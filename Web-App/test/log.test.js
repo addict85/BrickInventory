@@ -25,7 +25,7 @@ function transcript() {
   return { m, output: { out: z => m.out.push(z), err: z => m.err.push(z), jetzt: () => m.uhr } };
 }
 
-test('eine Zeile ist JSON mit Zeit, Stufe, Nachricht, Anfrage und Kontext', t => {
+test('a line is JSON with time, level, message, request and context', t => {
   const { m, output } = transcript();
   t.after(P.installLog(output));
   P.requestContext.run({ rid: 'ab12' }, () => console.warn('Preis fehlt für', '10294-1', { zustand: 'N' }));
@@ -54,7 +54,7 @@ test('eine Zeile ist JSON mit Zeit, Stufe, Nachricht, Anfrage und Kontext', t =>
   assert.match(fehler.kontext.fehler.stack, /log\.test\.js/);
 });
 
-test('app_logs bekommt die Zeilen im bisherigen Textformat', async t => {
+test('app_logs gets the lines in the previous text format', async t => {
   const { output } = transcript();
   t.after(P.installLog(output));
   const geschrieben = [];
@@ -70,7 +70,7 @@ test('app_logs bekommt die Zeilen im bisherigen Textformat', async t => {
   assert.match(geschrieben[0][1], /^\[\d{1,4}\/cd34\] Set angelegt \{"set":"42115-1"\}$/);
 });
 
-test('Schreibfehler: sofort, dann je Minute gesammelt', async t => {
+test('write errors: immediately, then collected per minute', async t => {
   const { m, output } = transcript();
   t.after(P.installLog(output));
   P.logInDieDatabase({
@@ -101,7 +101,7 @@ test('Schreibfehler: sofort, dann je Minute gesammelt', async t => {
   );
 });
 
-test('X-Request-Id: nur harmlose Kennungen, sonst eine eigene', () => {
+test('X-Request-Id: only harmless identifiers, otherwise an own one', () => {
   for (const gut of ['ab12', '3f6c1a2e-6e1b-4c55-9a5d-1b2c3d4e5f60', 'proxy.1:2_x'])
     assert.equal(P.anfrageKennung(gut), gut);
   for (const boese of ['a\nwarn gefälscht', 'x'.repeat(65), '', 'a b', '"};', ['liste'], undefined]) {

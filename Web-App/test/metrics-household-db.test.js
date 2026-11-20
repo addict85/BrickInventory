@@ -25,7 +25,7 @@ async function erreichbar() {
 
 after(() => db.pool.end());
 
-test('Kopfzeile und Galerie zaehlen dieselben Sets', async t => {
+test('header and gallery count the same sets', async t => {
   if (!(await erreichbar())) {
     keineDb(t);
     return;

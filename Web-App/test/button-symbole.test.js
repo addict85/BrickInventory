@@ -12,7 +12,7 @@ const assert = require('node:assert/strict');
 const { openUi } = require('./helpers/ui');
 
 for (const sprache of ['de', 'en']) {
-  test(`kein Knopf beginnt mit einem Plus (${sprache})`, async () => {
+  test(`no button starts with a plus (${sprache})`, async () => {
     const { w, d } = await openUi({}, { sprache });
     try {
       const knoepfe = [...d.querySelectorAll('button, .btn')];

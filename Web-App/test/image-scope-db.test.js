@@ -62,7 +62,7 @@ const DATEIEN = [
   ['instructions', `${SN.gemerkt}_bdp.pdf`],
 ].map(([o, n]) => path.join(DATEN, o, n));
 
-test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }, async t => {
+test('images and instructions in scope', { concurrency: 1, timeout: 180_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const namen = ['bb_haupt', 'bb_unter', 'bb_fremd'].map(n => `${n}_${P}`);
@@ -143,7 +143,7 @@ test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }
   };
   const bild = (sn, zusatz = '') => `/images/sets/${sn}${zusatz}.jpg`;
 
-  await t.test('ohne Anmeldung kein Bild und keine Anleitung, und Bilder nur privat zwischengespeichert', async () => {
+  await t.test('without login no image and no instruction, and images only cached privately', async () => {
     for (const weg of [bild(SN.unter), `/images/parts/${TEIL}`, `/data/instructions/${SN.unter}_1.pdf`]) {
       const r = await fetch(`http://127.0.0.1:${port}${weg}`, { redirect: 'manual' });
       const text = await r.text();
@@ -161,13 +161,13 @@ test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }
     );
   });
 
-  await t.test('das eigene Set-Bild samt Vorschau', async () => {
+  await t.test('the own set image including preview', async () => {
     assert.equal((await hole('unter', bild(SN.unter))).status, 200);
     assert.equal((await hole('unter', bild(SN.unter, '_thumb'))).text, `Inhalt ${SN.unter}_thumb.jpg`);
     assert.equal((await hole('fremd', bild(SN.fremd))).status, 200);
   });
 
-  await t.test('Set-Bilder gehen an jedes angemeldete Konto', async () => {
+  await t.test('set images go to every logged-in account', async () => {
     for (const [wer, sn] of [
       ['haupt', SN.unter],
       ['haupt', SN.gemerkt],
@@ -181,11 +181,11 @@ test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }
     assert.equal((await hole('haupt', bild(SN.none))).status, 404, 'eine fehlende Datei bleibt 404');
   });
 
-  await t.test('Teilebilder sind Katalog', async () => {
+  await t.test('part images are catalog', async () => {
     assert.equal((await hole('fremd', `/images/parts/${TEIL}`)).status, 200);
   });
 
-  await t.test('Anleitungen nur zu eigenen Sets', async () => {
+  await t.test('instructions only for own sets', async () => {
     assert.equal((await hole('haupt', `/data/instructions/${SN.unter}_1.pdf`)).status, 200);
     assert.equal((await hole('fremd', `/data/instructions/${SN.fremd}_1.pdf`)).status, 200);
     const fremd = await hole('haupt', `/data/instructions/${SN.fremd}_1.pdf`);
@@ -198,13 +198,13 @@ test('Bilder und Anleitungen im Blickfeld', { concurrency: 1, timeout: 180_000 }
     );
   });
 
-  await t.test('die API nennt das lokale Bild jedes Sets', async () => {
+  await t.test('the API names the local image of every set', async () => {
     const info = async sn => JSON.parse((await hole('haupt', `/api/v1/sets/info/${sn}`)).text);
     assert.equal((await info(SN.unter)).image_local, `/images/sets/${SN.unter}.jpg`);
     assert.equal((await info(SN.fremd)).image_local, `/images/sets/${SN.fremd}.jpg`);
   });
 
-  await t.test('nach dem Lösen der Verknüpfung sieht das Hauptkonto die Anleitung sofort nicht mehr', async () => {
+  await t.test('after unlinking, the main account immediately no longer sees the instruction', async () => {
     assert.equal(
       (await hole('haupt', `/data/instructions/${SN.unter}_1.pdf`)).status,
       200,

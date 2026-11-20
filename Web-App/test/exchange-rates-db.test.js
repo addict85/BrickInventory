@@ -56,7 +56,7 @@ const TAG = `<?xml version="1.0" encoding="UTF-8"?>
   <Cube currency='USD' rate='1.2600'/><Cube currency='CHF' rate='0.9600'/>
 </Cube></Cube></gesmes:Envelope>`;
 
-test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t => {
+test('exchange rates: fetch, conversion, fallback', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const abgerufen = [];
@@ -88,7 +88,7 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t =
   await db.run('DELETE FROM exchange_rates');
   const { reloadRates } = _req('src/finances/exchangeRates.js');
 
-  await t.test('erst die Historie, dann die Tageskurse', async () => {
+  await t.test('first the history, then the daily rates', async () => {
     assert.deepEqual(await reloadRates(lokal), { quelle: 'historie', rates: 5 }, 'N/A und leere Spalten zählen nicht');
     assert.deepEqual(await reloadRates(lokal), { quelle: 'tag', rates: 2 });
     assert.deepEqual(abgerufen, ['/stats/eurofxref/eurofxref-hist.zip', '/stats/eurofxref/eurofxref-daily.xml']);
@@ -96,7 +96,7 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t =
     assert.equal(r.per_eur, 0.96);
   });
 
-  await t.test('nur HTTPS auf den Host der EZB', async () => {
+  await t.test("only HTTPS to the ECB's host", async () => {
     const { ecbFetch } = _req('clients/ecb.js');
     await assert.rejects(ecbFetch('http://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml'), /nur von https/);
     await assert.rejects(ecbFetch('https://ecb.example.org/stats/eurofxref/eurofxref-daily.xml'), /nur von https/);
@@ -138,7 +138,7 @@ test('Wechselkurse: Abruf, Umrechnung, Rückfall', { concurrency: 1 }, async t =
     assert.equal(b.kaufpreise_fremde_waehrung, 1);
   });
 
-  await t.test('Preisverlauf', async () => {
+  await t.test('price history', async () => {
     const { priceHistorySet } = _req('src/finances/priceHistory.js');
     const v = await priceHistorySet([uid], SET, 'CHF');
     assert.equal(v.purchase_price, 92.5, 'die erste Erfassung, umgerechnet');

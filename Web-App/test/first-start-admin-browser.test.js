@@ -28,7 +28,7 @@ const { startApp, warte } = require('./helpers/app-browser');
 const ROOT = path.join(__dirname, '..');
 const ENTER = { key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, nativeVirtualKeyCode: 13 };
 
-test('Enter bestätigt, Erststart mit einer Passwortabfrage', { timeout: 240_000 }, async t => {
+test('Enter confirms, first start with one password prompt', { timeout: 240_000 }, async t => {
   const app = await startApp(t, { name: `erst_v_${process.pid}` });
   if (app.grund) {
     t.skip(app.grund);
@@ -43,7 +43,7 @@ test('Enter bestätigt, Erststart mit einer Passwortabfrage', { timeout: 240_000
   const offen = id => `getComputedStyle(document.getElementById('${id}')).display !== 'none'`;
   const errorToasts = `[...document.querySelectorAll('#toasts .toast.error')].map(x => x.textContent)`;
 
-  await t.test('Enter im Passwortfeld bestätigt', async () => {
+  await t.test('Enter in the password field confirms', async () => {
     await b.auswerten(`location.hash = '#/konto'; true`);
     await bis(`document.getElementById('prof-user')?.value !== ''`, 'Profil geladen');
     await b.auswerten(
@@ -81,7 +81,7 @@ test('Enter bestätigt, Erststart mit einer Passwortabfrage', { timeout: 240_000
   ).id;
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [sid]).catch(() => {}));
 
-  await t.test('das Startpasswort reist mit', async () => {
+  await t.test('the start password travels along', async () => {
     // Abmelden lädt die Seite neu; die Maske spricht dann die Sprache des Browsers.
     await b.tab('Network.setUserAgentOverride', {
       userAgent: await b.auswerten('navigator.userAgent'),
@@ -111,7 +111,7 @@ test('Enter bestätigt, Erststart mit einer Passwortabfrage', { timeout: 240_000
   });
 
   let geheimnis = '';
-  await t.test('Einrichten ohne dritte Passwortabfrage', async () => {
+  await t.test('setup without a third password prompt', async () => {
     await b.auswerten(`document.getElementById('zf-start').click(); true`);
     await bis(`!!document.querySelector('#zf-qr img') || ${offen('confirm-modal')}`, 'QR-Code oder Dialog');
     assert.equal(await b.auswerten(offen('confirm-modal')), false, 'Einrichten ohne dritte Passwortabfrage');
@@ -120,11 +120,11 @@ test('Enter bestätigt, Erststart mit einer Passwortabfrage', { timeout: 240_000
     );
   });
 
-  await t.test('QR-Bild mit Namen', async () => {
+  await t.test('QR image with name', async () => {
     assert.match(await b.auswerten(`document.querySelector('#zf-qr img').getAttribute('alt') || ''`), /QR-Code/);
   });
 
-  await t.test('falscher Code am Feld', async () => {
+  await t.test('wrong code at the field', async () => {
     await b.auswerten(`document.getElementById('zf-code').focus(); true`);
     await tap('000000');
     await enter();
@@ -136,7 +136,7 @@ test('Enter bestätigt, Erststart mit einer Passwortabfrage', { timeout: 240_000
     assert.deepEqual(z.toasts, [], 'falscher Code am Feld, nicht als Toast');
   });
 
-  await t.test('richtiger Code zeigt die Wiederherstellungscodes', async () => {
+  await t.test('correct code shows the recovery codes', async () => {
     const _req = require('./helpers/sources').buildAndRequire();
     const zf = _req('src/factors/secondFactor.js');
     await b.auswerten(

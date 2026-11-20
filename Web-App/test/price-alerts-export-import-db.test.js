@@ -169,7 +169,7 @@ async function hochladen(base, text, name = 'preisalarme.csv') {
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }
 
-test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, async t => {
+test('price alerts: round trip over the real addresses', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -183,7 +183,7 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
 
   let csvText = '';
 
-  await t.test('1. preisalarme.csv liegt im ZIP, neben den vier anderen', async () => {
+  await t.test('1. preisalarme.csv is in the ZIP, next to the four others', async () => {
     const r = await fetch(`${srv.base}/api/v1/settings/export/data`);
     assert.equal(r.status, 200, `Der Export antwortete mit ${r.status}`);
     const buf = Buffer.from(await r.arrayBuffer());
@@ -198,7 +198,7 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
     }
   });
 
-  await t.test('2. auch der Alarm auf einem NICHT besessenen Set steht drin', () => {
+  await t.test('2. the alert on a set NOT owned is in there too', () => {
     const zeilen = csvRows(csvText);
     assert.equal(zeilen.length, ALERTS.length, `${zeilen.length} Zeilen statt ${ALERTS.length}`);
     for (const a of ALERTS) {
@@ -235,7 +235,7 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
     }
   });
 
-  await t.test('3. Laufzeitzustand steht NICHT in der Datei', () => {
+  await t.test('3. runtime state is NOT in the file', () => {
     const kopf = csvText.replace(/^﻿/, '').split(/\r?\n/)[0];
     for (const spalte of ['triggered', 'last_triggered_at', 'last_price']) {
       assert.ok(
@@ -248,7 +248,7 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
     }
   });
 
-  await t.test('4. dieselbe Datei stellt die geleerte Tabelle wieder her', async () => {
+  await t.test('4. the same file restores the emptied table', async () => {
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [MAIN]);
     assert.equal(
       (await db.get('SELECT COUNT(*)::int c FROM price_alerts WHERE user_id=$1', [MAIN])).c,
@@ -284,7 +284,7 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
     }
   });
 
-  await t.test('5. eine Datei in fremder Währung: das KONTO gewinnt, und es wird gesagt', async () => {
+  await t.test('5. a file in a foreign currency: the ACCOUNT wins, and it is said', async () => {
     // Die Regel des Baums (PUT /sets/:setNumber/alert): Die Währung kommt aus
     // den Einstellungen, nicht aus der Anfrage. Eine Datei ist eine Anfrage.
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [MAIN]);
@@ -329,7 +329,7 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
     );
   });
 
-  await t.test('6. eine unbrauchbare Zeile wird gezählt, nicht verschluckt', async () => {
+  await t.test('6. an unusable row is counted, not swallowed', async () => {
     // Was dieser Fall WIRKLICH unterscheidet (beim Gegenprobieren gelernt)
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [MAIN]);
     const kaputt =
@@ -371,7 +371,7 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
     );
   });
 
-  await t.test('6b. ein erneuter Import setzt den Merker zurück', async () => {
+  await t.test('6b. a repeated import resets the flag', async () => {
     // setzeAlarm() sagt zu: „Der Merker triggered wird beim Ändern
     // ZURÜCKGESETZT: Eine neue Schwelle ist eine neue Frage, und die soll
     // beantwortet werden, auch wenn die alte schon einmal gemeldet hat."
@@ -403,7 +403,7 @@ test('Preisalarme: Rundlauf über die echten Adressen', { concurrency: 1 }, asyn
     );
   });
 
-  await t.test('7. der Rebrickable-Export bleibt unberührt', async () => {
+  await t.test('7. the Rebrickable export stays untouched', async () => {
     // Festgehalten, damit die Entscheidung nicht später als Versäumnis
     // gelesen wird: Diese Datei geht an den Importer einer FREMDEN Firma und
     // trägt genau zwei Spalten. Eine dritte macht sie dort unbrauchbar.

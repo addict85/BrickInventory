@@ -16,11 +16,11 @@ const { portOf } = require('./helpers/server');
 placeBundleSafe();
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
-test('das Bündel ist gebaut', () => {
+test('the bundle is built', () => {
   assert.ok(fs.existsSync(BUNDLE), 'public/js/app.bundle.js fehlt trotz placeBundleSafe()');
 });
 
-test('index.html lädt das Bündel und die Sprachdatei in der richtigen Reihenfolge', () => {
+test('index.html loads the bundle and the language file in the right order', () => {
   const iLocale = HTML.indexOf('/locales/');
   const iBundle = HTML.indexOf('app.bundle.js');
   assert.ok(iLocale > 0, 'Sprachdatei fehlt');
@@ -31,7 +31,7 @@ test('index.html lädt das Bündel und die Sprachdatei in der richtigen Reihenfo
   );
 });
 
-test('das Bündel lässt sich auswerten, ohne zu werfen', async () => {
+test('the bundle can be evaluated without throwing', async () => {
   const { JSDOM } = require('jsdom');
   const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: 'http://localhost/' });
   const { window } = dom;
@@ -60,7 +60,7 @@ test('das Bündel lässt sich auswerten, ohne zu werfen', async () => {
   dom.window.close();
 });
 
-test('api() liefert bei jedem Fehlschlag ein Objekt statt zu werfen', async () => {
+test('api() delivers an object on every failure instead of throwing', async () => {
   // Woher dieser Test kommt
   const http = require('node:http');
   const srv = http.createServer((q, r) => {
@@ -137,7 +137,7 @@ test('api() liefert bei jedem Fehlschlag ein Objekt statt zu werfen', async () =
   }
 });
 
-test('unbehandelte Fehler landen nicht nur in der Konsole', () => {
+test('unhandled errors do not only end up in the console', () => {
   // Ergänzung zum Test darüber: api() deckt den Regelfall ab, aber nicht einen
   // Fehler in einem Rückruf oder eine Zusage, die niemand einsammelt. Ohne
   // Auffangnetz sieht der Benutzer davon nichts — er klickt, und es passiert
@@ -153,7 +153,7 @@ test('unbehandelte Fehler landen nicht nur in der Konsole', () => {
   );
 });
 
-test('ein 401 führt zurück zur Anmeldung, nicht in eine tote Oberfläche', () => {
+test('a 401 leads back to the login, not into a dead UI', () => {
   // Woher dieser Test kommt
   const core = require('./helpers/sources').coreSource();
   assert.match(

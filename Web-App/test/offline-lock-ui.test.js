@@ -18,7 +18,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, takt } = require('./helpers/ui');
 
-test('offline: schreibende Knöpfe gesperrt', async t => {
+test('offline: writing buttons locked', async t => {
   const { w, d } = await openUi();
   try {
     const hinzu = d.querySelector('#tab-gallery button[data-click="oeffneErfassen"]');
@@ -27,14 +27,14 @@ test('offline: schreibende Knöpfe gesperrt', async t => {
     Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => false });
     w.dispatchEvent(new w.Event('offline'));
     await takt(10);
-    await t.test('offline: Hinzufügen gesperrt', () => {
+    await t.test('offline: adding locked', () => {
       assert.equal(d.getElementById('offline-band').hidden, false);
       assert.equal(hinzu.disabled, true);
       assert.match(hinzu.getAttribute('aria-describedby') || '', /offline-band/);
       assert.equal(filter.disabled, false, 'Lesen bleibt möglich');
       assert.match(d.getElementById('offline-band').textContent, /gesperrt/);
     });
-    await t.test('alle schreibenden Bedienelemente, Lesen bleibt frei', async () => {
+    await t.test('all writing controls, reading stays free', async () => {
       const import_ = d.querySelector('#tab-gallery .import-menue > summary');
       assert.equal(import_.getAttribute('aria-disabled'), 'true', 'Importieren');
       import_.click();
@@ -59,14 +59,14 @@ test('offline: schreibende Knöpfe gesperrt', async t => {
       for (const sel of ['.ntab[data-tab="finance"]', '#btn-umenu', '.umenu-item[data-arg="profil"]'])
         assert.equal(d.querySelector(sel).disabled, false, sel);
     });
-    await t.test('neu gezeichnete Knöpfe auch', async () => {
+    await t.test('redrawn buttons too', async () => {
       const div = d.createElement('div');
       div.innerHTML = '<button class="btn bp" data-click="speichereAlarm">Speichern</button>';
       d.body.appendChild(div);
       await takt(10);
       assert.equal(div.querySelector('button').disabled, true);
     });
-    await t.test('online: wieder frei', async () => {
+    await t.test('online: free again', async () => {
       Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => true });
       w.dispatchEvent(new w.Event('online'));
       await takt(10);

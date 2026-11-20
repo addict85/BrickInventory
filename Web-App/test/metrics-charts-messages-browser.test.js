@@ -30,7 +30,7 @@ const assert = require('node:assert/strict');
 const { startApp, warte } = require('./helpers/app-browser');
 const { patternCollection } = require('./helpers/inventory');
 
-test('Kennzahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
+test('metrics, charts, messages', { timeout: 280_000 }, async t => {
   const app = await startApp(t, { name: `r11_${process.pid}`, bestand: patternCollection, allDesigns: true });
   if (app.grund) {
     t.skip(app.grund);
@@ -42,7 +42,7 @@ test('Kennzahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
     await warte(300);
   };
 
-  await t.test('Kaufpreis-Karte nennt ihren Bezug', async () => {
+  await t.test('purchase price card names its reference', async () => {
     await geh('finanzen');
     await bis(`!!document.querySelector('#fin-tbl .dt-summe tfoot')`, 'Finanzen geladen', 200);
     const z = await b.auswerten(`({ titel: document.getElementById('fin-einstand-titel').textContent.trim(),
@@ -56,7 +56,7 @@ test('Kennzahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
     assert.ok(z.unter.includes(z.gesamt), `die Summe aller Kaufpreise steht darunter: ${z.unter} / ${z.gesamt}`);
   });
 
-  await t.test('Wertlinie in der Akzentfarbe', async () => {
+  await t.test('value line in the accent color', async () => {
     await bis(`!!document.querySelector('#portfolio-chart svg polyline')`, 'Wertdiagramm', 200);
     const farbe = await b.auswerten(`(() => { const h = document.documentElement, alt = h.getAttribute('data-theme');
       h.setAttribute('data-theme', 'werkbank'); const f = getComputedStyle(document.querySelector('#portfolio-chart svg polyline')).stroke;
@@ -64,7 +64,7 @@ test('Kennzahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
     assert.equal(farbe, 'rgb(201, 150, 63)', 'Wertlinie in der Akzentfarbe (Messing bei Werkbank)');
   });
 
-  await t.test('Diagramm wächst mit der Schrift', async () => {
+  await t.test('chart grows with the font', async () => {
     // Der Massstab des Gezeichneten (getScreenCTM), nicht der Rahmen: Mit
     // max-height steht ein verkleinertes Bild mittig in einem breiten Rahmen.
     const mass = `(() => { const svg = document.querySelector('#portfolio-chart svg');
@@ -91,7 +91,7 @@ test('Kennzahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
     );
   });
 
-  await t.test('Fusszeile der Teile nennt Einträge', async () => {
+  await t.test('parts footer names entries', async () => {
     await geh('teile');
     await bis(`/\\d/.test(document.getElementById('parts-sentinel')?.textContent || '')`, 'Teileliste', 200);
     const fuss = await b.auswerten(`document.getElementById('parts-sentinel').textContent`);
@@ -99,7 +99,7 @@ test('Kennzahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
     assert.doesNotMatch(fuss, /Teilesorten/);
   });
 
-  await t.test('unbekanntes Set: Klartext statt „Fehler“', async () => {
+  await t.test('unknown set: plain text instead of "error"', async () => {
     await geh('sammlung');
     await b.auswerten(`location.hash = '#/sammlung/set/99999-9'; true`);
     await bis(
@@ -114,7 +114,7 @@ test('Kennzahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
     );
   });
 
-  await t.test('Weitere Aktionen überlagern den Inhalt', async () => {
+  await t.test('more actions overlay the content', async () => {
     await geh('sammlung');
     await b.auswerten(`location.hash = '#/sammlung/set/10294-1'; true`);
     await bis(
@@ -137,7 +137,7 @@ test('Kennzahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
     await b.auswerten(`document.querySelector('#set-modal [data-dialog-zu]').click(); true`);
   });
 
-  await t.test('keine Aktionen gegen das eigene Konto', async () => {
+  await t.test('no actions against the own account', async () => {
     const ANDERE = `r11_andere_${process.pid}`;
     await db.run(
       `INSERT INTO users (username, email, password_hash, is_active, email_verified) VALUES ($1, $2, 'x', true, true)`,
@@ -163,7 +163,7 @@ test('Kennzahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
     );
   });
 
-  await t.test('Werkbank sperrt die Darstellung', async () => {
+  await t.test('werkbank locks the appearance', async () => {
     await geh('konto');
     await bis(`document.getElementById('design-wahl')?.options.length > 1`, 'Design-Wahl');
     await b.auswerten(
@@ -177,7 +177,7 @@ test('Kennzahlen, Diagramme, Meldungen', { timeout: 280_000 }, async t => {
     await bis(`!document.getElementById('dunkel-wahl').disabled`, 'andere Designs geben sie frei', 50);
   });
 
-  await t.test('leere Anmeldung: Fokus ins erste Feld', async () => {
+  await t.test('empty login: focus into the first field', async () => {
     await b.auswerten(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
     await bis(
       `!window.__alt && getComputedStyle(document.getElementById('login-screen')).display !== 'none'`,

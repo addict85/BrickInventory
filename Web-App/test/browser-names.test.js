@@ -17,7 +17,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { pruefe, RUNS } = require('../scripts/check-frontend-types');
 
-test('Oberfläche: die CI prüft beide Konfigurationen als eigenen Schritt', () => {
+test('UI: the CI checks both configurations as a step of its own', () => {
   // Den tsc-Lauf macht die CI (npm run typecheck:frontend, beide RUNS); hier
   // doppelt gelaufen kostete er jeden Testlauf rund 19 s (Prüfbericht arch17-web-b, N7).
   const fs = require('node:fs');
@@ -29,7 +29,7 @@ test('Oberfläche: die CI prüft beide Konfigurationen als eigenen Schritt', () 
   assert.equal(typeof pruefe, 'function');
 });
 
-test('Oberfläche: strict ist eingeschaltet, kein Teil davon abgeschaltet', () => {
+test('UI: strict is switched on, no part of it switched off', () => {
   // Ohne die Schalter bliebe der Lauf oben grün, prüfte aber weniger. Gefragt
   // wird tsc selbst (--showConfig), damit auch geerbte Einstellungen zählen.
   const { spawnSync } = require('node:child_process');

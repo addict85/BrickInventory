@@ -19,7 +19,7 @@ const { testServer } = require('./helpers/server');
 const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
-test('ein geleerter Kaufpreis wird aus dem Marktpreis gefüllt — Webapp UND App', { concurrency: 1 }, async t => {
+test('a cleared purchase price is filled from the market price — web app AND app', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const MAIN = `cp-h-${process.pid}`,

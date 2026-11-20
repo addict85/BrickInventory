@@ -14,7 +14,7 @@ const { testServer } = require('./helpers/server');
 const { holdsSet, quantityOf, haltRow } = require('./helpers/inventory');
 const db = testData();
 
-test('Löschen einer Erfassung bestimmt Preis und Zustand der Elternzeile neu', { concurrency: 1 }, async t => {
+test('deleting an acquisition redetermines price and condition of the parent row', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const USER = `delp-${process.pid}`;

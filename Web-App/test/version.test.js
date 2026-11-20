@@ -23,7 +23,7 @@ const { execFileSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 
-test('das Projekt hat kein Install-Skript', () => {
+test('the project has no install script', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   for (const s of ['preinstall', 'install', 'postinstall', 'prepare'])
     assert.equal(pkg.scripts[s], undefined, `package.json hat ${s}`);
@@ -31,7 +31,7 @@ test('das Projekt hat kein Install-Skript', () => {
   assert.equal(lock.packages[''].hasInstallScript, undefined, 'die Lockfile kennt noch ein Install-Skript');
 });
 
-test('ein Build-Argument geht vor, sonst Git', () => {
+test('a build argument takes precedence, otherwise Git', () => {
   const ziel = fs.mkdtempSync(path.join(os.tmpdir(), 'version-'));
   try {
     const script = path.join(ROOT, 'scripts', 'version.js');
@@ -48,7 +48,7 @@ test('ein Build-Argument geht vor, sonst Git', () => {
   }
 });
 
-test('der Server meldet die gebaute Version', () => {
+test('the server reports the built version', () => {
   const _req = require('./helpers/sources').buildAndRequire();
   const gebaut = JSON.parse(fs.readFileSync(path.join(ROOT, 'dist', 'version.json'), 'utf8')).version;
   const alt = process.env.APP_VERSION;
@@ -64,7 +64,7 @@ test('der Server meldet die gebaute Version', () => {
   }
 });
 
-test('Android-Etiketten nennen nicht die Web-Version', () => {
+test('Android tags do not name the web version', () => {
   const { buildVersion } = require('../scripts/version');
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'version-git-'));
   const git = (...a) =>

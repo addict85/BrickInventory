@@ -29,7 +29,7 @@ const TEIL = `lpf${process.pid}`;
 const SET = `LPF${process.pid}-1`;
 const NAME = `lesepfade_${process.pid}`;
 
-test('Lesefehler im Katalog: Fehler statt leer', { concurrency: 1 }, async t => {
+test('read error in the catalog: error instead of empty', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const { colorList } = _req('src/catalog/colors.js');
@@ -67,7 +67,7 @@ test('Lesefehler im Katalog: Fehler statt leer', { concurrency: 1 }, async t => 
     }
   };
 
-  await t.test('Farbliste', async () => {
+  await t.test('color list', async () => {
     assert.ok(
       (await colorList()).some(f => f.id === FARBE),
       'die Probefarbe fehlt — die Prüfung darunter bewiese nichts',
@@ -75,12 +75,12 @@ test('Lesefehler im Katalog: Fehler statt leer', { concurrency: 1 }, async t => 
     await ohne('rb_colors', () => assert.rejects(colorList(), /rb_colors/));
   });
 
-  await t.test('BrickLink-Zuordnung', async () => {
+  await t.test('BrickLink mapping', async () => {
     assert.equal(await blNumberOf('part', TEIL), `${TEIL}bl`);
     await ohne('bl_mapping', () => assert.rejects(blNumberOf('part', TEIL), /bl_mapping/));
   });
 
-  await t.test('Anleitungen eines Sets', async () => {
+  await t.test('instructions of a set', async () => {
     assert.equal((await instructionsToSet(SET)).length, 1);
     await ohne('shared_instructions', () => assert.rejects(instructionsToSet(SET), /shared_instructions/));
   });

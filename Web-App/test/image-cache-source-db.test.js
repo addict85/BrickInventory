@@ -57,7 +57,7 @@ function intercept(t) {
   return abgerufen;
 }
 
-test('Bildquellen kommen aus dem Katalog, nicht vom Client', { concurrency: 1 }, async t => {
+test('image sources come from the catalog, not from the client', { concurrency: 1 }, async t => {
   try {
     await db.initSchema();
   } catch (e) {
@@ -103,7 +103,7 @@ test('Bildquellen kommen aus dem Katalog, nicht vom Client', { concurrency: 1 },
     { part_number: `${T}d`, color_id: 5, quantity: 1, image_url: BOESE },
   ];
 
-  await t.test('die Angaben des Clients werden verworfen', async () => {
+  await t.test("the client's details are discarded", async () => {
     const teile = fromClient();
     await imagesFromCatalog(teile);
     assert.equal(teile[0].image_url, GUT);
@@ -113,7 +113,7 @@ test('Bildquellen kommen aus dem Katalog, nicht vom Client', { concurrency: 1 },
     assert.equal(teile[2].image_local, null);
   });
 
-  await t.test('abgerufen wird nur die geprüfte Katalogadresse', async () => {
+  await t.test('only the verified catalog address is fetched', async () => {
     const abgerufen = intercept(t);
     await createPdf({ job_id: jobId, user_id: 1, sets: [], parts: fromClient() });
     assert.ok(abgerufen.includes(GUT), `die Katalogadresse wird nicht abgerufen: ${abgerufen}`);
@@ -122,7 +122,7 @@ test('Bildquellen kommen aus dem Katalog, nicht vom Client', { concurrency: 1 },
   });
 });
 
-test('Setnummer nur aus einer reinen Rebrickable-Setadresse', () => {
+test('set number only from a plain Rebrickable set address', () => {
   const { setNumberFromImageAddress: sn } = _req('routes/imgProxy.js');
   assert.equal(sn('https://cdn.rebrickable.com/media/sets/10294-1.jpg'), '10294-1');
   for (const fremd of [

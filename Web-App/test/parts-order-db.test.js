@@ -33,7 +33,7 @@ const PS = _req('src/parts/summary.js');
 const U = 990611,
   U2 = 990612;
 
-test('Reihenfolge der Teileliste', { concurrency: 1 }, async t => {
+test('order of the parts list', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -76,7 +76,7 @@ test('Reihenfolge der Teileliste', { concurrency: 1 }, async t => {
   const abfrage = ordnung => ({ exclude_manual: '1', page: 1, page_size: 50, ordnung });
   const reihe = r => r.parts.map(p => p.part_number);
 
-  await t.test('der Server sortiert in jedem Weg wie gewählt', async () => {
+  await t.test('the server sorts as chosen on every path', async () => {
     const results = [];
     for (const ordnung of Object.keys(EXPECTED)) {
       await db.run('DELETE FROM parts_summary_state WHERE user_id = ANY($1)', [[U, U2]]);
@@ -107,11 +107,11 @@ test('Reihenfolge der Teileliste', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('ein unbekannter Wert gilt als Farbe', async () => {
+  await t.test('an unknown value counts as color', async () => {
     assert.deepEqual(reihe(await H.partsQuery(U, abfrage('; DROP TABLE parts'))), ['ORD2', 'ORD3', 'ORD1']);
   });
 
-  await t.test('ungruppiert zeichnet die Oberfläche keine Farbkacheln', async () => {
+  await t.test('ungrouped, the UI draws no color tiles', async () => {
     const teile = [
       { part_number: '3003', part_name: 'Axle', color_id: 3, color_name: 'Yellow', total_quantity: 7 },
       { part_number: '3001', part_name: 'Brick', color_id: 5, color_name: 'Red', total_quantity: 3 },

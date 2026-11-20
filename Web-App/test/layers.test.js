@@ -71,7 +71,7 @@ function afterOuter(rel) {
   return [...treffer];
 }
 
-test('keine Fachschicht importiert aus routes/ — ausser den benannten Faellen', () => {
+test('no domain layer imports from routes/ — except the named cases', () => {
   const dateien = innerFiles();
   // Selbstbeweis: Findet die Suche keine Dateien, waere die Pruefung darunter
   // still gruen. GEMESSEN sind es ueber sechzig.
@@ -92,7 +92,7 @@ test('keine Fachschicht importiert aus routes/ — ausser den benannten Faellen'
   );
 });
 
-test('eine v1-Route importiert keine andere Routendatei', () => {
+test('a v1 route imports no other route file', () => {
   // Gemeinsames gehört nach src/<bereich>/ (manualParts, manualMinifigs). Eine
   // Route, die eine Route importiert, zieht deren Router samt Middleware mit.
   // Gegenprobe (28.10.2026): require('../parts') in wanted.ts → rot.
@@ -106,7 +106,7 @@ test('eine v1-Route importiert keine andere Routendatei', () => {
   assert.deepEqual(treffer, []);
 });
 
-test('keine Route importiert eine andere Routendatei', () => {
+test('no route imports another route file', () => {
   // Erlaubt sind nur der Wächter (api_v1/middleware) und der Zusammenbau in
   // api_v1/index.ts, auth.ts (aus routes/auth/) und api_v1/settings.ts (settingsGlobal hinter requireLogin).
   // Gegenprobe (10.11.2026): `import { requireLogin } from '../auth'` in routes/api_v1/minifigs.ts → rot;
@@ -136,7 +136,7 @@ test('keine Route importiert eine andere Routendatei', () => {
   assert.deepEqual(treffer, []);
 });
 
-test('kein Zustand auf global', () => {
+test('no state on global', () => {
   // Was Prozesse teilen, steht in einem Modul (src/jobQueue/startState.ts) und
   // ist über den Import zu finden. Gegenprobe (29.10.2026): eine Zeile
   // `global.startupStatus = …` in server.ts → rot.
@@ -163,7 +163,7 @@ test('kein Zustand auf global', () => {
   assert.deepEqual(treffer, []);
 });
 
-test('src/ und clients/ importieren nichts aus jobs/', () => {
+test('src/ and clients/ import nothing from jobs/', () => {
   // Was src/ an Hintergrundarbeit anstösst, stellt es als Auftrag ein (src/jobQueue);
   // die Ausführung setzt startup/wiring.ts ein.
   // Gegenprobe (28.10.2026): require('../jobs/imageQueue') in wanted.ts → rot.
@@ -173,7 +173,7 @@ test('src/ und clients/ importieren nichts aus jobs/', () => {
   assert.deepEqual(treffer, []);
 });
 
-test('db/, clients/ und jobs/ kennen keine HTTP-Antwort', () => {
+test('db/, clients/ and jobs/ know no HTTP response', () => {
   // Fehler melden sie über src/infra/error.ts; den Weg zur Antwort kennt nur
   // die HTTP-Seite (src/http/httpResponse.ts, Routen).
   // Gegenprobe (05.11.2026): `import { fehlertext } from '../src/http/httpResponse'`
@@ -190,7 +190,7 @@ const codeRows = rel =>
     .split('\n')
     .filter(z => z.trim()).length;
 
-test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () => {
+test('jobs/ executes jobs, the work of a job lives in src/', () => {
   // jobs/ hält den Worker (Pacht, Wiederholung, Abbruch), die Bearbeitertabelle
   // und den Einstieg des Importprozesses; was ein Auftrag fachlich tut, liegt in src/<bereich>/.
   // Codezeilen im Biome-Format (Zeilenbreite 120).
@@ -221,7 +221,7 @@ test('jobs/ führt Aufträge aus, die Arbeit eines Auftrags steht in src/', () =
   if (summe < LIMIT) console.log(`  ℹ Codezeilen in jobs/: ${summe} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
-test('db/ importiert nichts aus jobs/', () => {
+test('db/ imports nothing from jobs/', () => {
   // Die Datenbankschicht ist die unterste; die Bilddienste startet
   // startup/database.ts. Gegenprobe (28.10.2026): der Import von
   // setUpImageDemand zurück in db/database.ts → rot.
@@ -245,7 +245,7 @@ function routesFiles() {
   return dateien;
 }
 
-test('keine Route führt SQL aus oder importiert aus db/', () => {
+test('no route executes SQL or imports from db/', () => {
   // Routen lesen die Anfrage, rufen einen Dienst und schreiben die Antwort;
   // Datenzugriff, Sperren und Benachrichtigungen stehen hinter src/<bereich>/.
   // Gegenproben: `import * as db from '../../db/database'` und eine db.get-Zeile
@@ -262,7 +262,7 @@ test('keine Route führt SQL aus oder importiert aus db/', () => {
   assert.deepEqual(treffer, []);
 });
 
-test('keine Route importiert aus jobs/ oder clients/', () => {
+test('no route imports from jobs/ or clients/', () => {
   // Jobs steuert eine Route über die Dienste von src/jobQueue und die Auftragstabelle,
   // fremde Dienste erreicht sie über einen Dienst in src/<bereich>/.
   // Gegenprobe (29.10.2026): `import { triggerNow } from '../../jobs/priceJob'`
@@ -274,7 +274,7 @@ test('keine Route importiert aus jobs/ oder clients/', () => {
   assert.deepEqual(treffer, []);
 });
 
-test('ins Netz geht nur clients/ über src/infra/fetch.ts', () => {
+test('only clients/ goes to the network, via src/infra/fetch.ts', () => {
   // Host-Liste, Grössendeckel, Frist und Abbruch stehen in abruf.ts; die Klienten
   // legen Hosts und Kopfzeilen fest. Ein Abruf daneben hätte nichts davon.
   // Gegenprobe (05.11.2026): `import { holeHttps } from '../infra/abruf'` in
@@ -287,7 +287,7 @@ test('ins Netz geht nur clients/ über src/infra/fetch.ts', () => {
   assert.deepEqual(treffer, []);
 });
 
-test('startup/ und routes/ kennen einander nur in einer Richtung, Routerfabriken nehmen Pick<Dienste, …>', () => {
+test('startup/ and routes/ know each other in only one direction, router factories take Pick<Dienste, …>', () => {
   // Was der Start anstösst (Aufräumläufe), steht in src/; eine Route gehört nur in
   // den Zusammenbau der App (startup/app.ts). Umgekehrt hängen routes/ und jobs/ nicht
   // an startup/: Den Typ Dienste gibt es in src/services.ts, und jede Routerfabrik
@@ -331,7 +331,7 @@ test('startup/ und routes/ kennen einander nur in einer Richtung, Routerfabriken
   );
 });
 
-test('keine Importzyklen in den inneren Schichten', () => {
+test('no import cycles in the inner layers', () => {
   // Ein Zyklus zwingt zu verzögertem require() und macht die Ladereihenfolge
   // zum Glücksspiel. `import type` zählt mit: Ein Typzyklus ist dieselbe
   // Verflechtung, nur ohne Folgen beim Laden.
@@ -369,7 +369,7 @@ test('keine Importzyklen in den inneren Schichten', () => {
   assert.deepEqual(cycles, []);
 });
 
-test('die Ausnahmeliste bleibt ehrlich — jeder Eintrag hat noch einen Fall', () => {
+test('the exception list stays honest — every entry still has a case', () => {
   // ── Warum es diese zweite Haelfte braucht ─────────────────────────────────
   // Eine Ausnahmeliste, die nie schrumpft, ist keine Liste offener Punkte
   // mehr, sondern Tapete. Faellt ein Fall weg, muss der Eintrag mit — sonst
@@ -382,7 +382,7 @@ test('die Ausnahmeliste bleibt ehrlich — jeder Eintrag hat noch einen Fall', (
   assert.deepEqual(tot, [], 'Diese Ausnahmen treffen auf nichts mehr zu — bitte aus der Liste streichen');
 });
 
-test('in routes/ liegt nichts, was keine Route ist', () => {
+test('nothing lies in routes/ that is not a route', () => {
   // Woher diese Pruefung kommt
   const allowedWithoutRouter = {
     'imgProxy.ts': 'registriert seine Routen ueber app.get() statt router.get()',
@@ -466,7 +466,7 @@ const hatSql = rel => {
   return SQL_TEXT.test(s) || SQL_AUFRUF.test(s) || SQL_FRAGMENT.test(s) || SQL_CLAUSE.test(s);
 };
 
-test('SQL steht nur in Repositories und in db/', () => {
+test('SQL only lives in repositories and in db/', () => {
   // Ein Verbot, keine Ratsche mehr: Die Liste der Ausnahmen ist seit dem
   // 31.10.2026 leer. Gegenproben (31.10.2026): `await db.get('SELECT 1')` in
   // src/household/household.ts → rot; `'SELECT 1'` in src/management/cleanup.ts → rot;
@@ -506,7 +506,7 @@ const DB_OUTSIDE = new Set([
   'TxGriff',
 ]);
 
-test('ausserhalb von repository/ und db/ fragt niemand die Datenbank ab', () => {
+test('outside of repository/ and db/ nobody queries the database', () => {
   // Die SQL-Suche oben liest Text; ein Aufruf unter anderem Namen (`datenbank.all(SQL)` mit dem
   // Text aus einem Repository) ginge an ihr vorbei. Gegenproben (09.11.2026):
   // `import * as datenbank from '../../db/database'` und `datenbank.all(repo.SQL)` in
@@ -540,7 +540,7 @@ test('ausserhalb von repository/ und db/ fragt niemand die Datenbank ab', () => 
   workUnitAtCallLocation();
 });
 
-test('Routen, Aufträge und Clients importieren keine Repositories', () => {
+test('routes, jobs and clients import no repositories', () => {
   // Gegenprobe (31.10.2026): `import * as r from '../../src/account/repository/accounts'`
   // in routes/api_v1/admin.ts → rot.
   const treffer = [];
@@ -677,7 +677,7 @@ function workUnitAtCallLocation() {
   assert.deepEqual(treffer, []);
 }
 
-test('ein Fachbereich greift auf einen anderen nur über dessen Dienste und index.ts zu', () => {
+test('a domain area accesses another only via its services and index.ts', () => {
   // Das Repository eines Bereichs ist sein Inneres; andere Bereiche nutzen die
   // Dienste. Gegenprobe (31.10.2026): `import { accountShort } from
   // '../konto/repository/konten'` in src/household/household.ts → rot.
@@ -782,7 +782,7 @@ function indexWithoutAccess(indizes) {
 /** Ein Modul ohne relative Importe (Zeilentypen, Konstanten) hängt an nichts. */
 const isSheet = rel => !/(?:from\s+|import\(\s*)['"]\./.test(sourceText(rel + '.ts'));
 
-test('ein Repository kennt keine Dienste, auch nicht deren Typen', () => {
+test('a repository knows no services, not even their types', () => {
   // Gegenproben: `import { getSetting } from '../settings'` in
   // src/settings/repository/values.ts → rot (31.10.2026); (05.11.2026)
   // `import type { SetMaster } from '../dienst'` zurück in
@@ -795,7 +795,7 @@ test('ein Repository kennt keine Dienste, auch nicht deren Typen', () => {
   assert.deepEqual(treffer, []);
 });
 
-test('Routen lösen keine Konten auf — das tun die Dienste', () => {
+test('routes do not resolve accounts — the services do that', () => {
   // Eine Route gibt die Sicht (viewOf) oder den Wunsch weiter; die Regeln des
   // Haushalts stehen in src/household und den Diensten, die sie anwenden.
   // Gegenprobe (05.11.2026): `await scopeIds(req.apiUser.user_id)` zurück in
@@ -813,7 +813,7 @@ test('Routen lösen keine Konten auf — das tun die Dienste', () => {
 /** Die HTTP-Seite eines Bereichs (Middleware, Sitzung): src/<bereich>/http/. */
 const isHttp = rel => /^src\/[^/]+\/http\//.test(rel);
 
-test('Express kennen nur src/http, die HTTP-Seiten der Bereiche und die Routen', () => {
+test("only src/http, the areas' HTTP sides and the routes know Express", () => {
   // Gegenproben (31.10.2026): `import type { Request } from 'express'` in
   // src/sets/service.ts → rot; dasselbe in src/account/loginLimiter.ts → rot.
   // (10.11.2026): dasselbe in src/infra/geld.ts, src/contract/base.ts und
@@ -839,7 +839,7 @@ test('Express kennen nur src/http, die HTTP-Seiten der Bereiche und die Routen',
   assert.deepEqual(withStatus, []);
 });
 
-test('nur Routen, Server und HTTP-Seiten importieren eine HTTP-Seite oder src/http', () => {
+test('only routes, server and HTTP sides import an HTTP side or src/http', () => {
   // Ein Dienst, der die HTTP-Seite importiert, hängt wieder am Request.
   // Gegenprobe (31.10.2026): `import { adresse } from './http/anmeldung'` in
   // src/account/deviceToken.ts → rot.
@@ -880,7 +880,7 @@ const SEND_ERROR_IN_ROUTES = new Map([
   ['routes/api_v1/middleware.ts', 1],
 ]);
 
-test('Routen fangen keine Fehler — der Fehlerweg des Routers antwortet', () => {
+test("routes catch no errors — the router's error path answers", () => {
   // Gegenproben: eine Route in routes/api_v1/minifigs.ts wieder in `try { … } catch (e) {
   // handleRouteError(res, e, undefined, req); }` gehüllt → rot (31.10.2026). In parts.ts
   // `return sendError(req, res, 404, 'teil_nicht_manuell')` statt notFound → rot
@@ -982,7 +982,7 @@ function areaEdges() {
   return _kanten;
 }
 
-test('jeder Bereich importiert nur Bereiche tieferer Stufen', () => {
+test('every area only imports areas of lower levels', () => {
   // Gegenproben (05.11.2026): `import { getSetting } from '../src/settings/settings'`
   // in clients/brickset.ts → rot (clients → src/settings); dasselbe mit
   // `import { withVersion } from '../sets/setNummer'` in src/catalog/service.ts,
@@ -1007,7 +1007,7 @@ test('jeder Bereich importiert nur Bereiche tieferer Stufen', () => {
   assert.deepEqual(falsch, []);
 });
 
-test('Klienten erreicht man nur über src/externalSources/sources.ts', () => {
+test('clients are only reached via src/externalSources/sources.ts', () => {
   // Dort bekommen sie Schlüssel, Kontingent und Drossel ihres Zugangs; ein Weg daran
   // vorbei fände keinen Schlüssel. Auch `import type` zählt, Ausnahmen gibt es keine.
   // Gegenproben: `import { lookupPart } from '../../clients/rebrickable'` in
@@ -1024,7 +1024,7 @@ test('Klienten erreicht man nur über src/externalSources/sources.ts', () => {
   );
 });
 
-test('docs/architektur.md nennt die Rangfolge der Bereiche wie LEVELS', () => {
+test('docs/architektur.md names the order of the areas like LEVELS', () => {
   // Gegenprobe: in der Tabelle `src/mail` und `src/settings` vertauscht → rot.
   const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architektur.md'), 'utf8');
   const tabelle = doc.slice(doc.indexOf('## Rangfolge der Bereiche'), doc.indexOf('## API-Vertrag'));
@@ -1035,7 +1035,7 @@ test('docs/architektur.md nennt die Rangfolge der Bereiche wie LEVELS', () => {
   assert.deepEqual(stufen, LEVELS);
 });
 
-test('die Warteschlange kennt keine Fachbereiche und Nutzlastformen, Ereignisse laufen über ereignis.ts', () => {
+test('the queue knows no domain areas and payload shapes, events go via ereignis.ts', () => {
   // Gegenproben (15.11.2026): `import type { CatalogServices } from '../katalog'` in
   // src/jobQueue/service.ts → rot (Kante src/jobQueue → src/catalog); `const P = z.object({})` in
   // src/jobQueue/kinds.ts → rot (Nutzlastform); `'brickset'` zurück in src/jobQueue/service.ts → rot.

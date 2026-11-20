@@ -18,7 +18,7 @@ const { testServer } = require('./helpers/server');
 const { holdsSet, quantityOf } = require('./helpers/inventory');
 const db = testData();
 
-test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 }, async t => {
+test('quantity: display = household, change = own account', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const MAIN = `mh-${process.pid}`,
@@ -69,7 +69,7 @@ test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 },
   const menge = async uid => await quantityOf(db, uid, SN);
 
   try {
-    await t.test('das Detail zeigt die Menge aller Konten', async () => {
+    await t.test('the detail shows the quantity of all accounts', async () => {
       const d = await detail();
       assert.equal(
         d.quantity,
@@ -78,7 +78,7 @@ test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 },
       );
     });
 
-    await t.test('erhöhen legt im EIGENEN Konto an, mit Marktpreis', async () => {
+    await t.test('increasing creates in the OWN account, with market price', async () => {
       const r = await setzen(2);
       assert.equal(r.status, 200);
       assert.equal(await menge(mainId), 1, 'die Differenz gehört dem eigenen Konto');
@@ -100,7 +100,7 @@ test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 },
       assert.equal(r.body.quantity, 2, 'die Antwort trägt die neue Gesamtmenge');
     });
 
-    await t.test('nochmal erhöhen fasst am selben Tag zusammen', async () => {
+    await t.test('increasing again merges on the same day', async () => {
       // Die Tagesregel gilt unverändert: eine Erfassung je Konto, Set und Tag.
       await setzen(4);
       const zeilen = await db.all(`SELECT quantity FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [
@@ -112,7 +112,7 @@ test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 },
       assert.equal(await menge(mainId), 3);
     });
 
-    await t.test('verringern nimmt zuerst die eigenen Exemplare', async () => {
+    await t.test('decreasing takes the own copies first', async () => {
       await setzen(1);
       assert.equal(await menge(mainId), 0, 'die eigenen Exemplare gehen zuerst');
       assert.equal(await menge(subId), 1, 'das fremde bleibt');
@@ -121,7 +121,7 @@ test('Menge: Anzeige = Haushalt, Änderung = eigenes Konto', { concurrency: 1 },
       assert.equal(eigene.c, 0, 'eine eigene Zeile mit Menge 0 bleibt zurück');
     });
 
-    await t.test('unter den eigenen Bestand geht es nicht', async () => {
+    await t.test('it cannot go below the own stock', async () => {
       // Die Exemplare eines anderen Kontos sind nicht meine. Statt sie
       // wegzunehmen, deckelt der Server — und sagt in der Antwort, was
       // tatsächlich gilt.

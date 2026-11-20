@@ -69,7 +69,7 @@ const freePort = () =>
     });
   });
 
-test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t => {
+test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `schritt_${process.pid}`,
     CHEF = `schrittchef_${process.pid}`,
@@ -152,7 +152,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
   const klartext = o => ruf(`/vouchers/${gid}/klartext`, { method: 'POST', body: { password: PASS }, ...o });
   let geraet;
 
-  await t.test('ohne Geräteschlüssel kommt ein App-Token nicht an die PIN', async () => {
+  await t.test('without a device key an app token does not get to the PIN', async () => {
     const r = await klartext({ token });
     assert.deepEqual([r.status, r.body.code], [403, 'geraeteschluessel_fehlt']);
     const c = await ruf('/geraet/schritt/challenge', { method: 'POST', token, body: { aktion: 'gutschein' } });
@@ -160,7 +160,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
   });
 
   await t.test(
-    'auch anders geschrieben kommt ein App-Token ohne Freigabe nicht an PIN, Löschung oder Codes',
+    'even written differently an app token without approval does not get to PIN, deletion or codes',
     async () => {
       const offen = [];
       for (const [method, weg] of [
@@ -184,28 +184,25 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     },
   );
 
-  await t.test(
-    'ohne frische Widerrufsliste oder mit widerrufener Kette nimmt der Server keinen Schlüssel an',
-    async () => {
-      const versuch = async grund => {
-        const h = await deposit(ruf, (await anmelden(NAME)).body.token);
-        assert.deepEqual([h.antwort.status, h.antwort.body.code], [400, 'geraeteschluessel_attestation'], grund);
-        await bis(() => log.includes(`abgewiesen: ${grund}`), 5000);
-        assert.match(log, new RegExp(`abgewiesen: ${grund}`));
-        log = '';
-      };
-      await db.run("DELETE FROM run_state WHERE key = 'attestation_widerruf'");
-      await versuch('widerrufsliste_fehlt');
-      await attestation.storeRevocationList(db, [], new Date(Date.now() - 8 * 86_400_000));
-      await versuch('widerrufsliste_fehlt');
-      const wurzel = new X509Certificate(attestation.WURZEL.der);
-      await attestation.storeRevocationList(db, ['1', wurzel.serialNumber.toLowerCase().replace(/^0+/, '')]);
-      await versuch('widerrufen');
-      await attestation.storeRevocationList(db, ['1']);
-    },
-  );
+  await t.test('without a fresh revocation list or with a revoked chain the server accepts no key', async () => {
+    const versuch = async grund => {
+      const h = await deposit(ruf, (await anmelden(NAME)).body.token);
+      assert.deepEqual([h.antwort.status, h.antwort.body.code], [400, 'geraeteschluessel_attestation'], grund);
+      await bis(() => log.includes(`abgewiesen: ${grund}`), 5000);
+      assert.match(log, new RegExp(`abgewiesen: ${grund}`));
+      log = '';
+    };
+    await db.run("DELETE FROM run_state WHERE key = 'attestation_widerruf'");
+    await versuch('widerrufsliste_fehlt');
+    await attestation.storeRevocationList(db, [], new Date(Date.now() - 8 * 86_400_000));
+    await versuch('widerrufsliste_fehlt');
+    const wurzel = new X509Certificate(attestation.WURZEL.der);
+    await attestation.storeRevocationList(db, ['1', wurzel.serialNumber.toLowerCase().replace(/^0+/, '')]);
+    await versuch('widerrufen');
+    await attestation.storeRevocationList(db, ['1']);
+  });
 
-  await t.test('der Schlüssel gilt einmal je Zugang; ein anderer wird nicht nachgeschoben', async () => {
+  await t.test('the key applies once per access; another one is not pushed in later', async () => {
     const h = await deposit(ruf, token);
     assert.equal(h.antwort.status, 200, JSON.stringify(h.antwort.body));
     geraet = h.schluessel;
@@ -223,30 +220,27 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     );
   });
 
-  await t.test(
-    'eine Kette mit fremder oder verbrauchter Challenge, aus Software oder fremder Wurzel wird abgewiesen',
-    async () => {
-      const neu = (await anmelden(NAME)).body.token;
-      const senden = kette => ruf('/geraet/schluessel', { method: 'POST', token: neu, body: { kette } });
-      const foreignChallenge = attestation.kette({ challenge: Buffer.alloc(32, 1) });
-      assert.deepEqual([(await senden(foreignChallenge.kette)).body.code], ['geraeteschluessel_attestation']);
-      for (const o of [{ sicherheit: 0 }, { wurzel: attestation.newRoot('Fremd') }, { paket: 'com.boese.app' }]) {
-        const n = (await ruf('/geraet/schluessel/nonce', { method: 'POST', token: neu, body: {} })).body.nonce;
-        const r = await senden(attestation.kette({ challenge: Buffer.from(n, 'base64url'), ...o }).kette);
-        assert.deepEqual([r.status, r.body.code], [400, 'geraeteschluessel_attestation'], JSON.stringify(o));
-      }
-      const ok = await deposit(ruf, neu);
-      assert.equal(ok.antwort.status, 200, JSON.stringify(ok.antwort.body));
-      const zweimal = await ruf('/geraet/schluessel', {
-        method: 'POST',
-        token: (await anmelden(NAME)).body.token,
-        body: { kette: attestation.kette({ challenge: Buffer.from(ok.nonce, 'base64url') }).kette },
-      });
-      assert.equal(zweimal.body.code, 'geraeteschluessel_attestation', 'Die Nonce gilt einmal und nur ihrer Familie');
-    },
-  );
+  await t.test('a chain with a foreign or used challenge, from software or a foreign root is rejected', async () => {
+    const neu = (await anmelden(NAME)).body.token;
+    const senden = kette => ruf('/geraet/schluessel', { method: 'POST', token: neu, body: { kette } });
+    const foreignChallenge = attestation.kette({ challenge: Buffer.alloc(32, 1) });
+    assert.deepEqual([(await senden(foreignChallenge.kette)).body.code], ['geraeteschluessel_attestation']);
+    for (const o of [{ sicherheit: 0 }, { wurzel: attestation.newRoot('Fremd') }, { paket: 'com.boese.app' }]) {
+      const n = (await ruf('/geraet/schluessel/nonce', { method: 'POST', token: neu, body: {} })).body.nonce;
+      const r = await senden(attestation.kette({ challenge: Buffer.from(n, 'base64url'), ...o }).kette);
+      assert.deepEqual([r.status, r.body.code], [400, 'geraeteschluessel_attestation'], JSON.stringify(o));
+    }
+    const ok = await deposit(ruf, neu);
+    assert.equal(ok.antwort.status, 200, JSON.stringify(ok.antwort.body));
+    const zweimal = await ruf('/geraet/schluessel', {
+      method: 'POST',
+      token: (await anmelden(NAME)).body.token,
+      body: { kette: attestation.kette({ challenge: Buffer.from(ok.nonce, 'base64url') }).kette },
+    });
+    assert.equal(zweimal.body.code, 'geraeteschluessel_attestation', 'Die Nonce gilt einmal und nur ihrer Familie');
+  });
 
-  await t.test('ein Schlüssel ohne Attestation gilt bis zum Stichtag und weicht einem attestierten', async () => {
+  await t.test('a key without attestation applies until the cutoff date and gives way to an attested one', async () => {
     const alt = (await anmelden(NAME)).body.token;
     const z = await db.get(
       `SELECT user_id AS uid, date_trunc('milliseconds', created_at) AS seit FROM api_tokens
@@ -267,7 +261,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     assert.equal(await repo.keyThe(f, new Date(0)), h.schluessel.oeffentlich);
   });
 
-  await t.test('ein Zugang aus der QR-Kopplung hinterlegt nur mit der Nonce seiner Abholung', async () => {
+  await t.test('an access from QR pairing only stores with the nonce of its collection', async () => {
     const sitzung = (await anmelden(NAME, { ohne_token: true })).kopf.get('set-cookie').split(';')[0];
     const qr = await ruf('/auth/qr-token', { method: 'POST', cookie: sitzung, body: { password: PASS } });
     assert.equal(qr.status, 200, JSON.stringify(qr.body));
@@ -283,12 +277,12 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     assert.equal(h.antwort.status, 200, JSON.stringify(h.antwort.body));
   });
 
-  await t.test('mit Schlüssel, aber ohne Freigabe: weiter zu', async () => {
+  await t.test('with a key but without approval: still closed', async () => {
     const r = await klartext({ token });
     assert.deepEqual([r.status, r.body.code], [403, 'schritt_freigabe_noetig']);
   });
 
-  await t.test('eine fremde Signatur öffnet nichts, und die Challenge ist danach verbraucht', async () => {
+  await t.test('a foreign signature opens nothing, and the challenge is used up afterwards', async () => {
     const c = await ruf('/geraet/schritt/challenge', { method: 'POST', token, body: { aktion: 'gutschein' } });
     assert.equal(c.status, 200);
     const fremd = await ruf('/geraet/schritt/freigabe', {
@@ -306,7 +300,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     assert.equal((await klartext({ token })).status, 403);
   });
 
-  await t.test('eine Challenge taugt nur für ihre Aktion', async () => {
+  await t.test('a challenge is only good for its action', async () => {
     const c = await ruf('/geraet/schritt/challenge', { method: 'POST', token, body: { aktion: 'verwaltung' } });
     const reinterpreted = c.body.nachricht.replace('\nverwaltung\n', '\ngutschein\n');
     assert.notEqual(reinterpreted, c.body.nachricht);
@@ -321,7 +315,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     assert.equal((await klartext({ token })).status, 403);
   });
 
-  await t.test('nach der Freigabe die PIN; abgelaufen wieder zu; ein anderer Zugang hat seine eigene', async () => {
+  await t.test('after approval the PIN; expired closed again; another access has its own', async () => {
     await releaseDevice(ruf, token, 'gutschein', geraet);
     const r = await klartext({ token });
     assert.equal(r.status, 200, JSON.stringify(r.body));
@@ -336,7 +330,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     assert.equal((await klartext({ token })).body.code, 'schritt_freigabe_noetig');
   });
 
-  await t.test('ein alter Zugang kann keinen Schlüssel mehr hinterlegen', async () => {
+  await t.test('an old access can no longer store a key', async () => {
     const alt = (await anmelden(NAME)).body.token;
     await db.run(`UPDATE api_tokens SET created_at = NOW() - INTERVAL '1 hour' WHERE token = $1`, [
       auth.tokenDigest(alt),
@@ -358,7 +352,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     assert.deepEqual([r.status, r.body.code], [403, 'geraeteschluessel_frist']);
   });
 
-  await t.test('die Browser-Sitzung bleibt beim Passwort', async () => {
+  await t.test('the browser session stays with the password', async () => {
     const a = await anmelden(NAME, { ohne_token: true });
     const keks = a.kopf.get('set-cookie').split(';')[0];
     const r = await klartext({ cookie: keks });
@@ -367,7 +361,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     assert.deepEqual([c.status, c.body.code], [403, 'nur_mit_app_token']);
   });
 
-  await t.test('Verwalter-Routen eines App-Tokens erst nach der Freigabe „verwaltung“', async () => {
+  await t.test('administrator routes of an app token only after the approval “verwaltung”', async () => {
     const voll = (await anmelden(CHEF, { scope: 'voll', code: codes.shift() })).body.token;
     const vorher = await ruf('/admin/cache-ttl', { token: voll });
     assert.deepEqual([vorher.status, vorher.body.code], [403, 'geraeteschluessel_fehlt']);
@@ -386,7 +380,7 @@ test('Schrittschutz am Server', { concurrency: 1, timeout: 180_000 }, async t =>
     assert.equal((await ruf('/auth/users', { token: voll })).status, 200);
   });
 
-  await t.test('jeder Verwalterweg in Einstellungen und Anleitungen verlangt die Freigabe „verwaltung“', async () => {
+  await t.test('every administrator path in settings and instructions requires the approval “verwaltung”', async () => {
     const voll = (await anmelden(CHEF, { scope: 'voll', code: codes.shift() })).body.token;
     await db.run(`INSERT INTO global_settings (key, value) VALUES ('smtp_host', 'mail.schritt.example')
       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);

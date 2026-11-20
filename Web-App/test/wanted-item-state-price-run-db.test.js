@@ -31,7 +31,7 @@ const { statesJeSet, conditionsNeededFor } = _req('src/finances/priceRun.js');
 /** Sortiert vergleichen: die Reihenfolge in der Menge ist keine Aussage. */
 const sortiert = a => [...a].sort();
 
-test('Preislauf: der Zustand eines Merkpostens ist der des Nutzers', { concurrency: 1 }, async t => {
+test('price run: the condition of a wishlist item is that of the user', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   // Eigene Nutzer je Prozess — der Test läuft neben anderen auf derselben DB.

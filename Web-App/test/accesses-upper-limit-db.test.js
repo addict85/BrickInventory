@@ -31,7 +31,7 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
 
-test('Obergrenzen für Sitzungen, Tokens und Vorrang', { concurrency: 1 }, async t => {
+test('upper limits for sessions, tokens and priority', { concurrency: 1 }, async t => {
   try {
     await db.initSchema();
   } catch (e) {
@@ -71,7 +71,7 @@ test('Obergrenzen für Sitzungen, Tokens und Vorrang', { concurrency: 1 }, async
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('höchstens 50 Sitzungen je Konto, die zuletzt benutzten bleiben', async () => {
+  await t.test('at most 50 sessions per account, the most recently used stay', async () => {
     // 60 alte Sitzungen: alt_00 lief zuerst ab (am längsten unbenutzt), alt_59 zuletzt.
     for (const [id, n] of [
       [uid, 60],
@@ -113,7 +113,7 @@ test('Obergrenzen für Sitzungen, Tokens und Vorrang', { concurrency: 1 }, async
     assert.equal((await sitzungen(anderer)).length, 3, 'fremde Sitzungen bleiben');
   });
 
-  await t.test('höchstens 50 Tokens je Konto, ein getauschter zählt nicht', async () => {
+  await t.test('at most 50 tokens per account, a swapped one does not count', async () => {
     for (let i = 0; i < 55; i++) {
       await db.run(
         `INSERT INTO api_tokens (token, user_id, label, last_used, expires_at)
@@ -143,7 +143,7 @@ test('Obergrenzen für Sitzungen, Tokens und Vorrang', { concurrency: 1 }, async
     );
   });
 
-  await t.test('nach 30 Anmeldungen je Adresse und Konto nur noch ohne Vorrang', async () => {
+  await t.test('after 30 logins per address and account only without priority', async () => {
     const L = _req('src/account/loginLimiter.js');
     const ip = '203.0.113.77';
     assert.equal(await L.knownLogin(ip, NAME), false, 'ein unbekanntes Gerät hat keinen Vorrang');

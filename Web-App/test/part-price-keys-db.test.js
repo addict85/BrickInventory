@@ -11,7 +11,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
-test('Preise stehen unter der BrickLink-Nummer, Erfassungen unter der Rebrickable-Nummer', async t => {
+test('prices are under the BrickLink number, acquisitions under the Rebrickable number', async t => {
   const db = testData();
   try {
     await db.initSchemaOnce();

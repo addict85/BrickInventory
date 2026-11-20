@@ -30,9 +30,9 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
+test('cents only at the end, currencies honest', { concurrency: 1 }, async t => {
   const geld = _req('src/infra/geld.js');
-  await t.test('120,3333 × 2 ist 240,67, und 1,005 rundet auf 1,01', () => {
+  await t.test('120.3333 × 2 is 240.67, and 1.005 rounds to 1.01', () => {
     assert.equal(geld.zeilenwert(120.3333, 2), 240.67);
     assert.equal(geld.zeilenwert('120.3333', 2), 240.67);
     assert.equal(geld.alsText(1.005), '1.01');
@@ -86,7 +86,7 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
     [SN],
   );
 
-  await t.test('120,3333 × 3 ist 361,00, und ein Kaufpreis in EUR wird gezählt', async () => {
+  await t.test('120.3333 × 3 is 361.00, and a purchase price in EUR is counted', async () => {
     const { valueSets } = _req('src/finances/financeCalc.js');
     const r = await valueSets(uid, [uid]);
     const set = r.sets.find(s => s.set_number === SN);
@@ -100,7 +100,7 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
     assert.equal(r.ttl_stunden, Number(r.ttl_hours));
   });
 
-  await t.test('die Kachel kommt fertig vom Server', async () => {
+  await t.test('the tile comes ready-made from the server', async () => {
     const { gainAndLoss } = _req('src/finances/financeCalc.js');
     const r = await gainAndLoss(uid, [uid]);
     const zeile = r.sets.find(s => s.set_number === SN);
@@ -110,7 +110,7 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
     assert.equal(r.totals.kaufpreise_fremde_waehrung, 1);
   });
 
-  await t.test('nur ein Kaufpreis in EUR: keine G&V statt Tausender-Prozent', async () => {
+  await t.test('only a purchase price in EUR: no P&L instead of thousands of percent', async () => {
     const { holdsPart, holdsMinifig } = require('./helpers/inventory');
     await holdsPart(db, uid, PART_EUR, { colorId: 5, preis: 1 });
     await holdsPart(db, uid, TEIL_CHF, { colorId: 5, preis: 0.1 });
@@ -147,7 +147,7 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('mehrere Zeilen eines Sets: mengengewichtet, sonst der Kaufpreis', () => {
+  await t.test('several rows of a set: weighted by quantity, otherwise the purchase price', () => {
     const { tileValues } = _req('src/finances/setValue.js');
     const w = tileValues([
       {
@@ -182,7 +182,7 @@ test('Rappen erst am Ende, Währungen ehrlich', { concurrency: 1 }, async t => {
     assert.deepEqual(w.get('B'), { kachel_preis: 40, kachel_pnl_pct: null, kachel_quelle: 'kauf' });
   });
 
-  await t.test('ohne Kontowährung gilt die der Installation — für Erfassungen und Gutscheine', async () => {
+  await t.test("without an account currency the installation's applies — for acquisitions and vouchers", async () => {
     await db.run(`INSERT INTO global_settings (key, value) VALUES ('currency','GBP')
                   ON CONFLICT (key) DO UPDATE SET value='GBP'`);
     await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [ohne, SN]);

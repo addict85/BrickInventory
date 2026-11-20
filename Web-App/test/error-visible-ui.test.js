@@ -15,7 +15,7 @@ const SN = '10326-1';
 const FEHLER = { $status: 500, success: false, code: 'interner_fehler', error: 'Datenbank gestört' };
 const meldungen = d => [...d.querySelectorAll('#toasts .toast')].map(t => t.textContent);
 
-test('Kaufpreis-Dialog: ein Lesefehler ist eine Meldung, keine leere Liste', async () => {
+test('purchase price dialog: a read error is a message, not an empty list', async () => {
   const o = await openUi({
     [`/v1/sets/${SN}`]: {
       success: true,
@@ -47,7 +47,7 @@ async function rememberFromCatalog(antworten, schwelle) {
   return o;
 }
 
-test('Merken aus dem Katalog: ein abgelehntes Merken wird gemeldet', async () => {
+test('remember from the catalog: a rejected remember is reported', async () => {
   const o = await rememberFromCatalog({ '/v1/wanted': FEHLER });
   try {
     assert.ok(await warte(() => meldungen(o.d).some(m => /Datenbank gestört/.test(m)), 2000), 'keine Meldung');
@@ -56,7 +56,7 @@ test('Merken aus dem Katalog: ein abgelehntes Merken wird gemeldet', async () =>
   }
 });
 
-test('Merken aus dem Katalog: … auch der Alarm', async () => {
+test('remember from the catalog: … the alert too', async () => {
   const o = await rememberFromCatalog(
     {
       '/v1/wanted': { success: true, war_neu: false },

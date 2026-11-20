@@ -21,7 +21,7 @@ const assert = require('node:assert/strict');
 const { startApp, warte } = require('./helpers/app-browser');
 const { holdsSet } = require('./helpers/inventory');
 
-test('Geringe Höhe: Kopf, Leiste und Band', { concurrency: 1, timeout: 300_000 }, async t => {
+test('low height: header, bar and banner', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `hoehe_${process.pid}`,
     bestand: async (db, uid) => {
@@ -49,7 +49,7 @@ test('Geringe Höhe: Kopf, Leiste und Band', { concurrency: 1, timeout: 300_000 
     await warte(350);
   };
 
-  await t.test('Kopf weicht beim Rollen', async () => {
+  await t.test('header gives way when scrolling', async () => {
     await rolle(0);
     assert.deepEqual((await b.auswerten(kopf))[0], 0);
     await rolle(300);
@@ -60,7 +60,7 @@ test('Geringe Höhe: Kopf, Leiste und Band', { concurrency: 1, timeout: 300_000 
     assert.equal((await b.auswerten(kopf))[0], 0, 'Kopf kommt beim Rollen nach oben nicht zurück');
   });
 
-  await t.test('untere Leiste schmal, Namen bleiben', async () => {
+  await t.test('bottom bar narrow, names stay', async () => {
     const m =
       await b.auswerten(`(() => { const n = document.querySelector('nav'); const tabs = [...n.querySelectorAll('.ntab')].filter(x => x.getClientRects().length);
       return { hoehe: Math.round(n.getBoundingClientRect().height), namen: tabs.map(x => x.textContent.trim()).filter(Boolean).length, tabs: tabs.length,
@@ -70,7 +70,7 @@ test('Geringe Höhe: Kopf, Leiste und Band', { concurrency: 1, timeout: 300_000 
     assert.equal(m.namen, m.tabs, 'ein Reiter ohne Namen');
   });
 
-  await t.test('Band bleibt weg, auch nach neuer Sitzung', async () => {
+  await t.test('banner stays away, even after a new session', async () => {
     await rolle(0);
     await bis(`!document.getElementById('rb-hinweis').hidden`, 'Hinweisband');
     await b.auswerten(

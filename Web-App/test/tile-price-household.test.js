@@ -18,7 +18,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { tileValues } = _req('src/finances/setValue.js');
 const kachel = (zeilen, nr) => tileValues(zeilen.map(z => ({ purchase_price: null, pnl_pct: null, ...z }))).get(nr);
 
-test('mehrere Besitzer: der Kachelpreis wird nach Menge gewichtet', () => {
+test('several owners: the tile price is weighted by quantity', () => {
   // Der gemessene Fall ohne Erfassungszeilen: zwei Konten, ein Set, 600 und 100.
   const k = kachel(
     [
@@ -31,7 +31,7 @@ test('mehrere Besitzer: der Kachelpreis wird nach Menge gewichtet', () => {
   assert.equal(k.kachel_preis, 850, 'Der Marktpreis ist in beiden Zeilen derselbe');
 });
 
-test('mehrere Besitzer mit erfassten Kaufpreisen: unveraendert', () => {
+test('several owners with entered purchase prices: unchanged', () => {
   const k = kachel(
     [
       { set_number: '75192-1', quantity: 1, baseline_price: 350, current_price: 850, baseline_pnl_pct: '142.9' },
@@ -42,7 +42,7 @@ test('mehrere Besitzer mit erfassten Kaufpreisen: unveraendert', () => {
   assert.equal(k.kachel_pnl_pct, 142.9);
 });
 
-test('unterschiedliche Mengen zaehlen unterschiedlich schwer', () => {
+test('different quantities weigh differently', () => {
   // Drei Exemplare zu 100, eines zu 500: (3·100 + 500)/4 = 200.
   const k = kachel(
     [
@@ -54,7 +54,7 @@ test('unterschiedliche Mengen zaehlen unterschiedlich schwer', () => {
   assert.equal(k.kachel_pnl_pct, 100, 'Gewichtet 200 gegen 400; ein einfacher Mittelwert ergäbe 33,3 %');
 });
 
-test('eine Zeile: der Wert des Servers bleibt', () => {
+test('one row: the server value stays', () => {
   const k = kachel(
     [
       {
@@ -71,7 +71,7 @@ test('eine Zeile: der Wert des Servers bleibt', () => {
   assert.equal(k.kachel_pnl_pct, 77.7, 'Bei einer Zeile wird nicht neu gerechnet — sonst stünde hier 5614,3 %');
 });
 
-test('ohne Kaufpreis und ohne Marktpreis steht kein Prozentwert und kein Betrag', () => {
+test('without purchase price and without market price there is no percentage and no amount', () => {
   const k = kachel(
     [
       { set_number: '10290-1', quantity: 1, baseline_price: null, current_price: 0, baseline_pnl_pct: null },
@@ -82,7 +82,7 @@ test('ohne Kaufpreis und ohne Marktpreis steht kein Prozentwert und kein Betrag'
   assert.deepEqual(k, { kachel_preis: null, kachel_pnl_pct: null, kachel_quelle: null });
 });
 
-test('das Web übernimmt die Werte des Servers', () => {
+test('the web takes over the server values', () => {
   // enrichGalleryWithPrices() mit einer Antwort ausführen und nachsehen, was
   // an der Kachel ankommt — ohne Browser, über die Modulfunktion selbst.
   const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'collection.js'), 'utf8');

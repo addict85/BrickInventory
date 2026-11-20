@@ -28,7 +28,7 @@ function server(t, mount, router) {
   return `http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}`;
 }
 
-test('die Hülle setzt success, die Route gibt nur ihr Ergebnis', async t => {
+test('the envelope sets success, the route only returns its result', async t => {
   const r = vertragsRouter('/api/v1/auth');
   r.endpunkt('GET /api/v1/auth/users', () => ({ users: [] }));
   const basis = server(t, '/api/v1/auth', r);
@@ -36,7 +36,7 @@ test('die Hülle setzt success, die Route gibt nur ihr Ergebnis', async t => {
   assert.deepEqual([a.status, await a.json()], [200, { success: true, users: [] }]);
 });
 
-test('ein fremdes Präfix ist 500, keine Antwort unter falschem Pfad', async t => {
+test('a foreign prefix is a 500, no response under a wrong path', async t => {
   const r = vertragsRouter('/api/v1/auth');
   r.endpunkt('GET /api/v1/auth/registration-status', () => ({ enabled: true }));
   const basis = server(t, '/api/v1', r);
@@ -45,12 +45,12 @@ test('ein fremdes Präfix ist 500, keine Antwort unter falschem Pfad', async t =
   assert.match((await a.json()).error, /eingehängt/);
 });
 
-test('ein Schlüssel ausserhalb des Vertrags oder des Präfixes wirft beim Bau', () => {
+test('a key outside the contract or the prefix throws at build time', () => {
   assert.throws(() => vertragsRouter('/api/v1').endpunkt('GET /api/v1/gibt-es-nicht', () => ({})), /nicht im Vertrag/);
   assert.throws(() => vertragsRouter('/api/v1/auth').endpunkt('GET /api/v1/sets', () => ({})), /nicht im Vertrag/);
 });
 
-test('eine Route mit Schrittmarke antwortet nur, wenn der Eingang genau ihren Schritt geprüft hat', async t => {
+test('a route with a step brand only answers if the entrance checked exactly its step', async t => {
   const r = vertragsRouter('/api/v1');
   r.endpunkt('POST /api/v1/vouchers/:id/klartext', () => ({ id: 1, number: '1', pin: null }));
   const app = express();

@@ -24,7 +24,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { holdsSet, holdsPart } = require('./helpers/inventory');
 
-test('Teile-Zusammenfassung: Stand', { concurrency: 1 }, async t => {
+test('parts summary: state', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const PS = _req('src/parts/summary.js');
   const NAME = `stand-${process.pid}`,
@@ -43,7 +43,7 @@ test('Teile-Zusammenfassung: Stand', { concurrency: 1 }, async t => {
   );
 
   try {
-    await t.test('ein umbenannter Lagerort entwertet die Zusammenfassung', async () => {
+    await t.test('a renamed storage location invalidates the summary', async () => {
       await PS.rebuildNow(uid);
       assert.equal(await PS.summaryFresh(uid, { strict: true }), true, 'Vorbedingung: frisch');
       await db.run(`UPDATE storage_locations SET name = 'Regal B' WHERE id = $1`, [ort]);
@@ -53,7 +53,7 @@ test('Teile-Zusammenfassung: Stand', { concurrency: 1 }, async t => {
       assert.equal(z.storage, 'Regal B');
     });
 
-    await t.test('ein geänderter Teilename ist sofort nachgezogen', async () => {
+    await t.test('a changed part name is updated immediately', async () => {
       await PS.rebuildNow(uid);
       assert.equal(await PS.summaryFresh(uid, { strict: true }), true, 'Vorbedingung: frisch');
       await db.run(`UPDATE part_catalog SET part_name = 'Neuer Name' WHERE part_number = $1`, [TEIL]);

@@ -15,7 +15,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 
-test('Anmeldewege: die jüngste Antwort gilt', { timeout: 120_000 }, async t => {
+test('login methods: the most recent response applies', { timeout: 120_000 }, async t => {
   const name = `aw_${process.pid}`;
   const app = await startApp(t, {
     name,

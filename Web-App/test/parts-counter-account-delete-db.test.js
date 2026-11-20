@@ -32,7 +32,7 @@ const ALT = (name, quelle) => `
     RETURN NULL;
   END $$ LANGUAGE plpgsql`;
 
-test('Teilezähler und Kontolöschung', { concurrency: 1 }, async t => {
+test('parts counter and account deletion', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const migriere = async () => {
     const c = await db.pool.connect();
@@ -56,7 +56,7 @@ test('Teilezähler und Kontolöschung', { concurrency: 1 }, async t => {
   await holdsPart(db, uid, '3001', { menge: 2, colorId: 4 });
 
   try {
-    await t.test('das Löschen eines Kontos mit Teilen gelingt', async () => {
+    await t.test('deleting an account with parts succeeds', async () => {
       await db.run('DELETE FROM users WHERE id=$1', [uid]);
       assert.equal(await db.get('SELECT 1 FROM parts WHERE user_id=$1', [uid]), undefined);
     });

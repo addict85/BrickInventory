@@ -46,7 +46,7 @@ const mailer = _req('src/mail/mailer.js');
 const P = process.pid;
 const BOESE = 'Gewinn-abholen.example';
 
-test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
+test('mails without foreign text', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const SCHLUESSEL = ['registration_enabled', 'smtp_host', 'smtp_user'];
@@ -89,7 +89,7 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
     return undefined;
   };
 
-  await t.test('Namen mit Adresse oder Steuerzeichen werden abgewiesen', async () => {
+  await t.test('names with an address or control characters are rejected', async () => {
     for (const [i, extra] of [
       { first_name: `Hallo ${BOESE}: https://boese.example/x` },
       { last_name: 'Meier\nKlick hier' },
@@ -128,7 +128,7 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
     await emptyCounter();
   });
 
-  await t.test('die Bestätigungsmail nennt keinen gewählten Namen', async () => {
+  await t.test('the confirmation mail names no chosen name', async () => {
     const an = `anna_${P}@example.org`;
     const r = await register(`${BOESE.slice(0, 14)}_${P}`, an, { first_name: 'Anna', last_name: 'Beispiel' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
@@ -140,7 +140,7 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
     assert.match(m.text, /https:\/\/lego\.example\.org\/verify#token=[0-9a-f]{64}/, 'der Token steht im Fragment');
   });
 
-  await t.test('die Mail zum vergebenen Benutzernamen nennt ihn nicht', async () => {
+  await t.test('the mail about the taken username does not name it', async () => {
     const an = `zweiter_${P}@example.org`;
     const r = await register(`${BOESE.slice(0, 14)}_${P}`, an);
     assert.equal(r.status, 200, JSON.stringify(r.body));
@@ -149,7 +149,7 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
     assert.ok(!m.text.includes(BOESE.slice(0, 14)) && !m.html.includes(BOESE.slice(0, 14)), m.text);
   });
 
-  await t.test('mehrere Registrierungen: die Mail verweist ohne Namen auf die Bestätigungsseite', async () => {
+  await t.test('several registrations: the mail refers to the confirmation page without names', async () => {
     await emptyCounter();
     const an = `doppelt_${P}@example.org`;
     for (const n of [`${BOESE.slice(0, 14)}x_${P}`, `echt_${P}`]) assert.equal((await register(n, an)).status, 200);
@@ -169,7 +169,7 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
     await emptyCounter();
   });
 
-  await t.test('je Zieladresse höchstens drei Registrierungen', async () => {
+  await t.test('at most three registrations per target address', async () => {
     await emptyCounter();
     const an = `ziel_${P}@example.org`;
     const status = [];
@@ -184,7 +184,7 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
     await emptyCounter();
   });
 
-  await t.test('der vierte Rücksetzlink an dieselbe Adresse bleibt aus', async () => {
+  await t.test('the fourth reset link to the same address does not come', async () => {
     const an = `vergessen_${P}@example.org`;
     await db.run(
       `INSERT INTO users (username, email, password_hash, is_active, email_verified)
@@ -204,7 +204,7 @@ test('Mails ohne fremden Text', { concurrency: 1 }, async t => {
     assert.ok(m && !m.text.includes(`vergessen_${P}`), 'die Rücksetzmail grüsst ohne Benutzernamen');
   });
 
-  await t.test('die Konsole zeigt den echten Link', async () => {
+  await t.test('the console shows the real link', async () => {
     await db.run("DELETE FROM global_settings WHERE key = 'smtp_host'");
     const zeilen = [];
     const alt = console.log;

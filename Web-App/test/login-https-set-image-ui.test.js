@@ -49,8 +49,8 @@ async function anmelden(f) {
   return o;
 }
 
-test('M1 Anmeldung ohne gesetztes Sitzungs-Cookie', async t => {
-  await t.test('Server meldet keks_fehlt: App bleibt zu, Hinweis statt „abgelaufen“', async () => {
+test('M1 login without a set session cookie', async t => {
+  await t.test('server reports keks_fehlt: the app stays closed, hint instead of "expired"', async () => {
     const { w, d, aufrufe } = await anmelden({
       sicher: true,
       url: 'https://localhost/',
@@ -68,7 +68,7 @@ test('M1 Anmeldung ohne gesetztes Sitzungs-Cookie', async t => {
       w.close();
     }
   });
-  await t.test('Server bestätigt das Cookie (keks_fehlt: false): ein 401 heisst abgelaufen', async () => {
+  await t.test('server confirms the cookie (keks_fehlt: false): a 401 means expired', async () => {
     const { w, d } = await anmelden({
       sicher: true,
       login: { success: true, user: { id: 1, username: 'anna', is_admin: false }, keks_fehlt: false },
@@ -80,7 +80,7 @@ test('M1 Anmeldung ohne gesetztes Sitzungs-Cookie', async t => {
       w.close();
     }
   });
-  await t.test('älterer Server ohne Angabe, http://localhost: trotzdem der Cookie-Hinweis', async () => {
+  await t.test('older server without the information, http://localhost: the cookie hint anyway', async () => {
     const { w, d } = await anmelden({
       sicher: true,
       login: {
@@ -98,7 +98,7 @@ test('M1 Anmeldung ohne gesetztes Sitzungs-Cookie', async t => {
   });
 });
 
-test('N1 Hinweis ohne HTTPS schon auf der Anmeldeseite', async t => {
+test('N1 hint without HTTPS already on the login page', async t => {
   for (const [fall, url, sicher, sichtbar] of /** @type {[string, string, boolean, boolean][]} */ ([
     ['http://localhost', 'http://localhost/', true, true],
     ['http über eine IP (kein sicherer Kontext)', 'http://192.168.1.20/', false, true],
@@ -121,7 +121,7 @@ test('N1 Hinweis ohne HTTPS schon auf der Anmeldeseite', async t => {
   }
 });
 
-test('N3 Finanzen-Fehler: Zeitraum, Chips und Suche weg, nach Erfolg zurück', async () => {
+test('N3 finance error: period, chips and search gone, back after success', async () => {
   let kaputt = true;
   const { w, d, ruhig } = await openUi({
     '/v1/finance/valuation': () =>
@@ -150,7 +150,7 @@ test('N3 Finanzen-Fehler: Zeitraum, Chips und Suche weg, nach Erfolg zurück', a
   }
 });
 
-test('N7 Set-Bild im Detail: ein echter Knopf, mit Bild bedienbar', async () => {
+test('N7 set image in the detail: a real button, operable with an image', async () => {
   const IMAGE = '/images/sets/10300-1.jpg';
   const { w, d } = await openUi({
     '/v1/sets': {

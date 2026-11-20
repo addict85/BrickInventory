@@ -19,7 +19,7 @@ const { bericht, pruefen } = require('../scripts/coverage');
 
 const ROOT = path.join(__dirname, '..');
 
-test('ein Lauf über dist/ ergibt lcov und Bereiche', async () => {
+test('a run over dist/ yields lcov and areas', async () => {
   buildDist();
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'abdeckung-'));
   try {
@@ -42,7 +42,7 @@ test('ein Lauf über dist/ ergibt lcov und Bereiche', async () => {
   }
 });
 
-test('unter der Schranke ist rot, darüber nicht', () => {
+test('below the limit is red, above it is not', () => {
   const datei = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'schranke-')), 's.json');
   fs.writeFileSync(datei, JSON.stringify({ gesamt: 80, oberflaeche: 50 }));
   assert.deepEqual(pruefen({ gesamt: 85, oberflaeche: 50 }, datei), []);

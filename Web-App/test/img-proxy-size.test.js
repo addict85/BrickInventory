@@ -118,7 +118,7 @@ test.after(async () => {
   fs.rmSync(wurzel, { recursive: true, force: true });
 });
 
-test('ein Bild genau an der Grenze geht hinaus und in den Cache', async t => {
+test('an image exactly at the limit goes out and into the cache', async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   assert.ok(SET_IMG_MAX_BYTES >= 10 * 1024 * 1024, 'hochauflösende Katalogbilder (5 MB und mehr) fielen heraus');
   cdnBody = Buffer.alloc(SET_IMG_MAX_BYTES, 3);
@@ -132,7 +132,7 @@ test('ein Bild genau an der Grenze geht hinaus und in den Cache', async t => {
   );
 });
 
-test('ein Bild über der Grenze wird verworfen, gezählt und gemeldet', async t => {
+test('an image above the limit is discarded, counted and reported', async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   cdnBody = Buffer.alloc(SET_IMG_MAX_BYTES + 1, 4);
   const beforeCache = imCache().length;
@@ -159,7 +159,7 @@ test('ein Bild über der Grenze wird verworfen, gezählt und gemeldet', async t 
   assert.equal(imCache().length, beforeCache, 'etwas liegt im Cache');
 });
 
-test('der lokale Download verwirft dasselbe Bild und meldet es', async () => {
+test('the local download discards the same image and reports it', async () => {
   cdnBody = Buffer.alloc(SET_IMG_MAX_BYTES + 1, 5);
   let pfad = 'unberührt';
   const zeilen = await withErrors(async () => {
@@ -178,7 +178,7 @@ test('der lokale Download verwirft dasselbe Bild und meldet es', async () => {
   );
 });
 
-test('die Vorschau entsteht aus dem fertig geschriebenen Cache', async t => {
+test('the preview arises from the completely written cache', async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   cdnBody = await sharp({ create: { width: 640, height: 480, channels: 3, background: '#36c' } })
     .jpeg()

@@ -47,7 +47,7 @@ async function dbReachable() {
   }
 }
 
-test('Katalog-Import tauscht, statt zu leeren', async t => {
+test('catalog import swaps instead of clearing', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -79,7 +79,7 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
     fs.writeFileSync(path.join(DATA_DIR, name), zeilen.join('\n') + '\n', 'utf8');
   }
 
-  await t.test('während des Imports sieht ein zweiter Leser durchgehend Daten', async () => {
+  await t.test('during the import a second reader sees data throughout', async () => {
     await db.run('DELETE FROM rb_colors');
     await db.run(`INSERT INTO rb_colors (id, name, rgb, is_trans)
                   SELECT g, 'alt-' || g, 'FFFFFF', 'f' FROM generate_series(1, 300) g`);
@@ -118,7 +118,7 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
     assert.equal(jetzt.name, 'neu-1', 'die neuen Daten sind nicht angekommen');
   });
 
-  await t.test('eine leere Datei ersetzt den Bestand nicht', async () => {
+  await t.test('an empty file does not replace the existing data', async () => {
     await db.run('DELETE FROM rb_colors');
     await db.run(`INSERT INTO rb_colors (id, name, rgb, is_trans) VALUES (1,'bestand','FFFFFF','f')`);
     writeCsv('colors.csv.tmp', ['id,name,rgb,is_trans']);
@@ -133,7 +133,7 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
     assert.equal(remaining.c, 1, 'der alte Bestand ist trotz Abbruch verschwunden');
   });
 
-  await t.test('ein fehlerhafter Block bricht den Import ab, statt Zeilen zu verlieren', async () => {
+  await t.test('a faulty chunk aborts the import instead of losing rows', async () => {
     await db.run('DELETE FROM rb_colors');
     await db.run(`INSERT INTO rb_colors (id, name, rgb, is_trans) VALUES (1,'bestand','FFFFFF','f')`);
     // Einen Fehler erzwingen, ohne den Worker zu verbiegen: eine Bedingung,
@@ -151,7 +151,7 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
     await db.run(`ALTER TABLE rb_colors DROP CONSTRAINT rb_colors_name_kurz`);
   });
 
-  await t.test('Set-Nummern ohne Versionsendung bekommen sie beim Tausch', async () => {
+  await t.test('set numbers without a version suffix get it during the swap', async () => {
     writeCsv('inventories.csv.tmp', ['id,version,set_num', '1,1,75192-1', '2,1,llca8', '3,2,fig-000001']);
     const worker = _req('jobs/csvImportWorker.js');
     assert.equal(await worker.TASKS.inventories(), 3);
@@ -162,7 +162,7 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
     );
   });
 
-  await t.test('verdoppelte Anführungszeichen bleiben ein Anführungszeichen', async () => {
+  await t.test('doubled quotes stay one quote', async () => {
     await db.run('DELETE FROM rb_colors');
     writeCsv('colors.csv.tmp', ['id,name,rgb,is_trans', '7,"Trans ""Neon"" Grün",C91A09,f']);
     const worker = _req('jobs/csvImportWorker.js');
@@ -171,7 +171,7 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
     assert.equal(zeile.name, 'Trans "Neon" Grün');
   });
 
-  await t.test('rb_sets bildet den Dump nach: neu, geändert, mit Bezug, ohne Bezug', async () => {
+  await t.test('rb_sets mirrors the dump: new, changed, with reference, without reference', async () => {
     await db.run('DELETE FROM rb_sets');
     const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ('csv-abgleich','x') RETURNING id`))
       .id;
@@ -234,7 +234,7 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
   });
 
-  await t.test('nach dem Lauf bleibt keine Schattentabelle zurück', async () => {
+  await t.test('after the run no shadow table remains', async () => {
     const rest = await db.all(
       `SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename LIKE '%\\_import'`,
     );
@@ -249,7 +249,7 @@ test('Katalog-Import tauscht, statt zu leeren', async t => {
 
 // Gegenprobe (15.11.2026): in createImportAccess() `pool: { max: 2 }` gestrichen → rot:
 // statement_timeout '30s' statt '0' (die Fristen der Anfragen träfen den Tausch).
-test('der Importprozess baut seinen Zugang über createDb, ohne Fristen der Anfragen', async t => {
+test("the import process builds its access via createDb, without the requests' deadlines", async t => {
   const zugang = _req('src/catalog/index.js').createImportAccess();
   t.after(() => zugang.pool.end());
   let zeile;
@@ -263,7 +263,7 @@ test('der Importprozess baut seinen Zugang über createDb, ohne Fristen der Anfr
   assert.equal(zeile.statement_timeout, '0');
 });
 
-test('der CSV-Download geht über abruf.ts, mit Frist, Deckel und Host-Liste', () => {
+test('the CSV download goes via abruf.ts, with deadline, cap and host list', () => {
   // Quelltext statt Verhalten: Frist und Deckel selbst prüft test/fetch-helper.test.js
   // an abruf.ts; hier nur, dass der Download diesen Weg nimmt.
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'clients/rebrickableCsv.ts'), 'utf8'));

@@ -10,14 +10,14 @@ const path = require('node:path');
 
 const P = require('./helpers/sources').buildAndRequire()('src/catalog/priceComparison.js');
 
-test('die Suchadresse maskiert, was hineingeht', () => {
+test('the search address masks what goes in', () => {
   const u = P.suchUrl('LEGO 75192 Millennium Falcon');
   assert.match(u, /^https:\/\/www\.toppreise\.ch\/produktsuche\?q=/);
   assert.ok(!u.includes(' '), 'Leerzeichen sind nicht maskiert — die Adresse bricht');
   assert.ok(u.includes('Millennium'), 'Der Suchbegriff ist unterwegs verlorengegangen');
 });
 
-test('leer bleibt leer — und ist damit KEIN Knopf', () => {
+test('empty stays empty — and is therefore NOT a button', () => {
   // Eine leere Zeichenkette ist die Aussage „dafuer gibt es keine Adresse".
   // Die Oberflaechen blenden den Knopf dann aus, statt auf eine Suche nach
   // nichts zu fuehren.
@@ -27,7 +27,7 @@ test('leer bleibt leer — und ist damit KEIN Knopf', () => {
   }
 });
 
-test('die Variante faellt weg, der Name kommt dazu', () => {
+test('the variant is dropped, the name is added', () => {
   // „-1" ist eine Rebrickable-Eigenheit und steht auf keiner Verpackung; ein
   // Preisvergleicher findet damit nichts. Der Name dagegen ist genau das,
   // wonach dort gesucht wird.
@@ -42,7 +42,7 @@ test('die Variante faellt weg, der Name kommt dazu', () => {
   assert.ok(ohne.includes('10276'), ohne);
 });
 
-test('die Adresse des Preisvergleichs steht genau an EINER Stelle', () => {
+test('the price comparison address exists in exactly ONE place', () => {
   // Der Waechter. Server: nur src/catalog/priceComparison.ts; Oberfläche und App nehmen die
   // Adresse aus der Antwort (preisvergleich_url).
   const wurzel = path.join(__dirname, '..', '..');

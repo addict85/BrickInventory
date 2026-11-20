@@ -10,7 +10,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { buildAndRequire } = require('./helpers/sources');
 
-test('keine Kommentare in der ausgelieferten Seite', async () => {
+test('no comments in the delivered page', async () => {
   const { startPageHtml } = buildAndRequire()('src/profile/indexHtml.js');
   const html = await startPageHtml();
   assert.equal((html.match(/<!--/g) || []).length, 0);

@@ -37,7 +37,7 @@ async function confirm(d) {
   return titel;
 }
 
-test('X am Administrator-Chip entzieht nach der Rückfrage', async () => {
+test('X on the administrator chip revokes after confirmation', async () => {
   let angekuendigt = false;
   const { w, d, aufrufe } = await openUi({
     '/v1/auth/users': () => ({
@@ -84,7 +84,7 @@ test('X am Administrator-Chip entzieht nach der Rückfrage', async () => {
   }
 });
 
-test('Standard-Chip ohne X, + Administrator ernennt', async () => {
+test('default chip without X, + administrator appoints', async () => {
   const { w, d, aufrufe } = await openUi({
     '/v1/auth/users': { success: true, users: [ANNA, BEN, CARLA] },
     '/v1/auth/users/2/admin': { success: true },
@@ -112,7 +112,7 @@ test('Standard-Chip ohne X, + Administrator ernennt', async () => {
   }
 });
 
-test('eigenes Konto: Chip ohne X', async () => {
+test('own account: chip without X', async () => {
   const { w, d } = await openUi({ '/v1/auth/users': { success: true, users: [ANNA, BEN, CARLA] } });
   try {
     await reiter(w, 'settings');
@@ -126,7 +126,7 @@ test('eigenes Konto: Chip ohne X', async () => {
   }
 });
 
-test('ein einziger Administrator: kein X', async () => {
+test('a single administrator: no X', async () => {
   const { w, d } = await openUi({ '/v1/auth/users': { success: true, users: [ANNA, BEN] } });
   try {
     await reiter(w, 'settings');

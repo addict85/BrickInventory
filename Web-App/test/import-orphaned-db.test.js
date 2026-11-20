@@ -22,7 +22,7 @@ const { jobGet, startJob, ORPHANED_MIN } = _req('src/jobQueue/importJob.js');
 
 const NAME = `verwaist_${process.pid}`;
 
-test('verwaiste Importe', { concurrency: 1 }, async t => {
+test('orphaned imports', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -45,13 +45,13 @@ test('verwaiste Importe', { concurrency: 1 }, async t => {
       [uid, vorMin],
     );
 
-  await t.test('ein laufender Auftrag bleibt', async () => {
+  await t.test('a running job stays', async () => {
     await auftrag(1);
     assert.equal((await jobGet(uid)).status, 'running');
     assert.equal(await startJob(uid, { total: 5 }), false, 'Ein zweiter Auftrag verdrängt den laufenden');
   });
 
-  await t.test('ein verwaister Auftrag', async () => {
+  await t.test('an orphaned job', async () => {
     await auftrag(ORPHANED_MIN + 1);
     const stand = await jobGet(uid);
     assert.equal(stand.status, 'error');

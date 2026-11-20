@@ -274,7 +274,7 @@ async function passwordChange(_t, a) {
   assert.match(p.beschreibung, /^Empfohlen: Ein Passkey, den jemand Fremdes angelegt hat/);
 }
 
-test('Feldfehler, Beträge, Finanzen am Telefon', { concurrency: 1, timeout: 300_000 }, async t => {
+test('field errors, amounts, finances on the phone', { concurrency: 1, timeout: 300_000 }, async t => {
   const a = await startApp(t, { name: `r20_pruefer_${process.pid}`, bestand: patternHousehold });
   if (a.grund) {
     t.skip(a.grund);

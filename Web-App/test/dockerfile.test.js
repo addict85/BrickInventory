@@ -10,7 +10,7 @@ const { missingPrecondition } = require('./helpers/db');
 
 const ROOT = path.join(__dirname, '..');
 
-test('das Build-Stage installiert keine Compiler-Werkzeuge', () => {
+test('the build stage installs no compiler tools', () => {
   const df = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
   // Kommentare zählen nicht — dort steht die Zeile als Hinweis für den Fall,
   // dass sie doch einmal gebraucht wird.
@@ -23,7 +23,7 @@ test('das Build-Stage installiert keine Compiler-Werkzeuge', () => {
   }
 });
 
-test('und keine Abhängigkeit braucht sie', () => {
+test('and no dependency needs them', () => {
   // Zwei Belege, beide aus der Lockfile — sie gilt im Build (npm ci):
   //   1. kein Paket mit nativer Erweiterung
   //   2. die Pakete mit Install-Skript sind bekannt und harmlos
@@ -48,7 +48,7 @@ test('und keine Abhängigkeit braucht sie', () => {
 
 // Gegenprobe (am 28.10.2026 gemessen): `ENV PGPASSWORD=brickinventory_secret`
 // wieder ins Dockerfile → rot. Ein ENV steht in jeder Kopie des Images.
-test('das Image trägt kein Datenbankpasswort', () => {
+test('the image carries no database password', () => {
   const df = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
   const zeilen = df.split('\n').filter(l => !l.trim().startsWith('#'));
   assert.deepEqual(
@@ -65,7 +65,7 @@ test('das Image trägt kein Datenbankpasswort', () => {
 
 // Gegenprobe (am 28.10.2026 gemessen): den Digest an der zweiten FROM-Zeile
 // entfernt → rot. Ein Tag wie node:26-alpine zeigt morgen auf ein anderes Image.
-test('Basis-Images stehen per Digest fest', () => {
+test('base images are fixed by digest', () => {
   const quellen = {
     Dockerfile: fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8'),
     'compose.yaml': fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8'),
@@ -79,7 +79,7 @@ test('Basis-Images stehen per Digest fest', () => {
 });
 
 // Gegenprobe (30.10.2026): die rm-Zeile im Laufzeit-Stage entfernt → rot.
-test('das Laufzeit-Image trägt kein npm, corepack oder yarn', () => {
+test('the runtime image carries no npm, corepack or yarn', () => {
   const df = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
   const laufzeit = df
     .split(/^FROM /m)
@@ -91,7 +91,7 @@ test('das Laufzeit-Image trägt kein npm, corepack oder yarn', () => {
     assert.ok(laufzeit.includes(pfad), `${pfad} bleibt im Laufzeit-Image`);
 });
 
-test('Geheimnisse und Sicherungen bleiben aus Image und Repository', t => {
+test('secrets and backups stay out of image and repository', t => {
   // Der Build-Kontext ist Web-App/: Ohne Eintrag landeten .env (Passwörter),
   // die Sicherungen von scripts/backup.sh und der Datenschlüssel im Image.
   // Gegenprobe (01.11.2026): `backups` aus .dockerignore gestrichen → rot.
@@ -128,7 +128,7 @@ test('Geheimnisse und Sicherungen bleiben aus Image und Repository', t => {
 // Gegenproben (03.11.2026 gemessen, je einzeln): im Dockerfile wieder `RUN npm ci`
 // → rot „Dockerfile: npm ci ohne --ignore-scripts“; `npm rebuild esbuild` in
 // web-ci.yml gestrichen → rot „web-ci.yml baut nicht genau …“.
-test('Install-Skripte laufen nur gezielt, für genau die Pakete, die eines haben', () => {
+test('install scripts only run selectively, for exactly the packages that have one', () => {
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
   // fsevents gibt es nur unter macOS; auf Linux wird es nie installiert.
   const mitSkript = Object.entries(lock.packages)
@@ -158,7 +158,7 @@ test('Install-Skripte laufen nur gezielt, für genau die Pakete, die eines haben
 // Gegenproben (13.11.2026 gemessen, je einzeln): `USER brickinv` gestrichen → rot „das Image startet
 // ohne --user als root“; die Bedingung `[ "$(id -u)" = 0 ]` durch `true` ersetzt → rot „ohne root
 // startet node direkt, ohne su-exec“.
-test('das Image startet als brickinv, der Entrypoint läuft so und als root', () => {
+test('the image starts as brickinv, the entrypoint runs that way and as root', () => {
   const laufzeit =
     fs
       .readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8')

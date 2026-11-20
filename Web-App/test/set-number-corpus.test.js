@@ -18,7 +18,7 @@ const ROOT = path.join(__dirname, '..');
 const CORPUS_FILE = path.join(ROOT, '..', 'shared', 'setnummer-korpus.json');
 const korpus = JSON.parse(fs.readFileSync(CORPUS_FILE, 'utf8')).faelle;
 
-test('jeder Fall des gemeinsamen Korpus liefert denselben ersten Kandidaten', () => {
+test('every case of the shared corpus yields the same first candidate', () => {
   let withExpectation = 0,
     withoutCandidate = 0,
     threeDigit = 0;
@@ -48,7 +48,7 @@ test('jeder Fall des gemeinsamen Korpus liefert denselben ersten Kandidaten', ()
   assert.ok(threeDigit >= 2, `nur ${threeDigit} dreistellige Setnummern im Korpus`);
 });
 
-test('jeder Korpusfall hat eine Begründung', () => {
+test('every corpus case has a rationale', () => {
   // Ein Fall ohne `warum` ist in einem halben Jahr nicht mehr zu bewerten —
   // und wer ihn dann rot sieht, weiss nicht, ob er ihn ändern darf.
   for (const [i, fall] of korpus.entries()) {

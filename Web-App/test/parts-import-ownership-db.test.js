@@ -53,7 +53,7 @@ replace('src/sets/setContentImport.js', {
 const db = quellen.testData();
 const P = process.pid;
 
-test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async t => {
+test('parts import only in scope', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const namen = [`ti_haupt_${P}`, `ti_unter_${P}`, `ti_fremd_${P}`];
@@ -96,21 +96,21 @@ test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async t => {
     return { status: r.status, body: await r.json() };
   };
 
-  await t.test('ein fremdes Set wird nicht importiert', async () => {
+  await t.test('a foreign set is not imported', async () => {
     const r = await importiere(H, FREMD);
     assert.equal(r.status, 404, JSON.stringify(r.body));
     assert.equal(r.body.code, 'set_nicht_gefunden');
     assert.deepEqual(importe, []);
   });
 
-  await t.test('das Set des Unterkontos importiert das Hauptkonto für dessen Besitzer', async () => {
+  await t.test("the main account imports the sub-account's set for its owner", async () => {
     const r = await importiere(H, UNTER);
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.deepEqual(r.body, { success: true, count: 3 });
     assert.deepEqual(importe, [[UNTER, U]]);
   });
 
-  await t.test('ein gescheiterter Import ist ein Fehler, keine leere Liste', async () => {
+  await t.test('a failed import is an error, not an empty list', async () => {
     const r = await importiere(H, KAPUTT);
     assert.equal(r.status, 500, JSON.stringify(r.body));
     assert.equal(r.body.success, false);
@@ -118,7 +118,7 @@ test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async t => {
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'teile-import|%'");
   });
 
-  await t.test('je Konto höchstens 30 Importe je Stunde', async () => {
+  await t.test('at most 30 imports per hour per account', async () => {
     const status = [];
     for (let i = 0; i < 30; i++) status.push((await importiere(U, UNTER)).status);
     assert.deepEqual([...new Set(status)], [200], 'bis zur Grenze geht jeder durch');
@@ -128,7 +128,7 @@ test('Teile-Import nur im Blickfeld', { concurrency: 1 }, async t => {
     assert.equal((await importiere(F, FREMD)).status, 200, 'ein anderes Konto zählt für sich');
   });
 
-  await t.test('eine leere Antwort wird gemerkt', async () => {
+  await t.test('an empty response is remembered', async () => {
     const { alleTeileDesSets } = _req('src/catalog/rebrickableCatalog.js');
     const leer = `TIL${P}-1`;
     assert.deepEqual(await alleTeileDesSets(leer), []);

@@ -47,7 +47,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `familie_${process.pid}`,
   PASS = 'Familien-Passwort-1';
 
-test('Token-Familie mit Wiederverwendungserkennung', { concurrency: 1 }, async t => {
+test('token family with reuse detection', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -101,37 +101,37 @@ test('Token-Familie mit Wiederverwendungserkennung', { concurrency: 1 }, async t
   assert.equal(getauscht.status, 200, JSON.stringify(getauscht.body));
   const b = getauscht.body.token;
 
-  await t.test('der Vorgänger ist als verbraucht vermerkt', async () => {
+  await t.test('the predecessor is marked as used', async () => {
     assert.equal(await gilt(b), true, 'die erste Nutzung des Nachfolgers');
     assert.deepEqual(await verbraucht(), [auth.tokenDigest(a)]);
     assert.equal(await gilt(a), false, 'der Vorgänger gilt nach der Überlappung nicht mehr');
   });
 
-  await t.test('ein Nachzügler in der Schonfrist sperrt nichts', async () => {
+  await t.test('a straggler in the grace period locks nothing', async () => {
     assert.equal((await ruf('/token-rotieren', a, {})).status, 401);
     assert.equal(await gilt(b), true, 'eine Anfrage, die noch mit dem alten unterwegs war, sperrt das Gerät aus');
     assert.deepEqual(await mails(0), []);
   });
 
-  await t.test('der Tausch mit dem verbrauchten sperrt die Familie', async () => {
+  await t.test('the exchange with the used one locks the family', async () => {
     await db.run(`UPDATE api_tokens_consumed SET consumed_at = NOW() - INTERVAL '2 minutes' WHERE user_id = $1`, [uid]);
     assert.equal((await ruf('/token-rotieren', a, {})).status, 401);
     assert.equal(await gilt(b), false, 'der Nachfolger des kopierten Tokens gilt weiter');
     assert.deepEqual(await verbraucht(), [], 'die Familie ist samt Vermerk weg');
   });
 
-  await t.test('das andere Gerät bleibt angemeldet', async () => {
+  await t.test('the other device stays logged in', async () => {
     assert.equal(await gilt(anderes), true);
   });
 
-  await t.test('der Inhaber bekommt genau eine Mail', async () => {
+  await t.test('the owner gets exactly one mail', async () => {
     assert.deepEqual(await mails(1), [{ an: `${NAME}@example.org`, art: 'token_wiederverwendet', name: 'Pixel' }]);
     assert.equal((await ruf('/me', a)).status, 401);
     await new Promise(r => setTimeout(r, 100));
     assert.equal((await mails(1)).length, 1, 'ein zweiter Versuch schickt keine zweite Mail');
   });
 
-  await t.test('verwaiste Vermerke räumt der Hintergrundlauf ab', async () => {
+  await t.test('orphaned marks are cleared by the background run', async () => {
     const c2 = await ruf('/token-rotieren', anderes, {});
     assert.equal(await gilt(c2.body.token), true);
     assert.equal((await verbraucht()).length, 1, 'Vorbedingung: ein Vermerk der lebenden Familie');

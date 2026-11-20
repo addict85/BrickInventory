@@ -62,10 +62,10 @@ function measure(bin, ordner, design) {
   return JSON.parse(m[1].replace(/&quot;/g, '"'));
 }
 
-test('Kopf- und Reiterleiste haften in jedem Design gemeinsam und schliessen aneinander an', t => {
+test('header and tab bar stick together in every theme and connect to each other', t => {
   const bin = chrome();
   if (!bin) {
-    t.skip('kein Chrome gefunden');
+    t.skip('no Chrome found');
     return;
   }
   assert.ok(DESIGNS.length >= 5, `nur ${DESIGNS.length} Designs gefunden`);

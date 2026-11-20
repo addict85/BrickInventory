@@ -24,7 +24,7 @@ const { catalogSet } = require('./helpers/inventory');
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-test('Bildadresse über den Dateinamen-Stamm', { concurrency: 1 }, async t => {
+test('image address via the file name stem', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const { cdnForMissingImage, CDN_QUERY } = _req('src/images/imageLookup.js');
   const P = `bst${process.pid}`;
@@ -44,18 +44,18 @@ test('Bildadresse über den Dateinamen-Stamm', { concurrency: 1 }, async t => {
   });
 
   try {
-    await t.test('eine fehlende Vorschau findet die Adresse des Teilebilds', async () => {
+    await t.test('a missing preview finds the address of the part image', async () => {
       assert.equal(
         await cdnForMissingImage(`/images/parts/${P}_4_thumb.jpg`),
         'https://cdn.rebrickable.com/media/parts/x.png',
       );
     });
-    await t.test('Figuren und Sets', async () => {
+    await t.test('figures and sets', async () => {
       assert.equal(await cdnForMissingImage(`/images/minifigs/fig-${P}.jpg`), 'https://cdn.rebrickable.com/f.jpg');
       assert.equal(await cdnForMissingImage(`/images/sets/${P}-1.png`), 'https://img.bricklink.com/s.png');
       assert.equal(await cdnForMissingImage(`/images/sets/${P}-9.png`), null);
     });
-    await t.test('jede Bildtabelle fragt über ihren Index', async () => {
+    await t.test('every image table asks via its index', async () => {
       const plan = await db.transaction(async tx => {
         await tx.run('SET LOCAL enable_seqscan = off');
         return (await tx.all(`EXPLAIN ${CDN_QUERY.replaceAll('$1', `'${P}_4'`)}`)).map(z => z['QUERY PLAN']).join('\n');

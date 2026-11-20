@@ -60,7 +60,7 @@ const dbDa = async t => {
   }
 };
 
-test('nach der ganzen Kette tragen parts und minifigs nur noch den Bestand', { concurrency: 1 }, async t => {
+test('after the whole chain parts and minifigs only carry the inventory', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
   await db.run('DROP SCHEMA public CASCADE');
@@ -132,7 +132,7 @@ test('nach der ganzen Kette tragen parts und minifigs nur noch den Bestand', { c
   );
 });
 
-test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen', { concurrency: 1 }, async t => {
+test('the parts list delivers description and storage location from the catalogs', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
   // Frische, VOLLSTAENDIG migrierte Datenbank — der Zustand einer echten
@@ -222,7 +222,7 @@ test('die Teileliste liefert Beschreibung und Lagerort aus den Katalogen', { con
   );
 });
 
-test('die Figurenliste liefert Name und Bild aus minifigs_catalog', { concurrency: 1 }, async t => {
+test('the figure list delivers name and image from minifigs_catalog', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
   await db.run('DROP SCHEMA public CASCADE');

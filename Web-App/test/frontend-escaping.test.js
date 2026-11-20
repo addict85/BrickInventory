@@ -17,7 +17,7 @@ const FILES = fs
 const helper = import(require('node:url').pathToFileURL(path.join(JS_DIR, 'escaping.js')).href);
 const loadHelpers = () => helper;
 
-test('esc() neutralisiert alle HTML-Metazeichen inkl. Apostroph', async () => {
+test('esc() neutralizes all HTML metacharacters incl. apostrophe', async () => {
   const { esc } = await loadHelpers();
   assert.equal(esc('<script>'), '&lt;script&gt;');
   assert.equal(esc('a"b'), 'a&quot;b');
@@ -28,7 +28,7 @@ test('esc() neutralisiert alle HTML-Metazeichen inkl. Apostroph', async () => {
 });
 
 // Gegenprobe (08.11.2026): „\\“ und Steuerzeichen im Regex von safeUrl() entfernt → rot: „/\\host“ kam durch.
-test('safeUrl() lässt nur gleiche Herkunft, http(s) und Bild-Daten durch', async () => {
+test('safeUrl() only lets same origin, http(s) and image data through', async () => {
   const { safeUrl } = await loadHelpers();
   for (const gut of [
     '/img/a.png',
@@ -56,7 +56,7 @@ test('safeUrl() lässt nur gleiche Herkunft, http(s) und Bild-Daten durch', asyn
     assert.equal(safeUrl(schlecht), '', `„${schlecht}“ kam durch`);
 });
 
-test('escJs() bricht nicht aus onclick="fn(\'…\')" aus', async () => {
+test('escJs() does not break out of onclick="fn(\'…\')"', async () => {
   const { escJs } = await loadHelpers();
   // Der klassische Ausbruch: Apostroph schliesst den JS-String, danach Code.
   const payload = "');alert(1);//";
@@ -67,7 +67,7 @@ test('escJs() bricht nicht aus onclick="fn(\'…\')" aus', async () => {
   assert.equal(escJs('a\\'), 'a\\\\');
 });
 
-test('escUrl() lässt nur relative Pfade und http(s) durch', async () => {
+test('escUrl() only lets relative paths and http(s) through', async () => {
   const { escUrl } = await loadHelpers();
   assert.equal(escUrl('https://cdn.rebrickable.com/x.jpg'), 'https://cdn.rebrickable.com/x.jpg');
   assert.equal(escUrl('/data/part_images/x.jpg'), '/data/part_images/x.jpg');
@@ -79,7 +79,7 @@ test('escUrl() lässt nur relative Pfade und http(s) durch', async () => {
   assert.ok(!escUrl('https://a/" onerror="alert(1)').includes('"'));
 });
 
-test('escHex() akzeptiert ausschliesslich 6 Hex-Ziffern', async () => {
+test('escHex() exclusively accepts 6 hex digits', async () => {
   const { escHex } = await loadHelpers();
   assert.equal(escHex('FF0000'), '#FF0000');
   assert.equal(escHex('#00ff00'), '#00ff00');
@@ -96,7 +96,7 @@ function interpolations(attrValue) {
   return [...attrValue.matchAll(/\$\{([^{}]*)\}/g)].map(m => m[1]);
 }
 
-test('kein src/href/data-orig mit ungeprüfter URL', () => {
+test('no src/href/data-orig with an unchecked URL', () => {
   const bad = [];
   for (const f of FILES) {
     const src = fs.readFileSync(path.join(JS_DIR, f), 'utf8');
@@ -109,7 +109,7 @@ test('kein src/href/data-orig mit ungeprüfter URL', () => {
   assert.deepEqual(bad, [], 'URL-Attribute müssen durch escUrl()');
 });
 
-test('kein onXxx-Handler mit ungeprüftem Datenfeld', () => {
+test('no onXxx handler with an unchecked data field', () => {
   const bad = [];
   for (const f of FILES) {
     const src = fs.readFileSync(path.join(JS_DIR, f), 'utf8');
@@ -122,7 +122,7 @@ test('kein onXxx-Handler mit ungeprüftem Datenfeld', () => {
   assert.deepEqual(bad, [], 'Werte in Inline-Handlern müssen durch escJs()');
 });
 
-test('esc/escJs/escUrl/escHex sind genau einmal definiert', () => {
+test('esc/escJs/escUrl/escHex are defined exactly once', () => {
   // Alle Maskierer liegen in escaping.js (DOM-frei, auch der BrickLink-Export
   // lädt es). Zwei Fassungen desselben Maskierers liefen schon einmal auseinander.
   const home = { esc: 'escaping.js', escJs: 'escaping.js', escUrl: 'escaping.js', escHex: 'escaping.js' };
@@ -141,7 +141,7 @@ test('esc/escJs/escUrl/escHex sind genau einmal definiert', () => {
   }
 });
 
-test('Übersetzungen für reinen Text laufen über tRaw(), nicht über t()', () => {
+test('translations for plain text go via tRaw(), not via t()', () => {
   // Woher dieser Test kommt
   const jsDir = path.join(__dirname, '..', 'public', 'js');
   const offenders = [];
@@ -168,7 +168,7 @@ test('Übersetzungen für reinen Text laufen über tRaw(), nicht über t()', () 
   );
 });
 
-test('serverseitige Fehlermeldungen laufen im HTML-Kontext durch esc()', () => {
+test('server-side error messages go through esc() in the HTML context', () => {
   // Woher dieser Test kommt
   const bad = [];
   const FIELD = /\w+\.(?:error|message)\b/g;

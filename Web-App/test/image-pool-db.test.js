@@ -14,7 +14,7 @@ const _req = buildAndRequire();
 const { dataOrSkip, keineDb } = require('./helpers/db');
 const db = testData();
 
-test('eine Kachelwand kostet keine einzige Abfrage', { concurrency: 1 }, async t => {
+test('a tile wall costs not a single query', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const IM = _req('src/images/imageMisses.js');
@@ -37,7 +37,7 @@ test('eine Kachelwand kostet keine einzige Abfrage', { concurrency: 1 }, async t
   };
 
   try {
-    await t.test('60 Kacheln lösen 0 Abfragen aus', async () => {
+    await t.test('60 tiles trigger 0 queries', async () => {
       const vorher = abfragen;
       for (let i = 1; i <= 60; i++) {
         IM.isKnownMissing(`${PREFIX}_k${i}`);
@@ -52,7 +52,7 @@ test('eine Kachelwand kostet keine einzige Abfrage', { concurrency: 1 }, async t
       );
     });
 
-    await t.test('das Wegschreiben bündelt', async () => {
+    await t.test('writing away is batched', async () => {
       const vorher = abfragen;
       await IQ._writeBuffer();
       // Eine Anweisung für alle Notizen; dazu der Abarbeiter-Auftrag und sein NOTIFY.
@@ -65,14 +65,14 @@ test('eine Kachelwand kostet keine einzige Abfrage', { concurrency: 1 }, async t
       assert.equal(n, 60, `${n} Notizen statt 60 — gebündelt heisst nicht: weniger`);
     });
 
-    await t.test('Fehlanzeigen ebenso', async () => {
+    await t.test('negative results likewise', async () => {
       for (let i = 1; i <= 40; i++) IM.rememberMissing(`${PREFIX}_m${i}`);
       const vorher = abfragen;
       await IM._writeBuffer();
       assert.ok(abfragen - vorher <= 2, `${abfragen - vorher} Abfragen für 40 Fehlanzeigen`);
     });
 
-    await t.test('nach einem Neustart ist das Wissen noch da', async () => {
+    await t.test('after a restart the knowledge is still there', async () => {
       // Der Grund, warum es überhaupt in die Datenbank gehört:
       // Der Speicher eines Prozesses hilft den anderen nicht.
       IM._emptyForeground();
@@ -92,7 +92,7 @@ test('eine Kachelwand kostet keine einzige Abfrage', { concurrency: 1 }, async t
   }
 });
 
-test('eine gescheiterte Verkleinerung wird nicht endlos wiederholt', () => {
+test('a failed resize is not repeated endlessly', () => {
   // Marcos Log, immer wieder dieselbe Zeile
   const px = require('./helpers/sources').proxyThumbSource();
   const q = px.slice(px.indexOf('function queueThumb('), px.indexOf('function drainThumbQueue'));
@@ -110,7 +110,7 @@ test('eine gescheiterte Verkleinerung wird nicht endlos wiederholt', () => {
   );
 });
 
-test('ein 404 darf der Browser sich merken', () => {
+test('the browser may remember a 404', () => {
   const px = require('./helpers/sources').proxyThumbSource();
   // Der Weg heisst jetzt sendPlaceholder
   assert.match(px, /function sendPlaceholder\(res(: \w+)?\)/, 'Kein gemeinsamer Weg für ein fehlendes Bild');
@@ -131,7 +131,7 @@ test('ein 404 darf der Browser sich merken', () => {
   assert.doesNotMatch(px, /403[\s\S]{0,80}sendPlaceholder/, 'Ein 403 ist eine Drosselung, kein fehlendes Bild');
 });
 
-test('die Vorschau-Sperre belegt KEINE Pool-Verbindung', { concurrency: 1 }, async t => {
+test('the preview lock occupies NO pool connection', { concurrency: 1 }, async t => {
   // Marcos Log
   try {
     await db.initSchemaOnce();
@@ -159,7 +159,7 @@ test('die Vorschau-Sperre belegt KEINE Pool-Verbindung', { concurrency: 1 }, asy
   }
 });
 
-test('die Warteschlange hat einen Index auf dem Alter', () => {
+test('the queue has an index on the age', () => {
   // Der Job sucht alle 20 Sekunden die ÄLTESTEN Einträge. Mit ein paar Dutzend
   // Zeilen gleichgültig — mit 25 000 (nach „Katalogbilder holen") bedeutet jeder
   // Lauf sonst einen vollständigen Durchgang samt Sortierung.
@@ -171,7 +171,7 @@ test('die Warteschlange hat einen Index auf dem Alter', () => {
   );
 });
 
-test('die Sitzungssperre wird auf derselben Verbindung freigegeben', () => {
+test('the session lock is released on the same connection', () => {
   // Eine Sitzungssperre gehört der VERBINDUNG, die sie genommen hat. Wird sie
   // über eine andere freigegeben, tut das nichts — die Sperre bliebe für immer
   // bestehen, und es entstünde nie wieder ein Vorschaubild. Das ist mir in

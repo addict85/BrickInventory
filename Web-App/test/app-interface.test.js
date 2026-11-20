@@ -27,13 +27,13 @@ function operation(methode, pfad) {
   return treffer.length === 1 ? treffer[0][1][methode.toLowerCase()] : undefined;
 }
 
-test('jede Route der App steht im Vertrag', () => {
+test('every route of the app is in the contract', () => {
   assert.ok(app.routen.length > 100, `nur ${app.routen.length} Routen — ist die Datei erzeugt?`);
   const ohne = app.routen.filter(r => !operation(r.methode, r.pfad)).map(r => `${r.methode} ${r.pfad}`);
   assert.deepEqual(ohne, [], 'Diese Adressen ruft die App, der Server hat sie nicht');
 });
 
-test('jeder Abfrageparameter der App steht im Vertrag', () => {
+test('every query parameter of the app is in the contract', () => {
   const fehlt = [];
   let geprueft = 0;
   for (const r of app.routen) {
@@ -51,7 +51,7 @@ test('jeder Abfrageparameter der App steht im Vertrag', () => {
 
 // Eingaben sind geschlossen (strictObject): Ein Feld, das die App schickt und der Vertrag
 // nicht kennt, wäre im Betrieb eine 400.
-test('jedes Rumpffeld der App steht im Vertrag', () => {
+test('every body field of the app is in the contract', () => {
   // Ein erzeugter Rumpftyp dient mehreren Routen (Vereinigung ihrer Schemas); ein Feld muss in
   // einer von ihnen stehen.
   const withBody = app.routen.filter(x => x.rumpffelder.length);

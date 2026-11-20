@@ -25,7 +25,7 @@ async function erreichbar() {
 
 after(() => db.pool.end());
 
-test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async t => {
+test('every list with a badge in the client carries it in the response too', async t => {
   if (!(await erreichbar())) {
     keineDb(t);
     return;
@@ -108,7 +108,7 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async t
   }
 });
 
-test('im Einzelkonto steht keine Plakette', async t => {
+test('in a single account there is no badge', async t => {
   if (!(await erreichbar())) {
     keineDb(t);
     return;

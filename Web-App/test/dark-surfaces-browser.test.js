@@ -72,7 +72,7 @@ const MEASUREMENT = `(() => {
   return { surfaces: [...surfaces], texte: [...texte] };
 })()`;
 
-test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, timeout: 600_000 }, async t => {
+test('dark mode: no light surfaces, readable text', { concurrency: 1, timeout: 600_000 }, async t => {
   const app = await startApp(t, {
     name: `dunkel_${process.pid}`,
     allDesigns: true,
@@ -135,7 +135,7 @@ test('Dunkelmodus: keine hellen Flächen, lesbarer Text', { concurrency: 1, time
     await b.auswerten(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })); true`);
     await ruhig();
 
-    await t.test(`${design}: keine helle Fläche`, () => assert.deepEqual([...funde.surfaces], []));
-    await t.test(`${design}: Text lesbar`, () => assert.deepEqual([...funde.texte], []));
+    await t.test(`${design}: no light surface`, () => assert.deepEqual([...funde.surfaces], []));
+    await t.test(`${design}: text readable`, () => assert.deepEqual([...funde.texte], []));
   }
 });

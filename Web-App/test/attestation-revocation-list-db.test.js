@@ -29,7 +29,7 @@ const gespeichert = async () => {
   return z ? JSON.parse(z.value) : null;
 };
 
-test('Widerrufsliste als Auftrag', { concurrency: 1 }, async t => {
+test('revocation list as a job', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   t.after(async () => {
     await testAccess().notification.close();
@@ -47,7 +47,7 @@ test('Widerrufsliste als Auftrag', { concurrency: 1 }, async t => {
   });
   const d = testServices();
 
-  await t.test('der geplante Auftrag legt die Liste ab und plant den nächsten Lauf', async () => {
+  await t.test('the scheduled job stores the list and schedules the next run', async () => {
     await d.jobQueue.pullPlanBefore('widerrufsliste', 0);
     const worker = _req('jobs/startJobs.js').startJobWorker(d, { arten: ['widerrufsliste'], taktMs: 50 });
     try {
@@ -70,7 +70,7 @@ test('Widerrufsliste als Auftrag', { concurrency: 1 }, async t => {
     assert.ok(plan?.in_sek > 5 * 3600 && plan.in_sek <= 6 * 3600, `nächster Lauf in ${plan?.in_sek} s`);
   });
 
-  await t.test('eine unlesbare Antwort oder ein Netzfehler lässt die letzte gute Liste stehen', async () => {
+  await t.test('an unreadable response or a network error leaves the last good list in place', async () => {
     const vorher = await gespeichert();
     const lauf = () =>
       _req('jobs/startJobs.js').editor(d).widerrufsliste.ausfuehren({}, { signal: new AbortController().signal });

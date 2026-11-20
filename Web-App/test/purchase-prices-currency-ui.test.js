@@ -82,7 +82,7 @@ async function openSet(o) {
   await warte(() => o.d.querySelector('#set-modal [data-click="openAcqModal"]'), 4000);
 }
 
-test('Kaufpreis-Dialog: Währung je Zeile, Summe zieht nach', async () => {
+test('purchase price dialog: currency per row, the sum follows', async () => {
   const stand = { betrag: 1334.58 };
   const o = await openUi(antworten(stand), { browserLanguage: 'de-DE' });
   try {
@@ -106,7 +106,7 @@ test('Kaufpreis-Dialog: Währung je Zeile, Summe zieht nach', async () => {
   }
 });
 
-test('Escape gibt den Fokus an den Auslöser zurück', async () => {
+test('Escape returns focus to the trigger', async () => {
   const o = await openUi(antworten({ betrag: 1334.58 }), { browserLanguage: 'de-DE' });
   try {
     await openSet(o);
@@ -124,7 +124,7 @@ test('Escape gibt den Fokus an den Auslöser zurück', async () => {
   }
 });
 
-test('Set-Detail: ein USD-Kauf nennt USD und den umgerechneten Betrag', async () => {
+test('set detail: a USD purchase names USD and the converted amount', async () => {
   const o = await openUi(antworten({ betrag: 1334.58 }), { browserLanguage: 'de-DE' });
   try {
     await openSet(o);
@@ -137,7 +137,7 @@ test('Set-Detail: ein USD-Kauf nennt USD und den umgerechneten Betrag', async ()
   }
 });
 
-test('Finanzen: ≈ und Zahl der Schätzungen', async () => {
+test('finances: ≈ and number of estimates', async () => {
   const kauf = (id, preis, geschaetzt) => ({
     id,
     condition: 'N',
@@ -224,7 +224,7 @@ test('Finanzen: ≈ und Zahl der Schätzungen', async () => {
   }
 });
 
-test('Set hinzufügen schickt Währung und Datum', async () => {
+test('adding a set sends currency and date', async () => {
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     o.d.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click();
@@ -247,7 +247,7 @@ test('Set hinzufügen schickt Währung und Datum', async () => {
   }
 });
 
-test('Erfassen-Dialoge einheitlich', async () => {
+test('entry dialogs consistent', async () => {
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     assert.equal(o.d.getElementById('ap-qty-inline').labels[0].textContent.trim(), 'Anzahl');

@@ -128,7 +128,7 @@ async function lastFetchBefore(seconds) {
   );
 }
 
-test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
+test('balance: the route and the barrier', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -142,7 +142,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
 
   const abfrage = (basis, id) => fetch(`${basis}/api/v1/vouchers/${id}/guthaben`, { method: 'POST' });
 
-  await t.test('1. der abgefragte Betrag landet im Feld Betrag', async () => {
+  await t.test('1. the queried amount lands in the amount field', async () => {
     await limitFree();
     nextResponse = guthaben(25000, 'CHF', 'CHF 250.00');
     const r = await abfrage(srv.base, WITH_PIN);
@@ -178,7 +178,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('2. die zweite Abfrage prallt an der Schranke ab — ohne einen Aufruf', async () => {
+  await t.test('2. the second query bounces off the barrier — without a call', async () => {
     const vorher = abfragen();
     const r = await abfrage(srv.base, WITH_PIN);
     const d = await r.json();
@@ -194,7 +194,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('3. die Grenze gilt ÜBER ALLE BENUTZER', async () => {
+  await t.test('3. the limit applies ACROSS ALL USERS', async () => {
     // Marcos Nachtrag: „(über alle Benutzer)". Ein Zähler je Konto oder je
     // Arbeitsprozess wäre hier grün und in Wahrheit N-mal so hoch.
     const vorher = abfragen();
@@ -210,7 +210,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     assert.equal(abfragen(), vorher, 'Und es ging dabei nichts hinaus');
   });
 
-  await t.test('4. nach 31 Sekunden ist der Platz wieder frei', async () => {
+  await t.test('4. after 31 seconds the slot is free again', async () => {
     await lastFetchBefore(31);
     nextResponse = guthaben(12345);
     const r = await abfrage(srv.base, WITH_PIN);
@@ -222,7 +222,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('5. ohne PIN wird gar nicht gefragt — und der Platz bleibt frei', async () => {
+  await t.test('5. without a PIN nothing is asked at all — and the slot stays free', async () => {
     await limitFree();
     const vorher = abfragen();
     const r = await abfrage(srv.base, WITHOUT_PIN);
@@ -242,7 +242,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('6. ein fremder Gutschein ist nicht erreichbar', async () => {
+  await t.test('6. a foreign voucher is not reachable', async () => {
     await limitFree();
     const vorher = abfragen();
     const r = await abfrage(srv.base, FOREIGN);
@@ -255,7 +255,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     assert.equal(abfragen(), vorher);
   });
 
-  await t.test('7. ein unbekanntes Ausgabeland hält die Abfrage auf', async () => {
+  await t.test('7. an unknown issuing country stops the query', async () => {
     await limitFree();
     await db.run(
       `INSERT INTO global_settings (key,value) VALUES ('gutschein_land','de-XX')
@@ -275,7 +275,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     await db.run(`DELETE FROM global_settings WHERE key='gutschein_land'`);
   });
 
-  await t.test('8. das eingestellte Land geht wirklich mit', async () => {
+  await t.test('8. the configured country really goes along', async () => {
     await limitFree();
     await db.run(
       `INSERT INTO global_settings (key,value) VALUES ('gutschein_land','de-DE')
@@ -302,7 +302,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     await db.run(`UPDATE vouchers SET currency='CHF' WHERE id=$1`, [WITH_PIN]);
   });
 
-  await t.test('9. Bot-Schutz: die Abfrage ruht danach — auch für andere Konten', async () => {
+  await t.test('9. bot protection: the query rests afterwards — for other accounts too', async () => {
     await limitFree();
     nextResponse = antwort({ status: 403, text: 'Attention Required! Cloudflare' });
     const r = await abfrage(srv.base, WITH_PIN);
@@ -330,7 +330,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     assert.equal(abfragen(), vorher);
   });
 
-  await t.test('10. eine leergekaufte Karte: 0 wird gespeichert und bleibt änderbar', async () => {
+  await t.test('10. an exhausted card: 0 is saved and stays editable', async () => {
     await limitFree();
     nextResponse = guthaben(0);
     const r = await abfrage(srv.base, WITH_PIN);
@@ -381,7 +381,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('11. ein Fehler der Gegenseite wird gemeldet, nicht verschluckt', async () => {
+  await t.test('11. an error of the other side is reported, not swallowed', async () => {
     await limitFree();
     // Die PIN wird AUS DER TABELLE gelesen und nicht aus der Konstanten oben:
     // Fall 10 hat sie auf „9999" geändert. Mein erster Entwurf nahm `PIN` und
@@ -418,7 +418,7 @@ test('Guthaben: die Route und die Schranke', { concurrency: 1 }, async t => {
   // entfernt → rot (200 statt 429); zaehleKonto() entfernt → rot („eine Abfrage
   // zählt für ihr Konto“); die Kontoprüfung NACH die Sperre gelegt → rot (grund
   // „botschutz“ statt „konto“).
-  await t.test('12. die Grenze je Konto greift vor der für alle und vor dem Bot-Schutz', async () => {
+  await t.test('12. the per-account limit applies before the one for all and before bot protection', async () => {
     const zaehler = async uid =>
       (await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [`guthaben-konto|${uid}`]))?.count ?? 0;
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'guthaben-konto|%'");

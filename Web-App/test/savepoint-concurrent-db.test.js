@@ -35,7 +35,7 @@ const modul = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
 
 const TABELLE = `sp_gleichzeitig_${process.pid}`;
 
-test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
+test('savepoints of a transaction', { concurrency: 1 }, async t => {
   const db = modul.createDb(modul.dbKonfigFromEnvironment());
   try {
     await db.run(`CREATE TABLE ${TABELLE} (wert TEXT NOT NULL)`);
@@ -54,7 +54,7 @@ test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
   const innen = (tx, fn) => tx.db.transaction(fn);
   t.beforeEach(() => db.run(`DELETE FROM ${TABELLE}`));
 
-  await t.test('zwei gleichzeitige innere Transaktionen: die zweite wird abgewiesen', async () => {
+  await t.test('two concurrent inner transactions: the second is rejected', async () => {
     let results;
     await db.transaction(async tx => {
       await schreibe(tx, 'aussen');
@@ -76,7 +76,7 @@ test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
     assert.deepEqual(await werte(), ['aussen'], 'was gemeldet wurde, gilt');
   });
 
-  await t.test('… auch in einem Sicherungspunkt', async () => {
+  await t.test('… also in a savepoint', async () => {
     await assert.rejects(
       db.transaction(async tx =>
         innen(tx, async inner => {
@@ -89,7 +89,7 @@ test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
     assert.deepEqual(await werte(), []);
   });
 
-  await t.test('ein Nachzügler verdirbt nicht die nächste Transaktion seiner Verbindung', async () => {
+  await t.test('a straggler does not spoil the next transaction of its connection', async () => {
     // Ein Pool mit einer Verbindung: Die nächste Transaktion bekommt sicher dieselbe.
     const k = modul.dbKonfigFromEnvironment();
     const eng = modul.createDb({ ...k, pool: { ...k.pool, max: 1 } });
@@ -118,7 +118,7 @@ test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
     }
   });
 
-  await t.test('nacheinander und verschachtelt bleibt erlaubt', async () => {
+  await t.test('sequential and nested stay allowed', async () => {
     await db.transaction(async tx => {
       await schreibe(tx, '1-aussen');
       await innen(tx, async eins => {
@@ -137,7 +137,7 @@ test('Sicherungspunkte einer Transaktion', { concurrency: 1 }, async t => {
     assert.deepEqual(await werte(), ['1-aussen', '2-eins', '4-tief-danach', '5-zwei']);
   });
 
-  await t.test('getrennte äussere Transaktionen dürfen gleichzeitig laufen', async () => {
+  await t.test('separate outer transactions may run concurrently', async () => {
     await Promise.all(['p', 'q', 'r'].map(w => db.transaction(async tx => schreibe(tx, w))));
     assert.deepEqual(await werte(), ['p', 'q', 'r']);
   });

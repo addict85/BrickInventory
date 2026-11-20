@@ -21,7 +21,7 @@ const { patternCollection } = require('./helpers/inventory');
 
 const KEYS = { Enter: 13, Escape: 27, ArrowDown: 40, ArrowUp: 38, Home: 36, End: 35, Tab: 9 };
 
-test('Benutzermenü: Tastatur nach dem Menü-Muster', { timeout: 120_000 }, async t => {
+test('user menu: keyboard following the menu pattern', { timeout: 120_000 }, async t => {
   const app = await startApp(t, { name: `umenu_${process.pid}`, bestand: patternCollection });
   if (app.grund) {
     t.skip(app.grund);
@@ -50,11 +50,11 @@ test('Benutzermenü: Tastatur nach dem Menü-Muster', { timeout: 120_000 }, asyn
 
   await b.auswerten(`document.getElementById('btn-umenu').focus(); true`);
   await taste('Enter');
-  await t.test('Enter öffnet und fokussiert den ersten Eintrag', async () => {
+  await t.test('Enter opens and focuses the first entry', async () => {
     assert.equal(await offen(), true);
     assert.equal(await fokus(), eintraege[0]);
   });
-  await t.test('Pfeil ab wandert, Ende und Pos1 springen, Pfeil auf läuft rund', async () => {
+  await t.test('arrow down moves, End and Home jump, arrow up wraps around', async () => {
     await taste('ArrowDown');
     assert.equal(await fokus(), eintraege[1]);
     await taste('End');
@@ -64,18 +64,18 @@ test('Benutzermenü: Tastatur nach dem Menü-Muster', { timeout: 120_000 }, asyn
     await taste('ArrowUp');
     assert.equal(await fokus(), eintraege.at(-1));
   });
-  await t.test('Escape schliesst, Fokus zurück auf den Knopf', async () => {
+  await t.test('Escape closes, focus back on the button', async () => {
     await taste('Escape');
     assert.equal(await offen(), false);
     assert.equal(await fokus(), 'btn-umenu');
   });
-  await t.test('Pfeil auf am Knopf öffnet mit Fokus auf dem letzten Eintrag', async () => {
+  await t.test('arrow up on the button opens with focus on the last entry', async () => {
     await taste('ArrowUp');
     assert.equal(await offen(), true);
     assert.equal(await fokus(), eintraege.at(-1));
     await taste('Escape');
   });
-  await t.test('Wahl fokussiert die Überschrift der Sicht', async () => {
+  await t.test('choosing focuses the heading of the view', async () => {
     await taste('Enter');
     await taste('ArrowDown'); // der zweite Eintrag, eine Sicht ohne Reiter
     await taste('Enter');

@@ -42,10 +42,10 @@ window.addEventListener('load', () => {
 </script></body></html>`;
 }
 
-test('das Port-Feld bleibt in der Karte', t => {
+test('the port field stays in the card', t => {
   const bin = chrome();
   if (!bin) {
-    t.skip('kein Chrome gefunden');
+    t.skip('no Chrome found');
     return;
   }
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'einstellungen-'));

@@ -33,7 +33,7 @@ const einreihen = async sn => {
 };
 const merker = async sn => db.get(`SELECT checked_at, reason FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
 
-test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async t => {
+test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
     await db.runMigrations?.();
@@ -47,7 +47,7 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
   await emptyQueue(db);
   const P = `MR${process.pid}`;
 
-  await t.test('404 wird gemerkt, mit Grund', async () => {
+  await t.test('404 is remembered, with a reason', async () => {
     const sn = `${P}_404`;
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
     IM._emptyForeground();
@@ -65,7 +65,7 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
   });
 
-  await t.test('ein Stapel aus lauter 404ern meldet sich als warn, nicht als error', async () => {
+  await t.test('a batch of nothing but 404s reports as warn, not as error', async () => {
     // Marcos Protokoll
     const sn = `${P}_leise`;
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
@@ -101,7 +101,7 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
   });
 
-  await t.test('GEGENPROBE: ein wiederholbarer Fehler bleibt error', async () => {
+  await t.test('COUNTER-CHECK: a retryable error stays error', async () => {
     // Ohne diesen Fall waere die Regel oben auch erfuellt, wenn die
     // Sammelzeile IMMER auf warn ginge — und dann faellt nichts mehr auf.
     // Kein Statuscode heisst „voruebergehend, wird erneut versucht": genau
@@ -140,7 +140,7 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
   });
 
-  await t.test('eine Zeitüberschreitung sperrt NICHT sieben Tage aus', async () => {
+  await t.test('a timeout does NOT lock out for seven days', async () => {
     // Kein Statuscode: genau das Bild eines Netzwerkfehlers. setBildHerunterladen
     // setzt info.status ausschliesslich bei einer Antwort ≠ 200 — bricht die
     // Verbindung ab, bleibt das Feld leer.
@@ -162,7 +162,7 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
     assert.match(IQ.meldung(e), /Download fehlgeschlagen/);
   });
 
-  await t.test('derselbe Massstab wie im Bild-Proxy', () => {
+  await t.test('the same standard as in the image proxy', () => {
     // Der Proxy merkt sich seit jeher nur 404 und begründet das im Code. Dass
     // beide Bauteile in DIESELBE Tabelle schreiben, aber verschieden auslegen,
     // war der eigentliche Fehler. Die Regel wird hier zusammengehalten.
@@ -192,7 +192,7 @@ test('nur ein 404 heisst „das Bild gibt es nicht"', { concurrency: 1 }, async 
   await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%']).catch(() => {});
 });
 
-test('Fehlanzeigen lassen sich zurücknehmen und sind erklärbar', { concurrency: 1 }, async t => {
+test('negative results can be withdrawn and are explainable', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -219,7 +219,7 @@ test('Fehlanzeigen lassen sich zurücknehmen und sind erklärbar', { concurrency
     IM.rememberMissing(`set:${P}_1`, 'HTTP 404 vom CDN');
     await IM._writeBuffer();
 
-    await t.test('image-diag nennt den Merker und den Grund', async () => {
+    await t.test('image-diag names the flag and the reason', async () => {
       const a = await (await fetch(`${base}/api/v1/admin/image-diag/${P}_1`)).json();
       assert.ok(a.merker, 'Ausgerechnet die Tabelle, die den Abruf verhindert, ' + 'kam in der Diagnose nicht vor');
       assert.match(a.merker.grund || '', /404/);
@@ -229,7 +229,7 @@ test('Fehlanzeigen lassen sich zurücknehmen und sind erklärbar', { concurrency
       );
     });
 
-    await t.test('zurücknehmen wirkt', async () => {
+    await t.test('withdrawing works', async () => {
       const r = await (
         await fetch(`${base}/api/v1/admin/forget-image-misses`, {
           method: 'POST',
@@ -247,7 +247,7 @@ test('Fehlanzeigen lassen sich zurücknehmen und sind erklärbar', { concurrency
       );
     });
 
-    await t.test('Vorschau-Vermerke bleiben unangetastet', async () => {
+    await t.test('preview notes stay untouched', async () => {
       IM.rememberMissing('thumb:/irgendwo/xyz_thumb.jpg', 'Vorschau konnte nicht erzeugt werden');
       await IM._writeBuffer();
       await (

@@ -29,7 +29,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { concurrency: 1 }, async t => {
+test('price alert overview: own alerts, with names, changeable, deletable', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const { alleAlarme, setzeAlarm, loescheAlarm } = {
@@ -114,7 +114,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
     [kind.id],
   );
 
-  await t.test('1. alle eigenen Alarme kommen', async () => {
+  await t.test('1. all own alerts come', async () => {
     const a = await alleAlarme(ich.id);
     assert.equal(a.length, 3, `Erwartet 3 eigene Alarme, bekommen: ${a.length}`);
     // numeric kommt als Zeichenkette aus dem Treiber — die Übersicht rechnet
@@ -122,7 +122,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
     assert.equal(typeof a[0].threshold, 'number', 'Die Schwelle kommt nicht als Zahl an.');
   });
 
-  await t.test('2. und KEIN fremder', async () => {
+  await t.test('2. and NO foreign one', async () => {
     const a = await alleAlarme(ich.id);
     assert.ok(
       !a.some(x => Number(x.threshold) === 10),
@@ -132,7 +132,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
     assert.equal((await alleAlarme(fremd.id)).length, 1, 'Das andere Konto sieht plötzlich mehr.');
   });
 
-  await t.test('3. mit Setname — und ein unbekanntes Set fällt nicht heraus', async () => {
+  await t.test('3. with set name — and an unknown set does not drop out', async () => {
     const a = await alleAlarme(ich.id);
     const bekannt = a.find(x => x.set_number === '70002-1');
     const unbekannt = a.find(x => x.set_number === '99999-9');
@@ -149,7 +149,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
     assert.equal(unbekannt.name, null, 'Unbekannt heisst null, nicht leer geraten.');
   });
 
-  await t.test('4. die Rubrik steht in der Webapp und wird geladen', () => {
+  await t.test('4. the section is in the web app and gets loaded', () => {
     const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
     assert.match(html, /id="alerts-list"/, 'Die Rubrik fehlt im Markup.');
     assert.match(html, /data-i18n="alerts\.group"/, 'Die Rubrik hat keine Überschrift.');
@@ -171,7 +171,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
     assert.match(js, /'DELETE', `\/v1\/sets\//, 'Der Alarm lässt sich nicht löschen — genau das hat Marco verlangt.');
   });
 
-  await t.test('5. Bild und Besitz kommen mit — für die Kachel und für den Klick', async () => {
+  await t.test('5. image and ownership come along — for the tile and for the click', async () => {
     const a = await alleAlarme(ich.id);
     const meins = a.find(x => x.set_number === '70002-1');
     const fremdes = a.find(x => x.set_number === '99999-9');
@@ -207,7 +207,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
     assert.equal(fremdes.image_local, null, 'Woher sollte das Bild kommen?');
   });
 
-  await t.test('6. die Zeile öffnet den Detaildialog, das Zahlenfeld nicht', () => {
+  await t.test('6. the row opens the detail dialog, the number field does not', () => {
     const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
     assert.match(
       js,
@@ -221,7 +221,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
     assert.match(js, /thumbUrl\(/, 'Die Zeile zeigt kein Vorschaubild — analog den Finanzen war das der Auftrag.');
   });
 
-  await t.test('7. jedes gelieferte Feld kommt in der App auch an', async () => {
+  await t.test('7. every delivered field also arrives in the app', async () => {
     const a = await alleAlarme(ich.id);
     const felder = Object.keys(a[0]);
     assert.ok(felder.length >= 10, `Nur ${felder.length} Felder — Abfrage kaputt?`);
@@ -238,7 +238,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
     );
   });
 
-  await t.test('8. scharf/unscharf ist ohne Farbe zu erkennen', () => {
+  await t.test('8. armed/disarmed is recognizable without color', () => {
     // Marcos Befund vom 26.09.
     const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
     const css = fs.readFileSync(path.join(ROOT, 'public/styles.css'), 'utf8');
@@ -290,7 +290,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
     }
   });
 
-  await t.test('9. ein Set des HAUSHALTS zählt auch — Marcos Befund vom 26.09.', async () => {
+  await t.test("9. a set of the HOUSEHOLD counts too — Marco's finding from 26.09.", async () => {
     // „Das Bild in der Android-App ist sichtbar aber die Einträge in den
     // Preisalarme sind nicht klickbar."
     const a = await alleAlarme(ich.id);
@@ -325,7 +325,7 @@ test('Preisalarm-Übersicht: eigene Alarme, mit Namen, änderbar, löschbar', { 
     );
   });
 
-  await t.test('10. Löschen wirkt', async () => {
+  await t.test('10. deleting works', async () => {
     const vorher = (await alleAlarme(ich.id)).length;
     await loescheAlarm(ich.id, '99999-9', 'U');
     const a = await alleAlarme(ich.id);

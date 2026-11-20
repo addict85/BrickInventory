@@ -38,7 +38,7 @@ function hatSecondArgument(src, ab) {
   return false;
 }
 
-test('jeder fmtN-Aufruf nennt die Währung', () => {
+test('every fmtN call names the currency', () => {
   const dateien = fs
     .readdirSync(JS)
     .filter(f => f.endsWith('.js') && f !== 'app.bundle.js')
@@ -83,7 +83,7 @@ test('jeder fmtN-Aufruf nennt die Währung', () => {
  * entstehen, zeigt er die EINGESTELLTE — nicht Euro für jemanden, der in
  * Franken rechnet. Am Bündel in jsdom, mit Franken in den Einstellungen.
  */
-test('der Rückfall von fmtN ist die eingestellte Währung', async () => {
+test('the fallback of fmtN is the configured currency', async () => {
   const { w } = await openUi({
     '/v1/settings/raw': { success: true, settings: { ...ANMELDUNG['/v1/settings/raw'].settings, currency: 'CHF' } },
   });

@@ -88,7 +88,7 @@ async function fullChain() {
   }
 }
 
-test('nach der ganzen Kette tragen parts und minifigs keine quantity mehr', { concurrency: 1 }, async t => {
+test('after the whole chain parts and minifigs carry no quantity any more', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
   await db.run('DROP SCHEMA public CASCADE');
@@ -156,7 +156,7 @@ test('nach der ganzen Kette tragen parts und minifigs keine quantity mehr', { co
   }
 });
 
-test('niemand schreibt die Stückzahl eines Teils oder einer Figur mehr', () => {
+test('nobody writes the piece count of a part or a figure any more', () => {
   // Nur der QUELLTEXT, und nur die SCHREIBseite. Die Leseseite prueft nicht
   // dieser Test, sondern die Datenbank: Nach Migration 0038 gibt es die
   // Spalten nicht, jede verbliebene Lesestelle ist ein harter Fehler — und
@@ -262,7 +262,7 @@ test('niemand schreibt die Stückzahl eines Teils oder einer Figur mehr', () => 
   }
 });
 
-test('die Lesewege liefern die Stückzahl aus Katalog und Erfassungen', { concurrency: 1 }, async t => {
+test('the read paths deliver the piece count from catalog and acquisitions', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
   await fullChain();

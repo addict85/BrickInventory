@@ -39,7 +39,7 @@ const SCHLUESSEL = [
   'einrichtung_erledigt',
 ];
 
-test('Einrichtungs-Assistent', { concurrency: 1 }, async t => {
+test('setup wizard', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
   await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
@@ -70,13 +70,13 @@ test('Einrichtungs-Assistent', { concurrency: 1 }, async t => {
     );
 
   try {
-    await t.test('mit dem Startpasswort führt der Eingang nur zum Wechsel', async () => {
+    await t.test('with the initial password the entry only leads to the change', async () => {
       const r = await ruf(V, '/einrichtung');
       assert.equal(r.status, 403, JSON.stringify(r.body));
       assert.equal(r.body.code, 'passwort_wechsel_noetig');
     });
 
-    await t.test('frische Installation nach dem Pflichtwechsel: offen, ohne Passwortschritt', async () => {
+    await t.test('fresh installation after the mandatory change: open, without password step', async () => {
       // Wie POST /auth/change-password: Konto und Sitzung vergessen die Pflicht.
       await db.run('UPDATE users SET must_change_password = false WHERE id = $1', [uid]);
       delete verwalter.mussPasswortAendern;
@@ -90,7 +90,7 @@ test('Einrichtungs-Assistent', { concurrency: 1 }, async t => {
       assert.equal(n.body.code, 'nur_admins');
     });
 
-    await t.test('eingerichtet: Schlüssel da, Passwort gesetzt → nicht mehr offen', async () => {
+    await t.test('set up: key present, password set → no longer open', async () => {
       await setze('rebrickable_api_key', 'abc');
       await _req('src/settings/settings.js').reencryptLegacyGlobalValues();
       const r = await ruf(V, '/einrichtung');
@@ -99,14 +99,14 @@ test('Einrichtungs-Assistent', { concurrency: 1 }, async t => {
       assert.ok(!JSON.stringify(r.body).includes('abc'), 'Der Stand gibt den Schlüssel heraus');
     });
 
-    await t.test('„Fertig" schliesst ihn auch, wenn noch etwas fehlt', async () => {
+    await t.test('“Fertig” closes it even if something is still missing', async () => {
       await db.run('DELETE FROM global_settings WHERE key = $1', ['rebrickable_api_key']);
       assert.equal((await ruf(V, '/einrichtung')).body.offen, true);
       assert.equal((await ruf(V, '/einrichtung/fertig', {})).status, 200);
       assert.equal((await ruf(V, '/einrichtung')).body.offen, false, 'erscheint nach Fertig weiter');
     });
 
-    await t.test('Testknopf: nur bekannte Quellen, ohne Schlüssel eine verständliche Absage', async () => {
+    await t.test('test button: only known sources, without a key an understandable refusal', async () => {
       for (const q of ['gibtsnicht', '__proto__', 'constructor']) {
         const r = await ruf(V, '/quelle-testen', { quelle: q });
         assert.equal(r.status, 400, q);

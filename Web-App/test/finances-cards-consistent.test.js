@@ -51,7 +51,7 @@ const zeilen = [
   { purchase_price: 4.5, current_price: 0, quantity: 2 },
 ];
 
-test('Server: Geschenk zählt mit, ohne Markt- oder Kaufpreis nicht', () => {
+test('server: a gift counts, without market or purchase price not', () => {
   const b = baseTheMetrics(zeilen);
   assert.equal(b.basis_marktwert, '1863.90');
   assert.equal(b.basis_einstand, '1529.98');
@@ -65,7 +65,7 @@ test('Server: Geschenk zählt mit, ohne Markt- oder Kaufpreis nicht', () => {
   assert.equal(totalGuvPercent(zeilen), '21.8');
 });
 
-test('Oberfläche: Einstand + G/V = Marktwert, Prozent passt, Basis genannt', async () => {
+test('UI: cost basis + P/L = market value, percent matches, basis named', async () => {
   const b = baseTheMetrics(zeilen);
   const pct = totalGuvPercent(zeilen);
   const sets = SETS.map(([nr, k, m]) => ({

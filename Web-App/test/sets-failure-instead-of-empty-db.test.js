@@ -42,7 +42,7 @@ replace('src/catalog/partsEnrichment.js', {
   downloadSetImages: stoerung,
 });
 
-test('Ergebnis: Wert, Ersatz und gemeldeter Fehlschlag', async () => {
+test('result: value, substitute and reported failure', async () => {
   const { versuche, valueOr } = _req('src/infra/result.js');
   assert.deepEqual(await versuche('probe', Promise.resolve([])), { ok: true, wert: [] });
   const r = await versuche('probe', async () => {
@@ -52,7 +52,7 @@ test('Ergebnis: Wert, Ersatz und gemeldeter Fehlschlag', async () => {
   assert.equal(valueOr(r, 'ersatz'), 'ersatz');
 });
 
-test('Set-Dienste: Fehlschlag statt leer', { concurrency: 1 }, async t => {
+test('set services: failure instead of empty', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
@@ -60,7 +60,7 @@ test('Set-Dienste: Fehlschlag statt leer', { concurrency: 1 }, async t => {
   const { minifigsListOfSets } = require('./helpers/sources').areaPage('sets');
   const { partListOfSets } = _req('src/sets/content.js');
 
-  await t.test('eine gestörte Quelle ist keine leere Liste', async () => {
+  await t.test('a disturbed source is not an empty list', async () => {
     rebrickable = 'gestoert';
     const r = await partListOfSets(require('./helpers/sources').testContext('sets'), SN, async () => {});
     assert.equal(r.source, 'quelle_gestoert');
@@ -71,7 +71,7 @@ test('Set-Dienste: Fehlschlag statt leer', { concurrency: 1 }, async t => {
     assert.equal(leer.error, undefined);
   });
 
-  await t.test('… auch bei den Figuren', async () => {
+  await t.test('… also for the minifigures', async () => {
     rebrickable = 'gestoert';
     const r = await minifigsListOfSets(SN);
     assert.equal(r.source, 'quelle_gestoert');
@@ -79,7 +79,7 @@ test('Set-Dienste: Fehlschlag statt leer', { concurrency: 1 }, async t => {
     assert.equal((await minifigsListOfSets(SN)).source, 'not_found');
   });
 
-  await t.test('die Nacharbeit nennt gescheiterte Schritte', async () => {
+  await t.test('the follow-up work names failed steps', async () => {
     rebrickable = 'gestoert';
     const states = [];
     // Über die angemeldete Art, wie der Worker sie ausführt.

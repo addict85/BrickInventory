@@ -30,7 +30,7 @@ function dateien() {
   ];
 }
 
-test('jede Schriftgrösse nimmt eine Stufe der Skala', () => {
+test('every font size takes a step of the scale', () => {
   const css = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
   const stufen = new Set([...css.matchAll(/--fs-(\d+):/g)].map(m => m[1]));
   assert.ok(stufen.size >= 8, `Nur ${stufen.size} Stufen in styles.css gefunden — greift die Suche noch?`);

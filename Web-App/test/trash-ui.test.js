@@ -57,7 +57,7 @@ function antworten() {
   };
 }
 
-test('Konto und Menge unterscheiden gleiche Einträge', async () => {
+test('account and quantity distinguish equal entries', async () => {
   const { w, d } = await openUi(antworten());
   try {
     await sicht(w, 'daten');
@@ -76,7 +76,7 @@ test('Konto und Menge unterscheiden gleiche Einträge', async () => {
   }
 });
 
-test('Fokus und Toast nach dem Wiederherstellen im Papierkorb', async () => {
+test('focus and toast after restoring in the trash', async () => {
   const { w, d, aufrufe } = await openUi(antworten());
   try {
     await warte(() => d.querySelector('#gallery .sc[data-arg="21318-1"] .delbtn'));

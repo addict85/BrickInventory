@@ -66,7 +66,7 @@ function probebaum() {
   return d;
 }
 
-test('die Regel findet jeden äusseren Zugang im Rumpf, erlaubt den Parameter und gilt nicht für Tests', t => {
+test('the rule finds every outer access in the body, allows the parameter and does not apply to tests', t => {
   const d = probebaum();
   t.after(() => fs.rmSync(d, { recursive: true, force: true }));
   const f = funde(d, ['src', 'test']);
@@ -78,6 +78,6 @@ test('die Regel findet jeden äusseren Zugang im Rumpf, erlaubt den Parameter un
   );
 });
 
-test('der Bestand fragt in keinem Transaktionsrumpf über den äusseren Zugang', () => {
+test('the stock does not query via the outer access in any transaction body', () => {
   assert.deepEqual(funde(ROOT, ['server.ts', 'src', 'jobs', 'routes', 'db', 'startup', 'clients']), []);
 });

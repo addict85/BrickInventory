@@ -56,7 +56,7 @@ function rack(dom, targetId) {
   };
 }
 
-test('Abstand zwischen Einladungscode und Verknüpfen-Knopf', () => {
+test('spacing between invitation code and link button', () => {
   const d = new JSDOM(HTML).window.document;
   const knopf = d.querySelector('[data-click="redeemHouseholdInvite"]');
   assert.ok(knopf, 'Der Verknüpfen-Knopf ist nicht mehr zu finden');
@@ -70,7 +70,7 @@ test('Abstand zwischen Einladungscode und Verknüpfen-Knopf', () => {
   );
 });
 
-test('die verknüpften Konten stehen in zwei Spalten, nicht je Zeile neu', () => {
+test('the linked accounts are in two columns, not new per row', () => {
   const dom = new JSDOM(
     '<!doctype html><html><body>' +
       '<div id="household-state"></div><div id="household-invite-box"></div>' +
@@ -134,7 +134,7 @@ test('die verknüpften Konten stehen in zwei Spalten, nicht je Zeile neu', () =>
   );
 });
 
-test('die Lagerorte stehen wie in einer Tabelle', () => {
+test('the storage locations are laid out like a table', () => {
   const dom = new JSDOM('<!doctype html><html><body><div id="storage-list"></div></body></html>');
   const d = dom.window.document;
 

@@ -13,7 +13,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { belowRoot } = _req('src/http/fileUpload.js');
 const WURZEL = path.join(path.sep, 'daten', 'uploads');
 
-test('ein Upload unter der Ablage bleibt, alles andere wird abgewiesen', () => {
+test('an upload below the storage stays, everything else is rejected', () => {
   assert.equal(belowRoot(WURZEL, path.join(WURZEL, '7', 'a.pdf')), path.join(WURZEL, '7', 'a.pdf'));
   assert.throws(
     () => belowRoot(WURZEL, path.join(WURZEL, '7', '..', '..', 'geheim.pdf')),

@@ -46,7 +46,7 @@ const SET = '99072-1',
   URL_A = 'https://quelle.example/99072.pdf';
 const NAMEN = ['anl_halter', 'anl_fremd'].map(n => `${n}_${process.pid}`);
 
-test('Anleitungen neu laden', { concurrency: 1 }, async t => {
+test('reload instructions', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
@@ -91,19 +91,19 @@ test('Anleitungen neu laden', { concurrency: 1 }, async t => {
     return (await fetch(`${base}/api/v1/sets/${nummer}/instructions`, { method: 'POST' })).status;
   };
 
-  await t.test('ein fremdes Konto', async () => {
+  await t.test('a foreign account', async () => {
     await anleitung();
     assert.equal(await loadNew({ userId: ids[1], isAdmin: false }), 404);
     assert.ok(await vorhanden(), 'Die geteilte Anleitung ist weg, obwohl das Konto das Set nicht hat');
   });
 
-  await t.test('wer das Set hat, ersetzt keine geteilte Anleitung', async () => {
+  await t.test('whoever has the set does not replace a shared instruction', async () => {
     await anleitung();
     assert.equal(await loadNew({ userId: ids[0], isAdmin: false }), 403);
     assert.ok(await vorhanden(), 'die geteilte Anleitung ist für alle weg');
   });
 
-  await t.test('wer das Set hat, holt eine fehlende einmal am Tag', async () => {
+  await t.test('whoever has the set fetches a missing one once a day', async () => {
     await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [SET]);
     assert.equal(await loadNew({ userId: ids[0], isAdmin: false }), 202);
     assert.equal(await loadNew({ userId: ids[0], isAdmin: false }), 429);
@@ -113,7 +113,7 @@ test('Anleitungen neu laden', { concurrency: 1 }, async t => {
     assert.equal(await loadNew({ userId: ids[0], isAdmin: false }), 202, 'nach einem Tag geht es wieder');
   });
 
-  await t.test('der Verwalter ersetzt', async () => {
+  await t.test('the admin replaces', async () => {
     await anleitung();
     assert.equal(await loadNew({ userId: ids[1], isAdmin: true }), 202);
     assert.ok(!(await vorhanden()), 'der Verwalter hat die alte Zeile nicht ersetzt');
@@ -125,7 +125,7 @@ test('Anleitungen neu laden', { concurrency: 1 }, async t => {
     assert.equal(await loadNew({ userId: ids[1], isAdmin: true }), 202, 'den Verwalter hält die Drossel nicht');
   });
 
-  await t.test('eine Nummer mit Pfadteilen', async () => {
+  await t.test('a number with path parts', async () => {
     for (const roh of ['%2E%2E%2Fx', '%2E%2E%3Fx%3D', 'users'])
       assert.equal(await loadNew({ userId: ids[1], isAdmin: true }, roh), 400, roh);
   });

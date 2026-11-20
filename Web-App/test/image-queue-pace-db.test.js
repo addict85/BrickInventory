@@ -94,7 +94,7 @@ const einreihen = async (praefix, von, bis) => {
   );
 };
 
-test('ein Takt räumt fertige Notizen ab, statt je zwanzig Sekunden zehn', { concurrency: 1 }, async t => {
+test('a tick clears finished notes instead of ten every twenty seconds', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -141,7 +141,7 @@ test('ein Takt räumt fertige Notizen ab, statt je zwanzig Sekunden zehn', { con
   }
 });
 
-test('das Kontingent gilt für echte Arbeit, nicht für Notizen', { concurrency: 1 }, async t => {
+test('the quota applies to real work, not to notes', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -175,7 +175,7 @@ test('das Kontingent gilt für echte Arbeit, nicht für Notizen', { concurrency:
     loadTimes.length = 0;
     const e = await IQ._tickPass();
 
-    await t.test('höchstens STAPEL Anfragen je Takt', async () => {
+    await t.test('at most STAPEL requests per tick', async () => {
       assert.equal(
         loadTimes.length,
         STAPEL,
@@ -194,7 +194,7 @@ test('das Kontingent gilt für echte Arbeit, nicht für Notizen', { concurrency:
       );
     });
 
-    await t.test('zwischen zwei Anfragen liegt eine halbe Sekunde', () => {
+    await t.test('half a second lies between two requests', () => {
       const abst = loadTimes.slice(1).map((z, i) => z - loadTimes[i]);
       const smallest = Math.min(...abst);
       assert.ok(
@@ -209,7 +209,7 @@ test('das Kontingent gilt für echte Arbeit, nicht für Notizen', { concurrency:
   }
 });
 
-test('Übersprünge verbrauchen kein Kontingent — Marcos gemischte Warteschlange', { concurrency: 1 }, async t => {
+test("skips use no quota — Marco's mixed queue", { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -248,7 +248,7 @@ test('Übersprünge verbrauchen kein Kontingent — Marcos gemischte Warteschlan
   }
 });
 
-test('ein Takt sieht höchstens DURCHGANG_MAX_NOTIZEN Notizen durch', { concurrency: 1 }, async t => {
+test('a tick looks through at most DURCHGANG_MAX_NOTIZEN notes', { concurrency: 1 }, async t => {
   // Der Deckel ist nötig, weil `existsSync` synchron ist: Ohne ihn liefe eine
   // Warteschlange aus 25 000 fertigen Bildern in einem Zug durch und hielte
   // den Event-Loop des Arbeitsprozesses in Schüben auf.
@@ -279,7 +279,7 @@ test('ein Takt sieht höchstens DURCHGANG_MAX_NOTIZEN Notizen durch', { concurre
   }
 });
 
-test('verfallene Notizen werden wirklich gelöscht', { concurrency: 1 }, async t => {
+test('expired notes are really deleted', { concurrency: 1 }, async t => {
   // Was der Kommentar behauptete und der Code nicht tat
   try {
     await db.initSchemaOnce();
@@ -325,7 +325,7 @@ test('verfallene Notizen werden wirklich gelöscht', { concurrency: 1 }, async t
   }
 });
 
-test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 }, async t => {
+test('ANOTHER process sees that the job has run', { concurrency: 1 }, async t => {
   // ── Warum als eigener Prozess (Lehre aus einer früheren Runde) ────────────────────
   // Ein Test, der im selben Prozess prüft, kann diesen Fehler nicht sehen: Der
   // Merker liegt ja genau dort. Die Kachel wird aber von einem BELIEBIGEN der
@@ -416,7 +416,7 @@ test('ein ANDERER Prozess sieht, dass der Job gelaufen ist', { concurrency: 1 },
   await db.run(`DELETE FROM run_state WHERE key='imgqueue_last_run'`).catch(() => {});
 });
 
-test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async t => {
+test('every exit of the loop has a counter', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -430,7 +430,7 @@ test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async t
   const IM = _req('src/images/imageMisses.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
 
-  await t.test('Notiz ohne Setnummer', async () => {
+  await t.test('note without a set number', async () => {
     const P = `ON${process.pid}`;
     await db.run(`DELETE FROM image_wanted WHERE url LIKE $1`, [`%${P}%`]);
     await db.run(`INSERT INTO image_wanted (url, set_number) VALUES ($1, NULL)`, [`https://cdn/${P}.jpg`]);
@@ -444,7 +444,7 @@ test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async t
     await db.run(`DELETE FROM image_wanted WHERE url LIKE $1`, [`%${P}%`]).catch(() => {});
   });
 
-  await t.test('gescheiterter Download', async () => {
+  await t.test('failed download', async () => {
     // Der abgefangene Download liefert für diesen Teilschritt null — genau ihr
     // Verhalten bei HTTP 404, Netzwerkfehler oder zu kleiner Antwort.
     const P = `FD${process.pid}`;
@@ -468,7 +468,7 @@ test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async t
     }
   });
 
-  await t.test('bekannt fehlendes Bild kostet weder Kontingent noch Wartezeit', async () => {
+  await t.test('an image known to be missing costs neither quota nor waiting time', async () => {
     // rememberMissing('set:…') wurde geschrieben, aber im Job nie gelesen: Eine
     // Notiz, die über den Proxy erneut entsteht, löste bei jedem Durchgang
     // wieder einen Roundtrip zu einem Bild aus, das der CDN nachweislich nicht
@@ -509,7 +509,7 @@ test('jeder Ausgang der Schleife hat einen Zähler', { concurrency: 1 }, async t
   });
 });
 
-test('aufräumen', { concurrency: 1 }, async () => {
+test('clean up', { concurrency: 1 }, async () => {
   for (const f of angelegt) fs.rmSync(f, { force: true });
   // Letzter Test dieser Datei — nur hier wird der Pool geschlossen. (Lehre aus
   // Ein früher geschlossener Pool macht jeden folgenden DB-Test

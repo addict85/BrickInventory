@@ -32,7 +32,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `label_${process.pid}`,
   PASS = 'label-Passwort-1';
 
-test('Token-Label beim Anmelden', { concurrency: 1 }, async t => {
+test('token label at login', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -76,20 +76,20 @@ test('Token-Label beim Anmelden', { concurrency: 1 }, async t => {
     return (await db.get('SELECT label FROM api_tokens WHERE user_id = $1', [uid])).label;
   };
 
-  await t.test('1. ein langes Label wird auf 100 Zeichen gekürzt', async () => {
+  await t.test('1. a long label is shortened to 100 characters', async () => {
     const gespeichert = await labelNach('Pixel ' + 'x'.repeat(5000));
     assert.equal(gespeichert.length, 100, `${gespeichert.length} Zeichen gespeichert`);
     assert.ok(gespeichert.startsWith('Pixel x'));
     assert.equal(await labelNach('  Galaxy S24  '), 'Galaxy S24', 'ein kurzes bleibt, nur getrimmt');
   });
 
-  await t.test('2. Nicht-Text und Leeres fallen auf die Vorgabe zurück', async () => {
+  await t.test('2. non-text and empty fall back to the default', async () => {
     assert.equal(await labelNach({ name: 'x'.repeat(500) }), 'webapp-session');
     assert.equal(await labelNach(['a', 'b']), 'webapp-session');
     assert.equal(await labelNach('   '), 'webapp-session');
   });
 
-  await t.test('3. gekürzt wird nach Zeichen, nicht mitten in einem', async () => {
+  await t.test('3. shortening goes by characters, not in the middle of one', async () => {
     const gespeichert = await labelNach('🧱'.repeat(150));
     assert.equal(Array.from(gespeichert).length, 100);
     assert.equal(gespeichert, '🧱'.repeat(100));

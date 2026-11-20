@@ -50,7 +50,7 @@ async function abfragen(muster, fn) {
   }
 }
 
-test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }, async t => {
+test('valuation and set quantity without row-by-row queries', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const ID = process.pid;
@@ -89,7 +89,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
   }
   const { valueParts, valueMinifigs } = _req('src/finances/financeCalc.js');
 
-  await t.test('zwölf Teile, eine Abfrage auf den Teile-Cache', async () => {
+  await t.test('twelve parts, one query on the parts cache', async () => {
     const m = await abfragen(/FROM part_price_cache/, () => valueParts(uid, [uid]));
     assert.equal(m.ergebnis.parts.length, 12);
     assert.ok(
@@ -99,7 +99,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
     assert.equal(m.treffer(), 1, `${m.treffer()} Abfragen auf part_price_cache`);
   });
 
-  await t.test('sechs Figuren, eine Abfrage auf den Figuren-Cache', async () => {
+  await t.test('six minifigures, one query on the minifigure cache', async () => {
     const m = await abfragen(/FROM minifig_price_cache/, () => valueMinifigs(uid, [uid]));
     assert.equal(m.ergebnis.figs.length, 6);
     assert.ok(
@@ -109,7 +109,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
     assert.equal(m.treffer(), 1, `${m.treffer()} Abfragen auf minifig_price_cache`);
   });
 
-  await t.test('die Setmenge liest nur die Erfassungen der gefragten Konten', async () => {
+  await t.test('the set quantity only reads the entries of the requested accounts', async () => {
     await holdsSet(db, uid, `bw${ID}-1`, 2);
     for (let i = 0; i < 40; i++) await holdsSet(db, fremd, `bw${ID}x${i}-1`, 1);
     const { mengeJoin, mengeAus } = _req('db/stockQuantity.js');
@@ -133,7 +133,7 @@ test('Bewertung und Setmenge ohne Zeile-für-Zeile-Abfragen', { concurrency: 1 }
     );
   });
 
-  await t.test('der Durchschnittskaufpreis der Galerie zählt nur die Kontowährung', async () => {
+  await t.test('the average purchase price of the gallery only counts the account currency', async () => {
     const SN = `bw${ID}w-1`;
     await db.run(
       `INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')

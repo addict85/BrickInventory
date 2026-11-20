@@ -21,7 +21,7 @@ const SRC =
   '\n' +
   fs.readFileSync(path.join(ROOT, 'src/mail/mailer.ts'), 'utf8');
 
-test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
+test('the theme is loaded when sending, not hard-wired', () => {
   assert.match(SRC, /async function mailTheme\(k: MailContext\)/, 'Loader fehlt');
   // Früher stand hier die SQL-Anweisung selbst. Seit alle Zugriffe auf
   // global_settings über src/settings/settings.ts laufen, prüft der Test den Weg
@@ -59,7 +59,7 @@ test('das Design wird beim Versand geladen, nicht fest verdrahtet', () => {
 
 const _req = require('./helpers/sources').buildAndRequire();
 
-test('je Design eine Palette mit der Primärfarbe der Webapp', () => {
+test("one palette per theme with the web app's primary color", () => {
   const { MAIL_THEMES } = _req('src/mail/template.js');
   assert.deepEqual(Object.keys(MAIL_THEMES).sort(), ['brick', 'classic']);
   // --b600 je Design aus tokens.css: Die Mail soll aussehen wie die Webapp.
@@ -69,7 +69,7 @@ test('je Design eine Palette mit der Primärfarbe der Webapp', () => {
   assert.equal(MAIL_THEMES.brick.primary, b600('[data-theme="brick"]'));
 });
 
-test('Vorlage, Knopf und Infobox zeichnen im übergebenen Design', () => {
+test('template, button and info box draw in the passed theme', () => {
   const { MAIL_THEMES, emailTemplate, emailBtn, infoBox } = _req('src/mail/template.js');
   const { classic, brick } = MAIL_THEMES;
   for (const [name, bau] of /** @type {[string, (theme: string | undefined) => string][]} */ ([

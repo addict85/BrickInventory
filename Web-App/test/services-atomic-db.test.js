@@ -66,7 +66,7 @@ replace('src/vouchers/repository/vouchers.js', {
   rememberVoucherPdf: (...a) => (stoerung.rememberPdf ? kaputt('pdf merken') : echtRepo.rememberVoucherPdf(...a)),
 });
 
-test('Dienste schreiben ganz oder gar nicht', { concurrency: 1, timeout: 60_000 }, async t => {
+test('services write all or nothing', { concurrency: 1, timeout: 60_000 }, async t => {
   const db = await accessOrSkip(t, _req);
   if (!db) return;
   const NAME = `atomar-${process.pid}`;
@@ -97,7 +97,7 @@ test('Dienste schreiben ganz oder gar nicht', { concurrency: 1, timeout: 60_000 
     }
   };
 
-  await t.test('scheitert der Protokolleintrag, gibt es kein Konto', async () => {
+  await t.test('if the log entry fails, there is no account', async () => {
     await disrupt('protokoll', () => K.putAccountAn(chef, `${NAME}-neu`, 'Ein-Langes-Passwort-2026', false));
     assert.equal(await db.get('SELECT id FROM users WHERE username = $1', [`${NAME}-neu`]), undefined);
     // Ohne Störung entstehen Konto und Eintrag zusammen.
@@ -106,7 +106,7 @@ test('Dienste schreiben ganz oder gar nicht', { concurrency: 1, timeout: 60_000 
     assert.equal(eintrag?.action, 'konto_angelegt');
   });
 
-  await t.test('scheitert der Protokolleintrag beim Sperren, bleibt das Konto aktiv', async () => {
+  await t.test('if the log entry fails while locking, the account stays active', async () => {
     await disrupt('protokoll', () => K.verwalter.aktivSetzen(chef, nutzer, false));
     assert.equal((await db.get('SELECT is_active FROM users WHERE id = $1', [nutzer])).is_active, true);
   });
@@ -115,7 +115,7 @@ test('Dienste schreiben ganz oder gar nicht', { concurrency: 1, timeout: 60_000 
   const zeilen = async () => (await db.all('SELECT id FROM vouchers WHERE user_id = $1', [nutzer])).length;
   const dateien = () => (fs.existsSync(ordner) ? fs.readdirSync(ordner).filter(n => n.endsWith('.pdf')) : []);
 
-  await t.test('scheitert das Merken des Pfads, bleibt keine Gutscheinzeile und keine verwaiste Datei', async () => {
+  await t.test('if remembering the path fails, no voucher row and no orphaned file remain', async () => {
     const w = { number: '6000111122223333', pin: '123', amount: 25, currency: 'EUR' };
     await disrupt('rememberPdf', () => G.createVoucherWithPdf(nutzer, w, pdf));
     assert.equal(await zeilen(), 0);
@@ -129,7 +129,7 @@ test('Dienste schreiben ganz oder gar nicht', { concurrency: 1, timeout: 60_000 
     assert.deepEqual(await G.voucherPdf(nutzer, z.id), pdf);
   });
 
-  await t.test('zwei gleichzeitige Änderungen verlieren keine', async () => {
+  await t.test('two concurrent changes lose none', async () => {
     const z = await G.createVoucher(nutzer, { number: '6000444455556666', pin: '111', amount: 10 });
     let secondDa;
     limit = { n: 0, zweiter: new Promise(r => (secondDa = r)) };

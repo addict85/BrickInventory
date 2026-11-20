@@ -21,7 +21,7 @@ const AUTH = require('./helpers/sources').einhaengung('auth');
 const { routerServer } = require('./helpers/server');
 const db = testData();
 
-test('Adminrechte lassen sich auch mit "false" als Text entziehen', { concurrency: 1 }, async t => {
+test('admin rights can also be revoked with "false" as text', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   {
     const c = await db.pool.connect();

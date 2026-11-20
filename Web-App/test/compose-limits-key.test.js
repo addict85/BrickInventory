@@ -45,7 +45,7 @@ const byte = roh => {
   return m ? Number(m[1]) * { k: 2 ** 10, m: 2 ** 20, g: 2 ** 30 }[m[2]?.toLowerCase() ?? ''] || Number(m?.[1]) : NaN;
 };
 
-test('jeder Dienst hat Grenzen für Speicher, Prozesse und CPU', () => {
+test('every service has limits for memory, processes and CPU', () => {
   assert.ok(SERVICES.length >= 6, `nur ${SERVICES.join(', ')}`);
   const fehlt = [];
   for (const n of SERVICES) {
@@ -60,7 +60,7 @@ test('jeder Dienst hat Grenzen für Speicher, Prozesse und CPU', () => {
   assert.deepEqual(fehlt, [], 'jeder Dienst hat Grenzen');
 });
 
-test('app und jobs sehen den Datenschlüssel nur lesend', () => {
+test('app and jobs only see the data key read-only', () => {
   for (const n of ['app', 'jobs']) {
     const b = dienst(n);
     assert.match(b, /^\s+- \.\/schluessel:\/app\/schluessel:ro\s*$/m, `${n}: ./schluessel nur lesend`);
@@ -95,7 +95,7 @@ function sandbox() {
   return { ort, lauf, datei: path.join(ort, 'schluessel', 'datenschluessel') };
 }
 
-test('der Schlüssel entsteht einmal, nur der Eigentümer liest ihn', t => {
+test('the key is created once, only the owner reads it', t => {
   const { ort, lauf, datei } = sandbox();
   t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
   const r = lauf();
@@ -109,7 +109,7 @@ test('der Schlüssel entsteht einmal, nur der Eigentümer liest ihn', t => {
   assert.equal(fs.readFileSync(datei, 'utf8'), erster, 'ein zweiter Lauf ersetzt den Schlüssel');
 });
 
-test('ein alter Schlüssel in data/ bleibt der einzige', t => {
+test('an old key in data/ stays the only one', t => {
   const { ort, lauf, datei } = sandbox();
   t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
   fs.writeFileSync(path.join(ort, 'data', '.datenschluessel'), Buffer.alloc(32, 7).toString('base64'));

@@ -35,7 +35,7 @@ const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Loeschen-Passwort-1';
 
-test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, async t => {
+test('delete own account and open registrations', { concurrency: 1 }, async t => {
   try {
     await db.initSchema();
   } catch (e) {
@@ -80,7 +80,7 @@ test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, asy
     };
   };
 
-  await t.test('ohne Passwort bleibt das Konto, mit Passwort ist es weg', async () => {
+  await t.test('without password the account stays, with password it is gone', async () => {
     const id = await konto(NAMEN[0]);
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10294-1')`, [id]);
     const loesche = als(id);
@@ -93,7 +93,7 @@ test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, asy
     assert.equal((await db.get('SELECT count(*)::int AS n FROM sets WHERE user_id = $1', [id])).n, 0);
   });
 
-  await t.test('mit zweitem Faktor reicht das Passwort nicht', async () => {
+  await t.test('with a second factor the password is not enough', async () => {
     const id = await konto(NAMEN[1]);
     await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', true)`, [id]);
     const r = await als(id)({ password: PASS });
@@ -101,7 +101,7 @@ test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, asy
     assert.ok(await da(id));
   });
 
-  await t.test('der letzte Verwalter bleibt', async () => {
+  await t.test('the last admin stays', async () => {
     const id = await konto(NAMEN[2], true);
     const r = await als(id)({ password: PASS });
     assert.deepEqual([r.status, r.body.code], [409, 'letzter_verwalter']);
@@ -124,7 +124,7 @@ test('Konto selbst löschen und offene Registrierungen', { concurrency: 1 }, asy
     return { id, roh };
   };
 
-  await t.test('unbestätigte Registrierungen nach sieben Tagen', async () => {
+  await t.test('unconfirmed registrations after seven days', async () => {
     const alt = await registered(NAMEN[3], 8),
       neu = await registered(NAMEN[4], 6);
     const bestaetigt = await registered(NAMEN[6], 8);

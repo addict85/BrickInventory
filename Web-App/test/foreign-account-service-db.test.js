@@ -23,7 +23,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { holdsSet } = require('./helpers/inventory');
 
-test('ein Dienst fragt nur als das Konto des Zeilenschutzes', { concurrency: 1 }, async t => {
+test('a service only asks as the account of the row security', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
@@ -43,18 +43,18 @@ test('ein Dienst fragt nur als das Konto des Zeilenschutzes', { concurrency: 1 }
   await holdsSet(db, sub, '75192-1');
   const nummern = async nutzer => (await setsLesen({ nutzer }, {})).sets.map(s => s.set_number).sort();
 
-  await t.test('das eigene Konto sieht seinen Haushalt', async () => {
+  await t.test('the own account sees its household', async () => {
     assert.deepEqual(await asAccount(haupt, () => nummern(haupt)), ['10179-1', '75192-1']);
   });
 
-  await t.test('ein fremdes Konto als Anfragender wirft', async () => {
+  await t.test('a foreign account as requester throws', async () => {
     await assert.rejects(
       asAccount(sub, () => nummern(haupt)),
       e => e instanceof ForeignAccount && /Konto \d+ unter dem Zeilenschutz von Konto \d+/.test(String(e)),
     );
   });
 
-  await t.test('im Systemrahmen gilt jedes Konto', async () => {
+  await t.test('in the system frame every account applies', async () => {
     const gesehen = await asAccount(sub, () => inSystemContext('Test', () => nummern(haupt)));
     assert.deepEqual(gesehen, ['10179-1', '75192-1']);
   });

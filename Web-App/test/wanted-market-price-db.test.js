@@ -70,7 +70,7 @@ async function dbReachable() {
   }
 }
 
-test('Merkliste: Marktpreis aus dem Cache', async t => {
+test('wishlist: market price from the cache', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -79,7 +79,7 @@ test('Merkliste: Marktpreis aus dem Cache', async t => {
   await seed();
   const M = _req('src/wanted/wanted.js');
 
-  await t.test('1. Der Preis kommt als Zahl an', async () => {
+  await t.test('1. the price arrives as a number', async () => {
     // Dass er das tut, liegt am Typ-Leser in db/database.ts (Gegenprobe c),
     // nicht am Number() in merkliste.ts. Die Prüfung
     // steht trotzdem hier: Fiele der Leser weg, verglichen beide Oberflächen
@@ -91,7 +91,7 @@ test('Merkliste: Marktpreis aus dem Cache', async t => {
     assert.equal(neu.waehrung, 'EUR');
   });
 
-  await t.test('2. Jeder Zustand bekommt SEINEN Preis', async () => {
+  await t.test('2. every condition gets ITS price', async () => {
     // Ohne die Zustandsbedingung im JOIN stünde beim gebrauchten Merkposten
     // der Neupreis — und niemand sähe es der Zahl an.
     const liste = await M.wantedItemsOf([U.ich], undefined, 'EUR');
@@ -101,14 +101,14 @@ test('Merkliste: Marktpreis aus dem Cache', async t => {
     assert.deepEqual(karte, { N: 500, U: 300 }, 'Der gebrauchte Merkposten zeigt nicht den Gebrauchtpreis.');
   });
 
-  await t.test('3. Die Währung des Lesers entscheidet', async () => {
+  await t.test("3. the reader's currency decides", async () => {
     const chf = await M.wantedItemsOf([U.ich], undefined, 'CHF');
     const neu = chf.find(w => w.set_number === '10179-1' && w.condition === 'N');
     assert.equal(neu.marktpreis, 999, 'Der Preis stammt aus der falschen Währung.');
     assert.equal(neu.waehrung, 'CHF');
   });
 
-  await t.test('4. Kein Preis im Cache heisst null, nicht 0', async () => {
+  await t.test('4. no price in the cache means null, not 0', async () => {
     // 0 wäre „wertlos", null ist „noch keiner da" — die Oberflächen zeigen
     // dafür einen Strich. Der Unterschied ist der zwischen einer Aussage und
     // einer fehlenden Aussage.
@@ -117,7 +117,7 @@ test('Merkliste: Marktpreis aus dem Cache', async t => {
     assert.equal(ohne.marktpreis, null);
   });
 
-  await t.test('5. Der Filter auf EIN Set funktioniert weiter', async () => {
+  await t.test('5. the filter on ONE set still works', async () => {
     // Die Währung ist ein zusätzlicher Parameter geworden; ihre Nummer hängt
     // davon ab, ob der Set-Filter gesetzt ist. Genau dort entstünde ein
     // Zahlendreher, und er wäre still: Postgres bekäme die Währung als

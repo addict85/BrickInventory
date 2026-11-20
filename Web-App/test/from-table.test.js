@@ -13,15 +13,15 @@ const { fromTable } = _req('src/infra/validate.js');
 
 const TABELLE = { year_desc: 'rb.year DESC', name_asc: 'rb.name ASC' };
 
-test('bekannter Schlüssel liefert den Wert', () => {
+test('a known key delivers the value', () => {
   assert.strictEqual(fromTable(TABELLE, 'name_asc', 'VORGABE'), 'rb.name ASC');
 });
 
-test('unbekannter Schlüssel liefert die Vorgabe', () => {
+test('an unknown key delivers the default', () => {
   assert.strictEqual(fromTable(TABELLE, 'gibtsnicht', 'VORGABE'), 'VORGABE');
 });
 
-test('geerbte Eigenschaften zählen NICHT als Treffer', () => {
+test('inherited properties do NOT count as hits', () => {
   // Das ist der eigentliche Befund. Ohne hasOwnProperty käme hier die
   // Object-Funktion bzw. Object.prototype zurück — beides wahrheitswertig,
   // beides landete ungeprüft im SQL.
@@ -30,7 +30,7 @@ test('geerbte Eigenschaften zählen NICHT als Treffer', () => {
   }
 });
 
-test('Gegenprobe: der naive Zugriff FÄLLT bei denselben Schlüsseln durch', () => {
+test('counter-check: the naive access FAILS with the same keys', () => {
   // Belegt, dass der Test oben etwas prüft und nicht ohnehin grün wäre.
   const naive = k => TABELLE[k] || 'VORGABE';
   assert.strictEqual(naive('gibtsnicht'), 'VORGABE'); // hier gleich
@@ -38,7 +38,7 @@ test('Gegenprobe: der naive Zugriff FÄLLT bei denselben Schlüsseln durch', () 
   assert.notStrictEqual(naive('__proto__'), 'VORGABE');
 });
 
-test('nicht-string Schlüssel werden gefahrlos behandelt', () => {
+test('non-string keys are handled safely', () => {
   for (const k of [undefined, null, 42, {}, ['name_asc'], true]) {
     const r = fromTable(TABELLE, k, 'VORGABE');
     // Ein Array mit einem gültigen Wert darf über einzelwert() greifen —
@@ -47,7 +47,7 @@ test('nicht-string Schlüssel werden gefahrlos behandelt', () => {
   }
 });
 
-test('ohne Vorgabe kommt undefined statt eines geerbten Werts', () => {
+test('without a default undefined comes instead of an inherited value', () => {
   assert.strictEqual(fromTable(TABELLE, 'constructor'), undefined);
   assert.strictEqual(fromTable(TABELLE, 'name_asc'), 'rb.name ASC');
 });
@@ -63,7 +63,7 @@ const PLACES = [
 ];
 
 for (const [datei, name, muster] of PLACES) {
-  test(`${datei}: ${name} wird nicht mehr direkt indiziert`, () => {
+  test(`${datei}: ${name} is no longer indexed directly`, () => {
     // Kommentarzeilen heraus: Die Begründung ÜBER dem Code nennt das alte
     // Muster absichtlich, und darauf soll dieser Test nicht anspringen.
     const code = fs

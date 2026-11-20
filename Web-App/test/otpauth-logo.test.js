@@ -14,22 +14,22 @@ const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
 
-test('otpauth-Link mit Logo', async t => {
+test('otpauth link with logo', async t => {
   // Die Basis-URL kommt gereicht (k.konfig.appBaseUrl), nicht aus der Umgebung.
   const { otpauthAddress } = _req('src/factors/secondFactor.js');
 
-  await t.test('mit Basis-URL steht das Logo im Link', () => {
+  await t.test('with a base URL the logo is in the link', () => {
     const url = new URL(otpauthAddress('JBSWY3DPEHPK3PXP', 'marco', 'https://lego.example.org'));
     assert.equal(url.searchParams.get('image'), 'https://lego.example.org/assets/logo-256.png');
     assert.equal(url.searchParams.get('issuer'), 'BrickInventory');
   });
 
-  await t.test('ohne Basis-URL kein image', () => {
+  await t.test('without a base URL no image', () => {
     const url = new URL(otpauthAddress('JBSWY3DPEHPK3PXP', 'marco', null));
     assert.equal(url.searchParams.get('image'), null);
   });
 
-  await t.test('das Logo liegt als PNG unter public/assets', () => {
+  await t.test('the logo lies as a PNG under public/assets', () => {
     const png = fs.readFileSync(path.join(__dirname, '..', 'public', 'assets', 'logo-256.png'));
     assert.equal(png.subarray(1, 4).toString('latin1'), 'PNG');
   });

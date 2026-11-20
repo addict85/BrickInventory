@@ -42,7 +42,7 @@ const CONTENT = {
   [URLS[1]]: Buffer.concat([Buffer.from('<html>Bitte anmelden</html>'), Buffer.alloc(3000, 32)]),
 };
 
-test('Anleitungen nur mit PDF-Anfang', async t => {
+test('instructions only with a PDF start', async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const sn = '99981-1';
@@ -78,12 +78,12 @@ test('Anleitungen nur mit PDF-Anfang', async t => {
   const pfad = u => zeilen.find(z => z.url === u)?.local_path;
   const onDisk = rel => fs.existsSync(path.join(WURZEL, rel));
 
-  await t.test('ein echtes PDF wird abgelegt und eingetragen', () => {
+  await t.test('a real PDF is stored and registered', () => {
     assert.ok(pfad(URLS[0]), 'der Pfad steht in der Tabelle');
     assert.ok(onDisk(pfad(URLS[0])), 'die Datei liegt auf der Platte');
   });
 
-  await t.test('eine Datei ohne %PDF- wird nicht abgelegt', () => {
+  await t.test('a file without %PDF- is not stored', () => {
     assert.equal(pfad(URLS[1]), null, 'ohne Datei kein Pfad in der Tabelle');
     assert.deepEqual(fs.readdirSync(path.join(WURZEL, 'data', 'instructions')).sort(), [path.basename(pfad(URLS[0]))]);
   });

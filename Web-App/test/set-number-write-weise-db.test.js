@@ -31,7 +31,7 @@ require.cache[blPath].exports = Object.assign({}, echt, {
   },
 });
 
-test('die Schreibweise einer Set-Nummer ist eine Regel', () => {
+test('the spelling of a set number is one rule', () => {
   const { withVersion, withoutVersion } = _req('src/infra/setNumber.js');
   assert.equal(withVersion('10179'), '10179-1');
   assert.equal(withVersion('10179-1'), '10179-1');
@@ -40,7 +40,7 @@ test('die Schreibweise einer Set-Nummer ist eine Regel', () => {
   assert.equal(withoutVersion('75192-2'), '75192');
 });
 
-test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { concurrency: 1 }, async t => {
+test('the catalog answers the same no matter how the number is written', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const BLANK = `g${process.pid}`; // so fragt der Aufrufer
@@ -84,7 +84,7 @@ test('der Katalog antwortet gleich, egal wie die Nummer geschrieben ist', { conc
   }
 });
 
-test('die Schreibweise wird nirgends noch einmal ausgerechnet', () => {
+test('the spelling is not computed again anywhere', () => {
   // Gefunden, nicht aufgezaehlt.
   const dateien = [];
   const gehen = d => {

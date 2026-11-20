@@ -32,7 +32,7 @@ const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
 const db = testData();
 
-test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async t => {
+test('the request takes a note, the job stores', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
   // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
@@ -46,7 +46,7 @@ test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async t => {
   await weg();
 
   try {
-    await t.test('doppelte Notizen zählen einmal', async () => {
+    await t.test('duplicate notes count once', async () => {
       // Beim Scrollen kommt dasselbe Bild mehrfach vorbei. Ohne Entdopplung
       // stünde es mehrfach in der Warteschlange und würde mehrfach geholt.
       for (let i = 1; i <= 25; i++)
@@ -60,7 +60,7 @@ test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async t => {
       assert.equal(n, 25, `${n} Notizen statt 25`);
     });
 
-    await t.test('der Job arbeitet gestapelt, nicht alles auf einmal', async () => {
+    await t.test('the job works in batches, not everything at once', async () => {
       // Der Sinn der Sache: Auf schwacher Hardware darf nicht der ganze
       // Rückstau in einem Rutsch gerechnet werden.
       // Die Stapelgrösse steht in der Quelle (: von 5 auf 20
@@ -78,7 +78,7 @@ test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async t => {
       assert.equal(verkleinert, geladen, 'zu jedem geholten Bild gehört eine Vorschau');
     });
 
-    await t.test('am Ende bleibt keine Notiz liegen', async () => {
+    await t.test('at the end no note remains', async () => {
       for (let i = 0; i < 5; i++) await IQ._workStack();
       const n = (await db.get(`SELECT COUNT(*)::int c FROM image_wanted WHERE set_number LIKE $1`, [PREFIX + '%'])).c;
       assert.equal(n, 0, `${n} Notizen übrig`);
@@ -90,7 +90,7 @@ test('die Anfrage notiert, der Job legt ab', { concurrency: 1 }, async t => {
   }
 });
 
-test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { concurrency: 1 }, async t => {
+test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -191,7 +191,7 @@ test('die Kachel „Bild-Download (CDN)" zeigt die Katalog-Warteschlange', { con
   }
 });
 
-test('der Job meldet auch reine Übersprünge', () => {
+test('the job also reports pure skips', () => {
   // Marcos Befund
   const { meldung } = _req('src/images/imageDemandRun.js');
   const onlySkipped = {
@@ -233,7 +233,7 @@ test('der Job meldet auch reine Übersprünge', () => {
   );
 });
 
-test('die Bild-Tabellen kommen aus einer MIGRATION, nicht aus initSchema', () => {
+test('the image tables come from a MIGRATION, not from initSchema', () => {
   // Marcos Befund
   const mig = fs.readFileSync(path.join(ROOT, 'db/migrations/0009-bild-tabellen.sql'), 'utf8');
   assert.match(mig, /CREATE TABLE IF NOT EXISTS image_wanted/, 'image_wanted fehlt in der Migration');
@@ -265,7 +265,7 @@ test('die Bild-Tabellen kommen aus einer MIGRATION, nicht aus initSchema', () =>
   );
 });
 
-test('der Puffer wird in JEDEM Arbeitsprozess weggeschrieben', () => {
+test('the buffer is written away in EVERY worker process', () => {
   // Marcos Befund
   const q = fs.readFileSync(path.join(ROOT, 'src/images/imageDemand.ts'), 'utf8');
   const init = q.slice(
@@ -294,7 +294,7 @@ test('der Puffer wird in JEDEM Arbeitsprozess weggeschrieben', () => {
   // Abgearbeitet wird nur im Job-Prozess: test/web-and-jobs-db.test.js prüft das am echten Server.
 });
 
-test('die Anfrage rechnet nichts mehr, sie notiert nur', () => {
+test('the request no longer computes anything, it only takes notes', () => {
   // Geprüft am Quelltext, weil es um die REIHENFOLGE geht: Der Proxy darf im
   // gen=0-Fall keine Verkleinerung anstossen, sondern muss die Notiz
   // hinterlassen. Ein Test über die Route würde beides nicht unterscheiden —

@@ -12,7 +12,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-test('ohne Marktpreis: Anzeigewert 0, Erfassung NULL — bei Teil UND Figur', { concurrency: 1 }, async t => {
+test('without market price: display value 0, acquisition NULL — for part AND figure', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const name = `mkp_${process.pid}`;

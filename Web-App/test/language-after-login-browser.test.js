@@ -10,7 +10,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 
-test('englische Oberfläche ohne Neuladen', { timeout: 120_000 }, async t => {
+test('English UI without reloading', { timeout: 120_000 }, async t => {
   // Ohne Verwalterrolle: Der Verwalterpfad lud das Wörterbuch nebenbei und verdeckte den Fehler.
   const app = await startApp(t, {
     name: `sprache_${process.pid}`,

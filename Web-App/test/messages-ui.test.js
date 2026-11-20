@@ -39,7 +39,7 @@ function catchZeitgeber(w) {
   return gefangen;
 }
 
-test('Fehler und Knopf-Meldungen laufen nicht ab', async () => {
+test('errors and button messages do not expire', async () => {
   const { w, d } = await openUi(FEHLER);
   try {
     const gefangen = catchZeitgeber(w);
@@ -58,7 +58,7 @@ test('Fehler und Knopf-Meldungen laufen nicht ab', async () => {
   }
 });
 
-test('Maus auf der Meldung hält die Frist an', async () => {
+test('the mouse on the message stops the deadline', async () => {
   const { w, d } = await openUi({
     '/v1/wanted': (_u, o) => (o.method === 'POST' ? { success: true, war_neu: true } : { success: true, items: [] }),
   });
@@ -90,7 +90,7 @@ test('Maus auf der Meldung hält die Frist an', async () => {
   }
 });
 
-test('gleiche Fehler stapeln sich nicht', async () => {
+test('identical errors do not stack', async () => {
   const { w, d } = await openUi(FEHLER);
   try {
     for (let i = 0; i < 3; i++) {
@@ -106,7 +106,7 @@ test('gleiche Fehler stapeln sich nicht', async () => {
   }
 });
 
-test('Klick räumt die Meldung weg', async () => {
+test('a click clears the message', async () => {
   const { w, d } = await openUi(FEHLER);
   try {
     await createWantedItem(w, d);

@@ -57,7 +57,7 @@ function zaehle(muster, nur = (/** @type {string} */ _f) => true, marke = false)
   return n;
 }
 
-test('die Suche findet die Quellen ueberhaupt', () => {
+test('the search finds the sources at all', () => {
   // ── Der eigentliche Zweck dieser Pruefung ────────────────────────────────
   //
   // Wird ein Ordner umbenannt oder greift `quellen()` nicht mehr, zaehlen die
@@ -67,7 +67,7 @@ test('die Suche findet die Quellen ueberhaupt', () => {
   assert.ok(n >= 80, `Nur ${n} TypeScript-Quellen gefunden — greift die Suche noch?`);
 });
 
-test('stille Fänge (Server, nur gemeldete, Oberfläche) werden weniger, nie mehr', () => {
+test('silent catches (server, only reported, UI) become fewer, never more', () => {
   // Die Rebrickable-Teilezuordnung fängt nur 404, das rbGet() selbst als null liefert.
   const LIMIT = 0;
   // Selbstbeweis des letzten Musters: Es muss einen Ersatzwert ohne Meldung finden, die Meldung nicht.
@@ -93,7 +93,7 @@ test('stille Fänge (Server, nur gemeldete, Oberfläche) werden weniger, nie meh
   silentCatchesTheUi();
 });
 
-test('„melden und weiter“ wird weniger, nie mehr; src/sets kommt ohne aus', () => {
+test('“report and continue” becomes fewer, never more; src/sets does without', () => {
   // Die Regel steht in docs/architektur.md („Fehler“): Schreibpfade werfen, Lesepfade nehmen
   // versuche()/Abstriche, logAndContinue nur für Nebenwirkungen ohne Folgen; ein Ersatzwert
   // (reportAndDeliver) begründet sich als „Ausnahme:“ im Code. Ausserhalb von src/catalog eigene Schranke.
@@ -228,7 +228,7 @@ function takesProcessAccess(f) {
   );
 }
 
-test('der Kompatibilitätsweg zur Datenbank und modulweiter Zustand werden weniger, nie mehr', () => {
+test('the compatibility path to the database and module-wide state become fewer, never more', () => {
   // db/database.ts hat eine Fabrik (createDb); wer noch die Funktionen des
   // Prozesszugangs importiert, statt einen Zugang übergeben zu bekommen, zählt hier.
   // Gegenproben: ein `import * as db from '../../db/database'` in src/sets/rows.ts → rot (09.11.2026);
@@ -369,7 +369,7 @@ function bindingWithoutNamesAndProxy() {
   );
 }
 
-test('any wird weniger, nie mehr', () => {
+test('any becomes fewer, never more', () => {
   const LIMIT = 1;
   const ist = zaehle([/\bas any\b/g, /:\s*any\b/g]);
   assert.ok(
@@ -383,7 +383,7 @@ test('any wird weniger, nie mehr', () => {
   }
 });
 
-test('any in allen Formen, unknown-Parameter und success in Diensten werden weniger, nie mehr', () => {
+test('any in all forms, unknown parameters and success in services become fewer, never more', () => {
   // Auch Promise<any>, any[] und Record<string, any>: Die enge Zählung oben sah
   // nur `as any` und `: any`.
   // Gegenprobe (05.11.2026): getSetting wieder `fallback?: any` ohne Überladungen → rot.
@@ -440,7 +440,7 @@ test('any in allen Formen, unknown-Parameter und success in Diensten werden weni
     console.log(`  ℹ unknown-Parameter: ${unbekannt} (Schranke ${LIMIT_UNKNOWN}) — Schranke nachziehen`);
 });
 
-test('direkte Uhr-Aufrufe in Fachbereichen werden weniger, nie mehr', () => {
+test('direct clock calls in domain areas become fewer, never more', () => {
   // Die Zeit kommt über k.uhr (src/infra/clock.ts): Ein Test stellt sie, statt zu warten.
   // Übrig sind Drosseln mit echten Zeitgebern, die Sitzungsmiddleware (Fristen des Kekses) und
   // Zeitstempel ohne Kontext.
@@ -457,7 +457,7 @@ test('direkte Uhr-Aufrufe in Fachbereichen werden weniger, nie mehr', () => {
   if (ist < LIMIT) console.log(`  ℹ Uhr-Aufrufe: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
-test('keine Testdatei prüft REQUIRE_DB selbst', () => {
+test('no test file checks REQUIRE_DB itself', () => {
   // Die Regel steht in test/helpers/db.js (dbOderSkip, keineDb,
   // missingPrecondition); eine eigene Fassung war 115-mal kopiert.
   // Gegenprobe (11.11.2026): `if (process.env.REQUIRE_DB === '1') throw e;`
@@ -469,7 +469,7 @@ test('keine Testdatei prüft REQUIRE_DB selbst', () => {
   assert.deepEqual(eigene, [], 'test/helpers/db.js benutzen');
 });
 
-test('Datenbankzeilen sind ohne Typargument unknown', () => {
+test('database rows are unknown without a type argument', () => {
   // Ohne Angabe war eine Zeile `any`, und die Typprüfung endete an der
   // Datenbank — dort, wo numeric und bigint als Zeichenkette ankommen.
   // Gegenprobe (05.11.2026): `get<T = any>` in DbInterface → rot.
@@ -484,7 +484,7 @@ test('Datenbankzeilen sind ohne Typargument unknown', () => {
   assert.doesNotMatch(quelle, /<T = any>|lastID/);
 });
 
-test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
+test('untyped database queries become fewer, never more', () => {
   // Erlaubt, solange niemand Felder der Zeile liest — dann verlangt der
   // Übersetzer ohnehin ein Typargument.
   // Gegenprobe (05.11.2026): Schranke auf 68 → rot. Zeilentypen bindet db/rows.ts ans Schema.
@@ -495,7 +495,7 @@ test('ungetypte Datenbankabfragen werden weniger, nie mehr', () => {
   if (ist < LIMIT) console.log(`  ℹ ungetypte Abfragen: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
-test('rohe req.body und req.query in Routen werden weniger, nie mehr', () => {
+test('raw req.body and req.query in routes become fewer, never more', () => {
   // Eine Route liest req.eingabe und req.abfrage: geprüft und getypt aus dem
   // Vertrag. Übrig sind die Middleware vor der Prüfung, der Bild-Proxy (ohne
   // Vertrag) und routes/auth/registration.ts.
@@ -512,7 +512,7 @@ test('rohe req.body und req.query in Routen werden weniger, nie mehr', () => {
   if (ist < LIMIT) console.log(`  ℹ req.body/req.query in Routen: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
-test('Schreibziele in Routen werden weniger, nie mehr', () => {
+test('write targets in routes become fewer, never more', () => {
   // schreibziel() prüft im Haushalt, für wen geschrieben wird; besser nimmt der
   // Dienst den Wunsch selbst entgegen.
   // Gegenprobe (05.11.2026): Schranke auf 16 → rot.
@@ -549,7 +549,7 @@ function pureSourceTextTests() {
     });
 }
 
-test('Importkanten zwischen Ansichten werden weniger, nie mehr', () => {
+test('import edges between views become fewer, never more', () => {
   // Ansichten melden einander über events.js; was mehrere teilen, ist Baustein (BAUSTEINE).
   // Gegenprobe (15.11.2026): `import { loadGallery } from './sammlung.js';` zurück in lagerorte.js
   // → rot (51 statt 50).
@@ -570,7 +570,7 @@ test('Importkanten zwischen Ansichten werden weniger, nie mehr', () => {
     console.log(`  ℹ Kanten zwischen Ansichten: ${kanten.length} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
-test('Testdateien heissen nach ihrer Funktion, nicht nach einer Prüfrunde', () => {
+test('test files are named after their function, not after a review round', () => {
   // Ein Rundenname sagt nicht, was rot ist; man sucht die Datei über das Thema.
   // Gegenprobe (15.11.2026): security-server-limits-db.test.js zurück auf
   // sicherheit-runde11-db.test.js → rot mit diesem Namen.
@@ -582,7 +582,7 @@ test('Testdateien heissen nach ihrer Funktion, nicht nach einer Prüfrunde', () 
   );
 });
 
-test('reine Quelltext-Tests werden weniger, nie mehr', () => {
+test('pure source-text tests become fewer, never more', () => {
   const LIMIT = 34;
   const alle = fs.readdirSync(__dirname).filter(n => n.endsWith('.test.js')).length;
   assert.ok(alle >= 300, `Nur ${alle} Testdateien gefunden — greift die Suche noch?`);
@@ -731,7 +731,7 @@ function sourceTextCases() {
   return { n, alle };
 }
 
-test('Testfälle, die nur Quelltext lesen, werden weniger, nie mehr', () => {
+test('test cases that only read source text become fewer, never more', () => {
   // Strukturelle Erkennung: `await ` allein hielte reine Lesefälle für ausführend.
   // Gegenprobe (12.11.2026): `await ` wieder in FALL_LEADS_FROM → rot „Selbstbeweis“.
   const probe = [
@@ -793,7 +793,7 @@ const FALLBACKS = {
   'nehmen routerServer statt testServer': { muster: /\brouterServer\(/, limit: 13 },
 };
 
-test('Tests benutzen den echten Aufbau: keine DB-Fassade, Ersatzwege werden weniger', () => {
+test('tests use the real setup: no DB facade, substitute paths become fewer', () => {
   // Die DB-Fassade ist durch testData()/testAccess() ersetzt; umgebogene require und
   // eigene Router (routerServer) werden weniger.
   // Gegenproben (13.11.2026): in indexes-db.test.js wieder `_req('db/database.js')` → rot
@@ -831,7 +831,7 @@ test('Tests benutzen den echten Aufbau: keine DB-Fassade, Ersatzwege werden weni
  */
 const READS_ANDROID = /require\(['"]\.\/helpers\/android['"]\)|['"`]Android-App['"`/]|\.kt['"`]/;
 
-test('Web-Tests lesen keinen Android-Quelltext', () => {
+test('web tests do not read Android source code', () => {
   // Gegenprobe: `const k = 'x.kt';` in a11y.test.js → rot (nennt a11y.test.js); dasselbe in
   // test/helpers/contract.js → rot (nennt helpers/contract.js).
   const LIMIT = 0;
@@ -900,7 +900,7 @@ function fixedWaitTimes(/** @type {string} */ text) {
   return n;
 }
 
-test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
+test('fixed waits in tests become fewer, never more', () => {
   // Eine feste Pause ist unter Last zu kurz und sonst zu lang; gewartet wird auf
   // eine Bedingung (helpers/time.js bis(), ruhig()). Übrig sind Pausen, die zeigen,
   // dass etwas NICHT geschieht, oder die der geprüfte Code verlangt.
@@ -935,7 +935,7 @@ test('feste Wartezeiten in Tests werden weniger, nie mehr', () => {
  * Attribute ausserhalb von Kommentaren. display:none bleibt erlaubt: Die
  * Skripte schalten es um.
  */
-test('Inline-Stile in index.html werden weniger, nie mehr', () => {
+test('inline styles in index.html become fewer, never more', () => {
   const LIMIT = 32;
   const html = require('./helpers/sources').withoutHtmlComments(
     fs.readFileSync(path.join(WEB, 'public', 'index.html'), 'utf8'),
@@ -951,7 +951,7 @@ test('Inline-Stile in index.html werden weniger, nie mehr', () => {
   if (ist < LIMIT) console.log(`  ℹ Inline-Stile: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
-test('kein Verweis auf „Nachtrag N" unter Web-App/', () => {
+test('no reference to “Nachtrag N” under Web-App/', () => {
   // Die Geschichte einer Stelle steht im Commit (CLAUDE.md); eine Nummer im
   // Kommentar verweist auf eine Liste, die es im Baum nicht gibt. Ausgenommen:
   // docs/, CHANGELOG* und db/ (angewandte Migrationen dürfen sich nicht ändern).
@@ -982,7 +982,7 @@ test('kein Verweis auf „Nachtrag N" unter Web-App/', () => {
   assert.deepEqual(treffer, []);
 });
 
-test('kein Modul wird in einer Datei zweimal importiert', () => {
+test('no module is imported twice in one file', () => {
   // Je Modul ein Wert-Import und höchstens ein `import type`; neun Zeilen für
   // neun Namen aus derselben Datei verdecken, was wirklich gebraucht wird.
   // Gegenprobe (05.11.2026): `import { fehlertext } from '../infra/fehler';`
@@ -999,7 +999,7 @@ test('kein Modul wird in einer Datei zweimal importiert', () => {
   assert.deepEqual(treffer, []);
 });
 
-test('der Kommentaranteil im Server sinkt, nie steigt', () => {
+test('the comment share in the server sinks, never rises', () => {
   // Gezählt in server.ts, routes/, src/ und jobs/, im Biome-Format.
   const LIMIT = 9.8;
   let zeilen = 0,
@@ -1034,7 +1034,7 @@ function oberflaeche() {
 // Code für tsc, keine Erzählung; sie zählen weder als Kommentar noch als Zeile.
 const TYPZEILE = /^(\/\*\*\s*)?\*?\s*@(param|type|returns?|typedef|template|this|property)\b|^\/\*\*$|^\*\/$|^\*$/;
 
-test('der Kommentaranteil der Oberfläche sinkt, nie steigt', () => {
+test('the comment share of the UI sinks, never rises', () => {
   // Ohne Typzeilen gezählt, im Biome-Format.
   // Gegenprobe: 300 Kommentarzeilen an dom.js → rot.
   const LIMIT = 14.2;
@@ -1055,7 +1055,7 @@ test('der Kommentaranteil der Oberfläche sinkt, nie steigt', () => {
     console.log(`  ℹ Kommentaranteil Oberfläche: ${anteil} % (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
-test('any in den Typangaben der Oberfläche wird weniger, nie mehr', () => {
+test('any in the UI type annotations becomes fewer, never more', () => {
   // noImplicitAny verbietet nur das stille any; ein ausgeschriebenes schaltet
   // die Prüfung für diesen Wert genauso ab. Seit dem Abbau steht keines mehr da.
   // Gegenprobe: an api.js `/** @type {any} */ let x;` angehängt → rot mit 1.
@@ -1068,7 +1068,7 @@ test('any in den Typangaben der Oberfläche wird weniger, nie mehr', () => {
   if (ist < LIMIT) console.log(`  ℹ any in der Oberfläche: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
-test('kein Kommentar der Oberfläche hat mehr als fünf Zeilen Prosa', () => {
+test('no UI comment has more than five lines of prose', () => {
   // CLAUDE.md: Ein Kommentar sagt in zwei bis fünf Zeilen, warum. JSDoc-Tags
   // (@param, @returns …) zählen nicht mit.
   // Gegenprobe: ein //-Block mit sechs Zeilen in dom.js → rot mit Fundstelle.
@@ -1114,7 +1114,7 @@ function functionLengths(dateien = oberflaeche()) {
   return raus;
 }
 
-test('Funktionen der Oberfläche über 100 und über 80 Zeilen werden weniger, nie mehr', () => {
+test('UI functions over 100 and over 80 lines become fewer, never more', () => {
   // Im Biome-Format. Gegenprobe: loadFinance
   // wieder in einem Stück (vor dem Aufteilen) → rot mit „finanzen.js loadFinance“.
   const LIMIT_80 = 20;
@@ -1159,7 +1159,7 @@ function uisCode() {
   return raus;
 }
 
-test('Markup kommt nur über setzeHtml()/fuegeHtmlEin() in die Seite', () => {
+test('markup only gets into the page via setzeHtml()/fuegeHtmlEin()', () => {
   // Nur die beiden Helfer in dom.js schreiben Markup; das Protokollfenster (monitor.js) baut ein eigenes
   // Dokument per document.write. Gegenprobe: in sammlung.js `grid.innerHTML = ''` → rot mit Fundort.
   const ALLOWED = ['dom.js', 'dom.js', 'monitor.js'];
@@ -1187,7 +1187,7 @@ function rawHtmlArguments(/** @type {string} */ text) {
   return raus;
 }
 
-test('rawHtml() wird weniger, nie mehr; kein Template mit ${…} und kein .join() darin', () => {
+test('rawHtml() becomes fewer, never more; no template with ${…} and no .join() in it', () => {
   // html`` maskiert jeden eingesetzten Wert; rawHtml() setzt eine Zeichenkette als Markup ein, die
   // vor dem Umbau schon maskiert gebaut wurde. Listen aus html`` verbindet joinHtml() (escaping.js).
   // Gegenprobe (12.11.2026): in dom.js `${ungeprueft(`<b>${x}</b>`)}` → rot „Template“;
@@ -1226,7 +1226,7 @@ test('rawHtml() wird weniger, nie mehr; kein Template mit ${…} und kein .join(
   if (ist < LIMIT) console.log(`  ℹ rawHtml(): ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
-test('keine Datei der Oberfläche über 1000 Zeilen, die grossen werden kleiner', () => {
+test('no UI file over 1000 lines, the big ones become smaller', () => {
   // Eine Sammeldatei zieht Neues an, weil es dort schon liegt (Biome-Format).
   // Gegenprobe (09.11.2026): an finanzen.js Leerzeilen gehängt → rot.
   const LIMIT_LARGEST = 771,
@@ -1308,7 +1308,7 @@ test('server functions over 80/150 lines become fewer, never more', () => {
     console.log(`  ℹ Server-Funktionen über 80 Zeilen: ${ueber(80).length} — Schranke nachziehen`);
 });
 
-test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () => {
+test('the comment share in db/, clients/ and scripts/ sinks, never rises', () => {
   // Je Ordner eine Schranke, im Biome-Format.
   // Gegenprobe: 40 Kommentarzeilen an clients/ecb.ts gehängt → rot (clients).
   const LIMIT = { db: 15.1, clients: 12.3, scripts: 19.2 };
@@ -1343,7 +1343,7 @@ test('der Kommentaranteil in db/, clients/ und scripts/ sinkt, nie steigt', () =
   assert.deepEqual(toMuch, []);
 });
 
-test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
+test('history in test comments becomes fewer, never more', () => {
   // Ein Testkopf nennt, was geprüft wird, und seine Gegenproben (CLAUDE.md);
   // woher ein Test kam, steht im Commit. Gezählt werden Kommentarzeilen mit
   // den typischen Erzählmarken, auch „Gemessen … am <Datum>“.
@@ -1374,7 +1374,7 @@ test('Geschichte in Testkommentaren wird weniger, nie mehr', () => {
   if (ist < LIMIT) console.log(`  ℹ Geschichte in Testkommentaren: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
-test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
+test('the comment share of the tests sinks, never rises', () => {
   // Eigene Schranke: Testköpfe zählen ihre Gegenproben auf (CLAUDE.md), der
   // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in
   // den Commit. Gezählt in test/*.js und test/helpers/, im Biome-Format.
@@ -1407,7 +1407,7 @@ test('der Kommentaranteil der Tests sinkt, nie steigt', () => {
     console.log(`  ℹ Kommentaranteil Tests: ${anteil} % (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
-test('kein Verweis auf das frühere Begründungsarchiv', () => {
+test('no reference to the former rationale archive', () => {
   // Lange Begründungen stehen nicht im Baum (CLAUDE.md); das Archiv ist über git erreichbar. Ratsche 0:
   // Ein Verweis darauf zeigte ins Leere. Das Skript findet dieselben Verweise, die es entfernt.
   // Gegenprobe (10.11.2026): `// Ausführlich: docs/…/x.md#a` (voller Pfad) in src/infra/appPaths.ts → rot
@@ -1429,7 +1429,7 @@ test('kein Verweis auf das frühere Begründungsarchiv', () => {
   );
 });
 
-test('der Kommentaranteil der Betriebsdateien sinkt, nie steigt', () => {
+test('the comment share of the operations files sinks, never rises', () => {
   // Workflows, Dockerfile, compose.yaml, tsconfig.json: Auch dort steht das
   // Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md). Das Caddyfile zählt nicht mit:
   // Kein Block darin ist länger als fünf Zeilen.
@@ -1494,7 +1494,7 @@ function longBlocks(/** @type {string} */ text) {
   return n;
 }
 
-test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie mehr', () => {
+test('long comments in tests, scripts and index.html become fewer, never more', () => {
   // Im Code steht das Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md);
   // Gegenprobenlisten zählen nicht.
   // Gegenprobe (06.11.2026): sechs Zeilen Prosa vor die Gegenprobe im Kopf von hsts.test.js → rot (Tests 75).
@@ -1524,7 +1524,7 @@ test('lange Kommentare in Tests, Skripten und index.html werden weniger, nie meh
   }
 });
 
-test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
+test('test files without a counter-check become fewer, never more', () => {
   // Jeder Test nennt im Kopf seine Gegenprobe (CLAUDE.md); die älteren ohne
   // werden beim Anfassen nachgetragen.
   // Gegenprobe (05.11.2026): in lint-ratchet.test.js „Gegenproben“ umbenannt → rot (112).
@@ -1532,13 +1532,13 @@ test('Testdateien ohne Gegenprobe werden weniger, nie mehr', () => {
   const ohne = fs
     .readdirSync(__dirname)
     .filter(n => n.endsWith('.test.js'))
-    .filter(n => !fs.readFileSync(path.join(__dirname, n), 'utf8').includes('Gegenprobe'));
+    .filter(n => !/Gegenprobe|counter-check/i.test(fs.readFileSync(path.join(__dirname, n), 'utf8')));
   assert.ok(ohne.length <= LIMIT, `${ohne.length} Testdateien ohne Gegenprobe, erlaubt sind ${LIMIT}`);
   if (ohne.length < LIMIT)
     console.log(`  ℹ Testdateien ohne Gegenprobe: ${ohne.length} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
-test('in Testkommentaren genannte Pfade gibt es', () => {
+test('paths named in test comments exist', () => {
   // Eine Gegenprobe, die eine verschwundene Datei nennt, lässt sich nicht wiederholen. Geprüft wird jede
   // Kommentarzeile in test/ und test/helpers/; ein .js-Pfad gilt auch, wenn die .ts-Quelle dazu existiert.
   // Gegenprobe (10.11.2026): in acquisition-scope-db.test.js den Pfad bei schreibbereich auf den früheren der

@@ -22,7 +22,7 @@ const { testServer } = require('./helpers/server');
 const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
-test('Preis und Verlauf eines neuen Sets kommen im Zustand N', { concurrency: 1 }, async t => {
+test('price and history of a new set come in condition N', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = 'preiszustand-n',
     SET = '42201-1';

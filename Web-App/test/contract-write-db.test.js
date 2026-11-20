@@ -101,7 +101,7 @@ function formular(inhalt, typ, name, felder = {}) {
   return f;
 }
 
-test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, timeout: 180_000 }, async t => {
+test("the app's write responses keep their contract", { concurrency: 1, timeout: 180_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   importWorker(t, _req);
 
@@ -734,16 +734,14 @@ test('die Schreibantworten der App halten ihren Vertrag', { concurrency: 1, time
   }
   if (process.env.VERTRAG_DAUER) console.error(duration.sort((a, b) => b[0] - a[0]).slice(0, 5));
 
-  await t.test('jeder Schritt antwortet mit 200', () => assert.deepEqual(status, []));
-  await t.test('passt zum Vertrag', () => assert.deepEqual(deviations, []));
-  await t.test('jede schreibende Route ist geprüft oder begründet ausgelassen', () => {
+  await t.test('every step answers with 200', () => assert.deepEqual(status, []));
+  await t.test('matches the contract', () => assert.deepEqual(deviations, []));
+  await t.test('every writing route is checked or omitted with a reason', () => {
     const offen = routen.map(r => `${r.methode} ${r.pfad}`).filter(k => !gelaufen.has(k) && !OMITTED.has(k));
     assert.deepEqual(offen, []);
   });
-  await t.test('ein Stückpreis mit Nachkommastellen bleibt beim Ändern erhalten', () =>
-    assert.equal(w.partPrice, 0.25),
-  );
-  await t.test('keine tote Ausnahme', () => {
+  await t.test('a unit price with decimal places is kept when changing', () => assert.equal(w.partPrice, 0.25));
+  await t.test('no dead exception', () => {
     const bekannt = new Set(routen.map(r => `${r.methode} ${r.pfad}`));
     assert.deepEqual(
       [...OMITTED.keys()].filter(k => !bekannt.has(k)),

@@ -35,7 +35,7 @@ const { holdsSet, holdsPart } = require('./helpers/inventory');
 const { asRequest } = _req('src/infra/accountContext.js');
 const als = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
 
-test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, async t => {
+test('parts summary: catalog changes per part', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -92,7 +92,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
     assert.deepEqual(nach, await zeilen(uid), 'Nachzug und voller Neuaufbau ergeben dieselben Zeilen');
   };
 
-  await t.test('ein geänderter Teilename ist ohne Neuaufbau da', async () => {
+  await t.test('a changed part name is there without a rebuild', async () => {
     await marke(a, Z);
     await marke(b, Y);
     await db.run(`UPDATE part_catalog SET part_name = 'X neu' WHERE part_number = $1`, [X]);
@@ -103,7 +103,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
     );
   });
 
-  await t.test('andere Konten und andere Gruppen bleiben stehen', async () => {
+  await t.test('other accounts and other groups stay', async () => {
     assert.equal(
       (await db.get('SELECT storage FROM parts_summary WHERE user_id=$1', [b])).storage,
       'Marke',
@@ -118,7 +118,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
     await equalFullSetup(a);
   });
 
-  await t.test('die Anfrage eines Kontos zieht auch die anderen nach', async () => {
+  await t.test("one account's request also updates the others", async () => {
     await db.run(`UPDATE part_catalog SET part_name = 'Y neu' WHERE part_number = $1`, [Y]);
     assert.equal(await als(a, () => PS.summaryFresh(a, { strict: true })), true);
     assert.equal((await db.get('SELECT count(*)::int AS n FROM parts_catalog_pending')).n, 0);
@@ -128,7 +128,7 @@ test('Teile-Zusammenfassung: Katalogänderungen je Teil', { concurrency: 1 }, as
     );
   });
 
-  await t.test('eine neue BrickLink-Zuordnung verschiebt die Gruppe', async () => {
+  await t.test('a new BrickLink mapping moves the group', async () => {
     // W und X teilen sich eine BrickLink-Nummer; die Gruppe heisst nach W.
     await holdsPart(db, a, W, { setNumber: SA, menge: 1, colorId: 4 });
     await als(a, () => PS.rebuildNow(a));

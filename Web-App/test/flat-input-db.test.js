@@ -32,7 +32,7 @@ const { adminWithFactor } = require('./helpers/admin');
 const db = testData();
 const { CONTRACT } = _req('src/contract/index.js');
 
-test('verschachtelte Werte an schreibenden Routen', { concurrency: 1 }, async t => {
+test('nested values on writing routes', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -67,7 +67,7 @@ test('verschachtelte Werte an schreibenden Routen', { concurrency: 1 }, async t 
     return { status: r.status, code: j.code ?? null };
   };
 
-  await t.test('ein Objekt statt eines Lagerortnamens wird nicht gespeichert', async () => {
+  await t.test('an object instead of a storage location name is not saved', async () => {
     assert.deepEqual(await sende('POST', '/api/v1/storage/locations', { name: { $ne: 1 } }), {
       status: 400,
       code: 'eingabe_ungueltig',
@@ -80,14 +80,14 @@ test('verschachtelte Werte an schreibenden Routen', { concurrency: 1 }, async t 
     );
   });
 
-  await t.test('jede schreibende Route hat ein Eingabeschema', () => {
+  await t.test('every writing route has an input schema', () => {
     const withoutSchema = Object.entries(CONTRACT)
       .filter(([k, r]) => !k.startsWith('GET ') && !r.eingabe && !r.formular)
       .map(([k]) => k);
     assert.deepEqual(withoutSchema, []);
   });
 
-  await t.test('jede schreibende Route weist ein Objekt in einem ihrer Felder ab', async () => {
+  await t.test('every writing route rejects an object in one of its fields', async () => {
     const routen = Object.entries(CONTRACT).filter(([k, r]) => !k.startsWith('GET ') && !r.formular);
     assert.ok(routen.length >= 100, `nur ${routen.length} schreibende Routen`);
     const durch = [];

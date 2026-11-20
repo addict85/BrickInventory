@@ -64,14 +64,14 @@ const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-download-'));
 test.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
 const ziel = name => path.join(ordner, name);
 
-test('nur https', async t => {
+test('only https', async t => {
   const abgerufen = intercept(t, () => ({ status: 200, teile: [Buffer.alloc(500, 1)] }));
   assert.equal(await downloadFile('http://cdn.rebrickable.com/media/x.pdf', ziel('a.pdf')), false);
   assert.deepEqual(abgerufen, [], 'eine http-Adresse wird abgerufen');
   assert.equal(fs.existsSync(ziel('a.pdf')), false);
 });
 
-test('eine Umleitung auf http wird nicht befolgt', async t => {
+test('a redirect to http is not followed', async t => {
   const abgerufen = intercept(t, u =>
     u.endsWith('/start.pdf')
       ? { status: 302, kopf: { location: 'http://cdn.rebrickable.com/ziel.pdf' } }
@@ -81,20 +81,20 @@ test('eine Umleitung auf http wird nicht befolgt', async t => {
   assert.equal(abgerufen.length, 1);
 });
 
-test('über der Grenze: im Strom abgebrochen, nichts abgelegt', async t => {
+test('above the limit: aborted in the stream, nothing stored', async t => {
   intercept(t, () => ({ status: 200, teile: Array.from({ length: 50 }, () => Buffer.alloc(1000, 2)) }));
   assert.equal(await downloadFile('https://cdn.rebrickable.com/gross.pdf', ziel('c.pdf'), 10_000), false);
   await new Promise(r => setTimeout(r, 50));
   assert.equal(fs.existsSync(ziel('c.pdf')), false, 'die zu grosse Datei liegt auf der Platte');
 });
 
-test('Content-Length über der Grenze: gar nicht erst geschrieben', async t => {
+test('Content-Length above the limit: not even written', async t => {
   intercept(t, () => ({ status: 200, kopf: { 'content-length': '999999' }, teile: [Buffer.alloc(500, 1)] }));
   assert.equal(await downloadFile('https://cdn.rebrickable.com/gross2.pdf', ziel('d.pdf'), 10_000), false);
   assert.equal(fs.existsSync(ziel('d.pdf')), false);
 });
 
-test('unter der Grenze: abgelegt', async t => {
+test('below the limit: stored', async t => {
   intercept(t, () => ({ status: 200, teile: [Buffer.alloc(3000, 3), Buffer.alloc(3000, 4)] }));
   assert.equal(await downloadFile('https://cdn.rebrickable.com/klein.pdf', ziel('e.pdf'), 10_000), true);
   assert.equal(fs.statSync(ziel('e.pdf')).size, 6000);

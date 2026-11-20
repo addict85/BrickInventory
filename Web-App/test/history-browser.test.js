@@ -21,7 +21,7 @@ const { patternCollection } = require('./helpers/inventory');
 const ZUSTAND = `({ url: location.hash, ansicht: document.querySelector('.tab.active')?.id,
   dialoge: [...document.querySelectorAll('.ovl.open')].map(o => o.id) })`;
 
-test('Adresse und Verlauf', { timeout: 180_000 }, async t => {
+test('address and history', { timeout: 180_000 }, async t => {
   const app = await startApp(t, { name: `verlauf_${process.pid}`, bestand: patternCollection });
   if (app.grund) {
     t.skip(app.grund);
@@ -36,7 +36,7 @@ test('Adresse und Verlauf', { timeout: 180_000 }, async t => {
     await warte(400);
   };
 
-  await t.test('Reiter schreiben die Adresse', async () => {
+  await t.test('tabs write the address', async () => {
     await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
     await b.auswerten(`document.querySelector('.ntab[data-tab="wanted"]').click(); true`);
     assert.equal((await zustand()).url, '#/merkliste');
@@ -44,7 +44,7 @@ test('Adresse und Verlauf', { timeout: 180_000 }, async t => {
     assert.deepEqual(await zustand(), { url: '#/finanzen', ansicht: 'tab-finance', dialoge: [] });
   });
 
-  await t.test('Zurück schliesst den Dialog', async () => {
+  await t.test('back closes the dialog', async () => {
     await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
     await bis(`!!document.querySelector('#gallery [data-click="openModal"]')`, 'Kacheln');
     await b.auswerten(`document.querySelector('#gallery [data-click="openModal"]').click(); true`);
@@ -64,7 +64,7 @@ test('Adresse und Verlauf', { timeout: 180_000 }, async t => {
     assert.equal((await zustand()).ansicht, 'tab-finance');
   });
 
-  await t.test('Filter in der Adresse', async () => {
+  await t.test('filters in the address', async () => {
     await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
     await b.auswerten(
       `const f = document.getElementById('gs'); f.value = 'Tree'; f.dispatchEvent(new Event('input', { bubbles: true })); true`,
@@ -72,7 +72,7 @@ test('Adresse und Verlauf', { timeout: 180_000 }, async t => {
     assert.equal((await zustand()).url, '#/sammlung?suche=Tree');
   });
 
-  await t.test('Neuladen öffnet die Ansicht der Adresse', async () => {
+  await t.test('reloading opens the view of the address', async () => {
     await b.auswerten(`location.hash = '#/finanzen'; location.reload(); true`);
     await ruhig();
     await bis(

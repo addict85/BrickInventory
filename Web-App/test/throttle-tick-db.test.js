@@ -24,7 +24,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-test('gemeinsamer Takt über die Datenbank', { concurrency: 1 }, async t => {
+test('shared rhythm via the database', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
 
@@ -33,7 +33,7 @@ test('gemeinsamer Takt über die Datenbank', { concurrency: 1 }, async t => {
   const GAP = 250;
   await db.run('DELETE FROM api_cadence WHERE api = $1', [API]);
 
-  await t.test('zwei Drosseln teilen sich den Takt', async () => {
+  await t.test('two throttles share the rhythm', async () => {
     // Die eigene Drossel lässt sofort durch (Fenster 0) — jeder Abstand, der
     // sich zeigt, kommt aus dem gemeinsamen Takt.
     const apiTakt = require('./helpers/sources').testContext('externalSources').apiTakt;

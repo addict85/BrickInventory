@@ -84,10 +84,10 @@ exit 0
   return { tmp, work, ziel: path.join(tmp, 'ziel'), identity, recipient, lauf };
 }
 
-test('kein Klartext neben der verschlüsselten Sicherung', t => {
+test('no plaintext next to the encrypted backup', t => {
   if (!hatAge) {
     if (process.env.CI) assert.fail('age fehlt im CI-Lauf');
-    t.skip('age nicht installiert');
+    t.skip('age not installed');
     return;
   }
   const a = setup(t);
@@ -107,10 +107,10 @@ test('kein Klartext neben der verschlüsselten Sicherung', t => {
   }
 });
 
-test('restore.sh spielt die verschlüsselte Sicherung ein', t => {
+test('restore.sh loads the encrypted backup', t => {
   if (!hatAge) {
     if (process.env.CI) assert.fail('age fehlt im CI-Lauf');
-    t.skip('age nicht installiert');
+    t.skip('age not installed');
     return;
   }
   const a = setup(t);
@@ -129,7 +129,7 @@ test('restore.sh spielt die verschlüsselte Sicherung ein', t => {
   assert.equal(fs.readFileSync(path.join(a.work, 'data', 'uploads', 'anleitung.pdf'), 'utf8'), '%PDF-1.4 geheim');
 });
 
-test('ohne age kein Klartext', t => {
+test('without age no plaintext', t => {
   const a = setup(t);
   const r = a.lauf('backup.sh', [a.ziel], {
     BACKUP_AGE_EMPFAENGER: 'age1probe',
@@ -139,7 +139,7 @@ test('ohne age kein Klartext', t => {
   assert.deepEqual(fs.existsSync(a.ziel) ? fs.readdirSync(a.ziel) : [], []);
 });
 
-test('ohne Empfänger keine Sicherung', t => {
+test('without recipients no backup', t => {
   const a = setup(t);
   const r = a.lauf('backup.sh', [a.ziel]);
   assert.notEqual(r.status, 0, 'ohne Empfänger gesichert');
@@ -149,10 +149,10 @@ test('ohne Empfänger keine Sicherung', t => {
   assert.deepEqual(fs.existsSync(a.ziel) ? fs.readdirSync(a.ziel) : [], []);
 });
 
-test('die Empfänger aus backup-empfaenger.txt gelten ohne weitere Angabe', t => {
+test('the recipients from backup-empfaenger.txt apply without further information', t => {
   if (!hatAge) {
     if (process.env.CI) assert.fail('age fehlt im CI-Lauf');
-    t.skip('age nicht installiert');
+    t.skip('age not installed');
     return;
   }
   const a = setup(t);
@@ -173,7 +173,7 @@ test('die Empfänger aus backup-empfaenger.txt gelten ohne weitere Angabe', t =>
   assert.equal(fs.readFileSync(path.join(a.work, 'data', 'uploads', 'anleitung.pdf'), 'utf8'), '%PDF-1.4 geheim');
 });
 
-test('unverschlüsselt nur mit BACKUP_KLARTEXT=ja', t => {
+test('unencrypted only with BACKUP_KLARTEXT=ja', t => {
   const a = setup(t);
   const nein = a.lauf('backup.sh', [a.ziel], { BACKUP_KLARTEXT: '1' });
   assert.notEqual(nein.status, 0, 'BACKUP_KLARTEXT=1 genügt nicht, nur „ja"');
@@ -189,10 +189,10 @@ test('unverschlüsselt nur mit BACKUP_KLARTEXT=ja', t => {
   );
 });
 
-test('am Ziel liegt nie Klartext, auch nicht während der Sicherung', t => {
+test('there is never plaintext at the target, not even during the backup', t => {
   if (!hatAge) {
     if (process.env.CI) assert.fail('age fehlt im CI-Lauf');
-    t.skip('age nicht installiert');
+    t.skip('age not installed');
     return;
   }
   const a = setup(t);
@@ -228,10 +228,10 @@ printf -- '-- PostgreSQL database dump complete\\n'
   );
 });
 
-test('ein Dump ohne Endmarke hinterlässt nichts am Ziel', t => {
+test('a dump without an end marker leaves nothing at the target', t => {
   if (!hatAge) {
     if (process.env.CI) assert.fail('age fehlt im CI-Lauf');
-    t.skip('age nicht installiert');
+    t.skip('age not installed');
     return;
   }
   const a = setup(t);
@@ -244,7 +244,7 @@ test('ein Dump ohne Endmarke hinterlässt nichts am Ziel', t => {
   assert.deepEqual(fs.readdirSync(a.ziel), [], 'eine halbe Datei bleibt am Ziel');
 });
 
-test('restore.sh weist psql-Befehle im Dump ab', t => {
+test('restore.sh rejects psql commands in the dump', t => {
   const a = setup(t);
   const geknackt = path.join(a.tmp, 'geknackt');
   for (const zeile of [`\\! touch '${geknackt}'`, `  \\copy x to program 'touch ${geknackt}'`]) {
@@ -262,7 +262,7 @@ test('restore.sh weist psql-Befehle im Dump ab', t => {
   assert.ok(!fs.existsSync(geknackt));
 });
 
-test('ein tar-Fehler bricht ab und hinterlässt kein Archiv', t => {
+test('a tar error aborts and leaves no archive', t => {
   const a = setup(t);
   fs.writeFileSync(
     path.join(a.tmp, 'bin', 'tar'),
@@ -279,7 +279,7 @@ test('ein tar-Fehler bricht ab und hinterlässt kein Archiv', t => {
   );
 });
 
-test('eine unlesbare Datei unter data/ bricht vor dem Dump ab', t => {
+test('an unreadable file under data/ aborts before the dump', t => {
   // Als root läuft das Skript unten als „nobody“; dessen Weg muss durch alle Ordner
   // führen. TMPDIR und Arbeitsbaum können privat sein (0700), /tmp ist es nie.
   const a = setup(t, process.getuid() === 0 ? '/tmp' : os.tmpdir());
@@ -289,7 +289,7 @@ test('eine unlesbare Datei unter data/ bricht vor dem Dump ab', t => {
   if (process.getuid() === 0) {
     // root liest alles: als „nobody“ ausführen, die Datei bleibt bei root.
     if (spawnSync('setpriv', ['--version']).status !== 0) {
-      t.skip('setpriv fehlt');
+      t.skip('setpriv is missing');
       return;
     }
     fs.chmodSync(a.tmp, 0o755);

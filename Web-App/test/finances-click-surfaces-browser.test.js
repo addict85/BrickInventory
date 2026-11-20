@@ -23,7 +23,7 @@ const TO_SMALL = `[...document.querySelectorAll('a[href], button, [role=button],
     w: Math.round(r.width), h: Math.round(r.height), t: (e.textContent || e.getAttribute('aria-label') || '').trim().slice(0, 20) }; })
   .filter(x => x.h < 32 || x.w < 32).map(x => x.k + ' ' + x.w + '×' + x.h + ' „' + x.t + '“')`;
 
-test('Finanzen am Rechner: Bedienelemente mindestens 32 px', { concurrency: 1, timeout: 300_000 }, async t => {
+test('finances on the computer: controls at least 32 px', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `finklick_${process.pid}`,
     bestand: async (db, uid) => {
@@ -42,7 +42,7 @@ test('Finanzen am Rechner: Bedienelemente mindestens 32 px', { concurrency: 1, t
   await b.tab('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
   await ruhig();
 
-  await t.test('Bedienelemente der Finanzen', async () => {
+  await t.test('controls of the finances', async () => {
     assert.deepEqual(await b.auswerten(TO_SMALL), []);
     const m =
       await b.auswerten(`({ sort: document.querySelectorAll('.sort-knopf').length, zeile: document.querySelectorAll('.zeile-oeffnen').length,

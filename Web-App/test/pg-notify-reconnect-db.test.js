@@ -55,7 +55,7 @@ process.on('uncaughtException', e => { console.log('CRASH:' + e.message); proces
 })().catch(e => { console.log('FEHLER:' + e.message); process.exit(9); });
 `;
 
-test('ein Abriss der LISTEN-Verbindung beendet den Prozess NICHT und verbindet neu', { concurrency: 1 }, async t => {
+test('a drop of the LISTEN connection does NOT end the process and reconnects', { concurrency: 1 }, async t => {
   try {
     await db.pool.query('SELECT 1');
   } catch (e) {
@@ -91,7 +91,7 @@ test('ein Abriss der LISTEN-Verbindung beendet den Prozess NICHT und verbindet n
 
 // Unter Last ist der Aufbau noch unterwegs, wenn ein Test close() ruft; die
 // Verbindung, die danach ankam, hielt den Prozess für immer offen.
-test('close() während des Verbindungsaufbaus lässt keine Verbindung offen', async t => {
+test('close() during connection setup leaves no connection open', async t => {
   // Der Pool ist nach dem ersten Test zu: eine eigene Verbindung für die Probe.
   const probe = new (require(path.join(ROOT, 'node_modules', 'pg')).Client)({
     connectionString: process.env.DATABASE_URL,

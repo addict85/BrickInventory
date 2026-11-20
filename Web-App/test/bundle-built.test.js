@@ -23,7 +23,7 @@ const ROOT = path.join(__dirname, '..');
 const git = (...args) => spawnSync('git', args, { cwd: ROOT, encoding: 'utf8' });
 const imGit = git('rev-parse', '--is-inside-work-tree').stdout.trim() === 'true';
 
-test('das Bündel ist nicht eingecheckt und wird von git ignoriert', { skip: !imGit && 'kein git-Arbeitsbaum' }, () => {
+test('the bundle is not checked in and is ignored by git', { skip: !imGit && 'kein git-Arbeitsbaum' }, () => {
   const rel = path.posix.join('public', OUT_REL);
   assert.equal(git('ls-files', '--', rel).stdout.trim(), '', `${rel} ist eingecheckt`);
   for (const name of [rel, `${rel}.map`, `${rel}.123.tmp`]) {
@@ -31,7 +31,7 @@ test('das Bündel ist nicht eingecheckt und wird von git ignoriert', { skip: !im
   }
 });
 
-test('fehlendes oder veraltetes Bündel wird gebaut, ein frisches nicht angefasst', { timeout: 60_000 }, t => {
+test('a missing or outdated bundle is built, a fresh one is not touched', { timeout: 60_000 }, t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'buendel-'));
   t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
   const ziel = path.join(dir, 'app.bundle.js');

@@ -110,7 +110,7 @@ async function withFactor(uid) {
   return codes;
 }
 
-test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
+test('one single confirmation path', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const CHEF = `bv_chef_${process.pid}`,
     ZIEL = `bv_ziel_${process.pid}`,
@@ -149,12 +149,12 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
   };
   const markiert = Object.entries(CONTRACT).filter(([, r]) => r.bestaetigung);
 
-  await t.test('die Pflichtrouten tragen die Marke', () => {
+  await t.test('the mandatory routes carry the brand', () => {
     const fehlt = PFLICHT.filter(k => !CONTRACT[k]?.bestaetigung);
     assert.deepEqual(fehlt, []);
   });
 
-  await t.test('jede Passwort-Eingabe trägt die Marke', () => {
+  await t.test('every password input carries the brand', () => {
     const withoutBrand = Object.entries(CONTRACT)
       .filter(
         ([k, r]) =>
@@ -168,7 +168,7 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
   });
 
   for (const [schluessel, route] of markiert) {
-    await t.test(`${schluessel}: Passwort allein genügt nicht`, async () => {
+    await t.test(`${schluessel}: password alone is not enough`, async () => {
       // Auch die Kontobremse (20 am Tag): Hier rät eine Sitzung absichtlich bei jeder Route falsch.
       await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2', [
         `%-bestaetigen|${chef}|%`,
@@ -192,7 +192,7 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
   }
   assert.ok(markiert.length >= PFLICHT.length, `nur ${markiert.length} markierte Routen`);
 
-  await t.test('mit Code geht es, ohne Faktor wie bisher', async () => {
+  await t.test('with code it works, without a factor as before', async () => {
     const r = await ruf(basis, 'DELETE /api/v1/auth/users/:id/zweiter-faktor', {
       admin_password: PASS,
       code: codes[0],
@@ -204,7 +204,7 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
     assert.equal(tok.status, 200, JSON.stringify(tok.body));
   });
 
-  await t.test('kein zweiter Weg zum Passwortvergleich', () => {
+  await t.test('no second path to the password comparison', () => {
     const fs = require('node:fs');
     const { ohneKommentare } = require('./helpers/sources');
     const ordner = [path.join(ROOT, 'routes'), path.join(ROOT, 'src'), path.join(ROOT, 'jobs')];
@@ -228,7 +228,7 @@ test('ein einziger Bestätigungsweg', { concurrency: 1 }, async t => {
     assert.deepEqual(argon2, ['src/account/passwordHash.ts'], 'argon2 nur über passwordFits()/hashePassword()');
   });
 
-  await t.test('ohne Marke keine Bestätigung', async () => {
+  await t.test('no confirmation without the brand', async () => {
     const route = CONTRACT['DELETE /api/v1/bestand'];
     const marke = route.bestaetigung;
     delete route.bestaetigung;

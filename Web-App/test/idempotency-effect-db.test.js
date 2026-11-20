@@ -30,7 +30,7 @@ const dienst = _req('src/idempotency/service.js');
 
 const NAME = `idem_wirkung_${process.pid}`;
 
-test('Idempotenz: Wirkung und Schlüssel in einer Transaktion', { concurrency: 1 }, async t => {
+test('idempotency: effect and key in one transaction', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -94,7 +94,7 @@ test('Idempotenz: Wirkung und Schlüssel in einer Transaktion', { concurrency: 1
     }
   };
 
-  await t.test('abgebrochen nach dem COMMIT', async () => {
+  await t.test('aborted after the COMMIT', async () => {
     danach = 'abbrechen';
     assert.equal(await sende('k-abbruch'), null, 'Vorbedingung: Die Verbindung reisst ab');
     await orphan('k-abbruch');
@@ -105,7 +105,7 @@ test('Idempotenz: Wirkung und Schlüssel in einer Transaktion', { concurrency: 1
     assert.equal(await effects('k-abbruch'), 1);
   });
 
-  await t.test('ein Serverfehler nach dem COMMIT', async () => {
+  await t.test('a server error after the COMMIT', async () => {
     danach = 'scheitern';
     assert.equal((await sende('k-fehler')).status, 500);
     await fertig('k-fehler');
@@ -115,7 +115,7 @@ test('Idempotenz: Wirkung und Schlüssel in einer Transaktion', { concurrency: 1
     assert.equal(await effects('k-fehler'), 1);
   });
 
-  await t.test('ohne COMMIT darf sie neu', async () => {
+  await t.test('without COMMIT it may run anew', async () => {
     rollback = true;
     assert.equal((await sende('k-rollback')).status, 500);
     await fertig('k-rollback');

@@ -15,7 +15,7 @@ const { openUi, reiter, warte, takt } = require('./helpers/ui');
 
 const LEER = { '/v1/sets': { success: true, sets: [], total: 0, themes: ['Icons'] } };
 
-test('Sammlung: Suche ohne Treffer', async () => {
+test('collection: search without hits', async () => {
   const { w, d, aufrufe } = await openUi(LEER);
   try {
     d.getElementById('gs').value = 'xyz';
@@ -36,7 +36,7 @@ test('Sammlung: Suche ohne Treffer', async () => {
   }
 });
 
-test('Sammlung: Themenfilter ohne Treffer', async () => {
+test('collection: theme filter without hits', async () => {
   const { w, d } = await openUi(LEER);
   try {
     await warte(() => d.querySelector('#gtheme option[value="Icons"]'));
@@ -50,7 +50,7 @@ test('Sammlung: Themenfilter ohne Treffer', async () => {
   }
 });
 
-test('Merkliste: Suche ohne Treffer', async () => {
+test('wishlist: search without hits', async () => {
   const { w, d } = await openUi({ '/v1/wanted': { success: true, merkposten: [] } });
   try {
     await reiter(w, 'wanted');

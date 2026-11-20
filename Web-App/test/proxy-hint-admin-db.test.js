@@ -23,7 +23,7 @@ const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
 const { proxyHinweis, EINE_ADDRESS } = _req('src/http/proxyHint.js');
 
-test('Proxy-Hinweis in der Antwort für Verwalter', { concurrency: 1 }, async t => {
+test('proxy hint in the response for administrators', { concurrency: 1 }, async t => {
   const db = await accessOrSkip(t, _req);
   if (!db) return;
   const NAME = `proxyhinweis-${process.pid}`;
@@ -50,13 +50,13 @@ test('Proxy-Hinweis in der Antwort für Verwalter', { concurrency: 1 }, async t 
   app.locals.proxyHinweis = mw;
   const jobs = async () => (await fetch(`${base}/api/v1/admin/jobs`)).json();
 
-  await t.test('ohne Hinweis: null', async () => {
+  await t.test('without a hint: null', async () => {
     const d = await jobs();
     assert.equal(d.success, true);
     assert.equal(d.proxy_hinweis, null);
   });
 
-  await t.test('nach dem Hinweis im Protokoll steht er in der Antwort', async () => {
+  await t.test('after the hint in the log it is in the response', async () => {
     // Eine Stunde lang nur die Adresse des Proxys davor, wie hinter Nginx Proxy Manager mit `keiner`.
     for (let i = 0; i <= EINE_ADDRESS.anfragen; i++) {
       jetzt = Math.round((i / EINE_ADDRESS.anfragen) * 61 * 60_000);
@@ -69,7 +69,7 @@ test('Proxy-Hinweis in der Antwort für Verwalter', { concurrency: 1 }, async t 
     assert.ok(h.vars.minuten >= 60 && h.vars.anzahl >= EINE_ADDRESS.anfragen, JSON.stringify(h));
   });
 
-  await t.test('die App legt ihren Hinweisgeber dort ab, wo die Verwaltung liest', () => {
+  await t.test('the app puts its hint provider where the administration reads', () => {
     const echt = _req('startup/app.js').baueApp({
       pool: db.systemPool,
       konfig: _req('src/infra/config.js').konfig(),

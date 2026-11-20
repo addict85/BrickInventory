@@ -21,7 +21,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 // Ohne Datenbank: Die Sets dieser Datei liegen im Blickfeld des Kontos, sonst legt der Proxy nichts ab.
 require('./helpers/sources').replaceServices('images', { setNumberInScope: async () => true });
 
-test('Bild-Proxy liefert vorhandene Set-Bilder aus images/sets', async t => {
+test('image proxy delivers existing set images from images/sets', async t => {
   const express = require('express');
   const passThroughImage = (...a) =>
     _req('src/images/http/imageProxy.js').passThroughImage(require('./helpers/sources').testServices(), ...a);
@@ -72,20 +72,20 @@ test('Bild-Proxy liefert vorhandene Set-Bilder aus images/sets', async t => {
   put(cacheFile, CACHE);
   put(`${cacheFile}.ct`, Buffer.from('image/jpeg'));
 
-  await t.test('das Original kommt aus images/sets, nicht aus dem Proxy-Cache', async () => {
+  await t.test('the original comes from images/sets, not from the proxy cache', async () => {
     const r = await hole(`url=${encodeURIComponent(withCacheUrl)}`);
     assert.equal(r.status, 200);
     assert.deepEqual(r.inhalt, ORIGINAL);
   });
 
-  await t.test('mit thumb=1 kommt die lokale Vorschau, ohne Notiz für den Bild-Job', async () => {
+  await t.test('with thumb=1 the local preview comes, without a note for the image job', async () => {
     const r = await hole(`url=${encodeURIComponent(withCacheUrl)}&thumb=1&gen=0`);
     assert.equal(r.status, 200);
     assert.deepEqual(r.inhalt, VORSCHAU);
     assert.deepEqual(notes, []);
   });
 
-  await t.test('ohne Proxy-Cache und über der Drossel kommt das lokale Bild statt 429', async () => {
+  await t.test('without proxy cache and above the throttle the local image comes instead of 429', async () => {
     const withoutCache = `4${process.pid}-1`;
     const url = `https://cdn.rebrickable.com/media/sets/${withoutCache}.jpg`;
     put(path.join(SET_IMAGES_DIR, `${withoutCache}.jpg`), ORIGINAL);
@@ -98,7 +98,7 @@ test('Bild-Proxy liefert vorhandene Set-Bilder aus images/sets', async t => {
     assert.deepEqual(r.inhalt, VORSCHAU);
   });
 
-  await t.test('fehlt die Vorschau in images/sets, bleibt es beim bisherigen Weg', async () => {
+  await t.test('if the preview is missing in images/sets, the previous path stays', async () => {
     const halb = `3${process.pid}-1`;
     const url = `https://cdn.rebrickable.com/media/sets/${halb}.jpg`;
     put(path.join(SET_IMAGES_DIR, `${halb}.jpg`), ORIGINAL);

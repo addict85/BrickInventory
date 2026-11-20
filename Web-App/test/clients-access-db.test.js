@@ -60,7 +60,7 @@ const accessWith = schluessel => {
   };
 };
 
-test('zwei Klienten in einem Prozess fragen jeder mit dem Schlüssel ihres Zugangs', async () => {
+test('two clients in one process each ask with the key of their access', async () => {
   const { createRebrickable } = _req('clients/rebrickable.js');
   const { RbSet } = _req('clients/responses.js');
   const erster = createRebrickable(accessWith('erster'));
@@ -74,7 +74,7 @@ test('zwei Klienten in einem Prozess fragen jeder mit dem Schlüssel ihres Zugan
   );
 });
 
-test('über die Dienste tragen Abrufe den eingetragenen Schlüssel und zählen', { concurrency: 1 }, async t => {
+test('via the services fetches carry the stored key and count', { concurrency: 1 }, async t => {
   const db = S.testData();
   if (!(await dataOrSkip(t, _req))) return;
   const { setGlobalSetting, deleteGlobalValues } = _req('src/settings/settings.js');

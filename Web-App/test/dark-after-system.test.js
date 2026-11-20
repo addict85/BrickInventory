@@ -44,20 +44,20 @@ function fenster({ server = 'classic', wahl = null, dunkel = false } = {}) {
   return { w, thema: () => w.document.documentElement.getAttribute('data-theme'), dunkel: hatDark, systemSwitch };
 }
 
-test('ohne Wahl folgt das Gerät dem System', () => {
+test('without a choice the device follows the system', () => {
   const { w, thema, dunkel } = fenster({ dunkel: true });
   assert.equal(thema(), 'classic');
   assert.equal(dunkel(), true, 'Vorgabe ist „system“, das dunkle System wurde übergangen');
   assert.equal(w.__bimDunkelWert(), 'system');
 });
 
-test('mit Wahl „server" bleibt das Design hell — auch bei dunklem System', () => {
+test('with the choice "server" the theme stays light — even with a dark system', () => {
   const { thema, dunkel } = fenster({ wahl: 'server', dunkel: true });
   assert.equal(thema(), 'classic');
   assert.equal(dunkel(), false);
 });
 
-test('mit Wahl „system": dunkel bei dunklem System, und es folgt dem Wechsel', () => {
+test('with the choice "system": dark with a dark system, and it follows the change', () => {
   const { w, thema, dunkel, systemSwitch } = fenster({ wahl: 'system', dunkel: true });
   assert.equal(dunkel(), true, 'bleibt hell, obwohl das System dunkel ist');
   assert.equal(thema(), 'classic', 'das Design bleibt — dunkel ist eine Variante, kein anderes Design');
@@ -69,13 +69,13 @@ test('mit Wahl „system": dunkel bei dunklem System, und es folgt dem Wechsel',
   assert.equal(thema(), 'classic');
 });
 
-test('werkbank ist schon dunkel und bekommt keine Variante', () => {
+test('werkbank is already dark and gets no variant', () => {
   const { thema, dunkel } = fenster({ server: 'werkbank', wahl: 'system', dunkel: true });
   assert.equal(thema(), 'werkbank');
   assert.equal(dunkel(), false);
 });
 
-test('ein späteres Design vom Server gilt, das Gerät bleibt dunkel', () => {
+test('a later theme from the server applies, the device stays dark', () => {
   const { w, thema, dunkel } = fenster({ wahl: 'system', dunkel: true });
   w.__bimApplyTheme('brick');
   assert.equal(thema(), 'brick');

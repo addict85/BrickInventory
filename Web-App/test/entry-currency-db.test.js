@@ -25,7 +25,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
-test('Kaufpreise in fremder Währung und geschätzte', { concurrency: 1 }, async t => {
+test('purchase prices in a foreign currency and estimated ones', { concurrency: 1 }, async t => {
   const db = testData();
   if (!(await dataOrSkip(t, _req))) return;
   const P = process.pid,
@@ -52,7 +52,7 @@ test('Kaufpreise in fremder Währung und geschätzte', { concurrency: 1 }, async
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const hole = async pfad => (await fetch(`${base}/api/v1/${pfad}`)).json();
 
-  await t.test('Summe in Kontowährung wie die Finanzen', async () => {
+  await t.test('sum in the account currency like the finances', async () => {
     const r = await hole(`sets/${SN}/acquisitions`);
     assert.equal(r.totals.currency, 'EUR');
     assert.equal(r.totals.ohne_kurs, 0);
@@ -66,7 +66,7 @@ test('Kaufpreise in fremder Währung und geschätzte', { concurrency: 1 }, async
     assert.equal(Math.round(finanzen * 100) / 100, r.totals.amount, 'gleicher Betrag wie in den Finanzen');
   });
 
-  await t.test('ohne Kurs nicht eingerechnet, sondern gezählt', async () => {
+  await t.test('without a rate not included but counted', async () => {
     await db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency, created_at, day)
                   VALUES ($1,$2,1,9000,'U','JPY','2010-01-01 12:00','2010-01-01')`,
@@ -78,7 +78,7 @@ test('Kaufpreise in fremder Währung und geschätzte', { concurrency: 1 }, async
     await db.run(`DELETE FROM set_acquisitions WHERE user_id=$1 AND currency='JPY'`, [uid]);
   });
 
-  await t.test('geschätzte Kaufpreise sind gekennzeichnet', async () => {
+  await t.test('estimated purchase prices are marked', async () => {
     const v = await hole('finance/valuation');
     const geschaetzt = v.sets.find(s => s.set_number === GS).acquisitions;
     assert.deepEqual(

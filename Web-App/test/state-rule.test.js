@@ -10,13 +10,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const _req = require('./helpers/sources').buildAndRequire();
 
-test('klein geschrieben zählt wie gross', () => {
+test('lower case counts like upper case', () => {
   const { zustand } = _req('src/infra/validate.js');
   assert.equal(zustand('u'), 'U');
   assert.equal(zustand(' n '), 'N');
 });
 
-test('Unbekanntes wird zur Vorgabe', () => {
+test('unknown values become the default', () => {
   const { zustand } = _req('src/infra/validate.js');
   assert.equal(zustand('X'), 'N');
   assert.equal(zustand(null, 'U'), 'U');

@@ -49,7 +49,7 @@ const SET = {
   '/v1/sets/10300-1/acquisitions': { success: true, acquisitions: [] },
 };
 
-test('Dauer in der Schreibweise der Sprache', async () => {
+test("duration in the language's notation", async () => {
   for (const { sprache, browserLanguage, ms, erwartet } of [
     { sprache: 'de', browserLanguage: 'de-DE', ms: 1500, erwartet: /1,5 s/ },
     { sprache: 'de', browserLanguage: 'de-DE', ms: 125_000, erwartet: /2 min 5 s/ },
@@ -67,7 +67,7 @@ test('Dauer in der Schreibweise der Sprache', async () => {
   }
 });
 
-test('Jahresfilter sagen, dass es um Jahre geht', async () => {
+test('year filters say that it is about years', async () => {
   const o = await openUi({
     '/v1/catalog/meta': { success: true, themes: [], year_min: 2015, year_max: 2016, year_counts: [] },
   });
@@ -82,7 +82,7 @@ test('Jahresfilter sagen, dass es um Jahre geht', async () => {
   }
 });
 
-test('Set ohne Bild: kein Knopf „Bild vergrössern“', async () => {
+test('set without image: no button "enlarge image"', async () => {
   const o = await openUi(SET);
   try {
     const bild = o.d.getElementById('m-img');
@@ -106,7 +106,7 @@ test('Set ohne Bild: kein Knopf „Bild vergrössern“', async () => {
   }
 });
 
-test('Menü in Gruppen mit Titel', async () => {
+test('menu in groups with titles', async () => {
   const o = await openUi();
   try {
     const gruppen = [...o.d.querySelectorAll('#umenu-pop [role="group"]')].map(g => ({
@@ -126,7 +126,7 @@ test('Menü in Gruppen mit Titel', async () => {
   }
 });
 
-test('aus dem Set-Detail zu Preisalarmen und Lagerorten', async () => {
+test('from the set detail to price alerts and storage locations', async () => {
   const o = await openUi({
     ...SET,
     '/v1/alerts': { success: true },

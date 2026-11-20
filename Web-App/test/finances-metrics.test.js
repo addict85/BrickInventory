@@ -127,7 +127,7 @@ async function finanzen(opt) {
   return o;
 }
 
-test('ohne Marktpreise: Einstand oben und in den Summen, Hinweis statt „—“', async () => {
+test('without market prices: cost basis at the top and in the sums, a hint instead of "—"', async () => {
   const { w, d } = await finanzen({ withPrice: false });
   try {
     assert.match(zahl(text(d.getElementById('fin-einstand'))), /1097\.93/, 'Einstand fehlt oben');
@@ -145,7 +145,7 @@ test('ohne Marktpreise: Einstand oben und in den Summen, Hinweis statt „—“
   }
 });
 
-test('mit Marktpreisen: Gesamtwert und G&V', async () => {
+test('with market prices: total value and P&L', async () => {
   const { w, d } = await finanzen({ withPrice: true });
   try {
     assert.match(zahl(text(d.getElementById('fin-wert'))), /700\.00/);
@@ -165,7 +165,7 @@ test('mit Marktpreisen: Gesamtwert und G&V', async () => {
   }
 });
 
-test('nichts erfasst: ein Leerzustand, kein „Preis fehlt“', async () => {
+test('nothing captured: one empty state, no "price missing"', async () => {
   const o = await openUi({});
   try {
     await reiter(o.w, 'finance');

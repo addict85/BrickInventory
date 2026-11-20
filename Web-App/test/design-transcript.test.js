@@ -21,7 +21,7 @@ const DATEN = JSON.parse(fs.readFileSync(QUELLE, 'utf8'));
 
 // Die Kotlin-Erzeugnisse (DesignTokens.kt, DunkelTokens.kt) prüft der Android-Lauf mit
 // `node scripts/generate-design-tokens.js --pruefen`.
-test('das erzeugte Stylesheet stimmt mit shared/design-tokens.json ueberein', () => {
+test('the generated stylesheet matches shared/design-tokens.json', () => {
   // Gegenprobe (30.10., gemessen): dort "txt" von Hand auf #e6e9ee → rot.
   assert.equal(
     fs.readFileSync(TARGET_CSS, 'utf8'),
@@ -31,7 +31,7 @@ test('das erzeugte Stylesheet stimmt mit shared/design-tokens.json ueberein', ()
   );
 });
 
-test('kein handgeschriebenes Stylesheet definiert einen erzeugten Token neu', () => {
+test('no handwritten stylesheet redefines a generated token', () => {
   // Ein eigenes --b600 in styles.css gewänne (später geladen); die App folgte weiter der Quelle.
   const erzeugt = new Set(Object.values(DATEN.designs).flatMap(t => Object.keys(t)));
   assert.ok(erzeugt.size >= 10, `Nur ${erzeugt.size} erzeugte Tokens — greift die Suche noch?`);
@@ -58,7 +58,7 @@ test('kein handgeschriebenes Stylesheet definiert einen erzeugten Token neu', ()
   );
 });
 
-test('index.html laedt die erzeugten Tokens', () => {
+test('index.html loads the generated tokens', () => {
   // Ohne diese Zeile liefert jedes var(--b600) im Web nichts — und zwar still:
   // Die Seite baut sich auf, nur farblos.
   const html = fs.readFileSync(INDEX, 'utf8');
@@ -81,7 +81,7 @@ test('index.html laedt die erzeugten Tokens', () => {
 // Android-App (Docker-Bau, Teil-Klon) darf er daran nicht scheitern.
 // Gegenprobe (02.11.2026 gemessen): die Ordnerprüfung im Erzeuger entfernt →
 // rot (ENOENT beim Schreiben von DesignTokens.kt, Exit 1).
-test('ohne Android-App schreibt der Erzeuger nur das Web-CSS', () => {
+test('without the Android app the generator only writes the web CSS', () => {
   const { spawnSync } = require('node:child_process');
   const os = require('node:os');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tokens-'));

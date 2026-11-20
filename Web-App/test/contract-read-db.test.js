@@ -59,7 +59,7 @@ const EXTRA = new Map([['/api/v1/alerts/pending', 'since=2000-01-01T00:00:00Z']]
 /** Mindestens so viele Routen werden wirklich geprüft — damit die Zahl nicht still sinkt. */
 const MIN_CHECKED = 58;
 
-test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, timeout: 120_000 }, async t => {
+test('the responses of the app routes keep their contract', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -308,12 +308,12 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
     for (const [k, v] of Object.entries(json)) if (Array.isArray(v) && v.length === 0) leer.push(`${r.pfad} .${k}`);
   }
 
-  await t.test('jede Route antwortet', () => assert.deepEqual(status, []));
-  await t.test('so viele Routen geprüft', () =>
+  await t.test('every route answers', () => assert.deepEqual(status, []));
+  await t.test('this many routes checked', () =>
     assert.ok(geprueft >= MIN_CHECKED, `nur ${geprueft} Routen geprüft, erwartet mindestens ${MIN_CHECKED}`),
   );
-  await t.test('passt zum Vertrag', () => assert.deepEqual(deviations, []));
-  await t.test('keine Liste ist unbemerkt leer', () =>
+  await t.test('matches the contract', () => assert.deepEqual(deviations, []));
+  await t.test('no list is unnoticeably empty', () =>
     assert.deepEqual(
       leer.filter(l => !EMPTY_ALLOWED.has(l)),
       [],
@@ -345,7 +345,7 @@ test('die Antworten der App-Routen halten ihren Vertrag', { concurrency: 1, time
       pagesError.push(`${p}: Seite 2 hat ${zweite[feld]?.length} Einträge`);
     if (zweite.total !== ganz.total) pagesError.push(`${p}: total ${zweite.total} statt ${ganz.total}`);
   }
-  await t.test('lange Listen blättern', () => {
+  await t.test('long lists page', () => {
     assert.ok(paged.length >= 10, `nur ${paged.length} geblätterte Routen gefunden`);
     assert.deepEqual(pagesError, []);
   });

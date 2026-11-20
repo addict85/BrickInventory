@@ -31,7 +31,7 @@ const MEASURE = `(() => {
            seite: document.documentElement.scrollWidth, innen: document.documentElement.clientWidth };
 })()`;
 
-test('Einstellungen: Abschnittsliste bei grosser Schrift am Desktop', { concurrency: 1, timeout: 300_000 }, async t => {
+test('settings: section list with large font on the desktop', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, { name: `einstnav_${process.pid}`, allDesigns: true });
   if (app.grund) {
     t.skip(app.grund);
@@ -50,7 +50,7 @@ test('Einstellungen: Abschnittsliste bei grosser Schrift am Desktop', { concurre
 
   for (const design of ['brick', 'classic']) {
     for (const schrift of ['100%', '200%']) {
-      await t.test(`${design}, ${schrift}: kein Eintrag abgeschnitten`, async () => {
+      await t.test(`${design}, ${schrift}: no entry cut off`, async () => {
         await b.auswerten(`document.documentElement.setAttribute('data-theme', '${design}');
           document.documentElement.style.fontSize = '${schrift}'; true`);
         await b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);

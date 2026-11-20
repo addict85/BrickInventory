@@ -69,7 +69,7 @@ async function setup(t) {
   return db;
 }
 
-test('Teil und Figur ohne Preis im gewählten Zustand übernehmen den anderen und sagen es', async t => {
+test('part and minifigure without a price in the selected condition take the other and say so', async t => {
   if (!(await setup(t))) return;
   const { addManualPart } = _req('src/parts/manualParts.js');
   const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
@@ -83,14 +83,14 @@ test('Teil und Figur ohne Preis im gewählten Zustand übernehmen den anderen un
   assert.deepEqual([gleich.effectivePurchasePrice, gleich.priceFromState], [0.9, null], 'ohne Rückfall keine Herkunft');
 });
 
-test('eine eingetippte Zahl hat keine Herkunft', async t => {
+test('a typed-in number has no origin', async t => {
   if (!(await setup(t))) return;
   const { manualPartPurchase } = _req('src/parts/manualParts.js');
   const r = await manualPartPurchase(U, { partNumber: TEIL, colorId: FARBE, unitPrice: '2.50', condition: 'N' });
   assert.deepEqual([r.effectivePurchasePrice, r.priceFromState, r.geschaetzt], [2.5, null, false]);
 });
 
-test('die Webapp nennt die Herkunft bei Teil und Figur', async () => {
+test('the web app names the origin for part and minifigure', async () => {
   const de = require('./helpers/sources').loadTranslations().de;
   const posten = art => (_url, o) =>
     o.method === 'POST'

@@ -29,7 +29,7 @@ async function erreichbar() {
 // dem letzten Test, auch wenn eine Zusicherung vorher scheitert.
 after(() => db.pool.end());
 
-test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async t => {
+test('the trash hits the clicked card, not the own one', async t => {
   if (!(await erreichbar())) {
     keineDb(t);
     return;
@@ -147,7 +147,7 @@ test('der Papierkorb trifft die geklickte Karte, nicht die eigene', async t => {
 /**
  * Damit eine Ansicht den Besitzer MITGEBEN kann, muss sie ihn erst BEKOMMEN.
  */
-test('beide Bewertungen fuehren den Besitzer mit', async t => {
+test('both valuations carry the owner along', async t => {
   if (!(await erreichbar())) {
     keineDb(t);
     return;

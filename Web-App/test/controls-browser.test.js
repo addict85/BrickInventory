@@ -31,7 +31,7 @@ const { LAYOUT } = require('./helpers/layout-measurement');
 
 const ESC = { key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 };
 
-test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }, async t => {
+test('operation: focus, target sizes, hover, login mask', { timeout: 240_000 }, async t => {
   const app = await startApp(t, { name: `bedien_${process.pid}`, bestand: patternCollection, allDesigns: true });
   if (app.grund) {
     t.skip(app.grund);
@@ -58,7 +58,7 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
     'Set-Ansicht',
   );
 
-  await t.test('Teile neu importieren: beschriftet, 24 px, ohne Inline-Stil', async () => {
+  await t.test('reimport parts: labeled, 24 px, without inline style', async () => {
     const k = await b.auswerten(`(() => { document.querySelector('#set-modal details.mehr-menue').open = true;
       const k = document.querySelector('#set-modal [data-click="teileNeuImportieren"]'); const r = k.getBoundingClientRect();
       return { text: k.textContent.trim(), b: r.width, h: r.height, stil: k.getAttribute('style') }; })()`);
@@ -67,7 +67,7 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
     assert.equal(k.stil, null);
   });
 
-  await t.test('Escape im Bestätigungsdialog: Fokus zurück auf „Weitere Aktionen“', async () => {
+  await t.test('Escape in the confirmation dialog: focus back on "more actions"', async () => {
     // Das Menü klappt bei der Wahl zu; der sichtbare Auslöser ist dann sein Knopf.
     await b.auswerten(
       `document.querySelector('#set-modal details.mehr-menue').open = true; document.getElementById('btn-md').focus(); document.getElementById('btn-md').click(); true`,
@@ -87,7 +87,7 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
     );
   });
 
-  await t.test('Escape bei zugeklapptem Menü: Fokus auf Weitere Aktionen', async () => {
+  await t.test('Escape with a collapsed menu: focus on more actions', async () => {
     await b.auswerten(`document.getElementById('btn-md').click(); true`);
     await bis(`document.getElementById('confirm-modal').style.display !== 'none'`, 'Bestätigung');
     await b.auswerten(`document.querySelector('#set-modal details.mehr-menue').open = false; true`);
@@ -100,7 +100,7 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
   });
   await printEscape();
 
-  await t.test('Häkchen Passkeys 24 px', async () => {
+  await t.test('passkeys check box 24 px', async () => {
     await b.auswerten(`document.querySelector('.umenu-item[data-arg="profil"]').click(); true`);
     await bis(`!!document.getElementById('pw-pk')?.checkVisibility()`, 'Konto');
     const r = await b.auswerten(
@@ -109,11 +109,11 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
     assert.ok(r[0] >= 24 && r[1] >= 24, `nur ${r[0]}×${r[1]}`);
   });
 
-  await t.test('Passwortwechsel: Passkeys-Häkchen ist vorbelegt', async () => {
+  await t.test('password change: passkeys check box is preselected', async () => {
     assert.equal(await b.auswerten(`document.getElementById('pw-pk').checked`), true);
   });
 
-  await t.test('Hover nur bei Zeigergeräten', async () => {
+  await t.test('hover only on pointer devices', async () => {
     const frei = await b.auswerten(`(() => { const raus = [];
       const lauf = (regeln, inHover) => { for (const r of regeln) {
         if (r instanceof CSSMediaRule) lauf(r.cssRules, inHover || /hover:\\s*hover/.test(r.conditionText));
@@ -143,7 +143,7 @@ test('Bedienung: Fokus, Zielgrössen, Hover, Anmeldemaske', { timeout: 240_000 }
     `document.getElementById('btn-passkey').hidden = false; document.getElementById('link-forgot').hidden = false; true`,
   );
   for (const design of ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz']) {
-    await t.test(`Anmeldemaske ${design}`, async () => {
+    await t.test(`login mask ${design}`, async () => {
       const funde = [];
       for (const dunkel of [false, true]) {
         await b.auswerten(

@@ -21,7 +21,7 @@ const { holdsSet } = require('./helpers/inventory');
 
 const DESIGNS = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
-test('Scrollbalken: sichtbar und bedienbar', { concurrency: 1, timeout: 300_000 }, async t => {
+test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `scrollbalken_${process.pid}`,
     allDesigns: true,
@@ -45,7 +45,7 @@ test('Scrollbalken: sichtbar und bedienbar', { concurrency: 1, timeout: 300_000 
     'Balken sichtbar',
   );
 
-  await t.test('Griff hebt sich in jedem Design ab (3:1)', async () => {
+  await t.test('thumb stands out in every design (3:1)', async () => {
     const werte = [];
     for (const design of DESIGNS)
       for (const dunkel of design === 'werkbank' ? [true] : [false, true]) {
@@ -71,7 +71,7 @@ test('Scrollbalken: sichtbar und bedienbar', { concurrency: 1, timeout: 300_000 
     );
   });
 
-  await t.test('Ziehen am Griff rollt die Seite', async () => {
+  await t.test('dragging the thumb scrolls the page', async () => {
     await b.auswerten(`scrollTo(0, 0); true`);
     const g =
       await b.auswerten(`(() => { const r = document.getElementById('app-scrollbar-thumb').getBoundingClientRect();
@@ -100,7 +100,7 @@ test('Scrollbalken: sichtbar und bedienbar', { concurrency: 1, timeout: 300_000 
     assert.equal(danach.etikett, 'none', 'das Etikett bleibt nach dem Loslassen stehen');
   });
 
-  await t.test('Kontrastmodus: die Leiste des Browsers bleibt', async () => {
+  await t.test("contrast mode: the browser's bar stays", async () => {
     const stand = () =>
       b.auswerten(`({ eigen: getComputedStyle(document.getElementById('app-scrollbar')).display,
       browserBar: innerWidth - document.documentElement.clientWidth })`);

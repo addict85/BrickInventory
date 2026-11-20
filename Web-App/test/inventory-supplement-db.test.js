@@ -19,7 +19,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { newestInventory } = _req('src/catalog/rbInventory.js');
 
-test('ein Inventar wird unter beiden Schreibweisen gefunden', { concurrency: 1 }, async t => {
+test('an inventory is found under both spellings', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   // rb_inventories.id ist kein SERIAL — die Nummern kommen aus der CSV.
@@ -60,7 +60,7 @@ test('ein Inventar wird unter beiden Schreibweisen gefunden', { concurrency: 1 }
   }
 });
 
-test('der Inventar-Nachschlag steht nur an einer Stelle', () => {
+test('the inventory lookup lives in only one place', () => {
   // Gefunden, nicht aufgezaehlt.
   const dateien = [];
   const gehen = d => {

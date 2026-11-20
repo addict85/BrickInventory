@@ -27,7 +27,7 @@ function datei(name, inhalt) {
   return p;
 }
 
-test('eine LEERE Datei wird abgewiesen', async () => {
+test('an EMPTY file is rejected', async () => {
   const p = datei('leer.jpg', Buffer.alloc(0));
   assert.equal(
     await readableImage(p),
@@ -38,7 +38,7 @@ test('eine LEERE Datei wird abgewiesen', async () => {
   );
 });
 
-test('eine ABGESCHNITTENE Datei wird abgewiesen', async () => {
+test('a TRUNCATED file is rejected', async () => {
   // Die ersten drei Bytes eines JPEG, dann nichts mehr: genau das Bild eines
   // abgebrochenen Downloads.
   const p = datei('halb.jpg', Buffer.from([0xff, 0xd8, 0xff]));
@@ -49,7 +49,7 @@ test('eine ABGESCHNITTENE Datei wird abgewiesen', async () => {
   );
 });
 
-test('ein ECHTES kleines Bild geht weiter durch', async () => {
+test('a REAL small image still goes through', async () => {
   // Der Kern. Ohne diesen Fall wäre die Schranke auch dann „richtig", wenn sie
   // ALLES abwiese — und dann gäbe es gar keine Vorschaubilder mehr.
   //
@@ -66,7 +66,7 @@ test('ein ECHTES kleines Bild geht weiter durch', async () => {
   );
 });
 
-test('eine Datei, die es nicht gibt, wird abgewiesen', async () => {
+test('a file that does not exist is rejected', async () => {
   // Das war schon vorher so (der catch unten in readableImage) und bleibt es —
   // hier festgehalten, damit die neue Schranke diesen Weg nicht verdeckt.
   assert.equal(await readableImage('/gibt/es/nicht/x.jpg'), false);

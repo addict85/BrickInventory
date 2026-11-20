@@ -40,7 +40,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 // den Timeout des Runners.
 test.after(() => db.pool.end().catch(() => {}));
 
-test('forgot-password findet die E-Mail unabhängig von der Schreibweise', { concurrency: 1 }, async t => {
+test('forgot-password finds the email regardless of case', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const USERNAME = 'forgotcasetest';
@@ -107,7 +107,7 @@ test('forgot-password findet die E-Mail unabhängig von der Schreibweise', { con
   }
 });
 
-test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserhalb des Betriebs', {
+test('reset link only with APP_BASE_URL, never from the Host header — even outside production', {
   concurrency: 1,
 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
@@ -194,7 +194,7 @@ test('Reset-Link nur mit APP_BASE_URL, nie aus dem Host-Header — auch ausserha
   }
 });
 
-test('höchstens ein Link je Konto in 15 Minuten, und jede Antwort braucht gleich lange', {
+test('at most one link per account in 15 minutes, and every response takes equally long', {
   concurrency: 1,
 }, async t => {
   const USERNAME = `forgotpause_${process.pid}`;

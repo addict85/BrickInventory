@@ -183,15 +183,15 @@ async function werkbank(rebuild) {
 
 // Gegenprobe (02.11.2026 gemessen): isEvalSupported in pdfviewer.js
 // gestrichen → rot.
-test('PDF.js lädt ohne eval und ohne Skripte im PDF', async () => {
+test('PDF.js loads without eval and without scripts in the PDF', async () => {
   const b = await werkbank();
   assert.equal(b.optionen.length, 1);
   assert.equal(b.optionen[0].isEvalSupported, false);
   assert.equal(b.optionen[0].enableScripting, false);
 });
 
-test('Zoom im PDF-Betrachter', async t => {
-  await t.test('Grundzustand ist 100 % und der Minus-Knopf ist abgeschaltet', async () => {
+test('zoom in the PDF viewer', async t => {
+  await t.test('the initial state is 100 % and the minus button is disabled', async () => {
     const b = await werkbank();
     assert.equal(b.faktor(), 1);
     assert.equal(
@@ -202,14 +202,14 @@ test('Zoom im PDF-Betrachter', async t => {
     assert.equal(b.platzhalter().length, SEITEN);
   });
 
-  await t.test('Platzhalter traegt die auto-Raender', async () => {
+  await t.test('placeholder carries the auto margins', async () => {
     const b = await werkbank();
     const stil = b.platzhalter()[0].style;
     assert.equal(stil.marginLeft, 'auto');
     assert.equal(stil.marginRight, 'auto');
   });
 
-  await t.test('Hineinzoomen vergroessert die Seite und meldet den Faktor', async () => {
+  await t.test('zooming in enlarges the page and reports the factor', async () => {
     const b = await werkbank();
     const vorher = parseFloat(b.platzhalter()[0].style.width);
     b.aktionen.pdfZoomIn();
@@ -222,7 +222,7 @@ test('Zoom im PDF-Betrachter', async t => {
     );
   });
 
-  await t.test('Die Anschlaege halten', async () => {
+  await t.test('the stops hold', async () => {
     const b = await werkbank();
     for (let i = 0; i < 25; i++) b.aktionen.pdfZoomIn();
     await b.warte(40);
@@ -234,7 +234,7 @@ test('Zoom im PDF-Betrachter', async t => {
     assert.equal(b.w.document.getElementById('pdf-viewer-zoom-out').disabled, true);
   });
 
-  await t.test('Der Anker haelt: dieselbe Stelle bleibt in der Mitte', async () => {
+  await t.test('the anchor holds: the same spot stays in the middle', async () => {
     const b = await werkbank();
     b.container.scrollTop = 7000;
     const vorher = b.place();
@@ -249,7 +249,7 @@ test('Zoom im PDF-Betrachter', async t => {
     );
   });
 
-  await t.test('Gegenprobe: ohne Ankerrechnung springt es', async () => {
+  await t.test('counter-check: without the anchor calculation it jumps', async () => {
     // Die Wiederherstellung herausnehmen — die Rollstaende bleiben, wo sie waren.
     const b = await werkbank(code =>
       code
@@ -269,7 +269,7 @@ test('Zoom im PDF-Betrachter', async t => {
     );
   });
 
-  await t.test('Nach dem Zoomen werden die sichtbaren Seiten neu gerendert', async () => {
+  await t.test('after zooming the visible pages are re-rendered', async () => {
     const b = await werkbank();
     const vorher = b.beobachtet.length;
     b.aktionen.pdfZoomIn();
@@ -328,7 +328,7 @@ test('Zoom im PDF-Betrachter', async t => {
     return { haengen, oldWidths, soll: Math.round(parseFloat(b.platzhalter()[0].style.width)) };
   }
 
-  await t.test('Ein Render, der ueber einen Zoom hinweglaeuft, wird verworfen', async () => {
+  await t.test('a render that runs across a zoom is discarded', async () => {
     const r = await staleRender(true);
     const veraltet = r.haengen.filter(w => w !== r.soll);
     assert.deepEqual(
@@ -341,7 +341,7 @@ test('Zoom im PDF-Betrachter', async t => {
     );
   });
 
-  await t.test('Gegenprobe: ohne Generationszaehler haengt die alte Leinwand drin', async () => {
+  await t.test('counter-check: without the generation counter the old canvas hangs in', async () => {
     const r = await staleRender(false);
     const veraltet = r.haengen.filter(w => w !== r.soll);
     assert.ok(
@@ -353,7 +353,7 @@ test('Zoom im PDF-Betrachter', async t => {
     );
   });
 
-  await t.test('Strg + Rad zoomt, Rad allein nicht', async () => {
+  await t.test('Ctrl + wheel zooms, the wheel alone does not', async () => {
     const b = await werkbank();
     const rad = strg =>
       b.container.dispatchEvent(
@@ -374,7 +374,7 @@ test('Zoom im PDF-Betrachter', async t => {
     assert.equal(b.faktor(), 1.25);
   });
 
-  await t.test('Die Zuhoerer haengen nur einmal, auch nach mehrfachem Oeffnen', async () => {
+  await t.test('the listeners only hang once, even after opening several times', async () => {
     const b = await werkbank();
     for (let i = 0; i < 5; i++) {
       b.aktionen.closePdfViewer();
@@ -403,7 +403,7 @@ test('Zoom im PDF-Betrachter', async t => {
 
 // Gegenprobe (08.11.2026 gemessen): in pdfviewer.js den Platzhalter wieder `background:#fff` gegeben
 // → rot „Platzhalter ist gedämpft“; `background: '#fff'` aus render() gestrichen → rot „Seite bleibt weiss“.
-test('Platzhalter ist gedämpft, die gerenderte Seite bleibt weiss', async () => {
+test('placeholder is dimmed, the rendered page stays white', async () => {
   const b = await werkbank();
   const grund = b.platzhalter()[0].style.background;
   assert.ok(

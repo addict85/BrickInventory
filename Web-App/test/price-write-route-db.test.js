@@ -62,7 +62,7 @@ async function traces(sn) {
   return { cache, hist };
 }
 
-test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }, async t => {
+test('a BrickLink price is written away on one path', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const JOB = `schreibweg-${process.pid}-job`;
@@ -145,7 +145,7 @@ test('ein BrickLink-Preis wird auf einem Weg weggeschrieben', { concurrency: 1 }
   }
 });
 
-test('die Schreibregel steht nur an einer Stelle', () => {
+test('the write rule exists in only one place', () => {
   // Gefunden, nicht aufgezaehlt: alle .ts des Baums ausser Tests und Werkzeug.
   const dateien = [];
   const gehen = d => {

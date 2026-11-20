@@ -18,7 +18,7 @@ const _req = buildAndRequire();
 const { catalogSet } = require('./helpers/inventory');
 const { dataOrSkip } = require('./helpers/db');
 
-test('Zustände je Set für den Preislauf', { concurrency: 1 }, async t => {
+test('conditions per set for the price run', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const uid = (
@@ -55,11 +55,11 @@ test('Zustände je Set für den Preislauf', { concurrency: 1 }, async t => {
 
   const z = sortiert(await statesJeSet(uid, [MIXED, REIN, GEMERKT, FREMD]));
 
-  await t.test('ein gemischtes Set braucht beide Preise', () => assert.deepEqual(z[MIXED], ['N', 'U']));
-  await t.test('ein reines Set kostet nur einen Abruf', () => assert.deepEqual(z[REIN], ['U']));
-  await t.test('ein gemerkter Gebrauchtzustand zählt mit', () => assert.deepEqual(z[GEMERKT], ['U']));
-  await t.test('ohne Erfassung und Merkposten gilt Neu', () => assert.deepEqual(z[FREMD], ['N']));
-  await t.test('der Zustand einer noch nicht geschriebenen Erfassung zählt', async () => {
+  await t.test('a mixed set needs both prices', () => assert.deepEqual(z[MIXED], ['N', 'U']));
+  await t.test('a pure set costs only one request', () => assert.deepEqual(z[REIN], ['U']));
+  await t.test('a remembered used condition counts as well', () => assert.deepEqual(z[GEMERKT], ['U']));
+  await t.test('without an entry and pending item, new applies', () => assert.deepEqual(z[FREMD], ['N']));
+  await t.test('the condition of a not yet written entry counts', async () => {
     assert.deepEqual((await conditionsNeededFor(REIN, uid, 'N')).sort(), ['N', 'U']);
   });
 });

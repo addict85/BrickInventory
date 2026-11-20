@@ -36,7 +36,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAMEN = ['sv_chef', 'sv_second', 'sv_nutzer'];
 const PW = 'sitzungsVersion-1';
 
-test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrency: 1 }, async t => {
+test('ended sessions stay ended, even when written back', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   for (const n of NAMEN) await db.run('DELETE FROM users WHERE username = $1', [n]);
@@ -103,7 +103,7 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
   const angemeldet = async cookie => (await (await ruf('/api/v1/auth/me', cookie)).json()).loggedIn === true;
 
   try {
-    await t.test('Rechteentzug: die zurückgeschriebene Verwaltersitzung gilt nicht mehr', async () => {
+    await t.test('revocation of rights: the written-back administrator session no longer applies', async () => {
       const chef = await anmelden('sv_chef');
       const zweiter = await anmelden('sv_second');
       assert.equal((await ruf('/api/v1/auth/users', zweiter)).status, 200, 'Vorbedingung: Verwalter');
@@ -130,7 +130,7 @@ test('beendete Sitzungen bleiben beendet, auch zurückgeschrieben', { concurrenc
       assert.equal(await angemeldet(await anmelden('sv_second')), true, 'neu anmelden geht');
     });
 
-    await t.test('andere Fenster beenden: das eigene bleibt, das andere bleibt draussen', async () => {
+    await t.test('end other windows: the own one stays, the other stays out', async () => {
       const a = await anmelden('sv_nutzer');
       const b = await anmelden('sv_nutzer');
       const altB = await zeile(b);

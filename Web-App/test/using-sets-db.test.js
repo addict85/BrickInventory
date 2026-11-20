@@ -26,7 +26,7 @@ async function erreichbar() {
 
 after(() => db.pool.end());
 
-test('die Liste der verwendenden Sets folgt dem Blickfeld', async t => {
+test('the list of using sets follows the viewport', async t => {
   if (!(await erreichbar())) {
     keineDb(t);
     return;
@@ -189,9 +189,9 @@ test('die Liste der verwendenden Sets folgt dem Blickfeld', async t => {
   assert.ok(inHousehold.length >= 3 && figuren.length >= 2, 'Eine der beiden Abfragen hat nichts geliefert');
 });
 
-test('eine unerlaubte Spalte wird abgewiesen', async t => {
+test('a disallowed column is rejected', async t => {
   if (!(await erreichbar())) {
-    t.skip('keine Test-DB');
+    t.skip('no test DB');
     return;
   }
   // Der Spaltenname wird in den Abfragetext eingefügt — als Parameter geht das

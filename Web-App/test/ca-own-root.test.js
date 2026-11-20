@@ -112,9 +112,9 @@ function caddyScript() {
   return rumpf.join('\n').replace(/\$\$/g, '$');
 }
 
-test('openssl ist da', () => assert.equal(ossl('version').status, 0, 'ohne openssl lässt sich die CA nicht prüfen'));
+test('openssl is there', () => assert.equal(ossl('version').status, 0, 'ohne openssl lässt sich die CA nicht prüfen'));
 
-test('eine Wurzel für einen Namen: nur dieser Name, keine IP-Adressen', async t => {
+test('a root for a name: only this name, no IP addresses', async t => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'eigene-ca-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const ordner = path.join(tmp, 'ca');
@@ -130,13 +130,13 @@ test('eine Wurzel für einen Namen: nur dieser Name, keine IP-Adressen', async t
     'der Schlüssel der Zwischenstelle ist für andere lesbar',
   );
 
-  await t.test('ein Blatt für eine fremde Adresse scheitert an der Wurzel', () => {
+  await t.test('a leaf for a foreign address fails at the root', () => {
     assert.equal(blattGilt(ordner, 'DNS:nas.example.lan'), true, 'der eigene Name');
     assert.equal(blattGilt(ordner, 'DNS:www.bank.example'), false, 'ein fremder Name');
     assert.equal(blattGilt(ordner, 'IP:1.2.3.4'), false, 'eine IP-Adresse');
   });
 
-  await t.test('kein Schlüssel der Wurzel im Ordner für Caddy', () => {
+  await t.test('no key of the root in the folder for Caddy', () => {
     const wurzel = oeffentlich(fs.readFileSync(path.join(ordner, 'root.crt')));
     for (const f of fs.readdirSync(ordner)) {
       const inhalt = fs.readFileSync(path.join(ordner, f), 'utf8');
@@ -154,7 +154,7 @@ test('eine Wurzel für einen Namen: nur dieser Name, keine IP-Adressen', async t
     );
   });
 
-  await t.test('eine vorhandene CA bleibt ohne NEU=1, der Wurzelschlüssel nur auf Wunsch', () => {
+  await t.test('an existing CA stays without NEU=1, the root key only on request', () => {
     const vorher = fs.readFileSync(path.join(ordner, 'root.crt'), 'utf8');
     const nochmal = einrichten(ordner, 'nas.example.lan');
     assert.notEqual(nochmal.status, 0);
@@ -168,7 +168,7 @@ test('eine Wurzel für einen Namen: nur dieser Name, keine IP-Adressen', async t
     );
   });
 
-  await t.test('auch ein gestohlener Wurzelschlüssel stellt nichts Fremdes aus', () => {
+  await t.test('even a stolen root key issues nothing foreign', () => {
     // Eine eigene Zwischenstelle ohne Einschränkung, signiert mit dem Schlüssel der Wurzel.
     const ablage = path.join(tmp, 'wurzel.key'),
       boese = { crt: path.join(tmp, 'boese.crt'), key: path.join(tmp, 'boese.key') };
@@ -201,7 +201,7 @@ test('eine Wurzel für einen Namen: nur dieser Name, keine IP-Adressen', async t
   });
 });
 
-test('eine Wurzel für eine IP-Adresse: nur diese Adresse', t => {
+test('a root for an IP address: only this address', t => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'eigene-ca-ip-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const ordner = path.join(tmp, 'ca');
@@ -212,7 +212,7 @@ test('eine Wurzel für eine IP-Adresse: nur diese Adresse', t => {
   assert.equal(blattGilt(ordner, 'DNS:www.bank.example'), false);
 });
 
-test('das Startskript wählt eigene CA, acme oder ausdrücklich Caddys CA — sonst startet Caddy nicht', async t => {
+test("the start script chooses own CA, acme or explicitly Caddy's CA — otherwise Caddy does not start", async t => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'caddy-start-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const caddysRoot = fs.readFileSync(path.join(ROOT, 'test', 'fixtures', 'ca-root-1.crt'), 'utf8');
@@ -281,7 +281,7 @@ test('das Startskript wählt eigene CA, acme oder ausdrücklich Caddys CA — so
         : null,
     };
   };
-  await t.test('ohne eigene CA und ohne Schalter startet Caddy nicht', async () => {
+  await t.test('without own CA and without switch Caddy does not start', async () => {
     const r = await lauf(false);
     assert.notEqual(r.beendet, null, 'das Skript läuft weiter');
     assert.notEqual(r.beendet, 0);
@@ -291,13 +291,13 @@ test('das Startskript wählt eigene CA, acme oder ausdrücklich Caddys CA — so
     assert.match(r.stderr, /BRICK_TLS=acme/);
     assert.match(r.stderr, /CA_OHNE_NAMENSBESCHRAENKUNG=ja/);
   });
-  await t.test('Caddys CA nur mit CA_OHNE_NAMENSBESCHRAENKUNG=ja, mit Warnung', async () => {
+  await t.test("Caddy's CA only with CA_OHNE_NAMENSBESCHRAENKUNG=ja, with a warning", async () => {
     const r = await lauf(false, { CA_OHNE_NAMENSBESCHRAENKUNG: 'ja' });
     assert.equal(r.beendet, null, r.stderr);
     assert.deepEqual([r.wurzel, r.aussteller, r.optionen, r.eigen], [caddysRoot, 'internal', 'sign_with_root', null]);
     assert.match(r.stderr, /WARNUNG: Caddys eigene CA ohne Namensbeschränkung/);
   });
-  await t.test('das Protokoll nennt den Fingerabdruck der Wurzel', async () => {
+  await t.test('the log names the fingerprint of the root', async () => {
     const r = await lauf(false, { CA_OHNE_NAMENSBESCHRAENKUNG: 'ja' });
     const fp = new crypto.X509Certificate(caddysRoot).fingerprint256;
     assert.match(
@@ -306,7 +306,7 @@ test('das Startskript wählt eigene CA, acme oder ausdrücklich Caddys CA — so
       r.stdout + r.stderr,
     );
   });
-  await t.test('mit eigener CA: Zwischenstelle signiert, die App bekommt die eigene Wurzel', async () => {
+  await t.test('with own CA: an intermediate signs, the app gets the own root', async () => {
     const r = await lauf(true);
     assert.deepEqual(
       [r.wurzel, r.aussteller, r.optionen, r.eigen],
@@ -319,7 +319,7 @@ test('das Startskript wählt eigene CA, acme oder ausdrücklich Caddys CA — so
     );
     assert.doesNotMatch(r.stderr, /WARNUNG/);
   });
-  await t.test('öffentlicher Name mit acme: keine eigene CA nötig, keine Wurzel für die App', async () => {
+  await t.test('public name with acme: no own CA needed, no root for the app', async () => {
     const r = await lauf(false, { BRICK_TLS: 'acme', ACME_EMAIL: 'betrieb@example.org' });
     assert.equal(r.beendet, null, r.stderr);
     assert.deepEqual([r.wurzel, r.aussteller, r.optionen], [null, 'acme', 'email betrieb@example.org']);
@@ -335,7 +335,7 @@ const CADDY = process.env.CADDY_BIN || (spawnSync('caddy', ['version']).status =
 // REQUIRE_CADDY=1 (CI): ein fehlender Caddy ist ein Fehler, kein stilles Überspringen.
 if (!CADDY && process.env.REQUIRE_CADDY === '1') throw new Error('REQUIRE_CADDY=1, aber kein Caddy (CADDY_BIN)');
 
-test('Caddy liefert die Wurzel mit aus', { skip: !CADDY && 'kein Caddy (CADDY_BIN)' }, async t => {
+test('Caddy delivers the root along', { skip: !CADDY && 'kein Caddy (CADDY_BIN)' }, async t => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'caddy-echt-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const ordner = path.join(tmp, 'ca');
@@ -416,7 +416,7 @@ test('Caddy liefert die Wurzel mit aus', { skip: !CADDY && 'kein Caddy (CADDY_BI
   }
 });
 
-test('ohne Aussteller ist das Caddyfile ungültig', { skip: !CADDY && 'kein Caddy (CADDY_BIN)' }, () => {
+test('without an issuer the Caddyfile is invalid', { skip: !CADDY && 'kein Caddy (CADDY_BIN)' }, () => {
   const adapt = env =>
     spawnSync(CADDY, ['adapt', '--config', path.join(ROOT, 'Caddyfile'), '--adapter', 'caddyfile'], {
       encoding: 'utf8',
@@ -437,7 +437,7 @@ test('ohne Aussteller ist das Caddyfile ungültig', { skip: !CADDY && 'kein Cadd
   }
 });
 
-test('Caddy behält beim Erneuern den Schlüssel', { skip: !CADDY && 'kein Caddy (CADDY_BIN)' }, () => {
+test('Caddy keeps the key when renewing', { skip: !CADDY && 'kein Caddy (CADDY_BIN)' }, () => {
   for (const aussteller of ['internal', 'acme']) {
     const r = spawnSync(CADDY, ['adapt', '--config', path.join(ROOT, 'Caddyfile'), '--adapter', 'caddyfile'], {
       encoding: 'utf8',

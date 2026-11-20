@@ -22,7 +22,7 @@ const { accessOrSkip } = require('./helpers/db');
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'loadtest.js');
 
-test('das Lastskript läuft mit kleiner Last ohne Fehler durch', async t => {
+test('the load script runs through without errors at a small load', async t => {
   if (!(await accessOrSkip(t, _req, { migrieren: false }))) return;
   const r = spawnSync(process.execPath, [SCRIPT, '--users', '2', '--dauer', '1', '--sets', '20'], {
     encoding: 'utf8',

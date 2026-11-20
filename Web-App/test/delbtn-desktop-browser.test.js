@@ -15,10 +15,10 @@ const { chrome } = require('./helpers/app-browser');
 
 const PUBLIC = path.join(__dirname, '..', 'public');
 
-test('Löschknopf auf der Kachel misst am Desktop mindestens 32 × 32 px', t => {
+test('delete button on the tile measures at least 32 × 32 px on desktop', t => {
   const bin = chrome();
   if (!bin) {
-    t.skip('kein Chrome gefunden');
+    t.skip('no Chrome found');
     return;
   }
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'delbtn-'));

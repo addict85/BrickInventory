@@ -60,7 +60,7 @@ const freePort = () =>
     });
   });
 
-test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async t => {
+test('security across the board', { concurrency: 1, timeout: 180_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `quer_${process.pid}`,
     PASS = 'Quer-Passwort-1',
@@ -112,7 +112,7 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async t 
   for (let i = 0; i < 240 && (await fetch(`${basis}/api/v1/health/live`).catch(() => null)) === null; i++)
     await warte(250);
 
-  await t.test('jede Antwort trägt die Sicherheitskopfzeilen', async () => {
+  await t.test('every response carries the security headers', async () => {
     for (const pfad of ['/', '/api/v1/health/live', '/api/v1/gibt-es-nicht']) {
       const r = await fetch(basis + pfad);
       await r.arrayBuffer();
@@ -147,7 +147,7 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async t 
     }
   });
 
-  await t.test('die ausgelieferte Seite lädt nichts von fremden Hosts und kein Inline-Skript', async () => {
+  await t.test('the delivered page loads nothing from foreign hosts and no inline script', async () => {
     const seite = await (await fetch(`${basis}/`)).text();
     assert.match(seite, /<script[^>]+src="[^"]*app\.bundle\.js/, 'nicht die App-Seite');
     const extern = [
@@ -164,7 +164,7 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async t 
     );
   });
 
-  await t.test('doppelte Schrägstriche treffen dieselbe Route, nicht die Seite', async () => {
+  await t.test('double slashes hit the same route, not the page', async () => {
     for (const pfad of [
       '//api/v1/health/live',
       '/api//v1/health/live?x=1',
@@ -176,12 +176,12 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async t 
     }
   });
 
-  await t.test('ein unbekannter API-Pfad antwortet in der Form jeder Fehlerantwort', async () => {
+  await t.test('an unknown API path responds in the form of every error response', async () => {
     const r = await fetch(`${basis}/api/gibt-es-nicht`, { headers: { 'accept-language': 'en' } });
     assert.deepEqual([r.status, await r.json()], [404, { success: false, code: 'nicht_gefunden', error: 'Not found' }]);
   });
 
-  await t.test('das Sitzungscookie ist httpOnly und SameSite=Strict', async () => {
+  await t.test('the session cookie is httpOnly and SameSite=Strict', async () => {
     const r = await fetch(`${basis}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -193,7 +193,7 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async t 
     assert.match(keks, /SameSite=Strict/i);
   });
 
-  await t.test('eine vergebene Adresse antwortet wie eine neue', async () => {
+  await t.test('a taken address responds like a new one', async () => {
     const { base } = testServer(_req, { t });
     const register = (username, email) =>
       fetch(`${base}/api/v1/auth/register`, {
@@ -212,7 +212,7 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async t 
     assert.deepEqual(vergeben.body, neu.body);
   });
 
-  await t.test('ein vergebener Name antwortet wie ein neuer, die Adresse erfährt es per Mail', async () => {
+  await t.test('a taken name responds like a new one, the address learns of it by mail', async () => {
     const { base } = testServer(_req, { t });
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'register|%'");
     const register = (username, email) =>
@@ -236,7 +236,7 @@ test('Sicherheit im Querschnitt', { concurrency: 1, timeout: 180_000 }, async t 
   });
 });
 
-test('ein Serverfehler in Produktion nennt keine Interna', () => {
+test('a server error in production names no internals', () => {
   const script = `const { handleRouteError } = require(${JSON.stringify(path.join(ROOT, 'dist/src/http/httpResponse.js'))});
     console.error = () => {};
     const res = { headersSent: false, status(s) { this.s = s; return this; }, json(b) { process.stdout.write(JSON.stringify([this.s, b])); } };

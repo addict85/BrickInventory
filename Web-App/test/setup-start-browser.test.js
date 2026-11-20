@@ -32,7 +32,7 @@ const { holdsSet } = require('./helpers/inventory');
 const AXE = require('axe-core').source;
 const SCHLUESSEL = ['rebrickable_api_key', 'einrichtung_erledigt'];
 
-test('Einrichtungsassistent nur über leerer Sammlung', { concurrency: 1, timeout: 300_000 }, async t => {
+test('setup wizard only above an empty collection', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `einr_${process.pid}`,
     bestand: async db => {
@@ -59,7 +59,7 @@ test('Einrichtungsassistent nur über leerer Sammlung', { concurrency: 1, timeou
   const { b, bis, db, uid, ruhig } = app;
   const offen = `document.getElementById('einrichtung-modal').classList.contains('open')`;
 
-  await t.test('leere Sammlung: Assistent, Text und Überschriften', async () => {
+  await t.test('empty collection: wizard, text and headings', async () => {
     await bis(offen, 'Assistent');
     const text = await b.auswerten(`document.querySelector('#einrichtung-modal .ew-schritt.aktiv')?.textContent || ''`);
     assert.match(text, /Rebrickable/);
@@ -80,7 +80,7 @@ test('Einrichtungsassistent nur über leerer Sammlung', { concurrency: 1, timeou
     );
   });
 
-  await t.test('Schlüssel prüfen: Fehler am Feld, in Klartext', async () => {
+  await t.test('check key: error at the field, in plain text', async () => {
     const pruefen = `document.querySelector('#einrichtung-modal .ew-schritt.aktiv [data-click="einrichtungQuelle"]').click(); true`;
     const stand = `({ fehler: document.getElementById('ew-fehler-rebrickable').textContent, ungueltig: document.getElementById('ew-rb').getAttribute('aria-invalid'),
       fokus: document.activeElement?.id, zeichen: document.getElementById('ew-stand-rebrickable').className,
@@ -118,7 +118,7 @@ test('Einrichtungsassistent nur über leerer Sammlung', { concurrency: 1, timeou
     await db.run('DELETE FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
   });
 
-  await t.test('gefüllte Sammlung: kein Assistent, aber das Band', async () => {
+  await t.test('filled collection: no wizard, but the banner', async () => {
     await b.auswerten(`document.querySelector('#einrichtung-modal [data-click="einrichtungSpaeter"]').click(); true`);
     await holdsSet(db, uid, '10294-1', 1, { preis: 100 });
     await b.tab('Page.reload');

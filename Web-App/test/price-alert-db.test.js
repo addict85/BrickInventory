@@ -54,7 +54,7 @@ async function dbReachable() {
   }
 }
 
-test('Preisalarm gegen echte Datenbank', async t => {
+test('price alert against a real database', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -80,7 +80,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
   };
   const pruefe = sn => A.checkSet(sn, { ...require('./helpers/sources').testServices().mail, sendMail: send });
 
-  await t.test('die Richtung bedeutet, was sie sagt', () => {
+  await t.test('the direction means what it says', () => {
     // Die einzige Stelle im Modul, an der ein Vorzeichenfehler entsteht.
     assert.equal(A.reisst('unter', 199, 200), true);
     assert.equal(A.reisst('unter', 200, 200), false, 'genau auf der Schwelle ist nicht darunter');
@@ -90,7 +90,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     assert.equal(A.reisst('ueber', 199, 200), false);
   });
 
-  await t.test('unsinnige Eingaben werden abgelehnt, nicht zurechtgebogen', async () => {
+  await t.test('nonsensical input is rejected, not bent into shape', async () => {
     // Eine stillschweigend korrigierte Schwelle wäre schlimmer als eine
     // Absage: Der Alarm stünde da und meldete nie oder immer.
     for (const [feld, wert] of [
@@ -112,7 +112,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     }
   });
 
-  await t.test('gemeldet wird der ÜBERGANG, nicht der Zustand', async () => {
+  await t.test('the TRANSITION is reported, not the state', async () => {
     await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
 
     // 1. Über der Schwelle — nichts zu melden.
@@ -142,7 +142,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     assert.equal(await pruefe(SN), 1, 'das zweite Unterschreiten wurde verschluckt');
   });
 
-  await t.test('eine neue Schwelle ist eine neue Frage', async () => {
+  await t.test('a new threshold is a new question', async () => {
     // Nach Prüfung 5 steht der Merker. Wer die Schwelle ändert, will eine
     // Antwort — auch wenn die alte schon einmal gemeldet hat.
     await setPrice(150);
@@ -151,7 +151,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     assert.equal(await pruefe(SN), 1, 'nach dem Ändern wurde nicht neu gemeldet');
   });
 
-  await t.test('die Währung gehört zur Schwelle', async () => {
+  await t.test('the currency belongs to the threshold', async () => {
     // 200 CHF sind nicht 200 EUR. Gibt es keinen Preis in DER Währung des
     // Alarms, ist er nicht falsch — nur (noch) nicht beantwortbar.
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [U.ich]);
@@ -162,7 +162,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     assert.equal(await pruefe(SN), 1);
   });
 
-  await t.test('der Zustand trennt die Alarme', async () => {
+  await t.test('the condition separates the alerts', async () => {
     // Neu und gebraucht liegen oft um ein Vielfaches auseinander. Ein Alarm
     // auf „neu" darf von einem gebrauchten Preis nicht ausgelöst werden.
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [U.ich]);
@@ -174,7 +174,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     assert.equal(await pruefe(SN), 1);
   });
 
-  await t.test('ein Konto ohne Mailadresse blockiert den Lauf nicht', async () => {
+  await t.test('an account without a mail address does not block the run', async () => {
     // Der Merker wird trotzdem gesetzt — sonst liefe die Prüfung bei jedem
     // Lauf erneut durch alle Alarme dieses Kontos.
     await db.run('DELETE FROM price_alerts', []);
@@ -184,7 +184,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     assert.equal((await A.alertsFor(U.ohnemail, SN))[0].triggered, true, 'der Merker muss trotzdem stehen');
   });
 
-  await t.test('ein gescheiterter Versand lässt den Merker ungesetzt', async () => {
+  await t.test('a failed send leaves the flag unset', async () => {
     // Sonst wäre die Meldung verloren: Der Merker sagte „schon gemeldet",
     // obwohl nie eine Mail ankam.
     await db.run('DELETE FROM price_alerts', []);
@@ -203,7 +203,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     assert.equal(await pruefe(SN), 1, 'der zweite Versuch blieb aus');
   });
 
-  await t.test('Abholen: ohne Marke kommt nichts zurück, nur der Zeitpunkt', async () => {
+  await t.test('fetch: without a marker nothing comes back, only the timestamp', async () => {
     // Das ist der erste Start eines Geräts. Käme hier alles Ausgelöste, würde
     // eine frisch eingerichtete App mit Schwellen aufschlagen, die vor Wochen
     // gerissen sind.
@@ -220,7 +220,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     }
   });
 
-  await t.test('Abholen: die Marke des Servers holt genau einmal ab', async () => {
+  await t.test('fetch: the server marker fetches exactly once', async () => {
     // Der Ablauf eines Geräts: merken, abholen, wieder merken. Die zweite
     // Abholung mit der zurückgegebenen Marke muss LEER sein — sonst käme
     // dieselbe Meldung bei jedem stündlichen Lauf erneut.
@@ -268,7 +268,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     );
   });
 
-  await t.test('Abholen: eine Meldung aus derselben Millisekunde kommt NICHT doppelt', async () => {
+  await t.test('fetch: a notification from the same millisecond does NOT come twice', async () => {
     // Der Befund, und warum er zweimal die CI rot gemacht hat
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
@@ -297,7 +297,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     assert.equal(r2.alerts.length, 1, 'Eine Meldung nach der Marke wurde verschluckt — die Kürzung geht zu weit');
   });
 
-  await t.test('Abholen: jedes Konto sieht nur seine eigenen Alarme', async () => {
+  await t.test('fetch: every account sees only its own alerts', async () => {
     // Die Abfrage steht auf user_id, nicht auf scopeIds() — und das ist
     // Absicht: Eine Meldung gehört dem, der die Schwelle gesetzt hat. Ein
     // Hauptkonto bekäme sonst die Meldungen aller Unterkonten, ohne je einen
@@ -313,7 +313,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     assert.deepEqual((await A.triggeredSince(U.ohnemail, vorher)).alerts, [], 'ein fremdes Konto sah die Meldung');
   });
 
-  await t.test('Marcos vier Schritte — auch die APP bekommt je Übergang genau eine', async () => {
+  await t.test("Marco's four steps — the APP also gets exactly one per transition", async () => {
     // Marcos Vorgabe vom 25.09.
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
@@ -355,7 +355,7 @@ test('Preisalarm gegen echte Datenbank', async t => {
     assert.equal(spaeter.alerts.length, 1, 'eine Meldung verfällt, wenn die App gerade nicht abholt');
   });
 
-  await t.test('Löschen ist ohne Alarm kein Fehler', async () => {
+  await t.test('deleting without an alert is not an error', async () => {
     assert.equal(await A.loescheAlarm(U.ich, SN, 'N'), 1);
     assert.equal(await A.loescheAlarm(U.ich, SN, 'N'), 0, 'der zweite Aufruf darf nicht werfen');
   });

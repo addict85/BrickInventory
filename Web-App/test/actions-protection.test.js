@@ -50,7 +50,7 @@ async function oberflaeche() {
   return o;
 }
 
-test('eingeschleustes Markup löst keine gefährliche Aktion aus', async () => {
+test('injected markup triggers no dangerous action', async () => {
   const { w, d, aufrufe, inject, openPwDialog } = await oberflaeche();
   try {
     inject('<button id="x1" data-click="openRpw" data-arg="2">x</button>');
@@ -103,7 +103,7 @@ test('eingeschleustes Markup löst keine gefährliche Aktion aus', async () => {
   }
 });
 
-test('echte Knöpfe aus Vorlage und Markup wirken weiter', async () => {
+test('real buttons from template and markup keep working', async () => {
   const { w, d, aufrufe, openPwDialog } = await oberflaeche();
   try {
     d.querySelector('.umenu-item[data-arg="settings"]').click();
@@ -126,7 +126,7 @@ test('echte Knöpfe aus Vorlage und Markup wirken weiter', async () => {
   }
 });
 
-test('jeder Handler im Markup steht in der Liste seines Ereignisses', () => {
+test('every handler in the markup is in the list of its event', () => {
   // Struktur: Die Listen in aktionen.js müssen das Markup abdecken, sonst
   // wäre ein echtes Feld tot. Die Gegenrichtung prüft der Test darüber.
   const quelle = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
@@ -158,7 +158,7 @@ test('jeder Handler im Markup steht in der Liste seines Ereignisses', () => {
   assert.deepEqual(fehlt, []);
 });
 
-test('jede Vorlage mit gefährlicher Aktion trägt echt()', () => {
+test('every template with a dangerous action carries echt()', () => {
   // Sonst wäre der Knopf tot: Der Dispatcher weist ihn ab.
   const quelle = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
   const dangerous = new Set(

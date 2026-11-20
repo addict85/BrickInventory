@@ -68,7 +68,7 @@ function checkAtomic(spur, ziel) {
   );
 }
 
-test('vorschauErzeugenAus schreibt über eine temporäre Datei', async () => {
+test('vorschauErzeugenAus writes via a temporary file', async () => {
   const { DATA_DIR } = _req('src/infra/appPaths.js');
   const ordner = path.join(DATA_DIR, 'images', 'sets');
   fs.mkdirSync(ordner, { recursive: true });
@@ -90,7 +90,7 @@ test('vorschauErzeugenAus schreibt über eine temporäre Datei', async () => {
   }
 });
 
-test('createProxyPreview schreibt über eine temporäre Datei', async t => {
+test('createProxyPreview writes via a temporary file', async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'proxyvorschau-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
@@ -109,7 +109,7 @@ test('createProxyPreview schreibt über eine temporäre Datei', async t => {
   assert.deepEqual([(await sharp(ziel).metadata()).width, (await sharp(ziel).metadata()).height], [200, 150]);
 });
 
-test('eine unbrauchbar kleine Vorschau wird verworfen, ausgeliefert wird das Original', async t => {
+test('an unusably small preview is discarded, the original is delivered', async t => {
   const deliverFromCache = (...a) =>
     _req('src/images/http/imageCacheDelivery.js').deliverFromCache(
       require('./helpers/sources').testServices().images,

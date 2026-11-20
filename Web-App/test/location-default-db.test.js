@@ -43,7 +43,7 @@ async function dbReachable() {
   }
 }
 
-test('Lagerort-Vorgabe gegen echte Datenbank', async t => {
+test('storage location default against a real database', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -57,14 +57,14 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async t => {
   const cellar = (await L.putLocationAn(U.ich, 'Keller')).ort;
   const fremd = (await L.putLocationAn(U.kind, 'Kinderzimmer')).ort;
 
-  await t.test('ohne Stern gibt es keine Vorgabe', async () => {
+  await t.test('without a star there is no default', async () => {
     // Der Ausgangszustand, und er ist eine eigene Aussage: Eine Oberflaeche,
     // die hier einen Ort bekaeme, wuerde beim ersten Erfassen etwas
     // vorauswaehlen, das niemand gesetzt hat.
     assert.equal(await L.vorgabeVon(U.ich), null);
   });
 
-  await t.test('der Stern setzt die Vorgabe und sie liest sich zurueck', async () => {
+  await t.test('the star sets the default and it reads back', async () => {
     const gesetzt = await L.setDefault(U.ich, estrich.id);
     assert.equal(gesetzt.name, 'Estrich');
     const gelesen = await L.vorgabeVon(U.ich);
@@ -72,7 +72,7 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async t => {
     assert.equal(gelesen?.name, 'Estrich');
   });
 
-  await t.test('ein zweiter Stern ersetzt den ersten', async () => {
+  await t.test('a second star replaces the first', async () => {
     // Eine Vorgabe mit genau einem Wert: Zwei gleichzeitig waeren beim
     // Erfassen eine Frage ohne Antwort. Dass das ohne Zutun gilt, ist der
     // Gewinn aus der Ablage in user_settings (ein Schluessel, ein Wert).
@@ -85,7 +85,7 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async t => {
     await L.setDefault(U.ich, estrich.id);
   });
 
-  await t.test('ein fremder Ort wird abgelehnt', async () => {
+  await t.test('a foreign place is rejected', async () => {
     // Das Kinderzimmer des Kindes ist nicht mein Regal (Migration 0020). Ohne
     // diese Grenze stuende mein Stern an einem Ort in einer anderen Wohnung.
     // Geprueft wird `e.code` und nicht der Text: Der erste Entwurf suchte
@@ -102,7 +102,7 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async t => {
     );
   });
 
-  await t.test('UMBENENNEN: die Vorgabe bleibt und heisst neu', async () => {
+  await t.test('RENAME: the default stays and has a new name', async () => {
     // Die Aussage, fuer die es diese Datei gibt. Es steht KEINE Zeile in
     // benenneOrtUm, die die Vorgabe nachzieht — es braucht sie nicht, weil
     // die ID gespeichert ist. Mit dem Namen waere das hier rot.
@@ -118,7 +118,7 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async t => {
     await L.benenneOrtUm(U.ich, estrich.id, 'Estrich');
   });
 
-  await t.test('LOESCHEN: die Vorgabe ist weg, nicht kaputt', async () => {
+  await t.test('DELETE: the default is gone, not broken', async () => {
     // Die zweite Aussage. Ein Ort laesst sich nur loeschen, wenn nichts darin
     // liegt (loescheOrt) — deshalb ein eigener, leerer Ort fuer diese Probe.
     const kiste = (await L.putLocationAn(U.ich, 'Kiste 7')).ort;
@@ -145,7 +145,7 @@ test('Lagerort-Vorgabe gegen echte Datenbank', async t => {
     );
   });
 
-  await t.test('der Stern laesst sich wieder abschalten', async () => {
+  await t.test('the star can be switched off again', async () => {
     await L.setDefault(U.ich, cellar.id);
     assert.equal((await L.vorgabeVon(U.ich))?.name, 'Keller');
     assert.equal(await L.setDefault(U.ich, null), null);

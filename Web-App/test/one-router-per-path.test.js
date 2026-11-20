@@ -42,7 +42,7 @@ function einhaengungen() {
   return [v1, ...routerEinhaengungen({ withoutParts: true })];
 }
 
-test('ein Router je Einhängepunkt', () => {
+test('one router per mount point', () => {
   const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
   // Router heissen in startup/app.ts `…Router`; Middleware (loginAtInbox) darf daneben stehen.
   const je = new Map();
@@ -59,7 +59,7 @@ test('ein Router je Einhängepunkt', () => {
   assert.deepEqual(doppelt, []);
 });
 
-test('jede Route genau einmal', () => {
+test('every route exactly once', () => {
   const alle = [];
   for (const e of einhaengungen()) {
     const modul = require('./helpers/sources').routerFrom(_req, path.relative(ROOT, e.datei).replace(/\.ts$/, '.js'));

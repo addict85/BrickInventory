@@ -80,7 +80,7 @@ async function dbReachable() {
   }
 }
 
-test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
+test('vouchers against a real database', { concurrency: 1 }, async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -140,7 +140,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
   let grandparentsVoucher;
 
   try {
-    await t.test('manuell anlegen: die drei Werte landen in der Datenbank', async () => {
+    await t.test('create manually: the three values land in the database', async () => {
       const r = await jsonAn('/api/v1/vouchers', cookieGrandparent, 'POST', {
         number: '5045076374450011166',
         pin: '5225',
@@ -161,7 +161,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       assert.equal(Number(zeile.a), 400, 'der Betrag steht exakt in der Datenbank');
     });
 
-    await t.test('dieselbe Karte ein zweites Mal gibt 409, nicht stillschweigend nichts', async () => {
+    await t.test('the same card a second time gives 409, not silently nothing', async () => {
       const r = await jsonAn('/api/v1/vouchers', cookieGrandparent, 'POST', {
         number: '5045076374450011166',
         pin: '5225',
@@ -170,7 +170,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       assert.equal(r.status, 409);
     });
 
-    await t.test('unbrauchbare Eingaben werden abgewiesen', async () => {
+    await t.test('unusable input is rejected', async () => {
       const faelle = [
         [{ number: 'abc', amount: 10 }, 'nummer_ungueltig'],
         [{ number: '1234567890123', amount: 0 }, 'betrag_ungueltig'],
@@ -186,7 +186,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       }
     });
 
-    await t.test('ein fehlender Betrag legt KEINEN Gutschein ueber null an', async () => {
+    await t.test('a missing amount does NOT create a voucher over zero', async () => {
       // Die Umkehrung zur Regel oben. Number(undefined) ist NaN, Number('') ist
       // 0 — ohne die untere Grenze haette ein leeres Formularfeld einen
       // Gutschein ueber nichts angelegt, und zwar ohne jede Fehlermeldung.
@@ -197,7 +197,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
     });
 
     // ── Die Abgrenzung: NUR der Eigentuemer ─────────────────────────────────
-    await t.test('der Haushalt sieht den Gutschein NICHT', async () => {
+    await t.test('the household does NOT see the voucher', async () => {
       // opa ist Hauptkonto von enkel. Bei Sets, Teilen und der Merkliste saehe
       // opa alles von enkel — hier ist es umgekehrt UND gesperrt: Weder sieht
       // enkel opas Gutschein, noch opa einen von enkel.
@@ -206,7 +206,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       assert.deepEqual(b.vouchers, [], 'die Liste eines anderen Kontos muss leer sein');
     });
 
-    await t.test('ein fremdes Konto kann den Gutschein nicht lesen, aendern oder loeschen', async () => {
+    await t.test('a foreign account cannot read, change or delete the voucher', async () => {
       for (const [methode, pfad, keks, wer] of [
         ['POST', `/api/v1/vouchers/${grandparentsVoucher}/pdf-freigabe`, cookieGrandchild, 'Haushalt'],
         ['PUT', `/api/v1/vouchers/${grandparentsVoucher}`, cookieGrandchild, 'Haushalt'],
@@ -226,13 +226,13 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       assert.equal(n, 1, 'der Gutschein muss die Versuche ueberlebt haben');
     });
 
-    await t.test('ohne Anmeldung geht gar nichts', async () => {
+    await t.test('without login nothing works at all', async () => {
       const r = await fetch(`${basis}/api/v1/vouchers`);
       assert.equal(r.status, 401);
     });
 
     // ── Der PDF-Weg ─────────────────────────────────────────────────────────
-    await t.test('aus dem PDF: Werte werden gelesen und der Gutschein angelegt', async () => {
+    await t.test('from the PDF: values are read and the voucher is created', async () => {
       const pdf = await pdfWith(['Ihre LEGO-Geschenkkarte im Wert von 250 CHF:', '5045076374450019999', 'PIN: 4711']);
       const form = new FormData();
       form.append('file', new Blob([pdf], { type: 'application/pdf' }), 'gutschein.pdf');
@@ -252,7 +252,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       assert.ok(fs.existsSync(datei), `die PDF-Datei fehlt: ${datei}`);
     });
 
-    await t.test('das PDF kommt wieder heraus — zum Anzeigen und zum Herunterladen', async () => {
+    await t.test('the PDF comes out again — for viewing and downloading', async () => {
       const liste = await (await hole('/api/v1/vouchers', cookieGrandparent)).json();
       const withPdf = liste.vouchers.find(v => v.hat_pdf);
       assert.ok(withPdf, 'Vorbedingung: ein Gutschein mit PDF');
@@ -297,7 +297,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
     // gestrichen → rot „… nur für sein PDF“; confirmWithFactor() in der Freigabe
     // entfernt → rot „Freigabe nur mit Passwort“; protokolliere() entfernt → rot
     // „die Freigabe steht im Protokoll“; Frist auf -1 s → rot „… 60 Sekunden“.
-    await t.test('das PDF nur mit einem Einmal-Ticket aus einer bestätigten Freigabe', async () => {
+    await t.test('the PDF only with a one-time ticket from a confirmed approval', async () => {
       const liste = await (await hole('/api/v1/vouchers', cookieGrandparent)).json();
       const withPdf = liste.vouchers.find(v => v.hat_pdf);
       const pdf = ticket =>
@@ -373,7 +373,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       );
     });
 
-    await t.test('ein PDF ohne lesbare Werte gibt 422 und legt nichts an', async () => {
+    await t.test('a PDF without readable values gives 422 and creates nothing', async () => {
       const vorher = (await db.get('SELECT COUNT(*)::int AS n FROM vouchers')).n;
       const pdf = await pdfWith(['Rechnung Nr. 12', 'Vielen Dank.']);
       const form = new FormData();
@@ -386,7 +386,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       assert.equal(nachher, vorher, 'ein unlesbares PDF darf keine Zeile anlegen');
     });
 
-    await t.test('fehlende Werte duerfen von Hand ergaenzt werden — dieselbe Route', async () => {
+    await t.test('missing values may be completed by hand — the same route', async () => {
       // Marcos Vorgabe nennt beide Wege gleichrangig. Hier treffen sie sich:
       // Die Datei kommt mit, der Betrag von Hand, und beides zusammen ergibt
       // einen Gutschein. Ohne das muesste der Nutzer bei einem unleserlichen
@@ -406,7 +406,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       assert.equal(b.voucher.currency, 'EUR');
     });
 
-    await t.test('etwas, das kein PDF ist, wird abgewiesen', async () => {
+    await t.test('something that is not a PDF is rejected', async () => {
       const form = new FormData();
       form.append('file', new Blob([Buffer.from('kein PDF')], { type: 'text/plain' }), 'x.txt');
       const r = await hole('/api/v1/vouchers/pdf', cookieGrandparent, { method: 'POST', body: form });
@@ -418,7 +418,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
 
     // Gegenprobe (am 28.10.2026 gemessen): die Absage bei `!istPdf` in
     // routes/api_v1/vouchers.ts entfernt → rot (200, Datei abgelegt).
-    await t.test('als PDF gemeldet, aber keines: auch mit getippten Werten abgewiesen', async () => {
+    await t.test('reported as PDF but not one: rejected even with typed-in values', async () => {
       const form = new FormData();
       form.append(
         'file',
@@ -442,7 +442,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
     });
 
     // ── Aendern ─────────────────────────────────────────────────────────────
-    await t.test('aendern laesst stehen, was nicht mitkommt', async () => {
+    await t.test('changing leaves alone what does not come along', async () => {
       const r = await jsonAn(`/api/v1/vouchers/${grandparentsVoucher}`, cookieGrandparent, 'PUT', { amount: 350 });
       const b = await r.json();
       assert.equal(r.status, 200, JSON.stringify(b));
@@ -455,7 +455,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
 
     // Gegenprobe (03.11.2026 gemessen): in PUT die Maske nicht erkannt → rot
     // „die Maske aus dem Formular ändert nichts“ (400 nummer_ungueltig).
-    await t.test('die Maske aus dem Formular ändert nichts', async () => {
+    await t.test('the mask from the form changes nothing', async () => {
       const r = await jsonAn(`/api/v1/vouchers/${grandparentsVoucher}`, cookieGrandparent, 'PUT', {
         number: '…1166',
         pin: '•••',
@@ -472,7 +472,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
     // z.number/z.pin → rot „die Liste zeigt nur das Ende“; confirmWithFactor()
     // in /klartext entfernt → rot „Klartext nur mit Passwort“; protokolliere()
     // entfernt → rot „… steht im Protokoll“.
-    await t.test('die Liste zeigt nur das Ende, Klartext nur mit Passwort, und er steht im Protokoll', async () => {
+    await t.test('the list shows only the end, plain text only with password, and it is in the log', async () => {
       const liste = (await (await hole('/api/v1/vouchers', cookieGrandparent)).json()).vouchers;
       const withPin = liste.find(v => v.id === grandparentsVoucher);
       assert.deepEqual([withPin.number, withPin.pin], ['…1166', '•••'], 'die Liste zeigt nur das Ende');
@@ -507,7 +507,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       );
     });
 
-    await t.test('eine Karte auf die Nummer einer anderen umschreiben gibt 409', async () => {
+    await t.test('rewriting a card to the number of another gives 409', async () => {
       const r = await jsonAn(`/api/v1/vouchers/${grandparentsVoucher}`, cookieGrandparent, 'PUT', {
         number: '5045076374450019999',
       });
@@ -515,7 +515,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
     });
 
     // ── Der Android-Weg: derselbe Dienst ────────────────────────────────────
-    await t.test('mit Bearer-Token kommt die App an DIESELBE Route', async () => {
+    await t.test('with a bearer token the app reaches the SAME route', async () => {
       // Marcos Vorgabe „beide Apps sollen die gleichen Services verwenden"
       // ist genau hier belegt: kein zweiter Router, kein zweiter Pfad — nur
       // ein anderer Ausweis an derselben Tuer.
@@ -546,7 +546,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
     // ── Loeschen ────────────────────────────────────────────────────────────
     // Gegenprobe (03.11.2026 gemessen): confirmWithFactor() in DELETE
     // /vouchers/:id entfernt → rot „löschen ohne Passwort" (200 statt 400).
-    await t.test('loeschen nimmt Zeile UND Datei mit', async () => {
+    await t.test('deleting takes row AND file along', async () => {
       const liste = await (await hole('/api/v1/vouchers', cookieGrandparent)).json();
       const withPdf = liste.vouchers.find(v => v.hat_pdf);
       const zeile = await db.get('SELECT pdf_path FROM vouchers WHERE id=$1', [withPdf.id]);
@@ -566,7 +566,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       assert.ok(!fs.existsSync(datei), 'die Datei muss mit der Zeile verschwinden');
     });
 
-    await t.test('die Notiz-Spalte gibt es nicht mehr', async () => {
+    await t.test('the note column no longer exists', async () => {
       // Marcos Vorgabe: „Das Feld ‚Notiz' bitte vollständig inkl. Spalten auf
       // der Datenbank entfernen." Eine Spalte, die niemand mehr schreibt,
       // waere nicht „entfernt", sondern nur unbenutzt — und taucht im
@@ -579,7 +579,7 @@ test('Gutscheine gegen echte Datenbank', { concurrency: 1 }, async t => {
       assert.equal(spalte, undefined, 'die Spalte `note` steht noch in der Tabelle');
     });
 
-    await t.test('mit dem Konto verschwinden auch seine Gutscheine', async () => {
+    await t.test('with the account its vouchers disappear too', async () => {
       // ON DELETE CASCADE. Ohne das blieben Nummer und PIN eines geloeschten
       // Kontos in der Datenbank stehen — Zahlen, die weiter einloesbar sind.
       await require('./helpers/sources')
@@ -616,7 +616,7 @@ testUi('Gutscheine in der Webapp: Marcos Nachbesserungen', async t => {
   const html = fsO.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   const css = fsO.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
 
-  await t.test('das PDF geht in den Betrachter der Anleitungen', () => {
+  await t.test('the PDF goes into the instructions viewer', () => {
     // „Die beiden Buttons PDF Download und PDF im neuen Fenster öffnen
     // entfernen und durch den PDF-Viewer der Anleitungen ersetzen → Analog
     // wie es in der Android-App umgesetzt ist."
@@ -625,7 +625,7 @@ testUi('Gutscheine in der Webapp: Marcos Nachbesserungen', async t => {
     assert.ok(!/download=1/.test(js), 'der zweite Knopf ist noch da — der Betrachter traegt seinen Download selbst');
   });
 
-  await t.test('Nummer und PIN haben je einen Kopieren-Knopf', () => {
+  await t.test('number and PIN each have a copy button', () => {
     // „Kannst du in der Webapp hinter den Gutscheincode und den Pin jeweils
     // einen Kopieren Button einfügen (mit einem Icon)."
     const treffer = js.match(/data-click="gutscheinKopieren"/g) || [];
@@ -645,7 +645,7 @@ testUi('Gutscheine in der Webapp: Marcos Nachbesserungen', async t => {
     );
   });
 
-  await t.test('die Notiz ist auch aus der Oberflaeche verschwunden', () => {
+  await t.test('the note has also disappeared from the UI', () => {
     for (const [name, inhalt] of [
       ['vouchers.js', js],
       ['index.html', html],
@@ -655,7 +655,7 @@ testUi('Gutscheine in der Webapp: Marcos Nachbesserungen', async t => {
     }
   });
 
-  await t.test('das Dateifeld ist ein gestalteter Knopf wie bei den Anleitungen', () => {
+  await t.test('the file field is a styled button as with the instructions', () => {
     // Das native Feld schnitt seinen Text ab und sah anders aus als jede
     // andere Dateiwahl; jetzt dieselbe Form (label.btn mit .datei-versteckt).
     assert.match(

@@ -57,7 +57,7 @@ async function confirm(d, { passwort, code }) {
   d.getElementById('cd-confirm').click();
 }
 
-test('Alles löschen fragt den Code nach', async () => {
+test('delete everything asks for the code', async () => {
   const rufe = [];
   const { w, d } = await openUi({ '/v1/bestand': withFactor(rufe) });
   try {
@@ -71,7 +71,7 @@ test('Alles löschen fragt den Code nach', async () => {
   }
 });
 
-test('ein Konto anlegen fragt den Code nach', async () => {
+test('creating an account asks for the code', async () => {
   const rufe = [];
   const { w, d } = await openUi({
     '/v1/auth/users': (url, o) => (o?.method === 'POST' ? withFactor(rufe)(url, o) : { success: true, users: [] }),
@@ -89,7 +89,7 @@ test('ein Konto anlegen fragt den Code nach', async () => {
   }
 });
 
-test('der Passkey ersetzt den Code', async () => {
+test('the passkey replaces the code', async () => {
   const rufe = [];
   const puffer = () => new Uint8Array([1, 2, 3]).buffer;
   const { w, d } = await openUi(
@@ -134,7 +134,7 @@ test('der Passkey ersetzt den Code', async () => {
   }
 });
 
-test('den Papierkorb leeren fragt Passwort und Code', async () => {
+test('emptying the trash asks for password and code', async () => {
   const rufe = [];
   const { w, d } = await openUi({
     '/v1/papierkorb': (url, o) =>
@@ -150,7 +150,7 @@ test('den Papierkorb leeren fragt Passwort und Code', async () => {
   }
 });
 
-test('einen Gutschein löschen fragt Passwort und Code', async () => {
+test('deleting a voucher asks for password and code', async () => {
   const rufe = [];
   const { w, d } = await openUi({
     '/v1/vouchers': {
@@ -171,7 +171,7 @@ test('einen Gutschein löschen fragt Passwort und Code', async () => {
   }
 });
 
-test('das Gutschein-PDF öffnet erst nach Bestätigung, mit dem Ticket', async () => {
+test('the voucher PDF only opens after confirmation, with the ticket', async () => {
   const releases = [],
     fetches = [];
   const { w, d } = await openUi({
@@ -208,7 +208,7 @@ test('das Gutschein-PDF öffnet erst nach Bestätigung, mit dem Ticket', async (
   }
 });
 
-test('die Gutscheinliste zeigt die Maske, Nummer und PIN erst nach Bestätigung', async () => {
+test('the voucher list shows the mask, number and PIN only after confirmation', async () => {
   const rufe = [];
   const { w, d } = await openUi({
     '/v1/vouchers': {

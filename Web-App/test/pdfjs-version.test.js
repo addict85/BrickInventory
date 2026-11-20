@@ -22,20 +22,20 @@ const paket = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'
 const fassung = paket.devDependencies['pdfjs-dist'];
 const installiert = path.join(ROOT, 'node_modules', 'pdfjs-dist');
 
-test('exakte Fassung in package.json und Lockfile', () => {
+test('exact version in package.json and lockfile', () => {
   assert.match(String(fassung), /^\d+\.\d+\.\d+$/, `pdfjs-dist „${fassung}“ ist keine exakte Fassung`);
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
   assert.equal(lock.packages['node_modules/pdfjs-dist']?.version, fassung);
 });
 
-test('Cache-Brecher in pdfjs-boot.js nennt dieselbe Fassung', () => {
+test('cache buster in pdfjs-boot.js names the same version', () => {
   const boot = fs.readFileSync(path.join(ROOT, 'public', 'js', 'pdfjs-boot.js'), 'utf8');
   const v = [...boot.matchAll(/\/vendor\/pdfjs\/[\w.]+\.mjs\?v=([\w.-]+)/g)].map(m => m[1]);
   assert.deepEqual(v, [fassung, fassung]);
 });
 
-test('die ausgelieferten Dateien sind die des Pakets', t => {
-  if (!fs.existsSync(installiert)) return t.skip('pdfjs-dist nicht installiert (npm ci)');
+test('the delivered files are those of the package', t => {
+  if (!fs.existsSync(installiert)) return t.skip('pdfjs-dist not installed (npm ci)');
   for (const d of ['pdf.min.mjs', 'pdf.worker.min.mjs'])
     assert.ok(
       fs
@@ -48,7 +48,7 @@ test('die ausgelieferten Dateien sind die des Pakets', t => {
 // Ab PDF.js 5 gibt es den eval-Pfad für Schriften nicht mehr; eine ältere
 // Fassung brächte ihn zurück (die CSP verböte ihn, isEvalSupported auch).
 // Gegenprobe (02.11.2026 gemessen): `new Function("x")` an eine Kopie gehängt → rot.
-test('die ausgelieferten PDF.js-Dateien enthalten weder eval noch new Function', () => {
+test('the delivered PDF.js files contain neither eval nor new Function', () => {
   for (const d of [
     path.join(ROOT, 'public', 'vendor', 'pdfjs', 'pdf.min.mjs'),
     path.join(ROOT, 'public', 'vendor', 'pdfjs', 'pdf.worker.min.mjs'),
@@ -59,8 +59,8 @@ test('die ausgelieferten PDF.js-Dateien enthalten weder eval noch new Function',
   }
 });
 
-test('das Kopierskript legt die Dateien ab und zieht die Fassung nach', t => {
-  if (!fs.existsSync(installiert)) return t.skip('pdfjs-dist nicht installiert (npm ci)');
+test('the copy script stores the files and updates the version', t => {
+  if (!fs.existsSync(installiert)) return t.skip('pdfjs-dist not installed (npm ci)');
   const ziel = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-pdfjs-'));
   t.after(() => fs.rmSync(ziel, { recursive: true, force: true }));
   fs.mkdirSync(path.join(ziel, 'public', 'js'), { recursive: true });

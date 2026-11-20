@@ -31,7 +31,7 @@ const messen = `(() => {
            breit: document.documentElement.scrollWidth };
 })()`;
 
-test('Sammlung am Telefon: Karte über der Falz, Preise ohne Überlappung', { timeout: 120_000 }, async t => {
+test('collection on the phone: card above the fold, prices without overlap', { timeout: 120_000 }, async t => {
   const app = await startApp(t, { name: `falz_${process.pid}`, bestand: patternCollection, telefon: true });
   if (app.grund) {
     t.skip(app.grund);

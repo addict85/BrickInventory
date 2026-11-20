@@ -52,7 +52,7 @@ const P = process.pid,
   PASS = 'Protokoll-Passwort-1',
   FALSCH = 'Geheim-Falsch-987';
 
-test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
+test('login events in the log', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `prot_${P}`,
     FACTOR = `prot_zf_${P}`;
@@ -111,7 +111,7 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
     for (let i = 0; i < 60 && mails.length < n; i++) await new Promise(r => setTimeout(r, 25));
   };
 
-  await t.test('ein unbekannter Name: Zeile ohne Name und Passwort', async () => {
+  await t.test('an unknown name: line without name and password', async () => {
     assert.equal(await anmelden(`niemand_${P}`, FALSCH), 401);
     const [z] = ereignisse('anmeldung_fehlgeschlagen');
     assert.equal(z?.stufe, 'warn', 'keine Warnzeile');
@@ -124,7 +124,7 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('ein unbekannter Name steht nur als HMAC in rate_limit_attempts', async () => {
+  await t.test('an unknown name is only stored as an HMAC in rate_limit_attempts', async () => {
     const X = `Vertippt-Geheim-${P}-Passwort`;
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%'`);
     assert.equal(await anmelden(X, FALSCH), 401);
@@ -139,7 +139,7 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%'`);
   });
 
-  await t.test('eine gelungene Anmeldung: genau eine Infozeile mit Konto und Adresse', async () => {
+  await t.test('a successful login: exactly one info line with account and address', async () => {
     infos.length = 0;
     assert.equal(await anmelden(NAME, PASS), 200);
     const erfolg = infos.map(z => JSON.parse(z)).filter(z => /^\[anmeldung\] anmeldung_erfolgreich/.test(z.nachricht));
@@ -154,7 +154,7 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%'`);
   });
 
-  await t.test('falsches Passwort: Zeile mit Konto, beim Erreichen der Sperre eine Mail', async () => {
+  await t.test('wrong password: line with account, a mail when the lock is reached', async () => {
     zeilen.length = 0;
     for (let i = 0; i < 5; i++) assert.equal(await anmelden(NAME, FALSCH), 401);
     assert.deepEqual(
@@ -165,7 +165,7 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
     assert.deepEqual(mails, [{ an: `${NAME}@example.org`, art: 'anmeldung_gebremst' }]);
   });
 
-  await t.test('die Sperre steht im Protokoll', async () => {
+  await t.test('the lock is in the log', async () => {
     zeilen.length = 0;
     assert.equal(await anmelden(NAME, PASS), 429);
     assert.deepEqual(
@@ -174,14 +174,14 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('die Mail höchstens einmal am Tag', async () => {
+  await t.test('the mail at most once a day', async () => {
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%'`);
     for (let i = 0; i < 5; i++) await anmelden(NAME, FALSCH);
     await waitOnMails(2); // eine zweite Mail käme hier an
     assert.equal(mails.length, 1, JSON.stringify(mails));
   });
 
-  await t.test('ein falscher Code', async () => {
+  await t.test('a wrong code', async () => {
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%'`);
     zeilen.length = 0;
     const richtig = zf.hotp(zf.fromBase32(g), zf.timeStep());
@@ -192,7 +192,7 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('eine falsche Bestätigung', async () => {
+  await t.test('a wrong confirmation', async () => {
     zeilen.length = 0;
     assert.equal(await ruf('/change-password', { current: FALSCH, newPassword: 'Neues-Passwort-77' }), 400);
     const [z] = ereignisse('bestaetigung_fehlgeschlagen');
@@ -200,7 +200,7 @@ test('Anmeldeereignisse im Protokoll', { concurrency: 1 }, async t => {
     assert.ok(!zeilen.join('\n').includes(FALSCH));
   });
 
-  await t.test('die Zeile landet in app_logs', async () => {
+  await t.test('the line ends up in app_logs', async () => {
     console.warn(`prot-test-${P}`);
     await protokoll.emptyLog();
     const r = await db.all(

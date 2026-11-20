@@ -41,7 +41,7 @@ const SET = '99073-1',
   NAME = `anl_hoch_${process.pid}`;
 const PDF = Buffer.from('%PDF-1.4\n1 0 obj<<>>endobj\ntrailer<<>>\n%%EOF\n');
 
-test('Anleitung hochladen', { concurrency: 1 }, async t => {
+test('upload an instruction', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -76,13 +76,13 @@ test('Anleitung hochladen', { concurrency: 1 }, async t => {
   };
   const dateien = () => (fs.existsSync(ordner) ? fs.readdirSync(ordner) : []);
 
-  await t.test('ein echtes PDF', async () => {
+  await t.test('a real PDF', async () => {
     const r = await hochladen(PDF, 'application/pdf', 'anleitung.pdf');
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(dateien().length, 1);
   });
 
-  await t.test('nur für den Dienst lesbar, auch in einem älteren Ordner', async () => {
+  await t.test('readable only by the service, even in an older folder', async () => {
     for (const o of [path.dirname(ordner), ordner]) fs.chmodSync(o, 0o755);
     const r = await hochladen(PDF, 'application/pdf', 'zweite.pdf');
     assert.equal(r.status, 200, JSON.stringify(r.body));
@@ -92,20 +92,20 @@ test('Anleitung hochladen', { concurrency: 1 }, async t => {
     fs.rmSync(datei);
   });
 
-  await t.test('ein Text als PDF', async () => {
+  await t.test('a text as a PDF', async () => {
     const r = await hochladen(Buffer.from('<script>alert(1)</script>'), 'application/pdf', 'boese.pdf');
     assert.equal(r.status, 400, JSON.stringify(r.body));
     assert.equal(r.body.code, 'datei_inhalt_falsch');
     assert.equal(dateien().length, 1, 'die abgewiesene Datei liegt noch im Ordner');
   });
 
-  await t.test('ein PNG mit JPEG-Typ', async () => {
+  await t.test('a PNG with a JPEG type', async () => {
     const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
     assert.equal((await hochladen(png, 'image/jpeg', 'bild.jpg')).status, 400);
     assert.equal((await hochladen(png, 'image/png', 'bild.png')).status, 200);
   });
 
-  await t.test('über dem Kontingent', async () => {
+  await t.test('above the quota', async () => {
     environment({ UPLOAD_KONTINGENT_MB: String(1 / 1024) }); // 1 KB
     const gross = Buffer.concat([PDF, Buffer.alloc(2048, 0x20)]);
     const vorher = dateien().length;
@@ -115,7 +115,7 @@ test('Anleitung hochladen', { concurrency: 1 }, async t => {
     assert.equal(dateien().length, vorher, 'die Datei über dem Kontingent liegt noch im Ordner');
   });
 
-  await t.test('über der Grenze aller Konten zusammen: 507, nichts abgelegt', async st => {
+  await t.test('above the limit of all accounts together: 507, nothing stored', async st => {
     environment({ UPLOAD_KONTINGENT_MB: '1000', UPLOAD_GESAMT_MB: String(1 / 1024) }); // zusammen 1 KB
     st.after(() => environment({ UPLOAD_GESAMT_MB: undefined }));
     const vorher = dateien().length;
@@ -151,7 +151,7 @@ test('Anleitung hochladen', { concurrency: 1 }, async t => {
     assert.equal((await hochladen(PDF, 'application/pdf', 'gesamt.pdf')).status, 200);
   });
 
-  await t.test('abgewiesen, bevor der Inhalt ankommt', async () => {
+  await t.test('rejected before the content arrives', async () => {
     // Nur der Kopf mit 10 MB Content-Length, der Inhalt bleibt aus: Antwortet
     // der Server trotzdem, hat er vor dem Lesen entschieden.
     environment({ UPLOAD_KONTINGENT_MB: '1' });
@@ -179,7 +179,7 @@ test('Anleitung hochladen', { concurrency: 1 }, async t => {
     assert.equal(status, 413);
   });
 
-  await t.test('für ein Set, das das Konto nicht hat', async () => {
+  await t.test('for a set the account does not have', async () => {
     environment({ UPLOAD_KONTINGENT_MB: undefined });
     const vorher = dateien().length;
     const r = await hochladen(PDF, 'application/pdf', 'fremd.pdf', '99074-1');

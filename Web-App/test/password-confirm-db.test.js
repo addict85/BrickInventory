@@ -32,7 +32,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `pwbest_${process.pid}`,
   PASS = 'Passwort12345';
 
-test('Passwort bestätigen', { concurrency: 1 }, async t => {
+test('confirm password', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -61,21 +61,21 @@ test('Passwort bestätigen', { concurrency: 1 }, async t => {
     return { status: r.status, body: await r.json() };
   };
 
-  await t.test('ein Token prägt keinen weiteren', async () => {
+  await t.test('a token mints no further one', async () => {
     const token = await _req('src/account/deviceToken.js').createToken(uid, 'Probe');
     const r = await post(withoutSession, '/token-create', { password: PASS }, { Authorization: `Bearer ${token}` });
     assert.equal(r.status, 403, JSON.stringify(r.body));
     assert.equal(r.body.code, 'nur_mit_sitzung');
   });
 
-  await t.test('aus der Sitzung nur mit dem Passwort', async () => {
+  await t.test('from the session only with the password', async () => {
     assert.equal((await post(withSession, '/token-create', {})).status, 400);
     const r = await post(withSession, '/token-create', { password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.ok(r.body.token);
   });
 
-  await t.test('nach fünf Fehlversuchen ist Schluss — auch mit dem richtigen Passwort', async () => {
+  await t.test('after five failed attempts it stops — even with the correct password', async () => {
     for (let i = 0; i < 5; i++) {
       const r = await post(withSession, '/change-password', { current: 'falsch' + i, newPassword: 'NeuesPasswort123' });
       assert.equal(r.status, 400, `Versuch ${i + 1}`);
@@ -86,7 +86,7 @@ test('Passwort bestätigen', { concurrency: 1 }, async t => {
     assert.equal((await post(withSession, '/zweiter-faktor/einrichten', { password: PASS })).status, 429);
   });
 
-  await t.test('ein Erfolg setzt den Zähler zurück', async () => {
+  await t.test('a success resets the counter', async () => {
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1`, [`passwort-bestaetigen|${uid}|%`]);
     for (let i = 0; i < 4; i++) await post(withSession, '/zweiter-faktor/einrichten', { password: 'falsch' });
     assert.equal((await post(withSession, '/zweiter-faktor/einrichten', { password: PASS })).status, 200);

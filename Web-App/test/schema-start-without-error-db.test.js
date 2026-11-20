@@ -14,7 +14,7 @@ const db = testData();
 /**
  * Der Schemastart darf keinen Fehler verschlucken.
  */
-test('der Schemastart meldet keinen verschluckten Fehler', async t => {
+test('the schema start reports no swallowed error', async t => {
   // Der Pool wird IM NACHLAUF geschlossen, nicht am Ende des Rumpfes: Sonst
   // bleibt er bei einer scheiternden Zusicherung offen, der Prozess endet
   // nicht, und aus einem roten Test wird ein haengender — der schlechteste

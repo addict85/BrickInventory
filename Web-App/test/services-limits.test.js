@@ -17,7 +17,7 @@ const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 
-test('die Dienste eines Bereichs zeigen kein Innenleben', () => {
+test('the services of a scope show no internals', () => {
   const r = spawnSync(
     process.execPath,
     [

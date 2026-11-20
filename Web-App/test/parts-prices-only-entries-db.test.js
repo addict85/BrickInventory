@@ -49,7 +49,7 @@ const dbDa = async t => {
   }
 };
 
-test('nach der ganzen Kette tragen parts und minifigs keinen Preis mehr', { concurrency: 1 }, async t => {
+test('after the whole chain parts and minifigs carry no price any more', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
   await db.run('DROP SCHEMA public CASCADE');
@@ -98,7 +98,7 @@ test('nach der ganzen Kette tragen parts und minifigs keinen Preis mehr', { conc
   }
 });
 
-test('die Listen liefern Preis und Zustand aus der neuesten Erfassung', { concurrency: 1 }, async t => {
+test('the lists deliver price and condition from the newest acquisition', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
   await db.run('DROP SCHEMA public CASCADE');

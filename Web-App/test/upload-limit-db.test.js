@@ -74,7 +74,7 @@ function hangingUpload(base) {
   return { antwort, ende: () => req.end(`\r\n--${grenze}--\r\n`) };
 }
 
-test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, async t => {
+test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -107,7 +107,7 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
   const a = server(A),
     b = server(B);
 
-  await t.test('250 Seiten: 422 mit verständlicher Meldung', async () => {
+  await t.test('250 pages: 422 with an understandable message', async () => {
     const r = await hochladen(a.base, await pdfWith(250));
     assert.equal(r.status, 422, JSON.stringify(r.body));
     assert.equal(r.body.code, 'pdf_zu_viele_seiten');
@@ -115,7 +115,7 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
     assert.equal((await db.get('SELECT count(*)::int AS n FROM vouchers WHERE user_id = $1', [A])).n, 0);
   });
 
-  await t.test('gelesen wird in einem Worker-Thread', async () => {
+  await t.test('reading happens in a worker thread', async () => {
     const { readInBackground } = _req('src/vouchers/pdfReader.js');
     const Echt = wt.Worker;
     let gestartet = 0;
@@ -135,7 +135,7 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
     assert.equal(gestartet, 1);
   });
 
-  await t.test('ein zweites Gutschein-PDF desselben Kontos wartet nicht', async () => {
+  await t.test('a second voucher PDF of the same account does not wait', async () => {
     const erster = hangingUpload(a.base);
     try {
       await new Promise(r => setTimeout(r, 200));
@@ -150,12 +150,12 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
     }
   });
 
-  await t.test('… nach dem Ende geht es wieder', async () => {
+  await t.test('… after the end it works again', async () => {
     const r = await hochladen(a.base, await pdfWith(1));
     assert.notEqual(r.status, 429, JSON.stringify(r.body));
   });
 
-  await t.test('höchstens sechs Ereignisströme je Konto', async () => {
+  await t.test('at most six event streams per account', async () => {
     const offen = [];
     const strom = () =>
       new Promise(fertig => {
@@ -180,7 +180,7 @@ test('Grenzen je Konto beim Hochladen', { concurrency: 1, timeout: 120_000 }, as
 
 // Ein Client, der nach der Antwort sofort die nächste Datei schickt, kam im
 // Volllauf vor 'close' an und bekam 429. Hier ohne Netz, damit es nicht vom Takt abhängt.
-test('der Platz ist frei, sobald die Antwort übergeben ist', () => {
+test('the slot is free as soon as the response is handed over', () => {
   const { EventEmitter } = require('node:events');
   const { kontoSchranke } = _req('routes/api_v1/middleware.js');
   const limit = kontoSchranke('voucherPdf');

@@ -31,7 +31,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 
-test('der Namensabruf unter /api/v1/sets ist eindeutig', { concurrency: 1 }, async t => {
+test('the name lookup under /api/v1/sets is unambiguous', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `setinfo-${process.pid}`;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}-f`]]);
@@ -47,21 +47,21 @@ test('der Namensabruf unter /api/v1/sets ist eindeutig', { concurrency: 1 }, asy
   const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME, isAdmin: false }, t });
 
   try {
-    await t.test('eine gewöhnliche Nummer', async () => {
+    await t.test('an ordinary number', async () => {
       const r = await (await fetch(`${base}/api/v1/sets/info/${process.pid}-1`)).json();
       assert.equal(r.name, 'Gewöhnlich');
     });
-    await t.test('ein Pfadwort als Setnummer', async () => {
+    await t.test('a path word as set number', async () => {
       const r = await (await fetch(`${base}/api/v1/sets/info/price-history`)).json();
       assert.equal(r.set_number, 'price-history-1', JSON.stringify(r));
       assert.equal(r.name, 'Pfadwort');
     });
     const info = async sn => (await fetch(`${base}/api/v1/sets/info/${sn}`)).json();
-    await t.test('ein fremder Platzhalter antwortet wie eine nie erfasste Nummer', async () => {
+    await t.test('a foreign placeholder responds like a never entered number', async () => {
       assert.deepEqual(await info(nie), { success: true, set_number: nie, name: nie, im_katalog: false });
       assert.deepEqual(await info(fremd), { success: true, set_number: fremd, name: fremd, im_katalog: false });
     });
-    await t.test('ein eigener Platzhalter und ein Katalogeintrag gelten', async () => {
+    await t.test('an own placeholder and a catalog entry apply', async () => {
       const e = await info(eigen);
       assert.deepEqual([e.name, e.im_katalog], [`Set ${eigen}`, true], 'ein eigener Platzhalter …');
       const k = await info(`${process.pid}-1`);

@@ -73,11 +73,11 @@ function startScript(wert, bestaetigt = false) {
   }
 }
 
-test('VORGELAGERTER_PROXY ist Pflicht: keiner oder Adressen', async t => {
-  await t.test('compose verlangt die Angabe', () => {
+test('VORGELAGERTER_PROXY is required: keiner or addresses', async t => {
+  await t.test('compose requires the value', () => {
     assert.match(COMPOSE, /VORGELAGERTER_PROXY: \$\{VORGELAGERTER_PROXY:\?[^}]*keiner/);
   });
-  await t.test('ohne Angabe startet Caddy nicht', () => {
+  await t.test('without a value Caddy does not start', () => {
     for (const wert of [undefined, '', 'private_ranges', '10.0.0.1 }', '10.0.0.1\nhttp:// {']) {
       const r = startScript(wert);
       assert.notEqual(r.status, 0, `${JSON.stringify(wert)}: Caddy startet`);
@@ -85,7 +85,7 @@ test('VORGELAGERTER_PROXY ist Pflicht: keiner oder Adressen', async t => {
       assert.match(r.stderr, /VORGELAGERTER_PROXY in \.env setzen: keiner/);
     }
   });
-  await t.test('ein zu weites Netz startet nicht (wie TRUST_PROXY: IPv4 ab /16, IPv6 ab /64)', () => {
+  await t.test('a network that is too wide does not start (like TRUST_PROXY: IPv4 from /16, IPv6 from /64)', () => {
     for (const wert of ['0.0.0.0/0', '::/0', '172.28.73.20 10.0.0.0/8', '192.168.0.0/15', 'fd00::/48', '10.0.0.1/']) {
       const r = startScript(wert, true);
       assert.notEqual(r.status, 0, `${wert}: Caddy startet`);
@@ -93,7 +93,7 @@ test('VORGELAGERTER_PROXY ist Pflicht: keiner oder Adressen', async t => {
       assert.match(r.stderr, /ist zu weit/, wert);
     }
   });
-  await t.test('ein Netz über acht Adressen nur mit PROXY_NETZ_BESTAETIGT=1', () => {
+  await t.test('a network spanning more than eight addresses only with PROXY_NETZ_BESTAETIGT=1', () => {
     for (const wert of ['172.18.0.0/16', '192.168.1.0/28', 'fd00::/64', 'fd00::/119']) {
       const r = startScript(wert);
       assert.notEqual(r.status, 0, `${wert}: Caddy startet ohne Bestätigung`);
@@ -101,7 +101,7 @@ test('VORGELAGERTER_PROXY ist Pflicht: keiner oder Adressen', async t => {
       assert.deepEqual([startScript(wert, true).status, startScript(wert, true).stdout], [0, wert]);
     }
   });
-  await t.test('keiner ergibt die leere Liste, Adressen bleiben', () => {
+  await t.test('keiner yields the empty list, addresses stay', () => {
     assert.deepEqual([startScript('keiner').status, startScript('keiner').stdout], [0, '']);
     const r = startScript('172.28.73.20 fd00::100/120 172.18.0.8/29 fd00::1');
     assert.deepEqual([r.status, r.stdout], [0, '172.28.73.20 fd00::100/120 172.18.0.8/29 fd00::1'], r.stderr);
@@ -190,7 +190,7 @@ async function startCaddy(t, appPort, upstream) {
   return anfrage;
 }
 
-test('Caddy gibt der App die Client-Adresse hinter einem vorgelagerten Proxy', {
+test('Caddy gives the app the client address behind an upstream proxy', {
   skip: !CADDY && 'kein Caddy (CADDY_BIN)',
   timeout: 120_000,
 }, async t => {
@@ -203,13 +203,13 @@ test('Caddy gibt der App die Client-Adresse hinter einem vorgelagerten Proxy', {
   t.after(() => app.close());
   const appPort = /** @type {import('node:net').AddressInfo} */ (app.address()).port;
 
-  await t.test('keiner: die Adresse, die Caddy erreicht', async t2 => {
+  await t.test('keiner: the address that reaches Caddy', async t2 => {
     const anfrage = await startCaddy(t2, appPort, startScript('keiner').stdout);
     assert.equal((await anfrage('GET', '/api/v1/sets', '198.51.100.7')).rumpf, '127.0.0.1');
     assert.equal((await anfrage('POST', '/api/v1/auth/login', '198.51.100.7')).rumpf, '127.0.0.1');
   });
 
-  await t.test('mit VORGELAGERTER_PROXY: der Client, von rechts gelesen', async t2 => {
+  await t.test('with VORGELAGERTER_PROXY: the client, read from the right', async t2 => {
     const anfrage = await startCaddy(t2, appPort, startScript('10.9.9.9 127.0.0.1').stdout);
     assert.equal(
       (await anfrage('GET', '/api/v1/sets', '6.6.6.6, 198.51.100.7')).rumpf,
@@ -223,7 +223,7 @@ test('Caddy gibt der App die Client-Adresse hinter einem vorgelagerten Proxy', {
     );
   });
 
-  await t.test('ein anderer vorgelagerter Proxy: wieder die Adresse, die Caddy erreicht', async t2 => {
+  await t.test('another upstream proxy: again the address that reaches Caddy', async t2 => {
     const anfrage = await startCaddy(t2, appPort, startScript('10.9.9.9').stdout);
     assert.equal((await anfrage('GET', '/api/v1/sets', '198.51.100.7')).rumpf, '127.0.0.1');
   });

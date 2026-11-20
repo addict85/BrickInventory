@@ -51,7 +51,7 @@ const NAME = `haerte_${process.pid}`,
 const COUNTER = `${NAME}_zaehler`;
 let uid = 0;
 
-test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async t => {
+test('hardening against the database', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const aufraeumen = async () => {
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_v`]]);
@@ -72,7 +72,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
     await aufraeumen().catch(() => {});
   });
 
-  await t.test('die Sitzungs-ID wechselt beim Anmelden', async () => {
+  await t.test('the session ID changes on login', async () => {
     // Wer dem Opfer vorher eine ID untergeschoben hat, darf danach nicht angemeldet sein.
     const app = express();
     app.use(express.json());
@@ -102,7 +102,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
     assert.equal(await ich(alt), false, 'die alte ID ist angemeldet');
   });
 
-  await t.test('Anmeldezähler: ein zweiter Prozess sieht die Sperre', async () => {
+  await t.test('login counter: a second process sees the lock', async () => {
     const IP = '203.0.113.7';
     const a = _req('src/account/loginLimiter.js');
     assert.equal(await a.loginAllowed(IP, COUNTER), null, 'Vorbedingung: frei');
@@ -116,7 +116,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
     assert.equal((await b.loginAllowed(konto, IP, COUNTER))?.code, 'zu_viele_fehlversuche');
   });
 
-  await t.test('Anmeldezähler: ohne Datenbank bremst der Speicher', async () => {
+  await t.test('login counter: without a database the memory throttles', async () => {
     const IP = '203.0.113.8';
     const l = _req('src/account/loginLimiter.js');
     const warn = console.warn;
@@ -132,7 +132,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
     }
   });
 
-  await t.test('ein Token zählt nur im Kopf, nicht in der Adresszeile', async () => {
+  await t.test('a token only counts in the header, not in the address bar', async () => {
     const { base } = testServer(_req, { sitzung: {}, t });
     const login = await fetch(`${base}/api/v1/auth/login`, {
       method: 'POST',
@@ -146,7 +146,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
     assert.equal((await fetch(`${base}/api/v1/stats?access_token=${token}`)).status, 401);
   });
 
-  await t.test('den Preis-Cache leert nur, wer Verwalter ist', async () => {
+  await t.test('only an admin clears the price cache', async () => {
     // Sonst liesse sich das BrickLink-Kontingent der Installation von aussen verbrennen.
     const SN = `haerte-${process.pid}-1`;
     await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, avg_price) VALUES ($1,'N','EUR',1)`, [
@@ -169,7 +169,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
     assert.equal(await da(), false);
   });
 
-  await t.test('offene Ereignis-Ströme halten das Herunterfahren nicht auf', async () => {
+  await t.test('open event streams do not hold up shutdown', async () => {
     const port = await new Promise(r => {
       const s = net.createServer().listen(0, () => {
         const p = portOf(s);
@@ -229,7 +229,7 @@ test('Härtung gegen die Datenbank', { concurrency: 1, timeout: 120_000 }, async
   await db.pool.end().catch(() => {});
 });
 
-test('Minifiguren und Finanzen fordern Vorschaubilder an', async () => {
+test('minifigures and finances request preview images', async () => {
   // Volle Auflösung bei 36–100 px Anzeigegrösse liess die Kacheln sichtbar nachtröpfeln.
   const IMAGE = 'https://cdn.rebrickable.com/media/sets/fig-000123.jpg';
   const { w, d } = await openUi({
@@ -276,7 +276,7 @@ test('Minifiguren und Finanzen fordern Vorschaubilder an', async () => {
 
 // ── Struktur: Verbote über alle Aufrufer der Webapp ─────────────────────────
 
-test('die Webapp hängt keinen Token an eine Adresse', () => {
+test('the web app appends no token to an address', () => {
   // Der Server sieht ihn dort nicht mehr an (Test oben); er stünde nur im Protokoll.
   const { ohneKommentare, setCoreSource } = require('./helpers/sources');
   const append = [/'\?token='\s*\+/, /\?token=\$/];
@@ -301,7 +301,7 @@ test('die Webapp hängt keinen Token an eine Adresse', () => {
   assert.match(setCoreSource(), /loginOrTokenGuard\(d\.account, \{ timeoutMs: 3000 \}\)/);
 });
 
-test('jede Preisabfrage auf price_cache nennt die Währung', () => {
+test('every price query on price_cache names the currency', () => {
   // price_cache ist über Set, Zustand UND Währung verschlüsselt; ohne currency_code mischen sich Währungen,
   // und ein Währungswechsel bräuchte eine Cache-Leerung. Zählungen und Abfragen ohne WHERE wählen keinen Preis.
   const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');

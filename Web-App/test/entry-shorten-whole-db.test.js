@@ -25,7 +25,7 @@ const { changeManualPart } = _req('src/parts/manualParts.js');
 const NAME = `kuerzen_${process.pid}`,
   TEIL = '3001kz';
 
-test('Kürzen geht ganz oder gar nicht', { concurrency: 1 }, async t => {
+test('trimming works completely or not at all', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -65,14 +65,14 @@ test('Kürzen geht ganz oder gar nicht', { concurrency: 1 }, async t => {
       r => r.quantity,
     );
 
-  await t.test('nichts halb gekürzt', async () => {
+  await t.test('nothing half trimmed', async () => {
     assert.deepEqual(await erfassungen(), [3, 2], 'Vorbedingung');
     // 5 → 1: die neuere (2) weg, die ältere um 2 kürzen — dort greift der Trigger.
     await assert.rejects(changeManualPart(uid, TEIL, 5, { quantity: 1 }), /erzwungener Fehler/);
     assert.deepEqual(await erfassungen(), [3, 2], 'Die neuere Erfassung ist weg, die ältere nicht gekürzt');
   });
 
-  await t.test('ohne Fehler wird gekürzt', async () => {
+  await t.test('without errors trimming happens', async () => {
     await db.run(`DROP TRIGGER ${fn} ON part_acquisitions`);
     await changeManualPart(uid, TEIL, 5, { quantity: 1 });
     assert.deepEqual(await erfassungen(), [1]);

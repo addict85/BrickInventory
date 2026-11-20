@@ -38,7 +38,7 @@ const rect = sel => `(() => { const r = document.querySelector(${JSON.stringify(
   return r ? { l: Math.round(r.left), r: Math.round(r.right), o: Math.round(r.top), u: Math.round(r.bottom), b: Math.round(r.width) } : null; })()`;
 const cut = (a, b) => a.l < b.r && b.l < a.r && a.o < b.u && b.o < a.u;
 
-test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async t => {
+test('registration, categories, phone, terms', { timeout: 300_000 }, async t => {
   const NAME = `r14_${process.pid}`,
     KIND = `${NAME}_kind`,
     WARTET = `${NAME}_wartet`;
@@ -86,7 +86,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
 
   await telefon(390, 844);
 
-  await t.test('Merkliste: Fehler 500 über der Falz', async () => {
+  await t.test('wishlist: error 500 above the fold', async () => {
     await b.auswerten(`(() => { const echt = window.fetch; window.__echtFetch = echt;
       window.fetch = (u, o) => String(u).includes('/api/v1/wanted?') ? Promise.resolve(new Response('{"success":false,"error":"kaputt"}', { status: 500, headers: { 'Content-Type': 'application/json' } })) : echt(u, o);
       return true; })()`);
@@ -102,7 +102,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
     }
   });
 
-  await t.test('Gutscheinkarte ruhig', async () => {
+  await t.test('voucher card calm', async () => {
     await geh('gutscheine');
     await bis(`!!document.querySelector('.voucher-row .voucher-actions')`, 'Gutscheine');
     const z = await b.auswerten(`(() => { const w = (e) => Math.round(e.getBoundingClientRect().width);
@@ -113,7 +113,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
     assert.deepEqual(z, { knopf: [44], nebeneinander: true, gleich: true, unten: true });
   });
 
-  await t.test('Schwebender Knopf bei 200 %', async () => {
+  await t.test('floating button at 200 %', async () => {
     await geh('sammlung');
     await bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
     await schrift('200%');
@@ -134,7 +134,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
     }
   });
 
-  await t.test('Offline-Band: heute', async () => {
+  await t.test('offline banner: today', async () => {
     await b.tab('Network.emulateNetworkConditions', {
       offline: true,
       latency: 0,
@@ -159,7 +159,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
   await telefon(320, 640);
   await schrift('200%');
 
-  await t.test('Weitere Aktionen bei 320 px und 200 %', async () => {
+  await t.test('more actions at 320 px and 200 %', async () => {
     await geh('sammlung/set/10294-1');
     await bis(
       `document.getElementById('set-modal').classList.contains('open') && !document.querySelector('#set-modal .skelett-zeile')`,
@@ -172,7 +172,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
     await b.auswerten(`document.querySelector('#set-modal .v-mehr').open = false; true`);
   });
 
-  await t.test('Fokus nach Esc bei Direktaufruf', async () => {
+  await t.test('focus after Esc on direct call', async () => {
     for (const type of ['rawKeyDown', 'keyUp'])
       await b.tab('Input.dispatchKeyEvent', { type, key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
     await bis(`!document.getElementById('set-modal').classList.contains('open')`, 'Dialog zu');
@@ -186,7 +186,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
   await b.tab('Emulation.clearDeviceMetricsOverride');
   await ruhig();
 
-  await t.test('Verknüpfung lösen nennt das Konto', async () => {
+  await t.test('unlink names the account', async () => {
     await geh('haushalt');
     await bis(`!!document.querySelector('[data-click="unlinkHousehold"]')`, 'Haushalt');
     await b.auswerten(klick('[data-click="unlinkHousehold"]'));
@@ -199,7 +199,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
     await zu();
   });
 
-  await t.test('Verwaltung: wartendes Konto, Schalter ohne Mail', async () => {
+  await t.test('administration: waiting account, switch without mail', async () => {
     await geh('einstellungen/benutzer');
     await bis(
       `!!document.querySelector('#users-tbl tbody tr') && !document.getElementById('reg-mail-hinweis').hidden`,
@@ -224,7 +224,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
     await zu();
   });
 
-  await t.test('Kategorie in Tabelle und Filter', async () => {
+  await t.test('category in table and filter', async () => {
     await geh('teile');
     await b.auswerten(klick('[data-click="ansichtWaehlen"][data-arg="parts-view"][data-arg2="table"]'));
     await bis(
@@ -255,7 +255,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
     }
   });
 
-  await t.test('Hintergrundarbeiten: Anleitungen', async () => {
+  await t.test('background jobs: instructions', async () => {
     await geh('hintergrund');
     await bis(`document.querySelectorAll('.mon-dienste .mon-name').length >= 6`, 'Dienste');
     const namen = await b.auswerten(
@@ -265,7 +265,7 @@ test('Registrierung, Kategorien, Telefon, Begriffe', { timeout: 300_000 }, async
     assert.doesNotMatch(namen, /Handbücher/);
   });
 
-  await t.test('Bestätigung angemeldet', async () => {
+  await t.test('confirmation logged in', async () => {
     const { tokenDigest } = buildAndRequire()('src/account/deviceToken.js');
     const NEU = `${NAME}-neu@example.org`,
       TOKEN = `r14-${process.pid}-${Date.now()}`;

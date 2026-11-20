@@ -19,7 +19,7 @@ const { z } = require('zod');
 const _req = require('./helpers/sources').buildAndRequire();
 const { unbekannteFelder } = _req('src/contract/unknownFields.js');
 
-test('ein fremdes Feld, auch verschachtelt in Listen', () => {
+test('a foreign field, also nested in lists', () => {
   const Zeile = z.looseObject({ id: z.number(), name: z.string().nullable().optional() });
   const Antwort = z.looseObject({ success: z.boolean(), sets: z.array(Zeile) });
   const wert = {
@@ -34,7 +34,7 @@ test('ein fremdes Feld, auch verschachtelt in Listen', () => {
   assert.deepEqual(unbekannteFelder(Antwort, { success: true, sets: [{ id: 1 }] }), []);
 });
 
-test('Erweiterungen, Hüllen und records', () => {
+test('extensions, envelopes and records', () => {
   const Basis = z.looseObject({ a: z.number() });
   const Mehr = Basis.extend({ b: z.string().optional() });
   assert.deepEqual(unbekannteFelder(Mehr.nullable().optional(), { a: 1, b: 'x', c: 2 }), ['c']);
@@ -44,14 +44,14 @@ test('Erweiterungen, Hüllen und records', () => {
   ]);
 });
 
-test('in einer Union zählt die Option, die passt', () => {
+test('in a union the option that fits counts', () => {
   const A = z.looseObject({ art: z.literal('a'), x: z.number() });
   const B = z.looseObject({ art: z.literal('b'), y: z.number() });
   assert.deepEqual(unbekannteFelder(z.union([A, B]), { art: 'b', y: 1 }), []);
   assert.deepEqual(unbekannteFelder(z.union([A, B]), { art: 'b', y: 1, z: 0 }), ['z']);
 });
 
-test('die Route antwortet 500, wenn ein Feld fehlt im Vertrag', async () => {
+test('the route answers 500 if a field is missing in the contract', async () => {
   const { checkContract } = _req('src/http/contractRouter.js');
   const checker = checkContract();
   assert.ok(checker, 'VERTRAG_PRUEFEN ist in Tests gesetzt');

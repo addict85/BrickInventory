@@ -55,7 +55,7 @@ async function checkPreview(datei, transparent) {
   else assert.ok(data[1] > 150 && data[3] === 255, `Grund (${[...data.subarray(0, 4)]}) ist nicht das deckende Grün`);
 }
 
-test('sharp: durchsichtig bleibt PNG mit Alpha, 200 × 133', async () => {
+test('sharp: transparent stays PNG with alpha, 200 × 133', async () => {
   const b = await put(`zz-sharp-${process.pid}`, 0);
   try {
     assert.equal(await vorschauErzeugenAus(b.web), b.web.replace('.png', '_thumb.jpg'));
@@ -65,7 +65,7 @@ test('sharp: durchsichtig bleibt PNG mit Alpha, 200 × 133', async () => {
   }
 });
 
-test('sharp: deckend mit Alphakanal wird JPEG, 200 × 133', async () => {
+test('sharp: opaque with alpha channel becomes JPEG, 200 × 133', async () => {
   const b = await put(`zz-deckend-${process.pid}`, 1);
   try {
     assert.equal(await vorschauErzeugenAus(b.web), b.web.replace('.png', '_thumb.jpg'));
@@ -75,7 +75,7 @@ test('sharp: deckend mit Alphakanal wird JPEG, 200 × 133', async () => {
   }
 });
 
-test('ohne sharp rechnet Jimp dieselbe Vorschau', async () => {
+test('without sharp Jimp computes the same preview', async () => {
   for (const [alpha, transparent] of [
     [0, true],
     [1, false],
@@ -107,7 +107,7 @@ test('ohne sharp rechnet Jimp dieselbe Vorschau', async () => {
   }
 });
 
-test('sharp und Jimp sind als Abhängigkeiten eingetragen', () => {
+test('sharp and Jimp are registered as dependencies', () => {
   // Ohne Eintrag fehlt sharp im Docker-Image und jede Vorschau liefe über den langsamen Rückfall.
   const pkg = require(path.join(ROOT, 'package.json'));
   assert.ok(pkg.dependencies?.sharp, 'sharp fehlt in den dependencies');

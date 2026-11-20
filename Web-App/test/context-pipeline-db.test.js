@@ -54,7 +54,7 @@ function countingBroker(ziel) {
   return new Promise(r => srv.listen(0, '127.0.0.1', () => r({ srv, stand })));
 }
 
-test('Kontext je Abfrage in der Pipeline', { concurrency: 1 }, async t => {
+test('context per query in the pipeline', { concurrency: 1 }, async t => {
   const zugang = await accessOrSkip(t, _req);
   if (!zugang) return;
   t.after(() => zugang.pool.end().catch(() => {}));
@@ -81,13 +81,13 @@ test('Kontext je Abfrage in der Pipeline', { concurrency: 1 }, async t => {
   const allSets = () => app.all('SELECT user_id FROM sets');
   const account_ = () => app.get(`SELECT current_setting('app.konto', true) AS k`);
 
-  await t.test('nach einer Anfrage mit Konto sieht die nächste ohne Konto nichts', async () => {
+  await t.test('after a request with an account the next one without an account sees nothing', async () => {
     assert.deepEqual(ids(await als(A, allSets)), [A]);
     assert.deepEqual(await allSets(), []);
     assert.ok(!(await account_())?.k, 'die Verbindung trägt kein Konto weiter');
   });
 
-  await t.test('nach einer gescheiterten Abfrage mit Konto bleibt kein Kontext an der Verbindung', async () => {
+  await t.test('after a failed query with an account no context remains on the connection', async () => {
     await assert.rejects(
       als(A, () => app.all('SELECT 1 / (count(*) - count(*)) FROM sets')),
       /division by zero/,
@@ -101,13 +101,13 @@ test('Kontext je Abfrage in der Pipeline', { concurrency: 1 }, async t => {
     assert.equal((await eigen.get(`SELECT count(*)::int AS n FROM sets WHERE set_number = '10002-1'`)).n, 0);
   });
 
-  await t.test('abwechselnd und gleichzeitig: jede Anfrage sieht nur ihr Konto', async () => {
+  await t.test('alternately and concurrently: every request only sees its account', async () => {
     const wer = Array.from({ length: 30 }, (_, i) => [A, B, null][i % 3]);
     const gesehen = await Promise.all(wer.map(u => (u ? als(u, allSets) : allSets())));
     for (const [i, zeilen] of gesehen.entries()) assert.deepEqual(ids(zeilen), wer[i] ? [wer[i]] : [], `Anfrage ${i}`);
   });
 
-  await t.test('ein Roundtrip für eine Abfrage mit Konto', async () => {
+  await t.test('one round trip for a query with an account', async () => {
     const ziel = new URL(process.env.DATABASE_URL);
     const { srv, stand } = await countingBroker(ziel);
     const ueber = new URL(ziel);

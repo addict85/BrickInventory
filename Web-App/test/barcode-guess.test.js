@@ -10,7 +10,7 @@ const assert = require('node:assert/strict');
 const _req = require('./helpers/sources').buildAndRequire();
 const { isGuess, CHECKED } = _req('src/catalog/barcodeSource.js');
 
-test('geprüfte Wege sind keine Vermutung', () => {
+test('verified paths are not a guess', () => {
   for (const quelle of ['catalog_cache', 'rebrickable-ean', 'brickset-ean', 'brickset-item', 'rebrickable-direct']) {
     assert.equal(isGuess(quelle), false, `${quelle} gilt als Vermutung`);
   }
@@ -18,7 +18,7 @@ test('geprüfte Wege sind keine Vermutung', () => {
   assert.ok(CHECKED.size >= 5, `nur ${CHECKED.size} geprüfte Quellen — Liste geschrumpft?`);
 });
 
-test('die zwei ratenden Wege sind als Vermutung markiert', () => {
+test('the two guessing paths are marked as a guess', () => {
   assert.equal(
     isGuess('rebrickable-search'),
     true,
@@ -28,7 +28,7 @@ test('die zwei ratenden Wege sind als Vermutung markiert', () => {
   assert.equal(isGuess('upcitemdb'), true, 'Eine Zahl aus einem Produkttitel ist keine geprüfte Kennung.');
 });
 
-test('eine unbekannte Quelle gilt als Vermutung', () => {
+test('an unknown source counts as a guess', () => {
   // Der Kern der Positivliste: Ein achter Weg ist automatisch unsicher, statt
   // still als Treffer durchzugehen.
   for (const quelle of ['irgendwas-neues', '', null, undefined]) {

@@ -53,21 +53,21 @@ function loginHandler() {
   return treffer;
 }
 
-test('aktives, bestätigtes Konto darf sich anmelden', () => {
+test('an active, confirmed account may log in', () => {
   assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 1, email: 'a@b.c' }), null);
   assert.equal(assertLoginAllowed({ is_active: true, email_verified: true, email: 'a@b.c' }), null);
   // Konto ganz ohne E-Mail (Alt-Installation, admin/admin) bleibt erlaubt
   assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null }), null);
 });
 
-test('deaktiviertes Konto wird abgelehnt — egal ob 0 oder false', () => {
+test('a deactivated account is rejected — whether 0 or false', () => {
   for (const v of [0, false]) {
     const r = assertLoginAllowed({ is_active: v, email_verified: 1, email: 'a@b.c' });
     assert.equal(r?.art, 'verboten', `is_active=${v} muss verboten ergeben`);
   }
 });
 
-test('eine offene Registrierung wird abgelehnt, Admins ausgenommen', () => {
+test('an open registration is rejected, admins excepted', () => {
   const r = assertLoginAllowed({
     is_active: 1,
     email_verified: 0,
@@ -88,7 +88,7 @@ test('eine offene Registrierung wird abgelehnt, Admins ausgenommen', () => {
   );
 });
 
-test('jede Anmeldung mit Passwort läuft über dieselbe Prüfung', () => {
+test('every login with password goes through the same check', () => {
   const gefunden = loginHandler();
   // Selbstbeweis: Findet das Muster nichts, wäre die Fehlerliste leer und der
   // Test grün, ohne etwas geprüft zu haben.
@@ -117,7 +117,7 @@ test('jede Anmeldung mit Passwort läuft über dieselbe Prüfung', () => {
   );
 });
 
-test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
+test('the brute-force counter is only served in one place', () => {
   // Wer den Zähler selbst hochzählt, hat auch die Passwortprüfung selbst
   // gebaut — der Aufruf ist damit der zuverlässigste Fingerabdruck einer
   // zweiten Anmeldefassung, unabhängig davon, wie ihre Route heisst.
@@ -154,7 +154,7 @@ test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
     assert.match(central, new RegExp(`\\b${name}\\((?:k, )?ip`), `src/account/loginCheck.ts ruft ${name} nicht auf`);
 });
 
-test('die Benutzernamen-Regel', () => {
+test('the username rule', () => {
   assert.ok(USERNAME_RE.test('marco_1'));
   assert.ok(!USERNAME_RE.test('ma'));
   assert.ok(!USERNAME_RE.test('a b'));
@@ -163,13 +163,13 @@ test('die Benutzernamen-Regel', () => {
   // Dass PUT /profile sie anwendet (auch gross/klein), prüft login-rules-db.test.js.
 });
 
-test('escapeLike entschärft Platzhalter beim Token-Löschen', () => {
+test('escapeLike defuses wildcards when deleting tokens', () => {
   assert.equal(escapeLike('%'), '\\%');
   assert.equal(escapeLike('a_b'), 'a\\_b');
   assert.equal(escapeLike('abc123'), 'abc123');
 });
 
-test('die Gleitfrist lässt sich nicht abschalten', () => {
+test('the sliding deadline cannot be switched off', () => {
   // „Nie“ gibt es seit Migration 0080 nicht mehr: Ohne Ablauf nur je Gerät,
   // über HTTPS und mit Rotation (token-scope-rotation-db). Dass die Frist aus
   // der Konfiguration kommt und das Aufräumen zählt, zeigt token-gleitfrist-db.

@@ -26,7 +26,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-test('Teile-Kennzahlen mit einzeln erfassten Teilen', { concurrency: 1 }, async t => {
+test('parts metrics with individually captured parts', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const H = require('./helpers/sources').handlerModule(_req);
   const PS = _req('src/parts/summary.js');
@@ -50,21 +50,21 @@ test('Teile-Kennzahlen mit einzeln erfassten Teilen', { concurrency: 1 }, async 
     await holdsPart(db, UB, 'ke1', { colorId: 1, menge: 7 });
     await holdsPart(db, UB, 'ke3', { colorId: 15, menge: 1 });
 
-    await t.test('nur einzelne Teile: 4 Sorten in 4 Farben', async () => {
+    await t.test('only individual parts: 4 kinds in 4 colors', async () => {
       const s = await H.partStatsQuery(UA);
       assert.equal(s.unique_parts, 4);
       assert.equal(s.unique_colors, 4);
       assert.equal(s.total_parts, 0, 'keine Set-Teile');
       assert.equal(s.manual_parts, 100);
     });
-    await t.test('die Gesamtzahl zählt einzelne Teile nicht doppelt', async () => {
+    await t.test('the total does not count individual parts twice', async () => {
       const s = await H.partStatsQuery(UB);
       assert.equal(s.total_parts, 5, 'Set-Teile 3 + 2');
       assert.equal(s.manual_parts, 8, 'einzeln 7 + 1');
       assert.equal(s.unique_parts, 3);
       assert.equal(s.unique_colors, 3);
     });
-    await t.test('gemischt: Zusammenfassung und Live gleich', async () => {
+    await t.test('mixed: summary and live the same', async () => {
       const live = await H.partStatsQuery(UB);
       await PS.rebuildNow(UB);
       const repo = {

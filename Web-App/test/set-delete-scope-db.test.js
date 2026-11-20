@@ -27,7 +27,7 @@ const { holdsSet, holdsPart } = require('./helpers/inventory');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
-test('Löschen im Haushalt: vorwärts erlaubt, rückwärts nicht', { concurrency: 1 }, async t => {
+test('deleting in the household: forward allowed, backward not', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const MAIN = `del-haupt-${process.pid}`,

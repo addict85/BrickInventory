@@ -25,7 +25,7 @@ const PROXY = require('./helpers/sources').proxyThumbSource();
 const SERVER = SERVER_ONLY + '\n' + PROXY;
 const CODE = SERVER.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
 
-test('gleichzeitige Anfragen schreiben in getrennte Temp-Dateien', () => {
+test('concurrent requests write into separate temp files', () => {
   // Der Name enthielt nur die Prozess-ID. Fordert eine Kachelwand dasselbe Bild
   // mehrfach gleichzeitig an, schrieben alle Anfragen desselben Workers in
   // DIESELBE Datei — gemessen 418'603 statt 81'920 Bytes, also fünf Kopien
@@ -38,7 +38,7 @@ test('gleichzeitige Anfragen schreiben in getrennte Temp-Dateien', () => {
   );
 });
 
-test('nur vollständige Dateien kommen in den Cache', () => {
+test('only complete files get into the cache', () => {
   // Eine abgeschnittene Datei würde dauerhaft ausgeliefert: Der Browser bekommt
   // 200, kann das Bild aber nicht dekodieren.
   assert.match(
@@ -55,7 +55,7 @@ test('nur vollständige Dateien kommen in den Cache', () => {
   );
 });
 
-test('der Cache-Stream hängt vor dem Client-Stream', () => {
+test('the cache stream hangs in front of the client stream', () => {
   // r.pipe(ws) stand einmal hinter einem `await mkdir`. r.pipe(res) läuft
   // synchron davor — die ersten Chunks flossen also zum Client, bevor der
   // Cache-Stream überhaupt hing.
@@ -75,7 +75,7 @@ test('der Cache-Stream hängt vor dem Client-Stream', () => {
   );
 });
 
-test('komprimierte Antworten werden entpackt, nicht weitergereicht', () => {
+test('compressed responses are decompressed, not passed on', () => {
   // Ein durchgereichter komprimierter Körper mit Content-Type: image/jpeg
   // ergibt beim Browser eine weisse Fläche — bei Status 200 und passender
   // Länge, also ohne jeden Hinweis im Log. Entpacken macht auch die
@@ -102,7 +102,7 @@ test('komprimierte Antworten werden entpackt, nicht weitergereicht', () => {
   assert.ok(lengths >= 2, `Nur ${lengths} von zwei Stellen setzen Content-Length (Cache, CDN-Abruf)`);
 });
 
-test('abgebrochene Client-Anfragen geben die CDN-Verbindung frei', () => {
+test('aborted client requests release the CDN connection', () => {
   // Ohne das blieb der Socket belegt: Der Antwort-Stream lief in ein totes res,
   // die Gegendruck-Steuerung hielt ihn an, und die Warteschlange verhungerte.
   assert.match(
@@ -131,7 +131,7 @@ test('abgebrochene Client-Anfragen geben die CDN-Verbindung frei', () => {
   );
 });
 
-test('der Verbindungs-Pool ist weit genug', async () => {
+test('the connection pool is wide enough', async () => {
   // Mit 8 wartete ein einzeln geöffnetes Bild hinter 60 Kachel-Anfragen
   // 1195 ms; mit 32 sind es 282 ms, ohne Grenze 153 ms.
   // Der Pool steht im Klienten (clients/imageCdn.ts), der Proxy nimmt ihn mit `pool: true`.
@@ -151,7 +151,7 @@ test('der Verbindungs-Pool ist weit genug', async () => {
   assert.match(SERVER, /pool: true/, 'der Proxy nimmt den Pool nicht');
 });
 
-test('die Diagnose-Endpunkte sind vorhanden', () => {
+test('the diagnostic endpoints are present', () => {
   const route = require('./helpers/sources').kompakt(
     fs.readFileSync(path.join(ROOT, 'routes/api_v1/admin.ts'), 'utf8'),
   );
@@ -167,7 +167,7 @@ test('die Diagnose-Endpunkte sind vorhanden', () => {
   assert.match(admin, /proxy_failures: failures/, 'Die Zähler gehören in die Antwort');
 });
 
-test('kaputte Antworten werden nicht für einen Tag im Browser festgenagelt', () => {
+test('broken responses are not nailed into the browser for a day', () => {
   // Beobachtet: "200 OK (from disk cache)" — die Anfrage erreichte den Server
   // gar nicht mehr. Der Browser lieferte eine kaputte Antwort aus der Zeit der
   // behobenen Fehler weiter aus. Kein Log-Eintrag, kein Server-Cache, weisse
@@ -195,7 +195,7 @@ test('kaputte Antworten werden nicht für einen Tag im Browser festgenagelt', ()
   assert.match(SERVER, /`"t-\$\{tst\.size\}-\$\{Math\.floor\(tst\.mtimeMs\)\}"`/, 'ETag für die Vorschau fehlt');
 });
 
-test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
+test('minifigure images are stored locally like set images', () => {
   // Vorher lud der Hintergrundlauf nur `source='manual'`. Minifiguren aus Sets
   // liefen dadurch dauerhaft über /api/img-proxy: Anmeldeprüfung, Cache-Suche
   // und Stream bei jeder Kachel, beim ersten Anzeigen ein CDN-Roundtrip je
@@ -256,7 +256,7 @@ test('Minifiguren-Bilder werden lokal abgelegt wie Set-Bilder', () => {
   );
 });
 
-test('der Cache-Aufräumlauf ist ein geplanter Auftrag', () => {
+test('the cache cleanup run is a scheduled job', () => {
   // Das tägliche Aufräumen stand einmal in registerImgProxy() und lief damit
   // in jedem Web-Worker; heute ist es ein Schritt des geplanten Auftrags
   // 'aufraeumen_taeglich' (src/management/cleanup.ts) und läuft nur im Job-Prozess.

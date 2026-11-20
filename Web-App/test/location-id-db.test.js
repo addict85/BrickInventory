@@ -52,7 +52,7 @@ async function dbReachable() {
   }
 }
 
-test('Lagerort als ID gegen echte Datenbank', async t => {
+test('storage location as an ID against a real database', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -72,7 +72,7 @@ test('Lagerort als ID gegen echte Datenbank', async t => {
 
   const estrich = (await L.putLocationAn(UID, 'Estrich')).ort;
 
-  await t.test('eine andere Schreibweise landet im VORHANDENEN Ort', async () => {
+  await t.test('a different spelling lands in the EXISTING place', async () => {
     // Der Kern. Getippt wird „estrich", im Vorrat steht „Estrich" — und das
     // Set zeigt danach die Schreibweise des Vorrats. Mit dem Namen am Bestand
     // stand hier „estrich", und damit war die Zuordnung von da an eine andere
@@ -95,7 +95,7 @@ test('Lagerort als ID gegen echte Datenbank', async t => {
     assert.equal(parseInt(String(id), 10), estrich.id, 'Die Zeile zeigt nicht auf den Eintrag im Vorrat');
   });
 
-  await t.test('Umbenennen wirkt ohne eine Zeile Nacharbeit', async () => {
+  await t.test('renaming works without a single line of follow-up work', async () => {
     // benenneOrtUm() schreibt NUR den Vorrat um. Mit dem Namen brauchte es
     // dafür eine Schleife über drei Tabellen in einer Transaktion — und die
     // verglich zeichengenau, traf „estrich" also nicht.
@@ -107,7 +107,7 @@ test('Lagerort als ID gegen echte Datenbank', async t => {
     );
   });
 
-  await t.test('ein belegter Ort laesst sich nicht loeschen', async () => {
+  await t.test('an occupied place cannot be deleted', async () => {
     // Die Belegt-Prüfung zählt über die ID. Mit dem Namen zählte sie bei
     // abweichender Schreibweise null und gab den Ort frei — das Set behielt
     // danach einen Namen, den die Auswahlliste nicht mehr kannte.
@@ -123,7 +123,7 @@ test('Lagerort als ID gegen echte Datenbank', async t => {
     );
   });
 
-  await t.test('leeren setzt die ID auf NULL', async () => {
+  await t.test('clearing sets the ID to NULL', async () => {
     // Leer und NULL sind dasselbe: „nicht erfasst" (Begründung in 0018).
     await L.setLocation('set', writable, ['10179-1'], null);
     assert.equal(await ortAmSet('10179-1'), null, 'Das Leeren hat nichts entfernt');
@@ -132,7 +132,7 @@ test('Lagerort als ID gegen echte Datenbank', async t => {
     assert.deepEqual(await L.locationsOf([UID]), []);
   });
 
-  await t.test('ein Fehlversuch legt keinen Ort im Vorrat an', async () => {
+  await t.test('a failed attempt creates no place in the stock', async () => {
     // Diese Eigenschaft hatte der alte Weg nebenbei: Er ordnete zuerst zu und
     // legte den Ort nur bei Erfolg an. Mit der ID muss es umgekehrt laufen
     // (ohne Zeile keine ID), deshalb steht beides in einer Transaktion mit

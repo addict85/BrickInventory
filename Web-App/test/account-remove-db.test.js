@@ -25,7 +25,7 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
-test('Konto entfernen', { concurrency: 1 }, async t => {
+test('remove account', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const { kontoEntfernen, removeAccountFiles } = _req('src/account/removeAccount.js');
@@ -68,7 +68,7 @@ test('Konto entfernen', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('scheitert ein Schritt, bleibt alles, wie es war', async () => {
+  await t.test('if a step fails, everything stays as it was', async () => {
     const ziel = await neu();
     await sitzung(ziel);
     await db.exec(`CREATE FUNCTION entf_sperre() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -85,7 +85,7 @@ test('Konto entfernen', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM user_sessions WHERE sid = $1', [`entf-${ziel}`]);
   });
 
-  await t.test('gelingt es, sind Konto und Sitzungen weg und protokolliert', async () => {
+  await t.test('if it succeeds, account and sessions are gone and logged', async () => {
     const ziel = await neu();
     await sitzung(ziel);
     await kontoEntfernen(ziel, verw);
@@ -95,7 +95,7 @@ test('Konto entfernen', { concurrency: 1 }, async t => {
     await assert.rejects(kontoEntfernen(verw, verw), NICHT, 'das eigene Konto nicht über den Verwalterweg');
   });
 
-  await t.test('liegen die Dateien fest, übernimmt ein Auftrag', async () => {
+  await t.test('if the files are locked, a job takes over', async () => {
     const echt = fs.promises.rm;
     fs.promises.rm = async () => {
       throw Object.assign(new Error('EACCES'), { code: 'EACCES' });

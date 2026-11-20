@@ -40,7 +40,7 @@ const PID = 'SELECT pg_backend_pid() AS p';
 const { bis } = require('./helpers/time');
 const { LOCKS } = require(path.join(__dirname, '..', 'dist', 'src', 'infra', 'lockNamespaces.js'));
 
-test('Transaktion: ausdrücklich über t', { concurrency: 1 }, async t => {
+test('transaction: explicitly via t', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const k = testContext('sets');
   const uid = (
@@ -55,7 +55,7 @@ test('Transaktion: ausdrücklich über t', { concurrency: 1 }, async t => {
       .catch(() => {});
   });
 
-  await t.test('k.db im Rumpf wirft, t.db geht über die Transaktion', async () => {
+  await t.test('k.db in the body throws, t.db goes through the transaction', async () => {
     await k.transaktion(async tt => {
       const eigene = (await tt.db.get(PID)).p;
       await assert.rejects(k.db.get(PID), dbModule.UnboundQuery);
@@ -69,7 +69,7 @@ test('Transaktion: ausdrücklich über t', { concurrency: 1 }, async t => {
     assert.ok((await k.db.get(PID)).p > 0);
   });
 
-  await t.test('ein Signal über t gehört zur Transaktion und kommt mit dem COMMIT an', async () => {
+  await t.test('a signal via t belongs to the transaction and arrives with the COMMIT', async () => {
     const kanal = `tx_explizit_${process.pid}`;
     const listener = await testAccess().ownConnection();
     try {
@@ -86,7 +86,7 @@ test('Transaktion: ausdrücklich über t', { concurrency: 1 }, async t => {
     }
   });
 
-  await t.test('ein gefangenes k in einer inneren Transaktion wirft ebenso', async () => {
+  await t.test('a captured k in an inner transaction throws as well', async () => {
     await k.transaktion(async aussen => {
       await aussen.transaktion(async innen => {
         await innen.db.get('SELECT 1');
@@ -95,7 +95,7 @@ test('Transaktion: ausdrücklich über t', { concurrency: 1 }, async t => {
     });
   });
 
-  await t.test('ein Dienst eines anderen Bereichs über t läuft in der Transaktion', async () => {
+  await t.test('a service of another scope via t runs in the transaction', async () => {
     const r = await k.transaktion(async tt => {
       await tt.db.run(`UPDATE users SET first_name = first_name WHERE id = $1`, [uid]);
       // scopeIds fragt den Haushalt über seinen eigenen Zugang; über t gerufen gehört er dazu.
@@ -138,7 +138,7 @@ test('Transaktion: ausdrücklich über t', { concurrency: 1 }, async t => {
     return { frei, fertig };
   };
 
-  await t.test('eine Bestandssperre hält die zweite Transaktion auf, bis die erste endet', async () => {
+  await t.test('a stock lock holds up the second transaction until the first ends', async () => {
     const sperren = [{ konto: uid, schluessel: 'probe' }];
     const ablauf = [];
     const erste = await hold(sperren);
@@ -150,7 +150,7 @@ test('Transaktion: ausdrücklich über t', { concurrency: 1 }, async t => {
     assert.deepEqual(ablauf, ['erste aus', 'zweite an']);
   });
 
-  await t.test('Gegenrichtungen verklemmen nicht: gesperrt wird aufsteigend', async () => {
+  await t.test('opposite directions do not deadlock: locking is ascending', async () => {
     // Hält die erste beide Sperren, wartet die zweite auf ihre ERSTE. Aufsteigend ist das die
     // des kleineren Kontos, egal in welcher Reihenfolge sie genannt sind.
     const zwei = uid + 1_000_000;
@@ -164,7 +164,7 @@ test('Transaktion: ausdrücklich über t', { concurrency: 1 }, async t => {
     assert.equal(onSmaller, true, 'die zweite wartet auf die Sperre des kleineren Kontos');
   });
 
-  await t.test('ein Dienst im Systemrahmen in einer Transaktion ohne ihn wirft', async () => {
+  await t.test('a service in the system context inside a transaction without it throws', async () => {
     const konto = testContext('account');
     await asRequest({ apiUser: { user_id: uid } }, () =>
       konto.transaktion(async tt => {

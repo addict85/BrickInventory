@@ -34,7 +34,7 @@ const g = _req('src/infra/secret.js');
 
 const NAME = `geheim_${process.pid}`;
 
-test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
+test('secrets encrypted', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
@@ -47,7 +47,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
   });
   const settings = _req('src/settings/settings.js');
 
-  await t.test('globale Schlüssel', async () => {
+  await t.test('global keys', async () => {
     await settings.setGlobalSetting('brickset_api_key', 'klar-brickset-4242');
     const roh = (await db.get("SELECT value FROM global_settings WHERE key = 'brickset_api_key'")).value;
     assert.ok(roh.startsWith('v2:') && !roh.includes('4242'), roh);
@@ -56,7 +56,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
     assert.equal(gelesen.brickset_api_key, '\u2022'.repeat(12), 'die Maske sagt nur „gesetzt"');
   });
 
-  await t.test('Gutschein-PIN', async () => {
+  await t.test('voucher PIN', async () => {
     const { base } = testServer(_req, { sitzung: { userId: uid }, t });
     const r = await fetch(`${base}/api/v1/vouchers`, {
       method: 'POST',
@@ -75,7 +75,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('TOTP-Geheimnis', async () => {
+  await t.test('TOTP secret', async () => {
     const zf = _req('src/factors/secondFactor.js');
     const secret = await zf.beginSetup(uid);
     const roh = (await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid])).secret;
@@ -83,7 +83,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
     assert.equal(g.decrypt(roh, zf.secondFactorContext(uid)), secret);
   });
 
-  await t.test('Altbestand wird nachverschlüsselt', async () => {
+  await t.test('legacy stock is encrypted afterwards', async () => {
     const gs = {
       ..._req('src/vouchers/repository/vouchers.js'),
       ...require('./helpers/sources').testArea('vouchers').vouchers,
@@ -101,7 +101,7 @@ test('Geheimnisse verschlüsselt', { concurrency: 1 }, async t => {
     assert.equal(g.decrypt(roh, gs.pinContext(uid, id)), '9753');
   });
 
-  await t.test('falscher Schlüssel ergibt null, nicht Unsinn', async () => {
+  await t.test('wrong key yields null, not nonsense', async () => {
     const wert = g.encrypt('geheim', g.kontext('probe'));
     environment({ DATA_KEY: crypto.randomBytes(32).toString('base64') });
     g._forgetKey();

@@ -27,8 +27,8 @@ const CANDIDATES = [
   'routes/auth/registration.ts',
 ];
 
-test('E-Mail-Verifikation steht nur an einer Stelle', async t => {
-  await t.test('verifyEmailToken nimmt den rohen Token entgegen', () => {
+test('email verification only lives in one place', async t => {
+  await t.test('verifyEmailToken accepts the raw token', () => {
     // checkParameter statt eines Musters über den ganzen Kopf: Eine
     // Typannotation zu ergänzen ist eine Verbesserung und darf keinen Test
     // umwerfen.
@@ -40,7 +40,7 @@ test('E-Mail-Verifikation steht nur an einer Stelle', async t => {
     );
   });
 
-  await t.test('die Verifikationsabfrage steht genau einmal im Baum', () => {
+  await t.test('the verification query appears exactly once in the tree', () => {
     const treffer = CANDIDATES.filter(rel => QUERY.test(lies(rel)));
     assert.deepEqual(
       treffer,
@@ -52,7 +52,7 @@ test('E-Mail-Verifikation steht nur an einer Stelle', async t => {
     );
   });
 
-  await t.test('das Einlösen (email_verified=true) steht genau einmal im Baum', () => {
+  await t.test('redeeming (email_verified=true) appears exactly once in the tree', () => {
     const treffer = CANDIDATES.filter(rel => REDEEM.test(lies(rel)));
     assert.deepEqual(
       treffer,
@@ -61,7 +61,7 @@ test('E-Mail-Verifikation steht nur an einer Stelle', async t => {
     );
   });
 
-  await t.test('der eine verbleibende Weg ruft die gemeinsame Funktion', () => {
+  await t.test('the one remaining path calls the shared function', () => {
     // Einziger Weg ist POST /api/v1/auth/email-bestaetigen (der Knopf auf der
     // Seite hinter dem Mail-Link). GET /verify in server.ts liefert nur die
     // Seite; löste er wieder selbst ein, bestätigte schon ein Link-Scanner.

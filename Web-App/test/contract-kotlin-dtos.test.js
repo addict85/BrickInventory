@@ -26,7 +26,7 @@ const { spawnSync } = require('node:child_process');
 
 const { create } = require('../scripts/contract-kotlin-dtos.js');
 
-test('die eingecheckten Kotlin-Typen sind aus openapi.json erzeugt', () => {
+test('the checked-in Kotlin types are generated from openapi.json', () => {
   const r = spawnSync(
     process.execPath,
     [path.join(__dirname, '..', 'scripts', 'contract-kotlin-dtos.js'), '--pruefen'],
@@ -57,7 +57,7 @@ const zuordnung = (mehr = {}) => ({
 /** Die Kotlin-Datei aus einem Mini-Vertrag. @param {Record<string, any>} schemas @param {Record<string, any>} [z] @param {any} [paths] */
 const aus = (schemas, z, paths = {}) => create({ components: { schemas }, paths }, /** @type {any} */ (zuordnung(z)));
 
-test('jedes Antwortfeld hat eine Vorgabe: Leerwert, null nur mit null-Zweig', () => {
+test('every response field has a default: empty value, null only with a null branch', () => {
   const kt = aus({
     Probe: {
       type: 'object',
@@ -77,7 +77,7 @@ test('jedes Antwortfeld hat eine Vorgabe: Leerwert, null nur mit null-Zweig', ()
   assert.match(nullbar, /val name: String\? = null,/, 'Z.NULLBAR: fehlt heisst null');
 });
 
-test('ein Pflichtfeld, dessen Form keinen Leerwert hat, bekommt keine Vorgabe', () => {
+test('a required field whose shape has no empty value gets no default', () => {
   const kt = aus(
     {
       Konto: { type: 'object', properties: { id: { type: 'integer' } }, required: ['id'] },
@@ -93,7 +93,7 @@ test('ein Pflichtfeld, dessen Form keinen Leerwert hat, bekommt keine Vorgabe', 
   assert.match(kt, /val alt: Konto\? = null,/);
 });
 
-test('ein Feld mit null-Zweig ist nullbar', () => {
+test('a field with a null branch is nullable', () => {
   const kt = aus({
     Probe: {
       type: 'object',
@@ -104,7 +104,7 @@ test('ein Feld mit null-Zweig ist nullbar', () => {
   assert.match(kt, /val jahr: Int\? = null,/);
 });
 
-test('Listen, Verweise und verschachtelte Objekte bekommen ihren Typ', () => {
+test('lists, references and nested objects get their type', () => {
   const kt = aus({
     set_item: { type: 'object', properties: { n: { type: 'string' } } },
     Probe: {
@@ -121,7 +121,7 @@ test('Listen, Verweise und verschachtelte Objekte bekommen ihren Typ', () => {
   assert.match(kt, /data class ProbeSeite\(\n {4}@SerialName\("nummer"\) val nummer: Int = 0,/);
 });
 
-test('ein Fachtyp ersetzt den Text, Liste und Nullbarkeit bleiben', () => {
+test('a domain type replaces the text, list and nullability stay', () => {
   const kt = aus(
     {
       Probe: {
@@ -137,7 +137,7 @@ test('ein Fachtyp ersetzt den Text, Liste und Nullbarkeit bleiben', () => {
   assert.match(kt, /^import ch\.brickinventoryapp\.model\.domain\.Zustand$/m);
 });
 
-test('gleichnamige Formen werden eine: Felder vereint, Pflicht nur wo alle es verlangen', () => {
+test('shapes with the same name become one: fields merged, required only where all require it', () => {
   const kt = aus(
     {
       A: {
@@ -169,7 +169,7 @@ function bodySchema(properties, required = []) {
   return { content: { 'application/json': { schema: { type: 'object', properties, required } } } };
 }
 
-test('ein freiwilliges Rumpffeld geht nur gesetzt hinaus, ausser es soll null sagen', () => {
+test('an optional body field only goes out when set, unless it should say null', () => {
   const paths = {
     '/r': {
       put: {

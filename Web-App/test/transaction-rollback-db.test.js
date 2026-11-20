@@ -22,7 +22,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
 
-test('transaction() bei kaputter Verbindung', async t => {
+test('transaction() with a broken connection', async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -32,7 +32,7 @@ test('transaction() bei kaputter Verbindung', async t => {
   }
   t.after(() => db.pool.end().catch(() => {}));
 
-  await t.test('der Fehler aus fn kommt an, nicht der vom ROLLBACK', async () => {
+  await t.test('the error from fn arrives, not the one from ROLLBACK', async () => {
     await assert.rejects(
       db.transaction(async tx => {
         // Die eigene Verbindung beenden: Danach scheitert jedes ROLLBACK.
@@ -43,7 +43,7 @@ test('transaction() bei kaputter Verbindung', async t => {
     );
   });
 
-  await t.test('danach arbeitet der Pool weiter', async () => {
+  await t.test('afterwards the pool keeps working', async () => {
     for (let i = 0; i < 12; i++) assert.equal((await db.get('SELECT 1 AS n')).n, 1);
   });
 });

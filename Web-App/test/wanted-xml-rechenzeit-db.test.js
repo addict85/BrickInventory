@@ -47,7 +47,7 @@ function duration(f) {
   return { r, ms: Number(process.hrtime.bigint() - t) / 1e6 };
 }
 
-test('1. offene Tags ohne Ende kosten keine quadratische Rechenzeit', () => {
+test('1. open tags without an end cost no quadratic computing time', () => {
   // Je rund 480 KB; die alte Fassung brauchte dafür 8 bis 11 s.
   const faelle = {
     'ITEM ohne Ende': '<INVENTORY>' + '<ITEM>'.repeat(80000),
@@ -60,7 +60,7 @@ test('1. offene Tags ohne Ende kosten keine quadratische Rechenzeit', () => {
   }
 });
 
-test('2. gültige Posten bleiben richtig, auch neben einem offenen Block', () => {
+test('2. valid items stay correct, even next to an open block', () => {
   const xml =
     '<INVENTORY>\n' +
     item('3001', 5, 3) +
@@ -79,7 +79,7 @@ test('2. gültige Posten bleiben richtig, auch neben einem offenen Block', () =>
   );
 });
 
-test('3. die Route weist eine Liste über der XML-Grenze ab', async t => {
+test('3. the route rejects a list above the XML limit', async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {

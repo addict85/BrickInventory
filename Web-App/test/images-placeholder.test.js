@@ -79,7 +79,7 @@ const RESPONSES = {
 /** Alle <img> eines Bereichs, die aus Vorlagen stammen. */
 const bilder = (d, sel) => [...d.querySelectorAll(`${sel} img`)];
 
-test('alt an jedem Bild und der Platzhalter-Weg an jedem Vorlagenbild', async () => {
+test('alt on every image and the placeholder path on every template image', async () => {
   const { w, d } = await openUi(RESPONSES);
   try {
     const gesehen = [];
@@ -122,7 +122,7 @@ test('alt an jedem Bild und der Platzhalter-Weg an jedem Vorlagenbild', async ()
   }
 });
 
-test('Galerie: kaputtes Bild wird zum Platzhalter', async () => {
+test('gallery: a broken image becomes a placeholder', async () => {
   const { w, d } = await openUi(RESPONSES);
   try {
     await warte(() => d.querySelector('#gallery .sc img'));

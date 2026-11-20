@@ -17,7 +17,7 @@ const ROOT = path.join(__dirname, '..');
  */
 const ALLOWED = new Map([]);
 
-test('keine SQL-Anweisung steht in mehr als einer Datei', () => {
+test('no SQL statement is in more than one file', () => {
   // Gefunden, nicht aufgezaehlt.
   const dateien = [];
   const gehen = d => {

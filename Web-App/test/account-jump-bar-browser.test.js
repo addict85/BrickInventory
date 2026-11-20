@@ -43,7 +43,7 @@ const MASS = `(() => {
   };
 })()`;
 
-test('N5 Sprungleiste im Konto', { timeout: 240_000 }, async t => {
+test('N5 jump bar in the account', { timeout: 240_000 }, async t => {
   const app = await startApp(t, { name: `r26_${process.pid}` });
   if (app.grund) {
     t.skip(app.grund);
@@ -54,7 +54,7 @@ test('N5 Sprungleiste im Konto', { timeout: 240_000 }, async t => {
     [1280, false],
   ])
     for (const dunkel of [false, true]) {
-      await t.test(`${breite} px ${dunkel ? 'dunkel' : 'hell'}`, async () => {
+      await t.test(`${breite} px ${dunkel ? 'dark' : 'light'}`, async () => {
         await groesse(app.b, breite, telefon);
         await app.b.tab('Emulation.setEmulatedMedia', {
           features: [{ name: 'prefers-color-scheme', value: dunkel ? 'dark' : 'light' }],

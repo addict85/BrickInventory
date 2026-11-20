@@ -59,7 +59,7 @@ const dbDa = async t => {
   }
 };
 
-test('nach der ganzen Kette stehen die Nummern nur in bl_mapping', { concurrency: 1 }, async t => {
+test('after the whole chain the numbers are only in bl_mapping', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
   await db.run('DROP SCHEMA public CASCADE');
@@ -123,7 +123,7 @@ test('nach der ganzen Kette stehen die Nummern nur in bl_mapping', { concurrency
   assert.ok(idx.includes('idx_bl_zuordnung_bl'), `idx_bl_zuordnung_bl fehlt — gefunden: ${idx.join(', ')}`);
 });
 
-test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrency: 1 }, async t => {
+test('the read paths deliver the BrickLink number from the mapping', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
   await db.run('DROP SCHEMA public CASCADE');
@@ -211,7 +211,7 @@ test('die Lesewege liefern die BrickLink-Nummer aus der Zuordnung', { concurrenc
   );
 });
 
-test('niemand schreibt eine BrickLink-Nummer mehr an eine Bestandszeile', () => {
+test('nobody writes a BrickLink number to an inventory row any more', () => {
   // Nur der QUELLTEXT, und nur die SCHREIBseite. Die Leseseite prüft die
   // Datenbank: Nach Migration 0037 gibt es die Spalten nicht, jede verbliebene
   // Lesestelle ist ein harter Fehler — und genau deshalb laufen die Lesewege

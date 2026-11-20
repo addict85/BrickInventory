@@ -36,7 +36,7 @@ const geladen =
   teil => `performance.getEntriesByType('resource').map(e => e.name).filter(n => n.includes(${JSON.stringify(teil)}))
   .map(n => new URL(n).pathname)`;
 
-test('Menü, PDF.js, Designs, Leerzustände, Anmeldung', { timeout: 300_000 }, async t => {
+test('menu, PDF.js, themes, empty states, login', { timeout: 300_000 }, async t => {
   const a = await startApp(t, {
     name: `uxr_${process.pid}`,
     bestand: patternCollection,
@@ -59,7 +59,7 @@ test('Menü, PDF.js, Designs, Leerzustände, Anmeldung', { timeout: 300_000 }, a
     `document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`,
   );
 
-  await t.test('Menü: Gruppen ohne axe-Fund', async () => {
+  await t.test('menu: groups without an axe finding', async () => {
     await b.auswerten(`document.getElementById('btn-umenu').click(); true`);
     await bis(`document.getElementById('umenu-pop').style.display === 'block'`, 'Menü offen');
     const funde = await b.auswerten(`(async () => {
@@ -74,7 +74,7 @@ test('Menü, PDF.js, Designs, Leerzustände, Anmeldung', { timeout: 300_000 }, a
     await b.auswerten(`document.getElementById('btn-umenu').click(); true`);
   });
 
-  await t.test('PDF.js erst mit dem ersten PDF', async () => {
+  await t.test('PDF.js only with the first PDF', async () => {
     assert.deepEqual(await b.auswerten(geladen('/vendor/pdfjs/')), [], 'beim Start geladen');
     await b.auswerten(
       `document.querySelector('.ntab[data-tab="gallery"]').click(); document.querySelector('#gallery [data-click="openModal"]').click(); true`,
@@ -91,13 +91,13 @@ test('Menü, PDF.js, Designs, Leerzustände, Anmeldung', { timeout: 300_000 }, a
       document.querySelector('#set-modal [data-click="closeModal"]')?.click(); true`);
   });
 
-  await t.test('Finanzen ohne Positionen: kein Suchfeld', async () => {
+  await t.test('finances without positions: no search field', async () => {
     await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
     await bis(`document.getElementById('tab-finance').classList.contains('finanzen-leer')`, 'Finanzen leer');
     assert.equal(await b.auswerten(`document.getElementById('fin-suche').getClientRects().length`), 0);
   });
 
-  await t.test('Merkliste am Telefon: zugeklappt nicht höher als der Titel', async () => {
+  await t.test('wishlist on the phone: collapsed not taller than the title', async () => {
     await b.tab('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
     await b.auswerten(
       `document.querySelector('.ntab[data-tab="wanted"]').click(); document.getElementById('mk-kasten').open = false; true`,
@@ -110,7 +110,7 @@ test('Menü, PDF.js, Designs, Leerzustände, Anmeldung', { timeout: 300_000 }, a
     await b.tab('Emulation.clearDeviceMetricsOverride');
   });
 
-  await t.test('Designs: nur das aktive, Wechsel ohne Neuladen', async () => {
+  await t.test('themes: only the active one, switching without reloading', async () => {
     const dateien = d => ({ classic: [], hochglanz: ['noppe', 'hochglanz'] })[d] ?? [d];
     const start = await b.auswerten(`document.documentElement.dataset.theme`);
     const erwartet = dateien(start).map(d => `/themes/${d}.css`);
@@ -143,7 +143,7 @@ test('Menü, PDF.js, Designs, Leerzustände, Anmeldung', { timeout: 300_000 }, a
     for (const d of ['brick', 'werkbank', 'farbfaecher']) assert.ok(place(d) > vorlage, `${d} frei`);
   });
 
-  await t.test('Anmeldung: eine h1, nicht das Logo', async () => {
+  await t.test('login: one h1, not the logo', async () => {
     // Abmelden lädt die Seite neu; die Maske spricht dann die Sprache des Browsers.
     await b.tab('Network.setUserAgentOverride', {
       userAgent: await b.auswerten('navigator.userAgent'),

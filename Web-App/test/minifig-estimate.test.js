@@ -19,7 +19,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
-test('Minifiguren-Preis: BrickLink zuerst, sonst aus den Teilen', { concurrency: 1 }, async t => {
+test('minifigure price: BrickLink first, otherwise from the parts', { concurrency: 1 }, async t => {
   const db = testData();
   if (!(await dataOrSkip(t, _req))) return;
   const { figMarketPriceWithOrigin } = _req('src/finances/marketPrice.js');
@@ -45,7 +45,7 @@ test('Minifiguren-Preis: BrickLink zuerst, sonst aus den Teilen', { concurrency:
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1,'currency','CHF')`, [uid]);
 
-  await t.test('die eigene Nummer wird bei BrickLink versucht', async () => {
+  await t.test('the own number is tried at BrickLink', async () => {
     await db.run(
       `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price) VALUES ($1,'N','CHF',7)`,
       [FA],
@@ -62,7 +62,7 @@ test('Minifiguren-Preis: BrickLink zuerst, sonst aus den Teilen', { concurrency:
     assert.deepEqual({ preis: r.preis, geschaetzt: r.geschaetzt }, { preis: 7, geschaetzt: false });
   });
 
-  await t.test('ohne BrickLink-Preis wird aus den Teilen geschätzt, im Zustand der Anfrage', async () => {
+  await t.test('without a BrickLink price it is estimated from the parts, in the requested condition', async () => {
     await db.run(`INSERT INTO minifig_parts_cache (fig_number, data) VALUES ($1,$2)`, [
       FB,
       JSON.stringify([
@@ -85,7 +85,7 @@ test('Minifiguren-Preis: BrickLink zuerst, sonst aus den Teilen', { concurrency:
     assert.equal(gebraucht.preis, 3, 'im Zustand der Anfrage');
   });
 
-  await t.test('die Schätzung wird zwischengespeichert und fortgeschrieben', async () => {
+  await t.test('the estimate is cached and recorded', async () => {
     const z = await db.all(
       `SELECT condition, avg_price::float AS preis, estimated AS geschaetzt FROM minifig_price_cache
                              WHERE fig_number = $1 ORDER BY condition`,
@@ -105,7 +105,7 @@ test('Minifiguren-Preis: BrickLink zuerst, sonst aus den Teilen', { concurrency:
     assert.equal((await figMarketPriceWithOrigin(FB, uid, null, 'N')).preis, 2);
   });
 
-  await t.test('ohne ein bepreistes Teil gibt es keinen Preis, nicht 0', async () => {
+  await t.test('without a priced part there is no price, not 0', async () => {
     await db.run(`INSERT INTO minifig_parts_cache (fig_number, data) VALUES ($1,$2)`, [
       FC,
       JSON.stringify([{ part_num: TB, color_id: 777, quantity: 3 }]),

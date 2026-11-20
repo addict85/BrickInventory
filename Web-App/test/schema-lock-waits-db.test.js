@@ -26,7 +26,7 @@ const db = testData();
 const { LOCKS } = _req('src/infra/lockNamespaces.js');
 const { Client } = require(path.join(__dirname, '..', 'node_modules', 'pg'));
 
-test('Schema-Sperre: Warten dauert länger als statement_timeout', async t => {
+test('schema lock: waiting takes longer than statement_timeout', async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const fremder = new Client({ connectionString: process.env.DATABASE_URL });
   await fremder.connect();
@@ -36,7 +36,7 @@ test('Schema-Sperre: Warten dauert länger als statement_timeout', async t => {
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('wartet länger als statement_timeout', async () => {
+  await t.test('waits longer than statement_timeout', async () => {
     await fremder.query('SELECT pg_advisory_lock($1)', [LOCKS.SCHEMA_INIT]);
     /** @type {any} */
     let ergebnis = 'offen';
@@ -65,7 +65,7 @@ test('Schema-Sperre: Warten dauert länger als statement_timeout', async t => {
     assert.equal(ergebnis, 'fertig', String(ergebnis?.message ?? ergebnis));
   });
 
-  await t.test('danach gilt das statement_timeout der Pool-Verbindung wieder', async () => {
+  await t.test('afterwards the statement_timeout of the pool connection applies again', async () => {
     const c = await db.pool.connect();
     try {
       const { rows } = await c.query('SHOW statement_timeout');

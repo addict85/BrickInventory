@@ -84,7 +84,7 @@ function signatur(d) {
   return JSON.stringify([{ critical: { image: { 'docker-manifest-digest': d } } }]);
 }
 
-test('geprüft wird gegen docker-publish.yml auf main, der Digest landet in .env', t => {
+test('checking happens against docker-publish.yml on main, the digest ends up in .env', t => {
   const r = lauf(t, { cosignResponse: signatur(D1) });
   assert.equal(r.code, 0, r.log);
   const check = repo =>
@@ -104,7 +104,7 @@ test('geprüft wird gegen docker-publish.yml auf main, der Digest landet in .env
   assert.match(r.docker, /^docker compose pull schluessel daten-rechte migration app jobs caddy-rechte caddy$/m);
 });
 
-test('scheitert die Prüfung des Caddy-Images, ändert sich auch BRICK_IMAGE nicht', t => {
+test('if the check of the Caddy image fails, BRICK_IMAGE does not change either', t => {
   const vorher = 'BRICK_HOST=nas.lan\nBRICK_IMAGE=alt\nCADDY_IMAGE=altcaddy\n';
   const r = lauf(t, { env: vorher, cosignResponse: signatur(D1), caddyCode: 1 });
   assert.equal(r.code, 1);
@@ -113,7 +113,7 @@ test('scheitert die Prüfung des Caddy-Images, ändert sich auch BRICK_IMAGE nic
   assert.equal(r.docker, '', 'kein pull');
 });
 
-test('eine gescheiterte Prüfung ändert nichts', t => {
+test('a failed check changes nothing', t => {
   const vorher = 'BRICK_HOST=nas.lan\nBRICK_IMAGE=alt\n';
   const r = lauf(t, { env: vorher, cosignResponse: signatur(D1), cosignCode: 1 });
   assert.equal(r.code, 1);
@@ -122,7 +122,7 @@ test('eine gescheiterte Prüfung ändert nichts', t => {
   assert.equal(r.docker, '', 'kein pull');
 });
 
-test('zwei verschiedene Digests oder keiner: Abbruch', t => {
+test('two different digests or none: abort', t => {
   for (const antwort of [`${signatur(D1)}\n${signatur(D2)}`, '[]']) {
     const r = lauf(t, { cosignResponse: antwort });
     assert.equal(r.code, 1, r.log);
@@ -131,7 +131,7 @@ test('zwei verschiedene Digests oder keiner: Abbruch', t => {
   }
 });
 
-test('ohne cosign: Abbruch mit Hinweis', t => {
+test('without cosign: abort with a hint', t => {
   const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'image-pruefen-'));
   t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
   // Nur die Werkzeuge bis zur Abfrage, damit ein installiertes cosign nicht zählt.
@@ -148,7 +148,7 @@ test('ohne cosign: Abbruch mit Hinweis', t => {
   assert.match(r.stderr, /cosign fehlt/);
 });
 
-test('ohne BRICK_IMAGE und CADDY_IMAGE startet compose nicht, mit Digest zieht jeder Dienst sie', t => {
+test('without BRICK_IMAGE and CADDY_IMAGE compose does not start, with digest every service pulls them', t => {
   const call = env =>
     spawnSync('docker', ['compose', '-f', path.join(ROOT, 'compose.yaml'), 'config', '--format', 'json'], {
       encoding: 'utf8',
@@ -163,7 +163,7 @@ test('ohne BRICK_IMAGE und CADDY_IMAGE startet compose nicht, mit Digest zieht j
   const probe = call({ BRICK_IMAGE: 'x', CADDY_IMAGE: 'y' });
   if (probe.error || (probe.status !== 0 && !/_IMAGE/.test(probe.stderr))) {
     if (process.env.CI) assert.fail(`docker compose im CI-Lauf: ${probe.error?.message || probe.stderr}`);
-    t.skip('kein docker compose');
+    t.skip('no docker compose');
     return;
   }
   const ohne = call({ CADDY_IMAGE: 'y' });
@@ -188,7 +188,7 @@ test('ohne BRICK_IMAGE und CADDY_IMAGE startet compose nicht, mit Digest zieht j
   );
 });
 
-test('ein Update legt das neue Geheimnis der Systemrolle an, die übrigen bleiben', t => {
+test('an update creates the new secret of the system role, the others stay', t => {
   const alt = {
     db_password: 'su',
     db_app_password: 'app',
@@ -204,7 +204,7 @@ test('ein Update legt das neue Geheimnis der Systemrolle an, die übrigen bleibe
   assert.equal(ohne.hatSecrets, false, 'ohne ./geheimnisse legt das Update keine an');
 });
 
-test('… auch das der Web-Systemrolle, wenn nur es fehlt', t => {
+test('… also that of the web system role, if only it is missing', t => {
   const alt = {
     db_password: 'su',
     db_app_password: 'app',

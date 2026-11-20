@@ -30,7 +30,7 @@ const SET_PRICE = 37.5,
   PART_PRICE = 0.25,
   MINIFIG_PRICE = 8;
 
-test('avg_price 0 neben einem Mengenschnitt: überall derselbe Wert', { concurrency: 1 }, async t => {
+test('avg_price 0 next to a quantity average: the same value everywhere', { concurrency: 1 }, async t => {
   const db = await accessOrSkip(t, _req);
   if (!db) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -71,7 +71,7 @@ test('avg_price 0 neben einem Mengenschnitt: überall derselbe Wert', { concurre
 
   const f = _req('src/finances/financeCalc.js');
 
-  await t.test('Bewertung', async () => {
+  await t.test('valuation', async () => {
     const sets = await f.valueSets(uid, [uid]);
     const s = sets.sets.find(z => z.set_number === SET);
     assert.equal(s.avg_price, SET_PRICE);
@@ -98,7 +98,7 @@ test('avg_price 0 neben einem Mengenschnitt: überall derselbe Wert', { concurre
     assert.equal(kurve.points.at(-1).value, 75);
   });
 
-  await t.test('Preisverlauf', async () => {
+  await t.test('price history', async () => {
     const pv = _req('src/finances/priceHistory.js');
     assert.equal((await pv.priceHistorySet([uid], SET, 'CHF')).by_condition.N.market_price, SET_PRICE);
     assert.equal((await pv.priceHistoryPart([uid], TEIL, FARBE, 'CHF')).by_condition.N.market_price, PART_PRICE);

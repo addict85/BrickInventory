@@ -40,7 +40,7 @@ async function dbReachable() {
   }
 }
 
-test('Teile-Rückfallebene für fremde Sets', async t => {
+test('parts fallback for foreign sets', async t => {
   if (!(await dbReachable())) {
     keineDb(t);
     return;
@@ -63,7 +63,7 @@ test('Teile-Rückfallebene für fremde Sets', async t => {
 
   const { partsQuery } = require('./helpers/sources').handlerModule(_req);
 
-  await t.test('ohne eigene Teile kommt die Liste aus dem CSV-Bestand', async () => {
+  await t.test('without own parts the list comes from the CSV stock', async () => {
     await db.run(`INSERT INTO rb_inventories (id, set_num, version) VALUES (1,'10280-1',1)`);
     await db.run(
       `INSERT INTO rb_parts (part_num, name, part_img_url) VALUES ('3001','Brick 2x4','https://example.invalid/3001.png')`,
@@ -78,7 +78,7 @@ test('Teile-Rückfallebene für fremde Sets', async t => {
     assert.equal(r.parts[0].part_number, '3001');
   });
 
-  await t.test('ohne CSV-Eintrag und ohne API-Schlüssel gibt es eine leere Liste statt eines Fehlers', async () => {
+  await t.test('without a CSV entry and without an API key there is an empty list instead of an error', async () => {
     // Der frühere Absturz lag genau hier: Die API-Rückfallebene rief einen
     // Namen auf, den das Teilemodul nie exportiert hat — TypeError statt
     // Antwort. Ohne Schlüssel wird der Zweig übersprungen; DASS er keinen
@@ -92,7 +92,7 @@ test.after(() => db.pool.end().catch(() => {}));
 
 // ── Regeln ──────────────────────────────────────────────────────────────────
 
-test('Bilddownloads sind nach oben begrenzt', () => {
+test('image downloads are capped', () => {
   const src = quelle('src/images/setImages.ts');
   const fn = src.slice(src.indexOf('async function setBildHerunterladen'));
   const ende = fn.indexOf('\n}\n');
@@ -112,7 +112,7 @@ test('Bilddownloads sind nach oben begrenzt', () => {
   assert.match(body, /MAX_BYTES/, 'kein Grössendeckel — eine beliebig grosse Antwort landet komplett im Speicher');
 });
 
-test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
+test('write endpoints without login carry a throttle', () => {
   // routes/auth.ts ist der einzige Router ohne durchgehendes requireLogin —
   // hier stehen die Endpunkte, die naturgemäss vor der Anmeldung erreichbar
   // sind. Jeder schreibende darf entweder eine Anmeldung verlangen (per
@@ -136,7 +136,7 @@ test('Schreib-Endpunkte ohne Anmeldung tragen eine Drossel', () => {
   assert.deepEqual(offen, [], `weder Anmeldung noch Drossel: ${offen.join(', ')}`);
 });
 
-test('die Barcode-Suche zählt ihre Rebrickable-Aufrufe', () => {
+test('the barcode search counts its Rebrickable calls', () => {
   // Die Barcode-Suche (src/sets/barcode.ts) fragt Rebrickable nur über
   // rebrickableJson() — und das zählt und drosselt.
   const dienst = quelle('src/sets/barcode.ts');
@@ -151,7 +151,7 @@ test('die Barcode-Suche zählt ihre Rebrickable-Aufrufe', () => {
   assert.match(rbJson, /waitForSlot/, 'rebrickableJson umgeht die Drossel');
 });
 
-test('CSV-Export entschärft Formeln, der eigene Import macht es rückgängig', () => {
+test('CSV export defuses formulas, the own import reverses it', () => {
   const { csvField, defuse, defusingUndo, csvRowsClean } = _reqCsv('src/infra/csvExport.js');
 
   // Ein Feld, das Excel beim Öffnen ausführen würde.
@@ -188,7 +188,7 @@ test('CSV-Export entschärft Formeln, der eigene Import macht es rückgängig', 
  * „Rot;=1+1 bleibt eine Zelle“; B  FORMULA_START ohne Leerraum und volle
  * Breite → rot: „ =1+1 …“.
  */
-test('CSV-Export: Trennzeichen im Feld werden gequotet, Formeln auch nach Leerraum entschärft', () => {
+test('CSV export: separators in the field are quoted, formulas also defused after whitespace', () => {
   const { csvField, toCsv, defuse, defusingUndo, csvRowsFromRequest } = _reqCsv('src/infra/csvExport.js');
   assert.equal(csvField('Rot;=1+1'), '"Rot;=1+1"', 'Rot;=1+1 bleibt eine Zelle');
   for (const t of ['a\rb', 'a\tb', 'a\nb', 'a,b', 'a"b']) assert.equal(csvField(t)[0], '"', JSON.stringify(t));
@@ -203,7 +203,7 @@ test('CSV-Export: Trennzeichen im Feld werden gequotet, Formeln auch nach Leerra
   assert.ok(zeile.startsWith('"Rot;=1+1\r=2",') && zeile.includes("' @SUMME(1)"), JSON.stringify(zeile));
 });
 
-test('alle drei CSV-Importwege entschärfen zurück', () => {
+test('all three CSV import paths defuse back', () => {
   // Die Zeilenleser der Importe laufen hier selbst: der der Sets und der
   // gemeinsame für Teile und Figuren (csvRowsFromRequest). Dass beide
   // Importe ihn benutzen, zeigt test/csv-round-run-db.test.js.
@@ -223,7 +223,7 @@ test('alle drei CSV-Importwege entschärfen zurück', () => {
   );
 });
 
-test('der CSV-Fortschrittsstrom überlebt Gegendruck beim ersten Schreiben', async t => {
+test('the CSV progress stream survives back pressure on the first write', async t => {
   if (!(await dbReachable())) {
     keineDb(t);
     return;

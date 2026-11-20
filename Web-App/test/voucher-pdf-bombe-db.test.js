@@ -77,20 +77,20 @@ function duration(f) {
 // Über der Grenze je Strom, unter der Summe: Fall 1 prüft die Grenze je Strom.
 const BOMBE = pdfFrom([zlib.deflateSync(Buffer.alloc(15 * 1024 * 1024))]);
 
-test('1. ein Strom, der über die Grenze entpackt, wird abgewiesen', () => {
+test('1. a stream that unpacks beyond the limit is rejected', () => {
   assert.ok(BOMBE.length < 100 * 1024, `Vorbedingung: Bombe wiegt ${BOMBE.length} Bytes`);
   const { fehler } = duration(() => pdfText(BOMBE));
   assert.ok(fehler instanceof PdfTooLarge, `Erwartet PdfTooLarge, bekam ${fehler}`);
 });
 
-test('2. viele Ströme knapp unter der Grenze zählen zusammen', () => {
+test('2. many streams just below the limit add up', () => {
   const fast = zlib.deflateSync(Buffer.alloc(STREAM_MAX_BYTES - 1024));
   const n = Math.ceil(UNPACKED_MAX_BYTES / STREAM_MAX_BYTES) + 1;
   const { fehler } = duration(() => pdfText(pdfFrom(Array(n).fill(fast))));
   assert.ok(fehler instanceof PdfTooLarge, `${n} Ströme: erwartet PdfTooLarge, bekam ${fehler}`);
 });
 
-test('3. mehr Ströme als erlaubt werden abgewiesen', () => {
+test('3. more streams than allowed are rejected', () => {
   const klein = zlib.deflateSync(Buffer.from('BT (x) Tj ET'));
   const { fehler } = duration(() => pdfText(pdfFrom(Array(STREAMS_MAX + 1).fill(klein))));
   assert.ok(fehler instanceof PdfTooLarge, `Erwartet PdfTooLarge, bekam ${fehler}`);
@@ -101,7 +101,7 @@ test('3. mehr Ströme als erlaubt werden abgewiesen', () => {
   );
 });
 
-test('4. offene Anfänge kosten keine quadratische Rechenzeit', () => {
+test('4. open beginnings cost no quadratic computing time', () => {
   const n = 80000;
   const faelle = {
     'stream ohne Ende': Buffer.from('%PDF-1.4\n' + 'stream\n'.repeat(n)),
@@ -116,7 +116,7 @@ test('4. offene Anfänge kosten keine quadratische Rechenzeit', () => {
   }
 });
 
-test('5. gültige Textoperatoren werden weiter gelesen', () => {
+test('5. valid text operators are still read', () => {
   const inhalt =
     'BT /F1 14 Tf 60 700 Td [(Ihre LEGO-Geschenkkarte im Wert von )-20(400 CHF:)] TJ\n' +
     '0 -20 Td (5045076374450011166) Tj <50494E3A2035323235> Tj\n' +
@@ -162,7 +162,7 @@ async function twoFonts(inhalt) {
   return Buffer.from(await doc.save());
 }
 
-test('6. beim Ersetzen zählt die letzte Schrift VOR dem Operator', async () => {
+test('6. when replacing, the last font BEFORE the operator counts', async () => {
   const { replaceAmount } = _req('src/vouchers/pdfExport.js');
   const rest = 'BT /F1 12 Tf (5045076374450011166) Tj (PIN: 5225) Tj ET\n';
   const unsicher = await replaceAmount(
@@ -180,7 +180,7 @@ test('6. beim Ersetzen zählt die letzte Schrift VOR dem Operator', async () => 
   assert.equal(valuesFromPdf(sicher.data).amount, 250);
 });
 
-test('Gutschein-Upload: Bombe und Übergrösse kommen nicht in die Ablage', { concurrency: 1 }, async t => {
+test('voucher upload: bomb and oversize do not get into storage', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -214,14 +214,14 @@ test('Gutschein-Upload: Bombe und Übergrösse kommen nicht in die Ablage', { co
     return { status: r.status, body: await r.json().catch(() => ({})), zeile };
   }
 
-  await t.test('7. eine Entpackbombe wird auch mit getippten Werten abgewiesen', async () => {
+  await t.test('7. a decompression bomb is rejected even with typed-in values', async () => {
     const r = await hochladen(BOMBE, '5045076374450099991');
     assert.equal(r.status, 422, `Status ${r.status}: ${JSON.stringify(r.body)}`);
     assert.equal(r.body.code, 'pdf_unlesbar');
     assert.equal(r.zeile, undefined, 'Der Gutschein wurde trotzdem angelegt');
   });
 
-  await t.test('8. ein PDF über 2 MB wird nicht angenommen', async () => {
+  await t.test('8. a PDF over 2 MB is not accepted', async () => {
     const gross = Buffer.concat([
       Buffer.from('%PDF-1.4\n%'),
       Buffer.alloc(2.5 * 1024 * 1024, 0x41),

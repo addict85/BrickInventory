@@ -30,7 +30,7 @@ async function erreichbar() {
   }
 }
 
-test('Alles-Loeschen fasst die verknuepften Konten nicht an', async t => {
+test('delete everything does not touch the linked accounts', async t => {
   if (!(await erreichbar())) {
     keineDb(t);
     return;
@@ -105,7 +105,7 @@ test('Alles-Loeschen fasst die verknuepften Konten nicht an', async t => {
   assert.equal(myParts.c, 0, 'Das eigene manuelle Teil muss weg sein');
 });
 
-test('accounts kann das Loesch-Blickfeld nur einschraenken, nie erweitern', () => {
+test('accounts can only narrow the delete scope, never widen it', () => {
   // Ein Blickfeld-Parameter, der etwas ÖFFNEN kann, wäre ein Zugriffsweg statt
   // einer Sicherung. Der Dienst schneidet deshalb gegen schreibbereich(); die
   // Route gibt nur die Sicht weiter (Verhalten: scope-services-db.test.js).
@@ -124,7 +124,7 @@ test('accounts kann das Loesch-Blickfeld nur einschraenken, nie erweitern', () =
   );
 });
 
-test('der Knopf überlässt die Auswahl dem Server', () => {
+test('the button leaves the choice to the server', () => {
   // Früher listete der Knopf selbst und löschte Nummer für Nummer — mit der
   // Falle, dass ein fehlendes accounts=own den Haushalt mitlöschte. Jetzt
   // entscheidet der Server, und zwar nur über das eigene Konto.

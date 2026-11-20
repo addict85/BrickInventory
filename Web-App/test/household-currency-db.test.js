@@ -28,7 +28,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-test('Haushaltswährung', { concurrency: 1 }, async t => {
+test('household currency', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const namen = ['eltern', 'kind', 'enkel', 'fremd', 'carl', 'dora', 'erik', 'cleo'].map(n => `hw-${n}-${process.pid}`);
@@ -69,7 +69,7 @@ test('Haushaltswährung', { concurrency: 1 }, async t => {
 
   await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'waehrung|%'");
 
-  await t.test('der Wechsel des Hauptkontos gilt im ganzen Haushalt', async () => {
+  await t.test("the main account's change applies in the whole household", async () => {
     await setUserSetting(ids[0], 'currency', 'CHF');
     assert.deepEqual(
       (await currencies()).slice(0, 4),
@@ -78,7 +78,7 @@ test('Haushaltswährung', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('ein Unterkonto ändert die Haushaltswährung nicht', async () => {
+  await t.test('a sub-account does not change the household currency', async () => {
     for (const unter of [ids[1], ids[2]]) {
       await assert.rejects(
         setUserSetting(unter, 'currency', 'USD'),
@@ -93,12 +93,12 @@ test('Haushaltswährung', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('der Wechsel eines Kontos ohne Haushalt betrifft nur es selbst', async () => {
+  await t.test('the change of an account without a household only affects itself', async () => {
     await setUserSetting(ids[3], 'currency', 'USD');
     assert.deepEqual((await currencies()).slice(0, 4), ['CHF', 'CHF', 'CHF', 'USD']);
   });
 
-  await t.test('ein geteiltes Unterkonto zieht kein fremdes Hauptkonto mit', async () => {
+  await t.test('a shared sub-account does not pull a foreign main account along', async () => {
     // Ungerichtet erreichte carl über dora auch erik — einen fremden Haushalt.
     // Dora mitziehen hiesse eriks Haushalt zwei Währungen geben: abgelehnt.
     await assert.rejects(
@@ -117,7 +117,7 @@ test('Haushaltswährung', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('höchstens fünf Wechsel je Stunde', async () => {
+  await t.test('at most five changes per hour', async () => {
     // Der Wechsel oben war der erste dieses Kontos.
     for (const w of ['GBP', 'EUR', 'CHF', 'SEK']) await setUserSetting(ids[3], 'currency', w);
     await assert.rejects(

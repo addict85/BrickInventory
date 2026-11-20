@@ -53,7 +53,7 @@ function schluessel(aktuell, previous) {
   G._forgetKey();
 }
 
-test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
+test('rotate the data key', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const NAME = `wechsel_${process.pid}`;
@@ -114,7 +114,7 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
 
   // ── Start mit B und dem vorigen A ────────────────────────────────────────
   schluessel(B, A);
-  await t.test('ein Wiederherstellungscode von vor dem Wechsel gilt, solange A bereitsteht', async () => {
+  await t.test('a recovery code from before the rotation applies as long as A is available', async () => {
     assert.equal(await zf.checkCode(uid, codes[0]), 'wiederherstellung');
   });
   const warn = console.warn;
@@ -126,13 +126,13 @@ test('Datenschlüssel wechseln', { concurrency: 1 }, async t => {
     console.warn = warn;
   }
 
-  await t.test('B allein liest alles, der Suchwert der Nummer passt zu B', async () => {
+  await t.test('B alone reads everything, the search value of the number matches B', async () => {
     schluessel(B, null);
     assert.deepEqual(await readEverything(), KLAR);
     assert.ok(geschrieben >= 4, `nur ${geschrieben} Werte neu geschrieben`);
   });
 
-  await t.test('A allein liest nichts mehr', async () => {
+  await t.test('A alone reads nothing any more', async () => {
     schluessel(A, null);
     const warn2 = console.warn;
     console.warn = () => {};

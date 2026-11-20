@@ -59,7 +59,7 @@ https.get = (_url, _opts, cb) => {
   return req;
 };
 
-test('Preisverlauf je Tag und markierte Schätzungen', { concurrency: 1 }, async t => {
+test('price history per day and marked estimates', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const ID = String(process.pid);
@@ -89,7 +89,7 @@ test('Preisverlauf je Tag und markierte Schätzungen', { concurrency: 1 }, async
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('ein zweiter Teilepunkt am selben Tag bleibt aus', async () => {
+  await t.test('a second part point on the same day stays out', async () => {
     const neu = p =>
       db.run(
         `INSERT INTO part_price_history (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
@@ -105,7 +105,7 @@ test('Preisverlauf je Tag und markierte Schätzungen', { concurrency: 1 }, async
     );
   });
 
-  await t.test('die Migration räumt doppelte Tagespunkte ab und behält den ersten', async () => {
+  await t.test('the migration clears duplicate daily points and keeps the first', async () => {
     const sql = fs.readFileSync(path.join(ROOT, 'db/migrations/0056-preisverlauf-je-tag.sql'), 'utf8');
     const c = await db.pool.connect();
     try {
@@ -152,7 +152,7 @@ test('Preisverlauf je Tag und markierte Schätzungen', { concurrency: 1 }, async
     }
   });
 
-  await t.test('eine Schätzung im Cache gilt nicht als BrickLink-Preis', async () => {
+  await t.test('an estimate in the cache does not count as a BrickLink price', async () => {
     await db.run(
       `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, estimated, coverage)
       VALUES ($1, 'N', 'EUR', 5, 5, TRUE, 0.5)`,
@@ -169,7 +169,7 @@ test('Preisverlauf je Tag und markierte Schätzungen', { concurrency: 1 }, async
     assert.equal(zeile.abdeckung, null);
   });
 
-  await t.test('die Schätzung trägt ihre Abdeckung', async () => {
+  await t.test('the estimate carries its coverage', async () => {
     await db.run(
       `INSERT INTO minifig_price_cache (fig_number, condition, currency_code, avg_price, qty_avg_price, estimated, coverage)
       VALUES ($1, 'N', 'EUR', 8, 8, TRUE, 0.75)`,

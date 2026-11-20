@@ -416,7 +416,7 @@ async function sessionUnresolved(_t, a) {
   }
 }
 
-test('Sitzung, Monitor, Fehlerfang, Merkliste', { concurrency: 1, timeout: 400_000 }, async t => {
+test('session, monitor, error catching, wishlist', { concurrency: 1, timeout: 400_000 }, async t => {
   const a = await startApp(t, { name: `r21_pruefer_${process.pid}`, bestand: patternHousehold });
   if (a.grund) {
     t.skip(a.grund);

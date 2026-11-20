@@ -40,7 +40,7 @@ async function longestDelay(work) {
   return h.max / 1e6;
 }
 
-test('rechnet im Worker und richtig', async t => {
+test('computes in the worker and correctly', async t => {
   const pool = newPool(2);
   t.after(() => pool.beende());
   const hash = await pool.hash('Geheim-2026', 4);
@@ -51,7 +51,7 @@ test('rechnet im Worker und richtig', async t => {
   assert.deepEqual(pool.stand(), { worker: 1, frei: 1, wartend: 0, hauptthread: false }, 'rechnet im Worker …');
 });
 
-test('der Hauptthread bleibt ansprechbar', async t => {
+test('the main thread stays responsive', async t => {
   const pool = newPool(2);
   t.after(() => pool.beende());
   const hash = bcrypt.hashSync('Geheim-2026', 12);
@@ -66,13 +66,13 @@ test('der Hauptthread bleibt ansprechbar', async t => {
   assert.ok(imPool < imHauptthread / 2, `der Hauptthread bleibt ansprechbar: ${imPool} ms gegen ${imHauptthread} ms`);
 });
 
-test('ohne Arbeiterdatei rechnet der Hauptthread', async () => {
+test('without a worker file the main thread computes', async () => {
   const pool = newPool(2, path.join(os.tmpdir(), `bcrypt-arbeiter-${process.pid}-fehlt.js`));
   assert.equal(await pool.vergleiche('a', bcrypt.hashSync('a', 4)), true);
   assert.equal(pool.stand().hauptthread, true);
 });
 
-test('ein untätiger Arbeiter hält den Prozess nicht am Leben', () => {
+test('an idle worker does not keep the process alive', () => {
   const code = `const { newPool } = require(${JSON.stringify(path.join(S.DIST, 'src/account/bcryptPool.js'))});
     newPool(1).hash('x', 4).then((h) => console.log(h.length));`;
   const r = spawnSync(process.execPath, ['-e', code], { encoding: 'utf8', timeout: 15_000 });
@@ -80,7 +80,7 @@ test('ein untätiger Arbeiter hält den Prozess nicht am Leben', () => {
   assert.equal(r.stdout.trim(), '60', r.stderr);
 });
 
-test('die Anmeldung prüft alte bcrypt-Hashes über den Pool', async () => {
+test('login checks old bcrypt hashes via the pool', async () => {
   const { bcryptPool } = _req('src/account/bcryptLimit.js');
   const { passwordFits } = _req('src/account/passwordHash.js');
   assert.equal(await passwordFits('Geheim-2026', bcrypt.hashSync('Geheim-2026', 4)), true);
@@ -88,7 +88,7 @@ test('die Anmeldung prüft alte bcrypt-Hashes über den Pool', async () => {
   await bcryptPool.beende();
 });
 
-test('ein untätiger Arbeiter endet nach der Leerlaufzeit', async t => {
+test('an idle worker ends after the idle time', async t => {
   const pool = newPool(2, undefined, 200);
   t.after(() => pool.beende());
   await pool.hash('x', 4);
@@ -99,7 +99,7 @@ test('ein untätiger Arbeiter endet nach der Leerlaufzeit', async t => {
   assert.deepEqual(pool.stand(), { worker: 1, frei: 1, wartend: 0, hauptthread: false });
 });
 
-test('die Zahl der Arbeiter ist gedeckelt', () => {
+test('the number of workers is capped', () => {
   const { bcryptArbeiter, quotaCores } = _req('src/account/bcryptLimit.js');
   const { ladeKonfig } = _req('src/infra/config.js');
   assert.equal(bcryptArbeiter(null, 64, null), 4, '64 Kerne ohne Kontingent');

@@ -26,7 +26,7 @@ const { testServer } = require('./helpers/server');
 const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
-test('der geänderte Kaufpreis erreicht die Kachel — Webapp UND App', { concurrency: 1 }, async t => {
+test('the changed purchase price reaches the tile — web app AND app', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const USER = `spiegel-${process.pid}`;

@@ -66,7 +66,7 @@ async function comparisonVersion(setNumbers, setQty, currency, condition, dateFi
   return punkte;
 }
 
-test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurrency: 1 }, async t => {
+test('the portfolio curve computes the same as the reference version', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -166,7 +166,7 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   };
 
   for (const period of ['week', 'month', 'year', 'max']) {
-    await t.test(`Zeitraum ${period}: gleiche Punkte wie die Vergleichsfassung`, async () => {
+    await t.test(`period ${period}: same points as the reference version`, async () => {
       const alt = await comparisonVersion(setNumbers, setQty, 'CHF', 'N', filter[period]);
       const neu = await portfolioVerlauf(u1, [u1, u2], period, db, getSetting);
 
@@ -184,7 +184,7 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
     });
   }
 
-  await t.test('ohne Preisverlauf bleibt die Kurve leer statt zu stürzen', async () => {
+  await t.test('without price history the curve stays empty instead of crashing', async () => {
     await db.run('DELETE FROM price_history');
     await db.run('DELETE FROM price_cache');
     const r = await portfolioVerlauf(u1, [u1, u2], 'max', db, getSetting);
@@ -195,7 +195,7 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   // demselben Schema weiter und schliesst ihn am Ende.
 });
 
-test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, async t => {
+test('one price entry per set, condition, currency and day', { concurrency: 1 }, async t => {
   const db2 = testData();
   try {
     await db2.get('SELECT 1');
@@ -204,7 +204,7 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
     return;
   }
 
-  await t.test('doppelte Einträge desselben Tages werden abgewiesen', async () => {
+  await t.test('duplicate entries of the same day are rejected', async () => {
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price)
                    VALUES ('99999-1','N','CHF',10,10)`);
     // Genau die Klausel, die vorher ins Leere lief: Ohne passenden
@@ -215,14 +215,14 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
     assert.equal(n.c, 1, 'zweite Zeile desselben Tages angelegt — ON CONFLICT greift nicht');
   });
 
-  await t.test('ein anderer Zustand am selben Tag ist erlaubt', async () => {
+  await t.test('a different condition on the same day is allowed', async () => {
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price)
                    VALUES ('99999-1','U','CHF',8,8) ON CONFLICT DO NOTHING`);
     const n = await db2.get(`SELECT COUNT(*)::int c FROM price_history WHERE set_number='99999-1'`);
     assert.equal(n.c, 2, 'Neu und Gebraucht müssen nebeneinander stehen dürfen');
   });
 
-  await t.test('das Aufräumen entfernt alte Zeilen — auch die alten Schnappschüsse', async () => {
+  await t.test('cleanup removes old rows — including the old snapshots', async () => {
     // Die Ausnahme für '__portfolio__<id>' ist mit einer früheren Runde entfallen: Es
     // gibt die Schnappschüsse nicht mehr, und Zeilen aus der Zeit davor sollen
     // von der Aufbewahrungsfrist wegkommen wie alles andere. Eine Ausnahme, die
@@ -242,7 +242,7 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
       );
   });
 
-  await t.test('PRICE_HISTORY_KEEP_DAYS=0 schaltet das Aufräumen ab', async () => {
+  await t.test('PRICE_HISTORY_KEEP_DAYS=0 switches cleanup off', async () => {
     const { deleteOldPrices } = _req('src/finances/priceHistory.js');
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
                    VALUES ('77777-1','N','CHF',5,5, NOW() - INTERVAL '4000 days')`);
@@ -255,7 +255,7 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
   await db2.pool.end().catch(() => {});
 });
 
-test('der Mailversand schaltet die Zertifikatsprüfung nirgends ab', () => {
+test('mail sending never switches off certificate verification', () => {
   // Verhalten: test/smtp-tls-festnageln-db.test.js. Hier nur das Verbot im Quelltext.
   const fs = require('node:fs');
   const path = require('node:path');

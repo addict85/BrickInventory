@@ -40,7 +40,7 @@ const SET = `91${N}-1`,
   TEIL = `pf${N}`,
   FIGUR = `pf-fig-${N}`;
 
-test('BrickLink-Preisführer', { concurrency: 1 }, async t => {
+test('BrickLink price guide', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(async () => {
@@ -51,7 +51,7 @@ test('BrickLink-Preisführer', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('ohne Angabe der Neupreis aus den Verkäufen', async () => {
+  await t.test('without a value the new price from the sales', async () => {
     fetches.length = 0;
     preise = { sold: 120 };
     const g = await priceGuideQuery(SET);
@@ -62,7 +62,7 @@ test('BrickLink-Preisführer', { concurrency: 1 }, async t => {
     assert.deepEqual([g.avg_price, g.guide_used], ['120', 'sold']);
   });
 
-  await t.test('ohne Verkauf in sechs Monaten die Angebote — für Sets, Teile und Figuren', async () => {
+  await t.test('without a sale in six months the offers — for sets, parts and figures', async () => {
     preise = { sold: 0, stock: 80 };
     fetches.length = 0;
     const g = await priceGuideQuery(SET, 'U');

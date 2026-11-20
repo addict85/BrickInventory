@@ -27,7 +27,7 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-test('eine von zwei Erfassungen verschieben laesst den Rest beim Absender', { concurrency: 1 }, async t => {
+test('moving one of two acquisitions leaves the rest with the sender', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -100,7 +100,7 @@ test('eine von zwei Erfassungen verschieben laesst den Rest beim Absender', { co
     zeilen: (await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND part_number='3001'`, [uid])).c,
   });
 
-  await t.test('die zweite Erfassung wandert, die erste bleibt', async () => {
+  await t.test('the second acquisition moves, the first stays', async () => {
     const erf = await setup();
     const a = await move(erf[0].id, KIND); // die mit Menge 2
     assert.equal(a.status, 200, JSON.stringify(a.body));
@@ -125,7 +125,7 @@ test('eine von zwei Erfassungen verschieben laesst den Rest beim Absender', { co
     assert.equal(ziel.zeilen, 1, 'Das Ziel hat keine Bestandszeile bekommen');
   });
 
-  await t.test('wandert die LETZTE Erfassung, verschwindet die Zeile doch', async () => {
+  await t.test('if the LAST acquisition moves, the row disappears after all', async () => {
     // Die Gegenrichtung. Ohne sie waere der Fall darueber auch gruen, wenn
     // nie geloescht wuerde — und eine manuelle Zeile ohne Erfassung ist
     // Ballast, kein Bestand.

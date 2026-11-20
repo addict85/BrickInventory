@@ -39,7 +39,7 @@ const remove = (ziel, durch) =>
 
 const ROUNDS = 12;
 
-test('Verwalter: Gleichzeitig bleibt immer einer aktiv', { concurrency: 1 }, async t => {
+test('admins: at the same time one always stays active', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const P = process.pid,
     NAMEN = ['a', 'b'].map(n => `vb_${n}_${P}`);
@@ -78,7 +78,7 @@ test('Verwalter: Gleichzeitig bleibt immer einer aktiv', { concurrency: 1 }, asy
     }
   };
 
-  await t.test('der letzte Verwalter behält die Rolle und das Konto aktiv', async () => {
+  await t.test('the last admin keeps the role and the account active', async () => {
     const [x, y] = await zuruecksetzen();
     assert.deepEqual(await K.setzeVerwalterRolle(y, false), { geaendert: true });
     assert.equal(await alsWert(K.setzeVerwalterRolle(x, false)), LAST);
@@ -96,21 +96,21 @@ test('Verwalter: Gleichzeitig bleibt immer einer aktiv', { concurrency: 1 }, asy
     await assert.rejects(K.setzeVerwalterRolle(999999999, false), { code: 'benutzer_nicht_gefunden' });
   });
 
-  await t.test('gleichzeitiger Entzug der Rolle', async () => {
+  await t.test('concurrent revocation of the role', async () => {
     await gleichzeitig(ziel =>
       alsWert(K.setzeVerwalterRolle(ziel, false)).then(r => (r?.geaendert === true ? 'ok' : r)),
     );
   });
 
-  await t.test('gleichzeitiges Deaktivieren', async () => {
+  await t.test('concurrent deactivation', async () => {
     await gleichzeitig(ziel => alsWert(K.setzeAktiv(ziel, false)).then(r => (r?.geaendert === true ? 'ok' : r)));
   });
 
-  await t.test('gleichzeitiges Löschen', async () => {
+  await t.test('concurrent deletion', async () => {
     await gleichzeitig((ziel, ich) => remove(ziel, ich).then(r => (r === true ? 'ok' : r)));
   });
 
-  await t.test('Entzug gegen Deaktivieren, gleichzeitig', async () => {
+  await t.test('revocation against deactivation, concurrently', async () => {
     for (let i = 0; i < ROUNDS; i++) {
       const [x, y] = await zuruecksetzen();
       const r = await Promise.all([alsWert(K.setzeVerwalterRolle(x, false)), alsWert(K.setzeAktiv(y, false))]);

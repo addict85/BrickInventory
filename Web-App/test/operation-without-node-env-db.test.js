@@ -56,7 +56,7 @@ function starte(env, ms = 25_000) {
   });
 }
 
-test('startBans ohne NODE_ENV', () => {
+test('startBans without NODE_ENV', () => {
   assert.ok(startBans({ MAIL_KONSOLE_MIT_TOKEN: '1', APP_BASE_URL: 'https://x.example' }).length >= 1);
   assert.deepEqual(startBans({ NODE_ENV: 'test', MAIL_KONSOLE_MIT_TOKEN: '1' }), []);
   const k = ladeKonfig({});
@@ -64,14 +64,14 @@ test('startBans ohne NODE_ENV', () => {
   assert.equal(cookieSafe(k), true, 'ohne NODE_ENV ein sicheres Cookie wie im Betrieb');
 });
 
-test('MAIL_KONSOLE_MIT_TOKEN=1 ohne NODE_ENV: Start verweigert', { timeout: 40_000 }, async () => {
+test('MAIL_KONSOLE_MIT_TOKEN=1 without NODE_ENV: startup refused', { timeout: 40_000 }, async () => {
   const r = await starte({ DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', MAIL_KONSOLE_MIT_TOKEN: '1' });
   assert.notEqual(r.code, 0, r.log.slice(-400));
   assert.match(r.log, /❌ \[mail\] MAIL_KONSOLE_MIT_TOKEN=1 .*Start verweigert/);
   assert.doesNotMatch(r.log, /Database initialisation failed/, 'das Verbot kommt vor der Datenbank');
 });
 
-test('als Superuser ohne NODE_ENV: Start verweigert', { timeout: 60_000 }, async t => {
+test('as superuser without NODE_ENV: startup refused', { timeout: 60_000 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
@@ -82,7 +82,7 @@ test('als Superuser ohne NODE_ENV: Start verweigert', { timeout: 60_000 }, async
   assert.match(r.log, /als Superuser — Start verweigert/);
 });
 
-test('ein 5xx nennt ohne NODE_ENV keine Interna', () => {
+test('a 5xx names no internals without NODE_ENV', () => {
   const alt = process.env.NODE_ENV;
   environment({ NODE_ENV: undefined });
   try {

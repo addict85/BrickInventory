@@ -8,7 +8,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { fehlertext, fehlerCode } = require('./helpers/sources').buildAndRequire()('src/infra/error.js');
 
-test('fehlertext liefert nie "undefined"', () => {
+test('fehlertext never returns "undefined"', () => {
   // Der Normalfall.
   assert.equal(fehlertext(new Error('kaputt')), 'kaputt');
 
@@ -38,7 +38,7 @@ test('fehlertext liefert nie "undefined"', () => {
   }
 });
 
-test('fehlertext gibt NICHT das ganze Objekt preis', () => {
+test('fehlertext does NOT give away the whole object', () => {
   // Ein geworfener Datenbankfehler traegt gern die vollstaendige Abfrage samt
   // Parametern. Die darf nicht in einer Meldung landen, die bis zur
   // Oberflaeche laufen kann.
@@ -52,7 +52,7 @@ test('fehlertext gibt NICHT das ganze Objekt preis', () => {
   assert.ok(!t.includes('INSERT'), 'die Abfrage darf nicht in der Meldung stehen');
 });
 
-test('fehlerCode liest Node- und Postgres-Codes', () => {
+test('fehlerCode reads Node and Postgres codes', () => {
   assert.equal(fehlerCode(Object.assign(new Error('x'), { code: 'ECONNREFUSED' })), 'ECONNREFUSED');
   // Postgres liefert numerische Codes (23505 = Eindeutigkeitsverletzung).
   assert.equal(

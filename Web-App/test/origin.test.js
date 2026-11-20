@@ -32,7 +32,7 @@ const { onlyOwnOrigin, onlyOwnHost } = _req('src/http/origin.js');
 const http = require('node:http');
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
-test('Herkunft schreibender Anfragen', async t => {
+test('origin of writing requests', async t => {
   const app = express();
   app.use(onlyOwnOrigin);
   app.all('/x', (_req, res) => res.json({ ok: true }));
@@ -41,35 +41,35 @@ test('Herkunft schreibender Anfragen', async t => {
   const ruf = async (method, kopf = {}) =>
     (await fetch(`http://127.0.0.1:${srv.address().port}/x`, { method, headers: kopf })).status;
 
-  await t.test('eine fremde Website', async () => {
+  await t.test('a foreign website', async () => {
     assert.equal(await ruf('POST', { 'sec-fetch-site': 'cross-site' }), 403);
     assert.equal(await ruf('DELETE', { 'sec-fetch-site': 'cross-site' }), 403);
   });
-  await t.test('eine Nachbar-Subdomain', async () => {
+  await t.test('a neighboring subdomain', async () => {
     assert.equal(await ruf('PUT', { 'sec-fetch-site': 'same-site' }), 403);
   });
-  await t.test('die eigene Seite', async () => {
+  await t.test('the own site', async () => {
     assert.equal(await ruf('POST', { 'sec-fetch-site': 'same-origin' }), 200);
     assert.equal(await ruf('POST', { 'sec-fetch-site': 'none' }), 200, 'vom Nutzer selbst eingegeben');
   });
-  await t.test('ohne Kopf und ohne Sitzung: App, Skripte', async () => {
+  await t.test('without header and without session: app, scripts', async () => {
     assert.equal(await ruf('POST'), 200);
     assert.equal(await ruf('POST', { authorization: 'Bearer abc' }), 200);
   });
   const eigen = () => `http://127.0.0.1:${srv.address().port}`;
   const SESSION = { cookie: '__Host-bim.sid=s%3Aabc' };
-  await t.test('eine Cookie-Sitzung ohne jede Herkunftsangabe', async () => {
+  await t.test('a cookie session without any origin information', async () => {
     assert.equal(await ruf('POST', SESSION), 403);
     assert.equal(await ruf('DELETE', SESSION), 403);
     assert.equal(await ruf('GET', SESSION), 200, 'lesend bleibt erlaubt');
   });
-  await t.test('ein alter Browser ohne Sec-Fetch-Site, von einer fremden Seite', async () => {
+  await t.test('an old browser without Sec-Fetch-Site, from a foreign site', async () => {
     assert.equal(await ruf('POST', { ...SESSION, origin: 'https://boese.example' }), 403);
     assert.equal(await ruf('POST', { ...SESSION, origin: 'null' }), 403, 'Origin „null" (Sandbox, Datei)');
     assert.equal(await ruf('POST', { ...SESSION, referer: 'https://boese.example/seite' }), 403);
     assert.equal(await ruf('POST', { origin: 'https://boese.example' }), 403, 'auch ohne Sitzung (Anmelde-CSRF)');
   });
-  await t.test('ein Host, der nur so anfängt wie der eigene', async () => {
+  await t.test('a host that only starts like the own one', async () => {
     environment({ APP_BASE_URL: 'https://lego.example.org' });
     try {
       assert.equal(await ruf('POST', { ...SESSION, origin: 'https://lego.example.org.boese.example' }), 403);
@@ -78,7 +78,7 @@ test('Herkunft schreibender Anfragen', async t => {
       environment({ APP_BASE_URL: undefined });
     }
   });
-  await t.test('ein alter Browser von der eigenen Seite', async () => {
+  await t.test('an old browser from the own site', async () => {
     assert.equal(await ruf('POST', { ...SESSION, origin: eigen() }), 200);
     assert.equal(await ruf('POST', { ...SESSION, referer: `${eigen()}/#/sets` }), 200);
     environment({ APP_BASE_URL: 'https://lego.example.org' });
@@ -88,11 +88,11 @@ test('Herkunft schreibender Anfragen', async t => {
       environment({ APP_BASE_URL: undefined });
     }
   });
-  await t.test('lesend und mit Token', async () => {
+  await t.test('reading and with token', async () => {
     assert.equal(await ruf('GET', { 'sec-fetch-site': 'cross-site' }), 200);
     assert.equal(await ruf('POST', { 'sec-fetch-site': 'cross-site', authorization: 'Bearer abc' }), 200);
   });
-  await t.test('ein Bearer-Kopf neben dem Sitzungs-Cookie schaltet nichts ab', async () => {
+  await t.test('a bearer header next to the session cookie switches nothing off', async () => {
     // Mit Cookie gilt die Sitzung, nicht das Token — die Herkunft zählt also.
     assert.equal(
       await ruf('POST', {
@@ -109,7 +109,7 @@ test('Herkunft schreibender Anfragen', async t => {
   });
 });
 
-test('ohne APP_BASE_URL nimmt der Host-Filter keinen Namen an, nur Loopback und IP-Adressen', async t => {
+test('without APP_BASE_URL the host filter accepts no name, only loopback and IP addresses', async t => {
   environment({ APP_BASE_URL: undefined });
   const app = express();
   app.use(onlyOwnHost);

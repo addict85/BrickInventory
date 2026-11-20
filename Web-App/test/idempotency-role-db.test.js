@@ -22,7 +22,7 @@ const { accessOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
 
-test('Idempotenz: Verwalter-Antworten nur für die Verwalterrolle', { concurrency: 1 }, async t => {
+test('idempotency: admin responses only for the admin role', { concurrency: 1 }, async t => {
   const db = await accessOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));

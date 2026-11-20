@@ -39,7 +39,7 @@ async function dbDa(t) {
   }
 }
 
-test('ipThrottle: der sechste Versuch aus demselben /64 wird abgewiesen', async t => {
+test('ipThrottle: the sixth attempt from the same /64 is rejected', async t => {
   if (!(await dbDa(t))) return;
   const clean = () => db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'v6-probe|%'`);
   await clean();
@@ -62,7 +62,7 @@ test('ipThrottle: der sechste Versuch aus demselben /64 wird abgewiesen', async 
   assert.equal(await von('2001:db8:aa:cc::1'), 200, 'ein anderes /64 ist nicht betroffen');
 });
 
-test('Anmeldung: Spraying aus einem /64 trifft die Grenze je Adresse', async t => {
+test('login: spraying from a /64 hits the per-address limit', async t => {
   if (!(await dbDa(t))) return;
   const clean = () =>
     db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE '%2001:db8:5:%' OR key LIKE '%v6\\_spray\\_%'`);
@@ -79,7 +79,7 @@ test('Anmeldung: Spraying aus einem /64 trifft die Grenze je Adresse', async t =
   assert.equal(sperre.code, 'zu_viele_fehlversuche');
 });
 
-test('Schlüssel je Adresse: /64, IPv4 in IPv6, anderes bleibt', () => {
+test('key per address: /64, IPv4 in IPv6, others stay', () => {
   assert.equal(drosselAdresse('2001:0db8:0000:0042:1:2:3:4'), '2001:db8:0:42::/64');
   assert.equal(drosselAdresse('2001:db8::1'), '2001:db8:0:0::/64');
   assert.equal(drosselAdresse('::1'), '0:0:0:0::/64');

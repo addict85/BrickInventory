@@ -23,7 +23,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-test('Kontoschalter und eindeutige Adresse', { concurrency: 1 }, async t => {
+test('account switches and unique address', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const K = `schalter${process.pid}`;
   const leeren = () => db.run('DELETE FROM users WHERE username LIKE $1', [`${K}%`]);
@@ -36,19 +36,19 @@ test('Kontoschalter und eindeutige Adresse', { concurrency: 1 }, async t => {
   await leeren();
 
   try {
-    await t.test('ohne Angabe gelten die Vorgaben', async () => {
+    await t.test('without a value the defaults apply', async () => {
       const u = await put('a');
       assert.deepEqual([u.is_admin, u.is_active, u.email_verified], [false, true, false]);
     });
-    await t.test('ein Schalter ist nie leer', async () => {
+    await t.test('a switch is never empty', async () => {
       await assert.rejects(put('b', 'is_admin', [null]), (/** @type {any} */ e) => e.code === '23502');
       await assert.rejects(put('c', 'is_active', [null]), (/** @type {any} */ e) => e.code === '23502');
     });
-    await t.test('ein Schalter ist ein Wahrheitswert', async () => {
+    await t.test('a switch is a boolean', async () => {
       await assert.rejects(put('d', 'is_admin', [2]), (/** @type {any} */ e) => e.code === '22P02');
       await assert.rejects(put('e', 'email_verified', [-1]), (/** @type {any} */ e) => e.code === '22P02');
     });
-    await t.test('eine Adresse gibt es nur einmal, gleich in welcher Schreibweise', async () => {
+    await t.test('an address exists only once, regardless of case', async () => {
       await put('f', 'email', [`${K}@Beispiel.ch`]);
       await assert.rejects(
         put('g', 'email', [`${K.toUpperCase()}@beispiel.CH`]),

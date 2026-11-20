@@ -43,7 +43,7 @@ const NUTZER = {
   },
 };
 
-test('Speichern-Knöpfe sehen gleich aus', async () => {
+test('save buttons look the same', async () => {
   const { w, d } = await openUi(NUTZER);
   try {
     await reiter(w, 'settings');
@@ -62,7 +62,7 @@ test('Speichern-Knöpfe sehen gleich aus', async () => {
   }
 });
 
-test('Aktionen der Benutzertabelle sind benannt', async () => {
+test('actions of the user table are named', async () => {
   const { w, d } = await openUi(NUTZER);
   try {
     await reiter(w, 'settings');
@@ -86,7 +86,7 @@ test('Aktionen der Benutzertabelle sind benannt', async () => {
   }
 });
 
-test('Admin-Rechte entziehen schickt is_admin:false', async () => {
+test('revoking admin rights sends is_admin:false', async () => {
   const { w, d, aufrufe } = await openUi(NUTZER);
   try {
     await reiter(w, 'settings');
@@ -106,7 +106,7 @@ test('Admin-Rechte entziehen schickt is_admin:false', async () => {
   }
 });
 
-test('Deaktivieren und Aktivieren schicken is_active mit dem Passwort', async () => {
+test('deactivating and activating send is_active with the password', async () => {
   const { w, d, aufrufe } = await openUi(NUTZER);
   try {
     await reiter(w, 'settings');
@@ -132,7 +132,7 @@ test('Deaktivieren und Aktivieren schicken is_active mit dem Passwort', async ()
   }
 });
 
-test('SMTP: Hinweis auf die alte Ausnahme, Fingerabdruck und PEM gehen mit', async () => {
+test('SMTP: hint at the old exception, fingerprint and PEM go along', async () => {
   const roh = {
     success: true,
     settings: {
@@ -177,7 +177,7 @@ test('SMTP: Hinweis auf die alte Ausnahme, Fingerabdruck und PEM gehen mit', asy
   }
 });
 
-test('Schlüssel verdeckt, mit Knopf zum Anzeigen', async () => {
+test('key hidden, with a button to show it', async () => {
   const { w, d } = await openUi(NUTZER);
   try {
     await reiter(w, 'settings');
@@ -197,7 +197,7 @@ test('Schlüssel verdeckt, mit Knopf zum Anzeigen', async () => {
   }
 });
 
-test('Sprungleiste zu den Abschnitten', async () => {
+test('jump bar to the sections', async () => {
   const { w, d } = await openUi(NUTZER);
   try {
     await reiter(w, 'settings');

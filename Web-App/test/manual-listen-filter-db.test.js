@@ -48,7 +48,7 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concurrency: 1 }, async t => {
+test('search text and storage location also hit the manually captured lists', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -99,7 +99,7 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concur
   const figNumbers = async opt =>
     (await figuren.readManualMinifigs([UID], UID, opt)).map(f => String(f.fig_number)).sort();
 
-  await t.test('ohne Suchtext steht alles da', async () => {
+  await t.test('without search text everything is there', async () => {
     assert.deepEqual(
       await nummern({}),
       ['3001', '3002', '3003'],
@@ -108,7 +108,7 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concur
     assert.deepEqual(await figNumbers({}), ['fig-000123', 'fig-000456']);
   });
 
-  await t.test('die Suche nach der Teilenummer lässt nur diese stehen', async () => {
+  await t.test('the search for the part number leaves only it', async () => {
     const g = await nummern({ search: '3001' });
     assert.deepEqual(
       g,
@@ -118,7 +118,7 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concur
     );
   });
 
-  await t.test('die Suche findet den Namen aus dem Katalog', async () => {
+  await t.test('the search finds the name from the catalog', async () => {
     assert.deepEqual(
       await nummern({ search: '2 x 3' }),
       ['3003'],
@@ -127,7 +127,7 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concur
     );
   });
 
-  await t.test('die Suche findet die BrickLink-Nummer von der Kachel', async () => {
+  await t.test('the search finds the BrickLink number from the tile', async () => {
     const g = await nummern({ search: '9999' });
     assert.deepEqual(
       g,
@@ -138,7 +138,7 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concur
     );
   });
 
-  await t.test('ohne Treffer bleibt die Liste leer — nicht voll', async () => {
+  await t.test('without hits the list stays empty — not full', async () => {
     assert.deepEqual(
       await nummern({ search: '4711' }),
       [],
@@ -147,7 +147,7 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concur
     );
   });
 
-  await t.test('der Lagerort filtert dieselbe Liste', async () => {
+  await t.test('the storage location filters the same list', async () => {
     assert.deepEqual(
       await nummern({ storage: 'Kiste 3' }),
       ['3001'],
@@ -156,7 +156,7 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concur
     assert.deepEqual(await nummern({ storage: 'Regal B' }), [], 'Ein Ort ohne Teile ergibt eine leere Liste');
   });
 
-  await t.test('Suchtext und Lagerort zusammen', async () => {
+  await t.test('search text and storage location together', async () => {
     assert.deepEqual(
       await nummern({ search: '3001', storage: 'Kiste 3' }),
       ['3001'],
@@ -171,7 +171,7 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concur
     );
   });
 
-  await t.test('das Set-Teil bleibt draussen, auch als Suchtreffer', async () => {
+  await t.test('the set part stays out, even as a search hit', async () => {
     const alle = await teile.manualPartsList([UID], UID, { search: '3001' });
     assert.deepEqual(
       alle.map(p => p.color_id),
@@ -181,7 +181,7 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concur
     );
   });
 
-  await t.test('die Figurenliste sucht über Nummer und Name', async () => {
+  await t.test('the figure list searches via number and name', async () => {
     assert.deepEqual(
       await figNumbers({ search: 'chewb' }),
       ['fig-000123'],
@@ -190,7 +190,7 @@ test('Suchtext und Lagerort treffen auch die manuell erfassten Listen', { concur
     assert.deepEqual(await figNumbers({ search: '000456' }), ['fig-000456'], 'Die Figurennummer muss genauso treffen');
   });
 
-  await t.test('die Wand der Set-Teile sucht über dieselbe Formulierung', async () => {
+  await t.test('the wall of set parts searches via the same phrasing', async () => {
     // teileSuche() ist für beide Listen EIN Ausdruck. Diese Zusicherung hält
     // sie zusammen: Vorher kannte der Live-Weg der Set-Teile die
     // BrickLink-Nummer NICHT, die vorberechnete Zusammenfassung daneben schon

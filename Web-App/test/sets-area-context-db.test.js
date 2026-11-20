@@ -47,7 +47,7 @@ const recording = notiz => ({
   },
 });
 
-test('Sets mit eigenem Kontext', { concurrency: 1 }, async t => {
+test('sets with their own context', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(async () => {
@@ -75,7 +75,7 @@ test('Sets mit eigenem Kontext', { concurrency: 1 }, async t => {
   const sets = alle.sets;
   quellen.replaceServices('catalog', recording(processNote));
 
-  await t.test('Lesen geht über den übergebenen Zugang', async () => {
+  await t.test('reading goes through the passed access', async () => {
     assert.equal(await sets.setInfo(SN), null);
     assert.ok(
       sql.some(s => /LEFT JOIN rb_sets rs/.test(s)),
@@ -83,7 +83,7 @@ test('Sets mit eigenem Kontext', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('die Anreicherung kommt aus dem Kontext', async () => {
+  await t.test('the enrichment comes from the context', async () => {
     const r = await sets.partListWithRework(SN);
     assert.equal(r.parts.length, 1);
     assert.ok(sql.some(s => /FROM rb_inventory_parts/.test(s)));

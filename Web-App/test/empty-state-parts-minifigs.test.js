@@ -56,7 +56,7 @@ async function teile(antworten) {
   return o;
 }
 
-test('Teile: manuelle da, aus Sets leer — kein Leerzustand', async () => {
+test('parts: manual ones there, from sets empty — no empty state', async () => {
   const { w, d } = await teile({ '/v1/parts/manual': { success: true, parts: [ROT] } });
   try {
     assert.equal(d.querySelectorAll('#manual-parts-list .man-tile').length, 1);
@@ -70,7 +70,7 @@ test('Teile: manuelle da, aus Sets leer — kein Leerzustand', async () => {
   }
 });
 
-test('Teile: beide leer — genau ein Leerzustand, der leere Kasten verschwindet', async () => {
+test('parts: both empty — exactly one empty state, the empty box disappears', async () => {
   const { w, d } = await teile({});
   try {
     const leer = d.querySelectorAll('#tab-parts .leer');
@@ -91,7 +91,7 @@ test('Teile: beide leer — genau ein Leerzustand, der leere Kasten verschwindet
   }
 });
 
-test('Teile: nur aus Sets — kein leerer Kasten für manuelle', async () => {
+test('parts: only from sets — no empty box for manual ones', async () => {
   const { w, d } = await teile({ '/v1/parts': { success: true, parts: [SETTEIL], total: 1 } });
   try {
     assert.equal(d.querySelectorAll('#parts-main .part-card').length, 1);
@@ -102,7 +102,7 @@ test('Teile: nur aus Sets — kein leerer Kasten für manuelle', async () => {
   }
 });
 
-test('Farbfilter steht über den Listen und wirkt auf beide Listen', async () => {
+test('the color filter stands above the lists and acts on both lists', async () => {
   const { w, d, aufrufe, ruhig } = await teile({ '/v1/parts/manual': { success: true, parts: [ROT, BLUE] } });
   try {
     const wahl = d.getElementById('parts-color');
@@ -141,7 +141,7 @@ async function figuren(antworten) {
   return o;
 }
 
-test('Figuren: manuelle da, aus Sets leer — kein Leerzustand', async () => {
+test('figures: manual ones there, from sets empty — no empty state', async () => {
   const { w, d } = await figuren({ '/v1/minifigs/manual': { success: true, figs: [FIGUR] } });
   try {
     assert.equal(d.querySelectorAll('#manual-figs-list .man-tile').length, 1);
@@ -154,7 +154,7 @@ test('Figuren: manuelle da, aus Sets leer — kein Leerzustand', async () => {
   }
 });
 
-test('Figuren: beide leer — genau ein Leerzustand', async () => {
+test('figures: both empty — exactly one empty state', async () => {
   const { w, d } = await figuren({});
   try {
     const leer = d.querySelectorAll('#tab-minifigs .leer');

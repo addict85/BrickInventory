@@ -47,7 +47,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Widerruf-Passwort-1';
 const NAMEN = [`widerruf_a_${process.pid}`, `widerruf_b_${process.pid}`];
 
-test('Widerruf von App-Zugängen', { concurrency: 1 }, async t => {
+test('revoking app accesses', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
   const ids = [];
@@ -93,7 +93,7 @@ test('Widerruf von App-Zugängen', { concurrency: 1 }, async t => {
   const eigen = await auth.createToken(uidA, 'Telefon', true);
   const fremd = await auth.createToken(uidA, 'Tablet', true);
 
-  await t.test('ein Präfix der Kennung wird abgewiesen', async () => {
+  await t.test('a prefix of the identifier is rejected', async () => {
     for (const teil of ['0', kennung(fremd).slice(0, 1), kennung(fremd).slice(0, 15), kennung(fremd).toUpperCase()]) {
       const r = await ruf('DELETE', `/settings/tokens/${teil}`, eigen, { password: PASS });
       assert.equal(r.status, 400, `${teil}: ${JSON.stringify(r.body)}`);
@@ -101,7 +101,7 @@ test('Widerruf von App-Zugängen', { concurrency: 1 }, async t => {
     assert.equal(await gilt(fremd), true, 'ein Präfix hat den Zugang widerrufen');
   });
 
-  await t.test('ein fremder Zugang braucht das Passwort', async () => {
+  await t.test('a foreign access needs the password', async () => {
     const ohne = await ruf('DELETE', `/settings/tokens/${kennung(fremd)}`, eigen);
     assert.ok(ohne.status >= 400 && ohne.status < 500, JSON.stringify(ohne.body));
     const falsch = await ruf('DELETE', `/settings/tokens/${kennung(fremd)}`, eigen, { password: 'falsch-falsch-1' });
@@ -109,7 +109,7 @@ test('Widerruf von App-Zugängen', { concurrency: 1 }, async t => {
     assert.equal(await gilt(fremd), true, 'ohne richtiges Passwort widerrufen');
   });
 
-  await t.test('ein fremdes Konto widerruft nichts', async () => {
+  await t.test('a foreign account revokes nothing', async () => {
     const tokB = await auth.createToken(uidB, 'Fremd', true);
     const r = await ruf('DELETE', `/settings/tokens/${kennung(fremd)}`, tokB, { password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
@@ -117,7 +117,7 @@ test('Widerruf von App-Zugängen', { concurrency: 1 }, async t => {
     assert.equal(await gilt(fremd), true, 'ein anderes Konto hat den Zugang widerrufen');
   });
 
-  await t.test('mit Passwort geht er, und der Inhaber bekommt einen Hinweis', async () => {
+  await t.test('with password it works, and the owner gets a notice', async () => {
     const r = await ruf('DELETE', `/settings/tokens/${kennung(fremd)}`, eigen, { password: PASS });
     assert.deepEqual([r.status, r.body.deleted], [200, 1], JSON.stringify(r.body));
     assert.equal(await gilt(fremd), false);
@@ -127,7 +127,7 @@ test('Widerruf von App-Zugängen', { concurrency: 1 }, async t => {
     ]);
   });
 
-  await t.test('den eigenen Zugang beendet das Gerät ohne Passwort', async () => {
+  await t.test('the device ends its own access without password', async () => {
     const kurz = await auth.createToken(uidA, 'Abmelden', true);
     const r = await ruf('DELETE', `/settings/tokens/${kennung(kurz)}`, kurz);
     assert.deepEqual([r.status, r.body.deleted], [200, 1], JSON.stringify(r.body));
@@ -139,7 +139,7 @@ test('Widerruf von App-Zugängen', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('alle anderen: ein bestätigter Aufruf, der eigene bleibt', async () => {
+  await t.test('all others: one confirmed call, the own one stays', async () => {
     const x = await auth.createToken(uidA, 'X', true),
       y = await auth.createToken(uidA, 'Y', true);
     const ohne = await ruf('POST', '/settings/sessions/andere-beenden', eigen, { zugaenge: true });

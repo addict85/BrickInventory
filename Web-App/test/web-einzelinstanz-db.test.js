@@ -34,7 +34,7 @@ const modul = require(path.join(__dirname, '..', 'dist', 'db', 'database.js'));
 const ROOT = path.join(__dirname, '..');
 const SHORT = { wartenMs: 300, taktMs: 50 };
 
-test('ein Web-Prozess je Datenbank', { concurrency: 1 }, async t => {
+test('one web process per database', { concurrency: 1 }, async t => {
   const db = await accessOrSkip(t, _req);
   if (!db) return;
   const { holdWebLock: realLock, SecondWebProcess } = _req('startup/singleInstance.js');
@@ -74,7 +74,7 @@ test('ein Web-Prozess je Datenbank', { concurrency: 1 }, async t => {
     }
   };
 
-  await t.test('ein zweiter Zugang bekommt die Sperre nicht und sagt warum', async () => {
+  await t.test('a second access does not get the lock and says why', async () => {
     const frei = await holdWebLock(a, SHORT);
     try {
       await stumm(() => assert.rejects(holdWebLock(b, SHORT), SecondWebProcess));
@@ -86,7 +86,7 @@ test('ein Web-Prozess je Datenbank', { concurrency: 1 }, async t => {
     assert.equal((await halter()).length, 0, 'freigegeben');
   });
 
-  await t.test('er wartet auf einen endenden Vorgänger', async () => {
+  await t.test('it waits for an ending predecessor', async () => {
     const frei = await holdWebLock(a, SHORT);
     const zweiter = stumm(() => holdWebLock(b, { wartenMs: 5000, taktMs: 50 }));
     setTimeout(() => void frei(), 200);
@@ -95,7 +95,7 @@ test('ein Web-Prozess je Datenbank', { concurrency: 1 }, async t => {
     await frei2();
   });
 
-  await t.test('nach einem Abriss holt der Prozess die Sperre zurück', async () => {
+  await t.test('after a disconnect the process gets the lock back', async () => {
     const losses = [];
     const frei = await holdWebLock(a, { ...SHORT, atLoss: e => losses.push(e) });
     const [{ pid }] = await halter();
@@ -105,7 +105,7 @@ test('ein Web-Prozess je Datenbank', { concurrency: 1 }, async t => {
     await frei();
   });
 
-  await t.test('… oder gibt auf, wenn inzwischen ein anderer sie hält', async () => {
+  await t.test('… or gives up if another one holds it in the meantime', async () => {
     const losses = [];
     const frei = await holdWebLock(a, { ...SHORT, atLoss: e => losses.push(e) });
     const [{ pid }] = await halter();
@@ -123,7 +123,7 @@ test('ein Web-Prozess je Datenbank', { concurrency: 1 }, async t => {
     }
   });
 
-  await t.test('fehlt die Datenbank eine Weile, holt er die Sperre danach zurück', async () => {
+  await t.test('if the database is missing for a while, it gets the lock back afterwards', async () => {
     const losses = [];
     const frei = await holdWebLock(a, { ...SHORT, atLoss: e => losses.push(e) });
     const [{ pid }] = await halter();
@@ -147,7 +147,7 @@ test('ein Web-Prozess je Datenbank', { concurrency: 1 }, async t => {
     await frei();
   });
 
-  await t.test('der echte Server wartet, solange ein anderer die Sperre hält', async () => {
+  await t.test('the real server waits as long as another one holds the lock', async () => {
     const frei = await holdWebLock(a, SHORT);
     let released = false;
     t.after(() => (released ? undefined : frei()));

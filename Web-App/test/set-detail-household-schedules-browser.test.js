@@ -185,7 +185,7 @@ async function pathTilesAxis(_t, a) {
   );
 }
 
-test('Set-Detail im Haushalt, Zeitpläne, Kacheln', { concurrency: 1, timeout: 300_000 }, async t => {
+test('set detail in the household, schedules, tiles', { concurrency: 1, timeout: 300_000 }, async t => {
   const a = await startApp(t, { name: `r19_${process.pid}`, bestand: patternHousehold });
   if (a.grund) {
     t.skip(a.grund);

@@ -78,7 +78,7 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-test('die Farbe eines manuellen Teils lässt sich nachträglich ändern', { concurrency: 1 }, async t => {
+test('the color of a manual part can be changed afterwards', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -147,7 +147,7 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern', { conc
       [farbe],
     );
 
-  await t.test('ohne Zielzeile zieht die Zeile samt Erfassungen um', async () => {
+  await t.test('without a target row the row moves including acquisitions', async () => {
     await leeren();
     await db.run(
       `INSERT INTO parts (user_id,part_number,color_id,source)
@@ -193,7 +193,7 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern', { conc
     assert.equal(kat?.color_hex, 'C91A09');
   });
 
-  await t.test('gibt es die Zielfarbe schon, werden die Zeilen zusammengelegt', async () => {
+  await t.test('if the target color already exists, the rows are merged', async () => {
     await leeren();
     await db.run(
       `INSERT INTO parts (user_id,part_number,color_id,source)
@@ -237,7 +237,7 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern', { conc
     );
   });
 
-  await t.test('zwei Erfassungen vom GLEICHEN Tag werden addiert, nicht abgelehnt', async () => {
+  await t.test('two acquisitions from the SAME day are added, not rejected', async () => {
     await leeren();
     await db.run(
       `INSERT INTO parts (user_id,part_number,color_id,source)
@@ -271,7 +271,7 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern', { conc
     );
   });
 
-  await t.test('verschiedene Preise vom gleichen Tag bleiben eigene Zeilen', async () => {
+  await t.test('different prices from the same day stay rows of their own', async () => {
     await leeren();
     await db.run(
       `INSERT INTO parts (user_id,part_number,color_id,source)
@@ -294,7 +294,7 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern', { conc
     );
   });
 
-  await t.test('der Lagerort zieht mit, wenn die Zielzeile keinen hat', async () => {
+  await t.test('the storage location moves along if the target row has none', async () => {
     await leeren();
     await db.run(`INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 3')`, [UID]);
     const ORT = (await db.get(`SELECT id FROM storage_locations WHERE name='Kiste 3'`)).id;
@@ -314,7 +314,7 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern', { conc
     );
   });
 
-  await t.test('ohne color_id gibt es eine Absage, keine stille 0', async () => {
+  await t.test('without color_id there is a refusal, no silent 0', async () => {
     await leeren();
     await db.run(
       `INSERT INTO parts (user_id,part_number,color_id,source)
@@ -336,7 +336,7 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern', { conc
     );
   });
 
-  await t.test('ein Teil AUS EINEM SET bleibt unberührt', async () => {
+  await t.test('a part FROM A SET stays untouched', async () => {
     await leeren();
     await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,'10497-1') ON CONFLICT DO NOTHING`, [UID]);
     await db.run(
@@ -359,7 +359,7 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern', { conc
     );
   });
 
-  await t.test('dieselbe Farbe nochmal ist keine Änderung', async () => {
+  await t.test('the same color again is no change', async () => {
     // Die Gegenrichtung: Die Fälle oben wären auch grün, wenn die Funktion
     // einfach JEDES Mal löschte und neu schriebe. Hier passiert nichts, und
     // die Antwort sagt es.
@@ -391,7 +391,7 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern', { conc
 
   // Das Bild der neuen Farbe (Marcos Befund vom 20.10.)
 
-  await t.test('ein schon vorhandenes Farbbild wird nicht überschrieben', async () => {
+  await t.test('an already existing color image is not overwritten', async () => {
     await leeren();
     await db.run(
       `INSERT INTO parts (user_id,part_number,color_id,source)
@@ -413,7 +413,7 @@ test('die Farbe eines manuellen Teils lässt sich nachträglich ändern', { conc
     );
   });
 
-  await t.test('kennt niemand ein Bild, sagt die Antwort das — die Farbe ändert sich trotzdem', async () => {
+  await t.test('if nobody knows an image, the response says so — the color changes anyway', async () => {
     await leeren();
     await db.run(
       `INSERT INTO parts (user_id,part_number,color_id,source)

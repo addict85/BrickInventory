@@ -19,7 +19,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
-test('der Vertrag liefert der Route das Fachformat', { concurrency: 1 }, async t => {
+test('the contract delivers the domain format to the route', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const namen = [`fachformat_${process.pid}`];
@@ -42,7 +42,7 @@ test('der Vertrag liefert der Route das Fachformat', { concurrency: 1 }, async t
     return { status: r.status, body: await r.json() };
   };
 
-  await t.test('klein geschriebener Zustand gilt wie gross', async () => {
+  await t.test('a lower-case condition counts as upper case', async () => {
     const r = await rufe('POST', '/settings/user/default-condition', { condition: 'n' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.condition, 'N');

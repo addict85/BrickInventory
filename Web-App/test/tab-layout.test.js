@@ -52,7 +52,7 @@ function gemessen(t) {
   if (_result !== undefined) return _result;
   const bin = chrome();
   if (!bin) {
-    t.skip('kein Chrome gefunden');
+    t.skip('no Chrome found');
     _result = null;
     return null;
   }
@@ -113,7 +113,7 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
   }
 }
 
-test('Erfassen steht über den Filtern, die Filter über den Listen (auch der manuellen)', t => {
+test('adding is above the filters, the filters above the lists (including the manual one)', t => {
   const e = gemessen(t);
   if (!e) return;
   const falsch = [];
@@ -128,7 +128,7 @@ test('Erfassen steht über den Filtern, die Filter über den Listen (auch der ma
   assert.deepEqual(falsch, []);
 });
 
-test('jede Bedienelement-ID gibt es genau einmal', t => {
+test('every control ID exists exactly once', t => {
   const e = gemessen(t);
   if (!e) return;
   assert.deepEqual(
@@ -140,7 +140,7 @@ test('jede Bedienelement-ID gibt es genau einmal', t => {
   );
 });
 
-test('die Filterleisten halten Abstand zur Liste', t => {
+test('the filter bars keep distance to the list', t => {
   const e = gemessen(t);
   if (!e) return;
   assert.equal(e.leisten.length, 5, 'Galerie, Teile, Minifiguren, Katalog, Merkliste');
@@ -151,7 +151,7 @@ test('die Filterleisten halten Abstand zur Liste', t => {
   );
 });
 
-test('der eigene Bestand steht in der Teileliste auf einer eigenen Zeile', t => {
+test('the own stock is on its own line in the parts list', t => {
   const e = gemessen(t);
   if (!e) return;
   const { setnr, knopf, lose } = e.bestand;

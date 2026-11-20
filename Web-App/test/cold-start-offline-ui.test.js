@@ -14,7 +14,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, warte, takt } = require('./helpers/ui');
 
-test('ohne Server: Hinweis und Erneut versuchen', async () => {
+test('without server: hint and try again', async () => {
   const stand = { weg: true };
   const o = await openUi(
     {

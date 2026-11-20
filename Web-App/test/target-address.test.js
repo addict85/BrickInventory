@@ -58,7 +58,7 @@ async function grund(promise) {
   return 'kein Fehler';
 }
 
-test('öffentlich heisst: nicht privat, Loopback, Link-Local, ULA oder CGNAT', () => {
+test('public means: not private, loopback, link-local, ULA or CGNAT', () => {
   for (const ip of [
     '10.1.2.3',
     '172.20.0.5',
@@ -78,7 +78,7 @@ test('öffentlich heisst: nicht privat, Loopback, Link-Local, ULA oder CGNAT', (
   for (const ip of ['104.20.1.1', '1.1.1.1', '2606:4700::1111']) assert.equal(Z.publicAddress(ip), true, ip);
 });
 
-test('Dokumentations-, 6to4-Relais- und Site-Local-Netze sind kein öffentliches Ziel', () => {
+test('documentation, 6to4 relay and site-local networks are not a public target', () => {
   for (const ip of [
     '192.0.2.10',
     '198.51.100.7',
@@ -95,7 +95,7 @@ test('Dokumentations-, 6to4-Relais- und Site-Local-Netze sind kein öffentliches
     assert.equal(Z.publicAddress(ip), true, ip);
 });
 
-test('der Mailserver darf im eigenen Netz stehen, nur nicht in dem des Containers', () => {
+test('the mail server may be in the own network, just not in that of the container', () => {
   const interfaces = {
     lo: [{ address: '127.0.0.1', cidr: '127.0.0.1/8', family: 'IPv4', internal: true }],
     eth0: [{ address: '172.28.73.5', cidr: '172.28.73.5/24', family: 'IPv4', internal: false }],
@@ -116,7 +116,7 @@ test('der Mailserver darf im eigenen Netz stehen, nur nicht in dem des Container
   );
 });
 
-test('gemischte Antworten: nur die erlaubten Adressen gehen weiter', async t => {
+test('mixed responses: only the allowed addresses go on', async t => {
   withDns(t, { 'ziel.fake.test': ['10.0.0.7', '104.20.1.1', '127.0.0.1'] });
   const alle = await new Promise((fertig, scheitern) =>
     Z.publicLookup('ziel.fake.test', { all: true }, (e, a) => (e ? scheitern(e) : fertig(a))),
@@ -125,7 +125,7 @@ test('gemischte Antworten: nur die erlaubten Adressen gehen weiter', async t => 
   assert.equal(await Z.resolveOn('ziel.fake.test', Z.publicAddress), '104.20.1.1');
 });
 
-test('ein erlaubter Host, der intern auflöst, wird nicht verbunden', async t => {
+test('an allowed host that resolves internally is not connected', async t => {
   const gefragt = withDns(t, {
     'rebrickable.com': ['127.0.0.1'],
     'cdn.rebrickable.com': ['10.0.0.9', '169.254.169.254'],
@@ -139,7 +139,7 @@ test('ein erlaubter Host, der intern auflöst, wird nicht verbunden', async t =>
   assert.deepEqual(gefragt, ['rebrickable.com', 'cdn.rebrickable.com']);
 });
 
-test('auch der Pool des Bild-Proxys prüft die Adresse', async t => {
+test('the image proxy pool also checks the address', async t => {
   const gefragt = withDns(t, { 'cdn.rebrickable.com': ['192.168.0.10'] });
   assert.equal(
     await grund(oeffneBild('https://cdn.rebrickable.com/media/x.jpg', { maxBytes: 1000, pool: true })),
@@ -148,14 +148,14 @@ test('auch der Pool des Bild-Proxys prüft die Adresse', async t => {
   assert.deepEqual(gefragt, ['cdn.rebrickable.com']);
 });
 
-test('von LEGO nur die Hosts der Anleitungen', () => {
+test('from LEGO only the hosts of the instructions', () => {
   for (const gut of ['https://lego.com/a.pdf', 'https://www.lego.com/cdn/a.pdf', 'https://assets.lego.com/a.pdf'])
     assert.ok(hostAllowed(gut, ALLOWED_DOWNLOAD_HOSTS), gut);
   for (const fremd of ['https://irgendwas.lego.com/a.pdf', 'https://x.www.lego.com/a.pdf'])
     assert.ok(!hostAllowed(fremd, ALLOWED_DOWNLOAD_HOSTS), fremd);
 });
 
-test('NAT64 und IPv4-gemappte Adressen: es zählt die IPv4-Adresse darin', () => {
+test('NAT64 and IPv4-mapped addresses: the IPv4 address inside counts', () => {
   for (const [ip, v4] of [
     ['::ffff:127.0.0.1', '127.0.0.1'],
     ['::FFFF:7f00:1', '127.0.0.1'],
@@ -172,12 +172,12 @@ test('NAT64 und IPv4-gemappte Adressen: es zählt die IPv4-Adresse darin', () =>
   assert.equal(Z.publicAddress('64:ff9b::808:808'), true);
 });
 
-test('6to4 und Teredo sind nie öffentlich', () => {
+test('6to4 and Teredo are never public', () => {
   for (const ip of ['2002:a00:1::1', '2002:7f00:1::', '2001:0:4136:e378::1'])
     assert.equal(Z.publicAddress(ip), false, `6to4 und Teredo: ${ip}`);
 });
 
-test('der Mailserver erreicht das Container-Netz auch über NAT64 nicht', () => {
+test('the mail server does not reach the container network via NAT64 either', () => {
   const interfaces = {
     eth0: [{ address: '172.28.73.5', cidr: '172.28.73.5/24', family: 'IPv4', internal: false }],
   };
@@ -188,7 +188,7 @@ test('der Mailserver erreicht das Container-Netz auch über NAT64 nicht', () => 
   assert.equal(pruefe('64:ff9b::c0a8:10a'), true, 'ein Mailserver im eigenen LAN bleibt erlaubt');
 });
 
-test('IPv4-kompatible Adressen (::a.b.c.d) zählen wie die IPv4-Adresse darin', () => {
+test('IPv4-compatible addresses (::a.b.c.d) count like the IPv4 address inside', () => {
   assert.equal(Z.normalisiert('::127.0.0.1'), '127.0.0.1');
   assert.equal(Z.normalisiert('::a9fe:a9fe'), '169.254.169.254');
   for (const ip of ['::', '::1']) assert.equal(Z.normalisiert(ip), ip, `${ip} bleibt IPv6`);

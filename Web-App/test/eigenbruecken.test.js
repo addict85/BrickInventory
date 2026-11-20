@@ -44,7 +44,7 @@ function existsSource(rel) {
 /** Ordner, die es im Web-Baum wirklich gibt — alles andere ist kein Pfad von hier. */
 const ORDNER = ['routes', 'src', 'jobs', 'clients', 'db', 'startup', 'public', 'scripts', 'types'];
 
-test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
+test('no test reads a source file that does not exist', () => {
   const dateien = fs
     .readdirSync(__dirname)
     .filter(f => f.endsWith('.test.js'))
@@ -139,7 +139,7 @@ test('kein Test liest eine Quelldatei, die es nicht gibt', () => {
  * Gegenprobe (durchgefuehrt): den Aufruf aus image-throttle-db.test.js
  * entfernt → dieser Schritt wird rot und nennt die Datei.
  */
-test('wer die Bild-Warteschlange abarbeitet, leert sie vorher', () => {
+test('whoever processes the image queue clears it beforehand', () => {
   const dir = __dirname;
   const USED = /_workStack|_tickPass/;
   const CLEARS = /emptyQueue\s*\(/;

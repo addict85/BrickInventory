@@ -38,11 +38,11 @@ async function aufraeumen() {
   await db.run('DELETE FROM users WHERE id = $1', [UID]).catch(() => {});
 }
 
-test('Teile-Bewertung: kein Nachschlag je Teil', async t => {
+test('parts valuation: no lookup per part', async t => {
   try {
     await db.get('SELECT 1');
   } catch {
-    return t.skip('keine Test-Datenbank erreichbar');
+    return t.skip('no test database reachable');
   }
 
   try {

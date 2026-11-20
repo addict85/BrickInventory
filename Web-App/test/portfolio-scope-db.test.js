@@ -18,7 +18,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
-test('die Portfoliokurve folgt dem gewählten Konto', { concurrency: 1 }, async t => {
+test('the portfolio curve follows the selected account', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const MAIN = `vh-${process.pid}`,

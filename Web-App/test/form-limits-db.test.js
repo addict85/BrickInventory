@@ -20,7 +20,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 
-test('Grenzen für Formulare mit Datei', { concurrency: 1 }, async t => {
+test('limits for forms with a file', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `formular_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -36,13 +36,13 @@ test('Grenzen für Formulare mit Datei', { concurrency: 1 }, async t => {
     return [r.status, (await r.json()).code ?? null];
   };
 
-  await t.test('Vorbedingung: der Einstellungsimport nimmt ein gewöhnliches Formular an', async () => {
+  await t.test('precondition: the settings import accepts an ordinary form', async () => {
     const fd = new FormData();
     fd.append('file', datei(), 'e.json');
     assert.deepEqual(await sende('/api/v1/settings/import', fd), [200, null]);
   });
 
-  await t.test('zu viele Felder, zu grosse Felder, zwei Dateien: 400', async () => {
+  await t.test('too many fields, fields too large, two files: 400', async () => {
     const viele = new FormData();
     for (let i = 0; i < 30; i++) viele.append(`f${i}`, 'x');
     viele.append('file', datei(), 'e.json');

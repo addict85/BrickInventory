@@ -61,7 +61,7 @@ const NAME = 'scope_chef',
 const TAG = 86400_000;
 const daysUntil = d => (new Date(d).getTime() - Date.now()) / TAG;
 
-test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
+test('tokens with scope, expiry and rotation', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await require('./helpers/attestation').storeRevocationList(db);
 
@@ -144,7 +144,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
     return l;
   };
 
-  await t.test('Scope app: auch ein Verwalterkonto bekommt keine Verwalterrechte', async () => {
+  await t.test('scope app: even an administrator account gets no administrator rights', async () => {
     const qr = await qrLogin();
     assert.equal(qr.body.token_info.scope, 'app');
     assert.equal(qr.kopf.get('set-cookie'), null, 'Der QR-Login darf keine Sitzung anlegen');
@@ -165,7 +165,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
     assert.equal((await ruf('/admin/cache-ttl', { cookie: sitzung })).status, 200, 'Die Sitzung behält die Rechte');
   });
 
-  await t.test('Ablauf gleitet, geschrieben wird höchstens einmal je Tag', async () => {
+  await t.test('expiry slides, written at most once per day', async () => {
     const tok = (await anmelden({ never_expires: true })).body.token;
     assert.ok(Math.abs(daysUntil((await zeile(tok)).expires_at) - 90) < 0.01, 'Vorgabe 90 Tage');
 
@@ -205,7 +205,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
     assert.equal(nachher.expires_at.getTime(), vorher.expires_at.getTime());
   });
 
-  await t.test('Rotation: neu gegen alt, kurze Überlappung, wiederholter Tausch ersetzt den unbenutzten', async () => {
+  await t.test('rotation: new for old, short overlap, repeated exchange replaces the unused one', async () => {
     const a = (await anmelden({ never_expires: true, scope: 'voll', label: 'Telefon' })).body.token;
     const r1 = await ruf('/auth/token-rotieren', { method: 'POST', token: a });
     assert.equal(r1.status, 200, JSON.stringify(r1.body));
@@ -237,7 +237,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
     assert.equal((await ruf('/auth/token-rotieren', { method: 'POST', token: 'f'.repeat(64) })).status, 401);
   });
 
-  await t.test('App-Anmeldung: feste Höchstdauer 180 Tage, die der Tausch nicht verlängert', async () => {
+  await t.test('app login: fixed maximum duration of 180 days that the exchange does not extend', async () => {
     const a = (await anmelden({ never_expires: true, label: 'Höchstdauer' })).body.token;
     const z = await zeile(a);
     assert.ok(
@@ -260,7 +260,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
     assert.ok(daysUntil(r.body.token_info.expires_at) <= 10.01, 'die Antwort nennt das frühere Ende');
   });
 
-  await t.test('unbegrenzt nur über HTTPS, und dann mit Rotationspflicht', async () => {
+  await t.test('unlimited only over HTTPS, and then with mandatory rotation', async () => {
     const http = await qrToken('unbegrenzt');
     assert.equal(http.status, 400);
     assert.equal(http.body.code, 'unbegrenzt_nur_https');
@@ -302,7 +302,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
     }
   });
 
-  await t.test('Geräteliste: Name, Scope, Nutzung, Bereich, Ablauf; einzeln widerrufbar', async () => {
+  await t.test('device list: name, scope, usage, range, expiry; individually revocable', async () => {
     const g = (await anmelden({ never_expires: true, label: 'Tablet' })).body.token;
     await ruf('/auth/me', { token: g });
     const r = await ruf('/auth/token-rotieren', { method: 'POST', token: g });
@@ -328,7 +328,7 @@ test('Tokens mit Scope, Ablauf und Rotation', { concurrency: 1 }, async t => {
     assert.equal((await ruf('/auth/me', { token: g })).status, 401, 'der Vorgänger in der Überlappung lebt weiter');
   });
 
-  await t.test('Migration 0080: Bestand bekommt Scope voll und höchstens 90 Tage', async () => {
+  await t.test('migration 0080: existing tokens get scope full and at most 90 days', async () => {
     const sql = fs.readFileSync(path.join(ROOT, 'db/migrations/0080-token-scope-rotation.sql'), 'utf8');
     const c = await db.pool.connect();
     try {

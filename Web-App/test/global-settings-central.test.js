@@ -8,7 +8,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-test('kein neuer Direktzugriff auf global_settings', () => {
+test('no new direct access to global_settings', () => {
   try {
     execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'check-global-settings.js')], {
       cwd: ROOT,

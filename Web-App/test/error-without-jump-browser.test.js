@@ -95,7 +95,7 @@ const CASES = [
   },
 ];
 
-test('Fehlermeldungen verschieben keine Nachbarn', { concurrency: 1, timeout: 300_000 }, async t => {
+test('error messages do not move neighbors', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, { name: `sprung_${process.pid}` });
   if (app.grund) {
     t.skip(app.grund);

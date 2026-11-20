@@ -18,7 +18,7 @@ const ROOT = path.join(__dirname, '..');
 const { checkParameter } = require('./helpers/sources');
 const { openUi, warte } = require('./helpers/ui');
 
-test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
+test('the aggregate rule now exists in only one place', () => {
   const h = require('./helpers/sources').handlerQuelle();
   assert.match(h, /function zustandsAggregat/, 'Der gemeinsame Helfer fehlt');
   // Weder setsLesen()/readSet() noch die manuellen Listen dürfen die Regel je
@@ -41,7 +41,7 @@ test('die Aggregat-Regel steht nur noch an einer Stelle', () => {
   );
 });
 
-test('ein unbekannter Theme-Wert setzt nichts zurück', () => {
+test('an unknown theme value resets nothing', () => {
   // Das war die Ursache des Flackerns beim Login: showApp() reicht
   // d.settings.app_theme weiter, und ein fehlender Wert schaltete auf 'classic'
   // — samt Cache-Vergiftung.
@@ -65,7 +65,7 @@ test('ein unbekannter Theme-Wert setzt nichts zurück', () => {
   w.close();
 });
 
-test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
+test('a manually entered part gets market price and entry', () => {
   // Zwei Lücken: Der Marktpreis wurde ohne Zustand geholt (also der Neupreis,
   // auch bei „Gebraucht"), und es entstand gar keine Zeile in
   // part_acquisitions — der Kaufpreis stand nur in der Stammtabelle, während
@@ -134,7 +134,7 @@ test('ein manuell erfasstes Teil bekommt Marktpreis und Erfassung', () => {
   assert.match(fn, /condition: effectiveCondition/, 'Die Erfassung braucht den Zustand');
 });
 
-test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', () => {
+test('the minifigure market price asks BrickLink even without a separate BL number', () => {
   // Der Abruf lief nur, wenn eine abweichende bl_fig_number hinterlegt war.
   // Bei manuell erfassten Figuren ist das die Ausnahme — meist stimmt die
   // eigene Nummer mit der BrickLink-Nummer überein. Der Abruf wurde
@@ -203,7 +203,7 @@ test('der Minifiguren-Marktpreis fragt BrickLink auch ohne separate BL-Nummer', 
   );
 });
 
-test('die Teile-Schätzung landet in Cache und Verlauf', () => {
+test('the parts estimate lands in cache and history', () => {
   // Gemeldet: Im Detail-Dialog einer Minifigur OHNE BrickLink-Nummer standen
   // bei Marktpreis (Neu) und (Gebraucht) nur Striche, der Verlauf blieb leer —
   // obwohl Kaufpreise in beiden Zuständen erfasst waren.
@@ -232,7 +232,7 @@ test('die Teile-Schätzung landet in Cache und Verlauf', () => {
   assert.equal(erfassungen.length, 2, 'Die Erfassung muss den tatsächlich verwendeten Kaufpreis tragen');
 });
 
-test('auch manuelle Minifiguren legen bei jeder Erfassung eine Zeile an', () => {
+test('manual minifigures also create a row on every entry', () => {
   // Gleicher früher Ausstieg wie bei den Teilen: `if (existing) { … return }`
   // beendete den Pfad, bevor eine Erfassung entstand. Menge stieg, aber kein
   // Kaufpreis und kein abweichendes Erfassungsdatum.
@@ -261,7 +261,7 @@ test('auch manuelle Minifiguren legen bei jeder Erfassung eine Zeile an', () => 
   );
 });
 
-test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
+test('entries without a purchase price are filled in', () => {
   // Beim CSV-Import ist das Set oft noch nicht im Preis-Cache, und der
   // BrickLink-Abruf scheitert bei vielen Sets am Tageskontingent. Die Erfassung
   // entstand dann ohne Kaufpreis — der Marktpreis erschien später trotzdem,
@@ -308,7 +308,7 @@ test('Erfassungen ohne Kaufpreis werden nachgetragen', () => {
   );
 });
 
-test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
+test('new sets fetch the right condition, not the default', () => {
   // Beim Anlegen eines neuen Sets existiert weder die sets- noch die
   // set_acquisitions-Zeile schon. conditionsNeededFor() fand daher nichts und
   // fiel auf 'N' zurück — ein als „Gebraucht" importiertes Set bekam den
@@ -342,7 +342,7 @@ test('neue Sets holen den richtigen Zustand, nicht den Standard', () => {
 });
 
 // Preis- und Verlaufsroute im Zustand des Sets prüft test/price-state-of-sets-db.test.js am Server.
-test('genau EINE Zustandsauflösung für Einzelsets — setState', () => {
+test('exactly ONE condition resolution for single sets — setState', () => {
   // Fünfter Fundort desselben Fehlers in dieser Sitzung: valueSets,
   // aktuellerMarktpreis, gainAndLoss, die Webapp-Verlaufsroute und jetzt die
   // Android-API hatten je eine eigene Fassung. Ab jetzt genau eine Funktion für
@@ -381,7 +381,7 @@ test('genau EINE Zustandsauflösung für Einzelsets — setState', () => {
 
 // Die Datenbank-Sperre des Neuaufbaus prüft test/parts-summary-lock-db.test.js.
 
-test('CDN-Anfragen erzwingen IPv4', () => {
+test('CDN requests force IPv4', () => {
   // Ohne IPv6-Route liefen Bildabrufe stumm bis zur Frist. Der Set-Bild-Download
   // beim Import geht über den gemeinsamen Abrufhelfer; dass der und der Pool
   // der Bild-CDNs IPv4 erzwingen, prüft der Test darunter am laufenden Code.
@@ -393,7 +393,7 @@ test('CDN-Anfragen erzwingen IPv4', () => {
   );
 });
 
-test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bild-Proxy', async () => {
+test('IPv4 is forced on ALL outgoing HTTPS calls, not only in the image proxy', async () => {
   // Der Server hat keine IPv6-Route; ohne family: 4 hängt jede ausgehende
   // Verbindung stumm bis zur Frist. abruf.ts ist der eine Weg nach draussen.
   // Gegenprobe (05.11.2026): family: 4 aus https.get in abruf.ts oder aus dem Pool gestrichen → rot.
@@ -419,7 +419,7 @@ test('IPv4 wird an ALLEN ausgehenden HTTPS-Aufrufen erzwungen, nicht nur beim Bi
   assert.equal(aufrufe[2].optionen.agent?.options?.family, 4, 'der Pool der Bild-CDNs erzwingt IPv4 nicht');
 });
 
-test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilder', () => {
+test('the background job for parts and minifigures now creates preview images', () => {
   // Gemeldet: manuell erfasste Teile (und dasselbe Muster traf auch auf
   // Minifiguren zu) bekamen nie eine Vorschau. Ursache: Der stündliche
   // Hintergrund-Job lud das Bild herunter und aktualisierte image_local,
@@ -459,7 +459,7 @@ test('der Hintergrund-Job für Teile und Minifiguren erzeugt jetzt Vorschaubilde
 const { buildAndRequire, handlerModule } = require('./helpers/sources');
 const { conditionsFromAcquisitions, conditionFromAcquisitions } = handlerModule(buildAndRequire());
 
-test('gemischte Erfassungen ergeben ZWEI Plaketten', () => {
+test('mixed entries result in TWO badges', () => {
   // Der gemeldete Fall: ein Exemplar neu, eines gebraucht. Bisher zeigte die
   // Kachel nur „Gebraucht" — die Neu-Erfassung war unsichtbar, obwohl sie mit
   // ihrem eigenen Preis in die Bewertung eingeht.
@@ -468,12 +468,12 @@ test('gemischte Erfassungen ergeben ZWEI Plaketten', () => {
   assert.equal(conditionFromAcquisitions(2, 1), 'U');
 });
 
-test('nur ein Zustand ergibt eine Plakette', () => {
+test('only one condition results in one badge', () => {
   assert.deepEqual(conditionsFromAcquisitions(3, 0), ['N'], 'alle Erfassungen neu → nur Neu');
   assert.deepEqual(conditionsFromAcquisitions(2, 2), ['U'], 'alle Erfassungen gebraucht → nur Gebraucht');
 });
 
-test('ohne Erfassungen gilt „Neu"', () => {
+test('without entries “Neu” applies', () => {
   // Ohne Erfassungen gibt es keinen gespeicherten Wert, der zählte: Fuer
   // manuelle Positionen traegt sie eine Erfassung nach und prueft danach
   // nach, dass keine ohne geblieben ist; fuer Teile und Figuren aus einem Set …
@@ -481,7 +481,7 @@ test('ohne Erfassungen gilt „Neu"', () => {
   assert.equal(conditionFromAcquisitions(0, 0), 'N');
 });
 
-test('die Reihenfolge ist fest: Neu vor Gebraucht', () => {
+test('the order is fixed: new before used', () => {
   // Nach Häufigkeit sortiert würden die Plaketten beim nächsten Kauf die
   // Plätze tauschen — auf einer Kachel, die man überfliegt, fällt genau das
   // als „hat sich was geändert?" auf.
@@ -489,7 +489,7 @@ test('die Reihenfolge ist fest: Neu vor Gebraucht', () => {
   assert.deepEqual(conditionsFromAcquisitions(5, 1), ['N', 'U']);
 });
 
-test('die Kacheln rechnen die Plaketten nicht selbst aus', () => {
+test('the tiles do not compute the badges themselves', () => {
   const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'components.js'), 'utf8');
   assert.match(gal, /export function condBadges/, 'Eine gemeinsame Fassung für Set-, Teile- und Minifiguren-Kacheln');
   // Eine Plakette, keine Kopien mit fest eingetragenen Farben statt der CSS-Klassen:
@@ -501,7 +501,7 @@ test('die Kacheln rechnen die Plaketten nicht selbst aus', () => {
   }
 });
 
-test('der Kaufpreis auf der Kachel ist mengengewichtet, nicht das Maximum', () => {
+test('the purchase price on the tile is quantity-weighted, not the maximum', () => {
   // MAX(purchase_price) zeigte bei 2x100 und 1x160 den Wert 160.
   const h = require('./helpers/sources').handlerQuelle();
   assert.match(h, /avg_purchase_price/, 'Der gewichtete Kaufpreis fehlt im Aggregat');
@@ -519,7 +519,7 @@ test('der Kaufpreis auf der Kachel ist mengengewichtet, nicht das Maximum', () =
 const authModule = buildAndRequire()('src/account/nameRules.js');
 const { loginNameValid, USERNAME_RE, EMAIL_RE } = authModule;
 
-test('der Anmeldename darf eine E-Mail-Adresse sein', () => {
+test('the login name may be an e-mail address', () => {
   // Über dem Feld steht „Benutzername oder E-Mail", und die Abfrage sucht in
   // beiden Spalten — davor stand aber ein Wächter, der nur das
   // Benutzernamen-Muster zuliess. Das @ fiel durch, und die Meldung sprach von
@@ -530,7 +530,7 @@ test('der Anmeldename darf eine E-Mail-Adresse sein', () => {
   assert.ok(loginNameValid('mar_co.1-x'));
 });
 
-test('offensichtlicher Unsinn kommt weiterhin nicht bis zur Abfrage', () => {
+test('obvious nonsense still does not reach the query', () => {
   // Der Wächter ist nicht überflüssig: Er hält Müll von der Abfrage und vom
   // Brute-Force-Zähler fern, der je IP und Anmeldename zählt.
   for (const bad of [
@@ -546,7 +546,7 @@ test('offensichtlicher Unsinn kommt weiterhin nicht bis zur Abfrage', () => {
   }
 });
 
-test('Registrieren und Profil bleiben beim Benutzernamen-Muster', () => {
+test('registration and profile stay with the username pattern', () => {
   // Sonst könnte jemand die E-Mail-Adresse eines anderen als Benutzernamen
   // eintragen und dessen Anmeldung an sich ziehen — der Login sucht in beiden
   // Spalten.
@@ -555,7 +555,7 @@ test('Registrieren und Profil bleiben beim Benutzernamen-Muster', () => {
   // Dass /register diese Regel anwendet, prüft password-rule-db.test.js.
 });
 
-test('beide Login-Wege prüfen gleich', async () => {
+test('both login paths check the same', async () => {
   // Webapp und Android-API gehen durch checkCredentials(); dort fällt ein
   // unbrauchbarer Name ab, bevor Zähler oder Datenbank ihn sehen.
   // Gegenprobe (11.11.2026): die Formprüfung in checkCredentials() gestrichen → rot hier.
@@ -581,7 +581,7 @@ test('beide Login-Wege prüfen gleich', async () => {
   assert.deepEqual(kopien, [], `eigene Kopie des Benutzernamen-Musters statt USERNAME_RE: ${kopien.join(', ')}`);
 });
 
-test('die Kachel übernimmt den Zustand aus der Antwort des Servers', async () => {
+test('the tile takes the condition from the server response', async () => {
   // Die Webapp rechnet die Regel nicht nach: Sie nimmt das Aggregat der PUT-Antwort. Die Liste der Galerie
   // antwortet danach absichtlich nicht mehr — die Kachel darf nur aus der Antwort auf die Änderung kommen.
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 1, conditions: ['N'], condition: 'N' };

@@ -70,7 +70,7 @@ async function dbReachable() {
   }
 }
 
-test('Lagerort gegen echte Datenbank', async t => {
+test('storage location against a real database', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -88,7 +88,7 @@ test('Lagerort gegen echte Datenbank', async t => {
   };
   const writable = await household.schreibbereich(U.ich);
 
-  await t.test('ein Teil liegt an EINEM Ort, nicht je Set an einem', async () => {
+  await t.test('a part lies at ONE place, not at one per set', async () => {
     // Dasselbe Teil steckt in zwei Sets und damit in zwei Zeilen. Träfe das
     // Setzen nur eine davon, müsste man denselben Ort je Set nachpflegen — und
     // die Übersicht zeigte das Teil in zwei Kisten, von denen eine leer ist.
@@ -111,7 +111,7 @@ test('Lagerort gegen echte Datenbank', async t => {
     );
   });
 
-  await t.test('das Setzen bleibt im Schreibbereich', async () => {
+  await t.test('setting stays in the write scope', async () => {
     // Ohne diese Grenze wäre der Lagerort ein Weg, in fremden Daten zu
     // schreiben — und zwar unauffällig, weil sich sonst nichts ändert.
     const vorher =
@@ -143,7 +143,7 @@ test('Lagerort gegen echte Datenbank', async t => {
     await L.setLocation('part', writable, ['3001', '4'], 'Kiste 3');
   });
 
-  await t.test('leer heisst NULL, nicht ein Ort namens „nichts"', async () => {
+  await t.test('empty means NULL, not a place called "nothing"', async () => {
     // Ein leerer Text stünde als eigener Eintrag in jeder Auswahlliste.
     for (const eingabe of ['', '   ', null, undefined]) {
       assert.equal(L.normalizeLocation(eingabe), null, `„${eingabe}" wurde nicht zu null`);
@@ -161,7 +161,7 @@ test('Lagerort gegen echte Datenbank', async t => {
     assert.equal(r.storage, null, 'Das Leeren hat den Ort nicht entfernt');
   });
 
-  await t.test('zu lange Namen werden abgelehnt, nicht abgeschnitten', async () => {
+  await t.test('names that are too long are rejected, not truncated', async () => {
     // Abschneiden hiesse: In der Datenbank steht etwas anderes als eingegeben,
     // und niemand erfährt es.
     assert.throws(() => L.normalizeLocation('x'.repeat(L.LOCATION_MAX_CHARS + 1)), /lagerort_zu_lang|zu lang/i);
@@ -172,7 +172,7 @@ test('Lagerort gegen echte Datenbank', async t => {
     );
   });
 
-  await t.test('die Übersicht führt Sets und Teile zu EINER Liste zusammen', async () => {
+  await t.test('the overview merges sets and parts into ONE list', async () => {
     await L.setLocation('set', writable, ['10179-1'], 'Kiste 3');
     await L.setLocation('set', writable, ['75192-1'], 'Regal B');
 
@@ -193,7 +193,7 @@ test('Lagerort gegen echte Datenbank', async t => {
     assert.ok(!orte.some(o => o.ort === 'Kiste 9'), 'Ein fremder Ort ist aufgetaucht');
   });
 
-  await t.test('die Übersicht folgt dem Blickfeld', async () => {
+  await t.test('the overview follows the scope', async () => {
     await L.setLocation('set', await household.schreibbereich(U.kind), ['21318-1'], 'Kinderzimmer');
     const oben = (await L.lagerorte(await household.scopeIds(U.ich, 'all'))).map(o => o.ort);
     const unten = (await L.lagerorte(await household.scopeIds(U.kind, 'all'))).map(o => o.ort);

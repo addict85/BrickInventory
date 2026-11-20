@@ -108,7 +108,7 @@ async function setup() {
   await db.run(`INSERT INTO rb_colors (id,name,bl_color_id) VALUES (4,'Red',5),(15,'White',1)`);
 }
 
-test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurrency: 1 }, async t => {
+test('wanted list: preview and writing via the real address', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -120,7 +120,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
   importWorker(t, _req);
   const srv = testServer(_req, { sitzung: { userId: MAIN }, t });
 
-  await t.test('1. eine Datei ohne <INVENTORY> wird vorher abgewiesen', async () => {
+  await t.test('1. a file without <INVENTORY> is rejected beforehand', async () => {
     const { status, body } = await hochladen(srv.base, '<?xml version="1.0"?>\n<FOO/>\n');
     assert.equal(status, 422, `Erwartet 422, bekam ${status}`);
     assert.match(
@@ -131,7 +131,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     );
   });
 
-  await t.test('2. die Vorschau schreibt NICHTS', async () => {
+  await t.test('2. the preview writes NOTHING', async () => {
     const { status, body } = await hochladen(srv.base, XML);
     assert.equal(status, 200, `Erwartet 200, bekam ${status}: ${JSON.stringify(body)}`);
     assert.equal(body.vorschau, true, 'Ohne schreiben=1 ist das keine Vorschau');
@@ -148,7 +148,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     );
   });
 
-  await t.test('3. die Vorschau nennt die Stufen getrennt und die offenen Posten', async () => {
+  await t.test('3. the preview names the stages separately and the open items', async () => {
     const { body } = await hochladen(srv.base, XML);
     assert.deepEqual(
       body.stufen,
@@ -166,7 +166,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     assert.equal(body.rebrickable, undefined, 'Es wurde bei Rebrickable gefragt, obwohl rebrickable=1 fehlte');
   });
 
-  await t.test('4. mit schreiben=1 entstehen manuelle Teile — mit Menge und Farbe', async () => {
+  await t.test('4. with schreiben=1 manual parts are created — with quantity and color', async () => {
     const { body } = await hochladen(srv.base, XML, '?schreiben=1');
     assert.equal(body.vorschau, false);
     assert.equal(body.angelegt, 2, `${body.angelegt} angelegt statt 2: ${JSON.stringify(body.posten)}`);
@@ -204,7 +204,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     );
   });
 
-  await t.test('5. kein Kaufpreis aus MAXPRICE', async () => {
+  await t.test('5. no purchase price from MAXPRICE', async () => {
     // MAXPRICE ist eine SUCHGRENZE, kein bezahlter Preis. Hier steht -1, und
     // selbst ein echter Wert dürfte nicht als Kaufpreis landen — sonst stünde
     // in der Finanzansicht ein Betrag, den niemand ausgegeben hat.
@@ -220,7 +220,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     }
   });
 
-  await t.test('6. fremde Arten stehen im Bericht', async () => {
+  await t.test('6. foreign kinds are in the report', async () => {
     const mit = liste(item('P', '3001', 5), item('B', '5002', null), item('G', '6001', null));
     const { body } = await hochladen(srv.base, mit);
     assert.deepEqual(
@@ -232,7 +232,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
 
   // Der Fortschritt
 
-  await t.test('7. mit strom=1 kommen Fortschrittszeilen, zuletzt der Bericht', async () => {
+  await t.test('7. with strom=1 progress lines come, finally the report', async () => {
     const { status, typ, zeilen } = await uploadStream(srv.base, XML, '?schreiben=1&strom=1');
     assert.equal(status, 200);
     assert.match(
@@ -267,7 +267,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
 
   // Derselbe Balken wie beim Set-Import
 
-  await t.test('9. ein Import hinterlässt einen abgeschlossenen Auftrag', async () => {
+  await t.test('9. an import leaves a completed job', async () => {
     await db.run('DELETE FROM import_status WHERE user_id = $1', [MAIN]);
     const { body } = await hochladen(srv.base, XML, '?schreiben=1');
     assert.equal(body.success, true);
@@ -326,7 +326,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     assert.ok(offen.error, 'Ohne Grund steht in der Zeile nur die Nummer');
   });
 
-  await t.test('10. eine VORSCHAU legt keinen Auftrag an', async () => {
+  await t.test('10. a PREVIEW creates no job', async () => {
     await db.run('DELETE FROM import_status WHERE user_id = $1', [MAIN]);
     const { body } = await hochladen(srv.base, XML);
     assert.equal(body.vorschau, true, 'Vorbedingung: das ist eine Vorschau');
@@ -339,7 +339,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     );
   });
 
-  await t.test('11. ein laufender CSV-Import wird nicht verdrängt', async () => {
+  await t.test('11. a running CSV import is not displaced', async () => {
     // Der CSV-Import über 380 Sets ist das, worauf jemand waiting. Ihn aus dem
     // Balken zu werfen, weil nebenher eine Wanted-Liste eingelesen wird, wäre
     // der falsche Tausch — der Wanted-Import läuft trotzdem, nur ohne Balken.
@@ -362,7 +362,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     await db.run('DELETE FROM import_status WHERE user_id = $1', [MAIN]);
   });
 
-  await t.test('8. ohne strom=1 antwortet die Adresse unverändert als JSON', async () => {
+  await t.test('8. without strom=1 the address responds unchanged as JSON', async () => {
     // Der Weg der Android-App und aller übrigen Prüfungen. Er darf sich durch
     // den Strom NICHT geändert haben.
     const r = await (async () => {
@@ -378,7 +378,7 @@ test('Wanted-Liste: Vorschau und Schreiben über die echte Adresse', { concurren
     assert.equal(body.gelesen, 3);
   });
 
-  await t.test('9. ein Set geht durch setErfassen: angelegt, dann aufgestockt, mit Nacharbeit', async () => {
+  await t.test('9. a set goes through setErfassen: created, then topped up, with follow-up work', async () => {
     const SN = '76001-1';
     await catalogSet(db, SN, { name: 'Wanted-Set', minifigs: 0 });
     const datei = liste(item('S', SN, null, 2));

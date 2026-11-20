@@ -18,17 +18,17 @@ const { removeReferences } = require('../scripts/remove-rationales');
 // Zusammengesetzt, damit das Skript diese Datei nicht selbst bereinigt.
 const V = `Ausführlich: ${['docs', 'begruendungen'].join('/')}/src/x.ts.md#anker`;
 
-test('Zeilenkommentar: Verweiszeile und Verweis am Zeilenende verschwinden', () => {
+test('line comment: reference line and reference at end of line disappear', () => {
   assert.equal(removeReferences(`// Warum.\n// ${V}\nconst a = 1;`), '// Warum.\nconst a = 1;');
   assert.equal(removeReferences(`  // Warum. ${V}\n  f();`), '  // Warum.\n  f();');
 });
 
-test('umbrochener Verweis: „Ausführlich:“ am Zeilenende, Pfad auf der nächsten Zeile', () => {
+test('wrapped reference: “Ausführlich:” at end of line, path on the next line', () => {
   const pfad = V.replace('Ausführlich: ', '');
   assert.equal(removeReferences(`  // Warum. Ausführlich:\n  // ${pfad}\n  f();`), '  // Warum.\n  f();');
 });
 
-test('JSDoc-Schluss wandert an die letzte Inhaltszeile, Tags bleiben', () => {
+test('JSDoc end moves to the last content line, tags stay', () => {
   assert.equal(removeReferences(`/** Warum,\n * weil. ${V} */\nf();`), '/** Warum,\n * weil. */\nf();');
   assert.equal(removeReferences(`/** Warum.\n * ${V} */\nf();`), '/** Warum. */\nf();');
   assert.equal(removeReferences(`/**\n * Warum.\n * ${V}\n */`), '/**\n * Warum.\n */');
@@ -36,24 +36,24 @@ test('JSDoc-Schluss wandert an die letzte Inhaltszeile, Tags bleiben', () => {
   assert.equal(removeReferences(`/** Warum.\n * @returns Zahl\n * ${V} */`), '/** Warum.\n * @returns Zahl\n */');
 });
 
-test('Kommentare, die nur den Verweis trugen, verschwinden ganz', () => {
+test('comments that only carried the reference disappear entirely', () => {
   assert.equal(removeReferences(`/** ${V} */\nf();`), 'f();');
   assert.equal(removeReferences(`/**\n * ${V}\n */\nf();`), 'f();');
   assert.equal(removeReferences(`a();\n\n//\n// ${V}\n\nb();`), 'a();\n\nb();', 'allein zwischen Leerzeilen');
 });
 
-test('HTML-Kommentar endet auf der Inhaltszeile', () => {
+test('HTML comment ends on the content line', () => {
   assert.equal(removeReferences(`  <!-- Warum …\n       ${V} -->\n  <p>`), '  <!-- Warum … -->\n  <p>');
 });
 
-test('ohne Verweis bleibt der Text unverändert; ein zweiter Lauf ändert nichts', () => {
+test('without a reference the text stays unchanged; a second run changes nothing', () => {
   const ohne = '/** Warum.\n *\n */\n\n\n// x\n';
   assert.equal(removeReferences(ohne), ohne);
   const einmal = removeReferences(`/** Warum.\n * ${V} */\n// a ${V}\n`);
   assert.equal(removeReferences(einmal), einmal);
 });
 
-test('das Skript bereinigt einen Baum und lässt node_modules und Fremdes liegen', () => {
+test('the script cleans a tree and leaves node_modules and foreign files alone', () => {
   const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'begr-'));
   const script = (/** @type {string[]} */ ...args) =>
     spawnSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'remove-rationales.js'), ...args, wurzel], {

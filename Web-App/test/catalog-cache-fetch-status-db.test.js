@@ -34,7 +34,7 @@ const MIGRATION = fs.readFileSync(
 );
 const SCHEMA = `probe0108_${process.pid}`;
 
-test('catalog_cache nur noch Abrufstand', { concurrency: 1 }, async t => {
+test('catalog_cache only the fetch state now', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const c = await db.pool.connect();
   t.after(async () => {
@@ -43,7 +43,7 @@ test('catalog_cache nur noch Abrufstand', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('Migration auf einem Altbestand', async tt => {
+  await t.test('migration on legacy data', async tt => {
     await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`);
     await c.query(`CREATE SCHEMA ${SCHEMA}`);
     await c.query(`SET search_path TO ${SCHEMA}, public`);
@@ -70,7 +70,7 @@ test('catalog_cache nur noch Abrufstand', { concurrency: 1 }, async t => {
 
     await c.query(MIGRATION);
 
-    await tt.test('was nur ein Abruf kannte, steht danach in rb_sets', async () => {
+    await tt.test('what only a fetch knew is in rb_sets afterwards', async () => {
       assert.deepEqual(
         (await c.query('SELECT set_num, name, year, theme_id, num_parts, herkunft FROM rb_sets ORDER BY 1')).rows,
         [
@@ -83,7 +83,7 @@ test('catalog_cache nur noch Abrufstand', { concurrency: 1 }, async t => {
       );
     });
 
-    await tt.test('das Bild steht danach in set_catalog', async () => {
+    await tt.test('the image is in set_catalog afterwards', async () => {
       assert.deepEqual((await c.query('SELECT set_number, image_url FROM set_catalog ORDER BY 1')).rows, [
         { set_number: '5555-1', image_url: null },
         { set_number: '6000-1', image_url: 'https://abruf/6000.jpg' },
@@ -93,7 +93,7 @@ test('catalog_cache nur noch Abrufstand', { concurrency: 1 }, async t => {
       ]);
     });
 
-    await tt.test('catalog_cache behält nur den Abrufstand', async () => {
+    await tt.test('catalog_cache only keeps the fetch state', async () => {
       const spalten = (
         await c.query(
           `SELECT column_name FROM information_schema.columns
@@ -110,7 +110,7 @@ test('catalog_cache nur noch Abrufstand', { concurrency: 1 }, async t => {
   const cache = _req('src/catalog/repository/rebrickableCache.js');
   const detail = _req('src/sets/repository/setDetail.js');
 
-  await t.test('ein Abruf landet in rb_sets, und der Zwischenspeicher liest ihn von dort', async () => {
+  await t.test('a fetch lands in rb_sets, and the cache reads it from there', async () => {
     await db.run(`INSERT INTO rb_themes (id, name) VALUES (158, 'Star Wars') ON CONFLICT DO NOTHING`);
     await cache.rememberSet(db, {
       set_number: '4242-1',
@@ -132,7 +132,7 @@ test('catalog_cache nur noch Abrufstand', { concurrency: 1 }, async t => {
     assert.equal(z.is_gear, false);
   });
 
-  await t.test('Set-Stamm: das Bild nur aus set_catalog', async () => {
+  await t.test('set master: the image only from set_catalog', async () => {
     await db.run(
       `INSERT INTO rb_sets (set_num, name, year, set_img_url) VALUES ('4343-1', 'Nur CSV-Bild', 2020, 'https://csv/4343.jpg')`,
     );

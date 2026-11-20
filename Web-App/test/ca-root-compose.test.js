@@ -53,7 +53,7 @@ function caddyScript() {
   return rumpf.join('\n').replace(/\$\$/g, '$');
 }
 
-test('kein Dienst ausser Caddy hängt Caddys Daten ein, die App nur das Zertifikat', () => {
+test("no service except Caddy mounts Caddy's data, the app only the certificate", () => {
   const namen = [...compose.matchAll(/^ {2}([a-z-]+):\s*$/gm)].map(m => m[1]);
   assert.ok(namen.includes('app') && namen.includes('caddy'), `Dienste nicht gefunden: ${namen}`);
   // caddy-rechte übergibt Caddy seine Ordner und hat kein Netz (compose-haertung).
@@ -71,7 +71,7 @@ test('kein Dienst ausser Caddy hängt Caddys Daten ein, die App nur das Zertifik
   assert.match(compose, /^volumes:\n(?:\s*#.*\n)*\s+ca-wurzel:\s*$/m, 'das Volume ca-wurzel ist nicht angelegt');
 });
 
-test('die Schleife kopiert nur root.crt, auch wenn Caddy die CA erst später anlegt', async t => {
+test('the loop only copies root.crt, even if Caddy creates the CA only later', async t => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'wurzelprobe-'));
   const ca = path.join(tmp, 'data', 'caddy', 'pki', 'authorities', 'local'),
     vol = path.join(tmp, 'vol');

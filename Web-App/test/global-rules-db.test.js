@@ -21,7 +21,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
 
-test('globale Einstellungen: eine Regel je Schlüssel', { concurrency: 1 }, async t => {
+test('global settings: one rule per key', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
@@ -38,7 +38,7 @@ test('globale Einstellungen: eine Regel je Schlüssel', { concurrency: 1 }, asyn
   const send = (m, p, body) =>
     fetch(base + p, { method: m, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
-  await t.test('ungültige Grenzwerte ergeben 400 und ändern nichts', async () => {
+  await t.test('invalid limit values yield 400 and change nothing', async () => {
     const r0 = await send('PUT', '/api/v1/admin/api-limits', { bricklink: 4000 });
     assert.equal(r0.status, 200);
     assert.equal(await wert('api_limit_bricklink'), '4000', 'das Limit steht nach der Antwort in der Tabelle');
@@ -52,7 +52,7 @@ test('globale Einstellungen: eine Regel je Schlüssel', { concurrency: 1 }, asyn
     assert.equal(ttl.status, 400, 'eine TTL ausserhalb der Auswahl');
   });
 
-  await t.test('ein Import mit ungültigem Limit ändert nichts', async () => {
+  await t.test('an import with an invalid limit changes nothing', async () => {
     const form = new FormData();
     form.append(
       'file',
@@ -71,7 +71,7 @@ test('globale Einstellungen: eine Regel je Schlüssel', { concurrency: 1 }, asyn
     );
   });
 
-  await t.test('jeder geschriebene Schlüssel hat eine Regel', () => {
+  await t.test('every written key has a rule', () => {
     const { GLOBAL_RULES } = _req('src/contract/globalRules.js');
     const { GLOBAL_SETTINGS } = _req('src/contract/settings.js');
     const { DAILY_JOBS } = _req('src/management/timesOfDay.js');

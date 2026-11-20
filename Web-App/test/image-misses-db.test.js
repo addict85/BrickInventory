@@ -24,7 +24,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 
-test('bildlose Sets werden nicht immer wieder beim CDN gesucht', { concurrency: 1 }, async t => {
+test('imageless sets are not searched for at the CDN again and again', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const NUTZER = `im-${process.pid}`;
@@ -60,7 +60,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht', { concurrency: 
     await visit();
     assert.equal(versuche, 0, `${versuche} Downloads aus der Liste — sie darf keine mehr auslösen`);
 
-    await t.test('ein anderer Prozess weiss davon', async () => {
+    await t.test('another process knows about it', async () => {
       // Der Kern der Sache: Der Server läuft im Cluster. Ein Merker im
       // Arbeitsspeicher hilft nur DEM Prozess, der ihn angelegt hat — bei vier
       // Arbeitsprozessen wird dasselbe Bild viermal geholt.
@@ -77,7 +77,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht', { concurrency: 
       );
     });
 
-    await t.test('nach einer Woche wird erneut gesucht (gestellte Uhr statt Warten)', () => {
+    await t.test('after a week it is searched again (set clock instead of waiting)', () => {
       const IM = _req('src/images/imageMisses.js');
       IM.rememberMissing('set:' + PREFIX + '_frist');
       assert.equal(IM.isKnownMissing('set:' + PREFIX + '_frist'), true);
@@ -89,7 +89,7 @@ test('bildlose Sets werden nicht immer wieder beim CDN gesucht', { concurrency: 
       }
     });
 
-    await t.test('ein Bild, das es gibt, wird nicht gemerkt', async () => {
+    await t.test('an image that exists is not remembered', async () => {
       // Gegenrichtung: Sonst wäre der Test auch grün, wenn pauschal alles als
       // fehlend gälte — und kein Bild würde je geladen.
       const IM = _req('src/images/imageMisses.js');

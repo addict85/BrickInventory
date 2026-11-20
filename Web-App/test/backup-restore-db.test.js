@@ -59,7 +59,7 @@ async function dbReachable() {
   }
 }
 
-test('Sicherung und Wiederherstellung', async t => {
+test('backup and restore', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -108,7 +108,7 @@ test('Sicherung und Wiederherstellung', async t => {
   const grund = () =>
     (letzterLauf?.stderr || '').trim().split('\n').slice(-8).join('\n') || '(psql hat nichts nach stderr geschrieben)';
 
-  await t.test('Aufbau: Schema und ein paar Daten', async () => {
+  await t.test('setup: schema and some data', async () => {
     await db.run('DROP SCHEMA public CASCADE');
     await db.run('CREATE SCHEMA public');
     await db.initSchema();
@@ -153,7 +153,7 @@ test('Sicherung und Wiederherstellung', async t => {
     .split(' ')
     .filter(Boolean);
 
-  await t.test('pg_dump erzeugt einen vollständigen Dump', () => {
+  await t.test('pg_dump creates a complete dump', () => {
     assert.ok(optionen.includes('--clean'), `backup.sh: DUMP_OPTIONEN nicht gefunden (${optionen})`);
     execFileSync(pgDump, [...optionen, '-f', dump, url], { stdio: 'pipe', timeout: CALL_DEADLINE });
     const inhalt = fs.readFileSync(dump, 'utf8');
@@ -169,7 +169,7 @@ test('Sicherung und Wiederherstellung', async t => {
     );
   });
 
-  await t.test('nach dem Zurückspielen sind die Daten wieder da', async () => {
+  await t.test('after restoring the data is back', async () => {
     // Verwüsten — und zwar so, wie es im Ernstfall aussähe: alles weg.
     await db.run('DROP SCHEMA public CASCADE');
     await db.run('CREATE SCHEMA public');
@@ -218,7 +218,7 @@ test('Sicherung und Wiederherstellung', async t => {
     );
   });
 
-  await t.test('Sitzungen, Zähler und Protokoll kommen leer zurück, die App startet', async () => {
+  await t.test('sessions, counters and log come back empty, the app starts', async () => {
     for (const tabelle of ['user_sessions', 'rate_limit_attempts', 'app_logs']) {
       assert.ok(
         (await db.get('SELECT to_regclass($1) AS t', [`public.${tabelle}`])).t,
@@ -240,7 +240,7 @@ test('Sicherung und Wiederherstellung', async t => {
     }
   });
 
-  await t.test('ein abgeschnittener Dump wird an der Endmarke erkannt', () => {
+  await t.test('a truncated dump is recognized by the end marker', () => {
     // Der Fall, gegen den die Prüfung in backup.sh steht: pg_dump scheitert am
     // Anfang der Pipe, gzip läuft durch, die Datei ist formal gültig.
     const torso = path.join(work, 'torso.sql');
@@ -254,7 +254,7 @@ test('Sicherung und Wiederherstellung', async t => {
     );
   });
 
-  await t.test('ON_ERROR_STOP ist der Unterschied zwischen Erfolg und Schein-Erfolg', () => {
+  await t.test('ON_ERROR_STOP is the difference between success and fake success', () => {
     // Ein Dump, der mitten in einem Befehl abbricht. OHNE ON_ERROR_STOP meldet
     // psql dafür Exit 0 — das ist die ganze Begründung für die Variable in
     // restore.sh, und hier steht sie als Messung statt als Behauptung.
@@ -279,7 +279,7 @@ test('Sicherung und Wiederherstellung', async t => {
     );
   });
 
-  await t.test('die Skripte benutzen beide Vorkehrungen auch wirklich', () => {
+  await t.test('the scripts really use both precautions', () => {
     // Die Skripte selbst laufen über `docker compose exec` und sind hier nicht
     // ausführbar. Geprüft wird deshalb, dass sie die oben GEMESSENE Mechanik
     // einsetzen — die Messung sagt, dass sie wirkt, das hier, dass sie benutzt wird.
@@ -317,7 +317,7 @@ test('Sicherung und Wiederherstellung', async t => {
     );
   });
 
-  await t.test('aufräumen', async () => {
+  await t.test('clean up', async () => {
     await db.run('DROP TABLE IF EXISTS sicherungsprobe').catch(() => {});
     fs.rmSync(work, { recursive: true, force: true });
     await db.pool.end().catch(() => {});
@@ -336,7 +336,7 @@ test('Sicherung und Wiederherstellung', async t => {
  *   C  (01.11.2026) SCHLUESSEL wieder fest auf data/.datenschluessel → rot:
  *      „schluessel/datenschluessel …" (meldet „keine Schlüsseldatei")
  */
-test('backup.sh: der Datenschlüssel kommt nicht ins Archiv', t => {
+test('backup.sh: the data key does not go into the archive', t => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sicherung-schluessel-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const bin = path.join(tmp, 'bin');
@@ -384,7 +384,7 @@ test('backup.sh: der Datenschlüssel kommt nicht ins Archiv', t => {
   assert.doesNotMatch(mit.stderr, /NICHT in der Sicherung/);
 });
 
-test('backup.sh: schluessel/datenschluessel geht nur an den getrennten Ort', t => {
+test('backup.sh: schluessel/datenschluessel only goes to the separate location', t => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sicherung-schluessel-neu-'));
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const bin = path.join(tmp, 'bin');
@@ -438,7 +438,7 @@ test('backup.sh: schluessel/datenschluessel geht nur an den getrennten Ort', t =
  *   C  (04.11.) das vorangestellte \restrict entfernt → rot: „ein Backslash-Befehl
  *      mitten in einer Zeile läuft nicht“ (die Datei entstand)
  */
-test('restore.sh spielt als Migrationsrolle ein', { timeout: 240_000 }, async t => {
+test('restore.sh loads as the migration role', { timeout: 240_000 }, async t => {
   const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
   const basis = new URL(
     process.env.TEST_DB_BASIS || process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest',
@@ -575,7 +575,7 @@ esac
     return `${datei}.gz`;
   };
 
-  await t.test('Code der App-Rolle läuft beim Einspielen nicht als Superuser', async () => {
+  await t.test('code of the app role does not run as superuser when loading', async () => {
     const r = zurueck(sichern(ziel, path.join(tmp, 'db.sql')));
     assert.deepEqual(
       (await admin.query('SELECT rolname FROM pg_roles WHERE rolname = $1', [BOESE])).rows,
@@ -610,7 +610,7 @@ esac
     }
   });
 
-  await t.test('ein Dump von vor der App-Rolle (alles gehört dem Superuser)', async () => {
+  await t.test('a dump from before the app role (everything belongs to the superuser)', async () => {
     await admin.query(`CREATE DATABASE ${id(alt)}`);
     const a = schema(dbUrl(alt));
     assert.equal(a.status, 0, a.stderr);
@@ -639,7 +639,7 @@ esac
     }
   });
 
-  await t.test('ein Backslash-Befehl mitten in einer Zeile läuft nicht', async () => {
+  await t.test('a backslash command in the middle of a line does not run', async () => {
     const geknackt = path.join(tmp, 'geknackt');
     const sql = path.join(tmp, 'fremd.sql');
     execFileSync(klient('pg_dump'), ['--clean', '--if-exists', '-f', sql, dbUrl(ziel)], {

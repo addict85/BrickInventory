@@ -55,7 +55,7 @@ function ratsche(art, schranken, wurzel) {
 }
 
 for (const art of ['lint', 'format']) {
-  test(`${art}: der Bestand hält die Schranke, und sie ist knapp`, () => {
+  test(`${art}: the existing code keeps the limit, and it is tight`, () => {
     const r = ratsche(art);
     assert.equal(r.code, 0, r.aus);
     const ist = Number(/\] (\d+) /.exec(r.aus)?.[1]);
@@ -64,20 +64,20 @@ for (const art of ['lint', 'format']) {
     assert.ok(LIMITS[art] - ist <= 50, `Schranke ${LIMITS[art]}, gezählt ${ist}: nachziehen`);
   });
 
-  test(`${art}: zählt die Funde eines Probebaums`, () => {
+  test(`${art}: counts the findings of a sample tree`, () => {
     const r = ratsche(art, { lint: 1, format: 1 }, probebaum());
     assert.equal(r.code, 0, r.aus);
     assert.match(r.aus, new RegExp(`^\\[${art}\\] 1 .*\\(Schranke 1\\)`, 'm'));
   });
 
-  test(`${art}: eine zu niedrige Schranke ist rot`, () => {
+  test(`${art}: a limit that is too low is red`, () => {
     const r = ratsche(art, { lint: 0, format: 0 }, probebaum());
     assert.equal(r.code, 1, r.aus);
     assert.match(r.aus, /erlaubt sind 0/);
   });
 }
 
-test('typecheck:tests: rot über der Schranke, der Bestand hält sie', () => {
+test('typecheck:tests: red above the limit, the existing code keeps it', () => {
   // Der Bestand hat 0 Meldungen: Einmal mit der echten Schranke grün, einmal mit -1 rot,
   // damit sichtbar ist, dass das Skript überhaupt vergleicht.
   const lauf = (/** @type {number | null} */ limit) => {

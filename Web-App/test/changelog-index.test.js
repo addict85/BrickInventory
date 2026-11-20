@@ -24,7 +24,7 @@ function onDisk() {
     .sort();
 }
 
-test('jeder Teil steht im Index und umgekehrt', () => {
+test('every part is in the index and vice versa', () => {
   const tabelle = fromTable().sort();
   const disk = onDisk();
 
@@ -32,7 +32,7 @@ test('jeder Teil steht im Index und umgekehrt', () => {
   assert.deepEqual(tabelle, disk, 'Tabelle in CHANGELOG-fixes.md und Ordner CHANGELOG/ laufen auseinander');
 });
 
-test('kein Nachtrag steht in zwei Teilen', () => {
+test('no addendum is in two parts', () => {
   const gesehen = new Map(); // Nummer → Datei
   const doppelt = [];
   for (const f of onDisk()) {
@@ -51,7 +51,7 @@ test('kein Nachtrag steht in zwei Teilen', () => {
   assert.ok(gesehen.size > 100, `Nur ${gesehen.size} nummerierte Nachträge gefunden — greift das Muster noch?`);
 });
 
-test('der Dateiname deckt sich mit dem Inhalt', () => {
+test('the file name matches the content', () => {
   // Der Anlass: Beim Nachtragen der Einträge 148–153 landeten
   // 151, 152 und 153 in `12-nachtraege-126-150.md`. Alle bisherigen Prüfungen
   // blieben grün — die Nummern überschnitten sich nicht, jede Datei stand im
@@ -76,14 +76,14 @@ test('der Dateiname deckt sich mit dem Inhalt', () => {
   );
 });
 
-test('jeder Teil nennt am Anfang, wohin er gehört', () => {
+test('every part names at the start where it belongs', () => {
   const ohne = onDisk().filter(
     f => !fs.readFileSync(path.join(DIR, f), 'utf8').slice(0, 400).includes('CHANGELOG-fixes.md'),
   );
   assert.deepEqual(ohne, [], 'Diese Teile verweisen nicht zurück auf den Index: ' + ohne.join(', '));
 });
 
-test('der Index selbst bleibt kurz', () => {
+test('the index itself stays short', () => {
   // Der ganze Zweck der Aufteilung. 20 KB sind grosszügig — die Tabelle wächst
   // um eine Zeile je 25 Nachträge.
   const kb = fs.statSync(INDEX).size / 1024;

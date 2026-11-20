@@ -22,7 +22,7 @@ const db = testData();
 const NAME = `erfbest_${process.pid}`,
   SET = '99074-1';
 
-test('Erfassung und Bestand', { concurrency: 1 }, async t => {
+test('acquisition and inventory', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -45,7 +45,7 @@ test('Erfassung und Bestand', { concurrency: 1 }, async t => {
       menge,
     ]);
 
-  await t.test('eine Erfassung ohne Bestandszeile scheitert beim COMMIT', async () => {
+  await t.test('an acquisition without an inventory row fails at COMMIT', async () => {
     await assert.rejects(
       db.transaction(tx => erfassung(tx)),
       /set_acquisitions_bestand_fkey/,
@@ -53,7 +53,7 @@ test('Erfassung und Bestand', { concurrency: 1 }, async t => {
     assert.equal((await db.get('SELECT count(*)::int AS n FROM set_acquisitions WHERE user_id = $1', [uid])).n, 0);
   });
 
-  await t.test('innerhalb einer Transaktion darf die Erfassung vor dem Bestand kommen', async () => {
+  await t.test('within a transaction the acquisition may come before the inventory', async () => {
     await db.transaction(async tx => {
       await erfassung(tx);
       await tx.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SET]);
@@ -61,7 +61,7 @@ test('Erfassung und Bestand', { concurrency: 1 }, async t => {
     assert.equal((await db.get('SELECT count(*)::int AS n FROM set_acquisitions WHERE user_id = $1', [uid])).n, 1);
   });
 
-  await t.test('Menge null oder unbekannter Zustand werden abgewiesen', async () => {
+  await t.test('quantity zero or unknown condition are rejected', async () => {
     await assert.rejects(
       db.transaction(tx => erfassung(tx, 0)),
       /set_acquisitions_menge_positiv/,
@@ -75,7 +75,7 @@ test('Erfassung und Bestand', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('den Bestand löschen, solange Erfassungen da sind, scheitert', async () => {
+  await t.test('deleting the inventory while acquisitions exist fails', async () => {
     await assert.rejects(
       db.run('DELETE FROM sets WHERE user_id = $1 AND set_number = $2', [uid, SET]),
       /set_acquisitions_bestand_fkey/,

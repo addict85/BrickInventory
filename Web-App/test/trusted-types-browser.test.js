@@ -27,7 +27,7 @@ test('Trusted Types', { timeout: 180_000 }, async t => {
     return;
   }
 
-  await t.test('die CSP verlangt Trusted Types und meldet Verstösse an den Server', async () => {
+  await t.test('the CSP requires Trusted Types and reports violations to the server', async () => {
     const r = await fetch(`http://127.0.0.1:${app.port}/`);
     const csp = r.headers.get('content-security-policy') ?? '';
     assert.match(csp, /(^|; )require-trusted-types-for 'script'(;|$)/, csp);
@@ -43,7 +43,7 @@ test('Trusted Types', { timeout: 180_000 }, async t => {
     assert.equal(bericht.status, 204);
   });
 
-  await t.test('setzeHtml() baut die Sammlung, innerHTML ausserhalb wirft TypeError', async () => {
+  await t.test('setzeHtml() builds the collection, innerHTML outside throws TypeError', async () => {
     assert.ok(
       (await app.b.auswerten(`document.querySelectorAll('#gallery .sc').length`)) > 0,
       'keine Kachel in der Sammlung',
@@ -68,7 +68,7 @@ test('Trusted Types', { timeout: 180_000 }, async t => {
     });
   });
 
-  await t.test('das Protokollfenster zeigt seine Einträge', async () => {
+  await t.test('the log window shows its entries', async () => {
     // Mit Nutzergeste, sonst blockiert Chrome das Fenster und die App meldet es per alert().
     await app.b.tab('Runtime.evaluate', {
       userGesture: true,

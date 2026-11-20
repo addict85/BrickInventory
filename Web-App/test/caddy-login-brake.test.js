@@ -36,7 +36,7 @@ const CADDY = process.env.CADDY_BIN || (spawnSync('caddy', ['version']).status =
 // REQUIRE_CADDY=1 (CI): ein fehlender Caddy ist ein Fehler, kein stilles Überspringen.
 if (!CADDY && process.env.REQUIRE_CADDY === '1') throw new Error('REQUIRE_CADDY=1, aber kein Caddy (CADDY_BIN)');
 
-test('Caddy reicht die Anmeldewege ungebremst, aber nur mit ganzem Rumpf weiter', {
+test('Caddy passes the login paths on unthrottled, but only with a complete body', {
   skip: !CADDY && 'kein Caddy (CADDY_BIN)',
   timeout: 120_000,
 }, async t => {

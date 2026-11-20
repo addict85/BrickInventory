@@ -42,7 +42,7 @@ function runner(dateien, mehr = {}) {
   return { code: r.status, aus: r.stdout + r.stderr };
 }
 
-test('Frist und Nachlauf im Runner', { concurrency: 1, timeout: 240_000 }, async t => {
+test('deadline and rerun in the runner', { concurrency: 1, timeout: 240_000 }, async t => {
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'test-lauf-frist-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const marke = path.join(ordner, 'schon-gelaufen');
@@ -67,7 +67,7 @@ test('braucht erst 8 s, dann 3 s', async () => {
   );
   const kaputt = datei('kaputt.test.js', `test('scheitert', () => { throw new Error('echter Fehler'); });`);
 
-  await t.test('unter Last zu langsam, einzeln grün: der Lauf ist grün', () => {
+  await t.test('too slow under load, green alone: the run is green', () => {
     const r = runner([langsam]);
     assert.match(r.aus, /Nachlauf einzeln: .*langsam\.test\.js/);
     assert.match(r.aus, /Nachlauf grün/);
@@ -76,20 +76,20 @@ test('braucht erst 8 s, dann 3 s', async () => {
     assert.equal(r.code, 0, r.aus.slice(-1500));
   });
 
-  await t.test('mit TEST_NACHLAUF=aus ist die Fristüberschreitung rot', () => {
+  await t.test('with TEST_NACHLAUF=aus exceeding the deadline is red', () => {
     fs.rmSync(marke, { force: true });
     const r = runner([langsam], { TEST_NACHLAUF: 'aus' });
     assert.match(r.aus, /kein Nachlauf \(TEST_NACHLAUF=aus\)/);
     assert.notEqual(r.code, 0);
   });
 
-  await t.test('einzeln weiter zu langsam: der Lauf ist rot', () => {
+  await t.test('still too slow alone: the run is red', () => {
     const r = runner([immerLangsam]);
     assert.match(r.aus, /Nachlauf ROT/);
     assert.notEqual(r.code, 0);
   });
 
-  await t.test('ein echter Fehler wird nicht nachgeholt', () => {
+  await t.test('a real error is not rerun', () => {
     const r = runner([kaputt]);
     assert.doesNotMatch(r.aus, /Nachlauf/);
     assert.notEqual(r.code, 0);

@@ -12,7 +12,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 
-test('eine späte Startantwort „nicht angemeldet“ beendet die frische Anmeldung nicht', {
+test('a late startup response "not logged in" does not end the fresh login', {
   timeout: 120_000,
 }, async t => {
   const app = await startApp(t, {

@@ -49,7 +49,7 @@ function withoutPrefix(eintrag) {
   return eintrag.replace(/ \/api(\/v1)?/, ' ');
 }
 
-test('keine unbegruendete Route auf beiden API-Oberflaechen', () => {
+test('no unjustified route on either API surface', () => {
   const web = new Set();
   for (const r of webRouter()) for (const x of routesFrom(r.datei, r.mount)) web.add(x);
 
@@ -96,7 +96,7 @@ test('keine unbegruendete Route auf beiden API-Oberflaechen', () => {
   );
 });
 
-test('jeder Router haengt unter /api/v1', () => {
+test('every router hangs under /api/v1', () => {
   const STILL_NOT = new Map([]);
 
   const einhaengungen = webRouter();
@@ -134,7 +134,7 @@ test('jeder Router haengt unter /api/v1', () => {
 /**
  * Auch die Routen, die DIREKT in server.ts stehen.
  */
-test('auch die direkt angemeldeten Routen stehen unter /api/v1', () => {
+test('the directly registered routes are under /api/v1 too', () => {
   // Die EINE Ausnahme, und sie ist keine Nachlaessigkeit:
   // Die EINE Ausnahme — und sie ist eine Auslauf-Adresse, keine zweite
   // gleichrangige.
@@ -216,7 +216,7 @@ test('auch die direkt angemeldeten Routen stehen unter /api/v1', () => {
 /**
  * Der Gesundheitscheck aus compose.yaml zeigt auf eine Adresse, die es gibt.
  */
-test('der Gesundheitscheck aus compose.yaml zeigt auf eine echte Adresse', () => {
+test('the health check from compose.yaml points to a real address', () => {
   const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
   const treffer = compose.match(/http:\/\/localhost:\d+(\/api\/[^'"\s)]*)/);
   assert.ok(treffer, 'compose.yaml enthaelt keinen Gesundheitscheck auf eine /api-Adresse');

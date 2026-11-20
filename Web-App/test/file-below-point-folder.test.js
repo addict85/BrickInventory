@@ -20,7 +20,7 @@ const DATEI = path.join(ORDNER, 'gutschein.pdf');
 fs.writeFileSync(DATEI, '%PDF-1.4 probe');
 fs.writeFileSync(path.join(ORDNER, '.geheim'), 'nicht ausliefern');
 
-test('Auslieferung unter einem Punkt-Ordner', async t => {
+test('delivery under a dot folder', async t => {
   const app = express();
   app.get('/datei', (_req, res) => deliverFile(res, DATEI));
   app.get('/punktdatei', (_req, res) => deliverFile(res, path.join(ORDNER, '.geheim')));
@@ -28,13 +28,13 @@ test('Auslieferung unter einem Punkt-Ordner', async t => {
   t.after(() => srv.close());
   const basis = `http://127.0.0.1:${srv.address().port}`;
 
-  await t.test('eine Datei unter einem Punkt-Ordner kommt an', async () => {
+  await t.test('a file under a dot folder arrives', async () => {
     const r = await fetch(basis + '/datei');
     assert.equal(r.status, 200);
     assert.equal(await r.text(), '%PDF-1.4 probe');
   });
 
-  await t.test('eine Datei, die selbst mit Punkt beginnt, bleibt verborgen', async () => {
+  await t.test('a file that itself starts with a dot stays hidden', async () => {
     assert.equal((await fetch(basis + '/punktdatei')).status, 404);
   });
 });

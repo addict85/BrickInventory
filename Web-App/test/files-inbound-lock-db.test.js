@@ -35,7 +35,7 @@ const db = testData();
 
 const NAMEN = ['ds_normal', 'ds_wechsel', 'ds_chef', 'ds_chef2fa'].map(n => `${n}_${process.pid}`);
 
-test('Dateien und Bild-Proxy: Eingangssperren', { concurrency: 1 }, async t => {
+test('files and image proxy: entrance locks', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
@@ -91,7 +91,7 @@ test('Dateien und Bild-Proxy: Eingangssperren', { concurrency: 1 }, async t => {
     fs.rmSync(WURZEL, { recursive: true, force: true });
   });
 
-  await t.test('Passwortwechsel nötig sperrt Dateien und Bild-Proxy', async () => {
+  await t.test('password change required locks files and image proxy', async () => {
     for (const weg of wege(wechsel)) {
       const r = await hole(wechsel, weg);
       assert.equal(r.status, 403, `${weg}: ${r.body}`);
@@ -99,7 +99,7 @@ test('Dateien und Bild-Proxy: Eingangssperren', { concurrency: 1 }, async t => {
     }
   });
 
-  await t.test('Verwalter ohne zweiten Faktor wird gesperrt', async () => {
+  await t.test('an admin without a second factor is locked', async () => {
     for (const weg of wege(chef)) {
       const r = await hole(chef, weg);
       assert.equal(r.status, 403, `${weg}: ${r.body}`);
@@ -107,7 +107,7 @@ test('Dateien und Bild-Proxy: Eingangssperren', { concurrency: 1 }, async t => {
     }
   });
 
-  await t.test('gewöhnliches Konto und Verwalter mit zweitem Faktor kommen durch', async () => {
+  await t.test('an ordinary account and an admin with a second factor get through', async () => {
     assert.equal((await hole(normal, `/data/uploads/${normal}/a.pdf`)).status, 200);
     assert.equal((await hole(normal, `/data/instructions/${SN}_1.pdf`)).status, 200);
     assert.equal((await hole(normal, '/images/parts/probe.png')).status, 200);

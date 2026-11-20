@@ -75,7 +75,7 @@ test('Sitzungssperre: Freigabefehler', { concurrency: 1 }, async t => {
     testAccess().pool.options.max = maxBefore;
   });
 
-  await t.test('withSessionLock: das Ergebnis des Laufs bleibt', async () => {
+  await t.test('withSessionLock: the result of the run stays', async () => {
     const incident = unlockFailsOnce();
     const r = await withSessionLock(
       testAccess(),
@@ -89,7 +89,7 @@ test('Sitzungssperre: Freigabefehler', { concurrency: 1 }, async t => {
     assert.equal(incident.released, true);
   });
 
-  await t.test('withSessionLock: die Sperre ist nach einem Freigabefehler frei', async () => {
+  await t.test('withSessionLock: the lock is free after a release error', async () => {
     const incident = unlockFailsOnce();
     await withSessionLock(
       testAccess(),
@@ -103,7 +103,7 @@ test('Sitzungssperre: Freigabefehler', { concurrency: 1 }, async t => {
     assert.equal(await lockFree(), true, 'die Sperre hängt an einer Verbindung im Pool');
   });
 
-  await t.test('withSessionLock: ein Fehler des Laufs bleibt der Fehler', async () => {
+  await t.test('withSessionLock: an error of the run stays the error', async () => {
     unlockFailsOnce();
     await assert.rejects(
       withSessionLock(
@@ -121,7 +121,7 @@ test('Sitzungssperre: Freigabefehler', { concurrency: 1 }, async t => {
     assert.equal(await lockFree(), true);
   });
 
-  await t.test('receiptsSessionLock: die Sperre ist nach einem Freigabefehler frei', async () => {
+  await t.test('receiptsSessionLock: the lock is free after a release error', async () => {
     const incident = unlockFailsOnce();
     const frei = await receiptsSessionLock(testAccess(), SCHLUESSEL);
     assert.ok(frei, 'die Sperre war schon belegt');

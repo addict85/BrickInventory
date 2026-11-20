@@ -35,7 +35,7 @@ testImageWorker(null, {
 const { keineDb } = require('./helpers/db');
 const db = testData();
 
-test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async t => {
+test('the image server is queried gently', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -60,7 +60,7 @@ test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async t => {
     const n = (await _req('src/images/imageDemandRun.js')._workStack()).gesamt;
     const spacing = times.slice(1).map((z, i) => z - times[i]);
 
-    await t.test('nacheinander, nie gleichzeitig', () => {
+    await t.test('one after another, never concurrently', () => {
       assert.equal(
         maxConcurrent,
         1,
@@ -69,20 +69,20 @@ test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async t => {
       );
     });
 
-    await t.test('mindestens eine halbe Sekunde Abstand', () => {
+    await t.test('at least half a second apart', () => {
       assert.ok(spacing.length >= 5, `nur ${spacing.length} Abstände gemessen`);
       const smallest = Math.min(...spacing);
       assert.ok(smallest >= 500, `kleinster Abstand ${smallest} ms — gefordert sind mindestens 500`);
     });
 
-    await t.test('die Abstände sind nicht alle gleich', () => {
+    await t.test('the intervals are not all the same', () => {
       // Ein exakt gleicher Abstand ist selbst ein Muster: Eine Heuristik, die
       // nach Maschinen sucht, erkennt Gleichmass leichter als Unregelmässigkeit.
       const only = new Set(spacing.map(a => Math.round(a / 50)));
       assert.ok(only.size > 1, 'Alle Abstände sind gleich — die Verzögerung muss zufällig streuen');
     });
 
-    await t.test('höchstens 30 Anfragen je Minute', () => {
+    await t.test('at most 30 requests per minute', () => {
       // Die Rate ergibt sich aus Stapelgrösse und Takt; beide kommen aus dem
       // Modul, damit der Test keine Zahl wiederholt, die sich ändern darf.
       const { STAPEL: stapel, TAKT_MS: takt } = _req('src/images/imageDemandRun.js');
@@ -98,7 +98,7 @@ test('der Bildserver wird schonend abgefragt', { concurrency: 1 }, async t => {
   }
 });
 
-test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async t => {
+test('pure preview work is throttled too', { concurrency: 1 }, async t => {
   // Marcos Log
   try {
     await db.initSchemaOnce();
@@ -150,7 +150,7 @@ test('auch reine Vorschau-Arbeit wird gebremst', { concurrency: 1 }, async t => 
 
 // Gegenprobe (09.11.2026): bildUserAgent() wieder auf `BrickInventoryManager/…` → rot
 // „der Bild-Auftrag holt mit der Browser-Kennung des Proxys“.
-test('der Bild-Auftrag holt mit der Browser-Kennung des Proxys', () => {
+test("the image job fetches with the proxy's browser identifier", () => {
   const dist = path.join(ROOT, 'dist', 'src/images/setImages.js');
   assert.ok(fs.existsSync(dist), 'dist/src/images/setImages.js fehlt — erst bauen');
   const { IMAGE_HEADERS } = require(path.join(ROOT, 'dist', 'clients/imageCdn.js'));

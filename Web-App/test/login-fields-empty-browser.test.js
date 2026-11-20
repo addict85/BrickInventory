@@ -20,7 +20,7 @@ const felder = `({ lu: document.getElementById('lu').value, lp: document.getElem
   hinweis: document.getElementById('login-hinweis').hidden ? '' : document.getElementById('login-hinweis').textContent,
   fehler: [...document.querySelectorAll('#toasts .toast.error')].map(t => t.textContent) })`;
 
-test('Anmeldefelder nach Sitzungsablauf und nach Abmelden', { timeout: 180_000 }, async t => {
+test('login fields after the session expired and after logout', { timeout: 180_000 }, async t => {
   const app = await startApp(t, { name: `ablauf_${process.pid}`, bestand: patternCollection });
   if (app.grund) {
     t.skip(app.grund);
@@ -28,7 +28,7 @@ test('Anmeldefelder nach Sitzungsablauf und nach Abmelden', { timeout: 180_000 }
   }
   const mask = `getComputedStyle(document.getElementById('login-screen')).display !== 'none'`;
 
-  await t.test('Sitzungsablauf: Name bleibt, Passwort weg, genau eine Meldung', async () => {
+  await t.test('session expired: name stays, password gone, exactly one message', async () => {
     assert.notEqual(await app.b.auswerten(`document.getElementById('lp').value`), '', 'Vorbedingung: Passwort im Feld');
     await app.db.run(`DELETE FROM user_sessions`);
     // Zwei Ansichten im selben Takt: Die Sammlung lädt neu, während die Teile schon 401 bekommen.
@@ -44,7 +44,7 @@ test('Anmeldefelder nach Sitzungsablauf und nach Abmelden', { timeout: 180_000 }
     assert.deepEqual(f.fehler, [], 'Fehler-Toast neben dem Hinweis');
   });
 
-  await t.test('Abmelden leert Name, Passwort und Code', async () => {
+  await t.test('logout clears name, password and code', async () => {
     // Verwalter brauchen den zweiten Faktor; der erste Code ging an die erste Anmeldung.
     await app.b.auswerten(`document.getElementById('lp').value = 'app-Passwort-1';
       document.getElementById('lc').value = ${JSON.stringify(app.furtherCodes[0])};

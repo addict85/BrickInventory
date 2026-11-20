@@ -30,7 +30,7 @@ const anfrage = (i = 7) => ({ ip: `203.0.113.${i}`, headers: {}, socket: {} });
 /** Kosten eines argon2-Hashes: alles vor dem Salz. */
 const kosten = (/** @type {string} */ hash) => hash.split('$').slice(0, 4).join('$');
 
-test('unbekannter Anmeldename rechnet denselben Hash wie ein falsches Passwort', async t => {
+test('an unknown login name computes the same hash as a wrong password', async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const name = 'zeit_bekannt';

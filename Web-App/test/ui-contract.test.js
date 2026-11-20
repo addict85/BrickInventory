@@ -22,7 +22,7 @@ const { buildDist } = require('./helpers/sources');
 buildDist();
 const { routeForRequest } = require(path.join(__dirname, '..', 'dist/src/contract/index.js'));
 
-test('Standardantworten erfüllen den Vertrag ohne Ergänzung', () => {
+test('default responses fulfill the contract without additions', () => {
   const deviations = [];
   let geprueft = 0;
   for (const [pfad, antwort] of [...Object.entries(ANMELDUNG), ...Object.entries(SIGNED_OUT)]) {
@@ -40,7 +40,7 @@ test('Standardantworten erfüllen den Vertrag ohne Ergänzung', () => {
   assert.deepEqual(deviations, []);
 });
 
-test('checkResponse ergänzt Pflichtfelder und wirft bei falschem Typ', () => {
+test('checkResponse adds required fields and throws on the wrong type', () => {
   const supplemented = checkResponse('GET', '/api/v1/sets', { success: true, sets: [{ set_number: '10294-1' }] });
   assert.equal(supplemented.count, 0);
   assert.equal(supplemented.sets[0].set_number, '10294-1');
@@ -54,7 +54,7 @@ test('checkResponse ergänzt Pflichtfelder und wirft bei falschem Typ', () => {
   assert.equal(checkResponse('GET', '/api/v1/sets', kaputt), kaputt);
 });
 
-test('Fehlerantwort ohne code verletzt den Vertrag', () => {
+test('error response without code violates the contract', () => {
   assert.throws(
     () => checkResponse('GET', '/api/v1/sets', { $status: 500, success: false, error: 'kaputt' }),
     /\(500\): code/,
@@ -64,7 +64,7 @@ test('Fehlerantwort ohne code verletzt den Vertrag', () => {
   );
 });
 
-test('fetch der Oberfläche liefert die ergänzte Antwort', async () => {
+test("the UI's fetch delivers the completed response", async () => {
   const { w } = await openUi({
     '/v1/sets': { success: true, sets: [{ set_number: '10294-1', name: 'Titanic' }] },
   });
@@ -78,7 +78,7 @@ test('fetch der Oberfläche liefert die ergänzte Antwort', async () => {
   }
 });
 
-test('eine falsche Testantwort macht den Test rot', () => {
+test('a wrong test response makes the test red', () => {
   // In einem eigenen Lauf: Der Fehler soll dort einen Test rot machen, nicht diesen.
   const datei = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'vertrag-')), 'probe.test.js');
   fs.writeFileSync(

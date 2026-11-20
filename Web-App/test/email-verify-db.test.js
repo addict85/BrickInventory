@@ -70,7 +70,7 @@ const zustand = id =>
     [id],
   );
 
-test('E-Mail-Verifikation gegen echte Datenbank', async t => {
+test('email verification against a real database', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -78,7 +78,7 @@ test('E-Mail-Verifikation gegen echte Datenbank', async t => {
   }
   await seed();
 
-  await t.test('gültiger Token: setzt email_verified und räumt die Felder ab', async () => {
+  await t.test('valid token: sets email_verified and clears the fields', async () => {
     const u = await newUser('gueltig');
     assert.deepEqual(
       await verifyEmailToken(u.token),
@@ -95,7 +95,7 @@ test('E-Mail-Verifikation gegen echte Datenbank', async t => {
     });
   });
 
-  await t.test('abgelaufener Token wird abgelehnt und ändert nichts', async () => {
+  await t.test('an expired token is rejected and changes nothing', async () => {
     const u = await newUser('abgelaufen', { minutesValid: -5 });
     await assert.rejects(verifyEmailToken(u.token), INVALID);
     const z = await zustand(u.id);
@@ -107,22 +107,22 @@ test('E-Mail-Verifikation gegen echte Datenbank', async t => {
     assert.notEqual(z.new_email_token, null, 'Die Felder wurden fälschlich abgeräumt');
   });
 
-  await t.test('unbekannter Token wird abgelehnt', async () => {
+  await t.test('an unknown token is rejected', async () => {
     await assert.rejects(verifyEmailToken('gibtesnicht'), INVALID);
   });
 
-  await t.test('fehlender Token wird abgelehnt', async () => {
+  await t.test('a missing token is rejected', async () => {
     for (const leer of [undefined, null, '', '   '])
       await assert.rejects(verifyEmailToken(leer), INVALID, `${JSON.stringify(leer)} wurde angenommen`);
   });
 
-  await t.test('zweites Einlösen desselben Tokens schlägt fehl', async () => {
+  await t.test('redeeming the same token a second time fails', async () => {
     const u = await newUser('zweimal');
     await verifyEmailToken(u.token);
     await assert.rejects(verifyEmailToken(u.token), INVALID, 'Derselbe Link liess sich ein zweites Mal einlösen');
   });
 
-  await t.test('die erste Bestätigung gewinnt, die zweite Registrierung bleibt offen', async () => {
+  await t.test('the first confirmation wins, the second registration stays open', async () => {
     const erste = await newUser('erste', { email: 'geteilt@example.ch' });
     const zweite = await newUser('zweite', { email: 'GETEILT@example.ch' });
     await verifyEmailToken(erste.token);

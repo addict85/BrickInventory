@@ -19,7 +19,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
-test('Regelverletzungen der Datenbank werden zu 4xx mit Code', async t => {
+test('rule violations of the database become 4xx with a code', async t => {
   const db = await dataOrSkip(t, _req, { migrieren: false });
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));

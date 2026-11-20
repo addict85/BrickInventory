@@ -39,7 +39,7 @@ const freePort = () =>
     });
   });
 
-test('Nachprüfung am echten Server', { concurrency: 1, timeout: 180_000 }, async t => {
+test('verification on the real server', { concurrency: 1, timeout: 180_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `nach_${process.pid}`,
     PASS = 'Nach-Pruefung-7x';
@@ -95,7 +95,7 @@ test('Nachprüfung am echten Server', { concurrency: 1, timeout: 180_000 }, asyn
   const holen = (pfad, o = {}) =>
     fetch(basis + pfad, { redirect: 'manual', ...o, headers: { cookie: keks, origin: basis, ...(o.headers || {}) } });
 
-  await t.test('API und Anmeldewege tragen no-store, statische Dateien nicht', async () => {
+  await t.test('API and login paths carry no-store, static files do not', async () => {
     const neu = await holen('/api/v1/vouchers', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -118,7 +118,7 @@ test('Nachprüfung am echten Server', { concurrency: 1, timeout: 180_000 }, asyn
     assert.doesNotMatch(statisch.headers.get('cache-control'), /no-store/);
   });
 
-  await t.test('kaputtes JSON und zu grosse Anfragen: einheitliche Antwort ohne Parsertext', async () => {
+  await t.test('broken JSON and too large requests: uniform response without parser text', async () => {
     for (const [pfad, withCookie] of /** @type {[string, boolean][]} */ ([
       ['/api/v1/auth/login', false],
       ['/api/v1/vouchers', true],
@@ -145,7 +145,7 @@ test('Nachprüfung am echten Server', { concurrency: 1, timeout: 180_000 }, asyn
     assert.deepEqual([gross.status, (await gross.json()).code], [413, 'anfrage_zu_gross']);
   });
 
-  await t.test('zu grosse IDs in Pfad und Rumpf ergeben 400, nicht 500', async () => {
+  await t.test('too large IDs in path and body yield 400, not 500', async () => {
     const GROSS = '99999999999999999999';
     const faelle = [
       ['GET', `/api/v1/vouchers/${GROSS}/pdf`],
@@ -178,7 +178,7 @@ test('Nachprüfung am echten Server', { concurrency: 1, timeout: 180_000 }, asyn
   });
 });
 
-test('PostgreSQL 22003 (Wert ausserhalb des Spaltentyps) wird 400, nicht 500', () => {
+test('PostgreSQL 22003 (value outside the column type) becomes 400, not 500', () => {
   const script = `const { handleRouteError } = require(${JSON.stringify(path.join(ROOT, 'dist/src/http/httpResponse.js'))});
     console.warn = () => {};
     const res = { headersSent: false, status(s) { this.s = s; return this; }, json(b) { process.stdout.write(JSON.stringify([this.s, b.code])); } };

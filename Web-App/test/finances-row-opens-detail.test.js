@@ -74,7 +74,7 @@ for (const [fall, suche] of [
   ['ohne Filter', false],
   ['mit Suche in den Reitern', true],
 ]) {
-  test(`Finanzen: Teile- und Figurenzeile öffnen das Detail (${fall})`, async () => {
+  test(`finances: part and figure row open the detail (${fall})`, async () => {
     const o = await oeffne();
     try {
       if (suche) {

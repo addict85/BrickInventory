@@ -35,7 +35,7 @@ async function groesse(b, breite, hoehe, telefon) {
 }
 const sichtbar = sel => `[...document.querySelectorAll(${JSON.stringify(sel)})].map(e => e.checkVisibility())`;
 
-test('Kontoleiste, Feldfehler im Raster, untere Leiste, Set-Bild', { concurrency: 1, timeout: 420_000 }, async t => {
+test('account bar, field error in the grid, bottom bar, set image', { concurrency: 1, timeout: 420_000 }, async t => {
   const app = await startApp(t, {
     name: `r27_${process.pid}`,
     bestand: async (db, uid) => {
@@ -55,7 +55,7 @@ test('Kontoleiste, Feldfehler im Raster, untere Leiste, Set-Bild', { concurrency
   };
 
   // Zuerst: Nur ohne geladene Liste und Kurve landet der Fehler im Diagrammkasten.
-  await t.test('N3 Finanzen-Fehler: Zeitraum, Chips und Suche weg, nach Erfolg zurück', async () => {
+  await t.test('N3 finance error: period, chips and search gone, back after success', async () => {
     const kaputt = JSON.stringify({ success: false, error: 'interner Fehler', code: 'interner_fehler' });
     const intercept = d => {
       if (d.method !== 'Fetch.requestPaused') return;
@@ -96,7 +96,7 @@ test('Kontoleiste, Feldfehler im Raster, untere Leiste, Set-Bild', { concurrency
         ['Hintergrundarbeiten', '#/hintergrund', '#tab-monitor .konto-nav'],
         ...(telefon ? [['Einstellungen', '#/einstellungen/benutzer', '#global-settings-grid > .einst-nav']] : []),
       ])
-        await t.test(`M2 ${breite} px ${dunkel ? 'dunkel' : 'hell'}: Sprungleiste ${ansicht} klebt`, async () => {
+        await t.test(`M2 ${breite} px ${dunkel ? 'dark' : 'light'}: jump bar ${ansicht} sticks`, async () => {
           await groesse(b, breite, telefon ? 844 : 900, telefon);
           await b.tab('Emulation.setEmulatedMedia', {
             features: [{ name: 'prefers-color-scheme', value: dunkel ? 'dark' : 'light' }],
@@ -138,7 +138,7 @@ test('Kontoleiste, Feldfehler im Raster, untere Leiste, Set-Bild', { concurrency
           );
         });
 
-  await t.test('N2 Feldfehler im zweispaltigen Dialog unter ihrem Feld', async () => {
+  await t.test('N2 field errors in the two-column dialog below their field', async () => {
     await groesse(b, 1280, 900, false);
     await b.tab('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
     await zu('#/sammlung');
@@ -160,7 +160,7 @@ test('Kontoleiste, Feldfehler im Raster, untere Leiste, Set-Bild', { concurrency
     await b.auswerten(`document.querySelector('[data-click="schliesseErfassen"][data-arg="set"]').click(); true`);
   });
 
-  await t.test('N4 untere Leiste bei geringer Höhe: Namen bis 601 px', async () => {
+  await t.test('N4 bottom bar at low height: names up to 601 px', async () => {
     const BAR = `(() => { const tabs = [...document.querySelectorAll('nav .ntab')].filter(x => x.checkVisibility());
       return { n: tabs.length, pageWider: document.documentElement.scrollWidth > innerWidth,
         namen: tabs.map(x => { const t = x.getBoundingClientRect(), l = x.querySelector('.tab-label').getBoundingClientRect();
@@ -185,7 +185,7 @@ test('Kontoleiste, Feldfehler im Raster, untere Leiste, Set-Bild', { concurrency
     }
   });
 
-  await t.test('N5 Finanzen-Tabelle: Zustand und Konto auf einer Grundlinie', async () => {
+  await t.test('N5 finance table: condition and account on one baseline', async () => {
     await groesse(b, 1280, 900, false);
     await zu('#/finanzen');
     await bis(`!!document.querySelector('#fin-tbl .besitzer-badge')`, 'Abzeichen');
@@ -205,7 +205,7 @@ test('Kontoleiste, Feldfehler im Raster, untere Leiste, Set-Bild', { concurrency
     );
   });
 
-  await t.test('N7 Set-Bild: Knopf, mit der Tastatur zu öffnen', async () => {
+  await t.test('N7 set image: button, can be opened with the keyboard', async () => {
     await groesse(b, 1280, 900, false);
     await zu('#/sammlung');
     await b.auswerten(`document.querySelector('#gallery [data-click="openModal"][data-arg="10294-1"]').click(); true`);
@@ -224,7 +224,7 @@ test('Kontoleiste, Feldfehler im Raster, untere Leiste, Set-Bild', { concurrency
 
   // Gemessen wird der Grund genau unter den Schriftpixeln: Bild mit und ohne Schrift, wo sie sich unterscheiden.
   // Die berechnete Hintergrundfarbe kennt den Verlauf darüber nicht.
-  await t.test('Kontrast „hochglanz“ hell (390 px): Plakette und leise Schrift auf ihrem Verlauf', async () => {
+  await t.test('contrast "hochglanz" light (390 px): badge and quiet text on their gradient', async () => {
     const sharp = require('sharp');
     const bild = async r =>
       (

@@ -36,7 +36,7 @@ function bestand() {
 /** Ein Pfad, wie ihn ein Client schickt: jeder Platzhalter ein fester Wert. @param {string} p */
 const beispiel = p => p.replace(/:\w+/g, 'x1');
 
-test('die Router unter /api/v1 treffen einander nicht', () => {
+test('the routers under /api/v1 do not hit each other', () => {
   const router = bestand();
   assert.ok(router.length >= 15, `nur ${router.length} Router — greift die Suche noch?`);
   assert.ok(router.flatMap(r => r.prefilters).length >= 1, 'keine Middleware mit Pfad gefunden');
@@ -56,7 +56,7 @@ test('die Router unter /api/v1 treffen einander nicht', () => {
   assert.deepEqual(middleware, [], 'keine Middleware mit Pfad trifft eine Route eines anderen Routers');
 });
 
-test('den Fehlerweg hängt die App an, einmal hinter allen Routern', () => {
+test('the app attaches the error path, once behind all routers', () => {
   const { errorResponse } = _req('src/http/httpResponse.js');
   const app = _req('startup/app.js').baueApp({
     pool: q.testAccess().systemPool,

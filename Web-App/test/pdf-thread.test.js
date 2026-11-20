@@ -17,7 +17,7 @@ const path = require('node:path');
 const _req = require('./helpers/sources').buildAndRequire();
 const { drawPdfInThread } = _req('src/catalog/pdf/pdfDrawing.js');
 
-test('die Ereignisschleife bleibt frei, während das PDF entsteht', async () => {
+test('the event loop stays free while the PDF is being created', async () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pdf-faden-'));
   const ziel = path.join(dir, 'liste.pdf');
   // Eine Farbe: pdfkit zeichnet die ganze Gruppe ohne Unterbrechung.

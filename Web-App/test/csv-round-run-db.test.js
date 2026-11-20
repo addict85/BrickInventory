@@ -24,7 +24,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, async t => {
+test('CSV round trip: export and import fit together', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const konto = async n => {
@@ -78,7 +78,7 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
       [u],
     );
 
-  await t.test('Teile kommen unverändert an', async () => {
+  await t.test('parts arrive unchanged', async () => {
     const r = await importPartsCsv(B, await partsCsv(A));
     assert.equal(r.errors, 0, JSON.stringify(r.results));
     assert.deepEqual(
@@ -87,7 +87,7 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
     );
   });
 
-  await t.test('Figuren kommen unverändert an', async () => {
+  await t.test('figures arrive unchanged', async () => {
     const r = await importMinifigsCsv(B, await figurenCsv(A));
     assert.equal(r.errors, 0, JSON.stringify(r.results));
     assert.deepEqual(
@@ -96,7 +96,7 @@ test('CSV-Rundlauf: Export und Import passen zueinander', { concurrency: 1 }, as
     );
   });
 
-  await t.test('Sets: der Zeilenleser des Imports liest jede Spalte des Exports', async () => {
+  await t.test("sets: the import's row reader reads every column of the export", async () => {
     const { rows } = setCsvRows(await setsAlsCsv(A));
     assert.deepEqual(rows, [
       { sn: 'RL10001-1', qty: 2, zeile: 2, purchasePrice: 99.9, condition: 'U', acquiredAt: '2025-12-24' },

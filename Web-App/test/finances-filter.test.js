@@ -79,7 +79,7 @@ async function finanzen() {
   return o;
 }
 
-test('die drei Arten, und jede hat einen Abschnitt', async () => {
+test('the three kinds, and each has a section', async () => {
   const arten = ['sets', 'parts', 'figs'];
   const o = await finanzen();
   try {
@@ -92,7 +92,7 @@ test('die drei Arten, und jede hat einen Abschnitt', async () => {
   }
 });
 
-test('Webapp: leer heisst alle, der Filter häuft und überlebt das Neuzeichnen', async () => {
+test('web app: empty means all, the filter accumulates and survives redrawing', async () => {
   const o = await finanzen();
   try {
     o.chip('parts');

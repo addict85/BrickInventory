@@ -33,7 +33,7 @@ async function holdAs(fremder, ns) {
 
 const REDL_LOCK = 57;
 
-test('Job-Sperren wirken über Prozessgrenzen', async t => {
+test('job locks work across process boundaries', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -53,7 +53,7 @@ test('Job-Sperren wirken über Prozessgrenzen', async t => {
     }
   }
 
-  await t.test('der Bilder-Nachlauf startet nicht zweimal', async () => {
+  await t.test('the image follow-up run does not start twice', async () => {
     const enrich = _req('src/catalog/partsEnrichment.js');
     // Gegenprobe: ohne fremde Sperre läuft er durch (leerer Katalog → 0 fehlende).
     const frei = await enrich.redownloadMissingImages();

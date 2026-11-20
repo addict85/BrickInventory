@@ -12,7 +12,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 
-test('vorschauErzeugenAus() legt tatsächlich eine kleinere Datei an', async () => {
+test('vorschauErzeugenAus() actually creates a smaller file', async () => {
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
   const { DATA_DIR } = _req('src/infra/appPaths.js');
   const ordner = path.join(DATA_DIR, 'images', 'sets');
@@ -51,7 +51,7 @@ test('vorschauErzeugenAus() legt tatsächlich eine kleinere Datei an', async () 
   }
 });
 
-test('beide Erzeuger schreiben temporär auf eine BILDendung', () => {
+test('both generators write temporarily to an IMAGE extension', () => {
   // Die Quelltextregel zum Verhaltenstest oben: Jimp entscheidet über die
   // Endung, deshalb muss der temporäre Name auf .jpg enden.
   // Fundort seit einer früheren Runde: src/images/proxyThumbs.ts.
@@ -69,7 +69,7 @@ test('beide Erzeuger schreiben temporär auf eine BILDendung', () => {
   }
 });
 
-test('die Bildroute stösst eine fehlende Vorschau selbst an', () => {
+test('the image route triggers a missing preview itself', () => {
   // ohneKommentare() statt eines //-Filters: Der Filter liess
   // Blockkommentare stehen, und einer davon enthielt "app.get('/images/*', …)"
   // als Beispiel. indexOf() landete dadurch im Dateikopf statt an der Route.

@@ -40,7 +40,7 @@ const MIT = { repeatAtConflict: true };
 /** Ein Fehler wie von PostgreSQL gemeldet: nur der Code zählt. */
 const pgError = code => Object.assign(new Error(`simuliert ${code}`), { code });
 
-test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concurrency: 1 }, async t => {
+test('transaction: retry on deadlock and serialization failure', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run(`CREATE TABLE ${TABELLE} (id int PRIMARY KEY, n int NOT NULL DEFAULT 0)`);
   await db.run(`INSERT INTO ${TABELLE} (id) VALUES (1), (2)`);
@@ -73,7 +73,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     return { lauf, versuche: () => versuche };
   };
 
-  await t.test('ein echter Deadlock wird mit der Option wiederholt', async () => {
+  await t.test('a real deadlock is retried with the option', async () => {
     await db.run(`UPDATE ${TABELLE} SET n = 0`);
     const k = cross(MIT);
     await Promise.all([k.lauf(1, 2), k.lauf(2, 1)]);
@@ -85,7 +85,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     );
   });
 
-  await t.test('ohne die Option bleibt der Deadlock ein Fehler', async () => {
+  await t.test('without the option the deadlock stays an error', async () => {
     await db.run(`UPDATE ${TABELLE} SET n = 0`);
     const k = cross({});
     const r = await Promise.allSettled([k.lauf(1, 2), k.lauf(2, 1)]);
@@ -95,7 +95,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     assert.equal(k.versuche(), 2);
   });
 
-  await t.test('Serialisierungsfehler wird wiederholt, genau zweimal', async () => {
+  await t.test('serialization failure is retried, exactly twice', async () => {
     let n = 0;
     const r = await db.transaction(async () => {
       if (++n < 3) throw pgError('40001');
@@ -114,7 +114,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     assert.equal(m, 3, 'ein Versuch und zwei Wiederholungen');
   });
 
-  await t.test('andere Fehler und fehlende Option werden nicht wiederholt', async () => {
+  await t.test('other errors and missing option are not retried', async () => {
     let n = 0;
     await assert.rejects(
       db.transaction(async () => {
@@ -135,7 +135,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     assert.equal(m, 1);
   });
 
-  await t.test('der abgebrochene Anlauf hinterlässt nichts', async () => {
+  await t.test('the aborted attempt leaves nothing behind', async () => {
     await db.run(`UPDATE ${TABELLE} SET n = 0`);
     let n = 0;
     await db.transaction(async tx => {
@@ -185,7 +185,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     await db.run('DELETE FROM users WHERE id = ANY($1)', [konten]).catch(() => {});
   });
 
-  await t.test('k.transaktion mit Sperren reicht die Option weiter', async () => {
+  await t.test('k.transaktion with locks passes the option on', async () => {
     const k = testContext('inventory');
     const sperren = [{ konto: 1, schluessel: 'x' }];
     let n = 0;
@@ -211,7 +211,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     assert.equal(m, 1);
   });
 
-  await t.test('moveSet wiederholt bei Konflikt', async () => {
+  await t.test('moveSet retries on conflict', async () => {
     const { moveSet } = require('./helpers/sources').areaPage('sets');
     const { holdsSet, quantityOf } = require('./helpers/inventory');
     const von = await konto('wv_von');
@@ -232,7 +232,7 @@ test('Transaktion: Wiederholung bei Deadlock und Serialisierungsfehler', { concu
     }
   });
 
-  await t.test('setEstimatedPrice wiederholt bei Konflikt', async () => {
+  await t.test('setEstimatedPrice retries on conflict', async () => {
     const { setEstimatedPrice } = _req('src/inventory/acquisitions.js');
     const { holdsSet } = require('./helpers/inventory');
     const u = await konto('wv_preis');

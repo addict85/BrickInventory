@@ -120,7 +120,7 @@ test.beforeEach(() => {
   vorrat.clear();
 });
 
-test('Kekse, Token und Rumpf kommen über den echten Abrufweg an', async () => {
+test('cookies, token and body arrive via the real fetch path', async () => {
   modus = 'gut';
   const g = await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: legoFetch });
   assert.deepEqual(g, { amount: 12.5, currency: 'CHF', formatted: 'CHF 12.50' });
@@ -139,7 +139,7 @@ test('Kekse, Token und Rumpf kommen über den echten Abrufweg an', async () => {
   assert.deepEqual(JSON.parse(abfrage.rumpf).variables, { cardNumber: NUMBER, pin: PIN });
 });
 
-test('eine Umleitung auf einen fremden Host wird nicht befolgt', async () => {
+test('a redirect to a foreign host is not followed', async () => {
   modus = 'umleitung';
   await assert.rejects(
     G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: legoFetch }),
@@ -152,7 +152,7 @@ test('eine Umleitung auf einen fremden Host wird nicht befolgt', async () => {
   );
 });
 
-test('eine übergrosse Antwort wird abgebrochen', async () => {
+test('an oversized response is aborted', async () => {
   modus = 'gross';
   await assert.rejects(
     G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: legoFetch }),

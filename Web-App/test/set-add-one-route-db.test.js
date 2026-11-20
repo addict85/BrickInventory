@@ -24,7 +24,7 @@ const { buildAndRequire, testSources, testImageWorker, asAccount } = require('./
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
-test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async t => {
+test('add a set: one path for input and import', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const netz = [];
@@ -73,7 +73,7 @@ test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async 
     ).n;
   const record = (uid, e) => asAccount(uid, () => sets.setErfassen({ requester: uid, ...e }));
 
-  await t.test('kein Netz beim Import, Nacharbeit in derselben Transaktion', async () => {
+  await t.test('no network on import, follow-up work in the same transaction', async () => {
     const r = await record(h, {
       setNumber: SN,
       menge: 1,
@@ -90,7 +90,7 @@ test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async 
     assert.deepEqual(netz, []);
   });
 
-  await t.test('ein Import stockt beim Besitzer auf, ohne Netz', async () => {
+  await t.test('an import tops up at the owner, without network', async () => {
     // Eine Vorgabe des Kontos: Sie darf das schon einsortierte Set nicht verschieben (unten).
     const vorgabe = await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Vorgabe') RETURNING id`, [
       h,
@@ -105,7 +105,7 @@ test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async 
     assert.deepEqual(netz, [], 'kein Netz beim Import');
   });
 
-  await t.test('ein Import ohne Ort lässt den Lagerort stehen', async () => {
+  await t.test('an import without a location leaves the storage location alone', async () => {
     const ort = await db.get(
       'SELECT l.name FROM sets s JOIN storage_locations l ON l.id = s.storage_id WHERE s.user_id = $1 AND s.set_number = $2',
       [h, SN],
@@ -113,13 +113,13 @@ test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async 
     assert.equal(ort?.name, 'Kiste 1');
   });
 
-  await t.test('getippt heisst ein Set im Blickfeld „exists“', async () => {
+  await t.test('typed in, a set in view is called “exists”', async () => {
     const r = await record(h, { setNumber: SN, menge: 1 });
     assert.equal(r.action, 'exists');
     assert.equal(await menge(h, SN), 3);
   });
 
-  await t.test('hat nur das andere Konto das Set, legt der Import es im eigenen an', async () => {
+  await t.test('if only the other account has the set, the import creates it in its own', async () => {
     assert.equal((await record(k, { setNumber: FREMD, menge: 1 })).action, 'added');
     assert.equal((await record(h, { setNumber: FREMD, menge: 1 })).action, 'exists', 'getippt: im Blickfeld');
     assert.equal((await record(h, { setNumber: FREMD, menge: 1, ifPresent: 'aufstocken' })).action, 'added');
@@ -127,7 +127,7 @@ test('Set erfassen: ein Weg für Eingabe und Import', { concurrency: 1 }, async 
     assert.equal(await menge(k, FREMD), 1);
   });
 
-  await t.test('scheitert die Nacharbeit, ist nichts gebucht', async () => {
+  await t.test('if the follow-up work fails, nothing is booked', async () => {
     await db.exec(`
       CREATE FUNCTION ${FUNKTION}() RETURNS trigger LANGUAGE plpgsql AS $$
       BEGIN

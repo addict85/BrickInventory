@@ -24,7 +24,7 @@ function satz() {
   return { d, vorgemerkt: S.imageNotes(contexts.images).notes };
 }
 
-test('eine Fehlanzeige gilt nur ihrem Satz Dienste', () => {
+test('a negative result only applies to its set of services', () => {
   const a = satz().d,
     b = satz().d;
   a.images.rememberMissing('set:99901-1', 'HTTP 404 vom CDN');
@@ -32,7 +32,7 @@ test('eine Fehlanzeige gilt nur ihrem Satz Dienste', () => {
   assert.equal(b.images.isKnownMissing('set:99901-1'), false);
 });
 
-test('jeder Satz merkt sich selbst, was er vorgemerkt hat', () => {
+test('every set remembers by itself what it reserved', () => {
   const a = satz(),
     b = satz();
   const url = 'https://cdn.rebrickable.com/media/sets/99902-1.jpg';

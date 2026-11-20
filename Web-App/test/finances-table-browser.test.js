@@ -27,7 +27,10 @@ const WRAP = `[...document.querySelectorAll('.dt-fin thead th, .dt-summe thead t
   const zelle = th.getBoundingClientRect();
   return (tops.size > 1 || rechts > zelle.right + 0.5) ? th.textContent.trim() + ': ' + tops.size + ' Zeilen' : null; }).filter(Boolean)`;
 
-test('Finanztabelle nachrechenbar und ohne Umbruch im Kopf', { concurrency: 1, timeout: 300_000 }, async t => {
+test('finance table can be recalculated and without wrapping in the header', {
+  concurrency: 1,
+  timeout: 300_000,
+}, async t => {
   const app = await startApp(t, {
     name: `fintab_${process.pid}`,
     bestand: async (db, uid) => {
@@ -60,7 +63,7 @@ test('Finanztabelle nachrechenbar und ohne Umbruch im Kopf', { concurrency: 1, t
   await b.auswerten(`location.hash = '#/finanzen'; true`);
   await bis(`document.querySelectorAll('[data-fin-art="sets"] tbody tr').length === 2`, 'Sets in der Finanztabelle');
 
-  await t.test('Einstand: Spalte ergibt die Summe', async () => {
+  await t.test('cost basis: the column yields the sum', async () => {
     const m = await b.auswerten(`(() => {
       const tab = document.querySelector('[data-fin-art="sets"] table');
       const spalte = [...tab.querySelectorAll('thead th')].findIndex(th => th.textContent.trim() === 'Kaufpreis');
@@ -83,7 +86,7 @@ test('Finanztabelle nachrechenbar und ohne Umbruch im Kopf', { concurrency: 1, t
     );
   });
 
-  await t.test('Köpfe in einer Zeile', async () => {
+  await t.test('headers in one line', async () => {
     const fehler = [];
     for (const sprache of ['de', 'en']) {
       if (sprache === 'en') {

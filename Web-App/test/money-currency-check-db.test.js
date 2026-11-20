@@ -24,7 +24,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const NAME = `geldpruef_${process.pid}`;
 
-test('Geld und Währung in der Datenbank geprüft', { concurrency: 1 }, async t => {
+test('money and currency checked in the database', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_2`]]);
   const uid = (
@@ -53,16 +53,16 @@ test('Geld und Währung in der Datenbank geprüft', { concurrency: 1 }, async t 
     }
   };
 
-  await t.test('eine gültige Erfassung geht durch', async () => {
+  await t.test('a valid acquisition goes through', async () => {
     assert.equal(await abgelehnt(record(19.9, 'CHF')), null);
   });
 
-  await t.test('eine Währung in Kleinbuchstaben wird abgelehnt', async () => {
+  await t.test('a currency in lower case is rejected', async () => {
     assert.equal(await abgelehnt(record(5, 'chf')), '23514');
     assert.equal(await abgelehnt(record(5, 'EURO')), '23514');
   });
 
-  await t.test('ein negativer Betrag wird abgelehnt', async () => {
+  await t.test('a negative amount is rejected', async () => {
     assert.equal(await abgelehnt(record(-1, 'CHF')), '23514');
     assert.equal(
       await abgelehnt(
@@ -74,7 +74,7 @@ test('Geld und Währung in der Datenbank geprüft', { concurrency: 1 }, async t 
     );
   });
 
-  await t.test('die E-Mail bleibt eindeutig', async () => {
+  await t.test('the email stays unique', async () => {
     assert.equal(await db.get(`SELECT 1 FROM pg_indexes WHERE indexname = 'users_email_unique'`), undefined);
     assert.equal(
       await abgelehnt(

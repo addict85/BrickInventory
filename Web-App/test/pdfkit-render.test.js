@@ -32,7 +32,7 @@ function isValidPdf(b, wo) {
   assert.ok(b.length > 500, `${wo}: nur ${b.length} Bytes — das kann kein Dokument sein`);
 }
 
-test('der Teilelisten-Export zeichnet ein gültiges PDF', async () => {
+test('the parts list export draws a valid PDF', async () => {
   // Derselbe Methodensatz wie in routes/api_v1/pdf.ts.
   const b = await rendern(doc => {
     doc.font('Helvetica-Bold').fontSize(16).text('Teileliste');
@@ -49,7 +49,7 @@ test('der Teilelisten-Export zeichnet ein gültiges PDF', async () => {
   isValidPdf(b, 'Teileliste');
 });
 
-test('Bilder werden eingebettet — JPEG und PNG', async () => {
+test('images are embedded — JPEG and PNG', async () => {
   // ── Warum gerade das ─────────────────────────────────────────────────────
   // jpeg-exif war pdfkits JPEG-Leser. Wenn ein Versionssprung das Einbetten
   // bricht, dann hier — und Bauanleitungen bestehen ausschliesslich aus
@@ -91,7 +91,7 @@ test('Bilder werden eingebettet — JPEG und PNG', async () => {
   }
 });
 
-test('jpeg-exif ist nicht mehr im Abhängigkeitsbaum', () => {
+test('jpeg-exif is no longer in the dependency tree', () => {
   // Der Auslöser dieses Nachtrags. Wandert die Abhängigkeit über eine andere
   // Bibliothek zurück, soll das auffallen — die Warnung im Installationslog
   // liest niemand zuverlässig.

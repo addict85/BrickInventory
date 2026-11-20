@@ -21,7 +21,7 @@ const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', { concurrency: 1 }, async t => {
+test('a password change ends sessions AND tokens — against a real store', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   // ── Aufbau: ein Administrator, ein Opfer ────────────────────────────────
@@ -73,7 +73,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
     (await db.get("SELECT COUNT(*)::int n FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(uid)])).n;
 
   try {
-    await t.test('der Admin-Reset wirft das übernommene Fenster hinaus', async () => {
+    await t.test('the admin reset throws out the taken-over window', async () => {
       const angreifer = await anmelden('pw_opfer', 'altesPasswort1');
       const chef = await anmelden('pw_chef', 'altesPasswort1');
       assert.equal(await angemeldet(angreifer.cookie), true, 'Vorbedingung: Sitzung steht');
@@ -96,7 +96,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
       );
     });
 
-    await t.test('der eigene Passwortwechsel wirft die anderen Fenster hinaus — nicht das eigene', async () => {
+    await t.test('the own password change throws out the other windows — not the own one', async () => {
       // Zwei Fenster desselben Kontos: eines wechselt das Passwort, das andere
       // muss draussen sein. Das wechselnde Fenster bleibt drin (frische
       // Session-ID über establishSession) — sonst flöge man sich selbst raus.
@@ -122,7 +122,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
       assert.ok(r.headers.get('set-cookie'), 'Nach der Rotation muss ein neues Sitzungs-Cookie zurückkommen');
     });
 
-    await t.test('Bearer-Token des Kontos verfallen mit', async () => {
+    await t.test('bearer tokens of the account expire along with it', async () => {
       const { tokenDigest, nutzerZumToken } = _req('src/account/deviceToken.js');
       const crypto = require('node:crypto');
       const tok = crypto.randomBytes(16).toString('hex');
@@ -151,7 +151,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
 
     // Gegenprobe (11.11.2026 gemessen): in setPasswordBack (src/account/accounts.ts)
     // `await endAccesses(uid)` gestrichen → rot hier (Sitzung und Token bleiben).
-    await t.test('das Zurücksetzen per Link beendet Sitzungen und Token', async () => {
+    await t.test('resetting via link ends sessions and tokens', async () => {
       const { tokenDigest, createToken, nutzerZumToken } = _req('src/account/deviceToken.js');
       const fenster = await anmelden('pw_opfer', 'wiederNeu123');
       const tok = await createToken(victimId, 'Fremdgerät', true);
@@ -174,7 +174,7 @@ test('ein Passwortwechsel beendet Sitzungen UND Token — gegen echten Store', {
 
     // Gegenprobe (11.11.2026 gemessen): in PUT /users/:id/password die Prüfung
     // `targetId === nutzerId(req)` gestrichen → rot „… nicht für das eigene Konto“ (200).
-    await t.test('der Verwalterweg gilt nicht für das eigene Konto und nicht für Unbekannte', async () => {
+    await t.test('the admin path does not apply to the own account and not to unknown ones', async () => {
       const chef = await anmelden('pw_chef', 'nochNeuer1234');
       const chefId = (await db.get("SELECT id FROM users WHERE username='pw_chef'")).id;
       const setze = async (cookie, id) => {

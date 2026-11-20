@@ -37,7 +37,7 @@ test('pathSegment', () => {
   assert.equal(numbersList(['3001', 'a&b=c', '3,4']), '3001,a%26b%3Dc,3%2C4');
 });
 
-test('Setnummer aus der Anfrage bleibt ein Pfadsegment', { concurrency: 1 }, async t => {
+test('the set number from the request stays a path segment', { concurrency: 1 }, async t => {
   try {
     await db.initSchema();
   } catch (e) {

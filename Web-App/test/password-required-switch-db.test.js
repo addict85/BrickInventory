@@ -33,7 +33,7 @@ const NAME = `pflicht_${process.pid}`,
   PASS = 'start-Passwort-1',
   NEU = 'eigenes-Passwort-2';
 
-test('Startpasswort: erst wechseln, dann alles andere', { concurrency: 1 }, async t => {
+test('start password: change it first, then everything else', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -96,7 +96,7 @@ test('Startpasswort: erst wechseln, dann alles andere', { concurrency: 1 }, asyn
   } = anmeldung;
   const { cookie } = await ruf('/auth/login', { body: { username: NAME, password: PASS, ohne_token: true } });
 
-  await t.test('Sitzung und Token kommen nur bis zum Wechsel', async () => {
+  await t.test('session and token only get as far as the change', async () => {
     const s = await ruf('/settings/tokens', { cookie });
     assert.equal(s.status, 403, 'Sitzung kommt am Wechsel vorbei');
     assert.equal(s.body.code, 'passwort_wechsel_noetig');
@@ -107,13 +107,13 @@ test('Startpasswort: erst wechseln, dann alles andere', { concurrency: 1 }, asyn
     assert.equal(ich.body.user.mustChangePassword, true, '/me sagt der Oberfläche nichts vom Wechsel');
   });
 
-  await t.test('eine Sitzung von vor dem Feld fragt die Datenbank', async () => {
+  await t.test('a session from before the field asks the database', async () => {
     const sid = decodeURIComponent(cookie.split('=')[1]).slice(2).split('.')[0];
     await db.run(`UPDATE user_sessions SET sess = (sess::jsonb - 'mussPasswortAendern')::json WHERE sid = $1`, [sid]);
     assert.equal((await ruf('/settings/tokens', { cookie })).status, 403);
   });
 
-  await t.test('der Wechsel selbst geht, danach (als Verwalter mit zweitem Faktor) alles', async () => {
+  await t.test('the change itself works, afterwards (as an admin with a second factor) everything', async () => {
     const w = await ruf('/auth/change-password', { cookie, body: { current: PASS, newPassword: NEU } });
     assert.equal(w.status, 200, JSON.stringify(w.body));
     const neu = w.cookie ?? cookie;

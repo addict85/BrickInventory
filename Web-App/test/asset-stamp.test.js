@@ -36,7 +36,7 @@ function build(inhalt) {
 const HTML = '<link rel="stylesheet" href="/a.css?v=alt">';
 const stampFrom = s => (s.match(/\?v=([^"]*)/) || [])[1];
 
-test('eine geänderte Datei bekommt eine neue Adresse', () => {
+test('a changed file gets a new address', () => {
   const dir = build('.a{color:red}');
   try {
     const vorher = stampFrom(stempleAssets(HTML, dir));
@@ -67,7 +67,7 @@ test('eine geänderte Datei bekommt eine neue Adresse', () => {
   }
 });
 
-test('eine unveränderte Datei behält ihre Adresse', async () => {
+test('an unchanged file keeps its address', async () => {
   // Die Hälfte, die man vergisst: Ein Stempel, der sich IMMER ändert (etwa
   // aus der Uhrzeit), bestünde den Fall darüber und entwertete bei jedem
   // Seitenaufruf 223 KB Bündel und sechs Designs.
@@ -89,7 +89,7 @@ test('eine unveränderte Datei behält ihre Adresse', async () => {
   }
 });
 
-test('eine fehlende Datei lässt den vorhandenen Wert stehen', () => {
+test('a missing file leaves the existing value in place', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stempel-leer-'));
   try {
     assert.equal(
@@ -105,7 +105,7 @@ test('eine fehlende Datei lässt den vorhandenen Wert stehen', () => {
   }
 });
 
-test('ein Verweis ohne ?v= bleibt unberührt', () => {
+test('a reference without ?v= stays untouched', () => {
   const dir = build('.a{}');
   try {
     const roh = '<link href="/a.css"><script src="/b.js"></script>';
@@ -115,7 +115,7 @@ test('ein Verweis ohne ?v= bleibt unberührt', () => {
   }
 });
 
-test('der Renderer stempelt wirklich', () => {
+test('the renderer really stamps', () => {
   // Eine Regel, die niemand aufruft, ist die teuerste Art, nichts zu tun —
   // und die Fälle oben blieben dabei grün, weil sie die Funktion direkt
   // aufrufen. Dieselbe Lücke wie bei sitzung-beruehrung und

@@ -29,7 +29,7 @@ const db = testData();
 const MIGRATION = fs.readFileSync(path.join(__dirname, '..', 'db/migrations/0063-laufzustand.sql'), 'utf8');
 const SCHEMA = `probe0063_${process.pid}`;
 
-test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async t => {
+test('run state separate from the configuration', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   {
     const c = await db.pool.connect();
@@ -47,7 +47,7 @@ test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async t =
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('Migration 0063 trennt Zustand von Konfiguration', async () => {
+  await t.test('migration 0063 separates state from configuration', async () => {
     const c = await db.pool.connect();
     try {
       await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`);
@@ -77,7 +77,7 @@ test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async t =
   const { jobQueue: auftraege } = require('./helpers/sources').testServices();
   const imgDlAdd = n => auftraege.countState('imgdl_pending_count', n);
 
-  await t.test('die Kacheln lesen den Stand aus der Auftragstabelle', async () => {
+  await t.test('the tiles read the state from the job table', async () => {
     await db.run("DELETE FROM jobs WHERE type = 'preise'");
     await db.run(`INSERT INTO jobs (type, payload, status, locked_by, deadline_at, progress, updated_at)
                   VALUES ('preise', '{}', 'laeuft', 'p', NOW() + INTERVAL '1 min', '{"erledigt": 3, "gesamt": 9, "text": "10001-1"}',
@@ -93,7 +93,7 @@ test('Laufzustand getrennt von der Konfiguration', { concurrency: 1 }, async t =
     await db.run("DELETE FROM jobs WHERE type = 'preise'");
   });
 
-  await t.test('der Bildzähler zählt gleichzeitige Aufrufe genau', async () => {
+  await t.test('the image counter counts concurrent calls exactly', async () => {
     await jm.imgDlReset();
     await Promise.all(Array.from({ length: 20 }, () => imgDlAdd(1)));
     assert.equal(await jm.imgDlPending(), 20);

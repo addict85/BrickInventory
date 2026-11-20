@@ -26,7 +26,7 @@ function fetchOfUs(ursprung = 'https://lego.bigolin.online') {
 const withStack = (nachricht, stapel) => Object.assign(new Error(nachricht), { stack: stapel });
 const UNS = 'https://lego.bigolin.online';
 
-test('eine Erweiterung loest bei uns keinen Fehler aus', () => {
+test('an extension triggers no error with us', () => {
   const fromUs = fetchOfUs(UNS);
   // Ein echter Stapel, so wie Chromium ihn schreibt.
   const metamask = withStack(
@@ -48,7 +48,7 @@ test('eine Erweiterung loest bei uns keinen Fehler aus', () => {
   );
 });
 
-test('unsere eigenen Fehler kommen weiterhin an', () => {
+test('our own errors still arrive', () => {
   const fromUs = fetchOfUs(UNS);
   assert.equal(
     fromUs(withStack('kaputt', `TypeError: kaputt\n    at h (${UNS}/js/app.bundle.js:428:12)`)),
@@ -69,7 +69,7 @@ test('unsere eigenen Fehler kommen weiterhin an', () => {
   );
 });
 
-test('im Zweifel gilt der Fehler als unserer', () => {
+test('when in doubt the error counts as ours', () => {
   // Der teurere der beiden Irrtuemer ist der verschwiegene EIGENE Fehler —
   // genau dagegen gibt es dieses Netz. Ohne Stapel oder ohne erkennbare
   // Adresse wird deshalb weiter gemeldet.
@@ -83,7 +83,7 @@ test('im Zweifel gilt der Fehler als unserer', () => {
   );
 });
 
-test('ein fremder Host mit unserem Namen als Anfang zaehlt nicht als unserer', () => {
+test('a foreign host with our name as its start does not count as ours', () => {
   // `startsWith(origin)` ohne den Schraegstrich wuerde
   // https://lego.bigolin.online.boeswillig.example als unseren lesen.
   const fromUs = fetchOfUs(UNS);
@@ -94,7 +94,7 @@ test('ein fremder Host mit unserem Namen als Anfang zaehlt nicht als unserer', (
   );
 });
 
-test('beide Lauscher gehen durch die Pruefung', () => {
+test('both listeners go through the check', () => {
   // Nicht nur der fuer Ablehnungen: `window.onerror` faengt Skriptfehler, und
   // die einer Erweiterung landen dort genauso.
   // Klammern gezählt statt `indexOf('});')`: Ohne geschweiften Block träfe das den nächsten Lauscher.
@@ -122,7 +122,7 @@ test('beide Lauscher gehen durch die Pruefung', () => {
   }
 });
 
-test('keine liegengebliebene Fehlersuche im Auslieferungsstand', () => {
+test('no leftover debugging in the delivered state', () => {
   // Der zweite Befund aus derselben Konsole
   const ordner = path.join(__dirname, '..', 'public', 'js');
   const dateien = fs.readdirSync(ordner).filter(n => n.endsWith('.js') && n !== 'app.bundle.js');

@@ -22,7 +22,7 @@ const { adminWithFactor } = require('./helpers/admin');
 const { holdsSet, catalogSet } = require('./helpers/inventory');
 const db = testData();
 
-test('die Bild-Diagnose beschreibt jede Lage im Klartext', { concurrency: 1 }, async t => {
+test('the image diagnostics describe every situation in plain text', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
@@ -102,7 +102,7 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext', { concurrency: 1 }, a
   }
 });
 
-test('der Set-Bild-Download meldet jeden Fehlschlag', () => {
+test('the set image download reports every failure', () => {
   // Bis eine frühere Runde gab es genau EINE Logzeile (die Grössengrenze aus 47);
   // Statuscode, Netzwerkfehler, Zwergantwort und der umschliessende catch
   // endeten alle in einem stummen `return null`. Genau diese Stille hat die

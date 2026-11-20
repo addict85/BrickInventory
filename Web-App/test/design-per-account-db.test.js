@@ -28,7 +28,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 
-test('Design je Konto', { concurrency: 1 }, async t => {
+test('theme per account', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const namen = [`design_a_${process.pid}`, `design_b_${process.pid}`];
@@ -64,12 +64,12 @@ test('Design je Konto', { concurrency: 1 }, async t => {
     else delete sitzung.userId;
   };
 
-  await t.test('ohne Anmeldung: die Vorgabe', async () => {
+  await t.test('without login: the default', async () => {
     als(null);
     assert.deepEqual(await hole('/theme'), { success: true, theme: 'noppe', vorgabe: 'noppe', eigenes: null });
   });
 
-  await t.test('Konto mit eigenem Design, das andere folgt der Vorgabe', async () => {
+  await t.test('account with its own theme, the other follows the default', async () => {
     als(ids[0]);
     const r = await setze('werkbank');
     assert.equal(r.success, true, JSON.stringify(r));
@@ -84,7 +84,7 @@ test('Design je Konto', { concurrency: 1 }, async t => {
     assert.equal((await hole('/raw')).settings.app_theme, 'noppe');
   });
 
-  await t.test('App mit Token: dasselbe Design wie im Browser', async () => {
+  await t.test('app with token: the same theme as in the browser', async () => {
     als(null);
     const token = await _req('src/account/deviceToken.js').createToken(ids[0], 'Prüfung', true);
     const withToken = { headers: { Authorization: `Bearer ${token}` } };
@@ -92,14 +92,14 @@ test('Design je Konto', { concurrency: 1 }, async t => {
     assert.equal((await hole('', withToken)).settings?.app_theme, 'werkbank', 'GET /api/v1/settings nennt die Vorgabe');
   });
 
-  await t.test('unbekanntes Design abgewiesen', async () => {
+  await t.test('unknown theme rejected', async () => {
     als(ids[0]);
     const r = await setze('<b>');
     assert.equal(r.success, false);
     assert.equal((await hole('/theme')).theme, 'werkbank');
   });
 
-  await t.test('index.html: Design des Kontos, ohne Konto die Vorgabe', async () => {
+  await t.test("index.html: the account's theme, without an account the default", async () => {
     const { startPageHtml } = _req('src/profile/indexHtml.js');
     const designOf = html => /<html[^>]*\sdata-theme="([^"]+)"/.exec(html)?.[1];
     assert.equal(designOf(await startPageHtml(ids[0])), 'werkbank');
@@ -107,7 +107,7 @@ test('Design je Konto', { concurrency: 1 }, async t => {
     assert.equal(designOf(await startPageHtml()), 'noppe');
   });
 
-  await t.test('leer heisst Vorgabe — auch nach einem Wechsel des Verwalters', async () => {
+  await t.test('empty means default — even after a change by the admin', async () => {
     als(ids[0]);
     assert.equal((await setze('')).success, true);
     await setGlobalSetting('app_theme', 'brick');

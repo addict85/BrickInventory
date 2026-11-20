@@ -60,7 +60,7 @@ async function schemaImage(db) {
   return { spalten, schranken, indizes };
 }
 
-test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async t => {
+test('fresh database', { concurrency: 1, timeout: 180_000 }, async t => {
   const admin = new Client({ connectionString: BASIS });
   try {
     await admin.connect();
@@ -84,7 +84,7 @@ test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async t => {
 
   await starte();
 
-  await t.test('jede Kontospalte hat einen Fremdschlüssel', async () => {
+  await t.test('every account column has a foreign key', async () => {
     const offen = await db.all(
       `
       SELECT c.table_name || '.' || c.column_name AS spalte
@@ -112,7 +112,7 @@ test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async t => {
     assert.ok(alle.n >= 20, `Nur ${alle.n} Kontospalten gefunden — greift die Suche noch?`);
   });
 
-  await t.test('ein Konto verschwindet ganz', async () => {
+  await t.test('an account disappears completely', async () => {
     const uid = (
       await db.get(`INSERT INTO users (username, password_hash, is_active, email_verified)
                                 VALUES ('frisch_loeschen', 'x', true, true) RETURNING id`)
@@ -141,7 +141,7 @@ test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async t => {
       );
   });
 
-  await t.test('das Löschen sucht über einen Index', async () => {
+  await t.test('deleting searches via an index', async () => {
     const ohne = await db.all(`
       SELECT k.conrelid::regclass::text AS t FROM pg_constraint k
        WHERE k.contype = 'f' AND k.confrelid = 'users'::regclass
@@ -154,7 +154,7 @@ test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async t => {
     );
   });
 
-  await t.test('db/schema-stand.sql zeigt das Schema, das entsteht', async () => {
+  await t.test('db/schema-stand.sql shows the schema that results', async () => {
     const { schemaText, DATEI } = require(path.join(ROOT, 'scripts', 'schema-snapshot.js'));
     const eingecheckt = require('node:fs').readFileSync(DATEI, 'utf8');
     assert.equal(
@@ -164,13 +164,13 @@ test('frische Datenbank', { concurrency: 1, timeout: 180_000 }, async t => {
     );
   });
 
-  await t.test('ein zweiter Start ändert am Schema nichts', async () => {
+  await t.test('a second start changes nothing in the schema', async () => {
     const vorher = await schemaImage(db);
     await starte();
     assert.deepEqual(await schemaImage(db), vorher);
   });
 
-  await t.test('auch ein erzwungener Lauf holt Gelöschtes nicht zurück', async () => {
+  await t.test('even a forced run does not bring back deleted items', async () => {
     const vorher = await schemaImage(db);
     process.env.FORCE_SCHEMA_INIT = '1';
     try {

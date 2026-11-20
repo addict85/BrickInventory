@@ -58,7 +58,7 @@ function namesInMarkup() {
   return [...namen].sort();
 }
 
-test('jeder Handler aus Markup und Vorlagen ist angemeldet', async () => {
+test('every handler from markup and templates is registered', async () => {
   const { w } = await openUi();
   try {
     const namen = namesInMarkup();
@@ -74,7 +74,7 @@ test('jeder Handler aus Markup und Vorlagen ist angemeldet', async () => {
   }
 });
 
-test('ein Klick reicht Argumente, Feldwert und this durch', async () => {
+test('a click passes arguments, field value and this through', async () => {
   const { w, d } = await openUi();
   try {
     const gesehen = [];
@@ -112,7 +112,7 @@ test('ein Klick reicht Argumente, Feldwert und this durch', async () => {
 /** Ein Bild, das nicht lädt: error steigt nicht auf, der Dispatcher hört in der Capture-Phase. */
 const failure = (w, img) => img.dispatchEvent(new w.Event('error'));
 
-test('ein Bildfehler wird einmal wiederholt, bevor der Rückfall greift', async () => {
+test('an image error is retried once before the fallback applies', async () => {
   const { w, d } = await openUi();
   try {
     const host = d.createElement('div');
@@ -144,7 +144,7 @@ test('ein Bildfehler wird einmal wiederholt, bevor der Rückfall greift', async 
   }
 });
 
-test('der Zoom behält seine Adresse, wenn das Bild nicht lädt', async () => {
+test('the zoom keeps its address if the image does not load', async () => {
   const { w, d } = await openUi();
   try {
     const img = d.getElementById('lightbox-img');
@@ -166,7 +166,7 @@ test('der Zoom behält seine Adresse, wenn das Bild nicht lädt', async () => {
   }
 });
 
-test('das Protokollfenster lädt sein Skript als Datei', async () => {
+test('the log window loads its script as a file', async () => {
   const { w, d } = await openUi();
   try {
     let geschrieben = '';

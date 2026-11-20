@@ -20,7 +20,7 @@ for (const [sprache, bauliste, neu] of [
   ['de', 'Bauliste', 'Neuware'],
   ['en', 'Build list', 'New'],
 ]) {
-  test(`${sprache}: ${bauliste} in Leiste und Überschrift, Zustand „${neu}“`, async () => {
+  test(`${sprache}: ${bauliste} in bar and heading, condition “${neu}”`, async () => {
     const { w, d } = await openUi({}, { sprache });
     try {
       assert.equal(d.querySelector('.ntab[data-tab="partslist"] .tab-label').textContent.trim(), bauliste);
@@ -32,7 +32,7 @@ for (const [sprache, bauliste, neu] of [
   });
 }
 
-test('Teilekachel zeigt ×N', async () => {
+test('parts tile shows ×N', async () => {
   const { w, d } = await openUi({
     '/v1/parts': {
       success: true,
@@ -49,7 +49,7 @@ test('Teilekachel zeigt ×N', async () => {
   }
 });
 
-test('de: Setnummer ohne Bindestrich, wie in der Android-App', async () => {
+test('de: set number without hyphen, as in the Android app', async () => {
   const { w, d } = await openUi({});
   try {
     const texte = [
@@ -66,7 +66,7 @@ test('de: Setnummer ohne Bindestrich, wie in der Android-App', async () => {
   }
 });
 
-test('en: Platzhalter des Lagerort-Felds', async () => {
+test('en: placeholder of the storage location field', async () => {
   const { w, d } = await openUi({}, { sprache: 'en' });
   try {
     await warte(() => d.documentElement.lang === 'en');

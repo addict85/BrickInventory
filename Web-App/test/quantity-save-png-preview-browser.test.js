@@ -104,7 +104,7 @@ async function transparentPreview(_t, a, nr) {
   }
 }
 
-test('Menge beim Schliessen, PNG-Vorschau', { concurrency: 1, timeout: 600_000 }, async t => {
+test('quantity on close, PNG preview', { concurrency: 1, timeout: 600_000 }, async t => {
   const nr = `r25b-${process.pid}-1`;
   const req = require('./helpers/sources').buildAndRequire();
   const ordner = path.join(ROOT, 'data', 'images', 'sets');
@@ -132,6 +132,6 @@ test('Menge beim Schliessen, PNG-Vorschau', { concurrency: 1, timeout: 600_000 }
     return;
   }
   await a.ruhig();
-  await t.test('Menge beim sofortigen Schliessen gespeichert', () => closeQuantityOn(t, a));
-  await t.test('Vorschau eines durchsichtigen PNG bleibt durchsichtig', () => transparentPreview(t, a, nr));
+  await t.test('quantity saved on immediate close', () => closeQuantityOn(t, a));
+  await t.test('preview of a transparent PNG stays transparent', () => transparentPreview(t, a, nr));
 });

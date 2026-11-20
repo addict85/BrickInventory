@@ -28,7 +28,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-test('Kategorie aus der Zusammenfassung', { concurrency: 1 }, async t => {
+test('category from the summary', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const H = require('./helpers/sources').handlerModule(_req);
   const PS = _req('src/parts/summary.js');
@@ -74,16 +74,16 @@ test('Kategorie aus der Zusammenfassung', { concurrency: 1 }, async t => {
     assert.deepEqual(zeilen(live), ['kz1|5|8', 'kz2|5|4'], 'Testdaten: beide Teile der Kategorie, mit Setmenge');
     await PS.rebuildNow(U);
 
-    await t.test('der Kategoriefilter liest aus der Zusammenfassung', async () => {
+    await t.test('the category filter reads from the summary', async () => {
       const zsf = await H.partsQuery(U, { ...abfrage, category: '98701' });
       assert.equal(zsf.source, 'summary');
       assert.deepEqual(zeilen(zsf), zeilen(live));
     });
-    await t.test('der Ersatzteilfilter ist auf beiden Wegen gleich', async () => {
+    await t.test('the spare part filter is the same on both paths', async () => {
       assert.deepEqual(zeilen(liveSpare), ['kz2|5|4']);
       assert.deepEqual(zeilen(await H.partsQuery(U, { ...abfrage, spare: '1' })), zeilen(liveSpare));
     });
-    await t.test('die Kategorienliste ist auf beiden Wegen gleich', async () => {
+    await t.test('the category list is the same on both paths', async () => {
       assert.deepEqual(kategorien(liveKat), ['98701|Steine|12', '98702|Platten|6']);
       assert.deepEqual(kategorien(await H.partCategoriesQuery(U)), kategorien(liveKat));
     });

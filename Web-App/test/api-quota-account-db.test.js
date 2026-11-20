@@ -27,7 +27,7 @@ const db = testData();
 const k = _req('src/externalSources/apiQuota.js');
 const { asRequest } = _req('src/infra/accountContext.js');
 
-test('Tageskontingent je Konto', { concurrency: 1 }, async t => {
+test('daily quota per account', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const vorher = await db.get("SELECT value FROM global_settings WHERE key = 'api_limit_brickset'");
   await db.run(`INSERT INTO global_settings (key, value) VALUES ('api_limit_brickset', '8')
@@ -43,7 +43,7 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async t => {
   const chef = { apiUser: { user_id: 990102, is_admin: 1 } };
   const zaehle = req => asRequest(req, () => k.kontingentPruefenUndZaehlen('brickset'));
 
-  await t.test('ein Konto bekommt ein Viertel, und der abgewiesene Aufruf zählt gesamt nicht', async () => {
+  await t.test('an account gets a quarter, and the rejected call does not count in the total', async () => {
     assert.equal((await zaehle(kind)).allowed, true);
     assert.equal((await zaehle(kind)).allowed, true);
     const dritter = await zaehle(kind);
@@ -53,7 +53,7 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async t => {
     assert.equal((await asRequest(kind, () => k.quotaFree('brickset'))).allowed, false);
   });
 
-  await t.test('alle Nicht-Verwalter zusammen höchstens die Hälfte', async () => {
+  await t.test('all non-admins together at most half', async () => {
     await k.setQuotaBack('brickset');
     const konten = [990111, 990112, 990113].map(id => ({ apiUser: { user_id: id, is_admin: 0 } }));
     // Grenze 8: je Konto 2, alle zusammen 4. Das dritte Konto bekommt nichts mehr.
@@ -65,7 +65,7 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async t => {
     assert.equal((await k.kontingentUebersicht('brickset')).count, 5);
   });
 
-  await t.test('ein Auftrag zählt beim Konto, das ihn eingestellt hat', async () => {
+  await t.test('a job counts for the account that queued it', async () => {
     await k.setQuotaBack('brickset');
     await db.run("DELETE FROM users WHERE username = 'kontingent_kind'");
     await db.run(
@@ -97,7 +97,7 @@ test('Tageskontingent je Konto', { concurrency: 1 }, async t => {
     assert.deepEqual(results, [true, true, false], 'Im Auftrag gilt das Viertel des Kontos');
   });
 
-  await t.test('Verwalter und Hintergrund zählen nur gesamt', async () => {
+  await t.test('admins and background only count in the total', async () => {
     await k.setQuotaBack('brickset');
     for (let i = 0; i < 2; i++) assert.equal((await zaehle(kind)).allowed, true);
     for (let i = 0; i < 5; i++) assert.equal((await zaehle(chef)).allowed, true, `Verwalter ${i + 1}`);

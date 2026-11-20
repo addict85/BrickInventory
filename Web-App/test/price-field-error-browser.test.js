@@ -20,7 +20,7 @@ const MEASURE = `(() => { const r = id => document.getElementById(id).getBoundin
            bottomUnderneath: f.top >= Math.max(p.bottom, w.bottom) - 1, messageWidth: Math.round(f.width),
            nebeneinander: Math.abs(p.top - w.top) < 2 }; })()`;
 
-test('Preisfeld: Fehlermeldung unter der ganzen Zeile', { concurrency: 1, timeout: 300_000 }, async t => {
+test('price field: error message below the whole row', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, { name: `preisfehler_${process.pid}`, telefon: true });
   if (app.grund) {
     t.skip(app.grund);
@@ -36,7 +36,7 @@ test('Preisfeld: Fehlermeldung unter der ganzen Zeile', { concurrency: 1, timeou
     [390, true],
     [1280, false],
   ]) {
-    await t.test(`${breite} px: Meldung unter der Zeile, Preisfeld behält Breite`, async () => {
+    await t.test(`${breite} px: message below the row, price field keeps its width`, async () => {
       await b.tab('Emulation.setDeviceMetricsOverride', {
         width: breite,
         height: 900,

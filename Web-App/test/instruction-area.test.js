@@ -28,19 +28,19 @@ function starte() {
   return { srv, basis };
 }
 
-test('Bereichsanfragen an eine Anleitung', async t => {
+test('range requests to an instruction', async t => {
   const { srv, basis } = starte();
   t.after(() => srv.close());
 
   const hol = async (pfad, range) => await fetch(basis + pfad, range ? { headers: { Range: range } } : undefined);
 
-  await t.test('ohne Bereich kommt die ganze Datei', async () => {
+  await t.test('without a range the whole file comes', async () => {
     const r = await hol('/data/instructions/BI-3004.pdf');
     assert.equal(r.status, 200);
     assert.equal((await r.arrayBuffer()).byteLength, SIZE);
   });
 
-  await t.test('ein Bereich mittendrin wird fortgesetzt', async () => {
+  await t.test('a range in the middle is continued', async () => {
     // Das ist der NORMALE Fall nach einem Abbruch: Die App hat die Haelfte und
     // holt den Rest. Faellt dieser Schritt, ist der Fortsetz-Weg selbst kaputt.
     const r = await hol('/data/instructions/BI-3004.pdf', 'bytes=2500-');
@@ -48,7 +48,7 @@ test('Bereichsanfragen an eine Anleitung', async t => {
     assert.equal(r.headers.get('content-range'), `bytes 2500-${SIZE - 1}/${SIZE}`);
   });
 
-  await t.test('ein Bereich HINTER dem Dateiende ist 416, nicht 404', async () => {
+  await t.test('a range BEHIND the end of the file is 416, not 404', async () => {
     const r = await hol('/data/instructions/BI-3004.pdf', `bytes=${SIZE}-`);
     assert.equal(
       r.status,
@@ -61,7 +61,7 @@ test('Bereichsanfragen an eine Anleitung', async t => {
     assert.equal(r.headers.get('content-range'), `bytes */${SIZE}`);
   });
 
-  await t.test('eine fehlende Datei bleibt 404', async () => {
+  await t.test('a missing file stays 404', async () => {
     // Die Gegenrichtung, damit die Regel nicht dadurch gruen wird, dass gar
     // nichts mehr 404 antwortet.
     const r = await hol('/fehlt');

@@ -25,7 +25,7 @@ function chooseAlarmCsv(w) {
   feld.dispatchEvent(new w.Event('change', { bubbles: true }));
 }
 
-test('Upload trägt die Sprache und geht als FormData ohne JSON-Kopf', async () => {
+test('upload carries the language and goes as FormData without a JSON header', async () => {
   const { w, aufrufe } = await openUi(
     {
       '/v1/alerts/import/csv': { success: true, added: 1, updated: 0, errors: 0 },
@@ -52,7 +52,7 @@ test('Upload trägt die Sprache und geht als FormData ohne JSON-Kopf', async () 
   }
 });
 
-test('401 beim Upload beendet die Sitzung wie bei jedem anderen Aufruf', async () => {
+test('401 on upload ends the session as with every other call', async () => {
   const { w, d } = await openUi({
     '/v1/alerts/import/csv': { $status: 401, success: false, error: 'Nicht angemeldet', code: 'nicht_angemeldet' },
   });
@@ -69,7 +69,7 @@ test('401 beim Upload beendet die Sitzung wie bei jedem anderen Aufruf', async (
   }
 });
 
-test('der CSV-Import meldet übersprungene Zeilen und Zusatzhinweise in einer Meldung', async () => {
+test('the CSV import reports skipped rows and additional hints in one message', async () => {
   const { w, d } = await openUi({
     '/v1/alerts/import/csv': {
       success: true,

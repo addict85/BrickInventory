@@ -33,7 +33,7 @@ const NEW_LOADED = {
   ],
 };
 
-test('jeder Abruf hinter dem Kontofilter gibt den Kontofilter mit', async () => {
+test('every fetch behind the account filter passes the account filter along', async () => {
   const { w, d, aufrufe, ruhig } = await openUi({
     '/v1/sets/household-members': {
       success: true,

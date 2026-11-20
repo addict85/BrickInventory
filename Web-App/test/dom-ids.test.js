@@ -48,7 +48,7 @@ for (const f of JS_FILES) collect(fs.readFileSync(path.join(PUB, 'js', f), 'utf8
 const ALLOWED_MISSING = new Set();
 
 for (const file of JS_FILES) {
-  test(`G('...')-IDs aus ${file} existieren in index.html`, () => {
+  test(`G('...') IDs from ${file} exist in index.html`, () => {
     // ohneKommentare: Gesucht wird nach IDs im CODE. Ein Erklärkommentar, der
     // beschreibt, welches G('…') hier früher stand und warum es weg ist, ist
     // keine Verwendung — ohne diesen Schritt meldet der Test eine ID, die
@@ -60,7 +60,7 @@ for (const file of JS_FILES) {
   });
 }
 
-test('jede Moduldatei hängt im Bündel-Graphen', () => {
+test('every module file hangs in the bundle graph', () => {
   // Was diese beiden Tests früher prüften
   const { STANDALONE } = require('../scripts/build-frontend.js');
   const entry = fs.readFileSync(path.join(PUB, 'js', 'main.js'), 'utf8');

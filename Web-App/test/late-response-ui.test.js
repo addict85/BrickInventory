@@ -27,7 +27,7 @@ function withheld() {
 const set = (nr, name) => ({ set_number: nr, name, quantity: 1 });
 const teil = (nr, name) => ({ part_number: nr, part_name: name, color_id: 5, color_name: 'Red', total_quantity: 1 });
 
-test('Galerie: späte Antwort einer alten Suche wird verworfen', async () => {
+test('gallery: a late response of an old search is discarded', async () => {
   const alt = withheld();
   const { w, d, warte, aufrufe } = await openUi({
     '/v1/sets': url =>
@@ -50,7 +50,7 @@ test('Galerie: späte Antwort einer alten Suche wird verworfen', async () => {
   }
 });
 
-test('Galerie: späte Folgeseite einer alten Suche wird nicht angehängt', async () => {
+test('gallery: a late follow-up page of an old search is not appended', async () => {
   // Eine volle erste Seite (60) mit grösserem total löst das Nachladen aus.
   const erste = Array.from({ length: 60 }, (_, i) => set(`${1000 + i}-1`, `Set ${i}`));
   const sequence = withheld();
@@ -75,7 +75,7 @@ test('Galerie: späte Folgeseite einer alten Suche wird nicht angehängt', async
   }
 });
 
-test('Teileliste: späte Antwort eines alten Filters wird verworfen', async () => {
+test('parts list: a late response of an old filter is discarded', async () => {
   const alt = withheld();
   const { w, d, warte } = await openUi({
     '/v1/parts': url =>

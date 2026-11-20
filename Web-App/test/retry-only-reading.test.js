@@ -27,26 +27,26 @@ function onceAbort(code) {
   return { fn, versuche: () => versuche };
 }
 
-test('ein Lesezugriff nach Verbindungsabbruch wird wiederholt', async () => {
+test('a read access after a connection loss is retried', async () => {
   const a = onceAbort('08006');
   assert.equal(await queryWithRetry(a.fn, true), 'ok');
   assert.equal(a.versuche(), 2);
 });
 
-test('ein Schreibzugriff nach Verbindungsabbruch', async () => {
+test('a write access after a connection loss', async () => {
   const a = onceAbort('08006');
   await assert.rejects(queryWithRetry(a.fn, false), { code: '08006' });
   assert.equal(a.versuche(), 1, 'Die Zeile stünde sonst womöglich doppelt da');
 });
 
-test('Verklemmung und Startphase dürfen auch beim Schreiben noch einmal', async () => {
+test('deadlock and startup phase may retry once even when writing', async () => {
   for (const code of ['40001', '40P01', '57P03', '08001']) {
     const a = onceAbort(code);
     assert.equal(await queryWithRetry(a.fn, false), 'ok', code);
   }
 });
 
-test('INSERT … RETURNING ist kein Lesezugriff', () => {
+test('INSERT … RETURNING is not a read access', () => {
   assert.equal(isReading('SELECT 1'), true);
   assert.equal(isReading('  -- Notiz\n  WITH x AS (SELECT 1) SELECT * FROM x'), true);
   assert.equal(isReading('INSERT INTO t (a) VALUES (1) RETURNING id'), false);

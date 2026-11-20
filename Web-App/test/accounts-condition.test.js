@@ -16,7 +16,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const sicht = _req('db/inventoryView.js');
 const menge = _req('db/stockQuantity.js');
 
-test('Platzhalter gehen durch, an der richtigen Spalte', () => {
+test('placeholders go through, at the right column', () => {
   assert.match(sicht.setBestand('= ANY($1)'), /FROM sets WHERE user_id = ANY\(\$1\)\)$/);
   assert.match(sicht.merkliste('= $2'), /FROM wanted WHERE user_id = \$2\)$/);
   assert.match(menge.mengeJoin('s', 'sm', '= ANY($3)'), /WHERE a\.user_id = ANY\(\$3\)/);
@@ -25,7 +25,7 @@ test('Platzhalter gehen durch, an der richtigen Spalte', () => {
   assert.doesNotMatch(sicht.setBestand(), /WHERE/);
 });
 
-test('ein Wert im Text wirft', () => {
+test('a value in the text throws', () => {
   const boese = ['= 1 OR TRUE', '= ANY($1) OR TRUE', "= ANY('{1}')", 'IS NOT NULL', '= $1; DROP TABLE sets'];
   for (const k of boese) {
     assert.throws(() => sicht.setBestand(k), /Kontobedingung/, `setBestand(${k})`);

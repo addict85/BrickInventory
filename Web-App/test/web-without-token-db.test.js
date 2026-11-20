@@ -36,7 +36,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `ohnetoken_${process.pid}`,
   PASS = 'richtigesPasswort1';
 
-test('Browser ohne Token', { concurrency: 1 }, async t => {
+test('browser without token', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -93,7 +93,7 @@ test('Browser ohne Token', { concurrency: 1 }, async t => {
     );
 
   let eigene;
-  await t.test('kein Token für den Browser', async () => {
+  await t.test('no token for the browser', async () => {
     const r = await anmelden({ ohne_token: true });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.token, undefined, 'Der Browser bekommt einen Token, den ein Skript lesen könnte');
@@ -102,7 +102,7 @@ test('Browser ohne Token', { concurrency: 1 }, async t => {
     eigene = r.cookie;
   });
 
-  await t.test('die App bekommt ihren Token und keine Sitzung', async () => {
+  await t.test('the app gets its token and no session', async () => {
     const vorher = await sitzungen();
     const r = await anmelden({ label: 'Android App', never_expires: true });
     assert.ok(r.body.token, 'Die App kann ohne Token nichts');
@@ -114,7 +114,7 @@ test('Browser ohne Token', { concurrency: 1 }, async t => {
     assert.equal(profil.status, 200, 'Der Token allein trägt die App');
   });
 
-  await t.test('die eigene Sitzung bleibt', async () => {
+  await t.test('the own session stays', async () => {
     await anmelden({ ohne_token: true }); // ein zweiter Browser
     assert.equal(await sitzungen(), 2, 'Vorbedingung: zwei Sitzungen (zwei Browser; die App hat keine)');
     const ohne = await ruf('/settings/sessions/andere-beenden', {

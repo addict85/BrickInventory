@@ -20,7 +20,7 @@ const kompakt = require('./helpers/sources').kompakt;
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 
-test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async t => {
+test('invitation and write right against the database', { concurrency: 1 }, async t => {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   const _req = require('./helpers/sources').buildAndRequire();
   const db = await require('./helpers/db').dataOrSkip(t, _req);
@@ -41,7 +41,7 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('ein Konto verknüpft sich nicht mit sich selbst', async () => {
+  await t.test('an account does not link with itself', async () => {
     // Mehrere Elternkonten sind erlaubt (Migration 0046); die Verknüpfung mit sich selbst
     // verbietet das Schema. Gegenprobe (09.11.2026): Regel account_links_no_self entfernt → rot.
     await assert.rejects(
@@ -50,7 +50,7 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
     );
   });
 
-  await t.test('der Einladungscode steht nur als Hash in der Datenbank', async () => {
+  await t.test('the invitation code is only stored as a hash in the database', async () => {
     // Wie bei API-Tokens: Wer die Datenbank liest, soll keine Einladung einlösen können.
     // Wie eine Anfrage des Kontos: Einladungen stehen unter seinem Zeilenschutz.
     const { code } = await require('./helpers/sources').asAccount(ids[0], () => hh.createInvitation(ids[0]));
@@ -63,7 +63,7 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
     assert.match(zeilen[0].token_hash, /^[0-9a-f]{64}$/, 'Gespeichert wird ein SHA-256-Hash');
   });
 
-  await t.test('Schreibrechte kommen nie aus dem Gedächtnis', async () => {
+  await t.test('write rights never come from memory', async () => {
     // Das Blickfeld ist gemerkt (household-memory-db.test.js); über einen
     // Schreibzugriff darf nur der Stand der Datenbank entscheiden.
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [ids[0], ids[1]]);
@@ -97,7 +97,7 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
   });
 });
 
-test('Webapp und App bekommen dieselben Endpunkte', () => {
+test('web app and app get the same endpoints', () => {
   // Etappe 6: Die vier Haushalts-Routen gibt es nur noch einmal, unter
   // /api/v1; die Webapp ruft dieselbe Adresse auf (requireToken nimmt beide
   // Ausweise). Vorher stand diese Prüfung über ZWEI Dateien und verlangte,
@@ -118,7 +118,7 @@ test('Webapp und App bekommen dieselben Endpunkte', () => {
   assert.doesNotMatch(src, /account_links/, 'Routen dürfen nicht selbst gegen account_links abfragen');
 });
 
-test('die Webapp bietet Einladen und Einlösen jedem Konto an', () => {
+test('the web app offers inviting and redeeming to every account', () => {
   // Ein Konto kann mehreren Hauptkonten angehören; jedes braucht seine eigene
   // Einladung. Ein ausgeblendetes Eingabefeld verhinderte genau das.
   const js = require('./helpers/sources').ansichtQuelle('einstellungen');
@@ -130,7 +130,7 @@ test('die Webapp bietet Einladen und Einlösen jedem Konto an', () => {
 // Haushaltssicht: Listen, Finanzen, Verschieben, Schreibrechte
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('die Portfoliokurve des Haushalts ist rückwirkend', () => {
+test("the household's portfolio curve is retroactive", () => {
   // Die Aussage bleibt, der Weg dahin hat sich geändert: Die
   // Portfolio-Schnappschüsse ('__portfolio__<id>') gibt es nicht mehr. Sie
   // lagen je Konto zu unterschiedlichen Zeitpunkten — addiert ergäben sie
@@ -146,7 +146,7 @@ test('die Portfoliokurve des Haushalts ist rückwirkend', () => {
   assert.match(p, /FROM price_history ph/, 'Die Kurve muss aus dem Preisverlauf je Set entstehen');
 });
 
-test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () => {
+test('moving goes via the daily rule, not via UPDATE user_id', () => {
   // Ein direktes UPDATE hinterliesse im Zielkonto zwei Erfassungen desselben
   // Tages — genau den Zustand, den der Bearbeiten-Pfad ablehnt.
   // ohneKommentare(): Die BEGRÜNDUNGEN dieser Regeln stehen in setMove.ts als
@@ -196,7 +196,7 @@ test('Verschieben läuft über die Tagesregel, nicht über UPDATE user_id', () =
   );
 });
 
-test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
+test('manual parts and minifigures carry the owner', () => {
   // Anders als Sets werden sie NICHT verdichtet: Zwei Konten mit demselben
   // Teil sind zwei Bestände mit eigener Menge und eigenem Kaufpreis, und jeder
   // Bearbeiten-Weg führt auf genau eine Zeile. Ohne Plakette sähe die Liste
@@ -227,7 +227,7 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
   assert.equal(uses, 3, 'Set-, Teile- und Minifiguren-Bewertung brauchen den Besitzer');
 });
 
-test('die Teile-Zusammenfassung trägt auch über mehrere Konten', () => {
+test('the parts summary carries across several accounts too', () => {
   // Die Tabelle ist JE KONTO aufgebaut. Für den Haushalt wird über alle
   // beteiligten Konten gelesen und über part_key verdichtet — dasselbe Teil in
   // zwei Konten ergibt EINE Zeile mit der Summe, genau wie dasselbe Teil aus
@@ -258,7 +258,7 @@ test('die Teile-Zusammenfassung trägt auch über mehrere Konten', () => {
   assert.match(ps, /return results\.every\(Boolean\);/);
 });
 
-test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
+test('the UI shows owners and account selection only in the household', () => {
   // Im Einzelkonto stünde an jeder Kachel „gehört mir" — reines Rauschen.
   const gal = kompakt(require('./helpers/sources').frontendQuelle());
   assert.match(gal, /export function ownerBadges/);
@@ -301,7 +301,7 @@ test('die Oberfläche zeigt Besitzer und Kontoauswahl nur im Haushalt', () => {
   assert.equal(ownerCols, 2, 'Eigentümer-Spalte fehlt in einem der beiden Kaufpreis-Dialoge');
 });
 
-test('der Kontofilter gilt je Ansicht und wird überall mitgeschickt', () => {
+test('the account filter applies per view and is sent along everywhere', () => {
   // Wer in der Galerie den ganzen Haushalt sieht, will in den Finanzen
   // womöglich nur die eigenen Zahlen — deshalb je Ansicht ein eigener Wert.
   const core = require('./helpers/sources').coreSource();
@@ -343,7 +343,7 @@ test('der Kontofilter gilt je Ansicht und wird überall mitgeschickt', () => {
   );
 });
 
-test('der Umschalter lädt nur die betroffene Ansicht neu', () => {
+test('the switch only reloads the affected view', () => {
   // Alle vier gleichzeitig neu zu laden würde drei Ansichten anfassen, die
   // niemand ansieht — und dabei Preisabrufe auslösen.
   const gal = kompakt(require('./helpers/sources').frontendQuelle());
@@ -364,7 +364,7 @@ test('der Umschalter lädt nur die betroffene Ansicht neu', () => {
   );
 });
 
-test('Verschieben geht NUR über den Kaufpreis', async () => {
+test('moving ONLY goes via the purchase price', async () => {
   // Ein Set als Ganzes zu verschieben klingt bequem, verdeckt aber, was
   // tatsächlich wandert: Drei Erfassungen sind drei Käufe, die im Haushalt
   // verschiedenen Kindern gehören können. Wer alles verschieben will, ändert
@@ -384,7 +384,7 @@ test('Verschieben geht NUR über den Kaufpreis', async () => {
 /**
  * Was diese Regel prüft, und was NICHT
  */
-test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
+test('manual parts and minifigures also move via the purchase price', () => {
   // Dieselbe Regel für alle drei Arten. Ein manuell erfasstes Teil hat keinen
   // Inhalt — es wandern nur Menge und Erfassung.
   const mv = kompakt(read('src/inventory/reassign.ts'));
@@ -406,7 +406,7 @@ test('auch manuelle Teile und Minifiguren wandern über den Kaufpreis', () => {
   );
 });
 
-test('die App-Routen kennen den Eigentümerwechsel', () => {
+test('the app routes know the owner change', () => {
   // ── Woher dieser Test kommt ─────────────────────────────────────────────
   // Die Android-App schickte owner_user_id an die v1-PUT-Routen — die Fabrik
   // las aber nur Menge, Preis und Zustand. Die Anfrage lief als LEERES Update

@@ -36,7 +36,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
-test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => {
+test('add a set without network and without a race', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   // Jede Quelle im Netz gestellt und gezählt.
@@ -89,7 +89,7 @@ test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => 
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('gleichzeitig erfasst, genau einmal angelegt', async () => {
+  await t.test('added concurrently, created exactly once', async () => {
     // Das Hauptkonto sieht beide Konten; es legt teils für sich, teils für das Kind an.
     const fuer = [haupt, kind, haupt, kind, haupt, kind, haupt, kind];
     const r = await Promise.all(
@@ -108,7 +108,7 @@ test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => 
     );
   });
 
-  await t.test('die Anfrage fragt kein Netz und stellt den Auftrag ein', async () => {
+  await t.test('the request asks no network and enqueues the job', async () => {
     netz.length = 0;
     const { base } = testServer(_req, { sitzung: { userId: haupt }, t });
     const r = await fetch(`${base}/api/v1/sets`, {
@@ -147,7 +147,7 @@ test('Set erfassen ohne Netz und ohne Wettlauf', { concurrency: 1 }, async t => 
     assert.equal(a.dedupe_key, `nacharbeit:${haupt}:${SN2}`);
   });
 
-  await t.test('der Auftrag ergänzt Katalog und Kaufpreis', async () => {
+  await t.test('the job completes catalog and purchase price', async () => {
     netz.length = 0;
     await asAccount(haupt, () => sets.setSupplement(SN2, haupt));
     const kat = await db.get(

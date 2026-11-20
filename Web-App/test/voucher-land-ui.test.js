@@ -14,7 +14,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { countryForCurrency } = _req('src/vouchers/balanceLookup.js');
 const { openUi, sicht, warte } = require('./helpers/ui');
 
-test('Server: Land zur Kontowährung', () => {
+test('server: country for the account currency', () => {
   assert.deepEqual(['CHF', 'EUR', 'GBP', 'USD', 'JPY'].map(countryForCurrency), [
     'de-CH',
     'de-DE',
@@ -24,7 +24,7 @@ test('Server: Land zur Kontowährung', () => {
   ]);
 });
 
-test('EUR-Konto ohne gespeichertes Land: Deutschland, kein Abweichungshinweis', async () => {
+test('EUR account without a stored country: Germany, no deviation hint', async () => {
   const { w, d } = await openUi({
     '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: 'probe' } },
     '/v1/vouchers': {

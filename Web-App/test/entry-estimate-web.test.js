@@ -66,7 +66,7 @@ async function detail() {
   return o;
 }
 
-test('jede Erfassung in ihrer Währung', async () => {
+test('every acquisition in its currency', async () => {
   const { w, d } = await detail();
   try {
     const text = d.getElementById('man-detail-body').textContent;
@@ -80,7 +80,7 @@ test('jede Erfassung in ihrer Währung', async () => {
   }
 });
 
-test('ein geschätzter Preis trägt ≈', async () => {
+test('an estimated price carries ≈', async () => {
   const { w, d } = await detail();
   try {
     const zeichen = [...d.querySelectorAll('#man-detail-body [role="img"]')].filter(e => e.textContent === '≈');

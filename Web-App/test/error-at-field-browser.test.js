@@ -24,7 +24,7 @@ const FIELD =
            described: (f?.getAttribute('aria-describedby') || '').includes(${JSON.stringify(id + '-fehler')}),
            toasts: [...document.querySelectorAll('#toasts .toast.error')].map(x => x.textContent) }; })()`;
 
-test('Fehler am Feld, Toasts an der Ansicht', { concurrency: 1, timeout: 300_000 }, async t => {
+test('errors at the field, toasts at the view', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `feld_${process.pid}`,
     bestand: async (db, uid) => {
@@ -40,7 +40,7 @@ test('Fehler am Feld, Toasts an der Ansicht', { concurrency: 1, timeout: 300_000
   await ruhig();
   const toastsRoute = () => b.auswerten(`document.querySelectorAll('#toasts .toast').forEach(x => x.remove()); true`);
 
-  await t.test('Gutschein: leere Nummer am Feld', async () => {
+  await t.test('voucher: empty number at the field', async () => {
     await b.auswerten(`location.hash = '#/gutscheine'; true`);
     await bis(
       `!!document.querySelector('[data-click="gutscheinSpeichern"]')?.getClientRects().length`,
@@ -60,7 +60,7 @@ test('Fehler am Feld, Toasts an der Ansicht', { concurrency: 1, timeout: 300_000
     assert.match(z.meldung, /Bitte ausfüllen/);
   });
 
-  await t.test('Passwort: ungleich am Feld', async () => {
+  await t.test('password: unequal at the field', async () => {
     await b.auswerten(`location.hash = '#/konto'; true`);
     await bis(`!!document.getElementById('btn-sav-pw')?.getClientRects().length`, 'Kontoseite');
     await toastsRoute();
@@ -72,7 +72,7 @@ test('Fehler am Feld, Toasts an der Ansicht', { concurrency: 1, timeout: 300_000
     assert.match(z.meldung, /stimmen nicht überein/);
   });
 
-  await t.test('Lagerort: leerer Name am Feld', async () => {
+  await t.test('storage location: empty name at the field', async () => {
     await b.auswerten(`location.hash = '#/lagerorte'; true`);
     await bis(
       `!!document.querySelector('[data-click="legeLagerortAn"]')?.getClientRects().length && document.querySelectorAll('.lager-eingabe').length === 2`,
@@ -86,7 +86,7 @@ test('Fehler am Feld, Toasts an der Ansicht', { concurrency: 1, timeout: 300_000
     assert.match(z.meldung, /Namen/);
   });
 
-  await t.test('Fehler-Toast endet mit der Ansicht', async () => {
+  await t.test('error toast ends with the view', async () => {
     // Umbenennen auf einen vorhandenen Namen: der Server sagt ab, als Toast.
     await b.auswerten(`(() => { const f = [...document.querySelectorAll('.lager-eingabe')].find(x => x.value === 'Vitrine');
       f.value = 'Keller'; f.dispatchEvent(new Event('change', { bubbles: true })); return true; })()`);

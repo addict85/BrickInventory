@@ -32,7 +32,7 @@ const TEXT_WIDTH = `(el, texte) => { const cs = getComputedStyle(el), c = docume
   const breit = Math.max(...texte.map(x => c.measureText(x).width));
   return { id: el.id, innen: Math.round(innen), breit: Math.round(breit), passt: breit <= innen }; }`;
 
-test('Formulare und Filter am Telefon', { concurrency: 1, timeout: 300_000 }, async t => {
+test('forms and filters on the phone', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, { name: `telform_${process.pid}`, telefon: true });
   if (app.grund) {
     t.skip(app.grund);
@@ -46,7 +46,7 @@ test('Formulare und Filter am Telefon', { concurrency: 1, timeout: 300_000 }, as
     await ruhig();
   };
 
-  await t.test('Set hinzufügen: Kaufpreis-Platzhalter ganz sichtbar', async () => {
+  await t.test('add set: purchase price placeholder fully visible', async () => {
     await reiter('gallery');
     await b.auswerten(`document.querySelector('button[data-click="oeffneErfassen"][data-arg="set"]').click(); true`);
     await bis(`document.getElementById('add-set-modal').classList.contains('open')`, 'Dialog offen');
@@ -71,7 +71,7 @@ test('Formulare und Filter am Telefon', { concurrency: 1, timeout: 300_000 }, as
     assert.ok(m.seite <= 390, `Seite ${m.seite} px breit`);
   });
 
-  await t.test('Katalog: Filter in vier Zeilen, nichts abgeschnitten', async () => {
+  await t.test('catalog: filters in four rows, nothing cut off', async () => {
     await reiter('catalog');
     // Seit Runde 24 hinter dem Trichterknopf wie in der Sammlung; aufgeklappt gilt dieselbe Ordnung.
     await b.auswerten(`(() => { const k = document.querySelector('#tab-catalog .filter-knopf');
@@ -94,7 +94,7 @@ test('Formulare und Filter am Telefon', { concurrency: 1, timeout: 300_000 }, as
     assert.ok(m.seite <= 390, `Seite ${m.seite} px breit`);
   });
 
-  await t.test('Einstellungen: Pfeil als Knopf, solange rechts Abschnitte liegen', async () => {
+  await t.test('settings: arrow as a button while there are sections to the right', async () => {
     await reiter('settings');
     await bis(
       `document.querySelector('.einst-nav')?.getClientRects().length > 0 && !!document.querySelector('.einst-nav').dataset.mehr`,
@@ -115,7 +115,7 @@ test('Formulare und Filter am Telefon', { concurrency: 1, timeout: 300_000 }, as
     assert.equal(m.zeilen, 1, 'die Leiste bleibt einzeilig');
   });
 
-  await t.test('Einstellungen: Pfeil wechselt am Ende die Seite', async () => {
+  await t.test('settings: arrow switches the page at the end', async () => {
     await b.auswerten(
       `(() => { const nav = document.querySelector('.einst-nav'); nav.scrollLeft = nav.scrollWidth; return true; })()`,
     );

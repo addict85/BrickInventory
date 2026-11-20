@@ -15,7 +15,7 @@ const { openUi, warte } = require('./helpers/ui');
 const klick = (d, id) => d.getElementById(id).click();
 const fokus = d => d.activeElement?.id || d.activeElement?.tagName;
 
-test('Fokus beim Wechsel der Felder der Anmeldekarte', async () => {
+test('focus when switching the fields of the login card', async () => {
   const { w, d } = await openUi({}, { angemeldet: false });
   try {
     await warte(() => d.getElementById('panel-login')?.style.display !== 'none');
@@ -32,7 +32,7 @@ test('Fokus beim Wechsel der Felder der Anmeldekarte', async () => {
   }
 });
 
-test('Passwort vergessen: Titel, Erklärung und Enter sendet ab', async () => {
+test('forgot password: title, explanation and Enter submits', async () => {
   const { w, d, aufrufe } = await openUi(
     { '/v1/auth/forgot-password': { success: true, message: 'Falls die Adresse existiert, kommt ein Link.' } },
     { angemeldet: false },

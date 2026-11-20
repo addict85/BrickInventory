@@ -25,7 +25,7 @@ const db = testData();
 const auth = _req('src/account/deviceToken.js');
 const tokenCache = _req('src/account/tokenCache.js');
 
-test('/auth/me bei einem Lesefehler', { concurrency: 1 }, async t => {
+test('/auth/me on a read error', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `me_lesefehler_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -64,7 +64,7 @@ test('/auth/me bei einem Lesefehler', { concurrency: 1 }, async t => {
     }
   };
 
-  await t.test('mit Sitzung: 503 statt „nicht angemeldet“', async () => {
+  await t.test('with session: 503 instead of "not logged in"', async () => {
     Object.assign(sitzung, { userId: uid, username: NAME });
     assert.equal((await me()).body.loggedIn, true, 'Vorbedingung: ohne Fehler angemeldet');
     const r = await withError(() => me());
@@ -72,7 +72,7 @@ test('/auth/me bei einem Lesefehler', { concurrency: 1 }, async t => {
     for (const k of Object.keys(sitzung)) delete sitzung[k];
   });
 
-  await t.test('mit Token: 503 statt 401', async () => {
+  await t.test('with token: 503 instead of 401', async () => {
     const kopf = { authorization: `Bearer ${token}` };
     assert.equal((await me(kopf)).body.loggedIn, true, 'Vorbedingung: ohne Fehler angemeldet');
     tokenCache.emptyTokenCache();

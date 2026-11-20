@@ -27,7 +27,10 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { holdsSet } = require('./helpers/inventory');
 
-test('Import, Lagerorte, Fremdwährung und Katalog am Server', { concurrency: 1, timeout: 120_000 }, async t => {
+test('import, storage locations, foreign currency and catalog on the server', {
+  concurrency: 1,
+  timeout: 120_000,
+}, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `r16s_${process.pid}`,
     KIND = `${NAME}_kind`;
@@ -57,7 +60,7 @@ test('Import, Lagerorte, Fremdwährung und Katalog am Server', { concurrency: 1,
     return { status: r.status, body: await r.json() };
   };
 
-  await t.test('leere CSV-Datei: englisch und mit Code', async () => {
+  await t.test('empty CSV file: English and with a code', async () => {
     for (const [sprache, text] of [
       ['en', 'The file has no data rows'],
       ['de', 'Keine Datenzeilen in der Datei'],
@@ -69,7 +72,7 @@ test('Import, Lagerorte, Fremdwährung und Katalog am Server', { concurrency: 1,
     }
   });
 
-  await t.test('Zeilenfehler im Importstand in der Sprache des Lesers', async () => {
+  await t.test("row errors in the import state in the reader's language", async () => {
     await db.run(
       `INSERT INTO import_status (user_id, status, total, done, results) VALUES ($1, 'done', 2, 2, $2::jsonb)
                   ON CONFLICT (user_id) DO UPDATE SET status = 'done', results = EXCLUDED.results`,
@@ -88,7 +91,7 @@ test('Import, Lagerorte, Fremdwährung und Katalog am Server', { concurrency: 1,
     assert.match(de.body.results[0].error, /^Das ist keine Setnummer \(Buchstaben/);
   });
 
-  await t.test('Lagerorte: Vorrat mit leeren Orten, Filter nur belegte', async () => {
+  await t.test('storage locations: stock with empty places, filter only occupied ones', async () => {
     const leer = (
       await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Dachboden Kiste 3') RETURNING id`, [uid])
     ).id;
@@ -107,7 +110,7 @@ test('Import, Lagerorte, Fremdwährung und Katalog am Server', { concurrency: 1,
     assert.ok(leer > 0);
   });
 
-  await t.test('Fremdwährung: Betrag und Währung stehen da', async () => {
+  await t.test('foreign currency: amount and currency are shown', async () => {
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '75313-1')`, [uid]);
     await db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition, currency)
@@ -122,7 +125,7 @@ test('Import, Lagerorte, Fremdwährung und Katalog am Server', { concurrency: 1,
     assert.deepEqual([a.purchase_price, a.kaufpreis_original, a.kaufpreis_waehrung], [null, 99.99, 'USD']);
   });
 
-  await t.test('Katalog: Set des Unterkontos ist vorhanden', async () => {
+  await t.test("catalog: the sub-account's set is present", async () => {
     await db.run(`INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts) VALUES ('99161-1', 'Probe-Set', 2024, 1, 10)
                   ON CONFLICT (set_num) DO NOTHING`);
     await holdsSet(db, kid, '99161-1', 2);

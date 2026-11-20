@@ -38,7 +38,7 @@ function schreiber(nr) {
   });
 }
 
-test('alle Prozesse schreiben die Datei', async () => {
+test('all processes write the file', async () => {
   const results = await Promise.all([1, 2, 3, 4, 5, 6, 7, 8].map(schreiber));
   for (const e of results) assert.equal(e.code, 0, e.fehler.split('\n').find(z => z.includes('Error')) ?? e.fehler);
   const datei = _req('src/infra/startpasswort.js').startpasswortFile();
@@ -47,7 +47,7 @@ test('alle Prozesse schreiben die Datei', async () => {
   assert.deepEqual(reste, [], 'keine halben Dateien bleiben liegen');
 });
 
-test('der Symlink leitet nichts um', () => {
+test('the symlink redirects nothing', () => {
   const s = _req('src/infra/startpasswort.js');
   const datei = s.startpasswortFile();
   const fremd = path.join(wurzel, 'fremd.txt');

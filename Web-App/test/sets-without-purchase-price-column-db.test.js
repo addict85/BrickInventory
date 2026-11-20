@@ -39,7 +39,7 @@ const columnsOf = async tabelle =>
     .map(r => r.column_name)
     .sort();
 
-test('nach dem vollständigen Schemaaufbau hat sets keinen Kaufpreis und keinen Zustand', {
+test('after the complete schema setup sets has no purchase price and no condition', {
   concurrency: 1,
 }, async t => {
   try {

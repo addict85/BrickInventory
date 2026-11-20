@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 // und löst dorthin auf.
 const { csvDatum } = require('./helpers/sources').buildAndRequire()('src/infra/csvExport.js');
 
-test('Tag zuerst, nicht Monat', () => {
+test('day first, not month', () => {
   assert.equal(csvDatum('05.03.2026'), '2026-03-05', '5. März, nicht 3. Mai');
   assert.equal(csvDatum('25.12.2025'), '2025-12-25');
   assert.equal(csvDatum('05/03/2026'), '2026-03-05', 'auch mit Schrägstrich');
@@ -16,17 +16,17 @@ test('Tag zuerst, nicht Monat', () => {
   assert.equal(csvDatum('31.12.2025'), '2025-12-31');
 });
 
-test('ISO bleibt ISO', () => {
+test('ISO stays ISO', () => {
   // Das eigene Exportformat — es darf nicht als Tag-zuerst umgedeutet werden.
   assert.equal(csvDatum('2026-03-05'), '2026-03-05');
 });
 
-test('zweistellige Jahre', () => {
+test('two-digit years', () => {
   assert.equal(csvDatum('05.03.26'), '2026-03-05');
   assert.equal(csvDatum('05.03.99'), '1999-03-05');
 });
 
-test('unmögliche Daten werden abgelehnt', () => {
+test('impossible dates are rejected', () => {
   // Eine Prüfung auf 1–31 allein liesse den 31. Februar durch; Date rollt ihn
   // still in den März.
   assert.equal(csvDatum('31.02.2026'), null);
@@ -36,7 +36,7 @@ test('unmögliche Daten werden abgelehnt', () => {
   assert.equal(csvDatum('05.13.2026'), null);
 });
 
-test('leere und unbrauchbare Eingaben ergeben null', () => {
+test('empty and unusable inputs yield null', () => {
   for (const v of ['', '   ', 'abc', null, undefined]) {
     assert.equal(csvDatum(v), null, `${JSON.stringify(v)} muss null ergeben`);
   }
@@ -50,7 +50,7 @@ test('leere und unbrauchbare Eingaben ergeben null', () => {
  *
  * Gegenprobe (29.10.2026): csvDatum in setCsvRows weggelassen → rot.
  */
-test('jeder CSV-Import normalisiert das Datum', () => {
+test('every CSV import normalizes the date', () => {
   const _req = require('./helpers/sources').buildAndRequire();
   const { setCsvRows } = require('./helpers/sources').areaPage('sets');
   const { csvSharedFields } = _req('src/infra/csvExport.js');

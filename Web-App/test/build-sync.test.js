@@ -18,7 +18,7 @@ const { ohneKommentare } = require('./helpers/sources');
 const lies = p => ohneKommentare(fs.readFileSync(p, 'utf8'));
 const web = rel => lies(path.join(WEB, rel));
 
-test('Webapp: fragt den Endpunkt in Rebrickable-Schreibweise, unterscheidet lose und eigenes Blickfeld', async () => {
+test('web app: asks the endpoint in Rebrickable notation, distinguishes loose and own scope', async () => {
   const { openUi, reiter, warte } = require('./helpers/ui');
   const anfragen = [];
   const { w, d } = await openUi({
@@ -75,7 +75,7 @@ test('Webapp: fragt den Endpunkt in Rebrickable-Schreibweise, unterscheidet lose
   }
 });
 
-test('beide Sprachen sind gepflegt', () => {
+test('both languages are maintained', () => {
   // Ein fehlender Schlüssel fällt in dieser Webapp nicht auf: t() gibt den
   // Schlüsselnamen zurück, und „pl.only_loose" sieht auf den ersten Blick aus
   // wie ein Text.

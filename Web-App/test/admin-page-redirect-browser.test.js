@@ -17,7 +17,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 
-test('Verwalterseiten und unbekannte Pfade für normale Konten', { concurrency: 1, timeout: 300_000 }, async t => {
+test('admin pages and unknown paths for normal accounts', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `nutzer_${process.pid}`,
     bestand: async (db, uid) => {
@@ -33,7 +33,7 @@ test('Verwalterseiten und unbekannte Pfade für normale Konten', { concurrency: 
   const toasts = () => b.auswerten(`[...document.querySelectorAll('#toasts .toast')].map(x => x.textContent)`);
   const leeren = () => b.auswerten(`document.querySelectorAll('#toasts .toast').forEach(x => x.remove()); true`);
 
-  await t.test('Verwalterseite: Adresse und Hinweis', async () => {
+  await t.test('admin page: address and hint', async () => {
     await leeren();
     await b.auswerten(`location.hash = '#/einstellungen'; true`);
     await ruhig();
@@ -47,7 +47,7 @@ test('Verwalterseiten und unbekannte Pfade für normale Konten', { concurrency: 
     );
   });
 
-  await t.test('unbekannter Pfad: Hinweis', async () => {
+  await t.test('unknown path: hint', async () => {
     await leeren();
     await b.auswerten(`location.hash = '#/gibt-es-nicht'; true`);
     await ruhig();
@@ -58,7 +58,7 @@ test('Verwalterseiten und unbekannte Pfade für normale Konten', { concurrency: 
     );
   });
 
-  await t.test('Sprungverweis bleibt still', async () => {
+  await t.test('skip link stays silent', async () => {
     await leeren();
     await b.auswerten(`location.hash = '#inhalt'; true`);
     await ruhig();

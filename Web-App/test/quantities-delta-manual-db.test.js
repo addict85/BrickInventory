@@ -27,7 +27,7 @@ const NAME = `mdelta_${process.pid}`,
   TEIL = '3001md',
   FIGUR = 'fig-md01';
 
-test('quantity_delta für manuelle Teile und Figuren', { concurrency: 1 }, async t => {
+test('quantity_delta for manual parts and minifigures', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -69,7 +69,7 @@ test('quantity_delta für manuelle Teile und Figuren', { concurrency: 1 }, async
       ).q,
     );
 
-  await t.test('zwei gleichzeitige +1 ergeben +2', async () => {
+  await t.test('two concurrent +1 result in +2', async () => {
     await Promise.all([
       changeManualPart(uid, TEIL, 5, { quantity_delta: 1 }),
       changeManualPart(uid, TEIL, 5, { quantity_delta: 1 }),
@@ -82,7 +82,7 @@ test('quantity_delta für manuelle Teile und Figuren', { concurrency: 1 }, async
     assert.equal(await figur(), 3);
   });
 
-  await t.test('über die Route: Schritt nach unten, Antwort mit der Menge danach', async () => {
+  await t.test('via the route: step down, response with the quantity afterwards', async () => {
     const { base } = testServer(_req, { t, sitzung: { userId: uid } });
     const put = (pfad, body) =>
       fetch(`${base}/api/v1/${pfad}`, {
@@ -102,7 +102,7 @@ test('quantity_delta für manuelle Teile und Figuren', { concurrency: 1 }, async
     assert.equal(await teil(), 3);
   });
 
-  await t.test('ein Schritt unter 1 bleibt bei 1 — gelöscht wird nur über Löschen', async () => {
+  await t.test('a step below 1 stays at 1 — deleting only via delete', async () => {
     assert.deepEqual(await changeManualPart(uid, TEIL, 5, { quantity_delta: -10 }), { quantity: 1 });
     assert.equal(await teil(), 1);
   });

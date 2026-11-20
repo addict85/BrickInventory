@@ -26,7 +26,7 @@ const { portOf } = require('./helpers/server');
 const { vertragsRouter } = _req('src/http/contractRouter.js');
 const { CONTRACT } = _req('src/contract/index.js');
 
-test('geprüfte Eingabe und Abfrage', { concurrency: 1 }, async t => {
+test('checked input and query', { concurrency: 1 }, async t => {
   let aufrufe = 0;
   const router = vertragsRouter('/api/v1');
   // An res.json vorbei: Die Prüfung der Antwort (Testmodus) gilt dem echten Rumpf.
@@ -52,13 +52,13 @@ test('geprüfte Eingabe und Abfrage', { concurrency: 1 }, async t => {
     return { status: r.status, body: await r.json() };
   };
 
-  await t.test('die Route sieht den umgewandelten Rumpf', async () => {
+  await t.test('the route sees the converted body', async () => {
     const r = await sende('/sets', { set_number: '10179-1', quantity: '3', purchase_price: '12,50', condition: 'U' });
     assert.equal(r.status, 200);
     assert.deepEqual(r.body.eingabe, { set_number: '10179-1', quantity: 3, purchase_price: 12.5, condition: 'U' });
   });
 
-  await t.test('ein unbekanntes Feld ist 400', async () => {
+  await t.test('an unknown field is 400', async () => {
     const vorher = aufrufe;
     const r = await sende('/sets', { set_number: '10179-1', purchasePrice: 12 });
     assert.deepEqual([r.status, r.body.code], [400, 'feld_unbekannt']);
@@ -66,13 +66,13 @@ test('geprüfte Eingabe und Abfrage', { concurrency: 1 }, async t => {
     assert.equal(aufrufe, vorher, 'die Route lief trotzdem');
   });
 
-  await t.test('die Route sieht die umgewandelte Abfrage', async () => {
+  await t.test('the route sees the converted query', async () => {
     const r = await sende('/catalog/sets?page=2&theme_id=&q=Haus');
     assert.equal(r.status, 200);
     assert.deepEqual(r.body.abfrage, { page: 2, theme_id: null, q: 'Haus' });
   });
 
-  await t.test('eine falsche Abfrage ist 400', async () => {
+  await t.test('a wrong query is 400', async () => {
     const vorher = aufrufe;
     const zahl = await sende('/catalog/sets?page=zwei');
     assert.deepEqual([zahl.status, zahl.body.code], [400, 'eingabe_ungueltig']);
@@ -83,7 +83,7 @@ test('geprüfte Eingabe und Abfrage', { concurrency: 1 }, async t => {
   });
 });
 
-test('jede Eingabe und Abfrage ist geschlossen', () => {
+test('every input and query is closed', () => {
   // Ausnahmen: Schlüssel-Wert-Listen, deren Schlüssel die Route selbst prüft.
   const OFFEN = ['PUT /api/v1/settings'];
   const offen = [];
@@ -97,7 +97,7 @@ test('jede Eingabe und Abfrage ist geschlossen', () => {
   assert.ok(Object.values(CONTRACT).filter(r => r.abfrage).length >= 40, 'zu wenige Routen mit Abfrage');
 });
 
-test('die Abfrage steht in der OpenAPI-Beschreibung', () => {
+test('the query is in the OpenAPI description', () => {
   const dok = _req('src/contract/openapi.js').openapi();
   const abfrage = dok.paths['/api/v1/sets'].get.parameters.filter(p => p.in === 'query');
   assert.deepEqual(abfrage.map(p => p.name).sort(), [

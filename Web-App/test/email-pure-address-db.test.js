@@ -53,7 +53,7 @@ const UNREIN = [
   '(k)opfer@example.org',
 ];
 
-test('nur reine E-Mail-Adressen', { concurrency: 1 }, async t => {
+test('only plain email addresses', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const SCHLUESSEL = ['registration_enabled', 'smtp_host', 'smtp_user', 'smtp_from'];
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
@@ -95,7 +95,7 @@ test('nur reine E-Mail-Adressen', { concurrency: 1 }, async t => {
     return { status: r.status, code: (await r.json()).code };
   };
 
-  await t.test('Registrierung nimmt nur reine Adressen', async () => {
+  await t.test('registration only accepts plain addresses', async () => {
     for (const [i, email] of UNREIN.entries()) {
       const r = await rufe('POST', '/register', { username: `spam${i}_${P}`, email, password: 'Langes-Passwort-42' });
       assert.deepEqual(r, { status: 400, code: 'email_ungueltig' }, email);
@@ -109,7 +109,7 @@ test('nur reine E-Mail-Adressen', { concurrency: 1 }, async t => {
     assert.equal(gut.status, 200, 'eine gewöhnliche Adresse mit Apostroph geht weiter');
   });
 
-  await t.test('Passwort vergessen und Bestätigung nehmen nur reine Adressen', async () => {
+  await t.test('forgot password and confirmation only accept plain addresses', async () => {
     for (const weg of ['/forgot-password', '/bestaetigung-erneut'])
       for (const email of UNREIN)
         assert.deepEqual(
@@ -119,13 +119,13 @@ test('nur reine E-Mail-Adressen', { concurrency: 1 }, async t => {
         );
   });
 
-  await t.test('das Profil nimmt nur reine Adressen', async () => {
+  await t.test('the profile only accepts plain addresses', async () => {
     const r = await rufe('PUT', '/profile', { email: 'x<opfer@example.org>', password_current: PASS });
     assert.deepEqual(r, { status: 400, code: 'email_ungueltig' });
     assert.equal((await db.get('SELECT email FROM users WHERE id = $1', [uid])).email, `${NAME}@example.org`);
   });
 
-  await t.test('der Versand lehnt eine gespeicherte Liste ab', async () => {
+  await t.test('sending rejects a stored list', async () => {
     gesendet.length = 0;
     for (const to of UNREIN) {
       const r = await mailer.sendMail({ to, subject: 'Probe', text: 'x' });
@@ -134,7 +134,7 @@ test('nur reine E-Mail-Adressen', { concurrency: 1 }, async t => {
     assert.deepEqual(gesendet, [], 'an eine unreine Adresse wurde versandt');
   });
 
-  await t.test('der Umschlag nennt genau die eine Adresse', async () => {
+  await t.test('the envelope names exactly the one address', async () => {
     gesendet.length = 0;
     const r = await mailer.sendMail({ to: 'ziel@example.org', subject: 'Probe', text: 'x' });
     assert.equal(r.success, true);
@@ -144,7 +144,7 @@ test('nur reine E-Mail-Adressen', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('Bestandsdaten werden gemeldet, nicht geändert', async () => {
+  await t.test('existing data is reported, not changed', async () => {
     const alt = (
       await db.get(
         `INSERT INTO users (username, email, password_hash) VALUES ($1, 'x1<opfer@example.org>', 'x')

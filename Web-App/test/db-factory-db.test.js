@@ -27,7 +27,7 @@ const _req = buildAndRequire();
 const DIST = require('./helpers/sources').DIST;
 const { keineDb } = require('./helpers/db');
 
-test('der Import öffnet keinen Pool', () => {
+test('the import opens no pool', () => {
   // In einem eigenen Prozess: Hier hat der Testlauf den Zugang schon benutzt.
   const script = `
     const pg = require('pg'); let n = 0; const Echt = pg.Pool;
@@ -46,7 +46,7 @@ test('der Import öffnet keinen Pool', () => {
   assert.deepEqual(JSON.parse(aus.trim().split('\n').pop()), [0, 1], 'Import, Fabrik');
 });
 
-test('zwei Zugänge, zwei Transaktionen', async t => {
+test('two accesses, two transactions', async t => {
   const db = testData();
   try {
     await db.get('SELECT 1');
@@ -80,7 +80,7 @@ test('zwei Zugänge, zwei Transaktionen', async t => {
   await a.run('DELETE FROM global_settings WHERE key = $1', [SCHL]);
 });
 
-test('db/database führt keinen Zugang des Prozesses', () => {
+test('db/database keeps no access of the process', () => {
   const modul = require(path.join(DIST, 'db', 'database.js'));
   const prozess = [
     'pool',

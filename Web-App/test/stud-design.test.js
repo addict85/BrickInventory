@@ -16,7 +16,7 @@ const quelle = JSON.parse(fs.readFileSync(path.join(TREE, 'shared', 'design-toke
  * wird die Webapp; die App zeichnet dasselbe Design aus shared/design-tokens.json.
  */
 
-test('die Deckelfarben stehen aus DERSELBEN Quelle', () => {
+test('the lid colors come from the SAME source', () => {
   const steine = quelle.listen.steine.werte;
   assert.ok(
     steine.length === 6,
@@ -36,7 +36,7 @@ test('die Deckelfarben stehen aus DERSELBEN Quelle', () => {
   assert.match(css, /var\(--stein-0\)/, 'themes/noppe.css benutzt die Steinliste nicht');
 });
 
-test('die Steinfarbe laeuft im Takt der Steinliste', () => {
+test('the brick color runs in step with the brick list', () => {
   // Modulo sechs, und zwar an derselben Zahl: Laeuft das Web durch sechs und
   // die App durch vier, zeigt dasselbe Set auf Telefon und Rechner einen
   // anderen Deckel — und niemand kaeme auf die Idee, das fuer einen Fehler zu
@@ -50,7 +50,7 @@ test('die Steinfarbe laeuft im Takt der Steinliste', () => {
   );
 });
 
-test('Rahmen und Versatzschatten stehen auf demselben Ton', () => {
+test('frame and offset shadow are on the same tone', () => {
   // Kunststoff wirft keine Wolke, er liegt auf: Der Schatten ist derselbe Ton
   // wie der Rahmen, nur versetzt. Waeren es zwei Toene, saehe die Kante aus
   // wie ein Druckfehler.
@@ -67,9 +67,9 @@ test('Rahmen und Versatzschatten stehen auf demselben Ton', () => {
   }
 });
 
-test('die Steinfarbe bleibt Takt und wird nie Auskunft', () => {});
+test('the brick color stays rhythm and never becomes information', () => {});
 
-test('die Tabelle bleibt leise', () => {
+test('the table stays quiet', () => {
   // Das Laute gehoert an die Raender — Kopfleiste, Knoepfe, Plaketten —, nicht
   // zwischen die Zahlen. Ein Bestand ist nichts, was man einmal anschaut.
   const tabelle = css.slice(css.indexOf('table td'));
@@ -80,7 +80,7 @@ test('die Tabelle bleibt leise', () => {
   );
 });
 
-test('das Design fuehrt seine Schrift', () => {
+test('the design leads its font', () => {
   assert.match(
     css,
     /--font:'Nunito'/,
@@ -96,7 +96,7 @@ test('das Design fuehrt seine Schrift', () => {
   );
 });
 
-test('hochglanz erbt die Palette, statt sie abzuschreiben', () => {
+test('hochglanz inherits the palette instead of copying it', () => {
   assert.equal(
     quelle.designs.hochglanz.erbt,
     'noppe',
@@ -115,7 +115,7 @@ test('hochglanz erbt die Palette, statt sie abzuschreiben', () => {
   );
 });
 
-test('hochglanz traegt nur die Schichten, nicht die Anatomie', () => {
+test('hochglanz carries only the layers, not the anatomy', () => {
   // Jede Regel in noppe.css gilt fuer BEIDE Designs — das ist die gemeinsame
   // Grundlage. hochglanz.css darf sie nicht ein zweites Mal aufstellen.
   const studRules = [...css.matchAll(/\[data-theme="noppe"\][^{]*\{/g)].length;
@@ -133,7 +133,7 @@ test('hochglanz traegt nur die Schichten, nicht die Anatomie', () => {
   }
 });
 
-test('der harte Versatzschatten ueberlebt den Lack', () => {
+test('the hard offset shadow survives the lacquer', () => {
   // Die Kante traegt, auch wenn sie glaenzt. Faellt sie weg, ist es eine
   // andere Anatomie und nicht dasselbe Design in einem anderen Material.
   const karte = glanz.slice(glanz.indexOf('[data-theme="hochglanz"] .card'));
@@ -145,7 +145,7 @@ test('der harte Versatzschatten ueberlebt den Lack', () => {
   );
 });
 
-test('der Lichtstreifen liegt nicht ueber der ganzen Kachel', () => {
+test('the light stripe does not lie over the whole tile', () => {
   // Ein weisser Schleier über weissem Text ist kein Glanz, sondern Grau.
   const strip = '118deg';
   assert.ok(glanz.includes(strip), 'Der Lichtstreifen fehlt ganz');
@@ -161,7 +161,7 @@ test('der Lichtstreifen liegt nicht ueber der ganzen Kachel', () => {
   }
 });
 
-test('der Glanz steht auf festen Haltepunkten', () => {
+test('the gloss sits on fixed stops', () => {
   // Der Lichtabfall ist in CSS ein linear-gradient und in Compose ein
   // Brush.verticalGradient. Verschiedene Sprachen, dieselben vier Haltepunkte —
   // laufen sie auseinander, sieht dasselbe Design auf Telefon und Rechner
@@ -170,12 +170,12 @@ test('der Glanz steht auf festen Haltepunkten', () => {
   assert.ok(fromCss.length >= 4, `Nur ${fromCss.length} Haltepunkte im CSS — greift die Suche noch?`);
 });
 
-test('der Deckel ist EIN Baustein, nicht zwei', () => {});
+test('the lid is ONE building block, not two', () => {});
 
 /** Die beiden Regeln, die eine Noppenreihe zeichnen. */
 const studsRows = () => css.split('}').filter(r => /header::before|\.sc::after/.test(r.slice(0, r.indexOf('{') + 1)));
 
-test('die Noppen haben eine runde Oberkante, keine Verlaufskante', () => {
+test('the studs have a round top edge, not a gradient edge', () => {
   const reihen = studsRows();
   // Selbstbeweis: GEMESSEN sind es zwei — die Kopfleiste und der Kacheldeckel.
   assert.equal(reihen.length, 2, `${reihen.length} Noppenreihen gefunden statt zwei — greift die Suche noch?`);
@@ -196,7 +196,7 @@ test('die Noppen haben eine runde Oberkante, keine Verlaufskante', () => {
   }
 });
 
-test('Leiste und Deckel teilen sich EINE Noppenform', () => {
+test('bar and lid share ONE stud shape', () => {
   // Zwei Formen liefen beim naechsten Nachbessern auseinander: Die eine Reihe
   // bekaeme runde Noppen, die andere behielte ihre alten — und beides steht
   // auf demselben Bildschirm untereinander.
@@ -211,7 +211,7 @@ test('Leiste und Deckel teilen sich EINE Noppenform', () => {
   assert.match(grund, /--noppen-form:url\("data:image\/svg\+xml,/, 'Die Noppenform ist keine Maske mehr');
 });
 
-test('der Glanz liegt im Takt der Maske', () => {
+test('the gloss is in step with the mask', () => {
   // Die Stelle, an der es still falsch wird
   const masksTicks = [...css.matchAll(/\bmask-size:(\d+)px \d+px/g)].map(m => m[1]);
   const glossTicks = [...glanz.matchAll(/\bbackground-size:(\d+)px \d+px/g)].map(m => m[1]);
@@ -231,7 +231,7 @@ test('der Glanz liegt im Takt der Maske', () => {
   );
 });
 
-test('die Deckelfarbe loescht den Lack nicht', () => {
+test('the lid color does not erase the lacquer', () => {
   // Der Fehler, den diese Zusicherung verhindert
   const colorRules = css
     .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -260,7 +260,7 @@ test('die Deckelfarbe loescht den Lack nicht', () => {
 const stein = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'themes', 'brick.css'), 'utf8');
 const grundCss = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'styles.css'), 'utf8');
 
-test('die Noppenform gehoert allen Designs, nicht einem', () => {
+test('the stud shape belongs to all designs, not to one', () => {
   // Sie stand in themes/noppe.css. Solange nur ein Design Noppen zeichnete,
   // war das richtig; seit es zwei sind, ist es die Stelle, an der sie
   // auseinanderlaufen.

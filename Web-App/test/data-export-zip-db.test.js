@@ -26,7 +26,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 
-test('der Datenexport liefert ein entpackbares ZIP mit den Daten des Kontos', {
+test("the data export delivers an unpackable ZIP with the account's data", {
   concurrency: 1,
   timeout: 60_000,
 }, async t => {

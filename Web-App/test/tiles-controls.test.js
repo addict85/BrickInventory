@@ -17,7 +17,7 @@ const { openUi, reiter, warte } = require('./helpers/ui');
 const TABBAR = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]';
 const tabbar = wurzel => [...wurzel.querySelectorAll(TABBAR)].filter(el => el.getAttribute('tabindex') !== '-1');
 
-test('Galerie: der Papierkorb steht nicht in der Tab-Folge', async () => {
+test('gallery: the trash is not in the tab order', async () => {
   const { w, d } = await openUi({
     '/v1/sets': {
       success: true,
@@ -51,7 +51,7 @@ test('Galerie: der Papierkorb steht nicht in der Tab-Folge', async () => {
   }
 });
 
-test('Merkliste: ohne Namen steht die Nummer einmal, rechts bleibt Platz', async () => {
+test('wishlist: without a name the number appears once, space stays on the right', async () => {
   const { w, d } = await openUi({
     '/v1/wanted': {
       success: true,

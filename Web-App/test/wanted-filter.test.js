@@ -22,7 +22,7 @@ function sortValues(quelle) {
   return [...new Set(quelle.match(/\b(?:added|name|num|year|price|qty)_(?:asc|desc)\b/g) || [])].sort();
 }
 
-test('1. die Webapp schickt alle vier Filter an den Server', async () => {
+test('1. the web app sends all four filters to the server', async () => {
   const o = await openUi({
     '/v1/sets/household-members': {
       success: true,
@@ -61,7 +61,7 @@ test('1. die Webapp schickt alle vier Filter an den Server', async () => {
   }
 });
 
-test('3. die Webapp bietet genau die Sortierungen an, die der Server kennt', () => {
+test('3. the web app offers exactly the sortings the server knows', () => {
   // ── Die Quelle der Wahrheit ───────────────────────────────────────────────
   const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/wanted/repository/wanted.ts'), 'utf8'));
   const tabelle = server.slice(
@@ -88,7 +88,7 @@ test('3. die Webapp bietet genau die Sortierungen an, die der Server kennt', () 
   );
 });
 
-test('4. die Vorgabe-Sortierung ist in Server und Webapp dieselbe', () => {
+test('4. the default sorting is the same in server and web app', () => {
   // Sie entscheidet, ob die Webapp den Parameter überhaupt mitschickt.
   const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/wanted/repository/wanted.ts'), 'utf8'));
   const firstRow = server.slice(server.indexOf('const WANTED_SORTS')).split('\n')[1];

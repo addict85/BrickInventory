@@ -118,7 +118,7 @@ test.after(async () => {
   fs.rmSync(wurzel, { recursive: true, force: true });
 });
 
-test('ein Zeitstempel im Anfrageteil holt das Bild nicht neu', async () => {
+test('a timestamp in the query part does not fetch the image anew', async () => {
   konto = 700000 + (process.pid % 100000);
   geholt.length = 0;
   const a = await hole('https://cdn.rebrickable.com/media/sets/10294-1.jpg?1700000000');
@@ -136,7 +136,7 @@ test('ein Zeitstempel im Anfrageteil holt das Bild nicht neu', async () => {
   assert.equal(imagesInCache(), 2);
 });
 
-test('das vierte fremde Bild wird gedrosselt, Treffer und andere Konten nicht', async () => {
+test('the fourth foreign image is throttled, hits and other accounts are not', async () => {
   konto = 600000 + (process.pid % 100000);
   for (let i = 1; i <= 3; i++)
     assert.equal((await hole(`https://cdn.rebrickable.com/media/parts/d${i}.png`)).status, 200);
@@ -154,7 +154,7 @@ test('das vierte fremde Bild wird gedrosselt, Treffer und andere Konten nicht', 
   assert.equal(bilder(), 6);
 });
 
-test('eine Komma-Liste im Content-Type des CDN geht nicht hinaus', async () => {
+test("a comma list in the CDN's Content-Type does not go out", async () => {
   konto = 500000 + (process.pid % 100000);
   const typ = async (cdn, adresse) => {
     cdnType = cdn;
@@ -182,7 +182,7 @@ test('eine Komma-Liste im Content-Type des CDN geht nicht hinaus', async () => {
     await pause(100);
 });
 
-test('nur Bilder verlassen den Bild-Proxy', async () => {
+test('only images leave the image proxy', async () => {
   // Auf den erlaubten CDNs liegen teils Nutzer-Uploads; HTML oder SVG liefe
   // sonst unter unserer Herkunft.
   konto = 400000 + (process.pid % 100000);
@@ -202,7 +202,7 @@ test('nur Bilder verlassen den Bild-Proxy', async () => {
   }
 });
 
-test('ein fehlendes Bild kommt als Platzhalter, und der Server merkt es sich', async () => {
+test('a missing image comes as a placeholder, and the server remembers it', async () => {
   konto = 300000 + (process.pid % 100000);
   const platzhalter = fs.readFileSync(path.join(__dirname, '..', 'public', 'assets', 'set-placeholder.svg'));
   const adresse = 'https://cdn.rebrickable.com/media/sets/fehlt-1.jpg';
@@ -226,7 +226,7 @@ test('ein fehlendes Bild kommt als Platzhalter, und der Server merkt es sich', a
   }
 });
 
-test('nur 404 wird gemerkt, kein 403', async () => {
+test('only 404 is remembered, no 403', async () => {
   // 403 ist beim CDN oft nur Drosselung; gemerkt fehlten Bilder, die es gibt.
   konto = 200000 + (process.pid % 100000);
   cdnStatus = 403;
@@ -244,7 +244,7 @@ test('nur 404 wird gemerkt, kein 403', async () => {
   }
 });
 
-test('der Deckel löscht das am längsten unbenutzte Bild', async () => {
+test('the cap deletes the image unused the longest', async () => {
   fs.rmSync(cacheDir, { recursive: true, force: true });
   fs.mkdirSync(cacheDir, { recursive: true });
   const jetzt = Date.now() / 1000;
@@ -274,7 +274,7 @@ test('der Deckel löscht das am längsten unbenutzte Bild', async () => {
   );
 });
 
-test('images/sets zählt im Deckel mit und bleibt stehen', async () => {
+test('images/sets counts in the cap and stays', async () => {
   fs.rmSync(cacheDir, { recursive: true, force: true });
   fs.mkdirSync(cacheDir, { recursive: true });
   const sets = path.join(wurzel, 'data', 'images', 'sets');
@@ -296,7 +296,7 @@ test('images/sets zählt im Deckel mit und bleibt stehen', async () => {
   fs.rmSync(sets, { recursive: true, force: true });
 });
 
-test('Fehler werden gezählt und protokolliert', async () => {
+test('errors are counted and logged', async () => {
   const { imgProxyFailures: f } = _req('src/images/imgProxyStats.js');
   const vorher = { ...f };
   const fehler = [];
@@ -333,7 +333,7 @@ test('Fehler werden gezählt und protokolliert', async () => {
   );
 });
 
-test('die Probe zeigt, WAS ausgeliefert wird', async () => {
+test('the probe shows WHAT is delivered', async () => {
   const { imageProbe: bildProbe } = _req('src/management/diagnostics.js');
   const adresse = 'https://cdn.rebrickable.com/media/sets/probe-1.jpg';
   try {

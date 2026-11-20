@@ -29,7 +29,7 @@ async function dbReachable() {
   }
 }
 
-test('Sperr-Namensräume gegen echte Datenbank', async t => {
+test('lock namespaces against a real database', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -60,7 +60,7 @@ test('Sperr-Namensräume gegen echte Datenbank', async t => {
     }
   }
 
-  await t.test('alle Namensräume sind paarweise verschieden', () => {
+  await t.test('all namespaces are pairwise different', () => {
     const eintraege = Object.entries(LOCKS);
     assert.ok(
       eintraege.length >= 8,
@@ -87,7 +87,7 @@ test('Sperr-Namensräume gegen echte Datenbank', async t => {
     }
   });
 
-  await t.test('verschiedene Namensräume behindern sich nicht', async () => {
+  await t.test('different namespaces do not hinder each other', async () => {
     // Der eigentliche Punkt: ALLE gleichzeitig halten. Gäbe es irgendwo eine
     // Dublette, scheiterte schon das Belegen — und zwar mit dem Namen dabei.
     const freigeben = [];
@@ -105,7 +105,7 @@ test('Sperr-Namensräume gegen echte Datenbank', async t => {
     }
   });
 
-  await t.test('derselbe Namensraum sperrt tatsächlich aus', async () => {
+  await t.test('the same namespace really locks out', async () => {
     // Gegenprobe zur vorigen Prüfung: Wäre pg_try_advisory_lock hier immer
     // erfolgreich, sagte „alle gleichzeitig belegbar" gar nichts.
     const frei = await halten(LOCKS.PRICE_JOB);
@@ -121,7 +121,7 @@ test('Sperr-Namensräume gegen echte Datenbank', async t => {
     assert.equal(await stillFree(LOCKS.PRICE_JOB), true, 'Nach dem Freigeben muss die Sperre wieder zu haben sein');
   });
 
-  await t.test('der zweite Wert unterteilt den Namensraum', async () => {
+  await t.test('the second value subdivides the namespace', async () => {
     // Bild-Download und CSV-Import verlassen sich darauf: dieselbe Zahl, aber
     // je Set bzw. je Tabelle ein eigener Schlüssel. Ohne diese Unterteilung
     // liefen sie nacheinander statt nebeneinander.
@@ -142,7 +142,7 @@ test('Sperr-Namensräume gegen echte Datenbank', async t => {
     }
   });
 
-  await t.test('die Bestandssperre eines Kontos trifft keinen Job', async () => {
+  await t.test("an account's inventory lock does not hit a job", async () => {
     // Konto-ID = Nummer eines Jobs, Schlüssel = Setnummer: Mit der user_id als
     // erstem Wert war das genau die Sperre des Bild-Downloads für dieses Set.
     const SET = '60511-1';
@@ -167,7 +167,7 @@ test('Sperr-Namensräume gegen echte Datenbank', async t => {
     );
   });
 
-  await t.test('keine blanke Zahl mehr in einem Sperr-Aufruf', () => {
+  await t.test('no bare number in a lock call any more', () => {
     // Die einzige Quelltextprüfung, die hier bleibt — und sie prüft nicht
     // WELCHE Zahl irgendwo steht, sondern DASS keine mehr direkt dasteht.
     // Genau das macht die Liste oben zur einzigen Wahrheit: Ein Aufruf mit

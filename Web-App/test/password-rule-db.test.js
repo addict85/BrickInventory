@@ -40,7 +40,7 @@ const db = testData();
 const { passwordLack } = _req('src/infra/passwordRule.js');
 const { passwordFits, ARGON2_PREFIX } = _req('src/account/passwordHash.js');
 
-test('die Regel selbst', () => {
+test('the rule itself', () => {
   assert.equal(passwordLack('Brick-Sammlung-2026'), null);
   assert.equal(passwordLack('1234567'), 'passwort_zu_kurz');
   // Seit dem 04.11.2026 mindestens 12 Zeichen: Die häufigen darunter fallen schon an der Länge.
@@ -57,7 +57,7 @@ test('die Regel selbst', () => {
   assert.equal(passwordLack('a'.repeat(1025)), 'passwort_zu_lang');
 });
 
-test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, async t => {
+test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const CHEF = `regel_chef_${process.pid}`,
     ZIEL = `regel_ziel_${process.pid}`,
@@ -118,7 +118,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     return `${pfad} ${r.status} ${b.code ?? ''}`;
   };
 
-  await t.test('häufige Passwörter werden auf allen fünf Wegen abgewiesen', async () => {
+  await t.test('common passwords are rejected on all five paths', async () => {
     const ist = [];
     for (const w of wege('sonnenschein')) ist.push(await ruf(w));
     assert.deepEqual(
@@ -138,7 +138,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
   });
 
   // Über 1024 Zeichen weist schon der Vertrag ab (eingabe_ungueltig), sonst die Regel.
-  await t.test('übergrosse Passwörter werden abgewiesen', async () => {
+  await t.test('oversized passwords are rejected', async () => {
     const ist = [];
     for (const w of wege('Ä'.repeat(1025))) ist.push((await ruf(w)).replace(/ \S*$/, ''));
     assert.deepEqual(
@@ -147,14 +147,14 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     );
   });
 
-  await t.test('ein gutes Passwort geht durch', async () => {
+  await t.test('a good password goes through', async () => {
     assert.equal(await ruf(wege('Brick-Sammlung-2026')[3]), '/users 200 ');
     await db.run('DELETE FROM users WHERE username = $1', [`regel_vw_${process.pid}`]);
   });
 
   // Die Anmeldung sucht in Name UND Adresse: Eine fremde Adresse als Name zöge deren Anmeldung an sich.
   // Gegenprobe (11.11.2026 gemessen): /register lässt neben USERNAME_RE auch eine Adresse zu → rot.
-  await t.test('Registrieren nimmt keine Adresse als Benutzernamen', async () => {
+  await t.test('registration takes no address as username', async () => {
     assert.equal(
       await ruf([
         'POST',
@@ -172,7 +172,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
   // Gegenproben (02.11.2026 gemessen): in /change-password wieder
   // req.session?.username → rot (200 für den eigenen Namen); in
   // /users/:id/password wieder ohne Namen → rot (200 für den Namen des Ziels).
-  await t.test('der Benutzername ist kein Passwort, auch ohne Namen in der Sitzung', async () => {
+  await t.test('the username is no password, even without a name in the session', async () => {
     const app = routerServer(_req, {
       sitzung: { userId: chef, isAdmin: true },
       routen: { '/api/v1/auth': 'routes/auth.js' },
@@ -199,7 +199,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
 
   // Gegenprobe (05.11.2026 gemessen): in /reset-password die zweite Prüfung
   // mit user.username gestrichen → rot (200, das Passwort ist der Name).
-  await t.test('Zurücksetzen: der Benutzername ist kein Passwort', async () => {
+  await t.test('reset: the username is no password', async () => {
     const roh = 'b'.repeat(64);
     await db.run(`UPDATE users SET reset_token = $2, reset_token_expires = NOW() + interval '1 hour' WHERE id = $1`, [
       ziel,
@@ -232,7 +232,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
 
   // Gegenprobe (11.11.2026 gemessen): eigenesPasswortAendern() (src/account/loginFlow.ts)
   // lässt passwort_zu_kurz durch → rot (/change-password 200 statt 400).
-  await t.test('zu kurze Passwörter werden auf allen fünf Wegen abgewiesen', async () => {
+  await t.test('passwords that are too short are rejected on all five paths', async () => {
     const ist = [];
     for (const w of wege('Kurz-12345')) ist.push(await ruf(w));
     assert.deepEqual(
@@ -243,7 +243,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
 
   // Gegenprobe (11.11.2026 gemessen, damals bcrypt): in setForeignPassword (src/account/accounts.ts)
   // mit 4 statt BCRYPT_ROUNDS gehasht → rot (PUT /users/:id/password: 4); seit argon2id siehe E im Kopf.
-  await t.test('jeder Weg hasht mit denselben Kosten', async () => {
+  await t.test('every path hashes with the same costs', async () => {
     const NEU = `regel_neu_${process.pid}`,
       VW = `regel_vw_${process.pid}`;
     t.after(() => db.run('DELETE FROM users WHERE username = ANY($1)', [[NEU, VW]]));
@@ -282,7 +282,7 @@ test('Passwortregel auf allen Wegen', { concurrency: 1, timeout: 120_000 }, asyn
     );
   });
 
-  await t.test('ein schwaches ADMIN_PASSWORD wird nicht übernommen', async () => {
+  await t.test('a weak ADMIN_PASSWORD is not adopted', async () => {
     await db.run('DROP SCHEMA public CASCADE');
     await db.run('CREATE SCHEMA public');
     environment({ ADMIN_PASSWORD: 'passwort123' });

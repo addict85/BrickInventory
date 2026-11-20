@@ -42,13 +42,13 @@ const BOESE = [
 ];
 const GUT = ['Pixel 8 Pro', 'Android App', 'Galaxy S10.1', 'iPad (Küche)', 'Firefox auf Linux'];
 
-test('Gerätenamen: die Regel', () => {
+test('device names: the rule', () => {
   for (const n of BOESE) assert.equal(devicesNameValid(n), false, JSON.stringify(n));
   for (const n of GUT) assert.equal(devicesNameValid(n), true, JSON.stringify(n));
   assert.equal(devicesNameValid(undefined), true, 'ohne Namen gilt die Vorgabe');
 });
 
-test('Gerätenamen an allen drei Wegen', { concurrency: 1 }, async t => {
+test('device names on all three paths', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const NAME = `geraet_${process.pid}`,
@@ -98,7 +98,7 @@ test('Gerätenamen an allen drei Wegen', { concurrency: 1 }, async t => {
       assert.deepEqual(await post('/passkey/registrieren', { antwort: {}, name }), abgewiesen, JSON.stringify(name));
   });
 
-  await t.test('ein Satz in Anführungszeichen bleibt draussen', async () => {
+  await t.test('a sentence in quotes stays out', async () => {
     assert.deepEqual(
       await post('/login', { username: NAME, password: PASS, label: 'Handy" — alles in Ordnung' }),
       abgewiesen,

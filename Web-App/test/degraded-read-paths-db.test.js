@@ -28,7 +28,7 @@ const { getGlobalSetting } = _req('src/settings/settings.js');
 const NAME = `degradiert_${process.pid}`,
   TEIL = '3001dg';
 
-test('Lesefehler: `degradiert` oder Fehler, nie still leer', { concurrency: 1 }, async t => {
+test('read errors: `degradiert` or an error, never silently empty', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -59,7 +59,7 @@ test('Lesefehler: `degradiert` oder Fehler, nie still leer', { concurrency: 1 },
     return r.json();
   };
 
-  await t.test('mit Preisen bleibt `degradiert` weg', async () => {
+  await t.test('with prices `degradiert` stays away', async () => {
     const j = await manuelle();
     assert.deepEqual(
       j.parts.map((/** @type {any} */ p) => p.part_number),
@@ -68,7 +68,7 @@ test('Lesefehler: `degradiert` oder Fehler, nie still leer', { concurrency: 1 },
     assert.equal(j.degradiert, undefined);
   });
 
-  await t.test('ohne Preise sagt die Liste warum', async () => {
+  await t.test('without prices the list says why', async () => {
     const zurueck = await weg('part_price_cache');
     try {
       const j = await manuelle();
@@ -84,7 +84,7 @@ test('Lesefehler: `degradiert` oder Fehler, nie still leer', { concurrency: 1 },
     }
   });
 
-  await t.test('eine Einstellung, die sich nicht lesen lässt, ist keine Vorgabe', async () => {
+  await t.test('a setting that cannot be read is not a default', async () => {
     assert.equal(
       await getGlobalSetting(`fehlt_${process.pid}`, '24'),
       '24',

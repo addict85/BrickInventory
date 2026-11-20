@@ -55,7 +55,7 @@ const posten = n =>
     farbeOffen: false,
   }));
 
-test('Wanted-Auflösung über Rebrickable bricht mit Grund ab', { concurrency: 1 }, async t => {
+test('wanted resolution via Rebrickable aborts with a reason', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const S = _req('src/settings/settings.js');
@@ -63,7 +63,7 @@ test('Wanted-Auflösung über Rebrickable bricht mit Grund ab', { concurrency: 1
   const { resolveViaRebrickableOn } = _req('src/wanted/wantedResolution.js');
   await db.run("DELETE FROM global_settings WHERE key = 'rebrickable_api_key'");
 
-  await t.test('ohne Schlüssel: abgebrochen mit Grund kein_schluessel', async () => {
+  await t.test('without a key: aborted with reason kein_schluessel', async () => {
     const r = await resolveViaRebrickableOn(posten(3));
     assert.equal(r.abgebrochen, 'kein_schluessel');
     assert.equal(r.gefunden, 0);
@@ -72,7 +72,7 @@ test('Wanted-Auflösung über Rebrickable bricht mit Grund ab', { concurrency: 1
   await S.setGlobalSetting('rebrickable_api_key', 'testschluessel');
   await k.setQuotaBack('rebrickable');
 
-  await t.test('404 ist unbekannt, der Lauf geht weiter', async () => {
+  await t.test('404 is unknown, the run continues', async () => {
     const { ergebnis, anfragen } = await withResponse(404, () => resolveViaRebrickableOn(posten(3)));
     assert.equal(ergebnis.abgebrochen, undefined);
     assert.equal(ergebnis.gefragt, 3);
@@ -80,13 +80,13 @@ test('Wanted-Auflösung über Rebrickable bricht mit Grund ab', { concurrency: 1
     assert.equal(anfragen, 3 * 2);
   });
 
-  await t.test('Serverfehler 500 ist kein „unbekannt“', async () => {
+  await t.test('server error 500 is not “unknown”', async () => {
     const { ergebnis, anfragen } = await withResponse(500, () => resolveViaRebrickableOn(posten(3)));
     assert.equal(ergebnis.abgebrochen, 'stoerung');
     assert.equal(anfragen, 1, 'nach dem ersten Fehler weiter gefragt');
   });
 
-  await t.test('Tageslimit: abgebrochen mit Grund kontingent', async () => {
+  await t.test('daily limit: aborted with reason kontingent', async () => {
     await db.run(`INSERT INTO global_settings (key, value) VALUES ('api_limit_rebrickable', '1')
                   ON CONFLICT (key) DO UPDATE SET value = '1'`);
     await k.setQuotaBack('rebrickable');

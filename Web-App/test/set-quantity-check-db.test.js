@@ -22,7 +22,7 @@ const { testServer } = require('./helpers/server');
 const db = testData();
 const { holdsSet, quantityOf } = require('./helpers/inventory');
 
-test('Mengenänderung am Set: Prüfung und Papierkorb', { concurrency: 1 }, async t => {
+test('quantity change on the set: validation and trash', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `menge-pruef-${process.pid}`,
@@ -40,7 +40,7 @@ test('Mengenänderung am Set: Prüfung und Papierkorb', { concurrency: 1 }, asyn
     });
 
   try {
-    await t.test('eine kaputte Menge wird abgewiesen', async () => {
+    await t.test('a broken quantity is rejected', async () => {
       for (const kaputt of [{ a: 1 }, 'abc', -1, 1.5]) {
         const r = await setze(kaputt);
         assert.equal(r.status, 400, JSON.stringify(kaputt));
@@ -48,13 +48,13 @@ test('Mengenänderung am Set: Prüfung und Papierkorb', { concurrency: 1 }, asyn
       assert.equal(await quantityOf(db, uid, SN), 2, 'der Bestand ist unverändert');
     });
 
-    await t.test('eine gültige Menge als Text wird angenommen', async () => {
+    await t.test('a valid quantity as text is accepted', async () => {
       const r = await setze('3');
       assert.equal(r.status, 200);
       assert.equal(await quantityOf(db, uid, SN), 3);
     });
 
-    await t.test('Menge 0 legt das Set in den Papierkorb', async () => {
+    await t.test('quantity 0 puts the set into the trash', async () => {
       const r = await setze(0);
       assert.equal(r.status, 200);
       const j = await r.json();

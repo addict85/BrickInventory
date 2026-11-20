@@ -15,7 +15,7 @@ const db = testData();
 const { priceHistoryMinifig } = _req('src/finances/priceHistory.js');
 const { holdsMinifig } = require('./helpers/inventory');
 
-test('der Figuren-Preisverlauf findet die Preise unter der BrickLink-Nummer', { concurrency: 1 }, async t => {
+test('the figure price history finds the prices under the BrickLink number', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   // minifig_price_history steht bewusst NUR in db/migrations/0003.
   // initSchema() legt sie nicht an; ohne

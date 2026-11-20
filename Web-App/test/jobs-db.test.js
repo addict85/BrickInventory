@@ -39,7 +39,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { warte, bis } = require('./helpers/time');
 
-test('Auftragstabelle', { concurrency: 1 }, async t => {
+test('job table', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const A = Object.assign({}, _req('src/jobQueue/jobs.js'), {
     ..._req('src/jobQueue/service.js'),
@@ -63,7 +63,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
   await leeren();
 
   try {
-    await t.test('ein verwaister Auftrag wird nach seiner Frist erledigt', async () => {
+    await t.test('an orphaned job is settled after its deadline', async () => {
       const id = await A.placeJobOne(ART, { marke: MARKE, n: 1 });
       // Ein Prozess belegt ihn mit einer Frist von einer Sekunde und endet dann.
       const tot = await A.belegeAuftrag([ART], 1);
@@ -88,7 +88,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       assert.equal((await zeile(id)).attempts, 2);
     });
 
-    await t.test('ein Fehler wird wiederholt und endet nach dem letzten Versuch', async () => {
+    await t.test('an error is retried and ends after the last attempt', async () => {
       await leeren();
       let mal = 0;
       const aufgegeben = [];
@@ -122,7 +122,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       assert.deepEqual(aufgegeben, ['Quelle weg'], 'aufgegeben genau einmal, nach dem letzten Versuch');
     });
 
-    await t.test('derselbe Schlüssel steht nur einmal offen', async () => {
+    await t.test('the same key is open only once', async () => {
       await leeren();
       const a = await A.placeJobOne(ART, { marke: MARKE }, { schluessel: `${MARKE}:s` });
       const b = await A.placeJobOne(ART, { marke: MARKE }, { schluessel: `${MARKE}:s` });
@@ -130,7 +130,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       assert.equal(b, null);
     });
 
-    await t.test('zwei Worker, jeder Auftrag genau einmal', async () => {
+    await t.test('two workers, every job exactly once', async () => {
       await leeren();
       const N = 40;
       for (let i = 0; i < N; i++) await A.placeJobOne(ART, { marke: MARKE, n: i });
@@ -167,7 +167,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       assert.deepEqual(doppelt, [], 'Aufträge doppelt ausgeführt');
       assert.equal(new Set(runs).size, N);
     });
-    await t.test('eine pausierte Art waiting, eine exklusive läuft einzeln', async () => {
+    await t.test('a paused kind waits, an exclusive one runs alone', async () => {
       await leeren();
       const EX = `${ART}-ex`;
       for (let i = 0; i < 3; i++) await A.placeJobOne(EX, { marke: MARKE, n: i });
@@ -204,7 +204,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       await db.run('DELETE FROM jobs WHERE type = $1', [EX]);
     });
 
-    await t.test('verschieben zählt nur, wenn es soll', async () => {
+    await t.test('postponing only counts when it should', async () => {
       await leeren();
       const { JobMove } = _req('jobs/jobWorker.js');
       let zaehlt = false;
@@ -228,7 +228,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       assert.deepEqual([z.status, z.attempts], ['fehler', 2], 'gezählte Verschiebungen enden nach max_attempts');
     });
 
-    await t.test('ein abgebrochener Auftrag bleibt abgebrochen', async () => {
+    await t.test('an aborted job stays aborted', async () => {
       await leeren();
       let lebt = null;
       // Ohne feste Wartezeiten: Der Bearbeiter meldet, dass er läuft, und
@@ -262,7 +262,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       assert.equal((await zeile(id)).status, 'offen', 'wiederholen stellt ihn neu ein');
     });
 
-    await t.test('nach einem geplanten Lauf steht der nächste an', async () => {
+    await t.test('after a scheduled run the next one is pending', async () => {
       const Z = _req('src/jobQueue/schedule.js');
       await db.run(`DELETE FROM jobs WHERE type = 'aufraeumen'`);
       await Z.planeAll();
@@ -291,7 +291,7 @@ test('Auftragstabelle', { concurrency: 1 }, async t => {
       await db.run(`DELETE FROM jobs WHERE type = 'aufraeumen'`);
     });
 
-    await t.test('ein PDF-Auftrag entsteht im Worker', async () => {
+    await t.test('a PDF job is created in the worker', async () => {
       const NAME = `auftrag-pdf-${process.pid}`;
       await db.run('DELETE FROM users WHERE username=$1', [NAME]);
       const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;

@@ -211,7 +211,7 @@ async function als(db, nutzer, pw, fn) {
   }
 }
 
-test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => {
+test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t => {
   const admin = new Client({ connectionString: BASIS.toString() });
   try {
     await admin.connect();
@@ -238,7 +238,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     await admin.end();
   });
 
-  await t.test('bestehende Installation', async () => {
+  await t.test('existing installation', async () => {
     await admin.query(`CREATE DATABASE ${id(alt)}`);
     const s = schemaAsAccount(url(alt));
     assert.equal(s.status, 0, s.stderr);
@@ -343,7 +343,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     assert.match(warnung(url(alt, MIG, MIG_PW)).stdout, /WARNUNG=false/);
   });
 
-  await t.test('neue Installation', async () => {
+  await t.test('new installation', async () => {
     await admin.query(`CREATE DATABASE ${id(neu)}`);
     const r = setUpRole(neu);
     assert.equal(r.status, 0, r.stderr);
@@ -532,12 +532,15 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     );
   };
 
-  await t.test('Passwort-Hashes und Sitzungen liest nur die Systemrolle, schon nach der Migration', async () => {
-    // „neue Installation“ hat migriert, ohne app-rolle.sh danach: Das leistet Migration 0115 allein.
-    await checkAccountTables(neu);
-  });
+  await t.test(
+    'password hashes and sessions are only read by the system role, already after the migration',
+    async () => {
+      // „neue Installation“ hat migriert, ohne app-rolle.sh danach: Das leistet Migration 0115 allein.
+      await checkAccountTables(neu);
+    },
+  );
 
-  await t.test('… und nach jedem Lauf von app-rolle.sh; Kopien vor Migrationen nur für die Systemrolle', async () => {
+  await t.test('… and after every run of app-rolle.sh; copies before migrations only for the system role', async () => {
     await als(neu, MIG, MIG_PW, mig =>
       mig.query(`CREATE SCHEMA vor_migration_20261114000000000;
         CREATE TABLE vor_migration_20261114000000000.users AS SELECT 7 AS id, 'x' AS password_hash`),
@@ -553,7 +556,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     }
   });
 
-  await t.test('die Migrationsrolle schiebt dem Superuser nichts unter', async () => {
+  await t.test('the migration role slips nothing under the superuser', async () => {
     const app = new Client({ connectionString: url(neu, MIG, MIG_PW) });
     await app.connect();
     try {
@@ -603,7 +606,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     assert.equal((await rightsTheRole(admin, MIG)).rolsuper, false);
   });
 
-  await t.test('Laufzeit- und Systemrolle dürfen kein DROP, ALTER oder CREATE, nur Zeilen', async () => {
+  await t.test('runtime and system role may not DROP, ALTER or CREATE, only rows', async () => {
     assert.equal(setUpRole(neu).status, 0);
     for (const [nutzer, pw] of [
       [ROLLE, PASSWORT],
@@ -639,7 +642,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
       });
   });
 
-  await t.test('der Katalog-Import tauscht als Laufzeitrolle', async () => {
+  await t.test('the catalog import swaps as the runtime role', async () => {
     const tausch = require(path.join(ROOT, 'dist', 'src', 'catalog', 'repository', 'csvSwap.js'));
     await als(neu, ROLLE, PASSWORT, async app => {
       await tausch.lockTable(app, 'rb_colors');
@@ -669,7 +672,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     await als(neu, null, null, c => c.query('DELETE FROM rb_colors'));
   });
 
-  await t.test('was die Migrationsrolle später anlegt, erreicht die Laufzeitrolle ohne neuen Lauf', async () => {
+  await t.test('what the migration role creates later reaches the runtime role without a new run', async () => {
     await als(neu, MIG, MIG_PW, async mig => {
       await mig.query('CREATE TABLE spaeter (id serial PRIMARY KEY, x int)');
       await mig.query('CREATE SCHEMA vor_migration_20261111000000000');
@@ -705,7 +708,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     );
   });
 
-  await t.test('die Laufzeitrolle startet nicht auf einem Schema mit offenen Migrationen', async () => {
+  await t.test('the runtime role does not start on a schema with open migrations', async () => {
     const letzte = (await als(neu, MIG, MIG_PW, mig => mig.query('SELECT max(name) AS n FROM schema_migrations')))
       .rows[0].n;
     await als(neu, MIG, MIG_PW, mig =>
@@ -735,7 +738,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     assert.equal(ok.status, 0, ok.stderr);
   });
 
-  await t.test('die Leserolle sieht keine Geheimnisse', async () => {
+  await t.test('the read role sees no secrets', async () => {
     const c = new Client({ connectionString: url(neu) });
     await c.connect();
     try {
@@ -799,7 +802,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     assert.match(gleich.stderr, /PGWEB_DB_PASSWORD muss sich/);
   });
 
-  await t.test('die Leserolle liest genau die Allowlist', async () => {
+  await t.test('the read role reads exactly the allowlist', async () => {
     const r = setUpRole(neu);
     assert.equal(r.status, 0, r.stderr);
     // Jede Spalte der Allowlist gibt es im aktuellen Schema (sonst meldet das Skript sie).
@@ -857,7 +860,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
       assert.deepEqual(await lesbar(t), [], `${t} ist für die Leserolle lesbar`);
   });
 
-  await t.test('der Zeilenschutz gilt für die Laufzeitrolle, nicht für System- und Leserolle', async () => {
+  await t.test('row security applies to the runtime role, not to system and read role', async () => {
     await als(neu, null, null, c =>
       c.query(`INSERT INTO sets (user_id, set_number) SELECT id, '10001-1' FROM users WHERE username = 'leseprobe'`),
     );
@@ -883,7 +886,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     await als(neu, LESEN, READ_PW, async l => assert.equal(await zaehle(l), 1, 'pgweb sieht alle Zeilen'));
   });
 
-  await t.test('neue Spalten und Tabellen bleiben unlesbar, bis die Allowlist sie nennt', async () => {
+  await t.test('new columns and tables stay unreadable until the allowlist names them', async () => {
     const c = new Client({ connectionString: url(neu) });
     await c.connect();
     try {
@@ -958,7 +961,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     assert.equal(setUpRole(neu).status, 0);
   });
 
-  await t.test('Passwörter aus Dateien (Docker-Secrets)', async tt => {
+  await t.test('passwords from files (Docker secrets)', async tt => {
     const fsm = require('node:fs'),
       osm = require('node:os');
     const ordner = fsm.mkdtempSync(path.join(osm.tmpdir(), 'rolle-geheim-'));
@@ -1024,7 +1027,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
     assert.match(fehlt.stderr, /DB_APP_PASSWORD_FILE=.* ist nicht lesbar/);
   });
 
-  await t.test('ein gleiches Passwort wird abgewiesen', () => {
+  await t.test('an identical password is rejected', () => {
     const r = setUpRole(neu, { DB_APP_PASSWORD: decodeURIComponent(BASIS.password) });
     assert.notEqual(r.status, 0);
     assert.match(r.stderr, /DB_APP_PASSWORD muss sich von DB_PASSWORD unterscheiden/);
@@ -1038,7 +1041,7 @@ test('Datenbankrolle der App', { concurrency: 1, timeout: 180_000 }, async t => 
 
   // `docker` ist ein Stellvertreter: db-rolle und migration laufen wirklich gegen die Test-DB.
   await t.test(
-    'scripts/rollen-trennen.sh stellt eine Installation mit App-Rolle als Eigentümerin um, wiederholbar',
+    'scripts/rollen-trennen.sh converts an installation with the app role as owner, repeatable',
     async tt => {
       const fsm = require('node:fs'),
         osm = require('node:os');

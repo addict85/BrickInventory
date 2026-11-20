@@ -37,7 +37,7 @@ require.cache[pa].exports = Object.assign({}, require.cache[pa].exports, {
   },
 });
 
-test('Import als Auftrag', { concurrency: 1 }, async t => {
+test('import as a job', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const NAME = `importauftrag_${process.pid}`;
@@ -54,7 +54,7 @@ test('Import als Auftrag', { concurrency: 1 }, async t => {
   const importAlsAuftrag = (...a) => asAccount(uid, () => asJob(...a));
   const csv = teil => `part_number,color_id,quantity\n${teil},0,2\n`;
 
-  await t.test('ohne Worker bleibt der Auftrag offen', async () => {
+  await t.test('without a worker the job stays open', async () => {
     await assert.rejects(
       importAlsAuftrag(uid, 'teile_csv', { text: csv('ohne1') }, { wartenMs: 300 }),
       (/** @type {any} */ e) => e.code === 'import_laeuft_noch' && e.art === 'zeitueberschreitung',
@@ -69,7 +69,7 @@ test('Import als Auftrag', { concurrency: 1 }, async t => {
     await db.run("DELETE FROM jobs WHERE type = 'csv_import' AND user_id = $1", [uid]);
   });
 
-  await t.test('mit Worker kommt das Ergebnis', async tt => {
+  await t.test('with a worker the result comes', async tt => {
     importWorker(tt, _req);
     const r = await importAlsAuftrag(uid, 'teile_csv', { text: csv('mit1') });
     assert.equal(r.success, undefined, 'die Hülle der Antwort setzt die Route, nicht der Dienst');
@@ -84,7 +84,7 @@ test('Import als Auftrag', { concurrency: 1 }, async t => {
     assert.deepEqual(a, { status: 'erledigt', result: null }, 'gelesen ist gelesen');
   });
 
-  await t.test('ein Fachfehler kommt mit Code an', async tt => {
+  await t.test('a domain error arrives with a code', async tt => {
     importWorker(tt, _req);
     await assert.rejects(
       importAlsAuftrag(uid, 'alarme_csv', { waehrung: 'CHF', text: 'set_number\n1-1\n' }),

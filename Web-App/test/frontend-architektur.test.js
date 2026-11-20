@@ -111,7 +111,7 @@ function circles(/** @type {Map<string, string[]>} */ g) {
   return raus;
 }
 
-test('das Frontend-Bündel hat keinen Importkreis', () => {
+test('the frontend bundle has no import cycle', () => {
   const g = graph();
   const module = [...g.keys()].filter(k => k.startsWith('js/'));
   assert.ok(module.length >= 30, `nur ${module.length} Module im Graphen — greift die Auswertung noch?`);
@@ -125,7 +125,7 @@ test('das Frontend-Bündel hat keinen Importkreis', () => {
   );
 });
 
-test('Kern und Bausteine (KERN, BAUSTEINE, i18n.js) importieren keine Ansicht', () => {
+test('core and building blocks (KERN, BAUSTEINE, i18n.js) import no view', () => {
   const g = graph();
   const layer = new Set([...KERN, ...BAUSTEINE].map(f => `js/${f}`));
   const unten = (/** @type {string} */ k) => k === 'i18n.js' || layer.has(k);
@@ -135,7 +135,7 @@ test('Kern und Bausteine (KERN, BAUSTEINE, i18n.js) importieren keine Ansicht', 
   assert.deepEqual(aufwaerts, [], 'Der Kern ruft Ansichten über Ereignisse oder Sprungziele, nicht per Import');
 });
 
-test('geteilter veränderlicher Zustand nur in state.js', () => {
+test('shared mutable state only in state.js', () => {
   // Ein `export let` ist eine Variable, die jedes Modul lesen kann, deren
   // Besitzer aber nicht feststeht. Ausserhalb des Zustandsmoduls gibt es
   // stattdessen Lese- oder Stoppfunktionen (manualParts(), stopMonitor()).
@@ -151,7 +151,7 @@ test('geteilter veränderlicher Zustand nur in state.js', () => {
   assert.deepEqual(treffer, []);
 });
 
-test('kein fetch und kein EventSource an der API-Hülle vorbei', () => {
+test('no fetch and no EventSource bypassing the API wrapper', () => {
   // Ausnahmen: theme-boot.js läuft vor dem Bündel, logviewer.js in einem
   // eigenen Fenster mit Bearer-Token; beide können die Hülle nicht laden.
   const EXCEPTIONS = new Set(['theme-boot.js', 'logviewer.js', 'app.bundle.js']);
@@ -177,7 +177,7 @@ test('kein fetch und kein EventSource an der API-Hülle vorbei', () => {
   assert.deepEqual(treffer, [], 'Aufrufe der eigenen API gehen über api(), apiRaw() oder strom() (js/api.js)');
 });
 
-test('docs/architektur.md beschreibt die Oberfläche mit Dateien, die es gibt', () => {
+test('docs/architektur.md describes the UI with files that exist', () => {
   require('./helpers/bundle').placeBundleSafe(); // das Kapitel nennt das Bündel, ein Erzeugnis
   const doc = fs.readFileSync(path.join(__dirname, '..', 'docs', 'architektur.md'), 'utf8');
   const chapter = doc.split(/^## Oberfläche$/m)[1]?.split(/^## /m)[0] ?? '';

@@ -628,7 +628,7 @@ function writingPlaces() {
   return { tabellen, dynamisch };
 }
 
-test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
+test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -649,7 +649,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
   }
   t.after(() => db.pool.end().catch(() => {}));
 
-  await t.test('jede Tabelle ohne user_id steht in der Liste', async () => {
+  await t.test('every table without user_id is in the list', async () => {
     const ohne = (
       await db.all(`
       SELECT c.relname AS t FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
@@ -662,7 +662,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
 
   // Gemessen einmal, für die Prüfungen auf Schreiber, Besitzer und Stufen unten.
   const gemessen = {};
-  await t.test('Tabellennamen zur Laufzeit: gemessen, wie eingetragen', async () => {
+  await t.test('table names at runtime: measured as registered', async () => {
     const bekannt = new Set(Object.values(BESITZER).flat());
     const dateien = filesWithNamesToRuntime();
     assert.ok(dateien.length > 5, `nur ${dateien.length} Dateien — greift die Suche noch?`);
@@ -670,7 +670,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     assert.deepEqual(gemessen, DYNAMISCH, 'Neue Datei oder neue Tabelle zur Laufzeit: in DYNAMISCH eintragen');
   });
 
-  await t.test('jede schreibende Stelle auf eine Katalogtabelle ist eingetragen', () => {
+  await t.test('every writing site on a catalog table is registered', () => {
     const { tabellen, dynamisch } = writingPlaces();
     assert.ok(tabellen.size > 40, `nur ${tabellen.size} Tabellen beschrieben — greift die Suche noch?`);
     assert.ok(dynamisch.size > 0, 'Selbstbeweis: Schreibstellen mit Namen zur Laufzeit werden erkannt');
@@ -696,7 +696,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     );
   });
 
-  await t.test('jede Tabelle hat einen Besitzer, nur er schreibt hinein', async () => {
+  await t.test('every table has an owner, only it writes into it', async () => {
     const alle = (
       await db.all(`SELECT c.relname AS t FROM pg_class c
       JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public' WHERE c.relkind IN ('r', 'p')`)
@@ -730,7 +730,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     );
   });
 
-  await t.test('Trigger schreiben nur in Tabellen ihres Besitzers oder in begründete Ziele', async () => {
+  await t.test('triggers only write into tables of their owner or into justified targets', async () => {
     const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
     const trigger = await db.all(`SELECT DISTINCT c.relname AS tabelle, p.proname AS funktion, p.prosrc AS quelle
       FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
@@ -751,7 +751,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     );
   });
 
-  await t.test('fremde Bereiche lesen nie aufwärts, sonst weniger Tabellen direkt', async () => {
+  await t.test('foreign scopes never read upwards, otherwise fewer tables directly', async () => {
     const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
     assert.ok(besitzer.size > 60, `nur ${besitzer.size} Tabellen in docs/architektur.md — greift die Suche noch?`);
     const stufen = stufenAusDoku();
@@ -793,7 +793,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     }
   });
 
-  await t.test('auch über db/ liest kein Bereich die Tabelle eines höheren', async () => {
+  await t.test('not even via db/ does a scope read the table of a higher one', async () => {
     const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
     const stufen = stufenAusDoku();
     const bausteine = await lesebausteine(_req);
@@ -817,7 +817,7 @@ test('gemeinsame Tabellen', { concurrency: 1, timeout: 120_000 }, async t => {
     );
   });
 
-  await t.test('Eingaben eines Kontos landen in keiner gemeinsamen Tabelle', async () => {
+  await t.test('input of an account lands in no shared table', async () => {
     const neu = async name =>
       (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [name])).id;
     const A = await neu('anna'),

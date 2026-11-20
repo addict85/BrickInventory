@@ -107,7 +107,7 @@ const WITHOUT_CALLER = new Map([
   ],
 ]);
 
-test('jede Route hat einen Aufrufer oder einen eingetragenen Grund', () => {
+test('every route has a caller or a registered reason', () => {
   const routen = allRoutes();
   const quellen = clientSources();
   assert.ok(quellen.length >= 20, `Nur ${quellen.length} Client-Dateien gefunden — Pfade veraltet?`);

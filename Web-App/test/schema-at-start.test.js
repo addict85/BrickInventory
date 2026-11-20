@@ -8,7 +8,7 @@ const assert = require('node:assert/strict');
 const { execFileSync } = require('node:child_process');
 const path = require('node:path');
 
-test('keine Schema-Anweisung in routes/ oder den Leseabfragen', () => {
+test('no schema statement in routes/ or the read queries', () => {
   const script = path.join(__dirname, '..', 'scripts', 'check-schema-am-start.js');
   let output = '';
   try {

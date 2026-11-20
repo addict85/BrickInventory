@@ -33,7 +33,7 @@ const { testServer } = require('./helpers/server');
 const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
-test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async t => {
+test('QR pairing with confirmation', { concurrency: 1, timeout: 60_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAMEN = [`qrk_${process.pid}`, `qrk2_${process.pid}`];
   const PASS = 'Kopplung-Passwort-1';
@@ -80,7 +80,7 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
   const abholen = m => ruf('POST', '/qr-login/abholen', { abholung: m.abholung });
   const confirm = (qr, code) => ruf('POST', `/qr-kopplung/${qr.kopplung}/bestaetigen`, { code });
 
-  await t.test('ohne Bestätigung kein Token, danach genau einer', async () => {
+  await t.test('without confirmation no token, afterwards exactly one', async () => {
     const qr = await newCode();
     const m = await melde(qr);
     assert.equal(m.token, undefined, 'Der Scan allein gibt keinen Token');
@@ -104,7 +104,7 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
     assert.equal((await abholen(m)).status, 401, 'Ein zweites Abholen gibt keinen zweiten Token');
   });
 
-  await t.test('die Vorschau nennt das Konto, der Token kommt erst mit dem Ja', async () => {
+  await t.test('the preview names the account, the token only comes with the yes', async () => {
     const qr = await newCode();
     const m = await melde(qr);
     const vorschau = { abholung: m.abholung, vorschau: true };
@@ -127,7 +127,7 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
     assert.equal(n?.from_qr, true);
   });
 
-  await t.test('ein Nein der App verwirft die Kopplung, es entsteht kein Token', async () => {
+  await t.test('a no from the app discards the pairing, no token is created', async () => {
     const qr = await newCode();
     const m = await melde(qr);
     assert.equal((await confirm(qr, m.code)).status, 200);
@@ -143,13 +143,13 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
     assert.equal((await ruf('POST', '/qr-login/verwerfen', { abholung: 'unbekannt' })).status, 401);
   });
 
-  await t.test('ein Code meldet nur ein Gerät', async () => {
+  await t.test('a code reports only one device', async () => {
     const qr = await newCode();
     await melde(qr);
     assert.equal((await ruf('POST', '/qr-login', { token: qr.token })).status, 401);
   });
 
-  await t.test('ein falscher Code zählt, nach drei ist die Kopplung abgelehnt', async () => {
+  await t.test('a wrong code counts, after three the pairing is rejected', async () => {
     const qr = await newCode();
     const m = await melde(qr);
     const falsch = m.code === '000000' ? '111111' : '000000';
@@ -160,14 +160,14 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
     assert.deepEqual([r.status, r.body.code], [403, 'qr_abgelehnt']);
   });
 
-  await t.test('Ablehnen im Browser beendet die Kopplung', async () => {
+  await t.test('rejecting in the browser ends the pairing', async () => {
     const qr = await newCode();
     const m = await melde(qr);
     assert.equal((await ruf('POST', `/qr-kopplung/${qr.kopplung}/ablehnen`, {})).status, 200);
     assert.equal((await abholen(m)).status, 403);
   });
 
-  await t.test('die Kopplung eines anderen Kontos ist nicht zu sehen und nicht zu bestätigen', async () => {
+  await t.test("another account's pairing can neither be seen nor confirmed", async () => {
     const qr = await newCode();
     const m = await melde(qr);
     Object.assign(sitzung, { userId: ids[1], username: NAMEN[1] });
@@ -180,7 +180,7 @@ test('QR-Kopplung mit Bestätigung', { concurrency: 1, timeout: 60_000 }, async 
     assert.equal((await abholen(m)).body.wartet, true);
   });
 
-  await t.test('über der Obergrenze offener Kopplungen gibt es 503, abgeholte zählen nicht', async tt => {
+  await t.test('above the limit of open pairings there is 503, collected ones do not count', async tt => {
     const { OPEN_PAIRINGS_AT_MOST } = _req('src/account/qrPairing.js');
     await db.run(`DELETE FROM qr_login_tokens`);
     tt.after(() => db.run(`DELETE FROM qr_login_tokens`));

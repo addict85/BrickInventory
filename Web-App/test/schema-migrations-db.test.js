@@ -26,7 +26,7 @@ test.after(() =>
 /** Gemessen am Tag der Behebung. Die Zahl darf nur kleiner werden. */
 const INVENTORY_ALTER = 0;
 
-test('keine neue Spalten-Änderung in db/database.ts', () => {
+test('no new column change in db/database.ts', () => {
   const quelle = ohneKommentare(fs.readFileSync(path.join(ROOT, 'db/database.ts'), 'utf8'));
   const treffer = quelle.match(/ALTER TABLE \w+ ADD COLUMN/g) || [];
 
@@ -43,7 +43,7 @@ test('keine neue Spalten-Änderung in db/database.ts', () => {
   assert.equal(('x ALTER TABLE foo ADD COLUMN bar'.match(/ALTER TABLE \w+ ADD COLUMN/g) || []).length, 1);
 });
 
-test('api_tokens.sliding gibt es auf einer frischen und einer migrierten Datenbank', async t => {
+test('api_tokens.sliding exists on a fresh and on a migrated database', async t => {
   // Ohne die Spalte scheitert createToken() und damit Login und QR-Login.
   const db = await dataOrSkip(t, _req);
   if (!db) return;

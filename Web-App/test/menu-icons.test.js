@@ -95,7 +95,7 @@ function webMenu() {
   }));
 }
 
-test('jeder Menüeintrag ist zugeordnet', () => {
+test('every menu entry is assigned', () => {
   const web = webMenu();
   // Selbstbeweis: Findet die Ableitung nichts, wären die Schleifen still grün.
   assert.equal(web.length, 10, `${web.length} Web-Einträge abgeleitet statt zehn — greift die Ableitung noch?`);
@@ -110,7 +110,7 @@ test('jeder Menüeintrag ist zugeordnet', () => {
   );
 });
 
-test('jeder Eintrag trägt sein Sinnbild', () => {
+test('every entry carries its icon', () => {
   const web = new Map(webMenu().map(e => [e.schluessel, e.symbol]));
   const falsch = [];
   for (const z of MAPPING) {
@@ -124,7 +124,7 @@ test('jeder Eintrag trägt sein Sinnbild', () => {
   assert.deepEqual(falsch, [], 'Das Menü zeigt nicht mehr, was die Tabelle sagt:\n  ' + falsch.join('\n  '));
 });
 
-test('kein Sinnbild steht für zwei Dinge', () => {
+test('no icon stands for two things', () => {
   // Der gemessene Befund vom 17.10.: 📦 stand im Web für „Lagerorte" UND für
   // „Daten exportieren". In der App waren es längst zwei Symbole.
   const doppelt = (eintraege, name) => {

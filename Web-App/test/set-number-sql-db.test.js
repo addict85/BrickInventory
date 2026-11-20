@@ -32,7 +32,7 @@ function inputs() {
   return [...new Set([...kandidaten, ...kandidaten.map(k => `${k}-2`), ...RAND])];
 }
 
-test('beide Fassungen hängen gleich an', { concurrency: 1 }, async t => {
+test('both versions attach the same', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));

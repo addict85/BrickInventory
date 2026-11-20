@@ -14,7 +14,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, warte, takt } = require('./helpers/ui');
 
-test('Pflichtwechsel mit zweitem Faktor fragt den Code nach', async () => {
+test('mandatory change with second factor asks for the code', async () => {
   const wechsel = [];
   const { w, d } = await openUi({
     '/v1/auth/me': { loggedIn: true, user: { id: 1, username: 'anna', is_admin: false, mustChangePassword: true } },

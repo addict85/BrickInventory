@@ -25,7 +25,7 @@ function zippen(dateien) {
   });
 }
 
-test('archiver ist aus CommonJS heraus benutzbar', () => {
+test('archiver is usable from CommonJS', () => {
   // Die Aussage ist dieselbe geblieben: Der Server ist CommonJS, und was er
   // `require()`t, muss er auch benutzen können. Geändert hat sich, was
   // „benutzen" heisst — in archiver 7 eine Funktion aufrufen, seit 8 eine
@@ -43,7 +43,7 @@ test('archiver ist aus CommonJS heraus benutzbar', () => {
   }
 });
 
-test('der Datenexport erzeugt ein entpackbares ZIP', async () => {
+test('the data export produces an unpackable ZIP', async () => {
   const b = await zippen({
     'sets.csv': 'set_number;name\n10294-1;Titanic\n',
     'teile.csv': 'part;color\n3001;Rot\n',
@@ -76,7 +76,7 @@ test('der Datenexport erzeugt ein entpackbares ZIP', async () => {
   }
 });
 
-test('kein veraltetes glob mehr im Abhängigkeitsbaum', () => {
+test('no outdated glob in the dependency tree anymore', () => {
   // Der Auslöser. Wandert glob 10 über eine andere Bibliothek zurück, soll das
   // auffallen — die Warnung im Installationslog liest niemand zuverlässig.
   const lock = require(path.join(__dirname, '..', 'package-lock.json'));
@@ -92,7 +92,7 @@ test('kein veraltetes glob mehr im Abhängigkeitsbaum', () => {
   );
 });
 
-test('kein minimatch unter 11.0.1 im Abhängigkeitsbaum', () => {
+test('no minimatch below 11.0.1 in the dependency tree', () => {
   // GHSA-g3hv-75wg-m249 über archiver → readdir-glob; gehalten vom overrides-Eintrag.
   // Gegenprobe (01.11.2026): package-lock.json von e21f747 (minimatch 10.2.6) → rot.
   const lock = require(path.join(__dirname, '..', 'package-lock.json'));

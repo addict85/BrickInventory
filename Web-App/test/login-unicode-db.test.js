@@ -36,7 +36,7 @@ const NAME = `unicode_${process.pid}`;
 const MAIL = `opfer${process.pid}@mailbox.example`;
 const VARIANT = MAIL.replace('mailbox', 'maİlbox');
 
-test('Unicode-Schreibweisen derselben Adresse', { concurrency: 1 }, async t => {
+test('Unicode spellings of the same address', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -60,7 +60,7 @@ test('Unicode-Schreibweisen derselben Adresse', { concurrency: 1 }, async t => {
   });
   const { checkCredentials } = _req('src/account/loginCheck.js');
 
-  await t.test('nach fünf Fehlversuchen ist auch die Unicode-Schreibweise gesperrt', async () => {
+  await t.test('after five failed attempts the Unicode spelling is locked too', async () => {
     const anfrage = { ip: '203.0.113.9', socket: {}, headers: {} };
     for (let i = 0; i < 5; i++) {
       const r = await checkCredentials(anfrage, MAIL, 'falsch');
@@ -70,7 +70,7 @@ test('Unicode-Schreibweisen derselben Adresse', { concurrency: 1 }, async t => {
     assert.equal(r.absage?.art, 'zu_viele', 'die Variante bekam frische Zähler');
   });
 
-  await t.test('die Rücksetz-Mail geht an die gespeicherte Adresse', async () => {
+  await t.test('the reset mail goes to the stored address', async () => {
     const app = express();
     app.use(express.json());
     app.use(einhaengung('auth'), require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));

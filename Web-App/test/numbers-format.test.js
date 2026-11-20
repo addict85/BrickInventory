@@ -55,14 +55,14 @@ test('de-DE', async () => {
 });
 
 // Das Hochkomma hängt an der ICU-Fassung: Node 22 setzt ’, Node 26 setzt '.
-test('de-CH bleibt schweizerisch, auch in EUR', async () => {
+test('de-CH stays Swiss, even in EUR', async () => {
   assert.match(await einstand('de-CH'), /1['’]097\.93/);
 });
 
-test('ohne passende Region: EUR deutsch', async () => {
+test('without a matching region: EUR German', async () => {
   for (const b of ['de', 'en-US']) assert.match(await einstand(b), /^1\.097,93\s€$/, b);
 });
 
-test('ohne passende Region: CHF schweizerisch', async () => {
+test('without a matching region: CHF Swiss', async () => {
   assert.match(await einstand('en-US', 'CHF'), /1['’]097\.93/);
 });

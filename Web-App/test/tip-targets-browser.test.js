@@ -77,10 +77,10 @@ window.addEventListener('load', () => {
 </script></body></html>`;
 }
 
-test('am Telefon ist jedes Bedienelement mindestens 44 px gross', t => {
+test('on the phone every control is at least 44 px large', t => {
   const bin = chrome();
   if (!bin) {
-    t.skip('kein Chrome gefunden');
+    t.skip('no Chrome found');
     return;
   }
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'tippziele-'));

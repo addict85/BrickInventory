@@ -22,13 +22,13 @@ const paket = require('../package.json');
 const fassung = paket.devDependencies.qrcodejs;
 const installiert = path.join(ROOT, 'node_modules', 'qrcodejs');
 
-test('exakte Fassung in package.json und Lockfile', () => {
+test('exact version in package.json and lockfile', () => {
   assert.match(String(fassung), /^\d+\.\d+\.\d+$/, `qrcodejs „${fassung}“ ist keine exakte Fassung`);
   const lock = require('../package-lock.json');
   assert.equal(lock.packages['node_modules/qrcodejs']?.version, fassung);
 });
 
-test('das Skript erzeugt genau die ausgelieferten Dateien', () => {
+test('the script produces exactly the shipped files', () => {
   assert.ok(fs.existsSync(installiert), 'qrcodejs nicht installiert (npm ci)');
   const ziel = fs.mkdtempSync(path.join(os.tmpdir(), 'qrcode-'));
   try {

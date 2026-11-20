@@ -16,7 +16,7 @@ function boot(bodyHtml) {
   return dom;
 }
 
-test('data-label kommt aus der Kopfzeile', () => {
+test('data-label comes from the header row', () => {
   const dom = boot(`
     <table class="dt">
       <thead><tr><th>Nr.</th><th>Name</th><th>Preis</th></tr></thead>
@@ -29,7 +29,7 @@ test('data-label kommt aus der Kopfzeile', () => {
   );
 });
 
-test('bei mehrzeiligem Kopf zählt die unterste Zeile', () => {
+test('with a multi-row header the bottom row counts', () => {
   // Kommt in den Finanztabellen vor: eine Gruppenüberschrift über den
   // eigentlichen Spaltennamen.
   const dom = boot(`
@@ -47,7 +47,7 @@ test('bei mehrzeiligem Kopf zählt die unterste Zeile', () => {
   );
 });
 
-test('colspan verschiebt die Zuordnung nicht', () => {
+test('colspan does not shift the assignment', () => {
   const dom = boot(`
     <table class="dt">
       <thead><tr><th>A</th><th>B</th><th>C</th></tr></thead>
@@ -62,7 +62,7 @@ test('colspan verschiebt die Zuordnung nicht', () => {
   );
 });
 
-test('leere Spaltenköpfe ergeben ein leeres Label', () => {
+test('empty column headers yield an empty label', () => {
   // Aktionsspalten (Löschen-Button) haben kein <th>-Text; mobile.css blendet
   // die Beschriftung dann per content:none aus.
   const dom = boot(`
@@ -74,7 +74,7 @@ test('leere Spaltenköpfe ergeben ein leeres Label', () => {
   assert.equal(tds[1].getAttribute('data-label'), '');
 });
 
-test('nachträglich eingefügte Tabellen werden ebenfalls beschriftet', async () => {
+test('tables inserted later are labeled as well', async () => {
   // Der eigentliche Zweck des Observers: Die Listen werden per innerHTML
   // gebaut, lange nach dem Laden des Skripts.
   const dom = boot('<div id="host"></div>');
@@ -91,7 +91,7 @@ test('nachträglich eingefügte Tabellen werden ebenfalls beschriftet', async ()
   );
 });
 
-test('vorhandene data-label werden nicht überschrieben', () => {
+test('existing data-label are not overwritten', () => {
   const dom = boot(`
     <table class="dt">
       <thead><tr><th>Kopf</th></tr></thead>
@@ -100,7 +100,7 @@ test('vorhandene data-label werden nicht überschrieben', () => {
   assert.equal(dom.window.document.querySelector('td').getAttribute('data-label'), 'eigen');
 });
 
-test('Tabellen ohne .dt bleiben unangetastet', () => {
+test('tables without .dt stay untouched', () => {
   const dom = boot(`
     <table>
       <thead><tr><th>Kopf</th></tr></thead>
@@ -109,7 +109,7 @@ test('Tabellen ohne .dt bleiben unangetastet', () => {
   assert.equal(dom.window.document.querySelector('td').hasAttribute('data-label'), false);
 });
 
-test('eine Tabelle wird nur einmal verarbeitet', () => {
+test('a table is processed only once', () => {
   const dom = boot(`
     <table class="dt">
       <thead><tr><th>Kopf</th></tr></thead>
@@ -123,7 +123,7 @@ test('eine Tabelle wird nur einmal verarbeitet', () => {
   );
 });
 
-test('mobile.css deckt beide Designs ab und steht ganz in Media Queries', () => {
+test('mobile.css covers both themes and lives entirely in media queries', () => {
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'mobile.css'), 'utf8');
   // Alles ausserhalb einer @media-Regel würde den Desktop verändern.
   const outside = css
@@ -142,7 +142,7 @@ test('mobile.css deckt beide Designs ab und steht ganz in Media Queries', () => 
   assert.match(css, /font-size:\s*16px/, 'Unter 16px zoomt iOS beim Fokussieren in Eingabefelder hinein');
 });
 
-test('index.html lädt mobile.css nach beiden Designs', () => {
+test('index.html loads mobile.css after both themes', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   const iTheme = html.indexOf('themes/brick.css');
   const iMobile = html.indexOf('mobile.css');

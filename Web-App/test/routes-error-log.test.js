@@ -41,7 +41,7 @@ function logWithLevel(fehler, req) {
 }
 const protokolliere = (fehler, req) => logWithLevel(fehler, req).zeile;
 
-test('die Fehlerzeile nennt Methode und Pfad', () => {
+test('the error line names method and path', () => {
   const e = Object.assign(new Error('Nicht gefunden'), { status: 404, code: 'nicht_gefunden' });
   const zeile = protokolliere(e, {
     method: 'PUT',
@@ -54,7 +54,7 @@ test('die Fehlerzeile nennt Methode und Pfad', () => {
   );
 });
 
-test('der Fragezeichen-Teil bleibt draussen', () => {
+test('the question mark part stays outside', () => {
   const e = Object.assign(new Error('Nicht gefunden'), { status: 404 });
   const zeile = protokolliere(e, {
     method: 'GET',
@@ -68,7 +68,7 @@ test('der Fragezeichen-Teil bleibt draussen', () => {
   assert.ok(!zeile.includes('accounts'), `Die Abfrage steht mit im Protokoll: ${zeile}`);
 });
 
-test('ohne Anfrage bleibt die Zeile wie bisher', () => {
+test('without a request the line stays as before', () => {
   // Es gibt Aufrufer ausserhalb einer Route (Hintergrundarbeit, Tests). Aus
   // der Ergaenzung darf dort kein „undefined undefined" werden.
   const zeile = protokolliere(new Error('kaputt'), undefined);
@@ -76,7 +76,7 @@ test('ohne Anfrage bleibt die Zeile wie bisher', () => {
   assert.ok(!zeile.includes('undefined'), `„undefined" in der Zeile: ${zeile}`);
 });
 
-test('ein 4xx ist eine Warnung ohne Stack, ein 5xx ein Fehler mit Stack', () => {
+test('a 4xx is a warning without a stack, a 5xx an error with a stack', () => {
   const nicht = logWithLevel(Object.assign(new Error('Nicht gefunden'), { status: 404 }), {
     method: 'GET',
     originalUrl: '/api/v1/sets/1-1',

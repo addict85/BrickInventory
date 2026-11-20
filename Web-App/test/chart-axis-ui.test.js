@@ -24,7 +24,7 @@ const SET = {
   instructions: [],
 };
 
-test('Achse ab erstem Marktpreis, Kauf am Rand', async () => {
+test('axis from the first market price, purchase at the edge', async () => {
   const historie = [
     { recorded_at: '2026-06-01', avg_price: 199.99, is_purchase_price: true },
     { recorded_at: '2026-09-01', avg_price: 186 },
@@ -59,7 +59,7 @@ test('Achse ab erstem Marktpreis, Kauf am Rand', async () => {
   }
 });
 
-test('Einstand-Beschriftung weicht aus', async () => {
+test('cost basis label moves aside', async () => {
   // Einstand 1530, die Kurve endet bei 1545 — knapp darüber.
   const { w, d } = await openUi({
     '/v1/finance/valuation': {

@@ -50,7 +50,7 @@ const ROUTES = Object.keys(CONTRACT).map(k => {
   return { m, p, url: p.replace(/:[A-Za-z_]+\??/g, '1') };
 });
 
-test('Vertragsrouten in anderer Schreibung', { concurrency: 1, timeout: 300_000 }, async t => {
+test('contract routes in a different spelling', { concurrency: 1, timeout: 300_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const name = `schreibung_${process.pid}`;
   const uid = (
@@ -114,7 +114,7 @@ test('Vertragsrouten in anderer Schreibung', { concurrency: 1, timeout: 300_000 
   assert.ok(ROUTES.length > 150, `nur ${ROUTES.length} Vertragsrouten — greift die Suche noch?`);
   assert.ok((await rufe('GET', '/api/v1/settings')).status === 200, `der Token gilt nicht: ${log.slice(-400)}`);
 
-  await t.test('Grossschreibung ist eine andere Route', async () => {
+  await t.test('upper case is a different route', async () => {
     const falsch = [],
       key = [];
     for (const { m, url } of ROUTES) {
@@ -130,7 +130,7 @@ test('Vertragsrouten in anderer Schreibung', { concurrency: 1, timeout: 300_000 
     assert.deepEqual(await gespeichert(key), [], 'eine anders geschriebene Route hat in idempotency geschrieben');
   });
 
-  await t.test('routeForRequest ordnet einen Schrägstrich am Ende derselben Route zu', () => {
+  await t.test('routeForRequest assigns a trailing slash to the same route', () => {
     // Drossel, Schrittschutz und Idempotenz fragen so; die Absage am Eingang ist die erste Linie.
     const anders = ROUTES.filter(
       ({ m, url }) =>
@@ -143,7 +143,7 @@ test('Vertragsrouten in anderer Schreibung', { concurrency: 1, timeout: 300_000 
     );
   });
 
-  await t.test('ein Schrägstrich am Ende ist eine andere Route', async () => {
+  await t.test('a trailing slash is a different route', async () => {
     const falsch = [],
       key = [];
     // `/api/v1/` steht so im Vertrag; `//` am Ende ist dort derselbe Pfad.
@@ -157,7 +157,7 @@ test('Vertragsrouten in anderer Schreibung', { concurrency: 1, timeout: 300_000 
     assert.deepEqual(await gespeichert(key), []);
   });
 
-  await t.test('… und ein %2F am Ende kommt an keine geheime oder bestätigte Antwort', async () => {
+  await t.test('… and a %2F at the end gets no secret or confirmed response', async () => {
     const geheim = ROUTES.filter(({ m, url }) => WRITING.has(m) && antwortIstGeheim(m, url));
     assert.ok(geheim.length > 20, `nur ${geheim.length} geheime oder bestätigte Routen`);
     const succeeded = [];

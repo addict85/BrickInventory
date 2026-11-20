@@ -31,7 +31,7 @@ const teil = (nr, name, farbe = 'Red') => ({
 });
 const callsTo = (aufrufe, pfad) => aufrufe.filter(a => a.url.includes(`/api${pfad}?`)).map(a => abfrage(a.url));
 
-test('Galerie: erste Seite mit page und page_size, Folgeseite wird angehängt', async () => {
+test('gallery: first page with page and page_size, the follow-up page is appended', async () => {
   const erste = Array.from({ length: 60 }, (_, i) => set(`${1000 + i}-1`, `Set ${i}`));
   const { w, d, warte, aufrufe } = await openUi({
     '/v1/sets': url =>
@@ -60,7 +60,7 @@ test('Galerie: erste Seite mit page und page_size, Folgeseite wird angehängt', 
   }
 });
 
-test('Galerie: Suche, Sortierung und Themenfilter laden neu beim Server', async () => {
+test('gallery: search, sorting and theme filter reload at the server', async () => {
   const { w, d, warte, aufrufe } = await openUi({
     '/v1/sets': {
       success: true,
@@ -94,7 +94,7 @@ test('Galerie: Suche, Sortierung und Themenfilter laden neu beim Server', async 
   }
 });
 
-test('Galerie: zeigt, was der Server liefert, ohne selbst zu filtern oder zu sortieren', async () => {
+test('gallery: shows what the server delivers without filtering or sorting itself', async () => {
   const { w, d, warte } = await openUi({
     '/v1/sets': url =>
       abfrage(url).get('search')
@@ -112,7 +112,7 @@ test('Galerie: zeigt, was der Server liefert, ohne selbst zu filtern oder zu sor
   }
 });
 
-test('Teileliste: Seiten mit page_size, Bilder als Vorschau über den Proxy', async () => {
+test('parts list: pages with page_size, images as preview via the proxy', async () => {
   const { w, d, warte, aufrufe } = await openUi({
     '/v1/parts': { success: true, parts: [teil('3001', 'Stein 2 x 4')], total: 1, page: 1, page_size: 100 },
   });
@@ -131,7 +131,7 @@ test('Teileliste: Seiten mit page_size, Bilder als Vorschau über den Proxy', as
   }
 });
 
-test('Teileliste: eine Farbgruppe läuft über die Seitengrenze', async () => {
+test('parts list: a color group runs across the page boundary', async () => {
   const seite1 = [...Array.from({ length: 99 }, (_, i) => teil(`a${i}`, `Blau ${i}`, 'Blue')), teil('r1', 'Rot 1')];
   const { w, d, warte } = await openUi({
     '/v1/parts': url =>
@@ -158,7 +158,7 @@ test('Teileliste: eine Farbgruppe läuft über die Seitengrenze', async () => {
   }
 });
 
-test('Teileliste: Suche lädt beide Listen, Ersatzteil- und Ansichtswechsel bauen neu auf', async () => {
+test('parts list: search loads both lists, spare part and view changes rebuild', async () => {
   const { w, d, warte, aufrufe } = await openUi({
     '/v1/parts': { success: true, parts: [teil('3001', 'Stein')], total: 1, page: 1, page_size: 100 },
   });
@@ -190,7 +190,7 @@ test('Teileliste: Suche lädt beide Listen, Ersatzteil- und Ansichtswechsel baue
   }
 });
 
-test('Teileliste: Farbfilter baut beim Server neu auf', async () => {
+test('parts list: color filter rebuilds at the server', async () => {
   const { w, d, warte, aufrufe } = await openUi({
     '/v1/parts': { success: true, parts: [teil('3001', 'Stein')], total: 1, page: 1, page_size: 100 },
     '/v1/parts/colors': { success: true, colors: [{ color_name: 'Red', unique_parts: 1 }] },
@@ -208,7 +208,7 @@ test('Teileliste: Farbfilter baut beim Server neu auf', async () => {
   }
 });
 
-test('Minifiguren: Quelle und Seitengrösse gehen an den Server, die Suche lädt neu', async () => {
+test('minifigures: source and page size go to the server, the search reloads', async () => {
   const { w, d, warte, aufrufe } = await openUi({
     '/v1/minifigs': {
       success: true,
@@ -233,7 +233,7 @@ test('Minifiguren: Quelle und Seitengrösse gehen an den Server, die Suche lädt
   }
 });
 
-test('Minifiguren: Folgeseite wird angehängt, nicht neu gebaut', async () => {
+test('minifigures: the follow-up page is appended, not rebuilt', async () => {
   const fig = (nr, name) => ({ fig_number: nr, name, quantity: 1, source: 'set' });
   const erste = Array.from({ length: 60 }, (_, i) => fig(`sw${1000 + i}`, `Figur ${i}`));
   const { w, d, warte } = await openUi({

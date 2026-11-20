@@ -38,7 +38,7 @@ function stage({ scrollHeight = 5000, innerHeight = 800 } = {}) {
   return w;
 }
 
-test('der Balken wird erzeugt und erscheint bei rollbarer Seite', () => {
+test('the bar is created and appears on a scrollable page', () => {
   const w = stage();
   w.eval('initScrollbar();');
   const bar = w.document.getElementById('app-scrollbar');
@@ -52,7 +52,7 @@ test('der Balken wird erzeugt und erscheint bei rollbarer Seite', () => {
   assert.ok(thumb && parseInt(thumb.style.height, 10) > 0, `Der Griff hat keine Höhe: ${thumb?.style.height}`);
 });
 
-test('ohne Rollbereich verschwindet er wieder', () => {
+test('without a scroll area it disappears again', () => {
   // Gegenrichtung: Ein Balken über einer Seite, die ganz ins Fenster passt,
   // wäre nur Zierrat — und ohne diese Prüfung wäre der Test auch grün, wenn
   // die Sichtbarkeit fest verdrahtet wäre.
@@ -61,7 +61,7 @@ test('ohne Rollbereich verschwindet er wieder', () => {
   assert.equal(w.document.getElementById('app-scrollbar').style.display, 'none');
 });
 
-test('das Neuzeichnen ist gedrosselt', () => {
+test('redrawing is throttled', () => {
   // drawScrollbar() LIEST Layout (scrollHeight). Ungedrosselt erzwingt
   // jedes Scroll-Ereignis eine Neuberechnung — dutzende Male je Sekunde. Die
   // Seite fühlt sich dann zäh an, obwohl der Server längst geantwortet hat.
@@ -72,7 +72,7 @@ test('das Neuzeichnen ist gedrosselt', () => {
   assert.match(code.slice(0, i), /angefordert/, 'Der Zuhörer ruft nicht die gedrosselte Fassung');
 });
 
-test('das Etikett verschwindet nach dem Ziehen wieder', () => {
+test('the label disappears again after dragging', () => {
   // Marcos Bild
   const code = scrollbarCode();
   const i = code.indexOf('const ende =');
@@ -89,7 +89,7 @@ test('das Etikett verschwindet nach dem Ziehen wieder', () => {
   );
 });
 
-test('das Etikett wird beim Verlassen des Katalogs abgemeldet', () => {
+test('the label is unregistered when leaving the catalog', () => {
   const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'navigation.js'), 'utf8');
   assert.match(
     gal,
@@ -98,7 +98,7 @@ test('das Etikett wird beim Verlassen des Katalogs abgemeldet', () => {
   );
 });
 
-test('das Etikett bleibt leer, solange es niemand anmeldet', () => {
+test('the label stays empty as long as nobody registers it', () => {
   // Der Balken gehört der ganzen Anwendung; das Jahr ist eine Zutat des
   // Katalogs. Ohne Anmeldung darf dort nichts stehen — sonst zeigte jeder
   // Reiter eine Zahl, die für ihn nichts bedeutet.

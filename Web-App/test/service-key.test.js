@@ -199,7 +199,7 @@ function boundRepositories(b, leavesOfArea, q) {
   return raus;
 }
 
-test('kein Dienstschlüssel reicht ein Repository roh weiter', () => {
+test('no service key passes a repository through raw', () => {
   /** @type {Record<string, any>} */
   const contexts = {};
   const d = satz(contexts);

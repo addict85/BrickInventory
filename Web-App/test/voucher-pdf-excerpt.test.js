@@ -25,8 +25,8 @@ function pdfWith(zeilen) {
   });
 }
 
-test('Gutschein-PDF: die drei Werte landen an der richtigen Stelle', async t => {
-  await t.test('ein Gutschein in der Form von Marcos Beispiel', async () => {
+test('voucher PDF: the three values land in the right place', async t => {
+  await t.test("a voucher in the form of Marco's example", async () => {
     const buf = await pdfWith([
       'Bauen und spielen!',
       'Ihre LEGO-Geschenkkarte im Wert von 250 CHF:',
@@ -41,7 +41,7 @@ test('Gutschein-PDF: die drei Werte landen an der richtigen Stelle', async t => 
     assert.equal(w.currency, 'CHF', 'die Waehrung');
   });
 
-  await t.test('kurze Zahlen werden nicht zur Kartennummer', async () => {
+  await t.test('short numbers do not become the card number', async () => {
     // Diese Zusicherung gibt es wegen einer GEGENPROBE
     //
     // Der Test darueber sollte die Laengengrenze (>= 13 Stellen) absichern.
@@ -57,7 +57,7 @@ test('Gutschein-PDF: die drei Werte landen an der richtigen Stelle', async t => 
     assert.equal(w.number, null, 'Postleitzahl, Jahr oder Filialnummer sind keine Kartennummer');
   });
 
-  await t.test('ein PDF ohne Gutscheindaten liefert ueberall null', async () => {
+  await t.test('a PDF without voucher data delivers null everywhere', async () => {
     // Der wichtigste Fall: ehrlich scheitern. Ein falsch ausgelesener
     // Gutschein ist schlimmer als ein nicht ausgelesener, weil niemand ihn
     // nachprueft — die Oberflaeche faellt dann auf die manuelle Eingabe
@@ -67,7 +67,7 @@ test('Gutschein-PDF: die drei Werte landen an der richtigen Stelle', async t => 
     assert.deepEqual(w, { number: null, pin: null, amount: null, currency: null });
   });
 
-  await t.test('etwas, das gar kein PDF ist, wirft nicht', async () => {
+  await t.test('something that is not a PDF at all does not throw', async () => {
     // Der Upload-Filter laesst nur application/pdf durch, aber ein MIME-Typ
     // ist eine Behauptung des Klienten, keine Tatsache.
     const w = valuesFromPdf(Buffer.from('das ist kein PDF, sondern Text'));
@@ -75,43 +75,43 @@ test('Gutschein-PDF: die drei Werte landen an der richtigen Stelle', async t => 
   });
 });
 
-test('Gutschein-PDF: Zahlen in allen drei Schreibweisen', async t => {
+test('voucher PDF: numbers in all three notations', async t => {
   // Dieselbe Summe, drei Laender. Ohne diese Zuordnung wuerde aus 1'234.50
   // je nach Schreibweise 123450 oder 1.234 — beides stillschweigend falsch.
-  await t.test('Schweiz, Deutschland, USA ergeben dieselbe Zahl', () => {
+  await t.test('Switzerland, Germany, USA yield the same number', () => {
     assert.equal(parseNumber("1'234.50"), 1234.5, 'Schweiz');
     assert.equal(parseNumber('1.234,50'), 1234.5, 'Deutschland');
     assert.equal(parseNumber('1,234.50'), 1234.5, 'USA');
   });
 
-  await t.test('ein einzelner Trenner mit drei Ziffern ist Tausender', () => {
+  await t.test('a single separator with three digits is thousands', () => {
     // 1.234 ist mehrdeutig. Entschieden wird fuer 1234, weil es Gutscheine
     // ueber 1234 CHF gibt und keine ueber 1,234 CHF.
     assert.equal(parseNumber('1.234'), 1234);
     assert.equal(parseNumber('1,234'), 1234);
   });
 
-  await t.test('ganze Betraege und Rappen', () => {
+  await t.test('whole amounts and cents', () => {
     assert.equal(parseNumber('400'), 400);
     assert.equal(parseNumber('99,90'), 99.9);
     assert.equal(parseNumber('99.90'), 99.9);
   });
 
-  await t.test('was keine Zahl ist, wird keine', () => {
+  await t.test('what is not a number does not become one', () => {
     assert.equal(parseNumber('CHF'), null);
     assert.equal(parseNumber(''), null);
     assert.equal(parseNumber('12-34'), null);
   });
 });
 
-test('Gutschein-PDF: der Betrag wird an der benannten Stelle gelesen', async t => {
-  await t.test('die englische Formulierung ebenso', () => {
+test('voucher PDF: the amount is read at the named place', async t => {
+  await t.test('the English wording likewise', () => {
     const w = valuesFromText('Your LEGO gift card with a value of 75 GBP:\n5045076374450011111\nPIN: 1234');
     assert.equal(w.amount, 75);
     assert.equal(w.currency, 'GBP');
   });
 
-  await t.test('„im Wert von" schlaegt eine Zahl aus dem Kleingedruckten', () => {
+  await t.test('“im Wert von” beats a number from the small print', () => {
     // Die Reihenfolge der Muster ist der Schutz. Stuende hier nur „irgendeine
     // Zahl neben einem Waehrungscode", gewaenne der erste Treffer im Text —
     // und das Kleingedruckte steht nun einmal auch im PDF.
@@ -125,13 +125,13 @@ test('Gutschein-PDF: der Betrag wird an der benannten Stelle gelesen', async t =
     assert.equal(w.currency, 'CHF');
   });
 
-  await t.test('Waehrung vor dem Betrag wird auch gelesen', () => {
+  await t.test('currency before the amount is also read', () => {
     const w = valuesFromText('Geschenkkarte CHF 120\n5045076374450012222');
     assert.equal(w.amount, 120);
     assert.equal(w.currency, 'CHF');
   });
 
-  await t.test('ein Dreibuchstabenwort allein ist noch keine Waehrung', () => {
+  await t.test('a three-letter word alone is not yet a currency', () => {
     // Die Waehrungsliste ist geschlossen. Ohne das faengt dieselbe Regel
     // „PDF", „LEGO" oder „AGB" — und der Betrag haengt dann an einem Wort.
     const w = valuesFromText('Datei 400 PDF\nkeine Karte');
@@ -140,7 +140,7 @@ test('Gutschein-PDF: der Betrag wird an der benannten Stelle gelesen', async t =
   });
 });
 
-test('Gutschein-PDF: der Textauszug trennt die Operatoren', async () => {
+test('voucher PDF: the text extract separates the operators', async () => {
   // Die Kartennummer steht im Beispiel ALLEIN in einem Textoperator. Wuerde
   // alles zu einem Fliesstext verklebt, grenzte sie an den Doppelpunkt davor
   // und an „PIN" dahinter.

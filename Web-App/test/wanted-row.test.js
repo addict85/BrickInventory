@@ -28,7 +28,7 @@ test.after(() =>
     .catch(() => {}),
 );
 
-test('die Webapp-Zeile zeigt Marktpreis und Papierkorb, keinen Übernahme-Knopf', async () => {
+test('the web app row shows market price and trash, no takeover button', async () => {
   const o = await openUi({
     '/v1/wanted': {
       success: true,
@@ -50,7 +50,7 @@ test('die Webapp-Zeile zeigt Marktpreis und Papierkorb, keinen Übernahme-Knopf'
   }
 });
 
-test('manuelle Einträge: Papierkorb auf der Kachel, Lagerort und Löschen im Detail', async () => {
+test('manual entries: trash on the tile, storage location and delete in the detail', async () => {
   const o = await openUi({
     '/v1/parts/manual': {
       success: true,
@@ -75,7 +75,7 @@ test('manuelle Einträge: Papierkorb auf der Kachel, Lagerort und Löschen im De
   }
 });
 
-test('die Abfrage der manuellen Teile liefert den Lagerort', async t => {
+test('the query of the manual parts delivers the storage location', async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const U = 990900 + (process.pid % 90);

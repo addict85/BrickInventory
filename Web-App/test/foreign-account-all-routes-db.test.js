@@ -116,7 +116,7 @@ function beispiel(schema, name, wert, alle) {
   }
 }
 
-test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', {
+test('a foreign account sees and changes no data of another via any route', {
   concurrency: 1,
   timeout: 600_000,
 }, async t => {
@@ -386,7 +386,7 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
   }
   als = opfer;
 
-  await t.test('jede Route wurde gerufen', () => {
+  await t.test('every route was called', () => {
     const routen = new Set(gerufen.map(g => g.split(' ').slice(0, 2).join(' ')));
     assert.ok(routen.size >= 180, `nur ${routen.size} Routen gerufen`);
     // Ohne erreichte Prüfung beweist das Ganze nichts: Ein guter Teil muss durch die Eingabeprüfung kommen.
@@ -397,9 +397,9 @@ test('ein fremdes Konto sieht und ändert über keine Route Daten des anderen', 
     );
   });
 
-  await t.test('keine Antwort enthält Daten des Opfers', () => assert.deepEqual(leaks, []));
+  await t.test("no response contains the victim's data", () => assert.deepEqual(leaks, []));
 
-  await t.test('keine Zeile des Opfers ändert sich', async () => {
+  await t.test('no row of the victim changes', async () => {
     const nachher = await bestand();
     const geaendert = Object.keys(vorher).filter(k => JSON.stringify(vorher[k]) !== JSON.stringify(nachher[k]));
     assert.deepEqual(

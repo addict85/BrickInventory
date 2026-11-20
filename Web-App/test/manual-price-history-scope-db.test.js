@@ -21,7 +21,7 @@ const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
-test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos', { concurrency: 1 }, async t => {
+test("price history: the main account sees the sub-account's acquisitions", { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const MAIN = `ph-haupt-${process.pid}`,

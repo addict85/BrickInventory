@@ -24,7 +24,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-test('Anmeldesperre unter gleichzeitigen Versuchen', { concurrency: 1 }, async t => {
+test('login lock under concurrent attempts', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `parallel_${process.pid}`;
@@ -51,7 +51,7 @@ test('Anmeldesperre unter gleichzeitigen Versuchen', { concurrency: 1 }, async t
   const { checkCredentials } = _req('src/account/loginCheck.js');
   const lim = _req('src/account/loginLimiter.js');
 
-  await t.test('20 gleichzeitige Fehlversuche, höchstens 5 Prüfungen', async () => {
+  await t.test('20 concurrent failed attempts, at most 5 checks', async () => {
     const anfrage = { ip: '203.0.113.7', socket: {}, headers: {} };
     const r = await Promise.all(Array.from({ length: 20 }, () => checkCredentials(anfrage, NAME, 'falsch')));
     const geprueft = r.filter(x => x.absage?.art === 'nicht_angemeldet').length;
@@ -60,7 +60,7 @@ test('Anmeldesperre unter gleichzeitigen Versuchen', { concurrency: 1 }, async t
     assert.equal(geprueft + gesperrt, 20);
   });
 
-  await t.test('Bestätigung: 20 gleichzeitige Versuche, höchstens 5 frei', async () => {
+  await t.test('confirmation: 20 concurrent attempts, at most 5 free', async () => {
     const r = await Promise.all(Array.from({ length: 20 }, () => lim.confirmationLocked(uid)));
     const frei = r.filter(x => x === null).length;
     assert.ok(frei <= lim.MAX_ATTEMPTS, `${frei} Versuche durchgelassen`);

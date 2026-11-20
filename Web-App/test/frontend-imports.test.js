@@ -58,7 +58,7 @@ const KNOWN_WRONG_HITS = new Map([
   ['set-csv-import.js:bar', 'Kommentar „show the global bar (…)“ nennt das Wort, kein Aufruf von monitor.js'],
 ]);
 
-test('jedes Frontend-Modul importiert, was es aufruft', () => {
+test('every frontend module imports what it calls', () => {
   const dateien = fs
     .readdirSync(JS_DIR)
     .filter(f => f.endsWith('.js') && f !== 'app.bundle.js')

@@ -25,7 +25,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = 'eine_anmeldung',
   PASS = 'richtigesPasswort1';
 
-test('eine Adresse, zwei Ausweise — durchgespielt', { concurrency: 1 }, async t => {
+test('one address, two credentials — played through', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);

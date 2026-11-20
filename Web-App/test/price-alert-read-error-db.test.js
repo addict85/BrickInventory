@@ -35,7 +35,7 @@ replace('src/finances/repository/priceAlerts.js', {
   allActiveAlerts: disrupted,
 });
 
-test('Preisalarme: ein Lesefehler ist keine leere Liste', { concurrency: 1 }, async t => {
+test('price alerts: a read error is not an empty list', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const db = testData();
   const name = `pal_${process.pid}`;
@@ -48,17 +48,17 @@ test('Preisalarme: ein Lesefehler ist keine leere Liste', { concurrency: 1 }, as
   const p = testServices().finances.preisalarm;
   const SN = `92${String(process.pid).slice(-4)}-1`;
 
-  await t.test('alle Alarme', () => assert.rejects(p.alleAlarme(uid), /Tabelle gestört/));
-  await t.test('ausgelöste Alarme seit einer Marke', () =>
+  await t.test('all alerts', () => assert.rejects(p.alleAlarme(uid), /Tabelle gestört/));
+  await t.test('triggered alerts since a marker', () =>
     assert.rejects(p.triggeredSince(uid, new Date(0)), /Tabelle gestört/),
   );
-  await t.test('setzeAlarm liest nach dem Schreiben', () =>
+  await t.test('setzeAlarm reads after writing', () =>
     assert.rejects(
       asAccount(uid, () => p.setzeAlarm(uid, SN, 'EUR', { direction: 'unter', threshold: 10, condition: 'N' })),
       /Tabelle gestört/,
     ),
   );
-  await t.test('der Preislauf sieht den Fehler', () =>
+  await t.test('the price run sees the error', () =>
     assert.rejects(
       _req('src/finances/priceAlert.js').checkSet(SN, { buildAlertMail: () => ({}), sendMail: async () => ({}) }),
       /Tabelle gestört/,

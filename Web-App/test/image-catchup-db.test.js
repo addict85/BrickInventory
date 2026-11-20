@@ -21,7 +21,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { holdsSet, catalogSet } = require('./helpers/inventory');
 const db = testData();
 
-test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder', { concurrency: 1 }, async t => {
+test('the follow-up run creates missing previews — also for set images', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
@@ -70,7 +70,7 @@ test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder', { conc
   }
 });
 
-test('der Pfad-Auflöser kennt alle drei Bildarten', () => {
+test('the path resolver knows all three image kinds', () => {
   const src = fs
     .readFileSync(path.join(ROOT, 'src/catalog/reloadImages.ts'), 'utf8')
     .split('\n')
@@ -84,7 +84,7 @@ test('der Pfad-Auflöser kennt alle drei Bildarten', () => {
   assert.ok(/includes\('\.\.'\)/.test(fn), 'die Prüfung auf .. fehlt');
 });
 
-test('beide Vorschau-Erzeuger melden Fehlschläge', () => {
+test('both preview generators report failures', () => {
   for (const [datei, muster] of /** @type {[string, RegExp][]} */ ([
     ['src/images/thumbs.ts', /\[thumb\]/],
     ['src/images/proxyThumbs.ts', /\[img-proxy\] Vorschau fehlgeschlagen/],

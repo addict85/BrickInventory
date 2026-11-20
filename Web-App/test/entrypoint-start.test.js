@@ -11,7 +11,7 @@ const entry = fs.readFileSync(path.join(__dirname, '..', 'docker-entrypoint.sh')
  * Der Start des Containers schweigt nicht, und er arbeitet nicht umsonst.
  */
 
-test('der Start sagt, was er tut', () => {
+test('the startup says what it does', () => {
   // Der eigentliche Schaden war nicht die Wartezeit, sondern die Stille: Man
   // kann nicht unterscheiden, ob etwas arbeitet oder haengt.
   const zeilen = [...ep.matchAll(/^echo "\[daten-rechte\]/gm)].length;
@@ -28,7 +28,7 @@ test('der Start sagt, was er tut', () => {
   );
 });
 
-test('der Eigentuemerwechsel laeuft nicht bei jedem Start', () => {
+test('the owner change does not run on every start', () => {
   // ── Die Regel ────────────────────────────────────────────────────────────
   // `chown -R` ueber das Datenverzeichnis ist ein REPARATURSCHRITT. Er darf
   // vorkommen, aber nie unbedingt: Jede Inode-Aenderung ist auf einer SD-Karte
@@ -54,7 +54,7 @@ test('der Eigentuemerwechsel laeuft nicht bei jedem Start', () => {
   );
 });
 
-test('wer es anders braucht, kann es stellen', () => {
+test('whoever needs it differently can set it', () => {
   // `never` fuer Einhaengungen, auf denen chown nichts bewirkt (SMB/CIFS mit
   // festem uid); `always`, falls die Suche einmal etwas nicht sieht.
   for (const wert of ['never', 'always']) {
@@ -68,7 +68,7 @@ test('wer es anders braucht, kann es stellen', () => {
 });
 
 // Gegenprobe (02.11.2026 gemessen): `su-exec brickinv` vor mkdir gestrichen → rot.
-test('die angelegten Verzeichnisse legt der Dienst selbst an, nicht root', () => {
+test('the service creates the created directories itself, not root', () => {
   // So gehören sie ihm auch nach BRICKINV_CHOWN=never, und ein Symlink des
   // Dienstes unter /app/data führt kein mkdir von root nach aussen.
   const code = ep
@@ -96,7 +96,7 @@ test('die angelegten Verzeichnisse legt der Dienst selbst an, nicht root', () =>
   }
 });
 
-test('ein normaler Start geht gar nicht erst durch die Dateien', () => {
+test('a normal start does not even go through the files', () => {
   // Marcos Rueckfrage
   assert.match(
     ep,
@@ -121,7 +121,7 @@ test('ein normaler Start geht gar nicht erst durch die Dateien', () => {
   );
 });
 
-test('die Marke bricht keinen Start ab', () => {
+test('the marker aborts no startup', () => {
   // Ein nur lesbar eingehaengter Datentraeger kann sie nicht aufnehmen. Mit
   // `set -e` waere das sonst das Ende des Starts — wegen einer Abkuerzung.
   const fn = ep.slice(ep.indexOf('setzeMarke() {'), ep.indexOf('case "${BRICKINV_CHOWN'));
@@ -134,7 +134,7 @@ test('die Marke bricht keinen Start ab', () => {
 });
 
 // Gegenprobe (am 28.10.2026 gemessen): `-h` am chown der Marke entfernt → rot.
-test('chown als root folgt keinem Symlink', () => {
+test('chown as root follows no symlink', () => {
   // /app/data gehört dem Dienst. Ohne -h schriebe root das ZIEL eines dort
   // abgelegten Symlinks um — eine Datei ausserhalb, etwa /etc/passwd.
   const code = `${ep}\n${entry}`
@@ -151,7 +151,7 @@ test('chown als root folgt keinem Symlink', () => {
 
 // Gegenproben (02.11.2026 gemessen): in berichtige() `find -L` → rot (die Datei
 // hinter dem Symlink wird umgeschrieben); `-xdev` gestrichen → rot (fehlt im Aufruf).
-test('der Reparaturschritt folgt keinem Symlink und bleibt im Datenträger', t => {
+test('the repair step follows no symlink and stays on the volume', t => {
   const os = require('node:os');
   const { spawnSync } = require('node:child_process');
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-chown-'));
@@ -185,7 +185,7 @@ test('der Reparaturschritt folgt keinem Symlink und bleibt im Datenträger', t =
 
 // Gegenprobe (01.11.2026 gemessen): setzeMarke wieder mit `printf … > "$MARKE"`
 // als root → rot: „die Marke schreibt nicht durch einen Symlink“.
-test('die Marke schreibt nicht durch einen Symlink', t => {
+test('the marker does not write through a symlink', t => {
   const os = require('node:os');
   const { spawnSync } = require('node:child_process');
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-marke-'));
@@ -211,7 +211,7 @@ test('die Marke schreibt nicht durch einen Symlink', t => {
 // Gegenproben (04.11.2026 gemessen, Runde 12 H2): nach `umask 077` wieder
 // `umask 022` → rot (neue Ordner 755); das chmod der Uploads gestrichen → rot
 // (alte Datei 644).
-test('was der Dienst anlegt und hochgeladen hat, liest nur er', t => {
+test('what the service created and uploaded only it reads', t => {
   const os = require('node:os');
   const { spawnSync } = require('node:child_process');
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-umask-'));
@@ -242,7 +242,7 @@ test('was der Dienst anlegt und hochgeladen hat, liest nur er', t => {
 // gestrichen → rot „der Server legt Dateien für andere lesbar an“; die Abfrage
 // `[ "$(id -u)" = 0 ]` durch `true` ersetzt → rot „ohne root kein Weg über
 // daten-rechte und su-exec“ (der root-Zweig sucht /app/daten-rechte.sh).
-test('als brickinv gestartet geht der Entrypoint ohne root-Schritt direkt zum Server', t => {
+test('started as brickinv the entrypoint goes directly to the server without a root step', t => {
   const os = require('node:os');
   const { spawnSync } = require('node:child_process');
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-einstieg-'));

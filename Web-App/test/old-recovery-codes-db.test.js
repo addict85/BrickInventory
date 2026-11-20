@@ -39,7 +39,7 @@ const db = S.testData();
 const { hashePassword } = _req('src/account/passwordHash.js');
 const { searchValue } = _req('src/infra/secret.js');
 
-test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 120_000 }, async t => {
+test('recovery codes of the old kind expire', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `altcode_${process.pid}`,
     PASS = 'Alte-Codes-Pruefung-1';
@@ -76,7 +76,7 @@ test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 1
   };
   const waitOnMail = () => bis(() => gesendet.length > 0, 1000);
 
-  await t.test('ein Code alter Art gilt bis zur Frist, mit Mail und Hinweis im Profil', async () => {
+  await t.test('a code of the old kind applies until the deadline, with mail and hint in the profile', async () => {
     const bis = new Date(Date.now() + 3 * 86_400_000);
     await code(alt('abcde12345'), bis);
     await code(alt('fghij67890'), bis);
@@ -91,12 +91,12 @@ test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 1
     assert.equal(Date.parse(stand.alte_codes_bis), bis.getTime());
   });
 
-  await t.test('ein abgelaufener Code alter Art gilt nicht mehr', async () => {
+  await t.test('an expired code of the old kind no longer applies', async () => {
     await code(alt('klmno13579'), new Date(Date.now() - 60_000));
     assert.equal(await anmelden('klmno-13579'), 401);
   });
 
-  await t.test('ein Code neuer Art hebt die Frist für seinen Satz auf', async () => {
+  await t.test('a code of the new kind lifts the deadline for its set', async () => {
     await db.run('DELETE FROM second_factor_codes WHERE user_id = $1', [uid]);
     const neu = 'abcd-efgh-ijkl-mnop';
     const frist = new Date(Date.now() + 86_400_000);
@@ -107,7 +107,7 @@ test('Wiederherstellungscodes alter Art laufen ab', { concurrency: 1, timeout: 1
     assert.deepEqual([stand.codes_uebrig, stand.alte_codes_bis], [1, null]);
   });
 
-  await t.test('die Migration ist wiederholbar und lässt neue Codes ohne Frist', async () => {
+  await t.test('the migration is repeatable and leaves new codes without a deadline', async () => {
     const sql = fs.readFileSync(
       path.join(__dirname, '..', 'db', 'migrations', '0122-alte-wiederherstellungscodes-befristet.sql'),
       'utf8',

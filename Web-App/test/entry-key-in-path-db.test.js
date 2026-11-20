@@ -27,7 +27,7 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-test('Erfassungen gelten nur unter ihrem Schlüssel', { concurrency: 1 }, async t => {
+test('acquisitions only apply under their key', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username IN ($1,$2)', ['sk_haupt', 'sk_kind']);
   const haupt = (await db.get("INSERT INTO users (username,password_hash) VALUES ('sk_haupt','x') RETURNING id")).id;
@@ -91,29 +91,29 @@ test('Erfassungen gelten nur unter ihrem Schlüssel', { concurrency: 1 }, async 
   const b = await teilId('3002', 4);
   const otherColor = await teilId('3001', 5);
 
-  await t.test('Teil, anderer Schlüssel: ändern', async () => {
+  await t.test('part, different key: change', async () => {
     assert.equal(await ruf('PUT', `/api/v1/parts/3001/4/acquisitions/${b}`, { quantity: 99 }), 404);
     assert.equal((await partRow(b)).quantity, 4, 'Zeile von Teil B wurde geändert');
   });
 
-  await t.test('Teil, gleiche Nummer, andere Farbe: ändern', async () => {
+  await t.test('part, same number, different color: change', async () => {
     assert.equal(await ruf('PUT', `/api/v1/parts/3001/4/acquisitions/${otherColor}`, { quantity: 99 }), 404);
     assert.equal((await partRow(otherColor)).quantity, 4);
   });
 
-  await t.test('Teil, anderer Schlüssel: löschen', async () => {
+  await t.test('part, different key: delete', async () => {
     assert.equal(await ruf('DELETE', `/api/v1/parts/3001/4/acquisitions/${b}`), 404);
     assert.ok(await partRow(b), 'Erfassung von Teil B wurde gelöscht');
   });
 
-  await t.test('Verschieben unter fremdem Schlüssel: Teil', async () => {
+  await t.test('moving under a foreign key: part', async () => {
     assert.equal(await ruf('PUT', `/api/v1/parts/3001/4/acquisitions/${b}`, { owner_user_id: kind }), 404);
     assert.equal(Number((await partRow(b)).user_id), haupt, 'Erfassung von Teil B ist beim Ziel gelandet');
     const onKind = await db.all('SELECT part_number FROM parts WHERE user_id=$1', [kind]);
     assert.deepEqual(onKind, [], 'beim Ziel entstand eine Teilezeile unter dem Schlüssel der Anfrage');
   });
 
-  await t.test('Figur: ändern, löschen, verschieben unter fremdem Schlüssel', async () => {
+  await t.test('figure: change, delete, move under a foreign key', async () => {
     const f2 = await figId('sk0002');
     assert.equal(await ruf('PUT', `/api/v1/minifigs/sk0001/acquisitions/${f2}`, { quantity: 99 }), 404);
     assert.equal((await figRow(f2)).quantity, 3, 'Zeile von Figur B wurde geändert');
@@ -124,7 +124,7 @@ test('Erfassungen gelten nur unter ihrem Schlüssel', { concurrency: 1 }, async 
     assert.deepEqual(await db.all('SELECT fig_number FROM minifigs WHERE user_id=$1', [kind]), []);
   });
 
-  await t.test('richtiger Schlüssel: ändern und verschieben gehen weiter', async () => {
+  await t.test('correct key: changing and moving still work', async () => {
     const a = await teilId('3001', 4);
     assert.equal(await ruf('PUT', `/api/v1/parts/3001/4/acquisitions/${a}`, { quantity: 7 }), 200);
     assert.equal((await partRow(a)).quantity, 7);

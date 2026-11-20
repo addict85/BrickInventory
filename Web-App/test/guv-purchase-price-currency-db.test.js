@@ -28,7 +28,7 @@ const { holdsSet, record, catalogSet } = require('./helpers/inventory');
 const NAME = `guvwaehrung_${process.pid}`;
 const NR = { eur: `9${process.pid}1-1`, gemischt: `9${process.pid}2-1`, null: `9${process.pid}3-1` };
 
-test('G&V: ein Kaufpreis, in der Anzeigewährung', { concurrency: 1 }, async t => {
+test('P&L: one purchase price, in the display currency', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
@@ -68,7 +68,7 @@ test('G&V: ein Kaufpreis, in der Anzeigewährung', { concurrency: 1 }, async t =
   const zeile = nr => pnl.sets.find(s => s.set_number === nr);
   assert.equal(pnl.currency, 'CHF');
 
-  await t.test('nur in EUR erfasst: Kaufpreis unbekannt', () => {
+  await t.test('only captured in EUR: purchase price unknown', () => {
     const z = zeile(NR.eur);
     assert.equal(z.current_price, 120);
     assert.equal(z.purchase_price, null);
@@ -76,13 +76,13 @@ test('G&V: ein Kaufpreis, in der Anzeigewährung', { concurrency: 1 }, async t =
     assert.equal(z.pnl_pct, null);
   });
 
-  await t.test('gemischt: nur die Erfassung in CHF zählt', () => {
+  await t.test('mixed: only the acquisition in CHF counts', () => {
     const z = zeile(NR.gemischt);
     assert.equal(z.purchase_price, 80);
     assert.equal(z.pnl_pct, '50.0');
   });
 
-  await t.test('ein erfasster Preis 0 zählt', () => {
+  await t.test('a captured price of 0 counts', () => {
     // Bekannt und 0 (Geschenk): der Betrag zählt, eine Prozentzahl gibt es
     // nicht — siehe gift-guv-db.test.js.
     const z = zeile(NR.null);
@@ -91,7 +91,7 @@ test('G&V: ein Kaufpreis, in der Anzeigewährung', { concurrency: 1 }, async t =
     assert.equal(z.pnl_pct, null);
   });
 
-  await t.test('die Summe des Kaufpreises lässt das Unbekannte weg', () => {
+  await t.test('the sum of the purchase price leaves out the unknown', () => {
     // 80 × 4 (gemischt: die Menge zählt alle Erfassungen) + 0; EUR-Set ohne Betrag.
     assert.equal(Number(pnl.totals.sets_purchase), 80 * 4);
   });

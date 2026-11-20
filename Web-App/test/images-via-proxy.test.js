@@ -18,7 +18,7 @@ const BILDFELD = /image_url|image_local|imageUrl|set_img_url|thumbUrl\(/;
 
 // Dass die Richtlinie nur img-src 'self' data: blob: erlaubt, prüft security-across-cut-db.test.js
 // an jeder Antwort des echten Servers; darauf beruht die Regel unten.
-test('kein src-Attribut setzt ein Bildfeld ohne imgUrl()/fullUrl() ein', () => {
+test('no src attribute inserts an image field without imgUrl()/fullUrl()', () => {
   const dateien = fs.readdirSync(JS).filter(f => f.endsWith('.js') && f !== 'app.bundle.js');
   assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skripte — greift die Suche noch?`);
 

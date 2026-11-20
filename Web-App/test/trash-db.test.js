@@ -57,7 +57,7 @@ async function aufraeumen(namen) {
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]).catch(() => {});
 }
 
-test('Papierkorb', { concurrency: 1 }, async t => {
+test('trash', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const namen = [`pk-haupt-${process.pid}`, `pk-sub-${process.pid}`, `pk-fremd-${process.pid}`];
@@ -82,7 +82,7 @@ test('Papierkorb', { concurrency: 1 }, async t => {
   const eintraege = async srv => (await api(srv, 'GET', '/papierkorb')).body.eintraege;
 
   try {
-    await t.test('Set des Unterkontos: löschen, ansehen, zurückholen', async () => {
+    await t.test('set of the sub-account: delete, view, restore', async () => {
       await holdsSet(db, sub, SN, 2, { preis: 12.5, am: '2026-03-01T10:00:00Z' });
       await holdsPart(db, sub, '3001', { setNumber: SN, menge: 4, colorId: 4 });
       const vorher = await rows(sub);
@@ -117,7 +117,7 @@ test('Papierkorb', { concurrency: 1 }, async t => {
       assert.equal((await eintraege(H)).length, 0, 'Wiederhergestelltes verlässt den Papierkorb');
     });
 
-    await t.test('neu angelegt: Wiederherstellen weist ab und ändert nichts', async () => {
+    await t.test('newly created: restore rejects and changes nothing', async () => {
       assert.equal((await api(H, 'DELETE', `/sets/${SN}`)).status, 200);
       await holdsSet(db, sub, SN, 1, { preis: 99 });
       const neu = await rows(sub);
@@ -139,7 +139,7 @@ test('Papierkorb', { concurrency: 1 }, async t => {
       await db.run('DELETE FROM sets WHERE set_number=$1', [SN]);
     });
 
-    await t.test('manuelles Teil und manuelle Figur', async () => {
+    await t.test('manual part and manual minifigure', async () => {
       await holdsPart(db, haupt, PN, { colorId: 5, menge: 3, preis: 0.25, zustand: 'U' });
       await holdsMinifig(db, haupt, FN, { menge: 1, preis: 4 });
       const vorher = await rows(haupt);
@@ -163,7 +163,7 @@ test('Papierkorb', { concurrency: 1 }, async t => {
       for (const k of ['teil', 'partPurchase', 'figur', 'figPurchase']) assert.deepEqual(nachher[k], vorher[k], k);
     });
 
-    await t.test('ein Schnappschuss übersteht eine entfallene Spalte', async () => {
+    await t.test('a snapshot survives a dropped column', async () => {
       assert.equal((await api(H, 'DELETE', `/parts/${PN}/5`)).status, 200);
       const [e] = await eintraege(H);
       await db.run(`UPDATE trash SET rows = jsonb_set(rows, '{parts,0,gibt_es_nicht_mehr}', '"x"') WHERE id=$1`, [
@@ -173,7 +173,7 @@ test('Papierkorb', { concurrency: 1 }, async t => {
       assert.equal(r.status, 200, 'unbekannte Spalte: ' + JSON.stringify(r.body));
     });
 
-    await t.test('„Alle meine Daten löschen": alles Eigene in den Papierkorb, nichts Fremdes', async () => {
+    await t.test('“Alle meine Daten löschen”: everything own into the trash, nothing foreign', async () => {
       await db.run('DELETE FROM trash WHERE user_id = ANY($1)', [ids]);
       await holdsSet(db, haupt, SN, 1, { preis: 5 });
       await holdsPart(db, haupt, '3001', { setNumber: SN, menge: 2, colorId: 4 });
@@ -219,7 +219,7 @@ test('Papierkorb', { concurrency: 1 }, async t => {
       await db.run('DELETE FROM sets WHERE set_number = ANY($1)', [[SN, SN2]]);
     });
 
-    await t.test('nach 30 Tagen räumt der Hintergrundlauf ab, vorher nicht', async () => {
+    await t.test('after 30 days the background run clears up, not before', async () => {
       assert.equal((await api(H, 'DELETE', `/parts/${PN}/5`)).status, 200);
       assert.equal((await api(H, 'DELETE', `/minifigs/${FN}`)).status, 200);
       const [a, b] = await eintraege(H);

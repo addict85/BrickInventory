@@ -18,7 +18,7 @@ const { openUi, reiter, warte, takt } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 
-test('Bauliste in Kontosprache', async () => {
+test('build list in the account language', async () => {
   const { w, d } = await openUi({
     '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'en', rebrickable_api_key: 'probe' } },
   });
@@ -44,7 +44,7 @@ async function anmelden(antwort) {
   return o;
 }
 
-test('Anmeldung: falsches Passwort ohne Bestätigungslink', async () => {
+test('login: wrong password without confirmation link', async () => {
   const { w, d } = await anmelden({
     $status: 401,
     success: false,
@@ -58,7 +58,7 @@ test('Anmeldung: falsches Passwort ohne Bestätigungslink', async () => {
   }
 });
 
-test('Anmeldung: Adresse nicht bestätigt mit Bestätigungslink', async () => {
+test('login: address not confirmed, with confirmation link', async () => {
   const { w, d } = await anmelden({
     $status: 403,
     success: false,

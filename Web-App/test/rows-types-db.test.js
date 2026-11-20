@@ -52,20 +52,20 @@ function art(v) {
   return typeof v === 'object' ? 'unknown' : typeof v;
 }
 
-test('db/rows.ts ist erzeugt und passt zum Schema', () => {
+test('db/rows.ts is generated and matches the schema', () => {
   const r = spawnSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'row-types.js'), '--pruefen'], {
     encoding: 'utf8',
   });
   assert.equal(r.status, 0, r.stderr + r.stdout);
 });
 
-test('Zeilentypen gegen die Datenbank', { concurrency: 1 }, async t => {
+test('row types against the database', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const db = testAccess();
   t.after(() => db.pool.end());
   const schema = Z.tabellen(fs.readFileSync(path.join(__dirname, '..', 'db', 'schema-stand.sql'), 'utf8'));
 
-  await t.test('jede Tabelle und Spalte samt NULL steht so in der Datenbank', async () => {
+  await t.test('every table and column including NULL is like this in the database', async () => {
     const zeilen = await db.all(
       // pg_attribute statt information_schema: Das zeigt nur Spalten, die die Laufzeitrolle lesen darf.
       `SELECT c.relname AS t, a.attname AS s, NOT a.attnotnull AS n
@@ -80,7 +80,7 @@ test('Zeilentypen gegen die Datenbank', { concurrency: 1 }, async t => {
     assert.deepEqual([...erzeugt].sort(), [...echt].sort());
   });
 
-  await t.test('jeder Spaltentyp kommt so an, wie db/rows.ts verspricht', async () => {
+  await t.test('every column type arrives as db/rows.ts promises', async () => {
     const typen = new Set([...schema.values()].flatMap(sp => sp.map(s => s.typ)));
     const fehlt = [...typen].filter(x => !(x in PROBE));
     assert.deepEqual(fehlt, [], 'Probe für neue Spaltentypen nachtragen');

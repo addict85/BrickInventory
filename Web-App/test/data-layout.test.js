@@ -32,7 +32,7 @@ const SOURCES = [
   'src/catalog/catalogSync.ts',
 ];
 
-test('keine Quelle schreibt mehr die alten Pfade', () => {
+test('no source writes the old paths any more', () => {
   for (const f of SOURCES) {
     const src = strip(read(f));
     // In server.ts sind die Alt-Pfade als Weiterleitung noch erlaubt — dort
@@ -47,7 +47,7 @@ test('keine Quelle schreibt mehr die alten Pfade', () => {
   }
 });
 
-test('Teile- und Figurenbilder landen in getrennten Ordnern', async t => {
+test('part and figure images land in separate folders', async t => {
   // Am Verhalten: downloadImage() mit nachgestelltem https.get (ohne Netz).
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   const _req = require('./helpers/sources').buildAndRequire();
@@ -91,7 +91,7 @@ test('Teile- und Figurenbilder landen in getrennten Ordnern', async t => {
   );
 });
 
-test('die Bildroute behält Anmeldepflicht und CDN-Heilung', () => {
+test('the image route keeps mandatory login and CDN healing', () => {
   // EINE Route für den ganzen Baum unter data/images/, damit kein Teil ohne
   // Anmeldung ausgeliefert wird (kein statischer Mount: test/media-auth.test.js).
   // strip() vor dem Schneiden, sonst schiebt ein Erklärtext die Zeile hinaus.
@@ -112,7 +112,7 @@ test('die Bildroute behält Anmeldepflicht und CDN-Heilung', () => {
   );
 });
 
-test('es gibt keine Abwärtskompatibilität für die alten Pfade mehr', () => {
+test('there is no backward compatibility for the old paths any more', () => {
   // Bewusste Entscheidung
   const src = read('server.ts');
   assert.doesNotMatch(
@@ -134,7 +134,7 @@ test('es gibt keine Abwärtskompatibilität für die alten Pfade mehr', () => {
   );
 });
 
-test('daten-rechte legt die neuen Verzeichnisse an', () => {
+test('daten-rechte creates the new directories', () => {
   // Kommentare weg: Der Erklärtext im Entrypoint nennt die alten Verzeichnisse
   // ("instructions/shared und part_images sind entfallen") und hätte die
   // Negativprüfung unten selbst ausgelöst.

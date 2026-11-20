@@ -62,7 +62,7 @@ const MEASURE = wurzelSel => `(() => {
   return funde;
 })()`;
 
-test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async t => {
+test('dialogs at 200 % font on 320 and 390 px', { timeout: 240_000 }, async t => {
   const app = await startApp(t, { name: `dlg_${process.pid}`, bestand: patternCollection, telefon: true });
   if (app.grund) {
     t.skip(app.grund);
@@ -88,7 +88,7 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
     await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
     await bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
 
-    await t.test(`${breite} px: Benutzermenü`, async () => {
+    await t.test(`${breite} px: user menu`, async () => {
       // Ohne Silbentrennungs-Wörterbuch (so im CI-Chrome) bleibt „Hintergrundarbeiten“
       // ein Stück; hyphens: manual (CSSOM, die CSP sperrt <style>) stellt diesen schlechtesten Fall überall her.
       await b.auswerten(
@@ -100,7 +100,7 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
       await zu();
     });
 
-    await t.test(`${breite} px: Bestätigen`, async () => {
+    await t.test(`${breite} px: confirm`, async () => {
       await b.auswerten(`document.querySelector('#gallery .delbtn').click(); true`);
       await bis(`getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`, 'Bestätigungsdialog');
       await ruhig();
@@ -110,14 +110,14 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
       await zu();
     });
 
-    await t.test(`${breite} px: Set erfassen`, async () => {
+    await t.test(`${breite} px: capture set`, async () => {
       await b.auswerten(`document.querySelector('[data-click="oeffneErfassen"][data-arg="set"]').click(); true`);
       await ruhig();
       assert.deepEqual(await b.auswerten(MEASURE('#add-set-modal .modal')), []);
       await zu();
     });
 
-    await t.test(`${breite} px: Kaufpreis`, async () => {
+    await t.test(`${breite} px: purchase price`, async () => {
       await b.auswerten(`document.querySelector('#gallery [data-click="openModal"]').click(); true`);
       await bis(
         `document.getElementById('set-modal').classList.contains('open') && document.querySelector('#set-modal [data-click="openAcqModal"]')`,
@@ -130,7 +130,7 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
     });
   }
 
-  await t.test('149,95 wird 149.95 gespeichert', async () => {
+  await t.test('149,95 is saved as 149.95', async () => {
     const sn = await b.auswerten(`(document.querySelector('#gallery [data-click="openModal"]').dataset.arg)`);
     await b.auswerten(`document.querySelector('#gallery [data-click="openModal"]').click(); true`);
     await bis(`document.querySelector('#set-modal [data-click="openAcqModal"]')`, 'Set-Detail');
@@ -150,7 +150,7 @@ test('Dialoge bei 200 % Schrift auf 320 und 390 px', { timeout: 240_000 }, async
   });
 
   // Der Testserver hat weder APP_BASE_URL noch SMTP: Beide Wege fehlen auf der Maske.
-  await t.test('Anmeldemaske ohne Passkey und „Passwort vergessen?“', async () => {
+  await t.test('login mask without passkey and "forgot password?"', async () => {
     await zu();
     await b.auswerten(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
     await bis(

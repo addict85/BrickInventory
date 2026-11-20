@@ -24,7 +24,7 @@ function code(schema, rumpf) {
   return r.error.issues[0]?.params?.fehler?.code ?? r.error.issues[0]?.code;
 }
 
-test('Nummer, PIN und Währung kommen im Fachformat an', () => {
+test('number, PIN and currency arrive in the domain format', () => {
   const r = anlegen.parse({ number: '5045 0763-7445', pin: ' 5225 ', amount: 40, currency: 'chf' });
   assert.deepEqual(r, { number: '504507637445', pin: '5225', amount: 40, currency: 'CHF' });
   assert.deepEqual(anlegen.parse({ number: '1234', amount: 1, pin: '', currency: '' }), {
@@ -35,7 +35,7 @@ test('Nummer, PIN und Währung kommen im Fachformat an', () => {
   });
 });
 
-test('unbrauchbare Werte weist der Vertrag mit dem Code der Regel ab', () => {
+test("the contract rejects unusable values with the rule's code", () => {
   assert.equal(code(anlegen, { number: 'abc', amount: 10 }), 'nummer_ungueltig');
   assert.equal(code(anlegen, { number: '12', amount: 10 }), 'nummer_ungueltig');
   assert.equal(code(anlegen, { number: 1234567, amount: 10 }), 'nummer_ungueltig');
@@ -43,7 +43,7 @@ test('unbrauchbare Werte weist der Vertrag mit dem Code der Regel ab', () => {
   assert.equal(code(anlegen, { number: '1234567', amount: 10, currency: 'Franken' }), 'waehrung_ungueltig');
 });
 
-test('beim Ändern darf die Maske zurückkommen, leer heisst entfernen', () => {
+test('when changing the mask may come back, empty means remove', () => {
   assert.deepEqual(aendern.parse({ number: '…1166', pin: '•••' }), { number: '…1166', pin: '•••' });
   assert.deepEqual(aendern.parse({ pin: '', currency: '' }), { pin: '', currency: '' });
   assert.equal(code(aendern, { number: '…11' }), 'nummer_ungueltig');

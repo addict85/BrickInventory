@@ -28,7 +28,7 @@ function tsFiles(dir, praefix = '') {
   return gefunden;
 }
 
-test('keine Route verschickt einen festen Fehlersatz', () => {
+test('no route sends a fixed error sentence', () => {
   const dateien = [
     ...tsFiles(path.join(ROOT, 'routes')).map(([r, p]) => [r, p]),
     ...tsFiles(path.join(ROOT, 'src')).map(([r, p]) => [r, p]),
@@ -92,7 +92,7 @@ test('keine Route verschickt einen festen Fehlersatz', () => {
   );
 });
 
-test('jeder Eintrag der Tabelle hat beide Sprachen und dieselben Platzhalter', () => {
+test('every entry of the table has both languages and the same placeholders', () => {
   // Ein fehlender Platzhalter heisst, dass in einer Sprache „{name}" auf dem Bildschirm steht.
   const { FEHLER, errorText } = require('./helpers/sources').buildAndRequire()('src/infra/errorTexts.js');
   const codes = Object.keys(FEHLER);
@@ -114,7 +114,7 @@ test('jeder Eintrag der Tabelle hat beide Sprachen und dieselben Platzhalter', (
   assert.deepEqual(skewed, []);
 });
 
-test('die Webapp sagt dem Server, welche Sprache sie zeigt', async () => {
+test('the web app tells the server which language it shows', async () => {
   // Ohne diesen Kopf fiele der Server auf Deutsch zurück, und die Tabelle oben wäre wirkungslos.
   const { openUi } = require('./helpers/ui');
   for (const sprache of ['en', 'de']) {

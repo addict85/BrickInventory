@@ -65,7 +65,7 @@ async function withBrake(fn) {
   }
 }
 
-test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
+test('wishlist writes all or nothing', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   t.after(() => db.pool.end().catch(() => {}));
   await seed();
@@ -83,19 +83,19 @@ test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
     (await db.all(`SELECT 1 FROM price_alerts WHERE set_number='75192-1' AND condition='N' AND user_id=$1`, [uid]))
       .length;
 
-  await t.test('verschieben: der Fehler kommt an', async () => {
+  await t.test('move: the error arrives', async () => {
     await W.addWantedItem(U.von, '75192-1', 'N');
     await alarm(U.von);
     await withBrake(() => assert.rejects(W.moveWantedItem(U.von, '75192-1', 'N', U.zu), /erzwungen/));
   });
 
-  await t.test('verschieben: der Merkposten bleibt beim alten Konto', async () => {
+  await t.test('move: the wishlist item stays with the old account', async () => {
     assert.equal(await merk(U.von), 1, 'Merkposten ist trotz Fehler gewandert');
     assert.equal(await merk(U.zu), 0);
     assert.equal(await alarme(U.von), 1);
   });
 
-  await t.test('verschieben ohne Fehler nimmt Merkposten und Alarm mit', async () => {
+  await t.test('move without error takes wishlist item and alert along', async () => {
     const r = await W.moveWantedItem(U.von, '75192-1', 'N', U.zu);
     assert.deepEqual(r, { verschoben: true, zusammengefuehrt: false });
     assert.equal(await merk(U.zu), 1);
@@ -103,7 +103,7 @@ test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
     assert.equal(await alarme(U.von), 0);
   });
 
-  await t.test('Ziel mit eigenem Alarm: dessen Alarm gilt, der Merkposten wandert', async () => {
+  await t.test('target with its own alert: its alert applies, the wishlist item moves', async () => {
     await W.moveWantedItem(U.zu, '75192-1', 'N', U.von);
     await db.run(`DELETE FROM price_alerts`);
     await alarm(U.von);
@@ -115,7 +115,7 @@ test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
     assert.deepEqual(zeilen, [{ user_id: U.zu, s: 123 }]);
   });
 
-  await t.test('übernehmen: kein Set im Bestand, der Merkposten steht noch', async () => {
+  await t.test('take over: no set in stock, the wishlist item still stands', async () => {
     await withBrake(() =>
       assert.rejects(W.fulfillWantedItem(U.zu, U.zu, '75192-1', 'N', { quantity: 1 }), /erzwungen/),
     );
@@ -127,7 +127,7 @@ test('Merkliste schreibt ganz oder gar nicht', { concurrency: 1 }, async t => {
     assert.equal(await merk(U.zu), 1);
   });
 
-  await t.test('übernehmen ohne Fehler: Set erfasst, Merkposten und Alarm weg', async () => {
+  await t.test('take over without error: set entered, wishlist item and alert gone', async () => {
     const r = await W.fulfillWantedItem(U.zu, U.zu, '75192-1', 'N', { quantity: 1 });
     assert.equal(r.action, 'added');
     assert.equal((await db.all(`SELECT 1 FROM sets WHERE user_id=$1`, [U.zu])).length, 1);

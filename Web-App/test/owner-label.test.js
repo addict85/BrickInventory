@@ -44,7 +44,7 @@ async function galerie() {
 const labels = (d, nr) =>
   [...d.querySelector(`#gallery .sc[data-arg="${nr}"]`).querySelectorAll('.besitzer-badge')].map(e => e.textContent);
 
-test('eigene Sets ohne Etikett', async () => {
+test('own sets without a label', async () => {
   const { w, d } = await galerie();
   try {
     assert.deepEqual(labels(d, '10294-1'), []);
@@ -53,7 +53,7 @@ test('eigene Sets ohne Etikett', async () => {
   }
 });
 
-test('das Set des Kindes trägt seinen Namen, ein geteiltes beide', async () => {
+test("the child's set carries its name, a shared one both", async () => {
   const { w, d } = await galerie();
   try {
     assert.deepEqual(labels(d, '42143-1'), ['emily']);
@@ -63,7 +63,7 @@ test('das Set des Kindes trägt seinen Namen, ein geteiltes beide', async () => 
   }
 });
 
-test('die Kennzahl heisst Anleitungen', async () => {
+test('the metric is called instructions', async () => {
   const { w, d } = await openUi({});
   try {
     const l = d.getElementById('bstat-instr').parentElement.querySelector('.bstat-l');

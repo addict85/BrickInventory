@@ -29,7 +29,7 @@ const SERVER = {
       : { success: true },
 };
 
-test('die Registrierung fragt nach dem Passwort', async () => {
+test('registration asks for the password', async () => {
   const { w, d, aufrufe } = await openUi(SERVER);
   try {
     await reiter(w, 'settings');
@@ -49,7 +49,7 @@ test('die Registrierung fragt nach dem Passwort', async () => {
   }
 });
 
-test('Abbrechen nimmt das Häkchen zurück', async () => {
+test('cancel takes back the checkmark', async () => {
   const { w, d, aufrufe } = await openUi(SERVER);
   try {
     await reiter(w, 'settings');
@@ -67,7 +67,7 @@ test('Abbrechen nimmt das Häkchen zurück', async () => {
   }
 });
 
-test('der API-Schlüssel fragt nach dem Passwort', async () => {
+test('the API key asks for the password', async () => {
   const { w, d, aufrufe } = await openUi(SERVER);
   try {
     await reiter(w, 'settings');

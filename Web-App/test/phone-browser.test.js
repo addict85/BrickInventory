@@ -41,10 +41,10 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
 </script></body></html>`;
 }
 
-test('Finanzkacheln am Telefon', t => {
+test('finance tiles on the phone', t => {
   const bin = chrome();
   if (!bin) {
-    t.skip('kein Chrome gefunden');
+    t.skip('no Chrome found');
     return;
   }
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'telefon-'));

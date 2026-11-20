@@ -15,7 +15,7 @@ const db = testData();
 const { setUserSetting } = _req('src/settings/userSetting.js');
 const { setErfassen } = require('./helpers/sources').areaPage('sets');
 
-test('aufstocken ohne Zustandsangabe folgt dem Standard des Nutzers', { concurrency: 1 }, async t => {
+test("topping up without a condition follows the user's default", { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const name = `zst_${process.pid}`;

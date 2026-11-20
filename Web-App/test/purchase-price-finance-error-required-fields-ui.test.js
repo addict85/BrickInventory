@@ -56,7 +56,7 @@ const PNL = {
   },
 };
 
-test('N1 Kaufpreis-Kachel: beim Laden neutral, der Zusatz erst mit Daten', async () => {
+test('N1 purchase price tile: neutral while loading, the addition only with data', async () => {
   /** @type {null | ((v: unknown) => void)} */
   let freigeben = null;
   let anhalten = false;
@@ -83,7 +83,7 @@ test('N1 Kaufpreis-Kachel: beim Laden neutral, der Zusatz erst mit Daten', async
   }
 });
 
-test('N2 Finanzen-Fehler: eigener Titel, Chips und Suche gesperrt, nach Erfolg frei', async () => {
+test('N2 finances error: own title, chips and search locked, free after success', async () => {
   let kaputt = true;
   const { w, d, ruhig } = await openUi({
     '/v1/finance/valuation': () =>
@@ -108,7 +108,7 @@ test('N2 Finanzen-Fehler: eigener Titel, Chips und Suche gesperrt, nach Erfolg f
   }
 });
 
-test('N3 Manuell erfasste Teile und Figuren: Stückpreis mit „je“', async () => {
+test('N3 manually entered parts and minifigures: unit price with “je”', async () => {
   const { w, d, ruhig } = await openUi({
     '/v1/parts/manual': {
       success: true,
@@ -146,7 +146,7 @@ test('N3 Manuell erfasste Teile und Figuren: Stückpreis mit „je“', async ()
   }
 });
 
-test('N4 Anmeldung: leere Pflichtfelder melden sich am Feld', async t => {
+test('N4 login: empty required fields report at the field', async t => {
   const { w, d, aufrufe } = await openUi(
     {
       '/v1/auth/login': {
@@ -161,7 +161,7 @@ test('N4 Anmeldung: leere Pflichtfelder melden sich am Feld', async t => {
   try {
     await warte(() => typeof d.getElementById('btn-login')?.onclick === 'function');
     const logins = () => aufrufe.filter(a => a.url.includes('/v1/auth/login')).length;
-    await t.test('beide leer', async () => {
+    await t.test('both empty', async () => {
       d.getElementById('btn-login').click();
       await takt(30);
       assert.equal(logins(), 0, 'Server gefragt');
@@ -180,7 +180,7 @@ test('N4 Anmeldung: leere Pflichtfelder melden sich am Feld', async t => {
       // Die Meldung steht unter dem Passwortfeld, nicht zwischen Feld und Augen-Knopf.
       assert.equal(d.getElementById('lp-fehler').parentElement.classList.contains('geheim-feld'), false);
     });
-    await t.test('nur das Passwort leer', async () => {
+    await t.test('only the password empty', async () => {
       d.getElementById('lu').value = 'anna';
       d.getElementById('btn-login').click();
       await takt(30);
@@ -189,7 +189,7 @@ test('N4 Anmeldung: leere Pflichtfelder melden sich am Feld', async t => {
       assert.equal(d.getElementById('lu').hasAttribute('aria-invalid'), false);
       assert.equal(d.activeElement.id, 'lp');
     });
-    await t.test('falsche Anmeldedaten bleiben oben', async () => {
+    await t.test('wrong credentials stay at the top', async () => {
       d.getElementById('lp').value = 'falsch';
       d.getElementById('btn-login').click();
       await warte(() => text(d.getElementById('lerr')));
@@ -202,7 +202,7 @@ test('N4 Anmeldung: leere Pflichtfelder melden sich am Feld', async t => {
   }
 });
 
-test('N5 Konto: Sprungleiste zu allen Abschnitten', async () => {
+test('N5 account: jump bar to all sections', async () => {
   const { w, d } = await openUi();
   try {
     await sicht(w, 'profil');
@@ -270,8 +270,8 @@ async function signInWithoutCookie(sicher) {
   return o;
 }
 
-test('Betrieb: Anmeldung ohne gespeichertes Sitzungs-Cookie', async t => {
-  await t.test('Seite ohne HTTPS: klarer Hinweis statt „abgelaufen“', async () => {
+test('operation: login without a stored session cookie', async t => {
+  await t.test('page without HTTPS: clear hint instead of “expired”', async () => {
     const { w, d } = await signInWithoutCookie(false);
     try {
       const h = text(d.getElementById('login-hinweis'));
@@ -283,7 +283,7 @@ test('Betrieb: Anmeldung ohne gespeichertes Sitzungs-Cookie', async t => {
       w.close();
     }
   });
-  await t.test('sichere Seite: wie bisher „Sitzung abgelaufen“', async () => {
+  await t.test('secure page: as before “session expired”', async () => {
     const { w, d } = await signInWithoutCookie(true);
     try {
       assert.match(text(d.getElementById('login-hinweis')), /Sitzung abgelaufen/);

@@ -15,7 +15,7 @@ const { startApp } = require('./helpers/app-browser');
 // Ohne APP_BASE_URL verweigert der Server den Code; http, damit das Sitzungs-Cookie ohne TLS gilt.
 process.env.APP_BASE_URL = 'http://lego.example.org';
 
-test('QR-Code: der zweite Code bleibt nach Ablauf des ersten stehen', { timeout: 180_000 }, async t => {
+test('QR code: the second code stays after the first expires', { timeout: 180_000 }, async t => {
   const app = await startApp(t, {
     // Ohne Verwalterrechte kein zweiter Faktor, also keine Rückfrage vor dem Code.
     bestand: (db, uid) => db.run('UPDATE users SET is_admin = false WHERE id = $1', [uid]),

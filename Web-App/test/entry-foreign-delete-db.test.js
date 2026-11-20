@@ -22,7 +22,7 @@ const db = testData();
 const A = `fremd_a_${process.pid}`,
   B = `fremd_b_${process.pid}`;
 
-test('fremde Erfassungen löschen', { concurrency: 1 }, async t => {
+test('delete foreign acquisitions', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[A, B]]);
   const neu = async n =>
@@ -57,7 +57,7 @@ test('fremde Erfassungen löschen', { concurrency: 1 }, async t => {
     assert.equal(await loesche(`/api/v1/parts/3001/4/acquisitions/${teil}`), 404);
     assert.ok(await db.get('SELECT 1 FROM part_acquisitions WHERE id = $1', [teil]), 'die fremde Zeile ist weg');
   });
-  await t.test('Figur', async () => {
+  await t.test('figure', async () => {
     assert.equal(await loesche(`/api/v1/minifigs/sw0001/acquisitions/${figur}`), 404);
     assert.ok(await db.get('SELECT 1 FROM minifig_acquisitions WHERE id = $1', [figur]), 'die fremde Zeile ist weg');
   });

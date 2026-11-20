@@ -26,7 +26,7 @@ const { acquisitionTotals } = _req('src/inventory/acquisitions.js');
 
 // ── Teil 1: die Rechnung ────────────────────────────────────────────────────
 
-test('Menge und Betrag: mengengewichtet über alle Zeilen', () => {
+test('quantity and amount: weighted by quantity over all rows', () => {
   const t = acquisitionTotals([
     { quantity: 2, purchase_price: '7.41' }, // aus Postgres kommen NUMERIC als Text
     { quantity: 1, purchase_price: 9.48 },
@@ -36,13 +36,13 @@ test('Menge und Betrag: mengengewichtet über alle Zeilen', () => {
   assert.equal(t.priced_rows, 2);
 });
 
-test('unit_price zählt genauso wie purchase_price', () => {
+test('unit_price counts just like purchase_price', () => {
   // Manuelle Teile und Minifiguren führen den Preis in unit_price. Die
   // Rückfallregel steht deshalb HIER und nicht in einem der Clients.
   assert.equal(acquisitionTotals([{ quantity: 3, unit_price: 0.6 }]).amount, 1.8);
 });
 
-test('ohne Preis ist der Betrag null — nicht 0', () => {
+test('without a price the amount is null — not 0', () => {
   // „Nichts erfasst" ist etwas anderes als „für null Franken gekauft". Nur mit
   // null kann die Oberfläche den Gedankenstrich zeigen, ohne selbst zu raten;
   // mit 0 müsste jede Ansicht dieselbe Auslegung noch einmal treffen.
@@ -52,7 +52,7 @@ test('ohne Preis ist der Betrag null — nicht 0', () => {
   assert.equal(t.priced_rows, 0);
 });
 
-test('eine Zeile mit Preis 0 ist erfasst und ergibt 0', () => {
+test('a row with price 0 is captured and yields 0', () => {
   // Abgrenzung zum Fall darüber: 0 ist ein Preis, kein fehlender Wert —
   // sonst verschwände ein geschenktes Set aus der Zählung.
   const t = acquisitionTotals([{ quantity: 1, purchase_price: 0 }]);
@@ -60,26 +60,26 @@ test('eine Zeile mit Preis 0 ist erfasst und ergibt 0', () => {
   assert.equal(t.priced_rows, 1);
 });
 
-test('gemischt: Zeilen mit und ohne Preis', () => {
+test('mixed: rows with and without price', () => {
   const t = acquisitionTotals([{ quantity: 2, purchase_price: 10 }, { quantity: 5 }]);
   assert.equal(t.quantity, 7, 'die preislose Zeile zählt bei der MENGE mit');
   assert.equal(t.amount, 20, 'beim BETRAG nicht — sie hat keinen');
 });
 
-test('der Betrag ist auf zwei Stellen gerundet', () => {
+test('the amount is rounded to two places', () => {
   // 3 × 11.326666 ergibt sonst 33.980000000000004 auf dem Schirm.
   const t = acquisitionTotals([{ quantity: 3, purchase_price: 11.326666 }]);
   assert.equal(String(t.amount).split('.')[1]?.length <= 2, true, `war: ${t.amount}`);
 });
 
-test('leere Liste', () => {
+test('empty list', () => {
   assert.deepEqual(acquisitionTotals([]), { quantity: 0, amount: null, priced_rows: 0 });
   assert.deepEqual(acquisitionTotals(null), { quantity: 0, amount: null, priced_rows: 0 });
 });
 
 // ── Teil 2: die Regel ───────────────────────────────────────────────────────
 
-test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, async t => {
+test('all three acquisition routes deliver the sum', { concurrency: 1 }, async t => {
   const db = testData();
   if (!(await dataOrSkip(t, _req))) return;
   const P = process.pid,
@@ -130,7 +130,7 @@ test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, as
   }
 });
 
-test('keine Oberfläche rechnet die Summe noch einmal', async () => {
+test('no UI computes the sum again', async () => {
   // Der Server schickt die Summenzeile als `totals`; hier bewusst NICHT die Summe der Zeilen
   // (10 + 20 bei Menge 2): Was die Oberfläche zeigt, muss vom Server stammen.
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 2 };

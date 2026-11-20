@@ -39,7 +39,7 @@ const freePort = () =>
     });
   });
 
-test('vom Verwalter vergebene Passwörter gelten nur bis zum ersten Wechsel', {
+test('passwords assigned by an admin only apply until the first change', {
   concurrency: 1,
   timeout: 180_000,
 }, async t => {
@@ -129,7 +129,7 @@ test('vom Verwalter vergebene Passwörter gelten nur bis zum ersten Wechsel', {
     assert.equal((await ruf(keks, '/api/v1/stats')).status, 200);
   }
 
-  await t.test('ein vom Verwalter angelegtes Konto', async () => {
+  await t.test('an account created by an admin', async () => {
     const vergeben = 'Vom-Verwalter-vergeben-1';
     const r = await ruf(chefKeks, '/api/v1/auth/users', {
       method: 'POST',
@@ -139,7 +139,7 @@ test('vom Verwalter vergebene Passwörter gelten nur bis zum ersten Wechsel', {
     await onlyUntilToSwitch(NEU, vergeben);
   });
 
-  await t.test('ein vom Verwalter gesetztes Passwort', async () => {
+  await t.test('a password set by an admin', async () => {
     const vergeben = 'Vom-Verwalter-gesetzt-2';
     const r = await ruf(chefKeks, `/api/v1/auth/users/${alt}/password`, {
       method: 'PUT',

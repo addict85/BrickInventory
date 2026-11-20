@@ -24,7 +24,7 @@ const { linkForConsole } = _req('src/mail/mailer.js');
 // Der Absender reicht den Link selbst; aus dem Text gesucht wird nicht mehr.
 const TEXT = 'https://lego.example.org/reset?token=abcdef0123456789';
 
-test('ohne Schalter ohne Token', () => {
+test('without switch without token', () => {
   const link = linkForConsole(TEXT, undefined);
   assert.equal(link, 'https://lego.example.org/reset?token=…');
   assert.ok(!link.includes('abcdef'), link);
@@ -36,7 +36,7 @@ test('ohne Schalter ohne Token', () => {
   assert.equal(linkForConsole('https://x.example/verify#token=geheim', undefined), 'https://x.example/verify#token=…');
 });
 
-test('NODE_ENV öffnet nichts — auch nicht development', () => {
+test('NODE_ENV opens nothing — not even development', () => {
   const alt = process.env.NODE_ENV;
   try {
     for (const art of ['development', 'test', 'production']) {
@@ -49,12 +49,12 @@ test('NODE_ENV öffnet nichts — auch nicht development', () => {
   }
 });
 
-test('mit MAIL_KONSOLE_MIT_TOKEN=1 vollständig — dann ist die Konsole der Postausgang', () => {
+test('with MAIL_KONSOLE_MIT_TOKEN=1 complete — then the console is the outbox', () => {
   assert.equal(linkForConsole(TEXT, '1'), 'https://lego.example.org/reset?token=abcdef0123456789');
   assert.equal(linkForConsole(TEXT, 'ja'), 'https://lego.example.org/reset?token=…', 'nur „1" schaltet');
 });
 
-test('ohne Link nichts — auch keiner aus Fliesstext', () => {
+test('without a link nothing — not even one from running text', () => {
   assert.equal(linkForConsole('nur Text', undefined), null);
   assert.equal(linkForConsole('Hallo https://boese.example/x', '1'), null);
   assert.equal(linkForConsole(undefined, '1'), null);

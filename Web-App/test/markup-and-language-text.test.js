@@ -26,7 +26,7 @@ function languageTexts() {
   );
 }
 
-test('jeder Rückfalltext zeigt, was der Sprachtext sagt', () => {
+test('every fallback text shows what the language text says', () => {
   const texte = languageTexts();
   const stellen = [...HTML.matchAll(/(<[a-z]+\b[^>]*\bdata-i18n="([^"]+)"[^>]*>)([^<]+)</g)];
   // Selbstbeweis: GEMESSEN sind es über 200. Findet die Ableitung nichts,
@@ -55,7 +55,7 @@ test('jeder Rückfalltext zeigt, was der Sprachtext sagt', () => {
   );
 });
 
-test('kein Element mit data-i18n hat Kind-Elemente', () => {
+test('no element with data-i18n has child elements', () => {
   const bad = [];
   for (const m of HTML.matchAll(/<([a-z]+)\b([^>]*\bdata-i18n="([^"]+)"[^>]*)>/g)) {
     if (m[2].includes('data-i18n-attr')) continue;

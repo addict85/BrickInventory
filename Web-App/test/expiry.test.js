@@ -36,7 +36,7 @@ function lauf(name, inhalt, env) {
   return { status: r.status, fehler: r.error?.message, text: `${r.stdout}${r.stderr}`, ms: Date.now() - start };
 }
 
-test('ein offener Server nach dem letzten Test beendet die Datei rot und wird genannt', () => {
+test('an open server after the last test ends the file red and is named', () => {
   const r = lauf(
     'server.test.js',
     "test('lässt einen Server offen', () => { require('node:net').createServer().listen(0); });",
@@ -51,7 +51,7 @@ test('ein offener Server nach dem letzten Test beendet die Datei rot und wird ge
   assert.match(r.text, /^ok 1 - lässt einen Server offen/m, 'der Test selbst bleibt grün');
 });
 
-test('ein hängender t.after trifft die Frist der ganzen Datei', () => {
+test('a hanging t.after hits the deadline of the whole file', () => {
   const r = lauf(
     'haken.test.js',
     "test('t.after hängt', (t) => { t.after(() => new Promise(() => { setInterval(() => {}, 1000); })); });",
@@ -62,7 +62,7 @@ test('ein hängender t.after trifft die Frist der ganzen Datei', () => {
   assert.match(r.text, /\[auslauf\] haken\.test\.js: nach 1\.5 s nicht fertig/);
 });
 
-test('eine saubere Datei endet sofort und grün', () => {
+test('a clean file ends immediately and green', () => {
   const r = lauf('sauber.test.js', "test('nichts offen', () => {});", {
     TEST_AUSLAUF_MS: '30000',
     TEST_DATEI_FRIST_MS: '30000',

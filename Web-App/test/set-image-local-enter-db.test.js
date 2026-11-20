@@ -36,7 +36,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { emptyQueue } = require('./helpers/image-queue');
 const db = testData();
 
-test('Set-Bilder in images/sets werden eingetragen', { concurrency: 1 }, async t => {
+test('set images in images/sets are registered', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const { SET_IMAGES_DIR, DATA_DIR } = _req('src/infra/appPaths.js');
@@ -60,7 +60,7 @@ test('Set-Bilder in images/sets werden eingetragen', { concurrency: 1 }, async t
   const lokal = async sn =>
     (await db.get('SELECT image_local FROM set_catalog WHERE set_number = $1', [sn]))?.image_local;
 
-  await t.test('der Bild-Job trägt die Datei ein', async () => {
+  await t.test('the image job registers the file', async () => {
     await emptyQueue(db);
     put(path.join(SET_IMAGES_DIR, `${job}.jpg`));
     put(path.join(SET_IMAGES_DIR, `${job}_thumb.jpg`));
@@ -71,7 +71,7 @@ test('Set-Bilder in images/sets werden eingetragen', { concurrency: 1 }, async t
     assert.equal(await lokal(job), `/images/sets/${job}.jpg`);
   });
 
-  await t.test('der Proxy trägt vorhandene Dateien samt Quelle ein, auch ohne set_catalog-Zeile', async () => {
+  await t.test('the proxy registers existing files including source, even without a set_catalog row', async () => {
     // Ein Katalog-Set ausserhalb jedes Bestands: rb_sets kennt es, set_catalog ausnahmsweise nicht.
     await db.run('DELETE FROM set_catalog WHERE set_number = $1', [proxy]);
     const express = require('express');
@@ -115,7 +115,7 @@ test('Set-Bilder in images/sets werden eingetragen', { concurrency: 1 }, async t
     );
   });
 
-  await t.test('… und die Katalogsuche nennt danach die lokale Adresse', async () => {
+  await t.test('… and the catalog search then names the local address', async () => {
     const { catalogPage } = _req('src/catalog/service.js');
     const seite = await catalogPage(1, { q: proxy, themeId: null }, 'num_asc', 1, 10);
     assert.deepEqual(

@@ -56,7 +56,7 @@ for (const [sprache, eins, zwei] of [
   ['de', '1 Sorte', '2 Sorten'],
   ['en', '1 kind', '2 kinds'],
 ]) {
-  test(`${sprache}: Gruppen der Teile`, async () => {
+  test(`${sprache}: groups of the parts`, async () => {
     const { w, d } = await openUi(TEILE, { sprache });
     try {
       await reiter(w, 'parts');
@@ -69,7 +69,7 @@ for (const [sprache, eins, zwei] of [
   });
 }
 
-test('Finanzen: eine Position ohne Preis', async () => {
+test('finances: a position without a price', async () => {
   const { w, d } = await openUi({
     '/v1/finance/valuation': {
       success: true,

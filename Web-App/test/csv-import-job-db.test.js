@@ -42,7 +42,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { warte } = require('./helpers/time');
 
-test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
+test('CSV import as a job', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   // Erfassen fragt kein Netz; gestellt nur, damit eine Rückkehr dorthin auffiele.
   testSources(t, {
@@ -110,7 +110,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
   };
 
   try {
-    await t.test('ein Set eines anderen Kontos bekommt während des Imports seine Nacharbeit', async () => {
+    await t.test('a set of another account gets its follow-up work during the import', async () => {
       await holdLock('76001-1');
       const lauf = `lauf-${process.pid}-1`;
       const rows = [{ sn: '76001-1', qty: 1, purchasePrice: null, condition: null, acquiredAt: null }];
@@ -148,7 +148,7 @@ test('CSV-Import als Auftrag', { concurrency: 1 }, async t => {
       );
     });
 
-    await t.test('ein unterbrochener Import setzt fort', async () => {
+    await t.test('an interrupted import continues', async () => {
       const lauf = `lauf-${process.pid}-2`;
       const [r1, r2, r3] = ['91001-1', '91002-1', '91003-1'];
       const rows = [r1, r2, r3].map(sn => ({

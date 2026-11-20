@@ -67,7 +67,7 @@ function ohneKommentare(src) {
 }
 const CODE = ohneKommentare(SERVER);
 
-test('kein statischer Mount liefert Dateien aus dem Datenverzeichnis aus', () => {
+test('no static mount delivers files from the data directory', () => {
   // express.static kennt keine Anmeldeprüfung. Für PUBLIC_DIR ist das richtig
   // (CSS, JavaScript, Schriften), für IMAGES_DIR war es die Lücke.
   const mounts = [...CODE.matchAll(/express\.static\(([A-Za-z_$][\w$]*)/g)].map(m => m[1]);
@@ -78,7 +78,7 @@ test('kein statischer Mount liefert Dateien aus dem Datenverzeichnis aus', () =>
   );
 });
 
-test('der Platzhalter liegt ausserhalb von /images/', () => {
+test('the placeholder lies outside of /images/', () => {
   // Er ist ein Build-Asset wie CSS und JavaScript und wird auch angezeigt,
   // wenn gar kein Bild vorhanden ist — unter /images/ hätte er die Regel
   // "alles hier verlangt Anmeldung" durchlöchert.
@@ -101,14 +101,14 @@ test('der Platzhalter liegt ausserhalb von /images/', () => {
   assert.deepEqual(refs, [], `Alte Platzhalter-Adresse in: ${refs.join(', ')}`);
 });
 
-test('die SQL-Migrationen landen im Build', () => {
+test('the SQL migrations end up in the build', () => {
   // Woher dieser Test kommt
   const build = read('scripts/build-ts.js');
   assert.match(build, /ASSET_EXT/, 'build-ts.js kopiert keine Nicht-TS-Dateien mit — .sql-Migrationen fehlen im Build');
   assert.match(build, /'\.sql'/, '.sql muss unter den mitkopierten Endungen stehen');
 });
 
-test('data-self-Handler nehmen das Element als ERSTES Argument', () => {
+test('data-self handlers take the element as the FIRST argument', () => {
   // Woher dieser Test kommt
   const fs2 = require('node:fs');
   const jsDir = path.join(ROOT, 'public', 'js');
@@ -137,7 +137,7 @@ test('data-self-Handler nehmen das Element als ERSTES Argument', () => {
   assert.deepEqual(wrong, [], `Element gehört an die erste Stelle: ${wrong.join(', ')}`);
 });
 
-test('Adressen auf den eigenen Server gehen nicht durch den Proxy', () => {
+test('addresses to the own server do not go through the proxy', () => {
   // Woher dieser Test kommt
   const vm = require('node:vm');
   const src = require('./helpers/sources')

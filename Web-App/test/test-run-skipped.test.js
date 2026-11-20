@@ -52,7 +52,7 @@ function abschluss(t, /** @type {Record<string, string>} */ zusatz) {
   return r.stdout.trim().split('\n').pop() ?? '';
 }
 
-test('ohne Chrome und Caddy nennt die Abschlusszeile beide Zahlen', { timeout: 120_000 }, t => {
+test('without Chrome and Caddy the closing line names both numbers', { timeout: 120_000 }, t => {
   // Steht auf dem Rechner ein Chrome an einem Standardort, findet der Lauf ihn auch ohne CHROME_BIN.
   const vorher = { CHROME_BIN: process.env.CHROME_BIN, REQUIRE_BROWSER: process.env.REQUIRE_BROWSER };
   delete process.env.CHROME_BIN;
@@ -67,12 +67,12 @@ test('ohne Chrome und Caddy nennt die Abschlusszeile beide Zahlen', { timeout: 1
   assert.match(zeile, /, 1 Caddy-Dateien ohne Caddy \(CADDY_BIN, REQUIRE_CADDY=1\)$/);
 });
 
-test('mit Chrome und Caddy ist nichts übersprungen', { timeout: 120_000 }, t => {
+test('with Chrome and Caddy nothing is skipped', { timeout: 120_000 }, t => {
   const zeile = abschluss(t, { CHROME_BIN: process.execPath, CADDY_BIN: process.execPath });
   assert.match(zeile, /übersprungen: 0 Browser-Dateien ohne Chrome .*, 0 Caddy-Dateien ohne Caddy/);
 });
 
-test('mit REQUIRE_BROWSER=1 zählt nichts als übersprungen', { timeout: 120_000 }, t => {
+test('with REQUIRE_BROWSER=1 nothing counts as skipped', { timeout: 120_000 }, t => {
   // Dann scheitert jede echte Browser-Datei laut; die Wegwerf-Datei hier fragt nicht nach Chrome.
   const zeile = abschluss(t, { CHROME_BIN: '/gibt/es/nicht', REQUIRE_BROWSER: '1', REQUIRE_CADDY: '1' });
   assert.match(zeile, /übersprungen: 0 Browser-Dateien .*, 0 Caddy-Dateien/);

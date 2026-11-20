@@ -103,7 +103,7 @@ function lauf(s, id, ersatz = {}, moreEnv = {}) {
   return { code: r.status, log: r.stdout + r.stderr, aus };
 }
 
-test('signiert wird der Digest aus dem Push, nicht der umgehängte Tag', t => {
+test('the digest from the push is signed, not the moved tag', t => {
   const s = sandbox(t);
   const m = lauf(s, 'manifest');
   assert.equal(m.code, 0, m.log);
@@ -118,7 +118,7 @@ test('signiert wird der Digest aus dem Push, nicht der umgehängte Tag', t => {
   assert.equal(sig.aus.digest, FROM_PUSH, 'die Nachweise hängen am selben Digest');
 });
 
-test('ohne Digest aus dem Push bricht der Schritt ab', t => {
+test('without a digest from the push the step aborts', t => {
   const s = sandbox(t, false);
   const m = lauf(s, 'manifest');
   assert.equal(m.code, 1, m.log);
@@ -148,7 +148,7 @@ const callsIn = s => fs.readFileSync(path.join(s.ort, 'aufrufe'), 'utf8').split(
 // Caddy-Image …“; bei „Caddy-Herkunft bescheinigen“ `steps.signatur.outputs.digest`
 // → rot „… am signierten Caddy-Digest“; den Caddy-Artefakten den Namen
 // `digest-caddy-…` gegeben → rot „das App-Manifest mischt die Caddy-Digests“.
-test('Caddy wird wie das App-Image gebaut, signiert und bescheinigt, am Digest aus seinem Push', t => {
+test('Caddy is built, signed and attested like the app image, on the digest from its push', t => {
   const s = sandbox(t);
   const m = lauf(s, 'manifest-caddy', {}, { META: JSON.stringify({ tags: [`${CADDY}:latest`] }) });
   assert.equal(m.code, 0, m.log);
@@ -201,7 +201,7 @@ function tagsInPush(s) {
     .flatMap(z => [...z.matchAll(/-t (\S+)/g)].map(m => m[1]));
 }
 
-test('vor der Signatur trägt das Image keinen Tag', t => {
+test('before the signature the image carries no tag', t => {
   for (const [id, img] of [
     ['manifest', IMAGE],
     ['manifest-caddy', CADDY],
@@ -213,7 +213,7 @@ test('vor der Signatur trägt das Image keinen Tag', t => {
   }
 });
 
-test('ein anderer Digest als im Probelauf bricht ab', t => {
+test('a digest other than in the dry run aborts', t => {
   for (const id of ['manifest', 'manifest-caddy']) {
     const s = sandbox(t, true, { pushed: REASSIGNED });
     const m = lauf(s, id);
@@ -229,7 +229,7 @@ const place = marke => {
   return i;
 };
 
-test('Tags kommen nach Trivy, Signatur und Bescheinigung', t => {
+test('tags come after Trivy, signature and attestation', t => {
   for (const [id, sig, img, vorher] of [
     ['tags', 'signatur', IMAGE, ['Lücken im veröffentlichten Digest', 'Image signieren', 'Stückliste bescheinigen']],
     [
@@ -253,7 +253,7 @@ test('Tags kommen nach Trivy, Signatur und Bescheinigung', t => {
   }
 });
 
-test('ein umgehängter Tag bricht ab', t => {
+test('a moved tag aborts', t => {
   const s = sandbox(t, true, { inspection: REASSIGNED });
   const r = lauf(
     s,
@@ -269,7 +269,7 @@ test('ein umgehängter Tag bricht ab', t => {
 // Build-Job verweist auf deren Secrets. Gegenproben (13.11.2026 gemessen, je einzeln): `environment:
 // docker-hub` im Job build gestrichen → rot „build liest DOCKERHUB_* ohne Umgebung docker-hub“; die
 // Meldung wieder auf „Secrets and variables -> Actions“ → rot „… nennt die Environment-Secrets“.
-test('Docker-Hub-Zugangsdaten nur in Jobs mit der Umgebung docker-hub', () => {
+test('Docker Hub credentials only in jobs with the docker-hub environment', () => {
   const jobs = YML.slice(YML.indexOf('\njobs:\n'));
   const bloecke = jobs.split(/^ {2}(?=[\w-]+:\s*$)/m).slice(1);
   const withSecret = bloecke.filter(b => /secrets\.DOCKERHUB_/.test(b));

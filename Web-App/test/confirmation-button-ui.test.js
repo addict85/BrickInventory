@@ -35,7 +35,7 @@ async function liesDialog(d) {
   return stand;
 }
 
-test('Bestätigungsdialoge: Knopftext und Farbe je Aufrufer', async () => {
+test('confirmation dialogs: button text and color per caller', async () => {
   const { w, d } = await openUi({
     '/v1/vouchers': {
       success: true,
@@ -86,7 +86,7 @@ test('Bestätigungsdialoge: Knopftext und Farbe je Aufrufer', async () => {
   }
 });
 
-test('Bestätigungsdialoge auf Englisch: dasselbe Verb übersetzt', async () => {
+test('confirmation dialogs in English: the same verb translated', async () => {
   const { w, d } = await openUi(
     {
       '/v1/vouchers': {

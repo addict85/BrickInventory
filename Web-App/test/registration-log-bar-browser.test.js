@@ -20,7 +20,7 @@ const { catalogSet, holdsSet } = require('./helpers/inventory');
 const DESIGNS = ['classic', 'brick', 'noppe', 'werkbank', 'hochglanz', 'farbfaecher'];
 const THEMA = 'Star Wars / Ultimate Collector Series';
 
-test('Thema, Protokollfenster, untere Leiste und Registrierung', { timeout: 300_000 }, async t => {
+test('theme, log window, bottom bar and registration', { timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `masse_${process.pid}`,
     allDesigns: true,
@@ -37,7 +37,7 @@ test('Thema, Protokollfenster, untere Leiste und Registrierung', { timeout: 300_
   const groesse = (w, h, mobil) =>
     b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: mobil });
 
-  await t.test('Thema ganz auf der Kachel', async () => {
+  await t.test('theme fully on the tile', async () => {
     await groesse(1280, 900, false);
     await bis(`!!document.querySelector('#gallery .sc[data-arg="75192-1"] .smeta-text')`, 'Kachel');
     const m =
@@ -47,7 +47,7 @@ test('Thema, Protokollfenster, untere Leiste und Registrierung', { timeout: 300_
     assert.ok(m.sw <= m.cw + 1 && m.sh <= m.ch + 1, `abgeschnitten: ${JSON.stringify(m)}`);
   });
 
-  await t.test('Protokollfenster', async () => {
+  await t.test('log window', async () => {
     const im = (/** @type {string} */ a) =>
       `(() => { const document = window.document.getElementById('lv-rahmen')?.contentDocument; return !!document && (${a}); })()`;
     for (const dunkel of [false, true]) {
@@ -78,7 +78,7 @@ test('Thema, Protokollfenster, untere Leiste und Registrierung', { timeout: 300_
     await b.auswerten(`document.documentElement.removeAttribute('data-dunkel'); true`);
   });
 
-  await t.test('untere Leiste im Design brick bei 200 % Zoom', async () => {
+  await t.test('bottom bar in the brick design at 200 % zoom', async () => {
     try {
       await b.auswerten(`document.documentElement.dataset.theme = 'brick'; true`);
       await groesse(640, 450, false);
@@ -92,7 +92,7 @@ test('Thema, Protokollfenster, untere Leiste und Registrierung', { timeout: 300_
     }
   });
 
-  await t.test('Registrierung bei 320 px ohne Überlauf', async () => {
+  await t.test('registration at 320 px without overflow', async () => {
     await b.auswerten(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
     await bis(
       `!window.__alt && getComputedStyle(document.getElementById('login-screen')).display !== 'none'`,

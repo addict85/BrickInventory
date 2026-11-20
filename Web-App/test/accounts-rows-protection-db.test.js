@@ -26,7 +26,7 @@ const { testServer } = require('./helpers/server');
 const db = S.testData();
 const { asRequest } = _req('src/infra/accountContext.js');
 
-test('Konten nur im eigenen Haushalt', { concurrency: 1, timeout: 120_000 }, async t => {
+test('accounts only in the own household', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const P = process.pid;
   const namen = ['haupt', 'unter', 'fremd', 'frueher', 'fremdunter'].map(n => `kz_${n}_${P}`);
@@ -57,7 +57,7 @@ test('Konten nur im eigenen Haushalt', { concurrency: 1, timeout: 120_000 }, asy
   const zugang = S.testAccess();
   const als = (uid, f) => asRequest({ session: { userId: uid } }, f);
 
-  await t.test('eingeschleustes SQL sieht nur eigenes Konto und Haushalt', async () => {
+  await t.test('injected SQL only sees the own account and household', async () => {
     const sicht = async uid => ({
       konten: (await als(uid, () => zugang.all('SELECT id FROM users WHERE id = ANY($1) ORDER BY id', [ids]))).map(
         z => z.id,
@@ -73,7 +73,7 @@ test('Konten nur im eigenen Haushalt', { concurrency: 1, timeout: 120_000 }, asy
     assert.deepEqual(await sicht(fremd), { konten: [fremd, fremdunter], links: [fremd] });
   });
 
-  await t.test('… Adressen nicht, auch die eigene nicht; Namen nur am eigenen Konto', async () => {
+  await t.test('… not addresses, not even the own one; names only on the own account', async () => {
     await assert.rejects(
       als(haupt, () => zugang.get('SELECT email FROM users WHERE id = $1', [haupt])),
       /permission denied/,
@@ -88,7 +88,7 @@ test('Konten nur im eigenen Haushalt', { concurrency: 1, timeout: 120_000 }, asy
     );
   });
 
-  await t.test('wer eingeladen wird, erfährt den Namen des Einladenden', async () => {
+  await t.test('whoever is invited learns the name of the inviter', async () => {
     const haushalt = { ..._req('src/household/household.js'), ...S.testArea('household') };
     const { code } = await S.asAccount(fremd, () => haushalt.createInvitation(fremd));
     const { base } = testServer(_req, { sitzung: { userId: haupt, username: namen[0] }, t });
@@ -101,7 +101,7 @@ test('Konten nur im eigenen Haushalt', { concurrency: 1, timeout: 120_000 }, asy
     assert.deepEqual([r.status, body.inviter?.username], [200, namen[2]], JSON.stringify(body));
   });
 
-  await t.test('die Haushaltsansicht nennt Unterkonten und getrennte Konten beim Namen', async () => {
+  await t.test('the household view names sub-accounts and separated accounts by name', async () => {
     const { base } = testServer(_req, { sitzung: { userId: haupt, username: namen[0] }, t });
     const body = await (await fetch(`${base}/api/v1/settings/household`)).json();
     assert.deepEqual(

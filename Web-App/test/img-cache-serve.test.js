@@ -74,7 +74,7 @@ function datei(p, n) {
   fs.writeFileSync(p, Buffer.alloc(n, 0x41));
 }
 
-test('Auslieferungsreihenfolge des Bild-Caches', async t => {
+test('delivery order of the image cache', async t => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'imgcache-'));
   const orig = path.join(dir, 'bild');
   const thumb = path.join(dir, 'bild_thumb.jpg');
@@ -82,14 +82,14 @@ test('Auslieferungsreihenfolge des Bild-Caches', async t => {
     for (const f of fs.readdirSync(dir)) fs.unlinkSync(path.join(dir, f));
   };
 
-  await t.test('nichts im Cache → der Aufrufer muss beim CDN holen', async () => {
+  await t.test('nothing in the cache → the caller has to fetch from the CDN', async () => {
     aufraeumen();
     const { erledigt, streamed } = await ruf(dir, { wantThumb: false });
     assert.equal(erledigt, false, 'false heisst: nicht beantwortet, bitte holen');
     assert.deepEqual(streamed, []);
   });
 
-  await t.test('Original da, Vorschau gewünscht → Original SOFORT, Vorschau vorgemerkt', async () => {
+  await t.test('original there, preview wanted → original IMMEDIATELY, preview reserved', async () => {
     aufraeumen();
     datei(orig, 5000);
     const { erledigt, streamed, res } = await ruf(dir, { wantThumb: true });
@@ -104,7 +104,7 @@ test('Auslieferungsreihenfolge des Bild-Caches', async t => {
     assert.match(res.kopf['cache-control'] || '', /max-age=86400/);
   });
 
-  await t.test('Vorschau da → Vorschau statt Original', async () => {
+  await t.test('preview there → preview instead of original', async () => {
     aufraeumen();
     datei(orig, 5000);
     datei(thumb, 900);
@@ -114,7 +114,7 @@ test('Auslieferungsreihenfolge des Bild-Caches', async t => {
     assert.equal(res.kopf['content-length'], '900');
   });
 
-  await t.test('Vorschau da, aber NICHT gewünscht → Original', async () => {
+  await t.test('preview there, but NOT wanted → original', async () => {
     aufraeumen();
     datei(orig, 5000);
     datei(thumb, 900);
@@ -122,7 +122,7 @@ test('Auslieferungsreihenfolge des Bild-Caches', async t => {
     assert.deepEqual(streamed, [orig], 'Ohne ?thumb=1 gehört das Original raus, auch wenn eine Vorschau daliegt');
   });
 
-  await t.test('Rumpf-Vorschau wird verworfen und das Original geliefert', async () => {
+  await t.test('a stub preview is discarded and the original delivered', async () => {
     // Die Grenze liegt bei 200 Bytes. Eine leere oder abgeschnittene Datei ist
     // kein Bild — ausgeliefert sähe sie im Browser als kaputtes Kästchen aus,
     // und zwar dauerhaft, weil sie ja im Cache liegt.
@@ -138,7 +138,7 @@ test('Auslieferungsreihenfolge des Bild-Caches', async t => {
     );
   });
 
-  await t.test('gen=0 rechnet nichts, sondern hinterlässt nur eine Notiz', async () => {
+  await t.test('gen=0 computes nothing but only leaves a note', async () => {
     // Die ANFRAGE darf keine Verkleinerung anstossen — das macht der
     // Hintergrund-Job, gedrosselt und nur im Primärprozess.
     aufraeumen();
@@ -147,7 +147,7 @@ test('Auslieferungsreihenfolge des Bild-Caches', async t => {
     assert.deepEqual(noted, [1], 'Ohne Erzeugungsrecht muss vorgemerkt werden');
   });
 
-  await t.test('bekannter Stand → 304 und KEIN Bild', async () => {
+  await t.test('known state → 304 and NO image', async () => {
     // Der Fall, bei dem beim Herauslösen fast ein Fehler entstanden wäre:
     // Aus `return res.status(304).end()` darf kein blosses `res.status(304)`
     // werden — sonst liefe der Ablauf weiter und schriebe in eine bereits
@@ -169,7 +169,7 @@ test('Auslieferungsreihenfolge des Bild-Caches', async t => {
     assert.deepEqual(o.streamed, [], 'Auch der Original-Zweig darf bei 304 nichts senden');
   });
 
-  await t.test('nur Bild-Typen verlassen den Cache', async () => {
+  await t.test('only image types leave the cache', async () => {
     // Der Content-Type liegt als Datei daneben und stammt ursprünglich vom
     // CDN. Ein SVG ist das einzige Bildformat, das als Dokument geöffnet
     // aktiv wird — es darf nicht unter der eigenen Herkunft ausgeliefert
@@ -195,7 +195,7 @@ test('Auslieferungsreihenfolge des Bild-Caches', async t => {
     }
   });
 
-  await t.test('der Dienst nennt Datei, Typ, Länge und ETag, ohne zu senden', async () => {
+  await t.test('the service names file, type, length and ETag without sending', async () => {
     // Gesendet wird in src/images/http/; der Dienst bekommt keine Antwort zu sehen.
     aufraeumen();
     datei(orig, 5000);

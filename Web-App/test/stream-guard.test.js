@@ -32,7 +32,7 @@ srv.listen(0, async () => {
 });
 `;
 
-test('eine verschwundene Datei beim Ausliefern beendet den Prozess nicht', async () => {
+test('a vanished file during delivery does not end the process', async () => {
   const file = path.join(os.tmpdir(), `stream-guard-${process.pid}.js`);
   fs.writeFileSync(file, CHILD);
   try {

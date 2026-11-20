@@ -39,7 +39,7 @@ const { databaseConnection, standardPasswordInUse, ladeKonfig, KonfigFehler, VAR
 const { ohneKommentare } = require('./helpers/sources');
 const { spawnSync } = require('node:child_process');
 
-test('ohne Angaben dieselben Standardwerte wie compose.yaml', () => {
+test('without values the same defaults as compose.yaml', () => {
   assert.deepEqual(databaseConnection({}), {
     host: 'postgres',
     port: 5432,
@@ -49,7 +49,7 @@ test('ohne Angaben dieselben Standardwerte wie compose.yaml', () => {
   });
 });
 
-test('das Beispielpasswort wird erkannt — einzeln und in DATABASE_URL', () => {
+test('the example password is recognized — individually and in DATABASE_URL', () => {
   assert.equal(standardPasswordInUse({}), true);
   assert.equal(standardPasswordInUse({ PGPASSWORD: 'eigenes' }), false);
   assert.equal(standardPasswordInUse({ DATABASE_URL: 'postgres://brickinventory:brickinventory_secret@db/x' }), true);
@@ -57,14 +57,14 @@ test('das Beispielpasswort wird erkannt — einzeln und in DATABASE_URL', () => 
   assert.equal(standardPasswordInUse({ DATABASE_URL: 'kaputt' }), false);
 });
 
-test('DATABASE_URL geht vor', () => {
+test('DATABASE_URL takes precedence', () => {
   assert.deepEqual(databaseConnection({ DATABASE_URL: 'postgres://a:b@c/d', PGUSER: 'x' }), {
     connectionString: 'postgres://a:b@c/d',
   });
   assert.equal(databaseConnection({ PGPORT: '6543', PGUSER: 'u' }).port, 6543);
 });
 
-test('niemand sonst liest die Verbindungsvariablen', () => {
+test('nobody else reads the connection variables', () => {
   const funde = [];
   const durch = dir => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -85,7 +85,7 @@ test('niemand sonst liest die Verbindungsvariablen', () => {
   assert.deepEqual(funde, []);
 });
 
-test('niemand ausser der Konfiguration liest process.env', () => {
+test('nobody except the configuration reads process.env', () => {
   const funde = [];
   const durch = dir => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -107,7 +107,7 @@ test('niemand ausser der Konfiguration liest process.env', () => {
   assert.deepEqual(funde, []);
 });
 
-test('ungültige Werte: alle auf einmal, mit Namen', () => {
+test('invalid values: all at once, with names', () => {
   assert.throws(
     () =>
       ladeKonfig({ PORT: '0', SESSION_IDLE_MINUTES: 'viel', COOKIE_SECURE: 'ja', APP_BASE_URL: 'lego.example.org' }),
@@ -138,7 +138,7 @@ test('ungültige Werte: alle auf einmal, mit Namen', () => {
   assert.equal(ladeKonfig({}).sitzungLeerlaufMin, 240, 'ohne Angabe die Vorgabe');
 });
 
-test('eigene Attestierungswurzeln nur in Entwicklung und Test; der Stichtag ist ein Datum', () => {
+test('own attestation roots only in development and test; the cutoff date is a date', () => {
   assert.throws(() => ladeKonfig({ ATTESTATION_WURZELN: 'PEM' }), /ATTESTATION_WURZELN gilt nur mit NODE_ENV/);
   assert.throws(() => ladeKonfig({ NODE_ENV: 'production', ATTESTATION_WURZELN: 'PEM' }), KonfigFehler);
   assert.equal(ladeKonfig({ NODE_ENV: 'test', ATTESTATION_WURZELN: 'PEM' }).attestationWurzeln, 'PEM');
@@ -151,7 +151,7 @@ test('eigene Attestierungswurzeln nur in Entwicklung und Test; der Stichtag ist 
     assert.throws(() => ladeKonfig({ GERAETESCHLUESSEL_ALT_BIS: spaeter }), /liegt nach 2027-02-01/, spaeter);
 });
 
-test('der Server startet mit falschem Wert nicht', () => {
+test('the server does not start with a wrong value', () => {
   const r = spawnSync(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     env: {
       PATH: process.env.PATH,
@@ -166,7 +166,7 @@ test('der Server startet mit falschem Wert nicht', () => {
   assert.match(r.stderr, /Ungültige Konfiguration:\n {2}- PORT="achtzig"[^\n]*\n {2}- SESSION_IDLE_MINUTES="-5"/);
 });
 
-test('.env.example nennt jede Variable', () => {
+test('.env.example names every variable', () => {
   const beispiel = fs.readFileSync(path.join(ROOT, '.env.example'), 'utf8');
   const fehlt = VARIABLES.filter(v => !new RegExp(`^#? ?${v}=`, 'm').test(beispiel));
   assert.deepEqual(fehlt, []);

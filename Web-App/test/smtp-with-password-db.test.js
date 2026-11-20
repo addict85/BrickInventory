@@ -56,7 +56,7 @@ const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const NAME = `smtp_chef_${process.pid}`,
   PASS = 'chef-Passwort-1';
 
-test('SMTP nur mit Passwort', { concurrency: 1 }, async t => {
+test('SMTP only with password', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -97,25 +97,25 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async t => {
     }).then(async r => ({ status: r.status, body: await r.json() }));
   const host = async () => (await db.get("SELECT value FROM global_settings WHERE key = 'smtp_host'"))?.value;
 
-  await t.test('ohne Passwort bleibt der Mailserver', async () => {
+  await t.test('without a password the mail server stays', async () => {
     const r = await speichern({ smtp_host: 'mail.angreifer.example' });
     assert.equal(r.status, 400);
     assert.equal(r.body.code, 'aktuelles_passwort_erforderlich');
     assert.equal(await host(), 'mail.alt.example');
   });
 
-  await t.test('unverändert speichern fragt nicht nach', async () => {
+  await t.test('saving unchanged does not ask', async () => {
     const r = await speichern({ smtp_host: 'mail.alt.example', language: 'de' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
   });
 
-  await t.test('mit Passwort wird er geändert', async () => {
+  await t.test('with a password it is changed', async () => {
     const r = await speichern({ smtp_host: 'mail.neu.example', admin_password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await host(), 'mail.neu.example');
   });
 
-  await t.test('der Import stellt den Mailserver nicht um', async () => {
+  await t.test('the import does not switch the mail server', async () => {
     await db.run("DELETE FROM global_settings WHERE key = 'smtp_insecure_tls'");
     const fd = new FormData();
     fd.append(
@@ -151,14 +151,14 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async t => {
   });
 
   const wert = async k => (await db.get('SELECT value FROM global_settings WHERE key = $1', [k]))?.value;
-  await t.test('ein erster API-Schlüssel braucht in der Einrichtung kein Passwort', async () => {
+  await t.test('a first API key needs no password during setup', async () => {
     await db.run("DELETE FROM global_settings WHERE key IN ('rebrickable_api_key', 'einrichtung_erledigt')");
     const r = await speichern({ rebrickable_api_key: 'erster-schluessel' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await _req('src/settings/settings.js').getGlobalSetting('rebrickable_api_key'), 'erster-schluessel');
   });
 
-  await t.test('nach der Einrichtung auch ein erster Schlüssel nur mit Passwort', async () => {
+  await t.test('after setup even a first key only with password', async () => {
     await db.run("DELETE FROM global_settings WHERE key = 'brickset_api_key'");
     await db.run("INSERT INTO global_settings (key, value) VALUES ('einrichtung_erledigt', '1')");
     const r = await speichern({ brickset_api_key: 'erster-fremder' });
@@ -166,7 +166,7 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async t => {
     assert.equal(await wert('brickset_api_key'), undefined);
   });
 
-  await t.test('ohne Passwort bleiben Registrierung und API-Schlüssel', async () => {
+  await t.test('without a password registration and API key stay', async () => {
     await db.run(
       "INSERT INTO global_settings (key, value) VALUES ('registration_enabled', '0') ON CONFLICT (key) DO UPDATE SET value = '0'",
     );
@@ -178,7 +178,7 @@ test('SMTP nur mit Passwort', { concurrency: 1 }, async t => {
     assert.notEqual(await wert('rebrickable_api_key'), 'fremder-schluessel');
   });
 
-  await t.test('mit Passwort geändert, die Verwalter erfahren es', async () => {
+  await t.test('changed with password, the administrators learn of it', async () => {
     mails.length = 0;
     const r = await speichern({ registration_enabled: '1', admin_password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));

@@ -26,12 +26,12 @@ try {
 
 const U = 990601;
 
-test('beide Wege der Teileliste liefern dieselben Typen', async t => {
+test('both paths of the parts list deliver the same types', async t => {
   if (skip) return t.skip(skip);
   try {
     await db.get('SELECT 1');
   } catch {
-    return t.skip('keine Test-Datenbank erreichbar');
+    return t.skip('no test database reachable');
   }
 
   const aufraeumen = async () => {

@@ -34,7 +34,7 @@ const { testServer } = require('./helpers/server');
 const db = testData();
 const { warte, bis } = require('./helpers/time');
 
-test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async t => {
+test('CSV import: no double booking', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   // Erfassen fragt kein Netz; langsam macht eine Zeile die gehaltene Sperre je Setnummer.
   testSources(t, {
@@ -97,7 +97,7 @@ test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async t => {
   };
 
   try {
-    await t.test('nach einer Zeitüberschreitung kein zweiter Versuch', async () => {
+    await t.test('no second attempt after a timeout', async () => {
       const { ende } = await hold('70001-1');
       await importiere(['70001-1']);
       const a = await untilDone();
@@ -108,7 +108,7 @@ test('CSV-Import: keine Doppelbuchung', { concurrency: 1 }, async t => {
       assert.equal(a.results[0].isWarning, true, 'die Zeile endet als Warnung');
     });
 
-    await t.test('ein abgelöster Lauf hört auf', async () => {
+    await t.test('a superseded run stops', async () => {
       const { ende: lockEnd } = await hold('71002-1');
       await importiere(['71001-1', '71002-1', '71003-1', '71004-1', '71005-1']);
       assert.ok(await bis(async () => (await booked('71')).length > 0), 'der erste Lauf bucht schon');

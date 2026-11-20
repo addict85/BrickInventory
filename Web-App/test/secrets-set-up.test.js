@@ -46,7 +46,7 @@ function sandbox(t) {
   return { ort, lauf, lies };
 }
 
-test('eine neue Installation bekommt zufällige Geheimnisse, nur für den Besitzer erreichbar', t => {
+test('a new installation gets random secrets, only reachable by the owner', t => {
   const s = sandbox(t);
   const r = s.lauf();
   assert.equal(r.status, 0, r.stderr);
@@ -63,7 +63,7 @@ test('eine neue Installation bekommt zufällige Geheimnisse, nur für den Besitz
   assert.equal(s.lies('pgweb_db_password'), '');
 });
 
-test('eine bestehende Installation übernimmt die Werte aus .env', t => {
+test('an existing installation takes over the values from .env', t => {
   const s = sandbox(t);
   fs.mkdirSync(path.join(s.ort, 'pgdata18'));
   fs.writeFileSync(
@@ -90,7 +90,7 @@ test('eine bestehende Installation übernimmt die Werte aus .env', t => {
   assert.match(r.stderr, /aus \.env löschen.*SESSION_SECRET DB_PASSWORD DB_APP_PASSWORD PGWEB_PASSWORD/);
 });
 
-test('eine bestehende Datenbank ohne DB_PASSWORD bekommt kein neues', t => {
+test('an existing database without DB_PASSWORD does not get a new one', t => {
   const s = sandbox(t);
   fs.mkdirSync(path.join(s.ort, 'pgdata18'));
   const r = s.lauf();
@@ -99,7 +99,7 @@ test('eine bestehende Datenbank ohne DB_PASSWORD bekommt kein neues', t => {
   assert.equal(fs.existsSync(path.join(s.ort, 'geheimnisse', 'db_password')), false);
 });
 
-test('ein zweiter Lauf ändert nichts, PGWEB=ja füllt nur die leeren', t => {
+test('a second run changes nothing, PGWEB=ja only fills the empty ones', t => {
   const s = sandbox(t);
   assert.equal(s.lauf().status, 0);
   const vorher = Object.fromEntries(NAMEN.map(n => [n, s.lies(n)]));
@@ -114,7 +114,7 @@ test('ein zweiter Lauf ändert nichts, PGWEB=ja füllt nur die leeren', t => {
   assert.equal(s.lies('pgweb_db_password'), pw);
 });
 
-test('compose.yaml hängt genau diese Dateien ein', () => {
+test('compose.yaml mounts exactly these files', () => {
   const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
   const teil = compose.slice(compose.search(/^secrets:/m));
   const dateien = [...teil.matchAll(/^\s+file:\s*\.\/geheimnisse\/(\S+)\s*$/gm)].map(m => m[1]).sort();

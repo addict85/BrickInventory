@@ -42,7 +42,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
 
-test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async t => {
+test('first start via db/basis.sql', { concurrency: 1, timeout: 180_000 }, async t => {
   const admin = new Client({ connectionString: BASIS });
   try {
     await admin.connect();
@@ -67,7 +67,7 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
     await admin.end().catch(() => {});
   });
 
-  await t.test('eine leere Datenbank bekommt Basis, Vorgaben und einen Administrator', async () => {
+  await t.test('an empty database gets base, defaults and an administrator', async () => {
     await db.initSchemaOnce();
     const konto = await db.get(`SELECT is_admin, is_active FROM users WHERE username = 'admin'`);
     assert.equal(Number(konto?.is_admin), 1, 'kein Administrator angelegt');
@@ -91,7 +91,7 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
     );
   });
 
-  await t.test('eine bestehende Datenbank bleibt, wie sie ist', async () => {
+  await t.test('an existing database stays as it is', async () => {
     await db.run(`UPDATE users SET is_active = false WHERE username = 'admin'`);
     await db.run(`UPDATE global_settings SET value = '123' WHERE key = 'api_limit_bricklink'`);
     assert.equal(await db.initSchema(), false, 'die Basis wurde erneut eingespielt');
@@ -105,7 +105,7 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
   });
 
   // Der Stand von main bis 1ad80a5: 0045 da, 0050 noch nicht.
-  await t.test('eine Datenbank mit 0045, aber ohne 0050 startet und holt 0050 nach', async () => {
+  await t.test('a database with 0045 but without 0050 starts and catches up on 0050', async () => {
     await db.run(`DELETE FROM schema_migrations WHERE name LIKE '0050-%'`);
     assert.equal(await db.initSchema(), false);
     const c = await db.pool.connect();
@@ -119,7 +119,7 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
 
   // Ein Stand vor 0050 müsste die entfernten Startstufen nachholen; der Start
   // sagt das, statt die jüngeren Migrationen auf ein fremdes Schema zu setzen.
-  await t.test('eine Datenbank älter als 0050 hält den Start an und bleibt unberührt', async () => {
+  await t.test('a database older than 0050 stops the start and stays untouched', async () => {
     await db.run(`DELETE FROM schema_migrations WHERE name >= '0050'`);
     const vorher = (await db.get('SELECT COUNT(*)::int AS n FROM schema_migrations')).n;
     assert.ok(vorher > 0, 'die Probe braucht Migrationen vor 0050');
@@ -138,7 +138,7 @@ test('Erststart über db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
   });
 });
 
-test('db/basis.sql ist erzeugt, nicht geschrieben', { concurrency: 1, timeout: 180_000 }, async t => {
+test('db/basis.sql is generated, not written', { concurrency: 1, timeout: 180_000 }, async t => {
   const admin = new Client({ connectionString: BASIS });
   try {
     await admin.connect();
@@ -161,7 +161,7 @@ test('db/basis.sql ist erzeugt, nicht geschrieben', { concurrency: 1, timeout: 1
   const datei = fs.readFileSync(path.join(ROOT, 'db/basis.sql'), 'utf8');
   await c.query(datei);
 
-  await t.test('die Basis nennt eine lückenlose Folge vorhandener Migrationen', async () => {
+  await t.test('the base names a gapless sequence of existing migrations', async () => {
     const inBasis = (await c.query('SELECT name FROM schema_migrations ORDER BY name')).rows.map(r => r.name);
     const dateien = fs
       .readdirSync(path.join(ROOT, 'db/migrations'))
@@ -175,7 +175,7 @@ test('db/basis.sql ist erzeugt, nicht geschrieben', { concurrency: 1, timeout: 1
     );
   });
 
-  await t.test('db/basis.sql ist ein unverändertes Abbild der Datenbank, die es erzeugt', async tt => {
+  await t.test('db/basis.sql is an unchanged image of the database it creates', async tt => {
     const sk = require(path.join(ROOT, 'scripts', 'schema-snapshot.js'));
     const createdWith = Number((datei.match(/^-- Generated with pg_dump (\d+)\./m) || [])[1]);
     let jetzt = null;
@@ -186,7 +186,7 @@ test('db/basis.sql ist erzeugt, nicht geschrieben', { concurrency: 1, timeout: 1
     }
     // pg_dump schreibt je Hauptversion anders; verglichen wird nur mit derselben.
     if (jetzt !== createdWith) {
-      tt.skip(`pg_dump ${jetzt ?? 'fehlt'}, die Basis ist mit ${createdWith} erzeugt`);
+      tt.skip(`pg_dump ${jetzt ?? 'missing'}, the base was created with ${createdWith}`);
       return;
     }
     assert.equal(

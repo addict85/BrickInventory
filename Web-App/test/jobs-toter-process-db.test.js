@@ -21,7 +21,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-test('Aufträge toter Job-Prozesse', { concurrency: 1 }, async t => {
+test('jobs of dead job processes', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const prozess = _req('src/jobQueue/process.js');
   const { LOCKS } = _req('src/infra/lockNamespaces.js');
@@ -50,13 +50,13 @@ test('Aufträge toter Job-Prozesse', { concurrency: 1 }, async t => {
   // hochzufahren startete echte Aufträge, die Verbindungen halten.
   await prozess.reportProcessAn();
 
-  await t.test('der Start übernimmt den Auftrag eines toten Prozesses', async () => {
+  await t.test('the start takes over the job of a dead process', async () => {
     assert.notEqual(await status(tot), 'laeuft');
   });
-  await t.test('ein lebender Prozess behält seinen Auftrag', async () => {
+  await t.test('a living process keeps its job', async () => {
     assert.equal(await status(anderer), 'laeuft');
   });
-  await t.test('die eigenen Belegungen bleiben', async () => {
+  await t.test('the own claims stay', async () => {
     assert.equal(await status(eigener), 'laeuft');
   });
 });

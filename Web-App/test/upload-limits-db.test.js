@@ -49,7 +49,7 @@ const freePort = () =>
     });
   });
 
-test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async t => {
+test('upload limits', { concurrency: 1, timeout: 180_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `upload_${process.pid}`,
@@ -107,7 +107,7 @@ test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async t => 
   };
   const pdf = bytes => Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(bytes, 0x20)]);
 
-  await t.test('zu gross: 413 mit Code', async () => {
+  await t.test('too large: 413 with code', async () => {
     assert.deepEqual(
       {
         gutschein: await sende('/vouchers/pdf', pdf(3 * 1024 * 1024), 'application/pdf', 'g.pdf'),
@@ -120,7 +120,7 @@ test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async t => 
     );
   });
 
-  await t.test('falscher Typ: 415 mit Code', async () => {
+  await t.test('wrong type: 415 with code', async () => {
     assert.deepEqual(
       {
         gutschein: await sende('/vouchers/pdf', 'kein pdf', 'text/plain', 'g.txt'),
@@ -156,7 +156,7 @@ test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async t => 
     is_fig: false,
   }));
 
-  await t.test('die Teileliste des PDF-Auftrags darf grösser sein als 256 KB', async () => {
+  await t.test('the parts list of the PDF job may be larger than 256 KB', async () => {
     assert.ok(JSON.stringify({ parts: teile }).length > 900 * 1024);
     assert.deepEqual(await json('/sets/partslist-pdf', { sets: [{ set_number: SN }], parts: teile }), {
       status: 200,
@@ -170,7 +170,7 @@ test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async t => 
     );
   });
 
-  await t.test('… andere Routen nicht', async () => {
+  await t.test('… other routes not', async () => {
     assert.deepEqual(await json('/settings', { currency: 'EUR', ballast: teile }), {
       status: 413,
       code: 'anfrage_zu_gross',
@@ -187,12 +187,12 @@ test('Grenzen beim Hochladen', { concurrency: 1, timeout: 180_000 }, async t => 
     return { status: r.status, code: j?.code ?? null };
   };
 
-  await t.test('ohne Anmeldung wird kein Rumpf gelesen', async () => {
+  await t.test('without login no body is read', async () => {
     // Kaputtes JSON: Gelesen gäbe es 400, ungelesen bleibt es bei der 401 des Eingangs.
     assert.equal((await anonym('/sets/partslist-pdf', '{' + ' '.repeat(1024 * 1024))).status, 401);
   });
 
-  await t.test('… und auf den Anmelderouten höchstens 16 KB', async () => {
+  await t.test('… and on the login routes at most 16 KB', async () => {
     // Der Ballast im Feld `label`: Ein unbekanntes Feld wäre vor der Anmeldung schon 400.
     const mit = n => JSON.stringify({ username: 'niemand', password: 'x'.repeat(20), label: 'y'.repeat(n) });
     assert.equal((await anonym('/auth/login', mit(10 * 1024))).status, 401, 'eine gewöhnliche Anmeldung passt');

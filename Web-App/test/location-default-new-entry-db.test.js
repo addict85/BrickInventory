@@ -52,7 +52,7 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, async t => {
+test('the storage location default applies to every new capture', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -105,14 +105,14 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
       )
     )?.name ?? null;
 
-  await t.test('ein Teil ohne Ortangabe bekommt die Vorgabe', async () => {
+  await t.test('a part without a place gets the default', async () => {
     // Genau so ruft der Wanted-Import an (routes/api_v1/wanted.ts, `creator`):
     // Nummer, Farbe, Menge, Zustand — kein storage.
     await addManualPart(UID, { part_number: '3001', color_id: 4, quantity: 1 });
     assert.equal(await locationOfPart('3001'), 'Kiste 7');
   });
 
-  await t.test('eine Figur ohne Ortangabe bekommt sie auch', async () => {
+  await t.test('a figure without a place gets it too', async () => {
     await addManualMinifig(UID, { fig_number: 'fig-000123', quantity: 1 });
     const z = await db.get(
       `SELECT l.name FROM minifigs m LEFT JOIN storage_locations l ON l.id = m.storage_id
@@ -122,7 +122,7 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
     assert.equal(z?.name ?? null, 'Kiste 7');
   });
 
-  await t.test('ein Set wuerde sie ebenfalls bekommen', async () => {
+  await t.test('a set would get it as well', async () => {
     // Nicht durch addSet hindurch — siehe den Kopf. Geprueft ist der Wert, den
     // die Huelle in src/sets/service.ts aus demselben Aufruf erhaelt.
     assert.equal(await locationForNewEntry(UID, undefined), 'Kiste 7');
@@ -134,12 +134,12 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
     );
   });
 
-  await t.test('ein mitgegebener Ort gewinnt gegen die Vorgabe', async () => {
+  await t.test('a place passed along wins against the default', async () => {
     await addManualPart(UID, { part_number: '3002', color_id: 4, quantity: 1, storage: 'Kiste 3' });
     assert.equal(await locationOfPart('3002'), 'Kiste 3');
   });
 
-  await t.test('ein ausdruecklich geleertes Feld bleibt leer', async () => {
+  await t.test('an explicitly cleared field stays empty', async () => {
     await addManualPart(UID, { part_number: '3003', color_id: 4, quantity: 1, storage: '' });
     assert.equal(
       await locationOfPart('3003'),
@@ -150,7 +150,7 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
     );
   });
 
-  await t.test('eine Vorgabe, deren Ort geloescht wurde, gilt nicht', async () => {
+  await t.test('a default whose place was deleted does not apply', async () => {
     await db.run('DELETE FROM storage_locations WHERE user_id=$1 AND name=$2', [UID, 'Kiste 7']);
     assert.equal(
       await locationForNewEntry(UID, undefined),
@@ -161,7 +161,7 @@ test('die Lagerort-Vorgabe gilt bei jeder Neuerfassung', { concurrency: 1 }, asy
     assert.equal(await locationOfPart('3004'), null);
   });
 
-  await t.test('ohne jede Vorgabe bleibt es beim alten Verhalten', async () => {
+  await t.test('without any default the old behavior stays', async () => {
     await setDefault(UID, null);
     assert.equal(await locationForNewEntry(UID, undefined), null);
     assert.equal(await locationForNewEntry(UID, 'Kiste 3'), 'Kiste 3');

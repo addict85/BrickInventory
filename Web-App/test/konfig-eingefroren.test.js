@@ -22,7 +22,7 @@ test.after(() => {
   readKonfigNew();
 });
 
-test('nach dem ersten Lesen ändert die Umgebung nichts mehr', () => {
+test('after the first read the environment changes nothing any more', () => {
   process.env.PORT = '4101';
   assert.equal(readKonfigNew().port, 4101);
   process.env.PORT = '4102';
@@ -30,14 +30,14 @@ test('nach dem ersten Lesen ändert die Umgebung nichts mehr', () => {
   assert.equal(readKonfigNew().port, 4102);
 });
 
-test('setKonfig legt Werte darüber, null hebt sie auf', () => {
+test('setKonfig lays values over it, null lifts them', () => {
   process.env.PORT = '4103';
   assert.equal(setKonfig({ port: 5 }).port, 5);
   assert.equal(konfig().port, 5);
   assert.equal(setKonfig(null).port, 4103);
 });
 
-test('die Konfiguration ist eingefroren', () => {
+test('the configuration is frozen', () => {
   assert.ok(Object.isFrozen(readKonfigNew()));
   assert.ok(Object.isFrozen(setKonfig({ port: 5 })));
   setKonfig(null);

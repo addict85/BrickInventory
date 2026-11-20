@@ -33,7 +33,7 @@ const { secureUserData, cleanOldBackupsOn } = _req('db/migrate.js');
 const { cleanLogOn } = require('./helpers/sources').testArea('account').protokoll;
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
-test('Kontolöschung ohne Spuren', { concurrency: 1 }, async t => {
+test('account deletion without traces', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const P = process.pid,
@@ -84,7 +84,7 @@ test('Kontolöschung ohne Spuren', { concurrency: 1 }, async t => {
   });
   assert.equal(r.status, 200, await r.clone().text());
 
-  await t.test('das gelöschte Konto ist in keiner Kopie mehr', async () => {
+  await t.test('the deleted account is in no copy any more', async () => {
     assert.equal(await zaehle('users', 'id'), 0);
     assert.equal(await zaehle('sets', 'user_id'), 0);
     assert.ok(
@@ -93,14 +93,14 @@ test('Kontolöschung ohne Spuren', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('nach dem Aufräumlauf nennt das Verwaltungsprotokoll den Namen nicht mehr', async () => {
+  await t.test('after the cleanup run the admin log no longer names the name', async () => {
     await cleanLogOn();
     const z = await db.all('SELECT target_id, target_name FROM admin_log WHERE target_id = $1', [uid]);
     assert.equal(z.length, 1, 'die Zeile selbst bleibt');
     assert.equal(z[0].target_name, null);
   });
 
-  await t.test('Kopien älter als die Frist verschwinden im Aufräumlauf', async () => {
+  await t.test('copies older than the deadline disappear in the cleanup run', async () => {
     await db.run('CREATE SCHEMA vor_migration_20200101000000000');
     await db.run('CREATE TABLE vor_migration_20200101000000000.users (id int)');
     assert.ok((await cleanOldBackupsOn(db)) >= 1);
@@ -109,7 +109,7 @@ test('Kontolöschung ohne Spuren', { concurrency: 1 }, async t => {
     assert.ok(da.includes(schema), 'die frische Kopie bleibt');
   });
 
-  await t.test('Protokollzeilen älter als ein Jahr verschwinden im Aufräumlauf', async () => {
+  await t.test('log rows older than one year disappear in the cleanup run', async () => {
     const alt = (
       await db.get(
         `INSERT INTO admin_log (occurred_at, admin_id, target_id, target_name, action)

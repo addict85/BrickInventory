@@ -67,7 +67,7 @@ const tap = (o, wert) => {
   f.dispatchEvent(new o.w.Event('input', { bubbles: true }));
 };
 
-test('Webapp: beim Tippen gespeichert, entprellt mit der Ruhezeit der App', async () => {
+test("web app: saved while typing, debounced with the app's idle time", async () => {
   assert.ok(REST >= 300, `RUHE_MS der App nicht gefunden (${REST})`);
   const o = await detail();
   try {
@@ -92,7 +92,7 @@ test('Webapp: beim Tippen gespeichert, entprellt mit der Ruhezeit der App', asyn
   }
 });
 
-test('Webapp: ein leeres Feld löscht, ein Zustandswechsel lädt nur', async () => {
+test('web app: an empty field deletes, a condition change only loads', async () => {
   const o = await detail({
     [`/v1/sets/${SN}/alert`]: (_u, opt) =>
       opt.method === 'DELETE'
@@ -130,7 +130,7 @@ test('Webapp: ein leeres Feld löscht, ein Zustandswechsel lädt nur', async () 
   }
 });
 
-test('Webapp: offene Alarme — der erste Besuch merkt nur, danach die Meldung wie in der App', async () => {
+test('web app: open alerts — the first visit only remembers, afterwards the notification as in the app', async () => {
   const JETZT = '2026-11-10T08:00:00.123Z';
   const offen = {
     success: true,

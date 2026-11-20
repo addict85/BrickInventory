@@ -40,7 +40,7 @@ function stage() {
   return dom;
 }
 
-test('jedes Passwortfeld eines MENSCHEN liegt in einem Formular', () => {
+test('every password field of a HUMAN lies in a form', () => {
   const d = new JSDOM(HTML).window.document;
   const felder = [...d.querySelectorAll('input[type=password]')];
   assert.ok(felder.length >= 13, `Nur ${felder.length} Passwortfelder gefunden — stimmt der Pfad?`);
@@ -72,7 +72,7 @@ test('jedes Passwortfeld eines MENSCHEN liegt in einem Formular', () => {
   }
 });
 
-test('Absenden lädt die Seite NICHT neu, sondern drückt den Knopf', () => {
+test('submitting does NOT reload the page but presses the button', () => {
   const dom = stage();
   const d = dom.window.document;
   const forms = [...d.querySelectorAll('form[data-submit]')];
@@ -106,7 +106,7 @@ test('Absenden lädt die Seite NICHT neu, sondern drückt den Knopf', () => {
   }
 });
 
-test('die Absendeknöpfe tragen type="button"', () => {
+test('the submit buttons carry type="button"', () => {
   // Der Grund steht im Kopf: Ohne type="button" ist ein <button> in einem
   // <form> ein ABSENDEknopf. Der Lauscher drückt ihn, sein Klick löst wieder
   // submit aus, und das geht so weiter, bis der Zähler oben mehr als eins

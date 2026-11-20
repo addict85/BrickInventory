@@ -40,7 +40,7 @@ const accountNamed =
   name => `!document.getElementById('btn-verify').disabled && ${text('verify-ziel')}.includes('„${name}“')
   && ${text('btn-verify')}.includes('„${name}“')`;
 
-test('E-Mail-Bestätigung per Knopf', { timeout: 180_000 }, async t => {
+test('email confirmation via button', { timeout: 180_000 }, async t => {
   const app = await startApp(t, { name: `bestaetigen_${process.pid}` });
   if (app.grund) {
     t.skip(app.grund);
@@ -62,7 +62,7 @@ test('E-Mail-Bestätigung per Knopf', { timeout: 180_000 }, async t => {
       )
     ).ok;
 
-  await t.test('angemeldet (neue Adresse im Profil): erst der Knopf, dann die Anwendung', async () => {
+  await t.test('logged in (new address in the profile): first the button, then the application', async () => {
     await app.b.tab('Page.navigate', { url: await newLink(app.uid) });
     await app.bis(`${sichtbar('login-screen')} && ${sichtbar('panel-verify')}`, 'Bestätigungsseite');
     await app.bis(accountNamed(`bestaetigen_${process.pid}`), 'eigenes Konto genannt');
@@ -77,7 +77,7 @@ test('E-Mail-Bestätigung per Knopf', { timeout: 180_000 }, async t => {
     assert.equal(await bestaetigt(app.uid), true);
   });
 
-  await t.test('abgemeldet: die Erfolgsmeldung steht über der Anmeldung', async st => {
+  await t.test('logged out: the success message stands above the login', async st => {
     const zweiter = (
       await app.db.get(
         `INSERT INTO users (username, password_hash, is_active, registration_pending)

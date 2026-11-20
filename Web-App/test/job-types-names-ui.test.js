@@ -18,7 +18,7 @@ const { DECLARED_KINDS } = buildAndRequire()('startup/wiring.js');
 const ARTEN = Object.keys(DECLARED_KINDS).sort();
 
 for (const sprache of ['de', 'en']) {
-  test(`jede angemeldete Auftragsart hat einen Namen (${sprache})`, async () => {
+  test(`every registered job kind has a name (${sprache})`, async () => {
     assert.ok(ARTEN.length > 15 && ARTEN.includes('katalog_nachzug'), `nur ${ARTEN.length} Arten`);
     const { w, d, warte, ruhig } = await openUi(
       {

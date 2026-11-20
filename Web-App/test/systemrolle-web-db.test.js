@@ -93,7 +93,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
   t.after(() => db.pool.end().catch(() => {}));
   const imWeb = f => asWebRequest({}, () => inSystemContext('Test', f));
 
-  await t.test('die Web-Systemrolle hat genau diese Tabellenrechte', async () => {
+  await t.test('the web system role has exactly these table privileges', async () => {
     const zeilen = await db.all(
       `SELECT c.relname AS t, COALESCE(NULLIF(concat_ws(', ',
                 CASE WHEN has_table_privilege($1, c.oid, 'SELECT') THEN 'SELECT' END,
@@ -119,7 +119,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     assert.deepEqual(fn, { kopien: true, zahl: true, aufraeumen: false, bypass: true });
   });
 
-  await t.test('jede Sicht liest mit den Rechten der Abfragenden, die Web-Rolle nur die genannten', async tt => {
+  await t.test('every view reads with the rights of the querying role, the web role only the named ones', async tt => {
     const name = `sicht_test_${process.pid}`;
     const a = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [name])).id;
     const b = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [`${name}b`]))
@@ -162,13 +162,13 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     );
   });
 
-  await t.test('Anfragen nehmen im Systemrahmen die Web-Systemrolle, sonst die Systemrolle', async () => {
+  await t.test('requests take the web system role in the system context, otherwise the system role', async () => {
     assert.equal((await imWeb(() => zugang.get('SELECT current_user AS u'))).u, WEB);
     const ohne = await inSystemContext('Test', () => zugang.get('SELECT current_user AS u'));
     assert.equal(ohne.u, process.env.PGSYSTEM_USER);
   });
 
-  await t.test('im Systemrahmen einer Anfrage bleiben Gutscheine zu, Konten offen', async () => {
+  await t.test('in the system context of a request vouchers stay closed, accounts open', async () => {
     await assert.rejects(
       imWeb(() => zugang.get('SELECT count(*) FROM vouchers')),
       /permission denied for table vouchers/,
@@ -180,7 +180,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     assert.ok(await imWeb(() => zugang.get('SELECT count(*)::int AS n FROM users')));
   });
 
-  await t.test('ein Konto verschwindet auch aus den Kopien, ohne dass die Web-Rolle sie liest', async tt => {
+  await t.test('an account also disappears from the copies without the web role reading them', async tt => {
     const uid = 987_001;
     await db.run('DROP SCHEMA IF EXISTS vor_migration_1 CASCADE');
     await db.run('CREATE SCHEMA vor_migration_1');
@@ -201,7 +201,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     );
   });
 
-  await t.test('eine Anfrage zieht den Katalog nicht selbst nach, sie stellt den Auftrag ein', async () => {
+  await t.test('a request does not update the catalog itself, it enqueues the job', async () => {
     const uid = (
       await db.get(`INSERT INTO users (username, password_hash) VALUES ('systemweb-teile', 'x') RETURNING id`)
     ).id;
@@ -220,7 +220,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     assert.equal(await offen(), 0, 'der Auftrag leert sie');
   });
 
-  await t.test('der Web-Prozess startet mit der Web-Systemrolle und waiting auf die Umschlüsselung', async tt => {
+  await t.test('the web process starts with the web system role and waits for the re-encryption', async tt => {
     await db.run(`DELETE FROM run_state WHERE key = 'altbestand_v2'`);
     const port = await freePort();
     const { PGSYSTEM_WEB_USER: _u, PGSYSTEM_WEB_PASSWORD: _p, ...withoutWeb } = process.env;

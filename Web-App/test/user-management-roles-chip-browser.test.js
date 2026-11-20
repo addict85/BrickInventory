@@ -22,7 +22,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 
-test('Rollen-Chip: Tippfläche, Fokus, 320 px und 200 %', { timeout: 200_000 }, async t => {
+test('role chip: tap area, focus, 320 px and 200 %', { timeout: 200_000 }, async t => {
   const ANDERE = `rc_admin_${process.pid}`;
   const app = await startApp(t, { name: `rc_${process.pid}` });
   if (app.grund) {
@@ -56,7 +56,7 @@ test('Rollen-Chip: Tippfläche, Fokus, 320 px und 200 %', { timeout: 200_000 }, 
       return { b: Math.round(r.width), h: Math.round(r.height), seite: document.documentElement.scrollWidth, fenster: innerWidth,
         ragt: chip.left < karte.left - 0.5 || chip.right > karte.right + 0.5 || el.scrollWidth > el.clientWidth + 1 }; })()`);
 
-  await t.test('Rechner: X mindestens 24 px, sichtbarer Fokus, Rückfrage nennt das Konto', async () => {
+  await t.test('desktop: X at least 24 px, visible focus, confirmation names the account', async () => {
     await metric(1280, false);
     await toList();
     const m = await mass();
@@ -77,14 +77,14 @@ test('Rollen-Chip: Tippfläche, Fokus, 320 px und 200 %', { timeout: 200_000 }, 
     await bis(`getComputedStyle(document.getElementById('confirm-modal')).display === 'none'`, 'Rückfrage zu');
   });
 
-  await t.test('Telefon: X mindestens 44 px', async () => {
+  await t.test('phone: X at least 44 px', async () => {
     await metric(390, true);
     await toList();
     const m = await mass();
     assert.ok(m.b >= 44 && m.h >= 44, `Telefon: X mindestens 44 px (${m.b} × ${m.h})`);
   });
 
-  await t.test('320 px, 200 %: nichts ragt aus der Karte', async () => {
+  await t.test('320 px, 200 %: nothing sticks out of the card', async () => {
     for (const schrift of ['', '200%']) {
       await b.auswerten(`document.documentElement.style.fontSize = '${schrift}'; true`);
       await metric(320, true);

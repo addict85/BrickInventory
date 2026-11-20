@@ -47,7 +47,7 @@ function loadedImages(w) {
   w.document.head.append(stil);
 }
 
-test('geladene Bilder sind sofort als loaded markiert, auch in der Liste', async () => {
+test('loaded images are marked as loaded immediately, also in the list', async () => {
   const { w, d, warte } = await openUi({ '/v1/sets': SETS }, { vorher: loadedImages });
   try {
     assert.ok(await warte(() => d.querySelectorAll('#gallery img').length === 2));
@@ -68,7 +68,7 @@ test('geladene Bilder sind sofort als loaded markiert, auch in der Liste', async
   }
 });
 
-test('Preise kommen in die bestehende Kachel; ein leerer Container ist verborgen', async () => {
+test('prices go into the existing tile; an empty container is hidden', async () => {
   let priceLos;
   const preise = new Promise(r => {
     priceLos = r;

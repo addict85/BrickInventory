@@ -17,20 +17,20 @@ const { issueTicket, redeemTicket } = require(path.join(ROOT, 'dist/src/vouchers
 const { Faecher } = require(path.join(ROOT, 'dist/src/infra/cache.js'));
 const { stellbareClock } = require(path.join(ROOT, 'dist/src/infra/clock.js'));
 
-test('PDF-Ticket: einmal, je Konto und Ziel, je Satz Dienste', async t => {
+test('PDF ticket: once, per account and target, per set of services', async t => {
   const a = { faecher: new Faecher(), uhr: stellbareClock() },
     b = { faecher: new Faecher(), uhr: stellbareClock() };
-  await t.test('ein anderer Satz Dienste kennt das Ticket nicht', () => {
+  await t.test('another set of services does not know the ticket', () => {
     assert.equal(redeemTicket(b, issueTicket(a, 7, 'export'), 7, 'export'), false);
   });
-  await t.test('einmal, nur für Konto und Ziel', () => {
+  await t.test('once, only for account and target', () => {
     const ticket = issueTicket(a, 7, '12');
     assert.equal(redeemTicket(a, ticket, 8, '12'), false, 'fremdes Konto');
     const zweites = issueTicket(a, 7, '12');
     assert.equal(redeemTicket(a, zweites, 7, '12'), true);
     assert.equal(redeemTicket(a, zweites, 7, '12'), false, 'ein zweites Mal');
   });
-  await t.test('nach 60 s gilt es nicht mehr (gestellte Uhr statt Warten)', () => {
+  await t.test('after 60 s it no longer applies (set clock instead of waiting)', () => {
     const ticket = issueTicket(a, 7, 'spaet');
     a.uhr.vor(61_000);
     assert.equal(redeemTicket(a, ticket, 7, 'spaet'), false);

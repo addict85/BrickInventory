@@ -48,10 +48,10 @@ function app() {
   return a;
 }
 
-test('ein werfender async-Handler wird zur 500', async () => {
+test('a throwing async handler becomes a 500', async () => {
   assert.equal(await probe(app(), '/api/boom'), 500);
 });
 
-test('eine werfende async-Middleware ebenso', async () => {
+test('a throwing async middleware likewise', async () => {
   assert.equal(await probe(app(), '/mw/x'), 500);
 });

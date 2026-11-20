@@ -74,7 +74,7 @@ function buildVoucher(nummer, pin, betrag) {
 
 const rowAsText = async id => (await db.get('SELECT v::text AS t FROM vouchers v WHERE id = $1', [id])).t;
 
-test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
+test('voucher number encrypted', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -116,7 +116,7 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
   };
   let id1;
 
-  await t.test('nach dem Anlegen steht die Nummer in keiner Spalte im Klartext', async () => {
+  await t.test('after creation the number is in no column in plain text', async () => {
     const r = await ruf(haupt, 'POST', '/vouchers', { number: NR1, pin: '2468', amount: 50, currency: 'CHF' });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.voucher.number, '…' + NR1.slice(-4), 'nach aussen nur das Ende');
@@ -129,7 +129,7 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
     assert.match(roh.number_search, /^[0-9a-f]{64}$/);
   });
 
-  await t.test('lesen und ändern', async () => {
+  await t.test('read and change', async () => {
     const liste = await ruf(haupt, 'GET', '/vouchers');
     assert.deepEqual(
       liste.body.vouchers.map(v => [v.id, v.number, v.pin]),
@@ -148,7 +148,7 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
     assert.ok(!(await rowAsText(id1)).includes(NR2));
   });
 
-  await t.test('Doppelte werden erkannt, je Konto', async () => {
+  await t.test('duplicates are detected, per account', async () => {
     const doppelt = await ruf(haupt, 'POST', '/vouchers', { number: NR2, amount: 10 });
     assert.deepEqual([doppelt.status, doppelt.body.code], [409, 'gutschein_existiert']);
     const zweiter = await ruf(haupt, 'POST', '/vouchers', { number: NR3, amount: 10 });
@@ -163,7 +163,7 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
     assert.equal(searchValues.length, 2, 'derselbe Suchwert in zwei Konten verriete, dass sie dieselbe Karte halten');
   });
 
-  await t.test('PDF, Export und Import tragen die Nummer', async () => {
+  await t.test('PDF, export and import carry the number', async () => {
     const fd = new FormData();
     fd.append('file', new Blob([await buildVoucher(NR1, '1357', '25')], { type: 'application/pdf' }), 'g.pdf');
     const r = await fetch(`${haupt.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd });
@@ -210,7 +210,7 @@ test('Gutscheinnummer verschlüsselt', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('ein Altbestand wird beim Start umgeschlüsselt, samt Sicherungskopie', async () => {
+  await t.test('a legacy stock is re-encrypted at startup, including a backup copy', async () => {
     // Der Stand vor 0087: Nummer im Klartext, eindeutig über (user_id, number).
     await db.run('DELETE FROM vouchers');
     await db.run(`ALTER TABLE vouchers DROP CONSTRAINT vouchers_nummer_verschluesselt,

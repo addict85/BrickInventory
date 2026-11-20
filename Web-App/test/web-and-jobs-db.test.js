@@ -118,7 +118,7 @@ async function beende(p) {
   if (p.exitCode === null && p.signalCode === null) p.kill('SIGKILL');
 }
 
-test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
+test('web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   // Ohne heutige Stempel lädt der Job-Prozess den Rebrickable-Katalog herunter.
@@ -152,7 +152,7 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
     for (let i = 0; i < 240 && !/localhost:\d+/.test(web.log); i++) await warte(250);
     assert.match(web.log, /Rolle web/, web.log.slice(-1500));
 
-    await t.test('der Web-Prozess arbeitet keine Aufträge ab', async () => {
+    await t.test('the web process processes no jobs', async () => {
       const id = (
         await db.get(`INSERT INTO jobs (type, payload) VALUES ('bilder', $1) RETURNING id`, [
           JSON.stringify({ set_number: `rollen-nichtda-${process.pid}`, marke: MARKE }),
@@ -164,7 +164,7 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
       erster = id;
     });
 
-    await t.test('der Web-Prozess sieht den Startzustand des Job-Prozesses', async () => {
+    await t.test('the web process sees the startup state of the job process', async () => {
       const vorher = await hole(port, '/api/v1/startup-status');
       assert.equal(vorher.body.ready, false, 'Vorbedingung: ohne Job-Prozess ist der Katalog nicht geprüft');
       jobs = starte('jobs', jobsPort);
@@ -177,7 +177,7 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
       assert.equal(r.body.ready, true, `${JSON.stringify(r.body)}\n${jobs.log.slice(-1500)}`);
     });
 
-    await t.test('der Job-Prozess erledigt den Auftrag und nimmt keine Anfragen an', async () => {
+    await t.test('the job process completes the job and accepts no requests', async () => {
       let z;
       for (let i = 0; i < 80; i++) {
         z = await auftrag(erster);
@@ -189,7 +189,7 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
       await assert.rejects(hole(jobsPort, '/api/v1/health'), /ECONNREFUSED/, 'Der Job-Prozess lauscht auf einem Port');
     });
 
-    await t.test('jede API-Antwort nennt die Schnittstellenfassung', async () => {
+    await t.test('every API response names the interface version', async () => {
       const r = await hole(port, '/api/v1/health');
       const { API_VERSION, API_MIN_APP } = _req('src/http/apiVersion.js');
       assert.equal(r.headers['x-api-version'], String(API_VERSION));
@@ -198,7 +198,7 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
       assert.equal(r.body.status, 'ok');
     });
 
-    await t.test('eine zu alte App wird mit 426 abgewiesen', async () => {
+    await t.test('a too old app is rejected with 426', async () => {
       const { API_MIN_APP } = _req('src/http/apiVersion.js');
       assert.equal(
         (await hole(port, '/api/v1/health', { kopf: { 'X-App-Api': String(API_MIN_APP - 1) } })).status,
@@ -207,18 +207,18 @@ test('Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
       assert.equal((await hole(port, '/api/v1/health', { kopf: { 'X-App-Api': String(API_MIN_APP) } })).status, 200);
     });
 
-    await t.test('eine App mit Zahlen statt Wahrheitswerten (Fassung 1) bekommt „App zu alt“', async () => {
+    await t.test('an app with numbers instead of booleans (version 1) gets “app too old”', async () => {
       // Woran die App den Hinweis erkennt: Statuscode, Kopfzeile, Code (ServerWaechter.kt).
       const r = await hole(port, '/api/v1/auth/profile', { kopf: { 'X-App-Api': '1' } });
       assert.deepEqual([r.status, r.headers['x-api-min-app'], r.body.code], [426, '2', 'app_zu_alt']);
     });
 
-    await t.test('weist schreibende Anfragen fremder Seiten ab', async () => {
+    await t.test('rejects writing requests from foreign sites', async () => {
       const r = await hole(port, '/api/v1/auth/logout', { methode: 'POST', kopf: { 'sec-fetch-site': 'cross-site' } });
       assert.equal(r.status, 403, 'src/http/origin.ts hängt nicht in server.ts');
     });
 
-    await t.test('SIGTERM: der Job-Prozess gibt seinen laufenden Auftrag zurück', async () => {
+    await t.test('SIGTERM: the job process returns its running job', async () => {
       // Ein Auftrag mit langer Frist, den der Job-Prozess belegt, aber nie zu Ende bringt:
       // Die Art kennt er nicht, also simuliert der Test die Belegung selbst mit seiner Kennung.
       const id = (

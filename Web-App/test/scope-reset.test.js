@@ -35,7 +35,7 @@ const remember = w => {
 };
 const setQueries = o => o.aufrufe.filter(a => a.method === 'GET' && /\/v1\/sets(\?|$)/.test(a.url));
 
-test('die Anmeldung setzt Konto- und Lagerortfilter zurück, bevor die Liste lädt', async () => {
+test('login resets the account and location filters before the list loads', async () => {
   const o = await openUi(
     {
       ...ANMELDUNG,
@@ -65,7 +65,7 @@ test('die Anmeldung setzt Konto- und Lagerortfilter zurück, bevor die Liste lä
   }
 });
 
-test('ein Neuladen in derselben Sitzung behält die Wahl', async () => {
+test('a reload in the same session keeps the choice', async () => {
   const o = await openUi(HAUSHALT, { vorher: remember });
   try {
     await o.ruhig();
@@ -82,7 +82,7 @@ test('ein Neuladen in derselben Sitzung behält die Wahl', async () => {
   }
 });
 
-test('die Wahl wird gemerkt und geht an den Server', async () => {
+test('the choice is remembered and goes to the server', async () => {
   const o = await openUi(HAUSHALT);
   try {
     await o.ruhig();

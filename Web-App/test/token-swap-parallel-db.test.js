@@ -27,7 +27,7 @@ const auth = _req('src/account/deviceToken.js');
 const tokenCache = _req('src/account/tokenCache.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
-test('Tausch desselben Tokens', { concurrency: 1 }, async t => {
+test('exchange of the same token', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const NAME = `tausch_${process.pid}`;
@@ -59,7 +59,7 @@ test('Tausch desselben Tokens', { concurrency: 1 }, async t => {
     return { status: r.status, body: await r.json().catch(() => null) };
   };
 
-  await t.test('sechs gleichzeitige Tausche: einer neu, die anderen 409', async () => {
+  await t.test('six concurrent exchanges: one new, the others 409', async () => {
     const alt = await auth.createToken(uid, 'Telefon', true, null, { scope: 'app', ip: '127.0.0.1' });
     const antworten = await Promise.all(Array.from({ length: 6 }, () => ruf('/auth/token-rotieren', alt, 'POST')));
     const stand = JSON.stringify(antworten.map(a => [a.status, a.body?.code]));
@@ -73,7 +73,7 @@ test('Tausch desselben Tokens', { concurrency: 1 }, async t => {
     assert.equal((await ruf('/stats', neu[0].body.token)).status, 200, 'der ausgegebene Token gilt');
   });
 
-  await t.test('ein zweiter Tausch aus einem anderen Netz beendet die Familie', async () => {
+  await t.test('a second exchange from another network ends the family', async () => {
     const alt = await auth.createToken(uid, 'Tablet', true, null, { scope: 'app', ip: '10.1.2.3' });
     const erster = await auth.rotateToken(alt, '10.1.2.77');
     assert.ok(erster && typeof erster === 'object', 'Vorbedingung: der erste Tausch gelingt');

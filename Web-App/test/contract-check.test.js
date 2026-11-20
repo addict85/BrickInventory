@@ -42,7 +42,7 @@ function server(t, antworten) {
   return `http://127.0.0.1:${portOf(srv)}/api/v1/auth`;
 }
 
-test('eine abweichende Antwort wird zur 500', async t => {
+test('a deviating response becomes a 500', async t => {
   const basis = server(t, { rumpf: { enabled: 'ja' } });
   const r = await fetch(`${basis}/registration-status`);
   assert.equal(r.status, 500);
@@ -51,13 +51,13 @@ test('eine abweichende Antwort wird zur 500', async t => {
   assert.match(j.deviations.join(), /Antwort enabled/);
 });
 
-test('eine vertragsgemässe Antwort geht unverändert hinaus', async t => {
+test('a response matching the contract goes out unchanged', async t => {
   const basis = server(t, { rumpf: { enabled: true } });
   const r = await fetch(`${basis}/registration-status`);
   assert.deepEqual([r.status, await r.json()], [200, { enabled: true }]);
 });
 
-test('eine vertragswidrige Eingabe erreicht die Route nicht', async t => {
+test('an input violating the contract does not reach the route', async t => {
   const basis = server(t, {});
   const senden = rumpf =>
     fetch(`${basis}/users/7/admin`, {
@@ -71,19 +71,19 @@ test('eine vertragswidrige Eingabe erreicht die Route nicht', async t => {
   assert.match((await r.json()).error, /is_admin/);
 });
 
-test('eine Fehlerantwort wird nicht gegen das Erfolgsschema geprüft', async t => {
+test('an error response is not checked against the success schema', async t => {
   const basis = server(t, { status: 404, rumpf: { success: false, error: 'weg', code: 'x' } });
   assert.equal((await fetch(`${basis}/registration-status`)).status, 404);
 });
 
-test('eine Fehlerantwort ohne Code wird zur 500', async t => {
+test('an error response without a code becomes a 500', async t => {
   const basis = server(t, { status: 404, rumpf: { success: false, error: 'Endpoint nicht gefunden' } });
   const r = await fetch(`${basis}/registration-status`);
   assert.equal(r.status, 500);
   assert.match((await r.json()).deviations.join(), /Fehlerantwort code/);
 });
 
-test('im Betrieb geht die Antwort ungeprüft hinaus', async t => {
+test('in production the response goes out unchecked', async t => {
   setKonfig({ checkContract: false });
   t.after(() => setKonfig(null));
   const basis = server(t, { rumpf: { enabled: 'ja' } });
@@ -91,7 +91,7 @@ test('im Betrieb geht die Antwort ungeprüft hinaus', async t => {
   assert.deepEqual([r.status, await r.json()], [200, { enabled: 'ja' }]);
 });
 
-test('die Prüfung entscheidet sich beim Bau des Routers', async t => {
+test('the check is decided when the router is built', async t => {
   const basis = server(t, { rumpf: { enabled: 'ja' } });
   setKonfig({ checkContract: false });
   t.after(() => setKonfig(null));

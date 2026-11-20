@@ -12,7 +12,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 const db = testData();
 
-test('ein verschobenes Set nimmt die Bildpfade aller Bestandteile mit', { concurrency: 1 }, async t => {
+test('a moved set takes the image paths of all its components along', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const p = String(process.pid).slice(-5);

@@ -28,7 +28,7 @@ const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
 const db = testData();
 
-test('Eingaben gegen den Vertrag', { concurrency: 1 }, async t => {
+test('inputs against the contract', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `eingabe_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -56,7 +56,7 @@ test('Eingaben gegen den Vertrag', { concurrency: 1 }, async t => {
     return { status: r.status, code: j.code ?? null, error: j.error ?? null };
   };
 
-  await t.test('eine Liste statt eines Namens ist 400', async () => {
+  await t.test('a list instead of a name is 400', async () => {
     const r = await sende('POST', '/api/v1/auth/register', {
       username: ['abc'],
       email: 'a@b.ch',
@@ -68,7 +68,7 @@ test('Eingaben gegen den Vertrag', { concurrency: 1 }, async t => {
     assert.deepEqual([kein.status, kein.code], [400, 'eingabe_ungueltig']);
   });
 
-  await t.test('Freitext ist begrenzt', async () => {
+  await t.test('free text is limited', async () => {
     const r = await sende('PUT', '/api/v1/auth/profile', { first_name: 'x'.repeat(101) });
     assert.deepEqual([r.status, r.code], [400, 'eingabe_ungueltig']);
     const ok = await sende('PUT', '/api/v1/auth/profile', {
@@ -81,20 +81,20 @@ test('Eingaben gegen den Vertrag', { concurrency: 1 }, async t => {
     assert.equal((await db.get('SELECT first_name FROM users WHERE id = $1', [uid])).first_name, 'Marco');
   });
 
-  await t.test('ein wiederholter Abfragewert ist 400', async () => {
+  await t.test('a repeated query value is 400', async () => {
     assert.equal((await sende('GET', '/api/v1/auth/profile?x=1')).status, 200);
     const r = await sende('GET', '/api/v1/auth/profile?x=1&x=2');
     assert.deepEqual([r.status, r.code], [400, 'eingabe_ungueltig']);
   });
 
-  await t.test('die Prüfer aus validate.ts antworten wie die Route', async () => {
+  await t.test('the validators from validate.ts answer like the route', async () => {
     const r = await sende('PUT', `/api/v1/auth/users/${uid}/admin`, { is_admin: 'vielleicht' });
     assert.equal(r.status, 400);
     assert.notEqual(r.code, 'eingabe_ungueltig');
     assert.match(r.error, /is_admin/);
   });
 
-  await t.test('ohne Anmeldung bleibt es 401, nicht 400', async () => {
+  await t.test('without login it stays 401, not 400', async () => {
     const { base: offen } = testServer(_req, { sitzung: {}, t });
     const r = await fetch(`${offen}/api/v1/auth/profile`, {
       method: 'PUT',

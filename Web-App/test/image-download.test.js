@@ -57,7 +57,7 @@ function aufraeumen() {
     if (f.startsWith(NUMBER)) fs.rmSync(path.join(PART_IMAGES_DIR, f), { force: true });
 }
 
-test('die Bausteine', () => {
+test('the building blocks', () => {
   assert.equal(bd.imageExtension(`${CDN}/300121.PNG?x=1`), 'png');
   assert.equal(bd.imageExtension('https://cdn.rebrickable.com/a/b.html'), 'jpg', 'Endung aus der Adresse übernommen');
   assert.equal(bd.imageExtension('https://cdn.rebrickable.com/a/b.svg'), 'jpg');
@@ -81,7 +81,7 @@ test('die Bausteine', () => {
 test('downloadImage', { concurrency: 1 }, async t => {
   t.after(aufraeumen);
 
-  await t.test('ein Bild vom CDN wird gespeichert', async tt => {
+  await t.test('an image from the CDN is saved', async tt => {
     aufraeumen();
     const aufrufe = placeAfter(tt);
     const rel = await downloadImage(`${CDN}/1.png`, NUMBER, 4, 'part');
@@ -94,7 +94,7 @@ test('downloadImage', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('fremder Host: kein Abruf', async tt => {
+  await t.test('foreign host: no fetch', async tt => {
     aufraeumen();
     const aufrufe = placeAfter(tt);
     for (const adresse of [
@@ -107,7 +107,7 @@ test('downloadImage', { concurrency: 1 }, async t => {
     assert.deepEqual(aufrufe, [], 'fremder Host wird abgerufen');
   });
 
-  await t.test('kein Bild: nichts gespeichert', async tt => {
+  await t.test('no image: nothing saved', async tt => {
     for (const typ of ['image/svg+xml', 'text/html']) {
       aufraeumen();
       placeAfter(tt, { typ, body: Buffer.from('<svg onload="alert(1)"/>') });
@@ -120,7 +120,7 @@ test('downloadImage', { concurrency: 1 }, async t => {
     }
   });
 
-  await t.test('Pfad aus der Teilenummer: kein Abruf, keine Datei ausserhalb', async tt => {
+  await t.test('path from the part number: no fetch, no file outside', async tt => {
     const aufrufe = placeAfter(tt);
     const boese = `a/../../../${NUMBER}`;
     tt.after(() => fs.rmSync(path.join(DATA_DIR, `${NUMBER}_0.png`), { force: true }));
@@ -129,7 +129,7 @@ test('downloadImage', { concurrency: 1 }, async t => {
     assert.equal(fs.existsSync(path.join(DATA_DIR, `${NUMBER}_0.png`)), false);
   });
 
-  await t.test('zu gross: abgebrochen, nichts liegen gelassen', async tt => {
+  await t.test('too large: aborted, nothing left behind', async tt => {
     aufraeumen();
     const block = Buffer.alloc(1024 * 1024, 1);
     placeAfter(tt, { body: /** @type {any} */ (Array(bd.IMAGE_MAX_BYTES / block.length + 2).fill(block)) });
@@ -140,7 +140,7 @@ test('downloadImage', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('HTTP 404: nichts gespeichert', async tt => {
+  await t.test('HTTP 404: nothing saved', async tt => {
     aufraeumen();
     placeAfter(tt, { status: 404, typ: 'text/html' });
     assert.equal(await downloadImage(`${CDN}/x.png`, NUMBER, 0, 'part'), null);

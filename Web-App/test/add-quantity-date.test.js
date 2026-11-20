@@ -40,7 +40,7 @@ async function setErfassen(o, { qty, datum = null }) {
   };
 }
 
-test('Set hinzufügen: Anzahl nur ganz von 1 bis 10.000, sonst Hinweis am Feld', async () => {
+test('add set: quantity only whole from 1 to 10,000, otherwise a hint at the field', async () => {
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     for (const roh of ['0', '', '1.5', '-3', '99999', '10001', 'abc']) {
@@ -63,7 +63,7 @@ test('Set hinzufügen: Anzahl nur ganz von 1 bis 10.000, sonst Hinweis am Feld',
   }
 });
 
-test('Set hinzufügen: Hinweis englisch', async () => {
+test('add set: hint in English', async () => {
   const o = await openUi({}, { sprache: 'en', browserLanguage: 'en-GB' });
   try {
     const r = await setErfassen(o, { qty: '0' });
@@ -73,7 +73,7 @@ test('Set hinzufügen: Hinweis englisch', async () => {
   }
 });
 
-test('Set hinzufügen: „Gekauft am“ nicht in der Zukunft', async () => {
+test('add set: "bought on" not in the future', async () => {
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     const r = await setErfassen(o, { qty: '1', datum: '2099-01-01' });
@@ -90,7 +90,7 @@ test('Set hinzufügen: „Gekauft am“ nicht in der Zukunft', async () => {
   }
 });
 
-test('Teil und Figur hinzufügen: ungültige Anzahl und Zukunftsdatum gehen nicht hinaus', async () => {
+test('add part and figure: invalid quantity and future date do not go out', async () => {
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     const { d, aufrufe } = o;
@@ -149,7 +149,7 @@ async function purchasePriceDialog(puts) {
   return o;
 }
 
-test('Kaufpreis-Dialog: Anzahl und Datum melden am Feld, gültige gehen hinaus', async () => {
+test('purchase price dialog: quantity and date report at the field, valid ones go out', async () => {
   const puts = [];
   const o = await purchasePriceDialog(puts);
   try {

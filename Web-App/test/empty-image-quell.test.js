@@ -47,7 +47,7 @@ async function withObserver(antworten = {}) {
   return { ...o, leer };
 }
 
-test('beim Start und in der Galerie hat kein Bild ein leeres src', async () => {
+test('at startup and in the gallery no image has an empty src', async () => {
   const { w, d, warte, leer } = await withObserver({
     '/v1/sets': {
       success: true,
@@ -72,7 +72,7 @@ test('beim Start und in der Galerie hat kein Bild ein leeres src', async () => {
   }
 });
 
-test('ein Ladefehler wiederholt ohne leeres src', async () => {
+test('a load error retries without an empty src', async () => {
   const { w, d, warte, leer } = await withObserver({
     '/v1/sets': {
       success: true,
@@ -107,7 +107,7 @@ test('ein Ladefehler wiederholt ohne leeres src', async () => {
   }
 });
 
-test('Zoom schliessen entfernt das Bild, statt src zu leeren', async () => {
+test('closing the zoom removes the image instead of clearing src', async () => {
   const { w, d, leer } = await withObserver();
   try {
     const bild = d.getElementById('lightbox-img');

@@ -36,7 +36,7 @@ ${farbe === null ? '' : `<COLOR>${farbe}</COLOR>\n`}<MAXPRICE>${preis}</MAXPRICE
 }
 const liste = (...items) => `<?xml version="1.0" encoding="UTF-8"?>\n<INVENTORY>\n${items.join('\n')}\n</INVENTORY>\n`;
 
-test('1. jeder Posten wird einzeln gelesen, nicht die Datei als Ganzes', () => {
+test('1. every item is read individually, not the file as a whole', () => {
   // Der Fehler, den dieser Fall ausschliesst: ein Muster über die GANZE Datei
   // legen. Dann gewinnt der erste Treffer je Feld, und aus 224 Posten wird
   // einer. Genau diese Form hat in diesem Baum schon zweimal etwas falsch
@@ -58,7 +58,7 @@ test('1. jeder Posten wird einzeln gelesen, nicht die Datei als Ganzes', () => {
   );
 });
 
-test('2. CONDITION=X heisst „egal" und wird nicht zu N', () => {
+test('2. CONDITION=X means “any” and does not become N', () => {
   // Der Zustand ist in dieser Anwendung ein Schlüsselteil (N und U sind zwei
   // Einträge). „Egal" als N zu lesen wäre eine Entscheidung dieser Datei über
   // etwas, das die Einstellung des Kontos bestimmt — dieselbe Regel wie beim
@@ -72,7 +72,7 @@ test('2. CONDITION=X heisst „egal" und wird nicht zu N', () => {
   );
 });
 
-test('3. MAXPRICE=-1 ist kein Preis', () => {
+test('3. MAXPRICE=-1 is not a price', () => {
   // -1.0000 steht in ALLEN 224 Posten von Marcos Datei. Als Zahl übernommen
   // ergäbe das einen Kaufpreis von minus einem Franken.
   const r = readWantedList(liste(item('P', '3001', 4, 1, 'X', '-1.0000'), item('P', '3002', 4, 1, 'X', '2.5000')));
@@ -80,7 +80,7 @@ test('3. MAXPRICE=-1 ist kein Preis', () => {
   assert.equal(r.posten[1].maxPreis, 2.5);
 });
 
-test('4. fremde Arten werden gezählt, nicht verschluckt', () => {
+test('4. foreign kinds are counted, not swallowed', () => {
   // B (Book), G (Gear), I (Instruction) führt diese Anwendung nicht. Wer eine
   // Liste mit Zubehör hochlädt, soll LESEN, dass davon etwas liegenblieb —
   // eine stille Lücke sieht aus wie ein vollständiger Import.
@@ -106,14 +106,14 @@ test('4. fremde Arten werden gezählt, nicht verschluckt', () => {
   );
 });
 
-test('5. ein Posten ohne ITEMID wird gezählt, nicht geraten', () => {
+test('5. an item without ITEMID is counted, not guessed', () => {
   const xml = liste(item('P', '3001', 4)).replace('<ITEMID>3001</ITEMID>', '');
   const r = readWantedList(xml);
   assert.equal(r.posten.length, 0);
   assert.equal(r.ohneNummer, 1, 'Der Posten ohne Nummer wurde nicht gezählt');
 });
 
-test('6. Entitäten werden aufgelöst, und & zuletzt', () => {
+test('6. entities are resolved, and & last', () => {
   // &amp; MUSS zuletzt ersetzt werden: Sonst wird aus „&amp;lt;" erst „&lt;"
   // und dann „<" — eine Zeichenkette, die nie dort stand.
   const r = readWantedList(liste(item('P', 'A&amp;B', 4)));
@@ -122,7 +122,7 @@ test('6. Entitäten werden aufgelöst, und & zuletzt', () => {
   assert.equal(r2.posten[0].blId, 'A&lt;B', 'Aus &amp;lt; wurde „<" — die Reihenfolge der Ersetzungen stimmt nicht');
 });
 
-test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 }, async t => {
+test('the local resolution separates mapping from guess', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -161,13 +161,13 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
   const auf = await resolveLocalOn(posten);
   assert.equal(auf.length, 5);
 
-  await t.test('Stufe 1: die eingetragene abweichende Nummer', () => {
+  await t.test('stage 1: the registered deviating number', () => {
     assert.equal(auf[0].rbId, '98765', `4162 wurde zu ${auf[0].rbId} — erwartet 98765 aus bl_mapping`);
     assert.equal(auf[0].sicherheit, 'zuordnung');
     assert.equal(auf[0].rbFarbe, 4, 'BL-Farbe 5 ist Rebrickable 4 (Red)');
   });
 
-  await t.test('Stufe 2: „keine abweichende Nummer" ist auch eine Abbildung', () => {
+  await t.test('stage 2: “no deviating number” is also a mapping', () => {
     // Migration 0037 erklaert diesen NULL-Wert ausdruecklich als Vermerk,
     // nicht als Fehlen. Ihn wie einen Katalogtreffer zu zaehlen waere eine
     // Abbildung zur Vermutung herabgestuft.
@@ -181,7 +181,7 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
     assert.equal(auf[1].rbFarbe, 15);
   });
 
-  await t.test('Stufe 3: der Katalogtreffer bleibt als Vermutung markiert', () => {
+  await t.test('stage 3: the catalog hit stays marked as a guess', () => {
     assert.equal(auf[2].rbId, '11111');
     assert.equal(
       auf[2].sicherheit,
@@ -192,12 +192,12 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
     );
   });
 
-  await t.test('ohne jeden Treffer bleibt es offen — es wird nichts geraten', () => {
+  await t.test('without any hit it stays open — nothing is guessed', () => {
     assert.equal(auf[3].rbId, null, `99999 wurde zu ${auf[3].rbId} aufgelöst`);
     assert.equal(auf[3].sicherheit, null);
   });
 
-  await t.test('eine unbekannte Farbe lässt den Posten nicht scheitern', () => {
+  await t.test('an unknown color does not make the item fail', () => {
     // Die Nummer ist da, nur die Farbe nicht. Den ganzen Posten zu verwerfen
     // hiesse, ein bekanntes Teil wegen einer fehlenden Farbzuordnung
     // liegenzulassen; den Posten ohne Hinweis anzulegen hiesse, eine falsche
@@ -229,7 +229,7 @@ test('die lokale Auflösung trennt Abbildung von Vermutung', { concurrency: 1 },
  *   N  `unit_price` auch bei MAXPRICE=-1 (als null) → rot: ebenda; das Feld muss
  *      FEHLEN, nur dann gilt der Marktpreis
  */
-test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 1 }, async t => {
+test('the import invents no color and writes its name', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -271,7 +271,7 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
   const z1 = zaehler();
   const bericht = await importiereWantedListe(1, xml, { creator: z1.creator });
 
-  await t.test('eine offene Farbe wird nicht erfunden', () => {
+  await t.test('an open color is not invented', () => {
     assert.equal(
       z1.gesehen.length,
       1,
@@ -289,7 +289,7 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
     );
   });
 
-  await t.test('die Farbe reist mit Namen und Farbwert', () => {
+  await t.test('the color travels with name and color value', () => {
     assert.equal(z1.gesehen[0].color_id, 4);
     assert.equal(
       z1.gesehen[0].color_name,
@@ -301,7 +301,7 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
     assert.equal(z1.gesehen[0].color_hex, 'C91A09');
   });
 
-  await t.test('MAXPRICE wird zum Kaufpreis — und -1 bleibt keiner', async () => {
+  await t.test('MAXPRICE becomes the purchase price — and -1 stays none', async () => {
     // Marcos Entscheidung vom 21.10.
     const z = zaehler();
     await importiereWantedListe(
@@ -325,7 +325,7 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
     );
   });
 
-  await t.test('ein zweiter Lauf stockt auf, statt anzulegen', async () => {
+  await t.test('a second run tops up instead of creating', async () => {
     const z2 = zaehler(true);
     const b2 = await importiereWantedListe(1, xml, { creator: z2.creator });
     assert.equal(
@@ -338,7 +338,7 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
     assert.equal(b2.aufgestockt, 1);
   });
 
-  await t.test('in der Vorschau wird nichts geschrieben', () => {
+  await t.test('nothing is written in the preview', () => {
     // Die Gegenrichtung: Der Fall oben wäre auch grün, wenn der Import
     // überhaupt nichts mehr schriebe.
     assert.equal(bericht.vorschau, false, 'Dieser Lauf war keine Vorschau');
@@ -347,7 +347,7 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
 
   // Abbrechen
 
-  await t.test('ein Abbruch hält nach spätestens zehn Posten an', async () => {
+  await t.test('an abort stops after at most ten items', async () => {
     // 25 abbildbare Posten derselben Nummer in verschiedenen Mengen; die
     // Abbildung steht in der Datenbank (siehe oben, 3001 → Farbe 4).
     const viele = `<INVENTORY>${Array.from(
@@ -379,7 +379,7 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
     assert.equal(b.posten.length, 10, 'Der Bericht führt nur, was bearbeitet wurde — der Rest blieb liegen');
   });
 
-  await t.test('ohne Abbruch läuft die Liste durch', async () => {
+  await t.test('without an abort the list runs through', async () => {
     // Die Gegenrichtung: Der Fall oben wäre auch grün, wenn der Import nach
     // zehn Posten IMMER anhielte.
     const viele = `<INVENTORY>${Array.from(
@@ -396,7 +396,7 @@ test('der Import erfindet keine Farbe und schreibt ihren Namen', { concurrency: 
     assert.equal(z.gesehen.length, 25, `Der Anleger bekam ${z.gesehen.length} statt 25 Posten`);
   });
 
-  await t.test('in der VORSCHAU wird gar nicht erst gefragt', async () => {
+  await t.test('in the PREVIEW nothing is asked at all', async () => {
     // Eine Vorschau schreibt nichts; es gibt nichts abzubrechen, und eine
     // Datenbankabfrage alle zehn Posten wäre reine Last.
     const viele = `<INVENTORY>${Array.from(

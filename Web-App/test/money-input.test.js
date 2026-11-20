@@ -43,7 +43,7 @@ async function setErfassen(o, preis) {
   };
 }
 
-test('Set hinzufügen: Komma, Punkt und Tausender', async () => {
+test('add set: comma, dot and thousands', async () => {
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     for (const [ein, aus] of [
@@ -68,7 +68,7 @@ test('Set hinzufügen: Komma, Punkt und Tausender', async () => {
   }
 });
 
-test('englisch: Komma als Tausender, Punkt als Dezimal', async () => {
+test('English: comma as thousands, dot as decimal', async () => {
   const o = await openUi({}, { sprache: 'en', browserLanguage: 'en-GB' });
   try {
     for (const [ein, aus] of [
@@ -85,7 +85,7 @@ test('englisch: Komma als Tausender, Punkt als Dezimal', async () => {
   }
 });
 
-test('Unsinn wird am Feld gemeldet und nicht gesendet', async () => {
+test('nonsense is reported at the field and not sent', async () => {
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     for (const ein of ['abc', '12,3,4', '-5', '1.29.9', '149,95€x', '1,2.3,4']) {
@@ -104,7 +104,7 @@ test('Unsinn wird am Feld gemeldet und nicht gesendet', async () => {
   }
 });
 
-test('Gutschein: Betrag mit Komma', async () => {
+test('voucher: amount with comma', async () => {
   const o = await openUi({ '/v1/vouchers': { success: true, vouchers: [] } }, { browserLanguage: 'de-DE' });
   try {
     await sicht(o.w, 'gutscheine');
@@ -120,7 +120,7 @@ test('Gutschein: Betrag mit Komma', async () => {
   }
 });
 
-test('Kaufpreis-Dialog: Anzeige in Sprachform, Komma gespeichert, Marke je Zeile', async () => {
+test("purchase price dialog: display in the language's form, comma saved, marker per row", async () => {
   const puts = [];
   const o = await openUi(
     {

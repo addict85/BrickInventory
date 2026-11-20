@@ -66,7 +66,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `mailneu_${process.pid}`,
   PASS = 'Passwort12345';
 
-test('E-Mail ändern', { concurrency: 1 }, async t => {
+test('change email', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[NAME, `${NAME}_b`]]);
@@ -99,21 +99,21 @@ test('E-Mail ändern', { concurrency: 1 }, async t => {
   };
   const adresse = async () => (await db.get('SELECT email FROM users WHERE id = $1', [uid])).email;
 
-  await t.test('ohne Passwort', async () => {
+  await t.test('without password', async () => {
     const r = await profil({ email: `${NAME}@neu.example` });
     assert.equal(r.status, 400);
     assert.equal(r.body.code, 'aktuelles_passwort_erforderlich');
     assert.equal(await adresse(), `${NAME}@alt.example`);
   });
 
-  await t.test('falsches Passwort', async () => {
+  await t.test('wrong password', async () => {
     const r = await profil({ email: `${NAME}@neu.example`, password_current: 'falsch-falsch' });
     assert.equal(r.status, 400);
     assert.equal(r.body.code, 'aktuelles_passwort_falsch');
     assert.equal(await adresse(), `${NAME}@alt.example`);
   });
 
-  await t.test('mit Passwort', async () => {
+  await t.test('with password', async () => {
     const r = await profil({ email: `${NAME}@neu.example`, password_current: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(r.body.emailChanged, true);
@@ -125,7 +125,7 @@ test('E-Mail ändern', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('auch ohne neue Adresse nur mit Passwort', async () => {
+  await t.test('even without a new address only with password', async () => {
     const ohne = await profil({ email: `${NAME}@neu.example`, first_name: 'Neu' });
     assert.deepEqual([ohne.status, ohne.body.code], [400, 'aktuelles_passwort_erforderlich']);
     assert.equal(
@@ -137,7 +137,7 @@ test('E-Mail ändern', { concurrency: 1 }, async t => {
     assert.equal((await db.get('SELECT first_name FROM users WHERE id = $1', [uid])).first_name, 'Neu');
   });
 
-  await t.test('ein belegter Benutzername verrät sich nur mit Passwort', async () => {
+  await t.test('a taken username only reveals itself with password', async () => {
     assert.equal((await profil({ username: `${NAME}_b` })).body.code, 'aktuelles_passwort_erforderlich');
     assert.equal(
       (await profil({ username: `${NAME}_b`, password_current: 'falsch-falsch' })).body.code,
@@ -145,7 +145,7 @@ test('E-Mail ändern', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('in Produktion ohne APP_BASE_URL kein Link aus dem Host-Kopf', async () => {
+  await t.test('in production without APP_BASE_URL no link from the Host header', async () => {
     const vorher = { env: process.env.NODE_ENV, basis: process.env.APP_BASE_URL };
     environment({ NODE_ENV: 'production' });
     environment({ APP_BASE_URL: undefined });
@@ -165,7 +165,7 @@ test('E-Mail ändern', { concurrency: 1 }, async t => {
     }
   });
 
-  await t.test('eine belegte Adresse antwortet wie eine freie', async () => {
+  await t.test('a taken address answers like a free one', async () => {
     const belegt = `${NAME}@belegt.example`;
     assert.equal((await profil({ email: belegt })).body.code, 'aktuelles_passwort_erforderlich');
     assert.equal(
@@ -190,7 +190,7 @@ test('E-Mail ändern', { concurrency: 1 }, async t => {
     }
   });
 
-  await t.test('Vergabeprüfungen sind gebremst', async () => {
+  await t.test('availability checks are throttled', async () => {
     const codes = [];
     for (let i = 0; i < 12; i++)
       codes.push((await profil({ username: `${NAME}_b`, password_current: PASS })).body.code);
@@ -203,7 +203,7 @@ test('E-Mail ändern', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('Passwort nur über change-password', async () => {
+  await t.test('password only via change-password', async () => {
     const vorher = (await db.get('SELECT password_hash FROM users WHERE id = $1', [uid])).password_hash;
     const r = await profil({ password: 'GanzNeuesPasswort1', password_current: PASS });
     assert.equal(r.status, 400);

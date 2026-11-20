@@ -29,7 +29,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const modul = () => import(`file://${path.join(ROOT, 'public', 'js', 'bricklink-xml.js')}`);
 
-test('1. keine XML-Deklaration — BrickLink lehnt eine Datei mit ihr ab', async () => {
+test('1. no XML declaration — BrickLink rejects a file with it', async () => {
   const { buildWantedXml } = await modul();
   const xml = buildWantedXml([{ type: 'P', part: '3001', color: 5, qty: 10 }]);
   assert.ok(
@@ -42,7 +42,7 @@ test('1. keine XML-Deklaration — BrickLink lehnt eine Datei mit ihr ab', async
   assert.ok(xml.trimEnd().endsWith('</INVENTORY>'));
 });
 
-test('2. die Pflichtfelder stehen da, mit BrickLinks Artencodes', async () => {
+test("2. the required fields are there, with BrickLink's kind codes", async () => {
   const { buildWantedXml } = await modul();
   const xml = buildWantedXml([
     { type: 'P', part: '3001', color: 5, qty: 10 },
@@ -57,7 +57,7 @@ test('2. die Pflichtfelder stehen da, mit BrickLinks Artencodes', async () => {
   assert.equal((xml.match(/<COLOR>/g) || []).length, 1, `Es steht mehr als eine COLOR in der Datei:\n${xml}`);
 });
 
-test('3. eine UNBEKANNTE Farbe wird nicht erfunden', async () => {
+test('3. an UNKNOWN color is not invented', async () => {
   // Der Kern des dritten Befunds. `null` heisst „keine BrickLink-Nummer
   // bekannt" und ist etwas anderes als 0: 0 ist bei BrickLink „(Not
   // Applicable)" und bei Rebrickable SCHWARZ.
@@ -72,7 +72,7 @@ test('3. eine UNBEKANNTE Farbe wird nicht erfunden', async () => {
   );
 });
 
-test('4. Zustand nur, wenn er etwas sagt', async () => {
+test('4. condition only if it says something', async () => {
   const { buildWantedXml } = await modul();
   assert.ok(
     !/CONDITION/.test(buildWantedXml([{ type: 'P', part: '3001', color: 5, qty: 1, condition: 'X' }])),
@@ -84,7 +84,7 @@ test('4. Zustand nur, wenn er etwas sagt', async () => {
   );
 });
 
-test('5. Sonderzeichen werden maskiert, und & zuerst', async () => {
+test('5. special characters are escaped, and & first', async () => {
   // Teilenummern kommen aus dem Bestand; bei einem manuell erfassten Teil hat
   // sie der Mensch getippt. Ein `&` darin machte sonst die ganze Datei
   // unlesbar — wegen EINES Zeichens in EINER Zeile.
@@ -98,12 +98,12 @@ test('5. Sonderzeichen werden maskiert, und & zuerst', async () => {
   assert.match(buildWantedXml([{ type: 'P<&', part: '1', color: 5, qty: 1 }]), /<ITEMTYPE>P&lt;&amp;<\/ITEMTYPE>/);
 });
 
-test('5b. esc() kennt alle fünf XML-Entitäten — die Wunschliste hat keinen eigenen Maskierer', async () => {
+test('5b. esc() knows all five XML entities — the wishlist has no escaper of its own', async () => {
   const { esc } = await import(`file://${path.join(ROOT, 'public', 'js', 'escaping.js')}`);
   assert.equal(esc(`&<>"'`), '&amp;&lt;&gt;&quot;&#39;');
 });
 
-test('6. die Menge ist mindestens 1', async () => {
+test('6. the quantity is at least 1', async () => {
   const { buildWantedXml } = await modul();
   assert.match(
     buildWantedXml([{ type: 'P', part: '3001', color: 5, qty: 0 }]),
@@ -112,7 +112,7 @@ test('6. die Menge ist mindestens 1', async () => {
   );
 });
 
-test('7. zu grosse Listen werden in Stücke geschnitten, die BrickLink annimmt', async () => {
+test('7. lists that are too large are cut into pieces BrickLink accepts', async () => {
   const { buildWantedXml, buildWantedXmlPieces, BL_UPLOAD_MAX_BYTES } = await modul();
   // 3000 Posten sind erreichbar: Eine Teileliste aus mehreren grossen Sets
   // kommt leicht dorthin, und jedes fehlende Teil ist eine Zeile.
@@ -151,7 +151,7 @@ test('7. zu grosse Listen werden in Stücke geschnitten, die BrickLink annimmt',
   );
 });
 
-test('8. in Bytes gemessen, nicht in Zeichen', async () => {
+test('8. measured in bytes, not in characters', async () => {
   // Ein Teilename mit Umlaut wird in UTF-8 zu mehr Bytes als er Zeichen hat.
   // Wer in Zeichen deckelt, liefert Stücke, die BrickLink ablehnt — und zwar
   // nur bei Umlauten, also genau in Marcos Sprache.
@@ -173,7 +173,7 @@ test('8. in Bytes gemessen, nicht in Zeichen', async () => {
     );
 });
 
-test('9. eine leere Liste ergibt eine gültige, leere Datei', async () => {
+test('9. an empty list yields a valid, empty file', async () => {
   // Die Gegenrichtung: Ohne diesen Fall wäre auch ein leeres Array „in
   // Ordnung" — und der Export böte einen Download ohne Inhalt an.
   const { buildWantedXmlPieces } = await modul();

@@ -162,7 +162,7 @@ const CLOSE = `(() => {
 
 /** Registriert den Test für ein Design und ein Gerät. */
 function checkUi(design, geraet) {
-  test(`Oberfläche ${design}, ${geraet}: axe und Layout`, { concurrency: 1, timeout: 300_000 }, async t => {
+  test(`UI ${design}, ${geraet}: axe and layout`, { concurrency: 1, timeout: 300_000 }, async t => {
     const app = await startApp(t, {
       name: `ofl_${design}_${geraet}_${process.pid}`,
       bestand: patternHousehold,
@@ -229,7 +229,7 @@ const BAR = `[...document.querySelectorAll('nav .ntab')].filter(t => t.checkVisi
  * 'schmal' misst 320 px bei normaler Schrift auf Englisch.
  */
 function checkLargeFont(modus, breite = 320) {
-  test(`Oberfläche ${breite} px (${modus}): alle Ansichten`, { concurrency: 1, timeout: 300_000 }, async t => {
+  test(`UI ${breite} px (${modus}): all views`, { concurrency: 1, timeout: 300_000 }, async t => {
     // Schmal auf Englisch: Die längeren Beschriftungen sind dort der enge Fall.
     const app = await startApp(t, {
       name: `ofl_gross_${modus}_${process.pid}`,

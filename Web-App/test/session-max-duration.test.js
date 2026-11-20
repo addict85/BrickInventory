@@ -52,7 +52,7 @@ function testApp(maxMs, verwalter = {}) {
   return { srv, base: `http://localhost:${srv.address().port}` };
 }
 
-test('Höchstdauer der Webapp-Sitzung', async t => {
+test('maximum duration of the web app session', async t => {
   // Grosszügige Frist und Wartezeiten ab dem gemessenen Anmeldezeitpunkt: Unter
   // Last dauert ein Aufruf hunderte Millisekunden, feste Schritte kippten dann.
   const FRIST = 3_000;
@@ -63,12 +63,12 @@ test('Höchstdauer der Webapp-Sitzung', async t => {
   const keks = r.headers.get('set-cookie').split(';')[0];
   const wer = async () => (await (await fetch(base + '/wer', { headers: { cookie: keks } })).json()).userId;
 
-  await t.test('die Anmeldung setzt den Zeitpunkt', async () => {
+  await t.test('login sets the timestamp', async () => {
     const { am } = anmeldung;
     assert.ok(typeof am === 'number' && Math.abs(Date.now() - am) < 5_000);
   });
 
-  await t.test('trotz Betrieb endet die Sitzung nach der Höchstdauer', async () => {
+  await t.test('despite activity the session ends after the maximum duration', async () => {
     const bis = ms => warte(Math.max(0, anmeldung.am + ms - Date.now()));
     assert.equal(await wer(), 7);
     await bis(FRIST / 3);
@@ -87,8 +87,8 @@ async function anmelden(base, verwalter) {
   return { am, wer: async () => (await (await fetch(base + '/wer', { headers: { cookie: keks } })).json()).userId };
 }
 
-test('Verwaltersitzungen haben kürzere Fristen', async t => {
-  await t.test('eine Verwaltersitzung endet nach kurzem Leerlauf, solange sie arbeitet aber nicht', async () => {
+test('administrator sessions have shorter periods', async t => {
+  await t.test('an administrator session ends after a short idle time, but not while it works', async () => {
     const LEER = 3_000;
     const { srv, base } = testApp(LANG, { idleMs: LEER });
     t.after(() => new Promise(r => srv.close(r)));
@@ -105,7 +105,7 @@ test('Verwaltersitzungen haben kürzere Fristen', async t => {
     assert.equal(await nutzer.wer(), 7, 'die allgemeine Frist gilt für andere weiter');
   });
 
-  await t.test('… und nach ihrer kürzeren Höchstdauer', async () => {
+  await t.test('… and after its shorter maximum duration', async () => {
     const MAX = 2_000;
     const { srv, base } = testApp(LANG, { maxMs: MAX });
     t.after(() => new Promise(r => srv.close(r)));
@@ -117,7 +117,7 @@ test('Verwaltersitzungen haben kürzere Fristen', async t => {
     assert.equal(await nutzer.wer(), 7);
   });
 
-  await t.test('Verwalter nie länger als alle anderen', () => {
+  await t.test('administrators never longer than all others', () => {
     const { sitzungsfristen } = _req('src/account/sessionDeadline.js');
     const f = sitzungsfristen({
       sitzungHoechstStd: 2,

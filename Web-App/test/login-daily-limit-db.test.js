@@ -52,7 +52,7 @@ const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 test.after(() => db.pool.end().catch(() => {}));
 
-test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
+test('daily login limit per account', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const gesendet = mailAttrappe();
   t.after(await enterMailServer(db));
@@ -118,7 +118,7 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
   assert.equal((await anmelden(OHNE, PASS)).status, 200);
   assert.equal((await anmelden(MIT, PASS, await code())).status, 200);
 
-  await t.test('der 50. Fehlversuch erreicht die Grenze, der Inhaber bekommt eine Mail', async () => {
+  await t.test('the 50th failed attempt reaches the limit, the owner gets a mail', async () => {
     await setCounter(OHNE, 48, true);
     assert.equal((await anmelden(OHNE, 'falsch-geraten-1')).status, 401);
     assert.equal(await dailyCounter(OHNE, true), 49, 'ein Fehlversuch von einer bekannten Adresse zählt');
@@ -131,7 +131,7 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('über der Grenze: Passwort allein reicht nicht, auch von der bekannten Adresse', async () => {
+  await t.test('above the limit: the password alone is not enough, even from the known address', async () => {
     const r = await anmelden(OHNE, PASS);
     assert.equal(r.status, 429, JSON.stringify(r.body));
     assert.equal(r.body.code, 'konto_tagesgrenze');
@@ -141,7 +141,7 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
     assert.equal((await anmelden(OHNE, 'falsch', '123456')).body.code, 'konto_tagesgrenze');
   });
 
-  await t.test('… mit Code geht es weiter, ohne nicht', async () => {
+  await t.test('… with code it continues, without not', async () => {
     await setCounter(MIT, 50, true);
     assert.equal((await anmelden(MIT, PASS)).body?.code, 'konto_tagesgrenze');
     const r = await anmelden(MIT, PASS, await code());
@@ -149,7 +149,7 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
     assert.equal((await anmelden(MIT, 'falsch-geraten', await code())).status, 401);
   });
 
-  await t.test('nach Passwort vergessen geht das Passwort wieder', async () => {
+  await t.test('after forgot password the password works again', async () => {
     const link = `tg-link-${P}`;
     await db.run(`UPDATE users SET reset_token = $1, reset_token_expires = NOW() + INTERVAL '1 hour' WHERE id = $2`, [
       _req('src/account/deviceToken.js').tokenDigest(link),
@@ -166,7 +166,7 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
     assert.equal((await anmelden(OHNE, neu)).status, 200);
   });
 
-  await t.test('50 Fehlversuche eines Fremden sperren die bekannte Adresse nicht, eine unbekannte schon', async () => {
+  await t.test('50 failed attempts by a stranger do not lock the known address, an unknown one is locked', async () => {
     const neu = 'neues-Passwort-nach-Link-17';
     await setCounter(OHNE, 50);
     const r = await anmelden(OHNE, neu);
@@ -176,7 +176,7 @@ test('Tagesgrenze der Anmeldung je Konto', { concurrency: 1 }, async t => {
     assert.equal((await anmelden(OHNE, neu)).body?.code, 'konto_tagesgrenze');
   });
 
-  await t.test('an einer unbekannten Adresse kommt ein Freigabelink; er schaltet sie frei, einmal', async () => {
+  await t.test('at an unknown address an unlock link comes; it unlocks it, once', async () => {
     const neu = 'neues-Passwort-nach-Link-17';
     const links = () =>
       gesendet

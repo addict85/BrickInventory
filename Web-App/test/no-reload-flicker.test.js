@@ -34,7 +34,7 @@ const SETS = { success: true, sets: [{ set_number: '10294-1', name: 'Titanic', q
 const setsCalls = aufrufe => aufrufe.filter(a => a.method === 'GET' && /\/api\/v1\/sets\?/.test(a.url)).length;
 const kachel = d => d.querySelector('#gallery [data-price-for="10294-1"]')?.closest('[data-click="openModal"], .sc');
 
-test('der Start lädt die Galerie einmal, und gleiche Sprache baut nichts neu', async () => {
+test('the startup loads the gallery once, and the same language rebuilds nothing', async () => {
   const { w, d, warte, ruhig, aufrufe } = await openUi({ '/v1/sets': SETS });
   try {
     assert.ok(await warte(() => kachel(d)));
@@ -52,7 +52,7 @@ test('der Start lädt die Galerie einmal, und gleiche Sprache baut nichts neu', 
   }
 });
 
-test('ein echter Sprachwechsel zeichnet die Galerie neu, ohne sie neu zu laden', async () => {
+test('a real language change redraws the gallery without reloading it', async () => {
   const { w, d, warte, ruhig, aufrufe } = await openUi({ '/v1/sets': SETS });
   try {
     assert.ok(await warte(() => kachel(d)));
@@ -69,7 +69,7 @@ test('ein echter Sprachwechsel zeichnet die Galerie neu, ohne sie neu zu laden',
   }
 });
 
-test('Auffrischen lässt die Kacheln stehen, bis die neue Antwort da ist', async () => {
+test('refreshing leaves the tiles standing until the new response is there', async () => {
   let n = 0;
   let los;
   const spaeter = new Promise(r => {
@@ -90,7 +90,7 @@ test('Auffrischen lässt die Kacheln stehen, bis die neue Antwort da ist', async
   }
 });
 
-test('die Import-Abfrage läuft nicht ungebremst und nicht vor dem Login', () => {
+test('the import query does not run unthrottled and not before login', () => {
   // Sie pollte alle 3 Sekunden — auch auf dem Login-Screen und auch dann, wenn
   // die Antwort gar kein JSON war. Steht ein Reverse-Proxy davor, liefert der
   // bei einem Neustart eine HTML-Fehlerseite; r.json() warf dann bei jedem

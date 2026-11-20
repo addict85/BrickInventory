@@ -56,7 +56,7 @@ function normieren(roh) {
   return ('/api' + pathForm(roh, ':x')).replace(/\/$/, '');
 }
 
-test('jeder API-Pfad des Frontends trifft eine Route', () => {
+test('every API path of the frontend hits a route', () => {
   assert.ok(ROUTES.length > 100, `nur ${ROUTES.length} Routen gefunden — das Muster greift nicht mehr`);
 
   // Erste Wegsegmente, die der Server unter /api kennt.

@@ -47,7 +47,7 @@ async function setup() {
                 ON CONFLICT (fig_number) DO NOTHING`);
 }
 
-test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, async t => {
+test('the five wirings via their real addresses', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -61,7 +61,7 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
   const ohne = testServer(_req, { sitzung: {}, t });
   const mit = testServer(_req, { sitzung: { userId: MAIN }, t });
 
-  await t.test('1. der PDF-Download antwortet ohne Token nicht mit der Datei', async () => {
+  await t.test('1. the PDF download does not respond with the file without a token', async () => {
     const r = await fetch(`${ohne.base}/api/v1/sets/partslist-pdf/download/irgendwas`);
     assert.ok(
       r.status === 401 || r.status === 403,
@@ -71,7 +71,7 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
     assert.notEqual(r.headers.get('content-type'), 'application/pdf', 'Es kam trotzdem ein PDF zurück');
   });
 
-  await t.test('2. der Bild-Proxy holt nichts von einem fremden Host', async () => {
+  await t.test('2. the image proxy fetches nothing from a foreign host', async () => {
     const fremd = encodeURIComponent('https://angreifer.example/x.jpg');
     const r = await fetch(`${mit.base}/api/v1/img-proxy?url=${fremd}`);
     assert.equal(
@@ -95,7 +95,7 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
     );
   });
 
-  await t.test('3. ein zu kurzes Passwort wird abgelehnt', async () => {
+  await t.test('3. a too short password is rejected', async () => {
     // passwordToShort() liegt in src/account/loginCheck.ts und gilt für Registrierung,
     // Anlegen durch den Admin und das Ändern. Zugesichert war bisher, dass
     // die Routen die Funktion NENNEN.
@@ -140,7 +140,7 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
     assert.notEqual(r2.status, 400, 'Auch zwölf Zeichen wurden mit 400 abgelehnt — dann ist die Grenze nicht zwölf');
   });
 
-  await t.test('4. ein Datum, an dem schon ein Kauf steht, wird abgelehnt', async () => {
+  await t.test('4. a date on which a purchase already exists is rejected', async () => {
     // purchaseAtSameTag() sitzt im ÄNDERN-Weg: Wer das Datum einer
     // Erfassung auf einen Tag schiebt, an dem für dieselbe Position schon
     // eine steht, bekommt 409. Ohne die Prüfung liefe es in den eindeutigen
@@ -196,7 +196,7 @@ test('die fünf Verdrahtungen über ihre echten Adressen', { concurrency: 1 }, a
     );
   });
 
-  await t.test('5. ein Set verschieben ohne acquisition_ids wird abgelehnt', async () => {
+  await t.test('5. moving a set without acquisition_ids is rejected', async () => {
     const r = await fetch(`${mit.base}/api/v1/sets/${SN}/move`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

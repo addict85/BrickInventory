@@ -46,7 +46,7 @@ async function seed() {
   await holdsSet(db, MAIN, SN, 1);
 }
 
-test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
+test('storage location: detail and stock against a real database', async t => {
   try {
     await db.get('SELECT 1 AS ok');
   } catch (e) {
@@ -79,7 +79,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
     'Das Setzen muss genau die eine Zeile des Hauptkontos treffen',
   );
 
-  await t.test('Befund 1: der Detail-Aufruf liefert den Namen des Lagerorts', async () => {
+  await t.test('finding 1: the detail call delivers the name of the storage location', async () => {
     const detail = await S.readSet(writable, SN);
     assert.equal(
       detail.storage,
@@ -115,7 +115,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
     assert.ok(alt.storage_id > 0, 'Die frühere Form liefert keine storage_id — dann ist die Lage nicht die gedachte');
   });
 
-  await t.test('Befund 2: der Ort entsteht nur im Konto, dessen Zeile er beschreibt', async () => {
+  await t.test('finding 2: the place only arises in the account whose row it describes', async () => {
     const haupt = (await L.locationsOf([MAIN])).map(o => o.name);
     const kind = (await L.locationsOf([KIND])).map(o => o.name);
     assert.deepEqual(haupt, ['Estrich'], `Vorrat des Hauptkontos: ${haupt}`);
@@ -149,7 +149,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
     await db.run('DELETE FROM storage_locations WHERE user_id = $1', [KIND]);
   });
 
-  await t.test('ein Ort auf ein fremdes Set hinterlässt keinen Eintrag', async () => {
+  await t.test('a place on a foreign set leaves no entry', async () => {
     // Diese Eigenschaft hatte der frühere Weg über eine Transaktion mit
     // Rücknahme. Sie muss bleiben, auch wenn die Rücknahme weggefallen ist:
     // Jetzt wird vorher gefragt, wer überhaupt eine Zeile hält.
@@ -167,7 +167,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
     }
   });
 
-  await t.test('das Unterkonto bekommt seinen eigenen Eintrag, sobald es eine Zeile hält', async () => {
+  await t.test('the sub-account gets its own entry as soon as it holds a row', async () => {
     // Die Kehrseite von Befund 2: Nicht „nur das Hauptkonto", sondern „wer die
     // Zeile hält". Hält das Unterkonto ein Exemplar, gehört der Ort auch dorthin
     // — und zwar als EIGENE Zeile, weil ein Regal in einer Wohnung steht
@@ -199,7 +199,7 @@ test('Lagerort: Detail und Vorrat gegen echte Datenbank', async t => {
  * der Weitergabe in routes/api_v1/sets.ts entfernt → rot („2 Sets statt 1“); ohne Filter
  * kommen beide Sets (sonst bestünde auch eine leere Liste).
  */
-test('der Lagerortfilter der Listen wirkt über die Route', async t => {
+test("the lists' storage location filter works via the route", async t => {
   try {
     await db.get('SELECT 1 AS ok');
   } catch (e) {
@@ -239,7 +239,7 @@ test('der Lagerortfilter der Listen wirkt über die Route', async t => {
     return r.json();
   };
 
-  await t.test('Sets: ohne Filter kommen beide', async () => {
+  await t.test('sets: without a filter both come', async () => {
     const d = await hole('/api/v1/sets?page=1&page_size=60');
     const nummern = (d.sets || []).map(s => s.set_number).sort();
     assert.deepEqual(
@@ -249,7 +249,7 @@ test('der Lagerortfilter der Listen wirkt über die Route', async t => {
     );
   });
 
-  await t.test('Sets: mit storage=Estrich kommt NUR das Set in der Kiste', async () => {
+  await t.test('sets: with storage=Estrich ONLY the set in the box comes', async () => {
     const d = await hole(`/api/v1/sets?page=1&page_size=60&storage=${encodeURIComponent('Estrich')}`);
     const nummern = (d.sets || []).map(s => s.set_number);
     assert.deepEqual(
@@ -267,7 +267,7 @@ test('der Lagerortfilter der Listen wirkt über die Route', async t => {
     );
   });
 
-  await t.test('Sets: ein Ort, den es nicht gibt, liefert nichts', async () => {
+  await t.test('sets: a place that does not exist delivers nothing', async () => {
     // Die Gegenrichtung: Ohne sie wäre der Fall darüber auch grün, wenn der
     // Filter jeden Wert auf dasselbe eine Set abbildete.
     const d = await hole('/api/v1/sets?page=1&page_size=60&storage=Dachboden');
@@ -278,7 +278,7 @@ test('der Lagerortfilter der Listen wirkt über die Route', async t => {
     );
   });
 
-  await t.test('Teile: derselbe Filter, derselbe Weg', async () => {
+  await t.test('parts: the same filter, the same path', async () => {
     const alle = await hole('/api/v1/parts?page=1&page_size=60');
     const numbersAll = (alle.parts || []).map(p => p.part_number).sort();
     assert.deepEqual(

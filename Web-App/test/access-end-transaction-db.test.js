@@ -52,7 +52,7 @@ async function withBrake(fn) {
   }
 }
 
-test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async t => {
+test('accesses end completely or not at all', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const uid = await seed();
@@ -69,7 +69,7 @@ test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async t => {
     uid,
   ]);
 
-  await t.test('Rücksetzen: Passwort und Token bleiben', async () => {
+  await t.test('reset: password and token stay', async () => {
     const vorher = await stand();
     await withBrake(() => assert.rejects(K.setPasswordBack(link, 'ein-neues-langes-Passwort'), /erzwungen/));
     assert.deepEqual(
@@ -82,14 +82,14 @@ test('Zugänge enden ganz oder gar nicht', { concurrency: 1 }, async t => {
     assert.equal(z.reset_token, link, 'der Link ist verbraucht, obwohl nichts galt');
   });
 
-  await t.test('andere Zugänge: der Token bleibt', async () => {
+  await t.test('other accesses: the token stays', async () => {
     await withBrake(() =>
       assert.rejects(zugangsende.endOther(uid, { sitzung: null, token: null, zugaenge: true }), /erzwungen/),
     );
     assert.deepEqual(await tokens(), ['t1', 't2']);
   });
 
-  await t.test('ohne Fehler: alles gilt', async () => {
+  await t.test('without errors: everything applies', async () => {
     const vorher = await stand();
     assert.equal(await K.setPasswordBack(link, 'ein-neues-langes-Passwort'), uid);
     const nachher = await stand();

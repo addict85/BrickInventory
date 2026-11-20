@@ -12,7 +12,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, warte } = require('./helpers/ui');
 
-test('jeder Dialog hat einen Namen', async () => {
+test('every dialog has a name', async () => {
   const { w, d } = await openUi();
   try {
     const dialoge = [...d.querySelectorAll('[role="dialog"]')];
@@ -35,7 +35,7 @@ test('jeder Dialog hat einen Namen', async () => {
   }
 });
 
-test('Meldungen werden angesagt', async () => {
+test('messages are announced', async () => {
   const { w, d } = await openUi();
   try {
     const container = d.getElementById('toasts');

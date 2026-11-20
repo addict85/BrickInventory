@@ -152,7 +152,7 @@ async function measureMove(debounced) {
   return zustand;
 }
 
-test('Katalog: ein Zug ueber die Leiste laedt das Ziel, nicht den Weg dorthin', async () => {
+test('catalog: a drag across the bar loads the target, not the way there', async () => {
   const mit = await measureMove(true);
   const ohne = await measureMove(false);
 

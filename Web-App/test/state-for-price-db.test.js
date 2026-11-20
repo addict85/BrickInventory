@@ -26,7 +26,7 @@ const db = testData();
 const { conditionForPrice, setGlobalSetting } = _req('src/settings/settings.js');
 const { setUserSetting } = _req('src/settings/userSetting.js');
 
-test('Zustand für den Marktpreis: Eingabe → Bestand → Standard', { concurrency: 1 }, async t => {
+test('condition for the market price: input → stock → default', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   // Eigener Nutzer je Prozess — der Test läuft neben anderen auf derselben DB.

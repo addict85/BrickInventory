@@ -31,7 +31,7 @@ const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
 const db = testData();
 
-test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
+test('catalog images at the push of a button', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -75,7 +75,7 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
   const { base, srv } = testServer(_req, { sitzung: { userId: uid, isAdmin: 1 }, t });
 
   try {
-    await t.test('der Knopf reiht ein, ohne bekannte Fehlanzeigen', async () => {
+    await t.test('the button queues, without known negative results', async () => {
       const d = await (await fetch(`${base}/api/v1/admin/catalog-images`, { method: 'POST' })).json();
       assert.equal(d.success, true);
       // Fertiges bleibt aussen vor
@@ -116,7 +116,7 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
       assert.ok(d.dauer_minuten >= 0, 'Die Dauerabschätzung fehlt');
     });
 
-    await t.test('ein zweiter Klick reiht nichts Fertiges neu ein', async () => {
+    await t.test('a second click does not requeue anything finished', async () => {
       // Der eigentliche Befund: Nach einem vollen Durchlauf brachte jeder Klick
       // den ganzen Katalog zurück in die Warteschlange. Der Job arbeitete das
       // richtig ab (Datei da → überspringen), aber die Kachel zeigte
@@ -146,7 +146,7 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
       }
     });
 
-    await t.test('der Job holt nur, was fehlt', async () => {
+    await t.test('the job only fetches what is missing', async () => {
       const IQ = _req('src/images/imageDemandRun.js');
       let n = 0;
       // `.gesamt` = bearbeitete Notizen (geladen, Vorschau erzeugt oder
@@ -162,7 +162,7 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
       assert.ok(n >= 8, `nur ${n} Aufträge abgearbeitet`);
     });
 
-    await t.test('fehlende Vorschauen werden nachgeholt, vorhandene nicht', async () => {
+    await t.test('missing previews are caught up, existing ones are not', async () => {
       // Marcos zweite Frage. Für Bilder, die vor dem Hintergrund-Job abgelegt
       // wurden, fehlt die Vorschau womöglich.
       assert.ok(verkleinert.includes(`/images/sets/${P}_1.jpg`), 'Das vorhandene Bild ohne Vorschau bekommt keine');
@@ -184,7 +184,7 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
     // oben stand er zuerst — und liess die Job-Prüfungen darunter einen Download
     // mehr sehen, als sie erwarteten. Die Teilschritte hier teilen sich eine
     // Bühne; wer sie verändert, gehört ans Ende.
-    await t.test('alle_erneut nimmt auch die bestätigten 404er zurück', async () => {
+    await t.test('alle_erneut also takes back the confirmed 404s', async () => {
       // Für den Fall, dass der CDN Bilder nachgereicht hat. Bewusst NICHT die
       // Vorgabe: Für alte Sets hat Rebrickable meist gar kein Bild, und die
       // alle erneut zu holen kostet bei dreissig Anfragen je Minute Stunden.
@@ -213,7 +213,7 @@ test('Katalogbilder auf Knopfdruck', { concurrency: 1 }, async t => {
   }
 });
 
-test('der Knopf ist in der Kachel verdrahtet', () => {
+test('the button is wired in the tile', () => {
   // Ohne Registrierung tut ein Klick nichts — und das fällt erst am Gerät auf.
   const core = require('./helpers/sources').coreSource();
   assert.match(core, /data-click="queueCatalogImages"/, 'Der Knopf fehlt in der Kachel');

@@ -43,7 +43,7 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-test('die Schranke lässt n laufen, m warten und weist den Rest ab', async () => {
+test('the limit lets n run, m wait and rejects the rest', async () => {
   const s = newLimit(2, 1, 200);
   const offen = [];
   const blockiert = () => new Promise(r => offen.push(r));
@@ -74,7 +74,7 @@ test('die Schranke lässt n laufen, m warten und weist den Rest ab', async () =>
   await y;
 });
 
-test('Vorrang: vorne in die Schlange, auch wenn sie voll ist', async () => {
+test('priority: to the front of the queue, even if it is full', async () => {
   const s = newLimit(1, 1, 1000);
   const offen = [],
     reihe = [];
@@ -95,7 +95,7 @@ test('Vorrang: vorne in die Schlange, auch wenn sie voll ist', async () => {
   assert.deepEqual(reihe, ['v', 'b']);
 });
 
-test('bei voller Schranke antwortet die Anmeldung 503 und die Passwortbestätigung', { concurrency: 1 }, async t => {
+test('with a full limit, login and password confirmation answer 503', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {

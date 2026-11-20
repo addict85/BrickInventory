@@ -60,7 +60,7 @@ async function create(teile, nummern = '10294') {
   return o;
 }
 
-test('Aufbau: Beschriftungen, Zurücksetzen nicht rot', async () => {
+test('setup: labels, reset not red', async () => {
   const { w, d } = await openUi();
   try {
     assert.equal(text(d.querySelector('label[for="pl-setnr"]')), 'Setnummern (mehrere mit Komma trennen)');
@@ -73,7 +73,7 @@ test('Aufbau: Beschriftungen, Zurücksetzen nicht rot', async () => {
   }
 });
 
-test('Hinzufügen rechnet sofort, ohne zweiten Schritt; „Neu berechnen“ erst mit einem Set', async () => {
+test('adding computes immediately, without a second step; "recompute" only with a set', async () => {
   const o = await openUi({
     '/v1/sets/info/10294-1': { success: true, name: 'Titanic', im_katalog: true },
     '/v1/sets/10294-1/parts-list': { success: true, parts: [TEIL] },
@@ -110,7 +110,7 @@ test('Hinzufügen rechnet sofort, ohne zweiten Schritt; „Neu berechnen“ erst
   }
 });
 
-test('Entfernen rechnet neu', async () => {
+test('removing recomputes', async () => {
   const { w, d } = await create([TEIL], '10294, 99999-1');
   try {
     d.querySelector('#pl-sets .pl-chip:nth-child(2) [data-click="plRemoveSet"]').click();
@@ -124,7 +124,7 @@ test('Entfernen rechnet neu', async () => {
   }
 });
 
-test('leeres Ergebnis: Grund, keine Exporte', async () => {
+test('empty result: reason, no exports', async () => {
   const { w, d } = await create([]);
   try {
     assert.equal(d.getElementById('pl-optionen').hidden, true, 'Export und Optionen bei 0 Teilen');
@@ -136,7 +136,7 @@ test('leeres Ergebnis: Grund, keine Exporte', async () => {
   }
 });
 
-test('unbekannte Nummer: im Chip genannt, nicht mitgezählt', async () => {
+test('unknown number: named in the chip, not counted', async () => {
   const { w, d } = await create([TEIL], '10294, 99999-1');
   try {
     const chips = [...d.querySelectorAll('#pl-sets .pl-chip')].map(c => ({
@@ -156,7 +156,7 @@ test('unbekannte Nummer: im Chip genannt, nicht mitgezählt', async () => {
   }
 });
 
-test('Ergebnis mit Teilen: Exporte frei, Eingabefelder beschriftet', async () => {
+test('result with parts: exports enabled, input fields labeled', async () => {
   const { w, d } = await create([TEIL]);
   try {
     assert.equal(d.getElementById('pl-optionen').hidden, false);
@@ -168,7 +168,7 @@ test('Ergebnis mit Teilen: Exporte frei, Eingabefelder beschriftet', async () =>
   }
 });
 
-test('Farbgruppen deutsch, Zusammenfassung nennt Sorten', async () => {
+test('color groups in German, summary names the kinds', async () => {
   const { w, d } = await create([TEIL, { ...TEIL, part_number: '3003', part_name: 'Brick 2 x 2', total_quantity: 10 }]);
   try {
     assert.match(text(d.getElementById('pl-result')), /^Rot \(2 Sorten\)/, 'Farbgruppe in der Sprache der Oberfläche');

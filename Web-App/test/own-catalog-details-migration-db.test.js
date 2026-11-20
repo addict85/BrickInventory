@@ -26,7 +26,7 @@ const db = testData();
 const MIGRATION = fs.readFileSync(path.join(__dirname, '..', 'db/migrations/0093-eigene-katalogangaben.sql'), 'utf8');
 const SCHEMA = `probe0093_${process.pid}`;
 
-test('Migration 0093: eigene Katalogangaben', { concurrency: 1 }, async t => {
+test('migration 0093: own catalog details', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const c = await db.pool.connect();
   t.after(async () => {
@@ -73,7 +73,7 @@ test('Migration 0093: eigene Katalogangaben', { concurrency: 1 }, async t => {
   );
   await c.query(MIGRATION);
 
-  await t.test('Eingaben stehen beim Konto', async () => {
+  await t.test('inputs are stored with the account', async () => {
     assert.deepEqual((await c.query('SELECT user_id, part_number, part_name, category_name FROM teil_eigen')).rows, [
       { user_id: anna, part_number: 'p1', part_name: 'Annas Name', category_name: null },
     ]);
@@ -85,7 +85,7 @@ test('Migration 0093: eigene Katalogangaben', { concurrency: 1 }, async t => {
     ]);
   });
 
-  await t.test('der gemeinsame Katalog behält nur Geprüftes', async () => {
+  await t.test('the shared catalog only keeps verified data', async () => {
     assert.deepEqual(
       (await c.query('SELECT part_number, part_name, category_name FROM part_catalog ORDER BY 1')).rows,
       [

@@ -17,7 +17,7 @@ const { keineDb } = require('./helpers/db');
 const db = testData();
 const { holdsSet } = require('./helpers/inventory');
 
-test('Erfassen unter Last', { concurrency: 1 }, async t => {
+test('capturing under load', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -50,7 +50,7 @@ test('Erfassen unter Last', { concurrency: 1 }, async t => {
       [uid, sn],
     );
 
-  await t.test('zehn gleichzeitige Erfassungen ergeben EINE Tageszeile mit Menge 10', async () => {
+  await t.test('ten concurrent acquisitions yield ONE daily row with quantity 10', async () => {
     await holdsSet(db, uid, '70001-1', 0);
     await Promise.all(
       Array.from({ length: 10 }, () =>
@@ -66,7 +66,7 @@ test('Erfassen unter Last', { concurrency: 1 }, async t => {
     assert.equal(s.zeilen, 1, `${s.zeilen} Tageszeilen statt einer — die Regel „ein Kaufpreis je Tag" ist verletzt`);
   });
 
-  await t.test('der Index lässt eine zweite Tageszeile gar nicht erst zu', async () => {
+  await t.test('the index does not even allow a second daily row', async () => {
     await holdsSet(db, uid, '70002-1', 0);
     // Das Netz unter der Sperre: Ein Weg, der die Sperre vergisst, scheitert
     // an der Datenbank statt still eine zweite Zeile anzulegen.
@@ -87,7 +87,7 @@ test('Erfassen unter Last', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('dasselbe für manuelle Teile und Minifiguren', async () => {
+  await t.test('the same for manual parts and minifigures', async () => {
     await db.run(
       `INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition)
                   VALUES ($1,'3001',4,1,0.5,'N')`,
@@ -119,7 +119,7 @@ test('Erfassen unter Last', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('ein anderer TAG bleibt eine eigene Zeile', async () => {
+  await t.test('a different DAY stays a row of its own', async () => {
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
                   VALUES ($1,'70002-1',1,5,'N', NOW() - INTERVAL '2 days')`,
@@ -132,7 +132,7 @@ test('Erfassen unter Last', { concurrency: 1 }, async t => {
   await db.pool.end().catch(() => {});
 });
 
-test('Mengen und Preise werden geprüft', () => {
+test('quantities and prices are checked', () => {
   const V = _req('src/infra/validate.js');
 
   // Menge: 1 bis 10 000, alles andere wird eingefangen.
@@ -157,7 +157,7 @@ test('Mengen und Preise werden geprüft', () => {
   assert.throws(() => moneyInput('abc', 'Preis'), /Ungültiger Betrag/, 'Text ist kein Preis, auch kein fehlender');
 });
 
-test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
+test('all capture paths use the same check', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
@@ -188,7 +188,7 @@ test('alle Erfassen-Wege nutzen dieselbe Prüfung', () => {
   assert.ok(sperre > 0 && stellen.every(i => i > sperre), 'nicht jede Schreibstelle läuft unter der Sperre');
 });
 
-test('ein kaputter CSV-Eintrag kippt nicht die ganze Datei', () => {
+test('a broken CSV entry does not topple the whole file', () => {
   const { csvReadIn, skippedHint } = _req('src/infra/csvExport.js');
 
   // Genau die Datei, die am laufenden Server den Import komplett abbrach:
@@ -212,7 +212,7 @@ test('ein kaputter CSV-Eintrag kippt nicht die ganze Datei', () => {
   assert.equal(skippedHint([]), null, 'ohne Übersprungene kein Hinweis');
 });
 
-test('alle drei Importwege melden übersprungene Zeilen', () => {
+test('all three import paths report skipped rows', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
@@ -257,7 +257,7 @@ test('alle drei Importwege melden übersprungene Zeilen', () => {
   }
 });
 
-test('die Teileliste liefert, was sie meldet', () => {
+test('the parts list delivers what it reports', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');

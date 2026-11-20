@@ -82,10 +82,10 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
 </script></body></html>`;
 }
 
-test('jeder Text in der Kopfleiste ist in jedem Design lesbar', t => {
+test('every text in the header bar is readable in every theme', t => {
   const bin = chrome();
   if (!bin) {
-    t.skip('kein Chrome gefunden');
+    t.skip('no Chrome found');
     return;
   }
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'kopfleiste-'));

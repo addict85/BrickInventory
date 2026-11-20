@@ -13,7 +13,7 @@ const path = require('node:path');
 const { serverAll, ohneKommentare } = require('./helpers/sources');
 const { portOf } = require('./helpers/server');
 
-test('1. die Startseite ist auch ohne Pfad erreichbar', async () => {
+test('1. the start page is reachable even without a path', async () => {
   const src = serverAll();
 
   // Den Catch-all an seiner AUFGABE finden, nicht an seinem Muster: Es ist
@@ -58,7 +58,7 @@ test('1. die Startseite ist auch ohne Pfad erreichbar', async () => {
   }
 });
 
-test('2. req.body ist immer ein Objekt, auch ohne passenden Parser', async () => {
+test('2. req.body is always an object, even without a matching parser', async () => {
   // Zuerst der BEDARF: Stimmt die Annahme ueberhaupt noch? Laeuft Express
   // eines Tages wieder von selbst auf `{}` zurueck, soll diese Regel nicht
   // stumm eine Zusicherung einfordern, die niemand mehr braucht — dann faellt
@@ -107,7 +107,7 @@ test('2. req.body ist immer ein Objekt, auch ohne passenden Parser', async () =>
  *
  * Gegenprobe: `index: false` entfernt → dieser Fall rot (gelesen ohne Kommentare).
  */
-test('3. die Startseite geht durch den Renderer', () => {
+test('3. the start page goes through the renderer', () => {
   // OHNE KOMMENTARE, und das ist nicht Zierde: Der Erklaerkommentar ueber der
   // Option nennt `index: false` selbst. Die erste Fassung las den Quelltext
   // samt Kommentaren — GEMESSEN blieb die Gegenprobe deshalb gruen, obwohl

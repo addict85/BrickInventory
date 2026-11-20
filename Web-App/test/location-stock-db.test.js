@@ -40,7 +40,7 @@ async function dbReachable() {
   }
 }
 
-test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
+test('storage location stock against a real database', { concurrency: 1 }, async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -52,7 +52,7 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
     ...require('./helpers/sources').testArea('inventory').locationService,
   };
 
-  await t.test('anlegen, und dasselbe zweimal anlegen ist kein zweiter Eintrag', async () => {
+  await t.test('create, and creating the same twice is no second entry', async () => {
     const a = await L.putLocationAn(U.grandparent, 'Regal A');
     assert.equal(a.war_neu, true);
     assert.equal(a.ort.name, 'Regal A');
@@ -67,7 +67,7 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
     assert.equal(b.ort.name, 'Regal A');
   });
 
-  await t.test('leer und zu lang werden abgelehnt, nicht zurechtgebogen', async () => {
+  await t.test('empty and too long are rejected, not bent into shape', async () => {
     for (const roh of ['', '   ', null, undefined]) {
       await assert.rejects(
         () => L.putLocationAn(U.grandparent, roh),
@@ -86,7 +86,7 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM storage_locations WHERE id = $1', [rand.ort.id]);
   });
 
-  await t.test('jedes Konto hat seinen eigenen Vorrat', async () => {
+  await t.test('every account has its own stock', async () => {
     // Ein Lagerort ist ein Regal in einer Wohnung. Der Grossvater hat andere
     // Regale als der Enkel, auch wenn er dessen Sets sehen darf.
     await L.putLocationAn(U.enkel, 'Kinderzimmer');
@@ -107,7 +107,7 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('ein neuer Ort am SET landet im Vorrat', async () => {
+  await t.test('a new place on the SET lands in the stock', async () => {
     // Marcos „man kann auch gleich neue Auswahlwerte erfassen". Ohne das
     // stünde der Ort am Set, fehlte aber in der Liste, aus der er beim
     // nächsten Mal gewählt werden soll.
@@ -119,7 +119,7 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('ein Ort, der keine Zeile trifft, hinterlässt keinen Eintrag', async () => {
+  await t.test('a place that hits no row leaves no entry', async () => {
     // Kein Schreibrecht, falsche Setnummer: Dann soll auch nichts im Vorrat
     // stehen bleiben. Sonst sammelte die Liste Namen aus Fehlversuchen.
     const vorher = (await L.locationsOf([U.grandparent])).length;
@@ -131,7 +131,7 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('Umbenennen nimmt die Zuordnungen mit', async () => {
+  await t.test('renaming takes the assignments along', async () => {
     const ort = (await L.locationsOf([U.enkel])).find(o => o.name === 'Unterm Bett');
     await L.benenneOrtUm(U.enkel, ort.id, 'Kiste 3');
     // Die Aussage ist dieselbe wie vorher, der Weg dahin ein anderer: Bis
@@ -149,7 +149,7 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
     assert.ok((await L.locationsOf([U.enkel])).some(o => o.name === 'Kiste 3'));
   });
 
-  await t.test('Umbenennen auf einen belegten Namen wird abgelehnt', async () => {
+  await t.test('renaming to a taken name is rejected', async () => {
     const ort = (await L.locationsOf([U.enkel])).find(o => o.name === 'Kiste 3');
     await assert.rejects(
       () => L.benenneOrtUm(U.enkel, ort.id, 'kinderzimmer'),
@@ -162,7 +162,7 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
     assert.ok((await L.locationsOf([U.enkel])).some(o => o.name === 'KISTE 3'));
   });
 
-  await t.test('ein fremdes Konto kann nichts umbenennen', async () => {
+  await t.test('a foreign account cannot rename anything', async () => {
     const ort = (await L.locationsOf([U.enkel])).find(o => o.name === 'KISTE 3');
     await assert.rejects(
       () => L.benenneOrtUm(U.grandparent, ort.id, 'Opas Keller'),
@@ -174,7 +174,7 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('Löschen geht nur bei einem leeren Ort', async () => {
+  await t.test('deleting only works for an empty place', async () => {
     const belegt = (await L.locationsOf([U.enkel])).find(o => o.name === 'KISTE 3');
     await assert.rejects(
       () => L.loescheOrt(U.enkel, belegt.id),
@@ -192,7 +192,7 @@ test('Lagerort-Vorrat gegen echte Datenbank', { concurrency: 1 }, async t => {
     assert.deepEqual(await L.locationsOf([U.enkel]), []);
   });
 
-  await t.test('eine Zuordnung ohne Ort im Vorrat ist nicht mehr moeglich', async () => {
+  await t.test('an assignment without a place in the stock is no longer possible', async () => {
     // Was hier vorher stand, und warum es weg ist
     const frei = (await db.get('SELECT COALESCE(MAX(id),0) + 1000 AS frei FROM storage_locations')).frei;
     await assert.rejects(

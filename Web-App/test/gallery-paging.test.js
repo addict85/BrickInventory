@@ -33,7 +33,7 @@ const SETS = [
   { nr: '77105-1', name: 'Epsilon', theme: 'Stadt', menge: 3, vor: 1 },
 ];
 
-test('seitenweise Listen am Server', { concurrency: 1 }, async t => {
+test('page-by-page lists on the server', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const NAME = `paging_${process.pid}`;
@@ -72,24 +72,24 @@ test('seitenweise Listen am Server', { concurrency: 1 }, async t => {
   };
   const sequence = async abfrage => (await hole(`/sets?${abfrage}`)).sets.map(s => s.name[0]);
 
-  await t.test('nach Anzahl lässt sich in beide Richtungen sortieren, Gleichstand nach Aufnahme', async () => {
+  await t.test('sorting by quantity works in both directions, ties by addition', async () => {
     assert.deepEqual(await sequence('sort=qty_desc'), ['E', 'A', 'G', 'D', 'O']);
     assert.deepEqual(await sequence('sort=qty_asc'), ['D', 'O', 'G', 'E', 'A']);
   });
 
-  await t.test('unbekannte Sortierung fällt auf „zuletzt aufgenommen“', async () => {
+  await t.test('an unknown sorting falls back to "most recently added"', async () => {
     const vorgabe = ['E', 'D', 'G', 'O', 'A'];
     assert.deepEqual(await sequence('sort=added_desc'), vorgabe);
     for (const s of ['constructor', '__proto__', 'toString', 'name_asc;DROP TABLE sets', 'x'])
       assert.deepEqual(await sequence(`sort=${encodeURIComponent(s)}`), vorgabe, s);
   });
 
-  await t.test('der Suchbegriff ist gebunden, nicht eingesetzt', async () => {
+  await t.test('the search term is bound, not inserted', async () => {
     assert.deepEqual(await sequence(`search=${encodeURIComponent("o'brien")}`), ['O']);
     assert.deepEqual(await sequence(`search=${encodeURIComponent("' OR 1=1 --")}`), []);
   });
 
-  await t.test('ohne page_size alles, mit page_size Seiten und Gesamtzahl', async () => {
+  await t.test('without page_size everything, with page_size pages and total', async () => {
     const alle = await hole('/sets');
     assert.equal(alle.sets.length, 5);
     assert.equal(alle.themes, undefined, 'ohne page_size keine Themenliste');
@@ -99,14 +99,14 @@ test('seitenweise Listen am Server', { concurrency: 1 }, async t => {
     assert.deepEqual([s3.sets.map(s => s.set_number), s3.total], [['77105-1'], 5]);
   });
 
-  await t.test('die Themenliste kommt über den ganzen Bestand und nur auf Seite 1', async () => {
+  await t.test('the theme list comes over the whole inventory and only on page 1', async () => {
     const s1 = await hole('/sets?page=1&page_size=1&sort=num_asc');
     assert.deepEqual([...s1.themes].sort(), ['Burg', 'Stadt', 'Weltraum'], 'Themen der übrigen Seiten fehlen');
     const s2 = await hole('/sets?page=2&page_size=1&sort=num_asc');
     assert.ok(!s2.themes?.length, `Folgeseite trägt Themen: ${s2.themes}`);
   });
 
-  await t.test('Minifiguren zählen je Figur, nicht je Set, und laden seitenweise', async () => {
+  await t.test('minifigures count per figure, not per set, and load page by page', async () => {
     const alle = await hole('/minifigs');
     assert.equal(alle.figs.length, 2, JSON.stringify(alle.figs.map(f => f.fig_number)));
     const s1 = await hole('/minifigs?page=1&page_size=1');
@@ -115,7 +115,7 @@ test('seitenweise Listen am Server', { concurrency: 1 }, async t => {
     assert.notEqual(s1.figs[0].fig_number.toLowerCase().trim(), s2.figs[0].fig_number.toLowerCase().trim());
   });
 
-  await t.test('auch die manuellen Teile laden seitenweise', async () => {
+  await t.test('the manual parts load page by page too', async () => {
     const s1 = await hole('/parts/manual?page=1&page_size=2');
     const s2 = await hole('/parts/manual?page=2&page_size=2');
     assert.equal(s1.parts.length, 2);

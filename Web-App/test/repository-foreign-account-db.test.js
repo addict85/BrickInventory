@@ -37,7 +37,7 @@ const versch = {
   deleteManualEntry: _req('src/inventory/repository/manualQuantities.js').removeEntry,
 };
 
-test('Repository schreibt nur in übergebene Konten', { concurrency: 1 }, async t => {
+test('repository only writes to passed accounts', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const name = n => `zl_${process.pid}_${n}`;
@@ -66,7 +66,7 @@ test('Repository schreibt nur in übergebene Konten', { concurrency: 1 }, async 
   };
   const lies = (tabelle, id) => db.get(`SELECT * FROM ${tabelle} WHERE id = $1`, [id]);
 
-  await t.test('Menge, Preis, Zustand und Datum einer fremden Erfassung bleiben', async () => {
+  await t.test('quantity, price, condition and date of a foreign entry stay', async () => {
     const id = await setEntry(fremd);
     await ein(async tx => {
       await erf.setEntryQuantity(tx, 'set', id, 99, [eigen]);
@@ -78,7 +78,7 @@ test('Repository schreibt nur in übergebene Konten', { concurrency: 1 }, async 
     assert.deepEqual([z.quantity, Number(z.purchase_price), z.condition, z.price_estimated], [3, 10, 'N', false]);
   });
 
-  await t.test('Gegenprobe: mit dem richtigen Konto wirkt dieselbe Funktion', async () => {
+  await t.test('counter-check: with the right account the same function works', async () => {
     const id = await setEntry(fremd);
     await ein(async tx => {
       await erf.setEntryQuantity(tx, 'set', id, 99, [eigen, fremd]);
@@ -91,7 +91,7 @@ test('Repository schreibt nur in übergebene Konten', { concurrency: 1 }, async 
     assert.equal((await db.get('SELECT day::text AS t FROM set_acquisitions WHERE id = $1', [id])).t, '2020-01-02');
   });
 
-  await t.test('eine fremde manuelle Erfassung lässt sich weder kürzen noch entfernen', async () => {
+  await t.test('a foreign manual entry can neither be shortened nor removed', async () => {
     const id = (
       await db.get(
         `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, currency) VALUES ($1,'3001',5,4,'EUR') RETURNING id`,
@@ -109,7 +109,7 @@ test('Repository schreibt nur in übergebene Konten', { concurrency: 1 }, async 
     assert.equal(await lies('part_acquisitions', id), undefined, 'Gegenprobe: das eigene Konto entfernt');
   });
 
-  await t.test('eine fremde Erfassung lässt sich nicht aus einem Verschieben löschen', async () => {
+  await t.test('a foreign entry cannot be deleted from a move', async () => {
     const setId = await setEntry(fremd);
     const figId = (
       await db.get(
@@ -131,7 +131,7 @@ test('Repository schreibt nur in übergebene Konten', { concurrency: 1 }, async 
     assert.equal(await lies('minifig_acquisitions', figId), undefined);
   });
 
-  await t.test('die Bestandszeile eines fremden Kontos bleibt', async () => {
+  await t.test('the inventory row of a foreign account stays', async () => {
     const zeile = (
       await db.get(
         `INSERT INTO minifigs (user_id, fig_number, source) VALUES ($1,'fig-000002','manual') RETURNING id`,

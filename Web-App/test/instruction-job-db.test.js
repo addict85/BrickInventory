@@ -43,7 +43,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
 
-test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
+test('instructions as a job', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -69,7 +69,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('nach einem versorgten Set waiting niemand', async () => {
+  await t.test('after a supplied set nobody waits', async () => {
     await zuruecksetzen();
     abruf.extern = false;
     abruf.error_message = null;
@@ -81,7 +81,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
     assert.ok(s >= 13 && s <= 15, `nach einem echten Abruf ${s} s Abstand statt 15`);
   });
 
-  await t.test('die Cloudflare-Leiter steigt und endet am nächsten Tag', async () => {
+  await t.test('the Cloudflare ladder climbs and ends the next day', async () => {
     await zuruecksetzen();
     abruf.error_message = new Error('Cloudflare error 1015: rate limited');
     const gesehen = [];
@@ -102,7 +102,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
     assert.equal(await pause(), null, 'ein Erfolg setzt die Leiter zurück');
   });
 
-  await t.test('hält ein anderer Prozess die Sperre, wird nichts abgerufen', async () => {
+  await t.test('if another process holds the lock, nothing is fetched', async () => {
     await zuruecksetzen();
     const { LOCKS } = _req('src/infra/lockNamespaces.js');
     const fremd = await db.pool.connect();
@@ -119,7 +119,7 @@ test('Anleitungen als Auftrag', { concurrency: 1 }, async t => {
     assert.equal(abruf.aufrufe, vorher + 1, 'Gegenprobe: ohne fremde Sperre wird abgerufen');
   });
 
-  await t.test('ein Set steht nur einmal offen', async () => {
+  await t.test('a set is open only once', async () => {
     await db.run(`DELETE FROM jobs WHERE type = 'anleitung'`);
     const E = _req('src/catalog/instructionJob.js');
     await E.anleitungEinreihen('10005');

@@ -42,7 +42,7 @@ const freePort = () =>
     });
   });
 
-test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 }, async t => {
+test('health check and startup state', { concurrency: 1, timeout: 180_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `gesund_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -105,19 +105,19 @@ test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 
     }));
   for (let i = 0; i < 240 && (await hole('/api/v1/health/live').catch(() => null)) === null; i++) await warte(250);
 
-  await t.test('anonym nur der Status, der Verwalter sieht mehr', async () => {
+  await t.test('anonymously only the status, the admin sees more', async () => {
     const anonym = await hole('/api/v1/health');
     assert.deepEqual(anonym, { status: 200, body: { status: 'starting' } }, log.slice(-1500));
     const verwalter = await hole('/api/v1/health', { authorization: `Bearer ${token}` });
     assert.deepEqual(Object.keys(verwalter.body).sort(), ['db_pool', 'startup', 'status', 'uptime_seconds']);
   });
 
-  await t.test('der Startzustand nennt nur seine Felder', async () => {
+  await t.test('the startup state only names its fields', async () => {
     const r = await hole('/api/v1/startup-status', { authorization: `Bearer ${token}` });
     assert.deepEqual(r.body, { ready: false, step: 'Teile laden...', progress: 2.37, total: 8, sub: '40%' });
   });
 
-  await t.test('anonym nur der Fortschritt, nicht der Schritt', async () => {
+  await t.test('anonymously only the progress, not the step', async () => {
     const r = await hole('/api/v1/startup-status');
     assert.deepEqual(
       r.body,
@@ -126,12 +126,12 @@ test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 
     );
   });
 
-  await t.test('live und ready antworten mit der Datenbank', async () => {
+  await t.test('live and ready answer with the database', async () => {
     assert.deepEqual(await hole('/api/v1/health/live'), { status: 200, body: { status: 'ok' } });
     assert.deepEqual(await hole('/api/v1/health/ready'), { status: 200, body: { status: 'ok' } });
   });
 
-  await t.test('ohne Datenbank meldet ready 503, live weiter 200', async () => {
+  await t.test('without a database ready reports 503, live still 200', async () => {
     const name = new URL(URL_DB).pathname.slice(1);
     const maintenance = new URL(URL_DB);
     maintenance.pathname = '/postgres';

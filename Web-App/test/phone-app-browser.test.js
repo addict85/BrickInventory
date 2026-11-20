@@ -68,7 +68,7 @@ const SMALL = `(() => {
   return { klein, schrift };
 })()`;
 
-test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
+test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
   const app = await startApp(t, {
     name: `telefon_${process.pid}`,
     telefon: true,
@@ -139,7 +139,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
     await rest();
   };
 
-  await t.test('Skelett beim Laden der Teile', async () => {
+  await t.test('skeleton while loading the parts', async () => {
     await b.auswerten(`document.querySelector('.ntab[data-tab="parts"]').click(); true`);
     // Das Skelett kommt nach Kennzahlen und Filtern; die Teile selbst sind 1,5 s verzögert.
     await bis(`!!document.querySelector('#parts-main .skelett-raster')`, 'Skelett der Teile', 30);
@@ -152,7 +152,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
     );
   });
 
-  await t.test('Tippziele und Schrift je Reiter', async () => {
+  await t.test('tap targets and font per tab', async () => {
     const tabList = await b.auswerten(`[...document.querySelectorAll('.ntab[data-tab]')].map(x => x.dataset.tab)`);
     const klein = [],
       schrift = [];
@@ -178,7 +178,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
     assert.deepEqual([...new Set(schrift)], [], 'Text unter 12 px');
   });
 
-  await t.test('Sprunglink und genau eine h1 je Reiter', async () => {
+  await t.test('skip link and exactly one h1 per tab', async () => {
     const tabList = await b.auswerten(`[...document.querySelectorAll('.ntab[data-tab]')].map(x => x.dataset.tab)`);
     assert.ok(tabList.length >= 8, `nur ${tabList.length} Reiter`);
     const falsch = [];
@@ -209,7 +209,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
     assert.equal(await b.auswerten(`document.activeElement.id`), 'inhalt');
   });
 
-  await t.test('Einstellungen: ein Abschnitt je Unterseite', async () => {
+  await t.test('settings: one section per subpage', async () => {
     await reiter('settings');
     const stand = () =>
       b.auswerten(`(() => {
@@ -230,7 +230,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
     assert.equal(await b.auswerten(`localStorage.getItem('bim_einst_abschnitt')`), 'einst-smtp');
   });
 
-  await t.test('Teile und Minifiguren in der Leiste auffindbar', async () => {
+  await t.test('parts and minifigures findable in the bar', async () => {
     await reiter('gallery');
     await b.auswerten(`document.querySelector('#tab-gallery .sammlung-wahl [data-arg="parts"]').click(); true`);
     await ruhig();
@@ -263,7 +263,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
     assert.equal(await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').innerText.trim()`), 'Sammlung');
   });
 
-  await t.test('Teile: ein Raster, Filter als Blatt', async () => {
+  await t.test('parts: one grid, filters as a sheet', async () => {
     await reiter('parts');
     await bis(`document.querySelectorAll('#parts-main .part-card:not(.skelett)').length === 12`, 'zwölf Teile');
     const raster = await b.auswerten(`(() => {
@@ -294,7 +294,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
     await b.auswerten(`document.querySelector('#tab-parts .filter-knopf').click(); true`);
   });
 
-  await t.test('Merkliste: Erfassen-Zeile bündig', async () => {
+  await t.test('wishlist: capture row aligned', async () => {
     await reiter('wanted');
     const messen = () =>
       b.auswerten(`['mk-num', 'mk-cond', 'mk-add', 'mk-csv-file'].map(id => {
@@ -321,7 +321,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
     }
   });
 
-  await t.test('Diagrammschrift Finanzen', async () => {
+  await t.test('chart font finances', async () => {
     await reiter('finance');
     await bis(`!!document.querySelector('#portfolio-chart svg.diagramm')`, 'Wertdiagramm');
     const [d] = await b.auswerten(DIAGRAMMSCHRIFT('#portfolio-chart'));
@@ -331,7 +331,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
     assert.match(d.name, /Wert der Sammlung, .+ bis .+: von .+ auf .+/);
   });
 
-  await t.test('Set-Ansicht: Diagramm, Löschen, Preisalarm', async () => {
+  await t.test('set view: chart, delete, price alert', async () => {
     await reiter('gallery');
     await bis(`!!document.querySelector('[data-click="openModal"]')`, 'Set-Karte');
     await b.auswerten(`document.querySelector('[data-click="openModal"]').click(); true`);
@@ -375,7 +375,7 @@ test('Telefon', { concurrency: 1, timeout: 240_000 }, async t => {
     assert.ok(alarm.hoehe >= 44, `Preisalarm-Felder ${alarm.hoehe} px hoch`);
     await b.auswerten(`document.querySelector('#set-modal [data-click="closeModal"]')?.click(); true`);
   });
-  await t.test('weniger Bewegung: Dialog und Reiter ohne Animation', async () => {
+  await t.test('reduced motion: dialog and tab without animation', async () => {
     // Ein Probe-Dialog ohne role="dialog", damit die Fokusführung der echten
     // Dialoge (js/dialogs.js) nicht anspringt.
     const duration = () =>

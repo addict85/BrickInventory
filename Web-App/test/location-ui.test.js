@@ -36,7 +36,7 @@ const choose = (o, id, wert) => {
   s.dispatchEvent(new o.w.Event('change', { bubbles: true }));
 };
 
-test('Webapp: im Set-Detail aus dem Vorrat des Besitzers wählen oder neu eintippen', async () => {
+test("web app: in the set detail choose from the owner's stock or type a new one", async () => {
   const o = await openUi({
     [`/v1/sets/${SN}`]: {
       success: true,
@@ -86,7 +86,7 @@ test('Webapp: im Set-Detail aus dem Vorrat des Besitzers wählen oder neu eintip
   }
 });
 
-test('Webapp: das Teil hat das Feld und speichert, die Figur nicht', async () => {
+test('web app: the part has the field and saves, the figure does not', async () => {
   const o = await openUi({
     '/v1/parts/3001/5/sets': {
       success: true,
@@ -118,7 +118,7 @@ test('Webapp: das Teil hat das Feld und speichert, die Figur nicht', async () =>
   }
 });
 
-test('Webapp: der Filter steht neben dem Kontofilter und geht an den Server', async () => {
+test('web app: the filter stands next to the account filter and goes to the server', async () => {
   const o = await openUi({
     '/v1/storage': { success: true, orte: [{ ort: 'Regal A', sets: 1, teile: 0, figuren: 0 }] },
   });
@@ -144,7 +144,7 @@ test('Webapp: der Filter steht neben dem Kontofilter und geht an den Server', as
   }
 });
 
-test('die Längengrenze steht in Server, Fehlertext und Webapp gleich', async () => {
+test('the length limit is the same in server, error text and web app', async () => {
   const { LOCATION_MAX_CHARS: max, normalizeLocation } = {
     ..._req('src/inventory/storageLocation.js'),
     ...require('./helpers/sources').testArea('inventory').locationService,

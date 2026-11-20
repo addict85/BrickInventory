@@ -53,7 +53,7 @@ const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
 const { catalogSet } = require('./helpers/inventory');
 
-test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
+test('condition and aggregate of a set', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const P = process.pid;
@@ -111,7 +111,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
   };
   const { setsLesen, readSet } = require('./helpers/sources').areaPage('sets');
 
-  await t.test('ein ausdrücklich angefragter Zustand schlägt die Erfassungs-Bewertung', async () => {
+  await t.test('an explicitly requested condition beats the entry valuation', async () => {
     const { aktuellerMarktpreis } = _req('src/finances/marketPrice.js');
     assert.equal(await aktuellerMarktpreis(SN, uid), 55, 'ohne Wunsch: nach den (neuen) Erfassungen');
     assert.equal(
@@ -121,7 +121,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('der Marktpreis als Kaufpreis richtet sich nach dem gewählten Zustand', async () => {
+  await t.test('the market price as purchase price depends on the selected condition', async () => {
     const { setErfassen, setSupplement } = require('./helpers/sources').areaPage('sets');
     const r = await setErfassen({
       requester: uid,
@@ -142,7 +142,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     assert.deepEqual(neu, { condition: 'U', preis: 33 }, 'Gebraucht erfasst, aber der Neupreis eingetragen');
   });
 
-  await t.test('readSet liefert dieselben Aggregatfelder wie setsLesen', async () => {
+  await t.test('readSet delivers the same aggregate fields as setsLesen', async () => {
     const liste = (await setsLesen([uid], {})).sets.find((/** @type {any} */ s) => s.set_number === SN);
     const einzeln = await readSet([uid], SN);
     assert.ok(liste && einzeln, 'Das Set fehlt in einer der beiden Antworten');
@@ -158,7 +158,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     assert.equal(Number(einzeln.used_count), 1);
   });
 
-  await t.test('beide Wege einer Erfassung liefern das Aggregat mit — nur bei Sets', async () => {
+  await t.test('both paths of an entry deliver the aggregate — only for sets', async () => {
     const geaendert = await anfrage('PUT', `/sets/${SN}/acquisitions/${erste}`, { condition: 'U' });
     assert.equal(geaendert.status, 200, JSON.stringify(geaendert.body));
     assert.equal(geaendert.body.set?.set_number, SN, 'Die Antwort auf das Ändern trägt kein Set-Aggregat');
@@ -181,7 +181,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     assert.equal(teil.body.set, undefined, 'Ein Teil hat kein Set-Aggregat');
   });
 
-  await t.test('manuelle Teile und Minifiguren nutzen dieselbe Zustandsregel wie Sets', async () => {
+  await t.test('manual parts and minifigures use the same condition rule as sets', async () => {
     await db.run(
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition)
                   VALUES ($1,$2,5,1,1,'U')`,
@@ -201,7 +201,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     assert.equal(figur?.condition, 'U', 'Figur mit gebrauchter Erfassung steht als neu da');
   });
 
-  await t.test('gainAndLoss bewertet nach dem Zustand der Erfassungen', async () => {
+  await t.test('gainAndLoss values by the condition of the entries', async () => {
     const { gainAndLoss } = _req('src/finances/financeCalc.js');
     const pnl = await gainAndLoss(uid, [uid]);
     const zeile = pnl.sets.find((/** @type {any} */ s) => s.set_number === SN);
@@ -213,7 +213,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('die Preis-Probe läuft ohne Serverfehler', async () => {
+  await t.test('the price probe runs without a server error', async () => {
     // Per GET löste schon ein Link einer fremden Seite (Lax-Cookie) den Abruf aus.
     const perLink = await fetch(`${base}/api/v1/admin/price-probe?set=${SN}&live=1`);
     assert.equal(perLink.status, 404, 'die Probe lässt sich per GET auslösen');
@@ -227,7 +227,7 @@ test('Zustand und Aggregat eines Sets', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('der im Formular gewählte Zustand kommt beim Anlegen an', async () => {
+  await t.test('the condition selected in the form arrives on creation', async () => {
     /** @type {any[][]} */
     const aufrufe = [];
     posedAddSet = async (...a) => {

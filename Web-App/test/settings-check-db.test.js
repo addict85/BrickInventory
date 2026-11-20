@@ -25,7 +25,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
-test('Einstellungen: Prüfung der Werte und Export je Rolle', { concurrency: 1 }, async t => {
+test('settings: validation of the values and export per role', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const NAME = `einst-pruef-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
@@ -60,14 +60,14 @@ test('Einstellungen: Prüfung der Werte und Export je Rolle', { concurrency: 1 }
     (await db.get('SELECT value FROM user_settings WHERE user_id=$1 AND key=$2', [uid, key]))?.value ?? null;
 
   try {
-    await t.test('bekannte Werte werden gespeichert', async () => {
+    await t.test('known values are saved', async () => {
       const r = await send({ currency: 'CHF', language: 'de', user_default_condition: 'U' });
       assert.equal(r.status, 200);
       assert.equal(await wert('language'), 'de');
       assert.equal(await wert('user_default_condition'), 'U');
     });
 
-    await t.test('eine fremde Währung wird abgewiesen', async () => {
+    await t.test('a foreign currency is rejected', async () => {
       const r = await send({ currency: '<img src=x>' });
       assert.equal(r.status, 400);
       assert.equal((await r.json()).code, 'wert_ungueltig');
@@ -76,13 +76,13 @@ test('Einstellungen: Prüfung der Werte und Export je Rolle', { concurrency: 1 }
       assert.equal((await send({ user_default_condition: 'Z' })).status, 400);
     });
 
-    await t.test('ein Objekt als Wert wird abgewiesen', async () => {
+    await t.test('an object as value is rejected', async () => {
       const r = await send({ language: { a: 1 } });
       assert.equal(r.status, 400);
       assert.equal(await wert('language'), 'de');
     });
 
-    await t.test('ein Nicht-Verwalter exportiert keine SMTP-Daten', async () => {
+    await t.test('a non-administrator does not export SMTP data', async () => {
       const j = await (await fetch(url(nutzer, '/export'))).json();
       assert.deepEqual(j.global, {});
       assert.equal(j.user_settings.currency, 'CHF', 'die eigenen Einstellungen sind dabei');

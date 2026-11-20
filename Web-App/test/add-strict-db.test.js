@@ -21,7 +21,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
-test('Erfassen nur, was gemeint ist', { concurrency: 1 }, async t => {
+test('capture only what is meant', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const NAME = `streng_${process.pid}`;
@@ -49,13 +49,13 @@ test('Erfassen nur, was gemeint ist', { concurrency: 1 }, async t => {
   const sets = async () =>
     (await db.all('SELECT set_number FROM sets WHERE user_id = $1', [uid])).map(z => z.set_number);
 
-  await t.test('ein Satz ist keine Setnummer', async () => {
+  await t.test('a sentence is not a set number', async () => {
     for (const roh of ["1'; DROP TABLE sets;--", '75192 Millennium Falcon', '75192;2'])
       assert.deepEqual(await post('/sets', { set_number: roh }), { status: 400, code: 'setnummer_ungueltig' }, roh);
     assert.deepEqual(await sets(), []);
   });
 
-  await t.test('ohne Merkposten wird nichts übernommen', async () => {
+  await t.test('without a wishlist item nothing is adopted', async () => {
     assert.deepEqual(await post('/wanted/75192-1/N/uebernehmen', {}), { status: 404, code: 'nicht_gefunden' });
     assert.deepEqual(await sets(), []);
   });

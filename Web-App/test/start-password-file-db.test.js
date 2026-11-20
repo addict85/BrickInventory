@@ -28,7 +28,7 @@ const _req = buildAndRequire();
 const db = testData();
 const { keineDb } = require('./helpers/db');
 
-test('Startpasswort in einer Datei statt im Log', async t => {
+test('initial password in a file instead of the log', async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -62,20 +62,20 @@ test('Startpasswort in einer Datei statt im Log', async t => {
   const [name, passwort] = fs.readFileSync(datei, 'utf8').split('\n');
   const admin = await db.get("SELECT id, password_hash, must_change_password FROM users WHERE username = 'admin'");
 
-  await t.test('die Datei trägt das Passwort des Kontos', async () => {
+  await t.test("the file carries the account's password", async () => {
     assert.equal(name, 'admin');
     assert.ok(await _req('src/account/passwordHash.js').passwordFits(passwort, admin.password_hash));
     assert.equal(admin.must_change_password, true);
   });
-  await t.test('nur der Dienst kann sie lesen', () => {
+  await t.test('only the service can read it', () => {
     assert.equal(fs.statSync(datei).mode & 0o777, 0o600);
   });
-  await t.test('das Log nennt den Pfad, nicht das Passwort', () => {
+  await t.test('the log names the path, not the password', () => {
     const log = output.join('\n');
     assert.ok(log.includes(datei), log);
     assert.ok(!log.includes(passwort), 'Passwort im Log');
   });
-  await t.test('der erste Passwortwechsel löscht die Datei', async () => {
+  await t.test('the first password change deletes the file', async () => {
     await _req('src/account/accounts.js').aendereEigenesPasswort(admin.id, 'ein-neues-langes-Passwort-42');
     assert.equal(fs.existsSync(datei), false);
   });

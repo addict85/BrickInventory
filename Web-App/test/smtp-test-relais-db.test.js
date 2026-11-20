@@ -34,7 +34,7 @@ const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const NAME = `smtprelais_${process.pid}`,
   PASS = 'chef-Passwort-1';
 
-test('SMTP-Test nur an die eigene Adresse oder mit Passwort', { concurrency: 1 }, async t => {
+test('SMTP test only to the own address or with password', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const eigene = `${NAME}@example.org`;
@@ -63,7 +63,7 @@ test('SMTP-Test nur an die eigene Adresse oder mit Passwort', { concurrency: 1 }
       body: JSON.stringify(body),
     }).then(async r => ({ status: r.status, body: await r.json() }));
 
-  await t.test('die eigene Adresse braucht kein Passwort', async () => {
+  await t.test('the own address needs no password', async () => {
     const r = await probe({});
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const r2 = await probe({ to: eigene.toUpperCase() });
@@ -71,7 +71,7 @@ test('SMTP-Test nur an die eigene Adresse oder mit Passwort', { concurrency: 1 }
     assert.deepEqual(gesendet, [eigene, eigene.toUpperCase()]);
   });
 
-  await t.test('eine fremde Adresse braucht das Passwort', async () => {
+  await t.test('a foreign address needs the password', async () => {
     gesendet.length = 0;
     const r = await probe({ to: 'fremd@example.net' });
     assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_falsch']);
@@ -84,7 +84,7 @@ test('SMTP-Test nur an die eigene Adresse oder mit Passwort', { concurrency: 1 }
     assert.deepEqual(gesendet, ['fremd@example.net']);
   });
 
-  await t.test('ab der elften Mail in der Stunde Schluss', async () => {
+  await t.test('from the eleventh mail in an hour it stops', async () => {
     let letzte;
     for (let i = 0; i < 12; i++) {
       letzte = await probe({});

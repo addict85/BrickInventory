@@ -50,7 +50,7 @@ const EXPRESS = [
   'GET /api/v1/health/ready',
 ];
 
-test('jede Route hat einen Vertrag', () => {
+test('every route has a contract', () => {
   assert.ok(EXPRESS.length > 150, `nur ${EXPRESS.length} Routen gefunden — greift die Suche noch?`);
   assert.deepEqual(
     EXPRESS.filter(k => !Object.hasOwn(CONTRACT, k)),
@@ -58,26 +58,26 @@ test('jede Route hat einen Vertrag', () => {
   );
 });
 
-test('kein Vertrag ohne Route', () => {
+test('no contract without a route', () => {
   assert.deepEqual(
     Object.keys(CONTRACT).filter(k => !EXPRESS.includes(k)),
     [],
   );
 });
 
-test('kein Schlüssel doppelt', () => {
+test('no key twice', () => {
   const summe = Object.values(AREAS).reduce((n, b) => n + Object.keys(b.routen).length, 0);
   assert.equal(Object.keys(CONTRACT).length, summe);
 });
 
-test('die eingecheckte openapi.json ist erzeugt', () => {
+test('the checked-in openapi.json is generated', () => {
   assert.ok(
     fs.readFileSync(DATEI, 'utf8') === alsText(openapi()),
     'docs/openapi.json weicht vom Vertrag ab — `npm run vertrag:openapi` ausführen und einchecken',
   );
 });
 
-test('jede lange Liste nimmt Seiten', () => {
+test('every long list takes pages', () => {
   // Eine Liste ohne Seiten wächst mit dem Bestand; `klein` sagt, dass sie das nicht tut.
   const o = openapi();
   const schema = s => (s?.$ref ? o.components.schemas[s.$ref.split('/').pop()] : s);
@@ -166,7 +166,7 @@ function responseFields(o) {
   return je;
 }
 
-test('Antwortfelder sind Pflicht, wo der Server sie immer liefert: freiwillige und nullbare werden weniger', () => {
+test('response fields are required where the server always delivers them: optional and nullable ones become fewer', () => {
   // Ein freiwilliges oder nullbares Feld wird in OpenAPI, den Typen der Oberfläche und in Kotlin nullbar.
   // Je Vertragsdatei, damit sichtbar ist, wo der Vertrag noch weich ist; gesamt 1728 → 1449 Felder,
   // freiwillig 719 → 329 (41,6 % → 22,7 %), nullbar 700 → 484.

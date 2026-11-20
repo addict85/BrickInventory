@@ -18,10 +18,10 @@ const { chrome } = require('./helpers/app-browser');
 const PUBLIC = path.join(__dirname, '..', 'public');
 const DESIGNS = ['klassisch', 'brick', 'farbfaecher'];
 
-test('Kennzahlen am Telefon sind Text ohne Fläche und Rand', t => {
+test('metrics on the phone are text without surface and border', t => {
   const bin = chrome();
   if (!bin) {
-    t.skip('kein Chrome gefunden');
+    t.skip('no Chrome found');
     return;
   }
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'kennzahlen-'));

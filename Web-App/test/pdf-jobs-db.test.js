@@ -32,7 +32,7 @@ const _req = buildAndRequire();
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
-test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
+test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
   try {
     await db.initSchema();
   } catch (e) {
@@ -100,14 +100,14 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
     const jobA = jobs.newJobId(Date.now());
     await jobPut(jobA, idA);
 
-    await t.test('der eigene Auftrag ist abrufbar', async () => {
+    await t.test('the own job can be fetched', async () => {
       const s = await hol(`status/${jobA}`, tokA);
       const body = await s.json();
       assert.equal(s.status, 200, JSON.stringify(body));
       assert.equal(body.status, 'done');
     });
 
-    await t.test('ein fremder Auftrag ist es nicht — und zwar mit demselben 404', async () => {
+    await t.test('a foreign job cannot — and with the same 404', async () => {
       const s = await hol(`status/${jobA}`, tokB);
       assert.equal(s.status, 404, 'fremder Auftragsstatus war lesbar');
 
@@ -121,7 +121,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
       assert.equal(s2.status, 200, 'der eigene Auftrag ist durch den Fremdzugriff verschwunden');
     });
 
-    await t.test('der Deckel greift beim dritten gleichzeitigen Auftrag', async () => {
+    await t.test('the cap applies at the third concurrent job', async () => {
       await db.run(`DELETE FROM jobs WHERE type = 'pdf'`);
       await jobPut(jobs.newJobId(Date.now()), idA, 'running');
       await jobPut(jobs.newJobId(Date.now()), idA, 'running');
@@ -143,7 +143,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
       assert.equal(r2.status, 200, `fremder Deckel hat den zweiten Benutzer gebremst (${r2.status})`);
     });
 
-    await t.test('abgelaufene Läufe sperren niemanden dauerhaft aus', async () => {
+    await t.test('expired runs do not lock anyone out permanently', async () => {
       await db.run(`DELETE FROM jobs WHERE type = 'pdf'`);
       const alt1 = jobs.newJobId(Date.now()),
         alt2 = jobs.newJobId(Date.now());
@@ -161,7 +161,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
       assert.equal(r.status, 200, 'ein hängengebliebener Lauf sperrt den Benutzer für immer aus');
     });
 
-    await t.test('der Statusstrom meldet das Ende sofort', async () => {
+    await t.test('the status stream reports the end immediately', async () => {
       await db.run(`DELETE FROM jobs WHERE type = 'pdf'`);
       const job = jobs.newJobId(Date.now());
       await jobPut(job, idA, 'running');
@@ -198,7 +198,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
       assert.ok(Date.now() - start < 5000, `erst nach ${Date.now() - start} ms`);
     });
 
-    await t.test('die Teileliste wird geprüft, bevor ein Auftrag entsteht', async () => {
+    await t.test('the parts list is checked before a job arises', async () => {
       await db.run(`DELETE FROM jobs WHERE type = 'pdf'`);
       const starte = rumpf =>
         fetch(`${basis}/api/v1/sets/partslist-pdf`, {
@@ -236,7 +236,7 @@ test('PDF-Aufträge gehören ihrem Besteller', { concurrency: 1 }, async t => {
       assert.ok(!('boese' in payload.parts[0]), 'unbekannte Felder gehen in den Auftrag');
     });
 
-    await t.test('die Auftragskennung kommt aus kryptografischem Zufall', () => {
+    await t.test('the job identifier comes from cryptographic randomness', () => {
       const ids = new Set(Array.from({ length: 200 }, () => jobs.newJobId(Date.now())));
       assert.equal(ids.size, 200, 'Kennungen wiederholen sich');
       for (const id of ids) assert.ok(jobs.validJobId(id), `eigene Kennung ist ungültig: ${id}`);

@@ -48,7 +48,7 @@ const db = S.testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Hinweis-Passwort-1';
 
-test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
+test('mails on new accesses', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const P = process.pid,
     NAMEN = [`zh_chef_${P}`, `zh_zwei_${P}`, `zh_nutzer_${P}`, `zh_neu_${P}`];
@@ -93,14 +93,14 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
       .sort((a, b) => a.an.localeCompare(b.an));
   };
 
-  await t.test('neuer Token', async () => {
+  await t.test('new token', async () => {
     await ruf('POST', '/token-create', { password: PASS, label: 'Tablet' });
     assert.deepEqual(await mails('token_neu', 1), [
       { an: NAMEN[0], konto: undefined, durch: undefined, name: 'Tablet' },
     ]);
   });
 
-  await t.test('neuer QR-Zugang', async () => {
+  await t.test('new QR access', async () => {
     await ruf('POST', '/qr-token', { password: PASS });
     assert.deepEqual(
       (await mails('qr_zugang_neu', 1)).map(m => m.an),
@@ -108,7 +108,7 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('neues Verwalterkonto', async () => {
+  await t.test('new admin account', async () => {
     await ruf('POST', '/users', {
       username: NAMEN[3],
       password: 'Lang-genug-Passwort-1',
@@ -121,7 +121,7 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
     ]);
   });
 
-  await t.test('ernannter Verwalter', async () => {
+  await t.test('appointed admin', async () => {
     gesendet.length = 0;
     await ruf('PUT', `/users/${nutzer}/admin`, { is_admin: true, admin_password: PASS });
     assert.deepEqual(
@@ -140,7 +140,7 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
     assert.equal(await _req('src/account/adminActions.js').runDueTakeoversFrom(), 1);
   };
 
-  await t.test('entfernter zweiter Faktor', async () => {
+  await t.test('removed second factor', async () => {
     await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', true)`, [zwei]);
     await ruf('DELETE', `/users/${zwei}/zweiter-faktor`, { admin_password: PASS });
     assert.deepEqual(
@@ -162,7 +162,7 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('fremdes Passwort durch einen Verwalter', async () => {
+  await t.test('password set by an admin', async () => {
     await ruf('PUT', `/users/${zwei}/password`, { password: 'Neues-Langes-Passwort-9', admin_password: PASS });
     await faellig();
     assert.deepEqual(
@@ -179,7 +179,7 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('Token aus der Anmeldung (neues Gerät)', async () => {
+  await t.test('token from login (new device)', async () => {
     gesendet.length = 0;
     await ruf('POST', '/login', { username: NAMEN[2], password: PASS, label: 'Handy' });
     assert.deepEqual(await mails('token_neu', 1), [
@@ -187,7 +187,7 @@ test('Mails bei neuen Zugängen', { concurrency: 1 }, async t => {
     ]);
   });
 
-  await t.test('eigener zweiter Faktor eingerichtet und abgeschaltet', async () => {
+  await t.test('own second factor set up and switched off', async () => {
     const zf = _req('src/factors/secondFactor.js');
     const { geheimnis } = await ruf('POST', '/zweiter-faktor/einrichten', { password: PASS });
     const code = versatz => zf.hotp(zf.fromBase32(geheimnis), zf.timeStep() + versatz);

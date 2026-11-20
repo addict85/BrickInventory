@@ -29,7 +29,7 @@ async function dialog(browserLanguage) {
   return o;
 }
 
-test('deutscher Browser, deutsche App: das Datum steht einmal', async () => {
+test('German browser, German app: the date appears once', async () => {
   const o = await dialog('de-DE');
   try {
     assert.equal(o.d.getElementById('acq-datum-7'), null, 'das Datum steht unter dem Feld noch einmal');
@@ -38,7 +38,7 @@ test('deutscher Browser, deutsche App: das Datum steht einmal', async () => {
   }
 });
 
-test('englischer Browser, deutsche App: das Datum steht darunter auf Deutsch', async () => {
+test('English browser, German app: the date appears below in German', async () => {
   const o = await dialog('en-US');
   try {
     assert.match(o.d.getElementById('acq-datum-7')?.textContent ?? '', /1\. Juni 2026/);

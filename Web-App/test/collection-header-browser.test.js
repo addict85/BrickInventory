@@ -46,7 +46,7 @@ const RECORD = `(() => {
   requestAnimationFrame(bild);
 })()`;
 
-test('Kopf der Sammlung: gleich und ohne Sprung', { concurrency: 1, timeout: 300_000 }, async t => {
+test('header of the collection: the same and without a jump', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `kopf_${process.pid}`,
     bestand: async (db, uid) => {
@@ -81,7 +81,7 @@ test('Kopf der Sammlung: gleich und ohne Sprung', { concurrency: 1, timeout: 300
     ['Teile', '#/teile', `document.getElementById('ps-total').textContent !== '—'`],
     ['Minifiguren', '#/minifiguren', `document.getElementById('mf-total').textContent !== '—'`],
   ]) {
-    await t.test(`${name}: Laden ohne Sprung`, async () => {
+    await t.test(`${name}: loading without a jump`, async () => {
       await b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
       await b.tab('Page.reload');
       await bis(`!!window.__kopf && ${fertig}`, `${name} geladen`, 300);
@@ -94,7 +94,7 @@ test('Kopf der Sammlung: gleich und ohne Sprung', { concurrency: 1, timeout: 300
     });
   }
 
-  await t.test('Gleicher Kopf in allen drei Ansichten', () => {
+  await t.test('same header in all three views', () => {
     // Bis zur Erfassen-Leiste stimmt alles überein; Breiten von Pfad und Untertitel hängen am Text.
     const kopf = z =>
       z

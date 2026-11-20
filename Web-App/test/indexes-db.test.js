@@ -32,12 +32,12 @@ const INDIZES = `
     JOIN pg_namespace n ON n.oid = t.relnamespace AND n.nspname = 'public'
     JOIN pg_am am ON am.oid = c.relam`;
 
-test('Indizes', { concurrency: 1 }, async t => {
+test('indexes', { concurrency: 1 }, async t => {
   const db = await accessOrSkip(t, _req);
   if (!db) return;
 
   try {
-    await t.test('kein Index ist der Anfang eines anderen', async () => {
+    await t.test('no index is the start of another', async () => {
       const alle = await db.all(`WITH ix AS (${INDIZES}) SELECT COUNT(*)::int AS n FROM ix`);
       assert.ok(alle[0].n > 100, `nur ${alle[0].n} Indizes gefunden — greift die Abfrage?`);
       const double = await db.all(`
@@ -56,7 +56,7 @@ test('Indizes', { concurrency: 1 }, async t => {
       );
     });
 
-    await t.test('jeder Fremdschlüssel hat einen Index', async () => {
+    await t.test('every foreign key has an index', async () => {
       const ohne = await db.all(`
         WITH ix AS (${INDIZES})
         SELECT c.conname || ' (' || c.conrelid::regclass || ')' AS d

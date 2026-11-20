@@ -14,7 +14,7 @@ const { buildAndRequire, ROOT } = require('./helpers/sources');
 buildAndRequire();
 const { editor } = require(path.join(ROOT, 'dist/jobs/startJobs.js'));
 
-test('der Katalogabgleich bekommt den Import-Prozess', async () => {
+test('the catalog reconciliation gets the import process', async () => {
   const aufrufe = [];
   // Vor dem Laden der Verdrahtung ersetzt: Die Anmeldung des Katalogs ruft das Modul.
   const modul = require.resolve(path.join(ROOT, 'dist/src/catalog/csvSync.js'));

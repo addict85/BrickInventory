@@ -54,7 +54,7 @@ function restore(tar) {
   return { status: r.status, aus: r.stdout + r.stderr };
 }
 
-test('ein gutes Archiv kommt bis zur Rückfrage', () => {
+test('a good archive gets as far as the confirmation prompt', () => {
   const r = restore(archive('gut', o => fs.mkdirSync(path.join(o, 'data', 'anleitungen'))));
   assert.match(r.aus, /Archiv geprüft/, r.aus);
   assert.match(r.aus, /Abgebrochen/, r.aus);
@@ -81,7 +81,7 @@ const BOESE = {
 // db-rolle vorher (Rollen und Besitz für das Einspielen als Migrationsrolle) und danach.
 // Gegenprobe (02.11.2026 gemessen): einen der beiden Aufrufe von db-rolle
 // entfernt → rot. (11.11.2026) den Lauf von migration entfernt → rot.
-test('nach dem Einspielen richtet db-rolle die Rollen nach, migration läuft, dann starten app und jobs', () => {
+test('after restoring db-rolle adjusts the roles, migration runs, then app and jobs start', () => {
   const lauf = path.join(tmp, 'lauf-rolle');
   fs.mkdirSync(path.join(lauf, 'schluessel'), { recursive: true });
   fs.writeFileSync(path.join(lauf, 'schluessel', 'datenschluessel'), 'k');
@@ -113,7 +113,7 @@ test('nach dem Einspielen richtet db-rolle die Rollen nach, migration läuft, da
 });
 
 for (const [fall, bauen] of Object.entries(BOESE)) {
-  test(`abgewiesen: ${fall}`, () => {
+  test(`rejected: ${fall}`, () => {
     const tar = bauen();
     const r = restore(tar);
     assert.notEqual(r.status, 0);

@@ -60,14 +60,14 @@ async function kopplung(knopf, endStand) {
   }
 }
 
-test('die Frage nennt das Gerät, Bestätigen schickt den Code der App', async () => {
+test("the question names the device, confirming sends the app's code", async () => {
   const k = await kopplung('qrKopplungBestaetigen', 'abgeholt');
   assert.match(k.frage, /„Pixel 9“ \(Netz 10\.0\.0\.0\/24\) möchte sich koppeln/);
   assert.deepEqual(k.gesendet, [['ja', { code: '123 456' }]]);
   assert.match(k.ende, /ist gekoppelt/);
 });
 
-test('Ablehnen schickt die Ablehnung und räumt den QR-Code weg', async () => {
+test('rejecting sends the rejection and clears the QR code', async () => {
   const k = await kopplung('qrKopplungAblehnen', 'abgelehnt');
   assert.deepEqual(k.gesendet, [['nein']]);
   assert.match(k.ende, /abgelehnt/);

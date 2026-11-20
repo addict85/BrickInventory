@@ -38,13 +38,13 @@ async function warningsOf(fn) {
   return collected;
 }
 
-test('Preisalarm-Mail: der Knopf und sein Fehlen', async t => {
+test('price alert mail: the button and its absence', async t => {
   // Frisch laden, damit der „einmal je Prozess"-Merker dieser Prüfung gehört
   // und nicht einem früheren Test.
   const mailer = _req('src/mail/mailer.js');
   const vorher = process.env.APP_BASE_URL;
 
-  await t.test('1. mit APP_BASE_URL trägt die Mail den Link', async () => {
+  await t.test('1. with APP_BASE_URL the mail carries the link', async () => {
     environment({ APP_BASE_URL: 'https://lego.example.test/' });
     const m = await mailer.buildAlertMail(DATEN);
     // Der abschliessende Schrägstrich der Variablen darf sich nicht verdoppeln.
@@ -57,7 +57,7 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async t => {
     assert.match(m.html, /class="btn-link"/, 'Der Link steht nicht als Knopf da.');
   });
 
-  await t.test('2. ohne APP_BASE_URL kein geratener Link — und ein Hinweis', async () => {
+  await t.test('2. without APP_BASE_URL no guessed link — and a hint', async () => {
     // Zwei Aussagen in EINEM Schritt, und das ist kein Zusammenlegen aus
     // Bequemlichkeit: Der Hinweis faellt genau EINMAL je Prozess, also muss
     // der erste Aufruf ohne Basis-URL beide Fragen beantworten. Ein zweiter
@@ -83,7 +83,7 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async t => {
     );
   });
 
-  await t.test('3. aber nur EINMAL, nicht je Alarm', async () => {
+  await t.test('3. but only ONCE, not per alert', async () => {
     // Der Preislauf baut die Mail fuer JEDEN gerissenen Alarm. Bei zwanzig
     // Alarmen saehe zwanzigmal dieselbe Zeile aus wie ein Sturm statt wie ein
     // Hinweis. Schritt 2 hat den Hinweis bereits ausgeloest — hier darf keiner
@@ -102,7 +102,7 @@ test('Preisalarm-Mail: der Knopf und sein Fehlen', async t => {
   //   a) zurueck auf 50 / 12px / 50  -> rot: „Gefunden: 2" (der Abstand steht
   //                                    dann in Pixeln und faellt aus der Zaehlung)
   //   b) Kacheln ungleich (44/12/40) -> rot: „Die Breiten ergeben 96 %"
-  await t.test('4. die beiden Kacheln lassen in der Mitte Platz', async () => {
+  await t.test('4. the two tiles leave room in the middle', async () => {
     environment({ APP_BASE_URL: 'https://lego.example.org' });
     const m = await mailer.buildAlertMail(DATEN);
     const breiten = [...m.html.matchAll(/<td width="(\d+)%"/g)].map(t => Number(t[1]));

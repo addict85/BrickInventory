@@ -91,7 +91,7 @@ const buildWith = z => {
 };
 const serviceWith = z => buildWith(z).d;
 
-test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
+test('row security of the account tables', { concurrency: 1 }, async t => {
   const su = await accessOrSkip(t, _req);
   if (!su) return;
   if (!(await su.asSuperuserConnected())) return missingPrecondition(t, 'kein Superuser');
@@ -144,18 +144,18 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
   }
   const allSets = () => app.all('SELECT user_id FROM sets');
 
-  await t.test('mit Konto A sieht eine Abfrage ohne Filter A und sein Unterkonto B, nicht C', async () => {
+  await t.test('with account A a query without a filter sees A and its sub-account B, not C', async () => {
     assert.deepEqual(ids(await als(A, allSets)), [A, B]);
     assert.deepEqual(ids(await als(A, () => app.all('SELECT user_id FROM user_settings'))), [A, B]);
     assert.deepEqual(ids(await als(A, () => app.transaction(tx => tx.all('SELECT user_id FROM sets')))), [A, B]);
   });
 
-  await t.test('ein Unterkonto sieht nur sich selbst, nicht sein Hauptkonto', async () => {
+  await t.test('a sub-account sees only itself, not its main account', async () => {
     assert.deepEqual(ids(await als(B, allSets)), [B]);
     assert.equal(await als(B, () => app.get('SELECT 1 AS da FROM sets WHERE user_id = $1', [A])), undefined);
   });
 
-  await t.test('kein Schalter der Sitzung hebt den Zeilenschutz der Laufzeitrolle auf', async () => {
+  await t.test('no session switch lifts the row security of the runtime role', async () => {
     const schalter = `SELECT set_config('app.system', 'an', true), set_config('app.rolle', 'system', true),
                              set_config('app.bypass', 'on', true)`;
     const afterToggle = (vorher, sql) =>
@@ -179,15 +179,18 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     assert.deepEqual(ids(await inSystemContext('test', allSets)), [A, B, C]);
   });
 
-  await t.test('ohne Konto und ohne Systemrahmen keine Zeile, auch nach einer Anfrage mit Konto', async () => {
-    assert.deepEqual(ids(await als(A, allSets)), [A, B]);
-    assert.deepEqual(await allSets(), []);
-    await als(A, () => app.transaction(tx => tx.all('SELECT 1')));
-    assert.deepEqual(await app.all('SELECT user_id FROM trash'), []);
-    assert.equal((await app.run('DELETE FROM sets')).changes, 0);
-  });
+  await t.test(
+    'without an account and without a system context no row, even after a request with an account',
+    async () => {
+      assert.deepEqual(ids(await als(A, allSets)), [A, B]);
+      assert.deepEqual(await allSets(), []);
+      await als(A, () => app.transaction(tx => tx.all('SELECT 1')));
+      assert.deepEqual(await app.all('SELECT user_id FROM trash'), []);
+      assert.equal((await app.run('DELETE FROM sets')).changes, 0);
+    },
+  );
 
-  await t.test('fremde user_id beim Schreiben abgewiesen', async () => {
+  await t.test('foreign user_id rejected on write', async () => {
     const rls = /row-level security/;
     await assert.rejects(
       als(A, () => app.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10002-1')`, [C])),
@@ -210,14 +213,14 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     await su.run("DELETE FROM sets WHERE set_number = '10002-1'");
   });
 
-  await t.test('im Systemrahmen sieht die Aufräumarbeit alle Konten', async () => {
+  await t.test('in the system context the cleanup sees all accounts', async () => {
     const { papierkorb } = buildWith(app).contexts.inventory;
     assert.equal(await papierkorb.removeOlder(30), 0);
     assert.equal(await inSystemContext('test', () => papierkorb.removeOlder(30)), 3);
     assert.deepEqual(await su.all('SELECT id FROM trash'), []);
   });
 
-  await t.test('ein Auftrag läuft im Systemrahmen nur, wenn seine Art kontoübergreifend ist', async st => {
+  await t.test('a job runs in the system context only if its kind is cross-account', async st => {
     const leeren = () => su.run("DELETE FROM jobs WHERE type IN ('wechselkurse', 'nacharbeit', 'preise')");
     st.after(leeren);
     const A_ = _req('src/jobQueue/service.js');
@@ -259,7 +262,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
 
   // Mitten in einer Konto-Transaktion fragte der Systemrahmen über die Systemrolle neben ihr: abgewiesen.
   await t.test(
-    'inSystemContext mitten in der Transaktion wird abgewiesen; ein Kontowechsel folgt auch nach einem Sicherungspunkt',
+    'inSystemContext in the middle of the transaction is rejected; an account switch follows even after a savepoint',
     async () => {
       const n = async d => (await d.all('SELECT user_id FROM sets')).length;
       const stand = await als(B, () =>
@@ -283,7 +286,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     },
   );
 
-  await t.test('ein Signal-Handler fragt im Rahmen, in dem er sich angemeldet hat', async () => {
+  await t.test('a signal handler queries in the context in which it registered', async () => {
     const kanal = `zeilen_${process.pid}`;
     // Die Horch-Verbindung entsteht im Rahmen von C; der Handler von A darf ihn nicht erben.
     await new Promise(fertig => als(C, () => app.notification.listen(kanal, () => fertig(null))));
@@ -298,7 +301,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     assert.deepEqual(await gesehen, [A, B]);
   });
 
-  await t.test('wer einem Haushalt beitritt, vergleicht mit der Währung des Hauptkontos', async () => {
+  await t.test("whoever joins a household compares with the main account's currency", async () => {
     // Die Dienste über den Zugang mit Zeilenschutz, wie im Betrieb.
     const haushalt = serviceWith(app).household;
     const D = await konto('neu');
@@ -314,7 +317,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('ein Währungswechsel erreicht auch das Unterkonto des Unterkontos', async () => {
+  await t.test("a currency change also reaches the sub-account's sub-account", async () => {
     const einstellungen = serviceWith(app).settings;
     const E = await konto('enkel');
     await su.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [B, E]);
@@ -328,10 +331,10 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('eine Anfrage erbt keinen Systemrahmen', async () => {
+  await t.test('a request inherits no system context', async () => {
     assert.deepEqual(ids(await inSystemContext('test', () => asRequest({ apiUser: { user_id: C } }, allSets))), [C]);
   });
-  await t.test('Aufträge und Zugangsdaten anderer Konten bleiben der Laufzeitrolle verborgen', async () => {
+  await t.test('jobs and credentials of other accounts stay hidden from the runtime role', async () => {
     await su.run("DELETE FROM jobs WHERE type = 'wechselkurse'");
     await su.run(`INSERT INTO jobs (type, payload, dedupe_key) VALUES ('wechselkurse', '{}', $1)`, [
       `rows-sys-${process.pid}`,
@@ -356,7 +359,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     await su.run('DELETE FROM api_tokens WHERE user_id = $1', [C]);
   });
 
-  await t.test('die Anmeldung findet den Token ohne Konto, der Widerruf löscht ihn', async () => {
+  await t.test('login finds the token without an account, revocation deletes it', async () => {
     const { d, contexts } = buildWith(app);
     const K = _req('src/account/index.js');
     const token = `rows-token-${process.pid}`;
@@ -369,7 +372,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     assert.deepEqual(await su.all('SELECT 1 FROM api_tokens WHERE user_id = $1', [C]), []);
   });
 
-  await t.test('ein Konto liest seine Passkeys und Tokens unter Zeilenschutz, fremde nicht', async st => {
+  await t.test('an account reads its passkeys and tokens under row security, foreign ones not', async st => {
     const d = serviceWith(app);
     await su.run(
       `INSERT INTO passkeys (user_id, credential_id, public_key, name) VALUES ($1, $2, '\\x00', 'eigen'), ($3, $4, '\\x00', 'fremd')`,
@@ -400,7 +403,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     assert.equal((await su.all('SELECT 1 FROM passkeys WHERE user_id = $1', [C])).length, 1);
   });
 
-  await t.test('Zugangsdaten des Unterkontos bleiben dem Hauptkonto verborgen, lesend und schreibend', async st => {
+  await t.test('credentials of the sub-account stay hidden from the main account, reading and writing', async st => {
     const d = serviceWith(app);
     const pid = process.pid;
     await su.run(`INSERT INTO passkeys (user_id, credential_id, public_key, name) VALUES ($1, $2, '\\x00', 'unter')`, [
@@ -446,7 +449,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     await als(B, () => app.run(`INSERT INTO api_tokens (token, user_id) VALUES ($1, $2)`, [`zt-b2-${pid}`, B]));
   });
 
-  await t.test('Gutscheine und Idempotenzeinträge des Unterkontos sieht das Hauptkonto nicht', async st => {
+  await t.test('the main account does not see vouchers and idempotency entries of the sub-account', async st => {
     const pid = process.pid;
     await su.run(
       `INSERT INTO vouchers (user_id, number, number_search, amount, currency) VALUES ($1, 'v2:x', $2, 10, 'EUR')`,
@@ -468,7 +471,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('ein PDF-Auftrag eines fremden Kontos ist für die Anfrage keiner', async st => {
+  await t.test('a PDF job of a foreign account is none for the request', async st => {
     const d = serviceWith(app);
     const kennung = `zs${process.pid}`;
     await su.run(

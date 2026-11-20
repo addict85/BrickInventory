@@ -96,7 +96,7 @@ async function tap(f, takt, text = '249.90') {
   await warte(REST * 2);
 }
 
-test('Tippen speichert — und die Ruhezeit macht daraus EINE Anfrage', async () => {
+test('typing saves — and the quiet period turns it into ONE request', async () => {
   const schnell = fenster();
   await tap(schnell, 40);
   assert.deepEqual(schnell.meldungen, [], 'Es gab Meldungen in der Konsole');
@@ -130,7 +130,7 @@ test('Tippen speichert — und die Ruhezeit macht daraus EINE Anfrage', async ()
   langsam.schliesse();
 });
 
-test('die Antwort schreibt NICHT ins Feld zurück', async () => {
+test('the response does NOT write back into the field', async () => {
   // Der Grund steht an showAlarmMarker(): Wer „249.90" tippt, hat nach der
   // Ruhezeit hinter „249.9" vielleicht schon die letzte Null gesetzt. Ein
   // Nachladen machte daraus wieder „249.9" und frässe das Zeichen weg.
@@ -145,7 +145,7 @@ test('die Antwort schreibt NICHT ins Feld zurück', async () => {
   f.schliesse();
 });
 
-test('ein geleertes Feld löscht', async () => {
+test('a cleared field deletes', async () => {
   // Die natürliche Geste, einen Alarm loszuwerden. Ein eigener Knopf daneben
   // wäre ein zweiter Weg für dieselbe Absicht.
   const f = fenster();

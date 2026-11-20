@@ -15,7 +15,7 @@ const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 
-test('test-run.js übersteht Rahmen mit Nicht-ASCII-Text dahinter', () => {
+test('test-run.js survives frames with non-ASCII text behind them', () => {
   const env = { ...process.env };
   // Ohne Datenbank: Geprüft wird nur der Weg der Ausgabe.
   delete env.TEST_DATABASE_URL;

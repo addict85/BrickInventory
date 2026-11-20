@@ -38,7 +38,7 @@ const SET = {
   instructions: [],
 };
 
-test('Gutscheinnummer: erst Trenner weg, dann Vierergruppen; ohne PDF steht es im Text', async () => {
+test('voucher number: separators off first, then groups of four; without a PDF it is in the text', async () => {
   const { w, d } = await openUi({
     '/v1/vouchers': {
       success: true,
@@ -55,7 +55,7 @@ test('Gutscheinnummer: erst Trenner weg, dann Vierergruppen; ohne PDF steht es i
   }
 });
 
-test('Anmeldefehler wird vorgelesen (role=alert) und steht da', async () => {
+test('login error is read aloud (role=alert) and stays', async () => {
   const { w, d } = await openUi(
     {
       '/v1/auth/login': {
@@ -80,7 +80,7 @@ test('Anmeldefehler wird vorgelesen (role=alert) und steht da', async () => {
   }
 });
 
-test('Zeitraum und Filter der Finanzen melden ihren Zustand (aria-pressed)', async () => {
+test('period and filter of the finances report their state (aria-pressed)', async () => {
   // Zwei Messpunkte: Ohne Verlauf sind die Zeitraum-Knöpfe gesperrt.
   const { w, d } = await openUi({
     '/v1/finance/portfolio-history': {
@@ -120,7 +120,7 @@ test('Zeitraum und Filter der Finanzen melden ihren Zustand (aria-pressed)', asy
   }
 });
 
-test('Teile-Zahl: Sammlung und Teile-Reiter zeigen dieselbe Summe mit Aufschlüsselung', async () => {
+test('part count: collection and parts tab show the same sum with breakdown', async () => {
   const { w, d } = await openUi({
     '/v1/stats': {
       success: true,
@@ -150,7 +150,7 @@ test('Teile-Zahl: Sammlung und Teile-Reiter zeigen dieselbe Summe mit Aufschlüs
   }
 });
 
-test('Preis auf der Kachel ist beschriftet, Zustand und Datum benannt (de und en)', async () => {
+test('price on the tile is labeled, condition and date named (de and en)', async () => {
   for (const [sprache, art, zustand, gekauft, unbekannt] of [
     ['de', 'Kaufpreis', 'Neuware', 'Gekauft', 'Unbekannt'],
     ['en', 'Purchase price', 'New', 'Bought', 'Unknown'],
@@ -172,7 +172,7 @@ test('Preis auf der Kachel ist beschriftet, Zustand und Datum benannt (de und en
   }
 });
 
-test('offline: Das Diagramm sagt „nicht verfügbar“ mit Grund und Knopf statt weiter „Laden…“', async () => {
+test('offline: the chart says “not available” with reason and button instead of “Loading…”', async () => {
   const netzweg = () => {
     throw new TypeError('Failed to fetch');
   };
@@ -199,7 +199,7 @@ test('offline: Das Diagramm sagt „nicht verfügbar“ mit Grund und Knopf stat
 // UX-Prüfung 24 (M2): Ohne geladenen Stand fallen die Karten weg, statt „—“ ohne Fehlerbezug zu zeigen; die
 // Zeitraumknöpfe sind gesperrt. Gegenprobe (14.11.2026): in finanzenFehlen() `hidden = true` entfernt → rot
 // (Karten sichtbar); das Sperren der Knöpfe entfernt → rot (Zeitraum bedienbar).
-test('offline: Die Kennzahl-Karten der Finanzen fallen weg, die Zeitraumknöpfe sind gesperrt', async () => {
+test('offline: the key figure cards of the finances drop, the period buttons are locked', async () => {
   const netzweg = () => {
     throw new TypeError('Failed to fetch');
   };
@@ -234,7 +234,7 @@ test('offline: Die Kennzahl-Karten der Finanzen fallen weg, die Zeitraumknöpfe 
   }
 });
 
-test('Teile-Suche ohne Treffer: „Keine Treffer für …“ mit Knopf, der die Suche leert', async () => {
+test('parts search without results: “No results for …” with a button that clears the search', async () => {
   const { w, d } = await openUi({});
   try {
     await reiter(w, 'parts');
@@ -251,7 +251,7 @@ test('Teile-Suche ohne Treffer: „Keine Treffer für …“ mit Knopf, der die 
   }
 });
 
-test('Hintergrundarbeiten: technischer Fehler als Satz, Einzelheiten aufklappbar', async () => {
+test('background jobs: technical error as a sentence, details expandable', async () => {
   const roh = 'getaddrinfo ENOTFOUND rebrickable.com';
   const { w, d } = await openUi({
     '/v1/admin/job-status': { success: true, job: { running: false } },
@@ -286,7 +286,7 @@ test('Hintergrundarbeiten: technischer Fehler als Satz, Einzelheiten aufklappbar
   }
 });
 
-test('Hintergrundarbeiten: ein verschobener Auftrag wartet, ein abgebrochener ist nicht gescheitert', async () => {
+test('background jobs: a postponed job waits, an aborted one has not failed', async () => {
   const bis = new Date(Date.now() + 3 * 3600_000).toISOString();
   const zeile = (id, mehr) => ({
     id,

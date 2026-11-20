@@ -62,7 +62,7 @@ const freePort = () =>
     });
   });
 
-test('Eingang zu /api/v1', { concurrency: 1, timeout: 180_000 }, async t => {
+test('entrance to /api/v1', { concurrency: 1, timeout: 180_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
 
@@ -112,11 +112,11 @@ test('Eingang zu /api/v1', { concurrency: 1, timeout: 180_000 }, async t => {
     if (r.status !== 401 && r.status !== 403 && p !== '/api/v1/auth/register') offen.add(`${m} ${p}`);
   }
 
-  await t.test('nur die öffentlichen Pfade antworten ohne Anmeldung', () =>
+  await t.test('only the public paths answer without login', () =>
     assert.deepEqual([...offen].sort(), [...EXPECTED_OPEN.keys()].sort()),
   );
 
-  await t.test('ein falsches Token kommt nicht hinein', async () => {
+  await t.test('a wrong token does not get in', async () => {
     const r = await fetch(`http://127.0.0.1:${port}/api/v1/stats`, { headers: { authorization: 'Bearer falsch' } });
     assert.equal(r.status, 401);
   });

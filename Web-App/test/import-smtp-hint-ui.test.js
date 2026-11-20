@@ -10,7 +10,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, warte } = require('./helpers/ui');
 
-test('die übergangenen SMTP-Felder stehen in einer Meldung', async () => {
+test('the skipped SMTP fields stand in one message', async () => {
   const { w, d } = await openUi({
     '/v1/settings/import': {
       success: true,

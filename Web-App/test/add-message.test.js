@@ -28,7 +28,7 @@ async function record(antwort, sprache = 'de') {
   return o;
 }
 
-test('ohne Katalogdaten: gespeichert, Rest kommt nach', async () => {
+test('without catalog data: saved, the rest follows', async () => {
   const { w, d } = await record({
     success: true,
     action: 'added',
@@ -45,7 +45,7 @@ test('ohne Katalogdaten: gespeichert, Rest kommt nach', async () => {
   }
 });
 
-test('mit Katalogdaten: hinzugefügt', async () => {
+test('with catalog data: added', async () => {
   const { w, d } = await record({
     success: true,
     action: 'added',
@@ -60,7 +60,7 @@ test('mit Katalogdaten: hinzugefügt', async () => {
   }
 });
 
-test('aktualisiert', async () => {
+test('updated', async () => {
   const { w, d } = await record({
     success: true,
     action: 'updated',
@@ -75,7 +75,7 @@ test('aktualisiert', async () => {
   }
 });
 
-test('englisch: hinzugefügt', async () => {
+test('English: added', async () => {
   const { w, d } = await record(
     { success: true, action: 'added', set_number: '10294-1', name: 'Titanic', katalog_offen: false },
     'en',
@@ -87,7 +87,7 @@ test('englisch: hinzugefügt', async () => {
   }
 });
 
-test('englisch: aktualisiert', async () => {
+test('English: updated', async () => {
   const { w, d } = await record(
     { success: true, action: 'updated', set_number: '10294-1', name: 'Titanic', katalog_offen: false },
     'en',

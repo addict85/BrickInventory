@@ -23,7 +23,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const express = require(path.join(__dirname, '..', 'node_modules', 'express'));
 
-test('POST /api/v1/auth/serverbeweis gibt es nicht mehr', { concurrency: 1 }, async t => {
+test('POST /api/v1/auth/serverbeweis no longer exists', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const app = express();
@@ -46,6 +46,6 @@ test('POST /api/v1/auth/serverbeweis gibt es nicht mehr', { concurrency: 1 }, as
       body: JSON.stringify({ kennung: '0123456789abcdef', nonce: 'ab'.repeat(16) }),
     }).then(r => r.status);
 
-  await t.test('ohne Anmeldung 401', async () => assert.equal(await frage(), 401));
-  await t.test('angemeldet 404', async () => assert.equal(await frage({ 'x-probe-angemeldet': '1' }), 404));
+  await t.test('without login 401', async () => assert.equal(await frage(), 401));
+  await t.test('logged in 404', async () => assert.equal(await frage({ 'x-probe-angemeldet': '1' }), 404));
 });

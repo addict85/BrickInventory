@@ -65,7 +65,7 @@ function zaehle(zugang) {
   return n;
 }
 
-test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t => {
+test('sets with a second access', { concurrency: 1, timeout: 180_000 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const admin = new Client({ connectionString: process.env.DATABASE_URL });
@@ -115,11 +115,11 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
   const prozess = zaehle(quellen.testAccess());
   t.after(() => prozess.zurueck());
 
-  await t.test('Währung aus der zweiten Datenbank', async () => {
+  await t.test('currency from the second database', async () => {
     assert.equal(await require(path.join(ROOT, 'dist/src/sets/prices.js')).currencyOf(contexts.sets, uid), 'CHF');
   });
 
-  await t.test('Lagerort in der zweiten Datenbank', async () => {
+  await t.test('storage location in the second database', async () => {
     const { ort, n } = await sets.setLocationOfSets(uid, SN, 'Kiste Z');
     assert.equal(ort, 'Kiste Z');
     assert.equal(n, 1);
@@ -130,14 +130,14 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
     );
   });
 
-  await t.test('Preisalarm in der zweiten Datenbank', async () => {
+  await t.test('price alert in the second database', async () => {
     const alarm = await sets.setAlarmOfSets(uid, SN, { direction: 'unter', threshold: 12.5, condition: 'N' });
     assert.equal(alarm.currency_code, 'CHF', 'die Währung des Alarms kommt aus der zweiten Datenbank');
     assert.equal((await sets.readSetAlerts(uid, SN)).length, 1);
     assert.equal(await sets.deleteAlarmOfSets(uid, SN, 'N'), 1);
   });
 
-  await t.test('Marktpreis aus dem Cache der zweiten Datenbank', async () => {
+  await t.test('market price from the cache of the second database', async () => {
     const p = await sets.setPrice(uid, { nutzer: uid }, SN);
     assert.equal(p.error, undefined, JSON.stringify(p));
     assert.equal(Number(p.avg_price), 42.5);
@@ -145,7 +145,7 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
     assert.equal(p.currency, 'CHF');
   });
 
-  await t.test('Preisverlauf aus der zweiten Datenbank', async () => {
+  await t.test('price history from the second database', async () => {
     const v = await sets.setPriceHistory(uid, { nutzer: uid }, SN);
     assert.equal(Number(v.current.N?.avg_price), 42.5);
     assert.deepEqual(
@@ -154,7 +154,7 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
     );
   });
 
-  await t.test('Teileliste aus dem Katalog der zweiten Datenbank, Bilderauftrag dort', async () => {
+  await t.test('parts list from the catalog of the second database, image job there', async () => {
     const r = await require(path.join(ROOT, 'dist/src/sets/content.js')).partListOfSets(
       contexts.sets,
       SN,
@@ -172,7 +172,7 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
     assert.equal(n, 1, 'der Bilderauftrag steht in der zweiten Datenbank');
   });
 
-  await t.test('Löschen über Haushalt und Papierkorb der zweiten Datenbank', async () => {
+  await t.test('deleting via household and trash of the second database', async () => {
     const trash = await sets.deleteSetFor({ nutzer: uid }, SN);
     assert.equal(trash.length, 1);
     assert.equal((await zweite.get('SELECT count(*)::int AS n FROM sets WHERE user_id = $1', [uid])).n, 0);
@@ -182,11 +182,11 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
     );
   });
 
-  await t.test('der Prozesszugang blieb unberührt', () => {
+  await t.test('the process access stayed untouched', () => {
     assert.equal(prozess.anfragen, 0);
   });
 
-  await t.test('Haushaltsgedächtnis je Zugang', async () => {
+  await t.test('household memory per access', async () => {
     // Dieselbe Konto-ID, zwei Datenbanken: In der zweiten hat sie ein Unterkonto, im Prozesszugang nicht.
     const UNTER = 987654;
     await zweite.run("INSERT INTO users (id, username, password_hash) VALUES ($1, 'unter_in_zwei', 'x')", [UNTER]);

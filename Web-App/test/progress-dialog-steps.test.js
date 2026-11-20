@@ -144,7 +144,7 @@ function reachableSteps() {
 const galerie = fs.readFileSync(path.join(ROOT, 'public', 'js', 'progress.js'), 'utf8');
 const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
-test('jeder Schritt im Fortschrittsdialog kann den Browser auch erreichen', () => {
+test('every step in the progress dialog can also reach the browser', () => {
   const schalter = galerie.slice(galerie.indexOf('export function handleSseEvent'));
   const rumpf = schalter.slice(0, schalter.indexOf('\n}\n'));
   const faelle = [...rumpf.matchAll(/case\s+'([^']+)'/g)].map(m => m[1]);
@@ -162,7 +162,7 @@ test('jeder Schritt im Fortschrittsdialog kann den Browser auch erreichen', () =
   );
 });
 
-test('jede angesprochene ps-Kennung gibt es auch im Dialog', () => {
+test('every addressed ps identifier also exists in the dialog', () => {
   const ids = new Set([...galerie.matchAll(/'ps-([a-z-]+)'/g)].map(m => 'ps-' + m[1]));
   // setStep() setzt die Kennung aus 'ps-' + Name zusammen; beide Formen einsammeln.
   for (const m of galerie.matchAll(/setStep\('([a-z-]+)'/g)) ids.add('ps-' + m[1]);
@@ -172,7 +172,7 @@ test('jede angesprochene ps-Kennung gibt es auch im Dialog', () => {
   assert.deepEqual(fehlend, [], `Frontend spricht Elemente an, die es in index.html nicht gibt: ${fehlend.join(', ')}`);
 });
 
-test('kein Sprachschlüssel für die entfernten Schritte bleibt zurück', () => {
+test('no language key for the removed steps remains', () => {
   for (const datei of ['de.js', 'en.js']) {
     const s = fs.readFileSync(path.join(ROOT, 'public', 'locales', datei), 'utf8');
     for (const key of ['prog.step_instr', 'prog.step_parts', 'prog.step_partimgs', 'prog.step_price']) {
@@ -185,7 +185,7 @@ test('kein Sprachschlüssel für die entfernten Schritte bleibt zurück', () => 
 /**
  * Spielt den Ablauf einmal durch, statt nur Muster zu suchen.
  */
-test('nach dem letzten Ereignis hängt kein Punkt mehr auf „aktiv"', () => {
+test('after the last event no item hangs on “active”', () => {
   // ── Sendereihenfolge, wie der Erfassungsstrom sie erzeugt ───────────────
   // Die Route meldet vor und nach dem Ergänzen selbst; dazwischen meldet fetchCatalog().
   const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));

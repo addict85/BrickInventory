@@ -83,7 +83,7 @@ function roh(port, text) {
   return ergebnis;
 }
 
-test('Grenzen des Servers: langsame Anfragen, Fehlertexte, fremde Hosts', {
+test('server limits: slow requests, error texts, foreign hosts', {
   concurrency: 1,
   timeout: 240_000,
 }, async t => {
@@ -168,7 +168,7 @@ test('Grenzen des Servers: langsame Anfragen, Fehlertexte, fremde Hosts', {
         headers: { cookie: keks, origin: basis, 'content-type': 'application/json', ...(o.headers || {}) },
       });
 
-  await t.test('langsame Köpfe und Rümpfe halten den Server nicht fest', async () => {
+  await t.test('slow headers and bodies do not hold the server', async () => {
     const kopf = roh(port, 'POST /api/v1/auth/login HTTP/1.1\r\nHost: 127.0.0.1\r\n');
     const ohne = roh(
       port,
@@ -199,7 +199,7 @@ test('Grenzen des Servers: langsame Anfragen, Fehlertexte, fremde Hosts', {
     }
   });
 
-  await t.test('4xx nennen keinen Text einer Bibliothek, eigene Sätze bleiben', async () => {
+  await t.test('4xx name no library text, own sentences stay', async () => {
     const prozent = await fetch(`${basis}/%`);
     const p = await prozent.json();
     assert.equal(prozent.status, 400);
@@ -221,7 +221,7 @@ test('Grenzen des Servers: langsame Anfragen, Fehlertexte, fremde Hosts', {
     assert.match((await eigen.json()).error, /part_number darf nur Buchstaben/, 'ein eigener Satz erreicht den Nutzer');
   });
 
-  await t.test('eine fremde Erfassung antwortet wie eine fehlende', async () => {
+  await t.test('a foreign entry responds like a missing one', async () => {
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10294-1') ON CONFLICT DO NOTHING`, [alice]);
     const acq = (
       await db.get(
@@ -245,7 +245,7 @@ test('Grenzen des Servers: langsame Anfragen, Fehlertexte, fremde Hosts', {
     assert.equal(Number((await db.get('SELECT user_id FROM set_acquisitions WHERE id = $1', [acq])).user_id), alice);
   });
 
-  await t.test('ein fremder Host-Kopf wird abgewiesen, der eigene nicht', async () => {
+  await t.test('a foreign Host header is rejected, the own one is not', async () => {
     const fremd = await withHost(port, 'boese.example', '/api/v1/auth/me');
     assert.equal(fremd.status, 421, 'ein fremder Host-Kopf wird abgewiesen');
     assert.equal(JSON.parse(fremd.text).code, 'fremder_host');
@@ -272,7 +272,7 @@ test('Grenzen des Servers: langsame Anfragen, Fehlertexte, fremde Hosts', {
     );
   });
 
-  await t.test('der Link allein bestätigt nichts, erst der POST', async () => {
+  await t.test('the link alone confirms nothing, only the POST', async () => {
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'email-bestaetigen|%'");
     // Ein Link aus einer älteren Mail (?token=) wird vor dem Laden der Seite zum Fragment.
     const alt = await fetch(`${basis}/verify?token=${MAILTOKEN}`, { redirect: 'manual' });

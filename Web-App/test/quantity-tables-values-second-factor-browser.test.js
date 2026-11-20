@@ -506,7 +506,7 @@ async function wantedTo(_t, a) {
   }
 }
 
-test('Menge, Tabellenwerte, zweiter Faktor, Bauliste', { concurrency: 1, timeout: 900_000 }, async t => {
+test('quantity, table values, second factor, build list', { concurrency: 1, timeout: 900_000 }, async t => {
   const name = `r25_${process.pid}`;
   const req = require('./helpers/sources').buildAndRequire();
   const a = await startApp(t, {

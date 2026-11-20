@@ -83,7 +83,7 @@ async function bis(bedingung, ms) {
   return bedingung();
 }
 
-test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }, async t => {
+test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'setbild-prozesse-'));
@@ -204,7 +204,7 @@ test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }
   const noted = async (/** @type {string} */ sn) =>
     !!(await db.get('SELECT 1 AS ja FROM image_wanted WHERE url = $1 AND set_number = $2', [imageAddress(sn), sn]));
 
-  await t.test('frisch vom CDN: der Web-Prozess legt das Bild ab und notiert es', async () => {
+  await t.test('fresh from the CDN: the web process stores the image and notes it', async () => {
     // Ein Set ausserhalb des Blickfelds kommt durch, landet aber weder in images/sets noch im Bildbedarf.
     const fremd = await proxy(FREMD);
     assert.deepEqual([fremd.status, fremd.bytes], [200, bild.length]);
@@ -216,7 +216,7 @@ test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }
     assert.deepEqual([liegt(`${FREMD}.jpg`), await noted(FREMD)], [false, false]);
   });
 
-  await t.test('nur die Vorschau im Cache: der Proxy holt das Original und legt es ab', async () => {
+  await t.test('only the preview in the cache: the proxy fetches the original and stores it', async () => {
     const r = await proxy(ONLY_PREVIEW);
     assert.equal(r.status, 200);
     assert.ok(
@@ -230,13 +230,13 @@ test('Set-Bild über Web- und Job-Prozess', { concurrency: 1, timeout: 180_000 }
     );
   });
 
-  await t.test('weist das CDN den neuen Abruf ab, kommt die Vorschau aus dem Cache', async () => {
+  await t.test('if the CDN rejects the new request, the preview comes from the cache', async () => {
     const r = await proxy(LOCKED);
     assert.deepEqual([r.status, r.typ, r.bytes], [200, 'image/jpeg', previewInCache.length], web.log.slice(-1500));
     assert.equal(liegt(`${LOCKED}.jpg`), false);
   });
 
-  await t.test('der Job-Prozess erzeugt die Vorschau und trägt image_local ein', async () => {
+  await t.test('the job process creates the preview and registers image_local', async () => {
     const jobs = starte('jobs', await freePort());
     const fertig = async () => {
       const zeilen = await db.all('SELECT set_number, image_local FROM set_catalog WHERE set_number = ANY($1)', [

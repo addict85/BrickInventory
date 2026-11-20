@@ -47,7 +47,7 @@ const dialog = d => ({
   code: !d.getElementById('cd-code-wrap').hidden,
 });
 
-test('Verwalter: Neu einrichten in einem Dialog, danach Schlüssel und Link', async () => {
+test('administrator: set up again in one dialog, then key and link', async () => {
   const kopiert = [];
   const { w, d, aufrufe } = await oeffne(true, kopiert);
   try {
@@ -86,7 +86,7 @@ test('Verwalter: Neu einrichten in einem Dialog, danach Schlüssel und Link', as
   }
 });
 
-test('Konto ohne Verwalterrecht: Abschalten wie angekündigt, ohne Einrichtung', async () => {
+test('account without admin rights: switching off as announced, without setup', async () => {
   const { w, d, aufrufe } = await oeffne(false, []);
   try {
     await sicht(w, 'profil');

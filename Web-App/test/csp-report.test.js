@@ -22,7 +22,7 @@ const express = require('express');
 
 const _req = require('./helpers/sources').buildAndRequire();
 
-test('CSP-Berichte', async t => {
+test('CSP reports', async t => {
   const app = express();
   app.set('trust proxy', true);
   app.use(_req('src/http/cspReport.js').buildCspReportRouter());
@@ -48,7 +48,7 @@ test('CSP-Berichte', async t => {
     return { status: r.status, text: await r.text() };
   };
 
-  await t.test('report-uri: Regel, Ziel und Seite, ohne Anfrageteil', async () => {
+  await t.test('report-uri: rule, target and page, without the query part', async () => {
     const r = await melde(
       {
         'csp-report': {
@@ -69,7 +69,7 @@ test('CSP-Berichte', async t => {
     assert.doesNotMatch(log[0], /geheim/);
   });
 
-  await t.test('report-to: die Liste der Reporting-API', async () => {
+  await t.test('report-to: the list of the Reporting API', async () => {
     await melde(
       [
         {
@@ -87,7 +87,7 @@ test('CSP-Berichte', async t => {
     assert.deepEqual(log, ['[csp] script-src-elem blockierte https://fremd.example/x.js auf https://lego.test/']);
   });
 
-  await t.test('eine Adresse meldet höchstens zehn je Minute', async () => {
+  await t.test('an address reports at most ten per minute', async () => {
     const bericht = { 'csp-report': { 'effective-directive': 'img-src' } };
     const zeilen = [];
     for (let i = 0; i < 12; i++) {
@@ -97,13 +97,13 @@ test('CSP-Berichte', async t => {
     assert.equal(zeilen.length, 10);
   });
 
-  await t.test('ein überlanger oder kaputter Rumpf kommt nicht ins Protokoll', async () => {
+  await t.test('an overlong or broken body does not get into the log', async () => {
     assert.equal((await melde('x'.repeat(9000), 'application/csp-report')).status, 413);
     assert.equal((await melde('{kaputt', 'application/csp-report')).status, 204);
     assert.deepEqual(log, []);
   });
 
-  await t.test('viele Absender verdrängen einander nicht', async () => {
+  await t.test('many senders do not crowd each other out', async () => {
     const bericht = { 'csp-report': { 'effective-directive': 'img-src' } };
     const zeilen = [];
     for (let i = 0; i < 70; i++) {
@@ -113,7 +113,7 @@ test('CSP-Berichte', async t => {
     assert.equal(zeilen.length, 70);
   });
 
-  await t.test('was gedrosselt wurde, steht als eine Sammelzeile im Protokoll', () => {
+  await t.test('what was throttled stands as one summary line in the log', () => {
     const { cspMessageFree } = _req('src/http/cspReport.js');
     const morgen = Date.now() + 86_400_000;
     // Ein neues Fenster, frei von den Meldungen der Teiltests davor.
@@ -127,7 +127,7 @@ test('CSP-Berichte', async t => {
     assert.deepEqual(log, ['[csp] 3 gedrosselt']);
   });
 
-  await t.test('verkürzte IPv6-Adressen aus einem /64 zählen als ein Absender', () => {
+  await t.test('shortened IPv6 addresses from one /64 count as one sender', () => {
     const { cspMessageFree } = _req('src/http/cspReport.js');
     const tag = Date.now() + 2 * 86_400_000;
     cspMessageFree('10.1.1.3', tag);
@@ -142,7 +142,7 @@ test('CSP-Berichte', async t => {
     log.length = 0;
   });
 
-  await t.test('nur Direktiven und Adressen kommen ins Protokoll, kein Freitext', async () => {
+  await t.test('only directives and addresses get into the log, no free text', async () => {
     await melde(
       {
         'csp-report': {
@@ -160,7 +160,7 @@ test('CSP-Berichte', async t => {
     assert.deepEqual(log, [], 'keine Direktive, keine Zeile');
   });
 
-  await t.test('die Bildansicht des Browsers meldet nichts, ein SVG schon', async () => {
+  await t.test("the browser's image view reports nothing, an SVG does", async () => {
     const bericht = seite => ({
       'csp-report': { 'effective-directive': 'style-src-attr', 'blocked-uri': 'inline', 'document-uri': seite },
     });

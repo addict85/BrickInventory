@@ -22,7 +22,7 @@ const { dataOrSkip } = require('./helpers/db');
 const bcrypt = require('bcryptjs');
 const db = testData();
 
-test('Sitzungsfristen in der echten App', { concurrency: 1 }, async t => {
+test('session periods in the real app', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `sitzapp_${process.pid}`,
     PASS = 'Sitzung-in-der-App-1';
@@ -67,18 +67,18 @@ test('Sitzungsfristen in der echten App', { concurrency: 1 }, async t => {
       [String(uid)],
     );
 
-  await t.test('der Speicher bekommt die Leerlauffrist', async () => {
+  await t.test('the store gets the idle period', async () => {
     assert.equal(await wer(), true, 'Vorbedingung: angemeldet');
     const z = await zeile();
     assert.ok(z, 'keine Sitzung in user_sessions');
     assert.ok(Math.abs(z.rest - SESSION_IDLE_SEC) < 120, `Restlaufzeit ${z.rest} s statt ${SESSION_IDLE_SEC} s`);
   });
 
-  await t.test('das Cookie überlebt den Browser nicht', () => {
+  await t.test('the cookie does not survive the browser', () => {
     assert.doesNotMatch(setCookie, /;\s*(Max-Age|Expires)=/i, setCookie);
   });
 
-  await t.test('nach der Höchstdauer ist niemand mehr angemeldet', async () => {
+  await t.test('after the maximum duration nobody is logged in anymore', async () => {
     const { sid } = await zeile();
     await db.run(`UPDATE user_sessions SET sess = jsonb_set(sess::jsonb, '{angemeldetAm}', '1')::json WHERE sid = $1`, [
       sid,

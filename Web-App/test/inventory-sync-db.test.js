@@ -66,7 +66,7 @@ async function dbReachable() {
   }
 }
 
-test('Bestandsabgleich gegen echte Datenbank', async t => {
+test('inventory reconciliation against a real database', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -80,7 +80,7 @@ test('Bestandsabgleich gegen echte Datenbank', async t => {
     ...require('./helpers/sources').testArea('household'),
   };
 
-  await t.test('zählt je Teil UND Farbe, nicht je Teilenummer', async () => {
+  await t.test('counts per part AND color, not per part number', async () => {
     const b = await ownedQuantitiesQuery(
       [U.ich],
       [
@@ -97,7 +97,7 @@ test('Bestandsabgleich gegen echte Datenbank', async t => {
     assert.deepEqual(b['3002|4'], { gesamt: 10, lose: 0 });
   });
 
-  await t.test('„lose" schliesst aus, was in einem Set steckt', async () => {
+  await t.test('"lose" excludes what is in a set', async () => {
     // Der eigentliche Punkt der zweiten Zahl: Ein Teil in einem aufgebauten
     // Set besitzt man zwar, müsste dafür aber ein anderes Set zerlegen.
     const b = await ownedQuantitiesQuery([U.ich], [{ part_number: '3002', color_id: 4 }]);
@@ -105,7 +105,7 @@ test('Bestandsabgleich gegen echte Datenbank', async t => {
     assert.equal(b['3002|4'].lose, 0, 'Ein Set-Teil darf nicht als lose gelten');
   });
 
-  await t.test('was nicht da ist, fehlt in der Antwort', async () => {
+  await t.test('what is not there is missing in the response', async () => {
     // Bewusst kein Eintrag mit 0 statt eines fehlenden: Die Oberfläche setzt
     // fehlende Schlüssel auf 0 und unterscheidet damit nicht — der Server
     // spart sich dafür eine Zeile je nicht vorhandenem Teil, und das sind bei
@@ -114,7 +114,7 @@ test('Bestandsabgleich gegen echte Datenbank', async t => {
     assert.equal(b['9999|0'], undefined);
   });
 
-  await t.test('das Blickfeld entscheidet, nicht die Anfrage', async () => {
+  await t.test('the scope decides, not the request', async () => {
     // Ohne diese Grenze wäre der Abgleich ein Weg, fremde Bestände zu zählen.
     const nurIch = await ownedQuantitiesQuery([U.ich], [{ part_number: '3001', color_id: 4 }]);
     const withKind = await ownedQuantitiesQuery(await household.scopeIds(U.ich, 'all'), [
@@ -126,7 +126,7 @@ test('Bestandsabgleich gegen echte Datenbank', async t => {
     assert.ok(withKind['3001|4'].gesamt < 99, 'Ein fremder Bestand ist durchgeschlagen');
   });
 
-  await t.test('doppelte Anfragen und leere Eingaben laufen nicht ins Leere', async () => {
+  await t.test('duplicate requests and empty inputs do not run into nothing', async () => {
     const b = await ownedQuantitiesQuery(
       [U.ich],
       [
@@ -140,7 +140,7 @@ test('Bestandsabgleich gegen echte Datenbank', async t => {
     assert.deepEqual(await ownedQuantitiesQuery([U.ich], []), {});
   });
 
-  await t.test('die Anfrage ist gedeckelt', async () => {
+  await t.test('the request is capped', async () => {
     // Eine Teileliste über viele Sets darf keine unbegrenzte Abfrage bauen.
     // GEMESSEN: Der Deckel greift, die Antwort bleibt leer statt zu werfen.
     assert.equal(typeof MAX_OWNED_PARTS, 'number');

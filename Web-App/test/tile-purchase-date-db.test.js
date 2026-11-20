@@ -24,7 +24,7 @@ const { holdsSet, record } = require('./helpers/inventory');
 const { dataOrSkip } = require('./helpers/db');
 const { openUi, warte } = require('./helpers/ui');
 
-test('setsLesen liefert den letzten Kauf', { concurrency: 1 }, async t => {
+test('setsLesen delivers the last purchase', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `kaufdatum_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -42,7 +42,7 @@ test('setsLesen liefert den letzten Kauf', { concurrency: 1 }, async t => {
   assert.equal(new Date(s.letzter_kauf).toISOString().slice(0, 10), '2025-07-14');
 });
 
-test('die Kachel zeigt das Kaufdatum', async () => {
+test('the tile shows the purchase date', async () => {
   const { w, d } = await openUi(
     {
       '/v1/sets': {

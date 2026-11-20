@@ -45,7 +45,7 @@ function countingAccess(echt, sql) {
   });
 }
 
-test('Katalog mit eigenem Zugang', { concurrency: 1 }, async t => {
+test('catalog with its own access', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const weg = async () => {
@@ -64,7 +64,7 @@ test('Katalog mit eigenem Zugang', { concurrency: 1 }, async t => {
   const contexts = {};
   const { catalog: katalog } = buildServices(countingAccess(quellen.testAccess(), sql), { contexts });
 
-  await t.test('Lesen geht über den übergebenen Zugang', async () => {
+  await t.test('reading goes via the passed access', async () => {
     assert.equal(await katalog.newestInventory(SN), INVENTORY);
     assert.ok(
       sql.some(s => /FROM rb_inventories/.test(s)),
@@ -72,7 +72,7 @@ test('Katalog mit eigenem Zugang', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('die Transaktion geht über den übergebenen Zugang', async () => {
+  await t.test('the transaction goes via the passed access', async () => {
     sql.length = 0;
     const { kontingentPruefenUndZaehlen } = require(
       require('node:path').join(require('./helpers/sources').ROOT, 'dist/src/externalSources/apiQuota.js'),

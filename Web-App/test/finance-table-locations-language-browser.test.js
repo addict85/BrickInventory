@@ -36,7 +36,10 @@ const { patternHousehold, holdsSet, catalogSet } = require('./helpers/inventory'
 const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
 
-test('Finanztabelle, Lagerorte, Zahlenformat, Vorleser', { concurrency: 1, timeout: 300_000 }, async t => {
+test('finance table, storage locations, number format, screen reader', {
+  concurrency: 1,
+  timeout: 300_000,
+}, async t => {
   const NAME = `r16_${process.pid}`,
     KIND = `${NAME}_kind`;
   const app = await startApp(t, {
@@ -100,7 +103,7 @@ test('Finanztabelle, Lagerorte, Zahlenformat, Vorleser', { concurrency: 1, timeo
     'Finanztabelle',
   );
 
-  await t.test('Finanztabelle ohne seitliches Rollen bei 683, 820, 1024 und 1280 px', async () => {
+  await t.test('finance table without horizontal scrolling at 683, 820, 1024 and 1280 px', async () => {
     const fehler = [];
     for (const w of [683, 820, 1024, 1280]) {
       await groesse(w, w === 683 ? 450 : 900);
@@ -121,7 +124,7 @@ test('Finanztabelle, Lagerorte, Zahlenformat, Vorleser', { concurrency: 1, timeo
     await groesse(1280);
   });
 
-  await t.test('Zahlenformat: deutsches Konto in EUR schreibt 1.234,56 €', async () => {
+  await t.test('number format: a German account in EUR writes 1.234,56 €', async () => {
     const einstand = await b.auswerten(text('#fin-einstand'));
     assert.match(einstand.replace(/ /g, ' '), /^\d{1,3}(\.\d{3})*,\d{2} €$/, einstand);
     assert.equal(
@@ -131,7 +134,7 @@ test('Finanztabelle, Lagerorte, Zahlenformat, Vorleser', { concurrency: 1, timeo
     );
   });
 
-  await t.test('Fremdwährung und Kachel: Kaufpreis in ARS sichtbar, Marktwert benannt', async () => {
+  await t.test('foreign currency and tile: purchase price in ARS visible, market value named', async () => {
     const zelle =
       await b.auswerten(`(() => { const tr = [...document.querySelectorAll('[data-fin-art="sets"] tbody tr')].find(r => r.textContent.includes('Galaxy Explorer'));
       return tr.querySelector('td.price-cell').textContent.replace(/\\s+/g, ' ').trim(); })()`);
@@ -144,7 +147,7 @@ test('Finanztabelle, Lagerorte, Zahlenformat, Vorleser', { concurrency: 1, timeo
     assert.equal(sichtbar, 0);
   });
 
-  await t.test('neuer Lagerort steht beim Erfassen zur Wahl, der Filter zeigt nur belegte', async () => {
+  await t.test('a new storage location is available when capturing, the filter only shows occupied ones', async () => {
     await geh('lagerorte');
     await bis(
       `!!document.getElementById('storage-new') && !!document.querySelector('#storage-list .lager-eingabe')`,
@@ -170,7 +173,7 @@ test('Finanztabelle, Lagerorte, Zahlenformat, Vorleser', { concurrency: 1, timeo
     assert.deepEqual(z.filter, ['Vitrine Wohnzimmer']);
   });
 
-  await t.test('Sprachwechsel baut erzeugte Auswahlfelder, aria-label und Platzhalter neu', async () => {
+  await t.test('a language change rebuilds generated select fields, aria-label and placeholders', async () => {
     const lies = `({ konto: document.querySelector('#scope-gallery option[value="all"]')?.textContent,
       ort: document.querySelector('#storage-gallery option[value=""]')?.textContent,
       kein: document.querySelector('#add-storage-sel option')?.textContent,
@@ -197,7 +200,7 @@ test('Finanztabelle, Lagerorte, Zahlenformat, Vorleser', { concurrency: 1, timeo
     });
   });
 
-  await t.test('Trefferzahl nach der Suche in einer Live-Region', async () => {
+  await t.test('number of hits after the search in a live region', async () => {
     await geh('sammlung');
     const suche = async q => {
       // Die Suche ist entprellt: gewartet wird auf die Änderung der Live-Region, höchstens 5 s.
@@ -219,7 +222,7 @@ test('Finanztabelle, Lagerorte, Zahlenformat, Vorleser', { concurrency: 1, timeo
     await suche('');
   });
 
-  await t.test('Set-Detail nennt das Konto, dem das Set gehört', async () => {
+  await t.test('set detail names the account the set belongs to', async () => {
     await geh('sammlung/set/75313-1');
     await bis(
       `document.getElementById('set-modal').classList.contains('open') && !document.querySelector('#set-modal .skelett-zeile')`,
@@ -229,7 +232,7 @@ test('Finanztabelle, Lagerorte, Zahlenformat, Vorleser', { concurrency: 1, timeo
     await b.auswerten(klick('#set-modal [data-click="closeModal"]'));
   });
 
-  await t.test('Merkposten-Dialog: Knopftexte passen in ihre Knöpfe', async () => {
+  await t.test('wishlist item dialog: button texts fit into their buttons', async () => {
     await geh('merkliste');
     await bis(`!!document.querySelector('#mk-list .mk-zeile')`, 'Merkliste');
     await b.auswerten(klick('#mk-list .mk-zeile'));

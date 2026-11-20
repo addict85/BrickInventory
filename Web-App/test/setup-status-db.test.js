@@ -29,7 +29,7 @@ const db = testData();
 // die ganze Datei still, statt zu enden. Deshalb schliesst die Datei ihren Pool selbst.
 after(() => db.pool.end().catch(() => {}));
 
-test('Einrichtungsstand ohne Anmeldung', { concurrency: 1 }, async t => {
+test('setup state without login', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const schluessel = ['einrichtung_erledigt', 'rebrickable_api_key'];
@@ -92,7 +92,7 @@ test('Einrichtungsstand ohne Anmeldung', { concurrency: 1 }, async t => {
   assert.equal(d2.konfiguriert, true, 'mit hinterlegter Quelle gilt die Einrichtung als begonnen');
 });
 
-test('der Eingang lässt ohne Sitzung nur den Stand durch', async t => {
+test('the entry lets only the state through without a session', async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const app = express();
   const mw = _req('routes/api_v1/middleware.js');

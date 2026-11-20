@@ -23,7 +23,7 @@ function dateien(subfolder, extension) {
   return out;
 }
 
-test('keine Funktion ohne einen einzigen Aufrufer', () => {
+test('no function without a single caller', () => {
   const quellen = ['routes', 'src', 'jobs', 'db']
     .flatMap(d => dateien(d, '.ts'))
     .concat([path.join(ROOT, 'server.ts')]);
@@ -54,7 +54,7 @@ test('keine Funktion ohne einen einzigen Aufrufer', () => {
 /**
  * Die zweite Haelfte: EXPORTIERTE Namen ohne Aufrufer.
  */
-test('kein exportierter Wert ohne einen einzigen Aufrufer', () => {
+test('no exported value without a single caller', () => {
   const quellen = ['routes', 'src', 'jobs', 'db', 'clients', 'startup']
     .flatMap(d => dateien(d, '.ts'))
     .concat([path.join(ROOT, 'server.ts')]);

@@ -15,7 +15,7 @@ const { pathToFileURL } = require('node:url');
 
 const modul = import(pathToFileURL(path.join(__dirname, '..', 'public', 'js', 'escaping.js')).href);
 
-test('Stücke aus html`` werden verbunden, ihr Inhalt bleibt maskiert', async () => {
+test('pieces from html`` are joined, their content stays escaped', async () => {
   const { html, joinHtml, SafeHtml } = await modul;
   const v = joinHtml([html`<b>${'<x>'}</b>`, '', null, html`<i>1</i>`, [html`<u>2</u>`]], html`<br>`);
   assert.ok(v instanceof SafeHtml);
@@ -24,12 +24,12 @@ test('Stücke aus html`` werden verbunden, ihr Inhalt bleibt maskiert', async ()
   assert.equal(html`<ul>${joinHtml([html`<li>a</li>`, html`<li>b</li>`])}</ul>`.text, '<ul><li>a</li><li>b</li></ul>');
 });
 
-test('ein Trenner als Text wird maskiert', async () => {
+test('a separator as text is escaped', async () => {
   const { html, joinHtml } = await modul;
   assert.equal(joinHtml([html`a`, html`b`], ' <hr> & ').text, 'a &lt;hr&gt; &amp; b');
 });
 
-test('eine rohe Zeichenkette wirft', async () => {
+test('a raw string throws', async () => {
   const { html, joinHtml } = await modul;
   assert.throws(() => joinHtml([html`a`, '<img src=x onerror=alert(1)>']), /joinHtml: only pieces from html``/);
   assert.throws(() => joinHtml([html`a`, 42]), TypeError);

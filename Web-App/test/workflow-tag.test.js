@@ -80,7 +80,7 @@ esac
   return { status: r.status, output };
 }
 
-test('gültige Tags gehen als Ausgabe weiter', () => {
+test('valid tags go on as output', () => {
   for (const tag of ['2026.11.01', 'v1_2-rc.3', '']) {
     const r = lauf(tag);
     assert.equal(r.status, 0, `„${tag}" abgewiesen`);
@@ -100,14 +100,14 @@ const BOESE = {
   CarriageReturn: 'gut\r',
 };
 for (const [fall, tag] of Object.entries(BOESE)) {
-  test(`abgewiesen: ${fall}`, () => {
+  test(`rejected: ${fall}`, () => {
     const r = lauf(tag);
     assert.notEqual(r.status, 0, `abgewiesen: ${fall}`);
     assert.doesNotMatch(r.output, /^tag=/m);
   });
 }
 
-test('ohne grüne CI kein Image', () => {
+test('without green CI no image', () => {
   for (const [fall, gruen] of [
     ['keiner grün', '0'],
     ['Abfrage gescheitert', null],
@@ -119,13 +119,13 @@ test('ohne grüne CI kein Image', () => {
   }
 });
 
-test('Handstart auf einem Nebenzweig', () => {
+test('manual start on a side branch', () => {
   const r = lauf('', { ref: 'refs/heads/probe' });
   assert.notEqual(r.status, 0, 'Handstart auf einem Nebenzweig');
   assert.doesNotMatch(r.output, /^bauen=true$/m);
 });
 
-test('inputs.tag steht nur in env', () => {
+test('inputs.tag is only in env', () => {
   const ohneKommentare = YML.split('\n')
     .filter(z => !z.trimStart().startsWith('#'))
     .join('\n');

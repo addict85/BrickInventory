@@ -32,7 +32,7 @@ async function speichern(w, d) {
   await warte(() => openDialog(d));
 }
 
-test('ohne Passwort geht keine Anfrage hinaus', async () => {
+test('without a password no request goes out', async () => {
   const { w, d, aufrufe } = await openUi(PROFIL);
   try {
     await speichern(w, d);
@@ -45,7 +45,7 @@ test('ohne Passwort geht keine Anfrage hinaus', async () => {
   }
 });
 
-test('mit Passwort geht es mit, auch bei blossem Namenswechsel', async () => {
+test('with a password it goes along, even with a mere name change', async () => {
   const { w, d, aufrufe } = await openUi(PROFIL);
   try {
     await speichern(w, d);
@@ -61,7 +61,7 @@ test('mit Passwort geht es mit, auch bei blossem Namenswechsel', async () => {
   }
 });
 
-test('falsches Passwort fragt erneut', async () => {
+test('a wrong password asks again', async () => {
   let n = 0;
   const { w, d, aufrufe } = await openUi({
     ...PROFIL,

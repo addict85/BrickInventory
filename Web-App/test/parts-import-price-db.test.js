@@ -18,7 +18,7 @@ const { importWorker } = require('./helpers/jobs');
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-test('Import ohne Preis hinterlässt dasselbe wie Erfassen ohne Preis', { concurrency: 1 }, async t => {
+test('import without a price leaves the same as capturing without a price', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   importWorker(t, _req);
 

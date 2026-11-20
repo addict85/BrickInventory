@@ -31,7 +31,7 @@ const { routerServer } = require('./helpers/server');
 const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
-test('Servereinstellungen im Verwaltungsprotokoll', { concurrency: 1 }, async t => {
+test('server settings in the admin log', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const CHEF = `protokoll_${process.pid}`,
     PASS = 'Protokoll-Pruefung-3';
@@ -69,7 +69,7 @@ test('Servereinstellungen im Verwaltungsprotokoll', { concurrency: 1 }, async t 
     (await (await fetch(`${base}/api/v1/admin/protokoll`)).json()).eintraege.filter(e => e.admin_id === uid);
   const GEHEIM = 'Rebrickable-Geheim-4711';
 
-  await t.test('eine Änderung steht mit den Schlüsseln, nicht mit den Werten', async () => {
+  await t.test('a change is recorded with the keys, not with the values', async () => {
     const [status, b] = await speichere({
       smtp_host: 'mail.neu.example',
       rebrickable_api_key: GEHEIM,
@@ -83,7 +83,7 @@ test('Servereinstellungen im Verwaltungsprotokoll', { concurrency: 1 }, async t 
     assert.ok(!JSON.stringify(e).includes(GEHEIM) && !JSON.stringify(e).includes('mail.neu.example'));
   });
 
-  await t.test('unverändert zurückgeschickt schreibt keinen Eintrag', async () => {
+  await t.test('sent back unchanged writes no entry', async () => {
     const [status] = await speichere({
       smtp_host: 'mail.neu.example',
       rebrickable_api_key: GEHEIM,
@@ -93,7 +93,7 @@ test('Servereinstellungen im Verwaltungsprotokoll', { concurrency: 1 }, async t 
     assert.equal((await eigene()).length, 1);
   });
 
-  await t.test('scheitert ein Kontowert, bleiben globale Werte und Protokoll wie vorher', async () => {
+  await t.test('if an account value fails, global values and log stay as before', async () => {
     const [status, b] = await speichere({ smtp_host: 'mail.halb.example', language: 'xx' });
     assert.deepEqual([status, b.code], [400, 'wert_ungueltig']);
     assert.equal(
@@ -103,7 +103,7 @@ test('Servereinstellungen im Verwaltungsprotokoll', { concurrency: 1 }, async t 
     assert.equal((await eigene()).length, 1, 'kein Eintrag für eine Änderung, die nicht gilt');
   });
 
-  await t.test('… auch bei einer ungültigen Währung, die vor der Transaktion geprüft wird', async () => {
+  await t.test('… also with an invalid currency that is checked before the transaction', async () => {
     const [status, b] = await speichere({ smtp_host: 'mail.halb.example', currency: 'XYZ' });
     assert.deepEqual([status, b.code], [400, 'wert_ungueltig']);
     assert.equal(
@@ -113,7 +113,7 @@ test('Servereinstellungen im Verwaltungsprotokoll', { concurrency: 1 }, async t 
     assert.equal((await eigene()).length, 1, 'kein Eintrag für eine Änderung, die nicht gilt');
   });
 
-  await t.test('eine gültige Währung gilt zusammen mit den übrigen Kontowerten', async () => {
+  await t.test('a valid currency applies together with the other account values', async () => {
     const [status, b] = await speichere({ currency: 'USD', language: 'en' });
     assert.equal(status, 200, JSON.stringify(b));
     const werte = await db.all(

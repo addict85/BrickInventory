@@ -38,7 +38,7 @@ mailAttrappe();
 const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
-test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async t => {
+test('registration and yes/no settings', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const CHEF = `reg_chef_${process.pid}`,
@@ -100,7 +100,7 @@ test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async t => {
     });
   }
 
-  await t.test('Anmeldewege nur, wenn der Server sie kann', async () => {
+  await t.test('login methods only when the server supports them', async () => {
     const alt = process.env.APP_BASE_URL;
     t.after(() => {
       if (alt === undefined) environment({ APP_BASE_URL: undefined });
@@ -123,7 +123,7 @@ test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async t => {
     assert.deepEqual(await wege(), [true, true], 'Domäne und Mail');
   });
 
-  await t.test('"1" öffnet sie', async () => {
+  await t.test('"1" opens it', async () => {
     await setze('1');
     assert.equal((await rufe('GET', '/auth/registration-status')).body.enabled, true);
     const r = await register();
@@ -131,7 +131,7 @@ test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async t => {
     assert.ok(await db.get('SELECT id FROM users WHERE username = $1', [NEU]));
   });
 
-  await t.test('ohne Mailversand bleibt sie zu und lässt sich nicht einschalten', async () => {
+  await t.test('without mail sending it stays closed and cannot be switched on', async () => {
     environment({ APP_BASE_URL: 'https://inventar.example.org' });
     await db.run("DELETE FROM global_settings WHERE key IN ('smtp_host', 'smtp_user')");
     const s = (await rufe('GET', '/auth/registration-status')).body;
@@ -156,7 +156,7 @@ test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async t => {
     assert.equal(await gespeichert('registration_enabled'), '1');
   });
 
-  await t.test('der Verwalter schaltet eine offene Registrierung frei', async () => {
+  await t.test('the administrator approves an open registration', async () => {
     const { assertLoginAllowed } = _req('src/account/loginCheck.js');
     const neu = (await db.get('SELECT id FROM users WHERE username = $1', [NEU])).id;
     const zeile = () => db.get('SELECT * FROM users WHERE id = $1', [neu]);
@@ -181,7 +181,7 @@ test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async t => {
     assert.deepEqual([nochmal.status, nochmal.body.code], [409, 'konto_nicht_wartend']);
   });
 
-  await t.test('das Formular nimmt nur 0 oder 1', async () => {
+  await t.test('the form only takes 0 or 1', async () => {
     for (const falsch of ['false', 'true', 'ja', '']) {
       const r = await rufe('POST', '/settings', { registration_enabled: falsch });
       assert.equal(r.status, 400, `${falsch}: ${JSON.stringify(r.body)}`);
@@ -195,7 +195,7 @@ test('Registrierung und Ja/Nein-Einstellungen', { concurrency: 1 }, async t => {
     assert.equal(await gespeichert('registration_enabled'), '0');
   });
 
-  await t.test('der Import übergeht die Registrierung', async () => {
+  await t.test('the import skips the registration', async () => {
     const fd = new FormData();
     fd.append(
       'file',

@@ -33,7 +33,7 @@ const kaeufe = (db, uid, sn) =>
     .all(`SELECT to_jsonb(t) AS z FROM set_acquisitions t WHERE user_id=$1 AND set_number=$2 ORDER BY id`, [uid, sn])
     .then(r => r.map(x => x.z));
 
-test('Menge je Konto mit Rückweg', { concurrency: 1 }, async t => {
+test('quantity per account with a way back', { concurrency: 1 }, async t => {
   const db = await accessOrSkip(t, _req);
   if (!db) return;
   const NAME = `mjk-${process.pid}`,
@@ -50,7 +50,7 @@ test('Menge je Konto mit Rückweg', { concurrency: 1 }, async t => {
   const { changeSet } = require('./helpers/sources').areaPage('sets');
   const pk = _req('src/inventory/trash.js');
 
-  await t.test('Hauptkonto verringert das Unterkonto, Rückgängig bringt den Kauf zurück', async () => {
+  await t.test('main account reduces the sub-account, undo brings the purchase back', async () => {
     await holdsSet(db, uid, SN, 1, { preis: 199.99, am: '2026-06-01T10:00:00Z' });
     await holdsSet(db, kid, SN, 1, { preis: 210, am: '2026-06-02T10:00:00Z' });
     const vorher = await kaeufe(db, kid, SN);
@@ -67,7 +67,7 @@ test('Menge je Konto mit Rückweg', { concurrency: 1 }, async t => {
     assert.deepEqual(await kaeufe(db, kid, SN), vorher);
   });
 
-  await t.test('älterer Kauf bleibt, neuerer kommt zurück', async () => {
+  await t.test('older purchase stays, newer one comes back', async () => {
     await record(db, uid, SN, 1, { preis: 250, am: '2026-09-13T10:00:00Z' });
     const vorher = await kaeufe(db, uid, SN);
     const r = await changeSet(uid, SN, { quantity_delta: -1 });
@@ -85,7 +85,7 @@ test('Menge je Konto mit Rückweg', { concurrency: 1 }, async t => {
     assert.deepEqual(await kaeufe(db, uid, SN), vorher);
   });
 
-  await t.test('gekürzter Kauf: dieselbe Zeile wächst wieder, auch mit inzwischen geändertem Preis', async () => {
+  await t.test('shortened purchase: the same row grows again, even with a price changed in the meantime', async () => {
     await record(db, uid, SN, 3, { preis: 80, am: '2026-10-01T10:00:00Z' });
     const vorher = await kaeufe(db, uid, SN);
     const r = await changeSet(uid, SN, { quantity_delta: -1 });
@@ -103,7 +103,7 @@ test('Menge je Konto mit Rückweg', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('derselbe Kauf am selben Tag neu erfasst: die neue Zeile nimmt die Menge auf', async () => {
+  await t.test('the same purchase re-entered on the same day: the new row takes the quantity', async () => {
     await record(db, uid, SN, 1, { preis: 60, am: '2026-10-05T10:00:00Z' });
     const r = await changeSet(uid, SN, { quantity_delta: -1 });
     await record(db, uid, SN, 1, { preis: 60, am: '2026-10-05T12:00:00Z' });
@@ -116,7 +116,7 @@ test('Menge je Konto mit Rückweg', { concurrency: 1 }, async t => {
     await changeSet(uid, SN, { quantity_delta: -2 });
   });
 
-  await t.test('Unterkonto darf das Hauptkonto nicht ändern', async () => {
+  await t.test('sub-account may not change the main account', async () => {
     const vorher = await quantityOf(db, [uid], SN);
     await assert.rejects(changeSet(kid, SN, { quantity_delta: -1, owner_user_id: uid }), {
       art: 'verboten',
@@ -124,7 +124,7 @@ test('Menge je Konto mit Rückweg', { concurrency: 1 }, async t => {
     assert.equal(await quantityOf(db, [uid], SN), vorher);
   });
 
-  await t.test('Teil-Eintrag ohne Set: nichts geschrieben, Eintrag bleibt', async () => {
+  await t.test('part entry without a set: nothing written, entry stays', async () => {
     const r = await changeSet(uid, SN, { quantity_delta: -1 });
     await db.run('DELETE FROM set_acquisitions WHERE user_id=$1 AND set_number=$2', [uid, SN]);
     await db.run('DELETE FROM sets WHERE user_id=$1 AND set_number=$2', [uid, SN]);

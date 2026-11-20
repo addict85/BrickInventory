@@ -50,7 +50,7 @@ const PEM2 = fs.readFileSync(path.join(__dirname, 'fixtures', 'ca-root-2.crt'), 
 const FP1 = '6a2+vi4vM1RWOxXv8B8h4GIn8x0V+ELcjAp3DATfCE8=';
 const FP2 = 'N3/8TmZexexJN1wTiG1qcdjYhdQ/Bm3Gds0Om73H7wQ=';
 
-test('Fingerabdruck = Base64 SHA-256 des SPKI, 32 Byte', () => {
+test('fingerprint = Base64 SHA-256 of the SPKI, 32 bytes', () => {
   const s = tlsStatusFrom(PEM1);
   assert.equal(s.fp, FP1);
   assert.equal(Buffer.from(s.fp, 'base64').length, 32);
@@ -58,7 +58,7 @@ test('Fingerabdruck = Base64 SHA-256 des SPKI, 32 Byte', () => {
   assert.equal(tlsStatusFrom(PEM2).fp, FP2);
 });
 
-test('zum Abgleich auf dem Gerät: SHA-256 des ganzen Zertifikats, wie im Protokoll von Caddy', () => {
+test("for comparison on the device: SHA-256 of the whole certificate, as in Caddy's log", () => {
   // Wie compose.yaml ihn ins Protokoll schreibt: sha256sum über den DER-Inhalt des PEM.
   const der = Buffer.from(PEM1.replace(/-----[^-]+-----|\s/g, ''), 'base64');
   const hex = require('node:crypto')
@@ -73,7 +73,7 @@ test('zum Abgleich auf dem Gerät: SHA-256 des ganzen Zertifikats, wie im Protok
   assert.notEqual(stand.zert_sha256, stand.fp_hex);
 });
 
-test('Cookie nur über TLS: in Produktion und hinter https, abschaltbar', () => {
+test('cookie only over TLS: in production and behind https, can be switched off', () => {
   // Ohne NODE_ENV gelten die Regeln des Betriebs; locker ist nur die Entwicklung.
   const ent = { NODE_ENV: 'development' };
   assert.equal(cookieSafe(ladeKonfig({})), true);
@@ -84,7 +84,7 @@ test('Cookie nur über TLS: in Produktion und hinter https, abschaltbar', () => 
   assert.equal(cookieSafe(ladeKonfig({ APP_BASE_URL: 'https://lego.test', COOKIE_SECURE: '0' })), false);
 });
 
-test('/ca.crt, Einstellungen und QR-Code tragen denselben Fingerabdruck', { concurrency: 1 }, async t => {
+test('/ca.crt, settings and QR code carry the same fingerprint', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run("DELETE FROM users WHERE username = 'tls_nutzer'");
   await db.run(

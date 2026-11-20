@@ -14,7 +14,7 @@ buildAndRequire();
 const { numericAsNumber } = require(path.join(ROOT, 'dist/db/database.js'));
 const { inZehntel4 } = require(path.join(ROOT, 'dist/src/infra/geld.js'));
 
-test('NUMERIC(12,4) bleibt in Zehntausendsteln genau', () => {
+test('NUMERIC(12,4) stays exact in ten-thousandths', () => {
   /** @type {[string, number][]} */
   const faelle = [
     ['99999999.9999', 999999999999],
@@ -26,7 +26,7 @@ test('NUMERIC(12,4) bleibt in Zehntausendsteln genau', () => {
   assert.equal(numericAsNumber(null), null);
 });
 
-test('jenseits von 2^53/10^4 wirft der Parser', () => {
+test('beyond 2^53/10^4 the parser throws', () => {
   assert.throws(() => numericAsNumber('900719925474.0993'), RangeError);
   assert.equal(inZehntel4(numericAsNumber('900719925474.0000')), 9007199254740000);
 });

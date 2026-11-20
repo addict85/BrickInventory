@@ -22,7 +22,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
-test('Figurenschätzung und Setpreis je Zustand', async t => {
+test('figure estimate and set price per condition', async t => {
   const db = testData();
   try {
     await db.initSchemaOnce();
@@ -37,7 +37,7 @@ test('Figurenschätzung und Setpreis je Zustand', async t => {
   );
   const FIG = 'fig-ablage-01';
   try {
-    await t.test('je Zustand ein Eintrag in Cache und Verlauf', async () => {
+    await t.test('one entry per condition in cache and history', async () => {
       await db.run('INSERT INTO minifig_parts_cache (fig_number, data) VALUES ($1, $2)', [
         FIG,
         JSON.stringify([{ part_num: 'abl-1', bl_part_num: 'abl-1', color_id: 5, quantity: 2 }]),
@@ -75,7 +75,7 @@ test('Figurenschätzung und Setpreis je Zustand', async t => {
       ]);
     });
 
-    await t.test('ein angefragter Zustand schlägt den anderen', async () => {
+    await t.test('a requested condition beats the other one', async () => {
       const SN = 'abl-77-1';
       await db.run(
         `INSERT INTO price_cache (set_number, condition, currency_code, avg_price) VALUES

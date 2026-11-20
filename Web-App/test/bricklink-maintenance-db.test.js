@@ -44,7 +44,7 @@ function maintenanceFake(t) {
   return aufrufe;
 }
 
-test('BrickLink in Wartung', { concurrency: 1 }, async t => {
+test('BrickLink in maintenance', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const { createBricklink, BricklinkNotReachable } = _req('clients/bricklink.js');
@@ -63,7 +63,7 @@ test('BrickLink in Wartung', { concurrency: 1 }, async t => {
   testSources(t, { bricklinkRequest });
   maintenanceFake(t);
 
-  await t.test('eine Umleitung ist „nicht erreichbar“', async () => {
+  await t.test('a redirect is "not reachable"', async () => {
     await assert.rejects(bricklinkRequest('GET', '/items/set/10305-1/price'), (/** @type {Error} */ e) => {
       assert.ok(e instanceof BricklinkNotReachable, String(e?.message));
       assert.ok(e.message.includes('nach maintenance.bricklink.com'), e.message);
@@ -71,7 +71,7 @@ test('BrickLink in Wartung', { concurrency: 1 }, async t => {
     });
   });
 
-  await t.test('der Preislauf meldet es einmal', async () => {
+  await t.test('the price run reports it once', async () => {
     const uid = (
       await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [`blw_${process.pid}`])
     ).id;

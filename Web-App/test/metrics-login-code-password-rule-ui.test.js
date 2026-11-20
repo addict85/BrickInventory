@@ -30,7 +30,7 @@ const stats = s => ({
   },
 });
 
-test('M1 ein Set ohne Teileliste: Einzahl, Erklärsatz unter der Leiste', async () => {
+test('M1 a set without a parts list: singular, explanation below the bar', async () => {
   const { w, d } = await openUi(
     stats({ total_sets: 1, total_quantity: 1, total_parts: 0, total_minifigs: 1, total_instructions: 1 }),
   );
@@ -44,7 +44,7 @@ test('M1 ein Set ohne Teileliste: Einzahl, Erklärsatz unter der Leiste', async 
   }
 });
 
-test('M1 mehrere Sets mit Teilen: Mehrzahl, kein Erklärsatz', async () => {
+test('M1 several sets with parts: plural, no explanation', async () => {
   const { w, d } = await openUi(
     stats({ total_sets: 3, total_quantity: 4, total_parts: 120, set_parts: 120, total_minifigs: 2 }),
   );
@@ -57,7 +57,7 @@ test('M1 mehrere Sets mit Teilen: Mehrzahl, kein Erklärsatz', async () => {
   }
 });
 
-test('M2 leerer Code im zweiten Schritt: Meldung am Feld, keine zweite Anfrage', async () => {
+test('M2 empty code in the second step: message at the field, no second request', async () => {
   const { w, d, aufrufe } = await openUi(
     {
       '/v1/auth/login': {
@@ -104,7 +104,7 @@ test('M2 leerer Code im zweiten Schritt: Meldung am Feld, keine zweite Anfrage',
   }
 });
 
-test('M2 erster Schritt ohne Codefeld: Code ist keine Pflicht', async () => {
+test('M2 first step without a code field: the code is not required', async () => {
   const { w, d, aufrufe } = await openUi(
     {
       '/v1/auth/login': {
@@ -129,7 +129,7 @@ test('M2 erster Schritt ohne Codefeld: Code ist keine Pflicht', async () => {
   }
 });
 
-test('N6 Passwort ändern: Länge und Wiederholung auf einmal gemeldet', async () => {
+test('N6 change password: length and repetition reported at once', async () => {
   const { w, d, aufrufe } = await openUi({
     '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
   });
@@ -157,7 +157,7 @@ test('N6 Passwort ändern: Länge und Wiederholung auf einmal gemeldet', async (
   }
 });
 
-test('N7 Finanzen: Summe je Bereich unter dem Bereich, unten nur noch die Gesamtsumme', async () => {
+test('N7 finances: sum per area below the area, at the bottom only the grand total', async () => {
   const { w, d } = await openUi({
     '/v1/finance/valuation': {
       success: true,
@@ -205,7 +205,7 @@ test('N7 Finanzen: Summe je Bereich unter dem Bereich, unten nur noch die Gesamt
   }
 });
 
-test('N10 ohne HTTPS: vorab nur „unverschlüsselt“, der Betreiberhinweis erst bei fehlendem Cookie', async () => {
+test('N10 without HTTPS: up front only "unencrypted", the operator hint only with a missing cookie', async () => {
   const { w, d } = await openUi(
     {
       '/v1/auth/login': {

@@ -21,7 +21,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { holdsSet } = require('./helpers/inventory');
 
-test('die Route liefert die Menge überhaupt mit', { concurrency: 1 }, async t => {
+test('the route delivers the quantity at all', { concurrency: 1 }, async t => {
   // Ohne das Feld fielen beide Clients still auf ihre eigene Annahme zurück —
   // der Rückfall ist absichtlich lautlos. Die Menge kommt aus changeSet(),
   // summiert über das Blickfeld.
@@ -49,7 +49,7 @@ test('die Route liefert die Menge überhaupt mit', { concurrency: 1 }, async t =
   assert.equal((await setze(1)).quantity, 1, 'auch nach dem Verringern');
 });
 
-test('die Webapp übernimmt die Menge aus der Antwort', async () => {
+test('the web app takes the quantity from the response', async () => {
   // Der Server deckelt das Verringern (Erfassungen anderer Konten im Haushalt): Er schreibt 2, nicht 1.
   // Danach liest das Detail das Set neu; der Server nennt dort dieselbe Menge.
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 3 };

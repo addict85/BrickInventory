@@ -38,11 +38,11 @@ const NAME = `ersatz_tx_${process.pid}`,
 /** @param {string} c */
 const withCode = c => (/** @type {any} */ e) => e.code === c;
 
-test('kein Ersatzwert in einer Transaktion', { concurrency: 1 }, async t => {
+test('no substitute value in a transaction', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
 
-  await t.test('ein Datenbankfehler geht weiter', async () => {
+  await t.test('a database error propagates', async () => {
     await assert.rejects(
       db.transaction(async tx => tx.get('SELECT 1/0 AS x').catch(reportAndDeliver('probe', null))),
       withCode('22012'),
@@ -59,18 +59,18 @@ test('kein Ersatzwert in einer Transaktion', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('ausserhalb der Datenbank wirft er in Tests', async () => {
+  await t.test('outside the database it throws in tests', async () => {
     await assert.rejects(
       db.transaction(async () => Promise.reject(new Error('Netz weg')).catch(reportAndDeliver('probe', 7))),
       /Ersatzwert in einer Transaktion \(probe\): Netz weg/,
     );
   });
 
-  await t.test('ausserhalb einer Transaktion gilt der Ersatz', async () => {
+  await t.test('outside a transaction the substitute applies', async () => {
     assert.equal(await db.get('SELECT 1/0 AS x').catch(reportAndDeliver('probe', 'ersatz')), 'ersatz');
   });
 
-  await t.test('hinter einem Sicherungspunkt gilt der Ersatz', async () => {
+  await t.test('behind a savepoint the substitute applies', async () => {
     const r = await db.transaction(async tx => {
       // Der Sicherungspunkt über den Zugang der Transaktion.
       const ersatz = await tx.db
@@ -82,7 +82,7 @@ test('kein Ersatzwert in einer Transaktion', { concurrency: 1 }, async t => {
     assert.deepEqual(r, ['ersatz', 2]);
   });
 
-  await t.test('die Ursache kommt an, nichts wird aufgeräumt', async () => {
+  await t.test('the cause arrives, nothing is cleaned up', async () => {
     await db.run('DELETE FROM users WHERE username = $1', [NAME]);
     const uid = (
       await db.get(

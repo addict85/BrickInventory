@@ -40,7 +40,7 @@ const SET = {
   instructions: [],
 };
 
-test('unbekannte Setnummer: erst Rückfrage, dann anlegen', async () => {
+test('unknown set number: ask first, then create', async () => {
   const { w, d, aufrufe } = await openUi({
     '/v1/catalog/sets/99999-1': {
       $status: 404,
@@ -72,7 +72,7 @@ test('unbekannte Setnummer: erst Rückfrage, dann anlegen', async () => {
   }
 });
 
-test('Preisverlauf: Kaufpreis als Punkt, nicht als Anfang der Kurve', async () => {
+test('price history: purchase price as a point, not as the start of the curve', async () => {
   const historie = [
     { recorded_at: '2026-06-01', avg_price: 199.99, is_purchase_price: true },
     { recorded_at: '2026-09-01', avg_price: 186 },
@@ -105,7 +105,7 @@ test('Preisverlauf: Kaufpreis als Punkt, nicht als Anfang der Kurve', async () =
   }
 });
 
-test('Konto: Währung wirkt sofort, Passwort hat seinen eigenen Knopf', async () => {
+test('account: currency applies immediately, password has its own button', async () => {
   const { w, d, aufrufe } = await openUi({
     '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
   });
@@ -142,7 +142,7 @@ test('Konto: Währung wirkt sofort, Passwort hat seinen eigenen Knopf', async ()
   }
 });
 
-test('Merkposten löschen: Rückgängig legt ihn wieder an', async () => {
+test('delete pending item: undo creates it again', async () => {
   const { w, d, aufrufe } = await openUi({
     '/v1/wanted': (_u, o) =>
       o.method === 'POST'
@@ -163,7 +163,7 @@ test('Merkposten löschen: Rückgängig legt ihn wieder an', async () => {
   }
 });
 
-test('Gutscheine: Währung des Ausgabelandes, Abweichung benannt', async () => {
+test('vouchers: currency of the issuing country, deviation named', async () => {
   const { w, d } = await openUi({
     '/v1/settings/raw': {
       success: true,
@@ -185,7 +185,7 @@ test('Gutscheine: Währung des Ausgabelandes, Abweichung benannt', async () => {
   }
 });
 
-test('Preisalarm in seiner Ansicht anlegen', async () => {
+test('create price alert in its view', async () => {
   const { w, d, aufrufe } = await openUi({ '/v1/alerts': { success: true, alerts: [] } });
   try {
     await sicht(w, 'alarme');
@@ -201,7 +201,7 @@ test('Preisalarm in seiner Ansicht anlegen', async () => {
   }
 });
 
-test('Hintergrundarbeiten: beschriftete Spalten, Fehler in der Zeile, Uhrzeit in 24 h', async () => {
+test('background jobs: labeled columns, error in the row, time in 24 h', async () => {
   const { w, d, aufrufe } = await openUi({
     '/v1/admin/job-status': { success: true, job: { running: false } },
     '/v1/admin/jobs': {
@@ -253,7 +253,7 @@ test('Hintergrundarbeiten: beschriftete Spalten, Fehler in der Zeile, Uhrzeit in
   }
 });
 
-test('Datum auf Englisch mit Monatsnamen', async () => {
+test('date in English with month names', async () => {
   const { w, d } = await openUi(
     { '/v1/sets': { success: true, sets: [SET], total: 1, themes: [] } },
     { sprache: 'en' },

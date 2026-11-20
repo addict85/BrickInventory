@@ -80,11 +80,11 @@ function compose(ort, ...args) {
 
 for (const { datei, abschnitt } of DOKUS) {
   const name = path.relative(path.join(ROOT, '..'), datei);
-  test(`${name}: der Schnellstart passt zu compose.yaml`, t => {
+  test(`${name}: the quick start matches compose.yaml`, t => {
     const probe = compose(path.join(ROOT), 'version');
     if (probe.error || probe.status !== 0) {
       if (process.env.CI) assert.fail(`docker compose im CI-Lauf: ${probe.error?.message || probe.stderr}`);
-      t.skip('kein docker compose');
+      t.skip('no docker compose');
       return;
     }
     assert.ok(PUBLISHED, 'IMAGE in docker-publish.yml nicht gefunden');
@@ -207,7 +207,7 @@ function allFiles() {
   return raus;
 }
 
-test('jeder genannte Pfad auf .ts, .sh, .yml und .yaml existiert', () => {
+test('every named path to .ts, .sh, .yml and .yaml exists', () => {
   const dateien = allFiles();
   const pfade = [...TEXT.matchAll(/[\w./-]+\.(?:ts|sh|ya?ml)\b/g)].map(m => m[0].replace(/^\.\//, ''));
   assert.ok(pfade.length > 40, `nur ${pfade.length} Pfade gefunden — greift die Suche noch?`);
@@ -215,11 +215,11 @@ test('jeder genannte Pfad auf .ts, .sh, .yml und .yaml existiert', () => {
   assert.deepEqual([...new Set(fehlt)], []);
 });
 
-test('kein Renovate: Neue Fassungen schlägt Dependabot vor', () => {
+test('no Renovate: Dependabot proposes new versions', () => {
   assert.doesNotMatch(TEXT, /renovate/i);
 });
 
-test('jeder genannte Test existiert', () => {
+test('every named test exists', () => {
   const tests = new Set(
     fs
       .readdirSync(path.join(ROOT_DOCS, 'Web-App', 'test'))

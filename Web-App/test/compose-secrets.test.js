@@ -37,11 +37,11 @@ function konfig() {
   return { j: JSON.parse(r.stdout) };
 }
 
-test('Geheimnisse nur als Dateien unter /run/secrets', t => {
+test('secrets only as files under /run/secrets', t => {
   const { j, fehler } = konfig();
   if (!j) {
     if (process.env.CI) assert.fail(`docker compose config im CI-Lauf: ${fehler}`);
-    t.skip(`kein docker compose: ${fehler}`);
+    t.skip(`no docker compose: ${fehler}`);
     return;
   }
   const dienste = Object.keys(j.services).sort();

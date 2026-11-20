@@ -20,7 +20,7 @@ const { testServer } = require('./helpers/server');
 const db = testData();
 const { holdsMinifig, holdsSet, holdsPart, haltRow, quantityOf } = require('./helpers/inventory');
 
-test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz', { concurrency: 1 }, async t => {
+test('last purchase price deleted → the entry disappears entirely', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const NUTZER = `lk-${process.pid}`;
@@ -75,7 +75,7 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz', { concurre
     assert.equal(r.status, 200);
     assert.equal((await r.json()).new_quantity, 0);
 
-    await t.test('die Galerie zeigt es nicht mehr', async () => {
+    await t.test('the gallery no longer shows it', async () => {
       const g = await H.setsLesen([uid], {});
       const nummern = g.sets.map(s => s.set_number);
       assert.deepEqual(
@@ -86,7 +86,7 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz', { concurre
       assert.equal(g.total, 1, 'die Gesamtzahl zählt es noch mit');
     });
 
-    await t.test('die Statistik zählt es nicht mehr', async () => {
+    await t.test('the statistics no longer count it', async () => {
       const st = await H.getStats([uid]);
       assert.equal(st.total_sets, 1, `Sets=${st.total_sets} statt 1`);
       assert.equal(st.total_quantity, 1);
@@ -96,7 +96,7 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz', { concurre
       assert.equal(st.total_minifigs, 1, `Minifiguren=${st.total_minifigs} — dito`);
     });
 
-    await t.test('die Bewertung rechnet es nicht mehr mit', async () => {
+    await t.test('the valuation no longer includes it', async () => {
       // Der eigentliche Schaden: `quantity || 1` machte aus 0 eine 1, das
       // gelöschte Set trug mit 20 CHF zum Portfolio bei.
       const val = await FC.valueSets(uid, [uid]);
@@ -109,7 +109,7 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz', { concurre
       );
     });
 
-    await t.test('in der Datenbank bleibt keine Zeile zurück', async () => {
+    await t.test('no row remains in the database', async () => {
       for (const [tab, spalte] of [
         ['sets', 'set_number'],
         ['parts', 'set_number'],
@@ -121,7 +121,7 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz', { concurre
       }
     });
 
-    await t.test('die Kontrollgruppe ist unberührt', async () => {
+    await t.test('the control group is untouched', async () => {
       // Ohne diese Gegenrichtung wäre der Test auch grün, wenn das Löschen
       // einer Erfassung den ganzen Bestand mitnähme.
       // Zwei Fragen, zwei Tabellen (Migration 0036): Steht die Bestandszeile
@@ -131,7 +131,7 @@ test('letzter Kaufpreis gelöscht → der Eintrag verschwindet ganz', { concurre
       assert.equal((await db.get(`SELECT COUNT(*)::int c FROM parts WHERE set_number=$1`, [BLEIBT])).c, 1);
     });
 
-    await t.test('eine von mehreren Erfassungen zu löschen ändert nichts am Bestand', async () => {
+    await t.test('deleting one of several acquisitions changes nothing about the inventory', async () => {
       // Die Regel greift NUR, wenn keine Erfassung mehr übrig ist.
       // Anderer TAG: Je Konto, Set und Tag ist genau eine Erfassung erlaubt
       // (idx_set_acq_tag_zustand) — zwei am selben Tag legt die Datenbank ab.

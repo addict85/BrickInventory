@@ -18,7 +18,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { readSet, setsLesen } = require('./helpers/sources').areaPage('sets');
 
-test('Anleitungen: der Server sagt, welche selbst hochgeladen ist', { concurrency: 1 }, async t => {
+test('instructions: the server says which one was uploaded by the user', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const USER = `anlh-${process.pid}`;
@@ -100,7 +100,7 @@ test('Anleitungen: der Server sagt, welche selbst hochgeladen ist', { concurrenc
   }
 });
 
-test('Anleitungen: die Webapp hängt den Papierkorb an is_manual', () => {
+test('instructions: the web app attaches the trash to is_manual', () => {
   const galerie = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/set-detail.js'), 'utf8'));
 
   assert.ok(

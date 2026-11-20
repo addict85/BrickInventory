@@ -21,7 +21,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
 
-test('Verwalterkonto mit derselben Rundenzahl', async t => {
+test('admin account with the same number of rounds', async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {

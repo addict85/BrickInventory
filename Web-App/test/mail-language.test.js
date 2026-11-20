@@ -32,7 +32,7 @@ function rumpf(quelle, kopf) {
   return m >= 0 ? rest.slice(0, m) : rest;
 }
 
-test('1. jede Mail-Funktion nimmt die Sprache entgegen', () => {
+test('1. every mail function accepts the language', () => {
   // Gefunden wird über den NAMEN, nicht über eine Liste: Eine vierte Mail
   // soll von dieser Regel erfasst werden, ohne dass jemand sie hier einträgt.
   const namen = [...MAILER.matchAll(/async function (send\w*Mail|build\w*Mail)\s*\(/g)]
@@ -62,7 +62,7 @@ test('1. jede Mail-Funktion nimmt die Sprache entgegen', () => {
   }
 });
 
-test('2. und beherrscht beide Sprachen wirklich', () => {
+test('2. and really masters both languages', () => {
   // Ein `lang`-Parameter, der nirgends gelesen wird, ist schlimmer als keiner:
   // Er sieht nach Mehrsprachigkeit aus.
   for (const [n, kopf] of [
@@ -80,7 +80,7 @@ test('2. und beherrscht beide Sprachen wirklich', () => {
   }
 });
 
-test('3. und jeder Aufrufer gibt sie mit — die Mail ist in der Sprache des Kontos', { timeout: 60_000 }, async t => {
+test("3. and every caller passes it along — the mail is in the account's language", { timeout: 60_000 }, async t => {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   environment({ APP_BASE_URL: 'http://localhost' });
   const { mailAttrappe, enterMailServer } = require('./helpers/mail-fake');
@@ -153,7 +153,7 @@ test('3. und jeder Aufrufer gibt sie mit — die Mail ist in der Sprache des Kon
   assert.doesNotMatch(bestaetigung.subject, /bestätig|Bestätig/, bestaetigung.subject);
 });
 
-test('4. die Alarmmail trägt dieselbe Hülle wie die anderen', async t => {
+test('4. the alert mail carries the same envelope as the others', async t => {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   const _req = require('./helpers/sources').buildAndRequire();
   const db = await require('./helpers/db').dataOrSkip(t, _req);

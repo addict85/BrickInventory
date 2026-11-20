@@ -17,7 +17,7 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-test('Farb- und Kategorienliste sehen im Haushalt denselben Bestand', { concurrency: 1 }, async t => {
+test('color and category list see the same inventory in the household', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const mainName = `tfhaupt-${process.pid}`,

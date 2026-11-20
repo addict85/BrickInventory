@@ -20,7 +20,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
-test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', { concurrency: 1 }, async t => {
+test('a new copy follows the acquisitions, not the stored value', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   // Die Tagesregel steht als Index in Migration 0047; ohne ihn greift das
   // ON CONFLICT beim Erfassen nicht.
@@ -95,7 +95,7 @@ test('ein neues Exemplar folgt den Erfassungen, nicht dem gespeicherten Wert', {
 /**
  * Warum diese Regel umgeschrieben wurde
  */
-test('kein Quelltext liest Kaufpreis oder Zustand aus sets', () => {
+test('no source reads purchase price or condition from sets', () => {
   // Gefunden, nicht aufgezaehlt.
   const dateien = [];
   const gehen = d => {

@@ -30,7 +30,7 @@ function fake() {
   return { req, res };
 }
 
-test('nach dem Schliessen bricht sendOrAbortAb mit StromGeschlossen ab', () => {
+test('after closing sendOrAbortAb aborts with StromGeschlossen', () => {
   const { req, res } = fake();
   const strom = openStream({}, req, res, { heartbeat: false });
   strom.sendOrAbortAb({ step: 'a' });

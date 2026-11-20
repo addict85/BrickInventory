@@ -48,7 +48,7 @@ async function dbReachable() {
   }
 }
 
-test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
+test('wishlist against a real database', { concurrency: 1 }, async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -57,7 +57,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
   await seed();
   const W = _req('src/wanted/wanted.js');
 
-  await t.test('ein Merkposten ist KEIN Besitz', async () => {
+  await t.test('a wishlist item is NOT ownership', async () => {
     const a = await W.addWantedItem(U.grandparent, '75192-1', 'N');
     assert.equal(a.war_neu, true);
 
@@ -68,7 +68,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     assert.equal(inSets.n, 0, 'Der Merkposten hat eine Zeile in `sets` angelegt');
   });
 
-  await t.test('die Stammdaten kommen aus dem Katalog, nicht aus einer Kopie', async () => {
+  await t.test('the master data comes from the catalog, not from a copy', async () => {
     const [w] = await W.wantedItemsOf([U.grandparent]);
     assert.equal(w.name, 'Millennium Falcon');
     assert.equal(w.year, 2017);
@@ -82,7 +82,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     await db.run(`UPDATE rb_sets SET name='Millennium Falcon' WHERE set_num='75192-1'`);
   });
 
-  await t.test('ein Set, das der Katalog nicht kennt, zeigt seine Nummer', async () => {
+  await t.test('a set the catalog does not know shows its number', async () => {
     // Der benannte Preis dafür, dass hier keine Stammdaten liegen (0021).
     // Er soll SICHTBAR sein und nicht als Absturz auftreten.
     await W.addWantedItem(U.grandparent, '99999-1', 'N');
@@ -92,7 +92,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     assert.equal(w.year, null);
   });
 
-  await t.test('ohne Rebrickable-Katalog kommen Name und Bild aus set_catalog', async () => {
+  await t.test('without the Rebrickable catalog name and image come from set_catalog', async () => {
     // Gegenprobe (28.10.2026): rb.name statt COALESCE(rb.name, sc.name) → rot, name null.
     await catalogSet(db, '10316-1', { name: 'Rivendell', year: 2023, pieces: 6167, image_url: 'http://x/10316.jpg' });
     await W.addWantedItem(U.grandparent, '10316-1', 'N');
@@ -110,7 +110,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     await db.run(`DELETE FROM wanted WHERE set_number = '10316-1'`);
   });
 
-  await t.test('neu und gebraucht sind ZWEI Merkposten', async () => {
+  await t.test('new and used are TWO wishlist items', async () => {
     // Wer ein gebrauchtes zum Bauen und ein verpacktes zum Aufheben sucht, hat
     // zwei Merkposten mit zwei Schwellen. price_alerts führt den Zustand seit
     // 0019 genauso im Schlüssel.
@@ -120,7 +120,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     assert.deepEqual(beide, ['N', 'U']);
   });
 
-  await t.test('denselben Merkposten zweimal eintragen ist kein zweiter Eintrag', async () => {
+  await t.test('adding the same wishlist item twice is not a second entry', async () => {
     const wieder = await W.addWantedItem(U.grandparent, '75192-1', 'N');
     assert.equal(wieder.war_neu, false, 'war_neu meldet einen Neuzugang, den es nicht gab');
     const n = await db.get(`SELECT COUNT(*)::int AS n FROM wanted WHERE user_id=$1 AND set_number='75192-1'`, [
@@ -129,7 +129,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     assert.equal(n.n, 2, 'N und U — nicht mehr');
   });
 
-  await t.test('der Grossvater sieht die Merkposten des Enkels', async () => {
+  await t.test("the grandfather sees the grandchild's wishlist items", async () => {
     // Marcos Festlegung. Hier ist der Kontenbaum nicht nur konsequent,
     // sondern der Zweck: Wer ein Geschenk sucht, schaut genau dort nach.
     await W.addWantedItem(U.enkel, '75192-1', 'N');
@@ -142,7 +142,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     assert.equal(fromGrandchild.set_number, '75192-1');
   });
 
-  await t.test('owned prüft das BLICKFELD, nicht nur das eigene Konto', async () => {
+  await t.test('owned checks the VIEW, not only the own account', async () => {
     // „Habe ich das inzwischen?" ist die Frage, die in der Liste sofort
     // aufkommt. Beim Grossvater heisst „ich habe es" auch: der Enkel hat es.
     await holdsSet(db, U.enkel, '75192-1', 1);
@@ -157,7 +157,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     await db.run(`DELETE FROM sets WHERE user_id=$1`, [U.enkel]);
   });
 
-  await t.test('löschen trifft genau EINEN Zustand', async () => {
+  await t.test('deleting hits exactly ONE condition', async () => {
     const weg = await W.removeWantedItem(U.grandparent, '75192-1', 'U');
     assert.equal(weg, 1);
     const uebrig = (await W.wantedItemsOf([U.grandparent], '75192-1')).map(w => w.condition);
@@ -167,7 +167,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     assert.equal(await W.removeWantedItem(U.grandparent, '75192-1', 'U'), 0);
   });
 
-  await t.test('die Übernahme legt das Set über setErfassen() an — mit Erfassungszeile', async () => {
+  await t.test('the takeover creates the set via setErfassen() — with an entry row', async () => {
     // „Direkt in die Galerie übernehmen" muss dasselbe sein wie eine
     // Setnummer erfassen. Ein eigenes INSERT INTO sets hätte weder die
     // Erfassungszeile noch den Zustand noch die Anreicherung — und genau
@@ -187,7 +187,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     assert.equal(erf.n, 1, 'Keine Erfassungszeile — die Übernahme ruft setErfassen() nicht');
   });
 
-  await t.test('nach der Übernahme sind Merkposten UND Alarm weg', async () => {
+  await t.test('after the takeover wishlist item AND alert are gone', async () => {
     // Marcos Festlegung auf die Rückfrage: „Eintrag weg, Alarm auch."
     await W.addWantedItem(U.enkel, '10276-1', 'U');
     // Der zweite Merkposten auf dasselbe Set, im anderen Zustand — er ist die
@@ -211,7 +211,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     assert.equal((await P.alertsFor(U.enkel, '10276-1')).length, 0, 'Der Alarm steht noch');
   });
 
-  await t.test('die Übernahme eines Sets, das man schon hat, stockt NICHT auf', async () => {
+  await t.test('taking over a set one already has does NOT top up', async () => {
     // Dieselbe Regel wie beim Erfassen (src/sets/addSet.ts): Schon im Blickfeld
     // heisst „Detail öffnen", nicht „Menge erhöhen". Sie darf nicht davon
     // abhängen, über welchen der vier Wege jemand kommt.
@@ -226,7 +226,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     assert.equal((await W.wantedItemsOf([U.grandparent], '75192-1')).length, 0);
   });
 
-  await t.test('Anzahl, Kaufpreis und Zustand lassen sich bei der Übernahme setzen', async () => {
+  await t.test('quantity, purchase price and condition can be set on takeover', async () => {
     // Marcos Nachtrag: „gewisse Inhalte wie zB. Preis und Zustand, Anzahl
     // müssen beim Übernehmen angepasst werden."
     await W.addWantedItem(U.grandparent, '10497-1', 'N');
@@ -248,7 +248,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     assert.equal(erf.condition, 'U', 'Die Erfassung steht im Zustand des MERKPOSTENS statt in dem, was gekauft wurde');
   });
 
-  await t.test('der Merkposten verschwindet nach SEINEM Zustand, nicht nach dem gekauften', async () => {
+  await t.test('the wishlist item disappears by ITS condition, not by the purchased one', async () => {
     // Der Fall, der vorher still falsch war: Merkposten „gebraucht", gekauft
     // wurde ein neues. Dann muss der GEBRAUCHTE Merkposten weg — den hat man
     // erfuellt — und das Set als neu in die Galerie.
@@ -265,7 +265,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('der Preisvergleich haengt am Merkposten, nicht am Katalog', async () => {
+  await t.test('the price comparison hangs on the wishlist item, not on the catalog', async () => {
     // Die Adresse braucht nur die Setnummer, nicht den Katalog (der kennt nicht jedes Set).
     //
     // Gegenproben (durchgeführt, Ergebnis im Commit):
@@ -298,7 +298,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('das Bild kommt lokal — und fehlt es, wird es bestellt', async () => {
+  await t.test('the image comes locally — and if it is missing, it is ordered', async () => {
     // Marcos zwei Befunde in einem Test:
     //
     // Gegenproben (durchgeführt, Ergebnis im Commit):
@@ -362,7 +362,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     }
   });
 
-  await t.test('der Inhaber laesst sich wechseln — mit Alarm und Datum', async () => {
+  await t.test('the owner can be changed — with alert and date', async () => {
     // Gegenproben (durchgeführt, Ergebnis im Commit):
     //   a) In moveWantedItem() das UPDATE der price_alerts entfernt →
     //      „der Alarm zieht mit" wird rot.
@@ -426,7 +426,7 @@ test('Merkliste gegen echte Datenbank', { concurrency: 1 }, async t => {
     assert.equal(parseFloat(nachMerge.threshold), 99, 'Die Schwelle des ZIELS wurde überschrieben');
   });
 
-  await t.test('Verbindungen schliessen', async () => {
+  await t.test('close connections', async () => {
     await db.pool.end();
   });
 });

@@ -62,7 +62,7 @@ Object.assign(require('./helpers/sources').testArea('sets'), {
 
 const db = quellen.testData();
 
-test('kein interner Fehlertext an den Client', { concurrency: 1 }, async t => {
+test('no internal error text to the client', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `fehlertext_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -91,7 +91,7 @@ test('kein interner Fehlertext an den Client', { concurrency: 1 }, async t => {
     return ereignisse.at(-1);
   };
 
-  await t.test('der Erfassungsstrom nennt keinen internen Text', async () => {
+  await t.test('the acquisition stream names no internal text', async () => {
     const letztes = await strom('GEHEIM-1', 'en');
     assert.ok(!JSON.stringify(letztes).includes('geheime_tabelle'), JSON.stringify(letztes));
     // Angelegt ist das Set schon: Das Ende sagt, dass ein Auftrag ergänzt, statt „Fehler“.
@@ -101,14 +101,14 @@ test('kein interner Fehlertext an den Client', { concurrency: 1 }, async t => {
     assert.equal(letztes.katalog_offen, true);
   });
 
-  await t.test('ein Fachfehler kommt mit seinem Code an', async () => {
+  await t.test('a domain error arrives with its code', async () => {
     const letztes = await strom('FACH-1');
     assert.equal(letztes.status, 400);
     assert.equal(letztes.code, 'setnummer_ungueltig');
     assert.equal(letztes.error, errorText('setnummer_ungueltig', 'de'));
   });
 
-  await t.test('der CSV-Bericht nennt keinen internen Text', async () => {
+  await t.test('the CSV report names no internal text', async () => {
     const form = new FormData();
     form.append('file', new Blob(['set_number\n10283-1\n'], { type: 'text/csv' }), 'merkliste.csv');
     const r = await fetch(`${base}/api/v1/wanted/import/csv`, { method: 'POST', body: form });

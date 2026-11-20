@@ -172,10 +172,10 @@ function wortabstand() {
 </script></body></html>`;
 }
 
-test('Kontrast, Datei-Felder und Kachelschrift', t => {
+test('contrast, file fields and tile font', t => {
   const bin = chrome();
   if (!bin) {
-    t.skip('kein Chrome gefunden');
+    t.skip('no Chrome found');
     return;
   }
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'lesbar-'));

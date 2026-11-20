@@ -57,7 +57,7 @@ function starte(env, ms = 20000) {
   });
 }
 
-test('MAIL_KONSOLE_MIT_TOKEN=1 im Betrieb: Start verweigert', { timeout: 50_000 }, async () => {
+test('MAIL_KONSOLE_MIT_TOKEN=1 in production: startup refused', { timeout: 50_000 }, async () => {
   const db = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'https://lego.example.org' };
   const r = await starte({ ...db, MAIL_KONSOLE_MIT_TOKEN: '1' });
   assert.equal(r.code, 1, r.log.slice(-400));
@@ -68,7 +68,7 @@ test('MAIL_KONSOLE_MIT_TOKEN=1 im Betrieb: Start verweigert', { timeout: 50_000 
   assert.match(entw.log, /Database initialisation failed/);
 });
 
-test('COOKIE_SECURE=0 im Betrieb: Warnzeile beim Start', { timeout: 50_000 }, async () => {
+test('COOKIE_SECURE=0 in production: warning line at startup', { timeout: 50_000 }, async () => {
   const db = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'http://lego.lan' };
   const mit = await starte({ ...db, COOKIE_SECURE: '0' });
   assert.match(mit.log, /⚠️ \[start\] COOKIE_SECURE=0: Das Sitzungs-Cookie geht auch über http/);
@@ -77,14 +77,14 @@ test('COOKIE_SECURE=0 im Betrieb: Warnzeile beim Start', { timeout: 50_000 }, as
   assert.doesNotMatch(ohne.log, /COOKIE_SECURE/);
 });
 
-test('HSTS_MAX_AGE=0 im Betrieb: genau eine Warnung', () => {
+test('HSTS_MAX_AGE=0 in production: exactly one warning', () => {
   const w = startWarnings({ NODE_ENV: 'production', HSTS_MAX_AGE: '0' });
   assert.equal(w.length, 1, JSON.stringify(w));
   assert.match(w[0], /HSTS_MAX_AGE=0/);
   assert.deepEqual(startWarnings({ NODE_ENV: 'production', HSTS_MAX_AGE: '31536000' }), []);
 });
 
-test('entfernte Datenbank ohne geprüftes TLS: Warnung', () => {
+test('remote database without verified TLS: warning', () => {
   const tls = env => startWarnings({ NODE_ENV: 'production', ...env }).filter(x => x.startsWith('[datenbank]'));
   assert.equal(tls({ PGHOST: 'db.example.org' }).length, 1);
   assert.equal(tls({ DATABASE_URL: 'postgres://u:p@db.example.org/x?sslmode=require' }).length, 1);

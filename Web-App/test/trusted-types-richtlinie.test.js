@@ -25,7 +25,7 @@ globalThis.trustedTypes = {
 
 const laden = () => import(pathToFileURL(path.join(__dirname, '..', 'public', 'js', 'escaping.js')).href);
 
-test('Markup aus html`` wird TrustedHTML, der Wert darin maskiert', async () => {
+test('markup from html`` becomes TrustedHTML, the value inside escaped', async () => {
   const { asHtml, html } = await laden();
   assert.deepEqual(asHtml(html`<b>${'<img src=x onerror=alert(1)>'}</b>`), {
     geprueft: '<b>&lt;img src=x onerror=alert(1)&gt;</b>',
@@ -33,7 +33,7 @@ test('Markup aus html`` wird TrustedHTML, der Wert darin maskiert', async () => 
   assert.deepEqual(asHtml([html`<i>a</i>`, html`<i>b</i>`]), { geprueft: '<i>a</i><i>b</i>' });
 });
 
-test('direkt aufgerufen nimmt die Richtlinie nichts an', async () => {
+test('called directly the policy accepts nothing', async () => {
   const { asHtml, html } = await laden();
   assert.throws(() => policies.app.createHTML('<img src=x onerror=alert(1)>'), TypeError);
   // Auch nicht den Text, der eben durchging: Die Freigabe gilt einmal.
@@ -41,19 +41,19 @@ test('direkt aufgerufen nimmt die Richtlinie nichts an', async () => {
   assert.throws(() => policies.app.createHTML('<b>x</b>'), TypeError);
 });
 
-test('eine Zeichenkette kommt maskiert als Text an', async () => {
+test('a string arrives escaped as text', async () => {
   const { asHtml } = await laden();
   assert.deepEqual(asHtml('<b>x</b>'), { geprueft: '&lt;b&gt;x&lt;/b&gt;' });
 });
 
-test('ein nachgebautes SafeHtml ohne Marke wird maskiert', async () => {
+test('a replicated SafeHtml without a brand is escaped', async () => {
   const { asHtml, SafeHtml } = await laden();
   const falsch = Object.assign(Object.create(SafeHtml.prototype), { text: '<script>x</script>' });
   assert.ok(falsch instanceof SafeHtml, 'Vorbedingung: instanceof liesse es durch');
   assert.deepEqual(asHtml(falsch), { geprueft: '&lt;script&gt;x&lt;/script&gt;' });
 });
 
-test('die Richtlinie default nimmt nur das Leeren an', async () => {
+test('the default policy only accepts clearing', async () => {
   await laden();
   assert.deepEqual(policies.default.createHTML(''), { geprueft: '' });
   assert.throws(() => policies.default.createHTML('<b>'), TypeError);

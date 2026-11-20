@@ -52,7 +52,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { holdsSet } = require('./helpers/inventory');
 
-test('Ersatzwerte stehen in der Antwort', { concurrency: 1 }, async t => {
+test('substitute values are named in the response', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const NAME = `degr-${process.pid}`,
@@ -65,7 +65,7 @@ test('Ersatzwerte stehen in der Antwort', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('die Cache-Zahlen sagen, welcher Teil fehlt', async () => {
+  await t.test('the cache numbers say which part is missing', async () => {
     const { cacheStats: cacheStatistics } = _req('src/management/service.js');
     const heil = await cacheStatistics();
     assert.equal(heil.degradiert, undefined, 'ohne Fehler keine Angabe');
@@ -80,7 +80,7 @@ test('Ersatzwerte stehen in der Antwort', { concurrency: 1 }, async t => {
     }
   });
 
-  await t.test('eine Mengenerhöhung ohne Marktpreis sagt es', async () => {
+  await t.test('a quantity increase without a market price says so', async () => {
     await holdsSet(db, uid, SN, 0);
     await db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, purchase_price, condition, quantity)

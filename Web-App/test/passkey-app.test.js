@@ -39,7 +39,7 @@ function withEnvironment(t, werte) {
   });
 }
 
-test('ohne Eintrag gibt es kein Dokument und keine App-Herkunft', async t => {
+test('without an entry there is no document and no app origin', async t => {
   withEnvironment(t, { PASSKEY_ANDROID_ZERTIFIKATE: '' });
   const { base } = testServer(_req, { t });
   const r = await fetch(`${base}/.well-known/assetlinks.json`);
@@ -48,7 +48,7 @@ test('ohne Eintrag gibt es kein Dokument und keine App-Herkunft', async t => {
   assert.deepEqual(androidOrigins(), []);
 });
 
-test('das Dokument nennt Paket und Fingerabdruck, nur für die Anmeldedaten', async t => {
+test('the document names package and fingerprint, only for the credentials', async t => {
   withEnvironment(t, {
     PASSKEY_ANDROID_ZERTIFIKATE: HASH.toString('hex'),
     PASSKEY_ANDROID_PAKET: 'ch.brickinventoryapp.debug',
@@ -69,7 +69,7 @@ test('das Dokument nennt Paket und Fingerabdruck, nur für die Anmeldedaten', as
   ]);
 });
 
-test('die Herkunft ist base64url des Hashes, gleich in welcher Schreibweise er eingetragen ist', t => {
+test('the origin is base64url of the hash, regardless of the notation it is entered in', t => {
   withEnvironment(t, { PASSKEY_ANDROID_ZERTIFIKATE: `${WITH_COLON.toLowerCase()}, ${HASH.toString('hex')}` });
   const erwartet =
     'android:apk-key-hash:' + HASH.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -77,7 +77,7 @@ test('die Herkunft ist base64url des Hashes, gleich in welcher Schreibweise er e
   assert.deepEqual(androidOrigins(), [erwartet], 'Doppelt eingetragen zählt einmal');
 });
 
-test('ein falscher Fingerabdruck oder Paketname ist ein Startfehler mit Namen', () => {
+test('a wrong fingerprint or package name is a startup error with a name', () => {
   const fehler = env => {
     try {
       ladeKonfig(env);

@@ -64,7 +64,7 @@ async function occurrences(text) {
   return treffer;
 }
 
-test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t => {
+test('Idempotency-Key without secrets in plaintext', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `idem_geheim_${process.pid}`,
@@ -102,7 +102,7 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
     }).then(async r => ({ status: r.status, replay: r.headers.get('idempotent-replay'), body: await r.json() }));
   const zeile = k => db.get('SELECT status, response FROM idempotency WHERE user_id = $1 AND key = $2', [uid, k]);
 
-  await t.test('die Wiederholung mit falschem Passwort bekommt weder PIN noch Antwort', async () => {
+  await t.test('the repetition with a wrong password gets neither PIN nor response', async () => {
     const neu = await post('/vouchers', 'v-1', {
       number: '1234567890123456',
       pin: '4321',
@@ -122,7 +122,7 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
   });
 
   let g;
-  await t.test('das TOTP-Geheimnis steht in keiner Spalte der Datenbank', async () => {
+  await t.test('the TOTP secret is in no column of the database', async () => {
     const r = await post('/auth/zweiter-faktor/einrichten', 'zf-1', { password: PASS });
     assert.equal(r.status, 200, JSON.stringify(r.body));
     g = r.body.geheimnis;
@@ -131,14 +131,14 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
     assert.deepEqual(await zeile('zf-1'), { status: 200, response: null });
   });
 
-  await t.test('die Wiederholung bekommt 409 statt eines zweiten Geheimnisses', async () => {
+  await t.test('the repetition gets 409 instead of a second secret', async () => {
     const r = await post('/auth/zweiter-faktor/einrichten', 'zf-1', { password: PASS });
     assert.equal(r.status, 409);
     assert.equal(r.body.code, 'idempotenz_nicht_wiederholbar');
     assert.equal(r.replay, null);
   });
 
-  await t.test('auch die Wiederherstellungscodes stehen nirgends im Klartext', async () => {
+  await t.test('the recovery codes are nowhere in plaintext either', async () => {
     const code = zf.hotp(zf.fromBase32(g), zf.timeStep());
     const r = await post('/auth/zweiter-faktor/bestaetigen', 'zf-2', { code });
     assert.equal(r.status, 200, JSON.stringify(r.body));
@@ -147,7 +147,7 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
     assert.equal((await post('/auth/zweiter-faktor/bestaetigen', 'zf-2', { code })).status, 409);
   });
 
-  await t.test('gewöhnliche Antworten liegen verschlüsselt und werden wiederholt', async () => {
+  await t.test('ordinary responses are stored encrypted and repeated', async () => {
     const erst = await post('/storage/locations', 'p-1', { name: 'Kiste 1' });
     assert.equal(erst.status, 200, JSON.stringify(erst.body));
     assert.equal(erst.replay, null);
@@ -161,7 +161,7 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
     assert.deepEqual(nochmal, { ...erst, replay: 'true' });
   });
 
-  await t.test('der Fingerabdruck verrät das Passwort nicht', async () => {
+  await t.test('the fingerprint does not reveal the password', async () => {
     const dienst = _req('src/idempotency/service.js');
     const pfad = '/api/v1/auth/zweiter-faktor/einrichten';
     const alt = require('node:crypto')
@@ -199,7 +199,7 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
     assert.ok(!uebrig.includes('sha-1') && uebrig.includes('zf-1'), uebrig.join(', '));
   });
 
-  await t.test('die Migration entfernt Klartext und die Wiederholung wird abgesagt', async () => {
+  await t.test('the migration removes plaintext and the repetition is refused', async () => {
     const abdruck = _req('src/idempotency/service.js').fingerprint('POST', '/api/v1/storage/locations', {
       name: 'Alt',
     });
@@ -233,7 +233,7 @@ test('Idempotency-Key ohne Geheimnisse im Klartext', { concurrency: 1 }, async t
   });
 });
 
-test('jede schreibende Route mit Zugang oder Code steht auf der Liste', () => {
+test('every writing route with access or code is on the list', () => {
   // `code` ist sonst der Fehlercode; der Einladungscode steht deshalb unten einzeln.
   const SECRET_FIELDS = ['token', 'codes', 'geheimnis', 'otpauth'];
   const gefunden = [],
@@ -251,7 +251,7 @@ test('jede schreibende Route mit Zugang oder Code steht auf der Liste', () => {
   assert.equal(responseIsSecret('PUT', '/api/v1/parts/3001/5'), false);
 });
 
-test('jede Route mit Bestätigung ist nicht wiederholbar', () => {
+test('every route with confirmation is not repeatable', () => {
   const withConfirmation = Object.entries(CONTRACT).filter(([, r]) => r.bestaetigung);
   assert.ok(withConfirmation.length >= 20, `nur ${withConfirmation.length} Routen mit Bestätigung`);
   const retryable = withConfirmation

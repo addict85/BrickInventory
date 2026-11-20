@@ -53,10 +53,10 @@ window.addEventListener('load', () => {
 </script></body></html>`;
 }
 
-test('Zustandsfarben in allen Designs', t => {
+test('condition colors in all designs', t => {
   const bin = chrome();
   if (!bin) {
-    t.skip('kein Chrome gefunden');
+    t.skip('no Chrome found');
     return;
   }
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'zustand-'));

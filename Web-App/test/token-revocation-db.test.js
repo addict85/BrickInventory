@@ -33,7 +33,7 @@ const tokenCache = _req('src/account/tokenCache.js');
 const pgNotify = testAccess().notification;
 const { bis } = require('./helpers/time');
 
-test('Token-Widerruf wirkt sofort', { concurrency: 1 }, async t => {
+test('token revocation applies immediately', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -65,26 +65,26 @@ test('Token-Widerruf wirkt sofort', { concurrency: 1 }, async t => {
     return token;
   };
 
-  await t.test('Abmelden wirkt sofort', async () => {
+  await t.test('logout applies immediately', async () => {
     const token = await inCacheWithoutRow();
     tokenCache.tokenForgotten(token);
     assert.equal(await auth.nutzerZumToken(token), null);
   });
 
-  await t.test('die Token-Verwaltung leert den Cache', async () => {
+  await t.test('the token administration clears the cache', async () => {
     const token = await inCacheWithoutRow();
     tokenCache.emptyTokenCache();
     assert.equal(await auth.nutzerZumToken(token), null);
   });
 
-  await t.test('ein Passwortwechsel widerruft auch zwischengespeicherte Tokens', async () => {
+  await t.test('a password change also revokes cached tokens', async () => {
     const token = await auth.createToken(uid, 'Test');
     assert.ok(await auth.nutzerZumToken(token));
     await auth.revokeAllTokens(uid);
     assert.equal(await auth.nutzerZumToken(token), null);
   });
 
-  await t.test('ohne Benachrichtigung gilt ein widerrufener Token höchstens die Cache-Frist', async t2 => {
+  await t.test('without notification a revoked token applies at most for the cache period', async t2 => {
     assert.ok(tokenCache.TOKEN_TTL_MS < 10_000, 'die Frist ist unter 10 s');
     const token = await inCacheWithoutRow();
     t2.mock.timers.enable({ apis: ['Date'], now: Date.now() });
@@ -92,7 +92,7 @@ test('Token-Widerruf wirkt sofort', { concurrency: 1 }, async t => {
     assert.equal(await auth.nutzerZumToken(token), null);
   });
 
-  await t.test('ohne Horch-Verbindung gilt der Cache nicht', async () => {
+  await t.test('without a listen connection the cache does not apply', async () => {
     const token = await inCacheWithoutRow();
     // Die Verbindung reisst ab, wie bei einem Neustart der Datenbank; bis zum
     // Wiederverbinden (1 s) käme ein Widerruf aus einem anderen Prozess nicht an.

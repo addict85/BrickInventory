@@ -33,14 +33,14 @@ const containsKey = (wert, name) =>
   typeof wert === 'object' &&
   (Object.hasOwn(wert, name) || Object.values(wert).some(v => containsKey(v, name)));
 
-test('kein Antwortschema der Verwaltung nennt user_id', () => {
+test('no admin response schema names user_id', () => {
   for (const r of ['GET /api/v1/admin/auftraege', 'GET /api/v1/admin/image-diag/:setNumber']) {
     const schema = JSON.stringify(z.toJSONSchema(routeZu(r).antwort, { io: 'output', unrepresentable: 'any' }));
     assert.doesNotMatch(schema, /"user_id"/, r);
   }
 });
 
-test('Verwalterwerkzeuge verraten keine Besitzer', { concurrency: 1 }, async t => {
+test('admin tools reveal no owners', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const P = process.pid,
@@ -73,7 +73,7 @@ test('Verwalterwerkzeuge verraten keine Besitzer', { concurrency: 1 }, async t =
   await adminWithFactor(_req, ids[0]);
   const { base } = testServer(_req, { sitzung: { userId: ids[0], username: namen[0], isAdmin: true }, t });
 
-  await t.test('die Bild-Diagnose zählt Konten, nennt sie aber nicht', async () => {
+  await t.test('the image diagnostics count accounts but do not name them', async () => {
     const r = await fetch(`${base}/api/v1/admin/image-diag/${SN}`);
     const body = await r.json();
     assert.equal(r.status, 200, JSON.stringify(body));
@@ -82,7 +82,7 @@ test('Verwalterwerkzeuge verraten keine Besitzer', { concurrency: 1 }, async t =
     assert.ok(!JSON.stringify(body).includes(`"${ids[1]}"`) && !body.hinweise.includes('Kein Konto führt dieses Set.'));
   });
 
-  await t.test('die Auftragsliste ohne Konto', async () => {
+  await t.test('the job list without account', async () => {
     const r = await fetch(`${base}/api/v1/admin/auftraege?status=fehler`);
     const body = await r.json();
     assert.equal(r.status, 200, JSON.stringify(body));

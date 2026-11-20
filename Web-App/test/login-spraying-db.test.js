@@ -31,7 +31,7 @@ const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const NAME = `spray_${process.pid}`;
 const IP = '203.0.113.77';
 
-test('Grenze je Adresse über alle Namen', { concurrency: 1 }, async t => {
+test('limit per address across all names', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -55,7 +55,7 @@ test('Grenze je Adresse über alle Namen', { concurrency: 1 }, async t => {
   const { checkCredentials } = _req('src/account/loginCheck.js');
   const lim = _req('src/account/loginLimiter.js');
 
-  await t.test('nach 30 Fehlversuchen gegen verschiedene Namen ist die Adresse gesperrt', async () => {
+  await t.test('after 30 failed attempts against different names the address is locked', async () => {
     const anfrage = { ip: IP, socket: {}, headers: {} };
     for (let i = 0; i < lim.MAX_JE_ADDRESS; i++) {
       const r = await checkCredentials(anfrage, `${NAME}_gibtsnicht_${i}`, 'falsch');
@@ -65,7 +65,7 @@ test('Grenze je Adresse über alle Namen', { concurrency: 1 }, async t => {
     assert.equal(r.absage?.art, 'zu_viele');
   });
 
-  await t.test('wer sich von hier schon angemeldet hat, kommt trotz gesperrter Adresse hinein', async () => {
+  await t.test('whoever has already logged in from here gets in despite the locked address', async () => {
     const anfrage = { ip: IP, socket: {}, headers: {} };
     await lim.loginSucceeded(IP, NAME);
     const r = await checkCredentials(anfrage, NAME, 'richtig-geheim');
@@ -83,7 +83,7 @@ test('Grenze je Adresse über alle Namen', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('abgelaufene Zähler werden gelöscht, frische bleiben', async () => {
+  await t.test('expired counters are deleted, fresh ones stay', async () => {
     await db.run(`INSERT INTO rate_limit_attempts (key, count, first_at, last_at) VALUES
       ('probe-alt|1', 3, NOW() - interval '3 days', NOW() - interval '2 days'),
       ('probe-neu|x', 1, NOW(), NOW())`);

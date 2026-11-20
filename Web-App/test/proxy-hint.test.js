@@ -41,7 +41,7 @@ function lauf(trust, anfragen) {
   return meldungen;
 }
 
-test('Proxy über das Gateway wird gemeldet, nur einmal — ohne Rat, dem Gateway zu glauben', () => {
+test('proxy via the gateway is reported, only once — without advice to trust the gateway', () => {
   for (const trust of [undefined, '172.28.73.10']) {
     const m = lauf(trust, [anfrage('::ffff:172.18.0.1', '198.51.100.4'), anfrage('172.18.0.1', '198.51.100.5')]);
     assert.equal(m.length, 1, `TRUST_PROXY=${trust}`);
@@ -50,21 +50,21 @@ test('Proxy über das Gateway wird gemeldet, nur einmal — ohne Rat, dem Gatewa
   }
 });
 
-test('Proxy im Docker-Netz ohne passendes TRUST_PROXY: Hinweis auf genau seine Adresse', () => {
+test('proxy in the Docker network without matching TRUST_PROXY: hint at exactly its address', () => {
   const m = lauf(undefined, [anfrage('172.28.73.10', '198.51.100.4')]);
   assert.equal(m.length, 1);
   assert.match(m[0], /TRUST_PROXY=172\.28\.73\.10/);
   assert.doesNotMatch(m[0], /TRUST_PROXY=docker/);
 });
 
-test('kein Hinweis ohne Proxy-Kopf, von anderen Adressen oder mit passendem TRUST_PROXY', () => {
+test('no hint without a proxy header, from other addresses or with matching TRUST_PROXY', () => {
   assert.deepEqual(lauf(undefined, [anfrage('172.18.0.1')]), []);
   assert.deepEqual(lauf(undefined, [anfrage('127.0.0.1', '198.51.100.4'), anfrage('192.168.1.20', '1.2.3.4')]), []);
   assert.deepEqual(lauf('172.28.73.10', [anfrage('172.28.73.10', '198.51.100.4')]), []);
   assert.deepEqual(lauf('false', [anfrage('172.18.0.1', '198.51.100.4')]), [], 'ausdrücklich ohne Proxy');
 });
 
-test('Gateway-Erkennung', () => {
+test('gateway detection', () => {
   for (const a of ['172.17.0.1', '::ffff:172.31.0.1', 'fd00:dead:beef::1']) assert.equal(isDockerGateway(a), true, a);
   for (const a of ['172.17.0.2', '10.0.0.1', '192.168.0.1', '127.0.0.1', '::1'])
     assert.equal(isDockerGateway(a), false, a);
@@ -87,14 +87,14 @@ function viaProxy(trust, ips, { minuten }) {
 }
 const viele = (ip, n = EINE_ADDRESS.anfragen + 10) => Array(n).fill(ip);
 
-test('eine einzige Client-Adresse über eine Stunde wird gemeldet — einmal, mit VORGELAGERTER_PROXY', () => {
+test('a single client address over an hour is reported — once, with VORGELAGERTER_PROXY', () => {
   const m = viaProxy('172.28.73.10', viele('::ffff:172.28.73.20', 2 * EINE_ADDRESS.anfragen), { minuten: 61 });
   assert.equal(m.length, 1, 'eine einzige Client-Adresse über eine Stunde wird gemeldet');
   assert.match(m[0], /Client-Adresse 172\.28\.73\.20\b/);
   assert.match(m[0], /VORGELAGERTER_PROXY/);
 });
 
-test('zwei Client-Adressen, zu kurz oder ohne TRUST_PROXY: kein Hinweis', () => {
+test('two client addresses, too short or without TRUST_PROXY: no hint', () => {
   const gemischt = viele('192.168.1.20');
   gemischt[10] = '192.168.1.21';
   assert.deepEqual(viaProxy('172.28.73.10', gemischt, { minuten: 120 }), [], 'zwei Client-Adressen: kein Hinweis');

@@ -27,7 +27,7 @@ const CHECK = `(() => {
     || [...document.querySelectorAll('input')].some(i => i.getClientRects().length && i.value.includes('<img src=x onerror')) };
 })()`;
 
-test('XSS-Nutzlasten in den Hauptansichten bleiben Text', { concurrency: 1, timeout: 300_000 }, async t => {
+test('XSS payloads in the main views stay text', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `xss_${process.pid}`,
     bestand: async (db, uid) => {

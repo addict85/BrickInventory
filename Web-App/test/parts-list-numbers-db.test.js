@@ -53,7 +53,7 @@ async function dbReachable() {
   }
 }
 
-test('die Teileliste benennt die Teile mit beiden Nummern', { concurrency: 1 }, async t => {
+test('the parts list names the parts with both numbers', { concurrency: 1 }, async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -80,7 +80,7 @@ test('die Teileliste benennt die Teile mit beiden Nummern', { concurrency: 1 }, 
   assert.equal(d.success, true, JSON.stringify(d));
   const nach = nr => d.parts.find(p => p.part_number === nr);
 
-  await t.test('`part_number` ist die Rebrickable-Nummer', () => {
+  await t.test('`part_number` is the Rebrickable number', () => {
     assert.ok(
       nach('3070b'),
       'Die Antwort kennt `3070b` nicht. Steht dort die BrickLink-Nummer 3070, ' +
@@ -96,7 +96,7 @@ test('die Teileliste benennt die Teile mit beiden Nummern', { concurrency: 1 }, 
     );
   });
 
-  await t.test('zwei Rebrickable-Teile mit EINER BrickLink-Nummer bleiben zwei Zeilen', () => {
+  await t.test('two Rebrickable parts with ONE BrickLink number stay two rows', () => {
     // Der Grund, warum der Schluessel mitwandern musste: Auf der
     // BrickLink-Nummer faenden 3070b und 3069b zu einer Zeile zusammen — mit
     // addiertem Bedarf (6) unter einer der beiden Nummern.
@@ -110,7 +110,7 @@ test('die Teileliste benennt die Teile mit beiden Nummern', { concurrency: 1 }, 
     );
   });
 
-  await t.test('ohne Zuordnung bleibt die Nummer, wie sie ist', () => {
+  await t.test('without a mapping the number stays as it is', () => {
     // Die Gegenrichtung: Wo es keine BrickLink-Nummer gibt, darf nichts
     // erfunden werden — beide Felder tragen dann die Rebrickable-Nummer.
     assert.ok(nach('3001'), '3001 fehlt ganz');

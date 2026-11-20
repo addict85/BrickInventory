@@ -33,13 +33,13 @@ const MIGRATION = fs.readFileSync(
 );
 const SCHEMA = `probe0101_${process.pid}`;
 
-test('der Proxy legt die Rückfall-Adresse lokal ab', () => {
+test('the proxy stores the fallback address locally', () => {
   const adresse = rebrickableSetImage('75192');
   assert.equal(adresse, 'https://cdn.rebrickable.com/media/sets/75192-1.jpg');
   assert.equal(setNumberFromImageAddress(adresse), '75192-1', 'der Proxy legt die Rückfall-Adresse lokal ab');
 });
 
-test('nur das Hauptbild wird lokal abgelegt, kein Zusatzbild und nichts Fremdes', () => {
+test('only the main image is stored locally, no additional image and nothing foreign', () => {
   for (const fremd of [
     'https://cdn.rebrickable.com/media/sets/75192-1/119389.jpg',
     'https://cdn.rebrickable.com/media/sets/75192-1.png',
@@ -50,7 +50,7 @@ test('nur das Hauptbild wird lokal abgelegt, kein Zusatzbild und nichts Fremdes'
     assert.equal(setNumberFromImageAddress(fremd), null, fremd);
 });
 
-test('Migration 0101: Set-Bilder von Rebrickable', { concurrency: 1 }, async t => {
+test('migration 0101: set images from Rebrickable', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const c = await db.pool.connect();
   t.after(async () => {

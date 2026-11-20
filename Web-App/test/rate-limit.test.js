@@ -14,7 +14,7 @@ const { REBRICKABLE_DEFAULT_DAILY } = _req('src/externalSources/rateLimiter.js')
 
 const EXPECTED = 25000;
 
-test('Standard-Tageslimit ist 25000 — an EINER Stelle', () => {
+test('default daily limit is 25000 — in ONE place', () => {
   assert.equal(REBRICKABLE_DEFAULT_DAILY, EXPECTED);
   // limitTheSource() hatte eine eigene Kopie des Rückfallwerts (4000). Solange
   // Rebrickable seinen eigenen Zähler hatte, sah es diese Tabelle nie — seit
@@ -29,7 +29,7 @@ test('Standard-Tageslimit ist 25000 — an EINER Stelle', () => {
   assert.doesNotMatch(fc, /rebrickable: \d+/, 'Keine zweite Zahl für dasselbe Limit');
 });
 
-test('das Tageskontingent zählt für die Installation, nicht je Worker', () => {
+test('the daily quota counts for the installation, not per worker', () => {
   // Woher dieser Test kommt
   const rl = fs.readFileSync(path.join(ROOT, 'src/externalSources/rateLimiter.ts'), 'utf8');
   assert.match(rl, /async function consumeRebrickableDaily/, 'Der Verbrauch muss über den gemeinsamen Zähler laufen');
@@ -62,7 +62,7 @@ test('das Tageskontingent zählt für die Installation, nicht je Worker', () => 
   assert.doesNotMatch(server, /loadDailyLimitsFromDb\(\)/, 'Ein In-Memory-Limit muss nicht mehr geladen werden');
 });
 
-test('ein geändertes Limit gilt sofort in ALLEN Workern', () => {
+test('a changed limit applies immediately in ALL workers', () => {
   // Vorher: PUT /api/v1/admin/api-limits rief setMax() auf — das galt nur im
   // Worker, der die Anfrage bearbeitet hat. Die übrigen liefen bis zum
   // Neustart mit dem alten Wert weiter, und beim Start musste
@@ -81,7 +81,7 @@ test('ein geändertes Limit gilt sofort in ALLEN Workern', () => {
   );
 });
 
-test('keine hartkodierten Limitzahlen mehr in Meldungen und Labels', () => {
+test('no more hard-coded limit numbers in messages and labels', () => {
   // Fundort seit einer früheren Runde: clients/rebrickable.ts. Die Datei enthält keine
   // einzige Route und wurde nie als Router montiert — sie lag nur aus
   // Gewohnheit in routes/. Die Aussage dieser Prüfung ist unverändert.
@@ -109,7 +109,7 @@ test('keine hartkodierten Limitzahlen mehr in Meldungen und Labels', () => {
   }
 });
 
-test('das Eingabefeld zeigt denselben Standard an', () => {
+test('the input field shows the same default', () => {
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   const field = html.slice(html.indexOf('id="lim-rb"') - 400, html.indexOf('id="lim-rb"') + 200);
   assert.match(field, new RegExp(`value="${EXPECTED}"`), 'value des Felds #lim-rb passt nicht zum Standard');
@@ -118,7 +118,7 @@ test('das Eingabefeld zeigt denselben Standard an', () => {
 
 // ── Punkt 3: Zähler in der Datenbank ───────────────────────────────────────
 
-test('die Login-Zähler liegen nicht mehr im Prozessspeicher', () => {
+test('the login counters are no longer in process memory', () => {
   // Die Zähler schreibt src/throttle (Besitzer von rate_limit_attempts), die Anmeldung ruft k.throttle.
   const src = fs.readFileSync(path.join(ROOT, 'src/throttle/repository.ts'), 'utf8');
   assert.match(src, /rate_limit_attempts/, 'Bei N Cluster-Workern werden aus 5 Fehlversuchen sonst N×5');
@@ -134,7 +134,7 @@ test('die Login-Zähler liegen nicht mehr im Prozessspeicher', () => {
   );
 });
 
-test('bei DB-Ausfall greift die Rückfallebene', () => {
+test('on DB outage the fallback kicks in', () => {
   const src = fs.readFileSync(path.join(ROOT, 'src/throttle/counter.ts'), 'utf8');
   for (const fn of ['counterState', 'countAttempt', 'forgetCounter']) {
     const body = src.slice(src.indexOf(`async function ${fn}(`), src.indexOf(`async function ${fn}(`) + 900);
@@ -148,7 +148,7 @@ test('bei DB-Ausfall greift die Rückfallebene', () => {
   assert.match(src, /eintraege: new Map/, 'In-Memory-Rückfall fehlt');
 });
 
-test('die Aufrufstellen warten auf das Ergebnis', () => {
+test('the call sites wait for the result', () => {
   // loginAllowed ist seit der Umstellung asynchron — ein vergessenes
   // await liefert ein Promise, das immer truthy ist und JEDEN Login sperrt.
   const dateien = dir =>
@@ -189,7 +189,7 @@ test('die Aufrufstellen warten auf das Ergebnis', () => {
   );
 });
 
-test('Jobs mit externem Kontingent haben eine prozessübergreifende Sperre', () => {
+test('jobs with an external quota have a cross-process lock', () => {
   // Woher dieser Test kommt
   const job = (
     fs.readFileSync(path.join(ROOT, 'src/finances/priceRun.ts'), 'utf8') +

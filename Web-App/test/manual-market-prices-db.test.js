@@ -19,11 +19,11 @@ const FIG = 'mp-fig-1',
   TEIL = 'mp-teil-1',
   FARBE = 4;
 
-test('manuelle Listen tragen den Marktpreis aus dem Cache', async t => {
+test('manual lists carry the market price from the cache', async t => {
   try {
     await db.get('SELECT 1');
   } catch {
-    return t.skip('keine Test-Datenbank erreichbar');
+    return t.skip('no test database reachable');
   }
 
   const aufraeumen = async () => {

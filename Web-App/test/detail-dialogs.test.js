@@ -30,7 +30,7 @@ const WITH_TRASH = [
   ['Teile/Figuren', 'man-detail-modal', 'man-detail-del'],
 ];
 
-test('der Papierkorb ist in jedem Detail-Dialog gleich gross', () => {
+test('the trash is the same size in every detail dialog', () => {
   for (const [name, modal, knopf] of WITH_TRASH) {
     const zeile = dialog(modal)
       .split('\n')
@@ -49,7 +49,7 @@ test('der Papierkorb ist in jedem Detail-Dialog gleich gross', () => {
   }
 });
 
-test('das Set-Detail zeigt keine Kaufadressen mehr', () => {
+test('the set detail no longer shows purchase addresses', () => {
   // Beide Knoepfe stehen weiterhin im Katalog- und im Merkposten-Detail:
   // Kaufen will, wer das Set noch NICHT hat. Der Test prueft deshalb nicht
   // „nirgends", sondern „nicht HIER".
@@ -71,7 +71,7 @@ test('das Set-Detail zeigt keine Kaufadressen mehr', () => {
   }
 });
 
-test('der Teile-/Figuren-Dialog hat keinen zweiten Weg hinaus', () => {
+test('the part/figure dialog has no second way out', () => {
   // Das ✕ im Kopf schliesst den Dialog. Ein „Zurueck" in der Fusszeile war
   // derselbe Griff ein zweites Mal.
   const man = dialog('man-detail-modal');
@@ -92,7 +92,7 @@ test('der Teile-/Figuren-Dialog hat keinen zweiten Weg hinaus', () => {
  *   c) Den negativen Versatz auf 0 gesetzt           -> Schritt 2 rot.
  *   d) Die Polster-Variablen aus .modal entfernt     -> Schritt 2 rot.
  */
-test('Titel- und Fussleiste kleben — und koennen das auch', () => {
+test('title and footer bar stick — and can do so', () => {
   // ── 1. Voraussetzung: direktes Kind des Rollbereichs ──────────────────────
   //
   // Gesucht, nicht aufgezaehlt: Jeder Dialog mit einer .mhd wird geprueft, ein

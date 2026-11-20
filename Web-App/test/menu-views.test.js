@@ -40,7 +40,7 @@ const SICHTDATEN = Object.fromEntries(
 );
 const eintraege = d => [...d.querySelectorAll('.umenu-item[data-click="oeffneSicht"]')];
 
-test('jeder Menüeintrag öffnet seine Fläche und lädt sie', async () => {
+test('every menu entry opens its area and loads it', async () => {
   const o = await openUi(SICHTDATEN);
   try {
     await o.ruhig();
@@ -66,7 +66,7 @@ test('jeder Menüeintrag öffnet seine Fläche und lädt sie', async () => {
   }
 });
 
-test('jede Sicht ohne Reiter ist über das Menü erreichbar', async () => {
+test('every view without a tab is reachable via the menu', async () => {
   const o = await openUi();
   try {
     const reiter = new Set([...o.d.querySelectorAll('.ntab[data-tab]')].map(r => r.dataset.tab));
@@ -83,7 +83,7 @@ test('jede Sicht ohne Reiter ist über das Menü erreichbar', async () => {
   }
 });
 
-test('Einstellungen und Hintergrundarbeiten sieht nur ein Verwalter', async () => {
+test('only an admin sees settings and background jobs', async () => {
   for (const admin of [true, false]) {
     const o = await openUi(KONTO(admin));
     try {
@@ -98,7 +98,7 @@ test('Einstellungen und Hintergrundarbeiten sieht nur ein Verwalter', async () =
   }
 });
 
-test('jeder Menüeintrag behält sein Symbol, auch nach dem Übersetzen', async () => {
+test('every menu entry keeps its icon, even after translating', async () => {
   const words = require('./helpers/sources').loadTranslations().en;
   const o = await openUi({}, { sprache: 'en' });
   try {
@@ -120,7 +120,7 @@ test('jeder Menüeintrag behält sein Symbol, auch nach dem Übersetzen', async 
   }
 });
 
-test('Abmelden steht einmal, in der Klappe, und meldet ab', async () => {
+test('logout stands once, in the drawer, and logs out', async () => {
   const o = await openUi({ '/v1/auth/logout': { success: true } });
   try {
     await o.ruhig();
@@ -141,7 +141,7 @@ test('Abmelden steht einmal, in der Klappe, und meldet ab', async () => {
   }
 });
 
-test('die Kopfleiste behält ihre bewusste Höhe', () => {
+test('the header bar keeps its deliberate height', () => {
   // Die Höhe gehört der Kopfleiste, nicht .btn-sm: Die Klasse trägt die halbe
   // Oberfläche; min-height 32 px ist die kompakte Knopfgrösse.
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');

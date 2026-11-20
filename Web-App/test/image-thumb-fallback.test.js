@@ -45,7 +45,7 @@ test.after(async () => {
   fs.rmSync(wurzel, { recursive: true, force: true });
 });
 
-test('fehlt die Vorschau, kommt das Original vor dem CDN', async t => {
+test('if the preview is missing, the original comes before the CDN', async t => {
   const db = await dataOrSkip(t, _req, { migrieren: false });
   if (!db) return;
   // Die CDN-Adresse ist bekannt: Ohne den Rückfall ginge die Anfrage zum Bild-Proxy.

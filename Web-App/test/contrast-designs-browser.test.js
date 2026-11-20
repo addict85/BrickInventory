@@ -94,10 +94,10 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
 </script></body></html>`;
 }
 
-test('Kontrast in allen Designs, hell und dunkel', t => {
+test('contrast in all themes, light and dark', t => {
   const bin = chrome();
   if (!bin) {
-    t.skip('kein Chrome gefunden');
+    t.skip('no Chrome found');
     return;
   }
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'kontrast-'));

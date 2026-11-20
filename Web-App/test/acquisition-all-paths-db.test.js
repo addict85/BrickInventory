@@ -21,7 +21,7 @@ const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
-test('Erfassungen des Unterkontos: ändern und löschen auf allen drei Elementarten', { concurrency: 1 }, async t => {
+test('acquisitions of the sub-account: change and delete for all three element kinds', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const MAIN = `acq6-h-${process.pid}`,

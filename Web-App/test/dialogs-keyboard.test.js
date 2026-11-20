@@ -48,7 +48,7 @@ function takt() {
 const taste = (w, key, shiftKey = false) =>
   w.document.dispatchEvent(new w.KeyboardEvent('keydown', { key, shiftKey, bubbles: true }));
 
-test('jeder Dialog hat genau einen Schliessen-Knopf für Escape', async () => {
+test('every dialog has exactly one close button for Escape', async () => {
   const w = await fenster();
   try {
     const ovl = [...w.document.querySelectorAll('.ovl')];
@@ -65,7 +65,7 @@ test('jeder Dialog hat genau einen Schliessen-Knopf für Escape', async () => {
   }
 });
 
-test('Escape schliesst, und der Fokus kehrt zurück', async () => {
+test('Escape closes, and the focus returns', async () => {
   const w = await fenster();
   try {
     const d = w.document,
@@ -85,7 +85,7 @@ test('Escape schliesst, und der Fokus kehrt zurück', async () => {
   }
 });
 
-test('Escape schliesst nur den obersten — die Rückfrage über dem Detail', async () => {
+test('Escape only closes the topmost — the question above the detail', async () => {
   const w = await fenster();
   try {
     const d = w.document,
@@ -108,7 +108,7 @@ test('Escape schliesst nur den obersten — die Rückfrage über dem Detail', as
   }
 });
 
-test('Tab bleibt im Dialog', async () => {
+test('Tab stays in the dialog', async () => {
   const w = await fenster();
   try {
     const d = w.document,
@@ -130,7 +130,7 @@ test('Tab bleibt im Dialog', async () => {
   }
 });
 
-test('Escape in einem Eingabefeld verlässt zuerst nur das Feld', async () => {
+test('Escape in an input field first only leaves the field', async () => {
   const w = await fenster();
   try {
     const d = w.document,
@@ -154,7 +154,7 @@ test('Escape in einem Eingabefeld verlässt zuerst nur das Feld', async () => {
   }
 });
 
-test('Escape schliesst beim ersten Druck, auch wenn der Fokus in einem Feld steht', async () => {
+test('Escape closes on the first press, even if the focus is in a field', async () => {
   // Erfassen-Dialog: data-erstfokus sitzt auf der Set-Nummer. Vorher brauchte
   // es zwei Escape — das erste verliess nur das Feld (Befund der UI-Prüfung).
   const w = await fenster();

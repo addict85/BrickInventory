@@ -35,7 +35,7 @@ const SCHLUESSEL = [
   ['csv_import_jobs', 'csv_import_jobs_status_check'],
 ];
 
-test('Set-Inhalte und Wertemengen', { concurrency: 1 }, async t => {
+test('set contents and value sets', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `fk-${process.pid}`,
@@ -50,7 +50,7 @@ test('Set-Inhalte und Wertemengen', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('ein gelöschtes Set nimmt seinen Inhalt mit — nur im eigenen Konto', async () => {
+  await t.test('a deleted set takes its contents along — only in the own account', async () => {
     for (const k of [uid, andere]) {
       await holdsSet(db, k, SN, 1);
       await holdsPart(db, k, '3001', { setNumber: SN, menge: 4 });
@@ -69,7 +69,7 @@ test('Set-Inhalte und Wertemengen', { concurrency: 1 }, async t => {
     }
   });
 
-  await t.test('ein Teil ohne Set wird beim Abschluss abgewiesen', async () => {
+  await t.test('a part without a set is rejected on completion', async () => {
     await assert.rejects(
       db.transaction(async tx => {
         await tx.run(
@@ -89,7 +89,7 @@ test('Set-Inhalte und Wertemengen', { concurrency: 1 }, async t => {
     });
   });
 
-  await t.test('erfundene Quelle und erfundener Status werden abgewiesen', async () => {
+  await t.test('invented source and invented status are rejected', async () => {
     await assert.rejects(
       db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, '3003', 0, 'kiste')`, [uid]),
       /parts_source_check/,
@@ -100,7 +100,7 @@ test('Set-Inhalte und Wertemengen', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('eine Altlast hält die Migration nicht an', async () => {
+  await t.test('a legacy issue does not stop the migration', async () => {
     const c = await db.pool.connect();
     try {
       await c.query('BEGIN');

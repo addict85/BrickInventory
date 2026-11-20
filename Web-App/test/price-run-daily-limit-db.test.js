@@ -21,7 +21,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
-test('Preislauf am Tageslimit', { concurrency: 1 }, async t => {
+test('price run at the daily limit', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const { setGlobalSetting } = _req('src/settings/settings.js');
@@ -43,10 +43,10 @@ test('Preislauf am Tageslimit', { concurrency: 1 }, async t => {
   await runPriceRefresh();
   t.mock.restoreAll();
 
-  await t.test('eine Zeile statt einer je Set', () => {
+  await t.test('one line instead of one per set', () => {
     assert.equal(zeilen.filter(z => /Tageslimit erreicht/.test(z)).length, 1, zeilen.join('\n'));
   });
-  await t.test('die Abschlusszeile nennt die ausgelassenen Sets', () => {
+  await t.test('the closing line names the skipped sets', () => {
     const ende = zeilen.find(z => z.includes('Done:')) ?? '';
     assert.match(ende, /0 errors, [3-9]\d* wegen Tageslimit ausgelassen/, ende);
   });

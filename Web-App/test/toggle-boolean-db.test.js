@@ -41,7 +41,7 @@ async function numbersFlags(db, schema) {
   return [...spalten, ...schranken].map(r => r.z);
 }
 
-test('keine Ja/Nein-Spalte trägt 0/1', async t => {
+test('no yes/no column carries 0/1', async t => {
   const db = testData();
   try {
     await db.initSchemaOnce();
@@ -50,7 +50,7 @@ test('keine Ja/Nein-Spalte trägt 0/1', async t => {
     return;
   }
   try {
-    await t.test('die Suche greift', async () => {
+    await t.test('the search takes effect', async () => {
       const booleans = await db.get(
         `SELECT COUNT(*)::int AS n FROM information_schema.columns
         WHERE table_schema = 'public' AND column_name ~ $1 AND data_type = 'boolean'`,
@@ -66,7 +66,7 @@ test('keine Ja/Nein-Spalte trägt 0/1', async t => {
       }
     });
 
-    await t.test('im Schema der Anwendung ist jede davon BOOLEAN', async () => {
+    await t.test('in the application schema each of them is BOOLEAN', async () => {
       assert.deepEqual(await numbersFlags(db, 'public'), []);
     });
   } finally {

@@ -15,7 +15,7 @@ const { openUi, reiter } = require('./helpers/ui');
 
 const sichtbar = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
 
-test('englisch: Reiter und Merkliste heißen „Wishlist“', async () => {
+test('English: tab and wishlist are called “Wishlist”', async () => {
   const o = await openUi({ '/v1/wanted': { success: true, items: [], total: 0 } }, { sprache: 'en' });
   try {
     const { d, w } = o;
@@ -33,7 +33,7 @@ test('englisch: Reiter und Merkliste heißen „Wishlist“', async () => {
   }
 });
 
-test('englisch: Export-Knopf der Einstellungen nennt die „wishlist“', async () => {
+test('English: export button of the settings names the “wishlist”', async () => {
   const o = await openUi({}, { sprache: 'en' });
   try {
     const knopf = o.d.querySelector('[data-i18n="settings.data_zip_btn"]');

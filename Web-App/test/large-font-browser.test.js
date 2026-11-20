@@ -58,7 +58,7 @@ const MEASUREMENT = `(() => {
   return { funde, spalten, rem };
 })()`;
 
-test('grosse Schrift und schmale Geräte: Sammlung lesbar', { timeout: 180_000 }, async t => {
+test('large font and narrow devices: collection readable', { timeout: 180_000 }, async t => {
   const app = await startApp(t, { name: `gross_${process.pid}`, bestand: patternCollection });
   if (app.grund) {
     t.skip(app.grund);

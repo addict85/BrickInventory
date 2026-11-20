@@ -30,7 +30,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-test('Katalog-Bilder aus set_catalog', { concurrency: 1 }, async t => {
+test('catalog images from set_catalog', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `katalog-bild-${process.pid}`,
@@ -77,22 +77,22 @@ test('Katalog-Bilder aus set_catalog', { concurrency: 1 }, async t => {
       ]),
     );
 
-  await t.test('die Liste nennt das Bild aus set_catalog — und die Vorschau hat Vorrang', async () => {
+  await t.test('the list names the image from set_catalog — and the preview takes precedence', async () => {
     const bild = await bilder(uid);
     assert.equal(bild[MIT], '/images/sets/KB_1-1_thumb.jpg', 'die Liste nennt das Bild; die Vorschau hat Vorrang');
     assert.equal(bild[OHNE], null);
   });
 
-  await t.test('auch ein fremdes Konto bekommt die lokale Datei', async () => {
+  await t.test('a foreign account also gets the local file', async () => {
     assert.equal((await bilder(fremd))[MIT], '/images/sets/KB_1-1_thumb.jpg');
     assert.equal((await catalogSet(fremd, MIT)).image_local, '/images/sets/KB_1-1_thumb.jpg');
   });
 
-  await t.test('die Liste stösst keine Bildarbeit an', () => {
+  await t.test('the list triggers no image work', () => {
     assert.deepEqual(vorgemerkt, []);
   });
 
-  await t.test('das Detail nimmt dieselbe Datei und lädt nichts nach', async () => {
+  await t.test('the detail takes the same file and loads nothing more', async () => {
     const set = await catalogSet(uid, MIT);
     assert.equal(set.image_local, '/images/sets/KB_1-1_thumb.jpg');
     const ohne = await catalogSet(uid, OHNE);

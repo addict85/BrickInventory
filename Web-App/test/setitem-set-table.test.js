@@ -13,7 +13,7 @@ const assert = require('node:assert/strict');
 
 const { openUi, warte } = require('./helpers/ui');
 
-test('die Webapp zeigt die Sets als Tabelle mit Bild, Nummer und Name, unter der Beschriftung', async () => {
+test('the web app shows the sets as a table with image, number and name, below the label', async () => {
   const SETS = [
     {
       set_number: '10305-1',

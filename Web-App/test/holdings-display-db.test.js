@@ -19,7 +19,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { holdsSet, record } = require('./helpers/inventory');
 
-test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => {
+test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const MAIN = `bh-${process.pid}`,
@@ -74,7 +74,7 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => 
   const { setsLesen } = require('./helpers/sources').handlerModule(_req);
 
   try {
-    await t.test('das Diagramm zeigt nur die Zustände im Bestand', async () => {
+    await t.test('the chart only shows the conditions in the inventory', async () => {
       const ph = await priceHistorySet([mainId, subId], SN, 'CHF');
       assert.deepEqual(Object.keys(ph.by_condition), ['U'], 'Vorbedingung: nur „gebraucht" ist erfasst');
       assert.deepEqual(
@@ -85,7 +85,7 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => 
       );
     });
 
-    await t.test('Tief, Aktuell und Hoch stammen aus derselben Reihe', async () => {
+    await t.test('low, current and high come from the same series', async () => {
       // Die App liest diese drei Zahlen aus den Diagrammwerten. Mit einer
       // überzähligen Reihe standen dort die Neupreise (3.94 / 7.99 / 7.99),
       // während die Zeile darüber CHF 3.94 auswies — zwei Antworten auf
@@ -97,7 +97,7 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => 
       assert.equal(Math.min(...werte), 3.94);
     });
 
-    await t.test('ohne jede Erfassung bleibt der Verlauf trotzdem sichtbar', async () => {
+    await t.test('without any acquisition the history stays visible anyway', async () => {
       // Gegenrichtung: Ein Set ohne erfassten Kaufpreis hat trotzdem einen
       // Marktwert. Würde die Regel stur auf `by_condition` abstellen, wäre das
       // Diagramm hier leer — schlimmer als eine Reihe zu viel.
@@ -116,7 +116,7 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => 
       );
     });
 
-    await t.test('ein Konto mit Menge 0 steht nicht mehr als Besitzer da', async () => {
+    await t.test('an account with quantity 0 no longer stands as an owner', async () => {
       const r = await setsLesen([mainId, subId], {});
       const zeile = r.sets.find(s => s.set_number === SN);
       assert.ok(zeile, 'das Set fehlt in der Galerie');
@@ -130,7 +130,7 @@ test('Diagramm und Besitzer folgen dem Bestand', { concurrency: 1 }, async t => 
       );
     });
 
-    await t.test('hält wieder jemand ein Exemplar, kommt das Label zurück', async () => {
+    await t.test('if someone holds a copy again, the label comes back', async () => {
       // Ohne diese Gegenrichtung wäre der Test auch grün, wenn das Label ganz
       // verschwände.
       // „Wieder ein Exemplar halten" heisst: eine Erfassung anlegen.

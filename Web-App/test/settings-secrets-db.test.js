@@ -104,7 +104,7 @@ function allValues(x, out = []) {
   return out;
 }
 
-test('Einstellungen geben Geheimnisse nie im Klartext heraus', { concurrency: 1 }, async t => {
+test('settings never hand out secrets in plain text', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const NUTZER = `sec-user-${process.pid}`;

@@ -35,7 +35,7 @@ async function versuche(o, nummer) {
   return { gesendet, feld, fehler: fehler && !fehler.hidden ? fehler.textContent : '' };
 }
 
-test('abc wird abgewiesen, mit Meldung am Feld', async () => {
+test('abc is rejected, with a message at the field', async () => {
   const o = await openUi({});
   try {
     const r = await versuche(o, 'abc');
@@ -57,7 +57,7 @@ test('abc wird abgewiesen, mit Meldung am Feld', async () => {
   }
 });
 
-test('falsche Formen werden abgewiesen', async () => {
+test('wrong forms are rejected', async () => {
   const o = await openUi({});
   try {
     for (const n of ['abc', 'fig-000123', '10294-', '10294-1-2', '-1', '10 294', '<b>1</b>']) {
@@ -69,7 +69,7 @@ test('falsche Formen werden abgewiesen', async () => {
   }
 });
 
-test('gültige Nummern gehen durch', async () => {
+test('valid numbers pass', async () => {
   const o = await openUi({});
   try {
     const korpus = CORPUS.map(f => f.erwartet).filter(Boolean);

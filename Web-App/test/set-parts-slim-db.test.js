@@ -27,7 +27,7 @@ const db = testData();
 const MIGRATION = fs.readFileSync(path.join(__dirname, '..', 'db/migrations/0062-set-teile-schlank.sql'), 'utf8');
 const SCHEMA = `probe0062_${process.pid}`;
 
-test('Migration 0062: schlanke Setliste', { concurrency: 1 }, async t => {
+test('migration 0062: slim set list', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const c = await db.pool.connect();
   t.after(async () => {
@@ -66,7 +66,7 @@ test('Migration 0062: schlanke Setliste', { concurrency: 1 }, async t => {
   const zeile = async nr =>
     (await c.query(`SELECT * FROM set_parts_catalog WHERE set_number = '75192-1' AND part_number = $1`, [nr])).rows[0];
 
-  await t.test('die Setliste hat nur noch ihre eigenen Spalten', async () => {
+  await t.test('the set list only has its own columns', async () => {
     const spalten = (
       await c.query(
         `SELECT column_name FROM information_schema.columns
@@ -77,7 +77,7 @@ test('Migration 0062: schlanke Setliste', { concurrency: 1 }, async t => {
     assert.deepEqual(spalten, ['color_id', 'is_spare', 'part_number', 'quantity', 'set_number', 'updated_at']);
   });
 
-  await t.test('die View zeigt dieselben Werte wie vorher', async () => {
+  await t.test('the view shows the same values as before', async () => {
     const z = await zeile('3001');
     assert.equal(z.color_name, 'Red');
     assert.equal(z.color_hex, 'C91A09');
@@ -88,17 +88,17 @@ test('Migration 0062: schlanke Setliste', { concurrency: 1 }, async t => {
     assert.equal((await zeile('3002')).is_spare, 1);
   });
 
-  await t.test('der geprüfte Name aus der Setliste ersetzt den Platzhalter', async () => {
+  await t.test('the verified name from the set list replaces the placeholder', async () => {
     assert.equal((await zeile('3001')).part_name, 'Brick 2 x 4');
     const k = (await c.query(`SELECT part_name, name_von FROM part_catalog WHERE part_number = '3001'`)).rows[0];
     assert.deepEqual(k, { part_name: 'Brick 2 x 4', name_von: null });
   });
 
-  await t.test('ein vorhandener geprüfter Wert bleibt', async () => {
+  await t.test('an existing verified value stays', async () => {
     assert.equal((await zeile('3002')).part_name, 'Brick 2x3 geprüft');
   });
 
-  await t.test('ein Platzhalter erscheint nicht in der Setliste', async () => {
+  await t.test('a placeholder does not appear in the set list', async () => {
     assert.equal((await zeile('3003')).part_name, null);
   });
 });

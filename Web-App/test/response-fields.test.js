@@ -25,7 +25,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
-test('kein Antwortfeld ohne Verbraucher', () => {
+test('no response field without a consumer', () => {
   const script = path.join(__dirname, '..', 'scripts', 'check-response-fields.js');
   try {
     execFileSync(process.execPath, [script], { encoding: 'utf8', stdio: 'pipe' });

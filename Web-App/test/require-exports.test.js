@@ -26,7 +26,7 @@ function quellFiles() {
   return out;
 }
 
-test('kein Servermodul holt ein anderes per spätem require()', () => {
+test('no server module fetches another one via late require()', () => {
   const dateien = quellFiles();
   assert.ok(dateien.length > 100, `Nur ${dateien.length} Quelldateien gefunden — die Prüfung liefe ins Leere`);
   const treffer = [];
@@ -46,7 +46,7 @@ test('kein Servermodul holt ein anderes per spätem require()', () => {
 // Dieselbe Frage für die TESTS: laden sie Module, die es noch gibt?
 // ═══════════════════════════════════════════════════════════════════════════
 /** Ein fehlendes Modul auf Dateiebene liesse die ganze Datei beim Laden sterben, ohne einen Fall rot. */
-test('kein Test holt ein Modul aus dist/, das es nicht gibt', () => {
+test('no test fetches a module from dist/ that does not exist', () => {
   buildAndRequire(); // stellt sicher, dass dist/ steht
   const dir = path.join(ROOT, 'test');
   const fehlend = [];

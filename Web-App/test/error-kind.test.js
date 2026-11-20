@@ -63,7 +63,7 @@ const geworfen = fn => {
   throw new Error('nichts geworfen');
 };
 
-test('jede Art ergibt ihren Status', () => {
+test('every kind yields its status', () => {
   const erwartet = {
     ungueltig: 400,
     nicht_angemeldet: 401,
@@ -104,7 +104,7 @@ test('jede Art ergibt ihren Status', () => {
   }
 });
 
-test('ein Doppel aus der Datenbank wird zum Konflikt', () => {
+test('a duplicate from the database becomes a conflict', () => {
   const e = geworfen(() => asDuplicate('benutzername_vergeben')({ code: '23505' }));
   assert.equal(e.art, 'konflikt');
   assert.deepEqual(antwort(e), { status: 409, code: 'benutzername_vergeben' });
@@ -126,7 +126,7 @@ function dienste() {
   return raus.filter(d => !d.startsWith('src/http/') && !/^src\/[^/]+\/http\//.test(d));
 }
 
-test('nur src/http bildet Arten auf Status ab, kein Dienst nennt einen Status', () => {
+test('only src/http maps kinds to status, no service names a status', () => {
   const liste = dienste();
   assert.ok(liste.length > 200, `nur ${liste.length} Dienste gefunden — greift die Suche noch?`);
   const treffer = liste.filter(d => /from '[./]+\/http\/fehlerArt'/.test(fs.readFileSync(path.join(ROOT, d), 'utf8')));

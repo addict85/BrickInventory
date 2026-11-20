@@ -35,7 +35,7 @@ const db = testData();
 
 const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
-test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 1 }, async t => {
+test('1. without APP_BASE_URL no code comes — and no nonce', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run("DELETE FROM users WHERE username = 'qr_pruefling'");
@@ -107,7 +107,7 @@ test('1. ohne APP_BASE_URL kommt kein Code — und keine Nonce', { concurrency: 
   assert.equal(await nonces(), 1, 'Im guten Fall MUSS genau eine Nonce entstehen.');
 });
 
-test('2. die Webapp hat keine eigene Meinung mehr zur Adresse', () => {
+test('2. the web app no longer has its own opinion about the address', () => {
   const js = require('./helpers/sources').ansichtQuelle('einstellungen');
   assert.match(js, /const serverUrl = d\.url;/, 'Die Webapp nimmt nicht schlicht die Adresse des Servers.');
   // Der Rueckfall ist weg — das war Marcos zweiter Satz. `ohneKommentare`
@@ -123,7 +123,7 @@ test('2. die Webapp hat keine eigene Meinung mehr zur Adresse', () => {
   assert.ok(!/qr-server-url/.test(js), 'Die Webapp liest das entfallene Feld noch.');
 });
 
-test('3. eine Quelle fuer QR-Code, Mail-Knopf und Reset-Links', () => {
+test('3. one source for QR code, mail button and reset links', () => {
   // Der Kern von Marcos erstem Satz: EINE Adresse, nicht drei. Lesen darf sie
   // nur src/infra/basisUrl.ts; wer process.env.APP_BASE_URL selbst anfasst, hat
   // eine vierte Schreibweise begonnen.

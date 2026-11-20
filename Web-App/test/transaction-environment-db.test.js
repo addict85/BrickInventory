@@ -32,7 +32,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { accessOrSkip } = require('./helpers/db');
 
-test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
+test('transaction in the call path', { concurrency: 1 }, async t => {
   const db = await accessOrSkip(t, _req);
   if (!db) return;
   const S = `tx_umgebung_${process.pid}`;
@@ -51,25 +51,22 @@ test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
   const in_ = tx => einstellungen.ueber(tx.db);
   const schreibe = (tx, k, v) => tx.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [`${S}${k}`, v]);
 
-  await t.test(
-    'ein Dienst über tx.db sieht, was die Transaktion geschrieben hat; über dem ungebundenen Zugang wirft er',
-    async () => {
-      let gesehen;
-      await assert.rejects(
-        transaktion(async tx => {
-          await schreibe(tx, 'a', 'eins');
-          await assert.rejects(getGlobalSetting(`${S}a`), { name: 'Error', message: /ungebundenen Zugang/ });
-          gesehen = await in_(tx).globalValue(`${S}a`);
-          throw new Error('zurück');
-        }),
-        /zurück/,
-      );
-      assert.equal(gesehen, 'eins');
-      assert.equal(await getGlobalSetting(`${S}a`), null, 'mit der Transaktion zurückgerollt');
-    },
-  );
+  await t.test('a service via tx.db sees what the transaction wrote; on the unbound access it throws', async () => {
+    let gesehen;
+    await assert.rejects(
+      transaktion(async tx => {
+        await schreibe(tx, 'a', 'eins');
+        await assert.rejects(getGlobalSetting(`${S}a`), { name: 'Error', message: /ungebundenen Zugang/ });
+        gesehen = await in_(tx).globalValue(`${S}a`);
+        throw new Error('zurück');
+      }),
+      /zurück/,
+    );
+    assert.equal(gesehen, 'eins');
+    assert.equal(await getGlobalSetting(`${S}a`), null, 'mit der Transaktion zurückgerollt');
+  });
 
-  await t.test('eine gescheiterte innere Transaktion lässt die äussere weiterlaufen', async () => {
+  await t.test('a failed inner transaction lets the outer one continue', async () => {
     await transaktion(async tx => {
       await schreibe(tx, 'b', 'aussen');
       await assert.rejects(
@@ -88,7 +85,7 @@ test('Transaktion im Aufrufpfad', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('wer nach COMMIT fragt, bekommt den Pool', async () => {
+  await t.test('whoever asks after COMMIT gets the pool', async () => {
     let spaeter, inside;
     await transaktion(async tx => {
       await schreibe(tx, 'e', 'fest');

@@ -80,7 +80,7 @@ async function startServer(t, env) {
 
 const TLS = { 'x-forwarded-proto': 'https' };
 
-test('HSTS nur über TLS', { concurrency: 1, timeout: 180_000 }, async t => {
+test('HSTS only over TLS', { concurrency: 1, timeout: 180_000 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
@@ -101,23 +101,23 @@ test('HSTS nur über TLS', { concurrency: 1, timeout: 180_000 }, async t => {
   const withoutProxy = async kopf => (kopf ? k.withoutProxy.tls : k.withoutProxy.ohne);
   const disabled = async kopf => (kopf ? k.disabled.tls : k.disabled.ohne);
 
-  await t.test('über TLS ein Jahr mit Subdomains', async () => {
+  await t.test('over TLS one year with subdomains', async () => {
     assert.equal((await hinterProxy(TLS)).get('strict-transport-security'), 'max-age=31536000; includeSubDomains');
   });
 
-  await t.test('ohne TLS keine Kopfzeile', async () => {
+  await t.test('without TLS no header', async () => {
     assert.equal((await hinterProxy()).get('strict-transport-security'), null);
   });
 
-  await t.test('ein roher Kopf ohne vertrauten Proxy setzt nichts', async () => {
+  await t.test('a raw header without a trusted proxy sets nothing', async () => {
     assert.equal((await withoutProxy(TLS)).get('strict-transport-security'), null);
   });
 
-  await t.test('HSTS_MAX_AGE=0 schaltet ab', async () => {
+  await t.test('HSTS_MAX_AGE=0 switches it off', async () => {
     assert.equal((await disabled(TLS)).get('strict-transport-security'), null);
   });
 
-  await t.test('die übrigen Sicherheitskopfzeilen bleiben, auch ohne HSTS', async () => {
+  await t.test('the other security headers stay, even without HSTS', async () => {
     for (const kopf of [await hinterProxy(TLS), await disabled(TLS)]) {
       assert.deepEqual(
         ['x-frame-options', 'x-content-type-options', 'referrer-policy'].map(n => kopf.get(n)),

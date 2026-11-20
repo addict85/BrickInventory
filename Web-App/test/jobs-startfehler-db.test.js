@@ -38,7 +38,7 @@ Module.prototype.require = function (name) {
   return m;
 };`;
 
-test('ein gescheiterter Start des Job-Prozesses beendet ihn', { concurrency: 1, timeout: 90_000 }, async t => {
+test('a failed start of the job process ends it', { concurrency: 1, timeout: 90_000 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const { liesZustand, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
@@ -74,12 +74,12 @@ test('ein gescheiterter Start des Job-Prozesses beendet ihn', { concurrency: 1, 
     });
   });
 
-  await t.test('der Prozess endet mit Exit-Code 1', () => {
+  await t.test('the process ends with exit code 1', () => {
     assert.equal(ende, 1, log.slice(-1500));
     assert.match(log, /Start gescheitert: .*Testfehler: planeAll/);
   });
 
-  await t.test('kein Lebenszeichen ohne Worker', async () => {
+  await t.test('no sign of life without a worker', async () => {
     assert.equal(await liesZustand(HEARTBEAT_KEY), null);
   });
 });

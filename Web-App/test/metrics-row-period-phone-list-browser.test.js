@@ -29,7 +29,7 @@ async function groesse(b, breite, hoehe, telefon) {
   });
 }
 
-test('Kennzahlzeile, Zeitraum als Segment, Teileliste und Zoom am Telefon', {
+test('metrics row, period as a segment, parts list and zoom on the phone', {
   concurrency: 1,
   timeout: 420_000,
 }, async t => {
@@ -44,7 +44,7 @@ test('Kennzahlzeile, Zeitraum als Segment, Teileliste und Zoom am Telefon', {
     await ruhig();
   };
 
-  await t.test('M1 390 px: „1 Set · 0 Teile · 0 Minifiguren“ in einer Zeile, Erklärsatz darunter', async () => {
+  await t.test('M1 390 px: "1 set · 0 parts · 0 minifigures" in one line, explanation below', async () => {
     const stats = JSON.stringify({
       success: true,
       stats: {
@@ -99,7 +99,7 @@ test('Kennzahlzeile, Zeitraum als Segment, Teileliste und Zoom am Telefon', {
     assert.ok(m.hintTop >= m.unten, 'Erklärsatz unter der ganzen Leiste');
   });
 
-  await t.test('N4 Zeitraum als Segment: ein Grund, der gewählte Knopf gerahmt, aria-pressed', async () => {
+  await t.test('N4 period as a segment: one background, the chosen button framed, aria-pressed', async () => {
     await groesse(b, 390, 844, true);
     await zu('#/finanzen');
     await bis(`!!document.querySelector('.zeitraum-wahl .period-btn')?.checkVisibility()`, 'Zeitraum');
@@ -126,7 +126,7 @@ test('Kennzahlzeile, Zeitraum als Segment, Teileliste und Zoom am Telefon', {
     assert.deepEqual(m.flaeche.slice(0, 3), Array(3).fill('rgba(0, 0, 0, 0)'), 'ungewählte Knöpfe mit Fläche');
   });
 
-  await t.test('N8 390 px: Teile als kompakte Liste wählbar', async () => {
+  await t.test('N8 390 px: parts selectable as a compact list', async () => {
     await groesse(b, 390, 844, true);
     await zu('#/teile');
     await bis(`!!document.querySelector('#parts-main .part-card')`, 'Teilekarten');
@@ -154,7 +154,7 @@ test('Kennzahlzeile, Zeitraum als Segment, Teileliste und Zoom am Telefon', {
     await ruhig();
   });
 
-  await t.test('N9 200 % Zoom (640 × 450): „Set hinzufügen“ deckt keine Karte', async () => {
+  await t.test('N9 200 % zoom (640 × 450): "add set" covers no card', async () => {
     await groesse(b, 640, 450, false);
     await zu('#/sammlung');
     await bis(`document.querySelectorAll('#gallery .sc').length >= 3`, 'drei Karten');
@@ -178,7 +178,7 @@ test('Kennzahlzeile, Zeitraum als Segment, Teileliste und Zoom am Telefon', {
   });
 
   // Ab hier abgemeldet.
-  await t.test('N5 390 px: gleicher Abstand unter beiden Feldmeldungen der Anmeldung', async () => {
+  await t.test('N5 390 px: the same gap below both field messages of the login', async () => {
     await groesse(b, 390, 844, true);
     await b.tab('Network.clearBrowserCookies');
     // Die alte Seite hat auch einen Anmeldeknopf: erst warten, bis sie weg ist.
@@ -201,7 +201,7 @@ test('Kennzahlzeile, Zeitraum als Segment, Teileliste und Zoom am Telefon', {
   });
 
   for (const dunkel of [false, true])
-    await t.test(`M3 Startkasten ${dunkel ? 'dunkel' : 'hell'}`, async () => {
+    await t.test(`M3 start box ${dunkel ? 'dark' : 'light'}`, async () => {
       await b.tab('Emulation.setEmulatedMedia', {
         features: [{ name: 'prefers-color-scheme', value: dunkel ? 'dark' : 'light' }],
       });

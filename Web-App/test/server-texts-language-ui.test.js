@@ -10,7 +10,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, warte, reiter } = require('./helpers/ui');
 
-test('Untertitel der Kacheln in der Sprache der Oberfläche', async () => {
+test('tile subtitles in the UI language', async () => {
   const kachel = (sub, sub_teile) => ({ label: 'x', status: 'idle', progress: 0, total: 0, sub, sub_teile });
   const { w, d } = await openUi(
     {

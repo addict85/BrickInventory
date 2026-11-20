@@ -110,7 +110,7 @@ async function grund(promise) {
   assert.fail('kein Fehler');
 }
 
-test('relative Umleitung wird gegen die Ausgangsadresse aufgelöst', async () => {
+test('a relative redirect is resolved against the starting address', async () => {
   const r = await holeHttps(`${basis()}/relativ`, opt());
   assert.equal(r.status, 200);
   assert.equal(r.url, `${basis()}/bild.jpg`);
@@ -119,7 +119,7 @@ test('relative Umleitung wird gegen die Ausgangsadresse aufgelöst', async () =>
 
 // Gegenprobe (02.11.2026 gemessen): in abruf.ts die Bedingung „nur GET folgt“
 // entfernt → rot (der POST landet als GET auf /bild.jpg, Status 200).
-test('ein POST folgt keiner Umleitung', async () => {
+test('a POST follows no redirect', async () => {
   const vorher = gesehen.length;
   const r = await holeHttps(`${basis()}/relativ`, opt({ methode: 'POST', rumpf: '{"a":1}' }));
   assert.equal(r.status, 302);
@@ -129,12 +129,12 @@ test('ein POST folgt keiner Umleitung', async () => {
   );
 });
 
-test('http-Umleitung, fehlendes und unlesbares Ziel werden abgewiesen', async () => {
+test('http redirect, missing and unreadable target are rejected', async () => {
   for (const pfad of ['/http', '/ohne-ziel', '/kaputt'])
     assert.equal(await grund(holeHttps(`${basis()}${pfad}`, opt())), 'umleitung', pfad);
 });
 
-test('fremder Host wird abgewiesen', async () => {
+test('a foreign host is rejected', async () => {
   const vorher = gesehen.length;
   assert.equal(await grund(holeHttps(`${basis()}/fremd`, opt())), 'umleitung');
   assert.equal(
@@ -144,7 +144,7 @@ test('fremder Host wird abgewiesen', async () => {
   );
 });
 
-test('Startadresse ausserhalb der Liste oder ohne https geht nicht hinaus', async () => {
+test('a start address outside the list or without https does not go out', async () => {
   const vorher = gesehen.length;
   assert.equal(await grund(holeHttps(`http://localhost:${port}/bild.jpg`, opt())), 'adresse');
   assert.equal(await grund(holeHttps(`https://127.0.0.1:${port}/bild.jpg`, opt())), 'adresse');
@@ -152,13 +152,13 @@ test('Startadresse ausserhalb der Liste oder ohne https geht nicht hinaus', asyn
   assert.equal(gesehen.length, vorher);
 });
 
-test('Umleitungsschleife endet an der Grenze', async () => {
+test('a redirect loop ends at the limit', async () => {
   const vorher = gesehen.length;
   assert.equal(await grund(holeHttps(`${basis()}/schleife`, opt({ redirects: 3 }))), 'umleitung');
   assert.equal(gesehen.length - vorher, 4);
 });
 
-test('Authorization bleibt beim Hostwechsel nicht stehen', async () => {
+test('Authorization does not stay on a host change', async () => {
   const r = await holeHttps(
     `${basis()}/wechsel`,
     opt({
@@ -170,7 +170,7 @@ test('Authorization bleibt beim Hostwechsel nicht stehen', async () => {
   assert.equal(gesehen.find(g => g.pfad === '/wechsel').auth, 'key geheim', 'der erste Sprung trägt den Schlüssel');
 });
 
-test('Körper über der Grenze, angesagt oder ohne Längenangabe', async () => {
+test('body above the limit, announced or without a length', async () => {
   assert.equal(await grund(holeHttps(`${basis()}/gross-angesagt`, opt())), 'zu-gross');
   assert.equal(
     await grund(holeHttps(`${basis()}/gross-still`, opt())),
@@ -187,11 +187,11 @@ test('Körper über der Grenze, angesagt oder ohne Längenangabe', async () => {
   assert.equal(fehler?.grund, 'zu-gross', 'der Strom endet nicht mit Fehler');
 });
 
-test('ein schweigender Server läuft ins Zeitlimit', async () => {
+test('a silent server runs into the timeout', async () => {
   assert.equal(await grund(holeHttps(`${basis()}/still`, opt({ zeitlimitMs: 300 }))), 'zeitlimit');
 });
 
-test('setBildHerunterladen übersteht jede Umleitung', async t => {
+test('setBildHerunterladen survives every redirect', async t => {
   const echt = https.globalAgent;
   https.globalAgent = new Umlenker();
   const nr = `abruftest-${process.pid}`;

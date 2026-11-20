@@ -27,7 +27,7 @@ const ROLLE = `SELECT r.rolsuper AS super, r.rolbypassrls AS bypass,
                       pg_has_role(current_user, c.relowner, 'USAGE') AS eigentum
                  FROM pg_roles r, pg_class c WHERE r.rolname = current_user AND c.oid = 'public.sets'::regclass`;
 
-test('die Suite trennt die Rollen wie im Betrieb, Ausnahmen werden weniger', async t => {
+test('the suite separates the roles as in production, exceptions become fewer', async t => {
   const zugang = await accessOrSkip(t, _req);
   if (!zugang) return;
   t.after(() => zugang.pool.end().catch(() => {}));

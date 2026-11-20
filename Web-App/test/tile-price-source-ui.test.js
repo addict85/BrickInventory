@@ -26,7 +26,7 @@ const zeile = (nr, markt, kauf) => ({
   baseline_pnl_pct: null,
 });
 
-test('Kachelpreis: Markt- und Kaufpreis beschriftet, wie der Server sie liefert', async () => {
+test('tile price: market and purchase price labeled as the server delivers them', async () => {
   const k = tileValues([zeile('42115-1', 0, 99.99), zeile('21318-1', 186.2, 199.99)]);
   assert.equal(k.get('42115-1').kachel_quelle, 'kauf');
   assert.equal(k.get('21318-1').kachel_quelle, 'markt');

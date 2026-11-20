@@ -26,7 +26,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = 'geraete_test',
   PASS = 'richtigesPasswort1';
 
-test('Zugänge auflisten und aussperren — über Sitzung UND über Token', { concurrency: 1 }, async t => {
+test('list and lock out accesses — via session AND via token', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);

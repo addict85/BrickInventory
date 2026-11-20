@@ -15,20 +15,20 @@ const { openUi, reiter, warte } = require('./helpers/ui');
 const _req = require('./helpers/sources').buildAndRequire();
 const { withVariant, bareNumber, blAddress, blSuchadresse } = _req('src/catalog/bricklinkLink.js');
 
-test('withVariant ergänzt den Rebrickable-Suffix', () => {
+test('withVariant adds the Rebrickable suffix', () => {
   assert.equal(withVariant('75192'), '75192-1');
   assert.equal(withVariant('75192-1'), '75192-1');
   assert.equal(withVariant('10179-2'), '10179-2');
   assert.equal(withVariant('  75192  '), '75192-1');
 });
 
-test('bareNumber entfernt ihn wieder — BrickLink führt Gear/Book ohne Suffix', () => {
+test('bareNumber removes it again — BrickLink lists gear/book without suffix', () => {
   assert.equal(bareNumber('5005358-1'), '5005358');
   assert.equal(bareNumber('5005358'), '5005358');
   assert.equal(bareNumber('10179-2'), '10179');
 });
 
-test('blAddress verwendet je Item-Typ den richtigen Parameter', () => {
+test('blAddress uses the right parameter per item type', () => {
   const set = blAddress('SET', '75192-1');
   assert.match(set, /\?S=75192-1/);
   assert.match(set, /#T=S/);
@@ -42,17 +42,17 @@ test('blAddress verwendet je Item-Typ den richtigen Parameter', () => {
   assert.match(book, /#T=B/);
 });
 
-test('blAddress kennt auch MINIFIG', () => {
+test('blAddress also knows MINIFIG', () => {
   const m = blAddress('MINIFIG', 'col325');
   assert.match(m, /\?M=col325/);
   assert.match(m, /#T=M/);
 });
 
-test('blAddress liefert null für NONE — der Aufrufer weicht auf die Suche aus', () => {
+test('blAddress returns null for NONE — the caller falls back to the search', () => {
   assert.equal(blAddress('NONE', 'x-1'), null);
 });
 
-test('blSuchadresse greift, wo kein Deep-Link konstruierbar ist', () => {
+test('blSuchadresse applies where no deep link can be constructed', () => {
   // Sammelminifiguren: Rebrickable führt sie als Set (71021-1), BrickLink als
   // MINIFIG mit anderer Nummer (col325). Die Zuordnung existiert in keiner der
   // beiden Datenquellen — ein Deep-Link ist grundsätzlich nicht herleitbar.
@@ -61,20 +61,20 @@ test('blSuchadresse greift, wo kein Deep-Link konstruierbar ist', () => {
   assert.ok(!u.includes('-1'), 'Der Variantensuffix engt die Suche unnötig ein');
 });
 
-test('blAddress kodiert Sonderzeichen in der Nummer', () => {
+test('blAddress encodes special characters in the number', () => {
   const url = blAddress('SET', '10 30-1');
   assert.ok(!/\?S=10 30/.test(url), 'Leerzeichen muss kodiert werden');
   assert.match(url, /\?S=10%2030-1/);
 });
 
-test('Set-Links behalten den Suffix, Gear-Links nicht', () => {
+test('set links keep the suffix, gear links do not', () => {
   // Das ist der eigentliche Fehler, der behoben wurde: dieselbe
   // Rebrickable-Nummer ergibt je nach BrickLink-Typ zwei verschiedene URLs.
   assert.match(blAddress('SET', withVariant('5005358')), /\?S=5005358-1/);
   assert.match(blAddress('GEAR', bareNumber('5005358-1')), /\?G=5005358(?!-)/);
 });
 
-test('der Kauf-Knopf nimmt die Adresse des Servers und wird nie ausgeblendet', async () => {
+test("the buy button takes the server's address and is never hidden", async () => {
   const SEARCH = 'https://www.bricklink.com/v2/search.page?q=col001';
   const GEAR = 'https://www.bricklink.com/v2/catalog/catalogitem.page?G=5005358';
   const set = (nr, bricklink) => ({ set_number: nr, name: `Artikel ${nr}`, year: 2020, num_parts: 1, bricklink });

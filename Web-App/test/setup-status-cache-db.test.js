@@ -34,7 +34,7 @@ const db = testData();
 
 after(() => db.pool.end().catch(() => {}));
 
-test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurrency: 1 }, async t => {
+test('setup state: remembered, separated by administrator, throttled', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const schluessel = ['einrichtung_erledigt', 'rebrickable_api_key'];
@@ -71,7 +71,7 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
     for (const [i, p] of pools.entries()) p.query = echt[i];
   });
 
-  await t.test('innerhalb des Fensters rechnet nur der erste Aufruf', async () => {
+  await t.test('within the window only the first call computes', async () => {
     stand.forgetSetupStatus();
     gelesen.length = 0;
     await stand.setupStatus();
@@ -81,14 +81,14 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
     assert.equal(gelesen.length, erster, 'weitere Aufrufe im Fenster dürfen nichts lesen');
   });
 
-  await t.test('ein geschriebener Wert gilt sofort', async () => {
+  await t.test('a written value applies immediately', async () => {
     stand.forgetSetupStatus();
     assert.equal((await stand.setupStatus()).konfiguriert, false);
     await einstellungen.setGlobalSetting('rebrickable_api_key', 'probe');
     assert.equal((await stand.setupStatus()).konfiguriert, true);
   });
 
-  await t.test('ein Wert aus einem anderen Prozess leert den Stand hier (NOTIFY)', async () => {
+  await t.test('a value from another process clears the state here (NOTIFY)', async () => {
     await db.run("DELETE FROM global_settings WHERE key = 'rebrickable_api_key'");
     const weg = require('./helpers/sources').testServices().settings.listenForGlobalChanges();
     t.after(async () => {
@@ -107,7 +107,7 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
     );
   });
 
-  await t.test('Verwalter- und öffentliche Antwort sind getrennt', async () => {
+  await t.test('administrator and public response are separate', async () => {
     stand.forgetSetupStatus();
     const verwalter = await stand.setupStatus({ isAdmin: true });
     const offen = await stand.setupStatus({ isAdmin: false });
@@ -117,7 +117,7 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
     assert.equal(verwalter.basis_url, k.appBaseUrl);
   });
 
-  await t.test('nach Abschluss wird kein Schlüssel gelesen', async () => {
+  await t.test('after completion no key is read', async () => {
     await einstellungen.setGlobalSetting('einrichtung_erledigt', '1');
     stand.forgetSetupStatus();
     gelesen.length = 0;
@@ -133,7 +133,7 @@ test('Einrichtungsstand: gemerkt, getrennt nach Verwalter, gebremst', { concurre
     stand.forgetSetupStatus();
   });
 
-  await t.test('die Adresse wird gebremst', async () => {
+  await t.test('the address is throttled', async () => {
     const srv = testServer(_req, { sitzung: {}, t });
     let letzter = 0;
     for (let i = 0; i < 125 && letzter !== 429; i++) {

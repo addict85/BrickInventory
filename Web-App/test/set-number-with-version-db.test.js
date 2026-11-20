@@ -34,11 +34,11 @@ const { holdsPart } = require('./helpers/inventory');
 const MIG = n => fs.readFileSync(path.join(__dirname, '..', 'db/migrations', n), 'utf8');
 const PID = process.pid;
 
-test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 }, async t => {
+test('set numbers with version, one set master, spare part 0/1', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
 
-  await t.test('die Migration führt beide Schreibweisen zusammen', async () => {
+  await t.test('the migration merges both spellings', async () => {
     const c = await db.pool.connect();
     const q = async (sql, p) => (await c.query(sql, p)).rows;
     try {
@@ -169,7 +169,7 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
     }
   });
 
-  await t.test('der Filter findet das Set auch ohne Versionsanhang', async () => {
+  await t.test('the filter finds the set even without the version suffix', async () => {
     const NAME = `sn-filter-${PID}`;
     await db.run('DELETE FROM users WHERE username=$1', [NAME]);
     const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
@@ -200,7 +200,7 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
     }
   });
 
-  await t.test('Set-Stamm: nur rb_sets, ein Platzhalter bleibt Platzhalter', async () => {
+  await t.test('set master: only rb_sets, a placeholder stays a placeholder', async () => {
     const S = `S${PID}`;
     const weg = () =>
       Promise.all([
@@ -236,7 +236,7 @@ test('Set-Nummern mit Version, ein Set-Stamm, Ersatzteil 0/1', { concurrency: 1 
     }
   });
 
-  await t.test('Ersatzteil wird 0/1', async () => {
+  await t.test('spare part becomes 0/1', async () => {
     const c = await db.pool.connect();
     try {
       await c.query('BEGIN');

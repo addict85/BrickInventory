@@ -14,7 +14,7 @@ async function newUser(db) {
   return db.get(`INSERT INTO users (username, password_hash) VALUES ('t_'||floor(random()*1e9),'x') RETURNING id`);
 }
 
-test('ein frischer Cache-Eintrag ersetzt die Neuberechnung', async t => {
+test('a fresh cache entry replaces the recomputation', async t => {
   const db = testData();
   try {
     await db.initSchemaOnce();
@@ -57,7 +57,7 @@ test('ein frischer Cache-Eintrag ersetzt die Neuberechnung', async t => {
   await db.run('DELETE FROM minifig_price_cache WHERE fig_number = $1', [fig]);
 });
 
-test('ein veralteter Eintrag wird übergangen', async t => {
+test('an outdated entry is skipped', async t => {
   const db = testData();
   try {
     await db.initSchemaOnce();

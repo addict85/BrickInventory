@@ -18,7 +18,7 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
-test('Idempotenz: die Frist folgt der längsten Anfrage', { concurrency: 1 }, async t => {
+test('idempotency: the deadline follows the longest request', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));

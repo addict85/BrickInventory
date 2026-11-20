@@ -46,7 +46,7 @@ function gruppe(t, auf) {
   throw new Error('keine passende Klammer');
 }
 
-test('knopfBesetzt(): zweites Argument ist eine Beschriftung, kein Rückruf', () => {
+test('knopfBesetzt(): the second argument is a label, not a callback', () => {
   const dateien = fs.readdirSync(JS).filter(f => f.endsWith('.js') && f !== 'app.bundle.js');
   assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skripte — greift die Suche noch?`);
 
@@ -103,7 +103,7 @@ test('knopfBesetzt(): zweites Argument ist eine Beschriftung, kein Rückruf', ()
  *   c) Das Einfrieren der Breite entfernt → Schritt 5 rot.
  *   d) Die Freigabe setzt minWidth blind auf '' → Schritt 3 rot.
  */
-test('knopfBesetzt(): Beschriftung und Breite bleiben, solange der Knopf besetzt ist', () => {
+test('knopfBesetzt(): label and width stay as long as the button is busy', () => {
   const { JSDOM } = require(path.join(__dirname, '..', 'node_modules', 'jsdom'));
 
   // Die echte Funktion aus dem Quelltext holen — nicht nachgebaut.

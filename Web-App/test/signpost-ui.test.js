@@ -18,7 +18,7 @@ const WITHOUT_PATH =
   /unter Einstellungen\b|in den Einstellungen\b|in the settings\b|under Settings\b|in Settings\b|Reiter (Sets|Teile)/i;
 
 for (const sprache of ['de', 'en']) {
-  test(`${sprache}: Wegweiser stimmen`, async () => {
+  test(`${sprache}: signposts are correct`, async () => {
     const { w, d } = await openUi({}, { sprache });
     try {
       const menue = [...d.querySelectorAll('#umenu-pop .umenu-item span')].map(s => s.textContent.trim());

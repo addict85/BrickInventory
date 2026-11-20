@@ -25,7 +25,7 @@ const SET = {
   instructions: [],
 };
 
-test('offline: Set-Detail aus der geladenen Sammlung, Angaben als Paare', async () => {
+test('offline: set detail from the loaded collection, details as pairs', async () => {
   const { w, d } = await openUi({
     '/v1/sets': { success: true, sets: [SET], total: 1, themes: [] },
     '/v1/sets/21318-1': () => {
@@ -58,7 +58,7 @@ test('offline: Set-Detail aus der geladenen Sammlung, Angaben als Paare', async 
   }
 });
 
-test('Haushalt: jede Menge ein output mit dem Konto im Namen', async () => {
+test('household: every quantity an output with the account in the name', async () => {
   const geteilt = {
     ...SET,
     owners: [

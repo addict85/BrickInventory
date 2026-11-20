@@ -49,7 +49,7 @@ async function waitOnStatus(tabelle, vorher, ms = 5000) {
   }
 }
 
-test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async t => {
+test('refresh after bulk insert', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   // Ein echtes Konto: parts_summary hat seit Migration 0043 einen Schlüssel auf users.
@@ -61,7 +61,7 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('maintainTable raeumt auf UND vermisst neu', async () => {
+  await t.test('maintainTable cleans up AND re-measures', async () => {
     // Erst etwas einfuegen, damit es auch etwas zu tun gibt.
     await db.run(
       `INSERT INTO parts_summary (user_id, part_key, color_id, part_number,
@@ -89,7 +89,7 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('ein Name, der kein Tabellenname ist, fuehrt NICHTS aus', async () => {
+  await t.test('a name that is not a table name executes NOTHING', async () => {
     const gerufen = [];
     const runFrom = async sql => {
       gerufen.push(sql);
@@ -112,7 +112,7 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('ein Fehlschlag bleibt ein Fehlschlag und wird kein Absturz', async () => {
+  await t.test('a failure stays a failure and does not become a crash', async () => {
     // VACUUM braucht Rechte. Ein Import, der an der NACHSORGE scheitert, waere
     // das falsche Ergebnis — die Daten sind dann vollstaendig da.
     const ok = await maintainTable(async () => {
@@ -121,7 +121,7 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async t => {
     assert.equal(ok, false);
   });
 
-  await t.test('rebuild() frischt parts_summary auf', async () => {
+  await t.test('rebuild() refreshes parts_summary', async () => {
     const { rebuildSummary: rebuild } = _req('src/parts/summary.js');
     const nutzer = 90002;
     await db.run(
@@ -161,7 +161,7 @@ test('Auffrischen nach Masseneinfuegen', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('die Trigramm-Indizes der Zusammenfassung führen keine Warteliste', async () => {
+  await t.test('the trigram indexes of the summary keep no pending list', async () => {
     // Statt VACUUM nach jedem Neuaufbau: Ohne Warteliste gibt es nichts zu leeren.
     const idx = await db.all(`SELECT c.relname, c.reloptions FROM pg_index i
       JOIN pg_class c ON c.oid = i.indexrelid JOIN pg_am a ON a.oid = c.relam

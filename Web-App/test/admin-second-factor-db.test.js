@@ -68,7 +68,7 @@ function server(t, sitzung, token) {
   };
 }
 
-test('zweiter Faktor für Verwalter', { concurrency: 1 }, async t => {
+test('second factor for admins', { concurrency: 1 }, async t => {
   try {
     await db.initSchema();
   } catch (e) {
@@ -104,7 +104,7 @@ test('zweiter Faktor für Verwalter', { concurrency: 1 }, async t => {
 
   const alsChef = server(t, { userId: chef, username: NAMEN[0], isAdmin: true });
 
-  await t.test('Anmeldung und /auth/me nennen die Pflicht', async () => {
+  await t.test('login and /auth/me name the obligation', async () => {
     const anonym = server(t, {});
     const voll = await anonym('POST', '/auth/login', { username: NAMEN[0], password: PASS, scope: 'voll' });
     assert.equal(voll.status, 200, JSON.stringify(voll.body));
@@ -114,14 +114,14 @@ test('zweiter Faktor für Verwalter', { concurrency: 1 }, async t => {
     assert.equal((await alsChef('GET', '/auth/me')).body.user.zweiterFaktorPflicht, true);
   });
 
-  await t.test('ohne zweiten Faktor nur dessen Einrichtung', async () => {
+  await t.test('without a second factor only its setup', async () => {
     const r = await alsChef('GET', '/settings');
     assert.deepEqual([r.status, r.body.code], [403, 'zweiter_faktor_pflicht']);
     assert.equal((await alsChef('GET', '/auth/users')).status, 403);
     assert.equal((await alsChef('GET', '/auth/zweiter-faktor')).status, 200);
   });
 
-  await t.test('ein gewöhnliches Konto und ein App-Token sind nicht betroffen', async () => {
+  await t.test('an ordinary account and an app token are not affected', async () => {
     assert.equal(
       (await server(t, { userId: nutzer, username: NAMEN[1], isAdmin: false })('GET', '/settings')).status,
       200,
@@ -133,7 +133,7 @@ test('zweiter Faktor für Verwalter', { concurrency: 1 }, async t => {
     assert.equal((await voll('GET', '/settings')).status, 403);
   });
 
-  await t.test('… die Einrichtung geht, danach alles', async () => {
+  await t.test('… the setup works, afterwards everything', async () => {
     const e = await alsChef('POST', '/auth/zweiter-faktor/einrichten', { password: PASS });
     assert.equal(e.status, 200, JSON.stringify(e.body));
     const code = zf.hotp(zf.fromBase32(e.body.geheimnis), zf.timeStep());
@@ -143,7 +143,7 @@ test('zweiter Faktor für Verwalter', { concurrency: 1 }, async t => {
     assert.equal((await alsChef('GET', '/auth/me')).body.user.zweiterFaktorPflicht, false);
   });
 
-  await t.test('ein Passkey allein genügt nicht', async () => {
+  await t.test('a passkey alone is not enough', async () => {
     const pk = server(t, { userId: withPk, username: NAMEN[2], isAdmin: true });
     await db.run(`INSERT INTO passkeys (user_id, credential_id, public_key) VALUES ($1, $2, '\\x00')`, [
       withPk,

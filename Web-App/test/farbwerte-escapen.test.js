@@ -9,7 +9,7 @@ const path = require('node:path');
 
 const JS = path.join(__dirname, '..', 'public', 'js');
 
-test('Farbwerte kommen nur über escHex ins Markup', () => {
+test('color values only get into the markup via escHex', () => {
   const treffer = [];
   let checked = 0;
   for (const f of fs.readdirSync(JS).filter(n => n.endsWith('.js') && n !== 'app.bundle.js')) {

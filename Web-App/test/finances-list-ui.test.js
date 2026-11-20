@@ -105,7 +105,7 @@ function inSicht(o) {
 }
 const zeilen = o => [...o.d.querySelectorAll('#fin-tbl [data-fin-art="sets"] tbody tr[data-arg]')];
 
-test('blockweise beim Scrollen', async () => {
+test('block by block while scrolling', async () => {
   const o = await openFinances(250);
   try {
     assert.equal(zeilen(o).length, 100);
@@ -122,7 +122,7 @@ test('blockweise beim Scrollen', async () => {
   }
 });
 
-test('Suche über alle Positionen', async () => {
+test('search over all positions', async () => {
   const o = await openFinances(250);
   try {
     const feld = o.d.getElementById('fin-suche');
@@ -137,7 +137,7 @@ test('Suche über alle Positionen', async () => {
   }
 });
 
-test('Sortierköpfe mit aria-sort', async () => {
+test('sort headers with aria-sort', async () => {
   const o = await openFinances(30);
   try {
     const headers = [...o.d.querySelectorAll('#fin-tbl [data-fin-art="sets"] th[aria-sort]')];
@@ -157,7 +157,7 @@ test('Sortierköpfe mit aria-sort', async () => {
   }
 });
 
-test('Legende zeigt Zeichen', async () => {
+test('legend shows symbols', async () => {
   const o = await openFinances(3);
   try {
     const legende = o.d.querySelector('#fin-tbl .fin-legende');

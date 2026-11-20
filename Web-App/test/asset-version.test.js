@@ -8,7 +8,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-test('alle ?v=-Verweise in index.html tragen die Version aus package.json', () => {
+test('all ?v= references in index.html carry the version from package.json', () => {
   const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
   assert.ok(/^[\w.-]+$/.test(version || ''), `Unbrauchbare Version: ${version}`);
 

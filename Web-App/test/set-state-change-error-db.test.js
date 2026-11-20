@@ -18,7 +18,7 @@ const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 const { changeSet } = areaPage('sets');
 
-test('ein gescheiterter Zustandswechsel ist ein Fehler', { concurrency: 1 }, async t => {
+test('a failed condition change is an error', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const name = `zsf_${process.pid}`;
   const SET = `91${String(process.pid).slice(-4)}-1`;

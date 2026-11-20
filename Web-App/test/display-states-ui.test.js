@@ -22,7 +22,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, reiter, sicht, warte, takt } = require('./helpers/ui');
 
-test('Kennzahlen ohne k: 1300 Teile stehen als volle Zahl da', async () => {
+test('metrics without k: 1300 parts are shown as the full number', async () => {
   const { w, d } = await openUi({
     '/v1/stats': {
       success: true,
@@ -72,7 +72,7 @@ const HISTORY = (() => {
   };
 })();
 
-test('Wertdiagramm: Teilung nach 1-2-5, echte Zeitachse, Monatsnamen', async () => {
+test('value chart: division by 1-2-5, real time axis, month names', async () => {
   const { w, d } = await openUi({
     '/v1/finance/portfolio-history': HISTORY,
     '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [], totals: { grand_total: String(4219 + 13 * 63.7) } },
@@ -113,7 +113,7 @@ test('Wertdiagramm: Teilung nach 1-2-5, echte Zeitachse, Monatsnamen', async () 
   }
 });
 
-test('Finanzen: Platzhalter beim Laden statt „—“', async () => {
+test('finances: placeholder while loading instead of "—"', async () => {
   let freigeben;
   const spaeter = new Promise(r => {
     freigeben = r;
@@ -144,7 +144,7 @@ test('Finanzen: Platzhalter beim Laden statt „—“', async () => {
   }
 });
 
-test('Teile: Solange sie laden, keine leere Box „Manuell erfasste Teile“', async () => {
+test('parts: while they load, no empty box "manually captured parts"', async () => {
   let freigeben;
   const spaeter = new Promise(r => {
     freigeben = r;
@@ -169,7 +169,7 @@ test('Teile: Solange sie laden, keine leere Box „Manuell erfasste Teile“', a
   }
 });
 
-test('Konto: ohne E-Mail steht nicht „verifiziert“', async () => {
+test('account: without email it does not say "verified"', async () => {
   const { w, d } = await openUi({
     '/v1/auth/profile': {
       success: true,
@@ -185,7 +185,7 @@ test('Konto: ohne E-Mail steht nicht „verifiziert“', async () => {
   }
 });
 
-test('Konto: eine ausstehende Adresse steht unter dem Feld, im Feld die geltende', async () => {
+test('account: a pending address stands below the field, the valid one in the field', async () => {
   const { w, d } = await openUi({
     '/v1/auth/profile': {
       success: true,
@@ -209,7 +209,7 @@ test('Konto: eine ausstehende Adresse steht unter dem Feld, im Feld die geltende
   }
 });
 
-test('kein Hinweis zum Rebrickable-Schlüssel über dem Einrichtungsassistenten', async () => {
+test('no hint about the Rebrickable key above the setup wizard', async () => {
   const { w, d, ruhig } = await openUi({
     '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } },
     '/v1/settings/einrichtung': {
@@ -233,7 +233,7 @@ test('kein Hinweis zum Rebrickable-Schlüssel über dem Einrichtungsassistenten'
   }
 });
 
-test('Konto: eigenes Design oder Vorgabe des Verwalters', async () => {
+test("account: own theme or the admin's default", async () => {
   const aufrufe = [];
   let eigenes = null;
   const { w, d } = await openUi({

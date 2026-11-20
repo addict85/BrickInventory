@@ -129,7 +129,7 @@ function csvRows(text) {
     });
 }
 
-test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async t => {
+test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -143,7 +143,7 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
 
   let csvText = '';
 
-  await t.test('1. merkliste.csv liegt im ZIP des Daten-Exports', async () => {
+  await t.test('1. merkliste.csv is in the ZIP of the data export', async () => {
     const r = await fetch(`${srv.base}/api/v1/settings/export/data`);
     assert.equal(r.status, 200, `Der Export antwortete mit ${r.status}`);
     const buf = Buffer.from(await r.arrayBuffer());
@@ -162,7 +162,7 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
     }
   });
 
-  await t.test('2. die Datei trägt Nummer, Zustand und Datum jedes Merkpostens', () => {
+  await t.test('2. the file carries number, condition and date of every wishlist item', () => {
     const zeilen = csvRows(csvText);
     assert.equal(
       zeilen.length,
@@ -184,7 +184,7 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
     }
   });
 
-  await t.test('3. dieselbe Datei stellt die geleerte Liste wieder her — samt Datum', async () => {
+  await t.test('3. the same file restores the emptied list — including date', async () => {
     await db.run('DELETE FROM wanted');
     assert.equal((await db.get('SELECT COUNT(*)::int c FROM wanted')).c, 0, 'Vorbedingung: die Liste ist leer');
 
@@ -219,7 +219,7 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
     }
   });
 
-  await t.test('4. ein zweiter Import verdoppelt nichts und verschiebt kein Datum', async () => {
+  await t.test('4. a second import duplicates nothing and shifts no date', async () => {
     // Die Gegenrichtung zu Fall 3: Der Import muss auch auf eine GEFUELLTE
     // Liste anwendbar sein. Ohne diesen Fall waere ein Import „richtig", der
     // nur auf der leeren Tabelle funktioniert.
@@ -243,7 +243,7 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
     );
   });
 
-  await t.test('5. in ein FREMDES Konto lässt sich nichts importieren', async () => {
+  await t.test('5. nothing can be imported into a FOREIGN account', async () => {
     // writeTargetOrNull prueft die RICHTUNG, nicht bloss die Mitgliedschaft.
     // „fremd" ist kein Unterkonto von „haupt" — ohne diese Pruefung schriebe
     // eine hochgeladene Datei in jedes Konto der Installation.
@@ -273,7 +273,7 @@ test('Merkliste: Rundlauf über die echten Adressen', { concurrency: 1 }, async 
     );
   });
 
-  await t.test('6. eine Datei ohne Zustandsspalte nimmt die Vorgabe des Kontos', async () => {
+  await t.test('6. a file without a condition column takes the account default', async () => {
     // Nicht diese Route entscheidet den Standardzustand, sondern
     // conditionOrDefault() in src/wanted/wanted.ts — also die Einstellung des Kontos.
     // Geprueft wird, dass die Route ihn NICHT selbst setzt: Auf 'U' gestellt,

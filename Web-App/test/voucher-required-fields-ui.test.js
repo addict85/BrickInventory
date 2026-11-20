@@ -12,7 +12,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, sicht, warte } = require('./helpers/ui');
 
-test('Gutschein: beide Lücken auf einmal, Pflicht gekennzeichnet', async () => {
+test('voucher: both gaps at once, required marked', async () => {
   const { w, d, aufrufe } = await openUi({ '/v1/vouchers': { success: true, vouchers: [] } });
   try {
     await sicht(w, 'gutscheine');

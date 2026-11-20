@@ -22,7 +22,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { holdsSet, quantityOf } = require('./helpers/inventory');
 
-test('Mengenänderung ohne verlorene Zugänge', { concurrency: 1 }, async t => {
+test('quantity change without lost additions', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `delta-${process.pid}`,
@@ -43,18 +43,18 @@ test('Mengenänderung ohne verlorene Zugänge', { concurrency: 1 }, async t => {
   });
   const { changeSet } = require('./helpers/sources').areaPage('sets');
 
-  await t.test('zwei gleichzeitige +1 ergeben +2', async () => {
+  await t.test('two concurrent +1 result in +2', async () => {
     await holdsSet(db, uid, SN, 2, { preis: 40 });
     await Promise.all([changeSet(uid, SN, { quantity_delta: 1 }), changeSet(uid, SN, { quantity_delta: 1 })]);
     assert.equal(await quantityOf(db, [uid], SN), 4);
   });
 
-  await t.test('ein Schritt nach unten nimmt genau eines weg', async () => {
+  await t.test('a step down takes away exactly one', async () => {
     const r = await changeSet(uid, SN, { quantity_delta: -1 });
     assert.equal(r.quantity, 3);
   });
 
-  await t.test('ein ungültiger Schritt wird abgewiesen', async () => {
+  await t.test('an invalid step is rejected', async () => {
     await assert.rejects(changeSet(uid, SN, { quantity_delta: 1.5 }), (/** @type {any} */ e) => e.art === 'ungueltig');
   });
 });

@@ -77,7 +77,7 @@ function webCalls() {
   return out;
 }
 
-test('jede Adresse der Webapp existiert auf dem Server', () => {
+test('every address of the web app exists on the server', () => {
   const server = serverRoutes();
   const aufrufe = webCalls();
 
@@ -313,7 +313,7 @@ const NUR_WEB = new Map([
   ],
 ]);
 
-test('was nur die Webapp kann, hat einen Grund', () => {
+test('what only the web app can do has a reason', () => {
   // Die Retrofit-Routen der App (shared/app-schnittstelle.json); `{x}` wird zu `:X`.
   const appPaths = new Set(
     require('./helpers/contract')

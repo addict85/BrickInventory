@@ -41,7 +41,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
 
-test('zwei gleichzeitige Importe derselben Tabelle kollidieren nicht', { concurrency: 1 }, async t => {
+test('two concurrent imports of the same table do not collide', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {

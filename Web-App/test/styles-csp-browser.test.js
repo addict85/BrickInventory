@@ -103,10 +103,10 @@ async function cdp(wsUrl) {
   return { tab, auswerten, ereignisse, schliessen: () => ws.close() };
 }
 
-test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_000 }, async t => {
+test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 180_000 }, async t => {
   const bin = chrome();
   if (!bin) {
-    t.skip('kein Chrome gefunden');
+    t.skip('no Chrome found');
     return;
   }
   if (!(await dataOrSkip(t, _req))) return;
@@ -233,15 +233,15 @@ test('Stile unter style-src ohne unsafe-inline', { concurrency: 1, timeout: 180_
     .map(e => e.params.args.map(a => a.value ?? '').join(' '))
     .filter(x => x.includes('[stile]'));
 
-  await t.test('keine CSP-Verstösse', () => assert.deepEqual(s.violations, []));
-  await t.test('jedes data-stil ist angewendet', () => {
+  await t.test('no CSP violations', () => assert.deepEqual(s.violations, []));
+  await t.test('every data-stil is applied', () => {
     assert.deepEqual(s.uebrig, []);
     assert.ok(s.styleSet > 50, `nur ${s.styleSet} Elemente mit Stil`);
   });
-  await t.test('nur freigegebene Werte', () => assert.deepEqual(warnings, []));
+  await t.test('only approved values', () => assert.deepEqual(warnings, []));
 
   // Zuletzt, weil ein Formular nach draussen ohne form-action die Seite verliesse.
-  await t.test('form-action, base-uri und object-src greifen', async () => {
+  await t.test('form-action, base-uri and object-src take effect', async () => {
     assert.match(csp, /form-action 'self'/);
     // Ein Formular der App (Absenden per Enter) und ein Download bleiben ohne Verstoss.
     await b.auswerten(`document.querySelector('form[data-submit="btn-gen-qr"]')?.requestSubmit(); true`);

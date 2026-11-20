@@ -20,7 +20,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { createDb, dbKonfigFromEnvironment } = _req('db/database.js');
 const { bis } = require('./helpers/time');
 
-test('Haushaltsänderungen je Satz Dienste', { concurrency: 1 }, async t => {
+test('household changes per set of services', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const db = testData();
   const { buildServices } = _req('startup/wiring.js');
@@ -41,7 +41,7 @@ test('Haushaltsänderungen je Satz Dienste', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('ein Satz leert nur seine Abhängigen', () => {
+  await t.test('a set only clears its dependents', () => {
     const gerufen = [];
     a.household.atHouseholdChange(() => gerufen.push('a'));
     b.household.atHouseholdChange(() => gerufen.push('b'));
@@ -49,7 +49,7 @@ test('Haushaltsänderungen je Satz Dienste', { concurrency: 1 }, async t => {
     assert.deepEqual(gerufen, ['a']);
   });
 
-  await t.test('ein anderer Satz erfährt die Änderung über NOTIFY', async () => {
+  await t.test('another set learns about the change via NOTIFY', async () => {
     await b.household.listenOnChanges();
     // Unter dem Zeilenschutz des Kontos: Fremde Verknüpfungen sieht die Laufzeitrolle nicht (0121).
     const blickfeld = () => asAccount(ids[0], () => b.household.scopeIds(ids[0]));

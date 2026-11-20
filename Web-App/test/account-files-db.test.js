@@ -48,7 +48,7 @@ function gutscheinPdf() {
   });
 }
 
-test('Gutschein-PDFs verschlüsselt, Kontodateien gehen mit dem Konto', { concurrency: 1 }, async t => {
+test('voucher PDFs encrypted, account files go with the account', { concurrency: 1 }, async t => {
   try {
     await db.initSchema();
   } catch (e) {
@@ -99,7 +99,7 @@ test('Gutschein-PDFs verschlüsselt, Kontodateien gehen mit dem Konto', { concur
   };
   assert.equal(lesbar(original).pin, PIN, 'Vorbedingung: die PIN ist aus dem PDF lesbar');
 
-  await t.test('hochgeladen: verschlüsselt auf der Platte, entschlüsselt ausgeliefert', async () => {
+  await t.test('uploaded: encrypted on disk, delivered decrypted', async () => {
     const fd = new FormData();
     fd.append('file', new Blob([original], { type: 'application/pdf' }), 'g.pdf');
     const r = await fetch(`${ziel.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd });
@@ -122,7 +122,7 @@ test('Gutschein-PDFs verschlüsselt, Kontodateien gehen mit dem Konto', { concur
     assert.ok(aus.equals(original), 'das ausgelieferte PDF ist nicht das hochgeladene');
   });
 
-  await t.test('der Klartext-Altbestand wird beim Start verschlüsselt', async () => {
+  await t.test('the plaintext legacy data is encrypted at startup', async () => {
     const alt = path.join(vouchers, '999999.pdf');
     fs.writeFileSync(alt, original);
     const { encryptLegacyVoucherFiles, readVoucherPdf } = _req('src/vouchers/voucherFiles.js');
@@ -132,7 +132,7 @@ test('Gutschein-PDFs verschlüsselt, Kontodateien gehen mit dem Konto', { concur
     assert.equal(await encryptLegacyVoucherFiles(), 0, 'ein zweiter Lauf verschlüsselt doppelt');
   });
 
-  await t.test('Konto löschen entfernt Anleitungen und Gutscheine', async () => {
+  await t.test('deleting an account removes instructions and vouchers', async () => {
     fs.mkdirSync(uploads, { recursive: true });
     fs.writeFileSync(path.join(uploads, '10294-1_abc.pdf'), original);
     const r = await fetch(`${admin.base}${AUTH}/users/${targetId}`, {

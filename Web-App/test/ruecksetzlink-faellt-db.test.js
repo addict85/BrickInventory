@@ -26,7 +26,7 @@ const db = testData();
 const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').testArea('account').konten };
 const { tokenDigest } = _req('src/account/deviceToken.js');
 
-test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }, async t => {
+test('reset links fall with password and address change', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const namen = [];
   t.after(async () => {
@@ -58,11 +58,11 @@ test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }
   };
   const p = process.pid;
 
-  await t.test('ohne Wechsel gilt der Link (Vorbedingung)', async () => {
+  await t.test('without a change the link applies (precondition)', async () => {
     assert.deepEqual(await afterSwitch(`link_ohne_${p}`, async () => {}), [200, null]);
   });
 
-  await t.test('eigenes Passwort, Verwalter-Reset, neue Adresse: der Link fällt', async () => {
+  await t.test('own password, admin reset, new address: the link falls', async () => {
     assert.deepEqual(
       [
         await afterSwitch(`link_eigen_${p}`, uid => K.aendereEigenesPasswort(uid, 'Eigenes-Neu-2026')),
@@ -86,7 +86,7 @@ test('Rücksetzlinks fallen mit Passwort- und Adresswechsel', { concurrency: 1 }
     );
   });
 
-  await t.test('zwei gleichzeitige Anfragen mit demselben Link: nur eine setzt ihr Passwort', async () => {
+  await t.test('two concurrent requests with the same link: only one sets its password', async () => {
     const name = `link_doppelt_${p}`;
     namen.push(name);
     await db.run('DELETE FROM users WHERE username = $1', [name]);

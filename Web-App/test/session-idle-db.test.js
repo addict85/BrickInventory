@@ -96,11 +96,11 @@ after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-test('ohne Betrieb verfällt die Sitzung', async t => {
+test('without activity the session expires', async t => {
   try {
     await db.get('SELECT 1');
   } catch {
-    return t.skip('keine Test-Datenbank erreichbar');
+    return t.skip('no test database reachable');
   }
 
   // 5 s statt 2 s: Unter Last (paralleler Volllauf) lagen zwischen Anmelden
@@ -126,11 +126,11 @@ test('ohne Betrieb verfällt die Sitzung', async t => {
   }
 });
 
-test('mit Betrieb bleibt die Sitzung', async t => {
+test('with activity the session stays', async t => {
   try {
     await db.get('SELECT 1');
   } catch {
-    return t.skip('keine Test-Datenbank erreichbar');
+    return t.skip('no test database reachable');
   }
 
   // Dasselbe Verhältnis wie im Betrieb: Die Drosselung ist ein Fünftel der
@@ -155,7 +155,7 @@ test('mit Betrieb bleibt die Sitzung', async t => {
   }
 });
 
-test('die Drosselung ist kürzer als die Frist', () => {
+test('the throttling is shorter than the period', () => {
   // Der Kern der Kopplung, ohne Server: Wäre sie länger, flöge der ARBEITENDE
   // Benutzer heraus statt des untätigen.
   assert.ok(

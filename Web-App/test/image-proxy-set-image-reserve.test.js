@@ -23,7 +23,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 // Ohne Datenbank: Die Sets dieser Datei liegen im Blickfeld des Kontos, sonst legt der Proxy nichts ab.
 require('./helpers/sources').replaceServices('images', { setNumberInScope: async () => true });
 
-test('Bild-Proxy merkt Set-Bilder für images/sets vor', async t => {
+test('image proxy reserves set images for images/sets', async t => {
   const express = require('express');
   const passThroughImage = (...a) =>
     _req('src/images/http/imageProxy.js').passThroughImage(require('./helpers/sources').testServices(), ...a);
@@ -76,11 +76,11 @@ test('Bild-Proxy merkt Set-Bilder für images/sets vor', async t => {
   put(path.join(SET_IMAGES_DIR, `${liegt}.jpg`));
   put(path.join(SET_IMAGES_DIR, `${liegt}_thumb.jpg`));
 
-  await t.test('ein fehlendes Set-Bild wird vorgemerkt', async () => {
+  await t.test('a missing set image is reserved', async () => {
     assert.equal(await hole(missingUrl), 200);
     assert.deepEqual(notes, [[missingUrl, fehlt]]);
   });
-  await t.test('was der Proxy hat, liegt danach unter images/sets', async () => {
+  await t.test('what the proxy has lies under images/sets afterwards', async () => {
     const abgelegt = path.join(SET_IMAGES_DIR, `${fehlt}.jpg`);
     angelegt.push(abgelegt);
     assert.equal(await hole(missingUrl), 200);
@@ -95,15 +95,15 @@ test('Bild-Proxy merkt Set-Bilder für images/sets vor', async t => {
       'keine halbe Datei bleibt liegen',
     );
   });
-  await t.test('liegen Bild und Vorschau schon in images/sets, bleibt die Notiz aus', async () => {
+  await t.test('if image and preview already lie in images/sets, there is no note', async () => {
     assert.equal(await hole(liesUrl), 200);
     assert.deepEqual(notes, []);
   });
-  await t.test('ein Teilebild ist kein Set-Bild', async () => {
+  await t.test('a part image is not a set image', async () => {
     assert.equal(await hole(teilUrl), 200);
     assert.deepEqual(notes, []);
   });
-  await t.test('je Set eine Notiz', async () => {
+  await t.test('one note per set', async () => {
     const neu = `7${process.pid}-1`;
     const url = `https://cdn.rebrickable.com/media/sets/${neu}.jpg`;
     imCache(url);
@@ -115,7 +115,7 @@ test('Bild-Proxy merkt Set-Bilder für images/sets vor', async t => {
     }
     assert.deepEqual(alle, [[url, neu]]);
   });
-  await t.test('über der Drossel bleibt die Notiz aus', async () => {
+  await t.test('above the throttle there is no note', async () => {
     const url = `https://cdn.rebrickable.com/media/sets/6${process.pid}-1.jpg`;
     await _req('src/account/loginLimiter.js').countRequest('bild-abruf', 'konto:1', 60_000);
     assert.equal(await hole(url), 429);

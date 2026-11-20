@@ -24,7 +24,7 @@ const GELDSPALTEN = `
           OR column_name = 'amount' OR column_name LIKE '%\\_amount')
    ORDER BY 1`;
 
-test('Geldbeträge sind exakt', { concurrency: 1 }, async t => {
+test('money amounts are exact', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -43,7 +43,7 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async t => {
     client.release();
   }
 
-  await t.test('eine Neuinstallation hat keine Geldspalte als REAL', async () => {
+  await t.test('a new installation has no money column as REAL', async () => {
     const spalten = await db.all(GELDSPALTEN);
     assert.ok(spalten.length > 15, `nur ${spalten.length} Geldspalten gefunden — die Prüfung liefe ins Leere`);
     const real = spalten.filter(s => s.data_type === 'real' || s.data_type === 'double precision');
@@ -54,7 +54,7 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('die Migration holt eine alte Datenbank nach', async () => {
+  await t.test('the migration catches up an old database', async () => {
     // Alte Installation nachstellen: Spalte zurück auf REAL, Migration erneut
     // laufen lassen (Vermerk in schema_migrations entfernen).
     for (const [tab, sp] of [
@@ -115,7 +115,7 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async t => {
     await db.run(index[0].replace(/\btag\b/, 'day'));
   });
 
-  await t.test('tausend Beträge summieren sich exakt', async () => {
+  await t.test('a thousand amounts add up exactly', async () => {
     await db.run("INSERT INTO users (username,password_hash) VALUES ('geld','x')");
     const uid = (await db.get("SELECT id FROM users WHERE username='geld'")).id;
     await holdsSet(db, uid, '99001-1', 0); // Menge 0: die Erfassung dahinter traegt sie
@@ -131,7 +131,7 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async t => {
     assert.equal(Number(summe.s), 70, `Summe ${summe.s} statt exakt 70`);
   });
 
-  await t.test('ein gespeicherter Kaufpreis kommt unverändert zurück', async () => {
+  await t.test('a stored purchase price comes back unchanged', async () => {
     const uid = (await db.get("SELECT id FROM users WHERE username='geld'")).id;
     await holdsSet(db, uid, '99002-1', 0); // Menge 0: die Erfassung dahinter traegt sie
     await db.run(
@@ -157,7 +157,7 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async t => {
     }
   });
 
-  await t.test('die Werte kommen als Zahl an, nicht als Zeichenkette', async () => {
+  await t.test('the values arrive as a number, not as a string', async () => {
     // Der pg-Treiber liefert NUMERIC von Haus aus als Zeichenkette. Ohne den
     // Typ-Parser in db/database.ts würde aus `preis * menge` an hunderten
     // Stellen eine Zeichenketten-Rechnung, und ein Preis von 0 wäre als

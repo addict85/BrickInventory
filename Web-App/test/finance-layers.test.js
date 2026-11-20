@@ -18,7 +18,7 @@ function importsOf(name) {
   return [...s.matchAll(/(?:import|from)\s+['"]\.\/(\w+)['"]/g)].map(m => m[1]);
 }
 
-test('die Schichten sind vollstaendig da', () => {
+test('the layers are complete', () => {
   // Selbstbeweis: Fehlt eine Datei, pruefte die Schleife unten Luft.
   const da = fs
     .readdirSync(ORDNER)
@@ -34,7 +34,7 @@ test('die Schichten sind vollstaendig da', () => {
   );
 });
 
-test('keine Schicht greift nach oben', () => {
+test('no layer reaches upwards', () => {
   const fehler = [];
   let kanten = 0;
   SCHICHTEN.forEach((name, hoehe) => {
@@ -59,7 +59,7 @@ test('keine Schicht greift nach oben', () => {
   );
 });
 
-test('die Fassade reicht nur durch', () => {
+test('the facade only passes through', () => {
   // src/finances/financeCalc.ts ist die Tuer fuer 16 Aufrufstellen. Steht dort wieder
   // Logik, waechst sie zurueck auf 1529 Zeilen.
   const facade = fs.readFileSync(path.join(__dirname, '..', 'src/finances/financeCalc.ts'), 'utf8');
@@ -78,7 +78,7 @@ test('die Fassade reicht nur durch', () => {
   );
 });
 
-test('Blickfeld ist an einer Stelle erklaert', () => {
+test('scope is explained in one place', () => {
   // Ein Name, zwei Bedeutungen
   const wurzel = path.join(__dirname, '..');
   const treffer = [];

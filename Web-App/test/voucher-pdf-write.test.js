@@ -102,7 +102,7 @@ async function buildWithEncoding(unsicher) {
 
 const NR = '5045076374450011166';
 
-test('1. der Betrag wird im Original ersetzt — drei Schreibweisen', async () => {
+test('1. the amount is replaced in the original — three notations', async () => {
   // Drei Schreibweisen, weil im PDF die SCHREIBWEISE steht und nicht die Zahl:
   // „400", „1'250" (Schweizer Tausendertrenner), „49.90" (Rappen). Ein
   // Ersetzen, das nur die ganze Zahl kennt, fände die beiden anderen nie.
@@ -122,7 +122,7 @@ test('1. der Betrag wird im Original ersetzt — drei Schreibweisen', async () =
   }
 });
 
-test('2. ein schon richtiger Betrag bleibt unangetastet', async () => {
+test('2. an already correct amount stays untouched', async () => {
   // Kein Treffer ist hier ERFOLG, nicht Fehlschlag: Das Original stimmt
   // bereits. Ohne diesen Fall wäre ein Ersetzen „richtig", das jedes PDF
   // umschreibt, auch wenn es nichts zu ändern gibt.
@@ -133,7 +133,7 @@ test('2. ein schon richtiger Betrag bleibt unangetastet', async () => {
   assert.equal(r.data, original, 'Es kam ein neues PDF zurück statt des Originals');
 });
 
-test('3. ein PDF ohne lesbaren Betrag wird abgelehnt, nicht geraten', async () => {
+test('3. a PDF without a readable amount is rejected, not guessed', async () => {
   const original = await buildVoucher('400', NR, '5225', TTF); // Identity-H
   assert.equal(
     valuesFromPdf(original).amount,
@@ -149,7 +149,7 @@ test('3. ein PDF ohne lesbaren Betrag wird abgelehnt, nicht geraten', async () =
   );
 });
 
-test('4. Marke schreiben und lesen ist umkehrbar', () => {
+test('4. writing and reading the marker is reversible', () => {
   const w = { nummer: NR, pin: '5225', betrag: 249.5, waehrung: 'CHF' };
   const gelesen = readMark(markText(w));
   assert.deepEqual(gelesen, { number: NR, pin: '5225', amount: 249.5, currency: 'CHF' });
@@ -161,7 +161,7 @@ test('4. Marke schreiben und lesen ist umkehrbar', () => {
   assert.equal(readMark(markText({ ...w, pin: null })).pin, null);
 });
 
-test('5. drei Gutscheine werden EIN PDF und kommen alle zurück', async () => {
+test('5. three vouchers become ONE PDF and all come back', async () => {
   // Der Kern von Marcos Vorgabe, und drei Lagen in einem Lauf:
   //   · mit Original, Betrag abweichend  → wird ersetzt
   //   · mit Original, Schrift unlesbar   → bleibt unverändert, Marke trägt den Wert
@@ -206,7 +206,7 @@ test('5. drei Gutscheine werden EIN PDF und kommen alle zurück', async () => {
   }
 });
 
-test('6. eine Schrift mit eigener Kodierung wird NICHT angefasst', async () => {
+test('6. a font with its own encoding is NOT touched', async () => {
   // Der wichtigste Fall. Beide PDFs sind zeichengleich bis auf die Kodierung
   // der Betragsschrift, und in BEIDEN liest der Leser 400.
   const sicher = await buildWithEncoding(false);
@@ -235,7 +235,7 @@ test('6. eine Schrift mit eigener Kodierung wird NICHT angefasst', async () => {
   assert.match(String(b.grund), /own encoding/, `Der Grund lautet „${b.grund}"`);
 });
 
-test('7. ein fremdes PDF ohne Marke wird seitenweise geraten', async () => {
+test('7. a foreign PDF without a marker is guessed page by page', async () => {
   // Der Rückfall. Ein Stapel, wie LEGO ihn schickt, hat keine Marke. Zerlegt
   // werden MUSS er: Liest man den ganzen Stapel als einen Text, gewinnt die
   // längste Ziffernfolge des ganzen Haufens, und es käme EIN Gutschein heraus
@@ -260,7 +260,7 @@ test('7. ein fremdes PDF ohne Marke wird seitenweise geraten', async () => {
   );
 });
 
-test('8. dieselbe Karte zweimal im Stapel ergibt EINEN Eintrag', async () => {
+test('8. the same card twice in the batch yields ONE entry', async () => {
   const ziel = await PL.PDFDocument.create();
   for (let i = 0; i < 2; i++) {
     const doc = await PL.PDFDocument.load(await buildVoucher('400', NR, '5225', null));
@@ -275,7 +275,7 @@ test('8. dieselbe Karte zweimal im Stapel ergibt EINEN Eintrag', async () => {
   );
 });
 
-test('9. die Nachprüfung fängt ein Ersetzen, das die Kartennummer trifft', async () => {
+test('9. the verification catches a replacement that hits the card number', async () => {
   // Woher dieser Fall kommt (Gegenprobe)
   const numberMit400 = '5045076374400011166';
   const original = await buildVoucher('400', numberMit400, '5225', null);

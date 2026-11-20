@@ -32,7 +32,7 @@ async function detail(o) {
   await takt(30);
 }
 
-test('Set-Detail öffnet sofort mit Platzhalter', async () => {
+test('set detail opens immediately with a placeholder', async () => {
   const o = await openUi({
     '/v1/sets/10294-1': spaeter(SET),
     '/v1/sets/10294-1/acquisitions': { success: true, acquisitions: [] },
@@ -49,7 +49,7 @@ test('Set-Detail öffnet sofort mit Platzhalter', async () => {
   }
 });
 
-test('Set-Detail: geschlossen bleibt geschlossen', async () => {
+test('set detail: closed stays closed', async () => {
   const o = await openUi({
     '/v1/sets/10294-1': spaeter(SET),
     '/v1/sets/10294-1/acquisitions': { success: true, acquisitions: [] },
@@ -64,7 +64,7 @@ test('Set-Detail: geschlossen bleibt geschlossen', async () => {
   }
 });
 
-test('Merkliste zeigt Platzhalterzeilen, bis die Liste da ist', async () => {
+test('wishlist shows placeholder rows until the list is there', async () => {
   const liste = {
     success: true,
     merkposten: [{ set_number: '10276-1', condition: 'N', name: 'Kolosseum', added_at: '2026-10-01T00:00:00Z' }],

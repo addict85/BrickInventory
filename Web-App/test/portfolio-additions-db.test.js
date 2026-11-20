@@ -19,7 +19,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
-test('die Portfolio-Prozentzahl misst Preise, nicht Zukäufe', { concurrency: 1 }, async t => {
+test('the portfolio percentage measures prices, not additional purchases', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const NUTZER = `pfz-${process.pid}`;

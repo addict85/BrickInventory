@@ -72,7 +72,7 @@ function starte(env, ms = 8000) {
   });
 }
 
-test('Beispielpasswort der Datenbank: Start verweigert', { timeout: 30_000 }, async () => {
+test('example database password: startup refused', { timeout: 30_000 }, async () => {
   for (const env of [
     { PGPASSWORD: 'brickinventory_secret', PGHOST: '127.0.0.1', PGPORT: '1' },
     { DATABASE_URL: 'postgres://brickinventory:brickinventory_secret@127.0.0.1:1/x' },
@@ -83,13 +83,13 @@ test('Beispielpasswort der Datenbank: Start verweigert', { timeout: 30_000 }, as
   }
 });
 
-test('TRUST_PROXY=docker: Start verweigert', { timeout: 30_000 }, async () => {
+test('TRUST_PROXY=docker: startup refused', { timeout: 30_000 }, async () => {
   const { code, log } = await starte({ DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', TRUST_PROXY: 'docker' });
   assert.equal(code, 1, log.slice(-400));
   assert.match(log, /TRUST_PROXY enthält „docker/);
 });
 
-test('ohne NODE_ENV kein öffentliches Sitzungsgeheimnis', { timeout: 30_000 }, async () => {
+test('without NODE_ENV no public session secret', { timeout: 30_000 }, async () => {
   const ohne = {
     NODE_ENV: undefined,
     DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x',
@@ -107,7 +107,7 @@ test('ohne NODE_ENV kein öffentliches Sitzungsgeheimnis', { timeout: 30_000 }, 
   assert.match(log, /Database initialisation failed/);
 });
 
-test('Beispielwert und zu kurzes Sitzungsgeheimnis: Start verweigert', { timeout: 30_000 }, async () => {
+test('example value and too short session secret: startup refused', { timeout: 30_000 }, async () => {
   const env = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'https://lego.example.org' };
   for (const [geheimnis, grund] of /** @type {[string, RegExp][]} */ ([
     ['change-me-to-a-long-random-string', /Beispielwert/],
@@ -119,7 +119,7 @@ test('Beispielwert und zu kurzes Sitzungsgeheimnis: Start verweigert', { timeout
   }
 });
 
-test('ohne APP_BASE_URL im Betrieb: Start verweigert, nur ausdrücklich erlaubt', { timeout: 60_000 }, async () => {
+test('without APP_BASE_URL in production: startup refused, only explicitly allowed', { timeout: 60_000 }, async () => {
   const db = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x' };
   const ohne = await starte(db);
   assert.equal(ohne.code, 1, ohne.log.slice(-400));
@@ -136,12 +136,12 @@ test('ohne APP_BASE_URL im Betrieb: Start verweigert, nur ausdrücklich erlaubt'
   }
 });
 
-test('npm start setzt NODE_ENV=production', () => {
+test('npm start sets NODE_ENV=production', () => {
   const start = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).scripts.start;
   assert.match(start, /^NODE_ENV=production node dist\/server\.js$/);
 });
 
-test('ausserhalb von Produktion kein Verbot, mit eigenem Passwort keines', () => {
+test('outside production no ban, with an own password none', () => {
   assert.deepEqual(startBans({ NODE_ENV: 'development' }), [], 'ausserhalb von Produktion kein Verbot');
   const basis = { NODE_ENV: 'production', PGPASSWORD: 'eigenes', APP_BASE_URL: 'https://lego.example.org' };
   assert.deepEqual(startBans({ ...basis, TRUST_PROXY: '172.28.73.10' }), []);

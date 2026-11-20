@@ -63,7 +63,7 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, async t => {
+test('the own catalog is asked before Rebrickable', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -119,7 +119,7 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
     return fetches.filter(a => a.startsWith('lookupPart'));
   };
 
-  await t.test('Name und Farbbild im Katalog — kein Abruf', async () => {
+  await t.test('name and color image in the catalog — no fetch', async () => {
     assert.deepEqual(
       await putPart('3001', 4),
       [],
@@ -127,7 +127,7 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
     );
   });
 
-  await t.test('Bild als Datei zaehlt auch', async () => {
+  await t.test('an image as a file counts too', async () => {
     assert.deepEqual(
       await putPart('3002', 4),
       [],
@@ -136,7 +136,7 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
     );
   });
 
-  await t.test('Name ja, Farbbild nein — es wird gefragt', async () => {
+  await t.test('name yes, color image no — it is asked', async () => {
     assert.deepEqual(
       await putPart('3003', 4),
       ['lookupPart 3003/4'],
@@ -151,7 +151,7 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
     );
   });
 
-  await t.test('ohne Farbe zaehlt das allgemeine Bild', async () => {
+  await t.test('without color the generic image counts', async () => {
     // Die Kehrseite des Falls darueber: Ohne angegebene Farbe gibt es keine
     // farbrichtige Erwartung, und lookupPart holt dort selbst nur das
     // allgemeine Bild. Dann ist der Abruf wirklich ueberfluessig.
@@ -160,7 +160,7 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
     assert.deepEqual(fetches, [], 'rb_parts fuehrt Name und allgemeines Bild — mehr holt der Abruf hier nicht');
   });
 
-  await t.test('gar nicht im Katalog — es wird gefragt', async () => {
+  await t.test('not in the catalog at all — it is asked', async () => {
     assert.deepEqual(
       await putPart('99999zzz', 4),
       ['lookupPart 99999zzz/4'],
@@ -168,7 +168,7 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
     );
   });
 
-  await t.test('der Name kommt aus dem Katalog, nicht von Rebrickable', async () => {
+  await t.test('the name comes from the catalog, not from Rebrickable', async () => {
     // Die Gegenprobe zum ersten Fall: Dass nicht gefragt wurde, soll nicht
     // heissen, dass der Name fehlt. Der Vorgabewert des Doppels lautet
     // „VON REBRICKABLE" — er darf hier nirgends stehen.
@@ -183,14 +183,14 @@ test('der eigene Katalog wird vor Rebrickable gefragt', { concurrency: 1 }, asyn
     assert.deepEqual(fetches, []);
   });
 
-  await t.test('Figur mit Name und Bild — kein Abruf', async () => {
+  await t.test('figure with name and image — no fetch', async () => {
     fetches = [];
     const r = await addManualMinifig(UID, { fig_number: 'fig-000123', quantity: 1 });
     assert.deepEqual(fetches, [], 'minifigs_catalog fuehrt Name und Bild');
     assert.equal(r.fig_name, 'Chewbacca');
   });
 
-  await t.test('Figur ohne Bild — es wird gefragt', async () => {
+  await t.test('figure without image — it is asked', async () => {
     fetches = [];
     await addManualMinifig(UID, { fig_number: 'fig-000456', quantity: 1 });
     assert.deepEqual(fetches, ['getMinifigInfo fig-000456'], 'Der Name allein genuegt nicht: das Bild fehlt wirklich');

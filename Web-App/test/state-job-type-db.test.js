@@ -43,7 +43,7 @@ const TABELLEN = [
   'job_pauses',
 ];
 
-test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
+test('migration 0109: condition and job kind', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const c = await db.pool.connect();
   t.after(async () => {
@@ -52,7 +52,7 @@ test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('auf einem Altbestand', async tt => {
+  await t.test('on a legacy stock', async tt => {
     await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`);
     await c.query(`CREATE SCHEMA ${SCHEMA}`);
     await c.query(`SET search_path TO ${SCHEMA}, public`);
@@ -78,7 +78,7 @@ test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
 
     await c.query(MIGRATION);
 
-    await tt.test('Merkliste: andere Schreibweise wird berichtigt, Unbrauchbares fällt', async () => {
+    await tt.test('wishlist: other spelling is corrected, unusable items drop', async () => {
       const z = (await c.query('SELECT set_number, condition FROM wanted ORDER BY 1, 2')).rows;
       assert.deepEqual(z, [
         { set_number: '1-1', condition: 'N' },
@@ -87,19 +87,19 @@ test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
       ]);
     });
 
-    await tt.test('Preisalarm und Preisspeicher', async () => {
+    await tt.test('price alert and price store', async () => {
       assert.deepEqual((await c.query('SELECT set_number, condition FROM price_alerts')).rows, [
         { set_number: '1-1', condition: 'U' },
       ]);
       assert.deepEqual((await c.query('SELECT condition FROM price_cache')).rows, [{ condition: 'N' }]);
     });
 
-    await tt.test('Aufträge und Pausen unbekannter Art fallen', async () => {
+    await tt.test('jobs and pauses of unknown kind drop', async () => {
       assert.deepEqual((await c.query('SELECT art FROM auftraege')).rows, [{ art: 'preise' }]);
       assert.deepEqual((await c.query('SELECT art FROM auftrag_pausen')).rows, [{ art: 'preise' }]);
     });
 
-    await tt.test('danach weist das Schema Unbekanntes ab', async () => {
+    await tt.test('afterwards the schema rejects unknown values', async () => {
       await assert.rejects(c.query(`INSERT INTO auftraege (art) VALUES ('gibt_es_nicht')`), /auftraege_art_fkey/);
       await assert.rejects(
         c.query(`INSERT INTO price_history (set_number, condition, currency_code) VALUES ('9-1', 'u', 'EUR')`),
@@ -109,7 +109,7 @@ test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
     await c.query('SET search_path TO public');
   });
 
-  await t.test('job_types kennt genau die angemeldeten Arten', async () => {
+  await t.test('job_types knows exactly the registered kinds', async () => {
     const angemeldet = require('./helpers/sources')
       .testServices()
       .jobQueue.signedInKinds()
@@ -119,7 +119,7 @@ test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
     assert.deepEqual(inDb, [...angemeldet].sort());
   });
 
-  await t.test('ein Zustand ausser N und U wird abgewiesen', async () => {
+  await t.test('a condition other than N and U is rejected', async () => {
     for (const tab of ['wanted', 'price_cache']) {
       const sql =
         tab === 'wanted'
@@ -129,7 +129,7 @@ test('Migration 0109: Zustand und Auftragsart', { concurrency: 1 }, async t => {
     }
   });
 
-  await t.test('eine unbekannte Auftragsart wird abgewiesen', async () => {
+  await t.test('an unknown job kind is rejected', async () => {
     await assert.rejects(db.run(`INSERT INTO jobs (type) VALUES ('gibt_es_nicht')`), /auftraege_art_fkey/);
   });
 });

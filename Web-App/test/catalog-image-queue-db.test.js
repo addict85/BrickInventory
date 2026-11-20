@@ -22,7 +22,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 
-test('die Katalogliste löst gar keine Bildarbeit aus', { concurrency: 1 }, async t => {
+test('the catalog list triggers no image work at all', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const NUTZER = `bq-${process.pid}`;

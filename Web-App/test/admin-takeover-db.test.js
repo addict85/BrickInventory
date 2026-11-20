@@ -59,7 +59,7 @@ S.replaceServices('mail', {
   },
 });
 
-test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 180_000 }, async t => {
+test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const P = process.pid,
     PASS = 'Uebernahme-Pruefung-1',
@@ -146,7 +146,7 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 180_000 }, asy
     return m()?.abbruch;
   };
 
-  await t.test('ein normales Konto: sofort, Sitzungen und Tokens enden', async () => {
+  await t.test('a normal account: immediately, sessions and tokens end', async () => {
     await faktor(nutzer);
     await zugaenge(nutzer);
     const f = await ruf('DELETE', `/users/${nutzer}/zweiter-faktor`, { admin_password: PASS });
@@ -160,7 +160,7 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 180_000 }, asy
     assert.deepEqual([a.status, a.body.effective_at, (await konten(nutzer2)).is_active], [200, undefined, false]);
   });
 
-  await t.test('ein Verwalterkonto: angekündigt, wirksam erst nach der Frist, dann enden die Zugänge', async () => {
+  await t.test('an admin account: announced, effective only after the deadline, then the accesses end', async () => {
     await faktor(vw);
     await zugaenge(vw);
     const p = await ruf('PUT', `/users/${vw}/password`, { password: NEU, admin_password: PASS });
@@ -173,7 +173,7 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 180_000 }, asy
     assert.deepEqual(await offen(vw), []);
   });
 
-  await t.test('Deaktivieren, Rolle entziehen und Löschen eines Verwalters: angekündigt, dann wirksam', async () => {
+  await t.test('deactivating, revoking the role and deleting an admin: announced, then effective', async () => {
     mails.length = 0;
     inFrist(await ruf('PUT', `/users/${vw4}/aktiv`, { is_active: false, admin_password: PASS }));
     inFrist(await ruf('PUT', `/users/${vw5}/admin`, { is_admin: false, admin_password: PASS }));
@@ -199,14 +199,14 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 180_000 }, asy
     inFrist(await ruf('PUT', `/users/${vw5}/password`, { password: NEU, admin_password: PASS }));
   });
 
-  await t.test('erst die Rolle entziehen, dann übernehmen: beides angekündigt', async () => {
+  await t.test('first revoke the role, then take over: both announced', async () => {
     inFrist(await ruf('PUT', `/users/${vw2}/admin`, { is_admin: false, admin_password: PASS }));
     inFrist(await ruf('PUT', `/users/${vw2}/password`, { password: NEU, admin_password: PASS }));
     assert.deepEqual(await offen(vw2), ['passwort', 'rolle_entziehen']);
     assert.equal((await stand(vw2)).neuesPasswort, false);
   });
 
-  await t.test('eine Anmeldung des Ziels hebt die Ankündigung auf', async () => {
+  await t.test('a login of the target cancels the announcement', async () => {
     const eigene = await withFactor(vw3);
     inFrist(await ruf('DELETE', `/users/${vw3}/zweiter-faktor`, { admin_password: PASS }));
     // Ein eigener Server: Die Anmeldung schriebe sonst in die Sitzung des Verwalters.
@@ -222,7 +222,7 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 180_000 }, asy
     assert.equal((await stand(vw3)).faktor, 1, 'der Faktor fiel trotz Anmeldung');
   });
 
-  await t.test('der Link aus der Mail bricht ohne Anmeldung ab, einmal', async () => {
+  await t.test('the link from the mail cancels without login, once', async () => {
     mails.length = 0;
     inFrist(await ruf('PUT', `/users/${vw7}/aktiv`, { is_active: false, admin_password: PASS }));
     inFrist(await ruf('PUT', `/users/${vw7}/password`, { password: NEU, admin_password: PASS }));
@@ -243,7 +243,7 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 180_000 }, asy
     assert.deepEqual(await konten(vw7), { is_admin: true, is_active: true });
   });
 
-  await t.test('eine fällige Übernahme fällt weg, wenn das Ziel deaktiviert wurde', async () => {
+  await t.test('a due takeover is dropped if the target was deactivated', async () => {
     // a) Deaktivieren und Passwort werden zugleich fällig
     inFrist(await ruf('PUT', `/users/${vw8}/aktiv`, { is_active: false, admin_password: PASS }));
     inFrist(await ruf('PUT', `/users/${vw8}/password`, { password: NEU, admin_password: PASS }));
@@ -258,7 +258,7 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 180_000 }, asy
     assert.equal((await stand(vw9)).neuesPasswort, false);
   });
 
-  await t.test('eine QR-Abholung des Ziels hebt die Ankündigung auf', async () => {
+  await t.test('a QR pickup of the target cancels the announcement', async () => {
     const eigene = await withFactor(vw);
     await db.run('UPDATE users SET password_hash = $2, must_change_password = false WHERE id = $1', [vw, hash]);
     inFrist(await ruf('PUT', `/users/${vw}/password`, { password: NEU, admin_password: PASS }));
@@ -285,14 +285,14 @@ test('Verwalter übernimmt ein Konto', { concurrency: 1, timeout: 180_000 }, asy
     assert.deepEqual(await offen(vw), []);
   });
 
-  await t.test('die Kontenliste zeigt angekündigte Änderungen mit Zeitpunkt', async () => {
+  await t.test('the account list shows announced changes with their time', async () => {
     const r = await fetch(`${base}/api/v1/auth/users`).then(x => x.json());
     const z = r.users.find(u => u.id === vw2);
     assert.deepEqual(z.angekuendigt.map(a => a.type).sort(), ['passwort', 'rolle_entziehen']);
     assert.ok(z.angekuendigt.every(a => Date.parse(a.effective_at) > Date.now()));
   });
 
-  await t.test('… wer die Rolle verlor, setzt nichts mehr durch', async () => {
+  await t.test('… whoever lost the role no longer enforces anything', async () => {
     await db.run('UPDATE users SET is_admin = false WHERE id = $1', [chef]);
     try {
       assert.equal((await offen(vw2)).length, 2);

@@ -15,7 +15,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 
-test('Schlüssel-Band am Telefon', { concurrency: 1, timeout: 300_000 }, async t => {
+test('key banner on the phone', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, { name: `rbband_${process.pid}`, telefon: true });
   if (app.grund) {
     t.skip(app.grund);
@@ -25,7 +25,7 @@ test('Schlüssel-Band am Telefon', { concurrency: 1, timeout: 300_000 }, async t
   await ruhig();
   await bis(`document.getElementById('rb-hinweis') && !document.getElementById('rb-hinweis').hidden`, 'Band');
 
-  await t.test('Band ist schlank', async () => {
+  await t.test('banner is slim', async () => {
     for (const breite of [390, 320]) {
       await b.tab('Emulation.setDeviceMetricsOverride', {
         width: breite,
@@ -41,7 +41,7 @@ test('Schlüssel-Band am Telefon', { concurrency: 1, timeout: 300_000 }, async t
     }
   });
 
-  await t.test('Knopf behält seinen Namen', async () => {
+  await t.test('button keeps its name', async () => {
     const m =
       await b.auswerten(`(() => { const k = document.querySelector('#rb-hinweis [data-click="rbHinweisOeffnen"]');
       return { name: k.getAttribute('aria-label'), sichtbar: [...k.querySelectorAll('span')].filter(s => s.checkVisibility()).map(s => s.textContent.trim()) }; })()`);

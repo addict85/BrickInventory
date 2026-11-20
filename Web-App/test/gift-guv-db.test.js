@@ -37,7 +37,7 @@ const SET = `8${process.pid}1-1`,
   FARBE = 11,
   FIGUR = `gf${process.pid}`;
 
-test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }, async t => {
+test('purchase price 0 is a gift: amount yes, percent no', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
@@ -91,18 +91,18 @@ test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }
     assert.equal(z.pnl_abs, '240.00');
   });
 
-  await t.test('der Gesamtwert kommt fertig: Sets, Teile und Figuren', () => {
+  await t.test('the total value comes ready-made: sets, parts and figures', () => {
     // 2 × 120 (Set) + 10 × 0,40 (Teil) + 1 × 6 (Figur); die Clients addieren nicht selbst.
     assert.equal(pnl.totals.grand_total, '250.00');
   });
 
-  await t.test('Kachel', () => {
+  await t.test('tile', () => {
     const z = pnl.sets.find(s => s.set_number === SET);
     assert.equal(z.kachel_preis, 120);
     assert.equal(z.kachel_pnl_pct, null);
   });
 
-  await t.test('Preisverlauf', async () => {
+  await t.test('price history', async () => {
     const { priceHistorySet } = _req('src/finances/priceHistory.js');
     const v = await priceHistorySet([uid], SET, 'CHF');
     assert.equal(v.purchase_price, 0);
@@ -113,7 +113,7 @@ test('Kaufpreis 0 ist ein Geschenk: Betrag ja, Prozent nein', { concurrency: 1 }
     assert.equal(v.by_condition.N.market_price, 120);
   });
 
-  await t.test('Teil und Figur', async () => {
+  await t.test('part and figure', async () => {
     const { priceHistoryPart, priceHistoryMinifig } = _req('src/finances/priceHistory.js');
     const teil = await priceHistoryPart([uid], TEIL, FARBE, 'CHF');
     assert.deepEqual(teil.by_condition.N, { market_price: 0.4, purchase_price: 0, pnl_pct: null, pnl_prozent: null });

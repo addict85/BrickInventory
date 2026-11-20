@@ -51,26 +51,26 @@ function setup(w) {
 const taste = (w, el, key) =>
   el.dispatchEvent(new w.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
 
-test('Karten und Zeilen per Tastatur', async t => {
+test('cards and rows via keyboard', async t => {
   const w = await fenster();
   t.after(() => w.close());
   const d = w.document,
     k = setup(w);
 
-  await t.test('Eingabe auf einer Karte', () => {
+  await t.test('Enter on a card', () => {
     taste(w, d.getElementById('karte'), 'Enter');
     assert.equal(k.karte, 1);
   });
-  await t.test('Leertaste auf role="button"', () => {
+  await t.test('space bar on role="button"', () => {
     taste(w, d.getElementById('karte'), ' ');
     assert.equal(k.karte, 2);
   });
-  await t.test('Tabellenzeile: Eingabe ja, Leertaste nein', () => {
+  await t.test('table row: Enter yes, space bar no', () => {
     taste(w, d.getElementById('zeile'), 'Enter');
     taste(w, d.getElementById('zeile'), ' ');
     assert.equal(k.zeile, 1);
   });
-  await t.test('ein Knopf in der Karte löst die Karte nicht aus', () => {
+  await t.test('a button in the card does not trigger the card', () => {
     taste(w, d.getElementById('innen'), 'Enter');
     assert.equal(k.karte, 2);
   });

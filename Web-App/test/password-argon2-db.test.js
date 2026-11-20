@@ -28,7 +28,7 @@ const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const { ARGON2_PREFIX, hashePassword, passwordFits } = _req('src/account/passwordHash.js');
 
-test('argon2id und das Ersetzen alter bcrypt-Hashes', { concurrency: 1, timeout: 60_000 }, async t => {
+test('argon2id and replacing old bcrypt hashes', { concurrency: 1, timeout: 60_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `argon_${process.pid}`,
     PASS = 'Argon-Pruefung-2026-ä';
@@ -54,7 +54,7 @@ test('argon2id und das Ersetzen alter bcrypt-Hashes', { concurrency: 1, timeout:
     ).status;
   const gespeichert = async () => (await db.get('SELECT password_hash FROM users WHERE id = $1', [uid])).password_hash;
 
-  await t.test('neue Hashes sind argon2id mit den festen Kosten', async () => {
+  await t.test('new hashes are argon2id with the fixed costs', async () => {
     const h = await hashePassword(PASS);
     assert.ok(h.startsWith(ARGON2_PREFIX), h.slice(0, 40));
     assert.equal(await passwordFits(PASS, h), true);
@@ -64,12 +64,12 @@ test('argon2id und das Ersetzen alter bcrypt-Hashes', { concurrency: 1, timeout:
     assert.equal(await passwordFits(`${lang}b`, await hashePassword(`${lang}a`)), false);
   });
 
-  await t.test('… ein Fehlversuch ersetzt nichts', async () => {
+  await t.test('… a failed attempt replaces nothing', async () => {
     assert.equal(await anmelden('falsches-Passwort-1'), 401);
     assert.match(await gespeichert(), /^\$2[aby]\$04\$/);
   });
 
-  await t.test('ein bcrypt-Hash wird bei der Anmeldung ersetzt, danach mit argon2id', async () => {
+  await t.test('a bcrypt hash is replaced at login, afterwards with argon2id', async () => {
     assert.equal(await anmelden(PASS), 200);
     const neu = await gespeichert();
     assert.ok(neu.startsWith(ARGON2_PREFIX), neu.slice(0, 40));

@@ -18,7 +18,7 @@ const PNL = {
   '/v1/finance/pnl': { success: true, currency: 'EUR', sets: [], totals: { grand_total: '500', pnl_pct: '22.7' } },
 };
 
-test('ein Messpunkt: Leerzustand statt Linie', async () => {
+test('one data point: empty state instead of a line', async () => {
   const { w, d } = await openUi({
     ...PNL,
     '/v1/finance/portfolio-history': {
@@ -41,7 +41,7 @@ test('ein Messpunkt: Leerzustand statt Linie', async () => {
   }
 });
 
-test('Vorwahl Max, Veränderung mit Zeitraum', async () => {
+test('preselection max, change with period', async () => {
   const { w, d, aufrufe } = await openUi({
     ...PNL,
     '/v1/finance/portfolio-history': {
@@ -66,7 +66,7 @@ test('Vorwahl Max, Veränderung mit Zeitraum', async () => {
   }
 });
 
-test('en: Leerzustand übersetzt', async () => {
+test('en: empty state translated', async () => {
   const { w, d } = await openUi(
     {
       ...PNL,

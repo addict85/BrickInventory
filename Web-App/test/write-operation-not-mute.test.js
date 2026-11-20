@@ -21,7 +21,7 @@ const NUTZERDATEN = [
   'account_links',
 ];
 
-test('kein stiller catch auf einem Schreibvorgang mit Nutzerdaten', () => {
+test('no silent catch on a write operation with user data', () => {
   /** @type {string[]} */
   const dateien = [];
   const collect = d => {

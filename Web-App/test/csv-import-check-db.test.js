@@ -49,7 +49,7 @@ const { bis } = require('./helpers/time');
 
 const DATEI = 'Set Number,Quantity\n10200-1,1\n10305-1,2\nabc,1\n10312-1,x\n99999-1,1\n,3\n10319-1,-2\n10326-1,1\n';
 
-test('CSV-Import: Prüfung, Zeilen und Summen', { concurrency: 1 }, async t => {
+test('CSV import: check, rows and sums', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `csvpruef-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
@@ -75,7 +75,7 @@ test('CSV-Import: Prüfung, Zeilen und Summen', { concurrency: 1 }, async t => {
     return r.json();
   };
 
-  await t.test('die Prüfung nennt vorhandene Sets und startet nichts', async () => {
+  await t.test('the check names existing sets and starts nothing', async () => {
     const p = await sende(true);
     assert.equal(p.gestartet, false);
     assert.equal(p.total, 8, 'acht Datenzeilen gelesen');
@@ -91,7 +91,7 @@ test('CSV-Import: Prüfung, Zeilen und Summen', { concurrency: 1 }, async t => {
     return s.status !== 'running';
   });
 
-  await t.test('jede Zeile mit ihrem Ergebnis', () => {
+  await t.test('every row with its result', () => {
     assert.equal(s.status, 'done');
     const kurz = s.results.map(
       r => `${r.zeile}:${r.set_number}:${r.success ? (r.katalog_offen ? 'warn' : 'ok') : r.code || 'fehler'}`,
@@ -111,7 +111,7 @@ test('CSV-Import: Prüfung, Zeilen und Summen', { concurrency: 1 }, async t => {
     assert.deepEqual(booked, ['10200-1×1', '10305-1×2', '99999-1×1', '10326-1×1'], 'nur gültige Zeilen gebucht');
   });
 
-  await t.test('Summen', () => {
+  await t.test('sums', () => {
     assert.deepEqual({ total: s.total, ok: s.ok, warn: s.warn, err: s.err }, { total: 8, ok: 3, warn: 1, err: 4 });
     assert.ok(Date.now() - Date.parse(s.beendet_am) < 60_000, `beendet_am: ${s.beendet_am}`);
   });

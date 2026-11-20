@@ -29,7 +29,7 @@ const { keineDb } = require('./helpers/db');
 const { emptyQueue } = require('./helpers/image-queue');
 const db = testData();
 
-test('eine hoffnungslose Vorschau wird nur EINMAL versucht', { concurrency: 1 }, async t => {
+test('a hopeless preview is only attempted ONCE', { concurrency: 1 }, async t => {
   // Marcos Log
   try {
     await db.initSchemaOnce();
@@ -76,7 +76,7 @@ test('eine hoffnungslose Vorschau wird nur EINMAL versucht', { concurrency: 1 },
   }
 });
 
-test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, async t => {
+test('throttling and a missing image are distinguished', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -106,7 +106,7 @@ test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, a
   await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%']);
 
   try {
-    await t.test('403 sperrt kein Bild aus und verliert keine Notiz', async () => {
+    await t.test('403 locks out no image and loses no note', async () => {
       antwort = 403;
       versuche = 0;
       await fuellen();
@@ -142,7 +142,7 @@ test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, a
       );
     });
 
-    await t.test('die Pause hält den nächsten Lauf zurück', async () => {
+    await t.test('the pause holds back the next run', async () => {
       const vorher = versuche;
       const n = (await _req('src/images/imageDemandRun.js')._workStack()).gesamt;
       assert.equal(n, 0);
@@ -153,7 +153,7 @@ test('Drosselung und fehlendes Bild werden unterschieden', { concurrency: 1 }, a
       );
     });
 
-    await t.test('404 wird dagegen gemerkt', async () => {
+    await t.test('404 on the other hand is remembered', async () => {
       // Die Pause aus dem vorigen Teilschritt steht in der Datenbank und gilt sonst weiter.
       await db.run(`DELETE FROM job_pauses WHERE type = 'bildbedarf'`);
       const IQ = _req('src/images/imageDemandRun.js');

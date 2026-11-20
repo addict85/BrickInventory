@@ -21,7 +21,7 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
-test('Altbestand einmal je Datenbank', { concurrency: 1 }, async t => {
+test('legacy data once per database', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
@@ -29,17 +29,17 @@ test('Altbestand einmal je Datenbank', { concurrency: 1 }, async t => {
   const { liesZustand, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
   await deleteState(LEGACY_STOCK_BRAND);
 
-  await t.test('der erste Start rüstet auf und setzt die Marke', async () => {
+  await t.test('the first start upgrades and sets the marker', async () => {
     const r = await legacyStockUpgrade(require('./helpers/sources').testServices());
     assert.ok(r && typeof r.umgeschluesselt === 'number', JSON.stringify(r));
     assert.ok(await liesZustand(LEGACY_STOCK_BRAND));
   });
 
-  await t.test('der zweite Start lässt den Altbestand in Ruhe', async () => {
+  await t.test('the second start leaves the legacy data alone', async () => {
     assert.equal(await legacyStockUpgrade(require('./helpers/sources').testServices()), null);
   });
 
-  await t.test('ohne Marke (ältere Sicherung zurückgespielt) läuft es wieder', async () => {
+  await t.test('without the marker (older backup restored) it runs again', async () => {
     await deleteState(LEGACY_STOCK_BRAND);
     assert.notEqual(await legacyStockUpgrade(require('./helpers/sources').testServices()), null);
   });

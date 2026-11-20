@@ -50,7 +50,7 @@ async function hochladen(base, xml, korrekturen) {
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }
 
-test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
+test('BrickLink mapping per account', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -102,7 +102,7 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
 
   const anna = testServer(_req, { sitzung: { userId: ANNA }, t });
 
-  await t.test('der Import schreibt nur Annas Zuordnung', async () => {
+  await t.test("the import only writes Anna's mapping", async () => {
     const { status, body } = await hochladen(anna.base, liste(item('M', 'sw0001a', null), item('P', '3001', 5)), [
       { index: 0, blId: 'sw0001a', art: 'fig', rbId: 'fig-000001' },
       { index: 1, blId: '3001', art: 'part', rbId: '3003', rbFarbe: 4 },
@@ -120,7 +120,7 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
   const { resolveBlPartNumber, fetchPartPrice } = _req('src/finances/calculation/prices.js');
   const { blNumberOf } = _req('src/catalog/blMapping.js');
 
-  await t.test('Preisabruf: Anna fragt BrickLink nach 3001, Bruno nach 3003', async () => {
+  await t.test('price fetch: Anna asks BrickLink for 3001, Bruno for 3003', async () => {
     assert.equal(await asAccount(ANNA, () => resolveBlPartNumber('3003', ANNA)), '3001');
     assert.equal(await asAccount(BRUNO, () => resolveBlPartNumber('3003', BRUNO)), '3003');
     assert.equal(await resolveBlPartNumber('3003'), '3003', 'ohne Konto gilt die gemeinsame Zuordnung');
@@ -132,12 +132,12 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
     assert.equal(Number((await preis(BRUNO))?.avg_price), 2);
   });
 
-  await t.test('Figurenpreis: jedes Konto nach seiner Nummer', async () => {
+  await t.test('figure price: every account by its number', async () => {
     assert.equal(await asAccount(ANNA, () => blNumberOf('fig', 'fig-000001', ANNA)), 'sw0001a');
     assert.equal(await asAccount(BRUNO, () => blNumberOf('fig', 'fig-000001', BRUNO)), 'sw0001');
   });
 
-  await t.test('Bewertung: Nummern je Konto', async () => {
+  await t.test('valuation: numbers per account', async () => {
     const repo = require('./helpers/sources').testArea('finances').bewertung;
     // Jedes Konto bewertet seinen Bestand; zwei fremde Konten stehen nie in einer Bewertung.
     const je2 = async f => [...(await asAccount(ANNA, () => f([ANNA]))), ...(await asAccount(BRUNO, () => f([BRUNO])))];
@@ -148,7 +148,7 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
     assert.deepEqual(je(teile, 'bl_part_number'), { [ANNA]: '3001', [BRUNO]: '3003' });
   });
 
-  await t.test('der nächste Import: Annas Korrektur löst bei Anna auf, nicht bei Bruno', async () => {
+  await t.test("the next import: Anna's correction resolves for Anna, not for Bruno", async () => {
     const { resolveLocalOn } = _req('src/wanted/wantedResolution.js');
     const { readWantedList } = _req('src/wanted/wantedParser.js');
     const { posten } = readWantedList(liste(item('P', '3001', 5)));
@@ -158,14 +158,14 @@ test('BrickLink-Zuordnung je Konto', { concurrency: 1 }, async t => {
     assert.equal(bruno.sicherheit, 'katalogtreffer');
   });
 
-  await t.test('die BrickLink-Nr. einer eigenen Figur bleibt beim Konto', async () => {
+  await t.test('the BrickLink no. of an own figure stays with the account', async () => {
     await asAccount(BRUNO, () => updateManualMinifig(BRUNO, 'fig-000001', { bl_fig_number: 'sw9999' }));
     assert.deepEqual(await gemeinsam(), vorher);
     assert.equal(await asAccount(BRUNO, () => blNumberOf('fig', 'fig-000001', BRUNO)), 'sw9999');
     assert.equal(await asAccount(ANNA, () => blNumberOf('fig', 'fig-000001', ANNA)), 'sw0001a');
   });
 
-  await t.test('die gemeinsame Zuordnung wird nur gefüllt, nie ersetzt', async () => {
+  await t.test('the shared mapping is only filled, never replaced', async () => {
     const { rememberBlNumber, rememberBlNumbers } = _req('src/catalog/blMapping.js');
     await rememberBlNumber('fig', 'fig-000001', 'falsch');
     await rememberBlNumbers('fig', [{ rbId: 'fig-000001', blId: 'auch-falsch' }]);

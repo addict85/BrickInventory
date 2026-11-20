@@ -47,7 +47,7 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
+test('the shared catalog', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -92,7 +92,7 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
       [uid, nr],
     );
 
-  await t.test('die Eingabe steht in den eigenen Angaben, nicht im gemeinsamen Katalog', async () => {
+  await t.test('the input is in the own details, not in the shared catalog', async () => {
     fetches = [];
     await addManualPart(A, {
       part_number: '3001',
@@ -109,7 +109,7 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
     assert.deepEqual({ ...(await gemeinsam('3001')) }, { part_name: null, image_url: null });
   });
 
-  await t.test('ein anderes Konto fragt trotzdem Rebrickable', async () => {
+  await t.test('another account still asks Rebrickable', async () => {
     fetches = [];
     await addManualPart(B, { part_number: '3001', color_id: 4, quantity: 1 });
     assert.deepEqual(fetches, ['lookupPart 3001'], 'Annas Eingabe zählt für Bruno nicht als bekannt');
@@ -120,14 +120,14 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
     assert.equal((await catalogPart('3001', 4, B)).name, 'Brick 2 x 4');
   });
 
-  await t.test('der geprüfte Wert hat Vorrang, die eigene Angabe bleibt erhalten', async () => {
+  await t.test('the verified value takes precedence, the own detail is kept', async () => {
     await addManualPart(A, { part_number: '3001', color_id: 4, quantity: 1, part_name: 'Neuer Name' });
     assert.equal((await catalogPart('3001', 4, A)).name, 'Brick 2 x 4');
     assert.equal((await gemeinsam('3001')).part_name, 'Brick 2 x 4');
     assert.equal((await eigen(A, '3001')).part_name, 'Annas Name');
   });
 
-  await t.test('ein fremder Bild-Host kommt nicht in die eigenen Angaben', async () => {
+  await t.test('a foreign image host does not get into the own details', async () => {
     await addManualPart(A, {
       part_number: '3002',
       color_id: 4,
@@ -140,7 +140,7 @@ test('der gemeinsame Katalog', { concurrency: 1 }, async t => {
     assert.equal(z.image_url ?? null, null);
   });
 
-  await t.test('Figuren: die Eingabe bleibt beim Konto, die geprüfte Quelle füllt den Katalog', async () => {
+  await t.test('figures: the input stays with the account, the verified source fills the catalog', async () => {
     await addManualMinifig(A, { fig_number: 'sw0011', quantity: 1, fig_name: 'Annas Figur' });
     fetches = [];
     await addManualMinifig(B, { fig_number: 'sw0011', quantity: 1 });

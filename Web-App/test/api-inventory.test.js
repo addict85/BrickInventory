@@ -384,7 +384,7 @@ const C = {
 
 const VALID = new Set(['paritaet', 'paritaet-schreib', 'paar-extern', 'nur-v1', 'nur-web']);
 
-test('jeder API-Endpunkt ist klassifiziert', () => {
+test('every API endpoint is classified', () => {
   const eps = inventory();
   const missing = [...eps].filter(e => !(e in C)).sort();
   assert.deepEqual(
@@ -395,7 +395,7 @@ test('jeder API-Endpunkt ist klassifiziert', () => {
   );
 });
 
-test('keine verwaisten Klassifikations-Einträge', () => {
+test('no orphaned classification entries', () => {
   const eps = inventory();
   const stale = Object.keys(C)
     .filter(e => !eps.has(e))
@@ -419,7 +419,7 @@ function comparable(p) {
   return ('/' + p.trim().replace(/^\/+|\/+$/g, '')).replace(/\{[^}]+\}/g, ':X').replace(/:[A-Za-z_]\w*/g, ':X');
 }
 
-test('kein „nur-web" wird in Wahrheit von der Android-App gerufen', () => {
+test('no "nur-web" is in truth called by the Android app', () => {
   const app = androidAddresses();
   // Selbstbeweis: Greift das Muster nicht mehr, waere die Menge leer und der
   // Test gruen, ohne etwas geprueft zu haben. GEMESSEN sind es ueber 90.
@@ -444,7 +444,7 @@ test('kein „nur-web" wird in Wahrheit von der Android-App gerufen', () => {
   );
 });
 
-test('nur gültige Kategorien', () => {
+test('only valid categories', () => {
   const bad = Object.entries(C).filter(([, v]) => !VALID.has(v));
   assert.deepEqual(bad, []);
 });

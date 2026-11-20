@@ -18,7 +18,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
-test('rebuild weicht einer gehaltenen Kontosperre aus', async t => {
+test('rebuild gives way to a held account lock', async t => {
   const db = testData();
   try {
     await db.initSchemaOnce();

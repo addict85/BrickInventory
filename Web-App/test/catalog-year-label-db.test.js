@@ -12,7 +12,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 
-test('das Jahres-Etikett trifft die Stelle', { concurrency: 1 }, async t => {
+test('the year label hits the spot', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const NUTZER = `jv-${process.pid}`;
@@ -64,7 +64,7 @@ test('das Jahres-Etikett trifft die Stelle', { concurrency: 1 }, async t => {
 
   try {
     for (const sort of ['year_desc', 'year_asc']) {
-      await t.test(`Sortierung ${sort}`, async () => {
+      await t.test(`sorting ${sort}`, async () => {
         const v = (await hol(`/api/v1/catalog/year-verteilung?sort=${sort}${NUR}`)).years.filter(x => x.year);
         const gesamt = v.reduce((s, e) => s + e.n, 0);
         assert.ok(gesamt > 1000, `zu wenige Sets: ${gesamt}`);
@@ -79,7 +79,7 @@ test('das Jahres-Etikett trifft die Stelle', { concurrency: 1 }, async t => {
       });
     }
 
-    await t.test('mit Themenfilter stimmt es auch', async () => {
+    await t.test('with a theme filter it is right too', async () => {
       // Die Verteilung MUSS die Filter kennen. Eine über den ganzen Katalog
       // läge bei gesetztem Thema genauso daneben wie die lineare Schätzung —
       // Thema 2 enthält nur die 2010er.
@@ -98,7 +98,7 @@ test('das Jahres-Etikett trifft die Stelle', { concurrency: 1 }, async t => {
       }
     });
 
-    await t.test('die lineare Schätzung wäre falsch gewesen', async () => {
+    await t.test('the linear estimate would have been wrong', async () => {
       // Gegenprobe im Test selbst: Ohne sie könnte jemand die Verteilung wieder
       // durch eine Gerade ersetzen und der Test bliebe grün, falls die Bühne
       // zufällig gleichverteilt wäre.

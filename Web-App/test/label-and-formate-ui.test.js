@@ -42,7 +42,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { openUi, warte, takt, reiter } = require('./helpers/ui');
 
-test('Kennzahlen mit Trennzeichen, auch englisch ganz', async () => {
+test('metrics with separators, complete in English too', async () => {
   const stats = {
     '/v1/stats': {
       success: true,
@@ -72,7 +72,7 @@ test('Kennzahlen mit Trennzeichen, auch englisch ganz', async () => {
   );
 });
 
-test('Titel ohne weiche Trennstriche', async () => {
+test('title without soft hyphens', async () => {
   const o = await openUi(
     {
       '/v1/admin/job-status': { success: true, job: { running: false } },
@@ -97,7 +97,7 @@ test('Titel ohne weiche Trennstriche', async () => {
   }
 });
 
-test('admin ohne (Administrator)', async () => {
+test('admin without (Administrator)', async () => {
   for (const [username, sprache] of [
     ['admin', 'en'],
     ['admin', 'de'],
@@ -116,7 +116,7 @@ test('admin ohne (Administrator)', async () => {
   }
 });
 
-test('Protokoll mit fmtDatum', async () => {
+test('log with fmtDatum', async () => {
   const o = await openUi(
     {
       '/v1/admin/protokoll': {
@@ -142,7 +142,7 @@ test('Protokoll mit fmtDatum', async () => {
   }
 });
 
-test('leere Zugangsdaten melden „Zugang entfernt“', async () => {
+test('empty credentials report "access removed"', async () => {
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     o.d.getElementById('rb-key').value = '';
@@ -156,7 +156,7 @@ test('leere Zugangsdaten melden „Zugang entfernt“', async () => {
   }
 });
 
-test('Wiederherstellungscodes: gesichert und als Datei', async () => {
+test('recovery codes: saved and as a file', async () => {
   const o = await openUi(
     { '/v1/auth/zweiter-faktor/bestaetigen': { success: true, codes: ['aaaa-bbbb', 'cccc-dddd'] } },
     { browserLanguage: 'de-DE' },
@@ -186,7 +186,7 @@ test('Wiederherstellungscodes: gesichert und als Datei', async () => {
   }
 });
 
-test('Minifiguren: Gekauft am und Gesamtzahl zuerst', async () => {
+test('minifigures: bought on and total first', async () => {
   const o = await openUi(
     {
       '/v1/minifigs': {
@@ -215,7 +215,7 @@ test('Minifiguren: Gekauft am und Gesamtzahl zuerst', async () => {
   }
 });
 
-test('ein Knopf „Set öffnen“ bei vorhandenem Set', async () => {
+test('a button "open set" for an existing set', async () => {
   const o = await openUi(
     { '/v1/sets/10305-1': { success: true, set: { set_number: '10305-1', name: 'Burg', quantity: 2 } } },
     { browserLanguage: 'de-DE' },
@@ -233,7 +233,7 @@ test('ein Knopf „Set öffnen“ bei vorhandenem Set', async () => {
   }
 });
 
-test('Merken nennt die Sammlung', async () => {
+test('remember names the collection', async () => {
   const o = await openUi(
     {
       '/v1/wanted': (_u, opt) =>
@@ -257,7 +257,7 @@ test('Merken nennt die Sammlung', async () => {
   }
 });
 
-test('Haushalt im Untertitel', async () => {
+test('household in the subtitle', async () => {
   const o = await openUi(
     {
       '/v1/sets/household-members': {
@@ -288,7 +288,7 @@ test('Haushalt im Untertitel', async () => {
   }
 });
 
-test('Version in der Anmeldemaske', () => {
+test('version in the login mask', () => {
   const { insertVersion } = require('./helpers/sources').buildAndRequire()('src/profile/indexHtml.js');
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   assert.doesNotMatch(html, /Build 20\d\d\./, 'festes Datum in index.html');

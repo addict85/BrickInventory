@@ -64,7 +64,7 @@ async function tabGang(app, ansicht) {
   return { funde: [...new Set(funde)], gesehen };
 }
 
-test('Fokus unter festen Leisten', { concurrency: 1, timeout: 400_000 }, async t => {
+test('focus below fixed bars', { concurrency: 1, timeout: 400_000 }, async t => {
   const app = await startApp(t, { name: `fokl_${process.pid}`, bestand: patternHousehold });
   if (app.grund) {
     t.skip(app.grund);

@@ -14,7 +14,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { totalGuvPercent } = _req('src/finances/calculation/profitLoss.js');
 
-test('Gesamt-G&V nur über Posten mit Kauf- UND Marktpreis', () => {
+test('total gain/loss only over items with purchase AND market price', () => {
   assert.equal(
     totalGuvPercent([{ purchase_price: 100, current_price: 0, quantity: 1 }]),
     null,

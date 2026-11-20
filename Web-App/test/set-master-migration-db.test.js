@@ -30,7 +30,7 @@ const db = testData();
 const MIGRATION = fs.readFileSync(path.join(__dirname, '..', 'db/migrations/0105-set-stamm-aus-rb-sets.sql'), 'utf8');
 const SCHEMA = `probe0105_${process.pid}`;
 
-test('Migration 0105: Set-Stamm aus rb_sets', { concurrency: 1 }, async t => {
+test('migration 0105: set master from rb_sets', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const c = await db.pool.connect();
   t.after(async () => {
@@ -60,26 +60,23 @@ test('Migration 0105: Set-Stamm aus rb_sets', { concurrency: 1 }, async t => {
     ('5008-1', 'Promo', 2022, 'Star Wars', 50, 1, NULL, '/images/sets/5008-1.jpg', NULL),
     ('9999-1', NULL, NULL, 'Unbekannt', NULL, NULL, NULL, NULL, NULL)`);
 
-  await t.test('die Migration läuft', async () => {
+  await t.test('the migration runs', async () => {
     await c.query(MIGRATION);
   });
 
-  await t.test(
-    'rb_sets führt; ein Set nur aus set_catalog wird eine api-Zeile, das Thema über seinen Namen',
-    async () => {
-      assert.deepEqual(
-        (await c.query('SELECT set_num, name, year, theme_id, num_parts, herkunft FROM rb_sets ORDER BY 1')).rows,
-        [
-          { set_num: '10497-1', name: 'Galaxy Explorer', year: 2022, theme_id: 3, num_parts: 1254, herkunft: 'csv' },
-          { set_num: '5008-1', name: 'Promo', year: 2022, theme_id: 1, num_parts: 50, herkunft: 'api' },
-          { set_num: '75192-1', name: 'Millennium Falcon', year: 2017, theme_id: 1, num_parts: 7541, herkunft: 'csv' },
-          { set_num: '9999-1', name: 'Set 9999-1', year: null, theme_id: null, num_parts: null, herkunft: 'api' },
-        ],
-      );
-    },
-  );
+  await t.test('rb_sets leads; a set only from set_catalog becomes an api row, the theme via its name', async () => {
+    assert.deepEqual(
+      (await c.query('SELECT set_num, name, year, theme_id, num_parts, herkunft FROM rb_sets ORDER BY 1')).rows,
+      [
+        { set_num: '10497-1', name: 'Galaxy Explorer', year: 2022, theme_id: 3, num_parts: 1254, herkunft: 'csv' },
+        { set_num: '5008-1', name: 'Promo', year: 2022, theme_id: 1, num_parts: 50, herkunft: 'api' },
+        { set_num: '75192-1', name: 'Millennium Falcon', year: 2017, theme_id: 1, num_parts: 7541, herkunft: 'csv' },
+        { set_num: '9999-1', name: 'Set 9999-1', year: null, theme_id: null, num_parts: null, herkunft: 'api' },
+      ],
+    );
+  });
 
-  await t.test('jede rb_sets-Zeile hat ihre set_catalog-Zeile, die Ergänzungen bleiben', async () => {
+  await t.test('every rb_sets row has its set_catalog row, the additions stay', async () => {
     assert.deepEqual(
       (await c.query('SELECT * FROM set_catalog ORDER BY set_number')).rows.map(({ updated_at: _u, ...z }) => z),
       [
@@ -103,7 +100,7 @@ test('Migration 0105: Set-Stamm aus rb_sets', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('set_catalog hängt an rb_sets, set_stamm ist fort', async () => {
+  await t.test('set_catalog hangs on rb_sets, set_stamm is gone', async () => {
     await assert.rejects(c.query(`INSERT INTO set_catalog (set_number) VALUES ('1234-1')`), { code: '23503' });
     await c.query(`DELETE FROM rb_sets WHERE set_num = '9999-1'`);
     assert.equal(

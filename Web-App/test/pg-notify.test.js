@@ -26,7 +26,7 @@ const { keineDb } = require('./helpers/db');
 const { bis } = require('./helpers/time');
 const ROOT = path.join(__dirname, '..');
 const NOTIFY = fs.readFileSync(path.join(ROOT, 'db/pgNotify.ts'), 'utf8');
-test('kein Planer fragt mehr nach Auslösern', () => {
+test('no scheduler asks for triggers any more', () => {
   // Anstösse und Zeitpläne sind Aufträge (src/jobQueue/schedule.ts); die alten
   // Auslöser-Einträge mit eigenem Kanal sind weg.
   const { allSources } = require('./helpers/sources');
@@ -36,7 +36,7 @@ test('kein Planer fragt mehr nach Auslösern', () => {
   assert.deepEqual(treffer, []);
 });
 
-test('verpasste Signale werden beim Verbinden nachgeholt', { concurrency: 1 }, async t => {
+test('missed signals are caught up when connecting', { concurrency: 1 }, async t => {
   const db = testData();
   try {
     await db.get('SELECT 1');
@@ -80,7 +80,7 @@ test('verpasste Signale werden beim Verbinden nachgeholt', { concurrency: 1 }, a
   assert.deepEqual(bekommen, [null, 'hallo', null], 'nach dem Wiederverbinden holt der Handler nach');
 });
 
-test('beim Senden wird der Kanal gebunden, nicht eingesetzt', () => {
+test('when sending, the channel is bound, not inserted', () => {
   assert.match(
     NOTIFY,
     /pg_notify\(\$1, \$2\)/,
@@ -88,7 +88,7 @@ test('beim Senden wird der Kanal gebunden, nicht eingesetzt', () => {
   );
 });
 
-test('eigene Verbindung, mit gedeckeltem Reconnect', () => {
+test('own connection, with capped reconnect', () => {
   assert.match(NOTIFY, /new Client\(/, 'Ein dauerhaft lauschender Client wäre im Pool blockiert');
   assert.match(
     NOTIFY,

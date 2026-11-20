@@ -31,7 +31,7 @@ const bcrypt = require('bcryptjs');
 const NAME = `stromzugang_${process.pid}`,
   PASS = 'Strom-Zugang-Probe-1';
 
-test('Ströme enden mit ihrem Zugang', { concurrency: 1 }, async t => {
+test('streams end with their access', { concurrency: 1 }, async t => {
   const db = await accessOrSkip(t, _req);
   if (!db) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -103,7 +103,7 @@ test('Ströme enden mit ihrem Zugang', { concurrency: 1 }, async t => {
     assert.match(s.text, /event: zugang_beendet/, wie);
   };
 
-  await t.test('Token abgemeldet: der Strom endet', async () => {
+  await t.test('token logged out: the stream ends', async () => {
     const kopf = await token();
     const s = await oeffne(kopf);
     const andere = await oeffne(await token());
@@ -112,20 +112,20 @@ test('Ströme enden mit ihrem Zugang', { concurrency: 1 }, async t => {
     assert.equal(await bis(() => andere.zu, 300), false, 'der Strom eines anderen, gültigen Tokens bleibt offen');
   });
 
-  await t.test('Sitzung abgemeldet: der Strom endet', async () => {
+  await t.test('session logged out: the stream ends', async () => {
     const kopf = await sitzung();
     const s = await oeffne(kopf);
     assert.equal((await post('/api/v1/auth/logout', kopf)).status, 200);
     await endet(s, 'Sitzung abgemeldet');
   });
 
-  await t.test('alle Sitzungen beendet (neue Sitzungsversion): der Strom endet', async () => {
+  await t.test('all sessions ended (new session version): the stream ends', async () => {
     const s = await oeffne(await sitzung());
     await _req('src/account/accessEnd.js').endAllSessions(uid);
     await endet(s, 'alle Sitzungen beendet');
   });
 
-  await t.test('ohne Ereignis endet der Strom im Takt', async () => {
+  await t.test('without an event the stream ends on the tick', async () => {
     const kopf = await token();
     const watchViaAccess = (...a) =>
       _req('src/account/http/accessWatch.js').watchViaAccess(require('./helpers/sources').testServices().account, ...a);

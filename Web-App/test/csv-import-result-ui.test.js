@@ -63,7 +63,7 @@ function chooseFile(w, d) {
   feld.dispatchEvent(new w.Event('change', { bubbles: true }));
 }
 
-test('vorhandene Sets: erst fragen, Abbrechen startet nichts', async () => {
+test('existing sets: ask first, cancel starts nothing', async () => {
   const posts = [];
   const { w, d, ruhig } = await openUi({
     '/v1/sets/import/csv': u => {
@@ -84,7 +84,7 @@ test('vorhandene Sets: erst fragen, Abbrechen startet nichts', async () => {
   }
 });
 
-test('Ergebnisliste mit Zeilen, Farben und gelesenen Zeilen', async () => {
+test('result list with rows, colors and read rows', async () => {
   let fetches = 0,
     gestartet = false;
   const { w, d } = await openUi({
@@ -135,7 +135,7 @@ test('Ergebnisliste mit Zeilen, Farben und gelesenen Zeilen', async () => {
   }
 });
 
-test('nach dem Neuladen: der letzte Import im Menü', async () => {
+test('after reloading: the last import in the menu', async () => {
   const { w, d } = await openUi({ '/v1/sets/import/csv/status': DONE });
   try {
     const knopf = d.getElementById('letzter-import');
@@ -149,7 +149,7 @@ test('nach dem Neuladen: der letzte Import im Menü', async () => {
   }
 });
 
-test('ein alter Import bleibt aus dem Menü', async () => {
+test('an old import stays out of the menu', async () => {
   const alt = { ...DONE, beendet_am: new Date(Date.now() - 25 * 3600_000).toISOString() };
   const { w, d, ruhig } = await openUi({ '/v1/sets/import/csv/status': alt });
   try {

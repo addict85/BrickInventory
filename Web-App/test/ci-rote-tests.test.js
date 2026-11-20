@@ -34,13 +34,13 @@ function annotationen(protokoll) {
   }
 }
 
-test('Annotationen fuer rote Tests', async t => {
+test('annotations for red tests', async t => {
   assert.ok(
     fs.existsSync(AWK),
     `${AWK} fehlt — dann hat der Workflow nichts zum Auslesen und dieser Test ` + `prueft nichts.`,
   );
 
-  await t.test('die Begruendung steht in der Annotation, nicht nur der Name', () => {
+  await t.test('the reasoning is in the annotation, not only the name', () => {
     // Genau die Form, die `npm test` in der CI schreibt (ohne Terminal nimmt
     // Node 22 TAP) — nachgemessen an einem absichtlich roten Test.
     const log = [
@@ -82,7 +82,7 @@ test('Annotationen fuer rote Tests', async t => {
     assert.ok(m.includes('%0A'), 'es gibt keine kodierten Umbrueche — alles klebt zusammen');
   });
 
-  await t.test('elf rote Tests ergeben neun plus eine Sammelmeldung', () => {
+  await t.test('eleven red tests yield nine plus a summary message', () => {
     const bloecke = [];
     for (let i = 1; i <= 11; i++) {
       bloecke.push(
@@ -114,20 +114,20 @@ test('Annotationen fuer rote Tests', async t => {
     assert.match(einzeln[8], /Begruendung 9/);
   });
 
-  await t.test('die Ueberschrift des spec-Reporters wird uebersprungen', () => {
+  await t.test('the heading of the spec reporter is skipped', () => {
     const a = annotationen('✖ failing tests:\n\n✖ Test A (1.2ms)\n  error: etwas\n  stack: x\n');
     assert.equal(a.length, 1, `erwartet eine Annotation, bekommen ${a.length}:\n${a.join('\n')}`);
     assert.match(a[0], /Test A/);
     assert.doesNotMatch(a[0], /failing tests/, '„failing tests:" ist die Ueberschrift der Liste, kein Testname.');
   });
 
-  await t.test('ein Lauf ohne roten Test ergibt keine Annotation', () => {
+  await t.test('a run without a red test yields no annotation', () => {
     // Der Rueckfall dafuer steht im Workflow (das Protokollende als Annotation)
     // — dieses Werkzeug darf dann schweigen, statt etwas zu erfinden.
     assert.deepEqual(annotationen('TAP version 13\nok 1 - alles gut\n1..1\n'), []);
   });
 
-  await t.test('Prozentzeichen im Text zerstoeren die Annotation nicht', () => {
+  await t.test('percent signs in the text do not destroy the annotation', () => {
     // `%` ist das Fluchtzeichen der Annotationen. Ein Text wie „95 % der Zeilen"
     // wuerde sonst als Kodierung gelesen und den Rest verschlucken.
     const a = annotationen('not ok 1 - Deckung\n  error: |-\n    nur 95 % erreicht\n  stack: x\n');

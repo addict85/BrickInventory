@@ -38,7 +38,7 @@ const CHEF = `anlage_chef_${process.pid}`,
   PASS = 'richtigesPasswort1';
 const NEU = [`anlage_a_${process.pid}`, `anlage_b_${process.pid}`, `anlage_c_${process.pid}`];
 
-test('Konto anlegen', { concurrency: 1 }, async t => {
+test('create account', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[CHEF, ...NEU]]);
   await db.run(
@@ -70,13 +70,13 @@ test('Konto anlegen', { concurrency: 1 }, async t => {
   const cookie = a.cookie.split(';')[0];
   const konto = n => db.get('SELECT id, is_admin FROM users WHERE username = $1', [n]);
 
-  await t.test('ohne Verwalterpasswort kein Konto', async () => {
+  await t.test('no account without admin password', async () => {
     const r = await ruf(AUTH + '/users', { username: NEU[0], password: 'einPasswort123' }, cookie);
     assert.notEqual(r.status, 200);
     assert.equal(await konto(NEU[0]), undefined);
   });
 
-  await t.test('"false" legt keinen Verwalter an', async () => {
+  await t.test('"false" creates no admin', async () => {
     const r = await ruf(
       AUTH + '/users',
       { username: NEU[1], password: 'einPasswort123', isAdmin: 'false', admin_password: PASS },
@@ -86,25 +86,22 @@ test('Konto anlegen', { concurrency: 1 }, async t => {
     assert.equal(Number((await konto(NEU[1])).is_admin), 0);
   });
 
-  await t.test(
-    'die Weboberfläche legt mit is_admin einen Verwalter an, und das Protokoll hält beides fest',
-    async () => {
-      const r = await ruf(
-        AUTH + '/users',
-        { username: NEU[2], password: 'einPasswort123', is_admin: true, admin_password: PASS },
-        cookie,
-      );
-      assert.equal(r.status, 200, JSON.stringify(r.body));
-      const k = await konto(NEU[2]);
-      assert.equal(Number(k.is_admin), 1, 'die Checkbox „Admin“ wirkt nicht');
-      const p = (await db.all('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id', [k.id])).map(
-        z => z.action,
-      );
-      assert.deepEqual(p, ['konto_angelegt', 'verwalter_ernannt'], 'das Protokoll hält die Anlage nicht fest');
-    },
-  );
+  await t.test('the web UI creates an admin with is_admin, and the log records both', async () => {
+    const r = await ruf(
+      AUTH + '/users',
+      { username: NEU[2], password: 'einPasswort123', is_admin: true, admin_password: PASS },
+      cookie,
+    );
+    assert.equal(r.status, 200, JSON.stringify(r.body));
+    const k = await konto(NEU[2]);
+    assert.equal(Number(k.is_admin), 1, 'die Checkbox „Admin“ wirkt nicht');
+    const p = (await db.all('SELECT action FROM admin_log WHERE target_id = $1 ORDER BY id', [k.id])).map(
+      z => z.action,
+    );
+    assert.deepEqual(p, ['konto_angelegt', 'verwalter_ernannt'], 'das Protokoll hält die Anlage nicht fest');
+  });
 
-  await t.test('ein Name in anderer Schreibweise ist vergeben', async () => {
+  await t.test('a name in a different spelling is taken', async () => {
     const r = await ruf(
       AUTH + '/users',
       { username: NEU[1].toUpperCase(), password: 'einPasswort123', admin_password: PASS },
@@ -116,14 +113,14 @@ test('Konto anlegen', { concurrency: 1 }, async t => {
     assert.equal(n.n, 1);
   });
 
-  await t.test('die Datenbank lehnt Namen ab, die sich nur in der Schreibweise unterscheiden', async () => {
+  await t.test('the database rejects names that only differ in spelling', async () => {
     await assert.rejects(
       db.run('INSERT INTO users (username, password_hash) VALUES ($1, $2)', [NEU[2].toUpperCase(), 'x']),
       (/** @type {any} */ e) => e.code === '23505',
     );
   });
 
-  await t.test('Migration 0090 bricht bei Doppeln mit den Namen ab, statt Daten zu ändern', async () => {
+  await t.test('migration 0090 aborts on duplicates with the names instead of changing data', async () => {
     const sql = require('node:fs').readFileSync(
       path.join(ROOT, 'db/migrations/0090-benutzername-ohne-gross-klein.sql'),
       'utf8',
@@ -143,7 +140,7 @@ test('Konto anlegen', { concurrency: 1 }, async t => {
     }
   });
 
-  await t.test('passt ein Name auf zwei Konten, meldet niemand sich an', async st => {
+  await t.test('if a name matches two accounts, nobody logs in', async st => {
     const altname = `alt_${process.pid}@example.org`;
     await db.run('DELETE FROM users WHERE username = $1 OR lower(email) = lower($1)', [altname]);
     st.after(() => db.run('DELETE FROM users WHERE username = $1 OR lower(email) = lower($1)', [altname]));

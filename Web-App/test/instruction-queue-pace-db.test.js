@@ -20,7 +20,7 @@ const { buildAndRequire, testData, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
-test('ein bereits versorgtes Set löst keinen Abruf aus', async t => {
+test('an already supplied set triggers no fetch', async t => {
   const db = testData();
   try {
     await db.initSchemaOnce();

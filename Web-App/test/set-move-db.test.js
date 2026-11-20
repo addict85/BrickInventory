@@ -12,7 +12,7 @@ const { keineDb } = require('./helpers/db');
 const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 const db = testData();
 
-test('Set verschieben', { concurrency: 1 }, async t => {
+test('move set', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -60,7 +60,7 @@ test('Set verschieben', { concurrency: 1 }, async t => {
     }
   }
 
-  await t.test('der Lauf erzeugt keine pg-Warnung über parallele Abfragen', async () => {
+  await t.test('the run produces no pg warning about parallel queries', async () => {
     await createInventory('10001-1', 3, 2);
 
     const warnings = [];
@@ -83,7 +83,7 @@ test('Set verschieben', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('Teile und Minifiguren wandern mit und werden gezählt', async () => {
+  await t.test('parts and minifigures move along and are counted', async () => {
     await createInventory('10002-1', 4, 1);
     const r = await setEntriesReassign('10002-1', a, b);
 
@@ -102,7 +102,7 @@ test('Set verschieben', { concurrency: 1 }, async t => {
     assert.equal(onSender.c, 0, 'beim Absender blieben Teile ohne Set zurück');
   });
 
-  await t.test('ohne Inhalt sind 0 Teile die richtige Antwort, nicht ein Fehler', async () => {
+  await t.test('without contents 0 parts is the right answer, not an error', async () => {
     // Genau der Fall aus dem Bildschirmfoto: Ein Set, zu dem nie Teile
     // importiert wurden, meldet 0 — die Zahl ist wahr, nur die Meldung in der
     // App wirkt wie ein Fehler.
@@ -113,7 +113,7 @@ test('Set verschieben', { concurrency: 1 }, async t => {
     assert.equal(r.quantity, 1, 'das Exemplar selbst muss trotzdem gewandert sein');
   });
 
-  await t.test('hat das Ziel schon Teile, wird nicht doppelt kopiert', async () => {
+  await t.test('if the target already has parts, nothing is copied twice', async () => {
     await createInventory('10004-1', 2, 0);
     await holdsPart(db, b, '3000', { setNumber: '10004-1', menge: 2, colorId: 4 });
     const r = await setEntriesReassign('10004-1', a, b);
@@ -122,41 +122,38 @@ test('Set verschieben', { concurrency: 1 }, async t => {
     assert.equal(n.c, 1, 'doppelte Zeilen — die Zusammenfassung zählte die Menge zweimal');
   });
 
-  await t.test(
-    'Teilverschiebung lässt dem Absender alles; manuelle Teile bleiben auch beim letzten Exemplar',
-    async () => {
-      // Gegenprobe (31.10.2026): `if (remaining > 0)` in setMove.ts auf `if (false)`
-      // → rot (Absender ohne Set); `<> 'manual'` in entferneSet gestrichen → rot
-      // (manuelles Teil weg).
-      await createInventory('10005-1', 2, 1);
-      await db.run(
-        `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
+  await t.test('part move leaves everything to the sender; manual parts stay even with the last copy', async () => {
+    // Gegenprobe (31.10.2026): `if (remaining > 0)` in setMove.ts auf `if (false)`
+    // → rot (Absender ohne Set); `<> 'manual'` in entferneSet gestrichen → rot
+    // (manuelles Teil weg).
+    await createInventory('10005-1', 2, 1);
+    await db.run(
+      `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
                   VALUES ($1,'10005-1',1,60,'U',NOW() - interval '2 days')`,
-        [a],
-      );
-      await holdsPart(db, a, '3005', { menge: 2, colorId: 4 });
-      const [erste, zweite] = (
-        await db.all("SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number='10005-1' ORDER BY id", [a])
-      ).map(r => r.id);
-      const z = uid =>
-        db.get(
-          `SELECT (SELECT COUNT(*)::int FROM sets WHERE user_id=$1 AND set_number='10005-1') AS sets,
+      [a],
+    );
+    await holdsPart(db, a, '3005', { menge: 2, colorId: 4 });
+    const [erste, zweite] = (
+      await db.all("SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number='10005-1' ORDER BY id", [a])
+    ).map(r => r.id);
+    const z = uid =>
+      db.get(
+        `SELECT (SELECT COUNT(*)::int FROM sets WHERE user_id=$1 AND set_number='10005-1') AS sets,
               (SELECT COUNT(*)::int FROM parts WHERE user_id=$1 AND set_number='10005-1') AS teile,
               (SELECT COUNT(*)::int FROM minifigs WHERE user_id=$1 AND set_number='10005-1') AS figuren,
               (SELECT COUNT(*)::int FROM parts WHERE user_id=$1 AND source='manual') AS manuell`,
-          [uid],
-        );
+        [uid],
+      );
 
-      const r1 = await setEntriesReassign('10005-1', a, b, [erste]);
-      assert.equal(r1.source_emptied, false);
-      assert.deepEqual(await z(a), { sets: 1, teile: 2, figuren: 1, manuell: 1 });
-      assert.deepEqual(await z(b), { sets: 1, teile: 2, figuren: 1, manuell: 0 });
+    const r1 = await setEntriesReassign('10005-1', a, b, [erste]);
+    assert.equal(r1.source_emptied, false);
+    assert.deepEqual(await z(a), { sets: 1, teile: 2, figuren: 1, manuell: 1 });
+    assert.deepEqual(await z(b), { sets: 1, teile: 2, figuren: 1, manuell: 0 });
 
-      const r2 = await setEntriesReassign('10005-1', a, b, [zweite]);
-      assert.equal(r2.source_emptied, true);
-      assert.deepEqual(await z(a), { sets: 0, teile: 0, figuren: 0, manuell: 1 });
-    },
-  );
+    const r2 = await setEntriesReassign('10005-1', a, b, [zweite]);
+    assert.equal(r2.source_emptied, true);
+    assert.deepEqual(await z(a), { sets: 0, teile: 0, figuren: 0, manuell: 1 });
+  });
 
   await db.pool.end().catch(() => {});
 });

@@ -20,7 +20,7 @@ const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources')
 
 const PROGRESS = 'public/js/progress.js';
 
-test('nur EINE Fassung baut die Zeile fürs Import-Protokoll', () => {
+test('only ONE version builds the line for the import log', () => {
   const quellen = fs
     .readdirSync(path.join(ROOT, 'public', 'js'))
     .filter(n => n.endsWith('.js') && n !== 'app.bundle.js')
@@ -38,7 +38,7 @@ test('nur EINE Fassung baut die Zeile fürs Import-Protokoll', () => {
   );
 });
 
-test('der Fortschrittstext spricht nicht von Sets', () => {
+test('the progress text does not talk about sets', () => {
   // Derselbe Balken trägt Sets, Teile und Minifiguren; geprüft an den geladenen Wörterbüchern.
   const { de, en } = require('./helpers/sources').loadTranslations();
   assert.equal(de['csv.sets_progress'] ?? en['csv.sets_progress'], undefined, 'der alte Schlüssel ist zurück');

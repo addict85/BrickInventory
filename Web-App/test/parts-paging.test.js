@@ -55,7 +55,7 @@ function stripModuleSyntax(src) {
 
 const ROOT = path.join(__dirname, '..');
 
-test('der Proxy kann verkleinern und tut es nur einmal je Bild', () => {
+test('the proxy can shrink and does it only once per image', () => {
   const server = require('./helpers/sources').serverAll();
   assert.match(server, /req\.query\.thumb === '1'/, 'Der Proxy kennt kein thumb=1');
   assert.match(
@@ -73,7 +73,7 @@ test('der Proxy kann verkleinern und tut es nur einmal je Bild', () => {
   assert.match(core, /thumb \? '&thumb=1' : ''/, 'imgUrl() reicht den Wunsch nicht weiter');
 });
 
-test('alle Listenbilder laden verzögert', () => {
+test('all list images load lazily', () => {
   // Ohne loading="lazy" startet der Browser sämtliche Bilder einer Liste
   // gleichzeitig und drängt sie durch die ~6 Verbindungen pro Host — sie
   // tröpfeln dann sichtbar herein. Bei den Minifiguren fehlte das Attribut an
@@ -93,7 +93,7 @@ test('alle Listenbilder laden verzögert', () => {
   assert.deepEqual(bad, [], `Listenbilder ohne loading="lazy": ${bad.join(', ')}`);
 });
 
-test('die Verkleinerung lässt keine Anfrage warten', () => {
+test('shrinking keeps no request waiting', () => {
   // Gemessen: Jimp braucht rund 150 ms je Bild und belegt dabei den
   // Event-Loop. Eine Kachelwand mit 60 Minifiguren ergäbe neun Sekunden, in
   // denen der Server für ALLE Anfragen steht.
@@ -117,7 +117,9 @@ test('die Verkleinerung lässt keine Anfrage warten', () => {
   );
 });
 
-test('Teileliste an der Datenbank: Seiten, Farbfilter und Obergrenze auf beiden Wegen', { concurrency: 1 }, async t => {
+test('parts list against the database: pages, color filter and upper bound on both paths', {
+  concurrency: 1,
+}, async t => {
   const _req = require('./helpers/sources').buildAndRequire();
   const { dataOrSkip } = require('./helpers/db');
   const db = await dataOrSkip(t, _req);
@@ -181,7 +183,7 @@ test('Teileliste an der Datenbank: Seiten, Farbfilter und Obergrenze auf beiden 
   await pruefe('summary');
 });
 
-test('nachgeladen wird nur im sichtbaren Teile-Tab', async () => {
+test('loading more only happens in the visible parts tab', async () => {
   const observer = [];
   const seite = url => {
     const p = Number(new URL(url, 'http://x').searchParams.get('page'));
@@ -236,7 +238,7 @@ test('nachgeladen wird nur im sichtbaren Teile-Tab', async () => {
   }
 });
 
-test('Argumente aus data-arg werden als Zeichenkette behandelt', async () => {
+test('arguments from data-arg are treated as strings', async () => {
   const { w, d, aufrufe } = await openUi({
     '/v1/minifigs/manual': { success: true, figs: [{ fig_number: 'fig-000001', fig_name: 'Figur', quantity: 2 }] },
     '/v1/auth/users': {

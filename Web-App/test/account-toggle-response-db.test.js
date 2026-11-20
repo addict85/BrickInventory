@@ -20,7 +20,7 @@ const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
 
-test('Kontoschalter gehen als true/false hinaus', async t => {
+test('account switches go out as true/false', async t => {
   const db = testData();
   try {
     await db.initSchemaOnce();
@@ -54,7 +54,7 @@ test('Kontoschalter gehen als true/false hinaus', async t => {
     return r.json();
   };
 
-  await t.test('die Kontenliste der Verwaltung', async () => {
+  await t.test('the admin account list', async () => {
     als = chef;
     const liste = (await hole('/api/v1/auth/users')).users.filter(k => k.id === chef || k.id === gast);
     assert.deepEqual(
@@ -65,7 +65,7 @@ test('Kontoschalter gehen als true/false hinaus', async t => {
       ],
     );
   });
-  await t.test('das eigene Profil', async () => {
+  await t.test('the own profile', async () => {
     als = chef;
     assert.equal((await hole('/api/v1/auth/profile')).user.email_verified, true);
     als = gast;

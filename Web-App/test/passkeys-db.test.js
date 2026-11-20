@@ -213,7 +213,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
     withoutCounter = authenticator();
   let annaCodes = [];
 
-  await t.test('registrieren und ohne Passwort anmelden', async () => {
+  await t.test('register and log in without password', async () => {
     const c = await register('pk_anna', anna);
     const liste = await ruf('/passkeys', undefined, c);
     assert.equal(liste.body.passkeys.length, 1);
@@ -226,7 +226,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
     assert.equal(ich.body.user.id, ids.pk_anna, 'Die Anmeldung legt eine Sitzung an');
   });
 
-  await t.test('eine Antwort gilt nur einmal, und ein alter Zähler nicht', async () => {
+  await t.test('a response only applies once, and an old counter does not', async () => {
     const antwort = anna.anmelden(await optionen());
     assert.equal((await ruf('/passkey/anmelden', { antwort })).status, 200);
     assert.equal((await ruf('/passkey/anmelden', { antwort })).status, 401, 'Wiederholte Antwort');
@@ -245,7 +245,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
     assert.equal((await ruf('/passkey/anmelden', { antwort: null1 })).status, 401, 'Challenge nur einmal gültig');
   });
 
-  await t.test('fremde Herkunft wird abgewiesen', async () => {
+  await t.test('a foreign origin is rejected', async () => {
     const fremd = anna.anmelden(await optionen(), { origin: 'https://boese.test' });
     assert.equal((await ruf('/passkey/anmelden', { antwort: fremd })).status, 401);
     const c = await sitzung('pk_bert');
@@ -258,12 +258,12 @@ test('Passkeys', { concurrency: 1 }, async t => {
     assert.equal(r.status, 400);
   });
 
-  await t.test('ohne Passwort braucht es User Verification', async () => {
+  await t.test('without password user verification is needed', async () => {
     const withoutUv = anna.anmelden(await optionen(), { uv: false });
     assert.equal((await ruf('/passkey/anmelden', { antwort: withoutUv })).status, 401);
   });
 
-  await t.test('Passkey als zweiter Faktor statt des TOTP-Codes, nur für das eigene Konto', async () => {
+  await t.test('passkey as second factor instead of the TOTP code, only for the own account', async () => {
     const geheim = await zf.beginSetup(ids.pk_anna);
     annaCodes = await zf.confirmSetup(ids.pk_anna, zf.hotp(zf.fromBase32(geheim), zf.timeStep()));
     await register('pk_bert', bert);
@@ -293,7 +293,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
   const APP_HASH = crypto.createHash('sha256').update('app-zertifikat').digest();
   const appOrigin = h => `android:apk-key-hash:${b64u(h)}`;
 
-  await t.test('die eingetragene App meldet sich an und bekommt einen Token', async tt => {
+  await t.test('the registered app logs in and gets a token', async tt => {
     environment({ PASSKEY_ANDROID_ZERTIFIKATE: APP_HASH.toString('hex').match(/../g).join(':') });
     tt.after(() => {
       environment({ PASSKEY_ANDROID_ZERTIFIKATE: undefined });
@@ -323,7 +323,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
     assert.equal(zweiter.status, 200, 'Auch als zweiter Faktor gilt die App');
   });
 
-  await t.test('eine App mit anderem oder ohne eingetragenes Zertifikat wird abgewiesen', async tt => {
+  await t.test('an app with a different or no registered certificate is rejected', async tt => {
     const fremd = crypto.createHash('sha256').update('fremdes-zertifikat').digest();
     environment({ PASSKEY_ANDROID_ZERTIFIKATE: APP_HASH.toString('hex') });
     tt.after(() => {
@@ -342,7 +342,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
     assert.equal(ohne.status, 401, 'Ohne Eintrag nimmt der Server keine App an');
   });
 
-  await t.test('löschen verlangt das Passwort', async () => {
+  await t.test('deleting requires the password', async () => {
     const c = await sitzung('pk_bert');
     const liste = (await ruf('/passkeys', undefined, c)).body.passkeys;
     assert.equal(liste.length, 2);
@@ -359,7 +359,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
 
   const anzahl = async uid => (await db.get('SELECT COUNT(*)::int n FROM passkeys WHERE user_id = $1', [uid])).n;
 
-  await t.test('mit zweitem Faktor verlangt ein neuer Passkey auch den Code', async () => {
+  await t.test('with a second factor a new passkey also requires the code', async () => {
     const c = (await ruf('/login', { username: 'pk_anna', password: PASS, ohne_token: true, code: annaCodes[0] }))
       .cookie;
     const ohne = await ruf('/passkey/registrieren/optionen', { password: PASS }, c);
@@ -376,7 +376,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
     assert.equal(await anzahl(ids.pk_anna), 2);
   });
 
-  await t.test('ein Passwortwechsel widerruft Passkeys nur auf Wunsch', async () => {
+  await t.test('a password change revokes passkeys only on request', async () => {
     const c = await register('pk_bert', authenticator());
     const wechsel = (cookie, alt, neu, mehr = {}) =>
       ruf('/change-password', { current: alt, newPassword: neu, ...mehr }, cookie);
@@ -387,7 +387,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
     assert.equal(await anzahl(ids.pk_bert), 0, 'passkeys_widerrufen wirkt nicht');
   });
 
-  await t.test('Zurücksetzen per Mail widerruft alle Passkeys und meldet es', async tt => {
+  await t.test('resetting via mail revokes all passkeys and reports it', async tt => {
     assert.ok((await anzahl(ids.pk_anna)) > 0);
     // Ein Mailserver, der nicht antwortet: Der Versuch steht dann im Fehlerprotokoll.
     await db.run(`INSERT INTO global_settings (key, value) VALUES ('smtp_host', '127.0.0.1'), ('smtp_port', '1'), ('smtp_user', 'x')
@@ -419,7 +419,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('eine erfundene, veränderte oder umgewidmete Challenge wird abgewiesen', async () => {
+  await t.test('an invented, changed or repurposed challenge is rejected', async () => {
     // Annas Passkeys hat das Zurücksetzen eben widerrufen.
     const carl = authenticator();
     await register('pk_bert', carl);
@@ -437,7 +437,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
     assert.equal((await ruf('/passkey/anmelden', { antwort: carl.anmelden(echt) })).status, 200, 'die echte gilt');
   });
 
-  await t.test('Anmeldeoptionen legen nichts ab, ein voller Topf sperrt nur seinen Zweck', async tt => {
+  await t.test('login options store nothing, a full pot only locks its purpose', async tt => {
     const { MAX_OPEN_CHALLENGES: N } = _req('src/factors/passkeys.js');
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'passkey-optionen|%'");
     await db.run('DELETE FROM webauthn_challenges');

@@ -33,7 +33,7 @@ const { patternHousehold } = require('./helpers/inventory');
 const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
 
-test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async t => {
+test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, async t => {
   const NAME = `r12_${process.pid}`,
     KIND = `${NAME}_kind`,
     ANDERE = `r12x_${process.pid}`;
@@ -57,7 +57,7 @@ test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async
         : { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false },
     );
 
-  await t.test('Finanzen: ein Kauf je Zeile, mit Konto', async () => {
+  await t.test('finances: one purchase per row, with account', async () => {
     await geh('finanzen');
     await bis(`!!document.querySelector('#fin-tbl [data-fin-art="sets"] tfoot')`, 'Finanzen geladen', 200);
     const zeilen = await b.auswerten(`[...document.querySelectorAll('#fin-tbl [data-fin-art="sets"] tbody tr')]
@@ -74,7 +74,7 @@ test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async
     );
   });
 
-  await t.test('Finanzen: Summen ohne Doppelzählung', async () => {
+  await t.test('finances: sums without double counting', async () => {
     const z =
       await b.auswerten(`Promise.all([fetch('/api/v1/finance/pnl').then(r => r.json()), fetch('/api/v1/finance/valuation').then(r => r.json())])
       .then(([p, v]) => ({ kauf: p.totals.sets_purchase, markt: v.totals.avg, baum: p.sets.filter(s => s.set_number === '21318-1').map(s => s.quantity) }))`);
@@ -82,7 +82,7 @@ test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async
     assert.deepEqual(z, { kauf: '1739.98', markt: '2050.10', baum: [2] });
   });
 
-  await t.test('Löschdialog nennt das Konto', async () => {
+  await t.test('delete dialog names the account', async () => {
     await db.run(
       `INSERT INTO users (username, email, password_hash, is_active, email_verified) VALUES ($1, $2, 'x', true, true)`,
       [ANDERE, `${ANDERE}@example.org`],
@@ -110,7 +110,7 @@ test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async
     await db.run('DELETE FROM users WHERE username = $1', [ANDERE]);
   });
 
-  await t.test('Logo und Kartennamen einmal', async () => {
+  await t.test('logo and card names once', async () => {
     await geh('sammlung');
     await bis(`!!document.querySelector('#gallery .sc')`, 'Sammlung');
     await b.tab('Accessibility.enable');
@@ -127,7 +127,7 @@ test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async
     assert.equal(karte.match(/Titanic/g).length, 1, `Name einmal: ${karte}`);
   });
 
-  await t.test('Farbname deutsch', async () => {
+  await t.test('color name in German', async () => {
     await geh('teile');
     await bis(
       `!!document.querySelector('.part-card[data-click="openSetItemDetail"][data-arg3="0"]')`,
@@ -142,7 +142,7 @@ test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async
     await b.auswerten(`document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); true`);
   });
 
-  await t.test('Platzhalter sieht nicht aus wie ein Wert', async () => {
+  await t.test('placeholder does not look like a value', async () => {
     const z = await b.auswerten(`(() => { const f = document.getElementById('alarm-neu-set');
       return { text: f.placeholder, stil: getComputedStyle(f, '::placeholder').fontStyle }; })()`);
     assert.deepEqual(z, { text: 'z. B. 75192-1', stil: 'italic' });
@@ -151,7 +151,7 @@ test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async
   // ── Telefon ───────────────────────────────────────────────────────────────
   await telefon(true);
 
-  await t.test('Merkliste: Liste vor dem Formular', async () => {
+  await t.test('wishlist: list before the form', async () => {
     await geh('merkliste');
     await bis(`!!document.querySelector('#mk-list .mk-zeile')`, 'Merkliste');
     const z = await b.auswerten(`({ offen: document.getElementById('mk-kasten').open,
@@ -160,7 +160,7 @@ test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async
     assert.ok(z.oben < z.hoehe * 0.6, `erster Merkposten im ersten Bild: ${JSON.stringify(z)}`);
   });
 
-  await t.test('Toast verdeckt den Titel nicht', async () => {
+  await t.test('toast does not cover the title', async () => {
     await geh('sammlung/set/99999-9');
     await bis(
       `[...document.querySelectorAll('#toasts .toast')].some(x => /nicht in deiner Sammlung/.test(x.textContent))`,
@@ -175,7 +175,7 @@ test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async
     await b.auswerten(`document.querySelectorAll('#toasts .toast').forEach(x => x.remove()); true`);
   });
 
-  await t.test('offline: Knopf deckend', async () => {
+  await t.test('offline: button opaque', async () => {
     await geh('sammlung');
     await b.tab('Network.emulateNetworkConditions', {
       offline: true,
@@ -201,7 +201,7 @@ test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async
     await bis(`document.querySelector('.knopf-schwebend')?.disabled === false`, 'wieder frei', 100);
   });
 
-  await t.test('Benutzerkarte beginnt mit dem Namen', async () => {
+  await t.test('user card starts with the name', async () => {
     await geh('einstellungen/benutzer');
     await bis(`!!document.querySelector('#users-tbl tbody tr')`, 'Benutzerliste');
     const z = await b.auswerten(`(() => { const zeilen = [...document.querySelectorAll('#users-tbl tbody tr')];
@@ -212,7 +212,7 @@ test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async
     assert.equal(z.ids, 0, 'die ID steht am Telefon nicht');
   });
 
-  await t.test('Gutschein: eine Knopfgrösse', async () => {
+  await t.test('voucher: one button size', async () => {
     await b.auswerten(klick('.umenu-item[data-arg="gutscheine"]'));
     await bis(`!!document.querySelector('.voucher-row')`, 'Gutscheine');
     const sizes = await b.auswerten(
@@ -222,7 +222,7 @@ test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async
     assert.equal(new Set(sizes).size, 1, `Schriftgrössen ${sizes}`);
   });
 
-  await t.test('200 %: Achse kurz, Kopf weicht', async () => {
+  await t.test('200 %: axis short, header gives way', async () => {
     await b.auswerten(
       `document.documentElement.style.fontSize = '200%'; document.getElementById('portfolio-chart').innerHTML = ''; true`,
     );
@@ -250,7 +250,7 @@ test('Finanzen im Haushalt, Löschdialoge, Telefon', { timeout: 280_000 }, async
     }
   });
 
-  await t.test('401 ohne success beendet die Sitzung', async () => {
+  await t.test('401 without success ends the session', async () => {
     // Wie ein vorgeschalteter Proxy: 401 ohne JSON-Feld success.
     await b.auswerten(`(() => { const f = window.fetch; window.fetch = (u, o) => String(u).includes('/api/v1/wanted')
       ? Promise.resolve(new Response('{"message":"Unauthorized"}', { status: 401, headers: { 'Content-Type': 'application/json' } })) : f(u, o); return true; })()`);

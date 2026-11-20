@@ -27,7 +27,7 @@ const CASES = [
 ];
 const HEADER = { hell: 'rgb(61, 90, 128)', dunkel: 'rgb(39, 56, 73)' };
 
-test('Startgerüst folgt der Geräte-Einstellung und dem Design', async t => {
+test('startup skeleton follows the device setting and the design', async t => {
   const app = await startApp(t, {
     bestand: db =>
       db.run(`INSERT INTO global_settings (key, value) VALUES ('app_theme', 'brick')

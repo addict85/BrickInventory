@@ -41,7 +41,7 @@ function installation(t) {
 }
 const zufall = () => crypto.randomBytes(32).toString('base64');
 
-test('der Schlüssel aus DATA_KEY_FILE wird benutzt, nichts landet in data/', t => {
+test('the key from DATA_KEY_FILE is used, nothing ends up in data/', t => {
   const wurzel = installation(t),
     datei = path.join(wurzel, 'geheim', 'k'),
     k = zufall();
@@ -53,7 +53,7 @@ test('der Schlüssel aus DATA_KEY_FILE wird benutzt, nichts landet in data/', t 
   assert.deepEqual(fs.readdirSync(path.join(wurzel, 'data')), []);
 });
 
-test('ohne Schlüssel entsteht er unter schluessel/, nur für den Besitzer lesbar', t => {
+test('without a key it is created under schluessel/, readable only by the owner', t => {
   const wurzel = installation(t);
   const r = lade(wurzel);
   const datei = path.join(wurzel, 'schluessel', 'datenschluessel');
@@ -63,7 +63,7 @@ test('ohne Schlüssel entsteht er unter schluessel/, nur für den Besitzer lesba
   assert.equal(lade(wurzel).schluessel, r.schluessel, 'der zweite Start nimmt denselben');
 });
 
-test('eine alte Installation mit data/.datenschluessel läuft weiter und wird gewarnt', t => {
+test('an old installation with data/.datenschluessel keeps running and is warned', t => {
   const wurzel = installation(t),
     alt = zufall();
   fs.writeFileSync(path.join(wurzel, 'data', '.datenschluessel'), alt, { mode: 0o600 });
@@ -80,7 +80,7 @@ test('eine alte Installation mit data/.datenschluessel läuft weiter und wird ge
   assert.doesNotMatch(danach.fehler, /Datenordner/);
 });
 
-test('zwei verschiedene Schlüssel halten den Start an', t => {
+test('two different keys stop the startup', t => {
   const wurzel = installation(t);
   fs.writeFileSync(path.join(wurzel, 'data', '.datenschluessel'), zufall());
   fs.mkdirSync(path.join(wurzel, 'schluessel'));

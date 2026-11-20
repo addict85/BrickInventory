@@ -21,7 +21,7 @@ const { testServer } = require('./helpers/server');
 const db = testData();
 const { holdsSet, quantityOf } = require('./helpers/inventory');
 
-test('eine Mengenerhöhung am Unterkonto-Set landet im eigenen Konto', { concurrency: 1 }, async t => {
+test('a quantity increase on the sub-account set lands in the own account', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const MAIN = `qty-haupt-${process.pid}`,

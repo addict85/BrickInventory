@@ -284,7 +284,7 @@ async function telefon(_t, a) {
   }
 }
 
-test('Kachelnamen, Raster, 200 % Schrift, Telefon', { concurrency: 1, timeout: 400_000 }, async t => {
+test('tile names, grid, 200 % font, phone', { concurrency: 1, timeout: 400_000 }, async t => {
   const name = `r22_${process.pid}`;
   const a = await startApp(t, {
     name,

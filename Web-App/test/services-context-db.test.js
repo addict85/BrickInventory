@@ -33,7 +33,7 @@ function counting(z) {
   return { zaehler, zugang: { ...z, all: mit(z.all), get: mit(z.get), run: mit(z.run), exec: mit(z.exec) } };
 }
 
-test('Dienste nehmen den Zugang aus ihrem Kontext, nicht aus dem Prozess', async t => {
+test('services take the access from their context, not from the process', async t => {
   if (!(await accessOrSkip(t, _req))) return;
   const { buildServices } = _req('startup/wiring.js');
   // Testdaten als Eigentümerin (am Zeilenschutz vorbei), der Dienst fragt als Laufzeitrolle.
@@ -57,7 +57,7 @@ test('Dienste nehmen den Zugang aus ihrem Kontext, nicht aus dem Prozess', async
   assert.ok(zaehler.n > 0, 'partStatsQuery fragt über den übergebenen Zugang');
 });
 
-test('k.transaktion: was über t geschrieben wird, gilt zusammen oder gar nicht', async t => {
+test('k.transaktion: what is written via t applies together or not at all', async t => {
   if (!(await accessOrSkip(t, _req))) return;
   const { buildServices } = _req('startup/wiring.js');
   const contexts = {};

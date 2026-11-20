@@ -40,7 +40,7 @@ const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textConten
 const offen = `getComputedStyle(document.getElementById('confirm-modal')).display !== 'none'`;
 const CODE = /^[2-9A-HJKMNP-Z]{4}(-[2-9A-HJKMNP-Z]{4}){3}$/;
 
-test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }, async t => {
+test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, async t => {
   const NAME = `r13_${process.pid}`,
     KIND = `${NAME}_kind`,
     ANDERE = `r13x_${process.pid}`;
@@ -70,7 +70,7 @@ test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }
   ).id;
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [andere]).catch(() => {}));
 
-  await t.test('Einladungscode in Vierergruppen', async () => {
+  await t.test('invitation code in groups of four', async () => {
     await b.auswerten(klick('.umenu-item[data-arg="haushalt"]'));
     await bis(`document.getElementById('household-invite-box')?.checkVisibility()`, 'Haushalt');
     await b.auswerten(klick('[data-click="createHouseholdInvite"]'));
@@ -78,7 +78,7 @@ test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }
     assert.match(await b.auswerten(`document.getElementById('household-invite-code').value`), CODE);
   });
 
-  await t.test('Einladung nennt das Hauptkonto', async () => {
+  await t.test('invitation names the main account', async () => {
     const { code } = await require('./helpers/sources').asAccount(andere, () => haushalt.createInvitation(andere));
     assert.match(code, CODE);
     assert.match(
@@ -112,7 +112,7 @@ test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }
     assert.doesNotMatch(await fremd.text(), new RegExp(ANDERE));
   });
 
-  await t.test('E-Mail-Änderung: Titel und neue Adresse', async () => {
+  await t.test('email change: title and new address', async () => {
     await b.auswerten(klick('.umenu-item[data-arg="profil"]'));
     await bis(`!!document.getElementById('prof-email').value`, 'Profil');
     await b.auswerten(
@@ -127,7 +127,7 @@ test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }
     await zu();
   });
 
-  await t.test('Toast der Ansicht schliesst beim Wechsel', async () => {
+  await t.test("the view's toast closes on a switch", async () => {
     await geh('sammlung/set/99999-9');
     await bis(
       `[...document.querySelectorAll('#toasts .toast')].some(x => /nicht in deiner Sammlung/.test(x.textContent))`,
@@ -143,7 +143,7 @@ test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }
     );
   });
 
-  await t.test('Lösch-Kreuz: Entf auf der Karte', async () => {
+  await t.test('delete cross: Del on the card', async () => {
     await geh('sammlung');
     await bis(`!!document.querySelector('#gallery .sc')`, 'Sammlung');
     // Erst wenn die Sammlung fertig geladen ist: Ein späterer Neuaufbau ersetzte die
@@ -160,7 +160,7 @@ test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }
     await zu();
   });
 
-  await t.test('Geschenk als Plakette', async () => {
+  await t.test('gift as a badge', async () => {
     const z =
       await b.auswerten(`(() => { const k = [...document.querySelectorAll('#gallery .sc')].find(x => x.textContent.includes('10300-1'));
       return { plakette: k.querySelector('.splaketten .geschenk-badge')?.textContent, preis: k.querySelector('.price-badge').textContent }; })()`);
@@ -168,7 +168,7 @@ test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }
     assert.doesNotMatch(z.preis, /Geschenk/);
   });
 
-  await t.test('Hintergrundarbeiten: jeder Dienst mit Symbol', async () => {
+  await t.test('background jobs: every service with an icon', async () => {
     await b.auswerten(klick('.ntab[data-tab="monitor"]'));
     await bis(`document.querySelectorAll('.mon-dienste .mon-name').length >= 6`, 'Dienste');
     const ohne = await b.auswerten(
@@ -177,7 +177,7 @@ test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }
     assert.deepEqual(ohne, []);
   });
 
-  await t.test('Preis fehlt: grau, wenn er fast überall fehlt', async () => {
+  await t.test('price missing: grey if it is missing almost everywhere', async () => {
     const zeichen = async () => {
       await geh('sammlung');
       await geh('finanzen');
@@ -199,7 +199,7 @@ test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }
   // ── Telefon ───────────────────────────────────────────────────────────────
   await b.tab('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
 
-  await t.test('Unterkonto: Kaufpreis-Beschriftung im Diagramm', async () => {
+  await t.test('sub-account: purchase price label in the chart', async () => {
     const kid = (await db.get('SELECT id FROM users WHERE username = $1', [KIND])).id;
     await geh('sammlung');
     await geh('finanzen');
@@ -223,7 +223,7 @@ test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }
     );
   });
 
-  await t.test('Schwebender Knopf: nur Symbol', async () => {
+  await t.test('floating button: icon only', async () => {
     const knopf = `(() => { const k = document.querySelector('#tab-gallery .knopf-schwebend');
       return { breit: Math.round(k.getBoundingClientRect().width), text: k.querySelector('span').checkVisibility(), name: k.getAttribute('aria-label') }; })()`;
     // Unter Last kommen Scroll-Ereignis und Neuberechnung spät: Gewartet wird auf
@@ -259,7 +259,7 @@ test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }
     }
   });
 
-  await t.test('Bestätigungsseite nennt Konto und Adresse', async () => {
+  await t.test('confirmation page names account and address', async () => {
     const roh = `r13-${process.pid}-link`;
     await db.run(
       `UPDATE users SET new_email = $2, new_email_token = encode(sha256($3::bytea), 'hex'),

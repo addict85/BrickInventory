@@ -150,7 +150,7 @@ function core(body) {
   return out;
 }
 
-test('API-Parität Webapp ↔ Android', async t => {
+test('API parity web app ↔ Android', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t, DB_URL);
@@ -216,7 +216,7 @@ test('API-Parität Webapp ↔ Android', async t => {
     ['Standard-Zustand (effektiv)', '/api/v1/settings/user/default-condition'],
     ['Haushalt', '/api/v1/settings/household'],
   ]) {
-    await t.test(`Zusammengelegt: ${name} — Sitzung und Token gleichwertig`, async () => {
+    await t.test(`merged: ${name} — session and token equivalent`, async () => {
       const withSession = await get(pfad);
       const withToken = await get(pfad, { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' });
       assert.equal(
@@ -238,7 +238,7 @@ test('API-Parität Webapp ↔ Android', async t => {
   }
 
   // Gegenrichtung: Die alten Zweitfassungen dürfen NICHT zurückkehren.
-  await t.test('die Erfassungs-Routen gibt es nur noch einmal', async () => {
+  await t.test('the acquisition routes exist only once now', async () => {
     // ACHTUNG: Hier stehen absichtlich die ALTEN Adressen — geprüft wird, dass
     // sie NICHT mehr antworten. Bei einer Massenumstellung von Pfaden diese
     // drei Zeilen auslassen (mir selbst beim Nachziehen einmal passiert).
@@ -280,7 +280,7 @@ test('API-Parität Webapp ↔ Android', async t => {
     }
   });
 
-  await t.test('Einstellungen: kuratierte v1-Felder == Webapp-Werte', async () => {
+  await t.test('settings: curated v1 fields == web app values', async () => {
     // Die Webapp-Sicht und die kuratierte Sicht der App sind NICHT
     // zusammengelegt, und das mit Absicht: Die eine trägt die globalen
     // Schlüssel und die Admin-Felder, die die App weder braucht noch bekommen
@@ -307,12 +307,12 @@ test('API-Parität Webapp ↔ Android', async t => {
     assert.equal(v1.currency, 'CHF', 'Der Wert des Nutzers muss den globalen überschreiben (global steht USD)');
   });
 
-  await t.test('v1 valuation: total_value ist Alias von totals.qty_avg', async () => {
+  await t.test('v1 valuation: total_value is an alias of totals.qty_avg', async () => {
     const r = await get('/api/v1/finance/valuation');
     assert.equal(r.body.total_value, r.body.totals.qty_avg);
   });
 
-  await t.test('Bewertung: gleiche Antwortform mit beiden Ausweisen', async () => {
+  await t.test('valuation: same response shape with both credentials', async () => {
     // Was hier vorher stand, und warum es weg ist
     const withSession = (await get('/api/v1/finance/valuation')).body;
     const withToken = (
@@ -331,12 +331,12 @@ test('API-Parität Webapp ↔ Android', async t => {
     );
   });
 
-  await t.test('v1-Zusatzfelder sind konsistent (count = sets.length)', async () => {
+  await t.test('v1 additional fields are consistent (count = sets.length)', async () => {
     const r = await get('/api/v1/sets');
     assert.equal(r.body.count, r.body.sets.length);
   });
 
-  await t.test('Preisverlauf Set: Reihen und Diagramm kommen an', async () => {
+  await t.test('price history set: series and chart arrive', async () => {
     // Vorher verglich diese Prüfung die Webapp-Route gegen die v1-Route. Nach
     // dem Zusammenlegen gibt es nur eine; die Gleichwertigkeit der Ausweise
     // steht oben. Was hier bleibt, ist die INHALTLICHE Aussage: Der Verlauf
@@ -348,7 +348,7 @@ test('API-Parität Webapp ↔ Android', async t => {
     assert.ok(b.chart && Array.isArray(b.chart.values), 'chart fehlt');
   });
 
-  await t.test('Preisverlauf Teil und Minifigur: gleiche Form wie beim Set', async () => {
+  await t.test('price history part and minifigure: same shape as for the set', async () => {
     // Alle drei Arten teilen sich src/finances/priceHistory.ts. Geprüft wird deshalb,
     // dass sie dieselben FELDER liefern — läuft eine Art aus der Form, fällt
     // es hier auf, auch ohne zweite Route zum Vergleichen.
@@ -362,7 +362,7 @@ test('API-Parität Webapp ↔ Android', async t => {
   });
 
   // ── Schreib-Parität: gleicher Aufruf über beide Familien -> gleicher Effekt ──
-  await t.test('PUT Set: Webapp- und Android-Route bewirken dasselbe', async () => {
+  await t.test('PUT set: web app and Android route have the same effect', async () => {
     const body = JSON.stringify({ quantity: 4, purchase_price: 42.5, condition: 'U' });
     const hdr = { 'content-type': 'application/json' };
     // Es gibt nur noch EINE Schreibroute. Geprüft wird deshalb,
@@ -382,7 +382,7 @@ test('API-Parität Webapp ↔ Android', async t => {
     assert.equal(a.quantity, 4);
   });
 
-  await t.test('PUT Erfassung: Webapp- und Android-Route bewirken dasselbe', async () => {
+  await t.test('PUT acquisition: web app and Android route have the same effect', async () => {
     const idOf = async sn => (await get(`/api/v1/sets/${sn}/acquisitions`)).body.acquisitions[0].id;
     const hdr = { 'content-type': 'application/json' };
     const body = JSON.stringify({ quantity: 2, purchase_price: 30, condition: 'U' });
@@ -408,7 +408,7 @@ test('API-Parität Webapp ↔ Android', async t => {
     assert.deepEqual(strip(a), strip(b), 'Sitzung und Token bewirken Verschiedenes auf derselben Route');
   });
 
-  await t.test('DELETE Set: Webapp- und Android-Route bewirken dasselbe', async () => {
+  await t.test('DELETE set: web app and Android route have the same effect', async () => {
     // Ebenfalls eine Route, beide Ausweise.
     assert.equal((await fetch(base + '/api/v1/sets/40567-1', { method: 'DELETE' })).status, 200, 'Löschen mit Sitzung');
     assert.equal(
@@ -433,14 +433,14 @@ test('API-Parität Webapp ↔ Android', async t => {
     }
   });
 
-  await t.test('Bearer-Token (Android-Auth) liefert dasselbe wie die Session', async () => {
+  await t.test('bearer token (Android auth) delivers the same as the session', async () => {
     const viaSession = await get('/api/v1/sets');
     const viaToken = await get('/api/v1/sets', { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' });
     assert.equal(viaToken.status, 200, `Bearer-Auth fehlgeschlagen: ${JSON.stringify(viaToken.body)}`);
     assert.deepEqual(core(viaToken.body), core(viaSession.body));
   });
 
-  await t.test('ohne Auth: beide Absicherungen lehnen ab', async () => {
+  await t.test('without auth: both guards reject', async () => {
     // Es gibt nur EINEN Adressraum (/api/v1): Eine Adresse ausserhalb antwortete
     // mit 404, und das sähe aus wie eine bestandene Abweisung.
     const withToken = await get('/api/v1/sets', { 'x-no-session': '1' });

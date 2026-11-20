@@ -34,7 +34,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { holdsSet, catalogSet } = require('./helpers/inventory');
 const db = testData();
 
-test('Set-Bilder-Nachlauf: nur Sets mit Bezug, 404 ruht', { concurrency: 1 }, async t => {
+test('set image follow-up run: only sets with a reference, 404 rests', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const repo = _req('src/catalog/repository/imageState.js');
   const { LESEVERTRAG } = _req('src/services.js');
@@ -64,11 +64,11 @@ test('Set-Bilder-Nachlauf: nur Sets mit Bezug, 404 ruht', { concurrency: 1 }, as
     (await repo.setImagesWithoutFile(db, LESEVERTRAG)).map(r => r.set_number).filter(sn => sn.startsWith(P));
 
   try {
-    await t.test('Auswahl: gehaltene Sets ja, reine Katalogsätze und frische 404 nein', async () => {
+    await t.test('selection: held sets yes, pure catalog records and fresh 404 no', async () => {
       assert.deepEqual(await eigene(), [gehalten, imageless]);
     });
 
-    await t.test('ein 404 wird vermerkt und fehlt im nächsten Lauf', async () => {
+    await t.test('a 404 is noted and missing in the next run', async () => {
       IM._emptyForeground();
       antworten.set(imageless, 404);
       angefragt.length = 0;

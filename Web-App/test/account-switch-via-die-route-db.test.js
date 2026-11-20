@@ -78,7 +78,7 @@ async function setup() {
   );
 }
 
-test('eine Erfassung wechselt das Konto — alle drei Arten über ihre Route', { concurrency: 1 }, async t => {
+test('an acquisition changes the account — all three kinds via their route', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -103,7 +103,7 @@ test('eine Erfassung wechselt das Konto — alle drei Arten über ihre Route', {
       Number(r.user_id),
     );
 
-  await t.test('Set: die Erfassung UND die Bestandszeile sind danach beim Kind', async () => {
+  await t.test('set: the acquisition AND the inventory row are with the child afterwards', async () => {
     const id = await entryId('set_acquisitions', 'set_number', SN);
     const a = await setze(`/api/v1/sets/${SN}/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
@@ -123,7 +123,7 @@ test('eine Erfassung wechselt das Konto — alle drei Arten über ihre Route', {
     );
   });
 
-  await t.test('Teil: dieselbe Fabrik, andere Adresse', async () => {
+  await t.test('part: the same factory, a different address', async () => {
     const id = await entryId('part_acquisitions', 'part_number', '3001');
     const a = await setze(`/api/v1/parts/3001/4/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
@@ -135,7 +135,7 @@ test('eine Erfassung wechselt das Konto — alle drei Arten über ihre Route', {
     );
   });
 
-  await t.test('Figur: der dritte Zweig, und er wird sonst nirgends ausgeführt', async () => {
+  await t.test('figure: the third branch, and it is not executed anywhere else', async () => {
     // Bis hierher war fuer die Figuren NUR zugesichert, dass der Quelltext
     // `manualEntryReassign(tx, 'fig'` enthaelt. Genau diese Art Zusicherung
     // hat heute zweimal bestanden, waehrend der Weg kaputt war.
@@ -150,7 +150,7 @@ test('eine Erfassung wechselt das Konto — alle drei Arten über ihre Route', {
     );
   });
 
-  await t.test('ein Konto AUSSERHALB des Haushalts wird mit 403 abgewiesen', async () => {
+  await t.test('an account OUTSIDE the household is rejected with 403', async () => {
     // Bisher ein Muster: /if \(to === null\)\s*\n\s*return sendError\(req, res, 403/.
     // Das faengt eine geloeschte Zeile — nicht eine Bedingung, die nie
     // zutrifft, oder ein writeTargetOrNull(), das zu viel erlaubt.
@@ -178,7 +178,7 @@ test('eine Erfassung wechselt das Konto — alle drei Arten über ihre Route', {
     );
   });
 
-  await t.test('dasselbe Konto heisst „nichts zu tun", nicht „Fehler"', async () => {
+  await t.test('the same account means "nothing to do", not "error"', async () => {
     // Der Weg daneben: Wer auf sein eigenes Konto schiebt, bekommt 200 und
     // `unchanged`. Ohne diesen Fall koennte die Route jeden Wechsel ablehnen
     // und der 403-Fall darueber waere trotzdem gruen.

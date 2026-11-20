@@ -21,7 +21,7 @@ const { testServer } = require('./helpers/server');
 const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
-test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrency: 1 }, async t => {
+test('existing set: adding reports exists and writes nothing', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const MAIN = `ex-haupt-${process.pid}`,
@@ -172,7 +172,7 @@ test('vorhandenes Set: Erfassen meldet exists und schreibt nichts', { concurrenc
   }
 });
 
-test('eine Regel für Setnummern: normalisiereSetNummer', () => {
+test('one rule for set numbers: normalisiereSetNummer', () => {
   // Früher drei Namen (normalizeSetNumber, sanitizeSetNumber); jetzt nur die Stelle, an der die Regel steht.
   const { normalisiereSetNummer } = _req('src/infra/setNumber.js');
   const sets = _req('src/sets/index.js');

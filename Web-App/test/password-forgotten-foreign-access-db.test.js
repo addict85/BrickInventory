@@ -36,7 +36,7 @@ const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 test.after(() => db.pool.end().catch(() => {}));
 
-test('Passwort vergessen löst fremden Zugriff', { concurrency: 1 }, async t => {
+test('forgot password removes foreign access', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const gesendet = mailAttrappe();
   t.after(await enterMailServer(db));
@@ -72,7 +72,7 @@ test('Passwort vergessen löst fremden Zugriff', { concurrency: 1 }, async t => 
   const { inSystemContext } = _req('src/infra/accountContext.js');
   const mainAccountsOf = () => inSystemContext('test', () => H.householdOf(A)).then(h => h.memberIds.includes(V));
 
-  await t.test('der normale Passwortwechsel lässt den Haushalt stehen', async () => {
+  await t.test('the normal password change leaves the household', async () => {
     await K_.aendereEigenesPasswort(V, 'zwischen-Passwort-17');
     assert.equal(await mainAccountsOf(), true);
   });
@@ -90,24 +90,24 @@ test('Passwort vergessen löst fremden Zugriff', { concurrency: 1 }, async t => 
   });
   assert.equal(r.status, 200, await r.clone().text());
 
-  await t.test('das fremde Hauptkonto sieht den Bestand nicht mehr', async () => {
+  await t.test('the foreign main account no longer sees the inventory', async () => {
     assert.equal((await db.all('SELECT 1 FROM account_links WHERE sub_user_id = $1', [V])).length, 0);
     assert.equal(await mainAccountsOf(), false);
   });
-  await t.test('das eigene Unterkonto bleibt', async () => {
+  await t.test('the own sub-account stays', async () => {
     assert.equal(
       (await db.all('SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [V, K])).length,
       1,
     );
   });
-  await t.test('offene Einladungen sind verworfen', async () => {
+  await t.test('open invitations are discarded', async () => {
     assert.equal((await db.all('SELECT 1 FROM account_link_invites WHERE main_user_id = $1', [V])).length, 0);
   });
-  await t.test('der ausstehende Adresswechsel ist verworfen', async () => {
+  await t.test('the pending address change is discarded', async () => {
     const z = await db.get('SELECT email, new_email, new_email_token FROM users WHERE id = $1', [V]);
     assert.deepEqual(z, { email: `${namen[0]}@example.org`, new_email: null, new_email_token: null });
   });
-  await t.test('die Mail nennt, was gelöst wurde', async () => {
+  await t.test('the mail names what was removed', async () => {
     const an = () => gesendet.find(m => m.to === `${namen[0]}@example.org` && /zurückgesetzt/.test(m.text));
     assert.ok(await bis(() => !!an(), 10_000), 'keine Mail an das Konto');
     const text = an().text;

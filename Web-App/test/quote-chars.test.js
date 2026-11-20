@@ -25,7 +25,7 @@ async function suche(sprache) {
   return { o, text: text.trim() };
 }
 
-test('Suche ohne Treffer: de', async () => {
+test('search without results: de', async () => {
   const { o, text } = await suche('de');
   try {
     assert.equal(text, 'Keine Treffer für „xyzxyz“');
@@ -34,7 +34,7 @@ test('Suche ohne Treffer: de', async () => {
   }
 });
 
-test('Suche ohne Treffer: en', async () => {
+test('search without results: en', async () => {
   const { o, text } = await suche('en');
   try {
     assert.equal(text, 'No results for “xyzxyz”');
@@ -43,7 +43,7 @@ test('Suche ohne Treffer: en', async () => {
   }
 });
 
-test('jedes „ hat sein “, und englisch keine geraden Anführungszeichen um Wörter', async () => {
+test('every „ has its “, and English has no straight quotes around words', async () => {
   const { w } = await openUi({}, { angemeldet: false });
   try {
     const de = Object.entries(w.I18N_DE),

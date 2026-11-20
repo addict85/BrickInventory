@@ -17,7 +17,7 @@ const LOWER = [
   /\balert\(\s*'([^']{2,})'/g,
 ];
 
-test('kein fester Text in textContent, placeholder, title, toast, confirm oder alert', () => {
+test('no fixed text in textContent, placeholder, title, toast, confirm or alert', () => {
   const dateien = [];
   const lauf = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {

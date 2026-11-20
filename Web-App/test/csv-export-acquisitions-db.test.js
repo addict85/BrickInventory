@@ -34,7 +34,7 @@ function zeilen(csv) {
   });
 }
 
-test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile', { concurrency: 1 }, async t => {
+test('sets export: one row per acquisition, without an acquisition the set row', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const nutzer = `csvexp-${process.pid}`;
@@ -95,7 +95,7 @@ test('Sets-Export: eine Zeile je Erfassung, ohne Erfassung die Set-Zeile', { con
   }
 });
 
-test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets', { concurrency: 1 }, async t => {
+test('sets export needs ONE query, independent of the number of sets', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   // ── Warum gezaehlt und nicht gestoppt wird ────────────────────────────────
@@ -148,7 +148,7 @@ test('Sets-Export braucht EINE Abfrage, unabhaengig von der Anzahl Sets', { conc
   }
 });
 
-test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage', { concurrency: 1 }, async t => {
+test('minifigures export: the same rule, the same single query', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const nutzer = `figexp-${process.pid}`;
@@ -218,7 +218,7 @@ test('Minifiguren-Export: dieselbe Regel, dieselbe eine Abfrage', { concurrency:
   }
 });
 
-test('Teile-Export: dieselbe Regel, dieselbe eine Abfrage', { concurrency: 1 }, async t => {
+test('parts export: the same rule, the same single query', { concurrency: 1 }, async t => {
   // Warum dieser Fall spaeter kam
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 

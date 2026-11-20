@@ -35,7 +35,7 @@ function serverFiles() {
   return out;
 }
 
-test('die Schreibweisen werden nur an einer Stelle aufgezaehlt', () => {
+test('the spellings are enumerated in only one place', () => {
   const dateien = serverFiles();
   assert.ok(dateien.length >= 40, `Nur ${dateien.length} Server-Dateien gefunden — Pfad veraltet?`);
 
@@ -70,7 +70,7 @@ test('die Schreibweisen werden nur an einer Stelle aufgezaehlt', () => {
   for (const form of ["'1'", "'t'", "'true'"]) assert.ok(rumpf.includes(form), `isJa() kennt ${form} nicht`);
 });
 
-test('die Antwort traegt einen echten Wahrheitswert', async t => {
+test('the response carries a real boolean', async t => {
   try {
     await db.get('SELECT 1');
   } catch {

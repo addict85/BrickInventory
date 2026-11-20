@@ -31,7 +31,7 @@ const jobs = proxy_hinweis => ({
   },
 });
 
-test('der Hinweis steht unter Hintergrundarbeiten', async () => {
+test('the hint is under background jobs', async () => {
   const { w, d } = await openUi(jobs({ art: 'eine_adresse', vars: { ip: '172.28.73.20', minuten: 61, anzahl: 301 } }));
   try {
     await reiter(w, 'monitor');
@@ -44,7 +44,7 @@ test('der Hinweis steht unter Hintergrundarbeiten', async () => {
   }
 });
 
-test('ohne Hinweis steht nichts da', async () => {
+test('without a hint nothing is shown', async () => {
   const { w, d } = await openUi(jobs(null));
   try {
     await reiter(w, 'monitor');

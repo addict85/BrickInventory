@@ -16,7 +16,7 @@ const { nextRedirect, hostAllowed, REDIRECT_LIMIT, ALLOWED_IMAGE_HOSTS, ALLOWED_
 
 const HEADER = { Authorization: 'key GEHEIM', 'User-Agent': 'test' };
 
-test('eine Umleitung nimmt den Schluessel nicht mit auf einen fremden Host', () => {
+test('a redirect does not take the key along to a foreign host', () => {
   const w = nextRedirect('https://rebrickable.com/a', 'https://angreifer.tld/b', HEADER);
   assert.ok(w, 'Der Sprung selbst ist erlaubt — nur eben ohne Geheimnis');
   assert.equal(w.url, 'https://angreifer.tld/b');
@@ -28,7 +28,7 @@ test('eine Umleitung nimmt den Schluessel nicht mit auf einen fremden Host', () 
   );
 });
 
-test('auf demselben Host bleibt der Schluessel', () => {
+test('on the same host the key stays', () => {
   // Sonst waere die Regel unbrauchbar: rebrickable.com leitet innerhalb der
   // eigenen Adressen um (Schraegstrich am Ende), und ohne Schluessel kaeme
   // dort ein 401 zurueck.
@@ -36,7 +36,7 @@ test('auf demselben Host bleibt der Schluessel', () => {
   assert.equal(w.kopfzeilen.Authorization, 'key GEHEIM');
 });
 
-test('ein Downgrade auf http wird nicht befolgt', () => {
+test('a downgrade to http is not followed', () => {
   assert.equal(
     nextRedirect('https://rebrickable.com/a', 'http://rebrickable.com/a', HEADER),
     null,
@@ -48,7 +48,7 @@ test('ein Downgrade auf http wird nicht befolgt', () => {
     assert.equal(nextRedirect('https://rebrickable.com/a', boese, HEADER), null, `${boese} darf nicht befolgt werden`);
 });
 
-test('ein relatives Umleitungsziel wird aufgeloest', () => {
+test('a relative redirect target is resolved', () => {
   // Ein Location-Kopf DARF ein blosser Pfad sein (RFC 9110). Vorher lief das
   // in `new URL(location)` und damit in ein "Invalid URL" — richtig
   // abgewiesen, aber aus dem falschen Grund: eine gueltige Umleitung kam nicht
@@ -58,12 +58,12 @@ test('ein relatives Umleitungsziel wird aufgeloest', () => {
   assert.equal(w.kopfzeilen.Authorization, 'key GEHEIM', 'Derselbe Host — der Schluessel bleibt');
 });
 
-test('ohne Location-Kopfzeile gibt es kein Ziel', () => {
+test('without a Location header there is no target', () => {
   assert.equal(nextRedirect('https://rebrickable.com/a', undefined, HEADER), null);
   assert.equal(nextRedirect('https://rebrickable.com/a', '', HEADER), null);
 });
 
-test('mit Host-Liste zaehlt auch das Umleitungsziel', () => {
+test('with a host list the redirect target counts as well', () => {
   // Der Dateidownload prueft den Host bei JEDEM Sprung, weil er das Geholte
   // ausliefert (data/instructions/ ist fuer angemeldete Nutzer abrufbar).
   assert.equal(
@@ -77,7 +77,7 @@ test('mit Host-Liste zaehlt auch das Umleitungsziel', () => {
   );
 });
 
-test('die Host-Pruefung faellt nicht auf einen angehaengten Namen herein', () => {
+test('the host check does not fall for an appended name', () => {
   // Dieselbe Falle wie beim Bearer-Token der App und bei der Update-Adresse:
   // ein blosses endsWith() ohne den Punkt davor.
   assert.ok(hostAllowed('https://cdn.rebrickable.com/x', ALLOWED_IMAGE_HOSTS));
@@ -101,7 +101,7 @@ test('die Host-Pruefung faellt nicht auf einen angehaengten Namen herein', () =>
  *   Userinfo-Prüfung entfernt → rot bei „evil.com@"
  *   zusätzlich `u.host.endsWith('.' + h)` (alter Suffix) → rot bei „x.bdpinstructions"
  */
-test('Hostprüfung: nur Standardport, keine Userinfo, Eimer exakt', () => {
+test('host check: only default port, no userinfo, bucket exact', () => {
   for (const gut of [
     'https://cdn.rebrickable.com/x',
     'https://cdn.rebrickable.com:443/x',
@@ -120,7 +120,7 @@ test('Hostprüfung: nur Standardport, keine Userinfo, Eimer exakt', () => {
 /**
  * Die Anleitungen der BrickLink Designer Programme.
  */
-test('der BDP-Eimer darf geholt werden — aber nur er', () => {
+test('the BDP bucket may be fetched — but only it', () => {
   assert.ok(
     hostAllowed('https://bdpinstructions.s3.amazonaws.com/11010.pdf', ALLOWED_DOWNLOAD_HOSTS),
     'Der Rueckfall in src/catalog/instructions.ts baut genau diese Adresse — sie hier ' +
@@ -148,7 +148,7 @@ test('der BDP-Eimer darf geholt werden — aber nur er', () => {
   );
 });
 
-test('Abrufe nach draussen gehen nur über src/infra/fetch.ts', () => {
+test('outbound requests only go through src/infra/fetch.ts', () => {
   // Struktur, kein Verhalten: Das Verhalten des Helfers prüft
   // test/fetch-helper.test.js gegen einen echten TLS-Server. Gegenprobe
   // (02.11.2026 gemessen): globalThis.fetch zurück in gutscheinGuthaben.ts → rot.
@@ -201,7 +201,7 @@ test('Abrufe nach draussen gehen nur über src/infra/fetch.ts', () => {
   );
 });
 
-test('die Grenze ist die, die downloadFile schon hatte', () => {
+test('the limit is the one downloadFile already had', () => {
   // Selbstbeweis: Die Zahl kommt aus dem Baum, nicht aus dem Kopf. Stand
   // vorher als `redirects > 5` in downloadFile.
   assert.equal(REDIRECT_LIMIT, 5);

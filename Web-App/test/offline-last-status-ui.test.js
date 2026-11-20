@@ -33,7 +33,7 @@ function netz(w, an) {
   w.dispatchEvent(new w.Event(an ? 'online' : 'offline'));
 }
 
-test('Merkliste: letzter Stand statt Fehler, auch nach dem Neuladen der Seite', async () => {
+test('wishlist: last state instead of an error, even after reloading the page', async () => {
   // Erster Besuch mit Netz; der zweite (wie nach F5) ohne, mit dem Speicher dieses Tabs.
   const erst = await openUi({ '/v1/wanted': MERK });
   await reiter(erst.w, 'wanted');
@@ -66,7 +66,7 @@ test('Merkliste: letzter Stand statt Fehler, auch nach dem Neuladen der Seite', 
   }
 });
 
-test('nie geladen: „Keine Verbindung“, Erneut versuchen bleibt bedienbar und lädt von selbst', async t => {
+test('never loaded: "no connection", try again stays operable and loads by itself', async t => {
   let offline = true;
   const { w, d } = await openUi(
     {
@@ -83,10 +83,10 @@ test('nie geladen: „Keine Verbindung“, Erneut versuchen bleibt bedienbar und
     await warte(() => d.querySelector('#mk-list .fehler-zustand'));
     const box = d.querySelector('#mk-list .fehler-zustand');
     await t.test('Text', () => assert.match(box.textContent, /Keine Verbindung zum Server/));
-    await t.test('Erneut versuchen bleibt bedienbar', () =>
+    await t.test('try again stays operable', () =>
       assert.equal(box.querySelector('button[data-click]').disabled, false),
     );
-    await t.test('CSV-Label gesperrt', () => {
+    await t.test('CSV label locked', () => {
       const label = d.querySelector('#tab-wanted label:has(> input[type=file])');
       assert.ok(label, 'kein Datei-Label in der Merkliste');
       assert.equal(w.getComputedStyle(label).pointerEvents, 'none');
@@ -94,7 +94,7 @@ test('nie geladen: „Keine Verbindung“, Erneut versuchen bleibt bedienbar und
     offline = false;
     netz(w, true);
     await warte(() => d.querySelector('#mk-list .mk-zeile'));
-    await t.test('lädt von selbst', () => assert.ok(d.querySelector('#mk-list .mk-zeile')));
+    await t.test('loads by itself', () => assert.ok(d.querySelector('#mk-list .mk-zeile')));
   } finally {
     w.close();
   }

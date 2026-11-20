@@ -52,7 +52,7 @@ https.get = (url, opt, cb) => {
   return req;
 };
 
-test('der Rebrickable-Schlüssel bleibt bei rebrickable.com', { concurrency: 1 }, async t => {
+test('the Rebrickable key stays with rebrickable.com', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const S = _req('src/settings/settings.js');
   const vorher = await S.getGlobalSetting('rebrickable_api_key');
@@ -65,7 +65,7 @@ test('der Rebrickable-Schlüssel bleibt bei rebrickable.com', { concurrency: 1 }
     require('./helpers/sources').testServices().externalSources.quellen;
   const withKey = () => fetches.filter(a => Object.keys(a.kopf).some(k => k.toLowerCase() === 'authorization'));
 
-  await t.test('next auf api.upcitemdb.com wird nicht verfolgt', async () => {
+  await t.test('next on api.upcitemdb.com is not followed', async () => {
     fetches.length = 0;
     responseFor = url =>
       url.includes('/lego/sets/')
@@ -86,7 +86,7 @@ test('der Rebrickable-Schlüssel bleibt bei rebrickable.com', { concurrency: 1 }
     );
   });
 
-  await t.test('next auf rebrickable.com wird weiter verfolgt', async () => {
+  await t.test('next on rebrickable.com is still followed', async () => {
     fetches.length = 0;
     responseFor = url =>
       url.includes('page=2')
@@ -105,7 +105,7 @@ test('der Rebrickable-Schlüssel bleibt bei rebrickable.com', { concurrency: 1 }
     assert.equal(r.teile.length, 2, 'die zweite Seite fehlt');
   });
 
-  await t.test('rebrickableRaw erreicht keinen anderen Host', async () => {
+  await t.test('rebrickableRaw reaches no other host', async () => {
     fetches.length = 0;
     const r = await rebrickableRaw('https://lego.brickinstructions.com/x', 'geheim-123');
     assert.equal(r.status, 0);
@@ -113,7 +113,7 @@ test('der Rebrickable-Schlüssel bleibt bei rebrickable.com', { concurrency: 1 }
   });
 
   await t.test(
-    'Abrufe mit Schlüssel gehen nur an rebrickable.com; ohne Schlüssel bleibt die EAN-Suche erlaubt',
+    'requests with a key only go to rebrickable.com; without a key the EAN search stays allowed',
     async () => {
       fetches.length = 0;
       responseFor = () => ({ status: 200, body: '{}' });

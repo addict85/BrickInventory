@@ -40,7 +40,7 @@ function oberflaeche() {
 
 const CALL = /\bt(?:Raw)?\(\s*'([a-z0-9_.]+)'|\bt(?:Raw)?\(\s*"([a-z0-9_.]+)"|data-i18n(?:-tab)?="([a-z0-9_.]+)"/g;
 
-test('jeder gerufene i18n-Schlüssel steht im Wörterbuch', () => {
+test('every called i18n key is in the dictionary', () => {
   const { de, en } = loadTranslations();
   const vorhanden = new Set([...Object.keys(de), ...Object.keys(en)]);
   assert.ok(vorhanden.size >= 400, `Nur ${vorhanden.size} Schlüssel geladen — Pfad oder Format veraltet?`);
@@ -86,7 +86,7 @@ test('jeder gerufene i18n-Schlüssel steht im Wörterbuch', () => {
 /**
  * Und die Form des Aufrufs?
  */
-test('jede data-i18n-Form wird von applyLang auch ausgewertet', () => {
+test('every data-i18n form is also evaluated by applyLang', () => {
   const i18n = fs
     .readFileSync(path.join(ROOT, 'public', 'i18n.js'), 'utf8')
     .replace(/\/\*[\s\S]*?\*\//g, '')

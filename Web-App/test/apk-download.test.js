@@ -45,7 +45,7 @@ async function knopf() {
   }
 }
 
-test('1. der Knopf steht in der Sicht „App“, vor dem QR-Code, ohne fremdes Markenzeichen', async () => {
+test('1. the button is in the "app" view, before the QR code, without a foreign brand mark', async () => {
   const k = await knopf();
   assert.match(k.href, /^https:\/\/github\.com\//, 'Der Knopf zeigt nicht auf GitHub — dort liegt das APK.');
   assert.ok(k.sichtbar, 'Der Knopf ist in der geöffneten Sicht nicht zu sehen');
@@ -56,7 +56,7 @@ test('1. der Knopf steht in der Sicht „App“, vor dem QR-Code, ohne fremdes M
   assert.doesNotMatch(k.markup, /androidicons|google.*android.*logo|gstatic|play\.google\.com\/intl/i);
 });
 
-test('2. dieselbe Adresse wie im Workflow', async () => {
+test('2. the same address as in the workflow', async () => {
   const adresse = (await knopf()).href;
   // ── Aus dem Workflow: fester Link und der Name, unter dem das APK angelegt wird ──
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android-release.yml'), 'utf8');

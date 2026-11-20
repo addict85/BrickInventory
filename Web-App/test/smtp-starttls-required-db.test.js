@@ -91,7 +91,7 @@ function smtpServer(tlsOpt) {
   return new Promise(r => srv.listen(0, '127.0.0.1', () => r({ srv, recording, post, port: portOf(srv) })));
 }
 
-test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }, async t => {
+test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const SCHLUESSEL = [
@@ -171,7 +171,7 @@ test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }
   };
   const LINK = 'https://brick.example/reset?token=abcdef0123';
 
-  await t.test('ohne STARTTLS bricht der Versand vor AUTH ab', async () => {
+  await t.test('without STARTTLS sending aborts before AUTH', async () => {
     await setze({ smtp_port: ohne.port });
     const r = await mailer.sendMail({ to: 'ziel@example.org', subject: 'Rücksetzen', text: LINK });
     assert.equal(r.success, false);
@@ -188,7 +188,7 @@ test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }
     assert.equal(ohne.post.length, 0);
   });
 
-  await t.test('der Mail-Test in den Einstellungen nimmt denselben Weg', async () => {
+  await t.test('the mail test in the settings takes the same path', async () => {
     await setze({ smtp_port: ohne.port });
     const beforeRows = ohne.recording.length;
     assert.equal((await mailer.testSmtp()).code, 'smtp_fehler');
@@ -207,7 +207,7 @@ test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }
     );
   });
 
-  await t.test('mit STARTTLS geht AUTH erst über die verschlüsselte Verbindung', async () => {
+  await t.test('with STARTTLS AUTH only goes over the encrypted connection', async () => {
     await setze({ smtp_port: mit.port, smtp_tls_ca: zert.cert });
     const r = await mailer.sendMail({ to: 'ziel@example.org', subject: 'Rücksetzen', text: LINK });
     assert.equal(r.success, true, r.error);
@@ -219,7 +219,7 @@ test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }
     assert.ok(mit.recording.some(z => z.layer === 'tls' && /^AUTH PLAIN/i.test(z.zeile)));
   });
 
-  await t.test('TLS 1.1 wird abgelehnt, auch wenn der Prozess es zuliesse', async () => {
+  await t.test('TLS 1.1 is rejected, even if the process would allow it', async () => {
     const beforeMin = tls.DEFAULT_MIN_VERSION,
       beforeCiphers = tls.DEFAULT_CIPHERS;
     tls.DEFAULT_MIN_VERSION = 'TLSv1';
@@ -258,7 +258,7 @@ test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }
     return gefragt;
   };
 
-  await t.test('ein Name, der auf eine gesperrte Adresse auflöst, wird nicht verbunden', async () => {
+  await t.test('a name that resolves to a blocked address is not connected', async () => {
     await setze({ smtp_port: ohne.port, smtp_host: 'mail.fake.test' });
     const beforeRows = ohne.recording.length;
     let r;
@@ -271,28 +271,25 @@ test('SMTP ohne Port 465 nur mit STARTTLS', { concurrency: 1, timeout: 120_000 }
     assert.equal(ohne.recording.length, beforeRows, 'kein Verbindungsversuch');
   });
 
-  await t.test(
-    'ein Name, der auf eine erlaubte Adresse auflöst: verbunden wird mit der geprüften Adresse',
-    async () => {
-      await setze({ smtp_port: ohne.port, smtp_host: 'mail.fake.test' });
-      const beforeRows = ohne.recording.length;
-      // Nur der erste Aufruf bekommt 127.0.0.1; ein zweites Nachschlagen landete auf 127.0.0.2.
-      const dns = require('node:dns');
-      const echt = dns.lookup;
-      let n = 0;
-      /** @type {any} */ (dns).lookup = (host, opt, callback) => {
-        if (host !== 'mail.fake.test') return echt(host, opt, callback);
-        const a = { address: n++ === 0 ? '127.0.0.1' : '127.0.0.2', family: 4 };
-        setImmediate(() => (opt?.all ? callback(null, [a]) : callback(null, a.address, 4)));
-      };
-      let r;
-      try {
-        r = await mailer.testSmtp();
-      } finally {
-        dns.lookup = echt;
-      }
-      assert.match(r.vars.grund, /kein STARTTLS/, JSON.stringify(r));
-      assert.ok(ohne.recording.slice(beforeRows).some(z => /^EHLO/i.test(z.zeile)));
-    },
-  );
+  await t.test('a name that resolves to an allowed address: the connection goes to the checked address', async () => {
+    await setze({ smtp_port: ohne.port, smtp_host: 'mail.fake.test' });
+    const beforeRows = ohne.recording.length;
+    // Nur der erste Aufruf bekommt 127.0.0.1; ein zweites Nachschlagen landete auf 127.0.0.2.
+    const dns = require('node:dns');
+    const echt = dns.lookup;
+    let n = 0;
+    /** @type {any} */ (dns).lookup = (host, opt, callback) => {
+      if (host !== 'mail.fake.test') return echt(host, opt, callback);
+      const a = { address: n++ === 0 ? '127.0.0.1' : '127.0.0.2', family: 4 };
+      setImmediate(() => (opt?.all ? callback(null, [a]) : callback(null, a.address, 4)));
+    };
+    let r;
+    try {
+      r = await mailer.testSmtp();
+    } finally {
+      dns.lookup = echt;
+    }
+    assert.match(r.vars.grund, /kein STARTTLS/, JSON.stringify(r));
+    assert.ok(ohne.recording.slice(beforeRows).some(z => /^EHLO/i.test(z.zeile)));
+  });
 });

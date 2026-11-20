@@ -28,7 +28,7 @@ const NAME = 'gleitfrist_test',
   PASS = 'richtigesPasswort1';
 const TAG = 86400_000;
 
-test('das Ablaufdatum des App-Tokens gleitet mit der Benutzung', { concurrency: 1 }, async t => {
+test('the expiry date of the app token slides with use', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);

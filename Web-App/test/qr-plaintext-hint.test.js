@@ -31,19 +31,19 @@ async function hintFor(url) {
   }
 }
 
-test('http:// bekommt den Hinweis, dass die App nur HTTPS annimmt', async () => {
+test('http:// gets the hint that the app only accepts HTTPS', async () => {
   const h = await hintFor('http://192.168.1.5:3000');
   assert.equal(h.versteckt, false);
   assert.match(h.text, /Android-App nimmt nur noch HTTPS an/);
 });
 
-test('https:// bekommt keinen', async () => {
+test('https:// gets none', async () => {
   const h = await hintFor('https://lego.example.org');
   assert.equal(h.versteckt, true);
   assert.equal(h.text, '');
 });
 
-test('ohne HTTPS nennt die TLS-Fläche, dass die App sich nur über HTTPS verbindet', async () => {
+test('without HTTPS the TLS area says that the app only connects via HTTPS', async () => {
   const { w, d } = await openUi({
     '/v1/settings/tls': { success: true, https: false, fp: null },
     '/v1/settings/tokens': { success: true, tokens: [] },
@@ -57,7 +57,7 @@ test('ohne HTTPS nennt die TLS-Fläche, dass die App sich nur über HTTPS verbin
   }
 });
 
-test('der Countdown zählt von der Dauer des Servers, der Hinweis nennt dieselbe', async () => {
+test("the countdown counts from the server's duration, the hint names the same", async () => {
   for (const [sprache, minuten] of /** @type {[string, RegExp][]} */ ([
     ['de', /5 Minuten gültig/],
     ['en', /valid for 5 minutes/],

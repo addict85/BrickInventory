@@ -56,7 +56,7 @@ function roh1(daten) {
 const alsV1 = klar => 'v1:' + roh1(Buffer.from(klar, 'utf8')).toString('base64');
 const PDF = Buffer.from('%PDF-1.4\nGutschein 5045076374450099999 PIN 4711\n%%EOF\n');
 
-test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t => {
+test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const namen = [`kontext_a_${process.pid}`, `kontext_b_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
@@ -84,7 +84,7 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
   };
   const pinOf = async (uid, id) => (await gr.voucher(uid, id)).pin;
 
-  await t.test('vertauscht zwischen Konten, Zeilen und Spalten ist nichts mehr lesbar', async () => {
+  await t.test('swapped between accounts, rows and columns nothing is readable anymore', async () => {
     const ga = await gr.createVoucher(a, {
       number: '5045076374450011111',
       pin: '1111',
@@ -163,7 +163,7 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
     assert.equal(await stumm(() => dateien.readVoucherPdf(db_)), null, 'PDF an fremdem Ort lesbar');
   });
 
-  await t.test('Klartext und v1 werden beim Lesen abgewiesen', async () => {
+  await t.test('plain text and v1 are rejected on read', async () => {
     const k = g.kontext('probe', 1);
     assert.equal(await stumm(() => g.decrypt('klartext', k)), null);
     assert.equal(await stumm(() => g.decrypt(alsV1('alt'), k)), null);
@@ -177,7 +177,7 @@ test('Geheimnisse mit Kontext', { concurrency: 1, timeout: 120_000 }, async t =>
     fs.rmSync(pdf);
   });
 
-  await t.test('ein v1-Altbestand wird beim Start umgeschlüsselt', async () => {
+  await t.test('a v1 legacy stock is re-encrypted at startup', async () => {
     await db.run('DELETE FROM vouchers WHERE user_id = ANY($1)', [ids]);
     await db.run('DELETE FROM second_factor WHERE user_id = ANY($1)', [ids]);
     fs.rmSync(dateien.VOUCHER_DIR, { recursive: true, force: true });

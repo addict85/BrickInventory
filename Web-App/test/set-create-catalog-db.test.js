@@ -29,7 +29,7 @@ const { catalogSet } = require('./helpers/inventory');
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async t => {
+test('catalog name stays when sources are missing', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const SN = `9${process.pid % 10000}-1`;
   const NAME = `kat-name-${process.pid}`;
@@ -46,13 +46,13 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async t => 
   );
 
   try {
-    await t.test('setAngaben nennt den Katalognamen, keinen Platzhalter', async () => {
+    await t.test('setAngaben names the catalog name, not a placeholder', async () => {
       // Der Abrufstand in catalog_cache trägt seit 0108 keinen Namen mehr, der den Katalog verdecken könnte.
       const info = await _req('src/catalog/rebrickableCatalog.js').setAngaben(SN);
       assert.equal(info?.name, 'Titanic');
     });
 
-    await t.test('erneutes Erfassen ohne Quellen lässt den Katalognamen stehen', async () => {
+    await t.test('adding again without sources leaves the catalog name alone', async () => {
       const r = await require('./helpers/sources').areaPage('sets').setErfassen({
         requester: uid,
         setNumber: SN,
@@ -66,7 +66,7 @@ test('Katalogname bleibt bei fehlenden Quellen', { concurrency: 1 }, async t => 
       assert.equal(kat.year, 2021);
     });
 
-    await t.test('eine Eingabe ohne Ziffer wird nicht als Set angelegt', async () => {
+    await t.test('an input without a digit is not created as a set', async () => {
       const { setErfassen } = require('./helpers/sources').areaPage('sets');
       await assert.rejects(
         setErfassen({ requester: uid, setNumber: 'abc', menge: 1, zustand: 'N', ifPresent: 'aufstocken' }),

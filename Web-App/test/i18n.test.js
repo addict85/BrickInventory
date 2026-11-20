@@ -37,7 +37,7 @@ const { loadTranslations } = require('./helpers/sources');
 const PLACEHOLDER = /\{(\w+)\}/g;
 const placeholders = s => [...String(s).matchAll(PLACEHOLDER)].map(m => m[1]).sort();
 
-test('DE und EN haben identische Schlüsselmengen', () => {
+test('DE and EN have identical key sets', () => {
   const { de, en } = loadTranslations();
   const deKeys = Object.keys(de).sort();
   const enKeys = Object.keys(en).sort();
@@ -47,7 +47,7 @@ test('DE und EN haben identische Schlüsselmengen', () => {
   assert.deepEqual(onlyEn, [], `Nur in EN vorhanden: ${onlyEn.join(', ')}`);
 });
 
-test('Platzhalter stimmen zwischen DE und EN überein', () => {
+test('placeholders match between DE and EN', () => {
   const { de, en } = loadTranslations();
   for (const k of Object.keys(de)) {
     if (!(k in en)) continue; // wird vom Paritätstest gemeldet
@@ -62,7 +62,7 @@ test('Platzhalter stimmen zwischen DE und EN überein', () => {
 /**
  * Gleicher Text in beiden Sprachen heisst: nicht übersetzt.
  */
-test('kein Text steht in beiden Sprachen unübersetzt', () => {
+test('no text stands untranslated in both languages', () => {
   // Begriffe, Eigennamen und Zahlenformate, die in beiden Sprachen gleich
   // lauten. Jeder Eintrag ist eine Entscheidung, keine Nachsicht.
   const gewolltGleich = new Set([
@@ -142,7 +142,7 @@ function checkTerms(de, en) {
   assert.deepEqual(fund(de, /\bBenutzer(?!name)/), [], 'Konto statt Benutzer');
 }
 
-test('die Rollen heissen Standard und Administrator, auch in Server-Fehlertexten', () => {
+test('the roles are called Standard and Administrator, also in server error texts', () => {
   const { de, en } = loadTranslations();
   assert.equal(de['users.role.user'], 'Standard');
   assert.equal(de['users.role.admin'], 'Administrator');
@@ -159,7 +159,7 @@ test('die Rollen heissen Standard und Administrator, auch in Server-Fehlertexten
   assert.deepEqual(alt, [], 'Alter Rollenname „Verwalter“ bzw. „Admin“');
 });
 
-test('Katalog-Schlüssel vorhanden', () => {
+test('catalog keys present', () => {
   const { de } = loadTranslations();
   for (const k of [
     'nav.catalog',
@@ -173,7 +173,7 @@ test('Katalog-Schlüssel vorhanden', () => {
   }
 });
 
-test('der Papierkorb im Brick-Design ist von Anfang an weiss hinterlegt, nicht erst beim direkten Überfahren', () => {
+test('the trash in the brick theme has a white background from the start, not only on direct hover', () => {
   // Gemeldet per Screenshot: Beim Überfahren der Kachel erschien der
   // Papierkorb nur schwach (rgba(255,255,255,.22)) — erst beim direkten
   // Überfahren DES KNOPFES wurde er voll weiss. Jetzt von Anfang an voll
@@ -214,7 +214,7 @@ const COLORS = {
   '/v1/parts/brick-colors': { success: true, colors: [{ id: 72, name: GRAY, hex: '6C6E68' }] },
 };
 
-test('Farbnamen: deutsch angezeigt, englisch gespeichert und gefiltert', async () => {
+test('color names: displayed in German, stored and filtered in English', async () => {
   for (const [sprache, sichtbar] of [
     ['de', 'Dunkelbläulichgrau'],
     ['en', GRAY],
@@ -245,7 +245,7 @@ test('Farbnamen: deutsch angezeigt, englisch gespeichert und gefiltert', async (
   }
 });
 
-test('der Kaufpreis-Detail-Dialog lädt das Teilebild in voller Grösse über den Proxy', async () => {
+test('the purchase price detail dialog loads the part image in full size via the proxy', async () => {
   const CDN = 'https://cdn.rebrickable.com/media/parts/elements/300121.jpg';
   const { w, d } = await openUi({
     ...COLORS,

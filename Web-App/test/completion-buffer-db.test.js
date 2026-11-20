@@ -22,7 +22,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-test('Abschluss: Puffer geschrieben, Takte beendet', { concurrency: 1 }, async t => {
+test('shutdown: buffers written, ticks ended', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const P = _req('src/infra/log.js');
@@ -61,28 +61,28 @@ test('Abschluss: Puffer geschrieben, Takte beendet', { concurrency: 1 }, async t
 
   await closeBufferAndTicks(testAccess(), require('./helpers/sources').testServices());
 
-  await t.test('der Bildbedarf steht danach in image_wanted', async () => {
+  await t.test('the image demand is in image_wanted afterwards', async () => {
     const z = await db.get('SELECT set_number FROM image_wanted WHERE url = $1', [
       `https://cdn.rebrickable.com/media/sets/${kennung}.jpg`,
     ]);
     assert.equal(z?.set_number, `${kennung}-1`);
   });
 
-  await t.test('die Fehlanzeige steht danach in image_misses', async () => {
+  await t.test('the negative result is in image_misses afterwards', async () => {
     const z = await db.get('SELECT reason FROM image_misses WHERE cache_key = $1', [`fehlt:${kennung}`]);
     assert.equal(z?.reason, '404');
   });
 
-  await t.test('die letzte Zeile steht in app_logs', async () => {
+  await t.test('the last line is in app_logs', async () => {
     const z = await db.get('SELECT 1 AS ja FROM app_logs WHERE message LIKE $1', [`%letzte Zeile ${kennung}%`]);
     assert.ok(z, 'die Zeile fehlt');
   });
 
-  await t.test('jeder Takt ist beendet', () => {
+  await t.test('every tick is ended', () => {
     assert.equal(offen.size, 0, `${offen.size} Takt(e) laufen weiter`);
   });
 
-  await t.test('danach schreibt das Protokoll nicht mehr in die Datenbank', async () => {
+  await t.test('afterwards the log no longer writes to the database', async () => {
     console.log(`nach dem Abschluss ${kennung}`);
     await P.emptyLog();
     const z = await db.get('SELECT 1 AS ja FROM app_logs WHERE message LIKE $1', [`%nach dem Abschluss ${kennung}%`]);

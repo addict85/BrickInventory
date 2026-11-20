@@ -41,7 +41,7 @@ const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-test('RFC 6238: die Testvektoren für SHA-1', () => {
+test('RFC 6238: the test vectors for SHA-1', () => {
   // Anhang B der RFC: Schlüssel "12345678901234567890", acht Stellen.
   const schluessel = Buffer.from('12345678901234567890');
   for (const [seconds, erwartet] of /** @type {[number, string][]} */ ([
@@ -59,7 +59,7 @@ test('RFC 6238: die Testvektoren für SHA-1', () => {
   assert.deepEqual(zf.fromBase32('GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'), schluessel);
 });
 
-test('passenderSchritt: ein Schritt Spielraum, nicht mehr', () => {
+test('passenderSchritt: one step of leeway, no more', () => {
   const g = zf.base32(Buffer.from('12345678901234567890'));
   const jetzt = 1234567890 * 1000,
     s = zf.timeStep(jetzt),
@@ -71,7 +71,7 @@ test('passenderSchritt: ein Schritt Spielraum, nicht mehr', () => {
   assert.equal(zf.matchingStep(g, 'abcdef', jetzt), null);
 });
 
-test('Anmeldung mit zweitem Faktor — durchgespielt', { concurrency: 1 }, async t => {
+test('login with second factor — played through', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `zf_${process.pid}`,

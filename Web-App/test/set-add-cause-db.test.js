@@ -24,7 +24,7 @@ const { testServer } = require('./helpers/server');
 const { openUi, warte } = require('./helpers/ui');
 const db = testData();
 
-test('Server: leerer Katalog', { concurrency: 1 }, async t => {
+test('server: empty catalog', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const name = `ursache-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [name]);
@@ -60,7 +60,7 @@ async function versuche(antworten, nr) {
   };
 }
 
-test('Oberfläche: Set schon in der Sammlung', async () => {
+test('UI: set already in the collection', async () => {
   const set = { set_number: '10294-1', name: 'Titanic', quantity: 2, conditions: ['N'], instructions: [] };
   const { w, d, aufrufe, hinweis, knopf } = await versuche(
     {
@@ -95,7 +95,7 @@ test('Oberfläche: Set schon in der Sammlung', async () => {
   }
 });
 
-test('Oberfläche: Katalog nicht geladen', async () => {
+test('UI: catalog not loaded', async () => {
   const { w, hinweis, knopf } = await versuche(
     {
       '/v1/sets/99999-1': { $status: 404, success: false, code: 'set_nicht_gefunden', error: 'Set nicht gefunden' },

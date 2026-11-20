@@ -33,14 +33,14 @@ const prices = (n, u) => {
   return m;
 };
 
-test('nur Neu erfasst → Neupreis, kein Ausweichen auf Gebraucht', () => {
+test('only new entered → new price, no fallback to used', () => {
   // Der gemeldete Fall: eine Neu-Erfassung, beide Preise im Cache.
   const v = valueSet(SN, [{ quantity: 1, condition: 'N' }], prices(148.72, 92.68));
   assert.equal(v.unit_price, 148.72);
   assert.equal(v.total, 148.72);
 });
 
-test('je ein Exemplar neu und gebraucht', () => {
+test('one copy each new and used', () => {
   const v = valueSet(
     SN,
     [
@@ -55,7 +55,7 @@ test('je ein Exemplar neu und gebraucht', () => {
   assert.equal(v.quantity, 2);
 });
 
-test('Anzeige × Menge ergibt immer die Summe', () => {
+test('display × quantity always yields the sum', () => {
   // Verallgemeinerung auf ungleiche Stückzahlen: ein reiner Mittelwert über
   // die vorkommenden Zustände wäre hier inkonsistent zur Summe.
   const v = valueSet(
@@ -71,12 +71,12 @@ test('Anzeige × Menge ergibt immer die Summe', () => {
   assert.equal(v.unit_price * v.quantity, v.total);
 });
 
-test('fehlender Preis für einen Zustand weicht auf den anderen aus', () => {
+test('missing price for one condition falls back to the other', () => {
   const v = valueSet(SN, [{ quantity: 1, condition: 'U' }], prices(148.72, null));
   assert.equal(v.unit_price, 148.72, 'besser der andere Zustand als gar kein Wert');
 });
 
-test('gar kein Preis ergibt null, nicht 0', () => {
+test('no price at all yields null, not 0', () => {
   const v = valueSet(SN, [{ quantity: 1, condition: 'N' }], new Map());
   assert.equal(v.unit_price, null);
   assert.equal(v.total, null, 'eine 0 sähe in den Summen wie ein bekannter Wert aus');
@@ -86,13 +86,13 @@ test('gar kein Preis ergibt null, nicht 0', () => {
 // die Erfassung tatsaechlich optional. Fuer SETS gibt es seit Migration 0032
 // keine Zeile ohne Erfassung mehr — der Rueckfallweg bleibt aber erreichbar
 // und muss richtig rechnen.
-test('ohne Erfassungen zaehlen die mitgegebenen Rueckfallwerte', () => {
+test('without entries the passed fallback values count', () => {
   const v = valueSet(SN, [], prices(148.72, 92.68), 'U', 3);
   assert.equal(v.unit_price, 92.68);
   assert.equal(v.total, 278.04);
 });
 
-test('by_condition weist die Zusammensetzung aus', () => {
+test('by_condition shows the composition', () => {
   const v = valueSet(
     SN,
     [
@@ -107,7 +107,7 @@ test('by_condition weist die Zusammensetzung aus', () => {
   assert.deepEqual([u.quantity, u.unit_price], [1, 40]);
 });
 
-test('qty_avg_price wird für Set-Preise nirgends mehr gelesen', () => {
+test('qty_avg_price is no longer read anywhere for set prices', () => {
   // Der Set-Kern arbeitet ausschliesslich mit Set-Preisen — dort darf der
   // Bezeichner nicht vorkommen. Ausnahme ist setPrice(): Die Preis-Antwort der
   // App führt das Feld qty_avg_price und reicht es nur durch.
@@ -119,7 +119,7 @@ test('qty_avg_price wird für Set-Preise nirgends mehr gelesen', () => {
   assert.equal((sets.match(/qty_avg_price/g) || []).length, 0, 'Set-Kern: Set-Preise müssen über avg_price laufen');
 });
 
-test("guide_type ist überall 'sold', nicht 'stock'", () => {
+test("guide_type is 'sold' everywhere, not 'stock'", () => {
   // 'sold' = tatsächlich erzielte Preise der letzten sechs Monate.
   // 'stock' wären eingestellte Angebote, also auch das, was niemand zahlt.
   for (const f of [
@@ -147,7 +147,7 @@ test("guide_type ist überall 'sold', nicht 'stock'", () => {
   }
 });
 
-test('ein gecachter Null-Preis blockiert den Rückfall nicht dauerhaft', () => {
+test('a cached zero price does not permanently block the fallback', () => {
   // Ein 0-Eintrag galt für das volle TTL-Fenster als endgültige Antwort; die
   // Logik wich dann auf den ANDEREN Zustand aus. Ein Eintrag mit Preis gilt
   // das ganze Fenster, einer ohne nur kurz.
@@ -179,7 +179,7 @@ test('ein gecachter Null-Preis blockiert den Rückfall nicht dauerhaft', () => {
   );
 });
 
-test('die Finanz-Ansicht zeigt avg_price als Marktpreis', () => {
+test('the finances view shows avg_price as market price', () => {
   // Der Detail-Dialog war nach dem letzten Fix richtig, der Finanzen-Reiter
   // nicht: Dort zeigte die als „Marktpreis" beschriftete Spalte qty_avg_price,
   // und die Total-Spalte rechnete damit.
@@ -208,7 +208,7 @@ test('die Finanz-Ansicht zeigt avg_price als Marktpreis', () => {
   assert.doesNotMatch(i18n, /'finance\.qty_avg':/, 'Der Schlüssel gehört mit der Spalte entfernt');
 });
 
-test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
+test('finances: purchase price instead of a second market price column', () => {
   const fin = fs.readFileSync(path.join(ROOT, 'public', 'js', 'finances.js'), 'utf8');
   // Die Sets-Tabelle hatte zwei Preisspalten für dasselbe Konzept.
   assert.doesNotMatch(fin, /t\('finance\.qty_avg'\)/, 'Die mengengewichtete Spalte ist entfallen');
@@ -249,7 +249,7 @@ test('Finanzen: Kaufpreis statt zweiter Marktpreis-Spalte', () => {
   );
 });
 
-test('eine späte Antwort schreibt nicht in einen fremden Dialog', () => {
+test('a late response does not write into a foreign dialog', () => {
   const src = require('./helpers/sources').adminSource();
   // Seit Runde 24 (N7) kommt die Figurenzahl aus dem Katalog; nachgeladen wird nur noch der Preisverlauf.
   const i = src.indexOf("api('GET', `/v1/sets/${sn}/price-history`)");
@@ -262,7 +262,7 @@ test('eine späte Antwort schreibt nicht in einen fremden Dialog', () => {
   );
 });
 
-test('die Vorschau-Erzeugung ist gedeckelt', () => {
+test('preview generation is capped', () => {
   // Marcos Messung
   const server = require('./helpers/sources').serverAll();
   const parallel = server.match(/const THUMB_MAX_PARALLEL = (\d+)/);
@@ -317,7 +317,7 @@ test('die Vorschau-Erzeugung ist gedeckelt', () => {
   );
 });
 
-test('Bewertung und Anzeige benutzen dieselbe Zustandsregel', () => {
+test('valuation and display use the same condition rule', () => {
   // Die Anzeige leitete den Zustand aus den Erfassungen ab, die Bewertung las
   // einen gespeicherten Wert — die Kachel zeigte „Neu", bewertet wurde gebraucht.
   const { effectiveCondition } = _req('src/finances/calculation/condition.js');
@@ -342,7 +342,7 @@ test('Bewertung und Anzeige benutzen dieselbe Zustandsregel', () => {
   assert.equal(effectiveCondition(null), 'N', 'ohne Erfassungen gilt „Neu“');
 });
 
-test('die Verlaufs-Endpunkte liefern fertige Diagrammdaten', () => {
+test('the history endpoints deliver finished chart data', () => {
   // ── Warum der Server das ausrechnet ──────────────────────────────────────
   // Vorher baute jeder Client die Zeitachse selbst: die Webapp in
   // priceChartSVG(), Android hätte dieselbe Rechnung ein zweites Mal
@@ -413,7 +413,7 @@ const acq = (id, cond, qty, price, day) => ({
   created_at: day ? `${day}T12:00:00Z` : null,
 });
 
-test('je Erfassung eine Zeile, jede mit dem Preis IHRES Zustands', () => {
+test('one row per entry, each with the price of ITS condition', () => {
   // Der gemeldete Fall: ein Exemplar neu gekauft, eines gebraucht. Vorher galt
   // das ganze Set als gebraucht, sobald EINE Erfassung gebraucht war — auch
   // das neue Exemplar wurde dann mit dem Gebrauchtpreis bewertet.
@@ -426,18 +426,18 @@ test('je Erfassung eine Zeile, jede mit dem Preis IHRES Zustands', () => {
   assert.equal(rows[1].total_avg, '92.68');
 });
 
-test('die Prozentangabe rechnet gegen den Kaufpreis DIESER Zeile', () => {
+test('the percentage is computed against the purchase price of THIS row', () => {
   const rows = valueAcquisitionRows(SN, [acq(1, 'N', 1, 100), acq(2, 'U', 1, 60)], prices(150, 90));
   assert.equal(rows[0].pnl_pct, '50.0', '150 gegen 100');
   assert.equal(rows[1].pnl_pct, '50.0', '90 gegen 60');
 });
 
-test('Menge zählt: die Zeilensumme ist Preis × Menge', () => {
+test('quantity counts: the row sum is price × quantity', () => {
   const rows = valueAcquisitionRows(SN, [acq(1, 'N', 3, 100)], prices(50, 20));
   assert.equal(rows[0].total_avg, '150.00');
 });
 
-test('ohne erfassten Kaufpreis keine Prozentangabe — und bei 0 auch nicht', () => {
+test('without an entered purchase price no percentage — and none at 0 either', () => {
   const rows = valueAcquisitionRows(SN, [acq(1, 'N', 1, null), acq(2, 'N', 1, 0)], prices(50, 20));
   assert.equal(rows[0].purchase_price, null, 'nicht erfasst bleibt null, nicht 0');
   assert.equal(rows[0].pnl_pct, null, 'gegen nichts gerechnet ergibt keine Zahl');
@@ -445,14 +445,14 @@ test('ohne erfassten Kaufpreis keine Prozentangabe — und bei 0 auch nicht', ()
   assert.equal(rows[1].pnl_pct, null, 'gegen 0 gerechnet gibt es keine Prozentzahl');
 });
 
-test('fehlt der Preis eines Zustands, springt der andere ein', () => {
+test('if the price of one condition is missing, the other steps in', () => {
   // Viele ältere Sets werden nur noch in einem Zustand gehandelt. Die
   // Erfassung mit 0 zu bewerten würde die Summe verfälschen.
   const rows = valueAcquisitionRows(SN, [acq(1, 'U', 1, 60)], prices(148.72, null));
   assert.equal(rows[0].avg_price, 148.72);
 });
 
-test('der Kaufpreis wird nur über die Zeilen gemittelt, die einen haben', () => {
+test('the purchase price is only averaged over the rows that have one', () => {
   // 2×100 und 1×160 ergibt 120, nicht 130 — und eine Erfassung ohne
   // erfassten Preis darf den Nenner nicht aufblähen.
   const rows = valueAcquisitionRows(
@@ -464,7 +464,7 @@ test('der Kaufpreis wird nur über die Zeilen gemittelt, die einen haben', () =>
   assert.equal(weightedPurchase([]), null, 'keine Zeile mit Preis → kein Kaufpreis');
 });
 
-test('Zeilensummen und Set-Stückpreis passen zusammen', () => {
+test('row sums and set unit price match', () => {
   // Die Tabelle zeigt beides. Weichen sie ab, stehen zwei Wahrheiten
   // nebeneinander — genau das war der Grund, die Rechnung hierher zu holen.
   const acqs = [acq(1, 'N', 2, 100), acq(2, 'U', 1, 60)];
@@ -480,7 +480,7 @@ test('Zeilensummen und Set-Stückpreis passen zusammen', () => {
   );
 });
 
-test('Kaufpreis 0 ergibt keine Prozentzahl, keinen Sprung ins Unendliche', () => {
+test('purchase price 0 yields no percentage, no jump to infinity', () => {
   assert.equal(pnlPct(0, 50), null);
   assert.equal(pnlPct(40, 50), '25.0');
   assert.equal(pnlPct(null, 50), null);

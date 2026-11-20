@@ -41,7 +41,7 @@ const { testData } = require('./helpers/sources');
 const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 
-test('ein neu angelegtes Set wird in beiden Routen gleich beantwortet', { concurrency: 1 }, async t => {
+test('a newly created set is answered the same in both routes', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const NUTZER = `neu-form-${process.pid}`;

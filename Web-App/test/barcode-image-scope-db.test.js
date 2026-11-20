@@ -24,7 +24,7 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-test('Barcode-Treffer und lokales Bild', { concurrency: 1 }, async t => {
+test('barcode hit and local image', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const SN = `BCB${process.pid}-1`;
   const S = _req('src/settings/settings.js');
@@ -44,7 +44,7 @@ test('Barcode-Treffer und lokales Bild', { concurrency: 1 }, async t => {
   });
   const { setToBarcode } = require('./helpers/sources').areaPage('sets');
 
-  await t.test('der Treffer nennt das lokale Bild', async () => {
+  await t.test('the hit names the local image', async () => {
     const r = await setToBarcode(SN);
     assert.equal(r?.set_number, SN, 'der Treffer fehlt — die Prüfung darunter bewiese nichts');
     assert.match(String(r?.image_local), new RegExp(SN));

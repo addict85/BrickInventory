@@ -44,7 +44,7 @@ async function dbReachable() {
 }
 
 let _srv, _base, _uid;
-test('QR-Nonce nur per POST', async t => {
+test('QR nonce only via POST', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -91,7 +91,7 @@ test('QR-Nonce nur per POST', async t => {
   const nonces = async () =>
     Number((await db.get('SELECT COUNT(*)::int AS n FROM qr_login_tokens').catch(() => ({ n: 0 }))).n);
 
-  await t.test('per POST wird eine Nonce angelegt', async () => {
+  await t.test('via POST a nonce is created', async () => {
     const vorher = await nonces();
     const r = await ruf('POST');
     assert.equal(r.status, 200, `Erwartet 200, bekam ${r.status}`);
@@ -100,7 +100,7 @@ test('QR-Nonce nur per POST', async t => {
     assert.equal(await nonces(), vorher + 1, 'Es wurde keine Nonce angelegt');
   });
 
-  await t.test('per GET gibt es die Route nicht mehr', async () => {
+  await t.test('via GET the route no longer exists', async () => {
     const vorher = await nonces();
     const r = await ruf('GET');
     assert.notEqual(

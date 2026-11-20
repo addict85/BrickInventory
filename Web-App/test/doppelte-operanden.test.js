@@ -15,7 +15,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
-test('kein Ausdruck steht zweimal auf beiden Seiten', () => {
+test('no expression stands twice on both sides', () => {
   const script = path.join(__dirname, '..', 'scripts', 'check-duplicate-operands.js');
   try {
     execFileSync(process.execPath, [script], { encoding: 'utf8', stdio: 'pipe' });

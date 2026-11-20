@@ -117,7 +117,7 @@ function item(typ, id, farbe, menge = 1, zustand = 'X') {
 }
 const liste = (...items) => `<INVENTORY>\n${items.join('\n')}\n</INVENTORY>\n`;
 
-test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t => {
+test('preview, corrections and color translation', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -149,7 +149,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
   await db.run(`INSERT INTO rb_colors (id, name, rgb, bl_color_id)
                 VALUES (4,'Red','C91A09',5), (0,'Black','05131D',11), (7,'Blue','0055BF',7)`);
 
-  await t.test('1. die Vorschau trägt Name, Bild und Farbe — und erfindet nichts', async () => {
+  await t.test('1. the preview carries name, image and color — and invents nothing', async () => {
     const xml = liste(item('P', '3001', 5, 10), item('P', '3002', 5, 3), item('P', '9999', 5, 1));
     // `vorschau: true` steht AUSDRÜCKLICH da. Die Vorgabe dieser Funktion ist
     // WRITE (`vorschau: !!opt.vorschau`), und das ist richtig so: Wer sie
@@ -216,7 +216,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     );
   });
 
-  await t.test('2. Menge, BL-Farbe und Zustand reisen in die Vorschau mit', async () => {
+  await t.test('2. quantity, BL color and condition travel into the preview', async () => {
     // Ohne sie kann die Vorschau die Zeile nicht zeigen — und die Korrektur
     // nicht sagen, welche Farbe gemeint war.
     const b = await importiereWantedListe(1, liste(item('P', '3001', 85, 7)), { vorschau: true });
@@ -227,7 +227,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     assert.match(p.grund || '', /BrickLink-Farbe 85/);
   });
 
-  await t.test('2b. der Standardzustand des Kontos reist EINMAL je Bericht mit', async () => {
+  await t.test('2b. the account default condition travels ONCE per report', async () => {
     // Marcos Bitte vom 20.10.
     const ohne = await importiereWantedListe(1, liste(item('P', '3001', 5, 1, 'X')), { vorschau: true });
     assert.equal(ohne.standardZustand, 'N', 'Ohne Einstellung gilt die Vorgabe des Baums (userDefaultCondition)');
@@ -256,7 +256,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     await db.run(`DELETE FROM user_settings WHERE user_id=1 AND key='user_default_condition'`);
   });
 
-  await t.test('3. eine Korrektur trifft den Posten am Index, nicht die Nummer', async () => {
+  await t.test('3. a correction hits the item at the index, not the number', async () => {
     // Dieselbe Nummer und dieselbe Farbe ZWEIMAL — ein Schlüssel aus Art,
     // Nummer und Farbe träfe beide Zeilen.
     const xml = liste(item('P', '3001', 85, 2), item('P', '3001', 85, 5));
@@ -305,7 +305,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     );
   });
 
-  await t.test('4. eine Korrektur auf einen fremden Posten wird abgewiesen, nicht angewandt', async () => {
+  await t.test('4. a correction on a foreign item is rejected, not applied', async () => {
     // Der Fall: zwischen Vorschau und Schreiben wurde eine ANDERE Datei
     // gewählt. Ohne die Gegenprobe wirkte die Korrektur auf einen fremden
     // Posten — lautlos, denn beide Zahlen sähen plausibel aus.
@@ -333,7 +333,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     assert.equal(zaehler.length, 0, 'Der Posten hat weiterhin keine Farbe und bleibt offen');
   });
 
-  await t.test('5. nur eine EINGETRAGENE Nummer wird gemerkt, kein Katalogtreffer', async () => {
+  await t.test('5. only a REGISTERED number is remembered, no catalog hit', async () => {
     const gemerkt = [];
     const creator = {
       teil: async () => ({ action: 'created' }),
@@ -361,7 +361,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     );
   });
 
-  await t.test('5b. auch eine bei Rebrickable nachgeschlagene Nummer wird gemerkt', async () => {
+  await t.test('5b. a number looked up at Rebrickable is remembered too', async () => {
     const gemerkt = [];
     const xml = liste(item('P', '98765', 5, 1));
     const b = await importiereWantedListe(1, xml, {
@@ -390,7 +390,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     );
   });
 
-  await t.test('6. eine Vorschau merkt sich nichts', async () => {
+  await t.test('6. a preview remembers nothing', async () => {
     // Die Gegenrichtung zu Fall 5: Ohne diesen Fall wäre er auch grün, wenn
     // schon die Vorschau schriebe. Eine Vorschau, die etwas speichert, ist
     // keine.
@@ -415,7 +415,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     assert.deepEqual(gemerkt, [], 'In der Vorschau darf nichts gemerkt werden');
   });
 
-  await t.test('7. describeItem macht nicht eine Abfrage je Posten', async () => {
+  await t.test('7. describeItem does not make one query per item', async () => {
     // Marcos Datei hat 224 Zeilen. Eine Abfrage je Zeile wäre eine Vorschau,
     // auf die man wartet.
     const echt = db.pool.query.bind(db.pool);
@@ -445,7 +445,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     }
   });
 
-  await t.test('8. Name und Bild stehen AUCH nach dem Schreiben im Bericht', async () => {
+  await t.test('8. name and image are in the report EVEN after writing', async () => {
     // Marcos Befund vom 21.10.
     const creator = {
       teil: async () => ({ action: 'created' }),
@@ -470,7 +470,7 @@ test('Vorschau, Korrekturen und Farbübersetzung', { concurrency: 1 }, async t =
     );
   });
 
-  await t.test('9. ein beim Anlegen geholtes Bild steht im Bericht', async () => {
+  await t.test('9. an image fetched on creation is in the report', async () => {
     // Der Gewinn daraus, dass describeItem NACH der Schleife läuft: Ein
     // Teil, dessen Farbbild der Katalog noch nicht hatte, bekommt es beim
     // Anlegen (addManualPart → lookupPart → rememberPartColor). Ein Aufruf VOR

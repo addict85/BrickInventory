@@ -90,7 +90,7 @@ async function prepare(t) {
   return true;
 }
 
-test('proxyVertrauen: wem X-Forwarded-For geglaubt wird', () => {
+test('proxyVertrauen: whom X-Forwarded-For is believed', () => {
   const vertraut = (setting, adresse) => {
     const app = express();
     app.set('trust proxy', proxyVertrauen(setting));
@@ -148,7 +148,7 @@ test('proxyVertrauen: wem X-Forwarded-For geglaubt wird', () => {
   assert.equal(vertraut('203.0.113.5', '127.0.0.1'), false);
 });
 
-test('Sperre je Benutzername gilt über alle Adressen', { concurrency: 1 }, async t => {
+test('lock per username applies across all addresses', { concurrency: 1 }, async t => {
   if (!(await prepare(t))) return;
   const app = express();
   app.set('trust proxy', proxyVertrauen(undefined)); // Anfragen kommen von 127.0.0.1
@@ -194,7 +194,7 @@ test('Sperre je Benutzername gilt über alle Adressen', { concurrency: 1 }, asyn
   assert.equal(rest, undefined, 'erfolgreiche Anmeldung leert den Zähler je Konto nicht');
 });
 
-test('die Sperre je Name sperrt den Inhaber nicht aus', { concurrency: 1 }, async t => {
+test('the lock per name does not lock out the owner', { concurrency: 1 }, async t => {
   if (!(await prepare(t))) return;
   await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`%${NAME}%`]);
   const app = express();
@@ -232,7 +232,7 @@ test('die Sperre je Name sperrt den Inhaber nicht aus', { concurrency: 1 }, asyn
   );
 });
 
-test('server.ts: TRUST_PROXY=false — X-Forwarded-For wird ignoriert', { concurrency: 1, timeout: 120_000 }, async t => {
+test('server.ts: TRUST_PROXY=false — X-Forwarded-For is ignored', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await prepare(t))) return;
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(

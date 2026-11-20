@@ -19,7 +19,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 
-test('offene Haushaltseinladungen sind begrenzt', { concurrency: 1 }, async t => {
+test('open household invitations are limited', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `einladung_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -40,7 +40,7 @@ test('offene Haushaltseinladungen sind begrenzt', { concurrency: 1 }, async t =>
     return [r.status, r.status === 200 ? typeof b.code : b.code];
   };
 
-  await t.test('fünf gehen, die sechste nicht, eine eingelöste macht Platz', async () => {
+  await t.test('five work, the sixth does not, a redeemed one makes room', async () => {
     for (let i = 0; i < 5; i++) assert.deepEqual(await lade(), [200, 'string'], `Einladung ${i + 1}`);
     assert.deepEqual(await lade(), [409, 'einladungen_zu_viele'], 'die sechste');
     await db.run(

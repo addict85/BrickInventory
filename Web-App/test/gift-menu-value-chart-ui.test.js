@@ -105,7 +105,7 @@ const SETS = {
   },
 };
 
-test('Geschenk in Kachel, Tabelle und Detail', async () => {
+test('gift in tile, table and detail', async () => {
   const { w, d } = await openUi(SETS);
   try {
     await warte(() => /\d/.test(text(d.querySelector('[data-price-for="10300-1"]'))));
@@ -140,14 +140,14 @@ test('Geschenk in Kachel, Tabelle und Detail', async () => {
   }
 });
 
-test('Set ohne Bild: derselbe Würfel wie in der Kachel', () => {
+test('set without image: the same cube as in the tile', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   const cube = html.match(/<symbol id="i-set"[^>]*>(.*?)<\/symbol>/)[1];
   const bild = fs.readFileSync(path.join(__dirname, '..', 'public', 'assets', 'set-placeholder.svg'), 'utf8');
   for (const pfad of cube.match(/d="[^"]+"/g)) assert.ok(bild.includes(pfad), `${pfad} fehlt im Platzhalterbild`);
 });
 
-test('Menüseite: kein Reiter markiert, Name im Kopf', async () => {
+test('menu page: no tab marked, name in the header', async () => {
   const { w, d } = await openUi({ '/v1/auth/profile': { success: true, user: { username: 'anna' } } });
   try {
     await sicht(w, 'profil');
@@ -167,7 +167,7 @@ test('Menüseite: kein Reiter markiert, Name im Kopf', async () => {
   }
 });
 
-test('Import als ein Menü', async () => {
+test('import as one menu', async () => {
   const { w, d } = await openUi({});
   try {
     for (const tab of ['gallery', 'parts', 'minifigs']) {
@@ -189,7 +189,7 @@ test('Import als ein Menü', async () => {
   }
 });
 
-test('Thema ganz', async () => {
+test('theme complete', async () => {
   const { w, d } = await openUi(SETS);
   try {
     await warte(() => d.querySelector('#gallery .smeta-text'));
@@ -211,7 +211,7 @@ const HISTORY = {
   chart: { values: [{ values: moments.map(x => ({ x })) }] },
 };
 
-test('Wertdiagramm: Währung, Einstand, Achsenbruch, Fadenkreuz per Tastatur', async () => {
+test('value chart: currency, cost basis, axis break, crosshair via keyboard', async () => {
   const { w, d } = await openUi({
     ...SETS,
     '/v1/finance/portfolio-history': HISTORY,
@@ -237,7 +237,7 @@ test('Wertdiagramm: Währung, Einstand, Achsenbruch, Fadenkreuz per Tastatur', a
   }
 });
 
-test('Zeitraum ohne Verlauf', async () => {
+test('period without history', async () => {
   const { w, d } = await openUi({
     ...SETS,
     '/v1/finance/portfolio-history': { success: true, currency: 'EUR', points: [], messpunkte: 0 },
@@ -261,7 +261,7 @@ test('Zeitraum ohne Verlauf', async () => {
   }
 });
 
-test('Platzhalter je Sprache', async () => {
+test('placeholders per language', async () => {
   for (const [sprache, erwartet] of [
     ['de', 'z. B. 79,99'],
     ['en', 'e.g. 79.99'],

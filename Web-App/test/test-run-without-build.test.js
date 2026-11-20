@@ -16,7 +16,7 @@ const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 
-test('ein Lauf im Lauf baut nicht', { timeout: 120_000 }, t => {
+test('a run inside a run does not build', { timeout: 120_000 }, t => {
   require('./helpers/sources').buildAndRequire();
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'test-lauf-ohne-bau-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));

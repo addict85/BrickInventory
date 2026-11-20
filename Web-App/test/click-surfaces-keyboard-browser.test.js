@@ -64,7 +64,7 @@ const UNBEDIENBAR = `(() => {
   }
   return [...funde]; })()`;
 
-test('Klickflächen mit der Tastatur', { timeout: 280_000 }, async t => {
+test('click areas with the keyboard', { timeout: 280_000 }, async t => {
   const app = await startApp(t, { name: `kft_${process.pid}`, bestand: patternHousehold });
   if (app.grund) {
     t.skip(app.grund);
@@ -75,7 +75,7 @@ test('Klickflächen mit der Tastatur', { timeout: 280_000 }, async t => {
   await ruhig();
   const rest = () => b.auswerten(`new Promise(r => setTimeout(() => requestAnimationFrame(() => r(true)), 700))`);
 
-  await t.test('jede Klickfläche ist bedienbar', async () => {
+  await t.test('every click area is operable', async () => {
     const funde = [];
     let geprueft = 0;
     for (const [seite, schritte] of SEITEN) {
@@ -93,7 +93,7 @@ test('Klickflächen mit der Tastatur', { timeout: 280_000 }, async t => {
     assert.deepEqual(funde, []);
   });
 
-  await t.test('Figur aus Set per Tastatur', async () => {
+  await t.test('figure from set via keyboard', async () => {
     await b.auswerten(`document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open')); true`);
     await b.auswerten(reiter('minifigs'));
     for (const [wert, sel] of [

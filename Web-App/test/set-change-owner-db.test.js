@@ -23,7 +23,7 @@ const { dataOrSkip } = require('./helpers/db');
 const factory = require('./helpers/factory');
 const db = testData();
 
-test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, async t => {
+test("purchase price and condition land in the owner's account", { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const MAIN = `besitz-haupt-${process.pid}`,
@@ -109,7 +109,7 @@ test('Kaufpreis und Zustand landen im Konto des Besitzers', { concurrency: 1 }, 
 // Stelle". Gespiegelt wird seit Migration 0032 nichts mehr — geschrieben wird
 // nur noch die letzte Erfassung. Die Regel selbst ist unveraendert richtig und
 // sogar wichtiger geworden: Sie ist jetzt der EINZIGE Schreibweg.
-test('die letzte Erfassung wird an genau einer Stelle beschrieben', () => {
+test('the last entry is written in exactly one place', () => {
   // Gefunden, nicht aufgezaehlt.
   const dateien = [];
   const gehen = d => {

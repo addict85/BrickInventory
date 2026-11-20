@@ -59,7 +59,7 @@ function starte(t, mount) {
 
 const parallel = (n, f) => Promise.all(Array.from({ length: n }, f));
 
-test('1. 25 gleichzeitige Anfragen: genau 5 kommen durch, in jeder Runde', async t => {
+test('1. 25 concurrent requests: exactly 5 get through, in every round', async t => {
   if (!(await dbDa(t))) return;
   // Mehrere Runden: Das Rennen der alten Fassung trat nicht in jedem Schub auf.
   for (let runde = 1; runde <= 5; runde++) {
@@ -78,7 +78,7 @@ test('1. 25 gleichzeitige Anfragen: genau 5 kommen durch, in jeder Runde', async
   await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'parallel-probe|%'`);
 });
 
-test('2. dasselbe an der echten Route /forgot-password', async t => {
+test('2. the same at the real route /forgot-password', async t => {
   if (!(await dbDa(t))) return;
   await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-password|%'`);
   t.after(() => db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-password|%'`));

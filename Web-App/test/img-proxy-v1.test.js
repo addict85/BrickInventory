@@ -32,7 +32,7 @@ const ohneKommentare = src => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*
 
 const lies = (...p) => fs.readFileSync(path.join(...p), 'utf8');
 
-test('gebaute Adressen nehmen die neue Form, die alte wird weiter erkannt', () => {
+test('built addresses take the new form, the old one is still recognized', () => {
   const { proxyImageUrl, isProxyPath } = _req('src/images/images.js');
   const cdn = 'https://cdn.rebrickable.com/media/sets/10305-1.jpg';
   assert.equal(proxyImageUrl(cdn), `${NEU}?url=${encodeURIComponent(cdn)}`);
@@ -40,7 +40,7 @@ test('gebaute Adressen nehmen die neue Form, die alte wird weiter erkannt', () =
   assert.equal(isProxyPath(`${NEU}?url=x`), true);
 });
 
-test('der Server bedient beide Adressen', async t => {
+test('the server serves both addresses', async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   // Ältere App-Fassungen bauen die alte Adresse selbst zusammen.
   const app = require('express')();
@@ -62,7 +62,7 @@ test('der Server bedient beide Adressen', async t => {
   assert.equal(alt, neu, 'die alte Adresse antwortet anders als die neue');
 });
 
-test('gebaut wird nur noch die neue Adresse', () => {
+test('only the new address is built', () => {
   // Der Altpfad darf NUR als Konstantendefinition vorkommen — nirgends als
   // zusammengesetzte Adresse. Geprüft im Serverbaum UND im Browserbaum.
   const dateien = [];
@@ -101,7 +101,7 @@ test('gebaut wird nur noch die neue Adresse', () => {
 });
 
 /** Erkennen muss die App die alte nicht: Ein gespeicherter Pfad wird nur um die Serveradresse ergänzt. */
-test('die App baut die neue Adresse und nirgends die alte', () => {
+test('the app builds the new address and nowhere the old one', () => {
   // Von Hand gebaute Adressen der App (shared/app-schnittstelle.json, aus ihrem Quelltext erzeugt).
   const { adressen } = require('./helpers/contract').appSchnittstelle();
   assert.ok(adressen.includes(NEU), `Die App baut ${NEU} nicht (gefunden: ${adressen.join(', ')})`);
@@ -112,7 +112,7 @@ test('die App baut die neue Adresse und nirgends die alte', () => {
   );
 });
 
-test('die Migration erfasst JEDE Tabelle mit image_url', () => {
+test('the migration covers EVERY table with image_url', () => {
   // Die Tabellenliste wird aus dem Schema GELESEN, nicht abgeschrieben: Eine
   // achte Tabelle mit image_url soll auffallen, nicht durchrutschen.
   // Die Tabellen mit image_url, die es VOR 0014 gab — abgelesen aus dem

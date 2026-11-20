@@ -65,7 +65,7 @@ async function withFactor(uid) {
   return codes;
 }
 
-test('heikle Kontoänderungen mit zweitem Faktor', { concurrency: 1 }, async t => {
+test('sensitive account changes with second factor', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `zfh_${process.pid}`,
@@ -97,7 +97,7 @@ test('heikle Kontoänderungen mit zweitem Faktor', { concurrency: 1 }, async t =
     return { status: r.status, body: await r.json() };
   };
 
-  await t.test('Passwortwechsel', async () => {
+  await t.test('password change', async () => {
     const withoutCode = await ruf(basis, 'POST', '/change-password', {
       current: PASS,
       newPassword: 'Neues-Passwort-22',
@@ -120,7 +120,7 @@ test('heikle Kontoänderungen mit zweitem Faktor', { concurrency: 1 }, async t =
     await db.run('UPDATE users SET password_hash = $2 WHERE id = $1', [uid, await bcrypt.hash(PASS, 4)]);
   });
 
-  await t.test('Passkey löschen', async () => {
+  await t.test('delete passkey', async () => {
     const pk = (
       await db.get(
         `INSERT INTO passkeys (user_id, credential_id, public_key, name)
@@ -135,7 +135,7 @@ test('heikle Kontoänderungen mit zweitem Faktor', { concurrency: 1 }, async t =
     assert.equal(gut.body.deleted, 1, JSON.stringify(gut.body));
   });
 
-  await t.test('E-Mail ändern', async () => {
+  await t.test('change e-mail', async () => {
     const withoutCode = await ruf(basis, 'PUT', '/profile', {
       username: NAME,
       email: `${NAME}@neu.example`,
@@ -153,7 +153,7 @@ test('heikle Kontoänderungen mit zweitem Faktor', { concurrency: 1 }, async t =
     assert.equal((await db.get('SELECT new_email FROM users WHERE id = $1', [uid])).new_email, `${NAME}@neu.example`);
   });
 
-  await t.test('fehlender Code zählt nicht in der Bremse', async () => {
+  await t.test('missing code does not count in the brake', async () => {
     for (let i = 0; i < 7; i++)
       assert.equal(
         (await ruf(basis, 'POST', '/change-password', { current: PASS, newPassword: 'Neues-Passwort-33' })).status,
@@ -167,7 +167,7 @@ test('heikle Kontoänderungen mit zweitem Faktor', { concurrency: 1 }, async t =
     assert.equal(gut.status, 200, `fehlender Code zählt nicht in der Bremse: ${JSON.stringify(gut.body)}`);
   });
 
-  await t.test('ohne zweiten Faktor wie bisher', async () => {
+  await t.test('without second factor as before', async () => {
     const r = await ruf(server(ohne, OHNE), 'POST', '/change-password', {
       current: PASS,
       newPassword: 'Neues-Passwort-44',
@@ -175,7 +175,7 @@ test('heikle Kontoänderungen mit zweitem Faktor', { concurrency: 1 }, async t =
     assert.equal(r.status, 200, JSON.stringify(r.body));
   });
 
-  await t.test('Verwalter-Adresse gilt erst nach dem Link', async () => {
+  await t.test('administrator address only applies after the link', async () => {
     const r = await ruf(server(chef, CHEF, true), 'PUT', '/profile', {
       username: CHEF,
       email: `${CHEF}@neu.example`,

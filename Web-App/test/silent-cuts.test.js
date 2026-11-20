@@ -10,7 +10,7 @@ const path = require('node:path');
 /** Zusicherungen, die auf einem LEEREN Ausschnitt gruen bleiben. */
 const NEGATING = new Set(['doesNotMatch', 'doesNotThrow', 'notMatch']);
 
-test('kein Ausschnitt mit nur verneinenden Zusicherungen ist ungesichert', () => {
+test('no snippet with only negative assertions is unsecured', () => {
   const dateien = fs
     .readdirSync(__dirname)
     .filter(f => f.endsWith('.test.js'))

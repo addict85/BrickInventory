@@ -17,7 +17,7 @@ const { buildAndRequire, ohneKommentare } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { PASSWORD_MIN_CHARS, passwordToShort } = _req('src/account/loginCheck.js');
 
-test('die Regel selbst haelt auch das, was kein String ist', () => {
+test('the rule itself also holds for what is not a string', () => {
   // Seit dem 04.11.2026 zwölf statt acht.
   assert.equal(passwordToShort('12345678901'), true);
   assert.equal(passwordToShort('123456789012'), false);
@@ -36,14 +36,14 @@ test('die Regel selbst haelt auch das, was kein String ist', () => {
   assert.equal(passwordToShort(123456789012), false);
 });
 
-test('Server und Webapp nennen dieselbe Zahl', () => {
+test('server and web app name the same number', () => {
   const web = ohneKommentare(read('public/js/form.js'));
   const webNumber = /export const PASSWORD_MIN_CHARS = (\d+)/.exec(web);
   assert.ok(webNumber, 'Die Webapp fuehrt keine Konstante mehr — dann steht die Zahl wieder verstreut');
   assert.equal(Number(webNumber[1]), PASSWORD_MIN_CHARS, 'Webapp und Server verlangen verschiedene Laengen');
 });
 
-test('die Fehlermeldung nennt dieselbe Zahl wie die Regel', () => {
+test('the error message names the same number as the rule', () => {
   // Die Texte können der Konstante nicht folgen; ein Text, der weniger
   // verspricht, als der Server verlangt, führt den Nutzer in eine Absage.
   const { errorText } = _req('src/infra/errorTexts.js');
@@ -58,7 +58,7 @@ test('die Fehlermeldung nennt dieselbe Zahl wie die Regel', () => {
   }
 });
 
-test('die Webapp prueft vor dem Absenden', () => {
+test('the web app checks before submitting', () => {
   // Sonst schickte sie ab und zeigte erst den Serverfehler.
   const core = ohneKommentare(read('public/js/form.js'));
   const settings = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));

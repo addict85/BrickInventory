@@ -49,7 +49,7 @@ test.after(() => {
   fs.rmSync(wurzel, { recursive: true, force: true });
 });
 
-test('das Bild landet, auch wenn der Ordner fehlt', async t => {
+test('the image lands even if the folder is missing', async t => {
   const echt = https.globalAgent;
   https.globalAgent = new Umlenker();
   t.after(() => {

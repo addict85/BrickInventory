@@ -41,7 +41,7 @@ const GUTSCHEIN = {
   guthaben_geprueft_am: null,
 };
 
-test('Gutscheine: Zeile und Aktionen', async () => {
+test('vouchers: row and actions', async () => {
   const o = await openUi({ '/v1/vouchers': { success: true, vouchers: [GUTSCHEIN] } }, { vorher: withStyle });
   try {
     await sicht(o.w, 'gutscheine');
@@ -59,7 +59,7 @@ test('Gutscheine: Zeile und Aktionen', async () => {
   }
 });
 
-test('ohne Gutscheine: keine Summe, kein „alle abfragen“, kein Export', async () => {
+test('without vouchers: no sum, no “query all”, no export', async () => {
   const o = await openUi({ '/v1/vouchers': { success: true, vouchers: [] } }, { vorher: withStyle });
   try {
     await sicht(o.w, 'gutscheine');
@@ -76,7 +76,7 @@ test('ohne Gutscheine: keine Summe, kein „alle abfragen“, kein Export', asyn
   }
 });
 
-test('Rebrickable-Band nur in Sammlung und Katalog', async () => {
+test('Rebrickable banner only in collection and catalog', async () => {
   const o = await openUi(
     { '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } } },
     { vorher: withStyle },
@@ -99,7 +99,7 @@ test('Rebrickable-Band nur in Sammlung und Katalog', async () => {
   }
 });
 
-test('QR-Fläche erst mit Code', async () => {
+test('QR area only with a code', async () => {
   const o = await openUi({}, { vorher: withStyle });
   try {
     const f = o.d.getElementById('qr-code');
@@ -111,7 +111,7 @@ test('QR-Fläche erst mit Code', async () => {
   }
 });
 
-test('Kein Zugriff für ein normales Konto, Verwalter sieht nichts davon', async () => {
+test('no access for a normal account, administrator sees none of it', async () => {
   const normal = await openUi({
     '/v1/auth/me': { loggedIn: true, user: { id: 2, username: 'bert', is_admin: false } },
   });
@@ -134,7 +134,7 @@ test('Kein Zugriff für ein normales Konto, Verwalter sieht nichts davon', async
   }
 });
 
-test('Design: ein Satz zur Wahl, Noppe und Hochglanz verschieden', async () => {
+test('design: one sentence for the choice, Noppe and Hochglanz different', async () => {
   const texte = {};
   for (const design of ['noppe', 'hochglanz', 'werkbank']) {
     const o = await openUi({

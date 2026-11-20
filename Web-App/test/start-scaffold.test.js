@@ -34,7 +34,7 @@ test.after(() =>
     .catch(() => {}),
 );
 
-test('der Hash passt zum ausgelieferten Block', async () => {
+test('the hash matches the delivered block', async () => {
   const html = await startPageHtml();
   const block = /<style id="startstil">([\s\S]*?)<\/style>/.exec(html);
   assert.ok(block, 'kein Startgerüst-Stil im ausgelieferten HTML');
@@ -42,7 +42,7 @@ test('der Hash passt zum ausgelieferten Block', async () => {
   assert.equal(startPageStyleHash(false), erwartet);
 });
 
-test('vor dem ersten Stylesheet und vor jedem blockierenden Skript', () => {
+test('before the first stylesheet and before every blocking script', () => {
   const html = stripComments(fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8'));
   const geruest = html.indexOf('id="startgeruest"');
   assert.ok(geruest > 0);
@@ -52,7 +52,7 @@ test('vor dem ersten Stylesheet und vor jedem blockierenden Skript', () => {
   assert.ok(geruest < firstScript, 'vor dem ersten blockierenden Skript');
 });
 
-test('angemeldet: Gerüst weg, App da', async () => {
+test('logged in: skeleton gone, app there', async () => {
   const { w, d } = await openUi({});
   try {
     await warte(() => !d.getElementById('startgeruest'));
@@ -62,7 +62,7 @@ test('angemeldet: Gerüst weg, App da', async () => {
   }
 });
 
-test('abgemeldet: Gerüst weg, Anmeldung da', async () => {
+test('logged out: skeleton gone, login there', async () => {
   const { w, d } = await openUi({}, { angemeldet: false });
   try {
     await warte(() => d.getElementById('login-screen').style.display === 'flex');
@@ -72,7 +72,7 @@ test('abgemeldet: Gerüst weg, Anmeldung da', async () => {
   }
 });
 
-test('Stein (Blau): Kopf blau, Grund blaugrau', () => {
+test('Stein (blue): header blue, background blue-gray', () => {
   const { JSDOM } = require('jsdom');
   const html = fs
     .readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8')
@@ -89,7 +89,7 @@ test('Stein (Blau): Kopf blau, Grund blaugrau', () => {
   }
 });
 
-test('ohne Sitzung: keine App-Kacheln im Gerüst, mit Sitzung schon', async () => {
+test('without a session: no app tiles in the skeleton, with a session yes', async () => {
   const { JSDOM } = require('jsdom');
   const sichtbar = html => {
     const w = new JSDOM(html).window;

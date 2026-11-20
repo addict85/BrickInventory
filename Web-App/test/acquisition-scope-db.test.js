@@ -20,7 +20,7 @@ const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
-test('das Hauptkonto kann den Kaufpreis einer Unterkonto-Erfassung ändern', { concurrency: 1 }, async t => {
+test('the main account can change the purchase price of a sub-account acquisition', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const MAIN = 'acqscope-haupt',

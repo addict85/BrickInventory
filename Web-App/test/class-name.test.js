@@ -40,7 +40,7 @@ function quellen() {
   return out;
 }
 
-test('jeder Klassenname gestaltet etwas oder ist ein Griff', () => {
+test('every class name styles something or is a handle', () => {
   const dateien = quellen();
   assert.ok(dateien.length >= 20, `Nur ${dateien.length} Quelldateien gefunden`);
 

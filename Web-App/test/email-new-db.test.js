@@ -82,7 +82,7 @@ const COUNTER = [
   'email-vorschau|%',
 ];
 
-test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t => {
+test('new email address only after confirmation', { concurrency: 1 }, async t => {
   try {
     await db.initSchema();
   } catch (e) {
@@ -138,7 +138,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
   const anmelden = name =>
     ruf('POST', '/login', { username: `${name}_${P}`, password: 'Opfer-Passwort-2026!', ohne_token: true });
 
-  await t.test('eine neue Adresse gilt erst nach dem Link', async () => {
+  await t.test('a new address only applies after the link', async () => {
     const r = await ruf('PUT', '/profile', { username: `carol_${P}`, email: adr('opfer'), password_current: PASS });
     assert.deepEqual([r.status, r.body.emailChanged, r.body.emailSent], [200, true, true], JSON.stringify(r.body));
     assert.deepEqual(await carol(), {
@@ -156,7 +156,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
     assert.deepEqual([profil.body.user.email, profil.body.user.new_email], [adr('alt'), adr('opfer')]);
   });
 
-  await t.test('die ausstehende Adresse belegt nichts', async () => {
+  await t.test('the pending address occupies nothing', async () => {
     const r = await register('opfer', adr('opfer'));
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.deepEqual(
@@ -167,7 +167,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
     assert.equal((await carol()).email, adr('alt'));
   });
 
-  await t.test('Passwort vergessen nur für bestätigte Adressen', async () => {
+  await t.test('forgot password only for confirmed addresses', async () => {
     for (const email of [adr('opfer'), adr('alt')])
       assert.equal((await ruf('POST', '/forgot-password', { email })).status, 200);
     const opfer = await db.get('SELECT reset_token FROM users WHERE username = $1', [`opfer_${P}`]);
@@ -176,7 +176,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
     assert.notEqual((await carol()).reset_token, null);
   });
 
-  await t.test('beim Einlösen wird erneut geprüft', async () => {
+  await t.test('it is checked again when redeeming', async () => {
     const opfer = await ruf('POST', '/email-bestaetigen', { token: linkAn(adr('opfer'), 'registrierung') });
     assert.equal(opfer.status, 200, 'die erste Bestätigung gewinnt');
     assert.equal((await konto('opfer')).email, adr('opfer'));
@@ -186,7 +186,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
     assert.deepEqual([c.email, c.new_email], [adr('alt'), null]);
   });
 
-  await t.test('eingelöst gilt die neue Adresse', async () => {
+  await t.test('once redeemed the new address applies', async () => {
     assert.equal((await ruf('PUT', '/profile', { email: adr('neu'), password_current: PASS })).status, 200);
     const token = linkAn(adr('neu'));
     assert.equal((await ruf('POST', '/email-bestaetigen', { token })).status, 200);
@@ -196,7 +196,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
   });
 
   const unlinkBrakes = () => db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'register%' OR key LIKE 'login%'");
-  await t.test('eine fremde Registrierung sperrt die Adresse nicht', async () => {
+  await t.test('a foreign registration does not block the address', async () => {
     await unlinkBrakes();
     assert.equal((await register('mallory1', adr('ziel'))).status, 200);
     await db.run("UPDATE users SET created_at = NOW() - INTERVAL '25 hours' WHERE username = $1", [`mallory1_${P}`]);
@@ -226,7 +226,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
     assert.equal(post.filter(m => m.an === adr('ziel') && m.art === 'versuch').length, 1);
   });
 
-  await t.test('ein neuer Link nur für die einzige offene Registrierung', async () => {
+  await t.test('a new link only for the only open registration', async () => {
     await unlinkBrakes();
     const erneut = async email => {
       const vorher = post.length;
@@ -244,7 +244,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
     assert.deepEqual(await erneut(adr('allein')), [], 'bei zwei offenen Registrierungen ginge ein fremder Link mit');
   });
 
-  await t.test('vor dem Einlösen nennt der Link nur sein Konto', async () => {
+  await t.test('before redeeming the link only names its account', async () => {
     await unlinkBrakes();
     assert.equal((await register('mallory4', adr('zwei'))).status, 200);
     assert.equal((await register('zwei', adr('zwei'))).status, 200);
@@ -280,7 +280,7 @@ test('neue E-Mail-Adresse erst nach Bestätigung', { concurrency: 1 }, async t =
     assert.equal((await vorschau(eigen.token)).status, 400, 'ein eingelöster Link nennt nichts mehr');
   });
 
-  await t.test('Migrationen 0096 und 0097 machen den Altbestand ausstehend, der Start meldet ihn', async () => {
+  await t.test('migrations 0096 and 0097 make the legacy data pending, startup reports it', async () => {
     const sql = fs.readFileSync(path.join(ROOT, 'db/migrations/0096-email-neu.sql'), 'utf8');
     const c = await db.pool.connect();
     try {

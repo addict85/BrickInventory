@@ -35,7 +35,7 @@ const db = testData();
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Gnaden-Passwort-1';
 
-test('Gnadenfrist beim Einrichten des zweiten Faktors', { concurrency: 1 }, async t => {
+test('grace period when setting up the second factor', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `gnade_${process.pid}`,
     NUTZER = `gnade_n_${process.pid}`;
@@ -75,28 +75,28 @@ test('Gnadenfrist beim Einrichten des zweiten Faktors', { concurrency: 1 }, asyn
   };
   const einrichten = (body = {}) => ruf('/zweiter-faktor/einrichten', body);
 
-  await t.test('nach der Anmeldung ohne Passwort', async () => {
+  await t.test('after login without a password', async () => {
     await anmelden();
     const r = await einrichten();
     assert.equal(r.status, 200, `nach der Anmeldung ohne Passwort: ${JSON.stringify(r.body)}`);
     assert.match(r.body.otpauth, /^otpauth:\/\//);
   });
 
-  await t.test('nur einmal', async () => {
+  await t.test('only once', async () => {
     const r = await einrichten();
     assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_erforderlich'], 'nur einmal');
     const mit = await einrichten({ password: PASS });
     assert.equal(mit.status, 200, 'mit Passwort weiter wie bisher');
   });
 
-  await t.test('nach Ablauf der Frist', async () => {
+  await t.test('after the period expires', async () => {
     await anmelden();
     sitzung.passwordConfirmedAt = Date.now() - 6 * 60 * 1000;
     const r = await einrichten();
     assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_erforderlich'], 'nach Ablauf der Frist');
   });
 
-  await t.test('nach dem Passwortwechsel', async () => {
+  await t.test('after the password change', async () => {
     await anmelden();
     delete sitzung.passwordConfirmedAt;
     const w = await ruf('/change-password', { current: PASS, newPassword: 'Gnaden-Passwort-2' });
@@ -106,13 +106,13 @@ test('Gnadenfrist beim Einrichten des zweiten Faktors', { concurrency: 1 }, asyn
     assert.equal(r.status, 200, `nach dem Passwortwechsel: ${JSON.stringify(r.body)}`);
   });
 
-  await t.test('ohne Frist zählt nicht in der Bremse', async () => {
+  await t.test('without a period does not count in the brake', async () => {
     for (let i = 0; i < 8; i++) assert.equal((await einrichten()).body.code, 'aktuelles_passwort_erforderlich');
     const r = await einrichten({ password: PASS });
     assert.equal(r.status, 200, `ohne Frist zählt nicht in der Bremse: ${JSON.stringify(r.body)}`);
   });
 
-  await t.test('mit Token nie', async () => {
+  await t.test('never with a token', async () => {
     for (const k of Object.keys(sitzung)) delete sitzung[k];
     const login = await ruf('/login', { username: NAME, password: PASS });
     assert.ok(login.body.token, JSON.stringify(login.body));
@@ -121,7 +121,7 @@ test('Gnadenfrist beim Einrichten des zweiten Faktors', { concurrency: 1 }, asyn
     assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_erforderlich'], 'mit Token nie');
   });
 
-  await t.test('ein gewöhnliches Konto nennt immer das Passwort', async () => {
+  await t.test('an ordinary account always names the password', async () => {
     await anmelden(NUTZER);
     const r = await einrichten();
     assert.deepEqual(

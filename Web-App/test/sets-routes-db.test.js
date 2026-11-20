@@ -84,7 +84,7 @@ async function anleitung(uid, sn, relPath) {
   return (await db.get('SELECT id FROM instructions WHERE user_id=$1 AND local_path=$2', [uid, relPath])).id;
 }
 
-test('routes/sets gegen echte Datenbank', async t => {
+test('routes/sets against a real database', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -93,7 +93,7 @@ test('routes/sets gegen echte Datenbank', async t => {
   await seed();
   await startApi();
 
-  await t.test('das eigene Konto kann seine Anleitung löschen', async () => {
+  await t.test('the own account can delete its instructions', async () => {
     const id = await anleitung(U.anna, '10001-1', '/data/uploads/1/a_1.pdf');
     const r = await asAccount(U.anna, `/api/v1/sets/10001-1/instructions/${id}`, { method: 'DELETE' });
     assert.equal(r.status, 200);
@@ -104,7 +104,7 @@ test('routes/sets gegen echte Datenbank', async t => {
     );
   });
 
-  await t.test('ein fremdes Konto kann sie NICHT löschen', async () => {
+  await t.test('a foreign account can NOT delete them', async () => {
     // ── Gegenprobe ─────────────────────────────────────────────────────────
     // In der Route wurde `AND user_id = $2` aus dem SELECT entfernt. Ergebnis:
     // Diese Prüfung wird rot (204/200 statt 404, Zeile weg). Zurückgebaut.
@@ -120,7 +120,7 @@ test('routes/sets gegen echte Datenbank', async t => {
     );
   });
 
-  await t.test('die geteilte Datei bleibt liegen, solange eine Zeile darauf zeigt', async () => {
+  await t.test('the shared file stays as long as a row points to it', async () => {
     // Nach dem Verschieben teilen sich zwei Konten EINE Datei; löscht eines seine Zeile,
     // bleibt sie. Gegenprobe: die Zählung durch `const rest = null` ersetzt → rot.
     const rel = '/data/uploads/geteilt/x.pdf';
@@ -136,7 +136,7 @@ test('routes/sets gegen echte Datenbank', async t => {
     fs.rmSync(path.dirname(abs), { recursive: true, force: true });
   });
 
-  await t.test('zeigt keine Zeile mehr auf die Datei, wird sie entfernt', async () => {
+  await t.test('if no row points to the file anymore, it is removed', async () => {
     // Die Gegenrichtung derselben Regel: Ohne sie sammeln sich Dateien an, die
     // niemandem mehr gehören.
     const rel = '/data/uploads/allein/y.pdf';
@@ -150,7 +150,7 @@ test('routes/sets gegen echte Datenbank', async t => {
     fs.rmSync(path.dirname(abs), { recursive: true, force: true });
   });
 
-  await t.test('eine unbekannte Anleitungs-ID meldet 404 statt 500', async () => {
+  await t.test('an unknown instruction ID reports 404 instead of 500', async () => {
     const r = await asAccount(U.anna, '/api/v1/sets/10005-1/instructions/999999', { method: 'DELETE' });
     assert.equal(r.status, 404);
     assert.equal(r.body?.success, false);

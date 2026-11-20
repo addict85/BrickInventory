@@ -49,7 +49,7 @@ const { buildAndRequire, testAccess } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
-test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t => {
+test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const A = Object.assign(
@@ -62,7 +62,7 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('ein Auftrag ohne eigenes Lebenszeichen läuft genau einmal', async () => {
+  await t.test('a job without its own sign of life runs exactly once', async () => {
     await db.run("DELETE FROM jobs WHERE type = 'wechselkurse'");
     let starts = 0;
     // Zwei Worker wie zwei Prozesse: Der zweite darf die Zeile nicht übernehmen, solange der erste arbeitet.
@@ -101,7 +101,7 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
     );
   });
 
-  await t.test('die zweite Verbindung belegt keinen zweiten csv_sync', async () => {
+  await t.test('the second connection claims no second csv_sync', async () => {
     await db.run("DELETE FROM jobs WHERE type = 'csv_sync'");
     await db.run(
       `INSERT INTO jobs (type, payload, dedupe_key) VALUES ('csv_sync', '{}', 'x1'), ('csv_sync', '{}', 'x2')`,
@@ -137,7 +137,7 @@ test('Auftrags-Lease, Exklusivität und Abbruch', { concurrency: 1 }, async t =>
     await db.run("DELETE FROM jobs WHERE type = 'csv_sync'");
   });
 
-  await t.test('Abbruch eines csv_sync im Download endet in höchstens 2 s', async () => {
+  await t.test('aborting a csv_sync during the download ends in at most 2 s', async () => {
     await db.run("DELETE FROM jobs WHERE type = 'csv_sync'");
     const EDITOR = _req('jobs/startJobs.js').editor(require('./helpers/sources').testServices());
     const w = createWorker(

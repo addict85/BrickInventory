@@ -15,7 +15,7 @@ function keysOf(lang) {
 }
 
 for (const lang of ['de', 'en']) {
-  test(`keine doppelten Schlüssel in i18n (${lang})`, () => {
+  test(`no duplicate keys in i18n (${lang})`, () => {
     const keys = keysOf(lang);
     const seen = new Set(),
       dupes = new Set();
@@ -29,7 +29,7 @@ for (const lang of ['de', 'en']) {
   });
 }
 
-test('de und en haben denselben Schlüsselvorrat', () => {
+test('de and en have the same key stock', () => {
   const de = new Set(keysOf('de')),
     en = new Set(keysOf('en'));
   const onlyDe = [...de].filter(k => !en.has(k));

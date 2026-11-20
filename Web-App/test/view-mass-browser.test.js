@@ -28,7 +28,7 @@ const CONTRAST = `(vorne, hinten) => { const f = s => (s.match(/[\\d.]+/g) || []
     return 0.2126 * c(r) + 0.7152 * c(g) + 0.0722 * c(b); };
   const [a, b] = [l(f(vorne)), l(f(hinten))].sort((x, y) => y - x); return (a + 0.05) / (b + 0.05); }`;
 
-test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async t => {
+test('UI dimensions', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `mass_${process.pid}`,
     allDesigns: true,
@@ -71,7 +71,7 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async t => {
   // Einstellungen; erst danach den Reiter wechseln.
   await ruhig();
 
-  await t.test('Telefon: Beträge in einer Zeile', async () => {
+  await t.test('phone: amounts in one line', async () => {
     await reiter('finance');
     const sichtbar = await b.auswerten(
       `[...document.querySelectorAll('#fin-sum .fval')].filter(e => e.getClientRects().length && e.getBoundingClientRect().width > 0).length`,
@@ -90,7 +90,7 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async t => {
     assert.deepEqual(fehler, []);
   });
 
-  await t.test('Telefon: Löschknopf verdeckt nichts', async () => {
+  await t.test('phone: delete button covers nothing', async () => {
     const ueber = (a, b) => `(() => { const k = ${a}, z = ${b}; if (!k || !z) return 'fehlt';
       const p = k.getBoundingClientRect(), q = z.getBoundingClientRect();
       const x = Math.max(0, Math.min(p.right, q.right) - Math.max(p.left, q.left)), y = Math.max(0, Math.min(p.bottom, q.bottom) - Math.max(p.top, q.top));
@@ -108,7 +108,7 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async t => {
     assert.deepEqual({ teil, merk }, { teil: 0, merk: 0 }, 'überdeckte Fläche in px²');
   });
 
-  await t.test('Stein: Kennzahlen kompakt', async () => {
+  await t.test('Stein: key figures compact', async () => {
     await b.auswerten(`document.documentElement.setAttribute('data-theme', 'brick'); true`);
     await reiter('gallery');
     const m = await b.auswerten(`(() => {
@@ -121,7 +121,7 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async t => {
     assert.ok(m.hoehe <= 140, `Kennzahlen ${m.hoehe} px hoch`);
   });
 
-  await t.test('Noppe: untere Leiste mindestens 4,5:1', async () => {
+  await t.test('Noppe: bottom bar at least 4.5:1', async () => {
     await b.auswerten(`document.documentElement.setAttribute('data-theme', 'noppe'); true`);
     await ruhig();
     const werte = await b.auswerten(`(() => { const k = ${CONTRAST};
@@ -135,7 +135,7 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async t => {
 
   await groesse(1280, 900, false);
 
-  await t.test('Rechner: Fokusring innen', async () => {
+  await t.test('desktop: focus ring inside', async () => {
     await reiter('gallery');
     // Der Einrichtungsassistent des neuen Verwalters hielte den Fokus fest.
     await b.auswerten(
@@ -163,7 +163,7 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async t => {
     );
   });
 
-  await t.test('Rechner: Zahlen rechtsbündig', async () => {
+  await t.test('desktop: numbers right-aligned', async () => {
     await reiter('finance');
     await bis(`!!document.querySelector('#fin-tbl .dt-fin td.price-total')`, 'Finanztabelle');
     const links =
@@ -173,7 +173,7 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async t => {
     assert.deepEqual(links, []);
   });
 
-  await t.test('Rechner: Set hinzufügen bündig', async () => {
+  await t.test('desktop: add set aligned', async () => {
     await reiter('gallery');
     await b.auswerten(`document.querySelector('button[data-click="oeffneErfassen"][data-arg="set"]').click(); true`);
     await ruhig();
@@ -190,7 +190,7 @@ test('Masse der Oberfläche', { concurrency: 1, timeout: 300_000 }, async t => {
     assert.deepEqual(m, { zeile1: true, zeile2: true, buendig: true, spalten: true, buttonRight: true });
   });
 
-  await t.test('Rechner: Konto mit begrenzter Breite', async () => {
+  await t.test('desktop: account with limited width', async () => {
     await b.auswerten(`document.querySelector('.umenu-item[data-arg="profil"]').click(); true`);
     await ruhig();
     const breite = await b.auswerten(

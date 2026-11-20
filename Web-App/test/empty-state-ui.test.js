@@ -29,7 +29,7 @@ const sichtbar = (w, sel) =>
     return true;
   });
 
-test('Set hinzufügen genau einmal', async () => {
+test('add set exactly once', async () => {
   const { w, d } = await openUi({}, { vorher: withStyle });
   try {
     await warte(() => !!d.querySelector('#gallery .empty.leer'));
@@ -42,7 +42,7 @@ test('Set hinzufügen genau einmal', async () => {
   }
 });
 
-test('Teile und Minifiguren ebenso', async () => {
+test('parts and minifigures likewise', async () => {
   const { w } = await openUi({}, { vorher: withStyle });
   try {
     for (const [tab, art] of [

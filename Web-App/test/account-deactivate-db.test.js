@@ -37,7 +37,7 @@ const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
+test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const CHEF = `deakt_chef_${process.pid}`,
@@ -108,7 +108,7 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
   const chefKeks = (await anmelden(CHEF, { ohne_token: true, code: codes.shift() })).cookie;
   assert.match(chefKeks, /^bim\.sid=/);
 
-  await t.test('Token und Sitzung gelten sofort nicht mehr', async () => {
+  await t.test('token and session stop applying immediately', async () => {
     const a = { ...(await anmelden(NUTZER)), cookie: (await anmelden(NUTZER, { ohne_token: true })).cookie };
     assert.equal(a.status, 200, JSON.stringify(a.body));
     assert.equal((await rufe('GET', '/profile', { token: a.body.token })).status, 200);
@@ -121,7 +121,7 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
     assert.equal((await db.get('SELECT count(*)::int n FROM api_tokens WHERE user_id = $1', [nutzer])).n, 0);
   });
 
-  await t.test('die Anmeldung ist gesperrt, die Liste zeigt es, das Protokoll nennt es', async () => {
+  await t.test('login is blocked, the list shows it, the log names it', async () => {
     const a = await anmelden(NUTZER);
     const falsch = await rufe('POST', '/login', { body: { username: NUTZER, password: 'Falsches-Passwort-1' } });
     assert.deepEqual([a.status, a.body], [falsch.status, falsch.body], 'gesperrt antwortet wie ein falsches Passwort');
@@ -132,19 +132,19 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
     assert.deepEqual(await protokoll(), ['konto_deaktiviert']);
   });
 
-  await t.test('ohne Passwort des Verwalters ändert sich nichts', async () => {
+  await t.test('without the admin password nothing changes', async () => {
     const r = await schalte(nutzer, true, 'falsch');
     assert.equal(r.status, 400);
     assert.equal((await db.get('SELECT is_active FROM users WHERE id = $1', [nutzer])).is_active, false);
   });
 
-  await t.test('nicht das eigene Konto', async () => {
+  await t.test('not the own account', async () => {
     const r = await schalte(chef, false);
     assert.deepEqual([r.status, r.body.code], [400, 'eigenes_konto_deaktivieren']);
     assert.equal((await db.get('SELECT is_active FROM users WHERE id = $1', [chef])).is_active, true);
   });
 
-  await t.test('reaktiviert meldet sich das Konto wieder an', async () => {
+  await t.test('reactivated, the account logs in again', async () => {
     assert.equal((await schalte(nutzer, true)).status, 200);
     const a = await anmelden(NUTZER);
     assert.equal(a.status, 200, JSON.stringify(a.body));
@@ -152,7 +152,7 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
     assert.deepEqual(await protokoll(), ['konto_deaktiviert', 'konto_reaktiviert']);
   });
 
-  await t.test('unbestätigt: dieselbe Absage, neuer Link ohne Kontoauskunft', async () => {
+  await t.test('unconfirmed: the same refusal, new link without account information', async () => {
     const adresse = `deakt_${process.pid}@example.org`;
     await db.run('UPDATE users SET email = NULL, new_email = $2, registration_pending = true WHERE id = $1', [
       nutzer,
@@ -193,7 +193,7 @@ test('Konto deaktivieren und reaktivieren', { concurrency: 1 }, async t => {
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE '%deakt_%'");
   });
 
-  await t.test('die Token-Abfrage prüft is_active', async () => {
+  await t.test('the token query checks is_active', async () => {
     const auth = _req('src/account/deviceToken.js');
     const tokenCache = _req('src/account/tokenCache.js');
     const token = await auth.createToken(nutzer, 'Probe');

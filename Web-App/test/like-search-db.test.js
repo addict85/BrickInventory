@@ -26,7 +26,7 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-test('Suche mit % und _ findet nur wörtliche Treffer', { concurrency: 1 }, async t => {
+test('search with % and _ only finds literal hits', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -64,7 +64,7 @@ test('Suche mit % und _ findet nur wörtliche Treffer', { concurrency: 1 }, asyn
     return j;
   };
 
-  await t.test('Teile', async () => {
+  await t.test('parts', async () => {
     const r = await hole('/parts/manual?search=' + encodeURIComponent('%'));
     assert.deepEqual(
       r.parts.map(p => p.part_number),
@@ -77,7 +77,7 @@ test('Suche mit % und _ findet nur wörtliche Treffer', { concurrency: 1 }, asyn
     );
   });
 
-  await t.test('Figuren', async () => {
+  await t.test('figures', async () => {
     const r = await hole('/minifigs/manual?search=' + encodeURIComponent('_'));
     assert.deepEqual(
       r.figs.map(f => f.fig_number),
@@ -98,7 +98,7 @@ test('Suche mit % und _ findet nur wörtliche Treffer', { concurrency: 1 }, asyn
     );
   });
 
-  await t.test('Katalog', async () => {
+  await t.test('catalog', async () => {
     const r = await hole('/catalog/sets?q=' + encodeURIComponent('0%'));
     assert.deepEqual(
       r.sets.map(s => s.set_num ?? s.set_number),

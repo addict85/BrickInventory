@@ -34,11 +34,11 @@ async function plan(sql) {
   }
 }
 
-test('Anfragepfad: die drei Indizes gibt es und der Planer kann sie nehmen', async t => {
+test('request path: the three indexes exist and the planner can take them', async t => {
   try {
     await db.get('SELECT 1');
   } catch {
-    return t.skip('keine Test-Datenbank erreichbar');
+    return t.skip('no test database reachable');
   }
 
   try {

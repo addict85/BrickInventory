@@ -83,8 +83,8 @@ function double(antworten = {}) {
   return { abruf, protokoll };
 }
 
-test('Guthaben-Abfrage', async t => {
-  await t.test('1. der Weg: Seite, Login, Abfrage — und das Ergebnis in Franken', async () => {
+test('balance query', async t => {
+  await t.test('1. the path: page, login, query — and the result in francs', async () => {
     vorrat.clear();
     const { abruf, protokoll } = double();
     const g = await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf });
@@ -109,7 +109,7 @@ test('Guthaben-Abfrage', async t => {
     }
   });
 
-  await t.test('2. die Sitzung wird wiederverwendet, nicht je Karte neu aufgebaut', async () => {
+  await t.test('2. the session is reused, not rebuilt per card', async () => {
     vorrat.clear();
     const { abruf, protokoll } = double();
     await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf });
@@ -125,7 +125,7 @@ test('Guthaben-Abfrage', async t => {
     assert.equal(protokoll.length, 4, 'Erwartet Seite+Login+Abfrage, dann nur Abfrage');
   });
 
-  await t.test('3. ein 401 mit Token AUS DEM VORRAT fuehrt zu genau einem Neuversuch', async () => {
+  await t.test('3. a 401 with a token FROM THE POOL leads to exactly one retry', async () => {
     vorrat.clear();
     // Erst eine Abfrage, damit eine Sitzung im Vorrat liegt.
     const leadTime = double();
@@ -145,7 +145,7 @@ test('Guthaben-Abfrage', async t => {
     );
   });
 
-  await t.test('4. ein 401 mit FRISCHER Sitzung wird nicht wiederholt', async () => {
+  await t.test('4. a 401 with a FRESH session is not retried', async () => {
     vorrat.clear();
     const { abruf, protokoll } = double({
       giftCardBalanceQuery: [antwort({ status: 401 }), antwort({ status: 401 })],
@@ -163,7 +163,7 @@ test('Guthaben-Abfrage', async t => {
     );
   });
 
-  await t.test('5. HTTP 403 ist BOT-SCHUTZ und wird nicht wiederholt', async () => {
+  await t.test('5. HTTP 403 is BOT PROTECTION and is not retried', async () => {
     vorrat.clear();
     const { abruf, protokoll } = double({
       giftCardBalanceQuery: antwort({ status: 403, text: 'Attention Required! Cloudflare' }),
@@ -186,7 +186,7 @@ test('Guthaben-Abfrage', async t => {
     assert.equal(b.protokoll.length, 1, 'Danach wird nicht weitergefragt');
   });
 
-  await t.test('5b. nach Bot-Schutz beginnt der nächste Versuch mit frischer Sitzung', async () => {
+  await t.test('5b. after bot protection the next attempt starts with a fresh session', async () => {
     // Woher dieser Fall kommt
     vorrat.clear();
 
@@ -229,7 +229,7 @@ test('Guthaben-Abfrage', async t => {
     );
   });
 
-  await t.test('6. die PIN steht in KEINEM Text, der hinausgeht', async () => {
+  await t.test('6. the PIN is in NO text that goes out', async () => {
     vorrat.clear();
     // Der boeseste Fall: Die Gegenseite wirft die Eingabe in ihrer
     // Fehlermeldung zurueck. Ohne verdecke() landete die PIN damit im
@@ -262,7 +262,7 @@ test('Guthaben-Abfrage', async t => {
     );
   });
 
-  await t.test('7. verdecke() allein — auch ohne Fehlerfall', () => {
+  await t.test('7. verdecke() alone — even without an error case', () => {
     assert.equal(G.redact(`Karte ${NUMBER}, PIN ${PIN}`, NUMBER, PIN), 'Karte …1166, PIN …');
     // Mehrfaches Vorkommen, und eine PIN, die zufaellig IN der Nummer steckt
     // (hier „5045" am Anfang): Beide Ersetzungen muessen vollstaendig sein.
@@ -275,7 +275,7 @@ test('Guthaben-Abfrage', async t => {
     assert.equal(G.redact(`Karte ${NUMBER}`, NUMBER, null), 'Karte …1166');
   });
 
-  await t.test('8. das Land kann die Adresse nicht umlenken', async () => {
+  await t.test('8. the country cannot redirect the address', async () => {
     // Was ich hier erwartet hatte, und was gemessen herauskam
     vorrat.clear();
     const { abruf, protokoll } = double();
@@ -299,7 +299,7 @@ test('Guthaben-Abfrage', async t => {
     assert.equal(G.countryAllowed(null), false);
   });
 
-  await t.test('5c. eine Anmeldung mit Fehlern im Rumpf geht als LoginAbgelehnt weiter', async () => {
+  await t.test('5c. a login with errors in the body continues as LoginAbgelehnt', async () => {
     // Gegenprobe (14.11.2026): im Fang von baueSitzung `throw e` gestrichen → rot (Gast-Token-Fehler).
     vorrat.clear();
     const { abruf } = double({ Login: antwort({ json: { errors: [{ message: 'gesperrt' }] } }) });
@@ -309,7 +309,7 @@ test('Guthaben-Abfrage', async t => {
     );
   });
 
-  await t.test('9. das Auswahlfeld der Webapp traegt genau die erlaubten Laender', () => {
+  await t.test("9. the web app's select field carries exactly the allowed countries", () => {
     // Zwei Listen fuer eine Sache laufen auseinander: Im HTML steht, was der
     // Mensch waehlen kann, in LAENDER, was die Route annimmt. Waere im HTML
     // ein Land zu viel, bekaeme der Nutzer eine Absage statt eines Guthabens.

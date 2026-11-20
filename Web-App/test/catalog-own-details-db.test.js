@@ -45,7 +45,7 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-test('eigene Katalogangaben bleiben beim Konto und seinem Haushalt', { concurrency: 1 }, async t => {
+test('own catalog details stay with the account and its household', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -118,7 +118,7 @@ test('eigene Katalogangaben bleiben beim Konto und seinem Haushalt', { concurren
       await X('GET', '/minifigs/manual'),
     ]);
 
-  await t.test('Alice sieht ihre eigenen Angaben', async () => {
+  await t.test('Alice sees her own details', async () => {
     const l = await listen(A);
     for (const s of ['Alices Prototyp', 'Tresorrot', 'AB1234', 'Privat', 'media/alice.jpg', 'Geheimfigur'])
       assert.ok(l.includes(s), `Alices Liste ohne ${s}`);
@@ -126,13 +126,13 @@ test('eigene Katalogangaben bleiben beim Konto und seinem Haushalt', { concurren
     assert.match(csv, /geheim-77,1,4,Tresorrot/);
   });
 
-  await t.test('Bob sieht Alices Eingaben in keiner Liste und keinem Export', async () => {
+  await t.test("Bob sees Alice's inputs in no list and no export", async () => {
     const l = (await listen(B)) + (await partsCsv(bob)) + (await figurenCsv(bob));
     assert.ok(l.includes('geheim-77') && l.includes('fig-000001'), 'Testdaten: Bob führt beide Nummern');
     for (const s of ALICE) assert.ok(!l.includes(s), `Bob sieht ${s}`);
   });
 
-  await t.test('der geprüfte Name hat Vorrang vor einer Eingabe', async () => {
+  await t.test('the verified name takes precedence over an input', async () => {
     for (const X of [A, C]) {
       const m = (await X('GET', '/parts/manual')).parts.find(p => p.part_number === '3003');
       assert.equal(m?.part_name, 'Brick 2 x 2');
@@ -140,7 +140,7 @@ test('eigene Katalogangaben bleiben beim Konto und seinem Haushalt', { concurren
     assert.ok(!(await listen(C)).includes('Gefälscht'), 'Carol sieht Alices Text');
   });
 
-  await t.test('jedes Konto behält seinen eigenen Namen für dieselbe Nummer', async () => {
+  await t.test('every account keeps its own name for the same number', async () => {
     await A('POST', '/parts', { part_number: 'privat-9', color_id: 1, quantity: 1, part_name: 'Alices Name' });
     await B('POST', '/parts', { part_number: 'privat-9', color_id: 1, quantity: 1, part_name: 'Bobs Name' });
     const name = async X => (await X('GET', '/parts/manual')).parts.find(p => p.part_number === 'privat-9')?.part_name;
@@ -148,7 +148,7 @@ test('eigene Katalogangaben bleiben beim Konto und seinem Haushalt', { concurren
     assert.equal(await name(B), 'Bobs Name');
   });
 
-  await t.test('Haushalt: das Hauptkonto sieht die Angaben des Unterkontos', async () => {
+  await t.test("household: the main account sees the sub-account's details", async () => {
     await K('POST', '/parts', { part_number: 'haus-1', color_id: 1, quantity: 1, part_name: 'Kinds Name' });
     await B('POST', '/parts', { part_number: 'haus-1', color_id: 1, quantity: 1 });
     const zeilen = (await C('GET', '/parts/manual')).parts.filter(p => p.part_number === 'haus-1');
@@ -159,7 +159,7 @@ test('eigene Katalogangaben bleiben beim Konto und seinem Haushalt', { concurren
     assert.ok(!(await listen(B)).includes('Kinds Name'), 'Bob sieht den Namen des Unterkontos');
   });
 
-  await t.test('Haushalt: das Unterkonto sieht die Angaben des Hauptkontos nicht', async () => {
+  await t.test("household: the sub-account does not see the main account's details", async () => {
     await C('POST', '/parts', { part_number: 'haus-2', color_id: 1, quantity: 1, part_name: 'Carols Name' });
     await K('POST', '/parts', { part_number: 'haus-2', color_id: 1, quantity: 1 });
     const l = await listen(K);

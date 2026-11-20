@@ -47,7 +47,7 @@ const backups = async () =>
     r => r.nspname,
   );
 
-test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async t => {
+test('migrations: backup and time limit', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   const client = await db.pool.connect();
   await runMigrations(client);
@@ -75,12 +75,12 @@ test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('ohne offene Migration keine Sicherung', async () => {
+  await t.test('without an open migration no backup', async () => {
     await runMigrations(client, { sichern: true });
     assert.deepEqual(new Set(await backups()), vorher);
   });
 
-  await t.test('offene Migration: erst gesichert, dann ohne Zeitgrenze angewandt', async () => {
+  await t.test('open migration: first backed up, then applied without a time limit', async () => {
     fs.writeFileSync(
       probe,
       `DO $$ BEGIN
@@ -150,7 +150,7 @@ test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async t => {
     }
   };
 
-  await t.test('eine gehaltene Sperre: Frist, Wiederholung, klare Meldung', { timeout: 15_000 }, async () => {
+  await t.test('a held lock: deadline, retry, clear message', { timeout: 15_000 }, async () => {
     const datei = path.join(DIST, 'db/migrations', SPERRPROBE);
     await db.run(`CREATE TABLE IF NOT EXISTS ${TABELLE} (x int)`);
     t.after(async () => {
@@ -174,7 +174,7 @@ test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async t => {
     assert.deepEqual(await runMigrations(client, { sperre: SHORT }), [SPERRPROBE], 'ohne Sperre läuft sie durch');
   });
 
-  await t.test('auch die Sicherung wartet nicht ewig', { timeout: 15_000 }, async () => {
+  await t.test('the backup does not wait forever either', { timeout: 15_000 }, async () => {
     const frei = await holdLock('users');
     const { ergebnis } = await withWarnings(() => secureUserData(client, ['probe'], { fristMs: 200, versuche: 1 }));
     await frei();
@@ -182,7 +182,7 @@ test('Migrationen: Sicherung und Zeitgrenze', { concurrency: 1 }, async t => {
     assert.match(ergebnis.message, /Sicherung vor den Migrationen fehlgeschlagen: .*keine Sperre erhalten/);
   });
 
-  await t.test('die drei jüngsten Sicherungen bleiben', async () => {
+  await t.test('the three most recent backups stay', async () => {
     for (let i = 0; i < 4; i++) {
       await secureUserData(client, ['probe']);
       await new Promise(r => setTimeout(r, 5));

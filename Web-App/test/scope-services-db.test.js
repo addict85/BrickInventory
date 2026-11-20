@@ -25,7 +25,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { holdsSet } = require('./helpers/inventory');
 
-test('Dienste lösen die Sicht auf', { concurrency: 1 }, async t => {
+test('services resolve the view', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
@@ -46,7 +46,7 @@ test('Dienste lösen die Sicht auf', { concurrency: 1 }, async t => {
   await holdsSet(db, sub, '75192-1');
   const nummern = async sicht => (await setsLesen(sicht, {})).sets.map(s => s.set_number).sort();
 
-  await t.test('eine Sicht wählt die Konten im Dienst', async () => {
+  await t.test('a view selects the accounts in the service', async () => {
     assert.deepEqual(await nummern({ nutzer: haupt }), ['10179-1', '75192-1']);
     assert.deepEqual(await nummern({ nutzer: haupt, konten: 'own' }), ['10179-1']);
     assert.deepEqual(await nummern({ nutzer: haupt, konten: 'subs' }), ['75192-1']);
@@ -57,7 +57,7 @@ test('Dienste lösen die Sicht auf', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('Löschen folgt der Kontenwahl, im Schreibbereich', async () => {
+  await t.test('deleting follows the account selection, in the write scope', async () => {
     assert.equal(
       await deleteSetFor({ nutzer: sub, konten: String(haupt) }, '10179-1'),
       null,
@@ -73,7 +73,7 @@ test('Dienste lösen die Sicht auf', { concurrency: 1 }, async t => {
     assert.deepEqual(await nummern({ nutzer: haupt }), ['10179-1']);
   });
 
-  await t.test('ein Unterkonto schreibt nicht für sein Hauptkonto', async () => {
+  await t.test('a sub-account does not write for its main account', async () => {
     assert.equal(await H.schreibziel(haupt, sub), sub);
     assert.equal(await H.schreibziel(sub, undefined), sub, 'ohne Wunsch das eigene Konto');
     await assert.rejects(

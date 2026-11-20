@@ -18,7 +18,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
-test('ohne Erfassung kein Zustand im Diagramm, die Rohdaten bleiben', { concurrency: 1 }, async t => {
+test('without an entry no condition in the chart, the raw data stays', { concurrency: 1 }, async t => {
   const db = testData();
   if (!(await dataOrSkip(t, _req))) return;
   const { priceHistoryMinifig, statesForHistory } = _req('src/finances/priceHistory.js');

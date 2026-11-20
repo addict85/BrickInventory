@@ -15,7 +15,7 @@ const { buildAndRequire, testServices } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { DECLARED_KINDS } = _req('startup/wiring.js');
 
-test('angemeldet ist genau, was deklariert ist', () => {
+test('exactly what is declared is registered', () => {
   const angemeldet = testServices()
     .jobQueue.signedInKinds()
     .map(a => a.art)
@@ -24,7 +24,7 @@ test('angemeldet ist genau, was deklariert ist', () => {
   assert.deepEqual(angemeldet, Object.keys(DECLARED_KINDS).sort());
 });
 
-test('die Wiedervorlage von Brickset meldet ihre Art mit Nutzlast an, den Lauf gibt der Katalog', async () => {
+test('the Brickset resubmission registers its kind with payload, the run is provided by the catalog', async () => {
   const brickset = testServices()
     .jobQueue.signedInKinds()
     .find(a => a.art === 'brickset');

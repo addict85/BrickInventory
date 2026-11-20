@@ -22,7 +22,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
 
-test('testServer läuft durch die echte Kette', { concurrency: 1 }, async t => {
+test('testServer runs through the real chain', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const NAME = `kette_echt_${process.pid}`;
@@ -37,7 +37,7 @@ test('testServer läuft durch die echte Kette', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('Sicherheitsköpfe und Anfragekennung aus grundschutz()', async () => {
+  await t.test('security headers and request ID from grundschutz()', async () => {
     const { base } = testServer(_req, { sitzung: {}, t });
     const r = await fetch(`${base}/api/v1/health/live`);
     assert.match(String(r.headers.get('content-security-policy')), /default-src 'self'/);
@@ -45,7 +45,7 @@ test('testServer läuft durch die echte Kette', { concurrency: 1 }, async t => {
     assert.equal(r.headers.get('cache-control'), 'no-store');
   });
 
-  await t.test('fremde Herkunft mit Sitzungskeks: 403', async () => {
+  await t.test('foreign origin with session cookie: 403', async () => {
     const { base } = testServer(_req, { sitzung: { userId: mit, isAdmin: true }, t });
     const sende = (/** @type {string} */ herkunft) =>
       fetch(`${base}/api/v1/settings`, {
@@ -63,7 +63,7 @@ test('testServer läuft durch die echte Kette', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('ein Verwalter ohne zweiten Faktor wird am Eingang abgewiesen', async () => {
+  await t.test('an administrator without a second factor is rejected at the entrance', async () => {
     const jobs = async (/** @type {number} */ id) =>
       fetch(`${testServer(_req, { sitzung: { userId: id, isAdmin: true }, t }).base}/api/v1/admin/jobs`);
     const r = await jobs(ohne);

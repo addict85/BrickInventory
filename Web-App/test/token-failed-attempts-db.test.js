@@ -42,7 +42,7 @@ const { bis } = require('./helpers/time');
 
 const NAME = `fehlversuch_${process.pid}`;
 
-test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
+test('failed attempts with unknown tokens', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
   const server = routerServer(_req, { t, sitzung: {}, routen: {} });
@@ -79,14 +79,14 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
   };
   const zufall = i => `unbekannt-${process.pid}-${i}-${Math.random()}`;
 
-  await t.test('bis zum Limit prüft jeder unbekannte Token die Datenbank', async () => {
+  await t.test('up to the limit every unknown token checks the database', async () => {
     await bremse.forgetFailedAttempts();
     abfragen = 0;
     for (let i = 0; i < bremse.FAILED_ATTEMPT_MAX; i++) assert.equal((await ruf(zufall(i))).status, 401);
     assert.equal(abfragen, bremse.FAILED_ATTEMPT_MAX);
   });
 
-  await t.test('ein gültiger Token im Cache wird auch gebremster Adresse bedient', async () => {
+  await t.test('a valid token in the cache is served even for a throttled address', async () => {
     await bremse.forgetFailedAttempts();
     const token = await auth.createToken(uid, 'Cache');
     assert.equal((await ruf(token)).status, 200, 'Vorbedingung: der Token gilt und steht im Cache');
@@ -94,24 +94,24 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
     assert.equal((await ruf(token)).status, 200);
   });
 
-  await t.test('nach dem Limit kostet ein unbekannter Token keine Datenbankabfrage', async () => {
+  await t.test('after the limit an unknown token costs no database query', async () => {
     abfragen = 0;
     const r = await ruf(zufall('danach'));
     assert.equal(abfragen, 0);
     assert.equal(r.body.code, 'zu_viele_anfragen');
   });
 
-  await t.test('die Drossel antwortet 429, nicht 401', async () => {
+  await t.test('the throttle responds 429, not 401', async () => {
     assert.equal((await ruf(zufall('noch'))).status, 429);
   });
 
-  await t.test('nach dem Fenster gilt die Adresse wieder als unbescholten', async () => {
+  await t.test('after the window the address counts as clean again', async () => {
     const jetzt = Date.now() + bremse.FAILED_ATTEMPT_WINDOW_MS + 1000;
     assert.equal(bremse.toManyFailedAttempts('::1', jetzt), false);
     assert.equal(bremse.toManyFailedAttempts('127.0.0.1', jetzt), false);
   });
 
-  await t.test('ein wiederverwendeter Token zählt nicht als Fehlversuch', async () => {
+  await t.test('a reused token does not count as a failed attempt', async () => {
     await bremse.forgetFailedAttempts();
     const alt = await auth.createToken(uid, 'Alt', true);
     const neu = await auth.rotateToken(alt, null);
@@ -131,7 +131,7 @@ test('Fehlversuche mit unbekannten Token', { concurrency: 1 }, async t => {
   });
 
   // Ein zweiter Prozess hat eigenen Speicher, aber dieselbe Datenbank.
-  await t.test('ein zweiter Web-Prozess zählt die Fehlversuche des ersten mit', async () => {
+  await t.test('a second web process counts the failed attempts of the first', async () => {
     await bremse.forgetFailedAttempts();
     for (let i = 0; i < bremse.FAILED_ATTEMPT_MAX; i++) assert.equal((await ruf(zufall(`a${i}`))).status, 401);
     bremse.forgetLockInProcess();

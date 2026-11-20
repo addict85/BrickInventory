@@ -47,7 +47,7 @@ const liste = (block, schluessel) =>
     .map(s => s.trim())
     .filter(Boolean);
 
-test('kein Dienst gewinnt Rechte, jeder hat nur die nötigen Capabilities', () => {
+test('no service gains privileges, each has only the necessary capabilities', () => {
   const erwartet = {
     postgres: ['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'SETGID', 'SETUID'],
     app: [],
@@ -66,7 +66,7 @@ test('kein Dienst gewinnt Rechte, jeder hat nur die nötigen Capabilities', () =
   }
 });
 
-test('die App schreibt nur in ./data und /tmp — daten-rechte auch', () => {
+test('the app only writes to ./data and /tmp — daten-rechte too', () => {
   const block = readService(compose, 'app');
   assert.match(block, /^\s*read_only:\s*true\s*$/m, 'app: read_only fehlt');
   assert.match(block, /^\s*tmpfs:\s*\n\s*-\s*\/tmp:rw,noexec,nosuid,nodev,size=\d+m\s*$/m, 'app: /tmp als tmpfs fehlt');
@@ -122,7 +122,7 @@ test('die App schreibt nur in ./data und /tmp — daten-rechte auch', () => {
 // ergänzt → rot „daten-rechte sieht mehr als ./data“; `network_mode: none` dort
 // gestrichen → rot „daten-rechte braucht kein Netz“; bei app die Abhängigkeit
 // auf daten-rechte gestrichen → rot „app wartet nicht auf daten-rechte“.
-test('root richtet ./data nur im Dienst daten-rechte ein, app und jobs laufen als brickinv', t => {
+test('root sets up ./data only in the service daten-rechte, app and jobs run as brickinv', t => {
   // Wie Docker die Datei liest (Interpolation, Kurzschreibweisen), nicht per Regex.
   const r = require('node:child_process').spawnSync(
     'docker',
@@ -141,7 +141,7 @@ test('root richtet ./data nur im Dienst daten-rechte ein, app und jobs laufen al
   );
   if (r.error || r.status !== 0) {
     if (process.env.CI) assert.fail(`docker compose config im CI-Lauf: ${r.error?.message || r.stderr}`);
-    t.skip('kein docker compose');
+    t.skip('no docker compose');
     return;
   }
   const { services: d } = JSON.parse(r.stdout);
@@ -171,7 +171,7 @@ test('root richtet ./data nur im Dienst daten-rechte ein, app und jobs laufen al
 
 // Gegenproben (01.11.2026 gemessen): DATA_KEY_FILE bei jobs gestrichen → rot
 // „jobs: DATA_KEY_FILE fehlt“; Pfad auf /app/data/.datenschluessel → rot „… ./data“.
-test('der Datenschlüssel liegt für app und jobs ausserhalb von ./data', () => {
+test('the data key lies outside of ./data for app and jobs', () => {
   for (const dienst of ['app', 'jobs']) {
     const block = readService(compose, dienst);
     const datei = block.match(/^\s*DATA_KEY_FILE:\s*(\S+)\s*$/m)?.[1];
@@ -191,7 +191,7 @@ test('der Datenschlüssel liegt für app und jobs ausserhalb von ./data', () => 
 // App wieder veröffentlicht → rot „die App ist nur über Caddy erreichbar“.
 // (11.11.2026) in UPGRADE.md Abschnitt 53 `N=172.28.0.0/16` → rot „die LAN-Sperre
 // in UPGRADE.md nennt ein anderes Netz“.
-test('TRUST_PROXY vertraut genau Caddy, das Netz hat ein festes Subnetz', () => {
+test('TRUST_PROXY trusts exactly Caddy, the network has a fixed subnet', () => {
   const app = readService(compose, 'app');
   const caddy = readService(compose, 'caddy');
   const adresse = caddy.match(/ipv4_address:\s*(\S+)/)?.[1];
@@ -212,7 +212,7 @@ test('TRUST_PROXY vertraut genau Caddy, das Netz hat ein festes Subnetz', () => 
   assert.match(regel, /iptables -I DOCKER-USER -s "\$N" -j BRICK-LAN/);
 });
 
-test('die App ist nur über Caddy erreichbar', () => {
+test('the app is only reachable via Caddy', () => {
   const app = readService(compose, 'app')
     .split('\n')
     .filter(z => !/^\s*#/.test(z))
@@ -237,7 +237,7 @@ test('die App ist nur über Caddy erreichbar', () => {
 // in caddy-rechte 1000:1000 statt 10443:10443 → rot „… andere Kennung“;
 // `- ./caddy/config:/config` aus caddy-rechte gestrichen → rot „… nicht übergeben“;
 // die Abhängigkeit auf caddy-rechte gestrichen → rot „Caddy wartet nicht …“.
-test('Caddy läuft ohne root, caddy-rechte übergibt ihm seine Ordner', () => {
+test('Caddy runs without root, caddy-rechte hands it its folders', () => {
   const caddy = readService(compose, 'caddy');
   const rechte = readService(compose, 'caddy-rechte');
   const kennung = caddy.match(/^\s*user:\s*"?(\d+):(\d+)"?\s*$/m);
@@ -270,7 +270,7 @@ test('Caddy läuft ohne root, caddy-rechte übergibt ihm seine Ordner', () => {
   assert.deepEqual(fehlt, [], 'diese Orte hat caddy-rechte nicht übergeben');
 });
 
-test('Caddy: Aussteller aus dem Startskript, eigene Anfragekennung, Port 80 leitet nur um', () => {
+test('Caddy: issuer from the start script, own request identifier, port 80 only redirects', () => {
   const datei = fs
     .readFileSync(path.join(ROOT, 'Caddyfile'), 'utf8')
     .split('\n')
@@ -288,7 +288,7 @@ test('Caddy: Aussteller aus dem Startskript, eigene Anfragekennung, Port 80 leit
   assert.match(datei, /default_sni \{\$BRICK_HOST\}/);
 });
 
-test('kein Dienst hat ein Ersatz-Datenbankpasswort', () => {
+test('no service has a substitute database password', () => {
   assert.doesNotMatch(compose, /\$\{DB_PASSWORD:-/, 'ein Dienst fällt auf ein Beispielpasswort zurück');
   assert.doesNotMatch(compose, /DB_APP_PASSWORD:-/, 'ein Dienst fällt auf ein Beispielpasswort zurück');
 });
@@ -311,7 +311,7 @@ const geheimnisse = block =>
     .map(x => x.trim())
     .filter(Boolean)
     .sort();
-test('nur postgres und db-rolle kennen den Superuser, nur migration die Migrationsrolle, App und Jobs die Laufzeitrolle', () => {
+test('only postgres and db-rolle know the superuser, only migration the migration role, app and jobs the runtime role', () => {
   const dienste = ['postgres', 'db-rolle', 'app', 'jobs'];
   const withSuperuser = dienste.filter(d => geheimnisse(readService(compose, d)).includes('db_password'));
   assert.deepEqual(withSuperuser, ['postgres', 'db-rolle']);

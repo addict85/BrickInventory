@@ -78,7 +78,7 @@ async function bedienen(o, dateien) {
   return { ...o, xml, meldungen };
 }
 
-test('keine Rebrickable-Farbnummer wandert als BrickLink-Farbe hinaus — Posten ohne werden genannt', async () => {
+test('no Rebrickable color number goes out as a BrickLink color — items without one are named', async () => {
   const { w, xml, meldungen } = await exportiere('de');
   try {
     // Ohne XML-Deklaration: BrickLink lehnt eine Datei mit ihr ab (bricklink-wanted-xml.test.js prüft das Bauteil).
@@ -97,7 +97,7 @@ test('keine Rebrickable-Farbnummer wandert als BrickLink-Farbe hinaus — Posten
   }
 });
 
-test('die Meldungen sind übersetzt, nicht eingetippt', async () => {
+test('the messages are translated, not typed in', async () => {
   const { w, meldungen } = await exportiere('en');
   try {
     const texte = meldungen.map(m => m.text).join(' | ');

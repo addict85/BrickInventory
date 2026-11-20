@@ -42,7 +42,7 @@ const db = testData();
 
 const NAMEN = ['dd_haupt', 'dd_unter', 'dd_fremd'].map(n => `${n}_${process.pid}`);
 
-test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async t => {
+test('uploads: household yes, strangers no, %2F never', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
@@ -84,26 +84,26 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async t =
     fs.rmSync(WURZEL, { recursive: true, force: true });
   });
 
-  await t.test('die eigene Datei', async () => {
+  await t.test('the own file', async () => {
     const r = await hole(H, `/data/uploads/${H}/a.pdf`);
     assert.equal(r.status, 200);
     assert.equal(r.text, `pdf von ${H}`);
   });
 
-  await t.test('Hauptkonto liest Unterkonto', async () => {
+  await t.test('main account reads sub-account', async () => {
     const r = await hole(H, `/data/uploads/${U}/a.pdf`);
     assert.equal(r.status, 200, 'Das Hauptkonto sieht die Anleitung des Unterkontos und muss sie öffnen können');
   });
 
-  await t.test('Unterkonto liest Hauptkonto nicht', async () => {
+  await t.test('sub-account does not read main account', async () => {
     assert.equal((await hole(U, `/data/uploads/${H}/a.pdf`)).status, 404);
   });
 
-  await t.test('Fremde lesen nicht', async () => {
+  await t.test('strangers do not read', async () => {
     assert.equal((await hole(F, `/data/uploads/${H}/a.pdf`)).status, 404);
   });
 
-  await t.test('fremd und fehlend antworten gleich', async () => {
+  await t.test('foreign and missing answer the same', async () => {
     const withoutHeader = ({ kopf, ...r }) => {
       void kopf;
       return r;
@@ -113,7 +113,7 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async t =
     assert.deepEqual(withoutHeader(fremd), withoutHeader(fehlt));
   });
 
-  await t.test('als Anhang in einer Sandbox', async () => {
+  await t.test('as an attachment in a sandbox', async () => {
     for (const weg of [`/data/uploads/${U}/a.pdf`, `/data/instructions/${SN}_1.pdf`]) {
       const r = await hole(H, weg);
       assert.equal(r.status, 200, `${weg}: ${r.text}`);
@@ -122,7 +122,7 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async t =
     }
   });
 
-  await t.test('auch ein Verwalter liest fremde Uploads nicht', async () => {
+  await t.test('even an admin does not read foreign uploads', async () => {
     await db.run('UPDATE users SET is_admin = true WHERE id = $1', [F]);
     await db.run(`INSERT INTO second_factor (user_id, secret, active) VALUES ($1, 'x', TRUE)`, [F]);
     assert.equal(
@@ -132,7 +132,7 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async t =
     );
   });
 
-  await t.test('%2F im Segment', async () => {
+  await t.test('%2F in the segment', async () => {
     for (const weg of [
       `/data/uploads/x%2F..%2F${H}/a.pdf`,
       `/data/uploads/${F}%2F..%2F${H}/a.pdf`,
@@ -144,18 +144,18 @@ test('Uploads: Haushalt ja, Fremde nein, %2F nie', { concurrency: 1 }, async t =
     }
   });
 
-  await t.test('kein Benutzerordner', async () => {
+  await t.test('no user folder', async () => {
     assert.equal((await hole(F, '/data/uploads/lose.pdf')).status, 404);
   });
 
-  await t.test('gelöstes Unterkonto ist sofort nicht mehr lesbar', async () => {
+  await t.test('an unlinked sub-account is immediately no longer readable', async () => {
     assert.equal((await hole(H, `/data/uploads/${U}/a.pdf`)).status, 200);
     // Direkt in der Tabelle, ohne Benachrichtigung: Das Gedächtnis weiss nichts davon.
     await db.run('DELETE FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [H, U]);
     assert.equal((await hole(H, `/data/uploads/${U}/a.pdf`)).status, 404);
   });
 
-  await t.test('ohne Anmeldung', async () => {
+  await t.test('without login', async () => {
     assert.equal((await hole(undefined, `/data/uploads/${H}/a.pdf`)).status, 401);
   });
 });

@@ -21,7 +21,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
-test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurrency: 1 }, async t => {
+test('a cleared purchase price is refilled in the condition of the row', { concurrency: 1 }, async t => {
   const db = testData();
   if (!(await dataOrSkip(t, _req))) return;
   const { changeAcquisition } = _req('src/collection/acquisitions.js');
@@ -112,7 +112,7 @@ test('ein geleerter Kaufpreis wird im Zustand der Zeile nachgefüllt', { concurr
   }
 });
 
-test('jeder Marktpreis-Abruf bekommt einen Zustand mit', () => {
+test('every market price fetch gets a condition', () => {
   // Zweimal dieselbe Lücke
   const fs = require('node:fs');
   const path = require('node:path');

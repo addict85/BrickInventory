@@ -37,7 +37,7 @@ const MAIN = `beitritt_haupt_${process.pid}`,
   KIND = `beitritt_kind_${process.pid}`,
   HAUPT2 = `beitritt_haupt2_${process.pid}`;
 
-test('Haushalt beitreten', { concurrency: 1 }, async t => {
+test('join household', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = ANY($1)', [[MAIN, KIND, HAUPT2]]);
   const hash = await bcrypt.hash(PASS, 4);
@@ -77,7 +77,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async t => {
   const verknuepft = async () =>
     !!(await db.get('SELECT 1 FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [haupt, kind]));
 
-  await t.test('die Prüfung eines Codes ist je Konto gebremst', async () => {
+  await t.test('checking a code is throttled per account', async () => {
     const { code } = await createInvitation(haupt);
     const pruefe = () =>
       fetch(`${base}/api/v1/settings/household/redeem/pruefen`, {
@@ -94,7 +94,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async t => {
     await pruefCounter();
   });
 
-  await t.test('ohne Passwort keine Verknüpfung', async () => {
+  await t.test('no link without password', async () => {
     const { code } = await createInvitation(haupt);
     for (const body of [{ code }, { code, password: 'falsch' }]) {
       const r = await einloesen(body);
@@ -104,7 +104,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async t => {
     assert.equal(await verknuepft(), false);
   });
 
-  await t.test('mit Passwort verknüpft, und der Inhaber erfährt es', async () => {
+  await t.test('linked with password, and the owner learns about it', async () => {
     const { code } = await createInvitation(haupt);
     const zeilen = [];
     const echt = console.log;
@@ -132,7 +132,7 @@ test('Haushalt beitreten', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('mit zweitem Faktor braucht es auch den Code', async () => {
+  await t.test('with a second factor the code is needed too', async () => {
     const zf = _req('src/factors/secondFactor.js');
     const geheim = await zf.beginSetup(kind);
     const codes = await zf.confirmSetup(kind, zf.hotp(zf.fromBase32(geheim), zf.timeStep()));

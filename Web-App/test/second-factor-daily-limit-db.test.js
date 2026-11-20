@@ -42,7 +42,7 @@ const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const PASS = 'Tagesschranke-Passwort-1';
 const IP = '198.51.100.44';
 
-test('Tagesschranke für Codes des zweiten Faktors bei der Anmeldung', { concurrency: 1, timeout: 120_000 }, async t => {
+test('daily limit for second-factor codes at login', { concurrency: 1, timeout: 120_000 }, async t => {
   const db = await accessOrSkip(t, _req);
   if (!db) return;
   const NAME = `zfschranke_${process.pid}`;
@@ -79,7 +79,7 @@ test('Tagesschranke für Codes des zweiten Faktors bei der Anmeldung', { concurr
     return checkCredentials({ ip: IP }, NAME, PASS, code);
   };
 
-  await t.test('bis zur Schranke: falscher Code', async () => {
+  await t.test('up to the limit: wrong code', async () => {
     for (let i = 1; i < lim.MAX_FACTOR_LOGIN_JE_ACCOUNT; i++) {
       const r = await anmelden(FALSCH);
       assert.equal(r.absage?.code, 'zweiter_faktor_falsch', `Versuch ${i}`);
@@ -93,7 +93,7 @@ test('Tagesschranke für Codes des zweiten Faktors bei der Anmeldung', { concurr
     assert.equal(Number(zeile?.count), lim.MAX_FACTOR_LOGIN_JE_ACCOUNT, 'gezählt in der Datenbank');
   });
 
-  await t.test('der Inhaber erfährt es sofort, einmal', async () => {
+  await t.test('the owner learns of it immediately, once', async () => {
     // hintInBackground schickt ohne await; erst ein zweiter Blick zeigt, dass es bei einer Mail bleibt.
     await bis(() => mails.some(m => m.art === 'zweiter_faktor_gesperrt'));
     await anmelden(FALSCH);
@@ -103,13 +103,13 @@ test('Tagesschranke für Codes des zweiten Faktors bei der Anmeldung', { concurr
     );
   });
 
-  await t.test('über der Schranke gilt auch ein richtiger Einmalcode nicht', async () => {
+  await t.test('above the limit even a correct one-time code does not apply', async () => {
     const r = await anmelden(zf.hotp(schluessel, zf.timeStep()));
     assert.equal(r.ok, false, 'richtiger Einmalcode über der Schranke angenommen');
     assert.equal(r.absage?.code, 'zweiter_faktor_gesperrt');
   });
 
-  await t.test('ein Wiederherstellungscode gilt weiter', async () => {
+  await t.test('a recovery code still applies', async () => {
     const r = await anmelden(codes[0]);
     assert.equal(r.ok, true, JSON.stringify(r.absage));
   });

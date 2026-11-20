@@ -31,7 +31,7 @@ const assert = require('node:assert/strict');
 const read = f => require('./helpers/sources').serviceSource(f);
 const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 
-test('die Erfassungsliste wird in BEIDE Richtungen nachgeladen', async t => {
+test('the acquisition list is reloaded in BOTH directions', async t => {
   // Beim Verringern entfernt der Server Erfassungen; nur beim Erhöhen neu zu
   // laden liess gelöschte Einträge im Dialog stehen.
   const { openUi, reiter } = require('./helpers/ui');
@@ -84,7 +84,7 @@ test('die Erfassungsliste wird in BEIDE Richtungen nachgeladen', async t => {
   );
 });
 
-test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurrency: 1 }, async t => {
+test('quantities and acquisitions of manual entries against the database', { concurrency: 1 }, async t => {
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   const _req = require('./helpers/sources').buildAndRequire();
   const db = await require('./helpers/db').dataOrSkip(t, _req);
@@ -114,7 +114,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
       [uid, pn, cid],
     );
 
-  await t.test('eine Mengenerhöhung legt auch ohne bestehende Erfassung eine Zeile an', async () => {
+  await t.test('a quantity increase creates a row even without an existing acquisition', async () => {
     await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, 'ma-leer', 5, 'manual')`, [
       uid,
     ]);
@@ -134,7 +134,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
     assert.equal(fig.q, 2, 'Bei der Minifigur stieg die Menge ohne Erfassung');
   });
 
-  await t.test('die LIFO-Reduktion entfernt die neueste Erfassung zuerst', async () => {
+  await t.test('the LIFO reduction removes the newest acquisition first', async () => {
     await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, 'ma-lifo', 5, 'manual')`, [
       uid,
     ]);
@@ -155,7 +155,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
     assert.deepEqual(await partRows('ma-lifo'), [{ id: alt.id, quantity: 1 }]);
   });
 
-  await t.test('die Tagesregel gilt für alle drei Arten mit ihrem eigenen Schlüssel', async () => {
+  await t.test('the daily rule applies to all three kinds with their own key', async () => {
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, 'ma-1') ON CONFLICT DO NOTHING`, [uid]);
     const record = (art, keys) => addPurchaseAtTag(art, uid, keys, { quantity: 1, price: 4, condition: 'N' });
     for (const [art, keys] of [
@@ -186,7 +186,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
     );
   });
 
-  await t.test('der Bearbeiten-Pfad lehnt ab, was die Tagesregel verbietet', async () => {
+  await t.test('the edit path rejects what the daily rule forbids', async () => {
     await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, 'ma-datum', 5, 'manual')`, [
       uid,
     ]);
@@ -221,7 +221,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
     );
   });
 
-  await t.test('das Löschen eines manuellen Eintrags räumt die Kaufpreise mit ab', async () => {
+  await t.test('deleting a manual entry clears the purchase prices along', async () => {
     await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, 'ma-weg', 5, 'manual')`, [
       uid,
     ]);
@@ -235,7 +235,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
     assert.deepEqual(await partRows('ma-weg'), [], 'Verwaiste Erfassungen zählen in den Finanzsummen weiter');
   });
 
-  await t.test('die Bewertung liefert je Kaufpreis eine Zeile, Altbestand ohne', async () => {
+  await t.test('the valuation delivers one row per purchase price, legacy data without', async () => {
     const { valueParts, valueMinifigs } = _req('src/finances/financeCalc.js');
     await db.run(
       `INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, 'ma-preis', 5, 'manual'),
@@ -271,7 +271,7 @@ test('Mengen und Erfassungen manueller Einträge gegen die Datenbank', { concurr
   });
 });
 
-test('die Finanzen zeigen je Kaufpreis eine Zeile, den Altbestand in einer', async t => {
+test('the finances show one row per purchase price, the legacy data in one', async t => {
   const { openUi, reiter } = require('./helpers/ui');
   const erfassung = (id, preis) => ({
     id,
@@ -316,7 +316,7 @@ test('die Finanzen zeigen je Kaufpreis eine Zeile, den Altbestand in einer', asy
   assert.equal(zeilen.filter(z => z.includes('Teil ma-alt')).length, 1, zeilen.join('\n'));
 });
 
-test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
+test('no create path writes directly into an acquisition table', () => {
   // Verbot: Erfassungen entstehen nur über addPurchaseAtTag — sonst
   // gälte die Tagesregel (entry-per-state-db.test.js) nicht für jeden Weg.
   for (const f of [
@@ -350,7 +350,7 @@ test('kein Anlege-Pfad schreibt direkt in eine Erfassungstabelle', () => {
   }
 });
 
-test('der Altbestand wird einmalig auf eine Zeile je Tag zusammengefasst', () => {
+test('the legacy data is merged once into one row per day', () => {
   // Die neue Regel greift erst beim nächsten Schreiben — bereits bestehende
   // Doppelzeilen verschwinden nicht von selbst.
   const mig = read('db/migrations/0004-erfassung-pro-tag.sql');
@@ -369,7 +369,7 @@ test('der Altbestand wird einmalig auf eine Zeile je Tag zusammengefasst', () =>
   assert.match(mig, /GROUP BY user_id, set_number, created_at::date/);
 });
 
-test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', () => {
+test('the quantity increase averages the purchase price instead of leaving it', () => {
   // Der frühere Zweig erhöhte bei einer heutigen Erfassung NUR die Menge. Ein
   // heute dazugekauftes Exemplar zum aktuellen Marktpreis verschwand damit im
   // alten Stückpreis — die Zeile zeigte zwei Stück zum Preis des ersten.
@@ -406,7 +406,7 @@ test('die Mengenerhöhung mittelt den Kaufpreis, statt ihn stehen zu lassen', ()
   assert.doesNotMatch(src, /function isToday\(/, 'Die eigene Tagesprüfung gehört entfernt');
 });
 
-test('eine Mengenänderung läuft unter der Bestandssperre', () => {
+test('a quantity change runs under the inventory lock', () => {
   // Woher dieser Test kommt
   const src = require('./helpers/sources').setCoreSource();
   const fn = src

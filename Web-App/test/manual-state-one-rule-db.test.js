@@ -21,7 +21,7 @@ const { holdsMinifig, holdsPart } = require('./helpers/inventory');
 
 const NAME = 'zustand_eine_regel';
 
-test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand', { concurrency: 1 }, async t => {
+test('manual parts and figures: list and valuation state the same condition', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -148,7 +148,7 @@ test('manuelle Teile und Figuren: Liste und Bewertung sagen denselben Zustand', 
   }
 });
 
-test('die App holt die manuellen Stücke aus ihrer eigenen Adresse', () => {
+test('the app fetches the manual pieces from their own address', () => {
   // Was die App ruft, steht in shared/app-schnittstelle.json (aus ihrem Quelltext erzeugt).
   const gerufen = new Set(
     require('./helpers/contract')

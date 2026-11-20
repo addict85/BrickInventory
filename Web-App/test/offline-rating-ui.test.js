@@ -129,7 +129,7 @@ const DATEN = {
   },
 };
 
-test('jede angemeldete Aktion ist genau einmal eingestuft', async () => {
+test('every registered action is classified exactly once', async () => {
   const { w } = await openUi();
   try {
     const { actionNames, WRITING_ACTIONS: s, READING_ACTIONS: l } = w.__rating;
@@ -155,7 +155,7 @@ test('jede angemeldete Aktion ist genau einmal eingestuft', async () => {
   }
 });
 
-test('je Aktion ein Knopf: offline gesperrt sind genau die schreibenden', async () => {
+test('one button per action: exactly the writing ones are locked offline', async () => {
   const { w, d } = await openUi();
   try {
     const { actionNames, WRITING_ACTIONS: s } = w.__rating;
@@ -206,7 +206,7 @@ test('je Aktion ein Knopf: offline gesperrt sind genau die schreibenden', async 
   }
 });
 
-test('index.html und Vorlagen: offline genau die schreibenden gesperrt', async () => {
+test('index.html and templates: exactly the writing ones locked offline', async () => {
   const { w, d, aufrufe, ruhig } = await openUi(DATEN);
   try {
     const { WRITING_ACTIONS: s } = w.__rating;
@@ -274,7 +274,7 @@ test('index.html und Vorlagen: offline genau die schreibenden gesperrt', async (
   }
 });
 
-test('per id verdrahtete Knöpfe: data-schreibend sperrt, sonst frei', async () => {
+test('buttons wired by id: data-schreibend locks, otherwise free', async () => {
   const { w, d } = await openUi();
   try {
     await offline(w);

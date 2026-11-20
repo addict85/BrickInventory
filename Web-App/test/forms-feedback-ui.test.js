@@ -33,7 +33,7 @@ const { openUi, warte, takt, sicht } = require('./helpers/ui');
 const SN = '10305-1';
 const loeschen = (o, pfad) => o.aufrufe.filter(a => a.method === 'DELETE' && a.url.includes(pfad));
 
-test('Alarm im Set-Detail', async () => {
+test('alert in the set detail', async () => {
   const o = await openUi(
     {
       [`/v1/sets/${SN}`]: {
@@ -65,7 +65,7 @@ test('Alarm im Set-Detail', async () => {
   }
 });
 
-test('Alarm löschen mit Dialog und Rückgängig', async () => {
+test('delete alert with dialog and undo', async () => {
   const alarm = {
     set_number: SN,
     name: 'Burg',
@@ -111,7 +111,7 @@ test('Alarm löschen mit Dialog und Rückgängig', async () => {
   }
 });
 
-test('Lagerorte', async () => {
+test('storage locations', async () => {
   const o = await openUi(
     {
       '/v1/storage/locations': {
@@ -157,7 +157,7 @@ test('Lagerorte', async () => {
   }
 });
 
-test('Gutscheinsumme je Währung', async () => {
+test('voucher sum per currency', async () => {
   const o = await openUi(
     {
       '/v1/vouchers': {
@@ -182,7 +182,7 @@ test('Gutscheinsumme je Währung', async () => {
   }
 });
 
-test('Konto anlegen: Regeln am Feld vor der Passwortabfrage', async () => {
+test('create account: rules at the field before the password prompt', async () => {
   const o = await openUi({}, { browserLanguage: 'de-DE' });
   try {
     o.d.getElementById('nu-n').value = 'Bert Müller';
@@ -213,7 +213,7 @@ test('Konto anlegen: Regeln am Feld vor der Passwortabfrage', async () => {
   }
 });
 
-test('Immer dunkel', async () => {
+test('always dark', async () => {
   const o = await openUi(
     {},
     {

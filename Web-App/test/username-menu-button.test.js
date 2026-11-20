@@ -62,7 +62,7 @@ function menuButton(document) {
   return knopf;
 }
 
-test('die Striche stecken im Knopf, nicht daneben', () => {
+test('the lines sit in the button, not next to it', () => {
   const { document } = kopfleiste().window;
   const knopf = menuButton(document);
 
@@ -78,7 +78,7 @@ test('die Striche stecken im Knopf, nicht daneben', () => {
   assert.ok(knopf.contains(name), 'Der Namenszug liegt nicht im Menüknopf — Name und Striche sind wieder getrennt');
 });
 
-test('die Striche überleben den Benutzernamen', () => {
+test('the lines survive the username', () => {
   const { document } = kopfleiste().window;
   const knopf = menuButton(document);
   const name = document.getElementById('ubadge');
@@ -95,7 +95,7 @@ test('die Striche überleben den Benutzernamen', () => {
   assert.ok(knopf.textContent.includes('marco'), 'Der Benutzername steht nach dem Setzen nicht im Knopf');
 });
 
-test('der Knopf sagt einem Bildschirmleser, dass er ein Menü ist', () => {
+test('the button tells a screen reader that it is a menu', () => {
   const { document } = kopfleiste().window;
   const knopf = menuButton(document);
 
@@ -146,7 +146,7 @@ test('der Knopf sagt einem Bildschirmleser, dass er ein Menü ist', () => {
  * rot (englisch stünde „Verwalter“); die Profilseite wieder mit eigenem `G('ubadge').textContent =
  * username` statt showUsernames() → rot (nach dem Speichern).
  */
-test('der Namenszug trägt den Verwalter-Hinweis, die Kachel ist weg', () => {
+test('the signature carries the administrator hint, the tile is gone', () => {
   const { document } = kopfleiste().window;
   assert.equal(
     document.getElementById('abadge'),
@@ -165,7 +165,7 @@ test('der Namenszug trägt den Verwalter-Hinweis, die Kachel ist weg', () => {
   );
 });
 
-test('mit Administratorrecht steht (Administrator) dahinter, ohne nur der Name', async () => {
+test('with administrator rights (Administrator) follows, without only the name', async () => {
   // Am Bündel in jsdom: anmelden als Verwalter und als Nutzer, auf Englisch, und nach dem Speichern des Profils.
   const ich = u => ({
     '/v1/auth/me': { ...ANMELDUNG['/v1/auth/me'], user: { ...ANMELDUNG['/v1/auth/me'].user, ...u } },

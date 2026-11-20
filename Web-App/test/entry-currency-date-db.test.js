@@ -24,7 +24,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { holdsSet } = require('./helpers/inventory');
 
-test('Erfassungen: Kontowährung und CSV-Datum', { concurrency: 1 }, async t => {
+test('acquisitions: account currency and CSV date', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `waehr-datum-${process.pid}`,
@@ -45,7 +45,7 @@ test('Erfassungen: Kontowährung und CSV-Datum', { concurrency: 1 }, async t => 
   const { changeSet, setErfassen } = require('./helpers/sources').areaPage('sets');
 
   try {
-    await t.test('die Mengenerhöhung nimmt den Preis in der Kontowährung', async () => {
+    await t.test('the quantity increase takes the price in the account currency', async () => {
       await holdsSet(db, uid, SN, 1, { preis: 700, am: '2026-09-01T10:00:00Z' });
       await changeSet(uid, SN, { quantity: 2 });
       const neu = await db.get(
@@ -58,7 +58,7 @@ test('Erfassungen: Kontowährung und CSV-Datum', { concurrency: 1 }, async t => 
       assert.equal(neu.price_estimated, true);
     });
 
-    await t.test('das CSV-Datum trifft nur die neue Erfassung', async () => {
+    await t.test('the CSV date only affects the new acquisition', async () => {
       await db.run('DELETE FROM set_acquisitions WHERE user_id=$1 AND set_number=$2', [uid, SN]);
       await db.run(
         `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)

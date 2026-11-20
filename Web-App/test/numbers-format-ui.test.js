@@ -46,7 +46,7 @@ for (const [sprache, browser, preis, guv] of [
   ['de', 'de-DE', '411,90 €', '+51,1 %'],
   ['en', 'en-GB', '€411.90', '+51.1%'],
 ]) {
-  test(`${browser}: G&V auf der Kachel in der Form der Oberfläche`, async () => {
+  test(`${browser}: P&L on the tile in the UI's form`, async () => {
     const { w, d } = await openUi(RESPONSES, { sprache, browserLanguage: browser });
     try {
       await warte(() => d.querySelector('[data-price-for="10300-1"] .pnl-pos'));

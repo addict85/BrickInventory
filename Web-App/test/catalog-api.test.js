@@ -131,7 +131,7 @@ async function seed() {
                 VALUES (1, '9000-1', 2)`);
 }
 
-test('Katalog-API (Postgres-Integration)', async t => {
+test('catalog API (Postgres integration)', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t, DB_URL);
@@ -147,7 +147,7 @@ test('Katalog-API (Postgres-Integration)', async t => {
     return { status: r.status, body: await r.json() };
   };
 
-  await t.test('meta: Jahresbereich, year_counts, Theme-Vererbung', async () => {
+  await t.test('meta: year range, year_counts, theme inheritance', async () => {
     const r = await get('/catalog/meta');
     assert.equal(r.body.success, true);
     assert.equal(r.body.year_min, 2000);
@@ -158,13 +158,13 @@ test('Katalog-API (Postgres-Integration)', async t => {
     assert.ok(sw.set_count > 4, 'Star Wars muss UCS-Kinder mitzählen');
   });
 
-  await t.test('Randfall Maximaljahr: from=to=2027 liefert die 4 Sets', async () => {
+  await t.test('edge case maximum year: from=to=2027 delivers the 4 sets', async () => {
     const r = await get('/catalog/sets?year_from=2027&year_to=2027&limit=60');
     assert.equal(r.body.total, 4);
     assert.equal(r.body.sets.length, 4);
   });
 
-  await t.test('Von-Bis-Bereiche', async () => {
+  await t.test('from-to ranges', async () => {
     let r = await get('/catalog/sets?year_from=2000&year_to=2005&limit=200');
     assert.equal(r.body.total, 18);
     assert.ok(r.body.sets.every(s => s.year >= 2000 && s.year <= 2005));
@@ -174,7 +174,7 @@ test('Katalog-API (Postgres-Integration)', async t => {
     assert.equal(r.body.total, 6);
   });
 
-  await t.test('Suche + owned-Flag', async () => {
+  await t.test('search + owned flag', async () => {
     const r = await get('/catalog/sets?q=Future');
     assert.equal(r.body.total, 4);
     const owned = r.body.sets.find(s => s.set_number === '9000-1');
@@ -182,7 +182,7 @@ test('Katalog-API (Postgres-Integration)', async t => {
     assert.equal(owned.owned_quantity, 2);
   });
 
-  await t.test('die Liste nennt das lokale Bild aus set_catalog, ein Platzhalter der Erfassung fehlt', async () => {
+  await t.test('the list names the local image from set_catalog, a capture placeholder is missing', async () => {
     await db.run(`INSERT INTO set_catalog (set_number, image_local) VALUES ('9001-1', '/images/sets/9001-1.jpg')
                   ON CONFLICT (set_number) DO UPDATE SET image_local = EXCLUDED.image_local`);
     await db.run(
@@ -195,13 +195,13 @@ test('Katalog-API (Postgres-Integration)', async t => {
     assert.equal((await get('/catalog/sets/9100-1')).status, 404, 'und im Detail');
   });
 
-  await t.test('Theme-Filter inkl. Unterthemen', async () => {
+  await t.test('theme filter incl. subthemes', async () => {
     const r = await get('/catalog/sets?theme_id=1&limit=200');
     assert.ok(r.body.total > 4);
     assert.ok(r.body.sets.every(s => s.theme_id === 1 || s.theme_id === 2));
   });
 
-  await t.test('Detail: Minifiguren aus neuestem Inventar, Normalisierung, 404', async () => {
+  await t.test('detail: minifigures from the newest inventory, normalization, 404', async () => {
     let r = await get('/catalog/sets/9000-1');
     assert.equal(r.body.set.minifigs, 3, 'nur Inventar v2 zählt');
     assert.equal(r.body.set.theme_name, 'Star Wars');

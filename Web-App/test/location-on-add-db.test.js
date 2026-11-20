@@ -74,7 +74,7 @@ async function inStock(uid, name) {
   return !!r;
 }
 
-test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
+test('storage location when capturing — against a real database', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -90,7 +90,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
     ...require('./helpers/sources').testArea('inventory').locationService,
   };
 
-  await t.test('1. Ein Set kommt mit seinem Lagerort in die Galerie', async () => {
+  await t.test('1. a set comes into the gallery with its storage location', async () => {
     // Wie der CSV-Import (aufstocken); den Katalog holt der Auftrag, geprüft wird der Lagerort.
     await setService.setErfassen({
       requester: U.ich,
@@ -104,14 +104,14 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
     assert.equal(ort, 'Kiste 3', 'Das Set wurde erfasst, aber ohne den mitgegebenen Lagerort.');
   });
 
-  await t.test('2. Der neu getippte Ort landet im Vorrat', async () => {
+  await t.test('2. the newly typed place lands in the stock', async () => {
     // Sonst stünde er am Set, fehlte aber in der Auswahlliste, aus der er
     // gewählt werden soll — Marcos „man kann auch gleich neue Auswahlwerte
     // erfassen".
     assert.ok(await inStock(U.ich, 'Kiste 3'), 'Der Ort steht am Set, aber nicht im Vorrat.');
   });
 
-  await t.test('3. Ein manuell erfasstes Teil bekommt seinen Lagerort', async () => {
+  await t.test('3. a manually captured part gets its storage location', async () => {
     await teile.addManualPart(U.ich, { part_number: '3001', color_id: 4, quantity: 2, storage: 'Regal B' });
     const r = await db.get(
       `SELECT l.name AS storage FROM parts t
@@ -123,7 +123,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
     assert.ok(await inStock(U.ich, 'Regal B'), 'Nicht im Vorrat');
   });
 
-  await t.test('4. Eine manuell erfasste Minifigur bekommt ihren Lagerort', async () => {
+  await t.test('4. a manually captured minifigure gets its storage location', async () => {
     // Bis Migration 0024 gab es die Spalte gar nicht.
     await figuren.addManualMinifig(U.ich, { fig_number: 'sw0001', quantity: 1, storage: 'Vitrine' });
     const r = await db.get(
@@ -136,14 +136,14 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
     assert.ok(await inStock(U.ich, 'Vitrine'), 'Nicht im Vorrat');
   });
 
-  await t.test('5. Die Übernahme aus der Merkliste reicht ihn durch', async () => {
+  await t.test('5. the adoption from the wishlist passes it through', async () => {
     await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,$2,'N')`, [U.ich, '75192-1']);
     await merkliste.fulfillWantedItem(U.ich, U.ich, '75192-1', 'N', { quantity: 1, storage: 'Dachboden' });
     const ort = await locationOf(db, 'sets', 't.user_id=$1 AND t.set_number=$2', [U.ich, '75192-1']);
     assert.equal(ort, 'Dachboden', 'Der Merkposten wurde übernommen, der Lagerort ging dabei verloren.');
   });
 
-  await t.test('6. Die Übersicht zählt Figuren OWN, nicht als Teilesorten', async () => {
+  await t.test('6. the overview counts figures SEPARATELY, not as part kinds', async () => {
     // „18 Teilesorten" hiesse sonst mal 18 Teilesorten und mal 12 plus 6
     // Figuren, und niemand könnte der Zahl ansehen, was gemeint ist.
     const liste = await L.lagerorte([U.ich]);
@@ -154,7 +154,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
     assert.deepEqual([kiste.sets, kiste.teile, kiste.figuren], [1, 0, 0]);
   });
 
-  await t.test('7. Ein Ort mit nur einer Figur darin lässt sich nicht löschen', async () => {
+  await t.test('7. a place with only one figure in it cannot be deleted', async () => {
     // Sonst zeigte die Zuordnung der Figur danach auf einen Namen, den der
     // Vorrat nicht mehr kennt.
     const ort = await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [U.ich, 'Vitrine']);
@@ -168,7 +168,7 @@ test('Lagerort beim Erfassen — gegen echte Datenbank', async t => {
     );
   });
 
-  await t.test('8. Umbenennen nimmt die Figuren mit', async () => {
+  await t.test('8. renaming takes the figures along', async () => {
     const ort = await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [U.ich, 'Vitrine']);
     await L.benenneOrtUm(U.ich, parseInt(ort.id, 10), 'Vitrine Wohnzimmer');
     const minifigLocation = await locationOf(db, 'minifigs', 't.user_id=$1 AND t.fig_number=$2', [U.ich, 'sw0001']);

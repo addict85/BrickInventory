@@ -41,7 +41,7 @@ const NAME = `qr_laufzeit_${process.pid}`,
 /** Wie viele Tage liegt dieser Zeitpunkt in der Zukunft? */
 const daysAhead = wert => (new Date(wert).getTime() - Date.now()) / 86400_000;
 
-test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concurrency: 1 }, async t => {
+test('QR access: the lifetime is chosen by the creator, not by the redeemer', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -228,7 +228,7 @@ test('QR-Zugang: die Laufzeit waehlt der Erzeuger, nicht der Einloeser', { concu
   }
 });
 
-test('QR-Zugang: die Oberflaeche waehlt beim ERZEUGEN, nicht beim Einloesen', () => {
+test('QR access: the UI chooses when CREATING, not when redeeming', () => {
   const einst = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
 
   assert.ok(

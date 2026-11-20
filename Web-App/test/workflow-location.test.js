@@ -32,7 +32,7 @@ function workflowFolder(start) {
   return gefunden;
 }
 
-test('jeder Workflow liegt dort, wo GitHub ihn liest', () => {
+test('every workflow is where GitHub reads it', () => {
   const ordner = workflowFolder(WURZEL);
 
   // Selbstbeweis 1: Der Durchlauf hat wirklich gesucht und den echten Ort
@@ -55,7 +55,7 @@ test('jeder Workflow liegt dort, wo GitHub ihn liest', () => {
   );
 });
 
-test('im Wurzelverzeichnis stehen die Workflows, die es geben soll', () => {
+test('the root directory contains the workflows that should exist', () => {
   const dateien = fs
     .readdirSync(REAL_LOCATION)
     .filter(f => /\.ya?ml$/.test(f))
@@ -71,7 +71,7 @@ test('im Wurzelverzeichnis stehen die Workflows, die es geben soll', () => {
   assert.ok(dateien.includes('web-ci.yml'), `Der Web-CI-Lauf fehlt. Vorhanden: ${dateien.join(', ')}`);
 });
 
-test('ein Workflow benutzt jede Action überall in derselben Fassung', () => {
+test('a workflow uses every action in the same version everywhere', () => {
   // Warum
   const versions = new Map(); // Action -> Map(Fassung -> [Dateien])
   for (const f of fs.readdirSync(REAL_LOCATION).filter(f => /\.ya?ml$/.test(f))) {
@@ -108,7 +108,7 @@ test('ein Workflow benutzt jede Action überall in derselben Fassung', () => {
   assert.deepEqual(disagreeing, [], 'Dieselbe Action steht in zwei Fassungen:\n  ' + disagreeing.join('\n  '));
 });
 
-test('ein Lauf, der Tests ausführt, läuft auf JEDEM Zweig', () => {
+test('a run that executes tests runs on EVERY branch', () => {
   // Warum
   const TESTBEFEHLE = [/npm\s+test/, /testDebugUnitTest/];
 
@@ -158,7 +158,7 @@ test('ein Lauf, der Tests ausführt, läuft auf JEDEM Zweig', () => {
 // Gegenproben (am 28.10.2026 gemessen): die Zeile mit `head_repository` aus
 // dem `if:` des Prüfjobs gestrichen → rot „… fremdes Repository …“; eine
 // Action wieder als `@v7` statt per SHA → rot „… per Commit-SHA …“.
-test('das Docker-Image entsteht nur aus einem Push auf main dieses Repositorys', () => {
+test('the Docker image only results from a push to main of this repository', () => {
   const yml = fs.readFileSync(path.join(REAL_LOCATION, 'docker-publish.yml'), 'utf8');
   const job = yml.split(/\n {2}pruefen:\n/)[1]?.split(/\n {4}steps:\n/)[0] ?? '';
   assert.match(job, /\n {4}if: /, 'der Prüfjob hat kein if:');
@@ -173,7 +173,7 @@ test('das Docker-Image entsteht nur aus einem Push auf main dieses Repositorys',
 
 // Gegenprobe (01.11.2026 gemessen): `--no-build-cache` aus „Release bauen“
 // gestrichen → rot „… ohne Build-Cache …“.
-test('das Release-APK wird ohne Build-Cache gebaut', () => {
+test('the release APK is built without a build cache', () => {
   const yml = fs.readFileSync(path.join(REAL_LOCATION, 'android.yml'), 'utf8');
   const schritt = yml.split(/\n {6}- name: Release bauen\n/)[1]?.split(/\n {6}- name: /)[0] ?? '';
   const aufrufe = schritt.split('\n').filter(z => !z.trimStart().startsWith('#') && /gradlew/.test(z));
@@ -181,7 +181,7 @@ test('das Release-APK wird ohne Build-Cache gebaut', () => {
   for (const z of aufrufe) assert.match(z, /--no-build-cache/, `Release ohne Build-Cache bauen: ${z.trim()}`);
 });
 
-test('jede Action ist per Commit-SHA festgelegt', () => {
+test('every action is pinned by commit SHA', () => {
   const lose = [];
   for (const f of fs.readdirSync(REAL_LOCATION).filter(n => n.endsWith('.yml'))) {
     const zeilen = fs.readFileSync(path.join(REAL_LOCATION, f), 'utf8').split('\n');
@@ -199,7 +199,7 @@ test('jede Action ist per Commit-SHA festgelegt', () => {
 // oberste Ebene gezogen → rot „security-events: write darf nur der CodeQL-Job
 // haben“; die Kotlin-Zeile der
 // Matrix entfernt → rot „CodeQL prüft java-kotlin nicht“.
-test('der Sicherheitslauf prüft Code, Abhängigkeiten, Image und den laufenden Server', () => {
+test('the security run checks code, dependencies, image and the running server', () => {
   const roh = fs.readFileSync(path.join(REAL_LOCATION, 'sicherheit.yml'), 'utf8');
   const yml = roh
     .split('\n')
@@ -242,7 +242,7 @@ function dependabot() {
 // hält niemand aktuell“; `cooldown` beim npm-Eintrag gestrichen → rot „ohne Wartezeit“;
 // renovate.json wieder angelegt → rot „nur ein Werkzeug“; die postgres-Ausnahme gestrichen →
 // rot „Hauptversion“.
-test('Dependabot pflegt npm, Gradle, Images und Actions aus der Wurzel-Konfiguration', () => {
+test('Dependabot maintains npm, Gradle, images and actions from the root configuration', () => {
   const eintraege = dependabot();
   const finde = (oe, ordner) => eintraege.find(e => e.ecosystem === oe && e.ordner === ordner);
   for (const [oe, ordner] of [
@@ -298,7 +298,7 @@ function stepScript(yml, id) {
 // ersetzt → rot (Exit 1, „Kein Image per Digest gefunden“); (14.11.2026) den Eintrag
 // `docker-compose` in dependabot.yml gestrichen → rot „docker-compose: … ohne Update-Pfad“;
 // `matrix.image` im Trivy-Job durch ein festes Image ersetzt → rot.
-test('die Images aus compose.yaml haben einen Update-Pfad und gehen durch Trivy', () => {
+test('the images from compose.yaml have an update path and go through Trivy', () => {
   const yml = fs.readFileSync(path.join(REAL_LOCATION, 'sicherheit.yml'), 'utf8');
   const ort = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'compose-images-'));
   fs.mkdirSync(path.join(ort, 'Web-App'));
@@ -336,7 +336,7 @@ test('die Images aus compose.yaml haben einen Update-Pfad und gehen durch Trivy'
 
 // Gegenprobe (03.11.2026 gemessen): persist-credentials im Checkout von
 // web-ci.yml gestrichen → rot, die Liste nennt „web-ci.yml:test".
-test('Checkouts behalten keine Zugangsdaten, ausser wo der Job schreibt', () => {
+test('checkouts keep no credentials, except where the job writes', () => {
   const ohne = [];
   for (const datei of fs.readdirSync(REAL_LOCATION).filter(n => n.endsWith('.yml'))) {
     const z = fs.readFileSync(path.join(REAL_LOCATION, datei), 'utf8').split('\n');
@@ -354,7 +354,7 @@ test('Checkouts behalten keine Zugangsdaten, ausser wo der Job schreibt', () => 
 // gestrichen → rot „… Herkunft beim Bau“; den Schritt „Herkunft bescheinigen“
 // gestrichen → rot „… attest-build-provenance“; `attestations: write` gestrichen
 // → rot „… darf Nachweise ablegen“.
-test('das Image trägt Herkunft und Stückliste, bescheinigt am signierten Digest', () => {
+test('the image carries provenance and bill of materials, attested on the signed digest', () => {
   const yml = fs
     .readFileSync(path.join(REAL_LOCATION, 'docker-publish.yml'), 'utf8')
     .split('\n')
@@ -387,7 +387,7 @@ test('das Image trägt Herkunft und Stückliste, bescheinigt am signierten Diges
 // „Trivy prüft den Digest, bevor er signiert wird“; `npm audit signatures` aus
 // web-ci gestrichen → rot „… nach npm ci“; im Job trivy-eigenbau
 // `trivyignores:` ergänzt → rot „Caddy wird ohne Ausnahmen geprüft“.
-test('der signierte Bau ohne Cache, Trivy vor der Signatur, Paketsignaturen in der CI', () => {
+test('the signed build without cache, Trivy before the signature, package signatures in CI', () => {
   const withoutComment = t =>
     t
       .split('\n')
@@ -449,7 +449,7 @@ function trivyExceptions(roh) {
 // sicherheit.yml wieder `trivyignores: .github/trivy-operation.ignore` → rot
 // „trivy-compose liest die YAML-Ausnahmen“; bei CVE-2025-61726 `expired_at`
 // gestrichen → rot „… ohne Ablaufdatum“.
-test('Trivy-Ausnahmen der Betriebs-Images: an Datei oder Paket gebunden, mit Frist und Grund', () => {
+test('Trivy exceptions of the operations images: bound to file or package, with deadline and reason', () => {
   const roh = fs.readFileSync(path.join(WURZEL, '.github', 'trivy-betrieb.yaml'), 'utf8');
   const liste = trivyExceptions(roh);
   assert.ok(liste.length >= 40, `nur ${liste.length} Ausnahmen gelesen — greift der Leser noch?`);
@@ -542,7 +542,7 @@ function withGh(t, script, antworten, env = {}) {
 // Gegenproben (05.11.2026 gemessen, je einzeln): im Baujob `cache-disabled` gestrichen →
 // rot „Etiketten bauen ohne Cache“; im Gegenproben-Job `cache-read-only` gestrichen → rot
 // „… schreibt den Gradle-Cache“.
-test('Etiketten bauen ohne Gradle-Cache, und nur der Baujob schreibt ihn (sec17 M1)', () => {
+test('tags build without Gradle cache, and only the build job writes it (sec17 M1)', () => {
   const android = fs.readFileSync(path.join(REAL_LOCATION, 'android.yml'), 'utf8');
   const bau = jobOf(android, 'build');
   assert.match(
@@ -570,7 +570,7 @@ test('Etiketten bauen ohne Gradle-Cache, und nur der Baujob schreibt ihn (sec17 
 // Gegenproben (05.11.2026 gemessen): `exit-code: '1'` der Android-Prüfung auf '0' → rot
 // „… sperrt nicht“; den Schritt „Abhängigkeiten ohne bekannte Lücke“ gestrichen → rot
 // „… ohne grüne Lückenprüfung“; im gh-Ersatz ein roter Job → rot „ein roter …“.
-test('die Lückenprüfung der App sperrt, und ohne sie wird kein Etikett signiert (sec17 M2)', t => {
+test("the app's vulnerability check blocks, and without it no tag is signed (sec17 M2)", t => {
   const sicherheit = fs.readFileSync(path.join(REAL_LOCATION, 'sicherheit.yml'), 'utf8');
   const job = jobOf(sicherheit, 'android-abhaengigkeiten');
   assert.doesNotMatch(job.split('\n    steps:')[0], /continue-on-error/, 'der ganze Job darf nicht rot werden dürfen');
@@ -616,7 +616,7 @@ test('die Lückenprüfung der App sperrt, und ohne sie wird kein Etikett signier
 // „Prüfsummen aus der Übergabe“ die Auswahl des Übergabejobs durch `true` ersetzt → rot „die
 // Anmerkung eines anderen Jobs …“. Der gh-Ersatz wertet kein --jq aus: Die Zählung der
 // Anmerkungen (`if length == 1`) prüft dieser Test nicht.
-test('signiert wird nur bei geschütztem main, aus main, für ein echtes Etikett und ohne Umgehung durch Administratoren (sec17 B1, B3)', t => {
+test('signing happens only with protected main, from main, for a real tag and without bypass by administrators (sec17 B1, B3)', t => {
   const release = fs.readFileSync(path.join(REAL_LOCATION, 'android-release.yml'), 'utf8');
   const main = stepAfter(release, 'main ist geschützt');
   const regeln = arten => withGh(t, main, { 'rules/branches/main': arten }).status;
@@ -726,7 +726,7 @@ test('signiert wird nur bei geschütztem main, aus main, für ein echtes Etikett
 // Gegenproben (05.11.2026 gemessen): im Release-Job den Prüfsummen-Schritt gestrichen → rot
 // „vor dem Veröffentlichen …“; in android-bescheinigung.yml `sha256sum -c -` durch
 // `cat > /dev/null` ersetzt → rot „ein verändertes Byte …“.
-test('veröffentlicht und bescheinigt wird nur, was der Signierjob ausgab (sec17 B-N1, B-N7)', t => {
+test('only what the signing job output is published and attested (sec17 B-N1, B-N7)', t => {
   const android = fs.readFileSync(path.join(REAL_LOCATION, 'android-release.yml'), 'utf8');
   const bescheinigung = fs.readFileSync(path.join(REAL_LOCATION, 'android-bescheinigung.yml'), 'utf8');
   const release = jobOf(android, 'release');

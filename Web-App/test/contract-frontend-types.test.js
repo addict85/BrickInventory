@@ -27,7 +27,7 @@ const ROOT = path.join(__dirname, '..');
 const { QUELLE, ZIEL, create, formatiert } = require('../scripts/contract-frontend-types.js');
 const TSC = path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
 
-test('die eingecheckten Typen sind aus openapi.json erzeugt', () => {
+test('the checked-in types are generated from openapi.json', () => {
   const soll = formatiert(create(JSON.parse(fs.readFileSync(QUELLE, 'utf8'))));
   assert.ok(
     fs.readFileSync(ZIEL, 'utf8') === soll,
@@ -82,7 +82,7 @@ async function api(m, p) { return /** @type {any} */ (null); }
 const nr = String(Math.random());
 `;
 
-test('api(): jeder Pfad bekommt die Antwort seiner Route', () => {
+test('api(): every path gets the response of its route', () => {
   // Jede Zeile ab der dritten soll genau dann rot sein, wenn sie mit FEHLT endet.
   const faelle = [
     "api('GET', '/v1/sets').then(d => { if (d.success) zahl(d.total); });",
@@ -104,20 +104,20 @@ test('api(): jeder Pfad bekommt die Antwort seiner Route', () => {
   });
 });
 
-test('/v1/sets/:nr/parts-list trifft nur seine Route', () => {
+test('/v1/sets/:nr/parts-list only hits its route', () => {
   const m = pruefe(
     HEADER + "api('GET', `/v1/sets/${nr}/parts-list`).then(d => { if (d.success) zahl(d.parts.length); });\n",
   );
   assert.deepEqual(Object.values(m), []);
 });
 
-test('ohne Prüfung auf success ist ein Feld undefined, nicht unbekannt', () => {
+test('without checking success a field is undefined, not unknown', () => {
   // Unter strict: `d.total` ist number | undefined, mit Rückfall also eine Zahl.
   const m = pruefe(HEADER + "api('GET', '/v1/sets').then(d => { zahl(d.total ?? 0); });\n");
   assert.deepEqual(Object.values(m), []);
 });
 
-test('api()-Pfade stehen als Literal oder Vorlage da', () => {
+test('api() paths are written as a literal or template', () => {
   // Nur dann kennt tsc die Route. Ein zusammengesetzter Pfad (Variable,
   // `'/v1/x/' + nr`) bleibt ungeprüft; ihre Zahl darf sinken, nie steigen.
   const LIMIT = 12;

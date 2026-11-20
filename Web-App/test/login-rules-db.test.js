@@ -27,7 +27,7 @@ const { testServer } = require('./helpers/server');
 const db = testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
-test('Regeln der Anmeldung', { concurrency: 1, timeout: 60_000 }, async t => {
+test('rules of the login', { concurrency: 1, timeout: 60_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `regeln_${process.pid}`,
     NEIGHBOR = `Nachbar_${process.pid}`,
@@ -59,7 +59,7 @@ test('Regeln der Anmeldung', { concurrency: 1, timeout: 60_000 }, async t => {
     return { status: r.status, body: await r.json().catch(() => null) };
   };
 
-  await t.test('QR-Zugang: einmalig, ohne Passwort-Material, mit der Dauer des Servers', async () => {
+  await t.test("QR access: one-time, without password material, with the server's duration", async () => {
     const qr = await ruf('POST', '/qr-token', { password: PASS });
     assert.equal(qr.status, 200, JSON.stringify(qr.body));
     assert.equal(qr.body.expires_in, 300, 'Die Oberfläche zählt von dieser Dauer herunter');
@@ -71,7 +71,7 @@ test('Regeln der Anmeldung', { concurrency: 1, timeout: 60_000 }, async t => {
     assert.equal(zweit.status, 401, 'Derselbe Code öffnet das Konto ein zweites Mal');
   });
 
-  await t.test('Profil: Benutzername nach derselben Regel und ohne Rücksicht auf Gross/Klein', async () => {
+  await t.test('profile: username by the same rule and regardless of case', async () => {
     const ungueltig = await ruf('PUT', '/profile', { username: 'a b', password_current: PASS });
     assert.deepEqual([ungueltig.status, ungueltig.body.code], [400, 'benutzername_ungueltig']);
     const mail = await ruf('PUT', '/profile', { username: 'x@example.org', password_current: PASS });
@@ -81,7 +81,7 @@ test('Regeln der Anmeldung', { concurrency: 1, timeout: 60_000 }, async t => {
     assert.equal((await db.get('SELECT username FROM users WHERE id = $1', [uid])).username, NAME);
   });
 
-  await t.test('ohne gespeicherten Token kein halber Erfolg', async () => {
+  await t.test('no half success without a stored token', async () => {
     await db.run(`CREATE OR REPLACE FUNCTION regeln_token_sperre() RETURNS trigger AS $$
       BEGIN IF NEW.user_id = ${Number(uid)} THEN RAISE EXCEPTION 'gesperrt im Test'; END IF; RETURN NEW; END $$ LANGUAGE plpgsql`);
     await db.run(

@@ -27,7 +27,7 @@ const json = n => JSON.stringify({ username: 'x', password: 'y', fill: 'a'.repea
 const post = (base, pfad, rumpf) =>
   fetch(base + pfad, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: rumpf });
 
-test('Anmeldung und Rumpflimit in der echten Kette', { concurrency: 1 }, async t => {
+test('login and body limit in the real chain', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
@@ -39,12 +39,12 @@ test('Anmeldung und Rumpflimit in der echten Kette', { concurrency: 1 }, async t
   const ohne = testServer(_req, { sitzung: {}, t });
   const mit = testServer(_req, { sitzung: { userId: uid, username: name }, t });
 
-  await t.test('unangemeldet: 401 vor dem Rumpf', async () => {
+  await t.test('unauthenticated: 401 before the body', async () => {
     const r = await post(ohne.base, '/api/v1/sets', json(300 * 1024));
     assert.equal(r.status, 401);
   });
 
-  await t.test('unangemeldet: mehr als 16 KB sind zu viel', async () => {
+  await t.test('unauthenticated: more than 16 KB is too much', async () => {
     assert.equal((await post(ohne.base, '/api/v1/auth/login', json(20 * 1024))).status, 413);
     assert.notEqual(
       (await post(ohne.base, '/api/v1/auth/login', json(1024))).status,
@@ -53,7 +53,7 @@ test('Anmeldung und Rumpflimit in der echten Kette', { concurrency: 1 }, async t
     );
   });
 
-  await t.test('angemeldet: 20 KB gehen durch, 300 KB nicht', async () => {
+  await t.test('authenticated: 20 KB go through, 300 KB do not', async () => {
     const klein = await post(mit.base, '/api/v1/sets', json(20 * 1024));
     assert.notEqual(klein.status, 413);
     assert.notEqual(klein.status, 401, 'die gestellte Sitzung kam nicht an');

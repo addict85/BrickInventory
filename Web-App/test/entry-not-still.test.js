@@ -6,7 +6,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-test('kein stiller catch an einer Erfassung', () => {
+test('no silent catch on an acquisition', () => {
   const ROOT = path.join(__dirname, '..');
   const ordner = ['routes', 'src', 'jobs'];
 

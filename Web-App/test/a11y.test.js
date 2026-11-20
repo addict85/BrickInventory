@@ -61,7 +61,7 @@ test.after(() => _o?.w.close());
 const felder = d =>
   [...d.querySelectorAll('input[id], select[id], textarea[id]')].filter(f => f.type !== 'hidden' && !EXEMPT.has(f.id));
 
-test('jedes Formularfeld ist beschriftet', async () => {
+test('every form field is labeled', async () => {
   const { d } = await oberflaeche();
   const alle = felder(d);
   assert.ok(alle.length >= 50, `nur ${alle.length} Felder gefunden`);
@@ -74,7 +74,7 @@ test('jedes Formularfeld ist beschriftet', async () => {
   );
 });
 
-test('jedes for= zeigt auf ein existierendes Feld, ein umschliessendes Label auf sein eigenes', async () => {
+test('every for= points to an existing field, an enclosing label to its own', async () => {
   const { d } = await oberflaeche();
   const labels = [...d.querySelectorAll('label[for]')];
   assert.ok(labels.length >= 30, `nur ${labels.length} Labels mit for=`);
@@ -94,7 +94,7 @@ test('jedes for= zeigt auf ein existierendes Feld, ein umschliessendes Label auf
   );
 });
 
-test('modale Overlays sind als Dialog ausgezeichnet', async () => {
+test('modal overlays are marked up as dialogs', async () => {
   const { d } = await oberflaeche();
   const modals = [...d.querySelectorAll('div.ovl[id$="modal"]')];
   assert.ok(modals.length >= 5, `Nur ${modals.length} Modals gefunden`);
@@ -104,7 +104,7 @@ test('modale Overlays sind als Dialog ausgezeichnet', async () => {
   );
 });
 
-test('die Sprache steht am <html>-Element', async () => {
+test('the language is set on the <html> element', async () => {
   // Ohne lang= rät der Screenreader die Aussprache — bei gemischt deutsch-englischen Oberflächen hörbar falsch.
   const en = await openUi({}, { sprache: 'en' });
   try {
@@ -115,7 +115,7 @@ test('die Sprache steht am <html>-Element', async () => {
   assert.equal((await oberflaeche()).d.documentElement.lang, 'de');
 });
 
-test('bedeutungstragende Zeichen in der Finanztabelle sind erklärt', async () => {
+test('meaningful symbols in the finance table are explained', async () => {
   // Die Preisstatus-Spalte ist ein einziges Zeichen; ohne title (Maus) und aria-label (Vorleser) unlesbar.
   // Die Zeichen der Legende sind aria-hidden: Der Satz daneben erklärt sie.
   const { w, d } = await oberflaeche();
@@ -139,7 +139,7 @@ const sichtbar = el => {
   return true;
 };
 
-test('jedes sichtbare Bedienelement hat einen vorlesbaren Namen', async () => {
+test('every visible control has a name that can be read aloud', async () => {
   const { d } = await oberflaeche();
   const name = el =>
     el.getAttribute('aria-label') ||
@@ -159,7 +159,7 @@ test('jedes sichtbare Bedienelement hat einen vorlesbaren Namen', async () => {
   assert.deepEqual(ohne, []);
 });
 
-test('kein aria-label, das nur der Bezeichner ist', async () => {
+test('no aria-label that is only the identifier', async () => {
   // Vorgelesen wird der Wert — „mon-default-condition" hilft niemandem.
   const { d } = await oberflaeche();
   const mit = [...d.querySelectorAll('[aria-label]')].filter(sichtbar);

@@ -30,7 +30,7 @@ const ANTWORT = {
   https: false,
 };
 
-test('der Stand zeigt je Prüfung bereit oder fehlt', async () => {
+test('the state shows ready or missing per check', async () => {
   const { w, d, ruhig } = await openUi({ '/v1/einrichtung/stand': ANTWORT }, { angemeldet: false });
   try {
     await ruhig();
@@ -60,7 +60,7 @@ test('der Stand zeigt je Prüfung bereit oder fehlt', async () => {
   }
 });
 
-test('mit hinterlegter Quelle verschwindet der Prüfknopf', async () => {
+test('with a stored source the check button disappears', async () => {
   const antwort = { ...ANTWORT, konfiguriert: true };
   const { w, d, ruhig } = await openUi({ '/v1/einrichtung/stand': antwort }, { angemeldet: false });
   try {
@@ -76,7 +76,7 @@ test('mit hinterlegter Quelle verschwindet der Prüfknopf', async () => {
   }
 });
 
-test('nach Abschluss bleibt die Meldung, die Prüfliste verschwindet', async () => {
+test('after completion the message stays, the checklist disappears', async () => {
   const antwort = { ...ANTWORT, erledigt: true, schritte: [] };
   const { w, d } = await openUi({ '/v1/einrichtung/stand': antwort }, { angemeldet: false });
   try {
@@ -89,7 +89,7 @@ test('nach Abschluss bleibt die Meldung, die Prüfliste verschwindet', async () 
   }
 });
 
-test('englisch: Knopf und Hinweis', async () => {
+test('English: button and hint', async () => {
   const { w, d, ruhig } = await openUi({ '/v1/einrichtung/stand': ANTWORT }, { angemeldet: false, sprache: 'en' });
   try {
     await ruhig();

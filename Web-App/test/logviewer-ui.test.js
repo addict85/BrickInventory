@@ -63,7 +63,7 @@ function oeffne() {
   return { w, d: w.document, aufrufe, alarm: () => alarm };
 }
 
-test('lädt mit dem Sitzungscookie und zeigt nur die gewählten Stufen, maskiert', async () => {
+test('loads with the session cookie and only shows the chosen levels, escaped', async () => {
   const { w, d, aufrufe } = oeffne();
   try {
     await takt(10);
@@ -80,7 +80,7 @@ test('lädt mit dem Sitzungscookie und zeigt nur die gewählten Stufen, maskiert
   }
 });
 
-test('Stufe info zuschalten und Suche filtern', async () => {
+test('switch on level info and filter the search', async () => {
   const { w, d } = oeffne();
   try {
     await takt(10);
@@ -96,7 +96,7 @@ test('Stufe info zuschalten und Suche filtern', async () => {
   }
 });
 
-test('fremder Name bleibt wirkungslos', async () => {
+test('a foreign name stays ineffective', async () => {
   const { w, d, alarm } = oeffne();
   try {
     await takt(10);
@@ -108,7 +108,7 @@ test('fremder Name bleibt wirkungslos', async () => {
   }
 });
 
-test('Stufe übersetzt, Stacktrace eingeklappt, die Suche klappt ihn auf', async () => {
+test('level translated, stack trace collapsed, the search expands it', async () => {
   const { w, d } = oeffne();
   try {
     await takt(10);

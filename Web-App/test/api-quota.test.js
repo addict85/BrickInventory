@@ -21,7 +21,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { checkBudget, clearThrottle, classification, apiDrossel, BUDGET, JOB_BUDGET, WINDOW_MS, COST } =
   _req('src/http/apiThrottle.js');
 
-test('ein Konto hat BUDGET Einheiten je Fenster', () => {
+test('an account has BUDGET units per window', () => {
   clearThrottle();
   const t0 = 1_000_000;
   let letzte;
@@ -32,7 +32,7 @@ test('ein Konto hat BUDGET Einheiten je Fenster', () => {
   assert.equal(ab.restSec, WINDOW_MS / 1000, 'Retry-After nennt das Ende des Fensters');
 });
 
-test('ein Konto verbraucht nicht das Budget des anderen', () => {
+test('an account does not use up the budget of another', () => {
   clearThrottle();
   const t0 = 2_000_000;
   for (let i = 0; i < BUDGET; i++) checkBudget(11, 'GET', '/sets', t0);
@@ -40,7 +40,7 @@ test('ein Konto verbraucht nicht das Budget des anderen', () => {
   assert.equal(checkBudget(12, 'GET', '/sets', t0).erlaubt, true);
 });
 
-test('nach dem Fenster beginnt das Budget neu', () => {
+test('after the window the budget starts anew', () => {
   clearThrottle();
   const t0 = 3_000_000;
   for (let i = 0; i < BUDGET; i++) checkBudget(13, 'GET', '/sets', t0);
@@ -50,7 +50,7 @@ test('nach dem Fenster beginnt das Budget neu', () => {
   assert.equal(neu.restSec, WINDOW_MS / 1000);
 });
 
-test('abgewiesene Anfragen zählen nicht mit', () => {
+test('rejected requests do not count', () => {
   clearThrottle();
   const t0 = 4_000_000;
   for (let i = 0; i < BUDGET; i++) checkBudget(14, 'GET', '/sets', t0);
@@ -60,7 +60,7 @@ test('abgewiesene Anfragen zählen nicht mit', () => {
   assert.equal(ab.units, BUDGET, 'die Abweisung darf den Zähler nicht weiter hochziehen');
 });
 
-test('der Auftragstopf greift vor dem allgemeinen Budget', () => {
+test('the job pot applies before the general budget', () => {
   clearThrottle();
   const t0 = 5_000_000;
   for (let i = 0; i < JOB_BUDGET; i++) assert.equal(checkBudget(15, 'POST', '/sets/partslist-pdf', t0).erlaubt, true);
@@ -72,14 +72,14 @@ test('der Auftragstopf greift vor dem allgemeinen Budget', () => {
   assert.equal(checkBudget(15, 'GET', '/sets', t0).erlaubt, true);
 });
 
-test('Katalogabrufe kosten mehr als Lesen', () => {
+test('catalog fetches cost more than reading', () => {
   assert.equal(classification('GET', '/catalog/sets').kosten, COST.abruf);
   assert.equal(classification('GET', '/sets').kosten, COST.normal);
   assert.equal(classification('POST', '/minifigs/import/csv').auftrag, true);
   assert.equal(classification('GET', '/settings/export/data').auftrag, true);
 });
 
-test('ein Schrägstrich am Ende kostet so viel wie die Route, die Express findet', () => {
+test('a trailing slash costs as much as the route Express finds', () => {
   for (const [m, p, k] of [
     ['POST', '/sets/partslist-pdf/', COST.auftrag],
     ['POST', '/sets/import/csv//', COST.auftrag],
@@ -91,7 +91,7 @@ test('ein Schrägstrich am Ende kostet so viel wie die Route, die Express findet
     assert.equal(classification(m, p).kosten, k, `${m} ${p}`);
 });
 
-test('Routen mit BrickLink- oder Fremdabruf kosten mehr als Lesen', () => {
+test('routes with BrickLink or third-party fetches cost more than reading', () => {
   for (const [m, p] of [
     ['GET', '/wanted/10294-1/preise'],
     ['GET', '/sets/10294-1/price'],
@@ -114,7 +114,7 @@ test('Routen mit BrickLink- oder Fremdabruf kosten mehr als Lesen', () => {
   assert.ok(n * 4 <= 150, `${n} Anfragen je Fenster = bis zu ${n * 4} BrickLink-Aufrufe`);
 });
 
-test('die Route antwortet 429 mit Retry-After und Fehlercode', async t => {
+test('the route answers 429 with Retry-After and error code', async t => {
   clearThrottle();
   const app = express();
   app.use((req, _res, next) => {

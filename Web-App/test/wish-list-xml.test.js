@@ -18,7 +18,7 @@ const { openUi, reiter, warte } = require('./helpers/ui');
 
 const BOESE = '03:00"><img id="eingeschleust" src="x">';
 
-test('der Zeitplan setzt Serverwerte maskiert ein', async () => {
+test('the schedule inserts server values escaped', async () => {
   const o = await openUi({
     '/v1/admin/job-status': { success: true, job: { running: false } },
     '/v1/admin/auftraege': {

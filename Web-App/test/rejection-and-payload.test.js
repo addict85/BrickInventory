@@ -26,7 +26,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { openUi, sicht, warte } = require('./helpers/ui');
 
-test('Haushaltsrouten: Nutzlast und Absage', { concurrency: 1 }, async t => {
+test('household routes: payload and refusal', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const namen = [`absage_a_${process.pid}`, `absage_b_${process.pid}`, `absage_c_${process.pid}`];
@@ -65,7 +65,7 @@ test('Haushaltsrouten: Nutzlast und Absage', { concurrency: 1 }, async t => {
     assert.ok(r.body.error && r.body.error !== code && !/[{}]/.test(r.body.error), `Kein Satz: ${r.body.error}`);
   };
 
-  await t.test('Einladen liefert den Code als Nutzlast', async () => {
+  await t.test('inviting returns the code as payload', async () => {
     const r = await post(a, 'invite');
     assert.equal(r.status, 200);
     assert.equal(r.body.success, true);
@@ -73,7 +73,7 @@ test('Haushaltsrouten: Nutzlast und Absage', { concurrency: 1 }, async t => {
     assert.equal(r.body.error, undefined);
   });
 
-  await t.test('jede Absage beim Einlösen kommt als 409 mit Satz', async () => {
+  await t.test('every refusal on redeeming comes as 409 with a sentence', async () => {
     absage(await post(b, 'redeem', { code: 'kurz', password: PASS }), 'einladungscode_ungueltig');
     absage(await post(b, 'redeem', { code: 'ABCD-EFGH-IJKL', password: PASS }), 'einladungscode_abgelaufen');
     absage(await post(a, 'redeem', { code: await invitation(a), password: PASS }), 'konto_mit_sich_selbst');
@@ -90,7 +90,7 @@ test('Haushaltsrouten: Nutzlast und Absage', { concurrency: 1 }, async t => {
     absage(await post(a, 'redeem/pruefen', { code: await invitation(b) }), 'verknuepfung_erzeugt_kreis');
   });
 
-  await t.test('eine abgesagte Einladung bleibt einlösbar', async () => {
+  await t.test('a cancelled invitation stays redeemable', async () => {
     // Die Absage gibt den Code frei: Er war nicht der Fehler.
     const code = await invitation(c);
     absage(await post(a, 'redeem', { code, password: PASS }), 'waehrung_ungleich');
@@ -100,7 +100,7 @@ test('Haushaltsrouten: Nutzlast und Absage', { concurrency: 1 }, async t => {
   });
 });
 
-test('errorText fällt bei unbekanntem Code nicht um', () => {
+test('errorText does not fall over on an unknown code', () => {
   // Eine Fehlermeldung ist das Letzte, was selbst noch abstürzen darf.
   const { errorText } = _req('src/infra/errorTexts.js');
   const fehler = console.error;
@@ -118,7 +118,7 @@ test('errorText fällt bei unbekanntem Code nicht um', () => {
   );
 });
 
-test('nach dem Währungswechsel wird die Haushaltskarte neu gezeichnet', async () => {
+test('after the currency change the household card is redrawn', async () => {
   // Die Karte nennt die Währung; ohne Neuladen stünde bis zum nächsten Seitenaufruf die alte da.
   let waehrung = 'EUR';
   const { w, d, aufrufe } = await openUi({

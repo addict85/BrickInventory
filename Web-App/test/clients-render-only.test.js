@@ -29,7 +29,7 @@ const ALLOWED = [
   // Fortschrittsbalken rechnen Prozent aus done/total — kein Geld.
 ];
 
-test('die Webapp summiert keine Geldbeträge selbst', () => {
+test('the web app sums no money amounts itself', () => {
   const dir = path.join(ROOT, 'public', 'js');
   const treffer = [];
   for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.js') && x !== 'app.bundle.js')) {
@@ -51,7 +51,7 @@ test('die Webapp summiert keine Geldbeträge selbst', () => {
   );
 });
 
-test('die Webapp zeigt den Gesamtwert des Servers', async () => {
+test("the web app shows the server's total value", async () => {
   // Ohne Marktpreis bei den Posten trägt die Kopfzahl den Gesamtwert; der Server sagt 777,
   // die eigene Summe der Tabellen wäre 0.
   const { w, d } = await openUi({

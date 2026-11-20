@@ -42,7 +42,7 @@ function quellen() {
   return raus;
 }
 
-test('die API-Kontingente heissen nach der API, nicht nach einem Pfad', () => {
+test('the API quotas are named after the API, not after a path', () => {
   // Die Schlüssel stehen in rate_limits/global_settings. Ein Pfad darin
   // bedeutet: eine zweite, leere Zählung neben der echten.
   const treffer = [];
@@ -74,7 +74,7 @@ test('die API-Kontingente heissen nach der API, nicht nach einem Pfad', () => {
   );
 });
 
-test('kein Modul wird unter einem blossen Namen geholt', () => {
+test('no module is fetched under a bare name', () => {
   // Die Gegenrichtung: Beim Zurückdrehen des obigen Fehlers habe ich drei
   // echte require('../clients/rebrickable') auf require('rebrickable')
   // verkürzt. Node sucht dann in node_modules — 500er zur Laufzeit.
@@ -107,7 +107,7 @@ test('kein Modul wird unter einem blossen Namen geholt', () => {
   );
 });
 
-test('clients/ enthält keine Routen und wird trotzdem gebaut', () => {
+test('clients/ contains no routes and is built anyway', () => {
   // Der Ordner existiert, WEIL diese beiden Dateien keine Router sind. Kommt
   // dort je eine Route hinein, gehört die Datei zurück nach routes/.
   for (const f of fs.readdirSync(path.join(ROOT, 'clients'))) {
@@ -129,7 +129,7 @@ test('clients/ enthält keine Routen und wird trotzdem gebaut', () => {
   assert.match(zeile[1], /'clients'/, 'Das Bauskript baut clients/ nicht mit');
 });
 
-test('keine Zyklen über echte import-Anweisungen', () => {
+test('no cycles via real import statements', () => {
   // Warum das eine eigene Prüfung verdient
   const graph = new Map();
   const dateien = quellen();
@@ -191,7 +191,7 @@ test('keine Zyklen über echte import-Anweisungen', () => {
 // die frühere Liste ohne startup/ ersetzt → rot „Das Bau-Stage kopiert den
 // Kontext nicht ganz …“; `startup` in .dockerignore ergänzt → rot „startup wird
 // von .dockerignore ausgeschlossen“; `*.ts` dort → rot „server.ts wird …“.
-test('jeder Quellordner kommt auch im Container an', () => {
+test('every source folder also arrives in the container', () => {
   // Eine Liste: SRC_DIRS. Das Dockerfile kopiert den ganzen Kontext, .dockerignore darf keinen Quellordner treffen.
   const dockerfile = fs
     .readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8')
@@ -234,7 +234,7 @@ test('jeder Quellordner kommt auch im Container an', () => {
   }
 });
 
-test('das Grundschema wird dort gesucht, wo es zur Laufzeit liegt', () => {
+test('the base schema is looked for where it lies at runtime', () => {
   // Mein erster Versuch nahm APP_ROOT. Im Container gibt es die Quellen nicht —
   // das Laufzeit-Image enthält nur dist/. Die .sql-Dateien landen dort, weil
   // scripts/build-ts.js sie ausdrücklich mitkopiert (ASSET_EXT); gesucht werden
@@ -261,7 +261,7 @@ test('das Grundschema wird dort gesucht, wo es zur Laufzeit liegt', () => {
   assert.ok(fs.existsSync(path.join(ROOT, 'db/basis.sql')), 'db/basis.sql fehlt');
 });
 
-test('jedes späte require() zeigt auf eine Datei, die es gibt', () => {
+test('every late require() points to a file that exists', () => {
   // Ein echter Laufzeitfehler beim Umzug
   const treffer = [];
   for (const datei of quellen()) {

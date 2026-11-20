@@ -14,7 +14,7 @@ const ROOT = path.join(__dirname, '..');
 const DB_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 // ── Statische Prüfungen (immer) ────────────────────────────────────────────
-test('die Entwertung hängt an einem Trigger, nicht an Aufrufen', () => {
+test('the invalidation hangs on a trigger, not on calls', () => {
   // Die Trigger stehen seit 0052 in einer Migration, nicht mehr im Code.
   const src = fs.readFileSync(path.join(ROOT, 'db/migrations/0052-teilezusammenfassung-stand.sql'), 'utf8');
   assert.match(src, /FOR EACH STATEMENT/, 'Zeilen-Trigger würden bei einem CSV-Import 171 000 Mal feuern');
@@ -49,7 +49,7 @@ test('die Entwertung hängt an einem Trigger, nicht an Aufrufen', () => {
   );
 });
 
-test('die Live-Abfrage bleibt als Rückfallebene erhalten', () => {
+test('the live query stays as a fallback', () => {
   const h = require('./helpers/sources').handlerQuelle();
   assert.match(
     h,
@@ -60,7 +60,7 @@ test('die Live-Abfrage bleibt als Rückfallebene erhalten', () => {
   assert.match(src, /return false;/, 'summaryFresh muss Misserfolg melden können');
 });
 
-test('set_number und storage gehen bewusst an der Zusammenfassung vorbei', () => {
+test('set_number and storage deliberately bypass the summary', () => {
   // Zwei Filter, ein Grund: Die Zusammenfassung ist nach Teil und Farbe
   // verdichtet und kann nach nichts filtern, was INNERHALB einer Gruppe
   // verschieden ist.
@@ -95,7 +95,7 @@ try {
   skip = e.message;
 }
 
-test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht', { skip: skip || undefined }, async t => {
+test('summary matches the live query and does not go stale', { skip: skip || undefined }, async t => {
   try {
     await db.initSchema();
   } catch (e) {
@@ -241,7 +241,7 @@ test('Zusammenfassung stimmt mit der Live-Abfrage überein und veraltet nicht', 
   await db.run('DELETE FROM users WHERE id=$1', [U]);
 });
 
-test('der Neuaufbau blockiert den Request nicht', () => {
+test('the rebuild does not block the request', () => {
   // Kern des zuletzt gemeldeten Fehlers: summaryFresh() hat bei veralteter
   // Version SYNCHRON neu aufgebaut. Weil der Trigger die Version bei jeder
   // Änderung an parts hochsetzt (CSV-Import, Set hinzufügen,
@@ -276,7 +276,7 @@ test('der Neuaufbau blockiert den Request nicht', () => {
   );
 });
 
-test('Kennzahlen benutzen keinen veralteten Stand', () => {
+test('metrics use no outdated state', () => {
   // Webapp und Android fragen dieselbe Statistik über zwei Endpunkte ab.
   // Während eines Hintergrund-Neuaufbaus las der eine aus der Zusammenfassung
   // und der andere live — die Paritätsprüfung schlug dadurch reproduzierbar
@@ -301,7 +301,7 @@ test('Kennzahlen benutzen keinen veralteten Stand', () => {
   );
 });
 
-test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen', { skip: skip || undefined }, async t => {
+test('both paths of the metrics count THE SAME — also with manual parts', { skip: skip || undefined }, async t => {
   // Der Befund
   try {
     await db.initSchema();
@@ -367,6 +367,6 @@ test('beide Pfade der Kennzahlen zählen DASSELBE — auch mit manuellen Teilen'
 // Test hängen und der Läufer meldet die Datei als fehlgeschlagen, obwohl jede
 // Prüfung grün war. Ohne erreichbare Datenbank fiel das nie auf: Dann wurde
 // gar keine Verbindung geöffnet.
-test('Verbindungen schliessen', async () => {
+test('close connections', async () => {
   await db.pool.end().catch(() => {});
 });

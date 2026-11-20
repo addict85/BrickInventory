@@ -25,7 +25,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
 
-test('Servertexte in der Sprache der Anfrage', { concurrency: 1 }, async t => {
+test('server texts in the language of the request', { concurrency: 1 }, async t => {
   const db = testData();
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `sprache-${process.pid}`;
@@ -47,7 +47,7 @@ test('Servertexte in der Sprache der Anfrage', { concurrency: 1 }, async t => {
   const hole = async (pfad, sprache) =>
     (await fetch(`${base}/api/v1/${pfad}`, { headers: { 'Accept-Language': sprache } })).json();
 
-  await t.test('Preisfehler auf Englisch', async () => {
+  await t.test('price errors in English', async () => {
     const en = (await hole('finance/valuation', 'en')).sets.find(s => s.set_number === '10294-1');
     assert.ok(en.error_code, `ohne Code: ${JSON.stringify(en.error)}`);
     assert.doesNotMatch(en.error, /kein |Keine |Zugangsdaten|nicht /, en.error);
@@ -56,7 +56,7 @@ test('Servertexte in der Sprache der Anfrage', { concurrency: 1 }, async t => {
     assert.notEqual(de.error, en.error, 'der deutsche Text ist ein anderer');
   });
 
-  await t.test('Kacheln mit Codes', async () => {
+  await t.test('tiles with codes', async () => {
     const jobs = (await hole('admin/jobs', 'en')).jobs;
     assert.deepEqual(jobs.bricksetRetry.sub_teile, [{ code: 'keine_ausstehenden' }]);
     assert.deepEqual(jobs.pdfJobs?.sub_teile ?? [{ code: 'no_active' }], [{ code: 'no_active' }]);

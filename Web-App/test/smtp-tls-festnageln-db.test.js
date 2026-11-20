@@ -102,7 +102,7 @@ function smtpServer(z) {
   return new Promise(r => srv.listen(0, '127.0.0.1', () => r({ srv, post, port: portOf(srv) })));
 }
 
-test('SMTP über TLS nur mit geprüftem Zertifikat', { concurrency: 1, timeout: 120_000 }, async t => {
+test('SMTP over TLS only with a verified certificate', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const SCHLUESSEL = [
@@ -165,7 +165,7 @@ test('SMTP über TLS nur mit geprüftem Zertifikat', { concurrency: 1, timeout: 
     return { delivered, error: r.error ?? null };
   };
 
-  await t.test('ohne PEM wird nichts zugestellt, auch nicht mit der Altlast', async () => {
+  await t.test('without PEM nothing is delivered, not even with the legacy setting', async () => {
     await setze({ smtp_port: a.port, smtp_insecure_tls: '1' });
     const r = await sende(a);
     assert.equal(r.delivered, false);
@@ -174,7 +174,7 @@ test('SMTP über TLS nur mit geprüftem Zertifikat', { concurrency: 1, timeout: 
     assert.equal((await mailer.testSmtp()).code, 'smtp_zertifikat');
   });
 
-  await t.test('mit PEM wird zugestellt, mit richtigem Fingerabdruck auch', async () => {
+  await t.test('with PEM it is delivered, with the right fingerprint too', async () => {
     await setze({ smtp_port: a.port, smtp_tls_ca: richtig.pem });
     assert.deepEqual(await sende(a), { delivered: true, error: null });
     await setze({
@@ -185,21 +185,21 @@ test('SMTP über TLS nur mit geprüftem Zertifikat', { concurrency: 1, timeout: 
     assert.deepEqual(await sende(a), { delivered: true, error: null });
   });
 
-  await t.test('ein falscher Fingerabdruck bricht ab', async () => {
+  await t.test('a wrong fingerprint aborts', async () => {
     await setze({ smtp_port: a.port, smtp_tls_ca: richtig.pem, smtp_tls_fingerprint: fremd.fp });
     const r = await sende(a);
     assert.equal(r.delivered, false);
     assert.match(r.error, /Fingerabdruck/);
   });
 
-  await t.test('ohne Fingerabdruck gilt der Hostname, mit ihm genau das Zertifikat', async () => {
+  await t.test('without a fingerprint the hostname applies, with it exactly the certificate', async () => {
     await setze({ smtp_port: b.port, smtp_tls_ca: fremd.pem });
     assert.equal((await sende(b)).delivered, false);
     await setze({ smtp_port: b.port, smtp_tls_ca: fremd.pem, smtp_tls_fingerprint: fremd.fp });
     assert.deepEqual(await sende(b), { delivered: true, error: null });
   });
 
-  await t.test('das Formular nimmt nur lesbare Werte und räumt die Altlast ab', async () => {
+  await t.test('the form only takes readable values and clears the legacy setting', async () => {
     await setze({ smtp_port: a.port, smtp_insecure_tls: '1' });
     const { base } = routerServer(_req, {
       sitzung: { userId: uid, isAdmin: true },

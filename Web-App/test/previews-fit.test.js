@@ -29,7 +29,7 @@ const masse = async datei => {
   return [m.width, m.height];
 };
 
-test('zugeschnittene Vorschauen werden einmal neu eingepasst', async t => {
+test('cropped previews are refitted once', async t => {
   const sets = path.join(DATA_DIR, 'images', 'sets');
   fs.mkdirSync(sets, { recursive: true });
   const proxy = fs.mkdtempSync(path.join(os.tmpdir(), 'einpassen-proxy-'));
@@ -63,7 +63,7 @@ test('zugeschnittene Vorschauen werden einmal neu eingepasst', async t => {
   };
   const lokale = [quer, quadrat].map(n => ({ web: `/images/sets/${n}.jpg`, datei: datei(n) }));
 
-  await t.test('ersetzt nur zugeschnittene', async () => {
+  await t.test('replaces only cropped ones', async () => {
     assert.equal(await fitTailoredPreviews(k, lokale, proxy), 2);
     assert.deepEqual(await masse(vorschau(quer)), [200, 100], 'eigene Vorschau neu eingepasst');
     assert.equal(fs.statSync(vorschau(quadrat)).mtimeMs, quadratBefore, 'quadratisches Bild blieb nicht unberührt');
@@ -72,7 +72,7 @@ test('zugeschnittene Vorschauen werden einmal neu eingepasst', async t => {
     assert.ok(zustand.get(FITTED_MARKER), 'Merker fehlt');
   });
 
-  await t.test('läuft nur einmal', async () => {
+  await t.test('runs only once', async () => {
     await jpeg(vorschau(quer), 200, 200);
     assert.equal(await fitTailoredPreviews(k, lokale, proxy), null);
     assert.deepEqual(await masse(vorschau(quer)), [200, 200]);

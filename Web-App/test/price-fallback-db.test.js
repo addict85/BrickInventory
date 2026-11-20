@@ -82,7 +82,7 @@ async function konto(name, set) {
   return uid;
 }
 
-test('gebrauchtes Set ohne Gebraucht-Preis: Neu-Preis wird geholt', { concurrency: 1 }, async t => {
+test('used set without a used price: the new price is fetched', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const NAME = `rueckfall_${process.pid}`,
@@ -137,7 +137,7 @@ test('gebrauchtes Set ohne Gebraucht-Preis: Neu-Preis wird geholt', { concurrenc
   assert.deepEqual(fetches, [], 'ruft BrickLink erneut ab, obwohl beide Zustände frisch ohne Preis sind');
 });
 
-test('„BrickLink kennt das Set nicht" gilt nur eine Weile', { concurrency: 1 }, async t => {
+test('“BrickLink does not know the set” only applies for a while', { concurrency: 1 }, async t => {
   t.after(() => db.pool.end().catch(() => {}));
   const NAME = `unbekannt_${process.pid}`,
     SET = `8${process.pid % 10000}-1`;

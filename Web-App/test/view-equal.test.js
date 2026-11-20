@@ -10,7 +10,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, reiter } = require('./helpers/ui');
 
-test('dieselben Ansichtsknöpfe in allen drei Reitern', async () => {
+test('the same view buttons in all three tabs', async () => {
   const { w, d } = await openUi();
   try {
     for (const tab of ['tab-gallery', 'tab-parts', 'tab-minifigs']) {
@@ -28,7 +28,7 @@ test('dieselben Ansichtsknöpfe in allen drei Reitern', async () => {
   }
 });
 
-test('Teile: die Tabelle lädt die Set-Zuordnung', async () => {
+test('parts: the table loads the set mapping', async () => {
   const { w, d, aufrufe, ruhig } = await openUi();
   try {
     await reiter(w, 'parts');

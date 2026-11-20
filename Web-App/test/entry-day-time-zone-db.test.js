@@ -30,7 +30,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
 
-test('Erfassungstag in der Zeitzone der Installation', { concurrency: 1 }, async t => {
+test('acquisition day in the time zone of the installation', { concurrency: 1 }, async t => {
   // initSchemaOnce wie beim Start: Schema, Migrationen, Zone in die Datenbank.
   try {
     await db.initSchemaOnce();
@@ -56,7 +56,7 @@ test('Erfassungstag in der Zeitzone der Installation', { concurrency: 1 }, async
     db.all(`SELECT day::text AS tag, quantity FROM set_acquisitions WHERE user_id=$1 ORDER BY day`, [uid]);
 
   try {
-    await t.test('ein Kauf um 00:30 gehört zum selben Tag wie einer am Mittag', async () => {
+    await t.test('a purchase at 00:30 belongs to the same day as one at noon', async () => {
       assert.equal((await kauf('2026-03-04T23:30:00Z')).merged, false); // 05.03. 00:30 in Zürich
       assert.equal((await kauf('2026-03-05T11:00:00Z')).merged, true); // 05.03. 12:00
       assert.equal((await kauf('2026-03-04T21:30:00Z')).merged, false); // 04.03. 22:30
@@ -65,7 +65,7 @@ test('Erfassungstag in der Zeitzone der Installation', { concurrency: 1 }, async
         { tag: '2026-03-05', quantity: 2 },
       ]);
     });
-    await t.test('eine Verbindung ausserhalb des Pools rechnet denselben Tag', async () => {
+    await t.test('a connection outside the pool computes the same day', async () => {
       // So schreibt psql oder ein Skript: ohne Sitzungseinstellungen des Pools.
       const c = await db.ownConnection();
       try {
@@ -79,7 +79,7 @@ test('Erfassungstag in der Zeitzone der Installation', { concurrency: 1 }, async
         await c.end();
       }
     });
-    await t.test('ein geändertes Datum ist der neue Tag', async () => {
+    await t.test('a changed date is the new day', async () => {
       const id = (await db.get(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND day='2026-03-04'`, [uid])).id;
       await db.run(`UPDATE set_acquisitions SET created_at = '2026-02-01T23:30:00Z' WHERE id=$1`, [id]);
       assert.equal(

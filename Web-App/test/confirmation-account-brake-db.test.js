@@ -42,7 +42,7 @@ const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 const PASS = 'Konto-Bremse-Passwort-1',
   FALSCH = 'Falsch-geraten-0815';
 
-test('Bremse für Bestätigungen je Konto', { concurrency: 1, timeout: 120_000 }, async t => {
+test('brake for confirmations per account', { concurrency: 1, timeout: 120_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `kbremse_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -71,7 +71,7 @@ test('Bremse für Bestätigungen je Konto', { concurrency: 1, timeout: 120_000 }
   const versuch = async (zugang, pw = FALSCH) =>
     STATUS_THE_KIND[(await checkConfirmation(uid, zugang, pw, {}))?.art] ?? 200;
 
-  await t.test('über viele Zugänge höchstens 20 Fehlversuche am Tag', async () => {
+  await t.test('across many accesses at most 20 failed attempts per day', async () => {
     const ist = [];
     // Fünf Zugänge à vier Versuche: keiner erreicht seine eigene Grenze (5).
     for (let z = 0; z < 5; z++) for (let i = 0; i < 4; i++) ist.push(await versuch(`t:${z}`));
@@ -80,11 +80,11 @@ test('Bremse für Bestätigungen je Konto', { concurrency: 1, timeout: 120_000 }
     assert.equal(await versuch('t:4', PASS), 429, 'auch mit dem richtigen Passwort, ohne Prüfung');
   });
 
-  await t.test('der saubere Zugang des Inhabers bestätigt weiter', async () => {
+  await t.test("the owner's clean access keeps confirming", async () => {
     assert.equal(await versuch('s:inhaber', PASS), 200);
   });
 
-  await t.test('Mail und Protokoll beim Erreichen der Bremse, die Mail einmal am Tag', async () => {
+  await t.test('mail and log on reaching the brake, the mail once a day', async () => {
     for (let i = 0; i < 40 && mails.length < 1; i++) await new Promise(r => setTimeout(r, 25));
     await new Promise(r => setTimeout(r, 200));
     assert.deepEqual(mails, [{ an: `${NAME}@example.org`, art: 'bestaetigung_gebremst' }]);

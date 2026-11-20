@@ -36,11 +36,11 @@ async function aufraeumen() {
   await db.run('DELETE FROM users WHERE id = ANY($1)', [[MAIN, UNTER]]).catch(() => {});
 }
 
-test('Blickfeld: gemerkt, und bei Änderung sofort vergessen', async t => {
+test('scope: remembered, and forgotten immediately on a change', async t => {
   try {
     await db.get('SELECT 1');
   } catch {
-    return t.skip('keine Test-Datenbank erreichbar');
+    return t.skip('no test database reachable');
   }
 
   let listener = null;

@@ -52,7 +52,7 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, async t => {
+test('one acquisition per day, condition, price and currency', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -86,7 +86,7 @@ test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, a
       )
     ).map(z => ({ menge: Number(z.quantity), preis: z.preis, zustand: z.zustand }));
 
-  await t.test('zwei Zustände, zwei Zeilen', async () => {
+  await t.test('two conditions, two rows', async () => {
     await addPurchaseAtTag('part', UID, ['3001', 4], {
       quantity: 3,
       price: 1.5,
@@ -108,7 +108,7 @@ test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, a
     );
   });
 
-  await t.test('jede Zeile behält ihren eigenen Preis', async () => {
+  await t.test('every row keeps its own price', async () => {
     assert.deepEqual(
       await zeilen('3001'),
       [
@@ -119,7 +119,7 @@ test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, a
     );
   });
 
-  await t.test('gleicher Preis stockt auf, ein anderer Preis bekommt eine eigene Zeile', async () => {
+  await t.test('the same price tops up, a different price gets a row of its own', async () => {
     // Seit Migration 0047: Kein Mischpreis mehr. Gleiche Käufe eines Tages
     // werden addiert (verlustfrei), verschiedene Preise bleiben getrennt.
     await addPurchaseAtTag('part', UID, ['3002', 4], {
@@ -150,7 +150,7 @@ test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, a
     );
   });
 
-  await t.test('gleichzeitige Erfassungen gehen nicht verloren', async () => {
+  await t.test('concurrent acquisitions do not get lost', async () => {
     // Web und App erfassen dasselbe Teil im selben Augenblick.
     await Promise.all(
       Array.from({ length: 12 }, () =>
@@ -165,7 +165,7 @@ test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, a
     );
   });
 
-  await t.test('ein eingesetzter Marktpreis ist als geschätzt gekennzeichnet', async () => {
+  await t.test('an inserted market price is marked as estimated', async () => {
     await addPurchaseAtTag('part', UID, ['3005', 1], {
       quantity: 1,
       price: 0.3,
@@ -194,7 +194,7 @@ test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, a
     );
   });
 
-  await t.test('jede Erfassung trägt die Währung ihres Kontos', async () => {
+  await t.test('every acquisition carries the currency of its account', async () => {
     await db.run(
       `INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')
                   ON CONFLICT (user_id, key) DO UPDATE SET value = 'CHF'`,
@@ -214,7 +214,7 @@ test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, a
     );
   });
 
-  await t.test('der Unique-Index trägt die Regel, nicht nur der Code', async () => {
+  await t.test('the unique index carries the rule, not only the code', async () => {
     // Migration 0040. Ohne den Index hätte ein Weg, der am Helfer vorbei
     // schreibt, freie Bahn — genau dafür gibt es ihn seit 0008.
     await db.run(
@@ -240,7 +240,7 @@ test('eine Erfassung je Tag, Zustand, Preis und Währung', { concurrency: 1 }, a
     );
   });
 
-  await t.test('der Datums-Endpunkt sieht den Zustand an', async () => {
+  await t.test('the date endpoint looks at the condition', async () => {
     // Der zweite Schritt, ohne den die Fassung schon einmal verworfen wurde:
     // Der Bearbeiten-Pfad darf nicht ablehnen, was der Anlege-Pfad erlaubt.
     const n = await db.get(

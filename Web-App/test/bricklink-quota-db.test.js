@@ -58,7 +58,7 @@ const zaehler = async () =>
     )?.count || 0,
   );
 
-test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async t => {
+test('BrickLink quota per HTTP call', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const SN = `91${process.pid % 10000}-1`;
@@ -88,7 +88,7 @@ test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  await t.test('sold und stock zählen je einmal', async () => {
+  await t.test('sold and stock count once each', async () => {
     await setze('api_limit_bricklink', '100');
     await newTag();
     const p = await fetchPrice(SN, 'N', 'sold', 'EUR', 24);
@@ -97,7 +97,7 @@ test('BrickLink-Kontingent je HTTP-Aufruf', { concurrency: 1 }, async t => {
     assert.equal(await zaehler(), 2, 'das Kontingent zählt nicht jeden Abruf');
   });
 
-  await t.test('ein erschöpftes Kontingent hält auch den Rückfall an', async () => {
+  await t.test('an exhausted quota also stops the fallback', async () => {
     await setze('api_limit_bricklink', '1');
     await newTag();
     await fetchPrice(SN, 'N', 'sold', 'EUR', 24).catch(() => null);

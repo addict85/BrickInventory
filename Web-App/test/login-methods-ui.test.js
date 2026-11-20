@@ -37,7 +37,7 @@ async function mask(status) {
   return r;
 }
 
-test('der Server kann beides nicht', async () => {
+test('the server can do neither', async () => {
   assert.deepEqual(await mask({ enabled: true, passkey: false, passwort_vergessen: false }), {
     passkey: false,
     vergessen: false,
@@ -46,7 +46,7 @@ test('der Server kann beides nicht', async () => {
   });
 });
 
-test('der Server kann beides', async () => {
+test('the server can do both', async () => {
   assert.deepEqual(await mask({ enabled: false, passkey: true, passwort_vergessen: true }), {
     passkey: true,
     vergessen: true,
@@ -55,7 +55,7 @@ test('der Server kann beides', async () => {
   });
 });
 
-test('älterer Server ohne Angabe', async () => {
+test('older server without the information', async () => {
   assert.deepEqual(await mask({ enabled: false }), {
     passkey: true,
     vergessen: true,

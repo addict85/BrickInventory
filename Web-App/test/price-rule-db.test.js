@@ -22,7 +22,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { hatPrice } = _req('src/catalog/bricklinkPrices.js');
 
-test('die Preisregel gilt an jeder Stelle gleich', { concurrency: 1 }, async t => {
+test('the price rule applies the same everywhere', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const SN = `preisregel-${process.pid}-1`;

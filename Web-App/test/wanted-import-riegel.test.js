@@ -47,7 +47,7 @@ async function withImport(antwort) {
 
 const alsJson = d => ({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => d });
 
-test('ein zweiter Klick startet keinen zweiten Lauf, eine neue Datei wird abgewiesen', async () => {
+test('a second click starts no second run, a new file is rejected', async () => {
   let freigeben;
   const { w, d, importe, choose, knopf } = await withImport(
     () =>
@@ -93,7 +93,7 @@ test('ein zweiter Klick startet keinen zweiten Lauf, eine neue Datei wird abgewi
   }
 });
 
-test('der Riegel geht auch nach einem Fehler wieder auf', async () => {
+test('the latch opens again even after an error', async () => {
   const { w, importe, choose, knopf } = await withImport(async nr => {
     if (nr === 1) throw new Error('Netz weg');
     return alsJson(BERICHT);
@@ -109,7 +109,7 @@ test('der Riegel geht auch nach einem Fehler wieder auf', async () => {
   }
 });
 
-test('der Fortschritt kommt stückweise an und füllt den Balken', async () => {
+test('the progress arrives piece by piece and fills the bar', async () => {
   const stuecke = [
     `${JSON.stringify({ fortschritt: { phase: 'rebrickable', fertig: 1, gesamt: 4 } })}\n{"success":true,"vorschau":tr`,
     `ue,"gelesen":7,"posten":[]}\n`,

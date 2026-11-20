@@ -15,7 +15,7 @@ const { fetchPartPrice } = _req('src/finances/financeCalc.js');
 const { priceHistoryPart } = _req('src/finances/priceHistory.js');
 const { holdsPart } = require('./helpers/inventory');
 
-test('Teile-Preise stehen unter EINER Nummer', { concurrency: 1 }, async t => {
+test('part prices are under ONE number', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   // part_price_history steht nur in db/migrations/0003.
   const migClient = await db.pool.connect();

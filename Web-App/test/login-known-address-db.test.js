@@ -23,7 +23,7 @@ const { keineDb } = require('./helpers/db');
 const db = testData();
 const limiter = _req('src/account/loginLimiter.js');
 
-test('bekannte Anmeldung: Adresse nur als Abdruck gespeichert', { concurrency: 1 }, async t => {
+test('known login: address only stored as a fingerprint', { concurrency: 1 }, async t => {
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -45,7 +45,7 @@ test('bekannte Anmeldung: Adresse nur als Abdruck gespeichert', { concurrency: 1
   await limiter.loginSucceeded(IP, name);
   await limiter.loginSucceeded(IP6, name);
 
-  await t.test('keine Klartext-Adresse', async () => {
+  await t.test('no plaintext address', async () => {
     const zeilen = await db.all(
       `SELECT key FROM rate_limit_attempts WHERE key LIKE 'login-bekannt|%' OR key LIKE 'login-erfolg|%'`,
     );
@@ -56,14 +56,14 @@ test('bekannte Anmeldung: Adresse nur als Abdruck gespeichert', { concurrency: 1
     }
   });
 
-  await t.test('bekannt bleibt bekannt', async () => {
+  await t.test('known stays known', async () => {
     assert.equal(await limiter.knownLogin(IP, name), true);
     assert.equal(await limiter.knownLogin(IP6, name), true);
     // Dasselbe /64 zählt als dieselbe Adresse.
     assert.equal(await limiter.knownLogin('2001:db8:1:2:ffff::1', name), true);
   });
 
-  await t.test('andere Adresse ist unbekannt', async () => {
+  await t.test('a different address is unknown', async () => {
     assert.equal(await limiter.knownLogin('203.0.113.78', name), false);
   });
 });

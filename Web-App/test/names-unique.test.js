@@ -32,7 +32,7 @@ const ALLOWED = new Map([
   ['schreibePuffer', 'src/images/imageDemandRun und src/images/imageMisses — jeder schreibt SEINEN Puffer.'],
 ]);
 
-test('ein Funktionsname bedeutet eine Sache', () => {
+test('a function name means one thing', () => {
   const dateien = [];
   const gehen = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {

@@ -21,7 +21,7 @@ const { openUi, warte, sicht, reiter } = require('./helpers/ui');
 
 const NAME = 'A & B <C>';
 
-test('Löschdialog nennt den Set-Namen wörtlich', async () => {
+test('delete dialog names the set name literally', async () => {
   const { w, d } = await openUi({
     '/v1/sets': {
       success: true,
@@ -42,7 +42,7 @@ test('Löschdialog nennt den Set-Namen wörtlich', async () => {
   }
 });
 
-test('frühere Verknüpfung nennt den Weg wörtlich', async () => {
+test('former link names the path literally', async () => {
   const { w, d } = await openUi({
     '/v1/settings/household': {
       success: true,
@@ -64,7 +64,7 @@ test('frühere Verknüpfung nennt den Weg wörtlich', async () => {
   }
 });
 
-test('Pause nennt eine unbekannte Auftragsart wörtlich', async () => {
+test('pause names an unknown job kind literally', async () => {
   const { w, d, ruhig } = await openUi({
     '/v1/admin/job-status': { success: true, job: { running: false } },
     '/v1/admin/jobs': { success: true, jobs: {}, schedules: {}, db: { csvCache: {}, blMapping: {} } },

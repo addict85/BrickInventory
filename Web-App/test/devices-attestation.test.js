@@ -65,7 +65,7 @@ const grund = (k, e) => {
   return p.ok ? 'angenommen' : p.grund;
 };
 
-test('eine Kette wie die des Keystores geht durch, mit Challenge und Schlüssel des Blatts', () => {
+test("a chain like the keystore's goes through, with challenge and key of the leaf", () => {
   const k = T.kette({ challenge: NONCE });
   const p = pruefe(k);
   assert.equal(p.ok, true, JSON.stringify(p));
@@ -75,11 +75,11 @@ test('eine Kette wie die des Keystores geht durch, mit Challenge und Schlüssel 
   assert.equal(pruefe(T.kette({ challenge: NONCE, sicherheit: 2 })).sicherheit, 'strongbox');
 });
 
-test('ein Software-Schlüssel wird abgewiesen', () => {
+test('a software key is rejected', () => {
   assert.equal(grund(T.kette({ challenge: NONCE, sicherheit: 0 })), 'nur_software');
 });
 
-test('eine fremde Wurzel wird abgewiesen, auch mit sonst gültiger Kette', () => {
+test('a foreign root is rejected, even with an otherwise valid chain', () => {
   const fremd = T.newRoot('Fremde Wurzel');
   assert.equal(grund(T.kette({ challenge: NONCE, wurzel: fremd })), 'fremde_wurzel');
   // Die Google-Wurzeln nehmen die Testkette ebenso wenig an.
@@ -87,7 +87,7 @@ test('eine fremde Wurzel wird abgewiesen, auch mit sonst gültiger Kette', () =>
   assert.equal(grund(T.kette({ challenge: NONCE }), google), 'fremde_wurzel');
 });
 
-test('ein fremdes Paket oder eine fremde Signatur wird abgewiesen', () => {
+test('a foreign package or a foreign signature is rejected', () => {
   assert.equal(grund(T.kette({ challenge: NONCE, paket: 'com.boese.app' })), 'fremdes_paket');
   assert.equal(grund(T.kette({ challenge: NONCE, digest: Buffer.alloc(32, 7) })), 'fremde_signatur');
   assert.equal(
@@ -97,7 +97,7 @@ test('ein fremdes Paket oder eine fremde Signatur wird abgewiesen', () => {
   );
 });
 
-test('ein Schlüssel ohne Sperre, mit Frist oder importiert wird abgewiesen', () => {
+test('a key without lock, with a timeout or imported is rejected', () => {
   assert.equal(grund(T.kette({ challenge: NONCE, withoutLock: true })), 'ohne_sperre');
   assert.equal(grund(T.kette({ challenge: NONCE, alsoWithoutLogin: true })), 'ohne_sperre');
   assert.equal(grund(T.kette({ challenge: NONCE, frist: 300 })), 'sperre_mit_frist');
@@ -105,7 +105,7 @@ test('ein Schlüssel ohne Sperre, mit Frist oder importiert wird abgewiesen', ()
   assert.equal(grund(T.kette({ challenge: NONCE, kurve: 2 })), 'kein_ec_p256');
 });
 
-test('ein untergeschobenes Blatt (fremd signiert) und eine Kette ohne Erweiterung werden abgewiesen', () => {
+test('a slipped-in leaf (signed by a stranger) and a chain without extension are rejected', () => {
   const echt = T.kette({ challenge: NONCE });
   const fremd = T.kette({ challenge: NONCE });
   // Blatt aus einer Kette, Zwischenstufe aus einer anderen: gleiche Namen, falsche Signatur.
@@ -115,14 +115,14 @@ test('ein untergeschobenes Blatt (fremd signiert) und eine Kette ohne Erweiterun
   assert.equal(grund({ kette: ['AAAA'] }), 'kette_unlesbar');
 });
 
-test('die KeyDescription liest Challenge, Stufe und App-Kennung', () => {
+test('the KeyDescription reads challenge, level and app identifier', () => {
   const b = A.readDescription(T.beschreibung({ challenge: NONCE, sicherheit: 2 }));
   assert.deepEqual([b.version, b.sicherheit, b.challenge.toString()], [300, 'strongbox', NONCE.toString()]);
   const app = A.readAppId(b.software.get(709));
   assert.deepEqual(app, { packages: [T.PAKET], digests: [T.DIGEST_HEX] });
 });
 
-test('abgeschnittene Bytes und unbestimmte Längen werfen statt zu raten', () => {
+test('truncated bytes and indefinite lengths throw instead of guessing', () => {
   const ganz = T.beschreibung({ challenge: NONCE });
   for (const kaputt of [
     ganz.subarray(0, ganz.length - 3),
@@ -135,7 +135,7 @@ test('abgeschnittene Bytes und unbestimmte Längen werfen statt zu raten', () =>
   assert.equal(der.liesTlv(Buffer.from([0xbf, 0x85, 0x45, 0x02, 0x05, 0x00])).tlv.nummer, 709);
 });
 
-test('die Google-Wurzeln stimmen mit ihren Fingerabdrücken überein', () => {
+test('the Google roots match their fingerprints', () => {
   assert.ok(G.GOOGLE_ROOTS.length >= 2);
   assert.deepEqual(
     G.GOOGLE_ROOTS.map(p => new X509Certificate(p).fingerprint256),
@@ -146,7 +146,7 @@ test('die Google-Wurzeln stimmen mit ihren Fingerabdrücken überein', () => {
 
 const series = b64 => A.seriennummer(new X509Certificate(Buffer.from(b64, 'base64')));
 
-test('eine Kette mit widerrufener Seriennummer wird abgewiesen, gleich an welchem Glied', () => {
+test('a chain with a revoked serial number is rejected, regardless of the link', () => {
   const k = T.kette({ challenge: NONCE });
   assert.equal(grund(k), 'angenommen');
   for (const link of k.kette)
@@ -154,7 +154,7 @@ test('eine Kette mit widerrufener Seriennummer wird abgewiesen, gleich an welche
   assert.equal(grund(k, expectation({ widerrufen: new Set(['abc', '1']) })), 'angenommen');
 });
 
-test('die Seriennummer steht wie in Googles Liste: Hex klein, auch mit führender Null ohne sie', () => {
+test("the serial number stands as in Google's list: hex lower case, without the leading zero", () => {
   const c = { serialNumber: '00A1B2' };
   assert.equal(A.seriennummer(c), 'a1b2');
   assert.equal(A.seriennummer({ serialNumber: '00' }), '0');
@@ -162,7 +162,7 @@ test('die Seriennummer steht wie in Googles Liste: Hex klein, auch mit führende
   assert.deepEqual(liste, ['a1b2']);
 });
 
-test('ein Gerät mit unverifiziertem Boot, offenem Bootloader oder ohne RootOfTrust wird abgewiesen', () => {
+test('a device with unverified boot, unlocked bootloader or without RootOfTrust is rejected', () => {
   assert.equal(grund(T.kette({ challenge: NONCE, bootState: 2 })), 'boot_unverifiziert');
   assert.equal(grund(T.kette({ challenge: NONCE, bootState: 1 })), 'boot_unverifiziert', 'SelfSigned');
   assert.equal(grund(T.kette({ challenge: NONCE, bootState: 3 })), 'boot_unverifiziert', 'Failed');
@@ -170,14 +170,14 @@ test('ein Gerät mit unverifiziertem Boot, offenem Bootloader oder ohne RootOfTr
   assert.equal(grund(T.kette({ challenge: NONCE, withoutRootOfTrust: true })), 'ohne_root_of_trust');
 });
 
-test('ein Patchstand unter der Mindeststufe wird abgewiesen, ohne Mindeststufe jeder', () => {
+test('a patch level below the minimum is rejected, without a minimum every one is accepted', () => {
   const k = T.kette({ challenge: NONCE, patch: 202608 });
   assert.equal(grund(k), 'angenommen');
   assert.equal(grund(k, expectation({ patchAtLeast: 202608 })), 'angenommen');
   assert.equal(grund(k, expectation({ patchAtLeast: 202609 })), 'patchstand_alt');
 });
 
-test('Googles Liste wird gelesen; eine Liste in anderer Form wirft, statt halb zu gelten', () => {
+test("Google's list is read; a list in a different shape throws instead of half applying", () => {
   const roh = fs.readFileSync(path.join(__dirname, 'fixtures', 'attestation-status-excerpt.json'));
   const nummern = W.readRevocationList(roh);
   assert.equal(nummern.length, 5);
@@ -194,7 +194,7 @@ test('Googles Liste wird gelesen; eine Liste in anderer Form wirft, statt halb z
     assert.throws(() => W.readRevocationList(kaputt), kaputt);
 });
 
-test('eine zu alte, fehlende oder beschädigte gespeicherte Liste gilt nicht', () => {
+test('a stored list that is too old, missing or damaged does not apply', () => {
   const jetzt = new Date('2026-11-14T12:00:00Z');
   const wert = tage =>
     JSON.stringify({ stand: new Date(jetzt.getTime() - tage * 86_400_000).toISOString(), nummern: ['ab'] });
@@ -242,12 +242,12 @@ function chainWithMiddleLink({ attestiert = false, ca = false, keyUsage } = {}) 
   return { kette: [bThe, mThe, zThe, T.WURZEL.der].map(d => d.toString('base64')) };
 }
 
-test('ein attestierter Schlüssel als Aussteller eines Blatts wird abgewiesen, auch mit CA-Bit', () => {
+test('an attested key as the issuer of a leaf is rejected, even with the CA bit', () => {
   assert.equal(grund(chainWithMiddleLink({ attestiert: true })), 'glied_1_kein_aussteller');
   assert.equal(grund(chainWithMiddleLink({ attestiert: true, ca: true })), 'glied_1_kein_aussteller');
 });
 
-test('ein Aussteller ohne CA-Bit oder ohne keyCertSign wird abgewiesen, mit beidem angenommen', () => {
+test('an issuer without CA bit or without keyCertSign is rejected, accepted with both', () => {
   assert.equal(grund(chainWithMiddleLink()), 'glied_1_kein_aussteller');
   // keyUsage nur digitalSignature: 7 ungenutzte Bits, Bit 0 gesetzt.
   assert.equal(

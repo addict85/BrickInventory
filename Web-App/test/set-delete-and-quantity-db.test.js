@@ -23,7 +23,7 @@ const { testServer } = require('./helpers/server');
 const db = testData();
 const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
 
-test('das Löschen fragt genau einmal', () => {
+test('deleting asks exactly once', () => {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/collection.js'), 'utf8'));
   const detail = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/js/set-detail.js'), 'utf8'));
 
@@ -53,7 +53,7 @@ test('das Löschen fragt genau einmal', () => {
   assert.match(fn, /loadGallery\(\);\s*emit\('teileLaden'\);/, 'Nach dem Löschen müssen Sammlung und Teile nachziehen');
 });
 
-test('die Mengen-Multiplikation steht an allen Stellen', () => {
+test('the quantity multiplication is in all places', () => {
   const h = ohneKommentare(require('./helpers/sources').handlerQuelle());
   // Teile und Minifiguren eines Sets zählen JE EXEMPLAR mal Setanzahl.
   const stellen = (h.match(/mengeAus\('sm', ?1\)/g) || []).length;
@@ -74,7 +74,7 @@ test('die Mengen-Multiplikation steht an allen Stellen', () => {
   // parts-summary.test.js am laufenden Trigger (Migration 0052).
 });
 
-test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, async t => {
+test('deletion and quantity change against the database', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const NUTZER = `dl-${process.pid}`;
@@ -119,7 +119,7 @@ test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, asy
     });
 
   try {
-    await t.test('mehr Sets = mehr Teile und Minifiguren', async () => {
+    await t.test('more sets = more parts and minifigures', async () => {
       let st = await H.getStats([uid]);
       assert.equal(st.total_parts, 10, 'Vorbedingung');
       assert.equal(st.total_minifigs, 1, 'Vorbedingung');
@@ -146,7 +146,7 @@ test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, asy
       );
     });
 
-    await t.test('weniger Sets = weniger Teile und Minifiguren', async () => {
+    await t.test('fewer sets = fewer parts and minifigures', async () => {
       // Die Gegenrichtung: Ohne sie wäre der Test auch grün, wenn die Zahl nur
       // jemals wüchse.
       await setzen(1);
@@ -171,7 +171,7 @@ test('Löschen und Mengenänderung gegen die Datenbank', { concurrency: 1 }, asy
       assert.equal(spalte, undefined, 'parts.quantity ist zurück — dann gibt es die Stückzahl wieder zweimal');
     });
 
-    await t.test('Löschen nimmt Teile, Minifiguren und Kaufpreise mit', async () => {
+    await t.test('deleting takes parts, minifigures and purchase prices along', async () => {
       const r = await fetch(`${base}/api/v1/sets/${SN}`, { method: 'DELETE' });
       assert.equal(r.status, 200);
       for (const tab of ['sets', 'parts', 'minifigs', 'set_acquisitions']) {

@@ -35,7 +35,7 @@ function numberFields() {
   return treffer;
 }
 
-test('1. jedes type="number" trägt einen inputmode', () => {
+test('1. every type="number" carries an inputmode', () => {
   const felder = numberFields();
   // Selbstnachweis: Findet die Suche überhaupt etwas? Ohne das wäre eine
   // leere Liste für immer grün, ohne je ein Feld angesehen zu haben.
@@ -51,7 +51,7 @@ test('1. jedes type="number" trägt einen inputmode', () => {
   );
 });
 
-test('2. Preise und Schwellen bekommen `decimal`, nicht `numeric`', () => {
+test('2. prices and thresholds get `decimal`, not `numeric`', () => {
   // `numeric` ist ein reiner Ziffernblock — ohne Komma. Bei einem Preisfeld
   // heisst das: Man kann 12 tippen, aber nicht 12.50. Der Unterschied fällt
   // erst auf, wenn jemand einen Rappenbetrag eingeben will.
@@ -70,7 +70,7 @@ test('2. Preise und Schwellen bekommen `decimal`, nicht `numeric`', () => {
   );
 });
 
-test('3. Geldfelder sind Textfelder: type="number" verwirft „149,95“', () => {
+test('3. money fields are text fields: type="number" discards "149,95"', () => {
   // Chrome liefert für ein Zahlenfeld mit Komma je nach Sprache "" oder 149;
   // gelesen wird mit readAmount() (money-input.test.js prüft das Verhalten).
   const falsch = numberFields()

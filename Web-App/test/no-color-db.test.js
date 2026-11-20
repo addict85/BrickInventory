@@ -29,11 +29,11 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const MIGRATION = path.join(__dirname, '..', 'db/migrations/0071-keine-farbe.sql');
 
-test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async t => {
+test('no color is 9999, 0 stays black', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
 
-  await t.test('die Migration stellt nur um, wo die Zeile es beweist', async () => {
+  await t.test('the migration only converts where the row proves it', async () => {
     const c = await db.pool.connect();
     try {
       await c.query('BEGIN');
@@ -136,7 +136,7 @@ test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async t => {
     }
   });
 
-  await t.test('ein Teil ohne Farbe wird nicht schwarz', async () => {
+  await t.test('a part without color does not turn black', async () => {
     const V = _req('src/infra/validate.js');
     assert.equal(V.colorId(''), 9999);
     assert.equal(V.colorId(null), 9999);
@@ -177,30 +177,33 @@ test('keine Farbe ist 9999, 0 bleibt Schwarz', { concurrency: 1 }, async t => {
     }
   });
 
-  await t.test('die Farbliste kommt aus rb_colors, die Notliste führt nur echte Rebrickable-IDs', async () => {
-    const { colorList } = _req('src/catalog/colors.js');
-    const vorher = await db.all('SELECT id, name, rgb FROM rb_colors');
-    try {
-      await db.run('DELETE FROM rb_colors');
-      const not = await colorList(); // ohne Schlüssel kein Abruf
-      assert.equal(not.find(f => f.id === 0)?.name, 'Black');
-      assert.equal(not.find(f => f.id === 9999)?.name, '[No Color/Any Color]');
-      assert.ok(!not.some(f => f.id === 13), 'die Notliste führt nur echte Rebrickable-IDs');
-      await db.run(
-        `INSERT INTO rb_colors (id,name,rgb) VALUES (0,'Black','05131D'),(13,'Pink','FC97AC'),(-1,'[Unknown]','0033B2')`,
-      );
-      assert.deepEqual(await colorList(), [
-        { id: 0, name: 'Black', hex: '05131D' },
-        { id: 13, name: 'Pink', hex: 'FC97AC' },
-      ]);
-    } finally {
-      await db.run('DELETE FROM rb_colors');
-      for (const z of vorher)
-        await db.run('INSERT INTO rb_colors (id,name,rgb) VALUES ($1,$2,$3)', [z.id, z.name, z.rgb]);
-    }
-  });
+  await t.test(
+    'the color list comes from rb_colors, the emergency list only carries real Rebrickable IDs',
+    async () => {
+      const { colorList } = _req('src/catalog/colors.js');
+      const vorher = await db.all('SELECT id, name, rgb FROM rb_colors');
+      try {
+        await db.run('DELETE FROM rb_colors');
+        const not = await colorList(); // ohne Schlüssel kein Abruf
+        assert.equal(not.find(f => f.id === 0)?.name, 'Black');
+        assert.equal(not.find(f => f.id === 9999)?.name, '[No Color/Any Color]');
+        assert.ok(!not.some(f => f.id === 13), 'die Notliste führt nur echte Rebrickable-IDs');
+        await db.run(
+          `INSERT INTO rb_colors (id,name,rgb) VALUES (0,'Black','05131D'),(13,'Pink','FC97AC'),(-1,'[Unknown]','0033B2')`,
+        );
+        assert.deepEqual(await colorList(), [
+          { id: 0, name: 'Black', hex: '05131D' },
+          { id: 13, name: 'Pink', hex: 'FC97AC' },
+        ]);
+      } finally {
+        await db.run('DELETE FROM rb_colors');
+        for (const z of vorher)
+          await db.run('INSERT INTO rb_colors (id,name,rgb) VALUES ($1,$2,$3)', [z.id, z.name, z.rgb]);
+      }
+    },
+  );
 
-  await t.test('keine Farbe fragt BrickLink nach (Not Applicable)', async () => {
+  await t.test('no color asks BrickLink for (Not Applicable)', async () => {
     const { resolveBlColorId } = _req('src/finances/calculation/prices.js');
     assert.equal(await resolveBlColorId(9999), 0);
   });

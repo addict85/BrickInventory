@@ -38,7 +38,7 @@ function routesFiles(dir, praefix = '') {
   return gefunden;
 }
 
-test('kein Handler fragt die Sitzung selbst nach der Nutzerkennung', () => {
+test('no handler asks the session for the user identifier itself', () => {
   const dateien = routesFiles(ROUTES);
   assert.ok(dateien.length >= 10, `Nur ${dateien.length} Router-Dateien gefunden — dann prüft der Rest nichts.`);
 
@@ -86,7 +86,7 @@ test('kein Handler fragt die Sitzung selbst nach der Nutzerkennung', () => {
   );
 });
 
-test('kein Router bringt einen eigenen Wächter mit', () => {
+test('no router brings its own guard', () => {
   // Der zweite Teil desselben Befunds: routes/auth.ts DEFINIERTE requireLogin
   // und requireAdmin selbst — sitzungsgebunden, während src/account/http/login.ts und
   // routes/api_v1/middleware.ts längst token-fähige Fassungen hatten. Drei

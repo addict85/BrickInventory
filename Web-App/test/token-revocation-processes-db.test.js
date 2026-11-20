@@ -28,7 +28,7 @@ const tokenCache = _req('src/account/tokenCache.js');
 const pgNotify = testAccess().notification;
 const { Client } = require(path.join(__dirname, '..', 'node_modules', 'pg'));
 
-test('Token-Widerruf über alle Prozesse', { concurrency: 1 }, async t => {
+test('token revocation across all processes', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `widerruf_p_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -60,7 +60,7 @@ test('Token-Widerruf über alle Prozesse', { concurrency: 1 }, async t => {
   pgNotify.unlisten('token_widerrufen', fertig);
   assert.ok(bereit, 'die Horch-Verbindung kam nicht zustande');
 
-  await t.test('ein Widerruf aus einem anderen Prozess gilt sofort', async () => {
+  await t.test('a revocation from another process applies immediately', async () => {
     const token = await auth.createToken(uid, 'Probe', true);
     assert.ok((await auth.pruefeToken(token)).nutzer, 'Vorbedingung: Token gilt');
     await anderer.query('DELETE FROM api_tokens WHERE token = $1', [auth.tokenDigest(token)]);
@@ -74,7 +74,7 @@ test('Token-Widerruf über alle Prozesse', { concurrency: 1 }, async t => {
     assert.equal(gilt, false, 'der widerrufene Token gilt im Zwischenspeicher weiter');
   });
 
-  await t.test('ein Widerruf hier meldet sich bei den anderen', async () => {
+  await t.test('a revocation here notifies the others', async () => {
     const gehoert = [];
     anderer.on('notification', m => gehoert.push(m.channel));
     await anderer.query('LISTEN token_widerrufen');

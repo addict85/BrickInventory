@@ -20,7 +20,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 
-test('eine echte Währungsänderung stösst den Preis-Job an, ein No-op-Speichern nicht', { concurrency: 1 }, async t => {
+test('a real currency change triggers the price job, a no-op save does not', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   // Beobachtet wird der Termin des geplanten Auftrags 'preise'.

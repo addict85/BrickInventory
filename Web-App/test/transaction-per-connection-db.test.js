@@ -27,7 +27,7 @@ const { buildServices } = require(path.join(DIST, 'startup', 'wiring.js'));
 const { konfig } = require(path.join(DIST, 'src', 'infra', 'config.js'));
 const { inSystemContext } = require(path.join(DIST, 'src', 'infra', 'accountContext.js'));
 
-test('Transaktionskontext je Verbindung', { concurrency: 1 }, async t => {
+test('transaction context per connection', { concurrency: 1 }, async t => {
   const k0 = modul.dbKonfigFromEnvironment();
   const db = modul.createDb({ ...k0, pool: { ...k0.pool, max: 1 } });
   try {
@@ -44,7 +44,7 @@ test('Transaktionskontext je Verbindung', { concurrency: 1 }, async t => {
   const k = contexts.collection;
   const imSystem = (/** @type {() => Promise<any>} */ f) => inSystemContext('test', f);
 
-  await t.test('zwei Transaktionen auf einer Verbindung teilen t und die Dienste darin', async () => {
+  await t.test('two transactions on one connection share t and the services in it', async () => {
     const t1 = await imSystem(() => k.transaktion(async (/** @type {any} */ t) => t));
     const t2 = await imSystem(() => k.transaktion(async (/** @type {any} */ t) => t));
     assert.equal(t1, t2);
@@ -52,7 +52,7 @@ test('Transaktionskontext je Verbindung', { concurrency: 1 }, async t => {
     assert.notEqual(t1, k);
   });
 
-  await t.test('ein Nachzügler fragt nicht in die nächste Transaktion der Verbindung', async () => {
+  await t.test('a straggler does not query into the next transaction of the connection', async () => {
     /** @type {Promise<unknown> | undefined} */
     let stragglers;
     /** @type {() => void} */

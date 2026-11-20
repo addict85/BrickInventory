@@ -18,7 +18,7 @@ const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 const { holdsSet, catalogSet } = require('./helpers/inventory');
 
-test('Anzahl „+“ meldet das neue Exemplar mit Preis', { concurrency: 1, timeout: 300_000 }, async t => {
+test('quantity "+" reports the new copy with price', { concurrency: 1, timeout: 300_000 }, async t => {
   const app = await startApp(t, {
     name: `plus_${process.pid}`,
     bestand: async (db, uid) => {
@@ -48,7 +48,7 @@ test('Anzahl „+“ meldet das neue Exemplar mit Preis', { concurrency: 1, time
     'Toast nach „+“',
   );
 
-  await t.test('Toast nennt den geschätzten Preis', async () => {
+  await t.test('toast names the estimated price', async () => {
     const texte = await b.auswerten(`[...document.querySelectorAll('#toasts .toast')].map(x => x.textContent)`);
     assert.ok(
       texte.some(x => /Exemplar mit geschätztem Preis .*364[.,]32.* angelegt/.test(x)),
@@ -61,12 +61,12 @@ test('Anzahl „+“ meldet das neue Exemplar mit Preis', { concurrency: 1, time
     );
     assert.equal(zeile.price_estimated, true, 'Testdaten: der Server schätzt den Preis');
   });
-  await t.test('die Kaufpreisliste erklärt ≈', async () => {
+  await t.test('the purchase price list explains ≈', async () => {
     await bis(`/≈/.test(document.getElementById('m-acq-summary')?.textContent || '')`, 'geschätzte Zeile');
     const legende = await b.auswerten(`document.querySelector('#m-acq-summary .acq-legende')?.textContent || ''`);
     assert.match(legende, /≈ geschätzt/);
   });
-  await t.test('Ändern öffnet die Kaufpreise', async () => {
+  await t.test('change opens the purchase prices', async () => {
     const da = await b.auswerten(
       `(() => { const k = [...document.querySelectorAll('#toasts .toast-aktion')].find(x => x.textContent === 'Ändern'); k?.click(); return !!k; })()`,
     );

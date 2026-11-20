@@ -70,7 +70,7 @@ async function dbReachable() {
   }
 }
 
-test('Bestandsabgleich der Teileliste', { concurrency: 1 }, async t => {
+test('inventory reconciliation of the parts list', { concurrency: 1 }, async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -93,7 +93,7 @@ test('Bestandsabgleich der Teileliste', { concurrency: 1 }, async t => {
   ];
   const bestand = await ownedQuantitiesQuery([UID], frage);
 
-  await t.test('ein zweimal besessenes Set liefert seine Teile doppelt', () => {
+  await t.test('a set owned twice delivers its parts twice', () => {
     assert.equal(
       bestand['3001|0']?.gesamt,
       6,
@@ -103,13 +103,13 @@ test('Bestandsabgleich der Teileliste', { concurrency: 1 }, async t => {
     assert.equal(bestand['3001|0']?.lose, 0, 'Ein Set-Teil ist nicht „lose"');
   });
 
-  await t.test('ein einmal besessenes Set bleibt, wie es war', () => {
+  await t.test('a set owned once stays as it was', () => {
     // Die Gegenrichtung: Die Multiplikation darf nicht aus jeder Zeile mehr
     // machen, sondern nur aus denen mit einer Stückzahl über eins.
     assert.equal(bestand['3002|0']?.gesamt, 5);
   });
 
-  await t.test('manuell erfasste Teile werden NIE multipliziert', () => {
+  await t.test('manually captured parts are NEVER multiplied', () => {
     assert.equal(bestand['3003|0']?.gesamt, 7);
     assert.equal(
       bestand['3003|0']?.lose,
@@ -118,7 +118,7 @@ test('Bestandsabgleich der Teileliste', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('Minifiguren zaehlen mit — auch die aus Sets', () => {
+  await t.test('minifigures count too — also those from sets', () => {
     // Der Befund hinter dieser Prüfung: Gefragt wurde in `parts`, und dort
     // steht keine Figur. JEDE Minifigur einer Teileliste galt deshalb als
     // fehlend, auch wenn sie im Bestand stand — stillschweigend, denn „nicht
@@ -132,12 +132,12 @@ test('Bestandsabgleich der Teileliste', { concurrency: 1 }, async t => {
     assert.equal(bestand['trn241|0']?.lose, 0, 'Eine Figur aus einem Set ist nicht „lose"');
   });
 
-  await t.test('manuell erfasste Figuren zaehlen als lose', () => {
+  await t.test('manually captured figures count as loose', () => {
     assert.equal(bestand['cty0500|0']?.gesamt, 2);
     assert.equal(bestand['cty0500|0']?.lose, 2);
   });
 
-  await t.test('eine Teilezeile ohne Set faellt nicht aus der Antwort', () => {
+  await t.test('a part row without a set does not drop out of the response', () => {
     // Der Grund fuer LEFT statt INNER: Ein geloeschtes Set liesse seine
     // Teilezeilen sonst spurlos verschwinden — und der Abgleich meldete ein
     // Teil als fehlend, das dasteht.
@@ -151,7 +151,7 @@ test('Bestandsabgleich der Teileliste', { concurrency: 1 }, async t => {
  * Gegenprobe (durchgeführt): Schlüssel zurück auf `${blNum}|…` gesetzt →
  * dieser Schritt wird rot.
  */
-test('Bedarf und Bestand werden über dieselbe Nummer zusammengeführt', () => {
+test('demand and inventory are merged via the same number', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const { ohneKommentare } = require('./helpers/sources');
@@ -186,7 +186,7 @@ test('Bedarf und Bestand werden über dieselbe Nummer zusammengeführt', () => {
  *
  * Gegenprobe (durchgeführt): `scopeQuery('parts')` wieder eingesetzt → rot.
  */
-test('der Bestandsabgleich liest sein Blickfeld aus der eigenen Wahl', () => {
+test('the inventory reconciliation reads its scope from its own choice', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const { ohneKommentare } = require('./helpers/sources');

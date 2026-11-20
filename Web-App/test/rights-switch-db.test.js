@@ -35,7 +35,7 @@ const CHEF = 'rechte_chef',
   ZIEL = 'rechte_ziel',
   PASS = 'richtigesPasswort1';
 
-test('ein Rechtewechsel und eine Loeschung beenden die Sitzung des Ziels', { concurrency: 1 }, async t => {
+test("a change of rights and a deletion end the target's session", { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username IN ($1,$2)', [CHEF, ZIEL]);

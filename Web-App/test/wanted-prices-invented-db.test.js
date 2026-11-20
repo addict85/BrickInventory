@@ -43,7 +43,7 @@ https.get = (url, _opts, cb) => {
   return req;
 };
 
-test('Merkposten-Preise rufen BrickLink nur für Sets des Katalogs', { concurrency: 1 }, async t => {
+test('wishlist item prices call BrickLink only for sets in the catalog', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
   const INVENTED = '98765-1';
@@ -82,21 +82,21 @@ test('Merkposten-Preise rufen BrickLink nur für Sets des Katalogs', { concurren
   });
   const { pricesForBothConditions } = _req('src/wanted/wanted.js');
 
-  await t.test('erfundene Nummer: kein BrickLink-Aufruf', async () => {
+  await t.test('invented number: no BrickLink call', async () => {
     aufrufe.length = 0;
     const r = await pricesForBothConditions(uid, INVENTED);
     assert.deepEqual(r.current, {});
     assert.equal(aufrufe.length, 0, `unnötig abgerufen: ${aufrufe.join(' | ')}`);
   });
 
-  await t.test('eine kein-Preis-Markierung ist kein Katalogeintrag', async () => {
+  await t.test('a no-price marker is not a catalog entry', async () => {
     aufrufe.length = 0;
     const r = await pricesForBothConditions(uid, MARKED);
     assert.deepEqual(r.current, {});
     assert.equal(aufrufe.length, 0, `unnötig abgerufen: ${aufrufe.join(' | ')}`);
   });
 
-  await t.test('bekanntes Set wird abgerufen', async () => {
+  await t.test('known set is fetched', async () => {
     aufrufe.length = 0;
     const r = await pricesForBothConditions(uid, KNOWN);
     assert.ok(aufrufe.length > 0, 'die Attrappe sah keinen Aufruf — die Gegenprobe oben bewiese nichts');

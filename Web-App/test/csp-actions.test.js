@@ -26,7 +26,7 @@ const HTML = fs.readFileSync(path.join(PUB, 'index.html'), 'utf8');
 const ACT = fs.readFileSync(path.join(PUB, 'js', 'actions.js'), 'utf8');
 const JS_FILES = fs.readdirSync(path.join(PUB, 'js')).filter(f => isAppModule(f));
 
-test('nirgends mehr Inline-Handler — weder in index.html noch in den Templates', () => {
+test('no more inline handlers anywhere — neither in index.html nor in the templates', () => {
   // Wichtig: (?<!data-) schliesst data-onerror aus, und das Muster verlangt ="
   // — el.onclick = fn in JavaScript ist CSP-konform und darf bleiben.
   const RE = /(?<!data-)\bon(click|change|input|blur|keydown|error|load|submit|mouseenter|mouseleave)=\\?"/g;
@@ -43,7 +43,7 @@ test('nirgends mehr Inline-Handler — weder in index.html noch in den Templates
   assert.deepEqual(found, [], `Noch ${found.length} Inline-Handler — mit denen wäre die geschlossene CSP ein Ausfall`);
 });
 
-test('kein style-Attribut und kein <style> im Markup — ausser dem Startgerüst, das die CSP per Hash erlaubt', () => {
+test('no style attribute and no <style> in the markup — except the start skeleton, which the CSP allows by hash', () => {
   // Gegenprobe: ein data-stil in index.html wieder als style= → rot.
   const strip = t =>
     require('./helpers/sources')
@@ -66,7 +66,7 @@ test('kein style-Attribut und kein <style> im Markup — ausser dem Startgerüst
   assert.deepEqual(found, []);
 });
 
-test('der Dispatcher kommt ohne eval aus', () => {
+test('the dispatcher gets by without eval', () => {
   // Kommentare weg: Der Erklärtext nennt "kein eval, kein new Function" und
   // würde die Prüfung sonst selbst auslösen.
   const code = ACT.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
@@ -86,7 +86,7 @@ test('der Dispatcher kommt ohne eval aus', () => {
   );
 });
 
-test('Hover-Effekte liegen im Stylesheet', () => {
+test('hover effects live in the stylesheet', () => {
   const css = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
   assert.match(
     css,
@@ -95,7 +95,7 @@ test('Hover-Effekte liegen im Stylesheet', () => {
   );
 });
 
-test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
+test('delete buttons on tiles carry a trash can, no ✕', () => {
   const core = require('./helpers/sources').coreSource();
   assert.match(core, /const TRASH_ICON_SVG/, 'Symbol fehlt');
   // currentColor: derselbe Pfad dient weiss auf rotem Grund (.delbtn) und rot
@@ -195,7 +195,7 @@ test('Löschknöpfe auf Kacheln tragen einen Papierkorb, kein ✕', () => {
   assert.match(i18n, /'figs\.delete':\s*'Delete minifigure'/, 'EN-Beschriftung fehlt');
 });
 
-test('der Löschknopf hat je Design eine eigene Fassung', () => {
+test('the delete button has its own version per theme', () => {
   // Was dieser Test NICHT mehr prüft
   const css = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
   const brick = fs.readFileSync(path.join(PUB, 'themes', 'brick.css'), 'utf8');
@@ -228,7 +228,7 @@ test('der Löschknopf hat je Design eine eigene Fassung', () => {
   }
 });
 
-test('die Schriftdateien liegen wirklich im Baum', () => {
+test('the font files really are in the tree', () => {
   // Eine fonts.css, deren woff2 fehlen, ist schlimmer als der alte Zustand:
   // Der Browser wartet erst auf einen 404 und fällt dann auf Systemschriften
   // zurück — sichtbar erst im Betrieb, nicht im Typecheck.
@@ -244,7 +244,7 @@ test('die Schriftdateien liegen wirklich im Baum', () => {
   assert.ok(licenses.length >= 2, 'Die Schriftlizenzen fehlen neben den Dateien');
 });
 
-test('externe Links öffnen ohne Zugriff auf das Öffnerfenster', () => {
+test('external links open without access to the opener window', () => {
   // Ein target="_blank" ohne rel="noopener" gibt der geöffneten Seite über
   // window.opener Zugriff auf das eigene Fenster — sie kann es umleiten
   // (Tabnabbing). Moderne Browser setzen noopener bei _blank inzwischen von

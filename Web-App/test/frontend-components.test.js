@@ -29,7 +29,7 @@ function module_() {
   return gefiltert;
 }
 
-test('die Detailzeile wird nirgends mehr von Hand gebaut', () => {
+test('the detail row is no longer built by hand anywhere', () => {
   const treffer = [];
   for (const f of module_()) {
     const src = fs.readFileSync(path.join(JS, f), 'utf8');
@@ -46,7 +46,7 @@ test('die Detailzeile wird nirgends mehr von Hand gebaut', () => {
   );
 });
 
-test('die Ladeanzeige wird nirgends mehr von Hand gebaut', () => {
+test('the loading indicator is no longer built by hand anywhere', () => {
   const treffer = [];
   for (const f of module_()) {
     const src = fs.readFileSync(path.join(JS, f), 'utf8');
@@ -63,7 +63,7 @@ test('die Ladeanzeige wird nirgends mehr von Hand gebaut', () => {
   );
 });
 
-test('der Baustein erzeugt das Markup, das die Stylesheets erwarten', async () => {
+test('the building block creates the markup the stylesheets expect', async () => {
   // Nicht der Wortlaut der Funktion, sondern ihr Ergebnis, am Bündel in jsdom.
   const { w, d } = await openUi();
   try {

@@ -4,7 +4,7 @@
 const test = require('node:test');
 const { DefaultSerializer } = require('node:v8');
 
-test('Rahmen und Text abwechselnd', () => {
+test('border and text alternating', () => {
   const s = new DefaultSerializer();
   s.writeHeader();
   s.writeValue({ type: 'test:diagnostic', data: { nesting: 0, message: 'rahmen', file: __filename } });

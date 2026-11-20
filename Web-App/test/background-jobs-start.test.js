@@ -41,7 +41,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { warte } = require('./helpers/time');
 
-test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 1 }, async t => {
+test('starting the job process queues everything as a job', { concurrency: 1 }, async t => {
   const db = testData();
   /** Was startJobs zurückgibt: Der Test hält es wie server.ts. */
   const runs = [];
@@ -67,7 +67,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
                                  FROM jobs WHERE status = 'offen'`);
   const plan = type => zeilen.find(z => z.dedupe_key === `plan:${type}`);
 
-  await t.test('jede geplante Art hat einen Termin', () => {
+  await t.test('every scheduled kind has an appointment', () => {
     for (const { art } of require('./helpers/sources')
       .testServices()
       .jobQueue.signedInKinds()
@@ -84,7 +84,7 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
     );
   });
 
-  await t.test('jeder Nachlauf ist einmal eingestellt', async () => {
+  await t.test('every follow-up run is queued once', async () => {
     const { FOLLOWUP_RUNS } = _req('src/management/startFollowUpRuns.js');
     for (const schritt of Object.keys(FOLLOWUP_RUNS))
       assert.ok(
@@ -97,11 +97,11 @@ test('der Start des Job-Prozesses stellt alles als Auftrag ein', { concurrency: 
     assert.equal(doppelt, undefined, 'ein zweiter Start legt Termine doppelt an');
   });
 
-  await t.test('der Worker läuft an', () => {
+  await t.test('the worker starts', () => {
     assert.ok(workerStarted >= 1);
   });
 
-  await t.test('das Lebenszeichen folgt dem Worker', async () => {
+  await t.test('the sign of life follows the worker', async () => {
     const jp = _req('startup/jobsProcess.js');
     const { liesZustand, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
     for (let i = 0; i < 50 && !(await liesZustand(jp.HEARTBEAT_KEY)); i++) await warte(20);

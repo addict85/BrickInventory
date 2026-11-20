@@ -31,16 +31,16 @@ const WITHOUT_KEY = {
   },
 };
 
-test('ohne Rebrickable-Schlüssel: Sammlung mit Hinweisband', async t => {
+test('without a Rebrickable key: collection with hint banner', async t => {
   const { w, d, aufrufe } = await openUi(WITHOUT_KEY);
   try {
     const band = d.getElementById('rb-hinweis');
     await warte(() => !band.hidden, 2000);
-    await t.test('Band erscheint', () => {
+    await t.test('banner appears', () => {
       assert.equal(band.hidden, false);
       assert.match(band.textContent, /Rebrickable/);
     });
-    await t.test('Sammlung statt Einstellungen', async () => {
+    await t.test('collection instead of settings', async () => {
       await takt(50);
       assert.equal(d.getElementById('tab-gallery').classList.contains('active'), true);
       assert.equal(d.getElementById('tab-settings').classList.contains('active'), false);
@@ -49,7 +49,7 @@ test('ohne Rebrickable-Schlüssel: Sammlung mit Hinweisband', async t => {
         'Sammlung nicht geladen',
       );
     });
-    await t.test('Link führt zum Feld', async () => {
+    await t.test('link leads to the field', async () => {
       band.querySelector('[data-click="rbHinweisOeffnen"]').click();
       await takt(50);
       assert.equal(d.getElementById('tab-settings').classList.contains('active'), true);
@@ -62,7 +62,7 @@ test('ohne Rebrickable-Schlüssel: Sammlung mit Hinweisband', async t => {
   }
 });
 
-test('weggeklickt bleibt es weg — auch in einer neuen Sitzung', async () => {
+test('dismissed it stays away — even in a new session', async () => {
   const erst = await openUi(WITHOUT_KEY);
   let gemerkt;
   try {
@@ -86,7 +86,7 @@ test('weggeklickt bleibt es weg — auch in einer neuen Sitzung', async () => {
   }
 });
 
-test('auch nach 31 Tagen bleibt es weg, ein anderes Konto sieht es wieder', async t => {
+test('even after 31 days it stays away, another account sees it again', async t => {
   const erst = await openUi(WITHOUT_KEY);
   let schluessel;
   try {
@@ -96,7 +96,7 @@ test('auch nach 31 Tagen bleibt es weg, ein anderes Konto sieht es wieder', asyn
   } finally {
     erst.w.close();
   }
-  await t.test('auch nach 31 Tagen bleibt es weg', async () => {
+  await t.test('even after 31 days it stays away', async () => {
     const vor31 = Date.now() - 31 * 24 * 3600 * 1000;
     const { w, d, ruhig } = await openUi(WITHOUT_KEY, {
       vorher: f => {
@@ -111,7 +111,7 @@ test('auch nach 31 Tagen bleibt es weg, ein anderes Konto sieht es wieder', asyn
       w.close();
     }
   });
-  await t.test('ein anderes Konto sieht es wieder', async () => {
+  await t.test('another account sees it again', async () => {
     const { w, d } = await openUi(
       {
         ...WITHOUT_KEY,
@@ -132,7 +132,7 @@ test('auch nach 31 Tagen bleibt es weg, ein anderes Konto sieht es wieder', asyn
   });
 });
 
-test('nach „Später“ im Assistenten erscheint das Band', async () => {
+test('after “Später” in the wizard the banner appears', async () => {
   const { w, d, ruhig } = await openUi({
     ...WITHOUT_KEY,
     '/v1/settings/einrichtung': {
@@ -154,7 +154,7 @@ test('nach „Später“ im Assistenten erscheint das Band', async () => {
   }
 });
 
-test('mit Schlüssel kein Band', async () => {
+test('with a key no banner', async () => {
   const { w, d, ruhig } = await openUi();
   try {
     assert.ok(await ruhig());

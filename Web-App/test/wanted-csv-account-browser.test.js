@@ -13,7 +13,7 @@ const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 const { patternHousehold } = require('./helpers/inventory');
 
-test('Merkliste: CSV-Import in das gewählte Konto', { timeout: 120_000 }, async t => {
+test('wishlist: CSV import into the selected account', { timeout: 120_000 }, async t => {
   const app = await startApp(t, { name: `mkcsv_${process.pid}`, bestand: patternHousehold });
   if (app.grund) {
     t.skip(app.grund);

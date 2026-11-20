@@ -28,7 +28,7 @@ const datei = (name, inhalt) => {
   return p;
 };
 
-test('das Sitzungsgeheimnis kommt aus der Datei', () => {
+test('the session secret comes from the file', () => {
   const env = {
     SESSION_SECRET_FILE: datei('sitzung', 'aus-der-datei-lang-genug-fuer-den-start-42\n'),
     ADMIN_PASSWORD_FILE: datei('verwalter', 'Verwalter-aus-Datei-1'),
@@ -40,14 +40,14 @@ test('das Sitzungsgeheimnis kommt aus der Datei', () => {
   assert.equal(ladeKonfig(env).sessionSecret, 'aus-der-datei-lang-genug-fuer-den-start-42');
 });
 
-test('das Datenbankpasswort kommt aus der Datei', () => {
+test('the database password comes from the file', () => {
   const v = databaseConnection({ PGPASSWORD_FILE: datei('db', 'db-aus-datei\n'), PGUSER: 'brickinventory_app' });
   assert.equal(v.password, 'db-aus-datei');
   const url = databaseConnection({ DATABASE_URL_FILE: datei('url', 'postgres://a:b@c/d\n') });
   assert.equal(url.connectionString, 'postgres://a:b@c/d');
 });
 
-test('beide gesetzt ist ein Fehler, eine fehlende Datei auch', () => {
+test('both set is an error, a missing file too', () => {
   assert.throws(
     () => ladeKonfig({ SESSION_SECRET: 'x'.repeat(40), SESSION_SECRET_FILE: datei('s2', 'y'.repeat(40)) }),
     (/** @type {any} */ e) =>
@@ -59,6 +59,6 @@ test('beide gesetzt ist ein Fehler, eine fehlende Datei auch', () => {
   );
 });
 
-test('ohne X_FILE wie bisher', () => {
+test('without X_FILE as before', () => {
   assert.equal(ladeKonfig({ SESSION_SECRET: 'wie-bisher' }).sessionSecret, 'wie-bisher');
 });

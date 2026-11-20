@@ -10,7 +10,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-test('4. und die Webapp löst ihn ein', async () => {
+test('4. and the web app redeems it', async () => {
   const { openUi, warte } = require('./helpers/ui');
   const { w, d, aufrufe } = await openUi(
     {

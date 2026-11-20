@@ -146,7 +146,7 @@ async function setup() {
   }
 }
 
-test('die Verschiebung sperrt auf (Quellkonto, Set)', { concurrency: 1 }, async t => {
+test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -186,7 +186,7 @@ test('die Verschiebung sperrt auf (Quellkonto, Set)', { concurrency: 1 }, async 
     }
   }
 
-  await t.test('A. Sperre auf (Quellkonto, Set) — die Verschiebung wartet', async () => {
+  await t.test('A. lock on (source account, set) — the move waits', async () => {
     const acq = await erfassungsIds(MAIN, SN_A);
     assert.equal(acq.length, 1, `Vorbedingung: eine Erfassung für ${SN_A}`);
 
@@ -232,7 +232,7 @@ test('die Verschiebung sperrt auf (Quellkonto, Set)', { concurrency: 1 }, async 
     });
   });
 
-  await t.test('B. Sperre auf einem ANDEREN Set — sie wartet nicht', async () => {
+  await t.test('B. lock on ANOTHER set — it does not wait', async () => {
     // Der Schlüssel der Route muss davon abhängen, WELCHES Set wandert.
     // GEMESSEN: Steht in der Route eine feste Setnummer statt sn, wartet
     // diese Verschiebung mit, und nur dieser Fall wird rot — A bleibt grün.
@@ -259,7 +259,7 @@ test('die Verschiebung sperrt auf (Quellkonto, Set)', { concurrency: 1 }, async 
     });
   });
 
-  await t.test('C. Sperre auf dem ZIELkonto — sie wartet nicht', async () => {
+  await t.test('C. lock on the TARGET account — it does not wait', async () => {
     // Das ist der eigentliche Inhalt von `fromId`: Serialisiert wird über das
     // Konto, aus dem etwas WEGgeht — dort wird gelesen, gerechnet und
     // gelöscht. GEMESSEN: Steht `toId` in der Route, werden A UND dieser Fall

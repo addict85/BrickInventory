@@ -179,7 +179,7 @@ const showPage = n => {
   for (const cb of w.__ioCallbacks) cb([{ isIntersecting: true, target: el }]);
 };
 
-test('Katalog-Frontend: Seitenblöcke, Jahresfilter, eigener Scrollbalken', async () => {
+test('catalog frontend: page blocks, year filter, own scroll bar', async () => {
   w.eval('initCatalog()');
   await sleep(80);
 

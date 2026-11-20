@@ -29,7 +29,7 @@ const { Client } = require(path.join(__dirname, '..', 'node_modules', 'pg'));
 
 const { bis } = require('./helpers/time');
 
-test('Sitzungsversion über alle Prozesse', { concurrency: 1 }, async t => {
+test('session version across all processes', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `sv_prozesse_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
@@ -51,7 +51,7 @@ test('Sitzungsversion über alle Prozesse', { concurrency: 1 }, async t => {
   const hoeher = () => db.run('UPDATE users SET session_version = session_version + 1 WHERE id = $1', [uid]);
   const inDb = async () => (await db.get('SELECT session_version AS v FROM users WHERE id = $1', [uid])).v;
 
-  await t.test('ohne Horch-Verbindung gilt nur die Datenbank', async () => {
+  await t.test('without a listen connection only the database applies', async () => {
     await sv.currentSessionVersion(uid);
     await hoeher();
     assert.equal(await sv.currentSessionVersion(uid), await inDb());
@@ -67,7 +67,7 @@ test('Sitzungsversion über alle Prozesse', { concurrency: 1 }, async t => {
   signals.unlisten('sitzung_version', fertig);
   assert.ok(bereit, 'die Horch-Verbindung kam nicht zustande');
 
-  await t.test('eine Erhöhung aus einem anderen Prozess gilt sofort', async () => {
+  await t.test('an increment from another process applies immediately', async () => {
     const vorher = await sv.currentSessionVersion(uid);
     await hoeher();
     assert.equal(await sv.currentSessionVersion(uid), vorher, 'Vorbedingung: der Zwischenspeicher trägt sie noch');
@@ -79,7 +79,7 @@ test('Sitzungsversion über alle Prozesse', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('eine Erhöhung hier meldet sich bei den anderen', async () => {
+  await t.test('an increment here notifies the others', async () => {
     const gehoert = [];
     anderer.on('notification', m => gehoert.push(m.channel));
     await anderer.query('LISTEN sitzung_version');

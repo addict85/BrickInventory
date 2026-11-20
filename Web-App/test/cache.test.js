@@ -17,7 +17,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { Zwischenspeicher, Faecher } = _req('src/infra/cache.js');
 const { createCatalog } = _req('src/catalog/area.js');
 
-test('der älteste weicht, wenn der Speicher voll ist', () => {
+test('the oldest gives way when the store is full', () => {
   const z = new Zwischenspeicher(2);
   z.setze('a', 1);
   z.setze('b', 2);
@@ -28,7 +28,7 @@ test('der älteste weicht, wenn der Speicher voll ist', () => {
   assert.equal(z.groesse, 2);
 });
 
-test('nach der Frist vergessen, eine eigene Frist gilt nur für ihren Eintrag', t => {
+test('forgotten after the deadline, an own deadline only applies to its entry', t => {
   t.mock.timers.enable({ apis: ['Date'], now: 1_000_000 });
   const z = new Zwischenspeicher(10, 60_000);
   z.setze('lang', true);
@@ -40,7 +40,7 @@ test('nach der Frist vergessen, eine eigene Frist gilt nur für ihren Eintrag', 
   assert.equal(z.hole('lang'), undefined);
 });
 
-test('ein Fach bleibt, je Fabrik eigene Fächer', () => {
+test('a compartment stays, own compartments per factory', () => {
   const f = new Faecher();
   const a = f.fach('x', () => new Zwischenspeicher(1));
   assert.equal(

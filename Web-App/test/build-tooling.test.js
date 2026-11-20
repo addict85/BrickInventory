@@ -15,7 +15,7 @@ const { execFileSync, spawnSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
 
-test('die Build-Skripte bevorzugen das lokal installierte esbuild', () => {
+test('the build scripts prefer the locally installed esbuild', () => {
   for (const f of ['scripts/build-ts.js', 'scripts/build-frontend.js']) {
     const src = read(f);
     assert.match(
@@ -26,7 +26,7 @@ test('die Build-Skripte bevorzugen das lokal installierte esbuild', () => {
   }
 });
 
-test('build-ts.js startet esbuild genau einmal, nicht je Datei', () => {
+test('build-ts.js starts esbuild exactly once, not per file', () => {
   const src = read('scripts/build-ts.js');
   // Ein Aufruf mit --outdir/--outbase statt einer Schleife mit --outfile.
   assert.match(src, /--outbase=/, 'Ohne --outbase geht die Verzeichnisstruktur verloren');
@@ -37,7 +37,7 @@ test('build-ts.js startet esbuild genau einmal, nicht je Datei', () => {
   );
 });
 
-test('die npx-Rückfallversion stimmt mit package.json überein', () => {
+test('the npx fallback version matches package.json', () => {
   const pkg = JSON.parse(read('package.json'));
   const want = (pkg.devDependencies.esbuild || '').replace(/^[^0-9]*/, '');
   assert.ok(want, 'esbuild fehlt in den devDependencies');
@@ -52,7 +52,7 @@ test('die npx-Rückfallversion stimmt mit package.json überein', () => {
   }
 });
 
-test('Tests bauen dist/ nicht neu, wenn es aktuell ist', () => {
+test('tests do not rebuild dist/ if it is current', () => {
   const src = read('test/helpers/sources.js');
   assert.match(
     src,
@@ -61,7 +61,7 @@ test('Tests bauen dist/ nicht neu, wenn es aktuell ist', () => {
   );
 });
 
-test('das Runtime-Stage führt keine npm-Skripte aus', () => {
+test('the runtime stage runs no npm scripts', () => {
   // Nach dem `FROM` des Runtime-Stages darf kein npm-Befehl stehen, der Skripte
   // auslöst: scripts/ wird dorthin nicht kopiert, der Docker-Build bräche ab —
   // sichtbar nur im echten Build, nicht in Typecheck oder Testsuite.
@@ -76,7 +76,7 @@ test('das Runtime-Stage führt keine npm-Skripte aus', () => {
   );
 });
 
-test('devDependencies landen nicht im Laufzeit-Image', () => {
+test('devDependencies do not end up in the runtime image', () => {
   // Build-Werkzeuge gehören nicht ins Image: unnötige Grösse und Angriffsfläche.
   const df = read('Dockerfile');
   assert.match(df, /npm prune --omit=dev/, 'Ohne prune enthält das übernommene node_modules auch die devDependencies');
@@ -87,7 +87,7 @@ test('devDependencies landen nicht im Laufzeit-Image', () => {
   );
 });
 
-test('compose.yaml mountet nichts mehr nach public/', () => {
+test('compose.yaml no longer mounts anything into public/', () => {
   // Bilder liegen unter data/images/, und public/ ist unveränderlicher
   // Build-Inhalt: Ein Schreib-Mount hinein hebelt das auf.
   const compose = read('compose.yaml');
@@ -96,7 +96,7 @@ test('compose.yaml mountet nichts mehr nach public/', () => {
   assert.deepEqual(intoPublic, [], `Mount nach public/: ${intoPublic.join(', ')} — Bilder gehören unter /app/data`);
 });
 
-test('das Datenverzeichnis ist das einzige Datenvolume der App, der Schlüssel liegt daneben', () => {
+test("the data directory is the app's only data volume, the key lies next to it", () => {
   const compose = read('compose.yaml');
   // app und jobs hängen dasselbe ./data ein; daneben nur der Datenschlüssel,
   // der gerade nicht in data/ liegen soll (UPGRADE.md, Abschnitt 21).
@@ -108,7 +108,7 @@ test('das Datenverzeichnis ist das einzige Datenvolume der App, der Schlüssel l
   );
 });
 
-test('keine Build-Artefakte neben den TypeScript-Quellen', () => {
+test('no build artifacts next to the TypeScript sources', () => {
   // Erzeugnisse nur nach dist/ und public/js/app.bundle.js: Eine .js neben ihrer
   // .ts gewinnt bei require() ohne Endung, und `npm run dev` liefe veralteten Code.
   const walk = dir => {
@@ -139,7 +139,7 @@ test('keine Build-Artefakte neben den TypeScript-Quellen', () => {
  * Meldung bleibt aus. Nur die HAUPTVERSION: Typpakete ziehen in Neben- und
  * Patchversionen eigenständig nach.
  */
-test('@types/* beschreiben dieselbe Hauptversion wie das Paket selbst', () => {
+test('@types/* describe the same major version as the package itself', () => {
   const pkg = JSON.parse(read('package.json'));
   const alle = { ...pkg.dependencies, ...pkg.devDependencies };
   const haupt = s => {
@@ -179,7 +179,7 @@ test('@types/* beschreiben dieselbe Hauptversion wie das Paket selbst', () => {
 });
 
 // strictNullChecks bleibt an, und tsc muss sauber durchlaufen (CI-Schritt).
-test('tsconfig hat strictNullChecks an, und die CI prüft die Typen als eigenen Schritt', () => {
+test('tsconfig has strictNullChecks on, and the CI checks the types as a step of its own', () => {
   // Den tsc-Lauf selbst macht die CI (Schritt „Typprüfung“); hier doppelt
   // gelaufen kostete er jeden Testlauf rund 15 s (Prüfbericht arch17-web-b, N7).
   // Gegenprobe (05.11.2026): den Schritt `npx tsc --noEmit` aus web-ci.yml entfernt → rot.
@@ -200,7 +200,7 @@ test('tsconfig hat strictNullChecks an, und die CI prüft die Typen als eigenen 
  * mit einer Meldung ab, die nichts über die Ursache sagt. Kommentare raus,
  * BEVOR gesucht wird — sonst meldete die Regel ihren eigenen Erklärtext.
  */
-test('die Adresse der Test-Datenbank hat überall einen Rückfallwert', () => {
+test('the address of the test database has a fallback value everywhere', () => {
   const { ohneKommentare } = require('./helpers/sources');
   const dateien = fs.readdirSync(__dirname).filter(f => f.endsWith('.js'));
   let gelesen = 0;
@@ -231,7 +231,7 @@ test('die Adresse der Test-Datenbank hat überall einen Rückfallwert', () => {
  * EINMAL: pg_dump verweigert eine ältere Fassung als der Server, und zwei
  * Zahlen für dieselbe Sache laufen auseinander.
  */
-test('der pg-Klient in CI folgt der Version des Dienstes', () => {
+test('the pg client in CI follows the version of the service', () => {
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
 
   // Selbstbeweis: Ohne Dienstdefinition prüft alles darunter nichts.
@@ -261,7 +261,7 @@ test('der pg-Klient in CI folgt der Version des Dienstes', () => {
   );
 });
 
-test('beide Workflows melden, was rot war', () => {
+test('both workflows report what was red', () => {
   const wf = path.join(ROOT, '..', '.github', 'workflows');
   for (const datei of ['web-ci.yml', 'android.yml']) {
     const yml = fs.readFileSync(path.join(wf, datei), 'utf8');
@@ -313,7 +313,7 @@ function stepBody(yml, teilname) {
   return null;
 }
 
-test('die Sicherheitsprüfung sagt, was sie gefunden hat', () => {
+test('the security check says what it found', () => {
   // Der Befund
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
   const rumpf = stepBody(yml, 'Sicherheitsprüfung');
@@ -341,7 +341,7 @@ test('die Sicherheitsprüfung sagt, was sie gefunden hat', () => {
 // Die Auswertung aus dem Workflow läuft hier wirklich, mit einem nachgebauten
 // Bericht. Gegenprobe (03.11.2026 gemessen): `m.moderate` aus der Summe
 // gestrichen → rot „ein Befund „moderate“ macht den Lauf rot“.
-test('npm audit: ein Befund ab „moderate“ macht den Lauf rot', t => {
+test('npm audit: a finding from "moderate" makes the run red', t => {
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
   const rumpf = stepBody(yml, 'Sicherheitsprüfung');
   const stuecke = [...rumpf.matchAll(/node -e '\n([\s\S]*?)\n\s*'/g)].map(m => m[1]);
@@ -373,7 +373,7 @@ test('npm audit: ein Befund ab „moderate“ macht den Lauf rot', t => {
   assert.notEqual(lauf('critical').status, 0);
 });
 
-test('der CI-Workflow prüft, was er prüfen soll', () => {
+test('the CI workflow checks what it is supposed to check', () => {
   const p = path.join(ROOT, '..', '.github', 'workflows', 'web-ci.yml');
   assert.ok(fs.existsSync(p), 'Es gibt keinen CI-Workflow mehr');
   const yml = fs.readFileSync(p, 'utf8');
@@ -423,7 +423,7 @@ test('der CI-Workflow prüft, was er prüfen soll', () => {
   );
 });
 
-test('eine Pipe im Workflow verliert den Fehlschlag nicht', () => {
+test('a pipe in the workflow does not lose the failure', () => {
   // Gemessen, nicht vermutet
   const DURCHREICHER = /\|\s*(tee|head|tail|cat)\b/;
   const wf = path.join(ROOT, '..', '.github', 'workflows');
@@ -451,7 +451,7 @@ test('eine Pipe im Workflow verliert den Fehlschlag nicht', () => {
   assert.ok(geprueft >= 1, 'Kein run-Block mit Durchreicher gefunden — Muster veraltet?');
 });
 
-test('die noImplicitAny-Ausnahmeliste stimmt noch', () => {
+test('the noImplicitAny exception list is still correct', () => {
   // Das Skript prüft sich selbst in beide Richtungen (neue Schuld / verwaiste
   // Einträge) und wird hier nur ausgeführt, damit ein Verstoss auch dann
   // auffällt, wenn jemand nur `npm test` laufen lässt.
@@ -476,7 +476,7 @@ test('die noImplicitAny-Ausnahmeliste stimmt noch', () => {
  * Dockerfile". Die Begründung war richtig, die Zahl falsch — Node 20 hatte am
  * 30.04.2026 sein Lebensende erreicht und bekam seitdem keine …
  */
-test('Dockerfile und CI laufen auf derselben, unterstützten Node-Version', () => {
+test('Dockerfile and CI run on the same, supported Node version', () => {
   const docker = read('Dockerfile');
   // Der Workflow liegt im Wurzelverzeichnis des REPOSITORIES, nicht in
   // Web-App/ — siehe den Absatz im Test darueber.
@@ -529,7 +529,7 @@ test('Dockerfile und CI laufen auf derselben, unterstützten Node-Version', () =
  * oben greift hier nicht: `node` ist keine Abhängigkeit in package.json, die
  * Version steht im Dockerfile.
  */
-test('@types/node passt zur Node-Version aus dem Dockerfile', () => {
+test('@types/node matches the Node version from the Dockerfile', () => {
   const imBild = (read('Dockerfile').match(/^FROM node:(\d+)-/m) || [])[1];
   const typen = (JSON.parse(read('package.json')).devDependencies['@types/node'] || '').match(/(\d+)\./);
   assert.ok(imBild, 'Keine Node-Version im Dockerfile gefunden');
@@ -546,7 +546,7 @@ test('@types/node passt zur Node-Version aus dem Dockerfile', () => {
  * Eine Migration, die es in der Quelle nicht mehr gibt, liegt nach dem Bau
  * auch nicht mehr in dist/.
  */
-test('verwaiste .sql-Dateien verschwinden beim naechsten Bau', async t => {
+test('orphaned .sql files disappear on the next build', async t => {
   const ziel = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-bau-'));
   t.after(() => fs.rmSync(ziel, { recursive: true, force: true }));
 

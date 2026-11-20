@@ -49,12 +49,12 @@ function withKonfig(t) {
   const { j, fehler } = konfig();
   if (!j) {
     if (process.env.CI) assert.fail(`docker compose config im CI-Lauf: ${fehler}`);
-    t.skip(`kein docker compose: ${fehler}`);
+    t.skip(`no docker compose: ${fehler}`);
   }
   return j;
 }
 
-test('jeder Dienst hat begrenzte Protokolle', t => {
+test('every service has limited logs', t => {
   const j = withKonfig(t);
   if (!j) return;
   const dienste = Object.entries(j.services);
@@ -73,7 +73,7 @@ test('jeder Dienst hat begrenzte Protokolle', t => {
   assert.deepEqual(ohne, []);
 });
 
-test('jedes tmpfs ist ohne Ausführen, ohne setuid und in der Grösse begrenzt', t => {
+test('every tmpfs is without exec, without setuid and limited in size', t => {
   const j = withKonfig(t);
   if (!j) return;
   const falsch = [];
@@ -91,7 +91,7 @@ test('jedes tmpfs ist ohne Ausführen, ohne setuid und in der Grösse begrenzt',
   );
 });
 
-test('die Datenbank hängt nur in internen Netzen und schreibt nur in Daten und Socket', t => {
+test('the database hangs only in internal networks and only writes to data and socket', t => {
   const j = withKonfig(t);
   if (!j) return;
   const pg = j.services.postgres;
@@ -112,7 +112,7 @@ test('die Datenbank hängt nur in internen Netzen und schreibt nur in Daten und 
   );
 });
 
-test('pgweb gibt es nicht mehr, auch nicht im Profil tools', t => {
+test('pgweb no longer exists, not even in the tools profile', t => {
   const j = withKonfig(t);
   if (!j) return;
   assert.equal(j.services.pgweb, undefined);
@@ -121,7 +121,7 @@ test('pgweb gibt es nicht mehr, auch nicht im Profil tools', t => {
 
 // Gegenprobe (11.11.2026 gemessen): caddy-rechte wieder `brickinventory-caddy:2.11.8`
 // → rot „caddy-rechte nimmt dasselbe signierte Image“.
-test('Caddy kommt als signiertes Image per Digest, selbst gebaut aus Basis-Images per Digest', t => {
+test('Caddy comes as a signed image by digest, built itself from base images by digest', t => {
   const j = withKonfig(t);
   if (!j) return;
   const c = j.services.caddy;

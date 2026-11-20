@@ -23,7 +23,7 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const limiter = _req('src/account/loginLimiter.js');
 
-test('ohne Datenschlüssel sagt die Anmeldebremse ab, statt ungeschlüsselt zu hashen', async () => {
+test('without a data key the login brake refuses instead of hashing unkeyed', async () => {
   await assert.rejects(
     limiter.loginAllowed('203.0.113.5', `ohne_schluessel_${process.pid}`),
     /unter[\\/]datenschluessel|ENOTDIR/,

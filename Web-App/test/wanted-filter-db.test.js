@@ -106,7 +106,7 @@ async function dbReachable() {
 
 const nummern = liste => liste.map(w => `${w.set_number}/${w.condition}`);
 
-test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
+test('wishlist: search, condition, sorting, owner', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -116,7 +116,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
   const M = _req('src/wanted/wanted.js');
   const alle = [U.grandparent, U.enkel];
 
-  await t.test('1. Ohne Filter bleibt alles, wie es war', async () => {
+  await t.test('1. without a filter everything stays as it was', async () => {
     // Der Ausgangspunkt: Vier Parameter sind dazugekommen, und ein Aufruf ohne
     // sie muss weiterhin dieselbe Liste in derselben Reihenfolge liefern.
     const liste = await M.wantedItemsOf(alle, undefined, 'EUR');
@@ -125,7 +125,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
     assert.equal(liste[0].set_number, '75192-1');
   });
 
-  await t.test('2. Die Suche trifft Nummer UND Name', async () => {
+  await t.test('2. the search hits number AND name', async () => {
     const perNumber = await M.wantedItemsOf(alle, undefined, 'EUR', { search: '75192' });
     assert.deepEqual(nummern(perNumber), ['75192-1/N']);
 
@@ -135,7 +135,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
     assert.deepEqual(nummern(perName).sort(), ['10179-1/N', '10179-1/U', '75192-1/N']);
   });
 
-  await t.test('3. Ein Prozentzeichen sucht nach einem Prozentzeichen', async () => {
+  await t.test('3. a percent sign searches for a percent sign', async () => {
     // Ohne Maskierung wäre das '%' der LIKE-Platzhalter: Gesucht würde dann
     // nach „irgendwas, das 50 enthält" — und „Feuerwehr 5000er" käme mit.
     // Das ist nicht kaputt, aber es ist nicht, wonach gefragt wurde; für den
@@ -147,7 +147,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
     assert.equal(beide.length, 2, `„50" findet ${beide.length} statt 2 — Seed veraltet?`);
   });
 
-  await t.test('4. Der Zustand filtert, ein unbekannter Wert nicht', async () => {
+  await t.test('4. the condition filters, an unknown value does not', async () => {
     const gebraucht = await M.wantedItemsOf(alle, undefined, 'EUR', { condition: 'U' });
     assert.deepEqual(nummern(gebraucht), ['10179-1/U']);
     // Kleinschreibung soll genauso wirken — die Oberflächen schicken, was in
@@ -158,7 +158,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
     assert.equal((await M.wantedItemsOf(alle, undefined, 'EUR', { condition: 'X' })).length, 6);
   });
 
-  await t.test('5. Sortierung: der fehlende Wert steht hinten', async () => {
+  await t.test('5. sorting: the missing value is at the end', async () => {
     // 99999-1 hat keinen Namen (nicht im Katalog).
     const nachName = await M.wantedItemsOf(alle, undefined, 'EUR', { sort: 'name_asc' });
     assert.equal(
@@ -177,7 +177,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
     assert.equal(afterNumber[0].set_number, '10179-1');
   });
 
-  await t.test('6. Der Inhaber ist das Blickfeld, kein eigener Parameter', async () => {
+  await t.test('6. the owner is the view, not a separate parameter', async () => {
     // Genau so steht es in der Route: `accounts=` geht durch scopeIds() und
     // kommt als userIds herein. Eine zweite Stelle, die Konten auswählt, wäre
     // die Doppelung, vor der src/household/household.ts warnt.
@@ -187,7 +187,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
     assert.equal(onlyGrandparent.length, 5);
   });
 
-  await t.test('7. Eine erfundene Sortierung fällt auf die Vorgabe zurück', async () => {
+  await t.test('7. an invented sorting falls back to the default', async () => {
     // fromTable() prüft mit hasOwnProperty. Mit `WANTED_SORTS[x] || vorgabe`
     // wäre 'constructor' ein gültiger Wert gewesen — und was dann in ORDER BY
     // landet, ist keine Sortierung mehr, sondern eine Funktion als Text.
@@ -198,7 +198,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
     }
   });
 
-  await t.test('8. Alle vier zusammen — die Parameterfolge bleibt heil', async () => {
+  await t.test('8. all four together — the parameter order stays intact', async () => {
     // Der eigentliche Grund für diesen Schritt: Die Platzhalter werden beim
     // Bauen hochgezählt, und die Währung hängt sich ganz am Ende an. Verrutscht
     // eine Nummer, bekäme Postgres die Währung als Setnummer und liefe still

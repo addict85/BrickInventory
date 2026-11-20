@@ -26,7 +26,7 @@ const TWO_SETS = {
   ],
 };
 
-test('Sammlung: Serverfehler beim ersten Laden zeigt den Grund und „Erneut versuchen“', async () => {
+test('collection: a server error on the first load shows the reason and "try again"', async () => {
   /** @type {object} */
   let antwort = SERVERFEHLER;
   const { w, d } = await openUi({ '/v1/sets': () => antwort });
@@ -47,7 +47,7 @@ test('Sammlung: Serverfehler beim ersten Laden zeigt den Grund und „Erneut ver
   }
 });
 
-test('Sammlung: scheitert das Neuladen, bleibt die alte Liste stehen', async () => {
+test('collection: if reloading fails, the old list stays', async () => {
   /** @type {object} */
   let antwort = TWO_SETS;
   const { w, d } = await openUi({ '/v1/sets': () => antwort });
@@ -66,7 +66,7 @@ test('Sammlung: scheitert das Neuladen, bleibt die alte Liste stehen', async () 
   }
 });
 
-test('jede Liste zeigt ihren Ladefehler mit demselben Baustein', async () => {
+test('every list shows its load error with the same building block', async () => {
   const kaputt = () => {
     throw new TypeError('Failed to fetch');
   };
@@ -99,7 +99,7 @@ test('jede Liste zeigt ihren Ladefehler mit demselben Baustein', async () => {
   }
 });
 
-test('Netzfehler beim Erfassen: „Keine Verbindung zum Server“ statt „Failed to fetch“', async () => {
+test('network error when capturing: "no connection to the server" instead of "Failed to fetch"', async () => {
   const { w, d } = await openUi({
     '/v1/sets/add-stream': () => {
       throw new TypeError('Failed to fetch');
@@ -118,7 +118,7 @@ test('Netzfehler beim Erfassen: „Keine Verbindung zum Server“ statt „Faile
   }
 });
 
-test('Band ohne Verbindung: „Keine Verbindung seit …“', async () => {
+test('banner without connection: "no connection since …"', async () => {
   const { w, d } = await openUi();
   try {
     const band = d.getElementById('offline-band');

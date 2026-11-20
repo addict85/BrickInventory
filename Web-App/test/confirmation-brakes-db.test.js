@@ -48,7 +48,7 @@ async function konto(name) {
   ).id;
 }
 
-test('Bremsen der Bestätigung', { concurrency: 1 }, async t => {
+test('brakes of the confirmation', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const NAME = `bb_${process.pid}`,
     KARL = `bb_karl_${process.pid}`;
@@ -101,7 +101,7 @@ test('Bremsen der Bestätigung', { concurrency: 1 }, async t => {
   const passkeyLoeschen = (code, kopf = A) =>
     ruf('DELETE', '/api/v1/auth/passkeys/999999', { password: PASS, code }, kopf);
 
-  await t.test('das Passwort setzt den Codezähler nicht zurück', async () => {
+  await t.test('the password does not reset the code counter', async () => {
     await leeren();
     // Jeder Versuch trägt das richtige Passwort; dazwischen der frühere Rücksetzweg (Passwort ohne Code).
     for (let i = 0; i < 4; i++) assert.equal((await passkeyLoeschen(String(100000 + i))).code, 'zweiter_faktor_falsch');
@@ -114,14 +114,14 @@ test('Bremsen der Bestätigung', { concurrency: 1 }, async t => {
     assert.equal(sixth.status, 429, `das Passwort setzt den Codezähler zurück: ${JSON.stringify(sixth)}`);
   });
 
-  await t.test('ein richtiger Code setzt ihn zurück', async () => {
+  await t.test('a correct code resets it', async () => {
     await leeren();
     for (let i = 0; i < 4; i++) await passkeyLoeschen(String(200000 + i));
     assert.equal((await passkeyLoeschen(richtig())).status, 200);
     for (let i = 0; i < 4; i++) assert.equal((await passkeyLoeschen(String(210000 + i))).code, 'zweiter_faktor_falsch');
   });
 
-  await t.test('eine fremde Sitzung sperrt die Notbremsen nicht', async () => {
+  await t.test('a foreign session does not lock the emergency brakes', async () => {
     await leeren();
     const kopf = { 'x-sitzung': 'karl-fremd', 'x-konto': String(karl) };
     for (let i = 0; i < 5; i++)
@@ -147,7 +147,7 @@ test('Bremsen der Bestätigung', { concurrency: 1 }, async t => {
     await db.run('UPDATE users SET password_hash = $2 WHERE id = $1', [karl, await bcrypt.hash(PASS, 4)]);
   });
 
-  await t.test('falsche Codes einer fremden Sitzung sperren den Inhaber nicht', async () => {
+  await t.test('wrong codes of a foreign session do not lock out the owner', async () => {
     await leeren();
     for (let i = 0; i < 5; i++) await passkeyLoeschen(String(300000 + i), A);
     assert.equal((await passkeyLoeschen(richtig(), A)).status, 429, 'Vorbedingung: Angreifer gesperrt');
@@ -158,7 +158,7 @@ test('Bremsen der Bestätigung', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('der Tausch des Tokens setzt die Bremse nicht zurück', async () => {
+  await t.test('swapping the token does not reset the brake', async () => {
     await leeren();
     const token = await createToken(karl, 'Probe', true);
     const mit = tk => ({ authorization: `Bearer ${tk}` });

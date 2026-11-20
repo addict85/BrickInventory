@@ -91,7 +91,7 @@ async function setup() {
   await createVoucher(FREMD, { number: '9999999999999999999', pin: '0000', amount: 99, currency: 'CHF' });
 }
 
-test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1 }, async t => {
+test('vouchers: export and import via the real addresses', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -114,7 +114,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
   const exportiere = async () =>
     fetch(`${srv.base}/api/v1/vouchers/export/pdf?ticket=${(await (await freigabe()).json()).ticket}`);
 
-  await t.test('1. der Export liefert EIN PDF mit allen eigenen Gutscheinen', async () => {
+  await t.test('1. the export delivers ONE PDF with all own vouchers', async () => {
     const r = await exportiere();
     assert.equal(r.status, 200, `Der Export antwortete mit ${r.status}`);
     assert.equal(r.headers.get('content-type'), 'application/pdf');
@@ -153,7 +153,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     );
   });
 
-  await t.test('2. der FREMDE Gutschein ist nicht dabei', async () => {
+  await t.test('2. the FOREIGN voucher is not included', async () => {
     // Ein Gutschein traegt Nummer und PIN. Im Export eines anderen Kontos
     // waere das die Weitergabe eines Zahlungsmittels.
     const { readPageByPage } = _req('src/vouchers/pdfExport.js');
@@ -165,7 +165,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     assert.equal(drin.length, 3, `${drin.length} Karten im PDF statt 3`);
   });
 
-  await t.test('3. das exportierte PDF trägt den APP-Betrag, nicht den gedruckten', async () => {
+  await t.test('3. the exported PDF carries the APP amount, not the printed one', async () => {
     const { readPageByPage } = _req('src/vouchers/pdfExport.js');
     const gelesen = await readPageByPage(pdf);
     for (const k of CARDS) {
@@ -180,7 +180,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     }
   });
 
-  await t.test('4. dasselbe PDF stellt die geleerte Tabelle wieder her', async () => {
+  await t.test('4. the same PDF restores the emptied table', async () => {
     await db.run('DELETE FROM vouchers WHERE user_id=$1', [MAIN]);
     const fd = new FormData();
     fd.append('file', new Blob([pdf], { type: 'application/pdf' }), 'gutscheine.pdf');
@@ -223,7 +223,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     assert.equal(ohne.pin, null, 'Aus „keine PIN" wurde etwas anderes');
   });
 
-  await t.test('5. ein zweiter Import frischt den Betrag auf, statt nichts zu tun', async () => {
+  await t.test('5. a second import refreshes the amount instead of doing nothing', async () => {
     // Der Fall, für den es den Import gibt: Das Konto kennt die Karten schon,
     // und der Betrag hat sich geändert. Mit ON CONFLICT DO NOTHING wäre der
     // Import hier wirkungslos — und genau dann braucht man ihn.
@@ -252,7 +252,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     );
   });
 
-  await t.test('6. ohne Gutschein kommt eine Auskunft, kein leeres PDF', async () => {
+  await t.test('6. without a voucher an information comes, not an empty PDF', async () => {
     await db.run('DELETE FROM vouchers WHERE user_id=$1', [MAIN]);
     const r = await freigabe();
     assert.equal(r.status, 404, `Erwartet 404, bekam ${r.status}`);
@@ -264,7 +264,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     );
   });
 
-  await t.test('7. eine Datei, die kein PDF ist, ergibt 422 und keinen Eintrag', async () => {
+  await t.test('7. a file that is not a PDF yields 422 and no entry', async () => {
     const fd = new FormData();
     fd.append('file', new Blob([Buffer.from('kein PDF, nur Text')], { type: 'application/pdf' }), 'kaputt.pdf');
     const r = await fetch(`${srv.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd });
@@ -287,7 +287,7 @@ test('Gutscheine: Export und Import über die echten Adressen', { concurrency: 1
     );
   });
 
-  await t.test('8. EIN Gutschein im PDF bleibt der Einzelfall — mit Datei', async () => {
+  await t.test('8. ONE voucher in the PDF stays the single case — with file', async () => {
     // Die Entscheidung „einer oder mehrere" trifft der Server, und sie muss in
     // beide Richtungen stimmen. Bei einem einzigen Gutschein gilt der alte
     // Vertrag unverändert: `voucher` statt `mehrere`, und die Datei wird als

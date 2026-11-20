@@ -34,7 +34,7 @@ const { dataOrSkip } = require('./helpers/db');
 
 const set = n => ({ art: 'set', nummer: `${n}-1`, zustand: 'N' });
 
-test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 1 }, async t => {
+test('fetch missing prices: one job per account and currency', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const NAME = `pna-${process.pid}`;
@@ -63,7 +63,7 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
   });
   await leeren();
 
-  await t.test('je Konto und Währung ein offener Auftrag, der neue Posten aufnimmt', async () => {
+  await t.test('per account and currency one open job that takes in new items', async () => {
     const a = await D.rememberPricesBefore({ user_id: uid, waehrung: 'CHF', posten: [set(1), set(2)] });
     const b = await D.rememberPricesBefore({ user_id: uid, waehrung: 'CHF', posten: [set(2), set(3)] });
     assert.equal(b, a, 'eine zweite Liste stellte einen zweiten Auftrag ein');
@@ -78,7 +78,7 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
     );
   });
 
-  await t.test('höchstens 2000 Posten, die älteren zuerst', async () => {
+  await t.test('at most 2000 items, the older ones first', async () => {
     await leeren();
     const viele = (von, n) => Array.from({ length: n }, (_, i) => set(von + i));
     await D.rememberPricesBefore({ user_id: uid, waehrung: 'CHF', posten: viele(0, 1500) });
@@ -88,7 +88,7 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
     assert.deepEqual([z.posten[0].nummer, z.posten[1999].nummer], ['0-1', '1999-1']);
   });
 
-  await t.test('gleichzeitige Bewertungen stellen trotzdem nur einen ein', async () => {
+  await t.test('concurrent valuations still enqueue only one', async () => {
     await leeren();
     await Promise.all(
       Array.from({ length: 8 }, (_, i) =>
@@ -100,7 +100,7 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
     assert.equal(z[0].posten.length, 9);
   });
 
-  await t.test('läuft einer, kommt höchstens ein Folgeauftrag dazu', async () => {
+  await t.test('while one runs, at most one follow-up job is added', async () => {
     await leeren();
     await D.rememberPricesBefore({ user_id: uid, waehrung: 'CHF', posten: [set(1)] });
     const lauf = await repo.belegeAuftrag(['preise_nachladen'], 60);
@@ -116,7 +116,7 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
     );
   });
 
-  await t.test('der laufende geht zurück, während sein Folgeauftrag waiting', async () => {
+  await t.test('the running one goes back while its follow-up job waiting', async () => {
     const bis = new Date(Date.now() + 6 * 3600_000);
     for (const zurueck of [
       a => D.verschoben(a, bis, 'BrickLink-Tageskontingent erschöpft', false),
@@ -139,7 +139,7 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
     }
   });
 
-  await t.test('verschoben waiting, belegt nicht mehr', async () => {
+  await t.test('postponed waiting, no longer occupies', async () => {
     await leeren();
     await D.rememberPricesBefore({ user_id: uid, waehrung: 'CHF', posten: [set(1)] });
     const lauf = await repo.belegeAuftrag(['preise_nachladen'], 60);
@@ -155,7 +155,7 @@ test('Fehlende Preise holen: ein Auftrag je Konto und Währung', { concurrency: 
     );
   });
 
-  await t.test('Fortschritt ganzzahlig, und eine gescheiterte Meldung hält die folgenden nicht an', async () => {
+  await t.test('progress in whole numbers, and a failed report does not stop the following ones', async () => {
     await leeren();
     const id = await D.rememberPricesBefore({ user_id: uid, waehrung: 'CHF', posten: [set(1)] });
     const stand = () => db.get('SELECT progress FROM jobs WHERE id = $1', [id]).then(r => r.progress);

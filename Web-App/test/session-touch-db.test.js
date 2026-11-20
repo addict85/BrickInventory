@@ -60,11 +60,11 @@ async function anmelden(base) {
   return (r.headers.get('set-cookie') || '').split(';')[0];
 }
 
-test('Sitzung: gelesen wird immer, geschrieben nur alle paar Minuten', async t => {
+test('session: always read, written only every few minutes', async t => {
   try {
     await db.get('SELECT 1');
   } catch {
-    return t.skip('keine Test-Datenbank erreichbar');
+    return t.skip('no test database reachable');
   }
 
   const N = 20;

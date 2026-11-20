@@ -42,7 +42,7 @@ function probebaum() {
 
 const lauf = (/** @type {string} */ web) => spawnSync(process.execPath, [SCRIPT, web], { encoding: 'utf8' });
 
-test('im Probebaum meldet das Skript genau die toten Verweise in Kommentaren und Doku', t => {
+test('in the sample tree the script reports exactly the dead references in comments and docs', t => {
   const { repo, web } = probebaum();
   t.after(() => fs.rmSync(repo, { recursive: true, force: true }));
   const r = lauf(web);
@@ -56,7 +56,7 @@ test('im Probebaum meldet das Skript genau die toten Verweise in Kommentaren und
   ]);
 });
 
-test('der Bestand hat keine toten Verweise', () => {
+test('the codebase has no dead references', () => {
   const r = lauf(path.join(__dirname, '..'));
   const gesehen = Number(/(\d+) Pfadverweise/.exec(r.stderr)?.[1]);
   assert.ok(gesehen > 200, `nur ${gesehen} Verweise gefunden — greift die Suche noch?\n${r.stderr}`);
