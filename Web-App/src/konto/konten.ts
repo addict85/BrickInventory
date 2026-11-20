@@ -148,14 +148,14 @@ export async function setPasswordBack(k: AccountContext, tokenHash: string, pass
       if (!uid) return null;
       await endAccesses(t, uid);
       await t.factors.revokePasskeys(uid);
-      const haushalt = await t.haushalt.unlinkForeignAccess(uid);
+      const haushalt = await t.household.unlinkForeignAccess(uid);
       const adresse = await t.konten.discardPendingAddress(uid);
       await deleteDailyLimit(t, uid);
       return { uid, resolved: { haushalt: haushalt.hauptkonten, einladungen: haushalt.einladungen, adresse } };
     },
   );
   if (!r) return null;
-  k.haushalt.reportHouseholdChange();
+  k.household.reportHouseholdChange();
   await startpasswortDone(k, r.uid);
   hintInBackground(k, r.uid, 'passwort_zurueckgesetzt', undefined, { resolved: r.resolved });
   return r.uid;

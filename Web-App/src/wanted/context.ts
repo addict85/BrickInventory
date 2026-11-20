@@ -4,11 +4,11 @@ import { mit, type Kontext } from '../infra/bereich';
 import * as wanted from './repository/wanted';
 import * as wantedListe from './repository/wantedListe';
 import type { SettingsServices } from '../settings';
-import type { HouseholdServices } from '../haushalt';
+import type { HouseholdServices } from '../household';
 import type { CatalogServices } from '../katalog';
 import type { FinancesServices } from '../finanzen';
 import type { SetsServices } from '../sets';
-import type { ForeignSourcesServices } from '../fremdquellen';
+import type { ForeignSourcesServices } from '../externalSources';
 import type { ImagesServices } from '../bilder';
 import type { Uhr } from '../infra/uhr';
 
@@ -16,10 +16,10 @@ export interface WantedDependencies {
   uhr: Uhr;
   db: Db;
   einstellungen: SettingsServices;
-  haushalt: HouseholdServices;
+  household: HouseholdServices;
   katalog: CatalogServices;
   finanzen: FinancesServices;
-  fremdquellen: ForeignSourcesServices;
+  externalSources: ForeignSourcesServices;
   bilder: ImagesServices;
   sets: SetsServices;
 }

@@ -180,7 +180,7 @@ test('Merkliste: Suche, Zustand, Sortierung, Inhaber', async t => {
   await t.test('6. Der Inhaber ist das Blickfeld, kein eigener Parameter', async () => {
     // Genau so steht es in der Route: `accounts=` geht durch scopeIds() und
     // kommt als userIds herein. Eine zweite Stelle, die Konten auswählt, wäre
-    // die Doppelung, vor der src/haushalt/haushalt.ts warnt.
+    // die Doppelung, vor der src/household/household.ts warnt.
     const onlyGrandchild = await M.wantedItemsOf([U.enkel], undefined, 'EUR');
     assert.deepEqual(nummern(onlyGrandchild), ['75192-1/N']);
     const onlyGrandparent = await M.wantedItemsOf([U.grandparent], undefined, 'EUR');

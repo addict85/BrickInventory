@@ -1,5 +1,5 @@
 import type { DbInterface, Treffer } from '../../db/database';
-import type { HouseholdReadContract } from './lesevertrag';
+import type { HouseholdReadContract } from './readContract';
 
 const zahl = (v: number | string) => parseInt(String(v), 10);
 

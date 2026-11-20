@@ -46,7 +46,7 @@ test('das Hauptkonto sieht Marktpreis und Verlauf eines Unterkonto-Sets', { conc
                 ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`,
     [mainId],
   );
-  // Im Haushalt gilt eine Währung (src/haushalt/haushalt.ts) — auch für das Unterkonto.
+  // Im Haushalt gilt eine Währung (src/household/household.ts) — auch für das Unterkonto.
   await db.run(
     `INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
                 ON CONFLICT (user_id,key) DO UPDATE SET value='CHF'`,

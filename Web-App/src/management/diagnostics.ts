@@ -49,7 +49,7 @@ export async function imageProbe(k: ManagementContext, url: string) {
 
 /** Ohne Umleitungen: Die Probe soll den rohen Status des CDN zeigen. */
 const fetchWithoutRedirect = (k: ManagementContext, url: string, kopfzeilen: Record<string, string>) =>
-  k.fremdquellen.quellen.oeffneBild(url, { maxBytes: 65536, zeitlimitMs: 10_000, redirects: 0, kopfzeilen });
+  k.externalSources.quellen.oeffneBild(url, { maxBytes: 65536, zeitlimitMs: 10_000, redirects: 0, kopfzeilen });
 
 function readStream(a: FetchStream, genug = Infinity) {
   return new Promise<{ teile: Buffer[]; bytes: number; truncated: boolean }>(fertig => {

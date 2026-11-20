@@ -20,7 +20,7 @@ async function preiseNachladen(kx: FinancesContext, n: Nutzlast<'preise_nachlade
   const ttl = (await kx.einstellungen.globalValue('price_cache_ttl', '24')) || '24';
   for (const [i, p] of n.posten.entries()) {
     checkAbort(k);
-    if (!(await kx.fremdquellen.quotaFree('bricklink')).allowed)
+    if (!(await kx.externalSources.quotaFree('bricklink')).allowed)
       throw new JobMove(new Date(kx.uhr.jetzt() + 6 * 3600_000), 'BrickLink-Tageskontingent erschöpft');
     await fetchOne(kx, p, n.user_id, n.waehrung, ttl).catch((e: unknown) =>
       reportError(`preise-nachladen:${p.art} ${p.nummer}`, e),

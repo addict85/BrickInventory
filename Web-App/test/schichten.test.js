@@ -472,7 +472,7 @@ const hatSql = rel => {
 test('SQL steht nur in Repositories und in db/', () => {
   // Ein Verbot, keine Ratsche mehr: Die Liste der Ausnahmen ist seit dem
   // 31.10.2026 leer. Gegenproben (31.10.2026): `await db.get('SELECT 1')` in
-  // src/haushalt/haushalt.ts → rot; `'SELECT 1'` in src/management/cleanup.ts → rot;
+  // src/household/household.ts → rot; `'SELECT 1'` in src/management/cleanup.ts → rot;
   // (05.11.2026) das EXISTS-Fragment zurück nach src/finanzen/preisalarm.ts → rot.
   const dateien = tsBelow('src', 'jobs', 'clients', 'routes', 'startup').concat('server.ts');
   assert.ok(dateien.length > 150, `nur ${dateien.length} Dateien gefunden`);
@@ -683,7 +683,7 @@ function workUnitAtCallLocation() {
 test('ein Fachbereich greift auf einen anderen nur über dessen Dienste und index.ts zu', () => {
   // Das Repository eines Bereichs ist sein Inneres; andere Bereiche nutzen die
   // Dienste. Gegenprobe (31.10.2026): `import { accountShort } from
-  // '../konto/repository/konten'` in src/haushalt/haushalt.ts → rot.
+  // '../konto/repository/konten'` in src/household/household.ts → rot.
   const treffer = [];
   const dateien = tsBelow('src');
   assert.ok(dateien.filter(isRepository).length >= 10, 'zu wenige Repositories gefunden');
@@ -770,7 +770,7 @@ function indexWithoutAccess(indizes) {
   const alle = indizes.filter(i => !/^src\/(?:infra|vertrag|http)\//.test(i)).flatMap(valueExports);
   assert.ok(alle.length > 50, `nur ${alle.length} Wertexporte gefunden — greift die Suche noch?`);
   assert.ok(
-    alle.some(x => x.name === 'src/haushalt.asIds' && !x.zugang) &&
+    alle.some(x => x.name === 'src/household.asIds' && !x.zugang) &&
       declaration('src/sets/lesen', 'setsLesen')?.zugang &&
       declaration('src/bilder/thumbs', 'vorschauErzeugenAus')?.zugang,
     'Selbstbeweis: asIds ist rein, setsLesen (Kontext) und vorschauErzeugenAus (asynchron) haben Zugang',
@@ -800,7 +800,7 @@ test('ein Repository kennt keine Dienste, auch nicht deren Typen', () => {
 
 test('Routen lösen keine Konten auf — das tun die Dienste', () => {
   // Eine Route gibt die Sicht (viewOf) oder den Wunsch weiter; die Regeln des
-  // Haushalts stehen in src/haushalt und den Diensten, die sie anwenden.
+  // Haushalts stehen in src/household und den Diensten, die sie anwenden.
   // Gegenprobe (05.11.2026): `await scopeIds(req.apiUser.user_id)` zurück in
   // routes/api_v1/misc.ts → rot.
   const RESOLUTION =
@@ -936,8 +936,8 @@ const LEVELS = [
   ['src/settings'],
   ['src/mail'],
   ['src/auftraege'],
-  ['src/fremdquellen'],
-  ['src/haushalt', 'src/geraete', 'src/factors'],
+  ['src/externalSources'],
+  ['src/household', 'src/devices', 'src/factors'],
   ['src/konto'],
   ['src/bilder', 'src/profile'],
   ['src/idempotency', 'src/katalog'],
@@ -1010,7 +1010,7 @@ test('jeder Bereich importiert nur Bereiche tieferer Stufen', () => {
   assert.deepEqual(falsch, []);
 });
 
-test('Klienten erreicht man nur über src/fremdquellen/quellen.ts', () => {
+test('Klienten erreicht man nur über src/externalSources/sources.ts', () => {
   // Dort bekommen sie Schlüssel, Kontingent und Drossel ihres Zugangs; ein Weg daran
   // vorbei fände keinen Schlüssel. Auch `import type` zählt, Ausnahmen gibt es keine.
   // Gegenproben: `import { lookupPart } from '../../clients/rebrickable'` in
@@ -1018,11 +1018,11 @@ test('Klienten erreicht man nur über src/fremdquellen/quellen.ts', () => {
   // '../clients/brickset'` in startup/verdrahtung.ts → rot (14.11.2026).
   const kanten = areaEdges();
   const treffer = kanten
-    .filter(k => k.nach === 'clients' && k.von !== 'clients' && k.d !== 'src/fremdquellen/quellen.ts')
+    .filter(k => k.nach === 'clients' && k.von !== 'clients' && k.d !== 'src/externalSources/sources.ts')
     .map(k => `${k.d} -> ${k.ziel}`);
   assert.deepEqual(treffer, []);
   assert.ok(
-    kanten.some(k => k.d === 'src/fremdquellen/quellen.ts' && k.nach === 'clients'),
+    kanten.some(k => k.d === 'src/externalSources/sources.ts' && k.nach === 'clients'),
     'quellen.ts holt keinen Klienten mehr?',
   );
 });

@@ -2,7 +2,7 @@ import path from 'node:path';
 import type { JobRun } from '../auftraege';
 import fs from 'node:fs';
 import { PART_IMAGES_DIR } from '../infra/appPaths';
-import { type RbSetTeil, firstBlNumber, parseThrottleWait } from '../fremdquellen';
+import { type RbSetTeil, firstBlNumber, parseThrottleWait } from '../externalSources';
 import { alleTeileDesSets } from './rebrickableKatalog';
 import { logAndContinue, reportError } from '../infra/fehler';
 import { withVersion } from '../infra/setNummer';
@@ -78,7 +78,7 @@ export async function enqueueSetPartImages(k: CatalogContext, n: string, zeilen:
 }
 
 function fetchPage(k: CatalogContext, url: string, rbKey: string): Promise<{ status: number; body: string }> {
-  return k.fremdquellen.quellen.rebrickableRaw(url, rbKey);
+  return k.externalSources.quellen.rebrickableRaw(url, rbKey);
 }
 
 /** Eine leere bl_id heisst „nachgesehen" und löst kein zweites Nachladen aus. */
@@ -99,8 +99,8 @@ export async function reloadBlNumbers(k: CatalogContext, lauf: JobRun = {}) {
   const BATCH = 500;
   let serverErrors = 0;
   for (let i = 0; i < missing.length; i += BATCH) {
-    if (lauf.signal?.aborted || !(await k.fremdquellen.consumeRebrickableDaily())) break;
-    await k.fremdquellen.drossel.hintergrund.waitForSlot();
+    if (lauf.signal?.aborted || !(await k.externalSources.consumeRebrickableDaily())) break;
+    await k.externalSources.drossel.hintergrund.waitForSlot();
     const batch: string[] = missing.slice(i, i + BATCH).map(r => r.part_number);
     const result = await fetchPage(
       k,

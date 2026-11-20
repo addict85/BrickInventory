@@ -17,7 +17,7 @@ import * as partsImport from './partsImport';
 import * as rbInventar from './rbInventar';
 import * as rebrickableKatalog from './rebrickableKatalog';
 import * as partsEnrichmentService from './teileAnreicherung';
-import { ConcurrentRateLimiter } from '../fremdquellen';
+import { ConcurrentRateLimiter } from '../externalSources';
 import * as pdfAuftraege from './pdf/pdfAuftraege';
 import * as anleitungsAuftrag from './anleitungsAuftrag';
 import * as setStamm from './setStamm';

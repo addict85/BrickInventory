@@ -1,7 +1,7 @@
 // Balance of a LEGO gift card; if the bot protection kicks in, no further call follows.
 import { reportAndDeliver } from '../infra/fehler';
 import { hostAllowed } from '../infra/fremdeAdressen';
-import { ALLOWED_BALANCE_HOSTS, type LegoFetch } from '../fremdquellen';
+import { ALLOWED_BALANCE_HOSTS, type LegoFetch } from '../externalSources';
 
 /** Taken from the prototype, not guessed — the part nobody could derive. */
 const ENDPOINT = 'https://www.lego.com/api/graphql/giftCardBalanceQuery';

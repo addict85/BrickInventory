@@ -1,4 +1,4 @@
-import type { Sicht } from '../haushalt';
+import type { Sicht } from '../household';
 import { buildChartData } from './portfolio/diagrammdaten';
 import { reconstructCurve, type CurvesPoint } from './portfolio/kurve';
 import { DEFAULT_PRICE_CONDITION } from './financeCalc';
@@ -39,7 +39,7 @@ export async function portfolioVerlauf(
   db: unknown = k.db,
   getSetting: (userId: number, key: string, fallback: string) => Promise<string> = k.einstellungen.userValue,
 ) {
-  const ids = await k.haushalt.scopeFrom(idsChoice);
+  const ids = await k.household.scopeFrom(idsChoice);
   // Mit dem Filter „Unterkonten" enthält ids das fragende Konto nicht; die
   // Währung darf dann nicht aus ids[0] kommen.
   const uids = Array.isArray(ids) ? ids.map(n => parseInt(String(n), 10)) : [parseInt(String(ids), 10)];

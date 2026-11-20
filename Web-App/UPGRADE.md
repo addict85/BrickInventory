@@ -1754,7 +1754,7 @@ docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM sc
 - **Was sich ändert:** Die App hinterlegt ihren Geräteschlüssel für den
   Schrittschutz (Gutschein-PIN, Verwaltung, zweiter Faktor) nur noch mit seiner
   Attestierungskette. Der Server prüft, dass die Kette bis zu einer Google-Wurzel
-  reicht (`src/geraete/attestation/googleWurzeln.ts`, Quelle und SHA-256 dort),
+  reicht (`src/devices/attestation/googleRoots.ts`, Quelle und SHA-256 dort),
   dass sie die Nonce des Servers trägt (`POST /api/v1/geraet/schluessel/nonce`,
   einmalig, nur in den ersten 10 Minuten eines Zugangs), dass der Schlüssel im
   TEE oder StrongBox entstand und bei jeder Benutzung nur nach Gerätesperre oder

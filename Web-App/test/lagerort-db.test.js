@@ -82,9 +82,9 @@ test('Lagerort gegen echte Datenbank', async t => {
     ...require('./helpers/sources').testArea('bestand').locationService,
   };
   const household = {
-    ..._req('src/haushalt/regeln.js'),
-    ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testArea('haushalt'),
+    ..._req('src/household/rules.js'),
+    ..._req('src/household/household.js'),
+    ...require('./helpers/sources').testArea('household'),
   };
   const writable = await household.schreibbereich(U.ich);
 

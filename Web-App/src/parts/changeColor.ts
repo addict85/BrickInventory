@@ -27,7 +27,7 @@ async function fetchImageLater(k: PartsContext, partNumber: string, farbe: numbe
   if (lokal?.bildQuelle === 'farbe') return 'vorhanden';
 
   // The change already stands; a failed fetch only drops the image.
-  const info = await versuche('partColor:lookupPart', () => k.fremdquellen.quellen.lookupPart(partNumber, farbe));
+  const info = await versuche('partColor:lookupPart', () => k.externalSources.quellen.lookupPart(partNumber, farbe));
   if (!info.ok || !info.wert?.image_url) return null;
   try {
     await k.katalog.rememberPartColor(partNumber, farbe, null, null, info.wert.image_url, null);

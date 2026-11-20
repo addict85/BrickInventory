@@ -93,7 +93,7 @@ export async function resolveViaInterface(k: CatalogContext, setNumber: string):
 
   const probe = async (type: Exclude<BlType, 'NONE'>, no: string) => {
     try {
-      await k.fremdquellen.quellen.bricklinkRequest('GET', `/items/${type.toLowerCase()}/${no}`);
+      await k.externalSources.quellen.bricklinkRequest('GET', `/items/${type.toLowerCase()}/${no}`);
       return true;
     } catch (e) {
       if (notFound(e)) return false;

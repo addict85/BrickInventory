@@ -388,7 +388,7 @@ test('CDN-Anfragen erzwingen IPv4', () => {
   const setsFile = fs.readFileSync(path.join(ROOT, 'src/bilder/setImages.ts'), 'utf8');
   assert.match(
     setsFile,
-    /await (?:k\.fremdquellen\.quellen\s*\.)?(?:hole(?:Https|Bild)|fetch(?:Https|Image))\(url, \{/,
+    /await (?:k\.externalSources\.quellen\s*\.)?(?:hole(?:Https|Bild)|fetch(?:Https|Image))\(url, \{/,
     'Der Hintergrund-Download beim Import muss ebenfalls IPv4 erzwingen — dieselbe Ursache, derselbe Ort',
   );
 });

@@ -5,7 +5,7 @@ import { newestInventory } from './rbInventar';
 import { withVersion } from '../infra/setNummer';
 import { rememberBlNumber } from './blZuordnung';
 import { rememberPart, rememberPartColor, rememberSetPart, rememberMinifigs, merkeSetFiguren } from './katalogPflege';
-import { parseThrottleWait as ptw } from '../fremdquellen';
+import { parseThrottleWait as ptw } from '../externalSources';
 
 /** Ohne Typparameter leitet TypeScript bei `new Promise` `unknown` ab. */
 type JobHttpResult = { status: number; body: string };
@@ -18,12 +18,12 @@ import type { CatalogContext } from './kontext';
 async function apiGet(k: CatalogContext, url: string, rbKey: string) {
   let serverErrors = 0;
   while (true) {
-    if (!(await k.fremdquellen.consumeRebrickableDaily())) return null;
-    await k.fremdquellen.drossel.hintergrund.waitForSlot();
-    const result: JobHttpResult = await k.fremdquellen.quellen.rebrickableRaw(url, rbKey);
+    if (!(await k.externalSources.consumeRebrickableDaily())) return null;
+    await k.externalSources.drossel.hintergrund.waitForSlot();
+    const result: JobHttpResult = await k.externalSources.quellen.rebrickableRaw(url, rbKey);
     if (result.status === 429) {
       const wait = ptw(result.body);
-      k.fremdquellen.drossel.hintergrund.throttle(wait);
+      k.externalSources.drossel.hintergrund.throttle(wait);
       await new Promise(r => setTimeout(r, wait));
       continue;
     }
@@ -75,7 +75,7 @@ async function enrichSetParts(k: CatalogContext, setNumber: string) {
 
   if (!missing.length) return;
 
-  const rbKey = await k.fremdquellen.quellen.getRbKey();
+  const rbKey = await k.externalSources.quellen.getRbKey();
   if (!rbKey) {
     console.log('[parts-enrich] No API key');
     return;
@@ -201,7 +201,7 @@ async function supplementSetMinifigs(k: CatalogContext, n: string, rbKey: string
 
 async function enrichSetMinifigs(k: CatalogContext, setNumber: string) {
   const n = withVersion(setNumber);
-  const rbKey = await k.fremdquellen.quellen.getRbKey();
+  const rbKey = await k.externalSources.quellen.getRbKey();
   if (!rbKey) return;
 
   const figs = await k.teileAnreicherung.minifigsOfSets(n);

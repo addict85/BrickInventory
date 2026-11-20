@@ -8,9 +8,9 @@ import * as summary from './repository/summary';
 import * as partColor from './repository/partColor';
 import type { JobsServices } from '../auftraege';
 import type { SettingsServices } from '../settings';
-import type { HouseholdServices } from '../haushalt';
+import type { HouseholdServices } from '../household';
 import type { CatalogServices } from '../katalog';
-import type { ForeignSourcesServices } from '../fremdquellen';
+import type { ForeignSourcesServices } from '../externalSources';
 import type { FinancesServices } from '../finanzen';
 import type { InventoryServices } from '../bestand';
 import type { Uhr } from '../infra/uhr';
@@ -22,9 +22,9 @@ export interface PartsDependencies {
   faecher: Faecher;
   einstellungen: SettingsServices;
   auftraege: JobsServices;
-  haushalt: HouseholdServices;
+  household: HouseholdServices;
   katalog: CatalogServices;
-  fremdquellen: ForeignSourcesServices;
+  externalSources: ForeignSourcesServices;
   finanzen: FinancesServices;
   bestand: InventoryServices;
 }

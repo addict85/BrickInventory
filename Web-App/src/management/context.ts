@@ -10,7 +10,7 @@ import type { AccountServices } from '../konto';
 import type { FactorsServices } from '../factors';
 import type { IdempotencyServices } from '../idempotency';
 import type { CatalogServices } from '../katalog';
-import type { ForeignSourcesServices } from '../fremdquellen';
+import type { ForeignSourcesServices } from '../externalSources';
 import type { ImagesServices } from '../bilder';
 import type { FinancesServices } from '../finanzen';
 import type { InventoryServices } from '../bestand';
@@ -27,7 +27,7 @@ export interface ManagementDependencies {
   factors: FactorsServices;
   idempotency: IdempotencyServices;
   katalog: CatalogServices;
-  fremdquellen: ForeignSourcesServices;
+  externalSources: ForeignSourcesServices;
   bilder: ImagesServices;
   finanzen: FinancesServices;
   bestand: InventoryServices;

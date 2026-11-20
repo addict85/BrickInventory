@@ -1,7 +1,7 @@
 import { Zwischenspeicher } from '../infra/zwischenspeicher';
 /** Erst der eigene Bestand (CSV-Tabellen, Zwischenspeicher), dann der Client:
  * Das Kontingent ist knapp. Der Client fragt nur ab, ablegen tut dieser Dienst. */
-import type { Quellen } from '../fremdquellen';
+import type { Quellen } from '../externalSources';
 import { istErsatzteil } from '../infra/validate';
 import { withVersion } from '../infra/setNummer';
 import { newestInventory } from './rbInventar';
@@ -26,13 +26,13 @@ export async function setAngaben(k: CatalogContext, setNumber: string) {
   // beim nächsten Erfassen den echten Namen. Nachgefragt wird höchstens täglich.
   if (cached?.name && cached.name !== `Set ${n}`) return cached;
   if (cached?.fetched_at && k.uhr.jetzt() - new Date(cached.fetched_at).getTime() < 86_400_000) return null;
-  const data = await k.fremdquellen.quellen.holeSet(n);
+  const data = await k.externalSources.quellen.holeSet(n);
   if (!data) {
-    await k.rebrickableCache.rememberUnknownSet(n, !!(await k.fremdquellen.quellen.getRbKey()));
+    await k.rebrickableCache.rememberUnknownSet(n, !!(await k.externalSources.quellen.getRbKey()));
     return null;
   }
   // Das Thema ist Beiwerk: Ohne es wird das Set trotzdem gemerkt, die Zeile nennt keins.
-  const thema = await versuche('rebrickable:thema', k.fremdquellen.quellen.getThemeName(data.theme_id ?? 0));
+  const thema = await versuche('rebrickable:thema', k.externalSources.quellen.getThemeName(data.theme_id ?? 0));
   const theme = thema.ok ? thema.wert : null;
   const row = {
     set_number: n,
@@ -81,7 +81,7 @@ export async function alleTeileDesSets(k: CatalogContext, setNumber: string) {
   );
   if (gemerkt) return gemerkt;
   if (leer(k).hole(n)) return [];
-  const { teile, verweigert } = await k.fremdquellen.quellen.holeSetTeile(n);
+  const { teile, verweigert } = await k.externalSources.quellen.holeSetTeile(n);
   // Eine Absage (403) wird als leere Liste gemerkt, damit nicht jeder Import erneut fragt.
   if (teile.length > 0 || verweigert) await k.rebrickableCache.rememberPartList(n, JSON.stringify(teile));
   else leer(k).setze(n, true);
@@ -94,7 +94,7 @@ export async function minifigPartsQuery(k: CatalogContext, figNumber: string) {
     await k.rebrickableCache.minifigsPartsFromCache(figNumber),
   );
   if (gemerkt) return gemerkt;
-  const parts = await k.fremdquellen.quellen.holeFigurTeile(figNumber);
+  const parts = await k.externalSources.quellen.holeFigurTeile(figNumber);
   if (!parts) return [];
   // Der Zwischenspeicher spart nur den nächsten Abruf; die Teile gelten auch ohne ihn.
   await versuche(

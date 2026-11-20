@@ -1,8 +1,8 @@
 import * as repo from './repository/partsList';
 import { blColorNumberFrom } from '../katalog';
 import { resolveImageLocal } from '../bilder';
-import { type RbSetTeil, firstBlNumber } from '../fremdquellen';
-import { asIds, type Sicht, type ScopeInput, type ScopeInput as Blickfeld } from '../haushalt';
+import { type RbSetTeil, firstBlNumber } from '../externalSources';
+import { asIds, type Sicht, type ScopeInput, type ScopeInput as Blickfeld } from '../household';
 import { istErsatzteil, colorId } from '../infra/validate';
 import { summaryFresh } from './summary';
 import { clampPageSize, MAX_PAGE_SIZE, UNPAGED_LIMIT, SET_PARTS_MAX_PAGE_SIZE } from '../bestand';
@@ -17,7 +17,7 @@ import type { PartsContext } from './context';
 /** Without manual entries — those have their own view. Hex fallback from
  * rb_colors for parts without a value of their own. */
 export async function partColorsQuery(k: PartsContext, userIdChoice: Sicht | Blickfeld) {
-  const userId = await k.haushalt.scopeFrom(userIdChoice);
+  const userId = await k.household.scopeFrom(userIdChoice);
   // asIds(), so older callers with a bare ID keep working.
   const uids = asIds(userId);
   // From the summary (quantities there are already multiplied by the set count);
@@ -139,7 +139,7 @@ export async function partsQuery(
   userIdChoice: Sicht | Blickfeld,
   query: Record<string, unknown> = {},
 ) {
-  const userId = await k.haushalt.scopeFrom(userIdChoice);
+  const userId = await k.household.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   const filter = partsFilter(query);
   const page = query.page ?? 1;
@@ -192,13 +192,13 @@ export async function partsQuery(
 /** The category from the own catalog, else from rb_parts: Rebrickable's set-parts
  * response usually has none, the list would otherwise consist of "Unknown". */
 export async function partCategoriesQuery(k: PartsContext, userIdChoice: Sicht | Blickfeld) {
-  const userId = await k.haushalt.scopeFrom(userIdChoice);
+  const userId = await k.household.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   return k.partsList.categories(uids, await summaryFresh(k, uids, { strict: true }));
 }
 
 export async function partStatsQuery(k: PartsContext, userIdChoice: Sicht | Blickfeld) {
-  const userId = await k.haushalt.scopeFrom(userIdChoice);
+  const userId = await k.household.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   // From the summary only when it's fresh: the webapp and the app show the same numbers.
   if (await summaryFresh(k, uids, { strict: true })) {
@@ -223,7 +223,7 @@ export async function blColorMapQuery(k: PartsContext) {
     for (const [id, blId] of karte) map[id] = blId;
     return { map, source: 'db' };
   }
-  const key = await k.fremdquellen.quellen.getRbKey();
+  const key = await k.externalSources.quellen.getRbKey();
   if (!key) return { map: {}, source: 'empty' };
   // If the fetch breaks off, the table is incomplete; `degradiert` says so.
   const ab = new Degradations();
@@ -234,7 +234,7 @@ export async function blColorMapQuery(k: PartsContext) {
   while (hasNext) {
     const { status, body } = await ab.oder(
       'rebrickable_farben',
-      k.fremdquellen.quellen.httpsGetRobust(
+      k.externalSources.quellen.httpsGetRobust(
         `https://rebrickable.com/api/v3/lego/colors/?page_size=200&page=${page}`,
         { Authorization: `key ${key}` },
         15000,
@@ -270,7 +270,7 @@ export async function manualPartsList(
   }: { page?: unknown; page_size?: unknown; search?: string | null; storage?: string | null } = {},
   ab = new Degradations(),
 ) {
-  const userId = await k.haushalt.scopeFrom(userIdChoice);
+  const userId = await k.household.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   const groesse = page_size ? clampPageSize(page_size, 60) : null;
   const seite = groesse ? { groesse, versatz: (Math.max(1, parseInt(String(page), 10) || 1) - 1) * groesse } : null;
@@ -284,7 +284,7 @@ export async function manualPartsList(
     new Map<string, number>(),
   );
   const withPrice = withState.map(t => ({ ...t, avg_price: preise.get(`${t.part_number}|${t.color_id}`) ?? null }));
-  return k.haushalt.besitzerAnhaengen(uids, withPrice);
+  return k.household.besitzerAnhaengen(uids, withPrice);
 }
 
 // Fills the "Have" column from the stock.
@@ -295,7 +295,7 @@ export async function ownedQuantitiesQuery(
   scopeChoice: Sicht | ScopeInput,
   teile: Array<{ part_number?: string | number | undefined; color_id?: number | string | null | undefined }>,
 ): Promise<Record<string, { gesamt: number; lose: number }>> {
-  const uids = await k.haushalt.scopeFrom(scopeChoice);
+  const uids = await k.household.scopeFrom(scopeChoice);
   // Duplicate keys drop out: a list spanning several sets would otherwise ask
   // for the same part multiple times.
   const gesehen = new Set<string>();

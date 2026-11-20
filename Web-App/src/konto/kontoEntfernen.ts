@@ -30,7 +30,7 @@ export async function kontoEntfernen(k: AccountContext, ziel: number, durch: num
   await inSystemContext('kontenverwaltung', loeschen);
   // Nach dem Festschreiben: Caches und Nachbarprozesse sollen das Konto erst vergessen, wenn es weg ist.
   emptyTokenCache(k);
-  k.haushalt.reportHouseholdChange();
+  k.household.reportHouseholdChange();
   await removeAccountFiles(k, ziel);
 }
 

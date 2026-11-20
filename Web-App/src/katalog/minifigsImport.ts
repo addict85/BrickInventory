@@ -27,7 +27,7 @@ export async function loadSetMinifigs(
         quantity: f.quantity || 1,
         image_url: f.image_url || null,
       }))
-    : await k.fremdquellen.quellen.getSetMinifigs(setNumber);
+    : await k.externalSources.quellen.getSetMinifigs(setNumber);
   const jeNumber = new Map<string, Figur>();
   for (const f of roh) {
     if (!f.fig_number) continue;

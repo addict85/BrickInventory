@@ -6,11 +6,11 @@ import { SET_IMAGES_DIR } from '../infra/appPaths';
 import { fehlertext, reportError, withoutMissingFile } from '../infra/fehler';
 import { Degradations, versuche } from '../infra/ergebnis';
 import { requestsJeMinute } from '../bilder';
-import { asFetchError } from '../fremdquellen';
+import { asFetchError } from '../externalSources';
 import { fachfehler, type ErrorCode } from '../infra/fehlerTexte';
 import type { ManagementContext } from './context';
 
-const SOURCES: Record<string, (q: ManagementContext['fremdquellen']['quellen']) => Promise<void>> = {
+const SOURCES: Record<string, (q: ManagementContext['externalSources']['quellen']) => Promise<void>> = {
   rebrickable: q => q.checkRebrickableAccess(),
   brickset: q => q.checkBricksetAccess(),
   bricklink: q => q.checkBricklinkAccess(),
@@ -45,7 +45,7 @@ export async function checkSource(
   const pruefe = Object.hasOwn(SOURCES, quelle) ? SOURCES[quelle] : undefined;
   if (!pruefe) fachfehler('ungueltig', 'quelle_unbekannt');
   try {
-    await pruefe(k.fremdquellen.quellen);
+    await pruefe(k.externalSources.quellen);
     return null;
   } catch (e) {
     return { code: sourceRejection(e), quelle: SOURCE_NAME[quelle] ?? quelle, grund: fehlertext(e).slice(0, 200) };
@@ -62,9 +62,9 @@ export async function cacheStats(k: ManagementContext) {
       { prices: 0, subsets: 0, catalog: 0 },
     ),
     ab.oder('veraltete_preise', k.management.stalePrices(), 0),
-    ab.oder('kontingent_bricklink', k.fremdquellen.quotaStatus('bricklink'), leer),
-    ab.oder('kontingent_rebrickable', k.fremdquellen.quotaStatus('rebrickable'), leer),
-    ab.oder('kontingent_brickset', k.fremdquellen.quotaStatus('brickset'), leer),
+    ab.oder('kontingent_bricklink', k.externalSources.quotaStatus('bricklink'), leer),
+    ab.oder('kontingent_rebrickable', k.externalSources.quotaStatus('rebrickable'), leer),
+    ab.oder('kontingent_brickset', k.externalSources.quotaStatus('brickset'), leer),
   ]);
   return {
     ...stats,
@@ -87,12 +87,12 @@ export async function clearCaches(k: ManagementContext, alle: boolean) {
 export async function bricksetLimitSet(k: ManagementContext, alt: number, neu: number) {
   if (!(neu > alt)) return;
   // Das neue Limit ist gespeichert; ohne Zählerstand wartet die Schlange auf den nächsten Lauf.
-  const rl = await versuche('management:kontingentUebersicht', k.fremdquellen.quotaStatus('brickset'));
+  const rl = await versuche('management:kontingentUebersicht', k.externalSources.quotaStatus('brickset'));
   if (!rl.ok) return;
   const rest = Math.max(0, neu - (rl.wert.count || 0));
   if (rest <= 0) return;
   console.log(`[brickset] Limit erhöht ${alt}→${neu}, ${rest} Abrufe frei — Warteschlange wird abgearbeitet`);
-  await k.fremdquellen.brickset.jetzt();
+  await k.externalSources.brickset.jetzt();
 }
 
 export async function requeueInstructions(k: ManagementContext) {
@@ -137,7 +137,7 @@ export async function priceJobStatus(k: ManagementContext) {
         : null,
     log: Array.isArray(letzter.log) ? letzter.log : [],
   };
-  return { job, rate_limit: await k.fremdquellen.quotaStatus('bricklink') };
+  return { job, rate_limit: await k.externalSources.quotaStatus('bricklink') };
 }
 
 /** false, wenn er schon läuft. */
@@ -151,12 +151,12 @@ export const runCatalogSyncNow = (k: ManagementContext) => k.auftraege.pullPlanB
 
 /** Auch über das Tageskontingent hinweg. */
 export async function retryBrickset(k: ManagementContext, sn: string) {
-  await k.fremdquellen.setQuotaBack('brickset');
-  await k.fremdquellen.brickset.jetzt(sn);
+  await k.externalSources.setQuotaBack('brickset');
+  await k.externalSources.brickset.jetzt(sn);
 }
 
 export async function removeBrickset(k: ManagementContext, sn: string) {
-  await k.fremdquellen.quellen.fromRetryQueue(sn);
+  await k.externalSources.quellen.fromRetryQueue(sn);
   await k.katalog.anleitungEinreihen(sn, { nurAusweichquelle: true });
 }
 
@@ -189,7 +189,7 @@ export async function setJobSchedule(
 export async function rescheduleJobs(k: ManagementContext) {
   await k.auftraege.scheduleChanged('csv_sync');
   await k.auftraege.scheduleChanged('preise');
-  await k.fremdquellen.brickset.prefer(await k.fremdquellen.brickset.dueAb(false));
+  await k.externalSources.brickset.prefer(await k.externalSources.brickset.dueAb(false));
 }
 
 /** Fertig ist ein Set mit Original UND Vorschau; zurückgenommene Fehlanzeigen

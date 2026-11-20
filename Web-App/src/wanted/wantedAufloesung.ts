@@ -1,6 +1,6 @@
 /** BL-Nummern der Wanted-Liste auf Rebrickable-Nummern abbilden: zuerst lokal
  * (Zuordnungen, Katalog), dann über Rebrickable, zuletzt die Korrekturen von Hand. */
-import { RebrickableLocked } from '../fremdquellen';
+import { RebrickableLocked } from '../externalSources';
 import { reportError } from '../infra/fehler';
 import type { WantedArt, WantedItem } from './wantedParser';
 import type { WantedContext } from './context';
@@ -132,7 +132,7 @@ export async function resolveViaRebrickableOn(
     // Ein Fehler ausser „unbekannt“ trifft auch alle folgenden Posten; der Bericht
     // nennt den Grund, statt sie still als „nicht gefunden“ zu zählen.
     try {
-      rbId = await k.fremdquellen.quellen.blTeilZuRb(a.posten.blId);
+      rbId = await k.externalSources.quellen.blTeilZuRb(a.posten.blId);
     } catch (e) {
       if (!(e instanceof RebrickableLocked)) reportError('wanted:rebrickable', e);
       const abgebrochen = e instanceof RebrickableLocked ? e.grund : 'stoerung';
@@ -140,7 +140,7 @@ export async function resolveViaRebrickableOn(
         auf: ergebnis,
         gefragt,
         gefunden,
-        filterWirkungslos: k.fremdquellen.quellen.blFilterIneffective(),
+        filterWirkungslos: k.externalSources.quellen.blFilterIneffective(),
         abgebrochen,
       };
     }
@@ -151,7 +151,7 @@ export async function resolveViaRebrickableOn(
     // Nach dem Abruf: „37 von 50" heisst 37 erledigt.
     fortschritt?.({ phase: 'rebrickable', fertig: gefragt, gesamt });
   }
-  return { auf: ergebnis, gefragt, gefunden, filterWirkungslos: k.fremdquellen.quellen.blFilterIneffective() };
+  return { auf: ergebnis, gefragt, gefunden, filterWirkungslos: k.externalSources.quellen.blFilterIneffective() };
 }
 
 /** Adressiert über den Index: Dieselbe Nummer darf mehrfach in der Liste stehen. */

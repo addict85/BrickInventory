@@ -1,9 +1,9 @@
-import { asIds, type Sicht } from '../haushalt';
+import { asIds, type Sicht } from '../household';
 import type { InventoryContext } from './kontext';
 
 /** Spannen über alle drei Domänen und gehören deshalb in keine davon. */
 export async function getStats(k: InventoryContext, userIdChoice: Sicht | number | number[]) {
-  const userId = await k.haushalt.scopeFrom(userIdChoice);
+  const userId = await k.household.scopeFrom(userIdChoice);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   const [setsRow, instrRow, partsRow, minifigsRow, cur, singleRow] = await Promise.all([

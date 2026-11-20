@@ -62,7 +62,7 @@ test('der Rebrickable-Schlüssel bleibt bei rebrickable.com', { concurrency: 1 }
     else await S.deleteGlobalValues('rebrickable_api_key');
   });
   const { holeSetTeile, httpsGetRobust, rebrickableRaw } =
-    require('./helpers/sources').testServices().fremdquellen.quellen;
+    require('./helpers/sources').testServices().externalSources.quellen;
   const withKey = () => fetches.filter(a => Object.keys(a.kopf).some(k => k.toLowerCase() === 'authorization'));
 
   await t.test('next auf api.upcitemdb.com wird nicht verfolgt', async () => {

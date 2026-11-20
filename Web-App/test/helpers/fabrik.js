@@ -20,7 +20,7 @@ async function konto(name, o = {}) {
 /** Hängt `unter` an `haupt` wie in der Oberfläche: Einladung anlegen und einlösen.
  * @param {number} haupt @param {number} unter */
 async function subAccount(haupt, unter) {
-  const h = testServices().haushalt;
+  const h = testServices().household;
   const e = await h.createInvitation(haupt);
   if (!e.code) throw new Error(`Einladung abgewiesen: ${e.fehler}`);
   const r = await h.redeemInvitation(unter, e.code);

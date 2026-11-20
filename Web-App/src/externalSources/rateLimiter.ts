@@ -60,9 +60,9 @@ export class RateLimiter {
 }
 
 import { reportError } from '../infra/fehler';
-import { kontingentPruefenUndZaehlen, REBRICKABLE_DEFAULT_DAILY } from './apiKontingent';
+import { kontingentPruefenUndZaehlen, REBRICKABLE_DEFAULT_DAILY } from './apiQuota';
 import { versuche } from '../infra/ergebnis';
-import type { ForeignSourcesContext } from './kontext';
+import type { ForeignSourcesContext } from './context';
 
 /** Ein einziges UPDATE schiebt den Zeitpunkt weiter — zwei Prozesse bekommen
  * nie denselben Platz, ohne dass einer eine Sperre hält, während er wartet. */

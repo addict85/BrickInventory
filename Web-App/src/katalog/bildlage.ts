@@ -19,7 +19,7 @@ export async function imagesForFollowUp(k: CatalogContext) {
 
 /** Vorhandenes bleibt. @returns ob Brickset das Set kennt */
 export async function fillFromBrickset(k: CatalogContext, setNumber: string): Promise<boolean> {
-  const info = await k.fremdquellen.quellen.setAngaben(setNumber);
+  const info = await k.externalSources.quellen.setAngaben(setNumber);
   if (!info) return false;
   // Scheitert es, wirft es: Der Auftrag versucht es erneut, statt das Set namenlos zu lassen.
   await k.bildlage.fillSetGaps(setNumber, info);

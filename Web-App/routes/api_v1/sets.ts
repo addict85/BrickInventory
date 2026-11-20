@@ -5,7 +5,7 @@ import { vertragsRouter } from '../../src/http/vertragsRouter';
 import type { Dienste } from '../../src/dienste';
 import { fachfehler, notFound } from '../../src/infra/fehlerTexte';
 
-export function buildSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'sets'>) {
+export function buildSetsRouter(d: Pick<Dienste, 'household' | 'konto' | 'sets'>) {
   const { requireToken } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1');
 
@@ -59,7 +59,7 @@ export function buildSetsRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'sets'>)
   /** MUSS vor /sets/:setNumber stehen: Express liest „household-members" sonst
    * als Setnummer. */
   router.endpunkt('GET /api/v1/sets/household-members', requireToken, async req => {
-    return { members: await d.haushalt.householdMembers(req.apiUser.user_id) };
+    return { members: await d.household.householdMembers(req.apiUser.user_id) };
   });
 
   router.endpunkt('GET /api/v1/sets/:setNumber', requireToken, async req => {

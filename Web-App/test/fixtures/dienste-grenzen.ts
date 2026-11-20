@@ -25,9 +25,9 @@ export function probe(d: Dienste): unknown[] {
     // @ts-expect-error
     d.settings.repository,
     // @ts-expect-error
-    d.haushalt.db,
+    d.household.db,
     // @ts-expect-error
-    d.haushalt.repository,
+    d.household.repository,
     // @ts-expect-error
     d.konto.db,
     // @ts-expect-error

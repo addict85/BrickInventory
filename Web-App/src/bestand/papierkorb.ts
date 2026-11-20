@@ -1,4 +1,4 @@
-import type { Schreiber } from '../haushalt';
+import type { Schreiber } from '../household';
 import type { DbInterface } from '../../db/database';
 import * as repo from './repository/papierkorb';
 import * as kauf from './repository/kaufErfassungen';
@@ -93,7 +93,7 @@ export interface PapierkorbEintrag {
 }
 
 export async function listTrash(k: InventoryContext, uidsChoice: Schreiber | number[]): Promise<PapierkorbEintrag[]> {
-  const uids = await k.haushalt.writeAreaFrom(uidsChoice);
+  const uids = await k.household.writeAreaFrom(uidsChoice);
   const rows = await k.papierkorb.eintraege(uids, RETENTION_DAYS);
   return rows.map(r => {
     const erfassungen = r.rows?.[ERFASSUNGEN[r.type]] ?? [];
@@ -111,7 +111,7 @@ export async function placeAgainHer(
   uidsChoice: Schreiber | number[],
   id: number,
 ): Promise<Wiederherstellung> {
-  const uids = await k.haushalt.writeAreaFrom(uidsChoice);
+  const uids = await k.household.writeAreaFrom(uidsChoice);
   try {
     return await k.transaktion(async (t): Promise<Wiederherstellung> => {
       const e = await repo.lockTrashEntry(t.db, id, uids);
@@ -135,12 +135,12 @@ export async function placeAgainHer(
 }
 
 export async function deleteFinal(k: InventoryContext, uidsChoice: Schreiber | number[], id: number): Promise<void> {
-  const uids = await k.haushalt.writeAreaFrom(uidsChoice);
+  const uids = await k.household.writeAreaFrom(uidsChoice);
   if (!(await k.papierkorb.removeEntryOfAccount(id, uids))) notFound();
 }
 
 export async function emptyTrash(k: InventoryContext, uidsChoice: Schreiber | number[]): Promise<number> {
-  const uids = await k.haushalt.writeAreaFrom(uidsChoice);
+  const uids = await k.household.writeAreaFrom(uidsChoice);
   return k.papierkorb.removeAll(uids);
 }
 

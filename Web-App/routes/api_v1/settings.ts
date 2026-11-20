@@ -10,7 +10,7 @@ import { fachfehler } from '../../src/infra/fehlerTexte';
 import { ownAccess } from '../../src/konto';
 
 export function buildSettingsRouter(
-  d: Pick<Dienste, 'settings' | 'mail' | 'haushalt' | 'konto' | 'profile' | 'management'>,
+  d: Pick<Dienste, 'settings' | 'mail' | 'household' | 'konto' | 'profile' | 'management'>,
 ) {
   const { requireToken, requireLoginOrToken } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1');
@@ -146,19 +146,19 @@ export function buildSettingsRouter(
     return { condition: condition || null };
   });
 
-  // ── Haushalt: Konten verknüpfen (Regeln in src/haushalt/haushalt.ts) ─────────────
+  // ── Haushalt: Konten verknüpfen (Regeln in src/household/household.ts) ─────────────
   router.endpunkt('GET /api/v1/settings/household', requireToken, async req => {
-    return { ...(await d.haushalt.householdStatus(req.apiUser.user_id)) };
+    return { ...(await d.household.householdStatus(req.apiUser.user_id)) };
   });
 
   router.endpunkt('POST /api/v1/settings/household/invite', requireToken, async req => {
-    return { ...(await d.haushalt.createInvitation(req.apiUser.user_id)) };
+    return { ...(await d.household.createInvitation(req.apiUser.user_id)) };
   });
 
   router.endpunkt('POST /api/v1/settings/household/redeem/pruefen', requireToken, async req => {
     const zuOft = await d.konto.accountThrottled('haushalt-pruefen', req.apiUser.user_id, 30, 60 * 60 * 1000);
     if (zuOft) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: zuOft.waitMin });
-    return { ...(await d.haushalt.checkInvitation(req.apiUser.user_id, req.eingabe.code)) };
+    return { ...(await d.household.checkInvitation(req.apiUser.user_id, req.eingabe.code)) };
   });
 
   // Mit Passwort: Das Hauptkonto schreibt danach den Bestand dieses Kontos; ein
@@ -172,12 +172,12 @@ export function buildSettingsRouter(
 
   router.endpunkt('POST /api/v1/settings/household/unlink', requireToken, async req => {
     return {
-      ...(await d.haushalt.unlinkAccounts(req.apiUser.user_id, req.eingabe.sub_user_id, req.eingabe.main_user_id)),
+      ...(await d.household.unlinkAccounts(req.apiUser.user_id, req.eingabe.sub_user_id, req.eingabe.main_user_id)),
     };
   });
 
   router.endpunkt('POST /api/v1/settings/household/former/dismiss', requireToken, async req => {
-    return { ...(await d.haushalt.discardSeparated(req.apiUser.user_id, req.eingabe.sub_user_id)) };
+    return { ...(await d.household.discardSeparated(req.apiUser.user_id, req.eingabe.sub_user_id)) };
   });
 
   router.use('/settings', requireLogin);

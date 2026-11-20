@@ -10,11 +10,11 @@ async function bricksetNachlauf(k: CatalogContext, n: Nutzlast<'brickset'>, lauf
   const sn = n.set_number;
   try {
     const [limit, status] = await Promise.all([
-      k.fremdquellen.quotaLimit('brickset'),
-      k.fremdquellen.quotaStatus('brickset'),
+      k.externalSources.quotaLimit('brickset'),
+      k.externalSources.quotaStatus('brickset'),
     ]);
     if (Math.max(0, limit - (status.count || 0)) <= 0) {
-      const bis = await k.fremdquellen.brickset.dueAb(false);
+      const bis = await k.externalSources.brickset.dueAb(false);
       await k.auftraege.pauseKind('brickset', bis, 'Brickset-Tageskontingent erschöpft');
       throw new JobMove(bis, 'Brickset-Tageskontingent erschöpft');
     }
@@ -38,7 +38,7 @@ const tag = (d: Date) =>
 
 /** Im Format der früheren Tabelle, damit die Oberfläche gleich bleibt; die Namen aus dem Katalog. */
 async function bricksetList(k: CatalogContext) {
-  const wartend = await k.fremdquellen.brickset.wartende();
+  const wartend = await k.externalSources.brickset.wartende();
   const namen = new Map(
     (await k.bildlage.setNames([...new Set(wartend.map(w => w.set_number))])).map(z => [z.set_num, z.name]),
   );

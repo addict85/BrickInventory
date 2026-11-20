@@ -6,7 +6,7 @@ import * as balanceThrottle from './repository/balanceThrottle';
 import * as vouchers from './repository/vouchers';
 import type { SettingsServices } from '../settings';
 import type { AccountServices } from '../konto';
-import type { ForeignSourcesServices } from '../fremdquellen';
+import type { ForeignSourcesServices } from '../externalSources';
 import type { Faecher } from '../infra/zwischenspeicher';
 import type { Uhr } from '../infra/uhr';
 
@@ -16,7 +16,7 @@ export interface VoucherDependencies {
   einstellungen: SettingsServices;
   konto: AccountServices;
   throttle: ThrottleServices;
-  fremdquellen: ForeignSourcesServices;
+  externalSources: ForeignSourcesServices;
   /** Sessions of balance lookups and PDF tickets of this set of services. */
   faecher: Faecher;
 }

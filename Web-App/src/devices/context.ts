@@ -3,9 +3,9 @@ import type { Konfig } from '../infra/konfig';
 import type { Uhr } from '../infra/uhr';
 import type { Db } from '../../db/database';
 import { imSystem, mit, type Kontext } from '../infra/bereich';
-import type { DevicesReadContract } from './lesevertrag';
+import type { DevicesReadContract } from './readContract';
 import type { JobsServices } from '../auftraege';
-import * as geraeteSchluessel from './repository/geraeteSchluessel';
+import * as geraeteSchluessel from './repository/deviceKeys';
 
 export interface DevicesDependencies {
   konfig: Readonly<Konfig>;

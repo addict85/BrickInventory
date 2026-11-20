@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { type Route, zeit, Erfolg, WITHOUT_BODY } from './grund';
 
-/** Die Schritte, die die App hinter ihren Schrittschutz stellt (src/geraete/geraeteChallenge.ts). */
+/** Die Schritte, die die App hinter ihren Schrittschutz stellt (src/devices/deviceChallenge.ts). */
 export const ACTIONS = ['gutschein', 'verwaltung', 'zweiter_faktor'] as const;
 
 export const SchrittChallenge = z.looseObject({

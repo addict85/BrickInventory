@@ -1,6 +1,6 @@
 /** Stammdaten, Teile- und Figurenliste eines Sets. */
 import { proxyImageUrl } from '../bilder';
-import { type RbSetTeil, firstBlNumber } from '../fremdquellen';
+import { type RbSetTeil, firstBlNumber } from '../externalSources';
 import { findSetInScope } from './erfassen';
 import { istErsatzteil } from '../infra/validate';
 import { withVersion, withoutVersion } from '../infra/setNummer';
@@ -153,9 +153,9 @@ export async function minifigsListOfSets(sk: SetsContext, setNum: string) {
     figs = await repo.inventoryMinifigsOfSets(sk.db, invId);
   }
   if (!figs.length) {
-    const mit = await versuche('sets:getSetMinifigs', sk.fremdquellen.quellen.getSetMinifigs(n));
+    const mit = await versuche('sets:getSetMinifigs', sk.externalSources.quellen.getSetMinifigs(n));
     const rb =
-      mit.ok && mit.wert ? mit : await versuche('sets:getSetMinifigs', sk.fremdquellen.quellen.getSetMinifigs(bare));
+      mit.ok && mit.wert ? mit : await versuche('sets:getSetMinifigs', sk.externalSources.quellen.getSetMinifigs(bare));
     if (!rb.ok) return { figs: [], source: SOURCE_DISRUPTED, error: rb.fehler.grund };
     figs = rb.wert || [];
   }
@@ -175,7 +175,7 @@ async function storeSetMinifigs(
     let bild = f.image_url || null;
     if (!bild)
       bild =
-        valueOr(await versuche('sets:minifigur-info', k.fremdquellen.quellen.getMinifigInfo(f.fig_number)), null)
+        valueOr(await versuche('sets:minifigur-info', k.externalSources.quellen.getMinifigInfo(f.fig_number)), null)
           ?.image_url || null;
     await k.katalog.rememberMinifig(f.fig_number, f.fig_name, bild);
     await k.katalog.merkeSetFiguren(n, [{ figNumber: f.fig_number, quantity: f.quantity }]);

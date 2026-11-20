@@ -3,7 +3,7 @@
 import { reportError, logAndContinue } from '../infra/fehler';
 import { withVersion } from '../infra/setNummer';
 import { setPartImageLocal, setMinifigImageLocal } from './katalogPflege';
-import { IMAGE_HEADERS } from '../fremdquellen';
+import { IMAGE_HEADERS } from '../externalSources';
 
 // Teile- und Figurenbilder liegen in getrennten Ordnern; downloadImage()
 // bekommt deshalb die Art mit.

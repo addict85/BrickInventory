@@ -27,8 +27,8 @@ const G = _req('src/vouchers/balanceLookup.js');
 /** Der Sitzungsvorrat, den sonst das Fach der Gutschein-Dienste hält. */
 const vorrat = new Map();
 const { AbrufFehler } = _req('src/infra/abruf.js');
-// Der echte Abruf, wie ihn die Dienste über ihre Quellen reichen (src/fremdquellen/quellen.ts).
-const { legoFetch } = require('./helpers/sources').testServices().fremdquellen.quellen;
+// Der echte Abruf, wie ihn die Dienste über ihre Quellen reichen (src/externalSources/sources.ts).
+const { legoFetch } = require('./helpers/sources').testServices().externalSources.quellen;
 
 const FIX = path.join(__dirname, 'fixtures');
 const cert = fs.readFileSync(path.join(FIX, 'abruf-test.crt'));

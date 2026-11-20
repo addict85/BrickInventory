@@ -59,7 +59,7 @@ test('Wanted-Auflösung über Rebrickable bricht mit Grund ab', { concurrency: 1
   if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const S = _req('src/settings/settings.js');
-  const k = _req('src/fremdquellen/apiKontingent.js');
+  const k = _req('src/externalSources/apiQuota.js');
   const { resolveViaRebrickableOn } = _req('src/wanted/wantedAufloesung.js');
   await db.run("DELETE FROM global_settings WHERE key = 'rebrickable_api_key'");
 

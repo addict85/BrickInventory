@@ -1,11 +1,11 @@
 /** Die eine Stelle, an der verdrahtet wird: Bereiche und die Klienten
- * (über src/fremdquellen) entstehen aus einem Datenbankzugang. Der Einstieg (server.ts, Skripte,
+ * (über src/externalSources) entstehen aus einem Datenbankzugang. Der Einstieg (server.ts, Skripte,
  * Testhilfen) hält das Ergebnis und reicht es weiter; einen Prozess-Speicher gibt es nicht. */
 import path from 'node:path';
 import { createJobs, type Anmeldung, type JobKind } from '../src/auftraege';
 import { dbKonfigFromEnvironment, createDb, type Db } from '../db/database';
 import { createSets } from '../src/sets';
-import { createHousehold } from '../src/haushalt';
+import { createHousehold } from '../src/household';
 import { createMail } from '../src/mail';
 import { createIdempotency } from '../src/idempotency';
 import { createInventory } from '../src/bestand';
@@ -21,10 +21,10 @@ import { createFinances } from '../src/finanzen';
 import { createAccount } from '../src/konto';
 import { createFactors } from '../src/factors';
 import { createProfile } from '../src/profile';
-import { createForeignSources, type Quellen } from '../src/fremdquellen';
+import { createForeignSources, type Quellen } from '../src/externalSources';
 import { createSettings } from '../src/settings';
 import { createThrottle } from '../src/throttle';
-import { createDevices } from '../src/geraete';
+import { createDevices } from '../src/devices';
 import { konfig, type Konfig } from '../src/infra/konfig';
 import { systemClock, type Uhr } from '../src/infra/uhr';
 import { LESEVERTRAG, type Dienste } from '../src/dienste';
@@ -34,7 +34,7 @@ export type { Dienste } from '../src/dienste';
 /** Was ein Test statt des Echten gibt: eigenes Bildwerk, eigene Fremdquellen. */
 export interface Components {
   bildwerk?: ImageWorker;
-  /** Ersetzte Klienten (src/fremdquellen/quellen.ts), gelesen beim Aufruf. */
+  /** Ersetzte Klienten (src/externalSources/sources.ts), gelesen beim Aufruf. */
   quellen?: Partial<Quellen>;
   /** Nur Testhilfen: Hier legt jede Fabrik ihren Kontext ab (Einblick). */
   contexts?: Record<string, unknown>;
@@ -122,25 +122,25 @@ function buildReason(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige:
   const einstellungen = createSettings({ db, uhr, throttle, lesevertrag: LESEVERTRAG }, zeige('settings'));
   const mail = createMail({ uhr, einstellungen, konfig }, zeige('mail'));
   const auftraege = createJobs({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('auftraege'));
-  const haushalt = createHousehold({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('haushalt'));
-  const geraete = createDevices({ db, uhr, konfig, auftraege, lesevertrag: LESEVERTRAG }, zeige('geraete'));
+  const household = createHousehold({ db, uhr, einstellungen, lesevertrag: LESEVERTRAG }, zeige('household'));
+  const devices = createDevices({ db, uhr, konfig, auftraege, lesevertrag: LESEVERTRAG }, zeige('devices'));
   const factors = createFactors({ db, uhr, konfig, einstellungen }, zeige('factors'));
   const konto = createAccount(
-    { db, uhr, konfig, einstellungen, auftraege, haushalt, mail, throttle, geraete, factors },
+    { db, uhr, konfig, einstellungen, auftraege, household, mail, throttle, devices, factors },
     zeige('konto'),
   );
   const profile = createProfile({ db, uhr, konfig, einstellungen, konto, mail }, zeige('profile'));
   const idempotency = createIdempotency({ db, uhr }, zeige('idempotency'));
-  const fremdquellen = createForeignSources(
+  const externalSources = createForeignSources(
     { db, uhr, einstellungen, auftraege, ersatz: quellen },
-    zeige('fremdquellen'),
+    zeige('externalSources'),
   );
   const bilder = createImages(
-    { db, uhr, konfig, auftraege, haushalt, fremdquellen, bildwerk, lesevertrag: LESEVERTRAG },
+    { db, uhr, konfig, auftraege, household, externalSources, bildwerk, lesevertrag: LESEVERTRAG },
     zeige('bilder'),
   );
   const katalog = createCatalog(
-    { db, uhr, einstellungen, auftraege, haushalt, fremdquellen, bilder, throttle, lesevertrag: LESEVERTRAG },
+    { db, uhr, einstellungen, auftraege, household, externalSources, bilder, throttle, lesevertrag: LESEVERTRAG },
     zeige('katalog'),
   );
   // Den Eintrag beim Set macht der Katalog (höher); er horcht auf die Bilder, statt dass sie ihn rufen.
@@ -150,13 +150,13 @@ function buildReason(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige:
     settings: einstellungen,
     mail,
     auftraege,
-    haushalt,
-    geraete,
+    household,
+    devices,
     factors,
     konto,
     profile,
     idempotency,
-    fremdquellen,
+    externalSources,
     bilder,
     katalog,
   };
@@ -165,47 +165,49 @@ function buildReason(db: Db, { bildwerk, quellen, konfig, uhr }: Gesetzt, zeige:
 function buildAreas(db: Db, components: Gesetzt): Dienste {
   const zeige = inspectIn(components.contexts);
   const grund = buildReason(db, components, zeige);
-  const {
-    throttle,
-    settings: einstellungen,
-    mail,
-    auftraege,
-    haushalt,
-    factors,
-    konto,
-    idempotency,
-    fremdquellen,
-    bilder,
-    katalog,
-  } = grund;
+  const { throttle, settings: einstellungen, mail, auftraege, household, factors } = grund;
+  const { konto, idempotency, externalSources, bilder, katalog } = grund;
   const { konfig, uhr } = components;
   const finanzen = createFinances(
-    { db, uhr, konfig, einstellungen, auftraege, haushalt, katalog, fremdquellen, mail, lesevertrag: LESEVERTRAG },
+    { db, uhr, konfig, einstellungen, auftraege, household, katalog, externalSources, mail, lesevertrag: LESEVERTRAG },
     zeige('finanzen'),
   );
   const bestand = createInventory(
-    { db, uhr, einstellungen, haushalt, konto, katalog, finanzen, lesevertrag: LESEVERTRAG },
+    { db, uhr, einstellungen, household, konto, katalog, finanzen, lesevertrag: LESEVERTRAG },
     zeige('bestand'),
   );
   const sets = createSets(
-    { db, uhr, konfig, katalog, fremdquellen, bilder, finanzen, haushalt, auftraege, bestand, einstellungen, konto },
+    {
+      db,
+      uhr,
+      konfig,
+      katalog,
+      externalSources,
+      bilder,
+      finanzen,
+      household,
+      auftraege,
+      bestand,
+      einstellungen,
+      konto,
+    },
     zeige('sets'),
   );
   const parts = createParts(
-    { db, uhr, einstellungen, auftraege, haushalt, katalog, fremdquellen, finanzen, bestand },
+    { db, uhr, einstellungen, auftraege, household, katalog, externalSources, finanzen, bestand },
     zeige('parts'),
   );
   const minifigs = createMinifigs(
-    { db, uhr, einstellungen, haushalt, katalog, fremdquellen, auftraege, finanzen, bestand },
+    { db, uhr, einstellungen, household, katalog, externalSources, auftraege, finanzen, bestand },
     zeige('minifigs'),
   );
   const wanted = createWanted(
-    { db, uhr, einstellungen, haushalt, katalog, fremdquellen, bilder, finanzen, sets },
+    { db, uhr, einstellungen, household, katalog, externalSources, bilder, finanzen, sets },
     zeige('wanted'),
   );
-  const vouchers = createVouchers({ db, uhr, einstellungen, konto, fremdquellen, throttle }, zeige('vouchers'));
+  const vouchers = createVouchers({ db, uhr, einstellungen, konto, externalSources, throttle }, zeige('vouchers'));
   const collection = createCollection(
-    { db, uhr, haushalt, auftraege, katalog, finanzen, bestand, sets, parts, minifigs, wanted },
+    { db, uhr, household, auftraege, katalog, finanzen, bestand, sets, parts, minifigs, wanted },
     zeige('collection'),
   );
   const management = createManagement(
@@ -218,7 +220,7 @@ function buildAreas(db: Db, components: Gesetzt): Dienste {
       konto,
       idempotency,
       katalog,
-      fremdquellen,
+      externalSources,
       bilder,
       finanzen,
       bestand,

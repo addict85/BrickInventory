@@ -24,7 +24,7 @@ declare const k: any, sk: any, kx: any, db: any;
 export async function a() {
   await k.transaktion(async (t: any) => { await t.db.get('x'); await k.db.get('y'); });
   await k.transaktion(async t => k.konfig);
-  await sk.transaktion(async t => { await kx.haushalt.x(t); }, { repeatAtConflict: true });
+  await sk.transaktion(async t => { await kx.household.x(t); }, { repeatAtConflict: true });
   await db.transaction(async function (tx: any) { await db.get('z'); });
   await k.transaktion((t: any) => t.transaktion(async (u: any) => sk.x(u)));
 }

@@ -104,7 +104,7 @@ Absicht, solange es nur von unten gebraucht wird:
   `bilder`, Idempotenz-Middleware). Fachdienste importieren weder Express noch
   eine HTTP-Seite; eine Absage ist eine `FehlerArt` (oder ein `Fachfehler`),
   den HTTP-Status wählt `src/http/fehlerArt.ts`.
-- Clients erreicht man nur über `src/fremdquellen/quellen.ts`. Jeder Klient
+- Clients erreicht man nur über `src/externalSources/sources.ts`. Jeder Klient
   entsteht dort je Satz Dienste (`erzeugeRebrickable(z)` …) mit Schlüssel,
   Kontingent und Drossel seines Zugangs (`clients/zugang.ts`); einen Zugang des
   Prozesses gibt es nicht. Tests stellen Klienten mit `testQuellen()`.
@@ -230,8 +230,8 @@ auf (`tsc --explainFiles`). Von unten nach oben:
 | 6 | `src/settings` |
 | 7 | `src/mail` |
 | 8 | `src/auftraege` |
-| 9 | `src/fremdquellen` |
-| 10 | `src/haushalt`, `src/geraete`, `src/factors` |
+| 9 | `src/externalSources` |
+| 10 | `src/household`, `src/devices`, `src/factors` |
 | 11 | `src/konto` |
 | 12 | `src/bilder`, `src/profile` |
 | 13 | `src/idempotency`, `src/katalog` |
@@ -299,9 +299,9 @@ liest und schreibt (`DYNAMISCH`); dafür gelten dieselben Regeln.
 | `src/throttle` | `rate_limit_attempts` |
 | `src/settings` | `global_settings`, `user_settings` |
 | `src/auftraege` | `jobs`, `job_exclusive_locks`, `job_pauses`, `job_types`, `import_status`, `run_state` |
-| `src/fremdquellen` | `api_calls`, `api_cadence` |
-| `src/haushalt` | `account_link_invites`, `account_links`, `household_former_links` |
-| `src/geraete` | `device_nonces`, `device_keys`, `step_up_challenges`, `step_up_approvals` |
+| `src/externalSources` | `api_calls`, `api_cadence` |
+| `src/household` | `account_link_invites`, `account_links`, `household_former_links` |
+| `src/devices` | `device_nonces`, `device_keys`, `step_up_challenges`, `step_up_approvals` |
 | `src/factors` | `passkeys`, `webauthn_challenges`, `second_factor`, `second_factor_codes` |
 | `src/konto` | `api_tokens`, `api_tokens_consumed`, `qr_login_tokens`, `user_sessions`, `users`, `admin_takeovers`, `admin_log` |
 | `src/bilder` | `image_misses`, `image_wanted` |

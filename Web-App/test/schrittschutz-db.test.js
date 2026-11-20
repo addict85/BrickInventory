@@ -59,7 +59,7 @@ const { bis } = require('./helpers/zeit');
 const { adminWithFactor } = require('./helpers/verwalter');
 const { geraeteSchluessel, signiere, releaseDevice, deposit } = require('./helpers/geraet');
 const attestation = require('./helpers/attestation');
-const repo = require('./helpers/sources').testArea('geraete').geraeteSchluessel;
+const repo = require('./helpers/sources').testArea('devices').geraeteSchluessel;
 const { pairQr } = require('./helpers/qr');
 const freePort = () =>
   new Promise(r => {

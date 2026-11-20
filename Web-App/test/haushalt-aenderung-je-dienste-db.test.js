@@ -43,19 +43,19 @@ test('Haushaltsänderungen je Satz Dienste', { concurrency: 1 }, async t => {
 
   await t.test('ein Satz leert nur seine Abhängigen', () => {
     const gerufen = [];
-    a.haushalt.atHouseholdChange(() => gerufen.push('a'));
-    b.haushalt.atHouseholdChange(() => gerufen.push('b'));
-    a.haushalt.reportHouseholdChange();
+    a.household.atHouseholdChange(() => gerufen.push('a'));
+    b.household.atHouseholdChange(() => gerufen.push('b'));
+    a.household.reportHouseholdChange();
     assert.deepEqual(gerufen, ['a']);
   });
 
   await t.test('ein anderer Satz erfährt die Änderung über NOTIFY', async () => {
-    await b.haushalt.listenOnChanges();
+    await b.household.listenOnChanges();
     // Unter dem Zeilenschutz des Kontos: Fremde Verknüpfungen sieht die Laufzeitrolle nicht (0121).
-    const blickfeld = () => asAccount(ids[0], () => b.haushalt.scopeIds(ids[0]));
+    const blickfeld = () => asAccount(ids[0], () => b.household.scopeIds(ids[0]));
     assert.deepEqual(await blickfeld(), [ids[0]]);
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [ids[0], ids[1]]);
-    a.haushalt.reportHouseholdChange();
+    a.household.reportHouseholdChange();
     const neu = async () => (await blickfeld()).length === 2;
     assert.ok(await bis(neu, 3000), 'altes Blickfeld: die Änderung kam nicht an');
   });

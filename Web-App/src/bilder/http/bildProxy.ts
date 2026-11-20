@@ -17,7 +17,7 @@ import { proxyAddress, proxyCacheKey } from '../images';
 import type { Request, Response } from 'express';
 import type { Readable } from 'node:stream';
 import { AbrufFehler, type FetchStream } from '../../infra/abruf';
-import { IMAGE_HEADERS, IMAGE_HEADERS_WITHOUT_REFERER } from '../../fremdquellen';
+import { IMAGE_HEADERS, IMAGE_HEADERS_WITHOUT_REFERER } from '../../externalSources';
 import zlib from 'node:zlib';
 import { setImageComplete } from '../setImages';
 import { ALLOWED_IMAGE_HOSTS, hostAllowed } from '../../infra/fremdeAdressen';

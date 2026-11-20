@@ -49,7 +49,7 @@ export async function findSetInScope(
   setNumber: string,
 ): Promise<ExistingSet | null> {
   const sn = normalisiereSetNummer(setNumber);
-  const row = await repo.setInScope(sk.db, await sk.haushalt.scopeIds(viewerId), sn, viewerId);
+  const row = await repo.setInScope(sk.db, await sk.household.scopeIds(viewerId), sn, viewerId);
   if (!row) return null;
   return { set_number: row.set_number, owner_user_id: row.user_id, is_self: row.user_id === viewerId };
 }
@@ -107,7 +107,7 @@ export async function setErfassen(sk: SetsContext, e: NewSet): Promise<SetRecord
   if (e.streng && !TYPED_NUMBER.test(roh)) fachfehler('ungueltig', 'setnummer_ungueltig');
   const sn = normalisiereSetNummer(roh);
   if (!possibleSetNumber(sn)) fachfehler('ungueltig', 'setnummer_ungueltig');
-  const besitzer = await sk.haushalt.schreibziel(e.requester, e.ownerWish);
+  const besitzer = await sk.household.schreibziel(e.requester, e.ownerWish);
   const zustand = await sk.einstellungen.conditionForPrice(e.zustand ?? null, null, besitzer);
   const ort = await sk.bestand.locationService.locationForNewEntry(besitzer, e.lagerort ?? null);
   const kaufpreis = e.kaufpreis ?? null;
@@ -186,7 +186,7 @@ async function fetchCatalog(sk: SetsContext, sn: string, withBrickset: boolean, 
   }
   if (withBrickset) {
     const bs = valueOr(
-      await versuche('set-anlegen:brickset-info', sk.fremdquellen.quellen.brickset.setAngaben(sn)),
+      await versuche('set-anlegen:brickset-info', sk.externalSources.quellen.brickset.setAngaben(sn)),
       null,
     );
     if (bs) {

@@ -199,7 +199,7 @@ const _imageWorker = {
   createPreview: (...a) => require(path.join(ROOT, 'dist', 'src/bilder/thumbs.js')).vorschauErzeugenAus(...a),
 };
 
-/** Die ersetzten Klienten der Dienste (src/fremdquellen/quellen.ts): leer heisst echt. */
+/** Die ersetzten Klienten der Dienste (src/externalSources/sources.ts): leer heisst echt. */
 const _sources = {};
 
 /** Die Uhr der Dienste dieser Testdatei (k.uhr, stellbareClock aus src/infra/uhr.ts): Sie läuft
@@ -378,7 +378,7 @@ function asAccount(uid, f, o = {}) {
   return asRequest({ apiUser: { user_id: uid, is_admin: !!o.verwalter } }, f);
 }
 
-/** Ersetzt Fremdquellen (Rebrickable, BrickLink, Brickset; Namen wie in buildSources(), src/fremdquellen/quellen.ts)
+/** Ersetzt Fremdquellen (Rebrickable, BrickLink, Brickset; Namen wie in buildSources(), src/externalSources/sources.ts)
  *  an der Verdrahtung, statt Module beim Laden umzubiegen. Mit `t` bis zum Ende des Tests.
  *  @param {{ after: (f: () => void) => void } | null} t @param {Record<string, unknown>} ersatz */
 function testSources(t, ersatz) {
@@ -526,7 +526,7 @@ function setCoreSource() {
 /** Die Leseabfragen je Fachbereich als EIN Quelltext. */
 const HANDLER_MODULE = [
   'src/bestand/gemeinsam',
-  'src/haushalt/haushalt',
+  'src/household/household',
   'src/parts/queries',
   'src/sets/lesen',
   'src/sets/loeschen',

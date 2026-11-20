@@ -1,7 +1,7 @@
 /** Hier fällt die Entscheidung, unter welcher Art (Set, Gear, Buch) gefragt
  * wird; der Katalog merkt sich die Antwort, damit der nächste Abruf gleich
  * richtig fragt. */
-import { asFetchError } from '../fremdquellen';
+import { asFetchError } from '../externalSources';
 import { withVersion, withoutBricklinkPrice, withoutVersion } from '../infra/setNummer';
 import { fachfehler } from '../infra/fehlerTexte';
 import type { CatalogEntry } from './repository/katalogCache';
@@ -52,18 +52,18 @@ async function getPriceGuideRaw(
   const params = { guide_type: guideType, new_or_used: condition, currency_code: currencyCode, vat: 'N' };
   const cached = await catalogEntry(k, n);
   if (cached?.bl_type === 'GEAR')
-    return await k.fremdquellen.quellen.bricklinkRequest('GET', `/items/gear/${bare}/price`, params);
+    return await k.externalSources.quellen.bricklinkRequest('GET', `/items/gear/${bare}/price`, params);
   if (cached?.bl_type === 'BOOK')
-    return await k.fremdquellen.quellen.bricklinkRequest('GET', `/items/book/${bare}/price`, params);
+    return await k.externalSources.quellen.bricklinkRequest('GET', `/items/book/${bare}/price`, params);
   if (withoutBricklinkPrice(cached)) fachfehler('nicht_gefunden', 'kein_bricklink_preis');
   try {
-    return await k.fremdquellen.quellen.bricklinkRequest('GET', `/items/set/${n}/price`, params);
+    return await k.externalSources.quellen.bricklinkRequest('GET', `/items/set/${n}/price`, params);
   } catch (e) {
     if (!tryNext(e)) throw e;
   }
   for (const art of ['GEAR', 'BOOK'] as const) {
     try {
-      const result = await k.fremdquellen.quellen.bricklinkRequest(
+      const result = await k.externalSources.quellen.bricklinkRequest(
         'GET',
         `/items/${art.toLowerCase()}/${bare}/price`,
         params,

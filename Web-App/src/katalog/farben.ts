@@ -34,7 +34,7 @@ export async function colorList(k: CatalogContext): Promise<Farbe[]> {
   const geladen = await k.katalogStamm.loadedColors();
   if (geladen.length) return geladen;
   // Ohne Rebrickable bleibt die eingebaute Notliste; sie ist als solche kurz.
-  const abgerufen = await versuche('farben:rebrickable', k.fremdquellen.quellen.getBrickColors());
+  const abgerufen = await versuche('farben:rebrickable', k.externalSources.quellen.getBrickColors());
   if (abgerufen.ok && abgerufen.wert.length) return abgerufen.wert;
   return FALLBACK_LIST;
 }

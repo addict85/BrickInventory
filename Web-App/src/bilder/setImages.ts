@@ -2,11 +2,11 @@ import type { Konfig } from '../infra/konfig';
 import path from 'node:path';
 import fs from 'node:fs';
 import { AbrufFehler } from '../infra/abruf';
-import { IMAGE_HEADERS } from '../fremdquellen';
+import { IMAGE_HEADERS } from '../externalSources';
 import type { ImagesContext } from './kontext';
 
 /** Was das Bildwerk braucht; es entsteht vor dem Kontext des Bereichs (bereich.ts). */
-export type ImageWorkerContext = Pick<ImagesContext, 'konfig' | 'fremdquellen'>;
+export type ImageWorkerContext = Pick<ImagesContext, 'konfig' | 'externalSources'>;
 import { SET_IMAGES_DIR } from '../infra/appPaths';
 import { withVersion } from '../infra/setNummer';
 
@@ -55,7 +55,7 @@ export async function setBildHerunterladen(
     )
   )
     return relPath;
-  const buf = await k.fremdquellen.quellen
+  const buf = await k.externalSources.quellen
     .fetchImage(url, {
       maxBytes: SET_IMG_MAX_BYTES,
       zeitlimitMs: 30_000,

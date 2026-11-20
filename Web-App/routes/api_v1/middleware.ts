@@ -14,7 +14,7 @@ import {
 } from '../../src/konto/http/anmeldung';
 import { receiptsAccountSpace, type Schranke } from '../../src/http/kontoSchranke';
 import { requireRelease } from '../../src/konto/http/schrittschutz';
-import type { Sicht } from '../../src/haushalt';
+import type { Sicht } from '../../src/household';
 
 /** Wer fragt und welche Konten er gewählt hat; den Bereich löst der Dienst auf. */
 export const viewOf = (req: AuthedRequest & { abfrage: { accounts?: string | undefined } }): Sicht => ({

@@ -8,7 +8,7 @@ import type { Dienste } from '../../src/dienste';
 import { fachfehler } from '../../src/infra/fehlerTexte';
 
 export function buildAdminRouter(
-  d: Pick<Dienste, 'settings' | 'auftraege' | 'katalog' | 'konto' | 'fremdquellen' | 'management'>,
+  d: Pick<Dienste, 'settings' | 'auftraege' | 'katalog' | 'konto' | 'externalSources' | 'management'>,
 ) {
   const { requireApiAdmin } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1', { largeIds: true });
@@ -86,9 +86,9 @@ export function buildAdminRouter(
 
   router.endpunkt('GET /api/v1/admin/api-limits', requireApiAdmin, async _req => {
     const [rb, bl, bs] = await Promise.all([
-      d.fremdquellen.quotaLimit('rebrickable'),
-      d.fremdquellen.quotaLimit('bricklink'),
-      d.fremdquellen.quotaLimit('brickset'),
+      d.externalSources.quotaLimit('rebrickable'),
+      d.externalSources.quotaLimit('bricklink'),
+      d.externalSources.quotaLimit('brickset'),
     ]);
     return { limits: { rebrickable: rb, bricklink: bl, brickset: bs } };
   });

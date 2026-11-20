@@ -36,7 +36,7 @@ test('ein Dienst fragt nur als das Konto des Zeilenschutzes', { concurrency: 1 }
   const haupt = await neu(MAIN);
   const sub = await neu(SUB);
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [haupt, sub]);
-  require('./helpers/sources').testServices().haushalt.reportHouseholdChange();
+  require('./helpers/sources').testServices().household.reportHouseholdChange();
   await holdsSet(db, haupt, '10179-1');
   await holdsSet(db, sub, '75192-1');
   const nummern = async nutzer => (await setsLesen({ nutzer }, {})).sets.map(s => s.set_number).sort();

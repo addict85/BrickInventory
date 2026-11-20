@@ -25,7 +25,7 @@
  *   G  derselbe placeJobOne('bilder', …) ohne sk.auftraege → rot:
  *      „Teileliste … Bilderauftrag dort“ (kein Auftrag in der zweiten) und „der
  *      Prozesszugang …“
- *   H  src/haushalt/haushalt.ts wieder mit einem Gedächtnis für alle Zugänge →
+ *   H  src/household/household.ts wieder mit einem Gedächtnis für alle Zugänge →
  *      rot: „Haushaltsgedächtnis je Zugang“ (14.11.2026 erneut, das Gedächtnis jetzt im
  *      Fach des Bereichs: gedaechtnis() mit einem Fach für alle → rot, derselbe Test)
  *
@@ -191,12 +191,13 @@ test('Sets mit zweitem Zugang', { concurrency: 1, timeout: 180_000 }, async t =>
     const UNTER = 987654;
     await zweite.run("INSERT INTO users (id, username, password_hash) VALUES ($1, 'unter_in_zwei', 'x')", [UNTER]);
     await zweite.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [uid, UNTER]);
-    alle.haushalt.reportHouseholdChange();
+    alle.household.reportHouseholdChange();
     assert.deepEqual(
-      (await require(path.join(ROOT, 'dist/src/haushalt/haushalt.js')).householdOf(contexts.haushalt, uid)).memberIds,
+      (await require(path.join(ROOT, 'dist/src/household/household.js')).householdOf(contexts.household, uid))
+        .memberIds,
       [uid, UNTER],
     );
-    const inProcess = await _req('src/haushalt/haushalt.js').householdOf(uid);
+    const inProcess = await _req('src/household/household.js').householdOf(uid);
     assert.ok(
       !inProcess.memberIds.includes(UNTER),
       `Gedächtnis der zweiten Datenbank geliehen: ${inProcess.memberIds}`,

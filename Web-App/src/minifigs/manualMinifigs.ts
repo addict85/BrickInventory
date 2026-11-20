@@ -1,11 +1,11 @@
 /** Here, not in a route, because the session route and the v1 factory both
  * reach it — a route should not import another route. */
-import type { Sicht } from '../haushalt';
+import type { Sicht } from '../household';
 import { publicError } from '../infra/fehler';
 import { Degradations, versuche } from '../infra/ergebnis';
 import { csvSharedFields, csvRowsFromRequest } from '../infra/csvExport';
 import { mengenwunsch } from '../bestand';
-import type { Quellen } from '../fremdquellen';
+import type { Quellen } from '../externalSources';
 import * as V from '../infra/validate';
 import { moneyInput } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
@@ -137,7 +137,7 @@ async function minifigDescription(
   // still proves there's nothing left to fetch.
   if (!fig_name || !(image_url || lokal?.hatImage)) {
     // Without Rebrickable, the minifig is entered with whatever the catalog already knows.
-    const abruf = await versuche('figuren:getMinifigInfo', k.fremdquellen.quellen.getMinifigInfo(num));
+    const abruf = await versuche('figuren:getMinifigInfo', k.externalSources.quellen.getMinifigInfo(num));
     found = abruf.ok ? abruf.wert : null;
     // `||`: what the catalog already knew stays.
     if (found) fig_name = fig_name || found.fig_name;
@@ -199,7 +199,7 @@ export async function updateManualMinifig(
 
 /** `uid` is the viewing scope (list). */
 export async function minifigAcquisitionsInScope(k: MinifigsContext, uidChoice: Sicht | number[], figNumber: string) {
-  const uid = await k.haushalt.scopeFrom(uidChoice);
+  const uid = await k.household.scopeFrom(uidChoice);
   return k.manualMinifigs.minifigAcquisitions(uid, figNumber);
 }
 
@@ -231,7 +231,7 @@ export async function importMinifigsCsv(k: MinifigsContext, uid: number, text: s
       let imageUrl: string | null = null;
       if (!figName) {
         // Without Rebrickable, the minifig is entered without a name; the image job won't fetch it later.
-        const abruf = await versuche('figuren:import-info', k.fremdquellen.quellen.getMinifigInfo(figNumber));
+        const abruf = await versuche('figuren:import-info', k.externalSources.quellen.getMinifigInfo(figNumber));
         const info = abruf.ok ? abruf.wert : null;
         if (info) {
           figName = info.fig_name;

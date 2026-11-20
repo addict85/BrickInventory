@@ -1,5 +1,5 @@
 /** Marktpreis, Preisverlauf und Preisalarm eines Sets. */
-import type { Sicht } from '../haushalt';
+import type { Sicht } from '../household';
 import { normalisiereSetNummer } from '../infra/setNummer';
 import type { Zustand } from '../infra/validate';
 import type { CsvImportReport } from '../infra/csvExport';
@@ -9,7 +9,7 @@ import type { SetsContext } from './kontext';
 
 /** Im Zustand des Bestands. null: kein Set im Blickfeld. */
 export async function setPrice(sk: SetsContext, uid: number, scopeChoice: Sicht | number[], sn: string) {
-  const blickfeld = await sk.haushalt.scopeFrom(scopeChoice);
+  const blickfeld = await sk.household.scopeFrom(scopeChoice);
   const set = await repo.setInField(sk.db, sn, blickfeld);
   if (!set) return null;
   // Die Währung aus der Einstellung: Die App schickte ihren lokalen Startwert mit, bevor sie die Einstellung

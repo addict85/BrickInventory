@@ -11,11 +11,11 @@ import * as startVerwalter from './repository/startVerwalter';
 import * as uebernahmen from './repository/uebernahmen';
 import * as zugaenge from './repository/zugaenge';
 import type { SettingsServices } from '../settings';
-import type { HouseholdServices } from '../haushalt';
+import type { HouseholdServices } from '../household';
 import type { JobsServices } from '../auftraege';
 import type { MailServices } from '../mail';
 import type { ThrottleServices } from '../throttle';
-import type { DevicesServices } from '../geraete';
+import type { DevicesServices } from '../devices';
 import type { FactorsServices } from '../factors';
 import type { Uhr } from '../infra/uhr';
 
@@ -27,10 +27,10 @@ export interface AccountDependencies {
   faecher: Faecher;
   einstellungen: SettingsServices;
   auftraege: JobsServices;
-  haushalt: HouseholdServices;
+  household: HouseholdServices;
   mail: MailServices;
   throttle: ThrottleServices;
-  geraete: DevicesServices;
+  devices: DevicesServices;
   factors: FactorsServices;
 }
 

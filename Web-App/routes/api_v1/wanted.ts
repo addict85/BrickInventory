@@ -33,7 +33,7 @@ function correctionsFrom(roh: string | undefined): Korrektur[] | undefined | nul
  * Auftrag läuft als eigener weiter. Die Kopfzeilen sind hinaus: Ein Fehler kommt
  * als letzte ZEILE, sonst wartet der Client auf einen Bericht, der nie kommt. */
 async function importInStream(
-  d: Pick<Dienste, 'settings' | 'haushalt' | 'konto' | 'wanted' | 'collection'>,
+  d: Pick<Dienste, 'settings' | 'household' | 'konto' | 'wanted' | 'collection'>,
   req: express.Request,
   res: express.Response,
   uid: number,
@@ -61,7 +61,7 @@ async function importInStream(
   if (!res.writableEnded) res.end();
 }
 
-export function buildWantedRouter(d: Pick<Dienste, 'settings' | 'haushalt' | 'konto' | 'wanted' | 'collection'>) {
+export function buildWantedRouter(d: Pick<Dienste, 'settings' | 'household' | 'konto' | 'wanted' | 'collection'>) {
   const { requireToken } = guardFor(d.konto);
   const router = vertragsRouter('/api/v1');
 
@@ -85,15 +85,15 @@ export function buildWantedRouter(d: Pick<Dienste, 'settings' | 'haushalt' | 'ko
   router.endpunkt('POST /api/v1/wanted', requireToken, async req => {
     const { set_number, condition, owner_user_id } = req.eingabe;
     if (!set_number) fachfehler('ungueltig', 'set_number_erforderlich');
-    const owner = await d.haushalt.schreibziel(req.apiUser.user_id, owner_user_id);
+    const owner = await d.household.schreibziel(req.apiUser.user_id, owner_user_id);
     const { merkposten, war_neu } = await d.wanted.addWantedItem(owner, set_number, condition);
     return { war_neu, merkposten };
   });
 
   // Zwei Kontenprüfungen: heraus aus dem einen UND hinein ins andere Konto.
   router.endpunkt('PUT /api/v1/wanted/:setNumber/:condition/inhaber', requireToken, async req => {
-    const von = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
-    const zu = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.neuer_inhaber);
+    const von = await d.household.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+    const zu = await d.household.schreibziel(req.apiUser.user_id, req.eingabe.neuer_inhaber);
     const r = await d.wanted.moveWantedItem(von, req.pfad.setNumber, req.pfad.condition, zu);
     return { ...r, owner_user_id: zu };
   });
@@ -101,7 +101,7 @@ export function buildWantedRouter(d: Pick<Dienste, 'settings' | 'haushalt' | 'ko
   /** Der Zustand steht im Pfad, weil er zum Schlüssel gehört: Dasselbe Set kann
    * neu UND gebraucht gewünscht sein. */
   router.endpunkt('DELETE /api/v1/wanted/:setNumber/:condition', requireToken, async req => {
-    const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner_user_id);
+    const owner = await d.household.schreibziel(req.apiUser.user_id, req.abfrage.owner_user_id);
     const weg = await d.wanted.removeWantedItem(owner, req.pfad.setNumber, req.pfad.condition);
     return { geloescht: weg };
   });
@@ -115,7 +115,7 @@ export function buildWantedRouter(d: Pick<Dienste, 'settings' | 'haushalt' | 'ko
 
   /** Die Regel steht in wanted.ts:fulfillWantedItem(); hier bleibt nur, wer schreiben darf. */
   router.endpunkt('POST /api/v1/wanted/:setNumber/:condition/uebernehmen', requireToken, async req => {
-    const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+    const owner = await d.household.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
     const r = await d.wanted.fulfillWantedItem(
       req.apiUser.user_id,
       owner,
@@ -134,7 +134,7 @@ export function buildWantedRouter(d: Pick<Dienste, 'settings' | 'haushalt' | 'ko
     csvReceive.single('file'),
     async req => {
       if (!req.file) fachfehler('ungueltig', 'keine_datei');
-      const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+      const owner = await d.household.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
 
       return {
         ...(await d.collection.runImport<CsvImportReport>(req.apiUser.user_id, 'merkliste_csv', {

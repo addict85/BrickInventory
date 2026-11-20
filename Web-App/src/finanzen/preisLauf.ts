@@ -3,7 +3,7 @@ import { reportError, fehlertext, logAndContinue } from '../infra/fehler';
 import { JobMove, type JobContext } from '../auftraege';
 import { withoutBricklinkPrice } from '../infra/setNummer';
 import { hatPrice } from '../katalog';
-import { BricklinkNotReachable } from '../fremdquellen';
+import { BricklinkNotReachable } from '../externalSources';
 import { receiptsSessionLock } from '../../db/txLock';
 import { LOCKS } from '../infra/lockNamespaces';
 import { versuche } from '../infra/ergebnis';
@@ -57,7 +57,7 @@ async function fetchAndCachePrice(
   const vorhanden = await priceFromCache(k, setNumber, condition, currency, ttl);
   if (cacheUsable(vorhanden, ttl, k.uhr.jetzt())) return 'skipped';
 
-  const rl = await k.fremdquellen.quotaFree('bricklink');
+  const rl = await k.externalSources.quotaFree('bricklink');
   if (!rl.allowed) return 'rate_limited';
 
   const fallback = condition === 'N' ? 'U' : 'N';
@@ -75,7 +75,7 @@ async function fetchAndCachePrice(
   const p = await savePrice(k, setNumber, condition, currency, g);
 
   if (!hatPrice({ avg_price: p.avg, qty_avg_price: p.qavg })) {
-    const rl2 = await k.fremdquellen.quotaFree('bricklink');
+    const rl2 = await k.externalSources.quotaFree('bricklink');
     if (rl2.allowed) {
       try {
         const g2 = await k.katalog.priceGuide(setNumber, fallback, guideType, currency);

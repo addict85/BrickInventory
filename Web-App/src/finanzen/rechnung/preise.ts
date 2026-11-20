@@ -4,7 +4,7 @@
 
 import type { Preiszeile, SetPreiszeile } from '../repository/preisCache';
 import { type CatalogEntry, hatPrice, marketPriceFrom } from '../../katalog';
-import { asIds } from '../../haushalt';
+import { asIds } from '../../household';
 import { logAndContinue, reportError } from '../../infra/fehler';
 import { Fachfehler, fachfehler } from '../../infra/fehlerTexte';
 import { withVersion, withoutBricklinkPrice } from '../../infra/setNummer';
@@ -15,7 +15,7 @@ import type { FinancesContext } from '../kontext';
 import type { Uhr } from '../../infra/uhr';
 
 /** Wessen DATEN gerechnet werden; wessen EINSTELLUNGEN gelten, sagt `viewerId`. */
-export type { Blickfeld } from '../../haushalt';
+export type { Blickfeld } from '../../household';
 
 type PriceRow = { avg_price?: unknown; fetched_at?: string | Date | null } | null | undefined;
 
@@ -168,14 +168,14 @@ async function fetchPriceWithFallback(
   const knownEmpty = cacheUsable(z, ttl, k.uhr.jetzt());
   let pd: CacheRow | null = null;
   if (!knownEmpty) {
-    if (!(await k.fremdquellen.quotaFree('bricklink')).allowed) fachfehler('zu_viele', 'bricklink_tageslimit');
+    if (!(await k.externalSources.quotaFree('bricklink')).allowed) fachfehler('zu_viele', 'bricklink_tageslimit');
     pd = await callAb(q, zustand);
     if (hatPrice(pd)) return fromRow(pd!, { from_cache: false, condition_used: zustand });
   }
   const zf = await q.lies(anderer);
   if (hatPrice(zf)) return fromRow(zf!, { condition_used: anderer, is_fallback: true });
   if (knownEmpty && cacheUsable(zf, ttl, k.uhr.jetzt())) return { ...WITHOUT_PRICE, from_cache: true, no_price: true };
-  const frei = (await k.fremdquellen.quotaFree('bricklink')).allowed;
+  const frei = (await k.externalSources.quotaFree('bricklink')).allowed;
   const pd2 = frei ? await callAb(q, anderer) : null;
   if (hatPrice(pd2)) return fromRow(pd2!, { from_cache: false, condition_used: anderer, is_fallback: true });
   if (knownEmpty || pd || pd2) return { ...WITHOUT_PRICE, from_cache: !pd && !pd2, no_price: true };
@@ -419,11 +419,11 @@ async function questionPriceGuide(
   extra: Record<string, string> = {},
 ) {
   const qp = { guide_type: 'sold', new_or_used: zustand, currency_code: currency, vat: 'N', ...extra };
-  const g = await k.fremdquellen.quellen.bricklinkRequest('GET', pfad, qp);
+  const g = await k.externalSources.quellen.bricklinkRequest('GET', pfad, qp);
   if (hatPrice(g)) return g;
   const alt = await versuche(
     'preise:alt',
-    k.fremdquellen.quellen.bricklinkRequest('GET', pfad, { ...qp, guide_type: 'stock' }),
+    k.externalSources.quellen.bricklinkRequest('GET', pfad, { ...qp, guide_type: 'stock' }),
   );
   return alt.ok && hatPrice(alt.wert) ? alt.wert : g;
 }

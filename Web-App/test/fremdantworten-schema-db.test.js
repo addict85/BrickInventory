@@ -43,7 +43,7 @@ async function withBody(koerper, lauf) {
 test('Fremdantworten gegen ihr Schema', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const S = _req('src/settings/settings.js');
-  const k = _req('src/fremdquellen/apiKontingent.js');
+  const k = _req('src/externalSources/apiQuota.js');
   t.after(async () => {
     await db.run("DELETE FROM global_settings WHERE key IN ('rebrickable_api_key', 'brickset_api_key')");
     await db.pool.end().catch(() => {});
@@ -52,7 +52,7 @@ test('Fremdantworten gegen ihr Schema', { concurrency: 1 }, async t => {
   await S.setGlobalSetting('brickset_api_key', 'bs-test');
   await k.setQuotaBack('rebrickable');
   await k.setQuotaBack('brickset');
-  const rb = require('./helpers/sources').testServices().fremdquellen.quellen;
+  const rb = require('./helpers/sources').testServices().externalSources.quellen;
   const bs = rb.brickset;
 
   await t.test('Rebrickable: eine passende Antwort kommt typisiert an', async () => {

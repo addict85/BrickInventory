@@ -56,9 +56,9 @@ test('Kopfzeile und Galerie zaehlen dieselben Sets', async t => {
   await holdsSet(db, kind, '21318-1', 1);
 
   const { scopeIds } = {
-    ..._req('src/haushalt/regeln.js'),
-    ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testArea('haushalt'),
+    ..._req('src/household/rules.js'),
+    ..._req('src/household/household.js'),
+    ...require('./helpers/sources').testArea('household'),
   };
   const { getStats } = _req('src/bestand/kennzahlen.js');
   const { setsLesen } = require('./helpers/sources').areaPage('sets');

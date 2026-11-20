@@ -59,9 +59,9 @@ test('jede Liste mit Plakette im Client traegt sie auch in der Antwort', async t
   await holdsMinifig(db, kind, 'sw0002', { menge: 2 });
 
   const { scopeIds } = {
-    ..._req('src/haushalt/regeln.js'),
-    ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testArea('haushalt'),
+    ..._req('src/household/rules.js'),
+    ..._req('src/household/household.js'),
+    ...require('./helpers/sources').testArea('household'),
   };
   const uids = await scopeIds(haupt, 'all');
   const S = require('./helpers/sources').areaPage('sets');
@@ -131,9 +131,9 @@ test('im Einzelkonto steht keine Plakette', async t => {
   await holdsMinifig(db, allein, 'sw0003', { setNumber: '21318-1', menge: 1 });
 
   const { scopeIds } = {
-    ..._req('src/haushalt/regeln.js'),
-    ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testArea('haushalt'),
+    ..._req('src/household/rules.js'),
+    ..._req('src/household/household.js'),
+    ...require('./helpers/sources').testArea('household'),
   };
   const uids = await scopeIds(allein, 'all');
   const S = require('./helpers/sources').areaPage('sets');

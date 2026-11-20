@@ -10,7 +10,7 @@ type Stand = { nummern: Set<string>; anleitungen: Set<string>; am: number };
 const merker = (k: ImagesContext) =>
   k.faecher.fach('blickfeld', () => {
     const m = new Map<number, Stand>();
-    k.haushalt.atHouseholdChange(() => m.clear());
+    k.household.atHouseholdChange(() => m.clear());
     return m;
   });
 // Ein Treffer gilt eine Minute; eine Absage wird nach zwei Sekunden neu
@@ -20,7 +20,7 @@ const HITS_MS = 60_000,
   ACCOUNTS_AT_MOST = 1000;
 
 async function lade(k: ImagesContext, uid: number): Promise<Stand> {
-  const zeilen = await k.bildBlickfeld.setsInScope(await k.haushalt.scopeIds(uid));
+  const zeilen = await k.bildBlickfeld.setsInScope(await k.household.scopeIds(uid));
   const s: Stand = { nummern: new Set(), anleitungen: new Set(), am: k.uhr.jetzt() };
   for (const z of zeilen) {
     s.nummern.add(fileMaster(z.set_number));

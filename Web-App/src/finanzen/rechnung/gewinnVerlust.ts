@@ -1,4 +1,4 @@
-import type { Sicht } from '../../haushalt';
+import type { Sicht } from '../../household';
 import { valueSet, valueAcquisitionRows, weightedPurchase, developmentPercent, tileValues } from '../setValue';
 import { effectiveCondition } from './zustand';
 import { valueMinifigs, valueParts } from './bewertung';
@@ -123,7 +123,7 @@ const purchaseTotal = (rs: Array<{ purchase_price: number | null; quantity: numb
 export async function gainAndLoss(k: FinancesContext, viewerId: number, idsChoice: Sicht | Blickfeld) {
   // Zwei Grössen: viewerId — wessen EINSTELLUNGEN gelten; ids — WESSEN DATEN
   // gerechnet werden. Mit dem Filter „Unterkonten" fehlt viewerId in ids.
-  const uids = await k.haushalt.scopeFrom(idsChoice);
+  const uids = await k.household.scopeFrom(idsChoice);
   const [currency, ttlHours] = await Promise.all([
     k.einstellungen.userValue(viewerId, 'currency', 'EUR'),
     k.einstellungen.globalValue('price_cache_ttl', '24'),

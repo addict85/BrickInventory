@@ -1,7 +1,7 @@
 /**
  * Klienten kennen keinen Fachbereich und keinen Prozess-Speicher: Schlüssel,
  * Kontingent und Drossel bekommt jeder Klient bei seiner Erzeugung
- * (createRebrickable(z) …), src/fremdquellen gibt sie ihm aus seinem Zugang.
+ * (createRebrickable(z) …), src/externalSources gibt sie ihm aus seinem Zugang.
  *
  * Gegenproben (am 14.11.2026 gemessen):
  *   A  in clients/rebrickable.ts ein modulweites `let _z` gesetzt von jedem
@@ -91,9 +91,9 @@ test('über die Dienste tragen Abrufe den eingetragenen Schlüssel und zählen',
     );
   const vorher = await zaehler();
 
-  const { RbSet } = _req('src/fremdquellen/index.js');
+  const { RbSet } = _req('src/externalSources/index.js');
   fetches.length = 0;
-  const antwort = await S.testServices().fremdquellen.quellen.rebrickableJson('/lego/sets/10001-1/', RbSet);
+  const antwort = await S.testServices().externalSources.quellen.rebrickableJson('/lego/sets/10001-1/', RbSet);
   assert.deepEqual(antwort, { set_num: '10001-1', name: 'Attrappe' });
   assert.deepEqual(fetches, [{ pfad: '/api/v3/lego/sets/10001-1/', schluessel: 'key schluessel-zugang-1' }]);
   assert.equal(await zaehler(), vorher + 1);

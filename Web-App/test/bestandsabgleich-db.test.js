@@ -75,9 +75,9 @@ test('Bestandsabgleich gegen echte Datenbank', async t => {
   await seed();
   const { ownedQuantitiesQuery, MAX_OWNED_PARTS } = _req('src/parts/queries.js');
   const household = {
-    ..._req('src/haushalt/regeln.js'),
-    ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testArea('haushalt'),
+    ..._req('src/household/rules.js'),
+    ..._req('src/household/household.js'),
+    ...require('./helpers/sources').testArea('household'),
   };
 
   await t.test('zählt je Teil UND Farbe, nicht je Teilenummer', async () => {

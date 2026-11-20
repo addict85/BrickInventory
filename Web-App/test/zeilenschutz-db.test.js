@@ -300,7 +300,7 @@ test('Zeilenschutz der Kontotabellen', { concurrency: 1 }, async t => {
 
   await t.test('wer einem Haushalt beitritt, vergleicht mit der Währung des Hauptkontos', async () => {
     // Die Dienste über den Zugang mit Zeilenschutz, wie im Betrieb.
-    const haushalt = serviceWith(app).haushalt;
+    const haushalt = serviceWith(app).household;
     const D = await konto('neu');
     await su.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')`, [D]);
     await su.run(`UPDATE user_settings SET value = 'USD' WHERE user_id = $1 AND key = 'currency'`, [A]);

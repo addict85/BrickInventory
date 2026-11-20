@@ -66,8 +66,8 @@ export function createImages(
       loadImage: mit(k)(bildDatei.loadImage),
       fitTailoredPreviews: (lokale: { web: string; datei: string }[]) =>
         vorschauenEinpassen.fitTailoredPreviews(k, lokale),
-      openImage: (...x: Parameters<ImagesContext['fremdquellen']['quellen']['oeffneBild']>) =>
-        k.fremdquellen.quellen.oeffneBild(...x),
+      openImage: (...x: Parameters<ImagesContext['externalSources']['quellen']['oeffneBild']>) =>
+        k.externalSources.quellen.oeffneBild(...x),
     }),
     inspect,
   );

@@ -204,7 +204,7 @@ async function reloadImage(k: CatalogContext, m: MissingImage): Promise<boolean>
     await k.cdnDrossel.acquire();
     try {
       // Ein Fehler zählt wie ein vergeblicher Abruf; der Zähler nennt beide.
-      const r = await versuche('teile-enrich:downloadFile', k.fremdquellen.quellen.downloadFile(m.image_url, m.fp));
+      const r = await versuche('teile-enrich:downloadFile', k.externalSources.quellen.downloadFile(m.image_url, m.fp));
       ok = r.ok && r.wert === true;
     } finally {
       k.cdnDrossel.release();

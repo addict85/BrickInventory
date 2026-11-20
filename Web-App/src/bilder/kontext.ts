@@ -6,8 +6,8 @@ import type { ImagesReadContract } from './lesevertrag';
 import type { Faecher } from '../infra/zwischenspeicher';
 import type { Db } from '../../db/database';
 import type { JobsServices } from '../auftraege';
-import type { ForeignSourcesServices } from '../fremdquellen';
-import type { HouseholdServices } from '../haushalt';
+import type { ForeignSourcesServices } from '../externalSources';
+import type { HouseholdServices } from '../household';
 import * as bildBlickfeld from './repository/bildBlickfeld';
 import * as bildFehlschlaege from './repository/bildFehlschlaege';
 import * as bildStammCdn from './repository/bildStammCdn';
@@ -29,9 +29,9 @@ export interface ImagesDependencies {
   db: Db;
   faecher: Faecher;
   bildwerk: ImageWorker;
-  fremdquellen: ForeignSourcesServices;
+  externalSources: ForeignSourcesServices;
   auftraege: JobsServices;
-  haushalt: HouseholdServices;
+  household: HouseholdServices;
   lesevertrag: ImagesReadContract;
 }
 

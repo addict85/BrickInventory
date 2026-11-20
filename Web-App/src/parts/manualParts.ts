@@ -1,12 +1,12 @@
 /** Here and not in a route, because the session route and the v1 factory both
  * reach for it — a route shouldn't import another route. */
-import type { Sicht } from '../haushalt';
+import type { Sicht } from '../household';
 import { publicError } from '../infra/fehler';
 import { Degradations, versuche } from '../infra/ergebnis';
 import { csvSharedFields, csvRowsFromRequest } from '../infra/csvExport';
 import { mengenwunsch } from '../bestand';
 import { KEINE_FARBE } from '../katalog';
-import type { Quellen } from '../fremdquellen';
+import type { Quellen } from '../externalSources';
 import * as V0 from '../infra/validate';
 import { moneyInput } from '../infra/geld';
 import { fachfehler } from '../infra/fehlerTexte';
@@ -137,7 +137,7 @@ async function partDescription(
     // Without Rebrickable, the part gets logged with whatever the catalog already knows.
     const abruf = await versuche(
       'parts:lookupPart',
-      k.fremdquellen.quellen.lookupPart(part_number, hasColor ? color_id : null),
+      k.externalSources.quellen.lookupPart(part_number, hasColor ? color_id : null),
     );
     gefunden = abruf.ok ? abruf.wert : null;
     // `||`: what the catalog already knew stays as-is.
@@ -226,7 +226,7 @@ export async function listPartAcquisitions(
   partNumber: string,
   colorId: string | number,
 ) {
-  const uid = await k.haushalt.scopeFrom(uidChoice);
+  const uid = await k.household.scopeFrom(uidChoice);
   // The VIEWPOINT: each row comes with its owner, otherwise the picker in the
   // dialog wouldn't know what it's choosing from.
   return k.manualParts.partAcquisitions(uid, partNumber, V0.colorId(colorId));
@@ -264,7 +264,7 @@ export async function importPartsCsv(k: PartsContext, uid: number, text: string)
       if (!partName) {
         const abruf = await versuche(
           'parts:import-lookupPart',
-          k.fremdquellen.quellen.lookupPart(partNumber, colorId === KEINE_FARBE ? null : colorId),
+          k.externalSources.quellen.lookupPart(partNumber, colorId === KEINE_FARBE ? null : colorId),
         );
         const info = abruf.ok ? abruf.wert : null;
         if (info) {

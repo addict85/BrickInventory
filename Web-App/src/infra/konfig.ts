@@ -103,7 +103,7 @@ export interface Konfig {
   /** SHA-256 der Signaturzertifikate der App, 64 Hex-Zeichen in Grossbuchstaben. */
   androidZertifikate: string[];
   androidPaket: string;
-  /** PEM statt der Google-Wurzeln; nur in Entwicklung und Test (src/geraete/attestation). */
+  /** PEM statt der Google-Wurzeln; nur in Entwicklung und Test (src/devices/attestation). */
   attestationWurzeln: string | null;
   /** Bis dahin gelten Geräteschlüssel, die vor der Attestation hinterlegt wurden (UPGRADE.md). */
   geraeteschluesselAltBis: Date;

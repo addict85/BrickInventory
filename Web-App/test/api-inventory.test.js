@@ -196,7 +196,7 @@ const C = {
   'POST /api/v1/sets/:sn/move': 'paritaet',
   // Haushalt: Konten verknüpfen. Beide Wege, damit die App dieselben Regeln
   // bekommt — die Grenzen (kein Kreis, gleiche Währung im ganzen
-  // einziehenden Teilbaum) stehen in src/haushalt/haushalt.ts, nicht in den
+  // einziehenden Teilbaum) stehen in src/household/household.ts, nicht in den
   // Routen. „Nur eine Stufe“ stand hier bis eine frühere Runde.
   'GET /api/v1/settings/household': 'nur-v1',
   'POST /api/v1/settings/household/invite': 'nur-v1',

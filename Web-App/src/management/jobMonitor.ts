@@ -64,7 +64,10 @@ function instructionsTile(alt: Tile, a: { offen: number; erledigt: number; fehle
 }
 
 async function bricksetTile(k: ManagementContext, ab: Degradations): Promise<Tile> {
-  const { wartend, faellig } = await ab.oder('brickset', k.fremdquellen.brickset.zahlen(), { wartend: 0, faellig: 0 });
+  const { wartend, faellig } = await ab.oder('brickset', k.externalSources.brickset.zahlen(), {
+    wartend: 0,
+    faellig: 0,
+  });
   return {
     label: 'Brickset Retry Queue',
     status: wartend === 0 ? 'done' : 'idle',

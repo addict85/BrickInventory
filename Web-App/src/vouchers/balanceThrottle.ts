@@ -87,7 +87,7 @@ export async function checkBalanceThrottled(
   try {
     // Set individually: exactOptionalPropertyTypes distinguishes "not set" from
     // "undefined", and only "not set" makes fetchBalance use the real fetch.
-    const through = { locale: opt.locale || DEFAULT_COUNTRY, abruf: opt.abruf ?? k.fremdquellen.quellen.legoFetch };
+    const through = { locale: opt.locale || DEFAULT_COUNTRY, abruf: opt.abruf ?? k.externalSources.quellen.legoFetch };
     const store = k.faecher.fach<SessionStore>('voucherBalanceSessions', () => new Map());
     const guthaben = await fetchBalance(store, number, pin, through);
     return { art: 'guthaben', guthaben };

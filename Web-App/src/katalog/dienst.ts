@@ -119,7 +119,7 @@ export async function catalogPage(
   const wahl = await choose(k, f);
   const [total, sets] = await Promise.all([
     k.katalogSuche.catalogCount(wahl),
-    k.katalogSuche.catalogRows(await k.haushalt.scopeIds(userId), wahl, sortRaw, limit, (page - 1) * limit),
+    k.katalogSuche.catalogRows(await k.household.scopeIds(userId), wahl, sortRaw, limit, (page - 1) * limit),
   ]);
   const tree = await getThemeTree(k);
   // Die Liste stösst keine Bildarbeit an; fehlende Bilder holt der Bild-Proxy.
@@ -140,7 +140,7 @@ export const catalogLoaded = async (k: CatalogContext) => !(await k.katalogSuche
 
 export async function catalogSet(k: CatalogContext, userId: number, roh: string) {
   const n = withVersion(roh.trim());
-  const set = await k.katalogSuche.catalogRow(await k.haushalt.scopeIds(userId), n);
+  const set = await k.katalogSuche.catalogRow(await k.household.scopeIds(userId), n);
   if (!set) return null;
   const invId = await newestInventory(k, n);
   const m = invId ? await k.katalogSuche.minifigsInInventory(invId) : undefined;

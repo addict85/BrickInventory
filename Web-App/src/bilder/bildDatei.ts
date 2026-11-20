@@ -63,9 +63,9 @@ export async function loadImage(
   kopfzeilen: Record<string, string> = {},
   reportWarning: (text: string) => void = () => {},
 ): Promise<boolean> {
-  let a: Awaited<ReturnType<ImagesContext['fremdquellen']['quellen']['oeffneBild']>>;
+  let a: Awaited<ReturnType<ImagesContext['externalSources']['quellen']['oeffneBild']>>;
   try {
-    a = await k.fremdquellen.quellen.oeffneBild(adresse, {
+    a = await k.externalSources.quellen.oeffneBild(adresse, {
       hosts: allowedHosts,
       maxBytes: IMAGE_MAX_BYTES,
       zeitlimitMs: 30_000,

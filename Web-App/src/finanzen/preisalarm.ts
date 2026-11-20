@@ -84,7 +84,7 @@ export async function loescheAlarm(k: FinancesContext, userId: number, setNumber
 
 export async function alertsFor(k: FinancesContext, userId: number, setNumber: string): Promise<Preisalarm[]> {
   // Ohne Fang: Eine leere Liste hiesse „kein Alarm“, und setzeAlarm() lieferte nichts.
-  const rows = await repo.alertsOfSets(k.db, k.lesevertrag, userId, setNumber, await k.haushalt.scopeIds(userId));
+  const rows = await repo.alertsOfSets(k.db, k.lesevertrag, userId, setNumber, await k.household.scopeIds(userId));
   return rows.map(alsAlarm);
 }
 
@@ -103,7 +103,7 @@ export interface AlarmWithName extends Preisalarm {
 export async function alleAlarme(k: FinancesContext, userId: number): Promise<AlarmWithName[]> {
   // Das Blickfeld fragt nur, ob das Set sichtbar ist; der Alarm bleibt beim
   // eigenen Konto.
-  const blickfeld = await k.haushalt.scopeIds(userId);
+  const blickfeld = await k.household.scopeIds(userId);
   return (await repo.alertsInScope(k.db, k.lesevertrag, userId, blickfeld)).map(alsAlarm);
 }
 
@@ -126,7 +126,7 @@ export async function triggeredSince(k: FinancesContext, userId: number, seit: D
   if (!marke || Number.isNaN(marke.getTime())) return { alerts: [], now: jetzt };
 
   // Ohne Fang: Die App rückte sonst ihre Marke vor und verlöre die Meldungen dazwischen.
-  const rows = await repo.alertsOfAccount(k.db, k.lesevertrag, userId, marke, await k.haushalt.scopeIds(userId));
+  const rows = await repo.alertsOfAccount(k.db, k.lesevertrag, userId, marke, await k.household.scopeIds(userId));
   return { alerts: rows.map(alsAlarm), now: jetzt };
 }
 

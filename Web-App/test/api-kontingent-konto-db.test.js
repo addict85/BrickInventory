@@ -24,7 +24,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
-const k = _req('src/fremdquellen/apiKontingent.js');
+const k = _req('src/externalSources/apiQuota.js');
 const { asRequest } = _req('src/infra/kontoKontext.js');
 
 test('Tageskontingent je Konto', { concurrency: 1 }, async t => {

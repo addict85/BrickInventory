@@ -1,7 +1,7 @@
 /** Was die Dienste bekommen; getrennt von bereich.ts, damit kein Importzyklus entsteht. */
 import type { Db } from '../../db/database';
 import { imSystem, mit, withContract, type Kontext } from '../infra/bereich';
-import type { HouseholdReadContract } from './lesevertrag';
+import type { HouseholdReadContract } from './readContract';
 import type { SettingsServices } from '../settings';
 import type { Faecher } from '../infra/zwischenspeicher';
 import * as repository from './repository';

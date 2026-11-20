@@ -87,8 +87,8 @@ export async function moveSet(
 ) {
   if (!erfassungen.length) fachfehler('ungueltig', 'kaufpreise_angeben');
   const sn = withVersion(roh);
-  const fromId = await sk.haushalt.schreibziel(uid, von ?? uid);
-  const toId = await sk.haushalt.schreibziel(uid, nach);
+  const fromId = await sk.household.schreibziel(uid, von ?? uid);
+  const toId = await sk.household.schreibziel(uid, nach);
   if (fromId === toId) fachfehler('ungueltig', 'quelle_ziel_identisch');
   // Zwei Verschiebungen in Gegenrichtung sperren die Zeilen beider Konten in umgekehrter Reihenfolge.
   const r = await sk.transaktion(t => setEntriesReassign(t, sn, fromId, toId, erfassungen), {

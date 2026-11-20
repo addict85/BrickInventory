@@ -2,10 +2,10 @@
 import type { Db } from '../../db/database';
 import { mit, buildArea, type Inspect } from '../infra/bereich';
 import { Faecher } from '../infra/zwischenspeicher';
-import * as haushalt from './haushalt';
-import { zugang, type HouseholdDependencies, type HouseholdContext } from './kontext';
+import * as haushalt from './household';
+import { zugang, type HouseholdDependencies, type HouseholdContext } from './context';
 
-export type { HouseholdDependencies, HouseholdContext } from './kontext';
+export type { HouseholdDependencies, HouseholdContext } from './context';
 
 export function createHousehold(a: Omit<HouseholdDependencies, 'faecher'>, inspect?: Inspect<HouseholdContext>) {
   return buildArea(

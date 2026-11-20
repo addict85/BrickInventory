@@ -9,7 +9,7 @@
  *      „Systemrahmen in einer Konto-Transaktion …“ und „… und umgekehrt“ (die
  *      Abfrage lief auf einer anderen Verbindung, pg_backend_pid verschieden)
  *   B  inTransaction wieder über txStand() (wirft) → rot: „inTransaction …“
- *   C  in redeemInvitation() (src/haushalt/haushalt.ts) inSystemContext wieder
+ *   C  in redeemInvitation() (src/household/household.ts) inSystemContext wieder
  *      nur um die beiden getSetting() innerhalb von k.transaktion → rot in
  *      test/zeilenschutz-db.test.js „wer einem Haushalt beitritt …“ (BesideTheTransaction)
  *   D  in txStand() die Prüfung des Pools ganz gestrichen → rot: die beiden ersten

@@ -3,12 +3,12 @@
  * heiklen Schritte eines App-Tokens. Das belegt seine Attestation; ohne sie
  * hinterlegte ein erbeuteter Token einen Schlüssel ohne Sperre. */
 import { createPublicKey, randomBytes, verify, X509Certificate, type KeyObject } from 'node:crypto';
-import type { Familie } from './repository/geraeteSchluessel';
+import type { Familie } from './repository/deviceKeys';
 import type { ACTIONS } from '../vertrag/geraet';
-import { GOOGLE_ROOTS } from './attestation/googleWurzeln';
-import { checkChain } from './attestation/schluesselAttestation';
-import { applicableList, REVOCATION_STATE } from './attestation/widerrufsliste';
-import type { DevicesContext } from './kontext';
+import { GOOGLE_ROOTS } from './attestation/googleRoots';
+import { checkChain } from './attestation/keyAttestation';
+import { applicableList, REVOCATION_STATE } from './attestation/revocationList';
+import type { DevicesContext } from './context';
 import { prozessweit } from '../infra/prozessweit';
 import { fachfehler } from '../infra/fehlerTexte';
 

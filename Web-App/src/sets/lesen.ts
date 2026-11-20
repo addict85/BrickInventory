@@ -2,7 +2,7 @@ import { forSet, mergeInstructions } from '../katalog';
 import { resolveImageLocal } from '../bilder';
 import { reportError } from '../infra/fehler';
 import * as repo from './repository/sets';
-import { asIds, type Sicht, type ScopeInput as Blickfeld } from '../haushalt';
+import { asIds, type Sicht, type ScopeInput as Blickfeld } from '../household';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand';
 
 // Leseabfragen; Zustand aus den Erfassungen.
@@ -18,7 +18,7 @@ export async function setsLesen(
   userIdChoice: Sicht | Blickfeld,
   query: Abfrage<'GET /api/v1/sets'> = {},
 ) {
-  const userId = await sk.haushalt.scopeFrom(userIdChoice);
+  const userId = await sk.household.scopeFrom(userIdChoice);
   // asIds(), damit ältere Aufrufer mit einer nackten ID weiter gehen.
   const uids = asIds(userId);
   // Die Spaltenliste steht im Repository; die Antwort trägt nur, was die
@@ -67,7 +67,7 @@ export async function setsLesen(
   }));
 
   // Eine Abfrage für die ganze Seite statt einer je Zeile.
-  const withOwners = await sk.haushalt.besitzerAnhaengen(uids, mapped);
+  const withOwners = await sk.household.besitzerAnhaengen(uids, mapped);
 
   // Mit Gesamtzahl für den Endlos-Scroll; ohne Paginierung ist total die Länge.
   return {
@@ -108,7 +108,7 @@ export async function withSetAggregate<T extends object>(
 }
 
 export async function readSet(sk: SetsContext, userIdChoice: Sicht | Blickfeld, setNumber: string) {
-  const userId = await sk.haushalt.scopeFrom(userIdChoice);
+  const userId = await sk.household.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   const [set, shared, uploaded] = await Promise.all([
     // Die eigene Zeile gewinnt für Zustand und Kaufpreis; die MENGE ist die Summe
@@ -130,7 +130,7 @@ export async function readSet(sk: SetsContext, userIdChoice: Sicht | Blickfeld, 
     Promise.resolve(forSet(setNumber, set.name)),
   ]);
   const { owner_ids, ...withoutIds } = set;
-  const [withOwners] = await sk.haushalt.besitzerAnhaengen(uids, [
+  const [withOwners] = await sk.household.besitzerAnhaengen(uids, [
     uids.length > 1 ? { ...withoutIds, owner_ids } : withoutIds,
   ]);
   return {

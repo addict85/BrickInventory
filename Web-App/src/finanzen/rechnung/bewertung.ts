@@ -4,7 +4,7 @@
 
 import { logAndContinue } from '../../infra/fehler';
 import type * as repo from '../repository/bewertung';
-import { asIds, type Sicht } from '../../haushalt';
+import { asIds, type Sicht } from '../../household';
 import { hatPrice, marketPriceFrom } from '../../katalog';
 import { resolveImageLocal, proxyImageUrl } from '../../bilder';
 import { valueSet, valueAcquisitionRows, weightedPurchase, pnlPct as calcPnlPct, pnlProzent } from '../setValue';
@@ -174,7 +174,7 @@ function valuationSums(
 export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice: Sicht | Blickfeld) {
   // viewerId bestimmt die Einstellungen, ids die gerechneten Daten: Mit dem
   // Filter „Unterkonten" fehlt das fragende Konto in ids.
-  const uids = await kx.haushalt.scopeFrom(idsChoice);
+  const uids = await kx.household.scopeFrom(idsChoice);
   const [currency, ttlHours, guideType] = await Promise.all([
     kx.einstellungen.userValue(viewerId, 'currency', 'EUR'),
     kx.einstellungen.userValue(viewerId, 'price_cache_ttl', '24'),
@@ -233,7 +233,7 @@ export async function valueSets(kx: FinancesContext, viewerId: number, idsChoice
     if (l) l.push(a);
     else jeAccountAndSet.set(k, [a]);
   }
-  const results = await kx.haushalt.besitzerAnhaengen(
+  const results = await kx.household.besitzerAnhaengen(
     uids,
     sets.map(set => bewerteSet(set, jeAccountAndSet.get(`${set.user_id}|${set.set_number}`) || [], situation)),
   );
@@ -302,7 +302,7 @@ function gesamt(zeilen: Array<{ total_value: string }>) {
 
 /** Eine Umsetzung für Sitzungsroute und Token-API. */
 export async function valueMinifigs(k: FinancesContext, viewerId: number, idsChoice: Sicht | Blickfeld) {
-  const uids = asIds(await k.haushalt.scopeFrom(idsChoice));
+  const uids = asIds(await k.household.scopeFrom(idsChoice));
   const [currency, ttlHours] = await Promise.all([
     k.einstellungen.userValue(viewerId, 'currency', 'EUR'),
     k.einstellungen.globalValue('price_cache_ttl', '24'),
@@ -336,7 +336,7 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
   ]);
   const fehlt: Posten[] = [];
 
-  const results = await k.haushalt.besitzerAnhaengen(
+  const results = await k.household.besitzerAnhaengen(
     uids,
     manualFigs.map(fig => {
       // Je vorkommendem Zustand: Ein neu gekauftes Exemplar bekommt den Neupreis,
@@ -385,7 +385,7 @@ export async function valueMinifigs(k: FinancesContext, viewerId: number, idsCho
 }
 
 export async function valueParts(k: FinancesContext, viewerId: number, idsChoice: Sicht | Blickfeld) {
-  const uids = asIds(await k.haushalt.scopeFrom(idsChoice));
+  const uids = asIds(await k.household.scopeFrom(idsChoice));
   const [currency, ttlHours] = await Promise.all([
     k.einstellungen.userValue(viewerId, 'currency', 'EUR'),
     k.einstellungen.globalValue('price_cache_ttl', '24'),
@@ -447,7 +447,7 @@ export async function valueParts(k: FinancesContext, viewerId: number, idsChoice
     };
   });
 
-  const results = await k.haushalt.besitzerAnhaengen(uids, await parallelLimit(tasks, 5));
+  const results = await k.household.besitzerAnhaengen(uids, await parallelLimit(tasks, 5));
   return {
     currency,
     parts: results,

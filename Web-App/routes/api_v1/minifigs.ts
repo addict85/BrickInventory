@@ -11,7 +11,7 @@ import { fachfehler, notFound } from '../../src/infra/fehlerTexte';
 export function buildMinifigsRouter(
   d: Pick<
     Dienste,
-    'settings' | 'auftraege' | 'haushalt' | 'konto' | 'finanzen' | 'bestand' | 'minifigs' | 'collection'
+    'settings' | 'auftraege' | 'household' | 'konto' | 'finanzen' | 'bestand' | 'minifigs' | 'collection'
   >,
 ) {
   const { requireToken } = guardFor(d.konto);
@@ -24,14 +24,14 @@ export function buildMinifigsRouter(
   });
 
   router.endpunkt('POST /api/v1/minifigs', requireToken, async req => {
-    const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+    const owner = await d.household.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
     const result = await d.minifigs.addManualMinifig(owner, req.eingabe);
     return { ...result };
   });
 
   router.endpunkt('PUT /api/v1/minifigs/:figNumber', requireToken, async req => {
     // Ohne den Parameter das eigene Konto.
-    const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+    const besitzer = await d.household.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
     const r = await d.minifigs.updateManualMinifig(besitzer, req.pfad.figNumber, req.eingabe);
     return { ...r };
   });
@@ -50,7 +50,7 @@ export function buildMinifigsRouter(
 
   router.endpunkt('DELETE /api/v1/minifigs/:figNumber', requireToken, async req => {
     // Ohne den Parameter das eigene Konto.
-    const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+    const besitzer = await d.household.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
     const geloescht = await d.collection.deleteMinifig(besitzer, req.pfad.figNumber);
     if (geloescht === null) notFound('minifig_nicht_manuell');
     return { papierkorb: [geloescht] };

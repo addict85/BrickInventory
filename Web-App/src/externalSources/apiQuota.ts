@@ -1,7 +1,7 @@
 import type { DbInterface } from '../../db/database';
 import { currentAccount } from '../infra/kontoKontext';
-import * as repo from './repository/apiKontingent';
-import type { ForeignSourcesContext } from './kontext';
+import * as repo from './repository/apiQuota';
+import type { ForeignSourcesContext } from './context';
 
 export type ApiName = 'bricklink' | 'rebrickable' | 'brickset';
 

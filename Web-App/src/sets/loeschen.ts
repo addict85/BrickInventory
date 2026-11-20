@@ -1,5 +1,5 @@
 import * as repo from './repository/sets';
-import { asIds, type Sicht, type ScopeInput as Blickfeld } from '../haushalt';
+import { asIds, type Sicht, type ScopeInput as Blickfeld } from '../household';
 import type { SetsContext } from './kontext';
 
 // Für Löschen und Wegfall; sonst verwaisen Teile. In der Transaktion des Aufrufers (`t`).
@@ -9,8 +9,8 @@ export async function deleteSetRows(t: SetsContext, uids: number[], setNumber: s
 
 /** Standardmässig im ganzen Schreibbereich; eine Kontenwahl schränkt ihn ein, erweitert ihn nie. */
 export async function deleteSetFor(sk: SetsContext, s: Sicht, setNumber: string) {
-  const writable = await sk.haushalt.schreibbereich(s.nutzer);
-  const gewaehlt = s.konten === undefined ? writable : await sk.haushalt.scopeFrom(s);
+  const writable = await sk.household.schreibbereich(s.nutzer);
+  const gewaehlt = s.konten === undefined ? writable : await sk.household.scopeFrom(s);
   return deleteSet(
     sk,
     gewaehlt.filter(id => writable.includes(id)),

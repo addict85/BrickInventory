@@ -30,9 +30,9 @@ test('Dienste lösen die Sicht auf', { concurrency: 1 }, async t => {
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const H = {
-    ..._req('src/haushalt/regeln.js'),
-    ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testArea('haushalt'),
+    ..._req('src/household/rules.js'),
+    ..._req('src/household/household.js'),
+    ...require('./helpers/sources').testArea('household'),
   };
   const { setsLesen } = require('./helpers/sources').areaPage('sets');
   const { deleteSetFor } = require('./helpers/sources').areaPage('sets');

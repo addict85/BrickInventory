@@ -676,7 +676,7 @@ export async function updateManualPart(partNumber, colorId, body, owner) {
  *   manuelle Bereich die Einträge aller Konten mit Plakette und Papierkorb;
  *   ohne diese Angabe löschte der Server immer die Zeile des Aufrufers —
  *   geklickt war die fremde Karte, weg war die eigene, und die Antwort sagte
- *   „success". Begründung und Messung in src/haushalt/haushalt.ts.
+ *   „success". Begründung und Messung in src/household/household.ts.
  */
 export async function deleteManualPart(partNumber, colorId, owner) {
   if (!(await confirmDelete(tRaw('parts.delete.title'), tRaw('gallery.delete.text', { name: partNumber }), 'teil')))

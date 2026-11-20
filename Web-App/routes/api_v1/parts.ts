@@ -11,7 +11,7 @@ import { fachfehler, notFound } from '../../src/infra/fehlerTexte';
 export function buildPartsRouter(
   d: Pick<
     Dienste,
-    'settings' | 'auftraege' | 'haushalt' | 'konto' | 'katalog' | 'finanzen' | 'bestand' | 'parts' | 'collection'
+    'settings' | 'auftraege' | 'household' | 'konto' | 'katalog' | 'finanzen' | 'bestand' | 'parts' | 'collection'
   >,
 ) {
   const { requireToken } = guardFor(d.konto);
@@ -53,7 +53,7 @@ export function buildPartsRouter(
   router.endpunkt('POST /api/v1/parts', requireToken, async req => {
     // writeTargetOrNull prüft die RICHTUNG (Hauptkonto → eigenes Unterkonto),
     // nicht bloss die Mitgliedschaft im Blickfeld.
-    const owner = await d.haushalt.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
+    const owner = await d.household.schreibziel(req.apiUser.user_id, req.eingabe.owner_user_id);
     const result = await d.parts.addManualPart(owner, req.eingabe);
     return { ...result };
   });
@@ -61,7 +61,7 @@ export function buildPartsRouter(
   router.endpunkt('PUT /api/v1/parts/:partNumber/:colorId', requireToken, async req => {
     // Die Ansicht sagt, wessen Karte gemeint ist; ohne Parameter änderte das
     // Hauptkonto auf der Karte des Kindes die eigene Zeile.
-    const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+    const besitzer = await d.household.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
     // Mit Mengenänderung trägt die Antwort die Menge danach (bei quantity_delta
     // weiss der Client sie sonst nicht).
     const r = await d.parts.changeManualPart(besitzer, req.pfad.partNumber, req.pfad.colorId, req.eingabe);
@@ -70,7 +70,7 @@ export function buildPartsRouter(
 
   // Eigene Adresse: Die Farbe ist schon Teil der Adresse von PUT /parts/:nr/:farbe.
   router.endpunkt('PUT /api/v1/parts/:partNumber/:colorId/color', requireToken, async req => {
-    const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+    const besitzer = await d.household.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
     // Die neue Farbe muss dastehen: V.colorId() machte aus fehlend „keine Farbe",
     // ein stilles Leeren mit Erfolgsmeldung.
     const neueFarbe = req.eingabe.color_id;
@@ -84,7 +84,7 @@ export function buildPartsRouter(
 
   router.endpunkt('DELETE /api/v1/parts/:partNumber/:colorId', requireToken, async req => {
     // Ohne Parameter das eigene Konto — unverändert für Clients, die ihn nicht kennen.
-    const besitzer = await d.haushalt.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
+    const besitzer = await d.household.schreibziel(req.apiUser.user_id, req.abfrage.owner, 'kein_zugriff_konto');
     const geloescht = await d.collection.deletePart(besitzer, req.pfad.partNumber, req.pfad.colorId);
     if (geloescht === null) notFound('teil_nicht_manuell');
     return { papierkorb: [geloescht] };

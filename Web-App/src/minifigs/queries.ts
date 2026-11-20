@@ -1,5 +1,5 @@
 import { resolveImageLocal } from '../bilder';
-import { asIds, type Sicht } from '../haushalt';
+import { asIds, type Sicht } from '../household';
 import { clampPageSize, conditionFromAcquisitions, conditionsFromAcquisitions } from '../bestand';
 import { withVersion } from '../infra/setNummer';
 import { Degradations } from '../infra/ergebnis';
@@ -20,7 +20,7 @@ export async function readMinifigs(
   userIdChoice: Sicht | number | number[],
   { search, source, set_number, page = 1, page_size = null }: MinifigsQuery = {},
 ) {
-  const userId = await k.haushalt.scopeFrom(userIdChoice);
+  const userId = await k.household.scopeFrom(userIdChoice);
   // asIds(), so older callers with a bare ID keep working.
   const uids = asIds(userId);
   const size = page_size ? clampPageSize(page_size, 60) : null;
@@ -50,14 +50,14 @@ export async function readMinifigs(
 
   // With a total count for infinite scroll, as with setsLesen.
   return {
-    figs: await k.haushalt.besitzerAnhaengen(uids, mappedFigs),
+    figs: await k.household.besitzerAnhaengen(uids, mappedFigs),
     total: figCount ? figCount.c : mappedFigs.length,
   };
 }
 
 // One count for the webapp and the app; the app used to count itself, differently.
 export async function computeMinifigStats(k: MinifigsContext, userIdChoice: Sicht | number | number[]) {
-  const userId = await k.haushalt.scopeFrom(userIdChoice);
+  const userId = await k.household.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   const row = await k.minifigsList.minifigStats(uids);
   return {
@@ -81,7 +81,7 @@ export async function readManualMinifigs(
   }: { page?: number; page_size?: number | null; search?: string | null } = {},
   ab = new Degradations(),
 ) {
-  const userId = await k.haushalt.scopeFrom(userIdChoice);
+  const userId = await k.household.scopeFrom(userIdChoice);
   const uids = asIds(userId);
   const size = page_size ? clampPageSize(page_size, 60) : null;
   const figs = await k.minifigsList.manualMinifigsList(
@@ -101,5 +101,5 @@ export async function readManualMinifigs(
   );
   const withPrice = withCondition.map(f => ({ ...f, avg_price: preise.get(String(f.fig_number)) ?? null }));
 
-  return k.haushalt.besitzerAnhaengen(uids, withPrice);
+  return k.household.besitzerAnhaengen(uids, withPrice);
 }

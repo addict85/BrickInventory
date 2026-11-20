@@ -38,7 +38,7 @@ async function reportAccountChangeFor(
   const k = await kx.konten.profileRow(uid);
   if (!k?.email) return false;
   const lang = String(await kx.einstellungen.userValue(uid, 'language', 'de'));
-  const haushalt = (await kx.haushalt.householdStatus(uid)).parents.map(p => p.username);
+  const haushalt = (await kx.household.householdStatus(uid)).parents.map(p => p.username);
   const r = await kx.mail.mailAccountNotice(k.email, k.username, art, {
     lang,
     haushalt,
@@ -79,7 +79,7 @@ export function adminHintInBackground(k: AccountContext, art: AccountNotice, ang
 /** Nach dem Beitritt erfährt der Inhaber per Mail, wem er sich angeschlossen hat; nebenher,
  * damit die Antwort nicht auf den Mailserver wartet. */
 export async function joinHousehold(k: AccountContext, uid: number, code: string) {
-  const r = await k.haushalt.redeemInvitation(uid, code);
+  const r = await k.household.redeemInvitation(uid, code);
   const ich = await k.konten.profileRow(uid);
   if (ich?.email) {
     const sprache = await k.einstellungen

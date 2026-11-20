@@ -1,6 +1,6 @@
 /** One rule for three kinds, so the webapp and the app don't drift apart. */
 import { moneyInput } from '../infra/geld';
-import type { Sicht } from '../haushalt';
+import type { Sicht } from '../household';
 import { Degradations } from '../infra/ergebnis';
 import { inventoryKey } from '../../db/txLock';
 import { fachfehler, type ErrorCode } from '../infra/fehlerTexte';
@@ -58,7 +58,7 @@ interface Row {
 
 /** Only for the lock key and price fallback; the query inside the transaction checks the rights. */
 async function beforehand(k: CollectionContext, art: ErfassungsArt, uid: number, id: number, keys: Keys) {
-  return k.bestand.erfassung.imSchreibfeld(art, id, await k.haushalt.schreibbereich(uid), keys);
+  return k.bestand.erfassung.imSchreibfeld(art, id, await k.household.schreibbereich(uid), keys);
 }
 
 /** 0 "empty" and null "no row" are cleaned up; a read error propagates, a fallback would hide the
@@ -119,8 +119,8 @@ export async function changeAcquisition(
 
   const ownerReq = body.owner_user_id;
   if (ownerReq !== undefined && ownerReq !== null && ownerReq !== '') {
-    const from = await k.haushalt.moveSource(uid, art, id);
-    const to = await k.haushalt.writeTargetOrNull(uid, ownerReq);
+    const from = await k.household.moveSource(uid, art, id);
+    const to = await k.household.writeTargetOrNull(uid, ownerReq);
     if (to === null) fachfehler('verboten', 'kein_schreibrecht');
     if (from === to) return { unchanged: true };
     // Like moveSet(): opposite directions lock both accounts' rows in reverse order.
@@ -153,7 +153,7 @@ export async function changeAcquisition(
   const besitzer = (await beforehand(k, art, uid, id, keys))?.user_id ?? uid;
   await k.transaktion(
     async t => {
-      const wids = await t.haushalt.schreibbereich(uid);
+      const wids = await t.household.schreibbereich(uid);
       const acq = await rowInWriteScope(t, art, wids, id, keys);
       // From here on the row's owner counts, not the viewer.
       const ownerId = Number(acq.user_id);
@@ -195,7 +195,7 @@ export async function deleteAcquisition(k: CollectionContext, art: ErfassungsArt
   const besitzer = (await beforehand(k, art, uid, id, keys))?.user_id ?? uid;
   const menge = await k.transaktion(
     async t => {
-      const acq = await rowInWriteScope(t, art, await t.haushalt.schreibbereich(uid), id, keys);
+      const acq = await rowInWriteScope(t, art, await t.household.schreibbereich(uid), id, keys);
       const ownerId = Number(acq.user_id);
       await t.bestand.erfassung.loesche(art, id, ownerId);
       const q = await holdingQuantity(t, art, ownerId, keys);
@@ -208,5 +208,5 @@ export async function deleteAcquisition(k: CollectionContext, art: ErfassungsArt
 }
 
 export async function setAcquisitionsForSet(k: CollectionContext, sicht: Sicht | number[], setNumber: string) {
-  return k.setAcquisitions.inScope(await k.haushalt.scopeFrom(sicht), setNumber);
+  return k.setAcquisitions.inScope(await k.household.scopeFrom(sicht), setNumber);
 }

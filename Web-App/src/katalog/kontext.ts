@@ -4,10 +4,10 @@ import type { CatalogReadContract } from './lesevertrag';
 import type { Faecher } from '../infra/zwischenspeicher';
 import type { ThrottleServices } from '../throttle';
 import type { Db } from '../../db/database';
-import type { ConcurrentRateLimiter, ForeignSourcesServices } from '../fremdquellen';
+import type { ConcurrentRateLimiter, ForeignSourcesServices } from '../externalSources';
 import type { JobsServices } from '../auftraege';
 import type { SettingsServices } from '../settings';
-import type { HouseholdServices } from '../haushalt';
+import type { HouseholdServices } from '../household';
 import type { ImagesServices } from '../bilder';
 import * as anleitungen from './repository/anleitungen';
 import * as bildlage from './repository/bildlage';
@@ -25,14 +25,14 @@ export interface CatalogDependencies {
   uhr: Uhr;
   db: Db;
   faecher: Faecher;
-  /** Klienten, Kontingent und Drosseln dieses Satzes Dienste (src/fremdquellen). */
-  fremdquellen: ForeignSourcesServices;
+  /** Klienten, Kontingent und Drosseln dieses Satzes Dienste (src/externalSources). */
+  externalSources: ForeignSourcesServices;
   /** Höchstens zwei Bildabrufe beim CDN zugleich, je Satz Dienste einer. */
   cdnDrossel: ConcurrentRateLimiter;
   bilder: ImagesServices;
   einstellungen: SettingsServices;
   auftraege: JobsServices;
-  haushalt: HouseholdServices;
+  household: HouseholdServices;
   throttle: ThrottleServices;
   lesevertrag: CatalogReadContract;
 }

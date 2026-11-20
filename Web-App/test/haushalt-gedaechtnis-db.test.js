@@ -12,9 +12,9 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = testData();
 const hh = {
-  ..._req('src/haushalt/regeln.js'),
-  ..._req('src/haushalt/haushalt.js'),
-  ...require('./helpers/sources').testArea('haushalt'),
+  ..._req('src/household/rules.js'),
+  ..._req('src/household/household.js'),
+  ...require('./helpers/sources').testArea('household'),
 };
 
 const MAIN = 990501,

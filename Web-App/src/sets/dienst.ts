@@ -20,7 +20,7 @@ export type { CatalogPart, ListenTeil, SetMaster } from './zeilen';
  * src/bestand/kaufpreisNachtrag.ts nach. */
 async function priceForNewEntry(sk: SetsContext, userId: number, setNumber: string) {
   // Über das Blickfeld: Mit einer nackten ID fände der Hauptaccount das Set des Unterkontos nicht.
-  const blickfeld = valueOr(await versuche('sets:kaufpreis-blickfeld', sk.haushalt.scopeIds(userId)), [userId]);
+  const blickfeld = valueOr(await versuche('sets:kaufpreis-blickfeld', sk.household.scopeIds(userId)), [userId]);
   const cond = await sk.finanzen.setState(blickfeld, setNumber);
   // Die Währung DES KONTOS: Der Preis wird in ihr gesucht und gespeichert.
   const currency = String(await sk.einstellungen.userValue(userId, 'currency', 'EUR'));
@@ -139,7 +139,7 @@ export async function changeSet(
   body: Eingabe<'PUT /api/v1/sets/:setNumber'>,
 ) {
   // SCHREIB-Blickfeld statt eigener ID, sonst fände ein Set des Unterkontos keine Zeile.
-  const _wids = await sk.haushalt.schreibbereich(uid);
+  const _wids = await sk.household.schreibbereich(uid);
   // Die EIGENE Zeile gewinnt, sonst entschiede die Tabellenreihenfolge.
   const existing = await repo.setRowInWriteField(sk.db, _wids, sn, uid);
   if (!existing) fachfehler('nicht_gefunden', 'set_nicht_gefunden');
@@ -162,7 +162,7 @@ export async function changeSet(
     const ziel = body.owner_user_id == null ? uid : Number(body.owner_user_id);
     if (!_wids.includes(ziel)) fachfehler('verboten', 'kein_schreibrecht');
     const desiredTotal = delta === null ? inventoryQuantity(body.quantity) : null;
-    const readField = await sk.haushalt.scopeIds(uid);
+    const readField = await sk.household.scopeIds(uid);
     // Angezeigt wird der Haushalt, geändert nur das Zielkonto.
     const eigenesZiel = async (s: SetsContext) => {
       const totalBefore = await repo.setMenge(s.db, 'blickfeld', readField, sn);
@@ -219,7 +219,7 @@ export async function changeSet(
   // Geschrieben ist schon; scheitert nur das Nachlesen, sagt die Antwort „unbekannt“ statt 0.
   const nachher = await ab.oder(
     'menge',
-    async () => (await repo.setMenge(sk.db, 'blickfeld', await sk.haushalt.scopeIds(uid), sn)) ?? 0,
+    async () => (await repo.setMenge(sk.db, 'blickfeld', await sk.household.scopeIds(uid), sn)) ?? 0,
     null,
   );
   return {

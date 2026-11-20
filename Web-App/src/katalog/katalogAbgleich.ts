@@ -49,8 +49,10 @@ async function syncSetCatalog(k: CatalogContext, setNumber: string) {
       if (fs.existsSync(dest)) {
         imageLocal = rel;
       } else {
-        await k.fremdquellen.drossel.hintergrund.waitForSlot();
-        await k.fremdquellen.quellen.downloadFile(p.image_url, dest).catch(logAndContinue('katalog-sync:downloadFile'));
+        await k.externalSources.drossel.hintergrund.waitForSlot();
+        await k.externalSources.quellen
+          .downloadFile(p.image_url, dest)
+          .catch(logAndContinue('katalog-sync:downloadFile'));
         if (fs.existsSync(dest)) {
           await k.bilder.createPreview(rel).catch(logAndContinue('katalog-sync:vorschauErzeugenAus'));
           imageLocal = rel;
@@ -101,7 +103,7 @@ async function backfillPartColorsImages(k: CatalogContext) {
   let done = 0;
   for (const row of rows) {
     try {
-      const info = await k.fremdquellen.quellen.lookupPart(row.part_number, row.color_id);
+      const info = await k.externalSources.quellen.lookupPart(row.part_number, row.color_id);
       if (info?.image_url) {
         await k.csvKatalog.replacePartColorsImage(row.part_number, row.color_id, info.image_url);
         done++;

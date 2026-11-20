@@ -76,7 +76,7 @@ export async function holeQrTokenAb(
     scope: 'app',
     ip,
   });
-  const keyNonce = await k.geraete.nonceForQrToken(tokenDigest(token));
+  const keyNonce = await k.devices.nonceForQrToken(tokenDigest(token));
   return { stand: 'fertig', token, uid: z.user_id, keyNonce };
 }
 

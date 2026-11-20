@@ -18,7 +18,7 @@ function asAttachment(res: Response, datei: string): void {
   res.attachment(path.basename(datei));
 }
 
-export function buildDataFilesRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'bilder'>) {
+export function buildDataFilesRouter(d: Pick<Dienste, 'household' | 'konto' | 'bilder'>) {
   const { inboundLock, requireLoginOrToken } = guardFor(d.konto);
   const router = express.Router();
 
@@ -34,7 +34,7 @@ export function buildDataFilesRouter(d: Pick<Dienste, 'haushalt' | 'konto' | 'bi
     const besitzer = Number(segments[0]);
     // Auch Verwalter lesen fremde Uploads (Rechnungen, Gutscheine) nicht. Fremd
     // antwortet wie fehlend, damit sich nicht ablesen lässt, welche Konten Dateien haben.
-    if (!(await d.haushalt.seesAccount(userId, besitzer))) return res.status(404).send('Datei nicht gefunden');
+    if (!(await d.household.seesAccount(userId, besitzer))) return res.status(404).send('Datei nicht gefunden');
     asAttachment(res, filePath);
     deliverFile(res, filePath);
   });

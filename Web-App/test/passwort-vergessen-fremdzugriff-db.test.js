@@ -68,7 +68,7 @@ test('Passwort vergessen löst fremden Zugriff', { concurrency: 1 }, async t => 
     [V, `boese-${P}@example.org`],
   );
   const K_ = _req('src/konto/konten.js');
-  const H = _req('src/haushalt/haushalt.js');
+  const H = _req('src/household/household.js');
   const { inSystemContext } = _req('src/infra/kontoKontext.js');
   const mainAccountsOf = () => inSystemContext('test', () => H.householdOf(A)).then(h => h.memberIds.includes(V));
 

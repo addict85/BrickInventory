@@ -10,7 +10,7 @@
  *   B  in 0121 die Policy `lesen` auf account_links unverändert (USING true) → rot: dieselbe
  *      Prüfung (die fremde Verknüpfung ist sichtbar)
  *   C  in 0121 das REVOKE der Adressspalten gestrichen → rot: „… Adressen nicht“
- *   D  in src/haushalt/haushalt.ts checkInvitation wieder mit repo.accountName (Laufzeitrolle)
+ *   D  in src/household/household.ts checkInvitation wieder mit repo.accountName (Laufzeitrolle)
  *      → rot: „wer eingeladen wird, erfährt den Namen …“ (die Kennung statt des Namens)
  *   E  in 0121 household_former_links aus der Policy gestrichen → rot: „die Haushaltsansicht
  *      nennt Unterkonten und getrennte …“ (former_links leer)
@@ -89,7 +89,7 @@ test('Konten nur im eigenen Haushalt', { concurrency: 1, timeout: 120_000 }, asy
   });
 
   await t.test('wer eingeladen wird, erfährt den Namen des Einladenden', async () => {
-    const haushalt = { ..._req('src/haushalt/haushalt.js'), ...S.testArea('haushalt') };
+    const haushalt = { ..._req('src/household/household.js'), ...S.testArea('household') };
     const { code } = await S.asAccount(fremd, () => haushalt.createInvitation(fremd));
     const { base } = testServer(_req, { sitzung: { userId: haupt, username: namen[0] }, t });
     const r = await fetch(`${base}/api/v1/settings/household/redeem/pruefen`, {

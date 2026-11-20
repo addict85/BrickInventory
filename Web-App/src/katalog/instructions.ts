@@ -53,7 +53,7 @@ async function brickinstructionsFund(k: CatalogContext, n: string) {
   const baseUrl = `https://lego.brickinstructions.com/instructions/${folder}/${baseNum}`;
   const pageUrl = `https://lego.brickinstructions.com/lego_instructions/set/${baseNum}/`;
   const hdrs = { 'User-Agent': 'Mozilla/5.0 (compatible; BrickManager/3.0)', Referer: pageUrl };
-  const probe = await k.fremdquellen.quellen.httpsGetRobust(`${baseUrl}/001.jpg`, hdrs, 3000);
+  const probe = await k.externalSources.quellen.httpsGetRobust(`${baseUrl}/001.jpg`, hdrs, 3000);
   if (probe.status !== 200 || !probe.buffer || probe.buffer.length <= 500) return null;
   return { baseUrl, pageUrl, hdrs, firstImage: probe.buffer };
 }
@@ -136,12 +136,12 @@ async function instructionSources(k: CatalogContext, n: string) {
   let instrList: InstructionSource[] = [];
   let bricksetSucceededEmpty = false;
   try {
-    instrList = await k.fremdquellen.quellen.scrapeInstructions(n);
+    instrList = await k.externalSources.quellen.scrapeInstructions(n);
   } catch (e) {
     reportError('anleitungen:auslesen', e);
   }
   if (!instrList.length) {
-    const bs = await versuche('anleitungen:brickset', k.fremdquellen.quellen.brickset.getInstructions(n));
+    const bs = await versuche('anleitungen:brickset', k.externalSources.quellen.brickset.getInstructions(n));
     instrList = bs.ok ? bs.wert.instructions || [] : [];
     // usesFallback false heisst Kontingent erschöpft. Ein Fehler ist keine Antwort —
     // beides bleibt in der Warteschlange.
@@ -161,7 +161,7 @@ async function bdpFallback(k: CatalogContext, n: string, ownTick: boolean): Prom
     fs.mkdirSync(instrDir, { recursive: true });
     const pdfDest = path.join(instrDir, pdfName);
     const relPath = `/data/instructions/${pdfName}`;
-    const ok = await k.fremdquellen.quellen.downloadFile(bdpUrl, pdfDest, undefined, PDF_START);
+    const ok = await k.externalSources.quellen.downloadFile(bdpUrl, pdfDest, undefined, PDF_START);
     if (ok) {
       console.log(`[instr] BDP fallback downloaded: ${bdpUrl}`);
       await k.anleitungen.rememberInstruction(n, bdpUrl, `Anleitung ${n} (BDP)`, relPath);
@@ -221,7 +221,7 @@ async function saveInstructions(k: CatalogContext, n: string, instrList: Instruc
     const safeName = `${safeBase}_${i + 1}.pdf`;
     const dest = path.join(instrDir, safeName);
     const relPath = `/data/instructions/${safeName}`;
-    const ok = await k.fremdquellen.quellen.downloadFile(instr.url, dest, undefined, PDF_START);
+    const ok = await k.externalSources.quellen.downloadFile(instr.url, dest, undefined, PDF_START);
     await k.anleitungen.rememberInstruction(n, instr.url, instr.description || `Anleitung ${n}`, ok ? relPath : null);
     saved++;
     if (i < instrList.length - 1) await warte(200);
@@ -243,7 +243,11 @@ async function collectAndBuildPDF(
   for (let p = 2; p <= 99; p++) {
     await warte(500);
     try {
-      const r = await k.fremdquellen.quellen.httpsGetRobust(`${baseUrl}/${String(p).padStart(3, '0')}.jpg`, hdrs, 8000);
+      const r = await k.externalSources.quellen.httpsGetRobust(
+        `${baseUrl}/${String(p).padStart(3, '0')}.jpg`,
+        hdrs,
+        8000,
+      );
       if (r.status !== 200 || !r.buffer || r.buffer.length < 500) break;
       imageBuffers.push(r.buffer);
     } catch (_) {

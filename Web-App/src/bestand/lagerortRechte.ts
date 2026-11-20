@@ -17,7 +17,7 @@ export async function storageAccounts(
     .map(x => parseInt(x.trim(), 10))
     .filter(Number.isFinite);
   if (!gewuenscht.length) return [nutzer];
-  const erlaubt = schreiben ? await k.haushalt.schreibbereich(nutzer) : await k.haushalt.scopeIds(nutzer);
+  const erlaubt = schreiben ? await k.household.schreibbereich(nutzer) : await k.household.scopeIds(nutzer);
   return gewuenscht.filter(id => erlaubt.includes(id));
 }
 

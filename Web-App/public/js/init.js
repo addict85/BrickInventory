@@ -247,7 +247,7 @@ async function plFuelleBestand() {
   const frei = knopfBesetzt(b);
   // Das Blickfeld kommt aus DIESER Ansicht, nicht mehr aus dem Teile-Reiter.
   // `own` und `all` sind die Namen, die der Server ohnehin kennt
-  // (src/haushalt/haushalt.ts, parseScopeMode) — die Wahl ist also nur eine andere Bedienung derselben Sache,
+  // (src/household/household.ts, parseScopeMode) — die Wahl ist also nur eine andere Bedienung derselben Sache,
   // kein zweiter Begriff daneben.
   const withSubs = !!G('pl-bestand-subs')?.checked;
   const d = await api('POST', `/v1/parts/owned${withSubs ? '' : '?accounts=own'}`, { teile });

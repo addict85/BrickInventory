@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { auftragsart, nextTimeOfDay, type Anmeldung, type Bearbeiter } from '../auftraege';
-import type { ForeignSourcesContext } from './kontext';
+import type { ForeignSourcesContext } from './context';
 
 /** Je Set ein Auftrag, fällig zur eingestellten Uhrzeit. `versuch` zählt über
  * Aufträge hinweg: Nach 30 Tagen ohne Kontingent gibt Brickset auf. */

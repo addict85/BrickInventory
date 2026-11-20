@@ -2,7 +2,7 @@
 import type { Db } from '../../db/database';
 import { mit, type Kontext } from '../infra/bereich';
 import * as setAcquisitions from './repository/setAcquisitions';
-import type { HouseholdServices } from '../haushalt';
+import type { HouseholdServices } from '../household';
 import type { JobsServices } from '../auftraege';
 import type { CatalogServices } from '../katalog';
 import type { FinancesServices } from '../finanzen';
@@ -16,7 +16,7 @@ import type { Uhr } from '../infra/uhr';
 export interface CollectionDependencies {
   uhr: Uhr;
   db: Db;
-  haushalt: HouseholdServices;
+  household: HouseholdServices;
   auftraege: JobsServices;
   katalog: CatalogServices;
   finanzen: FinancesServices;

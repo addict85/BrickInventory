@@ -4,7 +4,7 @@ import { Degradations } from '../infra/ergebnis';
 import { Zwischenspeicher } from '../infra/zwischenspeicher';
 import { processEvent } from '../infra/ereignis';
 import { sperreHaushaltswaehrung } from '../../db/txLock';
-import type { HouseholdContext } from './kontext';
+import type { HouseholdContext } from './context';
 import * as repo from './repository';
 import type { ErfassungsArt } from './repository';
 import { fachfehler, type ErrorCode } from '../infra/fehlerTexte';
@@ -25,7 +25,7 @@ import {
   type ScopeMode,
   type Schreiber,
   type Sicht,
-} from './regeln';
+} from './rules';
 
 /** Je Satz Dienste: Der Stand zählt die Änderungen, die Abhängigen (Bilder) horchen mit. */
 const stand = (k: HouseholdContext) => k.faecher.fach('haushaltStand', () => ({ wert: 0 }));

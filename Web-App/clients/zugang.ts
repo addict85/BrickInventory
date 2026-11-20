@@ -1,6 +1,6 @@
 // Was ein Klient von der Anwendung braucht, ohne sie zu kennen: Schlüssel,
 // Kontingent, Drossel und die Brickset-Wiedervorlage. Jeder Klient bekommt es
-// bei seiner Erzeugung (src/fremdquellen); einen Zugang des Prozesses gibt es nicht.
+// bei seiner Erzeugung (src/externalSources); einen Zugang des Prozesses gibt es nicht.
 
 export type ApiName = 'bricklink' | 'rebrickable' | 'brickset';
 export type KeyName =

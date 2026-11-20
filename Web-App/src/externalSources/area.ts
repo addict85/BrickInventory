@@ -2,13 +2,13 @@
  * Zwei Sätze Dienste in einem Prozess teilen weder Schlüssel noch Zwischenstände. */
 import { mit, buildContext, type Inspect } from '../infra/bereich';
 import type { Db } from '../../db/database';
-import * as brickset from './bricksetWiedervorlage';
-import * as apiQuotaService from './apiKontingent';
+import * as brickset from './bricksetResubmission';
+import * as apiQuotaService from './apiQuota';
 import * as rateLimiter from './rateLimiter';
-import { buildSources, type ClientsAccess, type Quellen } from './quellen';
-import { zugang, type ForeignSourcesDependencies, type ForeignSourcesContext } from './kontext';
+import { buildSources, type ClientsAccess, type Quellen } from './sources';
+import { zugang, type ForeignSourcesDependencies, type ForeignSourcesContext } from './context';
 
-export type { ForeignSourcesDependencies, ForeignSourcesContext } from './kontext';
+export type { ForeignSourcesDependencies, ForeignSourcesContext } from './context';
 
 /** Gelesen beim Aufruf, nicht beim Bau: Ein Test ersetzt einen Klienten auch, nachdem
  * die Dienste schon stehen (test/helpers/sources.js testSources). */

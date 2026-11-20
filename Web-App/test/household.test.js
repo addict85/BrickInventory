@@ -26,9 +26,9 @@ test('Einladung und Schreibrecht gegen die Datenbank', { concurrency: 1 }, async
   const db = await require('./helpers/db').dataOrSkip(t, _req);
   if (!db) return;
   const hh = {
-    ..._req('src/haushalt/regeln.js'),
-    ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testArea('haushalt'),
+    ..._req('src/household/rules.js'),
+    ..._req('src/household/household.js'),
+    ...require('./helpers/sources').testArea('household'),
   };
   const namen = [`hh_haupt_${process.pid}`, `hh_unter_${process.pid}`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
@@ -114,7 +114,7 @@ test('Webapp und App bekommen dieselben Endpunkte', () => {
     "/api/v1/settings/household/unlink'",
   ])
     assert.equal(src.split(pfad).length - 1, 1, `${pfad} steht nicht genau einmal in routes/api_v1/settings.ts`);
-  // Keine eigene Regel in der Route — sie stehen in src/haushalt/haushalt.ts.
+  // Keine eigene Regel in der Route — sie stehen in src/household/household.ts.
   assert.doesNotMatch(src, /account_links/, 'Routen dürfen nicht selbst gegen account_links abfragen');
 });
 
@@ -222,7 +222,7 @@ test('manuelle Teile und Minifiguren tragen den Besitzer', () => {
   );
 
   const fc = kompakt(require('./helpers/sources').finanzQuelle());
-  const uses = (fc.match(/await (?:kx?\.haushalt\.)?besitzerAnhaengen\(uids,/g) || []).length;
+  const uses = (fc.match(/await (?:kx?\.household\.)?besitzerAnhaengen\(uids,/g) || []).length;
   // Seit der UI-Prüfung 12 auch die Sets: Jede Zeile ist der Bestand eines Kontos.
   assert.equal(uses, 3, 'Set-, Teile- und Minifiguren-Bewertung brauchen den Besitzer');
 });

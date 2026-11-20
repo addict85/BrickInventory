@@ -1,7 +1,7 @@
 /** Nicht strikt: Die Nutzlast überlebt Deploys, ein Altfeld soll keinen offenen Auftrag scheitern lassen. */
 import { z } from 'zod';
 import { auftragsart, type Anmeldung } from '../auftraege';
-import { bricksetJobType } from '../fremdquellen';
+import { bricksetJobType } from '../externalSources';
 import * as anleitungLaden from './anleitungLaden';
 import * as bildNachlauf from './bildNachlauf';
 import * as bilderNachladen from './bilderNachladen';

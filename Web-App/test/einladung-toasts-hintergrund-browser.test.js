@@ -53,7 +53,7 @@ test('Einladung, Toasts, Hintergrundarbeiten, Preisstatus', { timeout: 280_000 }
   // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
   await ruhig();
   buildAndRequire();
-  const haushalt = require('./helpers/sources').testServices().haushalt;
+  const haushalt = require('./helpers/sources').testServices().household;
   const geh = async pfad => {
     await b.auswerten(`location.hash = '#/${pfad}'; true`);
     await warte(300);

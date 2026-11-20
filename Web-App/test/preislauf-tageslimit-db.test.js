@@ -25,7 +25,7 @@ test('Preislauf am Tageslimit', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   t.after(() => db.pool.end().catch(() => {}));
   const { setGlobalSetting } = _req('src/settings/settings.js');
-  const { kontingentPruefenUndZaehlen } = _req('src/fremdquellen/apiKontingent.js');
+  const { kontingentPruefenUndZaehlen } = _req('src/externalSources/apiQuota.js');
   const { runPriceRefresh } = _req('src/finanzen/preisLauf.js');
 
   const uid = (

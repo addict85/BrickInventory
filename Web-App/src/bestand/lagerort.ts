@@ -3,7 +3,7 @@
 import type { InventoryContext } from './kontext';
 import * as orte from './repository/lagerort';
 import type { StorageTable } from './repository/lagerort';
-import { asIds, type Sicht, type ScopeInput } from '../haushalt';
+import { asIds, type Sicht, type ScopeInput } from '../household';
 import { fachfehler } from '../infra/fehlerTexte';
 
 /** Fachlich, nicht technisch (die Spalte ist TEXT): Der Name muss auf eine
@@ -94,7 +94,7 @@ export async function loescheOrt(k: InventoryContext, userId: number, id: number
 
 /** EINE Abfrage über alle Tabellen, damit nicht jede Oberfläche selbst zusammenführt. */
 export async function lagerorte(k: InventoryContext, scopeChoice: Sicht | ScopeInput) {
-  const blickfeld = await k.haushalt.scopeFrom(scopeChoice);
+  const blickfeld = await k.household.scopeFrom(scopeChoice);
   const uids = asIds(blickfeld);
   // Über den NAMEN gruppiert, absichtlich: „Keller" von Grossvater und Enkel
   // sind zwei Vorratszeilen, gehören in der Übersicht aber zusammen.

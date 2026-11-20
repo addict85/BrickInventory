@@ -21,7 +21,7 @@ import * as accessesService from './zugaenge';
 import * as startAdminService from './startVerwalter';
 import * as qrPairingService from './qrKopplung';
 import * as accountsService from './konten';
-import type { DevicesServices } from '../geraete';
+import type { DevicesServices } from '../devices';
 import { zugang, type AccountDependencies, type AccountContext } from './kontext';
 
 export type { AccountDependencies, AccountContext } from './kontext';
@@ -50,7 +50,7 @@ function loginAndDevices(k: AccountContext) {
     devicesTokenIssue: mit(k)(anmeldungAblauf.devicesTokenIssue),
     createQrAccess: mit(k)(anmeldungAblauf.createQrAccess),
     // Der Schrittschutz (http/schrittschutz.ts) fragt das Konto, ob die Anfrage darf; die Regel steht in geraete.
-    pruefeFreigabe: (...a: Parameters<DevicesServices['pruefeFreigabe']>) => k.geraete.pruefeFreigabe(...a),
+    pruefeFreigabe: (...a: Parameters<DevicesServices['pruefeFreigabe']>) => k.devices.pruefeFreigabe(...a),
     pruefeToken: mit(k)(geraeteToken.pruefeToken),
     rotateToken: mit(k)(geraeteToken.rotateToken),
     tokenLoeschen: mit(k)(geraeteToken.tokenLoeschen),

@@ -8,7 +8,7 @@ import {
   readDailyRates,
   type Abruf,
   type Kurs,
-} from '../fremdquellen';
+} from '../externalSources';
 import type { FinancesContext } from './kontext';
 
 const BLOCK = 5000;
@@ -30,7 +30,7 @@ export async function saveRates(kx: FinancesContext, rates: Kurs[]): Promise<num
 
 export async function reloadRates(
   k: FinancesContext,
-  abruf: Abruf = k.fremdquellen.quellen.ecbFetch,
+  abruf: Abruf = k.externalSources.quellen.ecbFetch,
   signal?: AbortSignal,
 ): Promise<{ quelle: 'historie' | 'tag'; rates: number }> {
   const leer = !(await k.wechselkurse.givesEsRates());
@@ -66,7 +66,7 @@ export async function planeKursabruf(
 /** Erst den nächsten Tag einplanen, dann laden: Scheitert das Laden, steht der Plan schon. */
 export async function kursauftrag(
   k: FinancesContext,
-  abruf: Abruf = k.fremdquellen.quellen.ecbFetch,
+  abruf: Abruf = k.externalSources.quellen.ecbFetch,
   lauf?: JobRun,
 ): Promise<void> {
   await planeKursabruf(k, k.uhr.datum(), true);

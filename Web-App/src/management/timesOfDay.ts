@@ -1,4 +1,4 @@
-import { BRICKSET_TIME_OF_DAY } from '../fremdquellen';
+import { BRICKSET_TIME_OF_DAY } from '../externalSources';
 import { CATALOG_SYNC_TIME_OF_DAY } from '../katalog';
 
 export const DAILY_JOBS = [

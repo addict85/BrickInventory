@@ -1,7 +1,7 @@
 /** Die EINE Umsetzung für Webapp und Android-API, damit beide dasselbe Diagramm zeigen. */
 
 import { setState, resolveBlColorId, resolveBlPartNumber } from './financeCalc';
-import { asIds, type Sicht } from '../haushalt';
+import { asIds, type Sicht } from '../household';
 import { buildChart } from './chartData';
 import { marketPriceFrom } from '../katalog';
 import { developmentPercent } from './setValue';
@@ -49,7 +49,7 @@ export async function priceHistorySet(
   setNumber: string,
   currency: string,
 ) {
-  const uids = asIds(await k.haushalt.scopeFrom(uidChoice));
+  const uids = asIds(await k.household.scopeFrom(uidChoice));
   const condition = await setState(k, uids, setNumber);
 
   const [historyNew, historyUsed] = await Promise.all([
@@ -205,7 +205,7 @@ export async function priceHistoryPart(
   colorId: number,
   currency: string,
 ) {
-  const uid = await k.haushalt.scopeFrom(uidChoice);
+  const uid = await k.household.scopeFrom(uidChoice);
   // Preise liegen unter BrickLink-Nummer und -Farbe, Erfassungen unter denen
   // des Benutzers — die beiden Schlüsselräume dürfen nicht gemischt werden.
   const blNumber = await resolveBlPartNumber(k, partNumber, Array.isArray(uid) ? (uid[0] ?? null) : uid);
@@ -230,7 +230,7 @@ export async function priceHistoryMinifig(
   figNumber: string,
   currency: string,
 ) {
-  const uid = await k.haushalt.scopeFrom(uidChoice);
+  const uid = await k.household.scopeFrom(uidChoice);
   const nummern = await priceNumbersForMinifig(k, uid, figNumber);
   return manualPriceHistory(
     k,

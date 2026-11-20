@@ -1,7 +1,7 @@
 /** The wanted list — what one WANTS to have, separate from holdings. A helper
  * instead of code in the routes, because both UIs and several entry paths
  * need the same rules. */
-import type { Sicht } from '../haushalt';
+import type { Sicht } from '../household';
 import * as V from '../infra/validate';
 import { fachfehler } from '../infra/fehlerTexte';
 import { moneyInput } from '../infra/geld';
@@ -160,7 +160,7 @@ export async function wantedItemsOf(
   waehrung = 'EUR',
   filter?: WantedFilter,
 ): Promise<WantedItem[]> {
-  const userIds = await k.haushalt.scopeFrom(userIdsChoice);
+  const userIds = await k.household.scopeFrom(userIdsChoice);
   if (!userIds?.length) return [];
   // Unknown means "both", not "none": an emptied list would look like an empty wanted list.
   const condition = String(filter?.condition ?? '').toUpperCase();

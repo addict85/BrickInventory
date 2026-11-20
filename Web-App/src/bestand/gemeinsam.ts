@@ -1,7 +1,7 @@
 import * as repo from './repository/gemeinsam';
 import * as kaeufe from './repository/kaeufe';
 import { istErsatzteil, KEINE_FARBE } from '../infra/validate';
-import { asIds, type Sicht } from '../haushalt';
+import { asIds, type Sicht } from '../household';
 import type { InventoryContext } from './kontext';
 
 // Was Sets, Teile und Figuren gemeinsam brauchen.
@@ -118,7 +118,7 @@ export async function usingSets(
   tabelle: 'parts' | 'minifigs',
   schluessel: Record<string, string | number>,
 ): Promise<ComponentResponse> {
-  const uids = await k.haushalt.scopeFrom(uidsChoice);
+  const uids = await k.household.scopeFrom(uidsChoice);
   const rows = await k.gemeinsam.setsWithComponent(uids, tabelle, schluessel);
 
   const sets: VerwendendesSet[] = rows.map(r => ({

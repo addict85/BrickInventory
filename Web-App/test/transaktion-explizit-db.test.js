@@ -7,7 +7,7 @@
  * Gegenproben (14.11.2026 gemessen, je einzeln):
  *   A  in txStand() (db/database.ts) die Zeile `if (freigabe.getStore() !== t) throw …`
  *      gestrichen → rot: „k.db im Rumpf wirft …“, „ein gefangenes k …“, „ein Dienst eines
- *      anderen Bereichs …“ (k.haushalt lief still in der Transaktion)
+ *      anderen Bereichs …“ (k.household lief still in der Transaktion)
  *   B  in gebundenAn() (src/infra/bereich.ts) die Abhängigkeiten ungehüllt weitergereicht
  *      (`aus[name] = wert`) → rot: „ein Dienst eines anderen Bereichs über t …“
  *      (UnboundQuery aus dem Haushalt)
@@ -99,8 +99,8 @@ test('Transaktion: ausdrücklich über t', { concurrency: 1 }, async t => {
     const r = await k.transaktion(async tt => {
       await tt.db.run(`UPDATE users SET first_name = first_name WHERE id = $1`, [uid]);
       // scopeIds fragt den Haushalt über seinen eigenen Zugang; über t gerufen gehört er dazu.
-      const ids = await tt.haushalt.scopeIds(uid);
-      await assert.rejects(k.haushalt.schreibbereich(uid), dbModule.UnboundQuery);
+      const ids = await tt.household.scopeIds(uid);
+      await assert.rejects(k.household.schreibbereich(uid), dbModule.UnboundQuery);
       return ids;
     });
     assert.deepEqual(r, [uid]);

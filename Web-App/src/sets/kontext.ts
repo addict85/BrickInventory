@@ -1,11 +1,11 @@
 import type { Konfig } from '../infra/konfig';
 import type { Db } from '../../db/database';
 import type { JobsServices } from '../auftraege';
-import type { ForeignSourcesServices } from '../fremdquellen';
+import type { ForeignSourcesServices } from '../externalSources';
 import type { ImagesServices } from '../bilder';
 import type { InventoryServices } from '../bestand';
 import type { FinancesServices } from '../finanzen';
-import type { HouseholdServices } from '../haushalt';
+import type { HouseholdServices } from '../household';
 import type { CatalogServices } from '../katalog';
 import type { SettingsServices } from '../settings';
 import type { AccountServices } from '../konto';
@@ -18,11 +18,11 @@ export interface SetsDependencies {
   uhr: Uhr;
   konfig: Readonly<Konfig>;
   db: Db;
-  fremdquellen: ForeignSourcesServices;
+  externalSources: ForeignSourcesServices;
   bilder: ImagesServices;
   katalog: CatalogServices;
   finanzen: FinancesServices;
-  haushalt: HouseholdServices;
+  household: HouseholdServices;
   auftraege: JobsServices;
   bestand: InventoryServices;
   einstellungen: SettingsServices;

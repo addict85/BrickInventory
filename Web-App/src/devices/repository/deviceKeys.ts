@@ -1,5 +1,5 @@
 import type { DbInterface } from '../../../db/database';
-import type { DevicesReadContract } from '../lesevertrag';
+import type { DevicesReadContract } from '../readContract';
 
 /** Eine Token-Familie: Konto und created_at (auf Millisekunden, wie es über JavaScript reist). */
 export interface Familie {

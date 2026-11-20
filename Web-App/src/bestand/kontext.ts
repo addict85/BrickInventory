@@ -11,7 +11,7 @@ import * as manuelleMengen from './repository/manuelleMengen';
 import * as nachtrag from './repository/nachtrag';
 import * as papierkorb from './repository/papierkorb';
 import type { SettingsServices } from '../settings';
-import type { HouseholdServices } from '../haushalt';
+import type { HouseholdServices } from '../household';
 import type { AccountServices } from '../konto';
 import type { CatalogServices } from '../katalog';
 import type { FinancesServices } from '../finanzen';
@@ -21,7 +21,7 @@ export interface InventoryDependencies {
   uhr: Uhr;
   db: Db;
   einstellungen: SettingsServices;
-  haushalt: HouseholdServices;
+  household: HouseholdServices;
   konto: AccountServices;
   katalog: CatalogServices;
   finanzen: FinancesServices;

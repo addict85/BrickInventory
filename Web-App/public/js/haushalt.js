@@ -6,7 +6,7 @@ import { toast } from './meldungen.js';
 import { esc, html, rawHtml, joinHtml } from './escaping.js';
 import { confirmDelete, bestaetigeMitPasswort, withSecondFactor } from './rueckfrage.js';
 // Einstellungen, Abschnitt Haushalt: Einladen, Beitreten, Trennen. Ein Konto sieht danach die Bestände der
-// verknüpften Konten; die Regeln dazu stehen im Server (src/haushalt).
+// verknüpften Konten; die Regeln dazu stehen im Server (src/household).
 
 // ═══════════════════════════════════════════════════════════════════════════
 // HAUSHALT — Konten verknüpfen

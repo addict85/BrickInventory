@@ -59,7 +59,7 @@ async function runWorker(
   const tmpFile = path.join(DATA_DIR, filename.replace('.gz', '.tmp'));
   let letzter = 0;
   try {
-    await k.fremdquellen.quellen.loadCatalogCsv(filename, tmpFile, {
+    await k.externalSources.quellen.loadCatalogCsv(filename, tmpFile, {
       ...(lauf.signal ? { signal: lauf.signal } : {}),
       atProgress: (bytes, gesamt) => {
         if (k.uhr.jetzt() - letzter < 700) return;
@@ -189,7 +189,7 @@ async function loadEverything(kx: CatalogContext, lauf: CsvLauf, prozess: Import
 }
 
 async function loadBlColors(k: CatalogContext): Promise<void> {
-  const key = await k.fremdquellen.quellen.getRbKey();
+  const key = await k.externalSources.quellen.getRbKey();
   if (!key) return;
   log('[colors] Fetching BrickLink color mapping from Rebrickable API…');
   let page = 1,
@@ -199,7 +199,7 @@ async function loadBlColors(k: CatalogContext): Promise<void> {
     // Ohne Antwort bleibt die bisherige Zuordnung; der nächste Abgleich versucht es wieder.
     const abruf = await versuche(
       'csv-abgleich:abruf',
-      k.fremdquellen.quellen.httpsGetRobust(
+      k.externalSources.quellen.httpsGetRobust(
         `https://rebrickable.com/api/v3/lego/colors/?page_size=200&page=${page}`,
         { Authorization: `key ${key}` },
         30000,

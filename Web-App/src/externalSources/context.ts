@@ -4,9 +4,9 @@ import { mit, type Kontext } from '../infra/bereich';
 import type { Db } from '../../db/database';
 import type { JobsServices } from '../auftraege';
 import type { SettingsServices } from '../settings';
-import * as apiKontingent from './repository/apiKontingent';
-import * as apiTakt from './repository/apiTakt';
-import type { Quellen } from './quellen';
+import * as apiKontingent from './repository/apiQuota';
+import * as apiTakt from './repository/apiTick';
+import type { Quellen } from './sources';
 import type { Uhr } from '../infra/uhr';
 
 export interface ForeignSourcesDependencies {

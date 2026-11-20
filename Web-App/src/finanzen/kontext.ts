@@ -17,10 +17,10 @@ import * as preisverlauf from './repository/preisverlauf';
 import * as setWert from './repository/setWert';
 import * as wechselkurse from './repository/wechselkurse';
 import type { SettingsServices } from '../settings';
-import type { HouseholdServices } from '../haushalt';
+import type { HouseholdServices } from '../household';
 import type { CatalogServices } from '../katalog';
 import type { JobsServices } from '../auftraege';
-import type { ForeignSourcesServices } from '../fremdquellen';
+import type { ForeignSourcesServices } from '../externalSources';
 import type { Uhr } from '../infra/uhr';
 
 export interface FinancesDependencies {
@@ -29,9 +29,9 @@ export interface FinancesDependencies {
   db: Db;
   einstellungen: SettingsServices;
   auftraege: JobsServices;
-  haushalt: HouseholdServices;
+  household: HouseholdServices;
   katalog: CatalogServices;
-  fremdquellen: ForeignSourcesServices;
+  externalSources: ForeignSourcesServices;
   faecher: Faecher;
   mail: MailServices;
   lesevertrag: FinancesReadContract;
