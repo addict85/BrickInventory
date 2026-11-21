@@ -28,9 +28,11 @@ Seit Runde 30 (17.11.2026, Entscheid des Nutzers) ist der Quellcode auf
 Englisch: Bezeichner (Variablen, Klassen, Funktionen, Methoden), Kommentare,
 Testnamen, Datei- und Verzeichnisnamen sowie das Datenbankschema und der
 API-Vertrag (OpenAPI, Zod-Schemas, erzeugte Kotlin-Typen, `app-schnittstelle.json`).
-Davor war der Code durchgehend Deutsch; die Umstellung läuft bereichsweise und
-ist in `test/ratschen.test.js` bzw. `QuelltextRatscheTest.kt` als Ratsche
-festgehalten (deutsche Bezeichner dürfen nur noch sinken).
+Davor war der Code durchgehend Deutsch; die Umstellung lief bereichsweise und
+ist seit dem 21.11.2026 abgeschlossen (Web-App und Android-App, inklusive
+der Kommentare). Die dafür genutzten Ratschen in `test/ratschen.test.js` und
+`QuelltextRatscheTest.kt` sind entfernt — neuer Quelltext ist ohnehin auf
+Englisch zu schreiben, ganz ohne Ausnahmeliste.
 
 Deutsch bleiben: Commit-Nachrichten und Oberflächentexte (das, was Nutzer auf
 Deutsch sehen — `public/locales/de.js`, `values-de/strings.xml`, Mailtexte,
