@@ -1,32 +1,32 @@
 /**
- * UX-Prüfung 22 im echten Chrome, im Haushalt mit Lagerort: M4 und N1–N13
- * (Namen der Kacheln bis Set-Detail). M3 prüft sammlung-kopf-browser, M1 und
- * M2 error_message-ohne-sprung-browser.
+ * UX check 22 in real Chrome, in the household with a storage location: M4 and N1–N13
+ * (names of the tiles up to the set detail). M3 is checked by collection-header-browser, M1 and
+ * M2 by error-without-jump-browser.
  *
- * Gegenproben (14.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  kachelName(): Teile ohne aria-hidden → rot: „Kachelnamen“, „Merkliste“
- *   B  Katalogabfrage der Merkliste ohne `if (w.name)` → rot: „Merkliste: Set
- *      nicht im Katalog“ (Anfrage an /catalog/sets/10276-1)
- *   C  ownerBadges() wieder mit o.username → rot: „Kachelnamen“, „Kontoangaben“
- *   D  `#gallery .scb > .price-badge{order:1}` entfernt → rot: „Preiskasten auf
- *      einer Höhe“ (925 gegen 943)
- *   E  Lagerortraster mit column-gap:8px → rot: „Lagerorte“ (8 px Lücken)
- *   F  --kopf-h fest 58px → rot: „200 % Schrift“ (Knopf 60,5 > Kopf 58)
- *   G  Gutschein-Knöpfe wieder in .zeile → rot: „Menüseiten“ (Speichern links)
- *   H  .alarm-ue-betrag als display:contents → rot: „Menüseiten“ (EUR bei
- *      320 px unter dem Feld)
- *   I  Bauliste nicht in der :has()-Liste des Bands → rot: „Bauliste mit
+ * Counter-checks (measured 14.11.2026, each on its own, bundle rebuilt):
+ *   A  kachelName(): parts without aria-hidden → red: „Kachelnamen“, „Merkliste“
+ *   B  catalog query of the wishlist without `if (w.name)` → red: „Merkliste: Set
+ *      nicht im Katalog“ (request to /catalog/sets/10276-1)
+ *   C  ownerBadges() again with o.username → red: „Kachelnamen“, „Kontoangaben“
+ *   D  `#gallery .scb > .price-badge{order:1}` removed → red: „Preiskasten auf
+ *      einer Höhe“ (925 against 943)
+ *   E  storage location grid with column-gap:8px → red: „Lagerorte“ (8 px gaps)
+ *   F  --kopf-h fixed 58px → red: „200 % Schrift“ (button 60.5 > header 58)
+ *   G  voucher buttons again in .zeile → red: „Menüseiten“ (save on the left)
+ *   H  .alarm-ue-betrag as display:contents → red: „Menüseiten“ (EUR at
+ *      320 px below the field)
+ *   I  build list not in the :has() list of the banner → red: „Bauliste mit
  *      Schlüsselband“
- *   K  .m-links als display:contents → rot: „Set-Detail nutzt die linke Spalte“
- *   L  `.filter-knopf[aria-expanded="true"]` nie zutreffend → rot: „Telefon“
- *   M  summary::before mit content:none → rot: „Telefon“ (kein Aufklappzeichen)
- *   N  `.bstat::after { line-height: 1 }` entfernt → rot: „Telefon“ (214/214/212)
- *   O  Teileraster wieder 6.75rem → rot: „Telefon“ (nicht zweispaltig)
- *   P  rootMargin wieder fest -64px → rot: „Telefon“ (Titel im Kopf, während
- *      die Überschrift 6 px unter ihm hervorragt)
+ *   K  .m-links as display:contents → red: „Set-Detail nutzt die linke Spalte“
+ *   L  `.filter-knopf[aria-expanded="true"]` never applying → red: „Telefon“
+ *   M  summary::before with content:none → red: „Telefon“ (no disclosure marker)
+ *   N  `.bstat::after { line-height: 1 }` removed → red: „Telefon“ (214/214/212)
+ *   O  parts grid again 6.75rem → red: „Telefon“ (not two columns)
+ *   P  rootMargin again fixed -64px → red: „Telefon“ (title in the header while
+ *      the heading sticks out 6 px below it)
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Without Chrome (CHROME_BIN, google-chrome, chromium) it is skipped.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -36,7 +36,7 @@ const { patternHousehold } = require('./helpers/inventory');
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
 const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;
 
-/** Name und Beschreibung im Barrierebaum, wie ein Vorleser sie bekommt. */
+/** Name and description in the accessibility tree, as a screen reader gets them. */
 async function vorgelesen(b, sel) {
   const { root } = await b.tab('DOM.getDocument', { depth: 0 });
   const { nodeId } = await b.tab('DOM.querySelector', { nodeId: root.nodeId, selector: sel });
@@ -161,7 +161,7 @@ async function menueseiten(_t, a) {
       .filter(h => !h.querySelector('svg')).map(h => h.textContent.trim())`);
     assert.deepEqual(ohne, [], `${hash}: Kartenüberschrift ohne Symbol`);
   }
-  // Der Hauptknopf steht rechts unten im Formular.
+  // The main button stands at the bottom right of the form.
   await geh(
     a,
     '#/gutscheine',
@@ -172,7 +172,7 @@ async function menueseiten(_t, a) {
     const f = document.getElementById('v-number').getBoundingClientRect();
     return [k.getBoundingClientRect().right, document.getElementById('v-number').closest('.sform, .ssec').getBoundingClientRect().right, f.right]; })()`);
   assert.ok(rechts[0] > rechts[2] - 2 || rechts[1] - rechts[0] < 40, `Speichern nicht rechts: ${rechts}`);
-  // Betrag und Währung des Preisalarms auf einer Linie, auch schmal.
+  // Amount and currency of the price alert on one line, even when narrow.
   await groesse(b, 320, 700, true);
   try {
     await geh(a, '#/alarme', `!!document.querySelector('#alerts-list .alarm-ue-feld')`, 'Alarme');
@@ -251,20 +251,20 @@ async function telefon(_t, a) {
     assert.notEqual(offen, zu, 'Filterknopf offen sieht aus wie zu');
     await b.auswerten(`document.querySelector('${knopf}').click(); true`);
 
-    // Zahlenzeile auf einer Grundlinie.
+    // Number row on one baseline.
     const oben =
       await b.auswerten(`[...document.querySelectorAll('#tab-gallery .bstat')].filter(x => x.checkVisibility())
       .map(x => Math.round(x.querySelector('.bstat-v').getBoundingClientRect().bottom))`);
     assert.equal(new Set(oben).size, 1, `Kennzahlen versetzt: ${oben}`);
 
-    // Teile und Figuren in so vielen Spalten wie die Sets.
+    // Parts and figures in as many columns as the sets.
     await geh(a, '#/teile', `!!document.querySelector('#tab-parts .part-card')`, 'Teile');
     const spalten = await b.auswerten(`new Set([...document.querySelectorAll('#tab-parts .parts-grid')].at(-1)
       .querySelectorAll('.part-card').values().map(k => Math.round(k.getBoundingClientRect().left))).size`);
     assert.equal(spalten, 2, 'Teile nicht zweispaltig');
 
-    // Hintergrundarbeiten: Ragt die Überschrift nur noch wenige Pixel unter dem Kopf hervor, steht der
-    // Titel nicht zusätzlich im Kopf.
+    // Background jobs: if the heading only sticks out a few pixels below the header, the
+    // title does not additionally stand in the header.
     await geh(a, '#/hintergrund', `!!document.querySelector('#tab-monitor .ptitle')?.checkVisibility()`, 'Hintergrund');
     await b.auswerten(`(() => { const kopf = document.querySelector('header').getBoundingClientRect().bottom;
       const h = document.querySelector('#tab-monitor .ptitle').getBoundingClientRect();
@@ -291,7 +291,7 @@ test('tile names, grid, 200 % font, phone', { concurrency: 1, timeout: 400_000 }
     bestand: async (db, uid) => {
       await patternHousehold(db, uid);
       await db.run(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Regal')`, [uid]);
-      // Ein Auftrag, damit „Einzelne Aufträge“ als aufklappbare Liste erscheint.
+      // A job, so that „Einzelne Aufträge“ appears as an expandable list.
       await db.run(`INSERT INTO jobs (type, due_at) VALUES ('konto_dateien', NOW() + interval '5 hours')`);
     },
   });

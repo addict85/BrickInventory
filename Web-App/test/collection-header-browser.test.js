@@ -1,30 +1,30 @@
 /**
- * Ein Kopf für Sets, Teile und Minifiguren, an derselben Stelle, und vom
- * ersten sichtbaren Bild an springt darin nichts mehr (Band, Kontoauswahl,
- * Kennzahlen, Filterfelder). Im Haushalt, mit Lagerort, ohne Schlüssel und
- * mit verzögerten Antworten, damit alles Nachgeladene vorkommt.
+ * One header for sets, parts and minifigures, in the same place, and from the
+ * first visible frame nothing jumps in it anymore (banner, account selection,
+ * key figures, filter fields). In the household, with storage location, without key and
+ * with delayed responses, so that everything loaded later occurs.
  *
- * Gegenproben (am 13.11.2026 gemessen):
- *   A  in showApp() startgeruestWeg() wieder sofort statt nach Band und
- *      Kontofilter → rot: alle drei „Laden ohne Sprung“ (der Kopf rutscht
- *      45 px tiefer, sobald das Band kommt)
- *   B  `.bstat .bstat-s:empty::before` ohne Inhalt → rot: „Sets: Laden ohne
- *      Sprung“ (Kennzahlen 77 → 95 px hoch, sobald „4 verschiedene“ kommt)
- *   C  Pfad und Untertitel der Minifiguren entfernt → rot: „Gleicher Kopf“
- *      (Titel bei y 184 statt 205)
- *   D  `#gtheme` und `#parts-color` ohne feste Breite → rot: „Sets“ und
- *      „Teile: Laden ohne Sprung“ (das Suchfeld schrumpft, sobald die
- *      Optionen kommen)
+ * Counter-checks (measured on 13.11.2026):
+ *   A  in showApp() startgeruestWeg() again immediately instead of after banner and
+ *      account filter → red: all three “loading without a jump” (the header slips
+ *      45 px lower as soon as the banner comes)
+ *   B  `.bstat .bstat-s:empty::before` without content → red: “sets: loading without
+ *      a jump” (key figures 77 → 95 px high as soon as “4 different” comes)
+ *   C  path and subtitle of the minifigures removed → red: “same header”
+ *      (title at y 184 instead of 205)
+ *   D  `#gtheme` and `#parts-color` without fixed width → red: “sets” and
+ *      “parts: loading without a jump” (the search field shrinks as soon as the
+ *      options come)
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Skipped without Chrome (CHROME_BIN, google-chrome, chromium).
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 const { patternHousehold } = require('./helpers/inventory');
 
-/** Zeichnet jedes Bild die Lage der Kopfteile auf, sobald das Startgerüst weg ist. */
+/** Records the position of the header parts in every frame as soon as the startup skeleton is gone. */
 const RECORD = `(() => {
   window.__kopf = [];
   const teile = ['.brotkrume', 'h1', '.ptitle-unter', '.sammlung-wahl', '.brick-stats', '.erfassen-leiste', '.suchfeld'];
@@ -57,7 +57,7 @@ test('header of the collection: the same and without a jump', { concurrency: 1, 
       { muster: '*household-members*', contains: '/household-members', delay: 600 },
       { muster: '*settings/raw*', contains: '/settings/raw', delay: 300 },
       { muster: '*/v1/stats*', contains: '/v1/stats', delay: 900 },
-      // Liste und Teilefilter kommen erst nach dem Gerüst: Dann füllen sich die Auswahlfelder sichtbar.
+      // List and parts filter only come after the skeleton: then the select fields visibly fill.
       { muster: '*/v1/sets?*', contains: '/v1/sets?', delay: 1200 },
       { muster: '*/v1/parts/colors*', contains: '/v1/parts/colors', delay: 1200 },
     ],
@@ -95,7 +95,7 @@ test('header of the collection: the same and without a jump', { concurrency: 1, 
   }
 
   await t.test('same header in all three views', () => {
-    // Bis zur Erfassen-Leiste stimmt alles überein; Breiten von Pfad und Untertitel hängen am Text.
+    // Up to the add bar everything matches; widths of path and subtitle depend on the text.
     const kopf = z =>
       z
         .split(' | ')

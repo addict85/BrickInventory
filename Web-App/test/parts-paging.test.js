@@ -1,28 +1,28 @@
 /**
- * Teileliste und Bilder: was der Server liefern muss (Seiten, Grenzen,
- * Farbfilter) an der Test-DB, und was die Oberfläche daraus macht in jsdom.
- * Das Blättern selbst prüft test/listen-paging-ui.test.js.
+ * Parts list and images: what the server must deliver (pages, limits,
+ * color filter) on the test DB, and what the UI makes of it in jsdom.
+ * The paging itself is checked by test/listen-paging-ui.test.js.
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln, danach zurückgesetzt):
- *   A  in pageFromSummary den Farbfilter wieder über
- *      `color_id = parseInt(o.color)` → rot: „Teileliste an der Datenbank“
- *      (Zusammenfassung: Farbe Rot)
- *   B  in seitengroesse() `Math.min(obergrenze, …)` gestrichen → rot:
- *      „Teileliste an der Datenbank“ (page_size 100000 kommt durch)
- *   C  `total` aus der Rückgabe von partsQuery (Live) gestrichen → rot: dort
- *   D  in maybeLoadMoreParts die Prüfung auf den aktiven Reiter entfernt →
- *      rot: „nachgeladen wird nur im sichtbaren Teile-Tab“
- *   E  manQtyChange ohne parseInt(delta) → rot: „Argumente aus data-arg …“
- *      (Menge "21" statt 3); toggleAdmin mit `const cur = !!isAdmin` → rot: dort
- *      (is_admin false statt true)
- * Am 08.11.2026 gestrichen, weil anderswo ausgeführt: „Detailansicht und Zoom
- * zeigen die volle Auflösung“ und „data-orig zeigt nie auf dieselbe Adresse
- * wie src“ → bilder-proxy-oberflaeche (Gegenproben E, F, G dort); „fehlende
- * CDN-Bilder werden nicht endlos nachgefragt“ → bild-proxy-deckel („ein
- * fehlendes Bild … merkt es sich“, „nur 404 wird gemerkt“); „Kategorien werden
- * über den Teilekatalog aufgelöst“ → teile-kategorie-zusammenfassung-db
- * (Join auf rb_parts im Live-Filter bzw. in der Kategorienliste gestrichen →
- * dort rot).
+ * Counter-checks (measured 08.11.2026, each on its own, reset afterwards):
+ *   A  in pageFromSummary the color filter again via
+ *      `color_id = parseInt(o.color)` → red: “parts list against the database”
+ *      (summary: color red)
+ *   B  `Math.min(obergrenze, …)` deleted in seitengroesse() → red:
+ *      “parts list against the database” (page_size 100000 gets through)
+ *   C  `total` deleted from the return of partsQuery (live) → red: there
+ *   D  in maybeLoadMoreParts the check for the active tab removed →
+ *      red: “loading more only happens in the visible parts tab”
+ *   E  manQtyChange without parseInt(delta) → red: “arguments from data-arg …”
+ *      (quantity "21" instead of 3); toggleAdmin with `const cur = !!isAdmin` → red: there
+ *      (is_admin false instead of true)
+ * Deleted on 08.11.2026 because executed elsewhere: “detail view and zoom
+ * show the full resolution” and “data-orig never points to the same address
+ * as src” → images-proxy-ui (counter-checks E, F, G there); “missing
+ * CDN images are not requested endlessly” → image-proxy-deckel (“a
+ * missing image … remembers it”, “only 404 is remembered”); “categories are
+ * resolved via the parts catalog” → parts-category-summary-db
+ * (join on rb_parts deleted in the live filter or in the category list →
+ * red there).
  */
 const { isAppModule } = require('../scripts/build-frontend');
 require('./helpers/system-frame');
@@ -36,7 +36,7 @@ const { openUi, reiter, warte } = require('./helpers/ui');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 /**
- * import-/export-Syntax aus einer Moduldatei entfernen.
+ * Remove import/export syntax from a module file.
  * @param {string} src
  * @returns {string}
  */
@@ -44,10 +44,10 @@ function stripModuleSyntax(src) {
   const body = src
     .replace(/^import[^;]*;\s*$/gm, '') // import { a, b } from '…';
     .replace(/^export\s+/gm, ''); // export function/const/let/class
-  // registerActions() kommt sonst aus js/registry.js und ist nach dem
-  // Entfernen der Importe nicht definiert. In der Sandbox interessiert die
-  // Anmeldung nicht — dass sie aufgerufen WIRD, prüfen test/csp-actions.test.js
-  // und test/bundle-smoke.test.js gegen den echten Quelltext. …
+  // registerActions() otherwise comes from js/registry.js and is not defined after
+  // removing the imports. In the sandbox the registration does not
+  // matter — that it IS called is checked by test/csp-actions.test.js
+  // and test/bundle-smoke.test.js against the real source text. …
   return (
     'function registerActions() {}\n' + 'function tRaw(k, v) { return typeof t === "function" ? t(k, v) : k; }\n' + body
   );
@@ -63,10 +63,10 @@ test('the proxy can shrink and does it only once per image', () => {
     /_thumbInFlight/,
     'Ohne Zusammenfassung startet eine Kachelwand dieselbe Verkleinerung mehrfach',
   );
-  // Die Cache-Dauern wurden gesenkt und um must-revalidate ergänzt, nachdem
-  // ein langes max-age kaputte Antworten im Browser festgenagelt hatte
-  // („200 from disk cache"). Geprüft wird jetzt nur noch, dass eine
-  // Rückfragepflicht gesetzt ist.
+  // The cache durations were lowered and extended by must-revalidate after
+  // a long max-age had nailed broken responses down in the browser
+  // („200 from disk cache"). Now it is only checked that a
+  // revalidation duty is set.
   assert.match(server, /must-revalidate/, 'Ohne Rückfragepflicht bleiben Fehler im Browser stehen');
 
   const core = stripModuleSyntax(require('./helpers/sources').coreSource());
@@ -74,18 +74,18 @@ test('the proxy can shrink and does it only once per image', () => {
 });
 
 test('all list images load lazily', () => {
-  // Ohne loading="lazy" startet der Browser sämtliche Bilder einer Liste
-  // gleichzeitig und drängt sie durch die ~6 Verbindungen pro Host — sie
-  // tröpfeln dann sichtbar herein. Bei den Minifiguren fehlte das Attribut an
-  // drei von vier Stellen, in Finanzen an beiden.
+  // Without loading="lazy" the browser starts all images of a list
+  // at the same time and pushes them through the ~6 connections per host — they
+  // then trickle in visibly. For the minifigures the attribute was missing at
+  // three of four places, in finances at both.
   const dir = path.join(ROOT, 'public', 'js');
   const bad = [];
   for (const f of fs.readdirSync(dir).filter(x => isAppModule(x))) {
     const src = fs.readFileSync(path.join(dir, f), 'utf8');
     for (const m of src.matchAll(/<img\s[^>]*>/g)) {
       const tag = m[0];
-      if (!/\$\{/.test(tag)) continue; // kein dynamisches Bild
-      if (/placeholder/.test(tag)) continue; // lokales SVG, winzig
+      if (!/\$\{/.test(tag)) continue; // no dynamic image
+      if (/placeholder/.test(tag)) continue; // local SVG, tiny
       if (/loading="lazy"/.test(tag)) continue;
       bad.push(`${f}:${src.slice(0, m.index).split('\n').length}`);
     }
@@ -94,9 +94,9 @@ test('all list images load lazily', () => {
 });
 
 test('shrinking keeps no request waiting', () => {
-  // Gemessen: Jimp braucht rund 150 ms je Bild und belegt dabei den
-  // Event-Loop. Eine Kachelwand mit 60 Minifiguren ergäbe neun Sekunden, in
-  // denen der Server für ALLE Anfragen steht.
+  // Measured: Jimp needs around 150 ms per image and occupies the
+  // event loop meanwhile. A tile wall with 60 minifigures would result in nine seconds during
+  // which the server stands still for ALL requests.
   const server = require('./helpers/sources').serverAll();
   assert.match(
     server,
@@ -104,10 +104,10 @@ test('shrinking keeps no request waiting', () => {
     'Ohne Obergrenze laufen beliebig viele Verkleinerungen gleichzeitig',
   );
   assert.match(server, /function queueThumb/, 'Warteschlange fehlt');
-  // Im Ausliefer-Pfad darf nicht auf die Verkleinerung gewartet werden.
-  // Dieser Pfad IST seit einer früheren Runde src/images/imgCacheServe.ts — vorher ein
-  // grosszügig geschnittenes Stück des Route-Rumpfs, was nach dem Umzug ins
-  // Leere zeigte.
+  // In the delivery path the shrinking must not be waited for.
+  // Since an earlier round this path IS src/images/imgCacheServe.ts — before that a
+  // generously cut piece of the route body, which after the move showed
+  // emptiness.
   const proxy = fs.readFileSync(path.join(ROOT, 'src/images/imgCacheServe.ts'), 'utf8');
   assert.doesNotMatch(proxy, /await createProxyPreview/, 'Eine wartende Anfrage reiht 150 ms je Bild aneinander');
   assert.match(
@@ -158,16 +158,16 @@ test('parts list against the database: pages, color filter and upper bound on bo
     await db.pool.end().catch(() => {});
   });
 
-  // Ohne exclude_manual antwortet immer die Live-Abfrage; mit, nach dem Aufbau, die Zusammenfassung.
+  // Without exclude_manual the live query always answers; with it, after the build, the summary.
   let abfrage = { page: 1 };
   const pruefe = async weg => {
     const seite1 = await H.partsQuery(U, { ...abfrage, page_size: 2 });
     const seite2 = await H.partsQuery(U, { ...abfrage, page: 2, page_size: 2 });
     assert.equal(seite1.source, weg);
-    // Ohne total weiss der Client nicht, wann Schluss ist.
+    // Without total the client does not know when to stop.
     assert.deepEqual([seite1.total, seite1.parts.length, seite2.parts.length, seite1.page_size], [3, 2, 1, 2], weg);
     const rot = await H.partsQuery(U, { ...abfrage, page_size: 50, color: 'Rot' });
-    // Auch die Quelle: Ein Fehler im Filter fiele sonst unbemerkt auf die Live-Abfrage zurück.
+    // The source too: an error in the filter would otherwise fall back to the live query unnoticed.
     assert.deepEqual(
       [rot.source, ...rot.parts.map(p => p.part_number).sort()],
       [weg, 'pp1', 'pp3'],
@@ -176,7 +176,7 @@ test('parts list against the database: pages, color filter and upper bound on bo
     assert.equal((await H.partsQuery(U, { ...abfrage, page_size: 100000 })).page_size, 500, `${weg}: Obergrenze`);
   };
   await pruefe('db');
-  // Der Set-Weg darf mehr auf einmal (eine ganze Teileliste), aber nicht beliebig viel.
+  // The set path may do more at once (a whole parts list), but not arbitrarily much.
   assert.equal((await H.partsQuery(U, { set_number: SN, page_size: 100000 })).page_size, 5000);
   await PS.rebuildNow(U);
   abfrage = { exclude_manual: '1', page: 1 };
@@ -250,7 +250,7 @@ test('arguments from data-arg are treated as strings', async () => {
     },
   });
   try {
-    // Plus im Mengenfeld: aus 2 wird 3, nicht "21".
+    // Plus in the quantity field: 2 becomes 3, not "21".
     await reiter(w, 'minifigs');
     assert.ok(await warte(() => d.querySelector('#manual-figs-list [data-click="openManDetail"]')));
     d.querySelector('#manual-figs-list [data-click="openManDetail"]').click();
@@ -260,7 +260,7 @@ test('arguments from data-arg are treated as strings', async () => {
     assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v1/minifigs/fig-000001'))));
     assert.deepEqual(JSON.parse(aufrufe.find(a => a.method === 'PUT').body), { quantity: 3 });
 
-    // Rechte geben: is_admin kommt als "0" an, und !"0" wäre false.
+    // Grant rights: is_admin arrives as "0", and !"0" would be false.
     await reiter(w, 'settings');
     assert.ok(await warte(() => d.querySelector('#users-tbl [data-click="toggleAdmin"][data-arg="4"]')));
     d.querySelector('#users-tbl [data-click="toggleAdmin"][data-arg="4"]').click();

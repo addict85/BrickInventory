@@ -1,15 +1,15 @@
 /**
- * Die Regel „hat einen Preis" gilt an JEDER Stelle gleich.
+ * The rule „has a price" applies the same at EVERY place.
  *
- * Gegenproben (durchgeführt):
- *   a) (13.11.2026) in fromRow() (src/finances/calculation/prices.ts) avg_price wieder roh
- *      statt marketPriceFrom() → Teilschritt 2 rot: avg_price 0 neben qty_avg_price 12.34,
- *      die Clients zeigten „0.00“.
- *   b) In fetchPrice den Cache-Treffer wieder auf `parseFloat(avg_price) > 0`
- *      gestellt → Teilschritt 1 bleibt grün (die Regel ist dieselbe), aber
- *      Teilschritt 3 wird rot: Die Regel steht dann wieder zweimal da.
+ * Counter-checks (carried out):
+ *   a) (13.11.2026) in fromRow() (src/finances/calculation/prices.ts) avg_price raw again
+ *      instead of marketPriceFrom() → substep 2 red: avg_price 0 next to qty_avg_price 12.34,
+ *      the clients showed „0.00“.
+ *   b) in fetchPrice the cache hit set back to `parseFloat(avg_price) > 0`
+ *      → substep 1 stays green (the rule is the same), but
+ *      substep 3 turns red: the rule then stands there twice again.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,7 +30,7 @@ test('the price rule applies the same everywhere', { concurrency: 1 }, async t =
   await aufraeumen();
 
   try {
-    // 1. Die Regel selbst — vier Fälle, einer je Ecke.
+    // 1. The rule itself — four cases, one per corner.
     assert.equal(hatPrice({ avg_price: 12.34, qty_avg_price: 0 }), true);
     assert.equal(
       hatPrice({ avg_price: 0, qty_avg_price: 12.34 }),
@@ -39,7 +39,7 @@ test('the price rule applies the same everywhere', { concurrency: 1 }, async t =
     );
     assert.equal(hatPrice({ avg_price: null, qty_avg_price: null }), false);
     assert.equal(hatPrice(null), false, 'kein Datensatz, kein Preis');
-    // numeric kommt je nach Weg als Text — die Regel muss beides vertragen.
+    // Depending on the path numeric comes as text — the rule must tolerate both.
     assert.equal(hatPrice({ avg_price: '12.34' }), true);
     assert.equal(
       hatPrice({ avg_price: '0.00' }),
@@ -47,8 +47,8 @@ test('the price rule applies the same everywhere', { concurrency: 1 }, async t =
       '"0.00" ist als Zeichenkette wahr — genau daran ist die Regel schon ' + 'einmal gescheitert',
     );
 
-    // 2. Der Leser gibt keine Zeile heraus, die er selbst nicht als Preis
-    //    anerkennt. Sonst stünde in der App „0.00" statt „—".
+    // 2. The reader hands out no row that it does not itself recognize as a
+    //    price. Otherwise the app would show „0.00" instead of „—".
     await db.run(
       `INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)
        VALUES ($1,'N','EUR',10,0,20,12.34,5,NOW())`,
@@ -68,9 +68,9 @@ test('the price rule applies the same everywhere', { concurrency: 1 }, async t =
         JSON.stringify(pd),
     );
 
-    // 3. Ein 0-Eintrag blockiert den Neuabruf nur SHORT.
+    // 3. A 0 entry blocks the refetch only SHORT.
     //
-    // Gegenprobe, die grün blieb.
+    // Counter-check that stayed green.
     for (const [alter, expectedFromCache] of [
       [0, true],
       [12, false],
@@ -83,9 +83,9 @@ test('the price rule applies the same everywhere', { concurrency: 1 }, async t =
         [S2, alter],
       );
       let erg;
-      // Faellt der Eintrag durch, versucht fetchPrice einen Live-Abruf. Ohne
-      // BrickLink-Zugang wirft der — und genau das ist hier der Beleg, dass
-      // NICHT aus dem Cache geantwortet wurde.
+      // If the entry falls through, fetchPrice tries a live fetch. Without
+      // BrickLink access that one throws — and exactly that is the proof here that
+      // the answer did NOT come from the cache.
       try {
         erg = await fetchPrice(S2, 'N', 'sold', 'EUR', '24');
       } catch (e) {
@@ -112,7 +112,7 @@ test('the price rule applies the same everywhere', { concurrency: 1 }, async t =
       }
     }
 
-    // 4. Der mengengewichtete Schnitt ist der mengengewichtete Schnitt.
+    // 4. The quantity-weighted average is the quantity-weighted average.
     const PN = `probe-teil-${process.pid}`;
     await db.run(`DELETE FROM part_price_cache WHERE part_number=$1`, [PN]).catch(() => {});
     await db.run(
@@ -132,8 +132,8 @@ test('the price rule applies the same everywhere', { concurrency: 1 }, async t =
         JSON.stringify(teil),
     );
 
-    // 5. Und die Regel steht nur an EINER Stelle. Eine zweite Fassung wäre
-    //    genau der Zustand, aus dem der Fehler entstanden ist.
+    // 5. And the rule stands at only ONE place. A second version would be
+    //    exactly the state from which the error arose.
     const fs = require('node:fs');
     const path = require('node:path');
     const ROOT = path.join(__dirname, '..');
@@ -143,19 +143,19 @@ test('the price rule applies the same everywhere', { concurrency: 1 }, async t =
         .split('\n')
         .filter(z => !z.trim().startsWith('//') && !z.trim().startsWith('*'))
         .join('\n');
-      // Beide Schreibweisen. Die erste Fassung dieser Regel prüfte nur die
-      // parseFloat-Form — und übersah damit fünf Stellen, die schlicht
-      // `pd.avg_price > 0` schrieben. Aufgefallen ist das nicht an der Regel,
-      // sondern an einer Suche nach wortgleich wiederholten Bedingungen. …
+      // Both notations. The first version of this rule only checked the
+      // parseFloat form — and thereby overlooked five places that simply
+      // wrote `pd.avg_price > 0`. That was not noticed through the rule
+      // but through a search for verbatim repeated conditions. …
       assert.doesNotMatch(
         src,
         /(?:parseFloat\([^)]*avg_price[^)]*\)|[\w?.]*\.avg_price)\s*(?:>|<|===|==)\s*0/,
         `${rel} prüft den Preis wieder selbst statt über hatPrice() — und dann ` +
           'können die Fassungen erneut auseinanderlaufen',
       );
-      // Und der zweite Operand einer solchen Prüfung darf nicht derselbe sein
-      // wie der erste. Genau das stand hier achtmal (`avg > 0 || avg > 0`) und
-      // zweimal als `qty_avg_price: parseFloat(x.avg_price)`.
+      // And the second operand of such a check must not be the same
+      // as the first. Exactly that stood here eight times (`avg > 0 || avg > 0`) and
+      // twice as `qty_avg_price: parseFloat(x.avg_price)`.
       assert.doesNotMatch(
         src,
         /(\w+)\.avg_price\)?[^\n]{0,20}\|\|[^\n]{0,20}\1\.avg_price/,

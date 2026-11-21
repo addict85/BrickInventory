@@ -1,16 +1,16 @@
 /**
- * UX-Prüfung 28 am echten Bündel in jsdom: Ein- und Mehrzahl der Kennzahlen und ihr Erklärsatz (M1), der leere
- * Code im zweiten Anmeldeschritt (M2), alle Feldfehler der Passwortregel auf einmal (N6), keine doppelten
- * Summen in den Finanzen (N7) und der Hinweis ohne HTTPS in Nutzersprache (N10).
+ * UX check 28 on the real bundle in jsdom: singular and plural of the metrics and their explanation (M1), the empty
+ * code in the second login step (M2), all field errors of the password rule at once (N6), no duplicate
+ * sums in the finances (N7) and the hint without HTTPS in user language (N10).
  *
- * Gegenproben (15.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  kennzahl() schreibt nur die Zahl (Etikett bleibt „Sets“) → rot: „M1 ein Set …“ („Set“ ≠ „Sets“)
- *   B  #bstat-hinweis nicht gefüllt → rot: „M1 ein Set …“ (Erklärsatz fehlt unter der Leiste)
- *   C  lc nicht in die Pflichtprüfung von doLogin → rot: „M2 …“ (zweite Anfrage geschickt, kein Feldfehler)
- *   D  lc-status nicht gesetzt → rot: „M2 …“ (Satz „Passwort stimmt …“ fehlt)
- *   E  btn-sav-pw wieder mit return nach dem Fehler am ersten Feld → rot: „N6 …“ (Wiederholung ohne Meldung)
- *   F  summenTabelle wieder mit Bereichszeilen im tbody → rot: „N7 …“ („Bereichssummen doppelt“)
- *   G  auth.ohne_https wieder mit COOKIE_SECURE=0 → rot: „N10 …“ (Betreiberhinweis vorab)
+ * Counter-checks (measured 15.11.2026, each on its own, bundle rebuilt):
+ *   A  kennzahl() writes only the number (label stays „Sets“) → red: “M1 a set …” („Set“ ≠ „Sets“)
+ *   B  #bstat-hinweis not filled → red: “M1 a set …” (explanation missing below the bar)
+ *   C  lc not in the required check of doLogin → red: “M2 …” (second request sent, no field error)
+ *   D  lc-status not set → red: “M2 …” (sentence „Passwort stimmt …“ missing)
+ *   E  btn-sav-pw again with return after the error at the first field → red: “N6 …” (repetition without message)
+ *   F  summenTabelle again with area rows in the tbody → red: “N7 …” („Bereichssummen doppelt“)
+ *   G  auth.ohne_https again with COOKIE_SECURE=0 → red: “N10 …” (operator hint up front)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -91,7 +91,7 @@ test('M2 empty code in the second step: message at the field, no second request'
     assert.equal(d.getElementById('lc').getAttribute('aria-invalid'), 'true');
     assert.equal(d.activeElement?.id, 'lc');
 
-    // Mit Code geht die Anfrage, und die Feldmeldung verschwindet beim Tippen.
+    // With a code the request goes, and the field message disappears when typing.
     const lc = d.getElementById('lc');
     lc.value = '123456';
     lc.dispatchEvent(new w.Event('input', { bubbles: true }));
@@ -145,7 +145,7 @@ test('N6 change password: length and repetition reported at once', async () => {
     assert.equal(d.getElementById('confirm-modal').style.display === 'flex', false, 'Rückfrage trotz Fehler');
     assert.equal(aufrufe.filter(a => a.url.endsWith('/v1/auth/change-password')).length, 0);
 
-    // Nur die Wiederholung falsch: nur dort eine Meldung, die alte am ersten Feld ist weg.
+    // Only the repetition wrong: only there a message, the old one at the first field is gone.
     d.getElementById('pw-n').value = 'lang-genug-Passwort-1';
     d.getElementById('btn-sav-pw').click();
     await takt(30);

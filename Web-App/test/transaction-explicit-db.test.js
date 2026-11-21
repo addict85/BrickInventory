@@ -1,27 +1,27 @@
 /**
- * Eine Transaktionsform: In k.transaktion(t => …) fragt der Rumpf über `t`. Eine Abfrage
- * über den ungebundenen Zugang (k.db, ein gefangenes k) wirft UnboundQuery, statt
- * still in die Transaktion umgeleitet zu werden; Dienste anderer Bereiche, über `t`
- * gerufen, laufen in ihr. Bestandssperren sind eine Option von k.transaktion.
+ * One transaction form: in k.transaktion(t => …) the body queries via `t`. A query
+ * via the unbound access (k.db, a captured k) throws UnboundQuery instead of
+ * being silently redirected into the transaction; services of other scopes, called via `t`,
+ * run inside it. Stock locks are an option of k.transaktion.
  *
- * Gegenproben (14.11.2026 gemessen, je einzeln):
- *   A  in txStand() (db/database.ts) die Zeile `if (freigabe.getStore() !== t) throw …`
- *      gestrichen → rot: „k.db im Rumpf wirft …“, „ein gefangenes k …“, „ein Dienst eines
- *      anderen Bereichs …“ (k.household lief still in der Transaktion)
- *   B  in gebundenAn() (src/infra/area.ts) die Abhängigkeiten ungehüllt weitergereicht
- *      (`aus[name] = wert`) → rot: „ein Dienst eines anderen Bereichs über t …“
- *      (UnboundQuery aus dem Haushalt)
- *   C  in transaction() (db/database.ts) den Vorlauf mit lockInventories() gestrichen → rot:
- *      „eine Bestandssperre hält …“ und „Gegenrichtungen …“ (niemand wartete, bis() lief ab);
- *      ebenso test/lock-namespaces-db.test.js „die Bestandssperre eines Kontos …“
- *   D  in lockInventories() die Sortierung gestrichen → rot: „Gegenrichtungen …“
- *      (die zweite wartete auf die Sperre des grösseren Kontos)
- *   F  in anTransaktion() die Zeile `notification: huelle(…)` gestrichen → rot: „ein Signal
- *      über t …“ (notify() lief über den ungebundenen Zugang und verschluckte UnboundQuery)
- *   E  in imSystemrahmen() (src/infra/area.ts) statt zu werfen wieder `return f()`
- *      → rot: „ein Dienst im Systemrahmen in einer Transaktion ohne ihn wirft“
+ * Counter-checks (measured 14.11.2026, each on its own):
+ *   A  in txStand() (db/database.ts) the line `if (freigabe.getStore() !== t) throw …`
+ *      deleted → red: “k.db in the body throws …”, “a captured k …”, “a service of
+ *      another scope …” (k.household ran silently in the transaction)
+ *   B  in gebundenAn() (src/infra/area.ts) the dependencies passed on unwrapped
+ *      (`aus[name] = wert`) → red: “a service of another scope via t …”
+ *      (UnboundQuery from the household)
+ *   C  in transaction() (db/database.ts) the preamble with lockInventories() deleted → red:
+ *      “a stock lock holds up …” and “opposite directions …” (nobody waited, bis() timed out);
+ *      likewise test/lock-namespaces-db.test.js “an account's inventory lock …”
+ *   D  the sorting deleted in lockInventories() → red: “opposite directions …”
+ *      (the second waited for the lock of the larger account)
+ *   F  in anTransaktion() the line `notification: huelle(…)` deleted → red: “a signal
+ *      via t …” (notify() ran via the unbound access and swallowed UnboundQuery)
+ *   E  in imSystemrahmen() (src/infra/area.ts) again `return f()` instead of throwing
+ *      → red: “a service in the system context inside a transaction without it throws”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -65,7 +65,7 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
       );
       assert.equal((await tt.db.get(PID)).p, eigene, 'die Transaktion bleibt benutzbar');
     });
-    // Danach ist k wieder frei.
+    // Afterwards k is free again.
     assert.ok((await k.db.get(PID)).p > 0);
   });
 
@@ -98,7 +98,7 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
   await t.test('a service of another scope via t runs in the transaction', async () => {
     const r = await k.transaktion(async tt => {
       await tt.db.run(`UPDATE users SET first_name = first_name WHERE id = $1`, [uid]);
-      // scopeIds fragt den Haushalt über seinen eigenen Zugang; über t gerufen gehört er dazu.
+      // scopeIds asks the household via its own access; called via t it belongs to it.
       const ids = await tt.household.scopeIds(uid);
       await assert.rejects(k.household.schreibbereich(uid), dbModule.UnboundQuery);
       return ids;
@@ -106,7 +106,7 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
     assert.deepEqual(r, [uid]);
   });
 
-  /** Worauf eine andere Verbindung gerade wartet: die Bestandssperre zu diesem Schlüssel? */
+  /** What another connection is currently waiting for: the stock lock for this key? */
   const waitsOn = async schluessel =>
     !!(await testData().get(
       `SELECT 1 FROM pg_locks WHERE locktype = 'advisory' AND NOT granted AND classid = $1
@@ -114,8 +114,8 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
       [LOCKS.INVENTORY, schluessel],
     ));
 
-  /** Die erste Transaktion hält ihre Sperren, bis `frei()`; die zweite startet von aussen (ein
-   * Start im Rumpf der ersten fragte über den ungebundenen Zugang). */
+  /** The first transaction holds its locks until `frei()`; the second starts from outside (a
+   * start in the body of the first would query via the unbound access). */
   const hold = async sperren => {
     /** @type {(w?: unknown) => void} */
     let drin = () => {};
@@ -151,8 +151,8 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
   });
 
   await t.test('opposite directions do not deadlock: locking is ascending', async () => {
-    // Hält die erste beide Sperren, wartet die zweite auf ihre ERSTE. Aufsteigend ist das die
-    // des kleineren Kontos, egal in welcher Reihenfolge sie genannt sind.
+    // If the first holds both locks, the second waits for its FIRST. Ascending, that is the one
+    // of the smaller account, no matter in which order they are named.
     const zwei = uid + 1_000_000;
     const auf = konto => ({ konto, schluessel: 'x' });
     const erste = await hold([auf(uid), auf(zwei)]);
@@ -171,7 +171,7 @@ test('transaction: explicitly via t', { concurrency: 1 }, async t => {
         await assert.rejects(async () => tt.zugaenge.validToken('gibt-es-nicht'), SystemrahmenInTransaction);
       }),
     );
-    // Im Systemrahmen geöffnet, gilt er auch für den Dienst.
+    // Opened in the system context, it also applies to the service.
     assert.equal(
       await inSystemContext('probe', () => konto.transaktion(tt => tt.zugaenge.validToken('gibt-es-nicht'))),
       undefined,

@@ -1,18 +1,18 @@
 /**
- * Der BrickLink-Preisführer, wie ihn Sets, Teile und Figuren abfragen: an
- * einer Attrappe von bricklinkRequest (an der Verdrahtung gestellt,
- * testSources) und der Test-DB.
- * Erst Verkäufe der letzten sechs Monate, ohne Preis dort die Angebote.
+ * The BrickLink price guide as sets, parts and minifigures query it: on
+ * a dummy of bricklinkRequest (provided at the wiring,
+ * testSources) and the test DB.
+ * First sales of the last six months, without a price there the offers.
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   A  priceGuideQuery mit Vorgabe `condition = 'U'` → rot: „ohne Angabe der
- *      Neupreis aus den Verkäufen“
- *   B  priceGuideQuery ohne den Rückfall (`return { ...first, guide_used }`
- *      sofort) → rot: „ohne Verkauf … die Angebote“ (Set)
- *   C  in fetchPartPrice bzw. fetchMinifigPrice den Abruf mit guide_type
- *      'stock' gestrichen → rot: „ohne Verkauf … die Angebote“ (Teil bzw. Figur)
- *   D  getPriceGuideRaw fragt mit guide_type 'stock' zuerst → rot: „ohne
- *      Angabe …“
+ * Counter-checks (measured 08.11.2026, each alone):
+ *   A  priceGuideQuery with default `condition = 'U'` → red: “without input the
+ *      new price from the sales”
+ *   B  priceGuideQuery without the fallback (`return { ...first, guide_used }`
+ *      immediately) → red: “without a sale … the offers” (set)
+ *   C  in fetchPartPrice or fetchMinifigPrice the fetch with guide_type
+ *      'stock' deleted → red: “without a sale … the offers” (part or minifigure)
+ *   D  getPriceGuideRaw asks with guide_type 'stock' first → red: “without
+ *      input …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -23,7 +23,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
 const fetches = [];
-/** Preis je guide_type; fehlt einer, liefert BrickLink 0. */
+/** Price per guide_type; if one is missing, BrickLink delivers 0. */
 let preise = {};
 testSources(null, {
   bricklinkRequest: async (_method, pfad, params) => {

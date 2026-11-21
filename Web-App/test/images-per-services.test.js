@@ -1,13 +1,13 @@
 /**
- * Die Bilder halten ihren Zustand (Fehlanzeigen, Bildbedarf, Blickfeld) in den Fächern
- * ihres Satzes Dienste, nicht im Modul: Zwei Sätze in einem Prozess (Tests, Werkzeuge)
- * spiegeln einander nichts vor. Es wird nichts abgefragt; der Zugang bleibt ungenutzt.
+ * The images keep their state (miss markers, image demand, view) in the compartments
+ * of their set of services, not in the module: two sets in one process (tests, tools)
+ * do not fool each other. Nothing is queried; the access stays unused.
  *
- * Gegenproben (am 14.11.2026 gemessen, je einzeln):
- *   A  in src/images/imageMisses.ts `stand` wieder als Modulkonstante (ein Satz Maps
- *      für alle) → rot: „eine Fehlanzeige gilt nur ihrem Satz Dienste“
- *   B  in src/images/imageDemand.ts imageOnceReserve() mit einem modulweiten
- *      Zwischenspeicher → rot: „jeder Satz merkt sich selbst, was er vorgemerkt hat“
+ * Counter-checks (measured on 14.11.2026, each alone):
+ *   A  in src/images/imageMisses.ts `stand` back as a module constant (one set of maps
+ *      for all) → red: “a miss marker only applies to its set of services”
+ *   B  in src/images/imageDemand.ts imageOnceReserve() with a module-wide
+ *      cache → red: “every set remembers itself what it noted”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -17,7 +17,7 @@ const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const { buildServices } = _req('startup/wiring.js');
 
-/** Ein Satz Dienste, der mitschreibt, was vorgemerkt wurde. */
+/** A set of services that records what was noted. */
 function satz() {
   const contexts = {};
   const d = buildServices(S.testAccess(), { contexts });

@@ -1,10 +1,10 @@
 /**
- * Ein PDF-Ticket gilt einmal, nur für Konto und Ziel und nur in dem Satz Dienste,
- * der es ausgestellt hat (kein Speicher des Moduls).
+ * A PDF ticket applies once, only for account and target and only in the set of services
+ * that issued it (no module storage).
  *
- * Gegenproben (14.11.2026 gemessen): die Tickets wieder in einer Map des Moduls →
- * rot: „ein anderer Satz Dienste kennt das Ticket nicht“. In redeemTicket
- * `t.bis >= k.uhr.jetzt()` → `true` → rot: „nach 60 s gilt es nicht mehr“.
+ * Counter-checks (measured 14.11.2026): the tickets again in a map of the module →
+ * red: “another set of services does not know the ticket”. In redeemTicket
+ * `t.bis >= k.uhr.jetzt()` → `true` → red: “after 60 s it no longer applies”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,7 +12,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const { buildAndRequire, ROOT } = require('./helpers/sources');
 buildAndRequire();
-// Das gebaute Modul selbst: Die Funktionen nehmen den Kontext ausdrücklich.
+// The built module itself: the functions take the context explicitly.
 const { issueTicket, redeemTicket } = require(path.join(ROOT, 'dist/src/vouchers/pdfTicket.js'));
 const { Faecher } = require(path.join(ROOT, 'dist/src/infra/cache.js'));
 const { stellbareClock } = require(path.join(ROOT, 'dist/src/infra/clock.js'));

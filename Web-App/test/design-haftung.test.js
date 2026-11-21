@@ -1,14 +1,14 @@
 /**
- * Kopf- und Reiterleiste haften SHARED — in jedem Design, gemessen in Chrome
- * nach dem Rollen. Haftet nur die Reiterleiste, steht sie auf der Höhe der
- * weggerollten Kopfleiste und schiebt sich über den Inhalt; sitzt sie nicht
- * genau unter der Kopfleiste, klafft eine Lücke oder beide überdecken sich.
+ * Header and tab bar stick SHARED — in every design, measured in Chrome
+ * after scrolling. If only the tab bar sticks, it stands at the height of the
+ * scrolled-away header and slides over the content; if it does not sit
+ * exactly below the header, a gap opens or both overlap.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
+ * Counter-checks (measured 10.11.2026, each alone, reverted):
  *   A  in themes/noppe.css `[data-theme="noppe"] header{position:relative}` →
- *      rot: „noppe: Kopfleiste rollt weg, Reiterleiste haftet“
- *   B  in styles.css `nav{… top:58px …}` auf `top:50px` → rot: alle Designs
- *      („Reiterleiste bei 50, Kopfleiste endet bei 58“)
+ *      red: “noppe: header scrolls away, tab bar sticks”
+ *   B  in styles.css `nav{… top:58px …}` to `top:50px` → red: all designs
+ *      (“tab bar at 50, header ends at 58”)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -85,6 +85,6 @@ test('header and tab bar stick together in every theme and connect to each other
       fehler.push(`${d}: Reiterleiste bei ${Math.round(reiter[0])}, Kopfleiste endet bei ${Math.round(kopf[1])}`);
   }
   assert.deepEqual(fehler, []);
-  // Die Grundgestaltung heftet beide an; ohne das prüfte der Vergleich oben zweimal „rollt weg“.
+  // The base styling pins both; without that the comparison above would check “scrolls away” twice.
   assert.equal(Math.round(measure(bin, ordner, 'classic').kopf[0]), 0, 'classic: die Kopfleiste haftet nicht');
 });

@@ -1,23 +1,23 @@
 /**
- * Doppelte Schriftgrösse (Browser-Einstellung 32 px) und schmale Geräte:
- * Die Sammlung bleibt lesbar. Gemessen in Chrome mit Page.setFontSizes,
- * also so, wie ein Nutzer die Schrift im Browser vergrössert.
+ * Double font size (browser setting 32 px) and narrow devices:
+ * the collection stays readable. Measured in Chrome with Page.setFontSizes,
+ * i.e. the way a user enlarges the font in the browser.
  *
- * Gegenproben (02.11.2026 gemessen, je einzeln):
- *   A  .sgrid in mobile.css wieder minmax(150px, 1fr) → rot: „390 px, 200 %“
- *      (ragt über die Kachel: Markt-Zeile, Datum)
- *   B  white-space:nowrap an .snum entfernt, zusammen mit A (allein bricht
- *      in einer Spalte nichts) → rot: „390 px, 200 %“ (Set-Nummer auf zwei
- *      Zeilen, zusätzlich zu den Funden von A)
- *   C  Zwei-Reihen-Leiste wirkungslos (@media max-width: 1px statt 19.5em)
- *      → rot: „390 px, 200 %“ und „320 px, 200 %“ (Beschriftung abgeschnitten)
- *   F  (02.11.) alte Regel zurück: Beschriftung bei grosser Schrift visuell
- *      verborgen → rot: „390 px, 200 %“ und „320 px, 200 %“ (nur Symbol)
- *   D  .bstat-l wieder overflow-wrap:anywhere und .brick-stats wieder
- *      repeat(2, minmax(0, 1fr)) → rot: „390 px, 200 %“ und „320 px, 200 %“
- *      (Wort gebrochen: „Minifiguren“, „Anleitungen“)
- *   E  mobile.css .btn wieder font-size:16px → rot: „390 px, 200 %“ und
- *      „320 px, 200 %“ (Knopfschrift wächst nicht mit)
+ * Counter-checks (measured 02.11.2026, each alone):
+ *   A  .sgrid in mobile.css back to minmax(150px, 1fr) → red: “390 px, 200 %”
+ *      (sticks out over the tile: market row, date)
+ *   B  white-space:nowrap removed from .snum, together with A (alone nothing
+ *      breaks in one column) → red: “390 px, 200 %” (set number on two
+ *      lines, in addition to the findings of A)
+ *   C  two-row bar ineffective (@media max-width: 1px instead of 19.5em)
+ *      → red: “390 px, 200 %” and “320 px, 200 %” (label cut off)
+ *   F  (02.11.) old rule back: label visually hidden at large font
+ *      → red: “390 px, 200 %” and “320 px, 200 %” (only icon)
+ *   D  .bstat-l back to overflow-wrap:anywhere and .brick-stats back to
+ *      repeat(2, minmax(0, 1fr)) → red: “390 px, 200 %” and “320 px, 200 %”
+ *      (word broken: “Minifiguren”, “Anleitungen”)
+ *   E  mobile.css .btn back to font-size:16px → red: “390 px, 200 %” and
+ *      “320 px, 200 %” (button font does not grow along)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -65,7 +65,7 @@ test('large font and narrow devices: collection readable', { timeout: 180_000 },
     return;
   }
   const { b, ruhig } = app;
-  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  // Startup loads settings and prices afterwards; only then is the state fixed.
   await ruhig();
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
   await app.bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');

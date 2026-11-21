@@ -1,12 +1,12 @@
 /**
- * Adminrechte entziehen — an BEIDEN Wegen, mit Wahrheitswerten als Text.
+ * Revoke admin rights — on BOTH paths, with booleans as text.
  *
- * Gegenprobe (durchgeführt): strictBool() in einem der beiden Endpunkte wieder
- * durch `is_admin ? 1 : 0` ersetzt → der zugehörige Teilschritt wird rot.
- * Das Ziel ist Verwalter: Der Entzug wird seit Runde 29 angekündigt (24 h), geprüft
- * wird deshalb die Ankündigung statt der Spalte.
+ * Counter-check (performed): strictBool() in one of the two endpoints replaced again
+ * by `is_admin ? 1 : 0` → the corresponding substep turns red.
+ * The target is an administrator: since round 29 the revocation is announced (24 h), so
+ * the announcement is checked instead of the column.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,7 +16,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-// Adresse aus server.ts lesen — siehe einhaengung() in helpers/sources.js.
+// Read the address from server.ts — see einhaengung() in helpers/sources.js.
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const { routerServer } = require('./helpers/server');
 const db = testData();
@@ -56,7 +56,7 @@ test('admin rights can also be revoked with "false" as text', { concurrency: 1 }
     await db.run(`UPDATE users SET is_admin=true WHERE id=$1`, [targetId]);
     await db.run(`DELETE FROM admin_takeovers WHERE target_id=$1`, [targetId]);
   };
-  /** 0, sobald der Entzug angekündigt (oder vollzogen) ist. */
+  /** 0 as soon as the revocation is announced (or carried out). */
   const istAdmin = async () => {
     const angekuendigt = await db.get(`SELECT 1 FROM admin_takeovers WHERE target_id=$1 AND type='rolle_entziehen'`, [
       targetId,
@@ -81,7 +81,7 @@ test('admin rights can also be revoked with "false" as text', { concurrency: 1 }
     {
       const name = 'Webapp',
         url = WEB;
-      // Der eigentliche Fund: "false" als Zeichenkette MUSS entziehen.
+      // The actual finding: "false" as a string MUST revoke.
       let e = await revoke(url, 'PUT', 'false');
       assert.equal(e.status, 200, `${name}: "false" sollte angenommen werden`);
       assert.equal(e.adminAfterwards, 0, `${name}: "false" als Text muss die Rechte ENTZIEHEN`);
@@ -89,21 +89,21 @@ test('admin rights can also be revoked with "false" as text', { concurrency: 1 }
       e = await revoke(url, 'PUT', '0');
       assert.equal(e.adminAfterwards, 0, `${name}: "0" als Text muss die Rechte entziehen`);
 
-      // Echte Wahrheitswerte wie bisher.
+      // Real booleans as before.
       e = await revoke(url, 'PUT', false);
       assert.equal(e.adminAfterwards, 0, `${name}: false entzieht`);
 
       e = await revoke(url, 'PUT', true);
       assert.equal(e.adminAfterwards, 1, `${name}: true vergibt`);
 
-      // Unlesbares wird abgewiesen, statt still das Gegenteil zu tun.
+      // Unreadable input is rejected instead of silently doing the opposite.
       e = await revoke(url, 'PUT', 'vielleicht');
       assert.equal(e.status, 400, `${name}: unlesbarer Wert muss 400 geben`);
       assert.equal(e.adminAfterwards, 1, `${name}: bei 400 darf sich nichts geändert haben`);
     }
 
-    // Der Selbstschutz muss auch mit "false" als Text greifen. Stand vorher
-    // auf der v1-Route; die Regel selbst ist unverändert und steht in
+    // The self-protection must also apply with "false" as text. Previously it was
+    // on the v1 route; the rule itself is unchanged and lives in
     // routes/auth.ts.
     const r = await fetch(`${base}${AUTH}/users/${adminId}/admin`, {
       method: 'PUT',

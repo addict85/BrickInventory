@@ -1,24 +1,24 @@
 /**
- * Im Dunkelmodus jedes Designs bleibt keine Fläche hell und kein Text
- * unlesbar. Gemessen in Chrome an der echten App: je Design data-dunkel
- * setzen, jeden Reiter und das Set-Detail öffnen und jedes sichtbare Element
- * prüfen — eigene Hintergrundfarbe nicht hell (relative Helligkeit ≤ 0,4), …
+ * In the dark mode of every design no surface stays light and no text
+ * unreadable. Measured in Chrome on the real app: per design set data-dunkel,
+ * open every tab and the set detail and check every visible element
+ * — own background color not light (relative luminance ≤ 0.4), …
  *
- * Gegenproben (am 29.10.2026 gemessen):
- *   A  in styles.css .cond-used wieder `background:#fef3c7;color:#92400e`
- *      → rot: „classic: keine helle Fläche“ (span.cond-used)
- *   B  in themes/farbfaecher.css die Dunkel-Ausnahme der Zustandsplaketten
- *      entfernt → rot: „farbfaecher: keine helle Fläche“
- *   C  in styles.css .delbtn wieder `background:rgba(255,255,255,.92)`
- *      → rot: „classic: keine helle Fläche“ (button.delbtn)
- *   D  in themes/brick.css bei .bp die feste weisse Schrift entfernt
- *      → rot: „brick: Text lesbar“ (3,63:1 auf Petrol)
- *   E  in styles.css .ibadge wieder `color:#15803d` → rot: „classic“, „brick“
- *      und „hochglanz: Text lesbar“ (span.ibadge, 2,98:1)
- *   F  (29.10.) [data-dunkel] .sci wieder #c9ced4 → rot: „classic: keine helle
- *      Fläche“ (div.sci)
+ * Counter-checks (measured on 29.10.2026):
+ *   A  in styles.css .cond-used again `background:#fef3c7;color:#92400e`
+ *      → red: “classic: no light surface” (span.cond-used)
+ *   B  in themes/farbfaecher.css the dark exception of the condition badges
+ *      removed → red: “farbfaecher: no light surface”
+ *   C  in styles.css .delbtn again `background:rgba(255,255,255,.92)`
+ *      → red: “classic: no light surface” (button.delbtn)
+ *   D  in themes/brick.css the fixed white text removed at .bp
+ *      → red: “brick: text readable” (3.63:1 on petrol)
+ *   E  in styles.css .ibadge again `color:#15803d` → red: “classic”, “brick”
+ *      and “hochglanz: text readable” (span.ibadge, 2.98:1)
+ *   F  (29.10.) [data-dunkel] .sci back to #c9ced4 → red: “classic: no light
+ *      surface” (div.sci)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,7 +27,7 @@ const { holdsSet, holdsPart } = require('./helpers/inventory');
 
 const DESIGNS = ['classic', 'brick', 'farbfaecher', 'noppe', 'hochglanz'];
 
-/** Läuft im Browser: sammelt helle Flächen und zu schwachen Text im sichtbaren Teil. */
+/** Runs in the browser: collects light surfaces and too weak text in the visible part. */
 const MEASUREMENT = `(() => {
   const rgba = (s) => { const m = s.match(/rgba?\\(([^)]+)\\)/); if (!m) return null;
     const [r, g, b, a = 1] = m[1].split(/[ ,\\/]+/).filter(Boolean).map(Number); return { r, g, b, a }; };
@@ -79,7 +79,7 @@ test('dark mode: no light surfaces, readable text', { concurrency: 1, timeout: 6
     bestand: async (db, uid) => {
       await holdsSet(db, uid, '10300-1', 1, { preis: 199 });
       await holdsSet(db, uid, '75192-1', 1, { preis: 650, zustand: 'U' });
-      // Eine Anleitung, damit die Plakette mit der Anleitungszahl auf der Karte steht.
+      // An instruction so that the badge with the instruction count is on the card.
       await db.run(
         `INSERT INTO instructions (user_id, set_number, url) VALUES ($1, '10300-1', 'https://example.org/10300.pdf')`,
         [uid],
@@ -102,7 +102,7 @@ test('dark mode: no light surfaces, readable text', { concurrency: 1, timeout: 6
       document.documentElement.setAttribute('data-dunkel', ''); true`);
     const funde = { surfaces: new Set(), texte: new Set() };
     const collect = async wo => {
-      // Steht die Anmeldemaske da, mässe der Rest nur sie; dann die Ursache nennen.
+      // If the login mask is shown, the rest would measure only it; then name the cause.
       if (await b.auswerten(`getComputedStyle(document.getElementById('app')).display === 'none'`))
         assert.fail(`Sitzung vor „${design}: ${wo}“ verloren; 401 auf: ${app.abgewiesen.join(', ') || 'keine'}`);
       const r = await b.auswerten(MEASUREMENT);
@@ -112,7 +112,7 @@ test('dark mode: no light surfaces, readable text', { concurrency: 1, timeout: 6
     for (const r of reiter) {
       await b.auswerten(`document.querySelector('.ntab[data-tab="${r}"]').click(); true`);
       await ruhig();
-      // Die Einstellungen zeigen je einen Abschnitt; gemessen werden alle.
+      // The settings show one section at a time; all are measured.
       const seiten =
         r === 'settings'
           ? await b.auswerten(`[...document.querySelectorAll('.einst-nav a')].map(a => a.dataset.arg)`)

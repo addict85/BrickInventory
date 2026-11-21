@@ -1,18 +1,18 @@
 /**
- * LISTEN/NOTIFY statt Datenbank-Polling (Punkt 7). NOTIFY ist flüchtig: Wer
- * im Moment des Signals nicht verbunden ist, bekommt es nie. Deshalb ruft
- * pgNotify jeden Handler beim (Wieder-)Verbinden einmal auf, und der
- * Empfänger sieht in der Datenbank nach (die Auftragstabelle).
+ * LISTEN/NOTIFY instead of database polling (point 7). NOTIFY is volatile: whoever
+ * is not connected at the moment of the signal never gets it. Therefore
+ * pgNotify calls every handler once on (re)connecting, and the
+ * receiver looks in the database (the job table).
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in connect() die Aufhol-Schleife über _handlers entfernt → rot:
+ * Counter-checks (measured on 30.10.2026):
+ *   A  the catch-up loop over _handlers removed in connect() → red:
  *      „beim Verbinden fragt der Handler einmal von sich aus“
- *   B  quoteIdent() lässt jeden Namen durch → rot: „ein Kanalname mit
- *      Leerzeichen wird abgewiesen“ (danach hängt der Lauf am ungültigen Kanal)
- *   C  `listen('csv_sync_trigger', …)` wieder in startup/jobsProcess.ts →
- *      rot: „kein Planer fragt mehr nach Auslösern“
+ *   B  quoteIdent() lets every name through → red: „ein Kanalname mit
+ *      Leerzeichen wird abgewiesen“ (afterwards the run hangs on the invalid channel)
+ *   C  `listen('csv_sync_trigger', …)` again in startup/jobsProcess.ts →
+ *      red: “no scheduler asks for triggers any more”
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,8 +27,8 @@ const { bis } = require('./helpers/time');
 const ROOT = path.join(__dirname, '..');
 const NOTIFY = fs.readFileSync(path.join(ROOT, 'db/pgNotify.ts'), 'utf8');
 test('no scheduler asks for triggers any more', () => {
-  // Anstösse und Zeitpläne sind Aufträge (src/jobQueue/schedule.ts); die alten
-  // Auslöser-Einträge mit eigenem Kanal sind weg.
+  // Kicks and schedules are jobs (src/jobQueue/schedule.ts); the old
+  // trigger entries with their own channel are gone.
   const { allSources } = require('./helpers/sources');
   const treffer = allSources().filter(rel =>
     /csv_sync_trigger|job_reschedule_trigger|instr_queue_trigger/.test(fs.readFileSync(path.join(ROOT, rel), 'utf8')),
@@ -69,8 +69,8 @@ test('missed signals are caught up when connecting', { concurrency: 1 }, async t
   await waitOn(2);
   assert.deepEqual(bekommen, [null, 'hallo'], 'das Signal kommt an');
 
-  // Die lauschende Verbindung abreissen: Ein Signal in der Lücke ginge
-  // verloren, deshalb holt der Handler beim Wiederverbinden nach.
+  // Tear down the listening connection: a signal in the gap would be
+  // lost, hence the handler catches up when reconnecting.
   await db.run(
     `SELECT pg_terminate_backend(pid) FROM pg_stat_activity
                  WHERE datname = current_database() AND pid <> pg_backend_pid() AND query LIKE $1`,

@@ -1,15 +1,15 @@
 /**
- * GET /api/v1/settings/export/data über die echte Route: Das ZIP aus archiver
- * lässt sich entpacken, enthält alle fünf Dateien, und die Teile des Kontos
- * stehen darin. test/zip-export.test.js baut das Archiv nur nach; dieser Test
- * hält die Route über ein Heben von archiver oder seiner Abhängigkeiten.
+ * GET /api/v1/settings/export/data via the real route: the ZIP from archiver
+ * can be unpacked, contains all five files, and the account's parts
+ * are in it. test/zip-export.test.js only rebuilds the archive; this test
+ * holds the route across an upgrade of archiver or its dependencies.
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  in der Route `{ name: 'teile.csv' }` → `{ name: 'teil.csv' }` → rot:
- *      „alle fünf Dateien" (teil.csv statt teile.csv)
- *   B  archive.finalize() entfernt → rot: das Archiv endet nie, Zeitlimit 60 s
+ * Counter-checks (measured 01.11.2026):
+ *   A  in the route `{ name: 'teile.csv' }` → `{ name: 'teil.csv' }` → red:
+ *      “all five files" (teil.csv instead of teile.csv)
+ *   B  archive.finalize() removed → red: the archive never ends, time limit 60 s
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

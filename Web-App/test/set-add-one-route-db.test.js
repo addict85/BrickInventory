@@ -1,19 +1,19 @@
 /**
- * Auch der Import (CSV, Wanted-XML) erfasst über setErfassen(): ohne Netz, Set,
- * Erfassung, Lagerort und Nacharbeit in einer Transaktion. Getippt heisst ein Set
- * im Blickfeld „exists“; ein Import stockt beim Besitzer auf und legt es im eigenen
- * Konto an, wenn nur ein anderes im Haushalt es hat (die Datei ist sein Bestand).
+ * The import (CSV, wanted XML) also captures via setErfassen(): without network, set,
+ * acquisition, storage location and follow-up work in one transaction. Typed in, a set
+ * in view is called „exists“; an import tops up at the owner and creates it in its own
+ * account if only another one in the household has it (the file is its inventory).
  *
- * Gegenproben (14.11.2026 gemessen):
- *   A  im Aufstock-Zweig die Nacharbeit nach der Transaktion eingestellt (wie das
- *      frühere addSet, Fehler mit attempts() verschluckt) → rot: „scheitert die
- *      Nacharbeit, ist nichts gebucht“
- *   B  im Aufstock-Zweig vor dem Buchen `await t.katalog.setInfo(sn)` → rot:
- *      „ein Import stockt beim Besitzer auf, ohne Netz“
- *   C  den Aufstock-Zweig nie betreten (immer „melden“) → rot: „ein Import stockt
- *      beim Besitzer auf …“ (exists statt updated)
- *   D  im Aufstock-Zweig wieder der Vorgabe-Lagerort gesetzt → rot: „ein Import
- *      ohne Ort lässt den Lagerort stehen“
+ * Counter-checks (measured 14.11.2026):
+ *   A  in the top-up branch the follow-up work enqueued after the transaction (like the
+ *      former addSet, error swallowed with attempts()) → red: “if the
+ *      follow-up work fails, nothing is booked”
+ *   B  in the top-up branch `await t.katalog.setInfo(sn)` before booking → red:
+ *      “an import tops up at the owner, without network”
+ *   C  the top-up branch never entered (always „melden“) → red: “an import tops
+ *      up at the owner …” (exists instead of updated)
+ *   D  in the top-up branch the default storage location set again → red: “an import
+ *      without a location leaves the storage location alone”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -91,7 +91,7 @@ test('add a set: one path for input and import', { concurrency: 1 }, async t => 
   });
 
   await t.test('an import tops up at the owner, without network', async () => {
-    // Eine Vorgabe des Kontos: Sie darf das schon einsortierte Set nicht verschieben (unten).
+    // A default of the account: it must not move the already sorted-in set (below).
     const vorgabe = await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Vorgabe') RETURNING id`, [
       h,
     ]);

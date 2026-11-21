@@ -1,11 +1,11 @@
 /**
- * Ein Server für einen Test: die App aus startup/app.ts (baueApp) mit der Middleware-Kette
- * und den Routern des Betriebs, über die Dienste dieser Testdatei. Gestellt ist nur der
- * Sitzungsspeicher; die Prüfungen der Sitzung danach laufen echt.
+ * A server for a test: the app from startup/app.ts (baueApp) with the middleware chain
+ * and the routers of production, via the services of this test file. Only the
+ * session store is provided; the session checks after it run for real.
  */
 
-/** Was express-session an einer Sitzung anbietet. regenerate und destroy leeren dasselbe
- * Objekt, statt ein neues zu setzen: So liest der Test danach in `sitzung`, was die Route schrieb. */
+/** What express-session offers on a session. regenerate and destroy empty the same
+ * object instead of setting a new one: so the test reads afterwards in `sitzung` what the route wrote. */
 function asSession(/** @type {Record<string, any>} */ s) {
   const leeren = (/** @type {Function} [fertig] */ fertig) => {
     for (const k of Object.keys(s)) delete s[k];
@@ -24,11 +24,11 @@ function asSession(/** @type {Record<string, any>} */ s) {
 }
 
 /**
- * @param {(pfad: string) => any} _req  buildAndRequire() der Testdatei
+ * @param {(pfad: string) => any} _req  buildAndRequire() of the test file
  * @param {object} o
- * @param {object} [o.sitzung]  wird als `req.session` gestellt
- * @param {{ after: Function }} [o.t]  Der Testkontext. Ist er da, schliesst sich der
- *                                Server im NACHLAUF — auch wenn eine Zusicherung vorher scheitert.
+ * @param {object} [o.sitzung]  is provided as `req.session`
+ * @param {{ after: Function }} [o.t]  The test context. If present, the server closes
+ *                                itself in the TEARDOWN — even if an assertion fails before.
  */
 function testServer(_req, { sitzung = {}, t } = {}) {
   const { testAccess, testServices } = require('./sources');
@@ -50,9 +50,9 @@ function testServer(_req, { sitzung = {}, t } = {}) {
 }
 
 /**
- * Ersatzweg aus der Zeit vor baueApp: eigene Router hinter express.json(), ohne Sitzungs-
- * und Verwalterprüfungen. Nur für Dateien, die noch nicht auf testServer umgestellt sind;
- * ihre Zahl darf nur sinken (test/ratschen.test.js).
+ * Substitute path from the time before baueApp: own routers behind express.json(), without session
+ * and administrator checks. Only for files not yet converted to testServer;
+ * their number may only sink (test/ratschen.test.js).
  * @param {(pfad: string) => any} _req
  * @param {{ sitzung?: object, apiNutzer?: object, routen: Record<string, string>, t?: { after: Function } }} o
  */
@@ -73,7 +73,7 @@ function routerServer(_req, { sitzung = {}, apiNutzer, routen, t }) {
   return { app, srv, base: `http://localhost:${portOf(srv)}`, schliessen };
 }
 
-/** Der Port eines lauschenden Servers (net, http, https): address() ist erst danach ein AddressInfo.
+/** The port of a listening server (net, http, https): address() is an AddressInfo only afterwards.
  * @param {{ address(): string | import('node:net').AddressInfo | null }} srv @returns {number} */
 function portOf(srv) {
   const a = srv.address();

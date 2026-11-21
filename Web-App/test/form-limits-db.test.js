@@ -1,13 +1,13 @@
 /**
- * Formulare mit Datei haben Grenzen über die Dateigrösse hinaus: eine Datei,
- * höchstens 20 Felder zu je 64 KB. Ohne sie nahm multer beliebig viele Felder
- * zu je 1 MB und beliebig viele Dateien in den Speicher.
+ * Forms with a file have limits beyond the file size: one file,
+ * at most 20 fields of 64 KB each. Without them multer took arbitrarily many fields
+ * of 1 MB each and arbitrarily many files into memory.
  *
- * Gegenprobe (01.11.2026 gemessen): `...FORM_LIMITS` aus allen multer-
- * Aufrufen entfernt → rot: „zu viele Felder …“ (Einstellungsimport mit 30
- * Feldern 200, Gutschein-PDF mit 100-KB-Feld 422 aus der PDF-Prüfung).
+ * Counter-check (measured 01.11.2026): `...FORM_LIMITS` removed from all multer
+ * calls → red: “too many fields …” (settings import with 30
+ * fields 200, voucher PDF with a 100 KB field 422 from the PDF check).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

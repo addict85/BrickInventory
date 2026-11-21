@@ -1,5 +1,5 @@
 /**
- * Der Index der Fix-Historie und die Teile in CHANGELOG/ müssen zusammenpassen.
+ * The index of the fix history and the parts in CHANGELOG/ must match.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -10,13 +10,13 @@ const { ROOT } = require('./helpers/sources');
 const INDEX = path.join(ROOT, 'CHANGELOG-fixes.md');
 const DIR = path.join(ROOT, 'CHANGELOG');
 
-/** Die Dateinamen, die die Tabelle im Index nennt. */
+/** The file names the table in the index names. */
 function fromTable() {
   const src = fs.readFileSync(INDEX, 'utf8');
   return [...src.matchAll(/^\|\s*\[([^\]]+\.md)\]\(CHANGELOG\/[^)]+\)/gm)].map(m => m[1]);
 }
 
-/** Die Dateien, die es wirklich gibt. */
+/** The files that really exist. */
 function onDisk() {
   return fs
     .readdirSync(DIR)
@@ -33,7 +33,7 @@ test('every part is in the index and vice versa', () => {
 });
 
 test('no addendum is in two parts', () => {
-  const gesehen = new Map(); // Nummer → Datei
+  const gesehen = new Map(); // number → file
   const doppelt = [];
   for (const f of onDisk()) {
     const src = fs.readFileSync(path.join(DIR, f), 'utf8');
@@ -45,17 +45,17 @@ test('no addendum is in two parts', () => {
   }
   assert.deepEqual(doppelt, [], `Nachtrag mehrfach abgelegt:\n  ${doppelt.join('\n  ')}`);
 
-  // Untergrenze aus demselben Grund wie in require-exports.test.js: Bricht das
-  // Suchmuster (etwa weil Überschriften anders heissen), prüfte diese Regel
-  // stillschweigend nichts mehr und bliebe grün.
+  // Lower bound for the same reason as in require-exports.test.js: if the
+  // search pattern breaks (say because headings are named differently), this rule would
+  // silently check nothing anymore and stay green.
   assert.ok(gesehen.size > 100, `Nur ${gesehen.size} nummerierte Nachträge gefunden — greift das Muster noch?`);
 });
 
 test('the file name matches the content', () => {
-  // Der Anlass: Beim Nachtragen der Einträge 148–153 landeten
-  // 151, 152 und 153 in `12-nachtraege-126-150.md`. Alle bisherigen Prüfungen
-  // blieben grün — die Nummern überschnitten sich nicht, jede Datei stand im
-  // Index, jeder Verweis stimmte. Nur hiess die Datei etwas anderes, als sie …
+  // The occasion: when adding entries 148–153, entries
+  // 151, 152 and 153 landed in `12-nachtraege-126-150.md`. All previous checks
+  // stayed green — the numbers did not overlap, every file was in the
+  // index, every reference was right. Only the file was named something other than …
   const daneben = [];
   for (const f of onDisk()) {
     const spanne = f.match(/nachtraege-(\d+)-(\d+)\.md$/);
@@ -84,8 +84,8 @@ test('every part names at the start where it belongs', () => {
 });
 
 test('the index itself stays short', () => {
-  // Der ganze Zweck der Aufteilung. 20 KB sind grosszügig — die Tabelle wächst
-  // um eine Zeile je 25 Nachträge.
+  // The whole purpose of the split. 20 KB is generous — the table grows
+  // by one line per 25 addenda.
   const kb = fs.statSync(INDEX).size / 1024;
   assert.ok(
     kb < 20,

@@ -1,39 +1,39 @@
 /**
- * Der CSV-Import als Auftrag: Er entscheidet nur für seine eigenen Aufrufe,
- * dass die Nacharbeit je Set ausfällt, und er setzt nach einem Neustart fort.
+ * The CSV import as a job: it decides only for its own calls
+ * that the follow-up work per set is skipped, and it resumes after a restart.
  *
- * Kein prozessweiter Zähler laufender Importe: Mit ihm fiele die Nacharbeit
- * für JEDES Konto im Prozess aus, solange irgendein Import läuft.
+ * No process-wide counter of running imports: with it the follow-up work
+ * would be skipped for EVERY account in the process as long as any import runs.
  *
- * Gegenproben (am 29.10.2026 gemessen):
- *   A  den Zähler nachgebaut (globalThis.__importe in runCsvImportFrom hoch
- *      und wieder herunter, addSetIntern stellt nur bei 0 ein) → rot: „ein
- *      Set eines anderen Kontos bekommt während des Imports seine Nacharbeit“
- *   B  setImportFort nur für status 'running' → rot: „ein unterbrochener
- *      Import setzt fort“ (der als verwaist markierte Lauf blieb stehen)
- *   C  in runCsvImportFrom `stand.current` nicht beachtet → rot: „ein
- *      unterbrochener Import setzt fort“ (r2 wurde ein zweites Mal gebucht)
- *   C' (13.11.2026) C mit echtem Erfassen und gestelltem Rebrickable wiederholt
- *      → rot: „ein unterbrochener Import setzt fort“ (91002-1 ein zweites Mal)
- *   C" (14.11.2026) C, seit das Erfassen kein Netz mehr fragt: Der Import steckt an
- *      der gehaltenen Sperre je Setnummer → rot: „ein unterbrochener Import setzt fort“
- *   D  (13.11.2026) im Worker den Auftrag ohne sein Konto (inNamesOfJob mit
- *      asRequest({})) → rot: beide Teiltests (der Import sieht seinen Stand nicht)
+ * Counter-checks (measured on 29.10.2026):
+ *   A  the counter rebuilt (globalThis.__importe up and down again in runCsvImportFrom,
+ *      addSetIntern only enqueues at 0) → red: “a
+ *      set of another account gets its follow-up work during the import”
+ *   B  setImportFort only for status 'running' → red: “an interrupted
+ *      import resumes” (the run marked as orphaned stood still)
+ *   C  in runCsvImportFrom `stand.current` not respected → red: “an
+ *      interrupted import resumes” (r2 was booked a second time)
+ *   C' (13.11.2026) C repeated with real adding and provided Rebrickable
+ *      → red: “an interrupted import resumes” (91002-1 a second time)
+ *   C" (14.11.2026) C, since adding no longer asks the network: the import is stuck at
+ *      the held lock per set number → red: “an interrupted import resumes”
+ *   D  (13.11.2026) in the worker the job without its account (inNamesOfJob with
+ *      asRequest({})) → red: both subtests (the import does not see its state)
  *
- * Wie im Betrieb: Der Code unter Test fragt als Laufzeitrolle im Konto (asAccount,
- * der Worker über inNamesOfJob), Testdaten schreibt die Eigentümerin.
+ * As in production: the code under test queries as runtime role in the account (asAccount,
+ * the worker via inNamesOfJob), the owner writes the test data.
  *
- * Rebrickable und der Bildabruf sind an der Verdrahtung gestellt (testSources,
- * testImageWorker); das Erfassen läuft echt.
+ * Rebrickable and the image fetch are provided at the wiring (testSources,
+ * testImageWorker); adding runs for real.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-// Der Import hält im ersten Set an der Sperre je Setnummer, solange der Test sie hält.
+// The import stops at the first set at the lock per set number as long as the test holds it.
 let loslassen = () => {};
 
 const { buildAndRequire, testData, testAccess, asAccount, testSources, testImageWorker } = require('./helpers/sources');
@@ -44,7 +44,7 @@ const { warte } = require('./helpers/time');
 
 test('CSV import as a job', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
-  // Erfassen fragt kein Netz; gestellt nur, damit eine Rückkehr dorthin auffiele.
+  // Adding asks no network; provided only so that a return to it would show.
   testSources(t, {
     holeSet: async () => {
       throw new Error('Netz beim Erfassen');
@@ -52,7 +52,7 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
   });
   const { lockUntilToEnd } = _req('db/txLock.js');
   const { LOCKS } = _req('src/infra/lockNamespaces.js');
-  /** Die Sperre, die setErfassen() je Setnummer nimmt; gehalten bis loslassen(). */
+  /** The lock setErfassen() takes per set number; held until loslassen(). */
   const sperre = { fertig: Promise.resolve() };
   const holdLock = (/** @type {string} */ sn) =>
     /** @type {Promise<void>} */ (
@@ -158,8 +158,8 @@ test('CSV import as a job', { concurrency: 1 }, async t => {
         condition: null,
         acquiredAt: null,
       }));
-      // So sieht es nach einem Absturz mitten in r2 aus: jobGet() hat den Lauf
-      // als verwaist markiert, der Auftrag steht auf 'laeuft' mit abgelaufener Frist.
+      // This is how it looks after a crash in the middle of r2: jobGet() has marked the run
+      // as orphaned, the job stands at 'laeuft' with an expired deadline.
       await asAccount(a, () =>
         jobSet(a, {
           status: 'error',

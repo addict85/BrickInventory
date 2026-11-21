@@ -1,17 +1,17 @@
 /**
- * Kontrast in allen sechs Designs, hell und dunkel: Jeder Text, der in
- * Sammlung und Finanzen vorkommt (Setnummer, Jahr, Datum, Preis, Gewinn,
- * Verlust, Kennzahl, Unterzeile, Gruppenkopf, Plaketten, Basiszeile), dazu die
- * Rollen-Chips der Kontenverwaltung mit ihrem X, hat auf seinem echten Grund
- * mindestens 4,5:1. Gemessen in Chrome mit den …
+ * Contrast in all six designs, light and dark: every text that occurs in
+ * collection and finances (set number, year, date, price, gain,
+ * loss, key figure, subline, group header, badges, base line), plus the
+ * role chips of the account administration with their X, has at least 4.5:1
+ * on its real background. Measured in Chrome with the …
  *
- * Gegenproben (am 03.11.2026 gemessen; C am 16.11.2026):
- *   A  in themes/noppe.css --b600 der hellen Variante nicht überschrieben →
- *      rot: „noppe hell: Setnummer in der Tabelle 4.44:1“ (ebenso hochglanz)
- *   B  dort --gewinn nicht überschrieben → rot: „noppe hell: Gewinn in der
- *      Tabelle 4.43:1“ (ebenso hochglanz)
- *   C  .chip-weg mit color:var(--mut) statt inherit → rot: „classic hell: X am
- *      Rollen-Chip 4.03:1“
+ * Counter-checks (measured on 03.11.2026; C on 16.11.2026):
+ *   A  in themes/noppe.css --b600 of the light variant not overridden →
+ *      red: “noppe light: set number in the table 4.44:1” (likewise hochglanz)
+ *   B  --gewinn not overridden there → red: “noppe light: gain in the
+ *      table 4.43:1” (likewise hochglanz)
+ *   C  .chip-weg with color:var(--mut) instead of inherit → red: “classic light: X on the
+ *      role chip 4.03:1”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -35,7 +35,7 @@ const DESIGNS = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochgl
 
 const { chrome } = require('./helpers/app-browser');
 
-/** Die Bausteine, wie sie in Sammlung und Finanzen stehen; `n` ist das Präfix des Namens. */
+/** The building blocks as they appear in collection and finances; `n` is the prefix of the name. */
 function abschnitt(n) {
   return `
   <div class="tw"><table class="dt dt-fin"><thead><tr><th data-k="${n}: Tabellenkopf">Einstand</th></tr></thead><tbody><tr>

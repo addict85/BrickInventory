@@ -1,18 +1,18 @@
 /**
- * Der Bereich Katalog bekommt seinen Datenbankzugang übergeben (src/catalog/area.ts,
- * gebaut von buildServices in startup/wiring.ts): Lesen, Schreiben und
- * Transaktionen der Dienste gehen über diesen Zugang. Einen Prozess-Speicher, auf
- * den sie fallen könnten, gibt es nicht mehr (Verbot in test/ratschen.test.js).
+ * The catalog scope gets its database access passed in (src/catalog/area.ts,
+ * built by buildServices in startup/wiring.ts): reading, writing and
+ * transactions of the services go through this access. A process store
+ * they could fall back to no longer exists (ban in test/ratschen.test.js).
  *
- * Gegenproben (A, B am 10.11.2026 gemessen, je einzeln; C am 14.11.2026):
- *   A  in src/catalog/rbInventory.ts newestInventory() über das Repository mit
- *      standardDb() statt über den Kontext → rot: „Lesen geht über den übergebenen
- *      Zugang“ (gezählt: nichts)
- *   B  in src/externalSources/apiQuota.ts (damals src/catalog/) die Transaktion über standardDb() → rot:
- *      „die Transaktion geht über den übergebenen Zugang“
- *   C  in buildAreas (startup/wiring.ts) createCatalog mit { db: testAccess() }
- *      statt db → rot: „Lesen geht …“ (gezählt: nichts); das Kontingent zählen seit
- *      15.11.2026 die Fremdquellen selbst (kein Durchreichen im Katalog).
+ * Counter-checks (A, B measured on 10.11.2026, each alone; C on 14.11.2026):
+ *   A  in src/catalog/rbInventory.ts newestInventory() via the repository with
+ *      standardDb() instead of via the context → red: “reading goes through the passed
+ *      access” (counted: nothing)
+ *   B  in src/externalSources/apiQuota.ts (then src/catalog/) the transaction via standardDb() → red:
+ *      “the transaction goes through the passed access”
+ *   C  in buildAreas (startup/wiring.ts) createCatalog with { db: testAccess() }
+ *      instead of db → red: “reading goes …” (counted: nothing); since
+ *      15.11.2026 the external sources count the quota themselves (no passing through in the catalog).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,7 +27,7 @@ const { buildServices } = _req('startup/wiring.js');
 const SN = '99872-1';
 const INVENTORY = 987655;
 
-/** Ein Zugang, der jede Abfrage mitschreibt und an den echten weitergibt. */
+/** An access that records every query and passes it to the real one. */
 function countingAccess(echt, sql) {
   const remember = f => (text, p) => {
     sql.push(text);
@@ -36,7 +36,7 @@ function countingAccess(echt, sql) {
   const huelle = z => ({ all: remember(z.all), get: remember(z.get), run: remember(z.run), exec: remember(z.exec) });
   return new Proxy(echt, {
     get(ziel, name) {
-      // Der Griff trägt seinen Zugang (tx.db), über den t entsteht: Auch er zählt mit.
+      // The handle carries its access (tx.db) from which t is created: it counts too.
       if (name === 'transaction')
         return (fn, o) => ziel.transaction(tx => fn({ ...huelle(tx), db: countingAccess(tx.db, sql) }), o);
       if (['all', 'get', 'run', 'exec'].includes(String(name))) return huelle(ziel)[name];

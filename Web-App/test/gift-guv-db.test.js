@@ -1,23 +1,23 @@
 /**
- * Kaufpreis 0 heisst „Geschenk“: Der Server liefert purchase_price 0 (nicht
- * null), aber keine Prozentzahl — pnl_pct, pnl_prozent und kachel_pnl_pct
- * sind null. Der Betrag (pnl_betrag/pnl_abs) bleibt der Marktwert. Gilt für
- * Sets, manuelle Teile und Figuren, die Kachel und den Preisverlauf.
+ * Purchase price 0 means “gift”: the server delivers purchase_price 0 (not
+ * null), but no percentage — pnl_pct, pnl_prozent and kachel_pnl_pct
+ * are null. The amount (pnl_betrag/pnl_abs) stays the market value. Applies to
+ * sets, manual parts and minifigures, the tile and the price history.
  *
- * Gegen eine Untergrenze von 0,01 gerechnet stünde dort „+327.600 %“.
+ * Computed against a lower bound of 0.01 it would say “+327,600 %”.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in developmentPercent() (src/finances/setValue.ts) die Bedingung `!(kauf > 0)`
- *      entfernt und durch `Math.max(kauf, 0.01)` im Nenner ersetzt → rot:
- *      „Set“, „Kachel“, „Preisverlauf“, „Teil und Figur“ (pnl_pct 1200000.0)
- *   B  in conditionRows() (src/finances/priceHistory.ts) wieder
- *      `purchase_price: base > 0 ? base : null` → rot: „Teil und Figur“
- *      (by_condition.N.purchase_price null statt 0)
- * Gegenprobe (08.11.2026 gemessen):
- *   C  in gainAndLoss grand_total nur aus den Sets (`sumFrom(setResults…)`) →
- *      rot: „der Gesamtwert kommt fertig …“ ('240.00')
+ * Counter-checks (measured on 30.10.2026):
+ *   A  in developmentPercent() (src/finances/setValue.ts) the condition `!(kauf > 0)`
+ *      removed and replaced by `Math.max(kauf, 0.01)` in the denominator → red:
+ *      “set”, “tile”, “price history”, “part and minifigure” (pnl_pct 1200000.0)
+ *   B  in conditionRows() (src/finances/priceHistory.ts) again
+ *      `purchase_price: base > 0 ? base : null` → red: “part and minifigure”
+ *      (by_condition.N.purchase_price null instead of 0)
+ * Counter-check (measured 08.11.2026):
+ *   C  in gainAndLoss grand_total only from the sets (`sumFrom(setResults…)`) →
+ *      red: “the total value comes finished …” ('240.00')
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -92,7 +92,7 @@ test('purchase price 0 is a gift: amount yes, percent no', { concurrency: 1 }, a
   });
 
   await t.test('the total value comes ready-made: sets, parts and figures', () => {
-    // 2 × 120 (Set) + 10 × 0,40 (Teil) + 1 × 6 (Figur); die Clients addieren nicht selbst.
+    // 2 × 120 (set) + 10 × 0.40 (part) + 1 × 6 (minifigure); the clients do not add up themselves.
     assert.equal(pnl.totals.grand_total, '250.00');
   });
 

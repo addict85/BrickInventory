@@ -1,27 +1,27 @@
 /**
- * Die Registrierung ist nur bei genau '1' offen — Anzeige und Durchsetzung
- * fragen dieselbe Funktion. Ja/Nein-Einstellungen nehmen beim Schreiben nur
- * 0 oder 1 an, über das Formular wie über den Import.
+ * Registration is only open at exactly '1' — display and enforcement
+ * ask the same function. Yes/no settings only accept 0 or 1 when writing,
+ * via the form as well as via the import.
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  routes/auth.ts auf Stand e21f747 (Sperre nur bei `=== '0'`) → rot ab
- *      „ohne Zeile bleibt sie zu" (Konto angelegt, 200)
- *   B  registrationOpen() mit `!== '0'` → rot: „ohne Zeile …" und „"false"
- *      ist zu" (die Anzeige meldet enabled: true)
- *   C  isValidGlobalValue() liefert immer true → rot: „das Formular nimmt nur
- *      0 oder 1" (200, "false" gespeichert)
- *   E  (04.11.) registration_enabled wieder ohne Bestätigung im Import → rot:
- *      „der Import übergeht die Registrierung"
- *   D  (02.11.) passkey/passwort_vergessen fest true → rot: „Anmeldewege
- *      nur, wenn der Server sie kann" (ohne APP_BASE_URL true); nur
- *      basisUrl() ohne mailConfigured() → rot (ohne SMTP true)
- *   F  (04.11.) registration-status und /register ohne mailReady() → rot:
- *      „ohne Mailversand bleibt sie zu …“; ebenso die Prüfung beim Einschalten
- *      in POST /settings entfernt
- *   G  (04.11.) switchRegistrationFree() lässt registration_pending stehen oder
- *      die Route protokolliert nicht → rot: „der Verwalter schaltet … frei“
+ * Counter-checks (measured 01.11.2026):
+ *   A  routes/auth.ts at state e21f747 (lock only at `=== '0'`) → red from
+ *      „ohne Zeile bleibt sie zu" on (account created, 200)
+ *   B  registrationOpen() with `!== '0'` → red: „ohne Zeile …" and “"false"
+ *      is closed” (the display reports enabled: true)
+ *   C  isValidGlobalValue() always delivers true → red: “the form only takes
+ *      0 or 1” (200, "false" stored)
+ *   E  (04.11.) registration_enabled again without confirmation in the import → red:
+ *      “the import skips the registration”
+ *   D  (02.11.) passkey/passwort_vergessen fixed true → red: “login methods
+ *      only when the server supports them” (without APP_BASE_URL true); only
+ *      basisUrl() without mailConfigured() → red (without SMTP true)
+ *   F  (04.11.) registration-status and /register without mailReady() → red:
+ *      “without mail sending it stays closed …”; likewise the check when switching on
+ *      in POST /settings removed
+ *   G  (04.11.) switchRegistrationFree() leaves registration_pending standing or
+ *      the route does not log → red: “the administrator approves …”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const { environment, testData } = require('./helpers/sources');

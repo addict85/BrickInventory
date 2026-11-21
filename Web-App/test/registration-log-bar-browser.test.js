@@ -1,15 +1,15 @@
 /**
- * Masse im echten Chrome: Ein langes Thema bricht auf der Kachel um; das Protokollfenster hat Knöpfe ab
- * 24 px, 3 px Fokusring, folgt Hell/Dunkel der App und übersetzt die Stufen; im Design brick ist die untere
- * Leiste bei 200 % Zoom (640 × 450) mindestens 44 px hoch; die Registrierung läuft bei 320 px in keinem
- * der sechs Designs über.
+ * Dimensions in real Chrome: a long theme wraps on the tile; the log window has buttons from
+ * 24 px, a 3 px focus ring, follows light/dark of the app and translates the levels; in the theme brick the bottom
+ * bar is at least 44 px high at 200 % zoom (640 × 450); the registration does not overflow at 320 px in any
+ * of the six themes.
  *
- * Gegenproben (16.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  .smeta-text wieder nowrap mit Ellipse → rot: „Thema ganz“ (scrollWidth > clientWidth)
- *   B  logviewer.css ohne min-height:24px am button → rot: „Protokollfenster“ (Knopf 22 px)
- *   C  monitor.js ohne data-dunkel im Fenster → rot: „Protokollfenster“ (dunkle App, Grund 250)
- *   D  in mobile.css am brick-.ntab min-height:44px gestrichen → rot: „untere Leiste“ (34 px)
- *   E  Namenszeile wieder data-stil="display:flex;gap:10px" statt .reg-namen → rot: „Registrierung“
+ * Counter-checks (measured 16.11.2026, each on its own, bundle rebuilt):
+ *   A  .smeta-text again nowrap with ellipsis → red: „Thema ganz“ (scrollWidth > clientWidth)
+ *   B  logviewer.css without min-height:24px on the button → red: „Protokollfenster“ (button 22 px)
+ *   C  monitor.js without data-dunkel in the window → red: „Protokollfenster“ (dark app, background 250)
+ *   D  min-height:44px deleted on the brick .ntab in mobile.css → red: „untere Leiste“ (34 px)
+ *   E  name row again data-stil="display:flex;gap:10px" instead of .reg-namen → red: „Registrierung“
  *      (classic, noppe, werkbank … 332 > 320)
  */
 const test = require('node:test');

@@ -1,17 +1,17 @@
 /**
- * Merkposten verschieben und übernehmen schreiben mehrfach; scheitert ein
- * späterer Schritt, bleibt nichts halb geschrieben. Den Fehler erzwingt ein
- * Trigger auf price_alerts — der Alarm ist jeweils der letzte Schritt.
+ * Moving and taking over wishlist items write several times; if a later
+ * step fails, nothing stays half-written. A trigger on price_alerts
+ * forces the error — the alert is the last step in each case.
  *
- * Gegenproben (am 11.11.2026 gemessen):
- *   A  moveWantedItem() ohne withWantedItemLock (Rumpf direkt) → rot:
- *      „verschieben: der Merkposten bleibt beim alten Konto“
- *   B  fulfillWantedItem() ohne withWantedItemLock → rot: „übernehmen: kein Set im
- *      Bestand, der Merkposten steht noch“
- *   C  alarmTransfer() wieder mit .catch(reportError) → rot: „verschieben:
- *      der Fehler kommt an“
- *   D  transferAlarm() ohne NOT EXISTS → rot: „Ziel mit eigenem Alarm“
- *      (Primärschlüsselverletzung)
+ * Counter-checks (measured 11.11.2026):
+ *   A  moveWantedItem() without withWantedItemLock (body directly) → red:
+ *      “move: the wishlist item stays with the old account”
+ *   B  fulfillWantedItem() without withWantedItemLock → red: “take over: no set in
+ *      stock, the wishlist item still stands”
+ *   C  alarmTransfer() again with .catch(reportError) → red: “move:
+ *      the error arrives”
+ *   D  transferAlarm() without NOT EXISTS → red: “target with its own alert …”
+ *      (primary key violation)
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -42,8 +42,8 @@ async function seed() {
   }
   await db.run(`INSERT INTO rb_sets (set_num, name, year, theme_id, num_parts)
                 VALUES ('75192-1', 'Millennium Falcon', 2017, 158, 7541)`);
-  // Die Bremse fragt eine Funktion statt einer Sitzungsvariable: Das gilt
-  // sofort für jede Verbindung des Pools.
+  // The brake asks a function instead of a session variable: that applies
+  // immediately to every connection of the pool.
   await db.exec(`CREATE FUNCTION bremse_an() RETURNS boolean LANGUAGE sql AS $$ SELECT false $$;
     CREATE FUNCTION alarm_bremse() RETURNS trigger LANGUAGE plpgsql AS $$
     BEGIN

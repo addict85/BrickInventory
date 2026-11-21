@@ -1,5 +1,5 @@
 /**
- * Ausgehende Umleitungen: begrenzt, nur https, ohne Geheimnisse.
+ * Outgoing redirects: limited, only https, without secrets.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -29,9 +29,9 @@ test('a redirect does not take the key along to a foreign host', () => {
 });
 
 test('on the same host the key stays', () => {
-  // Sonst waere die Regel unbrauchbar: rebrickable.com leitet innerhalb der
-  // eigenen Adressen um (Schraegstrich am Ende), und ohne Schluessel kaeme
-  // dort ein 401 zurueck.
+  // Otherwise the rule would be unusable: rebrickable.com redirects within its
+  // own addresses (slash at the end), and without a key
+  // a 401 would come back there.
   const w = nextRedirect('https://rebrickable.com/a', 'https://rebrickable.com/a/', HEADER);
   assert.equal(w.kopfzeilen.Authorization, 'key GEHEIM');
 });
@@ -42,16 +42,16 @@ test('a downgrade to http is not followed', () => {
     null,
     'Sonst geht derselbe Schluessel im Klartext hinaus',
   );
-  // Positiv auf https geprueft, nicht negativ auf http: Eine Verbotsliste
-  // vergisst irgendwann ein Schema.
+  // Checked positively for https, not negatively for http: a deny list
+  // forgets a scheme at some point.
   for (const boese of ['file:///etc/passwd', 'ftp://x.tld/a', 'data:text/plain,x'])
     assert.equal(nextRedirect('https://rebrickable.com/a', boese, HEADER), null, `${boese} darf nicht befolgt werden`);
 });
 
 test('a relative redirect target is resolved', () => {
-  // Ein Location-Kopf DARF ein blosser Pfad sein (RFC 9110). Vorher lief das
-  // in `new URL(location)` und damit in ein "Invalid URL" — richtig
-  // abgewiesen, aber aus dem falschen Grund: eine gueltige Umleitung kam nicht
+  // A Location header MAY be a mere path (RFC 9110). Before, that ran
+  // into `new URL(location)` and thus into an "Invalid URL" — rightly
+  // rejected, but for the wrong reason: a valid redirect did not come
   // an.
   const w = nextRedirect('https://rebrickable.com/sets/123/', '/sets/123-1/', HEADER);
   assert.equal(w.url, 'https://rebrickable.com/sets/123-1/');
@@ -64,8 +64,8 @@ test('without a Location header there is no target', () => {
 });
 
 test('with a host list the redirect target counts as well', () => {
-  // Der Dateidownload prueft den Host bei JEDEM Sprung, weil er das Geholte
-  // ausliefert (data/instructions/ ist fuer angemeldete Nutzer abrufbar).
+  // The file download checks the host on EVERY hop, because it delivers what it
+  // fetched (data/instructions/ is retrievable for logged-in users).
   assert.equal(
     nextRedirect('https://cdn.rebrickable.com/a.pdf', 'https://angreifer.tld/a.pdf', HEADER, ALLOWED_DOWNLOAD_HOSTS),
     null,
@@ -78,8 +78,8 @@ test('with a host list the redirect target counts as well', () => {
 });
 
 test('the host check does not fall for an appended name', () => {
-  // Dieselbe Falle wie beim Bearer-Token der App und bei der Update-Adresse:
-  // ein blosses endsWith() ohne den Punkt davor.
+  // The same trap as with the bearer token of the app and with the update address:
+  // a mere endsWith() without the dot in front.
   assert.ok(hostAllowed('https://cdn.rebrickable.com/x', ALLOWED_IMAGE_HOSTS));
   assert.ok(hostAllowed('https://rebrickable.com/x', ALLOWED_IMAGE_HOSTS));
   for (const boese of [
@@ -89,17 +89,17 @@ test('the host check does not fall for an appended name', () => {
     'https://lego.com.angreifer.tld/x',
   ])
     assert.ok(!hostAllowed(boese, ALLOWED_DOWNLOAD_HOSTS), `${boese} darf nicht durchgehen`);
-  // Unparsebar heisst NICHT holen — und nicht: werfen.
+  // Unparsable means do NOT fetch — and not: throw.
   assert.equal(hostAllowed('kein-url', ALLOWED_IMAGE_HOSTS), false);
 });
 
 /**
- * Port, Userinfo und Eimer-Unterdomänen.
+ * Port, userinfo and bucket subdomains.
  *
- * Gegenproben (01.11.2026 gemessen, je einzeln):
- *   `u.hostname === h` statt `u.host === h` → rot bei „:22"
- *   Userinfo-Prüfung entfernt → rot bei „evil.com@"
- *   zusätzlich `u.host.endsWith('.' + h)` (alter Suffix) → rot bei „x.bdpinstructions"
+ * Counter-checks (measured 01.11.2026, each on its own):
+ *   `u.hostname === h` instead of `u.host === h` → red at „:22"
+ *   userinfo check removed → red at „evil.com@"
+ *   additionally `u.host.endsWith('.' + h)` (old suffix) → red at „x.bdpinstructions"
  */
 test('host check: only default port, no userinfo, bucket exact', () => {
   for (const gut of [
@@ -118,7 +118,7 @@ test('host check: only default port, no userinfo, bucket exact', () => {
 });
 
 /**
- * Die Anleitungen der BrickLink Designer Programme.
+ * The instructions of the BrickLink Designer Program.
  */
 test('the BDP bucket may be fetched — but only it', () => {
   assert.ok(
@@ -127,7 +127,7 @@ test('the BDP bucket may be fetched — but only it', () => {
       'abzulehnen heisst, ihn bauen zu lassen und ins Leere laufen zu lassen',
   );
 
-  // Und NICHT der halbe Anbieter
+  // And NOT half the provider
   for (const fremd of [
     'https://amazonaws.com/x.pdf',
     'https://s3.amazonaws.com/x.pdf',
@@ -140,7 +140,7 @@ test('the BDP bucket may be fetched — but only it', () => {
     );
   }
 
-  // Und die Bildliste bleibt unberuehrt: Von dort kommen PDFs, keine Bilder.
+  // And the image list stays untouched: PDFs come from there, no images.
   assert.ok(
     !hostAllowed('https://bdpinstructions.s3.amazonaws.com/11010.pdf', ALLOWED_IMAGE_HOSTS),
     'Der PDF-Eimer hat in der BILDliste nichts zu suchen — der Bild-Proxy ' +
@@ -149,9 +149,9 @@ test('the BDP bucket may be fetched — but only it', () => {
 });
 
 test('outbound requests only go through src/infra/fetch.ts', () => {
-  // Struktur, kein Verhalten: Das Verhalten des Helfers prüft
-  // test/fetch-helper.test.js gegen einen echten TLS-Server. Gegenprobe
-  // (02.11.2026 gemessen): globalThis.fetch zurück in gutscheinGuthaben.ts → rot.
+  // Structure, not behavior: the behavior of the helper is checked by
+  // test/fetch-helper.test.js against a real TLS server. Counter-check
+  // (measured 02.11.2026): globalThis.fetch back in gutscheinGuthaben.ts → red.
   const fremd = [];
   (function lauf(d) {
     for (const n of fs.readdirSync(d)) {
@@ -177,7 +177,7 @@ test('outbound requests only go through src/infra/fetch.ts', () => {
     'downloadFile prueft die Umleitungsziele nicht mehr — die Datei wird ausgeliefert',
   );
 
-  // ── Und die Liste steht nur noch an EINER Stelle ──────────────────────────
+  // ── And the list stands at only ONE place ──────────────────────────
   const proxy = ohneKommentare(read('src/images/http/imageProxy.ts'));
   assert.doesNotMatch(
     proxy,
@@ -185,15 +185,15 @@ test('outbound requests only go through src/infra/fetch.ts', () => {
     'Die Bild-Allowlist ist zurueck in der Route — sie gehoert nach src/infra/foreignAddresses.ts, ' +
       'weil clients/ sie braucht und ein Client nicht von einer Route abhaengen soll',
   );
-  // Dies ist eine MUSTERregel: Sie faengt eine geloeschte Zeile. Dass der
-  // Weg wirklich lebt, laeuft in test/wiring-running-db.test.js —
-  // beides zusammen, nicht eines statt des anderen.
+  // This is a PATTERN rule: it catches a deleted line. That the
+  // path really lives runs in test/wiring-running-db.test.js —
+  // both together, not one instead of the other.
   assert.match(
     proxy,
     /hostAllowed\(url, ALLOWED_IMAGE_HOSTS\)/,
     'Der Bild-Proxy prueft nicht mehr ueber die gemeinsame Regel',
   );
-  // Die Bild-Diagnose steht seit 05.11.2026 im Verwaltungsdienst.
+  // Since 05.11.2026 the image diagnosis stands in the admin service.
   assert.match(
     ohneKommentare(read('src/management/diagnostics.ts')),
     /hostAllowed\(url, ALLOWED_IMAGE_HOSTS\)/,
@@ -202,7 +202,7 @@ test('outbound requests only go through src/infra/fetch.ts', () => {
 });
 
 test('the limit is the one downloadFile already had', () => {
-  // Selbstbeweis: Die Zahl kommt aus dem Baum, nicht aus dem Kopf. Stand
-  // vorher als `redirects > 5` in downloadFile.
+  // Self-proof: the number comes from the tree, not from the header. It stood
+  // as `redirects > 5` in downloadFile before.
   assert.equal(REDIRECT_LIMIT, 5);
 });

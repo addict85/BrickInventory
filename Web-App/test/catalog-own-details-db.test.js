@@ -1,18 +1,18 @@
 /**
- * Eigene Katalogangaben (Name, Farbname, Farbcode, Kategorie, Bild) sieht nur
- * das Konto, das sie eingetippt hat, und wer dessen Bestand sieht (Haushalt).
- * Geprüft über die echten Routen mit zwei unverbundenen Konten und einem
- * Haushalt: Listen der Teile und Figuren, manuelle Listen und der CSV-Export.
+ * Own catalog details (name, color name, color code, category, image) are seen only by
+ * the account that typed them and by whoever sees its stock (household).
+ * Checked via the real routes with two unlinked accounts and a
+ * household: lists of parts and minifigures, manual lists and the CSV export.
  *
- * Gegenproben (am 03.11.2026 gemessen, je eine Änderung, danach zurück):
- *   A  rememberPart()/rememberPartColor()/rememberMinifig() ohne den Zweig für `von`
- *      (Eingaben wieder in den gemeinsamen Katalog) → rot: alle Teiltests
- *      ausser „Alice sieht ihre eigenen Angaben“
- *   B  in db/catalogView.ts part_custom ohne `te.user_id = konto` verbunden
- *      → rot: „Bob sieht Alices Eingaben …“, „jedes Konto behält …“ und
- *      beide Haushalt-Tests
- *   C  TEIL.name mit der eigenen Angabe vor dem geprüften Wert → rot: „der
- *      geprüfte Name hat Vorrang …“
+ * Counter-checks (measured on 03.11.2026, one change each, reverted afterwards):
+ *   A  rememberPart()/rememberPartColor()/rememberMinifig() without the branch for `von`
+ *      (input into the shared catalog again) → red: all subtests
+ *      except “Alice sees her own details”
+ *   B  in db/catalogView.ts part_custom joined without `te.user_id = konto`
+ *      → red: “Bob sees Alice's input …”, “every account keeps …” and
+ *      both household tests
+ *   C  TEIL.name with the own detail before the verified value → red: “the
+ *      verified name takes precedence …”
  *
  * REQUIRE_DB=1.
  */
@@ -28,7 +28,7 @@ const { keineDb } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 
-// Kein Netz: Rebrickable kennt nur 3003 (an der Verdrahtung gestellt, testSources).
+// No network: Rebrickable only knows 3003 (provided at the wiring, testSources).
 testSources(null, {
   lookupPart: async nr =>
     nr === '3003'

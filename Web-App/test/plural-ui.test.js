@@ -1,16 +1,16 @@
 /**
- * Zählwörter folgen den Mehrzahlregeln der Sprache (Intl.PluralRules) — am
- * echten Bündel in jsdom.
+ * Count words follow the plural rules of the language (Intl.PluralRules) — on the
+ * real bundle in jsdom.
  *
- *   - Teile, nach Farbe gruppiert: „1 Sorte“ und „2 Sorten“ (en: „1 kind“,
- *     „2 kinds“), nie „1 Typen“.
- *   - Finanzen ohne Marktpreis: „Marktpreis fehlt für 1 Position“.
+ *   - Parts, grouped by color: „1 Sorte“ and „2 Sorten“ (en: „1 kind“,
+ *     „2 kinds“), never „1 Typen“.
+ *   - Finances without a market price: „Marktpreis fehlt für 1 Position“.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  pluralKey() in i18n.js gibt immer `key` zurück → rot: alle drei,
- *      z. B. „1 Typen“ und „Marktpreis fehlt für 1 Positionen“
- *   B  'parts.group_types_one' aus locales/en.js entfernt → rot: „en: Gruppen
- *      der Teile“ (der Rückfall auf Deutsch ergab „1 Typ“)
+ * Counter-checks (measured on 28.10.2026):
+ *   A  pluralKey() in i18n.js always returns `key` → red: all three,
+ *      e.g. „1 Typen“ and „Marktpreis fehlt für 1 Positionen“
+ *   B  'parts.group_types_one' removed from locales/en.js → red: “en: groups
+ *      of the parts” (the fallback to German resulted in „1 Typ“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

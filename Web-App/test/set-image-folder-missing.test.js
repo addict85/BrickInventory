@@ -1,11 +1,11 @@
 /**
- * setBildHerunterladen legt data/images/sets selbst an: Auf einer frischen
- * Installation (und im ZAP-Lauf der CI) gibt es den Ordner noch nicht, und jedes
- * Bild endete mit ENOENT auf der .teil-Datei.
+ * setBildHerunterladen creates data/images/sets itself: on a fresh
+ * installation (and in the ZAP run of the CI) the folder does not exist yet, and every
+ * image ended with ENOENT on the .teil file.
  *
- * Gegenprobe (11.11.2026 gemessen):
- *   A  in src/images/setImages.ts das mkdir vor dem Schreiben gestrichen
- *      → rot: „das Bild landet, auch wenn der Ordner fehlt“ (null statt Pfad)
+ * Counter-check (measured 11.11.2026):
+ *   A  the mkdir before writing deleted in src/images/setImages.ts
+ *      → red: “the image lands even if the folder is missing” (null instead of a path)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -32,7 +32,7 @@ const server = https.createServer({ key, cert }, (_q, res) => {
   res.end(IMAGE);
 });
 
-/** Jede Verbindung landet beim Testserver; SNI und Zertifikatsprüfung bleiben echt. */
+/** Every connection lands at the test server; SNI and certificate check stay real. */
 class Umlenker extends https.Agent {
   createConnection(opt, cb) {
     return tls.connect({ ...opt, host: '127.0.0.1', port, ca: cert, servername: opt.servername || opt.host }, cb);

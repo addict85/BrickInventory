@@ -1,13 +1,13 @@
 /**
- * Das Wertdiagramm in Finanzen — am echten Bündel in jsdom.
+ * The value chart in finances — on the real bundle in jsdom.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  in loadPortfolioChart die Bedingung `messpunkte < 2` entfernt → rot:
- *      „ein Messpunkt: Leerzustand statt Linie“ (es stand ein <svg> da)
- *   B  _chartPeriod wieder 'week' → rot: „Vorwahl Max, Veränderung mit
- *      Zeitraum“ (die erste Abfrage fragte period=week)
- *   C  'finance.chart.too_few_title' aus locales/en.js entfernt → rot:
- *      „en: Leerzustand übersetzt“ (deutscher Rückfall)
+ * Counter-checks (measured on 28.10.2026):
+ *   A  the condition `messpunkte < 2` removed in loadPortfolioChart → red:
+ *      “one data point: empty state instead of a line” (an <svg> stood there)
+ *   B  _chartPeriod again 'week' → red: “preselection max, change with
+ *      period” (the first query asked period=week)
+ *   C  'finance.chart.too_few_title' removed from locales/en.js → red:
+ *      “en: empty state translated” (German fallback)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

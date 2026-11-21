@@ -1,13 +1,13 @@
 /**
- * Der Kategoriefilter der Finanzen: drei Arten (wie in der App), „leer heisst alle“, additiv.
- * Die Webapp läuft in jsdom (echtes Bündel).
+ * The category filter of the finances: three kinds (as in the app), “empty means all”, additive.
+ * The web app runs in jsdom (real bundle).
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen, Bündel neu gebaut):
- *   A  finFilter() ersetzt die Auswahl (`finKategorien.clear()` vor dem Hinzufügen) → rot:
- *      „Webapp: der Filter häuft …“
- *   B  in der Zeichenfunktion den Aufruf `finFilterAnwenden();` nach setzeHtml gestrichen → rot:
- *      „Webapp: … überlebt das Neuzeichnen“
- *   C  im Markup den Chip data-arg="figs" auf "minifigs" → rot: „die drei Arten …“
+ * Counter-checks (measured 10.11.2026, each alone, reverted, bundle rebuilt):
+ *   A  finFilter() replaces the selection (`finKategorien.clear()` before adding) → red:
+ *      “web app: the filter accumulates …”
+ *   B  in the drawing function the call `finFilterAnwenden();` after setzeHtml deleted → red:
+ *      “web app: … survives redrawing”
+ *   C  in the markup the chip data-arg="figs" to "minifigs" → red: “the three kinds …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -85,7 +85,7 @@ test('the three kinds, and each has a section', async () => {
   try {
     const webKinds = [...o.d.querySelectorAll('#fin-filter [data-click="finFilter"]')].map(b => b.dataset.arg);
     assert.deepEqual(webKinds, ['alle', ...arten]);
-    // Ein Chip ohne zugehörigen Abschnitt wäre ein Knopf, der nichts tut.
+    // A chip without a matching section would be a button that does nothing.
     assert.deepEqual(o.sichtbar(), arten);
   } finally {
     o.w.close();
@@ -102,7 +102,7 @@ test('web app: empty means all, the filter accumulates and survives redrawing', 
     assert.equal(o.d.querySelector('#fin-filter [data-arg="figs"]').getAttribute('aria-pressed'), 'true');
     o.chip('parts');
     assert.deepEqual(o.sichtbar(), ['figs'], 'ein zweiter Klick nimmt die Art nicht wieder heraus');
-    // Die Suche zeichnet die Tabelle neu: Der alte Abschnitt wird ersetzt.
+    // The search redraws the table: the old section is replaced.
     const vorher = o.d.querySelector('#fin-tbl [data-fin-art="figs"]');
     const feld = o.d.getElementById('fin-suche');
     feld.value = '0';

@@ -1,21 +1,21 @@
 /**
- * Ein erneuter Import der Figuren und Teile eines Sets lässt die vorhandenen
- * Bestandszeilen stehen — mit Kennung, Lagerort und Datum —, legt neue an und
- * entfernt nur die weggefallenen. Vorher löschte er alle Set-Zeilen und legte
- * sie neu an; aus {id:1, storage_id:1} wurde {id:2, storage_id:null}.
+ * A repeated import of the minifigures and parts of a set leaves the existing
+ * inventory rows standing — with identifier, storage location and date —, creates new ones and
+ * removes only the dropped ones. Before, it deleted all set rows and created
+ * them anew; {id:1, storage_id:1} became {id:2, storage_id:null}.
  *
- * Gegenproben (am 29.10.2026 gemessen):
- *   A  in importMinifigs wieder zuerst `DELETE … source='set'` ohne
- *      Bedingung → rot: „die Figur behält Kennung und Lagerort“
- *   B  dasselbe in importParts → rot: „das Teil behält Kennung, Lagerort
- *      und Datum“
- *   C  das gezielte DELETE in importMinifigs entfernt → rot: „eine
- *      weggefallene Figur geht, eine eingetippte bleibt“
- *   D  in merkeSetTeile das Zusammenfassen je Teil und Farbe entfernt → rot:
- *      „Bau- und Ersatzteil derselben Farbe“ (ON CONFLICT DO UPDATE command
- *      cannot affect row a second time) und als Folge die beiden Teile-Tests
+ * Counter-checks (measured on 29.10.2026):
+ *   A  in importMinifigs again first `DELETE … source='set'` without
+ *      a condition → red: “the minifigure keeps identifier and storage location”
+ *   B  the same in importParts → red: “the part keeps identifier, storage location
+ *      and date”
+ *   C  the targeted DELETE removed in importMinifigs → red: “a
+ *      dropped minifigure goes, a typed-in one stays”
+ *   D  in merkeSetTeile the merging per part and color removed → red:
+ *      “build part and spare part of the same color” (ON CONFLICT DO UPDATE command
+ *      cannot affect row a second time) and as a consequence the two parts tests
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

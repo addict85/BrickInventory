@@ -1,8 +1,8 @@
 /**
- * Ein Bereich hinter dem Dateiende ist kein „Datei nicht gefunden".
+ * A range behind the end of the file is not a “file not found".
  *
- * Gegenprobe (durchgefuehrt): in responseOnFileError() wieder bedingungslos
- * `res.status(404)` gesetzt → Schritt „416" wird rot, die anderen bleiben gruen.
+ * Counter-check (performed): in responseOnFileError() again unconditionally
+ * `res.status(404)` set → step “416" turns red, the others stay green.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -18,7 +18,7 @@ const DATEI = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'anleitung-')), 'B
 fs.writeFileSync(DATEI, Buffer.alloc(5000, 7));
 const SIZE = fs.statSync(DATEI).size;
 
-/** Server mit GENAU dem Rumpf, den die Anleitungs-Route in server.ts hat. */
+/** Server with EXACTLY the body the instruction route in server.ts has. */
 function starte() {
   const app = express();
   app.get('/data/instructions/*pfad', (_req, res) => deliverFile(res, DATEI));
@@ -41,8 +41,8 @@ test('range requests to an instruction', async t => {
   });
 
   await t.test('a range in the middle is continued', async () => {
-    // Das ist der NORMALE Fall nach einem Abbruch: Die App hat die Haelfte und
-    // holt den Rest. Faellt dieser Schritt, ist der Fortsetz-Weg selbst kaputt.
+    // That is the NORMAL case after an abort: the app has half and
+    // fetches the rest. If this step fails, the resume path itself is broken.
     const r = await hol('/data/instructions/BI-3004.pdf', 'bytes=2500-');
     assert.equal(r.status, 206);
     assert.equal(r.headers.get('content-range'), `bytes 2500-${SIZE - 1}/${SIZE}`);
@@ -56,14 +56,14 @@ test('range requests to an instruction', async t => {
       'Genau Marcos Befund: Die Datei ist da, der Bereich ist es nicht. 404 ' +
         'behauptet das Gegenteil und schickt jede Fehlersuche in die Irre.',
     );
-    // Die Laengenangabe ist die Auskunft, mit der ein Client sich selbst
-    // korrigieren kann — sie muss die 416 begleiten.
+    // The length is the information with which a client can correct
+    // itself — it must accompany the 416.
     assert.equal(r.headers.get('content-range'), `bytes */${SIZE}`);
   });
 
   await t.test('a missing file stays 404', async () => {
-    // Die Gegenrichtung, damit die Regel nicht dadurch gruen wird, dass gar
-    // nichts mehr 404 antwortet.
+    // The opposite direction, so that the rule does not turn green because
+    // nothing answers 404 anymore.
     const r = await hol('/fehlt');
     assert.equal(r.status, 404);
   });

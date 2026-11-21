@@ -1,10 +1,10 @@
 /**
- * UX-Prüfung 21 auf Englisch (N8, N11): Ein Konto in Englisch, Hintergrundarbeiten bei 320 px und 200 %
- * Schrift. Eigene Datei, weil je Datenbank nur ein Web-Prozess läuft und startApp den Pool am Ende schliesst.
+ * UX review 21 in English (N8, N11): an account in English, background jobs at 320 px and 200 %
+ * font. Own file because only one web process runs per database and startApp closes the pool at the end.
  *
- * Gegenproben (13.11.2026 gemessen, je einzeln):
- *   P  mobile.css wieder `.ptitle { overflow-wrap: anywhere }` → rot: Bruch nach „Backg“ ohne Trennstrich
- *   Q  en.js 'parts.stat.colors' wieder 'Colors' → rot: „amerikanische Schreibung“
+ * Counter-checks (measured 13.11.2026, each alone):
+ *   P  mobile.css again `.ptitle { overflow-wrap: anywhere }` → red: break after “Backg” without hyphen
+ *   Q  en.js 'parts.stat.colors' back to 'Colors' → red: “American spelling”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,7 +13,7 @@ const { patternHousehold } = require('./helpers/inventory');
 
 const text = sel => `(document.querySelector(${JSON.stringify(sel)})?.textContent || '').replace(/\\s+/g, ' ').trim()`;
 
-/** Ein eigenes Konto in Englisch: Der Titel bricht beim ersten Aufbau in der schmalen Breite. */
+/** An own account in English: the title breaks on the first build in the narrow width. */
 async function english(e) {
   const { b, bis, ruhig } = e;
   await ruhig();

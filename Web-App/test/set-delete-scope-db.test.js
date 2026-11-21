@@ -1,17 +1,17 @@
 /**
- * Set eines UNTERKONTOS löschen — beide Wege, beide Richtungen.
+ * Deleting a set of a SUB-ACCOUNT — both paths, both directions.
  *
- * Lesen weit, Schreiben eng: Ein Hauptkonto löscht Sets seiner Unterkonten,
- * ein Unterkonto aber kein Set des Hauptkontos. Beide Löschwege laufen in
- * einer Transaktion, damit kein Teil ohne Set zurückbleibt.
+ * Read wide, write narrow: a main account deletes sets of its sub-accounts,
+ * but a sub-account no set of the main account. Both deletion paths run in
+ * one transaction so that no part remains without a set.
  *
- * Gegenprobe (durchgeführt): schreibbereich in beiden Routen zurück auf die
- * eigene ID → der erste Teilschritt endet wieder in 404.
- * Gegenprobe (09.11.2026 gemessen): in requireToken den Sitzungszweig entfernt →
- * rot: „Webapp: … 401 !== 200“. Der App-Weg kommt ohne Sitzung, mit echtem Token;
- * ein falscher Token ergibt 401 (eigene Zusicherung vor der Schleife).
+ * Counter-check (carried out): schreibbereich in both routes back to the
+ * own ID → the first substep ends in 404 again.
+ * Counter-check (measured 09.11.2026): the session branch removed in requireToken →
+ * red: „Webapp: … 401 !== 200“. The app path comes without a session, with a real token;
+ * a wrong token results in 401 (own assertion before the loop).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
+ * Prerequisite: test DB via TEST_DATABASE_URL (migrations for account_links).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -42,7 +42,7 @@ test('deleting in the household: forward allowed, backward not', { concurrency: 
     subId,
   ]);
 
-  // Die Webapp kommt mit der Sitzung, die App mit einem echten Token und ohne Sitzung.
+  // The web app comes with the session, the app with a real token and without a session.
   const { createToken } = _req('src/account/deviceToken.js');
   const token = {
     [mainId]: await createToken(mainId, 'test-app', false, null, { scope: 'app' }),
@@ -63,12 +63,12 @@ test('deleting in the household: forward allowed, backward not', { concurrency: 
   const baseMain = `http://localhost:${srvMain.address().port}`;
   const baseSub = `http://localhost:${srvSub.address().port}`;
 
-  // Set mit Inhalt anlegen — der Besitzer wird je Fall gewählt.
+  // Create a set with content — the owner is chosen per case.
   const anlegen = async besitzer => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM parts WHERE set_number=$1`, [SN]);
-    await holdsSet(db, besitzer, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, besitzer, SN, 0); // quantity 0: the acquisition behind it carries it
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,10,'N',1)`,
@@ -85,14 +85,14 @@ test('deleting in the household: forward allowed, backward not', { concurrency: 
   });
 
   try {
-    // 1. VORWÄRTS: Hauptkonto löscht ein Set des Unterkontos — und zwar ganz.
-    // Ohne Token und ohne Sitzung kein Zugang: Der App-Weg prüft wirklich den Token.
+    // 1. FORWARD: the main account deletes a set of the sub-account — and completely.
+    // Without token and without session no access: the app path really checks the token.
     const ohne = await fetch(`${baseMain}/api/v1/sets/${SN}`, {
       method: 'DELETE',
       headers: { authorization: 'Bearer falsch' },
     });
     assert.equal(ohne.status, 401, 'der App-Weg darf nicht über die Sitzung laufen');
-    // Eine Adresse, zwei Ausweise: Sitzung (Webapp) und Token (App).
+    // One address, two credentials: session (web app) and token (app).
     const credential = (name, uid) => (name === 'Android' ? { authorization: `Bearer ${token[uid]}` } : {});
     for (const [name, base, pfad] of [
       ['Webapp', baseMain, `/api/v1/sets/${SN}`],
@@ -112,8 +112,8 @@ test('deleting in the household: forward allowed, backward not', { concurrency: 
       );
     }
 
-    // 2. RÜCKWÄRTS: Das Unterkonto darf ein Set des HAUPTkontos NICHT löschen.
-    //    Genau dafür steht dort schreibbereich() und nicht scopeIds().
+    // 2. BACKWARD: the sub-account must NOT delete a set of the MAIN account.
+    //    Exactly for that schreibbereich() stands there and not scopeIds().
     for (const [name, pfad] of [
       ['Webapp', `/api/v1/sets/${SN}`],
       ['Android', `/api/v1/sets/${SN}`],

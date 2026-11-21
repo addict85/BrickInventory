@@ -1,20 +1,20 @@
 /**
- * Ein offener Strom endet, sobald sein Zugang endet: Abmelden des Tokens oder
- * der Sitzung, neue Sitzungsversion (alle Sitzungen beendet). Geprüft am
- * CSV-Fortschrittsstrom der echten App (baueApp); der Takt ohne Ereignis (Widerruf
- * in einem anderen Prozess) an watchViaAccess() mit kurzem Takt.
+ * An open stream ends as soon as its access ends: logging out the token or
+ * the session, new session version (all sessions ended). Checked on the
+ * CSV progress stream of the real app (baueApp); the tick without an event (revocation
+ * in another process) on watchViaAccess() with a short tick.
  *
- * Gegenproben (12.11.2026 gemessen, je einzeln):
- *   A  in routes/api_v1/sets.ts den Aufruf watchViaAccess() gestrichen → rot:
- *      „Token abgemeldet: der Strom endet“, „Sitzung abgemeldet …“, „alle Sitzungen …“
- *   B  in watchViaAccess() nicht auf atAccessChange() hören → rot: die
- *      ersten drei Fälle (erst der Takt nach 15 s hätte die Ströme beendet)
- *   E  in increaseSessionVersion() ohne reportAccessChange() → rot: „alle
- *      Sitzungen beendet …“ (beim Token-Widerruf melden Abmelderoute und NOTIFY
- *      doppelt; dort einzeln gestrichen blieb es grün)
- *   C  in accessAppliesStill() die Prüfung sessionAlive() gestrichen → rot: „Sitzung
- *      abgemeldet: der Strom endet“
- *   D  setInterval in watchViaAccess() gestrichen → rot: „ohne Ereignis endet
+ * Counter-checks (measured 12.11.2026, each on its own):
+ *   A  the call watchViaAccess() deleted in routes/api_v1/sets.ts → red:
+ *      “token logged out: the stream ends”, „Sitzung abgemeldet …“, „alle Sitzungen …“
+ *   B  in watchViaAccess() not listening to atAccessChange() → red: the
+ *      first three cases (only the tick after 15 s would have ended the streams)
+ *   E  in increaseSessionVersion() without reportAccessChange() → red: „alle
+ *      Sitzungen beendet …“ (on token revocation the logout route and NOTIFY report
+ *      twice; deleted there individually it stayed green)
+ *   C  the check sessionAlive() deleted in accessAppliesStill() → red: “session
+ *      logged out: the stream ends”
+ *   D  setInterval deleted in watchViaAccess() → red: „ohne Ereignis endet
  *      der Strom im Takt“
  */
 require('./helpers/system-frame');
@@ -43,7 +43,7 @@ test('streams end with their access', { concurrency: 1 }, async t => {
   ).id;
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
-    // Der Strom hat LISTEN geöffnet; die Verbindung hielte den Prozess offen.
+    // The stream has opened LISTEN; the connection would keep the process open.
     await db.notification.close();
     await db.pool.end().catch(() => {});
   });
@@ -78,7 +78,7 @@ test('streams end with their access', { concurrency: 1 }, async t => {
     return { authorization: `Bearer ${j.token}` };
   };
 
-  /** Öffnet den Strom und liest mit, bis er endet. */
+  /** Opens the stream and reads along until it ends. */
   const oeffne = async kopf => {
     const abbruch = new AbortController();
     t.after(() => abbruch.abort());
@@ -133,7 +133,7 @@ test('streams end with their access', { concurrency: 1 }, async t => {
     const abmelden = watchViaAccess({ session: {}, headers: kopf }, () => beendet++, 50);
     t.after(abmelden);
     assert.equal(await bis(() => beendet > 0, 200), false, 'ein gültiger Token beendet nichts');
-    // Widerruf wie aus einem anderen Prozess: nur die Zeile, kein Ereignis hier.
+    // Revocation as from another process: only the row, no event here.
     await db.run('DELETE FROM api_tokens WHERE user_id = $1', [uid]);
     await bis(() => beendet > 0, 2000).catch(() => {});
     assert.equal(beendet, 1, 'ohne Ereignis endet der Strom im Takt');

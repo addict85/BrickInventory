@@ -1,15 +1,15 @@
 /**
- * Ein Job-Prozess, der hart endet, gibt seine laufenden Aufträge nicht zurück.
- * Der nächste Start übernimmt sie sofort, nicht erst nach der Frist; Aufträge
- * eines lebenden Prozesses und die eigenen bleiben, wo sie sind.
+ * A job process that ends hard does not return its running jobs.
+ * The next start takes them over immediately, not only after the deadline; jobs
+ * of a living process and its own stay where they are.
  *
- * Gegenproben (06.11.2026):
- *   A  in giveOrphanedBack() die Abfrage pg_try_advisory_lock durch `true`
- *      ersetzt → rot: „ein lebender Prozess behält seinen Auftrag“
- *   B  in giveOrphanedBack() das UPDATE gestrichen → rot: „der Start
- *      übernimmt den Auftrag eines toten Prozesses“
+ * Counter-checks (06.11.2026):
+ *   A  in giveOrphanedBack() the query pg_try_advisory_lock replaced by `true`
+ *      → red: “a living process keeps its job”
+ *   B  the UPDATE deleted in giveOrphanedBack() → red: “the start
+ *      takes over the job of a dead process”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -46,8 +46,8 @@ test('jobs of dead job processes', { concurrency: 1 }, async t => {
   const eigener = await laufend(`${prozess.PROCESS}/3`);
   const status = async id => (await db.get('SELECT status FROM jobs WHERE id = $1', [id])).status;
 
-  // Was startup/jobsProcess.ts vor dem Worker aufruft; den ganzen Job-Betrieb
-  // hochzufahren startete echte Aufträge, die Verbindungen halten.
+  // What startup/jobsProcess.ts calls before the worker; starting the whole job operation
+  // would launch real jobs that hold connections.
   await prozess.reportProcessAn();
 
   await t.test('the start takes over the job of a dead process', async () => {

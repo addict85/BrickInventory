@@ -1,25 +1,25 @@
 /**
- * Typprüfung der Oberfläche: kein unbekannter Name, keine Meldung.
+ * Type check of the UI: no unknown name, no message.
  *
- * Gegenproben (am 05.11.2026 gemessen; A–C seitdem im CI-Schritt
- * „Typprüfung Oberfläche“, nicht mehr in npm test):
- *   A  an G() in dom.js die Typangabe {Feld} entfernt → rot: Hauptlauf
- *      mit 357 Meldungen
- *   B  in fortschritt.js den Import von apiRaw entfernt → rot, TS2304
- *      „Cannot find name 'apiRaw'“ mit beiden Fundstellen
- *   C  in logviewer.js die Typangabe an getElementById("period") entfernt →
- *      rot im Lauf der klassischen Skripte
- *   E  den Schritt `npm run typecheck:frontend` aus web-ci.yml entfernt → rot
- *   D  "strict": true in tsconfig.frontend.json auf false → rot: „strict ist
- *      eingeschaltet“; "noImplicitThis": false ergänzt → ebenso rot
+ * Counter-checks (measured on 05.11.2026; A–C since then in the CI step
+ * “type check UI”, no longer in npm test):
+ *   A  the type annotation {Feld} removed from G() in dom.js → red: main run
+ *      with 357 messages
+ *   B  the import of apiRaw removed in fortschritt.js → red, TS2304
+ *      “Cannot find name 'apiRaw'” with both locations
+ *   C  in logviewer.js the type annotation on getElementById("period") removed →
+ *      red in the run of the classic scripts
+ *   E  the step `npm run typecheck:frontend` removed from web-ci.yml → red
+ *   D  "strict": true in tsconfig.frontend.json set to false → red: “strict is
+ *      switched on”; "noImplicitThis": false added → likewise red
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { pruefe, RUNS } = require('../scripts/check-frontend-types');
 
 test('UI: the CI checks both configurations as a step of its own', () => {
-  // Den tsc-Lauf macht die CI (npm run typecheck:frontend, beide RUNS); hier
-  // doppelt gelaufen kostete er jeden Testlauf rund 19 s (Prüfbericht arch17-web-b, N7).
+  // The tsc run is done by CI (npm run typecheck:frontend, both RUNS); run here
+  // twice it cost every test run about 19 s (review report arch17-web-b, N7).
   const fs = require('node:fs');
   const path = require('node:path');
   const ci = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'web-ci.yml'), 'utf8');
@@ -30,12 +30,12 @@ test('UI: the CI checks both configurations as a step of its own', () => {
 });
 
 test('UI: strict is switched on, no part of it switched off', () => {
-  // Ohne die Schalter bliebe der Lauf oben grün, prüfte aber weniger. Gefragt
-  // wird tsc selbst (--showConfig), damit auch geerbte Einstellungen zählen.
+  // Without the switches the run above would stay green but check less. What is asked
+  // is tsc itself (--showConfig), so that inherited settings count too.
   const { spawnSync } = require('node:child_process');
   const path = require('node:path');
   const ROOT = path.join(__dirname, '..');
-  // Das Werkzeug liegt im Projekt; -p nimmt den Konfigurationsnamen relativ zu cwd.
+  // The tool lives in the project; -p takes the configuration name relative to cwd.
   for (const config of RUNS) {
     const r = spawnSync(
       process.execPath,

@@ -1,6 +1,6 @@
-// Für test/test-run-text-output.test.js: schreibt im Takt einen Berichtsrahmen
-// und direkt danach Text, dessen drittes Byte kein ASCII ist — so, wie es der
-// Admin-Kasten und „✅ PostgreSQL schema ready" beim Schema-Aufbau tun.
+// For test/test-run-text-output.test.js: writes a report frame on a tick
+// and directly afterwards text whose third byte is not ASCII — the way the
+// admin box and “✅ PostgreSQL schema ready" do during schema setup.
 const test = require('node:test');
 const { DefaultSerializer } = require('node:v8');
 

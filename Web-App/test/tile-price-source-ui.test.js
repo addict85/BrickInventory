@@ -1,13 +1,13 @@
 /**
- * Die Sammlungskachel nennt, woher ihr Betrag stammt. Ohne Marktpreis liefert
- * der Server den Kaufpreis als kachel_preis — mit kachel_quelle 'kauf', und
- * die Kachel schreibt „Kaufpreis“ statt „Marktpreis“. Die Werte kommen aus der
- * echten Serverrechnung (tileValues), gezeigt vom echten Bündel in jsdom.
+ * The collection tile names where its amount comes from. Without a market price
+ * the server delivers the purchase price as kachel_preis — with kachel_quelle 'kauf', and
+ * the tile writes „Kaufpreis“ instead of „Marktpreis“. The values come from the
+ * real server calculation (tileValues), shown by the real bundle in jsdom.
  *
- * Gegenproben (am 03.11.2026 gemessen):
- *   A  in priceRow() wieder `markt = !!s._price` → rot: „ohne Marktpreis“
- *      (Kachel zeigte „Marktpreis 99,99 €“)
- *   B  in tileValues() kachel_quelle immer 'markt' → rot: „ohne Marktpreis“
+ * Counter-checks (measured on 03.11.2026):
+ *   A  in priceRow() again `markt = !!s._price` → red: „ohne Marktpreis“
+ *      (tile showed „Marktpreis 99,99 €“)
+ *   B  in tileValues() kachel_quelle always 'markt' → red: „ohne Marktpreis“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

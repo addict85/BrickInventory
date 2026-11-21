@@ -1,5 +1,5 @@
 /**
- * „Kann ich das bauen?" — der Abgleich zwischen Teileliste und eigenem Bestand.
+ * “Can I build this?" — the comparison between parts list and own stock.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -32,12 +32,12 @@ async function seed() {
   }
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [U.ich, U.kind]);
 
-  // Dieselbe Teilenummer in ZWEI Farben, und dieselbe Farbe bei ZWEI
-  // Teilenummern: Nur so fällt eine verrutschte Paarung auf.
-  // Die Spalte `quelle` ist ROUTE: holdsPart() leitet sie aus der Setnummer
-  // ab — eine Zeile mit Set ist ein Set-Teil, eine ohne ein manuelles. …
+  // The same part number in TWO colors, and the same color for TWO
+  // part numbers: only that way does a slipped pairing show.
+  // The column `quelle` is ROUTE: holdsPart() derives it from the set number
+  // — a row with a set is a set part, one without a manual one. …
   const teile = [
-    // user, nummer, farbe, menge, set
+    // user, number, color, quantity, set
     [U.ich, '3001', 4, 6, '10179-1'],
     [U.ich, '3001', 4, 2, null],
     [U.ich, '3001', 5, 3, null],
@@ -46,7 +46,7 @@ async function seed() {
     [U.fremd, '3001', 4, 99, null],
   ];
   for (const [uid, num, farbe, menge, set] of teile) {
-    // Der Name gehoert seit Migration 0034 in den Katalog, nicht an die
+    // Since migration 0034 the name belongs in the catalog, not on the
     // Bestandszeile.
     await db.run(
       `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,$2)
@@ -89,40 +89,40 @@ test('inventory reconciliation against a real database', async t => {
         { part_number: '3002', color_id: 4 },
       ],
     );
-    // 6 aus dem Set + 2 lose = 8 gesamt, davon 2 lose.
+    // 6 from the set + 2 loose = 8 total, of which 2 loose.
     assert.deepEqual(b['3001|4'], { gesamt: 8, lose: 2 });
-    // Dieselbe Nummer, andere Farbe — darf sich nicht vermischen.
+    // The same number, another color — must not mix.
     assert.deepEqual(b['3001|5'], { gesamt: 3, lose: 3 });
-    // Andere Nummer, dieselbe Farbe — ebenso wenig.
+    // Another number, the same color — just as little.
     assert.deepEqual(b['3002|4'], { gesamt: 10, lose: 0 });
   });
 
   await t.test('"lose" excludes what is in a set', async () => {
-    // Der eigentliche Punkt der zweiten Zahl: Ein Teil in einem aufgebauten
-    // Set besitzt man zwar, müsste dafür aber ein anderes Set zerlegen.
+    // The actual point of the second number: a part in a built
+    // set one owns, but one would have to take apart another set for it.
     const b = await ownedQuantitiesQuery([U.ich], [{ part_number: '3002', color_id: 4 }]);
     assert.equal(b['3002|4'].gesamt, 10);
     assert.equal(b['3002|4'].lose, 0, 'Ein Set-Teil darf nicht als lose gelten');
   });
 
   await t.test('what is not there is missing in the response', async () => {
-    // Bewusst kein Eintrag mit 0 statt eines fehlenden: Die Oberfläche setzt
-    // fehlende Schlüssel auf 0 und unterscheidet damit nicht — der Server
-    // spart sich dafür eine Zeile je nicht vorhandenem Teil, und das sind bei
-    // einem grossen Set die meisten.
+    // Deliberately no entry with 0 instead of a missing one: the UI sets
+    // missing keys to 0 and thus does not distinguish — the server
+    // saves a row per part not present for that, and for
+    // a big set those are most.
     const b = await ownedQuantitiesQuery([U.ich], [{ part_number: '9999', color_id: 0 }]);
     assert.equal(b['9999|0'], undefined);
   });
 
   await t.test('the scope decides, not the request', async () => {
-    // Ohne diese Grenze wäre der Abgleich ein Weg, fremde Bestände zu zählen.
+    // Without this limit the comparison would be a way of counting foreign stocks.
     const nurIch = await ownedQuantitiesQuery([U.ich], [{ part_number: '3001', color_id: 4 }]);
     const withKind = await ownedQuantitiesQuery(await household.scopeIds(U.ich, 'all'), [
       { part_number: '3001', color_id: 4 },
     ]);
     assert.equal(nurIch['3001|4'].gesamt, 8);
     assert.equal(withKind['3001|4'].gesamt, 9, 'Das Unterkonto muss mitzählen');
-    // 99 Stück liegen bei 'fremd' — die dürfen nirgends auftauchen.
+    // 99 pieces lie with 'fremd' — they must not appear anywhere.
     assert.ok(withKind['3001|4'].gesamt < 99, 'Ein fremder Bestand ist durchgeschlagen');
   });
 
@@ -131,9 +131,9 @@ test('inventory reconciliation against a real database', async t => {
       [U.ich],
       [
         { part_number: '3001', color_id: 4 },
-        { part_number: '3001', color_id: 4 }, // doppelt
+        { part_number: '3001', color_id: 4 }, // twice
         { part_number: '', color_id: 4 }, // leer
-        { part_number: '3001' }, // ohne Farbe → 0
+        { part_number: '3001' }, // without color → 0
       ],
     );
     assert.equal(b['3001|4'].gesamt, 8, 'Eine doppelte Anfrage darf nicht doppelt zählen');
@@ -141,11 +141,11 @@ test('inventory reconciliation against a real database', async t => {
   });
 
   await t.test('the request is capped', async () => {
-    // Eine Teileliste über viele Sets darf keine unbegrenzte Abfrage bauen.
-    // GEMESSEN: Der Deckel greift, die Antwort bleibt leer statt zu werfen.
+    // A parts list over many sets must not build an unbounded query.
+    // MEASURED: the cap applies, the response stays empty instead of throwing.
     assert.equal(typeof MAX_OWNED_PARTS, 'number');
     const viele = Array.from({ length: MAX_OWNED_PARTS + 50 }, (_, i) => ({ part_number: 'x' + i, color_id: 0 }));
-    viele.push({ part_number: '3001', color_id: 4 }); // steht HINTER dem Deckel
+    viele.push({ part_number: '3001', color_id: 4 }); // stands BEHIND the cap
     const b = await ownedQuantitiesQuery([U.ich], viele);
     assert.deepEqual(b, {}, 'Alles hinter dem Deckel muss wegfallen — auch Vorhandenes');
   });

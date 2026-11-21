@@ -1,22 +1,22 @@
 /**
- * Eine von Hand eingetragene BrickLink-Nummer gilt nur für das Konto, das sie
- * einträgt (bl_mapping_custom, Migration 0094). Zwei Konten ohne Haushalt:
- * Anna korrigiert beim Wanted-Import und an ihrer Figur, Bruno sieht weiter
- * die gemeinsame Zuordnung — in Preisabruf, Figurenpreis, Bewertung und …
+ * A BrickLink number entered by hand applies only to the account that
+ * enters it (bl_mapping_custom, migration 0094). Two accounts without a household:
+ * Anna corrects during the wanted import and on her minifigure, Bruno still sees
+ * the shared mapping — in price fetch, minifigure price, valuation and …
  *
- * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
- *   A  routes/api_v1/wanted.ts: rememberNumber schreibt immer rememberBlNumber →
- *      rot: alle sieben Teiltests (Annas 3001 füllt den Vermerk für 3003)
- *   B  db/blMappingSql.ts: blNummerSql ohne `_e.bl_id` → rot: „Bewertung“
- *      (Anna sieht die gemeinsame Nummer)
- *   C  resolveBlPartNumber() übergeht `konto` → rot: „Preisabruf“
- *   D  writeBlNumber() wieder mit `DO UPDATE SET bl_id=…` ohne WHERE → rot:
- *      „die gemeinsame Zuordnung wird nur gefüllt, nie ersetzt“
- *   E  manualMinifigs.ts schreibt die BrickLink-Nr. wieder mit rememberBlNumber →
- *      rot: „die BrickLink-Nr. einer eigenen Figur …“
+ * Counter-checks (measured on 04.11.2026, one change each, reverted afterwards):
+ *   A  routes/api_v1/wanted.ts: rememberNumber always writes rememberBlNumber →
+ *      red: all seven subtests (Anna's 3001 fills the note for 3003)
+ *   B  db/blMappingSql.ts: blNummerSql without `_e.bl_id` → red: “valuation”
+ *      (Anna sees the shared number)
+ *   C  resolveBlPartNumber() ignores `konto` → red: “price fetch”
+ *   D  writeBlNumber() back with `DO UPDATE SET bl_id=…` without WHERE → red:
+ *      “the shared mapping is only filled, never replaced”
+ *   E  manualMinifigs.ts writes the BrickLink no. with rememberBlNumber again →
+ *      red: “the BrickLink no. of an own minifigure …”
  *
- * Wie im Betrieb fragt jeder Dienst im Namen seines Kontos (asAccount) als Laufzeitrolle;
- * Testdaten schreibt die Eigentümerin.
+ * As in production every service queries on behalf of its account (asAccount) as runtime role;
+ * the owner writes the test data.
  *
  * REQUIRE_DB=1.
  */
@@ -82,7 +82,7 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
   await db.run(`INSERT INTO minifigs_catalog (fig_number, fig_name, image_url)
                 VALUES ('fig-000001','Han Solo','https://cdn.rebrickable.com/f.jpg')`);
   await db.run(`INSERT INTO rb_colors (id, name, bl_color_id) VALUES (4,'Red',5)`);
-  // Geprüft: 3003 heisst bei BrickLink gleich, die Figur sw0001.
+  // Checked: 3003 is called the same at BrickLink, the minifigure sw0001.
   await db.run(
     `INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part','3003',NULL), ('fig','fig-000001','sw0001')`,
   );
@@ -92,7 +92,7 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
     );
   const vorher = await gemeinsam();
 
-  // Bruno hält dieselben Dinge, damit seine Bewertung Zeilen hat.
+  // Bruno holds the same things so that his valuation has rows.
   const { addManualPart } = _req('src/parts/manualParts.js');
   const { addManualMinifig, updateManualMinifig } = _req('src/minifigs/manualMinifigs.js');
   await asAccount(BRUNO, async () => {
@@ -124,7 +124,7 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
     assert.equal(await asAccount(ANNA, () => resolveBlPartNumber('3003', ANNA)), '3001');
     assert.equal(await asAccount(BRUNO, () => resolveBlPartNumber('3003', BRUNO)), '3003');
     assert.equal(await resolveBlPartNumber('3003'), '3003', 'ohne Konto gilt die gemeinsame Zuordnung');
-    // Der Abruf selbst liest den Preis unter der übersetzten Nummer.
+    // The fetch itself reads the price under the translated number.
     await db.run(`INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, fetched_at)
                   VALUES ('3001',5,'N','EUR',7,NOW()), ('3003',5,'N','EUR',2,NOW())`);
     const preis = uid => asAccount(uid, () => fetchPartPrice('3003', 4, 'N', 'EUR', 24, null, uid));
@@ -139,7 +139,7 @@ test('BrickLink mapping per account', { concurrency: 1 }, async t => {
 
   await t.test('valuation: numbers per account', async () => {
     const repo = require('./helpers/sources').testArea('finances').bewertung;
-    // Jedes Konto bewertet seinen Bestand; zwei fremde Konten stehen nie in einer Bewertung.
+    // Every account values its stock; two foreign accounts are never in one valuation.
     const je2 = async f => [...(await asAccount(ANNA, () => f([ANNA]))), ...(await asAccount(BRUNO, () => f([BRUNO])))];
     const figuren = await je2(ids => repo.manualMinifigsToValuation(ids));
     const teile = await je2(ids => repo.manualPartsToValuation(ids));

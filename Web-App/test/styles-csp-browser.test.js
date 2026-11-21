@@ -1,22 +1,22 @@
 /**
- * Die App läuft unter `style-src 'self'` ohne einen einzigen CSP-Verstoss, und
- * die Stile aus data-stil kommen trotzdem an. Gemessen in Chrome am echten
- * Server: anmelden, jeden Reiter öffnen, dabei jede `securitypolicyviolation`
- * und jede Meldung „nicht freigegeben“ aus js/styles.js mitschreiben.
+ * The app runs under `style-src 'self'` without a single CSP violation, and
+ * the styles from data-stil still arrive. Measured in Chrome on the real
+ * server: log in, open every tab, meanwhile record every `securitypolicyviolation`
+ * and every message „nicht freigegeben“ from js/styles.js.
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
+ * Without Chrome (CHROME_BIN, google-chrome, chromium) it is skipped.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  in index.html ein data-stil wieder als style= → rot: „keine
+ * Counter-checks (measured on 28.10.2026):
+ *   A  in index.html a data-stil again as style= → red: „keine
  *      CSP-Verstösse“ (style-src-attr)
- *   B  in js/styles.js die Hülle um innerHTML entfernt → rot: „jedes
+ *   B  the wrapper around innerHTML removed in js/styles.js → red: „jedes
  *      data-stil ist angewendet“
- *   C  im Build eine leere Freigabeliste → rot: „nur freigegebene Werte“
- * Gegenprobe (am 29.10.2026 gemessen):
- *   D  form-action, base-uri und object-src aus der CSP in server.ts entfernt
- *      → rot: „form-action, base-uri und object-src greifen“
+ *   C  an empty allowlist in the build → red: „nur freigegebene Werte“
+ * Counter-check (measured on 29.10.2026):
+ *   D  form-action, base-uri and object-src removed from the CSP in server.ts
+ *      → red: „form-action, base-uri und object-src greifen“
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -50,7 +50,7 @@ const freePort = () =>
     });
   });
 
-/** Ein Prozess, der beim Testende sicher wieder weg ist. */
+/** A process that is surely gone again at the end of the test. */
 function starte(t, bin, args, opt) {
   const p = spawn(bin, args, { stdio: ['ignore', 'pipe', 'pipe'], ...opt });
   let log = '';
@@ -68,7 +68,7 @@ function starte(t, bin, args, opt) {
   return { p, log: () => log };
 }
 
-/** Kleinster CDP-Client: ein Tab, Befehle mit Antwort, Ereignisse als Liste. */
+/** Smallest CDP client: one tab, commands with a response, events as a list. */
 async function cdp(wsUrl) {
   const ws = new WebSocket(wsUrl);
   await new Promise((r, f) => {
@@ -120,7 +120,7 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
   ).id;
   await holdsSet(db, uid, '10300-1', 1, { preis: 199 });
   const [wiederherstellung] = await require('./helpers/admin').adminWithFactor(_req, uid);
-  // Mit heutigen Stempeln lädt der Start den Rebrickable-Katalog nicht herunter.
+  // With today's stamps the start does not download the Rebrickable catalog.
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(
       `INSERT INTO run_state (key, value) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
@@ -147,17 +147,17 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
   for (let i = 0; i < 40 && (await fetch(`http://127.0.0.1:${port}/api/v1/`).catch(() => null)) === null; i++)
     await warte(250);
   const csp = (await fetch(`http://127.0.0.1:${port}/`)).headers.get('content-security-policy') || '';
-  // Inline nur der eine Block des Startgerüsts, über seinen Hash — kein 'unsafe-inline'.
+  // Inline only the one block of the start skeleton, via its hash — no 'unsafe-inline'.
   assert.match(csp, /style-src 'self'( 'sha256-[A-Za-z0-9+/]+=*')?(;|$)/, `Die CSP erlaubt Inline-Stile: ${csp}`);
 
   const profil = fs.mkdtempSync(path.join(os.tmpdir(), 'stile-'));
-  // Chrome schreibt beim Beenden noch ins Profil; ein Fehler hier liesse die
-  // übrigen Aufräumschritte aus und Chrome weiterlaufen.
+  // Chrome still writes into the profile when exiting; an error here would skip the
+  // remaining cleanup steps and leave Chrome running.
   t.after(() => {
     try {
       fs.rmSync(profil, { recursive: true, force: true, maxRetries: 5 });
     } catch {
-      /* tmp räumt das System */
+      /* the system cleans up tmp */
     }
   });
   const browser = starte(
@@ -203,8 +203,8 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
       .catch(e => e.message);
     assert.fail(`Zeitüberschreitung: ${was} — ${zustand}`);
   };
-  // Erst klicken, wenn das Bündel den Knopf verdrahtet hat — unter Last steht
-  // die Maske schon da, bevor das Skript am Ende der Seite gelaufen ist.
+  // Only click once the bundle has wired up the button — under load the
+  // form already stands there before the script at the end of the page has run.
   await bis(`typeof document.getElementById('btn-login')?.onclick === 'function'`, 'Anmeldemaske');
   await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(NAME)};
     document.getElementById('lp').value = ${JSON.stringify(PASS)};
@@ -217,7 +217,7 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
     await b.auswerten(`document.querySelector('.ntab[data-tab="${r}"]').click(); true`);
     await warte(700);
   }
-  // Die Set-Ansicht baut am meisten Markup zur Laufzeit.
+  // The set view builds the most markup at runtime.
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
   await bis(`!!document.querySelector('[data-click="openModal"]')`, 'Set-Karte');
   await b.auswerten(`document.querySelector('[data-click="openModal"]').click(); true`);
@@ -240,10 +240,10 @@ test('styles under style-src without unsafe-inline', { concurrency: 1, timeout: 
   });
   await t.test('only approved values', () => assert.deepEqual(warnings, []));
 
-  // Zuletzt, weil ein Formular nach draussen ohne form-action die Seite verliesse.
+  // Last, because a form going outside without form-action would leave the page.
   await t.test('form-action, base-uri and object-src take effect', async () => {
     assert.match(csp, /form-action 'self'/);
-    // Ein Formular der App (Absenden per Enter) und ein Download bleiben ohne Verstoss.
+    // A form of the app (submit via Enter) and a download stay without a violation.
     await b.auswerten(`document.querySelector('form[data-submit="btn-gen-qr"]')?.requestSubmit(); true`);
     await b.auswerten(`document.getElementById('btn-cfg-export')?.click(); true`);
     await warte(800);

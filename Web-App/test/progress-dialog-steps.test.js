@@ -1,6 +1,6 @@
 /**
- * Der Zwischendialog beim Erfassen eines Sets zeigt nur Schritte, auf die der
- * Browser tatsächlich wartet.
+ * The intermediate dialog when capturing a set only shows steps the
+ * browser actually waits for.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,7 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { ROOT, ohneKommentare } = require('./helpers/sources');
 
-/** Alle Server-Quellen, die Fortschritt melden könnten. */
+/** All server sources that could report progress. */
 function serverSources() {
   const dirs = ['src', 'routes', 'jobs', 'clients'];
   const out = [];
@@ -24,11 +24,11 @@ function serverSources() {
 }
 
 /**
- * Zerlegt eine Argumentliste an den Kommas der OBERSTEN Ebene.
+ * Splits an argument list at the commas of the TOP level.
  *
- * Nötig, weil Aufrufe wie `addSet(a, b, c, d=>{ … ; send(d); }, e, f)` mitten
- * im vierten Argument Kommas enthalten. Ein blosses split(',') würde den
- * Fortschritts-Melder an der falschen Stelle suchen.
+ * Necessary because calls like `addSet(a, b, c, d=>{ … ; send(d); }, e, f)` contain
+ * commas in the middle of the fourth argument. A mere split(',') would look for the
+ * progress reporter in the wrong place.
  */
 function argumente(text) {
   const teile = [];
@@ -60,7 +60,7 @@ function argumente(text) {
   return teile;
 }
 
-/** Schneidet ab `start` die Klammer-Inhalte des Aufrufs heraus. */
+/** Cuts out the parenthesis contents of the call from `start`. */
 function bracketContent(src, start) {
   let tiefe = 0,
     str = null;
@@ -84,22 +84,22 @@ function bracketContent(src, start) {
 }
 
 /**
- * Schritte, die den Browser erreichen können.
+ * Steps that can reach the browser.
  *
- * Vorgehen: Für jede Funktion mit einem `sendProgress`-Parameter wird die
- * Position dieses Parameters bestimmt und geprüft, ob irgendein Aufrufer dort
- * etwas anderes als `null` übergibt. Nur dann zählen die Schritt-Namen, die im
- * Rumpf dieser Funktion gemeldet werden, als erreichbar.
+ * Approach: for every function with a `sendProgress` parameter the
+ * position of this parameter is determined and it is checked whether any caller passes
+ * something other than `null` there. Only then do the step names reported in the
+ * body of this function count as reachable.
  */
 function reachableSteps() {
   const quellen = serverSources();
   const alles = quellen.map(([, s]) => s).join('\n');
   const erreichbar = new Set();
 
-  // Schritte, die eine Route direkt in ihren eigenen Strom schreibt, sind immer
-  // erreichbar — dort gibt es keinen durchgereichten Melder.
+  // Steps that a route writes directly into its own stream are always
+  // reachable — there is no passed-through reporter there.
   for (const m of alles.matchAll(/\bsend\(\{\s*step\s*:\s*'([^']+)'/g)) erreichbar.add(m[1]);
-  // Eine JSON-Antwort statt eines Stroms (Fachfehler, „exists“) macht readSSE() zu einem Ereignis.
+  // A JSON response instead of a stream (domain error, „exists“) makes readSSE() turn it into an event.
   const lesen = fs.readFileSync(path.join(ROOT, 'public', 'js', 'progress.js'), 'utf8');
   for (const m of lesen.matchAll(/onEvent\(\{\s*step:[^,}]*\?\s*'(\w+)'\s*:\s*'(\w+)'/g)) {
     erreichbar.add(m[1]);
@@ -114,16 +114,16 @@ function reachableSteps() {
       const idx = argumente(params).findIndex(a => /^sendProgress\b/.test(a));
       assert.notEqual(idx, -1, `${datei}: sendProgress-Parameter von ${name} nicht gefunden`);
 
-      // Meldet diese Funktion überhaupt Schritte?
+      // Does this function report steps at all?
       const rumpf = bracketContent(src, src.indexOf('{', m.index + m[0].length)) ?? '';
       const gemeldet = [...src.slice(m.index).matchAll(/sendProgress\(\{\s*step\s*:\s*'([^']+)'/g)].map(x => x[1]);
       if (!gemeldet.length) continue;
 
-      // Übergibt irgendein Aufrufer etwas anderes als null?
+      // Does any caller pass something other than null?
       let lebt = false;
       for (const [, s2] of quellen) {
         for (const c of s2.matchAll(new RegExp(`\\b${name}\\s*\\(`, 'g'))) {
-          if (/function\s*$/.test(s2.slice(0, c.index))) continue; // die Deklaration selbst
+          if (/function\s*$/.test(s2.slice(0, c.index))) continue; // the declaration itself
           const args = bracketContent(s2, c.index + c[0].length - 1);
           if (args === null) continue;
           const a = argumente(args)[idx];
@@ -164,7 +164,7 @@ test('every step in the progress dialog can also reach the browser', () => {
 
 test('every addressed ps identifier also exists in the dialog', () => {
   const ids = new Set([...galerie.matchAll(/'ps-([a-z-]+)'/g)].map(m => 'ps-' + m[1]));
-  // setStep() setzt die Kennung aus 'ps-' + Name zusammen; beide Formen einsammeln.
+  // setStep() assembles the identifier from 'ps-' + name; collect both forms.
   for (const m of galerie.matchAll(/setStep\('([a-z-]+)'/g)) ids.add('ps-' + m[1]);
   assert.ok(ids.size >= 2, `nur ${ids.size} ps-Kennungen gefunden — Anker stimmt nicht mehr`);
 
@@ -183,14 +183,14 @@ test('no language key for the removed steps remains', () => {
 });
 
 /**
- * Spielt den Ablauf einmal durch, statt nur Muster zu suchen.
+ * Plays the flow through once instead of only searching for patterns.
  */
 test('after the last event no item hangs on “active”', () => {
-  // ── Sendereihenfolge, wie der Erfassungsstrom sie erzeugt ───────────────
-  // Die Route meldet vor und nach dem Ergänzen selbst; dazwischen meldet fetchCatalog().
+  // ── Sending order, as the capture stream produces it ───────────────
+  // The route reports before and after supplementing itself; in between fetchCatalog() reports.
   const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
   const route = require('./helpers/sources').kompakt(lies('routes/api_v1/setsImport.ts'));
-  // Die Route und ihr Helfer supplementInStream (vor der Router-Fabrik).
+  // The route and its helper supplementInStream (before the router factory).
   const strom =
     route.slice(
       route.indexOf("router.endpunkt('POST /api/v1/sets/add-stream'"),
@@ -211,7 +211,7 @@ test('after the last event no item hangs on “active”', () => {
   const sequence = [...schritte(vor), ...schritte(katalog), ...schritte(nach)];
   assert.ok(sequence.length >= 4, `der Strom meldet nur ${sequence.length} Schritte — Anker stimmt nicht mehr`);
 
-  // ── Schaltlogik, wie handleSseEvent() sie ausführt ───────────────────────
+  // ── Switching logic, as handleSseEvent() executes it ───────────────────────
   const schalter = galerie.slice(galerie.indexOf('export function handleSseEvent'));
   const rumpf = schalter.slice(0, schalter.indexOf('\n}\n'));
   const wirkung = {};
@@ -221,7 +221,7 @@ test('after the last event no item hangs on “active”', () => {
     wirkung[c[1]] = [...branch.matchAll(/setStep\('([a-z-]+)'\s*,\s*'(\w+)'\)/g)].map(m => [m[1], m[2]]);
   }
 
-  // ── Durchspielen ─────────────────────────────────────────────────────────
+  // ── Playing through ─────────────────────────────────────────────────────────
   const zustand = {};
   for (const ereignis of sequence) {
     for (const [punkt, wert] of wirkung[ereignis] || []) zustand[punkt] = wert;
@@ -239,7 +239,7 @@ test('after the last event no item hangs on “active”', () => {
       'auf die niemand wartet.',
   );
 
-  // Und jeder Punkt, den es im Dialog GIBT, muss der Ablauf auch erreichen.
+  // And every point that EXISTS in the dialog must also be reached by the flow.
   const gezeigt = [...html.matchAll(/class="prog-step" id="ps-([a-z-]+)"/g)].map(m => m[1]);
   assert.ok(gezeigt.length >= 2, `nur ${gezeigt.length} Punkte im Dialog — Anker stimmt nicht mehr`);
   const neverTouched = gezeigt.filter(g => !(g in zustand));

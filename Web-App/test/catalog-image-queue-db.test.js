@@ -1,12 +1,12 @@
 /**
- * Der Katalog stösst nicht mehr Bilder an, als jemand ansieht.
+ * The catalog no longer triggers more images than someone looks at.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-// Der Bild-Download über das Bildwerk der Dienste: gezählt, ohne Netz.
+// The image download via the services' image machinery: counted, without network.
 let kicked = 0;
 
 const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
@@ -39,13 +39,13 @@ test('the catalog list triggers no image work at all', { concurrency: 1 }, async
   const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
 
   try {
-    // Zehn Seiten in schneller Folge — so wie beim Durchscrollen.
+    // Ten pages in quick succession — as when scrolling through.
     for (let seite = 1; seite <= 10; seite++)
       await (await fetch(`${base}/api/v1/catalog/sets?limit=60&page=${seite}&sort=year_desc`)).json();
-    // Warten, bis die Warteschlange durchgelaufen wäre.
+    // Wait until the queue would have run through.
     await new Promise(r => setTimeout(r, 2500));
 
-    // Aus dem Deckel wurde eine Null
+    // The cap became a zero
     assert.equal(
       kicked,
       0,

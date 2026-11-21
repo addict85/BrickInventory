@@ -1,6 +1,6 @@
 /**
- * pdfkit erzeugt tatsächlich ein gültiges PDF — mit genau der API, die diese
- * Anwendung benutzt.
+ * pdfkit actually produces a valid PDF — with exactly the API that this
+ * application uses.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,7 +8,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 
-/** Sammelt den Datenstrom eines Dokuments zu einem Puffer. */
+/** Collects the data stream of a document into a buffer. */
 function rendern(bauen) {
   const PDFDocument = require('pdfkit');
   return new Promise((fertig, fehler) => {
@@ -33,7 +33,7 @@ function isValidPdf(b, wo) {
 }
 
 test('the parts list export draws a valid PDF', async () => {
-  // Derselbe Methodensatz wie in routes/api_v1/pdf.ts.
+  // The same set of methods as in routes/api_v1/pdf.ts.
   const b = await rendern(doc => {
     doc.font('Helvetica-Bold').fontSize(16).text('Teileliste');
     doc.moveDown(0.5);
@@ -50,10 +50,10 @@ test('the parts list export draws a valid PDF', async () => {
 });
 
 test('images are embedded — JPEG and PNG', async () => {
-  // ── Warum gerade das ─────────────────────────────────────────────────────
-  // jpeg-exif war pdfkits JPEG-Leser. Wenn ein Versionssprung das Einbetten
-  // bricht, dann hier — und Bauanleitungen bestehen ausschliesslich aus
-  // Bildseiten (src/catalog/instructions.ts, buildImagePDF_fromBuffers).
+  // ── Why exactly this ─────────────────────────────────────────────────────
+  // jpeg-exif was pdfkit's JPEG reader. If a version jump breaks the embedding,
+  // then here — and building instructions consist exclusively of
+  // image pages (src/catalog/instructions.ts, buildImagePDF_fromBuffers).
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pdfkit-'));
   const jpg = path.join(dir, 'p.jpg');
   const png = path.join(dir, 'p.png');
@@ -82,7 +82,7 @@ test('images are embedded — JPEG and PNG', async () => {
       doc.image(png, 0, 0, { width: 600 });
     });
     isValidPdf(b, 'Bildseiten');
-    // Beide Bildformate müssen als XObject im Dokument landen.
+    // Both image formats must end up as an XObject in the document.
     const text = b.toString('latin1');
     assert.ok(text.includes('/DCTDecode'), 'Das JPEG wurde nicht eingebettet');
     assert.ok(text.includes('/FlateDecode'), 'Das PNG wurde nicht eingebettet');
@@ -92,9 +92,9 @@ test('images are embedded — JPEG and PNG', async () => {
 });
 
 test('jpeg-exif is no longer in the dependency tree', () => {
-  // Der Auslöser dieses Nachtrags. Wandert die Abhängigkeit über eine andere
-  // Bibliothek zurück, soll das auffallen — die Warnung im Installationslog
-  // liest niemand zuverlässig.
+  // The trigger of this addition. If the dependency comes back via another
+  // library, that should stand out — nobody reliably reads the warning
+  // in the installation log.
   const lock = require(path.join(__dirname, '..', 'package-lock.json'));
   const treffer = Object.keys(lock.packages || {}).filter(p => p.includes('jpeg-exif'));
   assert.deepEqual(

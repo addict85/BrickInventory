@@ -1,5 +1,5 @@
 /**
- * Die Zahl über der Galerie muss zu dem passen, was darunter steht.
+ * The number above the gallery must match what stands below it.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -33,7 +33,7 @@ test('header and gallery count the same sets', async t => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchemaOnce();
-  // Und die MIGRATIONEN, nicht nur das Schema
+  // And the MIGRATIONS, not only the schema
   {
     const mc = await db.pool.connect();
     try {
@@ -49,8 +49,8 @@ test('header and gallery count the same sets', async t => {
     kind = await id('kind');
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
 
-  // 75192-1 besitzen BEIDE — ohne diese Überschneidung stimmen Zeilenzahl und
-  // Kachelzahl zufällig überein, und der Test prüfte nichts.
+  // BOTH own 75192-1 — without this overlap row count and
+  // tile count match by chance, and the test checked nothing.
   await holdsSet(db, haupt, '75192-1', 1);
   await holdsSet(db, kind, '75192-1', 1);
   await holdsSet(db, kind, '21318-1', 1);
@@ -82,9 +82,9 @@ test('header and gallery count the same sets', async t => {
     );
   }
 
-  // Die andere Lesart bleibt erhalten und steht in der App als eigene Kachel
-  // daneben („Einheiten"). Ohne diese Zusicherung wäre die naheliegende
-  // „Korrektur" — beide auf DISTINCT — unbemerkt geblieben.
+  // The other reading is preserved and stands in the app as its own tile
+  // next to it („Einheiten"). Without this assertion the obvious
+  // „correction" — both on DISTINCT — would have gone unnoticed.
   const alle = await getStats(await scopeIds(haupt, 'all'));
   assert.equal(alle.total_quantity, 3, 'Exemplare zählen weiterhin einzeln: zwei Konten mit demselben Set plus eines');
   assert.equal(alle.total_sets, 2, 'verschiedene Sets im Haushalt');

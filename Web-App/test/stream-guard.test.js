@@ -1,9 +1,9 @@
 /**
- * Eine Datei, die zwischen Prüfung und Auslieferung verschwindet, darf den
- * Prozess NICHT beenden.
+ * A file that disappears between check and delivery must NOT end the
+ * process.
  *
- * Gegenprobe (durchgeführt): streamFileToResponse wieder durch
- * `createReadStream(...).pipe(res)` ersetzt → Kindprozess endet mit Code 7.
+ * Counter-check (carried out): streamFileToResponse replaced again by
+ * `createReadStream(...).pipe(res)` → child process ends with code 7.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -46,8 +46,8 @@ test('a vanished file during delivery does not end the process', async () => {
       );
     }
     assert.ok(!out.includes('CRASH:'), `der Lesefehler hat den Prozess abgeschossen: ${out.trim()}`);
-    // Solange noch keine Kopfzeilen raus sind, wird der Fehler als 404 gemeldet
-    // statt die Verbindung wortlos fallen zu lassen.
+    // As long as no headers are out yet, the error is reported as 404
+    // instead of silently dropping the connection.
     assert.match(out, /STATUS:404/, `erwartet wurde HTTP 404, Ausgabe: ${out.trim()}`);
   } finally {
     fs.rmSync(file, { force: true });

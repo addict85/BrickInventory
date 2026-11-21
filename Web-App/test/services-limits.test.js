@@ -1,14 +1,14 @@
 /**
- * Ein Bereich gibt nur seine Dienste heraus, nicht seinen Kontext (Zugang,
- * Transaktion, Repositories, Fächer): Die Probe test/fixtures/services-limits.ts
- * greift darauf mit @ts-expect-error zu, und tsc muss jeden Zugriff ablehnen.
+ * An area only hands out its services, not its context (access,
+ * transaction, repositories, compartments): the probe test/fixtures/services-limits.ts
+ * accesses them with @ts-expect-error, and tsc must reject every access.
  *
- * Gegenproben (14.11.2026 gemessen, je einzeln):
- *   A  in createInventory (src/inventory/area.ts) wieder `...k,` vor die Dienste →
- *      rot: vier unbenutzte @ts-expect-error (d.inventory.db, .transaktion,
+ * Counter-checks (measured 14.11.2026, each on its own):
+ *   A  in createInventory (src/inventory/area.ts) again `...k,` before the services →
+ *      red: four unused @ts-expect-error (d.inventory.db, .transaktion,
  *      .papierkorb, .manuelleMengen)
- *   B  in createAccount `protokoll: k.protokoll,` ergänzt → rot: d.account.protokoll
- *   C  `locationService` aus createInventory entfernt → rot: tsc meldet die Nutzer und die Probe
+ *   B  `protokoll: k.protokoll,` added in createAccount → red: d.account.protokoll
+ *   C  `locationService` removed from createInventory → red: tsc reports the users and the probe
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

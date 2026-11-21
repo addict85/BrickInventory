@@ -1,12 +1,12 @@
 /**
- * Ein Konto hält höchstens fünf offene Haushaltseinladungen. Jede ist ein
- * gültiger Weg in den Haushalt (24 h); beliebig viele brauchte niemand, und
- * die Tabelle wuchs mit jedem Klick.
+ * An account holds at most five open household invitations. Each is a
+ * valid way into the household (24 h); nobody needed arbitrarily many, and
+ * the table grew with every click.
  *
- * Gegenprobe (01.11.2026 gemessen): die Prüfung in createInvitation() gestrichen
- * → rot: „die sechste …" (200 statt 409).
+ * Counter-check (measured 01.11.2026): the check deleted in createInvitation()
+ * → red: “the sixth …" (200 instead of 409).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

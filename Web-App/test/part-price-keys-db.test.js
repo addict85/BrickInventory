@@ -1,5 +1,5 @@
 /**
- * Der Marktpreis eines manuell erfassten Teils erreicht das Detailfenster.
+ * The market price of a manually captured part reaches the detail window.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -24,11 +24,11 @@ test('prices are under the BrickLink number, acquisitions under the Rebrickable 
   const u = await db.get(
     `INSERT INTO users (username, password_hash) VALUES ('t_'||floor(random()*1e9),'x') RETURNING id`,
   );
-  // Kontowährung wie die abgefragte: Eine andere würde umgerechnet (Migration 0077).
+  // Account currency like the queried one: another one would be converted (migration 0077).
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')`, [u.id]);
 
-  // Marcos Lage nachgebaut: Die BrickLink-Nummer weicht ab, die Farbe auch.
-  // Die Zuordnung steht seit Migration 0037 in bl_mapping (type, rb_id, bl_id).
+  // Marco's situation recreated: the BrickLink number differs, the color too.
+  // Since migration 0037 the mapping stands in bl_mapping (type, rb_id, bl_id).
   await db.run(
     `INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part','31000','bl31000')
      ON CONFLICT DO NOTHING`,
@@ -38,13 +38,13 @@ test('prices are under the BrickLink number, acquisitions under the Rebrickable 
      ON CONFLICT (id) DO UPDATE SET bl_color_id = 7`,
   );
 
-  // Erfassung mit Rebrickable-Schlüssel …
+  // Acquisition with Rebrickable key …
   await db.run(
     `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition)
      VALUES ($1,'31000',1,2,'0.11','U')`,
     [u.id],
   );
-  // … Preis mit BrickLink-Schlüssel.
+  // … price with BrickLink key.
   await db.run(
     `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price)
      VALUES ('bl31000',7,'U','CHF',0.13,0.13)

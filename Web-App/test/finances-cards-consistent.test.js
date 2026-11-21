@@ -1,18 +1,18 @@
 /**
- * Finanzen: Die Karten Einstand, Marktwert und Gewinn/Verlust widersprechen
- * sich nie. Der Server rechnet sie über dieselben Positionen (mit Kauf- und
- * Marktpreis, Geschenke mit 0), die Oberfläche zeigt genau diese Zahlen und
- * nennt, was nicht gerechnet ist. Geprüft wird die echte Serverrechnung
- * (baseTheMetrics) durch das echte Bündel in jsdom.
+ * Finances: the cards cost, market value and gain/loss never contradict
+ * each other. The server computes them over the same items (with purchase and
+ * market price, gifts with 0), the UI shows exactly these numbers and
+ * names what is not computed. What is checked is the real server computation
+ * (baseTheMetrics) through the real bundle in jsdom.
  *
- * Gegenproben (am 03.11.2026 gemessen):
- *   A  in showMetrics() wieder costAll statt basis.einstand → rot:
- *      „Einstand + G/V = Marktwert“
- *   B  in comparableSums() wieder nur Kaufpreis > 0 (Geschenk raus) → rot:
- *      beide Tests
- *   C  in baseTheMetrics() withoutPurchase nicht gezählt → rot: „Server: Geschenk
- *      zählt mit …“ (Zähler [11, 5, 6, 0])
- *   D  Diagrammkopf wieder grandTotal → rot: „Diagrammkopf = Marktwert-Karte“
+ * Counter-checks (measured on 03.11.2026):
+ *   A  in showMetrics() again costAll instead of basis.einstand → red:
+ *      “cost + G/L = market value”
+ *   B  in comparableSums() again only purchase price > 0 (gift out) → red:
+ *      both tests
+ *   C  in baseTheMetrics() withoutPurchase not counted → red: “server: gift
+ *      counts along …” (counter [11, 5, 6, 0])
+ *   D  chart header back to grandTotal → red: “chart header = market value card”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -21,7 +21,7 @@ const { baseTheMetrics, totalGuvPercent } = _req('src/finances/calculation/profi
 const { openUi, reiter, warte } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
-/** Zahl aus formatiertem Text, gleich welche Trennzeichen die Sprache setzt: „1’863.90“, „1.863,90 €“, „−21,8 %“. */
+/** Number from formatted text, whatever separators the language sets: “1’863.90”, “1.863,90 €”, “−21,8 %”. */
 const betrag = s => {
   const m = String(s).match(/([−+-]?)\s*(\d[\d’'.,\u202f\u00a0]*)/);
   if (!m) return NaN;
@@ -32,8 +32,8 @@ const betrag = s => {
   return m[1] === '−' || m[1] === '-' ? -v : v;
 };
 
-// Wie im Konto „anna“: drei Sets mit beiden Preisen, ein Geschenk, vier Sets
-// ohne Marktpreis, ein Set ohne Kaufpreis, ein Teil und eine Figur ohne Marktpreis.
+// As in the account “anna”: three sets with both prices, one gift, four sets
+// without market price, one set without purchase price, a part and a minifigure without market price.
 const SETS = [
   ['10294-1', 679.99, 712.4],
   ['75192-1', 650, 801.5],

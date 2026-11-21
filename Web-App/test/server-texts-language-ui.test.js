@@ -1,10 +1,10 @@
 /**
- * Die Hintergrundarbeiten übersetzen den Untertitel einer Kachel aus den Codes
- * des Servers (`sub_teile`, UI-Prüfung 17 M17); der deutsche Satz in `sub`
- * erscheint in der englischen Oberfläche nicht mehr. Echtes Bündel in jsdom.
+ * The background jobs translate the subtitle of a tile from the codes
+ * of the server (`sub_teile`, UI check 17 M17); the German sentence in `sub`
+ * no longer appears in the English UI. Real bundle in jsdom.
  *
- * Gegenprobe (05.11.2026 gemessen): in monitor.js wieder nur
- * translateJobSub(j.sub) → rot (die Kachel zeigt „Keine ausstehenden Einträge“).
+ * Counter-check (measured 05.11.2026): in monitor.js again only
+ * translateJobSub(j.sub) → red (the tile shows „Keine ausstehenden Einträge“).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

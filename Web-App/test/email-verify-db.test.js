@@ -1,18 +1,18 @@
 /**
- * E-Mail-Verifikation gegen eine ECHTE Datenbank.
+ * E-mail verification against a REAL database.
  *
- * ── Gegenproben (04.11.2026 gemessen, je einzeln) ───────────────────────────
- * Seit Runde 13 trägt eine Registrierung Adresse und Link in new_email*.
- *   A  in adoptEmailNew() `AND new_email_until > NOW()` gestrichen → rot:
- *      „abgelaufener Token wird abgelehnt …“
- *   B  adoptEmailNew() ohne `registration_pending = false` → rot: „gültiger
- *      Token …“ (die Registrierung bliebe offen und gesperrt)
- *   C  adoptEmailNew() ohne erneute Vergabeprüfung UND ohne den Fang von
- *      23505 → rot: „die erste Bestätigung gewinnt …“ (Fehler aus dem Index;
- *      jede der beiden allein hält)
+ * ── Counter-checks (measured 04.11.2026, each alone) ────────────────────────
+ * Since round 13 a registration carries address and link in new_email*.
+ *   A  in adoptEmailNew() `AND new_email_until > NOW()` deleted → red:
+ *      “expired token is rejected …”
+ *   B  adoptEmailNew() without `registration_pending = false` → red: “valid
+ *      token …” (the registration would stay open and locked)
+ *   C  adoptEmailNew() without the repeated assignment check AND without catching
+ *      23505 → red: “the first confirmation wins …” (error from the index;
+ *      each of the two alone holds)
  *
- * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
- * Ohne DB: skip — ausser REQUIRE_DB=1, dann Fehler.
+ * Prerequisite: test DB (content is emptied!) via TEST_DATABASE_URL.
+ * Without DB: skip — unless REQUIRE_DB=1, then error.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -41,7 +41,7 @@ async function seed() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  // Und die MIGRATIONEN, nicht nur das Schema
+  // And the MIGRATIONS, not only the schema
   {
     const mc = await db.pool.connect();
     try {
@@ -52,8 +52,8 @@ async function seed() {
   }
 }
 
-/** Eine offene Registrierung wie POST /register sie anlegt. `minutesValid` negativ =
- * abgelaufen. Gibt den ROHEN Token zurück — in der DB steht nur sein SHA-256. */
+/** An open registration as POST /register creates it. `minutesValid` negative =
+ * expired. Returns the RAW token — the DB only holds its SHA-256. */
 async function newUser(name, { minutesValid = 60, email = `${name}@example.ch` } = {}) {
   const token = crypto.randomBytes(16).toString('hex');
   const { id } = await db.get(
@@ -131,7 +131,7 @@ test('email verification against a real database', async t => {
     assert.deepEqual([z.email, z.registration_pending, z.new_email_token], [null, true, null]);
   });
 
-  // Die fuenf Faelle ueber die API-Route sind ENTFERNT
+  // The five cases via the API route are REMOVED
 
   await db.pool.end().catch(() => {});
 });

@@ -1,6 +1,6 @@
 /**
- * Der Preisverlauf einer Minifigur findet ihre Preise auch unter der
- * BrickLink-Nummer.
+ * The price history of a minifigure also finds its prices under the
+ * BrickLink number.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -17,11 +17,11 @@ const { holdsMinifig } = require('./helpers/inventory');
 
 test('the figure price history finds the prices under the BrickLink number', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
-  // minifig_price_history steht bewusst NUR in db/migrations/0003.
-  // initSchema() legt sie nicht an; ohne
-  // diesen Schritt liefe der Test gegen ein Schema, das es im Betrieb nicht
-  // gibt. Die Migrationen sind idempotent und überspringen bereits
-  // eingespielte Stände über schema_migrations.
+  // minifig_price_history deliberately stands ONLY in db/migrations/0003.
+  // initSchema() does not create it; without
+  // this step the test would run against a schema that does not exist in
+  // operation. The migrations are idempotent and skip already
+  // applied states via schema_migrations.
   const migClient = await db.pool.connect();
   try {
     await _req('db/migrate.js').runMigrations(migClient);
@@ -31,36 +31,36 @@ test('the figure price history finds the prices under the BrickLink number', { c
 
   const p = String(process.pid).slice(-5);
   const NUTZER = `fig_${p}`;
-  const EIGENE = `sw${p}`; // so hat der Benutzer die Figur erfasst
-  const BL = `sw${p}bl`; // so kennt BrickLink sie
-  const WITHOUT_BL = `sw${p}x`; // zweite Figur, ganz ohne BrickLink-Nummer
+  const EIGENE = `sw${p}`; // this is how the user captured the figure
+  const BL = `sw${p}bl`; // this is how BrickLink knows it
+  const WITHOUT_BL = `sw${p}x`; // second figure, entirely without a BrickLink number
   const CURRENCY = 'CHF';
 
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
-  // Kontowährung wie die abgefragte: Eine andere würde umgerechnet (Migration 0077).
+  // Account currency like the queried one: another one would be converted (migration 0077).
   await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency',$2)`, [uid, CURRENCY]);
 
   try {
-    // Die Figur trägt eine ABWEICHENDE BrickLink-Nummer — der Fall, für den
-    // es das Feld gibt.
-    // Die Nummer steht seit Migration 0037 in bl_mapping — einmal je
-    // Figur, ohne Konto. An der Bestandszeile stand sie je Konto.
-    await holdsMinifig(db, uid, EIGENE, { menge: 0 }); // Menge 0: die Erfassung dahinter traegt sie
+    // The figure carries a DIFFERENT BrickLink number — the case for which
+    // the field exists.
+    // Since migration 0037 the number stands in bl_mapping — once per
+    // figure, without an account. On the stock row it stood per account.
+    await holdsMinifig(db, uid, EIGENE, { menge: 0 }); // quantity 0: the acquisition behind it carries it
     await db.run(
       `INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('fig',$1,$2)
        ON CONFLICT (type, rb_id) DO UPDATE SET bl_id = EXCLUDED.bl_id`,
       [EIGENE, BL],
     );
-    // Der Kaufpreis steht unter der Nummer des Benutzers.
+    // The purchase price stands under the user's number.
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id,fig_number,quantity,unit_price,condition)
        VALUES ($1,$2,1,4.00,'N')`,
       [uid, EIGENE],
     );
-    // Marktpreis und Verlauf stehen unter der BRICKLINK-Nummer — so schreibt
-    // sie fetchMinifigPrice, wenn der Abruf über bl_fig_number geklappt hat.
+    // Market price and history stand under the BRICKLINK number — that is how
+    // fetchMinifigPrice writes them when the fetch via bl_fig_number worked.
     await db.run(
       `INSERT INTO minifig_price_cache (fig_number,condition,currency_code,avg_price,qty_avg_price)
        VALUES ($1,'N',$2,9.00,9.00)
@@ -91,8 +91,8 @@ test('the figure price history finds the prices under the BrickLink number', { c
     );
     assert.ok(v.history_new.length >= 1, 'Der Verlauf ist leer — dann bleibt das Diagramm leer, obwohl Punkte da sind');
 
-    // Und die andere Hälfte: die EIGENE Nummer darf nicht wegfallen
-    await holdsMinifig(db, uid, WITHOUT_BL, { menge: 0 }); // Menge 0: die Erfassung dahinter traegt sie
+    // And the other half: the OWN number must not drop away
+    await holdsMinifig(db, uid, WITHOUT_BL, { menge: 0 }); // quantity 0: the acquisition behind it carries it
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id,fig_number,quantity,unit_price,condition)
        VALUES ($1,$2,1,3.00,'N')`,

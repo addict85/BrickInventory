@@ -1,19 +1,19 @@
 /**
- * Ein Konto entfernen: Protokoll, Zeile und Sitzungen in einer Transaktion,
- * Dateien danach mit Ausgleich (Auftrag „konto_dateien“), wenn sie sich nicht
- * löschen lassen. Ein Ablauf für Verwalter und eigenes Konto (src/account/removeAccount.ts).
+ * Removing an account: log, row and sessions in one transaction,
+ * files afterwards with compensation (job “konto_dateien”) if they cannot
+ * be deleted. One flow for administrators and the own account (src/account/removeAccount.ts).
  *
- * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in kontoEntfernen() Sitzungsversion und Sitzungen erst nach der Transaktion
- *      gelöscht → rot: „scheitert ein Schritt, bleibt alles, wie es war“ (Konto weg)
- *   B  protokolliere() nach der Transaktion → rot: dieselbe Prüfung (Eintrag ohne Löschung)
- *   C  in removeAccountFiles() den Fang entfernt → rot: „liegen die Dateien
- *      fest, übernimmt ein Auftrag“ (die Löschung meldet einen Fehler)
+ * Counter-checks (measured 09.11.2026, each alone):
+ *   A  in kontoEntfernen() session version and sessions deleted only after the transaction
+ *      → red: “if a step fails, everything stays as it was” (account gone)
+ *   B  protokolliere() after the transaction → red: the same check (entry without deletion)
+ *   C  in removeAccountFiles() the catch removed → red: “if the files are
+ *      stuck, a job takes over” (the deletion reports an error)
  *
- * Die Sitzungslöschung scheitert an einem Trigger in der Datenbank (wie ein echter
- * Fehler dort), nicht an einem umgebogenen Modul. A am 13.11.2026 so wiederholt: rot.
+ * The session deletion fails on a trigger in the database (like a real
+ * error there), not on a bent module. A repeated like this on 13.11.2026: red.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,25 +1,25 @@
 /**
- * Die Gutscheinnummer liegt verschlüsselt in der Datenbank: nach dem Anlegen
- * in keiner Spalte im Klartext, über die API lesbar wie zuvor, Doppelte über
- * den HMAC in nummer_suche erkannt. PDF, Export und Import tragen die Nummer
- * weiter, und ein Altbestand aus der Zeit davor wird beim Start umgeschlüsselt,
- * samt der Sicherungskopie, die die Migration anlegt.
+ * The voucher number lies encrypted in the database: after creation
+ * in no column in plain text, readable via the API as before, duplicates detected via
+ * the HMAC in nummer_suche. PDF, export and import carry the number
+ * on, and a legacy stock from the time before is re-encrypted at startup,
+ * including the backup copy that the migration creates.
  *
- * Gegenproben (am 01.11.2026 gemessen):
- *   A  in createVoucher die Nummer unverschlüsselt geschrieben → rot:
- *      „nach dem Anlegen …“ (500: der CHECK der Migration lehnt ab)
- *   B  wie A und zusätzlich den CHECK aus 0087 entfernt → rot: „nach dem
- *      Anlegen …“ (die Nummer steht in der Zeile)
- *   C  numberColumns() ohne das Konto im HMAC → rot: „Doppelte …“ (zwei
- *      Konten, derselbe Suchwert)
- *   D  in prepareDatabaseBefore() reencryptNumbers() weggelassen →
- *      rot: „ein Altbestand …“
- *   E  reencryptCopies() weggelassen → rot: „ein Altbestand …“ (die
- *      Kopie vor_migration_* trägt die Nummer im Klartext)
+ * Counter-checks (measured on 01.11.2026):
+ *   A  the number written unencrypted in createVoucher → red:
+ *      “after creation …” (500: the CHECK of the migration refuses)
+ *   B  like A and additionally the CHECK removed from 0087 → red: “after
+ *      creation …” (the number stands in the row)
+ *   C  numberColumns() without the account in the HMAC → red: “duplicates …” (two
+ *      accounts, the same search value)
+ *   D  reencryptNumbers() left out in prepareDatabaseBefore() →
+ *      red: “a legacy stock …”
+ *   E  reencryptCopies() left out → red: “a legacy stock …” (the
+ *      copy vor_migration_* carries the number in plain text)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -31,7 +31,7 @@ const PDFKit = require('pdfkit');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATA_KEY = crypto.randomBytes(32).toString('base64');
-// Vor dem Laden: appPaths rechnet DATA_DIR beim Einlesen aus APP_ROOT.
+// Before loading: appPaths computes DATA_DIR from APP_ROOT when reading in.
 const SANDBOX = fs.mkdtempSync(path.join(os.tmpdir(), 'gutscheinnummer-'));
 fs.mkdirSync(path.join(SANDBOX, 'data'), { recursive: true });
 fs.writeFileSync(path.join(SANDBOX, 'package.json'), '{"name":"sandkasten"}');
@@ -46,7 +46,7 @@ const gr = {
   ..._req('src/vouchers/repository/vouchers.js'),
   ...require('./helpers/sources').testArea('vouchers').vouchers,
 };
-/** Das Format vor dem Kontext: v1, AES-GCM mit dem Rohschlüssel, ohne AAD. */
+/** The format before the context: v1, AES-GCM with the raw key, without AAD. */
 function alsV1(klar) {
   const iv = crypto.randomBytes(12),
     c = crypto.createCipheriv('aes-256-gcm', Buffer.from(process.env.DATA_KEY, 'base64'), iv);
@@ -108,7 +108,7 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
     });
     return { status: r.status, body: await r.json() };
   };
-  /** Nummer und PIN über den bestätigten Weg; die Liste zeigt nur die Maske. */
+  /** Number and PIN via the confirmed path; the list only shows the mask. */
   const klartext = async (srv, id) => {
     const k = await ruf(srv, 'POST', `/vouchers/${id}/klartext`, { password: PASS });
     assert.equal(k.status, 200, JSON.stringify(k.body));
@@ -142,7 +142,7 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
     const zeile = await rowAsText(id1);
     assert.ok(!zeile.includes(NR2) && !zeile.includes(NR1), zeile);
     assert.notEqual((await db.get('SELECT number_search FROM vouchers WHERE id = $1', [id1])).number_search, suche);
-    // Nur der Betrag: Die Nummer kommt entschlüsselt aus der Zeile und geht verschlüsselt zurück.
+    // Only the amount: the number comes decrypted from the row and goes back encrypted.
     const b = await ruf(haupt, 'PUT', `/vouchers/${id1}`, { amount: 40 });
     assert.deepEqual([b.status, (await klartext(haupt, id1))[0], b.body.voucher.amount], [200, NR2, 40]);
     assert.ok(!(await rowAsText(id1)).includes(NR2));
@@ -211,7 +211,7 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
   });
 
   await t.test('a legacy stock is re-encrypted at startup, including a backup copy', async () => {
-    // Der Stand vor 0087: Nummer im Klartext, eindeutig über (user_id, number).
+    // The state before 0087: number in plain text, unique via (user_id, number).
     await db.run('DELETE FROM vouchers');
     await db.run(`ALTER TABLE vouchers DROP CONSTRAINT vouchers_nummer_verschluesselt,
       DROP CONSTRAINT vouchers_user_id_nummer_suche_key, DROP COLUMN number_search,
@@ -236,9 +236,9 @@ test('voucher number encrypted', { concurrency: 1 }, async t => {
         ).id,
       );
 
-    // 0087 legt die Spalte noch unter ihrem alten Namen an; 0124 (längst
-    // angewandt) hätte sie sonst gleich danach umbenannt, wie bei einer
-    // echten Reihenfolge der Migrationen.
+    // 0087 still creates the column under its old name; 0124 (applied
+    // long ago) would otherwise have renamed it right afterwards, as with a
+    // real order of the migrations.
     await testAccess().initSchemaOnce();
     await db.run('ALTER TABLE vouchers RENAME COLUMN nummer_suche TO number_search');
     await _req('startup/database.js').legacyStockUpgrade(require('./helpers/sources').testServices());

@@ -1,20 +1,20 @@
 /**
- * Eingaben werden im Betrieb gegen den Vertrag geprüft, bevor die Route läuft
- * (checkInput in src/http/contractRouter.ts, von vertragsRouter() vor
- * jeden Endpunkt gesetzt). Eine Liste statt eines Textes kam vorher an
- * USERNAME_RE vorbei bis ins SQL, und Freitext war unbegrenzt.
+ * Inputs are checked against the contract in production before the route runs
+ * (checkInput in src/http/contractRouter.ts, set before every endpoint by
+ * vertragsRouter()). A list instead of a text previously got past
+ * USERNAME_RE into the SQL, and free text was unlimited.
  *
- * Gegenproben (am 01.11.2026 gemessen):
- *   A  in vertragsRouter() das Einsetzen von checkInput entfernt → rot:
- *      „eine Liste statt eines Namens ist 400“, „Freitext ist begrenzt“ und
- *      „ein wiederholter Abfragewert ist 400“
- *   B  in checkInput die Abfrageprüfung entfernt → rot: „ein
- *      wiederholter Abfragewert ist 400“
- *   C  in checkInput den eigenen Fehler der Prüfer übergangen (immer
- *      eingabe_ungueltig) → rot: „die Prüfer aus validate.ts antworten wie die
- *      Route“
+ * Counter-checks (measured on 01.11.2026):
+ *   A  in vertragsRouter() inserting checkInput removed → red:
+ *      “a list instead of a name is 400”, “free text is limited” and
+ *      “a repeated query value is 400”
+ *   B  the query check removed in checkInput → red: “a
+ *      repeated query value is 400”
+ *   C  in checkInput the validators' own error ignored (always
+ *      eingabe_ungueltig) → red: “the validators from validate.ts answer like the
+ *      route”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

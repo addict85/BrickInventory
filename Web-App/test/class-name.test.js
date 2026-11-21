@@ -1,5 +1,5 @@
 /**
- * Jeder Klassenname tut etwas — er gestaltet oder er ist ein Griff.
+ * Every class name does something — it styles or it is a handle.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -10,16 +10,16 @@ const ROOT = path.join(__dirname, '..');
 const PUB = path.join(ROOT, 'public');
 
 /**
- * Ein Klassenname in einem Selektor.
+ * A class name in a selector.
  *
- * Mit Vorausschau statt Verbrauch: `.bstat .bstat-l{…}` — ein Muster, das das
- * Trennzeichen MITISST, verschluckt den Punkt des zweiten Namens und meldet
- * ihn dann als undefiniert. Genau das ist beim ersten Anlauf passiert und hat
- * zwölf Fehlalarme erzeugt.
+ * With lookahead instead of consumption: `.bstat .bstat-l{…}` — a pattern that
+ * EATS the separator swallows the dot of the second name and then reports
+ * it as undefined. Exactly that happened on the first attempt and
+ * produced twelve false alarms.
  */
 const CLASS = /\.(-?[A-Za-z_][\w-]*)(?=[\s,{:.[)>~+]|$)/g;
 
-/** Alle Quelldateien der Oberfläche — ohne Kommentare, ohne das Bündel. */
+/** All source files of the UI — without comments, without the bundle. */
 function quellen() {
   const out = [];
   const lauf = d => {
@@ -44,21 +44,21 @@ test('every class name styles something or is a handle', () => {
   const dateien = quellen();
   assert.ok(dateien.length >= 20, `Nur ${dateien.length} Quelldateien gefunden`);
 
-  // Definiert: alles, was in einem Stylesheet als Selektor steht — UND was das
-  // Skript selbst als Stil zusammensetzt. Die Protokollseite (monitor.js) baut
-  // ihr eigenes <style> als Zeichenkette; ohne diesen Schritt gälten ihre
-  // sechs Klassen als undefiniert.
+  // Defined: everything that stands as a selector in a stylesheet — AND what the
+  // script itself assembles as style. The log page (monitor.js) builds
+  // its own <style> as a string; without this step its six classes would
+  // count as undefined.
   const definiert = new Set();
   for (const [rel, s] of dateien) if (/\.(css|js)$/.test(rel)) for (const m of s.matchAll(CLASS)) definiert.add(m[1]);
-  // Dazu der eine Inline-Stil in index.html (Startgerüst, per Hash in der CSP).
+  // Plus the one inline style in index.html (startup skeleton, via hash in the CSP).
   for (const [rel, s] of dateien)
     if (rel.endsWith('index.html'))
       for (const m of (/<style id="startstil">([\s\S]*?)<\/style>/.exec(s)?.[1] ?? '').matchAll(CLASS))
         definiert.add(m[1]);
-  // GEMESSEN sind es 600.
+  // MEASURED there are 600.
   assert.ok(definiert.size >= 300, `Nur ${definiert.size} Klassennamen in den Stylesheets — Muster veraltet?`);
 
-  // Griffe: Namen, an denen JavaScript Elemente sucht oder umschaltet.
+  // Handles: names by which JavaScript finds or toggles elements.
   const griffe = new Set();
   for (const [rel, s] of dateien) {
     if (!rel.endsWith('.js')) continue;
@@ -72,12 +72,12 @@ test('every class name styles something or is a handle', () => {
   const benutzt = new Map();
   for (const [rel, s] of dateien) {
     if (rel.endsWith('.css')) continue;
-    // Kein `$` und keine Klammer: `class="chip ${aktiv}"` ist zusammengesetzt.
+    // No `$` and no brace: `class="chip ${aktiv}"` is composed.
     for (const m of s.matchAll(/class="([^"$<>{]*)"/g))
       for (const k of m[1].trim().split(/\s+/)) if (k && !benutzt.has(k)) benutzt.set(k, rel);
     for (const m of s.matchAll(/classList\.\w+\(\s*['"]([\w-]+)['"]/g)) if (!benutzt.has(m[1])) benutzt.set(m[1], rel);
   }
-  // GEMESSEN sind es 161.
+  // MEASURED there are 161.
   assert.ok(benutzt.size >= 100, `Nur ${benutzt.size} benutzte Klassennamen gefunden — Muster veraltet?`);
 
   const wirkungslos = [...benutzt]

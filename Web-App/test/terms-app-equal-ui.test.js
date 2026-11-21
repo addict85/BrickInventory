@@ -1,16 +1,16 @@
 /**
- * Dieselben Namen und Schreibweisen wie die Android-App: „Bauliste“ / „Build
- * list“ statt „Teileliste“, Mengen als „×N“, Zustand „Neuware“ statt „Neu“.
- * Am echten Bündel in jsdom, in beiden Sprachen.
+ * The same names and spellings as the Android app: „Bauliste“ / „Build
+ * list“ instead of „Teileliste“, quantities as „×N“, condition „Neuware“ instead of „Neu“.
+ * On the real bundle in jsdom, in both languages.
  *
- * Gegenproben (02.11.2026 gemessen, je einzeln):
- *   A  nav.partslist (de) wieder „Teileliste“ → rot: „de: Bauliste …“
- *   B  partsCard wieder `${…}×` → rot: „Teilekachel zeigt ×N“
- *   C  common.condition_new (de) wieder „Neu“ → rot: „de: Bauliste …“
- *   D  gallery.add.number (de) wieder „Set-Nummer *“ → rot: „de: Setnummer ohne
- *      Bindestrich“ (08.11.2026)
- *   E  im Lagerort-Feld data-i18n-attr="placeholder" entfernt → rot: „en: Platzhalter
- *      des Lagerort-Felds“ (es bliebe „Neuer Lagerort“)
+ * Counter-checks (measured 02.11.2026, each on its own):
+ *   A  nav.partslist (de) again „Teileliste“ → red: “de: Bauliste …”
+ *   B  partsCard again `${…}×` → red: “parts tile shows ×N”
+ *   C  common.condition_new (de) again „Neu“ → red: “de: Bauliste …”
+ *   D  gallery.add.number (de) again „Set-Nummer *“ → red: “de: set number without
+ *      hyphen” (08.11.2026)
+ *   E  data-i18n-attr="placeholder" removed in the storage location field → red: “en: placeholder
+ *      of the storage location field” (it would remain „Neuer Lagerort“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

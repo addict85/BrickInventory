@@ -1,14 +1,14 @@
 /**
- * Mengenänderungen von zwei Geräten zugleich gehen nicht verloren: Ein
- * relativer Schritt (quantity_delta) zählt, und die Menge wird erst in der
- * Sperre gelesen.
+ * Quantity changes from two devices at the same time do not get lost: a
+ * relative step (quantity_delta) counts, and the quantity is only read inside the
+ * lock.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  in changeSet die Zielmenge aus dem Blick vorab statt in der Sperre
- *      genommen → rot: „zwei gleichzeitige +1 ergeben +2“ (3 statt 4)
- *   B  quantity_delta ignoriert (wie vor der Änderung) → rot: alle drei Fälle
+ * Counter-checks (measured on 28.10.2026):
+ *   A  in changeSet the target quantity taken from the view beforehand instead of inside the lock
+ *      → red: “two concurrent +1 result in +2” (3 instead of 4)
+ *   B  quantity_delta ignored (as before the change) → red: all three cases
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -29,7 +29,7 @@ test('quantity change without lost additions', { concurrency: 1 }, async t => {
     SN = `31170-${process.pid % 1000}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;
-  // Ein Marktpreis im Cache: Der Zugang braucht ihn, und so fragt niemand BrickLink.
+  // A market price in the cache: the addition needs it, and that way nobody asks BrickLink.
   await db.run('DELETE FROM price_cache WHERE set_number = $1', [SN]);
   await db.run(
     `INSERT INTO price_cache (set_number, condition, currency_code, avg_price, qty_avg_price, total_quantity)

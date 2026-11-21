@@ -1,18 +1,18 @@
 /**
- * Der BrickLink-Export der Teileliste — was er weglässt und was er sagt. Am
- * echten Bündel in jsdom: Bauliste erstellen, „BrickLink XML“ klicken, die
- * ausgelieferte Datei und die Meldungen lesen.
+ * The BrickLink export of the parts list — what it leaves out and what it says. On the
+ * real bundle in jsdom: create a build list, click „BrickLink XML“, read the
+ * delivered file and the messages.
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln, danach zurückgenommen):
- *   E  die Farbkette in plRenderTable wieder auf `?? p.color_id ?? ''` →
- *      rot: beide Fälle (COLOR 999 in der Datei, keine Meldung)
- *   F  statt `exportable` wieder `expanded` ins XML gegeben → rot: dieselbe
- *      Prüfung (Posten ohne COLOR in der Datei)
- *   G  die Erfolgsmeldung wieder als deutscher Text eingetippt → rot: „die
- *      Meldungen sind übersetzt“ (englische Oberfläche)
- *   H  der Export baut das XML wieder mit `<?xml …?>` davor → rot: „keine
- *      Rebrickable-Farbnummer …“ (Datei beginnt nicht mit <INVENTORY>)
- *   I  die Meldung pl.bl_no_color entfernt → rot: beide Fälle
+ * Counter-checks (measured 08.11.2026, each on its own, reverted afterwards):
+ *   E  the color chain in plRenderTable again to `?? p.color_id ?? ''` →
+ *      red: both cases (COLOR 999 in the file, no message)
+ *   F  instead of `exportable` again `expanded` given into the XML → red: the same
+ *      check (items without COLOR in the file)
+ *   G  the success message typed in again as German text → red: “the
+ *      messages are translated” (English UI)
+ *   H  the export builds the XML again with `<?xml …?>` in front → red: “no
+ *      Rebrickable color number …” (file does not begin with <INVENTORY>)
+ *   I  the message pl.bl_no_color removed → red: both cases
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -26,7 +26,7 @@ const ROT = {
   color_hex: 'C91A09',
   quantity: 6,
 };
-// Rebrickable-Farbe 999 kennt die Zuordnung nicht: Eine geratene Farbe bestellte das falsche Teil.
+// The mapping does not know Rebrickable color 999: a guessed color would order the wrong part.
 const UNKNOWN = {
   part_number: '3002',
   part_name: 'Brick 2 x 3',
@@ -81,7 +81,7 @@ async function bedienen(o, dateien) {
 test('no Rebrickable color number goes out as a BrickLink color — items without one are named', async () => {
   const { w, xml, meldungen } = await exportiere('de');
   try {
-    // Ohne XML-Deklaration: BrickLink lehnt eine Datei mit ihr ab (bricklink-wanted-xml.test.js prüft das Bauteil).
+    // Without an XML declaration: BrickLink rejects a file with one (bricklink-wanted-xml.test.js checks the building block).
     assert.ok(xml.startsWith('<INVENTORY>'), xml.slice(0, 60));
     assert.match(xml, /<ITEMID>3001<\/ITEMID>\s*<COLOR>5<\/COLOR>/, 'Die BrickLink-Farbe aus der Zuordnung');
     assert.doesNotMatch(xml, /3002|<COLOR>999<\/COLOR>|<COLOR>4<\/COLOR>/, xml);

@@ -1,25 +1,25 @@
 /**
- * Der Vertrag (src/contract/) deckt jede Route unter /api/v1 ab, die
- * Express wirklich kennt, und docs/openapi.json ist sein aktueller Stand.
- * Die Routen kommen aus den gebauten Routern (ihr stack), nicht aus dem
- * Quelltext: Was dort hängt, beantwortet Anfragen.
+ * The contract (src/contract/) covers every route under /api/v1 that
+ * Express really knows, and docs/openapi.json is its current state.
+ * The routes come from the built routers (their stack), not from the
+ * source text: whatever hangs there answers requests.
  *
- * Gegenproben (31.10.2026 gemessen):
- *   A  in docs/openapi.json einen Feldnamen (used_count) verändert → rot: „die
- *      eingecheckte openapi.json ist erzeugt“
- *   B  den Eintrag 'GET /api/v1/parts/stats' in src/contract/parts.ts
- *      umbenannt → rot: „jede Route hat einen Vertrag“ nennt ihn
- *   C  einen Eintrag 'GET /api/v1/gibt-es-nicht' ergänzt → rot: „kein Vertrag
- *      ohne Route“
- *   D  denselben Schlüssel in sets.ts und teile.ts → rot: „kein Schlüssel
- *      doppelt“ (der spätere überschriebe den früheren still)
- *   E  (05.11.2026) `klein: true` an 'GET /api/v1/storage' entfernt → rot:
- *      „jede lange Liste nimmt Seiten“ nennt /api/v1/storage
- *   F  (15.11.2026) SetItem.added_at wieder `.optional()` → rot: „Antwortfelder sind
- *      Pflicht …“ (720 freiwillige, erlaubt 719); SetItem.acq_count wieder `.nullable()`
- *      → rot (701 nullbare, erlaubt 700)
- *   G  (15.11.2026, je Datei) BarcodeResponse.name wieder `.nullable().optional()` → rot:
- *      „sets: 40 frei, erlaubt 39“
+ * Counter-checks (measured 31.10.2026):
+ *   A  in docs/openapi.json a field name (used_count) changed → red: “the
+ *      checked-in openapi.json is generated”
+ *   B  the entry 'GET /api/v1/parts/stats' in src/contract/parts.ts
+ *      renamed → red: “every route has a contract” names it
+ *   C  an entry 'GET /api/v1/gibt-es-nicht' added → red: “no contract
+ *      without a route”
+ *   D  the same key in sets.ts and teile.ts → red: “no key
+ *      twice” (the later one would silently overwrite the earlier one)
+ *   E  (05.11.2026) `klein: true` removed from 'GET /api/v1/storage' → red:
+ *      “every long list takes pages” names /api/v1/storage
+ *   F  (15.11.2026) SetItem.added_at back to `.optional()` → red: “response fields are
+ *      required …” (720 optional, 719 allowed); SetItem.acq_count back to `.nullable()`
+ *      → red (701 nullable, 700 allowed)
+ *   G  (15.11.2026, per file) BarcodeResponse.name back to `.nullable().optional()` → red:
+ *      “sets: 40 optional, 39 allowed”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,7 +30,7 @@ const { DATEI, alsText } = require('../scripts/contract-openapi.js');
 const { CONTRACT, AREAS } = _req('src/contract/index.js');
 const { openapi } = _req('src/contract/openapi.js');
 
-/** Methode und voller Pfad jeder Route eines Routers, auch in eingehängten Routern. */
+/** Method and full path of every route of a router, also in mounted routers. */
 function routesOf(router, basis) {
   const aus = [];
   for (const layer of router.stack) {
@@ -43,7 +43,7 @@ function routesOf(router, basis) {
 const EXPRESS = [
   ...routesOf(require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'), '/api/v1'),
   ...routesOf(require('./helpers/sources').routerFrom(_req, 'routes/auth.js'), '/api/v1/auth'),
-  // Direkt in server.ts: Sie antworten, bevor die Router stehen.
+  // Directly in server.ts: they answer before the routers are in place.
   'GET /api/v1/startup-status',
   'GET /api/v1/health',
   'GET /api/v1/health/live',
@@ -78,7 +78,7 @@ test('the checked-in openapi.json is generated', () => {
 });
 
 test('every long list takes pages', () => {
-  // Eine Liste ohne Seiten wächst mit dem Bestand; `klein` sagt, dass sie das nicht tut.
+  // A list without pages grows with the stock; `klein` says that it does not.
   const o = openapi();
   const schema = s => (s?.$ref ? o.components.schemas[s.$ref.split('/').pop()] : s);
   const ohne = [],
@@ -115,7 +115,7 @@ const CONTRACT_FILE = {
   verwaltung: 'management',
 };
 
-/** Die Vertragsdatei eines Schemas: wo sein Objekt exportiert ist, sonst der Bereich der Route, die es benennt. */
+/** The contract file of a schema: where its object is exported, otherwise the scope of the route that names it. */
 function fileJeSchema() {
   const datei = new Map();
   for (const f of ['grund', 'gemeinsam', ...Object.keys(AREAS)])
@@ -126,7 +126,7 @@ function fileJeSchema() {
   return datei;
 }
 
-/** Felder der Antwortschemas (alles, was eine 200 erreicht), je Vertragsdatei: wie viele, freiwillig, nullbar. */
+/** Fields of the response schemas (everything a 200 reaches), per contract file: how many, optional, nullable. */
 function responseFields(o) {
   const S = o.components.schemas;
   const erreicht = new Set();
@@ -167,9 +167,9 @@ function responseFields(o) {
 }
 
 test('response fields are required where the server always delivers them: optional and nullable ones become fewer', () => {
-  // Ein freiwilliges oder nullbares Feld wird in OpenAPI, den Typen der Oberfläche und in Kotlin nullbar.
-  // Je Vertragsdatei, damit sichtbar ist, wo der Vertrag noch weich ist; gesamt 1728 → 1449 Felder,
-  // freiwillig 719 → 329 (41,6 % → 22,7 %), nullbar 700 → 484.
+  // An optional or nullable field becomes nullable in OpenAPI, the UI types and in Kotlin.
+  // Per contract file so that it is visible where the contract is still soft; total 1728 → 1449 fields,
+  // optional 719 → 329 (41.6 % → 22.7 %), nullable 700 → 484.
   const LIMIT = {
     bestand: { frei: 10, nullbar: 12 },
     einstellungen: { frei: 14, nullbar: 11 },

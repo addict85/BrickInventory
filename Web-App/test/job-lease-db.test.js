@@ -1,18 +1,18 @@
 'use strict';
 /**
- * Der Worker hält das Lease eines Auftrags selbst, exklusive Arten bleiben
- * über Verbindungen hinweg einzeln, und ein Abbruch erreicht auch einen
- * Auftrag, der gerade auf einen Download waiting.
+ * The worker holds a job's lease itself, exclusive kinds stay
+ * single across connections, and an abort also reaches a
+ * job that is currently waiting for a download.
  *
- * Gegenproben (05.11.2026 gemessen):
- *   A  in runJobFrom() `holdLease(...)` durch `() => {}` ersetzt → rot: „ein
- *      Auftrag ohne eigenes Lebenszeichen läuft genau einmal“ (5 Starts, Status error_message)
- *   C  Trigger job_exclusive_locks gelöscht (DROP TRIGGER) → rot: „B belegt,
- *      solange A noch nicht festgeschrieben hat“
- *   D  im Worker `listen(JOB_STATUS_CHANNEL, …)` entfernt → rot: „Abbruch
- *      eines csv_sync im Download dauerte 5000 ms“
- *   E  in abruf.ts das Signal nicht beachtet → rot: dieselbe Prüfung (der
- *      Lauf hing am Download)
+ * Counter-checks (measured 05.11.2026):
+ *   A  in runJobFrom() `holdLease(...)` replaced by `() => {}` → red: “a
+ *      job without its own heartbeat runs exactly once” (5 starts, status error_message)
+ *   C  trigger job_exclusive_locks deleted (DROP TRIGGER) → red: “B occupies
+ *      while A has not committed yet”
+ *   D  in the worker `listen(JOB_STATUS_CHANNEL, …)` removed → red: “abort
+ *      of a csv_sync in the download took 5000 ms”
+ *   E  in abruf.ts the signal not respected → red: the same check (the
+ *      run hung on the download)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -22,7 +22,7 @@ const { warte, bis } = require('./helpers/time');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-// Der CSV-Download antwortet mit 200 und liefert dann nichts mehr: ein hängender CDN.
+// The CSV download answers 200 and then delivers nothing more: a hanging CDN.
 let downloadRunning = false;
 const Module = require('node:module');
 const _realRequire = Module.prototype.require;
@@ -65,8 +65,8 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
   await t.test('a job without its own sign of life runs exactly once', async () => {
     await db.run("DELETE FROM jobs WHERE type = 'wechselkurse'");
     let starts = 0;
-    // Zwei Worker wie zwei Prozesse: Der zweite darf die Zeile nicht übernehmen, solange der erste arbeitet.
-    // Die Arbeit dauert länger als die Frist (1 s): Nur das eigene Lebenszeichen hält die Zeile.
+    // Two workers like two processes: the second must not take over the row while the first works.
+    // The work takes longer than the deadline (1 s): only the own heartbeat holds the row.
     const editor = {
       wechselkurse: {
         ausfuehren: async () => {
@@ -109,7 +109,7 @@ test('job lease, exclusivity and abort', { concurrency: 1 }, async t => {
     const a = await db.pool.connect();
     try {
       await a.query('BEGIN');
-      // Verbindung A belegt und hält ihre Transaktion offen; B belegt über den Dienst.
+      // Connection A occupies and keeps its transaction open; B occupies via the service.
       const ra =
         await a.query(`UPDATE jobs SET status = 'laeuft', locked_by = 'A', deadline_at = NOW() + INTERVAL '5 min'
                                  WHERE dedupe_key = 'x1' RETURNING id`);

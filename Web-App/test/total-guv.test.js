@@ -1,11 +1,11 @@
 /**
- * Gesamt-G&V in Finanzen: Ein Posten ohne Marktpreis ist kein Wert 0.
+ * Total P&L in finances: an item without a market price is not a value of 0.
  *
- * Vorher rechnete die Kachel alle Kaufpreise gegen alle Marktwerte; ohne
- * einen einzigen Marktpreis stand dort −100 %.
+ * Before, the tile computed all purchase prices against all market values; without
+ * a single market price it showed −100 %.
  *
- * Gegenprobe (am 25.10. gemessen): die Bedingung `m > 0` in
- * totalGuvPercent() entfernt → rot: „−100 % ohne Marktpreis".
+ * Counter-check (measured on 25.10.): the condition `m > 0` removed in
+ * totalGuvPercent() → red: „−100 % ohne Marktpreis".
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -22,7 +22,7 @@ test('total gain/loss only over items with purchase AND market price', () => {
   );
   assert.equal(totalGuvPercent([]), null);
   assert.equal(totalGuvPercent([{ purchase_price: 0, current_price: 80, quantity: 1 }]), null, 'ohne Kaufpreis');
-  // Nur das zweite Set ist vergleichbar: 2 × 50 → 2 × 60 = +20 %.
+  // Only the second set is comparable: 2 × 50 → 2 × 60 = +20 %.
   assert.equal(
     totalGuvPercent([
       { purchase_price: 100, current_price: 0, quantity: 1 },

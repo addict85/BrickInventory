@@ -1,16 +1,16 @@
 /**
- * Strenge Antwortprüfung in Tests: Ein Feld, das der Vertrag nicht nennt, wird
- * gemeldet, auch in offenen Objekten (looseObject), Listen, Unions und
- * Erweiterungen; ein record() beschreibt beliebige Schlüssel und meldet keine.
- * Der zweite Teil prüft die Verdrahtung in vertragsRouter am echten Router.
+ * Strict response check in tests: a field the contract does not name is
+ * reported, also in open objects (looseObject), lists, unions and
+ * extensions; a record() describes arbitrary keys and reports none.
+ * The second part checks the wiring in vertragsRouter on the real router.
  *
- * Gegenproben (am 11.11.2026 gemessen):
- *   A  in unbekannteFelder() `else if (offen) funde.add(…)` entfernt → rot:
- *      „ein fremdes Feld, auch verschachtelt in Listen“
- *   B  im Zweig 'union' die erste Option statt der passenden genommen → rot:
- *      „in einer Union zählt die Option, die passt“
- *   C  in responseAgainstContract() die Zeile `if (fremd.length) fehler.push(…)`
- *      entfernt → rot: „die Route antwortet 500, wenn ein Feld fehlt im Vertrag“
+ * Counter-checks (measured on 11.11.2026):
+ *   A  in unbekannteFelder() `else if (offen) funde.add(…)` removed → red:
+ *      “a foreign field, also nested in lists”
+ *   B  in the branch 'union' the first option taken instead of the matching one → red:
+ *      “in a union the option that matches counts”
+ *   C  in responseAgainstContract() the line `if (fremd.length) fehler.push(…)`
+ *      removed → red: “the route answers 500 if a field is missing in the contract”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -55,7 +55,7 @@ test('the route answers 500 if a field is missing in the contract', async () => 
   const { checkContract } = _req('src/http/contractRouter.js');
   const checker = checkContract();
   assert.ok(checker, 'VERTRAG_PRUEFEN ist in Tests gesetzt');
-  // GET /api/v1/sets/info/:setNumber: SetInfoResponse nennt kein Feld `geheim`.
+  // GET /api/v1/sets/info/:setNumber: SetInfoResponse names no field `geheim`.
   const req = { method: 'GET', baseUrl: '/api/v1', route: { path: '/sets/info/:setNumber' }, body: {} };
   let status = 200;
   let gesendet;

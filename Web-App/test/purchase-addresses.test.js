@@ -1,7 +1,7 @@
 /**
- * Die zwei Kaufadressen am Set-Detail: BrickLink und Preisvergleich.
+ * The two purchase addresses on the set detail: BrickLink and price comparison.
  *
- * Gegenprobe (09.11.2026): suchUrl() ohne encodeURIComponent → rot: „die Suchadresse maskiert, was hineingeht“.
+ * Counter-check (09.11.2026): suchUrl() without encodeURIComponent → red: “the search address masks what goes in”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -18,9 +18,9 @@ test('the search address masks what goes in', () => {
 });
 
 test('empty stays empty — and is therefore NOT a button', () => {
-  // Eine leere Zeichenkette ist die Aussage „dafuer gibt es keine Adresse".
-  // Die Oberflaechen blenden den Knopf dann aus, statt auf eine Suche nach
-  // nichts zu fuehren.
+  // An empty string is the statement „there is no address for this".
+  // The UIs then hide the button instead of leading to a search for
+  // nothing.
   for (const roh of ['', '   ', null, undefined]) {
     assert.equal(P.suchUrl(roh), '', `${JSON.stringify(roh)} ergab eine Adresse`);
     assert.equal(P.forSet(roh), '', `${JSON.stringify(roh)} ergab eine Set-Adresse`);
@@ -28,23 +28,23 @@ test('empty stays empty — and is therefore NOT a button', () => {
 });
 
 test('the variant is dropped, the name is added', () => {
-  // „-1" ist eine Rebrickable-Eigenheit und steht auf keiner Verpackung; ein
-  // Preisvergleicher findet damit nichts. Der Name dagegen ist genau das,
-  // wonach dort gesucht wird.
+  // „-1" is a Rebrickable peculiarity and stands on no packaging; a
+  // price comparison site finds nothing with it. The name, on the other hand, is exactly what
+  // is searched for there.
   const mit = decodeURIComponent(P.forSet('75192-1', 'Millennium Falcon'));
   assert.ok(mit.includes('75192 '), `Die Nummer fehlt oder traegt noch die Variante: ${mit}`);
   assert.ok(!mit.includes('75192-1'), 'Die Variante „-1" steht noch drin');
   assert.ok(mit.includes('Millennium Falcon'), 'Der Name fehlt');
   assert.ok(mit.includes('LEGO'), 'Ohne „LEGO" findet der Vergleicher zu viel Fremdes');
 
-  // Ohne Namen bleibt die Nummer — besser als nichts.
+  // Without a name the number remains — better than nothing.
   const ohne = decodeURIComponent(P.forSet('10276-1', null));
   assert.ok(ohne.includes('10276'), ohne);
 });
 
 test('the price comparison address exists in exactly ONE place', () => {
-  // Der Waechter. Server: nur src/catalog/priceComparison.ts; Oberfläche und App nehmen die
-  // Adresse aus der Antwort (preisvergleich_url).
+  // The guard. Server: only src/catalog/priceComparison.ts; UI and app take the
+  // address from the response (preisvergleich_url).
   const wurzel = path.join(__dirname, '..', '..');
   const treffer = [];
   /** @type {[string, (f: string) => boolean][]} */

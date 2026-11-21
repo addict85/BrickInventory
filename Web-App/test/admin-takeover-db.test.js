@@ -1,33 +1,33 @@
 /**
- * Ein Verwalter setzt Passwort oder zweiten Faktor eines anderen Kontos zurück, deaktiviert es,
- * entzieht die Rolle oder löscht es (routes/auth/users.ts, src/account/adminActions.ts).
- * Ist das Ziel Verwalter (oder war es eben noch), gilt das erst nach 24 Stunden, im Aufräumlauf;
- * eine Anmeldung des Ziels (Passwort, Passkey, QR-Abholung) oder der Link aus seiner Mail hebt
- * es auf. Über die echten Routen und die Laufzeitrolle.
+ * An administrator resets password or second factor of another account, deactivates it,
+ * revokes the role or deletes it (routes/auth/users.ts, src/account/adminActions.ts).
+ * If the target is an administrator (or just was), this only applies after 24 hours, in the cleanup run;
+ * a login of the target (password, passkey, QR collection) or the link from its mail cancels
+ * it. Via the real routes and the runtime role.
  *
- * Gegenproben (14.11.2026 gemessen, je einzeln):
- *   A  in removeSecondFactor `endAccesses` gestrichen → rot: „ein normales Konto:
- *      sofort, Sitzungen und Tokens enden“ (Token und Sitzung des Ziels blieben)
- *   B  passwordByAdmin ohne die Prüfung auf Verwalter (immer sofort) → rot:
- *      „ein Verwalterkonto: angekündigt …“ (kein effective_at, Hash sofort neu)
- *   C  in adminOrJustBeen nur noch is_admin → rot (16.11. neu gemessen): „Deaktivieren,
- *      Rolle entziehen und Löschen …“ (nach dem Entzug ein Passwort sofort statt angekündigt)
- *   D  in signedInResponses (routes/auth.ts) cancelTakeovers gestrichen → rot:
- *      „eine Anmeldung des Ziels hebt die Ankündigung auf“ (der Faktor fiel trotzdem)
- *   E  in takeDue die Bedingung auf den noch aktiven Verwalter gestrichen → rot:
- *      „… wer die Rolle verlor, setzt nichts mehr durch“ (der Hash wurde ersetzt)
- *   F  im Aufräumlauf `endAccesses` gestrichen → rot: „… nach der Frist …“
- * Gegenproben (16.11.2026 gemessen, je einzeln):
- *   G  in aktivSetzen (verwalterAktionen.ts) die Ankündigung gestrichen → rot: „Deaktivieren,
- *      Rolle entziehen und Löschen …“ (sofort deaktiviert, kein effective_at)
- *   H  in executeTeardown den Zweig `loeschen` auf deaktivieren gelenkt → rot: dieselbe Prüfung
- *      (das Konto blieb)
- *   I  redeemMailLink ohne Abbruch (nur Suche) → rot: „der Link aus der Mail …“
- *   J  in takeDue die Prüfung auf eine zugleich fällige Deaktivierung gestrichen → rot: „… fällt
- *      weg, wenn das Ziel deaktiviert wurde“ (Fall a, der Hash wurde ersetzt); die Prüfung auf den
- *      Protokolleintrag seit der Ankündigung gestrichen → rot: dieselbe Prüfung (Fall b)
- *   K  in routes/auth/qr.ts cancelTakeovers gestrichen → rot: „eine QR-Abholung …“
- *   L  accountsList ohne `angekuendigt` → rot: „die Kontenliste zeigt …“
+ * Counter-checks (measured 14.11.2026, each alone):
+ *   A  in removeSecondFactor `endAccesses` deleted → red: “a normal account:
+ *      immediately, sessions and tokens end” (token and session of the target stayed)
+ *   B  passwordByAdmin without the administrator check (always immediate) → red:
+ *      “an administrator account: announced …” (no effective_at, hash new immediately)
+ *   C  in adminOrJustBeen only is_admin → red (measured anew 16.11.): “deactivating,
+ *      revoking the role and deleting …” (after revocation a password immediately instead of announced)
+ *   D  in signedInResponses (routes/auth.ts) cancelTakeovers deleted → red:
+ *      “a login of the target cancels the announcement” (the factor fell anyway)
+ *   E  in takeDue the condition on the still active administrator deleted → red:
+ *      “… whoever lost the role enforces nothing anymore” (the hash was replaced)
+ *   F  in the cleanup run `endAccesses` deleted → red: “… after the period …”
+ * Counter-checks (measured 16.11.2026, each alone):
+ *   G  in aktivSetzen (verwalterAktionen.ts) the announcement deleted → red: “deactivating,
+ *      revoking the role and deleting …” (deactivated immediately, no effective_at)
+ *   H  in executeTeardown the branch `loeschen` routed to deactivate → red: the same check
+ *      (the account stayed)
+ *   I  redeemMailLink without abort (search only) → red: “the link from the mail …”
+ *   J  in takeDue the check for a simultaneously due deactivation deleted → red: “… drops
+ *      if the target was deactivated” (case a, the hash was replaced); the check for the
+ *      log entry since the announcement deleted → red: the same check (case b)
+ *   K  in routes/auth/qr.ts cancelTakeovers deleted → red: “a QR collection …”
+ *   L  accountsList without `angekuendigt` → red: “the account list shows …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -43,7 +43,7 @@ const db = S.testData();
 const { hashePassword, passwordFits } = _req('src/account/passwordHash.js');
 const zf = _req('src/factors/secondFactor.js');
 const { decrypt } = _req('src/infra/secret.js');
-/** Ein echter zweiter Faktor; zurück kommen die Wiederherstellungscodes. */
+/** A real second factor; the recovery codes come back. */
 async function withFactor(uid) {
   await S.asAccount(uid, () => zf.beginSetup(uid));
   const z = await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid]);
@@ -87,7 +87,7 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
     await db.pool.end().catch(() => {});
   });
 
-  // Jede Verwalteraktion verbraucht einen Code; zehn reichen hier nicht, also weitere desselben Satzes.
+  // Every administrator action uses up a code; ten are not enough here, so more of the same set.
   const codes = await withFactor(chef);
   const { searchValue } = _req('src/infra/secret.js');
   for (let i = 0; i < 30; i++) {
@@ -195,7 +195,7 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
       [await konten(vw4), await konten(vw5), await konten(vw6)],
       [{ is_admin: true, is_active: false }, { is_admin: false, is_active: true }, undefined],
     );
-    // Wer die Rolle eben verlor, zählt noch als Verwalter: Sonst entzöge man sie erst und übernähme dann sofort.
+    // Whoever just lost the role still counts as administrator: otherwise one would first revoke it and then take over immediately.
     inFrist(await ruf('PUT', `/users/${vw5}/password`, { password: NEU, admin_password: PASS }));
   });
 
@@ -209,7 +209,7 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
   await t.test('a login of the target cancels the announcement', async () => {
     const eigene = await withFactor(vw3);
     inFrist(await ruf('DELETE', `/users/${vw3}/zweiter-faktor`, { admin_password: PASS }));
-    // Ein eigener Server: Die Anmeldung schriebe sonst in die Sitzung des Verwalters.
+    // A separate server: the login would otherwise write into the administrator's session.
     const anmeldung = testServer(_req, { sitzung: {}, t }).base;
     const a = await fetch(`${anmeldung}/api/v1/auth/login`, {
       method: 'POST',
@@ -244,12 +244,12 @@ test('admin takes over an account', { concurrency: 1, timeout: 180_000 }, async 
   });
 
   await t.test('a due takeover is dropped if the target was deactivated', async () => {
-    // a) Deaktivieren und Passwort werden zugleich fällig
+    // a) deactivation and password become due at the same time
     inFrist(await ruf('PUT', `/users/${vw8}/aktiv`, { is_active: false, admin_password: PASS }));
     inFrist(await ruf('PUT', `/users/${vw8}/password`, { password: NEU, admin_password: PASS }));
     await faellig(vw8);
     assert.deepEqual([(await konten(vw8)).is_active, (await stand(vw8)).neuesPasswort], [false, false]);
-    // b) seit der Ankündigung auf anderem Weg deaktiviert
+    // b) deactivated another way since the announcement
     inFrist(await ruf('PUT', `/users/${vw9}/password`, { password: NEU, admin_password: PASS }));
     await S.asAccount(chef, () => _req('src/account/adminActions.js').persistActive(chef, vw9, false), {
       verwalter: true,

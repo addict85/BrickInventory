@@ -1,20 +1,20 @@
 /**
- * Kategoriefilter und Kategorienliste der Teile lesen aus der Zusammenfassung,
- * sobald sie frisch ist, und liefern dasselbe wie die Live-Abfrage — auch für
- * ein Teil, dessen Kategorie nur rb_parts kennt (die Set-Teile-Antwort von
- * Rebrickable liefert meist keine). Gemessen bei 302 000 Teilezeilen:
- * Kategoriefilter 658 → 20 ms, Kategorienliste 634 → 144 ms.
+ * Category filter and category list of the parts read from the summary
+ * as soon as it is fresh, and deliver the same as the live query — also for
+ * a part whose category only rb_parts knows (the set parts response of
+ * Rebrickable mostly delivers none). Measured at 302 000 part rows:
+ * category filter 658 → 20 ms, category list 634 → 144 ms.
  *
- * Gegenproben (am 29.10.2026 gemessen):
- *   A  in tryPartsSummary wieder `if (o.category) return null;` → rot: „der
- *      Kategoriefilter liest aus der Zusammenfassung“ (source db)
- *   B  in partCategoriesQuery (Zusammenfassung) rb_parts nicht befragt → rot:
- *      „die Kategorienliste ist auf beiden Wegen gleich“ (kz2 unter „Unbekannt“)
- *   C  in partsFilter die Bedingung für spare=1 (tm_k.is_spare, vorher der
- *      Join auf set_parts_catalog) entfernt → rot: „der Ersatzteilfilter ist
- *      auf beiden Wegen gleich“
+ * Counter-checks (measured on 29.10.2026):
+ *   A  in tryPartsSummary again `if (o.category) return null;` → red: “the
+ *      category filter reads from the summary” (source db)
+ *   B  rb_parts not asked in partCategoriesQuery (summary) → red:
+ *      “the category list is the same on both paths” (kz2 under „Unbekannt“)
+ *   C  in partsFilter the condition for spare=1 (tm_k.is_spare, before that the
+ *      join on set_parts_catalog) removed → red: “the spare part filter is
+ *      the same on both paths”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -63,9 +63,9 @@ test('category from the summary', { concurrency: 1 }, async t => {
   const abfrage = { exclude_manual: '1', page: 1, page_size: 50 };
 
   try {
-    // Ohne exclude_manual antwortet immer die Live-Abfrage; die Teile hier
-    // sind alle Set-Teile, das Ergebnis also dasselbe. Die Kategorienliste
-    // zuerst, solange es keine Zusammenfassung gibt.
+    // Without exclude_manual the live query always answers; the parts here
+    // are all set parts, so the result is the same. The category list
+    // first, as long as there is no summary.
     const liveKat = await H.partCategoriesQuery(U);
     const live = await H.partsQuery(U, { page: 1, page_size: 50, category: '98701' });
     const liveSpare = await H.partsQuery(U, { page: 1, page_size: 50, spare: '1' });

@@ -1,25 +1,25 @@
 /**
- * Eine Adresse, die ständig unbekannte Bearer-Token vorlegt, wird gebremst,
- * ohne dass gültige Zugänge oder die Wiederverwendungserkennung leiden.
- * Gemessen an Eingang (loginAtInbox) und Repository-Aufrufen.
+ * An address that constantly presents unknown bearer tokens is throttled
+ * without valid accesses or the reuse detection suffering.
+ * Measured at the entrance (loginAtInbox) and repository calls.
  *
- * Gegenproben (am 08.11.2026 gemessen, je einzeln):
- *   A  in pruefeToken() die Zeile mit toManyFailedAttempts() entfernt → rot:
- *      „nach dem Limit kostet ein unbekannter Token keine Datenbankabfrage“
- *      und „die Drossel antwortet 429, nicht 401“
- *   B  in pruefeToken() countFailedAttempt() auch für Token aus einer Familie
- *      (Rückgabewert von reportReuse ignoriert) → rot: „ein
- *      wiederverwendeter Token zählt nicht als Fehlversuch“
- *   C  in sendTokenRejection() immer 401 → rot: „die Drossel antwortet 429,
- *      nicht 401“
- *   D  die Cache-Prüfung hinter die Drossel gestellt → rot: „ein gültiger
- *      Token im Cache wird auch gebremster Adresse bedient“
- *   E  (08.11.) in countFailedAttempt() wieder im Prozess gezählt (eine Map,
- *      die forgetLockInProcess() mit leert) statt über countRequest() →
- *      rot: „ein zweiter Web-Prozess zählt die Fehlversuche des ersten mit“
- *      (401 statt 429)
+ * Counter-checks (measured on 08.11.2026, each on its own):
+ *   A  the line with toManyFailedAttempts() removed in pruefeToken() → red:
+ *      “after the limit an unknown token costs no database query”
+ *      and “the throttle responds 429, not 401”
+ *   B  in pruefeToken() countFailedAttempt() also for tokens from a family
+ *      (return value of reportReuse ignored) → red: “a
+ *      reused token does not count as a failed attempt”
+ *   C  in sendTokenRejection() always 401 → red: “the throttle responds 429,
+ *      not 401”
+ *   D  the cache check put behind the throttle → red: “a valid
+ *      token in the cache is served even for a throttled address”
+ *   E  (08.11.) in countFailedAttempt() counted in the process again (a map
+ *      that forgetLockInProcess() clears too) instead of via countRequest() →
+ *      red: “a second web process counts the failed attempts of the first”
+ *      (401 instead of 429)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -48,7 +48,7 @@ test('failed attempts with unknown tokens', { concurrency: 1 }, async t => {
   const server = routerServer(_req, { t, sitzung: {}, routen: {} });
   server.app.use('/api/v1', loginAtInbox);
   server.app.get('/api/v1/probe', (_req2, res) => res.json({ ok: true }));
-  // Den Cache gibt es nur mit stehender Horch-Verbindung für Widerrufe (fail closed).
+  // The cache only exists with a standing listen connection for revocations (fail closed).
   tokenCache.listenOnTokenRevocation();
   assert.ok(await bis(() => pgNotify.listensTo('token_widerrufen')), 'die Horch-Verbindung kam nicht zustande');
   t.after(async () => {
@@ -58,8 +58,8 @@ test('failed attempts with unknown tokens', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
 
-  // Gezählt wird die Token-Abfrage an der Verbindung, nicht ein Aufruf im Quelltext.
-  // In den Pools der App (Laufzeit-, System- und Web-Systemrolle), nicht im Zugang der Testdaten.
+  // What is counted is the token query on the connection, not a call in the source text.
+  // In the pools of the app (runtime, system and web system role), not in the access of the test data.
   const zugang = require('./helpers/sources').testAccess();
   const pools = [...new Set([zugang.pool, zugang.systemPool, zugang.systemWebPool])];
   const echt = pools.map(p => p.query);
@@ -121,7 +121,7 @@ test('failed attempts with unknown tokens', { concurrency: 1 }, async t => {
     tokenCache.emptyTokenCache();
     for (let i = 0; i < bremse.FAILED_ATTEMPT_MAX; i++) await ruf(zufall(i));
     assert.equal((await ruf(alt)).status, 401);
-    // Wäre der Familien-Treffer mitgezählt, läge die Adresse jetzt über dem Limit.
+    // If the family hit had been counted, the address would now be above the limit.
     assert.equal((await ruf(zufall('letzter'))).status, 401);
     assert.equal(
       (await db.all(`SELECT 1 FROM api_tokens WHERE user_id = $1 AND label = 'Alt'`, [uid])).length,
@@ -130,7 +130,7 @@ test('failed attempts with unknown tokens', { concurrency: 1 }, async t => {
     );
   });
 
-  // Ein zweiter Prozess hat eigenen Speicher, aber dieselbe Datenbank.
+  // A second process has its own memory but the same database.
   await t.test('a second web process counts the failed attempts of the first', async () => {
     await bremse.forgetFailedAttempts();
     for (let i = 0; i < bremse.FAILED_ATTEMPT_MAX; i++) assert.equal((await ruf(zufall(`a${i}`))).status, 401);

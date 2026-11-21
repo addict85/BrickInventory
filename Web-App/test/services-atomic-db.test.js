@@ -1,19 +1,19 @@
 /**
- * Mehrstufige Schreibvorgänge der Dienste sind atomar: Konto und Protokoll,
- * Gutscheinzeile und PDF, Lesen und Schreiben beim Ändern eines Gutscheins.
+ * Multi-step writes of the services are atomic: account and log,
+ * voucher row and PDF, reading and writing when changing a voucher.
  *
- * Gegenproben (13.11.2026 gemessen, je einzeln, dist neu gebaut):
- *   A  putAccountAn (src/account/accounts.ts) ohne db.transaction, der Rumpf direkt →
- *      rot: „scheitert der Protokolleintrag, gibt es kein Konto“
- *   B  aktivSetzen (src/account/adminActions.ts) ohne withAccessEnd → rot:
- *      „… bleibt das Konto aktiv“
- *   C  createVoucherWithPdf (src/vouchers/service.ts) ohne das Löschen im
- *      catch → rot: „… keine verwaiste Datei“
- *   D  createVoucherWithPdf ohne db.transaction → rot: „… keine Gutscheinzeile“
- *   E  changeVoucher liest mit voucher() statt lockedVoucher() → rot:
- *      „zwei gleichzeitige Änderungen“ (der Betrag des ersten ging verloren)
+ * Counter-checks (measured 13.11.2026, each on its own, dist rebuilt):
+ *   A  putAccountAn (src/account/accounts.ts) without db.transaction, the body directly →
+ *      red: “if the log entry fails, there is no account”
+ *   B  aktivSetzen (src/account/adminActions.ts) without withAccessEnd → red:
+ *      “… the account stays active”
+ *   C  createVoucherWithPdf (src/vouchers/service.ts) without the deletion in the
+ *      catch → red: “… no orphaned file”
+ *   D  createVoucherWithPdf without db.transaction → red: “… no voucher row”
+ *   E  changeVoucher reads with voucher() instead of lockedVoucher() → red:
+ *      “two concurrent changes” (the amount of the first got lost)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -27,7 +27,7 @@ const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
 const { accessOrSkip } = require('./helpers/db');
 
-/** Vor dem Laden der Dienste: Sie halten das Modulobjekt, das sie beim Laden bekommen. */
+/** Before loading the services: they hold the module object they get when loading. */
 const replace = (rel, zusatz) => {
   const pfad = require.resolve(path.join(quellen.DIST, rel));
   _req(rel);
@@ -46,8 +46,8 @@ replace('src/vouchers/voucherFiles.js', {
   writeVoucherPdf: (...a) => (stoerung.writePdf ? kaputt('pdf') : realFiles.writeVoucherPdf(...a)),
 });
 
-/** Zwei Leser: Der erste wartet nach dem Lesen, bis der zweite zu lesen begonnen
- * hat. Ohne Zeilensperre lesen dann beide denselben alten Stand. */
+/** Two readers: the first waits after reading until the second has begun
+ * to read. Without a row lock both then read the same old state. */
 let limit = null;
 const echtRepo = _req('src/vouchers/repository/vouchers.js');
 const withLimit =
@@ -100,7 +100,7 @@ test('services write all or nothing', { concurrency: 1, timeout: 60_000 }, async
   await t.test('if the log entry fails, there is no account', async () => {
     await disrupt('protokoll', () => K.putAccountAn(chef, `${NAME}-neu`, 'Ein-Langes-Passwort-2026', false));
     assert.equal(await db.get('SELECT id FROM users WHERE username = $1', [`${NAME}-neu`]), undefined);
-    // Ohne Störung entstehen Konto und Eintrag zusammen.
+    // Without interference account and entry arise together.
     const id = await K.putAccountAn(chef, `${NAME}-neu`, 'Ein-Langes-Passwort-2026', false);
     const eintrag = await db.get('SELECT action FROM admin_log WHERE target_id = $1', [id]);
     assert.equal(eintrag?.action, 'konto_angelegt');
@@ -122,7 +122,7 @@ test('services write all or nothing', { concurrency: 1, timeout: 60_000 }, async
     assert.deepEqual(dateien(), []);
     await disrupt('writePdf', () => G.createVoucherWithPdf(nutzer, w, pdf));
     assert.equal(await zeilen(), 0);
-    // Ohne Störung: Zeile und Datei, und die Zeile kennt die Datei.
+    // Without interference: row and file, and the row knows the file.
     const z = await G.createVoucherWithPdf(nutzer, w, pdf);
     assert.equal(z.pdf_path, `${nutzer}/${z.id}.pdf`);
     assert.deepEqual(dateien(), [`${z.id}.pdf`]);

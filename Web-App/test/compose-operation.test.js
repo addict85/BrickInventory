@@ -1,20 +1,20 @@
 /**
- * Betrieb laut `docker compose config` (aufgelöst, nicht per Regex): Jeder
- * Dienst hat begrenzte Protokolle, jedes tmpfs ist ohne Ausführen und begrenzt,
- * die Datenbank hängt nur in internen Netzen und schreibt nur in Daten und
- * Socket, pgweb gibt es nicht mehr, Caddy kommt signiert per Digest oder aus
- * Dockerfile.caddy. Ohne Docker-CLI übersprungen, in CI nicht.
+ * Operation according to `docker compose config` (resolved, not via regex): every
+ * service has bounded logs, every tmpfs is without exec and bounded,
+ * the database only hangs in internal networks and only writes to data and
+ * socket, pgweb no longer exists, Caddy comes signed via digest or from
+ * Dockerfile.caddy. Skipped without Docker CLI, not in CI.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  bei caddy `logging: *protokoll` gestrichen → rot: „jeder Dienst hat
- *      begrenzte Protokolle“ (caddy: json-file ohne Grenze)
- *   B  bei jobs wieder `- /tmp` ohne Optionen → rot: „jedes tmpfs …“
- *   C  postgres wieder zusätzlich in brickinventory-net → rot: „die Datenbank
- *      hängt nur in internen Netzen“
- *   D  bei db-net `internal: true` gestrichen → rot: dieselbe Prüfung
- *   E  postgres ohne `read_only: true` → rot: „… schreibt nur in Daten und Socket“
- *   F  caddy wieder `image: caddy:…@sha256:…` ohne build → rot: „Caddy kommt
- *      als signiertes Image …“ (damals: „Caddy wird hier gebaut …“)
+ * Counter-checks (measured 05.11.2026, each alone):
+ *   A  for caddy `logging: *protokoll` deleted → red: “every service has
+ *      bounded logs” (caddy: json-file without limit)
+ *   B  for jobs again `- /tmp` without options → red: “every tmpfs …”
+ *   C  postgres again additionally in brickinventory-net → red: “the database
+ *      only hangs in internal networks”
+ *   D  for db-net `internal: true` deleted → red: the same check
+ *   E  postgres without `read_only: true` → red: “… only writes to data and socket”
+ *   F  caddy again `image: caddy:…@sha256:…` without build → red: “Caddy comes
+ *      as a signed image …” (back then: “Caddy is built here …”)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -119,8 +119,8 @@ test('pgweb no longer exists, not even in the tools profile', t => {
   assert.ok(!Object.keys(j.networks ?? {}).some(n => /pgweb/.test(n)), Object.keys(j.networks ?? {}).join(', '));
 });
 
-// Gegenprobe (11.11.2026 gemessen): caddy-rechte wieder `brickinventory-caddy:2.11.8`
-// → rot „caddy-rechte nimmt dasselbe signierte Image“.
+// Counter-check (measured 11.11.2026): caddy-rechte back to `brickinventory-caddy:2.11.8`
+// → red “caddy-rechte takes the same signed image”.
 test('Caddy comes as a signed image by digest, built itself from base images by digest', t => {
   const j = withKonfig(t);
   if (!j) return;
@@ -128,7 +128,7 @@ test('Caddy comes as a signed image by digest, built itself from base images by 
   assert.equal(c.image, `addict85/brickinventory-caddy@sha256:${'0'.repeat(64)}`, 'caddy zieht nicht CADDY_IMAGE');
   assert.equal(c.pull_policy, 'missing');
   assert.equal(j.services['caddy-rechte'].image, c.image, 'caddy-rechte nimmt dasselbe signierte Image');
-  // `up -d --build` mit eigenem CADDY_IMAGE baut weiter aus Dockerfile.caddy.
+  // `up -d --build` with own CADDY_IMAGE still builds from Dockerfile.caddy.
   assert.equal(c.build?.dockerfile, 'Dockerfile.caddy', JSON.stringify(c.build ?? null));
   const df = fs.readFileSync(path.join(ROOT, 'Dockerfile.caddy'), 'utf8');
   const basis = [...df.matchAll(/^FROM\s+(\S+)/gm)].map(m => m[1]);

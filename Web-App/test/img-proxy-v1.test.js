@@ -1,14 +1,14 @@
 /**
- * Der Bild-Proxy ist nach /api/v1 gezogen — überall, auch in den Daten.
- * Adressbau und Server laufen echt; dass nirgends die alte Adresse gebaut
- * wird (Web; die App über shared/app-schnittstelle.json) und die Migration jede
- * Tabelle erfasst, bleibt Struktur.
+ * The image proxy has moved to /api/v1 — everywhere, also in the data.
+ * Address building and server run for real; that the old address is built
+ * nowhere (web; the app via shared/app-schnittstelle.json) and the migration covers every
+ * table stays structure.
  *
- * Gegenproben (10.11.2026 gemessen, dist neu gebaut):
- *   A  in routes/imgProxy.ts die Zeile app.get(IMG_PROXY_PATH_LEGACY, …) entfernt
- *      → rot: „der Server bedient beide Adressen“ (404)
- *   B  proxyImageUrl baut IMG_PROXY_PATH_LEGACY → rot: „gebaute Adressen …“ (die
- *      Quelltextregel darunter sieht die Konstante nicht, nur Zeichenketten)
+ * Counter-checks (measured 10.11.2026, dist rebuilt):
+ *   A  in routes/imgProxy.ts the line app.get(IMG_PROXY_PATH_LEGACY, …) removed
+ *      → red: “the server serves both addresses” (404)
+ *   B  proxyImageUrl builds IMG_PROXY_PATH_LEGACY → red: “built addresses …” (the
+ *      source text rule below does not see the constant, only strings)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -42,7 +42,7 @@ test('built addresses take the new form, the old one is still recognized', () =>
 
 test('the server serves both addresses', async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
-  // Ältere App-Fassungen bauen die alte Adresse selbst zusammen.
+  // Older app versions assemble the old address themselves.
   const app = require('express')();
   app.use((req, _res, next) => {
     Object.assign(req, { session: { userId: 1 } });
@@ -55,7 +55,7 @@ test('the server serves both addresses', async t => {
     fetch(`http://127.0.0.1:${/** @type {import('node:net').AddressInfo} */ (srv.address()).port}${p}`).then(
       r => r.status,
     );
-  // Beide antworten wie der Proxy (ohne gültiges Konto abgewiesen), eine unbekannte Adresse mit 404.
+  // Both answer like the proxy (rejected without a valid account), an unknown address with 404.
   const [neu, alt, fremd] = [await status(NEU), await status(ALT), await status('/api/v2/img-proxy')];
   assert.equal(fremd, 404);
   assert.notEqual(neu, 404, 'die neue Adresse ist nicht angemeldet');
@@ -63,8 +63,8 @@ test('the server serves both addresses', async t => {
 });
 
 test('only the new address is built', () => {
-  // Der Altpfad darf NUR als Konstantendefinition vorkommen — nirgends als
-  // zusammengesetzte Adresse. Geprüft im Serverbaum UND im Browserbaum.
+  // The old path may ONLY occur as a constant definition — nowhere as a
+  // composed address. Checked in the server tree AND in the browser tree.
   const dateien = [];
   const lauf = (d, extension) => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -85,7 +85,7 @@ test('only the new address is built', () => {
   const gebaut = [];
   for (const [rel, src] of dateien)
     for (const m of src.matchAll(new RegExp(`['"\`]${ALT}[^'"\`]*['"\`]`, 'g'))) {
-      // Die beiden Definitionen der Auslauf-Konstante sind der eine erlaubte Ort.
+      // The two definitions of the phase-out constant are the one allowed place.
       const zeile = src.slice(0, m.index).split('\n').pop();
       if (/IMG_PROXY_(PATH_)?LEGACY\s*=/.test(zeile)) continue;
       gebaut.push(`${rel}: ${m[0]}`);
@@ -100,9 +100,9 @@ test('only the new address is built', () => {
   );
 });
 
-/** Erkennen muss die App die alte nicht: Ein gespeicherter Pfad wird nur um die Serveradresse ergänzt. */
+/** The app need not recognize the old one: a stored path is only completed with the server address. */
 test('the app builds the new address and nowhere the old one', () => {
-  // Von Hand gebaute Adressen der App (shared/app-schnittstelle.json, aus ihrem Quelltext erzeugt).
+  // Addresses built by hand by the app (shared/app-schnittstelle.json, generated from its source text).
   const { adressen } = require('./helpers/contract').appSchnittstelle();
   assert.ok(adressen.includes(NEU), `Die App baut ${NEU} nicht (gefunden: ${adressen.join(', ')})`);
   assert.deepEqual(
@@ -113,10 +113,10 @@ test('the app builds the new address and nowhere the old one', () => {
 });
 
 test('the migration covers EVERY table with image_url', () => {
-  // Die Tabellenliste wird aus dem Schema GELESEN, nicht abgeschrieben: Eine
-  // achte Tabelle mit image_url soll auffallen, nicht durchrutschen.
-  // Die Tabellen mit image_url, die es VOR 0014 gab — abgelesen aus dem
-  // Schema vor db/basis.sql. 0014 ist …
+  // The table list is READ from the schema, not copied: an
+  // eighth table with image_url should stand out, not slip through.
+  // The tables with image_url that existed BEFORE 0014 — read from the
+  // schema before db/basis.sql. 0014 is …
   const tabellen = [
     'sets',
     'set_catalog',
@@ -126,12 +126,12 @@ test('the migration covers EVERY table with image_url', () => {
     'catalog_cache',
     'minifigs',
   ];
-  // GEMESSEN sind es sieben.
+  // MEASURED there are seven.
   assert.ok(tabellen.length >= 5, `Nur ${tabellen.length} Tabellen mit image_url gefunden — Muster veraltet?`);
 
-  // Ohne Kommentare: Der Erklaertext dieser Migration NENNT das Muster
-  // `LIKE '%…%'`, gegen das sie sich entscheidet — und die Pruefung unten
-  // fiel prompt darueber. Dieselbe Falle, vor der helpers/sources.js warnt.
+  // Without comments: the explanatory text of this migration NAMES the pattern
+  // `LIKE '%…%'` it decides against — and the check below
+  // promptly tripped over it. The same trap helpers/sources.js warns about.
   const mig = ohneKommentare(lies(ROOT, 'db/migrations/0014-img-proxy-nach-v1.sql'));
   const fehlend = tabellen.filter(t => !new RegExp(`UPDATE\\s+${t}\\s`).test(mig)).sort();
   assert.deepEqual(
@@ -142,7 +142,7 @@ test('the migration covers EVERY table with image_url', () => {
       '\nSonst bleiben dort Adressen in der alten Form stehen.',
   );
 
-  // Tabellen, die es bei Migration 0014 noch nicht gab
+  // Tables that did not exist yet at migration 0014
   const umgeschrieben = [...mig.matchAll(/UPDATE\s+(\w+)\s/g)].map(m => m[1]);
   assert.ok(umgeschrieben.length >= 5, `Nur ${umgeschrieben.length} UPDATE-Ziele in 0014 gefunden — Muster veraltet?`);
 
@@ -164,10 +164,10 @@ test('the migration covers EVERY table with image_url', () => {
       '(gemessen sind es zwei: part_color_catalog und minifigs_catalog) — Muster veraltet?',
   );
 
-  // Gültige Quelle ist auch eine spätere Tabelle, die selbst aus einer solchen liest.
+  // A valid source is also a later table that itself reads from such a one.
   const quellen = new Set(umgeschrieben);
   const liestAusQuelle = (tab, txt) => {
-    // Der INSERT, der diese Tabelle fuellt, und woraus er liest.
+    // The INSERT that fills this table, and what it reads from.
     const bloecke = [
       ...txt.matchAll(
         new RegExp(
@@ -200,9 +200,9 @@ test('the migration covers EVERY table with image_url', () => {
       'nie wieder vorbei.',
   );
 
-  // Und der Vergleich bleibt ein PRÄFIX-Vergleich. Ein `LIKE '%…%'` träfe
-  // auch einen CDN-Link, der die Zeichenkette im Abfrageteil trägt, und
-  // machte aus ihm eine kaputte Adresse.
+  // And the comparison stays a PREFIX comparison. A `LIKE '%…%'` would also hit
+  // a CDN link that carries the string in the query part, and
+  // turn it into a broken address.
   assert.match(
     mig,
     /LEFT\(image_url, 15\) = '\/api\/img-proxy\?'/,

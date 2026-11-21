@@ -1,15 +1,15 @@
 /**
- * Die Verschiebung eines Sets serialisiert über das QUELLKONTO — geprüft über
- * die echte Route, nicht am Quelltext.
+ * Moving a set serializes on the SOURCE ACCOUNT — checked via
+ * the real route, not on the source text.
  *
- * Gegenproben (gemessen):
- *   a) withInventoryLock → db.transaction (Sperre weg)  → A rot, B+C grün
- *   b) fromId → toId                                    → A+C rot, B grün
- *   c) Schlüssel 'alle' statt sn                        → A rot, B+C grün
- *   d) Schlüssel fest '75192-1' statt sn                → B rot, A+C grün
- *   e) Sperre auf BEIDEN Konten (fromId und toId)       → C rot, A+B grün
+ * Counter-checks (measured):
+ *   a) withInventoryLock → db.transaction (lock gone)  → A red, B+C green
+ *   b) fromId → toId                                    → A+C red, B green
+ *   c) key 'alle' instead of sn                         → A red, B+C green
+ *   d) key fixed '75192-1' instead of sn                → B red, A+C green
+ *   e) lock on BOTH accounts (fromId and toId)          → C red, A+B green
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
  * REQUIRE_DB=1.
  */
 const test = require('node:test');
@@ -30,18 +30,18 @@ test.after(async () => {
 
 let MAIN = 0,
   KIND = 0;
-// Drei Sets, weil jeder Fall eine eigene, noch nicht verschobene Erfassung
-// braucht: Eine gelungene Verschiebung verbraucht sie.
+// Three sets, because every case needs its own, not yet moved capture:
+// a successful move uses it up.
 const SN_A = '75192-1',
   SN_B = '10179-1',
   SN_C = '21309-1';
 
 /**
- * Die Sperre, wie db/txLock.ts sie stellt — Halter oder Warter.
+ * The lock as db/txLock.ts sets it — holder or waiter.
  *
- * Dasselbe SQL wie dort, absichtlich wörtlich: Würde hier eine andere
- * Schlüsselbildung stehen, prüfte dieser Test eine Sperre, die es so nicht
- * gibt.
+ * The same SQL as there, deliberately literal: if a different key formation
+ * stood here, this test would check a lock that does not exist
+ * like this.
  */
 const LOCK_SQL = 'SELECT pg_advisory_xact_lock($1, hashtext($2))';
 const { LOCKS } = _req('src/infra/lockNamespaces.js');
@@ -62,8 +62,8 @@ async function lockRows(userId, scopeKey, granted) {
 }
 
 /**
- * Wartet, bis auf genau diesem Schlüssel ein Warter steht — oder bis die
- * Route fertig ist.
+ * Waits until a waiter stands on exactly this key — or until the
+ * route is done.
  */
 async function findingWarter(userId, scopeKey, isDone, limitMs = 5000) {
   const bis = Date.now() + limitMs;
@@ -75,7 +75,7 @@ async function findingWarter(userId, scopeKey, isDone, limitMs = 5000) {
   }
 }
 
-/** Die Verschiebung, mit einer Schranke, damit ein Hänger eine Meldung wird. */
+/** The move, with a limit, so that a hang becomes a message. */
 function move(base, sn, acqIds, limitMs = 10000) {
   const lauf = fetch(`${base}/api/v1/sets/${sn}/move`, {
     method: 'POST',
@@ -94,10 +94,10 @@ function move(base, sn, acqIds, limitMs = 10000) {
     },
   );
   zustand.antwort = tracked;
-  // Der Wecker wird GELÖSCHT, sobald die Antwort da ist. Ohne das bleibt ein
-  // offener Timer von zehn Sekunden stehen, hält den Prozess am Leben und
-  // schiebt das Ende der Datei nach hinten — in einem Lauf mit achtzig
-  // Dateien ist das nicht nichts.
+  // The alarm is CLEARED as soon as the response is there. Without that an
+  // open ten-second timer remains, keeps the process alive and
+  // pushes the end of the file back — in a run with eighty
+  // files that is not nothing.
   let alarm;
   zustand.withLimit = Promise.race([
     tracked,
@@ -158,12 +158,12 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
   const srv = testServer(_req, { sitzung: { userId: MAIN }, t });
 
   /**
-   * Nimmt die Sperre auf eigener Verbindung, führt `fn` aus, gibt sie frei.
+   * Takes the lock on an own connection, runs `fn`, releases it.
    *
-   * Die eigene Verbindung ist der Kern: Über `db.run()` liefe das auf einer
-   * Verbindung aus dem Vorrat, die danach sofort zurückgeht — und eine
-   * Transaktionssperre endet mit der Transaktion. Sie wäre weg, bevor die
-   * Route sie bemerken könnte.
+   * The own connection is the core: via `db.run()` this would run on a
+   * connection from the pool that goes back immediately afterwards — and a
+   * transaction lock ends with the transaction. It would be gone before the
+   * route could notice it.
    */
   async function withLock(userId, scopeKey, fn) {
     const halter = await db.pool.connect();
@@ -178,9 +178,9 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
       );
       return await fn(() => halter.query('COMMIT'));
     } finally {
-      // ROLLBACK auch nach einem COMMIT: dann ein wirkungsloser Hinweis, aber
-      // nach einer gescheiterten Zusicherung die einzige Stelle, die die
-      // offene Transaktion (und damit die Sperre) wieder aufräumt.
+      // ROLLBACK also after a COMMIT: then an ineffective notice, but
+      // after a failed assertion the only place that cleans up the
+      // open transaction (and with it the lock) again.
       await halter.query('ROLLBACK').catch(() => {});
       halter.release();
     }
@@ -210,10 +210,10 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
         }[befund],
       );
 
-      // ── Und die Gegenrichtung: nach dem Freigeben muss sie durchgehen ────
+      // ── And the opposite direction: after releasing it must go through ────
       //
-      // Ohne diesen Teil wäre „wartet" auch von einer Route erfüllt, die
-      // dauerhaft hängt. Eine Sperre, die nie aufgeht, ist kein Fortschritt.
+      // Without this part „waits" would also be fulfilled by a route that
+      // hangs permanently. A lock that never opens is no progress.
       await freigeben();
       const r = await v.withLimit;
       assert.equal(
@@ -233,17 +233,17 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
   });
 
   await t.test('B. lock on ANOTHER set — it does not wait', async () => {
-    // Der Schlüssel der Route muss davon abhängen, WELCHES Set wandert.
-    // GEMESSEN: Steht in der Route eine feste Setnummer statt sn, wartet
-    // diese Verschiebung mit, und nur dieser Fall wird rot — A bleibt grün.
-    // Ohne B stünden alle Verschiebungen eines Kontos hintereinander an, auch
-    // die völlig unbeteiligten, und nichts würde es sagen.
+    // The key of the route must depend on WHICH set moves.
+    // MEASURED: if a fixed set number stands in the route instead of sn,
+    // this move waits along, and only this case turns red — A stays green.
+    // Without B all moves of an account would queue up one after another, even
+    // the completely uninvolved ones, and nothing would say so.
     const acq = await erfassungsIds(MAIN, SN_B);
     assert.equal(acq.length, 1, `Vorbedingung: eine Erfassung für ${SN_B}`);
 
     await withLock(MAIN, SN_A, async () => {
       const v = move(srv.base, SN_B, acq);
-      const r = await v.withLimit; // wirft, falls sie doch hängt
+      const r = await v.withLimit; // throws if it hangs after all
       assert.equal(
         r.status,
         200,
@@ -260,10 +260,10 @@ test('the move locks on (source account, set)', { concurrency: 1 }, async t => {
   });
 
   await t.test('C. lock on the TARGET account — it does not wait', async () => {
-    // Das ist der eigentliche Inhalt von `fromId`: Serialisiert wird über das
-    // Konto, aus dem etwas WEGgeht — dort wird gelesen, gerechnet und
-    // gelöscht. GEMESSEN: Steht `toId` in der Route, werden A UND dieser Fall
-    // rot. Und allein fängt dieser Fall eine Sperre auf BEIDEN Konten: auch …
+    // That is the actual content of `fromId`: serialization happens on the
+    // account from which something goes AWAY — there it is read, calculated and
+    // deleted. MEASURED: if `toId` stands in the route, A AND this case turn
+    // red. And on its own this case catches a lock on BOTH accounts: also …
     const acq = await erfassungsIds(MAIN, SN_C);
     assert.equal(acq.length, 1, `Vorbedingung: eine Erfassung für ${SN_C}`);
 

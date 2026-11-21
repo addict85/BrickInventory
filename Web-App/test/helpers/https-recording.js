@@ -1,6 +1,6 @@
 /**
- * Schneidet mit, womit src/infra/fetch.ts https.get und https.request ruft,
- * ohne ins Netz zu gehen: Jede Anfrage scheitert sofort mit ECONNREFUSED.
+ * Records with what src/infra/fetch.ts calls https.get and https.request,
+ * without going to the network: every request fails immediately with ECONNREFUSED.
  */
 const https = require('node:https');
 const { EventEmitter } = require('node:events');

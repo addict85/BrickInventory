@@ -1,17 +1,17 @@
 /**
- * Ein normales Konto, das eine Verwalterseite oder einen unbekannten Pfad
- * aufruft, sieht die Sammlung — und die Adresse sagt dasselbe (#/sammlung),
- * dazu ein Hinweis, warum. Ein Sprungverweis (#inhalt) bleibt still.
+ * A normal account that calls an administrator page or an unknown path
+ * sees the collection — and the address says the same (#/sammlung),
+ * plus a hint why. A skip link (#inhalt) stays silent.
  *
- * Gegenproben (am 03.11.2026 gemessen):
- *   A  im popstate-Zweig die Rückgabe von applyAn() übergangen (kein
- *      replaceState auf adresse()) → rot: „Verwalterseite: Adresse und Hinweis“
- *      (Adresse blieb #/einstellungen, kein Hinweis)
- *   B  isAppPath() liefert immer false → rot: „unbekannter Pfad: Hinweis“
- *   C  isAppPath() liefert immer true → rot: „Sprungverweis bleibt still“
+ * Counter-checks (measured on 03.11.2026):
+ *   A  in the popstate branch the return value of applyAn() ignored (no
+ *      replaceState to adresse()) → red: “administrator page: address and hint”
+ *      (address stayed #/einstellungen, no hint)
+ *   B  isAppPath() always returns false → red: “unknown path: hint”
+ *   C  isAppPath() always returns true → red: “skip link stays silent”
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Skipped without Chrome (CHROME_BIN, google-chrome, chromium).
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

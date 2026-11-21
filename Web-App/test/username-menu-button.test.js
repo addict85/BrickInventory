@@ -1,37 +1,37 @@
 /**
- * Die drei Striche stecken IM Benutzernamen — und bleiben dort.
+ * The three lines sit INSIDE the username — and stay there.
  *
- * ── Gegenproben (durchgeführt, Ergebnisse abgeschrieben) ────────────────────
+ * ── Counter-checks (carried out, results copied) ────────────────────
  *
- * A  Name und Striche zu EINEM Element verschmolzen, das `ubadge` heisst:
+ * A  name and lines merged into ONE element called `ubadge`:
  *      <button class="ubadge" id="ubadge" data-click="benutzerMenue">— ☰</button>
- *    → „die Striche stecken im Knopf"        GRÜN  (die Glyphe ist ja drin)
- *      „die Striche überleben den Namen"     rot: „Die drei Striche sind nach
- *                                            dem Setzen des Namens verschwunden"
- *      „sagt einem Bildschirmleser …"        rot (keine eigene Glyphe, die man
- *                                            verstecken könnte)
+ *    → “the lines sit in the button”           GREEN (the glyph is in there after all)
+ *      “the lines survive the username”        red: „Die drei Striche sind nach
+ *                                              dem Setzen des Namens verschwunden"
+ *      “tells a screen reader …”               red (no glyph of its own that one
+ *                                              could hide)
  *
- * B  die Glyphe aus dem Knopf entfernt      → alle drei rot
+ * B  the glyph removed from the button      → all three red
  *
- * C  zurück zum alten, getrennten Aufbau (Plakette, daneben ein Knopf):
- *    → „die Striche stecken im Knopf"        rot: „Name und Striche sind
- *                                            wieder getrennt"
- *      „die Striche überleben den Namen"     rot
- *      „sagt einem Bildschirmleser …"        GRÜN — und das ist richtig so:
- *                                            der alte Knopf war barrierefrei,
- *                                            er war nur nicht der Namenszug.
+ * C  back to the old, separate structure (badge, next to it a button):
+ *    → “the lines sit in the button”           red: „Name und Striche sind
+ *                                              wieder getrennt"
+ *      “the lines survive the username”        red
+ *      “tells a screen reader …”               GREEN — and that is right:
+ *                                              the old button was accessible,
+ *                                              it just was not the name tag.
  *
- * A ist der Fall, auf den es ankommt: Dort bleibt Fall 1 grün und nur Fall 2
- * fällt. Die beiden messen also wirklich Verschiedenes — „die Striche sind im
- * Knopf" und „sie bleiben dort, wenn sich jemand anmeldet".
+ * A is the case that matters: there case 1 stays green and only case 2
+ * falls. So the two really measure different things — “the lines are in the
+ * button” and “they stay there when somebody logs in”.
  *
- * Und eine Gegenprobe, die NICHTS gemessen hat, als Warnung: Beim ersten
- * Versuch suchte die Prüfung den Knopf über `getElementById('btn-umenu')` und
- * die Variante gab dem Knopf versehentlich zwei `id`-Attribute. Der Parser
- * nimmt das erste, `btn-umenu` war damit gar nicht da, und alle drei Fälle
- * fielen über `assert.ok(knopf)` — aus formalem Grund, nicht am Schaden. Drei
- * rote Fälle sahen nach einer scharfen Prüfung aus und waren eine kaputte
- * Vorlage. Daher die Suche über `data-click`.
+ * And a counter-check that measured NOTHING, as a warning: on the first
+ * attempt the check searched for the button via `getElementById('btn-umenu')` and
+ * the variant accidentally gave the button two `id` attributes. The parser
+ * takes the first, `btn-umenu` was thus not there at all, and all three cases
+ * fell on `assert.ok(knopf)` — for a formal reason, not on the damage. Three
+ * red cases looked like a sharp check and were a broken
+ * template. Hence the search via `data-click`.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -41,7 +41,7 @@ const { JSDOM } = require('jsdom');
 const { openUi, ANMELDUNG, sicht, warte } = require('./helpers/ui');
 
 const ROOT = path.join(__dirname, '..');
-/** Die Striche sind seit dem 27.10. ein Symbol der Symbolfamilie statt „☰“. */
+/** Since 27.10. the lines are a symbol of the symbol family instead of „☰“. */
 const striche = knopf => knopf.querySelector('.ubadge-striche use[href="#i-menue"]');
 
 function kopfleiste() {
@@ -53,7 +53,7 @@ function kopfleiste() {
 }
 
 /**
- * Den Menüknopf über seinen HANDLER finden, nicht über die ID.
+ * Find the menu button via its HANDLER, not via the ID.
  */
 function menuButton(document) {
   const knopf = document.querySelector('[data-click="benutzerMenue"]');
@@ -71,8 +71,8 @@ test('the lines sit in the button, not next to it', () => {
     'Die drei Striche stehen nicht im Menüknopf — sind sie wieder ein eigenes Element daneben?',
   );
 
-  // Und der Name steht im SELBEN Knopf. Genau das ist „integrieren": nicht
-  // zwei Elemente, die nebeneinander liegen, sondern eines.
+  // And the name stands in the SAME button. Exactly that is „integrating": not
+  // two elements that lie side by side, but one.
   const name = document.getElementById('ubadge');
   assert.ok(name, 'Kein #ubadge in der Kopfleiste');
   assert.ok(knopf.contains(name), 'Der Namenszug liegt nicht im Menüknopf — Name und Striche sind wieder getrennt');
@@ -84,7 +84,7 @@ test('the lines survive the username', () => {
   const name = document.getElementById('ubadge');
   assert.ok(name, 'Kein #ubadge — konto.js schreibt den Namen genau dorthin');
 
-  // Genau was konto.js in showApp() tut.
+  // Exactly what konto.js does in showApp().
   name.textContent = 'marco';
 
   assert.ok(
@@ -99,8 +99,8 @@ test('the button tells a screen reader that it is a menu', () => {
   const { document } = kopfleiste().window;
   const knopf = menuButton(document);
 
-  // Die ID bleibt gefordert: closeMenu() und benutzerMenue() in
-  // js/sammlung.js führen `aria-expanded` über G('btn-umenu') mit.
+  // The ID stays required: closeMenu() and benutzerMenue() in
+  // js/sammlung.js keep `aria-expanded` updated via G('btn-umenu').
   assert.equal(
     knopf.id,
     'btn-umenu',
@@ -115,9 +115,9 @@ test('the button tells a screen reader that it is a menu', () => {
   );
   assert.equal(knopf.getAttribute('aria-controls'), 'umenu-pop');
 
-  // KEIN aria-label: Das ersetzt den sichtbaren Namen, der Bildschirmleser
-  // hätte den Benutzernamen dann gar nicht mehr genannt. Der Zusatz steht
-  // stattdessen als vorgelesener Text im Knopf.
+  // NO aria-label: that replaces the visible name, the screen reader
+  // would then not have named the username at all any more. The addition stands
+  // instead as read-aloud text in the button.
   assert.equal(
     knopf.getAttribute('aria-label'),
     null,
@@ -130,7 +130,7 @@ test('the button tells a screen reader that it is a menu', () => {
     'Der vorgelesene Zusatz („Menü") fehlt — der Knopf hiesse dann nur „marco ☰"',
   );
 
-  // Die Striche selbst sind für einen Bildschirmleser nichts wert.
+  // The lines themselves are worth nothing to a screen reader.
   const glyph = knopf.querySelector('.ubadge-striche');
   assert.ok(glyph, 'Kein .ubadge-striche im Knopf');
   assert.equal(
@@ -141,10 +141,10 @@ test('the button tells a screen reader that it is a menu', () => {
 });
 
 /**
- * Der Verwalter-Hinweis steht IM Namen. Gegenproben (08.11.2026, am Bündel): showUsernames() ohne
- * `angemeldetesKonto.isAdmin &&` bzw. mit fest „Admin“ statt tRaw('users.admin_badge') →
- * rot (englisch stünde „Verwalter“); die Profilseite wieder mit eigenem `G('ubadge').textContent =
- * username` statt showUsernames() → rot (nach dem Speichern).
+ * The admin hint stands IN the name. Counter-checks (08.11.2026, on the bundle): showUsernames() without
+ * `angemeldetesKonto.isAdmin &&` or with fixed „Admin“ instead of tRaw('users.admin_badge') →
+ * red (in English „Verwalter“ would stand); the profile page again with its own `G('ubadge').textContent =
+ * username` instead of showUsernames() → red (after saving).
  */
 test('the signature carries the administrator hint, the tile is gone', () => {
   const { document } = kopfleiste().window;
@@ -155,7 +155,7 @@ test('the signature carries the administrator hint, the tile is gone', () => {
       'wie der Name daneben, und das Menü sitzt nicht mehr ganz rechts.',
   );
 
-  // Der Namensknopf ist das LETZTE Element der Reihe.
+  // The name button is the LAST element of the row.
   const reihe = document.querySelector('.umenu');
   assert.ok(reihe, 'Keine .umenu in der Kopfleiste');
   const letztes = [...reihe.children].at(-1);
@@ -166,7 +166,7 @@ test('the signature carries the administrator hint, the tile is gone', () => {
 });
 
 test('with administrator rights (Administrator) follows, without only the name', async () => {
-  // Am Bündel in jsdom: anmelden als Verwalter und als Nutzer, auf Englisch, und nach dem Speichern des Profils.
+  // On the bundle in jsdom: log in as admin and as user, in English, and after saving the profile.
   const ich = u => ({
     '/v1/auth/me': { ...ANMELDUNG['/v1/auth/me'], user: { ...ANMELDUNG['/v1/auth/me'].user, ...u } },
   });
@@ -187,7 +187,7 @@ test('with administrator rights (Administrator) follows, without only the name',
       w.close();
     }
   }
-  // Die Profilseite setzt den Namen über dieselbe Regel — der Hinweis bleibt nach dem Speichern.
+  // The profile page sets the name via the same rule — the hint stays after saving.
   const { w, d } = await name({
     '/v1/auth/profile': { success: true, user: { username: 'anna', email: 'anna@example.org', email_verified: true } },
   });

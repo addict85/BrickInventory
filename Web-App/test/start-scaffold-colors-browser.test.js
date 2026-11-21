@@ -1,19 +1,19 @@
 /**
- * Das Startgerüst malt in den Farben, die die Seite danach hat: Es folgt dem Attribut data-dunkel
- * (gesetzt von theme-boot.js nach der Geräte-Einstellung „bim_dunkel“), nicht dem System allein.
- * Dasselbe gilt für <meta name="theme-color"> (Browserleiste). Gemessen in Chrome mit dem Design
- * „Stein (Blau)“; alle Skripte und Stile außer dem Boot-Skript werden festgehalten, damit nur das Gerüst malt.
+ * The start skeleton paints in the colors the page has afterwards: it follows the attribute data-dunkel
+ * (set by theme-boot.js according to the device setting „bim_dunkel“), not the system alone.
+ * The same applies to <meta name="theme-color"> (browser bar). Measured in Chrome with the theme
+ * „Stein (Blau)“; all scripts and styles except the boot script are held back so that only the skeleton paints.
  *
- * Gegenproben (am 08.11.2026 gemessen):
- *   A  im Startstil wieder `@media (prefers-color-scheme:dark)` statt [data-dunkel]
- *      → rot: „System hell, immer dunkel: Gerüst dunkel“ und „System dunkel, nie dunkel: Gerüst hell“
- *   B  die Regel `[data-theme=brick][data-dunkel] .sg-kopf` entfernt
- *      → rot: „Stein dunkel: Kopf im dunklen Blau“
- *   C  die Regel `[data-theme=brick] .sg-kopf` entfernt → rot: „Stein hell: Kopf im Stein-Blau“
- *   D  in theme-boot.js die Zeilen zu `theme-color` entfernt
- *      → rot: alle vier Fälle (Farbe der Browserleiste)
+ * Counter-checks (measured on 08.11.2026):
+ *   A  in the start style again `@media (prefers-color-scheme:dark)` instead of [data-dunkel]
+ *      → red: „System hell, immer dunkel: Gerüst dunkel“ and „System dunkel, nie dunkel: Gerüst hell“
+ *   B  the rule `[data-theme=brick][data-dunkel] .sg-kopf` removed
+ *      → red: „Stein dunkel: Kopf im dunklen Blau“
+ *   C  the rule `[data-theme=brick] .sg-kopf` removed → red: „Stein hell: Kopf im Stein-Blau“
+ *   D  the lines on `theme-color` removed in theme-boot.js
+ *      → red: all four cases (color of the browser bar)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL, Chrome.
+ * Prerequisite: test DB via TEST_DATABASE_URL, Chrome.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -35,7 +35,7 @@ test('startup skeleton follows the device setting and the design', async t => {
   });
   if (app.grund) return t.skip(app.grund);
   const { b } = app;
-  // Nur das Boot-Skript und das Dokument laufen; alles andere bleibt hängen, das Gerüst bleibt stehen.
+  // Only the boot script and the document run; everything else stays hanging, the skeleton stays standing.
   await b.tab('Fetch.enable', { patterns: [{ urlPattern: '*', requestStage: 'Request' }] });
   b.listener.push(d => {
     if (d.method !== 'Fetch.requestPaused') return;

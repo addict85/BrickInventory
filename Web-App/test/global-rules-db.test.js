@@ -1,13 +1,13 @@
 'use strict';
 /**
- * Globale Einstellungen haben je Schlüssel eine Regel (GLOBAL_RULES); die
- * Routen warten auf das Schreiben, und ein ungültiger Wert ändert nichts.
+ * Global settings have one rule per key (GLOBAL_RULES); the
+ * routes wait for the write, and an invalid value changes nothing.
  *
- * Gegenproben (05.11.2026 gemessen):
- *   A  api_limit_bricklink in GLOBAL_RULES als text(200) → rot: „"abc" als
- *      BrickLink-Limit wurde angenommen“ und „ein Import mit ungültigem Limit …“
- *   B  in setGlobalSetting die Prüfung entfernt (nur schreiben) → rot in
- *      settings-helfer-db: „ein Schlüssel ohne Regel wird nicht geschrieben“
+ * Counter-checks (measured 05.11.2026):
+ *   A  api_limit_bricklink in GLOBAL_RULES as text(200) → red: “"abc" as
+ *      BrickLink limit was accepted” and “an import with an invalid limit …”
+ *   B  the check removed in setGlobalSetting (only write) → red in
+ *      settings-helfer-db: “a key without a rule is not written”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,13 +1,13 @@
 /**
- * Die Merkliste heißt auf Englisch „Wishlist“, nicht „Wanted“ (das ist BrickLinks Wort für den Import).
- * Geprüft an dem, was die englische Oberfläche zeigt: Reiter, Titel, Suchfeld, Leerzustand, Meldungen und die
- * Beschriftung des Export-Knopfs in den Einstellungen. Die BrickLink-Import-Texte nennen weiter „wanted list“.
+ * In English the wishlist is called “Wishlist”, not “Wanted” (that is BrickLink's word for the import).
+ * Checked against what the English UI shows: tab, title, search field, empty state, messages and the
+ * label of the export button in the settings. The BrickLink import texts keep saying “wanted list”.
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   A  'nav.wanted' in en.js wieder 'Wanted' → rot: „Reiter und Merkliste“ (Beschriftung „Wanted“)
- *   B  'wanted.search' wieder „Search the wanted list…“ → rot: „Reiter und Merkliste“ (Suchfeld)
- *   C  'wanted.empty' wieder „…wanted list yet“ → rot: „Reiter und Merkliste“ (Leerzustand)
- *   D  'settings.data_zip_btn' wieder „watchlist“ → rot: „Export-Knopf“
+ * Counter-checks (measured 08.11.2026, each individually):
+ *   A  'nav.wanted' in en.js back to 'Wanted' → red: “English: tab and wishlist …” (label “Wanted”)
+ *   B  'wanted.search' back to “Search the wanted list…” → red: “English: tab and wishlist …” (search field)
+ *   C  'wanted.empty' back to “…wanted list yet” → red: “English: tab and wishlist …” (empty state)
+ *   D  'settings.data_zip_btn' back to “watchlist” → red: “English: export button …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

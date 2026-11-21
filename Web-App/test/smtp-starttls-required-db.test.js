@@ -1,21 +1,21 @@
 /**
- * Ohne Port 465 verlangt der Mailer STARTTLS: Bietet der Mailserver es nicht
- * an, bricht der Versand vor AUTH ab, statt Passwort und Rücksetzlink im
- * Klartext zu senden. Geprüft gegen einen SMTP-Server im Test, der jede Zeile
- * mitschreibt — einmal ohne STARTTLS, einmal mit (selbst signiert, PEM).
+ * Without port 465 the mailer demands STARTTLS: if the mail server does not offer it,
+ * sending aborts before AUTH instead of sending password and reset link in
+ * plain text. Checked against an SMTP server in the test that records every line
+ * — once without STARTTLS, once with it (self-signed, PEM).
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  `requireTLS: !secure` entfernt → rot: „ohne STARTTLS …" (AUTH PLAIN mit
- *      Passwort und die Mail stehen im Klartext-Mitschnitt)
- *   B  `minVersion: 'TLSv1.2'` entfernt → rot: „TLS 1.1 wird abgelehnt …"
- *      (Zustellung über TLSv1.1, wenn der Prozess ältere Fassungen zulässt)
- *   C  in getTransporter() `mailServerAddress(ip)` durch `true` ersetzt → rot:
- *      „ein Name, der auf eine gesperrte Adresse auflöst …“ (11.11.2026)
- *   D  in getTransporter() wieder `host` statt der geprüften Adresse an
- *      nodemailer → rot: „… verbunden wird mit der geprüften Adresse“
- *      (nodemailer löste selbst auf und erreichte 127.0.0.2 statt 127.0.0.1)
+ * Counter-checks (measured 01.11.2026):
+ *   A  `requireTLS: !secure` removed → red: “without STARTTLS …” (AUTH PLAIN with
+ *      password and the mail stand in the plaintext recording)
+ *   B  `minVersion: 'TLSv1.2'` removed → red: “TLS 1.1 is rejected …”
+ *      (delivery via TLSv1.1 if the process allows older versions)
+ *   C  in getTransporter() `mailServerAddress(ip)` replaced by `true` → red:
+ *      “a name that resolves to a blocked address …” (11.11.2026)
+ *   D  in getTransporter() again `host` instead of the checked address to
+ *      nodemailer → red: “… the connection goes to the checked address”
+ *      (nodemailer resolved itself and reached 127.0.0.2 instead of 127.0.0.1)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL, openssl im Pfad.
+ * Prerequisite: test DB via TEST_DATABASE_URL, openssl in the path.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,7 +38,7 @@ const db = testData();
 const mailer = _req('src/mail/mailer.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
-/** Klartext-SMTP; mit `tlsOpt` bietet er STARTTLS an. Jede Zeile landet mit ihrer Schicht im Mitschnitt. */
+/** Plaintext SMTP; with `tlsOpt` it offers STARTTLS. Every line lands in the recording with its layer. */
 function smtpServer(tlsOpt) {
   const recording = [],
     post = [];
@@ -239,7 +239,7 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
     }
   });
 
-  /** Das DNS des Tests: `mail.fake.test` löst auf `ziel` auf, alles andere wie gewohnt. */
+  /** The test's DNS: `mail.fake.test` resolves to `ziel`, everything else as usual. */
   const withDns = async (ziel, work) => {
     const dns = require('node:dns');
     const echt = dns.lookup;
@@ -274,7 +274,7 @@ test('SMTP without port 465 only with STARTTLS', { concurrency: 1, timeout: 120_
   await t.test('a name that resolves to an allowed address: the connection goes to the checked address', async () => {
     await setze({ smtp_port: ohne.port, smtp_host: 'mail.fake.test' });
     const beforeRows = ohne.recording.length;
-    // Nur der erste Aufruf bekommt 127.0.0.1; ein zweites Nachschlagen landete auf 127.0.0.2.
+    // Only the first call gets 127.0.0.1; a second lookup would land on 127.0.0.2.
     const dns = require('node:dns');
     const echt = dns.lookup;
     let n = 0;

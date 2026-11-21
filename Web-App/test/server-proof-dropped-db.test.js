@@ -1,15 +1,15 @@
 /**
- * Der Serverbeweis für Klartext-Verbindungen ist entfallen: Die Android-App
- * nimmt im Release nur noch HTTPS an. Der Pfad ist nicht mehr öffentlich (401
- * ohne Anmeldung) und existiert auch angemeldet nicht (404).
+ * The server proof for plaintext connections is dropped: the Android app
+ * only accepts HTTPS in release. The path is no longer public (401
+ * without login) and does not exist even when logged in (404).
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  `serverbeweis` zurück in die öffentlichen Pfade von loginAtInbox
- *      → rot: „ohne Anmeldung 401" (404 statt 401)
- *   B  eine Route POST /serverbeweis (Antwort 400 wie die alte bei falscher
- *      Eingabe) wieder in routes/auth.ts → rot: „angemeldet 404"
+ * Counter-checks (measured 01.11.2026):
+ *   A  `serverbeweis` back into the public paths of loginAtInbox
+ *      → red: “without login 401” (404 instead of 401)
+ *   B  a route POST /serverbeweis (response 400 like the old one on wrong
+ *      input) back in routes/auth.ts → red: “logged in 404”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

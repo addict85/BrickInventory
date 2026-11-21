@@ -1,24 +1,24 @@
 /**
- * UX-Prüfung 12.11.2026 in Chrome mit echtem Server: Menügruppen ohne axe-Fund;
- * PDF.js erst mit dem ersten PDF; nur das aktive Design lädt, ein Wechsel lädt nach
- * und schaltet erst danach um, der Server gibt es im HTML frei; Finanzen ohne
- * Positionen ohne Suchfeld; Merkliste zugeklappt nur Titelhöhe; Anmeldung mit
- * genau einer h1, die nicht das Logo ist.
+ * UX check 12.11.2026 in Chrome with a real server: menu groups without an axe finding;
+ * PDF.js only with the first PDF; only the active theme loads, a switch loads afterwards
+ * and only then switches, the server releases it in the HTML; finances without
+ * positions without a search field; wishlist collapsed only title height; login with
+ * exactly one h1 that is not the logo.
  *
- * Gegenproben (12.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  .umenu-gruppe-titel mit color:#ddd → rot: „Menü“ (axe color-contrast)
- *   B  <template id="pdfjs-quelle"> wieder als <script type="module"> → rot:
- *      „PDF.js erst mit dem ersten PDF“ (pdf.min.mjs schon beim Start)
- *   C  in index.html die Design-Links wieder ausserhalb der Vorlage → rot:
- *      „Designs“ (alle Dateien beim Start); releaseThemeStyles() in
- *      startPageHtml nicht gerufen → rot: ebenda (nach dem Neuladen nicht
- *      frei); in theme-boot.js applier ohne Warten → rot: ebenda (umgeschaltet,
- *      bevor die Stylesheets da waren)
- *   D  .fin-suche-zeile aus der Regel für #tab-finance.finanzen-leer entfernt →
- *      rot: „Finanzen ohne Positionen“
- *   E  `.merk-kasten:not([open]){padding-block:.5rem}` entfernt → rot:
- *      „Merkliste am Telefon“ (86 px bei 44 px Titel)
- *   F  das Logo der Anmeldung wieder als <h1> → rot: „Anmeldung“ (zwei h1)
+ * Counter-checks (measured 12.11.2026, each on its own, bundle rebuilt):
+ *   A  .umenu-gruppe-titel with color:#ddd → red: “menu” (axe color-contrast)
+ *   B  <template id="pdfjs-quelle"> again as <script type="module"> → red:
+ *      “PDF.js only with the first PDF” (pdf.min.mjs already at the start)
+ *   C  in index.html the theme links again outside of the template → red:
+ *      “themes” (all files at the start); releaseThemeStyles() not called in
+ *      startPageHtml → red: same place (not released after reloading);
+ *      in theme-boot.js applier without waiting → red: same place (switched
+ *      before the stylesheets were there)
+ *   D  .fin-suche-zeile removed from the rule for #tab-finance.finanzen-leer →
+ *      red: “finances without positions”
+ *   E  `.merk-kasten:not([open]){padding-block:.5rem}` removed → red:
+ *      “wishlist on the phone” (86 px with a 44 px title)
+ *   F  the logo of the login again as <h1> → red: “login” (two h1)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -120,7 +120,7 @@ test('menu, PDF.js, themes, empty states, login', { timeout: 300_000 }, async t 
       `window.__keinNeuladen = 1; document.querySelector('[data-click="oeffneSicht"][data-arg="profil"]').click(); true`,
     );
     await bis(`!!document.getElementById('design-wahl')?.options.length`, 'Designwahl');
-    // Beim Umschalten muss das Stylesheet schon Regeln tragen.
+    // When switching, the stylesheet must already carry rules.
     await b.auswerten(`window.__beimUmschalten = null;
       new MutationObserver((_, mo) => { if (document.documentElement.dataset.theme !== 'hochglanz') return;
         window.__beimUmschalten = [...document.styleSheets].filter(s => /themes\\/(noppe|hochglanz)\\.css/.test(s.href || '') && s.cssRules.length).length;
@@ -134,7 +134,7 @@ test('menu, PDF.js, themes, empty states, login', { timeout: 300_000 }, async t 
     await bis(`document.getElementById('app')?.style.display === 'block'`, 'neu geladen', 300);
     assert.equal(await b.auswerten(`document.documentElement.dataset.theme`), 'hochglanz');
     assert.deepEqual((await b.auswerten(geladen('/themes/'))).sort(), ['/themes/hochglanz.css', '/themes/noppe.css']);
-    // Im HTML frei, nicht erst vom Skript: So hält das Stylesheet das erste Bild an wie jedes andere.
+    // Released in the HTML, not only by the script: this way the stylesheet holds the first image like any other.
     const html = await b.auswerten(`fetch('/', { credentials: 'same-origin' }).then(r => r.text())`);
     const vorlage = html.indexOf('<template id="design-stile">');
     const place = d => html.indexOf(`href="/themes/${d}.css`);
@@ -144,7 +144,7 @@ test('menu, PDF.js, themes, empty states, login', { timeout: 300_000 }, async t 
   });
 
   await t.test('login: one h1, not the logo', async () => {
-    // Abmelden lädt die Seite neu; die Maske spricht dann die Sprache des Browsers.
+    // Logging out reloads the page; the form then speaks the language of the browser.
     await b.tab('Network.setUserAgentOverride', {
       userAgent: await b.auswerten('navigator.userAgent'),
       acceptLanguage: 'de-DE',

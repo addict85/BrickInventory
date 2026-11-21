@@ -1,5 +1,5 @@
 /**
- * Ein Workflow, der nicht im Wurzelverzeichnis liegt, läuft NIE.
+ * A workflow that is not in the root directory NEVER runs.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -10,10 +10,10 @@ const { spawnSync } = require('node:child_process');
 const WURZEL = path.join(__dirname, '..', '..');
 const REAL_LOCATION = path.join(WURZEL, '.github', 'workflows');
 
-/** Alle `.github/workflows`-Ordner im Baum, ohne node_modules und .git. */
+/** All `.github/workflows` folders in the tree, without node_modules and .git. */
 function workflowFolder(start) {
   const gefunden = [];
-  // .claude: lokale Arbeitskopien (git worktree) der Werkzeuge, kein Teil des Repositorys.
+  // .claude: local working copies (git worktree) of the tools, not part of the repository.
   const uebersprungen = new Set(['node_modules', '.git', 'dist', 'build', '.gradle', '.claude']);
   (function lauf(dir) {
     let eintraege;
@@ -35,8 +35,8 @@ function workflowFolder(start) {
 test('every workflow is where GitHub reads it', () => {
   const ordner = workflowFolder(WURZEL);
 
-  // Selbstbeweis 1: Der Durchlauf hat wirklich gesucht und den echten Ort
-  // gefunden. Ohne das könnte ein kaputtes Muster alles durchwinken.
+  // Self-proof 1: the walk really searched and found the real
+  // place. Without that a broken pattern could wave everything through.
   assert.ok(
     ordner.includes(REAL_LOCATION),
     `Der Durchlauf hat ${REAL_LOCATION} nicht gefunden — dann prüft er nichts. ` +
@@ -61,19 +61,19 @@ test('the root directory contains the workflows that should exist', () => {
     .filter(f => /\.ya?ml$/.test(f))
     .sort();
 
-  // Selbstbeweis 2: Eine Mindestzahl statt einer Aufzählung. Verschwände der
-  // Ordner oder griffe das Muster nicht, wäre die Liste leer — und die
-  // Prüfung darunter hätte nichts zu sagen.
+  // Self-proof 2: a minimum count instead of an enumeration. If the folder
+  // vanished or the pattern did not match, the list would be empty — and the
+  // check below would have nothing to say.
   assert.ok(dateien.length >= 3, `Nur ${dateien.length} Workflows im Wurzelverzeichnis: ${dateien.join(', ')}`);
 
-  // Der Web-Lauf muss dabei sein. Er ist der einzige, der die Testsuite
-  // ausführt — ohne ihn prüft KEIN Lauf die Web-App.
+  // The web run must be included. It is the only one that runs the test
+  // suite — without it NO run checks the web app.
   assert.ok(dateien.includes('web-ci.yml'), `Der Web-CI-Lauf fehlt. Vorhanden: ${dateien.join(', ')}`);
 });
 
 test('a workflow uses every action in the same version everywhere', () => {
-  // Warum
-  const versions = new Map(); // Action -> Map(Fassung -> [Dateien])
+  // Why
+  const versions = new Map(); // Action -> Map(version -> [files])
   for (const f of fs.readdirSync(REAL_LOCATION).filter(f => /\.ya?ml$/.test(f))) {
     const yml = fs
       .readFileSync(path.join(REAL_LOCATION, f), 'utf8')
@@ -89,14 +89,14 @@ test('a workflow uses every action in the same version everywhere', () => {
     }
   }
 
-  // Selbstbeweis 3: Ohne gefundene Actions ist die Schleife darunter leer.
+  // Self-proof 3: without found actions the loop below is empty.
   assert.ok(versions.size >= 8, `Nur ${versions.size} Actions gefunden — Muster veraltet?`);
   const mehrfach = [...versions].filter(([, je]) => [...je.values()].reduce((n, d) => n + d.length, 0) > 1);
-  // Von 3 auf 2 gesenkt, als android-playstore.yml entfernt wurde: Mit einem
-  // Workflow weniger gibt es weniger Ueberlappung. GEMESSEN sind es jetzt
-  // actions/checkout@v7 (in allen drei Laeufen) und actions/upload-artifact@v7
-  // (in zwei) — beide einheitlich, die Pruefung unten greift also weiter auf
-  // genau die Faelle, um die es geht.
+  // Lowered from 3 to 2 when android-playstore.yml was removed: with one
+  // workflow fewer there is less overlap. MEASURED, there are now
+  // actions/checkout@v7 (in all three runs) and actions/upload-artifact@v7
+  // (in two) — both uniform, so the check below still applies to
+  // exactly the cases that matter.
   assert.ok(
     mehrfach.length >= 2,
     `Nur ${mehrfach.length} Actions stehen an mehr als einer Stelle — dann ` + 'kann diese Prüfung nichts finden.',
@@ -109,15 +109,15 @@ test('a workflow uses every action in the same version everywhere', () => {
 });
 
 test('a run that executes tests runs on EVERY branch', () => {
-  // Warum
+  // Why
   const TESTBEFEHLE = [/npm\s+test/, /testDebugUnitTest/];
 
   const checking = [];
   for (const f of fs.readdirSync(REAL_LOCATION).filter(f => /\.ya?ml$/.test(f))) {
     const roh = fs.readFileSync(path.join(REAL_LOCATION, f), 'utf8');
-    // Kommentarzeilen raus: In den Erklärblöcken dieser Dateien stehen die
-    // Testbefehle als Fliesstext, und ein Workflow wäre sonst allein deswegen
-    // "prüfend", weil er über das Prüfen SCHREIBT.
+    // Comment lines out: the explanation blocks of these files contain the
+    // test commands as prose, and a workflow would otherwise count as
+    // "checking" merely because it WRITES about checking.
     const yml = roh
       .split('\n')
       .filter(z => !z.trimStart().startsWith('#'))
@@ -125,8 +125,8 @@ test('a run that executes tests runs on EVERY branch', () => {
     if (TESTBEFEHLE.some(r => r.test(yml))) checking.push([f, yml]);
   }
 
-  // Selbstbeweis: Es gibt mindestens die zwei — Web und Android. Fände das
-  // Muster keinen, wäre die Schleife darunter leer und die Prüfung still grün.
+  // Self-proof: there are at least the two — web and Android. If the pattern
+  // found none, the loop below would be empty and the check silently green.
   assert.ok(
     checking.length >= 2,
     `Nur ${checking.length} testausführende Workflows gefunden — Muster veraltet? ` +
@@ -135,12 +135,12 @@ test('a run that executes tests runs on EVERY branch', () => {
 
   const eng = [];
   for (const [f, yml] of checking) {
-    // Der `branches:`-Eintrag UNTER `push:` — nicht der unter `pull_request:`
-    // und nicht irgendeiner weiter unten im Text.
+    // The `branches:` entry UNDER `push:` — not the one under `pull_request:`
+    // and not any one further down in the text.
     const push = yml.match(/\n\s*push:\s*\n((?:\s{4,}.*\n|\s*\n)*)/);
-    if (!push) continue; // reiner Veröffentlichungslauf — siehe oben
+    if (!push) continue; // pure publishing run — see above
     const zweige = push[1].match(/branches(?:-ignore)?:\s*(.+)/);
-    // Kein branches-Eintrag heisst bei GitHub: alle Zweige. Das ist erlaubt.
+    // No branches entry means on GitHub: all branches. That is allowed.
     if (!zweige) continue;
     if (!zweige[1].includes('**')) eng.push(`${f}: push nur auf ${zweige[1].trim()}`);
   }
@@ -155,9 +155,9 @@ test('a run that executes tests runs on EVERY branch', () => {
   );
 });
 
-// Gegenproben (am 28.10.2026 gemessen): die Zeile mit `head_repository` aus
-// dem `if:` des Prüfjobs gestrichen → rot „… fremdes Repository …“; eine
-// Action wieder als `@v7` statt per SHA → rot „… per Commit-SHA …“.
+// Counter-checks (measured 28.10.2026): the line with `head_repository` deleted
+// from the `if:` of the check job → red „… fremdes Repository …“; an
+// action again as `@v7` instead of by SHA → red „… per Commit-SHA …“.
 test('the Docker image only results from a push to main of this repository', () => {
   const yml = fs.readFileSync(path.join(REAL_LOCATION, 'docker-publish.yml'), 'utf8');
   const job = yml.split(/\n {2}pruefen:\n/)[1]?.split(/\n {4}steps:\n/)[0] ?? '';
@@ -171,8 +171,8 @@ test('the Docker image only results from a push to main of this repository', () 
   );
 });
 
-// Gegenprobe (01.11.2026 gemessen): `--no-build-cache` aus „Release bauen“
-// gestrichen → rot „… ohne Build-Cache …“.
+// Counter-check (measured 01.11.2026): `--no-build-cache` deleted from „Release bauen“
+// → red „… ohne Build-Cache …“.
 test('the release APK is built without a build cache', () => {
   const yml = fs.readFileSync(path.join(REAL_LOCATION, 'android.yml'), 'utf8');
   const schritt = yml.split(/\n {6}- name: Release bauen\n/)[1]?.split(/\n {6}- name: /)[0] ?? '';
@@ -187,7 +187,7 @@ test('every action is pinned by commit SHA', () => {
     const zeilen = fs.readFileSync(path.join(REAL_LOCATION, f), 'utf8').split('\n');
     zeilen.forEach((z, i) => {
       const m = z.match(/^\s*-?\s*uses:\s*([^\s#]+)/);
-      // Ein lokaler Workflow (./.github/workflows/…) läuft immer im Commit des Aufrufers.
+      // A local workflow (./.github/workflows/…) always runs in the caller's commit.
       if (m && !m[1].startsWith('./.github/workflows/') && !/@[0-9a-f]{40}$/.test(m[1]))
         lose.push(`${f}:${i + 1} ${m[1]}`);
     });
@@ -195,10 +195,10 @@ test('every action is pinned by commit SHA', () => {
   assert.deepEqual(lose, [], 'Ein Tag lässt sich umhängen; nur ein SHA ist fest. Nicht per Commit-SHA festgelegt:');
 });
 
-// Gegenproben (am 30.10.2026 gemessen): `security-events: write` auf die
-// oberste Ebene gezogen → rot „security-events: write darf nur der CodeQL-Job
-// haben“; die Kotlin-Zeile der
-// Matrix entfernt → rot „CodeQL prüft java-kotlin nicht“.
+// Counter-checks (measured 30.10.2026): `security-events: write` moved to the
+// top level → red „security-events: write darf nur der CodeQL-Job
+// haben“; the Kotlin line of the
+// matrix removed → red „CodeQL prüft java-kotlin nicht“.
 test('the security run checks code, dependencies, image and the running server', () => {
   const roh = fs.readFileSync(path.join(REAL_LOCATION, 'sicherheit.yml'), 'utf8');
   const yml = roh
@@ -223,7 +223,7 @@ test('the security run checks code, dependencies, image and the running server',
   assert.ok(fs.existsSync(path.join(WURZEL, '.github', 'zap-regeln.tsv')), 'die ZAP-Regeln fehlen');
 });
 
-/** Die Einträge von .github/dependabot.yml, je `- package-ecosystem:` ein Block. */
+/** The entries of .github/dependabot.yml, one block per `- package-ecosystem:`. */
 function dependabot() {
   const text = fs.readFileSync(path.join(WURZEL, '.github', 'dependabot.yml'), 'utf8');
   return text
@@ -236,18 +236,18 @@ function dependabot() {
     }));
 }
 
-// Dependabot liest nur .github/dependabot.yml; Renovate lief nie (keine App, kein PR seit dem
-// 2. November) und daneben öffnete es jede Aktualisierung doppelt.
-// Gegenproben (14.11.2026 gemessen, je einzeln): den npm-Eintrag gestrichen → rot „npm …
-// hält niemand aktuell“; `cooldown` beim npm-Eintrag gestrichen → rot „ohne Wartezeit“;
-// renovate.json wieder angelegt → rot „nur ein Werkzeug“; die postgres-Ausnahme gestrichen →
-// rot „Hauptversion“.
+// Dependabot only reads .github/dependabot.yml; Renovate never ran (no app, no PR since
+// 2 November) and besides it opened every update twice.
+// Counter-checks (measured 14.11.2026, each individually): npm entry deleted → red „npm …
+// hält niemand aktuell“; `cooldown` deleted for the npm entry → red „ohne Wartezeit“;
+// renovate.json created again → red „nur ein Werkzeug“; the postgres exception deleted →
+// red „Hauptversion“.
 test('Dependabot maintains npm, Gradle, images and actions from the root configuration', () => {
   const eintraege = dependabot();
   const finde = (oe, ordner) => eintraege.find(e => e.ecosystem === oe && e.ordner === ordner);
   for (const [oe, ordner] of [
     ['npm', '/Web-App'],
-    // Der Name zusammengesetzt: abgleich-baumbruecken liest jede Erwähnung als Pfad in den Baum.
+    // The name assembled: abgleich-baumbruecken reads every mention as a path into the tree.
     ['gradle', `/${'Android'}-App`],
     ['docker', '/Web-App'],
     ['docker-compose', '/Web-App'],
@@ -281,7 +281,7 @@ test('Dependabot maintains npm, Gradle, images and actions from the root configu
   assert.deepEqual(renovate, [], 'nur ein Werkzeug: Renovate neben Dependabot öffnete jede Aktualisierung doppelt');
 });
 
-/** Der `run:`-Block des Schritts mit `id: <id>`, ohne Einrückung. */
+/** The `run:` block of the step with `id: <id>`, without indentation. */
 function stepScript(yml, id) {
   const z = yml.split('\n');
   const i = z.findIndex(l => l.trim() === `id: ${id}`);
@@ -294,10 +294,10 @@ function stepScript(yml, id) {
     .join('\n');
 }
 
-// Gegenproben (02.11.2026 gemessen): im sed-Muster `@sha256` durch `@sha512`
-// ersetzt → rot (Exit 1, „Kein Image per Digest gefunden“); (14.11.2026) den Eintrag
-// `docker-compose` in dependabot.yml gestrichen → rot „docker-compose: … ohne Update-Pfad“;
-// `matrix.image` im Trivy-Job durch ein festes Image ersetzt → rot.
+// Counter-checks (measured 02.11.2026): in the sed pattern `@sha256` replaced
+// by `@sha512` → red (exit 1, „Kein Image per Digest gefunden“); (14.11.2026) the entry
+// `docker-compose` deleted in dependabot.yml → red „docker-compose: … ohne Update-Pfad“;
+// `matrix.image` in the Trivy job replaced by a fixed image → red.
 test('the images from compose.yaml have an update path and go through Trivy', () => {
   const yml = fs.readFileSync(path.join(REAL_LOCATION, 'sicherheit.yml'), 'utf8');
   const ort = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'compose-images-'));
@@ -312,7 +312,7 @@ test('the images from compose.yaml have an update path and go through Trivy', ()
   assert.equal(r.status, 0, r.stdout + r.stderr);
   const images = JSON.parse(fs.readFileSync(output, 'utf8').match(/^images=(.*)$/m)?.[1] ?? '[]');
   fs.rmSync(ort, { recursive: true, force: true });
-  // Caddy baut compose.yaml selbst (Dockerfile.caddy), auch für caddy-rechte; pgweb gibt es nicht mehr.
+  // Caddy builds compose.yaml itself (Dockerfile.caddy), also for caddy-rechte; pgweb no longer exists.
   assert.deepEqual(images.map(i => i.split(':')[0]).sort(), ['postgres']);
   assert.ok(
     images.every(i => /@sha256:[0-9a-f]{64}$/.test(i)),
@@ -322,20 +322,20 @@ test('the images from compose.yaml have an update path and go through Trivy', ()
   const trivy = yml.slice(yml.indexOf('\n  trivy-compose:'), yml.indexOf('\n  zap:'));
   assert.match(trivy, /matrix:\s*\n\s*image: \$\{\{ fromJSON\(needs\.compose-images\.outputs\.images\) \}\}/);
   assert.match(trivy, /image-ref: \$\{\{ matrix\.image \}\}/);
-  // Digests in compose.yaml und Dockerfile, SHAs der Actions: Dependabot zieht sie nach.
+  // Digests in compose.yaml and Dockerfile, SHAs of the actions: Dependabot updates them.
   for (const oe of ['docker-compose', 'docker', 'github-actions'])
     assert.ok(
       dependabot().some(e => e.ecosystem === oe),
       `${oe}: Digests und Action-SHAs stehen ohne Update-Pfad fest`,
     );
-  // Gegenprobe (03.11.2026 gemessen): wieder exit-code '0' → rot „nicht scharf".
+  // Counter-check (measured 03.11.2026): exit-code '0' again → red „nicht scharf".
   assert.match(trivy, /exit-code: '1'/, 'Trivy für die Betriebs-Images ist nicht scharf');
   const liste = trivy.match(/trivyignores: (\S+)/)?.[1];
   assert.ok(liste && fs.existsSync(path.join(WURZEL, liste)), `Ausnahmeliste fehlt: ${liste}`);
 });
 
-// Gegenprobe (03.11.2026 gemessen): persist-credentials im Checkout von
-// web-ci.yml gestrichen → rot, die Liste nennt „web-ci.yml:test".
+// Counter-check (measured 03.11.2026): persist-credentials deleted in the checkout of
+// web-ci.yml → red, the list names „web-ci.yml:test".
 test('checkouts keep no credentials, except where the job writes', () => {
   const ohne = [];
   for (const datei of fs.readdirSync(REAL_LOCATION).filter(n => n.endsWith('.yml'))) {
@@ -350,10 +350,10 @@ test('checkouts keep no credentials, except where the job writes', () => {
   assert.deepEqual(ohne.sort(), ['android.yml:bildschirmfotos-einchecken', 'android.yml:pruefsummen-vorschlagen']);
 });
 
-// Gegenproben (03.11.2026 gemessen, je einzeln): `provenance: mode=max`
-// gestrichen → rot „… Herkunft beim Bau“; den Schritt „Herkunft bescheinigen“
-// gestrichen → rot „… attest-build-provenance“; `attestations: write` gestrichen
-// → rot „… darf Nachweise ablegen“.
+// Counter-checks (measured 03.11.2026, each individually): `provenance: mode=max`
+// deleted → red „… Herkunft beim Bau“; the step „Herkunft bescheinigen“
+// deleted → red „… attest-build-provenance“; `attestations: write` deleted
+// → red „… darf Nachweise ablegen“.
 test('the image carries provenance and bill of materials, attested on the signed digest', () => {
   const yml = fs
     .readFileSync(path.join(REAL_LOCATION, 'docker-publish.yml'), 'utf8')
@@ -376,17 +376,17 @@ test('the image carries provenance and bill of materials, attested on the signed
   assert.match(merge, /uses: actions\/attest-build-provenance@[0-9a-f]{40}/, 'attest-build-provenance fehlt');
   assert.match(merge, /uses: actions\/attest-sbom@[0-9a-f]{40}/, 'attest-sbom fehlt');
   assert.match(merge, /npm sbom --omit=dev --package-lock-only --sbom-format=cyclonedx/);
-  // Bescheinigt wird genau der Digest, den cosign signiert hat.
+  // Exactly the digest that cosign signed is attested.
   assert.equal([...merge.matchAll(/subject-digest: \$\{\{ steps\.signatur\.outputs\.digest \}\}/g)].length, 2);
   assert.match(merge, /- name: Image signieren\s*\n\s+id: signatur/);
 });
 
-// Gegenproben (05.11.2026 gemessen, je einzeln): im Publish-Bau `no-cache:
-// true` durch `cache-from: type=gha,…` ersetzt → rot „der signierte Bau liest
-// keinen Cache“; im Trivy-Schritt vor der Signatur eine andere Action → rot
-// „Trivy prüft den Digest, bevor er signiert wird“; `npm audit signatures` aus
-// web-ci gestrichen → rot „… nach npm ci“; im Job trivy-eigenbau
-// `trivyignores:` ergänzt → rot „Caddy wird ohne Ausnahmen geprüft“.
+// Counter-checks (measured 05.11.2026, each individually): in the publish build `no-cache:
+// true` replaced by `cache-from: type=gha,…` → red „der signierte Bau liest
+// keinen Cache“; in the Trivy step before the signature a different action → red
+// „Trivy prüft den Digest, bevor er signiert wird“; `npm audit signatures` deleted
+// from web-ci → red „… nach npm ci“; in the job trivy-eigenbau
+// `trivyignores:` added → red „Caddy wird ohne Ausnahmen geprüft“.
 test('the signed build without cache, Trivy before the signature, package signatures in CI', () => {
   const withoutComment = t =>
     t
@@ -420,7 +420,7 @@ test('the signed build without cache, Trivy before the signature, package signat
   assert.doesNotMatch(exceptions, /^\s*# (caddy|pgweb)/m, 'Caddy oder pgweb mit hingenommenen Lücken');
 });
 
-/** Die Einträge von .github/trivy-betrieb.yaml (nur die Form, die die Datei benutzt). */
+/** The entries of .github/trivy-betrieb.yaml (only the form the file uses). */
 function trivyExceptions(roh) {
   assert.match(roh, /^vulnerabilities:\s*$/m, 'kein Abschnitt vulnerabilities');
   return roh
@@ -444,11 +444,11 @@ function trivyExceptions(roh) {
     });
 }
 
-// Gegenproben (11.11.2026 gemessen, je einzeln): bei CVE-2026-9947 `purls:` samt
-// Einträgen gestrichen → rot „… an keine Datei und kein Paket gebunden“; in
-// sicherheit.yml wieder `trivyignores: .github/trivy-operation.ignore` → rot
-// „trivy-compose liest die YAML-Ausnahmen“; bei CVE-2025-61726 `expired_at`
-// gestrichen → rot „… ohne Ablaufdatum“.
+// Counter-checks (measured 11.11.2026, each individually): for CVE-2026-9947 `purls:` with
+// entries deleted → red „… an keine Datei und kein Paket gebunden“; in
+// sicherheit.yml again `trivyignores: .github/trivy-operation.ignore` → red
+// „trivy-compose liest die YAML-Ausnahmen“; for CVE-2025-61726 `expired_at`
+// deleted → red „… ohne Ablaufdatum“.
 test('Trivy exceptions of the operations images: bound to file or package, with deadline and reason', () => {
   const roh = fs.readFileSync(path.join(WURZEL, '.github', 'trivy-betrieb.yaml'), 'utf8');
   const liste = trivyExceptions(roh);
@@ -468,13 +468,13 @@ test('Trivy exceptions of the operations images: bound to file or package, with 
       assert.match(p, /^pkg:apk\/alpine\/[a-z0-9.+-]+$/, `${e.id}: ${p} ist kein Alpine-Paket ohne Fassung`);
     for (const p of e.paths) assert.doesNotMatch(p, /^\/|\*/, `${e.id}: ${p} ist kein fester Pfad im Image`);
   }
-  // gosu ist das einzige Go-Programm im Postgres-Image; seine Ausnahmen gelten nur dort.
+  // gosu is the only Go program in the Postgres image; its exceptions apply only there.
   assert.ok(
     liste.some(e => e.paths.includes('usr/local/bin/gosu')),
     'keine Ausnahme für gosu',
   );
 
-  // trivy-action reicht genau EINE .yaml-Datei als TRIVY_IGNOREFILE durch; mehrere oder gemischt brechen ab.
+  // trivy-action passes exactly ONE .yaml file through as TRIVY_IGNOREFILE; several or mixed abort.
   const sich = fs.readFileSync(path.join(REAL_LOCATION, 'sicherheit.yml'), 'utf8');
   assert.match(
     jobOf(sich, 'trivy-compose'),
@@ -489,7 +489,7 @@ test('Trivy exceptions of the operations images: bound to file or package, with 
 
 // ── Android-Release (sec17) ──────────────────────────────────────────────────
 
-/** Der run-Block eines Schritts, gesucht über seinen Namen. */
+/** The run block of a step, looked up by its name. */
 function stepAfter(yml, name) {
   const z = yml.split('\n');
   const i = z.findIndex(l => l.trim() === `- name: ${name}`);
@@ -503,7 +503,7 @@ function stepAfter(yml, name) {
     .join('\n');
 }
 
-/** Ein Job ohne Kommentarzeilen, von seiner Kopfzeile bis zum nächsten Job. */
+/** A job without comment lines, from its header line to the next job. */
 function jobOf(yml, name) {
   const ohne = yml
     .split('\n')
@@ -514,7 +514,7 @@ function jobOf(yml, name) {
   return teil.split(/\n {2}[\w-]+:\n/)[0];
 }
 
-/** Führt [skript] in bash aus, mit einem `gh`-Ersatz, der je Aufruf [antworten] befragt. */
+/** Runs [skript] in bash, with a `gh` stand-in that asks [antworten] per call. */
 function withGh(t, script, antworten, env = {}) {
   const ort = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'gh-ersatz-'));
   t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
@@ -539,8 +539,8 @@ function withGh(t, script, antworten, env = {}) {
   });
 }
 
-// Gegenproben (05.11.2026 gemessen, je einzeln): im Baujob `cache-disabled` gestrichen →
-// rot „Etiketten bauen ohne Cache“; im Gegenproben-Job `cache-read-only` gestrichen → rot
+// Counter-checks (measured 05.11.2026, each individually): in the build job `cache-disabled` deleted →
+// red „Etiketten bauen ohne Cache“; in the counter-check job `cache-read-only` deleted → red
 // „… schreibt den Gradle-Cache“.
 test('tags build without Gradle cache, and only the build job writes it (sec17 M1)', () => {
   const android = fs.readFileSync(path.join(REAL_LOCATION, 'android.yml'), 'utf8');
@@ -567,9 +567,9 @@ test('tags build without Gradle cache, and only the build job writes it (sec17 M
   }
 });
 
-// Gegenproben (05.11.2026 gemessen): `exit-code: '1'` der Android-Prüfung auf '0' → rot
-// „… sperrt nicht“; den Schritt „Abhängigkeiten ohne bekannte Lücke“ gestrichen → rot
-// „… ohne grüne Lückenprüfung“; im gh-Ersatz ein roter Job → rot „ein roter …“.
+// Counter-checks (measured 05.11.2026): `exit-code: '1'` of the Android check to '0' → red
+// „… sperrt nicht“; the step „Abhängigkeiten ohne bekannte Lücke“ deleted → red
+// „… ohne grüne Lückenprüfung“; a red job in the gh stand-in → red „ein roter …“.
 test("the app's vulnerability check blocks, and without it no tag is signed (sec17 M2)", t => {
   const sicherheit = fs.readFileSync(path.join(REAL_LOCATION, 'sicherheit.yml'), 'utf8');
   const job = jobOf(sicherheit, 'android-abhaengigkeiten');
@@ -608,14 +608,14 @@ test("the app's vulnerability check blocks, and without it no tag is signed (sec
   assert.notEqual(lauf('fehlt').status, 0, 'ohne den Job sperrt es');
 });
 
-// Gegenproben (11.11.2026 gemessen, je einzeln): im Schritt „main ist geschützt“ die Schleife
-// gestrichen → rot „ohne PR-Pflicht …“; die Prüfung von can_admins_bypass gestrichen → rot
-// „… umgehen …“; als erlaubte Regel wieder `tag:android-v*` → rot „… nur der Zweig main“; den
-// Vergleich `$COMMIT != $LAUF_COMMIT` gestrichen → rot „ein Etikett auf einem anderen Commit …“;
-// die Namensprüfung `^android-v…$` gestrichen → rot „ein Name mit Sonderzeichen …“; in
-// „Prüfsummen aus der Übergabe“ die Auswahl des Übergabejobs durch `true` ersetzt → rot „die
-// Anmerkung eines anderen Jobs …“. Der gh-Ersatz wertet kein --jq aus: Die Zählung der
-// Anmerkungen (`if length == 1`) prüft dieser Test nicht.
+// Counter-checks (measured 11.11.2026, each individually): in the step „main ist geschützt“ the loop
+// deleted → red „ohne PR-Pflicht …“; the check of can_admins_bypass deleted → red
+// „… umgehen …“; `tag:android-v*` as allowed rule again → red „… nur der Zweig main“; the
+// comparison `$COMMIT != $LAUF_COMMIT` deleted → red „ein Etikett auf einem anderen Commit …“;
+// the name check `^android-v…$` deleted → red „ein Name mit Sonderzeichen …“; in
+// „Prüfsummen aus der Übergabe“ the selection of the handover job replaced by `true` → red „die
+// Anmerkung eines anderen Jobs …“. The gh stand-in evaluates no --jq: the count of
+// annotations (`if length == 1`) is not checked by this test.
 test('signing happens only with protected main, from main, for a real tag and without bypass by administrators (sec17 B1, B3)', t => {
   const release = fs.readFileSync(path.join(REAL_LOCATION, 'android-release.yml'), 'utf8');
   const main = stepAfter(release, 'main ist geschützt');
@@ -723,9 +723,9 @@ test('signing happens only with protected main, from main, for a real tag and wi
   assert.notEqual(lies('55', `apk=${a} aab=${b}; rm`).status, 0, 'eine verunstaltete Anmerkung gilt nicht');
 });
 
-// Gegenproben (05.11.2026 gemessen): im Release-Job den Prüfsummen-Schritt gestrichen → rot
-// „vor dem Veröffentlichen …“; in android-bescheinigung.yml `sha256sum -c -` durch
-// `cat > /dev/null` ersetzt → rot „ein verändertes Byte …“.
+// Counter-checks (measured 05.11.2026): the checksum step deleted in the release job → red
+// „vor dem Veröffentlichen …“; in android-bescheinigung.yml `sha256sum -c -` replaced by
+// `cat > /dev/null` → red „ein verändertes Byte …“.
 test('only what the signing job output is published and attested (sec17 B-N1, B-N7)', t => {
   const android = fs.readFileSync(path.join(REAL_LOCATION, 'android-release.yml'), 'utf8');
   const bescheinigung = fs.readFileSync(path.join(REAL_LOCATION, 'android-bescheinigung.yml'), 'utf8');

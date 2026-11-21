@@ -1,14 +1,14 @@
 /**
- * Kein Dienst bekommt ein Passwort oder Geheimnis als Umgebungsvariable: Die
- * zeigt `docker inspect` jedem mit Zugang zu Docker. Gelesen wird compose.yaml
- * von `docker compose config` selbst (Interpolation, Profile, Kurzschreibweisen),
- * nicht per Regex. Ohne Docker-CLI wird übersprungen, in CI nicht.
+ * No service gets a password or secret as an environment variable: those are
+ * shown by `docker inspect` to everyone with access to Docker. compose.yaml is read
+ * by `docker compose config` itself (interpolation, profiles, short notations),
+ * not via regex. Skipped without Docker CLI, not in CI.
  *
- * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  bei app wieder `SESSION_SECRET: ${SESSION_SECRET:-x}` → rot: „app:
- *      Geheimnis als Umgebungsvariable (SESSION_SECRET)“
- *   B  bei jobs `secrets: [db_app_password]` gestrichen → rot: „jobs:
- *      PGPASSWORD_FILE zeigt auf ein nicht eingehängtes Secret“
+ * Counter-checks (measured 03.11.2026, each alone):
+ *   A  for app again `SESSION_SECRET: ${SESSION_SECRET:-x}` → red: “app:
+ *      secret as environment variable (SESSION_SECRET)”
+ *   B  for jobs `secrets: [db_app_password]` deleted → red: “jobs:
+ *      PGPASSWORD_FILE points to a secret that is not mounted”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

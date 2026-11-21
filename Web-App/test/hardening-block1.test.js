@@ -1,26 +1,26 @@
 /**
- * Härtung der Anmeldung und des Betriebs: neue Sitzungs-ID beim Anmelden,
- * Anmeldezähler in der Datenbank (mit Rückfall im Speicher), kein Token aus
- * der Adresszeile, Preis-Cache leeren nur als Verwalter, Vorschaubilder in den
- * Listen, und offene Ereignis-Ströme halten das Herunterfahren nicht auf.
+ * Hardening of login and operation: new session ID on login,
+ * login counters in the database (with fallback in memory), no token from
+ * the address bar, clearing the price cache only as administrator, preview images in the
+ * lists, and open event streams do not hold up shutdown.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
- *   A  in establishSession() `req.session.regenerate(…)` durch einen
- *      direkten Aufruf des Rückrufs ersetzt → rot: „die Sitzungs-ID …“
- *      (kein neues Cookie, die alte ID bleibt)
- *   B  in _bump() zuerst `throw 0` (nur der Prozessspeicher zählt) → rot:
- *      „ein zweiter Prozess sieht die Sperre“
- *   C  in _reserviere() den catch-Zweig durch `throw fehler` ersetzt → rot:
- *      „ohne Datenbank bremst der Speicher“
- *   D  in /admin/cache-clear requireApiAdmin durch `(_q, _s, n) => n()` →
- *      rot: „den Preis-Cache leert nur …“ (200 statt 403)
- *   E  in minifigs.js die Kachel mit imgUrl(…, false) (Bündel neu gebaut)
- *      → rot: „Minifiguren und Finanzen fordern Vorschaubilder an“
- *   F  in herunterfahren() `closeAllSse()` gestrichen → rot: „offene
- *      Ereignis-Ströme …“ (Ende erst nach der Frist von 8 s)
- * Gestrichen, weil ein Verhaltenstest dasselbe ausführt: „Preis-Vorhandensein
- * hängt an avg_price“ (price-rule-db.test.js), Vorschau der Teile und Sets
- * (listen-paging-oberflaeche, bilder-proxy-oberflaeche), thumb=1 am Proxy
+ * Counter-checks (measured 10.11.2026, each alone, reverted):
+ *   A  in establishSession() `req.session.regenerate(…)` replaced by a
+ *      direct call of the callback → red: “the session ID …”
+ *      (no new cookie, the old ID stays)
+ *   B  in _bump() first `throw 0` (only process memory counts) → red:
+ *      “a second process sees the lock”
+ *   C  in _reserviere() the catch branch replaced by `throw fehler` → red:
+ *      “without a database the memory throttles”
+ *   D  in /admin/cache-clear requireApiAdmin replaced by `(_q, _s, n) => n()` →
+ *      red: “only … clears the price cache” (200 instead of 403)
+ *   E  in minifigs.js the tile with imgUrl(…, false) (bundle rebuilt)
+ *      → red: “minifigures and finances request preview images”
+ *   F  `closeAllSse()` deleted in herunterfahren() → red: “open
+ *      event streams …” (end only after the deadline of 8 s)
+ * Deleted because a behavior test executes the same: “price presence
+ * depends on avg_price” (price-rule-db.test.js), preview of parts and sets
+ * (listen-paging-oberflaeche, bilder-proxy-oberflaeche), thumb=1 at the proxy
  * (img-cache-serve.test.js).
  */
 const test = require('node:test');
@@ -47,7 +47,7 @@ const db = testData();
 
 const NAME = `haerte_${process.pid}`,
   PASS = 'Haerte-Passwort-1';
-// Die Zähler-Fälle sperren diesen Namen; das Testkonto bleibt für den Token-Fall frei.
+// The counter cases lock this name; the test account stays free for the token case.
 const COUNTER = `${NAME}_zaehler`;
 let uid = 0;
 
@@ -73,7 +73,7 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
   });
 
   await t.test('the session ID changes on login', async () => {
-    // Wer dem Opfer vorher eine ID untergeschoben hat, darf danach nicht angemeldet sein.
+    // Whoever slipped the victim an ID beforehand must not be logged in afterwards.
     const app = express();
     app.use(express.json());
     app.use(session({ secret: 'haerte-test-geheimnis-lang-genug', resave: false, saveUninitialized: false }));
@@ -107,7 +107,7 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
     const a = _req('src/account/loginLimiter.js');
     assert.equal(await a.loginAllowed(IP, COUNTER), null, 'Vorbedingung: frei');
     for (let i = 0; i < a.MAX_ATTEMPTS; i++) await a.loginFailed(IP, COUNTER);
-    // Ein frisch geladenes Modul hat leeren Speicher, wie ein zweiter Arbeitsprozess.
+    // A freshly loaded module has empty memory, like a second worker process.
     const datei = path.join(ROOT, 'dist', 'src', 'account', 'loginLimiter.js');
     delete require.cache[datei];
     const b = require(datei);
@@ -147,7 +147,7 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
   });
 
   await t.test('only an admin clears the price cache', async () => {
-    // Sonst liesse sich das BrickLink-Kontingent der Installation von aussen verbrennen.
+    // Otherwise the installation's BrickLink quota could be burned from outside.
     const SN = `haerte-${process.pid}-1`;
     await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, avg_price) VALUES ($1,'N','EUR',1)`, [
       SN,
@@ -230,7 +230,7 @@ test('hardening against the database', { concurrency: 1, timeout: 120_000 }, asy
 });
 
 test('minifigures and finances request preview images', async () => {
-  // Volle Auflösung bei 36–100 px Anzeigegrösse liess die Kacheln sichtbar nachtröpfeln.
+  // Full resolution at a display size of 36–100 px made the tiles visibly trickle in.
   const IMAGE = 'https://cdn.rebrickable.com/media/sets/fig-000123.jpg';
   const { w, d } = await openUi({
     '/v1/minifigs': {
@@ -274,10 +274,10 @@ test('minifigures and finances request preview images', async () => {
   }
 });
 
-// ── Struktur: Verbote über alle Aufrufer der Webapp ─────────────────────────
+// ── Structure: bans across all callers of the web app ───────────────────────
 
 test('the web app appends no token to an address', () => {
-  // Der Server sieht ihn dort nicht mehr an (Test oben); er stünde nur im Protokoll.
+  // The server no longer looks at it there (test above); it would only stand in the log.
   const { ohneKommentare, setCoreSource } = require('./helpers/sources');
   const append = [/'\?token='\s*\+/, /\?token=\$/];
   const dateien = [
@@ -295,15 +295,15 @@ test('the web app appends no token to an address', () => {
     if (append.some(re => re.test(src))) treffer.push(path.basename(voll));
   }
   assert.deepEqual(treffer, []);
-  // Eine zweite Fassung des Wächters umginge die eine Regel in src/account/http/login.ts.
+  // A second version of the guard would bypass the one rule in src/account/http/login.ts.
   assert.doesNotMatch(setCoreSource(), /function requireLoginOrToken/);
-  // Während eines Imports ist 503 nach 3 s besser als eine hängende Verbindung.
+  // During an import 503 after 3 s is better than a hanging connection.
   assert.match(setCoreSource(), /loginOrTokenGuard\(d\.account, \{ timeoutMs: 3000 \}\)/);
 });
 
 test('every price query on price_cache names the currency', () => {
-  // price_cache ist über Set, Zustand UND Währung verschlüsselt; ohne currency_code mischen sich Währungen,
-  // und ein Währungswechsel bräuchte eine Cache-Leerung. Zählungen und Abfragen ohne WHERE wählen keinen Preis.
+  // price_cache is keyed over set, condition AND currency; without currency_code currencies mix,
+  // and a currency change would need a cache clearing. Counts and queries without WHERE select no price.
   const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
   const reader = require('./helpers/sources')
     .allSources()

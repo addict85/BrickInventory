@@ -1,11 +1,11 @@
 /**
- * Seit db/basis.sql gibt es den Stand VOR dieser Migration nicht mehr: Die
- * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
- * der Endstand und die Lesewege.
+ * Since db/basis.sql the state BEFORE this migration no longer exists: the
+ * cases on latch, addendum and intermediate state have been dropped. What is checked
+ * is the final state and the read paths.
  *
- *      GEGENPROBE: Ändert sich die Zuordnung, folgt die Antwort.
+ *      COUNTER-CHECK: if the mapping changes, the response follows.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
  * REQUIRE_DB=1.
  */
 require('./helpers/system-frame');
@@ -23,8 +23,8 @@ const { keineDb } = require('./helpers/db');
 const db = testData();
 const { holdsMinifig, holdsPart } = require('./helpers/inventory');
 
-// Dieselbe Begruendung wie in test/set-quantity-from-entries-db.test.js: Diese
-// Datei baut die Datenbank mehrfach von null auf.
+// The same rationale as in test/set-quantity-from-entries-db.test.js: this
+// file builds the database from scratch several times.
 test.after(async () => {
   try {
     await db.run('DROP SCHEMA public CASCADE');
@@ -66,8 +66,8 @@ test('after the whole chain the numbers are only in bl_mapping', { concurrency: 
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
 
-  // Den Vorstand vor den Migrationen gibt es nicht mehr: Eine leere
-  // Datenbank bekommt db/basis.sql. Geprüft wird der Endstand.
+  // The pre-state before the migrations no longer exists: an empty
+  // database gets db/basis.sql. What is checked is the final state.
   const client = await db.pool.connect();
   try {
     await _req('db/migrate.js').runMigrations(client);
@@ -75,7 +75,7 @@ test('after the whole chain the numbers are only in bl_mapping', { concurrency: 
     client.release();
   }
 
-  // ── Danach: die Abschriften sind weg ─────────────────────────────────────
+  // ── Afterwards: the copies are gone ─────────────────────────────────────
   assert.ok(
     !(await columnsOf('parts')).includes('bl_part_number'),
     'parts.bl_part_number ist nach allen Migrationen noch da',
@@ -93,7 +93,7 @@ test('after the whole chain the numbers are only in bl_mapping', { concurrency: 
     'rb_bl_mapping gibt es noch — ihr Inhalt steht als Art part in bl_mapping',
   );
 
-  // ── Und die Zuordnung steht ──────────────────────────────────────────────
+  // ── And the mapping stands ──────────────────────────────────────────────
   const z = await columnsOf('bl_mapping');
   assert.deepEqual(
     z,
@@ -101,8 +101,8 @@ test('after the whole chain the numbers are only in bl_mapping', { concurrency: 
     `bl_mapping hat nicht die vorgesehenen Spalten: ${z.join(', ')}`,
   );
 
-  // Die Art ist eingeschränkt — ein Tippfehler soll nicht als vierte Art
-  // durchgehen und dort still unsichtbare Zeilen anlegen.
+  // The kind is constrained — a typo should not pass as a fourth kind
+  // and silently create invisible rows there.
   await assert.rejects(
     () => db.run(`INSERT INTO bl_mapping (type, rb_id) VALUES ('teil','x')`),
     /bl_zuordnung_art|check constraint/,
@@ -118,7 +118,7 @@ test('after the whole chain the numbers are only in bl_mapping', { concurrency: 
   );
   await db.run(`DELETE FROM bl_mapping WHERE rb_id='x'`);
 
-  // Der Index fuer die Eindeutigkeitspruefung des Riegels.
+  // The index for the uniqueness check of the latch.
   const idx = (await db.all(`SELECT indexname FROM pg_indexes WHERE tablename='bl_mapping'`)).map(r => r.indexname);
   assert.ok(idx.includes('idx_bl_zuordnung_bl'), `idx_bl_zuordnung_bl fehlt — gefunden: ${idx.join(', ')}`);
 });
@@ -139,16 +139,16 @@ test('the read paths deliver the BrickLink number from the mapping', { concurren
   const u = await db.get(`INSERT INTO users (username,password_hash) VALUES ('blleser','x') RETURNING id`);
   const uid = u.id;
 
-  // Ein manuelles Teil und eine manuelle Figur, beide mit ABWEICHENDER
-  // BrickLink-Nummer in der Zuordnung.
+  // A manual part and a manual minifigure, both with a DEVIATING
+  // BrickLink number in the mapping.
   await db.run(`INSERT INTO part_catalog (part_number,part_name) VALUES ('3070b','Tile 1x1')
                 ON CONFLICT (part_number) DO NOTHING`);
   await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name)
                 VALUES ('3070b',0,'Schwarz') ON CONFLICT (part_number,color_id) DO NOTHING`);
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name) VALUES ('fig-9','Testfigur')
                 ON CONFLICT (fig_number) DO NOTHING`);
-  // Bestandszeile UND Erfassung in einem — die Stückzahl steht seit
-  // Migration 0038 nur noch dort.
+  // Stock row AND entry in one — since migration 0038 the item count
+  // is only there.
   await holdsPart(db, uid, '3070b', { menge: 5, colorId: 0, preis: 1.0 });
   await holdsMinifig(db, uid, 'fig-9', { menge: 2, preis: 5.0 });
   await db.run(`INSERT INTO bl_mapping (type,rb_id,bl_id) VALUES
@@ -171,11 +171,11 @@ test('the read paths deliver the BrickLink number from the mapping', { concurren
   assert.ok(fig, `Die Figur fehlt in der Antwort: ${JSON.stringify(figs).slice(0, 300)}`);
   assert.equal(fig.bl_fig_number, 'sw9999', `bl_fig_number kam als ${fig.bl_fig_number} statt sw9999`);
 
-  // ── GEGENPROBE: die Zuordnung ändern ─────────────────────────────────────
+  // ── COUNTER-CHECK: change the mapping ────────────────────────────────────
   //
-  // Der Kern dieses Tests. Ohne ihn könnten die Werte oben zufällig stimmen —
-  // etwa aus einer anderen Quelle, die gerade dasselbe sagt. Erst wenn die
-  // Antwort einer Änderung FOLGT, ist bewiesen, woher sie kommt.
+  // The core of this test. Without it the values above could be right by chance —
+  // say from another source that happens to say the same. Only when the
+  // response FOLLOWS a change is it proven where it comes from.
   await db.run(`UPDATE bl_mapping SET bl_id='3070neu' WHERE type='part' AND rb_id='3070b'`);
   await db.run(`UPDATE bl_mapping SET bl_id='sw0000'  WHERE type='fig'  AND rb_id='fig-9'`);
 
@@ -195,12 +195,12 @@ test('the read paths deliver the BrickLink number from the mapping', { concurren
     `Die Figurenliste folgt der Zuordnung nicht: ${fig2.bl_fig_number} statt sw0000`,
   );
 
-  // ── Und OHNE Zuordnung gilt die Rebrickable-Nummer ───────────────────────
+  // ── And WITHOUT a mapping the Rebrickable number applies ─────────────────
   //
-  // Die Zuordnung hält nur die ABWEICHUNG fest. Kein Eintrag heisst „heisst
-  // dort genauso" — und nicht „leer": Als Gruppierungsschlüssel fiele ein
-  // NULL-Wert in seine eigene Gruppe, und jedes Teil ohne Zuordnung stünde
-  // einzeln in der Liste.
+  // The mapping only records the DEVIATION. No entry means “is called the
+  // same there" — and not “empty": as a grouping key a NULL value
+  // would fall into its own group, and every part without a mapping would stand
+  // individually in the list.
   await db.run(`DELETE FROM bl_mapping WHERE type='part' AND rb_id='3070b'`);
   const teile3 = await H.manualPartsList([uid], uid);
   const teil3 = (Array.isArray(teile3) ? teile3 : teile3.parts || []).find(p => p.part_number === '3070b');
@@ -212,10 +212,10 @@ test('the read paths deliver the BrickLink number from the mapping', { concurren
 });
 
 test('nobody writes a BrickLink number to an inventory row any more', () => {
-  // Nur der QUELLTEXT, und nur die SCHREIBseite. Die Leseseite prüft die
-  // Datenbank: Nach Migration 0037 gibt es die Spalten nicht, jede verbliebene
-  // Lesestelle ist ein harter Fehler — und genau deshalb laufen die Lesewege
-  // oben gegen eine migrierte Datenbank.
+  // Only the SOURCE TEXT, and only the WRITE side. The read side is checked by the
+  // database: after migration 0037 the columns do not exist, every remaining
+  // read site is a hard error — and that is exactly why the read paths
+  // above run against a migrated database.
   const dateien = [];
   const lauf = verz => {
     for (const e of fs.readdirSync(verz, { withFileTypes: true })) {
@@ -240,9 +240,9 @@ test('nobody writes a BrickLink number to an inventory row any more', () => {
       return !(t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.startsWith('--'));
     });
 
-  // Die drei Abschriften, und die alte Tabelle. parts_summary.bl_part_number
-  // ist ausgenommen: Diese Tabelle ist ein Zwischenspeicher, sie hält den
-  // Gruppenschlüssel als fertige Spalte (src/parts/summary.ts).
+  // The three copies, and the old table. parts_summary.bl_part_number
+  // is excluded: this table is a cache, it holds the
+  // group key as a finished column (src/parts/summary.ts).
   /** @type {[string, RegExp][]} */
   const muster = [
     ['setzt parts.bl_part_number', /UPDATE\s+parts\s+SET\s+[^;`']*\bbl_part_number\s*=/i],
@@ -258,8 +258,8 @@ test('nobody writes a BrickLink number to an inventory row any more', () => {
   const stellen = [];
   for (const datei of dateien) {
     const rel = path.relative(ROOT, datei);
-    // Migrationen (.sql) sind nicht dabei: 0037 muss die alten Spalten und
-    // die alte Tabelle weiter lesen.
+    // Migrations (.sql) are not included: 0037 must keep reading the old columns and
+    // the old table.
     for (const z of codeRows(fs.readFileSync(datei, 'utf8'))) {
       for (const [was, m] of muster) if (m.test(z)) stellen.push(`${rel} (${was}): ${z.trim().slice(0, 80)}`);
     }
@@ -275,10 +275,10 @@ test('nobody writes a BrickLink number to an inventory row any more', () => {
 
   // ── Selbstbeweis ─────────────────────────────────────────────────────────
   //
-  // Die Muster finden jetzt nichts — das ist der Punkt, sagt aber allein noch
-  // nicht, dass sie etwas finden KOENNTEN. Also an erfundenen Zeilen
-  // nachgewiesen, in genau der Form, die vorher im Baum stand (die ersten drei
-  // standen vor Migration 0037 so im Teile-Import und in den Figurenrouten).
+  // The patterns find nothing now — that is the point, but alone it does not yet
+  // say that they COULD find something. So proven on invented lines,
+  // in exactly the form that stood in the tree before (the first three
+  // stood like this in the parts import and in the minifigure routes before migration 0037).
   const proben = [
     'UPDATE parts SET bl_part_number = m.bl_part_num FROM x',
     'UPDATE minifigs SET bl_fig_number=$1 WHERE id=$2',
@@ -292,7 +292,7 @@ test('nobody writes a BrickLink number to an inventory row any more', () => {
       `Kein Muster greift auf seine eigene Probe: ${zeile.slice(0, 60)}`,
     );
   }
-  // Und die Gegenrichtung: Was erlaubt ist, darf NICHT greifen.
+  // And the opposite direction: what is allowed must NOT match.
   for (const zeile of [
     'INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ($1,$2,NULLIF($3,$2))',
     'INSERT INTO parts_summary (user_id, part_key, bl_part_number) SELECT 1,2,3',

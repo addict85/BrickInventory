@@ -1,30 +1,30 @@
 /**
- * Rückmeldungen in Formularen (UI-Prüfung 17, Abläufe M8–M13, M15, N14,
- * N19), echtes Bündel in jsdom:
- *   - Set-Detail: „abc“ als Alarmschwelle ist ein Fehler am Feld, kein
- *     stilles Löschen; ein nur gebraucht vorhandenes Set wählt „Gebraucht“
- *     vor, und das Feld nennt die Währung.
- *   - Preisalarme: Löschen fragt im eigenen Dialog und bietet Rückgängig.
- *   - Lagerorte: belegte Orte sind nicht löschbar (mit Grund), Umbenennen
- *     meldet Erfolg, ein leerer Name einen Fehler; ab zehn Zeichen vor der
- *     Grenze zählt das Feld mit.
- *   - Gutscheine: die Summe steht je Währung.
- *   - Konto anlegen: Name- und Passwortregel stehen am Feld, bevor die
- *     Passwortabfrage kommt.
- *   - Dunkelmodus „Immer dunkel“ wirkt auch bei hellem System.
+ * Feedback in forms (UI review 17, flows M8–M13, M15, N14,
+ * N19), real bundle in jsdom:
+ *   - Set detail: “abc” as alert threshold is an error at the field, not a
+ *     silent deletion; a set only present as used preselects “used”,
+ *     and the field names the currency.
+ *   - Price alerts: deleting asks in its own dialog and offers undo.
+ *   - Storage locations: occupied locations cannot be deleted (with reason), renaming
+ *     reports success, an empty name an error; from ten characters before the
+ *     limit the field counts along.
+ *   - Vouchers: the sum stands per currency.
+ *   - Create account: name and password rule stand at the field before the
+ *     password prompt comes.
+ *   - Dark mode “always dark” also works with a light system.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in sendAlarm die Zeile mit feldFehler entfernt → rot: „Alarm im
- *      Set-Detail“ (DELETE statt Fehlermeldung)
- *   B  in loescheAlarm wieder confirm() → rot: „Alarm löschen mit Dialog
- *      und Rückgängig“
- *   C  in lagerorte `belegt ? ' disabled'` entfernt → rot: „Lagerorte“
- *   D  im Zähler-Listener (formular) sofort return → rot: „Lagerorte“
- *   E  in ladeGutscheine wieder eine Summe über alle Währungen → rot:
- *      „Gutscheinsumme je Währung“
- *   F  in nutzerverwaltung die Namensprüfung entfernt → rot: „Konto
- *      anlegen“
- *   G  in theme-boot `w === 'immer' ||` entfernt → rot: „Immer dunkel“
+ * Counter-checks (measured 05.11.2026, each alone, bundle rebuilt):
+ *   A  in sendAlarm the line with feldFehler removed → red: “alert in the
+ *      set detail” (DELETE instead of error message)
+ *   B  in loescheAlarm again confirm() → red: “delete alert with dialog
+ *      and undo”
+ *   C  in lagerorte `belegt ? ' disabled'` removed → red: “storage locations”
+ *   D  in the counter listener (formular) return immediately → red: “storage locations”
+ *   E  in ladeGutscheine again one sum over all currencies → red:
+ *      “voucher sum per currency”
+ *   F  in nutzerverwaltung the name check removed → red: “create
+ *      account”
+ *   G  in theme-boot `w === 'immer' ||` removed → red: “always dark”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -218,7 +218,7 @@ test('always dark', async () => {
     {},
     {
       browserLanguage: 'de-DE',
-      // Das Boot-Skript steht in index.html im <head>, nicht im Bündel; hier läuft es wie dort vor allem anderen.
+      // The boot script stands in index.html in the <head>, not in the bundle; here it runs as there before everything else.
       vorher: w => {
         w.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
         w.document.documentElement.setAttribute('data-theme', 'classic');

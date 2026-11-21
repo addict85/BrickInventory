@@ -1,17 +1,17 @@
 /**
- * Eine Unicode-Schreibweise derselben Adresse ist dasselbe Konto — für den
- * Login, für die Sperre und für die Rücksetz-Mail. PostgreSQL schreibt „İ“ als
- * „i“ klein, JavaScript als „i̇“; vorher fand der Login das Konto, die Sperre
- * zählte aber unter einer neuen Kennung, und die Rücksetz-Mail ging an die
- * eingetippte Schreibweise.
+ * A Unicode spelling of the same address is the same account — for the
+ * login, for the lock and for the reset mail. PostgreSQL lowercases „İ“ as
+ * „i“, JavaScript as „i̇“; before, the login found the account, but the lock
+ * counted under a new identifier, and the reset mail went to the
+ * typed-in spelling.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  kontoKennung() wieder mit JavaScript-toLowerCase() und `= $1` → rot:
- *      „nach fünf Fehlversuchen ist auch die Unicode-Schreibweise gesperrt“
- *   B  sendPasswordResetMail wieder an `email` aus der Anfrage → rot: „die
- *      Rücksetz-Mail geht an die gespeicherte Adresse“
+ * Counter-checks (measured on 28.10.2026):
+ *   A  kontoKennung() again with JavaScript toLowerCase() and `= $1` → red:
+ *      “after five failed attempts the Unicode spelling is locked too”
+ *   B  sendPasswordResetMail again to `email` from the request → red: “the
+ *      reset mail goes to the stored address”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,9 +19,9 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-// Links in Mails gibt es nur mit fester Adresse (routes/auth.ts, getBaseUrl).
+// Links in mails only exist with a fixed address (routes/auth.ts, getBaseUrl).
 process.env.APP_BASE_URL = 'http://localhost';
-// Die Konsole zeigt die Empfängeradresse sonst nur maskiert (src/mail/mailer.ts).
+// Otherwise the console shows the recipient address only masked (src/mail/mailer.ts).
 process.env.MAIL_KONSOLE_MIT_TOKEN = '1';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 

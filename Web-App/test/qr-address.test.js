@@ -1,18 +1,18 @@
 /**
- * Der QR-Code traegt die Adresse, unter der der Server von AUSSEN erreichbar
- * ist — oder es kommt kein Code.
+ * The QR code carries the address under which the server is reachable from
+ * OUTSIDE — or no code comes.
  *
- * ── Gegenproben (durchgefuehrt, Ergebnis im Commit) ─────────────────────────
- *   a) Absage entfernt, `url: basis` bleibt         → Schritt 1 rot (200 statt 503)
- *   b) Absage NACH den INSERT verschoben            → Schritt 1 rot, mit genau der
- *                                                     Meldung „Nonce entstanden"
- *   c) `d.url || location.origin` wiederhergestellt → Schritt 2 rot
- *   d) Rueckfall auf den Host-Header im Server      → Schritte 1 UND 3 rot
+ * ── Counter-checks (carried out, result in the commit) ─────────────────────────
+ *   a) refusal removed, `url: basis` stays         → step 1 red (200 instead of 503)
+ *   b) refusal moved AFTER the INSERT              → step 1 red, with exactly the
+ *                                                     message „Nonce entstanden"
+ *   c) `d.url || location.origin` restored         → step 2 red
+ *   d) fallback to the Host header in the server   → steps 1 AND 3 red
  *
- * Bei d) waren es zwei, nicht einer: Schritt 3 sieht den geratenen Host im
- * Quelltext, Schritt 1 sieht die Folge — die Route antwortet dann mit 200 und
- * einer Adresse aus dem Testserver (`localhost:<Port>`) statt abzusagen. Beide
- * Meldungen sind richtig; die zweite ist die, auf die es ankommt.
+ * With d) it was two, not one: step 3 sees the guessed host in the
+ * source text, step 1 sees the consequence — the route then answers with 200 and
+ * an address from the test server (`localhost:<port>`) instead of refusing. Both
+ * messages are right; the second one is the one that matters.
  */
 const test = require('node:test');
 const { environment, testData } = require('./helpers/sources');
@@ -28,8 +28,8 @@ const { buildAndRequire, einhaengung, ohneKommentare } = require('./helpers/sour
 const { testServer } = require('./helpers/server');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-// Die Einhaengung aus server.ts LESEN, nicht abschreiben: Ein Pruefstand mit
-// fester Adresse bleibt gruen, waehrend der Router laengst woanders haengt.
+// READ the mount from server.ts, do not copy it: a test bench with a
+// fixed address stays green while the router has long been mounted elsewhere.
 const AUTH = einhaengung('auth');
 const db = testData();
 
@@ -43,10 +43,10 @@ test('1. without APP_BASE_URL no code comes — and no nonce', { concurrency: 1 
     'INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,$2,false,true) RETURNING id',
     ['qr_pruefling', require('bcryptjs').hashSync('qr-passwort-1', 4)],
   );
-  // Aufraeumen UND den Pool schliessen, beides hier: Ohne das `end()` haelt
-  // die offene Verbindung den Prozess am Leben, und `node --test` haengt nach
-  // dem letzten Schritt, statt rot oder gruen zu melden. Genau das ist beim
-  // Schreiben dieser Datei passiert.
+  // Clean up AND close the pool, both here: without the `end()` the open
+  // connection keeps the process alive, and `node --test` hangs after
+  // the last step instead of reporting red or green. Exactly that happened when
+  // writing this file.
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = $1', [nutzer.id]).catch(() => {});
     await db.pool.end().catch(() => {});
@@ -55,7 +55,7 @@ test('1. without APP_BASE_URL no code comes — and no nonce', { concurrency: 1 
   const { base } = testServer(_req, { sitzung: { userId: nutzer.id, username: 'qr_pruefling', isAdmin: 0 }, t });
   const hole = () =>
     fetch(`${base}${AUTH}/qr-token`, {
-      // Seit dem Passwortschritt verlangt die Route das eigene Passwort.
+      // Since the password step the route requires the own password.
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: 'qr-passwort-1' }),
@@ -63,7 +63,7 @@ test('1. without APP_BASE_URL no code comes — and no nonce', { concurrency: 1 
   const nonces = async () =>
     (await db.get('SELECT COUNT(*)::int AS n FROM qr_login_tokens WHERE user_id = $1', [nutzer.id])).n;
 
-  // ── Fall 1: Die Variable fehlt ────────────────────────────────────────────
+  // ── Case 1: the variable is missing ────────────────────────────────────────────
   const vorher = process.env.APP_BASE_URL;
   t.after(() => {
     if (vorher === undefined) environment({ APP_BASE_URL: undefined });
@@ -86,14 +86,14 @@ test('1. without APP_BASE_URL no code comes — and no nonce', { concurrency: 1 
   );
   assert.match(grund.error, /APP_BASE_URL/, 'Der Satz fuer den Nutzer nennt die Variable nicht, die zu setzen ist.');
 
-  // DAS ist der Kern: Die Absage steht VOR dem Datenbankzugriff. Stuende sie
-  // dahinter, laege hier ein Zugangscode, der fuenf Minuten lang ein Konto
-  // oeffnet und den niemand je einloest.
+  // THAT is the core: the refusal stands BEFORE the database access. If it stood
+  // behind it, an access code would lie here that opens an account for five minutes
+  // and that nobody ever redeems.
   assert.equal(await nonces(), 0, 'Trotz Absage ist eine Nonce entstanden — die Pruefung steht zu spaet.');
 
-  // ── Fall 2: Die Variable ist gesetzt ──────────────────────────────────────
-  // Mit ueberzaehligem Schraegstrich, denn genau der wuerde sich sonst zu
-  // `https://host//?set=…` durchschlagen.
+  // ── Case 2: the variable is set ──────────────────────────────────────
+  // With a surplus slash, because exactly that would otherwise come through as
+  // `https://host//?set=…`.
   environment({ APP_BASE_URL: 'https://lego.example.org//' });
   const gut = await hole();
   assert.equal(gut.status, 200, 'Mit APP_BASE_URL muss ein Code entstehen.');
@@ -110,25 +110,25 @@ test('1. without APP_BASE_URL no code comes — and no nonce', { concurrency: 1 
 test('2. the web app no longer has its own opinion about the address', () => {
   const js = require('./helpers/sources').ansichtQuelle('einstellungen');
   assert.match(js, /const serverUrl = d\.url;/, 'Die Webapp nimmt nicht schlicht die Adresse des Servers.');
-  // Der Rueckfall ist weg — das war Marcos zweiter Satz. `ohneKommentare`
-  // sorgt dafuer, dass die Erklaerung DARUEBER (die den alten Ausdruck zitiert)
-  // diese Zusicherung nicht scheinbar erfuellt.
+  // The fallback is gone — that was Marco's second sentence. `ohneKommentare`
+  // makes sure that the explanation ABOVE (which quotes the old expression)
+  // does not seemingly fulfill this assertion.
   assert.ok(!/location\.origin/.test(js), 'location.origin steht noch im Code der QR-Erzeugung.');
 
-  // Das versteckte Feld ist entfallen: Es trug nur location.origin weiter und
-  // war nie zu bearbeiten. Eine Zeile, die niemand mehr braucht, ist eine
-  // Stelle, an der jemand spaeter etwas Falsches vermutet.
+  // The hidden field is dropped: it only carried location.origin along and
+  // was never editable. A line that nobody needs any more is a
+  // place where somebody later suspects something wrong.
   const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
   assert.ok(!/id="qr-server-url"/.test(html), 'Das verwaiste Feld qr-server-url steht noch im Markup.');
   assert.ok(!/qr-server-url/.test(js), 'Die Webapp liest das entfallene Feld noch.');
 });
 
 test('3. one source for QR code, mail button and reset links', () => {
-  // Der Kern von Marcos erstem Satz: EINE Adresse, nicht drei. Lesen darf sie
-  // nur src/infra/basisUrl.ts; wer process.env.APP_BASE_URL selbst anfasst, hat
-  // eine vierte Schreibweise begonnen.
-  // Die Variable liest src/infra/config.ts (appBaseUrl, ohne Schraegstrich am
-  // Ende); basisUrl() ist der eine Weg dorthin.
+  // The core of Marco's first sentence: ONE address, not three. Only
+  // src/infra/basisUrl.ts may read it; whoever touches process.env.APP_BASE_URL himself has
+  // started a fourth notation.
+  // src/infra/config.ts reads the variable (appBaseUrl, without a slash at the
+  // end); basisUrl() is the one way there.
   const helper = lies('src/infra/basisUrl.ts');
   assert.match(helper, /konfig\(\)\.appBaseUrl/, 'src/infra/basisUrl.ts liest die Konfiguration nicht.');
   assert.match(
@@ -146,9 +146,9 @@ test('3. one source for QR code, mail button and reset links', () => {
     assert.match(quelle, /basisUrl\(\)/, `${datei} benutzt den gemeinsamen Helfer nicht.`);
   }
 
-  // Der QR-Zweig darf keinen Host raten: Fuer diesen Code gilt dasselbe wie
-  // fuer einen Link in einer Mail — eine geratene Adresse ist schlechter als
-  // keine. (getBaseUrl weiter unten DARF es, siehe die Begruendung dort.)
+  // The QR branch must not guess a host: for this code the same applies as
+  // for a link in a mail — a guessed address is worse than
+  // none. (getBaseUrl further down MAY do it, see the reasoning there.)
   const auth = lies('routes/auth/qr.ts');
   const i = auth.search(/router\.endpunkt\(\s*'POST \/api\/v1\/auth\/qr-token'/);
   assert.ok(i > 0, 'Die Route /qr-token ist verschwunden — umbenannt?');
@@ -158,7 +158,7 @@ test('3. one source for QR code, mail button and reset links', () => {
     'Die Route faellt auf den Host-Header zurueck — genau das soll sie nicht.',
   );
 
-  // Und sie ist dokumentiert — sonst weiss niemand, dass es sie zu setzen gilt.
+  // And it is documented — otherwise nobody knows that it needs to be set.
   const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
   assert.match(readme, /APP_BASE_URL/, 'README.md nennt APP_BASE_URL nicht.');
 });

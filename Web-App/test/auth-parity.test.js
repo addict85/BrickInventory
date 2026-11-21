@@ -1,17 +1,17 @@
 /**
- * Auth-Paritätstest (ohne DB).
+ * Auth parity test (without DB).
  *
- * Gegenproben der am 08.11.2026 gestrichenen Fälle, die jetzt ausgeführt werden:
- * QR-Login ohne Passwort-Material und einmalig → anmeldung-regeln-db A/B;
- * angezeigte QR-Gültigkeit → dort B und qr-klartext-hinweis C; Profil prüft
- * den Benutzernamen → anmeldung-regeln-db C; Login ohne gespeicherten Token →
- * dort D, ein stilles `.catch(() => {})` beim Entwerten der Zugänge verbietet
- * ratschen.test.js („stille Faenge …“).
- * Am 11.11.2026 auf Verhalten umgestellt: Verwalter setzt fremdes Passwort und
- * jeder Passwortweg beendet die Zugänge → auth-sessions-db; gleiche bcrypt-Kosten
- * auf allen Wegen → passwort-regel-db; Gleitfrist und Zählung des Aufräumens →
- * token-gleitfrist-db. Gegenprobe: `ladeKonfig` nimmt TOKEN_IDLE_DAYS=0 an → rot
- * „die Gleitfrist lässt sich nicht abschalten“.
+ * Counter-checks of the cases deleted on 08.11.2026 that are now executed:
+ * QR login without password material and one-time → anmeldung-regeln-db A/B;
+ * displayed QR validity → there B and qr-klartext-hinweis C; profile checks
+ * the username → anmeldung-regeln-db C; login without a stored token →
+ * there D, a silent `.catch(() => {})` when invalidating the accesses is forbidden by
+ * ratschen.test.js (“silent catches …”).
+ * Switched to behavior on 11.11.2026: administrator sets a foreign password and
+ * every password path ends the accesses → auth-sessions-db; equal bcrypt cost
+ * on all paths → passwort-regel-db; sliding period and count of the cleanup →
+ * token-gleitfrist-db. Counter-check: `ladeKonfig` accepts TOKEN_IDLE_DAYS=0 → red
+ * “the sliding period cannot be switched off”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,7 +19,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-// Nach dist/ bauen statt in-place — siehe helpers/sources.js.
+// Build to dist/ instead of in place — see helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
 const { assertLoginAllowed } = _req('src/account/loginCheck.js');
 const { ARGON2_COST } = _req('src/account/passwordHash.js');
@@ -28,7 +28,7 @@ const { escapeLike } = _req('src/account/deviceToken.js');
 const { ohneKommentare } = require('./helpers/sources');
 
 /**
- * Jeden Anmelde-Handler SUCHEN statt zwei aufzuzählen.
+ * SEARCH every login handler instead of enumerating two.
  */
 function loginHandler() {
   const dateien = dir =>
@@ -43,8 +43,8 @@ function loginHandler() {
     for (const m of src.matchAll(
       /(?:router|app)\.(?:(?:post|put)\(\s*'|endpunkt\(\s*'(?:POST|PUT) )([^']*login[^']*)'/g,
     )) {
-      // Der Rumpf reicht bis zur nächsten Routendefinition. Kommentare sind
-      // schon weg — sonst zählte ein Erklärtext, der „password" erwähnt, mit.
+      // The body extends to the next route definition. Comments are
+      // already gone — otherwise an explanatory text mentioning “password" would count.
       const rel = src.slice(m.index + 1).search(/\n\s*(?:router|app)\.[a-z]+\(/);
       const koerper = rel < 0 ? src.slice(m.index) : src.slice(m.index, m.index + 1 + rel);
       treffer.push({ datei: path.relative(ROOT, datei), pfad: m[1], koerper });
@@ -56,7 +56,7 @@ function loginHandler() {
 test('an active, confirmed account may log in', () => {
   assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 1, email: 'a@b.c' }), null);
   assert.equal(assertLoginAllowed({ is_active: true, email_verified: true, email: 'a@b.c' }), null);
-  // Konto ganz ohne E-Mail (Alt-Installation, admin/admin) bleibt erlaubt
+  // An account entirely without e-mail (old installation, admin/admin) stays allowed
   assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null }), null);
 });
 
@@ -90,8 +90,8 @@ test('an open registration is rejected, admins excepted', () => {
 
 test('every login with password goes through the same check', () => {
   const gefunden = loginHandler();
-  // Selbstbeweis: Findet das Muster nichts, wäre die Fehlerliste leer und der
-  // Test grün, ohne etwas geprüft zu haben.
+  // Self-proof: if the pattern finds nothing, the error list would be empty and the
+  // test green without having checked anything.
   assert.ok(gefunden.length >= 2, `Nur ${gefunden.length} Anmelde-Routen gefunden — Muster veraltet?`);
   const withPassword = gefunden.filter(h => /password/.test(h.koerper));
   assert.equal(
@@ -118,9 +118,9 @@ test('every login with password goes through the same check', () => {
 });
 
 test('the brute-force counter is only served in one place', () => {
-  // Wer den Zähler selbst hochzählt, hat auch die Passwortprüfung selbst
-  // gebaut — der Aufruf ist damit der zuverlässigste Fingerabdruck einer
-  // zweiten Anmeldefassung, unabhängig davon, wie ihre Route heisst.
+  // Whoever increments the counter themselves has also built the password check
+  // themselves — the call is thus the most reliable fingerprint of a
+  // second login version, regardless of what its route is called.
   const zaehler = /\b(loginAllowed|loginFailed|loginSucceeded)\s*\(/;
   const erlaubt = new Set(['src/account/loginCheck.ts', 'src/account/loginLimiter.ts']);
 
@@ -148,7 +148,7 @@ test('the brute-force counter is only served in one place', () => {
       ' — die Anmeldung gehört ganz in checkCredentials() (src/account/loginCheck.ts).',
   );
 
-  // Gegenprobe zur Regel: Die erlaubte Stelle muss ihn auch wirklich bedienen.
+  // Counter-check of the rule: the allowed place must really serve it too.
   const central = require('./helpers/sources').serviceSource('src/account/loginCheck.ts');
   for (const name of ['loginAllowed', 'loginFailed', 'loginSucceeded'])
     assert.match(central, new RegExp(`\\b${name}\\((?:k, )?ip`), `src/account/loginCheck.ts ruft ${name} nicht auf`);
@@ -160,7 +160,7 @@ test('the username rule', () => {
   assert.ok(!USERNAME_RE.test('a b'));
   assert.ok(!USERNAME_RE.test('a@b.c'), 'E-Mail-Adresse darf kein Benutzername sein');
 
-  // Dass PUT /profile sie anwendet (auch gross/klein), prüft login-rules-db.test.js.
+  // That PUT /profile applies it (also upper/lower case) is checked by login-rules-db.test.js.
 });
 
 test('escapeLike defuses wildcards when deleting tokens', () => {
@@ -170,9 +170,9 @@ test('escapeLike defuses wildcards when deleting tokens', () => {
 });
 
 test('the sliding deadline cannot be switched off', () => {
-  // „Nie“ gibt es seit Migration 0080 nicht mehr: Ohne Ablauf nur je Gerät,
-  // über HTTPS und mit Rotation (token-scope-rotation-db). Dass die Frist aus
-  // der Konfiguration kommt und das Aufräumen zählt, zeigt token-gleitfrist-db.
+  // “Never” no longer exists since migration 0080: without expiry only per device,
+  // over HTTPS and with rotation (token-scope-rotation-db). That the period comes from
+  // the configuration and the cleanup counts is shown by token-gleitfrist-db.
   const { ladeKonfig } = _req('src/infra/config.js');
   assert.throws(() => ladeKonfig({ TOKEN_IDLE_DAYS: '0' }), /TOKEN_IDLE_DAYS/);
   assert.equal(ladeKonfig({ TOKEN_IDLE_DAYS: '23' }).tokenIdleDays, 23);

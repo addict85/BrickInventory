@@ -1,19 +1,19 @@
 'use strict';
 /**
- * HSTS am echten Server (dist/server.js), und nur über eine verschlüsselte
- * Verbindung: Im LAN läuft derselbe Server über http, und ein Browser, der
- * die Regel einmal gesehen hat, sperrte ihn danach ein Jahr lang aus.
+ * HSTS on the real server (dist/server.js), and only over an encrypted
+ * connection: in the LAN the same server runs over http, and a browser that
+ * has seen the rule once would lock it out for a year afterwards.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln, dist neu gebaut):
+ * Counter-checks (measured 05.11.2026, each alone, dist rebuilt):
  *   A  in securityHeaders() `if (viaTls && …)` → `if (hstsAlter !== 0)` →
- *      rot: „ohne TLS keine Kopfzeile“, „ein roher Kopf …“
+ *      red: “without TLS no header”, “a raw header …”
  *   B  `const viaTls = req.secure || req.headers['x-forwarded-proto'] ===
- *      'https'` → rot: „ein roher Kopf ohne vertrauten Proxy setzt nichts“
- *   C  `&& hstsAlter !== 0` gestrichen → rot: „HSTS_MAX_AGE=0 schaltet ab“
- *   D  die Zeile mit Strict-Transport-Security gestrichen → rot: „über TLS
- *      ein Jahr mit Subdomains“
+ *      'https'` → red: “a raw header without a trusted proxy sets nothing”
+ *   C  `&& hstsAlter !== 0` deleted → red: “HSTS_MAX_AGE=0 switches off”
+ *   D  the line with Strict-Transport-Security deleted → red: “over TLS
+ *      one year with subdomains”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -36,7 +36,7 @@ const freePort = () =>
     });
   });
 
-/** Ein Webprozess im Betriebsmodus mit eigener Umgebung; er endet im Nachlauf des Tests. */
+/** A web process in production mode with its own environment; it ends in the test's teardown. */
 async function startServer(t, env) {
   const port = await freePort();
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
@@ -49,7 +49,7 @@ async function startServer(t, env) {
       PORT: String(port),
       ROLLE: 'web',
       APP_BASE_URL: `http://127.0.0.1:${port}`,
-      // Wie im Betrieb: Nur dort vertraut Express dem Proxy; die Test-DB läuft als Superuser.
+      // As in production: only there does Express trust the proxy; the test DB runs as superuser.
       NODE_ENV: 'production',
       DB_SUPERUSER_ERLAUBT: '1',
       ...env,
@@ -84,8 +84,8 @@ test('HSTS only over TLS', { concurrency: 1, timeout: 180_000 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
-  // Nacheinander: Auf einer Datenbank läuft nur ein Web-Prozess (startup/singleInstance.ts).
-  // Jeder antwortet einmal mit und einmal ohne TLS; die Fälle prüfen die Antworten.
+  // One after another: only one web process runs on a database (startup/singleInstance.ts).
+  // Each answers once with and once without TLS; the cases check the responses.
   /** @type {Record<string, { tls: Headers, ohne: Headers }>} */
   const k = {};
   for (const [name, env] of Object.entries({

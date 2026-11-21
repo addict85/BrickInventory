@@ -1,21 +1,21 @@
 /**
- * Geheimnisse liegen verschlüsselt in der Datenbank und kommen lesbar wieder
- * heraus: globale Schlüssel, Gutschein-PIN, TOTP-Geheimnis. Klartext aus der
- * Zeit davor wird beim Start nachverschlüsselt. Mit falschem Schlüssel gibt es
- * null statt eines falschen Werts.
+ * Secrets lie encrypted in the database and come back out readable:
+ * global keys, voucher PIN, TOTP secret. Plain text from the
+ * time before is encrypted afterwards at startup. With a wrong key there is
+ * null instead of a wrong value.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  in setGlobalSetting den Wert unverschlüsselt geschrieben → rot:
- *      „globale Schlüssel …“
- *   B  in POST /vouchers verschluessele() weggelassen → rot: „Gutschein-PIN …“
- *   C  verschluesseleAltbestand() überspringt die Gutscheine → rot:
- *      „Altbestand …“ (seit 01.11.2026 schlüsselt reencryptNumbers()
- *      auch die PIN um)
- * Gegenprobe (am 29.10.2026 gemessen):
- *   D  geheimnisMaske() hängt wieder die letzten vier Zeichen an → rot:
- *      „globale Schlüssel …“
+ * Counter-checks (measured on 28.10.2026):
+ *   A  the value written unencrypted in setGlobalSetting → red:
+ *      “global keys …”
+ *   B  verschluessele() left out in POST /vouchers → red: “voucher PIN …”
+ *   C  verschluesseleAltbestand() skips the vouchers → red:
+ *      “legacy stock …” (since 01.11.2026 reencryptNumbers()
+ *      also re-encrypts the PIN)
+ * Counter-check (measured on 29.10.2026):
+ *   D  geheimnisMaske() again appends the last four characters → red:
+ *      “global keys …”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

@@ -1,29 +1,29 @@
 /**
- * Die Dialoge der Routen mit erneuter Bestätigung bieten den zweiten Faktor
- * an: Meldet der Server zweiter_faktor_noetig, fragt die Oberfläche den Code
- * nach (oder, wo der Browser es kann und das Konto Passkeys hat, einen
- * Passkey) und wiederholt die Anfrage. Echtes Bündel in jsdom.
+ * The dialogs of the routes with re-confirmation offer the second factor:
+ * if the server reports zweiter_faktor_noetig, the UI asks for the code
+ * (or, where the browser can and the account has passkeys, a
+ * passkey) and repeats the request. Real bundle in jsdom.
  *
- * Gegenproben (03.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in einstellungen.js „Alles löschen" wieder api() direkt → rot: „Alles
- *      löschen fragt den Code nach" und „der Passkey ersetzt den Code"
- *   B  in einstellungen.js das Anlegen eines Kontos wieder api() direkt → rot:
- *      „ein Konto anlegen fragt den Code nach"
- *   C  in passkeys.js fetchSetPasskey() nicht aufgerufen → rot: „der
- *      Passkey ersetzt den Code"
- *   D  in papierkorb.js bzw. gutscheine.js wieder confirmDelete() und
- *      api() ohne Passwort → rot: „den Papierkorb leeren …" bzw. „einen
- *      Gutschein löschen …" (der Passwortdialog erscheint nicht)
- *   E  in gutscheinPinUmschalten() fetchPlaintext() übergangen → rot: „die
- *      Gutscheinliste zeigt die Maske …" (kein Passwortdialog)
- *   F  gutscheinPdfOeffnen() wieder openPdfViewer() direkt → rot: „das
- *      Gutschein-PDF öffnet erst nach Bestätigung …"
+ * Counter-checks (measured 03.11.2026, each alone, bundle rebuilt):
+ *   A  in einstellungen.js “Alles löschen" again api() directly → red: “delete
+ *      everything asks for the code" and “the passkey replaces the code"
+ *   B  in einstellungen.js creating an account again api() directly → red:
+ *      “creating an account asks for the code"
+ *   C  in passkeys.js fetchSetPasskey() not called → red: “the
+ *      passkey replaces the code"
+ *   D  in papierkorb.js or gutscheine.js again confirmDelete() and
+ *      api() without password → red: “emptying the trash …” or “deleting a
+ *      voucher …" (the password dialog does not appear)
+ *   E  in gutscheinPinUmschalten() fetchPlaintext() skipped → red: “the
+ *      voucher list shows the mask …" (no password dialog)
+ *   F  gutscheinPdfOeffnen() again openPdfViewer() directly → red: “the
+ *      voucher PDF opens only after confirmation …"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, warte, takt, sicht } = require('./helpers/ui');
 
-/** Antwortet ohne Code mit zweiter_faktor_noetig und merkt sich jeden Rumpf. */
+/** Answers without code with zweiter_faktor_noetig and remembers every body. */
 function withFactor(liste, passkey = false) {
   return (_url, o) => {
     const body = JSON.parse(o.body);

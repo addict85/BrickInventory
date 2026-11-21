@@ -1,19 +1,19 @@
 /**
- * UX-Prüfung 12.11.2026, echtes Bündel in jsdom: Dauer in der Schreibweise der
- * Sprache („1,5 s“); Jahresfilter als Jahr beschriftet („ab 2015“); ein Set ohne
- * Bild hat keinen Zoom-Knopf; das Menü steht in drei Gruppen, und das Set-Detail
- * führt zu Preisalarmen und Lagerorten (der Dialog schliesst dabei).
+ * UX review 12.11.2026, real bundle in jsdom: duration in the notation of the
+ * language (“1,5 s”); year filter labeled as a year (“ab 2015”); a set without an
+ * image has no zoom button; the menu stands in three groups, and the set detail
+ * leads to price alerts and storage locations (the dialog closes in doing so).
  *
- * Gegenproben (12.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  formatDuration wieder mit toFixed(1) und „s“ ohne Leerzeichen → rot: „Dauer
- *      in der Schreibweise der Sprache“ („1.5s“)
- *   B  in katalog.js die Jahresoption wieder nur mit `${y}` → rot: „Jahresfilter
- *      …“ („2016“ statt „ab 2016“)
- *   C  an #m-img wieder tabindex="0" role="button" data-click → rot: „Set ohne
- *      Bild …“ (vor dem ersten Öffnen ein Tab-Halt)
- *   D  in index.html role="group" der Kontogruppe entfernt → rot: „Menü in
- *      Gruppen …“; in sichtAusDialog den Klick auf den Schliessknopf entfernt
- *      → rot: „aus dem Set-Detail …“ (Dialog bleibt offen)
+ * Counter-checks (measured 12.11.2026, each alone, bundle rebuilt):
+ *   A  formatDuration again with toFixed(1) and “s” without space → red: “duration
+ *      in the notation of the language” (“1.5s”)
+ *   B  in katalog.js the year option again only with `${y}` → red: “year filter
+ *      …” (“2016” instead of “ab 2016”)
+ *   C  on #m-img again tabindex="0" role="button" data-click → red: “set without
+ *      image …” (a tab stop before the first opening)
+ *   D  in index.html role="group" of the account group removed → red: “menu in
+ *      groups …”; in sichtAusDialog the click on the close button removed
+ *      → red: “from the set detail …” (dialog stays open)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -86,7 +86,7 @@ test('set without image: no button "enlarge image"', async () => {
   const o = await openUi(SET);
   try {
     const bild = o.d.getElementById('m-img');
-    // Seit Runde 27 liegt das Bild in einem Knopf; ohne Bild ist der gesperrt.
+    // Since round 27 the image lies in a button; without an image it is disabled.
     const knopf = /** @type {HTMLButtonElement} */ (bild.parentElement);
     const stand = () => ({
       role: bild.getAttribute('role'),
@@ -118,7 +118,7 @@ test('menu in groups with titles', async () => {
       { titel: 'Mein Konto', punkte: ['profil', 'haushalt', 'daten', 'app'] },
       { titel: 'Verwaltung', punkte: ['settings', 'monitor'] },
     ]);
-    // Konto und Einstellungen sagen, wofür sie stehen.
+    // Account and settings say what they stand for.
     assert.match(text(o.d.querySelector('[data-arg="profil"]')), /Profil, Design, Anmeldung/);
     assert.match(text(o.d.querySelector('[data-arg="settings"]')), /Für alle Konten/);
   } finally {

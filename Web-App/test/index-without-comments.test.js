@@ -1,10 +1,10 @@
 /**
- * Die ausgelieferte Startseite trägt keine Entwicklerkommentare: Sie stehen
- * in public/index.html für den Quelltext, der Renderer streift sie ab.
- * Geprüft am gebauten Renderer (startPageHtml), nicht an der Datei.
+ * The delivered start page carries no developer comments: they stand
+ * in public/index.html for the source text, the renderer strips them.
+ * Checked on the built renderer (startPageHtml), not on the file.
  *
- * Gegenprobe (02.11.2026 gemessen): in readIndex() stripComments() entfernt
- * → rot: „keine Kommentare in der ausgelieferten Seite“ (153 Kommentare).
+ * Counter-check (measured 02.11.2026): stripComments() removed in readIndex()
+ * → red: “no comments in the delivered page” (153 comments).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,7 +14,7 @@ test('no comments in the delivered page', async () => {
   const { startPageHtml } = buildAndRequire()('src/profile/indexHtml.js');
   const html = await startPageHtml();
   assert.equal((html.match(/<!--/g) || []).length, 0);
-  // Was die Seite braucht, ist noch da.
+  // What the page needs is still there.
   assert.match(html, /<main id="inhalt"/);
   assert.match(html, /<script src="\/js\/app\.bundle\.js/);
   assert.match(html, /<html[^>]*data-theme="/);

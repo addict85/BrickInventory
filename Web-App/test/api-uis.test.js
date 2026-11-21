@@ -1,5 +1,5 @@
 /**
- * EINE Adresse, eine Umsetzung — und nur noch EINE Oberfläche.
+ * ONE address, one implementation — and only ONE UI left.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,12 +8,12 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-// Kommentare entfernen — sonst zählen auskommentierte Routen mit. Der Helfer
-// statt eines naiven /\*…\*\/: `'/images/*pfad'` in server.ts eröffnete für
-// diesen sonst einen Kommentar bis zum nächsten echten Kommentarende.
+// Remove comments — otherwise commented-out routes count too. The helper
+// instead of a naive /\*…\*\/: `'/images/*pfad'` in server.ts otherwise opened
+// a comment for it up to the next real comment end.
 const { ohneKommentare } = require('./helpers/sources');
 
-/** Alle `router.<verb>('<pfad>'` einer Datei, mit vorangestelltem Mountpunkt. */
+/** All `router.<verb>('<pfad>'` of a file, with the mount point prepended. */
 function routesFrom(datei, mount) {
   const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
   const out = [];
@@ -25,26 +25,26 @@ function routesFrom(datei, mount) {
 }
 
 /**
- * Die Mountpunkte der Webapp aus server.ts lesen. Hart eingetragen wäre die
- * Liste genau so lange richtig, bis jemand einen Router dazustellt — und
- * dessen Routen fielen dann stillschweigend aus der Prüfung.
+ * Read the web app's mount points from server.ts. Hard-coded, the
+ * list would be right exactly until someone adds a router — and
+ * its routes would then silently drop out of the check.
  */
 function webRouter() {
-  // Dieselbe Lesart wie in den übrigen Prüfungen (helpers/sources.js); api_v1 ist die zweite Oberfläche.
+  // The same reading as in the other checks (helpers/sources.js); api_v1 is the second UI.
   return require('./helpers/sources').routerEinhaengungen();
 }
 
 /**
- * Erlaubte Überschneidungen — mit dem Grund, warum es hier ZWEI Umsetzungen
- * geben muss statt einer. Wer eine Zeile hinzufügt, schreibt den Grund dazu;
- * wer keinen hat, hat eine Doppelung gefunden.
+ * Allowed overlaps — with the reason why there must be TWO implementations
+ * here instead of one. Whoever adds a line writes the reason with it;
+ * whoever has none has found a duplication.
  */
 /**
- * Adressen, die es ZWEIMAL geben darf — mit dem Grund.
+ * Addresses that may exist TWICE — with the reason.
  */
 const ALLOWED = new Map([]);
 
-/** Präfix weg: /api/v1/sets/x und /api/sets/x werden beide zu /sets/x. */
+/** Prefix off: /api/v1/sets/x and /api/sets/x both become /sets/x. */
 function withoutPrefix(eintrag) {
   return eintrag.replace(/ \/api(\/v1)?/, ' ');
 }
@@ -60,16 +60,16 @@ test('no unjustified route on either API surface', () => {
     for (const x of routesFrom(path.join(v1Dir, f), '/api')) v1.add(x);
   }
 
-  // Selbstbeweis: Greift das Muster nicht mehr (umbenanntes `router`, andere
-  // Schreibweise des Mountpunkts), waeren beide Mengen leer und der Test
-  // gruen, ohne etwas geprueft zu haben.
+  // Self-proof: if the pattern no longer matches (renamed `router`, different
+  // spelling of the mount point), both sets would be empty and the test
+  // green without having checked anything.
   assert.ok(web.size >= 30, `Nur ${web.size} Webapp-Routen gefunden — Muster veraltet?`);
   assert.ok(v1.size >= 80, `Nur ${v1.size} v1-Routen gefunden — Muster veraltet?`);
 
-  // Beide Seiten ohne Praefix vergleichen: Seit dem Umzug haengen die
-  // Webapp-Router selbst unter /api/v1/<bereich>, und ein Vergleich der rohen
-  // Adressen faende gar keine Ueberschneidung mehr — der Test waere gruen,
-  // ohne etwas zu pruefen.
+  // Compare both sides without prefix: since the move the
+  // web app routers themselves hang under /api/v1/<bereich>, and a comparison of the raw
+  // addresses would find no overlap at all anymore — the test would be green
+  // without checking anything.
   const webN = new Set([...web].map(withoutPrefix));
   const v1N = new Set([...v1].map(withoutPrefix));
   const doppelt = [...webN].filter(r => v1N.has(r)).sort();
@@ -86,8 +86,8 @@ test('no unjustified route on either API surface', () => {
       'eintragen, WARUM es zwei sein muessen.',
   );
 
-  // Eine Zeile, die niemand mehr braucht, ist eine Erlaubnis, die niemand
-  // prueft — dieselbe Regel wie in scripts/check-global-settings.js.
+  // A line that nobody needs anymore is a permission that nobody
+  // checks — the same rule as in scripts/check-global-settings.js.
   const veraltet = [...ALLOWED.keys()].filter(r => !doppelt.includes(r));
   assert.deepEqual(
     veraltet,
@@ -100,9 +100,9 @@ test('every router hangs under /api/v1', () => {
   const STILL_NOT = new Map([]);
 
   const einhaengungen = webRouter();
-  // Selbstbeweis: Findet das Muster keine Einhaengepunkte, prueft alles
-  // darunter nichts und waere trotzdem gruen.
-  // Einer: auth. Einstellungen, Sets, Teile und Figuren gingen in den v1-Router auf.
+  // Self-proof: if the pattern finds no mount points, everything below
+  // checks nothing and would still be green.
+  // One: auth. Settings, sets, parts and minifigures were absorbed into the v1 router.
   assert.ok(
     einhaengungen.length >= 1,
     `Nur ${einhaengungen.length} Router-Einhaengepunkte in server.ts gefunden — Muster veraltet?`,
@@ -121,8 +121,8 @@ test('every router hangs under /api/v1', () => {
       '\nEntweder umhaengen oder in STILL_NOT eintragen, WARUM noch nicht.',
   );
 
-  // Und die Ausnahme darf nicht liegenbleiben: Steht sie da, obwohl der Router
-  // laengst umgezogen ist, sieht die Umstellung unfertiger aus als sie ist.
+  // And the exception must not be left lying around: if it is there although the router
+  // moved long ago, the conversion looks less finished than it is.
   const erledigt = [...STILL_NOT.keys()].filter(m => !einhaengungen.some(r => r.mount === m));
   assert.deepEqual(
     erledigt,
@@ -132,12 +132,12 @@ test('every router hangs under /api/v1', () => {
 });
 
 /**
- * Auch die Routen, die DIREKT in server.ts stehen.
+ * Also the routes that are DIRECTLY in server.ts.
  */
 test('the directly registered routes are under /api/v1 too', () => {
-  // Die EINE Ausnahme, und sie ist keine Nachlaessigkeit:
-  // Die EINE Ausnahme — und sie ist eine Auslauf-Adresse, keine zweite
-  // gleichrangige.
+  // The ONE exception, and it is not negligence:
+  // The ONE exception — and it is a phase-out address, not a second
+  // equal one.
   const WITHOUT_VERSION = new Map([
     [
       'GET /api/img-proxy',
@@ -150,7 +150,7 @@ test('the directly registered routes are under /api/v1 too', () => {
     ],
   ]);
 
-  // Alle .ts des Serverbaums, nicht nur server.ts.
+  // All .ts of the server tree, not only server.ts.
   const dateien = [path.join(ROOT, 'server.ts')];
   const lauf = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -165,7 +165,7 @@ test('the directly registered routes are under /api/v1 too', () => {
   for (const ordner of ['routes', 'src', 'jobs']) lauf(path.join(ROOT, ordner));
   assert.ok(dateien.length >= 30, `Nur ${dateien.length} Serverdateien gefunden`);
 
-  // Auch Anmeldungen ueber eine KONSTANTE
+  // Also registrations via a CONSTANT
   const quellen = dateien.map(d => ohneKommentare(fs.readFileSync(d, 'utf8')));
   const constants = new Map();
   for (const src of quellen)
@@ -187,9 +187,9 @@ test('the directly registered routes are under /api/v1 too', () => {
       gefunden.push(`${m[1].toUpperCase()} ${pfad}`);
     }
   }
-  // Selbstbeweis: Findet das Muster nichts, prueft alles darunter nichts.
-  // ZWEI ist der GEMESSENE Stand (die beiden Adressen des Bild-Proxys); health
-  // und startup-status hängen im Router routes/health.ts.
+  // Self-proof: if the pattern finds nothing, everything below checks nothing.
+  // TWO is the MEASURED state (the two addresses of the image proxy); health
+  // and startup-status hang in the router routes/health.ts.
   assert.ok(gefunden.length >= 2, `Nur ${gefunden.length} direkt angemeldete API-Routen gefunden — Muster veraltet?`);
 
   const daneben = gefunden.filter(r => !r.split(' ')[1].startsWith('/api/v1') && !WITHOUT_VERSION.has(r)).sort();
@@ -203,8 +203,8 @@ test('the directly registered routes are under /api/v1 too', () => {
       'versionslos bleiben muss.',
   );
 
-  // Dieselbe Gegenrichtung wie oben: eine Ausnahme fuer eine Route, die es
-  // nicht mehr gibt, laesst die Umstellung unfertiger aussehen als sie ist.
+  // The same opposite direction as above: an exception for a route that
+  // no longer exists makes the conversion look less finished than it is.
   const veraltet = [...WITHOUT_VERSION.keys()].filter(r => !gefunden.includes(r));
   assert.deepEqual(
     veraltet,
@@ -214,7 +214,7 @@ test('the directly registered routes are under /api/v1 too', () => {
 });
 
 /**
- * Der Gesundheitscheck aus compose.yaml zeigt auf eine Adresse, die es gibt.
+ * The health check from compose.yaml points to an address that exists.
  */
 test('the health check from compose.yaml points to a real address', () => {
   const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
@@ -224,7 +224,7 @@ test('the health check from compose.yaml points to a real address', () => {
 
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
   const direkt = [...src.matchAll(/app\.get\(\s*'(\/api\/[^']*)'/g)].map(m => m[1]);
-  // Und die GET-Routen der in server.ts eingehängten Router (routes/health.ts).
+  // And the GET routes of the routers mounted in server.ts (routes/health.ts).
   for (const r of webRouter())
     for (const m of require('./helpers/sources').routesFromSource(
       ohneKommentare(fs.readFileSync(r.datei, 'utf8')),

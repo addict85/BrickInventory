@@ -1,13 +1,13 @@
 /**
- * Die Oberfläche fragt den Code nach, wenn der Server für eine heikle
- * Änderung zweiter_faktor_noetig meldet, und wiederholt die Anfrage mit
- * `code` (withSecondFactor in public/js/admin.js). Geprüft am Pflichtwechsel
- * des Startpassworts, echtes Bündel in jsdom.
+ * The UI asks for the code when the server reports zweiter_faktor_noetig for a sensitive
+ * change, and repeats the request with
+ * `code` (withSecondFactor in public/js/admin.js). Checked on the mandatory change
+ * of the start password, real bundle in jsdom.
  *
- * Gegenproben (01.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  im Pflichtwechsel (api.js) wieder api() direkt statt
- *      withSecondFactor → rot: „der Code-Dialog erscheint"
- *   B  in withSecondFactor `code` nicht mitgeschickt → rot: „die zweite
+ * Counter-checks (measured 01.11.2026, each on its own, bundle rebuilt):
+ *   A  in the mandatory change (api.js) again api() directly instead of
+ *      withSecondFactor → red: „der Code-Dialog erscheint"
+ *   B  `code` not sent along in withSecondFactor → red: „die zweite
  *      Anfrage trägt den Code"
  */
 const test = require('node:test');

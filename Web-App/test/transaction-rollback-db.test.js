@@ -1,16 +1,16 @@
 /**
- * transaction(): Scheitert das ROLLBACK, kommt der ursprüngliche Fehler an,
- * und die kaputte Verbindung geht nicht zurück in den Pool.
+ * transaction(): if the ROLLBACK fails, the original error arrives,
+ * and the broken connection does not go back into the pool.
  *
- * Gegenproben (am 27.10. gemessen):
- *   A  wieder `await client.query('ROLLBACK')` ohne eigenes try und
- *      `client.release()` ohne Fehler → rot: „der Fehler aus fn kommt an,
- *      nicht der vom ROLLBACK"
- *   B  `client.on('error', teardown)` entfernt → rot: das 'error'-Ereignis des
- *      Clients bleibt ohne Zuhörer und bricht den Lauf ab („danach arbeitet
- *      der Pool weiter" wird abgebrochen)
+ * Counter-checks (measured on 27.10.):
+ *   A  again `await client.query('ROLLBACK')` without an own try and
+ *      `client.release()` without an error → red: “the error from fn arrives,
+ *      not the one from the ROLLBACK”
+ *   B  `client.on('error', teardown)` removed → red: the 'error' event of the
+ *      client stays without a listener and aborts the run („danach arbeitet
+ *      der Pool weiter" is aborted)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -35,7 +35,7 @@ test('transaction() with a broken connection', async t => {
   await t.test('the error from fn arrives, not the one from ROLLBACK', async () => {
     await assert.rejects(
       db.transaction(async tx => {
-        // Die eigene Verbindung beenden: Danach scheitert jedes ROLLBACK.
+        // End the own connection: afterwards every ROLLBACK fails.
         await tx.get('SELECT pg_terminate_backend(pg_backend_pid())').catch(() => {});
         throw new Error('Ursprung');
       }),

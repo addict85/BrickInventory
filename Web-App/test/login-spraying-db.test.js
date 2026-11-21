@@ -1,20 +1,20 @@
 /**
- * Password-Spraying: Je Adresse gilt eine Grenze über ALLE Namen, nicht nur
- * fünf Versuche je Konto. Und abgelaufene Zähler verschwinden wieder.
+ * Password spraying: per address a limit applies across ALL names, not only
+ * five attempts per account. And expired counters disappear again.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  in loginAllowed die Reservierung des Adressschlüssels entfernt →
- *      rot: „nach 30 Fehlversuchen gegen verschiedene Namen …“
- *   B  cleanLoginCounterOn() löscht nichts (`AND FALSE`) → rot:
- *      „abgelaufene Zähler werden gelöscht …“
+ * Counter-checks (measured on 28.10.2026):
+ *   A  the reservation of the address key removed in loginAllowed →
+ *      red: “after 30 failed attempts against different names …”
+ *   B  cleanLoginCounterOn() deletes nothing (`AND FALSE`) → red:
+ *      “expired counters are deleted …”
  *
- * Eine Flut fremder Fehlversuche sperrt den Inhaber auf seinem bekannten Gerät
- * nicht aus (hinter einem Proxy teilen sich alle eine Adresse).
- * Gegenprobe (13.11.2026 gemessen):
- *   C  in loginAllowed `bekannt ||` vor der Gesamtsperre gestrichen →
- *      rot: „bekannt: trotz gesperrter Adresse angemeldet“
+ * A flood of foreign failed attempts does not lock the owner out on his known device
+ * (behind a proxy everybody shares one address).
+ * Counter-check (measured 13.11.2026):
+ *   C  in loginAllowed `bekannt ||` before the total lock deleted →
+ *      red: „bekannt: trotz gesperrter Adresse angemeldet“
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,14 +1,14 @@
 /**
- * Marktpreis und Preisverlauf eines Sets nehmen den Zustand DES SETS, nicht den
- * globalen Standard ('U'): Ein neu gekauftes Set zeigte sonst den Gebrauchtpreis und
- * eine erfundene Entwicklung. Gegen die echten Routen; ersetzt zwei Quelltextprüfungen
- * aus set-condition-aggregate.test.js.
+ * Market price and price history of a set take the condition OF THE SET, not the
+ * global default ('U'): a newly bought set otherwise showed the used price and
+ * an invented development. Against the real routes; replaces two source text checks
+ * from set-condition-aggregate.test.js.
  *
- * Gegenproben (15.11.2026 gemessen):
+ * Counter-checks (measured 15.11.2026):
  *   A  in src/sets/prices.ts (setPrice) `await sk.finances.setState(blickfeld, sn)`
- *      durch 'U' ersetzt → rot: „/price nimmt den Neupreis“ (50 statt 100)
- *   B  in src/finances/priceHistory.ts (priceHistorySet) den Zustand fest auf
- *      DEFAULT_PRICE_CONDITION gesetzt → rot: „/price-history im Zustand des Sets“ ('U')
+ *      replaced by 'U' → red: „/price nimmt den Neupreis“ (50 instead of 100)
+ *   B  in src/finances/priceHistory.ts (priceHistorySet) the condition fixed to
+ *      DEFAULT_PRICE_CONDITION → red: „/price-history im Zustand des Sets“ ('U')
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

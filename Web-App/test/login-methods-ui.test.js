@@ -1,21 +1,21 @@
 /**
- * Die Anmeldemaske bietet nur Wege an, die der Server kann: ohne Passkey-
- * Adresse kein Passkey-Knopf, ohne Mailversand kein „Passwort vergessen?“.
- * Fehlt die Angabe (älterer Server), bleibt alles wie bisher. Die Maske ist
- * ein <main>, damit Vorleser dort einen Hauptbereich finden.
+ * The login form only offers methods the server can do: without a passkey
+ * address no passkey button, without mail sending no „Passwort vergessen?“.
+ * If the information is missing (older server), everything stays as before. The form is
+ * a <main>, so that screen readers find a main region there.
  *
- * Gegenproben (02.11.2026 gemessen, je einzeln):
- *   A  in checkRegistrationEnabled() die beiden neuen Zeilen entfernt → rot:
- *      „der Server kann beides nicht“ (Passkey-Knopf und Link sichtbar)
- *   B  Link auch ohne Angabe verborgen (hidden = !d.passwort_vergessen) → rot:
- *      „älterer Server ohne Angabe“
- *   C  #login-screen wieder <div> → alle drei rot (kein main)
+ * Counter-checks (measured 02.11.2026, each on its own):
+ *   A  the two new lines removed in checkRegistrationEnabled() → red:
+ *      “the server can do neither” (passkey button and link visible)
+ *   B  link hidden even without information (hidden = !d.passwort_vergessen) → red:
+ *      “older server without the information”
+ *   C  #login-screen again <div> → all three red (no main)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, warte } = require('./helpers/ui');
 
-// jsdom kennt keine Passkeys; so sieht die Maske einen Browser, der sie kann.
+// jsdom knows no passkeys; this way the form sees a browser that can do them.
 const withPasskeys = w => {
   w.PublicKeyCredential = () => {};
   Object.defineProperty(w, 'isSecureContext', { value: true });

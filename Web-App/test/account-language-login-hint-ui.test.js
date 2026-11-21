@@ -1,16 +1,16 @@
 /**
- * Zwei Texte, die nicht zur Lage passten (UI-Prüfung 03.11.2026):
- *   - Die leere Bauliste blieb deutsch, wenn das Konto Englisch spricht, der
- *     Browser aber deutsch startete — sie war vor der Kontosprache gezeichnet.
- *   - „Bestätigungslink erneut senden“ stand bei jedem falschen Passwort; er
- *     gehört nur zu einer Absage „Adresse nicht bestätigt“.
+ * Two texts that did not fit the situation (UI review 03.11.2026):
+ *   - The empty build list stayed German when the account speaks English but the
+ *     browser started in German — it was drawn before the account language.
+ *   - “Resend confirmation link” appeared on every wrong password; it
+ *     only belongs to a refusal “address not confirmed”.
  *
- * Gegenproben (am 03.11.2026 gemessen):
- *   A  plRenderSets() wieder mit titel/text statt titleKey/textKey → rot:
- *      „Bauliste in Kontosprache“ („Noch keine Sets …“; 13.11.2026 erneut
- *      gemessen mit titel statt titleKey: „Diese Bauliste ist noch leer“)
- *   B  in doLogin wieder d.code==='anmeldedaten_ungueltig' → rot: beide
- *      Anmelde-Tests
+ * Counter-checks (measured on 03.11.2026):
+ *   A  plRenderSets() back with titel/text instead of titleKey/textKey → red:
+ *      “build list in account language” (“Noch keine Sets …”; measured again 13.11.2026
+ *      with titel instead of titleKey: “Diese Bauliste ist noch leer”)
+ *   B  in doLogin back to d.code==='anmeldedaten_ungueltig' → red: both
+ *      login tests
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

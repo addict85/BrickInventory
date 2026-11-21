@@ -1,18 +1,18 @@
 /**
- * „Dunkel, wenn das System dunkel ist" — je Gerät, über theme-boot.js.
- * Seit dem 29.10. heisst das: dasselbe Design in seiner dunklen Variante
- * (data-dunkel am <html>, Farben aus tokens.css), nicht mehr „werkbank".
- * Ohne gespeicherte Wahl folgt das Gerät dem System (Vorgabe „system“).
+ * “Dark when the system is dark" — per device, via theme-boot.js.
+ * Since 29.10. that means: the same design in its dark variant
+ * (data-dunkel on <html>, colors from tokens.css), no longer “werkbank".
+ * Without a stored choice the device follows the system (default “system”).
  *
- * Gegenproben (am 25.10. gemessen):
- *   A  wirksam() gibt immer das Server-Design zurück → rot: „bleibt hell"
- *   B  in apply() das angezeigte statt des Server-Designs gecacht
- *      (localStorage KEY = werkbank) → rot: „Cache"
- *   C  (29.10.) wirksam() setzt data-dunkel nie → rot: „bleibt hell";
- *      wirksam() wieder mit 'werkbank' bei dunklem System → rot: „das Design
- *      bleibt"
- *   D  (29.10.) folgtSystem() wieder mit === 'system' → rot: „ohne Wahl folgt
- *      das Gerät dem System“ (data-dunkel fehlte)
+ * Counter-checks (measured on 25.10.):
+ *   A  wirksam() always returns the server design → red: “stays light"
+ *   B  in apply() the displayed instead of the server design cached
+ *      (localStorage KEY = werkbank) → red: “cache"
+ *   C  (29.10.) wirksam() never sets data-dunkel → red: “stays light";
+ *      wirksam() again with 'werkbank' on a dark system → red: “the design
+ *      stays"
+ *   D  (29.10.) folgtSystem() again with === 'system' → red: “without a choice the
+ *      device follows the system” (data-dunkel was missing)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -23,7 +23,7 @@ const ROOT = path.join(__dirname, '..');
 const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
 const BOOT = fs.readFileSync(path.join(ROOT, 'public', 'js', 'theme-boot.js'), 'utf8');
 
-/** Ein Fenster mit Server-Design, Gerätewahl und Systemfarbe. */
+/** A window with server design, device choice and system color. */
 function fenster({ server = 'classic', wahl = null, dunkel = false } = {}) {
   const dom = new jsdom.JSDOM(`<!doctype html><html data-theme="${server}"><head></head><body></body></html>`, {
     runScripts: 'outside-only',

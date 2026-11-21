@@ -1,15 +1,15 @@
 /**
- * Fehlende Bilder werden EINMAL geholt — nicht je Prozess und Besuch neu.
+ * Missing images are fetched ONCE — not anew per process and visit.
  *
- * Gegenprobe (14.11.2026): in isKnownMissing `k.uhr.jetzt()` → `Date.now()` → rot:
- * „nach einer Woche wird erneut gesucht“ (die Uhr der Dienste wirkte nicht).
+ * Counter-check (14.11.2026): in isKnownMissing `k.uhr.jetzt()` → `Date.now()` → red:
+ * “after a week the search happens again” (the services' clock had no effect).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-// Der Bild-Download über das Bildwerk der Dienste: null = das CDN hat kein Bild.
+// The image download via the services' image machinery: null = the CDN has no image.
 let versuche = 0;
 
 const { buildAndRequire, testData, testImageWorker, testClock } = require('./helpers/sources');
@@ -33,7 +33,7 @@ test('imageless sets are not searched for at the CDN again and again', { concurr
   await db.run(`INSERT INTO rb_themes (id,name,parent_id) VALUES (1,'T',NULL) ON CONFLICT DO NOTHING`);
   await db.run(`DELETE FROM rb_sets WHERE set_num LIKE $1`, [PREFIX + '%']);
   await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + PREFIX + '%']).catch(() => {});
-  // Ein Jahrgang ohne Bilder — wie 1958 im echten Katalog.
+  // A year without images — like 1958 in the real catalog.
   await db.run(
     `INSERT INTO rb_sets (set_num,name,year,theme_id,num_parts,set_img_url)
                 SELECT $1||g, 'Alt', 1958, 1, 50, 'https://example.invalid/'||g||'.jpg'
@@ -46,24 +46,24 @@ test('imageless sets are not searched for at the CDN again and again', { concurr
 
   const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
 
-  // Die Warteschlange arbeitet nebenläufig — nach dem Abruf kurz warten.
+  // The queue works concurrently — wait briefly after the fetch.
   const visit = async () => {
     await (await fetch(`${base}/api/v1/catalog/sets?limit=60&page=1&q=${PREFIX}`)).json();
     await new Promise(r => setTimeout(r, 700));
   };
 
   try {
-    // Die Liste löst seit einer früheren Runde gar keine Bildarbeit mehr aus (sie lief
-    // an allen Drosselungen vorbei). Der Weg führt jetzt über den Proxy und
-    // src/images/imageDemandRun.ts — geprüft wird deshalb der MERKER selbst, nicht mehr
-    // die Liste.
+    // Since an earlier round the list triggers no image work at all anymore (it ran
+    // past all throttles). The path now leads via the proxy and
+    // src/images/imageDemandRun.ts — what is checked is therefore the MARKER itself, no longer
+    // the list.
     await visit();
     assert.equal(versuche, 0, `${versuche} Downloads aus der Liste — sie darf keine mehr auslösen`);
 
     await t.test('another process knows about it', async () => {
-      // Der Kern der Sache: Der Server läuft im Cluster. Ein Merker im
-      // Arbeitsspeicher hilft nur DEM Prozess, der ihn angelegt hat — bei vier
-      // Arbeitsprozessen wird dasselbe Bild viermal geholt.
+      // The core of the matter: the server runs in a cluster. A marker in
+      // memory only helps THE process that created it — with four
+      // worker processes the same image is fetched four times.
       const IM = _req('src/images/imageMisses.js');
       IM.rememberMissing('set:' + PREFIX + '_probe');
       await IM._writeBuffer();
@@ -90,8 +90,8 @@ test('imageless sets are not searched for at the CDN again and again', { concurr
     });
 
     await t.test('an image that exists is not remembered', async () => {
-      // Gegenrichtung: Sonst wäre der Test auch grün, wenn pauschal alles als
-      // fehlend gälte — und kein Bild würde je geladen.
+      // Opposite direction: otherwise the test would also be green if everything counted
+      // as missing wholesale — and no image would ever be loaded.
       const IM = _req('src/images/imageMisses.js');
       IM._emptyForeground();
       assert.equal(IM.isKnownMissing('set:gibt-es-nicht-in-der-tabelle'), false);

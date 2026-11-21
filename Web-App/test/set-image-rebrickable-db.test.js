@@ -1,18 +1,18 @@
 /**
- * Set-Bilder kommen von Rebrickable: Nur für diese Adressen legt der Bild-Proxy
- * das Bild samt Vorschau unter images/sets ab. Der Rückfall beim Anlegen und
- * Migration 0101 für den Bestand führen beide auf die feste CDN-Adresse.
- * Die Migration läuft in einem eigenen Schema (search_path).
+ * Set images come from Rebrickable: only for these addresses does the image proxy store
+ * the image including preview under images/sets. The fallback when creating and
+ * migration 0101 for the inventory both lead to the fixed CDN address.
+ * The migration runs in its own schema (search_path).
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   A  rebrickableSetImage() wieder auf img.bricklink.com/ItemImage/SN/0/… →
- *      rot: „der Proxy legt die Rückfall-Adresse lokal ab“
- *   B  in 0101 die Zeile für images.brickset.com gestrichen → rot:
+ * Counter-checks (measured 08.11.2026, each on its own):
+ *   A  rebrickableSetImage() again on img.bricklink.com/ItemImage/SN/0/… →
+ *      red: „der Proxy legt die Rückfall-Adresse lokal ab“
+ *   B  the line for images.brickset.com deleted in 0101 → red:
  *      „BrickLink und Brickset zeigen danach auf Rebrickable“
- *   C  (15.11.2026, umgekehrt) in setNumberFromImageAddress() den Unterordner
- *      `(?:\/\d{1,12})?` wieder zugelassen → rot: „nur das Hauptbild …“
+ *   C  (15.11.2026, reversed) in setNumberFromImageAddress() the subfolder
+ *      `(?:\/\d{1,12})?` allowed again → red: “only the main image …”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

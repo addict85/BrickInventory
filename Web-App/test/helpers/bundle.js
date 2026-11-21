@@ -1,7 +1,7 @@
 /**
- * Das Bündel (public/js/app.bundle.js) ist ein Erzeugnis und nicht in git.
- * Jeder Test, der es liest oder einen Server mit Oberfläche startet, holt es
- * hier; der Bau selbst steht nur in scripts/build-frontend.js.
+ * The bundle (public/js/app.bundle.js) is a product and not in git.
+ * Every test that reads it or starts a server with a UI fetches it
+ * here; the build itself is only in scripts/build-frontend.js.
  */
 const fs = require('node:fs');
 const os = require('node:os');
@@ -12,10 +12,10 @@ const ROOT = path.join(__dirname, '..', '..');
 const BUENDEL = path.join(ROOT, 'public', OUT_REL);
 
 /**
- * Ein Bündel aus main.js plus `zusatz` (Quelltext mit Importen relativ zu
- * public/js), etwa um die Registry auf window zu legen. Das ausgelieferte
- * Bündel bleibt unverändert; die Datei wird beim Prozessende gelöscht.
- * Nutzung: `process.env.TEST_BUENDEL = buildTestbuendel(…)` vor helpers/oberflaeche.
+ * A bundle from main.js plus `zusatz` (source text with imports relative to
+ * public/js), for example to put the registry on window. The shipped
+ * bundle stays unchanged; the file is deleted at process end.
+ * Usage: `process.env.TEST_BUENDEL = buildTestbuendel(…)` before helpers/oberflaeche.
  * @param {string} name
  * @param {string} zusatz
  */

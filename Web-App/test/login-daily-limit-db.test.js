@@ -1,36 +1,36 @@
 /**
- * Tagesgrenze je Konto: Eine bekannte Adresse umgeht die Bremse je Konto; nach 50
- * Fehlversuchen in 24 Stunden gilt das Passwort deshalb nur noch zusammen mit dem Code des
- * zweiten Faktors. Unbekannte Adressen zählen gemeinsam, jede bekannte für sich: Ein Fremder
- * sperrt den Inhaber so nicht an dessen Geräten aus. Der Inhaber mit Faktor kommt weiter
- * hinein, ohne Faktor über „Passwort vergessen“ (das leert die Zähler); er bekommt eine Mail.
+ * Daily limit per account: a known address bypasses the brake per account; after 50
+ * failed attempts in 24 hours the password therefore only counts together with the code of the
+ * second factor. Unknown addresses count together, every known one on its own: a stranger
+ * thus does not lock the owner out on the owner's devices. The owner with a factor still gets
+ * in, without a factor via „Passwort vergessen“ (that clears the counters); he gets a mail.
  *
- * Gegenproben (14.11.2026 gemessen, je einzeln):
- *   A  in checkCredentials() die Abfrage dailyLimitReached() abgeschaltet → rot: „über der
- *      Grenze: Passwort allein reicht nicht …“ (200 statt 429) und „… mit Code geht es weiter“
- *   B  in loginFailed() den Tageszähler nicht erhöht → rot: „der 50. Fehlversuch
- *      erreicht die Grenze …“ und „über der Grenze …“
- *   C  die Ausnahme für Code und aktiven Faktor gestrichen → rot: „… mit Code geht es weiter“
- *   D  deleteDailyLimit() in setPasswordBack() gestrichen → rot: „nach Passwort
- *      vergessen geht das Passwort wieder“
+ * Counter-checks (measured 14.11.2026, each on its own):
+ *   A  in checkCredentials() the query dailyLimitReached() switched off → red: “above the
+ *      limit: the password alone is not enough …” (200 instead of 429) and “… with code it continues”
+ *   B  in loginFailed() the daily counter not increased → red: “the 50th failed attempt
+ *      reaches the limit …” and “above the limit …”
+ *   C  the exception for code and active factor deleted → red: “… with code it continues”
+ *   D  deleteDailyLimit() deleted in setPasswordBack() → red: “after forgot
+ *      password the password works again”
  *
- * Gegenproben zur Trennung bekannter Adressen (15.11.2026 gemessen):
- *   E  in _tagKey() stets `login-tag|${kennung}` geliefert → rot: „der 50. Fehlversuch …“
- *      (der gemeinsame Zähler stieg), die beiden folgenden und „50 Fehlversuche eines
- *      Fremden …“ (429 statt 200)
- *   F  in deleteDailyLimit() das Löschen mit Präfix gestrichen → rot: „nach Passwort
- *      vergessen …“ (Zähler der bekannten Adresse blieb)
+ * Counter-checks for the separation of known addresses (measured 15.11.2026):
+ *   E  in _tagKey() always delivered `login-tag|${kennung}` → red: “the 50th failed attempt …”
+ *      (the shared counter rose), the two following ones and “50 failed attempts by a
+ *      stranger …” (429 instead of 200)
+ *   F  in deleteDailyLimit() the deletion with prefix deleted → red: “after forgot
+ *      password …” (counter of the known address stayed)
  *
- * Gegenproben zum Freigabelink (16.11.2026 gemessen, je einzeln):
- *   G  in onlyStillWithFactor() offerRelease() gestrichen → rot: „an einer unbekannten
- *      Adresse kommt ein Freigabelink …“ (keine Mail)
- *   H  in _tagKey() die Freigabe nicht beachtet → rot: dieselbe Prüfung (429 nach dem Link)
- *   I  in anmeldungFreigeben() die Einmal-Prüfung gestrichen → rot: dieselbe Prüfung (der Link
- *      galt zweimal)
- *   J  in anmeldungFreigeben() die Signatur nicht geprüft → rot: dieselbe Prüfung (ein Link für
- *      ein anderes Konto galt)
+ * Counter-checks for the unlock link (measured 16.11.2026, each on its own):
+ *   G  in onlyStillWithFactor() offerRelease() deleted → red: “at an unknown
+ *      address an unlock link comes …” (no mail)
+ *   H  in _tagKey() the unlock not respected → red: the same check (429 after the link)
+ *   I  in anmeldungFreigeben() the one-time check deleted → red: the same check (the link
+ *      counted twice)
+ *   J  in anmeldungFreigeben() the signature not checked → red: the same check (a link for
+ *      another account counted)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -78,7 +78,7 @@ test('daily login limit per account', { concurrency: 1 }, async t => {
     id[MIT],
     encrypt(secret, zf.secondFactorContext(id[MIT])),
   ]);
-  /** Ein frischer Code: Derselbe Schritt gilt nur einmal, deshalb vorher zurücksetzen. */
+  /** A fresh code: the same step counts only once, hence reset beforehand. */
   const code = async () => {
     await db.run('UPDATE second_factor SET last_step = 0 WHERE user_id = $1', [id[MIT]]);
     return zf.hotp(zf.fromBase32(secret), zf.timeStep());
@@ -97,7 +97,7 @@ test('daily login limit per account', { concurrency: 1 }, async t => {
     });
     return { status: r.status, body: await r.json().catch(() => null) };
   };
-  /** Der gemeinsame Zähler unbekannter Adressen, oder mit `hier` der dieser bekannten Adresse. */
+  /** The shared counter of unknown addresses, or with `hier` the one of this known address. */
   const tagKey = async (name, hier) => {
     if (!hier) return `login-tag|konto:${id[name]}`;
     const b = await db.get('SELECT key FROM rate_limit_attempts WHERE key LIKE $1', [
@@ -114,7 +114,7 @@ test('daily login limit per account', { concurrency: 1 }, async t => {
       [await tagKey(name, hier), n],
     );
 
-  // Beide Konten melden sich einmal von hier an: Die Adresse ist ab jetzt bekannt.
+  // Both accounts log in once from here: the address is known from now on.
   assert.equal((await anmelden(OHNE, PASS)).status, 200);
   assert.equal((await anmelden(MIT, PASS, await code())).status, 200);
 
@@ -136,7 +136,7 @@ test('daily login limit per account', { concurrency: 1 }, async t => {
     assert.equal(r.status, 429, JSON.stringify(r.body));
     assert.equal(r.body.code, 'konto_tagesgrenze');
     assert.equal(r.body.zweiter_faktor, true, 'die Oberfläche bietet das Codefeld an');
-    // Ohne Faktor hilft auch ein Code nicht; die Antwort verrät das Passwort nicht.
+    // Without a factor even a code does not help; the response does not reveal the password.
     assert.equal((await anmelden(OHNE, PASS, '123456')).body.code, 'konto_tagesgrenze');
     assert.equal((await anmelden(OHNE, 'falsch', '123456')).body.code, 'konto_tagesgrenze');
   });
@@ -171,7 +171,7 @@ test('daily login limit per account', { concurrency: 1 }, async t => {
     await setCounter(OHNE, 50);
     const r = await anmelden(OHNE, neu);
     assert.equal(r.status, 200, JSON.stringify(r.body));
-    // Ohne Bekannt-Zeile ist dieselbe Adresse fremd: Dort gilt der gemeinsame Zähler.
+    // Without a known row the same address is foreign: there the shared counter applies.
     await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1', [`login-bekannt|%|konto:${id[OHNE]}`]);
     assert.equal((await anmelden(OHNE, neu)).body?.code, 'konto_tagesgrenze');
   });

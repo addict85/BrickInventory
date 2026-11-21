@@ -1,17 +1,17 @@
 /**
- * Der Kaufpreis wird übernommen — und seine Herkunft benannt: Führt BrickLink
- * für den gewählten Zustand keinen Preis, gilt der des anderen Zustands, und
- * die Antwort sagt es (price_from_condition). Server gegen die Test-DB (der
- * Preis-Cache kennt „Neuware ohne Preis“ und „Gebraucht mit Preis“, also kein
- * Abruf), Webapp im echten Bündel (jsdom).
+ * The purchase price is adopted — and its origin named: if BrickLink carries
+ * no price for the chosen condition, the one of the other condition applies, and
+ * the response says so (price_from_condition). Server against the test DB (the
+ * price cache knows „new without price“ and „used with price“, so no
+ * fetch), web app in the real bundle (jsdom).
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, dist bzw. Bündel neu gebaut):
- *   A  in preise.ts fetchPartPrice beim Cache-Rückfall ohne `is_fallback: true`
- *      → rot: „Teil und Figur ohne Preis …“ (Teil)
- *   B  dasselbe in fetchMinifigPrice → rot: ebenda (Figur)
- *   C  in preisRegel.ts den Markt auch bei eingetippter Zahl gefragt → rot:
- *      „eine eingetippte Zahl …“ (Herkunft 'U' an einem eigenen Preis)
- *   D  in teil-erfassen.js den Hinweis weggelassen → rot: „die Webapp nennt …“
+ * Counter-checks (measured 10.11.2026, each on its own, dist or bundle rebuilt):
+ *   A  in preise.ts fetchPartPrice on the cache fallback without `is_fallback: true`
+ *      → red: “part and minifigure without a price …” (part)
+ *   B  the same in fetchMinifigPrice → red: same place (figure)
+ *   C  in preisRegel.ts the market asked even for a typed-in number → red:
+ *      “a typed-in number …” (origin 'U' on an own price)
+ *   D  the hint left out in teil-erfassen.js → red: “the web app names …”
  */
 require('./helpers/system-frame');
 const test = require('node:test');

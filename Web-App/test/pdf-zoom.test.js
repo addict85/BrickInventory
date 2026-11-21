@@ -1,6 +1,6 @@
 /**
- * Der PDF-Betrachter kann zoomen — und verliert dabei weder die Stelle noch
- * die linke Seitenhaelfte.
+ * The PDF viewer can zoom — and loses neither the position nor
+ * the left half of the page while doing so.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,19 +14,19 @@ const QUELLE = path.join(__dirname, '..', 'public', 'js', 'pdfviewer.js');
 const CONTAINER_W = 600;
 const CONTAINER_H = 400;
 const PAGE_W = 595,
-  PAGE_H = 842; // A4 bei scale 1, so liefert es PDF.js
+  PAGE_H = 842; // A4 at scale 1, that is how PDF.js delivers it
 const SEITEN = 20;
 
-/** import/export entfernen — die Datei wird hier als klassisches Skript ausgewertet. */
+/** Remove import/export — the file is evaluated here as a classic script. */
 function withoutModuleShell(src) {
   return src.replace(/^import[^;]*;\s*$/gm, '').replace(/^export\s+/gm, '');
 }
 
 /**
- * Eine Werkbank mit dem echten Betrachter darin.
+ * A workbench with the real viewer in it.
  *
- * @param {(code: string) => string} [rebuild] Gegenprobe: baut den Quelltext um,
- *        bevor er ausgewertet wird. Muss etwas aendern, sonst schlaegt es fehl.
+ * @param {(code: string) => string} [rebuild] counter-check: rebuilds the source text
+ *        before it is evaluated. Must change something, otherwise it fails.
  */
 async function werkbank(rebuild) {
   let code = withoutModuleShell(fs.readFileSync(QUELLE, 'utf8'));
@@ -56,7 +56,7 @@ async function werkbank(rebuild) {
   );
   const w = dom.window;
 
-  // Masse und Rollstaende von Hand — jsdom rechnet kein Layout.
+  // Dimensions and scroll positions by hand — jsdom computes no layout.
   const container = w.document.getElementById('pdf-viewer-pages');
   let rollX = 0,
     rollY = 0;
@@ -78,7 +78,7 @@ async function werkbank(rebuild) {
   });
 
   /**
-   * Gestellter IntersectionObserver — jsdom hat keinen.
+   * Staged IntersectionObserver — jsdom has none.
    */
   const beobachtet = [];
   let visiblePages = new Set([1, 2]);
@@ -91,10 +91,10 @@ async function werkbank(rebuild) {
       const n = parseInt(el.dataset.page, 10);
       this.ziele.add(el);
       beobachtet.push(n);
-      // disconnect() hebt die Anmeldung auf, ein spaeteres observe() gilt wieder
-      // — deshalb wird hier das ZIEL geprueft und nicht ein Schalter am
-      // Observer. Mit einem Schalter blieb er nach dem ersten Zoom fuer immer
-      // stumm, und drei Faelle wurden rot, ohne dass am Betrachter etwas fehlte.
+      // disconnect() cancels the registration, a later observe() applies again
+      // — hence the TARGET is checked here and not a switch on the
+      // observer. With a switch it stayed silent forever after the first zoom,
+      // and three cases turned red without anything missing in the viewer.
       setTimeout(() => {
         if (this.ziele.has(el)) this.cb([{ target: el, isIntersecting: visiblePages.has(n) }]);
       }, 0);
@@ -104,9 +104,9 @@ async function werkbank(rebuild) {
     }
   };
 
-  // Gestelltes PDF.js. `anhalten` laesst Renderauftraege haengen, bis sie
-  // ausdruecklich freigegeben werden — so laesst sich der Fall bauen, in dem
-  // waehrend eines laufenden Renders gezoomt wird.
+  // Staged PDF.js. `anhalten` lets render jobs hang until they are
+  // explicitly released — this way the case can be built in which
+  // zooming happens during a running render.
   const openRender = [];
   const optionen = [];
   const backgrounds = [];
@@ -173,7 +173,7 @@ async function werkbank(rebuild) {
     },
     faktor: () => parseFloat(w.document.getElementById('pdf-viewer-zoom').textContent) / 100,
     platzhalter: () => [...container.querySelectorAll('.pdf-page-ph')],
-    /** Wo im Dokument liegt die Mitte des Sichtfelds — in Einheiten von Zoom 1? */
+    /** Where in the document lies the middle of the viewport — in units of zoom 1? */
     place() {
       const f = parseFloat(w.document.getElementById('pdf-viewer-zoom').textContent) / 100;
       return (container.scrollTop + CONTAINER_H / 2) / f;
@@ -181,8 +181,8 @@ async function werkbank(rebuild) {
   };
 }
 
-// Gegenprobe (02.11.2026 gemessen): isEvalSupported in pdfviewer.js
-// gestrichen → rot.
+// Counter-check (measured 02.11.2026): isEvalSupported deleted in pdfviewer.js
+// → red.
 test('PDF.js loads without eval and without scripts in the PDF', async () => {
   const b = await werkbank();
   assert.equal(b.optionen.length, 1);
@@ -250,7 +250,7 @@ test('zoom in the PDF viewer', async t => {
   });
 
   await t.test('counter-check: without the anchor calculation it jumps', async () => {
-    // Die Wiederherstellung herausnehmen — die Rollstaende bleiben, wo sie waren.
+    // Take the restoration out — the scroll positions stay where they were.
     const b = await werkbank(code =>
       code
         .replace('container.scrollLeft = dokX * ziel - ax;', '')
@@ -288,31 +288,31 @@ test('zoom in the PDF viewer', async t => {
   });
 
   /**
-   * Ein Render laeuft asynchron. Wird waehrenddessen gezoomt, ist der
-   * Platzhalter beim Fertigwerden eine andere Groesse — die alte Leinwand
-   * haette dort nichts mehr zu suchen.
+   * A render runs asynchronously. If zooming happens meanwhile, the
+   * placeholder has a different size when it finishes — the old canvas
+   * would have no business being there any more.
    *
-   * @param {boolean} withGuard false = Gegenprobe, der Generationszaehler
-   *        wird herausgenommen.
-   * @returns {Promise<{ haengen: number[], oldWidths: number[], soll: number }>} Breiten der Leinwaende, die am Ende haengen.
+   * @param {boolean} withGuard false = counter-check, the generation counter
+   *        is taken out.
+   * @returns {Promise<{ haengen: number[], oldWidths: number[], soll: number }>} widths of the canvases that hang at the end.
    */
   async function staleRender(withGuard) {
     const b = await werkbank(
       withGuard ? undefined : code => code.replace('if (gen !== _pdfZoomGen) {', 'if (false) {'),
     );
     b.anhalten = true;
-    b.aktionen.pdfZoomIn(); // Stufe 1: Auftraege bleiben haengen
+    b.aktionen.pdfZoomIn(); // stage 1: jobs stay hanging
     await b.warte(40);
     assert.ok(b.openRender.length > 0, 'Die Werkbank haelt keinen Auftrag an — der Fall misst nichts.');
     const alte = b.openRender.splice(0);
     const oldWidths = alte.map(r => r.breite);
 
-    b.aktionen.pdfZoomIn(); // Stufe 2: waehrend Stufe 1 noch laeuft
+    b.aktionen.pdfZoomIn(); // stage 2: while stage 1 is still running
     await b.warte(40);
-    // Erst die NEUEN fertig werden lassen, dann die alten. Genau diese
-    // Reihenfolge ist der Schadensfall: Der alte Durchlauf hat weniger zu
-    // rendern und kommt bei starkem Zoom regelmaessig zuletzt. Andersherum
-    // raeumt der neue hinter ihm auf, und der Fehler bliebe unsichtbar.
+    // First let the NEW ones finish, then the old ones. Exactly this
+    // order is the damage case: the old pass has less to
+    // render and regularly comes last at strong zoom. The other way round
+    // the new one cleans up behind it, and the error would stay invisible.
     for (const r of b.openRender) r.frei();
     await b.warte(30);
     for (const r of alte) r.frei();
@@ -401,8 +401,8 @@ test('zoom in the PDF viewer', async t => {
   });
 });
 
-// Gegenprobe (08.11.2026 gemessen): in pdfviewer.js den Platzhalter wieder `background:#fff` gegeben
-// → rot „Platzhalter ist gedämpft“; `background: '#fff'` aus render() gestrichen → rot „Seite bleibt weiss“.
+// Counter-check (measured 08.11.2026): in pdfviewer.js given the placeholder `background:#fff` again
+// → red „Platzhalter ist gedämpft“; `background: '#fff'` deleted from render() → red „Seite bleibt weiss“.
 test('placeholder is dimmed, the rendered page stays white', async () => {
   const b = await werkbank();
   const grund = b.platzhalter()[0].style.background;

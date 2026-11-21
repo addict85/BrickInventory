@@ -1,14 +1,14 @@
 /**
- * Zwischenspeicher (src/infra/cache.ts): begrenzt, mit Frist je
- * Eintrag; Fächer gehören zur Fabrik eines Bereichs, nicht zum Prozess.
+ * Cache (src/infra/cache.ts): bounded, with a deadline per
+ * entry; compartments belong to the factory of a scope, not to the process.
  *
- * Gegenproben (11.11.2026 gemessen, je einzeln):
- *   A  setze() verdrängt den jüngsten statt des ältesten Eintrags
- *      (`[...keys()].pop()`) → rot: „der älteste weicht“
- *   B  hole() prüft die Frist nicht → rot: „nach der Frist vergessen“
- *   C  Faecher.fach() legt bei jedem Aufruf neu an → rot: „ein Fach bleibt“
- *   D  createCatalog gibt allen Fabriken dieselben Fächer (modulweites
- *      `const FAECHER = new Faecher()`) → rot: „je Fabrik eigene Fächer“
+ * Counter-checks (measured 11.11.2026, each alone):
+ *   A  setze() evicts the newest instead of the oldest entry
+ *      (`[...keys()].pop()`) → red: “the oldest gives way”
+ *   B  hole() does not check the deadline → red: “forgotten after the deadline”
+ *   C  Faecher.fach() creates anew on every call → red: “a compartment stays”
+ *   D  createCatalog gives all factories the same compartments (module-wide
+ *      `const FAECHER = new Faecher()`) → red: “own compartments per factory”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -49,7 +49,7 @@ test('a compartment stays, own compartments per factory', () => {
   );
   /** @type {any[]} */
   const k = [];
-  // Der Katalog horcht beim Bau auf die Bilder (atSetImageLoaded); mehr braucht der Bau nicht.
+  // When built, the catalog listens for the images (atSetImageLoaded); the build needs nothing more.
   const abh = /** @type {any} */ ({ db: {}, bilder: { atSetImageLoaded() {} } });
   createCatalog(abh, x => k.push(x));
   createCatalog(abh, x => k.push(x));

@@ -1,21 +1,21 @@
 /**
- * Geheimnisse sind an ihren Ort gebunden (v2: AES-GCM mit Spalte, Konto und
- * Zeile als zusätzlich authentifizierten Daten): Ein Geheimtext, in ein
- * anderes Konto, eine andere Zeile oder Spalte kopiert, lässt sich dort nicht
- * lesen. Klartext und v1 nimmt das Lesen nicht mehr an; der Start schlüsselt
- * v1 und Klartext vorher um — Datenbank und Gutschein-PDFs.
+ * Secrets are bound to their place (v2: AES-GCM with column, account and
+ * row as additionally authenticated data): a ciphertext copied into
+ * another account, another row or column cannot be read there.
+ * Reading no longer accepts plain text and v1; the start re-encrypts
+ * v1 and plain text beforehand — database and voucher PDFs.
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  setAad() in versiegle() und oeffne() gestrichen → rot: „vertauscht …"
- *      (die PIN ist im fremden Konto lesbar)
- *   B  entschluessele() gibt Klartext ohne Präfix wieder zurück → rot:
- *      „Klartext und v1 …"
- *   C  prepareDatabaseBefore() ohne verschluesseleAltbestand() → rot:
- *      „ein v1-Altbestand …" (TOTP und SMTP-Passwort bleiben v1)
- *   D  encryptLegacyVoucherFiles() liest BIENC1 nicht mehr (nur
- *      Klartext) → rot: „ein v1-Altbestand …" (PDF bleibt BIENC1)
+ * Counter-checks (measured 01.11.2026):
+ *   A  setAad() deleted in versiegle() and oeffne() → red: “swapped …”
+ *      (the PIN is readable in the foreign account)
+ *   B  entschluessele() again returns plain text without a prefix → red:
+ *      “plain text and v1 …”
+ *   C  prepareDatabaseBefore() without verschluesseleAltbestand() → red:
+ *      “a v1 legacy stock …” (TOTP and SMTP password stay v1)
+ *   D  encryptLegacyVoucherFiles() no longer reads BIENC1 (only
+ *      plain text) → red: “a v1 legacy stock …” (PDF stays BIENC1)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -46,7 +46,7 @@ const zf = _req('src/factors/secondFactor.js');
 const settings = _req('src/settings/settings.js');
 const idem = _req('src/idempotency/service.js');
 
-/** Das Format vor dem Kontext: AES-GCM mit dem Rohschlüssel, ohne AAD. */
+/** The format before the context: AES-GCM with the raw key, without AAD. */
 function roh1(daten) {
   const iv = crypto.randomBytes(12),
     c = crypto.createCipheriv('aes-256-gcm', Buffer.from(process.env.DATA_KEY, 'base64'), iv);
@@ -109,13 +109,13 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
       'Vorbedingung: lesbar am eigenen Ort',
     );
     const zeile = async id => db.get('SELECT number, pin FROM vouchers WHERE id = $1', [id]);
-    // PIN von Konto a nach Konto b, Nummer innerhalb von a von einer Zeile zur anderen.
+    // PIN from account a to account b, number within a from one row to another.
     await db.run('UPDATE vouchers SET pin = $1 WHERE id = $2', [(await zeile(ga.id)).pin, gb.id]);
     await db.run('UPDATE vouchers SET number = $1 WHERE id = $2', [(await zeile(ga.id)).number, ga2.id]);
     assert.equal(await stumm(() => pinOf(b, gb.id)), null, 'PIN in fremdem Konto lesbar');
     assert.equal(await stumm(async () => (await gr.voucher(a, ga2.id)).number), '', 'Nummer in anderer Zeile lesbar');
 
-    // TOTP-Geheimnis von a nach b.
+    // TOTP secret from a to b.
     const secretA = await zf.beginSetup(a);
     await zf.beginSetup(b);
     const codeA = zf.hotp(zf.fromBase32(secretA), zf.timeStep());
@@ -126,7 +126,7 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
     assert.equal(await stumm(() => zf.confirmSetup(b, codeA)), null, 'fremdes TOTP-Geheimnis lesbar');
     assert.ok(await zf.confirmSetup(a, codeA), 'Vorbedingung: am eigenen Ort gilt der Code');
 
-    // SMTP-Passwort in die Zeile eines API-Schlüssels.
+    // SMTP password into the row of an API key.
     await settings.setGlobalSetting('smtp_pass', 'Smtp-Geheim-1');
     await db.run(`INSERT INTO global_settings (key, value) SELECT 'brickset_api_key', value FROM global_settings WHERE key = 'smtp_pass'
                   ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
@@ -137,7 +137,7 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
       'Wert in anderer Spalte lesbar',
     );
 
-    // Gespeicherte Antwort eines Idempotency-Keys in den Eintrag eines anderen Kontos.
+    // Stored response of an idempotency key into the entry of another account.
     for (const uid of ids) assert.equal((await idem.begin(uid, 'k-1', 'abdruck')).kind, 'new');
     await idem.end(a, 'k-1', 200, '{"geheim":"a"}');
     await idem.end(b, 'k-1', 200, '{"geheim":"b"}');
@@ -153,7 +153,7 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
     );
     assert.equal((await stumm(() => idem.begin(b, 'k-1', 'abdruck'))).kind, 'not_replayable');
 
-    // Gutschein-PDF von a in den Ordner von b.
+    // Voucher PDF of a into the folder of b.
     const da = path.join(dateien.VOUCHER_DIR, String(a), `${ga.id}.pdf`),
       db_ = path.join(dateien.VOUCHER_DIR, String(b), `${gb.id}.pdf`);
     await dateien.writeVoucherPdf(da, PDF);
@@ -181,7 +181,7 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
     await db.run('DELETE FROM vouchers WHERE user_id = ANY($1)', [ids]);
     await db.run('DELETE FROM second_factor WHERE user_id = ANY($1)', [ids]);
     fs.rmSync(dateien.VOUCHER_DIR, { recursive: true, force: true });
-    // Nummer und PIN v1, wie vor dem Kontext; der CHECK der Tabelle verlangt jetzt v2.
+    // Number and PIN v1, as before the context; the CHECK of the table now requires v2.
     await db.run('ALTER TABLE vouchers DROP CONSTRAINT vouchers_nummer_verschluesselt');
     const nr = '5045076374450044444';
     const id = (
@@ -205,7 +205,7 @@ test('secrets with context', { concurrency: 1, timeout: 120_000 }, async t => {
     fs.mkdirSync(path.dirname(pdf), { recursive: true });
     fs.writeFileSync(pdf, Buffer.concat([Buffer.from('BIENC1\n'), roh1(PDF)]));
 
-    // Ein Altbestand trägt die Marke der Umschlüsselung noch nicht (die Testvorlage schon).
+    // A legacy stock does not carry the re-encryption marker yet (the test template does).
     await require('./helpers/sources').testArea('jobQueue').laufzustand.deleteState('altbestand_v2');
     await _req('startup/database.js').prepareDatabaseBefore(testAccess(), require('./helpers/sources').testServices());
 

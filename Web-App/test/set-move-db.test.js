@@ -1,5 +1,5 @@
 /**
- * Set zwischen Konten verschieben — gegen echte Datenbank.
+ * Moving a set between accounts — against a real database.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -24,7 +24,7 @@ test('move set', { concurrency: 1 }, async t => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  // Und die MIGRATIONEN, nicht nur das Schema
+  // And the MIGRATIONS, not only the schema
   {
     const mc = await db.pool.connect();
     try {
@@ -34,9 +34,9 @@ test('move set', { concurrency: 1 }, async t => {
     }
   }
 
-  // In einer Transaktion über ihren Kontext: Die Sammlung ruft den Umzug so (t.sets).
+  // In one transaction via its context: the collection calls the move like this (t.sets).
   const sammlung = require('./helpers/sources').testContext('collection');
-  // Zwei fremde Konten: über beide hinweg nur im Systemrahmen (die Daten legt die Eigentümerin an).
+  // Two foreign accounts: across both only in the system context (the owner role creates the data).
   const { inSystemContext } = _req('src/infra/accountContext.js');
   const setEntriesReassign = (...a) =>
     inSystemContext('Testdaten', () => sammlung.transaktion(t => t.sets.setEntriesReassign(...a)));
@@ -44,9 +44,9 @@ test('move set', { concurrency: 1 }, async t => {
   await db.run("INSERT INTO users (username,password_hash) VALUES ('mv_a','x'),('mv_b','x')");
   const [a, b] = (await db.all('SELECT id FROM users ORDER BY id')).map(r => r.id);
 
-  /** Ein Set mit Inhalt beim Absender anlegen. */
+  /** Create a set with contents at the sender. */
   async function createInventory(sn, teile, figuren) {
-    await holdsSet(db, a, sn, 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, a, sn, 0); // quantity 0: the acquisition behind it carries it
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,$2,1,50,'N')`,
@@ -68,8 +68,8 @@ test('move set', { concurrency: 1 }, async t => {
     process.on('warning', listener);
     try {
       await setEntriesReassign('10001-1', a, b);
-      // Warnungen laufen über den Ereignisfaden — kurz warten, sonst käme die
-      // Meldung erst nach dem Test an und niemand sähe sie.
+      // Warnings run via the event thread — wait briefly, otherwise the
+      // message would only arrive after the test and nobody would see it.
       await new Promise(r => setTimeout(r, 50));
     } finally {
       process.off('warning', listener);
@@ -103,9 +103,9 @@ test('move set', { concurrency: 1 }, async t => {
   });
 
   await t.test('without contents 0 parts is the right answer, not an error', async () => {
-    // Genau der Fall aus dem Bildschirmfoto: Ein Set, zu dem nie Teile
-    // importiert wurden, meldet 0 — die Zahl ist wahr, nur die Meldung in der
-    // App wirkt wie ein Fehler.
+    // Exactly the case from the screenshot: a set for which parts were never
+    // imported reports 0 — the number is true, only the message in the
+    // app looks like an error.
     await createInventory('10003-1', 0, 0);
     const r = await setEntriesReassign('10003-1', a, b);
     assert.equal(r.parts, 0);
@@ -123,9 +123,9 @@ test('move set', { concurrency: 1 }, async t => {
   });
 
   await t.test('part move leaves everything to the sender; manual parts stay even with the last copy', async () => {
-    // Gegenprobe (31.10.2026): `if (remaining > 0)` in setMove.ts auf `if (false)`
-    // → rot (Absender ohne Set); `<> 'manual'` in entferneSet gestrichen → rot
-    // (manuelles Teil weg).
+    // Counter-check (31.10.2026): `if (remaining > 0)` in setMove.ts to `if (false)`
+    // → red (sender without set); `<> 'manual'` deleted in entferneSet → red
+    // (manual part gone).
     await createInventory('10005-1', 2, 1);
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)

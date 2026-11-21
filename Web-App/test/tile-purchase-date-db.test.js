@@ -1,16 +1,16 @@
 /**
- * Auf der Set-Kachel steht das Datum des letzten Kaufs, nicht die Aufnahme ins
- * Konto (die war nach einem Import für alle Sets derselbe Tag).
+ * The set tile shows the date of the last purchase, not the addition to the
+ * account (after an import that was the same day for all sets).
  *
- *   - setsLesen() liefert `letzter_kauf` = späteste Erfassung des Sets.
- *   - Die Kachel (jsdom, echtes Bündel) zeigt dieses Datum, nicht added_at.
+ *   - setsLesen() delivers `letzter_kauf` = latest acquisition of the set.
+ *   - The tile (jsdom, real bundle) shows this date, not added_at.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  MAX(…created_at) in src/sets/repository/sets.ts zu MIN → rot: „setsLesen
- *      liefert den letzten Kauf“
- *   B  gridCard() wieder mit s.added_at → rot: „die Kachel zeigt das Kaufdatum“
+ * Counter-checks (measured on 28.10.2026):
+ *   A  MAX(…created_at) in src/sets/repository/sets.ts to MIN → red: “setsLesen
+ *      delivers the last purchase”
+ *   B  gridCard() again with s.added_at → red: “the tile shows the purchase date”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -67,9 +67,9 @@ test('the tile shows the purchase date', async () => {
     await warte(() => d.querySelector('.sc .kachel-datum'));
     const datum = d.querySelector('.sc .kachel-datum');
     assert.ok(datum, 'Kein Datum auf der Kachel');
-    // Eine Schreibweise für alle Daten (fmtDatum): zweistellig, seit dem 29.10.
+    // One notation for all dates (fmtDatum): two digits, since 29.10.
     assert.match(datum.textContent, /14\.07\.2025/);
-    assert.match(datum.textContent, /Gekauft/); // sichtbar beschriftet (L3), „Gekauft am“ im title
+    assert.match(datum.textContent, /Gekauft/); // visibly labeled (L3), „Gekauft am“ in the title
   } finally {
     w.close();
   }

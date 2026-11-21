@@ -1,29 +1,29 @@
 /**
- * Befunde der UI-Prüfung 14 im echten Browser: Registrierung ohne Mailversand
- * und Freischalten, Kategorien, Bestätigungsseite angemeldet, Menüs und
- * schwebender Knopf bei grosser Schrift, Haushalt, Merkliste, Begriffe,
- * Gutscheinkarte, Offline-Band und Fokus nach Esc.
+ * Findings of UI check 14 in the real browser: registration without mail sending
+ * and approval, categories, confirmation page while logged in, menus and
+ * floating button with large font, household, wishlist, terms,
+ * voucher card, offline banner and focus after Esc.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  Kategorie im SQL wieder COALESCE(…, 'Unbekannt') → rot: „Kategorie in
+ * Counter-checks (measured 04.11.2026, each on its own, bundle rebuilt):
+ *   A  category in the SQL again COALESCE(…, 'Unbekannt') → red: „Kategorie in
  *      Tabelle und Filter“
- *   B  confirmedSignedIn() wieder location.replace('/') → rot: „Bestätigung
- *      angemeldet“ (kein Toast)
- *   C  .v-mehr > .mehr-liste wieder min-width:14rem → rot: „Weitere Aktionen bei
+ *   B  confirmedSignedIn() again location.replace('/') → red: „Bestätigung
+ *      angemeldet“ (no toast)
+ *   C  .v-mehr > .mehr-liste again min-width:14rem → red: „Weitere Aktionen bei
  *      320 px und 200 %“
- *   D  Container-Regel (max-width: 15em) für den schwebenden Knopf unwirksam
- *      → rot: „Schwebender Knopf bei 200 %“
- *   E  unlinkHousehold() ohne Namen → rot: „Verknüpfung lösen nennt das Konto“
- *   F  ladeMerkliste() klappt das Formular im Fehlerfall nicht zu → rot:
+ *   D  container rule (max-width: 15em) for the floating button ineffective
+ *      → red: „Schwebender Knopf bei 200 %“
+ *   E  unlinkHousehold() without names → red: „Verknüpfung lösen nennt das Konto“
+ *   F  ladeMerkliste() does not collapse the form in the error case → red:
  *      „Merkliste: Fehler 500 über der Falz“
- *   G  Freischalten-Knopf weg / Rolle wieder „Admin“ / Schalter ohne Mail frei
- *      → je rot: „Verwaltung: wartendes Konto, Schalter ohne Mail“
- *   H  .voucher-actions > .mehr-menue wieder flex → rot: „Gutscheinkarte ruhig“
- *   I  Offline-Band wieder mit Datum → rot: „Offline-Band: heute“
- *   K  Rückfall auf die Überschrift in dialoge.js weg → rot: „Fokus nach Esc
+ *   G  approve button gone / role again „Admin“ / switch free without mail
+ *      → each red: „Verwaltung: wartendes Konto, Schalter ohne Mail“
+ *   H  .voucher-actions > .mehr-menue again flex → red: „Gutscheinkarte ruhig“
+ *   I  offline banner again with a date → red: „Offline-Band: heute“
+ *   K  fallback to the heading in dialoge.js gone → red: „Fokus nach Esc
  *      bei Direktaufruf“
- *   L  „Registrieren“ wieder <p> / Bestätigen bleibt bp ohne ausstehende
- *      Adresse → je rot: „Bestätigung angemeldet“
+ *   L  „Registrieren“ again <p> / confirming stays bp without a pending
+ *      address → each red: „Bestätigung angemeldet“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -66,7 +66,7 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
     return;
   }
   const { b, bis, db, port, uid, ruhig } = app;
-  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  // The startup loads settings and prices afterwards; only then is the state fixed.
   await ruhig();
   const smtpBefore = await db.all(
     "SELECT key, value FROM global_settings WHERE key IN ('smtp_host', 'smtp_user', 'registration_enabled')",
@@ -125,7 +125,7 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
         '#gs',
         '#tab-gallery .brick-stats',
         '#tab-gallery .filter-knopf',
-        // Am Telefon ist der Umschalter die sichtbare Überschrift (UX-Prüfung 19 M4).
+        // On the phone the toggle is the visible heading (UX check 19 M4).
         '#tab-gallery .sammlung-wahl',
       ])
         assert.equal(cut(knopf, await b.auswerten(rect(sel))), false, `über ${sel}`);
@@ -298,7 +298,7 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
       'Toast',
     );
     assert.equal((await db.get('SELECT email FROM users WHERE id = $1', [uid])).email, NEU);
-    // Nichts ausstehend: Bestätigen ist nicht mehr der nahegelegte Schritt.
+    // Nothing pending: confirming is no longer the suggested step.
     await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/verify?token=veraltet` });
     await bis(
       `/wartet keine neue Adresse/.test(document.getElementById('verify-ziel')?.textContent || '')`,
@@ -310,7 +310,7 @@ test('registration, categories, phone, terms', { timeout: 300_000 }, async t => 
     );
   });
 
-  // Aufräumen hier, nicht in t.after: Dort endet der Pool aus startApp zuerst.
+  // Clean up here, not in t.after: there the pool from startApp ends first.
   for (const z of smtpBefore)
     await db.run('INSERT INTO global_settings (key, value) VALUES ($1, $2) ON CONFLICT DO NOTHING', [z.key, z.value]);
 });

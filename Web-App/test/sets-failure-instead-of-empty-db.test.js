@@ -1,11 +1,11 @@
 /**
- * Die Set-Dienste unterscheiden „fehlgeschlagen“ von „leer“ (src/infra/result.ts).
+ * The set services distinguish „failed“ from „empty“ (src/infra/result.ts).
  *
- * Gegenproben (09.11.2026 gemessen):
- *   A  in partListOfSets() nach dem Fehlschlag wieder mit null weitergerechnet (wie reportAndDeliver) → rot:
- *      „eine gestörte Quelle ist keine leere Liste“ (source 'not_found', kein error)
- *   B  in minifigsListOfSets() dasselbe → rot: „… auch bei den Figuren“
- *   C  in pullAfter() den Stand am Ende weggelassen → rot: „die Nacharbeit nennt gescheiterte Schritte“
+ * Counter-checks (measured 09.11.2026):
+ *   A  in partListOfSets() after the failure again computed on with null (like reportAndDeliver) → red:
+ *      “a disturbed source is not an empty list” (source 'not_found', no error)
+ *   B  the same in minifigsListOfSets() → red: “… also for the minifigures”
+ *   C  the state at the end left out in pullAfter() → red: “the follow-up work names failed steps”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -18,7 +18,7 @@ const { buildAndRequire, testSources } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
-/** Ein gebautes Modul im require-Zwischenspeicher ersetzen, bevor die Dienste es herausziehen. */
+/** Replace a built module in the require cache before the services pull it out. */
 function replace(rel, felder) {
   const p = require.resolve(path.join(ROOT, 'dist', rel));
   const echt = require(p);
@@ -31,7 +31,7 @@ const stoerung = async () => {
 };
 replace('src/catalog/rebrickableCatalog.js', { alleTeileDesSets: stoerung });
 testSources(null, { getSetMinifigs: stoerung });
-// Die Nacharbeit: Teile und Figuren gelingen, zwei Anreicherungen scheitern.
+// The follow-up work: parts and figures succeed, two enrichments fail.
 const still = async () => {};
 replace('src/catalog/partsImport.js', { reloadBlNumbers: still });
 replace('src/sets/setContentImport.js', { importParts: still, importMinifigs: still });
@@ -82,12 +82,12 @@ test('set services: failure instead of empty', { concurrency: 1 }, async t => {
   await t.test('the follow-up work names failed steps', async () => {
     rebrickable = 'gestoert';
     const states = [];
-    // Über die angemeldete Art, wie der Worker sie ausführt.
+    // Via the registered kind, as the worker executes it.
     const nacharbeit = require('./helpers/sources')
       .testServices()
       .jobQueue.signedInKinds()
       .find(a => a.art === 'nacharbeit');
-    // Mit Katalog und Bild: Die Nacharbeit fragt dann kein Netz für den Stamm, nur die Schritte danach.
+    // With catalog and image: the follow-up work then asks no network for the master, only the steps after it.
     await require('./helpers/inventory').catalogSet(db, SN, { name: 'Stamm', image_local: `/images/sets/${SN}.jpg` });
     try {
       await nacharbeit.ausfuehren(

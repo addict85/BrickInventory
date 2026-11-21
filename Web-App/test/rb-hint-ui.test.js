@@ -1,21 +1,21 @@
 /**
- * Fehlt der Rebrickable-Schlüssel, öffnet der Verwalter trotzdem seine
- * Sammlung. Ein Band weist darauf hin, führt auf Wunsch zum Feld und lässt
- * sich je Konto dauerhaft wegklicken. Am echten Bündel in jsdom.
+ * If the Rebrickable key is missing, the admin still opens his
+ * collection. A banner points it out, leads to the field on request and can be
+ * dismissed permanently per account. On the real bundle in jsdom.
  *
- * Gegenproben (02.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in checkRbKey wieder der Sprung auf den Reiter „settings“ → rot:
- *      „Sammlung statt Einstellungen“
- *   B  showRbHint() nicht aufgerufen → rot: „Band erscheint“
- *   C  localStorage-Prüfung in showRbHint entfernt → rot: „weggeklickt
- *      bleibt es weg“ (03.11.2026: Frist auf 30 Tage gesetzt → rot: „nach
- *      30 Tagen kommt es wieder“)
- *   D  rbHinweisOeffnen ohne Klick auf den Abschnitt → rot: „Link führt zum Feld“
- *   E  einrichtungSpaeter ohne showRbHint() → rot: „nach „Später“ im
- *      Assistenten erscheint das Band“
- *   F  (12.11.2026, UX-Prüfung 19 M4: dauerhaft je Konto) Schlüssel wieder
- *      ohne Konto → rot: „ein anderes Konto sieht es wieder“; mit Frist von
- *      30 Tagen → rot: „auch nach 31 Tagen bleibt es weg“
+ * Counter-checks (measured 02.11.2026, each on its own, bundle rebuilt):
+ *   A  in checkRbKey again the jump to the tab „settings“ → red:
+ *      “collection instead of settings”
+ *   B  showRbHint() not called → red: “banner appears”
+ *   C  localStorage check removed in showRbHint → red: “dismissed
+ *      it stays away” (03.11.2026: deadline set to 30 days → red: “after
+ *      30 days it comes back”)
+ *   D  rbHinweisOeffnen without a click on the section → red: “link leads to the field”
+ *   E  einrichtungSpaeter without showRbHint() → red: “after “Später” in the
+ *      wizard the banner appears”
+ *   F  (12.11.2026, UX check 19 M4: permanently per account) key again
+ *      without account → red: “another account sees it again”; with a deadline of
+ *      30 days → red: “even after 31 days it stays away”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,17 +1,17 @@
 /**
- * Die Marktpreise eines Merkpostens: Eine Nummer, die kein Katalog kennt, löst
- * keinen BrickLink-Abruf aus (das Tageskontingent teilen alle Konten).
+ * The market prices of a wishlist item: a number no catalog knows triggers
+ * no BrickLink call (all accounts share the daily quota).
  *
- * Gegenproben (am 08.11.2026 gemessen):
- *   A  die Katalogprüfung in pricesForBothConditions() entfernt
- *      → rot: „erfundene Nummer …“ und „eine kein-Preis-Markierung …“
- *   B  setInCatalog() verneint immer (auch bekannte Sets)
- *      → rot: „bekanntes Set wird abgerufen“
- *   C  setInCatalog() zählt die NONE-Markierung als Treffer
- *      → rot: „eine kein-Preis-Markierung ist kein Katalogeintrag“
+ * Counter-checks (measured 08.11.2026):
+ *   A  the catalog check in pricesForBothConditions() removed
+ *      → red: “invented number …” and “a no-price marker …”
+ *   B  setInCatalog() always says no (even for known sets)
+ *      → red: “known set is fetched”
+ *   C  setInCatalog() counts the NONE marker as a hit
+ *      → red: “a no-price marker is not a catalog entry”
  *
- * BrickLink selbst wird nicht gefragt: https.get ist eine Attrappe, die jeden
- * Aufruf zählt. Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * BrickLink itself is not asked: https.get is a dummy that counts every
+ * call. Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -28,7 +28,7 @@ const db = testData();
 
 /** @type {string[]} */
 const aufrufe = [];
-// @ts-expect-error — Attrappe mit genau dem, was clients/bricklink.ts benutzt.
+// @ts-expect-error — dummy with exactly what clients/bricklink.ts uses.
 https.get = (url, _opts, cb) => {
   aufrufe.push(new URL(url).pathname);
   const req = new EventEmitter();

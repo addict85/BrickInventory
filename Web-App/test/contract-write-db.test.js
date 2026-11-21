@@ -1,30 +1,30 @@
 /**
- * Jede SCHREIBENDE Route der App (shared/app-schnittstelle.json) gegen ihren
- * Vertrag (src/contract/): Antwort und, wo der Vertrag eine nennt, die Eingabe.
+ * Every WRITING route of the app (shared/app-schnittstelle.json) against its
+ * contract (src/contract/): response and, where the contract names one, the input.
  *
- * Gegenproben (am 27.10. gemessen):
- *   A  in routes/api_v1/sets.ts PUT /storage/default mit `success: null` →
- *      rot (31.10.2026): „jeder Schritt antwortet mit 200“ (500 vertrag_verletzt,
- *      Antwort success) und „jede schreibende Route ist geprüft …“
- *   B  einen Schritt aus STEPS entfernt (PUT /api/v1/vouchers/{id}) → rot:
- *      „jede schreibende Route ist geprüft oder begründet ausgelassen"
- *   C  in OMITTED einen Pfad ergänzt, den die App nicht kennt → rot:
- *      „keine tote Ausnahme"
- *   D  in src/parts/repository/manualParts.ts wieder `NULLIF($1, 0)` ohne ::numeric → rot: „jeder
- *      Schritt antwortet mit 200" (PUT /parts: 500, invalid input syntax for
- *      type integer) und „Stückpreis mit Nachkommastellen"
- *   E  (09.11.2026) in deleteOtherAccesses() ohne `$2::text IS NULL OR`
- *      (NULL IS DISTINCT FROM NULL ist falsch) → rot: „die Schreibantworten …“
- *      (zugaenge 0 statt 1 aus einer Browser-Sitzung)
+ * Counter-checks (measured on 27.10.):
+ *   A  in routes/api_v1/sets.ts PUT /storage/default with `success: null` →
+ *      red (31.10.2026): “every step answers with 200” (500 vertrag_verletzt,
+ *      response success) and “every writing route is checked …”
+ *   B  a step removed from STEPS (PUT /api/v1/vouchers/{id}) → red:
+ *      “every writing route is checked or omitted with reason"
+ *   C  a path the app does not know added to OMITTED → red:
+ *      “no dead exception"
+ *   D  in src/parts/repository/manualParts.ts again `NULLIF($1, 0)` without ::numeric → red: “every
+ *      step answers with 200" (PUT /parts: 500, invalid input syntax for
+ *      type integer) and “unit price with decimals"
+ *   E  (09.11.2026) in deleteOtherAccesses() without `$2::text IS NULL OR`
+ *      (NULL IS DISTINCT FROM NULL is false) → red: “the write responses …”
+ *      (zugaenge 0 instead of 1 from a browser session)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-// Links in Mails gibt es nur mit fester Adresse (routes/auth.ts, getBaseUrl).
+// Links in mails only exist with a fixed address (routes/auth.ts, getBaseUrl).
 process.env.APP_BASE_URL = 'http://localhost';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
@@ -51,7 +51,7 @@ const SET = '99075-1',
   FARBE2 = 1,
   FIGUR = 'ks0001';
 
-/** Routen, die hier nicht laufen dürfen oder können — mit Grund. */
+/** Routes that must not or cannot run here — with reason. */
 const OMITTED = new Map([
   ['POST /api/v1/admin/trigger-csv-sync', 'startet den Katalogabgleich mit Rebrickable im Netz'],
   ['POST /api/v1/admin/reimport-instructions', 'lädt Anleitungen bei LEGO im Netz'],
@@ -81,7 +81,7 @@ const OMITTED = new Map([
   ['POST /api/v1/geraet/schritt/freigabe', 'braucht eine Signatur des Geräteschlüssels; geprüft in schrittschutz-db'],
 ]);
 
-/** Ein PDF mit den übergebenen Zeilen. */
+/** A PDF with the passed lines. */
 function pdfWith(zeilen) {
   return new Promise(fertig => {
     const doc = new PDFDocument({ compress: true });
@@ -93,7 +93,7 @@ function pdfWith(zeilen) {
   });
 }
 
-/** Ein Formular mit einer Datei unter `file` — so schickt es die App. */
+/** A form with a file under `file` — that is how the app sends it. */
 function formular(inhalt, typ, name, felder = {}) {
   const f = new FormData();
   f.append('file', new Blob([inhalt], { type: typ }), name);
@@ -105,7 +105,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
   if (!(await dataOrSkip(t, _req))) return;
   importWorker(t, _req);
 
-  // ── Drei Konten: Haupt, Unterkonto, ein drittes für die Einladung ──────
+  // ── Three accounts: main, sub-account, a third for the invitation ──────
   const namen = [NAME, `${NAME}_sub`, `${NAME}_neu`, `${NAME}_reg`];
   await db.run('DELETE FROM users WHERE username = ANY($1)', [namen]);
   const hash = await bcrypt.hash(PASS, 4);
@@ -150,11 +150,11 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     await db.pool.end().catch(() => {});
   });
 
-  // Die Drosseln für Registrieren & Co. zählen je IP über Läufe hinweg.
+  // The throttles for registering & co. count per IP across runs.
   await db.run(`DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot-password|qr-login|qr-abholen)\\|'`);
-  // Die Währung steht schon: Ein Wechsel stiesse den Preisauftrag samt Zeitgeber an.
-  // Für alle drei: Der Haushaltsbeitritt verlangt dieselbe Währung, und die
-  // Vorgabe des Servers kann ein anderer Test verstellt haben.
+  // The currency is already set: a change would trigger the price job including timer.
+  // For all three: joining a household requires the same currency, and the
+  // server default may have been changed by another test.
   for (const k of [uid, sub, neu])
     await db.run(
       `INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')
@@ -162,7 +162,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
       [k],
     );
 
-  // ── Katalog, damit Anlegen ohne Netz geht ──────────────────────────────
+  // ── Catalog so that creating works without network ─────────────────────
   for (const s of [SET, SET2])
     await catalogSet(db, s, { name: 'Schreibprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 1 });
   await db.run(
@@ -186,7 +186,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     .run(`INSERT INTO brickset_queue (set_number, attempts) VALUES ($1, 1) ON CONFLICT DO NOTHING`, [SET2])
     .catch(() => {});
 
-  // ── Server wie in server.ts; die Sitzung lässt sich umstellen ──────────
+  // ── Server as in server.ts; the session can be switched ─────────────────
   let als = { id: uid, name: NAME, admin: true };
   const app = express();
   app.use(express.json());
@@ -217,14 +217,14 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
 
   const routen = appSchnittstelle().routen.filter(r => r.methode !== 'GET');
 
-  /** Werte für die Platzhalter im Pfad; Schritte tragen neue nach. */
+  /** Values for the placeholders in the path; steps add new ones. */
   const w = { setNumber: SET, partNumber: TEIL, colorId: String(FARBE), figNumber: FIGUR };
   const erst = async (sql, werte) => await db.get(sql, werte);
 
   /** @type {{ m: string, p: string, body?: any, form?: () => Promise<FormData>|FormData, q?: string, kopf?: () => object, als?: object, davor?: () => Promise<void>, danach?: (j: any) => Promise<void>|void }[]} */
   /** @type {any[]} */
   const STEPS = [
-    // ── Anmeldung und Konto ───────────────────────────────────────────────
+    // ── Login and account ─────────────────────────────────────────────────
     {
       m: 'POST',
       p: '/api/v1/auth/login',
@@ -233,7 +233,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
         w.appToken = j.token;
       },
     },
-    // Der Tausch nimmt den Token aus der Kopfzeile, nicht die Sitzung des Tests.
+    // The exchange takes the token from the header, not the test's session.
     { m: 'POST', p: '/api/v1/auth/token-rotieren', kopf: () => ({ Authorization: 'Bearer ' + w.appToken }) },
     {
       m: 'POST',
@@ -251,7 +251,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
         w.abholung = j.abholung;
       },
     },
-    // Bestätigt wird im Browser (qr-kopplung/:id/bestaetigen); hier zählt die Antwort an die App.
+    // Confirmation happens in the browser (qr-kopplung/:id/bestaetigen); here the response to the app counts.
     {
       m: 'POST',
       p: '/api/v1/auth/qr-login/abholen',
@@ -313,11 +313,11 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     },
     { m: 'POST', p: '/api/v1/auth/zweiter-faktor/abschalten', body: () => ({ password: PASS, code: w.codes[0] }) },
 
-    // ── Einstellungen ─────────────────────────────────────────────────────
+    // ── Settings ──────────────────────────────────────────────────────────
     { m: 'PUT', p: '/api/v1/settings', body: { currency: 'EUR', price_condition: 'N' } },
     { m: 'POST', p: '/api/v1/settings/user/default-condition', body: { condition: 'N' } },
     { m: 'POST', p: '/api/v1/settings/admin/theme', body: { theme: 'classic' } },
-    // Eigenes Design (Konto-Bildschirm der App), danach zurück zur Vorgabe.
+    // Own design (account screen of the app), then back to the default.
     {
       m: 'POST',
       p: '/api/v1/settings/user/theme',
@@ -360,7 +360,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
       },
     },
 
-    // ── Lagerorte ─────────────────────────────────────────────────────────
+    // ── Storage locations ─────────────────────────────────────────────────
     {
       m: 'POST',
       p: '/api/v1/storage/locations',
@@ -391,7 +391,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     },
     { m: 'PUT', p: '/api/v1/sets/{setNumber}/acquisitions/{acqId}', body: { purchase_price: 45 } },
     { m: 'DELETE', p: '/api/v1/sets/{setNumber}/acquisitions/{acqId}' },
-    // Die einzige Erfassung ist weg und mit ihr das Set — neu anlegen.
+    // The only entry is gone and with it the set — create it anew.
     { m: 'POST', p: '/api/v1/sets', body: { set_number: SET, quantity: 1, condition: 'N' } },
     { m: 'PUT', p: '/api/v1/sets/{setNumber}/alert', body: { direction: 'unter', threshold: 30, condition: 'N' } },
     { m: 'DELETE', p: '/api/v1/sets/{setNumber}/alert', q: 'condition=N' },
@@ -415,7 +415,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     { m: 'DELETE', p: '/api/v1/sets/{setNumber}/instructions/{instrId}' },
     { m: 'DELETE', p: '/api/v1/sets/{setNumber}' },
 
-    // ── Teile ─────────────────────────────────────────────────────────────
+    // ── Parts ─────────────────────────────────────────────────────────────
     {
       m: 'POST',
       p: '/api/v1/parts',
@@ -485,7 +485,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     { m: 'PUT', p: '/api/v1/minifigs/{figNumber}/storage', body: { storage: 'Kiste' } },
     { m: 'DELETE', p: '/api/v1/minifigs/{figNumber}' },
 
-    // ── Merkliste ─────────────────────────────────────────────────────────
+    // ── Wishlist ──────────────────────────────────────────────────────────
     { m: 'POST', p: '/api/v1/wanted', body: { set_number: SET2, condition: 'N' } },
     {
       m: 'POST',
@@ -496,7 +496,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
       },
       body: { quantity: 1, purchase_price: 30 },
     },
-    // Die Übernahme hat SET2 erfasst — der Kaufpreis wandert ins Unterkonto.
+    // The takeover entered SET2 — the purchase price moves into the sub-account.
     {
       m: 'POST',
       p: '/api/v1/sets/{setNumber}/move',
@@ -522,7 +522,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     },
     { m: 'DELETE', p: '/api/v1/wanted/{setNumber}/{condition}', q: () => `owner_user_id=${sub}` },
 
-    // ── Lagerort wegräumen (nach Sets/Teilen, die ihn benutzten) ──────────
+    // ── Remove the storage location (after the sets/parts that used it) ───
     {
       m: 'DELETE',
       p: '/api/v1/storage/locations/{id}',
@@ -534,7 +534,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
       },
     },
 
-    // ── Gutscheine ────────────────────────────────────────────────────────
+    // ── Vouchers ──────────────────────────────────────────────────────────
     {
       m: 'POST',
       p: '/api/v1/vouchers',
@@ -560,7 +560,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
         ),
     },
 
-    // ── Haushalt: einladen, als drittes Konto beitreten, lösen ────────────
+    // ── Household: invite, join as third account, unlink ──────────────────
     {
       m: 'POST',
       p: '/api/v1/settings/household/invite',
@@ -588,7 +588,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
       body: () => ({ sub_user_id: neu }),
     },
 
-    // ── CSV-Importe: nur die Kopfzeile, damit kein Auftrag ins Netz geht ──
+    // ── CSV imports: only the header so that no job goes to the network ───
     {
       m: 'POST',
       p: '/api/v1/sets/import/csv',
@@ -616,7 +616,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
       form: () => formular('set_number,condition,richtung,schwelle\n', 'text/csv', 'alarme.csv'),
     },
 
-    // ── Verwaltung ────────────────────────────────────────────────────────
+    // ── Administration ────────────────────────────────────────────────────
     {
       m: 'POST',
       p: '/api/v1/admin/job-schedule',
@@ -653,7 +653,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     },
     { m: 'DELETE', p: '/api/v1/admin/brickset-queue/{setNumber}' },
 
-    // ── Hintergrundarbeiten (Auftragstabelle) ─────────────────────────────
+    // ── Background jobs (job table) ───────────────────────────────────────
     {
       m: 'POST',
       p: '/api/v1/admin/auftraege/{id}/abbrechen',
@@ -676,7 +676,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     },
     { m: 'DELETE', p: '/api/v1/admin/auftraege/art/{art}' },
 
-    // ── Zum Schluss: Passwort ändern (verwirft alle Token), abmelden ──────
+    // ── Finally: change password (discards all tokens), log out ───────────
     { m: 'POST', p: '/api/v1/auth/change-password', body: { current: PASS, newPassword: PASS + 'x' } },
     { m: 'POST', p: '/api/v1/auth/logout' },
   ];
@@ -693,7 +693,7 @@ test("the app's write responses keep their contract", { concurrency: 1, timeout:
     const pfad = s.p.replace(/\{(\w+)\}/g, (_, n) => encodeURIComponent(w[n] ?? `<${n}>`));
     const q = typeof s.q === 'function' ? s.q() : s.q;
     const body = typeof s.body === 'function' ? await s.body() : s.body;
-    // Eine Zeitgrenze je Schritt: Ein hängender Schritt wird so ein roter, kein hängender Test.
+    // A time limit per step: a hanging step thus becomes a red test, not a hanging one.
     const init = { method: s.m, signal: AbortSignal.timeout(15_000) };
     if (s.form) init.body = await s.form();
     else if (body !== undefined) {

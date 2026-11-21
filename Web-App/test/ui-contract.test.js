@@ -1,14 +1,14 @@
 /**
- * Die Antworten der jsdom-Hilfe (helpers/ui.js) erfüllen den
- * zod-Vertrag ihrer Route: die Standardantworten wörtlich, die Antworten
- * eines Tests nach dem Ergänzen fehlender Pflichtfelder.
+ * The responses of the jsdom helper (helpers/ui.js) fulfill the
+ * zod contract of their route: the default responses literally, the responses
+ * of a test after adding missing required fields.
  *
- * Gegenproben (05.11.2026, je einzeln):
- *   A  `count` aus ANMELDUNG['/v1/sets'] entfernt → „Standardantworten“ rot
- *   B  Aufruf von checkResponse() im fetch der Hilfe entfernt → „fetch der
- *      Oberfläche liefert die ergänzte Antwort“ und „eine falsche Testantwort …“ rot
- *   C  Fehlerantworten ohne Prüfung (status >= 400 übersprungen) → „Fehlerantwort
- *      ohne code“ rot
+ * Counter-checks (05.11.2026, each on its own):
+ *   A  `count` removed from ANMELDUNG['/v1/sets'] → „Standardantworten“ red
+ *   B  call of checkResponse() removed in the helper's fetch → “the UI's fetch
+ *      delivers the completed response” and “a wrong test response …” red
+ *   C  error responses without a check (status >= 400 skipped) → “error response
+ *      without code” red
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -49,7 +49,7 @@ test('checkResponse adds required fields and throws on the wrong type', () => {
     () => checkResponse('GET', '/api/v1/sets', { success: true, sets: [], count: '3' }),
     /verletzt den Vertrag: GET \/api\/v1\/sets \(200\): count/,
   );
-  // Absichtlich kaputt, mit Grund: geht unverändert hinaus.
+  // Deliberately broken, with a reason: goes out unchanged.
   const kaputt = { success: true, count: 'x', $contractViolating: 'Fehlerpfad der Oberfläche' };
   assert.equal(checkResponse('GET', '/api/v1/sets', kaputt), kaputt);
 });
@@ -79,7 +79,7 @@ test("the UI's fetch delivers the completed response", async () => {
 });
 
 test('a wrong test response makes the test red', () => {
-  // In einem eigenen Lauf: Der Fehler soll dort einen Test rot machen, nicht diesen.
+  // In its own run: the error should make a test red there, not this one.
   const datei = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'vertrag-')), 'probe.test.js');
   fs.writeFileSync(
     datei,

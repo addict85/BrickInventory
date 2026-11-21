@@ -1,21 +1,21 @@
 /**
- * Jede Klickfläche ist mit der Tastatur bedienbar (WCAG 2.1.1, Stufe A): Auf
- * allen Hauptseiten, in Karten- und Tabellenansicht und im Haushalt, hat jedes
- * sichtbare Element mit data-click, das kein Knopf, Link oder Feld ist,
- * tabindex="0" und eine Rolle; eine Tabellenzeile trägt dafür einen Zeilenknopf
- * (.zeile-oeffnen) mit derselben Aktion. Ausgenommen …
+ * Every click surface is operable by keyboard (WCAG 2.1.1, level A): on
+ * all main pages, in card and table view and in the household, every
+ * visible element with data-click that is not a button, link or field has
+ * tabindex="0" and a role; a table row carries a row button for it
+ * (.zeile-oeffnen) with the same action. Excepted …
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  Figurenkachel aus Sets wieder ohne tabindex und role (minifigs.js) →
- *      rot: „jede Klickfläche ist bedienbar“ (Minifiguren: DIV.part-card
- *      openSetItemDetail) und „Figur aus Set per Tastatur“
- *   B  Finanzzeile der Teile und Figuren wieder ohne tabindex (finanzen.js)
- *      → rot: „jede Klickfläche ist bedienbar“ (Finanzen: TR openManDetail)
- *   C  Tabellenzeile der Figuren wieder ohne tabindex → rot: „jede Klickfläche
- *      ist bedienbar“ (Minifiguren Tabelle: TR openSetItemDetail)
- *   D  (05.11.2026) Zeilenknopf der Figurentabelle durch reinen Text ersetzt
- *      → rot: „jede Klickfläche ist bedienbar“ (Minifiguren Tabelle: TR
- *      openSetItemDetail) und „Figur aus Set per Tastatur“ (table)
+ * Counter-checks (measured 04.11.2026, each alone, bundle rebuilt):
+ *   A  minifigure tile from sets again without tabindex and role (minifigs.js) →
+ *      red: “every click surface is operable” (minifigures: DIV.part-card
+ *      openSetItemDetail) and “minifigure from set via keyboard”
+ *   B  finance row of parts and minifigures again without tabindex (finanzen.js)
+ *      → red: “every click surface is operable” (finances: TR openManDetail)
+ *   C  table row of the minifigures again without tabindex → red: “every click surface
+ *      is operable” (minifigures table: TR openSetItemDetail)
+ *   D  (05.11.2026) row button of the minifigure table replaced by plain text
+ *      → red: “every click surface is operable” (minifigures table: TR
+ *      openSetItemDetail) and “minifigure from set via keyboard” (table)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -50,7 +50,7 @@ const SEITEN = [
   ['Set-Detail', [reiter('gallery'), klick('#gallery [data-click="openModal"]')]],
 ];
 
-/** Klickflächen ohne Tastaturweg; eine Zeile je Art, damit die Meldung kurz bleibt. */
+/** Click surfaces without a keyboard path; one line per kind so that the message stays short. */
 const UNBEDIENBAR = `(() => {
   const NATIV = new Set(['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA', 'SUMMARY', 'LABEL', 'OPTION']);
   const bedienbar = (el) => NATIV.has(el.tagName) || (el.tabIndex >= 0 && el.hasAttribute('tabindex') && !!el.getAttribute('role'))
@@ -71,7 +71,7 @@ test('click areas with the keyboard', { timeout: 280_000 }, async t => {
     return;
   }
   const { b, bis, ruhig } = app;
-  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  // Startup loads settings and prices afterwards; only then is the state fixed.
   await ruhig();
   const rest = () => b.auswerten(`new Promise(r => setTimeout(() => requestAnimationFrame(() => r(true)), 700))`);
 
@@ -102,7 +102,7 @@ test('click areas with the keyboard', { timeout: 280_000 }, async t => {
     ]) {
       await b.auswerten(ansicht('figs-view', wert));
       await bis(`!!document.querySelector(${JSON.stringify(sel)})`, `Figur aus Set (${wert})`);
-      // Mit Tab hin, nicht mit focus(): Der Befund war, dass der Tab-Gang sie übersprang.
+      // Get there with Tab, not with focus(): the finding was that the tab order skipped them.
       await b.auswerten(`document.activeElement?.blur(); document.getElementById('fig-search').focus(); true`);
       let erreicht = false;
       for (let i = 0; i < 60 && !erreicht; i++) {

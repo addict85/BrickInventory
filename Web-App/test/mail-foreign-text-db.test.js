@@ -1,23 +1,23 @@
 /**
- * Mails an unbestätigte Adressen tragen keinen Text aus der Anfrage: keine
- * Anrede aus Vor-, Nach- oder Benutzername, die Konsole zeigt den echten Link,
- * und Registrierung wie „Passwort vergessen" sind je Zieladresse gedrosselt.
+ * Mails to unconfirmed addresses carry no text from the request: no
+ * salutation from first, last or username, the console shows the real link,
+ * and registration as well as „Passwort vergessen" are throttled per target address.
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  routes/auth.ts und src/mail/mailer.ts auf Stand 2b73e33 → alle sechs
- *      Teile rot, darunter „die Bestätigungsmail nennt …“ („Hallo Anna,“)
- *   B  nameValid() in POST /register entfernt → rot: „Namen mit Adresse oder
- *      Steuerzeichen werden abgewiesen“ (200 statt 400)
- *   C  targetThrottled() in POST /register entfernt → rot: „je Zieladresse
- *      höchstens drei Registrierungen“ (200 statt 429)
- *   D  sendMail() gibt wieder den Text an die alte URL-Suche in
- *      linkForConsole() → rot: „die Konsole zeigt den echten Link“
- *   E  targetThrottled() in /forgot-password entfernt → rot: „der vierte
- *      Rücksetzlink an dieselbe Adresse bleibt aus“
- *   F  sendVerificationMail() übergeht `mehrere` → rot: „die zweite Mail
- *      verweist auf die Bestätigungsseite“ (04.11.2026 gemessen)
+ * Counter-checks (measured 01.11.2026):
+ *   A  routes/auth.ts and src/mail/mailer.ts at state 2b73e33 → all six
+ *      parts red, among them “the confirmation mail names …” („Hallo Anna,“)
+ *   B  nameValid() removed in POST /register → red: “names with an address or
+ *      control characters are rejected” (200 instead of 400)
+ *   C  targetThrottled() removed in POST /register → red: “at most three
+ *      registrations per target address” (200 instead of 429)
+ *   D  sendMail() again gives the text to the old URL search in
+ *      linkForConsole() → red: “the console shows the real link”
+ *   E  targetThrottled() removed in /forgot-password → red: “the fourth
+ *      reset link to the same address does not come”
+ *   F  sendVerificationMail() ignores `mehrere` → red: „die zweite Mail
+ *      verweist auf die Bestätigungsseite“ (measured 04.11.2026)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -26,7 +26,7 @@ const path = require('node:path');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.APP_BASE_URL = 'https://lego.example.org';
 
-// Der Mailer baut den Transport erst beim Versand: hier abfangen statt senden.
+// The mailer builds the transport only when sending: intercept here instead of sending.
 const nodemailer = require(path.join(__dirname, '..', 'node_modules', 'nodemailer'));
 const gesendet = [];
 nodemailer.createTransport = () => ({
@@ -58,7 +58,7 @@ test('mails without foreign text', { concurrency: 1 }, async t => {
       [k, v],
     );
   await setze('registration_enabled', '1');
-  await setze('smtp_host', '192.0.2.25'); // eine Adresse: Ein Name müsste auflösen (src/infra/targetAddress.ts)
+  await setze('smtp_host', '192.0.2.25'); // an address: a name would have to resolve (src/infra/targetAddress.ts)
   await setze('smtp_user', 'versand');
   const emptyCounter = () => db.run("DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot)'");
   await emptyCounter();
@@ -173,7 +173,7 @@ test('mails without foreign text', { concurrency: 1 }, async t => {
     await emptyCounter();
     const an = `ziel_${P}@example.org`;
     const status = [];
-    // Verschiedene Namen, damit nur die Adresse gemeinsam ist.
+    // Different names, so that only the address is shared.
     for (let i = 0; i < 4; i++) status.push((await register(`ziel${i}_${P}`, an)).status);
     assert.deepEqual(status, [200, 200, 200, 429]);
     assert.equal(

@@ -1,29 +1,29 @@
 /**
- * Befunde der UI-Prüfung 10 im echten Browser: Zahlen, die sich nicht
- * widersprechen, Diagramme, die mit der Schrift wachsen, Meldungen, die sagen,
- * was los ist, und Bedienelemente, die nicht gegen das eigene Konto zielen.
+ * Findings of UI check 10 in the real browser: numbers that do not
+ * contradict each other, charts that grow with the font, messages that say
+ * what is going on, and controls that do not aim at the own account.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in showMetrics den Titel wieder fest „Kaufpreis gesamt“ und die
- *      Unterzeile „Summe der Kaufpreise“ → rot: „Kaufpreis-Karte nennt ihren Bezug“
- *   B  die Fusszeile der Teile wieder mit parts.stat.types → rot: „Fusszeile
- *      der Teile nennt Einträge“
- *   C  .diagramm-wert wieder mit max-height:180px, chartWidth teilt wieder
- *      durch die Schriftgrösse und fontFactor liefert 1 (der alte Stand) →
- *      rot: „Diagramm wächst mit der Schrift“
- *   D  in openModal wieder nur toast('Fehler') → rot: „unbekanntes Set“
- *   E  nutzerAktionen ohne die Ausnahme für das eigene Konto → rot:
- *      „keine Aktionen gegen das eigene Konto“
- *   F  im Set-Dialog die Klassen v-mehr nach-oben entfernt → rot: „Weitere
- *      Aktionen überlagern den Inhalt“ (die Liste steht in der Fusszeile)
- *   G  in zeigeDesignWahl das Sperren der Darstellung entfernt → rot:
- *      „Werkbank sperrt die Darstellung“
- *   H  die Wertlinie wieder fest var(--chart-new) → rot: „Wertlinie in der
- *      Akzentfarbe“
- *   I  in doLogin wieder ['lp','lu'] → rot: „leere Anmeldung: Fokus ins erste Feld“
- *   J  (12.11.2026, UX-Prüfung 19 N4) finance.stat.purchase_von wieder „von
- *      {betrag} Kaufpreis gesamt“ → rot: „Kaufpreis-Karte nennt ihren Bezug“
- *      (der Bezug ist nicht erklärt)
+ * Counter-checks (measured 04.11.2026, each on its own, bundle rebuilt):
+ *   A  in showMetrics the title again fixed „Kaufpreis gesamt“ and the
+ *      subline „Summe der Kaufpreise“ → red: “purchase price card names its reference”
+ *   B  the footer of the parts again with parts.stat.types → red: “parts
+ *      footer names entries”
+ *   C  .diagramm-wert again with max-height:180px, chartWidth again divides
+ *      by the font size and fontFactor delivers 1 (the old state) →
+ *      red: “chart grows with the font”
+ *   D  in openModal again only toast('Fehler') → red: “unknown set”
+ *   E  nutzerAktionen without the exception for the own account → red:
+ *      “no actions against the own account”
+ *   F  in the set dialog the classes v-mehr nach-oben removed → red: “more
+ *      actions overlay the content” (the list stands in the footer)
+ *   G  in zeigeDesignWahl the locking of the appearance removed → red:
+ *      “werkbank locks the appearance”
+ *   H  the value line again fixed var(--chart-new) → red: “value line in the
+ *      accent color”
+ *   I  in doLogin again ['lp','lu'] → red: “empty login: focus into the first field”
+ *   J  (12.11.2026, UX check 19 N4) finance.stat.purchase_von again „von
+ *      {betrag} Kaufpreis gesamt“ → red: “purchase price card names its reference”
+ *      (the reference is not explained)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -50,7 +50,7 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
       gesamt: document.querySelector('#fin-tbl .dt-summe tfoot td.fin-fuss-wert').textContent.trim(),
       basis: document.getElementById('fin-basis').hidden })`);
     assert.equal(z.basis, false, 'Testdaten: Positionen ohne Marktpreis');
-    // Kurz benannt seit UX-Prüfung 25 (B2); was „bewertet“ heisst, steht im Tooltip und unter den Karten.
+    // Named briefly since UX check 25 (B2); what „bewertet“ means stands in the tooltip and below the cards.
     assert.equal(z.titel, 'Kaufpreis (bewertete Positionen)', 'Kaufpreis-Karte nennt ihren Bezug, nicht „gesamt“');
     assert.match(z.unter, /^Insgesamt bezahlt: /, 'die Summe aller Käufe ist benannt (UX-Prüfung 19 N4)');
     assert.ok(z.unter.includes(z.gesamt), `die Summe aller Kaufpreise steht darunter: ${z.unter} / ${z.gesamt}`);
@@ -65,14 +65,14 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
   });
 
   await t.test('chart grows with the font', async () => {
-    // Der Massstab des Gezeichneten (getScreenCTM), nicht der Rahmen: Mit
-    // max-height steht ein verkleinertes Bild mittig in einem breiten Rahmen.
+    // The scale of what is drawn (getScreenCTM), not the frame: with
+    // max-height a shrunk image stands centered in a wide frame.
     const mass = `(() => { const svg = document.querySelector('#portfolio-chart svg');
       const k = svg.getScreenCTM().a;
       return { breite: svg.viewBox.baseVal.width * k, container: document.getElementById('portfolio-chart').clientWidth,
         schrift: Math.min(...[...svg.querySelectorAll('text')].map(x => parseFloat(getComputedStyle(x).fontSize) * k)) }; })()`;
     const vorher = await b.auswerten(mass);
-    // Das alte Bild weg, damit gemessen wird, was bei 200 % neu gezeichnet ist.
+    // The old image gone, so that what is newly drawn at 200 % is measured.
     await b.auswerten(
       `document.documentElement.style.fontSize = '200%'; document.getElementById('portfolio-chart').innerHTML = ''; true`,
     );
@@ -184,7 +184,7 @@ test('metrics, charts, messages', { timeout: 280_000 }, async t => {
       'Anmeldemaske',
     );
     await b.auswerten(`document.getElementById('btn-login').click(); true`);
-    // Seit Runde 26 (N4) meldet das leere Feld sich selbst, ohne den Server zu fragen.
+    // Since round 26 (N4) the empty field reports itself without asking the server.
     await bis(`document.getElementById('lu-fehler')?.hidden === false`, 'Fehler am Feld', 100);
     assert.equal(await b.auswerten(`document.activeElement?.id`), 'lu', 'leere Anmeldung: Fokus ins erste Feld');
   });

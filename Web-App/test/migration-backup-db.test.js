@@ -1,30 +1,30 @@
 /**
- * Vor offenen Migrationen: Nutzerdaten sichern, ohne Zeitgrenze migrieren.
- * @einzeln: legt eine Probe-Migration in dist/db/migrations, die jede parallel
- * startende Datei beim Migrieren sähe.
+ * Before open migrations: back up user data, migrate without a time limit.
+ * @einzeln: puts a sample migration into dist/db/migrations, which every file starting
+ * in parallel would see when migrating.
  *
- * Eine Probe-Migration in dist/db/migrations bricht ab, wenn
- * statement_timeout nicht 0 ist; der Pool setzt 30 s für jede Verbindung.
+ * A sample migration in dist/db/migrations aborts if
+ * statement_timeout is not 0; the pool sets 30 s for every connection.
  *
- * Gegenproben (am 27.10. gemessen):
- *   A  `SET LOCAL statement_timeout = 0` entfernt → rot: „offene Migration:
- *      erst gesichert, dann ohne Zeitgrenze angewandt"
- *   B  in runMigrations den Aufruf von secureUserData entfernt → rot:
- *      dieselbe Prüfung (keine Sicherung)
- *   C  OFFSET der Aufräumabfrage entfernt (alle löschen) → rot: „die drei
- *      jüngsten Sicherungen bleiben"
- *   D  (28.10.) die UNION über Fremdschlüssel auf users entfernt → rot:
- *      „offene Migration …" (account_links fehlt)
- *   E  (12.11.2026) in runMigrations wieder `SET LOCAL lock_timeout = 0` → rot:
- *      „eine gehaltene Sperre: Frist, Wiederholung, klare Meldung“ (Zeitüberschreitung)
- *   F  (12.11.2026) in withLockPeriod() ohne Wiederholung (sofort weiterwerfen)
- *      → rot: dieselbe Prüfung (eine Warnung erwartet, keine gesehen)
- *   G  (12.11.2026) in secureUserData wieder `lock_timeout = 0` → rot:
- *      „auch die Sicherung wartet nicht ewig“ (Zeitüberschreitung)
- *   H  (14.11.2026) in secureUserData das `ENABLE ROW LEVEL SECURITY` gestrichen
- *      → rot: „offene Migration …“ (Kopien ohne Zeilenschutz: users, api_tokens, …)
+ * Counter-checks (measured on 27.10.):
+ *   A  `SET LOCAL statement_timeout = 0` removed → red: “open migration:
+ *      first backed up, then applied without a time limit”
+ *   B  the call of secureUserData removed in runMigrations → red:
+ *      the same check (no backup)
+ *   C  OFFSET of the cleanup query removed (delete all) → red: “the three
+ *      most recent backups stay”
+ *   D  (28.10.) the UNION over foreign keys on users removed → red:
+ *      “open migration …” (account_links missing)
+ *   E  (12.11.2026) in runMigrations again `SET LOCAL lock_timeout = 0` → red:
+ *      “a held lock: deadline, retry, clear message” (timeout)
+ *   F  (12.11.2026) in withLockPeriod() without retry (rethrow immediately)
+ *      → red: the same check (one warning expected, none seen)
+ *   G  (12.11.2026) in secureUserData again `lock_timeout = 0` → red:
+ *      “the backup does not wait forever either” (timeout)
+ *   H  (14.11.2026) the `ENABLE ROW LEVEL SECURITY` deleted in secureUserData
+ *      → red: “open migration …” (copies without row protection: users, api_tokens, …)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -64,7 +64,7 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
     ).id;
   const haupt = await anlegen(NAME),
     kind = await anlegen(SECOND);
-  // Eine Haushaltsverknüpfung: Die Tabelle hat keine Spalte user_id, nur Fremdschlüssel auf users.
+  // A household link: the table has no column user_id, only foreign keys on users.
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [haupt, kind]);
   t.after(async () => {
     fs.rmSync(probe, { force: true });
@@ -110,7 +110,7 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
       await db.get(`SELECT 1 FROM ${neu[0]}.account_links WHERE main_user_id = $1 AND sub_user_id = $2`, [haupt, kind]),
       'Die Haushaltsverknüpfung fehlt in der Sicherung',
     );
-    // Die Kopie trägt keine Policy: Ohne RLS läse die Laufzeitrolle Hashes und Tokens aller Konten.
+    // The copy carries no policy: without RLS the runtime role would read hashes and tokens of all accounts.
     const offen = await db.all(
       `SELECT relname FROM pg_class WHERE relnamespace = $1::regnamespace AND relkind = 'r' AND NOT relrowsecurity`,
       [neu[0]],
@@ -121,8 +121,8 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
   const SHORT = { fristMs: 200, versuche: 2 };
   const SPERRPROBE = `9998-sperre-${process.pid}.sql`,
     TABELLE = `migsperre_${process.pid}`;
-  /** Eine zweite Verbindung hält `tabelle` exklusiv, bis `frei()` gerufen wird –
-   * spätestens nach 4 s, damit eine Fassung ohne Frist rot wird statt zu hängen. */
+  /** A second connection holds `tabelle` exclusively until `frei()` is called –
+   * at the latest after 4 s, so that a version without a deadline turns red instead of hanging. */
   const holdLock = async tabelle => {
     const c2 = await db.pool.connect();
     await c2.query('BEGIN');
@@ -138,7 +138,7 @@ test('migrations: backup and time limit', { concurrency: 1 }, async t => {
     const emergency = setTimeout(frei, 4000);
     return frei;
   };
-  /** console.warn mitschreiben, solange `f` läuft. */
+  /** Record console.warn as long as `f` runs. */
   const withWarnings = async f => {
     const echt = console.warn,
       gesehen = [];

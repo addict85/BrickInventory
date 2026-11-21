@@ -1,21 +1,21 @@
 /**
- * Ein gelöschtes Konto überlebt weder in den Kopien vor Migrationen
- * (vor_migration_*) noch mit Namen im Verwaltungsprotokoll; alte Kopien und
- * alte Protokollzeilen verfallen im Aufräumlauf.
+ * A deleted account survives neither in the copies before migrations
+ * (vor_migration_*) nor with its name in the administration log; old copies and
+ * old log lines expire in the cleanup run.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  in deleteTraces() removeAccountFromBackups() entfernt → rot:
- *      „das gelöschte Konto ist in keiner Kopie …“ (users und sets)
- *   B  in cleanLogOn() das UPDATE auf target_name entfernt → rot:
- *      „nach dem Aufräumlauf nennt das Verwaltungsprotokoll den Namen nicht mehr“
- *   C  cleanOldBackupsOn() vergleicht mit 3000 statt `tage` Tagen →
- *      rot: „Kopien älter als die Frist …“
- *   D  cleanLogOn() mit 3650 statt 365 Tagen → rot: „Protokollzeilen
- *      älter als ein Jahr …“
- *   Seit Migration 0117 räumt die Funktion verwaltungsprotokoll_aufraeumen() auf (14.11.2026
- *   wiederholt): dort `target_name = target_name` → rot wie B; 3650 statt 365 Tage → rot wie D.
+ * Counter-checks (measured 05.11.2026, each alone):
+ *   A  removeAccountFromBackups() removed in deleteTraces() → red:
+ *      “the deleted account is in no copy …” (users and sets)
+ *   B  the UPDATE on target_name removed in cleanLogOn() → red:
+ *      “after the cleanup run the administration log no longer names the name”
+ *   C  cleanOldBackupsOn() compares with 3000 instead of `tage` days →
+ *      red: “copies older than the period …”
+ *   D  cleanLogOn() with 3650 instead of 365 days → red: “log lines
+ *      older than a year …”
+ *   Since migration 0117 the function verwaltungsprotokoll_aufraeumen() cleans up (repeated
+ *   14.11.2026): there `target_name = target_name` → red like B; 3650 instead of 365 days → red like D.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

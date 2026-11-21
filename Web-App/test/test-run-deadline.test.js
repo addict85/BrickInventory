@@ -1,20 +1,20 @@
 /**
- * scripts/test-run.js: Eine Datei, die nur an der Frist scheitert, läuft
- * einzeln mit doppelter Frist nach. Wird sie dort grün, ist der Lauf grün und
- * sagt es; bleibt sie rot, ist er rot. Ein echter Fehler wird nie nachgeholt.
+ * scripts/test-run.js: a file that only fails on the deadline is rerun
+ * alone with a doubled deadline. If it turns green there, the run is green and
+ * says so; if it stays red, it is red. A real error is never rerun.
  *
- * Geprüft am echten Runner mit kurzer Frist (TEST_FRIST_MS) und drei kleinen
- * Testdateien im Temp-Ordner.
+ * Checked on the real runner with a short deadline (TEST_FRIST_MS) and three small
+ * test files in the temp folder.
  *
- * Gegenproben (05.11.2026 gemessen):
- *   A  in withFollowUp() sofort `return r.code` → rot: „unter Last zu langsam,
- *      einzeln grün: der Lauf ist grün“
- *   B  in deadlineError() jede rote Datei als Fristfehler gezählt → rot: „ein
- *      echter Fehler wird nicht nachgeholt“
- *   C  im Nachlauf dieselbe Frist statt der doppelten → rot: „unter Last zu
- *      langsam …“ (die Datei braucht mehr als die einfache Frist)
- *   D  reportFollowUp() nicht aufgerufen → rot: „unter Last zu langsam …“ (keine WARNUNG)
- *   E  TEST_NACHLAUF nicht ausgewertet → rot: „mit TEST_NACHLAUF=aus …“
+ * Counter-checks (measured 05.11.2026):
+ *   A  in withFollowUp() immediately `return r.code` → red: “too slow under load,
+ *      green alone: the run is green”
+ *   B  in deadlineError() every red file counted as a deadline error → red: “a
+ *      real error is not rerun”
+ *   C  in the rerun the same deadline instead of the doubled one → red: “too
+ *      slow under load …” (the file needs more than the single deadline)
+ *   D  reportFollowUp() not called → red: “too slow under load …” (no WARNUNG)
+ *   E  TEST_NACHLAUF not evaluated → red: “with TEST_NACHLAUF=aus …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,7 +30,7 @@ function runner(dateien, mehr = {}) {
   const env = { ...process.env, TEST_FRIST_MS: '3000', TEST_PARALLEL: '2' };
   delete env.TEST_NACHLAUF;
   Object.assign(env, mehr);
-  // Ohne Datenbank und nicht als Kind dieses Testlaufs: sonst schriebe node --test anders.
+  // Without a database and not as a child of this test run: otherwise node --test would write differently.
   for (const k of ['TEST_DATABASE_URL', 'TEST_DB_VORLAGE', 'TEST_DB_BASIS', 'TEST_DB_EIGEN', 'NODE_TEST_CONTEXT'])
     delete env[k];
   const r = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'test-run.js'), ...dateien], {
@@ -51,7 +51,7 @@ test('deadline and rerun in the runner', { concurrency: 1, timeout: 240_000 }, a
     fs.writeFileSync(p, `const test = require('node:test');\n${rumpf}\n`);
     return p;
   };
-  // Erst 8 s, dann 3 s: über der Frist (3 s), unter der doppelten — wie unter fremder Last.
+  // First 8 s, then 3 s: above the deadline (3 s), below the doubled one — as under foreign load.
   const langsam = datei(
     'langsam.test.js',
     `const fs = require('node:fs');

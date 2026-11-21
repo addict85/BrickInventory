@@ -1,17 +1,17 @@
 /**
- * KEINE Leseroute der Einstellungen gibt ein Geheimnis im Klartext heraus.
+ * NO read route of the settings hands out a secret in plain text.
  *
- * Gegenprobe (durchgeführt): readSettings() in `/raw` durch die alte, rohe
- * Abfrage ersetzt → beide Teilschritte für /raw werden rot (Nicht-Admin sieht
- * den Wert, Admin sieht ihn unmaskiert).
+ * Counter-check (carried out): readSettings() in `/raw` replaced by the old, raw
+ * query → both substeps for /raw turn red (non-admin sees
+ * the value, admin sees it unmasked).
  *
- * Dazu: Mailserver, Konto und Absender sieht nur der Verwalter.
- * Gegenprobe (am 28.10.2026 gemessen): ONLY_ADMIN-Zeile in
- * globaleFuerAnsicht() entfernt → rot: „… bekommt smtp_host“.
- * Gegenprobe (am 29.10.2026 gemessen): geheimnisMaske() hängt wieder die letzten
- * vier Zeichen an → rot: „… die Maske von bricklink_consumer_secret verrät 4711“.
+ * Also: mail server, account and sender are only seen by the admin.
+ * Counter-check (measured on 28.10.2026): ONLY_ADMIN row removed in
+ * globaleFuerAnsicht() → red: “… gets smtp_host”.
+ * Counter-check (measured on 29.10.2026): geheimnisMaske() again appends the last
+ * four characters → red: “… the mask of bricklink_consumer_secret reveals 4711”.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -26,7 +26,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
-/** Geheimnisse, die in keiner Antwort im Klartext stehen dürfen. */
+/** Secrets that must stand in plain text in no response. */
 const GEHEIM = {
   bricklink_consumer_secret: 'GEHEIM-bl-cs-4711',
   bricklink_token_secret: 'GEHEIM-bl-ts-4712',
@@ -35,7 +35,7 @@ const GEHEIM = {
   smtp_pass: 'GEHEIM-smtp-4715',
 };
 
-/** Keine Geheimnisse, aber nur für den Verwalter. */
+/** No secrets, but only for the admin. */
 const MANAGEMENT = {
   smtp_host: 'mail.verwaltung.example',
   smtp_user: 'postfach@verwaltung.example',
@@ -43,7 +43,7 @@ const MANAGEMENT = {
 };
 
 /**
- * Leserouten, die global_settings ausliefern — GESUCHT, nicht aufgezählt.
+ * Read routes that deliver global_settings — SEARCHED, not enumerated.
  */
 const EXEMPT = new Map([
   [
@@ -85,8 +85,8 @@ function leserouten() {
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
   const gefunden = [...quelle.matchAll(/router\.endpunkt\(\s*'GET \/api\/v1\/settings([^']*)'/g)].map(m => m[1] || '/');
-  // Selbstbeweis: Griffe das Muster nicht, wäre die Liste leer und der Test
-  // grün, ohne eine einzige Route angesehen zu haben.
+  // Self-proof: if the pattern did not apply, the list would be empty and the test
+  // green without having looked at a single route.
   assert.ok(
     gefunden.length >= 4,
     `Nur ${gefunden.length} GET-Routen in routes/api_v1/settings.ts gefunden — Muster veraltet?`,
@@ -96,7 +96,7 @@ function leserouten() {
   return gefunden.filter(p => !EXEMPT.has(p)).map(p => '/api/v1/settings' + (p === '/' ? '' : p));
 }
 
-/** Alle Zeichenketten einer Antwort — egal wie tief verpackt. */
+/** All strings of a response — no matter how deeply wrapped. */
 function allValues(x, out = []) {
   if (typeof x === 'string') out.push(x);
   else if (Array.isArray(x)) for (const v of x) allValues(v, out);
@@ -121,7 +121,7 @@ test('settings never hand out secrets in plain text', { concurrency: 1 }, async 
       [k, v],
     );
   }
-  // Wie der Start: Klartext in der Tabelle wird vor der ersten Anfrage verschlüsselt.
+  // Like the start: plain text in the table is encrypted before the first request.
   await _req('src/settings/settings.js').reencryptLegacyGlobalValues();
 
   const appFor = isAdmin => {
@@ -147,7 +147,7 @@ test('settings never hand out secrets in plain text', { concurrency: 1 }, async 
 
   try {
     for (const pfad of leserouten()) {
-      // 1. Ein Konto OHNE Adminrechte darf die Schlüssel gar nicht sehen.
+      // 1. An account WITHOUT admin rights must not see the keys at all.
       const asUser = await hol(baseUser, pfad);
       for (const [k, v] of Object.entries(GEHEIM)) {
         assert.ok(!asUser.includes(v), `${pfad}: ein Konto ohne Adminrechte bekommt ${k} im Klartext`);
@@ -157,20 +157,20 @@ test('settings never hand out secrets in plain text', { concurrency: 1 }, async 
         assert.ok(!asUser.includes(v), `${pfad}: ein Konto ohne Adminrechte bekommt ${k}`);
       }
 
-      // 2. Auch ein Admin bekommt nur die Maske — die Werte landen sonst im
-      //    Browser-Speicher, wo jede XSS-Lücke sie mitnimmt.
+      // 2. Even an admin only gets the mask — otherwise the values end up in the
+      //    browser storage, where every XSS gap takes them along.
       const alsAdmin = await hol(baseAdmin, pfad);
       for (const [k, v] of Object.entries(GEHEIM)) {
         assert.ok(!alsAdmin.includes(v), `${pfad}: auch ein Admin darf ${k} nur maskiert bekommen`);
       }
-      // Gegenrichtung: Die Maske muss überhaupt ankommen, sonst kann das
-      // Formular „gesetzt" nicht von „nicht gesetzt" unterscheiden — ein Test,
-      // der nur das Fehlen prüft, wäre auch bei einer leeren Antwort grün.
+      // Opposite direction: the mask must arrive at all, otherwise the
+      // form cannot tell „set" from „not set" — a test
+      // that only checks the absence would also be green with an empty response.
       assert.ok(
         alsAdmin.some(s => s.includes('\u2022'.repeat(12))),
         `${pfad}: der Admin muss die maskierte Fassung sehen`,
       );
-      // Nicht einmal das Ende des Werts: Es verkürzt das Raten.
+      // Not even the end of the value: it shortens the guessing.
       for (const [k, v] of Object.entries(GEHEIM))
         assert.ok(!alsAdmin.some(s => s.includes(v.slice(-4))), `${pfad}: die Maske von ${k} verrät „${v.slice(-4)}"`);
       for (const [k, v] of Object.entries(MANAGEMENT)) {

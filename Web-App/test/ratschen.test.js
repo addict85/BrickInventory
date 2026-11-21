@@ -7,10 +7,10 @@ const { isAppModule } = require('../scripts/build-frontend');
 const WEB = path.join(__dirname, '..');
 
 /**
- * Ratschen: Ein gemessener Bestand darf sinken, nie steigen.
+ * Ratchets: a measured count may sink, never rise.
  */
 
-/** Alle TypeScript-Quellen ohne Tests und ohne Erzeugnisse. */
+/** All TypeScript sources without tests and without generated files. */
 function quellen() {
   const raus = [];
   (function lauf(d) {
@@ -29,19 +29,19 @@ const SILENT_CATCHES = [
   /catch\s*\{\s*\}/g,
   /catch\s*\(\s*\w*\s*\)\s*\{\s*\}/g,
   /\.catch\(\(\)\s*=>\s*\{\s*\}\)/g,
-  // Auch ein Text, eine Zahl oder ein Objekt als Ersatz verschluckt den Fehler.
+  // A text, a number or an object as a substitute also swallows the error.
   /\.catch\(\(\)\s*=>\s*(null|undefined|true|false|-?\d+|'[^']*'|"[^"]*"|\(\{[^()]*\}\))\)/g,
-  // Eine leere Liste ist für den Leser keine Fehlermeldung, sondern „nichts da".
+  // For the reader an empty list is not an error message but „nothing there".
   /\.catch\(\(\)\s*=>\s*\[\]\)/g,
-  // Jeder andere Ausdruck als Ersatz (Map, Liste mit Inhalt, Vorgabe): Bei einem
-  // Datenbankfehler sähe die Antwort wie ein Ergebnis aus. reportAndDeliver liefert dasselbe mit Log.
+  // Any other expression as a substitute (map, list with content, default): on a
+  // database error the response would look like a result. reportAndDeliver delivers the same with a log.
   /\.catch\(\s*\(\s*\)\s*=>\s*(?!\{)(?!(?:null|undefined|true|false|-?\d+|'[^']*'|"[^"]*"|\[\])\s*\))\S/g,
 ];
 
 /**
- * Treffer zaehlen — im CODE, nicht in den Erklaerungen darueber. Mit `marke`
- * bleibt an jeder Kommentarstelle `/**\/` stehen: Ein Fang, dessen Rumpf sein
- * Warum nennt, ist nicht still, auch wenn Biome den Kommentar auf eine eigene Zeile setzt.
+ * Count hits — in the CODE, not in the explanations above it. With `marke`
+ * `/**\/` stays at every comment place: a catch whose body names its
+ * why is not silent, even if Biome puts the comment on its own line.
  */
 function zaehle(muster, nur = (/** @type {string} */ _f) => true, marke = false) {
   const { ohneKommentare } = require('./helpers/sources');
@@ -58,19 +58,19 @@ function zaehle(muster, nur = (/** @type {string} */ _f) => true, marke = false)
 }
 
 test('the search finds the sources at all', () => {
-  // ── Der eigentliche Zweck dieser Pruefung ────────────────────────────────
+  // ── The actual purpose of this check ────────────────────────────────
   //
-  // Wird ein Ordner umbenannt oder greift `quellen()` nicht mehr, zaehlen die
-  // Ratschen unten NULL — und null ist kleiner als jede Schranke. Sie waeren
-  // dann fuer immer gruen, ohne je wieder etwas anzusehen.
+  // If a folder is renamed or `quellen()` no longer applies, the ratchets
+  // below count ZERO — and zero is smaller than any limit. They would
+  // then be green forever without ever looking at anything again.
   const n = quellen().length;
   assert.ok(n >= 80, `Nur ${n} TypeScript-Quellen gefunden — greift die Suche noch?`);
 });
 
 test('silent catches (server, only reported, UI) become fewer, never more', () => {
-  // Die Rebrickable-Teilezuordnung fängt nur 404, das rbGet() selbst als null liefert.
+  // The Rebrickable part mapping only catches 404, which rbGet() itself delivers as null.
   const LIMIT = 0;
-  // Selbstbeweis des letzten Musters: Es muss einen Ersatzwert ohne Meldung finden, die Meldung nicht.
+  // Self-proof of the last pattern: it must find a substitute value without a report, not the report.
   const ersatz = SILENT_CATCHES[SILENT_CATCHES.length - 1];
   const trifft = s => (s.match(ersatz) || []).length;
   assert.equal(
@@ -94,14 +94,14 @@ test('silent catches (server, only reported, UI) become fewer, never more', () =
 });
 
 test('“report and continue” becomes fewer, never more; src/sets does without', () => {
-  // Die Regel steht in docs/architektur.md („Fehler“): Schreibpfade werfen, Lesepfade nehmen
-  // versuche()/Abstriche, logAndContinue nur für Nebenwirkungen ohne Folgen; ein Ersatzwert
-  // (reportAndDeliver) begründet sich als „Ausnahme:“ im Code. Ausserhalb von src/catalog eigene Schranke.
-  // Gegenproben: in src/catalog/colors.ts wieder `.catch(reportAndDeliver('x', []))` → rot (8, Schranke 7);
-  // (14.11.2026) in routes/auth.ts beim Abmelden wieder `.catch(logAndContinue('x'))` → rot (86 von 85),
-  // mit Gesamtschranke 200 → rot „ausserhalb src/catalog“ (40 von 39).
-  // (15.11.2026) Katalog-Schreibwege werfen (Auftrag wiederholt); in teileAnreicherung.ts wieder
-  // `.catch(logAndContinue('x'))` an rememberPart → rot (68 von 67).
+  // The rule stands in docs/architektur.md („Fehler“): write paths throw, read paths take
+  // versuche()/Abstriche, logAndContinue only for side effects without consequences; a substitute value
+  // (reportAndDeliver) justifies itself as „Ausnahme:“ in the code. Outside of src/catalog an own limit.
+  // Counter-checks: in src/catalog/colors.ts again `.catch(reportAndDeliver('x', []))` → red (8, limit 7);
+  // (14.11.2026) in routes/auth.ts on logout again `.catch(logAndContinue('x'))` → red (86 of 85),
+  // with a total limit 200 → red „ausserhalb src/catalog“ (40 of 39).
+  // (15.11.2026) catalog write paths throw (job retried); in teileAnreicherung.ts again
+  // `.catch(logAndContinue('x'))` on rememberPart → red (68 of 67).
   const LIMITS = { logAndContinue: 67, reportAndDeliver: 7 };
   const AT_LEAST = { logAndContinue: 20, reportAndDeliver: 3 };
   const OUTSIDE_CATALOG = { logAndContinue: 37 };
@@ -129,17 +129,17 @@ test('“report and continue” becomes fewer, never more; src/sets does without
   );
 });
 
-/** Fänge, die nur melden und weiterlaufen, werden weniger, nie mehr. */
+/** Catches that only report and carry on become fewer, never more. */
 function onlyReportedCatches() {
-  // Jede Form ohne throw: `catch (e) { reportError(…) }`, mit `return x`/`continue` danach, und
-  // `.catch(e => console.warn(…))`. Sie verschweigen den Fehler dem Aufrufer wie reportAndDeliver,
-  // nur ohne dessen Namen. Wer direkt in die Konsole schreibt statt reportError, nennt sein
-  // Warum als „Ausnahme:“ im Fang. Nur src/: Routen fangen nicht, Jobs und db/ haben eigene Regeln.
-  // Gegenproben (14.11.2026): in src/sets/service.ts den Zustandswechsel wieder in
-  // `try { … } catch (e) { console.error(…) }` → rot (62 von 61); in src/mail/transport.ts die
-  // „Ausnahme:“ am Fang gestrichen → rot „ohne Ausnahme: …“ (src/mail/transport.ts:155).
-  // (15.11.2026) Kaufpreis-Nachtrag sammelt und wirft, Anleitungen eintragen wirft; in
-  // instructions.ts das Eintragen wieder in try/catch mit reportError → rot (57 von 56).
+  // Every form without throw: `catch (e) { reportError(…) }`, with `return x`/`continue` after it, and
+  // `.catch(e => console.warn(…))`. They conceal the error from the caller like reportAndDeliver,
+  // only without its name. Whoever writes directly to the console instead of reportError names his
+  // why as „Ausnahme:“ in the catch. Only src/: routes do not catch, jobs and db/ have their own rules.
+  // Counter-checks (14.11.2026): in src/sets/service.ts the condition switch again in
+  // `try { … } catch (e) { console.error(…) }` → red (62 of 61); in src/mail/transport.ts the
+  // „Ausnahme:“ on the catch deleted → red „ohne Ausnahme: …“ (src/mail/transport.ts:155).
+  // (15.11.2026) purchase price backfill collects and throws, entering instructions throws; in
+  // instructions.ts the entering again in try/catch with reportError → red (57 of 56).
   const { catches, onlyReported } = require('./helpers/catches');
   const LIMIT = 56;
   const probe = (/** @type {string} */ q) => catches(q).filter(onlyReported).length;
@@ -174,13 +174,13 @@ function onlyReportedCatches() {
   );
 }
 
-/** Stille Fänge der Oberfläche werden weniger, nie mehr. */
+/** Silent catches of the UI become fewer, never more. */
 function silentCatchesTheUi() {
-  // Ein Fang in public/js ohne throw, Meldung (toast, zeige…, melde…, console) oder sichtbaren Text
-  // verschluckt den Fehler: Die Ansicht zeigt dann „leer“ statt „gescheitert“. Viele sind Absicht
-  // (localStorage, abgebrochene Ströme); neue braucht es nicht.
-  // Gegenprobe (15.11.2026): in public/js/wanted.js am Alarm beim Merken wieder
-  // `.catch(() => null)` → rot (92 stille Fänge, erlaubt sind 91).
+  // A catch in public/js without throw, message (toast, zeige…, melde…, console) or visible text
+  // swallows the error: the view then shows „empty“ instead of „failed“. Many are intended
+  // (localStorage, aborted streams); new ones are not needed.
+  // Counter-check (15.11.2026): in public/js/wanted.js on the alert when remembering again
+  // `.catch(() => null)` → red (92 silent catches, 91 allowed).
   const { catches, stillImBrowser } = require('./helpers/catches');
   // 85 since public/js/format.js no longer has a raw quote in a regex: the mask read the catch in
   // browserWritesDateHowApp() as part of a string before; it is not new.
@@ -194,7 +194,7 @@ function silentCatchesTheUi() {
   if (ist < LIMIT) console.log(`  ℹ stille Fänge der Oberfläche: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 }
 
-/** Die Fabrik (createDb, dbKonfigFromEnvironment) und Typen sind kein Prozesszugang. */
+/** The factory (createDb, dbKonfigFromEnvironment) and types are no process access. */
 const PROZESSZUGANG = new Set([
   'pool',
   'all',
@@ -214,7 +214,7 @@ const PROZESSZUGANG = new Set([
 ]);
 function takesProcessAccess(f) {
   if (/[\\/]db[\\/]database\.ts$/.test(f)) return false;
-  // Auch innerhalb von db/ (`./database`): txLock und pgNotify gingen dort am Zähler vorbei.
+  // Also inside db/ (`./database`): txLock and pgNotify bypassed the counter there.
   return [
     ...fs.readFileSync(f, 'utf8').matchAll(/^import (\* as \w+|\{[^}]*\}) from '(?:[./]+\/db\/|\.\/)database';/gm),
   ].some(
@@ -229,14 +229,14 @@ function takesProcessAccess(f) {
 }
 
 test('the compatibility path to the database and module-wide state become fewer, never more', () => {
-  // db/database.ts hat eine Fabrik (createDb); wer noch die Funktionen des
-  // Prozesszugangs importiert, statt einen Zugang übergeben zu bekommen, zählt hier.
-  // Gegenproben: ein `import * as db from '../../db/database'` in src/sets/rows.ts → rot (09.11.2026);
-  // `import { get as _probe } from '../../db/database'` ebendort → rot mit 1 (11.11.2026).
-  // `import * as _probe from './database'` in db/txLock.ts → rot mit 1 (11.11.2026).
+  // db/database.ts has a factory (createDb); whoever still imports the functions of the
+  // process access instead of being handed an access counts here.
+  // Counter-checks: an `import * as db from '../../db/database'` in src/sets/rows.ts → red (09.11.2026);
+  // `import { get as _probe } from '../../db/database'` in the same place → red with 1 (11.11.2026).
+  // `import * as _probe from './database'` in db/txLock.ts → red with 1 (11.11.2026).
   const LIMIT = 0;
   const ist = quellen().filter(takesProcessAccess).length;
-  // Selbstbeweis: Typimporte aus db/database zählen nicht, finden muss die Suche sie trotzdem.
+  // Self-proof: type imports from db/database do not count, but the search must still find them.
   const withTypes = quellen().filter(f =>
     /^import type \{[^}]*\} from '[./]+\/db\/database';/m.test(fs.readFileSync(f, 'utf8')),
   ).length;
@@ -244,19 +244,19 @@ test('the compatibility path to the database and module-wide state become fewer,
   assert.ok(ist <= LIMIT, `${ist} Dateien nehmen den Prozesszugang aus db/database, erlaubt sind ${LIMIT}`);
   if (ist < LIMIT) console.log(`  ℹ Kompatibilitätsweg db/database: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 
-  // Modulweiter Zustand (let und leer angelegte Map/Set/WeakMap/WeakSet): Ihn teilen alle
-  // Zugänge eines Prozesses. Ein Bereich hält seinen in Fächern (src/infra/cache.ts),
-  // bewusst prozessweiter steht mit Grund in src/infra/prozessweit.ts.
-  // Gegenproben (13.11.2026): `const _probe = new Map<string, number>();` in src/catalog/context.ts
-  // → rot mit 60; `let _probe = 0;` ebendort → rot mit 60. (14.11.2026) Schranke 2 (Transaktionswächter,
-  // Sicherungspunkte in db/); `const sitzungen = new Map<string, Sitzung>();` zurück in
-  // src/vouchers/balanceLookup.ts → rot (3 von 2). Schranke 1: Der Transaktionswächter
-  // reist mit der Transaktion im Aufrufrahmen; übrig sind die Sicherungspunkte in db/.
+  // Module-wide state (let and empty-created Map/Set/WeakMap/WeakSet): all accesses of a process
+  // share it. An area keeps its own in compartments (src/infra/cache.ts),
+  // deliberately process-wide state stands with a reason in src/infra/prozessweit.ts.
+  // Counter-checks (13.11.2026): `const _probe = new Map<string, number>();` in src/catalog/context.ts
+  // → red with 60; `let _probe = 0;` in the same place → red with 60. (14.11.2026) limit 2 (transaction guard,
+  // savepoints in db/); `const sitzungen = new Map<string, Sitzung>();` back in
+  // src/vouchers/balanceLookup.ts → red (3 of 2). Limit 1: the transaction guard
+  // travels with the transaction in the call frame; left are the savepoints in db/.
   const STATE_LIMIT = 1;
   const ZUSTAND =
     /^(?:export )?(?:let |const \w+(?:: [^=\n]+)? = new (?:Map|Set|WeakMap|WeakSet)\b(?:<[^\n]*>)?\(\))/gm;
   const countState = s => (s.match(ZUSTAND) || []).length;
-  // Selbstbeweis: Leer angelegte Sammlungen und let zählen, Konstanten mit Inhalt nicht.
+  // Self-proof: empty-created collections and let count, constants with content do not.
   assert.equal(
     countState(
       'let a = 0;\nconst b = new Map<string, number>();\nconst c: X = new WeakMap();\nconst d = new Set([1]);',
@@ -272,14 +272,14 @@ test('the compatibility path to the database and module-wide state become fewer,
   konfigNurAmStart();
 });
 
-/** Wege an den Kontexten vorbei sind verboten (früher eine Ratsche). */
+/** Paths around the contexts are forbidden (formerly a ratchet). */
 function routesAnDenContextsPast() {
-  // Ein Dienst bekommt seine Abhängigkeiten über den Kontext (src/<bereich>/kontext.ts);
-  // einen Speicher der Dienste im Prozess (Holer xBereich(), Fassaden aus dienstePerAufruf)
-  // gibt es nicht mehr.
-  // Gegenproben (14.11.2026): `export const sets = prozessStelle<SetsServices>('sets');` in
-  // src/sets/read.ts → rot (1 Holer-Stelle); `import { setsLesen } from '../sets'` in
-  // src/collection/deletion.ts (mit `export const setsLesen = …` in src/sets/index.ts) → rot (1 Fassade).
+  // A service gets its dependencies via the context (src/<bereich>/kontext.ts);
+  // a store of services in the process (getters xBereich(), facades from dienstePerAufruf)
+  // no longer exists.
+  // Counter-checks (14.11.2026): `export const sets = prozessStelle<SetsServices>('sets');` in
+  // src/sets/read.ts → red (1 getter place); `import { setsLesen } from '../sets'` in
+  // src/collection/deletion.ts (with `export const setsLesen = …` in src/sets/index.ts) → red (1 facade).
   const ohneKommentare = require('./helpers/sources').ohneKommentare;
   const src = path.join(WEB, 'src');
   const HOLER = /\b(?:prozessStelle|prozessDienste|dienstePerAufruf|verdrahteDienste)\b/;
@@ -292,7 +292,7 @@ function routesAnDenContextsPast() {
   const factoryFile = b => ['bereich.ts', 'area.ts'].map(f => path.join(src, b, f)).find(p => fs.existsSync(p));
   const bereiche = fs.readdirSync(src).filter(b => factoryFile(b));
   assert.ok(bereiche.length >= 15, `nur ${bereiche.length} Bereiche gefunden — greift die Suche noch?`);
-  // Was ein Bereich als Dienst bindet, darf keine index.ts zusätzlich als Wert exportieren.
+  // What an area binds as a service no index.ts may additionally export as a value.
   const dienste = new Map(
     bereiche.map(b => {
       const s = fs.readFileSync(factoryFile(b), 'utf8');
@@ -316,12 +316,12 @@ function routesAnDenContextsPast() {
   assert.deepEqual(facades, [], 'Dienste eines anderen Bereichs kommen über d oder den Kontext, nicht als Import');
 }
 
-/** konfig() liest der Start; Fachbereiche, Routen und Jobs bekommen die Konfiguration gereicht. */
+/** The startup reads konfig(); domain areas, routes and jobs get the configuration handed in. */
 function konfigNurAmStart() {
-  // buildServices reicht sie als k.konfig, der Start als Parameter. Übrig sind Helfer des Prozesses
-  // (src/infra, src/http, db/) und der beim Laden gebaute bcrypt-Pool; ihre Zahl sinkt nur.
-  // Gegenproben (14.11.2026): `const _k = konfig();` in src/sets/read.ts → rot (Fachbereich);
-  // dasselbe in src/http/csvResponse.ts → rot (14 von 13).
+  // buildServices passes it as k.konfig, the startup as a parameter. Left are helpers of the process
+  // (src/infra, src/http, db/) and the bcrypt pool built at load time; their number only sinks.
+  // Counter-checks (14.11.2026): `const _k = konfig();` in src/sets/read.ts → red (domain area);
+  // the same in src/http/csvResponse.ts → red (14 of 13).
   const LIMIT = 13;
   const EXCEPTION = ['src/account/bcryptLimit.ts'];
   const ohne = require('./helpers/sources').ohneKommentare;
@@ -338,13 +338,13 @@ function konfigNurAmStart() {
     console.log(`  ℹ konfig()-Leser: ${lesend.length} (Schranke ${LIMIT}) — Schranke nachziehen`);
 }
 
-/** Bereiche binden ohne Namen und Proxy; AsyncLocalStorage nur im Aufrufrahmen. */
+/** Areas bind without names and proxy; AsyncLocalStorage only in the call frame. */
 function bindingWithoutNamesAndProxy() {
-  // Ein Bereich ist eine Fabrik mit Closure über k (src/infra/area.ts, mit()); die Transaktion
-  // reist über `t` (tx.db), nicht über einen Proxy oder eine Freigabe im Aufrufpfad.
-  // Gegenproben (14.11.2026): `const _p = new Proxy({}, {});` in src/sets/read.ts → rot (Proxy);
-  // `setsLesen: binde(sk, lesen, ['setsLesen', 'x'])` in src/sets/area.ts → rot (Namensbindung);
-  // `new AsyncLocalStorage()` in db/transaction.ts → rot (zweiter Kanal).
+  // An area is a factory with a closure over k (src/infra/area.ts, mit()); the transaction
+  // travels via `t` (tx.db), not via a proxy or a release in the call path.
+  // Counter-checks (14.11.2026): `const _p = new Proxy({}, {});` in src/sets/read.ts → red (proxy);
+  // `setsLesen: binde(sk, lesen, ['setsLesen', 'x'])` in src/sets/area.ts → red (name binding);
+  // `new AsyncLocalStorage()` in db/transaction.ts → red (second channel).
   const ohne = require('./helpers/sources').ohneKommentare;
   const rel = f => path.relative(WEB, f).split(path.sep).join('/');
   const text = f => ohne(fs.readFileSync(f, 'utf8'));
@@ -384,17 +384,17 @@ test('any becomes fewer, never more', () => {
 });
 
 test('any in all forms, unknown parameters and success in services become fewer, never more', () => {
-  // Auch Promise<any>, any[] und Record<string, any>: Die enge Zählung oben sah
-  // nur `as any` und `: any`.
-  // Gegenprobe (05.11.2026): getSetting wieder `fallback?: any` ohne Überladungen → rot.
+  // Also Promise<any>, any[] and Record<string, any>: the narrow count above only saw
+  // `as any` and `: any`.
+  // Counter-check (05.11.2026): getSetting again `fallback?: any` without overloads → red.
   const LIMIT = 8;
   const ist = zaehle([/\bany\b/g]);
   assert.ok(ist <= LIMIT, `${ist}-mal any, erlaubt sind ${LIMIT}`);
   if (ist < LIMIT) console.log(`  ℹ any (alle Formen): ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 
-  // Dieselbe Art Zählung: Die Hülle der Antwort setzt die Route, ein Dienst
-  // liefert das Fachobjekt. Übrig sind Zeilenstatus in Importberichten, Mailversand und der Import-Fortschritt (ein Strom-Format) bleiben.
-  // Gegenprobe (11.11.2026): in auftragAbbrechen() wieder `success: true` → rot.
+  // The same kind of count: the route sets the envelope of the response, a service
+  // delivers the domain object. Left are row statuses in import reports, mail sending and the import progress (a stream format).
+  // Counter-check (11.11.2026): in auftragAbbrechen() again `success: true` → red.
   const SUCCESS_LIMIT = 7;
   const success = zaehle([/\bsuccess:\s*true\b/g], f =>
     /^src[\\/](?!contract[\\/]|http[\\/])/.test(path.relative(WEB, f)),
@@ -405,9 +405,9 @@ test('any in all forms, unknown parameters and success in services become fewer,
   );
   if (success < SUCCESS_LIMIT)
     console.log(`  ℹ success in Diensten: ${success} (Schranke ${SUCCESS_LIMIT}) — Schranke nachziehen`);
-  // Routen geben ihr Ergebnis zurück, die Hülle setzt der Vertragsrouter (endpunkt). Übrig sind
-  // Ströme, Rückrufe nach dem Abmelden und ganze Antworten der Anmeldung.
-  // Gegenprobe (14.11.2026): in routes/api_v1/sets.ts `return { set }` als `res.json({ success: true, set })` → rot (11).
+  // Routes return their result, the contract router (endpunkt) sets the envelope. Left are
+  // streams, callbacks after logout and whole responses of the login.
+  // Counter-check (14.11.2026): in routes/api_v1/sets.ts `return { set }` as `res.json({ success: true, set })` → red (11).
   const ROUTES_LIMIT = 10;
   const inRoutes = zaehle([/\bsuccess:\s*true\b/g], f => /^routes[\\/]/.test(path.relative(WEB, f)));
   assert.ok(
@@ -416,10 +416,10 @@ test('any in all forms, unknown parameters and success in services become fewer,
   );
   if (inRoutes < ROUTES_LIMIT)
     console.log(`  ℹ success in Routen: ${inRoutes} (Schranke ${ROUTES_LIMIT}) — Schranke nachziehen`);
-  // Routen reichen req.eingabe/req.pfad mit Vertragstyp durch, Dienste nehmen
-  // Fachtypen (Zustand, string). Ausgenommen sind die Prüfer für Rohwerte
-  // (src/contract, src/infra, src/http) und Fehlerparameter.
-  // Gegenprobe (11.11.2026): `condition: unknown` zurück in deleteAlarmOfSets → rot (75).
+  // Routes pass req.eingabe/req.pfad through with the contract type, services take
+  // domain types (Zustand, string). Exempt are the checkers for raw values
+  // (src/contract, src/infra, src/http) and error parameters.
+  // Counter-check (11.11.2026): `condition: unknown` back in deleteAlarmOfSets → red (75).
   const LIMIT_UNKNOWN = 63;
   const MUSTER = /(?<!catch\s*)[(,]\s*\.{0,3}(?!(?:e|err|error|fehler|grund)\b)\w+\??\s*:\s*unknown\s*(?=[,)=])/g;
   assert.equal(
@@ -441,12 +441,12 @@ test('any in all forms, unknown parameters and success in services become fewer,
 });
 
 test('direct clock calls in domain areas become fewer, never more', () => {
-  // Die Zeit kommt über k.uhr (src/infra/clock.ts): Ein Test stellt sie, statt zu warten.
-  // Übrig sind Drosseln mit echten Zeitgebern, die Sitzungsmiddleware (Fristen des Kekses) und
-  // Zeitstempel ohne Kontext.
-  // Gegenprobe (14.11.2026): `const x = Date.now();` in src/sets/service.ts → rot.
-  // (15.11.2026) Drosseln, Attestation, Portfolio nehmen k.uhr; `Date.now()` zurück in
-  // rateLimiter.ts (_schedule) → rot (21 von 20).
+  // Time comes via k.uhr (src/infra/clock.ts): a test sets it instead of waiting.
+  // Left are throttles with real timers, the session middleware (cookie deadlines) and
+  // timestamps without context.
+  // Counter-check (14.11.2026): `const x = Date.now();` in src/sets/service.ts → red.
+  // (15.11.2026) throttles, attestation, portfolio take k.uhr; `Date.now()` back in
+  // rateLimiter.ts (_schedule) → red (21 of 20).
   const LIMIT = 20;
   const CLOCK = /\bDate\.now\(\)|\bnew Date\(\)/g;
   assert.equal('Date.now(); new Date(); new Date(x); k.uhr.jetzt()'.match(CLOCK)?.length, 2, 'Selbstbeweis');
@@ -458,10 +458,10 @@ test('direct clock calls in domain areas become fewer, never more', () => {
 });
 
 test('no test file checks REQUIRE_DB itself', () => {
-  // Die Regel steht in test/helpers/db.js (dbOderSkip, keineDb,
-  // missingPrecondition); eine eigene Fassung war 115-mal kopiert.
-  // Gegenprobe (11.11.2026): `if (process.env.REQUIRE_DB === '1') throw e;`
-  // zurück in instruction-job-db.test.js → rot.
+  // The rule stands in test/helpers/db.js (dbOderSkip, keineDb,
+  // missingPrecondition); an own version was copied 115 times.
+  // Counter-check (11.11.2026): `if (process.env.REQUIRE_DB === '1') throw e;`
+  // back in instruction-job-db.test.js → red.
   const eigene = fs
     .readdirSync(__dirname)
     .filter(n => n.endsWith('.js') && n !== path.basename(__filename))
@@ -470,9 +470,9 @@ test('no test file checks REQUIRE_DB itself', () => {
 });
 
 test('database rows are unknown without a type argument', () => {
-  // Ohne Angabe war eine Zeile `any`, und die Typprüfung endete an der
-  // Datenbank — dort, wo numeric und bigint als Zeichenkette ankommen.
-  // Gegenprobe (05.11.2026): `get<T = any>` in DbInterface → rot.
+  // Without a type argument a row was `any`, and type checking ended at the
+  // database — exactly where numeric and bigint arrive as strings.
+  // Counter-check (05.11.2026): `get<T = any>` in DbInterface → red.
   const quelle = ['database.ts', 'transaction.ts', 'types.ts']
     .map(n => fs.readFileSync(path.join(WEB, 'db', n), 'utf8'))
     .join('\n');
@@ -485,10 +485,10 @@ test('database rows are unknown without a type argument', () => {
 });
 
 test('untyped database queries become fewer, never more', () => {
-  // Erlaubt, solange niemand Felder der Zeile liest — dann verlangt der
-  // Übersetzer ohnehin ein Typargument.
-  // Gegenprobe (05.11.2026): Schranke auf 68 → rot. Zeilentypen bindet db/rows.ts ans Schema.
-  // (15.11.2026) in auftraege.ts writeProgress wieder `db.get(` ohne Typ → rot (4 von 3).
+  // Allowed as long as nobody reads fields of the row — then the
+  // compiler demands a type argument anyway.
+  // Counter-check (05.11.2026): limit set to 68 → red. db/rows.ts binds row types to the schema.
+  // (15.11.2026) in auftraege.ts writeProgress again `db.get(` without a type → red (4 of 3).
   const LIMIT = 3;
   const ist = zaehle([/\b(?:db|tx|dbh|d)\.(?:get|all)\(/g]);
   assert.ok(ist <= LIMIT, `${ist} ungetypte db.get/all, erlaubt sind ${LIMIT}`);
@@ -496,10 +496,10 @@ test('untyped database queries become fewer, never more', () => {
 });
 
 test('raw req.body and req.query in routes become fewer, never more', () => {
-  // Eine Route liest req.eingabe und req.abfrage: geprüft und getypt aus dem
-  // Vertrag. Übrig sind die Middleware vor der Prüfung, der Bild-Proxy (ohne
-  // Vertrag) und routes/auth/registration.ts.
-  // Gegenprobe (05.11.2026): in routes/api_v1/sets.ts ein `req.body.storage` zurück → rot.
+  // A route reads req.eingabe and req.abfrage: checked and typed from the
+  // contract. Left are the middleware before the check, the image proxy (without
+  // contract) and routes/auth/registration.ts.
+  // Counter-check (05.11.2026): a `req.body.storage` back in routes/api_v1/sets.ts → red.
   const LIMIT = 4;
   let ist = 0;
   for (const f of quellen().filter(f => /[\\/]routes[\\/]/.test(f)))
@@ -513,9 +513,9 @@ test('raw req.body and req.query in routes become fewer, never more', () => {
 });
 
 test('write targets in routes become fewer, never more', () => {
-  // schreibziel() prüft im Haushalt, für wen geschrieben wird; besser nimmt der
-  // Dienst den Wunsch selbst entgegen.
-  // Gegenprobe (05.11.2026): Schranke auf 16 → rot.
+  // schreibziel() checks in the household for whom is written; better the
+  // service takes the wish itself.
+  // Counter-check (05.11.2026): limit set to 16 → red.
   const LIMIT = 13;
   let ist = 0;
   for (const f of quellen().filter(f => /[\\/]routes[\\/]/.test(f)))
@@ -529,14 +529,14 @@ test('write targets in routes become fewer, never more', () => {
 });
 
 /**
- * Testdateien, die nur Quelltext lesen und nichts ausführen. Eine Regex auf
- * den Quelltext bestätigt, dass eine Zeile dasteht — nicht, dass sie wirkt
- * (der Signal-Fehler vom 25.10. stand im Quelltext, nur an der falschen
- * Stelle). Strukturprüfungen dürfen bleiben; neue Prüfungen von Verhalten
- * gehören in einen Test, der den Code laufen lässt.
+ * Test files that only read source text and execute nothing. A regex on
+ * the source text confirms that a line stands there — not that it works
+ * (the signal error of 25.10. stood in the source text, only in the wrong
+ * place). Structure checks may stay; new checks of behavior
+ * belong in a test that runs the code.
  */
 const READS_SOURCE = /readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare/;
-// Die Hilfen für jsdom und Chrome führen die Oberfläche aus (wie im Prüfbericht arch17-web-b, H1).
+// The helpers for jsdom and Chrome execute the UI (as in audit report arch17-web-b, H1).
 const LEADS_FROM =
   /buildAndRequire|testServer|spawn\(|spawnSync\(|execFileSync\(|fetch\(|jsdom|new Function|vm\.|= import\(|helpers\/(ui|app-browser)'/;
 function pureSourceTextTests() {
@@ -550,9 +550,9 @@ function pureSourceTextTests() {
 }
 
 test('import edges between views become fewer, never more', () => {
-  // Ansichten melden einander über events.js; was mehrere teilen, ist Baustein (BAUSTEINE).
-  // Gegenprobe (15.11.2026): `import { loadGallery } from './sammlung.js';` zurück in lagerorte.js
-  // → rot (51 statt 50).
+  // Views notify each other via events.js; what several share is a building block (BAUSTEINE).
+  // Counter-check (15.11.2026): `import { loadGallery } from './sammlung.js';` back in lagerorte.js
+  // → red (51 instead of 50).
   const { KERN, BAUSTEINE } = require('../scripts/build-frontend');
   const LIMIT = 50;
   const JS = path.join(WEB, 'public', 'js');
@@ -571,9 +571,9 @@ test('import edges between views become fewer, never more', () => {
 });
 
 test('test files are named after their function, not after a review round', () => {
-  // Ein Rundenname sagt nicht, was rot ist; man sucht die Datei über das Thema.
-  // Gegenprobe (15.11.2026): security-server-limits-db.test.js zurück auf
-  // sicherheit-runde11-db.test.js → rot mit diesem Namen.
+  // A round name does not say what is red; one searches for the file by topic.
+  // Counter-check (15.11.2026): security-server-limits-db.test.js back to
+  // security-server-limits-db.test.js → red with this name.
   const ROUND = /runde\d|runde-|kleinbefunde|-befunde-/;
   assert.ok(ROUND.test('oberflaeche-runde25b-browser.test.js') && !ROUND.test('admin-hash-rounds-db.test.js'));
   assert.deepEqual(
@@ -599,15 +599,15 @@ test('pure source-text tests become fewer, never more', () => {
 });
 
 /**
- * Je Testfall statt je Datei. Ein Fall führt aus, wenn er einen Ausführungs-Helfer
- * ruft (buildAndRequire/_req, testServer, startApp, spawn, fetch, jsdom, db.…) oder
- * einen Namen der Datei, der dahin führt (auch über Helfer und deren Helfer). Ein
- * blosses `await` zählt nicht: Es wartet ebenso auf fs.promises.readFile.
+ * Per test case instead of per file. A case executes if it calls an execution helper
+ * (buildAndRequire/_req, testServer, startApp, spawn, fetch, jsdom, db.…) or
+ * a name of the file that leads there (also via helpers and their helpers). A
+ * mere `await` does not count: it waits just as well for fs.promises.readFile.
  */
 const FALL_LEADS_FROM =
   /\bbuildAndRequire\(|\b_req\w*\(|\btest(?:Daten|Zugang|Dienste|Kontext|Bereich|Data|Access|Services|Context|Area)\(|\b(?:bildNotizen|imageNotes)\(|\b(?:areaPage|replaceServices)\(|\btestServer\(|\b(?:starteApp|startApp)\(|\b(?:spawn|spawnSync|execFileSync|execSync|execFile|fork)\(|\bfetch\(|\bJSDOM\b|new Function\(|\bvm\.\w+\(|\bimport\(|require\([^)]*\bdist\b|require\(\s*['"]\.\.\/(?!test\/|scripts\/)|\.request\(|\bagent\.\w+\(|\bseite\.\w+\(|\bpage\.\w+\(|\bdb\.\w+\(/;
 const FALL_READS = /readFileSync|Quelle\(|serverOnly|serverAll|i18nAll|localeSource|ohneKommentare/;
-/** Aus helpers/sources führen nur diese aus; die übrigen lesen Quelltext. */
+/** Of helpers/sources only these execute; the others read source text. */
 const SOURCES_LEADS_FROM = new Set([
   'buildAndRequire',
   'buildDist',
@@ -623,7 +623,7 @@ const SOURCES_LEADS_FROM = new Set([
 ]);
 const HELP = /require\(\s*['"]\.\/helpers\/([\w-]+)['"]\s*\)/;
 
-/** Ob ein Modul unter test/helpers selbst etwas ausführt. */
+/** Whether a module under test/helpers executes something itself. */
 function executingHelper() {
   const raus = new Map();
   const d = path.join(__dirname, 'helpers');
@@ -633,7 +633,7 @@ function executingHelper() {
   return raus;
 }
 
-/** Anweisungen auf oberster Ebene: jeweils bis zur nächsten Zeile in Spalte 0, die keine Klammer schliesst. */
+/** Top-level statements: each up to the next line in column 0 that does not close a bracket. */
 function instructions(/** @type {string} */ s) {
   const z = s.split('\n');
   const raus = [];
@@ -664,7 +664,7 @@ function declaredNames(/** @type {string} */ a) {
   return m ? [m[1]] : [];
 }
 
-/** @returns {{ n: number, alle: number, faelle: string[] }} Fälle, die lesen und nichts ausführen */
+/** @returns {{ n: number, alle: number, faelle: string[] }} cases that read and execute nothing */
 function sourceTextCasesIn(/** @type {string} */ roh, /** @type {Map<string, boolean>} */ helper) {
   const s = require('./helpers/sources').ohneKommentare(roh);
   const fuehrt = new Set(),
@@ -732,8 +732,8 @@ function sourceTextCases() {
 }
 
 test('test cases that only read source text become fewer, never more', () => {
-  // Strukturelle Erkennung: `await ` allein hielte reine Lesefälle für ausführend.
-  // Gegenprobe (12.11.2026): `await ` wieder in FALL_LEADS_FROM → rot „Selbstbeweis“.
+  // Structural detection: `await ` alone would take pure read cases for executing ones.
+  // Counter-check (12.11.2026): `await ` back in FALL_LEADS_FROM → red „Selbstbeweis“.
   const probe = [
     "const _req = require('./helpers/sources').buildAndRequire();",
     "const { serverOnly } = require('./helpers/sources');",
@@ -778,30 +778,30 @@ test('test cases that only read source text become fewer, never more', () => {
   if (n < LIMIT) console.log(`  ℹ Quelltext-Testfälle: ${n} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
-/** Die Fassade `_req('db/database.js')` (und dbOderSkip, das sie lieferte) tat so, als gäbe
- * es noch einen Zugang des Prozesses, und mischte Testdaten mit dem Code unter Test.
- * Testdaten nehmen testData()/dataOrSkip(), Code unter Test testAccess()/accessOrSkip().
- * Einzelne Exporte des Moduls (createDb, isReading) sind kein Zugang und bleiben erlaubt. */
+/** The facade `_req('db/database.js')` (and dbOderSkip, which delivered it) pretended
+ * there was still a process access, and mixed test data with the code under test.
+ * Test data takes testData()/dataOrSkip(), code under test testAccess()/accessOrSkip().
+ * Single exports of the module (createDb, isReading) are no access and stay allowed. */
 const USES_FACADE =
   /(?<!\}\s*=\s*)(?:_req\w*|buildAndRequire\(\))\(\s*['"]db\/database(?:\.js)?['"]\s*\)|\bdbOderSkip\(|\.standardDb\(/;
-/** Ersatzwege, die nur sinken dürfen. Wer Module beim Laden umbiegt, prüft einen Aufbau, den es
- * im Betrieb nicht gibt, und greift still ins Leere, sobald sich ein Importpfad ändert; ersetzt
- * wird an der Verdrahtung (testImageWorker(), testSources(), replaceServices()). routerServer steckt
- * eigene Router zusammen statt baueApp, an Sitzungs- und Verwalterprüfungen vorbei. */
+/** Substitute paths that may only sink. Whoever bends modules at load time checks a setup that does not
+ * exist in operation, and silently grabs into nothing as soon as an import path changes; replacing
+ * happens at the wiring (testImageWorker(), testSources(), replaceServices()). routerServer assembles
+ * its own routers instead of baueApp, bypassing session and admin checks. */
 const FALLBACKS = {
   'biegen Module um': { muster: /\.prototype\.require\s*=|\._load\s*=/, limit: 11 },
   'nehmen routerServer statt testServer': { muster: /\brouterServer\(/, limit: 13 },
 };
 
 test('tests use the real setup: no DB facade, substitute paths become fewer', () => {
-  // Die DB-Fassade ist durch testData()/testAccess() ersetzt; umgebogene require und
-  // eigene Router (routerServer) werden weniger.
-  // Gegenproben (13.11.2026): in indexes-db.test.js wieder `_req('db/database.js')` → rot
-  // (Fassade); in image-queue-db.test.js `Module.prototype.require = r;` → rot (15 statt 14);
-  // in app-chain-db.test.js testServer → routerServer → rot (14 statt 13).
-  // Seit dem 13.11.2026 zählt test/helpers/ mit (helpers/system-frame.js, die Definition in
-  // helpers/server.js; je +1 gegenüber der Zählung nur der Testdateien); Gegenprobe:
-  // `Module._load = l;` in helpers/time.js → rot (12 statt 11).
+  // The DB facade is replaced by testData()/testAccess(); bent require and
+  // own routers (routerServer) become fewer.
+  // Counter-checks (13.11.2026): in indexes-db.test.js again `_req('db/database.js')` → red
+  // (facade); in image-queue-db.test.js `Module.prototype.require = r;` → red (15 instead of 14);
+  // in app-chain-db.test.js testServer → routerServer → red (14 instead of 13).
+  // Since 13.11.2026 test/helpers/ counts too (helpers/system-frame.js, the definition in
+  // helpers/server.js; +1 each compared to counting only the test files); counter-check:
+  // `Module._load = l;` in helpers/time.js → red (12 instead of 11).
   assert.ok(USES_FACADE.test("const db = _req('db/database.js');") && !USES_FACADE.test('accessOrSkip(t)'));
   assert.ok(!USES_FACADE.test("const { createDb } = _req('db/database.js');"), 'Exporte bleiben erlaubt');
   assert.ok(FALLBACKS['biegen Module um'].muster.test('Module.prototype.require = function () {}'));
@@ -815,7 +815,7 @@ test('tests use the real setup: no DB facade, substitute paths become fewer', ()
     [],
     'Testdaten über testData(), Code unter Test über testAccess()',
   );
-  // Auch die Helfer: Ein Umbiegen in test/helpers/ träfe jede Datei, die ihn lädt.
+  // The helpers too: a bending in test/helpers/ would hit every file that loads it.
   for (const [was, { muster, limit }] of Object.entries(FALLBACKS)) {
     const ist = [...tests, ...helper].filter(n => muster.test(lies(n))).length;
     assert.ok(ist > 0, `keine Datei ${was} — greift das Muster noch? Dann Schranke und Eintrag entfernen`);
@@ -825,15 +825,15 @@ test('tests use the real setup: no DB facade, substitute paths become fewer', ()
 });
 
 /**
- * Web-Tests lesen keinen Android-Quelltext: Was die App vom Server braucht, steht in
- * shared/app-schnittstelle.json (im Android-Lauf aus ihrem Quelltext erzeugt und geprüft);
- * was nur die App betrifft, prüft die Android-Suite. Gezählt werden auch die Helfer.
+ * Web tests read no Android source text: what the app needs from the server stands in
+ * shared/app-schnittstelle.json (generated from its source text and checked in the Android run);
+ * what only concerns the app is checked by the Android suite. The helpers are counted too.
  */
 const READS_ANDROID = /require\(['"]\.\/helpers\/android['"]\)|['"`]Android-App['"`/]|\.kt['"`]/;
 
 test('web tests do not read Android source code', () => {
-  // Gegenprobe: `const k = 'x.kt';` in a11y.test.js → rot (nennt a11y.test.js); dasselbe in
-  // test/helpers/contract.js → rot (nennt helpers/contract.js).
+  // Counter-check: `const k = 'x.kt';` in a11y.test.js → red (names a11y.test.js); the same in
+  // test/helpers/contract.js → red (names helpers/contract.js).
   const LIMIT = 0;
   for (const probe of ["path.join(ROOT, '..', 'Android-App', 'x')", "'Theme.kt'", "require('./helpers/android')"])
     assert.ok(READS_ANDROID.test(probe), `das Muster greift nicht mehr: ${probe}`);
@@ -851,16 +851,16 @@ test('web tests do not read Android source code', () => {
 });
 
 /**
- * Feste Pausen ab 100 ms, die als eigene Anweisung ausserhalb einer Schleife stehen (eine Schleife
- * wartet auf eine Bedingung). Gezählt auf dem Text in einer Zeile mit geleerten Zeichenketten,
- * damit es nicht darauf ankommt, wie Biome umbricht.
+ * Fixed pauses from 100 ms on that stand as their own statement outside a loop (a loop
+ * waits for a condition). Counted on the text in one line with emptied strings,
+ * so that it does not matter how Biome wraps.
  */
 function fixedWaitTimes(/** @type {string} */ text) {
   const q = require('./helpers/sources');
   const s = q
     .kompakt(q.ohneKommentare(text))
     .replace(/'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`/g, m => m[0] + '_'.repeat(m.length - 2) + m[0]);
-  /** Öffnende Klammer zur schliessenden an `zu`. */
+  /** Opening bracket for the closing one at `zu`. */
   const auf = (/** @type {number} */ zu) => {
     for (let j = zu, t = 0; j >= 0; j--)
       if (s[j] === ')') t++;
@@ -869,7 +869,7 @@ function fixedWaitTimes(/** @type {string} */ text) {
   };
   const schleifenkopf = (/** @type {string} */ vor) =>
     vor.endsWith(')') && /\b(for|while)\s*$/.test(s.slice(0, auf(vor.length - 1)));
-  /** Steht `i` in einer Klammer, einem Schleifenrumpf oder hinter einem Schleifenkopf? */
+  /** Does `i` stand in a bracket, a loop body or behind a loop head? */
   const inLoop = (/** @type {number} */ i) => {
     if (schleifenkopf(s.slice(0, i).trimEnd())) return true;
     for (let j = i - 1, tiefe = 0; j >= 0; j--) {
@@ -901,10 +901,10 @@ function fixedWaitTimes(/** @type {string} */ text) {
 }
 
 test('fixed waits in tests become fewer, never more', () => {
-  // Eine feste Pause ist unter Last zu kurz und sonst zu lang; gewartet wird auf
-  // eine Bedingung (helpers/time.js bis(), ruhig()). Übrig sind Pausen, die zeigen,
-  // dass etwas NICHT geschieht, oder die der geprüfte Code verlangt.
-  // Gegenprobe (05.11.2026): `await warte(500);` in history-browser.test.js → rot.
+  // A fixed pause is too short under load and too long otherwise; waiting is done for
+  // a condition (helpers/time.js bis(), ruhig()). Left are pauses that show
+  // that something does NOT happen, or that the code under test demands.
+  // Counter-check (05.11.2026): `await warte(500);` in history-browser.test.js → red.
   const LIMIT = 40;
   assert.equal(
     fixedWaitTimes(
@@ -929,11 +929,11 @@ test('fixed waits in tests become fewer, never more', () => {
 });
 
 /**
- * Inline-Stile in index.html. Ein data-stil="…" (styles.js setzt es als
- * Inline-Stil) setzt sich über jedes Design und jede Telefonregel hinweg;
- * gleiche Dinge sahen deshalb an zwei Stellen verschieden aus. Gezählt werden
- * Attribute ausserhalb von Kommentaren. display:none bleibt erlaubt: Die
- * Skripte schalten es um.
+ * Inline styles in index.html. A data-stil="…" (styles.js sets it as an
+ * inline style) overrides every theme and every phone rule;
+ * the same things therefore looked different in two places. Counted are
+ * attributes outside of comments. display:none stays allowed: the
+ * scripts toggle it.
  */
 test('inline styles in index.html become fewer, never more', () => {
   const LIMIT = 32;
@@ -952,11 +952,11 @@ test('inline styles in index.html become fewer, never more', () => {
 });
 
 test('no reference to “Nachtrag N” under Web-App/', () => {
-  // Die Geschichte einer Stelle steht im Commit (CLAUDE.md); eine Nummer im
-  // Kommentar verweist auf eine Liste, die es im Baum nicht gibt. Ausgenommen:
-  // docs/, CHANGELOG* und db/ (angewandte Migrationen dürfen sich nicht ändern).
-  // Gegenproben: eine Nachtragsnummer in src/account/deviceToken.ts → rot; dasselbe in
-  // test/tab-layout.test.js und in public/index.html → rot (05.11.2026).
+  // The history of a place stands in the commit (CLAUDE.md); a number in a
+  // comment refers to a list that does not exist in the tree. Exempt:
+  // docs/, CHANGELOG* and db/ (applied migrations must not change).
+  // Counter-checks: an addendum number in src/account/deviceToken.ts → red; the same in
+  // test/tab-layout.test.js and in public/index.html → red (05.11.2026).
   const RAUS = new Set(['node_modules', 'dist', 'coverage', 'data', 'docs', 'CHANGELOG', 'db', '.git']);
   const treffer = [];
   let dateien = 0;
@@ -983,10 +983,10 @@ test('no reference to “Nachtrag N” under Web-App/', () => {
 });
 
 test('no module is imported twice in one file', () => {
-  // Je Modul ein Wert-Import und höchstens ein `import type`; neun Zeilen für
-  // neun Namen aus derselben Datei verdecken, was wirklich gebraucht wird.
-  // Gegenprobe (05.11.2026): `import { fehlertext } from '../infra/fehler';`
-  // zusätzlich in src/finances/priceAlert.ts → rot.
+  // One value import per module and at most one `import type`; nine lines for
+  // nine names from the same file hide what is really needed.
+  // Counter-check (05.11.2026): `import { fehlertext } from '../infra/fehler';`
+  // additionally in src/finances/priceAlert.ts → red.
   const treffer = [];
   for (const f of quellen()) {
     const gesehen = new Set();
@@ -1000,7 +1000,7 @@ test('no module is imported twice in one file', () => {
 });
 
 test('the comment share in the server sinks, never rises', () => {
-  // Gezählt in server.ts, routes/, src/ und jobs/, im Biome-Format.
+  // Counted in server.ts, routes/, src/ and jobs/, in Biome format.
   const LIMIT = 9.8;
   let zeilen = 0,
     comment = 0;
@@ -1018,7 +1018,7 @@ test('the comment share in the server sinks, never rises', () => {
   if (anteil < LIMIT - 0.5) console.log(`  ℹ Kommentaranteil: ${anteil} % (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
-/** Quellen der Oberfläche: public/js ohne Bündel, dazu i18n.js. */
+/** Sources of the UI: public/js without bundle, plus i18n.js. */
 function oberflaeche() {
   const js = path.join(WEB, 'public', 'js');
   return [
@@ -1030,13 +1030,13 @@ function oberflaeche() {
   ];
 }
 
-// Typangaben in JSDoc (@param, @type …) und reine Begrenzer (/**, */) sind
-// Code für tsc, keine Erzählung; sie zählen weder als Kommentar noch als Zeile.
+// Type annotations in JSDoc (@param, @type …) and pure delimiters (/**, */) are
+// code for tsc, not narration; they count neither as a comment nor as a line.
 const TYPZEILE = /^(\/\*\*\s*)?\*?\s*@(param|type|returns?|typedef|template|this|property)\b|^\/\*\*$|^\*\/$|^\*$/;
 
 test('the comment share of the UI sinks, never rises', () => {
-  // Ohne Typzeilen gezählt, im Biome-Format.
-  // Gegenprobe: 300 Kommentarzeilen an dom.js → rot.
+  // Counted without type lines, in Biome format.
+  // Counter-check: 300 comment lines appended to dom.js → red.
   const LIMIT = 14.2;
   let zeilen = 0,
     comment = 0;
@@ -1056,9 +1056,9 @@ test('the comment share of the UI sinks, never rises', () => {
 });
 
 test('any in the UI type annotations becomes fewer, never more', () => {
-  // noImplicitAny verbietet nur das stille any; ein ausgeschriebenes schaltet
-  // die Prüfung für diesen Wert genauso ab. Seit dem Abbau steht keines mehr da.
-  // Gegenprobe: an api.js `/** @type {any} */ let x;` angehängt → rot mit 1.
+  // noImplicitAny only forbids the silent any; a written-out one switches off
+  // the check for this value just the same. Since the cleanup none stands there any more.
+  // Counter-check: `/** @type {any} */ let x;` appended to api.js → red with 1.
   const LIMIT = 0;
   let ist = 0;
   for (const f of oberflaeche())
@@ -1069,9 +1069,9 @@ test('any in the UI type annotations becomes fewer, never more', () => {
 });
 
 test('no UI comment has more than five lines of prose', () => {
-  // CLAUDE.md: Ein Kommentar sagt in zwei bis fünf Zeilen, warum. JSDoc-Tags
-  // (@param, @returns …) zählen nicht mit.
-  // Gegenprobe: ein //-Block mit sechs Zeilen in dom.js → rot mit Fundstelle.
+  // CLAUDE.md: a comment says why in two to five lines. JSDoc tags
+  // (@param, @returns …) do not count.
+  // Counter-check: a // block with six lines in dom.js → red with location.
   const lang = [];
   let bloecke = 0;
   for (const f of oberflaeche()) {
@@ -1099,7 +1099,7 @@ test('no UI comment has more than five lines of prose', () => {
   assert.deepEqual(lang, [], 'Lange Begründung: Warum in den Code (höchstens fünf Zeilen), Geschichte in den Commit');
 });
 
-/** Funktionen mit ihrer Länge (Deklaration bis zur schliessenden Klammer gleicher Einrückung). */
+/** Functions with their length (declaration up to the closing bracket of the same indentation). */
 function functionLengths(dateien = oberflaeche()) {
   const raus = [];
   for (const f of dateien) {
@@ -1115,8 +1115,8 @@ function functionLengths(dateien = oberflaeche()) {
 }
 
 test('UI functions over 100 and over 80 lines become fewer, never more', () => {
-  // Im Biome-Format. Gegenprobe: loadFinance
-  // wieder in einem Stück (vor dem Aufteilen) → rot mit „finanzen.js loadFinance“.
+  // In Biome format. Counter-check: loadFinance
+  // in one piece again (before splitting) → red with „finanzen.js loadFinance“.
   const LIMIT_80 = 20;
   const KNOWN_100 = [
     'public/js/purchase-dialogs.js acqSave',
@@ -1145,7 +1145,7 @@ test('UI functions over 100 and over 80 lines become fewer, never more', () => {
     console.log(`  ℹ Funktionen über 80 Zeilen: ${ueber80.length} (Schranke ${LIMIT_80}) — Schranke nachziehen`);
 });
 
-/** Code-Zeilen der Oberflächenmodule (public/js/NN-*.js) ohne Kommentarzeilen, mit Fundort. */
+/** Code lines of the UI modules (public/js/NN-*.js) without comment lines, with location. */
 function uisCode() {
   const js = path.join(WEB, 'public', 'js');
   const raus = [];
@@ -1160,8 +1160,8 @@ function uisCode() {
 }
 
 test('markup only gets into the page via setzeHtml()/fuegeHtmlEin()', () => {
-  // Nur die beiden Helfer in dom.js schreiben Markup; das Protokollfenster (monitor.js) baut ein eigenes
-  // Dokument per document.write. Gegenprobe: in sammlung.js `grid.innerHTML = ''` → rot mit Fundort.
+  // Only the two helpers in dom.js write markup; the log window (monitor.js) builds its own
+  // document via document.write. Counter-check: in sammlung.js `grid.innerHTML = ''` → red with location.
   const ALLOWED = ['dom.js', 'dom.js', 'monitor.js'];
   const roh = uisCode().filter(x =>
     /\.(innerHTML|outerHTML)\s*\+?=(?!=)|insertAdjacentHTML\(|document\.write\(/.test(x.z),
@@ -1173,7 +1173,7 @@ test('markup only gets into the page via setzeHtml()/fuegeHtmlEin()', () => {
   );
 });
 
-/** Die Argumente aller rawHtml()-Aufrufe in `text`, bis zur schliessenden Klammer. */
+/** The arguments of all rawHtml() calls in `text`, up to the closing bracket. */
 function rawHtmlArguments(/** @type {string} */ text) {
   const raus = [];
   for (const m of text.matchAll(/(?<![\w.])(?<!function )rawHtml\(/g)) {
@@ -1188,11 +1188,11 @@ function rawHtmlArguments(/** @type {string} */ text) {
 }
 
 test('rawHtml() becomes fewer, never more; no template with ${…} and no .join() in it', () => {
-  // html`` maskiert jeden eingesetzten Wert; rawHtml() setzt eine Zeichenkette als Markup ein, die
-  // vor dem Umbau schon maskiert gebaut wurde. Listen aus html`` verbindet joinHtml() (escaping.js).
-  // Gegenprobe (12.11.2026): in dom.js `${ungeprueft(`<b>${x}</b>`)}` → rot „Template“;
-  // `ungeprueft(a.join(''))` → rot „join“; Schranke auf 124 → rot.
-  // Gegenprobe (13.11.2026, Schranke 87): in gutscheine.js ein `${ungeprueft(COPY_ICON_SVG)}` zurück → rot.
+  // html`` escapes every inserted value; rawHtml() inserts a string as markup that
+  // was already built escaped before the rebuild. Lists from html`` are joined by joinHtml() (escaping.js).
+  // Counter-check (12.11.2026): in dom.js `${ungeprueft(`<b>${x}</b>`)}` → red „Template“;
+  // `ungeprueft(a.join(''))` → red „join“; limit set to 124 → red.
+  // Counter-check (13.11.2026, limit 87): in gutscheine.js a `${ungeprueft(COPY_ICON_SVG)}` back → red.
   const LIMIT = 83;
   assert.deepEqual(
     rawHtmlArguments("function rawHtml(t) {}\na(rawHtml(`<i>${b(c)}</i>`), rawHtml(d.map(e).join('')), x.rawHtml(f))"),
@@ -1227,8 +1227,8 @@ test('rawHtml() becomes fewer, never more; no template with ${…} and no .join(
 });
 
 test('no UI file over 1000 lines, the big ones become smaller', () => {
-  // Eine Sammeldatei zieht Neues an, weil es dort schon liegt (Biome-Format).
-  // Gegenprobe (09.11.2026): an finanzen.js Leerzeilen gehängt → rot.
+  // A collective file attracts new things because they already lie there (Biome format).
+  // Counter-check (09.11.2026): blank lines appended to finanzen.js → red.
   const LIMIT_LARGEST = 771,
     LIMIT_VIA_600 = 11;
   const lengths = oberflaeche().map(f => ({
@@ -1246,8 +1246,8 @@ test('no UI file over 1000 lines, the big ones become smaller', () => {
     console.log(`  ℹ Dateigrösse Oberfläche: grösste ${largest}, über 600: ${ueber600} — Schranke nachziehen`);
 });
 
-/** Top-Level-Funktionen samt Pfeilfunktionen an const; sie endet vor der nächsten Zeile
- * ohne Einzug (eine schliessende Klammer gehört noch dazu). */
+/** Top-level functions including arrow functions on const; it ends before the next line
+ * without indentation (a closing bracket still belongs to it). */
 function topLevelLengths(/** @type {string[]} */ dateien) {
   const raus = [];
   for (const f of dateien) {
@@ -1273,17 +1273,17 @@ function topLevelLengths(/** @type {string[]} */ dateien) {
 }
 
 test('server functions over 80/150 lines become fewer, never more', () => {
-  // Ab 100 Zeilen zählen Top-Level-Funktionen samt Pfeilfunktionen; keine ist bekannt.
-  // Gegenproben: buildPdf in src/catalog/pdf/pdfDrawing.ts wieder in einem Stück → rot „ab 100“ (13.11.2026);
-  // createDb in db/database.ts wieder als eine Closure → rot „ab 100“ und „über 150“ (14.11.2026).
+  // From 100 lines on top-level functions including arrow functions count; none is known.
+  // Counter-checks: buildPdf in src/catalog/pdf/pdfDrawing.ts in one piece again → red „ab 100“ (13.11.2026);
+  // createDb in db/database.ts again as one closure → red „ab 100“ and „über 150“ (14.11.2026).
   const LIMIT_80 = 17,
     LIMIT_150 = 0,
     KNOWN_100 = [];
   const dateien = quellen().filter(
     f => /[\\/](src|routes|jobs|db|clients|startup)[\\/]/.test(f) || /[\\/]server\.ts$/.test(f),
   );
-  // Eine Router-Fabrik (baueXRouter) ist die Liste ihrer Routen wie früher der Modulrumpf;
-  // ihre Handler zählen einzeln weiter.
+  // A router factory (baueXRouter) is the list of its routes like the module body used to be;
+  // its handlers keep counting individually.
   const noFactory = x => !/ build\w*Router$/.test(x.ort);
   const oben = topLevelLengths(dateien).filter(noFactory);
   assert.ok(oben.length > 1500, `nur ${oben.length} Top-Level-Funktionen gefunden — greift die Suche noch?`);
@@ -1309,8 +1309,8 @@ test('server functions over 80/150 lines become fewer, never more', () => {
 });
 
 test('the comment share in db/, clients/ and scripts/ sinks, never rises', () => {
-  // Je Ordner eine Schranke, im Biome-Format.
-  // Gegenprobe: 40 Kommentarzeilen an clients/ecb.ts gehängt → rot (clients).
+  // One limit per folder, in Biome format.
+  // Counter-check: 40 comment lines appended to clients/ecb.ts → red (clients).
   const LIMIT = { db: 15.1, clients: 12.3, scripts: 19.2 };
   const toMuch = [];
   for (const [ordner, limit] of Object.entries(LIMIT)) {
@@ -1344,15 +1344,15 @@ test('the comment share in db/, clients/ and scripts/ sinks, never rises', () =>
 });
 
 test('history in test comments becomes fewer, never more', () => {
-  // Ein Testkopf nennt, was geprüft wird, und seine Gegenproben (CLAUDE.md);
-  // woher ein Test kam, steht im Commit. Gezählt werden Kommentarzeilen mit
-  // den typischen Erzählmarken, auch „Gemessen … am <Datum>“.
-  // Gegenprobe (05.11.2026): den alten Kopf von scope-reset.test.js zurück → rot.
-  // Gegenprobe (14.11.2026): eine Zeile `// Gemessen 7 am` samt Datum an diesen Kopf gehängt → rot (4 von 3).
-  const LIMIT = 3;
+  // A test header names what is checked and its counter-checks (CLAUDE.md);
+  // where a test came from stands in the commit. Counted are comment lines with
+  // the typical narrative markers, also „Gemessen … am <Datum>“.
+  // Counter-check (05.11.2026): the old header of scope-reset.test.js back → red.
+  // Counter-check (14.11.2026): a line `// Gemessen 7 am` with a date appended to this header → red.
+  const LIMIT = 0;
 
   const MARKE =
-    /(Nachtr(ag|äge) [0-9]|Hier stand|Vorher stand|NACHGEMESSEN|kam(en)? am [0-9]|Gemessen\b[^.]*\bam [0-9]|Marcos (Frage|Wunsch|Bericht|Rückfrage|Konsole))/;
+    /(Nachtr(ag|äge) [0-9]|Hier stand|Vorher stand|NACHGEMESSEN|kam(en)? am [0-9]|Gemessen\b[^.]*\bam [0-9]|Marcos (Frage|Wunsch|Bericht|Rückfrage|Konsole)|Addendum [0-9]|Measured\b[^.]*\bon [0-9]|Marco's (question|request|report|console))/;
   const dateien = [
     ...fs
       .readdirSync(__dirname)
@@ -1369,16 +1369,17 @@ test('history in test comments becomes fewer, never more', () => {
       const t = z.trim();
       if ((t.startsWith('//') || t.startsWith('*')) && MARKE.test(t)) ist++;
     }
-  assert.ok(ist > 0, 'keine Marke gefunden — greift die Suche noch?');
+  // Self-proof without a real occurrence: the limit has reached 0.
+  assert.ok(MARKE.test('* Gemessen am 7.11.') && MARKE.test('// Measured on 7.11.'), 'greift die Suche noch?');
   assert.ok(ist <= LIMIT, `${ist} Kommentarzeilen mit Geschichte in den Tests, erlaubt sind ${LIMIT}`);
   if (ist < LIMIT) console.log(`  ℹ Geschichte in Testkommentaren: ${ist} (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
 test('the comment share of the tests sinks, never rises', () => {
-  // Eigene Schranke: Testköpfe zählen ihre Gegenproben auf (CLAUDE.md), der
-  // Anteil liegt deshalb höher als im Server. Geschichte gehört auch hier in
-  // den Commit. Gezählt in test/*.js und test/helpers/, im Biome-Format.
-  // Gegenprobe: 300 Kommentarzeilen an eine Testdatei gehängt → rot.
+  // Own limit: test headers list their counter-checks (CLAUDE.md), the
+  // share therefore lies higher than in the server. History belongs in the
+  // commit here too. Counted in test/*.js and test/helpers/, in Biome format.
+  // Counter-check: 300 comment lines appended to a test file → red.
   const LIMIT = 17;
   const dateien = [
     ...fs
@@ -1408,10 +1409,10 @@ test('the comment share of the tests sinks, never rises', () => {
 });
 
 test('no reference to the former rationale archive', () => {
-  // Lange Begründungen stehen nicht im Baum (CLAUDE.md); das Archiv ist über git erreichbar. Ratsche 0:
-  // Ein Verweis darauf zeigte ins Leere. Das Skript findet dieselben Verweise, die es entfernt.
-  // Gegenprobe (10.11.2026): `// Ausführlich: docs/…/x.md#a` (voller Pfad) in src/infra/appPaths.ts → rot
-  // mit „src/infra/appPaths.ts“; den Ordner docs/begruendungen/ wieder angelegt → rot.
+  // Long rationales do not stand in the tree (CLAUDE.md); the archive is reachable via git. Ratchet 0:
+  // a reference to it pointed into nothing. The script finds the same references that it removes.
+  // Counter-check (10.11.2026): `// Ausführlich: docs/…/x.md#a` (full path) in src/infra/appPaths.ts → red
+  // with „src/infra/appPaths.ts“; the folder docs/begruendungen/ created again → red.
   assert.equal(
     fs.existsSync(path.join(WEB, 'docs', 'begruendungen')),
     false,
@@ -1430,10 +1431,10 @@ test('no reference to the former rationale archive', () => {
 });
 
 test('the comment share of the operations files sinks, never rises', () => {
-  // Workflows, Dockerfile, compose.yaml, tsconfig.json: Auch dort steht das
-  // Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md). Das Caddyfile zählt nicht mit:
-  // Kein Block darin ist länger als fünf Zeilen.
-  // Gegenprobe (04.11.2026): 60 Kommentarzeilen an das Dockerfile → rot.
+  // Workflows, Dockerfile, compose.yaml, tsconfig.json: there too the why stands
+  // in few lines, the history in the commit (CLAUDE.md). The Caddyfile does not count:
+  // no block in it is longer than five lines.
+  // Counter-check (04.11.2026): 60 comment lines appended to the Dockerfile → red.
   const LIMIT = 20.4;
   const wf = path.join(WEB, '..', '.github', 'workflows');
   const dateien = [
@@ -1463,11 +1464,11 @@ test('the comment share of the operations files sinks, never rises', () => {
     console.log(`  ℹ Kommentaranteil Betrieb: ${anteil} % (Schranke ${LIMIT}) — Schranke nachziehen`);
 });
 
-/** Kommentarblöcke mit mehr als fünf Zeilen Prosa (vor dem ersten @-Tag), wie im Prüfbericht gezählt.
- * Eine Liste der Gegenproben zählt nicht mit: Sie gehört nach CLAUDE.md in den Kopf eines Tests. */
+/** Comment blocks with more than five lines of prose (before the first @ tag), counted as in the audit report.
+ * A list of counter-checks does not count: according to CLAUDE.md it belongs in the header of a test. */
 function longBlocks(/** @type {string} */ text) {
   const z = text.split('\n');
-  const COUNTER_CHECKS = /^\s*(\*|\/\/)\s*Gegenprobe/;
+  const COUNTER_CHECKS = /^\s*(\*|\/\/)\s*(Gegenprobe|Counter-check)/i;
   let n = 0;
   for (let i = 0; i < z.length; i++) {
     const t = z[i].trim();
@@ -1495,9 +1496,9 @@ function longBlocks(/** @type {string} */ text) {
 }
 
 test('long comments in tests, scripts and index.html become fewer, never more', () => {
-  // Im Code steht das Warum in wenigen Zeilen, die Geschichte im Commit (CLAUDE.md);
-  // Gegenprobenlisten zählen nicht.
-  // Gegenprobe (06.11.2026): sechs Zeilen Prosa vor die Gegenprobe im Kopf von hsts.test.js → rot (Tests 75).
+  // In the code the why stands in few lines, the history in the commit (CLAUDE.md);
+  // counter-check lists do not count.
+  // Counter-check (06.11.2026): six lines of prose before the counter-check in the header of hsts.test.js → red (tests 75).
   const LIMIT = { tests: 49, scripts: 0, indexHtml: 162 };
   const js = (/** @type {string} */ d) =>
     fs
@@ -1525,9 +1526,9 @@ test('long comments in tests, scripts and index.html become fewer, never more', 
 });
 
 test('test files without a counter-check become fewer, never more', () => {
-  // Jeder Test nennt im Kopf seine Gegenprobe (CLAUDE.md); die älteren ohne
-  // werden beim Anfassen nachgetragen.
-  // Gegenprobe (05.11.2026): in lint-ratchet.test.js „Gegenproben“ umbenannt → rot (112).
+  // Every test names its counter-check in the header (CLAUDE.md); the older ones without
+  // get it added when touched.
+  // Counter-check (05.11.2026): „Gegenproben“ renamed in lint-ratchet.test.js → red (112).
   const LIMIT = 70;
   const ohne = fs
     .readdirSync(__dirname)
@@ -1539,11 +1540,11 @@ test('test files without a counter-check become fewer, never more', () => {
 });
 
 test('paths named in test comments exist', () => {
-  // Eine Gegenprobe, die eine verschwundene Datei nennt, lässt sich nicht wiederholen. Geprüft wird jede
-  // Kommentarzeile in test/ und test/helpers/; ein .js-Pfad gilt auch, wenn die .ts-Quelle dazu existiert.
-  // Gegenprobe (10.11.2026): in acquisition-scope-db.test.js den Pfad bei schreibbereich auf den früheren der
-  // Set-Routen zurückgesetzt → rot mit dieser Zeile als Fundstelle. Gegenprobe (14.11.2026): ohne gebautes
-  // Bündel und ohne ARTIFACTS → rot (bundle-built.test.js); derselbe Pfad mit `app.bundle2.js` → rot.
+  // A counter-check that names a vanished file cannot be repeated. Checked is every
+  // comment line in test/ and test/helpers/; a .js path also counts if the .ts source for it exists.
+  // Counter-check (10.11.2026): in acquisition-scope-db.test.js the path at schreibbereich reset to the former one of the
+  // set routes → red with this line as location. Counter-check (14.11.2026): without a built
+  // bundle and without ARTIFACTS → red (bundle-built.test.js); the same path with `app.bundle2.js` → red.
   const REPO = path.join(WEB, '..');
   const ordner = [WEB, REPO]
     .flatMap(w =>
@@ -1558,7 +1559,7 @@ test('paths named in test comments exist', () => {
       '(?:ts|js|sql|html|css|json|md|sh|ya?ml|kt|kts|xml|txt))\\b',
     'g',
   );
-  // Das Bündel entsteht erst mit `npm run build`; ein frischer Checkout hat es nicht.
+  // The bundle only arises with `npm run build`; a fresh checkout does not have it.
   const ARTIFACTS = new Set([`public/${require('../scripts/build-frontend').OUT_REL}`]);
   const gibt = (/** @type {string} */ p) =>
     ARTIFACTS.has(p) ||

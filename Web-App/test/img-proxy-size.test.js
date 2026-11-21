@@ -1,18 +1,18 @@
 /**
- * Grosse CDN-Bilder landen im Cache und bekommen eine Vorschau; erst über der
- * gemeinsamen Grenze (SET_IMG_MAX_BYTES, für Proxy und lokalen Download
- * gleich) wird verworfen — mit Spur in der Konsole und der Fehlerzählung.
- * Das CDN ist eine Attrappe von https.get, APP_ROOT ein eigener Ordner.
+ * Large CDN images land in the cache and get a preview; only above the
+ * shared limit (SET_IMG_MAX_BYTES, the same for proxy and local download)
+ * is it discarded — with a trace in the console and the error count.
+ * The CDN is a dummy of https.get, APP_ROOT a separate folder.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, dist neu gebaut):
- *   A  in bildProxy.ts PROXY_CACHE_MAX_BYTES auf 5 MB → rot: „ein Bild genau an
- *      der Grenze …“ und „ein Bild über der Grenze …“
- *   B  in verwirf() console.error → console.log bzw. `imgProxyFailures.other++`
- *      entfernt → rot: „ein Bild über der Grenze …“ (ohne Content-Length)
- *   C  in setImages.ts das console.error beim Grund 'zu-gross' entfernt → rot:
- *      „der lokale Download …“
- *   D  in bildProxy.ts queueThumb(…) vor das rename gezogen → rot: „die
- *      Vorschau entsteht …“ (die Quelldatei gibt es noch nicht)
+ * Counter-checks (measured 10.11.2026, each alone, dist rebuilt):
+ *   A  in bildProxy.ts PROXY_CACHE_MAX_BYTES to 5 MB → red: “an image exactly at
+ *      the limit …” and “an image above the limit …”
+ *   B  in verwirf() console.error → console.log or `imgProxyFailures.other++`
+ *      removed → red: “an image above the limit …” (without Content-Length)
+ *   C  in setImages.ts the console.error for the reason 'zu-gross' removed → red:
+ *      “the local download …”
+ *   D  in bildProxy.ts queueThumb(…) moved before the rename → red: “the
+ *      preview is created …” (the source file does not exist yet)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -49,7 +49,7 @@ https.get = /** @type {typeof https.get} */ (
     (/** @type {unknown} */ _url, /** @type {unknown} */ _o, /** @type {(r: unknown) => void} */ cb) => {
       const req = Object.assign(new EventEmitter(), { setTimeout: () => req, destroy: () => {} });
       const rumpf = cdnBody;
-      // In Stücken wie ein echter Strom: Die Grenze greift mitten im Lesen.
+      // In pieces like a real stream: the limit applies in the middle of reading.
       const stuecke = [];
       for (let i = 0; i < rumpf.length; i += 1 << 20) stuecke.push(rumpf.subarray(i, i + (1 << 20)));
       setImmediate(() =>
@@ -68,7 +68,7 @@ https.get = /** @type {typeof https.get} */ (
   )
 );
 
-// Die Vorschau-Sperre hält eine eigene Verbindung; mitgeschrieben, damit der Test sie schliesst.
+// The preview lock holds its own connection; recorded so that the test closes it.
 const eigene = [];
 const standard = testAccess();
 const connect = standard.ownConnection;
@@ -95,7 +95,7 @@ const hole = (adresse, thumb = false) =>
 const imCache = () => (fs.existsSync(cacheDir) ? fs.readdirSync(cacheDir) : []);
 const adresse = name => `https://cdn.rebrickable.com/media/parts/elements/${name}-${process.pid}.jpg`;
 
-/** Fängt console.error während `work` ab. */
+/** Intercepts console.error while `work` runs. */
 async function withErrors(work) {
   const zeilen = [];
   const e = console.error;
@@ -136,7 +136,7 @@ test('an image above the limit is discarded, counted and reported', async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
   cdnBody = Buffer.alloc(SET_IMG_MAX_BYTES + 1, 4);
   const beforeCache = imCache().length;
-  // Mit Content-Length lehnt schon der Abruf ab; ohne zählt der Strom mit und bricht ab.
+  // With Content-Length the fetch already refuses; without it the stream counts along and aborts.
   /** @type {Array<{ laenge: boolean, zaehler: 'error' | 'other', meldung: RegExp }>} */
   const faelle = [
     { laenge: true, zaehler: 'error', meldung: /Antwort über 20971520 Byte/ },

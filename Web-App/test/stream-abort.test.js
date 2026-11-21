@@ -1,11 +1,11 @@
 /**
- * Ein geschlossener Ereignisstrom bricht die Arbeit dahinter mit einer Fehlerklasse ab,
- * nicht mit einer Zeichenkette, die der Fänger vergleichen müsste.
+ * A closed event stream aborts the work behind it with an error class,
+ * not with a string that the catcher would have to compare.
  *
- * Gegenproben (14.11.2026 gemessen, je einzeln, zurückgenommen):
- *   A  in sendOrAbortAb (src/account/http/stream.ts) wieder `throw new Error('CANCELLED')`
- *      → rot: „nach dem Schliessen bricht sendOrAbortAb mit StromGeschlossen ab“
- *   B  die Prüfung `if (zu)` dort gestrichen → rot: dieselbe Zusicherung (nichts geworfen)
+ * Counter-checks (measured 14.11.2026, each on its own, reverted):
+ *   A  in sendOrAbortAb (src/account/http/stream.ts) again `throw new Error('CANCELLED')`
+ *      → red: “after closing sendOrAbortAb aborts with StromGeschlossen”
+ *   B  the check `if (zu)` deleted there → red: the same assertion (nothing thrown)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

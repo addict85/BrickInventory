@@ -1,40 +1,40 @@
 /**
- * Den Mailserver ändert ein Verwalter nur mit seinem Passwort. Über ihn gehen
- * die Rücksetz-Links; mit einer erbeuteten Sitzung allein liesse er sich sonst
- * umbiegen. Speichern ohne Änderung fragt nicht nach.
+ * An admin only changes the mail server with his password. The reset links
+ * go via it; with a captured session alone it could otherwise be
+ * bent. Saving without a change does not ask.
  *
- * Gegenprobe (am 28.10.2026 gemessen): die Passwortprüfung in POST
- * /api/v1/settings entfernt → rot: „ohne Passwort bleibt der Mailserver“.
- * Gegenprobe (am 29.10.2026 gemessen): smtp_* wieder in die Schlüsselliste
- * von POST /import → rot: „der Import stellt den Mailserver nicht um“
- * (smtp_host war danach mail.angreifer.example).
+ * Counter-check (measured on 28.10.2026): the password check in POST
+ * /api/v1/settings removed → red: “without a password the mail server stays”.
+ * Counter-check (measured on 29.10.2026): smtp_* again in the key list
+ * of POST /import → red: “the import does not switch the mail server”
+ * (smtp_host was mail.angreifer.example afterwards).
  *
- * Registrierung und API-Schlüssel ebenso (seit 04.11.2026), die Verwalter
- * erfahren es per Mail. Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  isSensitive() wieder nur smtp_* → rot: „ohne Passwort bleiben Registrierung
- *      und API-Schlüssel“ (200 statt 400)
- *   B  adminHintInBackground() in POST /settings entfernt → rot: „mit
- *      Passwort geändert, die Verwalter erfahren es“
- *   C  die Absage ohne admin_password vor der Prüfung entfernt → rot: „ohne
- *      Passwort bleibt der Mailserver“, „ohne Passwort bleiben Registrierung …“
- *      (aktuelles_passwort_falsch, zählt zur Bremse)
+ * Registration and API keys likewise (since 04.11.2026), the admins
+ * learn of it by mail. Counter-checks (measured 04.11.2026, each on its own):
+ *   A  isSensitive() again only smtp_* → red: “without a password registration
+ *      and API key stay” (200 instead of 400)
+ *   B  adminHintInBackground() removed in POST /settings → red: “changed with
+ *      password, the administrators learn of it”
+ *   C  the refusal without admin_password before the check removed → red: “without
+ *      a password the mail server stays”, “without a password registration …”
+ *      (aktuelles_passwort_falsch, counts toward the brake)
  *
- * Ein erster API-Schlüssel (vorher leer) braucht kein Passwort, solange die
- * Einrichtung offen ist: Der Assistent fragt sonst mitten im Schritt nach.
- * Danach gilt auch für ihn die Passwortpflicht (Runde 12, H1).
- * Gegenproben (04.11.2026 gemessen):
- *   D  die Ausnahme für leere Werte entfernt → rot: „ein erster API-Schlüssel
- *      braucht in der Einrichtung kein Passwort“ (400 statt 200)
- *   E  die Ausnahme wieder ohne `einrichtung &&` → rot: „nach der Einrichtung
- *      auch ein erster Schlüssel nur mit Passwort“ (200 statt 400)
+ * A first API key (empty before) needs no password as long as the
+ * setup is open: otherwise the wizard asks in the middle of the step.
+ * Afterwards the password requirement applies to it too (round 12, H1).
+ * Counter-checks (measured 04.11.2026):
+ *   D  the exception for empty values removed → red: “a first API key
+ *      needs no password during setup” (400 instead of 200)
+ *   E  the exception again without `einrichtung &&` → red: “after setup
+ *      even a first key only with password” (200 instead of 400)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 
-// Die Registrierung lässt sich nur mit Mailversand einschalten (mailReady: Mailserver und Adresse).
+// Registration can only be switched on with mail sending (mailReady: mail server and address).
 process.env.APP_BASE_URL = 'https://inventar.example.org';
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
@@ -145,7 +145,7 @@ test('SMTP only with password', { concurrency: 1 }, async t => {
       undefined,
       'smtp_insecure_tls kam über den Import',
     );
-    // Der Rest der Datei kommt an — sonst prüfte der Fall einen Import, der gar nichts tut.
+    // The rest of the file arrives — otherwise the case would check an import that does nothing at all.
     assert.equal((await db.get("SELECT value FROM global_settings WHERE key = 'gutschein_land'"))?.value, 'AT');
     assert.deepEqual(r.body.smtp_uebergangen, ['smtp_host', 'smtp_insecure_tls']);
   });

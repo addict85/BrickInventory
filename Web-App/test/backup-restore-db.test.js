@@ -1,20 +1,20 @@
 /**
- * Sicherung und Wiederherstellung — einmal wirklich durchgespielt.
+ * Backup and restore — played through for real once.
  *
- * Gegenprobe, dass ein abgeschnittener Dump ohne sie stillschweigend
- * durchginge.
+ * Counter-check that a truncated dump would silently get through without
+ * them.
  *
- * Gegenprobe (05.11.2026 gemessen): in DUMP_OPTIONEN von backup.sh
- * `--exclude-table-data=user_sessions` gestrichen → rot: „Sitzungen, Zähler
- * und Protokoll kommen leer zurück …“.
+ * Counter-check (measured 05.11.2026): in DUMP_OPTIONEN of backup.sh
+ * `--exclude-table-data=user_sessions` deleted → red: “sessions, counters
+ * and log come back empty …”.
  *
- * Gegenprobe (13.11.2026 gemessen): CALL_DEADLINE auf 1 ms → 9 Fälle rot statt eines
- * Hängers (Sicherung, backup.sh, restore.sh).
+ * Counter-check (measured 13.11.2026): CALL_DEADLINE at 1 ms → 9 cases red instead of a
+ * hang (backup, backup.sh, restore.sh).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL UND die PostgreSQL-Klienten
- * (pg_dump/psql). Ohne DB: skip, ausser REQUIRE_DB=1.
+ * Prerequisite: test DB via TEST_DATABASE_URL AND the PostgreSQL clients
+ * (pg_dump/psql). Without DB: skip, unless REQUIRE_DB=1.
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -24,9 +24,9 @@ const path = require('node:path');
 const { testName, cleanRemainder } = require('./helpers/test-names');
 const { execFileSync, spawnSync } = require('node:child_process');
 
-/** Ein synchroner Aufruf blockiert die ganze Datei: Wartet psql oder restore.sh auf
- * eine Sperre, kommt auch die Dateifrist aus test/helpers/expiry.js nie an die Reihe,
- * und der Lauf hängt bis zum Abbruch der CI. Mit Frist wird daraus ein roter Test. */
+/** A synchronous call blocks the whole file: if psql or restore.sh waits for
+ * a lock, the file deadline from test/helpers/expiry.js never gets its turn either,
+ * and the run hangs until the CI aborts. With a deadline it becomes a red test. */
 const CALL_DEADLINE = 120_000;
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
@@ -37,7 +37,7 @@ const { keineDb, missingPrecondition } = require('./helpers/db');
 const { holdsSet, holdsPart, quantityOf, subsetOf, catalogSet } = require('./helpers/inventory');
 const db = testData();
 
-/** pg_dump/psql finden — auf dem PATH oder in einer Distributions-Installation. */
+/** Find pg_dump/psql — on the PATH or in a distribution installation. */
 function klient(name) {
   const direkt = spawnSync('which', [name], { encoding: 'utf8', timeout: CALL_DEADLINE });
   if (direkt.status === 0) return direkt.stdout.trim();
@@ -69,7 +69,7 @@ test('backup and restore', async t => {
   const pgDump = klient('pg_dump');
   const psql = klient('psql');
   /**
-   * Die Fassung eines Klienten — gehört in die Fehlermeldung.
+   * The version of a client — belongs in the error message.
    */
   const fassung = bin => {
     if (!bin) return '—';
@@ -86,7 +86,7 @@ test('backup and restore', async t => {
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-backup-'));
   const dump = path.join(work, 'db.sql');
 
-  // psql mit einem Dump füttern
+  // feed psql with a dump
   const lauf = (args, datei) =>
     spawnSync(psql, [...args, url, '-f', datei], {
       encoding: 'utf8',
@@ -94,7 +94,7 @@ test('backup and restore', async t => {
       env: { ...process.env },
       timeout: CALL_DEADLINE,
     });
-  /** Exit-Code; `grund()` liefert danach die Meldung von psql dazu. */
+  /** Exit code; `grund()` afterwards delivers psql's message for it. */
   let letzterLauf = null;
   const einspielen = datei => {
     letzterLauf = lauf(['-v', 'ON_ERROR_STOP=1'], datei);
@@ -104,7 +104,7 @@ test('backup and restore', async t => {
     letzterLauf = lauf([], datei);
     return letzterLauf.status;
   };
-  /** Was psql gesagt hat — die letzten Zeilen, damit die Meldung lesbar bleibt. */
+  /** What psql said — the last lines, so that the message stays readable. */
   const grund = () =>
     (letzterLauf?.stderr || '').trim().split('\n').slice(-8).join('\n') || '(psql hat nichts nach stderr geschrieben)';
 
@@ -121,24 +121,24 @@ test('backup and restore', async t => {
 
     await db.run(`INSERT INTO users (username, password_hash) VALUES ('sicherung','x')`);
     const uid = (await db.get(`SELECT id FROM users WHERE username='sicherung'`)).id;
-    await holdsSet(db, uid, '10214-1', 0); // Menge 0: die Erfassung dahinter traegt sie
-    // Der Name steht seit Migration 0033 im Katalog. Auch ihn muss die
-    // Sicherung zurueckbringen — und zwar aus einer ANDEREN Tabelle als die
-    // Menge. Genau das ist der Fall, an dem eine unvollstaendige Sicherung
-    // auffaellt: Ein Dump, der nur den Bestand nimmt, laesst jedes Set
-    // namenlos zurueck.
+    await holdsSet(db, uid, '10214-1', 0); // Quantity 0: the entry behind it carries it
+    // Since migration 0033 the name is in the catalog. The backup must
+    // bring it back too — and from a DIFFERENT table than the
+    // quantity. Exactly this is the case where an incomplete backup
+    // shows: a dump that only takes the stock brings every set back
+    // nameless.
     await catalogSet(db, '10214-1', { name: 'Tower Bridge', year: 2010 });
-    // Der Zustand steht seit Migration 0032 in der Erfassung. Die Sicherung
-    // muss ihn von DORT zurueckbringen — sonst prueft dieser Test nach dem
-    // Umbau eine Spalte, die es nicht mehr gibt, und waere stillschweigend
-    // schwaecher geworden.
+    // Since migration 0032 the condition is in the entry. The backup
+    // must bring it back from THERE — otherwise after the rebuild this test checks
+    // a column that no longer exists and would have silently
+    // become weaker.
     await db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
        VALUES ($1,'10214-1',2,44.50,'U')`,
       [uid],
     );
     await holdsPart(db, uid, '3001', { menge: 17, colorId: 4 });
-    // Was nicht in die Sicherung gehört: eine Sitzung, ein Anmeldezähler, eine Protokollzeile.
+    // What does not belong in the backup: a session, a login counter, a log line.
     await db.run(
       `INSERT INTO user_sessions (sid, sess, expire) VALUES ('sicherung-sid', '{"userId":1}', NOW() + INTERVAL '1 day')`,
     );
@@ -146,7 +146,7 @@ test('backup and restore', async t => {
     await db.run(`INSERT INTO app_logs (level, message) VALUES ('warn', '[anmeldung] sicherung')`);
   });
 
-  // Dieselben Optionen wie backup.sh: Gemessen wird, was das Skript sichert.
+  // The same options as backup.sh: what is measured is what the script backs up.
   const optionen = (
     fs.readFileSync(path.join(ROOT, 'scripts', 'backup.sh'), 'utf8').match(/^DUMP_OPTIONEN="([^"]+)"$/m)?.[1] ?? ''
   )
@@ -170,7 +170,7 @@ test('backup and restore', async t => {
   });
 
   await t.test('after restoring the data is back', async () => {
-    // Verwüsten — und zwar so, wie es im Ernstfall aussähe: alles weg.
+    // Devastate — exactly as it would look in an emergency: everything gone.
     await db.run('DROP SCHEMA public CASCADE');
     await db.run('CREATE SCHEMA public');
     await assert.rejects(
@@ -186,18 +186,18 @@ test('backup and restore', async t => {
 
     const s = await db.get(`SELECT user_id, set_number FROM sets`);
     assert.equal(s.set_number, '10214-1');
-    // Die Menge aus den Erfassungen (Migration 0036) — und dadurch ist sie
-    // hier eine zweite Aussage ueber eine zweite Tabelle, genau wie Name und
-    // Jahr darunter: Ein Dump, der nur `sets` mitnimmt, laesst jedes Set bei
-    // null Exemplaren zurueck.
+    // The quantity from the entries (migration 0036) — and thereby it is
+    // here a second statement about a second table, just like name and
+    // year below: a dump that only takes `sets` brings every set back at
+    // zero copies.
     assert.equal(
       await quantityOf(db, s.user_id, '10214-1'),
       2,
       'Die Stückzahl ist nicht zurückgekommen — set_acquisitions fehlt im Dump',
     );
-    // Name und Jahr aus dem Katalog — eine ANDERE Tabelle als die Menge
-    // darueber. Genau daran faellt eine unvollstaendige Sicherung auf: Ein
-    // Dump, der nur den Bestand nimmt, laesst jedes Set namenlos zurueck.
+    // Name and year from the catalog — a DIFFERENT table than the quantity
+    // above. Exactly this is where an incomplete backup shows: a
+    // dump that only takes the stock brings every set back nameless.
     const k = await db.get(
       `SELECT r.name, r.year FROM sets s
          JOIN set_catalog c ON c.set_number = s.set_number
@@ -230,7 +230,7 @@ test('backup and restore', async t => {
         `${tabelle} steht mit Zeilen in der Sicherung`,
       );
     }
-    // Wie beim Start des Servers: Schema prüfen und Migrationen anwenden, ohne Fehler.
+    // As at server start: check the schema and apply migrations, without errors.
     await db.initSchema();
     const c = await db.pool.connect();
     try {
@@ -241,8 +241,8 @@ test('backup and restore', async t => {
   });
 
   await t.test('a truncated dump is recognized by the end marker', () => {
-    // Der Fall, gegen den die Prüfung in backup.sh steht: pg_dump scheitert am
-    // Anfang der Pipe, gzip läuft durch, die Datei ist formal gültig.
+    // The case the check in backup.sh guards against: pg_dump fails at the
+    // start of the pipe, gzip runs through, the file is formally valid.
     const torso = path.join(work, 'torso.sql');
     const inhalt = fs.readFileSync(dump, 'utf8');
     fs.writeFileSync(torso, inhalt.slice(0, Math.floor(inhalt.length * 0.6)));
@@ -255,14 +255,14 @@ test('backup and restore', async t => {
   });
 
   await t.test('ON_ERROR_STOP is the difference between success and fake success', () => {
-    // Ein Dump, der mitten in einem Befehl abbricht. OHNE ON_ERROR_STOP meldet
-    // psql dafür Exit 0 — das ist die ganze Begründung für die Variable in
-    // restore.sh, und hier steht sie als Messung statt als Behauptung.
+    // A dump that breaks off in the middle of a statement. WITHOUT ON_ERROR_STOP
+    // psql reports exit 0 for it — that is the whole rationale for the variable in
+    // restore.sh, and here it stands as a measurement instead of a claim.
     const kaputt = path.join(work, 'kaputt.sql');
     fs.writeFileSync(
       kaputt,
       'CREATE TABLE sicherungsprobe (id int);\n' +
-        'INSERT INTO gibtesnicht VALUES (1);\n' + // schlägt fehl
+        'INSERT INTO gibtesnicht VALUES (1);\n' + // fails
         'INSERT INTO sicherungsprobe VALUES (2);\n',
     );
 
@@ -280,17 +280,17 @@ test('backup and restore', async t => {
   });
 
   await t.test('the scripts really use both precautions', () => {
-    // Die Skripte selbst laufen über `docker compose exec` und sind hier nicht
-    // ausführbar. Geprüft wird deshalb, dass sie die oben GEMESSENE Mechanik
-    // einsetzen — die Messung sagt, dass sie wirkt, das hier, dass sie benutzt wird.
+    // The scripts themselves run via `docker compose exec` and are not
+    // executable here. What is checked therefore is that they use the mechanism
+    // MEASURED above — the measurement says it works, this says it is used.
     const backup = fs.readFileSync(path.join(ROOT, 'scripts', 'backup.sh'), 'utf8');
     const restore = fs.readFileSync(path.join(ROOT, 'scripts', 'restore.sh'), 'utf8');
 
-    // Auf die BEFEHLSZEILE festgemacht, nicht auf das Vorkommen im Text: Beide
-    // Skripte erklären die Endmarke ausführlich im Kommentar. Ein Muster über
-    // die ganze Datei wäre allein durch die Erklärung erfüllt gewesen — beim
-    // ersten Versuch war es das auch, und die Gegenprobe blieb grün, obwohl
-    // die Prüfung entfernt war.
+    // Pinned to the COMMAND LINE, not to the occurrence in the text: both
+    // scripts explain the end marker at length in a comment. A pattern over
+    // the whole file would have been fulfilled by the explanation alone — on the
+    // first attempt it was, and the counter-check stayed green although
+    // the check had been removed.
     const withoutComment = t =>
       t
         .split('\n')
@@ -325,16 +325,16 @@ test('backup and restore', async t => {
 });
 
 /**
- * backup.sh selbst, mit einem nachgebauten `docker` auf dem PATH: Der
- * Datenschlüssel neben dem Dump machte dessen Verschlüsselung wertlos.
+ * backup.sh itself, with a rebuilt `docker` on the PATH: the
+ * data key next to the dump made its encryption worthless.
  *
- * Gegenproben (am 29.10.2026 gemessen):
- *   A  --exclude für data/.datenschluessel entfernt → rot: „der Schlüssel
- *      liegt im Archiv"
- *   B  das Kopieren nach BACKUP_SCHLUESSEL_ZIEL entfernt → rot: „… fehlt am
- *      getrennten Ort"
- *   C  (01.11.2026) SCHLUESSEL wieder fest auf data/.datenschluessel → rot:
- *      „schluessel/datenschluessel …" (meldet „keine Schlüsseldatei")
+ * Counter-checks (measured on 29.10.2026):
+ *   A  --exclude for data/.datenschluessel removed → red: “the key
+ *      is in the archive"
+ *   B  copying to BACKUP_SCHLUESSEL_ZIEL removed → red: “… missing at the
+ *      separate place"
+ *   C  (01.11.2026) SCHLUESSEL fixed to data/.datenschluessel again → red:
+ *      “schluessel/datenschluessel …" (reports “no key file")
  */
 test('backup.sh: the data key does not go into the archive', t => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'sicherung-schluessel-'));
@@ -424,19 +424,19 @@ test('backup.sh: schluessel/datenschluessel only goes to the separate location',
 });
 
 /**
- * restore.sh mit echter Datenbank: `docker` ist ein Stellvertreter, der psql,
- * postgres/app-rolle.sh und den Dienst migration gegen die Test-DB aufruft. Der
- * Dump stammt wie bei backup.sh vom Superuser und enthält eine Prüfregel, deren
- * Funktion der Migrationsrolle gehört; als Superuser eingespielt, legte sie eine
- * Superuser-Rolle an.
+ * restore.sh with a real database: `docker` is a stand-in that calls psql,
+ * postgres/app-rolle.sh and the migration service against the test DB. The
+ * dump, as with backup.sh, comes from the superuser and contains a check rule whose
+ * function belongs to the migration role; restored as superuser, it created a
+ * superuser role.
  *
- * Gegenproben (02.11.2026 gemessen):
- *   A  restore.sh spielt wieder als Superuser ein (`-U "$DB_MIGRATION_USER"` durch
- *      `-U tester` ersetzt) → rot: „Code der Migrationsrolle lief als Superuser“
- *   B  die Zeile mit `OWNER TO` im awk-Filter entfernt → rot: „ein Dump von
- *      vor der App-Rolle“ (must be able to SET ROLE)
- *   C  (04.11.) das vorangestellte \restrict entfernt → rot: „ein Backslash-Befehl
- *      mitten in einer Zeile läuft nicht“ (die Datei entstand)
+ * Counter-checks (measured 02.11.2026):
+ *   A  restore.sh restores as superuser again (`-U "$DB_MIGRATION_USER"` replaced
+ *      by `-U tester`) → red: “code of the migration role ran as superuser”
+ *   B  the line with `OWNER TO` removed in the awk filter → red: “a dump from
+ *      before the app role” (must be able to SET ROLE)
+ *   C  (04.11.) the prepended \restrict removed → red: “a backslash command
+ *      in the middle of a line does not run” (the file was created)
  */
 test('restore.sh loads as the migration role', { timeout: 240_000 }, async t => {
   const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
@@ -592,7 +592,7 @@ esac
           .rows[0].e,
         MIG,
       );
-      // Die Zeilenrechte der Laufzeitrolle kommen mit (Default Privileges der Migrationsrolle, db-rolle danach).
+      // The row privileges of the runtime role come along (default privileges of the migration role, db-rolle afterwards).
       assert.equal(
         (
           await c.query(

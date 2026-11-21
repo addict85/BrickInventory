@@ -1,10 +1,10 @@
 /**
- * BrickLink-Wanted-Listen lesen und auf Rebrickable-Nummern abbilden.
+ * Read BrickLink wanted lists and map them to Rebrickable numbers.
  *
- * ── Gegenproben (durchgeführt, Befunde GEMESSEN — siehe Commit) ─────────────
+ * ── Counter-checks (performed, findings MEASURED — see commit) ──────────────
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
- * REQUIRE_DB=1. Die reinen Lesefälle brauchen keine DB und laufen immer.
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
+ * REQUIRE_DB=1. The pure reading cases need no DB and always run.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -23,7 +23,7 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-/** Ein ITEM-Block in Marcos Schreibweise. */
+/** An ITEM block in Marco's notation. */
 function item(typ, id, farbe, menge = 1, zustand = 'X', preis = '-1.0000') {
   return `<ITEM>
 <ITEMTYPE>${typ}</ITEMTYPE>
@@ -37,10 +37,10 @@ ${farbe === null ? '' : `<COLOR>${farbe}</COLOR>\n`}<MAXPRICE>${preis}</MAXPRICE
 const liste = (...items) => `<?xml version="1.0" encoding="UTF-8"?>\n<INVENTORY>\n${items.join('\n')}\n</INVENTORY>\n`;
 
 test('1. every item is read individually, not the file as a whole', () => {
-  // Der Fehler, den dieser Fall ausschliesst: ein Muster über die GANZE Datei
-  // legen. Dann gewinnt der erste Treffer je Feld, und aus 224 Posten wird
-  // einer. Genau diese Form hat in diesem Baum schon zweimal etwas falsch
-  // gemacht (siehe readPageByPage in src/vouchers/pdfExport.ts).
+  // The error this case rules out: laying a pattern over the WHOLE file.
+  // Then the first match per field wins, and 224 items become
+  // one. Exactly this form has already gotten something wrong twice in this
+  // tree (see readPageByPage in src/vouchers/pdfExport.ts).
   const xml = liste(item('P', '41879', 7), item('P', '973pb4536c01', 36, 2), item('P', 'x126', 95, 14));
   const r = readWantedList(xml);
   assert.equal(r.posten.length, 3, `${r.posten.length} Posten statt 3`);
@@ -59,10 +59,10 @@ test('1. every item is read individually, not the file as a whole', () => {
 });
 
 test('2. CONDITION=X means “any” and does not become N', () => {
-  // Der Zustand ist in dieser Anwendung ein Schlüsselteil (N und U sind zwei
-  // Einträge). „Egal" als N zu lesen wäre eine Entscheidung dieser Datei über
-  // etwas, das die Einstellung des Kontos bestimmt — dieselbe Regel wie beim
-  // Merklisten-Import.
+  // In this application the condition is part of the key (N and U are two
+  // entries). Reading "any" as N would be a decision of this file about
+  // something the account's setting determines — the same rule as for the
+  // wishlist import.
   const r = readWantedList(
     liste(item('P', '3001', 4, 1, 'X'), item('P', '3002', 4, 1, 'N'), item('P', '3003', 4, 1, 'U')),
   );
@@ -73,17 +73,17 @@ test('2. CONDITION=X means “any” and does not become N', () => {
 });
 
 test('3. MAXPRICE=-1 is not a price', () => {
-  // -1.0000 steht in ALLEN 224 Posten von Marcos Datei. Als Zahl übernommen
-  // ergäbe das einen Kaufpreis von minus einem Franken.
+  // -1.0000 is in ALL 224 items of Marco's file. Taken over as a number
+  // that would give a purchase price of minus one franc.
   const r = readWantedList(liste(item('P', '3001', 4, 1, 'X', '-1.0000'), item('P', '3002', 4, 1, 'X', '2.5000')));
   assert.equal(r.posten[0].maxPreis, null, 'Aus -1 wurde ein Preis');
   assert.equal(r.posten[1].maxPreis, 2.5);
 });
 
 test('4. foreign kinds are counted, not swallowed', () => {
-  // B (Book), G (Gear), I (Instruction) führt diese Anwendung nicht. Wer eine
-  // Liste mit Zubehör hochlädt, soll LESEN, dass davon etwas liegenblieb —
-  // eine stille Lücke sieht aus wie ein vollständiger Import.
+  // B (Book), G (Gear), I (Instruction) are not kept by this application. Whoever
+  // uploads a list with accessories should READ that some of it was left behind —
+  // a silent gap looks like a complete import.
   const r = readWantedList(
     liste(
       item('P', '3001', 4),
@@ -114,8 +114,8 @@ test('5. an item without ITEMID is counted, not guessed', () => {
 });
 
 test('6. entities are resolved, and & last', () => {
-  // &amp; MUSS zuletzt ersetzt werden: Sonst wird aus „&amp;lt;" erst „&lt;"
-  // und dann „<" — eine Zeichenkette, die nie dort stand.
+  // &amp; MUST be replaced last: otherwise "&amp;lt;" first becomes "&lt;"
+  // and then "<" — a string that was never there.
   const r = readWantedList(liste(item('P', 'A&amp;B', 4)));
   assert.equal(r.posten[0].blId, 'A&B');
   const r2 = readWantedList(liste(item('P', 'A&amp;lt;B', 4)));
@@ -139,7 +139,7 @@ test('the local resolution separates mapping from guess', { concurrency: 1 }, as
     c.release();
   }
 
-  // Drei Lagen, eine je Stufe — und eine vierte ohne alles.
+  // Three situations, one per stage — and a fourth without anything.
   await db.run(`INSERT INTO part_catalog (part_number, part_name)
                 VALUES ('3001','Brick 2x4'), ('98765','Umgetauft'), ('11111','Nur im Katalog')`);
   await db.run(`INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES
@@ -150,11 +150,11 @@ test('the local resolution separates mapping from guess', { concurrency: 1 }, as
 
   const posten = readWantedList(
     liste(
-      item('P', '4162', 5), // Stufe 1 — Zuordnung
-      item('P', '3001', 1), // Stufe 2 — gleich vermerkt
-      item('P', '11111', 5), // Stufe 3 — nur Katalogtreffer
+      item('P', '4162', 5), // stage 1 — mapping
+      item('P', '3001', 1), // stage 2 — registered as identical
+      item('P', '11111', 5), // stage 3 — catalog hit only
       item('P', '99999', 5), // nichts
-      item('P', '3001', 77), // Nummer ja, Farbe unbekannt
+      item('P', '3001', 77), // number yes, color unknown
     ),
   ).posten;
 
@@ -168,9 +168,9 @@ test('the local resolution separates mapping from guess', { concurrency: 1 }, as
   });
 
   await t.test('stage 2: “no deviating number” is also a mapping', () => {
-    // Migration 0037 erklaert diesen NULL-Wert ausdruecklich als Vermerk,
-    // nicht als Fehlen. Ihn wie einen Katalogtreffer zu zaehlen waere eine
-    // Abbildung zur Vermutung herabgestuft.
+    // Migration 0037 explicitly declares this NULL value a registration,
+    // not an absence. Counting it like a catalog hit would be a
+    // mapping downgraded to a guess.
     assert.equal(auf[1].rbId, '3001');
     assert.equal(
       auf[1].sicherheit,
@@ -198,10 +198,10 @@ test('the local resolution separates mapping from guess', { concurrency: 1 }, as
   });
 
   await t.test('an unknown color does not make the item fail', () => {
-    // Die Nummer ist da, nur die Farbe nicht. Den ganzen Posten zu verwerfen
-    // hiesse, ein bekanntes Teil wegen einer fehlenden Farbzuordnung
-    // liegenzulassen; den Posten ohne Hinweis anzulegen hiesse, eine falsche
-    // Farbe zu behaupten. Deshalb: Nummer ja, `farbeOffen` gesetzt.
+    // The number is there, only the color is not. Discarding the whole item
+    // would mean leaving a known part behind because of a missing color
+    // mapping; creating the item without a hint would mean claiming a wrong
+    // color. Hence: number yes, `farbeOffen` set.
     assert.equal(auf[4].rbId, '3001');
     assert.equal(auf[4].rbFarbe, null);
     assert.equal(
@@ -209,7 +209,7 @@ test('the local resolution separates mapping from guess', { concurrency: 1 }, as
       true,
       'Die offene Farbe wird nicht gemeldet — dann legt der Import sie still falsch an',
     );
-    // Gegenrichtung: Bei den vier anderen ist nichts offen.
+    // Opposite direction: for the four others nothing is open.
     assert.deepEqual(
       auf.slice(0, 4).map(a => a.farbeOffen),
       [false, false, false, false],
@@ -218,16 +218,16 @@ test('the local resolution separates mapping from guess', { concurrency: 1 }, as
 });
 
 /**
- * Was der Schreibweg mit `farbeOffen` tut. Gegenproben, je eine Änderung in
+ * What the write path does with `farbeOffen`. Counter-checks, one change each in
  * src/wanted/wantedList.ts:
- *   A  `a.farbeOffen` aus der Abbruchbedingung entfernt (Posten mit `color_id: 0`)
- *      → rot: „eine offene Farbe wird nicht erfunden“, „ein zweiter Lauf stockt auf“,
- *      „in der Vorschau wird nichts geschrieben“
- *   B  `color_name`/`color_hex` nicht übergeben → rot: „die Farbe reist mit Namen …“
- *   C  `action` des Anlegers ignoriert → rot: „ein zweiter Lauf stockt auf …“
- *   M  `unit_price` weggelassen → rot: „MAXPRICE wird zum Kaufpreis“
- *   N  `unit_price` auch bei MAXPRICE=-1 (als null) → rot: ebenda; das Feld muss
- *      FEHLEN, nur dann gilt der Marktpreis
+ *   A  `a.farbeOffen` removed from the abort condition (item with `color_id: 0`)
+ *      → red: “an open color is not invented”, “a second run tops up instead of creating”,
+ *      “nothing is written in the preview”
+ *   B  `color_name`/`color_hex` not passed → red: “the color travels with name …”
+ *   C  `action` of the creator ignored → red: “a second run tops up …”
+ *   M  `unit_price` omitted → red: “MAXPRICE becomes the purchase price …”
+ *   N  `unit_price` also for MAXPRICE=-1 (as null) → red: same place; the field must
+ *      BE ABSENT, only then does the market price apply
  */
 test('the import invents no color and writes its name', { concurrency: 1 }, async t => {
   try {
@@ -236,7 +236,7 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
     keineDb(t, e);
     return;
   }
-  // Derselbe Unterbau wie oben — der Fall läuft eigenständig.
+  // The same scaffolding as above — the case runs on its own.
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
@@ -249,10 +249,10 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
   await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ('3001','Brick 2x4')`);
   await db.run(`INSERT INTO rb_colors (id, name, rgb, bl_color_id) VALUES (4,'Red','C91A09',5)`);
 
-  // BL-Farbe 5 ist abbildbar, 85 nicht — genau Marcos Lage.
+  // BL color 5 can be mapped, 85 cannot — exactly Marco's situation.
   const xml = `<INVENTORY>${item('P', '3001', 5, 10)}${item('P', '3001', 85, 7)}</INVENTORY>`;
 
-  /** Ein Anleger, der nur mitschreibt. `action` wie addManualPart. */
+  /** A creator that only records. `action` like addManualPart. */
   function zaehler(secondRun = false) {
     const gesehen = [];
     return {
@@ -302,7 +302,7 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
   });
 
   await t.test('MAXPRICE becomes the purchase price — and -1 stays none', async () => {
-    // Marcos Entscheidung vom 21.10.
+    // Marco's decision of 21.10.
     const z = zaehler();
     await importiereWantedListe(
       1,
@@ -339,17 +339,17 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
   });
 
   await t.test('nothing is written in the preview', () => {
-    // Die Gegenrichtung: Der Fall oben wäre auch grün, wenn der Import
-    // überhaupt nichts mehr schriebe.
+    // The opposite direction: the case above would also be green if the import
+    // wrote nothing at all any more.
     assert.equal(bericht.vorschau, false, 'Dieser Lauf war keine Vorschau');
     assert.equal(bericht.angelegt, 1, 'Der abbildbare Posten muss angelegt werden');
   });
 
-  // Abbrechen
+  // Abort
 
   await t.test('an abort stops after at most ten items', async () => {
-    // 25 abbildbare Posten derselben Nummer in verschiedenen Mengen; die
-    // Abbildung steht in der Datenbank (siehe oben, 3001 → Farbe 4).
+    // 25 mappable items of the same number in different quantities; the
+    // mapping is in the database (see above, 3001 → color 4).
     const viele = `<INVENTORY>${Array.from(
       { length: 25 },
       (_, i) =>
@@ -380,8 +380,8 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
   });
 
   await t.test('without an abort the list runs through', async () => {
-    // Die Gegenrichtung: Der Fall oben wäre auch grün, wenn der Import nach
-    // zehn Posten IMMER anhielte.
+    // The opposite direction: the case above would also be green if the import
+    // ALWAYS stopped after ten items.
     const viele = `<INVENTORY>${Array.from(
       { length: 25 },
       (_, i) =>
@@ -397,8 +397,8 @@ test('the import invents no color and writes its name', { concurrency: 1 }, asyn
   });
 
   await t.test('in the PREVIEW nothing is asked at all', async () => {
-    // Eine Vorschau schreibt nichts; es gibt nichts abzubrechen, und eine
-    // Datenbankabfrage alle zehn Posten wäre reine Last.
+    // A preview writes nothing; there is nothing to abort, and a
+    // database query every ten items would be pure load.
     const viele = `<INVENTORY>${Array.from(
       { length: 25 },
       (_, i) =>

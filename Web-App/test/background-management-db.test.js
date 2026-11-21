@@ -1,26 +1,26 @@
 /**
- * Die Hintergrundarbeiten in der Verwaltung (routes/api_v1/admin.ts,
- * src/management/background.ts) über die echte Route: Auftragsliste, Abbrechen,
- * Wiederholen, Leeren, Jetzt — und die alten Adressen (brickset-queue,
- * job-status, job-schedule, trigger-price-job) liefern ihre Felder weiter.
+ * The background jobs in the administration (routes/api_v1/admin.ts,
+ * src/management/background.ts) via the real route: job list, cancel,
+ * retry, clear, now — and the old addresses (brickset-queue,
+ * job-status, job-schedule, trigger-price-job) keep delivering their fields.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in emptyKind() die Ausnahme für `plan:%` entfernt → rot: „Leeren
- *      verwirft Wartende, nicht den Zeitplan“
- *   B  in auftragAbbrechen() planeNext() entfernt → rot: „ein
- *      abgebrochener geplanter Lauf hinterlässt den nächsten Termin“
- *   C  in rescheduleJobs() scheduleChanged('preise') entfernt → rot: „ein
- *      neues Intervall verschiebt den offenen Termin“
- *   D  in bricksetList() `to_char(…)` durch den rohen Zeitstempel ersetzt →
- *      rot: „die Brickset-Liste behält ihre Felder“ (retry_after kein Datum)
+ * Counter-checks (measured on 30.10.2026):
+ *   A  in emptyKind() the exception for `plan:%` removed → red: “clearing
+ *      discards waiting ones, not the schedule”
+ *   B  in auftragAbbrechen() planeNext() removed → red: “an
+ *      aborted scheduled run leaves the next date”
+ *   C  in rescheduleJobs() scheduleChanged('preise') removed → red: “a
+ *      new interval moves the open date”
+ *   D  in bricksetList() `to_char(…)` replaced by the raw timestamp →
+ *      red: “the Brickset list keeps its fields” (retry_after not a date)
  *
- * Seit Migration 0110 (am 13.11.2026 gemessen):
- *   E  in jobsInOverview() wieder 'fehler' und 'abgebrochen' als Vorgabe →
- *      rot: „die Liste zeigt nur Anstehende …“ (beendete stehen in der Liste)
- *   F  in setMoved() `waiting = NOT $3` entfernt → rot: derselbe Test
- *      (waiting false statt true)
+ * Since migration 0110 (measured on 13.11.2026):
+ *   E  in jobsInOverview() again 'fehler' and 'abgebrochen' as default →
+ *      red: “the list shows only pending ones …” (finished ones are in the list)
+ *   F  in setMoved() `waiting = NOT $3` removed → red: the same test
+ *      (waiting false instead of true)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -78,10 +78,10 @@ test('background jobs in the admin', { concurrency: 1 }, async t => {
       `plan:${type}`,
     ]);
 
-  // Ein Intervall aus einem früheren Lauf liesse den Termin schon richtig stehen.
+  // An interval from an earlier run would already leave the date correct.
   await db.run(`DELETE FROM global_settings WHERE key = 'price_job_interval_minutes'`);
   await Z.planeAll();
-  // Ein verschobener (Kontingent) und ein abgebrochener Auftrag neben dem gescheiterten.
+  // A postponed (quota) and an aborted job next to the failed one.
   const verschoben = await A.placeJobOne('anleitung', { set_number: '44444-1' });
   const receipt = await A.belegeAuftrag(['anleitung'], 60);
   assert.equal(receipt.id, verschoben, 'der verschobene Auftrag sollte als erster belegt werden');

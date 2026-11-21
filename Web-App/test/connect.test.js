@@ -1,12 +1,12 @@
 /**
- * joinHtml() (public/js/escaping.js) hängt Stücke aus html`` aneinander, statt dass
- * rawHtml(liste.join('')) jede Zeichenkette als Markup durchlässt: Ein Trenner als
- * Text wird maskiert, eine rohe Zeichenkette in der Liste wirft.
+ * joinHtml() (public/js/escaping.js) chains pieces from html`` instead of
+ * rawHtml(liste.join('')) letting every string through as markup: a separator as
+ * text is escaped, a raw string in the list throws.
  *
- * Gegenproben (12.11.2026 gemessen, je einzeln):
- *   A  in verbinde() die Prüfung auf SicheresHtml durch `void x;` ersetzt → rot:
- *      „eine rohe Zeichenkette wirft“ (sie kam maskiert durch und fiele nicht auf)
- *   B  den Trenner ohne einsetzen() angehängt → rot: „ein Trenner als Text wird maskiert“
+ * Counter-checks (measured 12.11.2026, each alone):
+ *   A  in verbinde() the check for SicheresHtml replaced by `void x;` → red:
+ *      “a raw string throws” (it came through escaped and would not stand out)
+ *   B  the separator appended without einsetzen() → red: “a separator as text is escaped”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

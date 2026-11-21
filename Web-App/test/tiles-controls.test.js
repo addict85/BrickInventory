@@ -1,14 +1,14 @@
 /**
- * Kacheln und Merklistenzeilen: Der Papierkorb ist eine Abkürzung für die
- * Maus und steht nicht in der Tab-Folge (gelöscht wird per Tastatur im
- * Detail-Dialog); eine Merkposten-Zeile ohne Namen nennt die Setnummer einmal
- * und lässt rechts Platz für den Papierkorb. Am echten Bündel in jsdom.
+ * Tiles and wishlist rows: the trash can is a shortcut for the
+ * mouse and does not stand in the tab order (deleting via keyboard happens in the
+ * detail dialog); a wishlist item row without a name names the set number once
+ * and leaves room for the trash can on the right. On the real bundle in jsdom.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  tabindex="-1" am Papierkorb der Set-Kachel entfernt → rot: „Galerie:
- *      der Papierkorb steht nicht in der Tab-Folge“
- *   B  die Setnummer wieder immer in die Unterzeile → rot: „Merkliste: …
- *      Nummer einmal“ (2-mal)
+ * Counter-checks (measured on 28.10.2026):
+ *   A  tabindex="-1" removed on the trash can of the set tile → red: “gallery:
+ *      the trash is not in the tab order”
+ *   B  the set number again always in the subline → red: „Merkliste: …
+ *      Nummer einmal“ (2 times)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -66,7 +66,7 @@ test('wishlist: without a name the number appears once, space stays on the right
     const zeile = d.querySelector('.mk-zeile');
     const n = (zeile.textContent.match(/99999-1/g) || []).length;
     assert.equal(n, 1, `Merkliste: Nummer einmal — steht ${n}-mal da`);
-    // Den Platz hält seit dem 29.10. die Klasse (styles.css); die Zeile trägt keinen Inline-Stil mehr.
+    // Since 29.10. the class (styles.css) holds the space; the row carries no inline style any more.
     assert.equal(zeile.getAttribute('style'), null, 'die Zeile trägt wieder einen Inline-Stil');
     assert.match(
       require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public', 'styles.css'), 'utf8'),

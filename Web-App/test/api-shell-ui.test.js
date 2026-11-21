@@ -1,23 +1,23 @@
 /**
- * Auch Uploads, Downloads und Ströme laufen über die API-Hülle (api/apiRaw in
- * js/api.js) — am echten Bündel in jsdom. Dann gelten für sie dieselben
- * Regeln wie für jeden anderen Aufruf: die Sprache der Oberfläche geht mit,
- * ein 401 beendet die Sitzung sichtbar, ein Netzfehler zeigt das Band.
+ * Uploads, downloads and streams also go through the API shell (api/apiRaw in
+ * js/api.js) — on the real bundle in jsdom. Then the same rules apply to them
+ * as to every other call: the UI language goes along,
+ * a 401 visibly ends the session, a network error shows the banner.
  *
- * Gegenproben (am 05.11.2026 gemessen):
- *   A  importAlarmeCsv wieder mit `fetch('/api/v1/alerts/import/csv', …)` →
- *      rot: „Upload trägt die Sprache“ (kein Accept-Language) und
- *      „401 beim Upload“ (die Anmeldemaske blieb verborgen)
- *   B  in apiRaw die Zeile `if (res.status === 401) melde('sitzungBeendet', path)`
- *      entfernt → rot: „401 beim Upload“
- *   C  in uploadCsv (bausteine.js) `d.skipped_hint` aus der Meldung
- *      genommen → rot: „übersprungene Zeilen“
+ * Counter-checks (measured on 05.11.2026):
+ *   A  importAlarmeCsv back with `fetch('/api/v1/alerts/import/csv', …)` →
+ *      red: “upload carries the language” (no Accept-Language) and
+ *      “401 on upload” (the login mask stayed hidden)
+ *   B  in apiRaw the line `if (res.status === 401) melde('sitzungBeendet', path)`
+ *      removed → red: “401 on upload”
+ *   C  in uploadCsv (bausteine.js) `d.skipped_hint` taken out of the message
+ *      → red: “skipped lines”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, warte } = require('./helpers/ui');
 
-/** Wählt im Alarm-Import eine CSV-Datei, wie es der Dateidialog täte. */
+/** Selects a CSV file in the alert import, as the file dialog would. */
 function chooseAlarmCsv(w) {
   const feld = w.document.getElementById('alerts-csv-file');
   const datei = new w.File(['set_number,threshold\n10294-1,100\n'], 'alarme.csv', { type: 'text/csv' });

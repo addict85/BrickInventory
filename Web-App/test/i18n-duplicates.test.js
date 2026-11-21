@@ -1,11 +1,11 @@
 /**
- * Doppelte Übersetzungsschlüssel.
+ * Duplicate translation keys.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 /**
- * Liest die Schlüssel einer Sprachdatei aus der QUELLE.
+ * Reads the keys of a language file from the SOURCE.
  */
 function keysOf(lang) {
   const src = require('./helpers/sources').localeSource(lang);

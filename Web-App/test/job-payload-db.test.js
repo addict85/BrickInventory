@@ -1,18 +1,18 @@
 /**
- * Die Nutzlast eines Auftrags hat je Art ein Schema (src/jobQueue/kinds.ts):
- * Beim Einstellen wird eine falsche abgewiesen, und der Worker übergibt nur
- * eine geprüfte. Eine Nutzlast, die ein früherer Stand geschrieben hat und
- * die nicht mehr passt, scheitert sofort endgültig und mit klarem Text.
+ * The payload of a job has a schema per kind (src/jobQueue/kinds.ts):
+ * on enqueuing a wrong one is rejected, and the worker only passes
+ * a checked one. A payload written by an earlier state that
+ * no longer fits fails finally immediately and with a clear text.
  *
- * Gegenproben (05.11.2026 gemessen):
- *   A  in placeJobOne() checkPayload() weggelassen → rot: „eine falsche
- *      Nutzlast wird beim Einstellen abgewiesen“ (die Zeile stand in der Tabelle)
- *   B  im Worker a.payload statt der geprüften übergeben → rot: „der Worker
- *      übergibt die geprüfte Nutzlast“ (das Fremdfeld kam an)
- *   C  fehlgeschlagen() ohne immediatelyFinal → rot: „eine alte Nutzlast
- *      scheitert sofort endgültig“ (Status offen für den zweiten Versuch)
+ * Counter-checks (measured 05.11.2026):
+ *   A  checkPayload() omitted in placeJobOne() → red: “a wrong
+ *      payload is rejected on enqueuing” (the row stood in the table)
+ *   B  in the worker a.payload passed instead of the checked one → red: “the worker
+ *      passes the checked payload” (the foreign field arrived)
+ *   C  fehlgeschlagen() without immediatelyFinal → red: “an old payload
+ *      fails finally immediately” (status open for the second attempt)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -43,7 +43,7 @@ test('payloads of the jobs', { concurrency: 1 }, async t => {
   });
 
   await t.test('the worker passes the checked payload', async () => {
-    // Ein Feld, das ein älterer Stand mitschrieb, erreicht den Bearbeiter nicht.
+    // A field an older state wrote along does not reach the handler.
     await db.run(`INSERT INTO jobs (type, payload, max_attempts) VALUES ('brickset', $1, 3)`, [
       JSON.stringify({ set_number: '10179-1', versuch: 2, legacyField: 'x' }),
     ]);

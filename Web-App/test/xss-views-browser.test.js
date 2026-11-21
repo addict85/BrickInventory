@@ -1,14 +1,14 @@
 /**
- * Kein Markup aus Daten: Namen, Themen, Kategorien und Lagerorte mit XSS-Nutzlast
- * durch die Hauptansichten gerendert, im echten Chrome.
+ * No markup from data: names, themes, categories and storage locations with an XSS payload
+ * rendered through the main views, in real Chrome.
  *
- * Gegenproben (gemessen):
- *   A  im Kachelnamen der Sammlung (sammlung.js) den Namen in ungeprueft()
- *      gesetzt (vor dem Umbau: esc() entfernt) → rot: „Sammlung“ mit img[onerror]
- *   B  im Lagerortfeld (lagerorte.js) esc() entfernt (vor dem Umbau) → rot:
+ * Counter-checks (measured):
+ *   A  in the collection tile name (collection.js) the name put in ungeprueft()
+ *      (before the rework: esc() removed) → red: „Sammlung“ with img[onerror]
+ *   B  esc() removed in the storage location field (storage-locations.js) (before the rework) → red:
  *      „Lagerorte“
  *
- * Ohne Chrome (CHROME_BIN) wird übersprungen; Voraussetzung: Test-DB.
+ * Without Chrome (CHROME_BIN) it is skipped; prerequisite: test DB.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -18,7 +18,7 @@ const { holdsSet, holdsPart, holdsMinifig, catalogSet } = require('./helpers/inv
 const N = `<img src=x onerror="window.__xss=1">"'><svg onload="window.__xss=2">`;
 const SPUR = 'XSS-Spur';
 
-/** Was im DOM aus der Nutzlast entstanden wäre, und ob sie als Text dasteht. */
+/** What would have arisen in the DOM from the payload, and whether it stands as text. */
 const CHECK = `(() => {
   const fremd = [...document.querySelectorAll('*')].filter(e =>
       [...e.attributes].some(a => /^on/i.test(a.name)) || (e.tagName === 'IMG' && e.getAttribute('src') === 'x'))
@@ -62,10 +62,10 @@ test('XSS payloads in the main views stay text', { concurrency: 1, timeout: 300_
     return;
   }
   const { b, bis, ruhig } = app;
-  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  // The start loads settings and prices afterwards; only then is the state settled.
   await ruhig();
 
-  /** @param {string} name @param {string} hash @param {string} [bereit] Ausdruck, der wahr wird, wenn die Daten stehen */
+  /** @param {string} name @param {string} hash @param {string} [bereit] expression that becomes true when the data is in place */
   const ansicht = async (name, hash, bereit) => {
     await t.test(name, async () => {
       await b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
@@ -92,7 +92,7 @@ test('XSS payloads in the main views stay text', { concurrency: 1, timeout: 300_
   await ansicht('Figuren', '#/minifiguren');
   await ansicht('Merkliste', '#/merkliste');
   await ansicht('Finanzen', '#/finanzen');
-  // Die Orte stehen hier in Eingabefeldern (umbenennen); der Name ist dann ein value, kein Text.
+  // The locations are in input fields here (rename); the name is then a value, not text.
   await ansicht(
     'Lagerorte',
     '#/lagerorte',

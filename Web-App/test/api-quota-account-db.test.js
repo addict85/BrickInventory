@@ -1,19 +1,19 @@
 /**
- * Ein Konto ohne Verwalterrecht verbraucht höchstens ein Viertel des
- * Tageskontingents eines Dienstes; Verwalter und Hintergrundjobs zählen nur
- * gegen das Gesamtkontingent. Ein abgewiesener Aufruf zählt auch gesamt nicht.
+ * An account without administrator rights uses at most a quarter of the
+ * daily quota of a service; administrators and background jobs only count
+ * against the total quota. A rejected call does not count in the total either.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  die Zählung je Konto in kontingentPruefenUndZaehlen entfernt → rot:
- *      „ein Konto bekommt ein Viertel …“
- *   B  bei voller Kontogrenze nicht zurückgerollt (return statt throw) → rot:
- *      „… und der abgewiesene Aufruf zählt gesamt nicht“
- *   C  (30.10.2026) die Zählung „alle Konten“ entfernt → rot: „alle
- *      Nicht-Verwalter zusammen höchstens die Hälfte“
- *   D  (30.10.2026) im Auftragsworker inNamesOfJob() weggelassen → rot:
- *      „ein Auftrag zählt beim Konto, das ihn eingestellt hat“
+ * Counter-checks (measured on 28.10.2026):
+ *   A  the per-account count removed in kontingentPruefenUndZaehlen → red:
+ *      “an account gets a quarter …”
+ *   B  not rolled back at a full account limit (return instead of throw) → red:
+ *      “… and the rejected call does not count in the total”
+ *   C  (30.10.2026) the count “all accounts” removed → red: “all
+ *      non-administrators together at most half”
+ *   D  (30.10.2026) inNamesOfJob() omitted in the job worker → red:
+ *      “a job counts for the account that enqueued it”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -56,7 +56,7 @@ test('daily quota per account', { concurrency: 1 }, async t => {
   await t.test('all non-admins together at most half', async () => {
     await k.setQuotaBack('brickset');
     const konten = [990111, 990112, 990113].map(id => ({ apiUser: { user_id: id, is_admin: 0 } }));
-    // Grenze 8: je Konto 2, alle zusammen 4. Das dritte Konto bekommt nichts mehr.
+    // Limit 8: 2 per account, 4 for all together. The third account gets nothing more.
     for (const kto of konten.slice(0, 2)) for (let i = 0; i < 2; i++) assert.equal((await zaehle(kto)).allowed, true);
     const dritter = await zaehle(konten[2]);
     assert.equal(dritter.allowed, false);
@@ -91,7 +91,7 @@ test('daily quota per account', { concurrency: 1 }, async t => {
     );
     await placeJobOne('wechselkurse', {}, { userId: uid });
     while (await w.processOne()) {
-      /* bis die Tabelle leer ist */
+      /* until the table is empty */
     }
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     assert.deepEqual(results, [true, true, false], 'Im Auftrag gilt das Viertel des Kontos');

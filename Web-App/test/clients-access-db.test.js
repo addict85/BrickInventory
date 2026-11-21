@@ -1,20 +1,20 @@
 /**
- * Klienten kennen keinen Fachbereich und keinen Prozess-Speicher: Schlüssel,
- * Kontingent und Drossel bekommt jeder Klient bei seiner Erzeugung
- * (createRebrickable(z) …), src/externalSources gibt sie ihm aus seinem Zugang.
+ * Clients know no domain area and no process store: key,
+ * quota and throttle are given to every client at its creation
+ * (createRebrickable(z) …), src/externalSources gives them to it from its access.
  *
- * Gegenproben (am 14.11.2026 gemessen):
- *   A  in clients/rebrickable.ts ein modulweites `let _z` gesetzt von jedem
- *      createRebrickable(z) und in getRbKey() statt `z` gelesen (der frühere
- *      verdrahteKlienten(): der letzte gewinnt) → rot: „zwei Klienten …“
- *      (beide Abrufe trugen „key zweiter“)
- *   B  in createForeignSources() `schluessel: async () => ''` → rot: „über die
- *      Dienste tragen Abrufe …“ (kein Abruf, Ergebnis null)
+ * Counter-checks (measured on 14.11.2026):
+ *   A  in clients/rebrickable.ts a module-wide `let _z` set by every
+ *      createRebrickable(z) and read in getRbKey() instead of `z` (the former
+ *      verdrahteKlienten(): the last one wins) → red: “two clients …”
+ *      (both fetches carried “key zweiter”)
+ *   B  in createForeignSources() `schluessel: async () => ''` → red: “via the
+ *      services fetches carry …” (no fetch, result null)
  *   C  in createForeignSources() `zaehle: async () => ({ allowed: true, count: 0,
- *      limit: 0 })` → rot: derselbe Test (der Zähler bleibt stehen)
+ *      limit: 0 })` → red: the same test (the counter stands still)
  *
- * Rebrickable selbst wird nicht gefragt: https.get ist eine Attrappe.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Rebrickable itself is not asked: https.get is a dummy.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -29,7 +29,7 @@ const { dataOrSkip } = require('./helpers/db');
 
 /** @type {{ pfad: string, schluessel: string | undefined }[]} */
 const fetches = [];
-// @ts-expect-error — Attrappe mit genau dem, was src/infra/fetch.ts benutzt.
+// @ts-expect-error — dummy with exactly what src/infra/fetch.ts uses.
 https.get = (url, opts, cb) => {
   const u = new URL(url);
   fetches.push({ pfad: u.pathname, schluessel: /** @type {any} */ (opts)?.headers?.Authorization });
@@ -47,7 +47,7 @@ https.get = (url, opts, cb) => {
   return req;
 };
 
-/** Ein Zugang ohne Datenbank: fester Schlüssel, freies Kontingent, Drossel ohne Warten. */
+/** An access without a database: fixed key, free quota, throttle without waiting. */
 const accessWith = schluessel => {
   const frei = { waitForSlot: async () => {}, throttle: () => {} };
   return {

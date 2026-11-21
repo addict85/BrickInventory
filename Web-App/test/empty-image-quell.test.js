@@ -1,20 +1,20 @@
 /**
- * Kein Bild bekommt ein leeres `src`: Der Browser löste es gegen die Adresse
- * der Seite auf, lüde sie als Bild und der Fehlerlauscher meldete das in der
- * Konsole. Beobachtet wird in jsdom jede Änderung eines src-Attributs, beim
- * Start, beim Wiederholversuch nach einem Ladefehler und beim Zoom.
+ * No image gets an empty `src`: the browser resolved it against the page's
+ * address, loaded it as an image and the error listener reported that in the
+ * console. Every change of an src attribute is observed in jsdom, at
+ * startup, at the retry after a loading error and at zoom.
  *
- * Gegenproben (05.11.2026, je einzeln, Bündel neu gebaut):
- *   A  closeImageLightbox() mit `G('lightbox-img').src = ''` → „Zoom schliessen …“ rot
- *   B  aktionen.js Wiederholversuch mit `el.src = ''` statt removeAttribute
- *      → „ein Ladefehler …“ rot
- *   C  `<img id="lightbox-img" src="">` in index.html → „beim Start …“ rot
+ * Counter-checks (05.11.2026, each alone, bundle rebuilt):
+ *   A  closeImageLightbox() with `G('lightbox-img').src = ''` → “close zoom …” red
+ *   B  aktionen.js retry with `el.src = ''` instead of removeAttribute
+ *      → “a loading error …” red
+ *   C  `<img id="lightbox-img" src="">` in index.html → “at startup …” red
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi } = require('./helpers/ui');
 
-/** Öffnet die Oberfläche und zeichnet jedes leere src auf, auch das aus dem Markup. */
+/** Opens the UI and records every empty src, also the one from the markup. */
 async function withObserver(antworten = {}) {
   const leer = [];
   const o = await openUi(antworten, {
@@ -22,7 +22,7 @@ async function withObserver(antworten = {}) {
       new w.MutationObserver(ms => {
         for (const m of ms) {
           const ziel = /** @type {any} */ (m.target);
-          // oldValue fängt auch ein leeres src, das im selben Takt wieder überschrieben wurde.
+          // oldValue also catches an empty src that was overwritten again in the same tick.
           if (
             m.type === 'attributes' &&
             ziel.tagName === 'IMG' &&
@@ -98,7 +98,7 @@ test('a load error retries without an empty src', async () => {
     }).observe(img, { attributes: true, attributeFilter: ['src'] });
     img.dispatchEvent(new w.Event('error'));
     assert.equal(img.dataset.retried, '1');
-    // Der Wiederholversuch nimmt die Adresse nach einer Sekunde weg und setzt sie neu.
+    // The retry removes the address after one second and sets it anew.
     assert.ok(await warte(() => wechsel >= 2, 3000), 'kein Wiederholversuch');
     assert.equal(img.src, vorher);
     assert.deepEqual(leer, []);

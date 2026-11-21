@@ -1,6 +1,6 @@
 /**
- * Der Papierkorb steht nur an SELBST hochgeladenen Anleitungen. Die App liest dasselbe
- * Feld (is_manual); dass ihr Modell es kennt, prüft der Android-Lauf gegen den Vertrag.
+ * The trash only stands at SELF-uploaded instructions. The app reads the same
+ * field (is_manual); that its model knows it is checked by the Android run against the contract.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -22,8 +22,8 @@ test('instructions: the server says which one was uploaded by the user', { concu
   if (!(await dataOrSkip(t, _req))) return;
 
   const USER = `anlh-${process.pid}`;
-  // Endet auf "-<Ziffern>", damit withVersion() nichts anhaengt: shared_
-  // instructions wird unter der Nummer MIT Versionsanhang gelesen.
+  // Ends in "-<digits>" so that withVersion() appends nothing: shared_
+  // instructions is read under the number WITH version suffix.
   const SN = `70999-${process.pid}`;
 
   await db.run(`DELETE FROM users WHERE username=$1`, [USER]);
@@ -32,13 +32,13 @@ test('instructions: the server says which one was uploaded by the user', { concu
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
 
   await holdsSet(db, uid, SN, 1);
-  // Die automatische Suche: kein Konto, Datei unter /data/instructions/.
+  // The automatic search: no account, file under /data/instructions/.
   await db.run(
     `INSERT INTO shared_instructions (set_number,url,description,local_path)
                 VALUES ($1,$2,'Anleitung automatisch',$3)`,
     [SN, `https://example.invalid/${SN}.pdf`, `/data/instructions/${SN}_1.pdf`],
   );
-  // Der eigene Upload: mit Konto, Datei unter /data/uploads/<id>/.
+  // The own upload: with account, file under /data/uploads/<id>/.
   await db.run(
     `INSERT INTO instructions (user_id,set_number,url,description,local_path)
                 VALUES ($1,$2,$3,'Anleitung selbst',$3)`,
@@ -46,7 +46,7 @@ test('instructions: the server says which one was uploaded by the user', { concu
   );
 
   try {
-    // ── 1. Detail: jede Zeile traegt ihre Herkunft ─────────────────────────
+    // ── 1. Detail: every row carries its origin ────────────────────────────
     const detail = await readSet(uid, SN);
     assert.ok(detail, 'Set nicht gefunden');
     assert.equal(
@@ -70,11 +70,11 @@ test('instructions: the server says which one was uploaded by the user', { concu
       'Die selbst hochgeladene Anleitung traegt is_manual=true — nur hier ein Papierkorb',
     );
 
-    // ── 2. Gegenprobe zur alten Regel: `id != null` trennt nichts ──────────
+    // ── 2. Counter-check of the old rule: `id != null` separates nothing ───
     //
-    // Genau daran hing der Papierkorb bisher. Beide Zeilen haben eine Kennung,
-    // und die Zaehler der beiden Tabellen sind voneinander unabhaengig — die
-    // Nummern koennen sich also decken.
+    // Exactly on that the trash used to hang. Both rows have an identifier,
+    // and the counters of the two tables are independent of each other — the
+    // numbers can therefore coincide.
     assert.notEqual(
       geteilt.id,
       null,
@@ -82,7 +82,7 @@ test('instructions: the server says which one was uploaded by the user', { concu
     );
     assert.notEqual(eigene.id, null, 'Die eigene Anleitung bringt ebenfalls eine id mit');
 
-    // ── 3. Liste: dieselbe Markierung, damit die Kachel gleich zaehlt ──────
+    // ── 3. List: the same marking so that the tile counts the same ─────────
     const { sets } = await setsLesen(uid, {});
     const inList = sets.find(s => s.set_number === SN);
     assert.ok(inList, 'Set fehlt in der Galerie');
@@ -94,8 +94,8 @@ test('instructions: the server says which one was uploaded by the user', { concu
   } finally {
     await db.run(`DELETE FROM shared_instructions WHERE set_number=$1`, [SN]).catch(() => {});
     await db.run(`DELETE FROM users WHERE username=$1`, [USER]).catch(() => {});
-    // Ohne das bleibt der Verbindungspool offen und der Testlauf haengt bis
-    // zur Zeitgrenze — so halten es alle DB-Tests hier.
+    // Without that the connection pool stays open and the test run hangs until
+    // the time limit — all DB tests here do it like that.
     await db.pool.end().catch(() => {});
   }
 });

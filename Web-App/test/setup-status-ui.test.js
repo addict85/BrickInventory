@@ -1,13 +1,13 @@
 /**
- * Einrichtungsstand vor der Anmeldung — am echten Bündel in jsdom.
+ * Setup state before login — on the real bundle in jsdom.
  *
- * Gegenproben:
- *   A  data-click="einrichtungPruefen" am Knopf entfernt → rot: „der Dialog öffnet sich“
- *   B  classList.toggle('ok', …) entfernt               → rot: „bereit steht als Text“
- *   C  `G('es-liste').hidden = !!d.erledigt` entfernt   → rot: „nach Abschluss keine Liste“
- *   D  `knopf.hidden = …konfiguriert === true` verdreht → rot: „ohne Quelle bleibt der Prüfknopf“, „mit Quelle verschwindet er“
- *   E  die Zeile mit `hinweis.hidden = knopf.hidden` entfernt → rot: „der Stand zeigt je Prüfung …“ (der Hinweis wird nie sichtbar)
- *   F  es.link_hint aus en.js entfernt → rot: „englisch: Knopf und Hinweis“ und „der Stand zeigt …“ (08.11.2026)
+ * Counter-checks:
+ *   A  data-click="einrichtungPruefen" removed on the button → red: “the dialog opens”
+ *   B  classList.toggle('ok', …) removed                  → red: „bereit steht als Text“
+ *   C  `G('es-liste').hidden = !!d.erledigt` removed      → red: „nach Abschluss keine Liste“
+ *   D  `knopf.hidden = …konfiguriert === true` inverted  → red: „ohne Quelle bleibt der Prüfknopf“, „mit Quelle verschwindet er“
+ *   E  the line with `hinweis.hidden = knopf.hidden` removed → red: “the state shows … per check” (the hint never becomes visible)
+ *   F  es.link_hint removed from en.js → red: “English: button and hint” and “the state shows …” (08.11.2026)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,9 +34,9 @@ test('the state shows ready or missing per check', async () => {
   const { w, d, ruhig } = await openUi({ '/v1/einrichtung/stand': ANTWORT }, { angemeldet: false });
   try {
     await ruhig();
-    // Ohne hinterlegte Quelle gehört die Prüfung zur Ersteinrichtung und steht da.
+    // Without a stored source the check belongs to the initial setup and stands there.
     assert.equal(d.getElementById('btn-einrichtung-pruefen').hidden, false, 'ohne Quelle bleibt der Prüfknopf');
-    // Erstnutzer müssen am Knopf lesen, was geprüft wird.
+    // First-time users must read at the button what is checked.
     assert.equal(d.getElementById('btn-einrichtung-pruefen').textContent.trim(), 'Was fehlt noch zur Einrichtung?');
     const hinweis = d.getElementById('einrichtung-pruefen-hinweis');
     assert.equal(hinweis.hidden, false, 'der Hinweis steht beim Knopf');
@@ -51,7 +51,7 @@ test('the state shows ready or missing per check', async () => {
     assert.equal(d.querySelector('#es-datenbank .es-wert').textContent, 'bereit', 'bereit steht als Text');
     assert.ok(d.getElementById('es-ca').classList.contains('fehlt'));
     assert.equal(d.querySelector('#es-ca .es-wert').textContent, 'fehlt');
-    // Das fehlende Zertifikat nennt den Grund, nicht nur die Farbe.
+    // The missing certificate names the reason, not only the color.
     assert.match(d.getElementById('es-ca-fp').textContent, /CA_ZERTIFIKAT/);
     assert.equal(d.getElementById('es-ca-link').hidden, true, 'ohne Zertifikat kein Download');
     assert.match(d.getElementById('es-banner').textContent, /noch nicht abgeschlossen/);

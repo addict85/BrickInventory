@@ -1,5 +1,5 @@
 /**
- * Der Kontowechsel einer Erfassung — über die ROUTE, nicht über ein Muster.
+ * The account switch of an entry — via the ROUTE, not via a pattern.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -39,8 +39,8 @@ async function setup() {
   MAIN = await id('haupt');
   KIND = await id('kind');
   FREMD = await id('fremd');
-  // Nur haupt+kind sind ein Haushalt. `fremd` steht bewusst daneben — ohne
-  // ihn liesse sich „403 fuer ein fremdes Konto" nicht pruefen.
+  // Only haupt+kind are a household. `fremd` stands beside them on purpose — without
+  // it “403 for a foreign account" could not be checked.
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [MAIN, KIND]);
 
   await catalogSet(db, SN, { name: 'Millennium Falcon' });
@@ -51,9 +51,9 @@ async function setup() {
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name) VALUES ('sw0001','Han Solo')
                 ON CONFLICT (fig_number) DO NOTHING`);
 
-  // Set mit einer Erfassung beim Hauptkonto.
+  // Set with one entry at the main account.
   await holdsSet(db, MAIN, SN, 2, { preis: 100 });
-  // Manuelles Teil und manuelle Figur, je eine Erfassung.
+  // Manual part and manual minifigure, one entry each.
   await db.run(
     `INSERT INTO parts (user_id,part_number,color_id,source)
                 VALUES ($1,'3001',4,'manual')`,
@@ -116,7 +116,7 @@ test('an acquisition changes the account — all three kinds via their route', {
       (await besitzer('sets', 'set_number', SN)).includes(KIND),
       'Das Kind hat keine Bestandszeile bekommen — die Erfassung haengt dann in der Luft',
     );
-    // Und der Absender haelt es nicht mehr: Es war seine einzige Erfassung.
+    // And the sender no longer holds it: it was its only entry.
     assert.ok(
       !(await besitzer('sets', 'set_number', SN)).includes(MAIN),
       'Beim Absender ist die leere Set-Zeile stehengeblieben',
@@ -136,9 +136,9 @@ test('an acquisition changes the account — all three kinds via their route', {
   });
 
   await t.test('figure: the third branch, and it is not executed anywhere else', async () => {
-    // Bis hierher war fuer die Figuren NUR zugesichert, dass der Quelltext
-    // `manualEntryReassign(tx, 'fig'` enthaelt. Genau diese Art Zusicherung
-    // hat heute zweimal bestanden, waehrend der Weg kaputt war.
+    // Up to here the only assurance for the minifigures was that the source text
+    // contains `manualEntryReassign(tx, 'fig'`. Exactly this kind of assurance
+    // passed twice today while the path was broken.
     const id = await entryId('minifig_acquisitions', 'fig_number', 'sw0001');
     const a = await setze(`/api/v1/minifigs/sw0001/acquisitions/${id}`, { owner_user_id: KIND });
     assert.equal(a.status, 200, JSON.stringify(a.body));
@@ -151,9 +151,9 @@ test('an acquisition changes the account — all three kinds via their route', {
   });
 
   await t.test('an account OUTSIDE the household is rejected with 403', async () => {
-    // Bisher ein Muster: /if \(to === null\)\s*\n\s*return sendError\(req, res, 403/.
-    // Das faengt eine geloeschte Zeile — nicht eine Bedingung, die nie
-    // zutrifft, oder ein writeTargetOrNull(), das zu viel erlaubt.
+    // Previously a pattern: /if \(to === null\)\s*\n\s*return sendError\(req, res, 403/.
+    // That catches a deleted line — not a condition that never
+    // applies, or a writeTargetOrNull() that allows too much.
     await setup();
     const id = await entryId('part_acquisitions', 'part_number', '3001');
     const a = await setze(`/api/v1/parts/3001/4/acquisitions/${id}`, { owner_user_id: FREMD });
@@ -164,8 +164,8 @@ test('an acquisition changes the account — all three kinds via their route', {
         'des Haushalts darf nichts bekommen — und schon gar nicht stillschweigend das ' +
         'eigene Konto behalten.',
     );
-    // Und NICHTS ist angefasst. Ohne diese Haelfte waere der Fall auch gruen,
-    // wenn die Route erst verschoebe und dann 403 antwortete.
+    // And NOTHING is touched. Without this half the case would also be green
+    // if the route first moved and then answered 403.
     assert.deepEqual(
       await besitzer('part_acquisitions', 'part_number', '3001'),
       [MAIN],
@@ -179,9 +179,9 @@ test('an acquisition changes the account — all three kinds via their route', {
   });
 
   await t.test('the same account means "nothing to do", not "error"', async () => {
-    // Der Weg daneben: Wer auf sein eigenes Konto schiebt, bekommt 200 und
-    // `unchanged`. Ohne diesen Fall koennte die Route jeden Wechsel ablehnen
-    // und der 403-Fall darueber waere trotzdem gruen.
+    // The path beside it: whoever moves to their own account gets 200 and
+    // `unchanged`. Without this case the route could reject every switch
+    // and the 403 case above would still be green.
     const id = await entryId('part_acquisitions', 'part_number', '3001');
     const a = await setze(`/api/v1/parts/3001/4/acquisitions/${id}`, { owner_user_id: MAIN });
     assert.equal(a.status, 200, JSON.stringify(a.body));

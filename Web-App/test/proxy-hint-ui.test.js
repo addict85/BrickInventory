@@ -1,11 +1,11 @@
 /**
- * Die Hintergrundarbeiten zeigen dem Verwalter den Proxy-Hinweis aus
- * GET /api/v1/admin/jobs (proxy-hint-admin-db.test.js), in seiner Sprache
- * und mit der Adresse; ohne Hinweis steht nichts da.
+ * The background jobs show the admin the proxy hint from
+ * GET /api/v1/admin/jobs (proxy-hint-admin-db.test.js), in his language
+ * and with the address; without a hint nothing stands there.
  *
- * Gegenprobe (13.11.2026 gemessen):
- *   A  in monitor.js die Zeile mit `d.proxy_hinweis` gestrichen → rot: „der
- *      Hinweis steht unter Hintergrundarbeiten“ (Zeitüberschreitung)
+ * Counter-check (measured 13.11.2026):
+ *   A  the line with `d.proxy_hinweis` deleted in monitor.js → red: “the
+ *      hint is under background jobs” (timeout)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

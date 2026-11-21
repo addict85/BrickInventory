@@ -1,34 +1,34 @@
 /**
- * Kaufpreise in der Oberfläche (UI-Prüfung 17: H3, H4, M6, M7, M21;
- * Barrierefreiheit M5), echtes Bündel in jsdom:
- *   - Der Kaufpreis-Dialog nennt je Zeile die Währung, zeigt die Summe des
- *     Servers in Kontowährung und zieht sie nach dem Speichern nach.
- *   - Escape im Kaufpreis-Dialog gibt den Fokus an „Kaufpreise bearbeiten“
- *     im neu aufgebauten Set-Dialog zurück.
- *   - Ein USD-Kauf zeigt im Set-Detail „USD“ und den umgerechneten Betrag.
- *   - Ein geschätzter Kaufpreis trägt in den Finanzen „≈“ mit Titel, und der
- *     Hinweis unter den Kennzahlen zählt ihn.
- *   - „Set hinzufügen“ hat Währung und Kaufdatum und schickt beides; alle
- *     drei Erfassen-Dialoge haben ein Datumsfeld, „Anzahl“ heisst Anzahl.
+ * Purchase prices in the UI (UI check 17: H3, H4, M6, M7, M21;
+ * accessibility M5), real bundle in jsdom:
+ *   - The purchase price dialog names the currency per row, shows the server's
+ *     sum in account currency and updates it after saving.
+ *   - Escape in the purchase price dialog returns the focus to „Kaufpreise bearbeiten“
+ *     in the rebuilt set dialog.
+ *   - A USD purchase shows „USD“ and the converted amount in the set detail.
+ *   - An estimated purchase price carries „≈“ with a title in the finances, and the
+ *     hint below the metrics counts it.
+ *   - „Set hinzufügen“ has currency and purchase date and sends both; all
+ *     three entry dialogs have a date field, „Anzahl“ is called Anzahl.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  refreshSum(sn) in acqSave() entfernt → rot: „Kaufpreis-Dialog:
- *      Währung je Zeile, Summe zieht nach“
- *   B  in closeAcqModal das erneute focus() entfernt → rot: „Escape gibt den
- *      Fokus an den Auslöser zurück“
- *   C  in einstandZelle wieder nur einstandBetrag() → rot: „Finanzen: ≈ und
- *      Zahl der Schätzungen“
- *   D  currency/date nicht in den Rumpf von add-stream → rot: „Set
- *      hinzufügen schickt Währung und Datum“
- *   E  label for="ap-qty-inline" wieder an „Farbe“ → rot: „Erfassen-Dialoge
- *      einheitlich“
+ * Counter-checks (measured 05.11.2026, each on its own, bundle rebuilt):
+ *   A  refreshSum(sn) removed in acqSave() → red: “purchase price dialog:
+ *      currency per row, the sum follows”
+ *   B  the renewed focus() removed in closeAcqModal → red: “Escape returns
+ *      focus to the trigger”
+ *   C  in einstandZelle again only einstandBetrag() → red: “finances: ≈ and
+ *      number of estimates”
+ *   D  currency/date not in the body of add-stream → red: “adding a set
+ *      sends currency and date”
+ *   E  label for="ap-qty-inline" again on „Farbe“ → red: “entry dialogs
+ *      consistent”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, warte, takt, reiter } = require('./helpers/ui');
 
 const SN = '10326-1';
-/** Text mit einfachen Leerzeichen: Intl setzt schmale geschützte Leerzeichen vor das Währungszeichen. */
+/** Text with simple spaces: Intl puts narrow no-break spaces before the currency sign. */
 const text = s => String(s || '').replace(/\s+/g, ' ');
 const ERFASSUNGEN = [
   {
@@ -53,7 +53,7 @@ const ERFASSUNGEN = [
   },
 ];
 
-/** Set-Detail und Erfassungen; die Summe wechselt nach dem ersten PUT. */
+/** Set detail and acquisitions; the sum changes after the first PUT. */
 function antworten(stand) {
   return {
     [`/v1/sets/${SN}`]: {

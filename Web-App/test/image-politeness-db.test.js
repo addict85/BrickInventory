@@ -1,5 +1,5 @@
 /**
- * Schonender Umgang mit dem Bildserver.
+ * Gentle handling of the image server.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -10,7 +10,7 @@ const fs = require('node:fs');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-// Zeitpunkte und Gleichzeitigkeit der Downloads mitschreiben.
+// Record times and concurrency of the downloads.
 const times = [];
 const thumbTimes = [];
 let gleichzeitig = 0,
@@ -23,7 +23,7 @@ testImageWorker(null, {
     times.push(Date.now());
     gleichzeitig++;
     maxConcurrent = Math.max(maxConcurrent, gleichzeitig);
-    await new Promise(r => setTimeout(r, 30)); // „Netzwerk"
+    await new Promise(r => setTimeout(r, 30)); // “network"
     gleichzeitig--;
     return `/images/sets/${sn}.jpg`;
   },
@@ -42,9 +42,9 @@ test('the image server is queried gently', { concurrency: 1 }, async t => {
     keineDb(t, e);
     return;
   }
-  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
-  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/image-queue.js.
+  // The queue must be emptied BEFORE use, not only the own
+  // prefix — otherwise the batch takes the rows of a predecessor. Rationale
+  // and reproduction in helpers/image-queue.js.
   await emptyQueue(db);
 
   const P = `TK${process.pid}`;
@@ -76,15 +76,15 @@ test('the image server is queried gently', { concurrency: 1 }, async t => {
     });
 
     await t.test('the intervals are not all the same', () => {
-      // Ein exakt gleicher Abstand ist selbst ein Muster: Eine Heuristik, die
-      // nach Maschinen sucht, erkennt Gleichmass leichter als Unregelmässigkeit.
+      // An exactly equal spacing is itself a pattern: a heuristic that
+      // looks for machines recognizes evenness more easily than irregularity.
       const only = new Set(spacing.map(a => Math.round(a / 50)));
       assert.ok(only.size > 1, 'Alle Abstände sind gleich — die Verzögerung muss zufällig streuen');
     });
 
     await t.test('at most 30 requests per minute', () => {
-      // Die Rate ergibt sich aus Stapelgrösse und Takt; beide kommen aus dem
-      // Modul, damit der Test keine Zahl wiederholt, die sich ändern darf.
+      // The rate results from batch size and tick; both come from the
+      // module so that the test repeats no number that may change.
       const { STAPEL: stapel, TAKT_MS: takt } = _req('src/images/imageDemandRun.js');
       assert.ok(stapel > 0 && takt > 0, 'STAPEL oder TAKT_MS nicht auffindbar');
       const jeMinute = stapel * (60_000 / takt);
@@ -93,28 +93,28 @@ test('the image server is queried gently', { concurrency: 1 }, async t => {
     });
   } finally {
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
-    // Den Pool nicht schliessen — der Test darunter braucht ihn noch. Aufgeräumt
-    // wird im LETZTEN Test dieser Datei, der mit der Datenbank arbeitet.
+    // Do not close the pool — the test below still needs it. Cleanup happens
+    // in the LAST test of this file that works with the database.
   }
 });
 
 test('pure preview work is throttled too', { concurrency: 1 }, async t => {
-  // Marcos Log
+  // Marco's log
   try {
     await db.initSchemaOnce();
   } catch (e) {
     keineDb(t, e);
     return;
   }
-  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
-  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/image-queue.js.
+  // The queue must be emptied BEFORE use, not only the own
+  // prefix — otherwise the batch takes the rows of a predecessor. Rationale
+  // and reproduction in helpers/image-queue.js.
   await emptyQueue(db);
   const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   const P = `NT${process.pid}`;
   const dateien = [];
-  // Bilder liegen, Vorschauen fehlen — Marcos Lage.
+  // Images present, previews missing — Marco's situation.
   for (let i = 1; i <= 10; i++) {
     const f = path.join(SET_IMAGES_DIR, `${P}_${i}.jpg`);
     fs.writeFileSync(f, 'x');
@@ -143,13 +143,13 @@ test('pure preview work is throttled too', { concurrency: 1 }, async t => {
   } finally {
     for (const f of dateien) fs.rmSync(f, { force: true });
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']).catch(() => {});
-    // Letzter Test mit Datenbank in dieser Datei — hier wird aufgeräumt.
+    // Last test with database in this file — cleanup happens here.
     await db.pool.end().catch(() => {});
   }
 });
 
-// Gegenprobe (09.11.2026): bildUserAgent() wieder auf `BrickInventoryManager/…` → rot
-// „der Bild-Auftrag holt mit der Browser-Kennung des Proxys“.
+// Counter-check (09.11.2026): bildUserAgent() back to `BrickInventoryManager/…` → red
+// “the image job fetches with the proxy's browser identifier”.
 test("the image job fetches with the proxy's browser identifier", () => {
   const dist = path.join(ROOT, 'dist', 'src/images/setImages.js');
   assert.ok(fs.existsSync(dist), 'dist/src/images/setImages.js fehlt — erst bauen');

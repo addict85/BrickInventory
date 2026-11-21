@@ -1,5 +1,5 @@
 /**
- * Jede versionierte Referenz in index.html trägt die Version aus package.json.
+ * Every versioned reference in index.html carries the version from package.json.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,8 +14,8 @@ test('all ?v= references in index.html carry the version from package.json', () 
 
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
   const references = [...html.matchAll(/(?:src|href)="([^"]*\?v=([^"&]*))"/g)];
-  // Selbstbeweis: Findet das Muster nichts, wäre die Prüfung darunter still
-  // grün. GEMESSEN sind es acht.
+  // Self-proof: if the pattern finds nothing, the check below would be silently
+  // green. MEASURED there are eight.
   assert.ok(references.length >= 5, `Nur ${references.length} versionierte Verweise gefunden — Muster veraltet?`);
 
   const falsch = references.filter(m => m[2] !== version).map(m => `${m[1]}   (erwartet ?v=${version})`);

@@ -1,12 +1,12 @@
 'use strict';
 /**
- * Der Preisverlauf zeichnet nur Zustände, zu denen es eine Erfassung gibt.
+ * The price history only draws conditions for which there is an acquisition.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in manualPriceHistory() wieder beide Zustände fest gezeichnet
- *      (['N', 'U'] statt statesForHistory) → rot: „nur Gebraucht wird
+ * Counter-checks (measured on 30.10.2026):
+ *   A  in manualPriceHistory() again both conditions drawn fixed
+ *      (['N', 'U'] instead of statesForHistory) → red: „nur Gebraucht wird
  *      gezeichnet“
- *   B  history_new auf die gezeichneten Zustände gekürzt → rot: „die
+ *   B  history_new shortened to the drawn conditions → red: „die
  *      Rohdaten bleiben vollständig“
  */
 require('./helpers/system-frame');
@@ -55,6 +55,6 @@ test('without an entry no condition in the chart, the raw data stays', { concurr
   assert.equal(v.history_new.length, 1, 'die Rohdaten bleiben vollständig');
   assert.equal(v.history_used.length, 2);
 
-  // Ohne jede Erfassung gilt der Rückfall: beide Zustände.
+  // Without any acquisition the fallback applies: both conditions.
   assert.deepEqual(statesForHistory([], ['N', 'U']), ['N', 'U']);
 });

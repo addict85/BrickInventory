@@ -1,29 +1,29 @@
 /**
- * Eine frische Datenbank, aufgebaut wie beim ersten Start: Jede Kontospalte
- * hat einen Fremdschlüssel auf users, ein Konto lässt sich samt allem löschen,
- * und ein zweiter Start ändert am Schema nichts.
+ * A fresh database, built as at the first start: every account column
+ * has a foreign key on users, an account can be deleted including everything,
+ * and a second start changes nothing in the schema.
  *
- * Gegenproben (am 27.10. gemessen):
- *   A  Migration 0043 umbenannt in .sql.aus → rot: „jede Kontospalte hat einen
- *      Fremdschlüssel" (sieben Spalten), „ein Konto verschwindet ganz" und
- *      „das Löschen sucht über einen Index" (account_link_invites)
- *   E  in 0043 den Schlüssel auch auf parts_version_user → rot: „ein Konto
- *      verschwindet ganz" (das Löschen scheitert am Zähltrigger)
- *   B  in 0043 den Index idx_qr_login_user entfernt → rot: „das Löschen sucht
- *      über einen Index"
- *   C  der zweite Start über initSchema() statt initSchemaOnce() → rot: „ein
- *      zweiter Start ändert am Schema nichts" — initSchema legt die von 0036
- *      bis 0038 gelöschten Spalten wieder an. Darum läuft es nur einmal.
- *   F  in db/schema-stand.sql eine Spalte gelöscht → rot: „db/schema-stand.sql
- *      zeigt das Schema, das entsteht"; ebenso eine neue Migration ohne neu
- *      erzeugte Datei
- *   D  (08.11.) initSchema() ohne die Prüfung auf eine leere Datenbank → rot:
- *      „ein zweiter Start ändert am Schema nichts" und „auch ein erzwungener
- *      Lauf …" (die Basis scheitert an vorhandenen Tabellen)
+ * Counter-checks (measured on 27.10.):
+ *   A  migration 0043 renamed to .sql.aus → red: “every account column has a
+ *      foreign key” (seven columns), “an account disappears completely” and
+ *      “deleting searches via an index” (account_link_invites)
+ *   E  in 0043 the key also on parts_version_user → red: “an account
+ *      disappears completely” (the deletion fails on the counting trigger)
+ *   B  the index idx_qr_login_user removed in 0043 → red: “deleting searches
+ *      via an index”
+ *   C  the second start via initSchema() instead of initSchemaOnce() → red: “a
+ *      second start changes nothing in the schema” — initSchema creates the columns
+ *      deleted by 0036 to 0038 again. That is why it runs only once.
+ *   F  a column deleted in db/schema-stand.sql → red: “db/schema-stand.sql
+ *      shows the schema that results”; likewise a new migration without a newly
+ *      generated file
+ *   D  (08.11.) initSchema() without the check for an empty database → red:
+ *      “a second start changes nothing in the schema” and “even a forced
+ *      run …” (the base fails on existing tables)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL (darf Datenbanken anlegen).
+ * Prerequisite: test DB via TEST_DATABASE_URL (may create databases).
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -44,7 +44,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
 const KONTOSPALTEN = ['user_id', 'main_user_id', 'sub_user_id'];
-/** Bewusst ohne Schlüssel — mit Grund. */
+/** Deliberately without a key — with a reason. */
 const WITHOUT_KEY = new Map([
   ['parts_version_user.user_id', 'Die Zähltrigger schreiben dort auch beim kaskadierten Löschen eines Kontos'],
 ]);
@@ -73,8 +73,8 @@ test('fresh database', { concurrency: 1, timeout: 180_000 }, async t => {
   await admin.query(`CREATE DATABASE ${id(NAME)}`);
 
   const db = testData();
-  // Derselbe Weg wie beim Serverstart: initSchema nur beim ersten Mal, die
-  // Migrationen immer.
+  // The same path as at server start: initSchema only the first time, the
+  // migrations always.
   const starte = () => db.initSchemaOnce();
   t.after(async () => {
     await db.pool.end().catch(() => {});
@@ -128,7 +128,7 @@ test('fresh database', { concurrency: 1, timeout: 180_000 }, async t => {
       [uid],
     );
     await db.run(`INSERT INTO qr_login_tokens (token, user_id, expires_at) VALUES ('frisch', $1, NOW())`, [uid]);
-    // Bestand, damit die Zähltrigger auf parts und sets beim Löschen feuern.
+    // Inventory, so that the counting triggers on parts and sets fire on deletion.
     await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1, '3001', 5, 'manual')`, [uid]);
     await catalogSet(db, '99073-1', { name: 'Frisch' });
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '99073-1')`, [uid]);

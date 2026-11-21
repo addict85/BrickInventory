@@ -1,14 +1,14 @@
 /**
- * Die echten Markup-Helfer (escaping.js, setzeHtml/fuegeHtmlEin aus dom.js)
- * für Tests, die ein Modul ohne Bündel in einer Sandbox laufen lassen. Nachbauen
- * hiesse: Die Sandbox prüfte eine andere Maskierung als die Seite.
+ * The real markup helpers (escaping.js, setzeHtml/fuegeHtmlEin from dom.js)
+ * for tests that run a module without the bundle in a sandbox. Rebuilding them
+ * would mean: the sandbox checks a different escaping than the page.
  */
 const fs = require('node:fs');
 const path = require('node:path');
 
 const JS = path.join(__dirname, '..', '..', 'public', 'js');
 
-/** Quelltext einer exportierten Funktion, ohne `export`. */
+/** Source text of an exported function, without `export`. */
 function funktion(src, name) {
   const a = src.indexOf(`export function ${name}(`);
   if (a < 0) throw new Error(`${name}() nicht gefunden`);

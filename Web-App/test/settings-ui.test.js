@@ -1,30 +1,30 @@
 /**
- * Einstellungen: einheitliche Speichern-Knöpfe und benannte Aktionen der
- * Benutzertabelle — am echten Bündel in jsdom nach dem Übersetzen.
+ * Settings: uniform save buttons and named actions of the
+ * user table — on the real bundle in jsdom after translating.
  *
- * Gegenproben (am 28.10. gemessen):
- *   A  btn-sav-bl wieder mit data-ico="schluessel" → rot: „Speichern-Knöpfe“
- *   B  nutzerKnopf() ohne <span> mit dem Wort → rot: „Aktionen der Benutzertabelle“
- *   C  data-arg2 wieder ${u.is_admin} → rot: „Admin-Rechte entziehen“
- *   E  (29.10.) rb-key wieder type="text" → rot: „Schlüssel verdeckt, mit Knopf
- *      zum Anzeigen“; geheimUmschalten() ohne aria-pressed → rot: dieselbe
- *   F  (29.10.) id="einst-bl" entfernt → rot: „Sprungleiste zu den Abschnitten“
- *   G  (29.10.) in einstAbschnitt() preventDefault weggelassen bzw. die
- *      Klasse einst-aktiv nicht gesetzt → rot: dieselbe Prüfung
- *   D  in toggleAdmin admin_password nicht mitgeschickt → rot: „Admin-Rechte
- *      entziehen“ (am 28.10. nach dem Zusammenführen gemessen)
- *   H  (01.11.) toggleAktiv schickt is_active ohne Umkehr → rot: „Deaktivieren
- *      und Aktivieren …“
- *   J  (04.11.) nutzerAktionen() ohne die Ausnahme für das eigene Konto → rot:
- *      „Aktionen der Benutzertabelle“ (Knöpfe gegen das eigene Konto)
- *   I  (01.11.) loadSmtpSettings() blendet den Hinweis smtp-tls-altlast nicht
- *      ein → rot: „SMTP: Hinweis auf die alte Ausnahme …“
+ * Counter-checks (measured on 28.10.):
+ *   A  btn-sav-bl again with data-ico="schluessel" → red: “save buttons”
+ *   B  nutzerKnopf() without a <span> with the word → red: “actions of the user table”
+ *   C  data-arg2 again ${u.is_admin} → red: “revoking admin rights”
+ *   E  (29.10.) rb-key again type="text" → red: “key hidden, with a button
+ *      to show it”; geheimUmschalten() without aria-pressed → red: the same
+ *   F  (29.10.) id="einst-bl" removed → red: “jump bar to the sections”
+ *   G  (29.10.) in einstAbschnitt() preventDefault left out or the
+ *      class einst-aktiv not set → red: the same check
+ *   D  admin_password not sent along in toggleAdmin → red: “revoking admin
+ *      rights” (measured on 28.10. after merging)
+ *   H  (01.11.) toggleAktiv sends is_active without inversion → red: “deactivating
+ *      and activating …”
+ *   J  (04.11.) nutzerAktionen() without the exception for the own account → red:
+ *      “actions of the user table” (buttons against the own account)
+ *   I  (01.11.) loadSmtpSettings() does not show the hint smtp-tls-altlast
+ *      → red: “SMTP: hint at the old exception …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, reiter, warte } = require('./helpers/ui');
 
-// anna ist das angemeldete Konto: Gegen sich selbst gibt es keine Knöpfe.
+// anna is the logged-in account: there are no buttons against oneself.
 const NUTZER = {
   '/v1/auth/users': {
     success: true,
@@ -93,7 +93,7 @@ test('revoking admin rights sends is_admin:false', async () => {
     await warte(() => d.querySelectorAll('#users-tbl tbody tr').length === 3);
     d.querySelector('#users-tbl [data-click="toggleAdmin"][data-arg="3"]').click();
     assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Kein Dialog');
-    // Fremde Konten ändern verlangt das eigene Passwort (Verwaltungsprotokoll).
+    // Changing foreign accounts requires the own password (admin log).
     assert.equal(d.getElementById('cd-pw-wrap').hidden, false, 'Die Passwortabfrage fehlt');
     d.getElementById('cd-pw').value = 'mein-passwort';
     d.getElementById('cd-confirm').click();
@@ -155,7 +155,7 @@ test('SMTP: hint at the old exception, fingerprint and PEM go along', async () =
     assert.equal(d.getElementById('smtp-tls-fp').value, 'AB:CD');
     d.getElementById('smtp-tls-ca').value = '-----BEGIN CERTIFICATE-----';
     d.getElementById('btn-sav-smtp').click();
-    // Der Dialog leert das Passwortfeld beim Öffnen: erst eintragen, wenn er offen ist.
+    // The dialog clears the password field when opening: only enter it once it is open.
     assert.ok(await warte(() => d.getElementById('confirm-modal').style.display === 'flex'), 'Kein Passwortdialog');
     d.getElementById('cd-pw').value = 'mein-passwort';
     d.getElementById('cd-confirm').click();
@@ -168,8 +168,8 @@ test('SMTP: hint at the old exception, fingerprint and PEM go along', async () =
       [body.smtp_tls_fingerprint, body.smtp_tls_ca, body.smtp_insecure_tls],
       ['AB:CD', '-----BEGIN CERTIFICATE-----', undefined],
     );
-    // Der Hinweis verschwindet erst nach der Antwort aufs Speichern; unter Last
-    // dauert das länger als ein fester Takt.
+    // The hint only disappears after the response to saving; under load
+    // that takes longer than a fixed beat.
     await warte(() => d.getElementById('smtp-tls-altlast').style.display === 'none');
     assert.equal(d.getElementById('smtp-tls-altlast').style.display, 'none');
   } finally {
@@ -205,7 +205,7 @@ test('jump bar to the sections', async () => {
     assert.ok(ziele.length >= 6, `nur ${ziele.length} Abschnitte`);
     const fehlt = ziele.filter(z => !d.querySelector(`#global-settings-grid > .ssec${z}`));
     assert.deepEqual(fehlt, [], 'Sprungziele ohne Abschnitt im Raster');
-    // Unterseiten: genau einer aktiv, der Klick wechselt ihn und springt nicht.
+    // Subpages: exactly one active, the click switches it and does not jump.
     const aktiv = () => [...d.querySelectorAll('#global-settings-grid > .ssec.einst-aktiv')].map(s => s.id);
     assert.equal(aktiv().length, 1);
     const link = d.querySelector('.einst-nav a[data-arg="usermgmt"]');
@@ -215,7 +215,7 @@ test('jump bar to the sections', async () => {
     assert.equal(link.getAttribute('aria-current'), 'page');
     assert.equal(klick.defaultPrevented, true, 'der Link soll nicht zum Anker springen');
     assert.equal(d.querySelectorAll('.einst-nav a[aria-current]').length, 1);
-    // Die Karte mit dem Design heisst nicht mehr „Einstellungen“ in „Einstellungen“.
+    // The card with the theme is no longer called „Einstellungen“ inside „Einstellungen“.
     assert.equal(d.querySelector('#einst-design .stit').textContent.trim(), 'Erscheinungsbild');
   } finally {
     w.close();

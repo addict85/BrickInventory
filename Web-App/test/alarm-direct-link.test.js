@@ -1,11 +1,11 @@
 /**
- * Eine Meldung führt zum Set: Der Knopf in der Mail trägt `?set=` (alarm-mail-button.test.js
- * baut sie), die Webapp öffnet damit das Set-Detail und bereinigt die Adresse. Die Seite der
- * App (Benachrichtigung, Einstieg, Manifest) prüft die Android-Suite (FremderEinstiegTest,
+ * A notification leads to the set: the button in the mail carries `?set=` (alarm-mail-button.test.js
+ * builds it), the web app uses it to open the set detail and cleans up the address. The app's
+ * side (notification, entry, manifest) is checked by the Android suite (FremderEinstiegTest,
  * ManifestPruefenTest, tools/manifest-pruefen.py).
  *
- * Gegenproben (10.11.2026, jsdom): das Auslesen von ?set= in showApp() entfernt → rot;
- * history.replaceState dort entfernt → rot („nicht bereinigt“).
+ * Counter-checks (10.11.2026, jsdom): reading ?set= removed in showApp() → red;
+ * history.replaceState removed there → red (“not cleaned up”).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -31,7 +31,7 @@ test('4. and the web app redeems it', async () => {
       ),
       'Das Set-Detail öffnet sich nicht.',
     );
-    // Sonst reisst ein F5 das Detail erneut auf.
+    // Otherwise an F5 tears the detail open again.
     assert.equal(w.location.search, '', 'Die Adresse wird nicht bereinigt');
   } finally {
     w.close();

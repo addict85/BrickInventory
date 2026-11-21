@@ -1,18 +1,18 @@
 /**
- * Ein Passwort, das ein Verwalter vergibt (neues Konto oder fremdes Passwort
- * gesetzt), gilt nur bis zur ersten Anmeldung: Danach lässt der Server nur
- * den Wechsel zu (403 passwort_wechsel_noetig), erst das eigene Passwort
- * öffnet den Rest. Am echten Server (dist/server.js) mit echtem Verwalter
- * samt zweitem Faktor.
+ * A password assigned by an administrator (new account or foreign password
+ * set) only applies until the first login: afterwards the server only allows
+ * the change (403 passwort_wechsel_noetig), only the own password
+ * opens the rest. On the real server (dist/server.js) with a real administrator
+ * including second factor.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  in setPasswordHash() `must_change_password = true` entfernt → rot:
- *      „ein vom Verwalter gesetztes Passwort …“ (mustChangePassword false,
+ * Counter-checks (measured 05.11.2026, each alone):
+ *   A  in setPasswordHash() `must_change_password = true` removed → red:
+ *      “a password set by the administrator …” (mustChangePassword false,
  *      /stats 200)
- *   B  in addAccountOne() die Spalte wieder weggelassen → rot: „ein vom
- *      Verwalter angelegtes Konto …“
+ *   B  in addAccountOne() the column omitted again → red: “an account
+ *      created by the administrator …”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -113,7 +113,7 @@ test('passwords assigned by an admin only apply until the first change', {
   };
   const chefKeks = (await anmelden(CHEF, CHEF_PW, codes[0])).keks;
 
-  /** Anmelden, gesperrt bis zum Wechsel, nach dem Wechsel offen. */
+  /** Log in, locked until the change, open after the change. */
   async function onlyUntilToSwitch(name, vergeben) {
     const a = await anmelden(name, vergeben);
     assert.equal(a.user.mustChangePassword, true, 'die Anmeldung meldet den Pflichtwechsel');

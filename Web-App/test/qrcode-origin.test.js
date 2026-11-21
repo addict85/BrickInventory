@@ -1,13 +1,13 @@
 /**
- * QRCode.js steht unter Abhängigkeitsverwaltung: qrcodejs mit exakter
- * Fassung in package.json und Lockfile; public/vendor/qrcode/ ist die Kopie,
- * die scripts/copy-qrcode.js beim Bauen schreibt.
+ * QRCode.js is under dependency management: qrcodejs with an exact
+ * version in package.json and lockfile; public/vendor/qrcode/ is the copy
+ * that scripts/copy-qrcode.js writes when building.
  *
- * Gegenproben (05.11.2026, je einzeln):
- *   A  package.json "qrcodejs": "^1.0.0" → „exakte Fassung …“ rot
- *   B  ein Byte an public/vendor/qrcode/qrcode.min.js gehängt → „das Skript
- *      erzeugt genau die ausgelieferten Dateien“ rot
- *   C  in copyQrcode() die LICENSE nicht kopiert → ebenda rot
+ * Counter-checks (05.11.2026, each on its own):
+ *   A  package.json "qrcodejs": "^1.0.0" → “exact version …” red
+ *   B  a byte appended to public/vendor/qrcode/qrcode.min.js → “the script
+ *      produces exactly the shipped files” red
+ *   C  the LICENSE not copied in copyQrcode() → same place red
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,7 +38,7 @@ test('the script produces exactly the shipped files', () => {
     assert.match(r.stdout, new RegExp(`qrcodejs ${fassung.replace(/\./g, '\\.')} → public/vendor/qrcode/`));
     const kopie = path.join(ziel, 'public', 'vendor', 'qrcode');
     assert.deepEqual(fs.readdirSync(kopie).sort(), [...DATEIEN].sort());
-    // Die Pfade wörtlich: eigenbruecken.test.js lässt Pfade mit variablem Segment nicht mehr werden.
+    // The paths literally: eigenbruecken.test.js no longer lets paths with a variable segment pass.
     assert.deepEqual(DATEIEN, ['qrcode.min.js', 'LICENSE']);
     const gleich = (a, b) => fs.readFileSync(a).equals(fs.readFileSync(b));
     assert.ok(

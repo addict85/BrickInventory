@@ -1,5 +1,5 @@
 /**
- * Lagerort gegen eine echte Datenbank.
+ * Storage location against a real database.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -32,7 +32,7 @@ async function seed() {
   }
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [U.ich, U.kind]);
 
-  // Dasselbe Teil in ZWEI Sets — daran hängt die wichtigste Aussage.
+  // The same part in TWO sets — the most important statement hangs on this.
   for (const [uid, sn] of [
     [U.ich, '10179-1'],
     [U.ich, '75192-1'],
@@ -44,14 +44,14 @@ async function seed() {
   for (const [uid, sn, num, farbe] of [
     [U.ich, '10179-1', '3001', 4],
     [U.ich, '75192-1', '3001', 4],
-    // DASSELBE Teil in einer anderen Farbe. Ohne diese Zeile blieb die
-    // Gegenprobe „Farbbedingung wirkungslos" grün: In der Saat gab es 3001
-    // nur in einer Farbe, also konnte kein Farbfehler etwas treffen.
+    // THE SAME part in another color. Without this line the
+    // counter-check „Farbbedingung wirkungslos" stayed green: in the seed 3001 existed
+    // only in one color, so no color error could hit anything.
     [U.ich, '10179-1', '3001', 5],
     [U.ich, '10179-1', '3002', 4],
     [U.fremd, '10030-1', '3001', 4],
   ]) {
-    // Der Name steht seit Migration 0034 im Katalog.
+    // The name stands in the catalog since migration 0034.
     await db.run(
       `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,$2)
        ON CONFLICT (part_number) DO NOTHING`,
@@ -89,9 +89,9 @@ test('storage location against a real database', async t => {
   const writable = await household.schreibbereich(U.ich);
 
   await t.test('a part lies at ONE place, not at one per set', async () => {
-    // Dasselbe Teil steckt in zwei Sets und damit in zwei Zeilen. Träfe das
-    // Setzen nur eine davon, müsste man denselben Ort je Set nachpflegen — und
-    // die Übersicht zeigte das Teil in zwei Kisten, von denen eine leer ist.
+    // The same part is in two sets and thus in two rows. If setting
+    // hit only one of them, one would have to maintain the same place per set — and
+    // the overview showed the part in two boxes, one of which is empty.
     const n = await L.setLocation('part', writable, ['3001', '4'], 'Kiste 3');
     assert.equal(n, 2, `${n} Zeilen getroffen, erwartet 2 (beide Sets)`);
     const rows = await db.all(
@@ -112,8 +112,8 @@ test('storage location against a real database', async t => {
   });
 
   await t.test('setting stays in the write scope', async () => {
-    // Ohne diese Grenze wäre der Lagerort ein Weg, in fremden Daten zu
-    // schreiben — und zwar unauffällig, weil sich sonst nichts ändert.
+    // Without this boundary the storage location would be a way to write into foreign
+    // data — and inconspicuously at that, because nothing else changes.
     const vorher =
       (
         await db.get(
@@ -135,16 +135,16 @@ test('storage location against a real database', async t => {
       )?.storage ?? null;
     assert.equal(nachher, vorher, 'Eine fremde Zeile wurde verändert');
 
-    // Zurücksetzen: Dieselben Zeilen zählt die Übersicht weiter unten. Ohne
-    // das stand dort „Kiste 9" statt „Kiste 3" — der erste Entwurf dieser
-    // Datei ist genau darüber gestolpert, und zwar erst zwei Prüfungen
-    // später. Ein Test, der seinen Aufbau verändert, ist ein Aufbau für alle
-    // folgenden.
+    // Reset: the overview further down counts the same rows. Without
+    // that it said „Kiste 9" instead of „Kiste 3" — the first draft of this
+    // file stumbled over exactly that, and only two checks
+    // later. A test that changes its setup is a setup for all
+    // following ones.
     await L.setLocation('part', writable, ['3001', '4'], 'Kiste 3');
   });
 
   await t.test('empty means NULL, not a place called "nothing"', async () => {
-    // Ein leerer Text stünde als eigener Eintrag in jeder Auswahlliste.
+    // An empty text would stand as its own entry in every selection list.
     for (const eingabe of ['', '   ', null, undefined]) {
       assert.equal(L.normalizeLocation(eingabe), null, `„${eingabe}" wurde nicht zu null`);
     }
@@ -162,8 +162,8 @@ test('storage location against a real database', async t => {
   });
 
   await t.test('names that are too long are rejected, not truncated', async () => {
-    // Abschneiden hiesse: In der Datenbank steht etwas anderes als eingegeben,
-    // und niemand erfährt es.
+    // Truncating would mean: the database holds something other than what was entered,
+    // and nobody learns of it.
     assert.throws(() => L.normalizeLocation('x'.repeat(L.LOCATION_MAX_CHARS + 1)), /lagerort_zu_lang|zu lang/i);
     assert.equal(
       L.normalizeLocation('x'.repeat(L.LOCATION_MAX_CHARS)).length,
@@ -178,18 +178,18 @@ test('storage location against a real database', async t => {
 
     const orte = await L.lagerorte(await household.scopeIds(U.ich, 'all'));
     const karte = Object.fromEntries(orte.map(o => [o.ort, o]));
-    // „Kiste 3" hat ein Set UND zwei Teilezeilen — ein Ort, nicht zwei
-    // Einträge. Zwei getrennte Listen zu liefern hiesse, dass jede Oberfläche
-    // sie selbst zusammenführt, und zwar jede für sich.
-    // `figuren`: Auch eine Minifigur traegt einen Lagerort (Migration 0024).
+    // „Kiste 3" has a set AND two part rows — one place, not two
+    // entries. Delivering two separate lists would mean that every UI
+    // merges them itself, and each one on its own.
+    // `figuren`: a minifigure carries a storage location too (migration 0024).
     assert.deepEqual(karte['Kiste 3'], { ort: 'Kiste 3', sets: 1, teile: 2, figuren: 0 });
     assert.deepEqual(karte['Regal B'], { ort: 'Regal B', sets: 1, teile: 0, figuren: 0 });
-    // Alphabetisch — die Auswahlliste soll nicht bei jedem Aufruf anders sein.
+    // Alphabetical — the selection list should not differ on every call.
     assert.deepEqual(
       orte.map(o => o.ort),
       [...orte.map(o => o.ort)].sort(),
     );
-    // Und nichts Fremdes.
+    // And nothing foreign.
     assert.ok(!orte.some(o => o.ort === 'Kiste 9'), 'Ein fremder Ort ist aufgetaucht');
   });
 

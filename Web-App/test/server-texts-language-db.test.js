@@ -1,19 +1,19 @@
 /**
- * Servertexte folgen der Sprache der Anfrage (UI-Prüfung 17, M17): Ein
- * Preisfehler der Bewertung kommt mit Code und in der Sprache des
- * Accept-Language-Kopfs; die Kacheln der Hintergrundarbeiten tragen ihren
- * Untertitel als Codes (`sub_teile`), die die Oberfläche übersetzt. Vorher
- * stand in der englischen Oberfläche „kein BrickLink-Preis gefunden“ und
- * „Keine ausstehenden Einträge“. Echter Server; ohne BrickLink-Zugang
- * scheitert jeder Preis, wie in der Prüfumgebung.
+ * Server texts follow the language of the request (UI check 17, M17): a
+ * price error of the valuation comes with a code and in the language of the
+ * Accept-Language header; the tiles of the background jobs carry their
+ * subtitle as codes (`sub_teile`) that the UI translates. Before,
+ * the English UI showed „kein BrickLink-Preis gefunden“ and
+ * „Keine ausstehenden Einträge“. Real server; without BrickLink access
+ * every price fails, as in the test environment.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  in routes/api_v1/finance.ts `sets: uebersetzt(…)` entfernt → rot:
- *      „Preisfehler auf Englisch“ (deutscher Text)
- *   B  in fetchPrice (src/finances/calculation/prices.ts) wieder throw new
- *      Error(`… — kein BrickLink-Preis gefunden`) → rot: „Preisfehler auf
- *      Englisch“ (kein error_code)
- *   C  sub_teile der Brickset-Kachel entfernt → rot: „Kacheln mit Codes“
+ * Counter-checks (measured 05.11.2026, each on its own):
+ *   A  in routes/api_v1/finance.ts `sets: uebersetzt(…)` removed → red:
+ *      “price errors in English” (German text)
+ *   B  in fetchPrice (src/finances/calculation/prices.ts) again throw new
+ *      Error(`… — kein BrickLink-Preis gefunden`) → red: “price errors in
+ *      English” (no error_code)
+ *   C  sub_teile of the Brickset tile removed → red: “tiles with codes”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

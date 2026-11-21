@@ -1,5 +1,5 @@
 /**
- * Die Guthaben-Abfrage über ihre echte Adresse — Schranke inbegriffen.
+ * The balance query via its real address — throttle included.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -27,9 +27,9 @@ let WITH_PIN = 0,
 const NUMBER = '5045076374450011166';
 const PIN = '5225';
 
-// ── Der Ersatz für fetch ───────────────────────────────────────────────────
+// ── The replacement for fetch ───────────────────────────────────────────────────
 const protokoll = [];
-/** Was die nächste Guthaben-Abfrage antworten soll. */
+/** What the next balance query should answer. */
 let nextResponse = null;
 
 function antwort({ status = 200, json = {}, text = '', cookies = [] } = {}) {
@@ -68,7 +68,7 @@ function guthaben(cent, waehrung = 'CHF', text = null) {
   });
 }
 
-// Der Abruf an LEGO, gestellt an der Verdrahtung: Die Route reicht keinen durch.
+// The fetch to LEGO, set up at the wiring: the route passes none through.
 testSources(null, {
   legoFetch: async url => {
     const s = String(url);
@@ -79,7 +79,7 @@ testSources(null, {
   },
 });
 
-/** Die Zahl der Abfragen an den Guthaben-Endpunkt (nicht Seite/Login). */
+/** The number of queries to the balance endpoint (not page/login). */
 const abfragen = () => protokoll.filter(u => u.includes('giftCardBalanceQuery')).length;
 
 async function setup() {
@@ -104,7 +104,7 @@ async function setup() {
     .id;
 }
 
-/** Die Schranke zurücksetzen — sonst steht jeder Fall im Schatten des vorigen. */
+/** Reset the throttle — otherwise every case stands in the shadow of the previous one. */
 async function limitFree() {
   await S.forgetThrottle();
   testContext('vouchers')
@@ -113,12 +113,12 @@ async function limitFree() {
 }
 
 /**
- * Den Zeitpunkt des letzten Abrufs künstlich altern lassen.
+ * Artificially age the time of the last fetch.
  *
- * 30 Sekunden wirklich abzuwarten wäre ein Test, der eine halbe Minute
- * stillsteht — bei zwei Fällen eine Minute, und der Lauf hat 1400 Tests. Die
- * Uhr der Schranke steht in der Datenbank, also wird dort gealtert; geprüft
- * wird damit genau die Rechnung, die im Betrieb gilt.
+ * Really waiting 30 seconds would be a test that stands still for half a minute
+ * — a minute with two cases, and the run has 1400 tests. The
+ * clock of the throttle stands in the database, so the aging happens there; thus
+ * exactly the calculation that applies in production is checked.
  */
 async function lastFetchBefore(seconds) {
   await db.run(
@@ -195,8 +195,8 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
   });
 
   await t.test('3. the limit applies ACROSS ALL USERS', async () => {
-    // Marcos Nachtrag: „(über alle Benutzer)". Ein Zähler je Konto oder je
-    // Arbeitsprozess wäre hier grün und in Wahrheit N-mal so hoch.
+    // Marco's addendum: „(über alle Benutzer)". A counter per account or per
+    // worker process would be green here and in truth N times as high.
     const vorher = abfragen();
     const r = await abfrage(fremdSrv.base, FOREIGN);
     const d = await r.json();
@@ -230,8 +230,8 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     assert.equal(r.status, 400, `Antwort ${r.status}: ${JSON.stringify(d)}`);
     assert.equal(d.code, 'guthaben_pin_fehlt');
     assert.equal(abfragen(), vorher, 'Ohne PIN hat LEGO nichts zu antworten');
-    // Und jetzt der eigentliche Punkt: Die Absage darf den einen Platz je
-    // 30 Sekunden NICHT verbraucht haben.
+    // And now the actual point: the refusal must NOT have used up the one slot per
+    // 30 seconds.
     nextResponse = guthaben(777);
     const r2 = await abfrage(srv.base, WITH_PIN);
     assert.equal(
@@ -291,7 +291,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
       `Die Guthabenseite wurde nicht für de-DE geladen: ${JSON.stringify(protokoll)}. ` +
         'Eine Karte gilt nur im Shop ihres Ausgabelandes — das Land ist keine Zierde.',
     );
-    // Und die Währung der Gegenseite gewinnt, aber nicht stillschweigend.
+    // And the currency of the other side wins, but not silently.
     assert.equal(d.voucher.currency, 'EUR');
     assert.equal(
       d.waehrung_geaendert,
@@ -312,8 +312,8 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     assert.ok(d.wartenSek > 60, `wartenSek = ${d.wartenSek} — eine Bot-Sperre ist keine Sache von Sekunden`);
     assert.ok(/Bot|bot/.test(d.error), `Der Satz sagt nicht, worum es geht: ${d.error}`);
 
-    // Der Platz ist auch nach 31 Sekunden noch zu: Die SPERRE gilt, nicht der
-    // Abstand. Genau das ist Marcos „dass nicht mehr Aufrufe generiert werden".
+    // The slot is still closed after 31 seconds: the LOCK applies, not the
+    // distance. Exactly that is Marco's „dass nicht mehr Aufrufe generiert werden".
     await lastFetchBefore(31);
     const vorher = abfragen();
     nextResponse = guthaben(25000);
@@ -323,7 +323,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     assert.equal(d2.grund, 'botschutz', 'Nach einem Bot-Schutz-Treffer gilt die Pause');
     assert.equal(abfragen(), vorher, 'Und es geht dabei nichts hinaus');
 
-    // Dasselbe für das fremde Konto — die Sperre ist installationsweit.
+    // The same for the foreign account — the lock is installation-wide.
     const r3 = await abfrage(fremdSrv.base, FOREIGN);
     assert.equal(r3.status, 429);
     assert.equal((await r3.json()).grund, 'botschutz');
@@ -342,9 +342,9 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
       'Eine Karte ohne Guthaben ist eine AUSKUNFT — „0" ist das Ergebnis, nicht ' + 'ein Fehler der Abfrage.',
     );
 
-    // Und der Nachsatz, der ohne Nachmessen durchgerutscht wäre: checkValues
-    // weist amount <= 0 ab. Wer danach die PIN ändert, schickt keinen Betrag
-    // mit — der gespeicherte 0 ginge durch dieselbe Prüfung.
+    // And the postscript that would have slipped through without re-measuring: checkValues
+    // rejects amount <= 0. Whoever changes the PIN afterwards sends no amount
+    // along — the stored 0 would go through the same check.
     const p = await fetch(`${srv.base}/api/v1/vouchers/${WITH_PIN}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -367,7 +367,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
       '9999',
     );
     assert.equal(pd.voucher.amount, 0, 'Und der Betrag bleibt, was er war');
-    // Ein von Hand eingetippter Nullbetrag bleibt verboten.
+    // A zero amount typed in by hand stays forbidden.
     const n = await fetch(`${srv.base}/api/v1/vouchers/${WITH_PIN}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -383,11 +383,11 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
 
   await t.test('11. an error of the other side is reported, not swallowed', async () => {
     await limitFree();
-    // Die PIN wird AUS DER TABELLE gelesen und nicht aus der Konstanten oben:
-    // Fall 10 hat sie auf „9999" geändert. Mein erster Entwurf nahm `PIN` und
-    // meldete einen Leck, den es nicht gab — der Text enthielt eine Ziffernfolge,
-    // die gar nicht mehr die PIN dieser Karte war. Die Zusicherung muss gegen
-    // DEN Wert prüfen, den die Route an verdecke() gibt.
+    // The PIN is read FROM THE TABLE and not from the constant above:
+    // case 10 changed it to „9999". My first draft took `PIN` and
+    // reported a leak that did not exist — the text contained a digit sequence
+    // that was no longer the PIN of this card at all. The assertion must check against
+    // THE value that the route passes to verdecke().
     const pinRow = await db.get('SELECT user_id, pin FROM vouchers WHERE id=$1', [WITH_PIN]);
     const pinNow = _req('src/infra/secret.js').decrypt(
       pinRow.pin,
@@ -402,7 +402,7 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     assert.ok(!d.error.includes(NUMBER), `Die ganze Kartennummer steht in der Antwort: ${d.error}`);
     assert.ok(d.error.includes('1166'), 'Die letzten vier Ziffern dürfen stehen — sonst weiss niemand, welche Karte');
 
-    // Der Platz IST verbraucht: Die Anfrage wurde abgesetzt.
+    // The slot IS used up: the request was sent.
     const vorher = abfragen();
     const r2 = await abfrage(srv.base, WITH_PIN);
     assert.equal(
@@ -414,10 +414,10 @@ test('balance: the route and the barrier', { concurrency: 1 }, async t => {
     assert.equal(abfragen(), vorher);
   });
 
-  // Gegenproben (02.11.2026 gemessen): die Prüfung kontoStand() aus claimSlot()
-  // entfernt → rot (200 statt 429); zaehleKonto() entfernt → rot („eine Abfrage
-  // zählt für ihr Konto“); die Kontoprüfung NACH die Sperre gelegt → rot (grund
-  // „botschutz“ statt „konto“).
+  // Counter-checks (measured 02.11.2026): the check kontoStand() removed from claimSlot()
+  // → red (200 instead of 429); zaehleKonto() removed → red (“a query
+  // counts for its account”); the account check put AFTER the lock → red (grund
+  // „botschutz“ instead of „konto“).
   await t.test('12. the per-account limit applies before the one for all and before bot protection', async () => {
     const zaehler = async uid =>
       (await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [`guthaben-konto|${uid}`]))?.count ?? 0;

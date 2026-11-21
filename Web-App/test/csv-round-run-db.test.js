@@ -1,17 +1,17 @@
 /**
- * Was der CSV-Export schreibt, liest der Import wieder ein — für Sets, Teile
- * und Figuren. Geprüft am Rundlauf selbst: Konto A erfasst, exportiert;
- * die Datei geht in Konto B (Sets: durch den Zeilenleser des Imports), und
- * Menge, Preis, Zustand, Farbe und Datum kommen unverändert an.
+ * What the CSV export writes, the import reads back in — for sets, parts
+ * and minifigures. Checked on the round trip itself: account A enters, exports;
+ * the file goes into account B (sets: through the import's line reader), and
+ * quantity, price, condition, color and date arrive unchanged.
  *
- * Gegenproben (am 29.10.2026 gemessen):
- *   A  in importPartsCsv() die Farbe nicht mehr lesen (immer KEINE_FARBE)
- *      → rot: „Teile kommen unverändert an“ (color_id 4 → 9999)
- *   B  in csvSharedFields() acquired_at nicht mehr lesen → rot: „Teile …“
- *      und „Figuren …“ (Datum des Imports statt des Kaufs)
- *   C  in setCsvRows() den Zustand nicht mehr lesen → rot: „Sets …“
+ * Counter-checks (measured on 29.10.2026):
+ *   A  in importPartsCsv() no longer read the color (always KEINE_FARBE)
+ *      → red: “parts arrive unchanged” (color_id 4 → 9999)
+ *   B  in csvSharedFields() no longer read acquired_at → red: “parts …”
+ *      and “minifigures …” (date of the import instead of the purchase)
+ *   C  in setCsvRows() no longer read the condition → red: “sets …”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -42,7 +42,7 @@ test('CSV round trip: export and import fit together', { concurrency: 1 }, async
   for (const u of [A, B])
     await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')`, [u]);
 
-  // Konto A: je Art zwei Käufe mit allen Feldern, die der Export kennt.
+  // Account A: two purchases per kind with all fields the export knows.
   await db.run(`INSERT INTO parts (user_id, part_number, color_id, source) VALUES ($1,'RL3001',4,'manual')`, [A]);
   await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name) VALUES ('RL3001',4,'Red')
                 ON CONFLICT (part_number, color_id) DO NOTHING`);

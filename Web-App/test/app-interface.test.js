@@ -1,14 +1,14 @@
 /**
- * Was die Android-App vom Server braucht, steht in shared/app-schnittstelle.json (erzeugt aus
- * ihrem Quelltext, im Android-Lauf auf Stand geprüft). Der Server muss es weiter anbieten:
- * jede Route im Vertrag, mit den Abfrageparametern und Rumpffeldern, die die App schickt.
- * Ob die Kotlin-Modelle die Antworten lesen können, prüft die Android-Seite
+ * What the Android app needs from the server is in shared/app-schnittstelle.json (generated from
+ * its source text, checked for currency in the Android run). The server must keep offering it:
+ * every route in the contract, with the query parameters and body fields the app sends.
+ * Whether the Kotlin models can read the responses is checked by the Android side
  * (Android-App/tools/vertrag/vertrag-kotlin.test.js).
  *
- * Gegenproben (14.11.2026 gemessen, je einzeln, zurückgenommen):
- *   A  im Vertrag 'GET /api/v1/settings/default-condition' umbenannt → rot: „jede Route der App …“
- *   B  SEITE ohne `page_size` (src/contract/base.ts) → rot: „jeder Abfrageparameter …“
- *   C  im Vertrag `label` aus den Anmeldedaten gestrichen → rot: „jedes Rumpffeld …“ (LoginRequest)
+ * Counter-checks (measured 14.11.2026, each alone, reverted):
+ *   A  'GET /api/v1/settings/default-condition' renamed in the contract → red: “every route of the app …”
+ *   B  SEITE without `page_size` (src/contract/base.ts) → red: “every query parameter …”
+ *   C  `label` deleted from the login data in the contract → red: “every body field …” (LoginRequest)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -49,11 +49,11 @@ test('every query parameter of the app is in the contract', () => {
   assert.deepEqual(fehlt, []);
 });
 
-// Eingaben sind geschlossen (strictObject): Ein Feld, das die App schickt und der Vertrag
-// nicht kennt, wäre im Betrieb eine 400.
+// Inputs are closed (strictObject): a field the app sends and the contract
+// does not know would be a 400 in production.
 test('every body field of the app is in the contract', () => {
-  // Ein erzeugter Rumpftyp dient mehreren Routen (Vereinigung ihrer Schemas); ein Feld muss in
-  // einer von ihnen stehen.
+  // A generated body type serves several routes (union of their schemas); a field must be in
+  // one of them.
   const withBody = app.routen.filter(x => x.rumpffelder.length);
   /** @type {Map<string, Set<string>>} */
   const jeType = new Map();

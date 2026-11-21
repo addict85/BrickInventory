@@ -1,12 +1,12 @@
 'use strict';
 /**
- * Die Fehlerzeile nennt, WELCHE Anfrage gescheitert ist.
+ * The error line names WHICH request failed.
  *
- * Gegenprobe (29.10.2026): in handleRouteError wieder jede Stufe über
- * console.error mit `e?.stack` → rot: „ein 4xx ist eine Warnung ohne Stack“
- * (Stufe error, Stack in der Zeile) und „die Fehlerzeile nennt Methode und Pfad“.
+ * Counter-check (29.10.2026): in handleRouteError again every level via
+ * console.error with `e?.stack` → red: “a 4xx is a warning without a stack”
+ * (level error, stack in the line) and “the error line names method and path”.
  *
- * Ausfuehren: npm test
+ * Run: npm test
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -15,13 +15,13 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { handleRouteError } = _req('src/http/httpResponse.js');
 
-/** Ruft handleRouteError; liefert die eine Zeile samt Stufe (error/warn). */
+/** Calls handleRouteError; delivers the one line including the level (error/warn). */
 function logWithLevel(fehler, req) {
   const zeilen = [];
   const echt = { error: console.error, warn: console.warn };
   console.error = (...teile) => zeilen.push({ stufe: 'error', zeile: require('node:util').format(...teile) });
   console.warn = (...teile) => zeilen.push({ stufe: 'warn', zeile: require('node:util').format(...teile) });
-  // Eine Antwort, die nur so viel kann, wie handleRouteError braucht.
+  // A response that can do only as much as handleRouteError needs.
   const res = {
     headersSent: false,
     status() {
@@ -69,8 +69,8 @@ test('the question mark part stays outside', () => {
 });
 
 test('without a request the line stays as before', () => {
-  // Es gibt Aufrufer ausserhalb einer Route (Hintergrundarbeit, Tests). Aus
-  // der Ergaenzung darf dort kein „undefined undefined" werden.
+  // There are callers outside of a route (background work, tests). The addition
+  // must not turn into „undefined undefined" there.
   const zeile = protokolliere(new Error('kaputt'), undefined);
   assert.match(zeile, /\[route-error\] 500:/, `Unerwartete Form: ${zeile}`);
   assert.ok(!zeile.includes('undefined'), `„undefined" in der Zeile: ${zeile}`);

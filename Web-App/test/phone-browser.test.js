@@ -1,13 +1,13 @@
 /**
- * Am Telefon bleibt jede Finanzkachel innerhalb der Seite, auch mit langen
- * Beträgen. Gemessen im Browser mit den echten Stylesheets: Fenster 500 px
- * (kleiner lässt Headless-Chrome nicht zu, die Telefonregeln greifen), Inhalt
- * in einem 412 px breiten Rahmen wie auf einem Pixel-Telefon.
+ * On the phone every finance tile stays within the page, even with long
+ * amounts. Measured in the browser with the real stylesheets: window 500 px
+ * (headless Chrome does not allow smaller, the phone rules apply), content
+ * in a 412 px wide frame as on a Pixel phone.
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
+ * Without Chrome (CHROME_BIN, google-chrome, chromium) it is skipped.
  *
- * Gegenprobe (am 28.10.2026 gemessen): .fgrid in mobile.css wieder
- * `1fr 1fr` → rot: „Gesamtwert ragt … px über den Rand“.
+ * Counter-check (measured on 28.10.2026): .fgrid in mobile.css again
+ * `1fr 1fr` → red: „Gesamtwert ragt … px über den Rand“.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

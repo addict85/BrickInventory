@@ -1,23 +1,23 @@
 /**
- * Der Namensabruf /sets/info/:setNumber steht in routes/api_v1/sets.ts vor
- * /sets/:setNumber/…: Sonst landet eine Nummer, die wie ein Pfadwort der ersten aussieht, landete dort:
- * GET /api/v1/sets/info/price-history traf /sets/:setNumber/price-history mit …
+ * The name lookup /sets/info/:setNumber stands in routes/api_v1/sets.ts before
+ * /sets/:setNumber/…: otherwise a number that looks like a path word of the first lands there:
+ * GET /api/v1/sets/info/price-history hit /sets/:setNumber/price-history with …
  *
- * Gegenprobe (am 29.10.2026 gemessen): die Route /sets/info/:setNumber hinter
- * die Routen /sets/:setNumber/… gestellt → rot:
- * „ein Pfadwort als Setnummer“ (die Antwort kam vom Preisverlauf).
+ * Counter-check (measured on 29.10.2026): the route /sets/info/:setNumber put behind
+ * the routes /sets/:setNumber/… → red:
+ * “a path word as set number” (the response came from the price history).
  *
- * Ein Platzhalter („Set <Nummer>“ ohne Jahr, Thema, Teile), den addSet ohne
- * Katalogtreffer anlegt, verrät nur, dass irgendein Konto die Nummer hat
- * (Sicherheitsprüfung Runde 13, H3). Gegenproben (04.11.2026 gemessen):
- *   A  in GET /sets/info die Absage für `platzhalter` gestrichen → rot: „ein
- *      fremder Platzhalter …“
- *   B  setStamm() liefert `platzhalter` immer wahr → rot: „eine gewöhnliche
- *      Nummer“, „ein Pfadwort …“ (der Katalogeintrag gilt nicht mehr)
- *   C  die Absage ohne Blickfeld (jeder Platzhalter gilt als fremd) → rot: „ein
+ * A placeholder („Set <Nummer>“ without year, theme, parts) that addSet creates without
+ * a catalog hit only reveals that some account has the number
+ * (security review round 13, H3). Counter-checks (measured 04.11.2026):
+ *   A  in GET /sets/info the refusal for `platzhalter` deleted → red: “a
+ *      foreign placeholder …”
+ *   B  setStamm() always delivers `platzhalter` true → red: “an ordinary
+ *      number”, “a path word …” (the catalog entry no longer counts)
+ *   C  the refusal without scope (every placeholder counts as foreign) → red: „ein
  *      eigener Platzhalter …“
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,17 +1,17 @@
 /**
- * Der Rebrickable-Schlüssel geht nur an rebrickable.com — auch dann nicht an
- * einen anderen Host der API-Liste, wenn eine Antwort mit `next` dorthin zeigt.
+ * The Rebrickable key only goes to rebrickable.com — not even to another
+ * host of the API list when a response points there with `next`.
  *
- * Gegenproben (am 08.11.2026 gemessen):
- *   A  in holeSetTeile die Prüfung von `next` entfernt UND httpsGetRobust wieder mit
- *      ALLOWED_API_HOSTS → rot: „next auf api.upcitemdb.com …“ (Abruf mit Schlüssel gesehen)
- *   B  nur die Hostwahl in httpsGetRobust zurück auf ALLOWED_API_HOSTS (next-Prüfung bleibt)
- *      → rot: „Abrufe mit Schlüssel …“ (die next-Prüfung allein fängt diesen Weg nicht)
- *   C  rebrickableRaw wieder mit ALLOWED_API_HOSTS → rot: „rebrickableRaw erreicht keinen anderen Host“
- *   D  nur die next-Prüfung entfernt (Hostwahl bleibt) → BLEIBT GRÜN: Die Hostwahl allein
- *      hält den Schlüssel zurück; die next-Prüfung ist das frühe, lesbare Netz davor.
+ * Counter-checks (measured on 08.11.2026):
+ *   A  the check of `next` removed in holeSetTeile AND httpsGetRobust again with
+ *      ALLOWED_API_HOSTS → red: “next on api.upcitemdb.com …” (fetch with key seen)
+ *   B  only the host choice in httpsGetRobust back to ALLOWED_API_HOSTS (next check stays)
+ *      → red: “fetches with key …” (the next check alone does not catch this path)
+ *   C  rebrickableRaw again with ALLOWED_API_HOSTS → red: “rebrickableRaw reaches no other host”
+ *   D  only the next check removed (host choice stays) → STAYS GREEN: the host choice alone
+ *      holds back the key; the next check is the early, readable net in front of it.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL (der Schlüssel liegt in global_settings).
+ * Prerequisite: test DB via TEST_DATABASE_URL (the key lies in global_settings).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -32,7 +32,7 @@ test.after(async () => {
 /** @type {Array<{ url: string, kopf: Record<string, string> }>} */
 const fetches = [];
 let responseFor = (/** @type {string} */ _url) => ({ status: 404, body: '' });
-// @ts-expect-error — Attrappe mit genau dem, was src/infra/fetch.ts benutzt.
+// @ts-expect-error — dummy with exactly what src/infra/fetch.ts uses.
 https.get = (url, opt, cb) => {
   fetches.push({ url: String(url), kopf: { .../** @type {Record<string, string>} */ (opt?.headers) } });
   const { status, body } = responseFor(String(url));

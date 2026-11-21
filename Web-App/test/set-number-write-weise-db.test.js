@@ -1,9 +1,9 @@
 /**
- * Eine Set-Nummer wird ueberall gleich geschrieben.
+ * A set number is written the same everywhere.
  *
- * Gegenproben: siehe am jeweiligen Teilschritt.
+ * Counter-checks: see at the respective substep.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -18,9 +18,9 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-// BrickLink vorgeben, BEVOR die Preiswege priceGuideQuery herausziehen. Der
-// echte Client wirft in genau dieser Lage — hier wird nur MITGEZAEHLT, wie
-// oft ueberhaupt gefragt wird.
+// Set up BrickLink BEFORE the price paths pull out priceGuideQuery. The
+// real client throws in exactly this situation — here it is only COUNTED how
+// often it is asked at all.
 const blPath = require.resolve(path.join(ROOT, 'dist', 'src/catalog/bricklinkPrices.js'));
 const echt = require(blPath);
 let fetches = [];
@@ -43,14 +43,14 @@ test('the spelling of a set number is one rule', () => {
 test('the catalog answers the same no matter how the number is written', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
-  const BLANK = `g${process.pid}`; // so fragt der Aufrufer
-  const MITV = `${BLANK}-1`; // so legt clients/bricklink.ts es ab
+  const BLANK = `g${process.pid}`; // this is how the caller asks
+  const MITV = `${BLANK}-1`; // this is how clients/bricklink.ts stores it
   const aufraeumen = () =>
     db.run('DELETE FROM catalog_cache WHERE set_number = ANY($1)', [[BLANK, MITV]]).catch(() => {});
   await aufraeumen();
 
   try {
-    // Die Markierung genau so schreiben, wie clients/bricklink.ts sie schreibt.
+    // Write the marker exactly as clients/bricklink.ts writes it.
     await db.run(
       `INSERT INTO catalog_cache (set_number, bl_type, is_gear) VALUES ($1,'NONE',true)
        ON CONFLICT (set_number) DO UPDATE SET bl_type='NONE', is_gear=true`,
@@ -60,8 +60,8 @@ test('the catalog answers the same no matter how the number is written', { concu
     const { fetchAndCachePrice } = _req('src/finances/priceRun.js');
     const { fetchPrice } = _req('src/finances/financeCalc.js');
 
-    // Gegenprobe: in src/infra/setNumber.ts das withVersion() aus catalogEntry()
-    // entfernt -> die Zeile mit „ohne Versionsanhang" wird rot.
+    // Counter-check: in src/infra/setNumber.ts the withVersion() removed from catalogEntry()
+    // -> the row with „without version suffix" turns red.
     for (const nummer of [BLANK, MITV]) {
       fetches = [];
       const r = await fetchAndCachePrice(nummer, 'N', 'sold', 'EUR', 24);
@@ -85,7 +85,7 @@ test('the catalog answers the same no matter how the number is written', { concu
 });
 
 test('the spelling is not computed again anywhere', () => {
-  // Gefunden, nicht aufgezaehlt.
+  // Found, not enumerated.
   const dateien = [];
   const gehen = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -96,7 +96,7 @@ test('the spelling is not computed again anywhere', () => {
     }
   };
   gehen(ROOT);
-  // Selbstnachweis: Faende die Suche nichts, waere die Regel leer wahr.
+  // Self-proof: if the search found nothing, the rule would be vacuously true.
   assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
 
   const eigene = [],
@@ -107,20 +107,20 @@ test('the spelling is not computed again anywhere', () => {
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/[^\n]*$/gm, '');
     const rel = path.relative(ROOT, f);
-    // Warum drei Muster
+    // Why three patterns
     for (const m of [
-      /\.includes\('-'\)\s*\?/, // die haeufigste Fassung
+      /\.includes\('-'\)\s*\?/, // the most common version
       /\/-\\d\+\$\/\.test\(/, // bricklinkLink, setAdd, setService
-      /\?\s*[\w.]+\s*:\s*`\$\{[^}]+\}-1`/, // die Ergaenzung selbst
+      /\?\s*[\w.]+\s*:\s*`\$\{[^}]+\}-1`/, // the addition itself
       /\.replace\(\/-(?:\\\\d|\[0-9\])\+\$\//,
-    ]) // und das Abschneiden
+    ]) // and the truncation
       if (m.test(code)) {
         eigene.push(rel);
         break;
       }
     if (/SELECT is_gear, bl_type(?:, fetched_at)? FROM catalog_cache/.test(code)) vorpruefer.push(rel);
   }
-  // Keine Ausnahmen: Zwei Stellen, die dieselbe Schreibweise ausrechnen, laufen auseinander.
+  // No exceptions: two places that compute the same notation drift apart.
   assert.deepEqual(
     eigene,
     ['src/infra/setNumber.ts'],

@@ -1,26 +1,26 @@
 /**
- * Hochgeladene Anleitungen: der Haushalt liest mit, Fremde nicht — auch nicht
- * über einen Schrägstrich, der als %2F im Segment steckt.
+ * Uploaded instructions: the household reads along, strangers do not — not even
+ * via a slash hidden as %2F in the segment.
  *
- * Express dekodiert %2F erst nach dem Aufteilen am Schrägstrich. Aus
- * `/data/uploads/x%2F..%2F7/a.pdf` wird das Segment `x/../7`; die alte
- * Besitzerprüfung las daraus keine Zahl und liess die Anfrage durch.
+ * Express decodes %2F only after splitting at the slash. From
+ * `/data/uploads/x%2F..%2F7/a.pdf` the segment becomes `x/../7`; the old
+ * owner check read no number from it and let the request through.
  *
- * Gegenproben (am 27.10. gemessen):
- *   A  die alte Prüfung (parseInt auf segments[0], NaN = keine Prüfung, Segmente
- *      nur auf '..' geprüft) → rot: „%2F im Segment" (200 statt 404) und
- *      „kein Benutzerordner" (200 statt 404)
- *   B  scopeIds-Abfrage entfernt (nur eigene ID) → rot: „Hauptkonto liest Unterkonto"
- *   C  (28.10.) die Verwalter-Ausnahme wieder eingebaut → rot: „auch ein
- *      Verwalter liest fremde Uploads nicht"
- *   D  (03.11.) für fremde Konten wieder 403 „Kein Zugriff“ → rot: „fremd und
- *      fehlend antworten gleich“ und die drei Teiltests davor
- *   E  (05.11.) asAttachment() in beiden Routen entfernt → rot: „als Anhang in
- *      einer Sandbox“ (beide Wege, Kopf fehlt)
- *   F  (08.11.) seesAccount liest wieder über scopeIds (Gedächtnis) → rot:
- *      „gelöstes Unterkonto ist sofort nicht mehr lesbar“ (200 statt 404)
+ * Counter-checks (measured on 27.10.):
+ *   A  the old check (parseInt on segments[0], NaN = no check, segments
+ *      only checked for '..') → red: “%2F in the segment" (200 instead of 404) and
+ *      “no user folder" (200 instead of 404)
+ *   B  scopeIds query removed (own ID only) → red: “main account reads sub-account"
+ *   C  (28.10.) the administrator exception rebuilt → red: “not even an
+ *      administrator reads foreign uploads"
+ *   D  (03.11.) for foreign accounts again 403 “Kein Zugriff” → red: “foreign and
+ *      missing answer the same” and the three subtests before
+ *   E  (05.11.) asAttachment() removed in both routes → red: “as attachment in
+ *      a sandbox” (both paths, header missing)
+ *   F  (08.11.) seesAccount reads via scopeIds (memory) again → red:
+ *      “an unlinked sub-account is no longer readable immediately” (200 instead of 404)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -28,7 +28,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-// Ein eigenes Datenverzeichnis, bevor appPaths geladen wird.
+// An own data directory before appPaths is loaded.
 const WURZEL = fs.mkdtempSync(path.join(os.tmpdir(), 'daten-dateien-'));
 fs.writeFileSync(path.join(WURZEL, 'package.json'), '{}');
 process.env.APP_ROOT = WURZEL;
@@ -150,7 +150,7 @@ test('uploads: household yes, strangers no, %2F never', { concurrency: 1 }, asyn
 
   await t.test('an unlinked sub-account is immediately no longer readable', async () => {
     assert.equal((await hole(H, `/data/uploads/${U}/a.pdf`)).status, 200);
-    // Direkt in der Tabelle, ohne Benachrichtigung: Das Gedächtnis weiss nichts davon.
+    // Directly in the table, without notification: the memory knows nothing of it.
     await db.run('DELETE FROM account_links WHERE main_user_id = $1 AND sub_user_id = $2', [H, U]);
     assert.equal((await hole(H, `/data/uploads/${U}/a.pdf`)).status, 404);
   });

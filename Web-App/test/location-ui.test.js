@@ -1,18 +1,18 @@
 /**
- * Lagerort in der Webapp. Sie läuft im echten Bündel (jsdom), die Längengrenze
- * am Servermodul; die App prüft die Android-Suite. Den Server selbst (Endpunkte, Vorrat,
- * Filter, Besitzerliste, Schreibbereich) prüfen lagerort-db, lagerort-vorrat-db,
- * lagerort-id-db, lagerort-detail-und-vorrat-db und lagerort-beim-erfassen-db;
- * die Verwaltung in den Einstellungen formulare-rueckmeldung-oberflaeche.
+ * Storage location in the web app. It runs in the real bundle (jsdom), the length limit
+ * on the server module; the Android suite checks the app. The server itself (endpoints, stock,
+ * filter, owner list, write scope) is checked by location-db, location-stock-db,
+ * location-id-db, location-detail-and-stock-db and location-on-add-db;
+ * the management in the settings by forms-feedback-ui.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in lagerortGewaehlt das dispatchEvent(change) entfernt → rot: „Webapp:
- *      im Set-Detail …“ und „Webapp: das Teil …“ (kein PUT)
- *   B  in set-detail.js loadLocationSelection ohne die Besitzer → rot: ebenda (owner=)
- *   C  in set-teile.js `if (type === 'part')` → `if (true)` → rot: „Webapp: das
- *      Teil …“ (Feld bei der Figur)
- *   D  maxlength="60" → "80" in locationBlock → rot: „die Längengrenze …“
- *   E  in kontofilter.js addLagerParam ohne p.set → rot: „Webapp: der Filter …“
+ * Counter-checks (measured 10.11.2026, each on its own, bundle rebuilt):
+ *   A  the dispatchEvent(change) removed in lagerortGewaehlt → red: “web app:
+ *      in the set detail …” and “web app: the part …” (no PUT)
+ *   B  in set-detail.js loadLocationSelection without the owners → red: same place (owner=)
+ *   C  in set-teile.js `if (type === 'part')` → `if (true)` → red: “web app: the
+ *      part …” (field on the figure)
+ *   D  maxlength="60" → "80" in locationBlock → red: “the length limit …”
+ *   E  in kontofilter.js addLagerParam without p.set → red: “web app: the filter …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -21,7 +21,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 
 const SN = '10305-1';
 
-/** Ein Detail öffnen wie ein Klick: data-click mit Argumenten. */
+/** Open a detail like a click: data-click with arguments. */
 function klick(o, daten) {
   const k = o.d.createElement('button');
   Object.assign(k.dataset, daten);

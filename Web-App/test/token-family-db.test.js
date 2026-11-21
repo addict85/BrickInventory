@@ -1,22 +1,22 @@
 /**
- * Token-Familien: Ein ersetzter Token bleibt als „verbraucht“ stehen. Kommt er
- * nach der Schonfrist wieder (Nutzung oder Tausch), hat ihn jemand kopiert:
- * Die ganze Familie endet samt Nachfolger, der Inhaber bekommt eine Mail.
- * Andere Geräte desselben Kontos bleiben angemeldet.
+ * Token families: a replaced token stays as „verbraucht“. If it comes
+ * back after the grace period (use or exchange), somebody has copied it:
+ * the whole family ends including the successor, the owner gets a mail.
+ * Other devices of the same account stay logged in.
  *
- * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  in endOverlap() nur noch löschen, nicht vermerken → rot:
- *      „der Vorgänger ist als verbraucht vermerkt“
- *   B  in pruefeToken() reportReuse() nicht aufgerufen → rot:
- *      „der Tausch mit dem verbrauchten sperrt die Familie“ (B gilt weiter)
- *   C  in lockFamily() `a.created_at = v.token_family` gestrichen → rot:
- *      „das andere Gerät bleibt angemeldet“
- *   D  hintInBackground() in reportReuse() entfernt → rot:
- *      „der Inhaber bekommt genau eine Mail“
- *   E  REUSE_GRACE_PERIOD_S auf 0 → rot: „ein Nachzügler in der
- *      Schonfrist sperrt nichts“
+ * Counter-checks (measured 03.11.2026, each on its own):
+ *   A  in endOverlap() only delete, not mark → red:
+ *      “the predecessor is marked as used”
+ *   B  reportReuse() not called in pruefeToken() → red:
+ *      “the exchange with the used one locks the family” (B still applies)
+ *   C  in lockFamily() `a.created_at = v.token_family` deleted → red:
+ *      “the other device stays logged in”
+ *   D  hintInBackground() removed in reportReuse() → red:
+ *      “the owner gets exactly one mail”
+ *   E  REUSE_GRACE_PERIOD_S set to 0 → red: “a straggler in the
+ *      grace period locks nothing”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -88,7 +88,7 @@ test('token family with reuse detection', { concurrency: 1 }, async t => {
   };
   const verbraucht = async () =>
     (await db.all('SELECT token FROM api_tokens_consumed WHERE user_id = $1', [uid])).map(z => z.token);
-  // Jede Anmeldung meldet ihren neuen Zugang (token_neu); gezählt wird hier die Warnung.
+  // Every login reports its new access (token_neu); here the warning is counted.
   const warnings = () => gesendet.filter(m => m.an === `${NAME}@example.org` && m.art !== 'token_neu');
   const mails = async anzahl => {
     for (let i = 0; i < 60 && warnings().length < anzahl; i++) await new Promise(r => setTimeout(r, 25));

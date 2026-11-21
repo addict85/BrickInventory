@@ -1,28 +1,28 @@
 /**
- * Erfassungsliste im Detail-Dialog manueller Teile und Minifiguren.
+ * Acquisition list in the detail dialog of manual parts and minifigures.
  *
- * Die Mengen- und Tagesregeln laufen gegen die Datenbank, das Nachladen der
- * Liste in der ganzen Oberfläche (jsdom).
+ * The quantity and daily rules run against the database, the reloading of the
+ * list in the whole UI (jsdom).
  *
- * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
- *   A  manQtySave() lädt die Liste nur beim Erhöhen (`if (qty > 2)` um den
- *      Abruf) → rot „die Erfassungsliste wird in BEIDE Richtungen nachgeladen“
+ * Counter-checks (measured 08.11.2026, each reverted):
+ *   A  manQtySave() loads the list only when increasing (`if (qty > 2)` around the
+ *      fetch) → red “the acquisition list is reloaded in BOTH directions”
  *   B  passeManualQuantityAn: `if (soll > bisher)` → `if (soll > bisher && bisher > 0)`
- *      → rot „eine Mengenerhöhung legt auch ohne bestehende Erfassung …“
- *   C  entriesNewestFirst sortiert ASC → rot „die LIFO-Reduktion …“
- *   D  ENTRY_TABLES: Schlüssel des Teils ohne color_id → rot „die
- *      Tagesregel gilt für alle drei Arten …“ (dazu „Erhöhung …“ und „Bearbeiten-Pfad …“)
- *   E  in src/collection/acquisitions.ts `if (clash)` → `if (false)` → rot „der
- *      Bearbeiten-Pfad lehnt ab, was die Tagesregel verbietet“ (500 statt 409)
- *   F  deletePart() ohne deletePartEntries → rot „das Löschen eines
- *      manuellen Eintrags räumt die Kaufpreise mit ab“
- *   G  valueManual() mit `acquisitions: []` statt `rows` → rot „die
- *      Bewertung liefert je Kaufpreis eine Zeile …“
- *   H  pmRows() zeichnet immer nur eine Zeile (`return pmRow(it, label, null,
- *      situation, text)`) → rot „die Finanzen zeigen je Kaufpreis eine Zeile …“
- *   I  in src/collection/deletion.ts `.catch(() => {})` an deletePartEntries → rot in
- *      ratschen.test.js „stille Faenge …“ (deckt den gestrichenen Fall „kein
- *      stiller Fehler mehr auf Bestandstabellen“)
+ *      → red “a quantity increase creates even without an existing acquisition …”
+ *   C  entriesNewestFirst sorts ASC → red “the LIFO reduction …”
+ *   D  ENTRY_TABLES: key of the part without color_id → red “the
+ *      daily rule applies to all three kinds …” (plus “increase …” and “edit path …”)
+ *   E  in src/collection/acquisitions.ts `if (clash)` → `if (false)` → red “the
+ *      edit path rejects what the daily rule forbids” (500 instead of 409)
+ *   F  deletePart() without deletePartEntries → red “deleting a
+ *      manual entry clears the purchase prices along”
+ *   G  valueManual() with `acquisitions: []` instead of `rows` → red “the
+ *      valuation delivers one row per purchase price …”
+ *   H  pmRows() always draws only one row (`return pmRow(it, label, null,
+ *      situation, text)`) → red “the finances show one row per purchase price …”
+ *   I  in src/collection/deletion.ts `.catch(() => {})` on deletePartEntries → red in
+ *      ratschen.test.js “silent catches …” (covers the deleted case “no
+ *      silent error on stock tables any more”)
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -32,8 +32,8 @@ const read = f => require('./helpers/sources').serviceSource(f);
 const strip = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 
 test('the acquisition list is reloaded in BOTH directions', async t => {
-  // Beim Verringern entfernt der Server Erfassungen; nur beim Erhöhen neu zu
-  // laden liess gelöschte Einträge im Dialog stehen.
+  // When decreasing, the server removes acquisitions; reloading only when
+  // increasing left deleted entries standing in the dialog.
   const { openUi, reiter } = require('./helpers/ui');
   const zeile = (id, menge, tag) => ({
     id,
@@ -170,7 +170,7 @@ test('quantities and acquisitions of manual entries against the database', { con
         `${art}: der zweite Kauf desselben Tages stockt nicht auf`,
       );
     }
-    // Eine andere Farbe ist ein anderes Teil, kein zweiter Kauf.
+    // Another color is another part, not a second purchase.
     assert.deepEqual(
       await record('part', ['ma-tag', 7]),
       { merged: false },
@@ -317,8 +317,8 @@ test('the finances show one row per purchase price, the legacy data in one', asy
 });
 
 test('no create path writes directly into an acquisition table', () => {
-  // Verbot: Erfassungen entstehen nur über addPurchaseAtTag — sonst
-  // gälte die Tagesregel (entry-per-state-db.test.js) nicht für jeden Weg.
+  // Prohibition: acquisitions only arise via addPurchaseAtTag — otherwise
+  // the daily rule (entry-per-state-db.test.js) would not apply to every path.
   for (const f of [
     'src/parts/manualParts.ts',
     'src/minifigs/manualMinifigs.ts',
@@ -351,8 +351,8 @@ test('no create path writes directly into an acquisition table', () => {
 });
 
 test('the legacy data is merged once into one row per day', () => {
-  // Die neue Regel greift erst beim nächsten Schreiben — bereits bestehende
-  // Doppelzeilen verschwinden nicht von selbst.
+  // The new rule only applies on the next write — already existing
+  // duplicate rows do not disappear by themselves.
   const mig = read('db/migrations/0004-erfassung-pro-tag.sql');
   for (const t of ['set_acquisitions', 'part_acquisitions', 'minifig_acquisitions']) {
     assert.ok(mig.includes(`FROM ${t}`), `${t} fehlt im Zusammenfassen`);
@@ -364,15 +364,15 @@ test('the legacy data is merged once into one row per day', () => {
     'Preislose Zeilen dürfen den Nenner nicht aufblähen',
   );
   assert.match(mig, /CASE WHEN g\.gebraucht = 1 THEN 'U' ELSE 'N' END/, 'Gebraucht gewinnt — wie im Schreibpfad');
-  // Gruppiert wird je Eintrag UND Tag; Käufe an verschiedenen Tagen bleiben
-  // getrennt, sie sind der Grund für die Erfassungshistorie.
+  // Grouping is per entry AND day; purchases on different days stay
+  // separate, they are the reason for the acquisition history.
   assert.match(mig, /GROUP BY user_id, set_number, created_at::date/);
 });
 
 test('the quantity increase averages the purchase price instead of leaving it', () => {
-  // Der frühere Zweig erhöhte bei einer heutigen Erfassung NUR die Menge. Ein
-  // heute dazugekauftes Exemplar zum aktuellen Marktpreis verschwand damit im
-  // alten Stückpreis — die Zeile zeigte zwei Stück zum Preis des ersten.
+  // The earlier branch only increased the quantity for an acquisition of today. A
+  // copy bought today at the current market price thereby vanished into the
+  // old unit price — the row showed two pieces at the price of the first.
   const src = require('./helpers/sources').kompakt(require('./helpers/sources').setCoreSource());
   const fn = src.slice(
     src.indexOf('async function entriesAnQuantityAlign'),
@@ -388,16 +388,16 @@ test('the quantity increase averages the purchase price instead of leaving it', 
     /await bookEntry\(sk, \{ konto: userId, setNumber, menge: delta, kaufpreis: plan\.price, zustand: plan\.condition,/,
     'Auch die Erhöhung läuft über den gemeinsamen Schreibweg',
   );
-  // Der Preis kommt aus priceForNewEntry() — ausgelagert, weil der
-  // BrickLink-Abruf darin VOR dem Advisory-Lock laufen muss (ein Netzaufruf
-  // in offener Transaktion hielte Sperre und Verbindung).
+  // The price comes from priceForNewEntry() — extracted, because the
+  // BrickLink fetch in it must run BEFORE the advisory lock (a network call
+  // in an open transaction would hold lock and connection).
   assert.match(
     fn,
     /pricePlan \?\? \(?await priceForNewEntry\(sk, userId, setNumber\)/,
     'Ein vorab ermittelter Preis muss durchgereicht werden können',
   );
-  // Ziel der Mengenänderung ist das Konto `ziel` (ohne Angabe das eigene, im Haushalt das gewählte).
-  // Die geprüfte REGEL ist unverändert: Preis ermitteln (Netzaufruf), DANN sperren.
+  // Target of the quantity change is the account `ziel` (without a setting the own one, in the household the chosen one).
+  // The checked RULE is unchanged: determine the price (network call), THEN lock.
   assert.match(
     src,
     /const plan = [\s\S]{0,120}priceForNewEntry\(sk, ziel, sn\)[\s\S]{0,400}sk\.transaktion\(/,
@@ -407,14 +407,14 @@ test('the quantity increase averages the purchase price instead of leaving it', 
 });
 
 test('a quantity change runs under the inventory lock', () => {
-  // Woher dieser Test kommt
+  // Where this test comes from
   const src = require('./helpers/sources').setCoreSource();
   const fn = src
     .slice(src.indexOf('async function changeSet'), src.indexOf("router.put('/:setNumber'"))
-    // Kommentare weg: Der Erklärtext oben zitiert den alten Aufruf samt
-    // .catch(() => {}) und würde die Prüfung sonst selbst auslösen.
+    // Comments gone: the explanatory text above quotes the old call including
+    // .catch(() => {}) and would otherwise trigger the check itself.
     .replace(/\/\/[^\n]*/g, '');
-  // Ziel ist das Konto `ziel` — die Regel bleibt: EINE gesperrte Transaktion für Menge und Erfassungen.
+  // Target is the account `ziel` — the rule stays: ONE locked transaction for quantity and acquisitions.
   assert.match(
     fn,
     /sperren: \[\{ konto: ziel, schluessel: sn \}\]/,
@@ -430,10 +430,10 @@ test('a quantity change runs under the inventory lock', () => {
     /await db\.run\('UPDATE sets SET quantity/,
     'Die Mengenänderung darf nicht an der Transaktion vorbei laufen',
   );
-  // Und die Differenz muss aus der GESAMTMENGE des Blickfelds kommen, nicht
-  // aus der Zeile eines einzelnen Kontos — sonst zeigte das Detail eine
-  // Haushaltszahl an, während das „+" gegen eine andere rechnete.
-  // Die Abfrage steht seit Migration 0036 in db/stockQuantity.ts; hier …
+  // And the difference must come from the TOTAL QUANTITY of the scope, not
+  // from the row of a single account — otherwise the detail would show a
+  // household number while the „+" calculated against another one.
+  // Since migration 0036 the query stands in db/stockQuantity.ts; here …
   assert.match(
     fn,
     /repo\.setMenge\(s\.db, 'blickfeld', readField/,

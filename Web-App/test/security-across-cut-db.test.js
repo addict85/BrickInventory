@@ -1,36 +1,36 @@
 /**
- * Querschnitt der üblichen Klassen am laufenden Code: Sicherheitskopfzeilen
- * und Cookie-Flags am echten Server, keine Abfrage vergebener E-Mail-Adressen
- * über die Registrierung, kein Stacktrace in einer Fehlerantwort der
- * Produktion.
+ * Cross-section of the usual classes on the running code: security headers
+ * and cookie flags on the real server, no probing for taken email addresses
+ * via the registration, no stack trace in an error response in
+ * production.
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  Cross-Origin-Opener-Policy und -Resource-Policy in server.ts
- *      gestrichen → rot: „jede Antwort trägt die Sicherheitskopfzeilen"
- *   B  /register antwortet bei vergebener Adresse wieder 409 → rot: „eine
- *      vergebene Adresse antwortet wie eine neue"
- *   C  handleRouteError() gibt auch in Produktion e.message aus → rot: „ein
- *      Serverfehler in Produktion nennt keine Interna"
- *   D  /register antwortet bei vergebenem Benutzernamen wieder 409
- *      benutzername_vergeben → rot: „ein vergebener Name antwortet wie ein
- *      neuer" (gemessen 01.11.2026)
- *   E  in server.ts wieder `res.status(404).json({ success: false, error:
- *      'Endpoint nicht gefunden' })` statt unknownApiPath → rot: „ein
- *      unbekannter API-Pfad antwortet in der Form jeder Fehlerantwort"
- *   F  handleRouteError() ohne `code` bei 5xx → rot: „ein Serverfehler in
- *      Produktion nennt keine Interna" (E und F gemessen 05.11.2026)
- *   G  in server.ts img-src wieder mit `https:` → rot: „jede Antwort trägt
- *      die Sicherheitskopfzeilen"; ebenso worker-src gestrichen und
- *      script-src mit 'unsafe-inline' (je einzeln, 08.11.2026)
- *   H  in index.html ein `<script>var x=1;</script>` bzw. ein
- *      `<link rel="stylesheet" href="https://fonts.example/x.css">` → rot:
- *      „die ausgelieferte Seite lädt nichts von fremden Hosts …“ (08.11.2026)
- *   I  die Normalisierung doppelter Schrägstriche in server.ts entfernt → rot:
- *      „doppelte Schrägstriche treffen dieselbe Route …“ (08.11.2026)
- *   J  (09.11.2026) in sessionCookieOptions() wieder `sameSite: 'lax'` → rot:
- *      „das Sitzungscookie ist httpOnly und SameSite=Strict“
+ * Counter-checks (measured 01.11.2026):
+ *   A  Cross-Origin-Opener-Policy and -Resource-Policy in server.ts
+ *      deleted → red: “every response carries the security headers”
+ *   B  /register again answers 409 for a taken address → red: “a
+ *      taken address responds like a new one”
+ *   C  handleRouteError() also outputs e.message in production → red: “a
+ *      server error in production names no internals”
+ *   D  /register again answers 409 benutzername_vergeben for a taken username
+ *      → red: “a taken name responds like a
+ *      new one” (measured 01.11.2026)
+ *   E  in server.ts again `res.status(404).json({ success: false, error:
+ *      'Endpoint nicht gefunden' })` instead of unknownApiPath → red: “an
+ *      unknown API path responds in the form of every error response”
+ *   F  handleRouteError() without `code` for 5xx → red: “a server error in
+ *      production names no internals” (E and F measured 05.11.2026)
+ *   G  in server.ts img-src again with `https:` → red: “every response carries
+ *      the security headers”; likewise worker-src deleted and
+ *      script-src with 'unsafe-inline' (each on its own, 08.11.2026)
+ *   H  in index.html a `<script>var x=1;</script>` or a
+ *      `<link rel="stylesheet" href="https://fonts.example/x.css">` → red:
+ *      “the delivered page loads nothing from foreign hosts …” (08.11.2026)
+ *   I  the normalization of double slashes removed in server.ts → red:
+ *      “double slashes hit the same route …” (08.11.2026)
+ *   J  (09.11.2026) in sessionCookieOptions() again `sameSite: 'lax'` → red:
+ *      “the session cookie is httpOnly and SameSite=Strict”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -40,7 +40,7 @@ const { spawn, execFileSync } = require('node:child_process');
 
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
-// Links in Mails gibt es nur mit fester Adresse (routes/auth.ts, getBaseUrl).
+// Links in mails only exist with a fixed address (routes/auth.ts, getBaseUrl).
 process.env.APP_BASE_URL = 'http://localhost';
 const ROOT = path.join(__dirname, '..');
 const { buildAndRequire, testData } = require('./helpers/sources');
@@ -100,7 +100,7 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
       ROLLE: 'web',
     },
   });
-  // Abfliessen lassen: Ein voller Puffer hielte den Server an.
+  // Let it drain: a full buffer would stall the server.
   srv.stdout.resume();
   srv.stderr.resume();
   t.after(async () => {
@@ -132,7 +132,7 @@ test('security across the board', { concurrency: 1, timeout: 180_000 }, async t 
         pfad,
       );
       assert.match(k('permissions-policy'), /camera=\(\).*geolocation=\(\)/, pfad);
-      // Bilder nur vom eigenen Server (Bild-Proxy), der PDF.js-Worker gedeckt, kein fremder Host.
+      // Images only from the own server (image proxy), the PDF.js worker covered, no foreign host.
       const csp = Object.fromEntries(
         k('content-security-policy')
           .split(/;\s*/)

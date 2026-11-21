@@ -1,5 +1,5 @@
 /**
- * Wo ein Client eine Besitzer-Plakette zeichnet, muss die Antwort sie tragen.
+ * Where a client draws an owner badge, the response must carry it.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -33,7 +33,7 @@ test('every list with a badge in the client carries it in the response too', asy
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchemaOnce();
-  // Und die MIGRATIONEN, nicht nur das Schema
+  // And the MIGRATIONS, not only the schema
   {
     const mc = await db.pool.connect();
     try {
@@ -49,9 +49,9 @@ test('every list with a badge in the client carries it in the response too', asy
     kind = await id('kind');
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
 
-  // NUR das Unterkonto besitzt etwas. Damit ist die Plakette aussagekräftig:
-  // Steht dort das eigene Konto, ist die Zuordnung falsch; fehlt sie, sieht
-  // das Hauptkonto einen Bestand ohne Herkunft.
+  // ONLY the sub-account owns something. That makes the badge meaningful:
+  // if the own account stands there, the assignment is wrong; if it is missing,
+  // the main account sees stock without an origin.
   await holdsSet(db, kind, '75192-1', 1);
   await holdsPart(db, kind, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
   await holdsPart(db, kind, '3020', { menge: 3, colorId: 0 });
@@ -71,8 +71,8 @@ test('every list with a badge in the client carries it in the response too', asy
   /** @type {[string, () => Promise<any[]>][]} */
   const listen = [
     ['/v1/sets', async () => (await S.setsLesen(uids, { page_size: 60 })).sets],
-    // manualPartsList/readManualMinifigs liefern ein NACKTES Array; die Route
-    // verpackt es. Die drei anderen Listen liefern ein Objekt mit `total`.
+    // manualPartsList/readManualMinifigs deliver a BARE array; the route
+    // wraps it. The three other lists deliver an object with `total`.
     ['/v1/parts/manual', async () => await P.manualPartsList(uids, {})],
     ['/v1/minifigs', async () => (await M.readMinifigs(uids, { source: 'set' })).figs],
     ['/v1/minifigs/manual', async () => await M.readManualMinifigs(uids, {})],
@@ -92,10 +92,10 @@ test('every list with a badge in the client carries it in the response too', asy
     }
   }
 
-  // Die Set-Teileliste ist die eine Ausnahme, und zwar begründet: Sie gruppiert
-  // nach Teilenummer UND Farbe über den ganzen Haushalt, und keiner der beiden
-  // Clients zeichnet dort eine Plakette. Kommt eine dazu, schlägt diese
-  // Zusicherung an — dann gehört auch das Aggregat in die Abfrage.
+  // The set parts list is the one exception, and a justified one: it groups
+  // by part number AND color across the whole household, and neither of the two
+  // clients draws a badge there. If one is added, this assertion
+  // strikes — then the aggregate belongs in the query too.
   const teile = (await P.partsQuery(uids, { page_size: 60, exclude_manual: '1' })).parts;
   assert.ok(teile?.length, 'Vorlage: Set-Teile fehlen');
   for (const z of teile) {
@@ -113,10 +113,10 @@ test('in a single account there is no badge', async t => {
     keineDb(t);
     return;
   }
-  // Kein zweites DROP SCHEMA — eigene Kontonamen genügen (siehe
+  // No second DROP SCHEMA — own account names suffice (see
   // manual-delete-owner-db.test.js).
   await db.initSchemaOnce();
-  // Migrationen auch hier — siehe die Begruendung weiter oben.
+  // Migrations here too — see the reasoning further above.
   {
     const mc = await db.pool.connect();
     try {
@@ -139,8 +139,8 @@ test('in a single account there is no badge', async t => {
   const S = require('./helpers/sources').areaPage('sets');
   const M = _req('src/minifigs/queries.js');
 
-  // „gehört mir" an jeder Kachel wäre nur Rauschen — und zusätzliche Felder in
-  // jeder Antwort. Dieselbe Entscheidung wie bei den Sets seit jeher.
+  // „mine" on every tile would only be noise — and additional fields in
+  // every response. The same decision as for the sets all along.
   for (const [name, zeilen] of [
     ['/v1/sets', (await S.setsLesen(uids, { page_size: 60 })).sets],
     ['/v1/minifigs', (await M.readMinifigs(uids, { source: 'set' })).figs],

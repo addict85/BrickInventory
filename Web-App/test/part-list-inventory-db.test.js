@@ -1,8 +1,8 @@
 /**
- * „Kann ich das bauen?" — was der Bestandsabgleich zählt.
+ * „Can I build this?" — what the inventory comparison counts.
  *
- * Gegenprobe (durchgeführt): den LEFT JOIN samt Multiplikation zurück auf
- * `SUM(p.quantity)` gesetzt → Schritt 1 wird rot, die anderen bleiben grün.
+ * Counter-check (carried out): the LEFT JOIN including multiplication set back to
+ * `SUM(p.quantity)` → step 1 turns red, the others stay green.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -33,13 +33,13 @@ async function seed() {
   await db.run(`INSERT INTO users (username, password_hash) VALUES ('bauer','x')`);
   UID = (await db.get(`SELECT id FROM users WHERE username='bauer'`)).id;
 
-  // Zwei Sets: eines zweimal besessen, eines einmal.
+  // Two sets: one owned twice, one once.
   await holdsSet(db, UID, '60052-1', 2);
   await holdsSet(db, UID, '10276-1', 1);
 
-  // Teile AUS den Sets (source bleibt leer — genau wie partsImport.ts sie legt).
+  // Parts FROM the sets (source stays empty — exactly as partsImport.ts creates them).
   const setTeil = async (setNr, num, farbe, menge) => {
-    // Beschreibung in den Katalog, Bestand in parts (Migration 0034).
+    // Description into the catalog, stock into parts (migration 0034).
     await db.run(
       `INSERT INTO part_catalog (part_number, part_name) VALUES ($1,'Brick')
                   ON CONFLICT (part_number) DO NOTHING`,
@@ -47,16 +47,16 @@ async function seed() {
     );
     await holdsPart(db, UID, num, { setNumber: setNr, menge: menge, colorId: farbe });
   };
-  await setTeil('60052-1', '3001', 0, 3); // 3 je Bausatz, zweimal besessen → 6
-  await setTeil('10276-1', '3002', 0, 5); // 5 je Bausatz, einmal besessen  → 5
+  await setTeil('60052-1', '3001', 0, 3); // 3 per kit, owned twice → 6
+  await setTeil('10276-1', '3002', 0, 5); // 5 per kit, owned once   → 5
 
-  // Manuell erfasst: haengt an keinem Set.
+  // Captured manually: hangs on no set.
   await holdsPart(db, UID, '3003', { menge: 7, colorId: 0 });
 
-  // Teilezeile, deren Set nicht (mehr) in `sets` steht — der LEFT-JOIN-Fall.
+  // Part row whose set no longer stands in `sets` — the LEFT JOIN case.
   await setTeil('99999-1', '3004', 0, 4);
 
-  // Minifiguren: eine aus dem zweimal besessenen Set, eine manuell erfasste.
+  // Minifigures: one from the set owned twice, one captured manually.
   await holdsMinifig(db, UID, 'trn241', { setNumber: '60052-1', menge: 1 });
   await holdsMinifig(db, UID, 'cty0500', { menge: 2 });
 }
@@ -86,8 +86,8 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
     { part_number: '3002', color_id: 0 },
     { part_number: '3003', color_id: 0 },
     { part_number: '3004', color_id: 0 },
-    // Die Teileliste haengt Minifiguren als eigene Zeilen an — mit der
-    // FIGURENNUMMER als part_number und Farbe 0 (init.js, plGenerate).
+    // The parts list attaches minifigures as rows of their own — with the
+    // FIGURE NUMBER as part_number and color 0 (init.js, plGenerate).
     { part_number: 'trn241', color_id: 0 },
     { part_number: 'cty0500', color_id: 0 },
   ];
@@ -104,8 +104,8 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
   });
 
   await t.test('a set owned once stays as it was', () => {
-    // Die Gegenrichtung: Die Multiplikation darf nicht aus jeder Zeile mehr
-    // machen, sondern nur aus denen mit einer Stückzahl über eins.
+    // The opposite direction: the multiplication must not make more out of every
+    // row, but only out of those with a piece count above one.
     assert.equal(bestand['3002|0']?.gesamt, 5);
   });
 
@@ -119,10 +119,10 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
   });
 
   await t.test('minifigures count too — also those from sets', () => {
-    // Der Befund hinter dieser Prüfung: Gefragt wurde in `parts`, und dort
-    // steht keine Figur. JEDE Minifigur einer Teileliste galt deshalb als
-    // fehlend, auch wenn sie im Bestand stand — stillschweigend, denn „nicht
-    // gefunden" sieht aus wie „habe ich nicht".
+    // The finding behind this check: the query asked in `parts`, and there
+    // no figure stands. EVERY minifigure of a parts list therefore counted as
+    // missing, even if it stood in the stock — silently, because „not
+    // found" looks like „I don't have it".
     assert.equal(
       bestand['trn241|0']?.gesamt,
       2,
@@ -138,18 +138,18 @@ test('inventory reconciliation of the parts list', { concurrency: 1 }, async t =
   });
 
   await t.test('a part row without a set does not drop out of the response', () => {
-    // Der Grund fuer LEFT statt INNER: Ein geloeschtes Set liesse seine
-    // Teilezeilen sonst spurlos verschwinden — und der Abgleich meldete ein
-    // Teil als fehlend, das dasteht.
+    // The reason for LEFT instead of INNER: a deleted set would otherwise let its
+    // part rows vanish without a trace — and the comparison would report a
+    // part as missing that stands there.
     assert.equal(bestand['3004|0']?.gesamt, 4, 'Ohne passende sets-Zeile wurde der Posten ganz weggejoint');
   });
 });
 
 /**
- * Beide Seiten des Abgleichs benutzen DIESELBE Nummer.
+ * Both sides of the comparison use THE SAME number.
  *
- * Gegenprobe (durchgeführt): Schlüssel zurück auf `${blNum}|…` gesetzt →
- * dieser Schritt wird rot.
+ * Counter-check (carried out): key set back to `${blNum}|…` →
+ * this step turns red.
  */
 test('demand and inventory are merged via the same number', () => {
   const fs = require('node:fs');
@@ -166,14 +166,14 @@ test('demand and inventory are merged via the same number', () => {
   );
   assert.ok(!/const key = `\$\{blNum\}/.test(src), 'Der alte BrickLink-Schlüssel steht wieder da');
 
-  // Die Nachfrage-Seite: derselbe Bestandteil, damit beide zusammenpassen.
+  // The demand side: the same component, so that both match.
   assert.match(
     src,
     /const pkey = `\$\{(?:esc\()?p\.part_number\)?\}__\$\{p\.color_id\s*\|\|\s*0\}`/,
     'Die Bestandsabfrage fragt nicht mehr mit der Rebrickable-Nummer',
   );
 
-  // Und die Anzeige bleibt BrickLink — genau Marcos Vorgabe.
+  // And the display stays BrickLink — exactly Marco's specification.
   assert.match(
     src,
     /data-part="\$\{p\.bl_part_number\s*\|\|\s*p\.part_number\}"/,
@@ -182,9 +182,9 @@ test('demand and inventory are merged via the same number', () => {
 });
 
 /**
- * Das Blickfeld des Abgleichs kommt aus DIESER Ansicht.
+ * The scope of the comparison comes from THIS view.
  *
- * Gegenprobe (durchgeführt): `scopeQuery('parts')` wieder eingesetzt → rot.
+ * Counter-check (carried out): `scopeQuery('parts')` reinserted → red.
  */
 test('the inventory reconciliation reads its scope from its own choice', () => {
   const fs = require('node:fs');

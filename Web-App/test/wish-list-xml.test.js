@@ -1,16 +1,16 @@
 /**
- * Der Zeitplan setzt die Werte des Servers maskiert ein: als Text unter
- * „Hintergrundarbeiten“, als Feld in den Einstellungen. Echtes Bündel in
- * jsdom, Verwalterkonto.
- * Die Maskierung der BrickLink-Wunschliste selbst läuft am Modul in
+ * The schedule inserts the server's values escaped: as text under
+ * „Hintergrundarbeiten“, as a field in the settings. Real bundle in
+ * jsdom, admin account.
+ * Escaping of the BrickLink wish list itself is tested on the module in
  * bricklink-wanted-xml.test.js.
  *
- * Gegenprobe (10.11.2026 gemessen, Bündel neu gebaut): in monitor.js
- * schedInput `value="${sc.time}"` per ungeprueft() eingesetzt → rot (ein
- * fremdes <img> steht in der Tabelle, der Wert ist abgeschnitten).
- * 12.11.2026 gemessen (Felder jetzt in den Einstellungen): dasselbe in
- * schedInput → rot „Einstellungen“; in schedText `${wann}` per ungeprueft()
- * → rot „Hintergrundarbeiten“.
+ * Counter-check (measured 10.11.2026, bundle rebuilt): in monitor.js
+ * schedInput `value="${sc.time}"` inserted via ungeprueft() → red (a
+ * foreign <img> is in the table, the value is cut off).
+ * Measured 12.11.2026 (fields now in the settings): the same in
+ * schedInput → red „Einstellungen“; in schedText `${wann}` via ungeprueft()
+ * → red „Hintergrundarbeiten“.
  */
 const test = require('node:test');
 const assert = require('node:assert');

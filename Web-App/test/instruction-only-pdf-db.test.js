@@ -1,16 +1,16 @@
 /**
- * Eine heruntergeladene Anleitung landet nur im gemeinsamen Cache (und geht
- * von dort an alle Konten), wenn sie mit `%PDF-` beginnt. Gemessen an
- * setAnleitungenLaden: Die Quellen und das Netz sind ersetzt, Datenbank
- * und Platte sind echt.
+ * A downloaded instruction only lands in the shared cache (and goes
+ * from there to all accounts) if it starts with `%PDF-`. Measured on
+ * setAnleitungenLaden: the sources and the network are replaced, database
+ * and disk are real.
  *
- * Gegenproben (am 08.11.2026 gemessen, je einzeln):
- *   A  in setAnleitungenLaden() `PDF_START` nicht mehr übergeben → rot:
- *      „eine Datei ohne %PDF- wird nicht abgelegt“ (Datei liegt, Pfad steht
- *      in der Tabelle)
- *   B  in downloadFile() den Block `if (anfang && …)` entfernt → dasselbe rot
+ * Counter-checks (measured on 08.11.2026, each alone):
+ *   A  in setAnleitungenLaden() `PDF_START` no longer passed → red:
+ *      “a file without %PDF- is not stored” (file lies there, path stands
+ *      in the table)
+ *   B  in downloadFile() the block `if (anfang && …)` removed → the same red
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,7 +30,7 @@ const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 
-// Die Quelle nennt zwei Adressen; was dort liegt, bestimmt der Test.
+// The source names two addresses; what lies there is determined by the test.
 const URLS = ['https://cdn.rebrickable.com/media/echt.pdf', 'https://cdn.rebrickable.com/media/seite.pdf'];
 S.testSources(null, {
   scrapeInstructions: async () => URLS.map((url, i) => ({ url, description: `Anleitung ${i}` })),

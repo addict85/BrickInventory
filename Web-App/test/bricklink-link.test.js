@@ -1,17 +1,17 @@
 /**
- * BrickLink-Link-Auflösung für Katalog-Sets (src/catalog/bricklinkLink.ts).
+ * BrickLink link resolution for catalog sets (src/catalog/bricklinkLink.ts).
  *
- * Gegenproben (08.11.2026 gemessen, am Bündel in jsdom):
- *   A  in openCatModal wieder `blBtn.style.display = bl ? '' : 'none'` → rot:
- *      „der Kauf-Knopf nimmt die Adresse des Servers …“ (Fall ohne Auflösung)
- *   B  `blBtn.href` wieder aus der Setnummer gebaut
- *      (`…catalogitem.page?S=${s.set_number}`) → rot: dieselbe Prüfung
+ * Counter-checks (measured 08.11.2026, on the bundle in jsdom):
+ *   A  in openCatModal back to `blBtn.style.display = bl ? '' : 'none'` → red:
+ *      “the buy button takes the server's address …” (case without resolution)
+ *   B  `blBtn.href` built from the set number again
+ *      (`…catalogitem.page?S=${s.set_number}`) → red: the same check
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, reiter, warte } = require('./helpers/ui');
 
-// Nach dist/ bauen statt in-place — siehe helpers/sources.js.
+// Build to dist/ instead of in place — see helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
 const { withVariant, bareNumber, blAddress, blSuchadresse } = _req('src/catalog/bricklinkLink.js');
 
@@ -53,9 +53,9 @@ test('blAddress returns null for NONE — the caller falls back to the search', 
 });
 
 test('blSuchadresse applies where no deep link can be constructed', () => {
-  // Sammelminifiguren: Rebrickable führt sie als Set (71021-1), BrickLink als
-  // MINIFIG mit anderer Nummer (col325). Die Zuordnung existiert in keiner der
-  // beiden Datenquellen — ein Deep-Link ist grundsätzlich nicht herleitbar.
+  // Collectible minifigures: Rebrickable lists them as a set (71021-1), BrickLink as
+  // MINIFIG with another number (col325). The mapping exists in neither of the
+  // two data sources — a deep link cannot be derived in principle.
   const u = blSuchadresse('71021-1');
   assert.match(u, /search\.page\?q=71021/);
   assert.ok(!u.includes('-1'), 'Der Variantensuffix engt die Suche unnötig ein');
@@ -68,8 +68,8 @@ test('blAddress encodes special characters in the number', () => {
 });
 
 test('set links keep the suffix, gear links do not', () => {
-  // Das ist der eigentliche Fehler, der behoben wurde: dieselbe
-  // Rebrickable-Nummer ergibt je nach BrickLink-Typ zwei verschiedene URLs.
+  // That is the actual bug that was fixed: the same
+  // Rebrickable number yields two different URLs depending on the BrickLink type.
   assert.match(blAddress('SET', withVariant('5005358')), /\?S=5005358-1/);
   assert.match(blAddress('GEAR', bareNumber('5005358-1')), /\?G=5005358(?!-)/);
 });
@@ -96,7 +96,7 @@ test("the buy button takes the server's address and is never hidden", async () =
     for (const [nr, href, text] of [
       ['col001-1', SEARCH, 'Auf BrickLink suchen'],
       ['5005358-1', GEAR, 'Auf BrickLink kaufen'],
-      // Ohne Auflösung die Suche nach der Nummer — nicht ein ausgeblendeter Knopf.
+      // Without resolution the search for the number — not a hidden button.
       ['99999-1', 'https://www.bricklink.com/v2/search.page?q=99999-1', 'Auf BrickLink kaufen'],
     ]) {
       assert.ok(await warte(() => d.querySelector(`[data-click="openCatModal"][data-arg="${nr}"]`)), `Kachel ${nr}`);

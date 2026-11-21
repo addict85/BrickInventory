@@ -1,13 +1,13 @@
 /**
- * Beträge stehen in der Landesform des Browsers, wenn sie zur Sprache passt:
- * de-DE mit Tausenderpunkt und Dezimalkomma, de-CH mit Hochkomma und Punkt.
- * Ohne passende Region (Browser „de“ oder englisch) entscheidet die
- * Kontowährung: CHF schreibt Schweizer, sonst deutsches Format.
+ * Amounts stand in the country form of the browser if it matches the language:
+ * de-DE with a thousands dot and decimal comma, de-CH with an apostrophe and dot.
+ * Without a matching region (browser „de“ or English) the account currency
+ * decides: CHF writes Swiss, otherwise German format.
  *
- * Gegenproben:
- *   (28.10.2026) locale() fest 'de-CH' → rot: „de-DE“ (1’097.93 statt 1.097,93)
- *   (05.11.2026) Rückfall wieder fest 'de-CH' → rot: „ohne passende Region:
- *     EUR deutsch“ (1’097.93); Rückfall fest 'de-DE' → rot: „… CHF schweizerisch“
+ * Counter-checks:
+ *   (28.10.2026) locale() fixed 'de-CH' → red: “de-DE” (1’097.93 instead of 1.097,93)
+ *   (05.11.2026) fallback again fixed 'de-CH' → red: “without a matching region:
+ *     EUR German” (1’097.93); fallback fixed 'de-DE' → red: “… CHF Swiss”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -54,7 +54,7 @@ test('de-DE', async () => {
   assert.match(await einstand('de-DE'), /1\.097,93/);
 });
 
-// Das Hochkomma hängt an der ICU-Fassung: Node 22 setzt ’, Node 26 setzt '.
+// The apostrophe depends on the ICU version: Node 22 sets ’, Node 26 sets '.
 test('de-CH stays Swiss, even in EUR', async () => {
   assert.match(await einstand('de-CH'), /1['’]097\.93/);
 });

@@ -1,8 +1,8 @@
 /**
- * DOM-Konsistenz: Jede statisch per G('...') referenzierte Element-ID aus den
- * Frontend-Modulen muss in index.html existieren. Genau diese Fehlerklasse
- * (JS greift auf umbenannte/entfernte IDs zu) fällt sonst erst zur Laufzeit
- * als stiller TypeError auf.
+ * DOM consistency: every element ID statically referenced via G('...') from the
+ * frontend modules must exist in index.html. Exactly this class of error
+ * (JS accesses renamed/removed IDs) otherwise only shows at runtime
+ * as a silent TypeError.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,31 +11,31 @@ const path = require('node:path');
 const { ohneKommentare } = require('./helpers/sources');
 
 const PUB = path.join(__dirname, '..', 'public');
-// app.bundle.js ist ein BUILD-ERGEBNIS (scripts/build-frontend.js verkettet die
-// Quelldateien darin) und liegt nur lokal/im Image, nicht im Repo. Würde es
-// mitgeprüft, meldete jeder Test doppelte Deklarationen — einmal aus der
-// Quelle, einmal aus dem Bündel.
+// app.bundle.js is a BUILD RESULT (scripts/build-frontend.js concatenates the
+// source files into it) and only lives locally/in the image, not in the repo. If it
+// were checked too, every test would report duplicate declarations — once from the
+// source, once from the bundle.
 const JS_FILES = fs
   .readdirSync(path.join(PUB, 'js'))
   .filter(f => f.endsWith('.js'))
   .filter(f => f !== 'app.bundle.js' && !f.startsWith('.'));
 
-// Bekannte IDs = index.html + alle in JS-Templates erzeugten id="..."-Literale
-// (viele Modale bauen ihren Inhalt zur Laufzeit als Template-String auf).
+// Known IDs = index.html + all id="..." literals created in JS templates
+// (many modals build their content at runtime as a template string).
 const knownIds = new Set();
 const collect = src => {
   for (const m of src.matchAll(/id=\\?"([^"\\]+)\\?"/g)) knownIds.add(m[1]);
   for (const m of src.matchAll(/id='([^']+)'/g)) knownIds.add(m[1]);
-  // Auch Elemente, die der Code SELBST erzeugt: `el.id = 'name'`.
+  // Also elements the code creates ITSELF: `el.id = 'name'`.
   for (const m of src.matchAll(/\.id\s*=\s*'([^']+)'/g)) knownIds.add(m[1]);
   for (const m of src.matchAll(/\.id\s*=\s*"([^"]+)"/g)) knownIds.add(m[1]);
-  // Und der vierte Weg: Der Ansichts-Baustein setzt die id als OPTION.
+  // And the fourth path: the view building block sets the id as an OPTION.
   for (const m of src.matchAll(/wertId:\s*'([^']+)'/g)) knownIds.add(m[1]);
   for (const m of src.matchAll(/wertId:\s*"([^"]+)"/g)) knownIds.add(m[1]);
-  // Und der fuenfte Weg: Der Lagerort-Baustein erzeugt ZWEI Elemente aus
-  // einer Kennung — das Textfeld `id` und die Auswahl `id-sel`
-  // (admin.js, locationBlock). Seit das Feld ein Auswahlfeld mit
-  // Neuerfassung ist, steht das id-Literal nicht mehr an der Aufrufstelle, …
+  // And the fifth path: the storage location building block creates TWO elements from
+  // one identifier — the text field `id` and the select `id-sel`
+  // (admin.js, locationBlock). Since the field is a select with
+  // new entry, the id literal no longer stands at the call site, …
   for (const m of src.matchAll(/locationBlock\(\s*'([^']+)'/g)) {
     knownIds.add(m[1]);
     knownIds.add(m[1] + '-sel');
@@ -44,15 +44,15 @@ const collect = src => {
 collect(fs.readFileSync(path.join(PUB, 'index.html'), 'utf8'));
 for (const f of JS_FILES) collect(fs.readFileSync(path.join(PUB, 'js', f), 'utf8'));
 
-// Ausnahmen — und die Liste ist LEER, mit Absicht.
+// Exceptions — and the list is EMPTY, on purpose.
 const ALLOWED_MISSING = new Set();
 
 for (const file of JS_FILES) {
   test(`G('...') IDs from ${file} exist in index.html`, () => {
-    // ohneKommentare: Gesucht wird nach IDs im CODE. Ein Erklärkommentar, der
-    // beschreibt, welches G('…') hier früher stand und warum es weg ist, ist
-    // keine Verwendung — ohne diesen Schritt meldet der Test eine ID, die
-    // niemand mehr abruft. Dieselbe Falle, gegen die es helpers/sources.js …
+    // ohneKommentare: what is searched for are IDs in the CODE. An explanatory comment that
+    // describes which G('…') stood here before and why it is gone is
+    // not a use — without this step the test reports an ID that
+    // nobody fetches anymore. The same trap against which helpers/sources.js …
     const src = ohneKommentare(fs.readFileSync(path.join(PUB, 'js', file), 'utf8'));
     const ids = [...src.matchAll(/G\(\s*'([^'+]+)'\s*\)/g)].map(m => m[1]);
     const missing = [...new Set(ids)].filter(id => !knownIds.has(id) && !ALLOWED_MISSING.has(id));
@@ -61,7 +61,7 @@ for (const file of JS_FILES) {
 }
 
 test('every module file hangs in the bundle graph', () => {
-  // Was diese beiden Tests früher prüften
+  // What these two tests used to check
   const { STANDALONE } = require('../scripts/build-frontend.js');
   const entry = fs.readFileSync(path.join(PUB, 'js', 'main.js'), 'utf8');
   const imported = new Set([...entry.matchAll(/from\s+'\.\/([^']+)'|import\s+'\.\/([^']+)'/g)].map(m => m[1] || m[2]));

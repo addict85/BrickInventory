@@ -1,15 +1,15 @@
 /**
- * Mit dem Startpasswort (must_change_password) lässt der Server nur den
- * Wechsel zu — für Sitzung und App-Token, nicht nur in der Oberfläche.
+ * With the start password (must_change_password) the server only allows the
+ * change — for session and app token, not only in the UI.
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  die Prüfung in loginAtInbox entfernt → rot: „Sitzung kommt am
- *      Wechsel vorbei“ und „Token kommt am Wechsel vorbei“
- *   B  switchMust() liest nur das Sitzungsfeld (ohne Rückfall auf die
- *      Datenbank) → rot: „eine Sitzung von vor dem Feld …“
- *   C  change-password nicht mehr in VOR_DEM_WECHSEL → rot: „der Wechsel selbst geht“
+ * Counter-checks (measured 01.11.2026):
+ *   A  the check removed in loginAtInbox → red: „Sitzung kommt am
+ *      Wechsel vorbei“ and „Token kommt am Wechsel vorbei“
+ *   B  switchMust() only reads the session field (without fallback to the
+ *      database) → red: “a session from before the field …”
+ *   C  change-password no longer in VOR_DEM_WECHSEL → red: “the change itself works”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -60,7 +60,7 @@ test('start password: change it first, then everything else', { concurrency: 1 }
   );
   app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
-  // Wie startup/app.ts: ein Fehlerweg hinter allem, auch hinter dem Eingang.
+  // Like startup/app.ts: an error path behind everything, also behind the entrance.
   app.use(_req('src/http/httpResponse.js').errorResponse);
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}/api/v1`;
@@ -117,7 +117,7 @@ test('start password: change it first, then everything else', { concurrency: 1 }
     const w = await ruf('/auth/change-password', { cookie, body: { current: PASS, newPassword: NEU } });
     assert.equal(w.status, 200, JSON.stringify(w.body));
     const neu = w.cookie ?? cookie;
-    // Seit dem 04.11.2026 verlangen Verwalterrechte danach einen Code-Generator.
+    // Since 04.11.2026 admin rights require a code generator afterwards.
     assert.equal((await ruf('/settings/tokens', { cookie: neu })).body.code, 'zweiter_faktor_pflicht');
     await require('./helpers/admin').adminWithFactor(_req, uid);
     assert.equal((await ruf('/settings/tokens', { cookie: neu })).status, 200);

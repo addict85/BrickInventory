@@ -1,18 +1,18 @@
 /**
- * Ohne Verbindung sind schreibende Knöpfe gesperrt und nennen das Band als
- * Grund, statt nach dem Klick eine Fehlermeldung zu zeigen. Kommt die
- * Verbindung zurück, sind sie wieder frei. Am echten Bündel in jsdom.
+ * Without a connection writing buttons are locked and name the banner as
+ * the reason, instead of showing an error message after the click. When the
+ * connection comes back, they are free again. On the real bundle in jsdom.
  *
- * Gegenproben (02.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  schreibenSperren(true) in showConnection entfernt → rot: „offline:
- *      Hinzufügen gesperrt“
- *   B  MutationObserver nicht gestartet → rot: „neu gezeichnete Knöpfe auch“
- *   C  schreibenSperren(false) beim Zurückkommen entfernt → rot: „online: wieder frei“
- *   D  (02.11.) alte Einzelliste statt schreibt() (nur bp/bd und fünf
- *      Namensmuster, #rb-hinweis ausgenommen) → rot: „alle schreibenden
- *      Bedienelemente“ (Importieren, Schlüssel eintragen, Datei-Wahl, Bearbeiten)
- *   E  (08.11.) alte Regel zurück (bp/bd immer, sonst Namens-Regex) → rot:
- *      „alle schreibenden Bedienelemente“ (Schlüssel eintragen gesperrt)
+ * Counter-checks (measured 02.11.2026, each on its own, bundle rebuilt):
+ *   A  schreibenSperren(true) removed in showConnection → red: “offline:
+ *      adding locked”
+ *   B  MutationObserver not started → red: “redrawn buttons too”
+ *   C  schreibenSperren(false) removed on coming back → red: “online: free again”
+ *   D  (02.11.) old single list instead of schreibt() (only bp/bd and five
+ *      name patterns, #rb-hinweis excepted) → red: “all writing
+ *      controls” (import, enter key, file choice, edit)
+ *   E  (08.11.) old rule back (bp/bd always, otherwise name regex) → red:
+ *      “all writing controls” (enter key locked)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

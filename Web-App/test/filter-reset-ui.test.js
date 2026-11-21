@@ -1,13 +1,13 @@
 /**
- * „Filter zurücksetzen“ im Leerzustand ohne Treffer — am echten Bündel in
+ * “Reset filter” in the empty state without results — on the real bundle in
  * jsdom.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  in renderGallery `knopf: resetButton('gallery')` entfernt → rot:
- *      „Sammlung: Suche ohne Treffer“ und „Sammlung: Themenfilter ohne Treffer“
- *   B  `gefiltert` wieder nur `q` → rot: „Sammlung: Themenfilter ohne Treffer“
- *   C  in filterZuruecksetzen den Zweig 'merkliste' entfernt → rot:
- *      „Merkliste: Suche ohne Treffer“
+ * Counter-checks (measured on 28.10.2026):
+ *   A  in renderGallery `knopf: resetButton('gallery')` removed → red:
+ *      “collection: search without results” and “collection: theme filter without results”
+ *   B  `gefiltert` again only `q` → red: “collection: theme filter without results”
+ *   C  in filterZuruecksetzen the branch 'merkliste' removed → red:
+ *      “wishlist: search without results”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

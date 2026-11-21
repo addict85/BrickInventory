@@ -1,19 +1,19 @@
 /**
- * t() liefert fertiges Markup (SafeHtml), tRaw() reinen Text. Wer Text in
- * textContent oder einen Dialog schreibt, muss tRaw() nehmen, und eine
- * Variable von t() wird nicht vorher schon maskiert. Geprüft wird, was im
- * echten Bündel (jsdom) sichtbar ankommt: Ein Name mit „&“ und „<“ steht
- * wörtlich da, nicht als „&amp;“.
+ * t() delivers finished markup (SafeHtml), tRaw() plain text. Whoever writes text into
+ * textContent or a dialog must take tRaw(), and a
+ * variable of t() is not escaped beforehand. What is checked is what arrives visibly in the
+ * real bundle (jsdom): a name with „&“ and „<“ stands there
+ * literally, not as „&amp;“.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in sammlung.js delSet() wieder t('gallery.delete.name_parts') →
- *      typecheck:frontend rot (SicheresHtml ist kein string); mit
- *      String(t(…)) erzwungen → rot: „Löschdialog nennt den Set-Namen
- *      wörtlich“ (stand „A &amp; B &lt;C&gt;“)
- *   B  in haushalt.js wieder { via: esc(a.via) } → rot: „frühere
- *      Verknüpfung nennt den Weg wörtlich“ („Tom &amp;amp; Jerry“ im Quelltext)
- *   C  in monitor.js die Pause wieder mit esc(p.art) → rot: „Pause nennt
- *      eine unbekannte Auftragsart wörtlich“
+ * Counter-checks (measured 05.11.2026, each on its own, bundle rebuilt):
+ *   A  in sammlung.js delSet() again t('gallery.delete.name_parts') →
+ *      typecheck:frontend red (SicheresHtml is not a string); forced with
+ *      String(t(…)) → red: “delete dialog names the set name
+ *      literally” (it said „A &amp; B &lt;C&gt;“)
+ *   B  in haushalt.js again { via: esc(a.via) } → red: “former
+ *      link names the path literally” („Tom &amp;amp; Jerry“ in the source)
+ *   C  in monitor.js the pause again with esc(p.art) → red: “pause names
+ *      an unknown job kind literally”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

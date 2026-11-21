@@ -1,14 +1,14 @@
 /**
- * Anführungszeichen in der Oberfläche: deutsch „…“, englisch “…”, nie unten öffnend
- * und oben ein gerades Zeichen.
+ * Quotation marks in the UI: German „…“, English “…”, never opening at the bottom
+ * and closing with a straight character at the top.
  *
- * Geprüft wird die gezeigte Meldung im echten Bündel (jsdom) und jeder Text
- * der beiden Wörterbücher, wie das Bündel sie lädt.
+ * What is checked is the shown message in the real bundle (jsdom) and every text
+ * of the two dictionaries, as the bundle loads them.
  *
- * Gegenproben (am 28.10. gemessen):
- *   A  common.no_hits in de.js wieder mit "  → rot: „Suche ohne Treffer: de“
- *      und „jedes „ hat sein ““
- *   B  en.js wieder "{query}" → rot: „Suche ohne Treffer: en“ und „keine geraden …“
+ * Counter-checks (measured on 28.10.):
+ *   A  common.no_hits in de.js again with "  → red: “search without results: de”
+ *      and “every „ has its “”
+ *   B  en.js again "{query}" → red: “search without results: en” and “… no straight …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

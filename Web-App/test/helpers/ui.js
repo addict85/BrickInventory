@@ -1,7 +1,7 @@
 /**
- * Die ganze Weboberfläche in jsdom: echtes index.html, echtes Bündel, und ein
- * fetch, der je Pfad eine vorgegebene Antwort liefert. So prüft ein Test, was
- * die Oberfläche aus einer Serverantwort macht, ohne Server und ohne Browser.
+ * The whole web UI in jsdom: real index.html, real bundle, and a
+ * fetch that delivers a predefined response per path. That way a test checks what
+ * the UI makes of a server response, without server and without browser.
  */
 const fs = require('node:fs');
 const path = require('node:path');
@@ -9,7 +9,7 @@ const { complete } = require('./contract-fill');
 
 const ROOT = path.join(__dirname, '..', '..');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-// TEST_BUENDEL: das Bündel mit Sourcemap aus test-run.js --abdeckung.
+// TEST_BUENDEL: the bundle with source map from test-run.js --abdeckung.
 const { BUENDEL, placeBundleSafe } = require('./bundle');
 placeBundleSafe();
 const BUNDLE_PATH = process.env.TEST_BUENDEL || BUENDEL;
@@ -145,8 +145,8 @@ const SIGNED_OUT = {
   '/v1/auth/me': { success: true, loggedIn: false },
 };
 
-// Ein Fehler in einem Lader, den die Oberfläche selbst nicht abfängt, soll
-// den Testlauf nicht beenden; er landet in `fehler` und der Test kann ihn sehen.
+// An error in a loader that the UI itself does not catch should
+// not end the test run; it lands in `fehler` and the test can see it.
 const fehler = [];
 process.on('unhandledRejection', e => {
   fehler.push(e);
@@ -165,9 +165,9 @@ const vertrag = () => {
 };
 
 /**
- * Die Antwort, wie der Server sie senden dürfte: Fehlende Pflichtfelder
- * ergänzt das Schema der Route (contract-fill.js); ein falscher Typ wirft. Eine absichtlich kaputte Antwort trägt
- * `$contractViolating: '<Grund>'` und geht unverändert hinaus.
+ * The response as the server may send it: missing required fields are
+ * completed by the route's schema (contract-fill.js); a wrong type throws. A deliberately broken response carries
+ * `$contractViolating: '<reason>'` and goes out unchanged.
  */
 function checkResponse(methode, url, daten) {
   if (!daten || typeof daten !== 'object' || daten === UNASSIGNED || daten.$contractViolating) return daten;
@@ -184,7 +184,7 @@ function checkResponse(methode, url, daten) {
   const rumpf = Array.isArray(daten)
     ? daten
     : Object.fromEntries(Object.entries(daten).filter(([k]) => !k.startsWith('$')));
-  // Fehlerantworten werden nicht ergänzt: error und code sagt der Test selbst.
+  // Error responses are not completed: the test states error and code itself.
   const wert = status >= 400 ? rumpf : complete(schema, JSON.parse(JSON.stringify(rumpf)));
   const r = schema.safeParse(wert);
   if (!r.success) {
@@ -199,7 +199,7 @@ function checkResponse(methode, url, daten) {
   return Array.isArray(daten) ? wert : { ...wert, $status: daten.$status };
 }
 
-// Nicht vorgegebene Pfade: Der Test stützt sich nicht auf sie, also keine Vertragsprüfung.
+// Paths not predefined: the test does not rely on them, so no contract check.
 const UNASSIGNED = Object.freeze({ success: true });
 
 function responseFor(antworten, url, o = {}) {
@@ -213,7 +213,7 @@ function responseFor(antworten, url, o = {}) {
 
 const takt = (ms = 0) => new Promise(r => setTimeout(r, ms));
 
-/** Wartet, bis `bedingung()` wahr ist (höchstens `ms`). */
+/** Waits until `bedingung()` is true (at most `ms`). */
 async function warte(bedingung, ms = 3000) {
   const ende = Date.now() + ms;
   while (Date.now() < ende) {
@@ -224,14 +224,14 @@ async function warte(bedingung, ms = 3000) {
 }
 
 /**
- * @param {object} [antworten]  Pfad → Antwort (Objekt oder Funktion(url))
+ * @param {object} [antworten]  path → response (object or function(url))
  * @param {{ angemeldet?: boolean, sprache?: string, browserLanguage?: string, vorher?: (w: any) => void, url?: string }} [opt]
- *   url: Adresse der Seite (Vorgabe http://localhost/), etwa https:// für eine Seite mit TLS.
+ *   url: address of the page (default http://localhost/), e.g. https:// for a page with TLS.
  */
 async function openUi(antworten = {}, opt = {}) {
   const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
   const alle = { ...(opt.angemeldet === false ? SIGNED_OUT : ANMELDUNG), ...antworten };
-  // Die Sprache des Kontos gewinnt beim Laden über die gespeicherte — also beide setzen.
+  // The account's language wins over the stored one on loading — so set both.
   if (opt.sprache && !antworten['/v1/settings/raw'])
     alle['/v1/settings/raw'] = {
       success: true,
@@ -247,10 +247,10 @@ async function openUi(antworten = {}, opt = {}) {
   try {
     w.localStorage.setItem('bim_lang', opt.sprache || 'de');
   } catch (_) {
-    /* jsdom ohne Speicher */
+    /* jsdom without storage */
   }
-  // Eine Antwort darf ein Promise sein (verzögert) oder werfen (Netzfehler);
-  // `$status` setzt den HTTP-Status, z. B. { $status: 500, success: false }.
+  // A response may be a promise (delayed) or throw (network error);
+  // `$status` sets the HTTP status, e.g. { $status: 500, success: false }.
   let offen = 0;
   w.fetch = async (url, o = {}) => {
     aufrufe.push({ url: String(url), method: o.method || 'GET', body: o.body, headers: o.headers || {} });
@@ -261,7 +261,7 @@ async function openUi(antworten = {}, opt = {}) {
     } finally {
       setTimeout(() => offen--, 0);
     }
-    // Ausserhalb des Fensters geworfen: Die Oberfläche finge den Fehler sonst als Netzfehler ab.
+    // Thrown outside the window: the UI would otherwise catch the error as a network error.
     try {
       daten = checkResponse(o.method || 'GET', url, daten);
     } catch (e) {
@@ -279,16 +279,16 @@ async function openUi(antworten = {}, opt = {}) {
   };
   w.console.warn = () => {};
   if (opt.browserLanguage) Object.defineProperty(w.navigator, 'language', { value: opt.browserLanguage });
-  // jsdom kennt keinen IntersectionObserver; nachgeladen wird hier nichts.
+  // jsdom knows no IntersectionObserver; nothing is loaded later here.
   w.IntersectionObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}
   };
-  // Die Wörterbücher lädt index.html als eigene <script>-Tags.
+  // index.html loads the dictionaries as separate <script> tags.
   for (const l of ['de', 'en']) w.eval(fs.readFileSync(path.join(ROOT, 'public', 'locales', l + '.js'), 'utf8'));
   if (opt.vorher) opt.vorher(w);
-  // Mit Dateinamen statt w.eval(): So ordnet V8 die Abdeckung dem Bündel zu.
+  // With file names instead of w.eval(): that way V8 attributes the coverage to the bundle.
   new (require('node:vm').Script)(BUNDLE, { filename: BUNDLE_PATH }).runInContext(dom.getInternalVMContext());
   if (w.document.readyState === 'loading') await new Promise(r => w.document.addEventListener('DOMContentLoaded', r));
   if (opt.angemeldet !== false)
@@ -298,7 +298,7 @@ async function openUi(antworten = {}, opt = {}) {
         w.document.getElementById('app')?.style.display !== '',
     );
   await takt(20);
-  /** Bis keine Antwort mehr aussteht und die Oberfläche die letzte verarbeitet hat. */
+  /** Until no response is pending anymore and the UI has processed the last one. */
   const ruhig = async (ms = 3000) => {
     const ok = await warte(() => offen === 0, ms);
     for (let i = 0; i < 3; i++) await takt(0);
@@ -307,13 +307,13 @@ async function openUi(antworten = {}, opt = {}) {
   return { w, d: w.document, aufrufe, warte, takt, ruhig, fehler };
 }
 
-/** Einen Reiter öffnen, wie ein Klick in der Leiste. */
+/** Open a tab, like a click in the bar. */
 async function reiter(w, name) {
   w.document.querySelector(`.ntab[data-tab="${name}"]`).click();
   await takt(50);
 }
 
-/** Eine Sicht aus dem Benutzermenü öffnen (Konto, Gutscheine, …). */
+/** Open a view from the user menu (account, vouchers, …). */
 async function sicht(w, name) {
   w.document.querySelector(`.umenu-item[data-arg="${name}"]`).click();
   await takt(50);

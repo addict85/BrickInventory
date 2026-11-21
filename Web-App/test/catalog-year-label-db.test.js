@@ -1,5 +1,5 @@
 /**
- * Das Jahres-Etikett am Scrollbalken nennt das Jahr, das dort WIRKLICH steht.
+ * The year label on the scrollbar names the year that REALLY stands there.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -20,8 +20,8 @@ test('the year label hits the spot', { concurrency: 1 }, async t => {
   await db.run(`INSERT INTO rb_themes (id,name,parent_id) VALUES (1,'T',NULL),(2,'U',NULL)
                 ON CONFLICT DO NOTHING`);
   await db.run(`DELETE FROM rb_sets WHERE set_num LIKE 'JV%'`);
-  // Schiefe Verteilung — der ganze Punkt der Sache. Bei gleicher Anzahl je Jahr
-  // wäre auch die lineare Schätzung richtig gewesen, und der Test wertlos.
+  // Skewed distribution — the whole point of the matter. With the same count per year
+  // the linear estimate would also have been right, and the test worthless.
   for (const [von, bis, n, thema] of [
     [1960, 1969, 2, 1],
     [1990, 1999, 20, 1],
@@ -39,13 +39,13 @@ test('the year label hits the spot', { concurrency: 1 }, async t => {
 
   const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
   const hol = async p => (await fetch(base + p)).json();
-  // rb_sets ist eine GLOBALE Tabelle — andere Tests legen dort eigene Zeilen an.
-  // Ohne diese Einschränkung zählte die Verteilung fremde Sets mit, und der
-  // Test wäre allein gelaufen grün und im vollen Durchlauf rot. Die Suche über
-  // die Setnummer ist derselbe Filter, den auch die Liste anwendet.
+  // rb_sets is a GLOBAL table — other tests create their own rows there.
+  // Without this restriction the distribution would count foreign sets, and the
+  // test would be green run alone and red in the full run. The search via
+  // the set number is the same filter the list applies.
   const NUR = '&q=JV';
 
-  /** Dieselbe Rechnung wie im Browser: Anteil → laufende Nummer → Jahr. */
+  /** The same computation as in the browser: share → running number → year. */
   const etikett = (verteilung, gesamt, anteil) => {
     let nummer = Math.round(anteil * (gesamt - 1));
     for (const e of verteilung) {
@@ -54,7 +54,7 @@ test('the year label hits the spot', { concurrency: 1 }, async t => {
     }
     return verteilung[verteilung.length - 1].year;
   };
-  /** Was an dieser Stelle wirklich steht — aus der echten Liste. */
+  /** What really stands at this place — from the real list. */
   const thereStands = async (gesamt, anteil, filter = '') => {
     const nr = Math.round(anteil * (gesamt - 1));
     const seite = Math.floor(nr / 60) + 1;
@@ -80,9 +80,9 @@ test('the year label hits the spot', { concurrency: 1 }, async t => {
     }
 
     await t.test('with a theme filter it is right too', async () => {
-      // Die Verteilung MUSS die Filter kennen. Eine über den ganzen Katalog
-      // läge bei gesetztem Thema genauso daneben wie die lineare Schätzung —
-      // Thema 2 enthält nur die 2010er.
+      // The distribution MUST know the filters. One over the whole catalog
+      // would be just as far off with a set theme as the linear estimate —
+      // theme 2 contains only the 2010s.
       const v = (await hol(`/api/v1/catalog/year-verteilung?sort=year_desc&theme_id=2${NUR}`)).years.filter(
         x => x.year,
       );
@@ -99,9 +99,9 @@ test('the year label hits the spot', { concurrency: 1 }, async t => {
     });
 
     await t.test('the linear estimate would have been wrong', async () => {
-      // Gegenprobe im Test selbst: Ohne sie könnte jemand die Verteilung wieder
-      // durch eine Gerade ersetzen und der Test bliebe grün, falls die Bühne
-      // zufällig gleichverteilt wäre.
+      // Counter-check in the test itself: without it someone could replace the distribution
+      // with a straight line again and the test would stay green if the stage
+      // happened to be evenly distributed.
       const v = (await hol(`/api/v1/catalog/year-verteilung?sort=year_desc${NUR}`)).years.filter(x => x.year);
       const gesamt = v.reduce((s, e) => s + e.n, 0);
       const min = Math.min(...v.map(x => x.year)),

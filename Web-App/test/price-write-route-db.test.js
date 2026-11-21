@@ -1,24 +1,24 @@
 /**
- * Ein BrickLink-Preis wird auf EINEM Weg weggeschrieben.
+ * A BrickLink price is written away on ONE path.
  *
- * Gegenproben (durchgefuehrt):
- *   a) In savePrice() den price_history-Schreibvorgang entfernt
- *      → beide Teilschritte rot. Der Vergleich Job/Anfrageweg allein haette
- *        das NICHT gemerkt (beide verlieren den Punkt gleichermassen) —
- *        deshalb steht darunter zusaetzlich, was herauskommen soll.
- *   b) Nur das alte `return 'updated'` im Rueckfall wieder eingesetzt
- *      → blieb GRUEN, und zu Recht: Die Null-Zeile steht jetzt schon davor,
- *        der fruehe Ausstieg verliert nichts mehr.
- *      Die wirksame Gegenprobe ist die alte REIHENFOLGE — Null-Zeile erst
- *      nach dem Rueckfall, Rueckfall springt heraus. Damit ist Teilschritt 1
- *      rot: zweiter Lauf 'updated' statt 'skipped'.
- *   c) Einen zweiten INSERT INTO price_cache in src/finances/priceRun.ts gesetzt
- *      → Teilschritt 2 rot.
- *   d) (13.11.2026) in savePrice() der Verlauf wieder mit logAndContinue
- *      und ohne Transaktion → Teilschritt 3 rot (keine Absage); nur die
- *      Transaktion weggelassen → rot (die Cache-Zeile stand ohne Verlaufspunkt da).
+ * Counter-checks (carried out):
+ *   a) the price_history write removed in savePrice()
+ *      → both substeps red. The comparison job/request path alone would
+ *        NOT have noticed that (both lose the point equally) —
+ *        hence below it additionally stands what should come out.
+ *   b) only the old `return 'updated'` reinserted in the fallback
+ *      → stayed GREEN, and rightly so: the null row now already stands before it,
+ *        the early exit loses nothing any more.
+ *      The effective counter-check is the old ORDER — null row only
+ *      after the fallback, fallback jumps out. With that substep 1 is
+ *      red: second run 'updated' instead of 'skipped'.
+ *   c) a second INSERT INTO price_cache put in src/finances/priceRun.ts
+ *      → substep 2 red.
+ *   d) (13.11.2026) in savePrice() the history again with logAndContinue
+ *      and without a transaction → substep 3 red (no refusal); only the
+ *      transaction left out → red (the cache row stood there without a history point).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -33,23 +33,23 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-// BrickLink vorgeben, BEVOR financeCalc/priceJob priceGuideQuery herausziehen.
-// esbuild exportiert ueber Getter, ein `bl.priceGuideQuery = …` liefe ins
-// Leere — deshalb wird der Eintrag im require-Zwischenspeicher ersetzt.
+// Set up BrickLink BEFORE financeCalc/priceJob pull out priceGuideQuery.
+// esbuild exports via getters, a `bl.priceGuideQuery = …` would run into
+// nothing — hence the entry in the require cache is replaced.
 const blPath = require.resolve(path.join(ROOT, 'dist', 'src/catalog/bricklinkPrices.js'));
 const echt = require(blPath);
 let fetches = [];
 require.cache[blPath].exports = Object.assign({}, echt, {
   priceGuideQuery: async (_k, _sn, cond) => {
     fetches.push(cond);
-    // 'N' ohne Preis, 'U' mit — genau die Lage, in der der Rueckfall greift.
+    // 'N' without a price, 'U' with one — exactly the situation in which the fallback applies.
     return cond === 'U'
       ? { min_price: '8', avg_price: '10', max_price: '12', qty_avg_price: '9', total_quantity: '4' }
       : { min_price: '0', avg_price: '0', max_price: '0', qty_avg_price: '0', total_quantity: '0' };
   },
 });
 
-/** price_cache und price_history eines Sets, vergleichbar aufbereitet. */
+/** price_cache and price_history of a set, prepared for comparison. */
 async function traces(sn) {
   const cache = await db.all(
     'SELECT condition, avg_price::float AS avg FROM price_cache WHERE set_number=$1 ORDER BY condition',
@@ -75,8 +75,8 @@ test('a BrickLink price is written away on one path', { concurrency: 1 }, async 
   await aufraeumen();
 
   try {
-    // 1. Der Job schreibt die Null-Zeile mit — sonst kostet dasselbe Set
-    //    jeden Lauf erneut zwei Abrufe.
+    // 1. The job writes the null row too — otherwise the same set costs
+    //    two requests again on every run.
     const { fetchAndCachePrice } = _req('src/finances/priceRun.js');
     fetches = [];
     assert.equal(await fetchAndCachePrice(JOB, 'N', 'sold', 'EUR', 24), 'updated');
@@ -93,7 +93,7 @@ test('a BrickLink price is written away on one path', { concurrency: 1 }, async 
       `Zweiter Lauf hat ${fetches.length - nachLauf1} zusaetzliche BrickLink-Abrufe gekostet`,
     );
 
-    // 2. Derselbe Fall ueber den Anfrageweg hinterlaesst dasselbe.
+    // 2. The same case via the request path leaves behind the same.
     const { fetchPrice } = _req('src/finances/financeCalc.js');
     fetches = [];
     await fetchPrice(ROUTE, 'N', 'sold', 'EUR', 24);
@@ -109,19 +109,19 @@ test('a BrickLink price is written away on one path', { concurrency: 1 }, async 
       `Job braucht ${nachLauf1} Abrufe, der Anfrageweg ${fetchesRoute} — fuer dieselbe Auskunft`,
     );
 
-    // Und das Hinterlassene ist auch das Richtige: die Null-Zeile fuer den
-    // angefragten Zustand, der Preis fuer den Rueckfall, ein Verlaufspunkt
-    // fuer den Preis und keiner fuer die Null.
+    // And what is left behind is also the right thing: the null row for the
+    // requested condition, the price for the fallback, a history point
+    // for the price and none for the null.
     assert.deepEqual(j.cache, [
       { condition: 'N', avg: 0 },
       { condition: 'U', avg: 10 },
     ]);
     assert.deepEqual(j.hist, [{ condition: 'U', avg: 10 }]);
 
-    // 3. Scheitert der Verlaufspunkt, gilt auch der Cache nicht: Sonst hielte er den
-    //    nächsten Abruf zurück, und die Lücke im Verlauf füllte niemand mehr.
+    // 3. If the history point fails, the cache does not count either: otherwise it would hold back
+    //    the next fetch, and nobody would fill the gap in the history any more.
     const fk = require('./helpers/sources').testContext('finances');
-    /** Derselbe Kontext, dessen Verlauf nicht schreibbar ist — ausserhalb und in der Transaktion. */
+    /** The same context, whose history is not writable — outside and in the transaction. */
     const kaputt = z => ({
       ...z,
       preisCache: {
@@ -146,7 +146,7 @@ test('a BrickLink price is written away on one path', { concurrency: 1 }, async 
 });
 
 test('the write rule exists in only one place', () => {
-  // Gefunden, nicht aufgezaehlt: alle .ts des Baums ausser Tests und Werkzeug.
+  // Found, not enumerated: all .ts of the tree except tests and tooling.
   const dateien = [];
   const gehen = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -164,7 +164,7 @@ test('the write rule exists in only one place', () => {
     }
   };
   gehen(ROOT);
-  // Selbstnachweis: Faende die Suche nichts, waere die Regel unten leer wahr.
+  // Self-proof: if the search found nothing, the rule below would be vacuously true.
   assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
 
   const cacheWriter = [],
@@ -176,8 +176,8 @@ test('the write rule exists in only one place', () => {
       .replace(/^\s*\/\/[^\n]*$/gm, '');
     const rel = path.relative(ROOT, f);
     for (const _ of code.matchAll(/INSERT INTO price_cache/g)) cacheWriter.push(rel);
-    // Nur der zeilenweise Schreibvorgang. Der Tages-Schnappschuss im Job
-    // kopiert per SELECT und ist etwas anderes als „einen Punkt setzen".
+    // Only the row-wise write. The daily snapshot in the job
+    // copies via SELECT and is something other than „setting a point".
     for (const m of code.matchAll(/INSERT INTO price_history[\s\S]{0,220}?(VALUES|SELECT)/g))
       if (m[1] === 'VALUES') historyWriter.push(rel);
   }

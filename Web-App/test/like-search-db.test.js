@@ -1,12 +1,12 @@
 /**
- * Freitextsuche: `%` und `_` in der Eingabe gelten wörtlich (db/likeSearch.ts).
- * Sonst fände `%` jeden Eintrag und `_` jedes einzelne Zeichen.
+ * Free-text search: `%` and `_` in the input count literally (db/likeSearch.ts).
+ * Otherwise `%` would find every entry and `_` every single character.
  *
- * Gegenproben (am 03.11.2026 gemessen, je einzeln):
- *   A  likeLiteral() gibt den Text unverändert zurück → rot: alle vier
- *      Teiltests (jede Liste lieferte beide Einträge)
- *   B  LIKE_ESCAPE mit `!` statt `\` (Maske und ESCAPE passen nicht) → rot:
- *      alle vier Teiltests
+ * Counter-checks (measured on 03.11.2026, each on its own):
+ *   A  likeLiteral() returns the text unchanged → red: all four
+ *      subtests (every list delivered both entries)
+ *   B  LIKE_ESCAPE with `!` instead of `\` (mask and ESCAPE do not match) → red:
+ *      all four subtests
  *
  * REQUIRE_DB=1.
  */

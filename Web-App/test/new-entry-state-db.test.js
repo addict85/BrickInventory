@@ -1,9 +1,9 @@
 /**
- * Ein neues Exemplar bekommt den Zustand, den das Set WIRKLICH hat.
+ * A new copy gets the condition that the set REALLY has.
  *
- * Gegenproben: siehe am jeweiligen Teilschritt.
+ * Counter-checks: see at the respective substep.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -22,8 +22,8 @@ const db = testData();
 
 test('a new copy follows the acquisitions, not the stored value', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
-  // Die Tagesregel steht als Index in Migration 0047; ohne ihn greift das
-  // ON CONFLICT beim Erfassen nicht.
+  // The daily rule stands as an index in migration 0047; without it the
+  // ON CONFLICT does not apply when capturing.
   const mc = await db.pool.connect();
   try {
     await _req('db/migrate.js').runMigrations(mc);
@@ -45,18 +45,18 @@ test('a new copy follows the acquisitions, not the stored value', { concurrency:
     await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [U]);
     const uid = (await db.get('SELECT id FROM users WHERE username=$1', [U])).id;
 
-    // Der Fall, fuer den effectiveCondition() gebaut wurde: Die einzige
-    // Erfassung sagt 'U', und die Vorgabe des Nutzers (DEFAULT_PRICE_CONDITION)
-    // sagt 'N'. Bis Migration 0032 stand das 'N' zusaetzlich in
-    // sets.condition — die Spalte ist weg, die Verwechslungsmoeglichkeit
-    // zwischen Vorgabe und Erfassung bleibt.
-    await holdsSet(db, uid, SET, 0); // Menge 0: die Erfassung dahinter traegt sie
+    // The case effectiveCondition() was built for: the only
+    // acquisition says 'U', and the user's default (DEFAULT_PRICE_CONDITION)
+    // says 'N'. Until migration 0032 the 'N' additionally stood in
+    // sets.condition — the column is gone, the possibility of confusion
+    // between default and acquisition remains.
+    await holdsSet(db, uid, SET, 0); // quantity 0: the acquisition behind it carries it
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
                   VALUES ($1,$2,1,10,'U', NOW() - INTERVAL '2 days')`,
       [uid, SET],
     );
-    // Preise fuer BEIDE Zustaende — sonst waere der Unterschied unsichtbar.
+    // Prices for BOTH conditions — otherwise the difference would be invisible.
     for (const [c, p] of [
       ['N', 100],
       ['U', 20],
@@ -77,8 +77,8 @@ test('a new copy follows the acquisitions, not the stored value', { concurrency:
       [uid, SET],
     );
     assert.equal(erf.length, 2, 'Die Mengenerhoehung hat keine neue Erfassung angelegt');
-    // Gegenprobe: in priceForNewEntry den Zustand auf
-    // DEFAULT_PRICE_CONDITION festnageln -> hier steht 'N' und 100.
+    // Counter-check: in priceForNewEntry pin the condition to
+    // DEFAULT_PRICE_CONDITION -> here stands 'N' and 100.
     assert.equal(erf[1].condition, 'U', 'Das neue Exemplar traegt die Vorgabe statt den Zustand der Erfassungen');
     assert.equal(
       erf[1].p,
@@ -93,10 +93,10 @@ test('a new copy follows the acquisitions, not the stored value', { concurrency:
 });
 
 /**
- * Warum diese Regel umgeschrieben wurde
+ * Why this rule was rewritten
  */
 test('no source reads purchase price or condition from sets', () => {
-  // Gefunden, nicht aufgezaehlt.
+  // Found, not enumerated.
   const dateien = [];
   const gehen = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -109,9 +109,9 @@ test('no source reads purchase price or condition from sets', () => {
   gehen(ROOT);
   assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
 
-  // Gesucht werden die Formen, in denen die zwei Spalten in diesem Baum
-  // tatsaechlich vorkamen — GEFUNDEN, nicht erdacht (git log von Migration
-  // 0032 nennt jede Stelle):
+  // What is searched for are the forms in which the two columns actually
+  // occurred in this tree — FOUND, not invented (git log of migration
+  // 0032 names every place):
   const verboten = [
     /\bs\.purchase_price\b/i,
     /\bs\.condition\b/i,
@@ -134,8 +134,8 @@ test('no source reads purchase price or condition from sets', () => {
       if (m) treffer.push(`${path.relative(ROOT, f)}: ${m[0].replace(/\s+/g, ' ')}`);
     }
   }
-  // Selbstnachweis mit GEMESSENER Zahl: Die Muster muessen auf einem Text, der
-  // sie enthaelt, auch wirklich anschlagen — sonst waere die Regel leer wahr.
+  // Self-proof with a MEASURED number: the patterns must really trigger on a text that
+  // contains them — otherwise the rule would be vacuously true.
   const probe = `SELECT s.condition, s.purchase_price FROM sets s
     INSERT INTO sets (user_id,purchase_price) VALUES ($1,$2)`;
   const angeschlagen = verboten.filter(r => r.test(probe)).length;

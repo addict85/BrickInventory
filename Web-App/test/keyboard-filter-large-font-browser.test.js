@@ -1,34 +1,34 @@
 /**
- * UX-Prüfung 24 im echten Chrome, im Haushalt mit Unterkonto: M1–M3, N4–N16 und die beiden offenen Punkte
- * aus Runde 23 (Fokus nach „Rückgängig“, „Abbrechen“ in den einzelnen Aufträgen).
+ * UX review 24 in real Chrome, in the household with a sub-account: M1–M3, N4–N16 and the two open points
+ * from round 23 (focus after “undo”, “cancel” in the individual jobs).
  *
- * Gegenproben (14.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  Set-Formular ohne data-submit → rot: „Enter aus jedem Feld“ (add-qty schickt nicht ab)
- *   B  schliesseErfassen() ohne form.reset() → rot: „Esc verwirft den Entwurf“ (Preis „12“) und
- *      „Enter aus jedem Feld“ (der Hinweis „schon da“ bleibt stehen, Enter öffnet das Set)
- *   C  loadFinance zeigt den Fehler wieder in #fin-tbl → rot: „Finanzen bei Serverfehler“ (kein Fehler oben)
- *   D  Katalog wieder ohne .filterleiste → rot: „Filter hinter dem Knopf“ (Katalog: Suche und vier Felder)
- *   E  ohne das Etikett .delbtn[data-taste]::before → rot: „Entf löscht“; hover:none-Regel wieder ohne
- *      :not(:focus-visible) → rot: ebenda (Papierkorb unsichtbar)
- *   F  SET_SORTS ohne name_desc → rot: „Tabelle der Sets“ (absteigend nicht sortiert); Aktionsknöpfe
- *      wieder ohne Setnamen → rot: ebenda
- *   G  erfassungsPreis() ohne den Geschenk-Zweig → rot: „Geschenk und Figurenzahl“ („0,00 €“)
- *   H  die Figurenzahl wieder aus /v1/minifigs?source=set → rot: ebenda (Detail 1, Tabelle 4)
- *   I  Brick .ntab wieder 6px 2px → rot: „Brick bei 320 px“ (Reiter zweizeilig); #app wieder 16 px Rand →
- *      rot: ebenda (Sammlungswahl zweireihig); .hinweis-zu wieder im Fluss → rot: ebenda (× eigene Zeile)
- *   K  .preis-mit-waehrung ohne flex-wrap → rot: „Grosse Schrift: Set hinzufügen“ (Preisfeld 95 px)
- *   L  ohne @container ovl → rot: „Grosse Schrift: Set-Detail“ (250 px Inhalt)
- *   M  rb-hinweis offline wieder sichtbar → rot: „Offline-Band allein“
- *   N  --chart-wert wieder var(--chart-new) → rot: „Wertlinie in der Farbe der Beträge“ (Hochglanz blau)
- *   O  focusIfDa() ohne el.focus() → rot: „Fokus nach Rückgängig“ (bleibt auf der Überschrift)
- *   P  #tab-monitor .mon-knoepfe .btn ohne hyphens:manual → rot: „Abbrechen in einer Zeile“ (42 > 33 px)
- *   Q  Telefontext wieder „neben dem Titel“ → rot: „Leere Sammlung am Telefon“
+ * Counter-checks (measured 14.11.2026, each alone, bundle rebuilt):
+ *   A  set form without data-submit → red: “Enter from every field” (add-qty does not submit)
+ *   B  schliesseErfassen() without form.reset() → red: “Esc discards the draft” (price “12”) and
+ *      “Enter from every field” (the hint “schon da” stays, Enter opens the set)
+ *   C  loadFinance shows the error in #fin-tbl again → red: “finances on server error” (no error at the top)
+ *   D  catalog again without .filterleiste → red: “filters behind the button” (catalog: search and four fields)
+ *   E  without the label .delbtn[data-taste]::before → red: “Delete deletes”; hover:none rule again without
+ *      :not(:focus-visible) → red: same place (trash invisible)
+ *   F  SET_SORTS without name_desc → red: “table of the sets” (not sorted descending); action buttons
+ *      again without set names → red: same place
+ *   G  erfassungsPreis() without the gift branch → red: “gift and minifigure count” (“0,00 €”)
+ *   H  the minifigure count again from /v1/minifigs?source=set → red: same place (detail 1, table 4)
+ *   I  Brick .ntab back to 6px 2px → red: “Brick at 320 px” (tabs two lines); #app back to 16 px margin →
+ *      red: same place (collection choice in two rows); .hinweis-zu back in the flow → red: same place (× own line)
+ *   K  .preis-mit-waehrung without flex-wrap → red: “large font: add set” (price field 95 px)
+ *   L  without @container ovl → red: “large font: set detail” (250 px content)
+ *   M  rb-hinweis visible offline again → red: “offline banner alone”
+ *   N  --chart-wert back to var(--chart-new) → red: “value line in the color of the amounts” (hochglanz blue)
+ *   O  focusIfDa() without el.focus() → red: “focus after undo” (stays on the heading)
+ *   P  #tab-monitor .mon-knoepfe .btn without hyphens:manual → red: “cancel in one line” (42 > 33 px)
+ *   Q  phone text back to “neben dem Titel” → red: “empty collection on the phone”
  *
- * N16 (Datumsfeld 11/14/2026): Das native Feld formatiert nach der Sprache des Browsers, nicht nach `lang`;
- * geprüft wird nur, dass die Seite ihre Sprache richtig setzt.
+ * N16 (date field 11/14/2026): the native field formats by the browser's language, not by `lang`;
+ * what is checked is only that the page sets its language correctly.
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Skipped without Chrome (CHROME_BIN, google-chrome, chromium).
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -54,7 +54,7 @@ async function geh(a, hash, bereit, was) {
   await a.ruhig(5000);
 }
 
-/** Eine echte Taste über das DevTools-Protokoll: Nur sie löst das implizite Absenden eines Formulars aus. */
+/** A real key via the DevTools protocol: only it triggers the implicit submission of a form. */
 async function taste(b, key, vk) {
   await b.tab('Input.dispatchKeyEvent', {
     type: 'keyDown',
@@ -91,7 +91,7 @@ async function enterFromEachField(_t, a) {
     assert.equal(anfragen() - vorher, 1, `Enter aus ${feld}: Abfragen`);
     assert.match(await b.auswerten(text('#add-unbekannt')), /schon in deiner Sammlung/);
   }
-  // Teil und Figur: ohne Nummer meldet der Dialog es am Ergebnis, aus dem Preisfeld abgeschickt.
+  // Part and minifigure: without a number the dialog reports it at the result, submitted from the price field.
   for (const [hash, type, feld, result, meldung] of [
     ['#/teile', 'part', 'ap-price-inline', 'ap-inline-result', 'Teilenummer erforderlich'],
     ['#/minifiguren', 'fig', 'af-price-inline', 'af-inline-result', 'Figur-Nummer erforderlich'],
@@ -380,7 +380,7 @@ async function wertlinie(_t, a) {
   await geh(a, '#/finanzen', `!!document.querySelector('#portfolio-chart svg polyline')`, 'Wertdiagramm');
   const alt = await b.auswerten(`document.documentElement.getAttribute('data-theme')`);
   try {
-    // Werkbank zeichnet die Linie bewusst in Messing (Runde 11).
+    // Werkbank deliberately draws the line in brass (round 11).
     for (const design of ['classic', 'brick', 'farbfaecher', 'noppe', 'hochglanz']) {
       const m = await b.auswerten(`(() => { document.documentElement.setAttribute('data-theme', '${design}');
         return { linie: getComputedStyle(document.querySelector('#portfolio-chart svg polyline')).stroke,
@@ -485,7 +485,7 @@ test('keyboard in forms, filter bar, large font', { concurrency: 1, timeout: 600
     ['Sprache der Seite', sprache],
     ['Fokus nach Rückgängig', rueckgaengig],
     ['Abbrechen in einer Zeile', cancelSingleLine],
-    // Lädt die Seite neu und verliert damit die übrigen Design-Stylesheets: nach den Designprüfungen.
+    // Reloads the page and thereby loses the other design stylesheets: after the design checks.
     ['Finanzen bei Serverfehler', finanzenFehler],
     ['Leere Sammlung am Telefon', emptyCollection],
   ];

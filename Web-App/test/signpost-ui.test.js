@@ -1,14 +1,14 @@
 /**
- * Wegweiser in Texten („Menü → Haushalt“) führen dorthin, wo die Oberfläche
- * die Sache tatsächlich zeigt. Die Ziele werden aus der gerenderten Oberfläche
- * gelesen (Benutzermenü, Abschnitte der Einstellungen), nicht aus einer Liste
- * im Test: Benennt jemand einen Menüpunkt um, wird jeder alte Wegweiser rot. …
+ * Signposts in texts („Menü → Haushalt“) lead to where the UI
+ * actually shows the thing. The targets are read from the rendered UI
+ * (user menu, sections of the settings), not from a list
+ * in the test: if somebody renames a menu item, every old signpost turns red. …
  *
- * Gegenproben (02.11.2026 gemessen, je einzeln):
- *   A  household.invite_hint (de) wieder „… im anderen Konto unter
- *      Einstellungen ein …“ → rot: „de: Wegweiser stimmen“
- *   B  wanted.cond_default (en) „default from Menu → Profile“ → rot:
- *      „en: Wegweiser stimmen“ (Profile ist kein Menüpunkt)
+ * Counter-checks (measured 02.11.2026, each on its own):
+ *   A  household.invite_hint (de) again „… im anderen Konto unter
+ *      Einstellungen ein …“ → red: “de: signposts are correct”
+ *   B  wanted.cond_default (en) „default from Menu → Profile“ → red:
+ *      “en: signposts are correct” (Profile is not a menu item)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -31,8 +31,8 @@ for (const sprache of ['de', 'en']) {
       for (const [k, text] of Object.entries(words)) {
         if (typeof text !== 'string') continue;
         if (WITHOUT_PATH.test(text)) funde.push(`${k}: Ziel ohne Pfad — „${text.match(WITHOUT_PATH)[0]}“`);
-        // Nach „Menü → “ muss ein Menüpunkt stehen (der längste, der passt);
-        // nach „Einstellungen → “ ein Abschnitt der Einstellungen.
+        // After „Menü → “ a menu item must stand (the longest one that fits);
+        // after „Einstellungen → “ a section of the settings.
         const einst = sprache === 'de' ? 'Einstellungen' : 'Settings';
         const beginnt = (rest, namen) =>
           [...namen]

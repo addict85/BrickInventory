@@ -1,13 +1,13 @@
 /**
- * Das Profil speichert nur mit dem aktuellen Passwort, auch wenn sich bloss
- * der Benutzername ändert. Gefragt wird einmal beim Speichern in einem Dialog
- * statt in einem eigenen Feld je Abschnitt; ein falsches Passwort fragt erneut.
+ * The profile only saves with the current password, even if only
+ * the username changes. It is asked once when saving, in a dialog
+ * instead of in its own field per section; a wrong password asks again.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  in btn-sav-prof direkt api('PUT', …) ohne confirmWithPassword → rot:
- *      alle drei Fälle (es öffnet sich kein Dialog)
- *   B  in confirmWithPassword die Wiederholung bei aktuelles_passwort_falsch
- *      entfernt → rot: „falsches Passwort fragt erneut“
+ * Counter-checks (measured 04.11.2026, each on its own):
+ *   A  in btn-sav-prof directly api('PUT', …) without confirmWithPassword → red:
+ *      all three cases (no dialog opens)
+ *   B  in confirmWithPassword the repetition on aktuelles_passwort_falsch
+ *      removed → red: “a wrong password asks again”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,21 +1,21 @@
 /**
- * Schlüsselwechsel: Geheimnisse unter Schlüssel A geschrieben, dann mit
- * DATA_KEY=B und DATA_KEY_ALT=A gestartet (keySwitch wie im Start).
- * Danach liest B allein alles, A allein nichts mehr; der Suchwert der
- * Gutscheinnummer passt zu B. Wiederherstellungscodes von vor dem Wechsel
- * gelten, solange A als DATA_KEY_ALT bereitsteht.
+ * Key switch: secrets written under key A, then started with
+ * DATA_KEY=B and DATA_KEY_ALT=A (keySwitch as at startup).
+ * Afterwards B alone reads everything, A alone nothing anymore; the search value of the
+ * voucher number matches B. Recovery codes from before the switch
+ * apply as long as A is available as DATA_KEY_ALT.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  in umschluesseln() den Zweig für v2 mit dem vorigen Schlüssel
- *      entfernt → rot: „B allein liest alles“ (API-Schlüssel, Faktor, PIN)
- *   B  in reencryptAllVouchers() den Suchwert nicht neu → rot: „der
- *      Suchwert der Nummer …“
- *   C  pufferUmschluesseln() liefert immer undefined → rot: „B allein liest
- *      alles“ (Gutschein-PDF)
- *   D  in pruefeCode() den Rückfall auf searchValueAlt entfernt → rot: „ein
- *      Wiederherstellungscode von vor dem Wechsel …“
+ * Counter-checks (measured 05.11.2026, each alone):
+ *   A  in umschluesseln() the branch for v2 with the previous key
+ *      removed → red: “B alone reads everything” (API key, factor, PIN)
+ *   B  in reencryptAllVouchers() the search value not renewed → red: “the
+ *      search value of the number …”
+ *   C  pufferUmschluesseln() always returns undefined → red: “B alone reads
+ *      everything” (voucher PDF)
+ *   D  in pruefeCode() the fallback to searchValueAlt removed → red: “a
+ *      recovery code from before the switch …”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -45,7 +45,7 @@ const gut = {
 const dateien = _req('src/vouchers/voucherFiles.js');
 const { keySwitch } = _req('startup/database.js');
 
-/** Schlüssel umstellen, wie ein Neustart mit anderer Umgebung. */
+/** Switch keys, like a restart with a different environment. */
 function schluessel(aktuell, previous) {
   environment({ DATA_KEY: aktuell });
   if (previous) environment({ DATA_KEY_ALT: previous });
@@ -73,7 +73,7 @@ test('rotate the data key', { concurrency: 1 }, async t => {
     fs.rmSync(WURZEL, { recursive: true, force: true });
   });
 
-  // ── unter A schreiben ────────────────────────────────────────────────────
+  // ── write under A ────────────────────────────────────────────────────────
   schluessel(A, null);
   const apiContext = G.kontext('global_settings.value', 'rebrickable_api_key');
   await db.run(
@@ -87,7 +87,7 @@ test('rotate the data key', { concurrency: 1 }, async t => {
   const pdf = path.join(dateien.VOUCHER_DIR, String(uid), `${g.id}.pdf`);
   await dateien.writeVoucherPdf(pdf, Buffer.from('%PDF-1.4 Gutschein'));
 
-  /** Was der aktuelle Schlüssel lesen kann. */
+  /** What the current key can read. */
   const readEverything = async () => {
     const api = (await db.get(`SELECT value FROM global_settings WHERE key = 'rebrickable_api_key'`)).value;
     const faktor = (await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid])).secret;
@@ -112,7 +112,7 @@ test('rotate the data key', { concurrency: 1 }, async t => {
   };
   assert.deepEqual(await readEverything(), KLAR, 'Vorbedingung: A liest alles');
 
-  // ── Start mit B und dem vorigen A ────────────────────────────────────────
+  // ── start with B and the previous A ──────────────────────────────────────
   schluessel(B, A);
   await t.test('a recovery code from before the rotation applies as long as A is available', async () => {
     assert.equal(await zf.checkCode(uid, codes[0]), 'wiederherstellung');

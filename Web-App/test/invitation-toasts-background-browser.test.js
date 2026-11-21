@@ -1,32 +1,32 @@
 /**
- * Befunde der UI-Prüfung 13 im echten Browser: Die Haushaltseinladung nennt
- * das einladende Konto, der Code ist lesbar, Dialoge und Bestätigungsseite
- * sagen, was bestätigt wird, Toasts und schwebender Knopf verdecken nichts,
- * und Finanzen zeigen fehlende Preise ohne Alarm und die Kurve auch bei 200 %.
+ * Findings of UI review 13 in the real browser: the household invitation names
+ * the inviting account, the code is readable, dialogs and confirmation page
+ * say what is confirmed, toasts and floating button cover nothing,
+ * and finances show missing prices without alarm and the curve also at 200 %.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel bzw. dist neu gebaut):
- *   A  redeemHouseholdInvite wieder ohne Prüfroute (Titel „Einladung annehmen“)
- *      → rot: „Einladung nennt das Hauptkonto“
- *   B  createInvitation wieder mit randomBytes(24).base64url → rot: „Einladungscode
- *      in Vierergruppen“ (Format) und „Einladung nennt das Hauptkonto“
- *      (kleingeschrieben ohne Striche eingegeben: abgelaufen)
- *   C  Profil wieder mit tRaw('konto.profil') ohne Erklärung → rot: „E-Mail-
- *      Änderung: Titel und neue Adresse“
- *   D  discardToasts wieder „alle mit Knopf bleiben“ → rot: „Toast der Ansicht
- *      schliesst beim Wechsel“
- *   E  Entf-Zweig in aktionen.js entfernt → rot: „Lösch-Kreuz: Entf auf der Karte“
- *   F  priceRow wieder mit Geschenk im Preiskasten → rot: „Geschenk als Plakette“
- *   G  jobIconSvg ohne imgDl und pdfJobs → rot: „Hintergrundarbeiten: jeder Dienst
- *      mit Symbol“
- *   H  priceStatusBadge ohne neutralen Zweig → rot: „Preis fehlt: grau, wenn er
- *      fast überall fehlt“ (6 rote Dreiecke)
- *   I  die Regeln .knopf-schwebend > span { display: none } entfernt → rot:
- *      „Schwebender Knopf: nur Symbol“ (05.11.2026 mit Warten auf den Zustand
- *      erneut gemessen: rot nach 5 s bei „beim Rollen nur das Symbol“)
- *   K  referenceLine ohne den Platz-Test oben → rot: „Unterkonto: Kaufpreis-
- *      Beschriftung im Diagramm“ (abgeschnitten oben)
- *   L  showConfirmationTarget nicht aufgerufen → rot: „Bestätigungsseite nennt
- *      Konto und Adresse“
+ * Counter-checks (measured 04.11.2026, each alone, bundle or dist rebuilt):
+ *   A  redeemHouseholdInvite again without a check route (title “Einladung annehmen”)
+ *      → red: “invitation names the main account”
+ *   B  createInvitation again with randomBytes(24).base64url → red: “invitation code
+ *      in groups of four” (format) and “invitation names the main account”
+ *      (entered in lower case without dashes: expired)
+ *   C  profile again with tRaw('konto.profil') without explanation → red: “e-mail
+ *      change: title and new address”
+ *   D  discardToasts again “all with a button stay” → red: “toast of the view
+ *      closes on switching”
+ *   E  Delete branch removed in aktionen.js → red: “delete cross: Delete on the card”
+ *   F  priceRow again with gift in the price box → red: “gift as a badge”
+ *   G  jobIconSvg without imgDl and pdfJobs → red: “background jobs: every service
+ *      with an icon”
+ *   H  priceStatusBadge without a neutral branch → red: “price missing: gray when it
+ *      is missing almost everywhere” (6 red triangles)
+ *   I  the rules .knopf-schwebend > span { display: none } removed → red:
+ *      “floating button: only icon” (measured again 05.11.2026 with waiting for the state:
+ *      red after 5 s at “when scrolling only the icon”)
+ *   K  referenceLine without the space test at the top → red: “sub-account: purchase price
+ *      label in the chart” (cut off at the top)
+ *   L  showConfirmationTarget not called → red: “confirmation page names
+ *      account and address”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -50,7 +50,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
     return;
   }
   const { b, bis, db, port, ruhig } = app;
-  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  // Startup loads settings and prices afterwards; only then is the state fixed.
   await ruhig();
   buildAndRequire();
   const haushalt = require('./helpers/sources').testServices().household;
@@ -85,7 +85,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
       await b.auswerten(text('#household-redeem-box')),
       /sieht und bearbeitet danach deine Sammlung; du kannst die Verknüpfung jederzeit lösen/,
     );
-    // Wie abgetippt: klein und ohne Striche.
+    // As typed: lower case and without dashes.
     await b.auswerten(`document.getElementById('household-redeem-code').value = ${JSON.stringify(code.replace(/-/g, '').toLowerCase())};
       document.querySelector('[data-click="redeemHouseholdInvite"]').click(); true`);
     await bis(offen, 'Bestätigung');
@@ -95,7 +95,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
       new RegExp(`„${ANDERE}“ kann danach deine Sets, Teile und Minifiguren sehen und ändern`),
     );
     await zu();
-    // Ein falscher Code öffnet keinen Dialog, und ohne Anmeldung verrät die Route nichts.
+    // A wrong code opens no dialog, and without login the route reveals nothing.
     await b.auswerten(`document.getElementById('household-redeem-code').value = 'AAAA-BBBB-CCCC-DDDD';
       document.querySelector('[data-click="redeemHouseholdInvite"]').click(); true`);
     await bis(
@@ -146,8 +146,8 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
   await t.test('delete cross: Del on the card', async () => {
     await geh('sammlung');
     await bis(`!!document.querySelector('#gallery .sc')`, 'Sammlung');
-    // Erst wenn die Sammlung fertig geladen ist: Ein späterer Neuaufbau ersetzte die
-    // fokussierte Karte, und Entf ginge an den Körper der Seite.
+    // Only once the collection has finished loading: a later rebuild would replace the
+    // focused card, and Delete would go to the body of the page.
     await ruhig();
     const z = await b.auswerten(`(() => { const k = document.querySelector('#gallery .sc'); k.focus();
       return { taste: k.getAttribute('aria-keyshortcuts'), cross: k.querySelector('.delbtn').getAttribute('aria-hidden'),
@@ -186,7 +186,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
         `({ rot: document.querySelectorAll('#fin-tbl tbody .pst-err').length, grau: document.querySelectorAll('#fin-tbl [data-fin-art="sets"] tbody .pst-leer').length })`,
       );
     };
-    // Ohne Preis im Zwischenspeicher und ohne BrickLink-Zugang scheitert der Abruf.
+    // Without a price in the cache and without BrickLink access the fetch fails.
     await holdsSet(db, app.uid, '60001-1', 1, { preis: 20, am: '2026-06-03T10:00:00Z' });
     assert.deepEqual(await zeichen(), { rot: 1, grau: 0 }, 'ein einzelner Fehlschlag bleibt rot');
     for (const nr of ['60002-1', '60003-1', '60004-1', '60005-1', '60006-1'])
@@ -196,7 +196,7 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
     await db.run(`DELETE FROM sets WHERE user_id = $1 AND set_number LIKE '6000_-1'`, [app.uid]);
   });
 
-  // ── Telefon ───────────────────────────────────────────────────────────────
+  // ── Phone ─────────────────────────────────────────────────────────────────
   await b.tab('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
 
   await t.test('sub-account: purchase price label in the chart', async () => {
@@ -226,8 +226,8 @@ test('invitation, toasts, background jobs, price status', { timeout: 280_000 }, 
   await t.test('floating button: icon only', async () => {
     const knopf = `(() => { const k = document.querySelector('#tab-gallery .knopf-schwebend');
       return { breit: Math.round(k.getBoundingClientRect().width), text: k.querySelector('span').checkVisibility(), name: k.getAttribute('aria-label') }; })()`;
-    // Unter Last kommen Scroll-Ereignis und Neuberechnung spät: Gewartet wird auf
-    // den Zustand (höchstens 5 s), geprüft danach — eine feste Pause kippte.
+    // Under load scroll event and recomputation come late: the wait is for
+    // the state (at most 5 s), checked afterwards — a fixed pause tipped over.
     const sobald = async bedingung => {
       for (
         let i = 0;

@@ -1,9 +1,9 @@
 /**
- * Der Papierkorb auf der Kachel ist auch am Desktop mindestens 32 × 32 px gross, gemessen im Browser
- * (mit Maus reichen 32 px; die 44 px für Touch prüft tip-targets-browser.test.js).
+ * The trash on the tile is at least 32 × 32 px large on the desktop too, measured in the browser
+ * (with a mouse 32 px suffice; the 44 px for touch are checked by tip-targets-browser.test.js).
  *
- * Gegenprobe (am 07.11. gemessen): in styles.css `.delbtn` wieder auf 26 px
- *   → rot: „Löschknopf misst 26×26“.
+ * Counter-check (measured on 07.11.): in styles.css `.delbtn` back to 26 px
+ *   → red: “delete button measures 26×26”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

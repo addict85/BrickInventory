@@ -1,12 +1,12 @@
 /**
- * Ohne gespeichertes Ausgabeland gilt das Land zur Kontowährung — in der
- * Oberfläche und bei der Guthaben-Abfrage des Servers dieselbe Regel. Vorher
- * stand bei einem EUR-Konto „Schweiz“ vorgewählt, und jede EUR-Karte trug
- * sofort den Hinweis „nicht CHF wie das Ausgabeland“.
+ * Without a stored issuing country the country for the account currency applies — in the
+ * UI and in the server's balance query the same rule. Before,
+ * „Schweiz“ was preselected for an EUR account, and every EUR card immediately carried
+ * the hint „nicht CHF wie das Ausgabeland“.
  *
- * Gegenproben (am 03.11.2026 gemessen):
- *   A  in ladeGutscheine() wieder `einstellungsStand?.gutschein_land || 'de-CH'` → rot: „EUR-Konto“
- *   B  landFuerWaehrung() gibt immer LAND_STANDARD → rot: „Server: …“
+ * Counter-checks (measured on 03.11.2026):
+ *   A  in ladeGutscheine() again `einstellungsStand?.gutschein_land || 'de-CH'` → red: „EUR-Konto“
+ *   B  landFuerWaehrung() always returns LAND_STANDARD → red: “server: …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

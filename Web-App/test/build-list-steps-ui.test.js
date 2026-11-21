@@ -1,29 +1,29 @@
 /**
- * Bauliste im echten Bündel (jsdom): „Hinzufügen“ rechnet die Liste sofort, „Neu
- * berechnen“ gesperrt mit sichtbarem Grund; „Zurücksetzen“ nicht rot; beschriftet.
- * Export und Optionen erst mit Teilen; das leere Ergebnis nennt den Grund, eine
- * Nummer, die der Katalog nicht kennt, steht als solche da und zählt nicht als Set.
+ * Build list in the real bundle (jsdom): “add” computes the list immediately, “re-
+ * compute” locked with a visible reason; “reset” not red; labeled.
+ * Export and options only with parts; the empty result names the reason, a
+ * number the catalog does not know is shown as such and does not count as a set.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  plExportStand() mit box.hidden = _plParts === null (der alte Stand) →
- *      rot: „leeres Ergebnis“ (Export bei 0 Teilen sichtbar)
- *   D  in plAddSet das Setzen von eintrag.unbekannt entfernt → rot:
- *      „unbekannte Nummer“ (Chip ohne Hinweis, „aus 2 Sets“)
- *   B  plRenderTable() wieder mit „Keine Teile gefunden“ → rot: „leeres
- *      Ergebnis“ (kein Grund genannt)
- *   C  Zurücksetzen wieder class="btn bd" → rot: „Aufbau“
- *   E  (05.11.2026, UI-Prüfung 17 M14) Farbgruppe wieder ohne colorName() →
- *      rot: „Farbgruppen deutsch, Zusammenfassung nennt Sorten“ („Red“)
- *   F  (12.11.2026) plSchritt() in plRenderSets nicht gerufen (heute entfallen) → rot: „ein
- *      Hauptknopf …“; in plGenerate die getippte Nummer nicht übernommen →
- *      rot: ebenda (Fehler am Feld statt Liste)
- *   H  (14.11.2026, UX-Prüfung 24 N11) in plRenderSets `btn-pl-gen` nicht
- *      verborgen → rot: „Hinzufügen rechnet sofort …“ (sichtbar ohne Inhalt);
- *      Leerzustand ohne textKey → rot: ebenda (sagt nicht, was zu tun ist)
- *   G  (12.11.2026, UX-Prüfung 19 M6) in plAddSet `await plGenerate()`
- *      entfernt → rot: „Hinzufügen rechnet sofort …“ und jede Prüfung über
- *      erstelle() (keine Liste ohne zweiten Schritt); in plRemoveSet das
- *      Neurechnen entfernt → rot: „Entfernen rechnet neu“
+ * Counter-checks (measured 04.11.2026, each alone):
+ *   A  plExportStand() with box.hidden = _plParts === null (the old state) →
+ *      red: “empty result” (export visible at 0 parts)
+ *   D  in plAddSet setting eintrag.unbekannt removed → red:
+ *      “unknown number” (chip without hint, “from 2 sets”)
+ *   B  plRenderTable() back with “Keine Teile gefunden” → red: “empty
+ *      result” (no reason named)
+ *   C  reset back to class="btn bd" → red: “layout”
+ *   E  (05.11.2026, UI review 17 M14) color group again without colorName() →
+ *      red: “color groups German, summary names kinds” (“Red”)
+ *   F  (12.11.2026) plSchritt() not called in plRenderSets (dropped today) → red: “a
+ *      main button …”; in plGenerate the typed number not taken over →
+ *      red: same place (error at the field instead of list)
+ *   H  (14.11.2026, UX review 24 N11) in plRenderSets `btn-pl-gen` not
+ *      hidden → red: “add computes immediately …” (visible without content);
+ *      empty state without textKey → red: same place (does not say what to do)
+ *   G  (12.11.2026, UX review 19 M6) in plAddSet `await plGenerate()`
+ *      removed → red: “add computes immediately …” and every check via
+ *      erstelle() (no list without a second step); in plRemoveSet the
+ *      recomputation removed → red: “remove recomputes”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -52,7 +52,7 @@ async function create(teile, nummern = '10294') {
   await reiter(o.w, 'partslist');
   o.d.getElementById('pl-setnr').value = nummern;
   o.d.querySelector('[data-click="plAddSet"]').click();
-  // Ohne Liste das Fenster schliessen: Offen hielte jsdom den Testprozess am Leben.
+  // Close the window without a list: kept open, jsdom would keep the test process alive.
   if (!(await warte(() => / aus \d+ Set/.test(o.d.getElementById('pl-status').textContent), 3000))) {
     o.w.close();
     assert.fail('Liste erstellt');

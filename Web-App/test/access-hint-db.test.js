@@ -1,25 +1,25 @@
 /**
- * Neue Zugänge und abgebauter Schutz gehen per Mail hinaus: ein neuer
- * App-Token und ein QR-Zugang an den Inhaber, ein neuer Verwalter und ein
- * entfernter zweiter Faktor an alle Verwalter (der entfernte Faktor auch an
- * das betroffene Konto).
+ * New accesses and removed protection go out by mail: a new
+ * app token and a QR access to the owner, a new administrator and a
+ * removed second factor to all administrators (the removed factor also to
+ * the affected account).
  *
- * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  hintInBackground() in /token-create entfernt → rot: „neuer Token"
- *   B  hintInBackground() in /qr-token entfernt → rot: „neuer QR-Zugang"
- *   C  adminHintInBackground() in PUT /users/:id/admin entfernt → rot:
- *      „ernannter Verwalter"
- *   D  in activeAdmin() `is_admin AND` entfernt → rot: „neues
- *      Verwalterkonto" (die Mail ging auch an das gewöhnliche Konto)
- *   E  hintInBackground() in PUT /users/:id/password entfernt → rot:
- *      „fremdes Passwort durch einen Verwalter“
- * Gegenprobe (04.11.2026 gemessen):
- *   F  hintInBackground() in signedInResponses() (routes/auth.ts) entfernt →
- *      rot: „Token aus der Anmeldung (neues Gerät)“
- *   G  hintInBackground() in /zweiter-faktor/bestaetigen bzw. /abschalten
- *      entfernt → rot: „eigener zweiter Faktor eingerichtet und abgeschaltet“
+ * Counter-checks (measured 03.11.2026, each alone):
+ *   A  hintInBackground() removed in /token-create → red: “new token"
+ *   B  hintInBackground() removed in /qr-token → red: “new QR access"
+ *   C  adminHintInBackground() removed in PUT /users/:id/admin → red:
+ *      “appointed administrator"
+ *   D  in activeAdmin() `is_admin AND` removed → red: “new
+ *      administrator account" (the mail also went to the ordinary account)
+ *   E  hintInBackground() removed in PUT /users/:id/password → red:
+ *      “foreign password by an administrator”
+ * Counter-check (measured 04.11.2026):
+ *   F  hintInBackground() removed in signedInResponses() (routes/auth.ts) →
+ *      red: “token from login (new device)”
+ *   G  hintInBackground() removed in /zweiter-faktor/bestaetigen or /abschalten
+ *      → red: “own second factor set up and switched off”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -83,7 +83,7 @@ test('mails on new accesses', { concurrency: 1 }, async t => {
     assert.equal(r.status, 200, `${weg}: ${text}`);
     return JSON.parse(text);
   };
-  /** Die Mails gehen nebenher; bis sie da sind, kurz warten. */
+  /** The mails go out on the side; wait briefly until they arrive. */
   const mails = async (type, anzahl) => {
     for (let i = 0; i < 60 && gesendet.filter(m => m.type === type).length < anzahl; i++)
       await new Promise(r => setTimeout(r, 25));
@@ -134,7 +134,7 @@ test('mails on new accesses', { concurrency: 1 }, async t => {
     );
   });
 
-  // `zwei` ist Verwalter: Die Änderung wird angekündigt und gilt erst im Aufräumlauf nach der Frist.
+  // `zwei` is an administrator: the change is announced and only applies in the cleanup run after the period.
   const faellig = async () => {
     await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [zwei]);
     assert.equal(await _req('src/account/adminActions.js').runDueTakeoversFrom(), 1);

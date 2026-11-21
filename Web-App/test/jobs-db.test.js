@@ -1,32 +1,32 @@
 /**
- * Die Auftragstabelle (Migration 0066, src/jobQueue/jobs.ts, jobs/jobWorker.ts):
- * Ein Auftrag überlebt das Ende seines Prozesses, ein Fehler wird wiederholt
- * und endet nach dem letzten Versuch als 'fehler', und zwei Worker führen
- * nie denselben Auftrag aus.
+ * The job table (migration 0066, src/jobQueue/jobs.ts, jobs/jobWorker.ts):
+ * a job survives the end of its process, an error is retried
+ * and ends as 'fehler' after the last attempt, and two workers never
+ * execute the same job.
  *
- * Gegenproben (am 29.10.2026 gemessen):
- *   A  in belegeAuftrag nur `status = 'offen'` statt `IN ('offen', 'laeuft')`
- *      → rot: „ein verwaister Auftrag wird nach seiner Frist erledigt“
- *   B  in fehlgeschlagen immer 'fehler' statt 'offen' → rot: „ein Fehler wird
- *      wiederholt“
- *   C  `FOR UPDATE SKIP LOCKED` aus belegeAuftrag entfernt → rot: „zwei Worker,
- *      jeder Auftrag genau einmal“ (Aufträge doppelt ausgeführt)
- *   D  der PDF-Auftrag ohne Bearbeiter (EDITOR.pdf entfernt) → rot: „ein
- *      PDF-Auftrag entsteht im Worker“ (Status blieb running)
+ * Counter-checks (measured on 29.10.2026):
+ *   A  in belegeAuftrag only `status = 'offen'` instead of `IN ('offen', 'laeuft')`
+ *      → red: “an orphaned job is done after its deadline”
+ *   B  in fehlgeschlagen always 'fehler' instead of 'offen' → red: “an error is
+ *      retried”
+ *   C  `FOR UPDATE SKIP LOCKED` removed from belegeAuftrag → red: “two workers,
+ *      every job exactly once” (jobs executed twice)
+ *   D  the PDF job without a handler (EDITOR.pdf removed) → red: “a
+ *      PDF job is created in the worker” (status stayed running)
  *
- * Seit Migration 0082 (am 30.10.2026 gemessen):
- *   E  in belegeAuftrag die Bedingung zu job_pauses entfernt → rot: „eine
- *      pausierte Art waiting, eine exklusive läuft einzeln“
- *   F  in belegeAuftrag die Bedingung für exklusive Arten entfernt → rot:
- *      derselbe Test (zwei gleichzeitig)
- *   G  in verschoben() die Versuche immer zählen lassen → rot: „verschieben
- *      zählt nur, wenn es soll“
- *   H  folgeplan() im Worker leer → rot: „nach einem geplanten Lauf steht
- *      der nächste an“
- *   I  in erledigt() die Bedingung `status = 'laeuft'` entfernt → rot: „ein
- *      abgebrochener Auftrag bleibt abgebrochen“
+ * Since migration 0082 (measured on 30.10.2026):
+ *   E  in belegeAuftrag the condition on job_pauses removed → red: “a
+ *      paused kind waits, an exclusive one runs singly”
+ *   F  in belegeAuftrag the condition for exclusive kinds removed → red:
+ *      the same test (two at once)
+ *   G  in verschoben() always count the attempts → red: “postponing
+ *      only counts when it should”
+ *   H  folgeplan() empty in the worker → red: “after a scheduled run
+ *      the next one is pending”
+ *   I  in erledigt() the condition `status = 'laeuft'` removed → red: “an
+ *      aborted job stays aborted”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -46,11 +46,11 @@ test('job table', { concurrency: 1 }, async t => {
     ...require('./helpers/sources').testArea('jobQueue').auftraege,
   });
   const { createWorker } = _req('jobs/jobWorker.js');
-  // Nur Zeilen dieses Tests: eine eigene Art, die kein anderer Worker kennt.
+  // Only rows of this test: an own kind that no other worker knows.
   const ART = `test-${process.pid}`;
   const MARKE = `test-${process.pid}`;
-  // Eine Testart braucht wie jede andere ein Schema für ihre Nutzlast.
-  // … und eine Zeile in job_types (0109).
+  // A test kind needs a schema for its payload like any other.
+  // … and a row in job_types (0109).
   for (const type of [ART, `${ART}-ex`]) {
     require('./helpers/sources')
       .testServices()
@@ -65,7 +65,7 @@ test('job table', { concurrency: 1 }, async t => {
   try {
     await t.test('an orphaned job is settled after its deadline', async () => {
       const id = await A.placeJobOne(ART, { marke: MARKE, n: 1 });
-      // Ein Prozess belegt ihn mit einer Frist von einer Sekunde und endet dann.
+      // A process occupies it with a deadline of one second and then ends.
       const tot = await A.belegeAuftrag([ART], 1);
       assert.equal(tot.id, id);
       const erledigt = [];
@@ -81,7 +81,7 @@ test('job table', { concurrency: 1 }, async t => {
         { deadlineSec: 60 },
       );
       assert.equal(await w.processOne(), false, 'vor Ablauf der Frist gehört er noch dem anderen');
-      // Die Frist des toten Prozesses läuft ab; dann nimmt ihn der zweite.
+      // The dead process's deadline expires; then the second one takes it.
       assert.ok(await bis(() => w.processOne(), 5000), 'nach Ablauf der Frist übernimmt der Worker');
       assert.deepEqual(erledigt, [1]);
       assert.equal((await zeile(id)).status, 'erledigt');
@@ -231,8 +231,8 @@ test('job table', { concurrency: 1 }, async t => {
     await t.test('an aborted job stays aborted', async () => {
       await leeren();
       let lebt = null;
-      // Ohne feste Wartezeiten: Der Bearbeiter meldet, dass er läuft, und
-      // fragt erst nach dem Abbruch nach seinem Lebenszeichen.
+      // Without fixed waits: the handler reports that it is running, and
+      // only asks for its heartbeat after the abort.
       let laeuft = () => {},
         abgebrochen = () => {};
       const started_at = new Promise(r => {
@@ -314,7 +314,7 @@ test('job table', { concurrency: 1 }, async t => {
         );
         let stand;
         for (let i = 0; i < 200; i++) {
-          // Wie die Route: im Konto der Anfrage, unter Zeilenschutz.
+          // Like the route: in the request's account, under row security.
           stand = await asAccount(uid, () => pdfA.readJob(jobId, uid));
           if (stand?.status !== 'running') break;
           await warte(25);

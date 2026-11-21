@@ -1,21 +1,21 @@
 /**
- * Jeder Import läuft als Auftrag im Job-Prozess (src/jobQueue/importAsJob.ts):
- * Die Anfrage reicht ein und waiting; ohne Job-Prozess bleibt der Auftrag offen.
+ * Every import runs as a job in the job process (src/jobQueue/importAsJob.ts):
+ * the request submits and waits; without a job process the job stays open.
  *
- * Gegenproben (05.11.2026 gemessen):
- *   A  in jobs/startJobs.ts csv_import immer über runCsvImportFrom
- *      (ohne Blick auf `quelle`) → rot: „mit Worker kommt das Ergebnis“
- *   B  importAlsAuftrag() vergisst das Ergebnis nicht (setResult(id, null)
- *      gestrichen) → rot: derselbe Test (result bleibt in der Tabelle)
- *   C  importAlsAuftrag() ruft importPartsCsv direkt statt einzureichen
- *      → rot: „ohne Worker bleibt der Auftrag offen“ (und der zweite Fall)
- *   D  runImportFrom() fängt den Fachfehler nicht ab → rot: „ein Fachfehler
- *      kommt mit Code an“ (500 import_fehlgeschlagen)
- *   E  (14.11.2026) die Aufrufe hier ohne asAccount (ohne Konto der Anfrage) → rot: alle
- *      drei (import_abgebrochen: jobStatus läuft unter Zeilenschutz und sieht den
- *      eigenen Auftrag nur im Konto der Anfrage).
+ * Counter-checks (measured 05.11.2026):
+ *   A  in jobs/startJobs.ts csv_import always via runCsvImportFrom
+ *      (without looking at `quelle`) → red: “with a worker the result comes”
+ *   B  importAlsAuftrag() does not forget the result (setResult(id, null)
+ *      deleted) → red: the same test (result stays in the table)
+ *   C  importAlsAuftrag() calls importPartsCsv directly instead of submitting
+ *      → red: “without a worker the job stays open” (and the second case)
+ *   D  runImportFrom() does not catch the domain error → red: “a domain error
+ *      arrives with a code” (500 import_fehlgeschlagen)
+ *   E  (14.11.2026) the calls here without asAccount (without the request's account) → red: all
+ *      three (import_abgebrochen: jobStatus runs under row security and only sees the
+ *      own job in the request's account).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,7 +27,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { importWorker } = require('./helpers/jobs');
 const path = require('node:path');
 
-// Vor dem Laden des Workers: Der Alarm-Import wirft einen Fachfehler.
+// Before loading the worker: the alert import throws a domain error.
 const { fileError } = _req('src/infra/errorTexts.js');
 const pa = require.resolve(path.join(require('./helpers/sources').DIST, 'src/finances/priceAlert.js'));
 _req('src/finances/priceAlert.js');
@@ -49,7 +49,7 @@ test('import as a job', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE id = $1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  // Wie die Route: im Konto der Anfrage; den eigenen Auftrag liest sie unter Zeilenschutz.
+  // Like the route: in the request's account; it reads its own job under row security.
   const { runImport: asJob } = _req('src/collection/importJobs.js');
   const importAlsAuftrag = (...a) => asAccount(uid, () => asJob(...a));
   const csv = teil => `part_number,color_id,quantity\n${teil},0,2\n`;

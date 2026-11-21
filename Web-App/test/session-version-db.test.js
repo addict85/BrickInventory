@@ -1,19 +1,19 @@
 /**
- * Eine beendete Sitzung kommt nicht wieder: Auch wenn eine laufende Anfrage
- * die gelöschte Zeile nach dem Rechteentzug per Upsert zurückschreibt, gilt
- * sie nicht mehr (users.session_version, src/account/sessionVersion.ts).
- * Echter connect-pg-simple-Store, echte Routen, echte Kekse; das Zurückschreiben
- * wird nachgestellt, indem die alte Zeile wieder eingefügt wird.
+ * An ended session does not come back: even if a running request
+ * writes the deleted row back via upsert after the revocation of rights, it
+ * no longer applies (users.session_version, src/account/sessionVersion.ts).
+ * Real connect-pg-simple store, real routes, real cookies; the writing back
+ * is recreated by inserting the old row again.
  *
- * Gegenproben (01.11.2026 gemessen, je einzeln):
- *   A  checkSessionVersion() ruft immer next() → rot: „die zurückgeschriebene
- *      Verwaltersitzung gilt nicht mehr" und „das andere Fenster bleibt draussen"
- *   B  increaseSessionVersion() in endAllSessions (src/account/accessEnd.ts) entfernt → rot:
+ * Counter-checks (measured 01.11.2026, each on its own):
+ *   A  checkSessionVersion() always calls next() → red: „die zurückgeschriebene
+ *      Verwaltersitzung gilt nicht mehr" and „das andere Fenster bleibt draussen"
+ *   B  increaseSessionVersion() removed in endAllSessions (src/account/accessEnd.ts) → red:
  *      „die zurückgeschriebene Verwaltersitzung gilt nicht mehr"
- *   C  in routes/api_v1/settings.ts die neue Version nicht in die eigene
- *      Sitzung geschrieben → rot: „das eigene Fenster bleibt angemeldet"
+ *   C  in routes/api_v1/settings.ts the new version not written into the own
+ *      session → red: „das eigene Fenster bleibt angemeldet"
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -53,7 +53,7 @@ test('ended sessions stay ended, even when written back', { concurrency: 1 }, as
         [n, hash, admin],
       )
     ).id;
-  // Verwalter brauchen einen Code-Generator; Anmeldung und Bestätigung nehmen je einen Wiederherstellungscode.
+  // Admins need a code generator; login and confirmation each take a recovery code.
   const { adminWithFactor } = require('./helpers/admin');
   const codes = {
     sv_chef: await adminWithFactor(_req, id.sv_chef),
@@ -94,7 +94,7 @@ test('ended sessions stay ended, even when written back', { concurrency: 1 }, as
   };
   const sid = cookie => decodeURIComponent(cookie.split('=')[1]).slice(2).split('.')[0];
   const zeile = async cookie => db.get('SELECT sid, sess, expire FROM user_sessions WHERE sid = $1', [sid(cookie)]);
-  // Was eine Anfrage tut, die vor dem Löschen begann und danach speichert.
+  // What a request does that began before the deletion and saves afterwards.
   const writeBack = z =>
     db.run(
       'INSERT INTO user_sessions (sid, sess, expire) VALUES ($1,$2,$3) ON CONFLICT (sid) DO UPDATE SET sess = EXCLUDED.sess',
@@ -115,7 +115,7 @@ test('ended sessions stay ended, even when written back', { concurrency: 1 }, as
         body: JSON.stringify({ is_admin: false, admin_password: PW, code: codes.sv_chef.shift() }),
       });
       assert.equal(r.status, 200, await r.text());
-      // Einem Verwalter wird die Rolle erst nach der Frist entzogen: fällig machen und ausführen.
+      // An admin's role is only revoked after the period: make it due and execute.
       await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [
         id.sv_second,
       ]);

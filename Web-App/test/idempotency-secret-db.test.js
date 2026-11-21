@@ -1,34 +1,34 @@
 /**
- * Idempotency-Key und Geheimnisse: Kein Zugang, kein TOTP-Geheimnis und kein
- * Wiederherstellungscode steht im Klartext in der Datenbank; gespeicherte
- * Antworten sind verschlüsselt; die Wiederholung einer Route mit Geheimnis
- * bekommt 409 statt eines zweiten Laufs.
+ * Idempotency-Key and secrets: no access, no TOTP secret and no
+ * recovery code stands in plain text in the database; stored
+ * responses are encrypted; the repetition of a route with a secret
+ * gets 409 instead of a second run.
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  dienst.ts und middleware.ts auf Stand e21f747 → rot: alle fünf Fälle,
- *      zuerst „das TOTP-Geheimnis steht in keiner Spalte" (idempotency: 1)
- *   B  responseIsSecret() liefert immer false → rot: Fälle 1–3 (Rumpf liegt,
- *      wenn auch verschlüsselt; die Wiederholung bekommt 200 mit Replay)
- *   C  in beende() verschluessele() weggelassen → rot: Fälle 4 und 5
- *   D  Migration 0086 durch `SELECT 1;` ersetzt → rot: Fall 5
- *   E  `geheim` an /auth/zweiter-faktor/codes im Vertrag entfernt → rot:
- *      „jede schreibende Route …" (die Route steht in der Liste der fehlenden)
+ * Counter-checks (measured 01.11.2026):
+ *   A  dienst.ts and middleware.ts at state e21f747 → red: all five cases,
+ *      first “the TOTP secret stands in no column" (idempotency: 1)
+ *   B  responseIsSecret() always returns false → red: cases 1–3 (the body is stored,
+ *      albeit encrypted; the repetition gets 200 with replay)
+ *   C  verschluessele() omitted in beende() → red: cases 4 and 5
+ *   D  migration 0086 replaced by `SELECT 1;` → red: case 5
+ *   E  `geheim` removed from /auth/zweiter-faktor/codes in the contract → red:
+ *      “every writing route …" (the route stands in the list of missing ones)
  *
- * Gegenproben zu bestätigten Routen (03.11.2026 gemessen):
- *   I  notRetryable() prüft nur `geheim`, nicht `bestaetigung` → rot:
- *      „jede Route mit Bestätigung …“; zusammen mit `geheim` an
- *      /vouchers/:id/klartext entfernt auch „die Wiederholung mit falschem
- *      Passwort …“ (die PIN kam mit Idempotent-Replay)
- *   J  routeForRequest() liefert immer undefined → rot: die ersten vier
- *      Teiltests, „jede schreibende Route …“ und „jede Route mit Bestätigung …“
+ * Counter-checks for confirmed routes (measured 03.11.2026):
+ *   I  notRetryable() only checks `geheim`, not `bestaetigung` → red:
+ *      “every route with confirmation …”; together with `geheim` removed from
+ *      /vouchers/:id/klartext also “the repetition with a wrong
+ *      password …” (the PIN came with Idempotent-Replay)
+ *   J  routeForRequest() always returns undefined → red: the first four
+ *      subtests, “every writing route …” and “every route with confirmation …”
  *
- * Gegenproben zum Fingerabdruck (02.11.2026 gemessen), je rot: „der
- * Fingerabdruck verrät das Passwort nicht“:
- *   F  withoutSecrets() lässt Passwortfelder stehen
- *   G  suchwert() durch den blossen Text ersetzt (kein HMAC)
- *   H  deleteOldFingerprints() löscht nichts
+ * Counter-checks for the fingerprint (measured 02.11.2026), each red: “the
+ * fingerprint does not reveal the password”:
+ *   F  withoutSecrets() leaves password fields in place
+ *   G  suchwert() replaced by the mere text (no HMAC)
+ *   H  deleteOldFingerprints() deletes nothing
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -52,7 +52,7 @@ const { CONTRACT } = _req('src/contract/index.js');
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-/** Wie oft der Text in irgendeiner Spalte irgendeiner Tabelle steht. */
+/** How often the text stands in any column of any table. */
 async function occurrences(text) {
   const tabellen = await db.all(`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`);
   const treffer = [];
@@ -208,13 +208,13 @@ test('Idempotency-Key without secrets in plaintext', { concurrency: 1 }, async t
                   VALUES ($1, 'alt-1', $2, 200, '{"token":"klartext-aus-frueher"}')`,
       [uid, abdruck],
     );
-    // Zur Zeit von 0086 war verschlüsselt gleich v1.
+    // At the time of 0086 encrypted was equal to v1.
     await db.run(
       `INSERT INTO idempotency (user_id, key, request, status, response) VALUES ($1, 'v1-1', 'x', 200, 'v1:AAAA')`,
       [uid],
     );
     const m0086 = fs.readFileSync(path.join(ROOT, 'db/migrations/0086-idempotenz-ohne-klartext.sql'), 'utf8');
-    // Die Migration kennt noch die Namen von vor 0124; kurz zurückbenennen, danach sofort zurück.
+    // The migration still knows the names from before 0124; rename back briefly, then straight back again.
     await db.run(
       'ALTER TABLE idempotency RENAME TO idempotenz; ALTER TABLE idempotenz RENAME COLUMN response TO antwort',
     );
@@ -234,7 +234,7 @@ test('Idempotency-Key without secrets in plaintext', { concurrency: 1 }, async t
 });
 
 test('every writing route with access or code is on the list', () => {
-  // `code` ist sonst der Fehlercode; der Einladungscode steht deshalb unten einzeln.
+  // `code` is otherwise the error code; the invitation code therefore stands separately below.
   const SECRET_FIELDS = ['token', 'codes', 'geheimnis', 'otpauth'];
   const gefunden = [],
     fehlt = [];

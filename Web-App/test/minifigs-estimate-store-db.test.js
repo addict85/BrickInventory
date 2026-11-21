@@ -1,18 +1,18 @@
 /**
- * Die Figurenschätzung und der Setpreis, ausgeführt statt am Quelltext gelesen:
- * Die Schätzung legt je Zustand einen eigenen Eintrag in Cache und Verlauf ab,
- * und ein ausdrücklich angefragter Zustand hat beim Setpreis Vorrang.
- * Die Teile der Figur und ihre Preise liegen im Cache — kein Abruf übers Netz.
+ * The figure estimate and the set price, executed instead of read from the source text:
+ * the estimate stores its own entry per condition in cache and history,
+ * and an explicitly requested condition takes precedence for the set price.
+ * The parts of the figure and their prices lie in the cache — no fetch over the network.
  *
- * Gegenproben (31.10.2026, gemessen):
- *   a) in src/finances/repository/marketPrices.ts beim Schreiben der Schätzung
- *      `condition` durch 'N' ersetzt → Teil 1 rot (der Eintrag „U" fehlt).
- *   b) in estimateMinifigsPrice() fetchPartPrice mit DEFAULT_PRICE_CONDITION statt
- *      `cond` → Teil 1 rot (beide Zustände 2 × 3 = 6, nicht 4 und 6).
- *   c) rememberEstimatedMinifigsHistory() nicht aufgerufen → Teil 1 rot (Verlauf leer).
- *   d) in setPriceFromCache() `ORDER BY (condition = $2) DESC` → `ASC` → Teil 2 rot.
- *   e) in aktuellerMarktpreis() die Wache `if (!condition)` entfernt → Teil 2 rot
- *      (die Erfassung „Neu“ überstimmt den angefragten Zustand: 10 statt 20).
+ * Counter-checks (31.10.2026, measured):
+ *   a) in src/finances/repository/marketPrices.ts when writing the estimate
+ *      `condition` replaced by 'N' → part 1 red (the entry „U" is missing).
+ *   b) in estimateMinifigsPrice() fetchPartPrice with DEFAULT_PRICE_CONDITION instead of
+ *      `cond` → part 1 red (both conditions 2 × 3 = 6, not 4 and 6).
+ *   c) rememberEstimatedMinifigsHistory() not called → part 1 red (history empty).
+ *   d) in setPriceFromCache() `ORDER BY (condition = $2) DESC` → `ASC` → part 2 red.
+ *   e) in aktuellerMarktpreis() the guard `if (!condition)` removed → part 2 red
+ *      (the acquisition „Neu“ overrules the requested condition: 10 instead of 20).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -82,7 +82,7 @@ test('figure estimate and set price per condition', async t => {
                     ($1, 'N', 'EUR', 10), ($1, 'U', 'EUR', 20)`,
         [SN],
       );
-      // Eine Neu-Erfassung: Ohne Wunsch bewertet die Erfassung mit dem Neupreis.
+      // A new-condition acquisition: without a wish the acquisition values with the new price.
       await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [u.id, SN]);
       await db.run(
         `INSERT INTO set_acquisitions (user_id, set_number, quantity, condition, currency)

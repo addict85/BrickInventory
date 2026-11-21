@@ -1,12 +1,12 @@
 /**
- * „Unable to deserialize cloned data" unter Last: node:test (Node 22) liest
- * Berichtsrahmen und Text des Kindes aus demselben Strom. Steht Text mit einem
- * Nicht-ASCII-Byte an Stelle 2 im selben Lesestück direkt hinter einem Rahmen,
- * wird seine Länge negativ gelesen und der Text deserialisiert. Unter Last …
+ * „Unable to deserialize cloned data" under load: node:test (Node 22) reads
+ * report frames and text of the child from the same stream. If text with a
+ * non-ASCII byte at position 2 stands directly behind a frame in the same read chunk,
+ * its length is read as negative and the text is deserialized. Under load …
  *
- * Gegenprobe (05.11.2026): in scripts/test-run.js das Vorladen von
- * test/helpers/text-output.js gestrichen → rot (Exit 1, der Lauf bricht nach
- * wenigen Rahmen ohne Zusammenfassung ab).
+ * Counter-check (05.11.2026): in scripts/test-run.js the preloading of
+ * test/helpers/text-output.js deleted → red (exit 1, the run aborts after
+ * a few frames without a summary).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -17,7 +17,7 @@ const ROOT = path.join(__dirname, '..');
 
 test('test-run.js survives frames with non-ASCII text behind them', () => {
   const env = { ...process.env };
-  // Ohne Datenbank: Geprüft wird nur der Weg der Ausgabe.
+  // Without a database: only the path of the output is checked.
   delete env.TEST_DATABASE_URL;
   delete env.NODE_TEST_CONTEXT;
   const r = spawnSync(
@@ -28,8 +28,8 @@ test('test-run.js survives frames with non-ASCII text behind them', () => {
   const output = r.stdout + r.stderr;
   assert.equal(r.status, 0, output.slice(-2000));
   assert.match(output, /^(# |ℹ )pass 1$/m);
-  // Die Rahmen der Attrappe folgen dem Format von Node 22; neuere Läufer (CI:
-  // Node 26) lesen sie nicht als Rahmen. Dort zählt nur, dass der Lauf heil bleibt.
+  // The frames of the dummy follow the format of Node 22; newer runners (CI:
+  // Node 26) do not read them as frames. There only counts that the run stays intact.
   if (Number(process.versions.node.split('.')[0]) <= 22) {
     assert.equal((output.match(/^(# |ℹ )rahmen$/gm) || []).length, 300, 'nicht alle Rahmen kamen an');
   }

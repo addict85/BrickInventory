@@ -1,18 +1,18 @@
 /**
- * Ein Lesefehler sieht nicht aus wie „leer“: Entweder trägt die Antwort ihn
- * in `degradiert`, oder er geht als Fehler weiter. Erzwungen wird er, indem
- * der Test eine Tabelle seiner eigenen Datenbank kurz umbenennt.
+ * A read error does not look like “empty”: either the response carries it
+ * in `degradiert`, or it goes on as an error. It is forced by the test
+ * briefly renaming a table of its own database.
  *
- * Gegenproben (10.11.2026 gemessen):
- * - src/parts/queries.ts: Marktpreise wieder mit
- *   `.catch(reportAndDeliver('teile:marktpreise', new Map()))` statt `ab.oder` → rot:
- *   „ohne Preise sagt die Liste warum“ (kein `degradiert`).
- * - src/settings/settings.ts: getGlobalSetting wieder mit
- *   `.catch(reportAndDeliver(…, null))` → rot: „eine Einstellung, die sich nicht
- *   lesen lässt, ist keine Vorgabe“ (lieferte '24').
- * - Gegenrichtung „mit Preisen bleibt `degradiert` weg“ war in beiden grün.
+ * Counter-checks (measured 10.11.2026):
+ * - src/parts/queries.ts: market prices again with
+ *   `.catch(reportAndDeliver('teile:marktpreise', new Map()))` instead of `ab.oder` → red:
+ *   “without prices the list says why” (no `degradiert`).
+ * - src/settings/settings.ts: getGlobalSetting again with
+ *   `.catch(reportAndDeliver(…, null))` → red: “a setting that cannot be
+ *   read is not a default” (delivered '24').
+ * - Opposite direction “with prices `degradiert` stays away” was green in both.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -43,7 +43,7 @@ test('read errors: `degradiert` or an error, never silently empty', { concurrenc
     uid,
     TEIL,
   ]);
-  // Die Tabelle kommt im finally zurück, auch wenn eine Zusicherung scheitert.
+  // The table comes back in the finally, even if an assertion fails.
   const weg = async (/** @type {string} */ tabelle) => {
     await db.run(`ALTER TABLE ${tabelle} RENAME TO ${tabelle}_weg`);
     return () => db.run(`ALTER TABLE IF EXISTS ${tabelle}_weg RENAME TO ${tabelle}`);

@@ -1,19 +1,19 @@
 /**
- * Nach einem Masseneinfuegen wird die Tabelle aufgefrischt — sonst nimmt der
- * Planer den falschen Index.
+ * After a bulk insert the table is refreshed — otherwise the
+ * planner takes the wrong index.
  *
- * ── Gegenproben (durchgefuehrt) ─────────────────────────────────────────────
+ * ── Counter-checks (carried out) ─────────────────────────────────────────────
  *
- *   a) maintainTable() wirft nicht, wenn das Ausfuehren scheitert — eigener
- *      Fall unten, mit einem Ausfuehrer, der immer wirft.
- *   b) Ein Name, der kein einfacher Tabellenname ist, fuehrt NICHTS aus —
- *      eigener Fall, der mitzaehlt, wie oft der Ausfuehrer gerufen wurde.
- *   c) Das ANALYZE in rebuild() entfernt → der Fall „rebuild frischt auf"
- *      wird rot (last_analyze bewegt sich nicht).
- *   d) einen Index per ALTER INDEX … SET (fastupdate = on) zurückgestellt →
- *      der Fall „keine Warteliste" wird rot (c und d am 28.10.2026 gemessen).
+ *   a) maintainTable() does not throw if executing fails — own
+ *      case below, with an executor that always throws.
+ *   b) a name that is not a simple table name executes NOTHING —
+ *      own case that counts how often the executor was called.
+ *   c) the ANALYZE removed in rebuild() → the case “rebuild() refreshes”
+ *      turns red (last_analyze does not move).
+ *   d) an index set back via ALTER INDEX … SET (fastupdate = on) →
+ *      the case “no pending list” turns red (c and d measured on 28.10.2026).
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -26,7 +26,7 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { maintainTable } = _req('db/maintainTable.js');
 
-/** Wann wurde die Tabelle zuletzt aufgeraeumt und vermessen? */
+/** When was the table last cleaned up and measured? */
 async function stand(tabelle) {
   const r = await db.get(`SELECT last_vacuum, last_analyze FROM pg_stat_user_tables WHERE relname = $1`, [tabelle]);
   return {
@@ -36,8 +36,8 @@ async function stand(tabelle) {
 }
 
 /**
- * Auf die Statistik warten. Postgres schreibt sie nicht synchron zum Befehl —
- * ohne diese Schleife haengt der Test an der Laune des Sammlers.
+ * Wait for the statistics. Postgres does not write them synchronously with the command —
+ * without this loop the test hangs on the whim of the collector.
  */
 async function waitOnStatus(tabelle, vorher, ms = 5000) {
   const ende = Date.now() + ms;
@@ -52,7 +52,7 @@ async function waitOnStatus(tabelle, vorher, ms = 5000) {
 test('refresh after bulk insert', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
-  // Ein echtes Konto: parts_summary hat seit Migration 0043 einen Schlüssel auf users.
+  // A real account: since migration 0043 parts_summary has a key on users.
   const NAME = `pflege_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [NAME])).id;
@@ -62,7 +62,7 @@ test('refresh after bulk insert', { concurrency: 1 }, async t => {
   });
 
   await t.test('maintainTable cleans up AND re-measures', async () => {
-    // Erst etwas einfuegen, damit es auch etwas zu tun gibt.
+    // First insert something, so that there is something to do.
     await db.run(
       `INSERT INTO parts_summary (user_id, part_key, color_id, part_number,
         part_name, total_quantity, in_sets)
@@ -71,7 +71,7 @@ test('refresh after bulk insert', { concurrency: 1 }, async t => {
       [uid],
     );
     const vorher = await stand('parts_summary');
-    await new Promise(r => setTimeout(r, 1100)); // Zeitstempel haben Sekunden-Auflösung in der Anzeige
+    await new Promise(r => setTimeout(r, 1100)); // Timestamps have second resolution in the display
 
     const ok = await maintainTable(sql => db.exec(sql), 'parts_summary');
     assert.equal(ok, true, 'maintainTable hat aufgegeben — laeuft der Test als Eigentuemer der Tabelle?');
@@ -113,8 +113,8 @@ test('refresh after bulk insert', { concurrency: 1 }, async t => {
   });
 
   await t.test('a failure stays a failure and does not become a crash', async () => {
-    // VACUUM braucht Rechte. Ein Import, der an der NACHSORGE scheitert, waere
-    // das falsche Ergebnis — die Daten sind dann vollstaendig da.
+    // VACUUM needs privileges. An import that fails at the AFTERCARE would be
+    // the wrong result — the data is then completely there.
     const ok = await maintainTable(async () => {
       throw new Error('permission denied for table');
     }, 'parts_summary');
@@ -129,17 +129,17 @@ test('refresh after bulk insert', { concurrency: 1 }, async t => {
                   ON CONFLICT (id) DO NOTHING`,
       [nutzer, 'pflege-tester'],
     );
-    // Beschreibung in die Kataloge, Bestand in parts (Migration 0034).
+    // Description into the catalogs, inventory into parts (migration 0034).
     await db.run(`INSERT INTO part_catalog (part_number, part_name)
       SELECT 'p'||g, 'Brick '||g FROM generate_series(1, 300) g
       ON CONFLICT (part_number) DO NOTHING`);
     await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name)
       SELECT 'p'||g, 0, 'Red' FROM generate_series(1, 300) g
       ON CONFLICT (part_number, color_id) DO NOTHING`);
-    // Ohne quantity: Die Stückzahl eines Set-Teils ist seit Migration 0038 die
-    // Katalogzahl. Hier zaehlt nur die MENGE der Zeilen (300), nicht ihr Wert
-    // — deshalb braucht es keine Katalogzeilen dazu; teilmengeAus() faellt auf
-    // 1 zurueck, und 1 stand hier auch vorher.
+    // Without quantity: since migration 0038 the piece count of a set part is the
+    // catalog number. Here only the NUMBER of rows (300) counts, not their value
+    // — hence no catalog rows are needed for it; teilmengeAus() falls back to
+    // 1, and 1 stood here before as well.
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '75192-1') ON CONFLICT DO NOTHING`, [nutzer]);
     await db.run(
       `INSERT INTO parts (user_id, set_number, part_number, color_id)
@@ -162,7 +162,7 @@ test('refresh after bulk insert', { concurrency: 1 }, async t => {
   });
 
   await t.test('the trigram indexes of the summary keep no pending list', async () => {
-    // Statt VACUUM nach jedem Neuaufbau: Ohne Warteliste gibt es nichts zu leeren.
+    // Instead of VACUUM after every rebuild: without a pending list there is nothing to empty.
     const idx = await db.all(`SELECT c.relname, c.reloptions FROM pg_index i
       JOIN pg_class c ON c.oid = i.indexrelid JOIN pg_am a ON a.oid = c.relam
       WHERE i.indrelid = 'parts_summary'::regclass AND a.amname = 'gin'`);

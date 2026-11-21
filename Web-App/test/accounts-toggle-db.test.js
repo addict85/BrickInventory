@@ -1,17 +1,17 @@
 /**
- * Die Schalter eines Kontos (is_admin, is_active, email_verified) sind
- * Wahrheitswerte (Migration 0085, vorher 0/1) und nie leer, und eine E-Mail-Adresse gibt es nur einmal — ohne Rücksicht
- * auf Gross- und Kleinschreibung (Migration 0069). Der Code prüfte das schon
- * mit LOWER(email); die Datenbank kannte nur die genaue Schreibweise.
+ * The switches of an account (is_admin, is_active, email_verified) are
+ * booleans (migration 0085, before 0/1) and never empty, and an e-mail address exists only once — regardless
+ * of upper and lower case (migration 0069). The code already checked that
+ * with LOWER(email); the database only knew the exact spelling.
  *
- * Gegenproben (am 29.10.2026 gemessen, je auf frischer Datenbank):
- *   A  den Block mit users_email_lower aus 0069 entfernt → rot: „eine Adresse
- *      gibt es nur einmal, gleich in welcher Schreibweise“
- *   B  (31.10.2026) is_admin in 0085 nicht umgestellt → rot: „ohne Angabe gelten
- *      die Vorgaben“ und „ein Schalter ist ein Wahrheitswert“
- *   C  `SET NOT NULL` für is_admin entfernt → rot: „ein Schalter ist nie leer“
+ * Counter-checks (measured on 29.10.2026, each on a fresh database):
+ *   A  the block with users_email_lower removed from 0069 → red: “an address
+ *      exists only once, regardless of spelling”
+ *   B  (31.10.2026) is_admin not converted in 0085 → red: “without input the
+ *      defaults apply” and “a switch is a boolean”
+ *   C  `SET NOT NULL` removed for is_admin → red: “a switch is never empty”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

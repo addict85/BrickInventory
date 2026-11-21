@@ -1,11 +1,11 @@
 'use strict';
 /**
- * Die Bild-Warteschlange leeren, bevor ein Test sie benutzt.
+ * Empty the image queue before a test uses it.
  * @param {{ run: (sql: string, p?: unknown[]) => Promise<unknown> }} db
  */
 async function emptyQueue(db) {
   await db.run('DELETE FROM image_wanted').catch(() => {});
-  // Eine Drosselpause eines Vorgängers hielte den Stapel sonst an (job_pauses).
+  // A predecessor's throttle pause would otherwise hold the batch (job_pauses).
   await db.run(`DELETE FROM job_pauses WHERE type = 'bildbedarf'`).catch(() => {});
 }
 

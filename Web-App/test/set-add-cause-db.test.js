@@ -1,17 +1,17 @@
 /**
- * „Set hinzufügen“ nennt die richtige Ursache: Ist der Set-Katalog noch gar
- * nicht geladen, meldet der Server katalog_nicht_geladen statt
- * set_nicht_im_katalog; die Oberfläche sagt dann, dass Rebrickable fehlt,
- * nicht „Nummer prüfen“. Ein Set der eigenen Sammlung heisst „schon in deiner
- * Sammlung“ und führt mit einem Knopf zum Set.
+ * „Set hinzufügen“ names the right cause: if the set catalog is not
+ * loaded at all yet, the server reports katalog_nicht_geladen instead of
+ * set_nicht_im_katalog; the UI then says that Rebrickable is missing,
+ * not „Nummer prüfen“. A set of the own collection is called „schon in deiner
+ * Sammlung“ and leads to the set with a button.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  in routes/api_v1/catalog.ts immer 'set_nicht_im_katalog' → rot:
- *      „Server: leerer Katalog“ (Code set_nicht_im_katalog)
- *   B  in setUnbekannt() die Abfrage der eigenen Sammlung entfernt → rot:
- *      „Oberfläche: Set schon in der Sammlung“ (Meldung „unbekannt“)
- *   C  in setUnbekannt() katalog_nicht_geladen wie set_nicht_im_katalog
- *      behandelt → rot: „Oberfläche: Katalog nicht geladen“
+ * Counter-checks (measured 04.11.2026, each on its own):
+ *   A  in routes/api_v1/catalog.ts always 'set_nicht_im_katalog' → red:
+ *      “server: empty catalog” (code set_nicht_im_katalog)
+ *   B  the query of the own collection removed in setUnbekannt() → red:
+ *      “UI: set already in the collection” (message „unbekannt“)
+ *   C  in setUnbekannt() katalog_nicht_geladen treated like set_nicht_im_katalog
+ *      → red: “UI: catalog not loaded”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -45,7 +45,7 @@ test('server: empty catalog', { concurrency: 1 }, async t => {
   assert.equal((await frage('75192-1')).success, true, 'bekannte Nummer');
 });
 
-/** Öffnet „Set hinzufügen“, trägt die Nummer ein und liefert den Hinweis darunter. */
+/** Opens „Set hinzufügen“, enters the number and delivers the hint below it. */
 async function versuche(antworten, nr) {
   const o = await openUi(antworten);
   const { d } = o;
@@ -82,7 +82,7 @@ test('UI: set already in the collection', async () => {
       false,
       'trotzdem angelegt',
     );
-    // Ein Knopf „Set öffnen“ (UI-Prüfung 17, N2): der Hauptknopf.
+    // A button „Set öffnen“ (UI check 17, N2): the main button.
     d.getElementById('btn-add').click();
     assert.ok(await warte(() => d.getElementById('set-modal').classList.contains('open')), 'das Set öffnet sich');
     assert.equal(

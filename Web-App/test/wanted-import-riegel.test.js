@@ -1,24 +1,24 @@
 /**
- * Der Import einer Wanted-Liste lässt sich nicht zweimal anstossen: am echten
- * Bündel in jsdom, mit einer Serverantwort, die der Test zurückhält, bricht
- * oder stückweise schickt.
+ * Importing a wanted list cannot be triggered twice: on the real
+ * bundle in jsdom, with a server response that the test holds back, breaks
+ * or sends piece by piece.
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln, danach zurückgenommen; Namen
- * seit Phase 2b Runde 5 auf Englisch: `_laeuft`→`_busy`, `lies()`→`read()`,
+ * Counter-checks (measured 08.11.2026, each individually, reverted afterwards;
+ * names in English since phase 2b round 5: `_laeuft`→`_busy`, `lies()`→`read()`,
  * `liesStrom`→`readStream`, `knoepfeStand()`→`updateButtons()`):
- *   A  `_busy` aus der Bedingung in read() entfernt → rot: „ein zweiter
- *      Klick startet keinen zweiten Lauf“ (zwei Anfragen)
- *   B  im finally von read() `_busy = false;` gestrichen → rot: „der Riegel
- *      geht auch nach einem Fehler wieder auf“ (ein Fehler, der aus dem Lauf
- *      herausfliegt, liesse sich in jsdom nur als unbehandelte Zurückweisung
- *      auslösen, die der Test-Runner dem Test anrechnet)
- *   C  `_busy ||` aus der Zeile für den Schreibknopf gestrichen → rot: „ein
- *      zweiter Klick …“ (Schreiben während des Laufs bedienbar)
- *   D  die Zeile `if (_busy) { … return; }` in wantedXmlGewaehlt entfernt →
- *      rot: „ein zweiter Klick …“ (neue Datei während des Laufs angenommen)
- *   E  in readStream `rest = lines.pop() ?? ''` → `rest = ''` → rot: „der
- *      Fortschritt kommt stückweise an …“ (Bericht über zwei Stücke zerbricht)
- *   F  `p.set('strom', '1')` gestrichen → rot: dieselbe Prüfung
+ *   A  `_busy` removed from the condition in read() → red: “a second click
+ *      starts no second run, a new file is rejected” (two requests)
+ *   B  `_busy = false;` deleted in the finally of read() → red: “the latch
+ *      opens again even after an error” (an error that flies out of the run
+ *      could only be triggered in jsdom as an unhandled rejection, which the
+ *      test runner charges to the test)
+ *   C  `_busy ||` deleted from the line for the write button → red: “a
+ *      second click …” (writing operable during the run)
+ *   D  the line `if (_busy) { … return; }` removed in wantedXmlGewaehlt →
+ *      red: “a second click …” (new file accepted during the run)
+ *   E  in readStream `rest = lines.pop() ?? ''` → `rest = ''` → red: “the
+ *      progress arrives piece by piece …” (report about two pieces breaks)
+ *   F  `p.set('strom', '1')` deleted → red: the same check
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -26,7 +26,7 @@ const { openUi, warte } = require('./helpers/ui');
 
 const BERICHT = { success: true, vorschau: true, gelesen: 1, posten: [], angelegt: 0, aufgestockt: 0, fehler: 0 };
 
-/** Öffnet die Oberfläche; Anfragen an den XML-Import beantwortet `antwort(nr)` (Promise einer Response). */
+/** Opens the UI; requests to the XML import are answered by `antwort(nr)` (promise of a Response). */
 async function withImport(antwort) {
   const o = await openUi();
   const importe = [];
@@ -63,7 +63,7 @@ test('a second click starts no second run, a new file is rejected', async () => 
       [true, true],
       'Während des Laufs sind beide Knöpfe gesperrt',
     );
-    // Gesperrt hin oder her: auch ein ausgelöster Klick und eine neue Datei laufen ins Leere.
+    // Locked or not: a triggered click and a new file also come to nothing.
     knopf('wanted-xml-neu').disabled = false;
     knopf('wanted-xml-neu').click();
     knopf('wanted-xml-schreiben').disabled = false;
@@ -71,7 +71,7 @@ test('a second click starts no second run, a new file is rejected', async () => 
     choose('andere.xml');
     assert.ok(await warte(() => d.querySelector('#toasts .toast')), 'Keine Meldung zur abgewiesenen Datei');
     assert.equal(importe.length, 1, 'Ein zweiter Import addierte die Mengen auf');
-    // Zurück auf gesperrt, wie es updateButtons() hielte: Die Freigabe muss die Vorschau bringen.
+    // Back to locked, as updateButtons() would keep it: the release must bring the preview.
     knopf('wanted-xml-neu').disabled = true;
     knopf('wanted-xml-schreiben').disabled = true;
     freigeben();
@@ -82,7 +82,7 @@ test('a second click starts no second run, a new file is rejected', async () => 
       'Nach der Vorschau sind beide Knöpfe frei',
     );
     assert.equal(d.getElementById('wanted-xml-sub').textContent, 'liste.xml', 'Die Datei wurde ausgetauscht');
-    // Neu einlesen bei stehender Vorschau: Auch jetzt ist Schreiben gesperrt, solange es läuft.
+    // Re-read with the preview showing: writing is locked now too, as long as it runs.
     knopf('wanted-xml-neu').click();
     assert.ok(await warte(() => importe.length === 2));
     assert.equal(knopf('wanted-xml-schreiben').disabled, true, 'Schreiben ist während des Neueinlesens bedienbar');

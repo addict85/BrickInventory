@@ -1,11 +1,11 @@
 /**
- * Die Auslieferungsreihenfolge des Bild-Proxys — AUSGEFÜHRT, nicht gelesen.
+ * The delivery order of the image proxy — EXECUTED, not read.
  *
- * Gegenprobe (04.11.2026 gemessen): imageType() gibt wie vorher den rohen Wert
- * zurück, sobald er mit `image/` beginnt und kein SVG ist → rot: „Abgelegt als
- * image/png, text/html …“.
- * (11.11.2026) in cacheTreffer() die ETag-Angabe weggelassen (`etag: null`) →
- * rot: „der Dienst nennt Datei, Typ, Länge und ETag, ohne zu senden“.
+ * Counter-check (measured 04.11.2026): imageType() returns the raw value as before
+ * as soon as it starts with `image/` and is not SVG → red: “stored as
+ * image/png, text/html …”.
+ * (11.11.2026) in cacheTreffer() the ETag omitted (`etag: null`) →
+ * red: “the service names file, type, length and ETag without sending”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -20,7 +20,7 @@ const deliverFromCache = (...a) =>
     ...a,
   );
 
-/** Ein res, das nur festhält, was mit ihm geschehen ist. */
+/** A res that only records what happened to it. */
 function fakeRes() {
   const r = {
     kopf: {},
@@ -51,7 +51,7 @@ function fakeRes() {
   return r;
 }
 
-/** Ein Aufruf von deliverFromCache mit sinnvollen Vorgaben. */
+/** A call of deliverFromCache with sensible defaults. */
 async function ruf(dir, { wantThumb, createMay = true, fresh = false }) {
   const res = fakeRes();
   const streamed = [];
@@ -69,7 +69,7 @@ async function ruf(dir, { wantThumb, createMay = true, fresh = false }) {
   return { erledigt, res, streamed, noted };
 }
 
-/** Eine Datei mit `n` Bytes anlegen. */
+/** Create a file with `n` bytes. */
 function datei(p, n) {
   fs.writeFileSync(p, Buffer.alloc(n, 0x41));
 }
@@ -123,9 +123,9 @@ test('delivery order of the image cache', async t => {
   });
 
   await t.test('a stub preview is discarded and the original delivered', async () => {
-    // Die Grenze liegt bei 200 Bytes. Eine leere oder abgeschnittene Datei ist
-    // kein Bild — ausgeliefert sähe sie im Browser als kaputtes Kästchen aus,
-    // und zwar dauerhaft, weil sie ja im Cache liegt.
+    // The limit is 200 bytes. An empty or truncated file is
+    // not an image — delivered, it would look like a broken box in the browser,
+    // and permanently so, because it lies in the cache.
     aufraeumen();
     datei(orig, 5000);
     datei(thumb, 50);
@@ -139,8 +139,8 @@ test('delivery order of the image cache', async t => {
   });
 
   await t.test('gen=0 computes nothing but only leaves a note', async () => {
-    // Die ANFRAGE darf keine Verkleinerung anstossen — das macht der
-    // Hintergrund-Job, gedrosselt und nur im Primärprozess.
+    // The REQUEST must not trigger a downscale — that is done by the
+    // background job, throttled and only in the primary process.
     aufraeumen();
     datei(orig, 5000);
     const { noted } = await ruf(dir, { wantThumb: true, createMay: false });
@@ -148,10 +148,10 @@ test('delivery order of the image cache', async t => {
   });
 
   await t.test('known state → 304 and NO image', async () => {
-    // Der Fall, bei dem beim Herauslösen fast ein Fehler entstanden wäre:
-    // Aus `return res.status(304).end()` darf kein blosses `res.status(304)`
-    // werden — sonst liefe der Ablauf weiter und schriebe in eine bereits
-    // beendete Antwort.
+    // The case in which an error almost arose while extracting:
+    // `return res.status(304).end()` must not become a mere `res.status(304)`
+    // — otherwise the flow would continue and write into an already
+    // ended response.
     aufraeumen();
     datei(orig, 5000);
     datei(thumb, 900);
@@ -170,10 +170,10 @@ test('delivery order of the image cache', async t => {
   });
 
   await t.test('only image types leave the cache', async () => {
-    // Der Content-Type liegt als Datei daneben und stammt ursprünglich vom
-    // CDN. Ein SVG ist das einzige Bildformat, das als Dokument geöffnet
-    // aktiv wird — es darf nicht unter der eigenen Herkunft ausgeliefert
-    // werden, auch wenn ein alter Cache-Eintrag es behauptet.
+    // The Content-Type lies as a file next to it and originally comes from the
+    // CDN. An SVG is the only image format that becomes active when opened
+    // as a document — it must not be delivered under the own origin,
+    // even if an old cache entry claims it.
     for (const [abgelegt, erwartet] of [
       ['image/png', 'image/png'],
       ['image/svg+xml', 'image/jpeg'],
@@ -196,7 +196,7 @@ test('delivery order of the image cache', async t => {
   });
 
   await t.test('the service names file, type, length and ETag without sending', async () => {
-    // Gesendet wird in src/images/http/; der Dienst bekommt keine Antwort zu sehen.
+    // Sending happens in src/images/http/; the service gets to see no response.
     aufraeumen();
     datei(orig, 5000);
     fs.writeFileSync(orig + '.ct', 'image/png');

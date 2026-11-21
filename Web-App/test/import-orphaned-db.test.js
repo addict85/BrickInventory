@@ -1,13 +1,13 @@
 /**
- * Ein Import, dessen Prozess nicht mehr lebt (Neustart, Absturz), sperrt
- * keinen weiteren: Ohne Lebenszeichen seit ORPHANED_MIN Minuten gilt er als
- * unterbrochen. Vorher blieb „running" für immer stehen, und startJob
- * verweigerte jeden neuen Auftrag, bis jemand von Hand abbrach.
+ * An import whose process no longer lives (restart, crash) locks
+ * no further one: without a heartbeat for ORPHANED_MIN minutes it counts as
+ * interrupted. Previously “running" stayed forever, and startJob
+ * refused every new job until someone aborted by hand.
  *
- * Gegenprobe (am 27.10. gemessen): das UPDATE in jobGet entfernt → rot:
- * „ein verwaister Auftrag" (Status blieb running, kein neuer Auftrag).
+ * Counter-check (measured on 27.10.): the UPDATE in jobGet removed → red:
+ * “an orphaned job" (status stayed running, no new job).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

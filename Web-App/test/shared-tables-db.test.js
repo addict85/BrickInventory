@@ -1,66 +1,66 @@
 /**
- * Tabellen ohne user_id teilen sich alle Konten. Welche das sind, steht unten
- * in SHARED, je Tabelle mit Art und ob Eingaben eines Kontos hinein dürfen.
- * Die Tabellen kommen aus dem echten Schema, die schreibenden Stellen aus dem
- * Quelltext (eine neue Stelle auf eine Katalogtabelle muss hier eingetragen …
+ * Tables without user_id are shared by all accounts. Which ones they are stands below
+ * in SHARED, per table with kind and whether inputs of an account may go in.
+ * The tables come from the real schema, the writing places from the
+ * source text (a new place on a catalog table must be registered here …
  *
- * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
- *   A  routes/api_v1/wanted.ts: rememberNumber schreibt immer rememberBlNumber →
- *      rot: „Eingaben eines Kontos landen in keiner gemeinsamen Tabelle“
- *      (bl_mapping trägt die Marke)
- *   B  rememberMinifig() in src/catalog/catalogMaintenance.ts ohne den Zweig für `von` →
- *      rot: dieselbe Prüfung (minifigs_catalog)
- *   C  ein `INSERT INTO part_catalog` in src/parts/repository/manualParts.ts
- *      → rot: „jede schreibende Stelle auf eine Katalogtabelle ist eingetragen“
- *   D  eine Tabelle `probe_gemeinsam (x int)` per Migration → rot: „jede
- *      Tabelle ohne user_id steht in der Liste“
+ * Counter-checks (measured on 04.11.2026, one change each, reverted afterwards):
+ *   A  routes/api_v1/wanted.ts: rememberNumber always writes rememberBlNumber →
+ *      red: “input of an account lands in no shared table”
+ *      (bl_mapping carries the marker)
+ *   B  rememberMinifig() in src/catalog/catalogMaintenance.ts without the branch for `von` →
+ *      red: the same check (minifigs_catalog)
+ *   C  an `INSERT INTO part_catalog` in src/parts/repository/manualParts.ts
+ *      → red: “every writing site on a catalog table is registered”
+ *   D  a table `probe_gemeinsam (x int)` via migration → red: “every
+ *      table without user_id is in the list”
  *
- * Jede Tabelle hat einen Besitzer-Bereich (BESITZER); nur er schreibt hinein,
- * andere rufen seinen Dienst. Gegenproben (10.11.2026 gemessen):
- *   E  `DELETE FROM price_cache` zurück nach src/management/repository/management.ts
- *      → rot: „jede Tabelle hat einen Besitzer, nur er schreibt hinein“ (und
- *      „jede schreibende Stelle auf eine Katalogtabelle …“)
- *   F  merkeKatalogCache zurück nach src/sets/repository/setDetail.ts → rot: dieselbe
- *      Prüfung (und „jede schreibende Stelle auf eine Katalogtabelle …“)
- *   G  die Zeile 'db/schemaStart.ts → global_settings' aus FREMDSCHREIBER gestrichen
- *      → rot: dieselbe Prüfung
+ * Every table has an owner scope (BESITZER); only it writes into it,
+ * others call its service. Counter-checks (measured 10.11.2026):
+ *   E  `DELETE FROM price_cache` back into src/management/repository/management.ts
+ *      → red: “every table has an owner, only it writes into it” (and
+ *      “every writing site on a catalog table …”)
+ *   F  merkeKatalogCache back into src/sets/repository/setDetail.ts → red: the same
+ *      check (and “every writing site on a catalog table …”)
+ *   G  the line 'db/schemaStart.ts → global_settings' deleted from FREMDSCHREIBER
+ *      → red: the same check
  *
- * Die Besitzer stehen in docs/architektur.md („Tabellen und Besitzer“), je Tabelle genau einer.
- * Fremde Bereiche lesen über Lesebausteine in db/ oder den Dienst des Besitzers; die direkten
- * Lesestellen zählt eine Ratsche, aufwärts gilt null. Gegenproben (H 15.11., I/J 14.11.2026 gemessen):
- *   H  `SELECT 1 FROM price_cache` in src/sets/repository/sets.ts → rot: „fremde Bereiche lesen
- *      nie aufwärts …“ (27 abwärts von 26)
- *   I  `DELETE FROM user_settings` in src/account/repository/accounts.ts → rot: „jede Tabelle hat
- *      einen Besitzer, nur er schreibt hinein“
- *   J  die Zeile von src/drossel in docs/architektur.md gestrichen → rot: dieselbe Prüfung
- *      (rate_limit_attempts ohne Besitzer)
- *   K  setWert.ts liest wieder `FROM set_acquisitions` statt setErfassungen() → rot: dieselbe
- *      Prüfung, aufwärts ['src/finances → set_acquisitions'] (15.11.2026)
- *   L  'src/sets → parts_version_user' aus TRIGGER_FREMDZIELE gestrichen → rot: „Trigger schreiben
- *      nur in Tabellen ihres Besitzers …“ (15.11.2026)
+ * The owners stand in docs/architektur.md („Tabellen und Besitzer“), exactly one per table.
+ * Foreign scopes read via read building blocks in db/ or the owner's service; the direct
+ * read places are counted by a ratchet, upwards zero applies. Counter-checks (H 15.11., I/J 14.11.2026 measured):
+ *   H  `SELECT 1 FROM price_cache` in src/sets/repository/sets.ts → red: “foreign scopes never read
+ *      upwards …” (27 downwards of 26)
+ *   I  `DELETE FROM user_settings` in src/account/repository/accounts.ts → red: “every table has
+ *      an owner, only it writes into it”
+ *   J  the line of src/drossel deleted in docs/architektur.md → red: the same check
+ *      (rate_limit_attempts without owner)
+ *   K  setWert.ts again reads `FROM set_acquisitions` instead of setErfassungen() → red: the same
+ *      check, upwards ['src/finances → set_acquisitions'] (15.11.2026)
+ *   L  'src/sets → parts_version_user' deleted from TRIGGER_FREMDZIELE → red: “triggers only write
+ *      into tables of their owner …” (15.11.2026)
  *
- * Ein Lesebaustein in db/ zählt beim Bereich, der ihn importiert; was er liest, zeigt sein Ergebnis.
- * Liegt der Bereich unter dem Besitzer, bekommt er den Baustein über seinen Lesevertrag (src/services.ts
- * reicht ihn). Gegenproben (15.11.2026 gemessen, je einzeln):
- *   M  src/images/repository/imageScope.ts importiert countedSets wieder aus db/inventoryView →
- *      rot: „… aufwärts über db/“ ['src/images → price_alerts', 'src/images → sets', 'src/images → wanted']
- *   N  src/catalog/repository/catalogSearch.ts importiert mengeJoin wieder aus db/stockQuantity → rot:
- *      dieselbe Prüfung, ['src/catalog → set_acquisitions']
- *   O  setBestand in db/inventoryView.ts liest `FROM parts` → rot am Selbstbeweis „setBestand liest
- *      sets“; setzt es den Namen zur Laufzeit zusammen, bleibt es grün: gezählt wird das Ergebnis.
+ * A read building block in db/ counts for the scope that imports it; what it reads is shown by its result.
+ * If the scope lies below the owner, it gets the building block via its read contract (src/services.ts
+ * passes it). Counter-checks (measured 15.11.2026, each on its own):
+ *   M  src/images/repository/imageScope.ts imports countedSets again from db/inventoryView →
+ *      red: “… via db/” ['src/images → price_alerts', 'src/images → sets', 'src/images → wanted']
+ *   N  src/catalog/repository/catalogSearch.ts imports mengeJoin again from db/stockQuantity → red:
+ *      the same check, ['src/catalog → set_acquisitions']
+ *   O  setBestand in db/inventoryView.ts reads `FROM parts` → red at the self-proof „setBestand liest
+ *      sets“; if it assembles the name at runtime, it stays green: the result is what is counted.
  *
- * Wählt eine Datei den Tabellennamen zur Laufzeit, zählt, was sie beim Aufruf über einen mitschreibenden
- * Zugang liest und schreibt (DYNAMISCH, measureFile). Gegenproben (15.11.2026 gemessen, je einzeln):
- *   P  src/inventory/repository/storageLocation.ts: TABELLEN.set = 'instructions' → rot: „gemessen, wie
- *      eingetragen“, „nur er schreibt hinein“ ['…/lagerort.ts → instructions'] und „lesen nie
- *      aufwärts“ ['src/inventory → instructions']; die Regex auf wörtliche Namen sah beides nicht
- *   Q  cacheNumbers() in src/catalog/repository/catalogCache.ts zählt wieder zaehle('price_cache') →
- *      rot: „gemessen, wie eingetragen“ und „lesen nie aufwärts“ ['src/catalog → price_cache']
- *   R  src/wanted/repository/wanted.ts liest wieder `FROM sets s` statt setBestand() → rot:
+ * If a file chooses the table name at runtime, what counts is what it reads and writes when called via a recording
+ * access (DYNAMISCH, measureFile). Counter-checks (measured 15.11.2026, each on its own):
+ *   P  src/inventory/repository/storageLocation.ts: TABELLEN.set = 'instructions' → red: “measured as
+ *      registered”, “only it writes into it” ['…/lagerort.ts → instructions'] and “never read
+ *      upwards” ['src/inventory → instructions']; the regex on literal names saw neither
+ *   Q  cacheNumbers() in src/catalog/repository/catalogCache.ts again counts zaehle('price_cache') →
+ *      red: “measured as registered” and “never read upwards” ['src/catalog → price_cache']
+ *   R  src/wanted/repository/wanted.ts again reads `FROM sets s` instead of setBestand() → red:
  *      „25 direkte Lesestellen (abwärts), erlaubt sind 24“
  *
- * Die Eingaben macht jedes Konto in seinem Namen (asAccount) als Laufzeitrolle, wie im
- * Betrieb; Testdaten und die Suche danach laufen über die Eigentümerin.
+ * Every account makes the inputs in its own name (asAccount) as the runtime role, as in
+ * production; test data and the search for it run via the owner role.
  *
  * REQUIRE_DB=1.
  */
@@ -79,18 +79,18 @@ const { importWorker } = require('./helpers/jobs');
 const db = testData();
 const { testServer } = require('./helpers/server');
 
-// Ohne Netz: Rebrickable kennt nichts (testSources), dann bleibt nur die Eingabe selbst.
+// Without network: Rebrickable knows nothing (testSources), then only the input itself remains.
 testSources(null, {
   lookupPart: async () => null,
   getMinifigInfo: async () => null,
   setAngaben: async () => null,
 });
 
-const KATALOG = 'katalog'; // geprüfte Quellen (Rebrickable, BrickLink, Brickset, EZB)
-const BETRIEB = 'betrieb'; // Zustand des Servers, keine Angaben über Teile
-const KONTO = 'account_id'; // gehört einem Konto über einen anderen Schlüssel
+const KATALOG = 'katalog'; // verified sources (Rebrickable, BrickLink, Brickset, ECB)
+const BETRIEB = 'betrieb'; // state of the server, no details about parts
+const KONTO = 'account_id'; // belongs to an account via another key
 
-/** type, eingabe (false oder warum Eingaben hinein dürfen), schreiber (nur Katalog). */
+/** type, eingabe (false or why inputs may go in), schreiber (catalog only). */
 const SHARED = {
   bl_mapping: { type: KATALOG, eingabe: false, schreiber: ['src/catalog/repository/blMapping.ts'] },
   catalog_cache: {
@@ -201,9 +201,9 @@ const SHARED = {
   admin_takeovers: { type: KONTO, eingabe: 'angekündigte Änderung an einem Verwalterkonto (target_id)' },
 };
 
-/** Dateien, die einen Tabellennamen zur Laufzeit wählen (nicht über den Lesevertrag `l.`): was sie
- * lesen und schreiben, gemessen (measureFile). Steht es hier, ist die Messung vollständig; Besitzer
- * und Stufen gelten für das Gemessene wie für wörtliche Namen. */
+/** Files that choose a table name at runtime (not via the read contract `l.`): what they
+ * read and write, measured (measureFile). If it stands here, the measurement is complete; owners
+ * and levels apply to what is measured as to literal names. */
 const DYNAMISCH = {
   'src/inventory/repository/acquisitions.ts': {
     liest: ['minifig_acquisitions', 'part_acquisitions', 'set_acquisitions'],
@@ -334,8 +334,8 @@ const LIES = /\b(?:FROM|JOIN|USING)\s+(?:ONLY\s+)?(?:[a-z_][a-z0-9_]*\.)?([a-z_]
 const NAME_ZUR_LAUFZEIT =
   /\b(?:FROM|JOIN|USING|INSERT INTO|DELETE FROM|UPDATE|TRUNCATE(?: TABLE)?)\s+(?:ONLY\s+)?\$\{\s*([\w$]+)(\s*[.[(])?/g;
 
-/** Dateien unter src/, deren SQL einen Tabellennamen aus einer eigenen Variablen nimmt. Ausgenommen:
- * der Lesevertrag (`l.…`) und Lesebausteine aus db/, deren Ergebnis die Prüfung über db/ misst. */
+/** Files under src/ whose SQL takes a table name from an own variable. Exempt:
+ * the read contract (`l.…`) and read building blocks from db/, whose result the check measures via db/. */
 function filesWithNamesToRuntime() {
   const aus = [];
   (function lauf(d) {
@@ -364,7 +364,7 @@ function filesWithNamesToRuntime() {
   return aus.sort();
 }
 
-/** Ein Wert, der für jede Probe passt: Zahl, Text, Liste, Objekt, Lesevertrag. */
+/** A value that fits every probe: number, text, list, object, read contract. */
 function chamaeleon() {
   const c = new Proxy(() => c, {
     get(_, p) {
@@ -386,9 +386,9 @@ function chamaeleon() {
 
 const ARTEN = ['set', 'part', 'fig', 'teil', 'figur'];
 
-/** Ruft jeden Export der Datei je Art über einen Zugang, der die Abfragen nur mitschreibt. Wählt der
- * Aufrufer den Namen, dann aus einer exportierten Liste der Datei: Ihre Werte sind weitere Proben.
- * @returns gelesene und geschriebene Tabellen, soweit das Schema sie kennt */
+/** Calls every export of the file per kind via an access that only records the queries. If the
+ * caller chooses the name, then from an exported list of the file: its values are further probes.
+ * @returns read and written tables, as far as the schema knows them */
 async function measureFile(datei, bekannt) {
   const liest = new Set(),
     schreibt = new Set();
@@ -421,12 +421,12 @@ async function measureFile(datei, bekannt) {
             const r = f(...probe);
             if (r && typeof r.then === 'function') await r.catch(() => {});
           } catch {
-            // Eine Probe, die nicht passt, fragt nichts.
+            // A probe that does not fit asks nothing.
           }
   return { liest: [...liest].sort(), schreibt: [...schreibt].sort() };
 }
 
-/** Je Bereich die Tabellen, in die nur er schreibt: die Tabelle in docs/architektur.md. */
+/** Per scope the tables into which only it writes: the table in docs/architektur.md. */
 function besitzerAusDoku() {
   const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architektur.md'), 'utf8');
   const abschnitt = doc.slice(doc.indexOf('## Tabellen und Besitzer'), doc.indexOf('## API-Vertrag'));
@@ -439,14 +439,14 @@ function besitzerAusDoku() {
 }
 const BESITZER = besitzerAusDoku();
 
-/** Ausnahmen von „nur der Besitzer schreibt“; eine Ratsche: nur streichen, nie ergänzen. */
+/** Exceptions to „only the owner writes“; a ratchet: only delete, never add. */
 const FREMDSCHREIBER = [
-  // Der Schemastart schreibt die Zeitzone, bevor es Dienste gibt.
+  // The schema start writes the time zone before there are services.
   'db/schemaStart.ts → global_settings',
 ];
 
-/** Trigger, die in die Tabelle eines anderen Bereichs schreiben: „Besitzer der Triggertabelle →
- * Ziel“ und warum das nicht über den Dienst des Ziels geht. Eine Ratsche wie FREMDSCHREIBER. */
+/** Triggers that write into the table of another scope: „owner of the trigger table →
+ * target“ and why that does not go via the target's service. A ratchet like FREMDSCHREIBER. */
 const TRIGGER_FREMDZIELE = {
   'src/inventory → parts_version_user':
     'Der Teilezähler muss jede Änderung an Sets, Käufen, Teilen und Lagerorten sehen, auch ohne src/parts',
@@ -454,14 +454,14 @@ const TRIGGER_FREMDZIELE = {
     'Katalogänderungen merken nur die Nummer vor; src/parts zieht die Zusammenfassung nach und leert die Liste',
 };
 
-/** Lesen fremde Bereiche eine Tabelle direkt (FROM, JOIN, USING), statt über einen Lesebaustein
- * in db/ oder den Dienst des Besitzers? Paare „Bereich → Tabelle“; db/ selbst ist der Lesebaustein.
- * Aufwärts (Besitzer auf höherer Stufe) ist verboten; Katalogtabellen sind gemeinsame Stammdaten
- * und werden getrennt gezählt; der Rest liest abwärts und darf nur weniger werden. */
+/** Do foreign scopes read a table directly (FROM, JOIN, USING) instead of via a read building block
+ * in db/ or the owner's service? Pairs „scope → table“; db/ itself is the read building block.
+ * Upwards (owner on a higher level) is forbidden; catalog tables are shared master data
+ * and are counted separately; the rest reads downwards and may only become fewer. */
 const KATALOG_LESER_HOECHSTENS = 49;
 const ABWAERTS_LESER_HOECHSTENS = 24;
 
-/** Je Bereich seine Stufe aus docs/architektur.md („Rangfolge der Bereiche“). */
+/** Per scope its level from docs/architektur.md („Rangfolge der Bereiche“). */
 function stufenAusDoku() {
   const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architektur.md'), 'utf8');
   const abschnitt = doc.slice(doc.indexOf('## Rangfolge der Bereiche'), doc.indexOf('## Schema'));
@@ -472,7 +472,7 @@ function stufenAusDoku() {
   );
 }
 
-/** „aufwärts“, „katalog“ oder „abwärts“ für den Leser `b` einer Tabelle des Besitzers `owner`. */
+/** „aufwärts“, „katalog“ or „abwärts“ for the reader `b` of a table of the owner `owner`. */
 function readDirection(stufen, b, owner) {
   if (owner === 'src/catalog') return 'katalog';
   return stufen.get(owner) > stufen.get(b) ? 'aufwärts' : 'abwärts';
@@ -500,9 +500,9 @@ const areaOf = datei => (datei.startsWith('src/') ? datei.split('/').slice(0, 2)
 
 const LESE = /\b(?:FROM|JOIN|USING)\s+(?:ONLY\s+)?([a-z_][a-z0-9_]*)\b/g;
 
-/** Je Lesebaustein in db/ und Export die Tabellen, die sein Ergebnis liest: Jede Funktion läuft mit
- * Proben je Art und einem Zugang, der die Abfragen nur mitschreibt. So zählt auch, was über eine
- * Konstante (ZAEHLT) oder eine asynchrone Abfrage gelesen wird. */
+/** Per read building block in db/ and export the tables its result reads: every function runs with
+ * probes per kind and an access that only records the queries. That way what is read via a
+ * constant (ZAEHLT) or an asynchronous query counts too. */
 async function lesebausteine(_req) {
   const je = {};
   const ordner = path.join(ROOT, 'db');
@@ -545,7 +545,7 @@ async function lesebausteine(_req) {
               if (r && typeof r.then === 'function') await r.catch(() => {});
               else remember(r);
             } catch {
-              // Eine Probe, die nicht passt, liest nichts.
+              // A probe that does not fit reads nothing.
             }
           }
         }
@@ -555,7 +555,7 @@ async function lesebausteine(_req) {
   return je;
 }
 
-/** Paare „Bereich → Tabelle“, die ein Bereich über importierte Lesebausteine liest (auch `* as`). */
+/** Pairs „scope → table“ that a scope reads via imported read building blocks (also `* as`). */
 function readerViaDb(bausteine) {
   const pairs = new Set();
   const dateien = [];
@@ -601,7 +601,7 @@ function readerViaDb(bausteine) {
 
 const MARKE = 'zzmarke7q';
 
-/** Datei → geschriebene Tabellen, ohne Kommentare; `DO UPDATE SET` ist kein Tabellenname. */
+/** File → written tables, without comments; `DO UPDATE SET` is not a table name. */
 function writingPlaces() {
   const tabellen = new Map(),
     dynamisch = new Set();
@@ -660,7 +660,7 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
     assert.deepEqual(ohne.sort(), Object.keys(SHARED).sort());
   });
 
-  // Gemessen einmal, für die Prüfungen auf Schreiber, Besitzer und Stufen unten.
+  // Recorded once, for the checks on writers, owners and levels below.
   const gemessen = {};
   await t.test('table names at runtime: measured as registered', async () => {
     const bekannt = new Set(Object.values(BESITZER).flat());
@@ -714,7 +714,7 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
       'BESITZER nennt eine Tabelle, die es nicht gibt',
     );
     const fremd = [];
-    // Tabellen ausserhalb des Schemas (Kopien vor Migrationen, temporäre) haben keinen Besitzer.
+    // Tables outside the schema (copies before migrations, temporary ones) have no owner.
     for (const [tabelle, dateien] of writingPlaces().tabellen)
       for (const d of dateien)
         if (besitzer.has(tabelle) && areaOf(d) !== besitzer.get(tabelle)) fremd.push(`${d} → ${tabelle}`);
@@ -759,7 +759,7 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
     const je = { aufwärts: [], katalog: [], abwärts: [] };
     const pairs = new Set(foreignReader(besitzer));
     assert.ok(Object.keys(gemessen).length > 5, 'Selbstbeweis: die Messung der Namen zur Laufzeit lief');
-    // Was die Messung über einen importierten Lesebaustein sieht, zählt die Prüfung über db/ unten.
+    // What the measurement sees via an imported read building block is counted by the check via db/ below.
     const viaDb = new Set(readerViaDb(await lesebausteine(_req)));
     for (const [d, { liest }] of Object.entries(gemessen))
       for (const tabelle of liest) {
@@ -771,7 +771,7 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
       assert.ok(stufen.has(b), `${b} hat keine Stufe`);
       je[readDirection(stufen, b, besitzer.get(tabelle))].push(paar);
     }
-    // Selbstbeweis der Einteilung, an echten Stufen.
+    // Self-proof of the classification, on real levels.
     assert.equal(readDirection(stufen, 'src/finances', besitzer.get('sets')), 'aufwärts');
     assert.ok(je.abwärts.includes('src/management → sets'), 'Selbstbeweis: die Verwaltung liest sets direkt');
     assert.ok(je.katalog.length > 10, 'Selbstbeweis: Katalogtabellen werden gelesen');
@@ -797,7 +797,7 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
     const besitzer = new Map(Object.entries(BESITZER).flatMap(([b, ts]) => ts.map(x => [x, b])));
     const stufen = stufenAusDoku();
     const bausteine = await lesebausteine(_req);
-    // Selbstbeweis: Was die Bausteine lesen, kommt aus ihrem Ergebnis, auch über Konstanten.
+    // Self-proof: what the building blocks read comes from their result, also via constants.
     assert.deepEqual(bausteine.inventoryView?.setBestand, ['sets'], 'setBestand liest sets');
     assert.deepEqual(bausteine.accessView?.familieLebt, ['api_tokens']);
     assert.ok(bausteine.inventoryView?.setZaehlt?.includes('price_alerts'), 'setZaehlt liest über ZAEHLT');
@@ -889,7 +889,7 @@ test('shared tables', { concurrency: 1, timeout: 120_000 }, async t => {
       if (n) befallen.push(`${name} (${n})`);
     }
     assert.deepEqual(befallen, []);
-    // Gegenstück: Die Eingaben stehen bei den Konten, sonst prüfte die Suche oben nichts.
+    // Counterpart: the inputs stand with the accounts, otherwise the search above would check nothing.
     const eigen = await db.get(`SELECT
       (SELECT count(*) FROM bl_mapping_custom e WHERE e::text LIKE '%${MARKE}%')::int AS bl,
       (SELECT count(*) FROM minifig_custom e WHERE e::text LIKE '%${MARKE}%')::int AS fig,

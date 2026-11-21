@@ -1,24 +1,24 @@
 /**
- * QR-Anmeldung mit Bestätigung im Browser: Der Scan allein gibt keinen Token.
- * Die App meldet sich und zeigt einen Code; erst wenn die angemeldete Sitzung
- * ihn eintippt, holt die App ihren Zugang ab. Ein falscher Code zählt, nach
- * drei ist die Kopplung abgelehnt; die Kopplung eines anderen Kontos ist nicht
- * zu sehen und nicht zu bestätigen.
+ * QR login with confirmation in the browser: the scan alone gives no token.
+ * The app registers and shows a code; only when the logged-in session
+ * types it in does the app pick up its access. A wrong code counts, after
+ * three the pairing is rejected; the pairing of another account cannot
+ * be seen and cannot be confirmed.
  *
- * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in holeQrTokenAb() (src/account/qrPairing.ts) auch `wartet` wie `bestaetigt`
- *      behandelt → rot: „ohne Bestätigung kein Token“
- *   B  codeFits() gibt immer true → rot: „ein falscher Code zählt …“
- *   C  qrPairingOfAccount() ohne `AND user_id = $2` → rot: „die Kopplung eines anderen Kontos …“
- *   D  in melde() (Repository) `used_at IS NULL` gestrichen → rot: „ein Code meldet nur ein Gerät“
- *   E  (11.11.2026) in /qr-login/abholen `vorschau` nicht weitergegeben → rot: „die Vorschau
- *      nennt das Konto …“ (Token schon in der Vorschau)
- *   F  (11.11.2026) in discardPickup() markRejected() gestrichen → rot: „ein Nein
- *      der App …“ (Abholen gibt danach doch einen Token)
- *   G  (11.11.2026) in putQrPairingAn() die Zählbedingung gestrichen → rot:
- *      „über der Obergrenze offener Kopplungen …“ (200 statt 503)
+ * Counter-checks (measured 09.11.2026, each on its own):
+ *   A  in holeQrTokenAb() (src/account/qrPairing.ts) `wartet` treated like `bestaetigt`
+ *      too → red: “without confirmation no token”
+ *   B  codeFits() always returns true → red: “a wrong code counts …”
+ *   C  qrPairingOfAccount() without `AND user_id = $2` → red: “another account's pairing …”
+ *   D  in melde() (repository) `used_at IS NULL` deleted → red: “a code reports only one device”
+ *   E  (11.11.2026) in /qr-login/abholen `vorschau` not passed on → red: “the preview
+ *      names the account …” (token already in the preview)
+ *   F  (11.11.2026) markRejected() deleted in discardPickup() → red: “a no
+ *      from the app …” (picking up gives a token after all)
+ *   G  (11.11.2026) in putQrPairingAn() the count condition deleted → red:
+ *      “above the limit of open pairings …” (200 instead of 503)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,7 +38,7 @@ test('QR pairing with confirmation', { concurrency: 1, timeout: 60_000 }, async 
   const NAMEN = [`qrk_${process.pid}`, `qrk2_${process.pid}`];
   const PASS = 'Kopplung-Passwort-1';
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
-  // Die Drosseln zählen je Adresse über Testdateien hinweg (serieller Lauf auf einer Datenbank).
+  // The throttles count per address across test files (serial run on one database).
   await db.run(`DELETE FROM rate_limit_attempts WHERE key ~ '^(qr-login|qr-abholen)\\|'`);
   const ids = [];
   for (const n of NAMEN)
@@ -57,7 +57,7 @@ test('QR pairing with confirmation', { concurrency: 1, timeout: 60_000 }, async 
   });
   const sitzung = { userId: ids[0], username: NAMEN[0] };
   const { base } = testServer(_req, { sitzung, t });
-  // Über IPv4: Mit „localhost“ fragt der CI-Läufer über ::1, und das geprüfte Netz hiesse 0:0:0::/48.
+  // Via IPv4: with „localhost“ the CI runner asks via ::1, and the checked network would be 0:0:0::/48.
   const adresse = base.replace('localhost', '127.0.0.1');
   const ruf = async (methode, pfad, body) => {
     const r = await fetch(`${adresse}/api/v1/auth${pfad}`, {
@@ -118,7 +118,7 @@ test('QR pairing with confirmation', { concurrency: 1, timeout: 60_000 }, async 
     const ja = await abholen(m);
     assert.equal(ja.status, 200, JSON.stringify(ja.body));
     assert.equal(ja.body.username, NAMEN[0]);
-    // Die Nonce für den Geräteschlüssel gehört der Familie des neuen Tokens.
+    // The nonce for the device key belongs to the family of the new token.
     const n = await db.get(
       `SELECT n.from_qr FROM device_nonces n JOIN api_tokens t ON t.user_id = n.user_id
          AND date_trunc('milliseconds', t.created_at) = n.token_family WHERE n.nonce = $1 AND t.token = $2`,

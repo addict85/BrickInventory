@@ -1,5 +1,5 @@
 /**
- * Beim Aufstocken eines Sets müssen Preis und vermerkter Zustand ZUSAMMEN passen.
+ * When topping up a set, price and noted condition must match TOGETHER.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -28,14 +28,14 @@ test("topping up without a condition follows the user's default", { concurrency:
   const uid = u.id;
 
   try {
-    // Der Nutzer sammelt gebraucht.
+    // The user collects used.
     await setUserSetting(uid, 'user_default_condition', 'U');
 
-    // Den Aufstock-Weg ISOLIEREN
+    // ISOLATE the top-up path
     await holdsSet(db, uid, SET, 1, { zustand: 'N' });
 
-    // Erfassung OHNE Zustandsangabe. Preis mitgeben, damit kein Netzaufruf
-    // nötig ist; um den Preis geht es hier nicht.
+    // Acquisition WITHOUT a condition. Pass the price along so that no network call
+    // is needed; this is not about the price.
     await setErfassen({ requester: uid, setNumber: SET, menge: 1, kaufpreis: 20, ifPresent: 'aufstocken' });
 
     const zeilen = await db.all(

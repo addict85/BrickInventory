@@ -1,21 +1,21 @@
 /**
- * Die Bremse für Passwortbestätigungen gilt je Zugang UND über alle Zugänge
- * eines Kontos; erreicht ein Zugang oder das Konto sie, erfährt es der Inhaber
- * (höchstens einmal am Tag), und das Protokoll hält es fest. Ein Zugang ohne
- * eigene Fehlversuche bestätigt weiter.
+ * The brake for password confirmations applies per access AND across all accesses
+ * of an account; if an access or the account reaches it, the owner learns of it
+ * (at most once a day), and the log records it. An access without
+ * own failed attempts keeps confirming.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  in confirmationLocked() die Kontogrenze gestrichen → rot: „über
- *      viele Zugänge höchstens 20 …“ (der 21. Versuch wird geprüft, 400) und
- *      „Mail und Protokoll …“
- *   B  Bedingung `s.count > 0` gestrichen → rot: „der saubere Zugang des
- *      Inhabers …“ (429 statt 200)
- *   C  in gebremst() hintInBackground() entfernt → rot: „Mail und
- *      Protokoll …“ (keine Mail)
- *   D  accountThrottled() vor der Mail entfernt → rot: „Mail und Protokoll …“
- *      (zwei Mails)
+ * Counter-checks (measured 05.11.2026, each alone):
+ *   A  in confirmationLocked() the account limit deleted → red: “across
+ *      many accesses at most 20 …” (the 21st attempt is checked, 400) and
+ *      “mail and log …”
+ *   B  condition `s.count > 0` deleted → red: “the owner's clean
+ *      access …” (429 instead of 200)
+ *   C  in gebremst() hintInBackground() removed → red: “mail and
+ *      log …” (no mail)
+ *   D  accountThrottled() removed before the mail → red: “mail and log …”
+ *      (two mails)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -73,7 +73,7 @@ test('brake for confirmations per account', { concurrency: 1, timeout: 120_000 }
 
   await t.test('across many accesses at most 20 failed attempts per day', async () => {
     const ist = [];
-    // Fünf Zugänge à vier Versuche: keiner erreicht seine eigene Grenze (5).
+    // Five accesses with four attempts each: none reaches its own limit (5).
     for (let z = 0; z < 5; z++) for (let i = 0; i < 4; i++) ist.push(await versuch(`t:${z}`));
     assert.deepEqual([...new Set(ist)], [400]);
     assert.equal(await versuch('t:0'), 429, 'der 21. Versuch aus einem ratenden Zugang');
@@ -93,7 +93,7 @@ test('brake for confirmations per account', { concurrency: 1, timeout: 120_000 }
       gebremst.map(z => [z.kontext.konto, z.kontext.art]),
       [[uid, 'passwort']],
     );
-    // Ein Zugang erreicht danach seine eigene Grenze: Protokoll ja, zweite Mail nein.
+    // Afterwards one access reaches its own limit: log yes, second mail no.
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2`, [
       `%-bestaetigen|${uid}|%`,
       `%-bestaetigen-konto|${uid}`,

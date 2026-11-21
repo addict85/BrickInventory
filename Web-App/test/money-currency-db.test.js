@@ -1,23 +1,23 @@
 /**
- * Geld wird erst am Ende gerundet, Kaufpreise in fremder Währung werden
- * gezählt statt still weggelassen, die Vorgabewährung kommt aus dem Konto,
- * und die Galeriekachel bekommt Betrag und G&V fertig vom Server.
+ * Money is only rounded at the end, purchase prices in a foreign currency are
+ * counted instead of silently left out, the default currency comes from the account,
+ * and the gallery tile gets amount and P&L ready-made from the server.
  *
- * Gegenproben (am 29.10.2026 gemessen):
- *   A  in bewertung.ts total_avg wieder aus dem gerundeten Stückpreis
- *      ((unitAvg * qty).toFixed(2)) → rot: „120,3333 × 3 ist 361,00“ (360.99)
- *   B  kaufpreise_fremde_waehrung in valueSets fest auf 0 → rot:
- *      „ein Kaufpreis in EUR wird gezählt“
- *   C  erfassung_waehrung() in der Datenbank auf den alten Rumpf (Konto, sonst
- *      EUR) zurückgesetzt → rot: „ohne Kontowährung gilt die der Installation“
- *   D  tileValues() in gewinnVerlust.ts nicht angehängt → rot: „die Kachel
- *      kommt fertig vom Server“
- *   E  (30.10.) in valueParts hasCost wieder `acqs.length > 0` →
- *      rot: „nur ein Kaufpreis in EUR: keine G&V“ (Teil: kauf 0, pnl 21000 statt null)
- *   F  (30.10.) dasselbe in valueMinifigs → rot: „nur ein
- *      Kaufpreis in EUR: keine G&V“ (Figur: kauf 0, pnl 40000 statt null)
+ * Counter-checks (measured on 29.10.2026):
+ *   A  in bewertung.ts total_avg again from the rounded unit price
+ *      ((unitAvg * qty).toFixed(2)) → red: “120.3333 × 3 is 361.00” (360.99)
+ *   B  kaufpreise_fremde_waehrung fixed to 0 in valueSets → red:
+ *      “a purchase price in EUR is counted”
+ *   C  erfassung_waehrung() in the database reset to the old body (account, otherwise
+ *      EUR) → red: “without an account currency the installation's applies”
+ *   D  tileValues() not attached in gewinnVerlust.ts → red: “the tile
+ *      comes ready-made from the server”
+ *   E  (30.10.) in valueParts hasCost again `acqs.length > 0` →
+ *      red: “only a purchase price in EUR: no P&L” (part: kauf 0, pnl 21000 instead of null)
+ *   F  (30.10.) the same in valueMinifigs → red: “only a
+ *      purchase price in EUR: no P&L” (figure: kauf 0, pnl 40000 instead of null)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

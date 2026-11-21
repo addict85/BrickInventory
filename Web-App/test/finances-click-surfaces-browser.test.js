@@ -1,16 +1,16 @@
 /**
- * Am Rechner ist jedes Bedienelement der Finanzansicht mindestens 32 px hoch und breit (wie .delbtn und
- * .acq-loeschen): Sortierknöpfe im Tabellenkopf, Zeilenlinks und das Kontomenü der Kopfleiste. Gemessen im
- * Browser; die Kopfleiste behält ihre Höhe von 58 px.
+ * On the desktop every control of the finances view is at least 32 px high and wide (like .delbtn and
+ * .acq-loeschen): sort buttons in the table header, row links and the account menu of the header. Measured in the
+ * browser; the header keeps its height of 58 px.
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   A  .sort-knopf wieder min-height/min-width 24 px → rot: „Bedienelemente der Finanzen“
- *      (Sortierknöpfe 24 px hoch, „Name“ 34 × 24)
- *   B  .zeile-oeffnen wieder min-height 24 px → rot: „Bedienelemente der Finanzen“ (Zeilenlink 24 px)
- *   C  --kopf-hoehe wieder 28 px → rot: „Bedienelemente der Finanzen“ (btn-umenu 28 px)
+ * Counter-checks (measured 08.11.2026, each alone):
+ *   A  .sort-knopf again min-height/min-width 24 px → red: “controls of the finances”
+ *      (sort buttons 24 px high, “Name” 34 × 24)
+ *   B  .zeile-oeffnen again min-height 24 px → red: “controls of the finances” (row link 24 px)
+ *   C  --kopf-hoehe back to 28 px → red: “controls of the finances” (btn-umenu 28 px)
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Skipped without Chrome (CHROME_BIN, google-chrome, chromium).
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

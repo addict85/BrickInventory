@@ -1,17 +1,17 @@
 /**
- * Die Sitzungsversion wird je Web-Prozess fünf Sekunden zwischengespeichert
- * (src/account/sessionVersion.ts). Eine Erhöhung in einem Prozess meldet sich über
- * NOTIFY, die anderen verwerfen ihren Stand sofort; ohne Horch-Verbindung gilt nur
- * die Datenbank.
+ * The session version is cached per web process for five seconds
+ * (src/account/sessionVersion.ts). An increment in one process announces itself via
+ * NOTIFY, the others discard their state immediately; without a listening connection only
+ * the database applies.
  *
- * Gegenproben (16.11.2026 gemessen, je einzeln):
- *   A  in listenOnSessionVersion() das verbinde() gestrichen → rot: „eine Erhöhung
- *      aus einem anderen Prozess gilt sofort“ (die alte Version blieb)
- *   B  in increaseSessionVersion() melde() gestrichen → rot: „eine Erhöhung hier meldet
- *      sich bei den anderen“
- *   C  nutzbar() liefert immer true → rot: „ohne Horch-Verbindung …“
+ * Counter-checks (measured 16.11.2026, each on its own):
+ *   A  verbinde() deleted in listenOnSessionVersion() → red: “an increment
+ *      from another process applies immediately” (the old version stayed)
+ *   B  melde() deleted in increaseSessionVersion() → red: “an increment here notifies
+ *      the others”
+ *   C  nutzbar() always delivers true → red: “without a listen connection …”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

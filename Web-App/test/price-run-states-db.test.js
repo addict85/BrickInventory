@@ -1,11 +1,11 @@
 /**
- * Der Preislauf holt je Set genau die Zustände, die das Konto führt oder sich merkt
+ * The price run fetches per set exactly the conditions that the account carries or remembers
  * (statesJeSet in src/finances/priceRun.ts).
  *
- * Gegenproben (09.11.2026 gemessen):
- *   A  in statesJeSet() die Merkliste nicht mehr gelesen → rot: „ein gemerkter Gebrauchtzustand zählt mit“
- *   B  ergebnis.set(sn, ['N', 'U']) für jedes Set → rot: „ein reines Set kostet nur einen Abruf“
- *   C  den Hinweis beim Erfassen übergangen → rot: „der Zustand einer noch nicht geschriebenen Erfassung zählt“
+ * Counter-checks (measured 09.11.2026):
+ *   A  the wishlist no longer read in statesJeSet() → red: “a remembered used condition counts as well”
+ *   B  ergebnis.set(sn, ['N', 'U']) for every set → red: “a pure set costs only one request”
+ *   C  the hint skipped when capturing → red: “the condition of a not yet written entry counts”
  */
 require('./helpers/system-frame');
 const test = require('node:test');

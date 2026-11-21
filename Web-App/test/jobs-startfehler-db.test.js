@@ -1,18 +1,18 @@
 /**
- * Ein Job-Prozess, dessen Start scheitert, beendet sich mit Exit-Code 1 und
- * hinterlässt kein Lebenszeichen: Der Healthcheck darf keinen Prozess ohne
- * Worker für gesund halten.
+ * A job process whose start fails ends with exit code 1 and
+ * leaves no heartbeat: the health check must not consider a process without a
+ * worker healthy.
  *
- * Geprüft am echten Server (ROLLE=jobs). Ein vorgeladenes Modul lässt
- * planeAll() werfen, wie es eine fehlende Tabelle oder Verbindung täte.
+ * Checked on the real server (ROLLE=jobs). A preloaded module makes
+ * planeAll() throw, as a missing table or connection would.
  *
- * Gegenproben (05.11.2026 gemessen):
- *   A  in server.ts wieder `void starte();` → rot: „der Prozess endet mit
- *      Exit-Code 1“ (er lief weiter, bis der Test ihn nach 20 s abbrach)
- *   B  in startJobs() das Lebenszeichen wieder vor planeAll() → rot:
- *      „kein Lebenszeichen ohne Worker“
+ * Counter-checks (measured 05.11.2026):
+ *   A  in server.ts again `void starte();` → red: “the process ends with
+ *      exit code 1” (it kept running until the test aborted it after 20 s)
+ *   B  in startJobs() the heartbeat again before planeAll() → red:
+ *      “no heartbeat without a worker”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

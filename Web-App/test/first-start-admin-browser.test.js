@@ -1,24 +1,24 @@
 /**
- * Enter bestätigt, und der Erststart eines Verwalters fragt das Passwort nur
- * einmal: Der Bestätigungsdialog und das Codefeld beim Einrichten senden mit
- * der Eingabetaste ab; das Startpasswort reist aus der Anmeldung in den
- * Pflichtwechsel, „Einrichten“ fragt danach nicht erneut, das QR-Bild hat
- * einen Namen und ein falscher Code steht am Feld statt als Toast.
+ * Enter confirms, and an administrator's first start asks for the password only
+ * once: the confirmation dialog and the code field during setup submit with
+ * the Enter key; the initial password travels from the login into the
+ * mandatory change, “set up” does not ask again afterwards, the QR image has
+ * a name and a wrong code stands at the field instead of as a toast.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in aktionen.js den Enter-Hörer für Formulare mit `data-submit`
- *      entfernt → rot: „Enter im Passwortfeld bestätigt“
- *   B  in showRequiredSwitch das Übernehmen aus #lp entfernt → rot:
- *      „das Startpasswort reist mit“
- *   C  in zfEinrichten wieder sofort confirmWithPassword → rot: „Einrichten
- *      ohne dritte Passwortabfrage“
- *   D  das Setzen von alt am QR-Bild entfernt → rot: „QR-Bild mit Namen“
- *   E  zfBestaetigen meldet den Fehler wieder als Toast → rot: „falscher
- *      Code am Feld“
- *   F  die Einrichtung wieder in <div class="sform"> statt <form> → rot:
- *      „Enter im Codefeld bestätigt“
- *   G  in zeigeCodes das Umschalten der Einleitung entfernt → rot: „richtiger
- *      Code zeigt die Wiederherstellungscodes“ (Einleitung „Bitte jetzt …“)
+ * Counter-checks (measured 04.11.2026, each alone, bundle rebuilt):
+ *   A  in aktionen.js the Enter listener for forms with `data-submit`
+ *      removed → red: “Enter in the password field confirms”
+ *   B  in showRequiredSwitch the takeover from #lp removed → red:
+ *      “the initial password travels along”
+ *   C  in zfEinrichten again confirmWithPassword immediately → red: “set up
+ *      without a third password prompt”
+ *   D  setting alt on the QR image removed → red: “QR image with name”
+ *   E  zfBestaetigen reports the error as a toast again → red: “wrong
+ *      code at the field”
+ *   F  the setup again in <div class="sform"> instead of <form> → red:
+ *      “Enter in the code field confirms”
+ *   G  in zeigeCodes the switch of the introduction removed → red: “correct
+ *      code shows the recovery codes” (introduction “Bitte jetzt …”)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -52,7 +52,7 @@ test('Enter confirms, first start with one password prompt', { timeout: 240_000 
     await bis(`${offen('confirm-modal')} && document.activeElement?.id === 'cd-pw'`, 'Passwortdialog mit Fokus');
     await tap('app-Passwort-1');
     await enter();
-    // Mit zweitem Faktor folgt der Code im selben Dialog; auch er geht mit Enter.
+    // With a second factor the code follows in the same dialog; it also goes with Enter.
     await bis(`document.activeElement?.id === 'cd-code'`, 'Enter im Passwortfeld bestätigt', 50);
     await tap(app.furtherCodes[0]);
     await enter();
@@ -66,7 +66,7 @@ test('Enter confirms, first start with one password prompt', { timeout: 240_000 
     assert.equal((await db.get('SELECT first_name FROM users WHERE id = $1', [app.uid])).first_name, 'Erika');
   });
 
-  // Ein frisches Startkonto wie nach dem ersten Serverstart: Verwalter, Startpasswort, kein zweiter Faktor.
+  // A fresh initial account as after the first server start: administrator, initial password, no second factor.
   const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
   const NAME = `erst_s_${process.pid}`,
     START = 'Start-Passwort-0815',
@@ -82,7 +82,7 @@ test('Enter confirms, first start with one password prompt', { timeout: 240_000 
   t.after(() => db.run('DELETE FROM users WHERE id = $1', [sid]).catch(() => {}));
 
   await t.test('the start password travels along', async () => {
-    // Abmelden lädt die Seite neu; die Maske spricht dann die Sprache des Browsers.
+    // Logging out reloads the page; the mask then speaks the browser's language.
     await b.tab('Network.setUserAgentOverride', {
       userAgent: await b.auswerten('navigator.userAgent'),
       acceptLanguage: 'de-DE',
@@ -105,7 +105,7 @@ test('Enter confirms, first start with one password prompt', { timeout: 240_000 
     await b.auswerten(`document.getElementById('pflicht-wdh').focus(); true`);
     await tap(NEU);
     await enter();
-    // Nach dem Neuladen wartet die Seite, falls der Server noch seine Startaufträge einreiht.
+    // After reloading the page waits in case the server is still enqueuing its startup jobs.
     await bis(`!!document.getElementById('zf-start')`, 'Einrichten nach dem Wechsel', 1200);
     await bis(`document.activeElement?.id === 'zf-start'`, 'Fokus auf „Einrichten“');
   });
@@ -146,7 +146,7 @@ test('Enter confirms, first start with one password prompt', { timeout: 240_000 
     await enter();
     await bis(`!!document.getElementById('zf-codes')`, 'Wiederherstellungscodes');
     assert.deepEqual(await b.auswerten(errorToasts), [], 'kein liegen gebliebener Fehler-Toast');
-    // Über den Codes steht nicht mehr die Aufforderung zum Einrichten.
+    // Above the codes the request to set up no longer stands.
     assert.match(
       await b.auswerten(`document.getElementById('zfpflicht-hinweis').textContent`),
       /ist eingerichtet.*Wiederherstellungscodes sichern/,

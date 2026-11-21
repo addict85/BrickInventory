@@ -1,5 +1,5 @@
 /**
- * Zu jeder Route gehört jemand, der sie ruft — oder ein eingetragener Grund.
+ * Every route has someone who calls it — or a registered reason.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,8 +25,8 @@ function routesFrom(datei, mount) {
 
 function allRoutes() {
   const out = [];
-  // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben: Eine
-  // abgeschriebene Liste veraltet still. Siehe routerEinhaengungen().
+  // Mount points READ from server.ts instead of copied: a
+  // copied list silently goes stale. See routerEinhaengungen().
   for (const r of routerEinhaengungen()) out.push(...routesFrom(r.datei, r.mount));
   const v1 = path.join(ROOT, 'routes/api_v1');
   for (const f of fs.readdirSync(v1)) {
@@ -36,7 +36,7 @@ function allRoutes() {
   return out;
 }
 
-/** Browser-Code und Vorlagen; die Aufrufe der App stehen in shared/app-schnittstelle.json. */
+/** Browser code and templates; the app's calls are in shared/app-schnittstelle.json. */
 function clientSources() {
   const dateien = [];
   const collect = (dir, extensions) => {
@@ -47,9 +47,9 @@ function clientSources() {
         if (e.name !== 'build') collect(p, extensions);
         continue;
       }
-      // app.bundle.js ist das Erzeugnis aus public/js/*.js — mitzuzaehlen
-      // hiesse, jeden Aufruf doppelt zu sehen, und ein Aufruf, den es nur im
-      // Erzeugnis gaebe, waere ein Fehler und kein Beleg.
+      // app.bundle.js is the product of public/js/*.js — counting it
+      // would mean seeing every call twice, and a call that existed only in the
+      // product would be a bug and not evidence.
       if (e.name === 'app.bundle.js') continue;
       if (extensions.some(x => e.name.endsWith(x))) dateien.push(p);
     }
@@ -60,17 +60,17 @@ function clientSources() {
 }
 
 /**
- * Routen ohne Aufrufer im Quelltext — mit dem Grund, warum das in Ordnung ist.
- * Wer eine Zeile hinzufügt, schreibt den Grund dazu; wer keinen hat, hat eine
- * Route gefunden, die niemand mehr braucht.
+ * Routes without a caller in the source text — with the reason why that is fine.
+ * Whoever adds a line writes the reason with it; whoever has none has found a
+ * route that nobody needs anymore.
  */
-// Fuenf Eintraege sind hier verschwunden, weil die Routen es sind
+// Five entries disappeared here because the routes did
 const WITHOUT_CALLER = new Map([
   ['GET /api/v1/health', 'Für Überwachung von aussen (Status, Details nur für Verwalter).'],
   ['GET /api/v1/health/live', 'Lebenszeichen des Prozesses für eine Überwachung von aussen.'],
   ['GET /api/v1/health/ready', 'Gesundheitsprüfung von compose.yaml (node -e im Container).'],
-  // Die Token-Routen fehlen hier, weil ihre Oberfläche jetzt unter
-  // „Angemeldete Geräte“ steht und sie damit einen Aufrufer haben.
+  // The token routes are missing here because their UI is now under
+  // “Signed-in devices” and they thus have a caller.
   [
     'POST /api/v1/admin/img-probe',
     'Diagnosewerkzeug, von Hand gerufen: zeigt, was der Bild-Proxy vom ' +
@@ -122,7 +122,7 @@ test('every route has a caller or a registered reason', () => {
   const ohne = [];
   let withCaller = 0;
   for (const [verb, pfad] of routen) {
-    // Bis zum ersten Platzhalter suchen: Den Rest baut der Client zusammen.
+    // Search up to the first placeholder: the client assembles the rest.
     const stamm = pfad.split('/:')[0].replace(/\/+$/, '');
     if (!stamm) continue;
     const shapes = [stamm, stamm.slice(1), stamm.slice('/api'.length)].filter(Boolean);
@@ -133,10 +133,10 @@ test('every route has a caller or a registered reason', () => {
     ohne.push(`${verb} ${pfad}`);
   }
 
-  // Selbstbeweis: Faende das Muster gar nichts, waere `ohne` die ganze Liste
-  // und der Test rot — der umgekehrte Fall ist gefaehrlicher: Passte jeder
-  // Pfad auf irgendetwas, waere `ohne` leer und der Test gruen, ohne etwas
-  // geprueft zu haben. Deshalb beide Seiten festnageln.
+  // Self-proof: if the pattern found nothing at all, `ohne` would be the whole list
+  // and the test red — the reverse case is more dangerous: if every
+  // path matched anything, `ohne` would be empty and the test green without
+  // having checked anything. Hence pin down both sides.
   assert.ok(withCaller >= 100, `Nur ${withCaller} Routen mit Aufrufer — findet die Suche noch, was sie soll?`);
   assert.ok(
     ohne.length > 0,
@@ -155,8 +155,8 @@ test('every route has a caller or a registered reason', () => {
       'in WITHOUT_CALLER eintragen, damit der Naechste ihn nicht neu herleiten muss.',
   );
 
-  // Eine Zeile, die niemand mehr braucht, ist eine Erlaubnis, die niemand
-  // prueft — dieselbe Regel wie in scripts/check-global-settings.js.
+  // A line that nobody needs anymore is a permission that nobody
+  // checks — the same rule as in scripts/check-global-settings.js.
   const veraltet = [...WITHOUT_CALLER.keys()].filter(r => !ohne.includes(r)).sort();
   assert.deepEqual(
     veraltet,

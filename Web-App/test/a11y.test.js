@@ -1,29 +1,29 @@
 /**
- * Barrierefreiheit an der geladenen Oberfläche (jsdom, echtes Bündel): Was
- * ein Vorleseprogramm zu Feldern, Knöpfen, Dialogen und den Preiszeichen der
- * Finanztabelle sagen kann, nachdem die Sprache angewandt ist.
+ * Accessibility of the loaded UI (jsdom, real bundle): what a screen reader
+ * can say about fields, buttons, dialogs and the price signs of the
+ * finances table once the language has been applied.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen, Bündel neu gebaut):
- *   A  in index.html `for="s-cur"` vom Label entfernt → rot: „jedes Formularfeld
- *      ist beschriftet“ (s-cur)
- *   B  dasselbe Label auf `for="s-curx"` → rot: „jedes Formularfeld …“ und „jedes for= …“
- *   C  role="dialog" an #confirm-modal entfernt → rot: „modale Overlays …“
- *   D  in i18n.js `document.documentElement.lang = lang;` gestrichen → rot:
- *      „die Sprache steht am <html>-Element“
- *   E  in priceStatusBadge() (finanzen.js) aria-label der Fehler-Plakette
- *      entfernt → rot: „bedeutungstragende Zeichen …“
- *   F  #btn-sav-pw ohne Text und data-i18n, mit aria-label="btn-sav-pw" →
- *      rot: „kein aria-label, das nur der Bezeichner ist“
- *   G  #btn-sav-pw ohne Text und data-i18n → rot: „jedes sichtbare Bedienelement …“
- * Ersetzt bedienelement-name.test.js, das dieselben Regeln per Regex am Markup prüfte.
+ * Counter-checks (measured 10.11.2026, each alone, reverted, bundle rebuilt):
+ *   A  in index.html `for="s-cur"` removed from the label → red: “every form field
+ *      is labeled” (s-cur)
+ *   B  the same label set to `for="s-curx"` → red: “every form field …” and “every for= …”
+ *   C  role="dialog" removed from #confirm-modal → red: “modal overlays …”
+ *   D  in i18n.js `document.documentElement.lang = lang;` deleted → red:
+ *      “the language is on the <html> element”
+ *   E  in priceStatusBadge() (finanzen.js) aria-label of the error badge
+ *      removed → red: “meaningful signs …”
+ *   F  #btn-sav-pw without text and data-i18n, with aria-label="btn-sav-pw" →
+ *      red: “no aria-label that is only the identifier”
+ *   G  #btn-sav-pw without text and data-i18n → red: “every visible control …”
+ * Replaces bedienelement-name.test.js, which checked the same rules via regex on the markup.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, reiter, warte } = require('./helpers/ui');
 
-/** Felder, die bewusst keine sichtbare Beschriftung brauchen. */
+/** Fields that deliberately need no visible label. */
 const EXEMPT = new Set([
-  'cfg-import-file', // verstecktes <input type="file">, ausgelöst über einen beschrifteten Knopf
+  'cfg-import-file', // hidden <input type="file">, triggered via a labeled button
 ]);
 
 const FIN_SETS = [
@@ -41,7 +41,7 @@ const FIN_SETS = [
 }));
 
 let _o;
-/** Eine Oberfläche für alle Fälle: Laden dauert, geprüft wird nur gelesen. */
+/** One UI for all cases: loading takes time, the checks only read. */
 async function oberflaeche() {
   _o ??= await openUi({
     '/v1/finance/valuation': {
@@ -83,7 +83,7 @@ test('every for= points to an existing field, an enclosing label to its own', as
     [],
     'for= ohne Ziel',
   );
-  // Ein Klick setzt den Fokus auf das Ziel von for=, nicht auf das umschlossene Feld.
+  // A click puts focus on the target of for=, not on the wrapped field.
   const fremd = labels.filter(l => {
     const innen = l.querySelector('input, select, textarea');
     return innen && l.control !== innen;
@@ -105,7 +105,7 @@ test('modal overlays are marked up as dialogs', async () => {
 });
 
 test('the language is set on the <html> element', async () => {
-  // Ohne lang= rät der Screenreader die Aussprache — bei gemischt deutsch-englischen Oberflächen hörbar falsch.
+  // Without lang= the screen reader guesses the pronunciation — audibly wrong in mixed German-English UIs.
   const en = await openUi({}, { sprache: 'en' });
   try {
     assert.equal(en.d.documentElement.lang, 'en');
@@ -116,8 +116,8 @@ test('the language is set on the <html> element', async () => {
 });
 
 test('meaningful symbols in the finance table are explained', async () => {
-  // Die Preisstatus-Spalte ist ein einziges Zeichen; ohne title (Maus) und aria-label (Vorleser) unlesbar.
-  // Die Zeichen der Legende sind aria-hidden: Der Satz daneben erklärt sie.
+  // The price status column is a single sign; without title (mouse) and aria-label (reader) unreadable.
+  // The legend signs are aria-hidden: the sentence next to them explains them.
   const { w, d } = await oberflaeche();
   await reiter(w, 'finance');
   assert.ok(await warte(() => d.querySelectorAll('#fin-tbl .pst:not([aria-hidden])').length >= 3), 'Plaketten fehlen');
@@ -133,7 +133,7 @@ test('meaningful symbols in the finance table are explained', async () => {
   assert.deepEqual([...states].sort(), ['pst-err', 'pst-leer', 'pst-ok']);
 });
 
-/** Sichtbar heisst hier: kein Vorfahr mit display:none (Markup oder Skript). */
+/** Visible here means: no ancestor with display:none (markup or script). */
 const sichtbar = el => {
   for (let e = el; e; e = e.parentElement) if (e.style?.display === 'none' || e.hidden) return false;
   return true;
@@ -152,7 +152,7 @@ test('every visible control has a name that can be read aloud', async () => {
     el.textContent;
   const elements = [...d.querySelectorAll('button, a[href], select, textarea')].filter(sichtbar);
   assert.ok(elements.length >= 50, `Nur ${elements.length} Bedienelemente gefunden`);
-  // Mindestens zwei Buchstaben — ein Symbol oder ein ✕ ist kein Name.
+  // At least two letters — a symbol or a ✕ is not a name.
   const ohne = elements
     .filter(el => !/[^\W\d_]{2,}/u.test(name(el) || ''))
     .map(el => `<${el.tagName.toLowerCase()}> ${el.id || el.className}`);
@@ -160,7 +160,7 @@ test('every visible control has a name that can be read aloud', async () => {
 });
 
 test('no aria-label that is only the identifier', async () => {
-  // Vorgelesen wird der Wert — „mon-default-condition" hilft niemandem.
+  // The value is read aloud — “mon-default-condition" helps nobody.
   const { d } = await oberflaeche();
   const mit = [...d.querySelectorAll('[aria-label]')].filter(sichtbar);
   assert.ok(mit.length >= 20, `Nur ${mit.length} aria-label gefunden`);

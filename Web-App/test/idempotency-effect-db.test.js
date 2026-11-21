@@ -1,19 +1,19 @@
 /**
- * Der Idempotenzschlüssel vermerkt die Wirkung der Route in derselben
- * Transaktion. Bricht die Anfrage nach dem COMMIT ab (Absturz, Serverfehler),
- * wirkt die Wiederholung kein zweites Mal: nach der Frist 409
- * „nicht wiederholbar“ statt eines zweiten Laufs.
+ * The idempotency key records the route's effect in the same
+ * transaction. If the request aborts after the COMMIT (crash, server error),
+ * the repetition has no second effect: after the deadline 409
+ * “not repeatable” instead of a second run.
  *
- * Gegenproben (10.11.2026 gemessen):
- * - db/database.ts: der Aufruf von commitCompanion vor dem COMMIT entfernt →
- *   rot: „abgebrochen nach dem COMMIT“ (zwei Zeilen statt einer) und „ein
- *   Serverfehler nach dem COMMIT“ (Wiederholung lief, 200 statt 409).
- * - repository.ts: in belege() `AND NOT idempotency.has_effect` gestrichen → rot:
- *   „abgebrochen nach dem COMMIT“ (die Wiederholung belegt neu und wirkt).
- * - Gegenrichtung: „ohne COMMIT darf sie neu“ bleibt grün, auch mit beiden
- *   Gegenproben; eine zurückgerollte Transaktion vermerkt nichts.
+ * Counter-checks (measured 10.11.2026):
+ * - db/database.ts: the call of commitCompanion before the COMMIT removed →
+ *   red: “aborted after the COMMIT” (two rows instead of one) and “a
+ *   server error after the COMMIT” (repetition ran, 200 instead of 409).
+ * - repository.ts: in belege() `AND NOT idempotency.has_effect` deleted → red:
+ *   “aborted after the COMMIT” (the repetition occupies anew and acts).
+ * - Opposite direction: “without COMMIT it may run anew” stays green, even with both
+ *   counter-checks; a rolled-back transaction records nothing.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -48,7 +48,7 @@ test('idempotency: effect and key in one transaction', { concurrency: 1 }, async
     await db.pool.end().catch(() => {});
   });
 
-  // Was die Route nach ihrer Transaktion tut: antworten, abbrechen oder scheitern.
+  // What the route does after its transaction: answer, abort or fail.
   let danach = 'antworten',
     rollback = false;
   const app = express();

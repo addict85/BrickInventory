@@ -1,22 +1,22 @@
 /**
- * Ein Währungswechsel gilt für den ganzen Haushalt. Die Haushaltssicht
- * summiert Beträge; zwei Währungen darin ergäben eine falsche Summe. Stellen
- * darf sie nur das Hauptkonto, und jeder Wechsel (ein voller Preislauf) ist
- * gedrosselt.
+ * A currency change applies to the whole household. The household view
+ * sums amounts; two currencies in it would give a wrong sum. Only the
+ * main account may set it, and every change (a full price run) is
+ * throttled.
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  in setzeHaushaltswaehrung nur das eigene Konto schreiben → rot: „der
- *      Wechsel des Hauptkontos gilt im ganzen Haushalt“
- *   C  die Prüfung hatHauptkonto() entfernt → rot: „ein Unterkonto ändert die
- *      Haushaltswährung nicht“
- *   D  die Drossel entfernt → rot: „höchstens fünf Wechsel je Stunde“
- *   E  (02.11.2026) eigenerHaushalt() wieder ungerichtet (über Haupt- UND
- *      Unterkonten) → rot: „ein geteiltes Unterkonto zieht kein fremdes
- *      Hauptkonto mit“ (Missing expected rejection: erik wechselt mit)
- *   F  (02.11.2026) die Prüfung fremdGeteilt() entfernt → rot: dieselbe
- *      Prüfung (Missing expected rejection: dora wechselt ohne erik)
+ * Counter-checks (measured 01.11.2026):
+ *   A  in setzeHaushaltswaehrung only write the own account → red: “the
+ *      main account's change applies in the whole household”
+ *   C  the check hatHauptkonto() removed → red: “a sub-account does not change the
+ *      household currency”
+ *   D  the throttle removed → red: “at most five changes per hour”
+ *   E  (02.11.2026) eigenerHaushalt() undirected again (over main AND
+ *      sub-accounts) → red: “a shared sub-account does not drag along a foreign
+ *      main account” (Missing expected rejection: erik changes along)
+ *   F  (02.11.2026) the check fremdGeteilt() removed → red: the same
+ *      check (Missing expected rejection: dora changes without erik)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -41,7 +41,7 @@ test('household currency', { concurrency: 1 }, async t => {
     ids[1],
     ids[2],
   ]);
-  // carl und erik teilen sich das Unterkonto dora; cleo hängt nur an carl.
+  // carl and erik share the sub-account dora; cleo only hangs on carl.
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2), ($3, $2), ($1, $4)', [
     ids[4],
     ids[5],
@@ -50,7 +50,7 @@ test('household currency', { concurrency: 1 }, async t => {
   ]);
   for (const id of ids)
     await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')`, [id]);
-  // Ein echter Wechsel zieht den geplanten Preis-Auftrag vor; ausgeführt wird er hier nicht.
+  // A real change pulls the scheduled price job forward; it is not executed here.
   t.after(async () => {
     await db.run(`DELETE FROM jobs WHERE type = 'preise'`);
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'waehrung|%'");
@@ -99,8 +99,8 @@ test('household currency', { concurrency: 1 }, async t => {
   });
 
   await t.test('a shared sub-account does not pull a foreign main account along', async () => {
-    // Ungerichtet erreichte carl über dora auch erik — einen fremden Haushalt.
-    // Dora mitziehen hiesse eriks Haushalt zwei Währungen geben: abgelehnt.
+    // Undirected, carl also reached erik via dora — a foreign household.
+    // Dragging dora along would give erik's household two currencies: rejected.
     await assert.rejects(
       setUserSetting(ids[4], 'currency', 'CHF'),
       (/** @type {any} */ e) => e.code === 'waehrung_geteiltes_unterkonto' && e.art === 'konflikt',
@@ -118,7 +118,7 @@ test('household currency', { concurrency: 1 }, async t => {
   });
 
   await t.test('at most five changes per hour', async () => {
-    // Der Wechsel oben war der erste dieses Kontos.
+    // The change above was the first of this account.
     for (const w of ['GBP', 'EUR', 'CHF', 'SEK']) await setUserSetting(ids[3], 'currency', w);
     await assert.rejects(
       setUserSetting(ids[3], 'currency', 'NOK'),

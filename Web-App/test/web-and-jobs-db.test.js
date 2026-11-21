@@ -1,21 +1,21 @@
 /**
- * Ein Web- und ein Job-Prozess aus derselben Datei (ROLLE=web, ROLLE=jobs),
- * so wie compose.yaml sie startet — am echten Server.
+ * A web and a job process from the same file (ROLLE=web, ROLLE=jobs),
+ * the way compose.yaml starts them — on the real server.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in server.ts `const jobs = k.rolle !== 'web'` durch `true` ersetzt →
- *      rot: „der Web-Prozess arbeitet keine Aufträge ab“
- *   B  in currentStartState (src/jobQueue/startState.ts) das Nachlesen aus
- *      run_state entfernt → rot: „der Web-Prozess sieht den Startzustand des
- *      Job-Prozesses“
- *   C  in server.ts app.use(onlyOwnOrigin) entfernt → rot: „weist
- *      schreibende Anfragen fremder Seiten ab“ (200)
- *   D  in server.ts den Aufruf stopJobs() aus herunterfahren() entfernt →
- *      rot: „SIGTERM: der Job-Prozess gibt seinen laufenden Auftrag zurück“
- *   E  (31.10.2026) API_MIN_APP wieder auf 1 → rot: „eine App mit Zahlen statt
- *      Wahrheitswerten (Fassung 1) bekommt …“ (401 statt 426)
+ * Counter-checks (measured 30.10.2026):
+ *   A  in server.ts `const jobs = k.rolle !== 'web'` replaced by `true` →
+ *      red: “the web process processes no jobs”
+ *   B  in currentStartState (src/jobQueue/startState.ts) the re-read from
+ *      run_state removed → red: “the web process sees the startup state of the
+ *      job process”
+ *   C  in server.ts app.use(onlyOwnOrigin) removed → red: “rejects
+ *      writing requests from foreign sites” (200)
+ *   D  in server.ts the call stopJobs() removed from shutdown() →
+ *      red: “SIGTERM: the job process returns its running job”
+ *   E  (31.10.2026) API_MIN_APP back to 1 → red: “an app with numbers instead of
+ *      booleans (version 1) gets …” (401 instead of 426)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -121,7 +121,7 @@ async function beende(p) {
 test('web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
 
-  // Ohne heutige Stempel lädt der Job-Prozess den Rebrickable-Katalog herunter.
+  // Without today's stamps the job process downloads the Rebrickable catalog.
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(
       `INSERT INTO run_state (key, value) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
@@ -144,7 +144,7 @@ test('web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
     jobsPort = await freePort();
   const web = starte('web', port);
   let jobs = null;
-  /** Der Auftrag, den der Web-Prozess liegen liess; der Job-Prozess soll ihn erledigen. */
+  /** The job the web process left lying; the job process should do it. */
   let erster = 0;
   const auftrag = id => db.get('SELECT status, attempts FROM jobs WHERE id = $1', [id]);
 
@@ -208,7 +208,7 @@ test('web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
     });
 
     await t.test('an app with numbers instead of booleans (version 1) gets “app too old”', async () => {
-      // Woran die App den Hinweis erkennt: Statuscode, Kopfzeile, Code (ServerWaechter.kt).
+      // How the app recognizes the hint: status code, header, code (ServerWaechter.kt).
       const r = await hole(port, '/api/v1/auth/profile', { kopf: { 'X-App-Api': '1' } });
       assert.deepEqual([r.status, r.headers['x-api-min-app'], r.body.code], [426, '2', 'app_zu_alt']);
     });
@@ -219,8 +219,8 @@ test('web and job process', { concurrency: 1, timeout: 180_000 }, async t => {
     });
 
     await t.test('SIGTERM: the job process returns its running job', async () => {
-      // Ein Auftrag mit langer Frist, den der Job-Prozess belegt, aber nie zu Ende bringt:
-      // Die Art kennt er nicht, also simuliert der Test die Belegung selbst mit seiner Kennung.
+      // A job with a long deadline that the job process claims but never finishes:
+      // It does not know the kind, so the test simulates the claim itself with its ID.
       const id = (
         await db.get(`INSERT INTO jobs (type, payload) VALUES ('bilder', $1) RETURNING id`, [
           JSON.stringify({ set_number: `rollen-zwei-${process.pid}`, marke: MARKE }),

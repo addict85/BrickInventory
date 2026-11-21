@@ -1,13 +1,13 @@
 /**
- * Das Haushaltsgedächtnis und seine Abhängigen gehören einem Satz Dienste: Ein
- * neuer Satz hängt nichts an eine Liste des Prozesses, und ein anderer Satz
- * (wie ein zweiter Prozess) erfährt eine Änderung über NOTIFY.
+ * The household memory and its dependents belong to one set of services: a
+ * new set attaches nothing to a list of the process, and another set
+ * (like a second process) learns of a change via NOTIFY.
  *
- * Gegenproben (14.11.2026 gemessen):
- *   A  atHouseholdChange() wieder in eine Liste des Moduls → rot: „ein Satz
- *      leert nur seine Abhängigen“ (der Rückruf des anderen Satzes lief mit)
- *   B  listenOnChanges() ohne Leeren (Rückruf leer) → rot: „ein anderer
- *      Satz erfährt die Änderung über NOTIFY“ (altes Blickfeld)
+ * Counter-checks (measured 14.11.2026):
+ *   A  atHouseholdChange() back into a list of the module → red: “a set
+ *      only clears its own dependents” (the other set's callback ran along)
+ *   B  listenOnChanges() without clearing (callback empty) → red: “another
+ *      set learns of the change via NOTIFY” (old view)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -24,7 +24,7 @@ test('household changes per set of services', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
   const db = testData();
   const { buildServices } = _req('startup/wiring.js');
-  // Zwei Zugänge wie zwei Prozesse (Web und Jobs).
+  // Two accesses like two processes (web and jobs).
   const zugaenge = [createDb(dbKonfigFromEnvironment()), createDb(dbKonfigFromEnvironment())];
   const [a, b] = zugaenge.map(z => buildServices(z));
   const namen = [`hhd_h_${process.pid}`, `hhd_u_${process.pid}`];
@@ -51,7 +51,7 @@ test('household changes per set of services', { concurrency: 1 }, async t => {
 
   await t.test('another set learns about the change via NOTIFY', async () => {
     await b.household.listenOnChanges();
-    // Unter dem Zeilenschutz des Kontos: Fremde Verknüpfungen sieht die Laufzeitrolle nicht (0121).
+    // Under the account's row security: the runtime role does not see foreign links (0121).
     const blickfeld = () => asAccount(ids[0], () => b.household.scopeIds(ids[0]));
     assert.deepEqual(await blickfeld(), [ids[0]]);
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [ids[0], ids[1]]);

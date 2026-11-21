@@ -1,10 +1,10 @@
 /**
- * „Alle meine Sets löschen" löscht MEINE Sets — nicht die des Haushalts.
+ * “Delete all my sets" deletes MY sets — not those of the household.
  *
- * Gegenprobe (01.11.2026 gemessen): bestaetigePasswort() aus DELETE /bestand
- * entfernt → rot: „ohne Passwort gelöscht“ (Code fehlt in der Antwort).
+ * Counter-check (measured 01.11.2026): bestaetigePasswort() removed from DELETE /bestand
+ * → red: “deleted without password” (code missing in the response).
  *
- * Voraussetzung: Test-DB über TEST_DATABASE_URL (Inhalt wird geleert!).
+ * Prerequisite: test DB via TEST_DATABASE_URL (content is emptied!).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,7 +38,7 @@ test('delete everything does not touch the linked accounts', async t => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchemaOnce();
-  // Und die MIGRATIONEN, nicht nur das Schema
+  // And the MIGRATIONS, not only the schema
   {
     const mc = await db.pool.connect();
     try {
@@ -57,14 +57,14 @@ test('delete everything does not touch the linked accounts', async t => {
   const kind = (await db.get(`SELECT id FROM users WHERE username='kind'`)).id;
   await db.run(`INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
 
-  // 75192-1 besitzen BEIDE — das ist der Fall, den eine Prüfung auf
-  // „fremde Setnummern bleiben stehen" allein nicht fängt.
+  // BOTH own 75192-1 — that is the case that a check for
+  // “foreign set numbers stay" alone does not catch.
   await holdsSet(db, haupt, '75192-1', 1);
   await holdsSet(db, kind, '75192-1', 1);
   await holdsSet(db, kind, '21318-1', 1);
   await holdsPart(db, kind, '3001', { setNumber: '21318-1', menge: 10, colorId: 4 });
   await holdsMinifig(db, kind, 'fig1', { setNumber: '21318-1', menge: 1 });
-  // Manuelle Elemente auf beiden Seiten: Die des Kindes müssen bleiben.
+  // Manual elements on both sides: the child's must stay.
   await holdsPart(db, kind, '3003', { colorId: 1, menge: 2 });
   await holdsMinifig(db, kind, 'fig2', { menge: 1 });
   await holdsPart(db, haupt, '3004', { colorId: 1, menge: 2 });
@@ -78,12 +78,12 @@ test('delete everything does not touch the linked accounts', async t => {
       })
     ).json();
 
-  // Ohne Passwort bleibt alles stehen: Ein erbeutetes App-Token allein soll nicht alles löschen.
+  // Without a password everything stays: a captured app token alone should not delete everything.
   const ohne = await hole('/api/v1/bestand', 'DELETE');
   assert.equal(ohne.code, 'aktuelles_passwort_falsch', JSON.stringify(ohne));
   assert.equal((await db.all('SELECT 1 FROM sets WHERE user_id = $1', [haupt])).length, 1, 'ohne Passwort gelöscht');
 
-  // Genau der Aufruf aus public/js/settings.js (btn-dall).
+  // Exactly the call from public/js/settings.js (btn-dall).
   const r = await hole('/api/v1/bestand', 'DELETE', { password: PASS });
   assert.equal(r.success, true, JSON.stringify(r));
   assert.deepEqual([r.sets, r.teile, r.figuren], [1, 1, 0], 'Gezählt wird nur das eigene Konto');
@@ -106,9 +106,9 @@ test('delete everything does not touch the linked accounts', async t => {
 });
 
 test('accounts can only narrow the delete scope, never widen it', () => {
-  // Ein Blickfeld-Parameter, der etwas ÖFFNEN kann, wäre ein Zugriffsweg statt
-  // einer Sicherung. Der Dienst schneidet deshalb gegen schreibbereich(); die
-  // Route gibt nur die Sicht weiter (Verhalten: scope-services-db.test.js).
+  // A view parameter that can OPEN something would be an access path instead of
+  // a safeguard. The service therefore intersects with schreibbereich(); the
+  // route only passes the view on (behavior: scope-services-db.test.js).
   const src = require('./helpers/sources').kompakt(fs.readFileSync(path.join(ROOT, 'routes/api_v1/sets.ts'), 'utf8'));
   const i = src.indexOf("router.endpunkt('DELETE /api/v1/sets/:setNumber'");
   assert.ok(i > 0, 'Löschroute nicht gefunden');
@@ -125,9 +125,9 @@ test('accounts can only narrow the delete scope, never widen it', () => {
 });
 
 test('the button leaves the choice to the server', () => {
-  // Früher listete der Knopf selbst und löschte Nummer für Nummer — mit der
-  // Falle, dass ein fehlendes accounts=own den Haushalt mitlöschte. Jetzt
-  // entscheidet der Server, und zwar nur über das eigene Konto.
+  // Previously the button listed itself and deleted number by number — with the
+  // trap that a missing accounts=own deleted the household along. Now
+  // the server decides, and only about the own account.
   const src = fs.readFileSync(path.join(ROOT, 'public', 'js', 'settings.js'), 'utf8');
   const i = src.indexOf("G('btn-dall')");
   assert.ok(i > 0, 'Knopf btn-dall nicht gefunden');

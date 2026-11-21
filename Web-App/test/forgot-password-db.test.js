@@ -1,21 +1,21 @@
 /**
- * Passwort-vergessen gegen echte Datenbank: E-Mail-Vergleich ohne Beachtung
- * der Gross-/Kleinschreibung.
+ * Forgot-password against a real database: e-mail comparison ignoring
+ * upper/lower case.
  *
- * Gegenprobe (durchgeführt): LOWER($1) in routes/auth.ts wieder auf $1
- * zurückgedreht → genau der erste Teilschritt hier wird rot.
+ * Counter-check (performed): LOWER($1) in routes/auth.ts turned back to $1
+ * → exactly the first substep here turns red.
  *
- * Zweiter Test: Ohne APP_BASE_URL geht kein Reset-Link raus, auch nicht mit NODE_ENV=development.
- * Gegenproben (25.10., gemessen):
- *   A  resetLinkMoeglich() liefert immer true → rot: „Reset-Code an den Host aus dem Header"
- *   B  Prüfung erst nach der Nutzersuche, mit 200 für Unbekannte → rot: „verrät die E-Mail"
- *   C  (01.11., gemessen) Sperre in forgot-password wieder nur bei NODE_ENV=production → rot: „Reset-Code
- *      an den Host aus dem Header"
- * Dritter Test, Gegenproben (01.11., gemessen): Pausenbedingung im UPDATE entfernt → rot
- *   „zweiter Link innerhalb der Pause“; Mindestdauer entfernt → rot „die Dauer verrät die Adresse“
+ * Second test: without APP_BASE_URL no reset link goes out, not even with NODE_ENV=development.
+ * Counter-checks (25.10., measured):
+ *   A  resetLinkMoeglich() always returns true → red: “reset code to the host from the header"
+ *   B  check only after the user search, with 200 for unknown ones → red: “reveals the e-mail"
+ *   C  (01.11., measured) lock in forgot-password again only at NODE_ENV=production → red: “reset code
+ *      to the host from the header"
+ * Third test, counter-checks (01.11., measured): pause condition removed in the UPDATE → red
+ *   “second link within the pause”; minimum duration removed → red “the duration reveals the address”
  *
- * Voraussetzung: Test-DB (Inhalt wird verändert!) via TEST_DATABASE_URL.
- * Ohne DB: skip.
+ * Prerequisite: test DB (content is changed!) via TEST_DATABASE_URL.
+ * Without DB: skip.
  */
 const test = require('node:test');
 const { environment, testData } = require('./helpers/sources');
@@ -24,20 +24,20 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-// Links in Mails gibt es nur mit fester Adresse (routes/auth.ts, getBaseUrl).
+// Links in mails only exist with a fixed address (routes/auth.ts, getBaseUrl).
 environment({ APP_BASE_URL: 'http://localhost' });
 environment({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
-// Adresse aus server.ts lesen — siehe einhaengung() in helpers/sources.js.
+// Read the address from server.ts — see einhaengung() in helpers/sources.js.
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-// Pool schliessen, sonst hält er den Prozess am Leben und die Datei läuft in
-// den Timeout des Runners.
+// Close the pool, otherwise it keeps the process alive and the file runs into
+// the runner's timeout.
 test.after(() => db.pool.end().catch(() => {}));
 
 test('forgot-password finds the email regardless of case', { concurrency: 1 }, async t => {
@@ -45,13 +45,13 @@ test('forgot-password finds the email regardless of case', { concurrency: 1 }, a
 
   const USERNAME = 'forgotcasetest';
   await db.run(`DELETE FROM users WHERE username = $1`, [USERNAME]);
-  // Die ipThrottle des Endpunkts (5/h) zählt in rate_limit_attempts und
-  // ÜBERLEBT Prozesse — dieser Test macht vier Aufrufe von derselben Adresse,
-  // ein zweiter Lauf innerhalb der Stunde liefe sonst in 429.
+  // The endpoint's ipThrottle (5/h) counts in rate_limit_attempts and
+  // SURVIVES processes — this test makes four calls from the same address,
+  // a second run within the hour would otherwise run into 429.
   await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'forgot-%'`).catch(() => {});
   const hash = await bcrypt.hash('passwort123', 4);
-  // Registriert mit gemischter Schreibweise — genau so speichert die
-  // Registrierung die Adresse (unverändert, wie eingegeben).
+  // Registered with mixed case — exactly as the
+  // registration stores the address (unchanged, as entered).
   await db.run(
     `INSERT INTO users (username, email, password_hash, is_admin, is_active, email_verified)
      VALUES ($1, 'Forgot.Case@Example.CH', $2, false, true, true)`,
@@ -77,7 +77,7 @@ test('forgot-password finds the email regardless of case', { concurrency: 1 }, a
     assert.equal(r.status, 200);
     const j = await r.json();
     assert.equal(j.success, true, 'die Antwort ist IMMER success:true (Anti-Enumeration)');
-    // Die Wahrheit steht nicht in der Antwort, sondern in der Tabelle.
+    // The truth is not in the response but in the table.
     const row = await db.get(`SELECT reset_token FROM users WHERE username = $1`, [USERNAME]);
     const gesetzt = !!row.reset_token;
     await db.run(`UPDATE users SET reset_token = NULL, reset_token_expires = NULL WHERE username = $1`, [USERNAME]);
@@ -233,7 +233,7 @@ test('at most one link per account in 15 minutes, and every response takes equal
   const zweite = await forgot(`${USERNAME}@example.ch`);
   assert.equal(zweite.token, erste.token, 'zweiter Link innerhalb der Pause — das Postfach lässt sich fluten');
   assert.deepEqual(zweite.body, erste.body, 'die Antwort verrät die Pause');
-  // Nach der Pause (Ablauf liegt weniger als 45 Minuten vorn) gibt es wieder einen.
+  // After the pause (expiry lies less than 45 minutes ahead) there is one again.
   await db.run(`UPDATE users SET reset_token_expires = NOW() + INTERVAL '44 minutes' WHERE username = $1`, [USERNAME]);
   assert.notEqual((await forgot(`${USERNAME}@example.ch`)).token, erste.token, 'nach der Pause kein neuer Link');
   const unbekannt = await forgot(`gibt.es.nicht.${process.pid}@example.ch`);

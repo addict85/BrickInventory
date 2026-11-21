@@ -1,16 +1,16 @@
 'use strict';
 /**
- * Verwalterrechte verlangen einen eingerichteten Code-Generator (403
- * zweiter_faktor_pflicht, src/account/http/login.ts). Tests, die als
- * Verwalter arbeiten, richten ihn hier auf dem echten Weg ein.
+ * Administrator rights require a set-up code generator (403
+ * zweiter_faktor_pflicht, src/account/http/login.ts). Tests that work as
+ * administrators set it up here the real way.
  *
- * @param {(pfad: string) => any} _req  buildAndRequire() der Testdatei
+ * @param {(pfad: string) => any} _req  buildAndRequire() of the test file
  * @param {number} uid
- * @returns {Promise<string[]>} die zehn Wiederherstellungscodes, je einer für eine Anmeldung
+ * @returns {Promise<string[]>} the ten recovery codes, one per login
  */
 async function adminWithFactor(_req, uid) {
   const zf = _req('src/factors/secondFactor.js');
-  // Wie im Betrieb im Konto selbst: Der Zeilenschutz verbirgt die Zeilen sonst.
+  // As in production in the account itself: row security would otherwise hide the rows.
   return _req('src/infra/accountContext.js').asRequest({ apiUser: { user_id: uid } }, async () => {
     const geheimnis = await zf.beginSetup(uid);
     if (!geheimnis) throw new Error(`Konto ${uid} hat schon einen zweiten Faktor`);

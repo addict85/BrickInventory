@@ -1,24 +1,24 @@
 /**
- * Ein Proxy im Docker-Netz, dem TRUST_PROXY nicht glaubt, wird gemeldet — einmal.
- * Ohne die Angabe gelten alle Clients als dieselbe Adresse, und fünf
- * Fehlversuche eines Fremden sperren den Inhaber aus.
+ * A proxy in the Docker network that TRUST_PROXY does not believe is reported — once.
+ * Without the setting all clients count as the same address, and five
+ * failed attempts of a stranger lock out the owner.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  isDockerGateway() gibt immer false → rot: „Proxy über das Gateway …“
- *   B  `warned = true` nach der Warnung entfernt → rot: „… nur einmal“
- * Gegenprobe (am 29.10.2026 gemessen):
- *   C  Hinweis wieder nur ohne TRUST_PROXY (die Prüfung gegen die Einstellung
- *      entfernt) → rot: „Proxy über das Gateway ohne passendes TRUST_PROXY …“
- *      (mit TRUST_PROXY=docker blieb der Hinweis aus)
- * Gegenprobe (am 30.10.2026 gemessen):
- *   D  der Gateway-Hinweis nennt wieder `TRUST_PROXY=${ip}` → rot: „rät, den
+ * Counter-checks (measured on 28.10.2026):
+ *   A  isDockerGateway() always returns false → red: “proxy via the gateway …”
+ *   B  `warned = true` removed after the warning → red: “… only once”
+ * Counter-check (measured on 29.10.2026):
+ *   C  hint again only without TRUST_PROXY (the check against the setting
+ *      removed) → red: “proxy in the Docker network without matching TRUST_PROXY …”
+ *      (with TRUST_PROXY=docker the hint stayed away)
+ * Counter-check (measured on 30.10.2026):
+ *   D  the gateway hint again names `TRUST_PROXY=${ip}` → red: „rät, den
  *      Clients hinter dem Gateway zu glauben“
- * Ein Proxy vor dem vertrauten Proxy (13.11.2026 gemessen, je einzeln):
- *   E  in onlyClientAddress() den Abbruch bei einer zweiten Adresse
- *      gestrichen → rot: „zwei Client-Adressen: kein Hinweis“
- *   F  die Zeitbedingung (`uhr() - seit < EINE_ADDRESS.ms`) gestrichen → rot:
+ * A proxy in front of the trusted proxy (measured 13.11.2026, each on its own):
+ *   E  in onlyClientAddress() the abort on a second address
+ *      deleted → red: „zwei Client-Adressen: kein Hinweis“
+ *   F  the time condition (`uhr() - seit < EINE_ADDRESS.ms`) deleted → red:
  *      „nach zehn Minuten noch kein Hinweis“
- *   G  den Aufruf von eineAddress() in proxyHinweis() gestrichen → rot:
+ *   G  the call of eineAddress() deleted in proxyHinweis() → red:
  *      „eine einzige Client-Adresse über eine Stunde wird gemeldet“
  */
 const test = require('node:test');
@@ -70,7 +70,7 @@ test('gateway detection', () => {
     assert.equal(isDockerGateway(a), false, a);
 });
 
-/** Anfragen über den vertrauten Proxy; `ip` ist, was Express aus X-Forwarded-For liest. */
+/** Requests via the trusted proxy; `ip` is what Express reads from X-Forwarded-For. */
 function viaProxy(trust, ips, { minuten }) {
   const meldungen = [];
   let jetzt = 0;
@@ -108,12 +108,12 @@ test('two client addresses, too short or without TRUST_PROXY: no hint', () => {
     [],
     'zu wenige Anfragen',
   );
-  // Ohne TRUST_PROXY meldet sich nur der Hinweis auf den nicht vertrauten Proxy (oben).
+  // Without TRUST_PROXY only the hint about the untrusted proxy reports (above).
   assert.deepEqual(
     viaProxy(undefined, viele('192.168.1.20'), { minuten: 120 }).filter(t => /VORGELAGERTER_PROXY/.test(t)),
     [],
     'ohne TRUST_PROXY',
   );
-  // Ohne ausgewertetes X-Forwarded-For ist req.ip der Proxy selbst.
+  // Without an evaluated X-Forwarded-For req.ip is the proxy itself.
   assert.deepEqual(viaProxy('172.28.73.10', viele('172.28.73.10'), { minuten: 120 }), [], 'ohne Auswertung');
 });

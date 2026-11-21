@@ -1,11 +1,11 @@
 /**
- * Neu erfasste Sets verändern die Prozentzahl der Portfolio-Kurve NICHT.
+ * Newly captured sets do NOT change the percentage of the portfolio curve.
  *
- * Gegenprobe (durchgeführt): die Rückschreibung in src/finances/portfolioHistory.ts
- * entfernt (Ersteintrag wieder am eigenen Tag statt am Anfang der Reihe) →
- * der erste Teilschritt wird rot, mit +264 % statt −0,18 %.
+ * Counter-check (carried out): the backfill in src/finances/portfolioHistory.ts
+ * removed (first entry again on its own day instead of at the start of the series) →
+ * the first substep turns red, with +264 % instead of −0.18 %.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -40,12 +40,12 @@ test('the portfolio percentage measures prices, not additional purchases', { con
   const getSetting = async (_u, k, d) => (k === 'currency' ? 'CHF' : d);
   const kurve = async (period = 'week') => portfolioVerlauf(uid, [uid], period, db, getSetting);
 
-  /** Set anlegen und ihm ab `abTag` Tagen vor heute einen Preisverlauf geben. */
+  /** Create a set and give it a price history from `abTag` days before today. */
   const setWith = async (i, abTag, priceAtStart, priceToday) => {
-    await holdsSet(db, uid, SN(i), 0); // Menge 0: die Erfassung dahinter traegt sie
-    // Der Kaufpreis stand bis Migration 0032 in der sets-Zeile. Er steht jetzt
-    // in der Erfassung — dieselbe Zahl, nur am einzigen Ort, an dem
-    // portfolioHistory.ts ihn noch liest.
+    await holdsSet(db, uid, SN(i), 0); // quantity 0: the acquisition behind it carries it
+    // Until migration 0032 the purchase price stood in the sets row. It now stands
+    // in the acquisition — the same number, only in the single place where
+    // portfolioHistory.ts still reads it.
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,$2,1,10,'N')`,
@@ -62,13 +62,13 @@ test('the portfolio percentage measures prices, not additional purchases', { con
   };
 
   try {
-    // Ausgangslage: zwei Sets mit einer Woche Verlauf, Preis 100 → 110.
+    // Starting point: two sets with one week of history, price 100 → 110.
     await setWith(1, 6, 100, 110);
     await setWith(2, 6, 100, 110);
     const vorher = await kurve();
     assert.equal(vorher.period_change_pct, 10, `Grundfall stimmt nicht: ${vorher.period_change_pct} statt +10 %`);
 
-    // Der Fall aus Marcos Bild: heute 24 Sets dazu
+    // The case from Marco's screenshot: 24 sets added today
     for (let i = 3; i <= 26; i++) await setWith(i, 1, 50, 50);
     const nachher = await kurve();
     assert.ok(
@@ -85,8 +85,8 @@ test('the portfolio percentage measures prices, not additional purchases', { con
       'Kein Set hat sich um mehr als 10 % bewegt — mehr darf die Summe nicht zeigen',
     );
 
-    // Gegenrichtung: Bewegt sich ein PREIS, muss es sich zeigen — sonst wäre
-    // auch eine fest verdrahtete Null grün.
+    // Opposite direction: if a PRICE moves, it must show — otherwise
+    // a hard-wired zero would be green too.
     for (let i = 1; i <= 26; i++)
       await db.run(
         `UPDATE price_history SET avg_price = avg_price * 2, qty_avg_price = qty_avg_price * 2
@@ -99,15 +99,15 @@ test('the portfolio percentage measures prices, not additional purchases', { con
       `Eine Preisverdopplung muss sich zeigen, war: ${risen.period_change_pct}`,
     );
 
-    // Und die Kurve selbst darf keinen Sprung mehr haben: Der erste Punkt
-    // enthält bereits alle 26 Sets. Ohne die Rückschreibung stünde dort nur
-    // der Wert der beiden alten.
+    // And the curve itself must have no jump any more: the first point
+    // already contains all 26 sets. Without the backfill only the value of the
+    // two old ones would stand there.
     const p = risen.points.map(x => x.value);
     assert.ok(p[0] > 1000, `Der erste Punkt enthält nicht den ganzen Bestand (2×100 + 24×50 = 1400), war: ${p[0]}`);
 
-    // Alle Zeiträume müssen dieselbe Aussage treffen — die Monatsauflösung
-    // (Jahr/Max) hat einen eigenen Weg für den Startpunkt, und der ist in
-    // dieser Reihe schon einmal auseinandergelaufen.
+    // All periods must make the same statement — the monthly resolution
+    // (year/max) has its own path for the starting point, and that one has
+    // already drifted apart once in this series.
     const werte = {};
     for (const per of ['week', 'month', 'year', 'max']) werte[per] = (await kurve(per)).period_change_pct;
     const only = [...new Set(Object.values(werte))];

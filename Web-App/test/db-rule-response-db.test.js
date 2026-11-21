@@ -1,12 +1,12 @@
 'use strict';
 /**
- * Verletzt eine Anfrage eine Regel der Datenbank (CHECK, NOT NULL, UNIQUE,
- * Fremdschlüssel), antwortet der Fehlerweg mit 400/409 und Code, nicht mit 500.
+ * If a request violates a database rule (CHECK, NOT NULL, UNIQUE,
+ * foreign key), the error path answers with 400/409 and a code, not with 500.
  *
- * Gegenproben (05.11.2026 gemessen):
- *   A  DB_RULES in src/http/httpResponse.ts ohne '23514' → rot: „CHECK-Verletzung …“
+ * Counter-checks (measured 05.11.2026):
+ *   A  DB_RULES in src/http/httpResponse.ts without '23514' → red: “CHECK violation …”
  *      (500 interner_fehler)
- *   B  asUploadError() ohne den Block für DB_RULES → alle vier Fälle rot
+ *   B  asUploadError() without the block for DB_RULES → all four cases red
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,7 +25,7 @@ test('rule violations of the database become 4xx with a code', async t => {
   t.after(() => db.pool.end().catch(() => {}));
   const { errorResponse } = _req('src/http/httpResponse.js');
   const app = express();
-  // Echte Fehler aus PostgreSQL, nicht nachgebaute Objekte.
+  // Real errors from PostgreSQL, not rebuilt objects.
   app.get('/:regel', async req => {
     await db.run(`DO $$ BEGIN RAISE ${req.params.regel}; END $$`);
   });
@@ -40,6 +40,6 @@ test('rule violations of the database become 4xx with a code', async t => {
   assert.deepEqual(await hole('not_null_violation'), { status: 400, code: 'wert_ungueltig' }, 'NOT NULL …');
   assert.deepEqual(await hole('unique_violation'), { status: 409, code: 'schon_vorhanden' }, 'UNIQUE …');
   assert.deepEqual(await hole('foreign_key_violation'), { status: 409, code: 'bezug_fehlt' }, 'Fremdschlüssel …');
-  // Ein echter Serverfehler bleibt einer.
+  // A real server error stays one.
   assert.equal((await hole('division_by_zero')).status, 500);
 });

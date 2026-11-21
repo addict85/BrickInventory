@@ -1,5 +1,5 @@
 /**
- * Nach dem Verschieben eines Sets hat JEDER Bestandteil im Zielkonto sein Bild.
+ * After moving a set EVERY component in the target account has its image.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,15 +30,15 @@ test('a moved set takes the image paths of all its components along', { concurre
   const nachId = (await db.get(`SELECT id FROM users WHERE username=$1`, [NACH])).id;
 
   try {
-    await holdsSet(db, ofId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, ofId, SN, 0); // quantity 0: the acquisition behind it carries it
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,$2,1,10,'N')`,
       [ofId, SN],
     );
-    // Beide Bestandteile kommen AUS DEM SET (source='set') und haben ein
-    // zwischengespeichertes Bild — genau der Fall, den der Bild-Job herstellt.
-    // Das Bild steht seit Migration 0034 im Katalog, der Bestand in
+    // Both components come FROM THE SET (source='set') and have a
+    // cached image — exactly the case the image job produces.
+    // Since migration 0034 the image stands in the catalog, the stock in
     // parts/minifigs.
     await db.run(
       `INSERT INTO part_color_catalog (part_number,color_id,image_local)
@@ -55,15 +55,15 @@ test('a moved set takes the image paths of all its components along', { concurre
     await holdsPart(db, ofId, PN, { setNumber: SN, menge: 2, colorId: 4 });
     await holdsMinifig(db, ofId, FN, { setNumber: SN, menge: 1 });
 
-    // Wie die Sammlung: in einer Transaktion über deren Kontext; zwei fremde Konten nur im Systemrahmen.
+    // Like the collection: in one transaction via its context; two foreign accounts only in the system frame.
     const { inSystemContext } = _req('src/infra/accountContext.js');
     const sammlung = require('./helpers/sources').testContext('collection');
     await inSystemContext('Testdaten', () => sammlung.transaktion(tt => tt.sets.setEntriesReassign(SN, ofId, nachId)));
 
-    // Gelesen wird über denselben JOIN, den die Oberflächen benutzen — also
-    // über die Wirkung. Eine Abfrage auf parts.image_local gibt es nicht mehr,
-    // und sie wäre auch die falsche Frage: Der Nutzer will das Bild sehen, und
-    // ob es kopiert oder nachgeschlagen wird, ist ihm gleich.
+    // Read via the same JOIN that the UIs use — i.e.
+    // via the effect. A query on parts.image_local no longer exists,
+    // and it would also be the wrong question: the user wants to see the image, and
+    // whether it is copied or looked up does not matter to him.
     const teil = await db.get(
       `SELECT pcc.image_local
          FROM parts p
@@ -96,7 +96,7 @@ test('a moved set takes the image paths of all its components along', { concurre
       `Das verschobene Teil hat image_local=${teil.image_local} statt "${PATH_PART}".`,
     );
 
-    // Die eigentliche Regel: Beide Zweige liefern dasselbe Ergebnis.
+    // The actual rule: both branches deliver the same result.
     assert.deepEqual(
       { teil: teil.image_local !== null, figur: figur.image_local !== null },
       { teil: true, figur: true },
@@ -112,7 +112,7 @@ test('a moved set takes the image paths of all its components along', { concurre
       await db.run(`DELETE FROM sets WHERE user_id=$1`, [uid]).catch(() => {});
     }
     await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [VON, NACH]).catch(() => {});
-    // Die Katalogzeilen hängen an keinem Konto und bleiben sonst stehen.
+    // The catalog rows hang on no account and would otherwise remain.
     await db.run(`DELETE FROM part_color_catalog WHERE part_number=$1`, [PN]).catch(() => {});
     await db.run(`DELETE FROM minifigs_catalog WHERE fig_number=$1`, [FN]).catch(() => {});
     await db.pool.end().catch(() => {});

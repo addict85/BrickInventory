@@ -1,14 +1,14 @@
 /**
- * Haushalt — Konten verknüpfen.
+ * Household — link accounts.
  *
- * Die Regeln im Code und im Schema; was sich ausführen lässt, läuft gegen die
- * Datenbank hier oder in household-db.test.js.
+ * The rules in code and schema; what can be executed runs against the
+ * database here or in household-db.test.js.
  *
- * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
- *   A  createInvitation speichert den Code statt seines Hashes → rot „der
- *      Einladungscode steht nur als Hash …“
- *   B  darfSchreibenFuer fragt householdOf() statt der Verknüpfung → rot
- *      „Schreibrechte kommen nie aus dem Gedächtnis“
+ * Counter-checks (measured 08.11.2026, each reverted):
+ *   A  createInvitation stores the code instead of its hash → red “the
+ *      invitation code is only stored as a hash …”
+ *   B  darfSchreibenFuer asks householdOf() instead of the link → red
+ *      “write rights never come from memory”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -42,8 +42,8 @@ test('invitation and write right against the database', { concurrency: 1 }, asyn
   });
 
   await t.test('an account does not link with itself', async () => {
-    // Mehrere Elternkonten sind erlaubt (Migration 0046); die Verknüpfung mit sich selbst
-    // verbietet das Schema. Gegenprobe (09.11.2026): Regel account_links_no_self entfernt → rot.
+    // Several parent accounts are allowed (migration 0046); the schema forbids linking
+    // with oneself. Counter-check (09.11.2026): rule account_links_no_self removed → red.
     await assert.rejects(
       db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $1)', [ids[0]]),
       (/** @type {any} */ e) => e.code === '23514',
@@ -51,8 +51,8 @@ test('invitation and write right against the database', { concurrency: 1 }, asyn
   });
 
   await t.test('the invitation code is only stored as a hash in the database', async () => {
-    // Wie bei API-Tokens: Wer die Datenbank liest, soll keine Einladung einlösen können.
-    // Wie eine Anfrage des Kontos: Einladungen stehen unter seinem Zeilenschutz.
+    // As with API tokens: whoever reads the database should not be able to redeem an invitation.
+    // Like a request of the account: invitations stand under its row security.
     const { code } = await require('./helpers/sources').asAccount(ids[0], () => hh.createInvitation(ids[0]));
     assert.ok(code, 'kein Code erzeugt');
     const zeilen = await db.all('SELECT token_hash FROM account_link_invites WHERE main_user_id = $1', [ids[0]]);
@@ -64,11 +64,11 @@ test('invitation and write right against the database', { concurrency: 1 }, asyn
   });
 
   await t.test('write rights never come from memory', async () => {
-    // Das Blickfeld ist gemerkt (household-memory-db.test.js); über einen
-    // Schreibzugriff darf nur der Stand der Datenbank entscheiden.
+    // The view is remembered (household-memory-db.test.js); about a
+    // write access only the state of the database may decide.
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [ids[0], ids[1]]);
     hh.reportHouseholdChange();
-    // Unter dem Zeilenschutz des Hauptkontos: Fremde Verknüpfungen sieht die Laufzeitrolle nicht (0121).
+    // Under the main account's row security: the runtime role does not see foreign links (0121).
     const als = (uid, f) => require('./helpers/sources').asAccount(uid, f);
     assert.deepEqual(
       (await als(ids[0], () => hh.householdOf(ids[0]))).memberIds,
@@ -76,7 +76,7 @@ test('invitation and write right against the database', { concurrency: 1 }, asyn
       'Vorbedingung: das Unterkonto ist gemerkt',
     );
     assert.equal(await als(ids[0], () => hh.darfSchreibenFuer(ids[0], ids[1])), true);
-    // Von aussen gelöst, ohne dass dieser Prozess davon hört.
+    // Unlinked from outside without this process hearing of it.
     await db.run('DELETE FROM account_links WHERE main_user_id = $1', [ids[0]]);
     assert.deepEqual(
       (await als(ids[0], () => hh.householdOf(ids[0]))).memberIds,
@@ -98,15 +98,15 @@ test('invitation and write right against the database', { concurrency: 1 }, asyn
 });
 
 test('web app and app get the same endpoints', () => {
-  // Etappe 6: Die vier Haushalts-Routen gibt es nur noch einmal, unter
-  // /api/v1; die Webapp ruft dieselbe Adresse auf (requireToken nimmt beide
-  // Ausweise). Vorher stand diese Prüfung über ZWEI Dateien und verlangte,
-  // dass beide alles anbieten — die schwächere Fassung derselben Aussage.
+  // Stage 6: the four household routes now exist only once, under
+  // /api/v1; the web app calls the same address (requireToken takes both
+  // credentials). Previously this check spanned TWO files and required
+  // that both offer everything — the weaker version of the same statement.
   const src = read('routes/api_v1/settings.ts');
   for (const fn of ['householdStatus', 'createInvitation', 'joinHousehold', 'unlinkAccounts']) {
     assert.ok(src.includes(fn), `routes/api_v1/settings.ts: ${fn} fehlt`);
   }
-  // Und die Zweitfassung darf nicht zurückkehren: jede Haushalts-Route genau einmal.
+  // And the second version must not come back: every household route exactly once.
   for (const pfad of [
     "/api/v1/settings/household'",
     "/api/v1/settings/household/invite'",
@@ -114,27 +114,27 @@ test('web app and app get the same endpoints', () => {
     "/api/v1/settings/household/unlink'",
   ])
     assert.equal(src.split(pfad).length - 1, 1, `${pfad} steht nicht genau einmal in routes/api_v1/settings.ts`);
-  // Keine eigene Regel in der Route — sie stehen in src/household/household.ts.
+  // No own rule in the route — they are in src/household/household.ts.
   assert.doesNotMatch(src, /account_links/, 'Routen dürfen nicht selbst gegen account_links abfragen');
 });
 
 test('the web app offers inviting and redeeming to every account', () => {
-  // Ein Konto kann mehreren Hauptkonten angehören; jedes braucht seine eigene
-  // Einladung. Ein ausgeblendetes Eingabefeld verhinderte genau das.
+  // An account can belong to several main accounts; each needs its own
+  // invitation. A hidden input field prevented exactly that.
   const js = require('./helpers/sources').ansichtQuelle('einstellungen');
   assert.match(js, /inviteEl\.style\.display = ''/);
   assert.match(js, /redeemEl\.style\.display = ''/);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Haushaltssicht: Listen, Finanzen, Verschieben, Schreibrechte
+// Household view: lists, finances, moving, write rights
 // ═══════════════════════════════════════════════════════════════════════════
 
 test("the household's portfolio curve is retroactive", () => {
-  // Die Aussage bleibt, der Weg dahin hat sich geändert: Die
-  // Portfolio-Schnappschüsse ('__portfolio__<id>') gibt es nicht mehr. Sie
-  // lagen je Konto zu unterschiedlichen Zeitpunkten — addiert ergäben sie
-  // Einbrüche, die nie stattgefunden haben — und sie hielten fest, was AN …
+  // The statement stays, the way there has changed: the
+  // portfolio snapshots ('__portfolio__<id>') no longer exist. They
+  // lay at different times per account — added up they would yield
+  // drops that never happened — and they recorded what WAS …
   const p = require('./helpers/sources').portfolioSource();
   assert.doesNotMatch(
     p,
@@ -147,10 +147,10 @@ test("the household's portfolio curve is retroactive", () => {
 });
 
 test('moving goes via the daily rule, not via UPDATE user_id', () => {
-  // Ein direktes UPDATE hinterliesse im Zielkonto zwei Erfassungen desselben
-  // Tages — genau den Zustand, den der Bearbeiten-Pfad ablehnt.
-  // ohneKommentare(): Die BEGRÜNDUNGEN dieser Regeln stehen in setMove.ts als
-  // Kommentar, und sie ZITIEREN die Anweisungen, die es nicht mehr geben darf …
+  // A direct UPDATE would leave two entries of the same day in the target account
+  // — exactly the state the edit path rejects.
+  // ohneKommentare(): the RATIONALES of these rules stand in setMove.ts as a
+  // comment, and they QUOTE the statements that must no longer exist …
   const mv = kompakt(
     require('./helpers/sources').ohneKommentare(require('./helpers/sources').serviceSource('src/sets/setMove.ts')),
   );
@@ -159,11 +159,11 @@ test('moving goes via the daily rule, not via UPDATE user_id', () => {
     'Erfassungen müssen einzeln über den gemeinsamen Helfer wandern',
   );
   assert.doesNotMatch(mv, /UPDATE set_acquisitions SET user_id/, 'Kein direktes Umhängen der Erfassungen');
-  // Besitzt das Zielkonto das Set schon, addieren sich die Mengen dadurch,
-  // dass die ERFASSUNGEN wandern — hier stand dafuer
-  // `UPDATE sets SET quantity = quantity + $1`. Mit Migration 0036 gibt es die
-  // Spalte nicht mehr, und ein Mengen-UPDATE auf `sets` waere jetzt ein
-  // Fehler. Also genau umgekehrt geprueft.
+  // If the target account already owns the set, the quantities add up because
+  // the ENTRIES move — here stood for that
+  // `UPDATE sets SET quantity = quantity + $1`. With migration 0036 the
+  // column no longer exists, and a quantity UPDATE on `sets` would now be an
+  // error. So checked exactly the other way round.
   assert.doesNotMatch(
     mv,
     /UPDATE\s+sets\s+SET[^;`']*\bquantity\s*=/,
@@ -171,21 +171,21 @@ test('moving goes via the daily rule, not via UPDATE user_id', () => {
       'set_acquisitions und wird beim Lesen gerechnet (db/stockQuantity.ts)',
   );
 
-  // Der Wechsel des ganzen Sets liegt seit einer früheren Runde in der v1-Fabrik.
+  // The switch of the whole set has lived in the v1 factory since an earlier round.
   const src = read('routes/api_v1/sets.ts');
-  // Dies ist eine MUSTERregel: Sie faengt eine geloeschte Zeile. Dass die
-  // Sperre wirklich greift — und zwar auf (Quellkonto, Set) und nicht auf dem
-  // Zielkonto oder einem festen Schluessel — laeuft in
-  // test/lock-on-move-db.test.js ueber die echte Adresse; beides
-  // zusammen, nicht eines statt des anderen.
+  // This is a PATTERN rule: it catches a deleted line. That the
+  // lock really applies — on (source account, set) and not on the
+  // target account or a fixed key — runs in
+  // test/lock-on-move-db.test.js via the real address; both
+  // together, not one instead of the other.
   assert.ok(src.includes('sets.moveSet('), 'Die Route ruft den Dienst');
   assert.ok(
     kompakt(read('src/sets/setMove.ts')).includes('setEntriesReassign(t, sn, fromId'),
     'Das Verschieben läuft über setEntriesReassign',
   );
   assert.ok(kompakt(mv).includes('sperren: [{ konto: fromId, schluessel: sn }]'), 'Serialisiert über das Quellkonto');
-  // Ganzes Set und einzelne Kaufpreise laufen durch DIESELBE Umsetzung — der
-  // Teilfall ist kein Sonderweg, sondern der allgemeine Fall mit Auswahl.
+  // The whole set and single purchase prices run through THE SAME implementation — the
+  // partial case is no special path but the general case with a selection.
   const acq = read('routes/api_v1/acquisitions.ts');
   const calls =
     (mv.match(/setEntriesReassign\(t, sn/g) || []).length + (acq.match(/setEntriesReassign\(t, sn/g) || []).length;
@@ -197,24 +197,24 @@ test('moving goes via the daily rule, not via UPDATE user_id', () => {
 });
 
 test('manual parts and minifigures carry the owner', () => {
-  // Anders als Sets werden sie NICHT verdichtet: Zwei Konten mit demselben
-  // Teil sind zwei Bestände mit eigener Menge und eigenem Kaufpreis, und jeder
-  // Bearbeiten-Weg führt auf genau eine Zeile. Ohne Plakette sähe die Liste
-  // wie eine doppelte Zeile aus.
+  // Unlike sets they are NOT condensed: two accounts with the same
+  // part are two stocks with their own quantity and own purchase price, and every
+  // edit path leads to exactly one row. Without a badge the list would look
+  // like a duplicate row.
   const h = kompakt(require('./helpers/sources').handlerQuelle());
-  // Auf die Parameter geprüft, nicht auf den Wortlaut: `rows: any[]` eines Tages
-  // zu `rows: Row[]` zu schärfen ist eine Verbesserung und darf hier nicht als
-  // Fehler erscheinen (siehe checkParameter() im Helfer).
+  // Checked on the parameters, not on the wording: one day tightening `rows: any[]`
+  // to `rows: Row[]` is an improvement and must not appear here as an
+  // error (see checkParameter() in the helper).
   checkParameter(h, 'besitzerAnhaengen', ['uids', 'rows']);
   assert.match(
     h,
     /if \(uids\.length < 2 \|\| !rows\?\.length\) return rows;/,
     'Im Einzelkonto darf keine Plakette erscheinen',
   );
-  // Der Tabellenname davor ist seit Migration 0031 erlaubt: Die Abfrage
-  // verbindet den Vorrat, um den Lagerortnamen aufzuloesen, und muss ihre
-  // Spalten deshalb qualifizieren (`t.id` statt `id`). Die Aussage bleibt
-  // dieselbe — ohne user_id in der Auswahl gibt es keinen Besitzer.
+  // The table name before it is allowed since migration 0031: the query
+  // joins the stock to resolve the storage location name and must therefore
+  // qualify its columns (`t.id` instead of `id`). The statement stays
+  // the same — without user_id in the selection there is no owner.
   assert.match(
     h,
     /SELECT (?:t\.)?id, (?:t\.)?user_id, (?:t\.)?part_number/,
@@ -223,15 +223,15 @@ test('manual parts and minifigures carry the owner', () => {
 
   const fc = kompakt(require('./helpers/sources').finanzQuelle());
   const uses = (fc.match(/await (?:kx?\.household\.)?besitzerAnhaengen\(uids,/g) || []).length;
-  // Seit der UI-Prüfung 12 auch die Sets: Jede Zeile ist der Bestand eines Kontos.
+  // Since UI review 12 also the sets: every row is the stock of one account.
   assert.equal(uses, 3, 'Set-, Teile- und Minifiguren-Bewertung brauchen den Besitzer');
 });
 
 test('the parts summary carries across several accounts too', () => {
-  // Die Tabelle ist JE KONTO aufgebaut. Für den Haushalt wird über alle
-  // beteiligten Konten gelesen und über part_key verdichtet — dasselbe Teil in
-  // zwei Konten ergibt EINE Zeile mit der Summe, genau wie dasselbe Teil aus
-  // zwei Sets innerhalb eines Kontos.
+  // The table is built PER ACCOUNT. For the household it reads over all
+  // involved accounts and condenses over part_key — the same part in
+  // two accounts yields ONE row with the sum, just like the same part from
+  // two sets within one account.
   const h = require('./helpers/sources').handlerQuelle();
   assert.match(
     h,
@@ -251,24 +251,24 @@ test('the parts summary carries across several accounts too', () => {
       'SUM(INTEGER) als Text)',
   );
 
-  // Frisch ist die Sicht nur, wenn sie es für JEDES Konto ist — „zwei von drei
-  // sind aktuell" ergäbe eine Summe aus frischen und alten Beständen.
+  // The view is only fresh if it is for EVERY account — “two of three
+  // are current" would yield a sum of fresh and old stocks.
   const ps = read('src/parts/summary.ts');
   assert.match(ps, /const results = await Promise\.all\(ids\.map\(id => summaryFresh\((?:k, )?id, opts\)\)\);/);
   assert.match(ps, /return results\.every\(Boolean\);/);
 });
 
 test('the UI shows owners and account selection only in the household', () => {
-  // Im Einzelkonto stünde an jeder Kachel „gehört mir" — reines Rauschen.
+  // In a single account every tile would say “belongs to me" — pure noise.
   const gal = kompakt(require('./helpers/sources').frontendQuelle());
   assert.match(gal, /export function ownerBadges/);
   assert.match(gal, /if \(!item\?\.owners\?\.length\) return '';/);
-  // Eine Auswahl mit einer einzigen Möglichkeit ist keine Auswahl.
+  // A selection with a single option is no selection.
   assert.match(gal, /if \(members\.length < 2\) \{ box\.style\.display = 'none'; continue; \}/);
-  // Alle drei Erfassen-Formulare bekommen dieselbe Liste — Set, manuelles
-  // Teil, manuelle Minifigur. Vorher war die Kontoauswahl nur bei Sets da.
-  // Seit sind es VIER Formulare — der Katalog-Dialog („In Galerie
-  // aufnehmen") war als einziger nicht angeschlossen und erfasste immer aufs …
+  // All three add forms get the same list — set, manual
+  // part, manual minifigure. Previously the account selection was only there for sets.
+  // Since then there are FOUR forms — the catalog dialog (“add to
+  // gallery") was the only one not connected and always added to the …
   for (const feld of ['add-owner', 'ap-owner', 'af-owner', 'cat-m-owner']) {
     assert.ok(
       gal.includes(`'${feld}'`),
@@ -280,13 +280,13 @@ test('the UI shows owners and account selection only in the household', () => {
   const fig = kompakt(require('./helpers/sources').frontendQuelle());
   assert.match(fig, /owner_user_id: selectedOwner\('ap-owner'\)/);
   assert.match(fig, /owner_user_id: selectedOwner\('af-owner'\)/);
-  // Und die Besitzer-Plakette auf den manuellen Kacheln.
+  // And the owner badge on the manual tiles.
   assert.match(fig, /\$\{ownerBadges\(p\)\}/);
   assert.match(fig, /\$\{ownerBadges\(f\)\}/);
-  // Der Verschieben-Kasten im Set-Dialog ist entfernt: Verschoben wird über
-  // den KAUFPREIS, Zeile für Zeile. Geprüft wird jetzt, dass die
-  // Eigentümer-Spalte im Kaufpreis-Dialog nur im Haushalt erscheint — und
-  // zwar in BEIDEN Dialogen (Sets und manuelle Einträge).
+  // The move box in the set dialog is removed: moving goes via
+  // the PURCHASE PRICE, row by row. What is checked now is that the
+  // owner column in the purchase price dialog only appears in the household — and
+  // in BOTH dialogs (sets and manual entries).
   const adm = kompakt(require('./helpers/sources').adminSource());
   assert.doesNotMatch(
     adm,
@@ -302,29 +302,29 @@ test('the UI shows owners and account selection only in the household', () => {
 });
 
 test('the account filter applies per view and is sent along everywhere', () => {
-  // Wer in der Galerie den ganzen Haushalt sieht, will in den Finanzen
-  // womöglich nur die eigenen Zahlen — deshalb je Ansicht ein eigener Wert.
+  // Whoever sees the whole household in the gallery may want only their own
+  // numbers in the finances — hence a separate value per view.
   const core = require('./helpers/sources').coreSource();
-  // 'merkliste' ist am 24.09. dazugekommen (Marcos Vorgabe: „In der Merkliste
-  // noch einen Filter analog den Sets einbauen inkl. Inhaber"). Der Server
-  // verstand `accounts=` auf /v1/wanted schon immer — es fehlte allein die
-  // Wahl in den Oberflaechen.
+  // 'merkliste' was added on 24.09. (Marco's specification: “In der Merkliste
+  // noch einen Filter analog den Sets einbauen inkl. Inhaber"). The server
+  // always understood `accounts=` on /v1/wanted — only the
+  // choice in the UIs was missing.
   assert.match(core, /export const SCOPE_VIEWS = \['gallery', 'parts', 'minifigs', 'finance', 'merkliste'\];/);
   assert.match(core, /localStorage\.getItem\('bim_scope_' \+ view\)/, 'Die Wahl soll einen Neuladen überleben');
-  // 'all' ist die Vorgabe des Servers und wird weggelassen.
+  // 'all' is the server's default and is omitted.
   assert.match(core, /if \(m && m !== 'all'\) p\.set\('accounts', m\);/);
 
-  // Jede der fünf Ansichten hängt ihn an ihre Abfragen.
+  // Each of the five views appends it to its queries.
   assert.match(read('public/js/collection.js'), /addScopeParam\(p, 'gallery'\)/);
   assert.match(read('public/js/parts.js'), /addScopeParam\(p, 'parts'\)/);
   assert.match(read('public/js/minifigs.js'), /addScopeParam\(p, 'minifigs'\)/);
   assert.match(read('public/js/wanted.js'), /addScopeParam\(p, 'merkliste'\)/);
 
-  // Im Finanzreiter ALLE vier Abfragen — sonst stünde eine Summe aus einem
-  // Blickfeld neben einer Aufstellung aus einem anderen.
+  // In the finances tab ALL four queries — otherwise a sum from one
+  // view would stand next to a listing from another.
   const fin = read('public/js/finances.js') + read('public/js/value-curve.js');
-  // Adressen seit Etappe 5 unter /v1 — die Regel ist unverändert: ALLE vier
-  // Abfragen des Reiters tragen denselben Filter.
+  // Addresses under /v1 since stage 5 — the rule is unchanged: ALL four
+  // queries of the tab carry the same filter.
   for (const ep of [
     '/v1/finance/valuation',
     '/v1/finance/parts-valuation',
@@ -344,19 +344,19 @@ test('the account filter applies per view and is sent along everywhere', () => {
 });
 
 test('the switch only reloads the affected view', () => {
-  // Alle vier gleichzeitig neu zu laden würde drei Ansichten anfassen, die
-  // niemand ansieht — und dabei Preisabrufe auslösen.
+  // Reloading all four at once would touch three views that
+  // nobody looks at — and trigger price fetches in doing so.
   const gal = kompakt(require('./helpers/sources').frontendQuelle());
   assert.match(gal, /export function onScopeChange\(view\)/);
   assert.match(gal, /if \(view === 'finance'\) emit\('finanzenLaden'\);/);
-  // Die Reiter Teile und Minifiguren haben ZWEI Listen — die aus Sets und die
-  // manuell erfassten. Der manuelle Bereich lädt über einen eigenen Endpunkt
-  // und blieb sonst ungefiltert stehen.
+  // The parts and minifigures tabs have TWO lists — the one from sets and the
+  // manually entered one. The manual area loads via its own endpoint
+  // and otherwise stayed unfiltered.
   assert.match(gal, /if \(view === 'parts'\) \{ loadParts\(\); loadManualParts\(\); \}/);
-  // Und er erscheint nur bei einem Hauptkonto mit Unterkonten.
+  // And it only appears for a main account with sub-accounts.
   assert.match(gal, /if \(!isMain\) \{ el\.style\.display = 'none'; continue; \}/);
   assert.match(gal, /initScopeSelects\(members\);/);
-  // Ein Eintrag je Unterkonto, namentlich.
+  // One entry per sub-account, by name.
   assert.match(
     gal,
     /subs\.map\(m => (?:html)?`<option value="\$\{m\.id\}">/,
@@ -365,10 +365,10 @@ test('the switch only reloads the affected view', () => {
 });
 
 test('moving ONLY goes via the purchase price', async () => {
-  // Ein Set als Ganzes zu verschieben klingt bequem, verdeckt aber, was
-  // tatsächlich wandert: Drei Erfassungen sind drei Käufe, die im Haushalt
-  // verschiedenen Kindern gehören können. Wer alles verschieben will, ändert
-  // jede Zeile — und sieht dabei, wie viele es sind. …
+  // Moving a set as a whole sounds convenient but hides what
+  // actually moves: three entries are three purchases that in the household
+  // may belong to different children. Whoever wants to move everything changes
+  // every row — and sees how many there are in doing so. …
   const { moveSet } = require('./helpers/sources').areaPage('sets');
   await assert.rejects(
     moveSet(1, '10294-1', 1, 2, []),
@@ -376,26 +376,26 @@ test('moving ONLY goes via the purchase price', async () => {
     'move ohne acquisition_ids muss abgelehnt werden',
   );
 
-  // Und die Oberfläche bietet es gar nicht erst an.
+  // And the UI does not even offer it.
   assert.doesNotMatch(require('./helpers/sources').adminSource(), /renderMoveBox|moveSetToAccount/);
   assert.doesNotMatch(read('public/index.html'), /m-move-box/);
 });
 
 /**
- * Was diese Regel prüft, und was NICHT
+ * What this rule checks, and what NOT
  */
 test('manual parts and minifigures also move via the purchase price', () => {
-  // Dieselbe Regel für alle drei Arten. Ein manuell erfasstes Teil hat keinen
-  // Inhalt — es wandern nur Menge und Erfassung.
+  // The same rule for all three kinds. A manually entered part has no
+  // contents — only quantity and entry move.
   const mv = kompakt(read('src/inventory/reassign.ts'));
   assert.match(mv, /export async function manualEntryReassign/);
   assert.match(mv, /addPurchaseAtTag\(t, kind, toId, keyValues/, 'Auch hier gilt: eine Tageszeile je Konto');
 
-  // Die Erfassungs-Routen stehen nur noch in der v1-Fabrik, die
-  // jetzt Webapp UND App bedient. Die Regel gilt unverändert — sie wird nur an
-  // EINER Stelle geprüft statt an dreien, weil es nur noch eine gibt.
-  // Teile und Figuren gehen über denselben Aufruf; die Art kommt aus der Tabelle.
-  // Die Regel steht seit dem Schichtumbau im Dienst; die Route ruft ihn nur.
+  // The entry routes now only stand in the v1 factory, which
+  // now serves web app AND app. The rule applies unchanged — it is only checked in
+  // ONE place instead of three, because there is only one left.
+  // Parts and minifigures go via the same call; the kind comes from the table.
+  // Since the layer rebuild the rule stands in the service; the route only calls it.
   const f = 'src/collection/acquisitions.ts';
   const src = kompakt(read(f));
   assert.ok(src.includes('t.inventory.manualEntryReassign(art, keys, id, from, to)'), `${f}: Wechsel fehlt`);
@@ -407,11 +407,11 @@ test('manual parts and minifigures also move via the purchase price', () => {
 });
 
 test('the app routes know the owner change', () => {
-  // ── Woher dieser Test kommt ─────────────────────────────────────────────
-  // Die Android-App schickte owner_user_id an die v1-PUT-Routen — die Fabrik
-  // las aber nur Menge, Preis und Zustand. Die Anfrage lief als LEERES Update
-  // durch und antwortete success:true: Der Wechsel in der App war ein
-  // stiller No-op, ohne Fehlermeldung und ohne Bewegung.
+  // ── Where this test comes from ──────────────────────────────────────────
+  // The Android app sent owner_user_id to the v1 PUT routes — but the factory
+  // only read quantity, price and condition. The request went through as an EMPTY update
+  // and answered success:true: the switch in the app was a
+  // silent no-op, without error message and without movement.
   const v1 = read('src/collection/acquisitions.ts');
   assert.match(v1, /body\.owner_user_id/, 'Der Erfassungsdienst muss owner_user_id auswerten');
   assert.match(

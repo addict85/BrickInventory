@@ -1,20 +1,20 @@
 /**
- * Ein Konto löscht sich selbst (DELETE /api/v1/auth/konto) mit Passwort und,
- * falls eingerichtet, zweitem Faktor; der letzte Verwalter kann es nicht.
- * Unbestätigte Registrierungen räumt der tägliche Lauf nach sieben Tagen ab,
- * Konten mit nur noch nicht bestätigter neuer Adresse nicht.
+ * An account deletes itself (DELETE /api/v1/auth/konto) with password and,
+ * if set up, second factor; the last administrator cannot.
+ * Unconfirmed registrations are cleared by the daily run after seven days,
+ * accounts with only a not yet confirmed new address are not.
  *
- * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
- *   A  confirmWithFactor() in der Route gestrichen → rot: „ohne Passwort
- *      bleibt das Konto …“ und „mit zweitem Faktor …“
- *   B  deleteOwnAccount() ohne die Verwalterbedingung → rot: „der letzte
- *      Verwalter bleibt“
- *   C  deleteOpenRegistrations() ohne `registration_pending` → rot:
- *      „unbestätigte Registrierungen …“ (das Konto mit neuer Adresse ist weg)
- *   D  der Schritt fehlt in cleanupDaily() → rot: dieselbe Prüfung
- *      (die alte Registrierung bleibt)
- * Gemessen grün blieb (04.11.2026): adoptEmailNew() ohne `registration_pending = false` —
- * das Löschen verlangt zusätzlich NOT email_verified.
+ * Counter-checks (measured on 04.11.2026, one change each, reverted afterwards):
+ *   A  confirmWithFactor() deleted in the route → red: “without a password
+ *      the account stays …” and “with second factor …”
+ *   B  deleteOwnAccount() without the administrator condition → red: “the last
+ *      administrator stays”
+ *   C  deleteOpenRegistrations() without `registration_pending` → red:
+ *      “unconfirmed registrations …” (the account with a new address is gone)
+ *   D  the step missing in cleanupDaily() → red: the same check
+ *      (the old registration stays)
+ * Measured, stayed green (04.11.2026): adoptEmailNew() without `registration_pending = false` —
+ * deletion additionally requires NOT email_verified.
  *
  * REQUIRE_DB=1.
  */
@@ -53,7 +53,7 @@ test('delete own account and open registrations', { concurrency: 1 }, async t =>
   const P = process.pid,
     NAMEN = ['weg', 'zf', 'chef', 'offen_alt', 'offen_neu', 'adresse', 'bestaetigt'].map(n => `ksl_${n}_${P}`);
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
-  // Nur dieser Verwalter: Die übrigen Konten der Test-DB sollen die Bedingung nicht erfüllen.
+  // Only this administrator: the other accounts of the test DB must not fulfill the condition.
   await db.run('UPDATE users SET is_active = false WHERE is_admin AND NOT (username = ANY($1))', [NAMEN]);
   const konto = async (name, admin = false) =>
     (
@@ -129,7 +129,7 @@ test('delete own account and open registrations', { concurrency: 1 }, async t =>
       neu = await registered(NAMEN[4], 6);
     const bestaetigt = await registered(NAMEN[6], 8);
     assert.ok((await verifyEmailToken(bestaetigt.roh)).userId);
-    // Ein altes Konto, dessen neue Adresse noch nicht bestätigt ist.
+    // An old account whose new address is not yet confirmed.
     const adresse = await konto(NAMEN[5]);
     await db.run(
       `UPDATE users SET email_verified = false, verification_token = 'x', created_at = NOW() - INTERVAL '30 days' WHERE id = $1`,

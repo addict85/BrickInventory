@@ -1,20 +1,20 @@
 /**
- * Kaufpreise in fremder Währung werden zum Kurs ihres Kauftags umgerechnet
- * (Migration 0077, src/finances/calculation/queries.ts); fehlt der Tag, gilt der
- * nächstfrühere Kurs, fehlt jeder Kurs, bleibt der Preis „fremde Währung,
- * nicht eingerechnet“. Die Kurse kommen von der EZB — hier von einem lokalen
- * Server mit derselben Dateiform (ZIP mit CSV, Tages-XML).
+ * Purchase prices in a foreign currency are converted at the rate of their purchase day
+ * (migration 0077, src/finances/calculation/queries.ts); if the day is missing, the
+ * next earlier rate applies, if every rate is missing, the price stays “foreign currency,
+ * not included”. The rates come from the ECB — here from a local
+ * server with the same file format (ZIP with CSV, daily XML).
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in kaufpreisIn() wieder `CASE WHEN currency = w THEN spalte END`
- *      statt in_waehrung(…) → rot: „Set“ (purchase_price null statt 65.25),
- *      „Preisverlauf“, „Teil“
- *   B  in kurs_je_eur() `k.tag <= t` durch `k.tag = t` ersetzt (kein
- *      Rückfall auf den Vortag) → rot: „Set“ (purchase_price 38 statt 65.25),
- *      „Preisverlauf“ (null statt 92.5)
- *   C  ecbFetch ohne Prüfung des Schemas → rot: „nur HTTPS auf den Host der EZB“
+ * Counter-checks (measured on 30.10.2026):
+ *   A  in kaufpreisIn() again `CASE WHEN currency = w THEN spalte END`
+ *      instead of in_waehrung(…) → red: “set” (purchase_price null instead of 65.25),
+ *      “price history”, “part”
+ *   B  in kurs_je_eur() `k.tag <= t` replaced by `k.tag = t` (no
+ *      fallback to the previous day) → red: “set” (purchase_price 38 instead of 65.25),
+ *      “price history” (null instead of 92.5)
+ *   C  ecbFetch without checking the scheme → red: “only HTTPS to the ECB host”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -37,7 +37,7 @@ const SET = `7${process.pid}1-1`,
   TEIL = `wk${process.pid}`,
   FARBE = 4;
 
-/** Eine ZIP-Datei mit einer CSV, wie die EZB sie ausliefert. */
+/** A ZIP file with a CSV, as the ECB delivers it. */
 function zipWith(name, inhalt) {
   return new Promise((ok, fehler) => {
     const a = new ZipArchive(),
@@ -102,7 +102,7 @@ test('exchange rates: fetch, conversion, fallback', { concurrency: 1 }, async t 
     await assert.rejects(ecbFetch('https://ecb.example.org/stats/eurofxref/eurofxref-daily.xml'), /nur von https/);
   });
 
-  // Anzeigewährung CHF; gekauft in EUR, USD und JPY.
+  // Display currency CHF; bought in EUR, USD and JPY.
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')`, [uid]);
   await catalogSet(db, SET, { name: SET });
   await db.run(
@@ -118,11 +118,11 @@ test('exchange rates: fetch, conversion, fallback', { concurrency: 1 }, async t 
     );
   };
   await holdsSet(db, uid, SET, 0);
-  // Sonntag 4.1.: kein Kurs, es gilt der Freitag (2.1.): 100 / 1 × 0,925 = 92,5.
+  // Sunday 4.1.: no rate, Friday (2.1.) applies: 100 / 1 × 0.925 = 92.5.
   await kauf(1, 100, 'EUR', '2026-01-04T10:00:00Z');
   // 6.1.: 50 USD / 1,25 × 0,95 = 38.
   await kauf(1, 50, 'USD', '2026-01-06T10:00:00Z');
-  // XAU führt die EZB nicht: ohne Kurs bleibt der Preis draussen.
+  // The ECB does not carry XAU: without a rate the price stays out.
   await kauf(1, 900, 'XAU', '2026-01-06T11:00:00Z');
 
   await t.test('Set', async () => {

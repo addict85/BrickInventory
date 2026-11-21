@@ -1,21 +1,21 @@
 /**
- * Geräte- und Passkey-Namen stehen wörtlich in der Hinweismail an den
- * Inhaber. Ein Name mit Webadresse, Anführungszeichen oder Steuerzeichen
- * wird an allen drei Wegen abgewiesen (400 geraetename_ungueltig), bevor
- * etwas entsteht; gewöhnliche Gerätenamen bleiben erlaubt.
+ * Device and passkey names appear literally in the hint mail to the
+ * owner. A name with a web address, quotes or control characters
+ * is rejected on all three paths (400 geraetename_ungueltig) before
+ * anything is created; ordinary device names stay allowed.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  die Prüfung in POST /login entfernt → rot: „POST /login …“ (200 bzw.
- *      401 statt 400)
- *   B  die Prüfung in POST /token-create entfernt → rot: „POST /token-create …“
- *      (Absage erst an der Bestätigung)
- *   C  die Prüfung in POST /passkey/registrieren entfernt → rot: „POST
- *      /passkey/registrieren …“ (400 passkey_ungueltig)
- *   D  devicesNameValid() ohne die Prüfung auf Anführungszeichen → rot:
- *      „die Regel“, „ein Satz in Anführungszeichen …“ und die drei Wege
- *      (ihre Liste enthält ein solches Beispiel)
+ * Counter-checks (measured 05.11.2026, each alone):
+ *   A  the check removed in POST /login → red: “POST /login …” (200 or
+ *      401 instead of 400)
+ *   B  the check removed in POST /token-create → red: “POST /token-create …”
+ *      (refusal only at confirmation)
+ *   C  the check removed in POST /passkey/registrieren → red: “POST
+ *      /passkey/registrieren …” (400 passkey_ungueltig)
+ *   D  devicesNameValid() without the check for quotes → red:
+ *      “the rule”, “a sentence in quotes …” and the three paths
+ *      (their list contains such an example)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

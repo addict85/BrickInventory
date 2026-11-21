@@ -1,10 +1,10 @@
 /**
- * Kaufpreis einer Erfassung des UNTERKONTOS ändern — beide Routenfamilien.
+ * Change the purchase price of an entry of the SUB-ACCOUNT — both route families.
  *
- * Gegenprobe (durchgeführt): schreibbereich in src/collection/acquisitions.ts zurück auf die
- * eigene ID → der erste Teilschritt endet wieder in 404.
+ * Counter-check (performed): schreibbereich in src/collection/acquisitions.ts back to the
+ * own ID → the first substep ends in 404 again.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
+ * Prerequisite: test DB via TEST_DATABASE_URL (migrations for account_links).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,8 +37,8 @@ test('the main account can change the purchase price of a sub-account acquisitio
 
   await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SET]);
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]);
-  // Set UND Erfassung gehören dem Unterkonto — wie im gemeldeten Fall.
-  await holdsSet(db, subId, SET, 0); // Menge 0: die Erfassung dahinter traegt sie
+  // Set AND entry belong to the sub-account — as in the reported case.
+  await holdsSet(db, subId, SET, 0); // Quantity 0: the entry behind it carries it
   await db.run(
     `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,18.20,'U',1)`,
@@ -66,7 +66,7 @@ test('the main account can change the purchase price of a sub-account acquisitio
     parseFloat((await db.get(`SELECT purchase_price FROM set_acquisitions WHERE id=$1`, [acqId])).purchase_price);
 
   try {
-    // 1. Der gemeldete Fall: Webapp-Route, Hauptkonto ändert Unterkonto-Zeile.
+    // 1. The reported case: web app route, main account changes a sub-account row.
     let r = await fetch(`${baseMain}/api/v1/sets/${SET}/acquisitions/${acqId}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -75,15 +75,15 @@ test('the main account can change the purchase price of a sub-account acquisitio
     assert.equal(r.status, 200, 'die Webapp-Route darf nicht mehr 404 „Not found" liefern');
     assert.equal(await preis(), 25.5, 'der neue Kaufpreis muss gespeichert sein');
 
-    // Geschrieben wird in die Erfassung des BESITZERS, nicht des Betrachters:
-    // Um diese Besitzerfrage geht es in diesem Test.
+    // The write goes into the OWNER's entry, not the viewer's:
+    // this ownership question is what this test is about.
     const onOwner = await db.get(`SELECT purchase_price FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [
       subId,
       SET,
     ]);
     assert.equal(parseFloat(onOwner.purchase_price), 25.5, 'die Erfassung des Unterkontos muss den neuen Preis tragen');
 
-    // 2. Dieselbe Änderung über die Android-Route.
+    // 2. The same change via the Android route.
     r = await fetch(`${baseMain}/api/v1/sets/${SET}/acquisitions/${acqId}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -92,9 +92,9 @@ test('the main account can change the purchase price of a sub-account acquisitio
     assert.equal(r.status, 200, 'die Android-Route darf nicht mehr 404 liefern');
     assert.equal(await preis(), 31.0);
 
-    // 3. „Lesen weit, Schreiben eng": Das UNTERKONTO darf NICHT rückwärts in
-    //    eine Erfassung des Hauptkontos schreiben. Diese Asymmetrie ist der
-    //    Grund, warum hier schreibbereich() steht und nicht scopeIds().
+    // 3. “Read wide, write narrow": the SUB-ACCOUNT may NOT write backwards into
+    //    an entry of the main account. This asymmetry is the
+    //    reason why schreibbereich() is here and not scopeIds().
     await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [mainId, SET]);
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)

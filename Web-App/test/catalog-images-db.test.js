@@ -1,19 +1,19 @@
 /**
- * Katalog-Bilder: Die Katalogsuche nennt das lokale Bild aus set_catalog
- * (samt Vorschau) für jedes Konto — Set-Bilder sind seit Migration 0105 Katalog.
- * Die Liste stösst dabei keine Bildarbeit an — das macht der Bild-Job.
+ * Catalog images: the catalog search names the local image from set_catalog
+ * (including preview) for every account — since migration 0105 set images are catalog.
+ * The list triggers no image work in doing so — the image job does that.
  *
- * Gegenproben (am 10.11.2026 gemessen):
- *   A  in catalogPage() (src/catalog/service.ts) resolveImageLocal() weggelassen
- *      → rot: „… die Vorschau hat Vorrang“ (Originalpfad statt _thumb)
- *   B  in katalogSuche.ts c.image_local aus SET_SPALTEN entfernt → rot: „die Liste
- *      nennt das Bild aus set_catalog …“ (undefined)
- *   C  in catalogPage() je Zeile k.bilder.rememberUsed() → rot: „die
- *      Liste stösst keine Bildarbeit an“
- *   D  in catalogSet() image_local nur für eigene Sets (`set.owned ? … : null`)
- *      → rot: „auch ein fremdes Konto bekommt die lokale Datei“
+ * Counter-checks (measured on 10.11.2026):
+ *   A  in catalogPage() (src/catalog/service.ts) resolveImageLocal() omitted
+ *      → red: “… the preview takes precedence” (original path instead of _thumb)
+ *   B  in katalogSuche.ts c.image_local removed from SET_SPALTEN → red: “the list
+ *      names the image from set_catalog …” (undefined)
+ *   C  in catalogPage() k.bilder.rememberUsed() per row → red: “the
+ *      list triggers no image work”
+ *   D  in catalogSet() image_local only for own sets (`set.owned ? … : null`)
+ *      → red: “even a foreign account gets the local file”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -22,7 +22,7 @@ const os = require('node:os');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-// Eigene Ablage, damit der Test keine Bilder in den Arbeitsbaum legt.
+// Own storage so that the test puts no images into the working tree.
 process.env.APP_ROOT = fs.mkdtempSync(path.join(os.tmpdir(), 'katalog-bilder-'));
 
 const { buildAndRequire, testData } = require('./helpers/sources');

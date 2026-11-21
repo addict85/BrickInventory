@@ -1,17 +1,17 @@
 /**
- * Der Hinweis auf einen Proxy vor Caddy (alle Clients mit einer Adresse) steht
- * nicht nur im Protokoll: GET /api/v1/admin/jobs trägt ihn für Verwalter, und
- * die Hintergrundarbeiten zeigen ihn (proxy-hint-ui.test.js).
+ * The hint about a proxy in front of Caddy (all clients with one address) does
+ * not only stand in the log: GET /api/v1/admin/jobs carries it for admins, and
+ * the background jobs show it (proxy-hint-ui.test.js).
  *
- * Gegenproben (13.11.2026 gemessen, je einzeln):
- *   A  in onlyClientAddress() `remember(…)` gestrichen → rot: „nach dem
- *      Hinweis im Protokoll steht er in der Antwort“ (null)
- *   B  in routes/api_v1/admin.ts `proxy_hinweis` aus der Antwort gestrichen →
- *      rot: „ohne Hinweis: null“ und „nach dem Hinweis …“ (undefined)
- *   C  startup/app.ts legt den Hinweisgeber nicht in app.locals ab → rot: „die
- *      App legt ihren Hinweisgeber dort ab, …“
+ * Counter-checks (measured 13.11.2026, each on its own):
+ *   A  `remember(…)` deleted in onlyClientAddress() → red: “after the
+ *      hint in the log it is in the response” (null)
+ *   B  `proxy_hinweis` deleted from the response in routes/api_v1/admin.ts →
+ *      red: “without a hint: null” and “after the hint …” (undefined)
+ *   C  startup/app.ts does not put the hint provider into app.locals → red: “the
+ *      app puts its hint provider where …”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,7 +27,7 @@ test('proxy hint in the response for administrators', { concurrency: 1 }, async 
   const db = await accessOrSkip(t, _req);
   if (!db) return;
   const NAME = `proxyhinweis-${process.pid}`;
-  // Konten legt die Eigentümerin an: Die Laufzeitrolle schreibt in users nur Namen (0117).
+  // The owner role creates accounts: the runtime role only writes names into users (0117).
   const daten = require('./helpers/sources').testData();
   await daten.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (
@@ -37,7 +37,7 @@ test('proxy hint in the response for administrators', { concurrency: 1 }, async 
     await daten.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  // Wie startup/app.ts: Der Hinweisgeber liegt am App-Objekt, die Verwaltung liest ihn dort.
+  // Like startup/app.ts: the hint provider lies on the app object, the administration reads it there.
   let jetzt = 0;
   const meldungen = [];
   const mw = proxyHinweis(
@@ -57,7 +57,7 @@ test('proxy hint in the response for administrators', { concurrency: 1 }, async 
   });
 
   await t.test('after the hint in the log it is in the response', async () => {
-    // Eine Stunde lang nur die Adresse des Proxys davor, wie hinter Nginx Proxy Manager mit `keiner`.
+    // For one hour only the address of the proxy in front, as behind Nginx Proxy Manager with `keiner`.
     for (let i = 0; i <= EINE_ADDRESS.anfragen; i++) {
       jetzt = Math.round((i / EINE_ADDRESS.anfragen) * 61 * 60_000);
       const ip = '::ffff:172.28.73.20';

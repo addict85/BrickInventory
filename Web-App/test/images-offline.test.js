@@ -1,9 +1,9 @@
 /**
- * Die Bilder der Tabellen stehen auch ohne Netz.
+ * The images of the tables are there even without network.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
- *   A  in deliverImage() `private, max-age=0` → `private, no-cache` → rot: „… duerfen offline …“
- *   B  dasselbe → `max-age=0` (ohne private) → rot: „… duerfen offline …“
+ * Counter-checks (measured 10.11.2026, each alone, reverted):
+ *   A  in deliverImage() `private, max-age=0` → `private, no-cache` → red: “… may offline …”
+ *   B  the same → `max-age=0` (without private) → red: “… may offline …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,7 +27,7 @@ test("the tables' images may come from the cache offline", { concurrency: 1 }, a
       [NAME],
     )
   ).id;
-  // Teilebilder sind Katalog: Jedes angemeldete Konto bekommt sie.
+  // Part images are catalog: every logged-in account gets them.
   const datei = path.join(__dirname, '..', 'data', 'images', 'parts', `OFF${process.pid}_0.png`);
   fs.mkdirSync(path.dirname(datei), { recursive: true });
   fs.writeFileSync(datei, 'Bild');
@@ -40,10 +40,10 @@ test("the tables' images may come from the cache offline", { concurrency: 1 }, a
   const r = await fetch(`${base}/images/parts/${path.basename(datei)}`);
   assert.equal([r.status, await r.text()].join(' '), '200 Bild');
   const kopf = String(r.headers.get('cache-control'));
-  // no-cache, must-revalidate und no-store verbieten die alte Kopie, von der der Offline-Rückfall der App lebt.
+  // no-cache, must-revalidate and no-store forbid the old copy that the app's offline fallback lives on.
   assert.doesNotMatch(kopf, /no-cache|must-revalidate|no-store/, kopf);
-  // max-age=0: online wird trotzdem jedes Mal nachgefragt, ein ersetztes Bild gilt sofort.
+  // max-age=0: online it still asks every time, a replaced image applies immediately.
   assert.match(kopf, /max-age=0/, kopf);
-  // private: Ein Reverse-Proxy darf Bilder hinter einer Anmeldung nicht zwischenspeichern.
+  // private: a reverse proxy must not cache images behind a login.
   assert.match(kopf, /private/, kopf);
 });

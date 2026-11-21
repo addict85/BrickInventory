@@ -1,16 +1,16 @@
 /**
- * Migration 0093: Eingetippte Katalogwerte ziehen aus dem gemeinsamen
- * Katalog zu ihrem Konto um; geprüfte Werte bleiben, Eingaben gelöschter
- * Konten entfallen. Läuft auf einem Altbestand in einem eigenen Schema
- * (search_path), die echte Datenbank bleibt unberührt.
+ * Migration 0093: typed-in catalog values move from the shared
+ * catalog to their account; verified values stay, inputs of deleted
+ * accounts are dropped. Runs on legacy data in its own schema
+ * (search_path), the real database stays untouched.
  *
- * Gegenproben (am 03.11.2026 gemessen):
- *   A  das UPDATE auf part_catalog weggelassen → rot: „der gemeinsame Katalog
- *      behält nur Geprüftes“ (die Spalte fällt, der fremde Name bliebe stehen)
- *   B  für teil_eigen alle `*_von`-Werte statt nur bestehender Konten → rot:
- *      Fremdschlüssel teil_eigen_user_id_fkey verletzt (Konto 2147480000)
+ * Counter-checks (measured on 03.11.2026):
+ *   A  the UPDATE on part_catalog left out → red: “the shared catalog
+ *      only keeps verified data” (the column falls, the foreign name would remain)
+ *   B  for teil_eigen all `*_von` values instead of only existing accounts → red:
+ *      foreign key teil_eigen_user_id_fkey violated (account 2147480000)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -40,9 +40,9 @@ test('migration 0093: own catalog details', { concurrency: 1 }, async t => {
   await c.query(`SET search_path TO ${SCHEMA}, public`);
   for (const tab of ['part_catalog', 'part_color_catalog', 'minifigs_catalog'])
     await c.query(`CREATE TABLE ${tab} (LIKE public.${tab} INCLUDING ALL)`);
-  // Migration 0093 ist Geschichte und nennt die Tabellen noch unter ihrem alten
-  // Namen (set_teile/set_figuren); 0124 (längst angewandt) hätte sie sonst
-  // gleich danach umbenannt, wie bei einer echten Reihenfolge der Migrationen.
+  // Migration 0093 is history and still names the tables by their old
+  // names (set_teile/set_figuren); 0124 (applied long ago) would otherwise have
+  // renamed them right afterwards, as with a real order of the migrations.
   await c.query(`CREATE TABLE set_teile (LIKE public.set_parts INCLUDING ALL)`);
   await c.query(`CREATE TABLE set_figuren (LIKE public.set_minifigs INCLUDING ALL)`);
   await c.query(`ALTER TABLE part_catalog ADD COLUMN name_von integer, ADD COLUMN kategorie_von integer`);
@@ -56,7 +56,7 @@ test('migration 0093: own catalog details', { concurrency: 1 }, async t => {
   const anna = (
     await c.query(`INSERT INTO public.users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [SCHEMA])
   ).rows[0].id;
-  const weg = 2147480000; // ein gelöschtes Konto
+  const weg = 2147480000; // a deleted account
   await c.query(
     `INSERT INTO part_catalog (part_number, part_name, category_name, name_von, kategorie_von) VALUES
     ('p1', 'Annas Name', 'Brick', $1, NULL), ('p2', 'Geprüft', NULL, NULL, NULL), ('p3', 'Verwaist', NULL, $2, NULL)`,

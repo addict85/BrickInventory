@@ -1,21 +1,21 @@
 /**
- * Migration 0108 und die Leser danach: catalog_cache führt nur noch den
- * Abrufstand; Angaben stehen in rb_sets, das Bild in set_catalog. Die Migration
- * läuft auf einem Altbestand in einem eigenen Schema (search_path).
+ * Migration 0108 and the readers afterwards: catalog_cache only keeps the
+ * fetch state; details are in rb_sets, the image in set_catalog. The migration
+ * runs on a legacy stock in its own schema (search_path).
  *
- * Gegenproben (am 11.11.2026 gemessen, je einzeln):
- *   A  das INSERT INTO rb_sets … FROM catalog_cache entfernt → rot: „was nur
- *      ein Abruf kannte, steht danach in rb_sets“
- *   B  im ON CONFLICT der Migration `WHERE rb_sets.herkunft = 'api'` entfernt →
- *      rot: dasselbe (die CSV-Zeile 5555-1 bekommt das Jahr 1999)
- *   B2 `name = EXCLUDED.name` statt nur den Platzhalter ersetzen → rot:
- *      dasselbe (6100-1 heisst „Anderer Name“)
- *   C  das INSERT INTO set_catalog … der Migration entfernt → rot: „das Bild
- *      steht danach in set_catalog“
- *   D  rememberSet() schreibt wieder nur catalog_cache (rememberSetCatalog-Aufruf
- *      entfernt) → rot: „ein Abruf landet in rb_sets“
- *   E  setStamm() liest wieder COALESCE(c.image_url, rs.set_img_url) → rot:
- *      „Set-Stamm: das Bild nur aus set_catalog“
+ * Counter-checks (measured on 11.11.2026, each alone):
+ *   A  the INSERT INTO rb_sets … FROM catalog_cache removed → red: “what only
+ *      a fetch knew is in rb_sets afterwards”
+ *   B  in the migration's ON CONFLICT `WHERE rb_sets.herkunft = 'api'` removed →
+ *      red: the same (the CSV row 5555-1 gets the year 1999)
+ *   B2 `name = EXCLUDED.name` instead of only replacing the placeholder → red:
+ *      the same (6100-1 is called “Anderer Name”)
+ *   C  the INSERT INTO set_catalog … of the migration removed → red: “the image
+ *      is in set_catalog afterwards”
+ *   D  rememberSet() again writes only catalog_cache (rememberSetCatalog call
+ *      removed) → red: “a fetch lands in rb_sets”
+ *   E  setStamm() reads COALESCE(c.image_url, rs.set_img_url) again → red:
+ *      “set master: the image only from set_catalog”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -49,7 +49,7 @@ test('catalog_cache only the fetch state now', { concurrency: 1 }, async t => {
     await c.query(`SET search_path TO ${SCHEMA}, public`);
     for (const tab of ['rb_sets', 'rb_themes', 'set_catalog', 'catalog_cache'])
       await c.query(`CREATE TABLE ${tab} (LIKE public.${tab} INCLUDING ALL)`);
-    // Migration 0124 (nach 0108) hat die Spalte umbenannt; die Migration von damals kennt noch den alten Namen.
+    // Migration 0124 (after 0108) renamed the column; the migration from back then still knows the old name.
     await c.query(`ALTER TABLE rb_sets RENAME COLUMN source TO herkunft`);
     await c.query(`ALTER TABLE catalog_cache ADD COLUMN name text, ADD COLUMN year integer, ADD COLUMN theme text,
                    ADD COLUMN pieces integer, ADD COLUMN image_url text`);

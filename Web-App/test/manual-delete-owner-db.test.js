@@ -1,5 +1,5 @@
 /**
- * Der Papierkorb löscht die Karte, auf die geklickt wurde.
+ * The trash can deletes the card that was clicked on.
  */
 const test = require('node:test');
 const { after } = require('node:test');
@@ -23,10 +23,10 @@ async function erreichbar() {
   }
 }
 
-// EINMAL fuer die Datei, nicht je Test: Ein t.after(() => db.pool.end()) im
-// ersten Test schloss den Pool, bevor der zweite lief — der meldete dann
-// „Test-DB nicht erreichbar" statt zu pruefen. Auf Dateiebene laeuft es nach
-// dem letzten Test, auch wenn eine Zusicherung vorher scheitert.
+// ONCE for the file, not per test: a t.after(() => db.pool.end()) in the
+// first test closed the pool before the second one ran — which then reported
+// „Test-DB nicht erreichbar" instead of checking. At file level it runs after
+// the last test, even if an assertion fails before.
 after(() => db.pool.end());
 
 test('the trash hits the clicked card, not the own one', async t => {
@@ -37,7 +37,7 @@ test('the trash hits the clicked card, not the own one', async t => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchemaOnce();
-  // Und die MIGRATIONEN, nicht nur das Schema
+  // And the MIGRATIONS, not only the schema
   {
     const mc = await db.pool.connect();
     try {
@@ -54,8 +54,8 @@ test('the trash hits the clicked card, not the own one', async t => {
     fremd = await id('fremd');
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
 
-  // Dieselbe Nummer bei beiden — genau der Fall, den die Route nicht
-  // unterscheiden konnte.
+  // The same number for both — exactly the case the route could not
+  // distinguish.
   await holdsPart(db, haupt, '3001', { menge: 5, colorId: 4 });
   await holdsPart(db, kind, '3001', { menge: 9, colorId: 4 });
   await holdsMinifig(db, haupt, 'sw0001', { menge: 1 });
@@ -66,8 +66,8 @@ test('the trash hits the clicked card, not the own one', async t => {
     const r = await fetch(base + pfad, { method: methode });
     return { status: r.status, body: await r.json() };
   };
-  // Die Stückzahl kommt seit Migration 0038 aus den Erfassungen, nicht aus
-  // der Spalte. subsetOf() traegt dieselbe Fallunterscheidung wie der
+  // Since migration 0038 the piece count comes from the acquisitions, not from
+  // the column. subsetOf() carries the same case distinction as the
   // Server (test/helpers/inventory.js).
   const teile = async () => {
     const zeilen = await db.all(`SELECT user_id, color_id FROM parts WHERE part_number='3001' ORDER BY user_id`);
@@ -80,7 +80,7 @@ test('the trash hits the clicked card, not the own one', async t => {
 
   assert.deepEqual(await teile(), [`${haupt}:5`, `${kind}:9`], 'Vorlage');
 
-  // Die Karte des KINDES löschen.
+  // Delete the CHILD's card.
   const a = await ruf(`/api/v1/parts/3001/4?owner=${kind}`, 'DELETE');
   assert.equal(a.status, 200, JSON.stringify(a.body));
   assert.deepEqual(
@@ -89,26 +89,26 @@ test('the trash hits the clicked card, not the own one', async t => {
     'Geklickt war die Karte des Unterkontos — genau die muss weg sein, und die eigene bleiben',
   );
 
-  // Danach die eigene, ohne Parameter (Verhalten wie vorher).
+  // Then the own one, without parameter (behavior as before).
   const b = await ruf('/api/v1/parts/3001/4', 'DELETE');
   assert.equal(b.status, 200, JSON.stringify(b.body));
   assert.deepEqual(await teile(), [], 'Ohne owner das eigene Konto');
 
-  // Dasselbe für Minifiguren.
+  // The same for minifigures.
   assert.deepEqual(await figuren(), [haupt, kind], 'Vorlage Minifiguren');
   const c = await ruf(`/api/v1/minifigs/sw0001?owner=${kind}`, 'DELETE');
   assert.equal(c.status, 200, JSON.stringify(c.body));
   assert.deepEqual(await figuren(), [haupt], 'Die Figur des Unterkontos muss weg sein');
 
-  // ── Dasselbe beim ÄNDERN ────────────────────────────────────────────────
-  // Ändert das Hauptkonto auf der Karte des Kindes die Menge, darf nicht die EIGENE
-  // Zeile still mitgehen. Lesen und Löschen zu prüfen und das Schreiben auszulassen
-  // hiesse, denselben Fehler an der dritten Stelle stehen zu lassen.
+  // ── The same when CHANGING ────────────────────────────────────────────────
+  // If the main account changes the quantity on the child's card, its OWN
+  // row must not silently go along. Checking reading and deleting and leaving out writing
+  // would mean leaving the same error standing at the third place.
   await holdsPart(db, haupt, '3020', { menge: 5, colorId: 0 });
   await holdsPart(db, kind, '3020', { menge: 9, colorId: 0 });
-  // Wie teile() oben: Die Stueckzahl steht seit Migration 0038 in den
-  // Erfassungen. Der Mengenregler schreibt genau dorthin — deshalb ist das
-  // hier auch die Stelle, an der ein Griff auf die falsche Zeile auffaellt.
+  // Like teile() above: since migration 0038 the piece count stands in the
+  // acquisitions. The quantity control writes exactly there — hence this is
+  // also the place where a grab at the wrong row becomes noticeable.
   const mengen = async () => {
     const zeilen = await db.all(`SELECT user_id, color_id FROM parts WHERE part_number='3020' ORDER BY user_id`);
     const raus = [];
@@ -137,27 +137,27 @@ test('the trash hits the clicked card, not the own one', async t => {
   );
   assert.deepEqual(await mengen(), [`${haupt}:5`, `${kind}:99`], 'und nichts angefasst');
 
-  // Ein Konto ausserhalb des Haushalts geht nicht — der Parameter ist eine
-  // Angabe der Ansicht, kein Zugriffsweg.
+  // An account outside the household does not work — the parameter is a
+  // statement of the view, not an access path.
   const d = await ruf(`/api/v1/minifigs/sw0001?owner=${fremd}`, 'DELETE');
   assert.equal(d.status, 403, 'Fremdes Konto muss abgelehnt werden, nicht stillschweigend ignoriert');
   assert.deepEqual(await figuren(), [haupt], 'und nichts anfassen');
 });
 
 /**
- * Damit eine Ansicht den Besitzer MITGEBEN kann, muss sie ihn erst BEKOMMEN.
+ * For a view to be able to PASS the owner along, it must first GET it.
  */
 test('both valuations carry the owner along', async t => {
   if (!(await erreichbar())) {
     keineDb(t);
     return;
   }
-  // KEIN zweites DROP SCHEMA: Der erste Test in dieser Datei hat das Schema
-  // schon frisch aufgebaut, und jedes weitere Fallenlassen ist eine Sperre
-  // mehr, die mit dem Verbindungspool einer gerade beendeten Testdatei
-  // zusammentreffen kann. Die Vorlage hier benutzt deshalb eigene Namen (h2, …
+  // NO second DROP SCHEMA: the first test in this file has already built the schema
+  // fresh, and every further dropping is one more lock
+  // that can collide with the connection pool of a test file that just
+  // ended. The template here therefore uses its own names (h2, …
   await db.initSchemaOnce();
-  // Migrationen auch hier — siehe die Begruendung weiter oben.
+  // Migrations here too — see the reasoning further above.
   {
     const mc = await db.pool.connect();
     try {
@@ -172,10 +172,10 @@ test('both valuations carry the owner along', async t => {
   const haupt = await id('h2'),
     kind = await id('k2');
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
-  // Der Preis steht seit Migration 0035 in der Erfassung, nicht an der
+  // Since migration 0035 the price stands in the acquisition, not on the
   // Bestandszeile.
-  // Menge UND Preis in einem Aufruf: holdsPart/holdsMinifig legen die Erfassung
-  // selbst an. Ein zweites INSERT daneben verstiesse gegen idx_part_acq_tag_zustand …
+  // Quantity AND price in one call: holdsPart/holdsMinifig create the acquisition
+  // themselves. A second INSERT next to it would violate idx_part_acq_tag_zustand …
   await holdsPart(db, haupt, '3001', { menge: 5, colorId: 4, preis: 0.5 });
   await holdsPart(db, kind, '3020', { menge: 9, colorId: 0, preis: 0.3 });
   await holdsMinifig(db, haupt, 'sw0001', { menge: 1, preis: 12.0 });
@@ -184,8 +184,8 @@ test('both valuations carry the owner along', async t => {
   const { base } = testServer(_req, { sitzung: { userId: haupt, username: 'h2' }, t });
   const hole = async p => (await fetch(base + p)).json();
 
-  // Beide Arten in EINER Schleife: Die Zusicherung soll für beide gleich
-  // lauten, sonst driften sie wieder auseinander.
+  // Both kinds in ONE loop: the assertion should read the same for both,
+  // otherwise they drift apart again.
   for (const [pfad, feld, art] of [
     ['/api/v1/finance/parts-valuation', 'parts', 'Teile'],
     ['/api/v1/finance/minifigs-valuation', 'figs', 'Minifiguren'],

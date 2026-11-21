@@ -1,15 +1,15 @@
 /**
- * Die Idempotenz-Middleware antwortet aus dem Speicher, bevor die Route ihren
- * Verwalter-Wächter (requireApiAdmin) prüft. Eine gespeicherte Verwalter-Antwort
- * darf deshalb nicht einem App-Token desselben Kontos ausgeliefert werden.
- * Geprüft an der echten Kette vor /api/v1 (apiInbox) mit echten Tokens.
+ * The idempotency middleware answers from storage before the route checks its
+ * administrator guard (requireApiAdmin). A stored administrator response
+ * must therefore not be delivered to an app token of the same account.
+ * Checked on the real chain in front of /api/v1 (apiInbox) with real tokens.
  *
- * Gegenprobe (13.11.2026 gemessen):
- *   A  in middleware.ts die Rolle nicht an fingerprint() übergeben → rot:
- *      „ein App-Token bekommt die Verwalter-Antwort nicht“ (200 mit
- *      Idempotent-Replay statt 422)
+ * Counter-check (measured 13.11.2026):
+ *   A  in middleware.ts the role not passed to fingerprint() → red:
+ *      “an app token does not get the administrator response” (200 with
+ *      Idempotent-Replay instead of 422)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

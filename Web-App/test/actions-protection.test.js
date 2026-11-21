@@ -1,23 +1,23 @@
 /**
- * Der Aktions-Dispatcher (public/js/actions.js) ist kein Skript-Gadget:
- * Eingeschleustes Markup ohne Skript löst keine gefährliche Aktion aus, kein
- * Überfahren mit der Maus löst überhaupt etwas aus, und globale Funktionen
- * sind über data-click nicht erreichbar. Echte Knöpfe aus Vorlagen und aus
- * index.html wirken weiter. Geprüft am echten Bündel in jsdom.
+ * The action dispatcher (public/js/actions.js) is not a script gadget:
+ * injected markup without script triggers no dangerous action, no
+ * mouse hover triggers anything at all, and global functions
+ * are not reachable via data-click. Real buttons from templates and from
+ * index.html keep working. Checked on the real bundle in jsdom.
  *
- * Gegenproben (01.11.2026 gemessen, je einzeln, Bündel neu gebaut; Namen
- * seit Phase 2b Runde 5 auf Englisch: `GEFAEHRLICH`→`DANGEROUS`, `NUR`→`ONLY`):
- *   A  DANGEROUS-Prüfung in handle() entfernt → rot: „eingeschleuster Knopf
- *      öffnet den Passwort-Dialog"
- *   B  mouseenter wieder in DELEGATED → rot: „Überfahren löst aus"
- *   C  ONLY-Prüfung für change entfernt → rot: „change mit fremdem Handler"
- *   D  Rückfall auf window in resolveAction() zurück → rot: „window.open"
- *   E  echt() aus nutzerKnopf() in einstellungen.js entfernt → rot: „echter
- *      Knopf der Benutzerliste wirkt"
- *   F  ein Name aus ONLY.change gestrichen → rot: „jeder Handler im Markup
- *      steht in der Liste seines Ereignisses"
- *   G  echt() an papierkorbEndgueltig (papierkorb.js) entfernt → rot:
- *      „jede Vorlage mit gefährlicher Aktion trägt echt()"
+ * Counter-checks (measured 01.11.2026, each alone, bundle rebuilt; names
+ * in English since phase 2b round 5: `GEFAEHRLICH`→`DANGEROUS`, `NUR`→`ONLY`):
+ *   A  DANGEROUS check removed in handle() → red: “injected button
+ *      opens the password dialog"
+ *   B  mouseenter back in DELEGATED → red: “hover triggers"
+ *   C  ONLY check for change removed → red: “change with a foreign handler"
+ *   D  fallback to window back in resolveAction() → red: “window.open"
+ *   E  echt() removed from nutzerKnopf() in einstellungen.js → red: “real
+ *      button of the user list works"
+ *   F  a name deleted from ONLY.change → red: “every handler in the markup
+ *      is in the list of its event"
+ *   G  echt() removed from papierkorbEndgueltig (papierkorb.js) → red:
+ *      “every template with a dangerous action carries echt()"
  */
 const { isAppModule } = require('../scripts/build-frontend');
 const test = require('node:test');
@@ -68,7 +68,7 @@ test('injected markup triggers no dangerous action', async () => {
       'eingeschleuster Knopf ruft die Token-Liste ab',
     );
 
-    // loadGallery ist harmlos und angemeldet: Hier zählt allein das Ereignis.
+    // loadGallery is harmless and registered: only the event matters here.
     const galleryFetches = ab => aufrufe.slice(ab).filter(a => /\/v1\/sets(\?|$)/.test(a.url.replace(/^.*\/api/, '')));
     let ab = aufrufe.length;
     inject('<div id="x3" data-mouseenter="loadGallery">x</div>');
@@ -82,7 +82,7 @@ test('injected markup triggers no dangerous action', async () => {
     await takt(50);
     assert.deepEqual(galleryFetches(ab), [], 'change mit fremdem Handler');
 
-    // Kontrolle: derselbe Handler per Klick läuft — sonst bewiesen die zwei oben nichts.
+    // Control: the same handler via click runs — otherwise the two above prove nothing.
     ab = aufrufe.length;
     inject('<button id="x6" data-click="loadGallery">x</button>');
     d.getElementById('x6').click();
@@ -127,8 +127,8 @@ test('real buttons from template and markup keep working', async () => {
 });
 
 test('every handler in the markup is in the list of its event', () => {
-  // Struktur: Die Listen in aktionen.js müssen das Markup abdecken, sonst
-  // wäre ein echtes Feld tot. Die Gegenrichtung prüft der Test darüber.
+  // Structure: the lists in aktionen.js must cover the markup, otherwise
+  // a real field would be dead. The test above checks the opposite direction.
   const quelle = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
   const liste = typ => {
     const m = quelle.match(new RegExp(`\\b${typ}: new Set\\(\\[([^\\]]*)\\]`));
@@ -142,7 +142,7 @@ test('every handler in the markup is in the list of its event', () => {
       .filter(f => isAppModule(f))
       .map(f => path.join(ROOT, 'public', 'js', f)),
   ];
-  // Das Log-Fenster (monitor.js) ist ein eigenes Popup mit eigener Auflösung.
+  // The log window (monitor.js) is a separate popup with its own resolution.
   const LOGFENSTER = new Set(['loadLogs', 'renderLogs']);
   const fehlt = [];
   let gesehen = 0;
@@ -159,7 +159,7 @@ test('every handler in the markup is in the list of its event', () => {
 });
 
 test('every template with a dangerous action carries echt()', () => {
-  // Sonst wäre der Knopf tot: Der Dispatcher weist ihn ab.
+  // Otherwise the button would be dead: the dispatcher rejects it.
   const quelle = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
   const dangerous = new Set(
     [...quelle.match(/DANGEROUS = new Set\(\[([^\]]*)\]/)[1].matchAll(/'([^']+)'/g)].map(x => x[1]),

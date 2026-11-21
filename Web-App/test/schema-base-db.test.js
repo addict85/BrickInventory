@@ -1,27 +1,27 @@
 /**
- * Eine leere Datenbank bekommt ihr Schema aus db/basis.sql, eine bestehende
- * wird beim Start nicht angefasst — nur die Migrationen laufen.
+ * An empty database gets its schema from db/basis.sql, an existing one
+ * is not touched at startup — only the migrations run.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  in initSchema() die Prüfung auf eine leere Datenbank entfernt → rot:
- *      „eine bestehende Datenbank bleibt, wie sie ist“ (die Basis scheitert an
- *      vorhandenen Tabellen)
- *   B  (10.11.) den Erststart aus createDb(…, { firstStart }) nicht aufgerufen → rot:
- *      „eine leere Datenbank bekommt Basis, Vorgaben und einen Administrator“
- *   D  (29.10.) in initSchema() wieder die Sperre „älter als 0050“ → rot:
- *      „eine Datenbank mit 0045, aber ohne 0050 startet …“ (der Stand von
- *      main bis 1ad80a5).
- *   F  (09.11.) in db/basis.sql eine Zeile `ALTER TABLE ONLY public.users ALTER COLUMN …` von Hand
- *      ergänzt → rot: „db/basis.sql ist ein unverändertes Abbild …“; ebenso eine Migration, die
- *      in basis.sql als angewandt steht, deren Datei es nicht gibt → rot: „… eine lückenlose Folge …“
- *   E  (08.11.) in initSchemaOnce() den Aufruf checkMinimumVersion() entfernt
- *      → rot: „eine Datenbank älter als 0050 hält den Start an …“ (der Start
- *      lief durch und spielte die offenen Migrationen ein)
+ * Counter-checks (measured on 28.10.2026):
+ *   A  the check for an empty database removed in initSchema() → red:
+ *      “an existing database stays as it is” (the base fails on
+ *      existing tables)
+ *   B  (10.11.) the first start from createDb(…, { firstStart }) not called → red:
+ *      “an empty database gets base, defaults and an administrator”
+ *   D  (29.10.) in initSchema() again the lock „older than 0050“ → red:
+ *      “a database with 0045 but without 0050 starts …” (the state of
+ *      main up to 1ad80a5).
+ *   F  (09.11.) a line `ALTER TABLE ONLY public.users ALTER COLUMN …` added by hand
+ *      to db/basis.sql → red: “db/basis.sql is an unchanged image …”; likewise a migration that
+ *      stands as applied in basis.sql whose file does not exist → red: “… a gapless sequence …”
+ *   E  (08.11.) the call checkMinimumVersion() removed in initSchemaOnce()
+ *      → red: “a database older than 0050 stops the start …” (the start
+ *      ran through and applied the open migrations)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL, deren Benutzer Datenbanken
- * anlegen darf.
+ * Prerequisite: test DB via TEST_DATABASE_URL whose user may create
+ * databases.
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -53,7 +53,7 @@ test('first start via db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
   await cleanRemainder(admin, 'schema_basis');
   await admin.query(`DROP DATABASE IF EXISTS ${id(NAME)}`);
   await admin.query(`CREATE DATABASE ${id(NAME)}`);
-  // Wie server.ts: Der Zugang bekommt den Erststart mit, der das erste Konto anlegt.
+  // Like server.ts: the access gets the first start along, which creates the first account.
   const modul = require(path.join(ROOT, 'dist', 'db', 'database.js'));
   const db = modul.createDb(modul.dbKonfigFromEnvironment(), {
     firstStart: () => require('./helpers/sources').testServices().account.putStartAdminAn(),
@@ -104,7 +104,7 @@ test('first start via db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
     assert.equal((await db.get(`SELECT value FROM global_settings WHERE key = 'api_limit_bricklink'`)).value, '123');
   });
 
-  // Der Stand von main bis 1ad80a5: 0045 da, 0050 noch nicht.
+  // The state of main up to 1ad80a5: 0045 there, 0050 not yet.
   await t.test('a database with 0045 but without 0050 starts and catches up on 0050', async () => {
     await db.run(`DELETE FROM schema_migrations WHERE name LIKE '0050-%'`);
     assert.equal(await db.initSchema(), false);
@@ -117,8 +117,8 @@ test('first start via db/basis.sql', { concurrency: 1, timeout: 180_000 }, async
     assert.ok(await db.get(`SELECT 1 FROM schema_migrations WHERE name LIKE '0050-%'`), '0050 nicht nachgeholt');
   });
 
-  // Ein Stand vor 0050 müsste die entfernten Startstufen nachholen; der Start
-  // sagt das, statt die jüngeren Migrationen auf ein fremdes Schema zu setzen.
+  // A state before 0050 would have to catch up on the removed start stages; the start
+  // says so instead of putting the younger migrations onto a foreign schema.
   await t.test('a database older than 0050 stops the start and stays untouched', async () => {
     await db.run(`DELETE FROM schema_migrations WHERE name >= '0050'`);
     const vorher = (await db.get('SELECT COUNT(*)::int AS n FROM schema_migrations')).n;
@@ -182,9 +182,9 @@ test('db/basis.sql is generated, not written', { concurrency: 1, timeout: 180_00
     try {
       jetzt = sk.pgDumpVersion();
     } catch {
-      /* kein pg_dump im Pfad */
+      /* no pg_dump in the path */
     }
-    // pg_dump schreibt je Hauptversion anders; verglichen wird nur mit derselben.
+    // pg_dump writes differently per major version; it is only compared with the same one.
     if (jetzt !== createdWith) {
       tt.skip(`pg_dump ${jetzt ?? 'missing'}, the base was created with ${createdWith}`);
       return;

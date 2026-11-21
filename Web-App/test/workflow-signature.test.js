@@ -1,22 +1,22 @@
 /**
- * docker-publish.yml signiert genau das Manifest, das der Push erzeugt hat:
- * Der Digest kommt aus der Ausgabe von `imagetools create`, nicht aus einer
- * späteren Auflösung des Tags. Hier laufen die echten Skripte der Schritte
- * `manifest` und `signatur` in bash; `docker` und `cosign` sind Ersatz. Der …
+ * docker-publish.yml signs exactly the manifest the push created:
+ * the digest comes from the output of `imagetools create`, not from a
+ * later resolution of the tag. Here the real scripts of the steps
+ * `manifest` and `signatur` run in bash; `docker` and `cosign` are stand-ins. The …
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  im Schritt `signatur` wieder `DIGEST="$(docker buildx imagetools inspect
- *      "$TAG" --format …)"` → rot: „signiert wird der Digest aus dem Push“
- *   B  im Schritt `manifest` `--metadata-file …` gestrichen → rot: beide
- *      Fälle (der Hauptfall findet keinen Digest)
- * Tags erst nach Prüfung und Signatur (12.11.2026 gemessen, je einzeln):
- *   C  im Schritt `manifest` wieder die Tags aus DOCKER_METADATA_OUTPUT_JSON
- *      mitgegeben → rot: „vor der Signatur trägt das Image keinen Tag“
- *   D  den Abgleich `[ "$DIGEST" = "$SOLL" ]` gestrichen → rot: „ein anderer
+ * Counter-checks (measured 05.11.2026, each individually):
+ *   A  in the step `signatur` again `DIGEST="$(docker buildx imagetools inspect
+ *      "$TAG" --format …)"` → red: “the digest from the push is signed …”
+ *   B  in the step `manifest` `--metadata-file …` deleted → red: both
+ *      cases (the main case finds no digest)
+ * Tags only after check and signature (measured 12.11.2026, each individually):
+ *   C  in the step `manifest` the tags from DOCKER_METADATA_OUTPUT_JSON passed
+ *      again → red: „vor der Signatur trägt das Image keinen Tag“
+ *   D  the comparison `[ "$DIGEST" = "$SOLL" ]` deleted → red: „ein anderer
  *      Digest als im Probelauf bricht ab“
- *   E  den Schritt `tags` vor „Lücken im veröffentlichten Digest“ verschoben
- *      → rot: „Tags kommen nach Trivy, Signatur und Bescheinigung“
- *   F  im Schritt `tags` die Nachprüfung (`[ "$IST" = … ]`) gestrichen → rot:
+ *   E  the step `tags` moved before „Lücken im veröffentlichten Digest“
+ *      → red: „Tags kommen nach Trivy, Signatur und Bescheinigung“
+ *   F  in the step `tags` the re-check (`[ "$IST" = … ]`) deleted → red:
  *      „ein umgehängter Tag bricht ab“
  */
 const test = require('node:test');
@@ -30,12 +30,12 @@ const { spawnSync } = require('node:child_process');
 const YML = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'docker-publish.yml'), 'utf8');
 const IMAGE = 'addict85/brickinventory',
   CADDY = 'addict85/brickinventory-caddy';
-// Der Probelauf gibt diesen Index aus; gepusht wird er unter seinem sha256.
+// The dry run outputs this index; it is pushed under its sha256.
 const INDEX = '{"schemaVersion":2,"manifests":[]}';
 const FROM_PUSH = `sha256:${crypto.createHash('sha256').update(INDEX).digest('hex')}`,
   REASSIGNED = 'sha256:' + 'b'.repeat(64);
 
-/** Der run-Block des Schritts mit `id: <id>`. */
+/** The run block of the step with `id: <id>`. */
 function script(id) {
   const zeilen = YML.split('\n');
   const ab = zeilen.indexOf(`        id: ${id}`);
@@ -125,7 +125,7 @@ test('without a digest from the push the step aborts', t => {
   assert.match(m.log, /Kein Digest in der Ausgabe des Pushs/);
 });
 
-/** Der Block eines Schritts, gesucht über seinen Namen, bis zum nächsten Schritt. */
+/** The block of a step, looked up by its name, up to the next step. */
 function schritt(name) {
   const ab = YML.indexOf(`      - name: ${name}\n`);
   assert.ok(ab >= 0, `Schritt „${name}“ nicht gefunden`);
@@ -133,7 +133,7 @@ function schritt(name) {
   return YML.slice(ab, ende < 0 ? undefined : ende);
 }
 
-/** Muster des App-Downloads und Name der Caddy-Artefakte (ohne Plattform). */
+/** Pattern of the app download and name of the Caddy artifacts (without platform). */
 function artifacts() {
   return {
     muster: YML.match(/path: \/tmp\/digests\n\s+pattern: (\S+)/)?.[1],
@@ -143,11 +143,11 @@ function artifacts() {
 
 const callsIn = s => fs.readFileSync(path.join(s.ort, 'aufrufe'), 'utf8').split('\n');
 
-// Gegenproben (11.11.2026 gemessen, je einzeln): im Schritt `signatur-caddy`
-// `${{ env.IMAGE }}` statt `${{ env.CADDY_IMAGE }}` → rot „signiert wird das
-// Caddy-Image …“; bei „Caddy-Herkunft bescheinigen“ `steps.signatur.outputs.digest`
-// → rot „… am signierten Caddy-Digest“; den Caddy-Artefakten den Namen
-// `digest-caddy-…` gegeben → rot „das App-Manifest mischt die Caddy-Digests“.
+// Counter-checks (measured 11.11.2026, each individually): in the step `signatur-caddy`
+// `${{ env.IMAGE }}` instead of `${{ env.CADDY_IMAGE }}` → red „signiert wird das
+// Caddy-Image …“; at „Caddy-Herkunft bescheinigen“ `steps.signatur.outputs.digest`
+// → red „… am signierten Caddy-Digest“; given the Caddy artifacts the name
+// `digest-caddy-…` → red „das App-Manifest mischt die Caddy-Digests“.
 test('Caddy is built, signed and attested like the app image, on the digest from its push', t => {
   const s = sandbox(t);
   const m = lauf(s, 'manifest-caddy', {}, { META: JSON.stringify({ tags: [`${CADDY}:latest`] }) });
@@ -187,14 +187,14 @@ test('Caddy is built, signed and attested like the app image, on the digest from
     /sbom: generator=\S+@sha256:[0-9a-f]{64}/,
   ])
     assert.match(bau, zeile);
-  // Das App-Manifest sammelt seine Digests über ein Muster; die Caddy-Artefakte dürfen nicht darunter fallen.
+  // The app manifest collects its digests via a pattern; the Caddy artifacts must not fall under it.
   const { muster, caddy: caddyName } = artifacts();
   assert.ok(muster && caddyName, `${muster} / ${caddyName}`);
   assert.equal(path.matchesGlob(`${caddyName}linux-amd64`, muster), false, 'das App-Manifest mischt die Caddy-Digests');
   assert.equal(path.matchesGlob('digest-linux-amd64', muster), true);
 });
 
-/** Die `-t`-Ziele aller echten (nicht Probe-)Aufrufe von `imagetools create`. */
+/** The `-t` targets of all real (not dry-run) calls of `imagetools create`. */
 function tagsInPush(s) {
   return callsIn(s)
     .filter(z => z.startsWith('docker buildx imagetools create') && !z.includes('--dry-run'))
@@ -222,7 +222,7 @@ test('a digest other than in the dry run aborts', t => {
   }
 });
 
-/** Position eines Schritts im Workflow, gesucht über `id:` oder `name:`. */
+/** Position of a step in the workflow, looked up via `id:` or `name:`. */
 const place = marke => {
   const i = YML.indexOf(marke);
   assert.ok(i >= 0, `${marke} nicht gefunden`);
@@ -265,10 +265,10 @@ test('a moved tag aborts', t => {
   assert.match(r.log, /zeigt auf sha256:b+ statt auf/);
 });
 
-// Jeder Job, der die Docker-Hub-Zugangsdaten liest, läuft in der geschützten Umgebung; die Prüfung im
-// Build-Job verweist auf deren Secrets. Gegenproben (13.11.2026 gemessen, je einzeln): `environment:
-// docker-hub` im Job build gestrichen → rot „build liest DOCKERHUB_* ohne Umgebung docker-hub“; die
-// Meldung wieder auf „Secrets and variables -> Actions“ → rot „… nennt die Environment-Secrets“.
+// Every job that reads the Docker Hub credentials runs in the protected environment; the check in the
+// build job refers to its secrets. Counter-checks (measured 13.11.2026, each individually): `environment:
+// docker-hub` deleted in the job build → red „build liest DOCKERHUB_* ohne Umgebung docker-hub“; the
+// message back to „Secrets and variables -> Actions“ → red „… nennt die Environment-Secrets“.
 test('Docker Hub credentials only in jobs with the docker-hub environment', () => {
   const jobs = YML.slice(YML.indexOf('\njobs:\n'));
   const bloecke = jobs.split(/^ {2}(?=[\w-]+:\s*$)/m).slice(1);

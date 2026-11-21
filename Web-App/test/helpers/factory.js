@@ -1,15 +1,15 @@
 'use strict';
 /**
- * Testdaten über die Dienste dieser Testdatei (testServices()) statt rohem SQL: Konto,
- * Haushalt und Erfassung entstehen so, wie der Server sie anlegt (Protokoll, Haushaltsregeln,
- * Erfassung samt Bestandszeile). Ändert sich das Schema, folgt die Fabrik dem Dienst.
- * Erst nach buildAndRequire(); im Systemrahmen (helpers/system-frame.js) wie jede Testvorbereitung.
+ * Test data via the services of this test file (testServices()) instead of raw SQL: account,
+ * household and entry are created the way the server creates them (log, household rules,
+ * entry including stock row). If the schema changes, the factory follows the service.
+ * Only after buildAndRequire(); in the system context (helpers/system-frame.js) like every test preparation.
  */
 const { testServices } = require('./sources');
 
 const PASSWORT = 'Fabrik-Passwort-2026';
 
-/** Ein Konto über konto.putAccountAn (ohne Verwalter: das Protokoll nennt keinen).
+/** An account via konto.putAccountAn (without administrator: the log names none).
  * @param {string} name @param {{ verwalter?: boolean }} [o] @returns {Promise<number>} */
 async function konto(name, o = {}) {
   const id = await testServices().account.putAccountAn(null, name, PASSWORT, !!o.verwalter);
@@ -17,7 +17,7 @@ async function konto(name, o = {}) {
   return id;
 }
 
-/** Hängt `unter` an `haupt` wie in der Oberfläche: Einladung anlegen und einlösen.
+/** Attaches `unter` to `haupt` as in the UI: create the invitation and redeem it.
  * @param {number} haupt @param {number} unter */
 async function subAccount(haupt, unter) {
   const h = testServices().household;
@@ -27,7 +27,7 @@ async function subAccount(haupt, unter) {
   if (r?.fehler) throw new Error(`Einlösen abgewiesen: ${r.fehler}`);
 }
 
-/** Ein Set mit einer Erfassung über sets.setErfassen, gebucht beim Konto `besitzer`.
+/** A set with one entry via sets.setErfassen, booked at the account `besitzer`.
  * @param {number} besitzer @param {string} setNumber
  * @param {{ menge?: number, preis?: number | null, zustand?: 'N' | 'U' }} [o] */
 async function setRecorded(besitzer, setNumber, o = {}) {

@@ -1,40 +1,40 @@
 /**
- * Kleine Befunde der UI-Prüfung 17 (Abläufe N2–N6, N9, N10, N12, N16, N20,
- * N22, N26), echtes Bündel in jsdom bzw. die Serverfunktion:
- *   - Ein schon vorhandenes Set zeigt im Erfassen-Dialog genau einen Knopf
- *     „Set öffnen“ (N2).
- *   - Kennzahlen: „1.565 verschiedene“ mit Trennzeichen; en zeigt 10828 als
- *     ganze Zahl, nicht „10.8K“ (N3, N4).
- *   - Der Seitentitel hat keine weichen Trennstriche (N5).
- *   - Ein Administrator namens „admin“ heisst in der Kopfleiste nicht „admin
- *     (Administrator)“ (N6).
- *   - Protokollzeiten stehen als 05.11.2026 (N9).
- *   - Leere Zugangsdaten speichern meldet „Zugang entfernt“ (N10).
- *   - Die Wiederherstellungscodes: „Ich habe die Codes gesichert“ und „Als
- *     Datei speichern“ (N12).
- *   - Minifiguren: „Gekauft am“ an der Karte, Gesamtzahl als erste Kennzahl
+ * Small findings of UI review 17 (flows N2–N6, N9, N10, N12, N16, N20,
+ * N22, N26), real bundle in jsdom or the server function:
+ *   - An already existing set shows exactly one button “open set” in the add dialog
+ *     (N2).
+ *   - Key figures: “1.565 verschiedene” with separators; en shows 10828 as
+ *     a whole number, not “10.8K” (N3, N4).
+ *   - The page title has no soft hyphens (N5).
+ *   - An administrator named “admin” is not called “admin
+ *     (Administrator)” in the header (N6).
+ *   - Log times stand as 05.11.2026 (N9).
+ *   - Saving empty credentials reports “access removed” (N10).
+ *   - The recovery codes: “I have saved the codes” and “save as
+ *     file” (N12).
+ *   - Minifigures: “bought on” on the card, total count as the first key figure
  *     (N16).
- *   - Merken eines vorhandenen Sets nennt die Sammlung (N20).
- *   - Mit Unterkonto und „Alle Konten“ sagt der Untertitel der Galerie
- *     „im Haushalt“ (N22; seit UI-Prüfung 22 bleibt der Titel fest).
- *   - Die Anmeldemaske nennt die Version statt eines festen Datums (N26).
+ *   - Remembering an existing set names the collection (N20).
+ *   - With a sub-account and “all accounts” the gallery subtitle says
+ *     “in the household” (N22; since UI review 22 the title stays fixed).
+ *   - The login mask names the version instead of a fixed date (N26).
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  fmtBig wieder ab 10000 kurz → rot: „Kennzahlen mit Trennzeichen“
- *   B  in showPageName das replace(/­/) entfernt → rot: „Titel ohne
- *      weiche Trennstriche“
- *   C  in showUsernames die Namensprüfung entfernt → rot: „admin ohne
- *      (Administrator)“; nur `name === 'admin' ||` entfernt (16.11.2026) → rot: ebenda (en)
- *   D  im Protokoll wieder toLocaleString → rot: „Protokoll mit fmtDatum“
- *   E  speichereZugang meldet immer okText → rot: „leere Zugangsdaten“
- *   F  in setUnbekannt der zweite Knopf wieder da → rot: „ein Knopf Set
- *      öffnen“
- *   G  merkMeldung ohne Abfrage der Sammlung → rot: „Merken nennt die
- *      Sammlung“
- *   H  collectionSubtitle() in initScopeSelects nicht aufgerufen → rot:
- *      „Haushalt im Untertitel“ (13.11.2026)
- *   I  insertVersion() gibt das HTML unverändert zurück → rot: „Version in
- *      der Anmeldemaske“
+ * Counter-checks (measured 05.11.2026, each alone, bundle rebuilt):
+ *   A  fmtBig short again from 10000 → red: “key figures with separators”
+ *   B  in showPageName the replace(/­/) removed → red: “title without
+ *      soft hyphens”
+ *   C  in showUsernames the name check removed → red: “admin without
+ *      (Administrator)”; only `name === 'admin' ||` removed (16.11.2026) → red: same place (en)
+ *   D  in the log again toLocaleString → red: “log with fmtDatum”
+ *   E  speichereZugang always reports okText → red: “empty credentials”
+ *   F  in setUnbekannt the second button back → red: “one button open
+ *      set”
+ *   G  merkMeldung without querying the collection → red: “remembering names the
+ *      collection”
+ *   H  collectionSubtitle() not called in initScopeSelects → red:
+ *      “household in the subtitle” (13.11.2026)
+ *   I  insertVersion() returns the HTML unchanged → red: “version in
+ *      the login mask”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -65,7 +65,7 @@ test('metrics with separators, complete in English too', async () => {
   } finally {
     en.w.close();
   }
-  // Britisch wie „catalogue“ (Prüfung 21): Die Werte schreiben „colour“, die Schlüssel bleiben.
+  // British like “catalogue” (review 21): the values write “colour”, the keys stay.
   assert.doesNotMatch(
     fs.readFileSync(path.join(__dirname, '..', 'public', 'locales', 'en.js'), 'utf8'),
     /:\s*'[^']*\bcolor/i,
@@ -147,7 +147,7 @@ test('empty credentials report "access removed"', async () => {
   try {
     o.d.getElementById('rb-key').value = '';
     o.d.getElementById('btn-sav-rb').click();
-    // Bestätigt wird am Knopf (meldeAmFeld), nicht im Toast.
+    // Confirmation happens at the button (meldeAmFeld), not in the toast.
     const stand = () => o.d.querySelector('#einst-rb .feld-status')?.textContent || '';
     assert.ok(await warte(() => /Zugang entfernt/.test(stand()), 2000), stand());
     assert.doesNotMatch(stand() + o.d.getElementById('toasts').textContent, /gespeichert/i);

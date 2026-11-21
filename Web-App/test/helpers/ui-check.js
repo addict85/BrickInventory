@@ -1,53 +1,53 @@
 /**
- * Die ganze Oberfläche in Chrome, für ein Design und ein Gerät (Rechner
- * 1280 × 900 oder Telefon 390 × 844), hell und dunkel: jeder Reiter, alle
- * Abschnitte der Einstellungen, die Seiten hinter dem Menü und die
- * wichtigsten Dialoge. Je Zustand: axe-core ohne Verstoss jeder Stufe, Layout, Tastatur …
+ * The whole UI in Chrome, for one design and one device (desktop
+ * 1280 × 900 or phone 390 × 844), light and dark: every tab, all
+ * sections of the settings, the pages behind the menu and the
+ * most important dialogs. Per state: axe-core without violation at any level, layout, keyboard …
  *
- * Gegenproben (30.10.2026, zusammen angewendet; welche Datei rot war, steht
- * in ihrem Kopf):
- *   A  .v-btn aus der 44-px-Regel in mobile.css → „Sicht gutscheine“ (26×26)
- *   B  farbfaecher --mut wieder #8a8a8a → fast jede Ansicht hell (3,45:1)
- *   C  ::placeholder-Regel entfernt → „Sammlung“, „Teile“ dunkel (3,55:1)
- *   D  Papierkorb der Set-Kachel wieder <button tabindex="-1"> → „Sammlung“
+ * Counter-checks (30.10.2026, applied together; which file was red is noted
+ * in its header):
+ *   A  .v-btn out of the 44 px rule in mobile.css → “view gutscheine” (26×26)
+ *   B  farbfaecher --mut back to #8a8a8a → almost every view light (3.45:1)
+ *   C  ::placeholder rule removed → “collection”, “parts” dark (3.55:1)
+ *   D  trash of the set tile back to <button tabindex="-1"> → “collection”
  *      (axe nested-interactive)
- *   E  Telefonregel des Import-Menüs entfernt → „Import-Menü“ (Überlauf)
- * Gegenproben (01.11.2026, je einzeln, gemessen an classic/rechner):
- *   F  `summary` aus FOKUSSIERBAR (dialoge.js) → „Set-Detail“ („Weitere
- *      Aktionen“ nicht per Tab erreichbar)
- *   G  Dateifeld der Anleitungen wieder display:none → „Set-Detail“ (Knopf ohne Tastatur)
- *   H  --feldrand wieder var(--bdr) → fast jede Ansicht (Feldgrenze 1,18:1)
- *   I  .btn ohne min-height 24px → „Hintergrundarbeiten“, „Set-Detail“ u. a. (21–23 px)
- * Gegenproben (02.11.2026, je einzeln):
- *   K  .bs wieder border var(--bdr) → classic/rechner „Sammlung“, „Teile“,
- *      „Einstellungen“, Sichten u. a. (Knopfgrenze, z. B. „Schliessen“)
- *   L  .vb.active ohne border-color → classic/rechner „Sammlung“, „Teile“,
- *      „Minifiguren“, „Benutzermenü“, „Import-Menü“ (aktiver Zustand „Karten“)
- *   M  noppe dunkel .ntab.active ohne hellen Rand → noppe/rechner „Sammlung“,
- *      „Teileliste“, „Finanzen“ u. a. (aktiver Zustand 1,13:1)
- * Gegenproben (04.11.2026, zusammen angewendet, classic/telefon und schmal):
- *   N  Merklisten-Zeile ohne eigene Zeile für Etikett und Preis → „Merkliste“
- *      (schmal 0 px, 7 Zeilen: .mk-titel)
- *   O  Seitentitel der Sammlung ohne min-height 44px → „Teile“ (verdeckt:
- *      Untertitel unter „Importieren“)
- *   P  (einzeln, 320 px Seitenschrift 200 %) Finanzzeile ohne die
- *      Container-Abfrage 17rem → „Finanzen“ (schmal 0 px: .fin-name)
- * Gegenproben (04.11.2026, Bestand mit Unterkonto, patternHousehold):
- *   Q  .toast-aktion wieder --b500, .pl-chip-name wieder --mut →
- *      classic/rechner „Toast mit Aktion“ (3,67:1) und „Bauliste mit Sets“ (4,37:1)
- *   R  .haushalt-liste wieder max-content max-content ohne Umbruch des Knopfs
- *      → 390 px Seitenschrift 200 % „Sicht haushalt“ (Überlauf 432 px);
- *      mit patternCollection statt patternHousehold blieb dieselbe Prüfung grün —
- *      die Lücke, durch die der Befund der UI-Prüfung 12 rutschte.
- * Gegenproben (04.11.2026, je einzeln; Wortbruch, Zeichenfläche, Auswahlfeld):
- *   S  Zeitraumknöpfe wieder im 2×2-Raster ohne nowrap, Diagrammkarte mit
- *      vollem Innenrand → 320 px Seitenschrift 200 % „Finanzen“ (Wortbruch
- *      „Woch|e“, „Mona|t“); nur Raster und nowrap zurück blieb grün, weil der
- *      schmalere Innenrand allein schon Platz schafft
- *   T  axesSituation immer aussen → 320 px Seitenschrift 200 % „Finanzen“
- *      (schmal (Diagramm) -2 px Kurve) und „Set-Detail“ (101 px)
- *   U  Merklisten-Filter wieder je halbe Zeile → 320 px EN „Merkliste“
- *      (Auswahl gekürzt „All conditions“)
+ *   E  phone rule of the import menu removed → “import menu” (overflow)
+ * Counter-checks (01.11.2026, each alone, measured on classic/desktop):
+ *   F  `summary` out of FOKUSSIERBAR (dialoge.js) → “set detail” (“more
+ *      actions” not reachable via Tab)
+ *   G  file field of the instructions back to display:none → “set detail” (button without keyboard)
+ *   H  --feldrand back to var(--bdr) → almost every view (field border 1.18:1)
+ *   I  .btn without min-height 24px → “background jobs”, “set detail” and others (21–23 px)
+ * Counter-checks (02.11.2026, each alone):
+ *   K  .bs again border var(--bdr) → classic/desktop “collection”, “parts”,
+ *      “settings”, views and others (button border, e.g. “Schliessen”)
+ *   L  .vb.active without border-color → classic/desktop “collection”, “parts”,
+ *      “minifigures”, “user menu”, “import menu” (active state “Karten”)
+ *   M  noppe dark .ntab.active without light border → noppe/desktop “collection”,
+ *      “parts list”, “finances” and others (active state 1.13:1)
+ * Counter-checks (04.11.2026, applied together, classic/phone and narrow):
+ *   N  wishlist row without its own row for label and price → “wishlist”
+ *      (narrow 0 px, 7 lines: .mk-titel)
+ *   O  page title of the collection without min-height 44px → “parts” (obscured:
+ *      subtitle under “Importieren”)
+ *   P  (alone, 320 px page font 200 %) finance row without the
+ *      container query 17rem → “finances” (narrow 0 px: .fin-name)
+ * Counter-checks (04.11.2026, stock with sub-account, patternHousehold):
+ *   Q  .toast-aktion back to --b500, .pl-chip-name back to --mut →
+ *      classic/desktop “toast with action” (3.67:1) and “build list with sets” (4.37:1)
+ *   R  .haushalt-liste again max-content max-content without wrapping the button
+ *      → 390 px page font 200 % “view haushalt” (overflow 432 px);
+ *      with patternCollection instead of patternHousehold the same check stayed green —
+ *      the gap through which the finding of UI review 12 slipped.
+ * Counter-checks (04.11.2026, each alone; word break, canvas, select field):
+ *   S  period buttons again in a 2×2 grid without nowrap, chart card with
+ *      full padding → 320 px page font 200 % “finances” (word break
+ *      “Woch|e”, “Mona|t”); only grid and nowrap back stayed green because the
+ *      narrower padding alone already makes room
+ *   T  axesSituation always outside → 320 px page font 200 % “finances”
+ *      (narrow (chart) -2 px curve) and “set detail” (101 px)
+ *   U  wishlist filters again half a row each → 320 px EN “wishlist”
+ *      (selection shortened “All conditions”)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -58,7 +58,7 @@ const { AXE_LAUF, LAYOUT, tabCheck } = require('./layout-measurement');
 const DEVICES = { rechner: [1280, 900, false], telefon: [390, 844, true] };
 
 const klick = sel => `document.querySelector(${JSON.stringify(sel)})?.click(); true`;
-/** Eine Datei in ein verstecktes Dateifeld legen und `change` auslösen. */
+/** Put a file into a hidden file field and trigger `change`. */
 const datei = (
   sel,
   name,
@@ -72,7 +72,7 @@ const WANTED_XML = `<INVENTORY>
 <ITEM><ITEMTYPE>S</ITEMTYPE><ITEMID>10294-1</ITEMID><MINQTY>1</MINQTY></ITEM>
 <ITEM><ITEMTYPE>P</ITEMTYPE><ITEMID>99999zz</ITEMID><COLOR>5</COLOR><MINQTY>2</MINQTY></ITEM>
 </INVENTORY>`;
-/** Kleinstes gültiges PDF mit einer Seite; PDF.js baut die Querverweise selbst. */
+/** Smallest valid PDF with one page; PDF.js builds the cross references itself. */
 const PDF =
   '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n' +
   '3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 300 400]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n';
@@ -87,7 +87,7 @@ const VIEWS = [
   ['Merkliste', [reiter('wanted')]],
   ['Katalog', [reiter('catalog')]],
   ['Hintergrundarbeiten', [reiter('monitor')]],
-  // Alle Abschnitte auf einmal: Sie stehen sonst einzeln da, gemessen wird dasselbe.
+  // All sections at once: otherwise they stand alone, the same is measured.
   [
     'Einstellungen',
     [
@@ -112,7 +112,7 @@ const VIEWS = [
   ['Teil aus Set', [reiter('parts'), klick('.part-card[data-click="openSetItemDetail"]')]],
   ['Merkposten-Detail', [reiter('wanted'), klick('.mk-zeile[data-click="oeffneMerkpostenDetail"]')]],
   ['Löschen bestätigen', [reiter('parts'), klick('.man-tile .delbtn')]],
-  // Ein Toast mit Knopf und die Bauliste mit Chips, darunter einer, den der Katalog nicht kennt.
+  // A toast with a button and the build list with chips, among them one the catalog does not know.
   ['Toast mit Aktion', [reiter('gallery'), `location.hash = '#/sammlung/set/99999-9'; true`]],
   [
     'Bauliste mit Sets',
@@ -123,7 +123,7 @@ const VIEWS = [
       klick('#btn-pl-gen'),
     ],
   ],
-  // Dateidialoge ohne Datei auf der Platte: DataTransfer legt sie dem Feld unter, wie eine Wahl im Dialog.
+  // File dialogs without a file on disk: DataTransfer slips it to the field, like a choice in the dialog.
   ['Wanted-XML', [reiter('parts'), datei('#wanted-xml-part', 'wanted.xml', 'text/xml', WANTED_XML)]],
   [
     'CSV-Fortschritt',
@@ -160,7 +160,7 @@ const CLOSE = `(() => {
   const pop = document.getElementById('umenu-pop'); if (pop) pop.style.display = 'none';
   return true; })()`;
 
-/** Registriert den Test für ein Design und ein Gerät. */
+/** Registers the test for one design and one device. */
 function checkUi(design, geraet) {
   test(`UI ${design}, ${geraet}: axe and layout`, { concurrency: 1, timeout: 300_000 }, async t => {
     const app = await startApp(t, {
@@ -175,12 +175,12 @@ function checkUi(design, geraet) {
     const { b } = app;
     const [w, h, mobil] = DEVICES[geraet];
     await b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: mobil });
-    // Ohne Rebrickable-Schlüssel öffnet nach dem Start der Einrichtungsassistent.
+    // Without a Rebrickable key the setup wizard opens after startup.
     await warte(1000);
     await b.auswerten(klick('#einrichtung-modal.open [data-click="einrichtungSpaeter"]'));
     const bild = () =>
       b.auswerten(`new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`);
-    // Statt fester Pausen: warten, bis keine Anfrage mehr läuft, dann zwei Bilder.
+    // Instead of fixed pauses: wait until no request runs anymore, then two frames.
     await b.auswerten(`(() => { if (window.__offen === undefined) { window.__offen = 0; const f = window.fetch;
       window.fetch = (...a) => { window.__offen++; return f(...a).finally(() => setTimeout(() => window.__offen--, 60)); }; } return true; })()`);
     const ruhig = async () => {
@@ -191,7 +191,7 @@ function checkUi(design, geraet) {
 
     for (const [ansicht, schritte] of VIEWS) {
       const funde = [];
-      // Steht die Anmeldemaske da, misst der Rest nur sie; dann lieber die Ursache nennen.
+      // If the login mask is shown, the rest only measures it; then better name the cause.
       if (await b.auswerten(`getComputedStyle(document.getElementById('app')).display === 'none'`))
         assert.fail(`Sitzung vor „${ansicht}“ verloren; 401 auf: ${app.abgewiesen.join(', ') || 'keine'}`);
       await b.auswerten(CLOSE);
@@ -216,21 +216,21 @@ function checkUi(design, geraet) {
   });
 }
 
-/** Funde, die grosse Schrift betreffen: Überlauf, Abschneiden, Überlappung, Tippziel, Leiste, schmaler oder verdeckter Text, Wortbruch.
- * Ein gekürztes Auswahlfeld zählt nur bei normaler Schrift: Bei 200 % passt nicht jeder Eintrag in 320 px. */
+/** Findings that concern large font: overflow, cut-off, overlap, tap target, bar, narrow or obscured text, word break.
+ * A shortened select field only counts at normal font: at 200 % not every entry fits into 320 px. */
 const GROSS = /^(Überlauf|abgeschnitten|Überlappung|Tippziel|Leiste|schmal|verdeckt|Wortbruch)/;
 const BAR = `[...document.querySelectorAll('nav .ntab')].filter(t => t.checkVisibility()).map(t => t.querySelector('.tab-label'))
   .filter(l => l.getBoundingClientRect().width <= 1 || l.scrollWidth > l.clientWidth + 1).map(l => 'Leiste: „' + l.textContent.trim() + '“ abgeschnitten')`;
 
 /**
- * Alle Ansichten bei 320 px (oder `breite`) und 200 % Schrift, in allen sechs Designs hell
- * und dunkel. `modus` 'browser' vergrössert wie die Browsereinstellung
- * (Page.setFontSizes), 'seite' setzt die Grundschrift der Seite auf 200 %,
- * 'schmal' misst 320 px bei normaler Schrift auf Englisch.
+ * All views at 320 px (or `breite`) and 200 % font, in all six designs light
+ * and dark. `modus` 'browser' enlarges like the browser setting
+ * (Page.setFontSizes), 'seite' sets the page's base font to 200 %,
+ * 'schmal' measures 320 px at normal font in English.
  */
 function checkLargeFont(modus, breite = 320) {
   test(`UI ${breite} px (${modus}): all views`, { concurrency: 1, timeout: 300_000 }, async t => {
-    // Schmal auf Englisch: Die längeren Beschriftungen sind dort der enge Fall.
+    // Narrow in English: the longer labels are the tight case there.
     const app = await startApp(t, {
       name: `ofl_gross_${modus}_${process.pid}`,
       bestand: patternHousehold,
@@ -267,7 +267,7 @@ function checkLargeFont(modus, breite = 320) {
         await warte(250);
       }
       await warte(400);
-      // Gemessen wird der geladene Inhalt, nicht das Gerüst davor (Marktpreis im Set-Dialog).
+      // What is measured is the loaded content, not the skeleton before it (market price in the set dialog).
       await app
         .bis(`!document.querySelector('.ovl.open .skelett-zeile, .tab.active .skelett-zeile')`, 'Inhalt geladen', 40)
         .catch(() => {});

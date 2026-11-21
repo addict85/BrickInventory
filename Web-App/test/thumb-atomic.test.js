@@ -1,15 +1,15 @@
 /**
- * Vorschaubilder entstehen ATOMAR: Beide Erzeuger (vorschauErzeugenAus für eigene
- * Bilder, createProxyPreview für den Bild-Proxy) schreiben auf einen temporären
- * Namen und benennen erst die fertige Datei um. Eine unbrauchbar kleine
- * Vorschau im Cache wird verworfen, ausgeliefert wird das Original.
+ * Previews arise ATOMICALLY: both producers (vorschauErzeugenAus for own
+ * images, createProxyPreview for the image proxy) write to a temporary
+ * name and only rename the finished file. An unusably small
+ * preview in the cache is discarded, the original is delivered.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, dist neu gebaut):
- *   A  in thumbs.ts direkt auf thumbFs geschrieben (rename entfernt) → rot:
- *      „vorschauErzeugenAus schreibt …“
- *   B  dasselbe in proxyThumbs.ts → rot: „createProxyPreview schreibt …“
- *   C  in imgCacheServe.ts `tst.size < 200` → `< 20` → rot: „eine
- *      unbrauchbar kleine Vorschau …“
+ * Counter-checks (measured 10.11.2026, each on its own, dist rebuilt):
+ *   A  in thumbs.ts written directly to thumbFs (rename removed) → red:
+ *      “vorschauErzeugenAus writes …”
+ *   B  the same in proxyThumbs.ts → red: “createProxyPreview writes …”
+ *   C  in imgCacheServe.ts `tst.size < 200` → `< 20` → red: “an
+ *      unusably small preview …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -23,7 +23,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const sharp = require('sharp');
 
-// Die Vorschau-Sperre hält eine eigene Verbindung offen; mitgeschrieben, damit der Test sie schliessen kann.
+// The preview lock holds its own connection open; recorded so that the test can close it.
 const eigene = [];
 const standard = testAccess();
 const connect = standard.ownConnection;
@@ -39,7 +39,7 @@ test.after(async () => {
     .catch(() => {});
 });
 
-/** Ruft `work` und schreibt jedes rename mit: Quelle, Ziel, gab es das Ziel schon, wie gross war die Quelle. */
+/** Calls `work` and records every rename: source, target, did the target already exist, how big was the source. */
 async function withRenameTrack(work) {
   const echt = fs.promises.rename;
   const spur = [];
@@ -105,7 +105,7 @@ test('createProxyPreview writes via a temporary file', async t => {
   );
   assert.equal(ergebnis, true);
   checkAtomic(spur, ziel);
-  // 400 × 300 eingepasst, nicht zugeschnitten (UX-Prüfung 25, B1).
+  // 400 × 300 fitted, not cropped (UX check 25, B1).
   assert.deepEqual([(await sharp(ziel).metadata()).width, (await sharp(ziel).metadata()).height], [200, 150]);
 });
 

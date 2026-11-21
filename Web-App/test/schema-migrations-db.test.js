@@ -1,10 +1,10 @@
 /**
- * Schema-Änderungen gehören in db/migrations/ — nicht in initSchema().
+ * Schema changes belong in db/migrations/ — not in initSchema().
  *
- * Gegenprobe (10.11.2026 gemessen): in 0015-api-tokens-sliding.sql die Spalte
- * `slidingx` genannt → rot: „api_tokens.sliding gibt es …“ (die Migration legt
- * sie nicht an). Den Teil „frisch“ prüft die Vorlage-Datenbank des Testlaufs
- * (aus db/basis.sql); diese Gegenprobe ist nicht gemessen.
+ * Counter-check (measured 10.11.2026): in 0015-api-tokens-sliding.sql the column
+ * named `slidingx` → red: “api_tokens.sliding exists …” (the migration does not
+ * create it). The part „fresh“ is checked by the template database of the test run
+ * (from db/basis.sql); this counter-check is not measured.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -23,7 +23,7 @@ test.after(() =>
     .catch(() => {}),
 );
 
-/** Gemessen am Tag der Behebung. Die Zahl darf nur kleiner werden. */
+/** Counted on the day of the fix. The number may only get smaller. */
 const INVENTORY_ALTER = 0;
 
 test('no new column change in db/database.ts', () => {
@@ -38,19 +38,19 @@ test('no new column change in db/database.ts', () => {
       `api_tokens.sliding im Betrieb ausgeblieben und hat die Anmeldung zerlegt.`,
   );
 
-  // Seit db/basis.sql steht in db/database.ts gar kein Schema mehr; das
-  // Muster prüft die Gegenprobe an einem Beispiel, damit es nicht leerläuft.
+  // Since db/basis.sql there is no schema at all in db/database.ts any more; the
+  // counter-check tests the pattern on an example so that it does not run empty.
   assert.equal(('x ALTER TABLE foo ADD COLUMN bar'.match(/ALTER TABLE \w+ ADD COLUMN/g) || []).length, 1);
 });
 
 test('api_tokens.sliding exists on a fresh and on a migrated database', async t => {
-  // Ohne die Spalte scheitert createToken() und damit Login und QR-Login.
+  // Without the column createToken() fails and with it login and QR login.
   const db = await dataOrSkip(t, _req);
   if (!db) return;
   const spalte = await db.get(`SELECT data_type FROM information_schema.columns
     WHERE table_schema = current_schema() AND table_name = 'api_tokens' AND column_name = 'sliding'`);
   assert.equal(spalte?.data_type, 'boolean', 'api_tokens.sliding fehlt');
-  // Eine gewachsene Datenbank bekommt sie aus der Migration: Spalte weg, deren Anweisung erneut.
+  // A grown database gets it from the migration: column gone, its statement again.
   await db.run('ALTER TABLE api_tokens DROP COLUMN sliding');
   t.after(() => db.run('ALTER TABLE api_tokens ADD COLUMN IF NOT EXISTS sliding BOOLEAN NOT NULL DEFAULT FALSE'));
   const dateien = fs.readdirSync(path.join(ROOT, 'db/migrations')).filter(f => f.endsWith('.sql'));

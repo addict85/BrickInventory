@@ -1,5 +1,5 @@
 /**
- * Was ein Ersatzteil ist, entscheidet EINE Stelle.
+ * What a spare part is is decided by ONE place.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -18,7 +18,7 @@ const db = testData();
 
 after(() => db.pool.end().catch(() => {}));
 
-/** Alle .ts-Dateien der Server-Ordner. */
+/** All .ts files of the server folders. */
 function serverFiles() {
   const out = [];
   const lauf = d => {
@@ -39,14 +39,14 @@ test('the spellings are enumerated in only one place', () => {
   const dateien = serverFiles();
   assert.ok(dateien.length >= 40, `Nur ${dateien.length} Server-Dateien gefunden — Pfad veraltet?`);
 
-  // Zwei Formen, beide OHNE Fenster — ein Fenster von 200 Zeichen hat beim
-  // ersten Versuch quer über den Zeilenumbruch hinweg den FILTER-Parameter
-  // (`spare === '1'`) mitgefangen und drei von vier Treffern waren falsch.
+  // Two forms, both WITHOUT a window — a window of 200 characters caught, on the
+  // first attempt, the FILTER parameter across the line break
+  // (`spare === '1'`), and three of four hits were wrong.
   const suspicious = [/\bis_spare\s*===?\s*'(?:t|true|True|1)'/, /===?\s*'True'/];
   const gefunden = [];
   for (const datei of dateien) {
     const rel = path.relative(ROOT, datei).split(path.sep).join('/');
-    if (rel === 'src/infra/validate.ts') continue; // DIE eine Stelle
+    if (rel === 'src/infra/validate.ts') continue; // THE one place
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
     if (suspicious.some(r => r.test(src))) gefunden.push(rel);
   }
@@ -60,10 +60,10 @@ test('the spellings are enumerated in only one place', () => {
       'Ersatzteil-Plakette jahrelang nicht gezeichnet wurde.',
   );
 
-  // Selbstbeweis: Der Helfer muss die Schreibweisen wirklich kennen — sonst
-  // wäre die Prüfung oben grün, weil es nirgends mehr etwas zu finden gibt.
+  // Self-proof: the helper must really know the notations — otherwise
+  // the check above would be green because there is nothing left to find anywhere.
   const helper = fs.readFileSync(path.join(ROOT, 'src/infra/validate.ts'), 'utf8');
-  // istErsatzteil() liest mit isJa(), der Lesart aller Ja/Nein-Werte von aussen.
+  // istErsatzteil() reads with isJa(), the reading of all yes/no values from outside.
   const i = helper.indexOf('export function isJa(');
   assert.ok(i > 0, 'isJa() fehlt');
   const rumpf = helper.slice(i, helper.indexOf('\n}', i));
@@ -79,21 +79,21 @@ test('the response carries a real boolean', async t => {
   }
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
-  // initSchemaOnce() — nicht initSchema(): Es faehrt anschliessend die
-  // nummerierten Migrationen (db/database.ts, `const applied = await
-  // runMigrations(client)`). Die Kataloge aus Migration 0034 gibt es nur dort,
-  // und das Ersatzteilkennzeichen steht seit 0034 in set_parts_catalog.
+  // initSchemaOnce() — not initSchema(): afterwards it runs the
+  // numbered migrations (db/database.ts, `const applied = await
+  // runMigrations(client)`). The catalogs from migration 0034 only exist there,
+  // and since 0034 the spare part flag stands in set_parts_catalog.
   await db.initSchemaOnce();
 
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('spare','x')`);
   const uid = (await db.get(`SELECT id FROM users WHERE username='spare'`)).id;
   await holdsSet(db, uid, '75192-1', 1);
-  // ── is_spare gehoert zur TEILELISTE des Sets, nicht zum Teil ────────────
+  // ── is_spare belongs to the PARTS LIST of the set, not to the part ────────────
   //
-  // Seit Migration 0034 steht es in set_parts_catalog, und das ist die
-  // richtige Stelle: Derselbe Stein ist in einem Set Ersatzteil und im
-  // naechsten Pflichtteil. Die Frage dieses Tests bleibt dieselbe — kommt
-  // beim Leser ein echter Wahrheitswert an.
+  // Since migration 0034 it stands in set_parts_catalog, and that is the
+  // right place: the same brick is a spare part in one set and a required part in the
+  // next. The question of this test stays the same — does a real
+  // boolean arrive at the reader.
   await db.run(`INSERT INTO set_parts (set_number,part_number,color_id,quantity,is_spare)
                 VALUES ('75192-1','3001',4,10,true),
                        ('75192-1','3020',0,2,false)`);

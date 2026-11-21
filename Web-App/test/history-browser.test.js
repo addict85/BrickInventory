@@ -1,17 +1,17 @@
 /**
- * Adresse und Verlauf in Chrome: Jede Ansicht hat ihre Adresse, „Zurück“
- * führt zur vorigen Ansicht und schliesst offene Dialoge, ein Neuladen oder
- * ein Link öffnet die genannte Ansicht, Filter stehen als Query darin.
+ * Address and history in Chrome: every view has its address, “back”
+ * leads to the previous view and closes open dialogs, a reload or
+ * a link opens the named view, filters stand in it as a query.
  *
- * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  reportView(tab) in bindTabs entfernt → rot: „Reiter schreiben die
- *      Adresse“ (bleibt „#/sammlung“) und die drei folgenden
- *   B  beiDialogWechsel(dialogSwitched) in router.js entfernt → rot:
- *      „Zurück schliesst den Dialog“ (Dialog bleibt, Ansicht wechselt)
- *   C  routeOnStart() in showApp entfernt → rot: alle vier (der Router
- *      startet nie; „Neuladen“ zeigt die Sammlung statt der Finanzen)
- *   D  reportFilter() im Ereignis der Filterfelder entfernt → rot: „Filter in
- *      der Adresse“
+ * Counter-checks (measured 03.11.2026, each alone):
+ *   A  reportView(tab) removed in bindTabs → red: “tabs write the
+ *      address” (stays “#/sammlung”) and the three following
+ *   B  beiDialogWechsel(dialogSwitched) removed in router.js → red:
+ *      “back closes the dialog” (dialog stays, view switches)
+ *   C  routeOnStart() removed in showApp → red: all four (the router
+ *      never starts; “reload” shows the collection instead of the finances)
+ *   D  reportFilter() removed in the event of the filter fields → red: “filter in
+ *      the address”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -28,7 +28,7 @@ test('address and history', { timeout: 180_000 }, async t => {
     return;
   }
   const { b, bis, ruhig } = app;
-  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  // Startup loads settings and prices afterwards; only then is the state fixed.
   await ruhig();
   const zustand = () => b.auswerten(ZUSTAND);
   const zurueck = async () => {
@@ -54,7 +54,7 @@ test('address and history', { timeout: 180_000 }, async t => {
     assert.match(offen.url, /^#\/sammlung\/set\/\d+-\d+$/);
     await zurueck();
     assert.deepEqual(await zustand(), { url: '#/sammlung', ansicht: 'tab-gallery', dialoge: [] });
-    // Mit dem Knopf geschlossen: Der Eintrag des Dialogs fällt weg, Zurück führt zur vorigen Ansicht.
+    // Closed with the button: the dialog's entry drops, back leads to the previous view.
     await b.auswerten(`history.forward(); true`);
     await warte(800);
     assert.deepEqual((await zustand()).dialoge, ['set-modal']);

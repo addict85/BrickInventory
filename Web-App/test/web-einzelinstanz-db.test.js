@@ -1,23 +1,23 @@
 /**
- * Es läuft genau ein Web-Prozess je Datenbank (startup/singleInstance.ts): Drossel,
- * PDF-Tickets und Zwischenspeicher liegen in seinem Speicher. Ein zweiter wartet
- * auf das Ende des ersten und gibt dann mit klarer Meldung auf; reisst die Sperr-
- * verbindung ab, holt der Prozess die Sperre zurück oder gibt auf.
+ * Exactly one web process runs per database (startup/singleInstance.ts): throttle,
+ * PDF tickets and cache live in its memory. A second one waits
+ * for the first to end and then gives up with a clear message; if the lock
+ * connection drops, the process reclaims the lock or gives up.
  *
- * Gegenproben (12.11.2026 gemessen, je einzeln):
- *   A  in server.ts den Aufruf holdWebLock() gestrichen → rot: „der echte Server
- *      wartet, solange ein anderer die Sperre hält“
- *   B  in versuche() pg_try_advisory_lock durch `SELECT true AS ok` ersetzt → rot:
- *      „ein zweiter Zugang bekommt die Sperre nicht …“
- *   C  im Fehlerzuhörer von halte() nichts zurückholen (nur `client = null`) → rot:
- *      „nach einem Abriss holt der Prozess die Sperre zurück“
- *   D  bei einem Verbindungsfehler aufgeben statt es erneut zu versuchen → rot: „fehlt
- *      die Datenbank eine Weile, holt er die Sperre danach zurück“
- *   E  (13.11.2026) ohne `database =` in halter(), während eine ANDERE Datenbank
- *      im Cluster die Sperre hält → rot: „ein zweiter Zugang …“ (2 statt 1); mit
- *      der Bedingung unter derselben Störung grün
+ * Counter-checks (measured 12.11.2026, each individually):
+ *   A  in server.ts the call holdWebLock() deleted → red: “the real server
+ *      waits as long as another one holds the lock”
+ *   B  in attemptsProcessLock() pg_try_advisory_lock replaced by `SELECT true AS ok` → red:
+ *      “a second access does not get the lock …”
+ *   C  in the error listener of hold() reclaim nothing (only `client = null`) → red:
+ *      “after a disconnect the process gets the lock back”
+ *   D  give up on a connection error instead of retrying → red: “if the
+ *      database is missing for a while, it gets the lock back afterwards”
+ *   E  (13.11.2026) without `database =` in halter(), while ANOTHER database
+ *      in the cluster holds the lock → red: “a second access …” (2 instead of 1); with
+ *      the condition green under the same disturbance
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,7 +38,7 @@ test('one web process per database', { concurrency: 1 }, async t => {
   const db = await accessOrSkip(t, _req);
   if (!db) return;
   const { holdWebLock: realLock, SecondWebProcess } = _req('startup/singleInstance.js');
-  // Jede gehaltene Sperre wird am Ende freigegeben, auch wenn ein Fall vorher scheitert.
+  // Every held lock is released at the end, even if a case fails before.
   const offen = new Set();
   const holdWebLock = async (zugang, o) => {
     const f = await realLock(zugang, o);
@@ -58,7 +58,7 @@ test('one web process per database', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   const halter = () =>
-    // pg_locks gilt für den ganzen Cluster: Parallele Testdateien halten dieselbe Sperre auf ihrer Kopie.
+    // pg_locks applies to the whole cluster: parallel test files hold the same lock on their copy.
     db.all(
       `SELECT pid FROM pg_locks WHERE locktype = 'advisory' AND classid = $1 AND objid = 0 AND granted
               AND database = (SELECT oid FROM pg_database WHERE datname = current_database())`,
@@ -136,7 +136,7 @@ test('one web process per database', { concurrency: 1 }, async t => {
     try {
       await admin.query(`ALTER DATABASE "${name}" ALLOW_CONNECTIONS false`);
       await admin.query('SELECT pg_terminate_backend($1)', [pid]);
-      // Länger als die Wartefrist (300 ms): Ein Verbindungsfehler ist kein zweiter Prozess.
+      // Longer than the wait period (300 ms): a connection error is not a second process.
       await bis(() => false, 800);
     } finally {
       await admin.query(`ALTER DATABASE "${name}" ALLOW_CONNECTIONS true`);

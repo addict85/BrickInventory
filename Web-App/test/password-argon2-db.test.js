@@ -1,18 +1,18 @@
 /**
- * Passwörter als argon2id (src/account/passwordHash.ts): Neue Hashes sind argon2id, ein
- * bcrypt-Hash aus der Zeit davor gilt weiter und wird bei der ersten erfolgreichen
- * Anmeldung ersetzt, nicht bei einer gescheiterten. Über die echte Route /login und die
- * Laufzeitrolle (der Hash wird im Systemrahmen gelesen und geschrieben).
+ * Passwords as argon2id (src/account/passwordHash.ts): new hashes are argon2id, a
+ * bcrypt hash from the time before still applies and is replaced at the first successful
+ * login, not at a failed one. Via the real route /login and the
+ * runtime role (the hash is read and written in the system frame).
  *
- * Gegenproben (14.11.2026 gemessen, je einzeln):
- *   A  in checkCredentials das Ersetzen nach needsNewHash gestrichen → rot:
- *      „ein bcrypt-Hash wird bei der Anmeldung ersetzt“ ($2b$04$ bleibt)
- *   B  das Ersetzen vor die Passwortprüfung gezogen (auch bei Fehlversuch) → rot:
- *      „… ein Fehlversuch ersetzt nichts“ (der Hash hiess danach argon2id)
- *   C  replacePasswordHash aus der Systemliste in src/account/context.ts gestrichen →
- *      rot: „ein bcrypt-Hash …“ (permission denied for table users, 500)
- *   D  passwordFits prüft nur noch bcrypt → rot: „neue Hashes sind argon2id …“ und
- *      „… danach mit argon2id“ (die zweite Anmeldung 401)
+ * Counter-checks (measured 14.11.2026, each on its own):
+ *   A  in checkCredentials the replacing after needsNewHash deleted → red:
+ *      “a bcrypt hash is replaced at login” ($2b$04$ stays)
+ *   B  the replacing moved before the password check (also on a failed attempt) → red:
+ *      “… a failed attempt replaces nothing” (the hash was argon2id afterwards)
+ *   C  replacePasswordHash deleted from the system list in src/account/context.ts →
+ *      red: “a bcrypt hash …” (permission denied for table users, 500)
+ *   D  passwordFits only checks bcrypt → red: “new hashes are argon2id …” and
+ *      “… afterwards with argon2id” (the second login 401)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -59,7 +59,7 @@ test('argon2id and replacing old bcrypt hashes', { concurrency: 1, timeout: 60_0
     assert.ok(h.startsWith(ARGON2_PREFIX), h.slice(0, 40));
     assert.equal(await passwordFits(PASS, h), true);
     assert.equal(await passwordFits(`${PASS}x`, h), false);
-    // Was hinter Byte 72 steht, zählt (bcrypt schnitt es ab).
+    // What stands behind byte 72 counts (bcrypt cut it off).
     const lang = 'L'.repeat(80);
     assert.equal(await passwordFits(`${lang}b`, await hashePassword(`${lang}a`)), false);
   });

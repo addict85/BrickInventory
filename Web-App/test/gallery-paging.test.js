@@ -1,17 +1,17 @@
 /**
- * Seitenweise Listen am Server, an den Routen gegen die Datenbank:
- * Sortier-Whitelist mit Rückfall, gebundener Suchbegriff, Themenliste über
- * den ganzen Bestand nur auf Seite 1, Zähler über Gruppen, ohne page_size
- * alles. Das Verhalten der Oberfläche prüft test/listen-paging-ui.test.js.
+ * Paged lists on the server, on the routes against the database:
+ * sort whitelist with fallback, bound search term, theme list over
+ * the whole stock only on page 1, counter over groups, without page_size
+ * everything. The UI behavior is checked by test/listen-paging-ui.test.js.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
- *   A  in SET_SORTS qty_asc auf `s.quantity DESC, …` → rot: „nach Anzahl …“
- *   B  fromTable(SET_SORTS, …) durch `SET_SORTS[sort] ?? …` ersetzt → rot:
- *      „unbekannte Sortierung …“ (constructor liefert eine Funktion → 500)
- *   C  in setsLesen `themen: !!page_size && …` durch `themen: !!page_size` →
- *      rot: „die Themenliste …“ (Seite 2 trägt Themen)
- *   D  im Figurenzähler GROUP BY ohne m.source/LOWER(TRIM) durch
- *      `GROUP BY m.set_number, m.fig_number` → rot: „Minifiguren zählen …“
+ * Counter-checks (measured 10.11.2026, each alone, reverted):
+ *   A  in SET_SORTS qty_asc to `s.quantity DESC, …` → red: “by quantity …”
+ *   B  fromTable(SET_SORTS, …) replaced by `SET_SORTS[sort] ?? …` → red:
+ *      “unknown sorting …” (constructor delivers a function → 500)
+ *   C  in setsLesen `themen: !!page_size && …` replaced by `themen: !!page_size` →
+ *      red: “the theme list …” (page 2 carries themes)
+ *   D  in the minifigure counter GROUP BY without m.source/LOWER(TRIM) replaced by
+ *      `GROUP BY m.set_number, m.fig_number` → red: “minifigures count …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -24,7 +24,7 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { holdsSet, holdsMinifig, holdsPart, catalogSet } = require('./helpers/inventory');
 
-// Fünf Sets: Menge, Thema und Aufnahmezeit so, dass jede Sortierung eine andere Folge ergibt.
+// Five sets: quantity, theme and time added such that every sorting yields a different order.
 const SETS = [
   { nr: '77101-1', name: 'Alpha', theme: 'Burg', menge: 3, vor: 5 },
   { nr: '77102-1', name: "O'Brien 100%", theme: 'Stadt', menge: 1, vor: 4 },
@@ -53,7 +53,7 @@ test('page-by-page lists on the server', { concurrency: 1 }, async t => {
       [uid, s.nr, s.vor],
     );
   }
-  // Dieselbe Figur in zwei Sets und eine zweite: zwei Gruppen.
+  // The same minifigure in two sets and a second one: two groups.
   await holdsMinifig(db, uid, 'fig-0001', { setNumber: '77101-1' });
   await holdsMinifig(db, uid, 'FIG-0001 ', { setNumber: '77103-1' });
   await holdsMinifig(db, uid, 'fig-0002', { setNumber: '77104-1' });

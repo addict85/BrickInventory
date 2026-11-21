@@ -1,18 +1,18 @@
 /**
- * scripts/geheimnisse-einrichten.sh legt die Dateien an, die compose.yaml als
- * Docker-Secrets einhängt: neu erzeugt, aus einer alten .env übernommen, nie
- * überschrieben, und ohne das Passwort einer bestehenden Datenbank gar nicht.
- * Das Skript läuft wirklich (sh in einem Sandkasten).
+ * scripts/geheimnisse-einrichten.sh creates the files that compose.yaml mounts as
+ * Docker secrets: newly generated, taken over from an old .env, never
+ * overwritten, and not at all without the password of an existing database.
+ * The script really runs (sh in a sandbox).
  *
- * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  `chmod 700 "$ORDNER"` gestrichen → rot: „ein zweiter Lauf …“ (ein
- *      vorhandener Ordner mit 755 bleibt offen)
- *   B  die Prüfung auf ./pgdata18 ohne DB_PASSWORD gestrichen → rot: „eine
- *      bestehende Datenbank ohne DB_PASSWORD …“ (neues Passwort erzeugt)
- *   C  in richte_ein die Abfrage `[ -s "$ORDNER/$1" ]` gestrichen → rot: „ein
- *      zweiter Lauf …“ (session_secret neu erzeugt)
- *   D  compose.yaml: Datei ./geheimnisse/pgweb_passwort statt …_password → rot: „compose.yaml
- *      hängt genau diese Dateien ein“
+ * Counter-checks (measured 03.11.2026, each on its own):
+ *   A  `chmod 700 "$ORDNER"` deleted → red: “a second run …” (an
+ *      existing folder with 755 stays open)
+ *   B  the check for ./pgdata18 without DB_PASSWORD deleted → red: “an
+ *      existing database without DB_PASSWORD …” (new password generated)
+ *   C  in richte_ein the query `[ -s "$ORDNER/$1" ]` deleted → red: “a
+ *      second run …” (session_secret newly generated)
+ *   D  compose.yaml: file ./geheimnisse/pgweb_passwort instead of …_password → red: “compose.yaml
+ *      mounts exactly these files”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -59,7 +59,7 @@ test('a new installation gets random secrets, only reachable by the owner', t =>
   assert.match(s.lies('db_app_password'), /^[0-9a-f]{48}$/);
   assert.notEqual(s.lies('db_password'), s.lies('db_app_password'));
   assert.match(s.lies('db_migration_password'), /^[0-9a-f]{48}$/);
-  // Leer heisst: Die Leserolle meldet sich nicht an.
+  // Empty means: the reader role does not log in.
   assert.equal(s.lies('pgweb_db_password'), '');
 });
 
@@ -82,7 +82,7 @@ test('an existing installation takes over the values from .env', t => {
   assert.equal(s.lies('session_secret'), 'alt-sitzung-mindestens-zweiunddreissig-zeichen');
   assert.equal(s.lies('db_password'), 'su+/=pw');
   assert.equal(s.lies('db_app_password'), 'app pw');
-  // Die Migrationsrolle kam später dazu; db-rolle setzt ihr Passwort, ein neues passt also.
+  // The migration role was added later; db-rolle sets its password, so a new one fits.
   assert.match(s.lies('db_migration_password'), /^[0-9a-f]{48}$/);
   assert.match(s.lies('db_system_password'), /^[0-9a-f]{48}$/);
   assert.match(s.lies('db_system_web_password'), /^[0-9a-f]{48}$/);

@@ -1,5 +1,5 @@
 /**
- * Der Lagerort muss im DETAIL stehen — und nur in den Konten, die ihn haben.
+ * The storage location must stand in the DETAIL — and only in the accounts that have it.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -11,9 +11,9 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
-// Ein Bestand ist seit Migration 0036 ZWEI Zeilen: eine in `sets` („dieses
-// Konto haelt dieses Set") und eine je Kauf in `set_acquisitions`. holdsSet()
-// legt beide an — siehe test/helpers/inventory.js.
+// Since migration 0036 a stock entry is TWO rows: one in `sets` („this
+// account holds this set") and one per purchase in `set_acquisitions`. holdsSet()
+// creates both — see test/helpers/inventory.js.
 const { holdsSet, holdsPart, catalogSet } = require('./helpers/inventory');
 const { testServer } = require('./helpers/server');
 
@@ -39,10 +39,10 @@ async function seed() {
   MAIN = (await db.get("SELECT id FROM users WHERE username='haupt'")).id;
   KIND = (await db.get("SELECT id FROM users WHERE username='kind'")).id;
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [MAIN, KIND]);
-  // Der Setname steht im Katalog, die Stueckzahl in der Erfassung, nicht an der Bestandszeile.
+  // The set name stands in the catalog, the piece count in the capture, not on the stock row.
   await catalogSet(db, SN, { name: 'Falcon' });
-  // Das Set gehört dem HAUPTKONTO. Das Unterkonto hat gar keine Zeile — genau
-  // die Lage, in der ein Eintrag in seinem Vorrat nichts beschreibt.
+  // The set belongs to the MAIN ACCOUNT. The sub-account has no row at all — exactly
+  // the situation in which an entry in its stock describes nothing.
   await holdsSet(db, MAIN, SN, 1);
 }
 
@@ -66,8 +66,8 @@ test('storage location: detail and stock against a real database', async t => {
     ...require('./helpers/sources').testArea('household'),
   };
   const writable = await household.schreibbereich(MAIN);
-  // Vorbedingung: Das Blickfeld umfasst wirklich BEIDE Konten, sonst prüft
-  // Befund 2 unten nichts.
+  // Precondition: the scope really covers BOTH accounts, otherwise
+  // finding 2 below checks nothing.
   assert.ok(
     writable.includes(MAIN) && writable.includes(KIND),
     `schreibbereich lieferte ${writable} — der Haushalt steht nicht`,
@@ -88,8 +88,8 @@ test('storage location: detail and stock against a real database', async t => {
         'dann ein leeres Feld, obwohl der Ort in der Datenbank steht',
     );
 
-    // Liste und Detail müssen dasselbe sagen. Genau zwischen diesen beiden ist
-    // schon die MENGE auseinandergelaufen (siehe readSet in src/sets/read.ts).
+    // List and detail must say the same. Exactly between these two
+    // the QUANTITY already drifted apart (see readSet in src/sets/read.ts).
     const liste = await S.setsLesen(writable, { page: 1, page_size: 10 });
     const zeile = (liste.sets || []).find(s => s.set_number === SN);
     assert.ok(zeile, 'Das Set fehlt in der Liste');
@@ -100,9 +100,9 @@ test('storage location: detail and stock against a real database', async t => {
         `${JSON.stringify(detail.storage)} — zwei Antworten auf dieselbe Frage`,
     );
 
-    // ── GEGENPROBE: die Abfrage in ihrer frueheren Form ────────────────────
-    // `SELECT s.*` ohne aufgeloesten Namen. Sie liefert storage_id und kein
-    // storage — genau das gemeldete Bild.
+    // ── COUNTER-CHECK: the query in its earlier form ────────────────────
+    // `SELECT s.*` without a resolved name. It delivers storage_id and no
+    // storage — exactly the reported picture.
     const alt = await db.get(`SELECT s.* FROM sets s WHERE s.user_id = ANY($1) AND s.set_number = $2 LIMIT 1`, [
       writable,
       SN,
@@ -126,9 +126,9 @@ test('storage location: detail and stock against a real database', async t => {
         'Kontofilter und zeigen kein einziges Set',
     );
 
-    // ── GEGENPROBE: der frühere INSERT ─────────────────────────────────────
-    // Er legte den Ort für jedes schreibbare Konto an. Hier ausgeführt, muss
-    // der Phantom-Eintrag im Unterkonto entstehen — und danach wieder weg.
+    // ── COUNTER-CHECK: the earlier INSERT ─────────────────────────────────────
+    // It created the place for every writable account. Executed here,
+    // the phantom entry must arise in the sub-account — and afterwards be gone again.
     await db.run(
       `INSERT INTO storage_locations (user_id, name)
        SELECT id, $2 FROM users WHERE id = ANY($1)
@@ -150,9 +150,9 @@ test('storage location: detail and stock against a real database', async t => {
   });
 
   await t.test('a place on a foreign set leaves no entry', async () => {
-    // Diese Eigenschaft hatte der frühere Weg über eine Transaktion mit
-    // Rücknahme. Sie muss bleiben, auch wenn die Rücknahme weggefallen ist:
-    // Jetzt wird vorher gefragt, wer überhaupt eine Zeile hält.
+    // This property was had by the earlier path via a transaction with
+    // rollback. It must stay, even though the rollback has gone away:
+    // now it is asked beforehand who holds a row at all.
     const n = await L.setLocation('set', writable, ['99999-1'], 'Garage');
     assert.equal(n, 0, 'Ein Set, das niemand hält, darf keine Zeile treffen');
     for (const [wer, id] of [
@@ -168,9 +168,9 @@ test('storage location: detail and stock against a real database', async t => {
   });
 
   await t.test('the sub-account gets its own entry as soon as it holds a row', async () => {
-    // Die Kehrseite von Befund 2: Nicht „nur das Hauptkonto", sondern „wer die
-    // Zeile hält". Hält das Unterkonto ein Exemplar, gehört der Ort auch dorthin
-    // — und zwar als EIGENE Zeile, weil ein Regal in einer Wohnung steht
+    // The flip side of finding 2: not „only the main account", but „whoever
+    // holds the row". If the sub-account holds a copy, the place belongs there too
+    // — and as an OWN row, because a shelf stands in one flat
     // (Migration 0020). …
     await holdsSet(db, KIND, SN, 1);
     const n = await L.setLocation('set', writable, [SN], 'Keller');
@@ -182,7 +182,7 @@ test('storage location: detail and stock against a real database', async t => {
       const orte = (await L.locationsOf([id])).map(o => o.name);
       assert.ok(orte.includes('Keller'), `Der Vorrat des ${wer} hat „Keller" nicht: ${orte}`);
     }
-    // Und das Detail fasst beide zusammen, statt einen zu verschweigen.
+    // And the detail combines both instead of concealing one.
     await L.setLocation('set', [MAIN], [SN], 'Estrich');
     const detail = await S.readSet(writable, SN);
     assert.equal(
@@ -195,9 +195,9 @@ test('storage location: detail and stock against a real database', async t => {
 });
 
 /**
- * Der Lagerortfilter der Set-Liste, über die ROUTE geprüft. Gegenprobe: `storage` aus
- * der Weitergabe in routes/api_v1/sets.ts entfernt → rot („2 Sets statt 1“); ohne Filter
- * kommen beide Sets (sonst bestünde auch eine leere Liste).
+ * The storage location filter of the set list, checked via the ROUTE. Counter-check: `storage` removed from
+ * the passing-on in routes/api_v1/sets.ts → red („2 Sets statt 1“); without a filter
+ * both sets come (otherwise an empty list would pass too).
  */
 test("the lists' storage location filter works via the route", async t => {
   try {
@@ -212,14 +212,14 @@ test("the lists' storage location filter works via the route", async t => {
     ..._req('src/inventory/storageLocation.js'),
     ...require('./helpers/sources').testArea('inventory').locationService,
   };
-  // Ein zweites Set OHNE Lagerort — ohne es hätte der Filter nichts
-  // auszusieben, und „alle" wäre von „die richtigen" nicht zu unterscheiden.
+  // A second set WITHOUT a storage location — without it the filter would have nothing
+  // to sift out, and „all" would be indistinguishable from „the right ones".
   const OHNE = '21058-1';
   await catalogSet(db, OHNE, { name: 'Cheops' });
   await holdsSet(db, MAIN, OHNE, 1);
   await L.setLocation('set', [MAIN], [SN], 'Estrich');
 
-  // Ein Teil in derselben Kiste und eines ohne — für die Teileliste daneben.
+  // A part in the same box and one without — for the parts list next to it.
   await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES
                   ('3001','Brick 2x4'), ('3002','Brick 2x3')
                 ON CONFLICT (part_number) DO NOTHING`);
@@ -228,8 +228,8 @@ test("the lists' storage location filter works via the route", async t => {
                 ON CONFLICT (part_number, color_id) DO NOTHING`);
   await holdsPart(db, MAIN, '3001', { setNumber: SN, menge: 2, colorId: 4 });
   await holdsPart(db, MAIN, '3002', { setNumber: OHNE, menge: 2, colorId: 4 });
-  // Die Schluessel sind eine FLACHE Liste in der Reihenfolge von BEDINGUNG
-  // (src/inventory/storageLocation.ts): fuer ein Teil Nummer UND Farbe, also zwei Einträge.
+  // The keys are a FLAT list in the order of the CONDITION
+  // (src/inventory/storageLocation.ts): for a part number AND color, i.e. two entries.
   await L.setLocation('part', [MAIN], ['3001', 4], 'Estrich');
 
   const { base } = testServer(_req, { sitzung: { userId: MAIN }, t });
@@ -268,8 +268,8 @@ test("the lists' storage location filter works via the route", async t => {
   });
 
   await t.test('sets: a place that does not exist delivers nothing', async () => {
-    // Die Gegenrichtung: Ohne sie wäre der Fall darüber auch grün, wenn der
-    // Filter jeden Wert auf dasselbe eine Set abbildete.
+    // The opposite direction: without it the case above would be green too if the
+    // filter mapped every value to the same one set.
     const d = await hole('/api/v1/sets?page=1&page_size=60&storage=Dachboden');
     assert.deepEqual(
       (d.sets || []).map(s => s.set_number),

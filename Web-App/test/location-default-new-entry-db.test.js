@@ -1,32 +1,32 @@
 /**
- * Marcos Stern gilt auch dort, wo kein Formular steht.
+ * Marco's star applies also where no form stands.
  *
- * ── Gegenproben (am 20.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
+ * ── Counter-checks (MEASURED on 20.10., numbers copied) ──────────────────
  *
- * Ausgangslage: `# pass 8 / # fail 0` (sieben Faelle und ihre Huelle).
+ * Starting point: `# pass 8 / # fail 0` (seven cases and their wrapper).
  *
- *   A  die drei Anlegehuellen auf normalizeLocation() zurueckgestellt
- *      (also der Stand von Marcos Befund)
- *      → `pass 5 / fail 3`. Rot sind ZWEI Faelle: „ein Teil ohne Ortangabe
- *        bekommt die Vorgabe" (`null statt 'Kiste 7'` — Marcos Befund in
- *        Zahlen) und „eine Figur ohne Ortangabe bekommt sie auch".
+ *   A  the three create wrappers reset to normalizeLocation()
+ *      (i.e. the state of Marco's finding)
+ *      → `pass 5 / fail 3`. TWO cases are red: “a part without a place
+ *        gets the default” (`null instead of 'Kiste 7'` — Marco's finding in
+ *        numbers) and “a figure without a place gets it too”.
  *
- *        „Ein Set wuerde sie ebenfalls bekommen" bleibt dabei GRUEN, und das
- *        ist keine Nachlaessigkeit, sondern die Grenze dieses Falls: Er prueft
- *        locationForNewEntry() direkt, weil der Weg durch addSet() hier kein
- *        Rebrickable hat. Er sagt also etwas ueber den Wert, nicht darueber,
- *        dass addSet ihn holt. Wer die Huelle dort aendert, merkt es an dieser
- *        Pruefung NICHT — nachgewiesen eben hier.
- *   B  in locationForNewEntry() die Zeile `if (given !== undefined …)`
- *      entfernt (also ein leeres Feld wieder wie Schweigen behandelt)
- *      → `pass 6 / fail 2`. Rot: „ein ausdruecklich geleertes Feld bleibt
- *        leer". Das ist die Haelfte, die den Stern erst brauchbar macht.
- *   C  `vorgabeVon` durch eine Fassung ohne den JOIN auf storage_locations
- *      ersetzt (nur die Zahl aus den Einstellungen)
- *      → `pass 6 / fail 2`. Rot: „eine Vorgabe, deren Ort geloescht wurde,
- *        gilt nicht". Die Heilung steckt im JOIN, nicht hier.
+ *        “a set would get it as well” stays GREEN, and that
+ *        is no negligence but the boundary of this case: it checks
+ *        locationForNewEntry() directly, because the path through addSet() has no
+ *        Rebrickable here. So it says something about the value, not about
+ *        addSet fetching it. Whoever changes the wrapper there does NOT notice it
+ *        with this check — proven right here.
+ *   B  in locationForNewEntry() the line `if (given !== undefined …)`
+ *      removed (i.e. an empty field again treated like silence)
+ *      → `pass 6 / fail 2`. Red: “an explicitly cleared field stays
+ *        empty”. That is the half that makes the star usable in the first place.
+ *   C  `vorgabeVon` replaced by a version without the JOIN on storage_locations
+ *      (only the number from the settings)
+ *      → `pass 6 / fail 2`. Red: “a default whose place was deleted
+ *        does not apply”. The healing lies in the JOIN, not here.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
  * REQUIRE_DB=1.
  */
 require('./helpers/system-frame');
@@ -40,9 +40,9 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
 
-// Rebrickable vorgeben (testSources): Ohne Namen im Rumpf fragt addManualPart/addManualMinifig
-// den Katalog und danach notfalls Rebrickable. Hier geht es um den Lagerort,
-// nicht um den Namen — der Abruf soll nicht ueber das Netz greifen.
+// Set up Rebrickable (testSources): without a name in the body addManualPart/addManualMinifig asks
+// the catalog and then, if needed, Rebrickable. This is about the storage location,
+// not about the name — the fetch should not reach over the network.
 testSources(null, {
   lookupPart: async () => null,
   getMinifigInfo: async () => null,
@@ -106,8 +106,8 @@ test('the storage location default applies to every new capture', { concurrency:
     )?.name ?? null;
 
   await t.test('a part without a place gets the default', async () => {
-    // Genau so ruft der Wanted-Import an (routes/api_v1/wanted.ts, `creator`):
-    // Nummer, Farbe, Menge, Zustand — kein storage.
+    // Exactly like this the wanted import calls (routes/api_v1/wanted.ts, `creator`):
+    // number, color, quantity, condition — no storage.
     await addManualPart(UID, { part_number: '3001', color_id: 4, quantity: 1 });
     assert.equal(await locationOfPart('3001'), 'Kiste 7');
   });
@@ -123,8 +123,8 @@ test('the storage location default applies to every new capture', { concurrency:
   });
 
   await t.test('a set would get it as well', async () => {
-    // Nicht durch addSet hindurch — siehe den Kopf. Geprueft ist der Wert, den
-    // die Huelle in src/sets/service.ts aus demselben Aufruf erhaelt.
+    // Not through addSet — see the header. What is checked is the value that
+    // the wrapper in src/sets/service.ts gets from the same call.
     assert.equal(await locationForNewEntry(UID, undefined), 'Kiste 7');
     assert.equal(
       await locationForNewEntry(UID, null),

@@ -1,14 +1,14 @@
 /**
- * PDF.js steht unter Abhängigkeitsverwaltung: pdfjs-dist mit exakter Fassung
- * in package.json und Lockfile (sichtbar für npm audit und Dependabot);
- * public/vendor/pdfjs/ ist eine Kopie, die scripts/copy-pdfjs.js beim
- * Bauen schreibt. Läuft die Kopie der Fassung hinterher, wird dieser Test rot.
+ * PDF.js is under dependency management: pdfjs-dist with an exact version
+ * in package.json and lockfile (visible for npm audit and Dependabot);
+ * public/vendor/pdfjs/ is a copy that scripts/copy-pdfjs.js writes when
+ * building. If the copy lags behind the version, this test turns red.
  *
- * Gegenproben (am 01.11.2026 gemessen):
- *   A  package.json "pdfjs-dist": "^6.1.200" → rot: „exakte Fassung …“
- *   B  ?v=6.1.199 in public/js/pdfjs-boot.js → rot: „Cache-Brecher …“
- *   C  ein Byte in public/vendor/pdfjs/pdf.min.mjs angehängt → rot: „die
- *      ausgelieferten Dateien sind die des Pakets“
+ * Counter-checks (measured on 01.11.2026):
+ *   A  package.json "pdfjs-dist": "^6.1.200" → red: “exact version …”
+ *   B  ?v=6.1.199 in public/js/pdfjs-boot.js → red: “cache buster …”
+ *   C  a byte appended to public/vendor/pdfjs/pdf.min.mjs → red: “the
+ *      delivered files are those of the package”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -45,9 +45,9 @@ test('the delivered files are those of the package', t => {
     );
 });
 
-// Ab PDF.js 5 gibt es den eval-Pfad für Schriften nicht mehr; eine ältere
-// Fassung brächte ihn zurück (die CSP verböte ihn, isEvalSupported auch).
-// Gegenprobe (02.11.2026 gemessen): `new Function("x")` an eine Kopie gehängt → rot.
+// From PDF.js 5 on the eval path for fonts no longer exists; an older
+// version would bring it back (the CSP would forbid it, isEvalSupported too).
+// Counter-check (measured 02.11.2026): `new Function("x")` appended to a copy → red.
 test('the delivered PDF.js files contain neither eval nor new Function', () => {
   for (const d of [
     path.join(ROOT, 'public', 'vendor', 'pdfjs', 'pdf.min.mjs'),

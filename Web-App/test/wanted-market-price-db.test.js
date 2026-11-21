@@ -1,16 +1,16 @@
 /**
- * Die Merkliste zeigt den Marktpreis — und zwar den des richtigen Zustands.
+ * The wishlist shows the market price — namely that of the right condition.
  *
- * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
- *   a) Zustandsbedingung im JOIN entfernt → Schritte 2 und 5 rot.
- *   b) Währungsbedingung im JOIN entfernt → alle fünf rot (die Zeile findet
- *      dann drei Preiszeilen statt einer und vervielfacht das Ergebnis).
- *   c) Number() weggelassen → BLIEB GRÜN. Das ist kein Mangel des Tests,
- *      sondern eine Messung: db/database.ts:63 setzt einen Typ-Leser, der
- *      NUMERIC schon als Zahl liefert. Die Umwandlung ist damit ein Netz und
- *      keine Umrechnung — der Kommentar an der Stelle sagt das jetzt auch.
+ * ── Counter-checks (performed, result in the commit) ─────────────────────────
+ *   a) condition clause in the JOIN removed → steps 2 and 5 red.
+ *   b) currency clause in the JOIN removed → all five red (the row then
+ *      finds three price rows instead of one and multiplies the result).
+ *   c) Number() omitted → STAYED GREEN. That is not a flaw of the test,
+ *      but a measurement: db/database.ts:63 sets a type parser that already
+ *      returns NUMERIC as a number. The conversion is thus a safety net and
+ *      not a conversion — the comment at that place now says so too.
  *
- * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
+ * Prerequisite: test DB (content is wiped!) via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -38,15 +38,15 @@ async function seed() {
   await db.run(`INSERT INTO users (username, password_hash) VALUES ('ich','x')`);
   U.ich = (await db.get(`SELECT id FROM users WHERE username='ich'`)).id;
 
-  // Zwei Merkposten auf DASSELBE Set, in beiden Zuständen — daran hängt die
-  // wichtigste Aussage.
+  // Two wishlist items for the SAME set, in both conditions — the most
+  // important statement depends on that.
   for (const c of ['N', 'U']) {
     await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,'10179-1',$2)`, [U.ich, c]);
   }
   await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,'75192-1','N')`, [U.ich]);
 
-  // Preise: neu 500, gebraucht 300 — und in einer ANDEREN Währung ein
-  // abweichender Wert, damit ein fehlender Währungsvergleich auffällt.
+  // Prices: new 500, used 300 — and in a DIFFERENT currency a
+  // deviating value, so that a missing currency comparison stands out.
   for (const [c, p, w] of [
     ['N', 500, 'EUR'],
     ['U', 300, 'EUR'],
@@ -58,7 +58,7 @@ async function seed() {
       [c, w, p],
     );
   }
-  // 75192-1 bleibt ohne Preis — „noch keiner im Cache" ist ein gültiger Fall.
+  // 75192-1 stays without a price — "none in the cache yet" is a valid case.
 }
 
 async function dbReachable() {
@@ -80,10 +80,10 @@ test('wishlist: market price from the cache', async t => {
   const M = _req('src/wanted/wanted.js');
 
   await t.test('1. the price arrives as a number', async () => {
-    // Dass er das tut, liegt am Typ-Leser in db/database.ts (Gegenprobe c),
-    // nicht am Number() in merkliste.ts. Die Prüfung
-    // steht trotzdem hier: Fiele der Leser weg, verglichen beide Oberflächen
-    // später Text, und das fiele sonst erst beim Sortieren auf.
+    // That it does so is due to the type parser in db/database.ts (counter-check c),
+    // not to the Number() in the wishlist code. The check
+    // stays here anyway: if the parser went away, both UIs would later
+    // compare text, and that would otherwise only show up when sorting.
     const liste = await M.wantedItemsOf([U.ich], undefined, 'EUR');
     const neu = liste.find(w => w.set_number === '10179-1' && w.condition === 'N');
     assert.equal(typeof neu.marktpreis, 'number', `marktpreis ist ${typeof neu.marktpreis}`);
@@ -92,8 +92,8 @@ test('wishlist: market price from the cache', async t => {
   });
 
   await t.test('2. every condition gets ITS price', async () => {
-    // Ohne die Zustandsbedingung im JOIN stünde beim gebrauchten Merkposten
-    // der Neupreis — und niemand sähe es der Zahl an.
+    // Without the condition clause in the JOIN the used wishlist item would show
+    // the new price — and nobody could tell from the number.
     const liste = await M.wantedItemsOf([U.ich], undefined, 'EUR');
     const karte = Object.fromEntries(
       liste.filter(w => w.set_number === '10179-1').map(w => [w.condition, w.marktpreis]),
@@ -109,19 +109,19 @@ test('wishlist: market price from the cache', async t => {
   });
 
   await t.test('4. no price in the cache means null, not 0', async () => {
-    // 0 wäre „wertlos", null ist „noch keiner da" — die Oberflächen zeigen
-    // dafür einen Strich. Der Unterschied ist der zwischen einer Aussage und
-    // einer fehlenden Aussage.
+    // 0 would be "worthless", null is "none there yet" — the UIs show
+    // a dash for it. The difference is that between a statement and
+    // a missing statement.
     const liste = await M.wantedItemsOf([U.ich], undefined, 'EUR');
     const ohne = liste.find(w => w.set_number === '75192-1');
     assert.equal(ohne.marktpreis, null);
   });
 
   await t.test('5. the filter on ONE set still works', async () => {
-    // Die Währung ist ein zusätzlicher Parameter geworden; ihre Nummer hängt
-    // davon ab, ob der Set-Filter gesetzt ist. Genau dort entstünde ein
-    // Zahlendreher, und er wäre still: Postgres bekäme die Währung als
-    // Setnummer und liefe leer.
+    // The currency has become an additional parameter; its number depends
+    // on whether the set filter is set. Exactly there a transposed number
+    // would arise, and it would be silent: Postgres would get the currency as
+    // set number and return nothing.
     const eins = await M.wantedItemsOf([U.ich], '10179-1', 'EUR');
     assert.equal(eins.length, 2, `${eins.length} Zeilen statt 2 — Parameterfolge verrutscht?`);
     assert.ok(eins.every(w => w.set_number === '10179-1'));

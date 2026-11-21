@@ -1,13 +1,13 @@
 /**
- * Registrierung und API-Schlüssel ändert der Server nur mit Passwort. Die
- * Oberfläche schickt erst ohne; verlangt der Server es
- * (aktuelles_passwort_erforderlich), fragt sie im Dialog und schickt erneut.
- * Abbrechen nimmt das Häkchen zurück.
+ * The server only changes registration and API key with a password. The
+ * UI sends without it first; if the server demands it
+ * (aktuelles_passwort_erforderlich), it asks in a dialog and sends again.
+ * Cancelling takes the checkmark back.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  saveRegEnabled() wieder mit api('POST', …) statt saveSettings()
- *      → rot: „die Registrierung fragt nach dem Passwort“, „Abbrechen …“
- *   B  btn-sav-rb wieder mit api('POST', …) → rot: „der API-Schlüssel fragt …“
+ * Counter-checks (measured 04.11.2026, each on its own):
+ *   A  saveRegEnabled() again with api('POST', …) instead of saveSettings()
+ *      → red: “registration asks for the password”, „Abbrechen …“
+ *   B  btn-sav-rb again with api('POST', …) → red: “the API key asks …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,7 +16,7 @@ const { openUi, reiter, warte } = require('./helpers/ui');
 const openDialog = d => d.getElementById('confirm-modal').style.display === 'flex';
 const posts = aufrufe =>
   aufrufe.filter(a => a.method === 'POST' && /\/v1\/settings$/.test(a.url)).map(a => JSON.parse(a.body));
-/** Der Server verlangt das Passwort, bis es im Rumpf steht. */
+/** The server demands the password until it stands in the body. */
 const SERVER = {
   '/v1/settings': (_url, o) =>
     o?.method === 'POST' && !JSON.parse(o.body).admin_password

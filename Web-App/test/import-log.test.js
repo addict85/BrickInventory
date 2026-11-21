@@ -1,13 +1,13 @@
 /**
- * Das Protokoll des Import-Balkens: EINE Fassung, und keine Zeile ohne Namen.
+ * The log of the import bar: ONE version, and no line without a name.
  *
- * Gegenproben (10.11.2026 gemessen):
- *   A  in set-csv-import.js eine zweite function logRow() → rot:
- *      „nur EINE Fassung …“
- *   B  'csv.items_progress' im Deutschen auf „{done} / {total} Sets“ → rot:
- *      „der Fortschrittstext …“
- * Dass keine Zeile an logRow vorbei entsteht, prüft das Ergebnis in
- * csv-import-result-ui.test.js („Ergebnisliste mit Zeilen“).
+ * Counter-checks (measured 10.11.2026):
+ *   A  a second function logRow() in set-csv-import.js → red:
+ *      “only ONE version …”
+ *   B  'csv.items_progress' in German to “{done} / {total} Sets” → red:
+ *      “the progress text …”
+ * That no line arises past logRow is checked by the result in
+ * csv-import-result-ui.test.js (“result list with lines”).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,7 +25,7 @@ test('only ONE version builds the line for the import log', () => {
     .readdirSync(path.join(ROOT, 'public', 'js'))
     .filter(n => n.endsWith('.js') && n !== 'app.bundle.js')
     .map(n => ['public/js/' + n, ohneKommentare(lies('public/js/' + n))]);
-  // Selbstnachweis: Fände die Suche kaum Dateien, wäre die Regel leer wahr.
+  // Self-proof: if the search found hardly any files, the rule would be vacuously true.
   assert.ok(quellen.length >= 20, `Nur ${quellen.length} Oberflächen-Dateien gefunden — die Suche greift nicht mehr`);
 
   const definiert = quellen.filter(([, js]) => /function logRow\s*\(/.test(js));
@@ -39,7 +39,7 @@ test('only ONE version builds the line for the import log', () => {
 });
 
 test('the progress text does not talk about sets', () => {
-  // Derselbe Balken trägt Sets, Teile und Minifiguren; geprüft an den geladenen Wörterbüchern.
+  // The same bar carries sets, parts and minifigures; checked on the loaded dictionaries.
   const { de, en } = require('./helpers/sources').loadTranslations();
   assert.equal(de['csv.sets_progress'] ?? en['csv.sets_progress'], undefined, 'der alte Schlüssel ist zurück');
   for (const [sprache, text] of [

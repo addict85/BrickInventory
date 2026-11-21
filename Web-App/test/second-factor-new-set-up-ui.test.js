@@ -1,15 +1,15 @@
 /**
- * Zweiter Faktor im Profil, in jsdom. Ein Verwalter muss einen haben: Für ihn heisst „Abschalten“
- * „Neu einrichten“, ein Dialog fragt Passwort und Code zusammen, und die Einrichtung beginnt gleich
- * im Pflichtfeld — ohne zweite Passwortfrage, mit „Schlüssel kopieren“ und otpauth://-Link fürs
- * Telefon. Ein gewöhnliches Konto schaltet ab, wie der Text sagt, ohne Einrichtung danach.
+ * Second factor in the profile, in jsdom. An admin must have one: for him „Abschalten“ means
+ * „Neu einrichten“, a dialog asks for password and code together, and the setup begins right away
+ * in the required field — without a second password question, with „Schlüssel kopieren“ and an otpauth:// link for the
+ * phone. An ordinary account switches off as the text says, without a setup afterwards.
  *
- * Gegenproben (16.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in zfAbschalten() `withCode: true` gestrichen → rot: beide Tests (Codefeld verborgen)
- *   B  in zfAbschalten() `begonnen = null` statt der Einrichtung → rot: „Verwalter“ (kein Schlüssel im
- *      Pflichtfeld)
- *   C  den otpauth-Link nie sichtbar geschaltet → rot: „Verwalter“ (Link verborgen)
- *   D  Knopf immer „Abschalten“ → rot: „Verwalter“ ('Abschalten' statt 'Neu einrichten')
+ * Counter-checks (measured 16.11.2026, each on its own, bundle rebuilt):
+ *   A  `withCode: true` deleted in zfAbschalten() → red: both tests (code field hidden)
+ *   B  in zfAbschalten() `begonnen = null` instead of the setup → red: “admin” (no key in the
+ *      required field)
+ *   C  the otpauth link never made visible → red: “admin” (link hidden)
+ *   D  button always „Abschalten“ → red: “admin” ('Abschalten' instead of 'Neu einrichten')
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

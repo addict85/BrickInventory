@@ -1,5 +1,5 @@
 /**
- * Die Farben, die BEIDE Oberflaechen gleich fuehren muessen, stehen EINMAL.
+ * The colors BOTH UIs must carry identically appear ONCE.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -7,11 +7,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { buildCss, QUELLE, TARGET_CSS } = require('../scripts/generate-design-tokens.js');
 
-// TREE, nicht ROOT: In jeder anderen Testdatei dieses Ordners heisst `ROOT`
-// die Wurzel der WEB-APP. eigenbruecken.test.js prueft darauf gestuetzt jeden
-// `path.join(TREE, ...)` gegen den Web-Baum — und meldete diese Datei prompt
-// als kaputt, weil hier die Wurzel des REPOSITORYS gemeint ist. Derselbe Name
-// fuer zwei verschiedene Dinge; der Name wechselt, nicht die Regel.
+// TREE, not ROOT: in every other test file of this folder `ROOT` means
+// the root of the WEB APP. eigenbruecken.test.js relies on that to check every
+// `path.join(TREE, ...)` against the web tree — and promptly reported this file
+// as broken because the root of the REPOSITORY is meant here. The same name
+// for two different things; the name changes, not the rule.
 const TREE = path.join(__dirname, '..', '..');
 const CSS_BASIS = path.join(TREE, 'Web-App', 'public', 'styles.css');
 const CSS_BRICK = path.join(TREE, 'Web-App', 'public', 'themes', 'brick.css');
@@ -19,10 +19,10 @@ const CSS_MOBILE = path.join(TREE, 'Web-App', 'public', 'mobile.css');
 const INDEX = path.join(TREE, 'Web-App', 'public', 'index.html');
 const DATEN = JSON.parse(fs.readFileSync(QUELLE, 'utf8'));
 
-// Die Kotlin-Erzeugnisse (DesignTokens.kt, DunkelTokens.kt) prüft der Android-Lauf mit
+// The Kotlin products (DesignTokens.kt, DunkelTokens.kt) are checked by the Android run with
 // `node scripts/generate-design-tokens.js --pruefen`.
 test('the generated stylesheet matches shared/design-tokens.json', () => {
-  // Gegenprobe (30.10., gemessen): dort "txt" von Hand auf #e6e9ee → rot.
+  // Counter-check (30.10., measured): "txt" set to #e6e9ee by hand there → red.
   assert.equal(
     fs.readFileSync(TARGET_CSS, 'utf8'),
     buildCss(DATEN),
@@ -32,14 +32,14 @@ test('the generated stylesheet matches shared/design-tokens.json', () => {
 });
 
 test('no handwritten stylesheet redefines a generated token', () => {
-  // Ein eigenes --b600 in styles.css gewänne (später geladen); die App folgte weiter der Quelle.
+  // An own --b600 in styles.css would win (loaded later); the app would keep following the source.
   const erzeugt = new Set(Object.values(DATEN.designs).flatMap(t => Object.keys(t)));
   assert.ok(erzeugt.size >= 10, `Nur ${erzeugt.size} erzeugte Tokens — greift die Suche noch?`);
 
   const doppelt = [];
   for (const datei of [CSS_BASIS, CSS_BRICK, CSS_MOBILE]) {
-    // Die dunklen Varianten (seit 29.10.) sind eine zweite Belegung derselben
-    // Namen; gelesen wird hier die helle.
+    // The dark variants (since 29.10.) are a second assignment of the same
+    // names; the light one is read here.
     const src = fs
       .readFileSync(datei, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -59,8 +59,8 @@ test('no handwritten stylesheet redefines a generated token', () => {
 });
 
 test('index.html loads the generated tokens', () => {
-  // Ohne diese Zeile liefert jedes var(--b600) im Web nichts — und zwar still:
-  // Die Seite baut sich auf, nur farblos.
+  // Without this line every var(--b600) in the web delivers nothing — and silently:
+  // the page builds up, only colorless.
   const html = fs.readFileSync(INDEX, 'utf8');
   const place = html.indexOf('/tokens.css');
   assert.ok(
@@ -68,19 +68,19 @@ test('index.html loads the generated tokens', () => {
     'index.html laedt /tokens.css nicht — im Web fehlt dann ' +
       'jede gemeinsame Farbe, ohne dass irgendwo ein Fehler erscheint.',
   );
-  // Und zwar VOR styles.css: Die Tokens sind die Grundlage, alles andere baut
-  // darauf auf. (Fuer die Aufloesung von var() waere die Reihenfolge egal —
-  // fuer den Menschen, der die Datei liest, nicht.)
+  // And BEFORE styles.css: the tokens are the foundation, everything else builds
+  // on them. (For resolving var() the order would not matter —
+  // for the human reading the file it does.)
   assert.ok(
     place < html.indexOf('/styles.css'),
     'tokens.css wird nach styles.css geladen — die Grundlage gehoert nach oben.',
   );
 });
 
-// Der Bau (`npm run build`) ruft den Erzeuger auf; in einem Checkout ohne
-// Android-App (Docker-Bau, Teil-Klon) darf er daran nicht scheitern.
-// Gegenprobe (02.11.2026 gemessen): die Ordnerprüfung im Erzeuger entfernt →
-// rot (ENOENT beim Schreiben von DesignTokens.kt, Exit 1).
+// The build (`npm run build`) calls the generator; in a checkout without
+// the Android app (Docker build, partial clone) it must not fail on that.
+// Counter-check (measured 02.11.2026): the folder check removed in the generator →
+// red (ENOENT when writing DesignTokens.kt, exit 1).
 test('without the Android app the generator only writes the web CSS', () => {
   const { spawnSync } = require('node:child_process');
   const os = require('node:os');

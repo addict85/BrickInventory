@@ -1,8 +1,8 @@
 /**
- * Vorgeladen in jede Testdatei (scripts/test-run.js, `--require`): Endet das
- * Kind nach seinem letzten Test nicht, beendet es sich rot und nennt, was offen
- * blieb. Seit Node 26 bricht --test-timeout nur Tests ab, nicht die Datei; der
- * Runner wartete sonst auf das Kind, bis die CI den ganzen Job abbricht.
+ * Preloaded into every test file (scripts/test-run.js, `--require`): if the
+ * child does not end after its last test, it ends itself red and names what stayed
+ * open. Since Node 26 --test-timeout only aborts tests, not the file; the
+ * runner would otherwise wait for the child until CI aborts the whole job.
  */
 if (process.env.NODE_TEST_CONTEXT === 'child-v8' && !process.env.TEST_AUSLAUF_AKTIV) {
   process.env.TEST_AUSLAUF_AKTIV = '1';

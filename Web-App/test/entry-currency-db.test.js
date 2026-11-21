@@ -1,20 +1,20 @@
 /**
- * Kaufpreise in fremder Währung und geschätzte Kaufpreise (UI-Prüfung 17, H3
- * und H4), gegen den echten Server:
- *   - Die Summe im Kaufpreis-Dialog rechnet USD zum Kurs des Kauftags in die
- *     Kontowährung um und stimmt mit der Summe der Finanzen überein; vorher
- *     standen 3 × 260,66 USD + 2 × 354,50 EUR als „1.490,98 €“ da.
- *   - Jede Zeile trägt `preis_konto`; ohne Kurs zählt sie in `ohne_kurs`.
- *   - Die Bewertung nennt je Erfassung `price_estimated`, die Setliste
- *     `kaufpreis_geschaetzt`, wenn alle Kaufpreise geschätzt sind.
+ * Purchase prices in a foreign currency and estimated purchase prices (UI review 17, H3
+ * and H4), against the real server:
+ *   - The sum in the purchase price dialog converts USD at the rate of the purchase day into the
+ *     account currency and matches the finances sum; before, it showed
+ *     3 × 260.66 USD + 2 × 354.50 EUR as “1.490,98 €”.
+ *   - Every row carries `preis_konto`; without a rate it counts in `ohne_kurs`.
+ *   - The valuation names `price_estimated` per entry, the set list
+ *     `kaufpreis_geschaetzt` if all purchase prices are estimated.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  in erfassungenInKontowaehrung die Summe wieder über purchase_price →
- *      rot: „Summe in Kontowährung wie die Finanzen“ (1490.98)
- *   B  in valueAcquisitionRows das Feld price_estimated weggelassen → rot:
- *      „geschätzte Kaufpreise sind gekennzeichnet“
- *   C  bool_and(...) AS kaufpreis_geschaetzt durch NULL ersetzt → rot:
- *      „geschätzte Kaufpreise sind gekennzeichnet“ (Setliste)
+ * Counter-checks (measured 05.11.2026, each alone):
+ *   A  in erfassungenInKontowaehrung the sum again over purchase_price →
+ *      red: “sum in account currency like the finances” (1490.98)
+ *   B  in valueAcquisitionRows the field price_estimated omitted → red:
+ *      “estimated purchase prices are marked”
+ *   C  bool_and(...) AS kaufpreis_geschaetzt replaced by NULL → red:
+ *      “estimated purchase prices are marked” (set list)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

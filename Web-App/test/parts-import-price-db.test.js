@@ -1,10 +1,10 @@
 /**
- * CSV-Import und Erfassen von Hand müssen dasselbe hinterlassen. Beide laufen
- * wie im Betrieb im Konto: der Import über die echte Kette (testServer) und den
- * Auftrag, das Erfassen im Namen des Kontos (asAccount).
+ * CSV import and capturing by hand must leave behind the same. Both run
+ * in the account as in operation: the import via the real chain (testServer) and the
+ * job, the capturing in the name of the account (asAccount).
  *
- * Gegenprobe (13.11.2026 gemessen): im Worker den Auftrag ohne sein Konto
- * (inNamesOfJob mit asRequest({})) → rot (der Import schlägt fehl).
+ * Counter-check (measured 13.11.2026): in the worker the job without its account
+ * (inNamesOfJob with asRequest({})) → red (the import fails).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -35,8 +35,8 @@ test('import without a price leaves the same as capturing without a price', { co
   const { base, schliessen } = testServer(_req, { sitzung: { userId: uid } });
 
   try {
-    // part_name steht in der Datei, damit kein Rebrickable-Nachschlag nötig
-    // ist. Ein Preis steht NICHT drin — genau darum geht es.
+    // part_name stands in the file so that no Rebrickable lookup is
+    // needed. A price does NOT stand in it — that is exactly what this is about.
     const csv = `part_number,part_name,quantity\n${IMPORTED},Testteil,3\n`;
     const fd = new FormData();
     fd.append('file', new Blob([csv], { type: 'text/csv' }), 'teile.csv');
@@ -45,13 +45,13 @@ test('import without a price leaves the same as capturing without a price', { co
     assert.equal(ergebnis.success, true, `Import fehlgeschlagen: ${JSON.stringify(ergebnis)}`);
     assert.equal(ergebnis.added, 1, `Es wurde nichts angelegt: ${JSON.stringify(ergebnis)}`);
 
-    // Derselbe Fall von Hand, ueber dieselbe Route wie die Webapp.
+    // The same case by hand, via the same route as the web app.
     const { addManualPart } = _req('src/parts/manualParts.js');
     await asAccount(uid, () =>
       addManualPart(uid, { part_number: OF_HAND, part_name: 'Testteil', color_id: 0, quantity: 3 }),
     );
 
-    // Gelesen aus der ERFASSUNG
+    // Read from the ACQUISITION
     const spalten = 'unit_price, condition, quantity';
     const imp = await db.get(`SELECT ${spalten} FROM part_acquisitions WHERE user_id=$1 AND part_number=$2`, [
       uid,
@@ -64,8 +64,8 @@ test('import without a price leaves the same as capturing without a price', { co
     assert.ok(imp, 'Zum importierten Teil wurde keine Erfassung angelegt');
     assert.ok(hand, 'Zum von Hand erfassten Teil wurde keine Erfassung angelegt');
 
-    // Der eigentliche Fehler: Ohne Angabe in der Datei darf im Feld
-    // „Preis/Stk" nichts stehen.
+    // The actual error: without a value in the file nothing may stand in the
+    // field „Preis/Stk".
     assert.equal(
       imp.unit_price,
       null,
@@ -74,7 +74,7 @@ test('import without a price leaves the same as capturing without a price', { co
         'src/inventory/purchasePriceBackfill.ts liest es genau so.',
     );
 
-    // Und die Regel dahinter: BEIDE Wege hinterlassen dasselbe.
+    // And the rule behind it: BOTH paths leave behind the same.
     assert.deepEqual(
       { unit_price: imp.unit_price, condition: imp.condition, quantity: imp.quantity },
       { unit_price: hand.unit_price, condition: hand.condition, quantity: hand.quantity },

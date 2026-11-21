@@ -1,12 +1,12 @@
 /**
- * Der CSV-Import der Merkliste schreibt in das Konto, das im Feld „Für Konto“
- * gewählt ist — wie das Erfassen eines einzelnen Merkpostens daneben. Die
- * Typprüfung fand den Fehler: selectedOwner() wurde ohne Feldkennung gerufen
- * und lieferte immer „kein Konto“.
+ * The CSV import of the wishlist writes into the account chosen in the field „Für Konto“
+ * — like capturing a single wishlist item next to it. The
+ * type check found the error: selectedOwner() was called without a field identifier
+ * and always delivered „no account“.
  *
- * Gegenprobe (05.11.2026 gemessen, Bündel neu gebaut): in importMerklisteCsv
- * wieder `selectedOwner()` ohne Kennung → rot: „Zielkonto im Upload“
- * (owner_user_id fehlte im Formular).
+ * Counter-check (measured 05.11.2026, bundle rebuilt): in importMerklisteCsv
+ * again `selectedOwner()` without an identifier → red: „Zielkonto im Upload“
+ * (owner_user_id was missing in the form).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -20,17 +20,17 @@ test('wishlist: CSV import into the selected account', { timeout: 120_000 }, asy
     return;
   }
   const { b, bis, db, ruhig } = app;
-  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  // The startup loads settings and prices afterwards; only then is the state fixed.
   await ruhig();
   const kid = (await db.get('SELECT id FROM users WHERE username = $1', [`mkcsv_${process.pid}_kind`])).id;
   await b.auswerten(`location.hash = '#/merkliste'; true`);
-  // Das Konto-Feld erscheint, sobald die Haushaltsmitglieder geladen sind.
+  // The account field appears as soon as the household members are loaded.
   await bis(
     `[...document.querySelectorAll('#mk-owner option')].some(o => o.value === '${kid}')
     && getComputedStyle(document.getElementById('mk-owner-box')).display !== 'none'`,
     'Konto-Feld',
   );
-  // Den Upload abfangen statt ihn an den Server zu schicken: Geprüft wird, was die Oberfläche sendet.
+  // Intercept the upload instead of sending it to the server: what is checked is what the UI sends.
   await b.auswerten(`(() => {
     const echt = window.fetch.bind(window);
     window.__upload = null;

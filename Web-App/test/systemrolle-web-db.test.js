@@ -1,28 +1,28 @@
 /**
- * Die Web-Systemrolle (Migration 0119): Den Systemrahmen einer HTTP-Anfrage trägt eine Rolle, die
- * am Zeilenschutz vorbei nur Zugang, Verwaltung, Kontoeinstellungen, Aufträge und Tabellen ohne
- * Kontobezug erreicht; Gutscheine, Sammlung, Finanzen und Kopien vor Migrationen bleiben bei jobs.
- * Hier die Liste und der echte Web-Prozess mit ihr allein; testServer nimmt sie überall.
+ * The web system role (migration 0119): the system context of an HTTP request is carried by a role that,
+ * bypassing row security, only reaches access, administration, account settings, jobs and tables without
+ * account reference; vouchers, collection, finances and copies before migrations stay with jobs.
+ * Here the list and the real web process with it alone; testServer takes it everywhere.
  *
- * Gegenproben (15.11.2026 gemessen, je einzeln):
- *   A  in 0119 'vouchers' in die Liste `account_id` → rot: „genau diese Tabellenrechte“ und
- *      „… bleiben Gutscheine zu“ (die Abfrage gelingt)
- *   B  in db/database.ts poolOfFrame() ohne `web` (immer systemPool) → rot: „Anfragen
- *      nehmen …“ (current_user ist die Systemrolle), „… bleiben Gutscheine zu“ und „… aus
- *      den Kopien …“ (die Kopie ist lesbar)
- *   C  in db/migrate.ts removeAccountFromBackups() wieder mit DELETE je Kopie → rot:
- *      „ein Konto verschwindet auch aus den Kopien …“ (0 statt 2: Die Web-Rolle sieht die
- *      Kopien im Katalog nicht und löscht still nichts)
- *   D  in startup/database.ts prepareDatabaseBefore() ohne den Zweig `jobs === false` → rot:
- *      „der Web-Prozess startet …“ (permission denied for table vouchers, kein Start)
- *   E  waitOnLegacyStock() kehrt sofort zurück → rot: „… waiting auf die Umschlüsselung“
- *   F  in src/parts/summary.ts catalogFollowUpOnce() ohne den Zweig für `web` →
- *      rot: „eine Anfrage zieht den Katalog nicht selbst nach …“
- *   G  in 0120 die Schleife mit REVOKE gestrichen → rot: „jede Sicht liest …“ (die neue Sicht
- *      steht mit `web` in der Liste)
- *   H  in 0120 `security_invoker = true` gestrichen → rot im selben Test (alle drei Sichten
- *      „ohne security_invoker“; ohne den Listenvergleich: „durch die Sicht nur das eigene
- *      Konto“, a sah auch b)
+ * Counter-checks (measured 15.11.2026, each on its own):
+ *   A  in 0119 'vouchers' into the list `account_id` → red: “… exactly these table privileges” and
+ *      “… vouchers stay closed” (the query succeeds)
+ *   B  in db/database.ts poolOfFrame() without `web` (always systemPool) → red: “requests
+ *      take …” (current_user is the system role), “… vouchers stay closed” and “… from
+ *      the copies …” (the copy is readable)
+ *   C  in db/migrate.ts removeAccountFromBackups() again with DELETE per copy → red:
+ *      “an account also disappears from the copies …” (0 instead of 2: the web role does not see the
+ *      copies in the catalog and silently deletes nothing)
+ *   D  in startup/database.ts prepareDatabaseBefore() without the branch `jobs === false` → red:
+ *      “the web process starts …” (permission denied for table vouchers, no start)
+ *   E  waitOnLegacyStock() returns immediately → red: “… waits for the re-encryption”
+ *   F  in src/parts/summary.ts catalogFollowUpOnce() without the branch for `web` →
+ *      red: “a request does not update the catalog itself …”
+ *   G  the loop with REVOKE deleted in 0120 → red: “every view reads …” (the new view
+ *      stands in the list with `web`)
+ *   H  `security_invoker = true` deleted in 0120 → red in the same test (all three views
+ *      „ohne security_invoker“; without the list comparison: „durch die Sicht nur das eigene
+ *      Konto“, a also saw b)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -44,13 +44,13 @@ const { asRequest, asWebRequest, inSystemContext } = _req('src/infra/accountCont
 const WEB = process.env.PGSYSTEM_WEB_USER;
 const FULL = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'].join(', ');
 const WITH_ALL_RIGHT = [
-  // Zugang, Haushalt, Verwaltung, Kontoeinstellungen und Aufträge
+  // access, household, administration, account settings and jobs
   ...['account_link_invites', 'account_links', 'api_tokens', 'api_tokens_consumed', 'jobs'],
   ...['device_nonces', 'device_keys', 'global_settings', 'household_former_links', 'passkeys'],
   ...['qr_login_tokens', 'rate_limit_attempts', 'step_up_challenges', 'step_up_approvals', 'user_sessions'],
   ...['user_settings', 'users', 'admin_takeovers', 'webauthn_challenges', 'second_factor'],
   'second_factor_codes',
-  // ohne Kontobezug: Katalog, Preis- und Bildspeicher, Laufzustand
+  // without account reference: catalog, price and image stores, run state
   ...['api_calls', 'api_cadence', 'app_logs', 'job_exclusive_locks', 'job_pauses', 'job_types'],
   ...['bl_mapping', 'catalog_cache', 'image_misses', 'image_wanted', 'run_state', 'minifig_parts_cache'],
   ...['minifig_price_cache', 'minifig_price_history', 'minifigs_catalog', 'part_catalog', 'part_color_catalog'],
@@ -129,11 +129,11 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
       await db.run('DELETE FROM users WHERE id = ANY($1)', [[a, b]]);
     });
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10001-1'), ($2, '10002-1')`, [a, b]);
-    // Eine neue Sicht über eine Kontotabelle, danach 0119 erneut (UPGRADE.md, Abschnitt 65) und 0120.
+    // A new view over an account table, afterwards 0119 again (UPGRADE.md, section 65) and 0120.
     await db.run(`CREATE VIEW ${name} AS SELECT user_id, set_number FROM sets`);
-    // 0119 ist Geschichte und nennt Tabelle und Spalte noch unter ihrem alten
-    // Namen (auftrags_arten.art); 0124 (längst angewandt) hätte sie sonst
-    // gleich danach umbenannt, wie bei einer echten Reihenfolge der Migrationen.
+    // 0119 is history and still names table and column by their old
+    // names (auftrags_arten.art); 0124 (applied long ago) would otherwise have renamed them
+    // right afterwards, as with a real order of the migrations.
     await db.run('ALTER TABLE job_types RENAME COLUMN type TO art');
     await db.run('ALTER TABLE job_types RENAME TO auftrags_arten');
     await db.run(fs.readFileSync(path.join(ROOT, 'db/migrations/0119-systemrolle-web.sql'), 'utf8'));

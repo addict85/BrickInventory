@@ -1,17 +1,17 @@
 /**
- * Scheitert der Katalogabgleich beim Start (kein Netz), meldet der Server
- * trotzdem „bereit“ — sonst bleibt der Startbildschirm stehen.
+ * If the catalog sync fails at startup (no network), the server still
+ * reports “ready” — otherwise the startup screen stays.
  *
- * Gegenprobe (am 28.10.2026 gemessen): die Bereitmeldung im catch-Zweig von
- * run() entfernt → rot: „ohne Netz ist der Server trotzdem bereit“.
- * Gegenprobe (30.10.2026): `throw e` im catch-Zweig durch `return` ersetzt →
- * rot: derselbe Test („Missing expected rejection“) — der Auftrag hielte den
- * gescheiterten Abgleich für erledigt und versuchte ihn erst am nächsten Tag.
+ * Counter-check (measured on 28.10.2026): the ready report removed in the catch branch of
+ * run() → red: “without network the server is still ready”.
+ * Counter-check (30.10.2026): `throw e` in the catch branch replaced by `return` →
+ * red: the same test (“Missing expected rejection”) — the job would consider the
+ * failed sync done and retry it only the next day.
  *
- * Gegenprobe (09.11.2026): in runWorker() das unlink aus dem finally-Zweig genommen → rot:
- *   „die Zwischendatei bleibt nach einem Fehlschlag nicht liegen“ (colors.csv.tmp blieb stehen).
+ * Counter-check (09.11.2026): in runWorker() the unlink taken out of the finally branch → red:
+ *   “the temporary file does not stay after a failure” (colors.csv.tmp stayed).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,7 +19,7 @@ const { EventEmitter } = require('node:events');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-// Jeder Abruf scheitert sofort — wie ein Rechner ohne Netz.
+// Every fetch fails immediately — like a computer without network.
 const Module = require('node:module');
 const _realRequire = Module.prototype.require;
 Module.prototype.require = function (name, ...rest) {
@@ -44,7 +44,7 @@ const db = testData();
 const fs = require('node:fs');
 const path = require('node:path');
 
-// Mit `tempFile` legt der Download die Datei an und gelingt; den Import danach gibt es hier nicht.
+// With `tempFile` the download creates the file and succeeds; the import afterwards does not exist here.
 let tempFile = false;
 const echt = _req('clients/rebrickableCsv.js');
 testSources(null, {

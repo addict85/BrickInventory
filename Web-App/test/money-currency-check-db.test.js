@@ -1,15 +1,15 @@
 /**
- * Migration 0065: Die Datenbank selbst lehnt eine Währung ausserhalb des
- * ISO-Formats und einen negativen Betrag ab — gleich, welcher Weg schreibt.
- * Die E-Mail bleibt eindeutig, auch ohne den doppelten Teilindex.
+ * Migration 0065: the database itself rejects a currency outside of the
+ * ISO format and a negative amount — no matter which path writes.
+ * The email stays unique, even without the duplicate partial index.
  *
- * Gegenproben (am 28.10.2026 gemessen, je auf frischer Datenbank):
- *   A  in db/basis.sql die Prüfung set_acquisitions_currency_iso entfernt
- *      → rot: „eine Währung in Kleinbuchstaben wird abgelehnt“
- *   B  in db/basis.sql die Prüfung vouchers_amount_nicht_negativ entfernt
- *      → rot: „ein negativer Betrag wird abgelehnt“
+ * Counter-checks (measured on 28.10.2026, each on a fresh database):
+ *   A  the check set_acquisitions_currency_iso removed in db/basis.sql
+ *      → red: “a currency in lower case is rejected”
+ *   B  the check vouchers_amount_nicht_negativ removed in db/basis.sql
+ *      → red: “a negative amount is rejected”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

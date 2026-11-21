@@ -1,20 +1,20 @@
 /**
- * Befunde der UI-Prüfung 16, soweit sie am Server liegen, an der echten API:
- *   - Meldungen kommen als Code und in der Sprache des Anfragenden (M2):
- *     leere CSV-Datei, Zeilenfehler im Importstand, übersprungene Zeilen.
- *   - Lagerorte: /v1/storage/locations liefert auch leere Orte, /v1/storage …
+ * Findings of UI review 16, as far as they lie on the server, on the real API:
+ *   - Messages come as a code and in the requester's language (M2):
+ *     empty CSV file, line errors in the import state, skipped lines.
+ *   - Storage locations: /v1/storage/locations also delivers empty locations, /v1/storage …
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  in sets/dienst.ts wieder `throw new Meldung('Keine Datenzeilen in der
- *      Datei', 400)` → rot: „leere CSV-Datei: englisch und mit Code“
- *   B  buildJobStatus() ohne die Übersetzung der Zeilen → rot: „Zeilenfehler
- *      im Importstand in der Sprache des Lesers“
- *   C  kaufpreisSpalten() ohne kaufpreis_original → rot: „Fremdwährung:
- *      Betrag und Währung stehen da“
- *   D  catalogRow() wieder nur mit der eigenen Konto-ID → rot: „Katalog:
- *      Set des Unterkontos ist vorhanden“
+ * Counter-checks (measured 05.11.2026, each alone):
+ *   A  in sets/dienst.ts again `throw new Meldung('Keine Datenzeilen in der
+ *      Datei', 400)` → red: “empty CSV file: English and with code”
+ *   B  buildJobStatus() without translating the lines → red: “line errors
+ *      in the import state in the reader's language”
+ *   C  kaufpreisSpalten() without kaufpreis_original → red: “foreign currency:
+ *      amount and currency are shown”
+ *   D  catalogRow() again only with the own account ID → red: “catalog:
+ *      set of the sub-account is present”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

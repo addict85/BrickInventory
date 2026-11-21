@@ -1,16 +1,16 @@
 /**
- * Ergänzt eine Testantwort aus dem zod-Schema ihrer Route: Pflichtfelder, die
- * der Test nicht braucht, bekommen den kleinsten gültigen Wert (0, '', false,
- * [], null). Felder ausserhalb des Schemas bleiben stehen, denn der Vertrag
- * ist offen (looseObject) und der Server sendet solche Felder heute auch.
+ * Completes a test response from the zod schema of its route: required fields
+ * the test does not need get the smallest valid value (0, '', false,
+ * [], null). Fields outside the schema stay, because the contract
+ * is open (looseObject) and the server sends such fields today too.
  */
 
 /** @param {any} s */
 const art = s => s._zod.def.type;
 
 /**
- * @param {any} schema  zod-Schema
- * @param {any} wert    Teil aus dem Test (darf fehlen)
+ * @param {any} schema  zod schema
+ * @param {any} wert    part from the test (may be missing)
  */
 function fill(schema, wert) {
   const def = schema._zod.def;
@@ -38,7 +38,7 @@ function fill(schema, wert) {
     }
     case 'union': {
       if (wert === undefined) return fill(def.options[0], undefined);
-      // Die erste Möglichkeit, die nach dem Ergänzen passt.
+      // The first option that matches after completing.
       for (const o of def.options) {
         const v = fill(o, wert);
         if (o.safeParse(v).success) return v;

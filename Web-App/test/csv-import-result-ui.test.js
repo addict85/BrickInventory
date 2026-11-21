@@ -1,32 +1,32 @@
 /**
- * Der Set-CSV-Import in der Oberfläche (UI-Prüfung 17: M2–M4, Barrierefreiheit
- * H3), echtes Bündel in jsdom, Serverantworten wie aus
+ * The set CSV import in the UI (UI review 17: M2–M4, accessibility
+ * H3), real bundle in jsdom, server responses as from
  * csv-import-check-db.test.js:
- *   - Sind Sets schon da, fragt die Oberfläche vor dem Start; „Abbrechen“
- *     startet nichts.
- *   - Solange der Auftrag wartet, sagt der Dialog „Wartet …“ statt 0 %.
- *   - Das Ergebnis nennt die Zeile, färbt Fehler rot und Unbekanntes gelb und
- *     zählt die gelesenen Zeilen; ein Eintrag ohne Setnummer und Zeile fehlt.
- *   - Der Fortschritt ist ein Dialog: Fokus darin, Statuszeile als Live-Region,
- *     Balken als progressbar, Minimieren mit Namen.
- *   - Nach dem Neuladen führt ein Eintrag im Import-Menü zum Ergebnis.
+ *   - If sets already exist, the UI asks before starting; “cancel”
+ *     starts nothing.
+ *   - As long as the job waits, the dialog says “Waiting …” instead of 0 %.
+ *   - The result names the line, colors errors red and unknown items yellow and
+ *     counts the lines read; an entry without set number and line is missing.
+ *   - The progress is a dialog: focus inside, status line as live region,
+ *     bar as progressbar, minimize with a name.
+ *   - After reloading an entry in the import menu leads to the result.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in startSetCsvImport die Rückfrage entfernt → rot: „vorhandene Sets:
- *      erst fragen“ (zweite Anfrage ohne pruefen)
- *   B  in csvApplyOverlayStatus den Wartetext entfernt → rot: „Ergebnisliste
- *      mit Zeilen“ (kein „Wartet“)
- *   C  logRow ohne die Zeilennummer (wo = set_number) → rot:
- *      „Ergebnisliste mit Zeilen“
- *   D  role="status" an #prog-footer entfernt → rot: „Ergebnisliste mit Zeilen“
- *   E  rememberLastImport() in gibCheckOnLoad nicht gerufen → rot: „nach dem
- *      Neuladen“ (Eintrag bleibt hidden)
- *   F  csvPollLoop wieder mit api() statt apiData() → rot: „Ergebnisliste
- *      mit Zeilen“ (api() überschreibt `status` mit 200, der Abschluss kommt nie)
- *   G  csv.import_meldung aus de.js entfernt → rot: „Ergebnisliste mit Zeilen“
- *      (die Meldung zeigt den rohen Schlüssel; 08.11.2026)
- *   H  (16.11.2026) showImportCompletion() ohne das Verbergen von „Minimieren“ → rot: „Ergebnisliste mit
- *      Zeilen“ (nach Abschluss noch „Minimieren“)
+ * Counter-checks (measured 05.11.2026, each alone, bundle rebuilt):
+ *   A  in startSetCsvImport the confirmation removed → red: “existing sets:
+ *      ask first” (second request without pruefen)
+ *   B  in csvApplyOverlayStatus the waiting text removed → red: “result list
+ *      with lines” (no “Wartet”)
+ *   C  logRow without the line number (wo = set_number) → red:
+ *      “result list with lines”
+ *   D  role="status" removed from #prog-footer → red: “result list with lines”
+ *   E  rememberLastImport() not called in gibCheckOnLoad → red: “after
+ *      reloading” (entry stays hidden)
+ *   F  csvPollLoop again with api() instead of apiData() → red: “result list
+ *      with lines” (api() overwrites `status` with 200, the completion never comes)
+ *   G  csv.import_meldung removed from de.js → red: “result list with lines”
+ *      (the message shows the raw key; 08.11.2026)
+ *   H  (16.11.2026) showImportCompletion() without hiding “minimize” → red: “result list with
+ *      lines” (after completion still “minimize”)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -53,7 +53,7 @@ const DONE = {
   beendet_am: new Date().toISOString(),
 };
 
-/** Eine Datei wählen, wie der Browser es täte. */
+/** Choose a file as the browser would. */
 function chooseFile(w, d) {
   const feld = d.getElementById('csv-file');
   Object.defineProperty(feld, 'files', {
@@ -93,7 +93,7 @@ test('result list with rows, colors and read rows', async () => {
       gestartet = true;
       return { success: true, total: 8, gestartet: true };
     },
-    // Vor dem Start läuft nichts; danach erst ein wartender Auftrag, dann das Ergebnis.
+    // Before the start nothing runs; afterwards first a waiting job, then the result.
     '/v1/sets/import/csv/status': () =>
       !gestartet
         ? { success: false, code: 'kein_import_laeuft' }

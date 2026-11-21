@@ -1,31 +1,31 @@
 /**
- * Eine Fehlermeldung am Feld verschiebt keine Nachbarn: Was auf der Linie des
- * Feldes oder darüber steht, behält seinen Platz; was darunter steht, rückt
- * höchstens nach unten, nie zur Seite. Gemessen in sieben Formularen bei 1280
- * und 390 px.
+ * An error message at the field moves no neighbors: what stands on the line of the
+ * field or above it keeps its place; what stands below moves
+ * at most downwards, never sideways. Measured in seven forms at 1280
+ * and 390 px.
  *
- * Gegenproben (am 13.11.2026 gemessen):
- *   A  feldFehler ohne errorPlace (Meldung wieder direkt hinter das Feld)
- *      → rot: Bauliste 1280 (Meldung neben statt unter dem Feld), Merkliste
- *      1280 und 390 (Beschriftung „Zustand“ 27 bzw. 47 px tiefer), Lagerorte
- *      1280 und 390 („Hinzufügen“ tiefer), Set erfassen 1280 und 390
- *   B  `.feld-fehler` ohne contain:inline-size → rot: Bauliste 1280 (die
- *      Meldung verbreitert die Spalte, „Hinzufügen“ x 213 → 284)
- *   C  Zweig für Raster und umbrechende Zeilen entfernt → rot: Preisalarm 1280
- *      (76 px), Set erfassen 1280 (126 px), Merkliste 390 (108 px Abstand
- *      zwischen Feld und Meldung)
- *   D  (15.11.2026) Meldung in der Rasterzelle ohne Prüfung der Nachbarn
- *      (feldzelle() nur mit oben bündig) → rot: Lagerorte 1280 und 390
- *      („Hinzufügen“ 27 bzw. 47 px tiefer)
+ * Counter-checks (measured on 13.11.2026):
+ *   A  feldFehler without errorPlace (message directly behind the field again)
+ *      → red: build list 1280 (message next to instead of below the field), wishlist
+ *      1280 and 390 (label “Zustand” 27 or 47 px lower), storage locations
+ *      1280 and 390 (“Hinzufügen” lower), add set 1280 and 390
+ *   B  `.feld-fehler` without contain:inline-size → red: build list 1280 (the
+ *      message widens the column, “Hinzufügen” x 213 → 284)
+ *   C  branch for grid and wrapping rows removed → red: price alert 1280
+ *      (76 px), add set 1280 (126 px), wishlist 390 (108 px gap
+ *      between field and message)
+ *   D  (15.11.2026) message in the grid cell without checking the neighbors
+ *      (feldzelle() only top-aligned) → red: storage locations 1280 and 390
+ *      (“Hinzufügen” 27 or 47 px lower)
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Skipped without Chrome (CHROME_BIN, google-chrome, chromium).
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 
-/** Lage aller Bedienelemente im Formularkasten des Feldes, in DOM-Reihenfolge. */
+/** Position of all controls in the field's form box, in DOM order. */
 const SITUATION = id => `(() => {
   const f = document.getElementById(${JSON.stringify(id)});
   let kasten = f.closest('.modal, form, details, .ssec, .pl-leiste, .card') ?? f.parentElement;
@@ -40,7 +40,7 @@ const SITUATION = id => `(() => {
   return { feld: r(f), teile, meldung: m && !m.hidden ? r(m) : null };
 })()`;
 
-/** Formulare: Ansicht, Vorbereitung, Auslöser und das Feld, an dem die Meldung erscheint. */
+/** Forms: view, preparation, trigger and the field at which the message appears. */
 const CASES = [
   {
     name: 'Bauliste',
@@ -119,7 +119,7 @@ test('error messages do not move neighbors', { concurrency: 1, timeout: 300_000 
           await b.auswerten(`(() => { ${f.vorher} return true; })()`);
           await ruhig();
         }
-        // Eine Meldung aus dem vorigen Durchgang räumt das Feld selbst weg, sobald man tippt.
+        // A message from the previous pass is cleared by the field itself as soon as one types.
         await b.auswerten(`(() => { const e = document.getElementById(${JSON.stringify(f.feld)});
           e.value = ''; e.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
         await ruhig();
@@ -131,7 +131,7 @@ test('error messages do not move neighbors', { concurrency: 1, timeout: 300_000 
         assert.ok(nach.meldung, 'Meldung sichtbar');
         assert.ok(nach.meldung.y >= nach.feld.u - 1, `Meldung unter dem Feld (${nach.meldung.y} < ${nach.feld.u})`);
         assert.ok(nach.meldung.x <= nach.feld.x + 1, `Meldung beginnt am Feld (${nach.meldung.x} > ${nach.feld.x})`);
-        // Direkt darunter, nicht unter dem ganzen Formular: höchstens eine Elementzeile (60 px) dazwischen.
+        // Directly below, not below the whole form: at most one element row (60 px) in between.
         assert.ok(nach.meldung.y - nach.feld.u < 60, `Meldung ${nach.meldung.y - nach.feld.u} px unter dem Feld`);
         assert.equal(nach.teile.length, vor.teile.length);
         const verschoben = vor.teile

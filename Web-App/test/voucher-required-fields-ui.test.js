@@ -1,12 +1,12 @@
 /**
- * Gutscheinformular in jsdom: Nummer und Betrag sind als Pflicht gekennzeichnet, und ein leeres
- * Formular meldet beide Lücken auf einmal am Feld, ohne Anfrage an den Server. Mit gewähltem PDF
- * ist nichts Pflicht (der Server liest die Werte daraus).
+ * Voucher form in jsdom: number and amount are marked as required, and an empty
+ * form reports both gaps at once at the field, without a request to the server. With a chosen PDF
+ * nothing is required (the server reads the values from it).
  *
- * Gegenproben (16.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in gutscheinSpeichern() die Prüfung auf leere Felder gestrichen → rot: „beide Lücken“
- *      (v-number ohne Meldung)
- *   B  nur die erste Lücke gemeldet (fehlt.slice(0, 1)) → rot: ebenda (v-amount ohne Meldung)
+ * Counter-checks (measured 16.11.2026, each on its own, bundle rebuilt):
+ *   A  the check for empty fields deleted in gutscheinSpeichern() → red: “both gaps”
+ *      (v-number without a message)
+ *   B  only the first gap reported (fehlt.slice(0, 1)) → red: same place (v-amount without a message)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

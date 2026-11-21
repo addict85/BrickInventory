@@ -1,11 +1,11 @@
 /**
- * Preisverlauf im Haushalt — Set, manuelles Teil UND manuelle Minifigur.
+ * Price history in the household — set, manual part AND manual minifigure.
  *
- * Gegenprobe (durchgeführt): scopeIds() in den beiden Minifiguren-Routen
- * zurück auf `uid` → beide Minifiguren-Teilschritte werden rot, Set und Teil
- * bleiben grün.
+ * Counter-check (carried out): scopeIds() in the two minifigure routes
+ * back to `uid` → both minifigure substeps turn red, set and part
+ * stay green.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
+ * Prerequisite: test DB via TEST_DATABASE_URL (migrations for account_links).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -51,8 +51,8 @@ test("price history: the main account sees the sub-account's acquisitions", { co
     mainId,
     subId,
   ]);
-  // Beide Konten auf dieselbe Währung — sonst liest der Verlauf einen anderen
-  // Cache-Schlüssel als der Seed schreibt.
+  // Both accounts on the same currency — otherwise the history reads a different
+  // cache key than the seed writes.
   for (const id of [mainId, subId])
     await db.run(
       `INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency',$2)
@@ -62,8 +62,8 @@ test("price history: the main account sees the sub-account's acquisitions", { co
 
   await aufraeumen();
 
-  // ── Bestand ANLEGEN, und zwar durchgehend beim UNTERKONTO ────────────────
-  await holdsSet(db, subId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+  // ── CREATE stock, and that consistently with the SUB-ACCOUNT ────────────────
+  await holdsSet(db, subId, SN, 0); // quantity 0: the acquisition behind it carries it
   await db.run(
     `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,10,'N',1)`,
@@ -75,7 +75,7 @@ test("price history: the main account sees the sub-account's acquisitions", { co
     [SN, CUR],
   );
 
-  await holdsPart(db, subId, PN, { menge: 0, colorId: 4 }); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsPart(db, subId, PN, { menge: 0, colorId: 4 }); // quantity 0: the acquisition behind it carries it
   await db.run(
     `INSERT INTO part_acquisitions (user_id,part_number,color_id,unit_price,condition,quantity)
                 VALUES ($1,$2,4,3,'N',1)`,
@@ -87,7 +87,7 @@ test("price history: the main account sees the sub-account's acquisitions", { co
     [PN, CUR],
   );
 
-  await holdsMinifig(db, subId, FN, { menge: 0 }); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsMinifig(db, subId, FN, { menge: 0 }); // quantity 0: the acquisition behind it carries it
   await db.run(
     `INSERT INTO minifig_acquisitions (user_id,fig_number,unit_price,condition,quantity)
                 VALUES ($1,$2,4,'N',1)`,
@@ -113,9 +113,9 @@ test("price history: the main account sees the sub-account's acquisitions", { co
   const srv = appFor(mainId).listen(0);
   const base = `http://localhost:${srv.address().port}`;
 
-  // Seit Etappe 5 gibt es je Art nur noch EINE Adresse; beide Clients rufen
-  // sie auf (requireToken nimmt Sitzung oder Token). Geprüft wird hier die
-  // Regel, nicht der Ausweis — die Gleichwertigkeit der Ausweise steht in
+  // Since stage 5 there is only ONE address per kind; both clients call
+  // it (requireToken takes session or token). What is checked here is the
+  // rule, not the credential — the equivalence of the credentials stands in
   // api-parity.
   const CASES = [
     ['Set', `/api/v1/sets/${SN}/price-history`],
@@ -137,10 +137,10 @@ test("price history: the main account sees the sub-account's acquisitions", { co
       assert.ok(n.pnl_pct != null, `${art}: ohne Kaufpreis gibt es auch keine Prozentangabe`);
     }
 
-    // Gegenrichtung: Mit accounts=own schaut das Hauptkonto ausdrücklich nur
-    // auf SICH — dann darf die Zeile NICHT erscheinen. Ohne diese Prüfung wäre
-    // der Test auch grün, wenn jemand das Blickfeld durch „alle Konten der
-    // Installation\" ersetzt.
+    // Opposite direction: with accounts=own the main account explicitly looks only
+    // at ITSELF — then the row must NOT appear. Without this check the
+    // test would also be green if somebody replaced the scope by „all accounts of the
+    // installation\".
     for (const [art, pfad] of CASES) {
       const r = await fetch(`${base}${pfad}?accounts=own`);
       const b = await r.json();

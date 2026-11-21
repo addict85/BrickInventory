@@ -1,18 +1,18 @@
 /**
- * Unter /api/v1 ist ohne Anmeldung genau das erreichbar, was dazu gedacht ist
- * (Anmelden, Registrieren, Zurücksetzen, Design, Startzustand) — jede andere
- * Route antwortet 401, auch eine, die ihren eigenen Schutz vergessen hat.
- * Gemessen am echten Server: Jede Route aus dem Quelltext wird ohne Ausweis
- * aufgerufen.
+ * Under /api/v1 exactly what is meant for it is reachable without login
+ * (log in, register, reset, design, startup state) — every other
+ * route answers 401, even one that forgot its own protection.
+ * Measured on the real server: every route from the source text is called
+ * without credentials.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  loginAtInbox in server.ts nicht eingehängt und requireToken aus
- *      GET /stats (routes/api_v1/misc.ts) entfernt → rot: „nur die
- *      öffentlichen Pfade antworten ohne Anmeldung“ (GET /api/v1/stats offen)
- *      und „ein falsches Token kommt nicht hinein“. Mit dem Eingang, aber
- *      ohne den Schutz an /stats bleibt alles grün — das ist der Zweck.
+ * Counter-checks (measured on 28.10.2026):
+ *   A  loginAtInbox not mounted in server.ts and requireToken removed from
+ *      GET /stats (routes/api_v1/misc.ts) → red: “only the
+ *      public paths answer without login” (GET /api/v1/stats open)
+ *      and “a wrong token does not get in”. With the entrance but
+ *      without the protection on /stats everything stays green — that is the purpose.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,7 +30,7 @@ const db = testData();
 const { warte } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 
-/** Absichtlich ohne Anmeldung erreichbar — mit Grund. Wächst die Liste, muss jemand sie begründen. */
+/** Deliberately reachable without login — with a reason. If the list grows, someone must justify it. */
 const EXPECTED_OPEN = new Map([
   ['POST /api/v1/auth/login', 'Die Anmeldung selbst'],
   ['POST /api/v1/auth/logout', 'Muss auch ohne gültige Sitzung gehen'],
@@ -99,7 +99,7 @@ test('entrance to /api/v1', { concurrency: 1, timeout: 180_000 }, async t => {
   const offen = new Set();
   for (const [m, p] of alle) {
     const url = p.replace(/:[A-Za-z_]+\??/g, '1').replace(/\*[a-z]+/g, 'a');
-    // Leerer Körper: Ein öffentlicher Endpunkt antwortet dann 400, aber nicht 401.
+    // Empty body: a public endpoint then answers 400, but not 401.
     const r = await fetch(`http://127.0.0.1:${port}${url}`, {
       method: m,
       redirect: 'manual',
@@ -107,8 +107,8 @@ test('entrance to /api/v1', { concurrency: 1, timeout: 180_000 }, async t => {
       body: m === 'GET' ? undefined : '{}',
     });
     await r.arrayBuffer();
-    // /auth/register ist öffentlich, antwortet aber 403, solange die Registrierung
-    // aus ist — das hängt an einer Einstellung, die andere Tests umschalten.
+    // /auth/register is public but answers 403 as long as registration
+    // is off — that depends on a setting other tests toggle.
     if (r.status !== 401 && r.status !== 403 && p !== '/api/v1/auth/register') offen.add(`${m} ${p}`);
   }
 

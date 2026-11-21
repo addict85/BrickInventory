@@ -1,36 +1,36 @@
 /**
- * Bild-Proxy (routes/imgProxy.ts) gegen Platten- und Bandbreitenmissbrauch:
- * Zeitstempel im Anfrageteil der CDN-Adressen ergeben keinen neuen
- * Cache-Eintrag, CDN-Abrufe sind je Konto gedrosselt, und der Cache wird
- * gedeckelt, älteste Nutzung zuerst. Das CDN ist eine Attrappe von https.get,
- * APP_ROOT ein eigener Ordner — der Deckel löscht sonst fremde Testdateien.
+ * Image proxy (routes/imgProxy.ts) against disk and bandwidth abuse:
+ * timestamps in the query part of the CDN addresses yield no new
+ * cache entry, CDN fetches are throttled per account, and the cache is
+ * capped, oldest use first. The CDN is a dummy of https.get,
+ * APP_ROOT a separate folder — the cap would otherwise delete foreign test files.
  *
- * Gegenproben (am 01.11.2026 gemessen):
- *   A  in imgProxy.ts `url = proxyAddress(url) ?? url` entfernt → rot:
- *      „ein Zeitstempel im Anfrageteil holt das Bild nicht neu"
- *   B  die Drossel in passThroughImage auskommentiert → rot: „das vierte
- *      fremde Bild wird gedrosselt"
- *   C  in cleanImageCacheOn die Sortierung umgedreht (neueste zuerst) → rot:
- *      „der Deckel löscht das am längsten unbenutzte Bild"
- *   D  Cache-Control des gestreamten Wegs wieder `public` → rot: „ein
- *      Zeitstempel …“ (private fehlt)
- *   E  in passThroughImage wieder den rohen Content-Type des CDN gesetzt →
- *      rot: „eine Komma-Liste im Content-Type …“ (04.11.2026)
- * Gegenproben (am 08.11.2026 gemessen):
- *   F  die Typprüfung in passThroughImage lässt SVG durch → rot: „nur Bilder
- *      verlassen den Bild-Proxy“
- *   G  fromCdn antwortet auf 404 mit `res.status(404)` statt sendPlaceholder
- *      → rot: „ein fehlendes Bild kommt als Platzhalter …“; rememberMissing()
- *      entfernt → ebenda rot (zweiter Abruf beim CDN)
- *   H  auch 403 wird gemerkt (`r.status === 404 || r.status === 403`) → rot:
- *      „nur 404 wird gemerkt, kein 403“
- *   I  in fromCdn `imgProxyFailures.notFound++` bzw. `.error++` gestrichen → rot:
- *      „Fehler werden gezählt und protokolliert“; ebenso die Meldung
- *      „CDN antwortete …“ auf console.info statt console.error bei 403
- *   J  in bildProbe() `looks_like` ohne den JPEG-Zweig bzw. die Probe ohne
- *      'Accept-Encoding': 'identity' → rot: „die Probe zeigt, WAS …“
- *   K  (15.11.2026) in cleanImageCacheOn() die Schleife über images/sets gestrichen →
- *      rot: „images/sets zählt im Deckel mit …“ (0 statt 1 gelöscht)
+ * Counter-checks (measured on 01.11.2026):
+ *   A  in imgProxy.ts `url = proxyAddress(url) ?? url` removed → red:
+ *      “a timestamp in the query part does not refetch the image"
+ *   B  the throttle in passThroughImage commented out → red: “the fourth
+ *      foreign image is throttled"
+ *   C  in cleanImageCacheOn the sorting reversed (newest first) → red:
+ *      “the cap deletes the image unused the longest"
+ *   D  Cache-Control of the streamed path back to `public` → red: “a
+ *      timestamp …” (private missing)
+ *   E  in passThroughImage the CDN's raw Content-Type set again →
+ *      red: “a comma list in the Content-Type …” (04.11.2026)
+ * Counter-checks (measured on 08.11.2026):
+ *   F  the type check in passThroughImage lets SVG through → red: “only images
+ *      leave the image proxy”
+ *   G  fromCdn answers 404 with `res.status(404)` instead of sendPlaceholder
+ *      → red: “a missing image comes as a placeholder …”; rememberMissing()
+ *      removed → same place red (second fetch at the CDN)
+ *   H  403 is also remembered (`r.status === 404 || r.status === 403`) → red:
+ *      “only 404 is remembered, no 403”
+ *   I  in fromCdn `imgProxyFailures.notFound++` or `.error++` deleted → red:
+ *      “errors are counted and logged”; likewise the message
+ *      “CDN antwortete …” on console.info instead of console.error for 403
+ *   J  in bildProbe() `looks_like` without the JPEG branch or the probe without
+ *      'Accept-Encoding': 'identity' → red: “the probe shows WHAT …”
+ *   K  (15.11.2026) in cleanImageCacheOn() the loop over images/sets deleted →
+ *      red: “images/sets counts in the cap …” (0 instead of 1 deleted)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -43,7 +43,7 @@ const { EventEmitter } = require('node:events');
 
 const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-bildproxy-'));
 process.env.APP_ROOT = wurzel;
-// Der Platzhalter für fehlende Bilder liegt unter APP_ROOT/public.
+// The placeholder for missing images lies under APP_ROOT/public.
 fs.mkdirSync(path.join(wurzel, 'public', 'assets'), { recursive: true });
 fs.copyFileSync(
   path.join(__dirname, '..', 'public', 'assets', 'set-placeholder.svg'),
@@ -55,7 +55,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { warte: pause, bis } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
-// Ohne Datenbank: Kein Set liegt im Blickfeld, abgelegt wird nichts.
+// Without a database: no set is in the view, nothing is stored.
 require('./helpers/sources').replaceServices('images', { setNumberInScope: async () => false });
 const passThroughImage = (...a) =>
   _req('routes/imgProxy.js').passThroughImage(require('./helpers/sources').testServices(), ...a);
@@ -105,7 +105,7 @@ const hole = adresse =>
     n: (await r.arrayBuffer()).byteLength,
     cache: r.headers.get('cache-control'),
   }));
-// Der Cache schreibt nach der Antwort; gewartet wird auf die Dateien, nicht auf eine feste Zeit.
+// The cache writes after the response; the wait is for the files, not for a fixed time.
 const imagesInCache = () =>
   fs.existsSync(cacheDir) ? fs.readdirSync(cacheDir).filter(f => /^[0-9a-f]{40}$/.test(f)).length : 0;
 
@@ -126,10 +126,10 @@ test('a timestamp in the query part does not fetch the image anew', async () => 
   assert.ok(await bis(() => imagesInCache() >= 1), 'das erste Bild landet nicht im Cache');
   const b = await hole('https://cdn.rebrickable.com/media/sets/10294-1.jpg?1800000000#x');
   assert.equal(b.status, 200);
-  // Nur für Angemeldete: Ein geteilter Zwischenspeicher darf die Antwort nicht halten.
+  // Only for logged-in users: a shared cache must not hold the response.
   assert.match(`${a.cache} ${b.cache}`, /^private,.* private,/);
   assert.deepEqual(geholt, ['https://cdn.rebrickable.com/media/sets/10294-1.jpg']);
-  // Wo der Anfrageteil das Bild bestimmt, bleibt er — sortiert.
+  // Where the query part determines the image, it stays — sorted.
   await hole('https://www.bricklink.com/getPic.asp?itemNo=3001&colorID=5');
   assert.equal(geholt.at(-1), 'https://www.bricklink.com/getPic.asp?colorID=5&itemNo=3001');
   await bis(() => imagesInCache() >= 2);
@@ -147,8 +147,8 @@ test('the fourth foreign image is throttled, hits and other accounts are not', a
   assert.equal((await hole('https://cdn.rebrickable.com/media/parts/d1.png')).status, 200, 'Cache-Treffer gedrosselt');
   konto += 1;
   assert.equal((await hole('https://cdn.rebrickable.com/media/parts/d4.png')).status, 200, 'anderes Konto gedrosselt');
-  // Der Cache schreibt nach der Antwort weiter; landet die Datei erst im
-  // nächsten Test, zählt sie dort gegen den Deckel (im Volllauf so gesehen).
+  // The cache keeps writing after the response; if the file only lands in the
+  // next test, it counts against the cap there (seen like that in the full run).
   const bilder = () => fs.readdirSync(cacheDir).filter(f => /^[0-9a-f]{40}$/.test(f)).length;
   for (const ende = Date.now() + 5000; bilder() < 6 && Date.now() < ende; ) await pause(100);
   assert.equal(bilder(), 6);
@@ -174,7 +174,7 @@ test("a comma list in the CDN's Content-Type does not go out", async () => {
   } finally {
     cdnType = 'image/png';
   }
-  // Der Cache schreibt nach der Antwort weiter; der Deckel unten zählt sonst mit.
+  // The cache keeps writing after the response; the cap below would otherwise count it.
   for (
     const ende = Date.now() + 5000;
     fs.readdirSync(cacheDir).filter(f => f.endsWith('.ct')).length < 8 && Date.now() < ende;
@@ -183,8 +183,8 @@ test("a comma list in the CDN's Content-Type does not go out", async () => {
 });
 
 test('only images leave the image proxy', async () => {
-  // Auf den erlaubten CDNs liegen teils Nutzer-Uploads; HTML oder SVG liefe
-  // sonst unter unserer Herkunft.
+  // On the allowed CDNs there are partly user uploads; HTML or SVG would
+  // otherwise run under our origin.
   konto = 400000 + (process.pid % 100000);
   try {
     for (const [typ, adresse] of [
@@ -227,7 +227,7 @@ test('a missing image comes as a placeholder, and the server remembers it', asyn
 });
 
 test('only 404 is remembered, no 403', async () => {
-  // 403 ist beim CDN oft nur Drosselung; gemerkt fehlten Bilder, die es gibt.
+  // At the CDN 403 is often only throttling; remembered, images that exist would be missing.
   konto = 200000 + (process.pid % 100000);
   cdnStatus = 403;
   try {
@@ -289,7 +289,7 @@ test('images/sets counts in the cap and stays', async () => {
     fs.writeFileSync(p, Buffer.alloc(1000));
     fs.utimesSync(p, jetzt - alterDays * 86400, jetzt - alterDays * 86400);
   }
-  // 2000 Bytes im Cache lägen unter 3500, mit images/sets sind es 4000.
+  // 2000 bytes in the cache would be below 3500, with images/sets it is 4000.
   assert.equal(await cleanImageCacheOn(3500, jetzt * 1000), 1);
   assert.deepEqual(fs.readdirSync(cacheDir), ['b'.repeat(40)]);
   assert.deepEqual(fs.readdirSync(sets), ['10294-1.jpg']);
@@ -308,7 +308,7 @@ test('errors are counted and logged', async () => {
       [403, false, 'https://cdn.rebrickable.com/media/sets/zaehl-403.jpg'],
       [200, true, 'https://cdn.rebrickable.com/media/sets/zaehl-netz.jpg'],
     ])) {
-      // Je Abruf ein eigenes Konto: Die Drossel (drei je Minute) soll hier nicht greifen.
+      // One account per fetch: the throttle (three per minute) should not apply here.
       konto = 400000 + status * 1000 + (process.pid % 1000);
       cdnStatus = status;
       cdnNetworkError = netz;
@@ -350,10 +350,10 @@ test('the probe shows WHAT is delivered', async () => {
         ['nackt', 200],
       ],
     );
-    // Dieselbe Anforderung wie der Proxy: unkomprimiert.
+    // The same request as the proxy: uncompressed.
     assert.equal(kopfzeilen.at(-1)['Accept-Encoding'], 'identity');
     assert.equal(typeof jpeg.proxy_failures.notFound, 'number');
-    // Ein CDN, das trotzdem komprimiert, fällt in der Antwort auf.
+    // A CDN that compresses anyway shows up in the response.
     cdnBody = Buffer.from([0x1f, 0x8b, 8, 0, 0, 0, 0, 0]);
     cdnHeader = { 'content-encoding': 'gzip' };
     const gz = await bildProbe(adresse);

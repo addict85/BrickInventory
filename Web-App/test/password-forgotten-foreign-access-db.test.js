@@ -1,21 +1,21 @@
 /**
- * „Passwort vergessen“ beendet auch, was ein Eindringling am Konto hinterlassen haben kann:
- * Hauptkonten, unter die er es gehängt hat (sie sehen und ändern den Bestand), offene
- * Einladungen und einen ausstehenden Adresswechsel. Die Mail an das Konto nennt alles. Der
- * normale Passwortwechsel des angemeldeten Inhabers lässt den Haushalt stehen.
+ * „Passwort vergessen“ also ends what an intruder may have left behind on the account:
+ * main accounts under which he hung it (they see and change the inventory), open
+ * invitations and a pending address change. The mail to the account names everything. The
+ * normal password change of the logged-in owner leaves the household standing.
  *
- * Gegenproben (14.11.2026 gemessen, je einzeln):
- *   A  in setPasswordBack() unlinkForeignAccess() durch ein leeres Ergebnis ersetzt → rot:
- *      „das fremde Hauptkonto sieht …“, „offene Einladungen …“, „die Mail nennt …“
- *   B  in resolveSubAccountAndInvitations() `sub_user_id` durch `main_user_id` ersetzt → rot:
- *      „das fremde Hauptkonto …“, „das eigene Unterkonto bleibt“, „die Mail nennt …“
- *   C  discardPendingAddress() durch null ersetzt → rot: „der ausstehende Adresswechsel
- *      ist verworfen“, „die Mail nennt …“
- *   D  das DELETE auf account_link_invites durch nichts ersetzt → rot: „offene Einladungen …“,
- *      „die Mail nennt …“
- *   E  in geloestSatz() den Haushaltsteil abgeschaltet → rot: „die Mail nennt …“
+ * Counter-checks (measured 14.11.2026, each on its own):
+ *   A  in setPasswordBack() unlinkForeignAccess() replaced by an empty result → red:
+ *      “the foreign main account … sees …”, “open invitations …”, “the mail names …”
+ *   B  in resolveSubAccountAndInvitations() `sub_user_id` replaced by `main_user_id` → red:
+ *      “the foreign main account …”, “the own sub-account stays”, “the mail names …”
+ *   C  discardPendingAddress() replaced by null → red: “the pending address change
+ *      is discarded”, “the mail names …”
+ *   D  the DELETE on account_link_invites replaced by nothing → red: “open invitations …”,
+ *      “the mail names …”
+ *   E  the household part switched off in geloestSatz() → red: “the mail names …”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -57,7 +57,7 @@ test('forgot password removes foreign access', { concurrency: 1 }, async t => {
       ).id,
     );
   const [V, A, K] = ids;
-  // Der Eindringling hat V unter sein Konto A gehängt; V selbst ist Hauptkonto von K.
+  // The intruder hung V under his account A; V itself is the main account of K.
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2), ($2, $3)', [A, V, K]);
   await db.run(
     `INSERT INTO account_link_invites (token_hash, main_user_id, expires_at) VALUES ($1, $2, NOW() + INTERVAL '1 day')`,

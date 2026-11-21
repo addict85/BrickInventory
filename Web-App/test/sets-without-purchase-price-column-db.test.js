@@ -1,7 +1,7 @@
 /**
- * Seit db/basis.sql gibt es den Stand VOR dieser Migration nicht mehr: Die
- * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
- * der Endstand und die Lesewege.
+ * Since db/basis.sql the state BEFORE this migration no longer exists: the
+ * cases on bolt, addendum and intermediate state are dropped. What is checked is
+ * the final state and the read paths.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,7 +13,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
 
-// Nachlauf: aufgeraeumte Datenbank zuruecklassen
+// Aftermath: leave a cleaned-up database behind
 test.after(async () => {
   try {
     await db.run('DROP SCHEMA public CASCADE');
@@ -26,14 +26,14 @@ test.after(async () => {
       c.release();
     }
   } catch (e) {
-    // Nicht verschlucken: Bleibt die Datenbank kaputt, scheitern die
-    // naechsten Dateien an etwas, das nichts mit ihnen zu tun hat.
+    // Do not swallow: if the database stays broken, the next files fail
+    // on something that has nothing to do with them.
     console.error('[sets-ohne-kaufpreisspalte] Aufraeumen fehlgeschlagen:', e.message);
   }
   await db.pool.end().catch(() => {});
 });
 
-/** Spaltennamen einer Tabelle, aus dem Katalog. */
+/** Column names of a table, from the catalog. */
 const columnsOf = async tabelle =>
   (await db.all(`SELECT column_name FROM information_schema.columns WHERE table_name=$1`, [tabelle]))
     .map(r => r.column_name)
@@ -49,13 +49,13 @@ test('after the complete schema setup sets has no purchase price and no conditio
     return;
   }
 
-  // Von null: genau der Weg, den eine neue Installation nimmt.
+  // From zero: exactly the path a new installation takes.
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
 
-  // Den Vorstand vor den Migrationen gibt es nicht mehr: Eine leere
-  // Datenbank bekommt db/basis.sql. Geprüft wird der Endstand.
+  // The state before the migrations no longer exists: an empty
+  // database gets db/basis.sql. What is checked is the final state.
   const client = await db.pool.connect();
   try {
     await _req('db/migrate.js').runMigrations(client);
@@ -64,9 +64,9 @@ test('after the complete schema setup sets has no purchase price and no conditio
   }
 
   const nachher = await columnsOf('sets');
-  // `quantity` stand hier mit — bis Migration 0036 sie geloescht hat. Geprueft
-  // wird jetzt `user_id` und `set_number`: Welches Konto haelt welches Set,
-  // das ist, was von der Zeile bleibt. (Dass quantity ROUTE ist, prueft
+  // `quantity` stood here too — until migration 0036 deleted it. What is checked
+  // now is `user_id` and `set_number`: which account holds which set,
+  // that is what remains of the row. (That quantity is ROUTE is checked by
   // test/set-quantity-from-entries-db.test.js.)
   assert.ok(
     nachher.includes('user_id') && nachher.includes('set_number'),
@@ -80,7 +80,7 @@ test('after the complete schema setup sets has no purchase price and no conditio
     );
   }
 
-  // Und sie sind nicht verschwunden, sondern umgezogen.
+  // And they have not disappeared but moved.
   const erfassung = await columnsOf('set_acquisitions');
   for (const sp of ['purchase_price', 'condition', 'quantity', 'created_at']) {
     assert.ok(erfassung.includes(sp), `set_acquisitions.${sp} fehlt — dann gibt es den Kaufpreis nirgends mehr`);

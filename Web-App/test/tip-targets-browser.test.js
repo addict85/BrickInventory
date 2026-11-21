@@ -1,14 +1,14 @@
 /**
- * Am Telefon ist jedes Bedienelement mindestens 44 × 44 px gross — gemessen
- * im Browser, nicht im Quelltext gelesen.
+ * On the phone every control is at least 44 × 44 px — measured
+ * in the browser, not read from the source text.
  *
- * Gegenproben (am 27.10. gemessen):
- *   A  in mobile.css `.delbtn` wieder 36 px (29.10.; seitdem 44 px ohne ::after)
- *      → rot: „Löschknopf auf der Kachel"
- *   B  in mobile.css `.vb` aus der 44-px-Zeile genommen → rot: „Ansicht Karten/Tabelle"
- *   C  `label:has(> input[type="checkbox"])` entfernt → rot: „Häkchen mit Beschriftung"
- *   D  (28.10.) das Häkchen wieder als 22-px-Kästchen ohne eigene Fläche
- *      → rot: „Häkchen allein (22×22)"
+ * Counter-checks (measured on 27.10.):
+ *   A  in mobile.css `.delbtn` again 36 px (29.10.; since then 44 px without ::after)
+ *      → red: „Löschknopf auf der Kachel"
+ *   B  in mobile.css `.vb` taken out of the 44 px line → red: „Ansicht Karten/Tabelle"
+ *   C  `label:has(> input[type="checkbox"])` removed → red: „Häkchen mit Beschriftung"
+ *   D  (28.10.) the checkbox again as a 22 px box without its own surface
+ *      → red: „Häkchen allein (22×22)"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -22,7 +22,7 @@ const STILE = ['tokens.css', 'styles.css', 'mobile.css'];
 
 const { chrome } = require('./helpers/app-browser');
 
-/** Je Fall: Name und Markup; das gemessene Element trägt data-ziel. */
+/** Per case: name and markup; the measured element carries data-ziel. */
 const CASES = [
   ['Textfeld', '<input class="si" data-ziel placeholder="Suchen">'],
   ['Auswahl', '<select data-ziel><option>Alle</option></select>'],
@@ -44,7 +44,7 @@ const CASES = [
     'Häkchen mit Beschriftung',
     '<label style="display:flex;align-items:center;gap:6px"><input type="checkbox" style="width:auto" data-ziel> Admin</label>',
   ],
-  // Ohne Beschriftung ringsum muss das Kästchen selbst 44 px fassen.
+  // Without a label around it the box itself must hold 44 px.
   ['Häkchen allein', '<input type="checkbox" style="width:auto" data-ziel aria-label="Auswahl">'],
   ['Häkchen allein, angehakt', '<input type="checkbox" checked data-ziel aria-label="Auswahl">'],
 ];

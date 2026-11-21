@@ -1,18 +1,18 @@
 /**
- * Ohne SMTP zeigt die Konsole den Link einer Mail — ohne Token, ausser mit eigenem Schalter.
- * Die Konsole landet in app_logs; ein Reset-Link darin wäre für jeden
- * Verwalter 48 Stunden lang ein Zugang zu fremden Konten.
+ * Without SMTP the console shows the link of a mail — without token, except with an own switch.
+ * The console ends up in app_logs; a reset link in it would be for every
+ * admin an access to foreign accounts for 48 hours.
  *
- * Gegenproben (am 27.10. gemessen):
- *   A  die Ersetzung in linkForConsole entfernt → rot: „in Produktion ohne Token"
- *   B  wieder nur bei NODE_ENV=production maskiert → rot: „ohne NODE_ENV ohne Token"
- * Gegenproben (am 29.10.2026 gemessen, Schalter statt NODE_ENV):
- *   C  die Ersetzung entfernt → rot: „ohne Schalter …“, „NODE_ENV …“ und
- *      „mit MAIL_KONSOLE_MIT_TOKEN=1 …“ (der Wert „ja“)
- *   D  wieder NODE_ENV=development/test als Ausnahme → rot: „NODE_ENV öffnet nichts“
- * Gegenprobe (13.11.2026 gemessen):
- *   E  in linkForConsole `#` aus `[?&#]token=` gestrichen → rot: „ohne
- *      Schalter ohne Token“ (der Token im Fragment stand im Klartext)
+ * Counter-checks (measured on 27.10.):
+ *   A  the replacement in linkForConsole removed → red: „in Produktion ohne Token"
+ *   B  masked again only with NODE_ENV=production → red: „ohne NODE_ENV ohne Token"
+ * Counter-checks (measured on 29.10.2026, switch instead of NODE_ENV):
+ *   C  the replacement removed → red: “without switch …”, “NODE_ENV …” and
+ *      “with MAIL_KONSOLE_MIT_TOKEN=1 …” (the value „ja“)
+ *   D  again NODE_ENV=development/test as an exception → red: “NODE_ENV opens nothing”
+ * Counter-check (measured 13.11.2026):
+ *   E  in linkForConsole `#` deleted from `[?&#]token=` → red: “without
+ *      switch without token” (the token in the fragment stood in plaintext)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -21,7 +21,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const environment = require('./helpers/sources').environment;
 const { linkForConsole } = _req('src/mail/mailer.js');
 
-// Der Absender reicht den Link selbst; aus dem Text gesucht wird nicht mehr.
+// The sender passes the link itself; it is no longer searched for in the text.
 const TEXT = 'https://lego.example.org/reset?token=abcdef0123456789';
 
 test('without switch without token', () => {
@@ -32,7 +32,7 @@ test('without switch without token', () => {
     linkForConsole('https://x.example/verify?a=1&token=geheim#oben', undefined),
     'https://x.example/verify?a=1&token=…#oben',
   );
-  // Seit die Mails den Token ins Fragment legen (#token=).
+  // Since the mails put the token into the fragment (#token=).
   assert.equal(linkForConsole('https://x.example/verify#token=geheim', undefined), 'https://x.example/verify#token=…');
 });
 

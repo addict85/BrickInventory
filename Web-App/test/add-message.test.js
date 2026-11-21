@@ -1,15 +1,15 @@
 /**
- * Nach dem Erfassen sagt die Meldung, was wirklich geschehen ist: Fehlen die
- * Katalogdaten (kein Netz zu Rebrickable/Brickset), heisst es „gespeichert —
- * Name und Bild kommen nach“ statt „hinzugefügt!“. Am echten Bündel in jsdom.
+ * After adding, the message says what really happened: if the
+ * catalog data is missing (no network to Rebrickable/Brickset), it says “saved —
+ * name and image follow” instead of “added!”. On the real bundle in jsdom.
  *
- * Gegenprobe (am 28.10.2026 gemessen): in sammlung.js katalog_offen nicht
- * ausgewertet → rot: „ohne Katalogdaten“ (es kam „Set 99071-1 hinzugefügt!“).
+ * Counter-check (measured on 28.10.2026): katalog_offen not evaluated in sammlung.js
+ * → red: “without catalog data” (it said “Set 99071-1 hinzugefügt!”).
  *
- * Gegenprobe (08.11.2026 gemessen): der Schlüssel gallery.set_aktualisiert aus
- * beiden Sprachdateien entfernt → rot: „aktualisiert“ und „englisch: aktualisiert“
- * (es erscheint der rohe Schlüssel); gallery.set_hinzugefuegt nur in en.js entfernt
- * → rot: „englisch: hinzugefügt“.
+ * Counter-check (measured 08.11.2026): the key gallery.set_aktualisiert removed from
+ * both language files → red: “updated” and “English: updated”
+ * (the raw key appears); gallery.set_hinzugefuegt removed only in en.js
+ * → red: “English: added”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

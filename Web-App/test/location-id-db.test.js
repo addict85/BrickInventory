@@ -1,5 +1,5 @@
 /**
- * Der Lagerort am Bestand ist eine ID — und was das rettet.
+ * The storage location on the stock is an ID — and what that saves.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -30,7 +30,7 @@ async function seed() {
   await holdsSet(db, UID, '10179-1', 1);
 }
 
-/** Der NAME, den die Oberfläche am Set sieht — über den Vorrat aufgelöst. */
+/** The NAME the UI sees on the set — resolved via the stock. */
 async function ortAmSet(sn) {
   return (
     (
@@ -73,10 +73,10 @@ test('storage location as an ID against a real database', async t => {
   const estrich = (await L.putLocationAn(UID, 'Estrich')).ort;
 
   await t.test('a different spelling lands in the EXISTING place', async () => {
-    // Der Kern. Getippt wird „estrich", im Vorrat steht „Estrich" — und das
-    // Set zeigt danach die Schreibweise des Vorrats. Mit dem Namen am Bestand
-    // stand hier „estrich", und damit war die Zuordnung von da an eine andere
-    // Zeichenkette als der Eintrag, aus dem sie gewählt wurde.
+    // The core. „estrich" is typed, the stock holds „Estrich" — and the
+    // set then shows the spelling of the stock. With the name on the stock entry
+    // „estrich" stood here, and with that the assignment was from then on a different
+    // string than the entry it was chosen from.
     const n = await L.setLocation('set', writable, ['10179-1'], 'estrich');
     assert.equal(n, 1, `${n} Zeilen getroffen, erwartet 1`);
     assert.equal(
@@ -96,9 +96,9 @@ test('storage location as an ID against a real database', async t => {
   });
 
   await t.test('renaming works without a single line of follow-up work', async () => {
-    // benenneOrtUm() schreibt NUR den Vorrat um. Mit dem Namen brauchte es
-    // dafür eine Schleife über drei Tabellen in einer Transaktion — und die
-    // verglich zeichengenau, traf „estrich" also nicht.
+    // benenneOrtUm() rewrites ONLY the stock. With the name this needed
+    // a loop over three tables in one transaction — and that
+    // compared character by character, so it did not hit „estrich".
     await L.benenneOrtUm(UID, estrich.id, 'Dachboden');
     assert.equal(
       await ortAmSet('10179-1'),
@@ -108,9 +108,9 @@ test('storage location as an ID against a real database', async t => {
   });
 
   await t.test('an occupied place cannot be deleted', async () => {
-    // Die Belegt-Prüfung zählt über die ID. Mit dem Namen zählte sie bei
-    // abweichender Schreibweise null und gab den Ort frei — das Set behielt
-    // danach einen Namen, den die Auswahlliste nicht mehr kannte.
+    // The occupied check counts via the ID. With the name it counted zero for
+    // a different spelling and released the place — the set then kept
+    // a name that the selection list no longer knew.
     await assert.rejects(
       () => L.loescheOrt(UID, estrich.id),
       (/** @type {any} */ e) => String(e.code) === 'lagerort_in_benutzung',
@@ -124,19 +124,19 @@ test('storage location as an ID against a real database', async t => {
   });
 
   await t.test('clearing sets the ID to NULL', async () => {
-    // Leer und NULL sind dasselbe: „nicht erfasst" (Begründung in 0018).
+    // Empty and NULL are the same: „not captured" (reasoning in 0018).
     await L.setLocation('set', writable, ['10179-1'], null);
     assert.equal(await ortAmSet('10179-1'), null, 'Das Leeren hat nichts entfernt');
-    // Und jetzt geht das Löschen, weil nichts mehr darin liegt.
+    // And now deleting works, because nothing lies in it any more.
     await L.loescheOrt(UID, estrich.id);
     assert.deepEqual(await L.locationsOf([UID]), []);
   });
 
   await t.test('a failed attempt creates no place in the stock', async () => {
-    // Diese Eigenschaft hatte der alte Weg nebenbei: Er ordnete zuerst zu und
-    // legte den Ort nur bei Erfolg an. Mit der ID muss es umgekehrt laufen
-    // (ohne Zeile keine ID), deshalb steht beides in einer Transaktion mit
-    // Rücknahme. Ohne die stünde nach jedem Tippfehler ein Ort in der Liste.
+    // The old path had this property on the side: it assigned first and
+    // created the place only on success. With the ID it must run the other way round
+    // (no row, no ID), hence both stand in one transaction with
+    // rollback. Without it a place would stand in the list after every typo.
     const vorher = (await L.locationsOf([UID])).length;
     const n = await L.setLocation('set', writable, ['99999-1'], 'Geisterkiste');
     assert.equal(n, 0, 'Ein Set, das es nicht gibt, wurde angeblich geaendert');

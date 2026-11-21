@@ -1,23 +1,23 @@
 /**
- * Eine Webapp-Sitzung ohne Betrieb läuft ab — eine mit Betrieb nicht.
+ * A web app session without activity expires — one with activity does not.
  *
- * ── Gegenproben (durchgeführt, Ergebnisse abgeschrieben) ────────────────────
+ * ── Counter-checks (carried out, results copied) ────────────────────
  *
- * Jede trifft GENAU EINEN Fall — das ist der Punkt: Würde eine Variante
- * mehrere Fälle umlegen, wüssten wir nicht, welcher Fall was misst.
+ * Each hits EXACTLY ONE case — that is the point: if a variant
+ * knocked over several cases, we would not know which case measures what.
  *
- *   A  `ttl` aus dem Speicher entfernt (der Zustand VOR dieser Änderung)
- *      → nur Fall 1 rot. Die Sitzung lebt weiter, denn dann gilt wieder
- *        der Tag von connect-pg-simple.
- *   B  Drosselung 10000 ms bei 5 s Frist — also länger als die Frist
- *      (30.10.2026 mit den heutigen Zahlen erneut gemessen, ebenso A)
- *      → nur Fall 2 rot. Der Ablauf wird nicht nachgeführt, die TÄTIGE
- *        Sitzung stirbt mitten im Betrieb.
- *   C  `ttl` aus startup/app.ts entfernt → rot in session-app-db.test.js; die
- *      Fälle hier bauen ihren Speicher selbst und merken davon nichts.
+ *   A  `ttl` removed from the store (the state BEFORE this change)
+ *      → only case 1 red. The session lives on, because then the
+ *        day of connect-pg-simple applies again.
+ *   B  throttling 10000 ms with a 5 s period — i.e. longer than the period
+ *      (measured again on 30.10.2026 with today's numbers, likewise A)
+ *      → only case 2 red. The expiry is not carried along, the ACTIVE
+ *        session dies in the middle of operation.
+ *   C  `ttl` removed from startup/app.ts → red in session-app-db.test.js; the
+ *      cases here build their store themselves and notice nothing of it.
  *
- * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
- * Ohne DB: skip. Ausführen: REQUIRE_DB=1 npm test
+ * Prerequisite: test DB (contents are touched!) via TEST_DATABASE_URL.
+ * Without DB: skip. Run: REQUIRE_DB=1 npm test
  */
 const test = require('node:test');
 const { after } = require('node:test');
@@ -33,7 +33,7 @@ const _req = buildAndRequire();
 const db = testData();
 const { touchThrottle, touchMs } = _req('src/account/sessionTouch.js');
 const { sessionIdleMs, sessionIdleSec, IDLE_DEFAULT_MIN } = _req('src/account/sessionDeadline.js');
-// Die Vorgabe als gereichte Konfiguration, wie buildServices sie reicht.
+// The default as handed-in configuration, as buildServices hands it in.
 const VORGABE = { sitzungLeerlaufMin: IDLE_DEFAULT_MIN };
 const SESSION_IDLE_MS = sessionIdleMs(VORGABE);
 const SESSION_IDLE_SEC = sessionIdleSec(VORGABE);
@@ -42,14 +42,14 @@ const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
 
-/** Eine eigene Kennung je Lauf, damit das Aufräumen nichts Fremdes trifft. */
+/** An own identifier per run, so that the cleanup hits nothing foreign. */
 const UID = 990717;
 
 /**
- * Ein Server wie in server.ts, nur mit kurzen Fristen.
+ * A server as in server.ts, only with short periods.
  *
- * @param ttlSec    Leerlauf-Frist in Sekunden (als Bruchzahl erlaubt).
- * @param throttleMs Frist der Drosselung; `null` = gar nicht drosseln.
+ * @param ttlSec    idle period in seconds (fractions allowed).
+ * @param throttleMs period of the throttling; `null` = do not throttle at all.
  */
 async function startServer(ttlSec, throttleMs) {
   const speicher = new pgSession({
@@ -66,7 +66,7 @@ async function startServer(ttlSec, throttleMs) {
       secret: process.env.SESSION_SECRET,
       resave: false,
       saveUninitialized: false,
-      cookie: { httpOnly: true, sameSite: 'strict' }, // kein maxAge — wie in server.ts
+      cookie: { httpOnly: true, sameSite: 'strict' }, // no maxAge — as in server.ts
     }),
   );
   app.get('/anmelden', (req, res) => {
@@ -82,14 +82,14 @@ async function startServer(ttlSec, throttleMs) {
 
 const anmelden = async base => {
   const r = await fetch(base + '/anmelden');
-  await r.text(); // die Sitzung steht erst nach dem letzten Byte im Speicher
+  await r.text(); // the session only stands in the store after the last byte
   return (r.headers.get('set-cookie') || '').split(';')[0];
 };
 const wer = async (base, keks) => (await (await fetch(base + '/wer', { headers: { cookie: keks } })).json()).uid;
 const { warte: sleep } = require('./helpers/time');
 
 /**
- * Aufräumen — und zwar in `after`, nicht am Ende eines Falls.
+ * Cleanup — and that in `after`, not at the end of a case.
  */
 after(async () => {
   await db.run('DELETE FROM user_sessions WHERE sess::text LIKE $1', [`%${UID}%`]).catch(() => {});
@@ -103,8 +103,8 @@ test('without activity the session expires', async t => {
     return t.skip('no test database reachable');
   }
 
-  // 5 s statt 2 s: Unter Last (paralleler Volllauf) lagen zwischen Anmelden
-  // und erstem Lesen schon über 2 s, und die Vorbedingung kippte.
+  // 5 s instead of 2 s: under load (parallel full run) more than 2 s already lay between login
+  // and the first read, and the precondition toppled.
   const { srv, base } = await startServer(5, null);
   try {
     const keks = await anmelden(base);
@@ -114,7 +114,7 @@ test('without activity the session expires', async t => {
       'direkt nach dem Anmelden muss die Sitzung gelten — sonst misst der Rest nichts',
     );
 
-    await sleep(7000); // 5 s Frist, 2 s Reserve — siehe Kopf
+    await sleep(7000); // 5 s period, 2 s reserve — see header
     assert.equal(
       await wer(base, keks),
       null,
@@ -133,14 +133,14 @@ test('with activity the session stays', async t => {
     return t.skip('no test database reachable');
   }
 
-  // Dasselbe Verhältnis wie im Betrieb: Die Drosselung ist ein Fünftel der
-  // Frist, nicht länger. Mit einer Drosselung länger als die Frist wird
-  // dieser Fall rot — gemessen, siehe Kopf.
+  // The same ratio as in production: the throttling is one fifth of the
+  // period, not longer. With a throttling longer than the period
+  // this case turns red — measured, see header.
   const { srv, base } = await startServer(5, 1000);
   try {
     const keks = await anmelden(base);
-    // Über die Frist HINAUS arbeiten: 20 Anfragen à 400 ms = 8 s bei 5 s
-    // Frist. Ohne Nachführen wäre die Sitzung nach etwa Anfrage 13 tot.
+    // Work BEYOND the period: 20 requests at 400 ms = 8 s with a 5 s
+    // period. Without carrying it along the session would be dead after about request 13.
     for (let i = 0; i < 20; i++) {
       await sleep(400);
       assert.equal(
@@ -156,8 +156,8 @@ test('with activity the session stays', async t => {
 });
 
 test('the throttling is shorter than the period', () => {
-  // Der Kern der Kopplung, ohne Server: Wäre sie länger, flöge der ARBEITENDE
-  // Benutzer heraus statt des untätigen.
+  // The core of the coupling, without a server: if it were longer, the WORKING
+  // user would be thrown out instead of the idle one.
   assert.ok(
     TOUCH_MS * 2 <= SESSION_IDLE_MS,
     `Die Drosselung (${TOUCH_MS} ms) ist nicht deutlich kürzer als die ` +
@@ -165,11 +165,11 @@ test('the throttling is shorter than the period', () => {
       'rechtzeitig nachgeführt und eine tätige Sitzung stirbt mitten im Betrieb.',
   );
 
-  // Und die Vorgabe ist die, die im README steht.
+  // And the default is the one that stands in the README.
   assert.equal(SESSION_IDLE_MS, IDLE_DEFAULT_MIN * 60_000);
   assert.equal(SESSION_IDLE_SEC, IDLE_DEFAULT_MIN * 60);
-  // Bei vier Stunden bleibt die Drosselung bei den bisherigen fünf Minuten:
-  // ein Viertel davon wäre eine Stunde, es gewinnt das Minimum.
+  // At four hours the throttling stays at the previous five minutes:
+  // a quarter of it would be an hour, the minimum wins.
   assert.equal(
     TOUCH_MS,
     5 * 60 * 1000,

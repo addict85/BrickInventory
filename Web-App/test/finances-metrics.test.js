@@ -1,28 +1,28 @@
 /**
- * Finanzen: Oben stehen IMMER Kennzahlen. Der Einstand (Summe der
- * Kaufpreise) ist immer bekannt; Gesamtwert und G&V nur mit Marktpreisen,
- * sonst sagt die Kachel, für wie viele Positionen der Preis fehlt. Die
- * Summenzeilen zeigen den Einstand auch ohne Marktwert. Geprüft am echten
- * Bündel in jsdom mit Antworten in der Form des Servers.
+ * Finances: key figures ALWAYS stand at the top. The cost (sum of the
+ * purchase prices) is always known; total value and G&L only with market prices,
+ * otherwise the tile says for how many items the price is missing. The
+ * sum rows show the cost even without market value. Checked on the real
+ * bundle in jsdom with responses in the server's shape.
  *
- * Gegenproben (am 28.10. gemessen):
- *   A  showMetrics() nicht aufgerufen → rot: beide Fälle („Einstand fehlt oben“)
- *   B  summenZellen() ohne Einstandszelle → rot: „ohne Marktpreise“
- *      („Die Summenzeile der Sets zeigt den Einstand nicht“)
- *   C  Zähler withoutPrice ohne die Teile → rot: beide Fälle (3 statt 4, 2 statt 3)
- *   E  den Leerzustand in renderFinance entfernt → rot: „nichts erfasst“
- *      (fünfmal „fehlt“; 28.10.)
- *   D  G&V-Betrag wieder als Gesamtwert − Einstand → rot: „mit Marktpreisen“
- *      (−397.93 neben +11.3 %; 28.10.)
- *   F  die G&V-Kachel wieder ohne Preise ausgeblendet (display none) → rot:
- *      „ohne Marktpreise“ („G&V-Kachel verschwindet“; 30.10.)
+ * Counter-checks (measured on 28.10.):
+ *   A  showMetrics() not called → red: both cases (“cost missing at the top”)
+ *   B  summenZellen() without a cost cell → red: “without market prices”
+ *      (“the sets' sum row does not show the cost”)
+ *   C  counter withoutPrice without the parts → red: both cases (3 instead of 4, 2 instead of 3)
+ *   E  the empty state removed in renderFinance → red: “nothing entered”
+ *      (five times “missing”; 28.10.)
+ *   D  G&L amount again as total value − cost → red: “with market prices”
+ *      (−397.93 next to +11.3 %; 28.10.)
+ *   F  the G&L tile hidden again without prices (display none) → red:
+ *      “without market prices” (“G&L tile disappears”; 30.10.)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, reiter, warte } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
-// Beide Schreibweisen: de-DE (1.097,93) und de-CH (1’097.93).
+// Both notations: de-DE (1.097,93) and de-CH (1’097.93).
 const zahl = s =>
   s
     .replace(/[’'’\s]/g, '')
@@ -132,7 +132,7 @@ test('without market prices: cost basis at the top and in the sums, a hint inste
   try {
     assert.match(zahl(text(d.getElementById('fin-einstand'))), /1097\.93/, 'Einstand fehlt oben');
     assert.equal(text(d.getElementById('fin-wert')), 'Marktpreis fehlt für 4 Positionen');
-    // Die G&V-Kachel bleibt stehen (die Reihe springt nicht) und sagt, was fehlt.
+    // The G&L tile stays (the row does not jump) and says what is missing.
     assert.notEqual(d.getElementById('fin-stat-pnl').style.display, 'none', 'G&V-Kachel verschwindet');
     assert.equal(text(d.getElementById('fin-total-pnl')), '—');
     assert.equal(text(d.getElementById('fin-pnl-sub')), 'Braucht Kauf- und Marktpreise');
@@ -152,8 +152,8 @@ test('with market prices: total value and P&L', async () => {
     assert.match(text(d.getElementById('fin-basis')), /3 Positionen ohne Marktpreis nicht gerechnet/);
     assert.notEqual(d.getElementById('fin-stat-pnl').style.display, 'none');
     assert.match(text(d.getElementById('fin-total-pnl')), /11[.,]3/);
-    // Betrag aus denselben Posten wie die Prozentzahl: 700 − 629, nicht 700 − 1097.93.
-    // Dahinter steht, wogegen gerechnet ist; das Prozent im Diagramm rechnet gegen den Zeitraum.
+    // Amount from the same items as the percentage: 700 − 629, not 700 − 1097.93.
+    // Behind it stands what it is computed against; the percent in the chart computes against the period.
     assert.match(
       zahl(text(d.getElementById('fin-pnl-sub'))),
       /^\+[^0-9]*71\.00[^0-9]*$/,

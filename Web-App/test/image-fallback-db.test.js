@@ -1,15 +1,15 @@
 /**
- * Bildadresse: Rückfall auf den gemeinsamen Katalog — gegen echte Datenbank.
+ * Image address: fallback to the shared catalog — against a real database.
  *
- * Fehlt die Bildadresse in der eigenen sets-Zeile (Download-Frist, CSV-Import,
- * Barcode), kommt sie aus dem kontoübergreifenden set_catalog. Ohne den
- * Rückfall lieferte die API image_url: null, und beide Clients zeigten den
- * Platzhalter, obwohl die CDN-Adresse bekannt war; den Proxy wählen sie selbst.
+ * If the image address is missing in the own sets row (download deadline, CSV import,
+ * barcode), it comes from the cross-account set_catalog. Without the
+ * fallback the API delivered image_url: null, and both clients showed the
+ * placeholder although the CDN address was known; they choose the proxy themselves.
  *
- * Gegenprobe (durchgeführt): COALESCE wieder auf s.image_url zurückgedreht →
- * der erste Teilschritt hier wird rot.
+ * Counter-check (performed): COALESCE turned back to s.image_url →
+ * the first substep here turns red.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -27,8 +27,8 @@ test('if the image address is missing on the set, it comes from the shared catal
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const USERNAME = 'img-fallback-test';
-  const OHNE = '60445-1'; // Bild nur im Katalog
-  const MIT = '60446-1'; // eigene Adresse vorhanden
+  const OHNE = '60445-1'; // image only in the catalog
+  const MIT = '60446-1'; // own address present
   const CDN = 'https://cdn.rebrickable.com/media/sets/60445-1.jpg';
   const OWN = 'https://cdn.rebrickable.com/media/sets/eigen.jpg';
 
@@ -39,11 +39,11 @@ test('if the image address is missing on the set, it comes from the shared catal
   await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[OHNE, MIT]]);
   await db.run(`DELETE FROM set_catalog WHERE set_number = ANY($1)`, [[OHNE, MIT]]);
 
-  // Was Migration 0033 an diesem Aufbau geaendert hat
+  // What migration 0033 changed in this setup
   await holdsSet(db, uid, OHNE, 1);
   await catalogSet(db, OHNE, { name: 'F1 Truck', image_url: CDN });
 
-  // Gegenstück: eine ANDERE Adresse im Katalog — sie muss unveraendert durchkommen.
+  // Counterpart: a DIFFERENT address in the catalog — it must get through unchanged.
   await holdsSet(db, uid, MIT, 1);
   await catalogSet(db, MIT, { name: 'Anderes', image_url: OWN });
 

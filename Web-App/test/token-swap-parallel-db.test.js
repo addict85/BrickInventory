@@ -1,16 +1,16 @@
 /**
- * Gleichzeitige Tausche desselben Tokens: Genau einer bekommt einen neuen
- * Token, die übrigen 409 tausch_laeuft; der ausgegebene gilt. Ein zweiter
- * Tausch aus einem anderen /24-Netz gilt als Kopie und beendet die Familie.
+ * Concurrent exchanges of the same token: exactly one gets a new
+ * token, the others 409 tausch_laeuft; the issued one applies. A second
+ * exchange from another /24 network counts as a copy and ends the family.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  in rotateToken() die Zeile `if (offen && offen.alter_s < SWAP_LOCK_S)`
- *      entfernt → rot: „sechs gleichzeitige Tausche …“ (6× 200, nur der
- *      letzte gilt)
- *   B  den Zweig zum anderen Netz entfernt → rot: „ein zweiter Tausch aus
- *      einem anderen Netz …“ (der alte Token tauschte weiter)
+ * Counter-checks (measured 05.11.2026, each on its own):
+ *   A  in rotateToken() the line `if (offen && offen.alter_s < SWAP_LOCK_S)`
+ *      removed → red: “six concurrent exchanges …” (6× 200, only the
+ *      last one applies)
+ *   B  the branch for the other network removed → red: “a second exchange from
+ *      another network …” (the old token kept exchanging)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,23 +1,23 @@
 /**
- * Bilder laufen in jsdom nachweislich über den Bild-Proxy: Teilekachel, Set-Detail,
- * Zoom, Figurenkachel und manuell erfasste Teile. Die Vorschau-Adresse rät der
- * Client nicht selbst (kein „_thumb.jpg“), er nimmt, was der Server liefert.
+ * Images demonstrably go via the image proxy in jsdom: part tile, set detail,
+ * zoom, minifigure tile and manually entered parts. The client does not guess the preview address
+ * itself (no “_thumb.jpg”), it takes what the server delivers.
  */
 /*
- * Gegenproben (05.11.2026, je einzeln, Bündel neu gebaut):
- *   A  partsCard mit `orig: rawSrc` statt imgUrl(fullUrl(rawSrc), false) → „Teilekachel …“ rot
- *   B  renderManualParts mit `const imgSrc = p.image_local || p.image_url || ''` → „manuell …“ rot
- *   C  thumbUrl() hängt wieder `_thumb.jpg` an → „Teilekachel …“ und „manuell …“ rot
- * Gegenproben (08.11.2026, je einzeln, Bündel neu gebaut):
- *   D  fullUrl() gibt eine absolute CDN-Adresse wieder roh zurück (`return src`
- *      statt über IMG_PROXY) → „Set-Detail und Zoom …“ rot
- *   E  openModal setzt m-img wieder mit `set.image_local||set.image_url` ohne
- *      fullUrl() → „Set-Detail und Zoom …“ rot (Vorschau statt voller Auflösung)
- *   F  openImageLightboxFromEl nimmt wieder `this.src` statt data-orig/fullUrl
- *      → „Set-Detail und Zoom …“ rot
- *   G  Figurenkachel mit `orig: imgSrc` statt fullUrl(imgSrc) → „Minifigur …“ rot
- *   H  imgUrl() gibt eine absolute Adresse roh zurück → „Teilekachel …“ und
- *      „manuell …“ rot
+ * Counter-checks (05.11.2026, each alone, bundle rebuilt):
+ *   A  partsCard with `orig: rawSrc` instead of imgUrl(fullUrl(rawSrc), false) → “part tile …” red
+ *   B  renderManualParts with `const imgSrc = p.image_local || p.image_url || ''` → “manual …” red
+ *   C  thumbUrl() appends `_thumb.jpg` again → “part tile …” and “manual …” red
+ * Counter-checks (08.11.2026, each alone, bundle rebuilt):
+ *   D  fullUrl() returns an absolute CDN address raw again (`return src`
+ *      instead of via IMG_PROXY) → “set detail and zoom …” red
+ *   E  openModal sets m-img again with `set.image_local||set.image_url` without
+ *      fullUrl() → “set detail and zoom …” red (preview instead of full resolution)
+ *   F  openImageLightboxFromEl takes `this.src` again instead of data-orig/fullUrl
+ *      → “set detail and zoom …” red
+ *   G  minifigure tile with `orig: imgSrc` instead of fullUrl(imgSrc) → “minifigure …” red
+ *   H  imgUrl() returns an absolute address raw → “part tile …” and
+ *      “manual …” red
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -94,7 +94,7 @@ test('set detail and zoom: full resolution, a CDN address only via the proxy', a
     };
     assert.ok(await warte(() => d.querySelector('#gallery [data-click="openModal"]')));
     assert.equal(await oeffne('10294-1'), proxy(SET_CDN), 'Das Detail lädt direkt beim CDN');
-    // Der Zoom öffnet dieselbe volle Auflösung, ebenfalls über den eigenen Server.
+    // The zoom opens the same full resolution, likewise via the own server.
     d.getElementById('m-img').click();
     assert.ok(await warte(() => d.getElementById('lightbox-img').getAttribute('src')));
     assert.equal(d.getElementById('lightbox-img').getAttribute('src'), proxy(SET_CDN));

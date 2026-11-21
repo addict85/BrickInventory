@@ -1,17 +1,17 @@
 /**
- * Das Serverprotokoll (src/infra/log.ts): JSON-Zeilen auf stdout/stderr,
- * daneben app_logs im bisherigen Textformat; Schreibfehler werden gezählt und
- * höchstens einmal je Minute gemeldet statt verschluckt.
+ * The server log (src/infra/log.ts): JSON lines on stdout/stderr,
+ * next to it app_logs in the previous text format; write errors are counted and
+ * reported at most once per minute instead of swallowed.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in emptyLog() den Fehlerzweig wieder `() => {}` → rot:
- *      „Schreibfehler: sofort, dann je Minute gesammelt“ (keine Meldung)
- *   B  in schreibfehler() die Minutenregel entfernt (immer sofort melden) →
- *      rot: dieselbe Prüfung (drei Meldungen statt einer)
- *   C  in jsonRow() die Anfragekennung weggelassen → rot: „eine Zeile ist
- *      JSON mit Zeit, Stufe, Nachricht, Anfrage und Kontext“
- *   D  in anfrageKennung() den Filter entfernt (jede Zeichenkette übernommen)
- *      → rot: „X-Request-Id: nur harmlose Kennungen …“
+ * Counter-checks (measured on 30.10.2026):
+ *   A  in emptyLog() the error branch again `() => {}` → red:
+ *      “write errors: immediately, then collected per minute” (no message)
+ *   B  in schreibfehler() the minute rule removed (always report immediately) →
+ *      red: the same check (three messages instead of one)
+ *   C  in jsonRow() the request identifier left out → red: “a line is
+ *      JSON with time, level, message, request and context”
+ *   D  in anfrageKennung() the filter removed (every string taken over)
+ *      → red: “X-Request-Id: only harmless identifiers …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,7 +19,7 @@ const assert = require('node:assert/strict');
 const _req = require('./helpers/sources').buildAndRequire();
 const P = _req('src/infra/log.js');
 
-/** Eine Ausgabe zum Mitlesen, mit stellbarer Uhr. */
+/** An output to read along, with an adjustable clock. */
 function transcript() {
   const m = { out: [], err: [], uhr: Date.parse('2026-10-30T12:00:00Z') };
   return { m, output: { out: z => m.out.push(z), err: z => m.err.push(z), jetzt: () => m.uhr } };

@@ -1,18 +1,18 @@
 /**
- * Ein gefangener Fehler ergibt IMMER einen lesbaren Text.
+ * A caught error ALWAYS yields a readable text.
  *
- * Gegenprobe (09.11.2026): in fehlertext() die Zeile für Error-artige Objekte ohne Prototyp gestrichen
- * → rot: „fehlertext liefert nie "undefined"“.
+ * Counter-check (09.11.2026): in fehlertext() the line for error-like objects without a prototype deleted
+ * → red: “fehlertext never returns "undefined"”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { fehlertext, fehlerCode } = require('./helpers/sources').buildAndRequire()('src/infra/error.js');
 
 test('fehlertext never returns "undefined"', () => {
-  // Der Normalfall.
+  // The normal case.
   assert.equal(fehlertext(new Error('kaputt')), 'kaputt');
 
-  // ── Die vier Faelle, die vorher „undefined" ergaben ──────────────────────
+  // ── The four cases that used to yield “undefined" ────────────────────────
   assert.equal(fehlertext('kaputt'), 'kaputt', 'eine geworfene Zeichenkette ist die Meldung');
   assert.equal(
     fehlertext({ message: 'aus einem Fremdmodul' }),
@@ -22,15 +22,15 @@ test('fehlertext never returns "undefined"', () => {
   assert.equal(fehlertext(undefined), 'Unbekannter Fehler');
   assert.equal(fehlertext(null), 'Unbekannter Fehler');
 
-  // Ein Error OHNE Text faellt auf String(e) zurueck und ergibt 'Error'.
-  // Ich hatte hier 'Unbekannter Fehler' erwartet — der Test hat mich
-  // korrigiert. 'Error' ist die bessere Antwort: Sie sagt wenigstens, dass
-  // eine Ausnahme vorlag, und die Regel, um die es geht, lautet ohnehin
-  // „niemals leer und niemals undefined" (siehe die Schleife darunter).
+  // An Error WITHOUT text falls back to String(e) and yields 'Error'.
+  // I had expected 'Unbekannter Fehler' here — the test corrected
+  // me. 'Error' is the better answer: it at least says that
+  // an exception occurred, and the rule in question is anyway
+  // “never empty and never undefined" (see the loop below).
   assert.equal(fehlertext(new Error('')), 'Error');
 
-  // Kein Wert darf als leerer String herauskommen — sonst steht in der
-  // Oberflaeche „Fehler: " und der Nutzer sieht wieder nichts.
+  // No value may come out as an empty string — otherwise the
+  // UI shows “Fehler: " and the user again sees nothing.
   for (const wert of [0, false, {}, [], new Error(), Symbol('x')]) {
     const t = fehlertext(wert);
     assert.equal(typeof t, 'string', `${String(wert)} ergibt keinen String`);
@@ -39,9 +39,9 @@ test('fehlertext never returns "undefined"', () => {
 });
 
 test('fehlertext does NOT give away the whole object', () => {
-  // Ein geworfener Datenbankfehler traegt gern die vollstaendige Abfrage samt
-  // Parametern. Die darf nicht in einer Meldung landen, die bis zur
-  // Oberflaeche laufen kann.
+  // A thrown database error likes to carry the complete query including
+  // parameters. That must not land in a message that can reach the
+  // UI.
   const dbError = Object.assign(new Error('duplicate key'), {
     query: 'INSERT INTO users (password_hash) VALUES ($1)',
     parameters: ['geheim'],
@@ -54,14 +54,14 @@ test('fehlertext does NOT give away the whole object', () => {
 
 test('fehlerCode reads Node and Postgres codes', () => {
   assert.equal(fehlerCode(Object.assign(new Error('x'), { code: 'ECONNREFUSED' })), 'ECONNREFUSED');
-  // Postgres liefert numerische Codes (23505 = Eindeutigkeitsverletzung).
+  // Postgres delivers numeric codes (23505 = uniqueness violation).
   assert.equal(
     fehlerCode(Object.assign(new Error('x'), { code: 23505 })),
     '23505',
     'ein numerischer Code wird zur Zeichenkette — sonst schluege jeder Vergleich fehl',
   );
-  // Ohne Code ist undefined die richtige Antwort: Jeder Vergleich damit
-  // schlaegt sauber fehl, statt zufaellig zu treffen.
+  // Without a code undefined is the right answer: every comparison with it
+  // fails cleanly instead of hitting by chance.
   assert.equal(fehlerCode(new Error('x')), undefined);
   assert.equal(fehlerCode('kaputt'), undefined);
   assert.equal(fehlerCode(null), undefined);

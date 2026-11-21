@@ -1,11 +1,11 @@
 /**
- * Die Einstellungen richten ihre Spalten aneinander aus, nicht an der Textlänge.
+ * The settings align their columns with each other, not with the text length.
  *
- * ── Gegenproben (durchgeführt) ──────────────────────────────────────────────
+ * ── Counter-checks (carried out) ──────────────────────────────────────────────
  *
- *   a) Das Raster von der Liste zurück auf die Zeile → Fall 2 und 3 rot.
- *   b) margin-top am Verknüpfen-Knopf entfernt → Fall 1 rot.
- *   c) (14.11.2026) .konto-fuss ohne margin-top → Fall 1 rot.
+ *   a) the grid moved from the list back to the row → cases 2 and 3 red.
+ *   b) margin-top removed on the link button → case 1 red.
+ *   c) (14.11.2026) .konto-fuss without margin-top → case 1 red.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -18,22 +18,22 @@ const ROOT = path.join(__dirname, '..');
 const QUELLE = require('./helpers/sources').ansichtQuelle('einstellungen');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
-/** Wie in test/catalog-frontend.test.js: die Modulverpackung weg. */
+/** As in test/catalog-frontend.test.js: the module wrapping gone. */
 function withoutModule(src) {
   return src.replace(/^import[^;]*;\s*$/gm, '').replace(/^export\s+/gm, '');
 }
 
 /**
- * Eine Funktion aus einstellungen.js in einer Sandbox ausführen.
+ * Run a function from einstellungen.js in a sandbox.
  *
- * Nur die Funktion selbst, nicht die ganze Datei: Sie zieht ein halbes Dutzend
- * andere Module nach sich (Galerie, Teile, Minifiguren), und die hier
- * nachzubauen hiesse, die Anwendung zu starten, um ein Raster zu prüfen.
+ * Only the function itself, not the whole file: it pulls half a dozen
+ * other modules along (gallery, parts, minifigures), and rebuilding them here
+ * would mean starting the application to check a grid.
  */
 function runFrom(funktionsName, environment) {
   const start = QUELLE.indexOf(`function ${funktionsName}(`);
   assert.ok(start > 0, `${funktionsName}() steht nicht mehr in den Dateien der Ansicht „einstellungen“`);
-  // Bis zur Klammer auf Spalte 0 — so sind diese Dateien geschrieben.
+  // Up to the bracket in column 0 — that is how these files are written.
   const ende = QUELLE.indexOf('\n}\n', start) + 3;
   const code = withoutModule(QUELLE.slice(start, ende));
   const sandbox = { ...environment };
@@ -42,7 +42,7 @@ function runFrom(funktionsName, environment) {
   return sandbox;
 }
 
-/** Minimalgerüst: nur, was die beiden Erzeuger wirklich anfassen. */
+/** Minimal scaffold: only what the two producers really touch. */
 function rack(dom, targetId) {
   const d = dom.window.document;
   return {
@@ -60,7 +60,7 @@ test('spacing between invitation code and link button', () => {
   const d = new JSDOM(HTML).window.document;
   const knopf = d.querySelector('[data-click="redeemHouseholdInvite"]');
   assert.ok(knopf, 'Der Verknüpfen-Knopf ist nicht mehr zu finden');
-  // Seit UI-Prüfung 22 steht er in der Fusszeile der Menüseiten (.konto-fuss, margin-top:.75rem).
+  // Since UI check 22 it stands in the footer of the menu pages (.konto-fuss, margin-top:.75rem).
   const css = fs.readFileSync(path.join(ROOT, 'public', 'styles.css'), 'utf8');
   assert.ok(knopf.parentElement?.classList.contains('konto-fuss'), 'Der Knopf steht nicht in .konto-fuss');
   assert.match(
@@ -90,8 +90,8 @@ test('the linked accounts are in two columns, not new per row', () => {
 
   const liste = dom.window.document.querySelector('#household-state ul');
   assert.ok(liste, 'Die Liste der verknüpften Konten wurde nicht erzeugt');
-  // Das Raster steht in styles.css (.haushalt-liste); minmax(0, …) lässt die
-  // Spalten bei grosser Schrift schrumpfen, statt die Seite zu verbreitern.
+  // The grid stands in styles.css (.haushalt-liste); minmax(0, …) lets the
+  // columns shrink at large font sizes instead of widening the page.
   assert.ok(liste.classList.contains('haushalt-liste'), 'Die Liste trägt die Klasse haushalt-liste nicht');
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
   const stil = (css.match(/\n\.haushalt-liste\{([^}]*)\}/) || [])[1] || '';
@@ -117,8 +117,8 @@ test('the linked accounts are in two columns, not new per row', () => {
         'in den Spalten der Liste, und die Ausrichtung ist wieder dahin',
     );
   }
-  // Und jede Zeile liefert genau zwei Zellen — sonst verschieben sich die
-  // Spalten ab der ersten Zeile, die anders gebaut ist.
+  // And every row delivers exactly two cells — otherwise the columns shift
+  // from the first row that is built differently.
   for (const li of zeilen) {
     assert.equal(
       li.children.length,
@@ -138,9 +138,9 @@ test('the storage locations are laid out like a table', () => {
   const dom = new JSDOM('<!doctype html><html><body><div id="storage-list"></div></body></html>');
   const d = dom.window.document;
 
-  // ladeLagerortVerwaltung() holt die Daten selbst vom Server. Geprüft wird
-  // hier die ERZEUGTE Struktur, nicht das Holen — deshalb wird nur der
-  // Markup-Teil ausgeführt, mit festen Daten.
+  // ladeLagerortVerwaltung() fetches the data from the server itself. What is checked
+  // here is the PRODUCED structure, not the fetching — hence only the
+  // markup part is executed, with fixed data.
   const quelle = QUELLE.slice(QUELLE.indexOf('export async function ladeLagerortVerwaltung'));
   const ende = quelle.indexOf('\n}\n') + 3;
   const rumpf = quelle.slice(0, ende);
@@ -155,10 +155,10 @@ test('the storage locations are laid out like a table', () => {
     t: (k, v) => k + ' ' + JSON.stringify(v || {}),
     tRaw: k => k,
     loadLocations: async () => {},
-    // success: true, sonst kehrt die Funktion gleich am Anfang um. Und die
-    // Belegung schluesselt auf `ort`, nicht auf `name` — genau Marcos Lage:
-    // drei Orte mit Inhalt, einer leer, damit die Spalte „Belegung" wirklich
-    // verschieden lange Texte bekommt.
+    // success: true, otherwise the function turns back right at the start. And the
+    // occupancy is keyed on `ort`, not on `name` — exactly Marco's situation:
+    // three places with content, one empty, so that the column „Belegung" really
+    // gets texts of different lengths.
     api: async (_m, pfad) =>
       pfad.includes('locations')
         ? {
@@ -211,8 +211,8 @@ test('the storage locations are laid out like a table', () => {
         `Eine Zeile hat ${z.children.length} Zellen statt 4 (Feld, Belegung, Stern, Papierkorb)`,
       );
     }
-    // Der Trennstrich sass an der Zeile; ein display:contents-Element kann
-    // keinen Rahmen tragen. Er muss an den ZELLEN liegen, sonst ist er weg.
+    // The separator line sat on the row; a display:contents element cannot
+    // carry a border. It must lie on the CELLS, otherwise it is gone.
     for (const zelle of zeilen[0].children) {
       assert.match(
         zelle.getAttribute('data-stil') || '',

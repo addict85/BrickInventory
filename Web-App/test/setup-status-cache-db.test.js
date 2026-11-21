@@ -1,23 +1,23 @@
 /**
- * Der öffentliche Einrichtungsstand ist gebremst und wird kurz gemerkt:
- * Er kostet je Aufruf rund zehn Abfragen (Entschlüsselung, Kontenzählung).
+ * The public setup state is throttled and remembered briefly:
+ * it costs around ten queries per call (decryption, account count).
  *
- * Gegenproben (am 08.11.2026 gemessen):
- *   A  Zwischenspeicher aus setupStatus() entfernt
- *      → rot: „innerhalb des Fensters rechnet nur der erste Aufruf“
- *   B  beide Antworten unter demselben Schlüssel gemerkt (verwalter ignoriert)
- *      → rot: „Verwalter- und öffentliche Antwort sind getrennt“
- *   C  ipThrottle aus routes/api_v1/setup.ts entfernt
- *      → rot: „die Adresse wird gebremst“
- *   D  onGlobalChange(...) entfernt (14.11.2026: k.einstellungen.onGlobalChange im Fach)
- *      → rot: „ein geschriebener Wert gilt sofort“
- *   E  der Zweig `if (erledigt) return …` entfernt
- *      → rot: „nach Abschluss wird kein Schlüssel gelesen“
- *   F  (15.11.2026) in processEvent() verbinde() ohne s.listen(…) → rot: „ein Wert aus einem
- *      anderen Prozess …“ (kein LISTEN); mit listen, aber Fremdes wie das eigene Echo verworfen
- *      → rot: dieselbe Prüfung („blieb beim alten Wert“)
+ * Counter-checks (measured on 08.11.2026):
+ *   A  cache removed from setupStatus()
+ *      → red: “within the window only the first call computes”
+ *   B  both responses remembered under the same key (verwalter ignored)
+ *      → red: “administrator and public response are separate”
+ *   C  ipThrottle removed from routes/api_v1/setup.ts
+ *      → red: “the address is throttled”
+ *   D  onGlobalChange(...) removed (14.11.2026: k.einstellungen.onGlobalChange in the compartment)
+ *      → red: “a written value applies immediately”
+ *   E  the branch `if (erledigt) return …` removed
+ *      → red: “after completion no key is read”
+ *   F  (15.11.2026) in processEvent() verbinde() without s.listen(…) → red: “a value from
+ *      another process …” (no LISTEN); with listen, but foreign ones discarded like the own echo
+ *      → red: the same check („blieb beim alten Wert“)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const { after } = require('node:test');
@@ -56,9 +56,9 @@ test('setup state: remembered, separated by administrator, throttled', { concurr
 
   const einstellungen = _req('src/settings/settings.js');
   const stand = _req('src/profile/setupStatus.js');
-  // Am Pool statt am Repository: Importe sind gebunden, ein ersetzter Export käme nie an.
+  // On the pool instead of on the repository: imports are bound, a replaced export would never arrive.
   const gelesen = [];
-  // In den Pools der App (Laufzeit-, System- und Web-Systemrolle), nicht im Zugang der Testdaten.
+  // In the pools of the app (runtime, system and web system role), not in the access of the test data.
   const zugang = require('./helpers/sources').testAccess();
   const pools = [...new Set([zugang.pool, zugang.systemPool, zugang.systemWebPool])];
   const echt = pools.map(p => p.query);
@@ -98,7 +98,7 @@ test('setup state: remembered, separated by administrator, throttled', { concurr
     assert.ok(await bis(() => zugang.notification.listensTo('globale_einstellung')), 'kein LISTEN');
     stand.forgetSetupStatus();
     assert.equal((await stand.setupStatus()).konfiguriert, false);
-    // Ein zweiter Satz Dienste mit eigenen Fächern schreibt wie ein anderer Prozess.
+    // A second set of services with its own compartments writes like another process.
     const anderer = _req('startup/wiring.js').buildServices(zugang);
     await anderer.settings.setGlobalValue('rebrickable_api_key', 'probe2');
     assert.ok(

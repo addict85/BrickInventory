@@ -1,19 +1,19 @@
 /**
- * Verwalterrechte verlangen einen zweiten Faktor: Ein Verwalter ohne TOTP und
- * ohne Passkey kommt nach der Anmeldung nur bis zu dessen Einrichtung (403
- * zweiter_faktor_pflicht), Anmeldung und /auth/me sagen es der Oberfläche.
- * Ein gewöhnliches Konto und ein App-Token (Scope `app`) eines Verwalters sind …
+ * Administrator rights require a second factor: an administrator without TOTP and
+ * without passkey only gets as far as setting it up after login (403
+ * zweiter_faktor_pflicht), login and /auth/me tell the UI.
+ * An ordinary account and an app token (scope `app`) of an administrator are …
  *
- * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
- *   A  in loginAtInbox die Prüfung zweiterFaktorPflicht gestrichen → rot:
- *      „ohne zweiten Faktor nur dessen Einrichtung“, „… App-Token …“ (der volle
- *      Token kommt durch) und „ein Passkey genügt“
- *   B  /zweiter-faktor/einrichten aus TO_SETUP gestrichen → rot:
- *      „… die Einrichtung geht, danach alles“
- *   C  zweiterFaktorPflicht() zählt auch Passkeys (hatPasskeys) → rot: „ein
- *      Passkey allein genügt nicht“
- *   D  in signedInResponses `zweiterFaktorPflicht` immer false → rot:
- *      „Anmeldung und /auth/me nennen die Pflicht“
+ * Counter-checks (measured on 04.11.2026, one change each, reverted afterwards):
+ *   A  in loginAtInbox the check zweiterFaktorPflicht deleted → red:
+ *      “without second factor only its setup”, “… app token …” (the full
+ *      token gets through) and “a passkey suffices”
+ *   B  /zweiter-faktor/einrichten deleted from TO_SETUP → red:
+ *      “… setup works, then everything”
+ *   C  zweiterFaktorPflicht() also counts passkeys (hatPasskeys) → red: “a
+ *      passkey alone does not suffice”
+ *   D  in signedInResponses `zweiterFaktorPflicht` always false → red:
+ *      “login and /auth/me name the obligation”
  *
  * REQUIRE_DB=1.
  */
@@ -35,7 +35,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const { portOf } = require('./helpers/server');
 const PASS = 'Verwalter-Passwort-1';
 
-/** Wie server.ts: Eingang vor den Routen; die Sitzung steht fest. */
+/** Like server.ts: entrance before the routes; the session is fixed. */
 function server(t, sitzung, token) {
   const app = express();
   app.use(express.json());
@@ -53,7 +53,7 @@ function server(t, sitzung, token) {
   );
   app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   app.use('/api/v1/auth', require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
-  // Wie startup/app.ts: ein Fehlerweg hinter allem, auch hinter dem Eingang.
+  // Like startup/app.ts: an error path behind everything, also behind the entrance.
   app.use(_req('src/http/httpResponse.js').errorResponse);
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));

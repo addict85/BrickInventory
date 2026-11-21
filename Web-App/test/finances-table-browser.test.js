@@ -1,24 +1,24 @@
 /**
- * Finanztabelle am Rechner: Die Summe lässt sich aus der sichtbaren Spalte
- * nachrechnen, und kein Tabellenkopf bricht um (1280 und 1440 px, DE und EN).
+ * Finances table on the desktop: the sum can be recomputed from the visible column,
+ * and no table header wraps (1280 and 1440 px, DE and EN).
  *
- * Gegenproben (am 03.11.2026 gemessen):
- *   A  in setRow wieder `fmtGeld(purchase,cur)` statt einstandZelle → rot:
- *      „Einstand: Spalte ergibt die Summe“ (Spalte 250 €, Summe 300 €)
- *   B  Statusspalte der Sets wieder sp-40 und `.dt-fin th{white-space:nowrap;…}`
- *      entfernt → rot: „Köpfe in einer Zeile“ („Preis“ zweizeilig)
- *   C  in preisKoepfe() wieder der volle Kopf t('finance.total_pnl') → rot:
- *      „Köpfe in einer Zeile“ (de 1280: Gewinn/Verlust ragt über die Spalte)
+ * Counter-checks (measured on 03.11.2026):
+ *   A  in setRow again `fmtGeld(purchase,cur)` instead of einstandZelle → red:
+ *      “cost: column yields the sum” (column 250 €, sum 300 €)
+ *   B  status column of the sets back to sp-40 and `.dt-fin th{white-space:nowrap;…}`
+ *      removed → red: “headers in one line” (“Preis” two lines)
+ *   C  in preisKoepfe() again the full header t('finance.total_pnl') → red:
+ *      “headers in one line” (de 1280: Gewinn/Verlust sticks out over the column)
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Skipped without Chrome (CHROME_BIN, google-chrome, chromium).
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp, warte } = require('./helpers/app-browser');
 const { holdsSet } = require('./helpers/inventory');
 
-/** Sichtbarer Text (ohne .vh), der umbricht oder über die Zelle ragt. */
+/** Visible text (without .vh) that wraps or sticks out over the cell. */
 const WRAP = `[...document.querySelectorAll('.dt-fin thead th, .dt-summe thead th')].filter(e => e.getClientRects().length).map(th => {
   const tops = new Set(); let rechts = 0; const w = document.createTreeWalker(th, NodeFilter.SHOW_TEXT);
   while (w.nextNode()) { const n = w.currentNode; if (!n.textContent.trim() || n.parentElement.closest('.vh')) continue;
@@ -54,7 +54,7 @@ test('finance table can be recalculated and without wrapping in the header', {
     return;
   }
   const { b, bis, ruhig } = app;
-  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  // Startup loads settings and prices afterwards; only then is the state fixed.
   await ruhig();
   const groesse = async w => {
     await b.tab('Emulation.setDeviceMetricsOverride', { width: w, height: 900, deviceScaleFactor: 1, mobile: false });

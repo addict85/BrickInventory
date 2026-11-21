@@ -1,14 +1,14 @@
 /**
- * Antworten von Rebrickable und Brickset laufen durch ihre zod-Schemas
- * (clients/responses.ts): Eine passende Antwort kommt typisiert an, eine
- * unerwartete Form ist ein Fehler statt leerer Felder. HTTP über eine
- * Attrappe von https.get, Schlüssel und Kontingent über die echte Datenbank.
+ * Responses from Rebrickable and Brickset run through their zod schemas
+ * (clients/responses.ts): a matching response arrives typed, an
+ * unexpected shape is an error instead of empty fields. HTTP via a
+ * dummy of https.get, key and quota via the real database.
  *
- * Gegenproben (am 11.11.2026 gemessen):
- *   A  in rbGet() wieder `return JSON.parse(body)` statt checkResponse → rot:
- *      „Rebrickable: eine Antwort ohne set_num ist ein Fehler“
- *   B  in parseResponse() (Brickset) die zweite Prüfung entfernt (`return data`)
- *      → rot: „Brickset: ein Set ohne Nummer gilt nicht als Treffer“
+ * Counter-checks (measured on 11.11.2026):
+ *   A  in rbGet() again `return JSON.parse(body)` instead of checkResponse → red:
+ *      “Rebrickable: a response without set_num is an error”
+ *   B  in parseResponse() (Brickset) the second check removed (`return data`)
+ *      → red: “Brickset: a set without a number does not count as a hit”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -23,13 +23,13 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-/** Jede Anfrage bekommt 200 mit `koerper` als JSON. */
+/** Every request gets 200 with `koerper` as JSON. */
 async function withBody(koerper, lauf) {
   const echt = https.get;
-  // @ts-expect-error — Attrappe mit genau dem, was src/infra/fetch.ts benutzt.
+  // @ts-expect-error — dummy with exactly what src/infra/fetch.ts uses.
   https.get = (_u, _o, atResponse) => {
     const r = Object.assign(Readable.from([Buffer.from(JSON.stringify(koerper))]), { statusCode: 200, headers: {} });
-    // @ts-expect-error — kein vollständiges IncomingMessage
+    // @ts-expect-error — not a complete IncomingMessage
     setImmediate(() => atResponse(r));
     return Object.assign(new EventEmitter(), { destroy: () => {}, end: () => {} });
   };

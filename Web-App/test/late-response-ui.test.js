@@ -1,21 +1,21 @@
 /**
- * Späte Antworten einer verworfenen Filterkombination landen nicht in der
- * Liste: Galerie (sammlung.js) und Teileliste (teile.js) zählen eine
- * Generation hoch und verwerfen, was zu einer älteren gehört. In jsdom mit
- * zurückgehaltener erster Antwort, die erst nach der zweiten eintrifft.
+ * Late responses of a discarded filter combination do not land in the
+ * list: gallery (sammlung.js) and parts list (teile.js) increment a
+ * generation and discard what belongs to an older one. In jsdom with a
+ * held-back first response that only arrives after the second.
  *
- * Gegenproben (05.11.2026, je einzeln, Mutationen des Prüfberichts):
+ * Counter-checks (05.11.2026, each alone, mutations of the review report):
  *   A  teile.js `if (gen !== _partsGen) { _partsLoading = false; return; }`
- *      ohne `return` → „Teileliste: späte Antwort …“ rot (ALT erscheint)
- *   B  sammlung.js nach galleryParams(1, holen) `if (gen !== _galGen && false)`
- *      → „Galerie: späte Antwort …“ rot (ALT ersetzt NEU)
- *   C  loadGalleryMore ohne Generationsprüfung → „Galerie: späte Folgeseite …“ rot
+ *      without `return` → “parts list: late response …” red (ALT appears)
+ *   B  sammlung.js after galleryParams(1, holen) `if (gen !== _galGen && false)`
+ *      → “gallery: late response …” red (ALT replaces NEU)
+ *   C  loadGalleryMore without generation check → “gallery: late next page …” red
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, reiter } = require('./helpers/ui');
 
-/** Eine Antwort, die erst auf Zuruf eintrifft. */
+/** A response that only arrives on call. */
 function withheld() {
   let los;
   const antwort = new Promise(r => {
@@ -51,7 +51,7 @@ test('gallery: a late response of an old search is discarded', async () => {
 });
 
 test('gallery: a late follow-up page of an old search is not appended', async () => {
-  // Eine volle erste Seite (60) mit grösserem total löst das Nachladen aus.
+  // A full first page (60) with a larger total triggers loading more.
   const erste = Array.from({ length: 60 }, (_, i) => set(`${1000 + i}-1`, `Set ${i}`));
   const sequence = withheld();
   const { w, d, warte, aufrufe } = await openUi({

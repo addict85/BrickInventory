@@ -1,14 +1,14 @@
 'use strict';
 /**
- * Ohne BrickLink-Preis wird der Minifiguren-Preis aus den Teilen geschätzt.
+ * Without a BrickLink price the minifigure price is estimated from the parts.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in figMarketPriceWithOrigin() nur [blFigNumber] versucht → rot: „die
- *      eigene Nummer wird bei BrickLink versucht“
- *   B  estimateMinifigsPrice() mit festem 'N' statt effCond → rot: „im Zustand
- *      der Anfrage“ (2 statt 3)
- *   C  den Cache-Eintrag der Schätzung nicht mehr geschrieben → rot: „die
- *      Schätzung wird zwischengespeichert“
+ * Counter-checks (measured on 30.10.2026):
+ *   A  in figMarketPriceWithOrigin() only [blFigNumber] tried → red: “the
+ *      own number is tried at BrickLink”
+ *   B  estimateMinifigsPrice() with a fixed 'N' instead of effCond → red: “in the requested
+ *      condition” (2 instead of 3)
+ *   C  the cache entry of the estimate no longer written → red: “the
+ *      estimate is cached …”
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -75,7 +75,7 @@ test('minifigure price: BrickLink first, otherwise from the parts', { concurrenc
                   VALUES ($1,777,'U','CHF',1.5) ON CONFLICT DO NOTHING`,
       [TA],
     );
-    // Teil TA: Neu 1, Gebraucht 1.5; Teil TB ohne Preis → halbe Abdeckung.
+    // Part TA: new 1, used 1.5; part TB without a price → half coverage.
     const neu = await figMarketPriceWithOrigin(FB, uid, null, 'N');
     assert.deepEqual(
       { preis: neu.preis, geschaetzt: neu.geschaetzt, abdeckung: neu.abdeckung },
@@ -100,7 +100,7 @@ test('minifigure price: BrickLink first, otherwise from the parts', { concurrenc
       'die Schätzung wird zwischengespeichert',
     );
     assert.equal((await db.get('SELECT COUNT(*)::int AS n FROM minifig_price_history WHERE fig_number=$1', [FB])).n, 2);
-    // Ohne Teilepreise bleibt der gespeicherte Wert: kein neuer Abruf je Teil.
+    // Without part prices the stored value stays: no new fetch per part.
     await db.run('DELETE FROM part_price_cache WHERE part_number = $1', [TA]);
     assert.equal((await figMarketPriceWithOrigin(FB, uid, null, 'N')).preis, 2);
   });

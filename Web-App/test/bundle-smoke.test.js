@@ -1,9 +1,9 @@
 /**
- * Rauchtest für das Frontend-Bündel.
+ * Smoke test for the frontend bundle.
  *
- * „jeder Handler aus dem Markup ist angemeldet“ läuft seit dem 08.11.2026 am
- * laufenden Bündel in actions-dispatcher-ui.test.js (Gegenprobe:
- * `closePwModal,` aus registerActions() gestrichen → dort rot).
+ * “every handler from the markup is registered” has run since 08.11.2026 on the
+ * running bundle in actions-dispatcher-ui.test.js (counter-check:
+ * `closePwModal,` deleted from registerActions() → red there).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -35,8 +35,8 @@ test('the bundle can be evaluated without throwing', async () => {
   const { JSDOM } = require('jsdom');
   const dom = new JSDOM(HTML, { runScripts: 'outside-only', url: 'http://localhost/' });
   const { window } = dom;
-  // Die App ruft beim Start Netz und Speicher — beides stubben, sonst scheitert
-  // sie an fehlenden Browser-Fähigkeiten statt an einem echten Fehler.
+  // At startup the app calls network and storage — stub both, otherwise it fails
+  // on missing browser capabilities instead of on a real error.
   window.fetch = () => Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
   window.matchMedia =
     window.matchMedia || (() => ({ matches: false, addEventListener() {}, removeEventListener() {} }));
@@ -53,15 +53,15 @@ test('the bundle can be evaluated without throwing', async () => {
   }
   assert.deepEqual(errors, [], `Fehler beim Auswerten: ${errors.join('; ')}`);
 
-  // Fenster schliessen, sonst hält die App den Prozess offen: startApp() legt
-  // Intervalle für Statusabfragen an, und jsdom-Timer laufen als echte
-  // Node-Timer weiter — der Test lief dadurch in den Timeout, obwohl er
-  // inhaltlich bestanden hatte.
+  // Close the window, otherwise the app keeps the process open: startApp() sets up
+  // intervals for status queries, and jsdom timers keep running as real
+  // Node timers — the test thereby ran into the timeout although it
+  // had passed in substance.
   dom.window.close();
 });
 
 test('api() delivers an object on every failure instead of throwing', async () => {
-  // Woher dieser Test kommt
+  // Where this test comes from
   const http = require('node:http');
   const srv = http.createServer((q, r) => {
     const sende = (code, typ, body) => {
@@ -82,7 +82,7 @@ test('api() delivers an object on every failure instead of throwing', async () =
   const { window } = dom;
   window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
   window.scrollTo = () => {};
-  const realFetch = globalThis.fetch; // VOR dem Überschreiben festhalten
+  const realFetch = globalThis.fetch; // capture BEFORE overwriting
   Object.assign(globalThis, {
     window,
     document: window.document,
@@ -111,22 +111,22 @@ test('api() delivers an object on every failure instead of throwing', async () =
     assert.equal(ok.success, true, 'Der Normalfall muss unverändert durchgehen');
     assert.equal(ok.wert, 42);
 
-    // Der Fall, der vorher warf: Fehlerstatus mit HTML-Körper.
+    // The case that used to throw: error status with an HTML body.
     const html = await core.api('GET', '/html502');
     assert.equal(html.success, false, 'Eine HTML-Fehlerseite muss als Fehlschlag ankommen');
     assert.equal(html.status, 502);
     assert.ok(html.error, 'Ohne Text hätte der Aufrufer nichts anzuzeigen');
 
-    // Server-Fehler MIT eigener Meldung: die muss durchgereicht werden.
+    // Server error WITH its own message: it must be passed through.
     const json = await core.api('GET', '/json500');
     assert.equal(json.error, 'kaputt', 'Die Servermeldung darf nicht überschrieben werden');
 
-    // JSON ohne success/error (z. B. aus einer Zwischenschicht) wird ergänzt.
+    // JSON without success/error (e.g. from an intermediate layer) is completed.
     const bare = await core.api('GET', '/bare500');
     assert.equal(bare.success, false);
     assert.ok(bare.error);
 
-    // Netzfehler: kein Status, aber dieselbe Form.
+    // Network error: no status, but the same shape.
     globalThis.fetch = () => Promise.reject(new Error('offline'));
     const netz = await core.api('GET', '/x');
     assert.equal(netz.success, false);
@@ -138,10 +138,10 @@ test('api() delivers an object on every failure instead of throwing', async () =
 });
 
 test('unhandled errors do not only end up in the console', () => {
-  // Ergänzung zum Test darüber: api() deckt den Regelfall ab, aber nicht einen
-  // Fehler in einem Rückruf oder eine Zusage, die niemand einsammelt. Ohne
-  // Auffangnetz sieht der Benutzer davon nichts — er klickt, und es passiert
-  // einfach nichts.
+  // Addition to the test above: api() covers the normal case, but not an
+  // error in a callback or a promise that nobody collects. Without a
+  // safety net the user sees nothing of it — they click, and simply
+  // nothing happens.
   const init = fs.readFileSync(path.join(ROOT, 'public', 'js', 'error-capture.js'), 'utf8');
   assert.match(init, /addEventListener\('unhandledrejection'/, 'Abgewiesene Zusagen brauchen ein Auffangnetz');
   assert.match(init, /addEventListener\('error'/, 'Skriptfehler ebenso');
@@ -154,7 +154,7 @@ test('unhandled errors do not only end up in the console', () => {
 });
 
 test('a 401 leads back to the login, not into a dead UI', () => {
-  // Woher dieser Test kommt
+  // Where this test comes from
   const core = require('./helpers/sources').coreSource();
   assert.match(
     core,
@@ -169,14 +169,14 @@ test('a 401 leads back to the login, not into a dead UI', () => {
   assert.match(fn, /\/auth\/me/, '/auth/me beantwortet mit 401 nur „nicht angemeldet"');
   assert.match(fn, /\/auth\/login/, 'Ein falsches Passwort ist kein Sitzungsende');
   assert.match(fn, /showLogin\(\{ abgelaufen: true[,}]/, 'Die Anmeldemaske muss zurückkommen');
-  // Die Meldung steht einmal in der Anmeldekarte (showLogin), nicht als Toast.
+  // The message appears once in the login card (showLogin), not as a toast.
   assert.match(
     core,
     /o\.abgelaufen \? (o\.hinweis \|\| )?tRaw\('auth\.session_expired'\)/,
     'Ohne Meldung wüsste niemand, warum',
   );
 
-  // Der Text muss in beiden Sprachen existieren — sonst steht der Schlüssel da.
+  // The text must exist in both languages — otherwise the key is shown.
   for (const lang of ['de', 'en']) {
     const dict = fs.readFileSync(path.join(ROOT, 'public', 'locales', `${lang}.js`), 'utf8');
     assert.ok(dict.includes("'auth.session_expired'"), `${lang}.js: Text fehlt`);

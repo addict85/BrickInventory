@@ -1,13 +1,13 @@
 /**
- * Der Takt der Anleitungs-Warteschlange gilt echten Abrufen, nicht Durchgängen: Für ein
- * Set mit Anleitung fragt setAnleitungenLaden keinen fremden Server.
+ * The tick of the instruction queue applies to real fetches, not passes: for a
+ * set with an instruction setAnleitungenLaden asks no foreign server.
  *
- * Gezählt werden die Abrufe selbst (jede Quelle der Dienste, jede http(s)-Anfrage),
- * keine Dauer: Die mass den Aufbau der Dienste und Verbindungen mit und riss unter Last.
+ * What is counted are the fetches themselves (every source of the services, every http(s) request),
+ * no duration: that also measured the setup of services and connections and broke under load.
  *
- * Gegenprobe (14.11.2026 gemessen): in setAnleitungenLaden die Rückkehr bei
- * `existing > 0` gestrichen → rot („kein fremder Server“: scrapeInstructions und
- * brickset.getInstructions gezählt).
+ * Counter-check (measured 14.11.2026): in setAnleitungenLaden the return at
+ * `existing > 0` deleted → red (“no foreign server”: scrapeInstructions and
+ * brickset.getInstructions counted).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -52,7 +52,7 @@ test('an already supplied set triggers no fetch', async t => {
 
   const ins = _req('src/catalog/instructions.js');
   const sn = '99999-1';
-  // Auch wenn eine Prüfung scheitert: Ein offener Pool hielte die Datei bis zur Zeitgrenze.
+  // Even if a check fails: an open pool would keep the file until the time limit.
   t.after(async () => {
     await db.run('DELETE FROM shared_instructions WHERE set_number = $1', [sn]).catch(() => {});
     await db.pool.end().catch(() => {});

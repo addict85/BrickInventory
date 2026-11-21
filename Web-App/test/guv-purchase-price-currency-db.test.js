@@ -1,17 +1,17 @@
 /**
- * Die G&V kennt EINEN Kaufpreis: den mengengewichteten aus den Erfassungen mit
- * Preis in der Anzeigewährung. Ein Set, dessen Preis nur in einer anderen
- * Währung erfasst ist, hat keinen bekannten Kaufpreis — es darf nicht als
- * gratis gekauft und damit als reiner Gewinn dastehen.
+ * The G&L knows ONE purchase price: the quantity-weighted one from the entries with
+ * a price in the display currency. A set whose price is only entered in another
+ * currency has no known purchase price — it must not appear as
+ * bought for free and thus as pure gain.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  hasCost wieder wahr, sobald es irgendeine Erfassung gibt (wie der
- *      alte Schnitt mit COALESCE(…, 0)) → rot: „nur in EUR erfasst: Kaufpreis
- *      unbekannt“
- *   B  ein Kaufpreis 0 als fehlend gelesen (`… || null`) → rot: „ein
- *      erfasster Preis 0 zählt“ (purchase_price null statt 0)
+ * Counter-checks (measured on 28.10.2026):
+ *   A  hasCost true again as soon as there is any entry (like the
+ *      old average with COALESCE(…, 0)) → red: “only entered in EUR: purchase price
+ *      unknown”
+ *   B  a purchase price 0 read as missing (`… || null`) → red: “an
+ *      entered price 0 counts” (purchase_price null instead of 0)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -83,8 +83,8 @@ test('P&L: one purchase price, in the display currency', { concurrency: 1 }, asy
   });
 
   await t.test('a captured price of 0 counts', () => {
-    // Bekannt und 0 (Geschenk): der Betrag zählt, eine Prozentzahl gibt es
-    // nicht — siehe gift-guv-db.test.js.
+    // Known and 0 (gift): the amount counts, there is no
+    // percentage — see gift-guv-db.test.js.
     const z = zeile(NR.null);
     assert.equal(z.purchase_price, 0);
     assert.equal(z.pnl_abs, '120.00');
@@ -92,7 +92,7 @@ test('P&L: one purchase price, in the display currency', { concurrency: 1 }, asy
   });
 
   await t.test('the sum of the purchase price leaves out the unknown', () => {
-    // 80 × 4 (gemischt: die Menge zählt alle Erfassungen) + 0; EUR-Set ohne Betrag.
+    // 80 × 4 (mixed: the quantity counts all entries) + 0; EUR set without amount.
     assert.equal(Number(pnl.totals.sets_purchase), 80 * 4);
   });
 });

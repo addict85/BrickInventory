@@ -1,17 +1,17 @@
 /**
- * Was ein Konto eintippt, gehört ihm (part_custom, part_color_custom,
- * minifig_custom) und nie dem gemeinsamen Katalog: Ein anderes Konto zählt es
- * nicht als bekannt und fragt Rebrickable; der geprüfte Wert hat Vorrang.
- * Eingetippte Bilder kommen nur von den Hosts, die der Bild-Proxy zeigt.
+ * What an account types belongs to it (part_custom, part_color_custom,
+ * minifig_custom) and never to the shared catalog: another account does not count it
+ * as known and asks Rebrickable; the verified value takes precedence.
+ * Typed images only come from the hosts the image proxy shows.
  *
- * Gegenproben (am 03.11.2026 gemessen, je eine Änderung, danach zurück):
- *   A  rememberPart()/rememberPartColor()/rememberMinifig() ohne den Zweig für `von`
- *      (Eingabe in den gemeinsamen Katalog) → rot: alle fünf Teiltests
- *   B  partFromCatalog() verbindet part_custom und part_color_custom ohne
- *      `user_id = $3` → rot: „ein anderes Konto fragt trotzdem Rebrickable“
- *      und „der geprüfte Wert hat Vorrang …“ (nur der Name allein bleibt
- *      grün: Annas Bild fehlt Bruno und löst den Abruf schon aus)
- *   C  imageInput() gibt jede URL zurück → rot: „ein fremder Bild-Host …“
+ * Counter-checks (measured on 03.11.2026, one change each, reverted afterwards):
+ *   A  rememberPart()/rememberPartColor()/rememberMinifig() without the branch for `von`
+ *      (input into the shared catalog) → red: all five subtests
+ *   B  partFromCatalog() joins part_custom and part_color_custom without
+ *      `user_id = $3` → red: “another account still asks Rebrickable”
+ *      and “the verified value takes precedence …” (only the name alone stays
+ *      green: Anna's image is missing for Bruno and already triggers the fetch)
+ *   C  imageInput() returns every URL → red: “a foreign image host …”
  *
  * REQUIRE_DB=1.
  */
@@ -26,7 +26,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
 
-// Rebrickable an der Verdrahtung gestellt (testSources); `fetches` zählt, was gefragt wurde.
+// Rebrickable provided at the wiring (testSources); `fetches` counts what was asked.
 let fetches = [];
 testSources(null, {
   lookupPart: async nr => {

@@ -1,5 +1,5 @@
 /**
- * Die Lagerort-VORGABE gegen eine echte Datenbank.
+ * The storage location DEFAULT against a real database.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -58,9 +58,9 @@ test('storage location default against a real database', async t => {
   const fremd = (await L.putLocationAn(U.kind, 'Kinderzimmer')).ort;
 
   await t.test('without a star there is no default', async () => {
-    // Der Ausgangszustand, und er ist eine eigene Aussage: Eine Oberflaeche,
-    // die hier einen Ort bekaeme, wuerde beim ersten Erfassen etwas
-    // vorauswaehlen, das niemand gesetzt hat.
+    // The initial state, and it is a statement of its own: a UI
+    // that got a place here would preselect something on the first capture
+    // that nobody set.
     assert.equal(await L.vorgabeVon(U.ich), null);
   });
 
@@ -73,9 +73,9 @@ test('storage location default against a real database', async t => {
   });
 
   await t.test('a second star replaces the first', async () => {
-    // Eine Vorgabe mit genau einem Wert: Zwei gleichzeitig waeren beim
-    // Erfassen eine Frage ohne Antwort. Dass das ohne Zutun gilt, ist der
-    // Gewinn aus der Ablage in user_settings (ein Schluessel, ein Wert).
+    // A default with exactly one value: two at the same time would be a
+    // question without an answer when capturing. That this holds without any effort is the
+    // gain from storing it in user_settings (one key, one value).
     await L.setDefault(U.ich, cellar.id);
     assert.equal((await L.vorgabeVon(U.ich))?.name, 'Keller');
     const n = (
@@ -86,10 +86,10 @@ test('storage location default against a real database', async t => {
   });
 
   await t.test('a foreign place is rejected', async () => {
-    // Das Kinderzimmer des Kindes ist nicht mein Regal (Migration 0020). Ohne
-    // diese Grenze stuende mein Stern an einem Ort in einer anderen Wohnung.
-    // Geprueft wird `e.code` und nicht der Text: Der erste Entwurf suchte
-    // „lagerort_unbekannt" in der MELDUNG, und die lautet auf Deutsch …
+    // The child's nursery is not my shelf (migration 0020). Without
+    // this boundary my star would stand at a place in another flat.
+    // What is checked is `e.code` and not the text: the first draft searched for
+    // „lagerort_unbekannt" in the MESSAGE, and that one is in German …
     await assert.rejects(
       () => L.setDefault(U.ich, fremd.id),
       (/** @type {any} */ e) => String(e.code) === 'lagerort_unbekannt',
@@ -103,9 +103,9 @@ test('storage location default against a real database', async t => {
   });
 
   await t.test('RENAME: the default stays and has a new name', async () => {
-    // Die Aussage, fuer die es diese Datei gibt. Es steht KEINE Zeile in
-    // benenneOrtUm, die die Vorgabe nachzieht — es braucht sie nicht, weil
-    // die ID gespeichert ist. Mit dem Namen waere das hier rot.
+    // The statement this file exists for. There is NO line in
+    // benenneOrtUm that updates the default — it does not need one, because
+    // the ID is stored. With the name this would be red.
     await L.benenneOrtUm(U.ich, estrich.id, 'Dachboden');
     const v = await L.vorgabeVon(U.ich);
     assert.equal(v?.id, estrich.id, 'Die Vorgabe zeigt nach dem Umbenennen ins Leere');
@@ -119,8 +119,8 @@ test('storage location default against a real database', async t => {
   });
 
   await t.test('DELETE: the default is gone, not broken', async () => {
-    // Die zweite Aussage. Ein Ort laesst sich nur loeschen, wenn nichts darin
-    // liegt (loescheOrt) — deshalb ein eigener, leerer Ort fuer diese Probe.
+    // The second statement. A place can only be deleted when nothing lies
+    // in it (loescheOrt) — hence an own, empty place for this probe.
     const kiste = (await L.putLocationAn(U.ich, 'Kiste 7')).ort;
     await L.setDefault(U.ich, kiste.id);
     assert.equal((await L.vorgabeVon(U.ich))?.name, 'Kiste 7');
@@ -132,9 +132,9 @@ test('storage location default against a real database', async t => {
         'sich also nicht selbst, und die Oberflaeche waehlt einen Ort vor, den ' +
         'es nicht gibt',
     );
-    // Die verwaiste Zeile in user_settings darf bleiben: Sie ist stumm (der
-    // JOIN findet nichts) und wird beim naechsten Stern ueberschrieben. Sie
-    // aufzuraeumen waere genau der Code, den dieser Entwurf einspart.
+    // The orphaned row in user_settings may stay: it is silent (the
+    // JOIN finds nothing) and is overwritten with the next star. Cleaning
+    // it up would be exactly the code that this design saves.
     const rest = (await db.get(`SELECT value FROM user_settings WHERE user_id=$1 AND key=$2`, [U.ich, L.DEFAULT_KEY]))
       ?.value;
     assert.equal(

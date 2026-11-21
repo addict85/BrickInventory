@@ -1,32 +1,32 @@
 /**
- * Anmeldesperre: je Adresse UND je Benutzername — und die Adresse kommt nur
- * dann aus X-Forwarded-For, wenn ein vertrauter Proxy davorsteht.
+ * Login lock: per address AND per username — and the address only comes
+ * from X-Forwarded-For when a trusted proxy stands in front.
  *
- * Gegenproben (am 25.10. gemessen):
- *   A  Zähler je Name in loginAllowed entfernt → rot: „mit wechselnden
- *      Adressen unbegrenzt raten" (seit 28.10. je Konto mit wachsender Wartezeit)
- *   B  server.ts wieder mit `trust proxy` 1 statt proxyVertrauen() → rot:
+ * Counter-checks (measured on 25.10.):
+ *   A  counter per name removed in loginAllowed → red: „mit wechselnden
+ *      Adressen unbegrenzt raten" (since 28.10. per account with growing wait time)
+ *   B  server.ts again with `trust proxy` 1 instead of proxyVertrauen() → red:
  *      „TRUST_PROXY=false wird nicht beachtet"
- *   C  proxyVertrauen('') liefert true → rot: „öffentliche Adresse vertraut"
- *   D  (27.10.) Standard wieder mit uniquelocal → rot: „Heimnetz-Rechner vertraut"
- *   E  (27.10.) Ausnahme für bekannte Adressen entfernt → rot: „der Inhaber
+ *   C  proxyVertrauen('') delivers true → red: „öffentliche Adresse vertraut"
+ *   D  (27.10.) default again with uniquelocal → red: „Heimnetz-Rechner vertraut"
+ *   E  (27.10.) exception for known addresses removed → red: „der Inhaber
  *      kommt von seiner bekannten Adresse weiter herein"
- *   G  (27.10.) app.disable('x-powered-by') entfernt → rot: „verrät X-Powered-By"
- *   J  (29.10.) Standard ohne TRUST_PROXY wieder das Docker-Netz → rot:
+ *   G  (27.10.) app.disable('x-powered-by') removed → red: „verrät X-Powered-By"
+ *   J  (29.10.) default without TRUST_PROXY again the Docker network → red:
  *      „ohne TRUST_PROXY dem Docker-Netz vertraut: 172.18.0.2"
- *   K  (30.10.) proxyVertrauen nimmt wieder „docker" (172.16/12 ohne Gateway)
- *      an → rot: „angenommen: docker"; Präfixgrenze in proxyEntryValid
- *      entfernt → rot: „angenommen: 172.16.0.0/12"
- *   L  (14.11.2026) in proxyEntryValid die enge Grenze wieder /16 bzw. /64 → rot:
+ *   K  (30.10.) proxyVertrauen again accepts „docker" (172.16/12 without gateway)
+ *      → red: „angenommen: docker"; prefix limit in proxyEntryValid
+ *      removed → red: „angenommen: 172.16.0.0/12"
+ *   L  (14.11.2026) in proxyEntryValid the narrow limit again /16 or /64 → red:
  *      „ohne Bestätigung angenommen: 192.168.1.0/24“
- *   M  (14.11.2026) die Bestätigung erlaubt alles (`p <= max`) → rot: „bestätigt
+ *   M  (14.11.2026) the confirmation allows everything (`p <= max`) → red: „bestätigt
  *      angenommen: 172.16.0.0/12“
- *   H  (28.10.) kontoKennung() liefert wieder den rohen Namen → rot: „Name
- *      und E-Mail zählen gemeinsam" (und der Zähler je Konto fehlt)
- *   I  (28.10.) waitTimeSeconds() fest auf 1 s → rot: „Sperre je
- *      Benutzername gilt über alle Adressen" (keine Verdoppelung)
+ *   H  (28.10.) kontoKennung() again delivers the raw name → red: „Name
+ *      und E-Mail zählen gemeinsam" (and the counter per account is missing)
+ *   I  (28.10.) waitTimeSeconds() fixed at 1 s → red: “lock per
+ *      username applies across all addresses” (no doubling)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -55,7 +55,7 @@ const { warte } = require('./helpers/time');
 const { portOf } = require('./helpers/server');
 
 let UID = null;
-/** Schlüssel des Zählers je Konto (Name und E-Mail zählen gemeinsam). */
+/** Key of the counter per account (name and email count together). */
 const accountKey = () => `login-name|konto:${UID}`;
 const clearCounter = () =>
   db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2', [`%${NAME}%`, `%konto:${UID}`]);
@@ -96,18 +96,18 @@ test('proxyVertrauen: whom X-Forwarded-For is believed', () => {
     app.set('trust proxy', proxyVertrauen(setting));
     return app.get('trust proxy fn')(adresse, 0);
   };
-  // Ohne Angabe nur Loopback: Ausserhalb von Docker ist 172.16/12 ein Netz wie jedes andere.
+  // Without a setting only loopback: outside of Docker 172.16/12 is a network like any other.
   for (const eigen of ['127.0.0.1', '127.8.9.10', '::1', '::ffff:127.0.0.1'])
     assert.equal(vertraut(undefined, eigen), true, `${eigen} ist der eigene Proxy`);
   for (const netz of ['172.18.0.2', '172.31.255.1', 'fd00::5'])
     assert.equal(vertraut(undefined, netz), false, `ohne TRUST_PROXY dem Docker-Netz vertraut: ${netz}`);
-  // Eine feste Proxy-Adresse im Compose-Netz: genau diese, nicht ihre Nachbarn
-  // und nicht das Gateway, über das Clients selbst hereinkommen.
+  // A fixed proxy address in the Compose network: exactly this one, not its neighbors
+  // and not the gateway through which clients come in themselves.
   assert.equal(vertraut('172.28.73.10', '172.28.73.10'), true, 'der eingetragene Proxy');
   assert.equal(vertraut('172.28.73.10', '::ffff:172.28.73.10'), true, 'auch in der IPv6-Hülle');
   for (const neighbor of ['172.28.73.11', '172.28.73.1', '172.18.0.2', '127.0.0.1'])
     assert.equal(vertraut('172.28.73.10', neighbor), false, `nicht eingetragen und doch vertraut: ${neighbor}`);
-  // Ganze Netze, Hop-Zahlen und Freibriefe verweigern den Start.
+  // Whole networks, hop counts and blank checks refuse the start.
   for (const falsch of [
     'docker',
     'true',
@@ -130,7 +130,7 @@ test('proxyVertrauen: whom X-Forwarded-For is believed', () => {
     'fd00::7',
     'fd00::100/120',
   ]);
-  // Ein Netz über acht Adressen nur bestätigt, und auch dann höchstens /16 bzw. /64.
+  // A network above eight addresses only when confirmed, and even then at most /16 or /64.
   for (const weit of ['192.168.1.0/24', '172.18.0.0/16', '192.168.1.0/28', 'fd00::/64', 'fd00::/119']) {
     assert.throws(() => proxyVertrauen(weit), /PROXY_NETZ_BESTAETIGT=1/, `ohne Bestätigung angenommen: ${weit}`);
     assert.deepEqual(proxyVertrauen(weit, true), [weit]);
@@ -139,7 +139,7 @@ test('proxyVertrauen: whom X-Forwarded-For is believed', () => {
     assert.throws(() => proxyVertrauen(toWide, true), /TRUST_PROXY enthält/, `bestätigt angenommen: ${toWide}`);
   for (const fremd of ['203.0.113.5', '8.8.8.8', '2001:db8::1'])
     assert.equal(vertraut(undefined, fremd), false, `öffentliche Adresse vertraut: ${fremd}`);
-  // Rechner im Heimnetz geben ihre Adresse nicht selbst an.
+  // Computers in the home network do not state their address themselves.
   for (const lan of ['192.168.1.10', '10.1.2.3', '169.254.1.1'])
     assert.equal(vertraut(undefined, lan), false, `Heimnetz-Rechner vertraut: ${lan}`);
   assert.equal(vertraut('192.168.1.5', '192.168.1.5'), true, 'ein Proxy im Heimnetz lässt sich nennen');
@@ -151,7 +151,7 @@ test('proxyVertrauen: whom X-Forwarded-For is believed', () => {
 test('lock per username applies across all addresses', { concurrency: 1 }, async t => {
   if (!(await prepare(t))) return;
   const app = express();
-  app.set('trust proxy', proxyVertrauen(undefined)); // Anfragen kommen von 127.0.0.1
+  app.set('trust proxy', proxyVertrauen(undefined)); // Requests come from 127.0.0.1
   app.use(express.json());
   app.use(AUTH, require('./helpers/sources').routerFrom(_req, 'routes/auth.js'));
   const srv = app.listen(0);
@@ -165,16 +165,16 @@ test('lock per username applies across all addresses', { concurrency: 1 }, async
       })
     ).status;
 
-  // Je Adresse: nach MAX_ATTEMPTS ist für diese Adresse Schluss.
+  // Per address: after MAX_ATTEMPTS it is over for this address.
   for (let i = 0; i < MAX_ATTEMPTS; i++) assert.equal(await anmelden('falsch', '198.51.100.1'), 401);
   assert.equal(await anmelden(PASS, '198.51.100.1'), 429, 'keine Sperre je Adresse');
-  // Je Konto: Ab MAX_ATTEMPTS Fehlversuchen wartet auch jede andere Adresse.
+  // Per account: from MAX_ATTEMPTS failed attempts on every other address waits too.
   assert.equal(
     await anmelden(PASS, '198.51.100.2'),
     429,
     'mit wechselnden Adressen unbegrenzt raten — der Zähler je Konto fehlt',
   );
-  // Ist die Wartezeit um, geht es weiter — und sie verdoppelt sich.
+  // Once the wait time is over, it continues — and it doubles.
   const zurueck = sek =>
     db.run(`UPDATE rate_limit_attempts SET last_at = NOW() - make_interval(secs => $2) WHERE key = $1`, [
       accountKey(),
@@ -187,7 +187,7 @@ test('lock per username applies across all addresses', { concurrency: 1 }, async
   await zurueck(waitTimeSeconds(MAX_ATTEMPTS) + 0.5);
   assert.equal(await anmelden(PASS, '198.51.100.4'), 429, 'die Wartezeit wächst nicht');
 
-  // Nach der Wartezeit gilt das richtige Passwort und räumt den Zähler ab.
+  // After the wait time the right password counts and clears the counter.
   await zurueck(waitTimeSeconds(MAX_ATTEMPTS + 1) + 0.5);
   assert.equal(await anmelden(PASS, '198.51.100.5'), 200);
   const rest = await db.get('SELECT count FROM rate_limit_attempts WHERE key = $1', [accountKey()]);
@@ -213,7 +213,7 @@ test('the lock per name does not lock out the owner', { concurrency: 1 }, async 
     ).status;
 
   assert.equal(await anmelden(PASS, '198.51.100.7'), 200, 'Vorbedingung: der Inhaber war schon einmal da');
-  // Ein Angreifer verteilt seine Fehlversuche — über Name UND E-Mail.
+  // An attacker distributes his failed attempts — across name AND email.
   for (let i = 0; i < MAX_ATTEMPTS; i++)
     assert.equal(
       await anmelden('falsch', `203.0.113.${i + 1}`, i % 2 ? `${NAME}@example.org` : NAME),
@@ -294,8 +294,8 @@ test('server.ts: TRUST_PROXY=false — X-Forwarded-For is ignored', { concurrenc
     'Der Server verrät X-Powered-By',
   );
 
-  // Wechselnde X-Forwarded-For, aber derselbe Absender: Ohne Vertrauen zählt
-  // alles auf 127.0.0.1, die Sperre greift nach MAX_ATTEMPTS.
+  // Changing X-Forwarded-For, but the same sender: without trust everything
+  // counts on 127.0.0.1, the lock kicks in after MAX_ATTEMPTS.
   for (let i = 0; i < MAX_ATTEMPTS; i++)
     assert.equal(await anmelden('falsch', `198.51.100.${i + 1}`), 401, log.slice(-1500));
   assert.equal(await anmelden(PASS, '198.51.100.99'), 429, 'TRUST_PROXY=false wird nicht beachtet');

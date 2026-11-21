@@ -1,7 +1,7 @@
 /**
- * Das Blickfeld wird gemerkt — und bei jeder Änderung sofort vergessen.
+ * The view is remembered — and forgotten immediately on every change.
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -53,7 +53,7 @@ test('scope: remembered, and forgotten immediately on a change', async t => {
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [MAIN, UNTER]);
     hh.reportHouseholdChange();
 
-    // ── 1. Gemerkt: der zweite und jeder weitere Aufruf fragt nicht mehr ────
+    // ── 1. Remembered: the second and every further call no longer asks ────
     gesehen.length = 0;
     count = true;
     const erst = await hh.householdOf(MAIN);
@@ -68,7 +68,7 @@ test('scope: remembered, and forgotten immediately on a change', async t => {
     );
     assert.deepEqual(erst.memberIds, [MAIN, UNTER], 'das Unterkonto gehört ins Blickfeld');
 
-    // ── 2. Die Mitgliederliste ist eine frische Liste ──────────────────────
+    // ── 2. The member list is a fresh list ─────────────────────────────────
     const a = await hh.householdOf(MAIN);
     a.memberIds.push(999999);
     const b = await hh.householdOf(MAIN);
@@ -78,9 +78,9 @@ test('scope: remembered, and forgotten immediately on a change', async t => {
       'wer die Mitgliederliste anfasst, darf den gemerkten Stand nicht verändern',
     );
 
-    // ── 3. Nach dem Lösen ist das Blickfeld sofort wieder klein ────────────
-    // Über unlinkAccounts(), nicht über ein DELETE von Hand: Genau dieser Weg muss
-    // das Gedächtnis leeren, und nur so ist das geprüft.
+    // ── 3. After unlinking the view is small again immediately ─────────────
+    // Via unlinkAccounts(), not via a DELETE by hand: exactly this path must
+    // empty the memory, and only this way is it checked.
     await hh.unlinkAccounts(MAIN, UNTER);
     const nachher = await hh.householdOf(MAIN);
     assert.deepEqual(
@@ -89,10 +89,10 @@ test('scope: remembered, and forgotten immediately on a change', async t => {
       'nach unlinkAccounts() steht das gelöste Unterkonto noch im gemerkten Blickfeld',
     );
 
-    // ── 4. Das Signal geht an die anderen Cluster-Worker raus ──────────────
-    // Ohne dieses NOTIFY säße jeder andere Worker bis zum Ablauf der Frist auf
-    // seinem alten Stand — der Nutzer löst eine Verknüpfung und sieht sie je
-    // nach Worker mal so, mal so.
+    // ── 4. The signal goes out to the other cluster workers ────────────────
+    // Without this NOTIFY every other worker would sit on its old state until
+    // the deadline expires — the user unlinks and sees it one way or the
+    // other depending on the worker.
     listener = await db.ownConnection();
     await listener.query(`LISTEN ${hh.HOUSEHOLD_CHANNEL}`);
     const angekommen = new Promise((auf, ab) => {
@@ -116,12 +116,12 @@ test('scope: remembered, and forgotten immediately on a change', async t => {
     const meldung = await angekommen;
     assert.equal(meldung.channel, hh.HOUSEHOLD_CHANNEL);
 
-    // Dass jeder Worker auf dem Kanal lauscht, prüft
-    // signale-zwei-worker-db.test.js am echten Cluster.
+    // That every worker listens on the channel is checked by
+    // signale-zwei-worker-db.test.js on the real cluster.
 
-    // ── GEGENPROBE ────────────────────────────────────────────────────────
-    // Sieht der Zähler die Abfragen überhaupt? Nach dem Leeren muss der
-    // nächste Aufruf wieder beide machen — sonst prüft Zusicherung 1 nichts.
+    // ── COUNTER-CHECK ─────────────────────────────────────────────────────
+    // Does the counter see the queries at all? After clearing, the
+    // next call must make both again — otherwise assertion 1 checks nothing.
     hh.reportHouseholdChange();
     gesehen.length = 0;
     count = true;

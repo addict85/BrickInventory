@@ -1,20 +1,20 @@
 /**
- * Der Datenbankzugang entsteht durch createDb(konfig), nicht beim Import:
- * Wer db/database lädt, öffnet keinen Pool; jeder Zugang hat seinen eigenen
- * Pool und seine eigene Transaktion. Einen Zugang des Prozesses gibt es nicht:
- * Der Einstieg (server.ts, Skripte, Testhilfe) hält den seinen.
+ * The database access is created by createDb(konfig), not on import:
+ * whoever loads db/database opens no pool; every access has its own
+ * pool and its own transaction. An access of the process does not exist:
+ * the entry point (server.ts, scripts, test helper) holds its own.
  *
- * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in db/database.ts wieder `const pool = new Pool(...)` auf oberster Ebene →
- *      rot: „der Import öffnet keinen Pool“ (1 statt 0)
- *   B  in createDb() txClient ohne Vergleich `t.db === ich` → rot: „zwei Zugänge,
- *      zwei Transaktionen“ (b.inTransaction() wahr in der Transaktion von a)
- *   C  (11.11.2026) `export const get = …` mit einem Zugang des Prozesses zurück
- *      in db/database.ts → rot: „db/database führt keinen Zugang des Prozesses“
+ * Counter-checks (measured 09.11.2026, each alone):
+ *   A  in db/database.ts again `const pool = new Pool(...)` at the top level →
+ *      red: “the import opens no pool” (1 instead of 0)
+ *   B  in createDb() txClient without the comparison `t.db === ich` → red: “two accesses,
+ *      two transactions” (b.inTransaction() true in a's transaction)
+ *   C  (11.11.2026) `export const get = …` with an access of the process back
+ *      in db/database.ts → red: “db/database keeps no access of the process”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -28,7 +28,7 @@ const DIST = require('./helpers/sources').DIST;
 const { keineDb } = require('./helpers/db');
 
 test('the import opens no pool', () => {
-  // In einem eigenen Prozess: Hier hat der Testlauf den Zugang schon benutzt.
+  // In its own process: here the test run has already used the access.
   const script = `
     const pg = require('pg'); let n = 0; const Echt = pg.Pool;
     pg.Pool = class extends Echt { constructor(...a) { n++; super(...a); } };

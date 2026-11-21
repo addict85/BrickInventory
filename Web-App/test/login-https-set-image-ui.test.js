@@ -1,15 +1,15 @@
 /**
- * UX-Prüfung 27 am echten Bündel in jsdom: Anmeldung, wenn der Server das Sitzungs-Cookie nicht setzt (M1),
- * der Hinweis ohne HTTPS vorab (N1), der Fehlerzustand der Finanzen (N3) und das Set-Bild als Knopf (N7).
+ * UX check 27 on the real bundle in jsdom: login when the server does not set the session cookie (M1),
+ * the hint without HTTPS up front (N1), the error state of the finances (N3) and the set image as a button (N7).
  *
- * Gegenproben (15.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  doLogin() ohne den Zweig d.keks_fehlt → rot: „M1 … Server meldet …“ (App geht auf und lädt ohne Sitzung)
- *   B  withoutHttps() nur mit isSecureContext (ohne location.protocol) → rot: „M1 … älterer Server …“
- *      („Sitzung abgelaufen“) und „N1 … http://localhost“ (Hinweis verborgen)
- *   C  Hinweis login-ohne-https nie eingeblendet → rot: „N1“ in beiden Fällen ohne HTTPS
- *   D  filterBedienbar() ohne die Klasse finanzen-fehler → rot: „N3 …“ (im Fehlerfall)
- *   E  zoomStand() ohne den Zweig für den Knopf → rot: „N7 …“ (Knopf bleibt mit Bild gesperrt)
- *   F  sitzungBeendet ohne !_cookieSet → rot: „M1 … Server bestätigt …“ (Cookie-Hinweis statt „abgelaufen“)
+ * Counter-checks (measured 15.11.2026, each on its own, bundle rebuilt):
+ *   A  doLogin() without the branch d.keks_fehlt → red: “M1 … server reports …” (app opens and loads without session)
+ *   B  withoutHttps() only with isSecureContext (without location.protocol) → red: “M1 … older server …”
+ *      („Sitzung abgelaufen“) and “N1 … http://localhost” (hint hidden)
+ *   C  hint login-ohne-https never shown → red: “N1” in both cases without HTTPS
+ *   D  filterBedienbar() without the class finanzen-fehler → red: “N3 …” (in the error case)
+ *   E  zoomStand() without the branch for the button → red: “N7 …” (button stays disabled with an image)
+ *   F  sitzungBeendet without !_cookieSet → red: “M1 … server confirms …” (cookie hint instead of „abgelaufen“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

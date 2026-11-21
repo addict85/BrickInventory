@@ -1,16 +1,16 @@
 /**
- * Wächter für WCAG 2.4.11 (Fokus nicht verdeckt): Ein Tab-Gang durch die
- * Hauptansichten, bei 390 px und bei 320 px mit 200 % Browserschrift. Kein
- * fokussiertes Bedienelement darf zu mehr als 20 % unter Kopf, unterer
- * Leiste oder schwebendem Knopf liegen (oder ausserhalb des Fensters).
- * axe prüft das nicht.
+ * Guard for WCAG 2.4.11 (focus not obscured): a tab walk through the
+ * main views, at 390 px and at 320 px with 200 % browser font. No
+ * focused control may lie more than 20 % under the header, bottom
+ * bar or floating button (or outside the window).
+ * axe does not check this.
  *
- * Gegenproben (04.11.2026 gemessen):
- *   A  die Regel html{scroll-padding-…} in styles.css entfernt → rot bei 390 px:
- *      Sammlung, Teile, Konto, Gutscheine, Preisalarme; bei 320/200 %:
- *      Sammlung, Teile, Merkliste, Bauliste, Konto, Gutscheine (je 64–100 %)
- *   B  leistenMessen() mit fester Leistenhöhe 60 px statt gemessen → rot bei
- *      320/200 %: Sammlung, Merkliste, Gutscheine (die Leiste ist dort 116 px hoch)
+ * Counter-checks (measured 04.11.2026):
+ *   A  the rule html{scroll-padding-…} removed in styles.css → red at 390 px:
+ *      collection, parts, account, vouchers, price alerts; at 320/200 %:
+ *      collection, parts, wishlist, build list, account, vouchers (64–100 % each)
+ *   B  leistenMessen() with a fixed bar height of 60 px instead of measured → red at
+ *      320/200 %: collection, wishlist, vouchers (the bar is 116 px high there)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,7 +19,7 @@ const { patternHousehold } = require('./helpers/inventory');
 
 const VIEWS = ['sammlung', 'teile', 'finanzen', 'merkliste', 'bauliste', 'konto', 'gutscheine', 'alarme'];
 
-/** Anteil des fokussierten Elements, den feste Leisten oder der Fensterrand verdecken. */
+/** Share of the focused element obscured by fixed bars or the window edge. */
 const MEASUREMENT = `(() => {
   const e = document.activeElement;
   if (!e || !e.closest('main') || e.closest('.ovl')) return null;
@@ -37,7 +37,7 @@ const MEASUREMENT = `(() => {
 
 async function tabGang(app, ansicht) {
   const { b, ruhig } = app;
-  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  // Startup loads settings and prices afterwards; only then is the state fixed.
   await ruhig();
   await b.auswerten(`location.hash = '#/${ansicht}'; true`);
   await ruhig();
@@ -57,7 +57,7 @@ async function tabGang(app, ansicht) {
       continue;
     }
     gesehen++;
-    // Was höher als das halbe Fenster ist, passt ohnehin nicht ganz hinein.
+    // What is taller than half the window does not fit completely anyway.
     if (m.anteil > 0.2 && m.hoch < 0.5 * (await b.auswerten('innerHeight')))
       funde.push(`${m.name} ${Math.round(m.anteil * 100)} %`);
   }
@@ -85,7 +85,7 @@ test('focus below fixed bars', { concurrency: 1, timeout: 400_000 }, async t => 
     for (const ansicht of VIEWS) {
       const { funde, gesehen } = await tabGang(app, ansicht);
       await t.test(`${breite} px${gross ? ', 200 %' : ''}: ${ansicht}`, () => {
-        // Die leere Bauliste hat seit Runde 24 nur Feld und „Hinzufügen“ („Neu berechnen“ erst mit Set).
+        // Since round 24 the empty build list only has the field and “add” (“recompute” only with a set).
         const mindestens = ansicht === 'bauliste' ? 2 : 3;
         assert.ok(gesehen >= mindestens, `nur ${gesehen} Elemente erreicht — greift der Tab-Gang?`);
         assert.deepEqual(funde, []);

@@ -1,27 +1,27 @@
 /**
- * Eine Transaktion, die in einen Deadlock (40P01) oder Serialisierungsfehler
- * (40001) läuft, beginnt mit der Option repeatAtConflict bis zu zweimal
- * neu; ohne Option bleibt der Fehler. Die Verschiebe- und Nachtragswege
- * setzen sie, weil sie Zeilen zweier Konten in wechselnder Reihenfolge sperren.
+ * A transaction that runs into a deadlock (40P01) or serialization failure
+ * (40001) restarts up to twice with the option repeatAtConflict;
+ * without the option the error stays. The move and backfill paths
+ * set it because they lock rows of two accounts in changing order.
  *
- * Gegenproben (am 07.11.2026 gemessen, je einzeln):
- *   A  die Wiederholungsschleife in transaction() entfernt → rot: „ein echter
- *      Deadlock wird mit der Option wiederholt“, „Serialisierungsfehler …“,
- *      „der abgebrochene Anlauf hinterlässt nichts“, dazu die drei Aufrufer
- *   B  40001 aus TX_CONFLICT entfernt → rot: „Serialisierungsfehler …“ und
- *      „der abgebrochene Anlauf hinterlässt nichts“
- *   C  die Option aus verschiebeSet() entfernt → rot: „moveSet
- *      wiederholt bei Konflikt“; aus setEstimatedPrice() → rot:
- *      „setEstimatedPrice wiederholt bei Konflikt“
- *      (Der Verschiebeweg in changeAcquisition() braucht ein Haushaltskonto und
- *      ist hier nicht abgedeckt; er teilt k.transaktion mit Sperren mit verschiebeSet.)
- *   D  mitInventarSperre() reicht die Option nicht an transaction() → rot:
- *      „mitInventarSperre reicht die Option weiter“, „moveSet …“
- *      (14.11.2026, jetzt k.transaktion mit `sperren`: in buildContext() die Optionen
- *      nicht an transaction() gereicht → rot: „k.transaktion mit Sperren …“,
+ * Counter-checks (measured on 07.11.2026, each on its own):
+ *   A  the retry loop removed in transaction() → red: “a real
+ *      deadlock is retried with the option”, “serialization failure …”,
+ *      “the aborted attempt leaves nothing behind”, plus the three callers
+ *   B  40001 removed from TX_CONFLICT → red: “serialization failure …” and
+ *      “the aborted attempt leaves nothing behind”
+ *   C  the option removed from verschiebeSet() → red: “moveSet
+ *      retries on conflict”; from setEstimatedPrice() → red:
+ *      “setEstimatedPrice retries on conflict”
+ *      (the move path in changeAcquisition() needs a household account and
+ *      is not covered here; it shares k.transaktion with locks with verschiebeSet.)
+ *   D  mitInventarSperre() does not pass the option to transaction() → red:
+ *      “mitInventarSperre passes the option on”, „moveSet …“
+ *      (14.11.2026, now k.transaktion with `sperren`: in buildContext() the options
+ *      not passed to transaction() → red: “k.transaktion with locks …”,
  *      „moveSet …“, „setEstimatedPrice …“)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -37,7 +37,7 @@ const db = testData();
 const TABELLE = `tx_wiederholung_${process.pid}`;
 const MIT = { repeatAtConflict: true };
 
-/** Ein Fehler wie von PostgreSQL gemeldet: nur der Code zählt. */
+/** An error as reported by PostgreSQL: only the code counts. */
 const pgError = code => Object.assign(new Error(`simuliert ${code}`), { code });
 
 test('transaction: retry on deadlock and serialization failure', { concurrency: 1 }, async t => {
@@ -49,7 +49,7 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
     await db.pool.end().catch(() => {});
   });
 
-  /** Beide Transaktionen sperren zuerst "ihre" Zeile, dann die der anderen; erst wenn beide die erste halten, geht es weiter. */
+  /** Both transactions first lock "their" row, then that of the other; only when both hold the first does it continue. */
   const cross = o => {
     let angekommen = 0;
     let versuche = 0;
@@ -62,7 +62,7 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
       await db.transaction(async tx => {
         const versuch = ++versuche;
         await tx.run(`UPDATE ${TABELLE} SET n = n + 1 WHERE id = $1`, [erste]);
-        // Nur die ersten zwei Anläufe warten aufeinander; die Wiederholung läuft frei.
+        // Only the first two attempts wait for each other; the retry runs freely.
         if (versuch <= 2) {
           if (++angekommen === 2) weiter();
           await beide;
@@ -78,7 +78,7 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
     const k = cross(MIT);
     await Promise.all([k.lauf(1, 2), k.lauf(2, 1)]);
     assert.equal(k.versuche(), 3, 'genau ein Gegenspieler wurde abgebrochen und lief neu');
-    // Jede Transaktion hat beide Zeilen einmal erhöht; der abgebrochene Anlauf zählt nicht.
+    // Every transaction has increased both rows once; the aborted attempt does not count.
     assert.deepEqual(
       (await db.all(`SELECT n FROM ${TABELLE} ORDER BY id`)).map(z => z.n),
       [2, 2],
@@ -145,8 +145,8 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
     assert.equal((await db.get(`SELECT n FROM ${TABELLE} WHERE id = 1`)).n, 1);
   });
 
-  // Die Aufrufer: Ein Trigger wirft beim ersten Aufruf einen Deadlock (40P01), den die
-  // Sequenz auch nach dem Zurückrollen nicht vergisst; der zweite Anlauf geht durch.
+  // The callers: a trigger throws a deadlock (40P01) on the first call, which the
+  // sequence does not forget even after rolling back; the second attempt goes through.
   const onceError = async (tabelle, ereignis, bedingung) => {
     const name = `tx_einmal_${tabelle}_${process.pid}`;
     await db.run(`DROP SEQUENCE IF EXISTS ${name}`);
@@ -217,7 +217,7 @@ test('transaction: retry on deadlock and serialization failure', { concurrency: 
     const von = await konto('wv_von');
     const nach = await konto('wv_nach');
     await holdsSet(db, von, '10179-1', 2);
-    // Verschoben wird nur im Haushalt: nach ist Unterkonto von von.
+    // Moving only happens in the household: nach is a sub-account of von.
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [von, nach]);
     const probe = await onceError('sets', 'INSERT', `NEW.user_id = ${nach}`);
     try {

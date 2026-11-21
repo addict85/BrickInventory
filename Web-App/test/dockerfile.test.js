@@ -1,5 +1,5 @@
 /**
- * Bau-Image: keine Werkzeuge ohne Zweck.
+ * Build image: no tools without a purpose.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,8 +12,8 @@ const ROOT = path.join(__dirname, '..');
 
 test('the build stage installs no compiler tools', () => {
   const df = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
-  // Kommentare zählen nicht — dort steht die Zeile als Hinweis für den Fall,
-  // dass sie doch einmal gebraucht wird.
+  // Comments do not count — there the line stands as a hint for the case
+  // that it is needed after all.
   const cmds = df.split('\n').filter(l => !l.trim().startsWith('#'));
   for (const tool of ['python3', 'make', 'g++']) {
     assert.ok(
@@ -24,18 +24,18 @@ test('the build stage installs no compiler tools', () => {
 });
 
 test('and no dependency needs them', () => {
-  // Zwei Belege, beide aus der Lockfile — sie gilt im Build (npm ci):
-  //   1. kein Paket mit nativer Erweiterung
-  //   2. die Pakete mit Install-Skript sind bekannt und harmlos
+  // Two proofs, both from the lockfile — it applies in the build (npm ci):
+  //   1. no package with a native extension
+  //   2. the packages with an install script are known and harmless
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
   const withScript = Object.entries(lock.packages || {})
-    // Der leere Schlüssel ist das Projekt selbst; es hat kein Install-Skript
+    // The empty key is the project itself; it has no install script
     // (test/version.test.js).
     .filter(([k, v]) => k && v.hasInstallScript)
     .map(([k]) => k.replace(/^.*node_modules\//, ''));
 
-  // esbuild lädt eine fertige Binärdatei für die Plattform, fsevents ist
-  // macOS-only und wird auf Linux gar nicht erst installiert.
+  // esbuild downloads a finished binary for the platform, fsevents is
+  // macOS-only and is not even installed on Linux.
   const harmless = new Set(['esbuild', 'fsevents']);
   const unknown = [...new Set(withScript)].filter(p => !harmless.has(p));
   assert.deepEqual(
@@ -46,8 +46,8 @@ test('and no dependency needs them', () => {
   );
 });
 
-// Gegenprobe (am 28.10.2026 gemessen): `ENV PGPASSWORD=brickinventory_secret`
-// wieder ins Dockerfile → rot. Ein ENV steht in jeder Kopie des Images.
+// Counter-check (measured on 28.10.2026): `ENV PGPASSWORD=brickinventory_secret`
+// back in the Dockerfile → red. An ENV stands in every copy of the image.
 test('the image carries no database password', () => {
   const df = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
   const zeilen = df.split('\n').filter(l => !l.trim().startsWith('#'));
@@ -63,8 +63,8 @@ test('the image carries no database password', () => {
   );
 });
 
-// Gegenprobe (am 28.10.2026 gemessen): den Digest an der zweiten FROM-Zeile
-// entfernt → rot. Ein Tag wie node:26-alpine zeigt morgen auf ein anderes Image.
+// Counter-check (measured on 28.10.2026): the digest on the second FROM line
+// removed → red. A tag like node:26-alpine points to another image tomorrow.
 test('base images are fixed by digest', () => {
   const quellen = {
     Dockerfile: fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8'),
@@ -78,7 +78,7 @@ test('base images are fixed by digest', () => {
   assert.deepEqual(lose, []);
 });
 
-// Gegenprobe (30.10.2026): die rm-Zeile im Laufzeit-Stage entfernt → rot.
+// Counter-check (30.10.2026): the rm line in the runtime stage removed → red.
 test('the runtime image carries no npm, corepack or yarn', () => {
   const df = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
   const laufzeit = df
@@ -92,20 +92,20 @@ test('the runtime image carries no npm, corepack or yarn', () => {
 });
 
 test('secrets and backups stay out of image and repository', t => {
-  // Der Build-Kontext ist Web-App/: Ohne Eintrag landeten .env (Passwörter),
-  // die Sicherungen von scripts/backup.sh und der Datenschlüssel im Image.
-  // Gegenprobe (01.11.2026): `backups` aus .dockerignore gestrichen → rot.
+  // The build context is Web-App/: without an entry .env (passwords),
+  // the backups of scripts/backup.sh and the data key would land in the image.
+  // Counter-check (01.11.2026): `backups` deleted from .dockerignore → red.
   const muster = fs
     .readFileSync(path.join(ROOT, '.dockerignore'), 'utf8')
     .split('\n')
     .map(l => l.trim());
-  // (03.11.2026) `geheimnisse` aus .gitignore gestrichen → rot.
+  // (03.11.2026) `geheimnisse` deleted from .gitignore → red.
   for (const m of ['.env', '.env.*', 'backups', 'schluessel', 'data', 'geheimnisse'])
     assert.ok(muster.includes(m), `.dockerignore schliesst ${m} nicht aus`);
-  // Der zweite Teil fragt git; ohne Arbeitsbaum (Kopie ohne .git, Image) nur
-  // mit Meldung übersprungen, in der CI (REQUIRE_DB=1) ein Fehler.
-  // Gegenprobe (04.11.2026): Kopie des Baums ohne .git → übersprungen mit
-  // „kein Git-Arbeitsbaum“, mit REQUIRE_DB=1 rot.
+  // The second part asks git; without a working tree (copy without .git, image) only
+  // skipped with a message, in CI (REQUIRE_DB=1) an error.
+  // Counter-check (04.11.2026): copy of the tree without .git → skipped with
+  // “no Git working tree”, red with REQUIRE_DB=1.
   const baum = spawnSync('git', ['rev-parse', '--is-inside-work-tree'], { cwd: ROOT, encoding: 'utf8' });
   if (baum.error || baum.status !== 0) {
     const grund = `kein Git-Arbeitsbaum unter ${ROOT} (${baum.error?.message || baum.stderr.trim()})`;
@@ -125,12 +125,12 @@ test('secrets and backups stay out of image and repository', t => {
   ]);
 });
 
-// Gegenproben (03.11.2026 gemessen, je einzeln): im Dockerfile wieder `RUN npm ci`
-// → rot „Dockerfile: npm ci ohne --ignore-scripts“; `npm rebuild esbuild` in
-// web-ci.yml gestrichen → rot „web-ci.yml baut nicht genau …“.
+// Counter-checks (measured 03.11.2026, each alone): in the Dockerfile again `RUN npm ci`
+// → red “Dockerfile: npm ci without --ignore-scripts”; `npm rebuild esbuild` in
+// web-ci.yml deleted → red “web-ci.yml does not build exactly …”.
 test('install scripts only run selectively, for exactly the packages that have one', () => {
   const lock = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'));
-  // fsevents gibt es nur unter macOS; auf Linux wird es nie installiert.
+  // fsevents only exists under macOS; on Linux it is never installed.
   const mitSkript = Object.entries(lock.packages)
     .filter(([n, p]) => p.hasInstallScript && !/(^|\/)fsevents$/.test(n))
     .map(([n]) => n.replace(/^.*node_modules\//, ''))
@@ -154,10 +154,10 @@ test('install scripts only run selectively, for exactly the packages that have o
   }
 });
 
-// Das Image startet als brickinv; der Entrypoint mit Ersatz für id, su-exec und node, /app im Sandkasten.
-// Gegenproben (13.11.2026 gemessen, je einzeln): `USER brickinv` gestrichen → rot „das Image startet
-// ohne --user als root“; die Bedingung `[ "$(id -u)" = 0 ]` durch `true` ersetzt → rot „ohne root
-// startet node direkt, ohne su-exec“.
+// The image starts as brickinv; the entrypoint with substitutes for id, su-exec and node, /app in the sandbox.
+// Counter-checks (measured 13.11.2026, each alone): `USER brickinv` deleted → red “the image starts
+// as root without --user”; the condition `[ "$(id -u)" = 0 ]` replaced by `true` → red “without root
+// node starts directly, without su-exec”.
 test('the image starts as brickinv, the entrypoint runs that way and as root', () => {
   const laufzeit =
     fs

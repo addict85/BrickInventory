@@ -1,28 +1,28 @@
 /**
- * Masse der Oberfläche, gemessen in Chrome an der echten App.
+ * Dimensions of the UI, measured in Chrome on the real app.
  *
- * Gegenproben (am 29.10.2026 gemessen):
- *   A  .fval wieder `overflow-wrap: anywhere` statt nowrap/clamp und die
- *      420-px-Regel entfernt → rot: „Telefon: Beträge in einer Zeile“
- *   B  die beiden Platzregeln (.man-tile:has(> .ca), .mk-zeile) aus
- *      mobile.css entfernt → rot: „Telefon: Löschknopf verdeckt nichts“
- *   C  die Telefonregel wieder `grid-template-columns: 1fr` → rot: „Stein:
- *      Kennzahlen kompakt“ (4 Reihen; 30.10.2026)
- *   D  noppe nav .ntab wieder var(--b100) → rot: „Noppe: untere Leiste“ (3,74:1)
- *   E  .ntab:focus-visible entfernt → rot: „Rechner: Fokusring innen“
- *   F  `.dt-fin .zahl{text-align:right}` entfernt → rot: „Rechner: Zahlen
+ * Counter-checks (measured on 29.10.2026):
+ *   A  .fval again `overflow-wrap: anywhere` instead of nowrap/clamp and the
+ *      420 px rule removed → red: „Telefon: Beträge in einer Zeile“
+ *   B  the two space rules (.man-tile:has(> .ca), .mk-zeile) removed from
+ *      mobile.css → red: „Telefon: Löschknopf verdeckt nichts“
+ *   C  the phone rule again `grid-template-columns: 1fr` → red: „Stein:
+ *      Kennzahlen kompakt“ (4 rows; 30.10.2026)
+ *   D  noppe nav .ntab again var(--b100) → red: „Noppe: untere Leiste“ (3.74:1)
+ *   E  .ntab:focus-visible removed → red: „Rechner: Fokusring innen“
+ *   F  `.dt-fin .zahl{text-align:right}` removed → red: „Rechner: Zahlen
  *      rechtsbündig“
- *   G  .erfassen-raster entfernt → rot: „Rechner: Set hinzufügen bündig“
+ *   G  .erfassen-raster removed → red: „Rechner: Set hinzufügen bündig“
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Without Chrome (CHROME_BIN, google-chrome, chromium) it is skipped.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp, warte } = require('./helpers/app-browser');
 const { holdsSet, holdsPart } = require('./helpers/inventory');
 
-/** Kontrast zweier CSS-Farben (rgb[a]) im Browser. */
+/** Contrast of two CSS colors (rgb[a]) in the browser. */
 const CONTRAST = `(vorne, hinten) => { const f = s => (s.match(/[\\d.]+/g) || []).slice(0, 3).map(Number);
   const l = ([r, g, b]) => { const c = v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
     return 0.2126 * c(r) + 0.7152 * c(g) + 0.0722 * c(b); };
@@ -67,8 +67,8 @@ test('UI dimensions', { concurrency: 1, timeout: 300_000 }, async t => {
     await ruhig();
   };
 
-  // Ohne Rebrickable-Schlüssel springt die App kurz nach dem Start in die
-  // Einstellungen; erst danach den Reiter wechseln.
+  // Without a Rebrickable key the app jumps into the settings shortly after the start;
+  // only switch the tab afterwards.
   await ruhig();
 
   await t.test('phone: amounts in one line', async () => {
@@ -137,12 +137,12 @@ test('UI dimensions', { concurrency: 1, timeout: 300_000 }, async t => {
 
   await t.test('desktop: focus ring inside', async () => {
     await reiter('gallery');
-    // Der Einrichtungsassistent des neuen Verwalters hielte den Fokus fest.
+    // The setup wizard of the new admin would hold on to the focus.
     await b.auswerten(
       `document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`,
     );
     await ruhig();
-    // Mit der Tastatur bis zum ersten Reiter: Erst dann gilt :focus-visible.
+    // With the keyboard to the first tab: only then does :focus-visible apply.
     await b.auswerten(`document.activeElement?.blur(); document.querySelector('.sprunglink').focus(); true`);
     const weg = [];
     for (let i = 0; i < 25; i++) {

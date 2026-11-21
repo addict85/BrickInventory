@@ -1,18 +1,18 @@
 /**
- * Die drei Werte eines Gutscheins aus seinem PDF lesen.
+ * Read the three values of a voucher from its PDF.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { valuesFromPdf, valuesFromText, parseNumber, pdfText } = _req('src/vouchers/pdfParsing.js');
-// `require('pdfkit')` und NICHT ueber den Verzeichnispfad: pdfkit 0.20 hat
-// kein `main` mehr, nur noch `exports` — ein Pfad auf das Verzeichnis umgeht
-// die Aufloesung und scheitert. Der Baum macht es an seinen beiden eigenen
-// Stellen (routes/api_v1/pdf.ts, src/catalog/instructions.ts) genauso.
+// `require('pdfkit')` and NOT via the directory path: pdfkit 0.20 has
+// no `main` any more, only `exports` — a path to the directory bypasses
+// the resolution and fails. The tree does the same at its own two
+// places (routes/api_v1/pdf.ts, src/catalog/instructions.ts).
 const PDFDocument = require('pdfkit');
 
-/** Ein PDF mit den uebergebenen Zeilen bauen — je Zeile ein Textoperator. */
+/** Build a PDF with the passed lines — one text operator per line. */
 function pdfWith(zeilen) {
   return new Promise(fertig => {
     const doc = new PDFDocument({ compress: true });
@@ -42,12 +42,12 @@ test('voucher PDF: the three values land in the right place', async t => {
   });
 
   await t.test('short numbers do not become the card number', async () => {
-    // Diese Zusicherung gibt es wegen einer GEGENPROBE
+    // This assertion exists because of a COUNTER-CHECK
     //
-    // Der Test darueber sollte die Laengengrenze (>= 13 Stellen) absichern.
-    // Die Gegenprobe zeigte, dass er das nicht tat: Die Grenze von 13 auf 3
-    // herunterzusetzen liess ihn gruen — er bestand allein wegen des
-    // PIN-Ausschlusses, also aus einem anderen Grund als behauptet.
+    // The test above was supposed to secure the length limit (>= 13 digits).
+    // The counter-check showed that it did not: lowering the limit from 13 to 3
+    // left it green — it passed solely because of the
+    // PIN exclusion, i.e. for a different reason than claimed.
     const buf = await pdfWith([
       'LEGO Store, Postfach 8005 Zuerich',
       'Ausgestellt 2025, Filiale 4711',
@@ -58,26 +58,26 @@ test('voucher PDF: the three values land in the right place', async t => {
   });
 
   await t.test('a PDF without voucher data delivers null everywhere', async () => {
-    // Der wichtigste Fall: ehrlich scheitern. Ein falsch ausgelesener
-    // Gutschein ist schlimmer als ein nicht ausgelesener, weil niemand ihn
-    // nachprueft — die Oberflaeche faellt dann auf die manuelle Eingabe
-    // zurueck.
+    // The most important case: fail honestly. A wrongly read
+    // voucher is worse than one not read, because nobody checks it
+    // — the UI then falls back to the manual
+    // input.
     const buf = await pdfWith(['Rechnung Nr. 12', 'Vielen Dank fuer Ihren Einkauf.']);
     const w = valuesFromPdf(buf);
     assert.deepEqual(w, { number: null, pin: null, amount: null, currency: null });
   });
 
   await t.test('something that is not a PDF at all does not throw', async () => {
-    // Der Upload-Filter laesst nur application/pdf durch, aber ein MIME-Typ
-    // ist eine Behauptung des Klienten, keine Tatsache.
+    // The upload filter only lets application/pdf through, but a MIME type
+    // is a claim of the client, not a fact.
     const w = valuesFromPdf(Buffer.from('das ist kein PDF, sondern Text'));
     assert.equal(w.number, null);
   });
 });
 
 test('voucher PDF: numbers in all three notations', async t => {
-  // Dieselbe Summe, drei Laender. Ohne diese Zuordnung wuerde aus 1'234.50
-  // je nach Schreibweise 123450 oder 1.234 — beides stillschweigend falsch.
+  // The same sum, three countries. Without this mapping 1'234.50 would become
+  // 123450 or 1.234 depending on the notation — both silently wrong.
   await t.test('Switzerland, Germany, USA yield the same number', () => {
     assert.equal(parseNumber("1'234.50"), 1234.5, 'Schweiz');
     assert.equal(parseNumber('1.234,50'), 1234.5, 'Deutschland');
@@ -85,8 +85,8 @@ test('voucher PDF: numbers in all three notations', async t => {
   });
 
   await t.test('a single separator with three digits is thousands', () => {
-    // 1.234 ist mehrdeutig. Entschieden wird fuer 1234, weil es Gutscheine
-    // ueber 1234 CHF gibt und keine ueber 1,234 CHF.
+    // 1.234 is ambiguous. The decision is for 1234, because there are vouchers
+    // above 1234 CHF and none above 1,234 CHF.
     assert.equal(parseNumber('1.234'), 1234);
     assert.equal(parseNumber('1,234'), 1234);
   });
@@ -112,9 +112,9 @@ test('voucher PDF: the amount is read at the named place', async t => {
   });
 
   await t.test('“im Wert von” beats a number from the small print', () => {
-    // Die Reihenfolge der Muster ist der Schutz. Stuende hier nur „irgendeine
-    // Zahl neben einem Waehrungscode", gewaenne der erste Treffer im Text —
-    // und das Kleingedruckte steht nun einmal auch im PDF.
+    // The order of the patterns is the protection. If only „any
+    // number next to a currency code" stood here, the first hit in the text would win —
+    // and the small print does happen to stand in the PDF too.
     const text = [
       'Mindestbestellwert 20 EUR gemaess AGB.',
       'Ihre LEGO-Geschenkkarte im Wert von 400 CHF:',
@@ -132,8 +132,8 @@ test('voucher PDF: the amount is read at the named place', async t => {
   });
 
   await t.test('a three-letter word alone is not yet a currency', () => {
-    // Die Waehrungsliste ist geschlossen. Ohne das faengt dieselbe Regel
-    // „PDF", „LEGO" oder „AGB" — und der Betrag haengt dann an einem Wort.
+    // The currency list is closed. Without that the same rule catches
+    // „PDF", „LEGO" or „AGB" — and the amount then hangs on a word.
     const w = valuesFromText('Datei 400 PDF\nkeine Karte');
     assert.equal(w.amount, null);
     assert.equal(w.currency, null);
@@ -141,9 +141,9 @@ test('voucher PDF: the amount is read at the named place', async t => {
 });
 
 test('voucher PDF: the text extract separates the operators', async () => {
-  // Die Kartennummer steht im Beispiel ALLEIN in einem Textoperator. Wuerde
-  // alles zu einem Fliesstext verklebt, grenzte sie an den Doppelpunkt davor
-  // und an „PIN" dahinter.
+  // In the example the card number stands ALONE in a text operator. If
+  // everything were glued into one running text, it would border on the colon before it
+  // and on „PIN" behind it.
   const buf = await pdfWith(['Erste Zeile', 'Zweite Zeile']);
   const text = pdfText(buf);
   assert.match(text, /Erste Zeile/);

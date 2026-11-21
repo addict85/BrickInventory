@@ -1,14 +1,14 @@
 /**
- * Offline zeigt eine Liste den zuletzt geladenen Stand dieses Tabs statt
- * eines Fehlers, und Band und Inhalt widersprechen sich nicht: Hat eine Liste
- * nie geladen, sagt sie „Keine Verbindung“, ihr „Erneut versuchen“ bleibt
- * bedienbar (es liest nur) und lädt von selbst, sobald die Verbindung zurück …
+ * Offline a list shows the last loaded state of this tab instead of
+ * an error, and banner and content do not contradict each other: if a list has
+ * never loaded, it says „Keine Verbindung“, its „Erneut versuchen“ stays
+ * operable (it only reads) and loads by itself as soon as the connection is back …
  *
- * Gegenproben (am 03.11.2026 gemessen):
- *   A  in api() ausZwischenspeicher() nicht gefragt → rot: „Merkliste: letzter Stand“
- *   B  [data-lesend] aus NOT_LOCK entfernt → rot: „Erneut versuchen bleibt bedienbar“
- *   C  das automatische Neuladen in showConnection(true) entfernt → rot: „lädt von selbst“
- *   D  die Regel label:has(> input[data-offline-gesperrt]) entfernt → rot: „CSV-Label gesperrt“
+ * Counter-checks (measured on 03.11.2026):
+ *   A  ausZwischenspeicher() not asked in api() → red: „Merkliste: letzter Stand“
+ *   B  [data-lesend] removed from NOT_LOCK → red: “try again stays operable”
+ *   C  the automatic reloading removed in showConnection(true) → red: “loads by itself”
+ *   D  the rule label:has(> input[data-offline-gesperrt]) removed → red: “CSV label locked”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,7 +34,7 @@ function netz(w, an) {
 }
 
 test('wishlist: last state instead of an error, even after reloading the page', async () => {
-  // Erster Besuch mit Netz; der zweite (wie nach F5) ohne, mit dem Speicher dieses Tabs.
+  // First visit with network; the second (as after F5) without, with the storage of this tab.
   const erst = await openUi({ '/v1/wanted': MERK });
   await reiter(erst.w, 'wanted');
   await warte(() => erst.d.querySelector('#mk-list .mk-zeile'));

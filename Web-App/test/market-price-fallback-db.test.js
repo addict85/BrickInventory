@@ -1,15 +1,15 @@
 /**
- * Eine Preiszeile mit avg_price 0 und qty_avg_price > 0 hat EINEN Marktpreis
- * (den Mengenschnitt), und Bewertung, G&V, Wertkurve und Preisverlauf zeigen
- * denselben — für Set, Teil und Figur. Echter Code, echte Datenbank.
+ * A price row with avg_price 0 and qty_avg_price > 0 has ONE market price
+ * (the quantity average), and valuation, G&V, value curve and price history show
+ * the same — for set, part and figure. Real code, real database.
  *
- * Gegenproben (13.11.2026 gemessen, jeweils zurückgenommen):
- *   A  marketPriceFrom() (src/catalog/bricklinkPrices.ts) nur noch avg_price → rot:
- *      „Bewertung“ (Stückpreis 0 statt 37.5), „G&V“, „Preisverlauf“; Wertkurve grün
- *   B  marktpreisSql() (db/geldSql.ts) nur noch avg_price → rot: „Wertkurve“
- *      (60, der Kaufpreis als Startpunkt, statt 75) und „Preisverlauf“
+ * Counter-checks (measured 13.11.2026, each reverted):
+ *   A  marketPriceFrom() (src/catalog/bricklinkPrices.ts) only avg_price → red:
+ *      “valuation” (unit price 0 instead of 37.5), “G&V”, “price history”; Wertkurve green
+ *   B  marktpreisSql() (db/geldSql.ts) only avg_price → red: „Wertkurve“
+ *      (60, the purchase price as starting point, instead of 75) and “price history”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

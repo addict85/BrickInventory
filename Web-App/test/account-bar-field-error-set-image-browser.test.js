@@ -1,24 +1,24 @@
 /**
- * UX-Prüfung 27 im echten Chrome: Fehlerzustand der Finanzen (N3), klebende Sprungleisten in Konto,
- * Einstellungen und Hintergrundarbeiten (M2), Feldfehler im zweispaltigen Dialog (N2), die untere Leiste bei
- * 200 % Zoom (N4), Abzeichen auf einer Grundlinie (N5), das Set-Bild als Knopf mit der Tastatur (N7) und der
- * Kontrast unter der Schrift im Design „hochglanz“.
+ * UX review 27 in real Chrome: error state of the finances (N3), sticky jump bars in account,
+ * settings and background jobs (M2), field errors in the two-column dialog (N2), the bottom bar at
+ * 200 % zoom (N4), badges on one baseline (N5), the set image as a button via keyboard (N7) and the
+ * contrast under the text in the “hochglanz” design.
  *
- * Gegenproben (15.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  .konto-nav ohne position:sticky → rot: „M2 …“ alle Fälle mit Konto und Hintergrundarbeiten („Leiste
- *      rollt weg“); die mobile Regel der Einstellungen wieder position:static → rot: „M2 390 px … Einstellungen“
- *   B  Hintergrundarbeiten ohne Sprungleiste → rot: „M2 …“ (keine Leiste); ohne tabindex an den Titeln → rot:
- *      ebenda (Fokus)
- *   C  errorPlace() ohne den Zweig für Rasterzellen → rot: „N2 …“ (Meldung nicht unter ihrem Feld)
- *   D  finanzen-fehler blendet nichts aus → rot: „N3 …“ (Zeitraum und Chips sichtbar)
- *   E  die Regel für 601–640 px entfernt (Namen wieder nur bis 640 px verborgen) → rot: „N4 …“ (640 × 450)
- *   F  .besitzer-badge wieder overflow:hidden → rot: „N5 …“ (Abzeichen 4–6 px versetzt)
- *   G  Set-Bild wieder ohne Knopf (img mit role=button, kein Knopf) → rot: „N7 …“ (kein Knopf um das Bild)
- *   H  hochglanz.css: Plaketten wieder mit dem Licht der Knöpfe → rot: „Kontrast …“ (#fin-tbl .cond-new 3,03:1);
- *      --mut wieder #5a6270 aus noppe → rot: ebenda (.fin-fussnote 4,21:1)
+ * Counter-checks (measured 15.11.2026, each alone, bundle rebuilt):
+ *   A  .konto-nav without position:sticky → red: “M2 …” all cases with account and background jobs (“bar
+ *      scrolls away”); the mobile rule of the settings back to position:static → red: “M2 390 px … settings”
+ *   B  background jobs without jump bar → red: “M2 …” (no bar); without tabindex on the titles → red:
+ *      same place (focus)
+ *   C  errorPlace() without the branch for grid cells → red: “N2 …” (message not below its field)
+ *   D  finanzen-fehler hides nothing → red: “N3 …” (period and chips visible)
+ *   E  the rule for 601–640 px removed (names hidden only up to 640 px again) → red: “N4 …” (640 × 450)
+ *   F  .besitzer-badge back to overflow:hidden → red: “N5 …” (badges offset by 4–6 px)
+ *   G  set image without a button again (img with role=button, no button) → red: “N7 …” (no button around the image)
+ *   H  hochglanz.css: badges again with the light of the buttons → red: “contrast …” (#fin-tbl .cond-new 3.03:1);
+ *      --mut back to #5a6270 from noppe → red: same place (.fin-fussnote 4.21:1)
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Skipped without Chrome (CHROME_BIN, google-chrome, chromium).
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -40,7 +40,7 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
     name: `r27_${process.pid}`,
     bestand: async (db, uid) => {
       await patternHousehold(db, uid);
-      // Ein Bild, das der eigene Server ausliefert: Nur mit Bild ist der Zoom-Knopf bedienbar.
+      // An image delivered by the own server: only with an image is the zoom button usable.
       await db.run(`UPDATE set_catalog SET image_local = '/favicon.svg' WHERE set_number = '10294-1'`);
     },
   });
@@ -54,7 +54,7 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
     await ruhig();
   };
 
-  // Zuerst: Nur ohne geladene Liste und Kurve landet der Fehler im Diagrammkasten.
+  // First: only without a loaded list and curve does the error land in the chart box.
   await t.test('N3 finance error: period, chips and search gone, back after success', async () => {
     const kaputt = JSON.stringify({ success: false, error: 'interner Fehler', code: 'interner_fehler' });
     const intercept = d => {
@@ -124,7 +124,7 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
           assert.notEqual(m.grund, 'rgba(0, 0, 0, 0)', 'Leiste ohne eigenen Grund: Inhalt scheint durch');
           assert.equal(m.pageWider, false, 'Seite breiter als das Fenster');
           if (ansicht !== 'Hintergrundarbeiten') return;
-          // Ein Sprung ganz nach oben: Die Überschrift steht im Bild und nicht unter der Leiste.
+          // A jump to the very top: the heading is in view and not below the bar.
           await b.auswerten(`document.querySelector('${leiste} a[data-arg="mon-t-kontingente"]').click(); true`);
           await ruhig(400);
           const z =
@@ -222,8 +222,8 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
       document.querySelector('#set-modal [data-click="closeModal"]').click(); true`);
   });
 
-  // Gemessen wird der Grund genau unter den Schriftpixeln: Bild mit und ohne Schrift, wo sie sich unterscheiden.
-  // Die berechnete Hintergrundfarbe kennt den Verlauf darüber nicht.
+  // The background is measured exactly under the text pixels: image with and without text, where they differ.
+  // The computed background color does not know the gradient above it.
   await t.test('contrast "hochglanz" light (390 px): badge and quiet text on their gradient', async () => {
     const sharp = require('sharp');
     const bild = async r =>
@@ -248,7 +248,7 @@ test('account bar, field error in the grid, bottom bar, set image', { concurrenc
       const [h, d] = [lum(a), lum(z)].sort((x, y) => y - x);
       return (h + 0.05) / (d + 0.05);
     };
-    // Am Telefon steht die Fussnote im dunkleren Fuss des Kartenverlaufs.
+    // On the phone the footnote sits in the darker foot of the card gradient.
     await groesse(b, 390, 844, true);
     await b.tab('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'light' }] });
     await zu('#/finanzen');

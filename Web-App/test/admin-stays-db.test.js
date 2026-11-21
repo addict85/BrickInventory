@@ -1,19 +1,19 @@
 /**
- * Es bleibt immer ein aktiver Verwalter, auch wenn zwei Verwalter sich
- * gleichzeitig entziehen, deaktivieren oder löschen. Vorher schützte nur das
- * eigene Konto: Beide sahen den jeweils anderen noch als Verwalter.
+ * An active administrator always remains, even if two administrators
+ * revoke, deactivate or delete each other at the same time. Previously only the
+ * own account was protected: both still saw the other as administrator.
  *
- * Gegenproben (am 07.11.2026 gemessen, je einzeln):
- *   A  die Sperre (pg_advisory_xact_lock) in belowAdminLock() entfernt →
- *      rot: „gleichzeitiger Entzug der Rolle“, „gleichzeitiges Deaktivieren“,
- *      „gleichzeitiges Löschen“, „Entzug gegen Deaktivieren“ (beide Aufrufe gelangen durch)
- *   B  die Bedingung ANDERER_VERWALTER aus dem UPDATE in setAdmin()
- *      entfernt → rot: „der letzte Verwalter behält die Rolle“ und der
- *      gleichzeitige Entzug
- *   C  (13.11.2026) in belowAdminLock() die Prüfung inTransaction() gestrichen
- *      → rot: „der letzte Verwalter behält …“ (deleteAccount ohne Transaktion lief durch)
+ * Counter-checks (measured on 07.11.2026, each alone):
+ *   A  the lock (pg_advisory_xact_lock) removed in belowAdminLock() →
+ *      red: “concurrent revocation of the role”, “concurrent deactivation”,
+ *      “concurrent deletion”, “revocation against deactivation” (both calls get through)
+ *   B  the condition ANDERER_VERWALTER removed from the UPDATE in setAdmin()
+ *      → red: “the last administrator keeps the role” and the
+ *      concurrent revocation
+ *   C  (13.11.2026) in belowAdminLock() the check inTransaction() deleted
+ *      → red: “the last administrator keeps …” (deleteAccount without transaction got through)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,11 +25,11 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const K = { ..._req('src/account/accounts.js'), ...require('./helpers/sources').testArea('account').konten };
-/** Die Absage wirft der Dienst; hier wird sie zum Wert, damit gleichzeitige Aufrufe zählbar bleiben. */
+/** The service throws the refusal; here it becomes a value so that concurrent calls stay countable. */
 const LAST = 'letzter_verwalter';
 const alsWert = p => p.catch(e => (e?.code === LAST ? LAST : Promise.reject(e)));
-/** Wie kontoEntfernen(), ohne Protokoll: Dessen Eintrag zum gleichzeitig gelöschten Verwalter stiesse an den Fremdschlüssel. */
-/** Im Systemrahmen wie dort: Konten löscht nur die Systemrolle (0117). */
+/** Like kontoEntfernen(), without log: its entry for the concurrently deleted administrator would hit the foreign key. */
+/** In the system context as there: only the system role deletes accounts (0117). */
 const remove = (ziel, durch) =>
   _req('src/infra/accountContext.js').inSystemContext('test', () =>
     require('./helpers/sources')
@@ -44,7 +44,7 @@ test('admins: at the same time one always stays active', { concurrency: 1 }, asy
   const P = process.pid,
     NAMEN = ['a', 'b'].map(n => `vb_${n}_${P}`);
   await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
-  // Nur diese zwei Verwalter zählen; die übrigen Konten der Test-DB werden für die Dauer ausgeblendet.
+  // Only these two administrators count; the other accounts of the test DB are hidden for the duration.
   const fremde = (await db.all('SELECT id FROM users WHERE is_admin AND is_active')).map(z => z.id);
   await db.run('UPDATE users SET is_active = false WHERE id = ANY($1)', [fremde]);
   const neu = async name =>
@@ -67,7 +67,7 @@ test('admins: at the same time one always stays active', { concurrency: 1 }, asy
     await db.run('DELETE FROM users WHERE username = ANY($1)', [NAMEN]);
     return [await neu(NAMEN[0]), await neu(NAMEN[1])];
   };
-  /** In jeder Runde frische Konten; genau einer der beiden Aufrufe darf durchkommen. */
+  /** Fresh accounts in every round; exactly one of the two calls may get through. */
   const gleichzeitig = async call => {
     for (let i = 0; i < ROUNDS; i++) {
       const [x, y] = await zuruecksetzen();
@@ -90,7 +90,7 @@ test('admins: at the same time one always stays active', { concurrency: 1 }, asy
       'ohne Transaktion schützte die Sperre nichts',
     );
     assert.equal(await activeAdmin(), 1);
-    // Ein anderer Verwalter darf wieder gehen, die Rolle von Nicht-Verwaltern ist frei.
+    // Another administrator may leave again, the role of non-administrators is free.
     assert.deepEqual(await K.setzeVerwalterRolle(y, true), { geaendert: true });
     assert.deepEqual(await K.setzeAktiv(y, false), { geaendert: true });
     await assert.rejects(K.setzeVerwalterRolle(999999999, false), { code: 'benutzer_nicht_gefunden' });

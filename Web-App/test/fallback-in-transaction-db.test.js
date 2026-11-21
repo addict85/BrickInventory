@@ -1,23 +1,23 @@
 /**
- * In einer Transaktion gibt es keinen Ersatzwert: Nach einem Datenbankfehler
- * nimmt PostgreSQL keinen Befehl mehr an (25P02), ein Ersatz verdeckte die
- * Ursache. Erzwungen wird der Fehler mit einem Überlauf: Zwei Erfassungen zu
- * je zwei Milliarden sprengen das `::int` der Mengensumme.
+ * In a transaction there is no substitute value: after a database error
+ * PostgreSQL accepts no further command (25P02), a substitute would hide the
+ * cause. The error is forced with an overflow: two entries of
+ * two billion each blow the `::int` of the quantity sum.
  *
- * Gegenproben (10.11.2026 gemessen):
- * - erfassungen.ts: mengeDesBestands wieder mit `.catch(reportAndDeliver(…, null))`
- *   UND in db/transaction.ts (newTxStatus) `verdirbt: () => false` → rot: „die Ursache kommt an“
- *   (25P02 statt 22003, das Aufräumen lief in die tote Transaktion).
- *   Nur der alte Fang, Wächter aktiv → grün: Der Wächter allein trägt.
- * - fehler.ts: in checkFallbackInTransaction die erste Zeile durch `return;`
- *   ersetzt → rot: „ein Datenbankfehler geht weiter“ und „ausserhalb der
- *   Datenbank wirft er in Tests“.
- * - db/transaction.ts: `fromSavepointCaught.add(e)` entfernt → rot:
- *   „hinter einem Sicherungspunkt gilt der Ersatz“.
- * - db/database.ts: in oneTimeTransaction `streng: false` statt `streng: r.streng` → rot:
- *   „ausserhalb der Datenbank wirft er in Tests“.
+ * Counter-checks (measured 10.11.2026):
+ * - erfassungen.ts: mengeDesBestands again with `.catch(reportAndDeliver(…, null))`
+ *   AND in db/transaction.ts (newTxStatus) `verdirbt: () => false` → red: “the cause arrives”
+ *   (25P02 instead of 22003, the cleanup ran into the dead transaction).
+ *   Only the old catch, guard active → green: the guard alone carries.
+ * - fehler.ts: in checkFallbackInTransaction the first line replaced by `return;`
+ *   → red: “a database error goes on” and “outside the
+ *   database it throws in tests”.
+ * - db/transaction.ts: `fromSavepointCaught.add(e)` removed → red:
+ *   “behind a savepoint the substitute applies”.
+ * - db/database.ts: in oneTimeTransaction `streng: false` instead of `streng: r.streng` → red:
+ *   “outside the database it throws in tests”.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -72,11 +72,11 @@ test('no substitute value in a transaction', { concurrency: 1 }, async t => {
 
   await t.test('behind a savepoint the substitute applies', async () => {
     const r = await db.transaction(async tx => {
-      // Der Sicherungspunkt über den Zugang der Transaktion.
+      // The savepoint via the transaction's access.
       const ersatz = await tx.db
         .transaction(inner => inner.get('SELECT 1/0 AS x'))
         .catch(reportAndDeliver('probe', 'ersatz'));
-      // Die äussere Transaktion nimmt danach noch Befehle an.
+      // The outer transaction still accepts commands afterwards.
       return [ersatz, (await tx.get('SELECT 2 AS z')).z];
     });
     assert.deepEqual(r, ['ersatz', 2]);

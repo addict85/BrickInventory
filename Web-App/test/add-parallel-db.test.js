@@ -1,8 +1,8 @@
 /**
- * Erfassen: gleichzeitig, und mit unsinnigen Eingaben.
+ * Adding: concurrently, and with nonsensical input.
  *
- * Deshalb hier: echte parallele Aufrufe gegen echte Postgres-Verbindungen.
- * Ohne Sperre schlagen die Prüfungen sofort an — nachgewiesen per Gegenprobe.
+ * Hence here: real parallel calls against real Postgres connections.
+ * Without a lock the checks fail immediately — proven by counter-check.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -36,7 +36,7 @@ test('capturing under load', { concurrency: 1 }, async t => {
     c.release();
   }
 
-  // Ungebunden geladen: In der Transaktion bekommt der Dienst ihren Kontext `t`.
+  // Loaded unbound: in the transaction the service gets its context `t`.
   const { addPurchaseAtTag } = require(path.join(__dirname, '..', 'dist', 'src', 'inventory', 'acquisitions.js'));
   const bestand = testContext('inventory');
 
@@ -68,8 +68,8 @@ test('capturing under load', { concurrency: 1 }, async t => {
 
   await t.test('the index does not even allow a second daily row', async () => {
     await holdsSet(db, uid, '70002-1', 0);
-    // Das Netz unter der Sperre: Ein Weg, der die Sperre vergisst, scheitert
-    // an der Datenbank statt still eine zweite Zeile anzulegen.
+    // The net under the lock: a path that forgets the lock fails
+    // at the database instead of silently creating a second row.
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,'70002-1',1,5,'N')`,
@@ -135,14 +135,14 @@ test('capturing under load', { concurrency: 1 }, async t => {
 test('quantities and prices are checked', () => {
   const V = _req('src/infra/validate.js');
 
-  // Menge: 1 bis 10 000, alles andere wird eingefangen.
+  // Quantity: 1 to 10 000, everything else is caught.
   assert.equal(V.acquisitionQuantity(-5), 1, 'negative Menge kam durch');
   assert.equal(V.acquisitionQuantity(0), 1);
   assert.equal(V.acquisitionQuantity(999999999), 10000, 'unplausible Menge kam durch');
   assert.equal(V.acquisitionQuantity('3'), 3);
   assert.equal(V.acquisitionQuantity(undefined), 1);
 
-  // Preis: leer heisst „kein Preis", negativ wird abgelehnt (src/infra/geld.ts).
+  // Price: empty means “no price", negative is rejected (src/infra/geld.ts).
   const { moneyInput } = _req('src/infra/geld.js');
   assert.equal(moneyInput('', 'Preis'), null);
   assert.equal(moneyInput(null, 'Preis'), null);
@@ -162,8 +162,8 @@ test('all capture paths use the same check', () => {
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
 
-  // Manuelle Einträge prüfen im Dienst, Sets im Vertrag (eingabe.stueckzahl und
-  // eingabe.preis rufen dieselben Prüfer) — eine Regel.
+  // Manual entries validate in the service, sets in the contract (eingabe.stueckzahl and
+  // eingabe.preis call the same validators) — one rule.
   for (const rel of ['src/parts/manualParts.ts', 'src/minifigs/manualMinifigs.ts']) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
     assert.match(src, /acquisitionQuantity\(/, `${rel}: Menge ungeprüft`);
@@ -176,9 +176,9 @@ test('all capture paths use the same check', () => {
     'Sets: Menge oder Preis ungeprüft',
   );
 
-  // Und der Erfassen-Pfad schreibt gesperrt.
+  // And the add path writes under the lock.
   const sets = ohneKommentare(require('./helpers/sources').setCoreSource());
-  // Nur der Rumpf von setErfassen(), des einen Wegs zum Erfassen: bis zur nächsten Funktion.
+  // Only the body of setErfassen(), the single path for adding: up to the next function.
   const start = sets.indexOf('async function setErfassen(');
   const naechste = sets.slice(start + 10).search(/\n(?:export )?(?:async )?function [a-zA-Z_$]/);
   const kern = sets.slice(start, start + 10 + naechste);
@@ -191,20 +191,20 @@ test('all capture paths use the same check', () => {
 test('a broken CSV entry does not topple the whole file', () => {
   const { csvReadIn, skippedHint } = _req('src/infra/csvExport.js');
 
-  // Genau die Datei, die am laufenden Server den Import komplett abbrach:
-  // Zeile 3 hat eine Spalte statt drei.
+  // Exactly the file that aborted the whole import on the running server:
+  // line 3 has one column instead of three.
   const kaputt = 'set_number,quantity,purchase_price\n10280,1,20\nMÜLL;;;\n75192,2,30\n';
   const r = csvReadIn(kaputt);
   assert.equal(r.records.length, 3, 'brauchbare Zeilen gingen verloren — vorher brach der ganze Import ab');
   assert.equal(r.records[0].set_number, '10280');
   assert.equal(r.records[2].set_number, '75192', 'die Zeile NACH dem Fehler fehlt');
 
-  // Semikolon-Dateien werden weiterhin erkannt.
+  // Semicolon files are still recognized.
   const semi = csvReadIn('set_number;quantity\n10280;2\n');
   assert.equal(semi.delimiter, ';');
   assert.equal(semi.records[0].quantity, '2');
 
-  // Wirklich leere Zeilen zählen als übersprungen und werden benannt.
+  // Really empty lines count as skipped and are named.
   const leer = csvReadIn('set_number,quantity\n10280,1\n,\n');
   assert.equal(leer.records.length, 1);
   assert.deepEqual(leer.uebersprungen, [3], 'Zeilennummer wie im Editor, 1-basiert mit Kopfzeile');
@@ -216,11 +216,11 @@ test('all three import paths report skipped rows', () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');
-  // ── Zwei Wege zum selben Ziel ────────────────────────────
+  // ── Two paths to the same goal ───────────────────────────
   //
-  // Der Set-Import liest selbst und antwortet selbst; Teile und Minifiguren
-  // gehen über csvRowsFromRequest() und csvImportReport() in
-  // src/infra/csvExport.ts. Je Weg zählen Route, Dienst und Auftrag zusammen.
+  // The set import reads itself and responds itself; parts and minifigures
+  // go via csvRowsFromRequest() and csvImportReport() in
+  // src/infra/csvExport.ts. Per path, route, service and job count together.
   for (const [rel, dienst] of [
     ['routes/api_v1/setsImport.ts', 'src/sets/csvImport.ts'],
     ['routes/api_v1/parts.ts', 'src/parts/manualParts.ts'],
@@ -236,8 +236,8 @@ test('all three import paths report skipped rows', () => {
     assert.match(src, /csvReadIn\(|csvRowsFromRequest\(/, `${rel}: liest noch selbst`);
     assert.match(src, /skipped_hint|csvImportReport\(/, `${rel}: sagt dem Nutzer nichts über übersprungene Zeilen`);
   }
-  // Und die gemeinsame Fassung tut wirklich beides — sonst genügte oben der
-  // blosse Name.
+  // And the shared version really does both — otherwise the mere name
+  // above would suffice.
   const geteilt = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/infra/csvExport.ts'), 'utf8'));
   assert.match(
     geteilt,
@@ -249,8 +249,8 @@ test('all three import paths report skipped rows', () => {
     /function csvImportReport[\s\S]*?skipped_hint/,
     'csvImportReport() meldet die übersprungenen Zeilen nicht mehr',
   );
-  // Und die Oberfläche zeigt den Hinweis auch an.
-  // Sets in der Galerie, Teile/Figuren/Merkliste/Alarme über uploadCsv().
+  // And the UI shows the hint too.
+  // Sets in the gallery, parts/minifigures/wishlist/alerts via uploadCsv().
   for (const rel of ['public/js/set-csv-import.js', 'public/js/components.js']) {
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
     assert.match(src, /skipped_hint/, `${rel}: Hinweis kommt an, wird aber nicht gezeigt`);
@@ -263,7 +263,7 @@ test('the parts list delivers what it reports', () => {
   const { ROOT, ohneKommentare } = require('./helpers/sources');
   const H = require('./helpers/sources').handlerModule(_req);
 
-  // Die Teileliste EINES Sets darf mehr als eine normale Seite liefern
+  // The parts list of ONE set may deliver more than a normal page
   assert.ok(
     H.SET_PARTS_MAX_PAGE_SIZE > H.MAX_PAGE_SIZE,
     'Ein einzelnes Set braucht eine höhere Grenze als die allgemeine Liste',
@@ -271,9 +271,9 @@ test('the parts list delivers what it reports', () => {
   assert.ok(H.SET_PARTS_MAX_PAGE_SIZE >= 5000, 'Grosse Sets haben mehrere tausend Teilezeilen');
 
   const src = ohneKommentare(require('./helpers/sources').handlerQuelle());
-  // Beide Abfragewege (Zusammenfassung und Live) müssen dieselbe Grenze
-  // kennen — dass sie sich unterschiedlich deckelten, war schon einmal ein
-  // Fehler (dieselbe Anfrage lieferte je nach Cache-Zustand 500 oder 5000).
+  // Both query paths (summary and live) must know the same limit
+  // — that they were capped differently was already once a
+  // bug (the same request returned 500 or 5000 depending on the cache state).
   assert.equal(
     (src.match(/SET_PARTS_MAX_PAGE_SIZE/g) || []).length >= 3,
     true,
@@ -285,16 +285,16 @@ test('the parts list delivers what it reports', () => {
     'Die Grenze für Aufrufe ohne page_size gilt nicht auf beiden Wegen',
   );
 
-  // Die Antwort meldet die TATSÄCHLICHE Seitengrösse, nicht die angefragte.
+  // The response reports the ACTUAL page size, not the requested one.
   const v1 = ohneKommentare(fs.readFileSync(path.join(ROOT, 'routes/api_v1/parts.ts'), 'utf8'));
   const antwort = v1.slice(
     v1.indexOf("router.endpunkt('GET /api/v1/parts'"),
     v1.indexOf("router.endpunkt('GET /api/v1/parts/brick-colors'"),
   );
-  // Geprüft wird, WOHER die Zahl kommt, nicht wie die Zeile geschrieben ist.
+  // What is checked is WHERE the number comes from, not how the line is written.
   //
-  // Ein Wortlaut wie `page_size: result.page_size` wäre die falsche Probe: Er kann
-  // wirkungslos dastehen oder fehlen, ohne dass die Antwort sich ändert.
+  // A wording like `page_size: result.page_size` would be the wrong probe: it can
+  // stand there without effect or be missing without the response changing.
   assert.match(
     antwort,
     /\.\.\.result/,
@@ -306,7 +306,7 @@ test('the parts list delivers what it reports', () => {
     'Die Antwort spiegelt wieder die Anfrage zurück statt zu sagen, was geliefert wurde',
   );
 
-  // Und die SET-Liste bleibt unbegrenzt
+  // And the SET list stays unlimited
   const setsLesen = src.slice(src.indexOf('async function setList'));
   assert.match(
     setsLesen,

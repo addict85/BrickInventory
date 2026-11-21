@@ -1,16 +1,16 @@
 /**
- * Die Android-App als Partei der Passkeys: /.well-known/assetlinks.json und die
- * Herkunft `android:apk-key-hash:…` kommen aus PASSKEY_ANDROID_ZERTIFIKATE.
- * Ob der Server die Antwort einer App annimmt, prüft passkeys-db.test.js.
+ * The Android app as a party of the passkeys: /.well-known/assetlinks.json and the
+ * origin `android:apk-key-hash:…` come from PASSKEY_ANDROID_ZERTIFIKATE.
+ * Whether the server accepts the response of an app is checked by passkeys-db.test.js.
  *
- * Gegenproben (am 31.10.2026 gemessen):
- *   A  in assetlinks() die Doppelpunkte weggelassen (`hex` statt `AB:CD:…`) →
- *      rot: „das Dokument nennt Paket und Fingerabdruck …“
- *   B  in androidOrigins() base64 statt base64url → rot: „die Herkunft ist …“
- *   C  in androidZertifikate() die Formprüfung entfernt → rot: „ein falscher
- *      Fingerabdruck ist ein Startfehler …“
- *   D  den Router in routes/wellKnown.ts ohne Pfad `.well-known` → rot: „ohne
- *      Eintrag gibt es kein Dokument“ und „das Dokument nennt …“
+ * Counter-checks (measured on 31.10.2026):
+ *   A  in assetlinks() the colons left out (`hex` instead of `AB:CD:…`) →
+ *      red: “the document names package and fingerprint …”
+ *   B  in androidOrigins() base64 instead of base64url → red: “the origin is …”
+ *   C  in androidZertifikate() the form check removed → red: “a wrong
+ *      fingerprint … is a startup error …”
+ *   D  the router in routes/wellKnown.ts without the path `.well-known` → red: “without
+ *      an entry there is no document” and “the document names …”
  */
 const test = require('node:test');
 const { environment } = require('./helpers/sources');
@@ -24,7 +24,7 @@ const { ladeKonfig, KonfigFehler } = _req('src/infra/config.js');
 const { androidOrigins: origins } = _req('src/factors/androidApp.js');
 const androidOrigins = () => origins(_req('src/infra/config.js').konfig());
 
-/** Ein Hash, dessen base64 ein „+“ und ein „/“ enthält: base64url muss sie ersetzen. */
+/** A hash whose base64 contains a „+“ and a „/“: base64url must replace them. */
 const HASH = Buffer.from('fbff' + '00'.repeat(28) + 'fbff', 'hex');
 const WITH_COLON = HASH.toString('hex').toUpperCase().match(/../g).join(':');
 

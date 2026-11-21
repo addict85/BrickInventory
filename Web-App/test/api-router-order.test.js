@@ -1,16 +1,16 @@
 /**
- * Die Router unter /api/v1 (routes/api_v1/index.ts) dürfen in beliebiger Reihenfolge
- * hängen: Kein Pfad-Muster und keine Middleware mit Pfad eines Routers trifft eine Route
- * eines anderen. Geprüft an den gebauten Routern, nicht am Quelltext.
+ * The routers under /api/v1 (routes/api_v1/index.ts) may hang in any order:
+ * no path pattern and no middleware with a path of one router hits a route
+ * of another. Checked on the built routers, not on the source text.
  *
- * Gegenproben (14.11.2026 gemessen):
- *   A  in routes/api_v1/setsLager.ts vor der ersten Route zusätzlich
- *      `router.get('/sets/:setNumber', …)` → rot „kein Muster trifft …“
+ * Counter-checks (measured 14.11.2026):
+ *   A  in routes/api_v1/setsLager.ts before the first route additionally
+ *      `router.get('/sets/:setNumber', …)` → red “no pattern hits …”
  *   B  in settings.ts `router.use('/settings', requireLogin)` → `router.use('/', requireLogin)`
- *      → rot „keine Middleware mit Pfad …“ (trifft die Routen aller späteren Router)
- *   C  `router.use(errorResponse)` zurück in routes/api_v1/parts.ts → rot „den Fehlerweg hängt
- *      die App an, kein Router“; ein zweites `app.use(errorResponse)` in startup/app.ts
- *      → rot (2 statt 1)
+ *      → red “no middleware with a path …” (hits the routes of all later routers)
+ *   C  `router.use(errorResponse)` back in routes/api_v1/parts.ts → red “the error path is attached
+ *      by the app, not by a router”; a second `app.use(errorResponse)` in startup/app.ts
+ *      → red (2 instead of 1)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -18,7 +18,7 @@ const q = require('./helpers/sources');
 
 const _req = q.buildAndRequire();
 
-/** Je eingehängtem Router: seine Routen und seine Middleware mit Pfad, auch aus Unterroutern. */
+/** Per mounted router: its routes and its middleware with a path, also from subrouters. */
 function bestand() {
   const api = _req('routes/api_v1/index.js').buildApiRouter(q.testServices());
   /** @param {any} r */
@@ -33,7 +33,7 @@ function bestand() {
   return api.stack.filter((/** @type {any} */ l) => l.handle?.stack).map((/** @type {any} */ l) => collect(l.handle));
 }
 
-/** Ein Pfad, wie ihn ein Client schickt: jeder Platzhalter ein fester Wert. @param {string} p */
+/** A path as a client sends it: every placeholder a fixed value. @param {string} p */
 const beispiel = p => p.replace(/:\w+/g, 'x1');
 
 test('the routers under /api/v1 do not hit each other', () => {

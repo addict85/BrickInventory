@@ -1,27 +1,27 @@
 /**
- * i18n-Konsistenz: Deutsch und Englisch müssen exakt dieselben Schlüssel
- * haben (fehlende Übersetzungen fallen sonst erst im UI als roher Key auf),
- * und Platzhalter ({name}) müssen in beiden Sprachen übereinstimmen.
+ * i18n consistency: German and English must have exactly the same keys
+ * (otherwise missing translations only show up in the UI as a raw key),
+ * and placeholders ({name}) must match in both languages.
  *
- * Läuft ohne Browser: i18n.js wird in einem Sandbox-Kontext ausgeführt; die
- * Anzeige der Farbnamen am echten Bündel in jsdom.
+ * Runs without a browser: i18n.js is executed in a sandbox context; the
+ * display of the color names on the real bundle in jsdom.
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   A  in renderColorDropdown `${c.name}` statt colorName(c.name) → rot:
- *      „Farbnamen: deutsch angezeigt, englisch gespeichert“
- *   B  die Gruppenüberschrift der Teile wieder `${g.color}` → rot: dieselbe Prüfung
- *   C  colorName() ohne `if (LANG !== 'de') return en;` → rot: dieselbe
- *      Prüfung (englische Oberfläche)
- *   D  openManDetail mit `imgUrl(rawImgSrc, true)` (Vorschau) statt
- *      imgUrl(fullUrl(…), false) → rot: „der Kaufpreis-Detail-Dialog …“.
- *      `fullUrl(rawImgSrc)` allein bleibt grün: fullUrl() leitet eine
- *      CDN-Adresse inzwischen selbst über den Proxy (bilder-proxy-oberflaeche D).
- *   E  (16.11.2026) in en.js „email“ einmal wieder „e-mail“ → rot: „kein Text steht in beiden Sprachen unübersetzt“ (checkTerms); in de.js
- *      csv.import_title wieder „CSV Import“ → rot: ebenda; settings.users_new wieder „Neuen Benutzer
- *      erstellen“ → rot: ebenda
- *   F  (16.11.2026) users.role.user (de) wieder „Benutzer“ → rot: „kein Text … unübersetzt“ und „die
- *      Rollen heissen …“; maillink.abbrechen.ok wieder „übrigen Verwalter“, FEHLER.nur_admins (de)
- *      wieder „Nur für Admins“, settings.admins_only (en) wieder „Admins only“ → je rot: „die Rollen heissen …“
+ * Counter-checks (measured 08.11.2026, each alone):
+ *   A  in renderColorDropdown `${c.name}` instead of colorName(c.name) → red:
+ *      “color names: displayed in German, stored in English”
+ *   B  the parts group heading back to `${g.color}` → red: the same check
+ *   C  colorName() without `if (LANG !== 'de') return en;` → red: the same
+ *      check (English UI)
+ *   D  openManDetail with `imgUrl(rawImgSrc, true)` (preview) instead of
+ *      imgUrl(fullUrl(…), false) → red: “the purchase price detail dialog …”.
+ *      `fullUrl(rawImgSrc)` alone stays green: fullUrl() now routes a
+ *      CDN address via the proxy itself (bilder-proxy-oberflaeche D).
+ *   E  (16.11.2026) in en.js “email” once back to “e-mail” → red: “no text stands untranslated in both languages” (checkTerms); in de.js
+ *      csv.import_title back to “CSV Import” → red: same place; settings.users_new back to “Neuen Benutzer
+ *      erstellen” → red: same place
+ *   F  (16.11.2026) users.role.user (de) back to “Benutzer” → red: “no text … untranslated” and “the
+ *      roles are called …”; maillink.abbrechen.ok back to “übrigen Verwalter”, FEHLER.nur_admins (de)
+ *      back to “Nur für Admins”, settings.admins_only (en) back to “Admins only” → each red: “the roles are called …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -29,9 +29,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { openUi, reiter, warte } = require('./helpers/ui');
 
-// Die Wörterbücher liegen seit der Aufteilung in public/locales/{de,en}.js —
-// index.html lädt nur die aktive Sprache, den Rest holt loadLang() nach.
-// Der Helfer setzt beide zusammen, damit hier unverändert geprüft werden kann.
+// Since the split the dictionaries live in public/locales/{de,en}.js —
+// index.html only loads the active language, loadLang() fetches the rest.
+// The helper joins both so that the check here can stay unchanged.
 const { loadTranslations } = require('./helpers/sources');
 
 const PLACEHOLDER = /\{(\w+)\}/g;
@@ -50,7 +50,7 @@ test('DE and EN have identical key sets', () => {
 test('placeholders match between DE and EN', () => {
   const { de, en } = loadTranslations();
   for (const k of Object.keys(de)) {
-    if (!(k in en)) continue; // wird vom Paritätstest gemeldet
+    if (!(k in en)) continue; // is reported by the parity test
     assert.deepEqual(
       placeholders(de[k]),
       placeholders(en[k]),
@@ -60,20 +60,20 @@ test('placeholders match between DE and EN', () => {
 });
 
 /**
- * Gleicher Text in beiden Sprachen heisst: nicht übersetzt.
+ * The same text in both languages means: not translated.
  */
 test('no text stands untranslated in both languages', () => {
-  // Begriffe, Eigennamen und Zahlenformate, die in beiden Sprachen gleich
-  // lauten. Jeder Eintrag ist eine Entscheidung, keine Nachsicht.
+  // Terms, proper names and number formats that are the same in both
+  // languages. Every entry is a decision, not leniency.
   const gewolltGleich = new Set([
     'catalog.sort.name',
     'col.name',
     'col.sets',
     'currency.eur',
-    // „Passkey“ und „Name“ heissen in beiden Sprachen so.
+    // “Passkey” and “Name” are called that in both languages.
     'pk.title',
     'pk.col.name',
-    // „Filter“ heisst in beiden Sprachen so.
+    // “Filter” is called that in both languages.
     'common.filter',
     'finance.filter.sets',
     'finance.period.max',
@@ -86,24 +86,24 @@ test('no text stands untranslated in both languages', () => {
     'monitor.api.bricklink',
     'monitor.api.brickset',
     'monitor.api.rebrickable',
-    // PIN ist in beiden Sprachen PIN — ein Begriff, kein Satz.
+    // PIN is PIN in both languages — a term, not a sentence.
     'vouchers.pin',
-    // Die Rückmeldung der Guthaben-Abfrage: „{nummer}: {betrag}" — ein reiner
-    // Rahmen aus zwei Platzhaltern, ohne ein eigenes Wort. Übersetzt ist daran
-    // nichts; der Betrag kommt formatiert von LEGO.
+    // The feedback of the balance query: “{nummer}: {betrag}" — a pure
+    // frame of two placeholders without a word of its own. Nothing in it is
+    // translated; the amount comes formatted from LEGO.
     'vouchers.balance_done',
-    // USA heisst auf Deutsch USA. Die übrigen sieben Ausgabeländer
-    // (country_de_ch … country_en_gb) unterscheiden sich, dieses eine nicht.
+    // USA is called USA in German. The other seven issuing countries
+    // (country_de_ch … country_en_gb) differ, this one does not.
     'vouchers.country_en_us',
-    // Die Rollennamen „Administrator“ und „Standard“ lauten in beiden Sprachen gleich.
+    // The role names “Administrator” and “Standard” are the same in both languages.
     'users.role.admin',
     'users.role.user',
     'users.admin_badge',
     'users.protokoll.verwalter',
     'settings.users_admin_badge',
-    // Die Beschriftung des Knopfes, der eine BrickLink-Wanted-Liste einliest:
-    // ein Eigenname und ein Dateiformat. „BrickLink XML" ist in beiden
-    // Sprachen dasselbe, und eine eingedeutschte Marke wäre falsch.
+    // The label of the button that reads in a BrickLink wanted list:
+    // a proper name and a file format. “BrickLink XML" is the same in both
+    // languages, and a Germanized brand would be wrong.
     'wanted.pick_short',
   ]);
 
@@ -130,7 +130,7 @@ test('no text stands untranslated in both languages', () => {
   checkTerms(de, en);
 });
 
-/** Begriffe einheitlich: Konto statt Benutzer, CSV-Import, englisch email. @param {Record<string, string>} de @param {Record<string, string>} en */
+/** Terms uniform: Konto instead of Benutzer, CSV-Import, English email. @param {Record<string, string>} de @param {Record<string, string>} en */
 function checkTerms(de, en) {
   const fund = (/** @type {Record<string, string>} */ w, /** @type {RegExp} */ r) =>
     Object.entries(w)
@@ -138,7 +138,7 @@ function checkTerms(de, en) {
       .map(([k, v]) => `${k} = ${v}`);
   assert.deepEqual(fund(en, /\be-mail/i), [], 'EN schreibt email');
   assert.deepEqual(fund(de, /CSV Import/), [], 'DE schreibt CSV-Import');
-  // Ein Konto heisst Konto; die Rolle heisst „Standard“, nicht mehr „Benutzer“.
+  // An account is called Konto; the role is called “Standard”, no longer “Benutzer”.
   assert.deepEqual(fund(de, /\bBenutzer(?!name)/), [], 'Konto statt Benutzer');
 }
 
@@ -174,11 +174,11 @@ test('catalog keys present', () => {
 });
 
 test('the trash in the brick theme has a white background from the start, not only on direct hover', () => {
-  // Gemeldet per Screenshot: Beim Überfahren der Kachel erschien der
-  // Papierkorb nur schwach (rgba(255,255,255,.22)) — erst beim direkten
-  // Überfahren DES KNOPFES wurde er voll weiss. Jetzt von Anfang an voll
-  // weiss, sobald die Kachel selbst überfahren wird (die Sichtbarkeit des
-  // gesamten .ca-Containers regelt bereits .sc:hover .ca in styles.css).
+  // Reported via screenshot: when hovering over the tile the
+  // trash appeared only faintly (rgba(255,255,255,.22)) — only when hovering
+  // directly over THE BUTTON did it become fully white. Now fully
+  // white from the start as soon as the tile itself is hovered (the visibility of the
+  // whole .ca container is already governed by .sc:hover .ca in styles.css).
   const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'themes', 'brick.css'), 'utf8');
   const fn = src.slice(src.indexOf('[data-theme="brick"] .sc .delbtn{'), src.indexOf('[data-theme="brick"] .qbadge'));
   assert.doesNotMatch(fn, /rgba\(255,255,255,\.22\)/, 'Der schwache Ruhezustand darf nicht mehr vorkommen');
@@ -228,7 +228,7 @@ test('color names: displayed in German, stored and filtered in English', async (
         ),
       );
       const option = d.querySelector('#ap-color-select option[data-name]');
-      // data-name geht beim Speichern ans Backend und an BrickLink: englisch.
+      // data-name goes to the backend and to BrickLink on saving: English.
       assert.deepEqual([option.textContent.trim(), option.dataset.name], [sichtbar, GRAY], sprache);
       assert.equal(
         d.querySelector('#parts-main .group-title').textContent.trim(),

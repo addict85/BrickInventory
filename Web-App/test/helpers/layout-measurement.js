@@ -1,6 +1,6 @@
 /**
- * Messungen, die im Browser laufen (als Ausdruck für Runtime.evaluate): Layout
- * und Kontrast der sichtbaren Oberfläche, dazu axe-core. Benutzt von
+ * Measurements that run in the browser (as an expression for Runtime.evaluate): layout
+ * and contrast of the visible UI, plus axe-core. Used by
  * test/helpers/ui-check.js.
  */
 const fs = require('node:fs');
@@ -11,7 +11,7 @@ const AXE = fs.readFileSync(
   'utf8',
 );
 
-/** Der oberste offene Dialog (wie obersterDialog in dialoge.js), sonst null. */
+/** The topmost open dialog (like obersterDialog in dialoge.js), otherwise null. */
 const TOPMOST = `(() => { let d = null, z = -Infinity;
   for (const el of document.querySelectorAll('.ovl[role=dialog]')) {
     const offen = el.style.display ? el.style.display !== 'none' : el.classList.contains('open');
@@ -19,8 +19,8 @@ const TOPMOST = `(() => { let d = null, z = -Infinity;
     if (offen && zi >= z) { d = el; z = zi; } }
   return d; })()`;
 
-/** axe auf der offenen Seite, alle Stufen: Auch „moderate“ (Überschriftenfolge, Landmarken) und „minor“ sind
- * Befunde, die eine Prüfung findet. */
+/** axe on the open page, all levels: “moderate” (heading order, landmarks) and “minor” are also
+ * findings a review finds. */
 const AXE_LAUF = `(async () => {
   if (!window.axe) { (0, eval)(${JSON.stringify(AXE)}); }
   const d = ${TOPMOST}; const wurzel = d?.querySelector('.modal') || d || document;
@@ -30,11 +30,11 @@ const AXE_LAUF = `(async () => {
 })()`;
 
 /**
- * Layout: waagrechter Überlauf, Tippziele (Telefon ≥ 44 px, Rechner ≥ 24 px),
- * überlappende Bedienelemente, zu schmale oder verdeckte Textblöcke,
- * abgeschnittener Text ohne „…“, Kontrast von
- * Text und Platzhaltern (4,5:1, gross 3:1) und von Feldgrenzen und
- * Sinnbild-Knöpfen (3:1). Gemessen wird im offenen Dialog, sonst auf der Seite.
+ * Layout: horizontal overflow, tap targets (phone ≥ 44 px, desktop ≥ 24 px),
+ * overlapping controls, too narrow or obscured text blocks,
+ * cut-off text without “…”, contrast of
+ * text and placeholders (4.5:1, large 3:1) and of field borders and
+ * icon buttons (3:1). Measured in the open dialog, otherwise on the page.
  */
 const LAYOUT = telefon => `(() => {
   const telefon = ${telefon ? 'true' : 'false'};
@@ -285,10 +285,10 @@ const LAYOUT = telefon => `(() => {
 })()`;
 
 /**
- * Tastatur im offenen Dialog: Jedes Bedienelement muss per Tab erreichbar
- * sein, und jede Klickfläche (data-click) muss den Fokus nehmen können.
- * VORBEREITEN markiert die Ziele und liefert ihre Zahl; danach drückt der
- * Test Tab und fragt BESUCHT, wo der Fokus steht.
+ * Keyboard in the open dialog: every control must be reachable via Tab,
+ * and every click surface (data-click) must be able to take the focus.
+ * VORBEREITEN marks the targets and returns their number; afterwards the
+ * test presses Tab and asks BESUCHT where the focus stands.
  */
 const TAB_PREPARE = `(() => {
   const d = ${TOPMOST}; if (!d) return null;
@@ -321,7 +321,7 @@ const TAB_MISSING = visited => `(() => { const b = new Set(${JSON.stringify(visi
   for (const e of document.querySelectorAll('[data-tabprobe]')) { if (!b.has(e.dataset.tabprobe)) raus.push(e.dataset.tabname); delete e.dataset.tabprobe; delete e.dataset.tabname; }
   return [...new Set(raus)]; })()`;
 
-/** Drückt Tab, bis jedes Ziel einmal dran war; ein Datumsfeld nimmt je Teil einen Tab. */
+/** Presses Tab until every target had its turn once; a date field takes one Tab per part. */
 async function tabCheck(b) {
   const v = await b.auswerten(TAB_PREPARE);
   if (!v) return [];

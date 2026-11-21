@@ -1,19 +1,19 @@
 /**
- * Gutschein-PDFs liegen verschlüsselt auf der Platte und kommen entschlüsselt
- * heraus; beim Löschen eines Kontos verschwinden seine Gutscheine und
- * Anleitungen mit. Geprüft über die echten Routen und den Startlauf.
+ * Voucher PDFs are stored encrypted on disk and come out decrypted;
+ * when an account is deleted its vouchers and instructions disappear
+ * with it. Checked via the real routes and the startup run.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in writeVoucherPdf() wieder den Klartext schreiben → rot: „PIN
- *      und Kartennummer stehen im Klartext auf der Platte“
- *   B  encryptLegacyVoucherFiles() überspringt alles → rot: „der
- *      Altbestand bleibt Klartext“
- *   C  in kontoEntfernen() (src/account) den Aufruf von deleteAccountFiles() entfernt → rot:
- *      „data/uploads/<id> bleibt nach dem Löschen liegen“
- *   D  GET /vouchers/:id/pdf liefert die Datei wieder roh (deliverFile) →
- *      rot: „das ausgelieferte PDF ist nicht das hochgeladene“
+ * Counter-checks (measured on 30.10.2026):
+ *   A  in writeVoucherPdf() write the plain text again → red: “PIN
+ *      and card number are in plain text on disk”
+ *   B  encryptLegacyVoucherFiles() skips everything → red: “the
+ *      legacy stock stays plain text”
+ *   C  in kontoEntfernen() (src/account) the call of deleteAccountFiles() removed → red:
+ *      “data/uploads/<id> stays after deletion”
+ *   D  GET /vouchers/:id/pdf delivers the file raw again (deliverFile) →
+ *      red: “the delivered PDF is not the uploaded one”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -89,7 +89,7 @@ test('voucher PDFs encrypted, account files go with the account', { concurrency:
 
   const original = await gutscheinPdf();
   const { valuesFromPdf } = _req('src/vouchers/pdfParsing.js');
-  /** Was jemand mit der Datei allein aus ihr liest. */
+  /** What someone reads from the file alone. */
   const lesbar = daten => {
     try {
       return valuesFromPdf(daten);

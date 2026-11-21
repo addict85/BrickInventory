@@ -1,31 +1,31 @@
 /**
- * Den Betrag im Original-PDF ersetzen, Gutscheine verbinden, zurueckeinlesen.
+ * Replace the amount in the original PDF, join vouchers, read them back in.
  *
- * ── Gegenproben (durchgeführt, Befunde GEMESSEN) ────────────────────────────
+ * ── Counter-checks (carried out, findings MEASURED) ────────────────────────────
  *
- *   a) Schriftschranke entfernt         → 6 rot
- *   b) Nachprüfung entfernt             → 9 rot
- *   c) Marke auf ALLE Seiten            → nichts rot
- *   d) seitenweises Zerlegen entfernt   → 7 rot
- *   e) Dublettenprüfung entfernt        → 8 rot
+ *   a) font barrier removed            → 6 red
+ *   b) post-check removed              → 9 red
+ *   c) marker on ALL pages             → nothing red
+ *   d) page-wise splitting removed     → 7 red
+ *   e) duplicate check removed         → 8 red
  *
- * Drei davon sagen etwas über diesen Test, und alle drei gegen mich:
+ * Three of them say something about this test, and all three against me:
  *
- * (b) machte im ERSTEN Versuch gar nichts rot — die Nachprüfung, das Herzstück
- * der ganzen Sache, war ungeprüft. Daraufhin kam Fall 9: Steht der Betrag als
- * Teilfolge in der 19-stelligen KARTENNUMMER, trifft ein Ersetzen über den
- * Strom die Nummer mit. Das ist nicht konstruiert, sondern naheliegend, und es
- * ist der schlimmere Fehler — eine falsche Kartennummer macht den Gutschein
- * unbrauchbar, und es stünde nirgends. Seit Fall 9 ist (b) rot.
+ * (b) turned nothing red at all on the FIRST attempt — the post-check, the heart
+ * of the whole thing, was unchecked. Thereupon came case 9: if the amount stands as a
+ * subsequence in the 19-digit CARD NUMBER, a replacement via the
+ * stream hits the number too. That is not contrived but obvious, and it
+ * is the worse error — a wrong card number makes the voucher
+ * unusable, and it would stand nowhere. Since case 9 (b) is red.
  *
- * (c) machte nichts rot, und das bleibt so: Dass aus einer Dublette EIN
- * Eintrag wird, garantiert die Dublettenprüfung, nicht die Beschränkung der
- * Marke auf die erste Seite. Der Kommentar im Modul behauptete das Gegenteil
- * und ist richtiggestellt.
+ * (c) turned nothing red, and it stays that way: that a duplicate becomes ONE
+ * entry is guaranteed by the duplicate check, not by restricting the
+ * marker to the first page. The comment in the module claimed the opposite
+ * and has been corrected.
  *
- * (d) machte nur 7 rot, nicht 8 — Fall 8 bleibt grün, weil das Lesen des
- * ganzen Stapels zufällig auch EINEN Eintrag ergibt. Fall 8 beweist die
- * Dublettenprüfung (siehe e), nicht das Zerlegen. Das tut Fall 7.
+ * (d) only turned 7 red, not 8 — case 8 stays green because reading the
+ * whole stack happens to also result in ONE entry. Case 8 proves the
+ * duplicate check (see e), not the splitting. Case 7 does that.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,10 +38,10 @@ const { valuesFromPdf } = _req('src/vouchers/pdfParsing.js');
 const { replaceAmount, combineVouchers, readPageByPage, markText, readMark } = _req('src/vouchers/pdfExport.js');
 const PL = require('@cantoo/pdf-lib');
 
-/** Eine eingebettete Schrift — damit entsteht eine Identity-H-Teilmenge. */
+/** An embedded font — this creates an Identity-H subset. */
 const TTF = '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf';
 
-/** Ein Gutschein-PDF, wie LEGO es schreibt: der Satz, die Nummer, die PIN. */
+/** A voucher PDF as LEGO writes it: the sentence, the number, the PIN. */
 function buildVoucher(amountText, nummer, pin, schrift) {
   return new Promise(fertig => {
     const d = new PDFKit({ size: 'A4' });
@@ -56,9 +56,9 @@ function buildVoucher(amountText, nummer, pin, schrift) {
 }
 
 /**
- * Ein PDF von Hand, in dem der Betrag LESBAR ist, die Schrift aber eine eigene
- * Kodierung trägt. Nur so lässt sich die Schriftschranke prüfen — pdfkit baut
- * so etwas nicht.
+ * A PDF by hand in which the amount is READABLE but the font carries its own
+ * encoding. Only this way can the font barrier be checked — pdfkit does not build
+ * anything like that.
  */
 async function buildWithEncoding(unsicher) {
   const doc = await PL.PDFDocument.create();
@@ -103,9 +103,9 @@ async function buildWithEncoding(unsicher) {
 const NR = '5045076374450011166';
 
 test('1. the amount is replaced in the original — three notations', async () => {
-  // Drei Schreibweisen, weil im PDF die SCHREIBWEISE steht und nicht die Zahl:
-  // „400", „1'250" (Schweizer Tausendertrenner), „49.90" (Rappen). Ein
-  // Ersetzen, das nur die ganze Zahl kennt, fände die beiden anderen nie.
+  // Three notations, because the PDF holds the NOTATION and not the number:
+  // „400", „1'250" (Swiss thousands separator), „49.90" (cents). A
+  // replacement that only knows the whole number would never find the other two.
   for (const [geschrieben, neu] of [
     ['400', 250],
     ["1'250", 300],
@@ -123,9 +123,9 @@ test('1. the amount is replaced in the original — three notations', async () =
 });
 
 test('2. an already correct amount stays untouched', async () => {
-  // Kein Treffer ist hier ERFOLG, nicht Fehlschlag: Das Original stimmt
-  // bereits. Ohne diesen Fall wäre ein Ersetzen „richtig", das jedes PDF
-  // umschreibt, auch wenn es nichts zu ändern gibt.
+  // No hit is SUCCESS here, not failure: the original is already
+  // right. Without this case a replacement that rewrites every PDF would be „right",
+  // even if there is nothing to change.
   const original = await buildVoucher('400', NR, '5225', null);
   const r = await replaceAmount(original, 400);
   assert.ok(r.data, `Abgelehnt, obwohl nichts zu tun war: ${r.grund}`);
@@ -153,19 +153,19 @@ test('4. writing and reading the marker is reversible', () => {
   const w = { nummer: NR, pin: '5225', betrag: 249.5, waehrung: 'CHF' };
   const gelesen = readMark(markText(w));
   assert.deepEqual(gelesen, { number: NR, pin: '5225', amount: 249.5, currency: 'CHF' });
-  // Eine Zeile, die keine Marke ist, darf keine ergeben — sonst fände der
-  // Import in jedem Text einen Gutschein.
+  // A line that is no marker must not produce one — otherwise the
+  // import would find a voucher in every text.
   assert.equal(readMark('Ihre LEGO-Geschenkkarte im Wert von 400 CHF:'), null);
-  // Ohne PIN: null und nicht die leere Zeichenkette (die Spalte ist NULL-fähig,
-  // und „" wäre eine andere Aussage als „keine").
+  // Without a PIN: null and not the empty string (the column is nullable,
+  // and „" would be a different statement than „keine").
   assert.equal(readMark(markText({ ...w, pin: null })).pin, null);
 });
 
 test('5. three vouchers become ONE PDF and all come back', async () => {
-  // Der Kern von Marcos Vorgabe, und drei Lagen in einem Lauf:
-  //   · mit Original, Betrag abweichend  → wird ersetzt
-  //   · mit Original, Schrift unlesbar   → bleibt unverändert, Marke trägt den Wert
-  //   · ohne Original (von Hand erfasst) → Seite wird erzeugt
+  // The core of Marco's specification, and three situations in one run:
+  //   · with original, amount differing   → is replaced
+  //   · with original, font unreadable    → stays unchanged, the marker carries the value
+  //   · without original (captured by hand) → page is generated
   const g = [
     { id: 1, number: NR, pin: '5225', amount: 250, currency: 'CHF', pdf: await buildVoucher('400', NR, '5225', null) },
     {
@@ -188,15 +188,15 @@ test('5. three vouchers become ONE PDF and all come back', async () => {
   );
   assert.ok(results[1].grund, 'Zum unveränderten Gutschein steht kein Grund dabei');
 
-  // ── Der Rundlauf ───────────────────────────────────────────────────────
+  // ── The round trip ───────────────────────────────────────────────────────
   const zurueck = await readPageByPage(pdf);
   assert.equal(zurueck.length, 3, `${zurueck.length} Gutscheine gelesen statt 3`);
   for (const x of g) {
     const w = zurueck.find(z => z.number === x.number);
     assert.ok(w, `${x.number} kam nicht zurück`);
-    // Der APP-Betrag, nicht der aufgedruckte. Bei Gutschein 2 ist das
-    // Ersetzen GESCHEITERT — und trotzdem kommt 150 zurück, weil die Marke
-    // ihn trägt. Genau dafür ist sie da.
+    // The APP amount, not the printed one. For voucher 2 the
+    // replacement FAILED — and still 150 comes back, because the marker
+    // carries it. That is exactly what it is there for.
     assert.equal(
       w.amount,
       x.amount,
@@ -207,8 +207,8 @@ test('5. three vouchers become ONE PDF and all come back', async () => {
 });
 
 test('6. a font with its own encoding is NOT touched', async () => {
-  // Der wichtigste Fall. Beide PDFs sind zeichengleich bis auf die Kodierung
-  // der Betragsschrift, und in BEIDEN liest der Leser 400.
+  // The most important case. Both PDFs are identical except for the encoding
+  // of the amount font, and in BOTH the reader reads 400.
   const sicher = await buildWithEncoding(false);
   const unsicher = await buildWithEncoding(true);
   assert.equal(valuesFromPdf(sicher).amount, 400, 'Vorbedingung: WinAnsi ist lesbar');
@@ -236,10 +236,10 @@ test('6. a font with its own encoding is NOT touched', async () => {
 });
 
 test('7. a foreign PDF without a marker is guessed page by page', async () => {
-  // Der Rückfall. Ein Stapel, wie LEGO ihn schickt, hat keine Marke. Zerlegt
-  // werden MUSS er: Liest man den ganzen Stapel als einen Text, gewinnt die
-  // längste Ziffernfolge des ganzen Haufens, und es käme EIN Gutschein heraus
-  // statt zwei.
+  // The fallback. A stack as LEGO sends it has no marker. It MUST be
+  // split: if one reads the whole stack as one text, the longest
+  // digit sequence of the whole heap wins, and ONE voucher would come out
+  // instead of two.
   const ziel = await PL.PDFDocument.create();
   for (const [betrag, nr, pin] of [
     ['400', NR, '5225'],
@@ -276,7 +276,7 @@ test('8. the same card twice in the batch yields ONE entry', async () => {
 });
 
 test('9. the verification catches a replacement that hits the card number', async () => {
-  // Woher dieser Fall kommt (Gegenprobe)
+  // Where this case comes from (counter-check)
   const numberMit400 = '5045076374400011166';
   const original = await buildVoucher('400', numberMit400, '5225', null);
   const vorher = valuesFromPdf(original);
@@ -285,8 +285,8 @@ test('9. the verification catches a replacement that hits the card number', asyn
 
   const r = await replaceAmount(original, 250);
   if (r.data) {
-    // Ersetzt werden DARF — aber dann muss die Nummer heil sein. Beides
-    // zusammen ist die Aussage, nicht „es wurde abgelehnt".
+    // Replacing IS allowed — but then the number must be intact. Both
+    // together is the statement, not „it was rejected".
     const nachher = valuesFromPdf(r.data);
     assert.equal(
       nachher.number,

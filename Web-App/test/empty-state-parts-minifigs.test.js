@@ -1,15 +1,15 @@
 /**
- * Teile- und Minifiguren-Reiter: Ein Leerzustand steht nur da, wenn BEIDE
- * Quellen leer sind, und Farbe/Kategorie stehen als Auswahlfelder in der
- * Filterleiste über den Listen. Geprüft am echten Bündel in jsdom mit
- * vorgegebenen Serverantworten (test/helpers/ui.js).
+ * Parts and minifigures tabs: an empty state only appears when BOTH
+ * sources are empty, and color/category appear as select fields in the
+ * filter bar above the lists. Checked on the real bundle in jsdom with
+ * predefined server responses (test/helpers/ui.js).
  *
- * Gegenproben (am 28.10. gemessen):
- *   A  in teile.js den alten Leerzustand der Set-Teile wieder unbedingt
- *      gezeichnet → rot: „Teile: manuelle da, aus Sets leer" und „beide leer"
- *   B  in reconcileMinifigsEmpty() (minifigs.js) die Ausnahme für vorhandene
- *      manuelle Figuren entfernt → rot: „Figuren: manuelle da, aus Sets leer"
- *   C  partFitsToFilter() immer wahr → rot: „Farbfilter … wirkt auf beide Listen"
+ * Counter-checks (measured on 28.10.):
+ *   A  in teile.js the old empty state of the set parts drawn unconditionally again
+ *      → red: “parts: manual present, from sets empty" and “both empty"
+ *   B  in reconcileMinifigsEmpty() (minifigs.js) the exception for existing
+ *      manual minifigures removed → red: “minifigures: manual present, from sets empty"
+ *   C  partFitsToFilter() always true → red: “color filter … acts on both lists"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -80,7 +80,7 @@ test('parts: both empty — exactly one empty state, the empty box disappears', 
       d.querySelector('#tab-parts .erfassen-leiste [data-click="oeffneErfassen"][data-arg="part"]'),
       'Die Leiste bietet das Erfassen an',
     );
-    // Dasselbe Symbol wie der Reiter „Teile" — kein Puzzleteil.
+    // The same icon as the “parts" tab — not a puzzle piece.
     assert.equal(
       leer[0].querySelector('.leer-ico use')?.getAttribute('href'),
       d.querySelector('.sammlung-wahl [data-arg="parts"] use')?.getAttribute('href'),
@@ -111,7 +111,7 @@ test('the color filter stands above the lists and acts on both lists', async () 
       wahl.compareDocumentPosition(d.getElementById('manual-parts-box')) & w.Node.DOCUMENT_POSITION_FOLLOWING,
       'Der Farbfilter steht nicht über den Listen',
     );
-    // Der Wert bleibt englisch (so steht er in den Daten), die Beschriftung ist übersetzt.
+    // The value stays English (that is how it is in the data), the label is translated.
     assert.deepEqual(
       [...wahl.options].map(o => o.value),
       ['', 'Red', 'Blue'],

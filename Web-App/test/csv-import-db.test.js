@@ -1,30 +1,30 @@
 /**
- * @einzeln: schreibt data/<tabelle>.csv.tmp, das die andere CSV-Import-Datei
- * ebenfalls benutzt; parallel räumte die eine der anderen die Datei weg.
+ * @einzeln: writes data/<tabelle>.csv.tmp, which the other CSV import file
+ * also uses; in parallel one cleared the file away from the other.
  *
- * Der tägliche Katalog-Import — geprüft an dem, was andere Verbindungen
- * währenddessen sehen.
+ * The daily catalog import — checked by what other connections
+ * see meanwhile.
  *
- * ── Warum gegen echtes Postgres ─────────────────────────────────────────────
- * Der Kern des Umbaus ist eine Aussage über Sichtbarkeit: Ein Leser darf
- * während des Imports NIE eine leere Tabelle sehen. Das lässt sich nur mit
- * zwei echten Verbindungen prüfen — am Quelltext wäre es bloss die Frage, ob
- * irgendwo „BEGIN" steht.
+ * ── Why against real Postgres ───────────────────────────────────────────────
+ * The core of the rebuild is a statement about visibility: a reader must
+ * NEVER see an empty table during the import. That can only be checked with
+ * two real connections — on the source text it would merely be the question whether
+ * “BEGIN" stands somewhere.
  *
- * Gegenprobe (06.11.2026): putShadowAn wieder mit INCLUDING ALL ohne
- * EXCLUDING CONSTRAINTS → rot: „Set-Nummern ohne Versionsendung bekommen sie
- * beim Tausch“ (rb_inventories_setnummer_mit_version in der Schattentabelle).
+ * Counter-check (06.11.2026): putShadowAn again with INCLUDING ALL without
+ * EXCLUDING CONSTRAINTS → red: “set numbers without version suffix get it
+ * on swap” (rb_inventories_setnummer_mit_version in the shadow table).
  *
- * Gegenproben zu „rb_sets bildet den Dump nach“ (10.11.2026, in
- * sameSetsAb(), src/catalog/repository/csvSwap.ts, je einzeln):
- *   E  im Upsert `source='csv'` weggelassen → rot: „geändert“ (B bleibt 'api')
- *   F  das UPDATE auf source='api' entfernt → rot: „mit Bezug“ (C bleibt 'csv')
- *   G  das DELETE entfernt → rot: „ohne Bezug“ (D und F bleiben)
- *   H  im Bezug die Merkliste (wanted) entfernt → rot: „mit Bezug“ (E fehlt)
- *   I  das abschliessende INSERT INTO set_catalog entfernt → rot: „neu“ (G ohne Zeile)
+ * Counter-checks for “rb_sets reproduces the dump” (10.11.2026, in
+ * sameSetsAb(), src/catalog/repository/csvSwap.ts, each alone):
+ *   E  `source='csv'` omitted in the upsert → red: “changed” (B stays 'api')
+ *   F  the UPDATE to source='api' removed → red: “with reference” (C stays 'csv')
+ *   G  the DELETE removed → red: “without reference” (D and F stay)
+ *   H  the wishlist (wanted) removed from the reference → red: “with reference” (E missing)
+ *   I  the final INSERT INTO set_catalog removed → red: “new” (G without row)
  *
- * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
- * Ohne DB: skip.
+ * Prerequisite: test DB (content is emptied!) via TEST_DATABASE_URL.
+ * Without DB: skip.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -57,7 +57,7 @@ test('catalog import swaps instead of clearing', async t => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  // Und die MIGRATIONEN, nicht nur das Schema
+  // And the MIGRATIONS, not only the schema
   {
     const mc = await db.pool.connect();
     try {
@@ -67,14 +67,14 @@ test('catalog import swaps instead of clearing', async t => {
     }
   }
 
-  // Die Import-Tabellen legt der CSV-Abgleich selbst an.
+  // The CSV sync creates the import tables itself.
   await db.run(`CREATE TABLE IF NOT EXISTS rb_colors (
     id INTEGER PRIMARY KEY, name TEXT, rgb TEXT, is_trans TEXT, bl_color_id INTEGER)`);
 
   const DATA_DIR = _req('src/infra/appPaths.js').DATA_DIR;
   fs.mkdirSync(DATA_DIR, { recursive: true });
 
-  /** CSV-Datei erzeugen, wie sie der Download entpackt hinterlässt. */
+  /** Create a CSV file as the download leaves it unpacked. */
   function writeCsv(name, zeilen) {
     fs.writeFileSync(path.join(DATA_DIR, name), zeilen.join('\n') + '\n', 'utf8');
   }
@@ -89,7 +89,7 @@ test('catalog import swaps instead of clearing', async t => {
       ['id,name,rgb,is_trans'].concat(Array.from({ length: 300 }, (_, i) => `${i + 1},neu-${i + 1},C91A09,f`)),
     );
 
-    // Zweite Verbindung: zählt fortlaufend mit, während der Import läuft.
+    // Second connection: counts continuously while the import runs.
     const reader = await db.pool.connect();
     let minimum = Infinity;
     let laeuft = true;
@@ -136,8 +136,8 @@ test('catalog import swaps instead of clearing', async t => {
   await t.test('a faulty chunk aborts the import instead of losing rows', async () => {
     await db.run('DELETE FROM rb_colors');
     await db.run(`INSERT INTO rb_colors (id, name, rgb, is_trans) VALUES (1,'bestand','FFFFFF','f')`);
-    // Einen Fehler erzwingen, ohne den Worker zu verbiegen: eine Bedingung,
-    // die der Bestand erfüllt und die neue Zeile nicht. Sie greift beim Tausch.
+    // Force an error without bending the worker: a constraint
+    // that the stock fulfills and the new row does not. It applies at the swap.
     await db.run(`ALTER TABLE rb_colors ADD CONSTRAINT rb_colors_name_kurz CHECK (length(name) < 10)`);
     writeCsv('colors.csv.tmp', ['id,name,rgb,is_trans', '1,viel-zu-langer-name,C91A09,f']);
 
@@ -247,8 +247,8 @@ test('catalog import swaps instead of clearing', async t => {
   await db.pool.end().catch(() => {});
 });
 
-// Gegenprobe (15.11.2026): in createImportAccess() `pool: { max: 2 }` gestrichen → rot:
-// statement_timeout '30s' statt '0' (die Fristen der Anfragen träfen den Tausch).
+// Counter-check (15.11.2026): in createImportAccess() `pool: { max: 2 }` deleted → red:
+// statement_timeout '30s' instead of '0' (the requests' deadlines would hit the swap).
 test("the import process builds its access via createDb, without the requests' deadlines", async t => {
   const zugang = _req('src/catalog/index.js').createImportAccess();
   t.after(() => zugang.pool.end());
@@ -264,8 +264,8 @@ test("the import process builds its access via createDb, without the requests' d
 });
 
 test('the CSV download goes via abruf.ts, with deadline, cap and host list', () => {
-  // Quelltext statt Verhalten: Frist und Deckel selbst prüft test/fetch-helper.test.js
-  // an abruf.ts; hier nur, dass der Download diesen Weg nimmt.
+  // Source text instead of behavior: deadline and cap themselves are checked by test/fetch-helper.test.js
+  // on abruf.ts; here only that the download takes this path.
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'clients/rebrickableCsv.ts'), 'utf8'));
   const call = src.slice(src.indexOf('await openHttps('), src.indexOf('});', src.indexOf('await openHttps(')));
   for (const feld of ['hosts:', 'maxBytes:', 'zeitlimitMs:', 'signal'])

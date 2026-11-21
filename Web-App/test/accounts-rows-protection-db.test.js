@@ -1,19 +1,19 @@
 /**
- * Die Laufzeitrolle sieht in users nur das eigene Konto, die direkt verknüpften und die
- * getrennten, die die Haushaltsansicht nennt, und in account_links nur Verknüpfungen mit dem
- * eigenen Konto; Adressen und Links liest nur die Systemrolle (Migration 0121). Die Wege der
- * App, die fremde Namen brauchen (Einladung prüfen, Haushaltsansicht), gehen weiter.
+ * In users the runtime role sees only the own account, the directly linked ones and the
+ * separated ones named by the household view, and in account_links only links with the
+ * own account; addresses and links are read only by the system role (migration 0121). The app's
+ * paths that need foreign names (check invitation, household view) keep working.
  *
- * Gegenproben (16.11.2026 gemessen, je einzeln):
- *   A  in 0121 die Policy auf users durch `USING (true)` ersetzt → rot: „eingeschleustes SQL
- *      sieht nur eigenes Konto und Haushalt“ (alle vier Konten sichtbar)
- *   B  in 0121 die Policy `lesen` auf account_links unverändert (USING true) → rot: dieselbe
- *      Prüfung (die fremde Verknüpfung ist sichtbar)
- *   C  in 0121 das REVOKE der Adressspalten gestrichen → rot: „… Adressen nicht“
- *   D  in src/household/household.ts checkInvitation wieder mit repo.accountName (Laufzeitrolle)
- *      → rot: „wer eingeladen wird, erfährt den Namen …“ (die Kennung statt des Namens)
- *   E  in 0121 household_former_links aus der Policy gestrichen → rot: „die Haushaltsansicht
- *      nennt Unterkonten und getrennte …“ (former_links leer)
+ * Counter-checks (measured 16.11.2026, each alone):
+ *   A  in 0121 the policy on users replaced by `USING (true)` → red: “injected SQL
+ *      sees only own account and household” (all four accounts visible)
+ *   B  in 0121 the policy `lesen` on account_links unchanged (USING true) → red: the same
+ *      check (the foreign link is visible)
+ *   C  in 0121 the REVOKE of the address columns deleted → red: “… addresses not”
+ *   D  in src/household/household.ts checkInvitation back with repo.accountName (runtime role)
+ *      → red: “whoever is invited learns the name …” (the identifier instead of the name)
+ *   E  in 0121 household_former_links deleted from the policy → red: “the household view
+ *      names sub-accounts and separated …” (former_links empty)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

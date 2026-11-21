@@ -1,13 +1,13 @@
 /**
- * konfig() liest die Umgebung einmal und friert das Ergebnis ein; wer sie
- * danach umstellt, sagt es mit readKonfigNew() oder setKonfig().
+ * konfig() reads the environment once and freezes the result; whoever switches it
+ * afterwards says so with readKonfigNew() or setKonfig().
  *
- * Gegenproben (10.11.2026 gemessen):
- *   A  in konfig() `_konfig ??=` durch `_konfig =` ersetzt (jeder Aufruf liest neu)
- *      → rot: „nach dem ersten Lesen ändert die Umgebung nichts mehr“ (4102 statt 4101)
- *   B  setKonfig() ohne `...teil` → rot: „setKonfig legt Werte darüber,
- *      null hebt sie auf“ (3000 statt 5)
- *   C  Object.freeze in konfig() weggelassen → rot: „die Konfiguration ist eingefroren“
+ * Counter-checks (measured 10.11.2026):
+ *   A  in konfig() `_konfig ??=` replaced by `_konfig =` (every call rereads)
+ *      → red: “after the first read the environment no longer changes anything” (4102 instead of 4101)
+ *   B  setKonfig() without `...teil` → red: “setKonfig puts values on top,
+ *      null removes them” (3000 instead of 5)
+ *   C  Object.freeze omitted in konfig() → red: “the configuration is frozen”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

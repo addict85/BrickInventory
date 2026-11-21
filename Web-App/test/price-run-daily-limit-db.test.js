@@ -1,13 +1,13 @@
 /**
- * Preislauf bei aufgebrauchtem BrickLink-Kontingent: eine Zeile im Protokoll
- * statt einer je Set, und die übrigen Sets fragen gar nicht erst nach.
+ * Price run with an exhausted BrickLink quota: one line in the log
+ * instead of one per set, and the remaining sets do not even ask.
  *
- * Gegenprobe (06.11.2026): src/finances/priceRun.ts auf den Stand vor der Änderung
- * (Meldung in fetchAndCachePrice() je Aufruf, kein Abbruch nach dem ersten
- * Treffer) → rot: „eine Zeile statt einer je Set“ (6 Zeilen) und „die
- * Abschlusszeile nennt die ausgelassenen Sets“.
+ * Counter-check (06.11.2026): src/finances/priceRun.ts at the state before the change
+ * (message in fetchAndCachePrice() per call, no abort after the first
+ * hit) → red: “one line instead of one per set” (6 lines) and “the
+ * closing line names the skipped sets”.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

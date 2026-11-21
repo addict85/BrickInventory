@@ -1,12 +1,12 @@
 /**
- * 320 px und 200 % Grundschrift der Seite (html font-size, so hat die
- * UI-Prüfung gemessen): Media-Abfragen sehen diese Vergrösserung nicht, die
- * Container-Abfragen der Leiste und des Inhalts schon (@einzeln: Chrome).
+ * 320 px and 200 % base font of the page (html font-size, as the
+ * UI check measured): media queries do not see this enlargement, the
+ * container queries of the bar and the content do (@einzeln: Chrome).
  *
- * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  Container-Abfrage der Leiste wirkungslos (max-width: 1px) → rot: jede Ansicht
+ * Counter-checks (measured 03.11.2026, each on its own):
+ *   A  container query of the bar ineffective (max-width: 1px) → red: every view
  *      („Leiste: „Sammlung“ abgeschnitten“ …)
- *   B  main ohne container haupt → rot: „Finanzen“, „Merkliste“, „Einstellungen“,
- *      alle Sichten aus dem Menü (Überlauf)
+ *   B  main without container haupt → red: „Finanzen“, „Merkliste“, „Einstellungen“,
+ *      all views from the menu (overflow)
  */
 require('./helpers/ui-check').checkLargeFont('seite');

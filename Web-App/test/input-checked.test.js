@@ -1,21 +1,21 @@
 /**
- * Die Route bekommt Rumpf und Abfrage so, wie der Vertrag sie geprüft hat
- * (req.eingabe, req.abfrage aus checkInput): umgewandelt, ohne unbekannte
- * Felder. Eingaben und Abfragen sind geschlossen; ein unbekanntes Feld ist 400
- * mit dem Code feld_unbekannt. Die Abfrage steht in docs/openapi.json.
+ * The route gets body and query as the contract checked them
+ * (req.eingabe, req.abfrage from checkInput): converted, without unknown
+ * fields. Inputs and queries are closed; an unknown field is 400
+ * with the code feld_unbekannt. The query stands in docs/openapi.json.
  *
- * Gegenproben (05.11.2026 gemessen):
- *   A  in checkInput `geprueft.eingabe = r.data` gestrichen → rot: „die
- *      Route sieht den umgewandelten Rumpf“
- *   B  in checkInput `geprueft.abfrage = req.query` statt des Ergebnisses
- *      → rot: „die Route sieht die umgewandelte Abfrage“
- *   C  NewSet (vertrag/sets.ts) als z.looseObject → rot: „ein unbekanntes Feld
- *      ist 400“ und „jede Eingabe und Abfrage ist geschlossen“
- *   D  in reportDeviation den Zweig unrecognized_keys gestrichen → rot: „ein
- *      unbekanntes Feld ist 400“ und „eine falsche Abfrage ist 400“ (Code
+ * Counter-checks (measured 05.11.2026):
+ *   A  in checkInput `geprueft.eingabe = r.data` deleted → red: “the
+ *      route sees the converted body”
+ *   B  in checkInput `geprueft.abfrage = req.query` instead of the result
+ *      → red: “the route sees the converted query”
+ *   C  NewSet (vertrag/sets.ts) as z.looseObject → red: “an unknown field
+ *      is 400” and “every input and query is closed”
+ *   D  in reportDeviation the branch unrecognized_keys deleted → red: “an
+ *      unknown field is 400” and “a wrong query is 400” (code
  *      eingabe_ungueltig)
- *   E  in openapi.ts die Abfrageparameter als `in: 'header'` → rot: „die
- *      Abfrage steht in der OpenAPI-Beschreibung“
+ *   E  in openapi.ts the query parameters as `in: 'header'` → red: “the
+ *      query stands in the OpenAPI description”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -29,7 +29,7 @@ const { CONTRACT } = _req('src/contract/index.js');
 test('checked input and query', { concurrency: 1 }, async t => {
   let aufrufe = 0;
   const router = vertragsRouter('/api/v1');
-  // An res.json vorbei: Die Prüfung der Antwort (Testmodus) gilt dem echten Rumpf.
+  // Past res.json: the response check (test mode) applies to the real body.
   const zeige = (req, res) => {
     aufrufe++;
     res.type('json').send(JSON.stringify({ eingabe: req.eingabe, abfrage: req.abfrage }));
@@ -84,7 +84,7 @@ test('checked input and query', { concurrency: 1 }, async t => {
 });
 
 test('every input and query is closed', () => {
-  // Ausnahmen: Schlüssel-Wert-Listen, deren Schlüssel die Route selbst prüft.
+  // Exceptions: key-value lists whose keys the route checks itself.
   const OFFEN = ['PUT /api/v1/settings'];
   const offen = [];
   for (const [k, r] of Object.entries(CONTRACT)) {

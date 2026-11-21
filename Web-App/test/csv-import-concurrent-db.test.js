@@ -1,33 +1,33 @@
 /**
- * @einzeln: schreibt data/<tabelle>.csv.tmp, das die andere CSV-Import-Datei
- * ebenfalls benutzt; parallel räumte die eine der anderen die Datei weg.
+ * @einzeln: writes data/<tabelle>.csv.tmp, which the other CSV import file
+ * also uses; in parallel one cleared the file away from the other.
  *
- * Zwei gleichzeitige Katalog-Importe derselben Tabelle — gegen echte Datenbank.
+ * Two concurrent catalog imports of the same table — against a real database.
  *
- * ── Warum es diese Datei gibt ───────────────────────────────────────────────
- * Der Name der Schattentabelle (`<tabelle>_import`) leitet sich allein vom
- * Tabellennamen ab, ist also für ALLE Läufe derselbe. Zwei gleichzeitige
- * Importe derselben Tabelle sind erreichbar: Der Tageslauf ruft csvSync.run(),
- * und ein Admin kann parallel /admin/trigger-csv-sync auslösen — der Riegel
- * `_csvSyncRunning` in server.ts schützt nur den manuellen Weg gegen sich
- * selbst und liegt ohnehin im Speicher EINES Prozesses.
+ * ── Why this file exists ────────────────────────────────────────────────────
+ * The name of the shadow table (`<tabelle>_import`) derives solely from the
+ * table name, so it is the same for ALL runs. Two concurrent
+ * imports of the same table are reachable: the daily run calls csvSync.run(),
+ * and an admin can trigger /admin/trigger-csv-sync in parallel — the latch
+ * `_csvSyncRunning` in server.ts only protects the manual path against itself
+ * and lives in the memory of ONE process anyway.
  *
- * Vor einer früheren Runde scheiterte dann einer der beiden Läufe beim CREATE mit
- * „duplicate key value violates unique constraint pg_type_typname_nsp_index" —
- * einem Fehler, der nichts über die Ursache verrät. In csvSync.run() bricht
- * das den ganzen Durchgang ab, der Tagesmarker bleibt ungesetzt.
+ * Before an earlier round one of the two runs then failed at CREATE with
+ * “duplicate key value violates unique constraint pg_type_typname_nsp_index" —
+ * an error that reveals nothing about the cause. In csvSync.run() that aborts
+ * the whole pass, the daily marker stays unset.
  *
- * Seither serialisiert eine Postgres-Beratungssperre je Tabelle: Der zweite
- * Lauf WARTET und läuft danach sauber durch. Verschiedene Tabellen dürfen
- * weiterhin parallel importiert werden.
+ * Since then a Postgres advisory lock per table serializes: the second
+ * run WAITS and then runs through cleanly. Different tables may
+ * still be imported in parallel.
  *
- * Geprüft wird VERHALTEN (beide Läufe gelingen, Endbestand vollständig), nicht
- * der Wortlaut des Codes. Gegenprobe (durchgeführt): pg_advisory_lock in
- * jobs/csvImportWorker.ts entfernt → der Test wird rot, ein Lauf scheitert mit
- * genau der Meldung oben.
+ * What is checked is BEHAVIOR (both runs succeed, final stock complete), not
+ * the wording of the code. Counter-check (performed): pg_advisory_lock removed in
+ * jobs/csvImportWorker.ts → the test turns red, one run fails with
+ * exactly the message above.
  *
- * Voraussetzung: Test-DB (Inhalt wird verändert!) via TEST_DATABASE_URL.
- * Ohne DB: skip.
+ * Prerequisite: test DB (content is changed!) via TEST_DATABASE_URL.
+ * Without DB: skip.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -57,9 +57,9 @@ test('two concurrent imports of the same table do not collide', { concurrency: 1
   await db.run(`DROP TABLE IF EXISTS rb_colors_import`);
   await db.run(`DELETE FROM rb_colors`);
 
-  // Gross genug, dass sich die beiden Läufe zeitlich überlappen — bei einer
-  // Handvoll Zeilen wäre der erste fertig, bevor der zweite beginnt, und der
-  // Test würde auch ohne Sperre grün.
+  // Big enough that the two runs overlap in time — with a
+  // handful of lines the first would be done before the second begins, and the
+  // test would be green even without a lock.
   const ZEILEN = 30000;
   fs.mkdirSync(DATA_DIR, { recursive: true });
   const csv = ['id,name,rgb,is_trans'];
@@ -80,7 +80,7 @@ test('two concurrent imports of the same table do not collide', { concurrency: 1
       assert.equal(r.status === 'fulfilled' && r.value, ZEILEN, 'jeder Lauf muss alle Zeilen gelesen haben');
     }
 
-    // Der Endbestand entspricht genau EINEM Lauf — keine Mischung, nichts fehlt.
+    // The final stock corresponds to exactly ONE run — no mixture, nothing missing.
     const n = (await db.get('SELECT count(*)::int AS n FROM rb_colors')).n;
     assert.equal(n, ZEILEN, `Endbestand unvollständig: ${n} statt ${ZEILEN} Zeilen`);
   } finally {

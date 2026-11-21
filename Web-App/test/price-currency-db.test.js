@@ -1,11 +1,11 @@
 /**
- * Marktpreis der Detailansicht: Die Währung bestimmt der SERVER, nicht der
- * Client — gegen echte Route und Tabelle.
+ * Market price of the detail view: the SERVER determines the currency, not the
+ * client — against the real route and table.
  *
- * Gegenprobe (durchgeführt): `req.query.currency ||` wieder vorangestellt →
- * der erste Teilschritt hier wird rot (no_price statt 629.90).
+ * Counter-check (carried out): `req.query.currency ||` prepended again →
+ * the first substep here turns red (no_price instead of 629.90).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,8 +34,8 @@ test("the app's currency parameter does NOT override the user setting", { concur
   );
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [SET]);
   await holdsSet(db, uid, SET, 1);
-  // Preis liegt NUR in der eingestellten Währung vor — wie im Betrieb, wo der
-  // Preis-Job genau diese füllt.
+  // The price exists ONLY in the configured currency — as in operation, where the
+  // price job fills exactly that one.
   await db.run(
     `INSERT INTO price_cache (set_number,condition,currency_code,min_price,avg_price,max_price,qty_avg_price,total_quantity,fetched_at)
                 VALUES ($1,'N','CHF',500,629.90,800,631,7,NOW())
@@ -53,14 +53,14 @@ test("the app's currency parameter does NOT override the user setting", { concur
   };
 
   try {
-    // Der Fehlerfall von früher: App schickt ihren Startwert EUR mit. Die
-    // Antwort muss trotzdem der CHF-Preis der Nutzereinstellung sein.
+    // The error case from before: the app sends its start value EUR along. The
+    // response must nevertheless be the CHF price of the user setting.
     let j = await hole('?currency=EUR');
     assert.equal(j.currency, 'CHF', 'die Antwortwährung ist die Nutzereinstellung, nicht der Parameter');
     assert.equal(parseFloat(j.avg_price), 629.9, 'der Preis kommt aus dem Cache der Nutzereinstellung');
     assert.ok(!j.no_price, 'kein no_price — genau das war die leere Kachel');
 
-    // Ohne Parameter (Webapp, künftige App-Fassungen): identisches Ergebnis.
+    // Without a parameter (web app, future app versions): identical result.
     j = await hole('');
     assert.equal(j.currency, 'CHF');
     assert.equal(parseFloat(j.avg_price), 629.9);

@@ -1,20 +1,20 @@
 /**
- * Die Bewertung liest den Preiscache in einer Abfrage statt je Position, und
- * die Setmenge summiert nur die Erfassungen der gefragten Konten.
+ * The valuation reads the price cache in one query instead of per position, and
+ * the set quantity only sums the acquisitions of the requested accounts.
  *
- * Gezählt wird am Pool wie in valuation-queries-db.test.js; für die Setmenge
- * zählen die Zeilen, die der Scan auf set_acquisitions laut EXPLAIN liefert.
+ * Counted on the pool as in valuation-queries-db.test.js; for the set quantity
+ * the rows count that the scan on set_acquisitions delivers according to EXPLAIN.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  in valueParts den Vorrat nicht weitergereicht → rot:
- *      „zwölf Teile, eine Abfrage auf den Teile-Cache“
- *   B  dasselbe in valueMinifigs → rot: „sechs Figuren, …“
- *   C  in mengeJoin den Kontofilter ignoriert → rot: „die Setmenge liest nur
- *      die Erfassungen der gefragten Konten“
- *   D  inKontowaehrung liefert immer TRUE → rot: „der Durchschnittskaufpreis
- *      der Galerie zählt nur die Kontowährung“ (200 statt 100)
+ * Counter-checks (measured on 28.10.2026):
+ *   A  the store not passed on in valueParts → red:
+ *      “twelve parts, one query on the parts cache”
+ *   B  the same in valueMinifigs → red: “six minifigures, …”
+ *   C  the account filter ignored in mengeJoin → red: “the set quantity only reads
+ *      the entries of the requested accounts”
+ *   D  inKontowaehrung always delivers TRUE → red: “the average purchase price
+ *      of the gallery only counts the account currency” (200 instead of 100)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -30,7 +30,7 @@ const { holdsPart, holdsMinifig, holdsSet } = require('./helpers/inventory');
 
 const gesehen = [];
 let count = false;
-// Gezählt in den Pools der App (Laufzeit-, System- und Web-Systemrolle), nicht im Zugang der Testdaten.
+// Counted in the pools of the app (runtime, system and web system role), not in the access of the test data.
 const zugang = require('./helpers/sources').testAccess();
 const pools = [...new Set([zugang.pool, zugang.systemPool, zugang.systemWebPool])];
 const altQuery = pools.map(p => p.query);
@@ -39,7 +39,7 @@ for (const [i, p] of pools.entries())
     if (count) gesehen.push(String(typeof text === 'string' ? text : text?.text || '').replace(/\s+/g, ' '));
     return altQuery[i].call(p, text, ...rest);
   };
-/** Die Abfragen während fn, gefiltert auf ein Muster. */
+/** The queries during fn, filtered on a pattern. */
 async function abfragen(muster, fn) {
   gesehen.length = 0;
   count = true;
@@ -120,7 +120,7 @@ test('valuation and set quantity without row-by-row queries', { concurrency: 1 }
         WHERE s.user_id = ANY($1)`,
       [[uid]],
     );
-    /** Alle Knoten, die set_acquisitions lesen, und ihre gelieferten Zeilen. */
+    /** All nodes that read set_acquisitions, and their delivered rows. */
     const zeilen = [];
     (function lauf(k) {
       if (k['Relation Name'] === 'set_acquisitions') zeilen.push(k['Actual Rows']);

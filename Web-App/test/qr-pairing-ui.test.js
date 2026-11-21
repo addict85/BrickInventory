@@ -1,19 +1,19 @@
 /**
- * Nach dem Scan fragt die Web-Oberfläche „Gerät X koppeln?“ und schickt den
- * Code, den die App zeigt; erst danach meldet sie das Gerät als gekoppelt.
- * Ablehnen schickt die Ablehnung und räumt den QR-Code weg.
+ * After the scan the web UI asks „Gerät X koppeln?“ and sends the
+ * code that the app shows; only afterwards does it report the device as paired.
+ * Rejecting sends the rejection and clears the QR code away.
  *
- * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in generateQrCode() (einstellungen.js) die Zeile `_kopplung = { … }`
- *      gestrichen → rot: beide Fälle (die Frage erscheint nie)
- *   B  in qrKopplungBestaetigen() `{ code: '' }` statt des Felds → rot:
- *      „die Frage nennt das Gerät …“ (falscher Code an den Server)
+ * Counter-checks (measured 09.11.2026, each on its own):
+ *   A  in generateQrCode() (einstellungen.js) the line `_kopplung = { … }`
+ *      deleted → red: both cases (the question never appears)
+ *   B  in qrKopplungBestaetigen() `{ code: '' }` instead of the field → red:
+ *      “the question names the device …” (wrong code to the server)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, warte } = require('./helpers/ui');
 
-/** @param {string} endStand  was der Server nach dem Knopf meldet */
+/** @param {string} endStand  what the server reports after the button */
 async function kopplung(knopf, endStand) {
   let stand = 'offen';
   const gesendet = [];

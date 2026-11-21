@@ -1,18 +1,18 @@
 /**
- * Alle Preisalarme an EINEM Ort — und dort änderbar und löschbar.
+ * All price alerts in ONE place — and editable and deletable there.
  *
- * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
- *   a) `WHERE a.user_id = $1` entfernt     → Schritt 2 rot (fremder Alarm dabei)
- *   b) LEFT JOIN → INNER JOIN              → Schritt 3 rot (unbekanntes Set weg)
- *   c) Rubrik aus index.html entfernt      → Schritt 4 rot
- *   d) ladeAlarmUebersicht nicht aufgerufen → Schritt 4 rot
- *   e) zweiter LEFT JOIN auf `sets` entfernt → Schritt 5 rot (Bild und Besitz)
- *   f) `data-click="stopEvent"` am Feld entfernt → Schritt 6 rot
- *   g) `besitzt` aus data class Preisalarm entfernt, Schnittstelle neu erzeugt → Schritt 7 rot
- *   h) 'alerts.fired' auf „hat gemeldet" zurückgesetzt → Schritt 8 rot
- *   i) font-weight:600 aus .alarm-marke-an entfernt → Schritt 8 rot
- *   j) Verbindung wieder auf `s.user_id = a.user_id` → Schritt 9 rot
- *   k) DISTINCT ON entfernt → Schritt 9 rot (Alarm steht doppelt)
+ * ── Counter-checks (performed, result in the commit) ────────────────────────
+ *   a) `WHERE a.user_id = $1` removed       → step 2 red (foreign alert included)
+ *   b) LEFT JOIN → INNER JOIN               → step 3 red (unknown set gone)
+ *   c) section removed from index.html      → step 4 red
+ *   d) ladeAlarmUebersicht not called       → step 4 red
+ *   e) second LEFT JOIN on `sets` removed   → step 5 red (image and ownership)
+ *   f) `data-click="stopEvent"` removed from the field → step 6 red
+ *   g) `besitzt` removed from data class Preisalarm, interface regenerated → step 7 red
+ *   h) 'alerts.fired' reset to “hat gemeldet" → step 8 red
+ *   i) font-weight:600 removed from .alarm-marke-an → step 8 red
+ *   j) join back to `s.user_id = a.user_id` → step 9 red
+ *   k) DISTINCT ON removed → step 9 red (alert appears twice)
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -47,10 +47,10 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',false,true) RETURNING id",
     ['alarm_fremd'],
   );
-  // Ein Unterkonto im HAUSHALT. Genau daran ist die erste Fassung gescheitert:
-  // Sie verband auf `s.user_id = a.user_id`, also streng das eigene Konto —
-  // ein Set des Kindes galt damit als „gibt es nicht", obwohl die
-  // Detailansicht es sehr wohl öffnet (sie fragt über scopeIds()).
+  // A sub-account in the HOUSEHOLD. Exactly this is where the first version failed:
+  // it joined on `s.user_id = a.user_id`, i.e. strictly the own account —
+  // a set of the child thus counted as “does not exist", although the
+  // detail view does open it (it queries via scopeIds()).
   const kind = await db.get(
     "INSERT INTO users (username,password_hash,is_admin,email_verified) VALUES ($1,'x',false,true) RETURNING id",
     ['alarm_kind'],
@@ -64,13 +64,13 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     await db.pool.end().catch(() => {});
   });
 
-  // Ein Set, das der Katalog kennt — und eines, das er NICHT kennt.
+  // A set the catalog knows — and one it does NOT know.
   await db.run(`INSERT INTO rb_sets (set_num, name, set_img_url)
                 VALUES ('70002-1','Lennox Feuerwehr','https://cdn.example/70002-1.jpg')
                 ON CONFLICT (set_num) DO UPDATE
                    SET name = EXCLUDED.name, set_img_url = EXCLUDED.set_img_url`);
-  // Dasselbe Set liegt ZUSÄTZLICH in meiner Sammlung — nur dann gibt es einen
-  // Detaildialog, und nur dann gibt es das heruntergeladene Bild.
+  // The same set is ADDITIONALLY in my collection — only then is there a
+  // detail dialog, and only then is there the downloaded image.
   await db.run(
     `INSERT INTO sets (user_id, set_number)
                 VALUES ($1,'70002-1')
@@ -83,15 +83,15 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     image_url: 'https://cdn.example/70002-1.jpg',
   });
 
-  // Signatur GELESEN, nicht geraten: (userId, setNumber, waehrung, eingabe).
-  // Der erste Entwurf dieses Tests hatte sie sich zurechtgelegt und lief
-  // sofort in „Die Richtung muss unter oder ueber sein" — die Werte landeten
-  // an den falschen Stellen.
+  // Signature READ, not guessed: (userId, setNumber, waehrung, eingabe).
+  // The first draft of this test had made it up and ran
+  // straight into “Die Richtung muss unter oder ueber sein" — the values landed
+  // in the wrong places.
   await setzeAlarm(ich.id, '70002-1', 'CHF', { direction: 'unter', threshold: 30, condition: 'N' });
-  await setzeAlarm(ich.id, '99999-9', 'CHF', { direction: 'ueber', threshold: 500, condition: 'U' }); // Set unbekannt
+  await setzeAlarm(ich.id, '99999-9', 'CHF', { direction: 'ueber', threshold: 500, condition: 'U' }); // set unknown
   await setzeAlarm(fremd.id, '70002-1', 'CHF', { direction: 'unter', threshold: 10, condition: 'N' }); // fremd
 
-  // Das Set des KINDES — ich besitze es nicht, sehe es aber im Blickfeld.
+  // The CHILD's set — I do not own it, but I see it in the view.
   await db.run(`INSERT INTO rb_sets (set_num, name, set_img_url)
                 VALUES ('60000-1','Feuerwehreinsatz','https://cdn.example/60000-1.jpg')
                 ON CONFLICT (set_num) DO NOTHING`);
@@ -104,9 +104,9 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
   await catalogSet(db, '60000-1', { name: 'Feuerwehreinsatz', image_local: '/uploads/60000-1_thumb.jpg' });
   await setzeAlarm(ich.id, '60000-1', 'CHF', { direction: 'unter', threshold: 40, condition: 'N' });
 
-  // Dasselbe Set ZWEIMAL im Haushalt — bei mir und beim Kind. Seit die
-  // Verbindung über das Blickfeld geht, kann sie mehrere Zeilen treffen;
-  // ohne DISTINCT ON stünde der Alarm doppelt in der Liste.
+  // The same set TWICE in the household — with me and with the child. Since the
+  // join goes via the view, it can hit several rows;
+  // without DISTINCT ON the alert would appear twice in the list.
   await db.run(
     `INSERT INTO sets (user_id, set_number)
                 VALUES ($1,'70002-1')
@@ -117,8 +117,8 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
   await t.test('1. all own alerts come', async () => {
     const a = await alleAlarme(ich.id);
     assert.equal(a.length, 3, `Erwartet 3 eigene Alarme, bekommen: ${a.length}`);
-    // numeric kommt als Zeichenkette aus dem Treiber — die Übersicht rechnet
-    // damit (Feld, Vergleich), also muss hier eine ZAHL ankommen.
+    // numeric comes from the driver as a string — the overview computes
+    // with it (field, comparison), so a NUMBER must arrive here.
     assert.equal(typeof a[0].threshold, 'number', 'Die Schwelle kommt nicht als Zahl an.');
   });
 
@@ -160,8 +160,8 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
       'Beim Öffnen der Einstellungen wird die Übersicht nicht geladen — die Rubrik bliebe leer.',
     );
     const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
-    // Ändern und Löschen gehen über die BESTEHENDE Route zum Set: zwei
-    // Schreibwege zum selben Zustand wären zwei Stellen, an denen die Regeln
+    // Changing and deleting go via the EXISTING route to the set: two
+    // write paths to the same state would be two places where the rules
     // auseinanderlaufen.
     assert.match(
       js,
@@ -175,9 +175,9 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     const a = await alleAlarme(ich.id);
     const meins = a.find(x => x.set_number === '70002-1');
     const fremdes = a.find(x => x.set_number === '99999-9');
-    // Reihenfolge wie in den Finanzen: heruntergeladene Kopie zuerst. Ohne sie
-    // zeigte dieselbe Nummer in der Übersicht ein anderes Bild als in der
-    // Galerie daneben.
+    // Order as in the finances: downloaded copy first. Without it
+    // the same number would show a different image in the overview than in the
+    // gallery next to it.
     assert.equal(
       meins.image_local,
       '/uploads/70002-1_thumb.jpg',
@@ -190,8 +190,8 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
       'Das Katalogbild fehlt — es ist der Rückfall für Sets, die man nicht besitzt.',
     );
     assert.equal(meins.besitzt, true, 'Ein Set in der Sammlung gilt als nicht vorhanden.');
-    // Der zweite LEFT JOIN darf keine Zeile vervielfachen: sets ist über
-    // (user_id, set_number) eindeutig. Zwei Zeilen wären hier der Beweis.
+    // The second LEFT JOIN must not multiply any row: sets is unique over
+    // (user_id, set_number). Two rows would be the proof here.
     assert.equal(
       a.filter(x => x.set_number === '70002-1').length,
       1,
@@ -214,9 +214,9 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
       /data-click="openModal"/,
       'Die Zeile öffnet den Detaildialog nicht — genau das hat Marco verlangt.',
     );
-    // Der Verteiler in aktionen.js nimmt das NÄCHSTGELEGENE Element mit
-    // data-click. Ohne `stopEvent` am Eingabefeld öffnete jeder Klick ins Feld
-    // den Dialog über dem Feld, in das man gerade tippen wollte.
+    // The dispatcher in aktionen.js takes the NEAREST element with
+    // data-click. Without `stopEvent` on the input field every click into the field opened
+    // the dialog above the field one was just about to type into.
     assert.match(js, /data-click="stopEvent"/, 'Das Zahlenfeld hält den Klick nicht auf — Tippen öffnete den Dialog.');
     assert.match(js, /thumbUrl\(/, 'Die Zeile zeigt kein Vorschaubild — analog den Finanzen war das der Auftrag.');
   });
@@ -225,7 +225,7 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     const a = await alleAlarme(ich.id);
     const felder = Object.keys(a[0]);
     assert.ok(felder.length >= 10, `Nur ${felder.length} Felder — Abfrage kaputt?`);
-    // Das Modell der App (shared/app-schnittstelle.json, aus ihrem Quelltext erzeugt).
+    // The app's model (shared/app-schnittstelle.json, generated from its source text).
     const app = require('./helpers/contract').appSchnittstelle().modelle.Preisalarm?.felder ?? [];
     assert.ok(app.includes('set_number'), 'Modell Preisalarm nicht gefunden — umbenannt?');
     const fehlen = felder.filter(k => !app.includes(k));
@@ -239,13 +239,13 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
   });
 
   await t.test('8. armed/disarmed is recognizable without color', () => {
-    // Marcos Befund vom 26.09.
+    // Marco's finding from 26.09.
     const js = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
     const css = fs.readFileSync(path.join(ROOT, 'public/styles.css'), 'utf8');
 
-    // 1. Die Marke kommt aus einer Klasse, nicht aus einer Farbe im Markup.
-    //    Solange die Farbe direkt an der Stelle steht, ist sie das Einzige,
-    //    was die beiden Zustände trennt.
+    // 1. The marker comes from a class, not from a color in the markup.
+    //    As long as the color stands directly at the spot, it is the only thing
+    //    that separates the two states.
     assert.match(js, /alarm-marke-an/, 'Der scharfe Zustand hat keine eigene Klasse.');
     assert.match(js, /alarm-marke-aus/, 'Der unscharfe Zustand hat keine eigene Klasse.');
     assert.ok(
@@ -253,9 +253,9 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
       'Die Marke färbt noch direkt im Markup — dann hängt die Aussage wieder an der Farbe.',
     );
 
-    // 2. Die FLÄCHE unterscheidet: gefüllt gegen umrandet. Das ist der
-    //    Unterschied, den man auch dann sieht, wenn beide Farben gleich
-    //    aussehen.
+    // 2. The AREA distinguishes: filled versus outlined. That is the
+    //    difference one sees even when both colors look
+    //    the same.
     const an = (css.match(/\.alarm-marke-an\{([^}]*)\}/) || [])[1] || '';
     const aus = (css.match(/\.alarm-marke-aus\{([^}]*)\}/) || [])[1] || '';
     assert.ok(an && aus, 'Die beiden Klassen sind nicht gestaltet.');
@@ -267,9 +267,9 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
       'Auch das Schriftgewicht unterscheidet die beiden nicht — ein Merkmal weniger.',
     );
 
-    // 3. Das WORT ist ein Paar, in BEIDEN Sprachen. Vorher stand „scharf"
-    //    gegen „hat gemeldet" — zwei Aussagen über verschiedene Dinge; wer die
-    //    Farbe nicht lesen kann, musste sich den Gegensatz erschliessen.
+    // 3. The WORD is a pair, in BOTH languages. Previously it was “scharf"
+    //    versus “hat gemeldet" — two statements about different things; whoever
+    //    cannot read the color had to infer the contrast.
     const { de, en } = loadTranslations();
     for (const [name, w] of [
       ['DE', de],
@@ -291,8 +291,8 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
   });
 
   await t.test("9. a set of the HOUSEHOLD counts too — Marco's finding from 26.09.", async () => {
-    // „Das Bild in der Android-App ist sichtbar aber die Einträge in den
-    // Preisalarme sind nicht klickbar."
+    // “The image in the Android app is visible but the entries in the
+    // price alerts are not clickable."
     const a = await alleAlarme(ich.id);
     const fromKind = a.find(x => x.set_number === '60000-1');
     assert.ok(fromKind, 'Der Alarm auf das Set des Kindes fehlt ganz.');
@@ -308,16 +308,16 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
       'Auch das Bild kommt nicht aus dem Haushalt, sondern nur aus dem Katalog.',
     );
 
-    // Und die Kehrseite derselben Erweiterung: Dasselbe Set liegt bei mir UND
-    // beim Kind. Ohne DISTINCT ON stünde der Alarm jetzt zweimal da — ein
-    // Fehler, den die enge erste Fassung gar nicht haben konnte.
+    // And the flip side of the same extension: the same set is with me AND
+    // with the child. Without DISTINCT ON the alert would now appear twice — a
+    // bug the narrow first version could not have had.
     assert.equal(
       a.filter(x => x.set_number === '70002-1').length,
       1,
       'Der Alarm steht doppelt: Das Set liegt bei zwei Konten des Haushalts, ' +
         'und die Verbindung vervielfacht die Zeile.',
     );
-    // Die Zeile MIT heruntergeladenem Bild muss gewinnen, nicht eine beliebige.
+    // The row WITH a downloaded image must win, not an arbitrary one.
     assert.equal(
       a.find(x => x.set_number === '70002-1').image_local,
       '/uploads/70002-1_thumb.jpg',
@@ -329,9 +329,9 @@ test('price alert overview: own alerts, with names, changeable, deletable', { co
     const vorher = (await alleAlarme(ich.id)).length;
     await loescheAlarm(ich.id, '99999-9', 'U');
     const a = await alleAlarme(ich.id);
-    // Gegen die VORHER gemessene Zahl und nicht gegen eine feste: Wer oben
-    // einen Alarm dazunimmt, soll nicht hier scheitern. Genau das ist eben
-    // passiert, als der Haushalts-Fall dazukam.
+    // Against the number measured BEFORE and not against a fixed one: whoever adds
+    // an alert above should not fail here. Exactly that just
+    // happened when the household case was added.
     assert.equal(a.length, vorher - 1, `Nach dem Löschen stehen ${a.length} Alarme da, vorher waren es ${vorher}.`);
     assert.ok(!a.some(x => x.set_number === '99999-9'), 'Der gelöschte Alarm steht noch in der Übersicht.');
   });

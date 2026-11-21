@@ -1,19 +1,19 @@
 /**
- * „Keine Farbe“ ist 9999 wie bei Rebrickable, 0 bleibt Schwarz (Migration
- * 0071, src/catalog/colors.ts). Geprüft werden die Migration auf Altdaten, das
- * Erfassen ohne Farbe, die Farbliste ohne Rebrickable und der Preisabruf.
+ * „No color“ is 9999 as at Rebrickable, 0 stays black (migration
+ * 0071, src/catalog/colors.ts). Checked are the migration on legacy data, the
+ * capture without color, the color list without Rebrickable and the price fetch.
  *
- * Gegenproben (am 29.10.2026 gemessen):
- *   A  in 0071 Regel 2 die Bedingung farbname_von = user_id entfernt → rot:
- *      „ein fremder Name beweist nichts“ (Bs Schwarz wurde 9999)
- *   B  V.colorId() gibt für leer wieder 0 zurück → rot: „ein Teil ohne Farbe
- *      wird nicht schwarz“
- *   C  die alte Notliste (13 = Black) zurück in farben.ts → rot: „die
+ * Counter-checks (measured on 29.10.2026):
+ *   A  in 0071 rule 2 the condition farbname_von = user_id removed → red:
+ *      „ein fremder Name beweist nichts“ (B's black became 9999)
+ *   B  V.colorId() again returns 0 for empty → red: “a part without color
+ *      does not turn black”
+ *   C  the old emergency list (13 = Black) back in farben.ts → red: „die
  *      Notliste führt nur echte Rebrickable-IDs“
- *   D  resolveBlColorId ohne den Zweig für KEINE_FARBE → rot: „keine Farbe
- *      fragt BrickLink nach (Not Applicable)“
+ *   D  resolveBlColorId without the branch for KEINE_FARBE → red: “no color
+ *      asks BrickLink for (Not Applicable)”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -37,11 +37,11 @@ test('no color is 9999, 0 stays black', { concurrency: 1 }, async t => {
     const c = await db.pool.connect();
     try {
       await c.query('BEGIN');
-      // Stand vor 0071: color_id darf NULL sein, der Index faltet NULL auf 0.
+      // State before 0071: color_id may be NULL, the index folds NULL to 0.
       await c.query(`ALTER TABLE parts ALTER COLUMN color_id DROP NOT NULL;
                      DROP INDEX idx_parts_eindeutig;
                      CREATE UNIQUE INDEX idx_parts_eindeutig ON parts (user_id, COALESCE(set_number, ''), part_number, COALESCE(color_id, 0))`);
-      // Die Herkunftsspalten bis Migration 0093.
+      // The origin columns until migration 0093.
       await c.query('ALTER TABLE part_color_catalog ADD COLUMN farbname_von integer, ADD COLUMN farbcode_von integer');
       const konto = async n =>
         (
@@ -78,31 +78,31 @@ test('no color is 9999, 0 stays black', { concurrency: 1 }, async t => {
         );
 
       await teil(A, 'KF1', null);
-      await kauf(A, 'KF1', 0, 2); // Regel 1
+      await kauf(A, 'KF1', 0, 2); // rule 1
       await teil(A, 'KF2', 0);
-      await kauf(A, 'KF2', 0, 1); // Regel 2
+      await kauf(A, 'KF2', 0, 1); // rule 2
       await katalog('KF2', 0, '[No Color/Any Color]', 'FCFCFC', A);
       await teil(B, 'KF2', 0);
-      await kauf(B, 'KF2', 0, 4); // fremder Name
+      await kauf(B, 'KF2', 0, 4); // foreign name
       await teil(A, 'KF3', 0);
-      await katalog('KF3', 0, 'Black', '05131D', null); // echtes Schwarz
+      await katalog('KF3', 0, 'Black', '05131D', null); // real black
       await teil(A, 'KF4', 13);
-      await kauf(A, 'KF4', 13, 3); // Regel 3
+      await kauf(A, 'KF4', 13, 3); // rule 3
       await katalog('KF4', 13, 'Black', '05131D', A);
       await teil(A, 'KF5', null);
-      await kauf(A, 'KF5', 0, 2); // Zusammenlegen
+      await kauf(A, 'KF5', 0, 2); // merge
       await teil(A, 'KF5', 9999);
       await kauf(A, 'KF5', 9999, 5);
       await teil(A, 'KF6', 0, 'F1-1'); // Set-Teil
 
-      // Die verzögerten Fremdschlüssel der Testzeilen prüfen, sonst verweigert
-      // ALTER TABLE in derselben Transaktion.
+      // Check the deferred foreign keys of the test rows, otherwise
+      // ALTER TABLE refuses in the same transaction.
       await c.query('SET CONSTRAINTS ALL IMMEDIATE');
-      // Migration 0071 ist Geschichte und nennt die Spalte noch unter ihrem
-      // alten Namen (part_acquisitions.tag); 0124 (längst angewandt) hätte sie
-      // sonst gleich danach umbenannt, wie bei einer echten Reihenfolge der Migrationen.
-      // Der Trigger (Migration 0070/0124) kennt nur die jeweils aktuelle Spalte;
-      // während der Umbenennung aus, sonst scheitert er an NEW.day bzw. NEW.tag.
+      // Migration 0071 is history and still names the column by its
+      // old name (part_acquisitions.tag); 0124 (applied long ago) would otherwise have
+      // renamed it right afterwards, as with a real order of the migrations.
+      // The trigger (migration 0070/0124) only knows the respective current column;
+      // so switch it off during the renaming, otherwise it fails on NEW.day or NEW.tag.
       await c.query('ALTER TABLE part_acquisitions DISABLE TRIGGER part_acquisitions_tag');
       await c.query('ALTER TABLE part_acquisitions RENAME COLUMN day TO tag');
       await c.query(fs.readFileSync(MIGRATION, 'utf8'));
@@ -184,7 +184,7 @@ test('no color is 9999, 0 stays black', { concurrency: 1 }, async t => {
       const vorher = await db.all('SELECT id, name, rgb FROM rb_colors');
       try {
         await db.run('DELETE FROM rb_colors');
-        const not = await colorList(); // ohne Schlüssel kein Abruf
+        const not = await colorList(); // no key, no fetch
         assert.equal(not.find(f => f.id === 0)?.name, 'Black');
         assert.equal(not.find(f => f.id === 9999)?.name, '[No Color/Any Color]');
         assert.ok(!not.some(f => f.id === 13), 'die Notliste führt nur echte Rebrickable-IDs');

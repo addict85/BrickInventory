@@ -1,8 +1,8 @@
 /**
- * Härtung der Dienste in compose.yaml, gelesen als Struktur je Dienst:
- * Rechte, beschreibbare Orte, Netze, Geheimnisse und der Startbefehl von Caddy.
+ * Hardening of the services in compose.yaml, read as structure per service:
+ * privileges, writable places, networks, secrets and Caddy's start command.
  *
- * Gegenproben stehen bei den einzelnen Prüfungen.
+ * Counter-checks are listed with the individual checks.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,11 +12,11 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 
 /**
- * Minimaler YAML-Leser für genau diese Datei.
+ * Minimal YAML reader for exactly this file.
  *
- * Bewusst kein Paket dafür: js-yaml wäre eine neue Abhängigkeit für eine
- * einzige Prüfung. Gebraucht wird nur, was unter `services:` an
- * Diensten steht und welche Werte deren Schlüssel tragen.
+ * Deliberately no package for it: js-yaml would be a new dependency for a
+ * single check. All that is needed is what services stand under `services:`
+ * and which values their keys carry.
  */
 function readService(yaml, name) {
   const zeilen = yaml.split('\n');
@@ -26,7 +26,7 @@ function readService(yaml, name) {
   for (let i = start + 1; i < zeilen.length; i++) {
     const l = zeilen[i];
     if (/^\s*$/.test(l) || /^\s*#/.test(l)) continue;
-    if (/^ {2}\S/.test(l) || /^\S/.test(l)) break; // nächster Dienst / nächster Abschnitt
+    if (/^ {2}\S/.test(l) || /^\S/.test(l)) break; // next service / next section
     block.push(l);
   }
   return block.join('\n');
@@ -34,13 +34,13 @@ function readService(yaml, name) {
 
 const compose = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
 
-// ── Härtung aller Dienste ─────────────────────────────────────────────────
+// ── Hardening of all services ─────────────────────────────────────────────
 //
-// Diese Prüfung hält fest, dass Liste und Entrypoint zusammenpassen.
-// Gegenproben (am 29.10.2026 gemessen):
-//   A  cap_drop beim Dienst app entfernt → rot: „app: cap_drop: [ALL] fehlt“
-//   B  im Entrypoint ein Ziel /app/cache beim mkdir ergänzt → rot: „Der
-//      Entrypoint schreibt ausserhalb der beschreibbaren Orte“
+// This check records that list and entrypoint match.
+// Counter-checks (measured on 29.10.2026):
+//   A  cap_drop removed from the service app → red: “app: cap_drop: [ALL] missing”
+//   B  in the entrypoint a target /app/cache added to mkdir → red: “the
+//      entrypoint writes outside the writable places”
 const liste = (block, schluessel) =>
   (block.match(new RegExp(`^\\s*${schluessel}:\\s*\\[([^\\]]*)\\]`, 'm'))?.[1] ?? '')
     .split(',')
@@ -77,7 +77,7 @@ test('the app only writes to ./data and /tmp — daten-rechte too', () => {
     .split('\n')
     .filter(z => !/^\s*#/.test(z))
     .join('\n');
-  // Was der Entrypoint anlegt oder beschreibt: die mkdir-Ziele und die Marke.
+  // What the entrypoint creates or writes: the mkdir targets and the marker.
   const mkdir = ep.slice(ep.indexOf('mkdir -p'), ep.indexOf('\n\n', ep.indexOf('mkdir -p')));
   const ziele = [...mkdir.matchAll(/\/\S+/g)].map(m => m[0]);
   ziele.push(ep.match(/^MARKE=(\S+)/m)?.[1]);
@@ -88,9 +88,9 @@ test('the app only writes to ./data and /tmp — daten-rechte too', () => {
     'daten-rechte schreibt ausserhalb der beschreibbaren Orte',
   );
 
-  // Einmal ganz ausgeführt, /app/data im Sandkasten; id, su-exec und chown sind Ersatz.
-  // Gegenprobe (11.11.2026 gemessen): `/app/data/images/sets \` aus der mkdir-Liste
-  // gestrichen → rot „daten-rechte legt nicht an, was der Server braucht“.
+  // Executed fully once, /app/data in the sandbox; id, su-exec and chown are substitutes.
+  // Counter-check (measured 11.11.2026): `/app/data/images/sets \` deleted from the mkdir list
+  // → red “daten-rechte does not create what the server needs”.
   const ort = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'daten-rechte-'));
   try {
     const daten = path.join(ort, 'data'),
@@ -117,13 +117,13 @@ test('the app only writes to ./data and /tmp — daten-rechte too', () => {
   }
 });
 
-// Gegenproben (11.11.2026 gemessen, je einzeln): bei jobs `user: brickinv`
-// gestrichen → rot „jobs läuft als root“; bei daten-rechte `- ./schluessel:/app/schluessel`
-// ergänzt → rot „daten-rechte sieht mehr als ./data“; `network_mode: none` dort
-// gestrichen → rot „daten-rechte braucht kein Netz“; bei app die Abhängigkeit
-// auf daten-rechte gestrichen → rot „app wartet nicht auf daten-rechte“.
+// Counter-checks (measured 11.11.2026, each alone): for jobs `user: brickinv`
+// deleted → red “jobs runs as root”; for daten-rechte `- ./schluessel:/app/schluessel`
+// added → red “daten-rechte sees more than ./data”; `network_mode: none` there
+// deleted → red “daten-rechte needs no network”; for app the dependency
+// on daten-rechte deleted → red “app does not wait for daten-rechte”.
 test('root sets up ./data only in the service daten-rechte, app and jobs run as brickinv', t => {
-  // Wie Docker die Datei liest (Interpolation, Kurzschreibweisen), nicht per Regex.
+  // How Docker reads the file (interpolation, short notations), not via regex.
   const r = require('node:child_process').spawnSync(
     'docker',
     ['compose', '-f', path.join(ROOT, 'compose.yaml'), 'config', '--format', 'json'],
@@ -151,7 +151,7 @@ test('root sets up ./data only in the service daten-rechte, app and jobs run as 
   assert.equal(rechte.network_mode, 'none', 'daten-rechte braucht kein Netz');
   assert.equal(rechte.read_only, true);
   assert.deepEqual(rechte.entrypoint, ['sh', '/app/daten-rechte.sh']);
-  // Nur ./data: Ein Symlink des Dienstes darf root zu nichts anderem führen.
+  // Only ./data: a symlink of the service must lead root to nothing else.
   assert.deepEqual(
     (rechte.volumes || []).map(v => `${path.relative(ROOT, v.source)}:${v.target}`),
     ['data:/app/data'],
@@ -169,8 +169,8 @@ test('root sets up ./data only in the service daten-rechte, app and jobs run as 
   }
 });
 
-// Gegenproben (01.11.2026 gemessen): DATA_KEY_FILE bei jobs gestrichen → rot
-// „jobs: DATA_KEY_FILE fehlt“; Pfad auf /app/data/.datenschluessel → rot „… ./data“.
+// Counter-checks (measured 01.11.2026): DATA_KEY_FILE deleted for jobs → red
+// “jobs: DATA_KEY_FILE missing”; path to /app/data/.datenschluessel → red “… ./data”.
 test('the data key lies outside of ./data for app and jobs', () => {
   for (const dienst of ['app', 'jobs']) {
     const block = readService(compose, dienst);
@@ -184,13 +184,13 @@ test('the data key lies outside of ./data for app and jobs', () => {
   }
 });
 
-// Gegenproben (am 30.10.2026 gemessen): Vorgabe wieder `${TRUST_PROXY:-docker}` →
-// rot „TRUST_PROXY vertraut genau Caddy …“; `ipam` am Netz entfernt → rot „… festes
-// Subnetz“;
-// `sign_with_root` aus dem Caddyfile entfernt → rot „Caddy: …“; Port 3000 der
-// App wieder veröffentlicht → rot „die App ist nur über Caddy erreichbar“.
-// (11.11.2026) in UPGRADE.md Abschnitt 53 `N=172.28.0.0/16` → rot „die LAN-Sperre
-// in UPGRADE.md nennt ein anderes Netz“.
+// Counter-checks (measured on 30.10.2026): default back to `${TRUST_PROXY:-docker}` →
+// red “TRUST_PROXY trusts exactly Caddy …”; `ipam` removed from the network → red “… fixed
+// subnet”;
+// `sign_with_root` removed from the Caddyfile → red “Caddy: …”; port 3000 of the
+// app published again → red “the app is only reachable via Caddy”.
+// (11.11.2026) in UPGRADE.md section 53 `N=172.28.0.0/16` → red “the LAN block
+// in UPGRADE.md names another network”.
 test('TRUST_PROXY trusts exactly Caddy, the network has a fixed subnet', () => {
   const app = readService(compose, 'app');
   const caddy = readService(compose, 'caddy');
@@ -205,7 +205,7 @@ test('TRUST_PROXY trusts exactly Caddy, the network has a fixed subnet', () => {
   assert.deepEqual(proxyVertrauen(adresse), ['172.28.73.10'], 'geglaubt wird genau Caddy, kein ganzes Netz');
   const netz = compose.slice(compose.indexOf('\nnetworks:'));
   assert.match(netz, /subnet:\s*172\.28\.73\.0\/24/, 'brickinventory-net hat kein festes Subnetz');
-  // Die DOCKER-USER-Regel in UPGRADE.md (Abschnitt 53) nennt genau dieses Netz.
+  // The DOCKER-USER rule in UPGRADE.md (section 53) names exactly this network.
   const upgrade = fs.readFileSync(path.join(ROOT, 'UPGRADE.md'), 'utf8');
   const regel = upgrade.slice(upgrade.indexOf('## 53.'));
   assert.match(regel, /^N=172\.28\.73\.0\/24 /m, 'die LAN-Sperre in UPGRADE.md nennt ein anderes Netz');
@@ -232,11 +232,11 @@ test('the app is only reachable via Caddy', () => {
   assert.match(app, /^\s*-\s*ca-wurzel:\/caddy-ca:ro\s*$/m, 'das Wurzelzertifikat ist nicht nur lesend eingehängt');
 });
 
-// Gegenproben (09.11.2026 gemessen, je einzeln): bei caddy `user:` gestrichen →
-// rot „Caddy läuft als root“; `sysctls` gestrichen → rot „… Ports unter 1024“;
-// in caddy-rechte 1000:1000 statt 10443:10443 → rot „… andere Kennung“;
-// `- ./caddy/config:/config` aus caddy-rechte gestrichen → rot „… nicht übergeben“;
-// die Abhängigkeit auf caddy-rechte gestrichen → rot „Caddy wartet nicht …“.
+// Counter-checks (measured 09.11.2026, each alone): for caddy `user:` deleted →
+// red “Caddy runs as root”; `sysctls` deleted → red “… ports below 1024”;
+// in caddy-rechte 1000:1000 instead of 10443:10443 → red “… other identifier”;
+// `- ./caddy/config:/config` deleted from caddy-rechte → red “… not handed over”;
+// the dependency on caddy-rechte deleted → red “Caddy does not wait …”.
 test('Caddy runs without root, caddy-rechte hands it its folders', () => {
   const caddy = readService(compose, 'caddy');
   const rechte = readService(compose, 'caddy-rechte');
@@ -262,7 +262,7 @@ test('Caddy runs without root, caddy-rechte hands it its folders', () => {
     `caddy-rechte übergibt an eine andere Kennung als ${ziel}`,
   );
   const passed = chown.flatMap(m => m[2].trim().split(/\s+/));
-  // Jeder Ordner, den Caddy einhängt (ausser dem Caddyfile), ist dort eingehängt und gehört danach ihm.
+  // Every folder Caddy mounts (except the Caddyfile) is mounted there and belongs to it afterwards.
   const einh = block => [...block.matchAll(/^\s*-\s*([^\s:]+):(\/[^:\s]+)(:ro)?\s*$/gm)].map(m => `${m[1]}:${m[2]}`);
   const ordner = einh(caddy).filter(e => !e.endsWith(':/etc/caddy/Caddyfile'));
   assert.ok(ordner.length >= 4, `Caddys Ordner nicht gefunden: ${ordner}`);
@@ -276,14 +276,14 @@ test('Caddy: issuer from the start script, own request identifier, port 80 only 
     .split('\n')
     .filter(z => !/^\s*#/.test(z))
     .join('\n');
-  // Ohne Vorgabe: Fehlt BRICK_TLS_AUSSTELLER, ist das Caddyfile ungültig (ca-eigene-wurzel prüft das mit Caddy).
+  // Without default: if BRICK_TLS_AUSSTELLER is missing, the Caddyfile is invalid (ca-eigene-wurzel checks that with Caddy).
   assert.match(
     datei,
     /issuer \{\$BRICK_TLS_AUSSTELLER\} \{\s*\{\$BRICK_TLS_OPTIONEN\}\s*\}/,
     'der Aussteller hat eine Vorgabe',
   );
   assert.match(datei, /reverse_proxy app:3000 \{[^}]*header_up X-Request-Id \{http\.request\.uuid\}/);
-  // Auch /ca.crt nur über HTTPS (routes/certificate.ts sagt über HTTP 403, tls-wurzel-db).
+  // /ca.crt also only over HTTPS (routes/certificate.ts says 403 over HTTP, tls-wurzel-db).
   assert.match(datei, /http:\/\/ \{\s*redir \{\$BRICK_BASE_URL\}\{uri\} 308\s*\}/, 'Port 80 leitet nicht nur um');
   assert.match(datei, /default_sni \{\$BRICK_HOST\}/);
 });
@@ -293,18 +293,18 @@ test('no service has a substitute database password', () => {
   assert.doesNotMatch(compose, /DB_APP_PASSWORD:-/, 'ein Dienst fällt auf ein Beispielpasswort zurück');
 });
 
-// Gegenproben (02.11.2026 gemessen): bei jobs die Abhängigkeit wieder auf
-// postgres → rot „jobs wartet nicht auf db-rolle“; im Dienst db-rolle ein anderer
-// Digest → rot „db-rolle nimmt ein anderes Postgres-Image“. (03.11.2026) bei jobs
-// db_password unter secrets ergänzt → rot „jobs kennt das Passwort des
-// Superusers“; bei app PGPASSWORD_FILE auf /run/secrets/db_password → rot
-// „app: PGPASSWORD_FILE nicht aus db_app_password“. (11.11.2026) bei jobs die
-// Abhängigkeit auf migration gestrichen → rot „jobs wartet nicht auf migration“;
-// migration zusätzlich in brickinventory-net → rot „migration braucht nur das
-// interne Netz …“; schluessel bekommt db_migration_password → rot „ein
-// Laufzeitdienst kennt das Passwort der Migrationsrolle“. (15.11.2026) app wieder mit
-// db_system_password → rot „app kennt mehr als die Web-Systemrolle“; bei db-rolle
-// DB_SYSTEM_WEB_PASSWORD_FILE gestrichen → rot „db-rolle legt die Rolle system_web …“.
+// Counter-checks (measured 02.11.2026): for jobs the dependency back on
+// postgres → red “jobs does not wait for db-rolle”; in the service db-rolle another
+// digest → red “db-rolle takes another Postgres image”. (03.11.2026) for jobs
+// db_password added under secrets → red “jobs knows the password of the
+// superuser”; for app PGPASSWORD_FILE to /run/secrets/db_password → red
+// “app: PGPASSWORD_FILE not from db_app_password”. (11.11.2026) for jobs the
+// dependency on migration deleted → red “jobs does not wait for migration”;
+// migration additionally in brickinventory-net → red “migration only needs the
+// internal network …”; schluessel gets db_migration_password → red “a
+// runtime service knows the password of the migration role”. (15.11.2026) app again with
+// db_system_password → red “app knows more than the web system role”; for db-rolle
+// DB_SYSTEM_WEB_PASSWORD_FILE deleted → red “db-rolle creates the role system_web …”.
 const geheimnisse = block =>
   (block.match(/^\s*secrets:\s*\[([^\]]*)\]/m)?.[1] ?? '')
     .split(',')
@@ -362,7 +362,7 @@ test('only postgres and db-rolle know the superuser, only migration the migratio
   const image = d => readService(compose, d).match(/^\s*image:\s*(\S+)\s*$/m)?.[1];
   assert.equal(image('db-rolle'), image('postgres'), 'db-rolle nimmt ein anderes Postgres-Image');
 
-  // Die Migrationsrolle (Eigentümerin) kennt nur der Dienst migration; app und jobs starten erst nach ihm.
+  // Only the migration service knows the migration role (owner); app and jobs only start after it.
   const withMigration = Object.keys({
     postgres: 1,
     'db-rolle': 1,

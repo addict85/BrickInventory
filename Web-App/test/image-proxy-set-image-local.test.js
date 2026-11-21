@@ -1,24 +1,24 @@
 /**
- * Liegt ein Set-Bild samt Vorschau unter images/sets, liefert der Bild-Proxy
- * diese Dateien aus — nicht den eigenen Cache und nicht das CDN. So bekommt
- * die Katalogsuche (Sets ausserhalb des Blickfelds, ohne set_catalog-Zeile)
- * die lokal abgelegten Bilder, obwohl sie die Proxy-Adresse anfragt.
+ * If a set image including preview lies under images/sets, the image proxy delivers
+ * these files — not its own cache and not the CDN. That way the
+ * catalog search (sets outside the view, without a set_catalog row)
+ * gets the locally stored images although it requests the proxy address.
  *
- * Gegenprobe (09.11.2026 gemessen): in passThroughImage()
- * (src/images/http/imageProxy.ts) die Zeile mit fromSetImages() gestrichen →
- * rot: „das Original kommt aus images/sets, nicht aus dem Proxy-Cache“ und
- * „mit thumb=1 kommt die lokale Vorschau …“ (je der Inhalt des Caches) sowie
- * „ohne Proxy-Cache und über der Drossel …“ (429 statt 200).
+ * Counter-check (measured 09.11.2026): in passThroughImage()
+ * (src/images/http/imageProxy.ts) the line with fromSetImages() deleted →
+ * red: “the original comes from images/sets, not from the proxy cache” and
+ * “with thumb=1 the local preview comes …” (each the content of the cache) as well as
+ * “without proxy cache and above the throttle …” (429 instead of 200).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-// Ein Abruf beim CDN je Minute: Die Probe über der Drossel braucht so kein Netz.
+// One fetch at the CDN per minute: the probe above the throttle thus needs no network.
 process.env.BILD_ABRUFE_JE_MINUTE = '1';
 const _req = require('./helpers/sources').buildAndRequire();
-// Ohne Datenbank: Die Sets dieser Datei liegen im Blickfeld des Kontos, sonst legt der Proxy nichts ab.
+// Without a database: the sets of this file are in the account's view, otherwise the proxy stores nothing.
 require('./helpers/sources').replaceServices('images', { setNumberInScope: async () => true });
 
 test('image proxy delivers existing set images from images/sets', async t => {
@@ -62,8 +62,8 @@ test('image proxy delivers existing set images from images/sets', async t => {
   const VORSCHAU = Buffer.alloc(300, 3);
   const CACHE = Buffer.alloc(500, 4);
 
-  // Wie beim Nutzer: Datei und Vorschau liegen in images/sets, der Proxy-Cache
-  // hält nur das Original, ohne eigene Vorschau.
+  // As for the user: file and preview lie in images/sets, the proxy cache
+  // only holds the original, without its own preview.
   const withCache = `5${process.pid}-1`;
   const withCacheUrl = `https://cdn.rebrickable.com/media/sets/${withCache}.jpg`;
   put(path.join(SET_IMAGES_DIR, `${withCache}.jpg`), ORIGINAL);

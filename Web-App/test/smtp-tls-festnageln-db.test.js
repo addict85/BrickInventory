@@ -1,19 +1,19 @@
 /**
- * Der Mailer prüft das Zertifikat des Mailservers immer. Ein selbst signiertes
- * Zertifikat wird über das eingetragene PEM vertraut, ein Fingerabdruck nagelt
- * genau ein Zertifikat fest; die alte Ausnahme smtp_insecure_tls wirkt nicht
- * mehr. Geprüft gegen einen SMTP-Server im Test (TLS, selbst signiert).
+ * The mailer always checks the certificate of the mail server. A self-signed
+ * certificate is trusted via the entered PEM, a fingerprint pins
+ * exactly one certificate; the old exception smtp_insecure_tls no longer
+ * works. Checked against an SMTP server in the test (TLS, self-signed).
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  mailer.ts auf Stand e21f747 (smtp_insecure_tls schaltet ab) → rot: alle
- *      Fälle, zuerst „ohne PEM …" (mit der Altlast ungeprüft zugestellt)
- *   B  pruefeGegenstelle() liefert immer undefined → rot: „ein falscher
- *      Fingerabdruck bricht ab" und „ohne Fingerabdruck gilt der Hostname …"
- *   C  `ca` nicht an nodemailer übergeben → rot: „mit PEM wird zugestellt …",
- *      „ohne Fingerabdruck …" und „das Formular …"
- *   D  isValidGlobalValue() ohne GLOBAL_RULES → rot: „das Formular …"
+ * Counter-checks (measured 01.11.2026):
+ *   A  mailer.ts at state e21f747 (smtp_insecure_tls switches off) → red: all
+ *      cases, first “without PEM …” (delivered unchecked with the legacy setting)
+ *   B  pruefeGegenstelle() always delivers undefined → red: “a wrong
+ *      fingerprint aborts” and “without a fingerprint the hostname applies …”
+ *   C  `ca` not passed to nodemailer → red: “with PEM it is delivered …”,
+ *      “without a fingerprint …” and “the form …”
+ *   D  isValidGlobalValue() without GLOBAL_RULES → red: “the form …”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL, openssl im Pfad.
+ * Prerequisite: test DB via TEST_DATABASE_URL, openssl in the path.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -35,7 +35,7 @@ const db = testData();
 const mailer = _req('src/mail/mailer.js');
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
-/** Selbst signiert, mit dem angegebenen subjectAltName. */
+/** Self-signed, with the given subjectAltName. */
 function zertifikat(dir, name, san) {
   const key = path.join(dir, `${name}.key`),
     crt = path.join(dir, `${name}.crt`);
@@ -66,7 +66,7 @@ function zertifikat(dir, name, san) {
   return { key: fs.readFileSync(key), pem, fp: new crypto.X509Certificate(pem).fingerprint256 };
 }
 
-/** Gerade genug SMTP für nodemailer: EHLO, AUTH PLAIN, MAIL, RCPT, DATA, QUIT. */
+/** Just enough SMTP for nodemailer: EHLO, AUTH PLAIN, MAIL, RCPT, DATA, QUIT. */
 function smtpServer(z) {
   const post = [];
   const srv = tls.createServer({ key: z.key, cert: z.pem }, s => {

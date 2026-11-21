@@ -1,13 +1,13 @@
 /**
- * E-Mails im Design der Webapp.
+ * Emails in the theme of the web app.
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   A  brick.primary in src/mail/template.ts auf '#2563eb' → rot: „je Design
- *      eine Palette …“ (passt nicht zu --b600 in tokens.css)
- *   B  in emailTemplate wieder `#2563eb` statt `${theme.primary}` → rot:
- *      „Vorlage, Knopf und Infobox zeichnen im übergebenen Design“
- *   C  emailBtn ohne Vorgabe für theme (`theme: MailTheme`) → rot: dieselbe
- *      Prüfung (ohne Design scheitert der Knopf)
+ * Counter-checks (measured 08.11.2026, each on its own):
+ *   A  brick.primary in src/mail/template.ts set to '#2563eb' → red: “one palette
+ *      per theme …” (does not match --b600 in tokens.css)
+ *   B  in emailTemplate again `#2563eb` instead of `${theme.primary}` → red:
+ *      “template, button and info box draw in the passed theme”
+ *   C  emailBtn without a default for theme (`theme: MailTheme`) → red: the same
+ *      check (without a theme the button fails)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -15,7 +15,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-// Palette und Gerüst stehen in template.ts, die Mailtexte in mailer.ts.
+// Palette and skeleton stand in template.ts, the mail texts in mailer.ts.
 const SRC =
   fs.readFileSync(path.join(ROOT, 'src/mail/template.ts'), 'utf8') +
   '\n' +
@@ -23,34 +23,34 @@ const SRC =
 
 test('the theme is loaded when sending, not hard-wired', () => {
   assert.match(SRC, /async function mailTheme\(k: MailContext\)/, 'Loader fehlt');
-  // Früher stand hier die SQL-Anweisung selbst. Seit alle Zugriffe auf
-  // global_settings über src/settings/settings.ts laufen, prüft der Test den Weg
-  // dorthin — die Aussage ist dieselbe: Das Design ist eine GLOBALE
-  // Einstellung und darf nicht aus dem Prozess oder aus einer Konstanten
-  // kommen.
+  // Formerly the SQL statement itself stood here. Since all accesses to
+  // global_settings run via src/settings/settings.ts, the test checks the path
+  // there — the statement is the same: the theme is a GLOBAL
+  // setting and must not come from the process or from a
+  // constant.
   assert.match(
     SRC,
     /await k\.einstellungen\.globalValue\('app_theme'\)/,
     'Das Design ist eine globale Einstellung und muss von dort kommen',
   );
-  // `'./settings'` ODER `'../src/settings/settings'`: Der Mailer ist mit einer früheren Runde
-  // von routes/ nach utils/ gezogen (er hatte nie eine Route), und damit
-  // aenderte sich der RELATIVE Pfad auf dieselbe Datei. Geprueft ist die
-  // Aussage — zentrale Fassung statt eigener Abfrage —, nicht die Anzahl der
-  // Punkte davor.
+  // `'./settings'` OR `'../src/settings/settings'`: the mailer moved with an earlier round
+  // from routes/ to utils/ (it never had a route), and with that
+  // the RELATIVE path to the same file changed. What is checked is the
+  // statement — central version instead of an own query —, not the number of
+  // dots in front.
   assert.match(
     SRC,
     /import type \{ MailContext \} from '\.\/context'/,
     'und zwar über die zentrale Fassung, nicht über eine eigene Abfrage',
   );
-  // Bei jedem Zweifel classic — eine E-Mail darf nie am Design scheitern
+  // In any doubt classic — an email must never fail because of the theme
   assert.match(
     SRC,
     /catch \(_\) \{\s*return MAIL_THEMES\.classic;\s*\}/,
     'Ohne Rückfall bliebe eine E-Mail bei einem Datenbankfehler aus',
   );
 
-  // Beide Versandfunktionen müssen es laden
+  // Both sending functions must load it
   for (const fn of ['sendVerificationMail', 'sendPasswordResetMail']) {
     const body = SRC.slice(SRC.indexOf(`async function ${fn}(`), SRC.indexOf(`async function ${fn}(`) + 1500);
     assert.match(body, /const theme = await mailTheme\(k\);/, `${fn} lädt das Design nicht`);
@@ -62,7 +62,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 test("one palette per theme with the web app's primary color", () => {
   const { MAIL_THEMES } = _req('src/mail/template.js');
   assert.deepEqual(Object.keys(MAIL_THEMES).sort(), ['brick', 'classic']);
-  // --b600 je Design aus tokens.css: Die Mail soll aussehen wie die Webapp.
+  // --b600 per theme from tokens.css: the mail should look like the web app.
   const tokens = fs.readFileSync(path.join(ROOT, 'public', 'tokens.css'), 'utf8');
   const b600 = block => tokens.slice(tokens.indexOf(block)).match(/--b600:\s*(#[0-9a-f]{6})/i)[1];
   assert.equal(MAIL_THEMES.classic.primary, b600(':root'));
@@ -83,7 +83,7 @@ test('template, button and info box draw in the passed theme', () => {
       !withBrick.includes(classic.primary) && !withBrick.includes(classic.bg),
       `${name}: feste Farbe von classic`,
     );
-    // Ohne Angabe gilt classic: Eine Mail soll nie am Design scheitern.
+    // Without a setting classic applies: a mail should never fail because of the theme.
     assert.equal(bau(undefined), bau(classic), `${name}: Vorgabe ist nicht classic`);
   }
 });

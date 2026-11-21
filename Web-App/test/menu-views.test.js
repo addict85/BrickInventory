@@ -1,17 +1,17 @@
 /**
- * Das Kontomenü führt zu jeder Sicht, die keinen Reiter hat; jeder Eintrag
- * öffnet seine Fläche und lädt, was sie zeigt. Echtes Bündel in jsdom.
+ * The account menu leads to every view that has no tab; every entry
+ * opens its area and loads what it shows. Real bundle in jsdom.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in index.html data-arg="gutscheine" → "gutschein" → rot: „jeder
- *      Menüeintrag öffnet …“ und „jede Sicht ohne Reiter …“
- *   B  in navigation.js den VIEWS-Eintrag `daten` entfernt → rot: „jeder
- *      Menüeintrag öffnet …“ (daten öffnet nichts)
- *   C  in sitzung.js die Zeile, die #ntab-settings für Verwalter einblendet,
- *      entfernt → rot: „Einstellungen und Hintergrundarbeiten …“
- *   D  am Konto-Eintrag data-i18n vom <span> an den <button> verschoben → rot:
- *      „jeder Menüeintrag behält sein Symbol …“
- *   E  in sitzung.js den onclick an btn-logout entfernt → rot: „Abmelden …“
+ * Counter-checks (measured 10.11.2026, each on its own, bundle rebuilt):
+ *   A  in index.html data-arg="gutscheine" → "gutschein" → red: “every
+ *      menu entry opens …” and “every view without a tab …”
+ *   B  the VIEWS entry `daten` removed in navigation.js → red: “every
+ *      menu entry opens …” (daten opens nothing)
+ *   C  in sitzung.js the line that shows #ntab-settings for admins
+ *      removed → red: “only an admin sees settings and background jobs …”
+ *   D  on the account entry data-i18n moved from the <span> to the <button> → red:
+ *      “every menu entry keeps its icon …”
+ *   E  the onclick on btn-logout removed in sitzung.js → red: “logout …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -22,7 +22,7 @@ const { openUi, ANMELDUNG, sicht, takt } = require('./helpers/ui');
 const KONTO = admin => ({
   '/v1/auth/me': { success: true, loggedIn: true, user: { ...ANMELDUNG['/v1/auth/me'].user, is_admin: admin } },
 });
-// Jede Sicht bekommt eine leere, vertragsgemässe Antwort (checkResponse ergänzt die Pflichtfelder).
+// Every view gets an empty, contract-conforming response (checkResponse adds the required fields).
 const SICHTDATEN = Object.fromEntries(
   [
     '/v1/vouchers',
@@ -142,8 +142,8 @@ test('logout stands once, in the drawer, and logs out', async () => {
 });
 
 test('the header bar keeps its deliberate height', () => {
-  // Die Höhe gehört der Kopfleiste, nicht .btn-sm: Die Klasse trägt die halbe
-  // Oberfläche; min-height 32 px ist die kompakte Knopfgrösse.
+  // The height belongs to the header bar, not .btn-sm: the class carries half the
+  // UI; min-height 32 px is the compact button size.
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
   assert.match(css, /\.umenu\{[^}]*--kopf-hoehe:\s*(max\()?\d+px/, 'In `.umenu` steht keine Höhe mehr.');
   assert.match(css, /\.umenu \.ubadge\{height:var\(--kopf-hoehe\)\}/, 'Der Namensknopf nimmt die Höhe nicht mehr.');

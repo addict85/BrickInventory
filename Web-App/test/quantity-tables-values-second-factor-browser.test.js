@@ -1,35 +1,35 @@
 /**
- * UX-Prüfung 25 im echten Chrome, im Haushalt mit Unterkonto: N1–N8, Bilder verschiedener Form (B1),
- * Finanzbegriffe (B2) und die Sprache des Datumsfelds auf Englisch (B3).
+ * UX check 25 in real Chrome, in the household with a sub-account: N1–N8, images of different shapes (B1),
+ * finance terms (B2) and the language of the date field in English (B3).
  *
- * Gegenproben (14.11.2026 gemessen, je einzeln, Bündel bzw. dist neu gebaut):
- *   A  mQtyDec() ohne `if (n <= 1) return` → rot: „„−“ bei einem Exemplar“ (Feld zeigt 0); setQuantitiesField()
- *      ohne aria-disabled → rot: ebenda (nicht gesperrt)
- *   B  .ladepunkt wieder height:1px → rot: „Schwebender Knopf verdeckt nichts“ (Teile 390 px: Abschlusszeile
- *      751 > Knopf 716)
- *   C  updateGalleryPrices() ohne [data-tabwert-for] → rot: „Tabellenansicht …“ (Marktwert „—“)
- *   D  Spalte „Stückpreis“ samt Zellen zurück → rot: „Finanzen ohne leere Spalte“; Teile/Figuren wieder mit
- *      leerer Stand-Zelle → rot: ebenda
- *   E  finance.stat.purchase_basis wieder „Kaufpreis der Positionen mit Marktpreis“ → rot: „Finanzbegriffe“;
- *      finance.basis.gerechnet wieder mit dem zweiten Satz → rot: ebenda (390 px: 5 statt 3 Zeilen)
- *   F  clearerReason() ohne den Zweig für Verwalter → rot: „Serverfehler für Verwalter“
- *   G  Balken wieder bei jedem Dienst mit total > 0 → rot: „Aufträge und Fortschritt“ (auch „idle“, „done“);
- *      .mon-zusatz ohne display:block → rot: ebenda (Zahl 123 px links vom Rand, Zusatz daneben)
- *   H  zfNeueCodes() liest wieder #zf-code → rot: „Zweiter Faktor: Code im Dialog“ (kein Dialog)
- *   I  refreshPageName() ohne observeSetDetail() → rot: „Seitentitel im Set-Detail“
- *   K  .pl-leiste ohne align-self:stretch → rot: „Bauliste: breites Feld“ (1280 px: 205 px);
- *      mobile.css ohne .pl-setnr { flex-basis: 100% } → rot: ebenda (390 px: 209 von 358 px)
- *   L  .merk-kasten-kopf ohne display:flex/align-items:center → rot: „Merkliste zugeklappt“ (oben 9, unten 32 px)
- *   M  thumbs.ts wieder fit: 'cover' (dist neu) → rot: „Bilder verschiedener Form“ (r25breit-1: Vorschau 1:1
- *      statt 8:1)
- *   N  (16.11.2026) in zfAbschalten() `withCode: true` gestrichen → rot: „Zweiter Faktor: Code im Dialog“
- *      (Neu einrichten ohne Codefeld)
+ * Counter-checks (measured 14.11.2026, each on its own, bundle or dist rebuilt):
+ *   A  mQtyDec() without `if (n <= 1) return` → red: „„−“ bei einem Exemplar“ (field shows 0); setQuantitiesField()
+ *      without aria-disabled → red: same place (not locked)
+ *   B  .ladepunkt again height:1px → red: „Schwebender Knopf verdeckt nichts“ (parts 390 px: closing line
+ *      751 > button 716)
+ *   C  updateGalleryPrices() without [data-tabwert-for] → red: „Tabellenansicht …“ (market value „—“)
+ *   D  column „Stückpreis“ including cells back → red: „Finanzen ohne leere Spalte“; parts/figures again with
+ *      an empty state cell → red: same place
+ *   E  finance.stat.purchase_basis again „Kaufpreis der Positionen mit Marktpreis“ → red: „Finanzbegriffe“;
+ *      finance.basis.gerechnet again with the second sentence → red: same place (390 px: 5 instead of 3 lines)
+ *   F  clearerReason() without the branch for admins → red: „Serverfehler für Verwalter“
+ *   G  bar again for every service with total > 0 → red: „Aufträge und Fortschritt“ (also „idle“, „done“);
+ *      .mon-zusatz without display:block → red: same place (number 123 px left of the edge, addition next to it)
+ *   H  zfNeueCodes() reads #zf-code again → red: „Zweiter Faktor: Code im Dialog“ (no dialog)
+ *   I  refreshPageName() without observeSetDetail() → red: „Seitentitel im Set-Detail“
+ *   K  .pl-leiste without align-self:stretch → red: „Bauliste: breites Feld“ (1280 px: 205 px);
+ *      mobile.css without .pl-setnr { flex-basis: 100% } → red: same place (390 px: 209 of 358 px)
+ *   L  .merk-kasten-kopf without display:flex/align-items:center → red: „Merkliste zugeklappt“ (top 9, bottom 32 px)
+ *   M  thumbs.ts again fit: 'cover' (dist rebuilt) → red: „Bilder verschiedener Form“ (r25breit-1: preview 1:1
+ *      instead of 8:1)
+ *   N  (16.11.2026) `withCode: true` deleted in zfAbschalten() → red: „Zweiter Faktor: Code im Dialog“
+ *      (set up anew without a code field)
  *
- * B3: Das native Datumsfeld formatiert nach der Sprache des Browsers, nicht nach `lang` (Runde 24, N16);
- * geprüft wird, dass die Seite nach dem Sprachwechsel `lang="en"` trägt und das Feld sie erbt.
+ * B3: the native date field formats by the language of the browser, not by `lang` (round 24, N16);
+ * what is checked is that the page carries `lang="en"` after the language switch and the field inherits it.
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Without Chrome (CHROME_BIN, google-chrome, chromium) it is skipped.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -66,7 +66,7 @@ async function sprache(a, lang) {
   await a.ruhig();
 }
 
-/** Ein PNG mit Alphakanal; `farbe(x, y, rand)` gibt [r, g, b, a]. Der rote Rand zeigt, ob etwas abgeschnitten ist. */
+/** A PNG with an alpha channel; `farbe(x, y, rand)` returns [r, g, b, a]. The red border shows whether something is cut off. */
 function png(w, h, farbe) {
   const block = (typ, daten) => {
     const laenge = Buffer.alloc(4);
@@ -94,7 +94,7 @@ function png(w, h, farbe) {
 }
 const voll = (_x, _y, rand) => (rand ? [255, 0, 0, 255] : [40, 120, 200, 255]);
 const transparent = (x, y, rand) => (rand ? [255, 0, 0, 255] : (x + y) % 2 ? [0, 0, 0, 0] : [200, 40, 40, 255]);
-/** Nummer, Breite, Höhe, Muster: quer, hoch, quadratisch, sehr breit, klein mit Transparenz. */
+/** Number, width, height, pattern: landscape, portrait, square, very wide, small with transparency. */
 const IMAGES = [
   ['r25quer-1', 400, 200, voll],
   ['r25hoch-1', 200, 400, voll],
@@ -103,7 +103,7 @@ const IMAGES = [
   ['r25klein-1', 32, 32, transparent],
 ];
 
-/** Wie die App ihre Set-Bilder ablegt: <nr>.jpg unter data/images/sets, die Vorschau daneben (vorschauErzeugenAus). */
+/** How the app stores its set images: <nr>.jpg under data/images/sets, the preview next to it (vorschauErzeugenAus). */
 async function putImages(t, db, uid, req) {
   const ordner = path.join(ROOT, 'data', 'images', 'sets');
   fs.mkdirSync(ordner, { recursive: true });
@@ -125,7 +125,7 @@ async function putImages(t, db, uid, req) {
   }
 }
 
-/** Je sichtbarem Bild: Seitenverhältnis der Datei und des gemalten Bilds (object-fit), Lage im Rahmen. */
+/** Per visible image: aspect ratio of the file and of the painted image (object-fit), position in the frame. */
 const IMAGE_SIZE = sel => `(() => [...document.querySelectorAll(${JSON.stringify(sel)})]
   .filter(i => i.checkVisibility() && /r25/.test(i.currentSrc || i.src)).map(i => {
     const r = i.getBoundingClientRect(), s = getComputedStyle(i);
@@ -146,7 +146,7 @@ function checkImages(m, wo, anzahl) {
     const soll = IMAGES.find(([nr]) => nr === x.nr);
     assert.ok(soll && x.geladen, `${wo}: ${x.nr} nicht geladen`);
     const quelle = Number(soll[1]) / Number(soll[2]);
-    // Eine Vorschau darf kleiner sein, aber nicht anders geformt: eine quadratische hiesse „zugeschnitten“.
+    // A preview may be smaller, but not shaped differently: a square one would mean „zugeschnitten“.
     assert.ok(Math.abs(x.datei / quelle - 1) < 0.05, `${wo}: ${x.nr} Datei ${x.datei} statt ${quelle} (zugeschnitten)`);
     assert.ok(
       Math.abs(x.painted / quelle - 1) < 0.05,
@@ -177,7 +177,7 @@ async function bilder(_t, a) {
           `${wo}: Kachelbilder`,
         );
         checkImages(await b.auswerten(IMAGE_SIZE('#gallery .sci img')), `Kacheln ${wo}`, IMAGES.length);
-        // Ruhiges Raster: In einer Reihe sind alle Bildflächen gleich gross.
+        // Calm grid: in one row all image areas are the same size.
         const reihen = await b.auswerten(`(() => { const m = {};
           for (const k of document.querySelectorAll('#gallery .sc')) { const r = k.getBoundingClientRect(), s = k.querySelector('.sci').getBoundingClientRect();
             (m[Math.round(r.top)] ||= new Set()).add(Math.round(s.width) + 'x' + Math.round(s.height)); }
@@ -247,7 +247,7 @@ async function minusAtOne(_t, a) {
   await a.ruhig();
   await b.auswerten(`document.getElementById('m-qty-dec').click(); true`);
   await bis(`document.getElementById('m-qty-dec').getAttribute('aria-disabled') === 'true'`, 'zurück auf 1');
-  // Gespeichert wird 400 ms später; vorher geschlossen, bliebe die 2 stehen.
+  // Saving happens 400 ms later; closed before that, the 2 would remain.
   await a.warte(700);
   await a.ruhig();
   await b.auswerten(CLOSE);
@@ -257,7 +257,7 @@ async function floatingButton(_t, a) {
   const { b } = a;
   await sprache(a, 'en');
   try {
-    // B3: Das Datumsfeld erbt die Sprache der Seite.
+    // B3: the date field inherits the language of the page.
     assert.deepEqual(
       await b.auswerten(
         `({ lang: document.documentElement.lang, eigen: document.getElementById('add-date').closest('[lang]')?.tagName })`,
@@ -304,11 +304,11 @@ async function tabellenansicht(_t, a) {
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
   await b.auswerten(`document.getElementById('vl').click(); true`);
   await bis(`!!document.querySelector('#gallery table')`, 'Tabelle');
-  // Neu sortiert lädt die Liste neu: Die Tabelle steht vor den Preisen da, der Marktwert kommt nach.
+  // Re-sorted, the list reloads: the table stands there before the prices, the market value comes afterwards.
   await b.auswerten(
     `document.querySelector('#gallery thead [data-click="setsSortieren"][data-arg="num"]').click(); true`,
   );
-  // Auf die Marktwert-Spalte selbst warten: Ein späteres Neuzeichnen setzt sie kurz auf „—“ zurück.
+  // Wait for the market value column itself: a later redraw briefly resets it to „—“.
   await a.ruhig();
   await bis(
     `(() => { const kopf = [...document.querySelectorAll('#gallery thead th')].map(k => k.textContent.trim());
@@ -373,7 +373,7 @@ async function financeTerms(_t, a) {
   assert.match(m.basis, /je Kauf und Konto/, 'Testdaten: mehrere Zeilen je Position, die Erklärung steht im Tooltip');
 }
 
-/** Lädt die Seite neu (wie Runde 24): Der Fehler soll beim ersten Laden kommen, nicht über einem alten Stand. */
+/** Reloads the page (like round 24): the error should come on the first load, not over an old state. */
 async function serverfehlerAdmin(_t, a) {
   const { b, bis } = a;
   const { identifier } = await b.tab('Page.addScriptToEvaluateOnNewDocument', {
@@ -399,7 +399,7 @@ async function serverfehlerAdmin(_t, a) {
 
 async function jobs(_t, a) {
   const { b } = a;
-  // Ein Dienst waiting mit Arbeit (total > 0), einer läuft: Nur der laufende zeigt den Balken.
+  // One service waiting with work (total > 0), one running: only the running one shows the bar.
   await b.auswerten(`window.__echt = window.fetch; window.fetch = async (u, o) => { const r = await window.__echt(u, o);
     if (!/v1\\/admin\\/jobs$/.test(String(u))) return r;
     const d = await r.clone().json(); const [x, y] = Object.keys(d.jobs);
@@ -439,7 +439,7 @@ async function zweiterFaktor(_t, a) {
   assert.equal(await b.auswerten(`!!document.querySelector('#zf-flaeche input')`), false, 'Codefeld für zwei Aktionen');
   const dialog = `({ offen: document.getElementById('confirm-modal').style.display === 'flex', titel: ${text('#cd-title')},
     code: !document.getElementById('cd-code-wrap').hidden, pw: !document.getElementById('cd-pw-wrap').hidden })`;
-  // Neue Codes: der Code im eigenen Dialog.
+  // New codes: the code in its own dialog.
   await b.auswerten(`document.querySelector('#zf-flaeche [data-click="zfNeueCodes"]').click(); true`);
   await bis(`document.getElementById('confirm-modal').style.display === 'flex'`, 'Dialog „Neue Codes“');
   const neu = await b.auswerten(dialog);
@@ -450,7 +450,7 @@ async function zweiterFaktor(_t, a) {
   await bis(`!!document.getElementById('zf-codes')`, 'neue Codes');
   await b.auswerten(`document.getElementById('zf-gespeichert').click(); true`);
   await bis(`!!document.querySelector('#zf-flaeche [data-click="zfAbschalten"]')`, 'zurück');
-  // Abschalten heisst für Verwalter „Neu einrichten“: ein Dialog mit Passwort und Code, abgebrochen.
+  // For admins switching off means „Neu einrichten“: a dialog with password and code, cancelled.
   await b.auswerten(`document.querySelector('#zf-flaeche [data-click="zfAbschalten"]').click(); true`);
   await bis(`document.getElementById('confirm-modal').style.display === 'flex'`, 'Rückfrage Neu einrichten');
   const ab = await b.auswerten(dialog);
@@ -537,9 +537,9 @@ test('quantity, table values, second factor, build list', { concurrency: 1, time
     ['Bauliste: breites Feld', bauliste],
     ['Merkliste zugeklappt', wantedTo],
     ['Bilder verschiedener Form', bilder],
-    // Lädt die Seite neu.
+    // Reloads the page.
     ['Serverfehler für Verwalter', serverfehlerAdmin],
-    // Ersetzt die Wiederherstellungscodes: zuletzt.
+    // Replaces the recovery codes: last.
     ['Zweiter Faktor: Code im Dialog', zweiterFaktor],
   ];
   for (const [titel, fn] of pruefungen) await t.test(titel, () => fn(t, a));

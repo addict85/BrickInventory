@@ -1,20 +1,20 @@
 /**
- * POST /sets/:setNumber/parts importiert nur Sets im eigenen Blickfeld, für
- * deren Besitzer, und ist je Konto gedrosselt; eine leere Antwort von
- * Rebrickable wird kurz gemerkt, statt bei jedem Versuch erneut zu fragen.
+ * POST /sets/:setNumber/parts only imports sets in the own scope, for
+ * their owner, and is throttled per account; an empty response from
+ * Rebrickable is remembered briefly instead of asking again on every attempt.
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  findSetInScope() aus der Route entfernt (Import für das fragende
- *      Konto wie vorher) → rot: „ein fremdes Set wird nicht importiert“ und
- *      „das Set des Unterkontos … für dessen Besitzer“
- *   B  Drossel entfernt → rot: „je Konto höchstens 30 Importe je Stunde“
- *   C  der Merker `_leer` in alleTeileDesSets() nicht gelesen → rot: „eine
- *      leere Antwort wird gemerkt“ (zwei Abrufe statt einem)
- *   D  (14.11.2026) in importPartsOfSets() wieder ein Fang, der meldet
- *      und 0 liefert (früher importPartsForSet) → rot: „ein gescheiterter
- *      Import ist ein Fehler“ (200 mit count 0)
+ * Counter-checks (measured 01.11.2026):
+ *   A  findSetInScope() removed from the route (import for the asking
+ *      account as before) → red: “a foreign set is not imported” and
+ *      “the main account imports the sub-account's set for its owner”
+ *   B  throttle removed → red: “at most 30 imports per hour per account”
+ *   C  the marker `_leer` not read in alleTeileDesSets() → red: “an
+ *      empty response is remembered” (two fetches instead of one)
+ *   D  (14.11.2026) in importPartsOfSets() again a catch that reports
+ *      and delivers 0 (formerly importPartsForSet) → red: “a failed
+ *      import is an error” (200 with count 0)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,7 +27,7 @@ const _req = quellen.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
-// Vor dem Laden der Route: Import und Rebrickable-Abruf mitschreiben statt ausführen.
+// Before loading the route: record import and Rebrickable fetch instead of running them.
 const importe = [];
 const fetches = [];
 const replace = (rel, zusatz) => {
@@ -35,7 +35,7 @@ const replace = (rel, zusatz) => {
   _req(rel);
   require.cache[pfad].exports = Object.assign({}, require.cache[pfad].exports, zusatz);
 };
-// Rebrickable an der Verdrahtung gestellt: Jeder Satz Dienste fragt über ihn.
+// Rebrickable set up at the wiring: every set of services asks via it.
 quellen.testSources(null, {
   holeSetTeile: async n => {
     fetches.push(n);

@@ -1,7 +1,7 @@
 /**
- * Der Preisalarm wird beim TIPPEN gespeichert — aber nur einmal.
+ * The price alert is saved while TYPING — but only once.
  *
- * ── Die Gegenprobe läuft MIT ────────────────────────────────────────────────
+ * ── The counter-check runs ALONG ─────────────────────────────────────────────
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -17,40 +17,40 @@ const BUNDLE = fs.readFileSync(BUENDEL, 'utf8');
 const ADMIN = fs.readFileSync(path.join(ROOT, 'public', 'js', 'detail-fields.js'), 'utf8');
 
 /**
- * Die drei Bedienelemente des Alarms — AUS DEM ECHTEN QUELLTEXT geschnitten.
+ * The three controls of the alert — cut FROM THE REAL SOURCE TEXT.
  *
- * Genau das stand hier zuerst, und die Gegenprobe dazu blieb GRÜN: Ich habe
- * die Verdrahtung im Quelltext von `data-input="alarmGetippt"` auf das alte
- * `data-change="speichereAlarm"` zurückgedreht — also genau der Fehler, den
- * diese Datei melden soll —, und der Prüflauf merkte nichts. Er hatte sein
- * eigenes Markup gebaut und prüfte damit eine Verdrahtung, die es im Baum
- * gar nicht mehr gab.
+ * Exactly this stood here first, and the counter-check for it stayed GREEN: I
+ * turned the wiring in the source text back from `data-input="alarmGetippt"` to the old
+ * `data-change="speichereAlarm"` — exactly the bug this file
+ * is meant to report — and the check noticed nothing. It had built its
+ * own markup and thus checked a wiring that no longer existed in the
+ * tree at all.
  */
 function alarmMarkup(sn) {
-  // Ab dem ZUSTANDSFELD, nicht ab der Richtung: Seit der Alarm auch für
-  // „gebraucht" gilt, steht das Zustandsfeld davor, und alarmState() liest
-  // es. Ohne das Feld fiele der Prüfstand still auf „neu" zurück und prüfte
-  // eine Oberfläche, die es so nicht gibt.
+  // From the CONDITION FIELD, not from the direction: since the alert also applies to
+  // “used", the condition field comes first, and alarmState() reads
+  // it. Without the field the test bench would silently fall back to “new" and check
+  // a UI that does not exist like that.
   const i = ADMIN.indexOf('<select id="${p}-alert-cond"');
   const j = ADMIN.indexOf('id="${p}-alert-state"');
   assert.ok(i > 0 && j > i, 'Das Alarm-Markup steht nicht mehr, wo erwartet');
   const roh = ADMIN.slice(i, ADMIN.indexOf('</span>', j) + 7);
   return (
     roh
-      // Der Präfix des Set-Dialogs. Er steht in alarmBlock() als ${p}; hier
-      // wird daraus, was zur Laufzeit dort steht.
+      // The prefix of the set dialog. It is ${p} in alarmBlock(); here
+      // it becomes what stands there at runtime.
       .replace(/\$\{p\}/g, 'm')
       .replace(/\$\{(?:escJs\()?sn\)?\}/g, sn)
-      // Die Beschriftungen kommen aus der Übersetzung; hier zählt nur die
-      // Verdrahtung, nicht der Text.
+      // The labels come from the translation; only the wiring counts here,
+      // not the text.
       .replace(/\$\{[^}]*\}/g, 'x')
   );
 }
 
-/** Die Ruhezeit aus detailfelder.js — hier nur, um DARÜBER und DARUNTER zu takten. */
+/** The idle time from detailfelder.js — here only to tick ABOVE and BELOW it. */
 const REST = 800;
 
-/** Ein Fenster mit geladenem Bündel und dem Alarm-Markup des Detailfensters. */
+/** A window with a loaded bundle and the alert markup of the detail window. */
 function fenster() {
   const vc = new jsdom.VirtualConsole();
   const meldungen = [];
@@ -64,7 +64,7 @@ function fenster() {
   const w = dom.window;
   const rufe = [];
   w.fetch = async (u, o = {}) => {
-    // Die Startabfrage gehört nicht zur Messung.
+    // The startup query is not part of the measurement.
     if (!String(u).includes('startup-status')) rufe.push(`${o.method || 'GET'} ${u}`);
     return {
       ok: true,
@@ -78,15 +78,15 @@ function fenster() {
   const d = w.document.createElement('div');
   d.innerHTML = alarmMarkup('10179-1');
   w.document.body.appendChild(d);
-  // schliesse(): OHNE das bleibt der Prüflauf hängen. startApp() im Bündel
-  // fragt /api/v1/startup-status im Sekundentakt ab, und dieser Zeitgeber
-  // hält den Node-Prozess am Leben, lange nachdem der Test fertig ist.
+  // schliesse(): WITHOUT it the check hangs. startApp() in the bundle
+  // polls /api/v1/startup-status every second, and this timer
+  // keeps the Node process alive long after the test is done.
   return { w, rufe, meldungen, feld: w.document.getElementById('m-alert-val'), schliesse: () => w.close() };
 }
 
 const { warte } = require('./helpers/time');
 
-/** „249.90" Zeichen für Zeichen, mit [takt] ms zwischen den Anschlägen. */
+/** “249.90" character by character, with [takt] ms between the keystrokes. */
 async function tap(f, takt, text = '249.90') {
   for (let i = 1; i <= text.length; i++) {
     f.feld.value = text.slice(0, i);
@@ -101,10 +101,10 @@ test('typing saves — and the quiet period turns it into ONE request', async ()
   await tap(schnell, 40);
   assert.deepEqual(schnell.meldungen, [], 'Es gab Meldungen in der Konsole');
 
-  // 1. Es wird überhaupt gespeichert — das war Marcos Befund.
+  // 1. It is saved at all — that was Marco's finding.
   assert.ok(schnell.rufe.length >= 1, 'Tippen hat gar nichts ausgelöst — genau der gemeldete Fehler');
 
-  // 2. Und zwar einmal, nicht je Zeichen.
+  // 2. And only once, not per character.
   const langsam = fenster();
   await tap(langsam, REST + 200);
   assert.ok(
@@ -118,9 +118,9 @@ test('typing saves — and the quiet period turns it into ONE request', async ()
     `Schnelles Tippen ergab ${schnell.rufe.length} Anfragen: ${schnell.rufe.join(' | ')}`,
   );
 
-  // 3. Die letzte Zahl gewinnt — nicht die Zwischenstände „2" oder „24".
-  //    Genau die wären ohne Ruhezeit übrig geblieben, und eine Schwelle bei 2
-  //    meldet sofort.
+  // 3. The last number wins — not the intermediate states “2" or “24".
+  //    Exactly those would have remained without idle time, and a threshold at 2
+  //    reports immediately.
   assert.match(
     schnell.rufe[0],
     /^PUT .*\/sets\/10179-1\/alert$/,
@@ -131,9 +131,9 @@ test('typing saves — and the quiet period turns it into ONE request', async ()
 });
 
 test('the response does NOT write back into the field', async () => {
-  // Der Grund steht an showAlarmMarker(): Wer „249.90" tippt, hat nach der
-  // Ruhezeit hinter „249.9" vielleicht schon die letzte Null gesetzt. Ein
-  // Nachladen machte daraus wieder „249.9" und frässe das Zeichen weg.
+  // The reason is at showAlarmMarker(): whoever types “249.90" may already have set
+  // the last zero after the idle time behind “249.9". A
+  // reload would turn it back into “249.9" and eat the character.
   const f = fenster();
   await tap(f, 40);
   assert.equal(f.feld.value, '249.90', 'Das Feld wurde überschrieben');
@@ -146,8 +146,8 @@ test('the response does NOT write back into the field', async () => {
 });
 
 test('a cleared field deletes', async () => {
-  // Die natürliche Geste, einen Alarm loszuwerden. Ein eigener Knopf daneben
-  // wäre ein zweiter Weg für dieselbe Absicht.
+  // The natural gesture to get rid of an alert. A separate button next to it
+  // would be a second path for the same intent.
   const f = fenster();
   f.feld.value = '';
   f.feld.dispatchEvent(new f.w.Event('input', { bubbles: true }));

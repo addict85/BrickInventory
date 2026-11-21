@@ -1,16 +1,16 @@
 /**
- * Das zufällige Startpasswort des ersten Verwalters steht nicht im Log, sondern
- * in einer Datei mit 0600 im Datenverzeichnis; das Log nennt nur den Pfad. Mit
- * dem ersten eigenen Passwortwechsel verschwindet die Datei.
+ * The random initial password of the first admin does not stand in the log but
+ * in a file with 0600 in the data directory; the log only names the path. With
+ * the first own password change the file disappears.
  *
- * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in putStartAdminAn() (src/account/startAdmin.ts) zusätzlich das Passwort per
- *      console.log ausgegeben → rot: „das Log nennt den Pfad, nicht das Passwort“
- *   B  in writeStartpasswort() `mode: 0o644` → rot: „nur der Dienst kann sie lesen“
+ * Counter-checks (measured 09.11.2026, each on its own):
+ *   A  in putStartAdminAn() (src/account/startAdmin.ts) the password additionally output via
+ *      console.log → red: “the log names the path, not the password”
+ *   B  in writeStartpasswort() `mode: 0o644` → red: “only the service can read it”
  *   C  in aendereEigenesPasswort() (src/account/accounts.ts) startpasswortDone()
- *      gestrichen → rot: „der erste Passwortwechsel löscht die Datei“
+ *      deleted → red: “the first password change deletes the file”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL (das Schema wird neu angelegt).
+ * Prerequisite: test DB via TEST_DATABASE_URL (the schema is created anew).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

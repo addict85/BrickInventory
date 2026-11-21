@@ -1,35 +1,35 @@
 /**
- * Die eigene Wurzel-CA (scripts/ca-einrichten.sh) gilt nur für BRICK_HOST,
- * ihr Schlüssel bleibt nicht liegen, und Caddy signiert mit der Zwischenstelle
- * nur, wenn ./caddy/ca eingerichtet ist; ohne startet Caddy nur mit
- * BRICK_TLS=acme oder ausdrücklich mit CA_OHNE_NAMENSBESCHRAENKUNG=ja. …
+ * The own root CA (scripts/ca-einrichten.sh) applies only to BRICK_HOST,
+ * its key does not stay lying around, and Caddy signs with the intermediate
+ * only if ./caddy/ca is set up; without it Caddy only starts with
+ * BRICK_TLS=acme or explicitly with CA_OHNE_NAMENSBESCHRAENKUNG=ja. …
  *
- * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  nameConstraints aus [wurzel] in ca-einrichten.sh gestrichen → rot:
- *      „auch ein gestohlener Wurzelschlüssel stellt nichts Fremdes aus“
- *   B  `excluded;IP:…` beim Namen gestrichen → rot: „ein Blatt für eine
- *      fremde Adresse scheitert an der Wurzel“ (das Blatt für 1.2.3.4 gilt)
- *   C  den Schlüssel der Wurzel nach $ORDNER kopiert → rot: „eine Wurzel für
- *      einen Namen …“ (root.key liegt neben den vier Dateien für Caddy)
- *   D  im Startskript die Abfrage auf /ca-eigen/zwischen.key gestrichen (immer
- *      Caddys CA) → rot: „mit eigener CA …“
- *   E  in zwischen-kette.crt die Wurzel weggelassen → rot: „kein Schlüssel der
- *      Wurzel …“ (Kette) und „Caddy liefert die Wurzel mit aus“ (lokal mit
- *      Caddy 2.11.0 aus `go install`; ohne Caddy nur die erste)
- *   F  (03.11.2026, kein stiller Rückfall) im Startskript den Zweig `else …
- *      exit 1` durch den Rückfall auf Caddys CA ersetzt → rot: „ohne eigene CA
- *      und ohne Schalter startet Caddy nicht“
- *   G  im Caddyfile `issuer {$BRICK_TLS_AUSSTELLER}` durch
- *      `issuer {$BRICK_TLS_AUSSTELLER:internal}` ersetzt → rot: „ohne
- *      Aussteller ist das Caddyfile ungültig“ (nur mit Caddy)
- *   I  in ca-einrichten.sh die Zeile „SHA-256 des Zertifikats …“ gestrichen →
- *      rot: „eine Wurzel für einen Namen …“
- *   J  bei acme `rm -f /ca-wurzel/root.crt` gestrichen → rot: „öffentlicher
- *      Name mit acme …“ (die alte Wurzel bleibt für /ca.crt)
- *   H  die Fingerabdruck-Zeile im Startskript gestrichen → rot: „… nennt den
- *      Fingerabdruck der Wurzel“
- *   K  (14.11.2026, lokal mit Caddy 2.11.8) `reuse_private_keys` im Caddyfile
- *      gestrichen → rot: „Caddy behält beim Erneuern den Schlüssel“
+ * Counter-checks (measured 03.11.2026, each alone):
+ *   A  nameConstraints deleted from [wurzel] in ca-einrichten.sh → red:
+ *      “even a stolen root key issues nothing foreign”
+ *   B  `excluded;IP:…` deleted at the name → red: “a leaf for a
+ *      foreign address fails at the root” (the leaf for 1.2.3.4 is valid)
+ *   C  the root's key copied to $ORDNER → red: “a root for
+ *      a name …” (root.key lies next to the four files for Caddy)
+ *   D  in the startup script the query for /ca-eigen/zwischen.key deleted (always
+ *      Caddy's CA) → red: “with own CA …”
+ *   E  the root omitted in zwischen-kette.crt → red: “no key of the
+ *      root …” (chain) and “Caddy ships the root along” (locally with
+ *      Caddy 2.11.0 from `go install`; without Caddy only the first)
+ *   F  (03.11.2026, no silent fallback) in the startup script the branch `else …
+ *      exit 1` replaced by the fallback to Caddy's CA → red: “without own CA
+ *      and without switch Caddy does not start”
+ *   G  in the Caddyfile `issuer {$BRICK_TLS_AUSSTELLER}` replaced by
+ *      `issuer {$BRICK_TLS_AUSSTELLER:internal}` → red: “without
+ *      issuer the Caddyfile is invalid” (only with Caddy)
+ *   I  in ca-einrichten.sh the line “SHA-256 des Zertifikats …” deleted →
+ *      red: “a root for a name …”
+ *   J  with acme `rm -f /ca-wurzel/root.crt` deleted → red: “public
+ *      name with acme …” (the old root stays for /ca.crt)
+ *   H  the fingerprint line in the startup script deleted → red: “… names the
+ *      root's fingerprint”
+ *   K  (14.11.2026, locally with Caddy 2.11.8) `reuse_private_keys` deleted in the Caddyfile
+ *      → red: “Caddy keeps the key when renewing”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -41,7 +41,7 @@ const crypto = require('node:crypto');
 const { spawn, spawnSync } = require('node:child_process');
 const net = require('node:net');
 
-/** Ein Port, den gerade niemand belegt; aus der Prozessnummer abgeleitet traf es im parallelen CI-Lauf belegte. */
+/** A port nobody currently occupies; derived from the process number it hit occupied ones in the parallel CI run. */
 const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, '127.0.0.1', () => {
@@ -63,7 +63,7 @@ function einrichten(ordner, host, mehr = {}) {
   });
 }
 
-/** Ein Blatt, das die Zwischenstelle (oder `place`) für `san` ausstellt; dann die Prüfung gegen die Wurzel. */
+/** A leaf that the intermediate (or `place`) issues for `san`; then the check against the root. */
 function blattGilt(ordner, san, place = { crt: `${ordner}/zwischen.crt`, key: `${ordner}/zwischen.key` }) {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'blatt-'));
   try {
@@ -99,7 +99,7 @@ function blattGilt(ordner, san, place = { crt: `${ordner}/zwischen.crt`, key: `$
 
 const oeffentlich = pem => crypto.createPublicKey(pem).export({ type: 'spki', format: 'der' }).toString('base64');
 
-/** Das Skript hinter `command: [sh, -c, |]` von Caddy, wie Compose es übergibt ($$ → $). */
+/** The script behind Caddy's `command: [sh, -c, |]`, as Compose passes it ($$ → $). */
 function caddyScript() {
   const z = compose.split('\n');
   const start = z.findIndex(l => /^ {2}caddy:\s*$/.test(l));
@@ -120,7 +120,7 @@ test('a root for a name: only this name, no IP addresses', async t => {
   const ordner = path.join(tmp, 'ca');
   const r = einrichten(ordner, 'nas.example.lan');
   assert.equal(r.status, 0, r.stderr);
-  // Derselbe Wert, den das Gerät beim Installieren und Caddy im Protokoll zeigt.
+  // The same value the device shows on installation and Caddy in the log.
   const fp = new crypto.X509Certificate(fs.readFileSync(path.join(ordner, 'root.crt'))).fingerprint256;
   assert.match(r.stdout, new RegExp(`SHA-256 des Zertifikats zum Abgleich auf jedem Gerät: ${fp}$`, 'm'));
   assert.deepEqual(fs.readdirSync(ordner).sort(), ['root.crt', 'zwischen-kette.crt', 'zwischen.crt', 'zwischen.key']);
@@ -169,7 +169,7 @@ test('a root for a name: only this name, no IP addresses', async t => {
   });
 
   await t.test('even a stolen root key issues nothing foreign', () => {
-    // Eine eigene Zwischenstelle ohne Einschränkung, signiert mit dem Schlüssel der Wurzel.
+    // An own intermediate without constraint, signed with the root's key.
     const ablage = path.join(tmp, 'wurzel.key'),
       boese = { crt: path.join(tmp, 'boese.crt'), key: path.join(tmp, 'boese.key') };
     ossl('genpkey', '-algorithm', 'EC', '-pkeyopt', 'ec_paramgen_curve:P-256', '-out', boese.key);
@@ -227,7 +227,7 @@ test("the start script chooses own CA, acme or explicitly Caddy's CA — otherwi
       fs.writeFileSync(path.join(eigen, 'root.crt'), 'eigene wurzel\n');
       fs.writeFileSync(path.join(eigen, 'zwischen.key'), 'k\n');
     }
-    // Wie nach einem Wechsel auf acme: Die Wurzel von früher liegt noch im Volume.
+    // As after switching to acme: the root from before is still in the volume.
     if (env.BRICK_TLS === 'acme') fs.writeFileSync(path.join(vol, 'root.crt'), 'alte wurzel\n');
     const script = caddyScript()
       .replaceAll('/data/', `${ort}/data/`)
@@ -262,7 +262,7 @@ test("the start script chooses own CA, acme or explicitly Caddy's CA — otherwi
     try {
       process.kill(-p.pid, 'SIGKILL');
     } catch {
-      /* schon beendet */
+      /* already ended */
     }
     fs.closeSync(aus);
     fs.closeSync(fehl);
@@ -332,7 +332,7 @@ test("the start script chooses own CA, acme or explicitly Caddy's CA — otherwi
 });
 
 const CADDY = process.env.CADDY_BIN || (spawnSync('caddy', ['version']).status === 0 ? 'caddy' : null);
-// REQUIRE_CADDY=1 (CI): ein fehlender Caddy ist ein Fehler, kein stilles Überspringen.
+// REQUIRE_CADDY=1 (CI): a missing Caddy is an error, not a silent skip.
 if (!CADDY && process.env.REQUIRE_CADDY === '1') throw new Error('REQUIRE_CADDY=1, aber kein Caddy (CADDY_BIN)');
 
 test('Caddy delivers the root along', { skip: !CADDY && 'kein Caddy (CADDY_BIN)' }, async t => {
@@ -371,7 +371,7 @@ test('Caddy delivers the root along', { skip: !CADDY && 'kein Caddy (CADDY_BIN)'
     });
     return p;
   };
-  // Unter Last (vier Testdateien parallel) braucht der erste Start mit eigener CA länger als 10 s.
+  // Under load (four test files in parallel) the first start with own CA takes longer than 10 s.
   const kette = async ca => {
     for (let i = 0; i < 300; i++) {
       const r = await new Promise(fertig => {
@@ -398,7 +398,7 @@ test('Caddy delivers the root along', { skip: !CADDY && 'kein Caddy (CADDY_BIN)'
     const r = await kette(wurzel);
     assert.ok(r, `Caddy antwortet nicht:\n${protokoll}`);
     assert.equal(r.ok, true, 'der Client traut der Kette mit der eigenen Wurzel nicht');
-    // Ohne `ca` baut der Client nichts dazu: Das ist die Kette, die Caddy sendet und die App pinnt.
+    // Without `ca` the client adds nothing: this is the chain Caddy sends and the app pins.
     const gesendet = await kette(null);
     assert.equal(gesendet.liste.length, 3, 'Blatt, Zwischenstelle, Wurzel');
     assert.equal(gesendet.liste[2], new crypto.X509Certificate(wurzel).fingerprint256, 'die Wurzel steht in der Kette');

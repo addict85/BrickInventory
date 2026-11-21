@@ -1,21 +1,21 @@
 /**
- * Ein Platzhalter-Name überschreibt nie den echten Namen eines Sets, und eine
- * Eingabe, die keine Setnummer sein kann, wird nicht angelegt.
+ * A placeholder name never overwrites the real name of a set, and an
+ * input that cannot be a set number is not created.
  *
- * Fehlerbild: „Titanic" hiess nach erneutem Erfassen „Set 10294-1". Die
- * BrickLink-Typprüfung legt eine catalog_cache-Zeile an; setAngaben() muss den
- * Namen trotzdem aus dem Katalog (rb_sets) nennen.
+ * Error picture: „Titanic" was called „Set 10294-1" after capturing again. The
+ * BrickLink type check creates a catalog_cache row; setAngaben() must still name the
+ * name from the catalog (rb_sets).
  *
- * Gegenproben (A am 11.11.2026, B und C am 28.10.2026 gemessen):
- *   A  in catalogSetTo() `rs.name` durch `NULL::text AS name` ersetzt → rot:
- *      „setAngaben nennt den Katalognamen, keinen Platzhalter“
- *   B  beim Anlegen (damals addSetIntern) wieder `name = EXCLUDED.name` → rot: „erneutes
- *      Erfassen ohne Quellen lässt den Katalognamen stehen"
- *   C  die Prüfung possibleSetNumber() beim Anlegen entfernt → rot:
- *      „eine Eingabe ohne Ziffer wird nicht als Set angelegt" ("abc-1" im Bestand)
+ * Counter-checks (A measured on 11.11.2026, B and C on 28.10.2026):
+ *   A  in catalogSetTo() `rs.name` replaced by `NULL::text AS name` → red:
+ *      “setAngaben names the catalog name, not a placeholder”
+ *   B  when creating (back then addSetIntern) again `name = EXCLUDED.name` → red: “adding
+ *      again without sources leaves the catalog name alone”
+ *   C  the check possibleSetNumber() removed when creating → red:
+ *      “an input without a digit is not created as a set” ("abc-1" in the inventory)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne API-Schlüssel, damit
- * keine Quelle antwortet.
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without API keys, so that
+ * no source answers.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -47,7 +47,7 @@ test('catalog name stays when sources are missing', { concurrency: 1 }, async t 
 
   try {
     await t.test('setAngaben names the catalog name, not a placeholder', async () => {
-      // Der Abrufstand in catalog_cache trägt seit 0108 keinen Namen mehr, der den Katalog verdecken könnte.
+      // Since 0108 the fetch state in catalog_cache carries no name that could cover the catalog.
       const info = await _req('src/catalog/rebrickableCatalog.js').setAngaben(SN);
       assert.equal(info?.name, 'Titanic');
     });

@@ -1,9 +1,9 @@
 /**
- * Registrierung gibt es nur mit Mailversand (mailReady: Mailserver und
- * APP_BASE_URL). Für Tests, die registrieren: ein eingetragener Mailserver,
- * dessen Transport nichts verschickt; die Mails sammelt `gesendet`.
- * Der Mailer baut den Transport erst beim Versand, deshalb greift das auch
- * nach buildAndRequire — nur nicht in einem eigenen Serverprozess.
+ * Registration only exists with mail sending (mailReady: mail server and
+ * APP_BASE_URL). For tests that register: a registered mail server
+ * whose transport sends nothing; `gesendet` collects the mails.
+ * The mailer only builds the transport when sending, which is why this also applies
+ * after buildAndRequire — just not in a separate server process.
  */
 const path = require('node:path');
 
@@ -21,11 +21,11 @@ function mailAttrappe() {
   return gesendet;
 }
 
-/** Trägt den Mailserver ein; zurück kommt das Aufräumen auf den Stand davor. */
+/** Registers the mail server; returns the cleanup back to the state before. */
 async function enterMailServer(db) {
   const vorher = await db.all('SELECT key, value FROM global_settings WHERE key = ANY($1)', [SCHLUESSEL]);
   for (const [k, v] of [
-    ['smtp_host', '192.0.2.25' /* eine Adresse: Ein Name müsste auflösen */],
+    ['smtp_host', '192.0.2.25' /* one address: a name would have to resolve */],
     ['smtp_user', 'versand'],
   ])
     await db.run(

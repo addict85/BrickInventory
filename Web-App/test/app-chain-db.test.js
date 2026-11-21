@@ -1,17 +1,17 @@
 /**
- * Die echte Kette vor /api/v1 (startup/app.ts, apiInbox) in einem Prozess:
- * Anmeldepflicht und Rumpflimit hängen voneinander ab — unangemeldet gibt es
- * nur 16 KB, angemeldet 256 KB, und eine abgewiesene Anfrage liest ihren Rumpf nicht.
+ * The real chain in front of /api/v1 (startup/app.ts, apiInbox) in one process:
+ * login requirement and body limit depend on each other — unauthenticated there are
+ * only 16 KB, authenticated 256 KB, and a rejected request does not read its body.
  *
- * Gegenproben (am 11.11.2026 gemessen):
- *   A  in apiInbox() `readBody` vor `loginAtInbox` gehängt → rot:
- *      „unangemeldet: 401 vor dem Rumpf“ (413 statt 401, der Rumpf wurde gelesen)
- *   B  in routes/api_v1/middleware.ts das Limit für Unangemeldete auf 256kb → rot:
- *      „unangemeldet: mehr als 16 KB sind zu viel“
- *   C  in apiInbox() `loginAtInbox` nicht eingehängt → rot:
- *      „unangemeldet: 401 vor dem Rumpf“ (die Route antwortete selbst)
+ * Counter-checks (measured on 11.11.2026):
+ *   A  in apiInbox() `readBody` placed before `loginAtInbox` → red:
+ *      “unauthenticated: 401 before the body” (413 instead of 401, the body was read)
+ *   B  in routes/api_v1/middleware.ts the limit for unauthenticated set to 256kb → red:
+ *      “unauthenticated: more than 16 KB is too much”
+ *   C  in apiInbox() `loginAtInbox` not mounted → red:
+ *      “unauthenticated: 401 before the body” (the route answered itself)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

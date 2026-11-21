@@ -1,21 +1,21 @@
 /**
- * Ein Verwalter legt ein Konto nur mit seinem Passwort an, das Protokoll hält
- * es fest, und „false“ als Zeichenkette ergibt keinen Verwalter.
+ * An administrator creates an account only with their password, the log records
+ * it, and “false” as a string yields no administrator.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  bestaetigePasswort() aus POST /users entfernt → rot: „ohne
- *      Verwalterpasswort kein Konto“
- *   B  wieder `isAdmin ? 1 : 0` statt strictBool → rot: „"false" legt keinen
- *      Verwalter an“
- *   C  protokolliere(…, 'konto_angelegt') entfernt → rot: „das Protokoll …“
- * Gegenproben (01.11.2026 gemessen):
- *   D  Migration 0090 nach .sql.aus und nameTaken() aus POST /users entfernt → rot:
- *      „ein Name in anderer Schreibweise ist vergeben“ und „die Datenbank lehnt …“;
- *      nur nameTaken() entfernt bleibt grün (der Index fängt es, 409 über asDuplicate)
- *   E  RAISE EXCEPTION in 0090 durch RAISE WARNING ersetzt → rot: „Migration 0090 bricht …“
- *   F  accountToLogin wieder mit db.get (erster Treffer) → rot: „passt ein Name auf zwei Konten …“
+ * Counter-checks (measured on 28.10.2026):
+ *   A  bestaetigePasswort() removed from POST /users → red: “without
+ *      administrator password no account”
+ *   B  back to `isAdmin ? 1 : 0` instead of strictBool → red: “"false" creates no
+ *      administrator”
+ *   C  protokolliere(…, 'konto_angelegt') removed → red: “the log …”
+ * Counter-checks (measured 01.11.2026):
+ *   D  migration 0090 renamed to .sql.aus and nameTaken() removed from POST /users → red:
+ *      “a name in another spelling is taken” and “the database rejects …”;
+ *      only nameTaken() removed stays green (the index catches it, 409 via asDuplicate)
+ *   E  RAISE EXCEPTION in 0090 replaced by RAISE WARNING → red: “migration 0090 aborts …”
+ *   F  accountToLogin back to db.get (first hit) → red: “if a name fits two accounts …”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -145,7 +145,7 @@ test('create account', { concurrency: 1 }, async t => {
     await db.run('DELETE FROM users WHERE username = $1 OR lower(email) = lower($1)', [altname]);
     st.after(() => db.run('DELETE FROM users WHERE username = $1 OR lower(email) = lower($1)', [altname]));
     const h = await bcrypt.hash(PASS, 4);
-    // Altbestand: ein Name mit @ (heute verboten) gleich der Adresse eines anderen Kontos.
+    // Legacy stock: a name with @ (forbidden today) equal to the address of another account.
     await db.run('INSERT INTO users (username,password_hash,is_active,email_verified) VALUES ($1,$2,true,true)', [
       altname,
       h,

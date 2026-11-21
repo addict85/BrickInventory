@@ -1,15 +1,15 @@
 /**
- * Die Fristen der Webapp-Sitzung in der echten App (startup/app.ts): Der
- * Speicher bekommt die Leerlauffrist, das Cookie bleibt ein Sitzungs-Cookie,
- * und die Höchstdauer greift hinter der Sitzung.
+ * The periods of the web app session in the real app (startup/app.ts): the
+ * store gets the idle period, the cookie stays a session cookie,
+ * and the maximum duration applies behind the session.
  *
- * Gegenproben (11.11.2026 gemessen, je einzeln):
- *   A  `ttl: SESSION_IDLE_SEC` in startup/app.ts gestrichen → rot: „der
- *      Speicher bekommt die Leerlauffrist“ (connect-pg-simple setzt einen Tag)
- *   B  `app.use(sessionMaxDuration())` in startup/app.ts gestrichen → rot:
- *      „nach der Höchstdauer ist niemand mehr angemeldet“
- *   C  `maxAge: 3_600_000` in sessionCookieOptions() → rot: „das Cookie …“ (und
- *      „der Speicher …“: maxAge bestimmt auch dessen Frist)
+ * Counter-checks (measured 11.11.2026, each on its own):
+ *   A  `ttl: SESSION_IDLE_SEC` deleted in startup/app.ts → red: “the
+ *      store gets the idle period” (connect-pg-simple sets one day)
+ *   B  `app.use(sessionMaxDuration())` deleted in startup/app.ts → red:
+ *      “after the maximum duration nobody is logged in anymore”
+ *   C  `maxAge: 3_600_000` in sessionCookieOptions() → red: “the cookie …” (and
+ *      “the store …”: maxAge also determines its period)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

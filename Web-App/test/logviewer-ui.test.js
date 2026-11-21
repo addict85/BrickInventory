@@ -1,17 +1,17 @@
 /**
- * Das Protokollfenster (public/js/logviewer.js) in jsdom: lädt mit dem
- * Sitzungscookie (kein Token im Markup), filtert nach Stufe und Suche, und nur seine eigenen vier
- * Handler sind aus dem Markup erreichbar — nicht beliebige Funktionen auf window.
+ * The log window (public/js/logviewer.js) in jsdom: loads with the
+ * session cookie (no token in the markup), filters by level and search, and only its own four
+ * handlers are reachable from the markup — not arbitrary functions on window.
  *
- * Gegenproben (am 05.11.2026 gemessen):
- *   A  toggleLevel aus HANDLER in logviewer.js entfernt → rot: „Stufe info
- *      zuschalten“ (die Info-Zeile bleibt verborgen)
- *   B  Rückfall auf `window[name]` in der Auflösung ergänzt → rot: „fremder
- *      Name bleibt wirkungslos“ (window.alert wurde gerufen)
- *   C  fetch wieder mit Bearer-Header statt credentials → rot: „lädt mit dem
- *      Sitzungscookie …“ (credentials undefined statt same-origin)
- *   D  (16.11.2026) in renderLogs() die Stufe wieder roh statt tx('log.stufe.…') → rot: „Stufe übersetzt,
- *      Stacktrace eingeklappt“ („error“ statt „Fehler“); meldung() ohne <details> → rot: ebenda
+ * Counter-checks (measured on 05.11.2026):
+ *   A  toggleLevel removed from HANDLER in logviewer.js → red: „Stufe info
+ *      zuschalten“ (the info row stays hidden)
+ *   B  fallback to `window[name]` added in the resolution → red: “a foreign
+ *      name stays ineffective” (window.alert was called)
+ *   C  fetch again with a Bearer header instead of credentials → red: “loads with the
+ *      session cookie …” (credentials undefined instead of same-origin)
+ *   D  (16.11.2026) in renderLogs() the level raw again instead of tx('log.stufe.…') → red: “level translated,
+ *      stack trace collapsed” („error“ instead of „Fehler“); meldung() without <details> → red: same place
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,12 +1,12 @@
 /**
- * Telefon: In der Sammlung liegt ab 320 × 640 die erste Set-Karte über der
- * Falz, und auf der Karte läuft der Preis nie in „Geschenk“ oder den Gewinn.
- * Gemessen in Chrome an der echten App mit der Mustersammlung.
+ * Phone: in the collection, from 320 × 640 on the first set card lies above the
+ * fold, and on the card the price never runs into „Geschenk“ or the profit.
+ * Measured in Chrome on the real app with the sample collection.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  den Telefonblock „Sammlung am Telefon“ in mobile.css entfernt → rot:
- *      „320: erste Karte über der Falz“ (oben 573, Leiste 583)
- *   B  die drei Regeln zu #gallery .price-badge wieder als Raster minmax(0,1fr) auto → rot:
+ * Counter-checks (measured 04.11.2026, each on its own):
+ *   A  the phone block „Sammlung am Telefon“ removed in mobile.css → red:
+ *      „320: erste Karte über der Falz“ (top 573, bar 583)
+ *   B  the three rules on #gallery .price-badge again as a grid minmax(0,1fr) auto → red:
  *      „390: Preis und Nachbar überlappen“
  */
 const test = require('node:test');

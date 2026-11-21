@@ -1,10 +1,10 @@
 /**
- * Dateien werden auch ausgeliefert, wenn die Installation unter einem
- * Punkt-Ordner liegt (~/.local/…, ein Arbeitsbaum unter .claude/).
+ * Files are delivered even if the installation lives under a
+ * dot folder (~/.local/…, a working tree under .claude/).
  *
- * Gegenprobe (am 28.10.2026 gemessen): in sendeDatei() wieder
- * `res.sendFile(pfad, fertig)` → rot: „eine Datei unter einem Punkt-Ordner
- * kommt an“ (404).
+ * Counter-check (measured on 28.10.2026): in sendeDatei() again
+ * `res.sendFile(pfad, fertig)` → red: “a file under a dot folder
+ * arrives” (404).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

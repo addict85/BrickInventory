@@ -1,5 +1,5 @@
 /**
- * Ein verschluckter SCHREIBVORGANG auf Nutzerdaten.
+ * A swallowed WRITE operation on user data.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,7 +8,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-/** Tabellen mit Daten, die der Nutzer selbst eingegeben hat. */
+/** Tables with data the user entered themselves. */
 const NUTZERDATEN = [
   'sets',
   'parts',
@@ -35,7 +35,7 @@ test('no silent catch on a write operation with user data', () => {
   collect(ROOT);
   assert.ok(dateien.length >= 60, `nur ${dateien.length} Dateien gefunden — der Pfad stimmt nicht`);
 
-  // Warum hier geklammert und nicht nur ein Fenster gelesen wird
+  // Why parentheses are matched here instead of just reading a window
   const call = /\b(?:db|tx|dbh|client)\.(?:run|query)\(|\bpool\.query\(/g;
   const stillAfterwards = /^\s*\)?\s*\.catch\(\s*\(?\s*_?\w*\s*\)?\s*=>\s*(\{\s*\}|null|undefined)\s*\)/;
   const schreib = new RegExp(`\\b(INSERT\\s+INTO|UPDATE|DELETE\\s+FROM)\\s+(${NUTZERDATEN.join('|')})\\b`, 'i');
@@ -54,7 +54,7 @@ test('no silent catch on a write operation with user data', () => {
   for (const datei of dateien) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
     for (const m of src.matchAll(call)) {
-      // Bis zur schliessenden Klammer des Aufrufs
+      // Up to the closing parenthesis of the call
       let tiefe = 1,
         i = m.index + m[0].length;
       while (i < src.length && tiefe > 0) {
@@ -73,8 +73,8 @@ test('no silent catch on a write operation with user data', () => {
     }
   }
 
-  // Selbstbeweis: Findet das Muster keine schreibenden Aufrufe auf diesen
-  // Tabellen, sagt ein leeres Ergebnis nichts.
+  // Self-proof: if the pattern finds no writing calls on these
+  // tables, an empty result says nothing.
   assert.ok(geprueft >= 30, `nur ${geprueft} schreibende Aufrufe auf Nutzerdaten gefunden — Muster veraltet`);
 
   assert.deepEqual(

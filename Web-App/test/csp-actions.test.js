@@ -1,18 +1,18 @@
 /**
- * Inline-Handler entfernen, damit `script-src 'unsafe-inline'` aus der CSP
- * verschwinden kann (Punkt 2 der Optimierungsliste).
+ * Remove inline handlers so that `script-src 'unsafe-inline'` can disappear
+ * from the CSP (item 2 of the optimization list).
  *
- * Gegenproben der am 08.11.2026 gestrichenen Quelltext-Fälle, wo sie laufen
- * (je einzeln gemessen):
- *   CSP ohne unsafe-inline, img-src ohne https:, worker-src, kein fremder Host
- *   in der CSP → sicherheit-querschnitt-db „jede Antwort trägt …“ (Direktive
- *   je einzeln verdorben → rot); kein Inline-<script> und kein Fremdhost in
- *   der ausgelieferten Seite → dort „die ausgelieferte Seite …“ (rot mit
- *   eingefügtem Inline-Skript bzw. Fremd-Stylesheet).
- *   Handler aus index.html und Vorlagen angemeldet, Dispatcher eingebunden,
- *   Argumente/data-val/this, Capture der Bildfehler, Wiederholversuch, Modus
- *   „keep“, Protokollfenster ohne Inline-Skript → aktionen-dispatcher-
- *   oberflaeche (Gegenproben A–H dort); der Platzhalter-Modus →
+ * Counter-checks of the source-text cases deleted on 08.11.2026, where they run
+ * (measured each alone):
+ *   CSP without unsafe-inline, img-src without https:, worker-src, no foreign host
+ *   in the CSP → sicherheit-querschnitt-db “every response carries …” (directive
+ *   spoiled each alone → red); no inline <script> and no foreign host in
+ *   the delivered page → there “the delivered page …” (red with an
+ *   inserted inline script or foreign stylesheet).
+ *   Handlers from index.html and templates registered, dispatcher included,
+ *   arguments/data-val/this, capture of image errors, retry, mode
+ *   “keep”, log window without inline script → aktionen-dispatcher-
+ *   oberflaeche (counter-checks A–H there); the placeholder mode →
  *   images-placeholder.test.js.
  */
 const { isAppModule } = require('../scripts/build-frontend');
@@ -27,11 +27,11 @@ const ACT = fs.readFileSync(path.join(PUB, 'js', 'actions.js'), 'utf8');
 const JS_FILES = fs.readdirSync(path.join(PUB, 'js')).filter(f => isAppModule(f));
 
 test('no more inline handlers anywhere — neither in index.html nor in the templates', () => {
-  // Wichtig: (?<!data-) schliesst data-onerror aus, und das Muster verlangt ="
-  // — el.onclick = fn in JavaScript ist CSP-konform und darf bleiben.
+  // Important: (?<!data-) excludes data-onerror, and the pattern requires ="
+  // — el.onclick = fn in JavaScript is CSP-compliant and may stay.
   const RE = /(?<!data-)\bon(click|change|input|blur|keydown|error|load|submit|mouseenter|mouseleave)=\\?"/g;
-  // Kommentare entfernen: Die Dokumentation in aktionen.js zitiert die alten
-  // Handler ("War: onclick=…") und würde die Prüfung sonst selbst auslösen.
+  // Remove comments: the documentation in aktionen.js quotes the old
+  // handlers ("War: onclick=…") and would otherwise trigger the check itself.
   const strip = t => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/[^\n]*$/gm, '');
   const found = [];
   for (const [name, src] of [
@@ -44,7 +44,7 @@ test('no more inline handlers anywhere — neither in index.html nor in the temp
 });
 
 test('no style attribute and no <style> in the markup — except the start skeleton, which the CSP allows by hash', () => {
-  // Gegenprobe: ein data-stil in index.html wieder als style= → rot.
+  // Counter-check: a data-stil in index.html back as style= → red.
   const strip = t =>
     require('./helpers/sources')
       .withoutHtmlComments(t)
@@ -58,8 +58,8 @@ test('no style attribute and no <style> in the markup — except the start skele
     ...JS_FILES.map(f => [f, fs.readFileSync(path.join(PUB, 'js', f), 'utf8')]),
   ]) {
     for (const m of strip(src).matchAll(/(?<![-\w])style=\\?["']|<style[\s>]/g)) found.push(`${name}: ${m[0]}`);
-    // Ein Wert mit ${…} steht nicht auf der Freigabeliste und bliebe wirkungslos;
-    // nur die Bausteine reichen den stil-Parameter ihres Aufrufers weiter.
+    // A value with ${…} is not on the allow list and would have no effect;
+    // only the building blocks pass on the stil parameter of their caller.
     for (const m of src.matchAll(/data-stil="([^"]*\$\{[^"]*)"/g))
       if (!/^\$\{(esc\()?o\.(stil|rowsStyle|valueStyle)\)?\}$/.test(m[1])) found.push(`${name}: data-stil="${m[1]}"`);
   }
@@ -67,16 +67,16 @@ test('no style attribute and no <style> in the markup — except the start skele
 });
 
 test('the dispatcher gets by without eval', () => {
-  // Kommentare weg: Der Erklärtext nennt "kein eval, kein new Function" und
-  // würde die Prüfung sonst selbst auslösen.
+  // Comments out: the explanatory text names "kein eval, kein new Function" and
+  // would otherwise trigger the check itself.
   const code = ACT.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
   assert.doesNotMatch(
     code,
     /\beval\s*\(|new Function/,
     "Ein eval() würde 'unsafe-eval' verlangen und damit dasselbe Problem erzeugen",
   );
-  // Die typeof-Prüfung ist mit der Registry nach js/registry.js gewandert
-  // (resolveAction) — der Dispatcher ruft sie nur noch auf.
+  // The typeof check moved with the registry to js/registry.js
+  // (resolveAction) — the dispatcher only calls it now.
   const REG = fs.readFileSync(path.join(PUB, 'js', 'registry.js'), 'utf8');
   assert.match(REG, /typeof fn === 'function'/, 'Der Name muss aufgelöst und geprüft werden');
   assert.match(
@@ -98,21 +98,21 @@ test('hover effects live in the stylesheet', () => {
 test('delete buttons on tiles carry a trash can, no ✕', () => {
   const core = require('./helpers/sources').coreSource();
   assert.match(core, /const TRASH_ICON_SVG/, 'Symbol fehlt');
-  // currentColor: derselbe Pfad dient weiss auf rotem Grund (.delbtn) und rot
-  // auf hellem Grund (.bd) — keine zweite Fassung nötig.
+  // currentColor: the same path serves white on red background (.delbtn) and red
+  // on light background (.bd) — no second version needed.
   assert.match(core, /stroke="currentColor"/, 'Das Symbol muss die Farbe erben');
 
-  // Die Regel statt der Anzahl
+  // The rule instead of the count
   const EXCEPTION = new Set(['delInstr']);
   let exceptionsSeen = 0;
 
-  // Der Selbstbeweis zählt über ALLE Dateien, nicht je Datei
+  // The self-proof counts across ALL files, not per file
   let buttonsTotal = 0;
   for (const file of ['collection.js', 'sets-table.js', 'parts.js', 'minifigs.js', 'set-detail.js']) {
     const src = fs.readFileSync(path.join(PUB, 'js', file), 'utf8');
-    // `del\w*` und nicht `delete\w*`: Die Galerie-Kachel ruft `delSetStop`.
-    // Mit dem engeren Muster fand die Suche dort NICHTS — und der Selbstbeweis
-    // hat genau das gemeldet, statt gruen durchzulaufen.
+    // `del\w*` and not `delete\w*`: the gallery tile calls `delSetStop`.
+    // With the narrower pattern the search found NOTHING there — and the self-proof
+    // reported exactly that instead of running through green.
     const knoepfe = [...src.matchAll(/<button[^>]*data-click="del\w*"[\s\S]{0,400}?<\/button>/g)].map(m => m[0]);
     buttonsTotal += knoepfe.length;
     let gefunden = 0;
@@ -133,8 +133,8 @@ test('delete buttons on tiles carry a trash can, no ✕', () => {
   }
   assert.ok(buttonsTotal >= 1, 'Kein einziger Löschknopf gefunden — Muster veraltet?');
 
-  // Eine Zeile, die niemand mehr braucht, ist eine Erlaubnis, die niemand
-  // prueft — dieselbe Regel wie in den anderen Waechtern dieses Baums.
+  // A line that nobody needs anymore is a permission that nobody
+  // checks — the same rule as in the other guards of this tree.
   assert.equal(
     exceptionsSeen,
     EXCEPTION.size,
@@ -142,13 +142,13 @@ test('delete buttons on tiles carry a trash can, no ✕', () => {
       'beschreibt keinen Knopf mehr und gehoert gestrichen.',
   );
 
-  // Die betroffenen Knöpfe dürfen kein ✕ mehr enthalten
+  // The affected buttons may no longer contain ✕
   const gallery = fs.readFileSync(path.join(PUB, 'js', 'collection.js'), 'utf8');
   assert.doesNotMatch(gallery, /class="delbtn"[^>]*>✕/, 'Set-Kachel zeigt noch ✕');
 
-  // Der Papierkorb auf der Kachel ist ein Mausweg und für Hilfstechnik
-  // verborgen (sonst steckte ein Knopf im Knopf); Löschen per Tastatur geht
-  // über den Detail-Dialog. Ein title sagt der Maus, was er tut.
+  // The trash on the tile is a mouse path and hidden from assistive
+  // technology (otherwise there would be a button inside a button); deleting via keyboard goes
+  // via the detail dialog. A title tells the mouse what it does.
   assert.match(
     gallery,
     /<span class="delbtn" data-click="delSetStop"(?:\$\{echt\(\)\})? aria-hidden="true"[^>]*title=/,
@@ -161,9 +161,9 @@ test('delete buttons on tiles carry a trash can, no ✕', () => {
     'Minifiguren-Kachel: Papierkorb nicht verborgen',
   );
 
-  // Einheitliches Muster über alle drei Tabellen: .ca als Hover-Behälter mit
-  // .delbtn darin. Vorher war der Minifiguren-Knopf ein "btn bd" mit eigenem
-  // Inline-Style und dauerhaft sichtbar, Teile hatten gar keinen.
+  // Uniform pattern across all three tables: .ca as hover container with
+  // .delbtn inside. Previously the minifigure button was a "btn bd" with its own
+  // inline style and permanently visible, parts had none at all.
   for (const [file, expected] of /** @type {[string, number][]} */ ([
     ['collection.js', 1],
     ['parts.js', 1],
@@ -174,11 +174,11 @@ test('delete buttons on tiles carry a trash can, no ✕', () => {
     assert.equal(n, expected, `${file}: ${n} statt ${expected} Kachel-Löschknöpfe im .ca/.delbtn-Muster`);
   }
 
-  // Der Hover gilt für Set- UND manuelle Kacheln, und ohne Zeigegerät bleibt
-  // der Knopf sichtbar — sonst wäre Löschen per Touch nicht erreichbar.
+  // The hover applies to set AND manual tiles, and without a pointing device
+  // the button stays visible — otherwise deleting by touch would not be reachable.
   const css = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
-  // .mk-zeile steht seit dem 24.09. mit darin: Die Merklisten-Zeile trägt
-  // denselben Papierkorb oben rechts und braucht dieselbe Einblendung.
+  // .mk-zeile has been in it since 24.09.: the wishlist row carries
+  // the same trash at the top right and needs the same fade-in.
   assert.match(
     css,
     /\.sc:hover \.ca, \.man-tile:hover \.ca, \.mk-zeile:hover \.ca\{opacity:1\}/,
@@ -196,13 +196,13 @@ test('delete buttons on tiles carry a trash can, no ✕', () => {
 });
 
 test('the delete button has its own version per theme', () => {
-  // Was dieser Test NICHT mehr prüft
+  // What this test NO longer checks
   const css = fs.readFileSync(path.join(PUB, 'styles.css'), 'utf8');
   const brick = fs.readFileSync(path.join(PUB, 'themes', 'brick.css'), 'utf8');
 
   const del = css.slice(css.indexOf('.delbtn{'), css.indexOf('.delbtn svg'));
 
-  // 1) Eigene Fassung je Design
+  // 1) own version per design
   assert.ok(del.length > 0, 'styles.css hat keine .delbtn-Regel');
   assert.match(
     brick,
@@ -218,7 +218,7 @@ test('the delete button has its own version per theme', () => {
   // 2) Fokusring
   assert.match(del, /\.delbtn:focus-visible\{outline/, 'Ohne Fokusring ist der Knopf per Tastatur unsichtbar');
 
-  // 3) Token statt Literal — welcher Token, ist dem Test egal
+  // 3) token instead of literal — which token does not matter to the test
   for (const [name, src] of [
     ['styles.css', del],
     ['brick.css', brick],
@@ -229,9 +229,9 @@ test('the delete button has its own version per theme', () => {
 });
 
 test('the font files really are in the tree', () => {
-  // Eine fonts.css, deren woff2 fehlen, ist schlimmer als der alte Zustand:
-  // Der Browser wartet erst auf einen 404 und fällt dann auf Systemschriften
-  // zurück — sichtbar erst im Betrieb, nicht im Typecheck.
+  // A fonts.css whose woff2 files are missing is worse than the old state:
+  // the browser first waits for a 404 and then falls back to system fonts
+  // — visible only in production, not in the type check.
   const dir = path.join(__dirname, '..', 'public', 'vendor', 'fonts');
   const css = fs.readFileSync(path.join(dir, 'fonts.css'), 'utf8');
   const refs = [...css.matchAll(/url\(\.\/([^)]+)\)/g)].map(m => m[1]);
@@ -239,16 +239,16 @@ test('the font files really are in the tree', () => {
   for (const rel of refs) {
     assert.ok(fs.existsSync(path.join(dir, rel)), `Schriftdatei fehlt: ${rel}`);
   }
-  // Die Lizenztexte gehören dazu (SIL OFL) — wie bei vendor/qrcode.
+  // The license texts belong to it (SIL OFL) — as with vendor/qrcode.
   const licenses = fs.readdirSync(dir).filter(f => f.startsWith('LICENSE'));
   assert.ok(licenses.length >= 2, 'Die Schriftlizenzen fehlen neben den Dateien');
 });
 
 test('external links open without access to the opener window', () => {
-  // Ein target="_blank" ohne rel="noopener" gibt der geöffneten Seite über
-  // window.opener Zugriff auf das eigene Fenster — sie kann es umleiten
-  // (Tabnabbing). Moderne Browser setzen noopener bei _blank inzwischen von
-  // selbst; ältere und eingebettete WebViews nicht, und der Code setzte es an …
+  // A target="_blank" without rel="noopener" gives the opened page access to
+  // the own window via window.opener — it can redirect it
+  // (tabnabbing). Modern browsers now set noopener for _blank by
+  // themselves; older ones and embedded WebViews do not, and the code set it on …
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   const ohne = [...html.matchAll(/<a\b[^>]*target="_blank"[^>]*>/g)]
     .map(m => m[0])

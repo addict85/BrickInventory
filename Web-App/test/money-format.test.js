@@ -1,8 +1,8 @@
 /**
- * Wer Geld formatiert, sagt auch WELCHES.
+ * Whoever formats money also says WHICH.
  *
- * Gegenprobe (08.11.2026 gemessen): in fmtN `cur||accountCurrency||'EUR'` →
- * `cur||'EUR'` → rot: „der Rückfall von fmtN ist die eingestellte Währung“.
+ * Counter-check (measured 08.11.2026): in fmtN `cur||accountCurrency||'EUR'` →
+ * `cur||'EUR'` → red: “the fallback of fmtN is the configured currency”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,11 +19,11 @@ process.env.TEST_BUENDEL = buildTestbuendel(
 const { openUi, ANMELDUNG, warte } = require('./helpers/ui');
 
 /**
- * Hat dieser Aufruf ein ZWEITES Argument?
+ * Does this call have a SECOND argument?
  *
- * Ein Muster wie /fmtN\([^)]*,/ reicht nicht: Die Argumente enthalten selbst
- * Klammern (`fmtN(v.total_value, v.currency || accountCurrency)`) und Aufrufe. Deshalb
- * wird die Klammertiefe mitgezählt und nur ein Komma auf Ebene 1 gewertet.
+ * A pattern like /fmtN\([^)]*,/ is not enough: the arguments themselves contain
+ * parentheses (`fmtN(v.total_value, v.currency || accountCurrency)`) and calls. Therefore
+ * the parenthesis depth is counted along and only a comma on level 1 counts.
  */
 function hatSecondArgument(src, ab) {
   let tiefe = 0;
@@ -55,7 +55,7 @@ test('every fmtN call names the currency', () => {
   const ohne = [];
   for (const [rel, src] of dateien)
     for (const m of src.matchAll(/\bfmtN\(/g)) {
-      // Die Definition selbst ist kein Aufruf.
+      // The definition itself is not a call.
       if (/function\s+fmtN\($/.test(src.slice(0, m.index + 5))) continue;
       gefunden++;
       if (!hatSecondArgument(src, m.index + 4)) {
@@ -63,8 +63,8 @@ test('every fmtN call names the currency', () => {
         ohne.push(`${rel}:${zeile}  ${src.slice(m.index, m.index + 46).split('\n')[0]}`);
       }
     }
-  // Selbstbeweis: Findet das Muster nichts, wäre die Liste leer und der Test
-  // grün, ohne etwas geprüft zu haben. GEMESSEN sind es 30 Aufrufe.
+  // Self-proof: if the pattern finds nothing, the list would be empty and the test
+  // green without having checked anything. MEASURED there are 30 calls.
   assert.ok(gefunden >= 20, `Nur ${gefunden} fmtN-Aufrufe gefunden — Muster veraltet?`);
 
   assert.deepEqual(
@@ -79,9 +79,9 @@ test('every fmtN call names the currency', () => {
 });
 
 /**
- * Zweite Verteidigungslinie: Sollte doch einmal ein Aufruf ohne Währung
- * entstehen, zeigt er die EINGESTELLTE — nicht Euro für jemanden, der in
- * Franken rechnet. Am Bündel in jsdom, mit Franken in den Einstellungen.
+ * Second line of defense: should a call without a currency arise after all,
+ * it shows the CONFIGURED one — not euros for somebody who calculates in
+ * francs. On the bundle in jsdom, with francs in the settings.
  */
 test('the fallback of fmtN is the configured currency', async () => {
   const { w } = await openUi({

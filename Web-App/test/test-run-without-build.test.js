@@ -1,11 +1,11 @@
 /**
- * Ein Lauf innerhalb eines Laufs baut nicht neu: Die Tests von scripts/test-run.js
- * starten ihn als Kind, während parallele Dateien Migrationen aus dist/ und das
- * Bündel lesen; ein Neubau dort ergab „Migration nachträglich geändert“.
+ * A run inside a run does not rebuild: the tests of scripts/test-run.js
+ * start it as a child while parallel files read migrations from dist/ and the
+ * bundle; a rebuild there resulted in „Migration nachträglich geändert“.
  *
- * Gegenprobe (06.11.2026 gemessen): in main() die Bedingung
- * `TEST_LAUF_GEBAUT !== '1'` entfernt → rot: „dist/ und Bündel bleiben
- * unberührt“ (mtime von dist/server.js neu).
+ * Counter-check (measured 06.11.2026): in main() the condition
+ * `TEST_LAUF_GEBAUT !== '1'` removed → red: „dist/ und Bündel bleiben
+ * unberührt“ (mtime of dist/server.js new).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

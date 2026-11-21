@@ -1,16 +1,16 @@
 /**
- * Ein Arbeiter, der beim Abschalten gerade einen Auftrag belegt, gibt ihn
- * zurück: stoppe() waiting auf die laufende Belegung, und was danach noch
- * ankommt, wird nicht mehr ausgeführt, sondern freigegeben.
+ * A worker that is occupying a job at the moment of shutdown returns it:
+ * stoppe() waits for the running occupation, and whatever arrives after that
+ * is no longer executed but released.
  *
- * Die Zeitfolge wird erzwungen: Eine Sperre auf der Tabelle hält die
- * Belegung (UPDATE … RETURNING) an, während stoppe() aufgerufen wird.
+ * The timing is forced: a lock on the table holds the
+ * occupation (UPDATE … RETURNING) while stoppe() is called.
  *
- * Gegenprobe (01.11.2026 gemessen): in pumpe() die Prüfung `if (beendet)`
- * nach der Belegung und das Warten auf pumpLauf in stoppe() entfernt → rot:
- * „der Auftrag bleibt nicht belegt“ (status 'laeuft', der Bearbeiter lief an).
+ * Counter-check (measured 01.11.2026): in pumpe() the check `if (beendet)`
+ * after the occupation and the wait for pumpLauf in stoppe() removed → red:
+ * “the job does not stay occupied” (status 'laeuft', the handler started).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -29,7 +29,7 @@ test('switching off during a claim', async t => {
   const { createWorker } = _req('jobs/jobWorker.js');
   const ART = `abschalten-${process.pid}`;
   const MARKE = `abschalten-${process.pid}`;
-  // Eine Testart braucht wie jede andere ein Schema für ihre Nutzlast.
+  // A test kind needs a schema for its payload like any other.
   require('./helpers/sources')
     .testServices()
     .jobQueue.reportKindAn({ art: ART, nutzlast: require('zod').looseObject({}), ausfuehren: async () => {} });
@@ -52,7 +52,7 @@ test('switching off during a claim', async t => {
 
   const id = await A.placeJobOne(ART, { marke: MARKE });
   let started = false;
-  // Hängt bis zum Testende: Ein angelaufener Auftrag bliebe so auf 'laeuft'.
+  // Hangs until the end of the test: a started job would thus stay at 'laeuft'.
   const w = createWorker(
     require('./helpers/sources').testServices().jobQueue,
     {
@@ -69,7 +69,7 @@ test('switching off during a claim', async t => {
   await sperre.query('BEGIN');
   await sperre.query('LOCK TABLE jobs IN SHARE MODE');
   w.starte();
-  // Die Belegung steht jetzt in der Sperre.
+  // The occupation now stands in the lock.
   for (let i = 0; i < 50; i++) {
     const r = await db.get(`SELECT count(*)::int AS n FROM pg_locks l JOIN pg_class c ON c.oid = l.relation
                              WHERE c.relname = 'jobs' AND NOT l.granted

@@ -1,25 +1,25 @@
 /**
- * scripts/image-pruefen.sh übernimmt App- und Caddy-Image nur nach bestandener
- * Signaturprüfung und nur als Digest; compose.yaml startet ohne diese nicht.
- * Das echte Skript läuft in einem Sandkasten, `cosign` und `docker` sind Ersatz.
+ * scripts/image-pruefen.sh takes over app and Caddy image only after a passed
+ * signature check and only as a digest; compose.yaml does not start without them.
+ * The real script runs in a sandbox, `cosign` and `docker` are substitutes.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  im Skript `cosign verify … || true` (Fehler übergangen) → rot: „eine
- *      gescheiterte Prüfung ändert nichts“
- *   B  `--certificate-identity` auf einen anderen Workflow → rot: „geprüft
- *      wird gegen docker-publish.yml auf main“
- *   C  statt der Zählung nur der erste Digest (`head -n1`) → rot: „zwei verschiedene Digests …“
- *   D  in compose.yaml bei jobs wieder `addict85/brickinventory:latest` →
- *      rot: „ohne BRICK_IMAGE startet compose nicht“
- *   E  (11.11.2026) das Caddy-Image nicht geprüft (`caddy=$CADDY_REPO:$tag`) → rot:
- *      „… der Digest landet in .env“ (nur ein cosign-Aufruf) und „scheitert die
- *      Prüfung des Caddy-Images …“
- *   F  (11.11.2026) bei caddy wieder `brickinventory-caddy:2.11.8` mit
- *      `pull_policy: build` → rot: „ohne BRICK_IMAGE und CADDY_IMAGE …“
- *   G  (13.11.2026) den Aufruf von geheimnisse-einrichten.sh gestrichen → rot:
- *      „ein Update legt das neue Geheimnis der Systemrolle an …“
- *   H  (15.11.2026) im Skript nur noch auf db_system_password geprüft → rot:
- *      „… auch das der Web-Systemrolle …“
+ * Counter-checks (measured 05.11.2026, each alone):
+ *   A  in the script `cosign verify … || true` (error ignored) → red: “a
+ *      failed check changes nothing”
+ *   B  `--certificate-identity` to another workflow → red: “checked
+ *      against docker-publish.yml on main”
+ *   C  instead of the count only the first digest (`head -n1`) → red: “two different digests …”
+ *   D  in compose.yaml for jobs again `addict85/brickinventory:latest` →
+ *      red: “without BRICK_IMAGE compose does not start”
+ *   E  (11.11.2026) the Caddy image not checked (`caddy=$CADDY_REPO:$tag`) → red:
+ *      “… the digest lands in .env” (only one cosign call) and “if the
+ *      check of the Caddy image fails …”
+ *   F  (11.11.2026) for caddy again `brickinventory-caddy:2.11.8` with
+ *      `pull_policy: build` → red: “without BRICK_IMAGE and CADDY_IMAGE …”
+ *   G  (13.11.2026) the call of geheimnisse-einrichten.sh deleted → red:
+ *      “an update creates the new secret of the system role …”
+ *   H  (15.11.2026) in the script only db_system_password checked → red:
+ *      “… also that of the web system role …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -32,7 +32,7 @@ const ROOT = path.join(__dirname, '..');
 const D1 = 'sha256:' + '1'.repeat(64),
   D2 = 'sha256:' + '2'.repeat(64);
 
-/** cosignResponse: Zeilen auf stdout; cosignCode: Ende des Ersatzes; caddy…: dasselbe für das Caddy-Image. */
+/** cosignResponse: lines on stdout; cosignCode: end of the substitute; caddy…: the same for the Caddy image. */
 function lauf(
   t,
   {
@@ -134,7 +134,7 @@ test('two different digests or none: abort', t => {
 test('without cosign: abort with a hint', t => {
   const ort = fs.mkdtempSync(path.join(os.tmpdir(), 'image-pruefen-'));
   t.after(() => fs.rmSync(ort, { recursive: true, force: true }));
-  // Nur die Werkzeuge bis zur Abfrage, damit ein installiertes cosign nicht zählt.
+  // Only the tools up to the query, so that an installed cosign does not count.
   const bin = path.join(ort, 'bin');
   fs.mkdirSync(bin);
   for (const w of ['sed', 'tail'])
@@ -175,7 +175,7 @@ test('without BRICK_IMAGE and CADDY_IMAGE compose does not start, with digest ev
   const mit = JSON.parse(
     call({ BRICK_IMAGE: `addict85/brickinventory@${D1}`, CADDY_IMAGE: `addict85/brickinventory-caddy@${D2}` }).stdout,
   );
-  // Gezogen wird nur, was signiert ist; selbst gebaut nur mit `--build` und eigenem Namen.
+  // Only what is signed is pulled; self-built only with `--build` and an own name.
   const ziehen = Object.entries(mit.services).filter(([, d]) => !/^postgres:/.test(d.image));
   assert.deepEqual(
     ziehen.map(([n, d]) => `${n} ${d.image} ${d.pull_policy}`).sort(),

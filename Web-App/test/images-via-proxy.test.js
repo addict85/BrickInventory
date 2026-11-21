@@ -1,8 +1,8 @@
 /**
- * Jedes Bild geht über den eigenen Server — sonst blockt die Richtlinie es.
+ * Every image goes via the own server — otherwise the policy blocks it.
  *
- * ── Gegenprobe (durchgeführt, Ergebnis im Commit) ──────────────────────────
- *   Die alte Zeile in merkliste.js wiederhergestellt → rot.
+ * ── Counter-check (performed, result in the commit) ─────────────────────────
+ *   The old line in merkliste.js restored → red.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,11 +13,11 @@ const { ohneKommentare } = require('./helpers/sources');
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
 
-/** Felder, die eine FREMDE Adresse tragen können. */
+/** Fields that can carry a FOREIGN address. */
 const BILDFELD = /image_url|image_local|imageUrl|set_img_url|thumbUrl\(/;
 
-// Dass die Richtlinie nur img-src 'self' data: blob: erlaubt, prüft security-across-cut-db.test.js
-// an jeder Antwort des echten Servers; darauf beruht die Regel unten.
+// That the policy only allows img-src 'self' data: blob: is checked by security-across-cut-db.test.js
+// on every response of the real server; the rule below relies on that.
 test('no src attribute inserts an image field without imgUrl()/fullUrl()', () => {
   const dateien = fs.readdirSync(JS).filter(f => f.endsWith('.js') && f !== 'app.bundle.js');
   assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skripte — greift die Suche noch?`);
@@ -26,16 +26,16 @@ test('no src attribute inserts an image field without imgUrl()/fullUrl()', () =>
   let geprueft = 0;
   for (const name of dateien) {
     const src = ohneKommentare(fs.readFileSync(path.join(JS, name), 'utf8'));
-    // src="${ … }" in einem Template — die Form, in der die Oberflächen
-    // Bilder schreiben.
+    // src="${ … }" in a template — the form in which the UIs
+    // write images.
     const pruefe = (ausdruck, index) => {
       geprueft++;
-      if (!BILDFELD.test(ausdruck)) return; // kein Bildfeld — egal
+      if (!BILDFELD.test(ausdruck)) return; // not an image field — irrelevant
       if (/\b(imgUrl|fullUrl)\(/.test(ausdruck)) return;
       treffer.push(`${name}:${src.slice(0, index).split('\n').length}`);
     };
     for (const m of src.matchAll(/\bsrc="\$\{([^}]*(?:\}[^"]*\{[^}]*)*)\}"/g)) pruefe(m[1], m.index);
-    // Und die Vorlagen über bildTag({ src: … }) — bis zum Komma auf Klammertiefe 0.
+    // And the templates via bildTag({ src: … }) — up to the comma at bracket depth 0.
     for (const m of src.matchAll(/bildTag\(\{\s*src:\s*/g)) {
       let i = m.index + m[0].length,
         tiefe = 0,

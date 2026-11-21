@@ -1,5 +1,5 @@
 /**
- * Die Abhängigkeiten zeigen nach innen.
+ * The dependencies point inwards.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,11 +9,11 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 
 /**
- * Was noch aus einer Route nach innen geholt wird — und warum es noch steht.
+ * What is still fetched inwards from a route — and why it is still there.
  */
 const EXCEPTIONS = new Set([]);
 
-/** Quelltext ohne Kommentare, zeilenweise: Ein Regex hielte das /* in '/data/x/*' für einen Kommentar. */
+/** Source text without comments, line by line: a regex would take the /* in '/data/x/*' for a comment. */
 function ohneKommentare(s) {
   const zeilen = [];
   let imBlock = false;
@@ -34,7 +34,7 @@ function ohneKommentare(s) {
   return zeilen.join('\n');
 }
 
-/** Alle .ts-Dateien der inneren Schichten. */
+/** All .ts files of the inner layers. */
 function innerFiles() {
   const gefunden = [];
   const lauf = rel => {
@@ -46,24 +46,24 @@ function innerFiles() {
       else if (e.name.endsWith('.ts')) gefunden.push(kind);
     }
   };
-  // startup/ ist ausgelagerter Serverstart (nur server.ts benutzt es) und
-  // zählt zur äusseren Schicht; seine eigene Regel steht weiter unten.
+  // startup/ is the outsourced server start (only server.ts uses it) and
+  // counts to the outer layer; its own rule stands further below.
   ['src', 'jobs', 'clients', 'db'].forEach(lauf);
   return gefunden;
 }
 
-/** Quelltext einer Datei (relativ zu ROOT) ohne Kommentare. */
+/** Source text of a file (relative to ROOT) without comments. */
 function sourceText(rel) {
   return ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 }
 
-/** Alle Ziele von import/require einer Datei (relativ zu ROOT), roh. */
+/** All targets of import/require of a file (relative to ROOT), raw. */
 function importe(rel) {
   const src = sourceText(rel);
   return [...src.matchAll(/(?:from\s+|require\()\s*['"]([^'"]+)['"]/g)].map(m => m[1]);
 }
 
-/** Importe und require() aus routes/, je Datei. */
+/** Imports and require() from routes/, per file. */
 function afterOuter(rel) {
   const treffer = new Set();
   for (const ziel of importe(rel).filter(z => /routes\//.test(z)))
@@ -73,8 +73,8 @@ function afterOuter(rel) {
 
 test('no domain layer imports from routes/ — except the named cases', () => {
   const dateien = innerFiles();
-  // Selbstbeweis: Findet die Suche keine Dateien, waere die Pruefung darunter
-  // still gruen. GEMESSEN sind es ueber sechzig.
+  // Self-proof: if the search finds no files, the check below would be
+  // silently green. MEASURED there are over sixty.
   assert.ok(dateien.length > 40, `Nur ${dateien.length} Dateien in den inneren Schichten gefunden — Ordner umbenannt?`);
 
   const neu = [];
@@ -93,9 +93,9 @@ test('no domain layer imports from routes/ — except the named cases', () => {
 });
 
 test('a v1 route imports no other route file', () => {
-  // Gemeinsames gehört nach src/<bereich>/ (manualParts, manualMinifigs). Eine
-  // Route, die eine Route importiert, zieht deren Router samt Middleware mit.
-  // Gegenprobe (28.10.2026): require('../parts') in wanted.ts → rot.
+  // Shared things belong in src/<bereich>/ (manualParts, manualMinifigs). A
+  // route that imports a route drags its router including middleware along.
+  // Counter-check (28.10.2026): require('../parts') in wanted.ts → red.
   const ordner = path.join(ROOT, 'routes/api_v1');
   const dateien = fs.readdirSync(ordner).filter(f => f.endsWith('.ts'));
   assert.ok(dateien.length > 10, `nur ${dateien.length} v1-Dateien gefunden`);
@@ -107,9 +107,9 @@ test('a v1 route imports no other route file', () => {
 });
 
 test('no route imports another route file', () => {
-  // Erlaubt sind nur der Wächter (api_v1/middleware) und der Zusammenbau in
-  // api_v1/index.ts, auth.ts (aus routes/auth/) und api_v1/settings.ts (settingsGlobal hinter requireLogin).
-  // Gegenprobe (10.11.2026): `import { requireLogin } from '../auth'` in routes/api_v1/minifigs.ts → rot;
+  // Only the guard (api_v1/middleware) and the assembly in
+  // api_v1/index.ts, auth.ts (from routes/auth/) and api_v1/settings.ts (settingsGlobal behind requireLogin) are allowed.
+  // Counter-check (10.11.2026): `import { requireLogin } from '../auth'` in routes/api_v1/minifigs.ts → red;
   // (14.11.2026) `import { buildSetsRouter } from './sets'` in routes/api_v1/settingsGlobal.ts → rot.
   const dateien = [];
   const lauf = rel => {
@@ -137,8 +137,8 @@ test('no route imports another route file', () => {
 });
 
 test('no state on global', () => {
-  // Was Prozesse teilen, steht in einem Modul (src/jobQueue/startState.ts) und
-  // ist über den Import zu finden. Gegenprobe (29.10.2026): eine Zeile
+  // What processes share stands in one module (src/jobQueue/startState.ts) and
+  // can be found via the import. Counter-check (29.10.2026): a line
   // `global.startupStatus = …` in server.ts → rot.
   const treffer = [];
   for (const d of [
@@ -154,8 +154,8 @@ test('no state on global', () => {
       /\b(?:global|globalThis)\s*(?:as\s+\w+\s*\)\s*)?\.\s*\w+\s*=[^=]|\(\s*(?:global|globalThis)\s+as\s+any\s*\)/g,
     ))
       treffer.push(`${d}: ${m[0].trim()}`);
-  // Die Oberfläche teilt Zustand über public/js/state.js, nicht über `window._…`.
-  // Gegenprobe (15.11.2026): `window._finGrandTotal = kopfWert` zurück in finanzen.js → rot.
+  // The UI shares state via public/js/state.js, not via `window._…`.
+  // Counter-check (15.11.2026): `window._finGrandTotal = kopfWert` back in finanzen.js → red.
   const js = path.join(ROOT, 'public', 'js');
   for (const f of fs.readdirSync(js).filter(f => f.endsWith('.js') && !f.includes('bundle')))
     for (const m of ohneKommentare(fs.readFileSync(path.join(js, f), 'utf8')).matchAll(/\bwindow\._[a-zA-Z]\w*/g))
@@ -164,9 +164,9 @@ test('no state on global', () => {
 });
 
 test('src/ and clients/ import nothing from jobs/', () => {
-  // Was src/ an Hintergrundarbeit anstösst, stellt es als Auftrag ein (src/jobQueue);
-  // die Ausführung setzt startup/wiring.ts ein.
-  // Gegenprobe (28.10.2026): require('../jobs/imageQueue') in wanted.ts → rot.
+  // Whatever background work src/ triggers, it enqueues as a job (src/jobQueue);
+  // the execution is set up by startup/wiring.ts.
+  // Counter-check (28.10.2026): require('../jobs/imageQueue') in wanted.ts → red.
   const treffer = [];
   for (const d of innerFiles().filter(f => /^(src|clients)\//.test(f)))
     for (const ziel of importe(d).filter(z => /jobs\//.test(z))) treffer.push(`${d} -> ${ziel}`);
@@ -174,9 +174,9 @@ test('src/ and clients/ import nothing from jobs/', () => {
 });
 
 test('db/, clients/ and jobs/ know no HTTP response', () => {
-  // Fehler melden sie über src/infra/error.ts; den Weg zur Antwort kennt nur
-  // die HTTP-Seite (src/http/httpResponse.ts, Routen).
-  // Gegenprobe (05.11.2026): `import { fehlertext } from '../src/http/httpResponse'`
+  // They report errors via src/infra/error.ts; only the HTTP side knows the way
+  // to the response (src/http/httpResponse.ts, routes).
+  // Counter-check (05.11.2026): `import { fehlertext } from '../src/http/httpResponse'`
   // in db/migrate.ts → rot.
   const treffer = [];
   for (const d of innerFiles().filter(f => /^(db|clients|jobs)\//.test(f)))
@@ -184,19 +184,19 @@ test('db/, clients/ and jobs/ know no HTTP response', () => {
   assert.deepEqual(treffer, []);
 });
 
-/** Codezeilen ohne Leerzeilen und Kommentare. */
+/** Code lines without blank lines and comments. */
 const codeRows = rel =>
   sourceText(rel)
     .split('\n')
     .filter(z => z.trim()).length;
 
 test('jobs/ executes jobs, the work of a job lives in src/', () => {
-  // jobs/ hält den Worker (Pacht, Wiederholung, Abbruch), die Bearbeitertabelle
-  // und den Einstieg des Importprozesses; was ein Auftrag fachlich tut, liegt in src/<bereich>/.
-  // Codezeilen im Biome-Format (Zeilenbreite 120).
-  // Gegenproben (09.11.2026): `import * as db from '../db/database'` in jobs/startJobs.ts → rot
-  // (db/); fetchAndCachePrice und statesJeSet zurück nach jobs/startJobs.ts → rot (113
-  // Zeilen); `import { STAPEL } from '../src/images/imageDemand'` in jobs/jobWorker.ts → rot.
+  // jobs/ holds the worker (lease, retry, abort), the handler table
+  // and the entry of the import process; what a job does in domain terms lies in src/<bereich>/.
+  // Code lines in Biome format (line width 120).
+  // Counter-checks (09.11.2026): `import * as db from '../db/database'` in jobs/startJobs.ts → red
+  // (db/); fetchAndCachePrice and statesJeSet back to jobs/startJobs.ts → red (113
+  // lines); `import { STAPEL } from '../src/images/imageDemand'` in jobs/jobWorker.ts → red.
   const KERN = 'jobs/jobWorker.ts';
   const dateien = tsBelow('jobs');
   assert.ok(dateien.includes(KERN) && dateien.includes('jobs/startJobs.ts'), 'Worker oder Bearbeitertabelle fehlt');
@@ -222,16 +222,16 @@ test('jobs/ executes jobs, the work of a job lives in src/', () => {
 });
 
 test('db/ imports nothing from jobs/', () => {
-  // Die Datenbankschicht ist die unterste; die Bilddienste startet
-  // startup/database.ts. Gegenprobe (28.10.2026): der Import von
-  // setUpImageDemand zurück in db/database.ts → rot.
+  // The database layer is the lowest; the image services are started by
+  // startup/database.ts. Counter-check (28.10.2026): the import of
+  // setUpImageDemand back in db/database.ts → red.
   const treffer = [];
   for (const d of innerFiles().filter(f => f.startsWith('db/')))
     for (const ziel of importe(d).filter(z => /jobs\//.test(z))) treffer.push(`${d} -> ${ziel}`);
   assert.deepEqual(treffer, []);
 });
 
-/** Alle .ts-Dateien unter routes/, relativ zu ROOT. */
+/** All .ts files under routes/, relative to ROOT. */
 function routesFiles() {
   const dateien = [];
   const lauf = rel => {
@@ -246,10 +246,10 @@ function routesFiles() {
 }
 
 test('no route executes SQL or imports from db/', () => {
-  // Routen lesen die Anfrage, rufen einen Dienst und schreiben die Antwort;
-  // Datenzugriff, Sperren und Benachrichtigungen stehen hinter src/<bereich>/.
-  // Gegenproben: `import * as db from '../../db/database'` und eine db.get-Zeile
-  // in routes/api_v1/catalog.ts → rot, beide Treffer (29.10.2026);
+  // Routes read the request, call a service and write the response;
+  // data access, locks and notifications stand behind src/<bereich>/.
+  // Counter-checks: `import * as db from '../../db/database'` and a db.get line
+  // in routes/api_v1/catalog.ts → red, both hits (29.10.2026);
   // `import { withInventoryLock } from '../../db/txLock'` in api_v1/sets.ts → rot (05.11.2026).
   const dateien = routesFiles();
   assert.ok(dateien.length > 15, `nur ${dateien.length} Routendateien gefunden`);
@@ -263,11 +263,11 @@ test('no route executes SQL or imports from db/', () => {
 });
 
 test('no route imports from jobs/ or clients/', () => {
-  // Jobs steuert eine Route über die Dienste von src/jobQueue und die Auftragstabelle,
-  // fremde Dienste erreicht sie über einen Dienst in src/<bereich>/.
-  // Gegenprobe (29.10.2026): `import { triggerNow } from '../../jobs/priceJob'`
-  // in admin.ts und `import { getSetByEan } from '../../clients/brickset'` in
-  // api_v1/sets.ts → rot, beide Treffer.
+  // A route controls jobs via the services of src/jobQueue and the job table,
+  // it reaches foreign services via a service in src/<bereich>/.
+  // Counter-check (29.10.2026): `import { triggerNow } from '../../jobs/priceJob'`
+  // in admin.ts and `import { getSetByEan } from '../../clients/brickset'` in
+  // api_v1/sets.ts → red, both hits.
   const treffer = [];
   for (const d of routesFiles())
     for (const ziel of importe(d).filter(z => /(?:^|\/)(?:jobs|clients)\//.test(z))) treffer.push(`${d} -> ${ziel}`);
@@ -275,10 +275,10 @@ test('no route imports from jobs/ or clients/', () => {
 });
 
 test('only clients/ goes to the network, via src/infra/fetch.ts', () => {
-  // Host-Liste, Grössendeckel, Frist und Abbruch stehen in abruf.ts; die Klienten
-  // legen Hosts und Kopfzeilen fest. Ein Abruf daneben hätte nichts davon.
-  // Gegenprobe (05.11.2026): `import { holeHttps } from '../infra/abruf'` in
-  // src/catalog/partsImport.ts zurück → rot: „src/catalog/partsImport.ts“.
+  // Host list, size cap, deadline and abort stand in abruf.ts; the clients
+  // set hosts and headers. A fetch beside it would have none of that.
+  // Counter-check (05.11.2026): `import { holeHttps } from '../infra/abruf'` in
+  // src/catalog/partsImport.ts back → red: “src/catalog/partsImport.ts”.
   const ALLOWED = new Set(['src/infra/fetch.ts']);
   const treffer = tsBelow('src', 'routes', 'jobs', 'startup', 'db')
     .concat('server.ts')
@@ -288,14 +288,14 @@ test('only clients/ goes to the network, via src/infra/fetch.ts', () => {
 });
 
 test('startup/ and routes/ know each other in only one direction, router factories take Pick<Dienste, …>', () => {
-  // Was der Start anstösst (Aufräumläufe), steht in src/; eine Route gehört nur in
-  // den Zusammenbau der App (startup/app.ts). Umgekehrt hängen routes/ und jobs/ nicht
-  // an startup/: Den Typ Dienste gibt es in src/services.ts, und jede Routerfabrik
-  // verengt ihn auf die Bereiche, die sie ruft.
-  // Gegenproben: `import { startPdfJobCleanup } from '../routes/api_v1/pdf'` in
-  // startup/jobsProcess.ts → rot (10.11.2026); `import type { Dienste } from
-  // '../../startup/wiring'` zurück in routes/api_v1/catalog.ts → rot mit dieser Datei,
-  // `buildCatalogRouter(d: Dienste)` ebendort → rot mit „buildCatalogRouter“ (14.11.2026).
+  // What the start triggers (cleanup runs) stands in src/; a route only belongs in
+  // the assembly of the app (startup/app.ts). Conversely routes/ and jobs/ do not depend
+  // on startup/: the type Dienste exists in src/services.ts, and every router factory
+  // narrows it to the scopes it calls.
+  // Counter-checks: `import { startPdfJobCleanup } from '../routes/api_v1/pdf'` in
+  // startup/jobsProcess.ts → red (10.11.2026); `import type { Dienste } from
+  // '../../startup/wiring'` back in routes/api_v1/catalog.ts → red with this file,
+  // `buildCatalogRouter(d: Dienste)` in the same place → red with “buildCatalogRouter” (14.11.2026).
   const treffer = [];
   for (const f of fs.readdirSync(path.join(ROOT, 'startup')).filter(f => f.endsWith('.ts') && f !== 'app.ts'))
     for (const ziel of importe(`startup/${f}`).filter(z => /routes\//.test(z))) treffer.push(`startup/${f} -> ${ziel}`);
@@ -332,18 +332,18 @@ test('startup/ and routes/ know each other in only one direction, router factori
 });
 
 test('no import cycles in the inner layers', () => {
-  // Ein Zyklus zwingt zu verzögertem require() und macht die Ladereihenfolge
-  // zum Glücksspiel. `import type` zählt mit: Ein Typzyklus ist dieselbe
-  // Verflechtung, nur ohne Folgen beim Laden.
-  // Gegenproben: marketPrice.ts wieder über financeCalc → rot (28.10.2026);
+  // A cycle forces delayed require() and makes the load order
+  // a gamble. `import type` counts too: a type cycle is the same
+  // entanglement, only without consequences when loading.
+  // Counter-checks: marketPrice.ts via financeCalc again → red (28.10.2026);
   // (05.11.2026) `import type { SetMaster } from '../dienst'` in
-  // src/sets/repository/setDetail.ts → rot (setDetail → dienst → setDetail).
-  // (08.11.2026) `import('./database')` als Typ in db/migrate.ts → rot (migrate ↔ database).
+  // src/sets/repository/setDetail.ts → red (setDetail → dienst → setDetail).
+  // (08.11.2026) `import('./database')` as a type in db/migrate.ts → red (migrate ↔ database).
   const dateien = new Set(innerFiles());
   const kanten = new Map();
   for (const d of dateien) {
     const src = sourceText(d);
-    // Zwei getrennte Suchen: `import … from` nur am Zeilenanfang, `require(…)`/`import(…)` überall.
+    // Two separate searches: `import … from` only at the start of a line, `require(…)`/`import(…)` everywhere.
     const kopf = [...src.matchAll(/^\s*(?:import|export)\s[^;]*?from\s+['"](\.[^'"]+)['"]/gm)].map(m => m[1]);
     const call = [...src.matchAll(/(?:require|import)\(\s*['"](\.[^'"]+)['"]\s*\)?/g)].map(m => m[1]);
     const ziele = [...kopf, ...call]
@@ -353,7 +353,7 @@ test('no import cycles in the inner layers', () => {
     kanten.set(d, ziele);
   }
   const cycles = [];
-  const zustand = new Map(); // 1 = auf dem Pfad, 2 = fertig
+  const zustand = new Map(); // 1 = on the path, 2 = done
   const pfad = [];
   const visit = d => {
     zustand.set(d, 1);
@@ -370,11 +370,11 @@ test('no import cycles in the inner layers', () => {
 });
 
 test('the exception list stays honest — every entry still has a case', () => {
-  // ── Warum es diese zweite Haelfte braucht ─────────────────────────────────
-  // Eine Ausnahmeliste, die nie schrumpft, ist keine Liste offener Punkte
-  // mehr, sondern Tapete. Faellt ein Fall weg, muss der Eintrag mit — sonst
-  // steht hier in einem Jahr eine Sammlung von Behauptungen ueber Code, den es
-  // nicht mehr gibt.
+  // ── Why this second half is needed ────────────────────────────────────────
+  // An exception list that never shrinks is no longer a list of open points
+  // but wallpaper. If a case drops away, the entry must go with it — otherwise
+  // in a year a collection of claims about code that no longer exists
+  // stands here.
   const alive = new Set();
   for (const d of innerFiles()) for (const ziel of afterOuter(d)) alive.add(`${d} -> ${ziel}`);
 
@@ -383,13 +383,13 @@ test('the exception list stays honest — every entry still has a case', () => {
 });
 
 test('nothing lies in routes/ that is not a route', () => {
-  // Woher diese Pruefung kommt
+  // Where this check comes from
   const allowedWithoutRouter = {
     'imgProxy.ts': 'registriert seine Routen ueber app.get() statt router.get()',
     'api_v1/middleware.ts': 'Waechter FUER Routen; ohne Routen sinnlos',
   };
-  // Wie bei EXCEPTIONS: Ein Eintrag ohne Datei ist tot.
-  // Gegenprobe: 'mailer.ts' wieder eingetragen → rot.
+  // As with EXCEPTIONS: an entry without a file is dead.
+  // Counter-check: 'mailer.ts' registered again → red.
   assert.deepEqual(
     Object.keys(allowedWithoutRouter).filter(d => !fs.existsSync(path.join(ROOT, 'routes', d))),
     [],
@@ -420,16 +420,16 @@ test('nothing lies in routes/ that is not a route', () => {
   );
 });
 
-// ── Fachbereiche: src/<bereich>/ mit repository (SQL), Dienst und Routen ───────
+// ── Domain areas: src/<bereich>/ with repository (SQL), service and routes ──────
 
-/** Liegt die Datei in einem Repository (src/<bereich>/repository.ts oder …/repository/…)? */
+/** Does the file lie in a repository (src/<bereich>/repository.ts or …/repository/…)? */
 const isRepository = rel => /(^|\/)repository(\/|\.ts$)/.test(rel);
-/** Der Fachbereich einer Datei unter src/, sonst null. */
+/** The domain area of a file under src/, otherwise null. */
 const areaOf = rel => (rel.match(/^src\/([^/]+)\//) || [])[1] || null;
 
-/** Alle Ziele relativer Importe einer Datei, aufgelöst auf ROOT, mit import().
- * `import type` nur mit `withTypes`: Für die Ladereihenfolge verschwinden Typen
- * beim Übersetzen, für die Abhängigkeit zwischen Schichten nicht. */
+/** All targets of relative imports of a file, resolved to ROOT, with import().
+ * `import type` only with `withTypes`: for the load order types disappear
+ * on compilation, for the dependency between layers they do not. */
 function resolvedImports(rel, { withTypes = false } = {}) {
   const roh = sourceText(rel);
   const src = withTypes ? roh : roh.replace(/^\s*(?:import|export) type\b[^;]*;/gm, '');
@@ -438,7 +438,7 @@ function resolvedImports(rel, { withTypes = false } = {}) {
   );
 }
 
-/** Alle .ts-Dateien unter den Ordnern, relativ zu ROOT. */
+/** All .ts files under the folders, relative to ROOT. */
 function tsBelow(...ordner) {
   const raus = [];
   const lauf = rel => {
@@ -452,13 +452,13 @@ function tsBelow(...ordner) {
   return raus;
 }
 
-/** SQL im Code: eine Anweisung als Zeichenkette oder ein Aufruf auf einer Verbindung. */
+/** SQL in code: a statement as a string or a call on a connection. */
 const SQL_TEXT =
   /[`'"]\s*(?:SELECT|INSERT\s+INTO|UPDATE\s+\w+\s+(?:\w+\s+)?SET|DELETE\s+FROM|WITH\s+(?:RECURSIVE\s+)?\w+|CREATE\s+(?:TABLE|INDEX|UNIQUE)|ALTER\s+TABLE|DROP\s|TRUNCATE|LISTEN|NOTIFY|UNLISTEN|SET\s+LOCAL|LOCK\s+TABLE|ANALYZE|VACUUM)\b/;
 const SQL_AUFRUF = /\b(?:db|tx|client|pool)\.(?:run|get|all|query|exec)\s*(?:<[^>]*>)?\(/;
-/** Auch ein Fragment mitten in einer Zeichenkette, etwa `EXISTS (SELECT 1 FROM …)`. */
+/** Also a fragment in the middle of a string, e.g. `EXISTS (SELECT 1 FROM …)`. */
 const SQL_FRAGMENT = /\bSELECT\b[^;`'"]*\bFROM\b/;
-/** Ein Stück einer Anweisung in einer Zeichenkette: Sortierung, Bedingung, Upsert, Join. */
+/** A piece of a statement in a string: sorting, condition, upsert, join. */
 const SQL_CLAUSE =
   /[`'"][^`'"\n]*\b(?:ILIKE|COALESCE\(|ON CONFLICT|EXCLUDED\.|NULLS (?:LAST|FIRST)|ORDER BY|GROUP BY|(?:LEFT |INNER )?JOIN \w+ \w+ ON|RETURNING|WHERE \w)/;
 const hatSql = rel => {
@@ -467,10 +467,10 @@ const hatSql = rel => {
 };
 
 test('SQL only lives in repositories and in db/', () => {
-  // Ein Verbot, keine Ratsche mehr: Die Liste der Ausnahmen ist seit dem
-  // 31.10.2026 leer. Gegenproben (31.10.2026): `await db.get('SELECT 1')` in
+  // A ban, no longer a ratchet: the list of exceptions has been empty since
+  // 31.10.2026. Counter-checks (31.10.2026): `await db.get('SELECT 1')` in
   // src/household/household.ts → rot; `'SELECT 1'` in src/management/cleanup.ts → rot;
-  // (05.11.2026) das EXISTS-Fragment zurück nach src/finances/priceAlert.ts → rot.
+  // (05.11.2026) the EXISTS fragment back to src/finances/priceAlert.ts → red.
   const dateien = tsBelow('src', 'jobs', 'clients', 'routes', 'startup').concat('server.ts');
   assert.ok(dateien.length > 150, `nur ${dateien.length} Dateien gefunden`);
   assert.deepEqual(
@@ -479,7 +479,7 @@ test('SQL only lives in repositories and in db/', () => {
     'SQL gehört in das Repository des Bereichs (src/<bereich>/repository…).',
   );
   assert.ok(tsBelow('src').filter(isRepository).every(hatSql), 'ein Repository ohne SQL ist keines');
-  // Die Klauselsuche muss in den Repositories greifen, sonst sähe sie auch draussen nichts.
+  // The clause search must work in the repositories, otherwise it would see nothing outside either.
   assert.ok(
     tsBelow('src')
       .filter(isRepository)
@@ -487,9 +487,9 @@ test('SQL only lives in repositories and in db/', () => {
   );
 });
 
-/** Was ein Dienst aus db/database nehmen darf: die Arbeitseinheit und den Betrieb, keine Abfrage. */
-// Seit 09.11.2026 auch das Anlegen des Zugangs (createDb …): Das tun nur server.ts und startup/;
-// seit 10.11.2026 der Typ Db (Kontext eines Bereichs); standardDb() gibt es seit 11.11.2026 nicht mehr.
+/** What a service may take from db/database: the unit of work and the operation, no query. */
+// Since 09.11.2026 also creating the access (createDb …): only server.ts and startup/ do that;
+// since 10.11.2026 the type Db (context of a scope); standardDb() no longer exists since 11.11.2026.
 const DB_OUTSIDE = new Set([
   'transaction',
   'pool',
@@ -507,11 +507,11 @@ const DB_OUTSIDE = new Set([
 ]);
 
 test('outside of repository/ and db/ nobody queries the database', () => {
-  // Die SQL-Suche oben liest Text; ein Aufruf unter anderem Namen (`datenbank.all(SQL)` mit dem
-  // Text aus einem Repository) ginge an ihr vorbei. Gegenproben (09.11.2026):
-  // `import * as datenbank from '../../db/database'` und `datenbank.all(repo.SQL)` in
-  // src/sets/delete.ts → rot „src/sets/delete.ts: all“, die Prüfung oben blieb grün;
-  // die Merklisten-Sortierung (COALESCE … NULLS LAST) zurück in src/wanted/wanted.ts → rot oben.
+  // The SQL search above reads text; a call under another name (`datenbank.all(SQL)` with the
+  // text from a repository) would get past it. Counter-checks (09.11.2026):
+  // `import * as datenbank from '../../db/database'` and `datenbank.all(repo.SQL)` in
+  // src/sets/delete.ts → red “src/sets/delete.ts: all”, the check above stayed green;
+  // the wishlist sorting (COALESCE … NULLS LAST) back in src/wanted/wanted.ts → red above.
   const treffer = [];
   let gesehen = 0;
   for (const d of tsBelow('src', 'jobs', 'clients', 'routes', 'startup')
@@ -541,16 +541,16 @@ test('outside of repository/ and db/ nobody queries the database', () => {
 });
 
 test('routes, jobs and clients import no repositories', () => {
-  // Gegenprobe (31.10.2026): `import * as r from '../../src/account/repository/accounts'`
+  // Counter-check (31.10.2026): `import * as r from '../../src/account/repository/accounts'`
   // in routes/api_v1/admin.ts → rot.
   const treffer = [];
   for (const d of tsBelow('routes', 'jobs', 'clients', 'startup').concat('server.ts'))
     for (const z of resolvedImports(d)) if (isRepository(z)) treffer.push(`${d} -> ${z}`);
   assert.deepEqual(treffer, []);
 
-  // xBereich() liefert gebundene Repositories und den Zugang (db); eine Route nimmt
-  // die Dienste, die der Bereich in seiner index.ts anbietet. Gegenproben (13.11.2026):
-  // `await kontoBereich().protokoll.protokolliere(…)` zurück in routes/auth/users.ts
+  // xBereich() delivers bound repositories and the access (db); a route takes
+  // the services the scope offers in its index.ts. Counter-checks (13.11.2026):
+  // `await kontoBereich().protokoll.protokolliere(…)` back in routes/auth/users.ts
   // → rot „routes/auth/users.ts: kontoBereich()“; `gutscheineBereich` als Import in
   // routes/api_v1/vouchers.ts → rot „…: gutscheineBereich (Import)“.
   const CALL = /\b\w+Bereich\s*\(\s*\)/g;
@@ -571,11 +571,11 @@ test('routes, jobs and clients import no repositories', () => {
   routesWithoutSlotFlow();
 });
 
-/** Fachabläufe (Mail, Token-Hash, Design-Cache) stehen in Diensten, nicht in Routen. */
+/** Domain flows (mail, token hash, design cache) stand in services, not in routes. */
 function routesWithoutSlotFlow() {
-  // Eine Route liest die Anfrage, ruft d und antwortet; wer src/mail, tokenDigest oder
-  // forgetTheme importiert oder einen Bereich als Namensraum, baut den Ablauf selbst.
-  // Gegenproben (14.11.2026): `import { tokenDigest } from '../../src/account'` in
+  // A route reads the request, calls d and answers; whoever imports src/mail, tokenDigest or
+  // forgetTheme or a scope as a namespace builds the flow themselves.
+  // Counter-checks (14.11.2026): `import { tokenDigest } from '../../src/account'` in
   // routes/api_v1/settings.ts → rot; `import * as sets from '../../src/sets'` in
   // routes/api_v1/sets.ts → rot; `import { createMail } from '../../src/mail'` in
   // routes/auth/registration.ts → rot.
@@ -606,7 +606,7 @@ function routesWithoutSlotFlow() {
   assert.deepEqual(treffer, []);
 }
 
-/** Die gebundenen Dienste je Bereich, wie src/<bereich>/bereich.ts sie anbietet. */
+/** The bound services per scope, as src/<bereich>/bereich.ts offers them. */
 function boundServices() {
   const raus = new Map();
   for (const b of fs.readdirSync(path.join(ROOT, 'src'))) {
@@ -620,11 +620,11 @@ function boundServices() {
   return raus;
 }
 
-/** Routen nehmen Dienste nur über ihre Fabrik (baueXRouter(d)). */
+/** Routes only take services via their factory (baueXRouter(d)). */
 function routesOnlyViaFactory() {
-  // Ein Import aus der index.ts liefe über die Fassade des Prozesses; die Route sähe
-  // nicht, welche Dienste sie braucht. Ausgenommen: die Wächter vor allen Routern.
-  // Gegenprobe (13.11.2026): `import { readParts } from '../../src/parts'` in
+  // An import from the index.ts would go via the process's facade; the route would not
+  // see which services it needs. Excepted: the guards in front of all routers.
+  // Counter-check (13.11.2026): `import { readParts } from '../../src/parts'` in
   // routes/api_v1/parts.ts → rot „routes/api_v1/parts.ts: parts.partsList“.
   const dienste = boundServices();
   assert.ok(dienste.get('parts')?.has('readParts') && dienste.size >= 14, 'Selbstbeweis: gebundene Dienste gefunden');
@@ -641,23 +641,23 @@ function routesOnlyViaFactory() {
   assert.deepEqual(treffer, []);
 }
 
-/** Dienste, die noch einen rohen Griff nehmen; die Liste darf nur schrumpfen. Der Katalog
- * wird gerade geteilt (eigener Zweig): dort folgt die Umstellung auf `t`. */
+/** Services that still take a raw handle; the list may only shrink. The catalog
+ * is being split right now (own branch): the switch to `t` follows there. */
 const RAW_HANDLE_STILL = new Set(['src/catalog/catalogMaintenance.ts']);
 
-/** Eine Arbeitseinheit steht am Aufrufort: k.transaktion(t => …). */
+/** A unit of work stands at the call site: k.transaktion(t => …). */
 function workUnitAtCallLocation() {
-  // Eine Transaktionsform: Dienste öffnen sie mit k.transaktion, der Rumpf bekommt den
-  // Kontext der Transaktion (t); Repositories nehmen den tx des Aufrufers. `.transaction(`
-  // steht nur in src/infra/area.ts und db/.
-  // Gegenproben: (13.11.2026) in src/collection/deletion.ts wieder `k.db.transaction(async tx =>`
-  // → rot; (13.11.2026) ebenso in src/inventory/setStorageLocation.ts und in
+  // One transaction form: services open it with k.transaktion, the body gets the
+  // context of the transaction (t); repositories take the caller's tx. `.transaction(`
+  // only stands in src/infra/area.ts and db/.
+  // Counter-checks: (13.11.2026) in src/collection/deletion.ts again `k.db.transaction(async tx =>`
+  // → red; (13.11.2026) likewise in src/inventory/setStorageLocation.ts and in
   // src/factors/repository/secondFactor.ts → rot „…: .transaction(“.
-  // Ebenso db/txLock.ts: Bestandssperren sind eine Option von k.transaktion, kein eigener
-  // Weg mit rohem tx; und kein Dienst nimmt einen rohen Griff (tx/dbh), er nimmt `t`.
-  // Gegenproben (14.11.2026): eine Funktion mit `z.transaction(` in db/txLock.ts → rot
+  // Likewise db/txLock.ts: stock locks are an option of k.transaktion, not a separate
+  // path with a raw tx; and no service takes a raw handle (tx/dbh), it takes `t`.
+  // Counter-checks (14.11.2026): a function with `z.transaction(` in db/txLock.ts → red
   // „db/txLock.ts: .transaction(“; `export async function probe(tx: DbInterface, …)` in
-  // src/inventory/trash.ts → rot „…: Dienst mit rohem Griff probe“.
+  // src/inventory/trash.ts → red “…: service with raw handle probe”.
   const treffer = [];
   const alle = [...tsBelow('src', 'routes', 'jobs', 'clients', 'startup'), 'server.ts', 'db/txLock.ts'];
   for (const d of alle) {
@@ -678,9 +678,9 @@ function workUnitAtCallLocation() {
 }
 
 test('a domain area accesses another only via its services and index.ts', () => {
-  // Das Repository eines Bereichs ist sein Inneres; andere Bereiche nutzen die
-  // Dienste. Gegenprobe (31.10.2026): `import { accountShort } from
-  // '../konto/repository/konten'` in src/household/household.ts → rot.
+  // A scope's repository is its inside; other scopes use the
+  // services. Counter-check (31.10.2026): `import { accountShort } from
+  // '../konto/repository/konten'` in src/household/household.ts → red.
   const treffer = [];
   const dateien = tsBelow('src');
   assert.ok(dateien.filter(isRepository).length >= 10, 'zu wenige Repositories gefunden');
@@ -688,11 +688,11 @@ test('a domain area accesses another only via its services and index.ts', () => 
     for (const z of resolvedImports(d)) if (isRepository(z) && areaOf(z) !== areaOf(d)) treffer.push(`${d} -> ${z}`);
   assert.deepEqual(treffer, []);
 
-  // Und auch die Dienste nur über die index.ts des Bereichs:
-  // Wie ein Bereich seine Dateien schneidet, bleibt so seine Sache. Ausgenommen
-  // sind die Helfer ohne Fachbereich (infra, vertrag, http) und die HTTP-Seiten
-  // unter src/<bereich>/http/, die nur Routen und der Zusammenbau holen.
-  // Gegenprobe (11.11.2026): `export { catalogPart as _probe } from '../katalog/katalogPflege'`
+  // And the services too only via the scope's index.ts:
+  // how a scope cuts its files thus stays its own business. Excepted
+  // are the helpers without a domain area (infra, vertrag, http) and the HTTP sides
+  // under src/<bereich>/http/, which only routes and the assembly fetch.
+  // Counter-check (11.11.2026): `export { catalogPart as _probe } from '../katalog/katalogPflege'`
   // in src/parts/manualParts.ts → rot.
   const FREE = ['infra', 'contract', 'http'];
   const tief = (d, z) => {
@@ -712,7 +712,7 @@ test('a domain area accesses another only via its services and index.ts', () => 
         .filter(z => tief(d, z))
         .map(z => `${d} -> ${z}`),
     );
-  // Gegenprobe (11.11.2026): `import { USERNAME_RE } from '../../src/account/nameRules'`
+  // Counter-check (11.11.2026): `import { USERNAME_RE } from '../../src/account/nameRules'`
   // in routes/auth/users.ts → rot.
   assert.deepEqual(tiefe(tsBelow('src', 'jobs', 'startup', 'routes').concat('server.ts')), []);
   const indizes = tsBelow('src').filter(d => /^src\/[^/]+\/index\.ts$/.test(d));
@@ -720,10 +720,10 @@ test('a domain area accesses another only via its services and index.ts', () => 
   indexWithoutAccess(indizes);
 });
 
-/** Mit Zugang: ein Datenbankzugang, Kontext oder Dienstesatz als Parameter, oder asynchron (Netz, Dateien). */
+/** With access: a database access, context or service set as a parameter, or asynchronous (network, files). */
 const ACCESS_PARAMETER = /\b(?:Db|DbInterface|Pool|PoolClient|ClientBase|\w+Kontext|\w+Dienste)\b/;
 
-/** Die Deklaration eines exportierten Namens, auch über `export { … } from` und Importe weiter. */
+/** The declaration of an exported name, also via `export { … } from` and further imports. */
 function declaration(rel, name, tiefe = 0) {
   const voll = [`${rel}.ts`, `${rel}/index.ts`, rel].find(x => fs.existsSync(path.join(ROOT, x)) && x.endsWith('.ts'));
   if (!voll) return null;
@@ -743,7 +743,7 @@ function declaration(rel, name, tiefe = 0) {
   return null;
 }
 
-/** Was eine index.ts als Wert hergibt, ausser der Fabrik (erzeugeX), samt Zugang. */
+/** What an index.ts hands out as a value, except the factory (erzeugeX), including access. */
 function valueExports(index) {
   const raus = [];
   for (const m of sourceText(index).matchAll(/export \{([^}]*)\} from '(\.[^']+)'/g))
@@ -757,13 +757,13 @@ function valueExports(index) {
   return raus;
 }
 
-/** Ein Bereich gibt über index.ts nur Typen, seine Fabrik und reine Funktionen her: Was Datenbank,
- * Netz oder Dateien braucht, ruft ein anderer Bereich über den Kontext (`k.<bereich>.…`), damit es
- * in einer Transaktion über `t` läuft und ein Test es an der Verdrahtung ersetzt. */
+/** A scope only hands out types, its factory and pure functions via index.ts: whatever needs a database,
+ * network or files another scope calls via the context (`k.<bereich>.…`), so that it
+ * runs in a transaction via `t` and a test replaces it at the wiring. */
 function indexWithoutAccess(indizes) {
-  // Gegenproben (14.11.2026): `export { catalogStatus } from './setStamm'` zurück in
+  // Counter-checks (14.11.2026): `export { catalogStatus } from './setStamm'` back in
   // src/catalog/index.ts → rot (src/catalog.catalogStatus); `export { vorschauErzeugenAus } from './thumbs'`
-  // in src/images/index.ts → rot (asynchron).
+  // in src/images/index.ts → red (asynchronous).
   const alle = indizes.filter(i => !/^src\/(?:infra|contract|http)\//.test(i)).flatMap(valueExports);
   assert.ok(alle.length > 50, `nur ${alle.length} Wertexporte gefunden — greift die Suche noch?`);
   assert.ok(
@@ -779,13 +779,13 @@ function indexWithoutAccess(indizes) {
   );
 }
 
-/** Ein Modul ohne relative Importe (Zeilentypen, Konstanten) hängt an nichts. */
+/** A module without relative imports (row types, constants) depends on nothing. */
 const isSheet = rel => !/(?:from\s+|import\(\s*)['"]\./.test(sourceText(rel + '.ts'));
 
 test('a repository knows no services, not even their types', () => {
-  // Gegenproben: `import { getSetting } from '../settings'` in
+  // Counter-checks: `import { getSetting } from '../settings'` in
   // src/settings/repository/values.ts → rot (31.10.2026); (05.11.2026)
-  // `import type { SetMaster } from '../dienst'` zurück in
+  // `import type { SetMaster } from '../dienst'` back in
   // src/sets/repository/setDetail.ts → rot.
   const treffer = [];
   for (const d of tsBelow('src').filter(isRepository))
@@ -796,9 +796,9 @@ test('a repository knows no services, not even their types', () => {
 });
 
 test('routes do not resolve accounts — the services do that', () => {
-  // Eine Route gibt die Sicht (viewOf) oder den Wunsch weiter; die Regeln des
-  // Haushalts stehen in src/household und den Diensten, die sie anwenden.
-  // Gegenprobe (05.11.2026): `await scopeIds(req.apiUser.user_id)` zurück in
+  // A route passes on the view (viewOf) or the request; the household rules
+  // stand in src/household and the services that apply them.
+  // Counter-check (05.11.2026): `await scopeIds(req.apiUser.user_id)` back in
   // routes/api_v1/misc.ts → rot.
   const RESOLUTION =
     /\b(?:scopeIds|schreibbereich|writeTargetOrNull|scopeKind|darfSchreibenFuer|asIds|storageAccounts|scopeFrom|writeAreaFrom)\s*\(/;
@@ -810,17 +810,17 @@ test('routes do not resolve accounts — the services do that', () => {
   );
 });
 
-/** Die HTTP-Seite eines Bereichs (Middleware, Sitzung): src/<bereich>/http/. */
+/** The HTTP side of a scope (middleware, session): src/<bereich>/http/. */
 const isHttp = rel => /^src\/[^/]+\/http\//.test(rel);
 
 test("only src/http, the areas' HTTP sides and the routes know Express", () => {
-  // Gegenproben (31.10.2026): `import type { Request } from 'express'` in
-  // src/sets/service.ts → rot; dasselbe in src/account/loginLimiter.ts → rot.
-  // (10.11.2026): dasselbe in src/infra/geld.ts, src/contract/base.ts und
+  // Counter-checks (31.10.2026): `import type { Request } from 'express'` in
+  // src/sets/service.ts → red; the same in src/account/loginLimiter.ts → red.
+  // (10.11.2026): the same in src/infra/geld.ts, src/contract/base.ts and
   // db/txLock.ts → rot.
   const usesExpress = d =>
     /from\s+['"]express['"]|import\(\s*['"]express['"]\s*\)|require\(\s*['"]express['"]\s*\)/.test(sourceText(d));
-  // startup/app.ts baut die App zusammen, wie zuvor server.ts.
+  // startup/app.ts assembles the app, as server.ts did before.
   const treffer = tsBelow('src', 'db', 'clients', 'jobs', 'startup')
     .filter(d => areaOf(d) !== 'http' && !isHttp(d) && d !== 'startup/app.ts')
     .filter(usesExpress);
@@ -828,11 +828,11 @@ test("only src/http, the areas' HTTP sides and the routes know Express", () => {
   assert.ok(tsBelow('src/http').filter(usesExpress).length >= 8, 'die Suche findet Express in src/http nicht mehr');
   assert.ok(tsBelow('src').some(isHttp), 'keine HTTP-Seite unter src/<bereich>/http/ gefunden');
 
-  // Dienste antworten mit einer Fehlerart, nicht mit einem HTTP-Status; clients/
-  // spricht selbst HTTP nach aussen. Gegenprobe (10.11.2026): in
-  // src/account/passwordConfirmation.ts wieder `return { status: 429, ...gesperrt }` → rot.
+  // Services answer with an error kind, not with an HTTP status; clients/
+  // itself speaks HTTP outward. Counter-check (10.11.2026): in
+  // src/account/passwordConfirmation.ts again `return { status: 429, ...gesperrt }` → red.
   const STATUS = /\bstatus\s*:\s*[1-5]\d\d\b|\bres\.status\(/;
-  // Gegenprobe (11.11.2026): `res.status(304)` zurück in src/images/imgCacheServe.ts → rot.
+  // Counter-check (11.11.2026): `res.status(304)` back in src/images/imgCacheServe.ts → red.
   const withStatus = tsBelow('src', 'db', 'jobs')
     .filter(d => areaOf(d) !== 'http' && !isHttp(d))
     .filter(d => STATUS.test(sourceText(d)));
@@ -840,18 +840,18 @@ test("only src/http, the areas' HTTP sides and the routes know Express", () => {
 });
 
 test('only routes, server and HTTP sides import an HTTP side or src/http', () => {
-  // Ein Dienst, der die HTTP-Seite importiert, hängt wieder am Request.
-  // Gegenprobe (31.10.2026): `import { adresse } from './http/anmeldung'` in
+  // A service that imports the HTTP side depends on the request again.
+  // Counter-check (31.10.2026): `import { adresse } from './http/anmeldung'` in
   // src/account/deviceToken.ts → rot.
   const treffer = [];
   for (const d of tsBelow('src', 'jobs', 'clients').filter(d => !isHttp(d)))
     for (const z of resolvedImports(d)) if (isHttp(z)) treffer.push(`${d} -> ${z}`);
   assert.deepEqual(treffer, []);
 
-  // Dasselbe für src/http/: Die gemeinsamen Helfer hängen am Request, ein Dienst,
-  // der sie holt, hinge es auch; umgekehrt kennt src/http nur src/infra.
-  // Gegenproben (08.11.2026): `import { errorResponse } from '../http/httpAntwort'`
-  // in src/account/deviceToken.ts → rot; `import { setKey } from '../sets/dienst'` in
+  // The same for src/http/: the shared helpers depend on the request, a service
+  // that fetches them would too; conversely src/http only knows src/infra.
+  // Counter-checks (08.11.2026): `import { errorResponse } from '../http/httpAntwort'`
+  // in src/account/deviceToken.ts → red; `import { setKey } from '../sets/dienst'` in
   // src/http/httpResponse.ts → rot.
   const http = tsBelow('src').filter(d => areaOf(d) === 'http');
   assert.ok(http.length >= 8, `nur ${http.length} Dateien unter src/http`);
@@ -872,22 +872,22 @@ test('only routes, server and HTTP sides import an HTTP side or src/http', () =>
   assert.deepEqual(up, []);
 });
 
-/** Routen fangen nichts: Ströme reichen ihren Fehler mit .then(…, …) als letztes Ereignis weiter. */
+/** Routes catch nothing: streams pass their error on with .then(…, …) as the last event. */
 const TRY_IN_ROUTES = new Map([]);
-/** Wo eine Route doch selbst antwortet, mit Grund. Sonst wirft sie (`fachfehler`, `notFound`). */
+/** Where a route does answer itself, with a reason. Otherwise it throws (`fachfehler`, `notFound`). */
 const SEND_ERROR_IN_ROUTES = new Map([
-  // bodyDeadline: Die Uhr läuft nach next(); ein Wurf erreichte keinen Fehlerweg mehr.
+  // bodyDeadline: the clock runs after next(); a throw would no longer reach an error path.
   ['routes/api_v1/middleware.ts', 1],
 ]);
 
 test("routes catch no errors — the router's error path answers", () => {
-  // Gegenproben: eine Route in routes/api_v1/minifigs.ts wieder in `try { … } catch (e) {
-  // handleRouteError(res, e, undefined, req); }` gehüllt → rot (31.10.2026). In parts.ts
-  // `return sendError(req, res, 404, 'teil_nicht_manuell')` statt notFound → rot
-  // „sendError in Routen“; in settings.ts wieder `String(req.eingabe.condition ?? '')` → rot
-  // „Umwandlungen geprüfter Eingaben“ (14.11.2026). Absagen der Dienste (15.11.2026): in
-  // routes/auth/users.ts wieder `if (r === LAST_ADMIN) fachfehler(…)` → rot „Route
-  // übersetzt eine Absage“; ebenso `if ((await d.konto.kontoEntfernen(uid, null)) !== 'entfernt')
+  // Counter-checks: a route in routes/api_v1/minifigs.ts wrapped again in `try { … } catch (e) {
+  // handleRouteError(res, e, undefined, req); }` → red (31.10.2026). In parts.ts
+  // `return sendError(req, res, 404, 'teil_nicht_manuell')` instead of notFound → red
+  // “sendError in routes”; in settings.ts again `String(req.eingabe.condition ?? '')` → red
+  // “conversions of checked inputs” (14.11.2026). Refusals of the services (15.11.2026): in
+  // routes/auth/users.ts again `if (r === LAST_ADMIN) fachfehler(…)` → red “route
+  // translates a refusal”; likewise `if ((await d.konto.kontoEntfernen(uid, null)) !== 'entfernt')
   // fachfehler(…)` in routes/auth.ts → rot.
   const ist = new Map();
   const senden = new Map();
@@ -895,7 +895,7 @@ test("routes catch no errors — the router's error path answers", () => {
   const rejections = [];
   for (const d of tsBelow('routes')) {
     const q = sourceText(d);
-    // Eine Absage wirft der Dienst (fachfehler); ein Zustand, der die Antwort formt, bleibt erlaubt.
+    // The service throws a refusal (fachfehler); a state that shapes the response stays allowed.
     const results = [...q.matchAll(/\b(?:const|let)\s+(\w+)\s*=\s*await\s+d\./g)].map(m => m[1]);
     const vergleich = n => new RegExp(`\\b${n}(?:\\.\\w+)?\\s*[!=]==\\s*(?:'[^']*'|[A-Z][A-Z_]{2,}\\b)`);
     for (const z of q.split('\n')) {
@@ -914,16 +914,16 @@ test("routes catch no errors — the router's error path answers", () => {
   }
   assert.deepEqual(Object.fromEntries(ist), Object.fromEntries(TRY_IN_ROUTES));
   assert.deepEqual(Object.fromEntries(senden), Object.fromEntries(SEND_ERROR_IN_ROUTES), 'sendError in Routen');
-  // Der Vertrag liefert das Fachformat (z.transform); eine Route wandelt nicht nach.
+  // The contract delivers the domain format (z.transform); a route does not convert afterwards.
   assert.deepEqual(conversions, [], 'Umwandlungen geprüfter Eingaben in Routen');
   assert.deepEqual(rejections, [], 'Route übersetzt eine Absage des Dienstes');
 });
 
-// ── Rangfolge der Bereiche ──────────────────────────────────────────────────
+// ── Ranking of the scopes ───────────────────────────────────────────────────
 
-/** Von unten nach oben. Ein Bereich importiert nur Bereiche tieferer Stufen;
- * Bereiche derselben Stufe kennen einander nicht. Ein neuer Ordner braucht
- * eine Stufe, sonst ist der Test rot. */
+/** From bottom to top. A scope only imports scopes of lower levels;
+ * scopes of the same level do not know each other. A new folder needs
+ * a level, otherwise the test is red. */
 const LEVELS = [
   ['src/infra'],
   ['src/contract'],
@@ -951,8 +951,8 @@ const LEVELS = [
 const levelOf = new Map(LEVELS.flatMap((s, i) => s.map(b => [b, i])));
 const areaName = rel => (rel.startsWith('src/') ? rel.split('/').slice(0, 2).join('/') : rel.split('/')[0]);
 
-/** Je Datei, wer sie importiert, wie der Übersetzer es auflöst: auch `import type`, import()
- * und `export … from`. Eine Regex verfehlte Typimporte und Pfade über index.ts. */
+/** Per file, who imports it, as the compiler resolves it: also `import type`, import()
+ * and `export … from`. A regex missed type imports and paths via index.ts. */
 function translatorEdges(output) {
   const kanten = [];
   let ziel = null;
@@ -965,7 +965,7 @@ function translatorEdges(output) {
 }
 
 let _kanten = null;
-/** Kanten zwischen Bereichen aus tsc --explainFiles über tsconfig.json; einmal je Lauf. */
+/** Edges between scopes from tsc --explainFiles over tsconfig.json; once per run. */
 function areaEdges() {
   if (!_kanten) {
     const tsc = path.join(ROOT, 'node_modules', 'typescript', 'bin', 'tsc');
@@ -983,19 +983,19 @@ function areaEdges() {
 }
 
 test('every area only imports areas of lower levels', () => {
-  // Gegenproben (05.11.2026): `import { getSetting } from '../src/settings/settings'`
-  // in clients/brickset.ts → rot (clients → src/settings); dasselbe mit
+  // Counter-checks (05.11.2026): `import { getSetting } from '../src/settings/settings'`
+  // in clients/brickset.ts → red (clients → src/settings); the same with
   // `import { withVersion } from '../sets/setNummer'` in src/catalog/service.ts,
-  // nachdem setNummer wieder unter src/sets lag → rot (katalog → sets).
-  // Gegenproben (15.11.2026, Übersetzer statt Regex): `import type { Db } from '../../db/database'`
-  // in src/infra/area.ts → rot (src/infra → db); die Stufe von src/services.ts gestrichen
-  // → rot „Bereich ohne Stufe“; die späte Bindung `d().katalog.…` zurück in verdrahtung.ts → rot.
+  // after setNummer lay under src/sets again → red (katalog → sets).
+  // Counter-checks (15.11.2026, compiler instead of regex): `import type { Db } from '../../db/database'`
+  // in src/infra/area.ts → red (src/infra → db); the level of src/services.ts deleted
+  // → red “scope without level”; the late binding `d().katalog.…` back in verdrahtung.ts → red.
   assert.deepEqual(
     translatorEdges("a.ts\n   Imported via './a' from file 'b.ts'\nc.ts\n   Matched by include pattern"),
     [{ d: 'b.ts', ziel: 'a.ts' }],
     'Selbstbeweis: die Ausgabe von --explainFiles wird gelesen',
   );
-  // Ein höherer Bereich horcht auf ein Ereignis des tieferen; späte Bindung umginge die Stufen.
+  // A higher scope listens to an event of the lower one; late binding would bypass the levels.
   assert.doesNotMatch(sourceText('startup/wiring.ts'), /\bd\(\)\.\w+/, 'späte Bindung in der Verdrahtung');
   const kanten = areaEdges();
   assert.ok(kanten.length > 500, `nur ${kanten.length} Kanten gefunden — greift die Suche noch?`);
@@ -1008,9 +1008,9 @@ test('every area only imports areas of lower levels', () => {
 });
 
 test('clients are only reached via src/externalSources/sources.ts', () => {
-  // Dort bekommen sie Schlüssel, Kontingent und Drossel ihres Zugangs; ein Weg daran
-  // vorbei fände keinen Schlüssel. Auch `import type` zählt, Ausnahmen gibt es keine.
-  // Gegenproben: `import { lookupPart } from '../../clients/rebrickable'` in
+  // There they get key, quota and throttle of their access; a path past
+  // it would find no key. `import type` counts too, there are no exceptions.
+  // Counter-checks: `import { lookupPart } from '../../clients/rebrickable'` in
   // src/parts/manualParts.ts → rot (05.11.2026); `import { createBrickset } from
   // '../clients/brickset'` in startup/wiring.ts → rot (14.11.2026).
   const kanten = areaEdges();
@@ -1025,7 +1025,7 @@ test('clients are only reached via src/externalSources/sources.ts', () => {
 });
 
 test('docs/architektur.md names the order of the areas like LEVELS', () => {
-  // Gegenprobe: in der Tabelle `src/mail` und `src/settings` vertauscht → rot.
+  // Counter-check: `src/mail` and `src/settings` swapped in the table → red.
   const doc = fs.readFileSync(path.join(ROOT, 'docs', 'architektur.md'), 'utf8');
   const tabelle = doc.slice(doc.indexOf('## Rangfolge der Bereiche'), doc.indexOf('## API-Vertrag'));
   const stufen = [...tabelle.matchAll(/^\| (\d+) \| (.+) \|$/gm)].map(m =>
@@ -1036,9 +1036,9 @@ test('docs/architektur.md names the order of the areas like LEVELS', () => {
 });
 
 test('the queue knows no domain areas and payload shapes, events go via ereignis.ts', () => {
-  // Gegenproben (15.11.2026): `import type { CatalogServices } from '../katalog'` in
-  // src/jobQueue/service.ts → rot (Kante src/jobQueue → src/catalog); `const P = z.object({})` in
-  // src/jobQueue/kinds.ts → rot (Nutzlastform); `'brickset'` zurück in src/jobQueue/service.ts → rot.
+  // Counter-checks (15.11.2026): `import type { CatalogServices } from '../katalog'` in
+  // src/jobQueue/service.ts → red (edge src/jobQueue → src/catalog); `const P = z.object({})` in
+  // src/jobQueue/kinds.ts → red (payload shape); `'brickset'` back in src/jobQueue/service.ts → red.
   const ALLOWED = new Set(['src/infra', 'src/settings', 'db']);
   const fremd = areaEdges()
     .filter(k => k.von === 'src/jobQueue' && !ALLOWED.has(k.nach))
@@ -1049,7 +1049,7 @@ test('the queue knows no domain areas and payload shapes, events go via ereignis
   const shapes = dateien.filter(d => /\bz\.(?:object|enum|array|union|discriminatedUnion)\(/.test(sourceText(d)));
   assert.deepEqual(shapes, [], 'Nutzlastform in src/jobQueue: in den Bereich, der die Art anmeldet');
 
-  // Die Arten stehen dort, wo die Bereiche ihre Nutzlast melden (declare module … JobPayloads).
+  // The kinds stand where the scopes register their payload (declare module … JobPayloads).
   const arten = tsBelow('src')
     .flatMap(d => [...sourceText(d).matchAll(/interface JobPayloads \{([^}]*)\}/g)])
     .flatMap(m => [...m[1].matchAll(/^\s*(\w+):/gm)].map(a => a[1]));
@@ -1059,11 +1059,11 @@ test('the queue knows no domain areas and payload shapes, events go via ereignis
   );
   assert.deepEqual(literale, [], 'src/jobQueue nennt eine Auftragsart');
 
-  // Ereignisse laufen über src/infra/event.ts, nicht über eigene Horcher.
-  // Gegenproben (15.11.2026): in src/settings/userSetting.ts wieder
-  // `fach('currencyChange', () => new Set<() => void>())` → rot (eigene Horcher);
-  // in src/jobQueue/importJob.ts wieder `k.db.notification.listen('csv_import_progress', f)`
-  // → rot (NOTIFY von Hand); `new EventEmitter()` zurück in importAuftrag.ts → rot.
+  // Events go via src/infra/event.ts, not via own listeners.
+  // Counter-checks (15.11.2026): in src/settings/userSetting.ts again
+  // `fach('currencyChange', () => new Set<() => void>())` → red (own listeners);
+  // in src/jobQueue/importJob.ts again `k.db.notification.listen('csv_import_progress', f)`
+  // → red (NOTIFY by hand); `new EventEmitter()` back in importAuftrag.ts → red.
   const EREIGNIS = 'src/infra/event.ts';
   const alle = tsBelow('src', 'routes', 'jobs').filter(d => d !== EREIGNIS);
   const treffer = muster =>

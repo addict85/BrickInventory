@@ -1,5 +1,5 @@
 /**
- * Der geschätzte Minifiguren-Marktpreis wird zwischengespeichert.
+ * The estimated minifigure market price is cached.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -77,8 +77,8 @@ test('an outdated entry is skipped', async t => {
     [fig],
   );
 
-  // Ohne Netz liefert die Neuberechnung null — entscheidend ist, DASS sie
-  // stattfindet statt den alten Wert zurückzugeben.
+  // Without a network the recalculation delivers null — what matters is THAT it
+  // takes place instead of returning the old value.
   const wert = await mf.estimateFigPriceFromParts(fig, u.id, 'N');
   assert.equal(
     wert,

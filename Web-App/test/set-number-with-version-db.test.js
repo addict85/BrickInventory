@@ -1,22 +1,22 @@
 /**
- * Set-Nummern tragen in der Datenbank immer ihre Version (Migration 0074),
- * der Set-Stamm liest nur rb_sets (0105, 0108), und Ersatzteil ist
- * überall 0 oder 1 (0075). Geprüft werden die Migrationen auf Altdaten, das
- * Schreiben ohne Versionsanhang und die Leser, die früher zwei Schreibweisen
- * per OR abfragten.
+ * Set numbers always carry their version in the database (migration 0074),
+ * the set master only reads rb_sets (0105, 0108), and spare part is
+ * 0 or 1 everywhere (0075). Checked are the migrations on legacy data, the
+ * writing without a version suffix and the readers that used to query two notations
+ * via OR.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in 0074 die Zusammenführung der Kaufpreise entfernt → rot: „gleiche
+ * Counter-checks (measured on 30.10.2026):
+ *   A  the merging of the purchase prices removed in 0074 → red: „gleiche
  *      Kaufpreise werden addiert“ (duplicate key idx_set_acq_erfassungstag)
- *   B  in 0074 mit_version('sets') vor die abhängigen Tabellen gestellt → rot:
- *      „Teile des alten Sets bleiben“ (ON DELETE CASCADE nahm sie mit)
- *   C  im Teilefilter (src/parts/queries.ts) withVersion() entfernt → rot:
- *      „der Filter findet das Set auch ohne Versionsanhang“
- *   D  (10.11.) in setStamm() (src/sets/repository/setDetail.ts) den Platzhalter
- *      „Set …“ nicht ausgeblendet → rot: „ein Platzhalter ist kein Name“
- *   E  in 0075 'True' nicht als Ersatzteil gelesen → rot: „Ersatzteil wird 0/1“
+ *   B  in 0074 mit_version('sets') put before the dependent tables → red:
+ *      „Teile des alten Sets bleiben“ (ON DELETE CASCADE took them along)
+ *   C  withVersion() removed in the parts filter (src/parts/queries.ts) → red:
+ *      “the filter finds the set even without the version suffix”
+ *   D  (10.11.) in setStamm() (src/sets/repository/setDetail.ts) the placeholder
+ *      „Set …“ not hidden → red: “… a placeholder stays a placeholder”
+ *   E  'True' not read as spare part in 0075 → red: „Ersatzteil wird 0/1“
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -43,13 +43,13 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
     const q = async (sql, p) => (await c.query(sql, p)).rows;
     try {
       await c.query('BEGIN');
-      // Stand vor 0074: keine Trigger, keine CHECK-Regel.
+      // State before 0074: no triggers, no CHECK rule.
       await c.query(`DO $$ DECLARE r record; BEGIN
         FOR r IN SELECT tgname, tgrelid::regclass AS t FROM pg_trigger WHERE tgname LIKE '%\\_setnummer' LOOP
           EXECUTE format('DROP TRIGGER %I ON %s', r.tgname, r.t); END LOOP;
         FOR r IN SELECT conname, conrelid::regclass AS t FROM pg_constraint WHERE conname LIKE '%\\_setnummer\\_mit\\_version' LOOP
           EXECUTE format('ALTER TABLE %s DROP CONSTRAINT %I', r.t, r.conname); END LOOP; END $$`);
-      // Und vor 0105: set_catalog mit eigenen Stammspalten, ohne Bezug auf rb_sets.
+      // And before 0105: set_catalog with its own master columns, without reference to rb_sets.
       await c.query(`ALTER TABLE set_catalog DROP CONSTRAINT set_catalog_rb_sets_fkey,
         ADD COLUMN name text, ADD COLUMN year integer, ADD COLUMN theme text, ADD COLUMN pieces integer`);
       const A = (await q(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [`sn-${PID}`]))[0]
@@ -99,11 +99,11 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
       await c.query(`INSERT INTO rb_inventories (id, set_num, version) VALUES ($1,$2,1)`, [880000 + (PID % 10000), T3]);
       await c.query('SET CONSTRAINTS ALL IMMEDIATE');
 
-      // Migration 0074 ist Geschichte und nennt die Spalte noch unter ihrem
-      // alten Namen (set_acquisitions.tag); 0124 (längst angewandt) hätte sie
-      // sonst gleich danach umbenannt, wie bei einer echten Reihenfolge der Migrationen.
-      // Der Trigger (0070/0124) kennt nur die jeweils aktuelle Spalte, während
-      // der Umbenennung aus.
+      // Migration 0074 is history and still names the column by its
+      // old name (set_acquisitions.tag); 0124 (applied long ago) would otherwise have
+      // renamed it right afterwards, as with a real order of the migrations.
+      // The trigger (0070/0124) only knows the respective current column, so switch it off
+      // during the renaming.
       await c.query('ALTER TABLE set_acquisitions DISABLE TRIGGER set_acquisitions_tag');
       await c.query('ALTER TABLE set_acquisitions RENAME COLUMN day TO tag');
       await c.query('ALTER TABLE set_parts RENAME TO set_teile');
@@ -158,7 +158,7 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
         { set_num: `${T3}-1` },
       ]);
 
-      // Ab jetzt normalisiert die Datenbank beim Schreiben.
+      // From now on the database normalizes when writing.
       await c.query(`INSERT INTO set_parts (set_number, part_number, color_id) VALUES ($1,'P9',4)`, [`N${PID}`]);
       assert.deepEqual(await q('SELECT set_number FROM set_parts WHERE part_number=$1', ['P9']), [
         { set_number: `N${PID}-1` },
@@ -174,7 +174,7 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
     await db.run('DELETE FROM users WHERE username=$1', [NAME]);
     const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
     try {
-      await holdsPart(db, uid, 'SNF1', { setNumber: `F${PID}`, menge: 2, colorId: 4 }); // blank geschrieben
+      await holdsPart(db, uid, 'SNF1', { setNumber: `F${PID}`, menge: 2, colorId: 4 }); // written bare
       const { partsQuery } = _req('src/parts/queries.js');
       for (const filter of [`F${PID}`, `F${PID}-1`]) {
         const r = await partsQuery([uid], { set_number: filter, page_size: 60 });
@@ -240,7 +240,7 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
     const c = await db.pool.connect();
     try {
       await c.query('BEGIN');
-      // Stand vor 0075 (und 0085): Text in rb_inventory_parts, Zahlen ohne CHECK-Regeln.
+      // State before 0075 (and 0085): text in rb_inventory_parts, numbers without CHECK rules.
       await c.query('DROP VIEW set_parts_catalog');
       for (const tab of ['set_parts', 'parts_summary'])
         await c.query(`ALTER TABLE ${tab} ALTER COLUMN is_spare DROP NOT NULL, ALTER COLUMN is_spare DROP DEFAULT,
@@ -253,9 +253,9 @@ test('set numbers with version, one set master, spare part 0/1', { concurrency: 
                      VALUES ($1,'E1',1,1,'True'), ($1,'E2',1,1,'f'), ($1,'E3',1,1,NULL), ($1,'E4',1,1,'t')`,
         [inv],
       );
-      // Migration 0075 ist Geschichte und nennt die Tabelle noch unter ihrem
-      // alten Namen (set_teile); 0124 (längst angewandt) hätte sie sonst gleich
-      // danach umbenannt, wie bei einer echten Reihenfolge der Migrationen.
+      // Migration 0075 is history and still names the table by its
+      // old name (set_teile); 0124 (applied long ago) would otherwise have renamed it right
+      // afterwards, as with a real order of the migrations.
       await c.query('ALTER TABLE set_parts RENAME TO set_teile');
       await c.query(MIG('0075-ersatzteil-null-eins.sql'));
       await c.query('ALTER TABLE set_teile RENAME TO set_parts');

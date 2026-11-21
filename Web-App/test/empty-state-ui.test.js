@@ -1,13 +1,13 @@
 /**
- * Eine leere Sammlung zeigt „Set hinzufügen“ genau einmal sichtbar: als
- * Hauptknopf im Leerzustand; der Knopf oben tritt solange zurück. Ebenso bei
- * Teilen und Minifiguren. Am echten Bündel in jsdom, mit styles.css.
+ * An empty collection shows “add set” visibly exactly once: as the
+ * main button in the empty state; the button at the top steps back meanwhile. Likewise for
+ * parts and minifigures. On the real bundle in jsdom, with styles.css.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  Regel .tab.sammlung-leer … > .btn.bp aus styles.css entfernt → rot:
- *      „Set hinzufügen genau einmal“ und „Teile und Minifiguren ebenso“ (2 sichtbar)
- *   B  Knopf aus dem Leerzustand der Sammlung entfernt → rot: „Set
- *      hinzufügen genau einmal“ (0 sichtbar)
+ * Counter-checks (measured 04.11.2026, each alone):
+ *   A  rule .tab.sammlung-leer … > .btn.bp removed from styles.css → red:
+ *      “add set exactly once” and “parts and minifigures likewise” (2 visible)
+ *   B  button removed from the collection's empty state → red: “add
+ *      set exactly once” (0 visible)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

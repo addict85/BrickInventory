@@ -1,13 +1,13 @@
 /**
- * Der Barcode-Treffer nennt das lokale Bild eines Sets: Set-Bilder sind seit
- * Migration 0105 Katalog, die Bildroute liefert sie jedem angemeldeten Konto.
- * Der Dienst setToBarcode() kennt deshalb kein Konto mehr.
+ * The barcode hit names the local image of a set: since migration 0105 set images
+ * are catalog, the image route delivers them to every logged-in account.
+ * The service setToBarcode() therefore no longer knows an account.
  *
- * Gegenprobe (am 11.11.2026 gemessen):
- *   B  in barcodeResult() image_local immer null → rot: „der Treffer nennt das lokale Bild“
+ * Counter-check (measured on 11.11.2026):
+ *   B  in barcodeResult() image_local always null → red: “the hit names the local image”
  *
- * Ohne Rebrickable-Schlüssel antwortet nur der eigene Katalog; es geht nichts ins Netz.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Without a Rebrickable key only the own catalog answers; nothing goes to the network.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

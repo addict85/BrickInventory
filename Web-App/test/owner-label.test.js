@@ -1,14 +1,14 @@
 /**
- * Das Besitzer-Etikett steht nur, wo ein ANDERES Konto des Haushalts mit
- * drinsteckt; die eigene Sammlung trägt keins. Und die Kopfzahl heisst
- * „Anleitungen“, nicht „Anleit.“. Geprüft am echten Bündel in jsdom.
+ * The owner label only stands where ANOTHER account of the household is
+ * involved; the own collection carries none. And the header number is called
+ * „Anleitungen“, not „Anleit.“. Checked on the real bundle in jsdom.
  *
- * Gegenproben (am 28.10. gemessen):
- *   A  in ownerBadges() die Ausnahme für eigene Einträge entfernt → rot:
- *      „eigene Sets ohne Etikett“
- *   B  ownerBadges() gibt immer '' zurück → rot: „das Set des Kindes trägt seinen Namen“
- *   C  (13.11.2026) ownerBadges() wieder mit o.username statt accountDisplay() → rot:
- *      „das Set des Kindes trägt seinen Namen“ („anna“ statt „anna (ich)“)
+ * Counter-checks (measured on 28.10.):
+ *   A  the exception for own entries removed in ownerBadges() → red:
+ *      “own sets without a label”
+ *   B  ownerBadges() always returns '' → red: “the child's set carries its name”
+ *   C  (13.11.2026) ownerBadges() again with o.username instead of accountDisplay() → red:
+ *      “the child's set carries its name” („anna“ instead of „anna (ich)“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

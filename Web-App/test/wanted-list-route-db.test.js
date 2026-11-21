@@ -1,33 +1,33 @@
 /**
- * Der Wanted-Listen-Import über seine echte Adresse.
+ * The wanted list import via its real address.
  *
- * ── Gegenproben (durchgeführt, Befunde GEMESSEN) ────────────────────────────
+ * ── Counter-checks (performed, findings MEASURED) ───────────────────────────
  *
- *   a) Vorschau nicht mehr Vorgabe (schreibt immer) → 2 UND 4 rot
- *   b) <INVENTORY>-Prüfung entfernt                 → 1 rot
- *   c) BL-Nummer roh übernommen statt abgebildet    → 4 rot
- *   d) BL-Farbe statt der abgebildeten genommen     → 4 rot
- *   e) (14.11.2026) im Wanted-Anleger für Sets `ifPresent: 'aufstocken'`
- *      weggelassen → 9 rot (aufgestockt 0: das zweite Mal hiess „exists“)
+ *   a) preview no longer the default (always writes) → 2 AND 4 red
+ *   b) <INVENTORY> check removed                    → 1 red
+ *   c) BL number taken raw instead of mapped        → 4 red
+ *   d) BL color taken instead of the mapped one     → 4 red
+ *   e) (14.11.2026) in the wanted creator for sets `ifPresent: 'aufstocken'`
+ *      omitted → 9 red (`aufgestockt` 0: the second time said “exists”)
  *
- * Zwei Vorhersagen waren zu eng, und beide sagen etwas über diesen Test:
+ * Two predictions were too narrow, and both say something about this test:
  *
- * Bei (a) hatte ich nur Fall 2 erwartet. Rot wurde auch 4, und zu Recht:
- * Schreibt die Vorschau, liegen beim späteren Schreiblauf schon Teile da, und
- * `angelegt` stimmt nicht mehr. Eine Kettenwirkung — Fall 2 ist der Befund,
- * Fall 4 die Folge.
+ * For (a) I had only expected case 2. 4 turned red as well, and rightly so:
+ * if the preview writes, parts are already there in the later write run, and
+ * `angelegt` is no longer right. A chain effect — case 2 is the finding,
+ * case 4 the consequence.
  *
- * Bei (c) hatte ich 3 UND 4 erwartet. Rot wurde nur 4. Fall 3 zählt die
- * LEVELS, und die stimmen auch dann, wenn die falsche Nummer übernommen wird
- * — er prüft die Abbildung nicht. Das tut Fall 4, und nur er.
+ * For (c) I had expected 3 AND 4. Only 4 turned red. Case 3 counts the
+ * LEVELS, and they are right even if the wrong number is taken over
+ * — it does not check the mapping. Case 4 does, and only it.
  *
- * Damit hängt an Fall 4 viel: Abbildung der Nummer, Abbildung der Farbe,
- * Menge, und dass der offene Posten draussen bleibt. Das ist bewusst so — die
- * vier Aussagen gehören zu EINEM Vorgang („was steht nach dem Schreiben im
- * Bestand"), und sie einzeln zu prüfen hiesse viermal denselben Import zu
- * fahren.
+ * So a lot hangs on case 4: mapping of the number, mapping of the color,
+ * quantity, and that the open item stays outside. That is deliberate — the
+ * four statements belong to ONE operation (“what is in the holdings after
+ * writing”), and checking them individually would mean running the same
+ * import four times.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
  * REQUIRE_DB=1.
  */
 const test = require('node:test');
@@ -59,11 +59,11 @@ function item(typ, id, farbe, menge = 1) {
 }
 const liste = (...i) => `<?xml version="1.0" encoding="UTF-8"?>\n<INVENTORY>\n${i.join('\n')}\n</INVENTORY>\n`;
 
-/** Die Datei des Tests: zwei auflösbare Teile, eines offen. */
+/** The test's file: two resolvable parts, one open. */
 const XML = liste(
-  item('P', '3001', 5, 3), // bl_mapping: NULL-Vermerk → Stufe 2
-  item('P', '4162', 1, 2), // bl_mapping: abweichende Nummer → Stufe 1
-  item('P', '99999', 5, 1), // nichts → offen
+  item('P', '3001', 5, 3), // bl_mapping: NULL registration → stage 2
+  item('P', '4162', 1, 2), // bl_mapping: deviating number → stage 1
+  item('P', '99999', 5, 1), // nothing → open
 );
 
 async function hochladen(base, xml, abfrage = '') {
@@ -73,7 +73,7 @@ async function hochladen(base, xml, abfrage = '') {
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }
 
-/** Dieselbe Adresse, aber die Antwort ZEILENWEISE (NDJSON) gelesen. */
+/** The same address, but the response read LINE BY LINE (NDJSON). */
 async function uploadStream(base, xml, abfrage) {
   const fd = new FormData();
   fd.append('file', new Blob([xml], { type: 'text/xml' }), 'wanted.xml');
@@ -138,9 +138,9 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     assert.equal(body.gelesen, 3, `${body.gelesen} Posten gelesen statt 3`);
     assert.equal(body.angelegt, 0, `${body.angelegt} angelegt — die Vorschau schreibt nicht`);
 
-    // An der TABELLE geprüft und nicht an der Antwort: Eine Route, die
-    // „vorschau: true" meldet und trotzdem schreibt, sähe in der Antwort
-    // richtig aus.
+    // Checked against the TABLE and not the response: a route that
+    // reports "vorschau: true" and writes anyway would look right in the
+    // response.
     assert.equal(
       (await db.get('SELECT COUNT(*)::int c FROM parts WHERE user_id=$1', [MAIN])).c,
       0,
@@ -161,8 +161,8 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
       '99999',
       'Der offene Posten wird nicht mit seiner BrickLink-Nummer genannt — dann kann ' + 'ihn niemand nachsehen',
     );
-    // Rebrickable wurde NICHT gefragt: ohne rebrickable=1 kostet der Import
-    // kein Kontingent.
+    // Rebrickable was NOT asked: without rebrickable=1 the import costs
+    // no quota.
     assert.equal(body.rebrickable, undefined, 'Es wurde bei Rebrickable gefragt, obwohl rebrickable=1 fehlte');
   });
 
@@ -172,7 +172,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     assert.equal(body.angelegt, 2, `${body.angelegt} angelegt statt 2: ${JSON.stringify(body.posten)}`);
     assert.equal(body.fehler, 0, `${body.fehler} Fehler: ${JSON.stringify(body.posten)}`);
 
-    // Stufe 2: die Nummer bleibt, die Farbe wird abgebildet (BL 5 → RB 4).
+    // Stage 2: the number stays, the color is mapped (BL 5 → RB 4).
     const a = await db.get(
       `SELECT p.color_id, COALESCE(SUM(pa.quantity),0)::int AS menge
          FROM parts p LEFT JOIN part_acquisitions pa
@@ -184,7 +184,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     assert.equal(Number(a.color_id), 4, `Farbe ${a.color_id} statt 4 (BL 5 = Rebrickable 4)`);
     assert.equal(a.menge, 3, `Menge ${a.menge} statt 3 — MINQTY war 3`);
 
-    // Stufe 1: die abweichende Nummer muss UMGESETZT sein, nicht übernommen.
+    // Stage 1: the deviating number must be CONVERTED, not taken over.
     assert.ok(
       await db.get(`SELECT 1 FROM parts WHERE user_id=$1 AND part_number='98765'`, [MAIN]),
       'Die BrickLink-Nummer 4162 wurde nicht auf 98765 abgebildet',
@@ -196,7 +196,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
         'Rebrickable-Nummer, und ein Teil darunter findet keinen Katalogeintrag',
     );
 
-    // Der offene Posten ist NICHT angelegt worden.
+    // The open item was NOT created.
     assert.equal(
       (await db.get(`SELECT COUNT(*)::int c FROM parts WHERE user_id=$1 AND part_number='99999'`, [MAIN])).c,
       0,
@@ -205,10 +205,10 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
   });
 
   await t.test('5. no purchase price from MAXPRICE', async () => {
-    // MAXPRICE ist eine SUCHGRENZE, kein bezahlter Preis. Hier steht -1, und
-    // selbst ein echter Wert dürfte nicht als Kaufpreis landen — sonst stünde
-    // in der Finanzansicht ein Betrag, den niemand ausgegeben hat.
-    // Die Spalte heisst `unit_price`, nicht `price` — nachgesehen, nachdem mein …
+    // MAXPRICE is a SEARCH LIMIT, not a price paid. Here it is -1, and
+    // even a real value must not end up as purchase price — otherwise the
+    // finance view would show an amount nobody spent.
+    // The column is called `unit_price`, not `price` — looked up after my …
     const preise = await db.all('SELECT unit_price FROM part_acquisitions WHERE user_id=$1', [MAIN]);
     assert.ok(preise.length > 0, 'Vorbedingung: es gibt Erfassungen');
     for (const p of preise) {
@@ -230,7 +230,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     );
   });
 
-  // Der Fortschritt
+  // The progress
 
   await t.test('7. with strom=1 progress lines come, finally the report', async () => {
     const { status, typ, zeilen } = await uploadStream(srv.base, XML, '?schreiben=1&strom=1');
@@ -242,8 +242,8 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
         'ausgegeben werden, sonst versucht der Browser sie als EIN Dokument zu lesen',
     );
 
-    // Der Import läuft als Auftrag; die Anfrage liest seinen Stand im Takt,
-    // Zwischenstände können darum zusammenfallen. Der letzte kommt immer an.
+    // The import runs as a job; the request reads its state at intervals,
+    // so intermediate states can coincide. The last one always arrives.
     const melde = zeilen.filter(z => z.fortschritt);
     assert.ok(melde.length >= 1, 'keine Fortschrittszeile');
     const fertig = melde.map(z => z.fortschritt.fertig);
@@ -265,7 +265,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     assert.ok(!letzte.fortschritt, 'Der Bericht ist keine Fortschrittszeile');
   });
 
-  // Derselbe Balken wie beim Set-Import
+  // The same bar as for the set import
 
   await t.test('9. an import leaves a completed job', async () => {
     await db.run('DELETE FROM import_status WHERE user_id = $1', [MAIN]);
@@ -286,8 +286,8 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
     assert.equal(Number(job.total), 3, 'Der Nenner ist die Zahl der Posten');
     assert.equal(Number(job.done), Number(job.total), 'Am Ende muss der Balken voll sein');
     assert.equal(job.current, null, 'Was „gerade dran" ist, gibt es nicht mehr');
-    // ok/warn/err rechnet buildJobStatus aus `results` — ohne die Liste stünde
-    // im Balken nach dem Ende „0 ok", obwohl zwei Posten angelegt wurden.
+    // buildJobStatus computes ok/warn/err from `results` — without the list the
+    // bar would say "0 ok" after the end although two items were created.
     const results = Array.isArray(job.results) ? job.results : JSON.parse(job.results || '[]');
     assert.equal(
       results.filter(r => r.success).length,
@@ -296,7 +296,7 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
         `${body.angelegt} angelegt und ${body.aufgestockt} aufgestockt`,
     );
 
-    // Jede Zeile BENENNT ihren Posten (Marcos Befund vom 21.10.)
+    // Every line NAMES its item (Marco's finding of 21.10.)
     assert.equal(results.length, 3, 'Je Posten eine Zeile, auch für den offenen');
     for (const r of results) {
       assert.ok(
@@ -340,9 +340,9 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
   });
 
   await t.test('11. a running CSV import is not displaced', async () => {
-    // Der CSV-Import über 380 Sets ist das, worauf jemand waiting. Ihn aus dem
-    // Balken zu werfen, weil nebenher eine Wanted-Liste eingelesen wird, wäre
-    // der falsche Tausch — der Wanted-Import läuft trotzdem, nur ohne Balken.
+    // The CSV import of 380 sets is what someone is waiting for. Throwing it
+    // out of the bar because a wanted list is being read alongside would be
+    // the wrong trade — the wanted import runs anyway, just without a bar.
     await db.run(
       `INSERT INTO import_status (user_id, status, total, done, current, results, updated_at)
        VALUES ($1,'running',380,42,'10256-1','[]', NOW())
@@ -363,8 +363,8 @@ test('wanted list: preview and writing via the real address', { concurrency: 1 }
   });
 
   await t.test('8. without strom=1 the address responds unchanged as JSON', async () => {
-    // Der Weg der Android-App und aller übrigen Prüfungen. Er darf sich durch
-    // den Strom NICHT geändert haben.
+    // The path of the Android app and all other checks. It must NOT have
+    // changed because of the stream.
     const r = await (async () => {
       const fd = new FormData();
       fd.append('file', new Blob([XML], { type: 'text/xml' }), 'wanted.xml');

@@ -1,15 +1,15 @@
 /**
- * Kontofilter und Lagerortfilter liegen im localStorage; jede Anmeldung setzt
- * sie auf „Alle“ zurück, ein Neuladen in derselben Sitzung nicht. Echtes
- * Bündel in jsdom, Haushalt mit Unterkonto (sonst bleibt der Filter verborgen).
+ * Account filter and storage location filter lie in localStorage; every login resets
+ * them to „Alle“, a reload in the same session does not. Real
+ * bundle in jsdom, household with a sub-account (otherwise the filter stays hidden).
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in doLogin den Aufruf resetScopeModes() entfernt → rot: „die Anmeldung
- *      setzt …“ (accounts=7 in der ersten Setabfrage)
- *   B  in resetLagerModi() die Schleife entfernt → rot: ebenda (storage=…)
- *   C  setScopeMode() speichert nicht mehr → rot: „die Wahl wird gemerkt …“
- * Den Aufruf hinter openApp() zu schieben bleibt grün: Die Lader warten
- * zuerst auf den Haushalt, das Zurücksetzen läuft vorher durch.
+ * Counter-checks (measured 10.11.2026, each on its own, bundle rebuilt):
+ *   A  the call resetScopeModes() removed in doLogin → red: “login
+ *      resets …” (accounts=7 in the first set query)
+ *   B  the loop removed in resetLagerModi() → red: same place (storage=…)
+ *   C  setScopeMode() no longer stores → red: “the choice is remembered …”
+ * Moving the call behind openApp() stays green: the loaders first wait
+ * for the household, the reset runs through before.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

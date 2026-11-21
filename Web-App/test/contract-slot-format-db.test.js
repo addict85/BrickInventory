@@ -1,13 +1,13 @@
 /**
- * Der Vertrag ist die einzige Eingabeprüfung und liefert das Fachformat: Was er annimmt,
- * nimmt die Route an, so wie er es umgeformt hat (src/contract/base.ts, z.transform).
- * Geprüft über die echten Routen gegen die Datenbank.
+ * The contract is the only input check and delivers the domain format: what it accepts,
+ * the route accepts, as it has transformed it (src/contract/base.ts, z.transform).
+ * Checked via the real routes against the database.
  *
- * Gegenproben (14.11.2026 gemessen, je einzeln, zurückgenommen):
- *   A  ZUSTAND ohne `.transform(v => v.toUpperCase() …)` → rot: „klein geschriebener Zustand
- *      gilt wie gross“ (400 statt 200: 'n' geht unverändert durch und hält den Antwortvertrag nicht)
- *   B  KENNUNG ohne `.transform(Number)` → `npm run typecheck` rot (settings.ts, parts.ts:
- *      string | number ist keine Zahl); die Dienste lesen Text wie Zahl, der Lauf sähe es nicht.
+ * Counter-checks (measured 14.11.2026, each alone, reverted):
+ *   A  ZUSTAND without `.transform(v => v.toUpperCase() …)` → red: “lower-case condition
+ *      counts like upper case” (400 instead of 200: 'n' passes unchanged and breaks the response contract)
+ *   B  KENNUNG without `.transform(Number)` → `npm run typecheck` red (settings.ts, parts.ts:
+ *      string | number is not a number); the services read text like a number, the run would not see it.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -49,7 +49,7 @@ test('the contract delivers the domain format to the route', { concurrency: 1 },
     assert.equal((await rufe('GET', '/settings/user/default-condition')).body.condition, 'N');
     const u = await rufe('POST', '/settings/user/default-condition', { condition: 'u' });
     assert.equal(u.body.condition, 'U');
-    // Was der Vertrag nicht kennt, weist er ab; die Route sieht es nie.
+    // What the contract does not know it rejects; the route never sees it.
     assert.equal((await rufe('POST', '/settings/user/default-condition', { condition: 'x' })).status, 400);
   });
 });

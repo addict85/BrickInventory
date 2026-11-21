@@ -1,35 +1,35 @@
 /**
- * Der Filter der Reiter „Teile" und „Minifiguren" trifft BEIDE Listen.
+ * The filter of the tabs „Teile" and „Minifiguren" hits BOTH lists.
  *
- * ── Gegenproben (am 20.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
+ * ── Counter-checks (MEASURED on 20.10., numbers copied) ──────────────────
  *
- * Ausgangslage: `# pass 11 / # fail 0` (zehn Fälle und ihre Hülle). Jede
- * Gegenprobe ist EINE Änderung, danach zurückgenommen (die Dateien wurden
- * gegen ihre Sicherung verglichen).
+ * Starting point: `# pass 11 / # fail 0` (ten cases and their wrapper). Every
+ * counter-check is ONE change, reverted afterwards (the files were
+ * compared against their backup).
  *
- *   A  `search` in manualPartsList ignoriert (`if (false && search)`)
- *      → `pass 4 / fail 7`. Rot sind SECHS Fälle: Teilenummer, Name,
- *        BrickLink-Nummer, „ohne Treffer leer", „Suchtext und Lagerort
- *        zusammen" und „das Set-Teil bleibt draussen". Der erste meldet
+ *   A  `search` ignored in manualPartsList (`if (false && search)`)
+ *      → `pass 4 / fail 7`. SIX cases are red: part number, name,
+ *        BrickLink number, “without hits … empty”, “search text and storage location
+ *        together” and “the set part stays out”. The first reports
  *        „die Suche nach 3001 liefert 3001,3002,3003 — erwartet nur 3001".
- *        Das ist Marcos Befund, in Zahlen.
- *   B  `search` in readManualMinifigs ignoriert
- *      → `pass 9 / fail 2`. Rot ist der Figuren-Fall. Dass es nur einer ist,
- *        ist der Grund, warum diese Lücke so lange unbemerkt blieb: Niemand
- *        sucht im Reiter Minifiguren nach einer manuell erfassten Figur,
- *        bevor er es bei den Teilen gemerkt hat.
- *   C  die BrickLink-Nummer aus teileSuche() entfernt
- *      → `pass 8 / fail 3`. Rot sind ZWEI Fälle: „die Suche findet die
- *        BrickLink-Nummer von der Kachel" (manuelle Liste) und „die Wand der
- *        Set-Teile sucht über dieselbe Formulierung". Eine Änderung, zwei
- *        Fundstellen — genau dafür ist der Ausdruck zusammengelegt.
- *   D  den Lagerort-Platzhalter VOR den Suchtext in `params` gelegt, die
- *      Nummern im SQL gelassen
- *      → `pass 9 / fail 2`. Rot ist „Suchtext und Lagerort zusammen" mit
- *        null Treffern: Jede Bedingung bekam den Wert der anderen. Der Fall
- *        steht genau deshalb da.
+ *        That is Marco's finding, in numbers.
+ *   B  `search` ignored in readManualMinifigs
+ *      → `pass 9 / fail 2`. The figure case is red. That it is only one
+ *        is the reason why this gap stayed unnoticed for so long: nobody
+ *        searches the minifigures tab for a manually captured figure
+ *        before noticing it with the parts.
+ *   C  the BrickLink number removed from teileSuche()
+ *      → `pass 8 / fail 3`. TWO cases are red: “the search finds the
+ *        BrickLink number from the tile” (manual list) and “the wall of
+ *        set parts searches via the same phrasing”. One change, two
+ *        places — exactly for that the expression is merged.
+ *   D  the storage location placeholder put BEFORE the search text in `params`, the
+ *      numbers left in the SQL
+ *      → `pass 9 / fail 2`. Red is “search text and storage location together” with
+ *        zero hits: every condition got the value of the other one. The case
+ *        stands there exactly for that reason.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
  * REQUIRE_DB=1.
  */
 require('./helpers/system-frame');
@@ -71,9 +71,9 @@ test('search text and storage location also hit the manually captured lists', { 
   const u = await db.get(`INSERT INTO users (username,password_hash) VALUES ('marco','x') RETURNING id`);
   const UID = u.id;
 
-  // Drei manuell erfasste Teile. 3002 trägt bei BrickLink eine ANDERE Nummer —
-  // und auf der Kachel steht die (bl_part_number, blNummerSql). Wer sie dort
-  // liest, tippt sie auch ein.
+  // Three manually captured parts. At BrickLink 3002 carries a DIFFERENT number —
+  // and the tile shows that one (bl_part_number, blNummerSql). Whoever reads it
+  // there also types it in.
   await db.run(`INSERT INTO part_catalog (part_number,part_name) VALUES
                   ('3001','Brick 2 x 4'), ('3002','Brick 2 x 2'), ('3003','Brick 2 x 3')`);
   await db.run(`INSERT INTO part_color_catalog (part_number,color_id,color_name) VALUES
@@ -84,8 +84,8 @@ test('search text and storage location also hit the manually captured lists', { 
   await holdsPart(db, UID, '3001', { colorId: 4, menge: 10, storageId: ORT });
   await holdsPart(db, UID, '3002', { colorId: 4, menge: 5 });
   await holdsPart(db, UID, '3003', { colorId: 4, menge: 1 });
-  // Ein Set-Teil derselben Nummer: Es darf in dieser Liste NIE auftauchen,
-  // auch nicht als Suchtreffer.
+  // A set part with the same number: it must NEVER show up in this list,
+  // not even as a search hit.
   await holdsPart(db, UID, '3001', { setNumber: '10497-1', colorId: 7, menge: 2 });
 
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name) VALUES
@@ -191,10 +191,10 @@ test('search text and storage location also hit the manually captured lists', { 
   });
 
   await t.test('the wall of set parts searches via the same phrasing', async () => {
-    // teileSuche() ist für beide Listen EIN Ausdruck. Diese Zusicherung hält
-    // sie zusammen: Vorher kannte der Live-Weg der Set-Teile die
-    // BrickLink-Nummer NICHT, die vorberechnete Zusammenfassung daneben schon
-    // — dieselbe Suche fand je nach Weg etwas anderes.
+    // teileSuche() is ONE expression for both lists. This assertion holds
+    // them together: before, the live path of the set parts did NOT know the
+    // BrickLink number, the precomputed summary next to it did
+    // — the same search found something different depending on the path.
     const d = await teile.partsQuery([UID], { search: '9999' });
     assert.deepEqual(
       d.parts.map(p => String(p.part_number)),

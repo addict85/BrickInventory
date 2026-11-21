@@ -1,22 +1,22 @@
 /**
- * Ein Gutschein-PDF mit zu vielen Seiten wird abgewiesen, bevor es seitenweise
- * gelesen wird; gelesen wird in einem Worker-Thread. Je Konto läuft höchstens
- * ein Gutschein-PDF und eine begrenzte Zahl Uploads und Ereignisströme
- * zugleich — ein zweites Konto ist davon nicht betroffen.
+ * A voucher PDF with too many pages is rejected before it is read
+ * page by page; reading happens in a worker thread. Per account at most
+ * one voucher PDF and a limited number of uploads and event streams run
+ * at the same time — a second account is not affected by it.
  *
- * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
- *   A  MAX_PAGES-Abfrage in readUploadedPdf() gestrichen → rot:
- *      „250 Seiten: 422 mit verständlicher Meldung“ (der Stapel wird gelesen)
- *   B  readInBackground() ruft readUploadedPdf() direkt → rot: „gelesen wird
- *      in einem Worker-Thread“
- *   C  kontoSchranke('voucherPdf') an POST /vouchers/pdf gestrichen → rot:
- *      „ein zweites Gutschein-PDF desselben Kontos wartet nicht“
- *   D  in kontoSchranke() die Freigabe bei 'close' gestrichen → rot: „… nach
- *      dem Ende geht es wieder“
- *   E  kontoSchranke('strom') am CSV-Strom gestrichen → rot: „höchstens sechs
- *      Ereignisströme je Konto“
- *   F  in kontoSchranke() die Freigabe bei 'finish' gestrichen → rot: „der
- *      Platz ist frei, sobald die Antwort übergeben ist“
+ * Counter-checks (measured on 04.11.2026, one change each, reverted afterwards):
+ *   A  MAX_PAGES query deleted in readUploadedPdf() → red:
+ *      “250 pages: 422 with an understandable message” (the stack is read)
+ *   B  readInBackground() calls readUploadedPdf() directly → red: “reading happens
+ *      in a worker thread”
+ *   C  kontoSchranke('voucherPdf') deleted on POST /vouchers/pdf → red:
+ *      “a second voucher PDF of the same account does not wait”
+ *   D  the release on 'close' deleted in kontoSchranke() → red: “… after
+ *      the end it works again”
+ *   E  kontoSchranke('strom') deleted on the CSV stream → red: “at most six
+ *      event streams per account”
+ *   F  the release on 'finish' deleted in kontoSchranke() → red: “the
+ *      slot is free as soon as the response is handed over”
  *
  * REQUIRE_DB=1.
  */
@@ -50,7 +50,7 @@ async function hochladen(base, daten) {
   return { status: r.status, body: await r.json().catch(() => ({})) };
 }
 
-/** Ein Upload, dessen Rumpf erst auf Zuruf endet: Er hält seinen Platz. */
+/** An upload whose body only ends on call: it holds its slot. */
 function hangingUpload(base) {
   const u = new URL(`${base}/api/v1/vouchers/pdf`);
   const grenze = 'xyzgrenze';
@@ -100,7 +100,7 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
     await db.run('DELETE FROM users WHERE id = ANY($1)', [[A, B]]);
     await testAccess()
       .notification.close()
-      .catch(() => {}); // der CSV-Strom hört auf NOTIFY
+      .catch(() => {}); // the CSV stream listens to NOTIFY
     await db.pool.end().catch(() => {});
   });
   const server = uid => testServer(_req, { sitzung: { userId: uid }, t });
@@ -145,7 +145,7 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
       const fremd = await hochladen(b.base, await pdfWith(1));
       assert.notEqual(fremd.status, 429, 'ein anderes Konto ist nicht betroffen');
     } finally {
-      erster.ende(); // sonst wartet das Schliessen des Servers auf ihn
+      erster.ende(); // otherwise closing the server waits for it
       await erster.antwort;
     }
   });
@@ -178,8 +178,8 @@ test('per-account limits on upload', { concurrency: 1, timeout: 120_000 }, async
   });
 });
 
-// Ein Client, der nach der Antwort sofort die nächste Datei schickt, kam im
-// Volllauf vor 'close' an und bekam 429. Hier ohne Netz, damit es nicht vom Takt abhängt.
+// A client that sends the next file immediately after the response arrived in the
+// full run before 'close' and got 429. Here without network so that it does not depend on the timing.
 test('the slot is free as soon as the response is handed over', () => {
   const { EventEmitter } = require('node:events');
   const { kontoSchranke } = _req('routes/api_v1/middleware.js');

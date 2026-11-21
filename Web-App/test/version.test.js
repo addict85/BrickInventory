@@ -1,17 +1,17 @@
 /**
- * Die Version kommt zur Bauzeit aus Git oder einem Build-Argument und landet
- * in dist/version.json; `npm ci` und `npm run build` verändern den
- * Arbeitsbaum nicht mehr.
+ * The version comes from Git or a build argument at build time and lands
+ * in dist/version.json; `npm ci` and `npm run build` no longer change the
+ * working tree.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in package.json wieder "postinstall": "node scripts/version.js" →
- *      rot: „das Projekt hat kein Install-Skript“
- *   B  in scripts/version.js APP_VERSION nicht mehr gelesen → rot: „ein
- *      Build-Argument geht vor, sonst Git“
- *   C  in src/infra/appVersion.ts den Rückgriff auf dist/version.json entfernt →
- *      rot: „der Server meldet die gebaute Version“ („unbekannt“)
- *   D  (13.11.2026) in scripts/version.js die beiden --exclude entfernt → rot: „Android-Etiketten
- *      nennen nicht die Web-Version“ („android-v2026.11.12.4-1-g…“)
+ * Counter-checks (measured on 30.10.2026):
+ *   A  in package.json again "postinstall": "node scripts/version.js" →
+ *      red: “the project has no install script”
+ *   B  APP_VERSION no longer read in scripts/version.js → red: “a
+ *      build argument takes precedence, otherwise Git”
+ *   C  the fallback to dist/version.json removed in src/infra/appVersion.ts →
+ *      red: “the server reports the built version” („unbekannt“)
+ *   D  (13.11.2026) the two --exclude removed in scripts/version.js → red: “Android tags
+ *      do not name the web version” („android-v2026.11.12.4-1-g…“)
  */
 const test = require('node:test');
 const { environment } = require('./helpers/sources');

@@ -1,15 +1,15 @@
 /**
- * Das Band „Rebrickable-Schlüssel fehlt“ ist am Telefon schlank: höchstens 56 px hoch (zwei Zeilen Text
- * neben Knopf und Schliessen) und nicht mehr drei Zeilen mit 68 px. Der Knopf „Eintragen“ behält seinen
- * vollen Namen „Schlüssel eintragen“ für Vorleser. Gemessen im Browser bei 390 und 320 px.
+ * The banner „Rebrickable-Schlüssel fehlt“ is slim on the phone: at most 56 px high (two lines of text
+ * next to button and close) and no longer three lines with 68 px. The button „Eintragen“ keeps its
+ * full name „Schlüssel eintragen“ for screen readers. Measured in the browser at 390 and 320 px.
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   A  de.js 'rb_key.banner_short' wieder „Ohne Rebrickable-Schlüssel keine neuen Sets.“ → rot:
- *      „Band ist schlank“ (68 px bei 320 px)
- *   B  aria-label am Knopf in index.html entfernt → rot: „Knopf behält seinen Namen“ („Eintragen“)
+ * Counter-checks (measured 08.11.2026, each on its own):
+ *   A  de.js 'rb_key.banner_short' again „Ohne Rebrickable-Schlüssel keine neuen Sets.“ → red:
+ *      “banner is slim” (68 px at 320 px)
+ *   B  aria-label on the button removed in index.html → red: “button keeps its name” („Eintragen“)
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Without Chrome (CHROME_BIN, google-chrome, chromium) it is skipped.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

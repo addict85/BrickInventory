@@ -1,23 +1,23 @@
 /**
- * Meldungen (Toasts), am echten Bündel in jsdom: Fehler und Meldungen mit
- * Knopf laufen nicht ab, andere halten unter Maus oder Fokus an, ein Klick
- * räumt weg.
+ * Messages (toasts), on the real bundle in jsdom: errors and messages with a
+ * button do not expire, others pause under mouse or focus, a click
+ * clears them away.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  (05.11.2026 neu gemessen) `bleibt` in toast() immer false → rot:
- *      „Fehler und Knopf-Meldungen laufen nicht ab“
- *   B  der click-Handler am Toast entfernt → rot: „Klick räumt die Meldung weg“
- *   C  (30.10.) die Suche nach der gleichen Meldung in toast() entfernt → rot:
- *      „gleiche Fehler stapeln sich nicht“ (3 Meldungen statt 1)
- *   D  (05.11.2026) der mouseenter-Halt entfernt → rot: „Maus auf der Meldung
- *      hält die Frist an“
+ * Counter-checks (measured on 28.10.2026):
+ *   A  (re-measured 05.11.2026) `bleibt` in toast() always false → red:
+ *      “errors and button messages do not expire”
+ *   B  the click handler on the toast removed → red: “a click clears the message”
+ *   C  (30.10.) the search for the same message in toast() removed → red:
+ *      “identical errors do not stack” (3 messages instead of 1)
+ *   D  (05.11.2026) the mouseenter pause removed → red: “the mouse on the message
+ *      stops the deadline”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, reiter, warte } = require('./helpers/ui');
 
-// Seit dem 29.10. zeigt eine Liste ihren Ladefehler selbst (fehlerZustand);
-// eine Meldung kommt von einer Handlung — hier „Auf die Merkliste“.
+// Since 29.10. a list shows its load error itself (fehlerZustand);
+// a message comes from an action — here „Auf die Merkliste“.
 const FEHLER = { '/v1/wanted': { success: false, error: 'Merkliste kaputt' } };
 async function createWantedItem(w, d) {
   await reiter(w, 'wanted');
@@ -25,7 +25,7 @@ async function createWantedItem(w, d) {
   d.getElementById('mk-add').click();
 }
 
-/** Zeitgeber ab jetzt mitschreiben, statt sie laufen zu lassen. */
+/** Record timers from now on instead of letting them run. */
 function catchZeitgeber(w) {
   const gefangen = [];
   const echt = w.setTimeout;
@@ -63,7 +63,7 @@ test('the mouse on the message stops the deadline', async () => {
     '/v1/wanted': (_u, o) => (o.method === 'POST' ? { success: true, war_neu: true } : { success: true, items: [] }),
   });
   try {
-    // Wie catchZeitgeber, aber clearTimeout nimmt einen gefangenen Zeitgeber wieder heraus.
+    // Like catchZeitgeber, but clearTimeout takes a caught timer out again.
     const offen = new Map();
     let n = 1e6;
     const setzen = w.setTimeout,

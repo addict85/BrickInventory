@@ -1,23 +1,23 @@
 /**
- * Caddy lässt die Anmeldewege ungebremst zur App, damit deren bcrypt-Schranke
- * die Last sieht (Vorrang, 503); er weist nur Rümpfe über 16 KB ab und reicht
- * einen Rumpf erst ganz gelesen weiter. Das echte Caddyfile läuft in einem
- * echten Caddy (CADDY_BIN oder `caddy` im Pfad) vor einem Node-Server, der
- * mitzählt; ohne Caddy wird übersprungen.
+ * Caddy lets the login paths through to the app unthrottled so that its bcrypt barrier
+ * sees the load (priority, 503); it only rejects bodies over 16 KB and passes
+ * a body on only when fully read. The real Caddyfile runs in a
+ * real Caddy (CADDY_BIN or `caddy` in the path) in front of a Node server that
+ * counts along; without Caddy it is skipped.
  *
- * Gegenproben (04.11.2026 gemessen mit Caddy aus `go install`, je einzeln):
- *   A  `transport http { max_conns_per_host 4 }` wieder eingesetzt → rot:
- *      „Caddy lässt die Anmeldungen ungebremst zur App“ (4 zugleich); mit
- *      `max_conns_per_host 8` ebenso (8 zugleich)
- *   B  `import anmeldung` gestrichen → rot: „der Block (anmeldung) ist nicht
- *      eingebunden“
- *   C  `request_body { max_size 16KB }` gestrichen → rot: „ein Rumpf über 16 KB …“
- *   D  `request_buffers 32KB` gestrichen → rot: „kein angefangener Rumpf
- *      erreicht die App“ (alle acht)
- *   E  `request_buffers 16KB` (= max_size) → rot: dieselbe; die vier
- *      Rümpfe mit 16 000 Byte strömen ab der Puffergrenze doch zur App
- *   F  `read_header 10s` gestrichen → rot: „Caddy schliesst eine Verbindung,
- *      deren Kopf stockt …“ (Vorgabe von Caddy ist eine Minute)
+ * Counter-checks (measured 04.11.2026 with Caddy from `go install`, each alone):
+ *   A  `transport http { max_conns_per_host 4 }` reinserted → red:
+ *      “Caddy lets the logins through to the app unthrottled” (4 at once); with
+ *      `max_conns_per_host 8` likewise (8 at once)
+ *   B  `import anmeldung` deleted → red: “the block (anmeldung) is not
+ *      included”
+ *   C  `request_body { max_size 16KB }` deleted → red: “a body over 16 KB …”
+ *   D  `request_buffers 32KB` deleted → red: “no started body
+ *      reaches the app” (all eight)
+ *   E  `request_buffers 16KB` (= max_size) → red: the same; the four
+ *      bodies with 16 000 bytes do stream to the app from the buffer limit on
+ *   F  `read_header 10s` deleted → red: “Caddy closes a connection
+ *      whose header stalls …” (Caddy's default is one minute)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -33,7 +33,7 @@ const { portOf } = require('./helpers/server');
 
 const ROOT = path.join(__dirname, '..');
 const CADDY = process.env.CADDY_BIN || (spawnSync('caddy', ['version']).status === 0 ? 'caddy' : null);
-// REQUIRE_CADDY=1 (CI): ein fehlender Caddy ist ein Fehler, kein stilles Überspringen.
+// REQUIRE_CADDY=1 (CI): a missing Caddy is an error, not a silent skip.
 if (!CADDY && process.env.REQUIRE_CADDY === '1') throw new Error('REQUIRE_CADDY=1, aber kein Caddy (CADDY_BIN)');
 
 test('Caddy passes the login paths on unthrottled, but only with a complete body', {
@@ -66,8 +66,8 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
     app.close();
     fs.rmSync(tmp, { recursive: true, force: true });
   });
-  // Ports vom System statt aus der pid: Die lagen im Bereich, aus dem auch listen(0) der
-  // parallelen Testdateien schöpft. Ein belegter Port bleibt möglich; dann ein neuer Versuch.
+  // Ports from the system instead of from the pid: those lay in the range that listen(0) of the
+  // parallel test files also draws from. An occupied port stays possible; then a new attempt.
   const freePort = () =>
     new Promise(r => {
       const s = net.createServer().listen(0, '127.0.0.1', () => {
@@ -127,7 +127,7 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
     caddy.stderr.on('data', d => {
       fehler = (fehler + d).slice(-4000);
     });
-    // Unter Last startet Caddy mit eigener CA langsam; endet er vorher, steht sein stderr in der Meldung.
+    // Under load Caddy with own CA starts slowly; if it ends before, its stderr is in the message.
     const bis = Date.now() + 30_000;
     while (bereit !== 200 && caddy.exitCode === null && Date.now() < bis) {
       bereit = await anfrage('GET', '/api/v1/health');
@@ -138,7 +138,7 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
   }
   assert.equal(bereit, 200, `Caddy antwortet nicht (Exit ${caddy.exitCode}): ${fehler.slice(-600)}`);
 
-  // Lange gehalten, damit auch ein langsamer Lauf alle 16 zugleich offen hat.
+  // Held long so that even a slow run has all 16 open at once.
   jetzt = 0;
   hoechst = 0;
   halten = 1500;
@@ -153,8 +153,8 @@ test('Caddy passes the login paths on unthrottled, but only with a complete body
     'ein Rumpf über 16 KB erreicht die Anmeldung',
   );
 
-  // Kopf sofort, vom Rumpf nur ein Teil, dann Stille: vier knapp angefangene
-  // und vier, die genau bis zur Grenze von max_size gehen.
+  // Header immediately, only part of the body, then silence: four barely started
+  // and four that go exactly up to the limit of max_size.
   const langsam = (laenge, upfront) =>
     new Promise(bereit => {
       const s = tls.connect(

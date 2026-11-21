@@ -1,23 +1,23 @@
 /**
- * Ein zweites Mal erzeugter QR-Code bleibt stehen: Der Ablaufzähler des ersten
- * Codes darf ihn nicht wegräumen, die Kopplungsabfrage (alle 2 s) auch nicht.
- * Echter Server, echtes Chrome; nur die Laufzeit des ersten Codes ist auf 4 s
- * gekürzt (Antwort von /qr-token umgeschrieben), damit sein Zähler im Test abläuft.
+ * A QR code created a second time stays: the expiry counter of the first
+ * code must not clear it away, nor must the pairing query (every 2 s).
+ * Real server, real Chrome; only the lifetime of the first code is shortened to 4 s
+ * (response of /qr-token rewritten) so that its counter expires in the test.
  *
- * Gegenprobe (12.11.2026 gemessen): heutiger Stand von zugaenge.js, in dem
- * generateQrCode den Zähler nur lokal hält und beim Neuerzeugen weiterlaufen
- * lässt → rot: „der zweite Code steht nach Ablauf des ersten nicht mehr da“.
+ * Counter-check (measured 12.11.2026): the state of the day of zugaenge.js in which
+ * generateQrCode only holds the counter locally and lets it keep running when regenerating
+ * → red: „der zweite Code steht nach Ablauf des ersten nicht mehr da“.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 
-// Ohne APP_BASE_URL verweigert der Server den Code; http, damit das Sitzungs-Cookie ohne TLS gilt.
+// Without APP_BASE_URL the server refuses the code; http, so that the session cookie applies without TLS.
 process.env.APP_BASE_URL = 'http://lego.example.org';
 
 test('QR code: the second code stays after the first expires', { timeout: 180_000 }, async t => {
   const app = await startApp(t, {
-    // Ohne Verwalterrechte kein zweiter Faktor, also keine Rückfrage vor dem Code.
+    // Without admin rights no second factor, so no prompt before the code.
     bestand: (db, uid) => db.run('UPDATE users SET is_admin = false WHERE id = $1', [uid]),
   });
   if (app.grund) return t.skip(app.grund);
@@ -52,7 +52,7 @@ test('QR code: the second code stays after the first expires', { timeout: 180_00
   await create();
   await bis(`(${bild}).startsWith('data:image/png') && (${bild}) !== ${JSON.stringify(erstes)}`, 'zweiter Code');
   assert.equal(erzeugt, 2);
-  // Fünf Takte des neuen Zählers: Bis dahin ist der des ersten (4 s) abgelaufen und die Kopplung zweimal gefragt.
+  // Five beats of the new counter: by then the first one's (4 s) has expired and the pairing has been asked twice.
   await bis(`/4:5[0-5]/.test(document.getElementById('qr-hint').textContent)`, 'neuer Zähler bei 4:55', 150);
 
   const nachher = await b.auswerten(`({ bild: ${bild}, hinweis: document.getElementById('qr-hint').textContent })`);

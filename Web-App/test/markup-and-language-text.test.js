@@ -1,12 +1,12 @@
 /**
- * Was im Markup steht, ist auch das, was der Sprachtext sagt.
+ * What stands in the markup is also what the language text says.
  *
- * ── Gegenproben (durchgeführt, Ergebnisse abgeschrieben) ────────────────────
+ * ── Counter-checks (carried out, results copied) ────────────────────
  *
- *   A  ein Markup-Text wieder abweichend gesetzt
- *      → „jeder Rückfalltext zeigt, was der Sprachtext sagt" rot, nennt ihn
- *   B  das `(Admin)`-Feld zurück unter ein `data-i18n`-Element
- *      → „kein Element mit data-i18n hat Kind-Elemente" rot
+ *   A  a markup text set differently again
+ *      → “every fallback text shows what the language text says” red, names it
+ *   B  the `(Admin)` field back under a `data-i18n` element
+ *      → “no element with data-i18n has child elements” red
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,7 +16,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
 
-/** Im Textknoten maskiert, was dort maskiert gehört. */
+/** Escaped in the text node what belongs escaped there. */
 const escHtml = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 
 function languageTexts() {
@@ -29,17 +29,17 @@ function languageTexts() {
 test('every fallback text shows what the language text says', () => {
   const texte = languageTexts();
   const stellen = [...HTML.matchAll(/(<[a-z]+\b[^>]*\bdata-i18n="([^"]+)"[^>]*>)([^<]+)</g)];
-  // Selbstbeweis: GEMESSEN sind es über 200. Findet die Ableitung nichts,
-  // wäre die Schleife still grün.
+  // Self-proof: MEASURED there are over 200. If the derivation finds nothing,
+  // the loop would be silently green.
   assert.ok(stellen.length > 150, `Nur ${stellen.length} Stellen abgeleitet — greift die Suche noch?`);
 
   const abweichend = [];
   let geprueft = 0;
   for (const [, tag, schluessel, text] of stellen) {
-    if (tag.includes('data-i18n-attr')) continue; // Ausnahme 1
+    if (tag.includes('data-i18n-attr')) continue; // exception 1
     const soll = texte.get(schluessel);
-    if (soll === undefined) continue; // i18n.test.js deckt fehlende Schlüssel ab
-    if (soll.includes('{')) continue; // Ausnahme 2
+    if (soll === undefined) continue; // i18n.test.js covers missing keys
+    if (soll.includes('{')) continue; // exception 2
     geprueft++;
     if (escHtml(soll) !== text.trim()) abweichend.push(`${schluessel}: Markup "${text.trim()}" ≠ "${soll}"`);
   }
@@ -61,7 +61,7 @@ test('no element with data-i18n has child elements', () => {
     if (m[2].includes('data-i18n-attr')) continue;
     const tag = m[1];
     const rest = HTML.slice(m.index + m[0].length);
-    // Bis zum passenden Schluss-Tag, verschachtelte gleichnamige mitgezählt.
+    // Up to the matching closing tag, nested ones of the same name counted.
     let tiefe = 1,
       i = 0,
       ende = -1;

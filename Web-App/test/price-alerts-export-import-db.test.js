@@ -1,36 +1,36 @@
 /**
- * Preisalarme gehen als CSV hinaus und kommen als Preisalarme zurueck.
+ * Price alerts go out as CSV and come back as price alerts.
  *
- * ── Gegenproben (durchgeführt, Befunde GEMESSEN) ────────────────────────────
+ * ── Counter-checks (carried out, findings MEASURED) ────────────────────────────
  *
- *   a) preisalarme.csv aus dem ZIP entfernt      → 1, 2, 3, 4 rot
- *   b) Währung aus der DATEI statt den Einstell. → 5 rot
- *   c) `triggered` mit exportiert               → 3 rot
- *   d) setzeAlarm durch ein rohes INSERT ersetzt → 6 und 6b rot
- *   e) `WHERE user_id` aus dem Export entfernt   → 2 und 4 rot
+ *   a) preisalarme.csv removed from the ZIP      → 1, 2, 3, 4 red
+ *   b) currency from the FILE instead of settings → 5 red
+ *   c) `triggered` exported too                 → 3 red
+ *   d) setzeAlarm replaced by a raw INSERT      → 6 and 6b red
+ *   e) `WHERE user_id` removed from the export   → 2 and 4 red
  *
- * Drei Dinge daran sind nicht so ausgegangen, wie ich sie vorher aufgeschrieben
- * hatte, und alle drei stehen hier, weil sie etwas über den Test sagen:
+ * Three things about it did not turn out the way I had written them down
+ * beforehand, and all three stand here because they say something about the test:
  *
- * (d) machte im ERSTEN Versuch GAR NICHTS rot. Fall 6 behauptete, er prüfe,
- * dass die Route setzeAlarm() benutzt — tat er nicht: Die Tabelle hat eigene
- * CHECK-Bedingungen auf `direction` und `threshold` (nachgemessen), die fingen
- * das rohe INSERT genauso. Fall 6 trägt jetzt den Zustand „X", auf den es
- * KEINE CHECK gibt, und 6b das Zurücksetzen von `triggered`, das die Tabelle
- * auch nicht erzwingt. Erst damit trennt der Test die beiden Fassungen.
+ * (d) turned NOTHING AT ALL red on the FIRST attempt. Case 6 claimed it checked
+ * that the route uses setzeAlarm() — it did not: the table has its own
+ * CHECK conditions on `direction` and `threshold` (measured), they caught
+ * the raw INSERT just the same. Case 6 now carries the condition „X", for which there is
+ * NO CHECK, and 6b the resetting of `triggered`, which the table does not
+ * enforce either. Only with that does the test separate the two versions.
  *
- * (e) deckte beim DURCHDENKEN eine Lücke auf, bevor er lief: Der Aufbau hatte
- * nur ein Konto, und ohne ein zweites sieht ein Export über ALLE Konten
- * genauso aus wie der richtige. Seitdem gibt es `FOREIGN_ALARM` — und das ist
- * kein Schönheitsfehler gewesen, sondern ein Leck: Ein Alarm löst eine MAIL an
- * die Adresse seines Kontos aus.
+ * (e) uncovered a gap while THINKING IT THROUGH, before it ran: the setup had
+ * only one account, and without a second one an export over ALL accounts looks
+ * just like the right one. Since then there is `FOREIGN_ALARM` — and that was
+ * no cosmetic flaw but a leak: an alert triggers a MAIL to
+ * the address of its account.
  *
- * Gemessen wurde dann 2 UND 4 rot, vorhergesagt hatte ich nur 2. Auch richtig:
- * Steht der fremde Alarm in der Datei, legt ihn der Import im eigenen Konto an,
- * und die Zahl stimmt nicht mehr. Die Vorhersage war zu eng, nicht der Befund
- * falsch.
+ * Then 2 AND 4 were measured red, I had only predicted 2. Also right:
+ * if the foreign alert stands in the file, the import creates it in the own account,
+ * and the number is no longer right. The prediction was too narrow, not the finding
+ * wrong.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
  * REQUIRE_DB=1.
  */
 const test = require('node:test');
@@ -54,16 +54,16 @@ let MAIN = 0,
   FREMD = 0;
 
 /**
- * Der Alarm eines FREMDEN Kontos. Er steht hier, weil ein Export ohne
- * `WHERE user_id` sonst nicht auffiele: Mit nur einem Konto im Aufbau sieht
- * eine Abfrage über ALLE Konten genauso aus wie die richtige. Das ist beim
- * Durchdenken der Gegenproben aufgefallen — Fall „user_id weggelassen" hätte …
+ * The alert of a FOREIGN account. It stands here because an export without
+ * `WHERE user_id` would otherwise not stand out: with only one account in the setup
+ * a query over ALL accounts looks just like the right one. That came up while
+ * thinking through the counter-checks — the case „user_id left out" would have …
  */
 const FOREIGN_ALARM = { sn: '31203-1', c: 'N', r: 'unter', s: 77, w: 'CHF' };
 
 /**
- * Vier Alarme. Der dritte sitzt auf einem Set, das das Konto NICHT besitzt —
- * genau der Fall, der als Spalte an sets.csv herausgefallen wäre.
+ * Four alerts. The third sits on a set that the account does NOT own —
+ * exactly the case that would have fallen out as a column on sets.csv.
  */
 const ALERTS = [
   { sn: '75192-1', c: 'N', r: 'unter', s: 600, w: 'CHF', besitzt: true },
@@ -85,8 +85,8 @@ async function setup(accountCurrency = 'CHF') {
   await db.run(`INSERT INTO users (username,password_hash) VALUES ('haupt','x'),('fremd','x')`);
   MAIN = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
   FREMD = (await db.get(`SELECT id FROM users WHERE username='fremd'`)).id;
-  // KEINE Kontoverknuepfung: 'fremd' ist kein Unterkonto. Selbst mit einer
-  // waere es falsch — ein Alarm kennt kein Blickfeld.
+  // NO account link: 'fremd' is not a sub-account. Even with one
+  // it would be wrong — an alert knows no scope.
   await catalogSet(db, FOREIGN_ALARM.sn, { name: FOREIGN_ALARM.sn });
   await db.run(
     `INSERT INTO price_alerts (user_id,set_number,condition,direction,threshold,currency_code)
@@ -98,10 +98,10 @@ async function setup(accountCurrency = 'CHF') {
                 ON CONFLICT (user_id,key) DO UPDATE SET value=$2`,
     [MAIN, accountCurrency],
   );
-  // Der Bestand gehoert je SET, der Alarm je (Set, Zustand): 75192-1 traegt
-  // beide Zustaende. Zwei Erfassungen fuer dasselbe Set am selben TAG verletzt
-  // idx_set_acq_tag_zustand (Migration 0008) — genau daran ist der erste Lauf dieses
-  // Tests gescheitert. Deshalb die Bestandszeile nur einmal je Nummer.
+  // The stock belongs per SET, the alert per (set, condition): 75192-1 carries
+  // both conditions. Two acquisitions for the same set on the same DAY violate
+  // idx_set_acq_tag_zustand (migration 0008) — exactly on that the first run of this
+  // test failed. Hence the stock row only once per number.
   const gelegt = new Set();
   for (const a of ALERTS) {
     await catalogSet(db, a.sn, { name: a.sn });
@@ -126,7 +126,7 @@ async function setup(accountCurrency = 'CHF') {
   }
 }
 
-/** Eine Datei aus dem ZIP holen — wie in wanted-export-import-db.test.js. */
+/** Fetch a file from the ZIP — as in wanted-export-import-db.test.js. */
 function fromZip(buf, name) {
   const zlib = require('node:zlib');
   for (let i = 0; i + 30 <= buf.length; i++) {
@@ -153,7 +153,7 @@ function csvRows(text) {
     });
 }
 
-/** Dieselbe CSV aus ALERTS gebaut — unabhängig vom Export (Lehre aus Stück 1). */
+/** The same CSV built from ALERTS — independent of the export (lesson from piece 1). */
 function csvFromAlerts(waehrung) {
   return (
     'set_number,condition,richtung,schwelle,currency_code\n' +
@@ -212,11 +212,11 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
       );
       assert.equal(z.currency_code, a.w);
     }
-    // Der Kern: Zwei der vier Alarme sitzen auf Sets ohne Bestandszeile. Als
-    // Spalten an sets.csv wären sie stillschweigend herausgefallen — und genau
-    // das ist der haeufige Fall (Schwelle auf ein Set, das man kaufen WILL).
-    // Und NICHTS vom fremden Konto. Ohne diesen Fall waere ein Export ohne
-    // `WHERE user_id` nicht zu bemerken.
+    // The core: two of the four alerts sit on sets without a stock row. As
+    // columns on sets.csv they would have silently fallen out — and exactly
+    // that is the common case (threshold on a set one WANTS to buy).
+    // And NOTHING from the foreign account. Without this case an export without
+    // `WHERE user_id` would not be noticeable.
     assert.ok(
       !zeilen.some(x => x.set_number === FOREIGN_ALARM.sn),
       `Der Alarm des fremden Kontos (${FOREIGN_ALARM.sn}) steht im eigenen Export. ` +
@@ -285,8 +285,8 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
   });
 
   await t.test('5. a file in a foreign currency: the ACCOUNT wins, and it is said', async () => {
-    // Die Regel des Baums (PUT /sets/:setNumber/alert): Die Währung kommt aus
-    // den Einstellungen, nicht aus der Anfrage. Eine Datei ist eine Anfrage.
+    // The rule of the tree (PUT /sets/:setNumber/alert): the currency comes from
+    // the settings, not from the request. A file is a request.
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [MAIN]);
     const { body } = await hochladen(srv.base, csvFromAlerts('EUR'));
 
@@ -309,7 +309,7 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
       'Die Schwelle wurde verändert — umgerechnet wird NICHT, dafür bräuchte es einen Kurs',
     );
 
-    // Und das Entscheidende: Es wird NICHT verschwiegen.
+    // And the decisive point: it is NOT concealed.
     assert.ok(
       body.waehrung_hinweis,
       'Kein Hinweis in der Antwort. Die Zahlen bedeuten jetzt etwas anderes als in der ' +
@@ -330,19 +330,19 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
   });
 
   await t.test('6. an unusable row is counted, not swallowed', async () => {
-    // Was dieser Fall WIRKLICH unterscheidet (beim Gegenprobieren gelernt)
+    // What this case REALLY distinguishes (learned while counter-checking)
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [MAIN]);
     const kaputt =
       'set_number,condition,richtung,schwelle,currency_code\n' +
-      '75192-1,N,seitwaerts,600,CHF\n' + // Richtung gibt es nicht
-      '10179-1,N,unter,0,CHF\n' + // Schwelle muss > 0 sein
-      '31203-1,X,unter,50,CHF\n' + // Zustand gibt es nicht — nur die Prüfung fängt das
-      '21309-1,U,ueber,24.9,CHF\n'; // die gute Zeile
+      '75192-1,N,seitwaerts,600,CHF\n' + // direction does not exist
+      '10179-1,N,unter,0,CHF\n' + // threshold must be > 0
+      '31203-1,X,unter,50,CHF\n' + // condition does not exist — only the check catches that
+      '21309-1,U,ueber,24.9,CHF\n'; // the good row
     const { body } = await hochladen(srv.base, kaputt);
     assert.equal(body.errors, 3, `${body.errors} Fehler gemeldet statt 3: ${JSON.stringify(body.results)}`);
     assert.equal(body.added, 1, `${body.added} angelegt statt 1`);
-    // Der Zustand „X" darf NICHT in der Tabelle stehen. Die Datenbank hätte
-    // ihn genommen; nur checkInput() in src/finances/priceAlert.ts weist ihn ab.
+    // The condition „X" must NOT stand in the table. The database would have
+    // taken it; only checkInput() in src/finances/priceAlert.ts rejects it.
     assert.equal(
       (await db.get(`SELECT COUNT(*)::int c FROM price_alerts WHERE user_id=$1 AND condition NOT IN ('N','U')`, [MAIN]))
         .c,
@@ -356,15 +356,15 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
       1,
       'Eine unbrauchbare Zeile ist trotzdem in der Tabelle gelandet',
     );
-    // Und der fremde Alarm steht unberuehrt da — ein Import schreibt nur im
-    // eigenen Konto.
+    // And the foreign alert stands there untouched — an import writes only in the
+    // own account.
     assert.equal(
       (await db.get('SELECT COUNT(*)::int c FROM price_alerts WHERE user_id=$1', [FREMD])).c,
       1,
       'Der Import hat das fremde Konto angefasst',
     );
-    // Gegenrichtung: Die gute Zeile MUSS durchgehen. Ohne sie wäre die Regel
-    // auch erfüllt, wenn der Import grundsätzlich alles abwiese.
+    // Opposite direction: the good row MUST go through. Without it the rule would
+    // also be fulfilled if the import rejected everything in principle.
     assert.ok(
       await db.get(`SELECT 1 FROM price_alerts WHERE set_number='21309-1' AND condition='U'`),
       'Auch die gültige Zeile wurde abgewiesen',
@@ -372,9 +372,9 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
   });
 
   await t.test('6b. a repeated import resets the flag', async () => {
-    // setzeAlarm() sagt zu: „Der Merker triggered wird beim Ändern
-    // ZURÜCKGESETZT: Eine neue Schwelle ist eine neue Frage, und die soll
-    // beantwortet werden, auch wenn die alte schon einmal gemeldet hat."
+    // setzeAlarm() promises: „The marker triggered is RESET when
+    // changing: a new threshold is a new question, and it should
+    // be answered, even if the old one has already reported once."
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [MAIN]);
     await db.run(
       `INSERT INTO price_alerts
@@ -404,9 +404,9 @@ test('price alerts: round trip over the real addresses', { concurrency: 1 }, asy
   });
 
   await t.test('7. the Rebrickable export stays untouched', async () => {
-    // Festgehalten, damit die Entscheidung nicht später als Versäumnis
-    // gelesen wird: Diese Datei geht an den Importer einer FREMDEN Firma und
-    // trägt genau zwei Spalten. Eine dritte macht sie dort unbrauchbar.
+    // Recorded so that the decision is not later read as an omission:
+    // this file goes to the importer of a FOREIGN company and
+    // carries exactly two columns. A third one makes it unusable there.
     const r = await fetch(`${srv.base}/api/v1/sets/export/rebrickable`);
     assert.equal(r.status, 200, `Der Rebrickable-Export antwortete mit ${r.status}`);
     const kopf = (await r.text()).replace(/^﻿/, '').split(/\r?\n/)[0];

@@ -1,11 +1,11 @@
 /**
- * Der Knopf „Set ansehen" in der Preisalarm-Mail — und was passiert, wenn er
- * nicht gebaut werden kann.
+ * The “view set" button in the price alert mail — and what happens if it
+ * cannot be built.
  *
- * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
- *   a) Den Knopf bedingungslos setzen (auch ohne Basis) → Schritt 2 rot.
- *   b) Den Hinweis entfernt                             → Schritt 2 rot.
- *   c) Den Hinweis bei JEDEM Aufruf ausgeben            → Schritt 3 rot.
+ * ── Counter-checks (performed, result in the commit) ────────────────────────
+ *   a) set the button unconditionally (even without base) → step 2 red.
+ *   b) removed the hint                                    → step 2 red.
+ *   c) output the hint on EVERY call                       → step 3 red.
  */
 const test = require('node:test');
 const { environment } = require('./helpers/sources');
@@ -25,7 +25,7 @@ const DATEN = {
   currency: 'CHF',
 };
 
-/** console.warn einsammeln, statt den Testlauf zuzumuellen. */
+/** Collect console.warn instead of littering the test run. */
 async function warningsOf(fn) {
   const echt = console.warn;
   const collected = [];
@@ -39,15 +39,15 @@ async function warningsOf(fn) {
 }
 
 test('price alert mail: the button and its absence', async t => {
-  // Frisch laden, damit der „einmal je Prozess"-Merker dieser Prüfung gehört
-  // und nicht einem früheren Test.
+  // Load fresh so that the “once per process" flag belongs to this check
+  // and not to an earlier test.
   const mailer = _req('src/mail/mailer.js');
   const vorher = process.env.APP_BASE_URL;
 
   await t.test('1. with APP_BASE_URL the mail carries the link', async () => {
     environment({ APP_BASE_URL: 'https://lego.example.test/' });
     const m = await mailer.buildAlertMail(DATEN);
-    // Der abschliessende Schrägstrich der Variablen darf sich nicht verdoppeln.
+    // The trailing slash of the variable must not double.
     assert.match(
       m.html,
       /https:\/\/lego\.example\.test\/\?set=10179-1/,
@@ -58,10 +58,10 @@ test('price alert mail: the button and its absence', async t => {
   });
 
   await t.test('2. without APP_BASE_URL no guessed link — and a hint', async () => {
-    // Zwei Aussagen in EINEM Schritt, und das ist kein Zusammenlegen aus
-    // Bequemlichkeit: Der Hinweis faellt genau EINMAL je Prozess, also muss
-    // der erste Aufruf ohne Basis-URL beide Fragen beantworten. Ein zweiter
-    // Schritt davor haette den Merker verbraucht — genau das ist beim ersten …
+    // Two statements in ONE step, and that is not merging out of
+    // convenience: the hint fires exactly ONCE per process, so
+    // the first call without a base URL must answer both questions. A second
+    // step before it would have used up the flag — exactly that happened with the first …
     environment({ APP_BASE_URL: undefined });
     let m;
     const collected = await warningsOf(async () => {
@@ -70,13 +70,13 @@ test('price alert mail: the button and its absence', async t => {
 
     assert.ok(!/\?set=/.test(m.html), 'Ohne bekannte Adresse steht trotzdem ein Link in der Mail.');
     assert.ok(!/Set ansehen/.test(m.html), 'Der Knopf ist da, kann aber nirgends hinfuehren.');
-    // Der Rest der Mail bleibt vollstaendig — nur der Knopf fehlt.
+    // The rest of the mail stays complete — only the button is missing.
     assert.match(m.html, /Marktpreis/, 'Ohne Basis-URL fehlt auf einmal die halbe Mail.');
     assert.match(m.subject, /10179-1/);
 
-    // Genau das fehlte: Marco sah einen fehlenden Knopf, der Betreiber sah
-    // nichts. Dieselbe Luecke hat getBaseUrl() in routes/auth.ts laengst
-    // geschlossen — mit demselben Mittel.
+    // Exactly that was missing: Marco saw a missing button, the operator saw
+    // nothing. getBaseUrl() in routes/auth.ts closed the same gap long
+    // ago — with the same means.
     assert.ok(
       collected.some(z => z.includes('APP_BASE_URL')),
       `Kein Hinweis im Protokoll. Gesammelt: ${JSON.stringify(collected)}`,
@@ -84,10 +84,10 @@ test('price alert mail: the button and its absence', async t => {
   });
 
   await t.test('3. but only ONCE, not per alert', async () => {
-    // Der Preislauf baut die Mail fuer JEDEN gerissenen Alarm. Bei zwanzig
-    // Alarmen saehe zwanzigmal dieselbe Zeile aus wie ein Sturm statt wie ein
-    // Hinweis. Schritt 2 hat den Hinweis bereits ausgeloest — hier darf keiner
-    // mehr kommen.
+    // The price run builds the mail for EVERY triggered alert. With twenty
+    // alerts, twenty times the same line would look like a storm instead of a
+    // hint. Step 2 has already triggered the hint — none may come
+    // here anymore.
     environment({ APP_BASE_URL: undefined });
     const collected = await warningsOf(async () => {
       for (let i = 0; i < 3; i++) await mailer.buildAlertMail(DATEN);
@@ -96,12 +96,12 @@ test('price alert mail: the button and its absence', async t => {
     assert.equal(treffer, 0, `Der Hinweis wiederholt sich (${treffer}-mal bei drei Mails).`);
   });
 
-  // Marcos Befund vom 25.09.: die Kacheln stiessen aneinander
+  // Marco's finding from 25.09.: the tiles bumped into each other
   //
-  // Gegenproben (durchgefuehrt, je rot, danach wieder gruen):
-  //   a) zurueck auf 50 / 12px / 50  -> rot: „Gefunden: 2" (der Abstand steht
-  //                                    dann in Pixeln und faellt aus der Zaehlung)
-  //   b) Kacheln ungleich (44/12/40) -> rot: „Die Breiten ergeben 96 %"
+  // Counter-checks (performed, each red, green again afterwards):
+  //   a) back to 50 / 12px / 50  -> red: “Found: 2" (the spacing is then
+  //                                 in pixels and drops out of the count)
+  //   b) unequal tiles (44/12/40) -> red: “the widths add up to 96 %"
   await t.test('4. the two tiles leave room in the middle', async () => {
     environment({ APP_BASE_URL: 'https://lego.example.org' });
     const m = await mailer.buildAlertMail(DATEN);

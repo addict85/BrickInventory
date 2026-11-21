@@ -1,19 +1,19 @@
 /**
- * Ein Lesefehler im Katalog geht an den Aufrufer, statt wie „nichts da“ auszusehen:
- * Farbliste, BrickLink-Zuordnung, Anleitungen und Set-Detail. Erzwungen wird der
- * Fehler, indem der Test eine Tabelle seiner eigenen Datenbank kurz umbenennt.
+ * A read error in the catalog goes to the caller instead of looking like „nothing there“:
+ * color list, BrickLink mapping, instructions and set detail. The error is forced
+ * by the test briefly renaming a table of its own database.
  *
- * Gegenproben (am 11.11.2026 gemessen):
- *   A  src/catalog/colors.ts: loadedColors() wieder mit Ersatz `.catch(() => [])`
- *      → rot: „Farbliste“ (die Notliste kam statt eines Fehlers)
- *   B  src/catalog/blMapping.ts: blNumberOf() wieder mit Ersatz null
- *      → rot: „BrickLink-Zuordnung“
- *   C  src/catalog/instructions.ts: instructionsToSet() wieder mit Ersatz `[]`
- *      → rot: „Anleitungen eines Sets“
- *   D  src/catalog/service.ts: newestInventory() in catalogSet() wieder mit Ersatz null
- *      → rot: „Set-Detail“ (minifigs 0 statt eines Fehlers)
+ * Counter-checks (measured on 11.11.2026):
+ *   A  src/catalog/colors.ts: loadedColors() again with substitute `.catch(() => [])`
+ *      → red: “color list” (the emergency list came instead of an error)
+ *   B  src/catalog/blMapping.ts: blNumberOf() again with substitute null
+ *      → red: “BrickLink mapping”
+ *   C  src/catalog/instructions.ts: instructionsToSet() again with substitute `[]`
+ *      → red: “instructions of a set”
+ *   D  src/catalog/service.ts: newestInventory() in catalogSet() again with substitute null
+ *      → red: „Set-Detail“ (minifigs 0 instead of an error)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -57,7 +57,7 @@ test('read error in the catalog: error instead of empty', { concurrency: 1 }, as
     await db.pool.end().catch(() => {});
   });
 
-  /** Die Tabelle kommt im finally zurück, auch wenn eine Zusicherung scheitert. */
+  /** The table comes back in finally, even if an assertion fails. */
   const ohne = async (tabelle, work) => {
     await db.run(`ALTER TABLE ${tabelle} RENAME TO ${tabelle}_weg`);
     try {

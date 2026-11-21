@@ -1,12 +1,12 @@
 /**
- * „Verwendet in" zeigt Bild, Nummer und Bezeichnung (wie in der App).
- * Die Webapp im echten Bündel (jsdom).
+ * „Verwendet in" shows image, number and name (as in the app).
+ * The web app in the real bundle (jsdom).
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel neu gebaut), alle in
- * set-teile.js → rot „die Webapp zeigt die Sets als Tabelle …“:
- *   A  die Bildzelle `${setBild(s)}` geleert
- *   B  rowsStyle 'flex-direction:column…' entfernt (Tabelle neben der Beschriftung)
- *   C  `orig:` aus bildTag entfernt (kein Rückfall auf das CDN-Bild)
+ * Counter-checks (measured 10.11.2026, each on its own, bundle rebuilt), all in
+ * set-teile.js → red “the web app shows the sets as a table …”:
+ *   A  the image cell `${setBild(s)}` emptied
+ *   B  rowsStyle 'flex-direction:column…' removed (table next to the label)
+ *   C  `orig:` removed from bildTag (no fallback to the CDN image)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

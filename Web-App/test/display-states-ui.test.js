@@ -1,22 +1,22 @@
 /**
- * Zahlen, Achsen und Zwischenzustände — am echten Bündel in jsdom.
+ * Numbers, axes and intermediate states — on the real bundle in jsdom.
  *
- * Gegenproben (am 29.10.2026 gemessen):
- *   A  fmtBig wieder mit „k“ → rot: „Kennzahlen ohne k“ („1.3k“)
- *   B  in portfolioChartSVG wieder px(i) nach Index → rot: „Zeitachse“
- *      (Abstand Tag gleich Abstand Monat); niceSplit durch fünf gleiche
- *      Teile ersetzt → rot: „1-2-5“ (4'219 …)
- *   C  VALUE_SKELETON in loadFinance nicht gesetzt → rot: „Platzhalter beim
- *      Laden“ („—“)
- *   D  reconcilePartsEmpty wieder mit `_manualEmpty ? 'none' : ''` → rot:
- *      „keine leere Box“
- *   E  die Prüfung `!u.email` in loadProfile entfernt → rot: „ohne E-Mail“
- *   F  die Prüfung auf den offenen Assistenten in showRbHint entfernt
- *      → rot: „kein Hinweis über dem Assistenten“ (02.11.2026 erneut gemessen)
- *   G  in setOwnTheme applyTheme() entfernt → rot: „eigenes Design“
- *      (data-theme blieb classic)
- *   H  (04.11.2026) in loadProfile den Hinweis auf new_email entfernt → rot:
- *      „ausstehende Adresse“ (der Hinweis blieb leer)
+ * Counter-checks (measured on 29.10.2026):
+ *   A  fmtBig again with “k” → red: “key figures without k” (“1.3k”)
+ *   B  in portfolioChartSVG again px(i) by index → red: “time axis”
+ *      (spacing of a day equal to spacing of a month); niceSplit replaced by five equal
+ *      parts → red: “1-2-5” (4'219 …)
+ *   C  VALUE_SKELETON not set in loadFinance → red: “placeholder while
+ *      loading” (“—”)
+ *   D  reconcilePartsEmpty again with `_manualEmpty ? 'none' : ''` → red:
+ *      “no empty box”
+ *   E  the check `!u.email` removed in loadProfile → red: “without e-mail”
+ *   F  the check for the open wizard removed in showRbHint
+ *      → red: “no hint above the wizard” (measured again 02.11.2026)
+ *   G  applyTheme() removed in setOwnTheme → red: “own design”
+ *      (data-theme stayed classic)
+ *   H  (04.11.2026) in loadProfile the hint on new_email removed → red:
+ *      “pending address” (the hint stayed empty)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -39,7 +39,7 @@ test('metrics without k: 1300 parts are shown as the full number', async () => {
   }
 });
 
-/** Zwölf Monate, dazwischen ein einzelner Tag — wie period=max sie liefert. */
+/** Twelve months, with a single day in between — as period=max delivers them. */
 const HISTORY = (() => {
   const tage = [
     '2025-10-29',
@@ -98,12 +98,12 @@ test('value chart: division by 1-2-5, real time axis, month names', async () => 
     );
     const x = texte.filter(t => +t.getAttribute('y') > 160).map(t => t.textContent);
     assert.ok(x.length >= 3, `nur ${x.length} Beschriftungen an der Zeitachse`);
-    // Ganzes Jahr: „Juli 26“ las sich auch als 26. Juli.
+    // Whole year: “Juli 26” also read as 26 July.
     assert.ok(
       x.every(t => /^[A-Za-zäÄ]{3,5}\.? \d{4}$/.test(t)),
       `uneinheitlich: ${x.join(' | ')}`,
     );
-    // Zwischen den letzten beiden Punkten liegt ein Tag, davor ein Monat.
+    // Between the last two points lies a day, before that a month.
     const cx = JSON.parse(svg.dataset.punkte).map(p => p.x);
     const tag = cx[13] - cx[12],
       monat = cx[12] - cx[11];
@@ -246,7 +246,7 @@ test("account: own theme or the admin's default", async () => {
     },
   });
   try {
-    // Das Boot-Skript steht im <head>, das der Helfer nicht ausführt; es stellt applyTheme bereit.
+    // The boot script stands in the <head>, which the helper does not execute; it provides applyTheme.
     w.eval(
       require('node:fs').readFileSync(
         require('node:path').join(__dirname, '..', 'public', 'js', 'theme-boot.js'),

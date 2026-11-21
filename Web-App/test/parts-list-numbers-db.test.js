@@ -1,9 +1,9 @@
 /**
- * Die Teileliste liefert die REBRICKABLE-Nummer, nicht die BrickLink-Nummer.
+ * The parts list delivers the REBRICKABLE number, not the BrickLink number.
  *
- * Gegenprobe (durchgefuehrt): `part_number: p.part_number` zurueck auf
- * `blId` gesetzt → Schritt 1 wird rot; zusaetzlich den Schluessel auf
- * `${blId}|…` zurueckgedreht → Schritt 2 wird rot.
+ * Counter-check (carried out): `part_number: p.part_number` set back to
+ * `blId` → step 1 turns red; additionally the key turned back to
+ * `${blId}|…` → step 2 turns red.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -31,15 +31,15 @@ async function seed() {
   await db.run(`INSERT INTO users (username, password_hash) VALUES ('bauer','x')`);
 
   await db.run(`INSERT INTO rb_inventories (id, set_num, version) VALUES (900,'60052-1',2)`);
-  // Drei Zeilen, die den Fall vollstaendig beschreiben:
-  //   3070b → BrickLink 3070   (die Umbenennung, an der es scheiterte)
-  //   3069b → BrickLink 3070   (zweite Rebrickable-Nummer, GLEICHE BL-Nummer)
-  //   3001  → keine Zuordnung  (BrickLink-Nummer = Rebrickable-Nummer)
+  // Three rows that describe the case completely:
+  //   3070b → BrickLink 3070   (the renaming on which it failed)
+  //   3069b → BrickLink 3070   (second Rebrickable number, SAME BL number)
+  //   3001  → no mapping       (BrickLink number = Rebrickable number)
   await db.run(`INSERT INTO rb_inventory_parts (inventory_id, part_num, color_id, quantity, is_spare)
                 VALUES (900,'3070b',0,4,false), (900,'3069b',0,2,false), (900,'3001',0,7,false)`);
   await db.run(`INSERT INTO rb_parts (part_num, name) VALUES
                 ('3070b','Tile 1x1'), ('3069b','Tile 1x2'), ('3001','Brick 2x4')`);
-  // Seit Migration 0037 in bl_mapping, mit Art-Unterscheidung.
+  // Since migration 0037 in bl_mapping, with a kind distinction.
   await db.run(`INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES
                 ('part','3070b','3070'), ('part','3069b','3070')`);
 }
@@ -97,9 +97,9 @@ test('the parts list names the parts with both numbers', { concurrency: 1 }, asy
   });
 
   await t.test('two Rebrickable parts with ONE BrickLink number stay two rows', () => {
-    // Der Grund, warum der Schluessel mitwandern musste: Auf der
-    // BrickLink-Nummer faenden 3070b und 3069b zu einer Zeile zusammen — mit
-    // addiertem Bedarf (6) unter einer der beiden Nummern.
+    // The reason why the key had to move along: on the
+    // BrickLink number 3070b and 3069b would merge into one row — with
+    // added-up demand (6) under one of the two numbers.
     assert.ok(nach('3069b'), 'Die zweite Nummer ist verschluckt worden');
     assert.equal(nach('3070b').total_quantity, 4, 'Der Bedarf von 3070b stimmt nicht mehr');
     assert.equal(nach('3069b').total_quantity, 2, 'Der Bedarf von 3069b stimmt nicht mehr');
@@ -111,8 +111,8 @@ test('the parts list names the parts with both numbers', { concurrency: 1 }, asy
   });
 
   await t.test('without a mapping the number stays as it is', () => {
-    // Die Gegenrichtung: Wo es keine BrickLink-Nummer gibt, darf nichts
-    // erfunden werden — beide Felder tragen dann die Rebrickable-Nummer.
+    // The opposite direction: where there is no BrickLink number, nothing may
+    // be invented — both fields then carry the Rebrickable number.
     assert.ok(nach('3001'), '3001 fehlt ganz');
     assert.equal(nach('3001').bl_part_number, '3001');
   });

@@ -1,16 +1,16 @@
 /**
- * Erfassen nur, was gemeint ist: POST /sets nimmt eine getippte Setnummer,
- * keinen Satz, aus dem die nachsichtige Normalisierung ein Set machte; und
- * „von der Merkliste übernehmen“ verlangt einen Merkposten.
+ * Add only what is meant: POST /sets takes a typed set number,
+ * not a sentence from which the lenient normalization made a set; and
+ * “take over from the wishlist” requires a wishlist item.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  in POST /sets die Prüfung der rohen Nummer entfernt → rot: „ein Satz
- *      ist keine Setnummer“ (200, Set 1-1 angelegt) und dadurch auch „ohne
- *      Merkposten …“ (das Set steht schon)
- *   B  in uebernimm() die Prüfung auf den Merkposten entfernt → rot: „ohne
- *      Merkposten …“ (200, Set angelegt)
+ * Counter-checks (measured 05.11.2026, each alone):
+ *   A  in POST /sets the check of the raw number removed → red: “a sentence
+ *      is not a set number” (200, set 1-1 created) and thereby also “without
+ *      wishlist item …” (the set already exists)
+ *   B  in uebernimm() the check for the wishlist item removed → red: “without
+ *      wishlist item …” (200, set created)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,18 +1,18 @@
 /**
- * Migration 0109: Zustand ist in Merkliste, Preisalarm und Preisspeichern
- * 'N' oder 'U', Auftragsarten stehen in job_types. Die Migration läuft auf
- * einem Altbestand in einem eigenen Schema (search_path); danach prüft der Test
- * die Regeln an der echten Datenbank.
+ * Migration 0109: the condition in wishlist, price alert and price stores is
+ * 'N' or 'U', job kinds stand in job_types. The migration runs on
+ * legacy data in its own schema (search_path); afterwards the test checks
+ * the rules on the real database.
  *
- * Gegenproben (am 11.11.2026 gemessen):
- *   A  das UPDATE wanted … der Migration entfernt → rot: „Merkliste: andere
- *      Schreibweise wird berichtigt …“ ('2-1' fehlt)
- *   B  im UPDATE wanted die Bedingung `w.id = (SELECT min(y.id) …)` entfernt →
- *      rot: die Migration scheitert an wanted_user_id_set_number_condition_key
- *   C  in startup/wiring.ts eine Art 'neu' ohne Migration angemeldet → rot:
- *      „job_types kennt genau die angemeldeten Arten“ (15.11.2026)
- *   D  das ALTER TABLE jobs ADD CONSTRAINT auftraege_art_fkey entfernt →
- *      rot: „danach weist das Schema Unbekanntes ab“
+ * Counter-checks (measured on 11.11.2026):
+ *   A  the UPDATE wanted … of the migration removed → red: “wishlist: other
+ *      spelling is corrected …” ('2-1' missing)
+ *   B  in the UPDATE wanted the condition `w.id = (SELECT min(y.id) …)` removed →
+ *      red: the migration fails on wanted_user_id_set_number_condition_key
+ *   C  a kind 'neu' registered in startup/wiring.ts without a migration → red:
+ *      “job_types knows exactly the registered kinds” (15.11.2026)
+ *   D  the ALTER TABLE jobs ADD CONSTRAINT auftraege_art_fkey removed →
+ *      red: “afterwards the schema rejects unknown values”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -56,10 +56,10 @@ test('migration 0109: condition and job kind', { concurrency: 1 }, async t => {
     await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`);
     await c.query(`CREATE SCHEMA ${SCHEMA}`);
     await c.query(`SET search_path TO ${SCHEMA}, public`);
-    // Ohne die Prüfungen von heute: Standardwerte und Indizes, keine CHECKs.
+    // Without today's checks: defaults and indexes, no CHECKs.
     for (const tab of TABELLEN)
       await c.query(`CREATE TABLE ${tab} (LIKE public.${tab} INCLUDING DEFAULTS INCLUDING INDEXES)`);
-    // Stand vor 0124: Die Migration 0109 kennt nur die damaligen Namen.
+    // State before 0124: migration 0109 only knows the names of back then.
     await c.query(`ALTER TABLE price_alerts RENAME COLUMN direction TO richtung;
                    ALTER TABLE price_alerts RENAME COLUMN threshold TO schwelle;
                    ALTER TABLE jobs RENAME TO auftraege; ALTER TABLE auftraege RENAME COLUMN type TO art;

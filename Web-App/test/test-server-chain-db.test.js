@@ -1,15 +1,15 @@
 /**
- * testServer (test/helpers/server.js) baut die App über baueApp wie server.ts: Was ein
- * Test dort prüft, läuft durch dieselbe Middleware-Kette wie im Betrieb, nicht durch
- * nachgebaute Router.
+ * testServer (test/helpers/server.js) builds the app via baueApp like server.ts: what a
+ * test checks there runs through the same middleware chain as in production, not through
+ * rebuilt routers.
  *
- * Gegenproben (13.11.2026 gemessen, je einzeln):
- *   A  in startup/app.ts `app.use(onlyOwnOrigin)` entfernt → rot:
- *      „fremde Herkunft mit Sitzungskeks: 403“ (200 statt 403)
- *   B  testServer wieder mit eigenen Routern (routerServer statt baueApp) → rot:
- *      alle drei Fälle (kein CSP-Kopf, keine Absage am Eingang, keine fremde Herkunft)
- *   C  in startup/app.ts die Eingangssperre (loginAtInbox) aus apiInbox() entfernt
- *      → rot: „ein Verwalter ohne zweiten Faktor wird am Eingang abgewiesen“
+ * Counter-checks (measured 13.11.2026, each on its own):
+ *   A  `app.use(onlyOwnOrigin)` removed in startup/app.ts → red:
+ *      “foreign origin with session cookie: 403” (200 instead of 403)
+ *   B  testServer again with own routers (routerServer instead of baueApp) → red:
+ *      all three cases (no CSP header, no refusal at the entrance, no foreign origin)
+ *   C  the entrance lock (loginAtInbox) removed from apiInbox() in startup/app.ts
+ *      → red: “an administrator without a second factor is rejected at the entrance”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

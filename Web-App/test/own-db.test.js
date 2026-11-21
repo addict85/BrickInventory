@@ -1,14 +1,14 @@
 /**
- * Im parallelen Lauf (scripts/test-run.js) hat jede Testdatei ihre eigene
- * Datenbank: eine Kopie der Vorlage mit fertigem Schema, benannt nach dem
- * Prozess. Ausserhalb dieses Laufs (npm run test:seriell, Einzelaufruf)
- * gibt es nichts zu prüfen.
+ * In the parallel run (scripts/test-run.js) every test file has its own
+ * database: a copy of the template with a finished schema, named after the
+ * process. Outside of this run (npm run test:seriell, single call)
+ * there is nothing to check.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in scripts/test-run.js den Vorlader (--require) weggelassen → rot:
- *      „die Datei hat ihre eigene Kopie der Vorlage“ (die Basis-Datenbank)
- *   B  in test/helpers/test-db.js `TEMPLATE` weggelassen (leere Datenbank)
- *      → rot: dieselbe Prüfung (relation schema_migrations fehlt)
+ * Counter-checks (measured on 30.10.2026):
+ *   A  in scripts/test-run.js the preloader (--require) left out → red:
+ *      “the file has its own copy of the template” (the base database)
+ *   B  in test/helpers/test-db.js `TEMPLATE` left out (empty database)
+ *      → red: the same check (relation schema_migrations missing)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

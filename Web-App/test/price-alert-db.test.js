@@ -1,5 +1,5 @@
 /**
- * Preisalarm gegen eine echte Datenbank.
+ * Price alert against a real database.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -34,7 +34,7 @@ async function seed() {
   }
 }
 
-/** Den Marktpreis setzen — das, was der Preislauf sonst aus BrickLink holt. */
+/** Set the market price — what the price run otherwise fetches from BrickLink. */
 async function setPrice(preis, condition = 'N', waehrung = 'EUR') {
   await db.run(
     `INSERT INTO price_cache (set_number, condition, currency_code, avg_price, fetched_at)
@@ -62,12 +62,12 @@ test('price alert against a real database', async t => {
   }
   await seed();
 
-  // Der Versand wird als PARAMETER übergeben, nicht ersetzt.
+  // The sending is passed as a PARAMETER, not replaced.
   //
-  // Der erste Entwurf setzte `mailer.sendMail` um. Das verpufft lautlos:
-  // TypeScript übersetzt `export { sendMail }` zu einem Getter auf dem
-  // Modulobjekt, und eine Zuweisung darauf tut nichts. Der Test lief gegen den
-  // echten Versand, zählte null Meldungen — und die Ursache stand nirgends.
+  // The first draft replaced `mailer.sendMail`. That fizzles out silently:
+  // TypeScript compiles `export { sendMail }` into a getter on the
+  // module object, and an assignment to it does nothing. The test ran against the
+  // real sending, counted zero messages — and the cause stood nowhere.
   const A = {
     ..._req('src/finances/priceAlert.js'),
     ...require('./helpers/sources').testArea('finances').preisalarm,
@@ -81,7 +81,7 @@ test('price alert against a real database', async t => {
   const pruefe = sn => A.checkSet(sn, { ...require('./helpers/sources').testServices().mail, sendMail: send });
 
   await t.test('the direction means what it says', () => {
-    // Die einzige Stelle im Modul, an der ein Vorzeichenfehler entsteht.
+    // The only place in the module where a sign error arises.
     assert.equal(A.reisst('unter', 199, 200), true);
     assert.equal(A.reisst('unter', 200, 200), false, 'genau auf der Schwelle ist nicht darunter');
     assert.equal(A.reisst('unter', 201, 200), false);
@@ -91,8 +91,8 @@ test('price alert against a real database', async t => {
   });
 
   await t.test('nonsensical input is rejected, not bent into shape', async () => {
-    // Eine stillschweigend korrigierte Schwelle wäre schlimmer als eine
-    // Absage: Der Alarm stünde da und meldete nie oder immer.
+    // A silently corrected threshold would be worse than a
+    // refusal: the alert would stand there and report never or always.
     for (const [feld, wert] of [
       ['direction', 'seitwärts'],
       ['threshold', 0],
@@ -101,9 +101,9 @@ test('price alert against a real database', async t => {
       ['condition', 'X'],
     ]) {
       const eingabe = { direction: 'unter', threshold: 200, condition: 'N', [feld]: wert };
-      // Auf `code` geprüft, nicht auf die Meldung: fachfehler() setzt als
-      // `message` den DEUTSCHEN Satz — ein Test darauf bräche bei jeder
-      // Umformulierung, ohne dass sich das Verhalten ändert.
+      // Checked on `code`, not on the message: fachfehler() sets as
+      // `message` the GERMAN sentence — a test on it would break on every
+      // rephrasing without the behavior changing.
       await assert.rejects(
         () => A.setzeAlarm(U.ich, SN, 'EUR', eingabe),
         (/** @type {any} */ e) => String(e.code || '').startsWith('alarm_'),
@@ -115,36 +115,36 @@ test('price alert against a real database', async t => {
   await t.test('the TRANSITION is reported, not the state', async () => {
     await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
 
-    // 1. Über der Schwelle — nichts zu melden.
+    // 1. Above the threshold — nothing to report.
     await setPrice(250);
     assert.equal(await pruefe(SN), 0, 'über der Schwelle darf nichts kommen');
 
-    // 2. Unterschreitung — eine Meldung.
+    // 2. Falling below — one message.
     await setPrice(180);
     assert.equal(await pruefe(SN), 1, 'die Unterschreitung wurde nicht gemeldet');
     assert.match(sent.at(-1).subject, /10179-1/);
 
-    // 3. Bleibt darunter — KEINE zweite Meldung. Ohne diesen Merker käme bei
-    //    stündlichem Preislauf stündlich eine Mail.
+    // 3. Stays below — NO second message. Without this marker an hourly
+    //    price run would produce a mail every hour.
     await setPrice(170);
     assert.equal(await pruefe(SN), 0, 'zweite Meldung ohne neuen Übergang');
 
-    // 4. Zurück darüber — der Merker fällt.
+    // 4. Back above — the marker falls.
     await setPrice(260);
     assert.equal(await pruefe(SN), 0);
     const nach = (await A.alertsFor(U.ich, SN))[0];
     assert.equal(nach.triggered, false, 'der Merker wurde nicht zurückgesetzt');
 
-    // 5. Wieder darunter — wieder eine Meldung. Genau das verschluckt eine
-    //    Sperrfrist („höchstens einmal pro Woche"), und genau das ist der
-    //    Fall, der wieder interessant ist.
+    // 5. Below again — again a message. Exactly this is swallowed by a
+    //    blocking period („at most once a week"), and exactly this is the
+    //    case that is interesting again.
     await setPrice(150);
     assert.equal(await pruefe(SN), 1, 'das zweite Unterschreiten wurde verschluckt');
   });
 
   await t.test('a new threshold is a new question', async () => {
-    // Nach Prüfung 5 steht der Merker. Wer die Schwelle ändert, will eine
-    // Antwort — auch wenn die alte schon einmal gemeldet hat.
+    // After check 5 the marker stands. Whoever changes the threshold wants an
+    // answer — even if the old one has already reported once.
     await setPrice(150);
     await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 160, condition: 'N' });
     assert.equal((await A.alertsFor(U.ich, SN))[0].triggered, false);
@@ -152,19 +152,19 @@ test('price alert against a real database', async t => {
   });
 
   await t.test('the currency belongs to the threshold', async () => {
-    // 200 CHF sind nicht 200 EUR. Gibt es keinen Preis in DER Währung des
-    // Alarms, ist er nicht falsch — nur (noch) nicht beantwortbar.
+    // 200 CHF are not 200 EUR. If there is no price in THE currency of the
+    // alert, it is not wrong — only not answerable (yet).
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [U.ich]);
     await A.setzeAlarm(U.ich, SN, 'CHF', { direction: 'unter', threshold: 200, condition: 'N' });
-    await setPrice(10, 'N', 'EUR'); // billig, aber in der falschen Währung
+    await setPrice(10, 'N', 'EUR'); // cheap, but in the wrong currency
     assert.equal(await pruefe(SN), 0, 'ein Preis in fremder Währung hat ausgelöst');
     await setPrice(10, 'N', 'CHF');
     assert.equal(await pruefe(SN), 1);
   });
 
   await t.test('the condition separates the alerts', async () => {
-    // Neu und gebraucht liegen oft um ein Vielfaches auseinander. Ein Alarm
-    // auf „neu" darf von einem gebrauchten Preis nicht ausgelöst werden.
+    // New and used are often a multiple apart. An alert
+    // on „new" must not be triggered by a used price.
     await db.run('DELETE FROM price_alerts WHERE user_id=$1', [U.ich]);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
@@ -175,8 +175,8 @@ test('price alert against a real database', async t => {
   });
 
   await t.test('an account without a mail address does not block the run', async () => {
-    // Der Merker wird trotzdem gesetzt — sonst liefe die Prüfung bei jedem
-    // Lauf erneut durch alle Alarme dieses Kontos.
+    // The marker is set nevertheless — otherwise the check would run through
+    // all alerts of this account again on every run.
     await db.run('DELETE FROM price_alerts', []);
     await A.setzeAlarm(U.ohnemail, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
     await setPrice(100, 'N');
@@ -185,8 +185,8 @@ test('price alert against a real database', async t => {
   });
 
   await t.test('a failed send leaves the flag unset', async () => {
-    // Sonst wäre die Meldung verloren: Der Merker sagte „schon gemeldet",
-    // obwohl nie eine Mail ankam.
+    // Otherwise the message would be lost: the marker said „already reported",
+    // although no mail ever arrived.
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
@@ -199,14 +199,14 @@ test('price alert against a real database', async t => {
       'nach einem gescheiterten Versand darf der Merker nicht stehen',
     );
     sendingError = null;
-    // Und beim nächsten Lauf wird es erneut versucht.
+    // And on the next run it is tried again.
     assert.equal(await pruefe(SN), 1, 'der zweite Versuch blieb aus');
   });
 
   await t.test('fetch: without a marker nothing comes back, only the timestamp', async () => {
-    // Das ist der erste Start eines Geräts. Käme hier alles Ausgelöste, würde
-    // eine frisch eingerichtete App mit Schwellen aufschlagen, die vor Wochen
-    // gerissen sind.
+    // That is the first start of a device. If everything triggered came here, a
+    // freshly set-up app would land with thresholds that were broken weeks
+    // ago.
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
@@ -221,9 +221,9 @@ test('price alert against a real database', async t => {
   });
 
   await t.test('fetch: the server marker fetches exactly once', async () => {
-    // Der Ablauf eines Geräts: merken, abholen, wieder merken. Die zweite
-    // Abholung mit der zurückgegebenen Marke muss LEER sein — sonst käme
-    // dieselbe Meldung bei jedem stündlichen Lauf erneut.
+    // The flow of a device: remember, fetch, remember again. The second
+    // fetch with the returned marker must be EMPTY — otherwise the
+    // same message would come again on every hourly run.
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     const vorher = (await A.triggeredSince(U.ich, null)).now;
@@ -233,9 +233,9 @@ test('price alert against a real database', async t => {
     assert.equal(await pruefe(SN), 1);
 
     const erste = await A.triggeredSince(U.ich, vorher);
-    // Auch hier die Zeitstempel: Ein voller CI-Lauf ist an diesem Subtest
-    // einmal gescheitert, und aus dem Bericht war nicht zu erkennen, WELCHE
-    // der beiden Zusicherungen gerissen ist. Beide nennen deshalb ihre Werte.
+    // The timestamps here too: a full CI run failed on this subtest
+    // once, and the report did not show WHICH
+    // of the two assertions broke. Both therefore name their values.
     assert.equal(
       erste.alerts.length,
       1,
@@ -245,19 +245,19 @@ test('price alert against a real database', async t => {
     );
     assert.equal(erste.alerts[0].set_number, SN);
     assert.equal(erste.alerts[0].direction, 'unter');
-    // numeric kommt als Zeichenkette aus dem Treiber — käme sie so durch,
-    // stünde in der Meldung "200.00" statt einer Zahl, und die App rechnete
-    // auf einer Zeichenkette.
+    // numeric comes out of the driver as a string — if it came through like that,
+    // the message would say "200.00" instead of a number, and the app would compute
+    // on a string.
     assert.equal(typeof erste.alerts[0].threshold, 'number');
     assert.equal(erste.alerts[0].threshold, 200);
     assert.equal(typeof erste.alerts[0].last_price, 'number');
     assert.equal(erste.alerts[0].last_price, 100);
 
     const zweite = await A.triggeredSince(U.ich, erste.now);
-    // Die Zeitstempel stehen in der Meldung, und das hat einen Grund: Genau
-    // diese Zusicherung ist mir EINMAL in einem vollen Lauf rot geworden und
-    // in vier Wiederholungen nicht mehr. Ohne die drei Werte bliebe im
-    // Fehlerbericht nur „kam ein zweites Mal" — und damit wieder nichts zu …
+    // The timestamps stand in the message, and that has a reason: exactly
+    // this assertion turned red for me ONCE in a full run and
+    // no longer in four repetitions. Without the three values the
+    // error report would only say „kam ein zweites Mal" — and with that again nothing to …
     assert.deepEqual(
       zweite.alerts,
       [],
@@ -269,7 +269,7 @@ test('price alert against a real database', async t => {
   });
 
   await t.test('fetch: a notification from the same millisecond does NOT come twice', async () => {
-    // Der Befund, und warum er zweimal die CI rot gemacht hat
+    // The finding, and why it turned the CI red twice
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
@@ -291,17 +291,17 @@ test('price alert against a real database', async t => {
         'Die Mikrosekunden entscheiden — sie dürfen es nicht.',
     );
 
-    // Und die Gegenrichtung muss weiter funktionieren: Eine Meldung aus der
-    // NÄCHSTEN Millisekunde ist wirklich neu und gehört geliefert.
+    // And the opposite direction must keep working: a message from the
+    // NEXT millisecond is really new and belongs delivered.
     const r2 = await A.triggeredSince(U.ich, new Date('2026-09-19T20:29:58.526Z'));
     assert.equal(r2.alerts.length, 1, 'Eine Meldung nach der Marke wurde verschluckt — die Kürzung geht zu weit');
   });
 
   await t.test('fetch: every account sees only its own alerts', async () => {
-    // Die Abfrage steht auf user_id, nicht auf scopeIds() — und das ist
-    // Absicht: Eine Meldung gehört dem, der die Schwelle gesetzt hat. Ein
-    // Hauptkonto bekäme sonst die Meldungen aller Unterkonten, ohne je einen
-    // Alarm gesetzt zu haben.
+    // The query is on user_id, not on scopeIds() — and that is
+    // intended: a message belongs to whoever set the threshold. A
+    // main account would otherwise get the messages of all sub-accounts without ever having
+    // set an alert.
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     const vorher = (await A.triggeredSince(U.ich, null)).now;
@@ -314,7 +314,7 @@ test('price alert against a real database', async t => {
   });
 
   await t.test("Marco's four steps — the APP also gets exactly one per transition", async () => {
-    // Marcos Vorgabe vom 25.09.
+    // Marco's specification of 25.09.
     await db.run('DELETE FROM price_alerts', []);
     await db.run('DELETE FROM price_cache WHERE set_number=$1', [SN]);
     sent = [];
@@ -322,7 +322,7 @@ test('price alert against a real database', async t => {
     let marke = (await A.triggeredSince(U.ich, null)).now;
     await A.setzeAlarm(U.ich, SN, 'EUR', { direction: 'unter', threshold: 200, condition: 'N' });
 
-    /** Ein Preislauf: Preis setzen, prüfen, abholen. Gibt [Mails, Meldungen] zurück. */
+    /** A price run: set the price, check, fetch. Returns [mails, messages]. */
     const lauf = async preis => {
       sent = [];
       await setPrice(preis);
@@ -332,25 +332,25 @@ test('price alert against a real database', async t => {
       return [mails, r.alerts.length];
     };
 
-    // 1. Der Preis fällt unter die Schwelle.
+    // 1. The price falls below the threshold.
     assert.deepEqual(await lauf(180), [1, 1], 'Schritt 1: Mail UND Meldung erwartet');
 
-    // 2. Nächster Preislauf, immer noch darunter.
+    // 2. Next price run, still below.
     assert.deepEqual(await lauf(170), [0, 0], 'Schritt 2: nichts erwartet — kein neuer Übergang');
 
-    // Und auch ein dritter Lauf schweigt. Ohne diesen Schritt bliebe offen, ob
-    // Schritt 2 nur an der unveränderten Zahl hing.
+    // And a third run stays silent too. Without this step it would remain open whether
+    // step 2 only depended on the unchanged number.
     assert.deepEqual(await lauf(165), [0, 0], 'Schritt 2b: auch beim dritten Lauf nichts');
 
-    // 3. Der Preis steigt wieder darüber.
+    // 3. The price rises above again.
     assert.deepEqual(await lauf(260), [0, 0], 'Schritt 3: das Zurückkehren selbst meldet nichts');
 
-    // 4. Und fällt erneut darunter — beide Wege melden wieder.
+    // 4. And falls below again — both paths report again.
     assert.deepEqual(await lauf(150), [1, 1], 'Schritt 4: das zweite Unterschreiten wurde verschluckt');
 
-    // Der Vollständigkeit halber: Wer NICHT abholt, verpasst nichts. Die
-    // Meldung steht weiter bereit, solange die Marke älter ist — das Telefon
-    // darf aus sein.
+    // For completeness: whoever does NOT fetch misses nothing. The
+    // message stays ready as long as the marker is older — the phone
+    // may be off.
     const spaeter = await A.triggeredSince(U.ich, new Date(Date.now() - 60_000));
     assert.equal(spaeter.alerts.length, 1, 'eine Meldung verfällt, wenn die App gerade nicht abholt');
   });

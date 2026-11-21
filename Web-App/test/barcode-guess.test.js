@@ -1,8 +1,8 @@
 /**
- * Eine geratene Setnummer muss als Vermutung erkennbar sein.
+ * A guessed set number must be recognizable as a guess.
  *
- * Gegenprobe (09.11.2026): isGuess() nur noch `!quelle` → rot: „die zwei ratenden Wege …“
- * und „eine unbekannte Quelle gilt als Vermutung“.
+ * Counter-check (09.11.2026): isGuess() only `!quelle` → red: “the two guessing paths …”
+ * and “an unknown source counts as a guess”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,7 +14,7 @@ test('verified paths are not a guess', () => {
   for (const quelle of ['catalog_cache', 'rebrickable-ean', 'brickset-ean', 'brickset-item', 'rebrickable-direct']) {
     assert.equal(isGuess(quelle), false, `${quelle} gilt als Vermutung`);
   }
-  // Selbstbeweis: Wäre die Liste leer, bestünde die Schleife oben nicht.
+  // Self-proof: if the list were empty, the loop above would not pass.
   assert.ok(CHECKED.size >= 5, `nur ${CHECKED.size} geprüfte Quellen — Liste geschrumpft?`);
 });
 
@@ -29,15 +29,15 @@ test('the two guessing paths are marked as a guess', () => {
 });
 
 test('an unknown source counts as a guess', () => {
-  // Der Kern der Positivliste: Ein achter Weg ist automatisch unsicher, statt
-  // still als Treffer durchzugehen.
+  // The core of the allow list: an eighth path is automatically uncertain instead of
+  // silently passing as a hit.
   for (const quelle of ['irgendwas-neues', '', null, undefined]) {
     assert.equal(isGuess(quelle), true, `"${quelle}" ging als geprüft durch`);
   }
 });
 
-// Die Kandidaten-Regel selbst (Jahre, Mengenangaben, Rauten, Stellenzahlen,
-// dreistellige Altsets) steht nicht mehr hier: Sie muss in BEIDEN Apps gleich
-// ausfallen und wird deshalb gegen den gemeinsamen Korpus geprüft —
-// test/set-number-corpus.test.js und shared/setnummer-korpus.json; eine zweite Aufzählung
-// hier deckte nur die Web-Seite.
+// The candidate rule itself (years, quantity notes, hashes, digit counts,
+// three-digit old sets) is no longer here: it must turn out the same in BOTH apps
+// and is therefore checked against the shared corpus —
+// test/set-number-corpus.test.js and shared/setnummer-korpus.json; a second enumeration
+// here covered only the web side.

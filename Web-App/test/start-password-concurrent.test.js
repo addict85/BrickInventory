@@ -1,12 +1,12 @@
 /**
- * Die Startpasswort-Datei entsteht auch dann, wenn mehrere Prozesse sie zugleich
- * schreiben (parallele Testdateien teilen sich data/), und ein vorbereiteter
- * Symlink am Zielort leitet das Passwort nicht um.
+ * The initial password file also arises when several processes write it
+ * at the same time (parallel test files share data/), and a prepared
+ * symlink at the target place does not redirect the password.
  *
- * Gegenproben (11.11.2026 gemessen, je einzeln):
- *   A  writeStartpasswort() (src/infra/startpasswort.ts) wieder als rmSync + writeFileSync
- *      mit flag 'wx' auf die Zieldatei → rot: „alle Prozesse schreiben die Datei“ (EEXIST)
- *   B  writeFileSync direkt auf die Zieldatei mit flag 'w' → rot: „der Symlink leitet nichts um“
+ * Counter-checks (measured 11.11.2026, each on its own):
+ *   A  writeStartpasswort() (src/infra/startpasswort.ts) again as rmSync + writeFileSync
+ *      with flag 'wx' on the target file → red: “all processes write the file” (EEXIST)
+ *   B  writeFileSync directly on the target file with flag 'w' → red: “the symlink redirects nothing”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

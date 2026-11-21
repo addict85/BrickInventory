@@ -1,15 +1,15 @@
 /**
- * Seit db/basis.sql gibt es den Stand VOR dieser Migration nicht mehr: Die
- * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
- * der Endstand und die Lesewege.
+ * Since db/basis.sql the state BEFORE this migration no longer exists: the
+ * cases on bolt, addendum and intermediate state are dropped. What is checked is
+ * the final state and the read paths.
  *
- *      Gegenprobe: ohne Riegel läuft dieselbe Lage durch und der Name ist weg.
- *   3. Die Teileliste liefert Name, Farbe, Bild und Ersatzteilkennzeichen
- *      weiterhin — über die Katalog-JOINs.
- *   4. Der Lagerortfilter zählt. Das ist kein Beiwerk: Die Zählabfrage stand
- *      auf `FROM parts p` allein, während die Filterbedingung auf lo zeigte.
+ *      Counter-check: without the bolt the same situation runs through and the name is gone.
+ *   3. The parts list still delivers name, color, image and spare part flag
+ *      — via the catalog JOINs.
+ *   4. The storage location filter counts. That is no accessory: the count query stood
+ *      on `FROM parts p` alone, while the filter condition pointed to lo.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
  * REQUIRE_DB=1.
  */
 require('./helpers/system-frame');
@@ -24,10 +24,10 @@ const { keineDb } = require('./helpers/db');
 const { holdsMinifig, holdsSet, holdsPart, catalogSet } = require('./helpers/inventory');
 const db = testData();
 
-// Dieselbe Begruendung wie in test/sets-without-purchase-price-column-db.test.js: Diese
-// Datei baut die Datenbank mehrfach von null auf und wendet Migrationen von
-// Hand an. Ohne diesen Nachlauf findet die naechste Testdatei einen Zustand,
-// den sie nicht erwartet.
+// The same reasoning as in test/sets-without-purchase-price-column-db.test.js: this
+// file builds the database from zero several times and applies migrations by
+// hand. Without this follow-up the next test file finds a state
+// it does not expect.
 test.after(async () => {
   try {
     await db.run('DROP SCHEMA public CASCADE');
@@ -67,8 +67,8 @@ test('after the whole chain parts and minifigs only carry the inventory', { conc
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
 
-  // Den Vorstand vor den Migrationen gibt es nicht mehr: Eine leere
-  // Datenbank bekommt db/basis.sql. Geprüft wird der Endstand.
+  // The state before the migrations no longer exists: an empty
+  // database gets db/basis.sql. What is checked is the final state.
   const client = await db.pool.connect();
   try {
     await _req('db/migrate.js').runMigrations(client);
@@ -76,12 +76,12 @@ test('after the whole chain parts and minifigs only carry the inventory', { conc
     client.release();
   }
 
-  // ── Die Zusage: nur noch Bestand ─────────────────────────────────────────
+  // ── The promise: only stock any more ─────────────────────────────────────────
   //
-  // Marcos Liste, ergaenzt um die Spalten, die den BESTAND betreffen und die
-  // er nicht genannt hat: quantity (Stueckzahl), condition, unit_price und
-  // purchase_price (die drei gehen in Etappe 6 in die Erfassungen) und
-  // bl_part_number (geht in die Mapping-Tabelle).
+  // Marco's list, extended by the columns that concern the STOCK and that
+  // he did not name: quantity (piece count), condition, unit_price and
+  // purchase_price (the three go into the acquisitions in stage 6) and
+  // bl_part_number (goes into the mapping table).
   const nachher = await columnsOf('parts');
   for (const sp of [
     'part_name',
@@ -111,7 +111,7 @@ test('after the whole chain parts and minifigs only carry the inventory', { conc
     assert.ok(figsAfter.includes(sp), `minifigs.${sp} fehlt`);
   }
 
-  // ── Und sie sind nicht verschwunden, sondern umgezogen ───────────────────
+  // ── And they have not disappeared but moved ───────────────────
   const pc = await columnsOf('part_catalog');
   const pcc = await columnsOf('part_color_catalog');
   const mc = await columnsOf('minifigs_catalog');
@@ -124,8 +124,8 @@ test('after the whole chain parts and minifigs only carry the inventory', { conc
   for (const sp of ['fig_number', 'fig_name', 'image_url', 'image_local']) {
     assert.ok(mc.includes(sp), `minifigs_catalog.${sp} fehlt`);
   }
-  // is_spare zieht nicht in einen neuen Katalog: Es ist eine Eigenschaft der
-  // TEILELISTE eines Sets und steht dort seit jeher.
+  // is_spare does not move into a new catalog: it is a property of the
+  // PARTS LIST of a set and has always stood there.
   assert.ok(
     (await columnsOf('set_parts_catalog')).includes('is_spare'),
     'set_parts_catalog.is_spare fehlt — dann gibt es das Ersatzteilkennzeichen nirgends',
@@ -135,8 +135,8 @@ test('after the whole chain parts and minifigs only carry the inventory', { conc
 test('the parts list delivers description and storage location from the catalogs', { concurrency: 1 }, async t => {
   if (!(await dbDa(t))) return;
 
-  // Frische, VOLLSTAENDIG migrierte Datenbank — der Zustand einer echten
-  // Installation nach dem Hochziehen.
+  // Fresh, FULLY migrated database — the state of a real
+  // installation after the upgrade.
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
@@ -150,7 +150,7 @@ test('the parts list delivers description and storage location from the catalogs
   const u = await db.get(`INSERT INTO users (username,password_hash) VALUES ('teilleser','x') RETURNING id`);
   const uid = u.id;
 
-  // Ein Set mit zwei Teilen: eines Pflichtteil, eines Ersatzteil.
+  // A set with two parts: one required part, one spare part.
   await catalogSet(db, '75192-1', { name: 'Falcon' });
   await holdsSet(db, uid, '75192-1', 2);
   await db.run(`INSERT INTO set_parts (set_number,part_number,color_id,is_spare,quantity)
@@ -161,14 +161,14 @@ test('the parts list delivers description and storage location from the catalogs
     VALUES ('3001',4,'Red','C91A09','http://cdn/3001r.png'),
            ('3002',1,'Blue','0055BF','http://cdn/3002b.png')`);
   const ort = await db.get(`INSERT INTO storage_locations (user_id,name) VALUES ($1,'Kiste 3') RETURNING id`, [uid]);
-  // Die Stückzahl steht seit Migration 0038 im Set-Teile-Katalog, nicht an
-  // der Zeile — holdsPart() legt beides an.
+  // Since migration 0038 the piece count stands in the set parts catalog, not on
+  // the row — holdsPart() creates both.
   await holdsPart(db, uid, '3001', { setNumber: '75192-1', menge: 6, colorId: 4, storageId: ort.id });
   await holdsPart(db, uid, '3002', { setNumber: '75192-1', menge: 2, colorId: 1 });
 
   const handlers = _req('src/parts/queries.js');
 
-  // ── Die Beschreibung kommt an ────────────────────────────────────────────
+  // ── The description arrives ────────────────────────────────────────────
   const alle = await handlers.partsQuery(uid, { exclude_manual: '1' });
   const nach = nr => alle.parts.find(p => String(p.part_number) === nr);
   assert.equal(alle.parts.length, 2, `Erwartet 2 Teile, bekommen ${alle.parts.length}: ${JSON.stringify(alle.parts)}`);
@@ -177,10 +177,10 @@ test('the parts list delivers description and storage location from the catalogs
   assert.equal(nach('3001')?.color_hex, 'C91A09', 'Der Farbcode kommt nicht an');
   assert.equal(nach('3001')?.category_name, 'Bricks', 'Die Kategorie kommt nicht an');
   assert.equal(nach('3001')?.image_url, 'http://cdn/3001r.png', 'Das Bild kommt nicht an');
-  // Menge: 6 Teile je Set, 2 Sets im Bestand.
+  // Quantity: 6 parts per set, 2 sets in the stock.
   assert.equal(nach('3001')?.total_quantity, 12, 'Die Menge wird nicht mehr mit der Set-Anzahl multipliziert');
 
-  // ── is_spare aus set_parts_catalog, als echter Wahrheitswert ─────────────
+  // ── is_spare from set_parts_catalog, as a real boolean ─────────────
   assert.equal(nach('3001')?.is_spare, false, 'Ein Pflichtteil wird als Ersatzteil gemeldet');
   assert.equal(nach('3002')?.is_spare, true, 'Das Ersatzteilkennzeichen kommt nicht aus set_parts_catalog an');
   const nurErsatz = await handlers.partsQuery(uid, { exclude_manual: '1', spare: '1' });
@@ -190,7 +190,7 @@ test('the parts list delivers description and storage location from the catalogs
     `spare=1 filtert nicht über set_parts_catalog: ${JSON.stringify(nurErsatz.parts.map(p => p.part_number))}`,
   );
 
-  // ── Der Farbfilter ───────────────────────────────────────────────────────
+  // ── The color filter ───────────────────────────────────────────────────────
   const nurRot = await handlers.partsQuery(uid, { exclude_manual: '1', color: 'Red' });
   assert.deepEqual(
     nurRot.parts.map(p => String(p.part_number)),
@@ -198,7 +198,7 @@ test('the parts list delivers description and storage location from the catalogs
     'Der Farbfilter greift nicht über part_color_catalog',
   );
 
-  // Der Lagerortfilter — und seine ZAEHLUNG
+  // The storage location filter — and its COUNT
   const inBox = await handlers.partsQuery(uid, { exclude_manual: '1', storage: 'Kiste 3' });
   assert.deepEqual(
     inBox.parts.map(p => String(p.part_number)),
@@ -213,7 +213,7 @@ test('the parts list delivers description and storage location from the catalogs
   );
   assert.equal(inBox.parts[0].storage, 'Kiste 3', 'Der Lagerortname kommt nicht aus storage_locations an');
 
-  // ── Suche über den Katalognamen ──────────────────────────────────────────
+  // ── Search via the catalog name ──────────────────────────────────────────
   const gesucht = await handlers.partsQuery(uid, { exclude_manual: '1', search: 'brick 2x3' });
   assert.deepEqual(
     gesucht.parts.map(p => String(p.part_number)),
@@ -252,7 +252,7 @@ test('the figure list delivers name and image from minifigs_catalog', { concurre
   assert.equal(f.image_url, 'http://cdn/chewie.png', 'Das Figurenbild kommt nicht an');
   assert.equal(Number(f.total_quantity), 3, 'Die Menge wird nicht mehr mit der Set-Anzahl multipliziert');
 
-  // Die Suche läuft über den Katalognamen.
+  // The search runs via the catalog name.
   const gesucht = await handlers.readMinifigs(uid, { search: 'chewb' });
   const gFigs = gesucht.minifigs || gesucht.figs || gesucht;
   assert.equal(

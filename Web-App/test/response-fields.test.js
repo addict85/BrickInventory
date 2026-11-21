@@ -1,24 +1,24 @@
 /**
- * Kein Antwortfeld ohne Verbraucher.
+ * No response field without a consumer.
  *
- * Die Regel selbst steht in scripts/check-response-fields.js — dort, weil sie
- * auch von Hand aufrufbar sein soll. Was die App liest, nimmt sie aus
- * shared/app-schnittstelle.json. Dieser Test führt sie im normalen Lauf mit aus;
- * ohne ihn wäre sie ein Skript, das niemand startet.
+ * The rule itself stands in scripts/check-response-fields.js — there because it
+ * should also be callable by hand. What the app reads it takes from
+ * shared/app-schnittstelle.json. This test runs it in the normal run;
+ * without it it would be a script nobody starts.
  *
- * Gegenproben (durchgeführt):
- *   a) `rate_limit_neu` in die Bewertungsantwort gelegt → rot.
- *   b) Die Ausnahme für `db_pool` gestrichen → rot (27.10.; vorher `uptime_seconds`,
- *      das seit /health nur für Verwalter nicht mehr oben in einer Antwort steht).
- *   c) Eine Ausnahme für einen Schlüssel eingetragen, den es nicht gibt → rot
+ * Counter-checks (carried out):
+ *   a) `rate_limit_neu` put into the valuation response → red.
+ *   b) the exception for `db_pool` deleted → red (27.10.; before that `uptime_seconds`,
+ *      which since /health only for admins no longer stands at the top of a response).
+ *   c) an exception entered for a key that does not exist → red
  *      ("tote Ausnahme").
- *   e) (11.11.2026) Seit Dienste ohne `success` antworten (die Route spreizt
- *      ihr Ergebnis), liest die Prüfung auch deren return: `feld_ohne_leser`
- *      im return von cacheStats() → rot.
- *   f) (14.11.2026) In shared/app-schnittstelle.json `"is_main"` aus den Antwortfeldern
- *      gestrichen → rot: OHNE VERBRAUCHER is_main.
- *   d) Den Pfad zu den Verbrauchern verbogen → rot mit eigener Meldung (ohne
- *      Verbraucher gälte JEDES Feld als ungelesen).
+ *   e) (11.11.2026) Since services answer without `success` (the route spreads
+ *      its result), the check also reads their return: `feld_ohne_leser`
+ *      in the return of cacheStats() → red.
+ *   f) (14.11.2026) in shared/app-schnittstelle.json `"is_main"` deleted from the response fields
+ *      → red: OHNE VERBRAUCHER is_main.
+ *   d) the path to the consumers bent → red with its own message (without
+ *      consumers EVERY field would count as unread).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

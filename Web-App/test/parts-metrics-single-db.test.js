@@ -1,18 +1,18 @@
 /**
- * Die Kennzahlen „Sorten“ und „Farben“ über der Teileliste zählen auch die
- * einzeln erfassten Teile — auf beiden Wegen (Live-Abfrage und Zusammenfassung).
- * Vorher zeigte ein Konto mit vier einzelnen Teilen in vier Farben „0 / 0“.
+ * The metrics „Sorten“ and „Farben“ above the parts list also count the
+ * individually captured parts — on both paths (live query and summary).
+ * Before, an account with four individual parts in four colors showed „0 / 0“.
  *
- * Gegenproben (am 03.11.2026 gemessen):
- *   A  in kennzahlen() (Live) wieder `AND COALESCE(p.source,'set') <> 'manual'`
- *      in die WHERE-Klausel → rot: alle drei, „nur einzelne Teile: 4 Sorten
- *      in 4 Farben“ mit 0 statt 4
- *   B  im Zweig der Zusammenfassung den UNION-Teil mit den einzelnen Teilen
- *      entfernt → rot nur: „gemischt: Zusammenfassung und Live gleich“
- *   C  in der Live-Abfrage das FILTER an total_parts entfernt → rot: alle
- *      drei, zuerst total_parts 100 statt 0 (einzelne Teile doppelt gezählt)
+ * Counter-checks (measured on 03.11.2026):
+ *   A  in kennzahlen() (live) again `AND COALESCE(p.source,'set') <> 'manual'`
+ *      in the WHERE clause → red: all three, “only individual parts: 4 kinds
+ *      in 4 colors” with 0 instead of 4
+ *   B  in the summary branch the UNION part with the individual parts
+ *      removed → red only: “mixed: summary and live the same”
+ *   C  in the live query the FILTER on total_parts removed → red: all
+ *      three, first total_parts 100 instead of 0 (individual parts counted twice)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -40,10 +40,10 @@ test('parts metrics with individually captured parts', { concurrency: 1 }, async
   for (const nr of TEILE)
     await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ($1, $1) ON CONFLICT DO NOTHING`, [nr]);
   try {
-    // Konto A: nur einzelne Teile, vier Sorten in vier Farben.
+    // Account A: only individual parts, four kinds in four colors.
     for (const [i, nr] of TEILE.entries()) await holdsPart(db, UA, nr, { colorId: [1, 4, 15, 0][i], menge: 25 });
-    // Konto B: ein Set mit ke1/Farbe 1 (×3) und ke2/Farbe 4 (×2), dazu einzeln
-    // ke1/Farbe 1 (dieselbe Sorte) und ke3/Farbe 15 (neue Sorte und Farbe).
+    // Account B: a set with ke1/color 1 (×3) and ke2/color 4 (×2), plus individually
+    // ke1/color 1 (the same kind) and ke3/color 15 (new kind and color).
     await holdsSet(db, UB, SN, 1);
     await holdsPart(db, UB, 'ke1', { setNumber: SN, colorId: 1, menge: 3 });
     await holdsPart(db, UB, 'ke2', { setNumber: SN, colorId: 4, menge: 2 });

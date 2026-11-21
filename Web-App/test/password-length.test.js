@@ -1,10 +1,10 @@
 /**
- * Die Mindestlaenge eines Passworts — an allen Stellen dieselbe. Dass jeder
- * Weg, der ein Passwort setzt, sie prüft, zeigt password-rule-db.test.js
- * („zu kurze Passwörter werden auf allen fünf Wegen abgewiesen“).
+ * The minimum length of a password — the same in all places. That every
+ * path that sets a password checks it is shown by password-rule-db.test.js
+ * (“passwords that are too short are rejected on all five paths”).
  *
- * Gegenprobe (11.11.2026 gemessen): `passwort_zu_kurz` in src/infra/errorTexts.ts
- * auf „mindestens 8 Zeichen“ → rot „die Fehlermeldung nennt dieselbe Zahl …“.
+ * Counter-check (measured 11.11.2026): `passwort_zu_kurz` in src/infra/errorTexts.ts
+ * set to „mindestens 8 Zeichen“ → red “the error message names the same number …”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -18,21 +18,21 @@ const _req = buildAndRequire();
 const { PASSWORD_MIN_CHARS, passwordToShort } = _req('src/account/loginCheck.js');
 
 test('the rule itself also holds for what is not a string', () => {
-  // Seit dem 04.11.2026 zwölf statt acht.
+  // Since 04.11.2026 twelve instead of eight.
   assert.equal(passwordToShort('12345678901'), true);
   assert.equal(passwordToShort('123456789012'), false);
   assert.equal(passwordToShort(''), true);
   assert.equal(passwordToShort(null), true);
   assert.equal(passwordToShort(undefined), true);
-  // ── Der Fall, den zwei der vier alten Pruefungen durchliessen ─────────────
-  // Der Rumpf einer Anfrage kann alles enthalten. `(123456789).length` ist
-  // `undefined`, und `undefined < 8` ist FALSCH — ein Passwort als JSON-Zahl
-  // kam an `password.length < 8` also vorbei. Nur die zwei Stellen mit
-  // `String(password).length` fingen es ab.
+  // ── The case that two of the four old checks let through ─────────────
+  // The body of a request can contain anything. `(123456789).length` is
+  // `undefined`, and `undefined < 8` is FALSE — a password as a JSON number
+  // thus got past `password.length < 8`. Only the two places with
+  // `String(password).length` caught it.
   assert.equal(passwordToShort(123), true, 'Eine Zahl hat kein .length — sie darf nicht durchrutschen');
-  // Die Gegenrichtung, damit die Zeile darueber nicht bloss „alles ist zu
-  // kurz" beweist: Aus der Zahl wird ihre Ziffernfolge, und die ist lang
-  // genug (`String(123456789012)` hat zwölf Zeichen).
+  // The opposite direction, so that the line above does not merely prove „everything is too
+  // short": the number becomes its digit sequence, and that is long
+  // enough (`String(123456789012)` has twelve characters).
   assert.equal(passwordToShort(123456789012), false);
 });
 
@@ -44,12 +44,12 @@ test('server and web app name the same number', () => {
 });
 
 test('the error message names the same number as the rule', () => {
-  // Die Texte können der Konstante nicht folgen; ein Text, der weniger
-  // verspricht, als der Server verlangt, führt den Nutzer in eine Absage.
+  // The texts cannot follow the constant; a text that promises less
+  // than the server demands leads the user into a refusal.
   const { errorText } = _req('src/infra/errorTexts.js');
   for (const sprache of ['de', 'en'])
     assert.match(errorText('passwort_zu_kurz', sprache), new RegExp(`\\b${PASSWORD_MIN_CHARS}\\b`), sprache);
-  // Die Webapp füllt die Zahl zur Laufzeit ein: dort ein Platzhalter, keine Zahl.
+  // The web app fills in the number at runtime: there a placeholder, no number.
   const texte = require('./helpers/sources').loadTranslations();
   for (const sprache of ['de', 'en']) {
     const text = texte[sprache]['settings.password.too_short'];
@@ -59,17 +59,17 @@ test('the error message names the same number as the rule', () => {
 });
 
 test('the web app checks before submitting', () => {
-  // Sonst schickte sie ab und zeigte erst den Serverfehler.
+  // Otherwise it would submit and only then show the server error.
   const core = ohneKommentare(read('public/js/form.js'));
   const settings = ohneKommentare(require('./helpers/sources').ansichtQuelle('einstellungen'));
-  // Anmelden, Registrieren und Zurücksetzen stehen seit dem Umbau in sitzung.js.
+  // Login, registration and resetting stand in sitzung.js since the rebuild.
   const sitzung = ohneKommentare(read('public/js/session.js'));
   const webCalls =
     (core.match(/passwordRuleText\(/g) || []).length +
     (settings.match(/passwordRuleText\(/g) || []).length +
     (sitzung.match(/passwordRuleText\(/g) || []).length;
-  // Fuenf Stellen setzen in der Webapp ein Passwort: Registrieren,
-  // Zuruecksetzen, Aendern, Konto anlegen, Konto-Passwort zuruecksetzen.
-  // Dazu die Definition selbst in formular.js.
+  // Five places set a password in the web app: registering,
+  // resetting, changing, creating an account, resetting an account password.
+  // Plus the definition itself in formular.js.
   assert.ok(webCalls >= 6, `Nur ${webCalls} Vorkommen — nicht alle fuenf Formulare pruefen vor dem Absenden`);
 });

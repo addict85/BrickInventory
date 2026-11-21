@@ -1,16 +1,16 @@
 /**
- * Jedes Bild aus einer Vorlage hat ein alt und den einheitlichen Platzhalter:
- * Lädt es nicht, steht dort dieselbe getönte Fläche wie bei einem Eintrag ohne
- * Bild — nicht das Browser-Symbol für kaputte Bilder. Geprüft am echten Bündel
- * in jsdom; der Fehler wird als error-Ereignis am Bild ausgelöst, wie der
- * Browser es tut (erst Wiederholung, dann Originalgrösse, dann Platzhalter).
+ * Every image from a template has an alt and the uniform placeholder:
+ * if it does not load, the same tinted area stands there as for an entry without an
+ * image — not the browser icon for broken images. Checked on the real bundle
+ * in jsdom; the error is triggered as an error event on the image, as the
+ * browser does (first retry, then original size, then placeholder).
  *
- * Gegenproben (am 28.10. gemessen):
- *   A  in aktionen.js statt bildPlatzhalter() wieder removeAttribute('src')
- *      → rot: „Galerie: kaputtes Bild wird zum Platzhalter"
- *   B  in bildTag() (bilder.js) das alt weggelassen → rot: „alt an jedem Bild"
- *   C  (03.11.) placeholderContent('set') wieder das Sinnbild statt
- *      set-placeholder.svg → rot: „Galerie: kaputtes Bild wird zum Platzhalter"
+ * Counter-checks (measured on 28.10.):
+ *   A  in aktionen.js again removeAttribute('src') instead of bildPlatzhalter()
+ *      → red: “gallery: broken image becomes the placeholder"
+ *   B  the alt omitted in bildTag() (bilder.js) → red: “alt on every image"
+ *   C  (03.11.) placeholderContent('set') again the icon instead of
+ *      set-placeholder.svg → red: “gallery: broken image becomes the placeholder"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -76,7 +76,7 @@ const RESPONSES = {
   '/v1/finance/parts-valuation': { success: true, currency: 'EUR', total_value: '0', parts: TEILE },
 };
 
-/** Alle <img> eines Bereichs, die aus Vorlagen stammen. */
+/** All <img> of an area that come from templates. */
 const bilder = (d, sel) => [...d.querySelectorAll(`${sel} img`)];
 
 test('alt on every image and the placeholder path on every template image', async () => {
@@ -94,7 +94,7 @@ test('alt on every image and the placeholder path on every template image', asyn
     };
     await warte(() => d.querySelector('#gallery .sc img'));
     pruefe('Galerie-Kachel', '#gallery');
-    // Die Kachel ist ein Knopf und nennt das Set im Text; ein alt nannte es doppelt.
+    // The tile is a button and names the set in text; an alt named it twice.
     assert.equal(
       d.querySelector('#gallery .sc img').getAttribute('alt'),
       '',
@@ -128,15 +128,15 @@ test('gallery: a broken image becomes a placeholder', async () => {
     await warte(() => d.querySelector('#gallery .sc img'));
     const img = d.querySelector('#gallery .sc img');
     const fehler = () => img.dispatchEvent(new w.Event('error'));
-    fehler(); // 1. Versuch: Wiederholung in einer Sekunde
-    fehler(); // 2. Versuch: volle Auflösung (data-orig)
-    fehler(); // 3. Versuch: Platzhalter
+    fehler(); // 1st attempt: retry in one second
+    fehler(); // 2nd attempt: full resolution (data-orig)
+    fehler(); // 3rd attempt: placeholder
     await takt(10);
     const sci = d.querySelector('#gallery .sc .sci');
     assert.equal(sci.querySelector('img[data-onerror]'), null, 'Das kaputte Bild steht noch da');
     const ph = sci.querySelector('.bild-ph');
     assert.ok(ph, 'Kein Platzhalter an seiner Stelle');
-    // Ohne alt (die Kachel nennt das Set im Text) ist der Platzhalter Schmuck.
+    // Without alt (the tile names the set in text) the placeholder is decoration.
     assert.equal(ph.getAttribute('aria-hidden'), 'true');
     assert.equal(
       ph.querySelector('img')?.getAttribute('src'),

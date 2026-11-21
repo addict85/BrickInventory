@@ -1,34 +1,34 @@
 /**
- * Tokens: Scope, gleitender Ablauf, Rotation, „unbegrenzt“ nur über HTTPS,
- * Geräteliste und die Migration der Bestandstokens — gegen eine echte
- * Datenbank und den Anmeldeweg wie im Server (Eingang, api_v1, settings, auth).
+ * Tokens: scope, sliding expiry, rotation, „unbegrenzt“ only over HTTPS,
+ * device list and the migration of existing tokens — against a real
+ * database and the login path as in the server (entrance, api_v1, settings, auth).
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in pruefeToken() den Scope nicht beachtet (is_admin = konto_is_admin) →
- *      rot: „Scope app: auch ein Verwalterkonto bekommt keine Verwalterrechte“
- *   B  in /qr-login wieder establishSession() mit isAdmin → rot: dieselbe
- *      Prüfung (die Antwort setzt ein Sitzungscookie)
- *   C  in _touchLastUsed() die Tagesregel entfernt (immer schreiben) → rot:
- *      „Ablauf gleitet, geschrieben wird höchstens einmal je Tag“
- *   D  in rotateToken() den unbenutzten Nachfolger nicht ersetzt → rot:
- *      „Rotation: …“ (B gilt nach dem zweiten Tausch weiter)
- *   E  in pruefeToken() den Vorgänger bei der ersten Nutzung nicht gelöscht →
- *      rot: „Rotation: …“ (der alte gilt nach Nutzung des neuen weiter)
- *   F  in /qr-token die https-Prüfung für „unbegrenzt“ entfernt → rot:
- *      „unbegrenzt nur über HTTPS, und dann mit Rotationspflicht“
- *   G  rotationRequired() immer false → rot: dieselbe Prüfung (Status 200 statt 401)
- *   H  in der Migration 0080 never_expires nicht zurückgesetzt → rot:
- *      „Migration 0080: …“
- *   I  in accessesOfAccount() `replaced_by IS NULL` entfernt → rot:
- *      „Geräteliste: …“ (das getauschte Gerät stand doppelt da)
- *   J  (02.11.2026) in /login wieder `null` statt APP_MAX_DURATION_DAYS → rot:
- *      „App-Anmeldung: feste Höchstdauer …“ (hard_expires_at null)
- *   K  (02.11.2026) in putSuccessorAn() hard_expires_at auf NOW() + 180
- *      Tage gesetzt → rot: dieselbe Prüfung („der Tausch verlängert …“)
- *   L  (09.11.2026) in deleteAccess() den Vorgänger (`left(replaced_by, 16)`)
- *      nicht mitgelöscht → rot: „Geräteliste: …“ (der Vorgänger lebt weiter)
+ * Counter-checks (measured on 30.10.2026):
+ *   A  the scope not respected in pruefeToken() (is_admin = konto_is_admin) →
+ *      red: “scope app: even an administrator account gets no administrator rights”
+ *   B  in /qr-login again establishSession() with isAdmin → red: the same
+ *      check (the response sets a session cookie)
+ *   C  the daily rule removed in _touchLastUsed() (always write) → red:
+ *      “expiry slides, written at most once per day”
+ *   D  in rotateToken() the unused successor not replaced → red:
+ *      “rotation: …” (B still applies after the second exchange)
+ *   E  in pruefeToken() the predecessor not deleted on the first use →
+ *      red: “rotation: …” (the old one still applies after use of the new one)
+ *   F  the https check for „unbegrenzt“ removed in /qr-token → red:
+ *      “unlimited only over HTTPS, and then with mandatory rotation”
+ *   G  rotationRequired() always false → red: the same check (status 200 instead of 401)
+ *   H  never_expires not reset in migration 0080 → red:
+ *      “migration 0080: …”
+ *   I  `replaced_by IS NULL` removed in accessesOfAccount() → red:
+ *      “device list: …” (the exchanged device stood there twice)
+ *   J  (02.11.2026) in /login again `null` instead of APP_MAX_DURATION_DAYS → red:
+ *      “app login: fixed maximum duration …” (hard_expires_at null)
+ *   K  (02.11.2026) in putSuccessorAn() hard_expires_at set to NOW() + 180
+ *      days → red: the same check („der Tausch verlängert …“)
+ *   L  (09.11.2026) in deleteAccess() the predecessor (`left(replaced_by, 16)`)
+ *      not deleted along → red: “device list: …” (the predecessor lives on)
  *
- * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
+ * Prerequisite: test DB (contents are touched!) via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -41,7 +41,7 @@ const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 environment({ SESSION_SECRET: 'test-secret-lang-genug-fuer-die-pruefung' });
 environment({ APP_BASE_URL: 'http://lego.test:3000' });
-// Der Geräteschlüssel kommt mit einer Testkette (helpers/attestation.js).
+// The device key comes with a test chain (helpers/attestation.js).
 environment(require('./helpers/attestation').UMGEBUNG);
 
 const { buildAndRequire } = require('./helpers/sources');
@@ -71,8 +71,8 @@ test('tokens with scope, expiry and rotation', { concurrency: 1 }, async t => {
     [NAME, await bcrypt.hash(PASS, 4)],
   );
   const uid = (await db.get('SELECT id FROM users WHERE username=$1', [NAME])).id;
-  // Verwalter brauchen einen Code-Generator: Anmeldung und Bestätigung nehmen je einen
-  // Wiederherstellungscode, reichen die zehn nicht, kommen neue.
+  // Admins need a code generator: login and confirmation each take a
+  // recovery code; if the ten do not suffice, new ones come.
   const vorrat = await require('./helpers/admin').adminWithFactor(_req, uid);
   const code = async () => {
     if (!vorrat.length) vorrat.push(...(await _req('src/factors/secondFactor.js').renewCodes(uid)));
@@ -159,7 +159,7 @@ test('tokens with scope, expiry and rotation', { concurrency: 1 }, async t => {
 
     const voll = await anmelden({ never_expires: true, scope: 'voll' });
     assert.equal(voll.body.token_info.scope, 'voll');
-    // Verwalterrechte eines App-Tokens erst nach der Gerätesperre (step-protection-db.test.js).
+    // Admin rights of an app token only after the device lock (step-protection-db.test.js).
     await require('./helpers/device').releaseDevice(ruf, voll.body.token, 'verwaltung');
     assert.equal((await ruf('/admin/cache-ttl', { token: voll.body.token })).status, 200);
     assert.equal((await ruf('/admin/cache-ttl', { cookie: sitzung })).status, 200, 'Die Sitzung behält die Rechte');
@@ -169,7 +169,7 @@ test('tokens with scope, expiry and rotation', { concurrency: 1 }, async t => {
     const tok = (await anmelden({ never_expires: true })).body.token;
     assert.ok(Math.abs(daysUntil((await zeile(tok)).expires_at) - 90) < 0.01, 'Vorgabe 90 Tage');
 
-    // Zwei Tage nicht benutzt: Die nächste Anfrage schiebt Frist und letzte Nutzung.
+    // Unused for two days: the next request pushes the period and the last use.
     await db.run(
       `UPDATE api_tokens SET last_used = NOW() - INTERVAL '2 days', expires_at = NOW() + INTERVAL '88 days',
                   ip_range = NULL WHERE token = $1`,
@@ -186,7 +186,7 @@ test('tokens with scope, expiry and rotation', { concurrency: 1 }, async t => {
     assert.ok(Math.abs(daysUntil(z.expires_at) - 90) < 0.01, 'Die Nutzung verlängert auf 90 Tage');
     assert.match(String(z.ip_range), /\/(24|48)$/, 'Der Adressbereich wird mitgeschrieben');
 
-    // Vor 23 Stunden geschrieben: Weitere Anfragen schreiben nichts.
+    // Written 23 hours ago: further requests write nothing.
     await db.run(
       `UPDATE api_tokens SET last_used = NOW() - INTERVAL '23 hours',
                   expires_at = NOW() + INTERVAL '89 days 1 hour' WHERE token = $1`,
@@ -217,8 +217,8 @@ test('tokens with scope, expiry and rotation', { concurrency: 1 }, async t => {
     assert.ok(rest > 250 && rest <= 300, `alter Token gilt noch ${rest} s`);
     assert.equal((await zeile(b)).label, 'Telefon');
 
-    // Antwort verloren: Der alte tauscht noch einmal, der unbenutzte B fällt weg —
-    // nach dem Sperrfenster gegen gleichzeitige Tausche (token-tausch-parallel-db).
+    // Response lost: the old one exchanges once more, the unused B drops away —
+    // after the lock window against concurrent exchanges (token-swap-parallel-db).
     assert.equal((await ruf('/auth/me', { token: a })).status, 200, 'Der alte gilt in der Überlappung');
     await db.run(`UPDATE api_tokens SET rotated_at = NOW() - INTERVAL '1 minute' WHERE token = $1`, [
       auth.tokenDigest(b),
@@ -229,7 +229,7 @@ test('tokens with scope, expiry and rotation', { concurrency: 1 }, async t => {
     tokenCache.emptyTokenCache();
     assert.equal((await ruf('/auth/me', { token: b })).status, 401, 'Der ersetzte Nachfolger gilt nicht mehr');
 
-    // Die erste Nutzung von C beendet die Überlappung.
+    // The first use of C ends the overlap.
     assert.equal((await ruf('/auth/me', { token: c })).status, 200);
     tokenCache.emptyTokenCache();
     assert.equal((await ruf('/auth/me', { token: a })).status, 401, 'Nach Nutzung des neuen ist der alte weg');
@@ -245,7 +245,7 @@ test('tokens with scope, expiry and rotation', { concurrency: 1 }, async t => {
       `feste Frist 180 Tage, gemessen: ${z.hard_expires_at}`,
     );
     assert.ok(Math.abs(daysUntil(z.expires_at) - 90) < 0.01, 'die Gleitfrist bleibt daneben');
-    // 170 Tage nach der Anmeldung: Ein Tausch erbt die zehn restlichen Tage.
+    // 170 days after the login: an exchange inherits the remaining ten days.
     await db.run(`UPDATE api_tokens SET hard_expires_at = NOW() + INTERVAL '10 days' WHERE token = $1`, [
       auth.tokenDigest(a),
     ]);
@@ -307,7 +307,7 @@ test('tokens with scope, expiry and rotation', { concurrency: 1 }, async t => {
     await ruf('/auth/me', { token: g });
     const r = await ruf('/auth/token-rotieren', { method: 'POST', token: g });
     const neu = r.body.token;
-    // Noch in der Überlappung: Der alte Token lebt, zählt aber nicht als Gerät.
+    // Still in the overlap: the old token lives but does not count as a device.
     const liste = (await ruf('/settings/tokens', { cookie: sitzung })).body.tokens;
     const tablets = liste.filter(x => x.label === 'Tablet');
     assert.equal(tablets.length, 1, 'Ein getauschtes Gerät steht einmal da');
@@ -333,7 +333,7 @@ test('tokens with scope, expiry and rotation', { concurrency: 1 }, async t => {
     const c = await db.pool.connect();
     try {
       await c.query('BEGIN');
-      // Eine temporäre Tabelle in der alten Form verdeckt die echte (pg_temp zuerst).
+      // A temporary table in the old form covers the real one (pg_temp first).
       await c.query(`CREATE TEMP TABLE api_tokens (token text PRIMARY KEY, user_id int, created_at timestamptz DEFAULT now(),
         last_used timestamptz DEFAULT now(), expires_at timestamptz, sliding boolean NOT NULL DEFAULT false,
         hard_expires_at timestamptz, never_expires boolean NOT NULL DEFAULT false, label text)`);

@@ -1,5 +1,5 @@
 /**
- * Nachschlagetabellen mit Schlüssel von aussen.
+ * Lookup tables with a key from outside.
  */
 const test = require('node:test');
 const assert = require('node:assert');
@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-// Über buildAndRequire: Ein veraltetes dist/ prüfte sonst den Stand vor der letzten Änderung.
+// Via buildAndRequire: a stale dist/ would otherwise check the state before the last change.
 const _req = require('./helpers/sources').buildAndRequire();
 const { fromTable } = _req('src/infra/validate.js');
 
@@ -22,27 +22,27 @@ test('an unknown key delivers the default', () => {
 });
 
 test('inherited properties do NOT count as hits', () => {
-  // Das ist der eigentliche Befund. Ohne hasOwnProperty käme hier die
-  // Object-Funktion bzw. Object.prototype zurück — beides wahrheitswertig,
-  // beides landete ungeprüft im SQL.
+  // This is the actual finding. Without hasOwnProperty the
+  // Object function or Object.prototype would come back here — both truthy,
+  // both landed unchecked in the SQL.
   for (const k of ['constructor', '__proto__', 'toString', 'valueOf', 'hasOwnProperty']) {
     assert.strictEqual(fromTable(TABELLE, k, 'VORGABE'), 'VORGABE', `Schlüssel ${k}`);
   }
 });
 
 test('counter-check: the naive access FAILS with the same keys', () => {
-  // Belegt, dass der Test oben etwas prüft und nicht ohnehin grün wäre.
+  // Proves that the test above checks something and would not be green anyway.
   const naive = k => TABELLE[k] || 'VORGABE';
-  assert.strictEqual(naive('gibtsnicht'), 'VORGABE'); // hier gleich
-  assert.notStrictEqual(naive('constructor'), 'VORGABE'); // hier NICHT
+  assert.strictEqual(naive('gibtsnicht'), 'VORGABE'); // equal here
+  assert.notStrictEqual(naive('constructor'), 'VORGABE'); // NOT here
   assert.notStrictEqual(naive('__proto__'), 'VORGABE');
 });
 
 test('non-string keys are handled safely', () => {
   for (const k of [undefined, null, 42, {}, ['name_asc'], true]) {
     const r = fromTable(TABELLE, k, 'VORGABE');
-    // Ein Array mit einem gültigen Wert darf über einzelwert() greifen —
-    // alles andere fällt auf die Vorgabe.
+    // An array with a valid value may apply via einzelwert() —
+    // everything else falls back to the default.
     assert.ok(r === 'VORGABE' || r === 'rb.name ASC', `Schlüssel ${JSON.stringify(k)} ergab ${r}`);
   }
 });
@@ -52,20 +52,20 @@ test('without a default undefined comes instead of an inherited value', () => {
   assert.strictEqual(fromTable(TABELLE, 'name_asc'), 'rb.name ASC');
 });
 
-// ── Die drei Fundstellen: kein direkter Tabellenzugriff mehr ────────────────
+// ── The three locations: no direct table access anymore ────────────────────
 
 /** @type {[string, string, RegExp][]} */
 const PLACES = [
   ['src/catalog/repository/catalogSearch.ts', 'ORDERS', /ORDERS\s*\[/],
   ['src/sets/repository/sets.ts', 'SET_SORTS', /SET_SORTS\s*\[/],
-  // Die Endungen je MIME-Typ der Uploads stehen seit 05.11.2026 im Empfang.
+  // The extensions per MIME type of the uploads have been in the reception since 05.11.2026.
   ['src/http/fileUpload.ts', 'o.typen', /o\.typen\s*\[/],
 ];
 
 for (const [datei, name, muster] of PLACES) {
   test(`${datei}: ${name} is no longer indexed directly`, () => {
-    // Kommentarzeilen heraus: Die Begründung ÜBER dem Code nennt das alte
-    // Muster absichtlich, und darauf soll dieser Test nicht anspringen.
+    // Comment lines out: the rationale ABOVE the code names the old
+    // pattern on purpose, and this test should not trigger on it.
     const code = fs
       .readFileSync(path.join(ROOT, datei), 'utf8')
       .split('\n')

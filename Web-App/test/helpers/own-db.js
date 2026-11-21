@@ -1,12 +1,12 @@
 'use strict';
 /**
- * Vorgeladen in jede Testdatei (scripts/test-run.js): eine eigene Kopie der Vorlage,
- * damit Dateien parallel laufen, ohne Zeilen, NOTIFY-Kanäle oder Sperren zu teilen.
- * Die App verbindet sich wie im Betrieb als Laufzeitrolle, der Systemrahmen als
- * Systemrolle (in HTTP-Anfragen als Web-Systemrolle), Testdaten schreibt die Eigentümerin (helpers/roles.js, sources.js);
- * Dateien mit der Marke `@superuser` laufen noch als Superuser.
+ * Preloaded into every test file (scripts/test-run.js): an own copy of the template
+ * so that files run in parallel without sharing rows, NOTIFY channels or locks.
+ * The app connects as in production as the runtime role, the system context as the
+ * system role (in HTTP requests as the web system role), the owner writes test data (helpers/roles.js, sources.js);
+ * files with the marker `@superuser` still run as superuser.
  */
-// Nur im Kind des Test-Runners und nur einmal: Gestartete Server erben die Umgebung samt Marke.
+// Only in the test runner's child and only once: started servers inherit the environment including the marker.
 const vorlage = process.env.TEST_DB_VORLAGE;
 if (process.env.NODE_TEST_CONTEXT && vorlage && process.env.TEST_DATABASE_URL && !process.env.TEST_DB_EIGEN) {
   const { execFileSync } = require('node:child_process');
@@ -40,7 +40,7 @@ if (process.env.NODE_TEST_CONTEXT && vorlage && process.env.TEST_DATABASE_URL &&
         env: { ...process.env, TEST_DATABASE_URL: process.env.TEST_DB_BASIS },
       });
     } catch {
-      /* der Lauf räumt Reste am Ende ab (scripts/test-run.js) */
+      /* the run clears leftovers at the end (scripts/test-run.js) */
     }
   });
 }

@@ -1,28 +1,28 @@
 /**
- * UX-Prüfung 20 im echten Chrome, im Haushalt (patternHousehold, Unterkonto mit langem Namen): Kaufpreis-Dialog
- * (M1, N8), Finanzen am Telefon (M2, N1), Setnummer-Felder (M3), Kachel (N2), Zeitpunkte der Hintergrund-
- * arbeiten (N3), Legende (N7), 200 % Schrift (N10), Finanzen ohne Verbindung (N11), Passwortwechsel (N12).
+ * UX review 20 in real Chrome, in the household (patternHousehold, sub-account with a long name): purchase price dialog
+ * (M1, N8), finances on the phone (M2, N1), set number fields (M3), tile (N2), times of the background
+ * jobs (N3), legend (N7), 200 % font (N10), finances without connection (N11), password change (N12).
  *
- * Gegenproben (13.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  feldFehler() wieder mit insertAdjacentElement am Feld statt eigener Zeile → rot: „Kaufpreis-Dialog“
- *      (keine Meldungszeile unter der Zeile)
- *   B  amountFromField() ohne die Prüfung auf ein Minus → rot: ebenda („„-5“ ist kein Betrag …“)
- *   C  styles.css ohne die Regeln für .acq-tabelle select und die breitere .acq-wide → rot: ebenda
- *      (Auswahl gekürzt)
- *   D  unterKauf() liefert '' → rot: „Finanzen am Telefon“ (kein Kaufpreis unter dem Namen)
- *   E  withoutMarket() wieder ohneWert() → rot: ebenda (Wert ohne „kein Marktpreis“)
- *   F  rowsButton() ohne <span> um den Inhalt → rot: ebenda (0 px zwischen „4“ und „(Schwarz)“)
- *   G  #add-num wieder inputmode="numeric" ohne autocapitalize → rot: „Setnummer-Felder“
- *   H  Kachel wieder mit nacktem Text „2 Käufe, zuletzt“ → rot: „Kachel mit mehreren Käufen“
- *   I  monitor.js wieder fmtDatum(…, 'zeit') → rot: „Zeitpunkte mit Tag“ („10:03“ statt „morgen 10:03“)
- *   K  legende() wieder als ein Satz ohne .legende-eintrag → rot: „Legende hält zusammen“
- *   L  mobile.css wieder `.bstat:not(:first-child)::after` → rot: „200 % Schrift am Telefon“ (Zeile beginnt
- *      mit „·“)
- *   M  @container leiste ohne `.ntab .ico { display: none }` → rot: ebenda (Leiste 106 px hoch)
- *   N  finanzenFehlen() wieder mit „Keine Verbindung“ in den Karten → rot: „Finanzen ohne Verbindung“;
- *      seit Runde 24 (14.11.2026): `G('fin-sum').hidden = true` entfernt → rot: ebenda („Karten ohne Zahl“)
- *   O  finanzenFehlen() ohne das Sperren der Zeitraumknöpfe → rot: ebenda (Knöpfe bedienbar)
- *   P  #pw-pk wieder mit dem langen Text im Etikett, ohne aria-describedby → rot: „Passwortwechsel“
+ * Counter-checks (measured 13.11.2026, each alone, bundle rebuilt):
+ *   A  feldFehler() again with insertAdjacentElement at the field instead of its own row → red: “purchase price dialog”
+ *      (no message row below the row)
+ *   B  amountFromField() without the check for a minus → red: same place (““-5” is not an amount …”)
+ *   C  styles.css without the rules for .acq-tabelle select and the wider .acq-wide → red: same place
+ *      (selection shortened)
+ *   D  unterKauf() returns '' → red: “finances on the phone” (no purchase price below the name)
+ *   E  withoutMarket() back to ohneWert() → red: same place (value without “no market price”)
+ *   F  rowsButton() without <span> around the content → red: same place (0 px between “4” and “(Schwarz)”)
+ *   G  #add-num again inputmode="numeric" without autocapitalize → red: “set number fields”
+ *   H  tile again with bare text “2 Käufe, zuletzt” → red: “tile with several purchases”
+ *   I  monitor.js again fmtDatum(…, 'zeit') → red: “times with day” (“10:03” instead of “morgen 10:03”)
+ *   K  legende() again as one sentence without .legende-eintrag → red: “legend holds together”
+ *   L  mobile.css again `.bstat:not(:first-child)::after` → red: “200 % font on the phone” (line starts
+ *      with “·”)
+ *   M  @container leiste without `.ntab .ico { display: none }` → red: same place (bar 106 px high)
+ *   N  finanzenFehlen() again with “Keine Verbindung” in the cards → red: “finances without connection”;
+ *      since round 24 (14.11.2026): `G('fin-sum').hidden = true` removed → red: same place (“cards without number”)
+ *   O  finanzenFehlen() without locking the period buttons → red: same place (buttons operable)
+ *   P  #pw-pk again with the long text in the label, without aria-describedby → red: “password change”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -44,13 +44,13 @@ async function groesse(b, breite, hoehe = 900) {
   });
 }
 
-/** Zuerst, solange die Finanzen noch nie geladen haben: So sieht es aus, wer offline den Reiter öffnet. */
+/** First, while the finances have never loaded: this is how it looks to whoever opens the tab offline. */
 async function financesOffline(_t, a) {
   const { b, bis, ruhig } = a;
   await b.tab('Network.emulateNetworkConditions', { offline: true, ...NETWORK });
   try {
     await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
-    // Seit Runde 24 (M2) steht der Fehler oben im Diagrammkasten, die Karten fallen weg.
+    // Since round 24 (M2) the error stands at the top of the chart box, the cards drop away.
     await bis(`!!document.querySelector('#portfolio-chart .error_message-zustand')`, 'Fehlerzustand oben');
     const z = await b.auswerten(`({
       karten: document.getElementById('fin-sum').checkVisibility() ? 'sichtbar' : 'weg',
@@ -64,7 +64,7 @@ async function financesOffline(_t, a) {
   } finally {
     await b.tab('Network.emulateNetworkConditions', { offline: false, ...NETWORK });
   }
-  // Zurück am Netz lädt die Liste von selbst; sonst hilft der Knopf.
+  // Back on the network the list loads by itself; otherwise the button helps.
   await b.auswerten(`document.querySelector('#tab-finance [data-click="loadFinance"]')?.click(); true`);
   await bis(`!!document.querySelector('#fin-tbl [data-fin-type="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 200);
   await bis(
@@ -85,7 +85,7 @@ async function purchasePriceDialog(_t, a) {
   await b.auswerten(`document.querySelector('[data-click="openAcqModal"]').click(); true`);
   await bis(`document.querySelectorAll('.acq-tabelle tbody tr').length === 2`, 'Kaufpreis-Tabelle');
   await ruhig();
-  // N8: Jede Auswahl zeigt ihren gewählten Eintrag ganz (gemessen an der Schrift der Auswahl).
+  // N8: every select shows its chosen entry fully (measured by the select's font).
   const gekuerzt = await b.auswerten(`(() => { const c = document.createElement('canvas').getContext('2d');
     return [...document.querySelectorAll('.acq-tabelle select')].filter(s => {
       const st = getComputedStyle(s); c.font = st.font;
@@ -140,7 +140,7 @@ async function financesPhone(_t, a) {
     assert.match(doc.unter, /Kaufpreis 9,00 €/, 'Figur ohne Kaufpreis unter dem Namen');
     assert.equal(doc.wert, 'kein Marktpreis');
     assert.equal(doc.guv, null, 'zweiter Strich neben dem Wert');
-    // N1: Zwischen „Brick 2 x 4“ und „(Schwarz)“ steht ein Wortabstand.
+    // N1: between “Brick 2 x 4” and “(Schwarz)” there is a word space.
     const abstand =
       await b.auswerten(`(() => { const k = [...document.querySelectorAll('#fin-tbl [data-fin-type="parts"] .zeile-oeffnen')].find(x => x.textContent.includes('(Schwarz)'));
       const farbe = [...k.querySelectorAll('span')].find(s => s.textContent.trim() === '(Schwarz)');

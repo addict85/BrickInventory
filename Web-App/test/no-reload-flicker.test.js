@@ -1,17 +1,17 @@
 /**
- * Kein doppelter Neuaufbau des Inhalts beim Neuladen / nach dem Login.
+ * No double rebuild of the content when reloading / after login.
  *
- * Gegenproben (05.11.2026, je einzeln, Bündel neu gebaut):
- *   A  navigation.js: bei Sprachwechsel loadGallery() statt renderGallery()
- *      → „ein echter Sprachwechsel …“ rot
- *   B  navigation.js ohne `if (!realSwitch) return;` → „der Start lädt …“ rot
- *   C  loadGallery zeigt die Ladeanzeige immer (`if (true)`) → „Auffrischen …“ rot
+ * Counter-checks (05.11.2026, each on its own, bundle rebuilt):
+ *   A  navigation.js: on language change loadGallery() instead of renderGallery()
+ *      → “a real language change …” red
+ *   B  navigation.js without `if (!realSwitch) return;` → “the startup loads …” red
+ *   C  loadGallery always shows the loading indicator (`if (true)`) → “refreshing …” red
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 /**
- * import-/export-Syntax aus einer Moduldatei entfernen.
+ * Remove import/export syntax from a module file.
  * @param {string} src
  * @returns {string}
  */
@@ -19,10 +19,10 @@ function stripModuleSyntax(src) {
   const body = src
     .replace(/^import[^;]*;\s*$/gm, '') // import { a, b } from '…';
     .replace(/^export\s+/gm, ''); // export function/const/let/class
-  // registerActions() kommt sonst aus js/registry.js und ist nach dem
-  // Entfernen der Importe nicht definiert. In der Sandbox interessiert die
-  // Anmeldung nicht — dass sie aufgerufen WIRD, prüfen test/csp-actions.test.js
-  // und test/bundle-smoke.test.js gegen den echten Quelltext. …
+  // registerActions() otherwise comes from js/registry.js and is not defined after
+  // removing the imports. In the sandbox the registration does not
+  // matter — that it IS called is checked by test/csp-actions.test.js
+  // and test/bundle-smoke.test.js against the real source text. …
   return (
     'function registerActions() {}\n' + 'function tRaw(k, v) { return typeof t === "function" ? t(k, v) : k; }\n' + body
   );
@@ -91,10 +91,10 @@ test('refreshing leaves the tiles standing until the new response is there', asy
 });
 
 test('the import query does not run unthrottled and not before login', () => {
-  // Sie pollte alle 3 Sekunden — auch auf dem Login-Screen und auch dann, wenn
-  // die Antwort gar kein JSON war. Steht ein Reverse-Proxy davor, liefert der
-  // bei einem Neustart eine HTML-Fehlerseite; r.json() warf dann bei jedem
-  // Versuch "Unexpected token '<'".
+  // It polled every 3 seconds — also on the login screen and also when
+  // the response was not JSON at all. If a reverse proxy stands in front, it delivers
+  // an HTML error page during a restart; r.json() then threw on every
+  // attempt "Unexpected token '<'".
   const core = stripModuleSyntax(require('./helpers/sources').coreSource());
   const fn = core.slice(core.indexOf('async function gibCheckOnLoad'), core.indexOf('let _gibCheckTimer = null;'));
   assert.match(

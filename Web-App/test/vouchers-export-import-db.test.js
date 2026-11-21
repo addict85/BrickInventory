@@ -1,9 +1,9 @@
 /**
- * Gutschein-Export und -Import über ihre echten Adressen.
+ * Voucher export and import via their real addresses.
  *
- * ── Gegenproben (durchgeführt, Befunde GEMESSEN — siehe Commit) ─────────────
+ * ── Counter-checks (carried out, findings MEASURED — see commit) ─────────────
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
  * REQUIRE_DB=1.
  */
 require('./helpers/system-frame');
@@ -15,12 +15,12 @@ const path = require('node:path');
 const PDFKit = require('pdfkit');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-// APP_ROOT, nicht DATA_DIR
+// APP_ROOT, not DATA_DIR
 const SANDBOX = fs.mkdtempSync(path.join(os.tmpdir(), 'gutschein-wurzel-'));
 fs.mkdirSync(path.join(SANDBOX, 'data'), { recursive: true });
-// package.json, damit findRoot() hier stehenbleibt und nicht weiter nach oben
-// laeuft (es sucht die naechste package.json). APP_ROOT hat Vorrang, also ist
-// das nur ein Gurt neben dem Hosentraeger.
+// package.json, so that findRoot() stops here and does not run further up
+// (it searches for the next package.json). APP_ROOT takes precedence, so this
+// is only a belt next to the suspenders.
 fs.writeFileSync(path.join(SANDBOX, 'package.json'), '{"name":"sandkasten"}');
 process.env.APP_ROOT = SANDBOX;
 const DATA_DIR = path.join(SANDBOX, 'data');
@@ -85,9 +85,9 @@ async function setup() {
     );
     await db.run('UPDATE vouchers SET pdf_path=$1 WHERE id=$2', [`${MAIN}/${z.id}.pdf`, z.id]);
   }
-  // Ein Gutschein OHNE Original — von Hand erfasst.
+  // A voucher WITHOUT an original — captured by hand.
   await createVoucher(MAIN, { number: '5045076374450033388', pin: null, amount: 42.5, currency: 'CHF' });
-  // Und einer in einem FREMDEN Konto, der im eigenen Export nichts zu suchen hat.
+  // And one in a FOREIGN account, which has no business in the own export.
   await createVoucher(FREMD, { number: '9999999999999999999', pin: '0000', amount: 99, currency: 'CHF' });
 }
 
@@ -104,7 +104,7 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
 
   let pdf = null,
     befunde = null;
-  /** Erst die bestätigte Freigabe, dann der eine Abruf mit dem Ticket. */
+  /** First the confirmed release, then the one fetch with the ticket. */
   const freigabe = () =>
     fetch(`${srv.base}/api/v1/vouchers/export/pdf-freigabe`, {
       method: 'POST',
@@ -141,11 +141,11 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
         'erste wird ersetzt (400→250), der zweite stimmt schon (150), der dritte hat ' +
         'kein Original',
     );
-    // „stimmte_schon" ist eine eigene Art und KEIN offener Punkt. Bis zum
-    // 15.10. trug dieser Fall `unveraendert` samt Grund, und die Oberfläche
-    // zeigte ihn als Warnung — Marco las in seinem Export zweimal
-    // „⚠ …: Der Betrag im PDF stimmt schon", also eine Warnung vor einem
-    // Erfolg. Hier steht der Unterschied fest.
+    // „stimmte_schon" is a kind of its own and NOT an open point. Until
+    // 15.10. this case carried `unveraendert` including a reason, and the UI
+    // showed it as a warning — Marco read twice in his export
+    // „⚠ …: Der Betrag im PDF stimmt schon", i.e. a warning about a
+    // success. Here the difference is fixed.
     assert.equal(
       befunde.filter(b => b.art === 'unveraendert' && b.grund).length,
       0,
@@ -154,8 +154,8 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
   });
 
   await t.test('2. the FOREIGN voucher is not included', async () => {
-    // Ein Gutschein traegt Nummer und PIN. Im Export eines anderen Kontos
-    // waere das die Weitergabe eines Zahlungsmittels.
+    // A voucher carries number and PIN. In the export of another account
+    // that would be passing on a means of payment.
     const { readPageByPage } = _req('src/vouchers/pdfExport.js');
     const drin = (await readPageByPage(pdf)).map(w => w.number);
     assert.ok(
@@ -184,9 +184,9 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
     await db.run('DELETE FROM vouchers WHERE user_id=$1', [MAIN]);
     const fd = new FormData();
     fd.append('file', new Blob([pdf], { type: 'application/pdf' }), 'gutscheine.pdf');
-    // DIESELBE Adresse wie fuer einen einzelnen Gutschein (Marcos Durchsicht
-    // vom 15.10.: ein Dateifeld, nicht zwei). Der Server sieht drei Seiten und
-    // antwortet mit `mehrere` statt mit `voucher`.
+    // THE SAME address as for a single voucher (Marco's review
+    // of 15.10.: one file field, not two). The server sees three pages and
+    // answers with `mehrere` instead of `voucher`.
     const r = await fetch(`${srv.base}/api/v1/vouchers/pdf`, { method: 'POST', body: fd });
     const b = await r.json();
     assert.equal(r.status, 200, `Der Import antwortete mit ${r.status}: ${JSON.stringify(b)}`);
@@ -213,7 +213,7 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
         `${k.nr}: PIN ${z.pin} statt ${k.pin}`,
       );
     }
-    // Und der von Hand erfasste, der nie ein PDF hatte.
+    // And the one captured by hand, which never had a PDF.
     const ohne = await db.get('SELECT amount, pin FROM vouchers WHERE user_id=$1 AND number_search=$2', [
       MAIN,
       suche(MAIN, '5045076374450033388'),
@@ -224,9 +224,9 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
   });
 
   await t.test('5. a second import refreshes the amount instead of doing nothing', async () => {
-    // Der Fall, für den es den Import gibt: Das Konto kennt die Karten schon,
-    // und der Betrag hat sich geändert. Mit ON CONFLICT DO NOTHING wäre der
-    // Import hier wirkungslos — und genau dann braucht man ihn.
+    // The case the import exists for: the account already knows the cards,
+    // and the amount has changed. With ON CONFLICT DO NOTHING the
+    // import would be ineffective here — and exactly then one needs it.
     await db.run('UPDATE vouchers SET amount = 1 WHERE user_id=$1', [MAIN]);
     const fd = new FormData();
     fd.append('file', new Blob([pdf], { type: 'application/pdf' }), 'gutscheine.pdf');
@@ -288,11 +288,11 @@ test('vouchers: export and import via the real addresses', { concurrency: 1 }, a
   });
 
   await t.test('8. ONE voucher in the PDF stays the single case — with file', async () => {
-    // Die Entscheidung „einer oder mehrere" trifft der Server, und sie muss in
-    // beide Richtungen stimmen. Bei einem einzigen Gutschein gilt der alte
-    // Vertrag unverändert: `voucher` statt `mehrere`, und die Datei wird als
-    // Original des Gutscheins GESPEICHERT (beim Stapel nicht — dort ist sie
-    // die Sicherung, nicht die Karte).
+    // The decision „one or several" is made by the server, and it must be right in
+    // both directions. For a single voucher the old
+    // contract applies unchanged: `voucher` instead of `mehrere`, and the file is
+    // STORED as the original of the voucher (not for the stack — there it is
+    // the backup, not the card).
     await db.run('DELETE FROM vouchers WHERE user_id=$1', [MAIN]);
     const eine = await buildVoucher('250', CARDS[0].nr, CARDS[0].pin);
     const fd = new FormData();

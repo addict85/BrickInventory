@@ -1,7 +1,7 @@
 /**
- * Die Teile-Bewertung darf nicht je Teil viermal nachfragen.
+ * The parts valuation must not ask four times per part.
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -15,10 +15,10 @@ const fc = _req('src/finances/financeCalc.js');
 const { holdsPart } = require('./helpers/inventory');
 
 const UID = 990101;
-const N = 20; // genug, damit „je Stück" von „einmalig" trennbar ist
+const N = 20; // enough so that „je Stück" can be told apart from „einmalig"
 const NR = i => `bwt-teil-${i}`;
 
-// Alle Abfragen dieses Laufs mitschreiben.
+// Record all queries of this run.
 const gesehen = [];
 let count = false;
 const altQuery = db.pool.query.bind(db.pool);
@@ -49,18 +49,18 @@ test('parts valuation: no lookup per part', async t => {
     await aufraeumen();
     await db.run("INSERT INTO users (id, username, password_hash) VALUES ($1, 'bwt_messnutzer', 'x')", [UID]);
     for (let i = 0; i < N; i++) {
-      // Zustand und Preis stehen seit Migration 0035 in der Erfassung, die
-      // Stückzahl seit 0038 — holdsPart() legt beides an.
+      // Since migration 0035 condition and price stand in the acquisition, the
+      // piece count since 0038 — holdsPart() creates both.
       await holdsPart(db, UID, NR(i), { menge: 1, colorId: 4 });
-      // Der Betriebsfall: Der Nachtrag-Job hat nachgesehen. Eine Zeile mit
-      // LEERER bl_id heisst „keine abweichende Nummer" (Migration 0037) —
-      // damit bleibt der Preis-Cache-Schlüssel die Rebrickable-Nummer.
+      // The production case: the backfill job has looked it up. A row with an
+      // EMPTY bl_id means „no differing number" (migration 0037) —
+      // so the price cache key stays the Rebrickable number.
       await db.run(
         "INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part', $1, NULL) ON CONFLICT (type, rb_id) DO UPDATE SET bl_id = NULL",
         [NR(i)],
       );
-      // Warmer Preis-Cache — der Normalfall. Ohne ihn misst man den
-      // BrickLink-Abruf mit, den es beim zweiten Aufruf nicht mehr gibt.
+      // Warm price cache — the normal case. Without it one measures the
+      // BrickLink fetch along, which no longer exists on the second call.
       for (const zustand of ['N', 'U'])
         await db.run(
           `INSERT INTO part_price_cache (part_number, color_id, condition, currency_code, avg_price, qty_avg_price, fetched_at)
@@ -68,8 +68,8 @@ test('parts valuation: no lookup per part', async t => {
           [NR(i), zustand],
         );
     }
-    // Farbtabelle: rb_colors wird als GANZES gemerkt. Ohne Zeile für Farbe 4
-    // wäre die Karte leer und würde bewusst nicht gemerkt (siehe farbkarte).
+    // Color table: rb_colors is remembered as a WHOLE. Without a row for color 4
+    // the map would be empty and would deliberately not be remembered (see farbkarte).
     await db
       .run(
         'INSERT INTO rb_colors (id, name, bl_color_id) VALUES (4, $1, 4) ON CONFLICT (id) DO UPDATE SET bl_color_id = 4',
@@ -84,43 +84,43 @@ test('parts valuation: no lookup per part', async t => {
 
     assert.equal(ergebnis.parts.length, N, 'alle Teile bewertet');
 
-    // ── 1. Keine EINZELabfrage je Teil mehr ────────────────────────────────
+    // ── 1. No SINGLE query per part any more ────────────────────────────────
     //
-    // Es ist nur noch EINE Einzelabfrage, nicht zwei: Der Rückfall auf
-    // `parts.bl_part_number` ist mit Migration 0037 weg, weil es die zweite
-    // Quelle nicht mehr gibt (die Begründung steht in src/finances/calculation/prices.ts).
+    // It is only ONE single query any more, not two: the fallback to
+    // `parts.bl_part_number` is gone with migration 0037, because the second
+    // source no longer exists (the reasoning stands in src/finances/calculation/prices.ts).
     assert.equal(
       howOften(/FROM bl_mapping WHERE type=\$1 AND rb_id=\$2/),
       0,
       'die Zuordnung wurde einzeln gefragt — das Vorladen (loadBlNumbersBefore) greift nicht',
     );
 
-    // ── 2. Statt dessen genau eine Sammelabfrage ───────────────────────────
+    // ── 2. Instead exactly one collective query ───────────────────────────
     assert.equal(
       howOften(/FROM bl_mapping WHERE type=\$1 AND rb_id = ANY\(\$2\)/),
       1,
       'die Sammelabfrage auf bl_mapping fehlt oder lief mehrfach',
     );
 
-    // ── 3. Die Farbtabelle höchstens einmal ────────────────────────────────
-    // Höchstens, nicht genau: Ein vorheriger Test im selben Prozess kann sie
-    // bereits geladen haben, und dann ist Null die richtige Zahl.
+    // ── 3. The color table at most once ────────────────────────────────
+    // At most, not exactly: a previous test in the same process may already
+    // have loaded it, and then zero is the right number.
     const farben = howOften(/FROM rb_colors/);
     assert.ok(farben <= 1, `rb_colors wurde ${farben}x gefragt — erwartet höchstens 1x für alle Teile`);
 
-    // ── 4. Die Gesamtzahl bleibt unter zwei Umläufen je Teil ───────────────
-    // Gemessen: 1,1 je Teil (die Preis-Cache-Zeile plus ein paar einmalige).
-    // Die Grenze steht bei 2, damit sie nicht bei jeder harmlosen Änderung
-    // reisst — aber weit unter den 4,1 von vorher.
+    // ── 4. The total stays below two round trips per part ───────────────
+    // Counted: 1.1 per part (the price cache row plus a few one-off ones).
+    // The limit stands at 2 so that it does not break on every harmless change
+    // — but far below the 4.1 from before.
     assert.ok(
       gesehen.length < 2 * N,
       `${gesehen.length} Abfragen für ${N} Teile (${(gesehen.length / N).toFixed(1)} je Teil) — erwartet unter 2 je Teil`,
     );
 
-    // ── GEGENPROBE ────────────────────────────────────────────────────────
-    // Sähe der Zähler die Einzelabfragen überhaupt? Ein Teil, das NICHT
-    // vorgeladen wurde, muss beide Einzelwege auslösen — sonst prüfen die
-    // Zusicherungen oben nichts.
+    // ── COUNTER-CHECK ────────────────────────────────────────────────────────
+    // Would the counter see the single queries at all? A part that was NOT
+    // preloaded must trigger both single paths — otherwise the
+    // assertions above check nothing.
     gesehen.length = 0;
     count = true;
     await fc.resolveBlPartNumber('bwt-teil-gibtesnicht');

@@ -1,16 +1,16 @@
 /**
- * Betrieb: Jeder Dienst in compose.yaml hat Grenzen für Speicher, Prozesse
- * und CPU, und der Datenschlüssel ist für app und jobs nur lesbar — angelegt
- * wird er vom Dienst `schluessel`, dessen Skript hier wirklich läuft (Pfade in
- * einen Sandkasten umgebogen, Eigentümer der aktuelle Nutzer).
+ * Operation: every service in compose.yaml has limits for memory, processes
+ * and CPU, and the data key is read-only for app and jobs — it is created
+ * by the service `schluessel`, whose script really runs here (paths bent into
+ * a sandbox, owner the current user).
  *
- * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  mem_limit bei caddy gestrichen → rot: „jeder Dienst hat Grenzen" (caddy)
- *   B  ./schluessel bei jobs wieder ohne :ro → rot: „… nur lesend" (jobs)
- *   C  im Skript die Prüfung auf den alten Schlüssel gestrichen → rot: „ein
- *      alter Schlüssel in data/ bleibt der einzige"
- *   D  im Skript `umask 077` und `chmod 400` gestrichen → rot: „nur der
- *      Eigentümer liest ihn"
+ * Counter-checks (measured 03.11.2026, each alone):
+ *   A  mem_limit deleted for caddy → red: “every service has limits" (caddy)
+ *   B  ./schluessel for jobs again without :ro → red: “… read-only" (jobs)
+ *   C  in the script the check for the old key deleted → red: “an
+ *      old key in data/ stays the only one"
+ *   D  in the script `umask 077` and `chmod 400` deleted → red: “only the
+ *      owner reads it"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,7 +38,7 @@ const SERVICES = [
   ...compose.slice(compose.indexOf('\nservices:'), compose.indexOf('\nvolumes:')).matchAll(/^ {2}([a-z-]+):\s*$/gm),
 ].map(m => m[1]);
 
-/** Vorgabe aus `${VAR:-wert}` oder der Wert selbst, in Byte bzw. als Zahl. */
+/** Default from `${VAR:-wert}` or the value itself, in bytes or as a number. */
 const wert = roh => roh.replace(/^\$\{\w+:-(.*)\}$/, '$1');
 const byte = roh => {
   const m = wert(roh).match(/^(\d+)([kmg])?$/i);

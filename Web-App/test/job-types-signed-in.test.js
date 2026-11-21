@@ -1,12 +1,12 @@
 /**
- * Jede Auftragsart, die ein Bereich deklariert (JobPayloads), ist nach buildServices()
- * angemeldet: Sonst nähme die Warteschlange sie an und kein Worker führte sie je aus.
+ * Every job kind a scope declares (JobPayloads) is registered after buildServices():
+ * otherwise the queue would accept it and no worker would ever execute it.
  *
- * Gegenproben (15.11.2026 gemessen, je einzeln):
- *   A  in startup/wiring.ts `...d.parts.jobKinds(),` gestrichen → rot: buildServices wirft
- *      KindNotSignedIn („Auftragsart ohne Anmeldung: katalog_nachzug“), beide Tests rot
- *   B  in DECLARED_KINDS `brickset` gestrichen → rot in `npm run typecheck` (Property 'brickset'
- *      is missing) und hier: „angemeldet ist genau, was deklariert ist“
+ * Counter-checks (measured 15.11.2026, each alone):
+ *   A  in startup/wiring.ts `...d.parts.jobKinds(),` deleted → red: buildServices throws
+ *      KindNotSignedIn (“Auftragsart ohne Anmeldung: katalog_nachzug”), both tests red
+ *   B  `brickset` deleted in DECLARED_KINDS → red in `npm run typecheck` (Property 'brickset'
+ *      is missing) and here: “registered is exactly what is declared”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

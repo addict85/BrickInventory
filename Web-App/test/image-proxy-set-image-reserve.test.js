@@ -1,26 +1,26 @@
 /**
- * Ein Set-Bild von Rebrickable, das über den Proxy gefragt wird, merkt der
- * Proxy für den Bild-Job vor: Der legt es samt Vorschau unter images/sets ab.
- * Liegen beide schon dort, und bei anderen Bildern, bleibt die Notiz aus.
+ * A set image from Rebrickable that is asked via the proxy is noted by the
+ * proxy for the image job: it stores it including preview under images/sets.
+ * If both already lie there, and for other images, the note stays out.
  *
- * Gegenprobe (06.11.2026): in passThroughImage() die Zeile mit
- * setImageComplete()/bildVormerken() gestrichen → rot: „ein fehlendes
- * Set-Bild wird vorgemerkt“.
- * Gegenprobe (08.11.2026): den Aufruf storeAsSetImage() in passThroughImage()
- * gestrichen → rot: „was der Proxy hat, liegt danach unter images/sets“.
- * Gegenproben (09.11.2026): bildVormerken() wieder vor deliverFromCache() und
- * der Drossel, ohne reserveOnce() → rot: „je Set eine Notiz“ (3 statt 1)
- * und „über der Drossel bleibt die Notiz aus“ (1 statt 0).
+ * Counter-check (06.11.2026): in passThroughImage() the line with
+ * setImageComplete()/bildVormerken() deleted → red: “a missing
+ * set image is noted”.
+ * Counter-check (08.11.2026): the call storeAsSetImage() deleted in passThroughImage()
+ * → red: “what the proxy has lies under images/sets afterwards”.
+ * Counter-checks (09.11.2026): bildVormerken() again before deliverFromCache() and
+ * the throttle, without reserveOnce() → red: “one note per set” (3 instead of 1)
+ * and “above the throttle the note stays out” (1 instead of 0).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-// Ein Abruf beim CDN je Minute: Die Probe über der Drossel braucht so kein Netz.
+// One fetch at the CDN per minute: the probe above the throttle thus needs no network.
 process.env.BILD_ABRUFE_JE_MINUTE = '1';
 const _req = require('./helpers/sources').buildAndRequire();
-// Ohne Datenbank: Die Sets dieser Datei liegen im Blickfeld des Kontos, sonst legt der Proxy nichts ab.
+// Without a database: the sets of this file are in the account's view, otherwise the proxy stores nothing.
 require('./helpers/sources').replaceServices('images', { setNumberInScope: async () => true });
 
 test('image proxy reserves set images for images/sets', async t => {
@@ -40,7 +40,7 @@ test('image proxy reserves set images for images/sets', async t => {
     fs.writeFileSync(datei, inhalt);
     angelegt.push(datei);
   };
-  /** Ein Cache-Treffer: Der Proxy fragt das CDN dann nicht. */
+  /** A cache hit: the proxy then does not ask the CDN. */
   const imCache = url => {
     const f = path.join(cacheDir, proxyCacheKey(proxyAddress(url) ?? url));
     put(f);

@@ -1,12 +1,12 @@
 /**
- * Ein Set, das schon im Blickfeld steht, wird beim Erfassen NICHT erhöht.
+ * A set that already stands in the scope is NOT increased when capturing.
  *
- * Gegenprobe (durchgeführt): den findSetInScope-Zweig aus routes/api_v1/sets.ts
- * entfernt → der erste Teilschritt wird rot (Menge 1 → 2).
- * Gegenprobe (15.11.2026): in setPresent() (src/sets/addSet.ts) die Nummer ohne
- * normalisiereSetNummer zurückgegeben → rot „exists: false, set_number“ (ohne -1).
+ * Counter-check (carried out): the findSetInScope branch removed from routes/api_v1/sets.ts
+ * → the first substep turns red (quantity 1 → 2).
+ * Counter-check (15.11.2026): in setPresent() (src/sets/addSet.ts) the number returned without
+ * normalisiereSetNummer → red „exists: false, set_number“ (without -1).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
+ * Prerequisite: test DB via TEST_DATABASE_URL (migrations for account_links).
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -26,15 +26,15 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
 
   const MAIN = `ex-haupt-${process.pid}`,
     SUB = `ex-sub-${process.pid}`;
-  // Endung bewusst „-1": normalisiereSetNummer() hängt an eine Nummer OHNE Suffix
-  // immer „-1" an. Ein Set 97001-42 wäre über die blosse Eingabe „97001" also
-  // gar nicht auffindbar — das ist die bestehende Regel des Projekts und nicht
-  // Gegenstand dieses Tests. Teilschritt 2 prüft die Normalisierung deshalb an
-  // Nummern, für die sie überhaupt greifen kann.
+  // Suffix deliberately „-1": normalisiereSetNummer() always appends „-1" to a number WITHOUT
+  // a suffix. A set 97001-42 could thus not be found at all via the mere input „97001"
+  // — that is the existing rule of the project and not
+  // the subject of this test. Substep 2 therefore checks the normalization on
+  // numbers for which it can apply at all.
   const basis = 97000 + (process.pid % 900);
-  const OWN = `${basis}-1`; // gehört dem Hauptkonto
-  const KIND = `${basis + 1000}-1`; // gehört dem Unterkonto
-  const NEU = `${basis + 2000}-1`; // gibt es nirgends
+  const OWN = `${basis}-1`; // belongs to the main account
+  const KIND = `${basis + 1000}-1`; // belongs to the sub-account
+  const NEU = `${basis + 2000}-1`; // exists nowhere
 
   const aufraeumen = async () => {
     for (const sn of [OWN, KIND, NEU]) {
@@ -54,7 +54,7 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
   await aufraeumen();
 
   const anlegen = async (besitzer, sn) => {
-    await holdsSet(db, besitzer, sn, 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, besitzer, sn, 0); // quantity 0: the acquisition behind it carries it
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,10,'N',1)`,
@@ -65,8 +65,8 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
   await anlegen(subId, KIND);
 
   const stand = async sn => ({
-    // Aus den Erfassungen (Migration 0036), ueber ALLE Konten — der Test
-    // fragt „wie viele Exemplare gibt es insgesamt".
+    // From the acquisitions (migration 0036), across ALL accounts — the test
+    // asks „how many copies are there in total".
     menge: (
       await db.get(
         `SELECT COALESCE(SUM(a.quantity),0)::int AS q
@@ -92,7 +92,7 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
   };
 
   try {
-    // 1. EIGENES Set und Set des UNTERKONTOS — beide Wege, beide Sets.
+    // 1. OWN set and set of the SUB-ACCOUNT — both paths, both sets.
     for (const [wer, sn] of [
       ['eigenes', OWN],
       ['Unterkonto', KIND],
@@ -115,18 +115,18 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
       }
     }
 
-    // 2. Die Nummer wird VOR der Prüfung normalisiert — sonst gälte "97001"
-    //    als neu, obwohl "97001-1" längst existiert, und genau daran hängt
-    //    die ganze Regel.
+    // 2. The number is normalized BEFORE the check — otherwise "97001" would count
+    //    as new although "97001-1" has long existed, and the whole rule
+    //    hangs exactly on that.
     const withoutSuffix = OWN.replace(/-\d+$/, '');
     const vor = await stand(OWN);
     const r = await erfassen('/api/v1/sets', withoutSuffix);
     assert.equal(r.body?.action, 'exists', 'ohne Suffix eingegeben muss dasselbe Set erkannt werden');
     assert.deepEqual(await stand(OWN), vor);
 
-    // 3. Die Vorabfrage sagt dasselbe wie das Erfassen — sonst könnte der
-    //    Scanner einen Zwischendialog zeigen für ein Set, das danach als
-    //    „schon vorhanden" abgewiesen wird.
+    // 3. The pre-query says the same as the capture — otherwise the
+    //    scanner could show an intermediate dialog for a set that is afterwards
+    //    rejected as „already present".
     for (const [sn, erwartet] of [
       [OWN, true],
       [KIND, true],
@@ -137,11 +137,11 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
       assert.equal(e.exists, erwartet, `exists für ${sn}`);
       if (erwartet) assert.ok(e.owner_user_id > 0, `Besitzer fehlt für ${sn}`);
     }
-    // Ohne Treffer nennt die Vorabfrage die Nummer so, wie sie angelegt würde (mit Suffix).
+    // Without a hit the pre-query names the number as it would be created (with suffix).
     const newWithoutSuffix = NEU.replace(/-1$/, '');
     const none = await (await fetch(`${base}/api/v1/sets/exists/${newWithoutSuffix}`)).json();
     assert.deepEqual([none.exists, none.set_number], [false, NEU], 'exists: false, set_number');
-    // Das eigene Konto gewinnt, wenn beide dasselbe Set haben.
+    // The own account wins if both have the same set.
     await anlegen(subId, OWN);
     const beide = await (await fetch(`${base}/api/v1/sets/exists/${OWN}`)).json();
     assert.equal(
@@ -151,7 +151,7 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
     );
     assert.equal(beide.is_self, true);
 
-    // 4. EXCEPTION: Der CSV-Import stockt auf (ifPresent: 'aufstocken').
+    // 4. EXCEPTION: the CSV import tops up (ifPresent: 'aufstocken').
     const { setErfassen } = require('./helpers/sources').areaPage('sets');
     const vorImport = await stand(KIND);
     const erg = await setErfassen({
@@ -173,7 +173,7 @@ test('existing set: adding reports exists and writes nothing', { concurrency: 1 
 });
 
 test('one rule for set numbers: normalisiereSetNummer', () => {
-  // Früher drei Namen (normalizeSetNumber, sanitizeSetNumber); jetzt nur die Stelle, an der die Regel steht.
+  // Formerly three names (normalizeSetNumber, sanitizeSetNumber); now only the place where the rule stands.
   const { normalisiereSetNummer } = _req('src/infra/setNumber.js');
   const sets = _req('src/sets/index.js');
   assert.equal(sets.normalizeSetNumber, undefined);

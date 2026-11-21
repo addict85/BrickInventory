@@ -1,15 +1,15 @@
 /**
- * Integrationstest für /api/v1/catalog gegen echtes PostgreSQL.
- * Gestubbt wird NUR requireToken (Auth) — Router, db-Modul und SQL laufen
- * 1:1 wie in Produktion. Prüft u.a. den Zukunftsjahr-Randfall (nur wenige
- * Sets im Maximaljahr), Von-Bis-Bereiche, Theme-Vererbung und owned-Flags.
+ * Integration test for /api/v1/catalog against real PostgreSQL.
+ * ONLY requireToken (auth) is stubbed — router, db module and SQL run
+ * 1:1 as in production. Checks among other things the future-year edge case (only a few
+ * sets in the maximum year), from-to ranges, theme inheritance and owned flags.
  *
- * Gegenproben: (05.11.2026) page_size in routes/api_v1/catalog.ts nicht gelesen
- * → rot: „Pagination“ (die Seite hat 60 statt 10 Sets). (10.11.2026) in
- * src/catalog/repository/catalogSearch.ts c.image_local aus SET_SPALTEN entfernt →
- * rot: „die Liste nennt das lokale Bild …“ (undefined statt der Adresse); dort
- * `NOT ${PLATZHALTER}` aus katalogWo() entfernt → rot: „… ein Platzhalter fehlt“
- * (total 1 statt 0).
+ * Counter-checks: (05.11.2026) page_size not read in routes/api_v1/catalog.ts
+ * → red: “Pagination” (the page has 60 instead of 10 sets). (10.11.2026) in
+ * src/catalog/repository/catalogSearch.ts c.image_local removed from SET_SPALTEN →
+ * red: “the list names the local image …” (undefined instead of the address); there
+ * `NOT ${PLATZHALTER}` removed from katalogWo() → red: “… a placeholder is missing”
+ * (total 1 instead of 0).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -20,15 +20,15 @@ const DB_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhos
 
 process.env.DATABASE_URL = DB_URL;
 
-// .ts -> .js bauen (esbuild, in-place) — idempotent und schnell
-// Nach dist/ bauen statt in-place — siehe helpers/sources.js.
+// build .ts -> .js (esbuild, in place) — idempotent and fast
+// Build to dist/ instead of in place — see helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
-// requireToken stubben, BEVOR der Router geladen wird
-// Der Pfad muss auf das GEBAUTE Modul in dist/ zeigen — dort lädt der Router
-// seine Abhängigkeit, und nur ein Treffer im selben require-Cache-Eintrag
-// ersetzt sie wirksam.
+// stub requireToken BEFORE the router is loaded
+// The path must point to the BUILT module in dist/ — that is where the router loads
+// its dependency, and only a hit in the same require cache entry
+// replaces it effectively.
 const { DIST, testData } = require('./helpers/sources');
 const mwPath = require.resolve(path.join(DIST, 'routes/api_v1', 'middleware.js'));
 require.cache[mwPath] = /** @type {any} */ ({
@@ -58,7 +58,7 @@ async function dbReachable() {
 }
 
 /**
- * Stellt das echte Schema wieder her, das seed() durch Attrappen ersetzt.
+ * Restores the real schema that seed() replaces with dummies.
  */
 async function restoreSchema() {
   await db.run('DROP SCHEMA public CASCADE');
@@ -73,10 +73,10 @@ async function restoreSchema() {
 }
 
 async function seed() {
-  // Erst das echte Schema sicherstellen, dann die Attrappen daruebersetzen:
-  // seed() braucht `set_acquisitions` ECHT (siehe unten), und ob eine frueher
-  // gelaufene Datei sie schon angelegt hat, haengt an der Reihenfolge.
-  // Eine leere Datenbank bekommt hier ihr Schema; danach erst die Attrappen.
+  // First ensure the real schema, then put the dummies over it:
+  // seed() needs `set_acquisitions` REAL (see below), and whether an earlier
+  // run file already created it depends on the order.
+  // An empty database gets its schema here; only afterwards the dummies.
   await db.initSchema();
   await db.run(`DROP TABLE IF EXISTS rb_sets, rb_themes, rb_inventories,
                                     rb_inventory_minifigs, sets CASCADE`);
@@ -87,10 +87,10 @@ async function seed() {
   await db.run(
     `CREATE TABLE rb_inventory_minifigs (id SERIAL PRIMARY KEY, inventory_id INTEGER, fig_num TEXT, quantity INTEGER)`,
   );
-  // `sets` bleibt die einzige Attrappe. Die Setmenge steht seit Migration
-  // 0036 in set_acquisitions, und die Katalogliste liest sie von dort
-  // (owned_quantity ueber db/stockQuantity.ts) — mit nur `sets`
-  // antwortete sie 0 (gemessen: „expected 2, actual 0"). Spalten wie setBestand() in db/inventoryView.ts.
+  // `sets` stays the only dummy. Since migration 0036 the set quantity
+  // is in set_acquisitions, and the catalog list reads it from there
+  // (owned_quantity via db/stockQuantity.ts) — with only `sets`
+  // it answered 0 (measured: “expected 2, actual 0"). Columns like setBestand() in db/inventoryView.ts.
   await db.run(
     `CREATE TABLE sets (id SERIAL, user_id INTEGER, set_number TEXT, storage_id INTEGER, added_at TIMESTAMPTZ)`,
   );
@@ -121,8 +121,8 @@ async function seed() {
   await db.run(
     `INSERT INTO rb_inventory_minifigs (inventory_id, fig_num, quantity) VALUES (2,'fig-001',2),(2,'fig-002',1),(1,'fig-old',9) ON CONFLICT DO NOTHING`,
   );
-  // Der Bestand: Konto 1 haelt 9000-1, und zwar zwei Exemplare — die Zahl
-  // steht in der Erfassung.
+  // The stock: account 1 holds 9000-1, two copies — the number
+  // is in the entry.
   await db.run(`INSERT INTO users (id, username, password_hash)
                 VALUES (1, 'katalogprobe', 'x') ON CONFLICT (id) DO NOTHING`);
   await db.run(`INSERT INTO sets (user_id, set_number) VALUES (1, '9000-1')`);
@@ -216,7 +216,7 @@ test('catalog API (Postgres integration)', async t => {
     assert.equal(r.body.total, 85);
     assert.equal(r.body.page, 2);
     assert.equal(r.body.sets.length, 10);
-    // page_size ist der Name aller Listen; limit bleibt für ältere Apps.
+    // page_size is the name for all lists; limit stays for older apps.
     const neu = await get('/catalog/sets?page_size=10&page=2&sort=num_asc');
     assert.deepEqual(
       neu.body.sets.map(s => s.set_number),
@@ -227,7 +227,7 @@ test('catalog API (Postgres integration)', async t => {
   });
 
   srv.close();
-  // REIHENFOLGE: erst das Schema, dann der Pool
+  // ORDER: first the schema, then the pool
   await restoreSchema();
-  await db.pool.end(); // pg-Pool schließen, sonst hält er den Prozess offen
+  await db.pool.end(); // close the pg pool, otherwise it keeps the process open
 });

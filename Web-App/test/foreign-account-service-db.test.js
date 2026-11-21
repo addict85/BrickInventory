@@ -1,16 +1,16 @@
 /**
- * „Wer fragt“ steht an einer Stelle: im Aufrufrahmen, dessen Konto auch der Zeilenschutz
- * setzt. Ein Dienst, der ein anderes Konto als Anfragenden bekommt, wirft (ForeignAccount),
- * statt still nur zu sehen, was der Zeilenschutz des Anfragenden zeigt.
+ * “Who asks” stands in one place: in the call context, whose account row security
+ * also sets. A service that gets another account as requester throws (ForeignAccount)
+ * instead of silently only seeing what the requester's row security shows.
  *
- * Gegenproben (14.11.2026):
- *   A  checkRequester() (src/infra/accountContext.ts) geleert → rot: „ein fremdes Konto
- *      als Anfragender wirft“ (das Unterkonto bekam still nur sein eigenes Set).
- *   B  in householdOf() den Aufruf von checkRequester() gestrichen → rot: dieselbe.
- *   C  in checkRequester() den Systemrahmen nicht ausgenommen → rot: „im Systemrahmen
- *      gilt jedes Konto“.
+ * Counter-checks (14.11.2026):
+ *   A  checkRequester() (src/infra/accountContext.ts) emptied → red: “a foreign account
+ *      as requester throws” (the sub-account silently got only its own set).
+ *   B  in householdOf() the call of checkRequester() deleted → red: the same.
+ *   C  in checkRequester() the system context not excepted → red: “in the system context
+ *      every account applies”.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

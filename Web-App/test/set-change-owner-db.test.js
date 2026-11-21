@@ -1,12 +1,12 @@
 /**
- * Kaufpreis und Zustand landen im Konto des Besitzers, die Menge bewusst im eigenen.
- * Konten, Haushalt und Erfassung legen die Dienste an (helpers/factory.js).
+ * Purchase price and condition land in the owner's account, the quantity deliberately in the own one.
+ * The services create accounts, household and acquisition (helpers/factory.js).
  *
- * Gegenproben: siehe am jeweiligen Teilschritt. Für „die Menge geht bewusst auf das
- * eigene Konto“ (14.11.2026): in setService.ts `const ziel = … ? uid :` durch
- * `ownerId` ersetzt → rot (die neue Erfassung landete beim Unterkonto).
+ * Counter-checks: see at the respective substep. For “the quantity deliberately goes to the
+ * own account” (14.11.2026): in setService.ts `const ziel = … ? uid :` replaced by
+ * `ownerId` → red (the new acquisition landed at the sub-account).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen fuer account_links).
+ * Prerequisite: test DB via TEST_DATABASE_URL (migrations for account_links).
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -40,11 +40,11 @@ test("purchase price and condition land in the owner's account", { concurrency: 
     const mainId = await factory.konto(MAIN);
     const subId = await factory.konto(SUB);
     await factory.subAccount(mainId, subId);
-    // Set UND Erfassung gehoeren dem UNTERKONTO.
+    // Set AND acquisition belong to the SUB-ACCOUNT.
     await factory.setRecorded(subId, SET, { preis: 10, zustand: 'N' });
 
     const { changeSet } = require('./helpers/sources').areaPage('sets');
-    // Kaufpreis und Zustand stehen in der Erfassung, die Menge ist ihre Summe.
+    // Purchase price and condition stand in the acquisition, the quantity is its sum.
     const stand = async () => ({
       set: await db.get(
         `SELECT s.user_id,
@@ -60,14 +60,14 @@ test("purchase price and condition land in the owner's account", { concurrency: 
       ),
     });
 
-    // 1. Der Preis — der Zweig, der schon vorher richtig lag.
+    // 1. The price — the branch that was already right before.
     await changeSet(mainId, SET, { purchase_price: 99 });
     let s = await stand();
     assert.equal(s.erf.p, 99, 'Die Erfassung traegt den neuen Preis nicht');
 
-    // 2. Der Zustand — genau hier verschwand die Aenderung.
-    //    Gegenprobe: in writeInLastEntry ownerId durch den Aufrufer
-    //    ersetzt -> dieser Teilschritt rot (durchgefuehrt).
+    // 2. The condition — exactly here the change disappeared.
+    //    Counter-check: in writeInLastEntry ownerId replaced by the caller
+    //    -> this substep red (carried out).
     await changeSet(mainId, SET, { condition: 'U' });
     s = await stand();
     assert.equal(
@@ -78,14 +78,14 @@ test("purchase price and condition land in the owner's account", { concurrency: 
     );
     assert.equal(s.erf.p, 99, 'Die Zustandsaenderung hat den Preis mitgenommen');
 
-    // 3. Und beides steht weiterhin beim BESITZER, nicht beim Aufrufer.
+    // 3. And both still stand with the OWNER, not with the caller.
     assert.equal(s.set.user_id, subId, 'Die Aenderung hat eine Zeile im falschen Konto angelegt');
     assert.equal(s.erf.user_id, subId);
     const fremde = await db.get('SELECT COUNT(*)::int n FROM sets WHERE set_number=$1 AND user_id=$2', [SET, mainId]);
     assert.equal(fremde.n, 0, 'Eine Preis- oder Zustandsaenderung hat eine eigene Zeile erzeugt');
 
-    // 4. Die Menge dagegen geht bewusst auf das EIGENE Konto: Wer erhöht, bekommt
-    //    einen eigenen Kaufpreis-Eintrag, statt den Bestand eines anderen Kontos zu ändern.
+    // 4. The quantity, on the other hand, deliberately goes to the OWN account: whoever increases gets
+    //    an own purchase price entry instead of changing the inventory of another account.
     await changeSet(mainId, SET, { quantity: 2 });
     const je = await db.all(
       'SELECT user_id, SUM(quantity)::int AS n FROM set_acquisitions WHERE set_number=$1 GROUP BY user_id ORDER BY user_id',
@@ -105,12 +105,12 @@ test("purchase price and condition land in the owner's account", { concurrency: 
   }
 });
 
-// Der Name lautete „die Spiegelung auf Set und letzte Erfassung steht an einer
-// Stelle". Gespiegelt wird seit Migration 0032 nichts mehr — geschrieben wird
-// nur noch die letzte Erfassung. Die Regel selbst ist unveraendert richtig und
-// sogar wichtiger geworden: Sie ist jetzt der EINZIGE Schreibweg.
+// The name was „the mirroring onto set and last acquisition stands in one
+// place". Since migration 0032 nothing is mirrored any more — only the last
+// acquisition is written. The rule itself is still right and
+// has even become more important: it is now the ONLY write path.
 test('the last entry is written in exactly one place', () => {
-  // Gefunden, nicht aufgezaehlt.
+  // Found, not enumerated.
   const dateien = [];
   const gehen = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -129,9 +129,9 @@ test('the last entry is written in exactly one place', () => {
       .readFileSync(f, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/[^\n]*$/gm, '');
-    // JEDE Fundstelle, nicht je Datei eine: Beim Gegenprobieren habe ich eine
-    // zweite Abschrift in DERSELBEN Datei eingesetzt, und die Regel blieb
-    // gruen — sie sammelte Dateinamen statt Vorkommen.
+    // EVERY occurrence, not one per file: when counter-checking I inserted a
+    // second copy into THE SAME file, and the rule stayed
+    // green — it collected file names instead of occurrences.
     for (const _ of code.matchAll(
       /UPDATE set_acquisitions SET[\s\S]{0,260}?ORDER BY created_at DESC, id DESC LIMIT 1/g,
     ))

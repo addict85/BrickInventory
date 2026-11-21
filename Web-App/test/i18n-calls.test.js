@@ -1,5 +1,5 @@
 /**
- * Jeder Schlüssel, den die Oberfläche ruft, steht auch im Wörterbuch.
+ * Every key the UI calls also stands in the dictionary.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,22 +9,22 @@ const path = require('node:path');
 const { loadTranslations } = require('./helpers/sources');
 const ROOT = path.join(__dirname, '..');
 
-/** Alle Quelldateien der Oberfläche — ohne Kommentare, ohne das Bündel. */
+/** All source files of the UI — without comments, without the bundle. */
 function oberflaeche() {
   const out = [];
   const lauf = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
       const p = path.join(d, e.name);
-      // locales/ selbst enthaelt die Schluessel als Definition, nicht als Aufruf.
+      // locales/ itself contains the keys as a definition, not as a call.
       if (e.isDirectory()) {
         if (!/node_modules|locales/.test(p)) lauf(p);
         continue;
       }
       if (!/\.(js|html)$/.test(e.name) || e.name === 'app.bundle.js') continue;
-      // Kommentare ZUERST weg: i18n.js dokumentiert die eigene Nutzung mit
-      // `t('key')` in einem Kommentar. Ohne diesen Schritt zaehlt der
-      // Beispielaufruf als echte Fundstelle — genau die Falle, vor der
-      // test/helpers/sources.js warnt.
+      // Comments out FIRST: i18n.js documents its own usage with
+      // `t('key')` in a comment. Without this step the sample call
+      // counts as a real location — exactly the trap that
+      // test/helpers/sources.js warns about.
       out.push([
         path.relative(ROOT, p),
         fs
@@ -54,11 +54,11 @@ test('every called i18n key is in the dictionary', () => {
       const k = m[1] || m[2] || m[3];
       if (!gerufen.has(k)) gerufen.set(k, rel);
     }
-  // Selbstbeweis: Greift das Muster nicht mehr, wäre die Menge leer und der
-  // Test grün, ohne etwas geprüft zu haben. GEMESSEN sind es 542.
+  // Self-proof: if the pattern no longer matches, the set would be empty and the
+  // test green without having checked anything. MEASURED there are 542.
   assert.ok(gerufen.size >= 300, `Nur ${gerufen.size} Aufrufstellen gefunden — Muster veraltet?`);
 
-  // Zusammengesetzte Schlüssel (`t('monitor.job.' + k)`) enden auf einen Punkt.
+  // Composed keys (`t('monitor.job.' + k)`) end in a dot.
   const prefixes = [...gerufen.keys()].filter(k => k.endsWith('.'));
   assert.equal(
     prefixes.length,
@@ -84,7 +84,7 @@ test('every called i18n key is in the dictionary', () => {
 });
 
 /**
- * Und die Form des Aufrufs?
+ * And the form of the call?
  */
 test('every data-i18n form is also evaluated by applyLang', () => {
   const i18n = fs
@@ -105,7 +105,7 @@ test('every data-i18n form is also evaluated by applyLang', () => {
   const benutzt = new Map();
   for (const [rel, src] of oberflaeche())
     for (const m of src.matchAll(/\b(data-i18n[a-z-]*)\s*=/g)) if (!benutzt.has(m[1])) benutzt.set(m[1], rel);
-  // GEMESSEN sind es vier Formen, 386 Vorkommen.
+  // MEASURED there are four forms, 386 occurrences.
   assert.ok(benutzt.size >= 2, `Nur ${benutzt.size} data-i18n-Formen im Markup gefunden`);
 
   const wirkungslos = [...benutzt]

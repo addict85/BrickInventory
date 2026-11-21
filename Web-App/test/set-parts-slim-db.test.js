@@ -1,17 +1,17 @@
 /**
- * Migration 0062: Die Setliste behält nur Set, Teil, Farbe, Menge und
- * Ersatzteil; Name, Kategorie, Farbe und Bild stehen in den Katalogen. Die View
- * set_parts_catalog zeigt den Lesestellen dieselben Spalten — und wie vorher
- * nur geprüfte Werte, keinen eingetippten Platzhalter eines Kontos.
+ * Migration 0062: the set list only keeps set, part, color, quantity and
+ * spare part; name, category, color and image stand in the catalogs. The view
+ * set_parts_catalog shows the read places the same columns — and as before
+ * only verified values, no typed-in placeholder of an account.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  im View den Filter `CASE WHEN pc.name_von IS NULL …` weggelassen
- *      → rot: „ein Platzhalter erscheint nicht in der Setliste“
- *   B  in der Migration COALESCE(Katalog, Setliste) ohne Ersetzen des
- *      Platzhalters → rot: „der geprüfte Name aus der Setliste ersetzt den
- *      Platzhalter“
+ * Counter-checks (measured on 28.10.2026):
+ *   A  the filter `CASE WHEN pc.name_von IS NULL …` left out in the view
+ *      → red: “a placeholder does not appear in the set list”
+ *   B  in the migration COALESCE(catalog, set list) without replacing the
+ *      placeholder → red: “the verified name from the set list replaces the
+ *      placeholder”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,10 +38,10 @@ test('migration 0062: slim set list', { concurrency: 1 }, async t => {
   await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`);
   await c.query(`CREATE SCHEMA ${SCHEMA}`);
   await c.query(`SET search_path TO ${SCHEMA}, public`);
-  // Der Altbestand: Kataloge wie heute, die Setliste in ihrer Form vor 0062.
+  // The legacy data: catalogs as today, the set list in its form before 0062.
   await c.query(`CREATE TABLE part_catalog (LIKE public.part_catalog INCLUDING ALL)`);
   await c.query(`CREATE TABLE part_color_catalog (LIKE public.part_color_catalog INCLUDING ALL)`);
-  // Die Herkunftsspalten von 0060 bis 0093.
+  // The origin columns from 0060 to 0093.
   await c.query(`ALTER TABLE part_catalog ADD COLUMN name_von integer, ADD COLUMN kategorie_von integer`);
   await c.query(
     `ALTER TABLE part_color_catalog ADD COLUMN farbname_von integer, ADD COLUMN farbcode_von integer, ADD COLUMN bild_von integer`,
@@ -55,11 +55,11 @@ test('migration 0062: slim set list', { concurrency: 1 }, async t => {
   await c.query(`INSERT INTO set_parts_catalog VALUES
     ('75192-1', '3001', 'Brick 2 x 4', 4, 'Red', 'C91A09', 'Bricks', 'https://cdn.rebrickable.com/3001.jpg', '/images/parts/3001_4.jpg', 0, 6),
     ('75192-1', '3002', 'Brick 2 x 3', 1, 'Blue', '0055BF', 'Bricks', NULL, NULL, 1, 2)`);
-  // Ein Konto hat 3001 vorher als Platzhalter eingetippt; 3002 steht geprüft da.
+  // An account had typed in 3001 as a placeholder before; 3002 stands there verified.
   await c.query(`INSERT INTO part_catalog (part_number, part_name, name_von) VALUES ('3001', 'Annas Stein', 42)`);
   await c.query(`INSERT INTO part_catalog (part_number, part_name) VALUES ('3002', 'Brick 2x3 geprüft')`);
   await c.query(MIGRATION);
-  // Ein Platzhalter NACH der Migration, für die Frage, was die View zeigt.
+  // A placeholder AFTER the migration, for the question what the view shows.
   await c.query(`INSERT INTO part_catalog (part_number, part_name, name_von) VALUES ('3003', 'Brunos Stein', 43)`);
   await c.query(`INSERT INTO set_teile (set_number, part_number, color_id, quantity) VALUES ('75192-1', '3003', 0, 1)`);
 

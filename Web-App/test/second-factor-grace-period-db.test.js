@@ -1,23 +1,23 @@
 /**
- * Gnadenfrist beim Einrichten des zweiten Faktors: Ein Verwalter ohne Faktor
- * (dort erzwingt ihn der Server), der sich eben mit dem Passwort angemeldet
- * (oder es gewechselt) hat, richtet ohne erneute Eingabe ein — einmal,
- * höchstens fünf Minuten lang, nur mit Sitzung. Jedes andere Konto nennt das Passwort. Ohne Frist und …
+ * Grace period when setting up the second factor: an admin without a factor
+ * (there the server enforces it) who has just logged in with the password
+ * (or changed it) sets up without entering it again — once,
+ * at most five minutes long, only with a session. Every other account names the password. Without a period and …
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  in signedInResponses `passwordConfirmedAt` nie gesetzt → rot:
- *      „nach der Anmeldung ohne Passwort“ (400 statt 200)
- *   B  in consumeGracePeriod das `delete` entfernt → rot: „nur einmal“,
- *      „ohne Frist zählt nicht in der Bremse“
- *   C  PASSWORD_GRACE_PERIOD_MS auf eine Stunde → rot: „nach Ablauf der Frist“
- *   D  in der Route die Absage ohne Frist entfernt (leeres Passwort geht in
- *      die Prüfung) → rot: „nur einmal“, „nach Ablauf der Frist“, „ohne Frist
- *      zählt nicht in der Bremse“, „mit Token nie“ (aktuelles_passwort_falsch)
- *   E  consumeGracePeriod gibt Token-Zugriffen die Frist → rot: „mit Token nie“
- *   F  (04.11.) in der Route wieder `!zf.istAktiv(uid)` statt zweiterFaktorPflicht(req)
- *      → rot: „ein gewöhnliches Konto nennt immer das Passwort“ (200 statt 400)
+ * Counter-checks (measured 04.11.2026, each on its own):
+ *   A  `passwordConfirmedAt` never set in signedInResponses → red:
+ *      “after login without a password” (400 instead of 200)
+ *   B  the `delete` removed in consumeGracePeriod → red: “only once”,
+ *      “without a period does not count in the brake”
+ *   C  PASSWORD_GRACE_PERIOD_MS set to one hour → red: “after the period expires”
+ *   D  the refusal without a period removed in the route (empty password goes into
+ *      the check) → red: “only once”, “after the period expires”, “without a period
+ *      does not count in the brake”, “never with a token” (aktuelles_passwort_falsch)
+ *   E  consumeGracePeriod gives token accesses the period → red: “never with a token”
+ *   F  (04.11.) in the route again `!zf.istAktiv(uid)` instead of zweiterFaktorPflicht(req)
+ *      → red: “an ordinary account always names the password” (200 instead of 400)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -57,7 +57,7 @@ test('grace period when setting up the second factor', { concurrency: 1 }, async
     await db.pool.end().catch(() => {});
   });
 
-  // Die Sitzung ist ein Objekt über alle Anfragen; die Anmeldung schreibt hinein.
+  // The session is one object across all requests; the login writes into it.
   const sitzung = {};
   const basis = routerServer(_req, { sitzung, routen: { '/api/v1/auth': 'routes/auth.js' }, t }).base;
   const ruf = async (weg, body, kopf = {}) => {

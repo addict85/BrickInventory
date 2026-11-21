@@ -1,10 +1,10 @@
 /**
- * Die Anzahl zeigt den HAUSHALT — geändert wird das EIGENE Konto.
+ * The count shows the HOUSEHOLD — what is changed is the OWN account.
  *
- * Gegenprobe (durchgeführt): Ziel wieder auf `ownerId` gestellt → der
- * Erhöhungs-Teilschritt wird rot (die Exemplare landen beim Unterkonto).
+ * Counter-check (carried out): target set back to `ownerId` → the
+ * increase substep turns red (the copies land at the sub-account).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -46,8 +46,8 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
                 VALUES ($1,'U','EUR',3.94,3.94,3)`,
     [SN],
   );
-  // NUR das Unterkonto hält ein Exemplar — Marcos Ausgangslage.
-  await holdsSet(db, subId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+  // ONLY the sub-account holds a copy — Marco's starting situation.
+  await holdsSet(db, subId, SN, 0); // quantity 0: the acquisition behind it carries it
   await db.run(
     `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,3.94,'U',1)`,
@@ -65,7 +65,7 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
     });
     return { status: r.status, body: await r.json() };
   };
-  // Aus den Erfassungen (Migration 0036 hat sets.quantity geloescht).
+  // From the acquisitions (migration 0036 deleted sets.quantity).
   const menge = async uid => await quantityOf(db, uid, SN);
 
   try {
@@ -101,7 +101,7 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
     });
 
     await t.test('increasing again merges on the same day', async () => {
-      // Die Tagesregel gilt unverändert: eine Erfassung je Konto, Set und Tag.
+      // The daily rule applies unchanged: one acquisition per account, set and day.
       await setzen(4);
       const zeilen = await db.all(`SELECT quantity FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [
         mainId,
@@ -116,15 +116,15 @@ test('quantity: display = household, change = own account', { concurrency: 1 }, 
       await setzen(1);
       assert.equal(await menge(mainId), 0, 'die eigenen Exemplare gehen zuerst');
       assert.equal(await menge(subId), 1, 'das fremde bleibt');
-      // Bleibt nichts übrig, verschwindet die eigene Zeile ganz.
+      // If nothing remains, the own row disappears entirely.
       const eigene = await db.get(`SELECT COUNT(*)::int c FROM sets WHERE user_id=$1 AND set_number=$2`, [mainId, SN]);
       assert.equal(eigene.c, 0, 'eine eigene Zeile mit Menge 0 bleibt zurück');
     });
 
     await t.test('it cannot go below the own stock', async () => {
-      // Die Exemplare eines anderen Kontos sind nicht meine. Statt sie
-      // wegzunehmen, deckelt der Server — und sagt in der Antwort, was
-      // tatsächlich gilt.
+      // The copies of another account are not mine. Instead of taking
+      // them away, the server caps — and says in the response what
+      // actually applies.
       const r = await setzen(0);
       assert.equal(await menge(subId), 1, 'das fremde Exemplar wurde weggenommen');
       assert.equal(r.body.quantity, 1, 'die Antwort muss die WIRKLICHE Menge nennen, nicht die gesendete');

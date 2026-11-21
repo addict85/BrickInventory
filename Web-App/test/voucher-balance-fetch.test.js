@@ -1,18 +1,18 @@
 /**
- * Die Guthaben-Abfrage mit ihrem echten Abrufweg (src/infra/fetch.ts) gegen
- * einen TLS-Server, der sich als www.lego.com ausgibt: Ein Agent lenkt jede
- * Verbindung auf 127.0.0.1, nichts geht hinaus. Kekse, Token und POST-Rumpf
- * kommen an; eine Umleitung auf einen fremden Host und eine übergrosse Antwort
- * werden zum Fehler, statt Kartennummer und PIN weiterzureichen.
+ * The balance query with its real fetch path (src/infra/fetch.ts) against
+ * a TLS server that poses as www.lego.com: an agent redirects every
+ * connection to 127.0.0.1, nothing goes out. Cookies, token and POST body
+ * arrive; a redirect to a foreign host and an oversized response
+ * become an error instead of passing on card number and PIN.
  *
- * Gegenproben (am 02.11.2026 gemessen):
- *   A  fetchBalance wieder mit globalThis.fetch → rot: alle drei (der
- *      Testserver sieht keine Anfrage, fetch nimmt den Agenten nicht)
- *   B  in legoFetch die Hostliste um example.org erweitert → rot: „eine
- *      Umleitung auf einen fremden Host …“ (example.org wird angefragt)
- *   C  in abruf.ts `req.end(o.rumpf)` ohne Rumpf → rot: „Kekse, Token und
- *      Rumpf …“ (die Abfrage kommt ohne Kartennummer an)
- *   D  maxBytes der POST-Antwort auf 64 MB → rot: „eine übergrosse Antwort …“
+ * Counter-checks (measured on 02.11.2026):
+ *   A  fetchBalance again with globalThis.fetch → red: all three (the
+ *      test server sees no request, fetch does not take the agent)
+ *   B  in legoFetch the host list extended by example.org → red: “a
+ *      redirect to a foreign host …” (example.org is requested)
+ *   C  in abruf.ts `req.end(o.rumpf)` without a body → red: “cookies, token and
+ *      body …” (the query arrives without a card number)
+ *   D  maxBytes of the POST response set to 64 MB → red: “an oversized response …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -24,10 +24,10 @@ const tls = require('node:tls');
 const _req = require('./helpers/sources').buildAndRequire();
 const { portOf } = require('./helpers/server');
 const G = _req('src/vouchers/balanceLookup.js');
-/** Der Sitzungsvorrat, den sonst das Fach der Gutschein-Dienste hält. */
+/** The session store that the compartment of the voucher services otherwise holds. */
 const vorrat = new Map();
 const { AbrufFehler } = _req('src/infra/fetch.js');
-// Der echte Abruf, wie ihn die Dienste über ihre Quellen reichen (src/externalSources/sources.ts).
+// The real fetch, as the services pass it via their sources (src/externalSources/sources.ts).
 const { legoFetch } = require('./helpers/sources').testServices().externalSources.quellen;
 
 const FIX = path.join(__dirname, 'fixtures');
@@ -87,7 +87,7 @@ const server = https.createServer({ key: fs.readFileSync(path.join(FIX, 'fetch-t
   });
 });
 
-/** Jeder Host landet beim Testserver; das Zertifikat gilt nicht für www.lego.com. */
+/** Every host lands at the test server; the certificate does not apply to www.lego.com. */
 class Umlenker extends https.Agent {
   createConnection(opt, cb) {
     return tls.connect(

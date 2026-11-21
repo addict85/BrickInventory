@@ -1,9 +1,9 @@
 /**
- * Hochgeladenes fasst der Dienst nur unter der eigenen Ablage an: Den Pfad legt
- * multer aus der Anfrage fest, chmod/rm danach dürfen nicht anderswo landen.
+ * The service only touches uploads below its own storage: multer determines the path
+ * from the request, chmod/rm afterwards must not land elsewhere.
  *
- * Gegenprobe (08.11.2026 gemessen): in belowRoot() die startsWith-Prüfung
- * gestrichen → rot „ausserhalb: ../“.
+ * Counter-check (measured 08.11.2026): the startsWith check deleted in belowRoot()
+ * → red „ausserhalb: ../“.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,8 +1,8 @@
 /**
- * EINE Adresse, BEIDE Ausweise: Sitzung (Weboberfläche) und Bearer-Token
- * (Android-App) müssen für dieselbe Route dasselbe liefern. Doppelte Routen
- * gibt es nicht mehr; geprüft wird, dass keine Route nur an einer Ausweisart
- * hängt.
+ * ONE address, BOTH credentials: session (web UI) and bearer token
+ * (Android app) must deliver the same for the same route. Duplicate routes
+ * no longer exist; what is checked is that no route depends on only one kind
+ * of credential.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,7 +12,7 @@ const ROOT = path.join(__dirname, '..');
 const DB_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = DB_URL;
 
-// Nach dist/ bauen statt in-place — siehe helpers/sources.js.
+// Build to dist/ instead of in place — see helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const { routerEinhaengungen, testData } = require('./helpers/sources');
@@ -33,14 +33,14 @@ async function dbReachable() {
   }
 }
 
-/** Echte Schema-Initialisierung + Fixtures über alle Domänen. */
+/** Real schema initialization + fixtures across all domains. */
 async function seed() {
-  // Schema komplett neu: andere Suiten (catalog-api) legen abgespeckte
-  // Tabellen gleichen Namens an — CREATE IF NOT EXISTS würde die behalten.
+  // Schema completely new: other suites (catalog-api) create slimmed-down
+  // tables of the same name — CREATE IF NOT EXISTS would keep them.
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  // Und die Migrationen, nicht nur initSchema()
+  // And the migrations, not only initSchema()
   const client = await db.pool.connect();
   try {
     await _req('db/migrate.js').runMigrations(client);
@@ -48,20 +48,20 @@ async function seed() {
     client.release();
   }
 
-  // Kein RETURNING: der SQLite-Kompat-Layer (toPostgres) hängt an INSERTs
-  // "ON CONFLICT DO NOTHING" an, was hinter RETURNING ungültig wäre.
+  // No RETURNING: the SQLite compat layer (toPostgres) appends to INSERTs
+  // "ON CONFLICT DO NOTHING", which would be invalid after RETURNING.
   await db.run(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') ON CONFLICT DO NOTHING`, [USER.username]);
   USER.id = (await db.get(`SELECT id FROM users WHERE username = $1`, [USER.username])).id;
 
-  // Bearer-Token wie ihn die Android-App nutzt — als HASH abgelegt.
+  // Bearer token as the Android app uses it — stored as a HASH.
   await db.run(`INSERT INTO api_tokens (token, user_id, label) VALUES ($1, $2, 'parity') ON CONFLICT DO NOTHING`, [
     _req('src/account/deviceToken.js').tokenDigest(TOKEN),
     USER.id,
   ]);
 
-  // Sets: eines mit gemischten Erfassungen (Zustand-Aggregat!), eines ohne
-  await holdsSet(db, USER.id, '75192-1', 0, { anywayIfDa: true }); // Menge 0: die Erfassung dahinter traegt sie
-  await holdsSet(db, USER.id, '6346-1', 0, { anywayIfDa: true }); // Menge 0: die Erfassung dahinter traegt sie
+  // Sets: one with mixed entries (condition aggregate!), one without
+  await holdsSet(db, USER.id, '75192-1', 0, { anywayIfDa: true }); // Quantity 0: the entry behind it carries it
+  await holdsSet(db, USER.id, '6346-1', 0, { anywayIfDa: true }); // Quantity 0: the entry behind it carries it
   await db.run(
     `INSERT INTO set_acquisitions (user_id, set_number, purchase_price, condition)
      VALUES ($1,'75192-1',649.99,'N'), ($1,'75192-1',420.00,'U'), ($1,'6346-1',25.00,'N') ON CONFLICT DO NOTHING`,
@@ -79,13 +79,13 @@ async function seed() {
     )
     .catch(() => {});
 
-  // Teile + Minifiguren (je Set-Quelle und manuelle Position)
+  // Parts + minifigures (per set source and manual item)
   await holdsPart(db, USER.id, '3001', { setNumber: '75192-1', menge: 10, colorId: 4, anywayIfDa: true });
-  await holdsPart(db, USER.id, '3020', { menge: 0, colorId: 0, anywayIfDa: true }); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsPart(db, USER.id, '3020', { menge: 0, colorId: 0, anywayIfDa: true }); // Quantity 0: the entry behind it carries it
   await holdsMinifig(db, USER.id, 'sw0850', { setNumber: '75192-1', menge: 1, anywayIfDa: true });
-  await holdsMinifig(db, USER.id, 'sw0001', { menge: 0, anywayIfDa: true }); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsMinifig(db, USER.id, 'sw0001', { menge: 0, anywayIfDa: true }); // Quantity 0: the entry behind it carries it
 
-  // Erfassungen für Teile/Minifiguren (eigene Acquisition-Endpunkte)
+  // Entries for parts/minifigures (own acquisition endpoints)
   await db.run(
     `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, unit_price, condition)
      VALUES ($1,'3020',0,3,0.15,'N'), ($1,'3020',0,2,0.10,'U') ON CONFLICT DO NOTHING`,
@@ -97,7 +97,7 @@ async function seed() {
     [USER.id],
   );
 
-  // Preisverlauf für den price-history-Vergleich
+  // Price history for the price-history comparison
   await db
     .run(
       `INSERT INTO price_history (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, recorded_at)
@@ -106,16 +106,16 @@ async function seed() {
     )
     .catch(() => {});
 
-  // Zwei identische Wegwerf-Sets für die Schreib-Paritätstests (PUT/DELETE)
-  await holdsSet(db, USER.id, '40567-1', 0, { anywayIfDa: true }); // Menge 0: die Erfassung dahinter traegt sie
-  await holdsSet(db, USER.id, '40568-1', 0, { anywayIfDa: true }); // Menge 0: die Erfassung dahinter traegt sie
+  // Two identical throwaway sets for the write parity tests (PUT/DELETE)
+  await holdsSet(db, USER.id, '40567-1', 0, { anywayIfDa: true }); // Quantity 0: the entry behind it carries it
+  await holdsSet(db, USER.id, '40568-1', 0, { anywayIfDa: true }); // Quantity 0: the entry behind it carries it
   await db.run(
     `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
      VALUES ($1,'40567-1',1,35.00,'N'), ($1,'40568-1',1,35.00,'N') ON CONFLICT DO NOTHING`,
     [USER.id],
   );
 
-  // Einstellungen: die Vorlage muss BEIDE Wege abdecken
+  // Settings: the template must cover BOTH paths
   await db.run(
     `INSERT INTO user_settings (user_id, key, value)
      VALUES ($1,'currency','CHF'), ($1,'user_default_condition','U') ON CONFLICT DO NOTHING`,
@@ -128,8 +128,8 @@ async function seed() {
      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
   );
 
-  // Preis-Caches füllen, damit die Bewertungs-Endpunkte OHNE externe
-  // Preis-API auskommen (wie in Produktion nach dem Preis-Job)
+  // Fill price caches so that the valuation endpoints get by WITHOUT an external
+  // price API (as in production after the price job)
   await db.run(
     `INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity)
      VALUES ('75192-1','N','EUR',700,850,1000,860,40), ('75192-1','U','EUR',500,600,700,610,25),
@@ -137,11 +137,11 @@ async function seed() {
   );
 }
 
-/** Envelope-Felder entfernen — der Rest muss zwischen beiden APIs identisch sein. */
-// total_value: v1-Altbestand, Alias von totals.qty_avg (eigener Subtest unten)
+/** Remove envelope fields — the rest must be identical between both APIs. */
+// total_value: v1 legacy, alias of totals.qty_avg (own subtest below)
 const ENVELOPE = new Set(['success', 'count', 'page', 'page_size', 'total_value']);
-// rate_limit: Live-Zähler (kann sich zwischen zwei Requests ändern) — Werte
-// sind nicht deterministisch vergleichbar; die Struktur prüft ein Subtest.
+// rate_limit: live counter (can change between two requests) — values
+// are not deterministically comparable; a subtest checks the structure.
 const VOLATILE = new Set(['rate_limit']);
 function core(body) {
   if (body === null || typeof body !== 'object' || Array.isArray(body)) return body;
@@ -160,12 +160,12 @@ test('API parity web app ↔ Android', async t => {
 
   const app = express();
   app.use(express.json());
-  // Session injizieren — die echten Middlewares beider Familien akzeptieren sie
+  // Inject session — the real middlewares of both families accept it
   app.use((req, _res, next) => {
     if (!req.headers['x-no-session']) req.session = { userId: USER.id, username: USER.username, isAdmin: false };
     next();
   });
-  // Die Einhaengepunkte kommen aus server.ts
+  // The mount points come from server.ts
   app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   for (const r of routerEinhaengungen())
     app.use(r.mount, require('./helpers/sources').routerFrom(_req, 'routes/' + r.name + '.js'));
@@ -177,20 +177,20 @@ test('API parity web app ↔ Android', async t => {
     return { status: r.status, body: await r.json().catch(() => null) };
   };
 
-  // Zusammengelegte Routen: EINE Adresse, BEIDE Ausweise
+  // Merged routes: ONE address, BOTH credentials
   for (const [name, pfad] of [
     ['Set-Erfassungen', '/api/v1/sets/75192-1/acquisitions'],
     ['Teil-Erfassungen', '/api/v1/parts/3020/0/acquisitions'],
     ['Minifig-Erfassungen', '/api/v1/minifigs/sw0001/acquisitions'],
-    // Minifiguren-Liste und manuelle Minifiguren sind ebenfalls
-    // zusammengelegt — vorher standen sie oben als PAAR, jetzt gehören sie
-    // hierher, wo „eine Route, beide Ausweise" geprüft wird.
+    // The minifigure list and manual minifigures are likewise
+    // merged — previously they stood above as a PAIR, now they belong
+    // here, where “one route, both credentials" is checked.
     ['Minifiguren-Liste', '/api/v1/minifigs'],
     ['Manuelle Minifiguren', '/api/v1/minifigs/manual'],
-    // dieselbe Umstellung für die Sets.
+    // the same conversion for the sets.
     ['Sets-Liste', '/api/v1/sets'],
     ['Set-Detail', '/api/v1/sets/75192-1'],
-    // dieselbe Umstellung für die Teile.
+    // the same conversion for the parts.
     ['Teile-Liste', '/api/v1/parts'],
     ['Teile-Liste (Suche)', '/api/v1/parts?search=Brick&page=1'],
     ['Teile-Farben', '/api/v1/parts/colors'],
@@ -198,10 +198,10 @@ test('API parity web app ↔ Android', async t => {
     ['Brick-Farbliste', '/api/v1/parts/brick-colors'],
     ['BL-Farb-Mapping', '/api/v1/parts/bl-color-map'],
     ['Manuelle Teile', '/api/v1/parts/manual'],
-    // Etappe 5: Bewertung, GuV, Portfolio-Verlauf und die drei
-    // Preisverlaufs-Routen. Sie standen oben als PAAR — die Doppelung war die
-    // Stelle, an der zuletzt das Blickfeld beim Minifiguren-Verlauf auf beiden
-    // Wegen gleichzeitig fehlte.
+    // Stage 5: valuation, gain/loss, portfolio history and the three
+    // price history routes. They stood above as a PAIR — the duplication was the
+    // place where most recently the view for the minifigure history was missing on both
+    // paths at once.
     ['Bewertung Sets', '/api/v1/finance/valuation'],
     ['Bewertung Teile', '/api/v1/finance/parts-valuation'],
     ['Bewertung Minifiguren', '/api/v1/finance/minifigs-valuation'],
@@ -210,7 +210,7 @@ test('API parity web app ↔ Android', async t => {
     ['Preisverlauf Set', '/api/v1/sets/75192-1/price-history'],
     ['Preisverlauf Teil', '/api/v1/parts/3001/4/price-history'],
     ['Preisverlauf Minifigur', '/api/v1/minifigs/sw0001/price-history'],
-    // Etappe 6: Statistik, Standard-Zustand und der Haushalt.
+    // Stage 6: statistics, default condition and the household.
     ['Statistik', '/api/v1/stats'],
     ['Standard-Zustand (global)', '/api/v1/settings/default-condition'],
     ['Standard-Zustand (effektiv)', '/api/v1/settings/user/default-condition'],
@@ -237,11 +237,11 @@ test('API parity web app ↔ Android', async t => {
     });
   }
 
-  // Gegenrichtung: Die alten Zweitfassungen dürfen NICHT zurückkehren.
+  // Opposite direction: the old second versions must NOT come back.
   await t.test('the acquisition routes exist only once now', async () => {
-    // ACHTUNG: Hier stehen absichtlich die ALTEN Adressen — geprüft wird, dass
-    // sie NICHT mehr antworten. Bei einer Massenumstellung von Pfaden diese
-    // drei Zeilen auslassen (mir selbst beim Nachziehen einmal passiert).
+    // CAUTION: the OLD addresses are here on purpose — what is checked is that
+    // they NO longer answer. In a mass rewrite of paths, leave these
+    // three lines out (happened to me once while updating).
     for (const alt of [
       '/api/sets/75192-1/acquisitions',
       '/api/parts/3020/0/acquisitions',
@@ -252,9 +252,9 @@ test('API parity web app ↔ Android', async t => {
       '/api/parts/manual',
       '/api/sets/',
       '/api/sets/household-members',
-      // Etappe 5. `/combined-valuation` steht mit dabei: eine
-      // dritte Bewertungsfassung, die niemand aufrief und die
-      // im Haushalt falsch gerechnet hätte.
+      // Stage 5. `/combined-valuation` is included: a
+      // third valuation version that nobody called and that
+      // would have computed wrongly in the household.
       '/api/finance/valuation',
       '/api/finance/parts-valuation',
       '/api/finance/minifigs-valuation',
@@ -264,7 +264,7 @@ test('API parity web app ↔ Android', async t => {
       '/api/finance/price-history/75192-1',
       '/api/finance/part-price-history/3001/4',
       '/api/finance/minifig-price-history/sw0001',
-      // Etappe 6.
+      // Stage 6.
       '/api/settings/stats',
       '/api/settings/default-condition',
       '/api/settings/user/default-condition',
@@ -281,10 +281,10 @@ test('API parity web app ↔ Android', async t => {
   });
 
   await t.test('settings: curated v1 fields == web app values', async () => {
-    // Die Webapp-Sicht und die kuratierte Sicht der App sind NICHT
-    // zusammengelegt, und das mit Absicht: Die eine trägt die globalen
-    // Schlüssel und die Admin-Felder, die die App weder braucht noch bekommen
-    // soll. Zwei verschiedene Antworten, nicht zwei Fassungen derselben — …
+    // The web app view and the curated view of the app are NOT
+    // merged, and that on purpose: the one carries the global
+    // keys and the admin fields that the app neither needs nor should
+    // get. Two different responses, not two versions of the same — …
     const web = (await get('/api/v1/settings/raw')).body.settings;
     const v1 = (await get('/api/v1/settings')).body.settings;
     assert.equal(v1.currency, web.currency);
@@ -292,12 +292,12 @@ test('API parity web app ↔ Android', async t => {
     assert.equal(v1.user_default_condition, web.user_default_condition);
     assert.equal(v1.default_price_condition, web.default_price_condition);
     assert.equal(v1.app_theme, web.app_theme);
-    assert.equal(v1.effective_condition, 'U'); // User-Wert schlägt global
+    assert.equal(v1.effective_condition, 'U'); // user value beats global
 
-    // Der Vergleich oben allein reicht nicht: Lieferten BEIDE die fest
-    // verdrahtete Vorgabe, wäre er ebenfalls grün. Deshalb hier die
-    // absoluten Werte aus der Vorlage — 48 kann nur aus global_settings
-    // stammen, CHF nur aus user_settings.
+    // The comparison above alone is not enough: if BOTH delivered the hard-
+    // wired default, it would be green as well. Hence here the
+    // absolute values from the template — 48 can only come from global_settings,
+    // CHF only from user_settings.
     assert.equal(
       v1.price_cache_ttl,
       '48',
@@ -313,7 +313,7 @@ test('API parity web app ↔ Android', async t => {
   });
 
   await t.test('valuation: same response shape with both credentials', async () => {
-    // Was hier vorher stand, und warum es weg ist
+    // What stood here before, and why it is gone
     const withSession = (await get('/api/v1/finance/valuation')).body;
     const withToken = (
       await get('/api/v1/finance/valuation', { authorization: `Bearer ${TOKEN}`, 'x-no-session': '1' })
@@ -337,10 +337,10 @@ test('API parity web app ↔ Android', async t => {
   });
 
   await t.test('price history set: series and chart arrive', async () => {
-    // Vorher verglich diese Prüfung die Webapp-Route gegen die v1-Route. Nach
-    // dem Zusammenlegen gibt es nur eine; die Gleichwertigkeit der Ausweise
-    // steht oben. Was hier bleibt, ist die INHALTLICHE Aussage: Der Verlauf
-    // liefert überhaupt Punkte, und zwar je Zustand getrennt (seit …
+    // Previously this check compared the web app route with the v1 route. After
+    // merging there is only one; the equivalence of the credentials
+    // is above. What remains here is the statement of CONTENT: the history
+    // delivers points at all, separated per condition (since …
     const b = (await get('/api/v1/sets/75192-1/price-history')).body;
     const pts = h => (h || []).filter(x => !x.is_purchase_price);
     assert.equal(b.success, true);
@@ -349,9 +349,9 @@ test('API parity web app ↔ Android', async t => {
   });
 
   await t.test('price history part and minifigure: same shape as for the set', async () => {
-    // Alle drei Arten teilen sich src/finances/priceHistory.ts. Geprüft wird deshalb,
-    // dass sie dieselben FELDER liefern — läuft eine Art aus der Form, fällt
-    // es hier auf, auch ohne zweite Route zum Vergleichen.
+    // All three kinds share src/finances/priceHistory.ts. What is checked therefore
+    // is that they deliver the same FIELDS — if one kind drifts out of shape, it
+    // shows here, even without a second route to compare.
     const felder = ['currency', 'by_condition', 'history_new', 'history_used', 'chart'];
     const set = (await get('/api/v1/sets/75192-1/price-history')).body;
     for (const pfad of ['/api/v1/parts/3001/4/price-history', '/api/v1/minifigs/sw0001/price-history']) {
@@ -361,13 +361,13 @@ test('API parity web app ↔ Android', async t => {
     }
   });
 
-  // ── Schreib-Parität: gleicher Aufruf über beide Familien -> gleicher Effekt ──
+  // ── Write parity: same call via both families -> same effect ──────────────
   await t.test('PUT set: web app and Android route have the same effect', async () => {
     const body = JSON.stringify({ quantity: 4, purchase_price: 42.5, condition: 'U' });
     const hdr = { 'content-type': 'application/json' };
-    // Es gibt nur noch EINE Schreibroute. Geprüft wird deshalb,
-    // dass sie über BEIDE Ausweise dieselbe Wirkung hat — mit Sitzung am einen
-    // Set, mit Token am anderen.
+    // There is only ONE write route left. What is checked therefore
+    // is that it has the same effect via BOTH credentials — with a session on one
+    // set, with a token on the other.
     const put = (p, extra = {}) => fetch(base + p, { method: 'PUT', headers: { ...hdr, ...extra }, body });
     assert.equal((await put('/api/v1/sets/40567-1')).status, 200, 'Schreiben mit Sitzung');
     assert.equal(
@@ -386,10 +386,10 @@ test('API parity web app ↔ Android', async t => {
     const idOf = async sn => (await get(`/api/v1/sets/${sn}/acquisitions`)).body.acquisitions[0].id;
     const hdr = { 'content-type': 'application/json' };
     const body = JSON.stringify({ quantity: 2, purchase_price: 30, condition: 'U' });
-    // Zusammengelegt: Es gibt nur noch EINE Schreibroute. Geprüft
-    // wird deshalb, dass sie über BEIDE Ausweise dieselbe Wirkung hat — mit
-    // Sitzung am einen Set, mit Token am anderen, danach müssen beide Sets
-    // denselben Stand zeigen. Das ist die Aussage, die nach dem Umbau zählt: …
+    // Merged: there is only ONE write route left. What is checked
+    // therefore is that it has the same effect via BOTH credentials — with
+    // a session on one set, with a token on the other; afterwards both sets must
+    // show the same state. That is the statement that counts after the rebuild: …
     const rA = await fetch(base + `/api/v1/sets/40567-1/acquisitions/${await idOf('40567-1')}`, {
       method: 'PUT',
       headers: hdr,
@@ -409,7 +409,7 @@ test('API parity web app ↔ Android', async t => {
   });
 
   await t.test('DELETE set: web app and Android route have the same effect', async () => {
-    // Ebenfalls eine Route, beide Ausweise.
+    // Likewise one route, both credentials.
     assert.equal((await fetch(base + '/api/v1/sets/40567-1', { method: 'DELETE' })).status, 200, 'Löschen mit Sitzung');
     assert.equal(
       (
@@ -423,7 +423,7 @@ test('API parity web app ↔ Android', async t => {
     );
     assert.equal((await get('/api/v1/sets/40567-1')).status, 404);
     assert.equal((await get('/api/v1/sets/40568-1')).status, 404);
-    // Aufräumverhalten identisch: keine verwaisten Erfassungen
+    // Cleanup behavior identical: no orphaned entries
     for (const sn of ['40567-1', '40568-1']) {
       const left = await db.get('SELECT COUNT(*)::int AS n FROM set_acquisitions WHERE user_id=$1 AND set_number=$2', [
         USER.id,
@@ -441,8 +441,8 @@ test('API parity web app ↔ Android', async t => {
   });
 
   await t.test('without auth: both guards reject', async () => {
-    // Es gibt nur EINEN Adressraum (/api/v1): Eine Adresse ausserhalb antwortete
-    // mit 404, und das sähe aus wie eine bestandene Abweisung.
+    // There is only ONE address space (/api/v1): an address outside it would answer
+    // with 404, and that would look like a passed rejection.
     const withToken = await get('/api/v1/sets', { 'x-no-session': '1' });
     const onlySession = await get('/api/v1/settings/raw', { 'x-no-session': '1' });
     assert.equal(withToken.status, 401, 'requireToken laesst ohne Ausweis durch');

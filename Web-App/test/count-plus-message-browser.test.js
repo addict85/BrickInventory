@@ -1,17 +1,17 @@
 /**
- * „+“ bei Anzahl im Set-Detail legt eine Kauferfassung an — meist mit dem
- * Marktpreis als Schätzung. Die Oberfläche sagt das: Der Toast nennt den
- * geschätzten Betrag und bietet „Ändern“ an, die Kaufpreisliste erklärt „≈“.
+ * “+” at quantity in the set detail creates a purchase entry — mostly with the
+ * market price as an estimate. The UI says so: the toast names the
+ * estimated amount and offers “change”, the purchase price list explains “≈”.
  *
- * Gegenproben (am 03.11.2026 gemessen):
- *   A  in autosaveSet den Aufruf meldeNeueExemplare(...) entfernt und wieder
- *      immer toast('Gespeichert') → rot: Zeitüberschreitung „Toast nach +“
- *      (es kommt nur „Gespeichert“)
- *   B  legendEstimated() liefert '' → rot: „die Kaufpreisliste erklärt ≈“
- *   C  im Toast die Aktion weggelassen → rot: „Ändern öffnet die Kaufpreise“
+ * Counter-checks (measured on 03.11.2026):
+ *   A  in autosaveSet the call meldeNeueExemplare(...) removed and again
+ *      always toast('Gespeichert') → red: timeout “toast after +”
+ *      (only “Gespeichert” comes)
+ *   B  legendEstimated() returns '' → red: “the purchase price list explains ≈”
+ *   C  the action omitted in the toast → red: “change opens the purchase prices”
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Skipped without Chrome (CHROME_BIN, google-chrome, chromium).
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -35,7 +35,7 @@ test('quantity "+" reports the new copy with price', { concurrency: 1, timeout: 
     return;
   }
   const { b, bis, db, uid, ruhig } = app;
-  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  // Startup loads settings and prices afterwards; only then is the state fixed.
   await ruhig();
   await b.auswerten(`location.hash = '#/sammlung/set/21318-1'; true`);
   await bis(

@@ -1,17 +1,17 @@
 /**
- * Regeln der Anmeldung an der echten Route (routes/auth.ts) und Test-DB: Der
- * QR-Zugang ist eine einmalige Nonce mit der Dauer, die der Server nennt; das
- * Profil prüft den Benutzernamen wie Login und Registrierung; scheitert das
- * Speichern des Tokens, bekommt die App einen Fehler statt eines halben Erfolgs.
+ * Rules of the login on the real route (routes/auth.ts) and test DB: the
+ * QR access is a one-time nonce with the duration the server states; the
+ * profile checks the username like login and registration; if storing
+ * the token fails, the app gets an error instead of a half success.
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   A  in loeseQrTokenEin `AND used_at IS NULL` gestrichen → rot: „QR-Zugang:
- *      einmalig …“ (heute melde() in src/account/repository/qrPairing.ts)
- *   B  in POST /qr-token `expires_in: 1800` → rot: dieselbe Prüfung
- *   C  in PUT /profile die Prüfung mit USERNAME_RE gestrichen → rot:
- *      „Profil: Benutzername …“; nameTaken() ohne LOWER() → rot: dort
- *   D  in signedInResponses `if (!token) return sendError(…)` gestrichen
- *      → rot: „ohne gespeicherten Token kein halber Erfolg“
+ * Counter-checks (measured 08.11.2026, each on its own):
+ *   A  in loeseQrTokenEin `AND used_at IS NULL` deleted → red: “QR access:
+ *      one-time …” (today melde() in src/account/repository/qrPairing.ts)
+ *   B  in POST /qr-token `expires_in: 1800` → red: the same check
+ *   C  in PUT /profile the check with USERNAME_RE deleted → red:
+ *      “profile: username …”; nameTaken() without LOWER() → red: there
+ *   D  in signedInResponses `if (!token) return sendError(…)` deleted
+ *      → red: “no half success without a stored token”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

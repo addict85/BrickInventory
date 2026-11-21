@@ -1,10 +1,10 @@
 /**
- * Sets, Teile und Minifiguren wechseln die Ansicht mit denselben Knöpfen
- * (Karten/Tabelle) statt teils mit Knöpfen, teils mit einem Auswahlfeld. Am
- * echten Bündel in jsdom.
+ * Sets, parts and minifigures switch the view with the same buttons
+ * (cards/table) instead of partly with buttons, partly with a select field. On the
+ * real bundle in jsdom.
  *
- * Gegenprobe (am 28.10.2026 gemessen): in ansichtWaehlen() das change-Ereignis
- * nicht ausgelöst → rot: „Teile: die Tabelle lädt die Set-Zuordnung“.
+ * Counter-check (measured on 28.10.2026): the change event not triggered in
+ * ansichtWaehlen() → red: “parts: the table loads the set mapping”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,22 +1,22 @@
 /**
- * Rollen-Chip der Kontenverwaltung im echten Browser: Das X ist am Rechner
- * mindestens 24 px gross, am Telefon 44 px, zeigt den Tastaturfokus, öffnet die
- * Rückfrage mit dem Kontonamen, und bei 320 px (auch mit 200 % Schrift) ragt
- * nichts aus der Karte.
+ * Role chip of the account management in the real browser: the X is at least
+ * 24 px on the computer, 44 px on the phone, shows the keyboard focus, opens the
+ * confirmation with the account name, and at 320 px (also with 200 % font)
+ * nothing sticks out of the card.
  *
- * Gegenproben (16.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  .chip-weg ohne min-width/min-height → rot: „Rechner: X mindestens 24 px“
+ * Counter-checks (measured 16.11.2026, each on its own, bundle rebuilt):
+ *   A  .chip-weg without min-width/min-height → red: „Rechner: X mindestens 24 px“
  *      (16 × 16)
- *   B  die Telefonregel .chip-weg { min-width: 44px … } entfernt → rot:
+ *   B  the phone rule .chip-weg { min-width: 44px … } removed → red:
  *      „Telefon: X mindestens 44 px“ (24 × 24)
- *   C  .chip-weg:focus-visible{outline:none} → rot: „Rechner: sichtbarer Fokus“
- *   D  .rolle-chip mit min-width:20rem und white-space:nowrap → rot: „320 px,
- *      200 %: nichts ragt aus der Karte“ (100 %: der Chip beginnt links
- *      ausserhalb der Karte). Mit der ersten Fassung, die nur den rechten Rand
- *      prüfte, blieb das grün.
- *   E  die Regel .rolle-wort (Wort darf brechen) entfernt → rot: dieselbe
- *      (200 %: das Wort ragt aus dem Chip). Ohne die Prüfung auf scrollWidth
- *      blieb das grün.
+ *   C  .chip-weg:focus-visible{outline:none} → red: „Rechner: sichtbarer Fokus“
+ *   D  .rolle-chip with min-width:20rem and white-space:nowrap → red: “320 px,
+ *      200 %: nothing sticks out of the card” (100 %: the chip begins on the left
+ *      outside the card). With the first version, which only checked the right edge,
+ *      it stayed green.
+ *   E  the rule .rolle-wort (word may break) removed → red: the same
+ *      (200 %: the word sticks out of the chip). Without the check on scrollWidth
+ *      it stayed green.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -43,7 +43,7 @@ test('role chip: tap area, focus, 320 px and 200 %', { timeout: 200_000 }, async
       deviceScaleFactor: 1,
       mobile: telefon,
     });
-  // Neu laden über einen anderen Reiter: Die Liste steht dann in der Breite, die gerade gilt.
+  // Reload via another tab: the list then stands in the width that currently applies.
   const toList = async () => {
     await b.auswerten(`location.hash = '#/sammlung'; true`);
     await bis(`document.getElementById('tab-gallery').classList.contains('active')`, 'Sammlung');
@@ -61,7 +61,7 @@ test('role chip: tap area, focus, 320 px and 200 %', { timeout: 200_000 }, async
     await toList();
     const m = await mass();
     assert.ok(m.b >= 24 && m.h >= 24, `Rechner: X mindestens 24 px (${m.b} × ${m.h})`);
-    // Tastatur zuletzt benutzt: Dann gilt :focus-visible auch für focus().
+    // Keyboard used last: then :focus-visible also applies to focus().
     await b.tab('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Shift', code: 'ShiftLeft' });
     await b.tab('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Shift', code: 'ShiftLeft' });
     const f = await b.auswerten(`(() => { const x = ${X}; x.focus(); const s = getComputedStyle(x);

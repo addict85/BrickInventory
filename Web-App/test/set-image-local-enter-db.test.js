@@ -1,26 +1,26 @@
 /**
- * Liegt ein Set-Bild unter images/sets, trägt der Server es beim Set als
- * image_local ein; erst dann lädt die Oberfläche die Datei statt des Proxys.
- * Beide Wege: der Bild-Job nach dem Ablegen und der Proxy, wenn Bild und
- * Vorschau schon da sind.
+ * If a set image lies under images/sets, the server registers it with the set as
+ * image_local; only then does the UI load the file instead of the proxy.
+ * Both paths: the image job after storing and the proxy when image and
+ * preview are already there.
  *
- * Gegenproben (07.11.2026):
- *   A  in src/images/imageDemandRun.ts den Aufruf enterSetImageLocal() im Zweig
- *      „Datei schon da“ gestrichen → rot: „der Bild-Job trägt die Datei ein“
- *   B  in passThroughImage() den else-Zweig mit enterSetImageLocal()
- *      gestrichen → rot: „der Proxy trägt vorhandene Dateien ein“
- * Gegenproben (10.11.2026, Katalog-Sets ausserhalb des Bestands):
- *   C  in setImageMissing() enterSetImageLocal(setNummer) ohne Quelle → rot:
- *      „der Proxy trägt … ein“ (image_url null)
- *   D  rememberSetImageLocal() wieder als UPDATE ohne INSERT … SELECT FROM rb_sets → rot:
- *      „der Proxy trägt … ein“ (fehlende set_catalog-Zeile bleibt fehlen)
- *   E  in katalogSuche.ts c.image_local aus SET_SPALTEN entfernt → rot: „… und die
- *      Katalogsuche nennt danach die lokale Adresse“
+ * Counter-checks (07.11.2026):
+ *   A  in src/images/imageDemandRun.ts the call enterSetImageLocal() in the branch
+ *      „file already there“ deleted → red: “the image job registers the file”
+ *   B  in passThroughImage() the else branch with enterSetImageLocal()
+ *      deleted → red: “the proxy registers existing files …”
+ * Counter-checks (10.11.2026, catalog sets outside the inventory):
+ *   C  in setImageMissing() enterSetImageLocal(setNummer) without a source → red:
+ *      “the proxy registers …” (image_url null)
+ *   D  rememberSetImageLocal() again as an UPDATE without INSERT … SELECT FROM rb_sets → red:
+ *      “the proxy registers …” (a missing set_catalog row stays missing)
+ *   E  c.image_local removed from SET_SPALTEN in katalogSuche.ts → red: “… and the
+ *      catalog search then names the local address”
  *
- * Gegenprobe (15.11.2026, Ereignis statt Nacharbeit):
- *   F  in createCatalog atSetImageLoaded() gestrichen → rot: alle drei Fälle
+ * Counter-check (15.11.2026, event instead of follow-up work):
+ *   F  atSetImageLoaded() deleted in createCatalog → red: all three cases
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -72,7 +72,7 @@ test('set images in images/sets are registered', { concurrency: 1 }, async t => 
   });
 
   await t.test('the proxy registers existing files including source, even without a set_catalog row', async () => {
-    // Ein Katalog-Set ausserhalb jedes Bestands: rb_sets kennt es, set_catalog ausnahmsweise nicht.
+    // A catalog set outside every inventory: rb_sets knows it, set_catalog exceptionally does not.
     await db.run('DELETE FROM set_catalog WHERE set_number = $1', [proxy]);
     const express = require('express');
     const passThroughImage = (...a) =>
@@ -80,7 +80,7 @@ test('set images in images/sets are registered', { concurrency: 1 }, async t => 
     const { proxyAddress, proxyCacheKey } = _req('src/images/images.js');
     put(path.join(SET_IMAGES_DIR, `${proxy}.jpg`));
     put(path.join(SET_IMAGES_DIR, `${proxy}_thumb.jpg`));
-    // Ein Cache-Treffer: Der Proxy fragt das CDN dann nicht.
+    // A cache hit: the proxy then does not ask the CDN.
     const cacheDir = path.join(DATA_DIR, 'img_proxy_cache');
     fs.mkdirSync(cacheDir, { recursive: true });
     const f = path.join(cacheDir, proxyCacheKey(proxyAddress(cdn(proxy)) ?? cdn(proxy)));
@@ -97,7 +97,7 @@ test('set images in images/sets are registered', { concurrency: 1 }, async t => 
     const r = await fetch(`http://127.0.0.1:${port}/p?url=${encodeURIComponent(cdn(proxy))}`);
     await r.arrayBuffer();
     assert.equal(r.status, 200);
-    // Ohne Warten eingetragen: Die Auslieferung hängt nicht am Schreiben.
+    // Registered without waiting: the delivery does not hang on the write.
     let z;
     for (let i = 0; i < 50; i++) {
       z = await db.get('SELECT image_local, image_url FROM set_catalog WHERE set_number = $1', [proxy]);
@@ -105,7 +105,7 @@ test('set images in images/sets are registered', { concurrency: 1 }, async t => 
       await new Promise(w => setTimeout(w, 50));
     }
     assert.deepEqual(z, { image_local: `/images/sets/${proxy}.jpg`, image_url: cdn(proxy) });
-    // Ein zweiter Abruf schreibt nichts neu.
+    // A second fetch writes nothing new.
     const vorher = (await db.get('SELECT updated_at FROM set_catalog WHERE set_number = $1', [proxy])).updated_at;
     await (await fetch(`http://127.0.0.1:${port}/p?url=${encodeURIComponent(cdn(proxy))}`)).arrayBuffer();
     await new Promise(w => setTimeout(w, 200));

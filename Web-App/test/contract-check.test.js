@@ -1,22 +1,22 @@
 /**
- * Die Prüfung der Antworten gegen den Vertrag (src/http/contractRouter.ts):
- * In Tests wird eine abweichende 2xx-Antwort zur 500 mit den Abweichungen;
- * eine vertragswidrige Eingabe ist schon vor der Route 400 (checkInput,
- * auch im Betrieb, siehe test/input-contract-db.test.js); im Betrieb
- * (VERTRAG_PRUEFEN nicht 1) geht die Antwort ungeprüft hinaus.
+ * Checking the responses against the contract (src/http/contractRouter.ts):
+ * in tests a deviating 2xx response becomes a 500 with the deviations;
+ * an input violating the contract is already 400 before the route (checkInput,
+ * also in production, see test/input-contract-db.test.js); in production
+ * (VERTRAG_PRUEFEN not 1) the response goes out unchecked.
  *
- * Gegenproben (31.10.2026 gemessen):
- *   A  in checkContract() `pruefe('Antwort', …)` auskommentiert → rot: „eine
- *      abweichende Antwort wird zur 500“ (200 statt 500)
- *   B  die Abfrage von konfig().checkContract entfernt → rot: „im Betrieb
- *      geht die Antwort ungeprüft hinaus“ (500 statt 200; nach dem Umzug in
- *      checkContract() beim Bau des Routers erneut gemessen 10.11.2026)
- *   C  in checkContract() `res.statusCode < 300` weggelassen → rot: „eine
- *      Fehlerantwort wird nicht gegen das Erfolgsschema geprüft“
- *   E  in responseAgainstContract() wieder `|| !konfig().checkContract` je Anfrage →
- *      rot: „die Prüfung entscheidet sich beim Bau des Routers“ (200 statt 500)
- *   D  die Zeile `pruefe('Fehlerantwort', …)` gestrichen → rot: „eine
- *      Fehlerantwort ohne Code wird zur 500“ (404 statt 500; gemessen 05.11.2026)
+ * Counter-checks (measured 31.10.2026):
+ *   A  in checkContract() `pruefe('Antwort', …)` commented out → red: “a
+ *      deviating response becomes 500” (200 instead of 500)
+ *   B  the query of konfig().checkContract removed → red: “in production
+ *      the response goes out unchecked” (500 instead of 200; measured again after the move into
+ *      checkContract() when building the router 10.11.2026)
+ *   C  in checkContract() `res.statusCode < 300` omitted → red: “an
+ *      error response is not checked against the success schema”
+ *   E  in responseAgainstContract() again `|| !konfig().checkContract` per request →
+ *      red: “the check is decided when the router is built” (200 instead of 500)
+ *   D  the line `pruefe('Fehlerantwort', …)` deleted → red: “an
+ *      error response without code becomes 500” (404 instead of 500; measured 05.11.2026)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,7 +27,7 @@ const { portOf } = require('./helpers/server');
 const { vertragsRouter } = _req('src/http/contractRouter.js');
 const { setKonfig } = _req('src/infra/config.js');
 
-/** Ein Router mit echten Schlüsseln des Vertrags, der antwortet, was der Test will. */
+/** A router with real contract keys that answers whatever the test wants. */
 function server(t, antworten) {
   const router = vertragsRouter('/api/v1/auth');
   router.endpunkt('GET /api/v1/auth/registration-status', (_req, res) =>

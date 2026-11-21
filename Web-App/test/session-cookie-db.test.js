@@ -1,23 +1,23 @@
 /**
- * Das Sitzungscookie am echten Server: mit TLS `__Host-bim.sid` (Secure,
- * Path=/, ohne Domain), ohne TLS `bim.sid`. In beiden Fällen trägt die
- * Anmeldung, die Herkunftsprüfung erkennt das Cookie, und die Abmeldung löscht
- * es unter seinem Namen.
+ * The session cookie on the real server: with TLS `__Host-bim.sid` (Secure,
+ * Path=/, without Domain), without TLS `bim.sid`. In both cases the
+ * login works, the origin check recognizes the cookie, and logging out deletes
+ * it under its name.
  *
- * Gegenproben (am 01.11.2026 gemessen):
- *   A  in server.ts `name: sitzungsKeksName()` entfernt (wieder connect.sid)
- *      → rot: „mit TLS …" und „ohne TLS …"
- *   B  sitzungsKeksName() gibt immer `__Host-bim.sid` → rot: „ohne TLS …"
- *   C  sessionCookieOptions() mit `secure: false` → rot: „mit TLS …" (kein
- *      Secure; `path` wegzulassen bleibt grün, Path=/ ist die Vorgabe)
- *   D  in POST /logout clearCookie() entfernt → rot: beide („Abmelden: null")
- *   E  carriesSessionCookie() wieder auf `connect.sid` → rot: beide („die
+ * Counter-checks (measured on 01.11.2026):
+ *   A  `name: sitzungsKeksName()` removed in server.ts (connect.sid again)
+ *      → red: “with TLS …” and “without TLS …”
+ *   B  sitzungsKeksName() always returns `__Host-bim.sid` → red: “without TLS …”
+ *   C  sessionCookieOptions() with `secure: false` → red: “with TLS …” (no
+ *      Secure; leaving out `path` stays green, Path=/ is the default)
+ *   D  clearCookie() removed in POST /logout → red: both („Abmelden: null")
+ *   E  carriesSessionCookie() again on `connect.sid` → red: both („die
  *      Herkunftsprüfung erkennt das Cookie")
- *   F  (15.11.2026) signedInResponses() ohne keks_fehlt → rot: beide
- *      („über http: keks_fehlt" bzw. „COOKIE_SECURE=0 …"); cookieStaysFrom()
- *      ohne `!req.secure` → rot: „mit TLS …" („über https kein Hinweis")
+ *   F  (15.11.2026) signedInResponses() without keks_fehlt → red: both
+ *      („über http: keks_fehlt" or „COOKIE_SECURE=0 …"); cookieStaysFrom()
+ *      without `!req.secure` → red: “with TLS …” („über https kein Hinweis")
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -46,7 +46,7 @@ const freePort = () =>
 const NAME = `keks_${process.pid}`,
   PASS = 'Keks-Passwort-1';
 
-/** Der echte Server aus dist/, in Produktion; `env` entscheidet über TLS. */
+/** The real server from dist/, in production; `env` decides on TLS. */
 async function startServer(t, env) {
   const port = await freePort();
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
@@ -82,7 +82,7 @@ async function startServer(t, env) {
   return { basis, log: () => log };
 }
 
-/** Anmelden, mit dem Cookie fragen, wer man ist, abmelden. */
+/** Log in, ask with the cookie who one is, log out. */
 async function pass(server, kopf) {
   const login = await fetch(`${server.basis}/api/v1/auth/login`, {
     method: 'POST',
@@ -95,7 +95,7 @@ async function pass(server, kopf) {
   const cookie = setzen.split(';')[0];
   const ich = async () => (await fetch(`${server.basis}/api/v1/auth/me`, { headers: { cookie, ...kopf } })).json();
   const angemeldet = await ich();
-  // Ein Bearer-Kopf daneben darf die Herkunftsprüfung nicht abschalten.
+  // A bearer header next to it must not switch off the origin check.
   const fremd = await fetch(`${server.basis}/api/v1/auth/logout`, {
     method: 'POST',
     headers: { cookie, ...kopf, authorization: 'Bearer x', 'sec-fetch-site': 'cross-site' },
@@ -130,7 +130,7 @@ test('session cookie with and without TLS', { concurrency: 1, timeout: 240_000 }
     await db.pool.end().catch(() => {});
   });
 
-  // Je Fall ein Server, der mit dem Fall endet: Auf einer Datenbank läuft nur ein Web-Prozess.
+  // One server per case that ends with the case: only one web process runs on a database.
   await t.test('with TLS: __Host-bim.sid, Secure, Path=/, without Domain', async st => {
     const server = await startServer(st, {});
     const d = await pass(server, { 'x-forwarded-proto': 'https' });
@@ -145,7 +145,7 @@ test('session cookie with and without TLS', { concurrency: 1, timeout: 240_000 }
     assert.match(d.loeschen, /; Secure(;|$)/, 'ohne Secure verwirft der Browser den Löschbefehl');
     assert.equal(d.danach.loggedIn, false);
     assert.equal(d.antwort.keks_fehlt, false, 'über https kein Hinweis');
-    // Dieselbe Anmeldung über http: express-session setzt das Secure-Cookie nicht, die Antwort sagt es.
+    // The same login via http: express-session does not set the Secure cookie, the response says so.
     const ohne = await fetch(`${server.basis}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },

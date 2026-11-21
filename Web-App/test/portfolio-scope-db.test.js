@@ -1,10 +1,10 @@
 /**
- * Die Portfoliokurve gehört zum GEWÄHLTEN Konto, nicht zum Betrachter.
+ * The portfolio curve belongs to the CHOSEN account, not to the viewer.
  *
- * Gegenprobe (durchgeführt): in portfolioVerlauf statt `ids` wieder
- * `viewerId` als Blickfeld benutzt → beide Kurven werden gleich.
+ * Counter-check (carried out): in portfolioVerlauf `viewerId` used again as scope
+ * instead of `ids` → both curves become the same.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -38,13 +38,13 @@ test('the portfolio curve follows the selected account', { concurrency: 1 }, asy
       [u],
     );
 
-  // Jedes Konto braucht Bestand, sonst entsteht gar keine Kurve.
+  // Every account needs stock, otherwise no curve arises at all.
   const SN_H = `9991-${process.pid}`,
     SN_S = `9992-${process.pid}`;
   await db.run(`DELETE FROM sets WHERE set_number IN ($1,$2)`, [SN_H, SN_S]);
-  await holdsSet(db, mainId, SN_H, 0); // Menge 0: die Erfassung dahinter traegt sie
-  await holdsSet(db, subId, SN_S, 0); // Menge 0: die Erfassung dahinter traegt sie
-  // Kaufpreis und Zustand in die Erfassung (Migration 0032).
+  await holdsSet(db, mainId, SN_H, 0); // quantity 0: the acquisition behind it carries it
+  await holdsSet(db, subId, SN_S, 0); // quantity 0: the acquisition behind it carries it
+  // Purchase price and condition into the acquisition (migration 0032).
   await db.run(`DELETE FROM set_acquisitions WHERE set_number IN ($1,$2)`, [SN_H, SN_S]);
   await db.run(
     `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
@@ -57,7 +57,7 @@ test('the portfolio curve follows the selected account', { concurrency: 1 }, asy
     [subId, SN_S],
   );
 
-  // Deutlich verschiedene Preise — bei einer Verwechslung fällt es auf.
+  // Clearly different prices — a mix-up stands out.
   await db.run(`DELETE FROM price_history WHERE set_number IN ($1,$2)`, [SN_H, SN_S]);
   for (const [sn, basis] of /** @type {[string, number][]} */ ([
     [SN_H, 1000],
@@ -75,7 +75,7 @@ test('the portfolio curve follows the selected account', { concurrency: 1 }, asy
   const { portfolioVerlauf } = _req('src/finances/portfolioHistory.js');
   const { getSetting } = _req('src/settings/settings.js');
   const kurve = async uids => {
-    // Betrachter ist IMMER das Hauptkonto — genau darum geht es.
+    // The viewer is ALWAYS the main account — that is exactly what this is about.
     const r = await portfolioVerlauf(mainId, uids, 'week', db, getSetting);
     return (r?.points || []).map(p => p.value);
   };

@@ -1,12 +1,12 @@
 /**
- * Die Richtlinie `app` (public/js/escaping.js) prägt TrustedHTML nur für den Text, den asHtml()
- * gerade aus html`` gebaut hat: Direkt aufgerufen scheitert sie, eine Zeichenkette und ein nachgebautes
- * SafeHtml kommen maskiert an. Ausgeführt wird das echte Modul mit einer Attrappe von trustedTypes.
+ * The policy `app` (public/js/escaping.js) mints TrustedHTML only for the text that asHtml()
+ * has just built from html``: called directly it fails, a string and a replicated
+ * SafeHtml arrive escaped. The real module is executed with a dummy of trustedTypes.
  *
- * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  createHTML der Richtlinie wieder `s => s` → rot: „direkt aufgerufen …“
- *   B  toText() wieder mit `instanceof SafeHtml` → rot: „ein nachgebautes …“
- *   C  asHtml() reicht eine Zeichenkette unverändert durch → rot: „eine Zeichenkette …“
+ * Counter-checks (measured 09.11.2026, each on its own):
+ *   A  createHTML of the policy again `s => s` → red: “called directly …”
+ *   B  toText() again with `instanceof SafeHtml` → red: “a replicated …”
+ *   C  asHtml() passes a string through unchanged → red: “a string …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -36,7 +36,7 @@ test('markup from html`` becomes TrustedHTML, the value inside escaped', async (
 test('called directly the policy accepts nothing', async () => {
   const { asHtml, html } = await laden();
   assert.throws(() => policies.app.createHTML('<img src=x onerror=alert(1)>'), TypeError);
-  // Auch nicht den Text, der eben durchging: Die Freigabe gilt einmal.
+  // Not even the text that just went through: the release applies once.
   asHtml(html`<b>x</b>`);
   assert.throws(() => policies.app.createHTML('<b>x</b>'), TypeError);
 });

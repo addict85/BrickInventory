@@ -1,21 +1,21 @@
 /**
- * Die Bremsen der erneuten Bestätigung: Falsche Codes zählen in einem eigenen
- * Zähler, den nur ein richtiger Code zurücksetzt (Bericht M2). Beide Zähler
- * gelten je Zugang — Sitzung oder Token-Familie —, damit Fehlversuche aus
- * einer erbeuteten Sitzung die Notbremsen des Inhabers nicht sperren (N1).
+ * The brakes of re-confirmation: wrong codes count in their own
+ * counter that only a correct code resets (report M2). Both counters
+ * apply per access — session or token family — so that failed attempts from
+ * a captured session do not lock the owner's emergency brakes (N1).
  *
- * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  in checkConfirmation den Code über die Bremse 'passwort' geprüft
- *      (gemeinsamer Zähler, den das richtige Passwort löscht) → rot:
- *      „das Passwort setzt den Codezähler nicht zurück" und „falsche Codes
- *      einer fremden Sitzung …" (der Angreifer wird nie gesperrt)
- *   B  accessOf() liefert immer '' (Zähler je Konto, wie vorher) → rot:
- *      „eine fremde Sitzung sperrt die Notbremsen nicht" und „falsche Codes
- *      einer fremden Sitzung sperren den Inhaber nicht"
- *   C  accessOf() nimmt für Token den Kopf statt created_at → rot: „der
- *      Tausch des Tokens setzt die Bremse nicht zurück"
+ * Counter-checks (measured 03.11.2026, each alone):
+ *   A  in checkConfirmation the code checked via the brake 'passwort'
+ *      (shared counter that the correct password clears) → red:
+ *      “the password does not reset the code counter" and “wrong codes
+ *      of a foreign session …" (the attacker is never locked)
+ *   B  accessOf() always returns '' (counter per account, as before) → red:
+ *      “a foreign session does not lock the emergency brakes" and “wrong codes
+ *      of a foreign session do not lock the owner"
+ *   C  accessOf() takes the head instead of created_at for tokens → red: “the
+ *      exchange of the token does not reset the brake"
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -74,7 +74,7 @@ test('brakes of the confirmation', { concurrency: 1 }, async t => {
   let naechster = 0;
   const richtig = () => codes[naechster++];
 
-  // Je Kopf `x-sitzung` eine eigene Sitzung (wie express-session sie stellt), ohne ihn ein Token.
+  // Per header `x-sitzung` its own session (as express-session provides it), without it a token.
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
@@ -103,7 +103,7 @@ test('brakes of the confirmation', { concurrency: 1 }, async t => {
 
   await t.test('the password does not reset the code counter', async () => {
     await leeren();
-    // Jeder Versuch trägt das richtige Passwort; dazwischen der frühere Rücksetzweg (Passwort ohne Code).
+    // Every attempt carries the correct password; in between the former reset path (password without code).
     for (let i = 0; i < 4; i++) assert.equal((await passkeyLoeschen(String(100000 + i))).code, 'zweiter_faktor_falsch');
     assert.equal(
       (await ruf('POST', '/api/v1/auth/zweiter-faktor/einrichten', { password: PASS }, A)).code,

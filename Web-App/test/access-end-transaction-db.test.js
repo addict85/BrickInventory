@@ -1,13 +1,13 @@
 /**
- * Passwort zurücksetzen und „andere Zugänge beenden“ schreiben mehrfach;
- * scheitert der letzte Schritt, bleibt alles beim Alten. Den Fehler erzwingt
- * ein Anweisungs-Trigger auf der zuletzt geleerten Tabelle.
+ * Resetting the password and “end other accesses” write several times;
+ * if the last step fails, everything stays as it was. The error is forced
+ * by a statement trigger on the table emptied last.
  *
- * Gegenproben (am 11.11.2026 gemessen):
- *   A  withAccessEnd() ohne db.transaction (fn direkt aufgerufen) → rot:
- *      „Rücksetzen: Passwort und Token bleiben“ und „andere Zugänge …“
- *   B  beendeAndereZugaenge() ruft den Rumpf direkt statt über withAccessEnd()
- *      → rot: „andere Zugänge: der Token bleibt“
+ * Counter-checks (measured on 11.11.2026):
+ *   A  withAccessEnd() without db.transaction (fn called directly) → red:
+ *      “reset: password and token stay” and “other accesses …”
+ *   B  beendeAndereZugaenge() calls the body directly instead of via withAccessEnd()
+ *      → red: “other accesses: the token stays”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

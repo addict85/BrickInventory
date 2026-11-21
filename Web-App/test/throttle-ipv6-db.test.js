@@ -1,16 +1,16 @@
 /**
- * Die Bremsen je Adresse zählen ein IPv6-/64 als EINE Adresse: Ein Anschluss
- * mit eigenem /64 hat 2^64 Adressen und wechselte sonst je Versuch die Adresse.
- * IPv4 in IPv6 (::ffff:a.b.c.d) zählt wie die IPv4-Adresse selbst.
+ * The brakes per address count an IPv6 /64 as ONE address: a connection
+ * with its own /64 has 2^64 addresses and would otherwise switch the address per attempt.
+ * IPv4 in IPv6 (::ffff:a.b.c.d) counts like the IPv4 address itself.
  *
- * Gegenproben (01.11.2026 gemessen, je einzeln):
- *   A  drosselAdresse() gibt die Adresse unverändert zurück → rot: „ipThrottle:
+ * Counter-checks (measured 01.11.2026, each on its own):
+ *   A  drosselAdresse() returns the address unchanged → red: „ipThrottle:
  *      der sechste Versuch aus demselben /64 wird abgewiesen", „Anmeldung:
- *      Spraying aus einem /64 trifft die Grenze je Adresse" und „Schlüssel …"
- *   B  in countRequest drosselAdresse() weggelassen → rot nur „ipThrottle: …"
- *   C  die ::ffff:-Erkennung entfernt → rot: „IPv4 in IPv6 zählt wie IPv4"
+ *      Spraying aus einem /64 trifft die Grenze je Adresse" and „Schlüssel …"
+ *   B  drosselAdresse() left out in countRequest → red only „ipThrottle: …"
+ *   C  the ::ffff: detection removed → red: „IPv4 in IPv6 zählt wie IPv4"
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -45,7 +45,7 @@ test('ipThrottle: the sixth attempt from the same /64 is rejected', async t => {
   await clean();
   t.after(clean);
   const app = express();
-  app.set('trust proxy', true); // X-Forwarded-For setzt req.ip
+  app.set('trust proxy', true); // X-Forwarded-For sets req.ip
   app.post('/probe', ipThrottle('v6-probe', 5, 60 * 60 * 1000), (_req, res) => res.json({ ok: true }));
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));

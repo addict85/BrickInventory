@@ -1,13 +1,13 @@
 /**
- * Der Filter der Merkliste in der Webapp — mit denselben Sortierungen wie der Server.
+ * The wishlist filter in the web app — with the same sortings as the server.
  *
- * Schritt 1 läuft im echten Bündel (jsdom); 3–4 gleichen die Auswahl mit der
- * Servertabelle WANTED_SORTS ab (Struktur).
+ * Step 1 runs in the real bundle (jsdom); 3–4 compare the selection with the
+ * server table WANTED_SORTS (structure).
  *
- * Gegenproben:
- *   a) qty_desc in die Auswahl der Webapp aufgenommen → Schritt 3 rot.
- *   d) (10.11.2026) addScopeParam aus merkliste.js entfernt → Schritt 1 rot.
- *   f) (10.11.2026) in merklisteParams die Sortierung nicht gesetzt → Schritt 1 rot.
+ * Counter-checks:
+ *   a) qty_desc added to the web app's selection → step 3 red.
+ *   d) (10.11.2026) addScopeParam removed from wanted.js → step 1 red.
+ *   f) (10.11.2026) sorting not set in wantedParams → step 1 red.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -17,7 +17,7 @@ const { ROOT } = require('./helpers/sources');
 const ohneKommentare = (/** @type {string} */ s) => require('./helpers/sources').ohneKommentare(s);
 const { openUi, reiter, warte } = require('./helpers/ui');
 
-/** Die Sortierwerte einer Quelle — alles, was wie ein WANTED_SORTS-Schlüssel aussieht. */
+/** The sort values of a source — everything that looks like a WANTED_SORTS key. */
 function sortValues(quelle) {
   return [...new Set(quelle.match(/\b(?:added|name|num|year|price|qty)_(?:asc|desc)\b/g) || [])].sort();
 }
@@ -62,7 +62,7 @@ test('1. the web app sends all four filters to the server', async () => {
 });
 
 test('3. the web app offers exactly the sortings the server knows', () => {
-  // ── Die Quelle der Wahrheit ───────────────────────────────────────────────
+  // ── The source of truth ───────────────────────────────────────────────────
   const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/wanted/repository/wanted.ts'), 'utf8'));
   const tabelle = server.slice(
     server.indexOf('const WANTED_SORTS'),
@@ -70,13 +70,13 @@ test('3. the web app offers exactly the sortings the server knows', () => {
   );
   const erlaubt = sortValues(tabelle);
   assert.ok(erlaubt.length >= 5, `Nur ${erlaubt.length} Sortierwerte gefunden — Tabelle umbenannt?`);
-  // qty_* gehört ausdrücklich NICHT dazu: Ein Merkposten hat keine Anzahl.
+  // qty_* explicitly does NOT belong to it: a wishlist item has no quantity.
   assert.ok(
     !erlaubt.some(w => w.startsWith('qty_')),
     'WANTED_SORTS führt eine Anzahl-Sortierung — ein Merkposten hat keine Anzahl.',
   );
 
-  // ── Webapp: die <option>-Werte des Sortierfelds ───────────────────────────
+  // ── Web app: the <option> values of the sort field ────────────────────────
   const html = ohneKommentare(fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8'));
   const feld = html.slice(html.indexOf('id="mksort"'));
   const webValues = sortValues(feld.slice(0, feld.indexOf('</select>')));
@@ -89,7 +89,7 @@ test('3. the web app offers exactly the sortings the server knows', () => {
 });
 
 test('4. the default sorting is the same in server and web app', () => {
-  // Sie entscheidet, ob die Webapp den Parameter überhaupt mitschickt.
+  // It decides whether the web app sends the parameter at all.
   const server = ohneKommentare(fs.readFileSync(path.join(ROOT, 'src/wanted/repository/wanted.ts'), 'utf8'));
   const firstRow = server.slice(server.indexOf('const WANTED_SORTS')).split('\n')[1];
   assert.match(firstRow, /added_desc/, 'WANTED_SORTS beginnt nicht mit added_desc');

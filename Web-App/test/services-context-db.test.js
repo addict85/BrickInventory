@@ -1,13 +1,13 @@
 /**
- * Die Dienste eines Bereichs lesen und schreiben über den Zugang, mit dem
- * buildServices() sie gebaut hat, und eine Arbeitseinheit (k.transaktion) gilt
- * ganz oder gar nicht.
+ * The services of an area read and write via the access with which
+ * buildServices() built them, and a unit of work (k.transaktion) applies
+ * entirely or not at all.
  *
- * Gegenproben (13.11.2026):
- *   A  in src/parts/queries.ts partStatsQuery() wieder über teileBereich() statt k
- *      → rot: „partStatsQuery fragt über den übergebenen Zugang“.
- *   B  in src/infra/area.ts buildContext(): transaktion ruft fn mit dem äusseren
- *      Kontext statt in a.db.transaction → rot: „ein Fehler nimmt alles zurück“.
+ * Counter-checks (13.11.2026):
+ *   A  in src/parts/queries.ts partStatsQuery() again via teileBereich() instead of k
+ *      → red: „partStatsQuery fragt über den übergebenen Zugang“.
+ *   B  in src/infra/area.ts buildContext(): transaktion calls fn with the outer
+ *      context instead of in a.db.transaction → red: „ein Fehler nimmt alles zurück“.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -21,7 +21,7 @@ const _req = quellen.buildAndRequire();
 const testAccess = () => quellen.testAccess();
 test.after(() => testAccess().pool.end());
 
-/** Ein Zugang, der seine Abfragen zählt; sonst derselbe wie der des Tests. */
+/** An access that counts its queries; otherwise the same as the test's. */
 function counting(z) {
   const zaehler = { n: 0 };
   const mit =
@@ -36,7 +36,7 @@ function counting(z) {
 test('services take the access from their context, not from the process', async t => {
   if (!(await accessOrSkip(t, _req))) return;
   const { buildServices } = _req('startup/wiring.js');
-  // Testdaten als Eigentümerin (am Zeilenschutz vorbei), der Dienst fragt als Laufzeitrolle.
+  // Test data as the owner role (bypassing row security), the service asks as the runtime role.
   const eigen = quellen.testData();
   const { asRequest } = _req('src/infra/accountContext.js');
   const db = testAccess();
@@ -63,7 +63,7 @@ test('k.transaktion: what is written via t applies together or not at all', asyn
   const contexts = {};
   buildServices(testAccess(), { contexts });
   const e = contexts.settings;
-  // Globale Werte schreibt nur die Systemrolle (0117): die Transaktion in ihrem Rahmen.
+  // Only the system role writes global values (0117): the transaction in its context.
   const { inSystemContext } = _req('src/infra/accountContext.js');
   const imSystem = f => inSystemContext('test', f);
   const A = `kontext_a_${process.pid}`;

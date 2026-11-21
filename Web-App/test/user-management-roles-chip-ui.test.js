@@ -1,20 +1,20 @@
 /**
- * Kontenverwaltung: Die Rolle steht als Chip. Am Administrator-Chip entzieht ein
- * X nach der Rückfrage die Rechte, der Standard-Chip hat kein X, „+ Administrator“
- * ernennt; gegen das eigene Konto (und damit den letzten Administrator) gibt es
- * keinen Knopf. Am echten Bündel in jsdom.
+ * Account management: the role stands as a chip. On the administrator chip an
+ * X revokes the rights after a confirmation, the default chip has no X, „+ Administrator“
+ * appoints; against the own account (and thus the last administrator) there is
+ * no button. On the real bundle in jsdom.
  *
- * Gegenproben (16.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in rolle() das X auch für das eigene Konto (`selbst` ignoriert) → rot:
- *      „eigenes Konto: Chip ohne X“ und „ein einziger Administrator: kein X“
- *   B  data-arg2 am X wieder fest '0' → rot: „X am Administrator-Chip entzieht
- *      nach der Rückfrage“ (is_admin true statt false)
- *   C  aria-label am X wieder ohne den Kontonamen (users.role.admin) → rot:
- *      „X am Administrator-Chip …“ (Name des Knopfs)
- *   D  in rolle() den Ernennen-Knopf weggelassen → rot: „Standard-Chip ohne X,
- *      + Administrator ernennt“ und „ein einziger Administrator: kein X“
- *   E  in angekuendigt() die Liste nicht mehr ausgegeben → rot: „X am
- *      Administrator-Chip …“ (Angekündigt fehlt nach der Antwort)
+ * Counter-checks (measured 16.11.2026, each on its own, bundle rebuilt):
+ *   A  in rolle() the X also for the own account (`selbst` ignored) → red:
+ *      “own account: chip without X” and “a single administrator: no X”
+ *   B  data-arg2 on the X again fixed '0' → red: “X on the administrator chip revokes
+ *      after confirmation” (is_admin true instead of false)
+ *   C  aria-label on the X again without the account name (users.role.admin) → red:
+ *      “X on the administrator chip …” (name of the button)
+ *   D  the appoint button left out in rolle() → red: “default chip without X,
+ *      + administrator appoints” and “a single administrator: no X”
+ *   E  the list no longer output in angekuendigt() → red: “X on the
+ *      administrator chip …” (Angekündigt missing after the response)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -73,7 +73,7 @@ test('X on the administrator chip revokes after confirmation', async () => {
     assert.ok(await warte(() => aufrufe.some(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/3/admin'))));
     const put = aufrufe.find(a => a.method === 'PUT' && a.url.includes('/v1/auth/users/3/admin'));
     assert.deepEqual(JSON.parse(put.body), { is_admin: false, admin_password: 'mein-passwort' });
-    // Gegen einen Administrator wirkt es erst nach 24 h; die Liste zeigt es an.
+    // Against an administrator it only takes effect after 24 h; the list shows it.
     assert.ok(
       await warte(() => /Angekündigt: Administratorrechte entziehen ab/.test(zeile(d, 'carla')?.textContent || '')),
       'Angekündigt fehlt nach der Antwort',

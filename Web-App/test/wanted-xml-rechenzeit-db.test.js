@@ -1,20 +1,20 @@
 /**
- * Die Wanted-Liste (XML) darf den Server nicht mit Rechenzeit lahmlegen.
+ * The wanted list (XML) must not paralyze the server with computing time.
  *
- * Das faule Muster `<ITEM>([\s\S]*?)</ITEM>` setzte bei einem offenen Tag
- * ohne Ende an jeder Fundstelle neu an: 469 KB `<ITEM>` hielten einen Worker
- * 8,4 s fest, quadratisch wachsend. Dazu nahm die Route 15 MB an.
+ * The lazy pattern `<ITEM>([\s\S]*?)</ITEM>` restarted at every match for an
+ * open tag without an end: 469 KB of `<ITEM>` held a worker for
+ * 8.4 s, growing quadratically. On top of that the route accepted 15 MB.
  *
- * ── Gegenproben (durchgeführt, Befunde GEMESSEN) ────────────────────────────
+ * ── Counter-checks (performed, findings MEASURED) ───────────────────────────
  *
- *   a) readWantedList wieder mit dem faulen Muster für ITEM
- *      → 1 rot („ITEM ohne Ende: 8376 ms")
- *   b) feld() wieder mit dem faulen Muster → 1 rot („ITEMID ohne Ende: 6285 ms")
- *   c) Tag-Suche ohne Flag i → 2 rot (der klein geschriebene Posten fehlte)
- *   d) Route wieder mit csvReceive (15 MB) → 3 rot (Status 200, 29 138 Posten)
+ *   a) readWantedList again with the lazy pattern for ITEM
+ *      → 1 red („ITEM ohne Ende: 8376 ms")
+ *   b) feld() again with the lazy pattern → 1 red („ITEMID ohne Ende: 6285 ms")
+ *   c) tag search without flag i → 2 red (the lowercase item was missing)
+ *   d) route again with csvReceive (15 MB) → 3 red (status 200, 29 138 items)
  *
- * Voraussetzung für Fall 3: Test-DB via TEST_DATABASE_URL. Ohne DB: skip,
- * ausser REQUIRE_DB=1.
+ * Prerequisite for case 3: test DB via TEST_DATABASE_URL. Without DB: skip,
+ * unless REQUIRE_DB=1.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -48,7 +48,7 @@ function duration(f) {
 }
 
 test('1. open tags without an end cost no quadratic computing time', () => {
-  // Je rund 480 KB; die alte Fassung brauchte dafür 8 bis 11 s.
+  // About 480 KB each; the old version needed 8 to 11 s for it.
   const faelle = {
     'ITEM ohne Ende': '<INVENTORY>' + '<ITEM>'.repeat(80000),
     'ITEMID ohne Ende': '<INVENTORY><ITEM>' + '<ITEMID>'.repeat(60000) + '</ITEM>',
@@ -106,8 +106,8 @@ test('3. the route rejects a list above the XML limit', async t => {
     return { status: r.status, body: await r.json().catch(() => ({})) };
   };
 
-  // Eine GÜLTIGE Liste knapp über der Grenze — abgewiesen wird die Grösse,
-  // nicht der Inhalt. Die Posten sind alle unbekannt, die Vorschau schreibt nichts.
+  // A VALID list just above the limit — the size is rejected,
+  // not the content. The items are all unknown, the preview writes nothing.
   const ein = item('99999', 5, 1);
   const gross = '<INVENTORY>\n' + ein.repeat(Math.ceil(XML_MAX_BYTES / ein.length) + 10) + '</INVENTORY>';
   assert.ok(Buffer.byteLength(gross) > XML_MAX_BYTES);

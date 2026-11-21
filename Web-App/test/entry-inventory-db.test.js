@@ -1,14 +1,14 @@
 /**
- * Eine Set-Erfassung gehört zu einer Bestandszeile — die Datenbank prüft es
- * (Migration 0045), nicht mehr nur die drei Löschstellen.
+ * A set entry belongs to a stock row — the database checks it
+ * (migration 0045), no longer only the three delete sites.
  *
- * Gegenproben (am 27.10. gemessen):
- *   A  den Fremdschlüssel in 0045 weggelassen → rot: „eine Erfassung ohne
- *      Bestandszeile scheitert beim COMMIT"
- *   B  den Fremdschlüssel ohne DEFERRABLE → rot: „innerhalb einer Transaktion
- *      darf die Erfassung vor dem Bestand kommen"
+ * Counter-checks (measured on 27.10.):
+ *   A  the foreign key omitted in 0045 → red: “an entry without a
+ *      stock row fails at COMMIT"
+ *   B  the foreign key without DEFERRABLE → red: “within a transaction
+ *      the entry may come before the stock"
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

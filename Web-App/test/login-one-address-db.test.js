@@ -1,8 +1,8 @@
 /**
- * Die EINE Anmeldung — durchgespielt, nicht gelesen.
+ * The ONE login — played through, not read.
  *
- * Gegenprobe (14.11.2026): in POST /logout wieder `tokenLoeschen(…).catch(logAndContinue(…))`
- * → rot: „Ein Token, der gültig bleibt, darf nicht als abgemeldet gelten“ (200 statt 500).
+ * Counter-check (14.11.2026): in POST /logout again `tokenLoeschen(…).catch(logAndContinue(…))`
+ * → red: „Ein Token, der gültig bleibt, darf nicht als abgemeldet gelten“ (200 instead of 500).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -29,9 +29,9 @@ test('one address, two credentials — played through', { concurrency: 1 }, asyn
   if (!(await dataOrSkip(t, _req))) return;
 
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
-  // Wenige Runden: Hier wird die VERDRAHTUNG geprüft, nicht die Laufzeit —
-  // die misst test/login-time-equal-db.test.js, und dort sind die echten
-  // Kosten Teil der Aussage.
+  // Few rounds: here the WIRING is checked, not the run time —
+  // that is measured by test/login-time-equal-db.test.js, and there the real
+  // costs are part of the statement.
   await db.run(
     'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,true,true,true)',
     [NAME, await bcrypt.hash(PASS, 4)],
@@ -66,7 +66,7 @@ test('one address, two credentials — played through', { concurrency: 1 }, asyn
     ]);
 
   try {
-    // ── 1. Ohne never_expires: ein Token mit sieben festen Tagen, kein Keks ──
+    // ── 1. Without never_expires: a token with seven fixed days, no cookie ──
     const kurz = await ruf('/login', { method: 'POST', body: { username: NAME, password: PASS } });
     assert.equal(kurz.status, 200, `Anmeldung scheiterte: ${JSON.stringify(kurz.body)}`);
     assert.equal(kurz.body.success, true);
@@ -76,16 +76,16 @@ test('one address, two credentials — played through', { concurrency: 1 }, asyn
     assert.equal(kurz.body.user.is_admin, true, 'Die App liest is_admin — das Feld muss da sein');
     const webToken = kurz.body.token;
     assert.ok((await ablauf(webToken))?.expires_at, 'Der kurze Token muss ein Ablaufdatum haben');
-    // Der Browser: nur die Sitzung.
+    // The browser: only the session.
     const web = await ruf('/login', { method: 'POST', body: { username: NAME, password: PASS, ohne_token: true } });
     assert.ok(web.cookie, 'Ohne Set-Cookie gibt es keine Sitzung — der Browser wäre nicht angemeldet');
     assert.equal(web.body.token, undefined);
     const webCookie = web.cookie.split(';')[0];
 
-    // 2. Die App: gleitende Frist statt gar keiner
+    // 2. The app: sliding deadline instead of none at all
     const app1 = await ruf('/login', {
       method: 'POST',
-      // Scope `voll`: Verwalterrechte bekommt ein Token nur auf ausdrücklichen Wunsch.
+      // Scope `voll`: a token only gets admin rights on explicit request.
       body: { username: NAME, password: PASS, label: 'Android App', never_expires: true, scope: 'voll' },
     });
     assert.equal(app1.status, 200, `Anmeldung der App scheiterte: ${JSON.stringify(app1.body)}`);
@@ -107,16 +107,16 @@ test('one address, two credentials — played through', { concurrency: 1 }, asyn
       true,
       'Ohne sliding rueckt das Datum bei Benutzung nicht nach — dann muesste man alle 90 Tage neu tippen',
     );
-    // Und er ist deutlich laenger gueltig als der des Browsers: Wer die App
-    // oeffnet, soll nicht woechentlich sein Passwort eintippen.
+    // And it is valid considerably longer than the browser's: whoever opens the app
+    // should not have to type in their password weekly.
     assert.ok(
       new Date(appRow.expires_at) > new Date((await ablauf(webToken)).expires_at),
       'Der App-Token muss laenger laufen als die sieben festen Tage',
     );
-    // Vorbedingung: Es sind zwei VERSCHIEDENE Token, sonst prüft der Rest nichts.
+    // Precondition: these are two DIFFERENT tokens, otherwise the rest checks nothing.
     assert.notEqual(webToken, appToken);
 
-    // ── 3. Wer bin ich? ─────────────────────────────────────────────────────
+    // ── 3. Who am I? ─────────────────────────────────────────────────────
     const withCookie = await ruf('/me', { headers: { cookie: webCookie } });
     assert.equal(withCookie.status, 200);
     assert.equal(withCookie.body.loggedIn, true, 'Die Sitzung des Browsers wird nicht erkannt');
@@ -127,15 +127,15 @@ test('one address, two credentials — played through', { concurrency: 1 }, asyn
     assert.equal(withToken.body.loggedIn, true, 'Der Token der App wird nicht erkannt');
     assert.equal(withToken.body.user.is_admin, true);
 
-    // Ohne alles: 200 und „nein". Der Browser fragt das VOR jeder Anmeldung —
-    // ein 401 wäre dort die normale Antwort auf eine normale Frage.
+    // Without anything: 200 and „no". The browser asks this BEFORE every login —
+    // a 401 there would be the normal answer to a normal question.
     const ohne = await ruf('/me');
     assert.equal(ohne.status, 200, 'Ohne Ausweis ist „nicht angemeldet" keine Störung');
     assert.equal(ohne.body.loggedIn, false);
 
-    // Mit einem Token, den es nicht gibt: 401. Der Interceptor der App macht
-    // daraus „Sitzung abgelaufen" und führt zurück zur Anmeldung
-    // (RepoBasis.kt). Bei 200 bliebe sie mit einem toten Token stehen.
+    // With a token that does not exist: 401. The interceptor of the app makes
+    // „Sitzung abgelaufen" out of it and leads back to the login
+    // (RepoBasis.kt). With 200 it would stay with a dead token.
     const falsch = await ruf('/me', { headers: { authorization: 'Bearer ' + 'f'.repeat(64) } });
     assert.equal(
       falsch.status,
@@ -143,7 +143,7 @@ test('one address, two credentials — played through', { concurrency: 1 }, asyn
       'Ein vorgelegter, ungültiger Token muss 401 ergeben — sonst merkt die App den Ablauf nicht',
     );
 
-    // ── 3b. Scheitert das Entwerten, ist die Abmeldung nicht gelungen ───────
+    // ── 3b. If the invalidation fails, the logout has not succeeded ───────
     const konto = require('./helpers/sources').testServices().account;
     const echt = konto.tokenLoeschen;
     konto.tokenLoeschen = async () => {
@@ -157,7 +157,7 @@ test('one address, two credentials — played through', { concurrency: 1 }, asyn
       konto.tokenLoeschen = echt;
     }
 
-    // ── 4. Abmelden entwertet BEIDES ────────────────────────────────────────
+    // ── 4. Logging out invalidates BOTH ────────────────────────────────────────
     const ab = await ruf('/logout', {
       method: 'POST',
       headers: { cookie: webCookie, authorization: `Bearer ${webToken}` },
@@ -166,11 +166,11 @@ test('one address, two credentials — played through', { concurrency: 1 }, asyn
     assert.equal(await ablauf(webToken), undefined, 'Der Token muss beim Abmelden verschwinden');
     const danach = await ruf('/me', { headers: { cookie: webCookie } });
     assert.equal(danach.body.loggedIn, false, 'Die Sitzung muss beim Abmelden enden');
-    // Der Token der App ist davon NICHT betroffen — abgemeldet hat sich der Browser.
+    // The token of the app is NOT affected by it — the browser logged out.
     const appStill = await ruf('/me', { headers: { authorization: `Bearer ${appToken}` } });
     assert.equal(appStill.body.loggedIn, true, 'Das Abmelden im Browser darf das Telefon nicht mit abmelden');
 
-    // ── 5. Falsches Passwort bleibt falsch ──────────────────────────────────
+    // ── 5. A wrong password stays wrong ──────────────────────────────────
     const daneben = await ruf('/login', { method: 'POST', body: { username: NAME, password: 'falsch' } });
     assert.equal(daneben.status, 401);
     assert.equal(daneben.body.token, undefined, 'Ein fehlgeschlagener Login darf keinen Token ausgeben');

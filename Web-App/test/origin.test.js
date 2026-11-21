@@ -1,26 +1,26 @@
 /**
- * Schreibende Anfragen einer fremden Seite werden abgewiesen (CSRF), alles
- * andere geht durch. Dass server.ts die Wache einhängt, prüft
- * signale-zwei-worker-db am echten Server.
+ * Writing requests of a foreign site are rejected (CSRF), everything
+ * else goes through. That server.ts mounts the guard is checked by
+ * signale-zwei-worker-db on the real server.
  *
- * Gegenproben (am 27.10. gemessen):
- *   A  nur 'cross-site' abgewiesen statt alles ausser same-origin/none → rot:
- *      „eine Nachbar-Subdomain"
- *   B  die Cookie-Bedingung an der Bearer-Ausnahme entfernt → rot: „ein
- *      Bearer-Kopf neben dem Sitzungs-Cookie schaltet nichts ab"
- * Gegenproben (am 30.10. gemessen):
- *   C  Origin/Referer nicht geprüft (Zweig entfernt) → rot: „ein alter
- *      Browser ohne Sec-Fetch-Site, von einer fremden Seite"
- *   D  ohne Kopf immer durchgelassen → rot: „eine Cookie-Sitzung ohne jede
- *      Herkunftsangabe"
- *   E  Host-Vergleich durch `startsWith` ersetzt → rot: „ein Host, der nur
- *      so anfängt wie der eigene"
- * Gegenprobe (am 01.11.2026 gemessen):
- *   F  carriesSessionCookie() erkennt wieder nur `connect.sid` → rot: „eine
- *      Cookie-Sitzung ohne jede Herkunftsangabe", „ein Bearer-Kopf …"
- * Gegenprobe (am 15.11.2026 gemessen):
- *   G  in onlyOwnHost() wieder `if (!adresse) return next()` → rot: „ohne
- *      APP_BASE_URL nimmt der Host-Filter keinen Namen an“ (200 statt 421)
+ * Counter-checks (measured on 27.10.):
+ *   A  only 'cross-site' rejected instead of everything except same-origin/none → red:
+ *      “a neighboring subdomain”
+ *   B  the cookie condition on the bearer exception removed → red: “a
+ *      bearer header next to the session cookie switches nothing off”
+ * Counter-checks (measured on 30.10.):
+ *   C  Origin/Referer not checked (branch removed) → red: “an old
+ *      browser without Sec-Fetch-Site, from a foreign site”
+ *   D  always let through without a header → red: “a cookie session without any
+ *      origin information”
+ *   E  host comparison replaced by `startsWith` → red: “a host that only
+ *      starts like the own one”
+ * Counter-check (measured on 01.11.2026):
+ *   F  carriesSessionCookie() again only recognizes `connect.sid` → red: “a
+ *      cookie session without any origin information”, “a bearer header …”
+ * Counter-check (measured on 15.11.2026):
+ *   G  in onlyOwnHost() again `if (!adresse) return next()` → red: “without
+ *      APP_BASE_URL the host filter accepts no name” (200 instead of 421)
  */
 const test = require('node:test');
 const { environment } = require('./helpers/sources');
@@ -93,7 +93,7 @@ test('origin of writing requests', async t => {
     assert.equal(await ruf('POST', { 'sec-fetch-site': 'cross-site', authorization: 'Bearer abc' }), 200);
   });
   await t.test('a bearer header next to the session cookie switches nothing off', async () => {
-    // Mit Cookie gilt die Sitzung, nicht das Token — die Herkunft zählt also.
+    // With a cookie the session applies, not the token — so the origin counts.
     assert.equal(
       await ruf('POST', {
         'sec-fetch-site': 'same-site',
@@ -132,7 +132,7 @@ test('without APP_BASE_URL the host filter accepts no name, only loopback and IP
       r.on('error', fehler);
       r.end();
     });
-  // Ein umgebogener Name (DNS-Rebinding) zeigt auf dieselbe Adresse, trägt aber seinen Namen.
+  // A bent name (DNS rebinding) points to the same address but carries its name.
   const fremd = await withHost('boese.example');
   assert.equal(fremd.status, 421);
   assert.equal(JSON.parse(fremd.text).code, 'fremder_host');

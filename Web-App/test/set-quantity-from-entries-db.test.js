@@ -1,11 +1,11 @@
 /**
- * Seit db/basis.sql gibt es den Stand VOR dieser Migration nicht mehr: Die
- * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
- * der Endstand und die Lesewege.
+ * Since db/basis.sql the state BEFORE this migration no longer exists: the
+ * cases on bolt, addendum and intermediate state are dropped. What is checked is
+ * the final state and the read paths.
  *
- *      GEGENPROBE: Ändert sich eine Erfassung, folgt die Antwort.
+ *      COUNTER-CHECK: if an acquisition changes, the response follows.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
  * REQUIRE_DB=1.
  */
 require('./helpers/system-frame');
@@ -23,9 +23,9 @@ const { keineDb } = require('./helpers/db');
 const { catalogSet } = require('./helpers/inventory');
 const db = testData();
 
-// Dieselbe Begruendung wie in test/parts-prices-only-entries-db.test.js:
-// Diese Datei baut die Datenbank mehrfach von null auf. Wer danach laeuft,
-// muss sie vollstaendig vorfinden.
+// The same reasoning as in test/parts-prices-only-entries-db.test.js:
+// this file builds the database from zero several times. Whoever runs afterwards
+// must find it complete.
 test.after(async () => {
   try {
     await db.run('DROP SCHEMA public CASCADE');
@@ -58,7 +58,7 @@ const dbDa = async t => {
   }
 };
 
-/** Frische Datenbank, Schema, alle Migrationen. */
+/** Fresh database, schema, all migrations. */
 async function fullChain() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
@@ -78,8 +78,8 @@ test('after the whole chain sets carries no quantity anymore', { concurrency: 1 
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
 
-  // Den Vorstand vor den Migrationen gibt es nicht mehr: Eine leere
-  // Datenbank bekommt db/basis.sql. Geprüft wird der Endstand.
+  // The state before the migrations no longer exists: an empty
+  // database gets db/basis.sql. What is checked is the final state.
   const client = await db.pool.connect();
   try {
     await _req('db/migrate.js').runMigrations(client);
@@ -94,13 +94,13 @@ test('after the whole chain sets carries no quantity anymore', { concurrency: 1 
       'geloescht, oder etwas legt die Spalte danach wieder an.',
   );
 
-  // Und was `sets` noch ist: DIESES Konto haelt DIESES Set, seit DANN, an DEM
-  // Ort. Marcos Liste.
+  // And what `sets` still is: THIS account holds THIS set, since THEN, at THAT
+  // place. Marco's list.
   for (const sp of ['id', 'user_id', 'set_number', 'storage_id', 'added_at', 'updated_at']) {
     assert.ok(nachher.includes(sp), `sets.${sp} fehlt — die Spalte gehoert zum Bestand`);
   }
 
-  // Nicht verschwunden, sondern umgezogen.
+  // Not disappeared but moved.
   const erf = await columnsOf('set_acquisitions');
   for (const sp of ['user_id', 'set_number', 'quantity', 'purchase_price', 'condition', 'created_at']) {
     assert.ok(erf.includes(sp), `set_acquisitions.${sp} fehlt — dann gibt es die Stueckzahl nirgends mehr`);
@@ -108,10 +108,10 @@ test('after the whole chain sets carries no quantity anymore', { concurrency: 1 
 });
 
 test('nobody writes the item count of a set anymore', () => {
-  // Nur der QUELLTEXT, und nur die SCHREIBseite. Die Leseseite prüft nicht
-  // dieser Test, sondern die Datenbank: Nach Migration 0036 gibt es die Spalte
-  // nicht, jede verbliebene Lesestelle ist ein harter Fehler — und genau
-  // deshalb laufen die Lesewege unten gegen eine migrierte Datenbank.
+  // Only the SOURCE TEXT, and only the WRITE side. The read side is not checked by
+  // this test but by the database: after migration 0036 the column does not
+  // exist, every remaining read place is a hard error — and exactly
+  // for that reason the read paths below run against a migrated database.
   const dateien = [];
   const lauf = verz => {
     for (const e of fs.readdirSync(verz, { withFileTypes: true })) {
@@ -130,26 +130,26 @@ test('nobody writes the item count of a set anymore', () => {
   dateien.push(path.join(ROOT, 'server.ts'));
   assert.ok(dateien.length > 100, `Nur ${dateien.length} Quelldateien gefunden — der Pfad stimmt nicht`);
 
-  /** Zeilen ohne Kommentare — ein Erklärtext, der eine Anweisung ZITIERT, ist
-   *  kein Schreibzugriff. Genau diese Falle hat in diesem Baum schon eine
-   *  Regel ihren eigenen Begründungstext melden lassen. */
+  /** Lines without comments — an explanatory text that QUOTES a statement is
+   *  not a write access. Exactly this trap has already made a rule in this tree
+   *  report its own reasoning text. */
   const codeRows = txt =>
     txt.split('\n').filter(z => {
       const t = z.trim();
       return !(t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.startsWith('--'));
     });
 
-  // Nur die sets-Tabelle: Die Erfassungstabellen schreiben ihre eigene
-  // quantity natuerlich fort — sie sind die Wahrheit, nicht die Kopie.
-  // GEMESSEN beim ersten Entwurf dieser Regel in ihrer breiteren Fassung: Sie
-  // meldete `UPDATE part_acquisitions SET quantity=quantity-$1` als Verstoss,
-  // und das ist genau der Weg, auf dem eine Erfassung kleiner wird.
+  // Only the sets table: the acquisition tables of course keep writing their own
+  // quantity — they are the truth, not the copy.
+  // MEASURED with the first draft of this rule in its broader version: it
+  // reported `UPDATE part_acquisitions SET quantity=quantity-$1` as a violation,
+  // and that is exactly the path on which an acquisition becomes smaller.
   const setzt = /UPDATE\s+sets\s+SET\s+[^;`']*\bquantity\s*=/i;
   const fortschreiben = /UPDATE\s+sets\s+SET\s+quantity\s*=\s*(?:sets\.)?quantity\s*[+-]/i;
   const beiKonflikt = /INSERT\s+INTO\s+sets\b[^;]*DO\s+UPDATE\s+SET\s+[^;]*\bquantity\s*=/i;
-  // Und die Spalte darf auch nicht wieder angelegt werden — ein
-  // `ADD COLUMN quantity` auf sets wuerde die Kopie zurueckbringen, ohne eine
-  // einzige der Regeln oben zu verletzen.
+  // And the column must not be created again either — an
+  // `ADD COLUMN quantity` on sets would bring the copy back without violating a
+  // single one of the rules above.
   const legtAn = /ALTER\s+TABLE\s+sets\s+ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?quantity/i;
 
   const stellen = [];
@@ -180,10 +180,10 @@ test('nobody writes the item count of a set anymore', () => {
 
   // ── Selbstbeweis ─────────────────────────────────────────────────────────
   //
-  // Die Muster oben finden jetzt nichts — das ist der Punkt, sagt aber allein
-  // noch nicht, dass sie ueberhaupt etwas finden KOENNTEN. Also einmal an
-  // erfundenen Zeilen nachgewiesen, in genau der Form, die vorher im Baum
-  // stand (die Beispiele stehen so in src/sets/service.ts, Fassung vor 0036).
+  // The patterns above now find nothing — that is the point, but alone it does not
+  // say yet that they COULD find anything at all. So proven once on
+  // invented lines, in exactly the form that stood in the tree before
+  // (the examples stand like this in src/sets/service.ts, version before 0036).
   const proben = [
     ['UPDATE sets SET quantity = $1 WHERE user_id=$2', setzt],
     ['UPDATE sets SET quantity = quantity + $1 WHERE id=$2', fortschreiben],
@@ -197,7 +197,7 @@ test('nobody writes the item count of a set anymore', () => {
   for (const [zeile, muster] of /** @type {[string, RegExp][]} */ (proben)) {
     assert.ok(muster.test(zeile), `Das Muster greift nicht mehr auf seine eigene Probe: ${zeile.slice(0, 60)}`);
   }
-  // Und die Gegenrichtung: Was erlaubt ist, darf NICHT greifen.
+  // And the opposite direction: what is allowed must NOT trigger.
   for (const zeile of [
     'UPDATE set_acquisitions SET quantity = quantity - $1 WHERE id=$2',
     'UPDATE parts SET quantity = COALESCE((SELECT SUM(a.quantity) FROM part_acquisitions a), 0)',
@@ -223,14 +223,14 @@ test('the read paths deliver the item count from the entries', { concurrency: 1 
   const SN = '10290-1';
 
   await catalogSet(db, SN, { name: 'Pickup Truck', year: 2022, pieces: 1677 });
-  // Zwei Konten halten dasselbe Set — der Haushaltszweig von setsLesen() fasst
-  // sie zu EINER Kachel zusammen und muss die Mengen addieren.
+  // Two accounts hold the same set — the household branch of setsLesen() merges
+  // them into ONE tile and must add the quantities.
   await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,$2),($3,$2)`, [haupt.id, SN, kind.id]);
-  // Drei Erfassungen: zwei beim Hauptkonto (2+1), eine beim Kind (3).
+  // Three acquisitions: two at the main account (2+1), one at the child (3).
   //
-  // Verschiedene TAGE, und das ist keine Kosmetik: idx_set_acq_tag_zustand (Migration
-  // 0004) erlaubt je Konto, Set und Tag genau eine Erfassung. Mit demselben
-  // Datum brach das INSERT ab — gemessen, „duplicate key value violates
+  // Different DAYS, and that is no cosmetics: idx_set_acq_tag_zustand (migration
+  // 0004) allows exactly one acquisition per account, set and day. With the same
+  // date the INSERT aborted — measured, „duplicate key value violates
   // unique constraint idx_set_acq_tag_zustand".
   await db.run(
     `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
@@ -242,21 +242,21 @@ test('the read paths deliver the item count from the entries', { concurrency: 1 
 
   const H = require('./helpers/sources').areaPage('sets');
 
-  // ── Ein Konto ────────────────────────────────────────────────────────────
+  // ── One account ────────────────────────────────────────────────────────────
   const eins = await H.setsLesen([haupt.id], { page_size: 60 });
   const kachel = eins.sets.find(s => s.set_number === SN);
   assert.ok(kachel, `Das Set fehlt in der Antwort: ${JSON.stringify(eins.sets).slice(0, 300)}`);
   assert.equal(Number(kachel.quantity), 3, `Ein Konto, Erfassungen 2+1: erwartet 3, bekam ${kachel.quantity}`);
-  // Der Treiber liefert BIGINT als ZEICHENKETTE. Ohne den ::int-Cast in
-  // db/stockQuantity.ts haengt der JSON-Typ daran, welcher Zweig geantwortet
-  // hat — genau dieser Fehler ist in src/parts/queries.ts schon aufgeflogen.
+  // The driver delivers BIGINT as a STRING. Without the ::int cast in
+  // db/stockQuantity.ts the JSON type depends on which branch answered
+  // — exactly this error already surfaced in src/parts/queries.ts.
   assert.equal(
     typeof kachel.quantity,
     'number',
     `quantity muss eine Zahl sein, war ${typeof kachel.quantity} (${kachel.quantity})`,
   );
 
-  // ── Haushalt ─────────────────────────────────────────────────────────────
+  // ── Household ─────────────────────────────────────────────────────────────
   const beide = await H.setsLesen([haupt.id, kind.id], { page_size: 60 });
   const zusammen = beide.sets.find(s => s.set_number === SN);
   assert.ok(zusammen, 'Das Set fehlt in der Haushaltsantwort');
@@ -272,12 +272,12 @@ test('the read paths deliver the item count from the entries', { concurrency: 1 
   assert.ok(detail, 'Das Set-Detail antwortet nicht');
   assert.equal(Number(detail.quantity), 3, `Detail eines Kontos: erwartet 3, bekam ${detail.quantity}`);
 
-  // ── GEGENPROBE: eine Erfassung ändern ────────────────────────────────────
+  // ── COUNTER-CHECK: change an acquisition ────────────────────────────────────
   //
-  // Der Kern dieses Tests. Ohne ihn könnten die Zahlen oben zufällig stimmen —
-  // etwa aus einer anderen Quelle, die gerade dasselbe sagt. Erst wenn die
-  // Antwort einer Änderung FOLGT, ist bewiesen, dass sie aus den Erfassungen
-  // kommt.
+  // The core of this test. Without it the numbers above could be right by chance —
+  // say from another source that happens to say the same. Only when the
+  // response FOLLOWS a change is it proven that it comes from the
+  // acquisitions.
   const eine = await db.get(
     `SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2
       ORDER BY id ASC LIMIT 1`,
@@ -297,12 +297,12 @@ test('the read paths deliver the item count from the entries', { concurrency: 1 
   const detail2 = await H.readSet(haupt.id, SN);
   assert.equal(Number(detail2.quantity), 8, `Das Detail folgt der Änderung nicht: ${detail2.quantity} statt 8`);
 
-  // ── Und ohne Erfassung ist die Menge 0, nicht 1 ──────────────────────────
+  // ── And without an acquisition the quantity is 0, not 1 ──────────────────────────
   //
-  // Eine Bestandszeile ohne Erfassung sollte es nicht geben (Schritt 1 der
-  // Migration traegt fuer jede eine nach), aber sie darf die Liste nicht
-  // LEEREN — deshalb LEFT JOIN in db/stockQuantity.ts. Sie bedeutet dann
-  // null Stueck.
+  // An inventory row without an acquisition should not exist (step 1 of the
+  // migration fills one in for each), but it must not EMPTY the list
+  // — hence LEFT JOIN in db/stockQuantity.ts. It then means
+  // zero pieces.
   await db.run('DELETE FROM set_acquisitions WHERE user_id=$1 AND set_number=$2', [haupt.id, SN]);
   const leer = await H.setsLesen([haupt.id], { page_size: 60 });
   const nullStueck = leer.sets.find(s => s.set_number === SN);

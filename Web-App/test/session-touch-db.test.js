@@ -1,5 +1,5 @@
 /**
- * Die Ablaufzeit der Sitzung wird gedrosselt geschrieben.
+ * The expiry time of the session is written throttled.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -29,7 +29,7 @@ const howOften = muster => gesehen.filter(q => muster.test(q)).length;
 const LESEN = /SELECT sess FROM "?user_sessions"?/;
 const WRITE = /UPDATE "?user_sessions"? SET expire/;
 
-/** Ein Server mit echtem Sitzungsspeicher; `frist` steuert die Drosselung. */
+/** A server with a real session store; `frist` controls the throttling. */
 async function startServer(frist) {
   const speicher = new pgSession({ pool: db.pool, tableName: 'user_sessions', createTableIfMissing: false });
   if (frist !== null) touchThrottle(speicher, frist);
@@ -56,7 +56,7 @@ async function startServer(frist) {
 
 async function anmelden(base) {
   const r = await fetch(base + '/anmelden');
-  await r.text(); // die Sitzung steht erst nach dem letzten Byte im Speicher
+  await r.text(); // the session only stands in the store after the last byte
   return (r.headers.get('set-cookie') || '').split(';')[0];
 }
 
@@ -70,7 +70,7 @@ test('session: always read, written only every few minutes', async t => {
   const N = 20;
   const server = [];
   try {
-    // ── 1. Mit Drosselung: N Lesevorgänge, EIN Schreibvorgang ──────────────
+    // ── 1. With throttling: N reads, ONE write ──────────────
     const a = await startServer(5 * 60 * 1000);
     server.push(a.srv);
     const keksA = await anmelden(a.base);
@@ -81,9 +81,9 @@ test('session: always read, written only every few minutes', async t => {
     count = false;
 
     assert.equal(howOften(LESEN), N, `gelesen wird bei jeder Anfrage — erwartet ${N}, gezählt ${howOften(LESEN)}`);
-    // GENAU einer, und beide Abweichungen sind Fehler: mehr heisst, die
-    // Drosselung greift nicht; NULL heisst, sie drosselt zu viel und die
-    // Ablaufzeit wird nie nachgeführt.
+    // EXACTLY one, and both deviations are errors: more means the
+    // throttling does not apply; ZERO means it throttles too much and the
+    // expiry time is never carried along.
     assert.equal(
       howOften(WRITE),
       1,
@@ -91,11 +91,11 @@ test('session: always read, written only every few minutes', async t => {
         `(mehr: die Drosselung greift nicht; keiner: sie drosselt zu viel)`,
     );
 
-    // ── 2. Die Sitzung lebt weiter ─────────────────────────────────────────
-    // Ohne diese Zusicherung wäre „gar nicht mehr schreiben" die beste Note.
+    // ── 2. The session lives on ─────────────────────────────────────────
+    // Without this assertion „not writing at all any more" would be the best grade.
     assert.equal(letzte.uid, 990601, 'die Sitzung muss über alle Anfragen hinweg gültig bleiben');
 
-    // ── 3. Und die Ablaufzeit steht wirklich in der Datenbank ──────────────
+    // ── 3. And the expiry time really stands in the database ──────────────
     const sid = decodeURIComponent(keksA.split('=')[1]).slice(2).split('.')[0];
     const zeile = await db.get('SELECT expire FROM user_sessions WHERE sid = $1', [sid]);
     assert.ok(zeile?.expire, 'die Sitzungszeile muss eine Ablaufzeit tragen');
@@ -104,9 +104,9 @@ test('session: always read, written only every few minutes', async t => {
       'die Ablaufzeit muss in der Zukunft liegen — sonst ist die Sitzung sofort tot',
     );
 
-    // ── GEGENPROBE: ohne Frist schreibt jede Anfrage ───────────────────────
-    // Dieselbe Strecke mit Frist 0. Bliebe die Zahl auch hier bei 1, käme die
-    // Ersparnis oben von etwas anderem als der Drosselung.
+    // ── COUNTER-CHECK: without a period every request writes ───────────────────────
+    // The same route with period 0. If the number stayed at 1 here too, the
+    // saving above would come from something other than the throttling.
     const b = await startServer(0);
     server.push(b.srv);
     const keksB = await anmelden(b.base);
@@ -120,10 +120,10 @@ test('session: always read, written only every few minutes', async t => {
       `Gegenprobe: ohne Frist müssten es ${N} Schreibvorgänge sein, gezählt ${howOften(WRITE)}`,
     );
 
-    // ── 4. Und startup/app.ts benutzt die Drosselung überhaupt ──────────────────
-    // Ein Helfer, den niemand aufruft, ist die teuerste Art, nichts zu tun —
-    // und die Zusicherungen oben blieben dabei grün, weil sie ihren Speicher
-    // selbst bauen.
+    // ── 4. And startup/app.ts uses the throttling at all ──────────────────
+    // A helper that nobody calls is the most expensive way of doing nothing —
+    // and the assertions above would stay green, because they build their store
+    // themselves.
     const quelle = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
     assert.match(
       quelle,

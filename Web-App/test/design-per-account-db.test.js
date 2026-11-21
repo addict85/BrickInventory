@@ -1,19 +1,19 @@
 /**
- * Design je Konto: Der Verwalter setzt die Vorgabe, jedes Konto darf sie
- * überschreiben — über den echten Router und die echte Datenbank.
+ * Design per account: the administrator sets the default, every account may
+ * override it — via the real router and the real database.
  *
- * Gegenproben (am 29.10.2026 gemessen):
- *   A  in themeFor `eigenes` immer null → rot: „Konto mit eigenem Design“
- *      (noppe statt werkbank) und „index.html“
- *   B  GET /theme wieder ohne userIdTheRequest → rot: „App mit Token“
- *   C  setOwnTheme schreibt ungeprüft, auch '' → rot: „leer heisst
- *      Vorgabe“ (/settings/raw: app_theme ''), „unbekanntes Design abgewiesen“
- *   D  in indexHtml wieder ALLOWED = ['classic', 'brick'] → rot: „index.html“
- *      (classic statt noppe)
- *   E  (30.10.) GET /api/v1/settings wieder mit getGlobalSetting('app_theme')
- *      → rot: „App mit Token“ (noppe statt werkbank)
+ * Counter-checks (measured on 29.10.2026):
+ *   A  in themeFor `eigenes` always null → red: “account with own design”
+ *      (noppe instead of werkbank) and “index.html”
+ *   B  GET /theme again without userIdTheRequest → red: “app with token”
+ *   C  setOwnTheme writes unchecked, even '' → red: “empty means
+ *      default” (/settings/raw: app_theme ''), “unknown design rejected”
+ *   D  in indexHtml again ALLOWED = ['classic', 'brick'] → red: “index.html”
+ *      (classic instead of noppe)
+ *   E  (30.10.) GET /api/v1/settings again with getGlobalSetting('app_theme')
+ *      → red: “app with token” (noppe instead of werkbank)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

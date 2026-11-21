@@ -1,31 +1,31 @@
 /**
- * Befunde der zehnten Sicherheitsprüfung am echten Server (dist/server.js):
- * langsame Anfragen, Fehlertexte bei 4xx, Orakel für Erfassungs-IDs, fremder
- * Host-Kopf, E-Mail-Bestätigung erst per POST.
+ * Findings of the tenth security review on the real server (dist/server.js):
+ * slow requests, error texts on 4xx, oracle for acquisition IDs, foreign
+ * Host header, email confirmation only via POST.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln, danach gebaut):
- *   M1a `headersTimeout` aus den Fristen in server.ts gestrichen → rot: „ein
- *       stockender Kopf …“ (Node-Vorgabe 60 s, Prüfung nach 18 s)
- *   M1b `onlyIf(anonymous, bodyDeadline)` aus readBody gestrichen → rot:
+ * Counter-checks (measured 04.11.2026, each on its own, built afterwards):
+ *   M1a `headersTimeout` deleted from the deadlines in server.ts → red: „ein
+ *       stockender Kopf …“ (Node default 60 s, check after 18 s)
+ *   M1b `onlyIf(anonymous, bodyDeadline)` deleted from readBody → red:
  *       „ein stockender Rumpf ohne Anmeldung …“
- *   M1c die Bedingung `anonymous` weggelassen (Frist für alle) → rot: „ein
+ *   M1c the condition `anonymous` left out (deadline for everybody) → red: „ein
  *       stockender Rumpf mit Anmeldung …“
- *   H1  in handleRouteError den Zweig für 4xx ohne Code gestrichen → rot:
- *       „GET /% …“ (Antwort „Failed to decode param '%'“); `fail()` in
- *       validate.ts wieder mit `new Error` → rot: „ein eigener Satz …“
- *   H2  in moveSource wieder 403 kein_schreibrecht für fremde
- *       Zeilen → rot: „eine fremde Erfassung antwortet wie eine fehlende“
- *   H4  `app.use(onlyOwnHost)` in server.ts gestrichen → rot: „ein fremder
- *       Host-Kopf …“; die Ausnahme für IP-Adressen gestrichen → rot: „IP-Host“; Bearer wieder
- *       als Ausnahme → rot: „öffnet einen fremden Namen nicht“
- *   H5  GET /verify bestätigt wieder selbst (verifyEmailToken im Handler)
- *       → rot: „der Link allein bestätigt nichts“
+ *   H1  in handleRouteError the branch for 4xx without code deleted → red:
+ *       „GET /% …“ (response „Failed to decode param '%'“); `fail()` in
+ *       validate.ts again with `new Error` → red: „ein eigener Satz …“
+ *   H2  in moveSource again 403 kein_schreibrecht for foreign
+ *       rows → red: “a foreign entry responds like a missing one”
+ *   H4  `app.use(onlyOwnHost)` deleted in server.ts → red: „ein fremder
+ *       Host-Kopf …“; the exception for IP addresses deleted → red: „IP-Host“; bearer again
+ *       as an exception → red: „öffnet einen fremden Namen nicht“
+ *   H5  GET /verify confirms by itself again (verifyEmailToken in the handler)
+ *       → red: „der Link allein bestätigt nichts“
  *
- * Token im Fragment statt in der Abfrage (13.11.2026 gemessen):
- *   N2  tokenToFragment() leitet nie um → rot: „ein
- *       alter Link mit ?token= wird umgeleitet“ (200 statt 303)
+ * Token in the fragment instead of in the query (measured 13.11.2026):
+ *   N2  tokenToFragment() never redirects → red: „ein
+ *       alter Link mit ?token= wird umgeleitet“ (200 instead of 303)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -53,7 +53,7 @@ const freePort = () =>
     });
   });
 
-/** Eine Anfrage mit frei gewähltem Host-Kopf; fetch setzt ihn selbst. */
+/** A request with a freely chosen Host header; fetch sets it itself. */
 function withHost(port, host, pfad, kopf = {}) {
   return new Promise((fertig, fehler) => {
     const r = http.request({ host: '127.0.0.1', port, path: pfad, setHost: false, headers: { host, ...kopf } }, res => {
@@ -68,7 +68,7 @@ function withHost(port, host, pfad, kopf = {}) {
   });
 }
 
-/** Rohe Verbindung: schickt `roh`, sammelt die Antwort und misst bis zum Schliessen. */
+/** Raw connection: sends `roh`, collects the response and measures until closing. */
 function roh(port, text) {
   const start = Date.now();
   const s = net.connect(port, '127.0.0.1', () => s.write(text));
@@ -105,7 +105,7 @@ test('server limits: slow requests, error texts, foreign hosts', {
     bob = await put(namen[1], true);
   const MAILTOKEN = crypto.randomBytes(32).toString('hex');
   const unconfirmed = await put(namen[2], false, crypto.createHash('sha256').update(MAILTOKEN).digest('hex'));
-  // Wie POST /register seit Runde 13: Adresse und Link nur ausstehend.
+  // Like POST /register since round 13: address and link only pending.
   await db.run(
     `UPDATE users SET new_email = email, new_email_token = verification_token, new_email_until = token_expires,
     email = NULL, verification_token = NULL, token_expires = NULL, registration_pending = true WHERE id = $1`,
@@ -274,7 +274,7 @@ test('server limits: slow requests, error texts, foreign hosts', {
 
   await t.test('the link alone confirms nothing, only the POST', async () => {
     await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE 'email-bestaetigen|%'");
-    // Ein Link aus einer älteren Mail (?token=) wird vor dem Laden der Seite zum Fragment.
+    // A link from an older mail (?token=) becomes a fragment before the page loads.
     const alt = await fetch(`${basis}/verify?token=${MAILTOKEN}`, { redirect: 'manual' });
     assert.equal(alt.status, 303, 'ein alter Link mit ?token= wird umgeleitet');
     assert.equal(alt.headers.get('location'), `/verify#token=${MAILTOKEN}`);

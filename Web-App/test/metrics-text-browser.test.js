@@ -1,11 +1,11 @@
 /**
- * Am Telefon stehen die Kennzahlen der Sammlung („4 Sets · 394 Teile“) als Text da, nicht als Pillen:
- * ohne Fläche, Rand und Schatten, in allen drei Designs mit eigener Kennzahlen-Optik. Gemessen im Browser
- * (berechnete Stile), sonst hielte man sie für einen zweiten Umschalter Sets/Teile/Minifiguren.
+ * On the phone the metrics of the collection („4 Sets · 394 Teile“) stand there as text, not as pills:
+ * without surface, border and shadow, in all three themes with their own metrics look. Measured in the browser
+ * (computed styles), otherwise one would take them for a second toggle sets/parts/minifigures.
  *
- * Gegenprobe (am 07.11. gemessen): in mobile.css wieder die Pille (`padding: 5px 12px; border-radius: 999px;`
- * ohne `background: none`) → rot in allen drei Designs („klassisch“, „brick“, „farbfaecher“: Hintergrund bzw. Rand);
- * ohne `border: 0 !important` allein rot im Design „farbfaecher“ (Rand oben 4 px).
+ * Counter-check (measured on 07.11.): in mobile.css the pill again (`padding: 5px 12px; border-radius: 999px;`
+ * without `background: none`) → red in all three themes („klassisch“, „brick“, „farbfaecher“: background or border);
+ * without `border: 0 !important` alone red in the theme „farbfaecher“ (top border 4 px).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

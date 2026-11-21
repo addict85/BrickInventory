@@ -1,32 +1,32 @@
 /**
- * Mit VORGELAGERTER_PROXY glaubt Caddy dem Proxy davor X-Forwarded-For, von
- * rechts gelesen; mit `keiner` niemandem; ohne Angabe startet er nicht. Der Wert
- * geht durch das Startskript aus compose.yaml in ein echtes Caddy (CADDY_BIN oder
- * `caddy` im Pfad) vor einem Echo-Server; ohne Caddy nur das Startskript.
+ * With VORGELAGERTER_PROXY Caddy believes the proxy in front of it about X-Forwarded-For,
+ * read from the right; with `keiner` nobody; without input it does not start. The value
+ * goes through the startup script from compose.yaml into a real Caddy (CADDY_BIN or
+ * `caddy` in the path) in front of an echo server; without Caddy only the startup script.
  *
- * Gegenproben zur Pflichtangabe (13.11.2026 gemessen, je einzeln):
- *   E  im Startskript `""` aus dem Fehlerzweig gestrichen → rot: „ohne Angabe
- *      startet Caddy nicht“ (leer)
- *   F  den Zweig `keiner)` gestrichen → rot: „keiner ergibt die leere Liste“
- *   G  `:?` bei VORGELAGERTER_PROXY in compose.yaml wieder `:-` → rot:
- *      „compose verlangt die Angabe“
- *   H  (14.11.2026) die Prüfung der Präfixe gestrichen → rot: „ein zu weites
- *      Netz startet nicht …“ (0.0.0.0/0: Caddy startet)
- *   I  (14.11.2026) min=8 statt 16 → rot: dieselbe (192.168.0.0/15 startet)
- *   J  (14.11.2026, Runde 24) eng=16 statt 29 → rot: „ein Netz über acht Adressen nur
- *      mit …“ (172.18.0.0/16 startet ohne Bestätigung)
- *   K  (14.11.2026) die Zeile `min=$$eng; [ … ] && min=$$weit` ohne Bestätigungszweig →
- *      rot: dieselbe (mit Bestätigung startet 172.18.0.0/16 nicht)
+ * Counter-checks for the mandatory input (measured 13.11.2026, each alone):
+ *   E  in the startup script `""` deleted from the error branch → red: “without input
+ *      Caddy does not start” (empty)
+ *   F  the branch `keiner)` deleted → red: “keiner yields the empty list”
+ *   G  `:?` at VORGELAGERTER_PROXY in compose.yaml back to `:-` → red:
+ *      “compose requires the input”
+ *   H  (14.11.2026) the prefix check deleted → red: “a too wide
+ *      network does not start …” (0.0.0.0/0: Caddy starts)
+ *   I  (14.11.2026) min=8 instead of 16 → red: the same (192.168.0.0/15 starts)
+ *   J  (14.11.2026, round 24) eng=16 instead of 29 → red: “a network over eight addresses only
+ *      with …” (172.18.0.0/16 starts without confirmation)
+ *   K  (14.11.2026) the line `min=$$eng; [ … ] && min=$$weit` without confirmation branch →
+ *      red: the same (with confirmation 172.18.0.0/16 does not start)
  *
- * Gegenproben (13.11.2026 gemessen mit Caddy v2.11.8, je einzeln):
- *   A  `trusted_proxies static {$VORGELAGERTER_PROXY}` gestrichen → rot:
- *      „mit VORGELAGERTER_PROXY sieht die App den Client“ (127.0.0.1)
- *   B  `trusted_proxies_strict` gestrichen → rot: dieselbe (6.6.6.6, der vom
- *      Client vorangestellte Eintrag)
- *   C  im Block `handle` `header_up X-Forwarded-For {client_ip}` gestrichen →
- *      rot: dieselbe (die ganze Kette samt 127.0.0.1)
- *   D  im Block (anmeldung) dieselbe Zeile gestrichen → rot: „… auch auf den
- *      Anmeldewegen“
+ * Counter-checks (measured 13.11.2026 with Caddy v2.11.8, each alone):
+ *   A  `trusted_proxies static {$VORGELAGERTER_PROXY}` deleted → red:
+ *      “with VORGELAGERTER_PROXY the app sees the client” (127.0.0.1)
+ *   B  `trusted_proxies_strict` deleted → red: the same (6.6.6.6, the entry
+ *      prepended by the client)
+ *   C  in the block `handle` `header_up X-Forwarded-For {client_ip}` deleted →
+ *      red: the same (the whole chain including 127.0.0.1)
+ *   D  the same line deleted in the block (anmeldung) → red: “… also on the
+ *      login paths”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -43,7 +43,7 @@ const CADDY = process.env.CADDY_BIN || (spawnSync('caddy', ['version']).status =
 if (!CADDY && process.env.REQUIRE_CADDY === '1') throw new Error('REQUIRE_CADDY=1, aber kein Caddy (CADDY_BIN)');
 
 const COMPOSE = fs.readFileSync(path.join(ROOT, 'compose.yaml'), 'utf8');
-/** Das Startskript von Caddy aus compose.yaml ($$ → $); statt `exec caddy` gibt es den Wert aus, den Caddy bekäme. */
+/** Caddy's startup script from compose.yaml ($$ → $); instead of `exec caddy` it outputs the value Caddy would get. */
 function startScript(wert, bestaetigt = false) {
   const z = COMPOSE.split('\n');
   const start = z.findIndex(l => /^ {2}caddy:\s*$/.test(l));
@@ -60,7 +60,7 @@ function startScript(wert, bestaetigt = false) {
       .replace(/\$\$/g, '$')
       .replaceAll('/ca-wurzel', tmp)
       .replace(/exec caddy run .*/, 'printf "%s" "${VORGELAGERTER_PROXY-ungesetzt}"');
-    // acme: kein Wurzelordner, keine Schleife im Hintergrund.
+    // acme: no root folder, no loop in the background.
     const env = {
       PATH: process.env.PATH,
       BRICK_TLS: 'acme',
@@ -116,7 +116,7 @@ const freePort = () =>
     });
   });
 
-/** Startet das echte Caddyfile vor `appPort`; liefert eine Anfragefunktion. */
+/** Starts the real Caddyfile in front of `appPort`; returns a request function. */
 async function startCaddy(t, appPort, upstream) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'caddy-vorgelagert-'));
   let caddy = null;
@@ -194,7 +194,7 @@ test('Caddy gives the app the client address behind an upstream proxy', {
   skip: !CADDY && 'kein Caddy (CADDY_BIN)',
   timeout: 120_000,
 }, async t => {
-  // Die App gibt zurück, welches X-Forwarded-For bei ihr ankommt.
+  // The app returns which X-Forwarded-For arrives at it.
   const app = http.createServer((req, res) => {
     req.resume();
     req.on('end', () => res.end(String(req.headers['x-forwarded-for'] ?? '')));

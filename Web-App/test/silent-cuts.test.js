@@ -1,13 +1,13 @@
 /**
- * Kein Testausschnitt, auf dem NUR verneinende Zusicherungen stehen, darf
- * ungesichert geschnitten sein.
+ * No test excerpt on which ONLY negating assertions stand may be
+ * cut unsecured.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-/** Zusicherungen, die auf einem LEEREN Ausschnitt gruen bleiben. */
+/** Assertions that stay green on an EMPTY excerpt. */
 const NEGATING = new Set(['doesNotMatch', 'doesNotThrow', 'notMatch']);
 
 test('no snippet with only negative assertions is unsecured', () => {
@@ -26,17 +26,17 @@ test('no snippet with only negative assertions is unsecured', () => {
       const ziel = m[1];
       geprueft++;
 
-      // Der umgebende Testblock, grob: bis zum naechsten "\n});"
+      // The surrounding test block, roughly: up to the next "\n});"
       let block = src.slice(m.index + m[0].length, m.index + m[0].length + 3000);
       const ende = block.indexOf('\n});');
       if (ende > 0) block = block.slice(0, ende);
 
-      // Welche Zusicherungen laufen auf diesem Ausschnitt?
+      // Which assertions run on this excerpt?
       const arten = [...block.matchAll(new RegExp(`assert\\.(\\w+)\\(\\s*${ziel}\\b`, 'g'))].map(a => a[1]);
-      if (!arten.length) continue; // wird nur weitergereicht
-      if (arten.some(a => !NEGATING.has(a))) continue; // eine positive genuegt
+      if (!arten.length) continue; // is only passed on
+      if (arten.some(a => !NEGATING.has(a))) continue; // a positive one suffices
 
-      // Doch abgesichert?
+      // Secured after all?
       const abgeleitet = new RegExp(`(\\w+)\\s*=\\s*${ziel}\\.indexOf\\(`, 'g');
       const indizes = [...block.matchAll(abgeleitet)].map(a => a[1]);
       if (indizes.some(n => new RegExp(`assert\\.ok\\([^)]*\\b${n}\\b\\s*[><!=]`).test(block))) continue;
@@ -45,9 +45,9 @@ test('no snippet with only negative assertions is unsecured', () => {
     }
   }
 
-  // Selbstbeweis: Findet die Suche keine Schnitte, waere die Zusicherung
-  // darunter still gruen — dieselbe Fehlerart, gegen die dieser Test gebaut
-  // ist. GEMESSEN sind es 102.
+  // Self-proof: if the search finds no cuts, the assertion below would be
+  // silently green — the same kind of error this test is built
+  // against. MEASURED there are 102.
   assert.ok(geprueft > 50, `Nur ${geprueft} Schnitte gefunden (gemessen: 102) — das Suchmuster ist veraltet.`);
 
   assert.deepEqual(

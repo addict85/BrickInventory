@@ -1,16 +1,16 @@
 /**
- * Der Einrichtungsstand vor der Anmeldung: öffentlich, aber ohne Konten und
- * ohne Schlüssel; der Eingang lässt ohne Sitzung nur diesen Pfad durch.
+ * The setup state before login: public, but without accounts and
+ * without keys; without a session the entry only lets this path through.
  *
- * Gegenproben:
- *   A  Konten-Zähler in setupStatus.ts entfernt → rot: „für den Verwalter steht das Konto erst auf bereit, …“
- *   B  Pfad aus PUBLIC gestrichen               → rot: 401 statt 200
- *   C  users-Zeile in die Antwort übernommen         → rot: „keine Adressen, keine Namen“
- *   D  BrickLink-/Rebrickable-Prüfung in setupStatus.ts entfernt → rot: „mit hinterlegter Quelle gilt die Einrichtung als begonnen“
- *   E  in routes/api_v1/setup.ts `verwalter: true` fest gesetzt (07.11.2026)
- *      → rot: „ohne Verwalter verrät der Stand kein Startpasswort“
+ * Counter-checks:
+ *   A  account counter removed in setupStatus.ts → red: „für den Verwalter steht das Konto erst auf bereit, …“
+ *   B  path deleted from PUBLIC                    → red: 401 instead of 200
+ *   C  users row taken into the response            → red: „keine Adressen, keine Namen“
+ *   D  BrickLink/Rebrickable check removed in setupStatus.ts → red: „mit hinterlegter Quelle gilt die Einrichtung als begonnen“
+ *   E  in routes/api_v1/setup.ts `verwalter: true` fixed (07.11.2026)
+ *      → red: „ohne Verwalter verrät der Stand kein Startpasswort“
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const { after } = require('node:test');
@@ -25,8 +25,8 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const db = testData();
 
-// Eine offene Verbindung aus dem Pool hält den Prozess am Leben; im Volllauf steht dann
-// die ganze Datei still, statt zu enden. Deshalb schliesst die Datei ihren Pool selbst.
+// An open connection from the pool keeps the process alive; in the full run the
+// whole file then stands still instead of ending. Hence the file closes its pool itself.
 after(() => db.pool.end().catch(() => {}));
 
 test('setup state without login', { concurrency: 1 }, async t => {
@@ -68,7 +68,7 @@ test('setup state without login', { concurrency: 1 }, async t => {
     assert.equal(typeof s.ok, 'boolean');
     assert.equal(typeof s.pflicht, 'boolean');
   }
-  // Ein Startpasswort ist noch gesetzt; ohne Verwalter heisst „konto“ nur „es gibt eines“.
+  // An initial password is still set; without an admin „konto“ only means „there is one“.
   const konto = d.schritte.find(s => s.id === 'konto');
   assert.equal(konto.ok, true, 'ohne Verwalter verrät der Stand kein Startpasswort');
   assert.equal(d.basis_url, null, 'ohne Verwalter keine Basis-URL');
@@ -79,14 +79,14 @@ test('setup state without login', { concurrency: 1 }, async t => {
     false,
     'für den Verwalter steht das Konto erst auf bereit, wenn das Startpasswort ersetzt ist',
   );
-  // Keine Adressen, keine Namen, keine Schlüsselnamen.
+  // No addresses, no names, no key names.
   const text = JSON.stringify(d);
   assert.doesNotMatch(text, /@/);
   assert.doesNotMatch(text, new RegExp(name));
   assert.doesNotMatch(text, /api_key|smtp_|password/i);
 
-  // Eine hinterlegte Quelle beendet die Ersteinrichtung: Der Prüfknopf verschwindet.
-  // Über den echten Schreibweg, weil Schlüssel verschlüsselt liegen (SECRET_KEYS).
+  // A stored source ends the initial setup: the check button disappears.
+  // Via the real write path, because keys lie encrypted (SECRET_KEYS).
   await _req('src/settings/settings.js').setGlobalSetting('rebrickable_api_key', 'probe');
   const d2 = await (await fetch(srv.base + '/api/v1/einrichtung/stand')).json();
   assert.equal(d2.konfiguriert, true, 'mit hinterlegter Quelle gilt die Einrichtung als begonnen');

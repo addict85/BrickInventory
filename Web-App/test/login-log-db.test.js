@@ -1,26 +1,26 @@
 /**
- * Fehlgeschlagene Anmeldungen, Sperren und falsche Codes hinterlassen je eine
- * Warnzeile (JSON auf stderr und in app_logs), ohne Passwort, Code oder den
- * eingegebenen Namen. Erreicht ein Konto die Sperre, bekommt der Inhaber
- * höchstens einmal am Tag eine Mail.
+ * Failed logins, locks and wrong codes each leave a
+ * warning line (JSON on stderr and in app_logs), without password, code or the
+ * entered name. If an account reaches the lock, the owner gets
+ * a mail at most once a day.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  reportLoginEvent() in fehlversuch() entfernt → rot: „ein unbekannter
- *      Name …“, „falsches Passwort …“, „ein falscher Code …“
- *   B  die Zeile bei loginAllowed() entfernt → rot: „die Sperre steht im Protokoll“
- *   C  reportLoginEvent() in gebremst() (passwortBestaetigung) entfernt →
- *      rot: „eine falsche Bestätigung …“, „die Zeile landet in app_logs“
- *   D  in fehlversuch() die Mail entfernt → rot: „falsches Passwort …“ (keine
- *      Mail), „die Mail höchstens einmal am Tag“
- *   E  accountThrottled() vor der Mail entfernt → rot: „die Mail höchstens einmal am Tag“
- *   F  in reportLoginEvent() `name` mitgegeben → rot: „ein unbekannter Name …“
- * Gegenproben Runde 17 (05.11.2026 gemessen, je einzeln):
- *   G  kontoKennung() gibt für unbekannte Namen wieder den Klartext zurück →
- *      rot: „ein unbekannter Name steht nur als HMAC …“ (Teil 1)
- *   H  reportLogin() in checkCredentials() entfernt → rot: „eine
- *      gelungene Anmeldung …“
+ * Counter-checks (measured 04.11.2026, each on its own):
+ *   A  reportLoginEvent() removed in fehlversuch() → red: “an unknown
+ *      name …”, “wrong password …”, “a wrong code …”
+ *   B  the line at loginAllowed() removed → red: “the lock is in the log”
+ *   C  reportLoginEvent() removed in gebremst() (passwortBestaetigung) →
+ *      red: “a wrong confirmation …”, “the line ends up in app_logs”
+ *   D  the mail removed in fehlversuch() → red: “wrong password …” (no
+ *      mail), “the mail at most once a day”
+ *   E  accountThrottled() before the mail removed → red: “the mail at most once a day”
+ *   F  `name` passed along in reportLoginEvent() → red: “an unknown name …”
+ * Counter-checks round 17 (measured 05.11.2026, each on its own):
+ *   G  kontoKennung() again returns the plaintext for unknown names →
+ *      red: “an unknown name is only stored as an HMAC …” (part 1)
+ *   H  reportLogin() removed in checkCredentials() → red: “a
+ *      successful login …”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -105,7 +105,7 @@ test('login events in the log', { concurrency: 1 }, async t => {
     }).then(r => r.status);
   const anmelden = (username, password, code) =>
     ruf('/login', { username, password, ohne_token: true, ...(code ? { code } : {}) });
-  /** Die Warnzeilen eines Ereignisses als geparstes JSON. */
+  /** The warning lines of an event as parsed JSON. */
   const ereignisse = art => zeilen.map(z => JSON.parse(z)).filter(z => z.kontext?.ereignis === art);
   const waitOnMails = async n => {
     for (let i = 0; i < 60 && mails.length < n; i++) await new Promise(r => setTimeout(r, 25));
@@ -115,7 +115,7 @@ test('login events in the log', { concurrency: 1 }, async t => {
     assert.equal(await anmelden(`niemand_${P}`, FALSCH), 401);
     const [z] = ereignisse('anmeldung_fehlgeschlagen');
     assert.equal(z?.stufe, 'warn', 'keine Warnzeile');
-    // localhost ist je nach Rechner 127.0.0.1 oder ::1 (gekürzt auf das /64).
+    // Depending on the machine, localhost is 127.0.0.1 or ::1 (shortened to the /64).
     assert.match(z.kontext.adresse, /^(127\.0\.0\.1|0:0:0:0::\/64)$/);
     assert.equal(z.kontext.konto, 'unbekannt');
     assert.ok(
@@ -177,7 +177,7 @@ test('login events in the log', { concurrency: 1 }, async t => {
   await t.test('the mail at most once a day', async () => {
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'login%'`);
     for (let i = 0; i < 5; i++) await anmelden(NAME, FALSCH);
-    await waitOnMails(2); // eine zweite Mail käme hier an
+    await waitOnMails(2); // a second mail would arrive here
     assert.equal(mails.length, 1, JSON.stringify(mails));
   });
 

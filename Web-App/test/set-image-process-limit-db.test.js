@@ -1,23 +1,23 @@
 /**
- * Set-Bilder über die Prozessgrenze wie in compose.yaml: Der Web-Prozess legt
- * das über /api/v1/img-proxy geholte Bild unter images/sets ab und notiert es,
- * der getrennte Job-Prozess erzeugt Vorschau und image_local. Das CDN ist ein
- * lokaler Server (helpers/cdn-redirect.js), der wie das echte Abrufe ohne
- * Browser-Kennung mit 403 abweist.
+ * Set images across the process boundary as in compose.yaml: the web process stores
+ * the image fetched via /api/v1/img-proxy under images/sets and notes it,
+ * the separate job process creates preview and image_local. The CDN is a
+ * local server (helpers/cdn-redirect.js) that, like the real one, rejects fetches without
+ * a browser identifier with 403.
  *
- * Gegenprobe (09.11.2026 gemessen): in passThroughImage()
- * (src/images/http/imageProxy.ts) `originalMissing` fest auf false gesetzt →
- * rot: „nur die Vorschau im Cache: der Proxy holt das Original und legt es ab“
- * (keine Datei 71888-1.jpg) und „der Job-Prozess erzeugt …“; der Fall „frisch
- * vom CDN“ blieb grün.
- * Gegenprobe (09.11.2026 gemessen): fromCdn() ohne `ersatz` aufgerufen → rot:
- * „weist das CDN den neuen Abruf ab, kommt die Vorschau aus dem Cache“ (403).
+ * Counter-check (measured 09.11.2026): in passThroughImage()
+ * (src/images/http/imageProxy.ts) `originalMissing` fixed to false →
+ * red: “only the preview in the cache: the proxy fetches the original and stores it”
+ * (no file 71888-1.jpg) and “the job process creates …”; the case “fresh
+ * from the CDN” stayed green.
+ * Counter-check (measured 09.11.2026): fromCdn() called without `ersatz` → red:
+ * “if the CDN rejects the new request, the preview comes from the cache” (403).
  *
- * Gegenprobe (15.11.2026 gemessen): in passThroughImage() `ablegen` ohne die Frage nach
- * dem Blickfeld (nur `!!setNummer`) → rot: „frisch vom CDN …“ (60000-1.jpg liegt in
- * images/sets, obwohl das Konto das Set nicht führt).
+ * Counter-check (measured 15.11.2026): in passThroughImage() `ablegen` without the question about
+ * the scope (only `!!setNummer`) → red: “fresh from the CDN …” (60000-1.jpg lies in
+ * images/sets although the account does not carry the set).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -43,9 +43,9 @@ const sharp = require(path.join(ROOT, 'node_modules', 'sharp'));
 
 const FRESH = '11516-1';
 const ONLY_PREVIEW = '71888-1';
-/** Das CDN weist dieses Set für jede Kennung ab. */
+/** The CDN rejects this set for every identifier. */
 const LOCKED = '10294-1';
-/** Im Katalog, aber nicht im Blickfeld des Kontos. */
+/** In the catalog, but not in the account's scope. */
 const FREMD = '60000-1';
 const imageAddress = (/** @type {string} */ sn) => `https://cdn.rebrickable.com/media/sets/${sn}.jpg`;
 
@@ -161,7 +161,7 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
     fs.rmSync(wurzel, { recursive: true, force: true });
   });
 
-  // Ohne heutige Stempel lädt der Job-Prozess den Rebrickable-Katalog herunter.
+  // Without today's stamps the job process downloads the Rebrickable catalog.
   for (const k of ['rb_csv_last_sync', 'rb_part_categories_last_sync', 'rb_catalog_extras_last_sync'])
     await db.run(
       `INSERT INTO run_state (key, value) VALUES ($1, to_char(NOW(), 'YYYY-MM-DD'))
@@ -187,8 +187,8 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
     crypto.createHash('sha256').update(TOKEN).digest('hex'),
   ]);
 
-  // Nur die Vorschau im Proxy-Cache: So steht es nach der 30-Tage-Pflege, die das
-  // unbenutzte Original löscht und die gelesene Vorschau stehen lässt.
+  // Only the preview in the proxy cache: that is how it stands after the 30-day maintenance, which
+  // deletes the unused original and leaves the read preview standing.
   const { proxyCacheKey } = _req('src/images/images.js');
   fs.mkdirSync(cache, { recursive: true });
   const previewInCache = await sharp(bild).resize(200, 200).jpeg().toBuffer();
@@ -205,13 +205,13 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
     !!(await db.get('SELECT 1 AS ja FROM image_wanted WHERE url = $1 AND set_number = $2', [imageAddress(sn), sn]));
 
   await t.test('fresh from the CDN: the web process stores the image and notes it', async () => {
-    // Ein Set ausserhalb des Blickfelds kommt durch, landet aber weder in images/sets noch im Bildbedarf.
+    // A set outside the scope gets through, but lands neither in images/sets nor in the image demand.
     const fremd = await proxy(FREMD);
     assert.deepEqual([fremd.status, fremd.bytes], [200, bild.length]);
     const r = await proxy(FRESH);
     assert.deepEqual([r.status, r.typ, r.bytes], [200, 'image/jpeg', bild.length]);
     assert.ok(await bis(() => liegt(`${FRESH}.jpg`), 5_000), `${FRESH}.jpg fehlt\n${web.log.slice(-1500)}`);
-    // Der Puffer geht alle 10 s in die Datenbank.
+    // The buffer goes into the database every 10 s.
     assert.ok(await bis(() => noted(FRESH), 15_000), `keine Notiz für ${FRESH}\n${web.log.slice(-1500)}`);
     assert.deepEqual([liegt(`${FREMD}.jpg`), await noted(FREMD)], [false, false]);
   });
@@ -254,7 +254,7 @@ test('set image via web and job process', { concurrency: 1, timeout: 180_000 }, 
       `Dateien: ${fs.existsSync(sets) ? fs.readdirSync(sets).join(', ') : '(kein Ordner)'}\n${jobs.log.slice(-2000)}`,
     );
     const vorschau = await sharp(path.join(sets, `${ONLY_PREVIEW}_thumb.jpg`)).metadata();
-    // 400 × 300 eingepasst, nicht zugeschnitten (UX-Prüfung 25, B1).
+    // 400 × 300 fitted, not cropped (UX check 25, B1).
     assert.deepEqual([vorschau.format, vorschau.width, vorschau.height], ['jpeg', 200, 150]);
   });
 });

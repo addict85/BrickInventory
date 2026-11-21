@@ -1,16 +1,16 @@
 /**
- * UX-Prüfung 26 im echten Chrome: die Sprungleiste im Konto (N5) auf Telefonbreite und am Rechner, hell und
- * dunkel. Sie steht unter dem Titel (nicht über der unteren Leiste), rollt am Telefon waagrecht ohne die Seite
- * zu verbreitern, und jeder Link bringt seine Überschrift ins Bild.
+ * UX review 26 in real Chrome: the jump bar in the account (N5) at phone width and on the desktop, light and
+ * dark. It sits below the title (not above the bottom bar), scrolls horizontally on the phone without widening
+ * the page, and every link brings its heading into view.
  *
- * Gegenproben (15.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  Leiste wieder als <nav> statt <div role="navigation"> → rot: alle vier Teilfälle („Leiste klebt fest wie
- *      die Hauptnavigation“; am Telefon lag sie über der unteren Leiste)
- *   B  mobile Regel .konto-nav{flex-wrap:nowrap;overflow-x:auto} entfernt → rot: beide 390-px-Fälle („Leiste
- *      bricht um“)
+ * Counter-checks (measured 15.11.2026, each alone, bundle rebuilt):
+ *   A  bar back as <nav> instead of <div role="navigation"> → red: all four subcases (“bar is fixed like
+ *      the main navigation”; on the phone it lay over the bottom bar)
+ *   B  mobile rule .konto-nav{flex-wrap:nowrap;overflow-x:auto} removed → red: both 390 px cases (“bar
+ *      wraps”)
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Skipped without Chrome (CHROME_BIN, google-chrome, chromium).
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -63,7 +63,7 @@ test('N5 jump bar in the account', { timeout: 240_000 }, async t => {
         await app.bis(`document.getElementById('tab-profil').classList.contains('active')`, 'Konto offen');
         await app.ruhig();
         const m = await app.b.auswerten(MASS);
-        // Seit Runde 27 klebt sie unter dem Kopf (sticky); fest wie die Hauptnavigation (fixed) bleibt falsch.
+        // Since round 27 it sticks below the header (sticky); fixed like the main navigation stays wrong.
         assert.equal(m.situation, 'sticky', 'Leiste klebt fest wie die Hauptnavigation');
         assert.ok(m.belowTitle, 'Leiste steht nicht unter dem Titel');
         assert.equal(m.zeilen, 1, 'Leiste bricht um');

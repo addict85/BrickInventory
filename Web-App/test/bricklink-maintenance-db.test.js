@@ -1,15 +1,15 @@
 /**
- * BrickLink in Wartung: Jede API-Anfrage wird auf maintenance.bricklink.com
- * umgeleitet. Der Klient meldet das als eigenen Fehler, und der Preislauf hört
- * nach dem ersten Treffer auf, statt jedes Set einzeln scheitern zu lassen.
+ * BrickLink under maintenance: every API request is redirected to maintenance.bricklink.com.
+ * The client reports that as its own error, and the price run stops
+ * after the first hit instead of letting every set fail individually.
  *
- * Gegenproben (06.11.2026):
- *   A  in bricklinkRequest() die Prüfung auf 3xx gestrichen → rot: „eine
- *      Umleitung ist ‚nicht erreichbar‘“ (BrickLink non-JSON (HTTP 302))
- *   B  in fetchAndCachePrice() den Zweig für BricklinkNotReachable gestrichen
- *      → rot: „der Preislauf meldet es einmal“ (eine Error-Zeile je Set)
+ * Counter-checks (06.11.2026):
+ *   A  in bricklinkRequest() the check for 3xx deleted → red: “a
+ *      redirect is ‘not reachable’” (BrickLink non-JSON (HTTP 302))
+ *   B  in fetchAndCachePrice() the branch for BricklinkNotReachable deleted
+ *      → red: “the price run reports it once” (one error line per set)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -28,7 +28,7 @@ const db = testData();
 
 const MAINTENANCE = 'https://maintenance.bricklink.com:443/recovery.html';
 
-/** Jede Anfrage an BrickLink antwortet wie während der Wartung. */
+/** Every request to BrickLink answers as during maintenance. */
 function maintenanceFake(t) {
   const aufrufe = [];
   t.mock.method(https, 'get', (url, _o, atResponse) => {
@@ -51,7 +51,7 @@ test('BrickLink in maintenance', { concurrency: 1 }, async t => {
   const { setGlobalSetting } = _req('src/settings/settings.js');
   const { runPriceRefresh } = _req('src/finances/priceRun.js');
 
-  // Ein Klient mit allen vier Schlüsseln und freiem Kontingent, gestellt an der Verdrahtung.
+  // A client with all four keys and free quota, provided at the wiring.
   const { bricklinkRequest } = createBricklink({
     async schluessel() {
       return 'x';

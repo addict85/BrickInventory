@@ -1,15 +1,15 @@
 /**
- * Bilder aus fremden Adressen: Was unter /images/ landet, liefert der Server
- * vom eigenen Ursprung aus. Geprüft wird downloadImage() selbst, mit einem
- * nachgestellten https.get — ohne Netz.
+ * Images from foreign addresses: what lands under /images/ the server delivers
+ * from its own origin. What is checked is downloadImage() itself, with a
+ * rebuilt https.get — without network.
  *
- * Gegenproben (am 25.10. gemessen):
- *   A  hostAllowed-Prüfung in loadImage() entfernt → rot: „fremder Host wird abgerufen"
- *   B  imageTypeAllowed-Prüfung entfernt            → rot: „SVG gespeichert"
- *   C  filePart() in downloadImage umgangen      → rot: „Pfad aus der Teilenummer"
- *   D  Grössengrenze entfernt                     → rot: „übergrosses Bild gespeichert"
- *   E  in imageExtension Object.hasOwn durch `in` ersetzt (02.11. gemessen)
- *                                                 → rot: „constructor als Endung übernommen"
+ * Counter-checks (measured on 25.10.):
+ *   A  hostAllowed check removed in loadImage() → red: “foreign host is fetched"
+ *   B  imageTypeAllowed check removed           → red: “SVG stored"
+ *   C  filePart() bypassed in downloadImage     → red: “path from the part number"
+ *   D  size limit removed                       → red: “oversized image stored"
+ *   E  in imageExtension Object.hasOwn replaced by `in` (measured 02.11.)
+ *                                               → red: “constructor taken as extension"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -28,7 +28,7 @@ const { PART_IMAGES_DIR, DATA_DIR } = _req('src/infra/appPaths.js');
 const CDN = 'https://cdn.rebrickable.com/media/parts/elements';
 const NUMBER = `bildtest${process.pid}`;
 
-/** https.get nachstellen: zählt Aufrufe und liefert die vorgegebene Antwort. */
+/** Rebuild https.get: counts calls and delivers the predefined response. */
 function placeAfter(t, { status = 200, typ = 'image/png', body = Buffer.from('PNGDATEN') } = {}) {
   const aufrufe = [];
   const echt = https.get;

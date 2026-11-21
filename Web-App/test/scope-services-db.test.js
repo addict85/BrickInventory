@@ -1,18 +1,18 @@
 /**
- * Den Bereich einer Anfrage lösen die Dienste auf, nicht die Routen: Eine Sicht
- * (wer fragt, welche Konten er gewählt hat) geht hinein, die Regel des
- * Haushalts gilt darin. Ein weiterer Aufrufer (Job, neuer Endpunkt) muss sie
- * nicht nachbauen.
+ * The services resolve the scope of a request, not the routes: a view
+ * (who asks, which accounts he has selected) goes in, the rule of the
+ * household applies inside. A further caller (job, new endpoint) does not have to
+ * rebuild it.
  *
- * Gegenproben (05.11.2026 gemessen):
- *   A  in scopeFrom() `scopeKind(v.konten)` durch 'all' ersetzt → rot:
- *      „eine Sicht wählt die Konten im Dienst“
- *   B  in deleteSetFor() die Kontenwahl übergangen (`gewaehlt = writable`)
- *      → rot: „Löschen folgt der Kontenwahl, im Schreibbereich“
- *   C  in schreibziel() ohne fachfehler (null zurück) → rot: „ein Unterkonto
- *      schreibt nicht für sein Hauptkonto“
+ * Counter-checks (measured 05.11.2026):
+ *   A  in scopeFrom() `scopeKind(v.konten)` replaced by 'all' → red:
+ *      “a view selects the accounts in the service”
+ *   B  in deleteSetFor() the account selection skipped (`gewaehlt = writable`)
+ *      → red: “deleting follows the account selection, in the write scope”
+ *   C  in schreibziel() without fachfehler (null returned) → red: “a sub-account
+ *      does not write for its main account”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

@@ -1,25 +1,25 @@
 /**
- * Der Schnellstart in README.md (Wurzel) und Web-App/README.md führt zu einer
- * Installation, die compose.yaml starten kann. Die Befehle des Blocks laufen
- * wirklich, in einem Sandkasten mit compose.yaml, .env.example und scripts/;
- * nur git und docker nicht. Danach liest `docker compose config` das Ergebnis: …
+ * The quick start in README.md (root) and Web-App/README.md leads to an
+ * installation that compose.yaml can start. The commands of the block really run,
+ * in a sandbox with compose.yaml, .env.example and scripts/;
+ * only git and docker do not. Afterwards `docker compose config` reads the result: …
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  compose.yaml: Secret-Datei ./geheimnisse/db_app_passwort statt …_password
- *      → rot: „Secret db_app_password: geheimnisse/db_app_passwort fehlt“
- *   B  README.md: `sh scripts/geheimnisse-einrichten.sh` gestrichen → rot:
+ * Counter-checks (measured 04.11.2026, each on its own):
+ *   A  compose.yaml: secret file ./geheimnisse/db_app_passwort instead of …_password
+ *      → red: „Secret db_app_password: geheimnisse/db_app_passwort fehlt“
+ *   B  README.md: `sh scripts/geheimnisse-einrichten.sh` deleted → red:
  *      „Secret session_secret: … fehlt“
- *   C  Web-App/README.md: `scripts/ca-einrichten.sh` in einen Namen geändert,
- *      den es nicht gibt → rot: „Schritt scheitert: sudo sh scripts/…“
- *   D  compose.yaml: bei app `ports: ["3000:3000"]` → rot: „app veröffentlicht
+ *   C  Web-App/README.md: `scripts/ca-einrichten.sh` changed to a name
+ *      that does not exist → red: „Schritt scheitert: sudo sh scripts/…“
+ *   D  compose.yaml: for app `ports: ["3000:3000"]` → red: „app veröffentlicht
  *      keinen Port“
- *   E  compose.yaml: bei jobs `image:` gestrichen → rot: „jobs zieht das
+ *   E  compose.yaml: `image:` deleted for jobs → red: „jobs zieht das
  *      veröffentlichte Image“
- *   F  README.md: `docker compose logs app worker` → rot: „unbekannter Dienst worker“;
- *      (09.11.2026) `docker compose exec worker cat …` → rot: „unbekannter Dienst worker“
- * Gegenprobe L1 (05.11.2026 gemessen): in beiden READMEs wieder `docker
- *   compose pull` statt `sh scripts/image-pruefen.sh` → rot: „docker compose
- *   config“ (BRICK_IMAGE fehlt).
+ *   F  README.md: `docker compose logs app worker` → red: „unbekannter Dienst worker“;
+ *      (09.11.2026) `docker compose exec worker cat …` → red: „unbekannter Dienst worker“
+ * Counter-check L1 (measured 05.11.2026): in both READMEs again `docker
+ *   compose pull` instead of `sh scripts/image-pruefen.sh` → red: „docker compose
+ *   config“ (BRICK_IMAGE missing).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,7 +38,7 @@ const PUBLISHED = fs
   .readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'docker-publish.yml'), 'utf8')
   .match(/^\s*IMAGE:\s*(\S+)/m)?.[1];
 
-/** Die Zeilen des ersten ```bash-Blocks im Abschnitt, ohne Kommentare. */
+/** The lines of the first ```bash block in the section, without comments. */
 function quickStart(datei, abschnitt) {
   const text = fs.readFileSync(datei, 'utf8');
   const ab = text.indexOf(`\n${abschnitt}\n`);
@@ -58,7 +58,7 @@ function sandbox(t) {
   fs.copyFileSync(path.join(ROOT, '.env.example'), path.join(ort, '.env.example'));
   fs.copyFileSync(path.join(ROOT, 'Caddyfile'), path.join(ort, 'Caddyfile'));
   fs.cpSync(path.join(ROOT, 'scripts'), path.join(ort, 'scripts'), { recursive: true });
-  // cosign und docker als Ersatz: Die Signaturprüfung meldet DIGEST, docker schreibt nur mit.
+  // cosign and docker as stand-ins: the signature check reports DIGEST, docker only records.
   const bin = path.join(ort, 'ersatz-bin');
   fs.mkdirSync(bin);
   fs.writeFileSync(
@@ -97,8 +97,8 @@ for (const { datei, abschnitt } of DOKUS) {
         dockerRows.push(zeile);
         continue;
       }
-      // sudo nur für die Dateirechte; CA_ORDNER nennt denselben Ordner wie die
-      // Vorgabe und erlaubt den Lauf ohne root (CI).
+      // sudo only for the file permissions; CA_ORDNER names the same folder as the
+      // default and allows the run without root (CI).
       const r = spawnSync('sh', ['-c', zeile.replace(/^sudo\s+/, '')], {
         cwd: ort,
         encoding: 'utf8',
@@ -123,7 +123,7 @@ for (const { datei, abschnitt } of DOKUS) {
     const j = JSON.parse(k.stdout);
     const dienste = Object.keys(j.services);
 
-    // Jeder Dienst, den ein docker-Befehl des Schnellstarts nennt, existiert.
+    // Every service named by a docker command of the quick start exists.
     for (const z of dockerRows) {
       const [, command, rest = ''] = z.match(/^docker compose (\w+)((?:\s+[\w-]+)*)/) || [];
       assert.ok(command, `unbekannte Form: ${z}`);
@@ -131,12 +131,12 @@ for (const { datei, abschnitt } of DOKUS) {
         .trim()
         .split(/\s+/)
         .filter(w => w && !w.startsWith('-'));
-      // Bei exec und run folgt auf den Dienst der Befehl im Container.
+      // With exec and run the command in the container follows the service.
       for (const d of ['exec', 'run'].includes(command) ? words.slice(0, 1) : words)
         assert.ok(dienste.includes(d), `unbekannter Dienst ${d} in „${z}“`);
     }
 
-    // Die Schritte haben jede Datei angelegt, die compose als Secret einhängt.
+    // The steps have created every file that compose mounts as a secret.
     const brauchen = new Set(
       Object.values(j.services).flatMap(d => (d.profiles ? [] : (d.secrets || []).map(s => s.source))),
     );
@@ -148,8 +148,8 @@ for (const { datei, abschnitt } of DOKUS) {
     for (const s of ['session_secret', 'db_password', 'db_app_password'])
       assert.ok(fs.statSync(j.secrets[s].file).size >= 16, `Secret ${s} ist leer`);
 
-    // BRICK_HOST aus .env kommt bei Caddy an, und Caddy findet die eigene CA
-    // (sein Startskript wählt sie an /ca-eigen/zwischen.key).
+    // BRICK_HOST from .env arrives at Caddy, and Caddy finds its own CA
+    // (its start script selects it at /ca-eigen/zwischen.key).
     assert.match(j.services.caddy.environment.BRICK_HOST, /\S/, 'BRICK_HOST ist bei Caddy leer');
     const ca = j.services.caddy.volumes.find(v => v.target === '/ca-eigen');
     for (const f of ['zwischen.key', 'zwischen-kette.crt', 'root.crt'])
@@ -158,7 +158,7 @@ for (const { datei, abschnitt } of DOKUS) {
         `Caddy findet ${f} nicht unter ${path.relative(ort, ca.source)}`,
       );
 
-    // Erreichbar nur über Caddy; app, jobs und schluessel teilen das veröffentlichte Image.
+    // Reachable only via Caddy; app, jobs and schluessel share the published image.
     assert.deepEqual(j.services.app.ports ?? [], [], 'app veröffentlicht keinen Port');
     assert.ok(
       j.services.caddy.ports.some(p => p.target === 443),
@@ -186,10 +186,10 @@ for (const { datei, abschnitt } of DOKUS) {
   });
 }
 
-// ── Das Bedrohungsmodell (docs/SICHERHEIT.md) nennt nur, was es gibt ────────
-// Gegenproben (05.11.2026 gemessen, je einzeln): einen Verweis wieder auf
-// `utils/konfig.ts` → rot „jeder genannte Pfad …“; „Dependabot“ in einen
-// Absatz → rot „kein Dependabot …“; einen Beleg `compose-pgweb` ergänzt → rot
+// ── The threat model (docs/SICHERHEIT.md) only names what exists ────────
+// Counter-checks (measured 05.11.2026, each on its own): a reference back to
+// `utils/konfig.ts` → red „jeder genannte Pfad …“; „Dependabot“ into a
+// paragraph → red „kein Dependabot …“; a reference `compose-pgweb` added → red
 // „jeder genannte Test existiert“.
 const ROOT_DOCS = path.join(__dirname, '..', '..');
 const TEXT = fs.readFileSync(path.join(ROOT_DOCS, 'docs', 'SICHERHEIT.md'), 'utf8');
@@ -226,7 +226,7 @@ test('every named test exists', () => {
       .filter(n => n.endsWith('.test.js'))
       .map(n => n.replace(/\.test\.js$/, '')),
   );
-  // Belege stehen nach einem Gedankenstrich, als `name` mit Bindestrich, durch Kommas getrennt.
+  // References stand after a dash, as `name` with a hyphen, separated by commas.
   const receipts = [...TEXT.matchAll(/ —\s+((?:`[a-z0-9-]+`(?:,\s*)?)+)/g)].flatMap(m =>
     [...m[1].matchAll(/`([a-z0-9-]+)`/g)].map(x => x[1]),
   );

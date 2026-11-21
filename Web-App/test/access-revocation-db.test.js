@@ -1,22 +1,22 @@
 /**
- * Widerruf von App-Zugängen: nur die ganze Kennung aus der Geräteliste, ein
- * fremder Zugang nur mit Passwort, der eigene ohne. „Alle anderen“ geht in
- * einer bestätigten Anfrage und lässt den eigenen Zugang stehen. Der Inhaber
- * bekommt einen Hinweis.
+ * Revoking app accesses: only the full identifier from the device list, a
+ * foreign access only with password, the own one without. “All others” goes in
+ * one confirmed request and leaves the own access in place. The owner
+ * gets a hint.
  *
- * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in PATH (src/contract/base.ts) tokenId wieder /^[A-Za-z0-9_-]{1,64}$/
- *      → rot: „ein Präfix der Kennung wird abgewiesen“ (200 statt 400)
- *   B  in DELETE /settings/tokens/:tokenId die Bestätigung gestrichen → rot:
- *      „ein fremder Zugang braucht das Passwort“ (200, Zugang weg)
- *   C  hintInBackground() beim Widerruf gestrichen → rot: „… der Inhaber
- *      bekommt einen Hinweis“
- *   D  in andere-beenden `null` statt des eigenen Hashes an
- *      deleteOtherAccesses → rot: „alle anderen: … der eigene bleibt“
- *   E  deleteAccess ohne `user_id = $1` → rot: „ein fremdes Konto
- *      widerruft nichts“
+ * Counter-checks (measured 09.11.2026, each alone):
+ *   A  in PATH (src/contract/base.ts) tokenId back to /^[A-Za-z0-9_-]{1,64}$/
+ *      → red: “a prefix of the identifier is rejected” (200 instead of 400)
+ *   B  in DELETE /settings/tokens/:tokenId the confirmation deleted → red:
+ *      “a foreign access needs the password” (200, access gone)
+ *   C  hintInBackground() deleted on revocation → red: “… the owner
+ *      gets a hint”
+ *   D  in andere-beenden `null` instead of the own hash passed to
+ *      deleteOtherAccesses → red: “all others: … the own one stays”
+ *   E  deleteAccess without `user_id = $1` → red: “a foreign account
+ *      revokes nothing”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

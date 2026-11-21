@@ -1,17 +1,17 @@
 /**
- * Anfragebudget je Konto unter /api/v1 (src/http/apiThrottle.ts).
+ * Request budget per account under /api/v1 (src/http/apiThrottle.ts).
  *
- * Gegenproben:
- *   A  COST.auftrag = 1                      → rot: „der Auftragstopf greift vor dem Budget“
- *   B  Abweisung erhöht den Zähler mit        → rot: „abgewiesene Anfragen zählen nicht mit“
- *   C  Schlüssel im Zähler ist die feste 0    → rot: „ein Konto verbraucht nicht das Budget des anderen“
- *   D  apiDrossel nicht in der Kette          → rot: „ohne Budget antwortet die Route 200“
- *   E  COST.preis = 1                       → rot: „Routen mit BrickLink- oder Fremdabruf …“
- *   F  (15.11.2026) einordnung() wieder über Regexe `^…$` auf den Pfad → rot:
- *      „ein Schrägstrich am Ende kostet …“ (partslist-pdf/ kostet 1 statt 25)
+ * Counter-checks:
+ *   A  COST.auftrag = 1                      → red: “the job pot applies before the budget”
+ *   B  rejection also increments the counter → red: “rejected requests do not count”
+ *   C  the key in the counter is the fixed 0 → red: “one account does not use up the other's budget”
+ *   D  apiDrossel not in the chain           → red: “without budget the route answers 200”
+ *   E  COST.preis = 1                        → red: “routes with BrickLink or foreign fetch …”
+ *   F  (15.11.2026) einordnung() back to regexes `^…$` on the path → red:
+ *      “a trailing slash costs …” (partslist-pdf/ costs 1 instead of 25)
  *
- * Ohne Datenbank: Der Zähler liegt im Prozess, die Route wird mit einer
- * Sitzung im Request nachgebildet.
+ * Without a database: the counter lives in the process, the route is simulated
+ * with a session in the request.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -68,7 +68,7 @@ test('the job pot applies before the general budget', () => {
   assert.equal(ab.erlaubt, false);
   assert.equal(ab.auftrag, true);
   assert.ok(ab.units < BUDGET, 'sonst hätte das allgemeine Budget zugemacht, nicht der Topf');
-  // Lesen und Schreiben ohne Auftrag gehen weiter.
+  // Reading and writing without a job keep working.
   assert.equal(checkBudget(15, 'GET', '/sets', t0).erlaubt, true);
 });
 
@@ -107,7 +107,7 @@ test('routes with BrickLink or third-party fetches cost more than reading', () =
   ])
     assert.equal(classification(m, p).kosten, COST.abruf, `${m} ${p}`);
   assert.ok(COST.preis > COST.abruf);
-  // Die Preisroute darf das gemeinsame Kontingent nicht mit dem ganzen Budget leeren.
+  // The price route must not drain the shared quota with the whole budget.
   clearThrottle();
   let n = 0;
   while (checkBudget(31, 'GET', '/wanted/1-1/preise', 9_000_000).erlaubt) n++;
@@ -118,7 +118,7 @@ test('the route answers 429 with Retry-After and error code', async t => {
   clearThrottle();
   const app = express();
   app.use((req, _res, next) => {
-    // Object.assign statt Zuweisung: `session` steht nicht im Typ von express.Request.
+    // Object.assign instead of assignment: `session` is not in the type of express.Request.
     Object.assign(req, { session: { userId: 42 } });
     next();
   });
@@ -137,7 +137,7 @@ test('the route answers 429 with Retry-After and error code', async t => {
   assert.ok(Number(letzte.headers.get('retry-after')) >= 1);
   assert.equal(letzte.headers.get('ratelimit-remaining'), '0');
 
-  // Ohne Anmeldung begrenzt nichts — die Anmeldung hat eigene Bremsen.
+  // Without login nothing limits — login has its own brakes.
   const ohne = express();
   ohne.use('/api/v1', apiDrossel);
   ohne.use('/api/v1', (_req, res) => res.json({ success: true }));

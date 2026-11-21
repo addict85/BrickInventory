@@ -1,20 +1,20 @@
 /**
- * Der `?v=`-Stempel kommt aus der DATEI, nicht aus einer gesetzten Zahl.
+ * The `?v=` stamp comes from the FILE, not from a set number.
  *
- * ── Gegenproben (durchgeführt, Ergebnisse abgeschrieben) ────────────────────
+ * ── Counter-checks (performed, results copied down) ─────────────────────────
  *
- *   A  `stempleAssetsGecacht(...)` aus src/profile/indexHtml.ts entfernt
- *      → „der Renderer stempelt wirklich" rot
- *   B  im Stempel die Grösse weggelassen (nur mtime)
- *      → „eine geänderte Datei bekommt eine neue Adresse" rot — aber erst an
- *        der ZWEITEN Zusicherung (gleiche mtime, andere Grösse). Die erste
- *        bliebe grün, weil Schreiben auch die mtime ändert.
- *   C  Stempel aus `Date.now()` statt aus der Datei
- *      → „eine unveränderte Datei behält ihre Adresse" rot.
- *        Beim ersten Versuch war C GRÜN: Ohne Pause fielen beide Aufrufe in
- *        dieselbe Millisekunde. Der Fall bestand aus Zufall. Seither liegt
- *        eine Pause dazwischen — die Gegenprobe hat die Prüfung repariert,
- *        nicht umgekehrt.
+ *   A  `stempleAssetsGecacht(...)` removed from src/profile/indexHtml.ts
+ *      → “the renderer really stamps" red
+ *   B  the size omitted from the stamp (mtime only)
+ *      → “a changed file gets a new address" red — but only at
+ *        the SECOND assertion (same mtime, different size). The first
+ *        would stay green because writing also changes the mtime.
+ *   C  stamp from `Date.now()` instead of from the file
+ *      → “an unchanged file keeps its address" red.
+ *        On the first attempt C was GREEN: without a pause both calls fell into
+ *        the same millisecond. The case passed by chance. Since then there is
+ *        a pause in between — the counter-check repaired the check,
+ *        not the other way round.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,7 +27,7 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { stempleAssets, fileStamp } = _req('src/infra/assetStempel.js');
 
-/** Ein Wegwerf-Verzeichnis mit einer Datei darin. */
+/** A throwaway directory with a file in it. */
 function build(inhalt) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'stempel-'));
   fs.writeFileSync(path.join(dir, 'a.css'), inhalt);
@@ -51,8 +51,8 @@ test('a changed file gets a new address', () => {
         'seine alte Kopie, bis zu sieben Tage lang. Genau das war Marcos Befund.',
     );
 
-    // Und der Fall, der die GRÖSSE im Stempel rechtfertigt: gleiche mtime,
-    // anderer Inhalt. Ohne die Grösse wäre das nicht zu unterscheiden.
+    // And the case that justifies the SIZE in the stamp: same mtime,
+    // different content. Without the size it could not be told apart.
     const st = fs.statSync(path.join(dir, 'a.css'));
     fs.writeFileSync(path.join(dir, 'a.css'), '.a{color:blue;padding:1px}/*x*/');
     fs.utimesSync(path.join(dir, 'a.css'), st.atime, st.mtime);
@@ -68,11 +68,11 @@ test('a changed file gets a new address', () => {
 });
 
 test('an unchanged file keeps its address', async () => {
-  // Die Hälfte, die man vergisst: Ein Stempel, der sich IMMER ändert (etwa
-  // aus der Uhrzeit), bestünde den Fall darüber und entwertete bei jedem
-  // Seitenaufruf 223 KB Bündel und sechs Designs.
+  // The half one forgets: a stamp that ALWAYS changes (say
+  // from the time of day) would pass the case above and invalidate on every
+  // page load a 223 KB bundle and six designs.
   //
-  // Gegenprobe C, nicht das Nachdenken.
+  // counter-check C, not reflection.
   const dir = build('.a{color:red}');
   try {
     const a = stampFrom(stempleAssets(HTML, dir));
@@ -116,10 +116,10 @@ test('a reference without ?v= stays untouched', () => {
 });
 
 test('the renderer really stamps', () => {
-  // Eine Regel, die niemand aufruft, ist die teuerste Art, nichts zu tun —
-  // und die Fälle oben blieben dabei grün, weil sie die Funktion direkt
-  // aufrufen. Dieselbe Lücke wie bei sitzung-beruehrung und
-  // sitzung-leerlauf, dort mit derselben Begründung geschlossen.
+  // A rule nobody calls is the most expensive way of doing nothing —
+  // and the cases above would stay green because they call the function
+  // directly. The same gap as with sitzung-beruehrung and
+  // sitzung-leerlauf, closed there with the same rationale.
   const idx = fs.readFileSync(path.join(ROOT, 'src/profile/indexHtml.ts'), 'utf8');
   assert.match(
     idx,
@@ -127,12 +127,12 @@ test('the renderer really stamps', () => {
     'src/profile/indexHtml.ts stempelt die Assets nicht mehr — dann gilt wieder die ' +
       'Zahl aus package.json, und die steht still, wenn niemand den Bumper läuft.',
   );
-  // ZULETZT, nach dem Sprachtausch: Die Sprachdatei trägt selbst ein `?v=`.
+  // LAST, after the language swap: the language file itself carries a `?v=`.
   //
-  // Der Anker ist `lang !== ` und NICHT `/locales/`. Erster Versuch nahm
-  // letzteres — und traf einen Kommentar weiter oben (Position 3150 statt
-  // 4882), wodurch der Fall rot wurde, obwohl die Reihenfolge stimmte. Eine
-  // Prüfung, die am falschen Wort hängt, misst das falsche.
+  // The anchor is `lang !== ` and NOT `/locales/`. The first attempt took
+  // the latter — and hit a comment further up (position 3150 instead of
+  // 4882), making the case red although the order was right. A
+  // check that hangs on the wrong word measures the wrong thing.
   assert.ok(
     idx.indexOf('stempleAssetsGecacht(out') > idx.indexOf('lang !== '),
     'Gestempelt wird vor dem Austausch der Sprachdatei — dann hängt der ' +

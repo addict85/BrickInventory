@@ -1,8 +1,8 @@
 /**
- * Der eigene Scrollbalken der Anwendung erscheint wirklich.
+ * The application's own scrollbar really appears.
  *
- * Gegenprobe (durchgeführt): das Erzeugen entfernt und stattdessen wie vorher
- * `G('app-scrollbar')` erwartet → „Balken erzeugt" wird rot.
+ * Counter-check (performed): creation removed and instead, as before,
+ * `G('app-scrollbar')` expected → “bar created" turns red.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,14 +13,14 @@ const { JSDOM } = require('jsdom');
 const ROOT = path.join(__dirname, '..');
 
 /**
- * Den Scrollbalken-Code auswerten.
+ * Evaluate the scrollbar code.
  */
 function scrollbarCode() {
   const roh = fs.readFileSync(path.join(ROOT, 'public', 'js', 'scrollbar.js'), 'utf8');
   return roh.replace(/^import .*$/gm, '').replace(/^export\s+/gm, '');
 }
 
-/** Kleine Bühne mit vorgetäuschtem Layout — jsdom rechnet keines. */
+/** Small stage with faked layout — jsdom computes none. */
 function stage({ scrollHeight = 5000, innerHeight = 800 } = {}) {
   const dom = new JSDOM('<!doctype html><html><body></body></html>', {
     runScripts: 'outside-only',
@@ -53,18 +53,18 @@ test('the bar is created and appears on a scrollable page', () => {
 });
 
 test('without a scroll area it disappears again', () => {
-  // Gegenrichtung: Ein Balken über einer Seite, die ganz ins Fenster passt,
-  // wäre nur Zierrat — und ohne diese Prüfung wäre der Test auch grün, wenn
-  // die Sichtbarkeit fest verdrahtet wäre.
+  // Opposite direction: a bar over a page that fits completely into the window
+  // would only be decoration — and without this check the test would also be green if
+  // the visibility were hard-wired.
   const w = stage({ scrollHeight: 700, innerHeight: 800 });
   w.eval('initScrollbar();');
   assert.equal(w.document.getElementById('app-scrollbar').style.display, 'none');
 });
 
 test('redrawing is throttled', () => {
-  // drawScrollbar() LIEST Layout (scrollHeight). Ungedrosselt erzwingt
-  // jedes Scroll-Ereignis eine Neuberechnung — dutzende Male je Sekunde. Die
-  // Seite fühlt sich dann zäh an, obwohl der Server längst geantwortet hat.
+  // drawScrollbar() READS layout (scrollHeight). Unthrottled, every
+  // scroll event forces a recomputation — dozens of times per second. The
+  // page then feels sluggish although the server answered long ago.
   const code = scrollbarCode();
   assert.match(code, /requestAnimationFrame\(/, 'Das Neuzeichnen hängt ungedrosselt am Scroll-Ereignis');
   const i = code.indexOf("addEventListener('scroll'");
@@ -73,13 +73,13 @@ test('redrawing is throttled', () => {
 });
 
 test('the label disappears again after dragging', () => {
-  // Marcos Bild
+  // Marco's screenshot
   const code = scrollbarCode();
   const i = code.indexOf('const ende =');
   assert.ok(i > 0, 'Kein Ende-Handler');
-  // Bis zum ENDE des Handlers schneiden, nicht nach fester Länge: Die
-  // Begründung im Kommentar ist länger als jedes Fenster, das ich raten würde
-  // — dieselbe Falle, die in diesem Projekt schon fünfmal zugeschlagen hat.
+  // Cut up to the END of the handler, not by fixed length: the
+  // rationale in the comment is longer than any window I would guess
+  // — the same trap that has already struck five times in this project.
   const fn = code.slice(i, code.indexOf('\n  };', i));
   assert.match(
     fn,
@@ -99,9 +99,9 @@ test('the label is unregistered when leaving the catalog', () => {
 });
 
 test('the label stays empty as long as nobody registers it', () => {
-  // Der Balken gehört der ganzen Anwendung; das Jahr ist eine Zutat des
-  // Katalogs. Ohne Anmeldung darf dort nichts stehen — sonst zeigte jeder
-  // Reiter eine Zahl, die für ihn nichts bedeutet.
+  // The bar belongs to the whole application; the year is an ingredient of the
+  // catalog. Without login nothing may stand there — otherwise every
+  // tab would show a number that means nothing to it.
   const code = scrollbarCode();
   assert.match(
     code,

@@ -1,30 +1,30 @@
 /**
- * Ein einziger Bestätigungsweg: Jede Route mit `bestaetigung` im API-Vertrag
- * verlangt bei aktivem zweitem Faktor den Code (oder einen Passkey), auch mit
- * dem richtigen Passwort des Verwalters. Jede Route, die ein Passwort zur
- * Bestätigung annimmt, trägt die Marke; eine Route ohne Marke, die dennoch
- * bestätigt, antwortet in Tests mit 500.
+ * A single confirmation path: every route with `bestaetigung` in the API contract
+ * requires the code (or a passkey) when a second factor is active, even with
+ * the administrator's correct password. Every route that accepts a password for
+ * confirmation carries the marker; a route without the marker that still
+ * confirms answers 500 in tests.
  *
- * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  in checkConfirmation `withFactor = false` (nur Passwort, der alte
- *      Befund M1) → rot: „… ohne Code" für alle markierten Routen
- *   B  im Vertrag die Marke von DELETE /api/v1/bestand entfernt → rot: „die
- *      Pflichtrouten tragen die Marke"
- *   C  im Vertrag DELETE /users/:id mit `eingabe: { admin_password }` statt
- *      adminConfirmed() → rot: „jede Passwort-Eingabe trägt die Marke"
- *   D  in confirmWithFactor die Prüfung auf die Marke entfernt → rot:
- *      „ohne Marke keine Bestätigung"
- *   E  in routes/api_v1/trash.ts ein eigenes bcrypt.compare( → rot:
- *      „kein zweiter Weg zum Passwortvergleich"
- *   F  (05.11.2026) in NurCode (konto.ts) `password: txtLeer(…)` statt
- *      `z.null()` → rot: „jede Passwort-Eingabe trägt die Marke"
- *   G  (09.11.2026) DELETE /settings/tokens/:tokenId wieder mit
- *      `eingabe: WITHOUT_BODY` statt bestaetigt() → rot: „die Pflichtrouten
- *      tragen die Marke"
+ * Counter-checks (measured 03.11.2026, each alone):
+ *   A  in checkConfirmation `withFactor = false` (password only, the old
+ *      finding M1) → red: “… without code" for all marked routes
+ *   B  in the contract the marker of DELETE /api/v1/bestand removed → red: “the
+ *      mandatory routes carry the marker"
+ *   C  in the contract DELETE /users/:id with `eingabe: { admin_password }` instead of
+ *      adminConfirmed() → red: “every password input carries the marker"
+ *   D  in confirmWithFactor the check for the marker removed → red:
+ *      “without marker no confirmation"
+ *   E  in routes/api_v1/trash.ts an own bcrypt.compare( → red:
+ *      “no second path to password comparison"
+ *   F  (05.11.2026) in NurCode (konto.ts) `password: txtLeer(…)` instead of
+ *      `z.null()` → red: “every password input carries the marker"
+ *   G  (09.11.2026) DELETE /settings/tokens/:tokenId again with
+ *      `eingabe: WITHOUT_BODY` instead of bestaetigt() → red: “the mandatory routes
+ *      carry the marker"
  *   H  (15.11.2026) in routes/api_v1/trash.ts `import { verify } from
- *      '@node-rs/argon2'` → rot: „kein zweiter Weg zum Passwortvergleich"
+ *      '@node-rs/argon2'` → red: “no second path to password comparison"
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -46,7 +46,7 @@ const { decrypt } = _req('src/infra/secret.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const PASS = 'Vertrag-Passwort-1';
 
-/** Was eine Route ausser Passwort und Code braucht, um bis zur Bestätigung zu kommen. */
+/** What a route needs besides password and code to get as far as the confirmation. */
 const EXTRA = {
   'POST /api/v1/auth/users': { username: `bv_neu_${process.pid}`, password: 'Lang-genug-Passwort-1', is_admin: true },
   'PUT /api/v1/auth/users/:id/admin': { is_admin: true },
@@ -58,7 +58,7 @@ const EXTRA = {
   'POST /api/v1/settings': { smtp_host: 'mail.bv.example' },
   'POST /api/v1/settings/smtp-test': { to: 'fremd@bv.example' },
 };
-/** Neue Zugänge prägen, Schutz abbauen, alles löschen (Bericht M1) — und die Notbremse. */
+/** Mint new accesses, remove protection, delete everything (report M1) — and the emergency brake. */
 const PFLICHT = [
   'POST /api/v1/auth/token-create',
   'POST /api/v1/auth/qr-token',
@@ -85,7 +85,7 @@ const PFLICHT = [
   'POST /api/v1/vouchers/:id/pdf-freigabe',
   'POST /api/v1/vouchers/export/pdf-freigabe',
 ];
-/** Vor der Anmeldung gibt es nichts zu bestätigen. */
+/** Before login there is nothing to confirm. */
 const PUBLIC = ['POST /api/v1/auth/login', 'POST /api/v1/auth/register', 'POST /api/v1/auth/reset-password'];
 const PASSWORTFELDER = ['password', 'admin_password', 'current', 'password_current'];
 
@@ -169,7 +169,7 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
 
   for (const [schluessel, route] of markiert) {
     await t.test(`${schluessel}: password alone is not enough`, async () => {
-      // Auch die Kontobremse (20 am Tag): Hier rät eine Sitzung absichtlich bei jeder Route falsch.
+      // The account brake too (20 a day): here one session deliberately guesses wrong on every route.
       await db.run('DELETE FROM rate_limit_attempts WHERE key LIKE $1 OR key LIKE $2', [
         `%-bestaetigen|${chef}|%`,
         `%-bestaetigen-konto|${chef}`,
@@ -221,7 +221,7 @@ test('one single confirmation path', { concurrency: 1 }, async t => {
       ['src/account/bcryptPool.ts'],
       'nur der Rückfall des Pools; alle anderen über passwordFits()',
     );
-    // argon2 verify() ginge ebenso an Anmeldung und Bestätigung vorbei.
+    // argon2 verify() would likewise bypass login and confirmation.
     const argon2 = dateien
       .filter(f => /['"]@node-rs\/argon2['"]/.test(ohneKommentare(fs.readFileSync(f, 'utf8'))))
       .map(f => path.relative(ROOT, f).replace(/\\/g, '/'));

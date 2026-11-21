@@ -1,11 +1,11 @@
 /**
- * Der otpauth-Link des zweiten Faktors nennt das BrickInventory-Logo, damit
- * Authenticator-Apps, die `image` lesen, es zeigen. Ohne Basis-URL gibt es
- * keine Adresse, unter der die App das Bild holen könnte; dann fehlt es.
- * Das Logo selbst liegt öffentlich unter public/assets.
+ * The otpauth link of the second factor names the BrickInventory logo, so that
+ * authenticator apps that read `image` show it. Without a base URL there is
+ * no address under which the app could fetch the image; then it is missing.
+ * The logo itself lies publicly under public/assets.
  *
- * Gegenprobe (07.11.2026): in otpauthAddress() den image-Teil gestrichen →
- * rot: „mit Basis-URL steht das Logo im Link“.
+ * Counter-check (07.11.2026): the image part deleted in otpauthAddress() →
+ * red: “with a base URL the logo is in the link”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -15,7 +15,7 @@ const path = require('node:path');
 const _req = require('./helpers/sources').buildAndRequire();
 
 test('otpauth link with logo', async t => {
-  // Die Basis-URL kommt gereicht (k.konfig.appBaseUrl), nicht aus der Umgebung.
+  // The base URL is passed in (k.konfig.appBaseUrl), not taken from the environment.
   const { otpauthAddress } = _req('src/factors/secondFactor.js');
 
   await t.test('with a base URL the logo is in the link', () => {

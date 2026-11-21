@@ -1,12 +1,12 @@
 /**
- * Der Teilelisten-PDF-Export liest Bilder nur aus dem Bildordner.
+ * The parts list PDF export reads images only from the image folder.
  *
- * Die Teileliste schickt der Client; `image_local` stand vorher ungeprüft in
- * readFile. Mit `/data/uploads/<fremde-id>/…` oder `/images/../../…` landete
- * so eine beliebige JPEG- oder PNG-Datei im PDF.
+ * The client sends the parts list; `image_local` used to go unchecked into
+ * readFile. With `/data/uploads/<foreign-id>/…` or `/images/../../…` an
+ * arbitrary JPEG or PNG file thus ended up in the PDF.
  *
- * Gegenprobe (am 27.10. gemessen): die Prüfung `startsWith(IMAGES_DIR + sep)`
- * entfernt → rot: „fremde Uploads", „aus dem Bildordner heraus".
+ * Counter-check (measured on 27.10.): the check `startsWith(IMAGES_DIR + sep)`
+ * removed → red: “foreign uploads”, “out of the image folder”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

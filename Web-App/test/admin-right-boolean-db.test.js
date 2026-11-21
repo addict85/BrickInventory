@@ -1,11 +1,11 @@
 /**
- * is_admin des Zugangs ist ein boolean, auf jedem Weg: Token mit Scope
- * `voll` true, mit `app` false; requireToken reicht es so an req.apiUser weiter.
+ * is_admin of the access is a boolean on every path: token with scope
+ * `voll` true, with `app` false; requireToken passes it on to req.apiUser like that.
  *
- * Gegenproben (am 11.11.2026 gemessen):
- *   A  in pruefeToken() wieder `… ? 1 : 0` → rot: beide Teile
- *   B  in requireToken `is_admin: user.is_admin ? 1 : 0` → rot: „requireToken
- *      reicht ein boolean weiter“
+ * Counter-checks (measured on 11.11.2026):
+ *   A  in pruefeToken() back to `… ? 1 : 0` → red: both parts
+ *   B  in requireToken `is_admin: user.is_admin ? 1 : 0` → red: “requireToken
+ *      passes a boolean on”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,17 +1,17 @@
 /**
- * Ein Konto mit Sprache Englisch sieht nach der Anmeldung sofort Englisch,
- * auch wenn die Anmeldemaske deutsch geladen war (nur die aktive Sprache wird
- * ausgeliefert). Echte App in Chrome.
+ * An account with language English sees English immediately after login,
+ * even if the login mask was loaded in German (only the active language is
+ * delivered). Real app in Chrome.
  *
- * Gegenprobe (02.11.2026 gemessen): in showApp wieder `srvLang && I18N[srvLang]`
- * → rot: „englische Oberfläche ohne Neuladen“ („Bauliste“ statt „Build list“).
+ * Counter-check (measured 02.11.2026): in showApp again `srvLang && I18N[srvLang]`
+ * → red: “English UI without reloading” (“Bauliste” instead of “Build list”).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 
 test('English UI without reloading', { timeout: 120_000 }, async t => {
-  // Ohne Verwalterrolle: Der Verwalterpfad lud das Wörterbuch nebenbei und verdeckte den Fehler.
+  // Without administrator role: the administrator path loaded the dictionary on the side and hid the bug.
   const app = await startApp(t, {
     name: `sprache_${process.pid}`,
     sprache: 'en',
@@ -21,8 +21,8 @@ test('English UI without reloading', { timeout: 120_000 }, async t => {
     t.skip(app.grund);
     return;
   }
-  // Wie ein Besucher mit deutschem Browser: abmelden, Deutsch merken, neu laden
-  // (die Seite bringt dann nur das deutsche Wörterbuch mit) und wieder anmelden.
+  // Like a visitor with a German browser: log out, remember German, reload
+  // (the page then only brings the German dictionary) and log in again.
   const { b, bis } = app;
   await b.auswerten(`document.getElementById('btn-logout').click(); true`);
   await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'abgemeldet');

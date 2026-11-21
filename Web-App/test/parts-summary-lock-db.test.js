@@ -1,13 +1,13 @@
 /**
- * Der Neuaufbau der Teile-Zusammenfassung weicht einer Datenbank-Sperre aus,
- * die ein anderer Prozess für dasselbe Konto hält — er schreibt dann nichts.
- * Ohne die Sperre stiessen zwei Prozesse mit DELETE + INSERT auf denselben
- * Primärschlüssel (parts_summary_pkey).
+ * The rebuild of the parts summary avoids a database lock
+ * that another process holds for the same account — it then writes nothing.
+ * Without the lock two processes with DELETE + INSERT collided on the same
+ * primary key (parts_summary_pkey).
  *
- * Gegenproben (31.10.2026, gemessen):
- *   a) in rebuild() die Prüfung `if (!(await repo.lockAccount(…)))` entfernt
- *      → rot: Die fremde Zeile ist weg und der Stand steht auf 7.
- *   b) in lockAccount() LOCKS.PARTS_CATALOG statt LOCKS.PARTS_SUMMARY → rot (wie a).
+ * Counter-checks (31.10.2026, measured):
+ *   a) in rebuild() the check `if (!(await repo.lockAccount(…)))` removed
+ *      → red: the foreign row is gone and the state stands at 7.
+ *   b) in lockAccount() LOCKS.PARTS_CATALOG instead of LOCKS.PARTS_SUMMARY → red (like a).
  */
 require('./helpers/system-frame');
 const test = require('node:test');

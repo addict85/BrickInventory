@@ -1,24 +1,24 @@
 /**
- * Lesbar und erreichbar — gemessen im Browser mit den echten Stylesheets.
+ * Readable and reachable — measured in the browser with the real stylesheets.
  *
- * Gegenproben (am 27.10. gemessen):
- *   A  --auf-primaer in themes/werkbank.css entfernt → rot: „werkbank: Primärknopf"
- *   B  .lerr wieder mit --r500 → rot: „Anmeldefehler"
- *   C  .datei-versteckt mit display:none → rot: „Datei-Feld fokussierbar"
- *   D  (28.10.) :focus-visible wieder 2px in var(--b600) → rot: „Fokusring hell: 2px“
- *   F  (28.10.) .cond-new wieder mit var(--g600) → rot: „hell: Etikett Neu 3:1“;
- *      .besitzer-badge mit --b600 → rot: „hell: Etikett Besitzer 4.24:1“
- *   G  (28.10.) .pnl-pos wieder #16a34a → rot: „hell: Gewinn 3.15:1“
- *   I  (29.10.) im Generator die dunklen Blöcke übersprungen (Tokens neu
- *      erzeugt) → rot: „Die Karte der dunklen Variante ist hell“ (alle fünf)
- *   H  (28.10.) --preis in themes/noppe.css entfernt → rot: „Preis in Rot“
- *      mit „noppe: Preis“ und „hochglanz: Preis“
- *   E  (28.10.) word-spacing am body entfernt, ebenso word-spacing:inherit an
- *      button → rot: „Wortabstand 0.17 em“
- *   J  (29.10.) .fval wieder var(--b700) → rot: „Preis in Rot“ (noppe: Kennzahl,
- *      hochglanz: Kennzahl); noppe nav .ntab wieder var(--b100) → rot: „noppe:
- *      Reiter 3.74:1“; .spare-tag wieder var(--mut) → rot: „hell: Ersatzteil
- *      4.34:1“; .fstat.hi .fsub entfernt → rot: „… hellblauen Kachel 4.37:1“
+ * Counter-checks (measured on 27.10.):
+ *   A  --auf-primaer removed in themes/werkbank.css → red: „werkbank: Primärknopf"
+ *   B  .lerr again with --r500 → red: „Anmeldefehler"
+ *   C  .datei-versteckt with display:none → red: „Datei-Feld fokussierbar"
+ *   D  (28.10.) :focus-visible again 2px in var(--b600) → red: „Fokusring hell: 2px“
+ *   F  (28.10.) .cond-new again with var(--g600) → red: „hell: Etikett Neu 3:1“;
+ *      .besitzer-badge with --b600 → red: „hell: Etikett Besitzer 4.24:1“
+ *   G  (28.10.) .pnl-pos again #16a34a → red: „hell: Gewinn 3.15:1“
+ *   I  (29.10.) the dark blocks skipped in the generator (tokens
+ *      regenerated) → red: „Die Karte der dunklen Variante ist hell“ (all five)
+ *   H  (28.10.) --preis removed in themes/noppe.css → red: „Preis in Rot“
+ *      with „noppe: Preis“ and „hochglanz: Preis“
+ *   E  (28.10.) word-spacing on the body removed, likewise word-spacing:inherit on
+ *      button → red: „Wortabstand 0.17 em“
+ *   J  (29.10.) .fval again var(--b700) → red: „Preis in Rot“ (noppe: Kennzahl,
+ *      hochglanz: Kennzahl); noppe nav .ntab again var(--b100) → red: „noppe:
+ *      Reiter 3.74:1“; .spare-tag again var(--mut) → red: „hell: Ersatzteil
+ *      4.34:1“; .fstat.hi .fsub removed → red: „… hellblauen Kachel 4.37:1“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -206,7 +206,7 @@ test('contrast, file fields and tile font', t => {
     [],
     'Die Karte der dunklen Variante ist hell',
   );
-  // hochglanz erbt die Farben von noppe; die übrigen vier bleiben unterscheidbar.
+  // hochglanz inherits the colors of noppe; the other four stay distinguishable.
   assert.equal(new Set(e.brands).size, 4, `Markenfarben dunkel: ${e.brands}`);
   assert.equal(e.farbton.length, 4);
   assert.deepEqual(

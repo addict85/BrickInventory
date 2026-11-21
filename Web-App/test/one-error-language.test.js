@@ -1,11 +1,11 @@
 /**
- * Der Server antwortet in der Sprache, die der Anfragende ZEIGT.
+ * The server answers in the language that the requester SHOWS.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
- *   A  im deutschen Text von einladungen_zu_viele `{n}` durch `n` ersetzt → rot:
- *      „jeder Eintrag der Tabelle hat beide Sprachen und dieselben Platzhalter“
- *   B  in api() (api.js) den Kopf Accept-Language gestrichen (Bündel neu gebaut)
- *      → rot: „die Webapp sagt dem Server, welche Sprache sie zeigt“
+ * Counter-checks (measured 10.11.2026, each on its own, reverted):
+ *   A  in the German text of einladungen_zu_viele `{n}` replaced by `n` → red:
+ *      “every entry of the table has both languages and the same placeholders”
+ *   B  in api() (api.js) the header Accept-Language deleted (bundle rebuilt)
+ *      → red: “the web app tells the server which language it shows”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,11 +14,11 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-/** Wo eine feste Zeichenkette bleiben DARF — und warum. Zurzeit nirgends. */
+/** Where a fixed string MAY remain — and why. Currently nowhere. */
 /** @type {Record<string, string>} */
 const ALLOWED = {};
 
-/** Alle .ts unter den angegebenen Ordnern, auch in Unterordnern. */
+/** All .ts under the given folders, also in subfolders. */
 function tsFiles(dir, praefix = '') {
   const gefunden = [];
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -39,37 +39,37 @@ test('no route sends a fixed error sentence', () => {
   const violations = [];
   const gebraucht = new Set();
   for (const [, voll] of dateien) {
-    // Der Schlüssel in ALLOWED ist der Pfad ab Web-App/ — hier zusammensetzen.
+    // The key in ALLOWED is the path from Web-App/ — assemble it here.
     const belowFolder = path.relative(ROOT, voll).split(path.sep).join('/');
     const src = fs
       .readFileSync(voll, 'utf8')
       .split('\n')
       .filter(z => !z.trimStart().startsWith('//') && !z.trimStart().startsWith('*'))
       .join('\n');
-    // KEIN Backtick und KEIN Zeilenumbruch im Text: Der erste Entwurf nahm
-    // beides und lief damit über Zeilenenden hinweg — er meldete sechs Stellen,
-    // an denen `error:` mitten in einem PROTOKOLLTEXT steht
-    // (`console.error(\`[pdf] error: \`, e.message)`). Sechs Fehlalarme für …
+    // NO backtick and NO line break in the text: the first draft took
+    // both and thereby ran across line ends — it reported six places
+    // at which `error:` stands in the middle of a LOG TEXT
+    // (`console.error(\`[pdf] error: \`, e.message)`). Six false alarms for …
     for (const m of src.matchAll(/error:\s*(['"])((?:[^\\\n]|\\.)*?)\1/g)) {
       const text = m[2];
-      // Variablen und leere Werte sind keine Sätze.
+      // Variables and empty values are not sentences.
       if (!text || text.length < 4) continue;
       if (/^[a-z_.]+$/.test(text)) continue;
       const zeile = src.slice(0, m.index).split('\n').length;
-      // Eine erlaubte Datei wird trotzdem DURCHSUCHT — nur landet ihr Treffer
-      // nicht in den Verstoessen, sondern belegt, dass die Ausnahme noch
-      // gebraucht wird. Ueberspringt man sie stattdessen gleich, kann ihr
-      // Eintrag jahrelang stehen bleiben, ohne noch etwas zu beschreiben.
+      // An allowed file is SEARCHED nevertheless — only its hit does not end up
+      // in the violations, but proves that the exception is still
+      // needed. If one skips it right away instead, its entry can
+      // remain for years without describing anything any more.
       if (belowFolder in ALLOWED) gebraucht.add(belowFolder);
       else violations.push(`${belowFolder}:${zeile}  ${text.slice(0, 60)}`);
     }
   }
 
-  // Hier stand `src/infra/errorTexts.ts` mit der Begruendung „Die Tabelle
-  // selbst." — und die Datei traf das Muster gar nicht: Sie fuehrt ihre Texte
-  // als `{ de: '…', en: '…' }`, nie als `error: '…'`. Der Eintrag verbarg
-  // also nichts, nahm aber ausgerechnet die Datei, in der ALLE Fehlertexte
-  // stehen, von dieser Pruefung aus. Damit das nicht wiederkommt:
+  // Here stood `src/infra/errorTexts.ts` with the reasoning „Die Tabelle
+  // selbst." — and the file did not even hit the pattern: it carries its texts
+  // as `{ de: '…', en: '…' }`, never as `error: '…'`. So the entry hid
+  // nothing, but of all files exempted the one in which ALL error texts
+  // stand from this check. So that this does not come back:
   const veraltet = Object.keys(ALLOWED)
     .filter(k => !gebraucht.has(k))
     .sort();
@@ -93,7 +93,7 @@ test('no route sends a fixed error sentence', () => {
 });
 
 test('every entry of the table has both languages and the same placeholders', () => {
-  // Ein fehlender Platzhalter heisst, dass in einer Sprache „{name}" auf dem Bildschirm steht.
+  // A missing placeholder means that in one language „{name}" stands on the screen.
   const { FEHLER, errorText } = require('./helpers/sources').buildAndRequire()('src/infra/errorTexts.js');
   const codes = Object.keys(FEHLER);
   assert.ok(codes.length >= 60, `Nur ${codes.length} Einträge — greift die Tabelle noch?`);
@@ -104,7 +104,7 @@ test('every entry of the table has both languages and the same placeholders', ()
       if (!String(FEHLER[code][sprache] || '').trim()) skewed.push(`${code}: ${sprache} fehlt`);
       for (const [, n] of String(FEHLER[code][sprache] || '').matchAll(/\{(\w+)\}/g)) vars[n] = `«${n}»`;
     }
-    // Mit allen Platzhaltern beider Sprachen gefüllt, bleibt in keiner eine Klammer stehen.
+    // Filled with all placeholders of both languages, no brace remains in either.
     for (const sprache of ['de', 'en']) {
       const text = errorText(code, sprache, vars);
       if (/\{\w+\}/.test(text)) skewed.push(`${code}/${sprache}: ${text}`);
@@ -115,7 +115,7 @@ test('every entry of the table has both languages and the same placeholders', ()
 });
 
 test('the web app tells the server which language it shows', async () => {
-  // Ohne diesen Kopf fiele der Server auf Deutsch zurück, und die Tabelle oben wäre wirkungslos.
+  // Without this header the server would fall back to German, and the table above would be ineffective.
   const { openUi } = require('./helpers/ui');
   for (const sprache of ['en', 'de']) {
     const { w, aufrufe } = await openUi({}, { sprache });

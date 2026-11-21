@@ -1,17 +1,17 @@
 /**
- * Die QR-Nonce wird per POST angelegt, nicht per GET.
+ * The QR nonce is created via POST, not via GET.
  *
- * Die Nonce öffnet fünf Minuten lang ein Konto. Per GET mit Sitzungs-Cookie
- * könnte eine fremde Seite sie trotz SameSite=lax auslösen (Navigation), und
- * Link-Vorschauen täten es nebenbei. Geprüft sind beide Richtungen: POST geht,
- * GET gibt es nicht mehr.
+ * The nonce opens an account for five minutes. Via GET with a session cookie
+ * a foreign site could trigger it despite SameSite=lax (navigation), and
+ * link previews would do it on the side. Both directions are checked: POST works,
+ * GET no longer exists.
  *
- * ── Gegenprobe (durchgeführt) ───────────────────────────────────────────────
- * Die Route versuchsweise auf `router.get` zurückgestellt: „per GET gibt es
- * die Route nicht mehr" wird rot (200 statt 404), und „per POST wird eine
- * Nonce angelegt" wird ebenfalls rot. Zurückgebaut, wieder grün.
+ * ── Counter-check (carried out) ───────────────────────────────────────────────
+ * The route tentatively set back to `router.get`: “via GET the route no
+ * longer exists” turns red (200 instead of 404), and “via POST a
+ * nonce is created” turns red as well. Rebuilt, green again.
  *
- * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
+ * Prerequisite: test DB (contents are cleared!) via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,17 +19,17 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-// Seit der QR-Code die Adresse des Servers traegt (src/infra/basisUrl.ts), ist
-// APP_BASE_URL eine VORBEDINGUNG der Route: Ohne sie sagt sie mit 503 ab,
-// damit kein Code mit der Browseradresse hinausgeht. Diese Datei prueft etwas
-// anderes — hier wird die Vorbedingung nur erfuellt, nicht geprueft. Das tut
+// Since the QR code carries the address of the server (src/infra/basisUrl.ts),
+// APP_BASE_URL is a PRECONDITION of the route: without it it refuses with 503,
+// so that no code goes out with the browser address. This file checks something
+// else — here the precondition is only fulfilled, not checked. That is done by
 // test/qr-address.test.js.
 process.env.APP_BASE_URL = 'https://lego.example.org';
 
 const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-// Adresse aus server.ts lesen — siehe einhaengung() in helpers/sources.js.
+// Read the address from server.ts — see einhaengung() in helpers/sources.js.
 const AUTH = require('./helpers/sources').einhaengung('auth');
 const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
@@ -53,7 +53,7 @@ test('QR nonce only via POST', async t => {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  // Und die MIGRATIONEN, nicht nur das Schema
+  // And the MIGRATIONS, not only the schema
   {
     const mc = await db.pool.connect();
     try {

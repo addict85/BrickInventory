@@ -1,13 +1,13 @@
 /**
- * Menge eines UNTERKONTO-Sets ändern — beide Routenfamilien.
+ * Changing the quantity of a SUB-ACCOUNT set — both route families.
  *
- * Gegenprobe (durchgeführt): schreibbereich in changeSet zurück auf die eigene ID
- * → beide Teilschritte enden wieder in 404.
- * Gegenprobe (09.11.2026 gemessen): in requireToken den Sitzungszweig entfernt →
- * rot: „Webapp: … 401 !== 200“. Der App-Weg kommt ohne Sitzung, mit echtem Token;
- * ein falscher Token ergibt 401 (eigene Zusicherung vor der Schleife).
+ * Counter-check (carried out): schreibbereich in changeSet back to the own ID
+ * → both substeps end in 404 again.
+ * Counter-check (measured 09.11.2026): the session branch removed in requireToken →
+ * red: „Webapp: … 401 !== 200“. The app path comes without a session, with a real token;
+ * a wrong token results in 401 (own assertion before the loop).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
+ * Prerequisite: test DB via TEST_DATABASE_URL (migrations for account_links).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -36,7 +36,7 @@ test('a quantity increase on the sub-account set lands in the own account', { co
     subId,
   ]);
 
-  // Die Webapp kommt mit der Sitzung, die App mit einem echten Token und ohne Sitzung.
+  // The web app comes with the session, the app with a real token and without a session.
   const web = testServer(_req, { sitzung: { userId: mainId }, t });
   const app = testServer(_req, { sitzung: {}, t });
   const token = await _req('src/account/deviceToken.js').createToken(mainId, 'test-app', false, null, {
@@ -47,9 +47,9 @@ test('a quantity increase on the sub-account set lands in the own account', { co
   const aufbauen = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
-    // Set UND Erfassung gehören dem Unterkonto.
-    // Marktpreis im Cache: Die neue Erfassung soll IHN bekommen und nicht den
-    // Kaufpreis des anderen Kontos — dessen Kauf ist nicht meiner.
+    // Set AND acquisition belong to the sub-account.
+    // Market price in the cache: the new acquisition should get IT and not the
+    // purchase price of the other account — its purchase is not mine.
     await db.run(`INSERT INTO global_settings (key,value) VALUES ('currency','EUR')
                   ON CONFLICT (key) DO UPDATE SET value='EUR'`);
     await db.run(`DELETE FROM price_cache WHERE set_number=$1`, [SN]);
@@ -58,8 +58,8 @@ test('a quantity increase on the sub-account set lands in the own account', { co
                   VALUES ($1,'U','EUR',77.00,77.00,4)`,
       [SN],
     );
-    // Nur die Bestandszeile: Menge, Preis und Zustand stehen in der Erfassung
-    // darunter (Migration 0032 fuer Preis und Zustand, 0036 fuer die Menge).
+    // Only the inventory row: quantity, price and condition stand in the acquisition
+    // below (migration 0032 for price and condition, 0036 for the quantity).
     await holdsSet(db, subId, SN, 0);
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
@@ -89,8 +89,8 @@ test('a quantity increase on the sub-account set lands in the own account', { co
       });
       assert.equal(r.status, 200, `${name}: die Mengenänderung darf nicht mehr in 404 enden`);
 
-      // (Die Mengen kommen jetzt alle aus den Erfassungen — Migration 0036.)
-      // ── Marcos neue Regel ────────────────────────────────
+      // (The quantities now all come from the acquisitions — migration 0036.)
+      // ── Marco's new rule ────────────────────────────────
       // „Die Anzahl soll immer von allen angezeigt werden. Wenn ich diese
       // erhöhe, soll es für meinen Account einen neuen Kaufpreis-Eintrag …
       const onOwner = await quantityOf(db, subId, SN);
@@ -106,7 +106,7 @@ test('a quantity increase on the sub-account set lands in the own account', { co
       const gesamt = await quantityOf(db, [subId, mainId], SN);
       assert.equal(gesamt, 3, `${name}: die Gesamtmenge muss der Eingabe entsprechen`);
 
-      // Und die Erfassungen ziehen mit — im eigenen Konto, mit Preis.
+      // And the acquisitions follow — in the own account, with a price.
       const acq = await db.get(
         `SELECT COALESCE(SUM(quantity),0)::int AS q,
                 COUNT(*) FILTER (WHERE purchase_price IS NOT NULL)::int AS mit_preis

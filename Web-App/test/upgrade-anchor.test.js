@@ -1,12 +1,12 @@
 /**
- * Meldungen, Skripte und Konfiguration verweisen auf UPGRADE.md über feste Anker
- * (`UPGRADE.md#migrationsrolle`, in UPGRADE.md `<a id="…">`), nicht über
- * Abschnittsnummern, die beim Umsortieren still auf den falschen Text zeigen.
+ * Messages, scripts and configuration refer to UPGRADE.md via fixed anchors
+ * (`UPGRADE.md#migrationsrolle`, in UPGRADE.md `<a id="…">`), not via
+ * section numbers, which silently point to the wrong text after reordering.
  *
- * Gegenproben (12.11.2026 gemessen, je einzeln):
- *   A  in UPGRADE.md `<a id="eigene-datenbankrolle">` umbenannt → rot: „jeder
+ * Counter-checks (measured 12.11.2026, each on its own):
+ *   A  `<a id="eigene-datenbankrolle">` renamed in UPGRADE.md → red: „jeder
  *      Verweis auf UPGRADE.md trifft einen Anker“ (datenbank.ts, compose.yaml)
- *   B  in startup/database.ts wieder „UPGRADE.md, Abschnitt 29“ → rot: „keine
+ *   B  in startup/database.ts again „UPGRADE.md, Abschnitt 29“ → red: „keine
  *      Abschnittsnummern mehr“
  */
 const test = require('node:test');
@@ -22,7 +22,7 @@ const ANKER = new Set(
 );
 const REFERENCE = /UPGRADE\.md#([\w-]+)((?:, #[\w-]+)*)/g;
 
-/** Was Betreiber sehen: Code, Skripte, Konfiguration und Oberflächentexte (nicht Tests, Doku, Erzeugnisse). */
+/** What operators see: code, scripts, configuration and UI texts (not tests, docs, generated files). */
 function dateien() {
   const raus = [];
   (function lauf(d) {
@@ -60,7 +60,7 @@ test('every reference hits an anchor, no more section numbers; the startup messa
   assert.deepEqual(fehlend, [], 'jeder Verweis auf UPGRADE.md trifft einen Anker');
   assert.deepEqual(nummern, [], 'keine Abschnittsnummern mehr');
 
-  // Die Meldung, die der Betreiber beim Start wirklich sieht: Superuser ohne Ausweg.
+  // The message the operator really sees at startup: superuser without a way out.
   quellen.buildDist();
   const lauf = spawnSync(
     process.execPath,

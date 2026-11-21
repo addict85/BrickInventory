@@ -1,19 +1,19 @@
 /**
- * UX-Prüfung 26 am echten Bündel in jsdom: Kaufpreis-Kachel beim Laden (N1), Fehlerzustand der Finanzen (N2),
- * Stückpreis der manuellen Teile und Figuren (N3), leere Anmeldefelder (N4), Sprungleiste im Konto (N5) und die
- * Anmeldung ohne gespeichertes Sitzungs-Cookie (Betrieb).
+ * UX check 26 on the real bundle in jsdom: purchase price tile while loading (N1), error state of the finances (N2),
+ * unit price of the manual parts and figures (N3), empty login fields (N4), jump bar in the account (N5) and the
+ * login without a stored session cookie (operation).
  *
- * Gegenproben (15.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  index.html wieder „Kaufpreis gesamt“ / „Summe der Kaufpreise“ → rot: „N1 …“ (vor dem ersten Laden)
- *   B  finanzenFehlen() ohne titel → rot: „N2 …“ (Die Liste konnte nicht geladen werden); ohne
- *      filterBedienbar(false) → rot: ebenda (Chip „Sets“ bedienbar); ohne filterBedienbar(true) → rot: ebenda
- *      (nach „Erneut versuchen“ gesperrt)
- *   C  teile.js wieder fmtN() ohne „je“ → rot: „N3 …“ (Teil „0,12 €“); minifigs.js ebenso → rot: ebenda (Figur)
- *   D  doLogin() ohne die Prüfung der Pflichtfelder → rot: „N4 …“ (alle drei Teilfälle); errorPlace()
- *      ohne .geheim-feld → rot: „beide leer“ (Meldung zwischen Passwortfeld und Augen-Knopf)
- *   E  kontoSprung() ohne focus() → rot: „N5 …“ (Fokus bleibt auf dem Link)
- *   F  sitzungBeendet ohne den Zweig withoutCookie → rot: „Betrieb …“ (Sitzung abgelaufen); mit isSecureContext
- *      true zeigt derselbe Ablauf „Sitzung abgelaufen“ (zweiter Teilfall, Gegenstück)
+ * Counter-checks (measured 15.11.2026, each on its own, bundle rebuilt):
+ *   A  index.html again „Kaufpreis gesamt“ / „Summe der Kaufpreise“ → red: “N1 …” (before the first load)
+ *   B  finanzenFehlen() without titel → red: “N2 …” (Die Liste konnte nicht geladen werden); without
+ *      filterBedienbar(false) → red: same place (chip „Sets“ operable); without filterBedienbar(true) → red: same place
+ *      (locked after „Erneut versuchen“)
+ *   C  teile.js again fmtN() without „je“ → red: “N3 …” (part „0,12 €“); minifigs.js likewise → red: same place (figure)
+ *   D  doLogin() without the check of the required fields → red: “N4 …” (all three subcases); errorPlace()
+ *      without .geheim-feld → red: “both empty” (message between password field and eye button)
+ *   E  kontoSprung() without focus() → red: “N5 …” (focus stays on the link)
+ *   F  sitzungBeendet without the branch withoutCookie → red: “operation …” (Sitzung abgelaufen); with isSecureContext
+ *      true the same flow shows „Sitzung abgelaufen“ (second subcase, counterpart)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,7 +37,7 @@ const VALUATION = {
   totals: { min: '650', avg: '700', max: '760' },
   sets: [SET],
 };
-// Nur ein Teil der Positionen bewertet: Die Kachel heisst dann „Kaufpreis (bewertete Positionen)“.
+// Only part of the positions valued: the tile is then called „Kaufpreis (bewertete Positionen)“.
 const PNL = {
   success: true,
   totals: {
@@ -177,7 +177,7 @@ test('N4 login: empty required fields report at the field', async t => {
         assert.equal(text(d.getElementById(`${id}-fehler`)), meldung);
       }
       assert.equal(d.activeElement.id, 'lu', 'Fokus ins erste fehlerhafte Feld');
-      // Die Meldung steht unter dem Passwortfeld, nicht zwischen Feld und Augen-Knopf.
+      // The message stands below the password field, not between field and eye button.
       assert.equal(d.getElementById('lp-fehler').parentElement.classList.contains('geheim-feld'), false);
     });
     await t.test('only the password empty', async () => {
@@ -237,7 +237,7 @@ test('N5 account: jump bar to all sections', async () => {
   }
 });
 
-/** Anmelden; danach antwortet die Sammlung mit 401 wie ohne Cookie. */
+/** Log in; afterwards the collection answers with 401 as without a cookie. */
 async function signInWithoutCookie(sicher) {
   let angemeldet = false;
   const withoutSession = { $status: 401, success: false, error: 'Nicht angemeldet', code: 'nicht_angemeldet' };
@@ -245,7 +245,7 @@ async function signInWithoutCookie(sicher) {
     {
       '/v1/auth/login': () => {
         angemeldet = true;
-        // Wie ein älterer Server ohne keks_fehlt: Die Oberfläche schliesst dann selbst aufs fehlende HTTPS.
+        // Like an older server without keks_fehlt: the UI then concludes the missing HTTPS by itself.
         return {
           $contractViolating: 'älterer Server ohne keks_fehlt',
           success: true,
@@ -258,7 +258,7 @@ async function signInWithoutCookie(sicher) {
     {
       angemeldet: false,
       vorher: w => Object.defineProperty(w, 'isSecureContext', { value: sicher }),
-      // Seit Runde 27 zählt auch http: allein als „ohne HTTPS“; die sichere Seite ist also https.
+      // Since round 27 http: alone also counts as „without HTTPS“; the secure page is therefore https.
       ...(sicher ? { url: 'https://localhost/' } : {}),
     },
   );

@@ -1,20 +1,20 @@
 /**
- * Jede Route des Vertrags, von einem fremden Konto mit Kennungen und Konto-IDs
- * des Opfers gerufen (einmal mit dessen Konto-ID in Feldern, einmal mit der
- * eigenen): Keine Antwort enthält Daten des Opfers, keine seiner Zeilen ändert
- * sich. Ausgelassen: Routen vor der Anmeldung und das Löschen des eigenen Kontos.
+ * Every route of the contract, called by a foreign account with identifiers and account IDs
+ * of the victim (once with the victim's account ID in fields, once with the
+ * own one): no response contains the victim's data, none of its rows
+ * changes. Omitted: routes before login and deleting the own account.
  *
- * Gegenproben (09.11.2026 gemessen, je einzeln):
+ * Counter-checks (measured 09.11.2026, each alone):
  *   A  in deleteVoucher() (src/vouchers/repository) `user_id = $2`
- *      durch `$2::int > 0` ersetzt → rot: „keine Zeile des Opfers ändert sich“
- *   B  in scopeIds() (src/household) eine angefragte Konto-ID ohne Prüfung der
- *      Mitgliedschaft übernommen → rot: „keine Antwort enthält Daten des
- *      Opfers“ und „keine Zeile des Opfers ändert sich“
- *   Grün blieb dagegen das Entfernen der Besitzprüfung nur beim Umbenennen
- *   oder Löschen eines Lagerorts: Dort prüft der Dienst den Besitz vorher
- *   schon einmal (ortName), die zweite Stelle ist Rückhalt.
+ *      replaced by `$2::int > 0` → red: “no row of the victim changes”
+ *   B  in scopeIds() (src/household) a requested account ID taken over without checking
+ *      membership → red: “no response contains the victim's
+ *      data” and “no row of the victim changes”
+ *   Green, by contrast, stayed removing the ownership check only when renaming
+ *   or deleting a storage location: there the service already checks ownership
+ *   once before (ortName), the second place is backup.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -63,7 +63,7 @@ function pdfWith(rows) {
   });
 }
 
-/** Ein Beispielwert für ein zod-Schema; `name` ist der Feldname, `wert` liefert die Werte des Opfers. */
+/** A sample value for a zod schema; `name` is the field name, `wert` delivers the victim's values. */
 function beispiel(schema, name, wert, alle) {
   const d = schema?._zod?.def;
   if (!d) return undefined;
@@ -166,7 +166,7 @@ test('a foreign account sees and changes no data of another via any route', {
     FIGUR,
   ]);
 
-  // ── Server wie in server.ts; die Sitzung wechselt zwischen den Konten ──
+  // ── Server as in server.ts; the session switches between the accounts ──
   let als = opfer;
   const app = express();
   app.use(express.json());
@@ -196,7 +196,7 @@ test('a foreign account sees and changes no data of another via any route', {
   t.after(async () => {
     srv.closeAllConnections?.();
     await new Promise(r => srv.close(r));
-    // LISTEN-Verbindung und Zeitgeber, die Routen nebenher anstossen, hielten den Prozess sonst offen.
+    // LISTEN connection and timers that routes trigger on the side would otherwise keep the process open.
     await S.testAccess()
       .notification.close()
       .catch(() => {});
@@ -223,7 +223,7 @@ test('a foreign account sees and changes no data of another via any route', {
     return JSON.parse(r.text);
   };
 
-  // ── Das Opfer legt über die API an, was es besitzt ──────────────────────
+  // ── The victim creates via the API what it owns ─────────────────────────
   const ort = (await ok('POST', '/api/v1/storage/locations', { name: `Ort ${MARKE}` })).ort.id;
   await ok('POST', '/api/v1/sets', { set_number: SET, quantity: 1, purchase_price: 12.34, condition: 'N' });
   await ok('PUT', `/api/v1/sets/${SET}/storage`, { storage: `Ort ${MARKE}` });
@@ -266,7 +266,7 @@ test('a foreign account sees and changes no data of another via any route', {
     )
   ).id;
 
-  /** Was das Opfer besitzt, Zeile für Zeile; danach darf sich davon nichts geändert haben. */
+  /** What the victim owns, row by row; afterwards none of it may have changed. */
   const spalten = await db.all(`SELECT table_name, column_name FROM information_schema.columns
     WHERE table_schema = current_schema() AND column_name IN ('user_id', 'owner_user_id', 'main_user_id', 'sub_user_id')`);
   const bestand = async () => {
@@ -281,7 +281,7 @@ test('a foreign account sees and changes no data of another via any route', {
   const rowsOfVictim = Object.values(vorher).reduce((n, z) => n + z.length, 0);
   assert.ok(rowsOfVictim >= 15, `nur ${rowsOfVictim} Zeilen des Opfers angelegt`);
 
-  // ── Werte des Opfers für Pfad, Abfrage und Rumpf ───────────────────────
+  // ── Values of the victim for path, query and body ───────────────────────
   const idFor = p =>
     p.includes('/storage/locations/')
       ? ort
@@ -313,8 +313,8 @@ test('a foreign account sees and changes no data of another via any route', {
       type: 'anleitung',
       barcode: '5702016616354',
     })[n];
-  /** `konto`: das Opfer (fremde Konto-ID im Feld) oder das eigene — dann kommt die Anfrage an der
-   * Kontoprüfung vorbei und trifft mit den Kennungen des Opfers die Besitzprüfung der Zeile. */
+  /** `konto`: the victim (foreign account ID in the field) or the own one — then the request gets past the
+   * account check and hits the row's ownership check with the victim's identifiers. */
   const fieldValue = (k, konto) =>
     ({
       accounts: String(konto),
@@ -340,7 +340,7 @@ test('a foreign account sees and changes no data of another via any route', {
       name: 'Name des Fremden',
       search: 'GEHEIM',
       q: 'GEHEIM',
-      // Das eigene Passwort: Bestätigen kann der Angreifer im eigenen Konto, gefragt ist der Besitz dahinter.
+      // The own password: the attacker can confirm in the own account, what is asked is the ownership behind it.
       password: PASS,
       admin_password: PASS,
       current: PASS,
@@ -356,7 +356,7 @@ test('a foreign account sees and changes no data of another via any route', {
     return v === undefined ? undefined : Array.isArray(v) ? v.join(',') : String(v);
   };
 
-  // ── Das fremde Konto ruft jede Route mit diesen Werten ──────────────────
+  // ── The foreign account calls every route with these values ─────────────
   als = fremd;
   const leaks = [],
     gerufen = [];
@@ -389,7 +389,7 @@ test('a foreign account sees and changes no data of another via any route', {
   await t.test('every route was called', () => {
     const routen = new Set(gerufen.map(g => g.split(' ').slice(0, 2).join(' ')));
     assert.ok(routen.size >= 180, `nur ${routen.size} Routen gerufen`);
-    // Ohne erreichte Prüfung beweist das Ganze nichts: Ein guter Teil muss durch die Eingabeprüfung kommen.
+    // Without a reached check the whole thing proves nothing: a good share must get through the input check.
     const durch = gerufen.filter(g => !/ (400|0)$/.test(g)).length;
     assert.ok(
       durch >= gerufen.length / 2,

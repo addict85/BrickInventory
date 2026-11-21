@@ -1,23 +1,23 @@
 /**
- * Datumsangaben aus CSV-Dateien.
+ * Dates from CSV files.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
-// src/infra/csvExport ist TypeScript; das ladbare .js liegt seit der Umstellung
-// in dist/ und nicht mehr neben der Quelle. buildAndRequire() baut bei Bedarf
-// und löst dorthin auf.
+// src/infra/csvExport is TypeScript; since the conversion the loadable .js lives
+// in dist/ and no longer next to the source. buildAndRequire() builds when needed
+// and resolves to there.
 const { csvDatum } = require('./helpers/sources').buildAndRequire()('src/infra/csvExport.js');
 
 test('day first, not month', () => {
   assert.equal(csvDatum('05.03.2026'), '2026-03-05', '5. März, nicht 3. Mai');
   assert.equal(csvDatum('25.12.2025'), '2025-12-25');
   assert.equal(csvDatum('05/03/2026'), '2026-03-05', 'auch mit Schrägstrich');
-  // Genau der Fall, der vorher zu einem Fehler führte: Tag > 12
+  // Exactly the case that used to lead to an error: day > 12
   assert.equal(csvDatum('31.12.2025'), '2025-12-31');
 });
 
 test('ISO stays ISO', () => {
-  // Das eigene Exportformat — es darf nicht als Tag-zuerst umgedeutet werden.
+  // The own export format — it must not be reinterpreted as day-first.
   assert.equal(csvDatum('2026-03-05'), '2026-03-05');
 });
 
@@ -27,8 +27,8 @@ test('two-digit years', () => {
 });
 
 test('impossible dates are rejected', () => {
-  // Eine Prüfung auf 1–31 allein liesse den 31. Februar durch; Date rollt ihn
-  // still in den März.
+  // A check for 1–31 alone would let 31 February through; Date silently rolls it
+  // into March.
   assert.equal(csvDatum('31.02.2026'), null);
   assert.equal(csvDatum('29.02.2025'), null, '2025 ist kein Schaltjahr');
   assert.equal(csvDatum('29.02.2024'), '2024-02-29', '2024 schon');
@@ -42,13 +42,13 @@ test('empty and unusable inputs yield null', () => {
   }
 });
 
-// Geprüft wird jeder Import, nicht eine aufgezählte Liste: Ein Import, der in
-// keiner Liste steht, wird sonst von niemandem geprüft.
+// Every import is checked, not an enumerated list: an import that is in
+// no list is otherwise checked by nobody.
 
 /**
- * Jeder CSV-Import läuft durch csvDatum — nicht nur die, an die jemand dachte.
+ * Every CSV import runs through csvDatum — not only the ones someone thought of.
  *
- * Gegenprobe (29.10.2026): csvDatum in setCsvRows weggelassen → rot.
+ * Counter-check (29.10.2026): csvDatum omitted in setCsvRows → red.
  */
 test('every CSV import normalizes the date', () => {
   const _req = require('./helpers/sources').buildAndRequire();

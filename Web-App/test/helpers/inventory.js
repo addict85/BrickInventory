@@ -1,29 +1,29 @@
 /**
- * Bestand anlegen und lesen — für Testaufbauten.
+ * Create and read stock — for test setups.
  */
 const path = require('node:path');
 
 /**
- * „Dieses Konto hält dieses Set, so viele Exemplare."
+ * “This account holds this set, this many copies."
  *
- * @param db   der Zugang für Testdaten (sources testData())
- * @param userId  Konto
- * @param setNumber  Setnummer
- * @param menge  Exemplare. 0 ist erlaubt und heisst „Bestandszeile ohne
- *               Erfassung" — ein gültiger Zustand (etwa nach dem Löschen der
- *               letzten Erfassung über den Mengenregler), und genau der Fall,
- *               auf den die Listen mit 0 antworten müssen.
- * @param {object} [opt] Optionen:
- * @param [opt.preis]    Kaufpreis der Erfassung (Standard: keiner)
- * @param [opt.zustand]  'N' oder 'U' (Standard 'N')
- * @param [opt.am]       Aufnahmedatum der Erfassung (Standard: jetzt).
- *                     idx_set_acq_tag_zustand erlaubt je Konto, Set, TAG und
- *                     ZUSTAND nur eine Erfassung — mehrere Käufe desselben
- *                     Sets im selben Zustand brauchen also verschiedene Tage.
- *                     (Der Zustand steht seit Migration 0040 im Schlüssel;
- *                     davor galt die Regel ohne ihn, und zwei Käufe eines
- *                     Tages wurden zu einer Zeile mit Mischpreis.)
- * @param [opt.anywayIfDa]  true: eine schon vorhandene sets-Zeile ist in Ordnung
+ * @param db   the access for test data (sources testData())
+ * @param userId  account
+ * @param setNumber  set number
+ * @param menge  copies. 0 is allowed and means “stock row without
+ *               entry" — a valid state (say after deleting the
+ *               last entry via the quantity control), and exactly the case
+ *               to which the lists must answer with 0.
+ * @param {object} [opt] options:
+ * @param [opt.preis]    purchase price of the entry (default: none)
+ * @param [opt.zustand]  'N' or 'U' (default 'N')
+ * @param [opt.am]       date the entry was added (default: now).
+ *                     idx_set_acq_tag_zustand allows only one entry per account, set, DAY and
+ *                     CONDITION — several purchases of the same
+ *                     set in the same condition therefore need different days.
+ *                     (The condition has been in the key since migration 0040;
+ *                     before that the rule applied without it, and two purchases of one
+ *                     day became one row with a mixed price.)
+ * @param [opt.anywayIfDa]  true: an already existing sets row is fine
  */
 async function holdsSet(db, userId, setNumber, menge = 1, opt = {}) {
   await db.run(
@@ -35,11 +35,11 @@ async function holdsSet(db, userId, setNumber, menge = 1, opt = {}) {
 }
 
 /**
- * Eine weitere Erfassung zu einem bestehenden Bestand.
+ * Another entry for an existing stock.
  *
- * COALESCE auf dem Datum und nicht zwei Abfragen: NOW() als Standardwert geht
- * nicht als Parameter, und zwei Textfassungen derselben Anweisung sind genau
- * die Doppelung, die diese Datei vermeidet.
+ * COALESCE on the date and not two queries: NOW() as a default value cannot
+ * go as a parameter, and two text versions of the same statement are exactly
+ * the duplication this file avoids.
  */
 async function record(db, userId, setNumber, menge, opt = {}) {
   await db.run(
@@ -50,13 +50,13 @@ async function record(db, userId, setNumber, menge, opt = {}) {
 }
 
 /**
- * Die Stückzahl eines Sets, wie der Server sie seit Migration 0036 sieht.
+ * The item count of a set as the server sees it since migration 0036.
  *
- * Ersetzt das `SELECT quantity FROM sets` der Zusicherungen. Der JOIN auf
- * `sets` ist dieselbe Einschränkung wie in db/stockQuantity.ts: Eine
- * Erfassung ohne Bestandszeile zählt nicht mit.
+ * Replaces the `SELECT quantity FROM sets` of the assertions. The JOIN on
+ * `sets` is the same restriction as in db/stockQuantity.ts: an
+ * entry without a stock row does not count.
  *
- * @param konten eine Konto-ID oder eine Liste (dann über alle summiert)
+ * @param konten an account ID or a list (then summed over all)
  */
 async function quantityOf(db, konten, setNumber) {
   const ids = Array.isArray(konten) ? konten : [konten];
@@ -70,37 +70,37 @@ async function quantityOf(db, konten, setNumber) {
   return z ? Number(z.q) : 0;
 }
 
-/** Gibt es die Bestandszeile überhaupt? Getrennt von der Menge, weil „kein
- *  Bestand" und „Bestand mit 0 Exemplaren" zwei verschiedene Aussagen sind. */
+/** Does the stock row exist at all? Separate from the quantity because “no
+ *  stock" and “stock with 0 copies" are two different statements. */
 async function haltRow(db, userId, setNumber) {
   return await db.get('SELECT id FROM sets WHERE user_id=$1 AND set_number=$2', [userId, setNumber]);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Teile und Minifiguren
+// Parts and minifigures
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * „Dieses Konto hält dieses Teil."
+ * “This account holds this part."
  *
- * @param {object} [opt] Optionen:
- * @param [opt.setNumber]  Aus welchem Set. Fehlt sie, ist es ein MANUELL
- *                       erfasstes Teil (source='manual'), und die Menge geht
- *                       in eine Erfassung. Steht sie da, ist es ein Set-Teil
- *                       (source='set'), und die Menge ist die KATALOGZAHL.
- * @param [opt.menge]      Stückzahl (Standard 1)
- * @param [opt.colorId]    Farbe (Standard 0)
- * @param [opt.preis]      Kaufpreis der Erfassung — nur fuer manuelle Teile
- * @param [opt.zustand]    'N' oder 'U' (Standard 'N'), nur fuer manuelle Teile
- * @param [opt.am]         Aufnahmedatum der Erfassung; idx_part_acq_tag_zustand erlaubt je
- *                       Konto, Teil, Farbe, Tag und Zustand nur eine Erfassung.
- * @param [opt.storageId]  Lagerort
- * @param [opt.anywayIfDa]  ohne Wirkung für Teile; nur der Gleichheit mit holdsSet halber
+ * @param {object} [opt] options:
+ * @param [opt.setNumber]  From which set. If missing, it is a MANUALLY
+ *                       entered part (source='manual'), and the quantity goes
+ *                       into an entry. If given, it is a set part
+ *                       (source='set'), and the quantity is the CATALOG COUNT.
+ * @param [opt.menge]      item count (default 1)
+ * @param [opt.colorId]    color (default 0)
+ * @param [opt.preis]      purchase price of the entry — only for manual parts
+ * @param [opt.zustand]    'N' or 'U' (default 'N'), only for manual parts
+ * @param [opt.am]         date the entry was added; idx_part_acq_tag_zustand allows only one entry per
+ *                       account, part, color, day and condition.
+ * @param [opt.storageId]  storage location
+ * @param [opt.anywayIfDa]  without effect for parts; only for parity with holdsSet
  */
 async function holdsPart(db, userId, partNumber, opt = {}) {
   const { setNumber = null, menge = 1, colorId = 0 } = opt;
   const quelle = setNumber ? 'set' : 'manual';
-  // Ein Set-Teil gehört zu einem Set des Kontos (Fremdschlüssel, Migration 0058).
+  // A set part belongs to a set of the account (foreign key, migration 0058).
   if (setNumber)
     await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2) ON CONFLICT DO NOTHING', [userId, setNumber]);
   await db.run(
@@ -109,8 +109,8 @@ async function holdsPart(db, userId, partNumber, opt = {}) {
     [userId, setNumber, partNumber, colorId, quelle, opt.storageId ?? null],
   );
   if (setNumber) {
-    // Die Katalogzahl — ohne sie faellt teilmengeAus() auf den Rueckfall 1
-    // zurueck, und ein Set mit vier gleichen Steinen zaehlte als einer.
+    // The catalog count — without it teilmengeAus() falls back to the fallback 1,
+    // and a set with four equal bricks would count as one.
     await db.run(
       `INSERT INTO set_parts (set_number, part_number, color_id, quantity)
        VALUES ($1,$2,$3,$4)
@@ -118,10 +118,10 @@ async function holdsPart(db, userId, partNumber, opt = {}) {
       [setNumber, partNumber, colorId, menge],
     );
   } else if (menge > 0) {
-    // ON CONFLICT auf die Tagesregel: Ein zweiter Aufruf fuer dieselbe
-    // Position SETZT die Menge, statt abzubrechen oder sie zu addieren.
-    // Das ist die Zusage dieser Funktion — „dieses Konto haelt N davon",
-    // nicht „kauf N dazu". Wer zwei Kaeufe braucht, gibt zwei Daten mit …
+    // ON CONFLICT on the daily rule: a second call for the same
+    // item SETS the quantity instead of aborting or adding it.
+    // That is the promise of this function — “this account holds N of them",
+    // not “buy N more". Whoever needs two purchases passes two dates …
     await db.run(
       `DELETE FROM part_acquisitions
         WHERE user_id = $1 AND part_number = $2 AND color_id = $3 AND condition = $4
@@ -137,7 +137,7 @@ async function holdsPart(db, userId, partNumber, opt = {}) {
 }
 
 /**
- * „Dieses Konto hält diese Minifigur." Wortgleich zu [holdsPart], ohne Farbe.
+ * “This account holds this minifigure." Word for word like [holdsPart], without color.
  */
 async function holdsMinifig(db, userId, figNumber, opt = {}) {
   const { setNumber = null, menge = 1 } = opt;
@@ -157,7 +157,7 @@ async function holdsMinifig(db, userId, figNumber, opt = {}) {
       [setNumber, figNumber, menge],
     );
   } else if (menge > 0) {
-    // ON CONFLICT auf die Tagesregel — siehe holdsPart().
+    // ON CONFLICT on the daily rule — see holdsPart().
     await db.run(
       `DELETE FROM minifig_acquisitions
         WHERE user_id = $1 AND fig_number = $2 AND condition = $3
@@ -173,10 +173,10 @@ async function holdsMinifig(db, userId, figNumber, opt = {}) {
 }
 
 /**
- * Die Stückzahl einer Bestandszeile, wie der Server sie seit Migration 0038
- * sieht — die Fallunterscheidung, in JavaScript nachgefragt.
+ * The item count of a stock row as the server sees it since migration 0038
+ * — the case distinction, asked in JavaScript.
  *
- * Ersetzt das `SELECT quantity FROM parts` der Zusicherungen.
+ * Replaces the `SELECT quantity FROM parts` of the assertions.
  */
 async function subsetOf(db, userId, partNumber, colorId = 0) {
   const z = await db.get(
@@ -196,7 +196,7 @@ async function subsetOf(db, userId, partNumber, colorId = 0) {
   return z ? Number(z.menge) : null;
 }
 
-/** Dasselbe fuer eine Minifigur. */
+/** The same for a minifigure. */
 async function minifigQuantityOf(db, userId, figNumber) {
   const z = await db.get(
     `SELECT CASE WHEN COALESCE(m.source,'set') = 'manual'
@@ -214,10 +214,10 @@ async function minifigQuantityOf(db, userId, figNumber) {
 }
 
 /**
- * Ein Set im Katalog (Migration 0105): Name, Jahr, Thema und Teile in rb_sets
- * (das Thema über seinen Namen in rb_themes), Figuren und Bild in set_catalog.
- * Fehlende Felder lassen vorhandene Werte stehen. `herkunft` wie in rb_sets
- * ('api' als Vorgabe: so legt die Erfassung an).
+ * A set in the catalog (migration 0105): name, year, theme and parts in rb_sets
+ * (the theme via its name in rb_themes), minifigures and image in set_catalog.
+ * Missing fields leave existing values alone. `herkunft` as in rb_sets
+ * ('api' as default: that is how adding creates it).
  */
 async function catalogSet(db, setNumber, f = {}) {
   let themeId = null;
@@ -246,10 +246,10 @@ async function catalogSet(db, setNumber, f = {}) {
 }
 
 /**
- * Eine Sammlung, in der jede Ansicht etwas zeigt: Sets mit Thema, Kaufpreis
- * (auch 0 = Geschenk), Marktpreis und Verlauf, Teile in mehreren Farben
- * (Schwarz für den Farbpunkt im Dunkelmodus), Figuren und Merkliste. Für
- * Layout-, Kontrast- und axe-Prüfungen, die sonst leere Listen prüften.
+ * A collection in which every view shows something: sets with theme, purchase price
+ * (also 0 = gift), market price and history, parts in several colors
+ * (black for the color dot in dark mode), minifigures and wishlist. For
+ * layout, contrast and axe checks that would otherwise check empty lists.
  */
 async function patternCollection(db, uid) {
   const sets = [
@@ -324,7 +324,7 @@ async function patternCollection(db, uid) {
     `INSERT INTO minifigs_catalog (fig_number, fig_name) VALUES ('fig-000002', 'Doc Brown') ON CONFLICT DO NOTHING`,
   );
   await holdsMinifig(db, uid, 'fig-000002', { menge: 2, preis: 4.5 });
-  // Über den Dienst: Nur er verschlüsselt die Nummer, wie es die Datenbank verlangt.
+  // Via the service: only it encrypts the number, as the database requires.
   await require(path.join(__dirname, '..', '..', 'dist', 'src', 'vouchers', 'repository', 'vouchers.js')).insertVoucher(
     db,
     uid,
@@ -339,10 +339,10 @@ async function patternCollection(db, uid) {
 }
 
 /**
- * patternCollection plus ein verknüpftes Unterkonto „<Konto>_kind“, das ein Set
- * der Sammlung zu einem anderen Preis hält: Haushaltszeilen, Besitzer und
- * „Verknüpfung lösen“ kommen so in die gemessenen Ansichten. startApp löscht
- * Konten mit dem Präfix „<Konto>_“ mit.
+ * patternCollection plus a linked sub-account “<account>_kind” that holds a set
+ * of the collection at a different price: household rows, owner and
+ * “unlink” thus get into the measured views. startApp also deletes
+ * accounts with the prefix “<account>_”.
  */
 async function patternHousehold(db, uid) {
   await patternCollection(db, uid);

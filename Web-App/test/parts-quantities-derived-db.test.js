@@ -1,24 +1,24 @@
 /**
- * Seit db/basis.sql gibt es den Stand VOR dieser Migration nicht mehr: Die
- * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
- * der Endstand und die Lesewege.
+ * Since db/basis.sql the state BEFORE this migration no longer exists: the
+ * cases on bolt, addendum and intermediate state are dropped. What is checked is
+ * the final state and the read paths.
  *
- *      Gegenprobe: fehlende Katalogzeile (nachgetragen), Drift (angehalten),
- *      Doppelte (zusammengelegt) — und jeweils der Lauf OHNE den Schritt, der
- *      es verhindert, damit bewiesen ist, dass er es verhindert.
- *   3. Niemand SCHREIBT die beiden Spalten mehr.
- *   4. Die Lesewege liefern die Stückzahl weiter — aus dem Katalog für ein
- *      Set-Teil, aus den Erfassungen für eine manuelle Position. Mit
- *      Gegenproben: Ändert sich die Quelle, folgt die Antwort.
- *   5. Jede Lesestelle wird AUSGEFÜHRT. Das ist kein Beiwerk: teilmengeAus()
- *      liest den Alias `tm_e`, den erst teilmengeJoin() anhängt. Fehlt der
- *      JOIN, ist das kein stiller Fehler, sondern „missing FROM-clause entry
- *      for table tm_e" — GEMESSEN in computeMinifigStats(), wo genau das passiert
- *      war. Ein Muster über den Quelltext hat diesen Fall NICHT gefunden
- *      (zwei seiner drei Treffer waren Fehlmeldungen: ein Bruchstück wird in
- *      eine Abfrage eingesetzt, die den JOIN trägt). Ausführen findet ihn.
+ *      Counter-check: missing catalog row (filled in), drift (stopped),
+ *      duplicates (merged) — and each time the run WITHOUT the step that
+ *      prevents it, so that it is proven that it prevents it.
+ *   3. Nobody WRITES the two columns any more.
+ *   4. The read paths still deliver the piece count — from the catalog for a
+ *      set part, from the acquisitions for a manual position. With
+ *      counter-checks: if the source changes, the response follows.
+ *   5. Every read place is EXECUTED. That is no accessory: teilmengeAus()
+ *      reads the alias `tm_e` that only teilmengeJoin() attaches. If the
+ *      JOIN is missing, that is not a silent error but „missing FROM-clause entry
+ *      for table tm_e" — MEASURED in computeMinifigStats(), where exactly that had
+ *      happened. A pattern over the source text did NOT find this case
+ *      (two of its three hits were false reports: a fragment is inserted into
+ *      a query that carries the JOIN). Executing finds it.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
  * REQUIRE_DB=1.
  */
 require('./helpers/system-frame');
@@ -36,10 +36,10 @@ const { keineDb } = require('./helpers/db');
 const { catalogSet } = require('./helpers/inventory');
 const db = testData();
 
-// Dieselbe Begruendung wie in test/set-quantity-from-entries-db.test.js: Diese
-// Datei baut die Datenbank mehrfach von null auf. Wer danach laeuft, muss sie
-// VOLLSTAENDIG vorfinden — Schema UND Migrationen. Ohne das erbt die naechste
-// Datei eine halbe Datenbank, und ihr Fehlschlag sieht aus wie ihr eigener.
+// The same reasoning as in test/set-quantity-from-entries-db.test.js: this
+// file builds the database from zero several times. Whoever runs afterwards must
+// find it COMPLETE — schema AND migrations. Without that the next
+// file inherits half a database, and its failure looks like its own.
 test.after(async () => {
   try {
     await db.run('DROP SCHEMA public CASCADE');
@@ -75,7 +75,7 @@ const dbDa = async t => {
   }
 };
 
-/** Frische Datenbank, Schema, alle Migrationen. */
+/** Fresh database, schema, all migrations. */
 async function fullChain() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
@@ -95,8 +95,8 @@ test('after the whole chain parts and minifigs carry no quantity any more', { co
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
 
-  // Den Vorstand vor den Migrationen gibt es nicht mehr: Eine leere
-  // Datenbank bekommt db/basis.sql. Geprüft wird der Endstand.
+  // The state before the migrations no longer exists: an empty
+  // database gets db/basis.sql. What is checked is the final state.
   const client = await db.pool.connect();
   try {
     await _req('db/migrate.js').runMigrations(client);
@@ -112,15 +112,15 @@ test('after the whole chain parts and minifigs carry no quantity any more', { co
     );
   }
 
-  // Was eine Bestandszeile noch ist: DIESES Konto hat DIESES Teil, aus DEM
-  // Set, an DEM Ort, in DEM Zustand.
+  // What a stock row still is: THIS account has THIS part, from THAT
+  // set, at THAT place, in THAT condition.
   const teile = await columnsOf('parts');
   for (const sp of ['id', 'user_id', 'part_number', 'color_id', 'set_number', 'source', 'storage_id']) {
     assert.ok(teile.includes(sp), `parts.${sp} fehlt — die Spalte gehoert zum Bestand`);
   }
 
-  // Nicht verschwunden, sondern umgezogen — und zwar an ZWEI Stellen, je
-  // nachdem, was die Zahl bedeutet.
+  // Not disappeared but moved — and to TWO places, depending
+  // on what the number means.
   for (const [tab, sp] of [
     ['set_parts_catalog', 'quantity'],
     ['set_minifigs_catalog', 'quantity'],
@@ -130,10 +130,10 @@ test('after the whole chain parts and minifigs carry no quantity any more', { co
     assert.ok((await columnsOf(tab)).includes(sp), `${tab}.${sp} fehlt — dann gibt es die Stueckzahl nirgends mehr`);
   }
 
-  // Die vier Indizes aus Schritt 5 und 6. Die beiden eindeutigen sind nicht
-  // Kosmetik: Ohne sie war das `ON CONFLICT DO NOTHING` der Importe
-  // WIRKUNGSLOS (es gab keinen Konflikt, auf den es treffen konnte), und
-  // jeder erneute Import desselben Sets legte neue Zeilen an. Ab 0038 liest …
+  // The four indexes from steps 5 and 6. The two unique ones are not
+  // cosmetics: without them the `ON CONFLICT DO NOTHING` of the imports was
+  // INEFFECTIVE (there was no conflict it could hit), and
+  // every repeated import of the same set created new rows. From 0038 on …
   const ix = await indizes();
   for (const name of [
     'idx_parts_eindeutig',
@@ -144,8 +144,8 @@ test('after the whole chain parts and minifigs carry no quantity any more', { co
     assert.ok(ix.includes(name), `${name} fehlt (Migration 0038, Schritt 5/6)`);
   }
 
-  // Und sie sind wirklich EINDEUTIG — ein Index mit demselben Namen, aber
-  // ohne UNIQUE, waere hier sonst nicht zu unterscheiden.
+  // And they really are UNIQUE — an index with the same name but
+  // without UNIQUE could not be told apart here otherwise.
   for (const name of ['idx_parts_eindeutig', 'idx_minifigs_eindeutig']) {
     const r = await db.get(
       `SELECT indisunique FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
@@ -157,11 +157,11 @@ test('after the whole chain parts and minifigs carry no quantity any more', { co
 });
 
 test('nobody writes the piece count of a part or a figure any more', () => {
-  // Nur der QUELLTEXT, und nur die SCHREIBseite. Die Leseseite prueft nicht
-  // dieser Test, sondern die Datenbank: Nach Migration 0038 gibt es die
-  // Spalten nicht, jede verbliebene Lesestelle ist ein harter Fehler — und
-  // genau deshalb laufen die Lesewege im naechsten Fall gegen eine migrierte
-  // Datenbank, statt hier gegen ein Muster.
+  // Only the SOURCE TEXT, and only the WRITE side. The read side is not checked by
+  // this test but by the database: after migration 0038 the columns
+  // do not exist, every remaining read place is a hard error — and
+  // exactly for that reason the read paths in the next case run against a migrated
+  // database instead of against a pattern here.
   const dateien = [];
   const lauf = verz => {
     for (const e of fs.readdirSync(verz, { withFileTypes: true })) {
@@ -180,28 +180,28 @@ test('nobody writes the piece count of a part or a figure any more', () => {
   dateien.push(path.join(ROOT, 'server.ts'));
   assert.ok(dateien.length > 100, `Nur ${dateien.length} Quelldateien gefunden — der Pfad stimmt nicht`);
 
-  // Zeilen ohne Kommentare: Ein Erklaertext, der eine Anweisung ZITIERT, ist
-  // kein Schreibzugriff. Genau diese Falle hat in diesem Baum schon eine Regel
-  // ihren eigenen Begruendungstext melden lassen — und die Kommentare in
-  // src/sets/setMove.ts und db/migrations/0038 zitieren die entfernten
-  // Anweisungen woertlich.
+  // Lines without comments: an explanatory text that QUOTES a statement is
+  // not a write access. Exactly this trap has already made a rule in this tree
+  // report its own reasoning text — and the comments in
+  // src/sets/setMove.ts and db/migrations/0038 quote the removed
+  // statements literally.
   const codeRows = txt =>
     txt.split('\n').filter(z => {
       const t = z.trim();
       return !(t.startsWith('//') || t.startsWith('*') || t.startsWith('/*') || t.startsWith('--'));
     });
 
-  // Nur parts und minifigs. Die Katalog- und Erfassungstabellen schreiben ihre
-  // quantity natuerlich fort — sie sind die Wahrheit, nicht die Abschrift.
+  // Only parts and minifigs. The catalog and acquisition tables of course keep
+  // writing their quantity — they are the truth, not the copy.
   /** @type {[string, RegExp][]} */
   const muster = [
     ['setzt parts', /UPDATE\s+parts\s+SET\s+[^;`']*\bquantity\s*=/i],
     ['setzt minifigs', /UPDATE\s+minifigs\s+SET\s+[^;`']*\bquantity\s*=/i],
     ['parts bei Konflikt', /INSERT\s+INTO\s+parts\b[^;]*DO\s+UPDATE\s+SET\s+[^;]*\bquantity\s*=/i],
     ['figs bei Konflikt', /INSERT\s+INTO\s+minifigs\b[^;]*DO\s+UPDATE\s+SET\s+[^;]*\bquantity\s*=/i],
-    // Und die Spalten duerfen nicht wieder angelegt werden — ein
-    // `ADD COLUMN quantity` brachte die Abschrift zurueck, ohne eine einzige
-    // der Regeln darueber zu verletzen.
+    // And the columns must not be created again — an
+    // `ADD COLUMN quantity` would bring the copy back without violating a single
+    // one of the rules above.
     ['legt parts an', /ALTER\s+TABLE\s+parts\s+ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?quantity/i],
     ['legt minifigs an', /ALTER\s+TABLE\s+minifigs\s+ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?quantity/i],
   ];
@@ -247,8 +247,8 @@ test('nobody writes the piece count of a part or a figure any more', () => {
     const m = muster.find(([was]) => was === name)[1];
     assert.ok(m.test(zeile), `Das Muster „${name}" greift nicht mehr auf seine eigene Probe: ${zeile.slice(0, 60)}`);
   }
-  // Und die Gegenrichtung: Was erlaubt ist, darf NICHT greifen. Ohne diese
-  // Haelfte waere ein Muster, das auf jede Zeile passt, auch gruen.
+  // And the opposite direction: what is allowed must NOT trigger. Without this
+  // half a pattern that fits every line would be green too.
   for (const zeile of [
     'UPDATE part_acquisitions SET quantity = quantity - $1 WHERE id=$2',
     'UPDATE minifig_acquisitions SET quantity = $1 WHERE id=$2',
@@ -272,11 +272,11 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2)`, [haupt, kind]);
   const SN = '75192-1';
 
-  // Die Lage
+  // The situation
   await catalogSet(db, SN, { name: 'Millennium Falcon', year: 2017, pieces: 7541 });
   await db.run(`INSERT INTO sets (user_id,set_number) VALUES ($1,$2),($3,$2)`, [haupt, SN, kind]);
-  // Verschiedene Tage: idx_set_acq_tag_zustand (Migration 0008) erlaubt je Konto, Set
-  // und TAG nur eine Erfassung.
+  // Different days: idx_set_acq_tag_zustand (migration 0008) allows per account, set
+  // and DAY only one acquisition.
   await db.run(
     `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
                 VALUES ($1,$2,2,100,'N', NOW() - INTERVAL '3 days'),
@@ -294,8 +294,8 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
                   ('sw0001','Han Solo'), ('fig-m','Eigenbau')
                 ON CONFLICT (fig_number) DO NOTHING`);
 
-  // Set-Teil: die Stückzahl steht EINMAL im Katalog des Sets — gemeinsam für
-  // alle Konten, die das Set halten.
+  // Set part: the piece count stands ONCE in the catalog of the set — shared by
+  // all accounts that hold the set.
   await db.run(
     `INSERT INTO set_parts (set_number,part_number,color_id,quantity)
                 VALUES ($1,'3001',4,6)`,
@@ -317,7 +317,7 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
     [haupt, SN, kind],
   );
 
-  // Manuelle Position: die Stückzahl ist die Summe ihrer Erfassungen.
+  // Manual position: the piece count is the sum of its acquisitions.
   await db.run(
     `INSERT INTO parts (user_id,part_number,color_id,source)
                 VALUES ($1,'3070b',0,'manual')`,
@@ -345,11 +345,11 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
   const S = _req('src/inventory/metrics.js');
   const SH = _req('src/inventory/shared.js');
 
-  // ── Kennzahlen, ein Konto ────────────────────────────────────────────────
+  // ── Metrics, one account ────────────────────────────────────────────────
   //
-  // 6 im Set × 2 Exemplare = 12, dazu 5 manuell = 17. Die manuelle Position
-  // darf NICHT mit der Setmenge multipliziert werden — sie gehört zu keinem
-  // Set. Stünde hier 22, wäre genau das passiert.
+  // 6 in the set × 2 copies = 12, plus 5 manual = 17. The manual position
+  // must NOT be multiplied by the set quantity — it belongs to no
+  // set. If 22 stood here, exactly that would have happened.
   const st1 = await S.getStats([haupt]);
   assert.equal(
     Number(st1.total_parts),
@@ -362,17 +362,17 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
     `Ein Konto: 1 im Set × 2 Exemplare + 2 manuell = 4, bekam ${st1.total_minifigs}`,
   );
 
-  // ── Kennzahlen, Haushalt ─────────────────────────────────────────────────
+  // ── Metrics, household ─────────────────────────────────────────────────
   //
-  // Dazu das eine Exemplar des Kindes: 6 × 1 = 6, also 23. Die Katalogzahl ist
-  // für beide Konten DIESELBE — das ist der Punkt des Umzugs: Vorher trug
-  // jedes Konto seine eigene Abschrift, und zwei Abschriften derselben Zahl
-  // können auseinanderlaufen.
+  // Plus the one copy of the child: 6 × 1 = 6, so 23. The catalog number is
+  // THE SAME for both accounts — that is the point of the move: before, every
+  // account carried its own copy, and two copies of the same number
+  // can drift apart.
   const st2 = await S.getStats([haupt, kind]);
   assert.equal(Number(st2.total_parts), 23, `Haushalt: 12 + 5 + 6 = 23, bekam ${st2.total_parts}`);
   assert.equal(Number(st2.total_minifigs), 5, `Haushalt: 2 + 2 + 1 = 5, bekam ${st2.total_minifigs}`);
 
-  // ── Die Listen ───────────────────────────────────────────────────────────
+  // ── The lists ───────────────────────────────────────────────────────────
   const liste = await P.partsQuery([haupt], { page_size: 60 });
   const rowOf = (l, nr) => (l.parts || []).find(x => x.part_number === nr);
   assert.equal(
@@ -385,9 +385,9 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
     5,
     'Die Teileliste liest die manuelle Position nicht aus den Erfassungen',
   );
-  // Der Treiber liefert BIGINT als ZEICHENKETTE. Ohne den ::int-Cast haengt
-  // der JSON-Typ daran, welcher Zweig geantwortet hat — genau dieser Fehler
-  // ist in src/parts/queries.ts schon einmal aufgeflogen.
+  // The driver delivers BIGINT as a STRING. Without the ::int cast the
+  // JSON type depends on which branch answered — exactly this error
+  // already surfaced once in src/parts/queries.ts.
   assert.equal(
     typeof rowOf(liste, '3001').total_quantity,
     'number',
@@ -412,17 +412,17 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
     4,
     'Die Figuren-Kennzahl rechnet nicht mit',
   );
-  // partStatsQuery zaehlt ABSICHTLICH nur Set-Teile — manuell erfasste haben in
-  // der Oberflaeche ihren eigenen Bereich (der Filter steht in
-  // src/parts/summary.ts und im Rueckfall darunter). Also 12, nicht 17. Diese
-  // Zahl ist hier kein Nebenbefund: Stuende 17, zaehlte die Kennzahl die …
+  // partStatsQuery DELIBERATELY counts only set parts — manually captured ones have
+  // their own area in the UI (the filter stands in
+  // src/parts/summary.ts and in the fallback below it). So 12, not 17. This
+  // number is no side finding here: if 17 stood here, the metric would count the …
   assert.equal(
     Number((await P.partStatsQuery([haupt])).total_parts),
     12,
     'Die Teile-Kennzahl zaehlt nur Set-Teile: 6 × 2 Exemplare = 12',
   );
 
-  // ── Die Listen der MANUELLEN Positionen ─────────────────────────────────
+  // ── The lists of the MANUAL positions ─────────────────────────────────
   const man = await P.manualPartsList([haupt], haupt, { page_size: 60 });
   const manRow = man.find(x => x.part_number === '3070b');
   assert.ok(manRow, 'Die manuelle Position fehlt in der Liste');
@@ -431,11 +431,11 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
   assert.ok(manFig, 'Die manuelle Figur fehlt in der Liste');
   assert.equal(Number(manFig.quantity), 2, `Manuelle Figurenliste: 2, bekam ${manFig.quantity}`);
 
-  // ── „Kann ich das bauen?" ───────────────────────────────────────────────
+  // ── „Can I build this?" ───────────────────────────────────────────────
   //
-  // ownedQuantitiesQuery trennt GESAMT von LOSE: Ein Teil, das in einem Set
-  // steckt, ist vorhanden, aber nicht greifbar. Genau diese Trennung braucht
-  // die Fallunterscheidung an zwei Stellen in EINER Abfrage.
+  // ownedQuantitiesQuery separates TOTAL from LOOSE: a part that sits in a set
+  // is present but not at hand. Exactly this separation needs
+  // the case distinction at two places in ONE query.
   const besitz = await P.ownedQuantitiesQuery(
     [haupt],
     [
@@ -448,35 +448,35 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
   assert.equal(besitz['3070b|0']?.gesamt, 5, 'Manuelle Position: 2 + 3');
   assert.equal(besitz['3070b|0']?.lose, 5, 'Eine manuelle Position ist lose');
 
-  // ── Der Dialog „in welchen Sets steckt das?" ────────────────────────────
+  // ── The dialog „which sets is it in?" ────────────────────────────
   //
-  // Hier zeigt sich die gemeinsame Katalogzahl am deutlichsten: Zwei Konten,
-  // ein Set, EINE Zahl — und zwar die JE EXEMPLAR, ohne Multiplikation, weil
-  // der Dialog das Set zeigt, nicht den Bestand.
+  // Here the shared catalog number shows most clearly: two accounts,
+  // one set, ONE number — namely the one PER COPY, without multiplication, because
+  // the dialog shows the set, not the stock.
   const verw = await SH.usingSets([haupt, kind], 'parts', { part_number: '3001', color_id: 4 });
   assert.equal(verw.sets.length, 2, `Beide Konten halten das Set, erwartet zwei Zeilen, bekam ${verw.sets.length}`);
   for (const s of verw.sets) {
     assert.equal(Number(s.quantity), 6, `Jede Zeile muss die Katalogzahl 6 tragen, bekam ${s.quantity}`);
   }
 
-  // ── Farben und Zusammenfassung ──────────────────────────────────────────
+  // ── Colors and summary ──────────────────────────────────────────
   const farben = await P.partColorsQuery([haupt]);
   assert.ok(
     Array.isArray(farben) && farben.length > 0,
     'Die Farbliste ist leer — sie zaehlt mit teilmengeAus() und muesste zwei Farben haben',
   );
 
-  // rebuildNow() und nicht rebuild(): Die Listenaufrufe darueber haben ueber
-  // summaryFresh() schon einen HINTERGRUNDaufbau angestossen, und der haelt
-  // die Sperre pg_try_advisory_xact_lock. rebuild() direkt gerufen sieht die
-  // Sperre, kehrt stillschweigend zurueck („ein anderer baut gerade") und baut …
+  // rebuildNow() and not rebuild(): the list calls above have already triggered
+  // a BACKGROUND build via summaryFresh(), and that one holds
+  // the lock pg_try_advisory_xact_lock. rebuild() called directly sees the
+  // lock, returns silently („somebody else is building right now") and builds …
   const { rebuildNow } = _req('src/parts/summary.js');
   await rebuildNow(haupt);
   const zus = await db.get(`SELECT total_quantity FROM parts_summary WHERE user_id=$1 AND part_number='3001'`, [haupt]);
   assert.ok(zus, 'Die Zusammenfassung hat das Set-Teil nicht aufgenommen');
   assert.equal(Number(zus.total_quantity), 12, `Die vorberechnete Zahl ist 6 × 2 = 12, bekam ${zus.total_quantity}`);
 
-  // Bewertung und CSV
+  // valuation and CSV
   const B = _req('src/finances/calculation/valuation.js');
   const bewP = await B.valueParts(haupt, [haupt]);
   const bewRow = (bewP.parts || []).find(x => x.part_number === '3070b');
@@ -497,12 +497,12 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
   const csvM = await _req('src/inventory/inventoryExport.js').figurenCsv(haupt);
   assert.match(csvM, /fig-m/, 'Der Figuren-Export laesst die manuelle Figur aus');
 
-  // ── GEGENPROBE 1: die KATALOGZAHL ändern ────────────────────────────────
+  // ── COUNTER-CHECK 1: change the CATALOG NUMBER ────────────────────────────────
   //
-  // Der Kern dieses Falls. Ohne ihn könnten alle Zahlen oben zufällig stimmen
-  // — etwa aus einer anderen Quelle, die gerade dasselbe sagt. Erst wenn die
-  // Antwort einer Änderung FOLGT, ist bewiesen, woher sie kommt. Und sie muss
-  // bei BEIDEN Konten folgen: Der Katalog ist gemeinsam.
+  // The core of this case. Without it all numbers above could be right by chance
+  // — say from another source that happens to say the same. Only when the
+  // response FOLLOWS a change is it proven where it comes from. And it must
+  // follow for BOTH accounts: the catalog is shared.
   await db.run(
     `UPDATE set_parts SET quantity = 9
                  WHERE set_number=$1 AND part_number='3001'`,
@@ -525,11 +525,11 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
     'Die Liste folgt der Katalogzahl nicht: 9 × 2 = 18',
   );
 
-  // ── GEGENPROBE 2: eine ERFASSUNG ändern ─────────────────────────────────
+  // ── COUNTER-CHECK 2: change an ACQUISITION ─────────────────────────────────
   //
-  // Dieselbe Probe für den anderen Zweig. Dass beide Gegenproben gebraucht
-  // werden, ist der ganze Grund, warum teilmengeAus() eine FALLunterscheidung
-  // ist und keine einzelne Abfrage.
+  // The same probe for the other branch. That both counter-checks are
+  // needed is the whole reason why teilmengeAus() is a CASE distinction
+  // and not a single query.
   const eine = await db.get(
     `SELECT id FROM part_acquisitions WHERE user_id=$1 AND part_number='3070b'
       ORDER BY id ASC LIMIT 1`,
@@ -542,12 +542,12 @@ test('the read paths deliver the piece count from catalog and acquisitions', { c
     'Nach 2 → 7 muss die manuelle Position 10 sein (7 + 3) — dann liest die Liste ' + 'sie nicht aus part_acquisitions',
   );
 
-  // ── Und ohne Erfassung ist die Menge 0, nicht 1 ─────────────────────────
+  // ── And without an acquisition the quantity is 0, not 1 ─────────────────────────
   //
-  // Eine manuelle Bestandszeile ohne Erfassung sollte es nicht geben
-  // (Migration 0035 traegt fuer jede eine nach), aber sie darf die Liste
-  // nicht LEEREN — deshalb LEFT JOIN in db/stockQuantity.ts. Sie bedeutet
-  // dann null Stueck, nicht eines.
+  // A manual stock row without an acquisition should not exist
+  // (migration 0035 fills one in for each), but it must not EMPTY
+  // the list — hence LEFT JOIN in db/stockQuantity.ts. It then means
+  // zero pieces, not one.
   await db.run(`DELETE FROM part_acquisitions WHERE user_id=$1 AND part_number='3070b'`, [haupt]);
   const leer = rowOf(await P.partsQuery([haupt], { page_size: 60 }), '3070b');
   assert.ok(

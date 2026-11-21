@@ -1,9 +1,9 @@
 /**
- * Karten und Zeilen mit data-click lassen sich mit der Tastatur auslösen —
- * am echten Bündel in jsdom (public/js/actions.js).
+ * Cards and rows with data-click can be triggered by keyboard —
+ * on the real bundle in jsdom (public/js/actions.js).
  *
- * Gegenprobe (am 27.10. gemessen): den keydown-Zuhörer in aktionen.js
- * entfernt → rot: „Eingabe auf einer Karte".
+ * Counter-check (measured on 27.10.): the keydown listener in aktionen.js
+ * removed → red: “Enter on a card".
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

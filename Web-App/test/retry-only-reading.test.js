@@ -1,13 +1,13 @@
 /**
- * Bricht die Verbindung mitten in einer Anfrage ab (08006), wird nur ein
- * Lesezugriff wiederholt. Beim Schreiben ist offen, ob die Zeile schon
- * festgeschrieben war — eine Wiederholung legte sie doppelt an.
+ * If the connection breaks in the middle of a request (08006), only a
+ * read access is retried. When writing it is open whether the row had already been
+ * committed — a retry would create it twice.
  *
- * Gegenproben (am 27.10. gemessen):
- *   A  08006 wieder in RETRYABLE_CODES → rot: „ein Schreibzugriff nach
- *      Verbindungsabbruch"
- *   B  isReading ohne die Prüfung auf INSERT/UPDATE/DELETE → rot: „INSERT …
- *      RETURNING ist kein Lesezugriff"
+ * Counter-checks (measured on 27.10.):
+ *   A  08006 again in RETRYABLE_CODES → red: “a write access after a
+ *      connection loss”
+ *   B  isReading without the check for INSERT/UPDATE/DELETE → red: “INSERT …
+ *      RETURNING is not a read access”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,7 +16,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { queryWithRetry, isReading } = _req('db/database.js');
 
-/** Scheitert beim ersten Versuch mit `code`, danach gelingt es. */
+/** Fails on the first attempt with `code`, afterwards it succeeds. */
 function onceAbort(code) {
   let versuche = 0;
   const fn = async () => {

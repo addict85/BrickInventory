@@ -1,9 +1,9 @@
 /**
- * Wiederkehrende Ansichtsteile stehen an EINER Stelle.
+ * Recurring view parts stand in ONE place.
  *
- * Gegenproben (08.11.2026 gemessen): in detailRow `class="dv"` →
- * `class="wert"` bzw. in loadDisplay die Skelettzeilen gestrichen → rot:
- * „der Baustein erzeugt das Markup, das die Stylesheets erwarten“.
+ * Counter-checks (measured 08.11.2026): in detailRow `class="dv"` →
+ * `class="wert"` or the skeleton rows deleted in loadDisplay → red:
+ * “the building block creates the markup the stylesheets expect”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,12 +19,12 @@ process.env.TEST_BUENDEL = buildTestbuendel(
 );
 const { openUi } = require('./helpers/ui');
 
-/** Alle Frontend-Module ausser dem Bündel und dem Baustein selbst. */
+/** All frontend modules except the bundle and the building block itself. */
 function module_() {
   const alle = fs.readdirSync(JS).filter(f => f.endsWith('.js'));
   const gefiltert = alle.filter(f => f !== 'app.bundle.js' && f !== COMPONENT);
-  // Selbstbeweis: Findet die Schleife nichts, wäre jede Prüfung unten
-  // stillschweigend grün.
+  // Self-proof: if the loop finds nothing, every check below would be
+  // silently green.
   assert.ok(gefiltert.length >= 10, `nur ${gefiltert.length} Frontend-Module gefunden — Pfad falsch?`);
   return gefiltert;
 }
@@ -64,7 +64,7 @@ test('the loading indicator is no longer built by hand anywhere', () => {
 });
 
 test('the building block creates the markup the stylesheets expect', async () => {
-  // Nicht der Wortlaut der Funktion, sondern ihr Ergebnis, am Bündel in jsdom.
+  // Not the wording of the function but its result, on the bundle in jsdom.
   const { w, d } = await openUi();
   try {
     const host = d.createElement('div');
@@ -72,7 +72,7 @@ test('the building block creates the markup the stylesheets expect', async () =>
     assert.equal(host.querySelector('.dr > .dl')?.textContent.trim(), 'Jahr');
     assert.equal(host.querySelector('.dr > .dv')?.textContent.trim(), '2021');
     assert.ok(host.querySelector('.lade-geruest[role="status"] .skelett-zeile'), host.innerHTML);
-    // Und die Stylesheets kennen jede Klasse, die herauskommt.
+    // And the stylesheets know every class that comes out.
     const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
     for (const regel of ['.dr', '.dl', '.dv', '.lade-geruest', '.skelett-zeile'])
       assert.ok(new RegExp('\\' + regel + '[\\s,{:]').test(css), `styles.css kennt ${regel} nicht`);

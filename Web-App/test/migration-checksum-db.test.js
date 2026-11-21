@@ -1,16 +1,16 @@
 /**
- * schema_migrations trägt je Migration eine Prüfsumme; ist eine schon
- * angewandte Datei danach geändert worden, bricht runMigrations() mit einer
- * Meldung ab, die die Datei nennt. Eine fehlende Summe (vor der Prüfung
- * angewandt) wird nachgetragen.
+ * schema_migrations carries a checksum per migration; if an already
+ * applied file was changed afterwards, runMigrations() aborts with a
+ * message that names the file. A missing sum (applied before the check)
+ * is filled in.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in checkApplied() den Vergleich `r.pruefsumme !== ist` entfernt →
- *      rot: „eine geänderte Migration hält den Start an“ (kein Fehler)
- *   B  das Nachtragen fehlender Summen entfernt → rot: „eine fehlende Summe
- *      wird nachgetragen“
+ * Counter-checks (measured on 30.10.2026):
+ *   A  the comparison `r.pruefsumme !== ist` removed in checkApplied() →
+ *      red: “a changed migration stops the startup” (no error)
+ *   B  the filling in of missing sums removed → red: “a missing sum
+ *      is filled in”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

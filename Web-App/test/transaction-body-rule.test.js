@@ -1,13 +1,13 @@
 /**
- * Die Lint-Regel biome/transaktionsrumpf.grit: Im Rumpf von `k.transaktion(async t => …)`
- * fragt niemand über den äusseren Zugang. Geprüft mit dem echten Biome und der echten
- * biome.json an einem Probebaum mit erlaubten und verbotenen Formen.
+ * The lint rule biome/transaktionsrumpf.grit: in the body of `k.transaktion(async t => …)`
+ * nobody queries via the outer access. Checked with the real Biome and the real
+ * biome.json on a sample tree with allowed and forbidden forms.
  *
- * Gegenproben (14.11.2026, je einzeln):
- *   A  in der Regel `contains JsIdentifierExpression()` → `contains \`nichts\`` → „findet jeden
- *      äusseren Zugang“ rot (0 statt 5 Funde)
- *   B  `not $treffer <: $p` gestrichen → „erlaubt den Parameter …“ rot (Fund in erlaubt.ts)
- *   C  in src/account/deviceToken.ts `t.konfig` zurück auf `kx.konfig` → „der Bestand“ rot
+ * Counter-checks (14.11.2026, each on its own):
+ *   A  in the rule `contains JsIdentifierExpression()` → `contains \`nichts\`` → “finds every
+ *      outer access” red (0 instead of 5 findings)
+ *   B  `not $treffer <: $p` deleted → “allows the parameter …” red (finding in erlaubt.ts)
+ *   C  in src/account/deviceToken.ts `t.konfig` back to `kx.konfig` → “the stock” red
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,81 +1,81 @@
 /**
- * Die Vorschau VOR dem Import — mit Bild, Farbe, Bezeichnung und Korrekturen.
+ * The preview BEFORE the import — with image, color, description and corrections.
  *
- * ── Gegenproben (am 19.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
+ * ── Counter-checks (MEASURED on 19.10., numbers copied) ─────────────────────
  *
- * Ausgangslage `# pass 9 / # fail 0` (acht Unterfälle plus der Rahmen). Jede
- * Gegenprobe ist EINE Änderung, danach zurückgenommen; die Dateien wurden
- * gegen ihre Sicherung verglichen (`diff` sagte identisch).
+ * Baseline `# pass 9 / # fail 0` (eight sub-cases plus the frame). Each
+ * counter-check is ONE change, reverted afterwards; the files were
+ * compared against their backup (`diff` said identical).
  *
- *   A  Korrektur über Art+Nummer gesucht statt am Index
- *      → `pass 7 / fail 2`. Rot ist Fall 3: „Menge 2 — korrigiert war Index
- *        1, also der Posten mit 5." Genau der Fehler, um den es geht: In
- *        einer Liste mit zweimal 3001 in Farbe 85 traf die Korrektur den
- *        ersten statt den gemeinten.
- *   B  backfillColors() weggelassen
- *      → `pass 7 / fail 2`. Rot ist Fall 3: „Ohne Nachtragen geht die
- *        eingetragene Farbe ohne Namen an den Anleger" — der Farbpunkt ohne
- *        Beschriftung, wieder.
- *   C  die Gegenprobe der Korrektur (Art und Nummer) weggelassen
- *      → `pass 7 / fail 2`. Rot ist Fall 4: die Korrektur auf einen fremden
- *        Posten wirkt.
- *   D  rememberNumber für JEDE Stufe gerufen, nicht nur für 'korrigiert'
- *      → `pass 7 / fail 2`. Rot ist Fall 5: Ein Katalogtreffer — eine
- *        Vermutung — würde als Zuordnung eingetragen.
- *   E  `opt.vorschau` aus der Abbruchbedingung des Schreibwegs entfernt
- *      → `pass 7 / fail 2`. Rot ist Fall 6: Die Vorschau merkt sich etwas.
- *   F  in describeItem eine Abfrage je Posten davorgesetzt
- *      → `pass 7 / fail 2`. Rot ist Fall 7: „64 Abfragen für 100 Posten."
- *        Diese Gegenprobe hat zuerst NICHTS gemeldet (`pass 9 / fail 0`) —
- *        der Grund und die Lehre stehen bei Fall 7 selbst.
- *   G  Name und Bild nicht in den Bericht gelegt
- *      → `pass 7 / fail 2`. Rot ist Fall 1.
+ *   A  correction looked up via kind+number instead of at the index
+ *      → `pass 7 / fail 2`. Red is case 3: „Menge 2 — korrigiert war Index
+ *        1, also der Posten mit 5." Exactly the error this is about: in
+ *        a list with 3001 twice in color 85 the correction hit the
+ *        first one instead of the intended one.
+ *   B  backfillColors() omitted
+ *      → `pass 7 / fail 2`. Red is case 3: „Ohne Nachtragen geht die
+ *        eingetragene Farbe ohne Namen an den Anleger" — the color dot without
+ *        a label, again.
+ *   C  the counter-check of the correction (kind and number) omitted
+ *      → `pass 7 / fail 2`. Red is case 4: the correction acts on a foreign
+ *        item.
+ *   D  rememberNumber called for EVERY stage, not only for 'korrigiert'
+ *      → `pass 7 / fail 2`. Red is case 5: a catalog hit — a
+ *        guess — would be registered as a mapping.
+ *   E  `opt.vorschau` removed from the abort condition of the write path
+ *      → `pass 7 / fail 2`. Red is case 6: the preview remembers something.
+ *   F  in describeItem one query per item put in front
+ *      → `pass 7 / fail 2`. Red is case 7: „64 Abfragen für 100 Posten."
+ *        This counter-check at first reported NOTHING (`pass 9 / fail 0`) —
+ *        the reason and the lesson are at case 7 itself.
+ *   G  name and image not put into the report
+ *      → `pass 7 / fail 2`. Red is case 1.
  *
- * Die Zahlen stammen aus dem Lauf mit acht Unterfällen; der damalige Fall 7
- * („der Export erfindet keine BrickLink-Farbe") ist entfallen, weil Marco den
- * Export nicht braucht. Die übrigen Fälle und ihre Gegenproben sind
- * unverändert — nachgerechnet wurde nach dem Ausbau erneut.
+ * The numbers come from the run with eight sub-cases; the former case 7
+ * (“the export invents no BrickLink color”) was dropped because Marco does not
+ * need the export. The remaining cases and their counter-checks are
+ * unchanged — recalculated again after the removal.
  *
- * Am 20.10. ist Fall 2b dazugekommen (Marcos Zustandsspalte). Damit sind es
- * wieder acht Unterfälle, und die Zahlen oben gelten unverändert — NACHGEZÄHLT,
- * nicht angenommen: `# tests 9 / # pass 9`, und der Lauf mit einem absichtlich
- * falschen 2b meldete `pass 7 / fail 2`, also dieselbe Form wie A bis G.
+ * On 20.10. case 2b was added (Marco's condition column). That makes it
+ * eight sub-cases again, and the numbers above still hold — RECOUNTED,
+ * not assumed: `# tests 9 / # pass 9`, and the run with a deliberately
+ * wrong 2b reported `pass 7 / fail 2`, i.e. the same shape as A to G.
  *
- * Eigene Gegenprobe zu 2b: `standardZustand: await userDefaultCondition(uid)`
- * durch das feste `'N'` ersetzt → `pass 7 / fail 2`, rot ist 2b mit
+ * Separate counter-check for 2b: `standardZustand: await userDefaultCondition(uid)`
+ * replaced by the fixed `'N'` → `pass 7 / fail 2`, red is 2b with
  * „'N' statt 'U' — die Einstellung des Kontos gewinnt".
  *
- * Mit Fall 5b (zweiter Lauf) ist die Ausgangslage `# pass 10 / # fail 0` — neun
- * Unterfälle plus der Rahmen.
+ * With case 5b (second run) the baseline is `# pass 10 / # fail 0` — nine
+ * sub-cases plus the frame.
  *
- *   H  `|| a.sicherheit === 'rebrickable'` aus der Merk-Bedingung entfernt
- *      → `pass 8 / fail 2`. Rot ist 5b: „Gemerkt wurde []".
- *   I  dieselbe Bedingung auf JEDE Stufe geweitet (`if (a.sicherheit …)`)
- *      → `pass 8 / fail 2`. Rot ist 5: Ein Katalogtreffer — eine Vermutung —
- *        wird als Abbildung eingetragen.
+ *   H  `|| a.sicherheit === 'rebrickable'` removed from the remember condition
+ *      → `pass 8 / fail 2`. Red is 5b: „Gemerkt wurde []".
+ *   I  the same condition widened to EVERY stage (`if (a.sicherheit …)`)
+ *      → `pass 8 / fail 2`. Red is 5: a catalog hit — a guess —
+ *        is registered as a mapping.
  *
- * H und I fassen die Regel von beiden Seiten: zu eng und zu weit. Fall 5
- * allein hätte H nie gemeldet, Fall 5b allein nicht I.
+ * H and I pin the rule from both sides: too narrow and too wide. Case 5
+ * alone would never have reported H, case 5b alone not I.
  *
- * Am 21.10. sind die Fälle 8 und 9 dazugekommen (Marcos leere Bild- und
- * Namensspalte nach dem Import). Ausgangslage damit `# pass 12 / # fail 0` —
- * elf Unterfälle plus der Rahmen.
+ * On 21.10. cases 8 and 9 were added (Marco's empty image and
+ * name column after the import). Baseline thus `# pass 12 / # fail 0` —
+ * eleven sub-cases plus the frame.
  *
- *   J  describeItem() wieder nur für die Vorschau gerufen (der Stand von
- *      Marcos Befund)
- *      → `pass 9 / fail 3`. Rot sind BEIDE neuen Fälle: „Name und Bild
- *        stehen AUCH nach dem Schreiben im Bericht" und „ein beim Anlegen
- *        geholtes Bild steht im Bericht".
- *   K  den Aufruf VOR die Schleife gelegt statt dahinter
- *      → `pass 10 / fail 2`. Rot ist nur Fall 9. Das ist der Beleg, dass die
- *        Stelle zählt und nicht bloss der Aufruf: Vor der Schleife sind die
- *        eben angelegten Teile noch nicht im Katalog, und gerade um die geht
- *        es beim Import.
+ *   J  describeItem() called only for the preview again (the state of
+ *      Marco's finding)
+ *      → `pass 9 / fail 3`. Red are BOTH new cases: “name and image
+ *        are in the report EVEN after writing” and “an image fetched on
+ *        creation is in the report”.
+ *   K  the call placed BEFORE the loop instead of after it
+ *      → `pass 10 / fail 2`. Red is only case 9. That is the proof that the
+ *        position counts and not merely the call: before the loop the
+ *        just-created parts are not yet in the catalog, and the import is
+ *        about exactly those.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
  * REQUIRE_DB=1.
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -87,10 +87,10 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
 
-// Rebrickable an der Verdrahtung gestellt (testSources).
+// Rebrickable stubbed at the wiring (testSources).
 testSources(null, {
-  // 98765 heisst bei Rebrickable 12345 — eine ABWEICHENDE Nummer, wie sie nur
-  // dort steht. Alles andere kennt dieses Doppel nicht.
+  // At Rebrickable 98765 is called 12345 — a DEVIATING number, as only listed
+  // there. Nothing else knows this pair.
   blTeilZuRb: async blId => (blId === '98765' ? '12345' : null),
   blFilterIneffective: () => false,
   lookupPart: async () => null,
@@ -104,9 +104,9 @@ test.after(async () => {
   await db.pool.end().catch(() => {});
 });
 
-/** Ein ITEM-Block in Marcos Schreibweise (wie in wanted-list-db.test.js). */
+/** An ITEM block in Marco's notation (as in wanted-list-db.test.js). */
 /**
- * `zustand` seit dem 20.10. — vorher stand hier fest `X`.
+ * `zustand` since 20.10. — previously this was a fixed `X`.
  */
 function item(typ, id, farbe, menge = 1, zustand = 'X') {
   return (
@@ -137,24 +137,24 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     }
   }
 
-  // Der Katalog: 3001 kennt der Baum mit Namen und einem Bild je Farbe,
-  // 3002 nur über den CSV-Abgleich (rb_parts), 9999 kennt niemand.
+  // The catalog: the tree knows 3001 with name and one image per color,
+  // 3002 only via the CSV sync (rb_parts), nobody knows 9999.
   await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES ('3001','Brick 2 x 4')`);
   await db.run(`INSERT INTO part_color_catalog (part_number, color_id, color_name, color_hex, image_url)
                 VALUES ('3001',4,'Red','C91A09','https://cdn.example/3001-rot.png')`);
   await db.run(`INSERT INTO rb_parts (part_num, name, part_img_url)
                 VALUES ('3002','Brick 2 x 2','https://cdn.example/3002.png')`);
-  // bl_color_id: 5 → Rot(4), 11 → Schwarz(0), 7 → Blau(7). Die BrickLink-Farbe
-  // 85 ist KEINER zugeordnet — genau Marcos Lage.
+  // bl_color_id: 5 → Red(4), 11 → Black(0), 7 → Blue(7). BrickLink color
+  // 85 is mapped to NONE — exactly Marco's situation.
   await db.run(`INSERT INTO rb_colors (id, name, rgb, bl_color_id)
                 VALUES (4,'Red','C91A09',5), (0,'Black','05131D',11), (7,'Blue','0055BF',7)`);
 
   await t.test('1. the preview carries name, image and color — and invents nothing', async () => {
     const xml = liste(item('P', '3001', 5, 10), item('P', '3002', 5, 3), item('P', '9999', 5, 1));
-    // `vorschau: true` steht AUSDRÜCKLICH da. Die Vorgabe dieser Funktion ist
-    // WRITE (`vorschau: !!opt.vorschau`), und das ist richtig so: Wer sie
-    // ruft, hat einen Anleger dabei. Die Entscheidung „Vorschau oder Ernst"
-    // trifft die Route aus `?schreiben=1` — nicht ein Vorgabewert hier.
+    // `vorschau: true` is there EXPLICITLY. The default of this function is
+    // WRITE (`vorschau: !!opt.vorschau`), and that is right: whoever calls it
+    // brings a creator along. The decision "preview or for real"
+    // is made by the route from `?schreiben=1` — not by a default value here.
     const b = await importiereWantedListe(1, xml, { vorschau: true });
     assert.equal(b.vorschau, true, 'Mit vorschau: true muss es eine Vorschau sein');
     assert.equal(b.angelegt, 0, 'Eine Vorschau schreibt nichts');
@@ -174,10 +174,10 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     assert.equal(nach.get('3001').farbName, 'Red');
     assert.equal(nach.get('3001').farbHex, 'C91A09');
 
-    // 3002 steht NUR in rb_parts (dem CSV-Abgleich), nicht in part_catalog.
-    // Die Auflösung lässt es deshalb OFFEN — Stufe 3 liest part_catalog, und
-    // das soll sie: Sie ist eine Vermutung, und sie auf die 50 000 Zeilen von
-    // rb_parts auszuweiten hiesse, viel mehr Posten auf eine Vermutung hin …
+    // 3002 is ONLY in rb_parts (the CSV sync), not in part_catalog.
+    // The resolution therefore leaves it OPEN — stage 3 reads part_catalog, and
+    // it should: it is a guess, and widening it to the 50,000 rows of
+    // rb_parts would mean many more items on the strength of a guess …
     assert.equal(
       nach.get('3002').ausgang,
       'offen',
@@ -202,7 +202,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     );
     assert.equal(nach.get('3001').nameGeraten, false, '3001 ist abgebildet — da ist nichts geraten.');
 
-    // 9999 steht in keinem Katalog. Leer ist hier die EHRLICHE Auskunft.
+    // 9999 is in no catalog. Empty is the HONEST answer here.
     assert.equal(
       nach.get('9999').name ?? null,
       null,
@@ -217,8 +217,8 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
   });
 
   await t.test('2. quantity, BL color and condition travel into the preview', async () => {
-    // Ohne sie kann die Vorschau die Zeile nicht zeigen — und die Korrektur
-    // nicht sagen, welche Farbe gemeint war.
+    // Without it the preview cannot show the row — and the correction
+    // cannot say which color was meant.
     const b = await importiereWantedListe(1, liste(item('P', '3001', 85, 7)), { vorschau: true });
     const p = b.posten[0];
     assert.equal(p.blFarbe, 85, 'Die BrickLink-Farbnummer aus der Datei fehlt');
@@ -228,7 +228,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
   });
 
   await t.test('2b. the account default condition travels ONCE per report', async () => {
-    // Marcos Bitte vom 20.10.
+    // Asked for by Marco on 20.10.
     const ohne = await importiereWantedListe(1, liste(item('P', '3001', 5, 1, 'X')), { vorschau: true });
     assert.equal(ohne.standardZustand, 'N', 'Ohne Einstellung gilt die Vorgabe des Baums (userDefaultCondition)');
     assert.equal(ohne.posten[0].zustand, null, 'Am ITEM steht weiterhin, was in der Datei stand — nicht der Standard');
@@ -257,8 +257,8 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
   });
 
   await t.test('3. a correction hits the item at the index, not the number', async () => {
-    // Dieselbe Nummer und dieselbe Farbe ZWEIMAL — ein Schlüssel aus Art,
-    // Nummer und Farbe träfe beide Zeilen.
+    // The same number and the same color TWICE — a key of kind,
+    // number and color would hit both rows.
     const xml = liste(item('P', '3001', 85, 2), item('P', '3001', 85, 5));
     const zaehler = [];
     const b = await importiereWantedListe(1, xml, {
@@ -288,8 +288,8 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
         'Trifft die Korrektur den ersten, zeigt sie auf die Nummer statt auf den Index.',
     );
     assert.equal(zaehler[0].color_id, 7);
-    // Der FARBNAME muss nachgeholt werden: Die Auflösung holt ihn für die
-    // Farben aus der DATEI, und 7 stand dort nicht.
+    // The COLOR NAME must be fetched afterwards: the resolution fetches it for the
+    // colors from the FILE, and 7 was not there.
     assert.equal(
       zaehler[0].color_name,
       'Blue',
@@ -306,9 +306,9 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
   });
 
   await t.test('4. a correction on a foreign item is rejected, not applied', async () => {
-    // Der Fall: zwischen Vorschau und Schreiben wurde eine ANDERE Datei
-    // gewählt. Ohne die Gegenprobe wirkte die Korrektur auf einen fremden
-    // Posten — lautlos, denn beide Zahlen sähen plausibel aus.
+    // The case: between preview and writing a DIFFERENT file was
+    // chosen. Without the counter-check the correction would act on a foreign
+    // item — silently, because both numbers would look plausible.
     const xml = liste(item('P', '3001', 85, 2));
     const zaehler = [];
     const b = await importiereWantedListe(1, xml, {
@@ -340,8 +340,8 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
       figur: async () => ({ action: 'created' }),
       set: async () => ({ action: 'created' }),
     };
-    // 3001 löst über den Katalog auf (Stufe 3, eine Vermutung), 9999 nicht.
-    // Korrigiert wird 9999 → 3002.
+    // 3001 resolves via the catalog (stage 3, a guess), 9999 does not.
+    // 9999 is corrected → 3002.
     const xml = liste(item('P', '3001', 5, 1), item('P', '9999', 5, 1));
     const b = await importiereWantedListe(1, xml, {
       vorschau: false,
@@ -391,13 +391,13 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
   });
 
   await t.test('6. a preview remembers nothing', async () => {
-    // Die Gegenrichtung zu Fall 5: Ohne diesen Fall wäre er auch grün, wenn
-    // schon die Vorschau schriebe. Eine Vorschau, die etwas speichert, ist
-    // keine.
+    // The opposite direction to case 5: without this case it would also be green
+    // if the preview already wrote. A preview that stores something is
+    // not one.
     const gemerkt = [];
-    // MIT Anleger: Ohne ihn scheitert das Schreiben, und der Rückruf wäre
-    // schon deshalb nicht erreicht — der Fall wäre grün, ohne etwas über die
-    // Vorschau zu sagen.
+    // WITH creator: without it writing fails, and the callback would
+    // not be reached for that reason alone — the case would be green without
+    // saying anything about the preview.
     const b = await importiereWantedListe(1, liste(item('P', '9999', 5, 1)), {
       vorschau: true,
       korrekturen: [{ index: 0, blId: '9999', art: 'part', rbId: '3002', rbFarbe: 4 }],
@@ -416,8 +416,8 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
   });
 
   await t.test('7. describeItem does not make one query per item', async () => {
-    // Marcos Datei hat 224 Zeilen. Eine Abfrage je Zeile wäre eine Vorschau,
-    // auf die man wartet.
+    // Marco's file has 224 rows. One query per row would be a preview
+    // one waits for.
     const echt = db.pool.query.bind(db.pool);
     let abfragen = 0;
     db.pool.query = (...a) => {
@@ -446,7 +446,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
   });
 
   await t.test('8. name and image are in the report EVEN after writing', async () => {
-    // Marcos Befund vom 21.10.
+    // Marco's finding of 21.10.
     const creator = {
       teil: async () => ({ action: 'created' }),
       figur: async () => ({ action: 'created' }),
@@ -471,10 +471,10 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
   });
 
   await t.test('9. an image fetched on creation is in the report', async () => {
-    // Der Gewinn daraus, dass describeItem NACH der Schleife läuft: Ein
-    // Teil, dessen Farbbild der Katalog noch nicht hatte, bekommt es beim
-    // Anlegen (addManualPart → lookupPart → rememberPartColor). Ein Aufruf VOR
-    // der Schleife zeigte für genau diese Posten nichts.
+    // The gain from describeItem running AFTER the loop: a
+    // part whose color image the catalog did not have yet gets it on
+    // creation (addManualPart → lookupPart → rememberPartColor). A call BEFORE
+    // the loop would show nothing for exactly these items.
     await db.run(`INSERT INTO part_catalog (part_number, part_name)
                   VALUES ('7777','Noch ohne Bild') ON CONFLICT DO NOTHING`);
     const vorher = await importiereWantedListe(1, liste(item('P', '7777', 5, 1)), { vorschau: true });
@@ -487,7 +487,7 @@ test('preview, corrections and color translation', { concurrency: 1 }, async t =
     const b = await importiereWantedListe(1, liste(item('P', '7777', 5, 1)), {
       vorschau: false,
       creator: {
-        // So, wie addManualPart es täte: erst den Katalog füllen, dann melden.
+        // The way addManualPart would do it: fill the catalog first, then report.
         teil: async () => {
           await db.run(`INSERT INTO part_color_catalog (part_number, color_id, image_url)
                         VALUES ('7777',4,'https://cdn.example/7777.png')

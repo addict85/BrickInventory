@@ -1,9 +1,9 @@
 /**
- * Zwei Zusicherungen, die der Umstieg auf Express 5 lautlos gekostet haette.
+ * Two assurances that the switch to Express 5 would have silently cost.
  *
- * ── Gegenproben (durchgefuehrt, Ergebnis im Commit) ─────────────────────────
- *   a) Muster auf '/*splat' zurueckgedreht → Schritt 1 rot, nennt den 404
- *   b) die Zusicherung aus server.ts entfernt → Schritt 2 rot
+ * ── Counter-checks (performed, result in the commit) ────────────────────────
+ *   a) pattern turned back to '/*splat' → step 1 red, names the 404
+ *   b) the assurance removed from server.ts → step 2 red
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,10 +16,10 @@ const { portOf } = require('./helpers/server');
 test('1. the start page is reachable even without a path', async () => {
   const src = serverAll();
 
-  // Den Catch-all an seiner AUFGABE finden, nicht an seinem Muster: Es ist
-  // die app.get-Registrierung, die startPageHtml() ausliefert. Haenge die
-  // Suche am Muster, muesste sie bei jeder Umbenennung mitgepflegt werden —
-  // und dann prueft sie irgendwann die Schreibweise statt der Sache. …
+  // Find the catch-all by its TASK, not by its pattern: it is
+  // the app.get registration that delivers startPageHtml(). If the
+  // search hung on the pattern, it would have to be maintained on every rename —
+  // and then at some point it checks the spelling instead of the matter. …
   const kandidaten = [];
   for (const m of src.matchAll(/^\s*app\.get\('([^']+)'/gm)) {
     if (/startPageHtml|sendStartPage/.test(src.slice(m.index, m.index + 800))) kandidaten.push(m[1]);
@@ -32,8 +32,8 @@ test('1. the start page is reachable even without a path', async () => {
       'Dann gibt es keinen SPA-Catch-all mehr.',
   );
 
-  // Dasselbe Muster auf einem leeren Express: Was die echte Route ausliefert,
-  // ist hier egal — gefragt ist allein, OB sie trifft.
+  // The same pattern on an empty Express: what the real route delivers
+  // does not matter here — the only question is WHETHER it matches.
   const app = express();
   app.get(muster, (_req, res) => res.status(200).send('ok'));
   const srv = app.listen(0);
@@ -48,8 +48,8 @@ test('1. the start page is reachable even without a path', async () => {
         'Damit laeuft jeder Aufruf der Seite ohne Pfad — Lesezeichen, ' +
         'Startbildschirm, erster Besuch — ins Leere.',
     );
-    // Und die Pfade darunter weiterhin; sonst koennte man die Regel mit
-    // einem Muster beruhigen, das NUR die Wurzel trifft.
+    // And the paths below still; otherwise one could calm the rule with
+    // a pattern that ONLY matches the root.
     for (const pfad of ['/start', '/tief/drin', '/reset-password']) {
       assert.equal((await fetch(basis + pfad)).status, 200, `Das Muster ${muster} trifft ${pfad} nicht mehr`);
     }
@@ -59,10 +59,10 @@ test('1. the start page is reachable even without a path', async () => {
 });
 
 test('2. req.body is always an object, even without a matching parser', async () => {
-  // Zuerst der BEDARF: Stimmt die Annahme ueberhaupt noch? Laeuft Express
-  // eines Tages wieder von selbst auf `{}` zurueck, soll diese Regel nicht
-  // stumm eine Zusicherung einfordern, die niemand mehr braucht — dann faellt
-  // sie hier auf.
+  // First the NEED: does the assumption still hold at all? If Express
+  // one day falls back to `{}` by itself again, this rule should not
+  // silently demand an assurance nobody needs anymore — then it shows
+  // up here.
   const blank = express();
   blank.use(express.json());
   blank.use(express.urlencoded({ extended: true }));
@@ -82,10 +82,10 @@ test('2. req.body is always an object, even without a matching parser', async ()
       'in server.ts ueberfluessig geworden und darf weg (mitsamt dieser Regel).',
   );
 
-  // Und jetzt die Zusicherung selbst. Gelesen wird ohne Kommentare: Der
-  // Erklaerblock darueber nennt `req.body` reichlich, ein blosses indexOf
-  // waere damit fuer immer zufrieden.
-  // Seit dem 04.11.2026 in readBody: Die Rümpfe werden erst nach der Anmeldung gelesen.
+  // And now the assurance itself. It is read without comments: the
+  // explanation block above names `req.body` plenty, a mere indexOf
+  // would thus be satisfied forever.
+  // Since 04.11.2026 in readBody: the bodies are only read after login.
   const code = ohneKommentare(fs.readFileSync(path.join(__dirname, '..', 'routes', 'api_v1', 'middleware.ts'), 'utf8'));
   assert.match(
     code,
@@ -95,24 +95,24 @@ test('2. req.body is always an object, even without a matching parser', async ()
       'sobald ein Client den Content-Type vergisst.',
   );
 
-  // Sie muss NACH den Parsern stehen — davor brächte sie nichts, weil der
-  // Parser danach überschreibt.
+  // It must stand AFTER the parsers — before them it would achieve nothing, because the
+  // parser overwrites afterwards.
   const nachParser = code.indexOf('req.body === undefined');
   const atJson = code.indexOf('express.json(');
   assert.ok(atJson >= 0 && nachParser > atJson, 'Die Zusicherung steht vor den Parsern — dort ist sie wirkungslos.');
 });
 
 /**
- * Die Startseite geht durch den Renderer — nicht an ihm vorbei.
+ * The start page goes through the renderer — not past it.
  *
- * Gegenprobe: `index: false` entfernt → dieser Fall rot (gelesen ohne Kommentare).
+ * Counter-check: `index: false` removed → this case red (read without comments).
  */
 test('3. the start page goes through the renderer', () => {
-  // OHNE KOMMENTARE, und das ist nicht Zierde: Der Erklaerkommentar ueber der
-  // Option nennt `index: false` selbst. Die erste Fassung las den Quelltext
-  // samt Kommentaren — GEMESSEN blieb die Gegenprobe deshalb gruen, obwohl
-  // die Option entfernt war. Eine Pruefung, die ihre eigene Begruendung
-  // mitliest, bestaetigt sich selbst.
+  // WITHOUT COMMENTS, and that is not decoration: the explanatory comment above the
+  // option names `index: false` itself. The first version read the source text
+  // including comments — MEASURED, the counter-check therefore stayed green although
+  // the option was removed. A check that reads its own rationale
+  // confirms itself.
   const src = ohneKommentare(serverAll());
   const auf = src.indexOf('express.static(PUBLIC_DIR');
   assert.ok(auf > 0, 'Die statische Auslieferung ist nicht mehr zu finden.');

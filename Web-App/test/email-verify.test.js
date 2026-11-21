@@ -1,10 +1,10 @@
 /**
- * Die E-Mail-Verifikation steht nur noch an EINER Stelle.
+ * E-mail verification only exists in ONE place.
  *
- * ── Gegenprobe (04.11.2026 gemessen) ────────────────────────────────────────
- * Die Abfrage aus adoptEmailNew() zusätzlich als eigene Funktion in
- * src/account/repository/accesses.ts → rot: „die Verifikationsabfrage steht genau
- * einmal im Baum" (nennt beide Fundstellen).
+ * ── Counter-check (measured 04.11.2026) ─────────────────────────────────────
+ * The query from adoptEmailNew() additionally as its own function in
+ * src/account/repository/accesses.ts → red: “the verification query stands exactly
+ * once in the tree" (names both locations).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,8 +14,8 @@ const { ROOT, ohneKommentare, checkParameter } = require('./helpers/sources');
 
 const lies = rel => ohneKommentare(fs.readFileSync(path.join(ROOT, rel), 'utf8'));
 
-// Die Abfrage, die den Token EINLÖST: Registrierung und neue Adresse tragen
-// ihn seit Runde 13 beide in new_email_token (verification_token ist leer).
+// The query that REDEEMS the token: registration and new address both carry
+// it in new_email_token since round 13 (verification_token is empty).
 const QUERY = /new_email_token\s*=\s*\$1\s+AND\s+new_email_until\s*>\s*NOW\(\)/;
 const REDEEM = /email_verified\s*=\s*true/i;
 const CANDIDATES = [
@@ -29,9 +29,9 @@ const CANDIDATES = [
 
 test('email verification only lives in one place', async t => {
   await t.test('verifyEmailToken accepts the raw token', () => {
-    // checkParameter statt eines Musters über den ganzen Kopf: Eine
-    // Typannotation zu ergänzen ist eine Verbesserung und darf keinen Test
-    // umwerfen.
+    // checkParameter instead of a pattern over the whole header: adding a
+    // type annotation is an improvement and must not knock over a
+    // test.
     checkParameter(
       lies('src/account/loginCheck.ts'),
       'verifyEmailToken',
@@ -62,10 +62,10 @@ test('email verification only lives in one place', async t => {
   });
 
   await t.test('the one remaining path calls the shared function', () => {
-    // Einziger Weg ist POST /api/v1/auth/email-bestaetigen (der Knopf auf der
-    // Seite hinter dem Mail-Link). GET /verify in server.ts liefert nur die
-    // Seite; löste er wieder selbst ein, bestätigte schon ein Link-Scanner.
-    // Das Verhalten prüft sicherheit-server-grenzen-db am echten Server.
+    // The only path is POST /api/v1/auth/email-bestaetigen (the button on the
+    // page behind the mail link). GET /verify in server.ts only delivers the
+    // page; if it redeemed by itself again, a link scanner would already confirm.
+    // The behavior is checked by sicherheit-server-grenzen-db on the real server.
     assert.match(
       lies('routes/auth/registration.ts'),
       /verifyEmailToken\s*\(/,
@@ -78,5 +78,5 @@ test('email verification only lives in one place', async t => {
     );
   });
 
-  // „der API-Weg antwortet NICHT mit einer Weiterleitung" ist entfallen
+  // “the API path does NOT answer with a redirect" has been dropped
 });

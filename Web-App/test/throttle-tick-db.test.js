@@ -1,18 +1,18 @@
 /**
- * Zwei Drosseln mit demselben Takt halten den Abstand auch untereinander —
- * so, wie zwei Prozesse es über die Tabelle api_cadence tun.
+ * Two throttles with the same rhythm also keep the distance between each other —
+ * the way two processes do it via the table api_cadence.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  in waitForSlot() den Aufruf von waitOnTick entfernt → rot: „zwei
- *      Drosseln teilen sich den Takt“
- *   B  im UPDATE von waitOnTick GREATEST(api_cadence.next_at, …) durch
- *      clock_timestamp() ersetzt → rot: derselbe Test
- *   (30.10.2026 mit der Prüfung „nicht vor k Takten“ erneut gemessen: A und B rot)
+ * Counter-checks (measured on 28.10.2026):
+ *   A  the call of waitOnTick removed in waitForSlot() → red: “two
+ *      throttles share the rhythm”
+ *   B  in the UPDATE of waitOnTick GREATEST(api_cadence.next_at, …) replaced by
+ *      clock_timestamp() → red: the same test
+ *   (measured again on 30.10.2026 with the check „not before k beats“: A and B red)
  *
- * Getrennte Instanzen stehen hier für getrennte Prozesse: Sie teilen nichts
- * ausser der Datenbank, genau wie ein Web-Worker und der Hintergrundprozess.
+ * Separate instances stand here for separate processes: they share nothing
+ * except the database, just like a web worker and the background process.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,8 +34,8 @@ test('shared rhythm via the database', { concurrency: 1 }, async t => {
   await db.run('DELETE FROM api_cadence WHERE api = $1', [API]);
 
   await t.test('two throttles share the rhythm', async () => {
-    // Die eigene Drossel lässt sofort durch (Fenster 0) — jeder Abstand, der
-    // sich zeigt, kommt aus dem gemeinsamen Takt.
+    // The own throttle lets through immediately (window 0) — every distance that
+    // shows comes from the shared rhythm.
     const apiTakt = require('./helpers/sources').testContext('externalSources').apiTakt;
     const a = new RateLimiter(1, 0, { api: API, gapMs: GAP, apiTakt, disruptedUntil: 0 });
     const b = new RateLimiter(1, 0, { api: API, gapMs: GAP, apiTakt, disruptedUntil: 0 });
@@ -43,9 +43,9 @@ test('shared rhythm via the database', { concurrency: 1 }, async t => {
     const start = Date.now();
     await Promise.all([a, b, a, b, a, b].map(d => d.waitForSlot().then(() => times.push(Date.now() - start))));
     times.sort((x, y) => x - y);
-    // Der k-te Durchlass kommt nicht vor k Takten. Spätes Aufwachen unter Last
-    // ist erlaubt; Abstände zwischen Aufwachzeiten wären es nicht, weil ein
-    // verspäteter Teilnehmer den Abstand zum nächsten pünktlichen verkürzt.
+    // The k-th pass does not come before k beats. Late waking under load
+    // is allowed; distances between wake times would not be, because a
+    // late participant shortens the distance to the next punctual one.
     const zufrueh = times.filter((z, k) => z < k * GAP - 40);
     assert.deepEqual(zufrueh, [], `Durchlässe nach Start: ${times.join(', ')} ms`);
   });

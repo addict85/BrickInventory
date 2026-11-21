@@ -1,5 +1,5 @@
 /**
- * Bilder werden im BACKGROUND lokal abgelegt — die Anfrage rechnet nichts.
+ * Images are stored locally in the BACKGROUND — the request computes nothing.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,8 +9,8 @@ const fs = require('node:fs');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-// Herunterladen und Verkleinern abfangen — hier zählt, WANN sie aufgerufen
-// werden, nicht was sie tun.
+// Intercept download and downscaling — what counts here is WHEN they are called,
+// not what they do.
 let geladen = 0,
   verkleinert = 0;
 
@@ -34,9 +34,9 @@ const db = testData();
 
 test('the request takes a note, the job stores', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
-  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
-  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/image-queue.js.
+  // The queue must be emptied BEFORE use, not only the own
+  // prefix — otherwise the batch takes the rows of a predecessor. Rationale
+  // and reproduction in helpers/image-queue.js.
   await emptyQueue(db);
 
   const IQ = _req('src/images/imageDemandRun.js');
@@ -47,24 +47,24 @@ test('the request takes a note, the job stores', { concurrency: 1 }, async t => 
 
   try {
     await t.test('duplicate notes count once', async () => {
-      // Beim Scrollen kommt dasselbe Bild mehrfach vorbei. Ohne Entdopplung
-      // stünde es mehrfach in der Warteschlange und würde mehrfach geholt.
+      // When scrolling the same image comes by several times. Without deduplication
+      // it would stand several times in the queue and be fetched several times.
       for (let i = 1; i <= 25; i++)
         IQ.rememberUsed(`https://cdn.rebrickable.com/media/sets/${PREFIX}_${i}.jpg`, `${PREFIX}_${i}`);
       IQ.rememberUsed(`https://cdn.rebrickable.com/media/sets/${PREFIX}_1.jpg`, `${PREFIX}_1`);
-      // Seit einer früheren Runde wird GEPUFFERT: rememberUsed() schreibt nichts mehr
-      // selbst — ein INSERT je Bildanfrage leerte den Verbindungspool. Das
-      // Wegschreiben läuft im Takt; hier von Hand angestossen.
+      // Since an earlier round it is BUFFERED: rememberUsed() no longer writes anything
+      // itself — one INSERT per image request drained the connection pool. The
+      // writing runs on a timer; triggered by hand here.
       await IQ._writeBuffer();
       const n = (await db.get(`SELECT COUNT(*)::int c FROM image_wanted WHERE set_number LIKE $1`, [PREFIX + '%'])).c;
       assert.equal(n, 25, `${n} Notizen statt 25`);
     });
 
     await t.test('the job works in batches, not everything at once', async () => {
-      // Der Sinn der Sache: Auf schwacher Hardware darf nicht der ganze
-      // Rückstau in einem Rutsch gerechnet werden.
-      // Die Stapelgrösse steht in der Quelle (: von 5 auf 20
-      // erhöht, nachdem die CPU-Ursachen behoben waren). Der Test liest sie …
+      // The point of the matter: on weak hardware the whole backlog must not
+      // be computed in one go.
+      // The batch size stands in the source (: raised from 5 to 20
+      // after the CPU causes were fixed). The test reads it …
       const stapel = IQ.STAPEL;
       assert.ok(stapel > 0, 'STAPEL nicht auffindbar');
       const vorher = geladen;
@@ -85,8 +85,8 @@ test('the request takes a note, the job stores', { concurrency: 1 }, async t => 
     });
   } finally {
     await weg();
-    // Den Pool NICHT hier schliessen: Der Kachel-Test weiter unten braucht ihn
-    // noch. Er schliesst als letzter DB-Test.
+    // Do NOT close the pool here: the tile test further below still needs it.
+    // It closes as the last DB test.
   }
 });
 
@@ -97,9 +97,9 @@ test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1
     keineDb(t, e);
     return;
   }
-  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
-  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/image-queue.js.
+  // The queue must be emptied BEFORE use, not only the own
+  // prefix — otherwise the batch takes the rows of a predecessor. Rationale
+  // and reproduction in helpers/image-queue.js.
   await emptyQueue(db);
 
   const NUTZER = `ka-${process.pid}`;
@@ -123,10 +123,10 @@ test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1
     const voll = await kachel();
     assert.equal(voll.queue, 137, 'Die Warteschlange wird nicht gezählt');
     assert.match(voll.sub, /137 Katalog-Bilder in Warteschlange/, 'Die Zahl steht nicht im Text der Kachel');
-    // „Bestand" muss danebenstehen — sonst weiss man nicht, worauf sich die
-    // ANDERE Zahl bezieht.
+    // “stock" must stand next to it — otherwise one does not know what the
+    // OTHER number refers to.
     assert.match(voll.sub, /Bestand:/, 'Ohne diese Beschriftung sind die beiden Zahlen nicht auseinanderzuhalten');
-    // „running" heisst jetzt: hat kürzlich etwas getan
+    // “running" now means: has done something recently
     await db.run(`DELETE FROM run_state WHERE key='imgqueue_last_run'`);
     await db.run(`DELETE FROM run_state WHERE key='imgredl_status'`);
     await _req('src/management/tiles.js')
@@ -141,16 +141,16 @@ test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1
       'Die Kachel verschweigt, dass der Job noch nicht gelaufen ist',
     );
 
-    // Und nach einem Durchgang meldet sie Betrieb. Gemeint ist der TAKT —
-    // dort wird der Stand für die anderen Arbeitsprozesse abgelegt.
+    // And after a pass it reports operation. What is meant is the TICK —
+    // there the state is stored for the other worker processes.
     await _req('src/images/imageDemandRun.js')._tickPass();
     const nachLauf = await kachel();
     assert.equal(nachLauf.status, 'running', 'Nach einem Durchgang muss die Kachel Betrieb melden');
     assert.ok(nachLauf.queueLastRun, 'Der Zeitpunkt des letzten Durchgangs fehlt');
-    // Und der Balken darf nicht auf 100 % stehen, während noch etwas aussteht.
+    // And the bar must not stand at 100 % while something is still pending.
     assert.ok(voll.total >= 137, `total=${voll.total} enthält die Warteschlange nicht`);
 
-    // Ein STEHENGEBLIEBENES „läuft" ist kein Betrieb
+    // A STUCK “running" is not operation
     await db.run(`DELETE FROM run_state WHERE key='imgqueue_last_run'`);
     _req('src/images/imageDemandRun.js').letzterLauf.zeit = null;
     await _req('src/management/tiles.js')
@@ -186,13 +186,13 @@ test('the tile "image download (CDN)" shows the catalog queue', { concurrency: 1
     await db.run(`DELETE FROM image_wanted`).catch(() => {});
     await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});
     await new Promise(r => srv.close(r));
-    // Letzter Test mit Datenbank in dieser Datei.
+    // Last test with database in this file.
     await db.pool.end().catch(() => {});
   }
 });
 
 test('the job also reports pure skips', () => {
-  // Marcos Befund
+  // Marco's finding
   const { meldung } = _req('src/images/imageDemandRun.js');
   const onlySkipped = {
     geholt: 0,
@@ -214,8 +214,8 @@ test('the job also reports pure skips', () => {
     'Die Meldung nennt die Übersprünge nicht — dann weiss man nicht, ob der ' + 'Job arbeitet oder nur leerläuft',
   );
 
-  // Und der Takt darf sie nicht verschweigen: Die Bedingung vor der Ausgabe
-  // darf an keiner Zahl hängen, die bei reinen Übersprüngen null ist.
+  // And the tick must not conceal them: the condition before the output
+  // must not depend on any number that is zero for pure skips.
   const q = fs.readFileSync(path.join(ROOT, 'src/images/imageDemandRun.ts'), 'utf8');
   const i = q.indexOf('async function processImageDemand');
   assert.ok(i > 0, 'Kein Takt');
@@ -234,13 +234,13 @@ test('the job also reports pure skips', () => {
 });
 
 test('the image tables come from a MIGRATION, not from initSchema', () => {
-  // Marcos Befund
+  // Marco's finding
   const mig = fs.readFileSync(path.join(ROOT, 'db/migrations/0009-bild-tabellen.sql'), 'utf8');
   assert.match(mig, /CREATE TABLE IF NOT EXISTS image_wanted/, 'image_wanted fehlt in der Migration');
   assert.match(mig, /CREATE TABLE IF NOT EXISTS image_misses/, 'image_misses fehlt in der Migration');
 
-  // Und NICHT mehr anderswo — zwei Stellen, die dasselbe anlegen, laufen
-  // irgendwann auseinander.
+  // And NO longer elsewhere — two places that create the same thing drift
+  // apart at some point.
   for (const datei of ['db/database.ts', 'src/images/imageMisses.ts', 'src/images/imageDemandRun.ts']) {
     const src = fs
       .readFileSync(path.join(ROOT, datei), 'utf8')
@@ -254,9 +254,9 @@ test('the image tables come from a MIGRATION, not from initSchema', () => {
     );
   }
 
-  // Die init-Funktionen laufen NACH Schema und Migrationen (sonst fehlt die
-  // Tabelle beim Laden des Bestands) und in jedem Arbeitsprozess: Sie stehen in
-  // startup/database.ts hinter initSchemaOnce(), das jeder Prozess aufruft.
+  // The init functions run AFTER schema and migrations (otherwise the
+  // table is missing when loading the stock) and in every worker process: they stand in
+  // startup/database.ts behind initSchemaOnce(), which every process calls.
   const preparation = fs.readFileSync(path.join(ROOT, 'startup/database.ts'), 'utf8');
   const schema = preparation.indexOf('await db.initSchemaOnce()');
   assert.ok(
@@ -266,7 +266,7 @@ test('the image tables come from a MIGRATION, not from initSchema', () => {
 });
 
 test('the buffer is written away in EVERY worker process', () => {
-  // Marcos Befund
+  // Marco's finding
   const q = fs.readFileSync(path.join(ROOT, 'src/images/imageDemand.ts'), 'utf8');
   const init = q.slice(
     q.indexOf('export async function setUpImageDemand'),
@@ -279,26 +279,26 @@ test('the buffer is written away in EVERY worker process', () => {
       'wo start() aufgerufen wird, also nur im Primärprozess',
   );
 
-  // Und setUpImageDemand() muss tatsächlich überall laufen.
+  // And setUpImageDemand() must actually run everywhere.
   const dbInit = fs.readFileSync(path.join(ROOT, 'startup/database.ts'), 'utf8');
-  // UMFORMULIERT in — aus demselben Grund wie zwoelf Zeilen
-  // tiefer bei start(), nur hatte diese Nachbarzusicherung den Fehler behalten:
-  // Sie verlangte die Schreibweise `jobs/imageQueue').setUpImageDemand()`, also
-  // ausdruecklich ein require(). Als daraus ein Top-Level-Import wurde, wurde …
+  // REWORDED in — for the same reason as twelve lines
+  // further down at start(), only this neighboring assertion had kept the bug:
+  // it required the notation `jobs/imageQueue').setUpImageDemand()`, i.e.
+  // explicitly a require(). When that became a top-level import, …
   assert.match(
     dbInit,
     /\bd\.images\.startImageDemand\(\)/,
     'startImageDemand() wird nicht beim Aufbau der Datenbank aufgerufen',
   );
 
-  // Abgearbeitet wird nur im Job-Prozess: test/web-and-jobs-db.test.js prüft das am echten Server.
+  // Processing only happens in the job process: test/web-and-jobs-db.test.js checks that on the real server.
 });
 
 test('the request no longer computes anything, it only takes notes', () => {
-  // Geprüft am Quelltext, weil es um die REIHENFOLGE geht: Der Proxy darf im
-  // gen=0-Fall keine Verkleinerung anstossen, sondern muss die Notiz
-  // hinterlassen. Ein Test über die Route würde beides nicht unterscheiden —
-  // ausgeliefert wird so oder so sofort.
+  // Checked on the source text because it is about the ORDER: in the
+  // gen=0 case the proxy must not trigger a downscale but must leave
+  // the note. A test via the route would not distinguish the two —
+  // delivery is immediate either way.
   const px = require('./helpers/sources').kompakt(require('./helpers/sources').proxyThumbSource());
   assert.match(px, /const note = \(\) => \{/, 'Der Proxy hinterlässt keine Notiz');
   assert.match(
@@ -306,7 +306,7 @@ test('the request no longer computes anything, it only takes notes', () => {
     /if \(createMay\) queueThumb\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?cacheFile, thumbFile\); else note\(\);/,
     'Im gen=0-Fall wird weiter sofort verkleinert statt notiert',
   );
-  // Und die Notiz braucht die Setnummer — ohne sie weiss der Job nicht, wohin.
+  // And the note needs the set number — without it the job does not know where to.
   assert.match(px, /const setNummer = setNumberFromImageAddress\(/, 'Die Setnummer wird nicht aus der Adresse gelesen');
   assert.equal(
     _req('routes/imgProxy.js').setNumberFromImageAddress('https://cdn.rebrickable.com/media/sets/10294-1.jpg'),

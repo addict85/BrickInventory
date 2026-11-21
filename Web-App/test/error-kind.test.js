@@ -1,19 +1,19 @@
 /**
- * Dienste werfen eine fachliche Fehlerart, keinen HTTP-Status; welcher Status
- * dazu gehört, steht nur in src/http/errorKind.ts. Geprüft wird die Antwort,
- * die der Fehlerweg der Routen (handleRouteError) daraus macht.
+ * Services throw a domain error kind, not an HTTP status; which status
+ * belongs to it is only in src/http/errorKind.ts. What is checked is the response
+ * the routes' error path (handleRouteError) makes of it.
  *
- * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in STATUS_THE_KIND `konflikt: 400` → rot: „jede Art ergibt ihren Status“
- *      (konflikt 400 statt 409)
- *   B  in handleRouteError wieder `typeof e.status === 'number' ? e.status : 500`
- *      statt statusOf(e) → rot: „jede Art ergibt ihren Status“ (alle 500)
+ * Counter-checks (measured 09.11.2026, each alone):
+ *   A  in STATUS_THE_KIND `konflikt: 400` → red: “every kind yields its status”
+ *      (konflikt 400 instead of 409)
+ *   B  in handleRouteError again `typeof e.status === 'number' ? e.status : 500`
+ *      instead of statusOf(e) → red: “every kind yields its status” (all 500)
  *   C  `import { statusOf } from '../http/fehlerArt'` in src/sets/service.ts →
- *      rot: „nur src/http bildet Arten auf Status ab …“
- *   D  in src/infra/geld.ts dem fachfehler() eine Statuszahl 400 angehängt → rot:
- *      dieselbe Prüfung, Liste `status`
- *   E  (15.11.2026) in sendError `res.status(500)` statt STATUS_THE_KIND[art] → rot:
- *      „jede Art ergibt ihren Status“ (sendError ungueltig: 500 statt 400)
+ *      red: “only src/http maps kinds to status …”
+ *   D  in src/infra/geld.ts a status number 400 appended to fachfehler() → red:
+ *      the same check, list `status`
+ *   E  (15.11.2026) in sendError `res.status(500)` instead of STATUS_THE_KIND[art] → red:
+ *      “every kind yields its status” (sendError ungueltig: 500 instead of 400)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,7 +27,7 @@ const { handleRouteError, sendError } = _req('src/http/httpResponse.js');
 const { STATUS_THE_KIND } = _req('src/http/errorKind.js');
 const { fachfehler, asDuplicate } = _req('src/infra/errorTexts.js');
 
-/** Was handleRouteError an eine Antwort schreibt. */
+/** What handleRouteError writes to a response. */
 function antwort(e) {
   let status = 0,
     rumpf = null;
@@ -91,7 +91,7 @@ test('every kind yields its status', () => {
       { status, code: 'set_nicht_gefunden' },
       art,
     );
-    // Wer selbst antwortet (Wächter, HTTP-Seiten), nennt die Art; den Status wählt dieselbe Tabelle.
+    // Whoever answers themselves (guards, HTTP sides) names the kind; the same table chooses the status.
     let gesendet = 0;
     const res = {
       status: c => {
@@ -108,11 +108,11 @@ test('a duplicate from the database becomes a conflict', () => {
   const e = geworfen(() => asDuplicate('benutzername_vergeben')({ code: '23505' }));
   assert.equal(e.art, 'konflikt');
   assert.deepEqual(antwort(e), { status: 409, code: 'benutzername_vergeben' });
-  // Ein fremder Fehler mit eigenem Status (Body-Parser) behält ihn.
+  // A foreign error with its own status (body parser) keeps it.
   assert.equal(antwort(Object.assign(new Error('x'), { status: 413, type: 'entity.too.large' })).status, 413);
 });
 
-/** Alle TypeScript-Quellen ausser src/http und der Testhilfen. */
+/** All TypeScript sources except src/http and the test helpers. */
 function dienste() {
   const raus = [];
   (function lauf(d) {
@@ -122,7 +122,7 @@ function dienste() {
       else if (e.name.endsWith('.ts')) raus.push(rel);
     }
   })('src');
-  // Die HTTP-Seiten der Bereiche (src/<bereich>/http/) gehören zur HTTP-Schicht.
+  // The HTTP sides of the scopes (src/<bereich>/http/) belong to the HTTP layer.
   return raus.filter(d => !d.startsWith('src/http/') && !/^src\/[^/]+\/http\//.test(d));
 }
 
@@ -132,8 +132,8 @@ test('only src/http maps kinds to status, no service names a status', () => {
   const treffer = liste.filter(d => /from '[./]+\/http\/fehlerArt'/.test(fs.readFileSync(path.join(ROOT, d), 'utf8')));
   assert.deepEqual(treffer, []);
 
-  // Kein Dienst nennt einen Status: Eine Zahl als zweites Argument hiesse, dass
-  // jemand die frühere Form (Code und Statuszahl) zurückholt.
+  // No service names a status: a number as the second argument would mean that
+  // someone brings back the former form (code and status number).
   const status = [];
   for (const d of liste) {
     const s = ohneKommentare(fs.readFileSync(path.join(ROOT, d), 'utf8'));
@@ -142,6 +142,6 @@ test('only src/http maps kinds to status, no service names a status', () => {
     for (const m of s.matchAll(/new Fachfehler\(\s*'[a-z_]+',\s*\d{3}/g)) status.push(`${d}: ${m[0]}`);
   }
   assert.deepEqual(status, []);
-  // Selbstbeweis der Suche an einer Probe.
+  // Self-proof of the search on a probe.
   assert.ok(/\b(?:fehlerWerfen|fachfehler|fileError)\([^)]*?,\s*\d{3}\b/.test("fehlerWerfen('x', 400)"));
 });

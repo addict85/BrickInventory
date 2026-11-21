@@ -1,42 +1,42 @@
 /**
- * Die Prüfung der Android Key Attestation (src/devices/attestation) an
- * selbst erzeugten Ketten mit eigener Wurzel (helpers/attestation.js): Eine
- * Kette wie die des Keystores geht durch, jede Abweichung, die einen Schlüssel
- * ohne Hardware, ohne Sperre oder einer fremden App verriete, nicht.
+ * The check of Android Key Attestation (src/devices/attestation) on
+ * self-generated chains with an own root (helpers/attestation.js): a
+ * chain like the keystore's passes, every deviation that would reveal a key
+ * without hardware, without lock or of a foreign app does not.
  *
- * Gegenproben (11.11.2026 gemessen):
- *   A  in checkDescription() die Prüfung auf 'software' gestrichen → rot:
- *      „ein Software-Schlüssel …“
- *   B  in checkLinks() `if (!anker) return 'fremde_wurzel'` gestrichen → rot:
- *      „eine fremde Wurzel …“ (TypeError → kette_unlesbar statt fremde_wurzel)
- *   C  die Paketprüfung `packages[0] !== e.paket` gestrichen → rot: „ein fremdes Paket …“
- *   D  in checkLinks() `!c.verify(...)` gestrichen → rot: „ein untergeschobenes Blatt …“
- *   E  in checkDescription() die Prüfung auf noAuthRequired gestrichen → rot:
- *      „ein Schlüssel ohne Sperre …“
- *   F  in FINGERPRINTS eine Ziffer geändert → rot: „die Google-Wurzeln …“
- *   G  in liesTlv() die Längenprüfung `p + laenge > b.length` gestrichen → rot:
- *      „abgeschnittene Bytes …“
+ * Counter-checks (measured 11.11.2026):
+ *   A  in checkDescription() the check for 'software' deleted → red:
+ *      “a software key …”
+ *   B  in checkLinks() `if (!anker) return 'fremde_wurzel'` deleted → red:
+ *      “a foreign root …” (TypeError → kette_unlesbar instead of fremde_wurzel)
+ *   C  the package check `packages[0] !== e.paket` deleted → red: “a foreign package …”
+ *   D  in checkLinks() `!c.verify(...)` deleted → red: “a slipped-in leaf …”
+ *   E  in checkDescription() the check for noAuthRequired deleted → red:
+ *      “a key without lock …”
+ *   F  a digit changed in FINGERPRINTS → red: “the Google roots …”
+ *   G  in liesTlv() the length check `p + laenge > b.length` deleted → red:
+ *      “truncated bytes …”
  *
- * Gegenproben zu Widerrufsliste, RootOfTrust und Patchstand (14.11.2026 gemessen):
- *   H  in checkChain() die Zeile mit `e.widerrufen.has(…)` gestrichen → rot:
- *      „eine Kette mit widerrufener Seriennummer …“
- *   I  in seriennummer() `.replace(/^0+(?=.)/, '')` gestrichen → rot: „… auch mit
- *      führender Null …“
- *   J  in checkBoot() die Prüfung auf BOOT_VERIFIED gestrichen → rot:
- *      „ein Gerät mit unverifiziertem Boot …“
- *   K  in checkBoot() `if (!gesperrt[0]) return 'bootloader_offen'` gestrichen →
- *      rot: „ein offener Bootloader …“
- *   L  in checkDescription() die Patchstand-Zeile gestrichen → rot: „ein
- *      Patchstand unter der Mindeststufe …“
- *   M  in readRevocationList() die Prüfung des Schlüssels (Hex) gestrichen → rot:
- *      „eine Liste in anderer Form …“
- *   N  in applicableList() die Altersgrenze gestrichen → rot: „eine zu alte Liste …“
+ * Counter-checks for revocation list, RootOfTrust and patch level (measured 14.11.2026):
+ *   H  in checkChain() the line with `e.widerrufen.has(…)` deleted → red:
+ *      “a chain with a revoked serial number …”
+ *   I  in seriennummer() `.replace(/^0+(?=.)/, '')` deleted → red: “… also with
+ *      a leading zero …”
+ *   J  in checkBoot() the check for BOOT_VERIFIED deleted → red:
+ *      “a device with unverified boot …”
+ *   K  in checkBoot() `if (!gesperrt[0]) return 'bootloader_offen'` deleted →
+ *      red: “an open bootloader …”
+ *   L  in checkDescription() the patch level line deleted → red: “a
+ *      patch level below the minimum …”
+ *   M  in readRevocationList() the check of the key (hex) deleted → red:
+ *      “a list in another shape …”
+ *   N  in applicableList() the age limit deleted → red: “a too old list …”
  *
- * Gegenproben zu den Ausstellern (15.11.2026 gemessen):
- *   O  in checkLinks() `|| attestationExtension(roh[i])` gestrichen → rot: „ein
- *      attestierter Schlüssel als Aussteller …“ (der Fall mit CA-Bit)
- *   P  in checkLinks() `!c.ca ||` gestrichen → rot: „ein Aussteller ohne CA-Bit oder
- *      ohne keyCertSign …“ (ca von node:crypto prüft keyUsage mit)
+ * Counter-checks for the issuers (measured 15.11.2026):
+ *   O  in checkLinks() `|| attestationExtension(roh[i])` deleted → red: “an
+ *      attested key as issuer …” (the case with CA bit)
+ *   P  in checkLinks() `!c.ca ||` deleted → red: “an issuer without CA bit or
+ *      without keyCertSign …” (ca of node:crypto also checks keyUsage)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -82,7 +82,7 @@ test('a software key is rejected', () => {
 test('a foreign root is rejected, even with an otherwise valid chain', () => {
   const fremd = T.newRoot('Fremde Wurzel');
   assert.equal(grund(T.kette({ challenge: NONCE, wurzel: fremd })), 'fremde_wurzel');
-  // Die Google-Wurzeln nehmen die Testkette ebenso wenig an.
+  // The Google roots do not accept the test chain either.
   const google = expectation({ roots: G.GOOGLE_ROOTS.map(p => new X509Certificate(p)) });
   assert.equal(grund(T.kette({ challenge: NONCE }), google), 'fremde_wurzel');
 });
@@ -108,7 +108,7 @@ test('a key without lock, with a timeout or imported is rejected', () => {
 test('a slipped-in leaf (signed by a stranger) and a chain without extension are rejected', () => {
   const echt = T.kette({ challenge: NONCE });
   const fremd = T.kette({ challenge: NONCE });
-  // Blatt aus einer Kette, Zwischenstufe aus einer anderen: gleiche Namen, falsche Signatur.
+  // Leaf from one chain, intermediate from another: same names, wrong signature.
   assert.equal(grund({ kette: [fremd.kette[0], echt.kette[1], echt.kette[2]] }), 'glied_0_signatur');
   assert.equal(grund(T.kette({ challenge: NONCE, withoutExtension: true })), 'ohne_attestation');
   assert.equal(grund({ kette: [] }), 'kette_laenge');
@@ -206,9 +206,9 @@ test('a stored list that is too old, missing or damaged does not apply', () => {
   assert.equal(W.applicableList(JSON.stringify({ stand: jetzt.toISOString() }), 7, jetzt), null);
 });
 
-/** Wurzel → Zwischenstufe → Mittelglied → Blatt; das Blatt trägt eine erfundene
- * KeyDescription (StrongBox), das Mittelglied ist wahlweise selbst ein attestierter Schlüssel.
- * @param {{ attestiert?: boolean, ca?: boolean, keyUsage?: Buffer }} [o] keyUsage: Inhalt des BIT STRING */
+/** Root → intermediate → middle link → leaf; the leaf carries an invented
+ * KeyDescription (StrongBox), the middle link is optionally itself an attested key.
+ * @param {{ attestiert?: boolean, ca?: boolean, keyUsage?: Buffer }} [o] keyUsage: content of the BIT STRING */
 function chainWithMiddleLink({ attestiert = false, ca = false, keyUsage } = {}) {
   const neu = () => generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
   const [zw, mittel, blatt] = [neu(), neu(), neu()];
@@ -249,12 +249,12 @@ test('an attested key as the issuer of a leaf is rejected, even with the CA bit'
 
 test('an issuer without CA bit or without keyCertSign is rejected, accepted with both', () => {
   assert.equal(grund(chainWithMiddleLink()), 'glied_1_kein_aussteller');
-  // keyUsage nur digitalSignature: 7 ungenutzte Bits, Bit 0 gesetzt.
+  // keyUsage only digitalSignature: 7 unused bits, bit 0 set.
   assert.equal(
     grund(chainWithMiddleLink({ ca: true, keyUsage: Buffer.from([0x07, 0x80]) })),
     'glied_1_kein_aussteller',
   );
-  // keyCertSign (Bit 5): die Kontrolle, dass die Prüfung nicht jede Kette verwirft.
+  // keyCertSign (bit 5): the control that the check does not reject every chain.
   assert.equal(grund(chainWithMiddleLink({ ca: true, keyUsage: Buffer.from([0x02, 0x04]) })), 'angenommen');
   assert.equal(grund(chainWithMiddleLink({ ca: true })), 'angenommen');
 });

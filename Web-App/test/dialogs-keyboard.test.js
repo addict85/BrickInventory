@@ -1,17 +1,17 @@
 /**
- * Dialoge lassen sich mit der Tastatur bedienen: Escape schliesst den
- * obersten, der Fokus springt hinein, Tab bleibt darin, und beim Schliessen
- * kehrt der Fokus zurück (public/js/dialogs.js).
+ * Dialogs can be operated by keyboard: Escape closes the
+ * topmost one, focus jumps inside, Tab stays inside, and on closing
+ * focus returns (public/js/dialogs.js).
  *
- * Geprüft am echten Bündel und am echten Markup in jsdom.
+ * Checked on the real bundle and the real markup in jsdom.
  *
- * Gegenproben (25.10., gemessen):
- *   A  data-dialog-zu am ✕ des Set-Dialogs entfernt → rot: Wächter und Escape
- *   B  Tab-Zweig in tasteGedrueckt() entfernt       → rot: „Tab verlässt den Dialog"
- *   C  Fokus-Rückgabe entfernt                      → rot: „Fokus kehrt nicht zurück"
- *   D  Ausnahme für Eingabefelder entfernt          → rot: „Escape im Feld schliesst"
- *   E  (28.10.) die Ausnahme wieder für jedes Feld statt nur für Tabellenzellen
- *      → rot: „Das erste Escape schliesst nicht"
+ * Counter-checks (25.10., measured):
+ *   A  data-dialog-zu removed from the ✕ of the set dialog → red: guard and Escape
+ *   B  Tab branch removed in tasteGedrueckt()      → red: “Tab leaves the dialog"
+ *   C  focus return removed                        → red: “focus does not return"
+ *   D  exception for input fields removed          → red: “Escape in the field closes"
+ *   E  (28.10.) the exception again for every field instead of only for table cells
+ *      → red: “the first Escape does not close"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -36,12 +36,12 @@ async function fenster() {
     json: async () => ({ success: true }),
   });
   w.eval(BUNDLE);
-  // Das Bündel hängt sich bei readyState 'loading' an DOMContentLoaded.
+  // The bundle attaches to DOMContentLoaded at readyState 'loading'.
   if (w.document.readyState === 'loading') await new Promise(r => w.document.addEventListener('DOMContentLoaded', r));
   return w;
 }
 
-/** MutationObserver nachlaufen lassen. */
+/** Let MutationObserver catch up. */
 function takt() {
   return warte(0);
 }
@@ -137,7 +137,7 @@ test('Escape in an input field first only leaves the field', async () => {
       modal = d.getElementById('wanted-xml-modal');
     modal.classList.add('open');
     await takt();
-    // Wie in der Vorschau: das Korrekturfeld steht in einer Tabellenzelle.
+    // As in the preview: the correction field sits in a table cell.
     d.getElementById('wanted-xml-tabelle').innerHTML =
       '<table><tbody><tr><td><input id="zelle"></td></tr></tbody></table>';
     const feld = d.getElementById('zelle');
@@ -155,8 +155,8 @@ test('Escape in an input field first only leaves the field', async () => {
 });
 
 test('Escape closes on the first press, even if the focus is in a field', async () => {
-  // Erfassen-Dialog: data-erstfokus sitzt auf der Set-Nummer. Vorher brauchte
-  // es zwei Escape — das erste verliess nur das Feld (Befund der UI-Prüfung).
+  // Add dialog: data-erstfokus sits on the set number. Previously it needed
+  // two Escapes — the first only left the field (finding of the UI review).
   const w = await fenster();
   try {
     const d = w.document,

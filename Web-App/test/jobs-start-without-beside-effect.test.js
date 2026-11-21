@@ -1,9 +1,9 @@
 /**
- * Das Laden von jobs/startJobs.ts setzt nichts im Prozess; den Pfad des
- * Import-Prozesses reicht die Bearbeitertabelle dem Katalogabgleich herein.
+ * Loading jobs/startJobs.ts sets nothing in the process; the path of the
+ * import process is handed into the catalog sync by the handler table.
  *
- * Gegenprobe (15.11.2026 gemessen): in startup/wiring.ts
- * `d.catalog.auftragsarten('')` statt des Pfads → rot: „der Katalogabgleich bekommt den Import-Prozess“.
+ * Counter-check (measured 15.11.2026): in startup/wiring.ts
+ * `d.catalog.auftragsarten('')` instead of the path → red: “the catalog sync gets the import process”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,7 +16,7 @@ const { editor } = require(path.join(ROOT, 'dist/jobs/startJobs.js'));
 
 test('the catalog reconciliation gets the import process', async () => {
   const aufrufe = [];
-  // Vor dem Laden der Verdrahtung ersetzt: Die Anmeldung des Katalogs ruft das Modul.
+  // Replaced before loading the wiring: the catalog's registration calls the module.
   const modul = require.resolve(path.join(ROOT, 'dist/src/catalog/csvSync.js'));
   const echt = require(modul);
   require.cache[modul].exports = { ...echt, csvAbgleich: async (...a) => aufrufe.push(a) };

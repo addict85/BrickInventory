@@ -1,5 +1,5 @@
 /**
- * Statischer XSS-Regressionstest für public/js/.
+ * Static XSS regression test for public/js/.
  */
 const { isAppModule } = require('../scripts/build-frontend');
 const test = require('node:test');
@@ -13,7 +13,7 @@ const FILES = fs
   .filter(f => isAppModule(f))
   .sort();
 
-// Die Helfer selbst, nicht nachgebaut: escaping.js ist DOM-frei und lädt in Node.
+// The helpers themselves, not rebuilt: escaping.js is DOM-free and loads in Node.
 const helper = import(require('node:url').pathToFileURL(path.join(JS_DIR, 'escaping.js')).href);
 const loadHelpers = () => helper;
 
@@ -27,7 +27,7 @@ test('esc() neutralizes all HTML metacharacters incl. apostrophe', async () => {
   assert.equal(esc(undefined), '');
 });
 
-// Gegenprobe (08.11.2026): „\\“ und Steuerzeichen im Regex von safeUrl() entfernt → rot: „/\\host“ kam durch.
+// Counter-check (08.11.2026): “\\” and control characters removed from the regex of safeUrl() → red: “/\\host” got through.
 test('safeUrl() only lets same origin, http(s) and image data through', async () => {
   const { safeUrl } = await loadHelpers();
   for (const gut of [
@@ -58,12 +58,12 @@ test('safeUrl() only lets same origin, http(s) and image data through', async ()
 
 test('escJs() does not break out of onclick="fn(\'…\')"', async () => {
   const { escJs } = await loadHelpers();
-  // Der klassische Ausbruch: Apostroph schliesst den JS-String, danach Code.
+  // The classic breakout: an apostrophe closes the JS string, code afterwards.
   const payload = "');alert(1);//";
   const out = escJs(payload);
   assert.ok(!/(^|[^\\])'/.test(out), `Apostroph nicht escaped: ${out}`);
   assert.ok(!out.includes('<'), 'Winkelklammer nicht escaped');
-  // Backslash muss verdoppelt werden, sonst entwertet er das folgende \'
+  // A backslash must be doubled, otherwise it neutralizes the following \'
   assert.equal(escJs('a\\'), 'a\\\\');
 });
 
@@ -75,7 +75,7 @@ test('escUrl() only lets relative paths and http(s) through', async () => {
   assert.equal(escUrl('  JaVaScRiPt:alert(1)'), '');
   assert.equal(escUrl('//evil.tld/x.jpg'), '', 'protokollrelative URL muss raus');
   assert.equal(escUrl(''), '');
-  // Attribut-Ausbruch über ein Anführungszeichen in der URL
+  // Attribute breakout via a quote in the URL
   assert.ok(!escUrl('https://a/" onerror="alert(1)').includes('"'));
 });
 
@@ -87,7 +87,7 @@ test('escHex() exclusively accepts 6 hex digits', async () => {
   assert.equal(escHex(null, 'var(--s50)'), 'var(--s50)');
 });
 
-// ── Statische Sink-Prüfung ──────────────────────────────────────────────────
+// ── Static sink check ───────────────────────────────────────────────────────
 const SAFE = /^\s*(esc|escJs|escUrl|safeUrl|escHex|escHtml|encodeURIComponent|t)\s*\(/;
 const DATA_FIELD =
   /(set_number|part_number|bl_part_number|fig_number|bl_fig_number|part_name|fig_name|color_name|category_name|image_url|image_local|note|username|theme|last_error)\b/;
@@ -123,8 +123,8 @@ test('no onXxx handler with an unchecked data field', () => {
 });
 
 test('esc/escJs/escUrl/escHex are defined exactly once', () => {
-  // Alle Maskierer liegen in escaping.js (DOM-frei, auch der BrickLink-Export
-  // lädt es). Zwei Fassungen desselben Maskierers liefen schon einmal auseinander.
+  // All escapers live in escaping.js (DOM-free, the BrickLink export also
+  // loads it). Two versions of the same escaper drifted apart once already.
   const home = { esc: 'escaping.js', escJs: 'escaping.js', escUrl: 'escaping.js', escHex: 'escaping.js' };
   for (const [name, datei] of Object.entries(home)) {
     const defs = FILES.filter(f =>
@@ -142,7 +142,7 @@ test('esc/escJs/escUrl/escHex are defined exactly once', () => {
 });
 
 test('translations for plain text go via tRaw(), not via t()', () => {
-  // Woher dieser Test kommt
+  // Where this test comes from
   const jsDir = path.join(__dirname, '..', 'public', 'js');
   const offenders = [];
   for (const f of fs.readdirSync(jsDir)) {
@@ -151,7 +151,7 @@ test('translations for plain text go via tRaw(), not via t()', () => {
       .split('\n')
       .forEach((l, i) => {
         if (/^\s*(\/\/|\*)/.test(l)) return;
-        // Zuweisung an ein Textziel oder Aufruf einer Funktion, die textContent setzt
+        // Assignment to a text target or call of a function that sets textContent
         if (
           /(\.(?:textContent|value|placeholder|title|alt|label)\s*=\s*|alert\(|confirm\(|toast\(|confirmDelete\()\s*t\(/.test(
             l,
@@ -169,7 +169,7 @@ test('translations for plain text go via tRaw(), not via t()', () => {
 });
 
 test('server-side error messages go through esc() in the HTML context', () => {
-  // Woher dieser Test kommt
+  // Where this test comes from
   const bad = [];
   const FIELD = /\w+\.(?:error|message)\b/g;
   for (const f of FILES) {
@@ -179,19 +179,19 @@ test('server-side error messages go through esc() in the HTML context', () => {
       const rowAb = ab;
       ab += line.length + 1;
       if (/^\s*(\/\/|\*)/.test(line)) return;
-      if (!/<\w/.test(line)) return; // kein HTML-Kontext
+      if (!/<\w/.test(line)) return; // no HTML context
       for (const m of line.matchAll(/\$\{([^}]*)\}/g)) {
-        // In html`` maskiert die Vorlage selbst — ausser der Wert geht durch rawHtml().
+        // In html`` the template itself escapes — unless the value goes through rawHtml().
         const vor = src.lastIndexOf('`', rowAb + (m.index ?? 0));
         if (src.slice(vor - 4, vor) === 'html' && !/rawHtml\(/.test(m[1])) continue;
-        // Zeichenkettenliterale entfernen, damit Übersetzungsschlüssel
-        // ('…error') nicht als Datenfeld gelten.
+        // Remove string literals so that translation keys
+        // ('…error') do not count as a data field.
         const ausdruck = m[1].replace(/'[^']*'|"[^"]*"|`[^`]*`/g, "''");
         for (const treffer of ausdruck.matchAll(FIELD)) {
           const danach = ausdruck.slice(treffer.index + treffer[0].length).trimStart();
           if (danach.startsWith('?')) continue; // Bedingungsstellung
           const davor = ausdruck.slice(0, treffer.index);
-          if (/\besc\s*\($/.test(davor)) continue; // bereits maskiert
+          if (/\besc\s*\($/.test(davor)) continue; // already escaped
           bad.push(`${f}:${i + 1}: \${${m[1]}}`);
         }
       }

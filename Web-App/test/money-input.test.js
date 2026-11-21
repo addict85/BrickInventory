@@ -1,22 +1,22 @@
 /**
- * Geldfelder lesen Komma und Punkt: „149,95“ geht als 149.95 an den Server,
- * nicht als 149 (parseFloat schnitt am Komma ab). Was keine Zahl ist, meldet
- * das Feld und geht nicht hinaus. Geprüft am echten Bündel in jsdom über die
- * Anfragen, die die Oberfläche schickt.
+ * Money fields read comma and dot: „149,95“ goes to the server as 149.95,
+ * not as 149 (parseFloat cut off at the comma). What is not a number is reported
+ * by the field and does not go out. Checked on the real bundle in jsdom via the
+ * requests the UI sends.
  *
- * Gegenproben (02.11.2026 gemessen, je einzeln):
- *   A  readAmount() in format.js durch parseFloat(roh) ersetzt → alle fünf
- *      rot (149,95 → 149; 1,299 en → 1; „12,3,4“ gesendet; Gutschein 50)
- *   B  in amountFromField() die Meldung bei NaN entfernt (ok: true, wert: null)
- *      → rot: „Unsinn wird am Feld gemeldet“ (abc ging als null hinaus)
- *   C  Gruppen-Regel entfernt (einzelnes Trennzeichen immer Dezimal) → rot:
- *      „Set hinzufügen …“ (1.299 de-DE → 1.299) und „englisch …“ (1,299)
- *   D  amountForField() mit en-Format statt locale() → rot: „Kaufpreis-Dialog“
- *      (Feld zeigte 129.99 statt 129,99)
- *   E  showSaved() in acqSave() entfernt → rot: „Kaufpreis-Dialog“
- *      (keine Marke „Gespeichert“)
- *   F  (13.11.2026) amountFromField() ohne die Prüfung auf ein Minus → rot:
- *      „Unsinn wird am Feld gemeldet“ („-5“ hiess „kein Betrag“)
+ * Counter-checks (measured 02.11.2026, each on its own):
+ *   A  readAmount() in format.js replaced by parseFloat(roh) → all five
+ *      red (149,95 → 149; 1,299 en → 1; „12,3,4“ sent; voucher 50)
+ *   B  in amountFromField() the message on NaN removed (ok: true, wert: null)
+ *      → red: “nonsense is reported at the field” (abc went out as null)
+ *   C  group rule removed (a single separator always decimal) → red:
+ *      “add set …” (1.299 de-DE → 1.299) and “English …” (1,299)
+ *   D  amountForField() with en format instead of locale() → red: “purchase price dialog”
+ *      (field showed 129.99 instead of 129,99)
+ *   E  showSaved() removed in acqSave() → red: “purchase price dialog”
+ *      (no marker „Gespeichert“)
+ *   F  (13.11.2026) amountFromField() without the check for a minus → red:
+ *      “nonsense is reported at the field” („-5“ was called „kein Betrag“)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -91,7 +91,7 @@ test('nonsense is reported at the field and not sent', async () => {
     for (const ein of ['abc', '12,3,4', '-5', '1.29.9', '149,95€x', '1,2.3,4']) {
       const r = await setErfassen(o, ein);
       assert.equal(r.gesendet, false, `„${ein}“ ging an den Server`);
-      // Lesbar, nur negativ: eigener Text (UX-Prüfung 20).
+      // Readable, only negative: own text (UX check 20).
       assert.match(
         r.fehler,
         ein === '-5' ? /^Der Kaufpreis kann nicht negativ sein\.$/ : /ist kein Betrag/,

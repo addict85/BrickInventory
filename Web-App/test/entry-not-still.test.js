@@ -1,5 +1,5 @@
 /**
- * Eine verlorene Erfassung verschwindet nicht stillschweigend.
+ * A lost entry does not disappear silently.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,12 +30,12 @@ test('no silent catch on an acquisition', () => {
   let aufrufe = 0;
   for (const datei of dateien) {
     const src = fs.readFileSync(datei, 'utf8');
-    // Innen heisst die Buchung addPurchaseAtTag, im Dienstsatz bookDailyEntry.
+    // Internally the booking is called addPurchaseAtTag, in the service set bookDailyEntry.
     for (const m of src.matchAll(/\b(?:addPurchaseAtTag|bookDailyEntry)\(/g)) {
       const i = m.index ?? 0;
       if (!/\bfunction\s+addPurchaseAtTag/.test(src.slice(Math.max(0, i - 40), i + 24))) {
         aufrufe++;
-        // Das Fenster nach dem Aufruf: bis zum Ende der Anweisung.
+        // The window after the call: up to the end of the statement.
         const fenster = src.slice(i, i + 400);
         if (/\)\s*\.catch\(\s*\(\s*_?\s*\)\s*=>\s*\{\s*\}\s*\)/.test(fenster)) {
           const zeile = src.slice(0, i).split('\n').length;
@@ -45,8 +45,8 @@ test('no silent catch on an acquisition', () => {
     }
   }
 
-  // Selbstbeweis: Findet das Muster keine Aufrufe, sagt ein leeres Ergebnis
-  // nichts. Es gibt derer deutlich mehr als fünf.
+  // Self-proof: if the pattern finds no calls, an empty result says
+  // nothing. There are clearly more than five of them.
   assert.ok(aufrufe >= 5, `nur ${aufrufe} Aufruf(e) von addPurchaseAtTag gefunden — Muster veraltet?`);
 
   assert.deepEqual(

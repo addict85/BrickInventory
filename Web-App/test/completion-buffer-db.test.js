@@ -1,16 +1,16 @@
 /**
- * Beim Herunterfahren schreiben Bildbedarf, Bild-Fehlanzeige und Protokoll
- * ihren Puffer noch in die Datenbank, und ihre Takte enden
- * (startup/shutdown.ts, aufgerufen von herunterfahren() in server.ts).
+ * On shutdown image demand, image miss marker and log still write
+ * their buffer into the database, and their timers end
+ * (startup/shutdown.ts, called by herunterfahren() in server.ts).
  *
- * Gegenproben (am 11.11.2026 gemessen):
- *   A  stopImageDemand() ohne `await schreibePuffer()` → rot: „der Bildbedarf
- *      steht danach in image_wanted“
- *   B  stopNone() ohne clearInterval → rot: „jeder Takt ist beendet“
- *   C  stopLog() ohne `await emptyLog()` → rot: „die letzte
- *      Zeile steht in app_logs“
- *   D  stopLog() ohne `Z.pool = null` → rot: „danach schreibt das
- *      Protokoll nicht mehr in die Datenbank“
+ * Counter-checks (measured on 11.11.2026):
+ *   A  stopImageDemand() without `await schreibePuffer()` → red: “the image demand
+ *      is in image_wanted afterwards”
+ *   B  stopNone() without clearInterval → red: “every timer has ended”
+ *   C  stopLog() without `await emptyLog()` → red: “the last
+ *      line is in app_logs”
+ *   D  stopLog() without `Z.pool = null` → red: “afterwards the
+ *      log no longer writes into the database”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,10 +30,10 @@ test('shutdown: buffers written, ticks ended', { concurrency: 1 }, async t => {
   const F = _req('src/images/imageMisses.js');
   const { closeBufferAndTicks } = _req('startup/shutdown.js');
 
-  // Welche Takte entstehen, und welche wieder enden.
+  // Which timers are created, and which end again.
   const offen = new Set();
   const echt = { set: global.setInterval, clear: global.clearInterval };
-  // @ts-expect-error — Mitschnitt mit genau der Form, die die Takte benutzen.
+  // @ts-expect-error — recording with exactly the shape the timers use.
   global.setInterval = (fn, ms) => {
     const h = echt.set(fn, ms);
     offen.add(h);

@@ -1,5 +1,5 @@
 /**
- * Vorberechnete Teile-Zusammenfassung (src/parts/summary.ts).
+ * Precomputed parts summary (src/parts/summary.ts).
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -13,9 +13,9 @@ const { keineDb } = require('./helpers/db');
 const ROOT = path.join(__dirname, '..');
 const DB_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-// ── Statische Prüfungen (immer) ────────────────────────────────────────────
+// ── Static checks (always) ────────────────────────────────────────────
 test('the invalidation hangs on a trigger, not on calls', () => {
-  // Die Trigger stehen seit 0052 in einer Migration, nicht mehr im Code.
+  // Since 0052 the triggers stand in a migration, no longer in the code.
   const src = fs.readFileSync(path.join(ROOT, 'db/migrations/0052-teilezusammenfassung-stand.sql'), 'utf8');
   assert.match(src, /FOR EACH STATEMENT/, 'Zeilen-Trigger würden bei einem CSV-Import 171 000 Mal feuern');
   for (const tbl of ['parts', 'sets']) {
@@ -23,16 +23,16 @@ test('the invalidation hangs on a trigger, not on calls', () => {
   }
   assert.match(src, /bump_parts_version/, 'Versionszähler fehlt');
 
-  // Der Zähler hängt JE KONTO — siehe den Test weiter unten. Ein globaler
-  // Zähler (eine Zeile, id=1) entwertete die Zusammenfassung aller Konten,
-  // sobald irgendjemand etwas schrieb.
+  // The counter hangs PER ACCOUNT — see the test further down. A global
+  // counter (one row, id=1) invalidated the summary of all accounts
+  // as soon as anybody wrote anything.
   assert.match(src, /parts_version_user/, 'Der Zähler muss je Konto geführt werden');
   assert.doesNotMatch(
     src,
     /UPDATE parts_version SET v = v \+ 1 WHERE id = 1/,
     'Der globale Zähler entwertet fremde Zusammenfassungen mit',
   );
-  // Alle drei Operationen brauchen ihre eigene Übergangstabelle.
+  // All three operations need their own transition table.
   for (const [op, ref] of [
     ['INSERT', 'NEW TABLE AS neu'],
     ['DELETE', 'OLD TABLE AS alt'],
@@ -40,8 +40,8 @@ test('the invalidation hangs on a trigger, not on calls', () => {
   ]) {
     assert.ok(src.includes(ref), `${op}: Übergangstabelle fehlt (${ref})`);
   }
-  // Beim UPDATE zählen BEIDE Seiten: Wandert eine Zeile im Haushalt zwischen
-  // Konten, sind die Zusammenfassungen von Absender UND Ziel veraltet.
+  // On UPDATE BOTH sides count: if a row moves within the household between
+  // accounts, the summaries of sender AND target are outdated.
   assert.match(
     src,
     /SELECT user_id FROM alt UNION SELECT user_id FROM neu/,
@@ -61,9 +61,9 @@ test('the live query stays as a fallback', () => {
 });
 
 test('set_number and storage deliberately bypass the summary', () => {
-  // Zwei Filter, ein Grund: Die Zusammenfassung ist nach Teil und Farbe
-  // verdichtet und kann nach nichts filtern, was INNERHALB einer Gruppe
-  // verschieden ist.
+  // Two filters, one reason: the summary is condensed by part and color
+  // and cannot filter by anything that differs WITHIN a
+  // group.
   const h = require('./helpers/sources').handlerQuelle();
   const zeile = /if \(filter\.withoutManual && ([^)]*)\)/.exec(h)?.[1] || '';
   assert.ok(
@@ -76,14 +76,14 @@ test('set_number and storage deliberately bypass the summary', () => {
   );
 });
 
-// ── Integrationstest (nur mit DB) ──────────────────────────────────────────
+// ── Integration test (only with DB) ──────────────────────────────────────────
 let db,
   H,
   PS,
   S,
   skip = null;
 try {
-  // Nach dist/ bauen statt in-place — siehe helpers/sources.js.
+  // Build into dist/ instead of in place — see helpers/sources.js.
   const _req = require('./helpers/sources').buildAndRequire();
   process.env.DATABASE_URL = DB_URL;
   environment({ SESSION_SECRET: 'test' });
@@ -116,11 +116,11 @@ test('summary matches the live query and does not go stale', { skip: skip || und
     "INSERT INTO users (id,username,password_hash,is_admin) VALUES ($1,'psum','x',false) ON CONFLICT DO NOTHING",
     [U],
   );
-  // Zwei Sets, das zweite doppelt vorhanden — die Menge muss mitmultipliziert werden.
+  // Two sets, the second one present twice — the quantity must be multiplied along.
   await holdsSet(db, U, 'A-1', 1);
   await holdsSet(db, U, 'B-1', 2);
-  // Farbbezeichnung und Name stehen seit Migration 0034 in den Katalogen.
-  // Hier nicht nebensaechlich: Die Prüfungen unten suchen die Gruppe über
+  // Since migration 0034 color label and name stand in the catalogs.
+  // Not incidental here: the checks below look for the group via
   // `color_name === 'Rot'`.
   await db.run(`INSERT INTO part_catalog (part_number, part_name) VALUES
     ('3001','Brick 2x4'),('3002','Plate 1x2'),('3003','Tile 1x1')
@@ -131,15 +131,15 @@ test('summary matches the live query and does not go stale', { skip: skip || und
   await holdsPart(db, U, '3001', { setNumber: 'A-1', menge: 3, colorId: 5 });
   await holdsPart(db, U, '3001', { setNumber: 'B-1', menge: 4, colorId: 5 });
   await holdsPart(db, U, '3002', { setNumber: 'A-1', menge: 1, colorId: 1 });
-  // Die Setliste für 3003 steht schon jetzt im Katalog; unten kommt nur die
-  // Bestandszeile dazu (eine Katalogänderung zöge die Gruppe sofort nach).
+  // The set list for 3003 already stands in the catalog now; below only the
+  // stock row is added (a catalog change would update the group immediately).
   await db.run(`INSERT INTO set_parts (set_number, part_number, color_id, quantity) VALUES ('A-1','3003',2,9)
                 ON CONFLICT (set_number, part_number, color_id) DO UPDATE SET quantity = 9`);
 
-  // Seit dem Fix baut summaryFresh() NICHT mehr im Request auf. Der erste
-  // Zugriff eines Nutzers ohne Zusammenfassung wird deshalb aus der
-  // Live-Abfrage bedient, während der Aufbau im Hintergrund anläuft. Für die
-  // Inhaltsprüfung hier wird einmal explizit aufgebaut.
+  // Since the fix summaryFresh() NO longer builds in the request. The first
+  // access of a user without a summary is therefore served from the
+  // live query while the build starts in the background. For the
+  // content check here it is built explicitly once.
   const first = await H.partsQuery(U, { exclude_manual: '1', page: 1, page_size: 50 });
   assert.equal(first.source, 'db', 'ohne vorhandene Zusammenfassung muss die Live-Abfrage einspringen statt zu warten');
   await PS.rebuildNow(U);
@@ -150,30 +150,30 @@ test('summary matches the live query and does not go stale', { skip: skip || und
   const rot = r1.parts.find(p => p.color_name === 'Rot');
   assert.equal(rot.total_quantity, 3 * 1 + 4 * 2, 'die Set-Menge muss in die Teilemenge eingehen');
 
-  // Änderung an parts → Trigger → nächster Lesezugriff baut neu auf
+  // Change to parts → trigger → next read access rebuilds
   await db.run(
     `INSERT INTO parts (user_id, set_number, part_number, color_id, source) VALUES ($1,'A-1','3003',2,'set')`,
     [U],
   );
-  // Der Lesezugriff darf jetzt NICHT mehr blockieren: Er liefert den alten
-  // Stand und stösst den Aufbau nur an. Erst danach stimmen die Zahlen wieder.
+  // The read access must NOT block any more now: it delivers the old
+  // state and only triggers the build. Only afterwards are the numbers right again.
   const stale = await H.partsQuery(U, { exclude_manual: '1', page: 1, page_size: 50 });
   assert.equal(stale.total, 2, 'der Lesezugriff soll den alten Stand liefern, nicht warten');
   await PS.rebuildNow(U);
   const r2 = await H.partsQuery(U, { exclude_manual: '1', page: 1, page_size: 50 });
   assert.equal(r2.total, 3, 'nach dem Aufbau muss die neue Gruppe enthalten sein');
 
-  // Änderung an der SETMENGE → ebenfalls. Sie steht seit Migration 0036 in
-  // der Erfassung, nicht mehr in sets.quantity — und deshalb hängt der
-  // Entwertungs-Trigger jetzt auch an set_acquisitions (src/parts/summary.ts).
-  // Ohne ihn bliebe die Zahl hier stehen und sähe dabei plausibel aus.
+  // Change to the SET QUANTITY → likewise. Since migration 0036 it stands in
+  // the acquisition, no longer in sets.quantity — and that is why the
+  // invalidation trigger now also hangs on set_acquisitions (src/parts/summary.ts).
+  // Without it the number here would stay and look plausible while doing so.
   await db.run("UPDATE set_acquisitions SET quantity=3 WHERE user_id=$1 AND set_number='B-1'", [U]);
   await PS.rebuildNow(U);
   const r3 = await H.partsQuery(U, { exclude_manual: '1', page: 1, page_size: 50 });
   const rot3 = r3.parts.find(p => p.color_name === 'Rot');
   assert.equal(rot3.total_quantity, 3 * 1 + 4 * 3, 'eine geänderte Set-Menge muss durchschlagen');
 
-  // Der Schreibvorgang eines FREMDEN Kontos darf nichts entwerten
+  // The write of a FOREIGN account must invalidate nothing
   const FREMD = 990502;
   await db.run(
     "INSERT INTO users (id,username,password_hash,is_admin) VALUES ($1,'psum2','x',false) ON CONFLICT DO NOTHING",
@@ -187,8 +187,8 @@ test('summary matches the live query and does not go stale', { skip: skip || und
     true,
     'Ein fremdes Konto darf die eigene Zusammenfassung nicht entwerten',
   );
-  // Die eigene Änderung dagegen schon. `updated_at=updated_at` schreibt
-  // nichts Neues — der Trigger hängt am UPDATE, nicht am Wert.
+  // The own change, on the other hand, does. `updated_at=updated_at` writes
+  // nothing new — the trigger hangs on the UPDATE, not on the value.
   await db.run("UPDATE sets SET updated_at=updated_at WHERE user_id=$1 AND set_number='A-1'", [U]);
   assert.equal(
     await PS.summaryFresh(U, { strict: true }),
@@ -196,18 +196,18 @@ test('summary matches the live query and does not go stale', { skip: skip || und
     'Eine eigene Änderung an sets muss die Zusammenfassung entwerten',
   );
 
-  // ── Und eine Änderung an den ERFASSUNGEN ebenso ─────────────────────────
+  // ── And a change to the ACQUISITIONS likewise ─────────────────────────
   //
-  // Neu mit Migration 0036: Die Setmenge steht dort. Ohne den Trigger auf
-  // set_acquisitions wäre diese Zusicherung die einzige Stelle, an der der
-  // Fehler auffiele — und sie ist genau deshalb hier.
+  // New with migration 0036: the set quantity stands there. Without the trigger on
+  // set_acquisitions this assertion would be the only place at which the
+  // error would show — and it is here exactly for that reason.
   await PS.rebuildNow(U);
   assert.equal(
     await PS.summaryFresh(U, { strict: true }),
     true,
     'Vorbedingung: nach dem Neuaufbau ist die Zusammenfassung frisch',
   );
-  // Ein geänderter Kaufpreis entwertet nicht (seit 0052), eine Menge schon.
+  // A changed purchase price does not invalidate (since 0052), a quantity does.
   await db.run("UPDATE set_acquisitions SET purchase_price = 1 WHERE user_id=$1 AND set_number='A-1'", [U]);
   assert.equal(
     await PS.summaryFresh(U, { strict: true }),
@@ -224,13 +224,13 @@ test('summary matches the live query and does not go stale', { skip: skip || und
   await db.run('DELETE FROM parts WHERE user_id=$1', [FREMD]);
   await PS.rebuildNow(U);
 
-  // Statistik und Farbfilter kommen aus derselben Quelle
+  // Statistics and color filter come from the same source
   const stats = await H.partStatsQuery(U);
   assert.equal(stats.unique_parts, 3);
   const colors = await H.partColorsQuery(U);
   assert.equal(colors.length, 3);
 
-  // Seitengrenzen
+  // page limits
   const p1 = await H.partsQuery(U, { exclude_manual: '1', page: 1, page_size: 2 });
   const p2 = await H.partsQuery(U, { exclude_manual: '1', page: 2, page_size: 2 });
   assert.equal(p1.parts.length, 2);
@@ -242,10 +242,10 @@ test('summary matches the live query and does not go stale', { skip: skip || und
 });
 
 test('the rebuild does not block the request', () => {
-  // Kern des zuletzt gemeldeten Fehlers: summaryFresh() hat bei veralteter
-  // Version SYNCHRON neu aufgebaut. Weil der Trigger die Version bei jeder
-  // Änderung an parts hochsetzt (CSV-Import, Set hinzufügen,
-  // Katalog-Anreicherung), zahlte der nächste Aufruf des Teile-Reiters den …
+  // Core of the most recently reported error: summaryFresh() rebuilt SYNCHRONOUSLY
+  // on an outdated version. Because the trigger raises the version on every
+  // change to parts (CSV import, adding a set,
+  // catalog enrichment), the next call of the parts tab paid the …
   const src = fs.readFileSync(path.join(ROOT, 'src/parts/summary.ts'), 'utf8');
   const fn = src.slice(
     src.indexOf('export async function summaryFresh'),
@@ -277,23 +277,23 @@ test('the rebuild does not block the request', () => {
 });
 
 test('metrics use no outdated state', () => {
-  // Webapp und Android fragen dieselbe Statistik über zwei Endpunkte ab.
-  // Während eines Hintergrund-Neuaufbaus las der eine aus der Zusammenfassung
-  // und der andere live — die Paritätsprüfung schlug dadurch reproduzierbar
-  // fehl. Mit strict weichen beide gemeinsam auf die Live-Abfrage aus.
+  // Web app and Android query the same statistics via two endpoints.
+  // During a background rebuild one read from the summary
+  // and the other live — the parity check thereby failed reproducibly.
+  // With strict both fall back to the live query together.
   const ps = fs.readFileSync(path.join(ROOT, 'src/parts/summary.ts'), 'utf8');
   assert.match(ps, /opts\?: \{ strict\?: boolean \}/, 'strict-Variante fehlt');
   assert.match(ps, /if \(opts\?\.strict\) return false;/, 'Ein veralteter Stand muss unter strict abgelehnt werden');
 
   const h = require('./helpers/sources').handlerQuelle();
-  // Seit der Haushaltssicht bekommt der Helfer eine LISTE von Konten (uids)
-  // und prüft jedes einzeln; strict gilt unverändert.
+  // Since the household view the helper gets a LIST of accounts (uids)
+  // and checks each one individually; strict applies unchanged.
   assert.match(
     h,
     /await summaryFresh\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?uids, \{ strict: true \}\)/,
     'partStatsQuery muss strict aufrufen',
   );
-  // Die Liste darf weiterhin den veralteten Stand nehmen — dort ist es egal
+  // The list may still take the outdated state — there it does not matter
   assert.match(
     h,
     /tryPartsSummary\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?userId/,
@@ -302,7 +302,7 @@ test('metrics use no outdated state', () => {
 });
 
 test('both paths of the metrics count THE SAME — also with manual parts', { skip: skip || undefined }, async t => {
-  // Der Befund
+  // The finding
   try {
     await db.initSchema();
   } catch (e) {
@@ -324,12 +324,12 @@ test('both paths of the metrics count THE SAME — also with manual parts', { sk
   await holdsPart(db, U, '3001', { setNumber: 'A-1', menge: 3, colorId: 5 });
   await holdsPart(db, U, '9999', { menge: 11, colorId: 7 });
 
-  // Weg 1: aus der Zusammenfassung.
+  // Path 1: from the summary.
   await PS.rebuildNow(U);
   const fromSummary = await H.partStatsQuery([U]);
 
-  // Weg 2: der Rückfall. Die Zusammenfassung wird dafür entfernt — dann
-  // liefert summaryFresh(strict) false, und partStatsQuery geht live.
+  // Path 2: the fallback. The summary is removed for it — then
+  // summaryFresh(strict) delivers false, and partStatsQuery goes live.
   await db.run('DELETE FROM parts_summary WHERE user_id=$1', [U]);
   await db.run('DELETE FROM parts_summary_state WHERE user_id=$1', [U]);
   const fromLive = await H.partStatsQuery([U]);
@@ -342,14 +342,14 @@ test('both paths of the metrics count THE SAME — also with manual parts', { sk
       'Das manuell erfasste Teil (Menge 11) gehört in keine der Set-Mengen.',
   );
 
-  // Sorten und Farben zählen beide Quellen, wie die Liste darunter (siehe
-  // parts-metrics-single-db.test.js); die Menge bleibt nach Quelle getrennt.
+  // Kinds and colors count both sources, like the list below (see
+  // parts-metrics-single-db.test.js); the quantity stays separated by source.
   assert.equal(fromSummary.unique_parts, 2, 'Das manuelle Teil fehlt in den Sorten');
   assert.equal(fromSummary.unique_colors, 2, 'Die Farbe des manuellen Teils fehlt');
   assert.equal(fromSummary.total_parts, 3, 'Die Menge des manuellen Teils steckt in der Summe');
-  // Getrennt ausgewiesen: Der Teile-Reiter zählt beide zusammen, wie die
-  // Kachel der Sammlung (/v1/stats). Gegenprobe (01.11.2026): manual_parts in
-  // kennzahlen() fest auf 0 → rot „Die einzeln erfassten Teile fehlen …“.
+  // Shown separately: the parts tab counts both together, like the
+  // tile of the collection (/v1/stats). Counter-check (01.11.2026): manual_parts in
+  // kennzahlen() fixed to 0 → red „Die einzeln erfassten Teile fehlen …“.
   assert.equal(fromSummary.manual_parts, 11, 'Die einzeln erfassten Teile fehlen in der Aufschlüsselung');
   const gesamt = await S.getStats([U]);
   assert.deepEqual(
@@ -363,10 +363,10 @@ test('both paths of the metrics count THE SAME — also with manual parts', { sk
   await db.run('DELETE FROM sets WHERE user_id=$1', [U]);
 });
 
-// Verbindungspool schliessen — sonst bleibt der Testprozess nach dem letzten
-// Test hängen und der Läufer meldet die Datei als fehlgeschlagen, obwohl jede
-// Prüfung grün war. Ohne erreichbare Datenbank fiel das nie auf: Dann wurde
-// gar keine Verbindung geöffnet.
+// Close the connection pool — otherwise the test process hangs after the last
+// test and the runner reports the file as failed, although every
+// check was green. Without a reachable database this never showed: then
+// no connection was opened at all.
 test('close connections', async () => {
   await db.pool.end().catch(() => {});
 });

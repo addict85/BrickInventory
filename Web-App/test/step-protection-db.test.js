@@ -1,42 +1,42 @@
 /**
- * Der Schrittschutz der App am echten Server (dist/server.js): Ein App-Token
- * kommt an Gutschein-PIN und Verwaltung nur mit einer Signatur des
- * Geräteschlüssels über eine einmalige Challenge. Die Browser-Sitzung bleibt
- * beim Passwort.
+ * The step-up protection of the app on the real server (dist/server.js): an app token
+ * only gets to voucher PIN and administration with a signature of the
+ * device key over a one-time challenge. The browser session stays
+ * with the password.
  *
- * Gegenproben (09.11.2026 gemessen):
- *   A  in server.ts `app.use('/api/v1', stepChutzAtInbox)` gestrichen →
- *      rot: „ohne Geräteschlüssel …“ (Klartext 200 statt 403)
- *   B  in requireApiAdmin wieder `next()` statt requireRelease() → rot:
- *      „Verwalter-Routen …“ (/admin/cache-ttl 200 ohne Freigabe)
- *   C  in resolveOne() die Signatur nicht geprüft (`passt = true`) → rot:
- *      „eine fremde Signatur …“
- *   D  in nachricht() die Aktion weggelassen → rot: „eine Challenge taugt
- *      nur für ihre Aktion“
- *   E  in putKeyAn() die Frist vertausendfacht → rot: „ein alter Zugang …“
- *      (mit einer Nonce von damals; ohne sie hält schon putNonceAn())
- *   F  in depositKey() `takeNonce` übergangen → rot: „eine Kette mit fremder
- *      oder verbrauchter Challenge …“
- *   G  in keyThe() `(attested OR NOW() < $3)` gestrichen → rot: „ein Schlüssel
- *      ohne Attestation gilt bis zum Stichtag …“
- *   H  in qrNonceThe() `from_qr` gestrichen und newNonce() immer neu → rot: „ein Zugang
- *      aus der QR-Kopplung …“
- *   I  in routes/api_v1/settings.ts POST /settings ohne freigegeben() → rot:
- *      „jeder Verwalterweg …“ (POST /settings ohne Freigabe 200); dasselbe je
- *      Weg für smtp-test, einrichtung und quelle-testen mit `requireToken`
- *      statt `requireAdmin`, für Import und Anleitungen ohne freigegeben()
- *   J  in /settings/raw `istVerwalter(req)` statt asAdmin() → rot:
+ * Counter-checks (measured 09.11.2026):
+ *   A  in server.ts `app.use('/api/v1', stepChutzAtInbox)` deleted →
+ *      red: “without a device key …” (plain text 200 instead of 403)
+ *   B  in requireApiAdmin again `next()` instead of requireRelease() → red:
+ *      “administrator routes …” (/admin/cache-ttl 200 without approval)
+ *   C  in resolveOne() the signature not checked (`passt = true`) → red:
+ *      “a foreign signature …”
+ *   D  in nachricht() the action left out → red: “a challenge is only good
+ *      for its action”
+ *   E  in putKeyAn() the deadline multiplied by a thousand → red: “an old access …”
+ *      (with a nonce from back then; without it putNonceAn() already holds)
+ *   F  in depositKey() `takeNonce` skipped → red: “a chain with a foreign
+ *      or used challenge …”
+ *   G  in keyThe() `(attested OR NOW() < $3)` deleted → red: “a key
+ *      without attestation applies until the cutoff date …”
+ *   H  in qrNonceThe() `from_qr` deleted and newNonce() always new → red: “an access
+ *      from QR pairing …”
+ *   I  in routes/api_v1/settings.ts POST /settings without freigegeben() → red:
+ *      “every administrator path …” (POST /settings without approval 200); the same per
+ *      path for smtp-test, einrichtung and quelle-testen with `requireToken`
+ *      instead of `requireAdmin`, for import and instructions without freigegeben()
+ *   J  in /settings/raw `istVerwalter(req)` instead of asAdmin() → red:
  *      „ohne Freigabe zeigt /settings/raw nur Kontowerte“
- *   K  (14.11.2026) in depositKey() `if (!widerrufen) return …` gestrichen und
- *      `widerrufen ?? new Set()` übergeben → rot: „ohne frische Widerrufsliste …“;
- *      `widerrufen: new Set()` (Liste nie geprüft) → rot im selben Test
- *   L  (15.11.2026) drei Linien zugleich: in startup/app.ts die Absage für `/` am Ende
- *      gestrichen, stepChutzAtInbox wieder mit den Regexen `^…$` auf req.path und
- *      in vertragsRouter die Prüfung von res.locals.schritt gestrichen → rot: „auch anders
- *      geschrieben …“ (klartext/, DELETE vouchers/n/ und zweiter-faktor/einrichten/ 200). Je eine Linie
- *      allein fängt die anderen beiden auf (vertrag-schreibung-db, vertrag-endpunkt).
+ *   K  (14.11.2026) in depositKey() `if (!widerrufen) return …` deleted and
+ *      `widerrufen ?? new Set()` passed → red: “without a fresh revocation list …”;
+ *      `widerrufen: new Set()` (list never checked) → red in the same test
+ *   L  (15.11.2026) three lines at once: in startup/app.ts the refusal for `/` at the end
+ *      deleted, stepChutzAtInbox again with the regexes `^…$` on req.path and
+ *      in vertragsRouter the check of res.locals.schritt deleted → red: „auch anders
+ *      geschrieben …“ (klartext/, DELETE vouchers/n/ and zweiter-faktor/einrichten/ 200). Each line
+ *      alone catches the other two (contract-spelling-db, contract-endpoint).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -310,7 +310,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
       body: { challenge: c.body.challenge, signatur: signiere(geraet.privateKey, reinterpreted) },
     });
     assert.equal(r.status, 400);
-    // Richtig signiert öffnet sie die Verwaltung, nicht die Gutscheine.
+    // Correctly signed it opens the administration, not the vouchers.
     await releaseDevice(ruf, token, 'verwaltung', geraet);
     assert.equal((await klartext({ token })).status, 403);
   });
@@ -337,7 +337,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
     ]);
     const n = await ruf('/geraet/schluessel/nonce', { method: 'POST', token: alt, body: {} });
     assert.deepEqual([n.status, n.body.code], [403, 'geraeteschluessel_frist']);
-    // Auch eine Nonce von damals hilft nicht: Sie läuft mit der Frist der Familie ab.
+    // Even a nonce from back then does not help: it expires with the deadline of the family.
     const altNonce = Buffer.alloc(32, 9);
     await db.run(
       `INSERT INTO device_nonces (nonce, user_id, token_family, expires_at) SELECT $2, user_id,
@@ -408,7 +408,7 @@ test('step-up protection on the server', { concurrency: 1, timeout: 180_000 }, a
       'POST /sets/:setNumber/instructions': () =>
         ruf('/sets/10001-1/instructions', { method: 'POST', token: voll, body: {} }),
     };
-    // Seit der Attestation hinterlegt die App den Schlüssel mit Kette (helpers/device.js).
+    // Since the attestation the app stores the key with a chain (helpers/device.js).
     const h = await deposit(ruf, voll);
     assert.equal(h.antwort.status, 200, JSON.stringify(h.antwort.body));
     const s = h.schluessel;

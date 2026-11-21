@@ -1,30 +1,30 @@
 /**
- * Befunde der UI-Prüfung 16 im echten Browser: Finanztabelle am Tablet und
- * bei 200 % Zoom, Zahlenformat nach Konto, Fremdwährung und Kachel, neue
- * Lagerorte beim Erfassen, Sprachwechsel samt erzeugter Auswahlfelder,
- * aria-label und Trefferzahl für Vorleser, Besitzer im Set-Detail, Knöpfe im …
+ * Findings of UI review 16 in the real browser: finances table on the tablet and
+ * at 200 % zoom, number format by account, foreign currency and tile, new
+ * storage locations when adding, language switch including generated select fields,
+ * aria-label and hit count for screen readers, owner in the set detail, buttons in …
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  .tw ohne position:relative UND die Media-Regel für 641–1100 px
- *      gestrichen → rot: „Finanztabelle ohne seitliches Rollen“ (Seite 913,
- *      1034, 1050 px breit bei 683, 820, 1024 px). A allein bleibt grün: Die
- *      Tablet-Regel lässt die Tabelle schon passen.
- *   B  nur die Media-Regel gestrichen → rot: dieselbe Prüfung (die Tabelle
- *      rollt in ihrem Kasten, „Stand“ liegt ausserhalb)
- *   C  locale() wieder mit Rückfall 'de-CH' → rot: „Zahlenformat …“,
- *      „Fremdwährung …“ und „Sprachwechsel …“ (Platzhalter „z. B. 79.99“)
- *   D  einstandZelle() ohne den Zweig für kaufpreis_original → rot:
- *      „Fremdwährung und Kachel …“
- *   E  loadLocations() füllt die Auswahl wieder aus /v1/storage → rot:
- *      „neuer Lagerort …“
- *   F  der Hörer auf spracheGewechselt in konten-orte.js gestrichen → rot:
- *      „Sprachwechsel …“ (danach auch die zwei folgenden, die Seite bleibt
- *      englisch)
- *   G  data-i18n-aria nicht ausgewertet → rot: dieselben drei
- *   H  reportHits() in renderGallery gestrichen → rot: „Trefferzahl …“
- *   I  im Set-Detail die Besitzerzeile gestrichen → rot: „Set-Detail nennt …“
- *   K  .knopf-fuellend wieder flex:1 → rot: „Merkposten-Dialog …“ (Text
- *      breiter als der Knopf)
+ * Counter-checks (measured 05.11.2026, each alone, bundle rebuilt):
+ *   A  .tw without position:relative AND the media rule for 641–1100 px
+ *      deleted → red: “finances table without sideways scrolling” (page 913,
+ *      1034, 1050 px wide at 683, 820, 1024 px). A alone stays green: the
+ *      tablet rule already makes the table fit.
+ *   B  only the media rule deleted → red: the same check (the table
+ *      scrolls in its box, “Stand” lies outside)
+ *   C  locale() again with fallback 'de-CH' → red: “number format …”,
+ *      “foreign currency …” and “language switch …” (placeholder “z. B. 79.99”)
+ *   D  einstandZelle() without the branch for kaufpreis_original → red:
+ *      “foreign currency and tile …”
+ *   E  loadLocations() fills the select from /v1/storage again → red:
+ *      “new storage location …”
+ *   F  the listener on spracheGewechselt in konten-orte.js deleted → red:
+ *      “language switch …” (afterwards also the two following ones, the page stays
+ *      English)
+ *   G  data-i18n-aria not evaluated → red: the same three
+ *   H  reportHits() deleted in renderGallery → red: “hit count …”
+ *   I  the owner line deleted in the set detail → red: “set detail names …”
+ *   K  .knopf-fuellend back to flex:1 → red: “wishlist item dialog …” (text
+ *      wider than the button)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -46,8 +46,8 @@ test('finance table, storage locations, number format, screen reader', {
     name: NAME,
     bestand: async (db, uid) => {
       const kid = await patternHousehold(db, uid);
-      // Belegt: Vitrine; leer: Regal Keller (patternCollection). Ein Kauf in ARS mit Marktpreis: Für ARS
-      // veröffentlicht die EZB keinen Kurs, auch nicht in der CI mit Netz.
+      // Occupied: Vitrine; empty: Regal Keller (patternCollection). A purchase in ARS with market price: for ARS
+      // the ECB publishes no rate, not even in CI with network.
       const vitrine = (
         await db.get(`INSERT INTO storage_locations (user_id, name) VALUES ($1, 'Vitrine Wohnzimmer') RETURNING id`, [
           uid,
@@ -63,7 +63,7 @@ test('finance table, storage locations, number format, screen reader', {
       );
       await db.run(`INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
                   VALUES ('10497-1', 'N', 'EUR', 80, 90, 100, 90, 5, NOW()) ON CONFLICT (set_number, condition, currency_code) DO UPDATE SET avg_price = 90`);
-      // Nur beim Unterkonto: das Set-Detail soll den Besitzer nennen.
+      // Only for the sub-account: the set detail should name the owner.
       await catalogSet(db, '75313-1', { name: 'AT-AT', year: 2021, theme: 'Star Wars', pieces: 6785 });
       await holdsSet(db, kid, '75313-1', 1, { preis: 700 });
     },
@@ -73,7 +73,7 @@ test('finance table, storage locations, number format, screen reader', {
     return;
   }
   const { b, bis, ruhig } = app;
-  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  // Startup loads settings and prices afterwards; only then is the state fixed.
   await ruhig();
   const geh = async pfad => {
     await b.auswerten(`location.hash = '#/${pfad}'; true`);
@@ -141,7 +141,7 @@ test('finance table, storage locations, number format, screen reader', {
     assert.match(zelle, /99,99\sARS.*nicht umgerechnet/);
     assert.equal(await b.auswerten(text('#fin-wert-titel')), 'Marktwert (bewertete Positionen)');
     assert.match(await b.auswerten(text('#fin-wert-sub')), /^Gesamter Marktwert: .+ €$/);
-    // Fehlende Werte sehen gleich aus: Strich mit Vorlesetext, nirgends „Preis fehlt“ als sichtbarer Text.
+    // Missing values look the same: dash with screen reader text, nowhere “Preis fehlt” as visible text.
     const sichtbar = await b.auswerten(`[...document.querySelectorAll('#fin-tbl td')].filter(td => {
       const k = td.cloneNode(true); k.querySelectorAll('.vh').forEach(v => v.remove()); return /Preis fehlt/.test(k.textContent); }).length`);
     assert.equal(sichtbar, 0);
@@ -160,7 +160,7 @@ test('finance table, storage locations, number format, screen reader', {
       `[...document.querySelectorAll('#storage-list .lager-eingabe')].some(e => e.value === 'Dachboden Kiste 3')`,
       'neuer Ort in der Liste',
     );
-    // Ohne den Dialog zu öffnen: Sein Öffnen lädt den Vorrat selbst nach und verdeckte, was die Seite vorher füllt.
+    // Without opening the dialog: opening it loads the stock itself and would hide what the page fills before.
     await geh('sammlung');
     await bis(
       `[...document.querySelectorAll('#add-storage-sel option')].some(o => o.value === 'Dachboden Kiste 3')`,
@@ -203,7 +203,7 @@ test('finance table, storage locations, number format, screen reader', {
   await t.test('number of hits after the search in a live region', async () => {
     await geh('sammlung');
     const suche = async q => {
-      // Die Suche ist entprellt: gewartet wird auf die Änderung der Live-Region, höchstens 5 s.
+      // The search is debounced: the wait is for the change of the live region, at most 5 s.
       await b.auswerten(`new Promise(r => { const e = document.getElementById('treffer-live');
         const mo = new MutationObserver(() => { mo.disconnect(); r(true); });
         mo.observe(e, { childList: true, characterData: true, subtree: true }); setTimeout(() => r(false), 5000);
@@ -237,7 +237,7 @@ test('finance table, storage locations, number format, screen reader', {
     await bis(`!!document.querySelector('#mk-list .mk-zeile')`, 'Merkliste');
     await b.auswerten(klick('#mk-list .mk-zeile'));
     await bis(`document.getElementById('mk-detail-modal').classList.contains('open')`, 'Merkposten-Dialog');
-    // Der BrickLink-Knopf erscheint erst mit einer Katalogantwort; gemessen wird er auch ohne.
+    // The BrickLink button only appears with a catalog response; it is measured even without one.
     await b.auswerten(
       `document.getElementById('mk-m-bricklink').style.display = ''; document.getElementById('mk-m-vergleich').style.display = ''; true`,
     );

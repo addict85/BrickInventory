@@ -1,21 +1,21 @@
 /**
- * Schalter, die im Betrieb eine Schutzschicht abschalten (Sicherheitsprüfung
- * 16, L5): MAIL_KONSOLE_MIT_TOKEN=1 verhindert mit NODE_ENV=production den
- * Start, COOKIE_SECURE=0 ergibt eine Warnzeile. Am echten Server; eigene
- * Datei, weil startverbot.test.js mit jedem Start näher an die Frist der
- * Datei rückte.
+ * Switches that turn off a protection layer in production (security review
+ * 16, L5): MAIL_KONSOLE_MIT_TOKEN=1 prevents the start with NODE_ENV=production,
+ * COOKIE_SECURE=0 results in a warning line. On the real server; a file of its own
+ * because startverbot.test.js moved closer to the file's deadline with every
+ * start.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   K  in startBans() den Zweig zu MAIL_KONSOLE_MIT_TOKEN entfernt → rot:
- *      „MAIL_KONSOLE_MIT_TOKEN=1 im Betrieb …“ (Code statt 1: Datenbankfehler)
- *   L  in server.ts die Schleife über startWarnings() entfernt → rot:
- *      „COOKIE_SECURE=0 im Betrieb …“ (keine Warnzeile)
- * Gegenproben N10/N11 (05.11.2026 gemessen, je einzeln):
- *   M  den Zweig zu HSTS_MAX_AGE in startWarnings() entfernt → rot:
+ * Counter-checks (measured 05.11.2026, each on its own):
+ *   K  the branch on MAIL_KONSOLE_MIT_TOKEN removed in startBans() → red:
+ *      “MAIL_KONSOLE_MIT_TOKEN=1 in production …” (code instead of 1: database error)
+ *   L  the loop over startWarnings() removed in server.ts → red:
+ *      “COOKIE_SECURE=0 in production …” (no warning line)
+ * Counter-checks N10/N11 (measured 05.11.2026, each on its own):
+ *   M  the branch on HSTS_MAX_AGE removed in startWarnings() → red:
  *      „HSTS_MAX_AGE=0 …“
- *   N  dbWithoutTls() liefert immer false → rot: „entfernte Datenbank …“
- *   O  (06.11.2026) in dbWithoutTls() die Regel für Namen ohne Punkt gestrichen →
- *      rot: „entfernte Datenbank …“ ({"PGHOST":"db-brickinventory"})
+ *   N  dbWithoutTls() always delivers false → red: “remote database …”
+ *   O  (06.11.2026) in dbWithoutTls() the rule for names without a dot deleted →
+ *      red: “remote database …” ({"PGHOST":"db-brickinventory"})
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -26,7 +26,7 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { startWarnings } = _req('src/infra/config.js');
 
-/** Server starten und auf sein Ende warten — höchstens `ms`, dann gilt er als laufend. */
+/** Start the server and wait for its end — at most `ms`, then it counts as running. */
 function starte(env, ms = 20000) {
   return new Promise(fertig => {
     const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {

@@ -1,20 +1,20 @@
 /**
- * Über 24 h zählen alle falschen Codes eines Kontos in der Datenbank; ab dem
- * 20. gilt kein Einmalcode mehr, nur Wiederherstellungscode oder Passkey, und
- * der Inhaber bekommt sofort eine Mail. Die übrigen Sperren räumt der Test vor
- * jedem Versuch weg, damit allein die Tagesschranke wirkt.
+ * Over 24 h all wrong codes of an account count in the database; from the
+ * 20th on no one-time code applies any more, only a recovery code or passkey, and
+ * the owner immediately gets a mail. The test clears the other locks before
+ * every attempt so that only the daily limit takes effect.
  *
- * Gegenproben (13.11.2026 gemessen, je einzeln):
- *   A  factorCodeLocked() liefert immer false → rot: „über der Schranke
- *      gilt auch ein richtiger Einmalcode nicht“
- *   B  in checkCredentials() den Aufruf hintInBackground(…,
- *      'zweiter_faktor_gesperrt') gestrichen → rot: „der Inhaber erfährt es
- *      sofort, einmal“
- *   C  pruefeCode() prüft bei mitEinmalcode=false gar nichts mehr (return
- *      null vor den Wiederherstellungscodes) → rot: „ein Wiederherstellungscode
- *      gilt weiter“
+ * Counter-checks (measured 13.11.2026, each on its own):
+ *   A  factorCodeLocked() always delivers false → red: “above the limit
+ *      even a correct one-time code does not apply”
+ *   B  in checkCredentials() the call hintInBackground(…,
+ *      'zweiter_faktor_gesperrt') deleted → red: “the owner learns of it
+ *      immediately, once”
+ *   C  pruefeCode() checks nothing at all with mitEinmalcode=false (return
+ *      null before the recovery codes) → red: “a recovery code
+ *      still applies”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -94,7 +94,7 @@ test('daily limit for second-factor codes at login', { concurrency: 1, timeout: 
   });
 
   await t.test('the owner learns of it immediately, once', async () => {
-    // hintInBackground schickt ohne await; erst ein zweiter Blick zeigt, dass es bei einer Mail bleibt.
+    // hintInBackground sends without await; only a second look shows that it stays at one mail.
     await bis(() => mails.some(m => m.art === 'zweiter_faktor_gesperrt'));
     await anmelden(FALSCH);
     assert.deepEqual(

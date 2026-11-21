@@ -1,38 +1,38 @@
 /**
- * Der eigene Katalog wird VOR Rebrickable gefragt.
+ * The own catalog is asked BEFORE Rebrickable.
  *
- * ── Gegenproben (am 20.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
+ * ── Counter-checks (MEASURED on 20.10., numbers copied down) ─────────────────
  *
- * Ausgangslage: `# pass 9 / # fail 0` (acht Faelle und ihre Huelle). Jede
- * Gegenprobe ist EINE Aenderung, danach zurueckgenommen (die drei Dateien
- * wurden gegen ihre Sicherung verglichen).
+ * Starting point: `# pass 9 / # fail 0` (eight cases and their shell). Every
+ * counter-check is ONE change, reverted afterwards (the three files
+ * were compared against their backup).
  *
- *   A  den catalogPart()-Vorlauf beim Erfassen eines Teils entfernt (also der Stand
- *      von Marcos Befund)
- *      → `pass 4 / fail 5`. Rot sind VIER Faelle: „Name und Farbbild im
- *        Katalog — kein Abruf", „Bild als Datei zaehlt auch", „ohne Farbe
- *        zaehlt das allgemeine Bild" und „der Name kommt aus dem Katalog".
- *        Der erste meldet `[ 'lookupPart 3001/4' ] statt []` — Marcos Befund
- *        in Zahlen.
- *   B  `hatImage` in der Bedingung durch `image_url` ersetzt (also die Datei
- *      nicht als Beleg zaehlen lassen)
- *      → `pass 7 / fail 2`. Rot: „Bild als Datei zaehlt auch". Genau dafuer
- *        gibt es das Feld; ohne es waere jedes heruntergeladene Bild wieder
- *        ein Abruf.
- *   C  in catalogPart() `rb_parts.part_img_url` auch mit Farbe als Treffer
- *      gezaehlt
- *      → `pass 7 / fail 2`. Rot: „Name ja, Farbbild nein — es wird gefragt".
- *        Das ist die Schranke gegen das weisse Bild.
+ *   A  the catalogPart() pre-pass removed when adding a part (i.e. the state
+ *      of Marco's finding)
+ *      → `pass 4 / fail 5`. Red are FOUR cases: “name and color image in the
+ *        catalog — no fetch", “image as file counts too", “without color
+ *        the general image counts" and “the name comes from the catalog".
+ *        The first reports `[ 'lookupPart 3001/4' ] instead of []` — Marco's finding
+ *        in numbers.
+ *   B  `hatImage` in the condition replaced by `image_url` (i.e. not letting the file
+ *      count as evidence)
+ *      → `pass 7 / fail 2`. Red: “image as file counts too". Exactly for that
+ *        the field exists; without it every downloaded image would again be
+ *        a fetch.
+ *   C  in catalogPart() `rb_parts.part_img_url` counted as a hit even with
+ *      a color
+ *      → `pass 7 / fail 2`. Red: “name yes, color image no — it is asked".
+ *        That is the barrier against the white image.
  *
- *        Diese Gegenprobe blieb beim ersten Versuch GRUEN, und das war kein
- *        Lob fuer die Schranke, sondern eine Luecke im Test: Fuer 3003 stand
- *        gar keine rb_parts-Zeile da, das allgemeine Bild konnte also nicht
- *        dazwischenkommen. Die Zeile steht jetzt unten — sie ist der Grund,
- *        warum dieser Fall ueberhaupt etwas prueft.
- *   D  den catalogMinifig()-Vorlauf beim Erfassen einer Figur entfernt
- *      → `pass 7 / fail 2`. Rot: „Figur mit Name und Bild — kein Abruf".
+ *        This counter-check stayed GREEN on the first attempt, and that was no
+ *        praise for the barrier but a gap in the test: for 3003 there was
+ *        no rb_parts row at all, so the general image could not
+ *        interfere. The row is below now — it is the reason
+ *        why this case checks anything at all.
+ *   D  the catalogMinifig() pre-pass removed when adding a minifigure
+ *      → `pass 7 / fail 2`. Red: “minifigure with name and image — no fetch".
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
  * REQUIRE_DB=1.
  */
 require('./helpers/system-frame');
@@ -46,7 +46,7 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 const db = testData();
 
-// Rebrickable an der Verdrahtung gestellt (testSources); `fetches` zählt, was gefragt wurde.
+// Rebrickable provided at the wiring (testSources); `fetches` counts what was asked.
 let fetches = [];
 testSources(null, {
   lookupPart: async (nr, farbe) => {
@@ -85,24 +85,24 @@ test('the own catalog is asked before Rebrickable', { concurrency: 1 }, async t 
 
   const UID = (await db.get(`INSERT INTO users (username,password_hash) VALUES ('marco','x') RETURNING id`)).id;
 
-  // Der Preisabruf ist hier nicht die Frage und soll nicht dazwischenreden:
-  // Ohne BrickLink-Zugang bricht fetchPartPrice von sich aus ab, und
-  // marketPriceWithOrigin faengt es (preis: null).
+  // The price fetch is not the question here and should not interfere:
+  // without BrickLink access fetchPartPrice aborts by itself, and
+  // marketPriceWithOrigin catches it (preis: null).
   await db.run(`INSERT INTO part_catalog (part_number,part_name,category_name) VALUES
                   ('3001','Brick 2 x 4','Bricks'),
                   ('3002','Brick 2 x 2','Bricks'),
                   ('3003','Brick 2 x 3','Bricks')`);
-  // 3001/4: Name UND Farbbild als URL. 3002/4: Bild nur als DATEI.
-  // 3003 steht ohne jedes Farbbild da.
+  // 3001/4: name AND color image as URL. 3002/4: image only as FILE.
+  // 3003 stands without any color image.
   await db.run(`INSERT INTO part_color_catalog (part_number,color_id,image_url) VALUES
                   ('3001',4,'https://cdn.example/3001-4.jpg')`);
   await db.run(`INSERT INTO part_color_catalog (part_number,color_id,image_local) VALUES
                   ('3002',4,'/images/parts/3002-4.jpg')`);
-  // 3003 traegt in rb_parts ein ALLGEMEINES Bild. Das ist der Fall, an dem
-  // sich entscheidet, ob die Schranke gegen das weisse Bild haelt: Zaehlte man
-  // es bei angegebener Farbe als Treffer, unterbliebe der Farb-Abruf und das
-  // allgemeine Bild stuende dauerhaft an der roten Variante. Ohne diese Zeile
-  // war Gegenprobe C gruen geblieben — die Schranke war ungeprueft.
+  // 3003 carries a GENERAL image in rb_parts. That is the case where
+  // it is decided whether the barrier against the white image holds: if one counted
+  // it as a hit with a given color, the color fetch would not happen and the
+  // general image would stay permanently on the red variant. Without this row
+  // counter-check C had stayed green — the barrier was unchecked.
   await db.run(`INSERT INTO rb_parts (part_num,name,part_img_url) VALUES
                   ('3003','Brick 2 x 3','https://cdn.example/3003-weiss.jpg')`);
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name,image_url) VALUES
@@ -112,7 +112,7 @@ test('the own catalog is asked before Rebrickable', { concurrency: 1 }, async t 
   const { addManualPart } = _req('src/parts/manualParts.js');
   const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
 
-  /** Ein Teil anlegen und zaehlen, was dabei nach draussen ging. */
+  /** Create a part and count what went outside in doing so. */
   const putPart = async (nr, farbe) => {
     fetches = [];
     await addManualPart(UID, { part_number: nr, color_id: farbe, quantity: 1 });
@@ -152,9 +152,9 @@ test('the own catalog is asked before Rebrickable', { concurrency: 1 }, async t 
   });
 
   await t.test('without color the generic image counts', async () => {
-    // Die Kehrseite des Falls darueber: Ohne angegebene Farbe gibt es keine
-    // farbrichtige Erwartung, und lookupPart holt dort selbst nur das
-    // allgemeine Bild. Dann ist der Abruf wirklich ueberfluessig.
+    // The flip side of the case above: without a given color there is no
+    // color-correct expectation, and lookupPart itself only fetches the
+    // general image there. Then the fetch really is superfluous.
     fetches = [];
     await addManualPart(UID, { part_number: '3003', quantity: 1 });
     assert.deepEqual(fetches, [], 'rb_parts fuehrt Name und allgemeines Bild — mehr holt der Abruf hier nicht');
@@ -169,9 +169,9 @@ test('the own catalog is asked before Rebrickable', { concurrency: 1 }, async t 
   });
 
   await t.test('the name comes from the catalog, not from Rebrickable', async () => {
-    // Die Gegenprobe zum ersten Fall: Dass nicht gefragt wurde, soll nicht
-    // heissen, dass der Name fehlt. Der Vorgabewert des Doppels lautet
-    // „VON REBRICKABLE" — er darf hier nirgends stehen.
+    // The counter-check of the first case: that nothing was asked should not
+    // mean that the name is missing. The double's default value is
+    // “VON REBRICKABLE" — it must not appear anywhere here.
     await db.run("DELETE FROM parts WHERE user_id=$1 AND part_number='3001'", [UID]);
     fetches = [];
     const r = await addManualPart(UID, { part_number: '3001', color_id: 4, quantity: 1 });

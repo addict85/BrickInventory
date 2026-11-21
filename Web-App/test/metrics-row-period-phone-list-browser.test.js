@@ -1,19 +1,19 @@
 /**
- * UX-Prüfung 28 im echten Chrome: Kennzahlzeile am Telefon (M1), Startkasten im Dunkelmodus (M3), Zeitraum
- * als Segment (N4), gleicher Abstand unter den Feldmeldungen der Anmeldung (N5), Teile am Telefon als Liste
- * (N8) und der Knopf „Set hinzufügen“ bei 200 % Zoom (N9).
+ * UX check 28 in real Chrome: metrics row on the phone (M1), start box in dark mode (M3), period
+ * as a segment (N4), equal gap below the field messages of the login (N5), parts on the phone as a list
+ * (N8) and the button „Set hinzufügen“ at 200 % zoom (N9).
  *
- * Gegenproben (15.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  .bstat-hinweis:not(:empty) in mobile.css auf display:none → rot: „M1 …“ (Erklärsatz unsichtbar)
- *   B  die Dunkelregel für #start-offline entfernt → rot: „M3 …“ (Grund rgb(255, 255, 255))
- *   C  Grund, Rand und Knopfform der .zeitraum-wahl entfernt → rot: „N4 …“ („Segment ohne Grund“)
- *   D  .sform .fg > .feld-fehler{contain:none} entfernt → rot: „N5 …“ (27,5 px gegen 8 px)
- *   E  #tab-parts .filterleiste > .vtgl wieder verborgen → rot: „N8 …“ (Umschalter fehlt);
- *      die Listenkarte ohne display:grid → rot: ebenda („Listenzeile 131 px hoch“)
- *   F  die Regel für max-height 500px unwirksam (50px) → rot: „N9 …“ (Knopf über einer Karte)
+ * Counter-checks (measured 15.11.2026, each on its own, bundle rebuilt):
+ *   A  .bstat-hinweis:not(:empty) in mobile.css set to display:none → red: “M1 …” (explanation invisible)
+ *   B  the dark rule for #start-offline removed → red: “M3 …” (background rgb(255, 255, 255))
+ *   C  background, border and button shape of .zeitraum-wahl removed → red: “N4 …” („Segment ohne Grund“)
+ *   D  .sform .fg > .feld-fehler{contain:none} removed → red: “N5 …” (27.5 px against 8 px)
+ *   E  #tab-parts .filterleiste > .vtgl hidden again → red: “N8 …” (toggle missing);
+ *      the list card without display:grid → red: same place („Listenzeile 131 px hoch“)
+ *   F  the rule for max-height 500px ineffective (50px) → red: “N9 …” (button over a card)
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Without Chrome (CHROME_BIN, google-chrome, chromium) it is skipped.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -177,11 +177,11 @@ test('metrics row, period as a segment, parts list and zoom on the phone', {
     );
   });
 
-  // Ab hier abgemeldet.
+  // Logged out from here on.
   await t.test('N5 390 px: the same gap below both field messages of the login', async () => {
     await groesse(b, 390, 844, true);
     await b.tab('Network.clearBrowserCookies');
-    // Die alte Seite hat auch einen Anmeldeknopf: erst warten, bis sie weg ist.
+    // The old page also has a login button: first wait until it is gone.
     await b.auswerten(`window.__alteSeite = true`);
     await b.tab('Page.navigate', { url: `http://127.0.0.1:${port}/` });
     await bis(

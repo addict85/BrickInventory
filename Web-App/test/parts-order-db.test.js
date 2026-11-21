@@ -1,18 +1,18 @@
 /**
- * Die Teileliste lässt sich ohne Farbgruppen zeigen: nach Name oder nach
- * Menge. Der Server sortiert in beiden Wegen (Live-Abfrage und
- * Zusammenfassung, einzeln und im Haushalt) gleich, und die Oberfläche
- * zeichnet ungruppiert keine Farbkacheln.
+ * The parts list can be shown without color groups: by name or by
+ * quantity. The server sorts the same on both paths (live query and
+ * summary, single and in the household), and the UI
+ * draws no color tiles when ungrouped.
  *
- * Gegenproben (am 29.10.2026 gemessen):
- *   A  in ordnungSql() den Zweig 'name' entfernt (fällt auf Farbe zurück)
- *      → rot: „der Server sortiert in jedem Weg wie gewählt“ (name)
- *   B  im Haushaltszweig der Zusammenfassung `menge: 'total_quantity'` statt
- *      SUM(…) → rot: „der Server sortiert in jedem Weg wie gewählt“
- *   C  in appendParts() die Weiche für die ungruppierte Liste entfernt
- *      → rot: „ungruppiert zeichnet die Oberfläche keine Farbkacheln“
+ * Counter-checks (measured on 29.10.2026):
+ *   A  the branch 'name' removed in ordnungSql() (falls back to color)
+ *      → red: “the server sorts as chosen on every path” (name)
+ *   B  in the household branch of the summary `menge: 'total_quantity'` instead of
+ *      SUM(…) → red: “the server sorts as chosen on every path”
+ *   C  the switch for the ungrouped list removed in appendParts()
+ *      → red: “ungrouped, the UI draws no color tiles”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -68,7 +68,7 @@ test('order of the parts list', { concurrency: 1 }, async t => {
   await holdsPart(db, U, 'ORD1', { setNumber: 'ORD-1', menge: 9, colorId: 5 });
   await holdsPart(db, U, 'ORD2', { setNumber: 'ORD-1', menge: 1, colorId: 1 });
   await holdsPart(db, U, 'ORD3', { setNumber: 'ORD-1', menge: 7, colorId: 3 });
-  // Im Haushalt hat das zweite Konto dasselbe Teil: Die Menge muss summiert sortieren.
+  // In the household the second account has the same part: the quantity must sort summed up.
   await holdsSet(db, U2, 'ORD-2', 1);
   await holdsPart(db, U2, 'ORD3', { setNumber: 'ORD-2', menge: 1, colorId: 3 });
 

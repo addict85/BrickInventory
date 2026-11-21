@@ -1,14 +1,14 @@
 /**
- * Der Dialog „Set hinzufügen“ prüft die Set-Nummer vor dem Absenden und
- * meldet einen Fehler direkt am Feld — „abc“ wurde vorher als Set „abc-1“
- * angelegt, mit Erfolgsmeldung. Geprüft am echten Bündel in jsdom: Was das
- * Feld abweist, erreicht den Server nicht. Angenommen werden muss jede …
+ * The dialog „Set hinzufügen“ checks the set number before submitting and
+ * reports an error directly at the field — „abc“ used to be created as set „abc-1“,
+ * with a success message. Checked on the real bundle in jsdom: what the
+ * field rejects does not reach the server. Every … must be accepted
  *
- * Gegenproben (am 28.10. gemessen):
- *   A  in doAddSet() (sammlung.js) die Prüfung entfernt → rot: „abc wird abgewiesen“
- *      und „falsche Formen werden abgewiesen“
- *   B  isSetnummer() ohne Buchstaben-Präfix (/^\d…/) → rot: „gültige Nummern gehen durch“ (llca30-1)
- *   C  feldFehler() ohne aria-invalid → rot: „abc wird abgewiesen“
+ * Counter-checks (measured on 28.10.):
+ *   A  the check removed in doAddSet() (sammlung.js) → red: “abc is rejected”
+ *      and “wrong forms are rejected”
+ *   B  isSetnummer() without a letter prefix (/^\d…/) → red: “valid numbers pass” (llca30-1)
+ *   C  feldFehler() without aria-invalid → red: “abc is rejected”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -44,11 +44,11 @@ test('abc is rejected, with a message at the field', async () => {
     assert.equal(r.feld.getAttribute('aria-invalid'), 'true');
     assert.equal(r.feld.getAttribute('aria-describedby'), 'add-num-fehler');
     assert.equal(o.d.activeElement, r.feld, 'Der Fokus steht nicht im Feld');
-    // Tippen räumt die Meldung weg.
+    // Typing clears the message away.
     r.feld.value = '1';
     r.feld.dispatchEvent(new o.w.Event('input', { bubbles: true }));
     assert.equal(o.d.getElementById('add-num-fehler').hidden, true);
-    // Leer: dieselbe Stelle, eigener Text.
+    // Empty: the same place, own text.
     const leer = await versuche(o, '   ');
     assert.equal(leer.gesendet, false);
     assert.match(leer.fehler, /Setnummer eingeben/);

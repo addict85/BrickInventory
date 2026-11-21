@@ -1,13 +1,13 @@
 /**
- * Die Versionsregel der Setnummer steht zweimal: withVersion() in src/infra/setNumber.ts und
- * set_nummer_mit_version() in der Datenbank (Migration 0074, Trigger auf set_number/set_num).
- * Beide laufen hier über dieselben Eingaben: die Kandidaten des gemeinsamen Korpus
- * (shared/setnummer-korpus.json), dieselben mit Versionsanhang, und Randfälle.
+ * The version rule of the set number stands twice: withVersion() in src/infra/setNumber.ts and
+ * set_nummer_mit_version() in the database (migration 0074, trigger on set_number/set_num).
+ * Both run here over the same inputs: the candidates of the shared corpus
+ * (shared/setnummer-korpus.json), the same with a version suffix, and edge cases.
  *
- * Gegenproben (15.11.2026 gemessen, je einzeln):
- *   A  withVersion prüft `/-\d+/` ohne `$` → rot: „beide Fassungen hängen gleich an“ ('10179-1b: SQL 10179-1b-1')
- *   B  in der Testdatenbank set_nummer_mit_version auf `n ~ '-'` umgestellt (CREATE OR REPLACE
- *      vor dem Vergleich) → rot: dieselbe Prüfung ('10179-', '10179-1b', 'a-b')
+ * Counter-checks (measured 15.11.2026, each on its own):
+ *   A  withVersion checks `/-\d+/` without `$` → red: “both versions attach the same” ('10179-1b: SQL 10179-1b-1')
+ *   B  in the test database set_nummer_mit_version switched to `n ~ '-'` (CREATE OR REPLACE
+ *      before the comparison) → red: the same check ('10179-', '10179-1b', 'a-b')
  *
  * REQUIRE_DB=1.
  */
@@ -37,7 +37,7 @@ test('both versions attach the same', { concurrency: 1 }, async t => {
   if (!db) return;
   t.after(() => db.pool.end().catch(() => {}));
   const alle = inputs();
-  // Selbstbeweis: Der Korpus liefert Kandidaten, und beide Zweige der Regel kommen vor.
+  // Self-proof: the corpus delivers candidates, and both branches of the rule occur.
   assert.ok(alle.length >= 40, `nur ${alle.length} Eingaben — liest der Test den Korpus noch?`);
   assert.ok(alle.some(x => withVersion(x) === x) && alle.some(x => withVersion(x) !== x), 'beide Zweige');
   const zeilen = await db.all(

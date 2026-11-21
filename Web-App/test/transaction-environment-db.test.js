@@ -1,29 +1,29 @@
 /**
- * Eine Transaktion wird ausdrücklich gereicht: Ein Satz Dienste über ihrem Zugang
- * (`ueber(tx.db)`, wie ihn der Kontext `t` baut) liest und schreibt über ihre
- * Verbindung; derselbe Dienst über dem ungebundenen Zugang wirft in ihr
- * (UnboundQuery). Eine innere Transaktion ist ein Sicherungspunkt, und wer
- * nach COMMIT noch fragt, bekommt den Pool.
+ * A transaction is passed explicitly: a set of services over its access
+ * (`ueber(tx.db)`, as the context `t` builds it) reads and writes via its
+ * connection; the same service over the unbound access throws inside it
+ * (UnboundQuery). An inner transaction is a savepoint, and whoever
+ * still asks after COMMIT gets the pool.
  *
- * Gegenproben (05.11.2026 gemessen):
- *   A  in all() die Abfrage von txClient() gestrichen → rot: „ein Dienst ohne
- *      tx-Parameter sieht, was die Transaktion geschrieben hat“
- *   B  transaction() ohne Sicherungspunkt (innere läuft auf eigener
- *      Verbindung) → rot: „eine gescheiterte innere Transaktion …“, die
- *      innere sieht den Stand der äusseren nicht
- *   B2 ROLLBACK TO SAVEPOINT gestrichen → rot: dieselbe Prüfung, die
- *      Zeile der inneren bleibt stehen
- *   C  `stand.offen = false` nach COMMIT gestrichen → rot: „wer nach COMMIT
- *      fragt, bekommt den Pool“
- *   D  (14.11.2026) in txStand() die Freigabe nicht geprüft → rot: „ein Dienst ohne
- *      tx-Parameter … ohne Freigabe wirft er“
- *   Seit der Kontext `t` über tx.db gebaut wird (14.11.2026, w5-vertrag), gemessen:
- *   E  in database.ts wache() geleert → rot: „… über dem ungebundenen Zugang wirft er“
- *   F  in umbau() (src/infra/area.ts) den Zugang nicht ersetzt (`aus.db = db` gestrichen)
- *      → rot: dieselbe Prüfung und „eine gescheiterte innere Transaktion …“ (der Satz über
- *      tx.db fragt über den ungebundenen Zugang)
+ * Counter-checks (measured 05.11.2026):
+ *   A  the query of txClient() deleted in all() → red: “a service without
+ *      tx parameter sees what the transaction wrote”
+ *   B  transaction() without a savepoint (the inner one runs on its own
+ *      connection) → red: “a failed inner transaction …”, the
+ *      inner one does not see the state of the outer one
+ *   B2 ROLLBACK TO SAVEPOINT deleted → red: the same check, the
+ *      row of the inner one stays
+ *   C  `stand.offen = false` after COMMIT deleted → red: “whoever asks after COMMIT
+ *      gets the pool”
+ *   D  (14.11.2026) the release not checked in txStand() → red: “a service without
+ *      tx parameter … without release it throws”
+ *   Since the context `t` is built via tx.db (14.11.2026, w5-vertrag), measured:
+ *   E  wache() emptied in database.ts → red: “… on the unbound access it throws”
+ *   F  in umbau() (src/infra/area.ts) the access not replaced (`aus.db = db` deleted)
+ *      → red: the same check and “a failed inner transaction …” (the set over
+ *      tx.db asks via the unbound access)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -36,7 +36,7 @@ test('transaction in the call path', { concurrency: 1 }, async t => {
   const db = await accessOrSkip(t, _req);
   if (!db) return;
   const S = `tx_umgebung_${process.pid}`;
-  // global_settings schreibt nur die Systemrolle (0117): Die Transaktionen laufen in ihrem Rahmen.
+  // Only the system role writes global_settings (0117): the transactions run in its context.
   const { inSystemContext } = _req('src/infra/accountContext.js');
   const transaktion = fn => inSystemContext('test', () => db.transaction(fn));
   t.after(async () => {
@@ -47,7 +47,7 @@ test('transaction in the call path', { concurrency: 1 }, async t => {
   });
   const { getGlobalSetting } = _req('src/settings/settings.js');
   const einstellungen = require('./helpers/sources').testServices().settings;
-  /** Die Einstellungen über dem Zugang einer Transaktion, wie sie in `t` stehen. */
+  /** The settings over the access of a transaction, as they stand in `t`. */
   const in_ = tx => einstellungen.ueber(tx.db);
   const schreibe = (tx, k, v) => tx.run('INSERT INTO global_settings (key, value) VALUES ($1, $2)', [`${S}${k}`, v]);
 

@@ -1,15 +1,15 @@
 /**
- * npm run loadtest: Das Lastskript startet mit minimaler Last gegen die
- * heutigen Router, sät seine Sammlung und bekommt nur HTTP 200. Es lud
- * Router-Dateien, die es nicht mehr gab, und niemand merkte es.
+ * npm run loadtest: the load script starts with minimal load against the
+ * current routers, seeds its collection and gets only HTTP 200. It loaded
+ * router files that no longer existed, and nobody noticed.
  *
- * Gegenproben (13.11.2026, je einzeln):
- *   A  in scripts/loadtest.js den Pfad der Galerie auf das frühere `/api/sets/?page=1…`
- *      zurückgesetzt → rot (Exit-Code 1, „Galerie (Seite 1) → HTTP 404“)
- *   B  im Seed das Einfügen in set_parts weggelassen → rot (die Zählung nennt „parts 0“;
- *      leer gemessen wäre die Teile-Liste nichts wert)
+ * Counter-checks (13.11.2026, each on its own):
+ *   A  in scripts/loadtest.js the path of the gallery reset to the former `/api/sets/?page=1…`
+ *      → red (exit code 1, „Galerie (Seite 1) → HTTP 404“)
+ *   B  the insert into set_parts left out in the seed → red (the count says „parts 0“;
+ *      measured empty, the parts list would be worth nothing)
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

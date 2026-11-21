@@ -1,23 +1,23 @@
 /**
- * Ein Verwalter deaktiviert ein fremdes Konto: Token und Sitzung gelten sofort
- * nicht mehr (nicht erst nach den 60 s des Token-Caches), die Anmeldung ist
- * gesperrt, beides steht im Protokoll; nach dem Reaktivieren geht die
- * Anmeldung wieder. Die Token-Abfrage selbst prüft is_active.
+ * An administrator deactivates a foreign account: token and session stop applying
+ * immediately (not only after the 60 s of the token cache), login is
+ * locked, both are in the log; after reactivation login
+ * works again. The token query itself checks is_active.
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  in setzeAktiv() endAccesses() weggelassen → rot: „Token und Sitzung
- *      gelten sofort nicht mehr" („Token gilt weiter": 200 aus dem Cache)
- *   B  `AND u.is_active` in validToken() entfernt → rot: „die Token-Abfrage
- *      prüft is_active"
- *   C  die Prüfung auf das eigene Konto entfernt → rot: „nicht das eigene
- *      Konto" (200; der Verwalter sperrte sich aus, die Fälle danach folgen)
- *   D  (02.11.2026) in checkCredentials() die Sperrprüfung wieder als eigene
- *      Absage nach dem Passwort → rot: „gesperrt antwortet wie ein falsches
- *      Passwort“ und „unbestätigt antwortet wie ein falsches Passwort“ (403)
- *   E  (02.11.2026) in renewEmailTokenIfFree() die Pause entfernt → rot:
- *      „ein zweiter Link sofort danach“
+ * Counter-checks (measured 01.11.2026):
+ *   A  endAccesses() omitted in setzeAktiv() → red: “token and session
+ *      stop applying immediately" (“token still applies": 200 from the cache)
+ *   B  `AND u.is_active` removed in validToken() → red: “the token query
+ *      checks is_active"
+ *   C  the check for the own account removed → red: “not the own
+ *      account" (200; the administrator locked themselves out, the cases after follow)
+ *   D  (02.11.2026) in checkCredentials() the lock check again as its own
+ *      refusal after the password → red: “locked responds like a wrong
+ *      password” and “unconfirmed responds like a wrong password” (403)
+ *   E  (02.11.2026) in renewEmailTokenIfFree() the pause removed → red:
+ *      “a second link immediately afterwards”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -54,7 +54,7 @@ test('deactivate and reactivate an account', { concurrency: 1 }, async t => {
     ).id;
   const chef = await put(CHEF, true),
     nutzer = await put(NUTZER, false);
-  // Verwalterrechte verlangen einen Code-Generator; jede Bestätigung nimmt einen Wiederherstellungscode.
+  // Administrator rights require a code generator; every confirmation takes a recovery code.
   const codes = await require('./helpers/admin').adminWithFactor(_req, chef);
   await db.run("DELETE FROM rate_limit_attempts WHERE key LIKE '%deakt_%'");
   t.after(async () => {

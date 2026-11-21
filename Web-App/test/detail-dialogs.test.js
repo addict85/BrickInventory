@@ -1,10 +1,10 @@
 /**
- * Die Fusszeilen der vier Detail-Dialoge — was dort steht und wie gross es ist.
+ * The footers of the four detail dialogs — what stands there and how big it is.
  *
- * Gegenproben (alle drei durchgefuehrt):
- *   1. `btn-sm` an #man-detail-del zurueckgesetzt  → Schritt 1 rot.
- *   2. Den BrickLink-Knopf ins Set-Modal zurueckkopiert → Schritt 2 rot.
- *   3. Den „Zurueck"-Knopf in #man-detail-modal wieder eingesetzt → Schritt 3 rot.
+ * Counter-checks (all three performed):
+ *   1. `btn-sm` reset on #man-detail-del            → step 1 red.
+ *   2. the BrickLink button copied back into the set modal → step 2 red.
+ *   3. the “back" button reinserted in #man-detail-modal → step 3 red.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,17 +13,17 @@ const path = require('node:path');
 
 const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 
-/** Den Rumpf eines Dialogs anhand seiner id herausschneiden. */
+/** Cut out the body of a dialog by its id. */
 function dialog(id) {
   const ab = html.indexOf(`id="${id}"`);
   assert.ok(ab > 0, `Dialog #${id} nicht gefunden — Markup umgebaut?`);
-  // Bis zum naechsten Dialog-Anfang; der letzte reicht bis zum Dateiende.
+  // Up to the next dialog start; the last one reaches to the end of the file.
   const naechster = html.indexOf('<div class="ovl"', ab);
   return html.slice(ab, naechster > 0 ? naechster : html.length);
 }
 
-// Die drei Dialoge mit Papierkorb. Der vierte (#setitem-modal, Teile AUS
-// Sets) hat keinen: Was zu einem Set gehoert, loescht man ueber das Set.
+// The three dialogs with a trash. The fourth (#setitem-modal, parts FROM
+// sets) has none: what belongs to a set is deleted via the set.
 const WITH_TRASH = [
   ['Set-Detail', 'set-modal', 'btn-md'],
   ['Merkposten-Detail', 'mk-detail-modal', 'mk-m-del'],
@@ -50,9 +50,9 @@ test('the trash is the same size in every detail dialog', () => {
 });
 
 test('the set detail no longer shows purchase addresses', () => {
-  // Beide Knoepfe stehen weiterhin im Katalog- und im Merkposten-Detail:
-  // Kaufen will, wer das Set noch NICHT hat. Der Test prueft deshalb nicht
-  // „nirgends", sondern „nicht HIER".
+  // Both buttons still stand in the catalog and wishlist item detail:
+  // whoever wants to buy does NOT have the set yet. The test therefore does not check
+  // “nowhere", but “not HERE".
   const set = dialog('set-modal');
   for (const id of ['m-bricklink', 'm-vergleich']) {
     assert.ok(
@@ -60,8 +60,8 @@ test('the set detail no longer shows purchase addresses', () => {
       `Das Set-Detail zeigt wieder #${id}. Marcos Vorgabe: dort keine Kaufadressen.`,
     );
   }
-  // Und die Gegenrichtung, damit der Test nicht durch Loeschen gruen wird:
-  // Wo sie hingehoeren, muessen sie noch stehen.
+  // And the opposite direction, so that the test does not turn green by deleting:
+  // where they belong, they must still stand.
   for (const [modal, id] of [
     ['cat-modal', 'cat-m-bricklink'],
     ['mk-detail-modal', 'mk-m-bricklink'],
@@ -72,8 +72,8 @@ test('the set detail no longer shows purchase addresses', () => {
 });
 
 test('the part/figure dialog has no second way out', () => {
-  // Das ✕ im Kopf schliesst den Dialog. Ein „Zurueck" in der Fusszeile war
-  // derselbe Griff ein zweites Mal.
+  // The ✕ in the header closes the dialog. A “back" in the footer was
+  // the same handle a second time.
   const man = dialog('man-detail-modal');
   const fuss = man.slice(man.indexOf('class="mfooter"'));
   assert.ok(
@@ -84,19 +84,19 @@ test('the part/figure dialog has no second way out', () => {
 });
 
 /**
- * Titel- und Fussleiste der Dialoge bleiben beim Rollen stehen.
+ * Title and footer bar of the dialogs stay in place when scrolling.
  *
- * Gegenproben (durchgefuehrt):
- *   a) Ein <div> um den Rumpf von #set-modal gelegt  -> Schritt 1 rot.
- *   b) `position:sticky` aus .mhd entfernt           -> Schritt 2 rot.
- *   c) Den negativen Versatz auf 0 gesetzt           -> Schritt 2 rot.
- *   d) Die Polster-Variablen aus .modal entfernt     -> Schritt 2 rot.
+ * Counter-checks (performed):
+ *   a) a <div> put around the body of #set-modal     -> step 1 red.
+ *   b) `position:sticky` removed from .mhd           -> step 2 red.
+ *   c) the negative offset set to 0                  -> step 2 red.
+ *   d) the padding variables removed from .modal     -> step 2 red.
  */
 test('title and footer bar stick — and can do so', () => {
-  // ── 1. Voraussetzung: direktes Kind des Rollbereichs ──────────────────────
+  // ── 1. Prerequisite: direct child of the scroll area ──────────────────────
   //
-  // Gesucht, nicht aufgezaehlt: Jeder Dialog mit einer .mhd wird geprueft, ein
-  // neuer ist damit von selbst dabei.
+  // Searched, not enumerated: every dialog with a .mhd is checked, a
+  // new one is thus included automatically.
   const dialoge = [...html.matchAll(/<div class="ovl"[^>]*id="([\w-]+)"/g)].map(m => m[1]);
   assert.ok(
     dialoge.length >= 8,
@@ -108,12 +108,12 @@ test('title and footer bar stick — and can do so', () => {
     const rumpf = dialog(id);
     if (!/class="mhd"/.test(rumpf)) continue;
     withBar++;
-    // Zwischen `<div class="modal…">` und `<div class="mhd">` darf kein
-    // weiteres oeffnendes <div> stehen.
+    // Between `<div class="modal…">` and `<div class="mhd">` no further
+    // opening <div> may stand.
     const abModal = rumpf.search(/<div class="modal/);
     assert.ok(abModal >= 0, `#${id}: kein .modal gefunden`);
     const untilHeader = rumpf.slice(abModal, rumpf.indexOf('<div class="mhd"'));
-    const dazwischen = (untilHeader.match(/<div\b/g) || []).length - 1; // das .modal selbst abziehen
+    const dazwischen = (untilHeader.match(/<div\b/g) || []).length - 1; // subtract the .modal itself
     assert.equal(
       dazwischen,
       0,
@@ -125,12 +125,12 @@ test('title and footer bar stick — and can do so', () => {
   }
   assert.ok(withBar >= 6, `Nur ${withBar} Dialoge mit Titelleiste — zu wenig, da stimmt das Muster nicht mehr.`);
 
-  // ── 2. Die Regeln selbst ──────────────────────────────────────────────────
+  // ── 2. The rules themselves ───────────────────────────────────────────────
   //
-  // Kommentare raus, BEVOR gesucht wird: Die Erklaerbloecke in diesen Dateien
-  // zitieren die Regeln, um die es geht („hier stand `.mhd { position:
-  // sticky; top: 0 }`"). Ohne das meldet die Pruefung den Erklaertext als
-  // Verstoss — genau das ist beim Schreiben dieser Datei passiert.
+  // Comments out BEFORE searching: the explanation blocks in these files
+  // quote the rules in question (“here stood `.mhd { position:
+  // sticky; top: 0 }`"). Without that the check reports the explanatory text as a
+  // violation — exactly that happened while writing this file.
   const withoutCssComments = t => t.replace(/\/\*[\s\S]*?\*\//g, '');
   const css = withoutCssComments(fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8'));
   const regel = wahl => {
@@ -154,8 +154,8 @@ test('title and footer bar stick — and can do so', () => {
     /bottom:calc\(var\(--modal-padb\) \* -1\)/,
     'Der Versatz der Fussleiste ist nicht mehr die negative Polsterung.',
   );
-  // Volle Breite: ohne die negativen Seitenraender bleibt links und rechts ein
-  // Streifen, durch den der Inhalt sichtbar vorbeirollt.
+  // Full width: without the negative side margins a strip remains left and right
+  // through which the content visibly scrolls past.
   for (const [name, r] of [
     ['Titelleiste', kopf],
     ['Fussleiste', fuss],
@@ -165,13 +165,13 @@ test('title and footer bar stick — and can do so', () => {
       /calc\(var\(--modal-padx\) \* -1\)/,
       `${name}: kein negativer Seitenrand — dann geht sie nicht ueber die volle Breite.`,
     );
-  // Undurchsichtig, sonst scheint der Inhalt durch.
+  // Opaque, otherwise the content shines through.
   for (const [name, r] of [
     ['Titelleiste', kopf],
     ['Fussleiste', fuss],
   ])
     assert.match(r, /background:var\(--sur\)/, `${name}: kein eigener Hintergrund.`);
-  // Die Trennlinie ist FORM, nicht Farbe — Marco hat eine Rot-Gruen-Schwaeche.
+  // The divider is SHAPE, not color — Marco has a red-green deficiency.
   assert.match(kopf, /border-bottom:1px solid/, 'Der Titelleiste fehlt die Trennlinie.');
   assert.match(fuss, /border-top:1px solid/, 'Der Fussleiste fehlt die Trennlinie.');
 
@@ -183,7 +183,7 @@ test('title and footer bar stick — and can do so', () => {
         `ohne die Variable faellt calc() aus und die Leisten sitzen falsch.`,
     );
 
-  // ── 3. Die Handyfassung darf die Polsterung nicht zurueckdrehen ───────────
+  // ── 3. The phone version must not turn back the padding ───────────────────
   const mobil = withoutCssComments(fs.readFileSync(path.join(__dirname, '..', 'public', 'mobile.css'), 'utf8'));
   assert.doesNotMatch(
     mobil,

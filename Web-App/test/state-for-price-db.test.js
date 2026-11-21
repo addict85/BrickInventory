@@ -1,17 +1,17 @@
 /**
- * Die Zustands-Staffelung Eingabe → Bestand → Standard, ausgeführt.
+ * The condition cascade input → stock → default, executed.
  *
- * ── Gegenproben (durchgeführt, siehe Kommentar im Commit) ───────────────────
+ * ── Counter-checks (carried out, see comment in the commit) ───────────────────
  *   a) `if (bisher) return bisher;` → `if (bisher != null) return bisher;`
- *      (also ?? statt ||) → „ein leerer Bestandszustand zählt als nicht
- *      gesetzt" wird rot. Genau die Naht, an der in diesem Projekt schon
- *      mehrfach JS-Falsy und Kotlin-Null auseinandergelaufen sind.
- *   b) Die Eingabeprüfung auf `if (eingabe)` gelockert → „eine ungültige
- *      Eingabe zählt nicht" wird rot.
- *   c) Die Reihenfolge gedreht (erst Bestand, dann Eingabe) → „die Eingabe
- *      gewinnt" wird rot.
+ *      (i.e. ?? instead of ||) → “an empty stock condition counts as not
+ *      set” turns red. Exactly the seam at which JS falsy and Kotlin null
+ *      have already drifted apart several times in this project.
+ *   b) the input check loosened to `if (eingabe)` → “an invalid
+ *      input does not count” turns red.
+ *   c) the order turned around (first stock, then input) → „die Eingabe
+ *      gewinnt" turns red.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -29,7 +29,7 @@ const { setUserSetting } = _req('src/settings/userSetting.js');
 test('condition for the market price: input → stock → default', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
-  // Eigener Nutzer je Prozess — der Test läuft neben anderen auf derselben DB.
+  // Own user per process — the test runs next to others on the same DB.
   const name = `zfp_${process.pid}`;
   const angelegt = await db.get(
     `INSERT INTO users (username, password_hash) VALUES ($1,'x')
@@ -44,7 +44,7 @@ test('condition for the market price: input → stock → default', { concurrenc
     .catch(() => null);
 
   try {
-    // ── Der Standard ganz unten ─────────────────────────────────────────────
+    // ── The default at the very bottom ─────────────────────────────────────────────
     await setGlobalSetting('default_price_condition', 'U');
     await db.run(`DELETE FROM user_settings WHERE user_id=$1 AND key='user_default_condition'`, [uid]);
 
@@ -54,7 +54,7 @@ test('condition for the market price: input → stock → default', { concurrenc
       'ohne Eingabe und ohne Bestand muss der globale Standard gelten',
     );
 
-    // ── Der Bestand schlägt den Standard ────────────────────────────────────
+    // ── The stock beats the default ────────────────────────────────────
     assert.equal(
       await conditionForPrice(undefined, 'N', uid),
       'N',
@@ -62,13 +62,13 @@ test('condition for the market price: input → stock → default', { concurrenc
         'genau das war der Fehler aus einer früheren Runde, nur andersherum',
     );
 
-    // ── Die Eingabe schlägt beides ──────────────────────────────────────────
+    // ── The input beats both ──────────────────────────────────────────
     assert.equal(await conditionForPrice('N', 'U', uid), 'N', 'die Eingabe gewinnt');
     assert.equal(await conditionForPrice('U', 'N', uid), 'U', 'die Eingabe gewinnt');
 
-    // ── Eine ungültige Eingabe zählt nicht ──────────────────────────────────
-    // Der Rumpf kommt vom Client; dort kann alles stehen. Ein 'X' darf nicht
-    // als Zustand durchgereicht werden, sonst landet es in der Erfassung.
+    // ── An invalid input does not count ──────────────────────────────────
+    // The body comes from the client; anything can stand there. An 'X' must not
+    // be passed on as a condition, otherwise it lands in the acquisition.
     for (const garbage of ['X', '', 'neu', 0, true, null, {}]) {
       assert.equal(
         await conditionForPrice(garbage, 'U', uid),
@@ -77,16 +77,16 @@ test('condition for the market price: input → stock → default', { concurrenc
       );
     }
 
-    // ── Ein leerer Bestandszustand zählt als nicht gesetzt ──────────────────
-    // So leert das Formular den Wert. Mit `??` statt `||` käme hier '' heraus
-    // und würde als Zustand weitergereicht.
+    // ── An empty stock condition counts as not set ──────────────────
+    // That is how the form clears the value. With `??` instead of `||` '' would come out here
+    // and be passed on as a condition.
     assert.equal(
       await conditionForPrice(undefined, '', uid),
       'U',
       'die leere Zeichenkette ist kein Zustand — sie muss auf den Standard durchfallen',
     );
 
-    // ── Der Nutzerwert schlägt den globalen Standard ────────────────────────
+    // ── The user value beats the global default ────────────────────────
     await setUserSetting(uid, 'user_default_condition', 'N');
     assert.equal(
       await conditionForPrice(undefined, null, uid),
@@ -99,9 +99,9 @@ test('condition for the market price: input → stock → default', { concurrenc
     if (beforeGlobal?.value !== undefined)
       await setGlobalSetting('default_price_condition', beforeGlobal.value).catch(() => {});
     else await db.run(`DELETE FROM global_settings WHERE key='default_price_condition'`).catch(() => {});
-    // Ohne das endet der Prozess nie: Der Pool hält offene Verbindungen, und
-    // node:test wartet darauf. Dieselbe Zeile steht am Ende jedes anderen
-    // DB-Tests hier — sie zu vergessen sieht aus wie ein hängender Test.
+    // Without this the process never ends: the pool holds open connections, and
+    // node:test waits for them. The same line stands at the end of every other
+    // DB test here — forgetting it looks like a hanging test.
     await db.pool.end().catch(() => {});
   }
 });

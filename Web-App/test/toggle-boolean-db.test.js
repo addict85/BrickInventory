@@ -1,16 +1,16 @@
 /**
- * Ja/Nein-Spalten sind BOOLEAN — geprüft an der echten Datenbank
- * (information_schema und pg_constraint), nicht an den Migrationen.
- * Gesucht wird zweifach: nach Spaltennamen, die eine Flagge sind
- * (is_…, has_…, must_…, never_…, …_verified), und nach Schranken, die eine
- * Zahl auf 0 und 1 beschränken. Beide Listen müssen leer sein.
+ * Yes/no columns are BOOLEAN — checked against the real database
+ * (information_schema and pg_constraint), not against the migrations.
+ * The search is twofold: for column names that are a flag
+ * (is_…, has_…, must_…, never_…, …_verified), and for constraints that restrict a
+ * number to 0 and 1. Both lists must be empty.
  *
- * Gegenproben (31.10.2026, gemessen):
- *   a) in db/migrations/0085-schalter-als-boolean.sql den Block für
- *      catalog_cache.is_gear entfernt → rot („catalog_cache.is_gear: integer“).
- *   b) dort die Schranken von users nicht entfernt und is_admin nicht umgestellt
- *      → rot (Spalte und Schranke users_is_admin_schalter).
- * Der Teil „die Suche greift“ legt selbst eine 0/1-Spalte an und muss sie finden.
+ * Counter-checks (31.10.2026, measured):
+ *   a) in db/migrations/0085-schalter-als-boolean.sql the block for
+ *      catalog_cache.is_gear removed → red („catalog_cache.is_gear: integer“).
+ *   b) there the constraints of users not removed and is_admin not converted
+ *      → red (column and constraint users_is_admin_schalter).
+ * The part „the search applies“ creates a 0/1 column itself and must find it.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -22,7 +22,7 @@ const { keineDb } = require('./helpers/db');
 
 const FLAG = '^(is|has|must|never)_|_verified$';
 
-/** Flaggen-Spalten, die nicht BOOLEAN sind, und Schranken auf 0/1 — im Schema `schema`. */
+/** Flag columns that are not BOOLEAN, and constraints on 0/1 — in the schema `schema`. */
 async function numbersFlags(db, schema) {
   const spalten = await db.all(
     `SELECT table_name || '.' || column_name || ': ' || data_type AS z FROM information_schema.columns

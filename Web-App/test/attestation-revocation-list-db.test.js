@@ -1,14 +1,14 @@
 /**
- * Googles Widerrufsliste kommt als geplanter Auftrag in run_state; der Abruf ist
- * über die Fremdquellen gestellt (testSources), kein Netz. Eine unlesbare Antwort
- * oder ein Netzfehler lässt die letzte gute Liste stehen.
+ * Google's revocation list arrives as a scheduled job in run_state; the fetch is
+ * provided via the external sources (testSources), no network. An unreadable response
+ * or a network error leaves the last good list in place.
  *
- * Gegenproben (14.11.2026 gemessen):
- *   A  in jobs/startJobs.ts den Bearbeiter `widerrufsliste` umbenannt → rot:
- *      „der geplante Auftrag legt die Liste ab …“ und „eine unlesbare Antwort …“
- *   B  in loadRevocationList() (src/catalog) erst den Rohtext speichern, dann lesen → rot: „eine
- *      unlesbare Antwort …“ (und „der geplante Auftrag …“: keine Seriennummern)
- *   C  ZEITPLAENE.widerrufsliste entfernt → rot: „… und plant den nächsten Lauf“
+ * Counter-checks (measured 14.11.2026):
+ *   A  in jobs/startJobs.ts the handler `widerrufsliste` renamed → red:
+ *      “the scheduled job stores the list …” and “an unreadable response …”
+ *   B  in loadRevocationList() (src/catalog) store the raw text first, then read → red: “an
+ *      unreadable response …” (and “the scheduled job …”: no serial numbers)
+ *   C  ZEITPLAENE.widerrufsliste removed → red: “… and schedules the next run”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

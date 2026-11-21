@@ -1,18 +1,18 @@
 /**
- * Dateien, Bilder und Bild-Proxy stehen vor dem Eingang von /api/v1; die Sperren
- * „Passwortwechsel nötig“ und „2. Faktor Pflicht für Verwalter“ gelten trotzdem.
+ * Files, images and image proxy stand before the /api/v1 entrance; the locks
+ * “password change needed” and “2nd factor mandatory for administrators” apply anyway.
  *
- * Gegenproben (am 08.11.2026 gemessen):
- *   A  inboundLock aus den beiden Datei-Routen in routes/dataFiles.ts
- *      gestrichen → rot: Uploads und Anleitungen in „Passwortwechsel“ und
- *      „Verwalter ohne zweiten Faktor“ (200 statt 403)
- *   B  inboundLock aus registerImgProxy gestrichen → rot: dieselben
- *      Teiltests beim Bild-Proxy (nicht mehr 403)
- *   C  Prüfung zweiterFaktorPflicht in inboundLock gestrichen → rot:
- *      „Verwalter ohne zweiten Faktor“, „Passwortwechsel“ bleibt grün
- *   D  (09.11.2026) in routes/pages.ts die Bildroute wieder ohne
- *      requireLoginOrToken, inboundLock → rot: beide Sperr-Teiltests bei
- *      /images/parts/probe.png (200 statt 403)
+ * Counter-checks (measured on 08.11.2026):
+ *   A  inboundLock deleted from the two file routes in routes/dataFiles.ts
+ *      → red: uploads and instructions in “password change” and
+ *      “administrator without second factor” (200 instead of 403)
+ *   B  inboundLock deleted from registerImgProxy → red: the same
+ *      subtests for the image proxy (no longer 403)
+ *   C  check zweiterFaktorPflicht deleted in inboundLock → red:
+ *      “administrator without second factor”, “password change” stays green
+ *   D  (09.11.2026) in routes/pages.ts the image route again without
+ *      requireLoginOrToken, inboundLock → red: both lock subtests for
+ *      /images/parts/probe.png (200 instead of 403)
  *
  * REQUIRE_DB=1.
  */
@@ -112,7 +112,7 @@ test('files and image proxy: entrance locks', { concurrency: 1 }, async t => {
     assert.equal((await hole(normal, `/data/instructions/${SN}_1.pdf`)).status, 200);
     assert.equal((await hole(normal, '/images/parts/probe.png')).status, 200);
     assert.equal((await hole(chef2fa, `/data/uploads/${chef2fa}/a.pdf`)).status, 200);
-    // 400 kommt erst vom Proxy selbst: Die Sperre liess den Verwalter durch.
+    // 400 only comes from the proxy itself: the lock let the administrator through.
     assert.equal((await hole(chef2fa, '/api/v1/img-proxy?url=http%3A%2F%2Fnein')).status, 400);
   });
 });

@@ -1,16 +1,16 @@
 /**
- * Ohne NODE_ENV gelten alle Regeln des Betriebs, nicht nur ein Teil davon:
- * Startverbote, Superuser-Verbot, verborgene 5xx-Texte, sicheres Cookie.
- * Geprüft am echten Server (dist/server.js), gestartet ohne NODE_ENV.
+ * Without NODE_ENV all rules of operation apply, not only a part of them:
+ * start bans, superuser ban, hidden 5xx texts, secure cookie.
+ * Checked on the real server (dist/server.js), started without NODE_ENV.
  *
- * Gegenprobe (05.11.2026 gemessen, drei Stellen zugleich zurück auf
- * `production`): starte() in server.ts → rot „MAIL_KONSOLE_MIT_TOKEN=1 …“;
- * warnAtSuperuser() → rot „als Superuser …“; handleRouteError → rot
- * „ein 5xx …“. Je ein roter Teil zu jeder Stelle.
+ * Counter-check (measured 05.11.2026, three places back to
+ * `production` at once): starte() in server.ts → red “MAIL_KONSOLE_MIT_TOKEN=1 …”;
+ * warnAtSuperuser() → red “as superuser …”; handleRouteError → red
+ * “a 5xx …”. One red part for each place.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL (als Superuser verbunden).
+ * Prerequisite: test DB via TEST_DATABASE_URL (connected as superuser).
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const { environment } = require('./helpers/sources');
@@ -25,7 +25,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { startBans, ladeKonfig, cookieSafe } = _req('src/infra/config.js');
 
-/** Ohne NODE_ENV starten; `PATH` allein, damit nichts aus der Testumgebung hineinfällt. */
+/** Start without NODE_ENV; `PATH` alone, so that nothing from the test environment falls in. */
 function starte(env, ms = 25_000) {
   return new Promise(fertig => {
     const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {

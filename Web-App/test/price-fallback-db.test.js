@@ -1,26 +1,26 @@
 /**
- * Finanzen: Ein gebrauchtes Set ohne Gebraucht-Preis bekommt den Preis für
- * „Neu" — auch wenn der nur noch alt im Cache liegt.
+ * Finances: a used set without a used price gets the price for
+ * „new" — even if that one only lies old in the cache.
  *
- * Gegenproben (am 25.10. gemessen):
- *   A  der Abruf des anderen Zustands im Null-Zweig entfernt (der Stand vor
- *      der Behebung) → rot: „kein Marktpreis"
- *   B  die Bedingung „beide frisch ohne Preis → nicht abrufen" entfernt →
- *      rot im dritten Fall (es kommt wieder ein Preis, weil erneut abgerufen
- *      wurde)
+ * Counter-checks (measured on 25.10.):
+ *   A  the fetch of the other condition removed in the null branch (the state before
+ *      the fix) → red: „kein Marktpreis"
+ *   B  the condition „both fresh without price → do not fetch" removed →
+ *      red in the third case (a price comes again, because it was fetched
+ *      again)
  *
- * Zweiter Fall: „BrickLink kennt dieses Set nicht" (catalog_cache NONE) galt
- * für immer. Ein neues Set, das beim ersten Nachschlagen noch nicht im
- * BrickLink-Katalog stand, bekam nie einen Marktpreis — mit grünem Haken.
- *   C  die Frist in withoutBricklinkPrice() entfernt → rot: „alte Markierung
+ * Second case: „BrickLink does not know this set" (catalog_cache NONE) applied
+ * forever. A new set that was not yet in the BrickLink catalog at the first lookup
+ * never got a market price — with a green check mark.
+ *   C  the deadline in withoutBricklinkPrice() removed → red: „alte Markierung
  *      verhindert den Abruf"
  *
- * Seit 05.11.2026 liest die Bewertung nur den Cache; geholt wird im Auftrag
- * preise_nachladen (hier von Hand ausgeführt). Gegenprobe (gemessen):
- *   D  in setPriceFromStock() den Rückfall auf den anderen Zustand entfernt →
- *      rot: „kein Marktpreis“
+ * Since 05.11.2026 the valuation only reads the cache; fetching happens in the job
+ * preise_nachladen (executed by hand here). Counter-check (measured):
+ *   D  in setPriceFromStock() the fallback to the other condition removed →
+ *      red: „kein Marktpreis“
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -36,8 +36,8 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 const { holdsSet, catalogSet } = require('./helpers/inventory');
 
-// BrickLink nachstellen — wie in preis-schreibweg-db: esbuild exportiert über
-// Getter, also den Eintrag im require-Zwischenspeicher ersetzen.
+// Recreate BrickLink — as in price-write-route-db: esbuild exports via
+// getters, so replace the entry in the require cache.
 const blPath = require.resolve(path.join(ROOT, 'dist', 'src/catalog/bricklinkPrices.js'));
 const echt = require(blPath);
 let fetches = [];
@@ -50,7 +50,7 @@ require.cache[blPath].exports = Object.assign({}, echt, {
   },
 });
 
-/** Führt den Auftrag aus, den die Bewertung für fehlende Preise eingestellt hat. */
+/** Runs the job that the valuation queued for missing prices. */
 async function nachladen() {
   const a = await db.get(
     `SELECT id, payload FROM jobs WHERE type = 'preise_nachladen' AND status = 'offen' ORDER BY id DESC LIMIT 1`,
@@ -62,7 +62,7 @@ async function nachladen() {
   return true;
 }
 
-/** Ein Konto mit einem gebrauchten Set, Währung EUR. */
+/** An account with a used set, currency EUR. */
 async function konto(name, set) {
   await db.run('DELETE FROM users WHERE username = $1', [name]).catch(() => {});
   const uid = (
@@ -71,7 +71,7 @@ async function konto(name, set) {
       [name],
     )
   ).id;
-  // Die Währung ausdrücklich: Ohne eigene Einstellung gälte die globale Vorgabe.
+  // The currency explicitly: without an own setting the global default would apply.
   await db.run(
     `INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')
                 ON CONFLICT (user_id, key) DO UPDATE SET value = 'EUR'`,
@@ -96,7 +96,7 @@ test('used set without a used price: the new price is fetched', { concurrency: 1
   t.after(aufraeumen);
 
   const uid = await konto(NAME, SET);
-  // Gebraucht: frisch, ohne Preis. Neu: Preis vorhanden, aber drei Tage alt.
+  // Used: fresh, without a price. New: price present, but three days old.
   await db.run(
     `INSERT INTO price_cache (set_number, condition, currency_code, min_price, avg_price, max_price, qty_avg_price, total_quantity, fetched_at)
                 VALUES ($1,'U','EUR',0,0,0,0,0,NOW()), ($1,'N','EUR',90,99,105,98,3,NOW() - INTERVAL '3 days')`,
@@ -118,14 +118,14 @@ test('used set without a used price: the new price is fetched', { concurrency: 1
   );
   assert.deepEqual(fetches, ['N'], 'Gebraucht ist frisch geprüft und darf nicht erneut abgerufen werden');
 
-  // Jetzt sind beide frisch — der nächste Aufruf kommt ohne BrickLink aus.
+  // Now both are fresh — the next call gets by without BrickLink.
   fetches = [];
   assert.equal(await nachladen(), false, 'ein frischer Preis stellt keinen Auftrag ein');
   const zweite = (await valueSets(uid, [uid])).sets.find(s => s.set_number === SET);
   assert.equal(zweite.avg_price, 111);
   assert.deepEqual(fetches, [], 'ruft BrickLink erneut ab, obwohl beide Zustände frisch im Cache liegen');
 
-  // Beide frisch ohne Preis: kein Abruf, kein Preis.
+  // Both fresh without a price: no fetch, no price.
   await db.run(
     `UPDATE price_cache SET avg_price = 0, min_price = 0, max_price = 0, qty_avg_price = 0, fetched_at = NOW() WHERE set_number = $1`,
     [SET],
@@ -152,7 +152,7 @@ test('“BrickLink does not know the set” only applies for a while', { concurr
   const { valueSets } = _req('src/finances/financeCalc.js');
   const value = async () => (await valueSets(uid, [uid])).sets.find(s => s.set_number === SET);
 
-  // Frisch markiert: kein Abruf, kein Preis, und der Grund steht dabei.
+  // Freshly marked: no fetch, no price, and the reason stands with it.
   await db.run(
     `INSERT INTO catalog_cache (set_number, bl_type, is_gear, fetched_at) VALUES ($1, 'NONE', true, NOW())`,
     [SET],
@@ -163,7 +163,7 @@ test('“BrickLink does not know the set” only applies for a while', { concurr
   assert.equal(frisch.no_price, true);
   assert.equal(frisch.bl_unbekannt, true, 'der Grund fehlt — die Anzeige kann ihn nicht nennen');
 
-  // Zehn Tage alt: Es wird wieder gefragt, und der Preis kommt an.
+  // Ten days old: it is asked again, and the price arrives.
   await db.run(`UPDATE catalog_cache SET fetched_at = NOW() - INTERVAL '10 days' WHERE set_number = $1`, [SET]);
   fetches = [];
   await value();

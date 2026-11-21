@@ -1,29 +1,29 @@
 /**
- * Dialoge bei 200 % Browser-Schrift (Page.setFontSizes 32 px) auf 320 und
- * 390 px: Das Benutzermenü bleibt im Bildschirm, die Knöpfe des Bestätigens
- * überlappen nicht, Felder im Erfassen- und Kaufpreis-Dialog sind hoch genug
- * für ihre Schrift und ragen nicht hinaus. Dazu der Weg einer Geldeingabe bis …
+ * Dialogs at 200 % browser font (Page.setFontSizes 32 px) at 320 and
+ * 390 px: the user menu stays on screen, the confirm buttons
+ * do not overlap, fields in the add and purchase price dialogs are tall enough
+ * for their font and do not stick out. Plus the path of a money input to …
  *
- * Gegenproben (02.11.2026 gemessen, je einzeln):
- *   A  .umenu-pop wieder min-width:14rem ohne max-width → rot: „Benutzermenü“
- *      (Klappe ragt links hinaus, beide Breiten)
- *   B  .knopf-reihe-mitte ohne flex-wrap und ohne flex-Basis der Knöpfe → rot:
- *      „320 px: Bestätigen“ (390 px bleibt grün: dort passen beide Knöpfe)
- *   C  .fg input/select height:38px statt max(38px,2.6em) → rot: „Set erfassen“ bei 320
- *      und 390 px (Feld zu niedrig für seine Schrift)
- *   D  in acqSave() wieder parseFloat(value) → rot: „149,95 wird 149.95
- *      gespeichert“ (149)
- *   E  #login-screen [hidden]-Regel entfernt → rot: „Anmeldemaske ohne
- *      Passkey …“ (a[href] und .btn hoben hidden auf)
- *   F  .umenu-item>span ohne overflow-wrap:anywhere → rot: „Benutzermenü“ bei 320
- *      und 390 px („Hintergrundarbeiten“ ragt aus dem Knopf; 02.11.2026)
+ * Counter-checks (measured 02.11.2026, each alone):
+ *   A  .umenu-pop again min-width:14rem without max-width → red: “user menu”
+ *      (flap sticks out on the left, both widths)
+ *   B  .knopf-reihe-mitte without flex-wrap and without flex basis of the buttons → red:
+ *      “320 px: confirm” (390 px stays green: both buttons fit there)
+ *   C  .fg input/select height:38px instead of max(38px,2.6em) → red: “add set” at 320
+ *      and 390 px (field too low for its font)
+ *   D  in acqSave() again parseFloat(value) → red: “149,95 is saved as
+ *      149.95” (149)
+ *   E  #login-screen [hidden] rule removed → red: “login mask without
+ *      passkey …” (a[href] and .btn lifted hidden)
+ *   F  .umenu-item>span without overflow-wrap:anywhere → red: “user menu” at 320
+ *      and 390 px (“Hintergrundarbeiten” sticks out of the button; 02.11.2026)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 const { patternCollection } = require('./helpers/inventory');
 
-/** Was ein Prüfer sieht: über den Rand, überlappend, abgeschnitten, zu niedrig. */
+/** What a reviewer sees: over the edge, overlapping, cut off, too low. */
 const MEASURE = wurzelSel => `(() => {
   const funde = [], breite = document.documentElement.clientWidth, hoehe = innerHeight;
   const wurzel = document.querySelector(${JSON.stringify(wurzelSel)});
@@ -69,7 +69,7 @@ test('dialogs at 200 % font on 320 and 390 px', { timeout: 240_000 }, async t =>
     return;
   }
   const { b, bis, ruhig } = app;
-  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  // Startup loads settings and prices afterwards; only then is the state fixed.
   await ruhig();
   const zu = () =>
     b.auswerten(`document.querySelectorAll('.ovl.open').forEach(o => o.classList.remove('open'));
@@ -89,8 +89,8 @@ test('dialogs at 200 % font on 320 and 390 px', { timeout: 240_000 }, async t =>
     await bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
 
     await t.test(`${breite} px: user menu`, async () => {
-      // Ohne Silbentrennungs-Wörterbuch (so im CI-Chrome) bleibt „Hintergrundarbeiten“
-      // ein Stück; hyphens: manual (CSSOM, die CSP sperrt <style>) stellt diesen schlechtesten Fall überall her.
+      // Without a hyphenation dictionary (as in CI Chrome) “Hintergrundarbeiten” stays
+      // one piece; hyphens: manual (CSSOM, the CSP blocks <style>) creates this worst case everywhere.
       await b.auswerten(
         `document.querySelectorAll('.umenu-item').forEach(e => e.style.setProperty('hyphens', 'manual', 'important')); true`,
       );
@@ -145,11 +145,11 @@ test('dialogs at 200 % font on 320 and 390 px', { timeout: 240_000 }, async t =>
     const zeile = await app.db.get('SELECT set_number, purchase_price FROM set_acquisitions WHERE id = $1', [id]);
     assert.equal(zeile.set_number, sn);
     assert.equal(Number(zeile.purchase_price), 149.95);
-    // Angezeigt in der Form der Sprache: de-DE „149,95“, de-CH „149.95“.
+    // Displayed in the form of the language: de-DE “149,95”, de-CH “149.95”.
     assert.match(await b.auswerten(`document.getElementById('acq-preis-${id}').value`), /^149[.,]95$/);
   });
 
-  // Der Testserver hat weder APP_BASE_URL noch SMTP: Beide Wege fehlen auf der Maske.
+  // The test server has neither APP_BASE_URL nor SMTP: both paths are missing on the mask.
   await t.test('login mask without passkey and "forgot password?"', async () => {
     await zu();
     await b.auswerten(`window.__alt = true; document.getElementById('btn-logout').click(); true`);

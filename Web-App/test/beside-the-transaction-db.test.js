@@ -1,21 +1,21 @@
 /**
- * Ein Rahmenwechsel mitten in einer Transaktion (inSystemContext in einer des Kontos,
- * asRequest in einer des Systemrahmens) fragte über den Pool der anderen Rolle neben
- * ihr; db/database.ts weist das ab (BesideTheTransaction). Vorher gewählt bleibt erlaubt.
- * Eigener Systempool mit derselben Rolle: Es kommt auf die zweite Verbindung an.
+ * A context switch in the middle of a transaction (inSystemContext in one of the account,
+ * asRequest in one of the system context) queried via the pool of the other role beside
+ * it; db/database.ts rejects that (BesideTheTransaction). Chosen beforehand stays allowed.
+ * Own system pool with the same role: what matters is the second connection.
  *
- * Gegenproben (13.11.2026 gemessen, je einzeln):
- *   A  in txStand() die Zeile `throw new BesideTheTransaction(…)` gestrichen → rot:
- *      „Systemrahmen in einer Konto-Transaktion …“ und „… und umgekehrt“ (die
- *      Abfrage lief auf einer anderen Verbindung, pg_backend_pid verschieden)
- *   B  inTransaction wieder über txStand() (wirft) → rot: „inTransaction …“
- *   C  in redeemInvitation() (src/household/household.ts) inSystemContext wieder
- *      nur um die beiden getSetting() innerhalb von k.transaktion → rot in
- *      test/rows-protection-db.test.js „wer einem Haushalt beitritt …“ (BesideTheTransaction)
- *   D  in txStand() die Prüfung des Pools ganz gestrichen → rot: die beiden ersten
- *      (14.11.2026 erneut: jetzt UnboundQuery statt BesideTheTransaction)
+ * Counter-checks (measured 13.11.2026, each alone):
+ *   A  in txStand() the line `throw new BesideTheTransaction(…)` deleted → red:
+ *      “system context in an account transaction …” and “… and vice versa” (the
+ *      query ran on another connection, pg_backend_pid differed)
+ *   B  inTransaction back via txStand() (throws) → red: “inTransaction …”
+ *   C  in redeemInvitation() (src/household/household.ts) inSystemContext again
+ *      only around the two getSetting() inside k.transaktion → red in
+ *      test/rows-protection-db.test.js “whoever joins a household …” (BesideTheTransaction)
+ *   D  in txStand() the pool check deleted entirely → red: the first two
+ *      (14.11.2026 again: now UnboundQuery instead of BesideTheTransaction)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

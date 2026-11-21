@@ -1,14 +1,14 @@
 /**
- * scripts/check-references.js: Pfadverweise in Code-Kommentaren, README.md und
- * docs/ zeigen auf Dateien, die es gibt. Geprüft am echten Skript, einmal an
- * einem Probebaum mit bekannten toten Verweisen und einmal am Bestand.
+ * scripts/check-references.js: path references in code comments, README.md and
+ * docs/ point to files that exist. Checked on the real script, once on
+ * a sample tree with known dead references and once on the codebase.
  *
- * Gegenproben (13.11.2026, je einzeln):
- *   A  in public/js/passkeys.js Zeile 11 den früheren Routen-Pfad (passkeys.ts
- *      unter routes) zurückgesetzt → „der Bestand hat keine toten Verweise“ rot mit dieser Zeile
- *   B  commentJs() gibt die ganze Zeile zurück → „im Probebaum …“ rot
- *      (der Pfad im Zeichenkettenwert des Codes wurde gemeldet)
- *   C  docs/ nicht mehr gelesen → „im Probebaum …“ rot (der tote Verweis aus der Doku fehlt)
+ * Counter-checks (13.11.2026, each on its own):
+ *   A  in public/js/passkeys.js line 11 the former route path (passkeys.ts
+ *      under routes) reset → “the codebase has no dead references” red with this line
+ *   B  commentJs() returns the whole line → “in the sample tree …” red
+ *      (the path in the string value of the code was reported)
+ *   C  docs/ no longer read → “in the sample tree …” red (the dead reference from the docs is missing)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,7 +19,7 @@ const { spawnSync } = require('node:child_process');
 
 const SCRIPT = path.join(__dirname, '..', 'scripts', 'check-references.js');
 
-/** Repo/Web-App mit src/, docs/ und README.md; tote Verweise stehen nur in Kommentaren und Doku. */
+/** Repo/Web-App with src/, docs/ and README.md; dead references only stand in comments and docs. */
 function probebaum() {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'verweise-'));
   const web = path.join(repo, 'Web-App');

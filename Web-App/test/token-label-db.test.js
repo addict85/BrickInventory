@@ -1,14 +1,14 @@
 /**
- * Das Label eines Tokens aus der Anmeldung ist begrenzt (100 Zeichen) und
- * immer Text. Vorher legte /login jedes Label ungekürzt in api_tokens ab.
+ * The label of a token from the login is limited (100 characters) and
+ * always text. Before, /login stored every label untruncated in api_tokens.
  *
- * Gegenproben (am 29.10.2026 gemessen):
- *   A  in /login wieder `label || 'webapp-session'` → rot: 1, 2 und 3 (das
- *      Label kam ungekürzt an, das Objekt nicht als Vorgabe)
- *   B  Kürzen nach UTF-16-Einheiten statt nach Zeichen → rot: „3. …“ (ein
- *      halbes Emoji am Ende)
+ * Counter-checks (measured on 29.10.2026):
+ *   A  in /login again `label || 'webapp-session'` → red: 1, 2 and 3 (the
+ *      label arrived untruncated, the object not as the default)
+ *   B  truncating by UTF-16 units instead of by characters → red: “3. …” (a
+ *      half emoji at the end)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
  * REQUIRE_DB=1.
  */
 const test = require('node:test');
@@ -62,7 +62,7 @@ test('token label at login', { concurrency: 1 }, async t => {
   const srv = app.listen(0);
   t.after(() => new Promise(r => srv.close(r)));
 
-  /** Anmelden und das Label des eben ausgestellten Tokens lesen. */
+  /** Log in and read the label of the token just issued. */
   const labelNach = async label => {
     await db.run('DELETE FROM api_tokens WHERE user_id = $1', [uid]);
     const r = await fetch(`http://localhost:${srv.address().port}${AUTH}/login`, {

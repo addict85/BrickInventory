@@ -1,14 +1,14 @@
 /**
- * Nach dem Abmelden und nach dem Ende der Sitzung steht kein Passwort mehr im
- * Anmeldefeld, und der Ablauf meldet sich genau einmal: als Hinweis in der
- * Anmeldekarte, ohne Fehler-Toast der Listen dahinter.
+ * After logging out and after the end of the session no password stands in the
+ * login field any more, and the expiry reports exactly once: as a hint in the
+ * login card, without an error toast of the lists behind it.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  in showLogin() das Leeren von #lp entfernt → rot: beide Teilfälle
+ * Counter-checks (measured 04.11.2026, each on its own):
+ *   A  the clearing of #lp removed in showLogin() → red: both subcases
  *      („das Passwort steht noch im Feld“)
- *   B  in listLoadError() die Zeile für Status 401 entfernt und in toast()
- *      den Filter für 401-Meldungen → rot: „Sitzungsablauf“ (Fehler-Toast
- *      „Nicht angemeldet …“ neben dem Hinweis)
+ *   B  in listLoadError() the line for status 401 removed and in toast()
+ *      the filter for 401 messages → red: “session expired” (error toast
+ *      „Nicht angemeldet …“ next to the hint)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -31,11 +31,11 @@ test('login fields after the session expired and after logout', { timeout: 180_0
   await t.test('session expired: name stays, password gone, exactly one message', async () => {
     assert.notEqual(await app.b.auswerten(`document.getElementById('lp').value`), '', 'Vorbedingung: Passwort im Feld');
     await app.db.run(`DELETE FROM user_sessions`);
-    // Zwei Ansichten im selben Takt: Die Sammlung lädt neu, während die Teile schon 401 bekommen.
+    // Two views in the same beat: the collection reloads while the parts already get 401.
     await app.b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click();
       document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
     await app.bis(mask, 'Anmeldemaske nach 401');
-    // Auch die zweite 401 ist beantwortet und ihr Hinweis gezeichnet.
+    // The second 401 is answered too and its hint drawn.
     await app.ruhig();
     const f = await app.b.auswerten(felder);
     assert.equal(f.lp, '', 'das Passwort steht noch im Feld');
@@ -45,7 +45,7 @@ test('login fields after the session expired and after logout', { timeout: 180_0
   });
 
   await t.test('logout clears name, password and code', async () => {
-    // Verwalter brauchen den zweiten Faktor; der erste Code ging an die erste Anmeldung.
+    // Admins need the second factor; the first code went to the first login.
     await app.b.auswerten(`document.getElementById('lp').value = 'app-Passwort-1';
       document.getElementById('lc').value = ${JSON.stringify(app.furtherCodes[0])};
       document.getElementById('btn-login').click(); true`);

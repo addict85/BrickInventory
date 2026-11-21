@@ -1,5 +1,5 @@
 /**
- * „Angemeldet" bedeutet an EINER Stelle etwas, nicht an fünf.
+ * „Logged in" means something in ONE place, not in five.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,11 +9,11 @@ const path = require('node:path');
 const ROUTES = path.join(__dirname, '..', 'routes');
 
 /**
- * Wo die Sitzung direkt gelesen werden DARF — und warum.
+ * Where the session MAY be read directly — and why.
  *
- * Die Liste ist bewusst kurz und bewusst nicht leer: Diese Stellen DEFINIEREN,
- * was „angemeldet" heisst, oder handeln von der Sitzung selbst. Wer sie
- * benutzt, statt sie zu definieren, gehört nicht hierher.
+ * The list is deliberately short and deliberately not empty: these places DEFINE
+ * what „logged in" means, or deal with the session itself. Whoever
+ * uses it instead of defining it does not belong here.
  */
 const ALLOWED = {
   'api_v1/middleware.ts':
@@ -28,7 +28,7 @@ const ALLOWED = {
     'Sitzungen die EIGENE wieder her; das geht nur, wenn es eine gibt.',
 };
 
-/** Alle .ts unter routes/, auch in Unterordnern. */
+/** All .ts under routes/, also in subfolders. */
 function routesFiles(dir, praefix = '') {
   const gefunden = [];
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -47,17 +47,17 @@ test('no handler asks the session for the user identifier itself', () => {
   for (const [rel, voll] of dateien) {
     const src = fs
       .readFileSync(voll, 'utf8')
-      // Kommentare raus: Ein Erklärtext, der `req.session.userId` NENNT
-      // (dieser hier zum Beispiel), ist keine Nutzung.
+      // Comments out: an explanatory text that NAMES `req.session.userId`
+      // (this one for example) is not a use.
       .split('\n')
       .filter(z => !z.trimStart().startsWith('//') && !z.trimStart().startsWith('*'))
       .join('\n');
     for (const m of src.matchAll(/req\.session\??\.(userId|isAdmin|username)\b/g)) {
       const zeile = src.slice(0, m.index).split('\n').length;
-      // Erlaubte Dateien werden trotzdem DURCHSUCHT: Ihr Treffer belegt, dass
-      // die Ausnahme noch etwas beschreibt. Wer sie stattdessen ueberspringt,
-      // merkt nie, wenn sie gegenstandslos wird — und dann nimmt ein toter
-      // Eintrag eine ganze Datei dauerhaft von der Pruefung aus.
+      // Allowed files are SEARCHED nevertheless: their hit proves that
+      // the exception still describes something. Whoever skips it instead
+      // never notices when it becomes moot — and then a dead
+      // entry permanently exempts a whole file from the check.
       if (rel in ALLOWED) gebraucht.add(rel);
       else violations.push(`${rel}:${zeile}  ${m[0]}`);
     }
@@ -87,16 +87,16 @@ test('no handler asks the session for the user identifier itself', () => {
 });
 
 test('no router brings its own guard', () => {
-  // Der zweite Teil desselben Befunds: routes/auth.ts DEFINIERTE requireLogin
-  // und requireAdmin selbst — sitzungsgebunden, während src/account/http/login.ts und
-  // routes/api_v1/middleware.ts längst token-fähige Fassungen hatten. Drei
-  // Fassungen einer Regel, und die App konnte nur eine erfüllen.
+  // The second part of the same finding: routes/auth.ts DEFINED requireLogin
+  // and requireAdmin itself — session-bound, while src/account/http/login.ts and
+  // routes/api_v1/middleware.ts had long had token-capable versions. Three
+  // versions of one rule, and the app could only fulfill one.
   const dateien = routesFiles(ROUTES);
   const eigene = [];
   for (const [rel, voll] of dateien) {
     const src = fs.readFileSync(voll, 'utf8');
     for (const m of src.matchAll(/^\s*(?:export\s+)?function\s+(require\w+)\s*\(/gm)) {
-      // api_v1/middleware.ts ist der Ort, AN DEM sie stehen sollen.
+      // api_v1/middleware.ts is the place WHERE they should stand.
       if (rel === 'api_v1/middleware.ts') continue;
       eigene.push(`${rel}  function ${m[1]}`);
     }

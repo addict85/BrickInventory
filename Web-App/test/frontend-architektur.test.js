@@ -1,26 +1,26 @@
 /**
- * Aufbau des Frontends: kein Importkreis, kein API-Aufruf an der Hülle vorbei.
+ * Structure of the frontend: no import cycle, no API call past the shell.
  *
- * Gegenproben (am 05.11.2026 gemessen):
- *   A  in api.js `import { loadGallery } from './sammlung.js'` samt
- *      Aufruf ergänzt → rot: „kein Importkreis“, der Kreis nennt api.js
- *   B  in konten-orte.js `import('./einstellungen.js')` ergänzt → rot: die
- *      dynamische Kante schliesst einen Kreis und zählt mit
- *   C  in einstellungen.js den Alarm-Import wieder per
- *      `fetch('/api/v1/alerts/import/csv', …)` → rot: „kein fetch an der
- *      Hülle vorbei“ mit Datei und Zeile
- *   D  in monitor.js wieder `export let _monitorTimer` → rot: „geteilter
- *      Zustand nur in zustand.js“
- *   E  in bausteine.js `import { loadGallery } from './sammlung.js'` → rot:
- *      „Kern importiert keine Ansicht“ (und der Kreis-Test)
- *   G  (08.11.2026) in minifigs.js wieder `import('./parts.js').ManuellesTeil` als JSDoc-Typ
- *      (teile.js importiert minifigs.js) → rot: „kein Importkreis“, der Kreis nennt beide Dateien
- *   F  im Kapitel „Oberfläche“ von docs/architektur.md `zustand.js` in
- *      `00-staat.js` umbenannt → rot; das Kapitel gestrichen → rot
- *   H  (11.11.2026) in registry.js (KERN) `import './sammlung.js'` ergänzt → rot: „Kern und
- *      Bausteine … importieren keine Ansicht“ nennt js/registry.js → js/sammlung.js
- *   I  (15.11.2026) in fortschritt.js wieder `new EventSource(url, { withCredentials: true })` statt
- *      strom() → rot: „kein fetch und kein EventSource an der API-Hülle vorbei“ mit Datei und Zeile
+ * Counter-checks (measured on 05.11.2026):
+ *   A  in api.js `import { loadGallery } from './sammlung.js'` including
+ *      call added → red: “no import cycle”, the cycle names api.js
+ *   B  in konten-orte.js `import('./einstellungen.js')` added → red: the
+ *      dynamic edge closes a cycle and counts along
+ *   C  in einstellungen.js the alert import again via
+ *      `fetch('/api/v1/alerts/import/csv', …)` → red: “no fetch past the
+ *      shell” with file and line
+ *   D  in monitor.js again `export let _monitorTimer` → red: “shared
+ *      state only in zustand.js”
+ *   E  in bausteine.js `import { loadGallery } from './sammlung.js'` → red:
+ *      “core imports no view” (and the cycle test)
+ *   G  (08.11.2026) in minifigs.js again `import('./parts.js').ManuellesTeil` as a JSDoc type
+ *      (teile.js imports minifigs.js) → red: “no import cycle”, the cycle names both files
+ *   F  in the chapter “Oberfläche” of docs/architektur.md `zustand.js` renamed to
+ *      `00-staat.js` → red; the chapter deleted → red
+ *   H  (11.11.2026) in registry.js (KERN) `import './sammlung.js'` added → red: “core and
+ *      building blocks … import no view” names js/registry.js → js/sammlung.js
+ *   I  (15.11.2026) in fortschritt.js again `new EventSource(url, { withCredentials: true })` instead of
+ *      strom() → red: “no fetch and no EventSource past the API shell” with file and line
  */
 const { isAppModule, KERN, BAUSTEINE } = require('../scripts/build-frontend');
 const test = require('node:test');
@@ -33,7 +33,7 @@ const { execFileSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
 
-/** Importgraph des Bündels: Datei → importierte Dateien (relativ zu public/). */
+/** Import graph of the bundle: file → imported files (relative to public/). */
 function graph() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fe-graph-'));
   try {
@@ -60,8 +60,8 @@ function graph() {
         kurz(datei),
         info.imports.filter(i => !i.external).map(i => kurz(i.path)),
       );
-    // JSDoc-Typverweise `import('./x.js').Name` löscht esbuild; sie binden die Dateien für die Typprüfung
-    // trotzdem aneinander, also zählen sie als Kanten.
+    // esbuild deletes JSDoc type references `import('./x.js').Name`; they still bind the files together
+    // for the type check, so they count as edges.
     for (const [datei, ziele] of g) {
       if (!datei.startsWith('js/')) continue;
       const quelle = fs.readFileSync(`${path.join(ROOT, 'public')}/${datei}`, 'utf8');
@@ -76,7 +76,7 @@ function graph() {
   }
 }
 
-/** Stark zusammenhängende Komponenten mit mehr als einem Knoten (Tarjan). */
+/** Strongly connected components with more than one node (Tarjan). */
 function circles(/** @type {Map<string, string[]>} */ g) {
   let n = 0;
   const index = new Map(),
@@ -136,9 +136,9 @@ test('core and building blocks (KERN, BAUSTEINE, i18n.js) import no view', () =>
 });
 
 test('shared mutable state only in state.js', () => {
-  // Ein `export let` ist eine Variable, die jedes Modul lesen kann, deren
-  // Besitzer aber nicht feststeht. Ausserhalb des Zustandsmoduls gibt es
-  // stattdessen Lese- oder Stoppfunktionen (manualParts(), stopMonitor()).
+  // An `export let` is a variable every module can read, but whose
+  // owner is not fixed. Outside the state module there are
+  // read or stop functions instead (manualParts(), stopMonitor()).
   const treffer = [];
   for (const f of fs.readdirSync(JS).filter(x => isAppModule(x) && x !== 'state.js')) {
     fs.readFileSync(path.join(JS, f), 'utf8')
@@ -152,8 +152,8 @@ test('shared mutable state only in state.js', () => {
 });
 
 test('no fetch and no EventSource bypassing the API wrapper', () => {
-  // Ausnahmen: theme-boot.js läuft vor dem Bündel, logviewer.js in einem
-  // eigenen Fenster mit Bearer-Token; beide können die Hülle nicht laden.
+  // Exceptions: theme-boot.js runs before the bundle, logviewer.js in its
+  // own window with a bearer token; neither can load the shell.
   const EXCEPTIONS = new Set(['theme-boot.js', 'logviewer.js', 'app.bundle.js']);
   const treffer = [];
   let gesehen = 0;
@@ -178,7 +178,7 @@ test('no fetch and no EventSource bypassing the API wrapper', () => {
 });
 
 test('docs/architektur.md describes the UI with files that exist', () => {
-  require('./helpers/bundle').placeBundleSafe(); // das Kapitel nennt das Bündel, ein Erzeugnis
+  require('./helpers/bundle').placeBundleSafe(); // the chapter names the bundle, a product
   const doc = fs.readFileSync(path.join(__dirname, '..', 'docs', 'architektur.md'), 'utf8');
   const chapter = doc.split(/^## Oberfläche$/m)[1]?.split(/^## /m)[0] ?? '';
   const pfade = [...chapter.matchAll(/`((?:public|test|frontend-types|scripts)\/[\w./-]+)`/g)].map(m => m[1]);

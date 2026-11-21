@@ -1,20 +1,20 @@
 /**
- * Die Schreib-/Löschwege in src/settings/settings.ts und der Auslöser in
- * src/jobQueue/repository/runState.ts (seit Migration 0063 dort) gegen eine echte Datenbank.
+ * The write/delete paths in src/settings/settings.ts and the trigger in
+ * src/jobQueue/repository/runState.ts (there since migration 0063) against a real database.
  *
- * Gegenproben (durchgeführt):
- *   a) `if (keys.length === 0) return;` in deleteGlobalValues entfernt und den
- *      Parameter auf `[keys]` gelassen → Teilschritt 4 blieb grün (ANY('{}')
- *      trifft nichts). Erst mit `WHERE key = ANY($1) OR $1 IS NULL` wurde er
- *      rot — die Probe misst also wirklich den Tabelleninhalt.
- *   b) entfällt mit setzeAusloeser (30.10.2026): Anstösse sind Aufträge.
- *   c) In deleteGlobalValues nur den ERSTEN Schlüssel gelöscht
- *      (`WHERE key = $1`, `[keys[0]]`) → Teilschritt 3 rot.
+ * Counter-checks (carried out):
+ *   a) `if (keys.length === 0) return;` removed in deleteGlobalValues and the
+ *      parameter left at `[keys]` → substep 4 stayed green (ANY('{}')
+ *      hits nothing). Only with `WHERE key = ANY($1) OR $1 IS NULL` did it turn
+ *      red — so the probe really measures the table contents.
+ *   b) dropped with setzeAusloeser (30.10.2026): kicks are jobs.
+ *   c) in deleteGlobalValues only the FIRST key deleted
+ *      (`WHERE key = $1`, `[keys[0]]`) → substep 3 red.
  *
- *   d) (05.11.2026) setGlobalSetting ohne Prüfung gegen GLOBAL_RULES → rot:
+ *   d) (05.11.2026) setGlobalSetting without the check against GLOBAL_RULES → red:
  *      „ein Schlüssel ohne Regel wird nicht geschrieben“
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -39,7 +39,7 @@ test('global settings: write, trigger, delete', { concurrency: 1 }, async t => {
     }
   }
 
-  // Echte Schlüssel: Ein Schlüssel ohne Regel in GLOBAL_RULES wird nicht geschrieben.
+  // Real keys: a key without a rule in GLOBAL_RULES is not written.
   const A = 'smtp_host',
     B = 'smtp_user',
     T = 'smtp_from';
@@ -48,7 +48,7 @@ test('global settings: write, trigger, delete', { concurrency: 1 }, async t => {
   const bestand = async () => (await db.get(`SELECT COUNT(*)::int AS c FROM global_settings`)).c;
 
   try {
-    // 1. Hin und zurück — inklusive der Umwandlung in eine Zeichenkette.
+    // 1. There and back — including the conversion into a string.
     await setGlobalSetting(A, 42);
     assert.equal(await getGlobalSetting(A), '42', 'die Spalte ist TEXT; eine Zahl muss als Zeichenkette zurückkommen');
     await setGlobalSetting(A, 'zwei');
@@ -60,23 +60,23 @@ test('global settings: write, trigger, delete', { concurrency: 1 }, async t => {
       'ein Schlüssel ohne Regel wird nicht geschrieben',
     );
 
-    // 2. Laufzustand: gelöscht heisst, die Zeile ist weg.
+    // 2. Run state: deleted means the row is gone.
     await setzeZustand(T, 'x');
     assert.equal(await liesZustand(T), 'x');
     await deleteState(T);
     assert.equal(await liesZustand(T), null, 'abgearbeitet heisst: die Zeile ist weg');
     await setGlobalSetting(T, 'bleibt');
 
-    // 3. Mehrere Schlüssel in EINEM Aufruf — der Grund für `key = ANY($1)`.
+    // 3. Several keys in ONE call — the reason for `key = ANY($1)`.
     await setGlobalSetting(B, 'x');
     await deleteGlobalValues(A, B);
     assert.equal(await getGlobalSetting(A), null, 'A muss weg sein');
     assert.equal(await getGlobalSetting(B), null, 'B muss weg sein');
     assert.ok(await getGlobalSetting(T), 'T war nicht genannt und muss stehen bleiben');
 
-    // 4. Der gefährliche Fall: kein Schlüssel genannt. Die Tabelle trägt die
-    //    Registrierungssperre, die API-Grenzen und die BrickLink-Zugangsdaten —
-    //    ein versehentliches Leeren wäre nicht rückholbar.
+    // 4. The dangerous case: no key named. The table carries the
+    //    registration lock, the API limits and the BrickLink credentials —
+    //    an accidental emptying could not be undone.
     const zahl = await bestand();
     assert.ok(zahl > 0, 'für diese Probe muss die Tabelle etwas enthalten');
     await deleteGlobalValues();

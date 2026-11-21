@@ -1,21 +1,21 @@
 /**
- * PDF-Aufträge gegen echte Routen: Wem gehört ein Auftrag, und wie viele darf
- * einer gleichzeitig starten?
+ * PDF jobs against real routes: who owns a job, and how many may
+ * someone start at the same time?
  *
- * Gegenprobe zum Statusstrom (am 28.10.2026 gemessen): in schreibeAuftrag()
- * das notify() entfernt → rot: „der Statusstrom meldet das Ende sofort“
- * (erst der 15-Sekunden-Rückfall hätte es gemeldet). Seit der Status im
- * Auftrag steht (Migration 0083) am 30.10.2026 wiederholt: in erledigt()
- * (src/jobQueue/jobs.ts) reportStatus() entfernt → rot: derselbe Test.
+ * Counter-check for the status stream (measured on 28.10.2026): in schreibeAuftrag()
+ * the notify() removed → red: “the status stream reports the end immediately”
+ * (only the 15-second fallback would have reported it). Since the status stands in the
+ * job (migration 0083) repeated on 30.10.2026: in erledigt()
+ * (src/jobQueue/jobs.ts) reportStatus() removed → red: the same test.
  *
- * Gegenproben zur Teileliste (am 02.11.2026 gemessen), je rot: „die
- * Teileliste wird geprüft …“: `eingabe: PdfEingabe` aus dem Vertrag
- * gestrichen; in der Route wieder `req.body` statt PdfEingabe.parse()
- * („unbekannte Felder gehen in den Auftrag“); `.max(5000)` gestrichen
- * („zu viele Posten“ bekam 200).
+ * Counter-checks for the parts list (measured on 02.11.2026), each red: “the
+ * parts list is checked …”: `eingabe: PdfEingabe` deleted from the contract;
+ * in the route again `req.body` instead of PdfEingabe.parse()
+ * („unbekannte Felder gehen in den Auftrag“); `.max(5000)` deleted
+ * („zu viele Posten“ got 200).
  *
- * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
- * Ohne DB: skip.
+ * Prerequisite: test DB (contents are cleared!) via TEST_DATABASE_URL.
+ * Without DB: skip.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -57,9 +57,9 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
   const idA = (await db.get("SELECT id FROM users WHERE username='pdf_a'")).id;
   const idB = (await db.get("SELECT id FROM users WHERE username='pdf_b'")).id;
 
-  // Tokens liegen GEHASHT in der Tabelle (src/account/deviceToken.ts) — der Klartextpfad
-  // wurde bewusst entfernt. Der Test legt deshalb den Hash ab und schickt den
-  // Klartext, genau wie ein echter Client.
+  // Tokens lie HASHED in the table (src/account/deviceToken.ts) — the plaintext path
+  // was removed deliberately. The test therefore stores the hash and sends the
+  // plaintext, exactly like a real client.
   const { tokenDigest } = _req('src/account/deviceToken.js');
   const tokenFor = async (uid, label) => {
     const t = require('node:crypto').randomBytes(24).toString('hex');
@@ -74,13 +74,13 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
   const tokB = await tokenFor(idB, 'test-b');
 
   const app = express();
-  // Den Rumpf liest wie im Betrieb der Parser des Servers, nicht der Router.
-  app.use(express.json({ limit: '4mb' })); // wie server.ts für diese Route
+  // As in operation the body is read by the server's parser, not the router.
+  app.use(express.json({ limit: '4mb' })); // like server.ts for this route
   app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/pdf.js'));
   const srv = app.listen(0);
   const basis = `http://localhost:${srv.address().port}`;
 
-  /** Auftrag direkt anlegen — der Lauf selbst ginge ins Netz. */
+  /** Create the job directly — the run itself would go to the network. */
   async function jobPut(jobId, userId, status = 'done') {
     await db.run(
       `INSERT INTO jobs (type, user_id, dedupe_key, status, locked_by, deadline_at)
@@ -115,8 +115,8 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
       assert.equal(d.status, 404, 'fremdes PDF war herunterladbar');
       assert.doesNotMatch(await d.text(), /PDF/, 'die Antwort enthielt PDF-Inhalt');
 
-      // Wichtig: Der Fehlversuch darf den Auftrag nicht beschädigen — der
-      // Download löscht die Datei nach dem Ausliefern.
+      // Important: the failed attempt must not damage the job — the
+      // download deletes the file after delivering it.
       const s2 = await hol(`status/${jobA}`, tokA);
       assert.equal(s2.status, 200, 'der eigene Auftrag ist durch den Fremdzugriff verschwunden');
     });
@@ -125,7 +125,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
       await db.run(`DELETE FROM jobs WHERE type = 'pdf'`);
       await jobPut(jobs.newJobId(Date.now()), idA, 'running');
       await jobPut(jobs.newJobId(Date.now()), idA, 'running');
-      await jobPut(jobs.newJobId(Date.now()), idB, 'running'); // fremder Lauf zählt nicht mit
+      await jobPut(jobs.newJobId(Date.now()), idB, 'running'); // a foreign run does not count
 
       const r = await fetch(`${basis}/api/v1/sets/partslist-pdf`, {
         method: 'POST',
@@ -134,7 +134,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
       });
       assert.equal(r.status, 429, `dritter Auftrag wurde angenommen (${r.status})`);
 
-      // Der zweite Benutzer ist davon nicht betroffen.
+      // The second user is not affected by it.
       const r2 = await fetch(`${basis}/api/v1/sets/partslist-pdf`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${tokB}`, 'content-type': 'application/json' },
@@ -149,7 +149,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
         alt2 = jobs.newJobId(Date.now());
       await jobPut(alt1, idA, 'running');
       await jobPut(alt2, idA, 'running');
-      // Stürzt ein Worker mitten im Lauf ab, bleibt der Auftrag auf 'running'.
+      // If a worker crashes in the middle of the run, the job stays at 'running'.
       await db.run(`UPDATE jobs SET created_at = NOW() - INTERVAL '1 day' WHERE dedupe_key = ANY($1)`, [
         [alt1, alt2].map(jobs.pdfKey),
       ]);
@@ -175,7 +175,7 @@ test('PDF jobs belong to whoever ordered them', { concurrency: 1 }, async t => {
       const dec = new TextDecoder();
       let text = '';
       const start = Date.now();
-      // Der Worker meldet das Ende über erledigt(); der Auftrag gehört hier dem Belegenden 'test'.
+      // The worker reports the end via erledigt(); the job here belongs to the claimer 'test'.
       const zeile = await db.get(`SELECT id FROM jobs WHERE dedupe_key = $1`, [jobs.pdfKey(job)]);
       setTimeout(
         () =>

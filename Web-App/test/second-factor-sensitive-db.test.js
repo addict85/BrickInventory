@@ -1,22 +1,22 @@
 /**
- * Bei aktivem zweitem Faktor verlangen Passwortwechsel, Passkey löschen und
- * E-Mail ändern zusätzlich einen Code (confirmWithFactor in
- * src/account/http/login.ts). Ein fehlender Code wird abgewiesen, bevor
- * etwas geprüft wird; ein falscher zählt in der Bremse. Ohne zweiten Faktor …
+ * With an active second factor, password change, deleting a passkey and
+ * changing the email additionally require a code (confirmWithFactor in
+ * src/account/http/login.ts). A missing code is rejected before
+ * anything is checked; a wrong one counts in the brake. Without a second factor …
  *
- * Gegenproben (01.11.2026 gemessen, je einzeln):
- *   A  change-password wieder mit bestaetigePasswort ohne Code → rot:
- *      „Passwortwechsel ohne Code" (die Folgeteile mit, das Passwort ist neu)
- *   B  DELETE /passkeys/:id ohne Code → rot: „Passkey löschen ohne Code"
- *   C  PUT /profile (E-Mail) ohne Code → rot: „E-Mail ändern"
- *   D  in confirmWithFactor die Absage für fehlenden Code entfernt (der
- *      Code geht leer in die Prüfung) → rot: die drei „ohne Code" und
- *      „fehlender Code zählt nicht in der Bremse" (429 statt 200)
- *   E  `felder.email_verified = user.is_admin` zurück → rot: „Verwalter-
- *      Adresse gilt erst nach dem Link" (seit 04.11.2026 über new_email,
- *      Gegenproben dazu in email-neu-db)
+ * Counter-checks (measured 01.11.2026, each on its own):
+ *   A  change-password again with bestaetigePasswort without a code → red:
+ *      „Passwortwechsel ohne Code" (the following parts too, the password is new)
+ *   B  DELETE /passkeys/:id without a code → red: „Passkey löschen ohne Code"
+ *   C  PUT /profile (email) without a code → red: „E-Mail ändern"
+ *   D  in confirmWithFactor the refusal for a missing code removed (the
+ *      code goes empty into the check) → red: the three „ohne Code" and
+ *      „fehlender Code zählt nicht in der Bremse" (429 instead of 200)
+ *   E  `felder.email_verified = user.is_admin` back → red: “admin
+ *      address only applies after the link” (since 04.11.2026 via new_email,
+ *      counter-checks for it in email-new-db)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -32,7 +32,7 @@ const _req = S.buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { routerServer } = require('./helpers/server');
 
-// Keine echten Mails: vor dem Laden von routes/auth ersetzen.
+// No real mails: replace before loading routes/auth.
 require('./helpers/sources').replaceServices('mail', {
   mailEmailChanged: async () => ({ success: true }),
   mailVerification: async () => ({ success: true }),
@@ -55,7 +55,7 @@ async function konto(name, { admin = false } = {}) {
   ).id;
 }
 
-/** Zweiten Faktor einschalten; liefert die Wiederherstellungscodes. */
+/** Switch on the second factor; delivers the recovery codes. */
 async function withFactor(uid) {
   await zf.beginSetup(uid);
   const z = await db.get('SELECT secret FROM second_factor WHERE user_id = $1', [uid]);
@@ -116,7 +116,7 @@ test('sensitive account changes with second factor', { concurrency: 1 }, async t
       code: codes[0],
     });
     assert.equal(gut.status, 200, JSON.stringify(gut.body));
-    // Zurück, damit die folgenden Teile dasselbe Passwort nehmen.
+    // Back, so that the following parts take the same password.
     await db.run('UPDATE users SET password_hash = $2 WHERE id = $1', [uid, await bcrypt.hash(PASS, 4)]);
   });
 

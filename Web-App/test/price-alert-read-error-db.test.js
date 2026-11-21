@@ -1,13 +1,13 @@
 /**
- * Scheitert das Lesen der Preisalarme, kommt der Fehler an, keine leere Liste:
- * Leer hiesse „kein Alarm“, die App rückte ihre Marke vor, und setzeAlarm()
- * lieferte nach dem Schreiben nichts zurück.
+ * If reading the price alerts fails, the error arrives, not an empty list:
+ * empty would mean „no alert“, the app would advance its marker, and setzeAlarm()
+ * would return nothing after writing.
  *
- * Gegenproben (14.11.2026 gemessen), je wieder `.catch(e => { reportError(…); return []; })`:
- *   A  in alleAlarme() → rot: „alle Alarme“ (Missing expected rejection)
- *   B  in triggeredSince() → rot: „ausgelöste Alarme seit …“
- *   C  in alertsFor() → rot: „setzeAlarm …“ (undefined statt Fehler)
- *   D  in checkSet() → rot: „der Preislauf …“ (0 statt Fehler)
+ * Counter-checks (measured 14.11.2026), each again `.catch(e => { reportError(…); return []; })`:
+ *   A  in alleAlarme() → red: “all alerts” (Missing expected rejection)
+ *   B  in triggeredSince() → red: “triggered alerts since …”
+ *   C  in alertsFor() → red: “setzeAlarm …” (undefined instead of an error)
+ *   D  in checkSet() → red: “the price run …” (0 instead of an error)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

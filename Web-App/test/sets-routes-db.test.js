@@ -1,12 +1,12 @@
 /**
- * Die Set-Routen (routes/api_v1/sets.ts) gegen eine ECHTE Datenbank.
+ * The set routes (routes/api_v1/sets.ts) against a REAL database.
  *
- * ── Gegenproben (durchgeführt) ──────────────────────────────────────────────
- * Siehe die einzelnen Prüfungen — jede nennt den Eingriff, mit dem sie rot
- * wurde.
+ * ── Counter-checks (carried out) ──────────────────────────────────────────────
+ * See the individual checks — each names the intervention with which it turned
+ * red.
  *
- * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
- * Ohne DB: skip — ausser REQUIRE_DB=1, dann Fehler.
+ * Prerequisite: test DB (contents are cleared!) via TEST_DATABASE_URL.
+ * Without DB: skip — unless REQUIRE_DB=1, then an error.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -36,7 +36,7 @@ async function seed() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  // Und die MIGRATIONEN, nicht nur das Schema
+  // And the MIGRATIONS, not only the schema
   {
     const mc = await db.pool.connect();
     try {
@@ -71,7 +71,7 @@ async function asAccount(actor, pfad, opts = {}) {
   return { status: r.status, body: await r.json().catch(() => null) };
 }
 
-/** Eine Anleitungs-Zeile anlegen, wie sie der Upload erzeugt. */
+/** Create an instruction row as the upload produces it. */
 async function anleitung(uid, sn, relPath) {
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2) ON CONFLICT DO NOTHING', [uid, sn]);
   await db.run('INSERT INTO instructions (user_id,set_number,url,description,local_path) VALUES ($1,$2,$3,$4,$5)', [
@@ -105,12 +105,12 @@ test('routes/sets against a real database', async t => {
   });
 
   await t.test('a foreign account can NOT delete them', async () => {
-    // ── Gegenprobe ─────────────────────────────────────────────────────────
-    // In der Route wurde `AND user_id = $2` aus dem SELECT entfernt. Ergebnis:
-    // Diese Prüfung wird rot (204/200 statt 404, Zeile weg). Zurückgebaut.
+    // ── Counter-check ─────────────────────────────────────────────────────────
+    // `AND user_id = $2` was removed from the SELECT in the route. Result:
+    // this check turns red (204/200 instead of 404, row gone). Reverted.
     //
-    // Das ist der teuerste Ausfall im ganzen Modul: Er meldet keinen Fehler,
-    // er löscht einfach die Daten von jemand anderem.
+    // That is the most expensive failure in the whole module: it reports no error,
+    // it simply deletes somebody else's data.
     const id = await anleitung(U.anna, '10002-1', '/data/uploads/1/b_1.pdf');
     const r = await asAccount(U.bruno, `/api/v1/sets/10002-1/instructions/${id}`, { method: 'DELETE' });
     assert.equal(r.status, 404, 'Ein fremdes Konto bekam Zugriff auf die Anleitung');
@@ -121,8 +121,8 @@ test('routes/sets against a real database', async t => {
   });
 
   await t.test('the shared file stays as long as a row points to it', async () => {
-    // Nach dem Verschieben teilen sich zwei Konten EINE Datei; löscht eines seine Zeile,
-    // bleibt sie. Gegenprobe: die Zählung durch `const rest = null` ersetzt → rot.
+    // After moving two accounts share ONE file; if one deletes its row,
+    // it stays. Counter-check: the count replaced by `const rest = null` → red.
     const rel = '/data/uploads/geteilt/x.pdf';
     const abs = path.join(ROOT, rel.slice(1));
     fs.mkdirSync(path.dirname(abs), { recursive: true });
@@ -137,8 +137,8 @@ test('routes/sets against a real database', async t => {
   });
 
   await t.test('if no row points to the file anymore, it is removed', async () => {
-    // Die Gegenrichtung derselben Regel: Ohne sie sammeln sich Dateien an, die
-    // niemandem mehr gehören.
+    // The opposite direction of the same rule: without it files accumulate that
+    // no longer belong to anybody.
     const rel = '/data/uploads/allein/y.pdf';
     const abs = path.join(ROOT, rel.slice(1));
     fs.mkdirSync(path.dirname(abs), { recursive: true });

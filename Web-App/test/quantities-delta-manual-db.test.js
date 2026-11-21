@@ -1,16 +1,16 @@
 /**
- * quantity_delta auch für manuelle Teile und Figuren: Zwei Geräte, die
- * gleichzeitig „+1" schicken, ergeben +2 — mit absoluter Menge gewann die
- * zuletzt gesendete. Geprüft über die Route (Antwort trägt die Menge) und
- * über den Dienst (Gleichzeitigkeit).
+ * quantity_delta for manual parts and figures too: two devices that
+ * send „+1" at the same time result in +2 — with an absolute quantity the one
+ * sent last won. Checked via the route (the response carries the quantity) and
+ * via the service (concurrency).
  *
- * Gegenproben (31.10.2026 gemessen):
- *   A  in passeManualQuantityAn die Zielmenge aus `upfront` statt aus den in der
- *      Sperre gelesenen Erfassungen → rot: „zwei gleichzeitige +1" (3 statt 4)
- *   B  mengenwunsch() ohne den quantity_delta-Zweig → rot: alle Fälle
- *   C  Untergrenze AT_LEAST auf 0 → rot: „ein Schritt unter 1 bleibt bei 1"
+ * Counter-checks (measured 31.10.2026):
+ *   A  in passeManualQuantityAn the target quantity from `upfront` instead of from the
+ *      acquisitions read inside the lock → red: “two concurrent +1” (3 instead of 4)
+ *   B  mengenwunsch() without the quantity_delta branch → red: all cases
+ *   C  lower limit AT_LEAST set to 0 → red: “a step below 1 stays at 1”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

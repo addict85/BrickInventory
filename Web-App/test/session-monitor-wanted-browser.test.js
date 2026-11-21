@@ -1,30 +1,30 @@
 /**
- * UX-Prüfung 21 im echten Chrome, im Haushalt (patternHousehold): Sitzungsfrage ohne Antwort (M1), Abfragen der
- * Hintergrundarbeiten (M1), ResizeObserver bei 200 % Schrift (M2), Rechenbasis der Finanzen (N1), Leeren ohne
- * Zahl (N2), Neuladen nach Fehler (N3), Design sofort (N4), Benutzer anlegen (N5), Merkposten-Detail (N6, N11),
- * Bezugslinie im Diagramm (N7), Auftragsrollen (N9), gesperrte Zeitraumknöpfe ohne Verbindung (N11).
+ * UX check 21 in real Chrome, in the household (patternHousehold): session question without an answer (M1), queries of the
+ * background jobs (M1), ResizeObserver at 200 % font (M2), calculation basis of the finances (N1), clearing without
+ * a number (N2), reloading after an error (N3), theme immediately (N4), creating users (N5), wishlist item detail (N6, N11),
+ * reference line in the chart (N7), job roles (N9), locked period buttons without a connection (N11).
  *
- * Gegenproben (13.11.2026 gemessen in drei Läufen, je Prüfung höchstens eine Änderung, Bündel neu gebaut):
- *   A  checkAuth() ohne die Prüfung auf `loggedIn` → rot: „Sitzung ungeklärt“ (Anmeldemaske sichtbar)
- *   B  monitor.js plant die nächste Runde ohne ifVisible() → rot: „Hintergrundarbeiten“ (Abfrage im
- *      verborgenen Tab)
- *   C  fehlerfang.js meldet wieder jedes Ereignis ohne Fehlerobjekt → rot: „200 % Schrift“ (roter Toast)
- *   D  finanzen.js immer mit 'finance.basis.gerechnet' → rot: „Rechenbasis“
- *   T  wertkurve.js zeichnet wieder im ResizeObserver selbst nach → rot: „200 % Schrift“ (Schleife)
- *   E  einstellungen.js wieder mit `z?.prices || 0` ohne Ersatztext → rot: „Leeren ohne Zahl“ („Löscht 0 …“)
- *   F  merkliste.js wieder mit dem Selektor `.mk-zeile, .leer` → rot: „Neuladen nach Fehler“ (Merkliste)
- *   G  loadMinifigs() ohne das Gerüst → rot: ebenda (Figuren)
- *   H  #mon-app-theme ohne data-change → rot: „Design sofort“
- *   I  btn-cu bricht wieder nach dem ersten Feldfehler ab → rot: „Benutzer anlegen“ (nur eine Meldung)
- *   K  styles.css ohne `.nutzer-neu{align-items:flex-start}` → rot: ebenda (Eingabefelder versetzt)
- *   L  mobile.css ohne die volle Breite für .nutzer-neu > .fg → rot: ebenda (390 px)
- *   M  #mk-m-del wieder frei in der Fusszeile statt unter „Weitere Aktionen“ → rot: „Merkposten-Detail“
- *   N  mk-m-sub wieder mit der Nummer ohne Namen → rot: ebenda
- *   O  portfolioChartSVG() ohne Legende (belowTheImage = false) → rot: „Bezugslinie bei 320 px“
- *   R  monitor.js ohne Rolle am Auftragsnamen → rot: „Hintergrundarbeiten“
- *   S  styles.css ohne `.period-btn:disabled` → rot: „Finanzen ohne Verbindung“
- *   U  (13.11.2026) sessionUnresolved() ohne eigenen Zweig für 429 → rot: „Sitzung ungeklärt“ (Titel
- *      „Anmeldung konnte nicht geprüft werden“, Text mit Minuten und Sekunden)
+ * Counter-checks (measured 13.11.2026 in three runs, at most one change per check, bundle rebuilt):
+ *   A  checkAuth() without the check for `loggedIn` → red: „Sitzung ungeklärt“ (login form visible)
+ *   B  monitor.js schedules the next round without ifVisible() → red: „Hintergrundarbeiten“ (query in the
+ *      hidden tab)
+ *   C  fehlerfang.js again reports every event without an error object → red: „200 % Schrift“ (red toast)
+ *   D  finanzen.js always with 'finance.basis.gerechnet' → red: „Rechenbasis“
+ *   T  wertkurve.js redraws itself again in the ResizeObserver → red: „200 % Schrift“ (loop)
+ *   E  einstellungen.js again with `z?.prices || 0` without a substitute text → red: „Leeren ohne Zahl“ („Löscht 0 …“)
+ *   F  merkliste.js again with the selector `.mk-zeile, .leer` → red: „Neuladen nach Fehler“ (wishlist)
+ *   G  loadMinifigs() without the skeleton → red: same place (figures)
+ *   H  #mon-app-theme without data-change → red: „Design sofort“
+ *   I  btn-cu aborts again after the first field error → red: „Benutzer anlegen“ (only one message)
+ *   K  styles.css without `.nutzer-neu{align-items:flex-start}` → red: same place (input fields offset)
+ *   L  mobile.css without the full width for .nutzer-neu > .fg → red: same place (390 px)
+ *   M  #mk-m-del again free in the footer instead of under „Weitere Aktionen“ → red: „Merkposten-Detail“
+ *   N  mk-m-sub again with the number without a name → red: same place
+ *   O  portfolioChartSVG() without a legend (belowTheImage = false) → red: „Bezugslinie bei 320 px“
+ *   R  monitor.js without a role on the job name → red: „Hintergrundarbeiten“
+ *   S  styles.css without `.period-btn:disabled` → red: „Finanzen ohne Verbindung“
+ *   U  (13.11.2026) sessionUnresolved() without its own branch for 429 → red: „Sitzung ungeklärt“ (title
+ *      „Anmeldung konnte nicht geprüft werden“, text with minutes and seconds)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -49,7 +49,7 @@ const reiter = (b, tab) =>
   b.auswerten(`document.querySelector('.ntab[data-tab="${tab}"]').click(); scrollTo(0, 0); true`);
 
 /**
- * Anfragen, deren URL `contains` enthält, beantwortet `tun(requestId)` (CDP Fetch); zurück kommt das Ende.
+ * Requests whose URL contains `contains` are answered by `tun(requestId)` (CDP Fetch); the end comes back.
  * @param {{ contains: string, tun: (id: string) => Promise<unknown> }[]} regeln
  */
 async function intercept(b, regeln) {
@@ -146,7 +146,7 @@ async function schrift200(_t, a) {
     `window.__ro = 0; addEventListener('error', e => { if (/ResizeObserver/.test(e.message)) window.__ro++; }); true`,
   );
   const errorToasts = `[...document.querySelectorAll('#toasts .toast.error')].filter(t => /Unerwarteter Fehler/.test(t.textContent)).length`;
-  // Das Ereignis, wie Chrome es schickt: ohne Fehlerobjekt.
+  // The event as Chrome sends it: without an error object.
   await b.auswerten(
     `dispatchEvent(new ErrorEvent('error', { message: 'ResizeObserver loop completed with undelivered notifications.' })); true`,
   );
@@ -192,7 +192,7 @@ async function clearWithoutNumber(_t, a) {
   }
 }
 
-/** Erst offline in den Fehlerzustand, dann langsam am Netz: Während des neuen Versuchs steht das Gerüst da. */
+/** First offline into the error state, then slowly on the network: during the new attempt the skeleton stands there. */
 async function newAfterError(b, bis, tab, ziel, pfad) {
   await b.auswerten(CACHE_CLEAR);
   await b.tab('Network.emulateNetworkConditions', { offline: true, ...NETWORK });
@@ -274,7 +274,7 @@ async function createUser(_t, a) {
   assert.equal(s.pwError, 'Bitte ein Passwort eintragen.', 'nur eine Meldung auf einmal');
   assert.deepEqual([s.nameRule, s.pwRule], [false, false], 'Regel und Meldung zugleich');
   assert.equal(await b.auswerten('document.activeElement.id'), 'nu-n', 'Fokus beim ersten Fehler');
-  // Nur der Name falsch: neben der Meldung steht die Passwortregel, die Felder bleiben auf einer Höhe.
+  // Only the name wrong: next to the message stands the password rule, the fields stay at one height.
   await setze('nu-p', 'Ziegel-Turm-Fenster-42');
   await setze('nu-n', 'a b');
   await b.auswerten(`document.getElementById('btn-cu').click(); true`);
@@ -336,7 +336,7 @@ async function hintergrundarbeiten(_t, a) {
       .filter(r => r.textContent.includes('Wechselkurse')).map(r => r.querySelector('.mon-rolle')?.textContent || '')`);
     assert.deepEqual(zeilen.sort(), ['Wiederholung nach Fehler', 'regulärer Lauf'], 'Rollen der beiden Läufe');
     await ruhig();
-    // Verborgen: keine Abfrage, auch über die 15 s des ruhigen Takts hinaus.
+    // Hidden: no query, even beyond the 15 s of the calm beat.
     await b.auswerten(`Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
       document.dispatchEvent(new Event('visibilitychange')); true`);
     const ab = Date.now();
@@ -396,7 +396,7 @@ async function sessionUnresolved(_t, a) {
       text: ${text('#start-offline-text')}, knopf: document.getElementById('start-erneut').checkVisibility() })`);
     assert.equal(z.mask, 'none', 'Anmeldemaske trotz gültiger Sitzung');
     assert.equal(z.app, 'none');
-    // Gedrosselt: ein eigener Titel und nur eine Zeitangabe (UI-Prüfung 22, N4).
+    // Throttled: an own title and only one time statement (UI check 22, N4).
     assert.equal(z.titel, 'Zu viele Anfragen');
     assert.match(z.text, /^Der Server nimmt gerade keine weiteren Anfragen an\. Neuer Versuch in (40|39|38) s\.$/);
     assert.equal(z.knopf, true, '„Erneut versuchen“ fehlt');

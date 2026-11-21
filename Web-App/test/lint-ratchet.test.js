@@ -1,16 +1,16 @@
 /**
- * npm run lint und npm run format:pruefen: Biome über den Bestand, rot erst,
- * wenn die Zahl der Funde über die Schranke in scripts/lint-schranken.json
- * steigt. Geprüft am echten Skript, einmal mit der echten Schranke und einmal
- * mit einer, die der Bestand nicht einhält.
+ * npm run lint and npm run format:pruefen: Biome over the existing code, red only
+ * when the number of findings rises above the limit in scripts/lint-schranken.json.
+ * Checked on the real script, once with the real limit and once
+ * with one that the existing code does not keep.
  *
- * Gegenproben (05.11.2026, je einzeln):
- *   A  `if (ist > limit)` → `if (false)` → „eine zu niedrige Schranke ist rot“ rot
- *   B  nur `lint/style` gezählt statt aller Regeln → „lint: … zählt die Funde eines
- *      Probebaums“ rot (seit der Bestand 0 Funde hat, zählt ein Probebaum mit Funden;
- *      12.11.2026 wiederholt)
+ * Counter-checks (05.11.2026, each on its own):
+ *   A  `if (ist > limit)` → `if (false)` → “a limit that is too low is red” red
+ *   B  only `lint/style` counted instead of all rules → “lint: … counts the findings of a
+ *      sample tree” red (since the existing code has 0 findings, a sample tree with findings counts;
+ *      repeated 12.11.2026)
  *   C  check-test-types.js: `if (meldungen.length > limit)` → `if (false)`
- *      → „typecheck:tests …“ rot (14.11.2026 mit Schranke 0 und Probe -1 wiederholt)
+ *      → “typecheck:tests …” red (repeated 14.11.2026 with limit 0 and probe -1)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -22,8 +22,8 @@ const { spawnSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 const LIMITS = require('../scripts/lint-schranken.json');
 
-/** Ein Baum mit einem Lint-Fund (`==`) und einer unformatierten Datei: Am Bestand ohne Funde
- *  liesse sich nicht sehen, ob das Skript überhaupt zählt. */
+/** A tree with one lint finding (`==`) and one unformatted file: on the existing code without findings
+ *  one could not see whether the script counts at all. */
 function probebaum() {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'lint-baum-'));
   fs.copyFileSync(path.join(ROOT, 'biome.json'), path.join(d, 'biome.json'));
@@ -60,7 +60,7 @@ for (const art of ['lint', 'format']) {
     assert.equal(r.code, 0, r.aus);
     const ist = Number(/\] (\d+) /.exec(r.aus)?.[1]);
     assert.ok(ist >= 0 && ist <= LIMITS[art], r.aus);
-    // Spielraum für Aufräumen in parallelen Zweigen; mehr heisst: die Schranke nachziehen.
+    // Leeway for cleanups in parallel branches; more means: tighten the limit.
     assert.ok(LIMITS[art] - ist <= 50, `Schranke ${LIMITS[art]}, gezählt ${ist}: nachziehen`);
   });
 
@@ -78,8 +78,8 @@ for (const art of ['lint', 'format']) {
 }
 
 test('typecheck:tests: red above the limit, the existing code keeps it', () => {
-  // Der Bestand hat 0 Meldungen: Einmal mit der echten Schranke grün, einmal mit -1 rot,
-  // damit sichtbar ist, dass das Skript überhaupt vergleicht.
+  // The existing code has 0 messages: once green with the real limit, once red with -1,
+  // so that it is visible that the script compares at all.
   const lauf = (/** @type {number | null} */ limit) => {
     const env = { ...process.env };
     if (limit !== null) {

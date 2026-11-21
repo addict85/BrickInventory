@@ -1,11 +1,11 @@
 /**
- * Ein Fehler der API erscheint als Meldung, nicht als leerer Zustand.
+ * An API error appears as a message, not as an empty state.
  *
- * Gegenproben (14.11.2026 gemessen):
- *   A  in loadAcqModal() die Prüfung auf `success` entfernt (wie vorher: Liste `|| []`)
- *      → rot: „Kaufpreis-Dialog“ (keine Fehlermeldung, „—“ im Dialog)
- *   B  in katalogAufMerkliste() wieder `if (!d?.success) return;` → rot: „Merken aus dem Katalog“
- *   C  dort das Ergebnis des Alarms wieder verworfen → rot: „… auch der Alarm“
+ * Counter-checks (measured 14.11.2026):
+ *   A  in loadAcqModal() the check for `success` removed (as before: list `|| []`)
+ *      → red: “purchase price dialog” (no error message, “—” in the dialog)
+ *   B  in katalogAufMerkliste() again `if (!d?.success) return;` → red: “remember from the catalog”
+ *   C  there the result of the alert discarded again → red: “… the alert too”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

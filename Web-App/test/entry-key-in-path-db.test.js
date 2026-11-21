@@ -1,16 +1,16 @@
 /**
- * Ändern, Löschen und Verschieben einer Erfassung gelten nur unter dem
- * Schlüssel im Pfad: `/parts/A/1/acquisitions/{Erfassung von Teil B}` ändert
- * weder Zeile B noch verbucht es deren Menge beim Ziel.
+ * Changing, deleting and moving an entry only apply under the
+ * key in the path: `/parts/A/1/acquisitions/{entry of part B}` neither changes
+ * row B nor books its quantity at the target.
  *
- * Gegenproben (am 08.11.2026 gemessen):
- *   A  entryInWriteField() ohne die Schlüsselspalten (wie vorher für Teil und Figur)
- *      → rot: „Teil, anderer Schlüssel: ändern“, „… andere Farbe“, „… löschen“, „Figur …“
- *   B  manualEntry() ohne die Schlüsselbedingung
- *      → rot: „Verschieben unter fremdem Schlüssel: Teil“ und „Figur …“
- *   (Der Test „richtiger Schlüssel“ wird in beiden Fällen mit rot, weil die Fremdzeile vorher zerstört ist.)
+ * Counter-checks (measured on 08.11.2026):
+ *   A  entryInWriteField() without the key columns (as before for part and minifigure)
+ *      → red: “part, other key: change”, “… other color”, “… delete”, “minifigure …”
+ *   B  manualEntry() without the key condition
+ *      → red: “move under a foreign key: part” and “minifigure …”
+ *   (The test “correct key” turns red too in both cases because the foreign row is destroyed before.)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

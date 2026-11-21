@@ -1,13 +1,13 @@
 /**
- * Schriftgrössen kommen aus der Skala (--fs-0 … --fs-8 in styles.css).
+ * Font sizes come from the scale (--fs-0 … --fs-8 in styles.css).
  *
- * Freie rem-Werte (.72, .73, .75 …) sind Unterschiede, die niemand sieht, aber
- * jeder neu erfindet. Geprüft werden Stile, Markup und die Vorlagen in public/js;
- * die Designs in public/themes bringen eigene Typografie mit.
+ * Free rem values (.72, .73, .75 …) are differences that nobody sees but
+ * everybody reinvents. Checked are styles, markup and the templates in public/js;
+ * the themes in public/themes bring their own typography.
  *
- * Gegenproben (am 25.10. gemessen):
- *   A  in index.html ein `font-size:.78rem` eingesetzt → rot, mit Fundstelle
- *   B  `var(--fs-9)` (gibt es nicht) eingesetzt        → rot: „Stufe fehlt"
+ * Counter-checks (measured on 25.10.):
+ *   A  a `font-size:.78rem` inserted in index.html → red, with location
+ *   B  `var(--fs-9)` (does not exist) inserted         → red: „Stufe fehlt"
  */
 const { isAppModule } = require('../scripts/build-frontend');
 const test = require('node:test');

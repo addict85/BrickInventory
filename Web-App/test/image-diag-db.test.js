@@ -1,10 +1,10 @@
 /**
- * Bild-Diagnose: „Warum fehlt das Bild für Set X?" in EINER Antwort.
+ * Image diagnosis: “Why is the image missing for set X?" in ONE response.
  *
- * Gegenprobe (durchgeführt): den Hinweis-Block für „Vorschau fehlt" entfernt →
- * Teilschritt A wird rot.
+ * Counter-check (performed): the hint block for “preview missing" removed →
+ * substep A turns red.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -31,8 +31,8 @@ test('the image diagnostics describe every situation in plain text', { concurren
   fs.mkdirSync(ordner, { recursive: true });
 
   const USER = `diag-${process.pid}`;
-  const MIT = `9000-${process.pid}`; // Datei vorhanden
-  const OHNE = `9001-${process.pid}`; // nichts vorhanden
+  const MIT = `9000-${process.pid}`; // file present
+  const OHNE = `9001-${process.pid}`; // nothing present
   const original = path.join(ordner, `${MIT}.jpg`);
   const vorschau = path.join(ordner, `${MIT}_thumb.jpg`);
 
@@ -41,8 +41,8 @@ test('the image diagnostics describe every situation in plain text', { concurren
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
   await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[MIT, OHNE]]);
   await db.run(`DELETE FROM set_catalog WHERE set_number = ANY($1)`, [[MIT, OHNE]]);
-  // Der Bestand sagt nur „dieses Konto haelt das Set"; Name und Bildpfad
-  // stehen seit Migration 0033 im Katalog.
+  // The stock only says “this account holds the set"; name and image path
+  // have been in the catalog since migration 0033.
   await holdsSet(db, uid, MIT, 1);
   await catalogSet(db, MIT, { name: 'Mit Bild', image_local: `/images/sets/${MIT}.jpg` });
   await holdsSet(db, uid, OHNE, 1);
@@ -59,7 +59,7 @@ test('the image diagnostics describe every situation in plain text', { concurren
   };
 
   try {
-    // A) Genau Marcos Lage: Original da, Vorschau fehlt.
+    // A) Exactly Marco's situation: original present, preview missing.
     let d = await frag(MIT);
     assert.equal(d.lokal.original.vorhanden, true, 'das Original muss gefunden werden');
     assert.equal(d.lokal.vorschau.vorhanden, false);
@@ -68,14 +68,14 @@ test('the image diagnostics describe every situation in plain text', { concurren
       `die Diagnose muss die fehlende Vorschau benennen, bekam: ${d.hinweise.join(' | ')}`,
     );
 
-    // B) Nichts bekannt — weder Datei noch Adresse.
+    // B) Nothing known — neither file nor address.
     d = await frag(OHNE);
     assert.ok(
       d.hinweise.some(h => /Weder lokale Datei noch CDN-Adresse/.test(h)),
       `die Diagnose muss „nichts anzeigbar" benennen, bekam: ${d.hinweise.join(' | ')}`,
     );
 
-    // C) Nach der Erzeugung ist alles beisammen — und die Grössen stimmen.
+    // C) After generation everything is together — and the sizes are right.
     await _req('src/images/thumbs.js').vorschauErzeugenAus(`/images/sets/${MIT}.jpg`);
     d = await frag(MIT);
     assert.ok(
@@ -87,8 +87,8 @@ test('the image diagnostics describe every situation in plain text', { concurren
       'die gemeldete Vorschau muss kleiner sein als das Original',
     );
 
-    // Die Diagnose darf NICHTS reparieren — sonst verändert das Werkzeug den
-    // Zustand, den es beschreiben soll.
+    // The diagnosis must repair NOTHING — otherwise the tool changes the
+    // state it is supposed to describe.
     fs.rmSync(vorschau, { force: true });
     await frag(MIT);
     assert.equal(fs.existsSync(vorschau), false, 'die Diagnose hat die Vorschau erzeugt — sie soll nur beobachten');
@@ -103,10 +103,10 @@ test('the image diagnostics describe every situation in plain text', { concurren
 });
 
 test('the set image download reports every failure', () => {
-  // Bis eine frühere Runde gab es genau EINE Logzeile (die Grössengrenze aus 47);
-  // Statuscode, Netzwerkfehler, Zwergantwort und der umschliessende catch
-  // endeten alle in einem stummen `return null`. Genau diese Stille hat die
-  // Bild-Fehlersuche über fünf Nachträge gestreckt.
+  // Until an earlier round there was exactly ONE log line (the size limit from 47);
+  // status code, network error, dwarf response and the enclosing catch
+  // all ended in a silent `return null`. Exactly this silence stretched
+  // the image debugging over five addenda.
   const src = fs.readFileSync(path.join(ROOT, 'src/images/setImages.ts'), 'utf8');
   const start = src.indexOf('async function setBildHerunterladen');
   const fn = src

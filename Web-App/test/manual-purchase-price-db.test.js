@@ -1,5 +1,5 @@
 /**
- * Teil und Minifigur ohne Marktpreis hinterlassen DASSELBE.
+ * Part and minifigure without a market price leave behind THE SAME.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -29,13 +29,13 @@ test('without market price: display value 0, acquisition NULL — for part AND f
     const { addManualPart } = _req('src/parts/manualParts.js');
     const { addManualMinifig } = _req('src/minifigs/manualMinifigs.js');
 
-    // Namen mitgeben, damit kein Rebrickable-Nachschlag nötig ist. KEIN Preis
-    // — darum geht es.
+    // Pass names along so that no Rebrickable lookup is needed. NO price
+    // — that is what this is about.
     await addManualPart(uid, { part_number: TEIL, part_name: 'Testteil', color_id: 0, quantity: 2 });
     await addManualMinifig(uid, { fig_number: FIG, fig_name: 'Testfigur', quantity: 2 });
 
-    // Gelesen ueber die Listen, die auch die Oberflaechen benutzen — die
-    // Spalten gibt es seit Migration 0035 nicht mehr (siehe den Kopf).
+    // Read via the lists that the UIs use too — the
+    // columns no longer exist since migration 0035 (see the header).
     const { manualPartsList } = _req('src/parts/queries.js');
     const { readManualMinifigs } = _req('src/minifigs/queries.js');
     const partsList = await manualPartsList([uid], uid);
@@ -45,12 +45,12 @@ test('without market price: display value 0, acquisition NULL — for part AND f
     assert.ok(teil, 'Das Teil steht nicht in der Liste');
     assert.ok(figur, 'Die Figur steht nicht in der Liste');
 
-    // Ohne Eingabe steht in „Preis/Stk" nichts — bei beiden.
+    // Without input nothing stands in „Preis/Stk" — for both.
     assert.equal(teil.unit_price, null, 'Das Teil behauptet eine Preiseingabe');
     assert.equal(figur.unit_price, null, 'Die Figur behauptet eine Preiseingabe');
 
-    // Der eigentliche Fund: der Anzeigewert trägt 0, nicht NULL — und zwar
-    // bei beiden gleich.
+    // The actual finding: the display value carries 0, not NULL — and that
+    // equally for both.
     assert.equal(Number(teil.purchase_price), 0, `Das Teil hat ${teil.purchase_price} statt 0 im Kaufpreis`);
     assert.equal(
       Number(figur.purchase_price),
@@ -65,11 +65,11 @@ test('without market price: display value 0, acquisition NULL — for part AND f
       'Teil und Figur sind sich uneins, ob ein unbekannter Marktpreis NULL oder 0 ist',
     );
 
-    // Und die feinere Hälfte: In der ERFASSUNG steht NULL, nicht 0.
-    // Die Erfassungstabellen nennen die Spalte `unit_price`, nicht
-    // `purchase_price` — nachgesehen, nicht angenommen (\d part_acquisitions).
-    // Sie traegt den PREIS DIESER ERFASSUNG; der Anzeigewert daneben wird
-    // beim Lesen gebildet.
+    // And the finer half: the ACQUISITION holds NULL, not 0.
+    // The acquisition tables call the column `unit_price`, not
+    // `purchase_price` — looked up, not assumed (\d part_acquisitions).
+    // It carries the PRICE OF THIS ACQUISITION; the display value next to it is
+    // formed when reading.
     const teilErf = await db.get('SELECT unit_price FROM part_acquisitions WHERE user_id=$1 AND part_number=$2', [
       uid,
       TEIL,

@@ -1,17 +1,17 @@
 /**
- * Fehlt eine lokale Bilddatei, findet der Server die CDN-Adresse über den
- * Dateinamen-Stamm — mit einem Index je Bildtabelle (Migration 0067) statt
- * LIKE '%/stamm.%' über sechs Tabellen, das keinen Index nutzen konnte und an
- * drei Tabellen ohne image_local mit einem Fehler endete.
+ * If a local image file is missing, the server finds the CDN address via the
+ * file name stem — with an index per image table (migration 0067) instead of
+ * LIKE '%/stamm.%' over six tables, which could use no index and ended
+ * with an error on three tables without image_local.
  *
- * Gegenproben (am 29.10.2026 gemessen):
- *   A  in der Abfrage wieder `image_local LIKE '%/' || $1 || '.%'` statt
- *      bild_stamm(image_local) = $1 → rot: „jede Bildtabelle fragt über ihren
- *      Index“ (die Teilindizes werden nur durchlaufen, keine Index Cond)
- *   B  imageMasterFromPath lässt _thumb stehen → rot: „eine fehlende Vorschau
- *      findet die Adresse des Teilebilds“
+ * Counter-checks (measured on 29.10.2026):
+ *   A  in the query again `image_local LIKE '%/' || $1 || '.%'` instead of
+ *      bild_stamm(image_local) = $1 → red: “every image table asks via its
+ *      index” (the partial indexes are only scanned, no Index Cond)
+ *   B  imageMasterFromPath leaves _thumb → red: “a missing preview
+ *      finds the address of the part image”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -60,15 +60,15 @@ test('image address via the file name stem', { concurrency: 1 }, async t => {
         await tx.run('SET LOCAL enable_seqscan = off');
         return (await tx.all(`EXPLAIN ${CDN_QUERY.replaceAll('$1', `'${P}_4'`)}`)).map(z => z['QUERY PLAN']).join('\n');
       });
-      // set_minifigs_catalog ist seit Migration 0072 eine Sicht auf minifigs_catalog.
+      // set_minifigs_catalog has been a view on minifigs_catalog since migration 0072.
       for (const ix of [
         'idx_part_color_catalog_bild_stamm',
         'idx_minifigs_catalog_bild_stamm',
         'idx_set_catalog_bild_stamm',
       ])
         assert.ok(plan.includes(ix), `${ix} fehlt im Plan:\n${plan}`);
-      // Nicht nur durchlaufen, sondern über den Stamm gesucht: Ohne Suchschlüssel
-      // läse der Planer bei abgeschaltetem Seq Scan den Teilindex ganz.
+      // Not only scanned but searched via the stem: without a search key
+      // the planner would read the partial index fully with Seq Scan switched off.
       const gesucht = plan.match(/Index Cond: \(regexp_replace\(regexp_replace\(image_local/g) || [];
       assert.equal(gesucht.length, 3, `nicht jede Tabelle sucht über den Stamm:\n${plan}`);
     });

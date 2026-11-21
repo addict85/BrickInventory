@@ -1,12 +1,12 @@
 /**
- * Eine fremde Erfassung zu löschen gibt 404 und ändert nichts — für Teile und
- * Figuren wie für Sets. Vorher antworteten Teile und Figuren mit Erfolg, ohne
- * etwas zu tun, und der Aufrufer konnte das nicht unterscheiden.
+ * Deleting a foreign entry gives 404 and changes nothing — for parts and
+ * minifigures as for sets. Previously parts and minifigures answered with success without
+ * doing anything, and the caller could not tell the difference.
  *
- * Gegenprobe (am 28.10.2026 gemessen): in der DELETE-Route die 404-Zeile
- * entfernt → rot: beide Teilschritte (200 statt 404).
+ * Counter-check (measured on 28.10.2026): in the DELETE route the 404 line
+ * removed → red: both substeps (200 instead of 404).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

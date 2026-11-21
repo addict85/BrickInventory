@@ -1,14 +1,14 @@
 /**
- * Die Kontoschalter gehen als true/false hinaus, wie sie seit Migration 0085
- * in der Datenbank stehen: is_admin in der Kontenliste der Verwaltung,
- * email_verified im eigenen Profil (API-Fassung 2). Geprüft an den Routen,
- * damit auch der Vertrag (src/contract/) mitläuft.
+ * The account switches go out as true/false, as they are stored in the database
+ * since migration 0085: is_admin in the administration's account list,
+ * email_verified in the own profile (API version 2). Checked on the routes
+ * so that the contract (src/contract/) runs along.
  *
- * Gegenproben (31.10.2026, gemessen):
- *   a) in accountsList() wieder `is_admin: k.is_admin ? 1 : 0` → rot: „die
- *      Kontenliste der Verwaltung“ (1 statt true; der Vertrag meldet 500)
- *   b) in profil() wieder `email_verified: p.email_verified ? 1 : 0` → rot:
- *      „das eigene Profil“
+ * Counter-checks (31.10.2026, measured):
+ *   a) in accountsList() back to `is_admin: k.is_admin ? 1 : 0` → red: “the
+ *      administration's account list” (1 instead of true; the contract reports 500)
+ *   b) in profil() back to `email_verified: p.email_verified ? 1 : 0` → red:
+ *      “the own profile”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,14 +1,14 @@
 /**
- * Der Vertrag einer Route aus src/contract/, gefunden über den Pfad, wie
- * die App ihn schreibt ({setNumber}); Express nennt die Platzhalter :setNumber,
- * und die Namen dürfen abweichen ({id} gegen :acqId).
+ * The contract of a route from src/contract/, found via the path as
+ * the app writes it ({setNumber}); Express names the placeholders :setNumber,
+ * and the names may differ ({id} versus :acqId).
  */
 
 /** @param {string} p */
 const uniform = p => p.replace(/\{\w+\}|:\w+/g, '{}');
 
 /**
- * @param {(rel: string) => any} _req  buildAndRequire() der Testdatei
+ * @param {(rel: string) => any} _req  buildAndRequire() of the test file
  * @param {string} methode
  * @param {string} pfad
  * @returns {{ antwort?: import('zod').ZodType, eingabe?: import('zod').ZodType } | undefined}
@@ -23,8 +23,8 @@ function contractTo(_req, methode, pfad) {
 }
 
 /**
- * Was die Android-App vom Server braucht (shared/app-schnittstelle.json, erzeugt aus ihrem
- * Quelltext): Routen mit Abfrage und Rumpffeldern, dazu die Antwortfelder, die sie liest.
+ * What the Android app needs from the server (shared/app-schnittstelle.json, generated from its
+ * source text): routes with query and body fields, plus the response fields it reads.
  * @returns {{ routen: { methode: string, pfad: string, typ: string | null, abfrage: { name: string, pflicht: boolean }[], rumpf: string | null, rumpffelder: string[] }[], adressen: string[], antwortfelder: string[], modelle: Record<string, { felder: string[], pflicht: string[] }> }}
  */
 function appSchnittstelle() {

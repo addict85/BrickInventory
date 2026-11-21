@@ -1,13 +1,13 @@
 /**
- * Vorschauen aus der Zeit des quadratischen Zuschnitts (200 × 200 zu nicht quadratischem Original) werden
- * einmal neu eingepasst: eigene Bilder neu erzeugt, im Proxy-Cache gelöscht. Ein Merker in run_state hält
- * es bei einem Lauf; richtige Vorschauen und quadratische Bilder bleiben unberührt.
+ * Previews from the time of the square crop (200 × 200 for a non-square original) are
+ * refitted once: own images regenerated, deleted in the proxy cache. A marker in run_state keeps
+ * it at one run; correct previews and square images stay untouched.
  *
- * Gegenproben (14.11.2026 gemessen, je einzeln, dist neu gebaut), in src/images/fitPreviews.ts:
- *   A  die Abfrage des Merkers entfernt → rot: „läuft nur einmal“ (die neue alte Vorschau wird ersetzt)
- *   B  zugeschnitten() prüft das Original nicht mehr (jede 200 × 200) → rot: „ersetzt nur zugeschnittene“
- *      (die Vorschau des quadratischen Bilds wird neu geschrieben)
- *   C  der Proxy-Teil entfernt → rot: ebenda (Proxy-Vorschau bleibt)
+ * Counter-checks (measured 14.11.2026, each on its own, dist rebuilt), in src/images/fitPreviews.ts:
+ *   A  the query of the marker removed → red: “runs only once” (the new old preview is replaced)
+ *   B  zugeschnitten() no longer checks the original (every 200 × 200) → red: “replaces only cropped ones”
+ *      (the preview of the square image is rewritten)
+ *   C  the proxy part removed → red: same place (proxy preview stays)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

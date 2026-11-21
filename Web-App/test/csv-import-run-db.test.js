@@ -1,25 +1,25 @@
 /**
- * Der CSV-Import bucht kein Set doppelt: Nach einer Zeitüberschreitung wird
- * nicht erneut versucht, und ein von einem neuen Import abgelöster Lauf hört
- * auf, statt weiter in dieselbe Statuszeile zu schreiben.
+ * The CSV import books no set twice: after a timeout there is
+ * no retry, and a run superseded by a new import stops
+ * instead of continuing to write into the same status line.
  *
- * Der Import läuft als Auftrag (src/sets/csvImportLauf.ts); der Test startet den
- * Worker dafür selbst, beschränkt auf die Art csv_import.
+ * The import runs as a job (src/sets/csvImportLauf.ts); the test starts the
+ * worker for it itself, restricted to the kind csv_import.
  *
- * Gegenproben (am 28.10.2026 gemessen, am 29.10. nach dem Umzug in den
- * Auftrag wiederholt — beide wieder rot):
- *   A  `isTimeout` wieder in die Wiederholungsbedingung → rot: „nach einer
- *      Zeitüberschreitung kein zweiter Versuch“ (2 Aufrufe)
- *   B  jobUpdate in der Schleife ohne `lauf` (alle drei Aufrufe in
- *      runCsvImportFrom) → rot: „ein abgelöster Lauf hört auf“ (der alte
- *      Lauf buchte alle fünf Sets weiter)
+ * Counter-checks (measured on 28.10.2026, repeated on 29.10. after the move into the
+ * job — both red again):
+ *   A  `isTimeout` back into the retry condition → red: “after a
+ *      timeout no second attempt” (2 calls)
+ *   B  jobUpdate in the loop without `lauf` (all three calls in
+ *      runCsvImportFrom) → red: “a superseded run stops” (the old
+ *      run kept booking all five sets)
  *
- * Das Erfassen läuft echt; gestellt sind Rebrickable (testSources) und der Bildabruf.
- *   A, B am 13.11.2026 mit echtem Erfassen wiederholt: beide wieder rot.
- *   B' (14.11.2026) seit das Erfassen kein Netz fragt, hält der Test die Sperre je
- *      Setnummer statt des Netzes; B wiederholt → rot (die Datei endet nicht in ihrer Frist).
+ * Adding runs for real; Rebrickable (testSources) and the image fetch are provided.
+ *   A, B repeated on 13.11.2026 with real adding: both red again.
+ *   B' (14.11.2026) since adding asks no network, the test holds the lock per
+ *      set number instead of the network; B repeated → red (the file does not end within its deadline).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -36,7 +36,7 @@ const { warte, bis } = require('./helpers/time');
 
 test('CSV import: no double booking', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req))) return;
-  // Erfassen fragt kein Netz; langsam macht eine Zeile die gehaltene Sperre je Setnummer.
+  // Adding asks no network; the held lock per set number makes a line slow.
   testSources(t, {
     holeSet: async () => {
       throw new Error('Netz beim Erfassen');
@@ -46,7 +46,7 @@ test('CSV import: no double booking', { concurrency: 1 }, async t => {
   const { LOCKS } = _req('src/infra/lockNamespaces.js');
   /** @type {() => void} */
   let loslassen = () => {};
-  /** Hält die Sperre von setErfassen() für `sn`, bis loslassen(); liefert das Ende der Transaktion. */
+  /** Holds the lock of setErfassen() for `sn` until loslassen(); returns the end of the transaction. */
   const hold = async (/** @type {string} */ sn) => {
     /** @type {Promise<unknown>} */
     let ende = Promise.resolve();

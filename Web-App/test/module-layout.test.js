@@ -1,5 +1,5 @@
 /**
- * Wo Module liegen — und dass ein API-Name kein Pfad ist.
+ * Where modules lie — and that an API name is not a path.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,10 +9,10 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const { ohneKommentare } = require('./helpers/sources');
 
-/** Alle Serverquellen (ohne Tests, node_modules, dist). */
+/** All server sources (without tests, node_modules, dist). */
 /**
- * Die zu prüfenden Quellordner — AUS DEM BAUSKRIPT gelesen, nicht hier
- * abgeschrieben.
+ * The source folders to check — read FROM THE BUILD SCRIPT, not copied
+ * here.
  */
 function srcDirs() {
   const build = fs.readFileSync(path.join(ROOT, 'scripts', 'build-ts.js'), 'utf8');
@@ -43,8 +43,8 @@ function quellen() {
 }
 
 test('the API quotas are named after the API, not after a path', () => {
-  // Die Schlüssel stehen in rate_limits/global_settings. Ein Pfad darin
-  // bedeutet: eine zweite, leere Zählung neben der echten.
+  // The keys stand in rate_limits/global_settings. A path in them
+  // means: a second, empty count next to the real one.
   const treffer = [];
   for (const datei of quellen()) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
@@ -75,9 +75,9 @@ test('the API quotas are named after the API, not after a path', () => {
 });
 
 test('no module is fetched under a bare name', () => {
-  // Die Gegenrichtung: Beim Zurückdrehen des obigen Fehlers habe ich drei
-  // echte require('../clients/rebrickable') auf require('rebrickable')
-  // verkürzt. Node sucht dann in node_modules — 500er zur Laufzeit.
+  // The opposite direction: when reverting the error above I shortened three
+  // real require('../clients/rebrickable') to require('rebrickable').
+  // Node then searches in node_modules — 500s at runtime.
   const eigene = new Set([
     'rebrickable',
     'brickset',
@@ -108,8 +108,8 @@ test('no module is fetched under a bare name', () => {
 });
 
 test('clients/ contains no routes and is built anyway', () => {
-  // Der Ordner existiert, WEIL diese beiden Dateien keine Router sind. Kommt
-  // dort je eine Route hinein, gehört die Datei zurück nach routes/.
+  // The folder exists BECAUSE these two files are not routers. If a route
+  // gets into either of them, the file belongs back in routes/.
   for (const f of fs.readdirSync(path.join(ROOT, 'clients'))) {
     if (!f.endsWith('.ts')) continue;
     const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'clients', f), 'utf8'));
@@ -120,9 +120,9 @@ test('clients/ contains no routes and is built anyway', () => {
     );
   }
 
-  // Und das Bauskript muss den Ordner kennen. Fehlt er dort, entsteht kein
-  // dist/clients/ und JEDER Import darauf läuft beim Start ins Leere — genau
-  // daran wäre der Umzug fast gescheitert.
+  // And the build script must know the folder. If it is missing there, no
+  // dist/clients/ arises and EVERY import of it runs into nothing at the start — exactly
+  // on that the move almost failed.
   const build = fs.readFileSync(path.join(ROOT, 'scripts', 'build-ts.js'), 'utf8');
   const zeile = build.match(/const SRC_DIRS = \[([^\]]*)\]/);
   assert.ok(zeile, 'SRC_DIRS nicht gefunden');
@@ -130,7 +130,7 @@ test('clients/ contains no routes and is built anyway', () => {
 });
 
 test('no cycles via real import statements', () => {
-  // Warum das eine eigene Prüfung verdient
+  // Why this deserves its own check
   const graph = new Map();
   const dateien = quellen();
   const kennt = new Set(dateien.map(d => path.resolve(d)));
@@ -146,7 +146,7 @@ test('no cycles via real import statements', () => {
   for (const datei of dateien) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));
     const ziele = new Set();
-    // `import type` verschwindet beim Übersetzen und lädt zur Laufzeit nichts.
+    // `import type` disappears when compiling and loads nothing at runtime.
     for (const m of src.matchAll(/^import (?!type\b)[^;]*from\s*'(\.[^']+)'/gm)) {
       const z = aufloesen(datei, m[1]);
       if (z && z !== path.resolve(datei)) ziele.add(z);
@@ -187,12 +187,12 @@ test('no cycles via real import statements', () => {
   );
 });
 
-// Gegenproben (11.11.2026 gemessen, je einzeln): im Dockerfile `COPY . .` durch
-// die frühere Liste ohne startup/ ersetzt → rot „Das Bau-Stage kopiert den
-// Kontext nicht ganz …“; `startup` in .dockerignore ergänzt → rot „startup wird
-// von .dockerignore ausgeschlossen“; `*.ts` dort → rot „server.ts wird …“.
+// Counter-checks (measured 11.11.2026, each on its own): in the Dockerfile `COPY . .` replaced by
+// the earlier list without startup/ → red „Das Bau-Stage kopiert den
+// Kontext nicht ganz …“; `startup` added in .dockerignore → red „startup wird
+// von .dockerignore ausgeschlossen“; `*.ts` there → red „server.ts wird …“.
 test('every source folder also arrives in the container', () => {
-  // Eine Liste: SRC_DIRS. Das Dockerfile kopiert den ganzen Kontext, .dockerignore darf keinen Quellordner treffen.
+  // One list: SRC_DIRS. The Dockerfile copies the whole context, .dockerignore must not hit any source folder.
   const dockerfile = fs
     .readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8')
     .split('\n')
@@ -217,13 +217,13 @@ test('every source folder also arrives in the container', () => {
     assert.deepEqual(treffer, [], `${ziel} wird von .dockerignore ausgeschlossen — im Container fehlt es`);
   }
 
-  // Alle Ordner mit .ts-Dateien auf oberster Ebene müssen in SRC_DIRS stehen.
+  // All folders with .ts files on the top level must stand in SRC_DIRS.
   for (const e of fs.readdirSync(ROOT, { withFileTypes: true })) {
     if (!e.isDirectory()) continue;
     if (['node_modules', 'dist', 'data', 'test', 'public', 'scripts', '.git', 'pgdata'].includes(e.name)) continue;
-    // Nur Dateien, aus denen ein Laufzeitmodul entsteht. Reine
-    // Typdeklarationen (.d.ts, z.B. types/augmentations.d.ts) erzeugen kein
-    // .js und brauchen deshalb kein SRC_DIRS.
+    // Only files from which a runtime module arises. Pure
+    // type declarations (.d.ts, e.g. types/augmentations.d.ts) produce no
+    // .js and therefore need no SRC_DIRS.
     const hatTs = fs.readdirSync(path.join(ROOT, e.name)).some(f => f.endsWith('.ts') && !f.endsWith('.d.ts'));
     if (!hatTs) continue;
     assert.ok(
@@ -235,10 +235,10 @@ test('every source folder also arrives in the container', () => {
 });
 
 test('the base schema is looked for where it lies at runtime', () => {
-  // Mein erster Versuch nahm APP_ROOT. Im Container gibt es die Quellen nicht —
-  // das Laufzeit-Image enthält nur dist/. Die .sql-Dateien landen dort, weil
-  // scripts/build-ts.js sie ausdrücklich mitkopiert (ASSET_EXT); gesucht werden
-  // müssen sie deshalb neben dem übersetzten Modul, also über __dirname.
+  // My first attempt took APP_ROOT. In the container the sources do not exist —
+  // the runtime image only contains dist/. The .sql files end up there because
+  // scripts/build-ts.js explicitly copies them along (ASSET_EXT); they must therefore
+  // be looked for next to the compiled module, i.e. via __dirname.
   const dbSrc = ohneKommentare(fs.readFileSync(path.join(ROOT, 'db/schemaStart.ts'), 'utf8'));
   const laden = dbSrc.slice(
     dbSrc.indexOf('async function initSchema'),
@@ -262,7 +262,7 @@ test('the base schema is looked for where it lies at runtime', () => {
 });
 
 test('every late require() points to a file that exists', () => {
-  // Ein echter Laufzeitfehler beim Umzug
+  // A real runtime error during the move
   const treffer = [];
   for (const datei of quellen()) {
     const src = ohneKommentare(fs.readFileSync(datei, 'utf8'));

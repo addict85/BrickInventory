@@ -1,5 +1,5 @@
 /**
- * Der Teile-Preis-Cache hat EINEN Schlüsselraum.
+ * The parts price cache has ONE key space.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -17,7 +17,7 @@ const { holdsPart } = require('./helpers/inventory');
 
 test('part prices are under ONE number', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
-  // part_price_history steht nur in db/migrations/0003.
+  // part_price_history only stands in db/migrations/0003.
   const migClient = await db.pool.connect();
   try {
     await _req('db/migrate.js').runMigrations(migClient);
@@ -27,18 +27,18 @@ test('part prices are under ONE number', { concurrency: 1 }, async t => {
 
   const p = String(process.pid).slice(-5);
   const NUTZER = `pks_${p}`;
-  const RB = `pt${p}`; // so steht das Teil in der Sammlung
-  const BL = `pt${p}bl`; // so kennt BrickLink es
-  const FARBE = 0; // 0 wird nicht übersetzt (resolveBlColorId)
-  const RB2 = `qt${p}`; // zweites Teil: GAR KEINE Zuordnung
+  const RB = `pt${p}`; // this is how the part stands in the collection
+  const BL = `pt${p}bl`; // this is how BrickLink knows it
+  const FARBE = 0; // 0 is not translated (resolveBlColorId)
+  const RB2 = `qt${p}`; // second part: NO mapping AT ALL
   const CURRENCY = 'CHF';
 
   await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
-  // Kontowährung wie die abgefragte: Eine andere würde umgerechnet (Migration 0077).
+  // Account currency like the queried one: another one would be converted (migration 0077).
   await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency',$2)`, [uid, CURRENCY]);
-  // Die Zuordnung steht seit Migration 0037 in bl_mapping (type, rb_id, bl_id).
+  // Since migration 0037 the mapping stands in bl_mapping (type, rb_id, bl_id).
   await db.run(
     `INSERT INTO bl_mapping (type, rb_id, bl_id) VALUES ('part',$1,$2)
                 ON CONFLICT (type, rb_id) DO UPDATE SET bl_id = EXCLUDED.bl_id`,
@@ -46,7 +46,7 @@ test('part prices are under ONE number', { concurrency: 1 }, async t => {
   );
 
   try {
-    // ── 1. Cache-Treffer über die BrickLink-Nummer ─────────────────────────
+    // ── 1. Cache hit via the BrickLink number ─────────────────────────
     await db.run(
       `INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price,qty_avg_price,fetched_at)
        VALUES ($1,$2,'N',$3,12.00,12.00,NOW())
@@ -66,15 +66,15 @@ test('part prices are under ONE number', { concurrency: 1 }, async t => {
     );
     assert.equal(preis?.from_cache, true, 'Der Wert kam nicht aus dem Cache');
 
-    // ── 2. Der Verlauf findet BEIDE Nummern ───────────────────────────────
-    // Erfassung unter der Nummer des Benutzers — so hat er das Teil erfasst.
+    // ── 2. The history finds BOTH numbers ───────────────────────────────
+    // Acquisition under the user's number — that is how he captured the part.
     await db.run(
       `INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition)
        VALUES ($1,$2,$3,1,5.00,'N')`,
       [uid, RB, FARBE],
     );
-    // Ein ALTER Verlaufspunkt unter der Rebrickable-Nummer — so hat ihn die
-    // Teileansicht bis jetzt geschrieben.
+    // An OLD history point under the Rebrickable number — that is how the
+    // parts view wrote it until now.
     await db.run(
       `INSERT INTO part_price_history (part_number,color_id,condition,currency_code,avg_price,qty_avg_price)
        VALUES ($1,$2,'N',$3,11.00,11.00)`,
@@ -101,7 +101,7 @@ test('part prices are under ONE number', { concurrency: 1 }, async t => {
       'Der Kaufpreis steht unter der Nummer des Benutzers und muss weiter gefunden werden',
     );
 
-    // 3. OHNE Zuordnung gilt die Rebrickable-Nummer
+    // 3. WITHOUT a mapping the Rebrickable number applies
     await holdsPart(db, uid, RB2, { menge: 1, colorId: FARBE });
     await db.run(
       `INSERT INTO part_price_cache (part_number,color_id,condition,currency_code,avg_price,qty_avg_price,fetched_at)

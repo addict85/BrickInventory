@@ -1,23 +1,23 @@
 /**
- * Die Kotlin-Typen der App (core-contract, Paket vertrag) sind aus docs/openapi.json
- * erzeugt und eingecheckt — Antworten und Rümpfe, ein Satz, keine Handtypen daneben.
- * Weicht die Datei vom Vertrag ab, ist dieser Test rot, bis `npm run vertrag:kotlin`
- * sie neu schreibt.
+ * The app's Kotlin types (core-contract, package vertrag) are generated from docs/openapi.json
+ * and checked in — responses and bodies, one set, no hand-written types beside them.
+ * If the file deviates from the contract, this test is red until `npm run vertrag:kotlin`
+ * rewrites it.
  *
- * Gegenproben (14.11.2026 gemessen):
- *   A  in Vertrag.kt bei CatalogMetaResponse das Feld year_min gestrichen → rot:
- *      „die eingecheckten Kotlin-Typen sind aus openapi.json erzeugt“
- *   B  im Erzeuger leerwert() ohne Zweig für Listen (immer `null`) → rot: „Listen,
- *      Verweise …“, „ein Fachtyp ersetzt …“ und A
- *   C  im Erzeuger anyOf mit null nicht mehr nullbar → rot: „ein Feld mit null-Zweig …“
- *   D  in rumpffeld() die Zeile für Z.NULL_SEND gestrichen → rot: „ein freiwilliges
- *      Rumpffeld geht nur gesetzt hinaus …“
- *   E  in vereine() Pflicht aus der ersten Form übernommen statt aus allen → rot:
- *      „gleichnamige Formen werden eine …“
- *   F  in withSlotType() den Fachtyp nicht eingesetzt (String bleibt) → rot: „ein Fachtyp
- *      ersetzt den Text …“
- *   G  (15.11.2026) in klasse() `|| withoutEmptyValue(t)` gestrichen → rot: „ein Pflichtfeld,
- *      dessen Form keinen Leerwert hat …“ und „die eingecheckten Kotlin-Typen …“
+ * Counter-checks (measured 14.11.2026):
+ *   A  in Vertrag.kt the field year_min deleted from CatalogMetaResponse → red:
+ *      “the checked-in Kotlin types are generated from openapi.json”
+ *   B  in the generator leerwert() without a branch for lists (always `null`) → red: “lists,
+ *      references …”, “a domain type replaces …” and A
+ *   C  in the generator anyOf with null no longer nullable → red: “a field with a null branch …”
+ *   D  in rumpffeld() the line for Z.NULL_SEND deleted → red: “an optional
+ *      body field only goes out when set …”
+ *   E  in vereine() required taken from the first form instead of from all → red:
+ *      “forms of the same name become one …”
+ *   F  in withSlotType() the domain type not inserted (String stays) → red: “a domain type
+ *      replaces the text …”
+ *   G  (15.11.2026) in klasse() `|| withoutEmptyValue(t)` deleted → red: “a required field
+ *      whose shape has no empty value …” and “the checked-in Kotlin types …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,7 +37,7 @@ test('the checked-in Kotlin types are generated from openapi.json', () => {
   assert.equal(r.status, 0, r.stderr);
 });
 
-/** Eine leere Zuordnung, nach Bedarf überschrieben. @param {Record<string, any>} [mehr] */
+/** An empty mapping, overridden as needed. @param {Record<string, any>} [mehr] */
 const zuordnung = (mehr = {}) => ({
   OMIT: new Set(),
   STRICT: new Set(),
@@ -54,7 +54,7 @@ const zuordnung = (mehr = {}) => ({
   ...mehr,
 });
 
-/** Die Kotlin-Datei aus einem Mini-Vertrag. @param {Record<string, any>} schemas @param {Record<string, any>} [z] @param {any} [paths] */
+/** The Kotlin file from a mini contract. @param {Record<string, any>} schemas @param {Record<string, any>} [z] @param {any} [paths] */
 const aus = (schemas, z, paths = {}) => create({ components: { schemas }, paths }, /** @type {any} */ (zuordnung(z)));
 
 test('every response field has a default: empty value, null only with a null branch', () => {

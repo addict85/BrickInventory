@@ -1,8 +1,8 @@
 /**
- * Gutscheine (LEGO-Geschenkkarten) — gegen eine echte Datenbank.
+ * Vouchers (LEGO gift cards) — against a real database.
  *
- * Gegenprobe (11.11.2026 gemessen): in GET /vouchers/:id/pdf den Kopf
- *   Content-Security-Policy gestrichen → rot: „das PDF kommt wieder heraus …“
+ * Counter-check (measured 11.11.2026): in GET /vouchers/:id/pdf the header
+ *   Content-Security-Policy deleted → red: “the PDF comes out again …”
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -22,17 +22,17 @@ const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 const session = require(path.join(ROOT, 'node_modules', 'express-session'));
 const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(session);
-const PDFDocument = require('pdfkit'); // kein Verzeichnispfad: pdfkit 0.20 hat nur `exports`
+const PDFDocument = require('pdfkit'); // no directory path: pdfkit 0.20 only has `exports`
 
 /**
- * Wo die Gutschein-PDFs liegen.
+ * Where the voucher PDFs lie.
  */
 const VOUCHER_DIR = path.join(ROOT, 'data', 'vouchers');
 
 const U = {};
 const PASS = 'Gutschein-Passwort-1';
 
-/** Ein Gutschein-PDF mit erfundenen Werten — nie ein echtes, das Repo ist oeffentlich. */
+/** A voucher PDF with invented values — never a real one, the repo is public. */
 function pdfWith(zeilen) {
   return new Promise(fertig => {
     const doc = new PDFDocument({ compress: true });
@@ -62,8 +62,8 @@ async function seed() {
     ]);
     U[name] = (await db.get('SELECT id FROM users WHERE username=$1', [name])).id;
   }
-  // chef ist Administrator, opa ist Haupt-, enkel Unterkonto. Beides zusammen
-  // stellt genau die zwei Durchgriffe her, die es hier NICHT geben darf.
+  // chef is an administrator, opa is a main account, enkel a sub-account. Both together
+  // establish exactly the two reach-throughs that must NOT exist here.
   await db.run('UPDATE users SET is_admin = true WHERE id = $1', [U.chef]);
   await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [
     U.grandparent,
@@ -88,7 +88,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
   }
   await seed();
 
-  // Ein Server wie der echte: derselbe Router, dieselbe Middleware.
+  // A server like the real one: the same router, the same middleware.
   const app = express();
   app.use(express.json());
   app.use(
@@ -99,7 +99,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       saveUninitialized: false,
     }),
   );
-  // Anmelden ohne Passwortweg: Der Test prueft Gutscheine, nicht die Anmeldung.
+  // Log in without the password path: the test checks vouchers, not the login.
   app.get('/einloggen/:id/:admin', (req, res) => {
     req.session.userId = Number(req.params.id);
     req.session.isAdmin = req.params.admin === '1';
@@ -111,11 +111,11 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
 
   const asUser = async (id, admin = false) => {
     const r = await fetch(`${basis}/einloggen/${id}/${admin ? 1 : 0}`);
-    // Erst den Rumpf ganz lesen: express-session hält das letzte Byte zurück,
-    // bis die Sitzung gespeichert ist; fetch() kehrt schon mit den Kopfzeilen zurück.
+    // Read the body completely first: express-session holds back the last byte
+    // until the session is stored; fetch() already returns with the headers.
     const rumpf = await r.text();
     const keks = (r.headers.get('set-cookie') || '').split(';')[0];
-    // Trägt die Sitzung nicht, wären alle folgenden Fälle nur 401 — dann hier die Ursache nennen.
+    // If the session does not carry, all following cases would only be 401 — then name the cause here.
     const probe = await fetch(`${basis}/api/v1/vouchers`, { headers: { cookie: keks } });
     if (!r.ok || !keks || probe.status !== 200)
       assert.fail(
@@ -156,7 +156,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.equal(b.voucher.hat_pdf, false);
       grandparentsVoucher = b.voucher.id;
 
-      // Und wirklich exakt — NUMERIC, nicht Gleitkomma.
+      // And really exact — NUMERIC, not floating point.
       const zeile = await db.get('SELECT amount::text AS a FROM vouchers WHERE id=$1', [grandparentsVoucher]);
       assert.equal(Number(zeile.a), 400, 'der Betrag steht exakt in der Datenbank');
     });
@@ -187,20 +187,20 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
     });
 
     await t.test('a missing amount does NOT create a voucher over zero', async () => {
-      // Die Umkehrung zur Regel oben. Number(undefined) ist NaN, Number('') ist
-      // 0 — ohne die untere Grenze haette ein leeres Formularfeld einen
-      // Gutschein ueber nichts angelegt, und zwar ohne jede Fehlermeldung.
+      // The reverse of the rule above. Number(undefined) is NaN, Number('') is
+      // 0 — without the lower bound an empty form field would have created a
+      // voucher over nothing, and without any error message.
       const vorher = (await db.get('SELECT COUNT(*)::int AS n FROM vouchers')).n;
       await jsonAn('/api/v1/vouchers', cookieGrandparent, 'POST', { number: '9999999999999', amount: '' });
       const nachher = (await db.get('SELECT COUNT(*)::int AS n FROM vouchers')).n;
       assert.equal(nachher, vorher, 'es darf keine Zeile dazugekommen sein');
     });
 
-    // ── Die Abgrenzung: NUR der Eigentuemer ─────────────────────────────────
+    // ── The demarcation: ONLY the owner ─────────────────────────────────
     await t.test('the household does NOT see the voucher', async () => {
-      // opa ist Hauptkonto von enkel. Bei Sets, Teilen und der Merkliste saehe
-      // opa alles von enkel — hier ist es umgekehrt UND gesperrt: Weder sieht
-      // enkel opas Gutschein, noch opa einen von enkel.
+      // opa is the main account of enkel. For sets, parts and the wishlist opa
+      // would see everything of enkel — here it is the other way round AND locked: neither does
+      // enkel see opa's voucher, nor opa one of enkel's.
       const r = await hole('/api/v1/vouchers', cookieGrandchild);
       const b = await r.json();
       assert.deepEqual(b.vouchers, [], 'die Liste eines anderen Kontos muss leer sein');
@@ -221,7 +221,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
             : await jsonAn(pfad, keks, methode, methode === 'PUT' ? { amount: 1 } : { password: PASS });
         assert.equal(r.status, 404, `${wer} durfte ${methode} ${pfad} nicht`);
       }
-      // Und die Zeile steht noch.
+      // And the row still stands.
       const n = (await db.get('SELECT COUNT(*)::int AS n FROM vouchers WHERE id=$1', [grandparentsVoucher])).n;
       assert.equal(n, 1, 'der Gutschein muss die Versuche ueberlebt haben');
     });
@@ -231,7 +231,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.equal(r.status, 401);
     });
 
-    // ── Der PDF-Weg ─────────────────────────────────────────────────────────
+    // ── The PDF path ─────────────────────────────────────────────────────────
     await t.test('from the PDF: values are read and the voucher is created', async () => {
       const pdf = await pdfWith(['Ihre LEGO-Geschenkkarte im Wert von 250 CHF:', '5045076374450019999', 'PIN: 4711']);
       const form = new FormData();
@@ -245,7 +245,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.equal(b.voucher.hat_pdf, true, 'der Gutschein muss sein PDF behalten');
       assert.equal(b.gelesen.number, '5045076374450019999', 'was gelesen wurde, kommt mit zurueck');
 
-      // Die Datei liegt unter data/vouchers/<uid>/ und NICHT unter uploads/.
+      // The file lies under data/vouchers/<uid>/ and NOT under uploads/.
       const zeile = await db.get('SELECT pdf_path FROM vouchers WHERE id=$1', [b.voucher.id]);
       assert.equal(zeile.pdf_path, `${U.grandparent}/${b.voucher.id}.pdf`);
       const datei = path.join(VOUCHER_DIR, zeile.pdf_path);
@@ -291,12 +291,12 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       );
     });
 
-    // Gegenproben (03.11.2026 gemessen, je einzeln): in GET /vouchers/:id/pdf die
-    // Ticketprüfung entfernt → rot „ohne Ticket kein PDF“; in redeemTicket() das
-    // Löschen weggelassen → rot „ein Ticket gilt einmal“; den Vergleich des Ziels
-    // gestrichen → rot „… nur für sein PDF“; confirmWithFactor() in der Freigabe
-    // entfernt → rot „Freigabe nur mit Passwort“; protokolliere() entfernt → rot
-    // „die Freigabe steht im Protokoll“; Frist auf -1 s → rot „… 60 Sekunden“.
+    // Counter-checks (measured 03.11.2026, each on its own): in GET /vouchers/:id/pdf the
+    // ticket check removed → red „ohne Ticket kein PDF“; in redeemTicket() the
+    // deletion left out → red „ein Ticket gilt einmal“; the comparison of the target
+    // deleted → red „… nur für sein PDF“; confirmWithFactor() removed in the release
+    // → red „Freigabe nur mit Passwort“; protokolliere() removed → red
+    // „die Freigabe steht im Protokoll“; period set to -1 s → red „… 60 Sekunden“.
     await t.test('the PDF only with a one-time ticket from a confirmed approval', async () => {
       const liste = await (await hole('/api/v1/vouchers', cookieGrandparent)).json();
       const withPdf = liste.vouchers.find(v => v.hat_pdf);
@@ -387,11 +387,11 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
     });
 
     await t.test('missing values may be completed by hand — the same route', async () => {
-      // Marcos Vorgabe nennt beide Wege gleichrangig. Hier treffen sie sich:
-      // Die Datei kommt mit, der Betrag von Hand, und beides zusammen ergibt
-      // einen Gutschein. Ohne das muesste der Nutzer bei einem unleserlichen
-      // PDF auf das Hochladen verzichten — und haette den Gutschein nie
-      // wieder zur Hand.
+      // Marco's specification names both paths as equal. Here they meet:
+      // the file comes along, the amount by hand, and both together make
+      // a voucher. Without that the user would, with an illegible
+      // PDF have to do without the upload — and would never have the voucher
+      // at hand again.
       const pdf = await pdfWith(['Geschenkkarte', '5045076374450017777']);
       const form = new FormData();
       form.append('file', new Blob([pdf], { type: 'application/pdf' }), 'g.pdf');
@@ -410,14 +410,14 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       const form = new FormData();
       form.append('file', new Blob([Buffer.from('kein PDF')], { type: 'text/plain' }), 'x.txt');
       const r = await hole('/api/v1/vouchers/pdf', cookieGrandparent, { method: 'POST', body: form });
-      // Ganz lesen: Bis die Sitzung gespeichert ist, hält der Server das Ende der
-      // Antwort und damit den Upload-Platz des Kontos; der nächste Fall bekäme 429.
+      // Read completely: until the session is stored, the server holds the end of the
+      // response and thus the account's upload slot; the next case would get 429.
       await r.arrayBuffer();
       assert.notEqual(r.status, 200, 'eine Textdatei darf nicht als Gutschein durchgehen');
     });
 
-    // Gegenprobe (am 28.10.2026 gemessen): die Absage bei `!istPdf` in
-    // routes/api_v1/vouchers.ts entfernt → rot (200, Datei abgelegt).
+    // Counter-check (measured on 28.10.2026): the refusal at `!istPdf` removed in
+    // routes/api_v1/vouchers.ts → red (200, file stored).
     await t.test('reported as PDF but not one: rejected even with typed-in values', async () => {
       const form = new FormData();
       form.append(
@@ -441,7 +441,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       );
     });
 
-    // ── Aendern ─────────────────────────────────────────────────────────────
+    // ── Changing ─────────────────────────────────────────────────────────────
     await t.test('changing leaves alone what does not come along', async () => {
       const r = await jsonAn(`/api/v1/vouchers/${grandparentsVoucher}`, cookieGrandparent, 'PUT', { amount: 350 });
       const b = await r.json();
@@ -453,8 +453,8 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.deepEqual([k.number, k.pin], ['5045076374450011166', '5225'], 'Nummer und PIN dürfen nicht verschwinden');
     });
 
-    // Gegenprobe (03.11.2026 gemessen): in PUT die Maske nicht erkannt → rot
-    // „die Maske aus dem Formular ändert nichts“ (400 nummer_ungueltig).
+    // Counter-check (measured 03.11.2026): the mask not recognized in PUT → red
+    // “the mask from the form changes nothing” (400 nummer_ungueltig).
     await t.test('the mask from the form changes nothing', async () => {
       const r = await jsonAn(`/api/v1/vouchers/${grandparentsVoucher}`, cookieGrandparent, 'PUT', {
         number: '…1166',
@@ -468,10 +468,10 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.deepEqual([k.number, k.pin], ['5045076374450011166', '5225']);
     });
 
-    // Gegenproben (03.11.2026 gemessen, je einzeln): forOuter() wieder mit
-    // z.number/z.pin → rot „die Liste zeigt nur das Ende“; confirmWithFactor()
-    // in /klartext entfernt → rot „Klartext nur mit Passwort“; protokolliere()
-    // entfernt → rot „… steht im Protokoll“.
+    // Counter-checks (measured 03.11.2026, each on its own): forOuter() again with
+    // z.number/z.pin → red „die Liste zeigt nur das Ende“; confirmWithFactor()
+    // removed in /klartext → red „Klartext nur mit Passwort“; protokolliere()
+    // removed → red „… steht im Protokoll“.
     await t.test('the list shows only the end, plain text only with password, and it is in the log', async () => {
       const liste = (await (await hole('/api/v1/vouchers', cookieGrandparent)).json()).vouchers;
       const withPin = liste.find(v => v.id === grandparentsVoucher);
@@ -514,12 +514,12 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.equal(r.status, 409);
     });
 
-    // ── Der Android-Weg: derselbe Dienst ────────────────────────────────────
+    // ── The Android path: the same service ────────────────────────────────────
     await t.test('with a bearer token the app reaches the SAME route', async () => {
-      // Marcos Vorgabe „beide Apps sollen die gleichen Services verwenden"
-      // ist genau hier belegt: kein zweiter Router, kein zweiter Pfad — nur
-      // ein anderer Ausweis an derselben Tuer.
-      // Die Tabelle haelt den SHA-256-Hex des Tokens, nicht den Klartext — …
+      // Marco's specification „beide Apps sollen die gleichen Services verwenden"
+      // is proven exactly here: no second router, no second path — only
+      // a different credential at the same door.
+      // The table holds the SHA-256 hex of the token, not the plain text — …
       const alsHash = t => crypto.createHash('sha256').update(t).digest('hex');
       await db.run(`INSERT INTO api_tokens (user_id, token, expires_at) VALUES ($1,$2, NOW() + INTERVAL '1 day')`, [
         U.grandparent,
@@ -532,7 +532,7 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.equal(r.status, 200, JSON.stringify(b));
       assert.ok(b.vouchers.length >= 2, 'die App sieht dieselben Gutscheine wie die Webapp');
 
-      // Und die Abgrenzung gilt auch hier: ein Token des Enkels sieht nichts.
+      // And the demarcation applies here too: a token of the grandchild sees nothing.
       await db.run(`INSERT INTO api_tokens (user_id, token, expires_at) VALUES ($1,$2, NOW() + INTERVAL '1 day')`, [
         U.enkel,
         alsHash('test-token-enkel'),
@@ -543,9 +543,9 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
       assert.deepEqual((await r2.json()).vouchers, []);
     });
 
-    // ── Loeschen ────────────────────────────────────────────────────────────
-    // Gegenprobe (03.11.2026 gemessen): confirmWithFactor() in DELETE
-    // /vouchers/:id entfernt → rot „löschen ohne Passwort" (200 statt 400).
+    // ── Deleting ────────────────────────────────────────────────────────────
+    // Counter-check (measured 03.11.2026): confirmWithFactor() removed in DELETE
+    // /vouchers/:id → red „löschen ohne Passwort" (200 instead of 400).
     await t.test('deleting takes row AND file along', async () => {
       const liste = await (await hole('/api/v1/vouchers', cookieGrandparent)).json();
       const withPdf = liste.vouchers.find(v => v.hat_pdf);
@@ -567,11 +567,11 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
     });
 
     await t.test('the note column no longer exists', async () => {
-      // Marcos Vorgabe: „Das Feld ‚Notiz' bitte vollständig inkl. Spalten auf
-      // der Datenbank entfernen." Eine Spalte, die niemand mehr schreibt,
-      // waere nicht „entfernt", sondern nur unbenutzt — und taucht im
-      // Schema-Abgleich, im Sicherungs-Export und in jedem SELECT * wieder
-      // auf. Geprueft wird deshalb das Schema selbst (Migration 0027).
+      // Marco's specification: „Das Feld ‚Notiz' bitte vollständig inkl. Spalten auf
+      // der Datenbank entfernen." A column that nobody writes any more
+      // would not be „removed" but only unused — and shows up again in the
+      // schema comparison, in the backup export and in every SELECT *.
+      // Hence the schema itself is checked (migration 0027).
       const spalte = await db.get(
         `SELECT column_name FROM information_schema.columns
           WHERE table_schema='public' AND table_name='vouchers' AND column_name='note'`,
@@ -580,8 +580,8 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
     });
 
     await t.test('with the account its vouchers disappear too', async () => {
-      // ON DELETE CASCADE. Ohne das blieben Nummer und PIN eines geloeschten
-      // Kontos in der Datenbank stehen — Zahlen, die weiter einloesbar sind.
+      // ON DELETE CASCADE. Without that number and PIN of a deleted
+      // account would stay in the database — numbers that can still be redeemed.
       await require('./helpers/sources')
         .testArea('vouchers')
         .vouchers.createVoucher(U.enkel, { number: '5045076374450013333', pin: null, amount: 60, currency: null });
@@ -597,20 +597,20 @@ test('vouchers against a real database', { concurrency: 1 }, async t => {
 });
 
 /**
- * Die Oberflaeche der Webapp — Marcos Nachbesserungen vom 06.10.
+ * The UI of the web app — Marco's touch-ups of 06.10.
  *
- * Textpruefungen, und das ist hier angemessen: Was geprueft wird, sind
- * Entscheidungen ueber die DARSTELLUNG, und die stehen nirgendwo sonst. Was
- * der Server tut, pruefen die Zusicherungen darueber gegen eine echte
- * Datenbank.
+ * Text checks, and that is appropriate here: what is checked are
+ * decisions about the PRESENTATION, and they stand nowhere else. What
+ * the server does is checked by the assertions above against a real
+ * database.
  */
 const testUi = require('node:test');
 testUi('Gutscheine in der Webapp: Marcos Nachbesserungen', async t => {
   const fsO = require('node:fs');
-  // Die Pfade unten stehen AUSGESCHRIEBEN und nicht hinter einem Helfer mit
-  // Variable: Ein `path.join(ROOT, rel)` nimmt test/eigenbruecken.test.js die
-  // Sicht darauf, ob ein Test eine Datei liest, die es gar nicht gibt — und
-  // genau dieser Waechter ist hier prompt rot geworden. …
+  // The paths below stand WRITTEN OUT and not behind a helper with a
+  // variable: a `path.join(ROOT, rel)` takes away from test/eigenbruecken.test.js the
+  // view of whether a test reads a file that does not exist at all — and
+  // exactly this guard promptly turned red here. …
   const { ohneKommentare } = require('./helpers/sources');
   const js = ohneKommentare(fsO.readFileSync(path.join(ROOT, 'public', 'js', 'vouchers.js'), 'utf8'));
   const html = fsO.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
@@ -631,8 +631,8 @@ testUi('Gutscheine in der Webapp: Marcos Nachbesserungen', async t => {
     const treffer = js.match(/data-click="gutscheinKopieren"/g) || [];
     assert.equal(treffer.length, 2, `erwartet 2 Kopieren-Knoepfe, gefunden ${treffer.length}`);
     assert.match(js, /COPY_ICON_SVG/, 'der Knopf traegt kein Symbol');
-    // Kopiert wird die ROHE Nummer: Die Vierergruppen sind eine Lesehilfe,
-    // ein Bezahlfeld nimmt sie nicht an.
+    // The RAW number is copied: the groups of four are a reading aid,
+    // a payment field does not accept them.
     const kopierBody = js.slice(js.indexOf('function gutscheinKopieren'));
     assert.match(
       kopierBody.slice(0, 400),
@@ -656,8 +656,8 @@ testUi('Gutscheine in der Webapp: Marcos Nachbesserungen', async t => {
   });
 
   await t.test('the file field is a styled button as with the instructions', () => {
-    // Das native Feld schnitt seinen Text ab und sah anders aus als jede
-    // andere Dateiwahl; jetzt dieselbe Form (label.btn mit .datei-versteckt).
+    // The native field cut off its text and looked different from every
+    // other file choice; now the same form (label.btn with .datei-versteckt).
     assert.match(
       html,
       /<label class="btn bs zeiger">[\s\S]*?<input type="file" id="v-pdf"[^>]*class="datei-versteckt"/,

@@ -1,12 +1,12 @@
 /**
- * Set-Detail in jsdom: Ohne Verbindung öffnet der Dialog mit dem, was die Sammlung geladen hat, und
- * sagt es. Die Angaben stehen als Paare in einem <dl>, und im Haushalt ist jede Menge ein <output>
- * mit dem Namen des Kontos.
+ * Set detail in jsdom: without a connection the dialog opens with what the collection has loaded and
+ * says so. The details stand as pairs in a <dl>, and in the household every quantity is an <output>
+ * with the name of the account.
  *
- * Gegenproben (16.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in openModal() den Rückgriff auf galerieSets gestrichen → rot: „offline“ (Dialog geht zu)
- *   B  in setDetailHtml() PAAR an Jahr/Thema/Teile gestrichen → rot: „Paare“ (dt/dd ≠ Zeilen)
- *   C  .menge-zahl wieder als <span> → rot: „Haushalt“ (kein output)
+ * Counter-checks (measured 16.11.2026, each on its own, bundle rebuilt):
+ *   A  the fallback to galerieSets deleted in openModal() → red: “offline” (dialog closes)
+ *   B  PAAR deleted at year/theme/parts in setDetailHtml() → red: “pairs” (dt/dd ≠ rows)
+ *   C  .menge-zahl again as <span> → red: “household” (no output)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

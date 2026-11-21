@@ -1,5 +1,5 @@
 /**
- * Fünf Verdrahtungen, die bisher nur als Textmuster zugesichert waren.
+ * Five wirings that were previously only asserted as text patterns.
  */
 const test = require('node:test');
 const { environment, testData } = require('./helpers/sources');
@@ -56,8 +56,8 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
   }
   await setup();
 
-  // Ohne Sitzung und ohne Token sieht die App genau das, was sie bei einer Anfrage
-  // ohne gültige Anmeldung sieht. Darum geht es im ersten Fall.
+  // Without a session and without a token the app sees exactly what it sees for a
+  // request without a valid sign-in. The first case is about that.
   const ohne = testServer(_req, { sitzung: {}, t });
   const mit = testServer(_req, { sitzung: { userId: MAIN }, t });
 
@@ -81,10 +81,10 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
         'Adresse, die ihm jemand unterschiebt — auch solche im eigenen Netz.',
     );
 
-    // Die Gegenrichtung: Ein ERLAUBTER Host darf nicht am Filter scheitern.
-    // Geholt wird hier nichts (kein Netz im Test) — geprüft wird nur, dass die
-    // Antwort eine ANDERE ist als 403. Ohne diesen Fall wäre die Regel auch
-    // erfüllt, wenn der Proxy alles abwiese.
+    // The opposite direction: an ALLOWED host must not fail at the filter.
+    // Nothing is fetched here (no network in the test) — it is only checked that the
+    // response is something OTHER than 403. Without this case the rule would also be
+    // satisfied if the proxy rejected everything.
     const erlaubt = encodeURIComponent('https://cdn.rebrickable.com/media/sets/75192-1.jpg');
     const r2 = await fetch(`${mit.base}/api/v1/img-proxy?url=${erlaubt}`);
     assert.notEqual(
@@ -96,9 +96,9 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
   });
 
   await t.test('3. a too short password is rejected', async () => {
-    // passwordToShort() liegt in src/account/loginCheck.ts und gilt für Registrierung,
-    // Anlegen durch den Admin und das Ändern. Zugesichert war bisher, dass
-    // die Routen die Funktion NENNEN.
+    // passwordToShort() lives in src/account/loginCheck.ts and applies to registration,
+    // creation by the admin and changing. Asserted so far was only that
+    // the routes NAME the function.
     await db.run(`INSERT INTO global_settings (key,value) VALUES ('registration_enabled','1')
                   ON CONFLICT (key) DO UPDATE SET value='1'`);
     await enterMailServer(db);
@@ -115,9 +115,9 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
     });
     const b = await r.json().catch(() => ({}));
     assert.equal(r.status, 400, `Erwartet 400, bekam ${r.status}: ${JSON.stringify(b)}`);
-    // Die Antwort traegt den uebersetzten SATZ, nicht den Schluessel — die
-    // Fehlersprache liegt zentral (src/infra/errorTexts.ts). Geprueft wird
-    // deshalb der Satz; er nennt die Zahl, auf die es ankommt.
+    // The response carries the translated SENTENCE, not the key — the
+    // error language is central (src/infra/errorTexts.ts). So the sentence
+    // is checked; it names the number that matters.
     assert.match(
       String(b.error || ''),
       /mindestens 12 Zeichen/,
@@ -130,8 +130,8 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
       'Das Konto wurde trotz Ablehnung angelegt',
     );
 
-    // Gegenrichtung: zwölf Zeichen gehen durch. Ohne sie wäre die Regel auch
-    // erfüllt, wenn JEDE Registrierung scheiterte.
+    // Opposite direction: twelve characters pass. Without it the rule would also be
+    // satisfied if EVERY registration failed.
     const r2 = await fetch(`${mit.base}/api/v1/auth/register`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -141,10 +141,10 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
   });
 
   await t.test('4. a date on which a purchase already exists is rejected', async () => {
-    // purchaseAtSameTag() sitzt im ÄNDERN-Weg: Wer das Datum einer
-    // Erfassung auf einen Tag schiebt, an dem für dieselbe Position schon
-    // eine steht, bekommt 409. Ohne die Prüfung liefe es in den eindeutigen
-    // Index (seit 0047 idx_set_acq_tag_merkmale) und käme als 500 zurück. …
+    // purchaseAtSameTag() sits in the CHANGE path: whoever moves the date of an
+    // acquisition to a day on which the same position already has
+    // one gets 409. Without the check it would run into the unique
+    // index (since 0047 idx_set_acq_tag_merkmale) and come back as 500. …
     const heute = new Date().toISOString().slice(0, 10);
     const gestern = new Date(Date.now() - 864e5).toISOString().slice(0, 10);
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
@@ -161,7 +161,7 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
     );
     assert.equal(zeilen.length, 2, 'Vorbedingung: zwei Erfassungen an zwei Tagen');
 
-    // Die ÄLTERE auf den Tag der jüngeren schieben.
+    // Move the OLDER one to the day of the younger one.
     const r = await fetch(`${mit.base}/api/v1/sets/${SN}/acquisitions/${zeilen[0].id}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -181,8 +181,8 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
       'Trotz Ablehnung hat sich die Zahl der Erfassungen geändert',
     );
 
-    // Gegenrichtung: ein FREIER Tag geht durch. Ohne sie wäre die Regel auch
-    // erfüllt, wenn jede Datumsänderung abgelehnt würde.
+    // Opposite direction: a FREE day passes. Without it the rule would also be
+    // satisfied if every date change were rejected.
     const dayBeforeYesterday = new Date(Date.now() - 2 * 864e5).toISOString().slice(0, 10);
     const r2 = await fetch(`${mit.base}/api/v1/sets/${SN}/acquisitions/${zeilen[0].id}`, {
       method: 'PUT',
@@ -204,9 +204,9 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
     });
     const b = await r.json().catch(() => ({}));
     assert.equal(r.status, 400, `Erwartet 400, bekam ${r.status}: ${JSON.stringify(b)}`);
-    // Wie bei der Passwortlänge: Die Antwort traegt den uebersetzten Satz,
-    // nicht den Schluessel. `acquisition_ids` steht woertlich darin — genau
-    // das Feld, das fehlt.
+    // As with the password length: the response carries the translated sentence,
+    // not the key. `acquisition_ids` is literally in it — exactly
+    // the field that is missing.
     assert.match(
       String(b.error || ''),
       /acquisition_ids/,
@@ -214,7 +214,7 @@ test('the five wirings via their real addresses', { concurrency: 1 }, async t =>
         'Erfassungen sind drei Käufe, die im Haushalt verschiedenen Kindern gehören ' +
         'können — wer alles verschieben will, wählt alle Zeilen.',
     );
-    // Und nichts ist gewandert.
+    // And nothing has moved.
     assert.equal(
       (await db.get(`SELECT COUNT(*)::int c FROM sets WHERE user_id=$1 AND set_number=$2`, [KIND, SN])).c,
       0,

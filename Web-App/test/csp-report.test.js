@@ -1,20 +1,20 @@
 /**
- * CSP-Berichte (report-uri und report-to) kommen ins Protokoll: gekürzt, ohne
- * Anfrageteil der Adressen, je Adresse höchstens zehn je Minute. Die Antwort
- * ist immer 204 ohne Inhalt; ein überlanger Rumpf wird nicht gelesen.
+ * CSP reports (report-uri and report-to) go into the log: shortened, without
+ * the query part of the addresses, at most ten per minute per address. The response
+ * is always 204 without content; an overlong body is not read.
  *
- * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in cspMessageFree() immer true → rot: „eine Adresse meldet höchstens zehn je Minute“
- *   B  kurz() ohne das Abschneiden von ?/# → rot: „report-uri: Regel, Ziel und Seite …“
- *   C  verstoesse() ohne den Zweig für report-to → rot: „report-to …“
- *   D  die frühere gemeinsame Quote (`&& ++insgesamt <= 60`) zurück → rot:
- *      „viele Absender …“ (60 statt 70 Zeilen)
- *   E  in cspMessageFree() die Sammelzeile gestrichen → rot: „was gedrosselt …“
- *   F  adresse() durch das frühere ohneAnfrageteil() ersetzt (Freitext bis
- *      160 Zeichen) → rot: „nur Direktiven und Adressen …“
- *   G  bildansicht() immer false → rot: „die Bildansicht des Browsers …“
- *   H  in cspMessageFree() das frühere split(':').slice(0, 4) statt
- *      drosselAdresse() → rot: „verkürzte IPv6-Adressen …“ (20 statt 10 frei)
+ * Counter-checks (measured 09.11.2026, each alone):
+ *   A  in cspMessageFree() always true → red: “an address reports at most ten per minute”
+ *   B  kurz() without cutting off ?/# → red: “report-uri: rule, target and page …”
+ *   C  verstoesse() without the branch for report-to → red: “report-to …”
+ *   D  the former shared quota (`&& ++insgesamt <= 60`) back → red:
+ *      “many senders …” (60 instead of 70 lines)
+ *   E  in cspMessageFree() the summary line deleted → red: “what was throttled …”
+ *   F  adresse() replaced by the former ohneAnfrageteil() (free text up to
+ *      160 characters) → red: “only directives and addresses …”
+ *   G  bildansicht() always false → red: “the browser's image view …”
+ *   H  in cspMessageFree() the former split(':').slice(0, 4) instead of
+ *      drosselAdresse() → red: “shortened IPv6 addresses …” (20 instead of 10 free)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -116,11 +116,11 @@ test('CSP reports', async t => {
   await t.test('what was throttled stands as one summary line in the log', () => {
     const { cspMessageFree } = _req('src/http/cspReport.js');
     const morgen = Date.now() + 86_400_000;
-    // Ein neues Fenster, frei von den Meldungen der Teiltests davor.
+    // A new window, free of the reports of the subtests before.
     cspMessageFree('10.1.1.2', morgen);
     log.length = 0;
     const frei = Array.from({ length: 12 }, () => cspMessageFree('2001:db8:1:2::7', morgen));
-    // Dasselbe /64 zählt als ein Absender.
+    // The same /64 counts as one sender.
     frei.push(cspMessageFree('2001:db8:1:2::8', morgen));
     assert.equal(frei.filter(Boolean).length, 10);
     assert.equal(cspMessageFree('10.1.1.1', morgen + 60_000), true);
@@ -136,7 +136,7 @@ test('CSP reports', async t => {
       ...Array.from({ length: 10 }, () => cspMessageFree('2001:db8::2', tag)),
     ];
     assert.equal(frei.filter(Boolean).length, 10);
-    // Ein anderes /64 hat seine eigene Quote.
+    // Another /64 has its own quota.
     assert.equal(cspMessageFree('2001:db8:0:1::1', tag), true);
     cspMessageFree('10.1.1.3', tag + 60_000);
     log.length = 0;

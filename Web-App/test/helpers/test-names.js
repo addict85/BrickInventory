@@ -1,25 +1,25 @@
 'use strict';
 /**
- * Namen für Datenbanken und Rollen, die ein Test selbst anlegt. Alle beginnen
- * mit `<Basis-DB>_vorlage_`: So sind sie auf einem geteilten Server als Reste
- * dieser Suite erkennbar, und scripts/test-run.js räumt sie beim nächsten
- * Lauf ab, auch wenn ein Test vor seinem t.after abgebrochen ist.
- * Gegenprobe (04.11.2026): Rest-DB …_schema_basis_999999 angelegt, in
- * schema-basis-db cleanRemainder() gestrichen → die DB blieb; mit dem Aufruf weg.
+ * Names for databases and roles a test creates itself. All begin
+ * with `<base DB>_vorlage_`: so on a shared server they are recognizable as leftovers
+ * of this suite, and scripts/test-run.js clears them on the next
+ * run, even if a test aborted before its t.after.
+ * Counter-check (04.11.2026): leftover DB …_schema_basis_999999 created, in
+ * schema-basis-db cleanRemainder() deleted → the DB stayed; with the call gone.
  */
 const STANDARD = 'postgres://tester:test@localhost/cattest';
 
-/** Die Basis-Datenbank (nicht die Kopie, die test-run.js je Datei anlegt). */
+/** The base database (not the copy test-run.js creates per file). */
 function basisUrl() {
   return new URL(process.env.TEST_DB_BASIS || process.env.TEST_DATABASE_URL || STANDARD);
 }
 
-/** `<basis>_vorlage` — derselbe Stamm wie die Vorlage in scripts/test-run.js. */
+/** `<basis>_vorlage` — the same stem as the template in scripts/test-run.js. */
 function stamm() {
   return `${decodeURIComponent(basisUrl().pathname.slice(1))}_vorlage`.toLowerCase();
 }
 
-/** Name für eine Datenbank oder Rolle dieses Prozesses: `<stamm>_<art>_<pid>`. */
+/** Name for a database or role of this process: `<stamm>_<art>_<pid>`. */
 function testName(art) {
   return `${stamm()}_${art}_${process.pid}`;
 }
@@ -35,8 +35,8 @@ const lebt = pid => {
 };
 
 /**
- * Reste früherer Läufe derselben Art löschen, deren Prozess nicht mehr lebt:
- * erst Datenbanken, dann Rollen (eine Rolle mit Objekten lässt sich nicht löschen).
+ * Delete leftovers of earlier runs of the same kind whose process no longer lives:
+ * first databases, then roles (a role with objects cannot be deleted).
  */
 async function cleanRemainder(admin, art) {
   const muster = `${stamm()}_${art}_%`.replace(/_/g, '\\_');

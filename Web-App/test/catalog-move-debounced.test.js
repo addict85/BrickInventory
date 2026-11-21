@@ -1,5 +1,5 @@
 /**
- * Ein Zug ueber die Jahres-Leiste holt EINE Seite, nicht hundert.
+ * A drag across the year bar fetches ONE page, not a hundred.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -10,7 +10,7 @@ const { warte } = require('./helpers/time');
 
 const JS = path.join(__dirname, '..', 'public', 'js');
 
-/** import/export entfernen — die Datei wird hier als klassisches Skript ausgewertet. */
+/** Remove import/export — the file is evaluated here as a classic script. */
 function withoutModuleShell(src) {
   return (
     'function registerActions(){}\n' +
@@ -19,15 +19,15 @@ function withoutModuleShell(src) {
   );
 }
 
-const BLOCK_HEIGHT = 900; // Pixel je Seitenblock
+const BLOCK_HEIGHT = 900; // pixels per page block
 const SEITEN = 50;
 const SETS = SEITEN * 60;
-const STEPS = 40; // Beruehrungspunkte eines Zuges
-const STEP_MS = 15; // Abstand zwischen zwei Punkten — schneller als die Ruhe
+const STEPS = 40; // touch points of a drag
+const STEP_MS = 15; // distance between two points — faster than the rest period
 
 /**
- * Einen Zug ueber die ganze Leiste fahren und die Seitenabrufe zaehlen.
- * @param {boolean} debounced false = Gegenprobe, die Ruhe wird herausgenommen
+ * Drag across the whole bar and count the page fetches.
+ * @param {boolean} debounced false = counter-check, the rest period is taken out
  */
 async function measureMove(debounced) {
   let code =
@@ -109,9 +109,9 @@ async function measureMove(debounced) {
     window.thumbUrl = s => s; window.fullUrl = s => s; window.detailRow = () => '';
   `);
 
-  // Echte Blocklagen statt der Nullen, die jsdom ohne Layout liefert. Sonst
-  // gilt JEDER Block als sichtbar, _loadVisiblePages() laedt einmal alles
-  // und der Zug misst nichts mehr.
+  // Real block positions instead of the zeros jsdom delivers without layout. Otherwise
+  // EVERY block counts as visible, _loadVisiblePages() loads everything once
+  // and the drag measures nothing anymore.
   let rollY = 0;
   Object.defineProperty(w, 'scrollY', { get: () => rollY, configurable: true });
   Object.defineProperty(w, 'innerHeight', { get: () => 800, configurable: true });
@@ -140,7 +140,7 @@ async function measureMove(debounced) {
     w.dispatchEvent(new w.Event('scroll'));
     await warte(STEP_MS);
   }
-  await warte(400); // Ruhe nach dem Loslassen — jetzt darf geladen werden
+  await warte(400); // rest after release — now loading may happen
 
   const inMove = fetches.slice(beforeTheMove);
   const zustand = {
@@ -156,19 +156,19 @@ test('catalog: a drag across the bar loads the target, not the way there', async
   const mit = await measureMove(true);
   const ohne = await measureMove(false);
 
-  // Der Pruefstand muss ueberhaupt etwas tun: Beim Aufbau wird die erste Seite
-  // geholt. Bliebe das aus, waere „wenige Abrufe" bedeutungslos.
+  // The test bench must do something at all: on setup the first page is
+  // fetched. If that did not happen, “few fetches" would be meaningless.
   assert.ok(mit.setup >= 1, `Der Aufbau holte keine Seite (${mit.setup}) — der Pruefstand laeuft leer`);
 
-  // Die Gegenprobe belegt, dass der Zug ueberhaupt ueber viele Seiten fuehrt.
-  // Ohne sie koennte die Leiste auch nur ein paar Bloecke ueberstreichen.
+  // The counter-check proves that the drag leads across many pages at all.
+  // Without it the bar might only sweep across a few blocks.
   assert.ok(
     ohne.seiten.length >= 25,
     `Ohne die Ruhe wurden nur ${ohne.seiten.length} Seiten geholt. Dann fuehrt ` +
       `der Zug gar nicht ueber den ganzen Katalog und diese Messung sagt nichts aus.`,
   );
 
-  // Und die eigentliche Zusicherung: MIT der Ruhe bleibt es bei einer Handvoll.
+  // And the actual assurance: WITH the rest period it stays at a handful.
   assert.ok(
     mit.anzahl <= 10,
     `Ein Zug ueber die Leiste loeste ${mit.anzahl} Seitenabrufe aus (Seiten ` +
@@ -176,8 +176,8 @@ test('catalog: a drag across the bar loads the target, not the way there', async
       `Geladen wird offenbar wieder unterwegs — genau Marcos „dauert einige Sekunden".`,
   );
 
-  // Der Abstand ist die haltbarste Aussage: Beide Laeufe stehen im selben
-  // Prozess unter denselben Bedingungen, eine Verzoegerung trifft beide.
+  // The gap is the most robust statement: both runs are in the same
+  // process under the same conditions, a delay hits both.
   assert.ok(
     ohne.anzahl >= mit.anzahl * 5,
     `Mit Ruhe ${mit.anzahl} Abrufe, ohne ${ohne.anzahl} — die Ruhe macht keinen ` +
@@ -185,8 +185,8 @@ test('catalog: a drag across the bar loads the target, not the way there', async
       `Gegenprobe trifft die falsche Stelle.`,
   );
 
-  // Das Ziel muss auch wirklich ankommen: Weniger laden ist nur dann richtig,
-  // wenn das Ende des Zuges danach dasteht.
+  // The target must really arrive: loading less is only right
+  // if the end of the drag is shown afterwards.
   const letzte = SEITEN;
   assert.ok(
     mit.seiten.includes(letzte),

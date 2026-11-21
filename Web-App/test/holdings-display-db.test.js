@@ -1,11 +1,11 @@
 /**
- * Diagramm und Besitzer-Label folgen dem TATSÄCHLICHEN Bestand.
+ * Chart and owner label follow the ACTUAL stock.
  *
- * Gegenproben (durchgeführt): Diagramm wieder fest auf beide Reihen → erster
- * Teilschritt rot (Reihen N,U statt U). FILTER entfernt → Besitzer-Teilschritt
- * rot (zwei Namen statt einem).
+ * Counter-checks (performed): chart fixed to both series again → first
+ * substep red (series N,U instead of U). FILTER removed → owner substep
+ * red (two names instead of one).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -41,8 +41,8 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
   ]);
   await aufraeumen();
 
-  // Der Preis-Job schreibt BEIDE Zustände, unabhängig davon, was jemand
-  // besitzt — genau daher kam die überzählige Reihe.
+  // The price job writes BOTH conditions regardless of what anyone
+  // owns — exactly that is where the surplus series came from.
   for (const [cond, preis] of [
     ['N', 7.99],
     ['U', 3.94],
@@ -60,10 +60,10 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
       );
   }
 
-  // Hauptkonto: Kaufpreis gelöscht → Menge 0, keine Erfassung mehr.
-  await holdsSet(db, mainId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
-  // Unterkonto: ein GEBRAUCHTES Exemplar mit Kaufpreis.
-  await holdsSet(db, subId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+  // Main account: purchase price deleted → quantity 0, no entry anymore.
+  await holdsSet(db, mainId, SN, 0); // Quantity 0: the entry behind it carries it
+  // Sub-account: a USED copy with purchase price.
+  await holdsSet(db, subId, SN, 0); // Quantity 0: the entry behind it carries it
   await db.run(
     `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,3.94,'U',1)`,
@@ -86,10 +86,10 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
     });
 
     await t.test('low, current and high come from the same series', async () => {
-      // Die App liest diese drei Zahlen aus den Diagrammwerten. Mit einer
-      // überzähligen Reihe standen dort die Neupreise (3.94 / 7.99 / 7.99),
-      // während die Zeile darüber CHF 3.94 auswies — zwei Antworten auf
-      // dieselbe Frage, untereinander.
+      // The app reads these three numbers from the chart values. With a
+      // surplus series the new prices stood there (3.94 / 7.99 / 7.99),
+      // while the row above showed CHF 3.94 — two answers to
+      // the same question, one below the other.
       const ph = await priceHistorySet([mainId, subId], SN, 'CHF');
       const werte = ph.chart.values.flatMap(v => v.values.map(p => p.y)).filter(y => y > 0);
       assert.ok(werte.length, 'keine Diagrammwerte');
@@ -98,9 +98,9 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
     });
 
     await t.test('without any acquisition the history stays visible anyway', async () => {
-      // Gegenrichtung: Ein Set ohne erfassten Kaufpreis hat trotzdem einen
-      // Marktwert. Würde die Regel stur auf `by_condition` abstellen, wäre das
-      // Diagramm hier leer — schlimmer als eine Reihe zu viel.
+      // Opposite direction: a set without an entered purchase price still has a
+      // market value. If the rule relied stubbornly on `by_condition`, the
+      // chart would be empty here — worse than one series too many.
       await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
       const ph = await priceHistorySet([mainId, subId], SN, 'CHF');
       assert.deepEqual(Object.keys(ph.by_condition), []);
@@ -131,9 +131,9 @@ test('chart and owners follow the inventory', { concurrency: 1 }, async t => {
     });
 
     await t.test('if someone holds a copy again, the label comes back', async () => {
-      // Ohne diese Gegenrichtung wäre der Test auch grün, wenn das Label ganz
-      // verschwände.
-      // „Wieder ein Exemplar halten" heisst: eine Erfassung anlegen.
+      // Without this opposite direction the test would also be green if the label
+      // disappeared entirely.
+      // “Hold a copy again" means: create an entry.
       await record(db, mainId, SN, 2);
       const r = await setsLesen([mainId, subId], {});
       const namen = (r.sets.find(s => s.set_number === SN).owners || []).map(o => o.username).sort();

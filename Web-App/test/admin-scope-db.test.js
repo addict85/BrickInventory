@@ -1,20 +1,20 @@
 /**
- * Auch der Verwalter erfährt über seine Werkzeuge nicht, welches Konto
- * welches Set führt: Bild-Diagnose und Auftragsliste antworten ohne
- * `user_id`. Die Testdaten tragen beides (Set eines fremden Kontos, Auftrag
- * mit Konto und Setnummer), damit das Feld vorkäme. Antworten laufen gegen
- * den Vertrag (VERTRAG_PRUEFEN=1 aus buildAndRequire).
+ * Not even the administrator learns via their tools which account
+ * holds which set: image diagnosis and job list respond without
+ * `user_id`. The test data carries both (set of a foreign account, job
+ * with account and set number) so that the field would occur. Responses run against
+ * the contract (VERTRAG_PRUEFEN=1 from buildAndRequire).
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  in jobList() wieder `user_id` mitgelesen → rot: „die
- *      Auftragsliste …“ (die Antwort trägt user_id)
- *   B  accountImageRows() liest zusätzlich `MAX(s.user_id) AS user_id` →
- *      rot: „die Bild-Diagnose …“
- *   C  im Vertrag `user_id` wieder in Auftrag → rot: „kein Antwortschema
- *      nennt user_id“ und „die Auftragsliste …“ (die Antwort weicht vom
- *      Vertrag ab, weil die Abfrage das Feld nicht liefert)
+ * Counter-checks (measured 05.11.2026, each alone):
+ *   A  in jobList() `user_id` read along again → red: “the
+ *      job list …” (the response carries user_id)
+ *   B  accountImageRows() additionally reads `MAX(s.user_id) AS user_id` →
+ *      red: “the image diagnosis …”
+ *   C  in the contract `user_id` back in Auftrag → red: “no response schema
+ *      names user_id” and “the job list …” (the response deviates from the
+ *      contract because the query does not deliver the field)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,7 +27,7 @@ const { adminWithFactor } = require('./helpers/admin');
 const { routeZu } = _req('src/contract/index.js');
 const { z } = require('zod');
 
-/** Kommt ein Schlüssel irgendwo im JSON vor? */
+/** Does a key occur anywhere in the JSON? */
 const containsKey = (wert, name) =>
   wert &&
   typeof wert === 'object' &&

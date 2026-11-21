@@ -1,26 +1,26 @@
 /**
- * Zweiter Faktor (TOTP, RFC 6238) — Rechnung gegen die RFC-Testvektoren und
- * der ganze Ablauf über die echte Anmeldung.
+ * Second factor (TOTP, RFC 6238) — calculation against the RFC test vectors and
+ * the whole flow via the real login.
  *
- * Gegenproben (25.10., gemessen):
- *   A  istAktiv-Prüfung in checkCredentials() entfernt → rot: „ohne Code angemeldet"
- *   B  `last_step < $2` in pruefeCode() entfernt   → rot: „derselbe Code zweimal"
- *   C  loginFailed beim falschen Code entfernt    → rot: „keine Sperre"
- *   D  hotp(): Offset aus dem ersten statt letzten Byte  → rot: RFC-Vektoren
- *   E  change-password wieder mit 401                    → rot: „die Clients melden dann ab"
- *   F  (28.10.) beendeAndereZugaenge() beim Bestätigen entfernt → rot: „Ein
+ * Counter-checks (25.10., measured):
+ *   A  istAktiv check removed in checkCredentials() → red: „ohne Code angemeldet"
+ *   B  `last_step < $2` removed in pruefeCode()     → red: „derselbe Code zweimal"
+ *   C  loginFailed removed for the wrong code      → red: „keine Sperre"
+ *   D  hotp(): offset from the first instead of the last byte → red: RFC vectors
+ *   E  change-password again with 401                    → red: „die Clients melden dann ab"
+ *   F  (28.10.) beendeAndereZugaenge() removed on confirming → red: „Ein
  *      Token von vor dem Einschalten gilt weiter"
- *   G  (28.10.) beim Abschalten wieder ohne Zählen des falschen Codes → rot:
+ *   G  (28.10.) on switching off again without counting the wrong code → red:
  *      „Code beim Abschalten beliebig oft ratbar"
- *   H  (01.11.) hashCode() wieder als blankes SHA-256 → rot: „ungesalzenes SHA-256";
- *      randomBytes(7)/10 Zeichen → rot: Format; Rückfall auf alterHash entfernt → rot:
+ *   H  (01.11.) hashCode() again as bare SHA-256 → red: „ungesalzenes SHA-256";
+ *      randomBytes(7)/10 characters → red: format; fallback to alterHash removed → red:
  *      „alter Code gilt nicht mehr"
- *   I  (01.11.) /zweiter-faktor/bestaetigen wieder direkt über zf.confirmSetup →
- *      rot: „Einrichtungscode beliebig oft ratbar"
- *   J  (02.11.) in DELETE /users/:id/zweiter-faktor die Prüfung aufs eigene Konto
- *      entfernt → rot: „eigener Faktor nur mit Passwort entfernt"
+ *   I  (01.11.) /zweiter-faktor/bestaetigen again directly via zf.confirmSetup →
+ *      red: „Einrichtungscode beliebig oft ratbar"
+ *   J  (02.11.) in DELETE /users/:id/zweiter-faktor the check for the own account
+ *      removed → red: „eigener Faktor nur mit Passwort entfernt"
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -42,7 +42,7 @@ const pgSession = require(path.join(ROOT, 'node_modules', 'connect-pg-simple'))(
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
 test('RFC 6238: the test vectors for SHA-1', () => {
-  // Anhang B der RFC: Schlüssel "12345678901234567890", acht Stellen.
+  // Appendix B of the RFC: key "12345678901234567890", eight digits.
   const schluessel = Buffer.from('12345678901234567890');
   for (const [seconds, erwartet] of /** @type {[number, string][]} */ ([
     [59, '94287082'],
@@ -54,7 +54,7 @@ test('RFC 6238: the test vectors for SHA-1', () => {
   ])) {
     assert.equal(zf.hotp(schluessel, Math.floor(seconds / 30), 8), erwartet, `T=${seconds}`);
   }
-  // Und Base32 hin und zurück, wie es eine Authenticator-App liest.
+  // And Base32 there and back, as an authenticator app reads it.
   assert.equal(zf.base32(schluessel), 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ');
   assert.deepEqual(zf.fromBase32('GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'), schluessel);
 });
@@ -110,7 +110,7 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
   };
   const anmelden = (name, code) =>
     ruf('/login', { username: name, password: PASS, ...(code !== undefined ? { code } : {}) });
-  /** Ein Code, der zum aktuellen Geheimnis passt — wahlweise einen Schritt versetzt. */
+  /** A code that matches the current secret — optionally offset by one step. */
   const codeFor = async (name, versatz = 0) => {
     const z = await db.get(
       'SELECT f.user_id, f.secret FROM second_factor f JOIN users u ON u.id = f.user_id WHERE u.username = $1',
@@ -121,7 +121,7 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
       zf.timeStep() + versatz,
     );
   };
-  /** Einrichten bis active; gibt den Token und die Wiederherstellungscodes zurück. */
+  /** Set up until active; returns the token and the recovery codes. */
   const einrichten = async name => {
     const token = (await anmelden(name)).body.token;
     assert.equal(
@@ -132,7 +132,7 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
     const e = await ruf('/zweiter-faktor/einrichten', { password: PASS }, token);
     assert.equal(e.status, 200, JSON.stringify(e.body));
     assert.match(e.body.otpauth, /^otpauth:\/\/totp\/BrickInventory%3A/);
-    // Vor der Bestätigung gilt der Faktor nicht: Anmelden geht noch ohne Code.
+    // Before the confirmation the factor does not apply: logging in still works without a code.
     assert.equal((await anmelden(name)).status, 200, 'unbestätigte Einrichtung sperrt schon');
     assert.equal((await ruf('/zweiter-faktor/bestaetigen', { code: '000000' }, token)).status, 400);
     const b = await ruf('/zweiter-faktor/bestaetigen', { code: await codeFor(name, -1) }, token);
@@ -142,7 +142,7 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
   };
 
   try {
-    // Ein Zugang von vorher — nach dem Einschalten muss er weg sein.
+    // An access from before — after switching on it must be gone.
     const alt = (await anmelden(NAME)).body.token;
     const { token, codes } = await einrichten(NAME);
     assert.equal(
@@ -154,16 +154,16 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
       success: true,
       aktiv: true,
       codes_uebrig: 10,
-      // Frisch erzeugte Codes sind neuer Art und tragen keine Frist (Migration 0122).
+      // Freshly generated codes are of the new kind and carry no deadline (migration 0122).
       alte_codes_bis: null,
     });
     const roh = JSON.stringify(await db.all('SELECT code_hash FROM second_factor_codes'));
     assert.ok(!codes.some(c => roh.includes(c.replace(/-/g, ''))), 'Wiederherstellungscodes stehen im Klartext');
-    // 80 Bit: 16 Base32-Zeichen in Vierergruppen; gespeichert als HMAC, nicht als blankes SHA-256.
+    // 80 bits: 16 Base32 characters in groups of four; stored as HMAC, not as bare SHA-256.
     for (const c of codes) assert.match(c, /^[a-z2-7]{4}(-[a-z2-7]{4}){3}$/);
     const sha = c => require('node:crypto').createHash('sha256').update(c.replace(/-/g, '')).digest('hex');
     assert.ok(!codes.some(c => roh.includes(sha(c))), 'Wiederherstellungscodes als ungesalzenes SHA-256 gespeichert');
-    // Ein Code der alten Form (10 Zeichen, SHA-256) gilt bis zu seiner Frist (0122), einmal.
+    // A code of the old form (10 characters, SHA-256) applies until its deadline (0122), once.
     const uid = (await db.get('SELECT id FROM users WHERE username = $1', [NAME])).id;
     await db.run(
       `INSERT INTO second_factor_codes (user_id, code_hash, old_valid_until) VALUES ($1, $2, NOW() + INTERVAL '1 day')`,
@@ -173,14 +173,14 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
     assert.equal(await zf.checkCode(uid, 'abcde-23456'), null, 'alter Code gilt zweimal');
     await db.run('DELETE FROM second_factor_codes WHERE user_id = $1 AND consumed_at IS NOT NULL', [uid]);
 
-    // Ohne Code: Absage mit Hinweis, kein Token.
+    // Without a code: refusal with a hint, no token.
     const ohne = await anmelden(NAME);
     assert.equal(ohne.status, 401);
     assert.equal(ohne.body.zweiter_faktor, true, 'ohne Code angemeldet');
     assert.equal(ohne.body.code, 'zweiter_faktor_noetig');
     assert.equal(ohne.body.token, undefined);
 
-    // Mit Code: angemeldet. Derselbe Code ein zweites Mal: abgewiesen.
+    // With a code: logged in. The same code a second time: rejected.
     const code = await codeFor(NAME);
     const mit = await anmelden(NAME, code);
     assert.equal(mit.status, 200, JSON.stringify(mit.body));
@@ -189,15 +189,15 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
     assert.equal(nochmal.status, 401, 'derselbe Code zweimal');
     assert.equal(nochmal.body.code, 'zweiter_faktor_falsch');
 
-    // Wiederherstellungscode: gilt einmal, auch mit anderer Schreibweise.
+    // Recovery code: applies once, even with a different notation.
     assert.equal((await anmelden(NAME, codes[0].toUpperCase().replace('-', ' '))).status, 200);
     assert.equal((await anmelden(NAME, codes[0])).status, 401, 'Wiederherstellungscode gilt zweimal');
     assert.equal((await ruf('/zweiter-faktor', null, token)).body.codes_uebrig, 9);
 
-    // Abschalten verlangt Passwort UND Code.
+    // Switching off requires password AND code.
     assert.equal((await ruf('/zweiter-faktor/abschalten', { password: PASS, code: '000000' }, token)).status, 400);
     assert.equal((await ruf('/zweiter-faktor/abschalten', { password: 'falsch', code: codes[1] }, token)).status, 400);
-    // Und beim Passwortwechsel: Ein 401 hiesse für Web und App „abgemeldet".
+    // And on password change: a 401 would mean „logged out" for web and app.
     const pw = await ruf('/change-password', { current: 'falsch', newPassword: 'neuesPasswort123' }, token);
     assert.equal(pw.status, 400, 'falsches aktuelles Passwort beim Wechsel ist ein 401 — die Clients melden dann ab');
     assert.equal((await ruf('/zweiter-faktor/abschalten', { password: PASS, code: codes[1] }, token)).status, 200);
@@ -212,14 +212,14 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
       0,
     );
 
-    // Falsche Codes zählen als Fehlversuche: Danach hilft auch der richtige nicht.
+    // Wrong codes count as failed attempts: afterwards even the right one does not help.
     const { token: tS, codes: cS } = await einrichten(SPERRE);
     for (let i = 0; i < 5; i++) await anmelden(SPERRE, String(100000 + i));
     const gesperrt = await anmelden(SPERRE, await codeFor(SPERRE));
     assert.equal(gesperrt.status, 429, `keine Sperre nach fünf falschen Codes: ${JSON.stringify(gesperrt.body)}`);
 
-    // Dasselbe beim Abschalten: Mit bekanntem Passwort liess sich der Code
-    // beliebig oft raten, weil das richtige Passwort den Zähler zurücksetzte.
+    // The same when switching off: with a known password the code could be
+    // guessed arbitrarily often, because the right password reset the counter.
     for (let i = 0; i < 5; i++)
       await ruf('/zweiter-faktor/abschalten', { password: PASS, code: String(200000 + i) }, tS);
     const geraten = await ruf('/zweiter-faktor/abschalten', { password: PASS, code: cS[0] }, tS);
@@ -230,15 +230,15 @@ test('login with second factor — played through', { concurrency: 1 }, async t 
       'Auch das Erneuern der Wiederherstellungscodes muss gesperrt sein',
     );
 
-    // Das Bestätigen der Einrichtung bremst genauso.
+    // Confirming the setup throttles just the same.
     const tB = (await anmelden(BRAKE)).body.token;
     assert.equal((await ruf('/zweiter-faktor/einrichten', { password: PASS }, tB)).status, 200);
     for (let i = 0; i < 5; i++) await ruf('/zweiter-faktor/bestaetigen', { code: String(300000 + i) }, tB);
     const spaet = await ruf('/zweiter-faktor/bestaetigen', { code: await codeFor(BRAKE) }, tB);
     assert.equal(spaet.status, 429, `Einrichtungscode beliebig oft ratbar: ${spaet.status}`);
 
-    // Der Notausgang des Verwalters gilt nur fremden Konten: Für das eigene
-    // genügte sonst eine offene Sitzung samt Passwort, ganz ohne Code.
+    // The admin's emergency exit only applies to foreign accounts: for the own one
+    // an open session including the password would otherwise suffice, without any code.
     await db.run(
       'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,true,true,true)',
       [VERWALTER, await bcrypt.hash(PASS, 4)],

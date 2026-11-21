@@ -1,10 +1,10 @@
 /**
- * Übergeht der Konfigurations-Import SMTP-Werte, nennt die Oberfläche sie:
- * Der Server schickt die Liste in smtp_uebergangen, eine Meldung zeigt sie.
+ * If the configuration import skips SMTP values, the UI names them:
+ * the server sends the list in smtp_uebergangen, a message shows it.
  *
- * Gegenprobe (am 29.10.2026 gemessen): in importConfig() die Meldung zu
- * smtp_uebergangen entfernt → rot: „die übergangenen SMTP-Felder stehen in
- * einer Meldung“.
+ * Counter-check (measured on 29.10.2026): in importConfig() the message about
+ * smtp_uebergangen removed → red: “the skipped SMTP fields stand in
+ * a message”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

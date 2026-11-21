@@ -1,23 +1,23 @@
 /**
- * Jede Route aus dem API-Vertrag, anders geschrieben: ganz in Grossbuchstaben,
- * mit grossem Anfangsbuchstaben nach /api/v1 und mit angehängtem „/“, „//“
- * oder „%2F“. Am echten Server mit Idempotency-Key. Eine andere Schreibung ist
- * eine andere Route (404) und hinterlässt nichts in `idempotency`.
+ * Every route from the API contract, spelled differently: all upper case,
+ * with an upper-case initial after /api/v1 and with an appended “/”, “//”
+ * or “%2F”. On the real server with Idempotency-Key. A different spelling is
+ * a different route (404) and leaves nothing in `idempotency`.
  *
- * Gegenproben (am 04.11.2026 gemessen, je eine Änderung, danach zurück):
- *   A  server.ts ohne `case sensitive routing` und vertragsRouter() ohne
- *      caseSensitive → rot: „Grossschreibung ist eine andere Route“ (Routen
- *      antworten, Einträge in idempotency) und „… nicht gespeichert“ (ein
- *      GROSS geschriebenes token-rotieren hat den Token schon ersetzt)
- *   B  nur in der Idempotenz-Middleware `if (!route) return next();`
- *      gestrichen → rot: „Grossschreibung …“ (die 404 liegt unter dem Schlüssel)
- *   C  routeForRequest() ohne das Abschneiden des Schrägstrichs → rot nur
- *      „routeForRequest ordnet …“
- *   D  (15.11.2026) in startup/app.ts die Absage für `/` am Ende gestrichen → rot:
- *      „ein Schrägstrich am Ende ist eine andere Route“ (u. a. storage/locations/
- *      200, vouchers/1/klartext/ 403 aus der zweiten Linie statt 404)
+ * Counter-checks (measured on 04.11.2026, one change each, reverted afterwards):
+ *   A  server.ts without `case sensitive routing` and vertragsRouter() without
+ *      caseSensitive → red: “upper case is a different route” (routes
+ *      answer, entries in idempotency) and “… not stored” (an
+ *      UPPER-case token-rotieren has already replaced the token)
+ *   B  only in the idempotency middleware `if (!route) return next();`
+ *      deleted → red: “upper case …” (the 404 is stored under the key)
+ *   C  routeForRequest() without cutting the slash → red only
+ *      “routeForRequest maps …”
+ *   D  (15.11.2026) in startup/app.ts the refusal for a trailing `/` deleted → red:
+ *      “a trailing slash is a different route” (among others storage/locations/
+ *      200, vouchers/1/klartext/ 403 from the second line instead of 404)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -131,7 +131,7 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
   });
 
   await t.test('routeForRequest assigns a trailing slash to the same route', () => {
-    // Drossel, Schrittschutz und Idempotenz fragen so; die Absage am Eingang ist die erste Linie.
+    // Throttle, step-up protection and idempotency ask like this; the refusal at the entrance is the first line.
     const anders = ROUTES.filter(
       ({ m, url }) =>
         routeForRequest(m, url + '/') !== routeForRequest(m, url) ||
@@ -146,7 +146,7 @@ test('contract routes in a different spelling', { concurrency: 1, timeout: 300_0
   await t.test('a trailing slash is a different route', async () => {
     const falsch = [],
       key = [];
-    // `/api/v1/` steht so im Vertrag; `//` am Ende ist dort derselbe Pfad.
+    // `/api/v1/` stands like this in the contract; `//` at the end is the same path there.
     for (const { m, url } of ROUTES.filter(r => !r.url.endsWith('/')))
       for (const anders of [url + '/', url + '//']) {
         const r = await rufe(m, anders);

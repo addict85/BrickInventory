@@ -1,11 +1,11 @@
 /**
- * Der Bilder-Nachlauf deckt ALLE Bildarten ab — und zieht fehlende Vorschauen
- * nach, nicht nur fehlende Dateien.
+ * The image follow-up run covers ALL image kinds — and catches up on missing previews,
+ * not only missing files.
  *
- * Gegenprobe (durchgeführt): `/images/sets/` aus _fsPathFromLocal entfernt →
- * thumbs bleibt 0 und die Datei entsteht nicht.
+ * Counter-check (performed): `/images/sets/` removed from _fsPathFromLocal →
+ * thumbs stays 0 and the file is not created.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -42,8 +42,8 @@ test('the follow-up run creates missing previews — also for set images', { con
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [name]);
   await db.run(`DELETE FROM set_catalog WHERE set_number=$1`, [name]);
   await holdsSet(db, uid, name, 1);
-  // Der Bildpfad steht seit Migration 0033 im Katalog — und genau von dort
-  // sammelt der Nachlauf (src/catalog/partsEnrichment.ts) die Pfade ein.
+  // Since migration 0033 the image path is in the catalog — and exactly from there
+  // the follow-up run (src/catalog/partsEnrichment.ts) collects the paths.
   await catalogSet(db, name, { name: 'Test', image_local: `/images/sets/${name}.jpg` });
 
   try {
@@ -80,7 +80,7 @@ test('the path resolver knows all three image kinds', () => {
   for (const art of ['/images/parts/', '/images/minifigs/', '/images/sets/']) {
     assert.ok(fn.includes(art), `_fsPathFromLocal kennt ${art} nicht — diese Bilder fallen still aus dem Lauf`);
   }
-  // Der Schutz gegen Pfadtricks muss bleiben: Der Wert kommt aus der Datenbank.
+  // The protection against path tricks must stay: the value comes from the database.
   assert.ok(/includes\('\.\.'\)/.test(fn), 'die Prüfung auf .. fehlt');
 });
 

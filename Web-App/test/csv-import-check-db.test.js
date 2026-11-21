@@ -1,20 +1,20 @@
 /**
- * Der Set-CSV-Import ist ehrlich zu Fehlern (UI-Prüfung 17, M2): Eine
- * ungültige Menge wird nicht still „repariert“, eine Zeile ohne Setnummer
- * nicht still übersprungen, jedes Ergebnis nennt seine Zeile, ein dem Katalog
- * unbekanntes Set zählt als Warnung, und vor dem Übernehmen sagt die Prüfung,
- * welche Sets schon in der Sammlung sind. Datei wie im Bericht
- * (import-fehler.csv), Import als Auftrag mit gestelltem setErfassen.
+ * The set CSV import is honest about errors (UI review 17, M2): an
+ * invalid quantity is not silently “repaired”, a line without a set number
+ * not silently skipped, every result names its line, a set unknown to the catalog
+ * counts as a warning, and before taking over the check says
+ * which sets are already in the collection. File as in the report
+ * (import-fehler.csv), import as a job with a provided setErfassen.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   A  csvMenge() wieder mit .replace(/[^0-9]/g, '') → rot: „jede Zeile mit
- *      ihrem Ergebnis“ (Zeile 5 als „+1 Exemplar“ gebucht)
- *   B  `if (!sn) continue;` statt der Fehlerzeile → rot: „jede Zeile mit
- *      ihrem Ergebnis“ (Zeile 7 fehlt, 7 statt 8 Ergebnisse)
- *   C  buildJobStatus zählt katalog_offen wieder als ok → rot: „Summen“
+ * Counter-checks (measured 05.11.2026, each alone):
+ *   A  csvMenge() again with .replace(/[^0-9]/g, '') → red: “every line with
+ *      its result” (line 5 booked as “+1 copy”)
+ *   B  `if (!sn) continue;` instead of the error line → red: “every line with
+ *      its result” (line 7 missing, 7 instead of 8 results)
+ *   C  buildJobStatus counts katalog_offen as ok again → red: “sums”
  *      (ok 4, warn 0)
- *   D  in startSetCsvImport alreadyPresent() durch [] ersetzt → rot: „die
- *      Prüfung nennt vorhandene Sets und startet nichts“
+ *   D  in startSetCsvImport alreadyPresent() replaced by [] → red: “the
+ *      check names existing sets and starts nothing”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

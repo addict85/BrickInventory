@@ -1,19 +1,19 @@
 /**
- * Laufzeitzustand der Jobs steht in run_state, nicht in global_settings:
- * Migration 0063 zieht die Schlüssel um, der Bildzähler bleibt auch unter
- * gleichzeitigen Aufrufen genau. Die Kacheln der Verwaltung lesen den Stand
- * eines Laufs aus der Auftragstabelle, nicht aus einem zweiten Speicher.
+ * Runtime state of the jobs stands in run_state, not in global_settings:
+ * migration 0063 moves the keys, the image counter stays exact even under
+ * concurrent calls. The tiles of the administration read the state
+ * of a run from the job table, not from a second store.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  in der Migration `starts_with(key, 'job_monitor_')` weggelassen (im
- *      INSERT und im DELETE) → rot: „Migration 0063 trennt Zustand von
- *      Konfiguration“
- *   B  countState() als Lesen-dann-Schreiben (liesZustand + setzeZustand)
- *      → rot: „der Bildzähler zählt gleichzeitige Aufrufe genau“
- * Gegenprobe (05.11.2026): in letzteJeArt() `ORDER BY type, updated_at DESC`
- *   → rot: „die Kachel zeigt den laufenden Auftrag“ (der jüngere offene gewann)
+ * Counter-checks (measured on 28.10.2026):
+ *   A  in the migration `starts_with(key, 'job_monitor_')` left out (in the
+ *      INSERT and in the DELETE) → red: “migration 0063 separates state from
+ *      configuration”
+ *   B  countState() as read-then-write (liesZustand + setzeZustand)
+ *      → red: “the image counter counts concurrent calls exactly”
+ * Counter-check (05.11.2026): in letzteJeArt() `ORDER BY type, updated_at DESC`
+ *   → red: „die Kachel zeigt den laufenden Auftrag“ (the younger open one won)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -58,10 +58,10 @@ test('run state separate from the configuration', { concurrency: 1 }, async t =>
         ('currency', 'CHF'), ('job_monitor_priceJob', '{"status":"running"}'),
         ('rb_csv_last_sync', '2026-10-28'), ('instr_queue_trigger', 'jetzt')`);
       await c.query(MIGRATION);
-      // Migration 0063 ist Geschichte und legt die Tabelle noch unter ihrem
-      // alten Namen und mit ihren alten Spalten an (laufzustand.schluessel);
-      // 0124 (längst angewandt) hätte sie sonst gleich danach umbenannt, wie
-      // bei einer echten Reihenfolge der Migrationen.
+      // Migration 0063 is history and still creates the table under its
+      // old name and with its old columns (laufzustand.schluessel);
+      // 0124 (applied long ago) would otherwise have renamed it right afterwards, as
+      // with a real order of the migrations.
       const zustand = (await c.query(`SELECT schluessel AS key FROM laufzustand ORDER BY 1`)).rows.map(r => r.key);
       const konfig = (await c.query(`SELECT key FROM global_settings ORDER BY 1`)).rows.map(r => r.key);
       assert.deepEqual(zustand, ['instr_queue_trigger', 'job_monitor_priceJob', 'rb_csv_last_sync']);
@@ -82,7 +82,7 @@ test('run state separate from the configuration', { concurrency: 1 }, async t =>
     await db.run(`INSERT INTO jobs (type, payload, status, locked_by, deadline_at, progress, updated_at)
                   VALUES ('preise', '{}', 'laeuft', 'p', NOW() + INTERVAL '1 min', '{"erledigt": 3, "gesamt": 9, "text": "10001-1"}',
                           NOW() - INTERVAL '1 min')`);
-    // Der nächste geplante Lauf ist jünger, aber nicht der, der gerade arbeitet.
+    // The next scheduled run is younger, but not the one that is currently working.
     await db.run(`INSERT INTO jobs (type, payload, dedupe_key) VALUES ('preise', '{}', 'plan:preise')`);
     const k = (await jm.tiles()).priceJob;
     assert.deepEqual(

@@ -1,15 +1,15 @@
 /**
- * Der Vertragsrouter registriert eine Route über ihren Vertragsschlüssel: Methode und Pfad
- * kommen aus ihm, der Rückgabewert der Route geht in die Hülle `{ success: true, … }`, und
- * ein Router unter einem fremden Präfix antwortet nicht unter einem Pfad ausserhalb des Vertrags.
+ * The contract router registers a route via its contract key: method and path
+ * come from it, the route's return value goes into the envelope `{ success: true, … }`, and
+ * a router under a foreign prefix does not answer under a path outside the contract.
  *
- * Gegenproben (14.11.2026):
- *   A  in endpunkt() `res.json({ success: true, ...r })` durch `res.json(r)` ersetzt → rot:
- *      „die Hülle setzt success“.
- *   B  die Prüfung von req.baseUrl gegen das Präfix gestrichen → rot: „ein fremdes Präfix ist 500“.
- *   C  in endpunkt() die Suche im Vertrag (`routeZu`) übergangen → rot: „ein Schlüssel ausserhalb …“.
- *   D  (15.11.2026) in endpunkt() die Prüfung von res.locals.schritt gestrichen → rot:
- *      „eine Route mit Schrittmarke …“ (200 statt 403 für `keiner` und `zweiter_faktor`).
+ * Counter-checks (14.11.2026):
+ *   A  in endpunkt() `res.json({ success: true, ...r })` replaced by `res.json(r)` → red:
+ *      “the envelope sets success”.
+ *   B  the check of req.baseUrl against the prefix deleted → red: “a foreign prefix is 500”.
+ *   C  in endpunkt() the lookup in the contract (`routeZu`) skipped → red: “a key outside …”.
+ *   D  (15.11.2026) in endpunkt() the check of res.locals.schritt deleted → red:
+ *      “a route with a step marker …” (200 instead of 403 for `keiner` and `zweiter_faktor`).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -55,7 +55,7 @@ test('a route with a step brand only answers if the entrance checked exactly its
   r.endpunkt('POST /api/v1/vouchers/:id/klartext', () => ({ id: 1, number: '1', pin: null }));
   const app = express();
   app.use(express.json());
-  // Wie stepChutzAtInbox: Es hält fest, welchen Schritt es der Anfrage zugeordnet hat.
+  // Like stepChutzAtInbox: it records which step it assigned to the request.
   app.use((req, res, next) => {
     const s = req.get('x-schritt');
     if (s !== undefined) res.locals.schritt = s === 'keiner' ? null : s;
@@ -73,7 +73,7 @@ test('a route with a step brand only answers if the entrance checked exactly its
         body: JSON.stringify({ password: 'x', code: '' }),
       })
     ).status;
-  // Ohne Eingang (routerServer in älteren Tests) prüft der Router nicht nach.
+  // Without the entrance (routerServer in older tests) the router does not check.
   assert.deepEqual(
     [await ruf('keiner'), await ruf('zweiter_faktor'), await ruf('gutschein'), await ruf(undefined)],
     [403, 403, 200, 200],

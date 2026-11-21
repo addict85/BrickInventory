@@ -1,14 +1,14 @@
 /**
- * Eine kaputte Menge löscht keinen Bestand, und Menge 0 geht in den
- * Papierkorb.
+ * A broken quantity deletes no inventory, and quantity 0 goes into the
+ * trash.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  inventoryQuantity() in changeSet durch `parseInt(body.quantity) || 0`
- *      ersetzt → rot: „eine kaputte Menge wird abgewiesen" (200, Set weg)
- *   B  putInTrash() im Zweig für Menge 0 entfernt → rot: „Menge 0
- *      legt das Set in den Papierkorb"
+ * Counter-checks (measured on 28.10.2026):
+ *   A  inventoryQuantity() in changeSet replaced by `parseInt(body.quantity) || 0`
+ *      → red: “a broken quantity is rejected” (200, set gone)
+ *   B  putInTrash() removed in the branch for quantity 0 → red: “quantity 0
+ *      puts the set into the trash”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

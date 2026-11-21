@@ -1,5 +1,5 @@
 /**
- * Farbfilter und Kategoriefilter zaehlen dasselbe Blickfeld.
+ * Color filter and category filter count the same scope.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -33,13 +33,13 @@ test('color and category list see the same inventory in the household', { concur
   try {
     await db.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1,$2)', [haupt, kind]);
 
-    // Das Set traegt die Teile — beide Listen schliessen `source='manual'` aus.
+    // The set carries the parts — both lists exclude `source='manual'`.
     await holdsSet(db, haupt, '0001-1', 1);
     await holdsSet(db, kind, '0002-1', 1);
-    // Je Konto ein Teil, VERSCHIEDENE Farben: Waere die Farbe gleich, faenden
-    // beide Zaehlungen zufaellig dieselbe Zahl und der Test pruefte nichts.
-    // Name, Farbbezeichnung und Kategorie stehen seit Migration 0034 in den
-    // Katalogen — und sie sind hier der Kern der Sache: Beide Listen dieses …
+    // One part per account, DIFFERENT colors: if the color were the same, both
+    // counts would find the same number by chance and the test would check nothing.
+    // Since migration 0034 name, color label and category stand in the
+    // catalogs — and here they are the core of the matter: both lists of this …
     await db.run(`INSERT INTO part_catalog (part_number, part_name, category_name) VALUES
         ('3001','Brick 2x4','Bricks'), ('3002','Plate 1x2','Plates')
         ON CONFLICT (part_number) DO UPDATE SET category_name = EXCLUDED.category_name`);
@@ -69,8 +69,8 @@ test('color and category list see the same inventory in the household', { concur
       );
     }
 
-    // Und der Unterschied zwischen den Modi muss ueberhaupt da sein — sonst
-    // waere die Gleichheit oben zweimal dieselbe Aussage.
+    // And the difference between the modes must be there at all — otherwise
+    // the equality above would be the same statement twice.
     const alle = await hole('/api/v1/parts/categories?accounts=all');
     const eigen = await hole('/api/v1/parts/categories?accounts=own');
     assert.ok(

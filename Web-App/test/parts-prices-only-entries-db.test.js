@@ -1,7 +1,7 @@
 /**
- * Seit db/basis.sql gibt es den Stand VOR dieser Migration nicht mehr: Die
- * Fälle zu Riegel, Nachtrag und Zwischenstand sind entfallen. Geprüft werden
- * der Endstand und die Lesewege.
+ * Since db/basis.sql the state BEFORE this migration no longer exists: the
+ * cases on bolt, addendum and intermediate state are dropped. What is checked is
+ * the final state and the read paths.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -15,8 +15,8 @@ const { keineDb } = require('./helpers/db');
 const db = testData();
 const { holdsMinifig, holdsPart } = require('./helpers/inventory');
 
-// Dieselbe Begruendung wie in test/sets-without-purchase-price-column-db.test.js: Diese
-// Datei baut die Datenbank mehrfach von null auf.
+// The same reasoning as in test/sets-without-purchase-price-column-db.test.js: this
+// file builds the database from zero several times.
 test.after(async () => {
   try {
     await db.run('DROP SCHEMA public CASCADE');
@@ -56,8 +56,8 @@ test('after the whole chain parts and minifigs carry no price any more', { concu
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
 
-  // Den Vorstand vor den Migrationen gibt es nicht mehr: Eine leere
-  // Datenbank bekommt db/basis.sql. Geprüft wird der Endstand.
+  // The state before the migrations no longer exists: an empty
+  // database gets db/basis.sql. What is checked is the final state.
   const client = await db.pool.connect();
   try {
     await _req('db/migrate.js').runMigrations(client);
@@ -73,10 +73,10 @@ test('after the whole chain parts and minifigs carry no price any more', { concu
         'geloescht, oder etwas legt die Spalte danach wieder an.',
     );
   }
-  // Und der Bestand ist noch da: Marcos Liste, plus was den Kauf NICHT betrifft.
-  // bl_part_number stand hier und ist weg: Migration 0037 hat sie geloescht,
-  // die BrickLink-Nummer steht in bl_mapping (einmal je Teil statt je
-  // Konto). Siehe test/bricklink-mapping-db.test.js. …
+  // And the stock is still there: Marco's list, plus what does NOT concern the purchase.
+  // bl_part_number stood here and is gone: migration 0037 deleted it,
+  // the BrickLink number stands in bl_mapping (once per part instead of per
+  // account). See test/bricklink-mapping-db.test.js. …
   for (const sp of ['id', 'user_id', 'set_number', 'part_number', 'color_id', 'source', 'storage_id', 'added_at']) {
     assert.ok(nachher.includes(sp), `parts.${sp} fehlt — die Spalte gehoert zum Bestand`);
   }
@@ -86,7 +86,7 @@ test('after the whole chain parts and minifigs carry no price any more', { concu
     assert.ok(!figsAfter.includes(sp), `minifigs.${sp} ist nach allen Migrationen noch da`);
   }
 
-  // Nicht verschwunden, sondern umgezogen.
+  // Not disappeared but moved.
   for (const [tab, spalten] of [
     ['part_acquisitions', ['user_id', 'part_number', 'color_id', 'quantity', 'unit_price', 'condition', 'created_at']],
     ['minifig_acquisitions', ['user_id', 'fig_number', 'quantity', 'unit_price', 'condition', 'created_at']],
@@ -120,15 +120,15 @@ test('the lists deliver price and condition from the newest acquisition', { conc
                 VALUES ('3002',1,'Blau') ON CONFLICT (part_number,color_id) DO NOTHING`);
   await db.run(`INSERT INTO minifigs_catalog (fig_number,fig_name) VALUES ('fig-5','Testfigur')
                 ON CONFLICT (fig_number) DO NOTHING`);
-  // Nur die Bestandszeilen, ohne Menge: Die beiden Erfassungen weiter unten
-  // tragen sie (Migration 0038). holdsPart() mit menge 0 legt deshalb keine
-  // eigene Erfassung an — die Tagesregel liesse daneben keine zweite zu.
+  // Only the stock rows, without quantity: the two acquisitions further down
+  // carry it (migration 0038). holdsPart() with menge 0 therefore creates no
+  // acquisition of its own — the daily rule would not allow a second one next to it.
   await holdsPart(db, uid, '3002', { menge: 0, colorId: 1 });
   await holdsMinifig(db, uid, 'fig-5', { menge: 0 });
 
-  // ZWEI Erfassungen, verschiedene Tage und Zustaende. Die neuere ist die, die
-  // als „der Preis dieses Teils" angezeigt werden muss — die aeltere darf ihn
-  // nicht verdecken.
+  // TWO acquisitions, different days and conditions. The newer one is the one that
+  // must be shown as „the price of this part" — the older one must not
+  // cover it.
   await db.run(
     `INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition,created_at)
                 VALUES ($1,'3002',1,2,1.00,'N', NOW() - INTERVAL '3 days'),
@@ -158,16 +158,16 @@ test('the lists deliver price and condition from the newest acquisition', { conc
   assert.equal(Number(fig.unit_price), 7.5, 'unit_price muss der Preis der NEUESTEN Erfassung sein');
   assert.equal(fig.condition, 'U', 'Eine gebrauchte Erfassung macht die Figur gebraucht');
 
-  // ── Und ohne Preis bleibt der Anzeigewert 0, nicht leer ──────────────────
+  // ── And without a price the display value stays 0, not empty ──────────────────
   //
-  // src/finances/priceRule.ts unterscheidet die beiden Bedeutungen: In der Erfassung
-  // heisst NULL „kein Preis bekannt", der Anzeigewert ist dann 0. Vor
-  // Migration 0035 stand diese 0 in parts.purchase_price; jetzt bildet die
-  // Leseabfrage sie.
+  // src/finances/priceRule.ts distinguishes the two meanings: in the acquisition
+  // NULL means „no price known", the display value is 0 then. Before
+  // migration 0035 this 0 stood in parts.purchase_price; now the
+  // read query forms it.
   await db.run(`INSERT INTO part_catalog (part_number,part_name) VALUES ('3003','Plate 1x1')
                 ON CONFLICT (part_number) DO NOTHING`);
-  // Menge 0 fuer die Bestandszeile, die Erfassung kommt darunter mit
-  // AUSDRUECKLICH leerem Preis — das ist die Aussage dieses Falls.
+  // quantity 0 for the stock row, the acquisition comes below with an
+  // EXPLICITLY empty price — that is the statement of this case.
   await holdsPart(db, uid, '3003', { menge: 0, colorId: 0 });
   await db.run(
     `INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition)

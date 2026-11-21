@@ -1,11 +1,11 @@
 /**
- * scripts/remove-rationales.js streicht die Verweise ins frühere Archiv, ohne leere Kommentare,
- * kaputte JSDoc oder doppelte Leerzeilen zu hinterlassen, und ein zweiter Lauf ändert nichts.
+ * scripts/remove-rationales.js deletes the references into the former archive without leaving empty comments,
+ * broken JSDoc or double blank lines, and a second run changes nothing.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
- *   A  im Skript die Normalisierung des JSDoc-Schlusses entfernt → rot: „JSDoc-Schluss“ (Stern blieb davor)
- *   B  die Leerzeilen-Regel (emptyBefore) entfernt → rot: „allein zwischen Leerzeilen“
- *   C  WRAP nicht angewandt → rot: „umbrochener Verweis“ (die Pfadzeile blieb)
+ * Counter-checks (measured 10.11.2026, each on its own, reverted):
+ *   A  the normalization of the JSDoc end removed in the script → red: “JSDoc end” (star stayed in front)
+ *   B  the blank line rule (emptyBefore) removed → red: „allein zwischen Leerzeilen“
+ *   C  WRAP not applied → red: “wrapped reference” (the path line stayed)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -15,7 +15,7 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { removeReferences } = require('../scripts/remove-rationales');
 
-// Zusammengesetzt, damit das Skript diese Datei nicht selbst bereinigt.
+// Assembled so that the script does not clean this file itself.
 const V = `Ausführlich: ${['docs', 'begruendungen'].join('/')}/src/x.ts.md#anker`;
 
 test('line comment: reference line and reference at end of line disappear', () => {

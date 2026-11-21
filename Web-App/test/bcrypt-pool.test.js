@@ -1,21 +1,21 @@
 /**
- * bcrypt rechnet in Worker-Threads (src/account/bcryptPool.ts, Sicherheitsprüfung
- * Runde 13, H1): Der Hauptthread bleibt während der Prüfungen ansprechbar, ein
- * untätiger Arbeiter hält den Prozess nicht am Leben, und ohne Arbeiterdatei
- * rechnet der Hauptthread wie früher.
+ * bcrypt computes in worker threads (src/account/bcryptPool.ts, security review
+ * round 13, H1): the main thread stays responsive during the checks, an
+ * idle worker does not keep the process alive, and without a worker file
+ * the main thread computes as before.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  newPool() rechnet immer im Hauptthread (`hauptthread = true`) → rot:
- *      „rechnet im Worker …“, „der Hauptthread bleibt ansprechbar“ und „die
- *      Anmeldung prüft über den Pool“
- *   B  in naechster() `w.unref()` gestrichen → rot: „ein untätiger Arbeiter …“
- *   C  passwordFits() ruft wieder bcrypt.compare im Hauptthread → rot: „die
- *      Anmeldung prüft über den Pool“
- *   D  in naechster() den Leerlauf-Timer gestrichen → rot: „ein untätiger
- *      Arbeiter endet nach der Leerlaufzeit“ (1 statt 0 Arbeiter)
- *   E  bcryptArbeiter() ohne die Obergrenze 4 → rot: „64 Kerne ohne Kontingent“;
- *      ohne `kontingent` → rot: „64 Kerne, Kontingent 1“
- *   F  quotaCores() liest nur cgroup v1 → rot: „cgroup v2: 1,5 Kerne“
+ * Counter-checks (measured 04.11.2026, each alone):
+ *   A  newPool() always computes in the main thread (`hauptthread = true`) → red:
+ *      “computes in the worker …”, “the main thread stays responsive” and “the
+ *      login checks via the pool”
+ *   B  in naechster() `w.unref()` deleted → red: “an idle worker …”
+ *   C  passwordFits() calls bcrypt.compare in the main thread again → red: “the
+ *      login checks via the pool”
+ *   D  in naechster() the idle timer deleted → red: “an idle
+ *      worker ends after the idle time” (1 instead of 0 workers)
+ *   E  bcryptArbeiter() without the upper limit 4 → red: “64 cores without quota”;
+ *      without `kontingent` → red: “64 cores, quota 1”
+ *   F  quotaCores() reads only cgroup v1 → red: “cgroup v2: 1.5 cores”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -31,7 +31,7 @@ const _req = S.buildAndRequire();
 const { newPool } = _req('src/account/bcryptPool.js');
 const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 
-/** Längste Verzögerung der Ereignisschleife (ms), während `work` läuft. */
+/** Longest delay of the event loop (ms) while `work` runs. */
 async function longestDelay(work) {
   const h = monitorEventLoopDelay({ resolution: 5 });
   h.enable();

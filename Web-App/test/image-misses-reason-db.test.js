@@ -1,5 +1,5 @@
 /**
- * Was „fehlend" heisst — und wie man es zurücknimmt.
+ * What “missing" means — and how to take it back.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,7 +8,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-/** Antwort des abgefangenen Downloads: null plus ein Statuscode nach Wunsch. */
+/** Response of the intercepted download: null plus a status code as desired. */
 let responseStatus = null;
 
 const { buildAndRequire, testData, testImageWorker } = require('./helpers/sources');
@@ -16,7 +16,7 @@ const _req = buildAndRequire();
 testImageWorker(null, {
   setBildLaden: async (_u, _sn, info) => {
     if (responseStatus && info) info.status = responseStatus;
-    return null; // Fehlschlag — der Statuscode entscheidet über den Rest
+    return null; // failure — the status code decides the rest
   },
 });
 const { keineDb } = require('./helpers/db');
@@ -41,9 +41,9 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
     keineDb(t, e);
     return;
   }
-  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
-  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/image-queue.js.
+  // The queue must be emptied BEFORE use, not only the own
+  // prefix — otherwise the batch takes the rows of a predecessor. Rationale
+  // and reproduction in helpers/image-queue.js.
   await emptyQueue(db);
   const P = `MR${process.pid}`;
 
@@ -66,7 +66,7 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
   });
 
   await t.test('a batch of nothing but 404s reports as warn, not as error', async () => {
-    // Marcos Protokoll
+    // Marco's log
     const sn = `${P}_leise`;
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
     IM._emptyForeground();
@@ -102,10 +102,10 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
   });
 
   await t.test('COUNTER-CHECK: a retryable error stays error', async () => {
-    // Ohne diesen Fall waere die Regel oben auch erfuellt, wenn die
-    // Sammelzeile IMMER auf warn ginge — und dann faellt nichts mehr auf.
-    // Kein Statuscode heisst „voruebergehend, wird erneut versucht": genau
-    // das, was jemand sehen soll.
+    // Without this case the rule above would also be fulfilled if the
+    // summary line ALWAYS went to warn — and then nothing stands out anymore.
+    // No status code means “temporary, will be retried": exactly
+    // what someone should see.
     const sn = `${P}_laut`;
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
     IM._emptyForeground();
@@ -141,9 +141,9 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
   });
 
   await t.test('a timeout does NOT lock out for seven days', async () => {
-    // Kein Statuscode: genau das Bild eines Netzwerkfehlers. setBildHerunterladen
-    // setzt info.status ausschliesslich bei einer Antwort ≠ 200 — bricht die
-    // Verbindung ab, bleibt das Feld leer.
+    // No status code: exactly the picture of a network error. setBildHerunterladen
+    // only sets info.status for a response ≠ 200 — if the connection
+    // breaks off, the field stays empty.
     const sn = `${P}_timeout`;
     await db.run(`DELETE FROM image_misses WHERE cache_key = $1`, ['set:' + sn]);
     IM._emptyForeground();
@@ -163,9 +163,9 @@ test('only a 404 means "the image does not exist"', { concurrency: 1 }, async t 
   });
 
   await t.test('the same standard as in the image proxy', () => {
-    // Der Proxy merkt sich seit jeher nur 404 und begründet das im Code. Dass
-    // beide Bauteile in DIESELBE Tabelle schreiben, aber verschieden auslegen,
-    // war der eigentliche Fehler. Die Regel wird hier zusammengehalten.
+    // The proxy has always only remembered 404 and explains that in the code. That
+    // both components write into THE SAME table but interpret it differently
+    // was the actual bug. The rule is held together here.
     const fs = require('node:fs');
     const { ohneKommentare } = require('./helpers/sources');
     const proxy = ohneKommentare(require('./helpers/sources').proxyThumbSource());
@@ -199,9 +199,9 @@ test('negative results can be withdrawn and are explainable', { concurrency: 1 }
     keineDb(t, e);
     return;
   }
-  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
-  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/image-queue.js.
+  // The queue must be emptied BEFORE use, not only the own
+  // prefix — otherwise the batch takes the rows of a predecessor. Rationale
+  // and reproduction in helpers/image-queue.js.
   await emptyQueue(db);
 
   const P = `VG${process.pid}`;

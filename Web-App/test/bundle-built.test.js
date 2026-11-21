@@ -1,15 +1,15 @@
 /**
- * Das Bündel (public/js/app.bundle.js) ist ein Erzeugnis: nicht in git, aber
- * überall da, wo es gebraucht wird, frisch gebaut (placeBundleSafe()).
+ * The bundle (public/js/app.bundle.js) is a product: not in git, but
+ * freshly built wherever it is needed (placeBundleSafe()).
  *
- * Gegenproben (gemessen am 08.11.2026):
- *   - `git add -f public/js/app.bundle.js` → rot: „ist eingecheckt“.
- *   - die Zeile `public/js/app.bundle.js` aus Web-App/.gitignore gestrichen →
- *     rot: „wird von git ignoriert“.
- *   - in placeBundleSafe() die Veraltet-Prüfung durch `true` ersetzt (nie
- *     bauen) → rot im zweiten Test: „fehlendes Bündel wird gebaut“.
- *   - sie durch `false` ersetzt (immer bauen) → rot im zweiten Test (das
- *     frische Bündel wird angefasst).
+ * Counter-checks (measured on 08.11.2026):
+ *   - `git add -f public/js/app.bundle.js` → red: “is checked in”.
+ *   - the line `public/js/app.bundle.js` deleted from Web-App/.gitignore →
+ *     red: “is ignored by git”.
+ *   - in placeBundleSafe() the staleness check replaced by `true` (never
+ *     build) → red in the second test: “missing bundle is built”.
+ *   - replaced by `false` (always build) → red in the second test (the
+ *     fresh bundle is touched).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -46,7 +46,7 @@ test('a missing or outdated bundle is built, a fresh one is not touched', { time
   assert.equal(placeBundleSafe(ziel), false, 'frisches Bündel bleibt unberührt');
   assert.equal(fs.statSync(ziel).mtimeMs, mtime);
 
-  // Eine zweite, vorher nie geprüfte Datei: Schreiben nach Prüfen derselben Datei ist ein Dateisystem-Rennen.
+  // A second file never checked before: writing after checking the same file is a file system race.
   const alt = path.join(dir, 'alt.bundle.js');
   fs.writeFileSync(alt, 'veraltet');
   fs.utimesSync(alt, 1, 1);

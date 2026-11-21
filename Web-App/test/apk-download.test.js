@@ -1,17 +1,17 @@
 /**
- * Der Download-Knopf zeigt dorthin, wo der Workflow das APK wirklich ablegt.
+ * The download button points to where the workflow really stores the APK.
  *
- * Knopf in jsdom (echtes Bündel), Workflow als Struktur. Die Release-Wege selbst
- * (Signieren, Prüfsummen, Fassungen) prüft der Android-Lauf:
+ * Button in jsdom (real bundle), workflow as structure. The release paths themselves
+ * (signing, checksums, versions) are checked by the Android run:
  * Android-App/tools/release-wege.test.js.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
- *   b) Knopf aus index.html entfernt             → rot: Schritt 1 und 2
- *   c) Knopf hinter den QR-Code verschoben       → rot: Schritt 1 („hinter dem QR-Code“)
- * Gegenproben (12.11.2026 gemessen, je einzeln, zurückgenommen):
- *   d) Knopf wieder auf `releases/download/apk-neuste/…`        → rot: Schritt 2
- *   e) `"$APK"` aus `gh release create` in android-release.yml  → rot: Schritt 2
- *   f) LINK in android-release.yml wieder auf apk-neuste        → rot: Schritt 2
+ * Counter-checks (measured 10.11.2026, each alone, reverted):
+ *   b) button removed from index.html            → red: steps 1 and 2
+ *   c) button moved behind the QR code           → red: step 1 (“behind the QR code”)
+ * Counter-checks (measured 12.11.2026, each alone, reverted):
+ *   d) button back to `releases/download/apk-neuste/…`          → red: step 2
+ *   e) `"$APK"` out of `gh release create` in android-release.yml → red: step 2
+ *   f) LINK in android-release.yml back to apk-neuste           → red: step 2
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -21,7 +21,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const { openUi, sicht } = require('./helpers/ui');
 
-/** Der Knopf, wie ihn die geöffnete Sicht „App“ zeigt. */
+/** The button as the opened “App” view shows it. */
 async function knopf() {
   const o = await openUi({ '/v1/settings/tokens': { success: true, tokens: [] } });
   try {
@@ -49,16 +49,16 @@ test('1. the button is in the "app" view, before the QR code, without a foreign 
   const k = await knopf();
   assert.match(k.href, /^https:\/\/github\.com\//, 'Der Knopf zeigt nicht auf GitHub — dort liegt das APK.');
   assert.ok(k.sichtbar, 'Der Knopf ist in der geöffneten Sicht nicht zu sehen');
-  // Erst die App holen, dann das Gerät verknüpfen; andersherum gibt es noch nichts zu scannen.
+  // First get the app, then link the device; the other way round there is nothing to scan yet.
   assert.ok(k.vorQr, 'Der Knopf steht hinter dem QR-Code');
-  // Googles Android-Roboter ist markenrechtlich gebunden; das Symbol ist bewusst ein eigenes.
+  // Google's Android robot is bound by trademark law; the icon is deliberately our own.
   assert.ok(k.svg, 'Das Symbol kommt nicht als eigenes SVG mit.');
   assert.doesNotMatch(k.markup, /androidicons|google.*android.*logo|gstatic|play\.google\.com\/intl/i);
 });
 
 test('2. the same address as in the workflow', async () => {
   const adresse = (await knopf()).href;
-  // ── Aus dem Workflow: fester Link und der Name, unter dem das APK angelegt wird ──
+  // ── From the workflow: fixed link and the name under which the APK is created ──
   const yml = fs.readFileSync(path.join(ROOT, '..', '.github', 'workflows', 'android-release.yml'), 'utf8');
   const link = yml.match(/^\s*LINK="https:\/\/github\.com\/\$GITHUB_REPOSITORY\/(\S+)"/m)?.[1];
   assert.ok(link, 'Im Workflow ist kein LINK mehr zu finden — Muster veraltet?');

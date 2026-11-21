@@ -1,39 +1,39 @@
 /**
- * UX-Prüfung 19 im echten Chrome, im Haushalt (patternHousehold): Set-Detail
- * (H1, H2, M1, M2), Einstellungen an einem Ort (M2, M3), erste Karte am
- * Telefon (M4), Pfad, Kacheln und Achse (M5, N1, N2, N3); was jeweils rot
- * wird, sagen die Gegenproben.
+ * UX check 19 in real Chrome, in the household (patternHousehold): set detail
+ * (H1, H2, M1, M2), settings in one place (M2, M3), first card on the
+ * phone (M4), path, tiles and axis (M5, N1, N2, N3); what turns red in each case
+ * is told by the counter-checks.
  *
- * Gegenproben (12.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in mengenBlock() `if (!inHousehold(set))` zu `if (true)` → rot:
- *      „Set-Detail im Haushalt“ (keine Zeile je Konto)
- *   B  in untertitel() wieder nur die fremden Konten → rot: ebenda
- *      („Konto: …_kind“ statt „Konten: r19_… (ich), …_kind“)
- *   C  in frischeDetailAuf() ladeSetNachtraege(sn) entfernt → rot: ebenda
- *      (Diagramm nennt weiter 205,00 €)
- *   D  in mengeJeKonto() owner_user_id weggelassen → rot: ebenda (Toast
- *      nennt den eigenen Kauf vom 01.06.)
- *   E  meldeAmFeld() in frischeDetailAuf() entfernt → rot: ebenda (kein
+ * Counter-checks (measured 12.11.2026, each on its own, bundle rebuilt):
+ *   A  in mengenBlock() `if (!inHousehold(set))` to `if (true)` → red:
+ *      „Set-Detail im Haushalt“ (no row per account)
+ *   B  in untertitel() again only the foreign accounts → red: same place
+ *      („Konto: …_kind“ instead of „Konten: r19_… (ich), …_kind“)
+ *   C  ladeSetNachtraege(sn) removed in frischeDetailAuf() → red: same place
+ *      (chart still names 205,00 €)
+ *   D  owner_user_id left out in mengeJeKonto() → red: same place (toast
+ *      names the own purchase of 01.06.)
+ *   E  meldeAmFeld() removed in frischeDetailAuf() → red: same place (no
  *      „Gespeichert ✓“)
- *   F  in monitor.js die Zeitplanfelder wieder in die Dienstetabelle → rot:
- *      „Einstellungen an einem Ort“ (Felder unter Hintergrundarbeiten)
- *   G  loadSchedules() beim Öffnen der Einstellungen nicht gerufen → rot:
- *      ebenda („Zeitpläne als Felder“)
- *   H  meldeAmFeld() in speichereCacheTtl entfernt → rot: ebenda
- *      („Gespeichert ✓“ am Feld)
- *   I  in mobile.css den Kopf der Sammlung wieder mit sichtbarem Titel →
- *      rot: „Telefon: erste Karte“ (43 % der Höhe)
- *   K  rbHinweisWeg() ohne localStorage → rot: ebenda (Band nach Neuladen)
- *   L  .delbtn wieder mit font-size var(--fs-1) → rot: „Pfad, Kacheln,
- *      Achse“ (Symbol zu klein)
- *   M  Kachel-Papierkorb wieder nur bei (hover:none) and (pointer:coarse)
- *      verborgen → rot: ebenda („Papierkorb auf jeder Kachel“)
- *   N  Kachel ohne „n Käufe, zuletzt“ → rot: ebenda („Gekauft 02.06.2026“)
- *   O  Pfad aus #tab-parts entfernt → rot: ebenda ('' statt „Sammlung ›
+ *   F  in monitor.js the schedule fields back into the services table → red:
+ *      „Einstellungen an einem Ort“ (fields under background jobs)
+ *   G  loadSchedules() not called when opening the settings → red:
+ *      same place („Zeitpläne als Felder“)
+ *   H  meldeAmFeld() removed in speichereCacheTtl → red: same place
+ *      („Gespeichert ✓“ at the field)
+ *   I  in mobile.css the header of the collection again with a visible title →
+ *      red: „Telefon: erste Karte“ (43 % of the height)
+ *   K  rbHinweisWeg() without localStorage → red: same place (banner after reloading)
+ *   L  .delbtn again with font-size var(--fs-1) → red: „Pfad, Kacheln,
+ *      Achse“ (symbol too small)
+ *   M  tile trash can again only hidden at (hover:none) and (pointer:coarse)
+ *      → red: same place („Papierkorb auf jeder Kachel“)
+ *   N  tile without „n Käufe, zuletzt“ → red: same place („Gekauft 02.06.2026“)
+ *   O  path removed from #tab-parts → red: same place ('' instead of „Sammlung ›
  *      Teile“)
- *   P  Tagesachse wieder { day: 'numeric', month: 'short' } → rot: ebenda
+ *   P  day axis again { day: 'numeric', month: 'short' } → red: same place
  *      („13. Sept. | 27. Sept. …“)
- *   Q  `.ca .delbtn{display:none}` in styles.css (13.11.2026) → rot: ebenda
+ *   Q  `.ca .delbtn{display:none}` in styles.css (13.11.2026) → red: same place
  *      („Symbol zu klein (0 px)“)
  */
 const test = require('node:test');
@@ -64,7 +64,7 @@ async function setDetailInHousehold(_t, a) {
     new RegExp(`Kauf vom 02\\.06\\.2026 \\(210,00 €\\) entfernt · ${kind}`),
   );
   assert.ok(await b.auswerten(`!!document.querySelector('#toasts .toast-aktion')`), 'kein Rückgängig');
-  // Ohne das Kind gehört das Set nur noch dem Konto: wieder das eine Feld, die Kopfzeile ohne Konten.
+  // Without the child the set only belongs to the account: the one field again, the header without accounts.
   assert.deepEqual(await b.auswerten(zeilen), []);
   assert.equal(await b.auswerten(`document.getElementById('m-qty')?.value`), '1');
   assert.equal(await b.auswerten(text('#m-untertit')), '21318-1');
@@ -144,14 +144,14 @@ async function pathTilesAxis(_t, a) {
 
   await bis(`!!document.querySelector('#gallery [data-arg="21318-1"] .kachel-datum')`, 'Kachel Tree House');
   assert.equal(await b.auswerten(text('#gallery [data-arg="21318-1"] .kachel-datum')), '2 Käufe, zuletzt 02.06.2026');
-  // Papierkorb: Ohne Überfahren (Chrome headless meldet hover: none, wie ein Touchgerät) steht er nicht auf
-  // der Kachel. Mit Maus erscheint er beim Überfahren; das lässt sich hier nicht emulieren, also wird er für
-  // Grösse und Kontrast eingeblendet: Symbol ≥ 16 px, im Dunkeln ≥ 3:1 zur Fläche.
+  // Trash can: without hovering (Chrome headless reports hover: none, like a touch device) it does not stand on
+  // the tile. With a mouse it appears on hover; that cannot be emulated here, so it is shown for
+  // size and contrast: symbol ≥ 16 px, in the dark ≥ 3:1 to the surface.
   const korb = `document.querySelector('#gallery [data-arg="21318-1"] .delbtn')`;
   assert.equal(await b.auswerten(`matchMedia('(hover: none)').matches`), true, 'Testaufbau: Überfahren möglich');
   assert.equal(await b.auswerten(`${korb}.checkVisibility()`), false, 'Papierkorb auf jeder Kachel');
-  // Einblenden und Messen in einem Schritt: Zeichnet die Galerie dazwischen neu (Auftrag fertig,
-  // Statusstrom), wäre der zweite Zugriff ein neues, wieder verstecktes Element mit 0 px.
+  // Show and measure in one step: if the gallery redraws in between (job done,
+  // status stream), the second access would be a new, hidden again element with 0 px.
   const breite = await b.auswerten(
     `(() => { const k = ${korb}; const c = k.parentElement; c.style.display = 'block'; c.style.opacity = '1';
       return k.querySelector('svg').getBoundingClientRect().width; })()`,

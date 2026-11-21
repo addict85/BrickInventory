@@ -1,13 +1,13 @@
 /**
- * Fehlermeldung am Preisfeld mit Währungswahl (Dialog „Set hinzufügen“), gemessen in Chrome bei 390 und
- * 1280 px: Das Preisfeld behält seine Breite, die Meldung steht unter der ganzen Zeile.
+ * Error message at the price field with currency choice (dialog „Set hinzufügen“), measured in Chrome at 390 and
+ * 1280 px: the price field keeps its width, the message stands below the whole row.
  *
- * Gegenprobe (08.11.2026 gemessen): in feldFehler (formular.js) die Meldung wieder direkt hinter das
- * Eingabefeld statt hinter den Wrapper `.preis-mit-waehrung` gesetzt
- *   → rot in beiden Breiten: Preisfeld nur noch ~25 px breit, Meldung neben der Währung.
+ * Counter-check (measured 08.11.2026): in feldFehler (formular.js) the message put directly behind the
+ * input field again instead of behind the wrapper `.preis-mit-waehrung`
+ *   → red in both widths: price field only ~25 px wide, message next to the currency.
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Without Chrome (CHROME_BIN, google-chrome, chromium) it is skipped.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

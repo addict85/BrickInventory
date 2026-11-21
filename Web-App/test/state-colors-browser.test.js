@@ -1,13 +1,13 @@
 /**
- * „Neu“ ist in jedem Design blau, „Gebraucht“ bernstein — Plakette und
- * Diagrammlinie gleich. Vorher war „Neu“ je nach Design grün oder blau, und
- * die Linie im Diagramm blau neben einer grünen Plakette. Blau/Bernstein,
- * weil das Paar auch bei Rot-Grün-Sehschwäche unterscheidbar bleibt.
+ * „Neu“ is blue in every theme, „Gebraucht“ amber — badge and
+ * chart line the same. Before, „Neu“ was green or blue depending on the theme, and
+ * the line in the chart blue next to a green badge. Blue/amber
+ * because the pair stays distinguishable even with red-green color blindness.
  *
- * Gemessen im Browser mit allen Designs; ohne Chrome übersprungen.
+ * Measured in the browser with all themes; skipped without Chrome.
  *
- * Gegenprobe (am 28.10.2026 gemessen): farbfaecher .cond-new wieder grün
- * (#dcfce7/#15803d) → rot: „farbfaecher: Neu ist nicht blau (Farbton 142)“.
+ * Counter-check (measured on 28.10.2026): farbfaecher .cond-new green again
+ * (#dcfce7/#15803d) → red: „farbfaecher: Neu ist nicht blau (Farbton 142)“.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

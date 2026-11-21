@@ -1,32 +1,32 @@
 /**
- * Eine neue E-Mail-Adresse verlangt das aktuelle Passwort, und die alte Adresse
- * erfährt davon. Über die neue Adresse liesse sich sonst das Passwort
- * zurücksetzen: Eine kurz offene fremde Sitzung genügte zur Übernahme.
+ * A new e-mail address requires the current password, and the old address
+ * learns of it. Via the new address the password could otherwise be
+ * reset: a briefly open foreign session would suffice for a takeover.
  *
- * Gegenproben (am 27.10. gemessen):
- *   A  die Passwortprüfung im E-Mail-Zweig von PUT /profile entfernt → rot:
- *      „ohne Passwort", „falsches Passwort", „mit Passwort" (die Adresse war
- *      schon im ersten Teiltest gewechselt)
- *   B  den Hinweis an die alte Adresse entfernt → rot: „mit Passwort"
- *      (keine Mail an die alte Adresse)
- *   C  `password` in PUT /profile wieder angenommen → rot: „Passwort nur über
+ * Counter-checks (measured on 27.10.):
+ *   A  the password check removed in the e-mail branch of PUT /profile → red:
+ *      “without password", “wrong password", “with password" (the address was
+ *      already changed in the first subtest)
+ *   B  the hint to the old address removed → red: “with password"
+ *      (no mail to the old address)
+ *   C  `password` accepted again in PUT /profile → red: “password only via
  *      change-password"
- *   D  getBaseUrl() fällt in Produktion wieder auf den Host-Kopf zurück → rot:
- *      „in Produktion ohne APP_BASE_URL kein Link aus dem Host-Kopf"
+ *   D  getBaseUrl() falls back to the Host header in production again → red:
+ *      “in production without APP_BASE_URL no link from the Host header"
  *
- * Gegenproben zur Kontenaufzählung (03.11.2026 gemessen):
- *   E  emailVergeben() wieder vor der Passwortprüfung → rot: „eine belegte
- *      Adresse verrät sich nur mit Passwort“
- *   F  accountThrottled() in PUT /profile entfernt → rot: „Vergabeprüfungen
- *      sind gebremst“
- *   G  Passwortpflicht wieder nur bei neuer Adresse → rot: „auch ohne neue
- *      Adresse nur mit Passwort“ und „ein belegter Benutzername verrät sich
- *      nur mit Passwort“
- * Gegenprobe Runde 17 (05.11.2026 gemessen):
- *   H  die Vorprüfung `emailVergeben → 400 email_vergeben` wieder eingebaut →
- *      rot: „eine belegte Adresse antwortet wie eine freie“
+ * Counter-checks for account enumeration (measured 03.11.2026):
+ *   E  emailVergeben() again before the password check → red: “a taken
+ *      address only reveals itself with password”
+ *   F  accountThrottled() removed in PUT /profile → red: “assignment checks
+ *      are throttled”
+ *   G  password required again only for a new address → red: “even without a new
+ *      address only with password” and “a taken username only reveals itself
+ *      with password”
+ * Counter-check round 17 (measured 05.11.2026):
+ *   H  the pre-check `emailVergeben → 400 email_vergeben` rebuilt →
+ *      red: “a taken address answers like a free one”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const { environment, testData } = require('./helpers/sources');
@@ -41,7 +41,7 @@ const _req = require('./helpers/sources').buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 
-// Versandte Hinweise mitschreiben, bevor routes/auth die Mail-Funktionen bindet.
+// Record sent hints before routes/auth binds the mail functions.
 const gesendet = [];
 const bestaetigt = [];
 const versuche = [];
@@ -179,7 +179,7 @@ test('change email', { concurrency: 1 }, async t => {
       const vergeben = await profil({ email: belegt.toUpperCase(), password_current: PASS });
       assert.deepEqual(vergeben, frei, 'Status und Felder gleich');
       assert.deepEqual(frei, { status: 200, body: { success: true, emailChanged: true, emailSent: true } });
-      // Der Inhaber der belegten Adresse bekommt einen Hinweis statt eines Links.
+      // The owner of the taken address gets a hint instead of a link.
       assert.deepEqual(versuche, [
         { an: `${NAME}@frei.example`, art: 'link' },
         { an: belegt, art: 'adresse' },

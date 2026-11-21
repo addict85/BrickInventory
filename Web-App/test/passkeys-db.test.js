@@ -1,43 +1,43 @@
 /**
- * Passkeys (WebAuthn): Registrieren, Anmelden ohne Passwort und als zweiter
- * Faktor — mit einem in Node erzeugten P-256-Schlüssel, der die Attestation
- * „none“ und jede Assertion selbst signiert. Geprüft wird über die echten
- * Routen gegen eine echte Datenbank.
+ * Passkeys (WebAuthn): registering, logging in without password and as second
+ * factor — with a P-256 key generated in Node that signs the attestation
+ * „none“ and every assertion itself. Checked via the real
+ * routes against a real database.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in loeseChallengeEin() das DELETE … RETURNING durch ein SELECT ersetzt
- *      (Challenge mehrfach gültig) → rot: „eine Antwort gilt nur einmal …“
- *      (beim Passkey ohne Zähler ging die Wiederholung durch)
- *   B  in anmeldungPruefen() zusätzlich 'https://boese.test' als Origin
- *      erlaubt → rot: „fremde Herkunft wird abgewiesen“
- *   C  requireUserVerification beim Anmelden ohne Passwort auf false → rot:
- *      „ohne Passwort braucht es User Verification“
- *   D  in checkCredentials() die Bindung an das Konto weggelassen (uid null)
- *      → rot: „Passkey als zweiter Faktor …“ (Berts Passkey öffnete Annas Konto)
- *   E  gespeicherten Zähler ignoriert (counter: 0, UPDATE ohne Zählerbedingung)
- *      → rot: „… und ein alter Zähler nicht“
- *   F  (31.10.2026) in anmeldungPruefen() `...androidOrigins()` aus
- *      expectedOrigin gestrichen → rot: „die eingetragene App meldet sich an …“
- *   G  (31.10.2026) in /passkey/anmelden `mit_token` überhört (immer false) →
- *      rot: „die eingetragene App meldet sich an …“ (kein Token)
- * Gegenproben (01.11.2026 gemessen):
- *   H  Code-Pflicht in /passkey/registrieren/optionen entfernt → rot: „mit zweitem
- *      Faktor verlangt ein neuer Passkey auch den Code“
- *   I  setPasswordBack() ohne loescheAlleDesKontos → rot: „Zurücksetzen per Mail …“
- *   J  hintInBackground() in /reset-password entfernt → rot: „kein Hinweis verschickt“
- *   K  passkeys_widerrufen überhört → rot: „ein Passwortwechsel widerruft Passkeys nur auf Wunsch“
- *   L  (11.11.2026) in speichereChallenge() die Zählbedingung gestrichen → rot:
- *      „über der Obergrenze offener Challenges …“ (200 statt 503)
- * Gegenproben (15.11.2026 gemessen, je einzeln; Anmeldeoptionen jetzt signiert statt abgelegt):
- *   M  in signierteFrist() den Vergleich der Signatur gestrichen → rot: „eine erfundene …“
- *   N  in signierteFrist() den Zweck nicht geprüft → rot: „eine erfundene …“ (zweiter Faktor 200)
- *   O  in anmeldungPruefen() vermerkeVerbraucht() übergangen → rot: „eine Antwort gilt nur einmal …“
- *   P  in speichereChallenge() ohne `WHERE zweck = $3` → rot: „Anmeldeoptionen legen nichts ab …“
- *      (Registrieren 503 bei vollen Anmeldetöpfen)
- *   Q  anmeldeOptionen() zusätzlich mit merkeChallenge() → rot u. a. „Anmeldeoptionen legen
- *      nichts ab …“ (Zeilen angelegt) und jede Anmeldung (der Vermerk trifft die abgelegte Zeile)
+ * Counter-checks (measured on 30.10.2026):
+ *   A  in loeseChallengeEin() the DELETE … RETURNING replaced by a SELECT
+ *      (challenge valid several times) → red: “a response only applies once …”
+ *      (with the passkey without a counter the repetition went through)
+ *   B  in anmeldungPruefen() additionally 'https://boese.test' allowed as origin
+ *      → red: “a foreign origin is rejected”
+ *   C  requireUserVerification set to false when logging in without password → red:
+ *      “without password user verification is needed”
+ *   D  in checkCredentials() the binding to the account left out (uid null)
+ *      → red: “passkey as second factor …” (Bert's passkey opened Anna's account)
+ *   E  stored counter ignored (counter: 0, UPDATE without counter condition)
+ *      → red: “… and an old counter does not”
+ *   F  (31.10.2026) in anmeldungPruefen() `...androidOrigins()` deleted from
+ *      expectedOrigin → red: “the registered app logs in …”
+ *   G  (31.10.2026) in /passkey/anmelden `mit_token` ignored (always false) →
+ *      red: “the registered app logs in …” (no token)
+ * Counter-checks (measured 01.11.2026):
+ *   H  code requirement removed in /passkey/registrieren/optionen → red: “with a second
+ *      factor a new passkey also requires the code”
+ *   I  setPasswordBack() without loescheAlleDesKontos → red: “resetting via mail …”
+ *   J  hintInBackground() removed in /reset-password → red: „kein Hinweis verschickt“
+ *   K  passkeys_widerrufen ignored → red: “a password change revokes passkeys only on request”
+ *   L  (11.11.2026) in speichereChallenge() the count condition deleted → red:
+ *      “above the upper limit of open challenges …” (200 instead of 503)
+ * Counter-checks (measured 15.11.2026, each on its own; login options now signed instead of stored):
+ *   M  in signierteFrist() the comparison of the signature deleted → red: “an invented …”
+ *   N  in signierteFrist() the purpose not checked → red: “an invented …” (second factor 200)
+ *   O  in anmeldungPruefen() vermerkeVerbraucht() skipped → red: “a response only applies once …”
+ *   P  in speichereChallenge() without `WHERE zweck = $3` → red: “login options store nothing …”
+ *      (registering 503 with full login pots)
+ *   Q  anmeldeOptionen() additionally with merkeChallenge() → red among others “login options store
+ *      nothing …” (rows created) and every login (the note hits the stored row)
  *
- * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
+ * Prerequisite: test DB (contents are touched!) via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -69,7 +69,7 @@ const ORIGIN = 'https://lego.test',
 const b64u = b => Buffer.from(b).toString('base64url');
 const sha = b => crypto.createHash('sha256').update(b).digest();
 
-/** Ein Authenticator aus einem Schlüsselpaar: erzeugt Attestation und Assertions. */
+/** An authenticator from a key pair: produces attestation and assertions. */
 function authenticator() {
   const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', { namedCurve: 'P-256' });
   const jwk = publicKey.export({ format: 'jwk' });
@@ -123,8 +123,8 @@ function authenticator() {
         response: { clientDataJSON: b64u(client), attestationObject: b64u(att), transports: ['internal'] },
       };
     },
-    /** @param challenge @param {object} [o] @param [o.uv] User Verification gesetzt @param [o.zaehler] fester Zählerstand
-     *  @param {string} [o.origin] Herkunft der Anmeldung */
+    /** @param challenge @param {object} [o] @param [o.uv] user verification set @param [o.zaehler] fixed counter value
+     *  @param {string} [o.origin] origin of the login */
     anmelden(challenge, o = {}) {
       const origin = o.origin ?? ORIGIN;
       const stand = o.zaehler ?? ++zaehler;
@@ -230,7 +230,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
     const antwort = anna.anmelden(await optionen());
     assert.equal((await ruf('/passkey/anmelden', { antwort })).status, 200);
     assert.equal((await ruf('/passkey/anmelden', { antwort })).status, 401, 'Wiederholte Antwort');
-    // Neue Challenge, aber der Zählerstand von eben: ein geklonter Authenticator.
+    // New challenge, but the counter value from just now: a cloned authenticator.
     const stand = Number(
       (await db.get('SELECT sign_count FROM passkeys WHERE user_id = $1', [ids.pk_anna])).sign_count,
     );
@@ -238,7 +238,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
     const clone = anna.anmelden(await optionen(), { zaehler: stand });
     assert.equal((await ruf('/passkey/anmelden', { antwort: clone })).status, 401, 'Zähler nicht gestiegen');
 
-    // Viele Passkeys zählen gar nicht (immer 0): Dann schützt allein die Challenge.
+    // Many passkeys do not count at all (always 0): then the challenge alone protects.
     await register('pk_bert', withoutCounter);
     const null1 = withoutCounter.anmelden(await optionen(), { zaehler: 0 });
     assert.equal((await ruf('/passkey/anmelden', { antwort: null1 })).status, 200);
@@ -389,7 +389,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
 
   await t.test('resetting via mail revokes all passkeys and reports it', async tt => {
     assert.ok((await anzahl(ids.pk_anna)) > 0);
-    // Ein Mailserver, der nicht antwortet: Der Versuch steht dann im Fehlerprotokoll.
+    // A mail server that does not answer: the attempt then stands in the error log.
     await db.run(`INSERT INTO global_settings (key, value) VALUES ('smtp_host', '127.0.0.1'), ('smtp_port', '1'), ('smtp_user', 'x')
                   ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
     await db.run("UPDATE users SET email = 'pk_anna@example.org' WHERE id = $1", [ids.pk_anna]);
@@ -420,7 +420,7 @@ test('Passkeys', { concurrency: 1 }, async t => {
   });
 
   await t.test('an invented, changed or repurposed challenge is rejected', async () => {
-    // Annas Passkeys hat das Zurücksetzen eben widerrufen.
+    // The resetting just revoked Anna's passkeys.
     const carl = authenticator();
     await register('pk_bert', carl);
     const echt = await optionen();

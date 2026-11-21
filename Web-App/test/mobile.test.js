@@ -1,5 +1,5 @@
 /**
- * Frontend-Tests für public/js/mobile.js in jsdom.
+ * Frontend tests for public/js/mobile.js in jsdom.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,7 +9,7 @@ const { JSDOM } = require('jsdom');
 
 const SRC = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'mobile.js'), 'utf8');
 
-/** Frisches Dokument mit geladenem mobile.js. */
+/** Fresh document with mobile.js loaded. */
 function boot(bodyHtml) {
   const dom = new JSDOM(`<!doctype html><html><body>${bodyHtml || ''}</body></html>`, { runScripts: 'outside-only' });
   dom.window.eval(SRC);
@@ -30,8 +30,8 @@ test('data-label comes from the header row', () => {
 });
 
 test('with a multi-row header the bottom row counts', () => {
-  // Kommt in den Finanztabellen vor: eine Gruppenüberschrift über den
-  // eigentlichen Spaltennamen.
+  // Occurs in the finance tables: a group heading above the
+  // actual column names.
   const dom = boot(`
     <table class="dt">
       <thead>
@@ -63,8 +63,8 @@ test('colspan does not shift the assignment', () => {
 });
 
 test('empty column headers yield an empty label', () => {
-  // Aktionsspalten (Löschen-Button) haben kein <th>-Text; mobile.css blendet
-  // die Beschriftung dann per content:none aus.
+  // Action columns (delete button) have no <th> text; mobile.css then hides
+  // the label via content:none.
   const dom = boot(`
     <table class="dt">
       <thead><tr><th>Name</th><th></th></tr></thead>
@@ -75,15 +75,15 @@ test('empty column headers yield an empty label', () => {
 });
 
 test('tables inserted later are labeled as well', async () => {
-  // Der eigentliche Zweck des Observers: Die Listen werden per innerHTML
-  // gebaut, lange nach dem Laden des Skripts.
+  // The actual purpose of the observer: the lists are built via innerHTML,
+  // long after the script was loaded.
   const dom = boot('<div id="host"></div>');
   dom.window.document.getElementById('host').innerHTML = `
     <table class="dt">
       <thead><tr><th>Teil</th><th>Menge</th></tr></thead>
       <tbody><tr><td>3001</td><td>4</td></tr></tbody>
     </table>`;
-  await new Promise(r => setTimeout(r, 20)); // MutationObserver ist asynchron
+  await new Promise(r => setTimeout(r, 20)); // MutationObserver is asynchronous
   const tds = [...dom.window.document.querySelectorAll('tbody td')];
   assert.deepEqual(
     tds.map(td => td.getAttribute('data-label')),
@@ -125,12 +125,12 @@ test('a table is processed only once', () => {
 
 test('mobile.css covers both themes and lives entirely in media queries', () => {
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'mobile.css'), 'utf8');
-  // Alles ausserhalb einer @media-Regel würde den Desktop verändern.
+  // Everything outside of an @media rule would change the desktop.
   const outside = css
-    .replace(/\/\*[\s\S]*?\*\//g, '') // Kommentare weg
-    .replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '') // Media-Blöcke weg
-    // Container-Abfragen greifen nur, wo ein Container besteht — und den
-    // legt mobile.css nur innerhalb von @media an (geprüft darunter).
+    .replace(/\/\*[\s\S]*?\*\//g, '') // comments gone
+    .replace(/@media[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '') // media blocks gone
+    // Container queries only apply where a container exists — and
+    // mobile.css only creates that inside of @media (checked below).
     .replace(/@container[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}/g, '')
     .trim();
   assert.equal(outside, '', `Regeln ausserhalb von @media würden den Desktop treffen:\n${outside.slice(0, 300)}`);
@@ -152,11 +152,11 @@ test('index.html loads mobile.css after both themes', () => {
     iMobile > iTheme && iMobile > iBase,
     'mobile.css muss NACH styles.css und dem Theme kommen, sonst gewinnt das Theme',
   );
-  // mobile.js steht seit der Bündelung nicht mehr als eigenes <script>-Tag
-  // in index.html, sondern in js/app.bundle.js. Geprüft wird deshalb, dass es
-  // Teil des Bündels ist — inhaltlich dieselbe Zusicherung.
-  // Seit der Umstellung auf ES-Module gibt es keine Dateiliste mehr, sondern
-  // einen Modulgraphen: js/main.js importiert die Teile, esbuild bündelt sie.
+  // Since the bundling, mobile.js no longer stands as its own <script> tag
+  // in index.html but in js/app.bundle.js. Hence what is checked is that it
+  // is part of the bundle — in substance the same assertion.
+  // Since the switch to ES modules there is no file list any more but
+  // a module graph: js/main.js imports the parts, esbuild bundles them.
   const entry = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'main.js'), 'utf8');
   assert.match(
     entry,

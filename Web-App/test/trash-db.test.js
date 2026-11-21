@@ -1,18 +1,18 @@
 /**
- * Papierkorb: Gelöschtes kommt Zeile für Zeile so zurück, wie es war.
+ * Trash: deleted things come back row by row as they were.
  *
- * Verglichen wird der volle Zeileninhalt (to_jsonb) vor dem Löschen und nach
- * dem Wiederherstellen — samt id, Kaufpreis und Erfassungsdatum.
+ * Compared is the full row content (to_jsonb) before deleting and after
+ * restoring — including id, purchase price and acquisition date.
  *
- * Gegenproben (25.10., gemessen):
- *   A  putInTrash() in deleteSet() entfernt      → rot: „Set fehlt im Papierkorb"
- *   B  Spaltenabgleich in placeAgainHer() entfernt   → rot: „unbekannte Spalte"
- *   C  `user_id = ANY($2)` in placeAgainHer() weg    → rot: „fremdes Konto"
- *   D  (03.11.2026) confirmWithFactor() in DELETE /papierkorb/:id bzw.
- *      DELETE /papierkorb entfernt → rot: „endgültig löschen ohne Passwort"
- *      bzw. „Leeren mit falschem Passwort" (200 statt 400)
+ * Counter-checks (25.10., measured):
+ *   A  putInTrash() removed in deleteSet()         → red: „Set fehlt im Papierkorb"
+ *   B  column matching removed in placeAgainHer()  → red: „unbekannte Spalte"
+ *   C  `user_id = ANY($2)` gone in placeAgainHer() → red: „fremdes Konto"
+ *   D  (03.11.2026) confirmWithFactor() removed in DELETE /papierkorb/:id or
+ *      DELETE /papierkorb → red: „endgültig löschen ohne Passwort"
+ *      or „Leeren mit falschem Passwort" (200 instead of 400)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -32,7 +32,7 @@ const SN = `99041-${process.pid}`,
   PN = `pk${process.pid}`,
   FN = `fig-pk-${process.pid}`;
 
-/** Alle Zeilen eines Elements, als JSON — der Massstab für „wie vorher". */
+/** All rows of an element, as JSON — the yardstick for „as before". */
 async function rows(uid) {
   const q = (tab, wo, p) =>
     db.all(`SELECT to_jsonb(t) AS z FROM ${tab} t WHERE ${wo} ORDER BY id`, p).then(r => r.map(x => x.z));
@@ -99,7 +99,7 @@ test('trash', { concurrency: 1 }, async t => {
       assert.equal(e.anzahl, 2);
       assert.deepEqual(weg.body.papierkorb, [e.id], 'Die Antwort nennt den Eintrag — dafür gibt es „Rückgängig"');
 
-      // Ein fremdes Konto sieht den Eintrag nicht und kann ihn nicht zurückholen.
+      // A foreign account does not see the entry and cannot bring it back.
       assert.equal((await eintraege(F)).length, 0);
       assert.equal(
         (await api(F, 'POST', `/papierkorb/${e.id}/wiederherstellen`)).status,
@@ -179,8 +179,8 @@ test('trash', { concurrency: 1 }, async t => {
       await holdsPart(db, haupt, '3001', { setNumber: SN, menge: 2, colorId: 4 });
       await holdsPart(db, haupt, PN, { colorId: 5, menge: 3 });
       await holdsMinifig(db, haupt, FN, { menge: 1 });
-      // Ein Set des Unterkontos: Das Hauptkonto sieht es, „meine Daten" ist es nicht.
-      const SN2 = `${SN.replace(/-\d+$/, '')}9-1`; // mit Version: die Datenbank ergänzt sie sonst (Migration 0074)
+      // A set of the sub-account: the main account sees it, „meine Daten" it is not.
+      const SN2 = `${SN.replace(/-\d+$/, '')}9-1`; // with version: otherwise the database adds it (migration 0074)
       await holdsSet(db, sub, SN2, 1);
       const vorher = await rows(haupt);
 
@@ -209,12 +209,12 @@ test('trash', { concurrency: 1 }, async t => {
           .sort(),
       );
 
-      // Und alles kommt einzeln zurück, wie vorher.
+      // And everything comes back individually, as before.
       for (const e of liste.filter(e => e.user_id === haupt))
         assert.equal((await api(H, 'POST', `/papierkorb/${e.id}/wiederherstellen`)).status, 200);
       assert.deepEqual(await rows(haupt), vorher);
       await db.run('DELETE FROM set_acquisitions WHERE set_number = ANY($1)', [[SN, SN2]]);
-      // Teil und Figur bleiben: Der nächste Fall löscht sie selbst.
+      // Part and figure stay: the next case deletes them itself.
       await db.run('DELETE FROM parts WHERE set_number = ANY($1)', [[SN, SN2]]);
       await db.run('DELETE FROM sets WHERE set_number = ANY($1)', [[SN, SN2]]);
     });

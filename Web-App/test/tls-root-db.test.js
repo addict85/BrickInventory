@@ -1,23 +1,23 @@
 /**
- * Die Wurzel der internen CA: Fingerabdruck (Base64 SHA-256 SPKI), /ca.crt,
- * die Anzeige in den Einstellungen, `fp` im QR-Code nur zu einer https-Adresse
- * und das Sitzungscookie nur über TLS.
+ * The root of the internal CA: fingerprint (Base64 SHA-256 SPKI), /ca.crt,
+ * the display in the settings, `fp` in the QR code only for an https address
+ * and the session cookie only over TLS.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in tlsStatusFrom() über das ganze Zertifikat (zert.raw) statt über SPKI
- *      gehasht → rot: „Fingerabdruck = Base64 SHA-256 des SPKI …“
- *   B  in tlsStand() den Zwischenspeicher nicht an mtime gebunden → rot:
- *      „/ca.crt, Einstellungen und QR …“ (nach dem Tausch der Datei alter fp)
- *   C  in /qr-token die https-Bedingung für `fp` entfernt → rot: dieselbe
- *      Prüfung (fp zur http-Adresse)
- *   D  cookieSafe() ohne hinterTls → rot: „Cookie nur über TLS …“
- *   E  (09.11.2026) zert_sha256 aus dem SPKI statt aus dem ganzen Zertifikat →
- *      rot: „zum Abgleich auf dem Gerät …“
- *   F  (14.11.2026, nur noch HTTPS) in /ca.crt die Absage ohne req.secure
- *      gestrichen → rot: „/ca.crt, Einstellungen und QR …“ (über HTTP 200 statt 403);
- *      den Kopf X-Fingerabdruck-Pruefen gestrichen → rot: dieselbe Prüfung
+ * Counter-checks (measured on 30.10.2026):
+ *   A  in tlsStatusFrom() hashed over the whole certificate (zert.raw) instead of over SPKI
+ *      → red: “fingerprint = Base64 SHA-256 of the SPKI …”
+ *   B  in tlsStand() the cache not bound to mtime → red:
+ *      “/ca.crt, settings and QR code …” (old fp after swapping the file)
+ *   C  the https condition for `fp` removed in /qr-token → red: the same
+ *      check (fp for the http address)
+ *   D  cookieSafe() without hinterTls → red: “cookie only over TLS …”
+ *   E  (09.11.2026) zert_sha256 from the SPKI instead of from the whole certificate →
+ *      red: “for comparison on the device …”
+ *   F  (14.11.2026, HTTPS only now) in /ca.crt the refusal without req.secure
+ *      deleted → red: “/ca.crt, settings and QR code …” (over HTTP 200 instead of 403);
+ *      the header X-Fingerabdruck-Pruefen deleted → red: the same check
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL (für Sitzung und QR-Code).
+ * Prerequisite: test DB via TEST_DATABASE_URL (for session and QR code).
  */
 const test = require('node:test');
 const { environment, testData } = require('./helpers/sources');
@@ -59,7 +59,7 @@ test('fingerprint = Base64 SHA-256 of the SPKI, 32 bytes', () => {
 });
 
 test("for comparison on the device: SHA-256 of the whole certificate, as in Caddy's log", () => {
-  // Wie compose.yaml ihn ins Protokoll schreibt: sha256sum über den DER-Inhalt des PEM.
+  // As compose.yaml writes it into the log: sha256sum over the DER content of the PEM.
   const der = Buffer.from(PEM1.replace(/-----[^-]+-----|\s/g, ''), 'base64');
   const hex = require('node:crypto')
     .createHash('sha256')
@@ -74,7 +74,7 @@ test("for comparison on the device: SHA-256 of the whole certificate, as in Cadd
 });
 
 test('cookie only over TLS: in production and behind https, can be switched off', () => {
-  // Ohne NODE_ENV gelten die Regeln des Betriebs; locker ist nur die Entwicklung.
+  // Without NODE_ENV the rules of production apply; only development is relaxed.
   const ent = { NODE_ENV: 'development' };
   assert.equal(cookieSafe(ladeKonfig({})), true);
   assert.equal(cookieSafe(ladeKonfig(ent)), false);
@@ -127,13 +127,13 @@ test('/ca.crt, settings and QR code carry the same fingerprint', { concurrency: 
   const anmeldung = await ruf('/api/v1/auth/login', {
     body: { username: 'tls_nutzer', password: 'richtigesPasswort1', ohne_token: true },
   });
-  await anmeldung.text(); // die Sitzung steht erst nach dem letzten Byte im Speicher
+  await anmeldung.text(); // the session only stands in the store after the last byte
   const cookie = anmeldung.headers.get('set-cookie').split(';')[0];
   const qr = async () =>
     (await ruf('/api/v1/auth/qr-token', { cookie, body: { password: 'richtigesPasswort1' } })).json();
 
   const zert = (proto = 'https') => fetch(basis + '/ca.crt', { headers: { 'x-forwarded-proto': proto } });
-  // Noch keine Datei (Caddy hat die CA nicht angelegt): kein fp, 404.
+  // No file yet (Caddy has not created the CA): no fp, 404.
   assert.equal((await zert()).status, 404);
   assert.equal((await qr()).fp, undefined);
 
@@ -142,7 +142,7 @@ test('/ca.crt, settings and QR code carry the same fingerprint', { concurrency: 
   assert.equal(r.status, 200);
   assert.match(r.headers.get('content-type'), /application\/x-x509-ca-cert/);
   assert.equal(tlsStatusFrom(await r.text()).fp, FP1, '/ca.crt liefert das Zertifikat selbst');
-  // Auch über HTTPS: Vor der Installation traut das Gerät der Verbindung nicht, Name und Kopf sagen es.
+  // Also over HTTPS: before the installation the device does not trust the connection, name and header say so.
   assert.match(r.headers.get('content-disposition'), /filename="brickinventory-ca-fingerabdruck-pruefen\.crt"/);
   assert.match(r.headers.get('x-fingerabdruck-pruefen') ?? '', /SHA-256 vor dem Installieren/);
   const klar = await zert('http');
@@ -157,12 +157,12 @@ test('/ca.crt, settings and QR code carry the same fingerprint', { concurrency: 
   assert.equal(q.zert_sha256, tlsStatusFrom(PEM1).zert_sha256, 'Neben dem QR-Code steht der Wert zum Abgleich');
   assert.equal(q.url, 'https://lego.test');
 
-  // Die Datei wird getauscht (neue CA): Der Server liest neu, ohne Neustart.
+  // The file is swapped (new CA): the server rereads without a restart.
   fs.writeFileSync(CA, PEM2);
   fs.utimesSync(CA, new Date(), new Date(Date.now() + 5000));
   assert.equal((await qr()).fp, FP2);
 
-  // Zu einer http-Adresse gehört kein fp: Die App prüft dann kein Zertifikat.
+  // No fp belongs to an http address: the app then checks no certificate.
   environment({ APP_BASE_URL: 'http://192.168.1.5:3000' });
   try {
     const ohne = await qr();

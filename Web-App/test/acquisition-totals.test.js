@@ -1,17 +1,17 @@
 /**
- * Die Summenzeile der Erfassungen rechnet der SERVER — einmal.
+ * The total row of the entries is computed by the SERVER — once.
  *
- * Gegenprobe (08.11.2026 gemessen): acqSummary() liest totals.quantity nicht
- * (`const menge = 0`) bzw. sumsText() rechnet nicht mit totals.amount → rot:
- * „keine Oberfläche rechnet die Summe noch einmal“.
- * Gegenprobe (durchgeführt): `amount` in acquisitionTotals() auf 0 statt null
- * bei fehlenden Preisen → der Randfall-Teilschritt wird rot. Und ein
- * eingefügtes `acqs.reduce(...)` in admin.js → der Regel-Teilschritt.
- * Am 30.10.2026 gemessen: `totals` aus der Teile-Antwort in
- * routes/api_v1/acquisitions.ts entfernt → rot: „parts“ im Routen-Teilschritt.
- * Seit 05.11.2026 fehlt `amount` ohne bekannten Preis (Geld hat einen Typ);
- * gemessen: die Route ohne das Weglassen → rot: „minifigs“ (amount: null
- * verletzt den Vertrag, die Antwort hat keine Erfassungen).
+ * Counter-check (measured 08.11.2026): acqSummary() does not read totals.quantity
+ * (`const menge = 0`) or sumsText() does not compute with totals.amount → red:
+ * “no UI computes the sum again”.
+ * Counter-check (performed): `amount` in acquisitionTotals() set to 0 instead of null
+ * for missing prices → the edge case substep turns red. And an
+ * inserted `acqs.reduce(...)` in admin.js → the rule substep.
+ * Counter-check of 30.10.2026: `totals` removed from the parts response in
+ * routes/api_v1/acquisitions.ts → red: “parts” in the route substep.
+ * Since 05.11.2026 `amount` is missing without a known price (money has a type);
+ * measured: the route without the omission → red: “minifigs” (amount: null
+ * violates the contract, the response has no entries).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -24,11 +24,11 @@ const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
 const { acquisitionTotals } = _req('src/inventory/acquisitions.js');
 
-// ── Teil 1: die Rechnung ────────────────────────────────────────────────────
+// ── Part 1: the computation ─────────────────────────────────────────────────
 
 test('quantity and amount: weighted by quantity over all rows', () => {
   const t = acquisitionTotals([
-    { quantity: 2, purchase_price: '7.41' }, // aus Postgres kommen NUMERIC als Text
+    { quantity: 2, purchase_price: '7.41' }, // from Postgres NUMERIC comes as text
     { quantity: 1, purchase_price: 9.48 },
   ]);
   assert.equal(t.quantity, 3);
@@ -37,15 +37,15 @@ test('quantity and amount: weighted by quantity over all rows', () => {
 });
 
 test('unit_price counts just like purchase_price', () => {
-  // Manuelle Teile und Minifiguren führen den Preis in unit_price. Die
-  // Rückfallregel steht deshalb HIER und nicht in einem der Clients.
+  // Manual parts and minifigures carry the price in unit_price. The
+  // fallback rule is therefore HERE and not in one of the clients.
   assert.equal(acquisitionTotals([{ quantity: 3, unit_price: 0.6 }]).amount, 1.8);
 });
 
 test('without a price the amount is null — not 0', () => {
-  // „Nichts erfasst" ist etwas anderes als „für null Franken gekauft". Nur mit
-  // null kann die Oberfläche den Gedankenstrich zeigen, ohne selbst zu raten;
-  // mit 0 müsste jede Ansicht dieselbe Auslegung noch einmal treffen.
+  // “Nothing entered" is something other than “bought for zero francs". Only with
+  // null can the UI show the dash without guessing itself;
+  // with 0 every view would have to make the same interpretation again.
   const t = acquisitionTotals([{ quantity: 2 }, { quantity: 1, purchase_price: null }]);
   assert.equal(t.quantity, 3, 'die Stücke sind da, auch ohne Preis');
   assert.equal(t.amount, null);
@@ -53,8 +53,8 @@ test('without a price the amount is null — not 0', () => {
 });
 
 test('a row with price 0 is captured and yields 0', () => {
-  // Abgrenzung zum Fall darüber: 0 ist ein Preis, kein fehlender Wert —
-  // sonst verschwände ein geschenktes Set aus der Zählung.
+  // Distinction from the case above: 0 is a price, not a missing value —
+  // otherwise a gifted set would disappear from the count.
   const t = acquisitionTotals([{ quantity: 1, purchase_price: 0 }]);
   assert.equal(t.amount, 0);
   assert.equal(t.priced_rows, 1);
@@ -67,7 +67,7 @@ test('mixed: rows with and without price', () => {
 });
 
 test('the amount is rounded to two places', () => {
-  // 3 × 11.326666 ergibt sonst 33.980000000000004 auf dem Schirm.
+  // Otherwise 3 × 11.326666 shows up as 33.980000000000004 on screen.
   const t = acquisitionTotals([{ quantity: 3, purchase_price: 11.326666 }]);
   assert.equal(String(t.amount).split('.')[1]?.length <= 2, true, `war: ${t.amount}`);
 });
@@ -77,7 +77,7 @@ test('empty list', () => {
   assert.deepEqual(acquisitionTotals(null), { quantity: 0, amount: null, priced_rows: 0 });
 });
 
-// ── Teil 2: die Regel ───────────────────────────────────────────────────────
+// ── Part 2: the rule ────────────────────────────────────────────────────────
 
 test('all three acquisition routes deliver the sum', { concurrency: 1 }, async t => {
   const db = testData();
@@ -93,7 +93,7 @@ test('all three acquisition routes deliver the sum', { concurrency: 1 }, async t
     await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  // Die Kontowährung ist die der Käufe: So bleibt die Summe ohne Umrechnung nachrechenbar.
+  // The account currency is that of the purchases: so the sum stays verifiable without conversion.
   await db.run("INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')", [uid]);
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, SN]);
   await db.run(
@@ -131,8 +131,8 @@ test('all three acquisition routes deliver the sum', { concurrency: 1 }, async t
 });
 
 test('no UI computes the sum again', async () => {
-  // Der Server schickt die Summenzeile als `totals`; hier bewusst NICHT die Summe der Zeilen
-  // (10 + 20 bei Menge 2): Was die Oberfläche zeigt, muss vom Server stammen.
+  // The server sends the total row as `totals`; here deliberately NOT the sum of the rows
+  // (10 + 20 at quantity 2): what the UI shows must come from the server.
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 2 };
   const zeile = (id, preis) => ({
     id,

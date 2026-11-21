@@ -1,23 +1,23 @@
 /**
- * Der Hauptknopf eines Bestätigungsdialogs nennt, was geschieht, und ist nur
- * bei endgültigem Entfernen rot (.bd). Echtes Bündel in jsdom: Je Aufrufer
- * wird der Dialog geöffnet und Knopftext und -klasse gelesen.
+ * The main button of a confirmation dialog names what happens and is only
+ * red for final removal (.bd). Real bundle in jsdom: per caller
+ * the dialog is opened and button text and class are read.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  openDialog() wieder mit `!knopf` als Gefahrenregel (rot, sobald kein
- *      Knopf übergeben wird) und bestaetigeMitPasswort() ohne Weitergabe →
- *      beide Tests rot: „Konto anlegen“ mit Knopf „Löschen“, englisch „Delete“
- *   B  in unlinkHousehold() die Knopfangabe entfernt → rot: „Haushalt“
- *      (Knopf „Löschen“ statt „Verknüpfung lösen“)
- *   C  zwischenspeicherLeeren() mit dem alten Text (nur der Titel) → rot:
- *      „Zwischenspeicher: was verloren geht“
- *   D  „Alles löschen“ mit art 'bp' → rot: „Alles löschen bleibt rot“
+ * Counter-checks (measured 04.11.2026, each alone, bundle rebuilt):
+ *   A  openDialog() again with `!knopf` as the danger rule (red as soon as no
+ *      button is passed) and bestaetigeMitPasswort() without passing on →
+ *      both tests red: “create account” with button “Löschen”, English “Delete”
+ *   B  in unlinkHousehold() the button spec removed → red: “household”
+ *      (button “Löschen” instead of “Verknüpfung lösen”)
+ *   C  zwischenspeicherLeeren() with the old text (only the title) → red:
+ *      “cache: what gets lost”
+ *   D  “Alles löschen” with art 'bp' → red: “delete everything stays red”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, warte, takt, sicht } = require('./helpers/ui');
 
-/** Liest den offenen Dialog, bricht ihn ab und wartet, bis er zu ist. */
+/** Reads the open dialog, cancels it and waits until it is closed. */
 async function liesDialog(d) {
   const modal = d.getElementById('confirm-modal');
   assert.ok(await warte(() => modal.style.display === 'flex'), 'der Bestätigungsdialog erscheint');

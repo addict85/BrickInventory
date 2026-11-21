@@ -1,19 +1,19 @@
 /**
- * Der Anleitungsabruf als Auftrag 'anleitung' (src/catalog/loadInstruction.ts):
- * Abstand nur nach einem echten Abruf, die Cloudflare-Leiter als Pause der
- * ganzen Art, die Sperre gegen einen zweiten Job-Prozess, ein Set nur einmal
- * offen. Der Abruf selbst ist nachgestellt; geprüft wird, was der Bearbeiter
- * daraus macht.
+ * The instruction fetch as job 'anleitung' (src/catalog/loadInstruction.ts):
+ * spacing only after a real fetch, the Cloudflare ladder as a pause of the
+ * whole kind, the lock against a second job process, a set only open
+ * once. The fetch itself is rebuilt; what is checked is what the handler
+ * makes of it.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  `if (lastFetchWarExtern())` vor der Takt-Pause entfernt → rot: „nach
- *      einem versorgten Set waiting niemand“
- *   B  in der Cloudflare-Leiter `level + 1` durch `level` ersetzt → rot: „die
- *      Cloudflare-Leiter steigt und endet am nächsten Tag“
- *   C  in withLock() die Prüfung `!rows[0]?.ok` durch `false` ersetzt → rot:
- *      „hält ein anderer Prozess die Sperre, wird nichts abgerufen“
+ * Counter-checks (measured on 30.10.2026):
+ *   A  `if (lastFetchWarExtern())` removed before the tick pause → red: “after
+ *      a supplied set nobody waits”
+ *   B  in the Cloudflare ladder `level + 1` replaced by `level` → red: “the
+ *      Cloudflare ladder rises and ends the next day”
+ *   C  in withLock() the check `!rows[0]?.ok` replaced by `false` → red:
+ *      “if another process holds the lock, nothing is fetched”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

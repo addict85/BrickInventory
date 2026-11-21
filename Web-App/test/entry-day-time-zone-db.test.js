@@ -1,22 +1,22 @@
 /**
- * Der Tag einer Erfassung gilt in der Zeitzone der Installation. Mit dem
- * UTC-Tag fiel ein Kauf um 00:30 in Zürich (23:30 UTC am Vortag) auf den
- * Vortag und wurde mit einem Kauf vom Vorabend zusammengelegt, aber nicht mit
- * einem vom selben Morgen (Migration 0070, ERFASSUNG_ZEITZONE).
+ * The day of an entry applies in the installation's time zone. With the
+ * UTC day a purchase at 00:30 in Zurich (23:30 UTC on the previous day) fell on the
+ * previous day and was merged with a purchase from the previous evening, but not with
+ * one from the same morning (migration 0070, ERFASSUNG_ZEITZONE).
  *
- * Gegenproben (am 29.10.2026 gemessen, je auf frischer Datenbank):
- *   A  der Trigger erfassung_tag() rechnet wieder in 'UTC' → rot: „ein Kauf
- *      um 00:30 gehört zum selben Tag wie einer am Mittag“
- *   B  im Trigger der Zweig für UPDATE entfernt → rot: „ein geändertes
- *      Datum ist der neue Tag“ (der Tag blieb beim alten)
- * Seit Migration 0078 steht die Zone in der Datenbank (30.10.2026 gemessen):
- *   C  der Trigger liest wieder current_setting('brickinventory.zeitzone')
- *      → rot: alle drei Teilprüfungen, auch „eine Verbindung ausserhalb des
- *      Pools rechnet denselben Tag“ (2026-03-09 statt 2026-03-10)
- *   D  writeEntryTimeZone() in initSchemaOnce() ausgelassen → rot:
- *      alle drei (es gilt UTC)
+ * Counter-checks (measured on 29.10.2026, each on a fresh database):
+ *   A  the trigger erfassung_tag() computes in 'UTC' again → red: “a purchase
+ *      at 00:30 belongs to the same day as one at noon”
+ *   B  the branch for UPDATE removed in the trigger → red: “a changed
+ *      date is the new day” (the day stayed the old one)
+ * Since migration 0078 the zone is in the database (measured 30.10.2026):
+ *   C  the trigger reads current_setting('brickinventory.zeitzone') again
+ *      → red: all three subchecks, also “a connection outside the
+ *      pool computes the same day” (2026-03-09 instead of 2026-03-10)
+ *   D  writeEntryTimeZone() skipped in initSchemaOnce() → red:
+ *      all three (UTC applies)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -31,7 +31,7 @@ const { keineDb } = require('./helpers/db');
 const db = testData();
 
 test('acquisition day in the time zone of the installation', { concurrency: 1 }, async t => {
-  // initSchemaOnce wie beim Start: Schema, Migrationen, Zone in die Datenbank.
+  // initSchemaOnce as at startup: schema, migrations, zone into the database.
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -57,7 +57,7 @@ test('acquisition day in the time zone of the installation', { concurrency: 1 },
 
   try {
     await t.test('a purchase at 00:30 belongs to the same day as one at noon', async () => {
-      assert.equal((await kauf('2026-03-04T23:30:00Z')).merged, false); // 05.03. 00:30 in Zürich
+      assert.equal((await kauf('2026-03-04T23:30:00Z')).merged, false); // 05.03. 00:30 in Zurich
       assert.equal((await kauf('2026-03-05T11:00:00Z')).merged, true); // 05.03. 12:00
       assert.equal((await kauf('2026-03-04T21:30:00Z')).merged, false); // 04.03. 22:30
       assert.deepEqual(await zeilen(), [
@@ -66,7 +66,7 @@ test('acquisition day in the time zone of the installation', { concurrency: 1 },
       ]);
     });
     await t.test('a connection outside the pool computes the same day', async () => {
-      // So schreibt psql oder ein Skript: ohne Sitzungseinstellungen des Pools.
+      // This is how psql or a script writes: without the pool's session settings.
       const c = await db.ownConnection();
       try {
         const r = await c.query(
@@ -90,7 +90,7 @@ test('acquisition day in the time zone of the installation', { concurrency: 1 },
     });
   } finally {
     await db.run('DELETE FROM users WHERE id=$1', [uid]);
-    // Die Zone gilt für die ganze Datenbank; nachfolgende Tests rechnen in UTC.
+    // The zone applies to the whole database; subsequent tests compute in UTC.
     await db.run(`UPDATE global_settings SET value = 'UTC' WHERE key = 'erfassung_zeitzone'`);
     await db.pool.end().catch(() => {});
   }

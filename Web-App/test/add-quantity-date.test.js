@@ -1,17 +1,17 @@
 /**
- * Anzahl und Kaufdatum beim Erfassen: Was keine Stückzahl von 1 bis 10.000 ist oder in der Zukunft liegt,
- * meldet das Feld und geht nicht an den Server. Früher wurden 0, leer und 1,5 stillschweigend zu 1,
- * −3 und 99999 kamen erst als Toast zurück, ein Datum von 2099 wurde übernommen.
- * Geprüft am echten Bündel in jsdom über die Anfragen, die die Oberfläche schickt.
+ * Quantity and purchase date when adding: what is not an item count from 1 to 10,000 or lies in the future
+ * is reported by the field and does not go to the server. Previously 0, empty and 1.5 silently became 1,
+ * −3 and 99999 only came back as a toast, a date from 2099 was accepted.
+ * Checked on the real bundle in jsdom via the requests the UI sends.
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   A  in doAddSet() wieder parseInt(...)||1 statt quantityFromField() → rot: „Set hinzufügen: Anzahl“ und
- *      „englisch“ (0 und 1,5 gingen als 1 hinaus, kein Hinweis am Feld)
- *   B  in quantityFromField() die Obergrenze entfernt → rot: „Set hinzufügen: Anzahl“ und „Kaufpreis-Dialog“
- *      (99999 gesendet)
- *   C  purchaseDateValid() meldet nie → rot: „Gekauft am“, „Teil und Figur“ und „Kaufpreis-Dialog“
- *      (2099 gesendet)
- *   E  in acqSave() die Menge wieder per Math.max(1, …) geklemmt → rot: „Kaufpreis-Dialog“
+ * Counter-checks (measured 08.11.2026, each alone):
+ *   A  in doAddSet() back to parseInt(...)||1 instead of quantityFromField() → red: “add set: quantity” and
+ *      “English” (0 and 1.5 went out as 1, no hint at the field)
+ *   B  in quantityFromField() the upper limit removed → red: “add set: quantity” and “purchase price dialog”
+ *      (99999 sent)
+ *   C  purchaseDateValid() never reports → red: “bought on”, “part and minifigure” and “purchase price dialog”
+ *      (2099 sent)
+ *   E  in acqSave() the quantity clamped again via Math.max(1, …) → red: “purchase price dialog”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

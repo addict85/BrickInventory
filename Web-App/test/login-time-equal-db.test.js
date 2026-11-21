@@ -1,16 +1,16 @@
 /**
- * Ein Anmeldeversuch darf nicht verraten, ob es das Konto gibt: Auch ein unbekannter
- * Name rechnet genau einen Hash mit den Kosten eines echten Kontos (DUMMY_HASH).
- * Gezählt statt gestoppt: argon2id kostet kaum mehr als die schwankende Datenbankarbeit.
+ * A login attempt must not reveal whether the account exists: an unknown
+ * name also computes exactly one hash with the costs of a real account (DUMMY_HASH).
+ * Counted instead of timed: argon2id costs hardly more than the fluctuating database work.
  *
- * Gegenproben (14.11.2026 gemessen, je einzeln):
- *   A  in checkCredentials() ohne Treffer kein Vergleich gegen DUMMY_HASH → rot:
- *      „unbekannt: genau ein Hash“ (0 statt 1)
- *   B  DUMMY_HASH mit geringeren Kosten (memoryCost 4096) → rot: „unbekannt: dieselben
- *      Kosten wie ein echtes Konto“
+ * Counter-checks (measured 14.11.2026, each on its own):
+ *   A  in checkCredentials() without a hit no comparison against DUMMY_HASH → red:
+ *      “unknown: exactly one hash” (0 instead of 1)
+ *   B  DUMMY_HASH with lower costs (memoryCost 4096) → red: “unknown: the same
+ *      costs as a real account”
  *
- * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
- * Ohne DB: skip. Ausführen: REQUIRE_DB=1 npm test
+ * Prerequisite: test DB (contents are touched!) via TEST_DATABASE_URL.
+ * Without DB: skip. Run: REQUIRE_DB=1 npm test
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,9 +25,9 @@ const argon2 = require('@node-rs/argon2');
 const { checkCredentials } = _req('src/account/loginCheck.js');
 const { hashePassword } = _req('src/account/passwordHash.js');
 
-/** Minimaler Request: checkCredentials braucht davon nur die IP (Zähler). */
+/** Minimal request: checkCredentials only needs the IP of it (counter). */
 const anfrage = (i = 7) => ({ ip: `203.0.113.${i}`, headers: {}, socket: {} });
-/** Kosten eines argon2-Hashes: alles vor dem Salz. */
+/** Costs of an argon2 hash: everything before the salt. */
 const kosten = (/** @type {string} */ hash) => hash.split('$').slice(0, 4).join('$');
 
 test('an unknown login name computes the same hash as a wrong password', async t => {
@@ -50,14 +50,14 @@ test('an unknown login name computes the same hash as a wrong password', async t
       return /** @type {any} */ (echt)(h, ...rest);
     });
 
-    // Je ein Versuch mit eigenem Namen und eigener IP: Ein zweiter liefe irgendwann in die Bremse.
+    // One attempt each with its own name and own IP: a second one would at some point run into the brake.
     for (const [was, wer, ip] of /** @type {const} */ ([
       ['bekannt', name, 10],
       ['unbekannt', 'zeit_gibtsnicht', 20],
     ])) {
       gerechnet = [];
       const r = await checkCredentials(anfrage(ip), wer, 'falschesPasswort1');
-      // Vorbedingung: wirklich abgelehnt, mit 401 — nicht 429 (Sperre) oder 400 (Formfehler).
+      // Precondition: really rejected, with 401 — not 429 (lock) or 400 (form error).
       assert.equal(r.ok, false, `${was}: hätte abgelehnt werden müssen`);
       assert.equal(r.absage.art, 'nicht_angemeldet', `${was}: erwartet nicht_angemeldet (${r.absage.error})`);
       assert.equal(gerechnet.length, 1, `${was}: genau ein Hash`);
@@ -65,7 +65,7 @@ test('an unknown login name computes the same hash as a wrong password', async t
     }
   } finally {
     await db.run('DELETE FROM users WHERE username = $1', [name]).catch(() => {});
-    // Ohne das bleibt der Pool offen und der Testprozess endet nie.
+    // Without this the pool stays open and the test process never ends.
     await db.pool.end().catch(() => {});
   }
 });

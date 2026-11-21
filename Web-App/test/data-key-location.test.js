@@ -1,16 +1,16 @@
 /**
- * Der Datenschlüssel liegt ausserhalb von data/: aus DATA_KEY_FILE, Vorgabe
- * <APP_ROOT>/schluessel/datenschluessel. Eine ältere Installation mit
- * data/.datenschluessel läuft weiter und bekommt beim Laden den Umzug
- * erklärt; zwei verschiedene Schlüssel halten den Start an. Jeder Fall läuft
- * in einem eigenen Prozess mit eigenem APP_ROOT.
+ * The data key lives outside data/: from DATA_KEY_FILE, default
+ * <APP_ROOT>/schluessel/datenschluessel. An older installation with
+ * data/.datenschluessel keeps running and gets the move explained
+ * on loading; two different keys stop the start. Every case runs
+ * in its own process with its own APP_ROOT.
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  keyFile() ohne konfig().dataKeyFile → rot: „der
- *      Schlüssel aus DATA_KEY_FILE …"
- *   B  Rückfall auf data/.datenschluessel entfernt → rot: „eine alte
- *      Installation …" (neuer Schlüssel, die alten Geheimnisse wären verloren)
- *   C  Vergleich der beiden Dateien entfernt → rot: „zwei verschiedene …"
+ * Counter-checks (measured 01.11.2026):
+ *   A  keyFile() without konfig().dataKeyFile → red: “the
+ *      key from DATA_KEY_FILE …"
+ *   B  fallback to data/.datenschluessel removed → red: “an old
+ *      installation …" (new key, the old secrets would be lost)
+ *   C  comparison of the two files removed → red: “two different …"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -22,7 +22,7 @@ const { spawnSync } = require('node:child_process');
 const { DIST } = require('./helpers/sources');
 require('./helpers/sources').buildAndRequire();
 
-/** Lädt den Schlüssel in einem frischen Prozess; liefert ihn base64 samt stderr. */
+/** Loads the key in a fresh process; returns it base64 together with stderr. */
 function lade(wurzel, env = {}) {
   const script = `const g = require(${JSON.stringify(path.join(DIST, 'src/infra/secret.js'))});
     process.stdout.write(g.datenSchluessel().toString('base64'));`;
@@ -72,7 +72,7 @@ test('an old installation with data/.datenschluessel keeps running and is warned
   assert.equal(r.schluessel, alt, r.fehler);
   assert.match(r.fehler, /liegt im Datenordner .*verschieben.*UPGRADE\.md/s);
   assert.equal(fs.existsSync(neu), false, 'ein zweiter Schlüssel ist entstanden');
-  // Nach dem Umzug: keine Warnung mehr.
+  // After the move: no more warning.
   fs.mkdirSync(path.dirname(neu));
   fs.renameSync(path.join(wurzel, 'data', '.datenschluessel'), neu);
   const danach = lade(wurzel, { DATA_KEY_FILE: neu });

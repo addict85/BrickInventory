@@ -1,7 +1,7 @@
 /**
- * Keine Schema-Anweisung im Anfragepfad.
+ * No schema statement in the request path.
  *
- * Gegenprobe (09.11.2026): `'ALTER TABLE sets ADD COLUMN probe INT'` in src/sets/read.ts → rot.
+ * Counter-check (09.11.2026): `'ALTER TABLE sets ADD COLUMN probe INT'` in src/sets/read.ts → red.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,16 +1,16 @@
 /**
- * Nachtrag zur UX-Prüfung 25 im echten Chrome: Eine Mengenänderung im Set-Detail überlebt das sofortige
- * Schliessen, und die Vorschau eines durchsichtigen PNG bleibt durchsichtig (Dunkelmodus).
+ * Addendum to UX check 25 in real Chrome: a quantity change in the set detail survives the immediate
+ * closing, and the preview of a transparent PNG stays transparent (dark mode).
  *
- * Gegenproben (14.11.2026 gemessen, je einzeln, Bündel bzw. dist neu gebaut):
- *   A  die ausstehende Speicherung wieder mit `if (!offenesSet) return` (Stand vor dem Nachtrag) → rot: „Menge
- *      beim sofortigen Schliessen gespeichert“ (mQtyInc verloren). Ohne den Beobachter allein bleibt es grün:
- *      Die Speicherung kommt dann 400 ms später, er macht sie nur sofort.
- *   B  deliverImage() ohne den Typ aus previewType() → rot: „Vorschau eines durchsichtigen PNG …“ (image/jpeg)
- *   C  verkleinern() ohne die Prüfung isOpaque → rot: ebenda (innen deckend, 255)
+ * Counter-checks (measured 14.11.2026, each on its own, bundle or dist rebuilt):
+ *   A  the pending save again with `if (!offenesSet) return` (state before the addendum) → red: “quantity
+ *      saved on immediate close” (mQtyInc lost). Without the observer alone it stays green:
+ *      the save then comes 400 ms later, it only makes it immediate.
+ *   B  deliverImage() without the type from previewType() → red: “preview of a transparent PNG …” (image/jpeg)
+ *   C  verkleinern() without the check isOpaque → red: same place (opaque inside, 255)
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Without Chrome (CHROME_BIN, google-chrome, chromium) it is skipped.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -23,7 +23,7 @@ const { patternCollection, catalogSet, holdsSet, quantityOf } = require('./helpe
 const ROOT = path.join(__dirname, '..');
 const CLOSE = `document.querySelectorAll('.ovl.open [data-dialog-zu]').forEach(x => x.click()); true`;
 
-/** 32 × 32 PNG: roter Rand, innen Schachbrett aus Rot und ganz durchsichtig. */
+/** 32 × 32 PNG: red border, inside a checkerboard of red and fully transparent. */
 function checkerboard() {
   const w = 32,
     h = 32;
@@ -70,7 +70,7 @@ async function closeQuantityOn(_t, a) {
     await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc[data-arg="10300-1"]')`, 'Sammlung');
     await b.auswerten(`document.querySelector('#gallery .sc[data-arg="10300-1"]').click(); true`);
     await bis(`document.getElementById('m-qty')?.value === '${3 - Number(soll)}'`, 'Detail');
-    // Ändern und im selben Zug schliessen: weit unter den 400 ms bis zum Speichern.
+    // Change and close in the same move: far below the 400 ms until saving.
     await b.auswerten(`document.querySelector('#set-modal [data-click="${knopf}"]').click();
       document.querySelector('#set-modal [data-dialog-zu]').click(); true`);
     await bis(`!document.getElementById('set-modal').classList.contains('open')`, 'geschlossen');
@@ -115,7 +115,7 @@ test('quantity on close, PNG preview', { concurrency: 1, timeout: 600_000 }, asy
     name: `r25b_${process.pid}`,
     bestand: async (db, uid) => {
       await patternCollection(db, uid);
-      // Wie die App Set-Bilder ablegt: <nr>.jpg, daneben die Vorschau aus vorschauErzeugenAus.
+      // How the app stores set images: <nr>.jpg, next to it the preview from vorschauErzeugenAus.
       fs.mkdirSync(ordner, { recursive: true });
       fs.writeFileSync(path.join(ordner, `${nr}.jpg`), checkerboard());
       assert.ok(await req('src/images/thumbs.js').vorschauErzeugenAus(`/images/sets/${nr}.jpg`), 'Vorschau');

@@ -1,11 +1,11 @@
 /**
- * Die Abschlusszeile von `npm test` nennt, wie viele Browser- und Caddy-Dateien mangels Werkzeug nur
- * übersprungen wurden: Lokal fehlt Chrome oft, und die Dateien sind dann grün, ohne geprüft zu haben.
+ * The closing line of `npm test` names how many browser and Caddy files were only
+ * skipped for lack of tooling: locally Chrome is often missing, and the files are then green without having checked.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
- *   A  in withoutTool() `chromeDa ? 0 : browser.length` durch `0` ersetzt → rot: „ohne Chrome und Caddy“
- *   B  im catch um chrome() `chromeDa = false` gesetzt → rot: „mit REQUIRE_BROWSER=1 zählt nichts
- *      als übersprungen“
+ * Counter-checks (measured 10.11.2026, each on its own, reverted):
+ *   A  in withoutTool() `chromeDa ? 0 : browser.length` replaced by `0` → red: “without Chrome and Caddy”
+ *   B  in the catch around chrome() `chromeDa = false` set → red: “with REQUIRE_BROWSER=1 nothing counts
+ *      as skipped”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,7 +16,7 @@ const { spawnSync } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 
-/** Zwei Wegwerf-Testdateien: eine Browser-Datei, eine, die Caddy braucht. */
+/** Two throwaway test files: a browser file, one that needs Caddy. */
 function dateien(t) {
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'test-lauf-uebersprungen-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
@@ -27,7 +27,7 @@ function dateien(t) {
   return [browser, caddy];
 }
 
-/** test-run.js als Kind, ohne Datenbank und ohne Neubau; `zusatz` setzt die Werkzeug-Variablen. */
+/** test-run.js as a child, without a database and without a rebuild; `zusatz` sets the tool variables. */
 function abschluss(t, /** @type {Record<string, string>} */ zusatz) {
   const env = { ...process.env, TEST_LAUF_GEBAUT: '1', PATH: path.dirname(process.execPath), ...zusatz };
   for (const k of [
@@ -53,7 +53,7 @@ function abschluss(t, /** @type {Record<string, string>} */ zusatz) {
 }
 
 test('without Chrome and Caddy the closing line names both numbers', { timeout: 120_000 }, t => {
-  // Steht auf dem Rechner ein Chrome an einem Standardort, findet der Lauf ihn auch ohne CHROME_BIN.
+  // If a Chrome stands at a standard location on the machine, the run finds it even without CHROME_BIN.
   const vorher = { CHROME_BIN: process.env.CHROME_BIN, REQUIRE_BROWSER: process.env.REQUIRE_BROWSER };
   delete process.env.CHROME_BIN;
   delete process.env.REQUIRE_BROWSER;
@@ -73,7 +73,7 @@ test('with Chrome and Caddy nothing is skipped', { timeout: 120_000 }, t => {
 });
 
 test('with REQUIRE_BROWSER=1 nothing counts as skipped', { timeout: 120_000 }, t => {
-  // Dann scheitert jede echte Browser-Datei laut; die Wegwerf-Datei hier fragt nicht nach Chrome.
+  // Then every real browser file fails loudly; the throwaway file here does not ask for Chrome.
   const zeile = abschluss(t, { CHROME_BIN: '/gibt/es/nicht', REQUIRE_BROWSER: '1', REQUIRE_CADDY: '1' });
   assert.match(zeile, /übersprungen: 0 Browser-Dateien .*, 0 Caddy-Dateien/);
 });

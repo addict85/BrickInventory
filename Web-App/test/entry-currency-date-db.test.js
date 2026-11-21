@@ -1,16 +1,16 @@
 /**
- * Eine neue Erfassung trägt den Preis in der Kontowährung, und ein
- * CSV-Datum landet in genau der Erfassung, die der Import anlegt.
+ * A new entry carries the price in the account currency, and a
+ * CSV date lands in exactly the entry the import creates.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  in priceForNewEntry wieder die globale Währung (`'EUR'` fest)
- *      → rot: „die Mengenerhöhung nimmt den Preis in der Kontowährung“
- *      (500 statt 800)
- *   B  das CSV-Erfassen (damals addSetWithDate) wieder mit nachträglichem UPDATE auf die höchste id
- *      → rot: „das CSV-Datum trifft nur die neue Erfassung“ (der Kauf vom
- *      1.10. stand danach auf dem 5.5.2020)
+ * Counter-checks (measured on 28.10.2026):
+ *   A  in priceForNewEntry again the global currency (`'EUR'` fixed)
+ *      → red: “the quantity increase takes the price in the account currency”
+ *      (500 instead of 800)
+ *   B  CSV adding (then addSetWithDate) again with a subsequent UPDATE on the highest id
+ *      → red: “the CSV date only hits the new entry” (the purchase of
+ *      1.10. then stood on 5.5.2020)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

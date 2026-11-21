@@ -1,14 +1,14 @@
 /**
- * Derselbe Operand zweimal in der Webapp.
+ * The same operand twice in the web app.
  *
- * Die Regel steht in scripts/check-duplicate-operands.js; dort ist auch
- * begründet, warum es sie gibt. Dieser Test führt sie im normalen Lauf mit aus.
+ * The rule lives in scripts/check-duplicate-operands.js; there it is also
+ * explained why it exists. This test runs it along in the normal run.
  *
- * Gegenproben (durchgeführt):
- *   a) Den bekannten `avg > 0 || avg > 0` in financeCalc.ts zurückgeholt → rot.
- *   b) `SELECT avg_price, avg_price` zurückgeholt → rot.
- *   d) Den Pfad zu den Quellen verbogen → rot mit eigener Meldung, statt still
- *      grün auf der halben Menge.
+ * Counter-checks (performed):
+ *   a) the known `avg > 0 || avg > 0` in financeCalc.ts brought back → red.
+ *   b) `SELECT avg_price, avg_price` brought back → red.
+ *   d) the path to the sources bent → red with its own message instead of silently
+ *      green on half the set.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

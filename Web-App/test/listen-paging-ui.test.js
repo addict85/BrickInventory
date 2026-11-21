@@ -1,19 +1,19 @@
 /**
- * Seitenweises Laden von Galerie, Teileliste und Minifiguren in jsdom:
- * welche Anfragen die Oberfläche stellt, wann sie neu aufbaut und wie sie
- * Folgeseiten anhängt. Filtern und Sortieren liegen auf dem Server; die
- * Oberfläche zeichnet nur, was er liefert.
+ * Page-wise loading of gallery, parts list and minifigures in jsdom:
+ * which requests the UI makes, when it rebuilds and how it
+ * appends follow-up pages. Filtering and sorting live on the server; the
+ * UI only draws what it delivers.
  *
- * Gegenproben (05.11.2026, je einzeln, Bündel neu gebaut):
- *   A  teile.js appendParts ohne den Zweig `g.color === _partsLastColor`
- *      → „Teileliste: eine Farbgruppe läuft über die Seitengrenze“ rot (zwei Überschriften)
- *   B  sammlung.js gsort-Listener entfernt → „Galerie: Suche, Sortierung …“ rot
- *   C  teile.js `with_sets` immer gesetzt → „Teileliste: in_sets nur in der Tabelle“ rot
- *   D  sammlung.js renderGallery mit `list.filter(s => s.name.includes(q))`
- *      → „Galerie: zeigt, was der Server liefert“ rot
- *   E  minifigs.js p.set('source', 'set') entfernt → „Minifiguren: Quelle …“ rot
- *   F  teile.js setColorFilter ohne loadPartsData() → „Teileliste: Farbfilter …“ rot
- *   G  minifigs.js loadMinifigsMore ohne appendFigs(batch) → „Minifiguren: Folgeseite …“ rot
+ * Counter-checks (05.11.2026, each on its own, bundle rebuilt):
+ *   A  teile.js appendParts without the branch `g.color === _partsLastColor`
+ *      → “parts list: a color group runs across the page boundary” red (two headings)
+ *   B  sammlung.js gsort listener removed → “gallery: search, sorting …” red
+ *   C  teile.js `with_sets` always set → “parts list: in_sets only in the table” red
+ *   D  sammlung.js renderGallery with `list.filter(s => s.name.includes(q))`
+ *      → “gallery: shows what the server delivers” red
+ *   E  minifigs.js p.set('source', 'set') removed → “minifigures: source …” red
+ *   F  teile.js setColorFilter without loadPartsData() → “parts list: color filter …” red
+ *   G  minifigs.js loadMinifigsMore without appendFigs(batch) → “minifigures: follow-up page …” red
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

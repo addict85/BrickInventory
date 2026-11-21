@@ -1,14 +1,14 @@
 /**
- * Die Anmeldemaske fragt den Server, welche Wege er anbietet
- * (/v1/auth/registration-status). Fragt sie zweimal, gilt die jüngste Antwort,
- * auch wenn die ältere später ankommt. Seit das Abmelden die Seite neu lädt,
- * fragt eine Seite zweimal so: beim Start ohne Sitzung, und nach Anmelden und
- * abgelaufener Sitzung. Die Startfrage antwortet 8 s spät und sagt das Gegenteil.
+ * The login form asks the server which methods it offers
+ * (/v1/auth/registration-status). If it asks twice, the most recent response applies,
+ * even if the older one arrives later. Since logging out reloads the page,
+ * a page asks twice like this: at the start without a session, and after logging in and
+ * an expired session. The start question answers 8 s late and says the opposite.
  *
- * Gegenproben (14.11.2026 gemessen, Bündel neu gebaut):
- *   A  in checkRegistrationEnabled die Prüfung `lauf !== _loginMethodsRun`
- *      entfernt → rot: „die jüngste Antwort gilt“ (link-forgot verborgen)
- *   B  `dataset.anmeldewege = 'geladen'` entfernt → rot: Zeitüberschreitung
+ * Counter-checks (measured 14.11.2026, bundle rebuilt):
+ *   A  in checkRegistrationEnabled the check `lauf !== _loginMethodsRun`
+ *      removed → red: „die jüngste Antwort gilt“ (link-forgot hidden)
+ *   B  `dataset.anmeldewege = 'geladen'` removed → red: timeout
  *      „Anmeldewege eingetragen“
  */
 const test = require('node:test');
@@ -27,7 +27,7 @@ test('login methods: the most recent response applies', { timeout: 120_000 }, as
   }
   const { b, bis, ruhig } = app;
   await ruhig();
-  // Auf jeder neuen Seite: Die erste Abfrage antwortet spät und verneint „Passwort vergessen?“, jede weitere sofort.
+  // On every new page: the first query answers late and denies „Passwort vergessen?“, every further one immediately.
   await b.tab('Page.addScriptToEvaluateOnNewDocument', {
     source: `(() => {
     const echt = window.fetch.bind(window); let n = 0;
@@ -48,12 +48,12 @@ test('login methods: the most recent response applies', { timeout: 120_000 }, as
   await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(name)};
     document.getElementById('lp').value = 'app-Passwort-1'; document.getElementById('btn-login').click(); true`);
   await bis(`getComputedStyle(document.getElementById('app')).display !== 'none'`, 'angemeldet', 300);
-  // Die Sitzung endet am Server; der nächste Aufruf der App bekommt 401 und zeigt die Maske erneut.
+  // The session ends at the server; the next call of the app gets 401 and shows the form again.
   await b.auswerten(`fetch('/api/v1/auth/logout', { method: 'POST' }).then(() => {
     document.querySelector('.ntab[data-tab="finance"]').click(); return true; })`);
   await bis(`getComputedStyle(document.getElementById('login-screen')).display !== 'none'`, 'Sitzung abgelaufen');
   await bis(`document.getElementById('login-screen').dataset.anmeldewege === 'geladen'`, 'Anmeldewege eingetragen');
-  // Die späte erste Antwort abwarten.
+  // Wait for the late first response.
   await bis('window.__spaet === true', 'späte erste Antwort', 150);
   await ruhig();
   assert.equal(await b.auswerten(`document.getElementById('link-forgot').hidden`), false, 'die jüngste Antwort gilt');

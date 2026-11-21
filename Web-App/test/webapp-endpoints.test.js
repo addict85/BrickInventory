@@ -1,13 +1,13 @@
 /**
- * Jede Adresse, die die Webapp aufruft, muss es auf dem Server geben.
+ * Every address the web app calls must exist on the server.
  *
- * ── Warum es diese Prüfung gibt ─────────────────────────────────────────────
- * Für die Android-App steht das seit test/app-interface.test.js fest — dort
- * fiel damit eine Methode auf, die auf eine längst gelöschte Route zeigte.
- * Für die Webapp gab es die Gegenprobe nicht, obwohl das Risiko dort GRÖSSER
- * ist: Ein falscher Pfad im Browser scheitert erst zur Laufzeit, und etliche
- * Aufrufe enden auf `.catch(() => null)` — dann fehlt einfach ein Diagramm,
- * ohne dass irgendwo etwas rot wird.
+ * ── Why this check exists ──────────────────────────────────────────────────
+ * For the Android app this has been settled since test/app-interface.test.js — there
+ * it revealed a method pointing to a route deleted long ago.
+ * For the web app the counter-check did not exist, although the risk there is
+ * GREATER: a wrong path in the browser only fails at runtime, and quite a few
+ * calls end in `.catch(() => null)` — then a chart is simply missing
+ * without anything turning red.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -18,13 +18,13 @@ const { ohneKommentare, routerEinhaengungen, pathForm, leseLiteral } = require('
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
 
-/** `/api/sets/:setNumber` → `/api/sets/:X` — verglichen wird die FORM. */
+/** `/api/sets/:setNumber` → `/api/sets/:X` — the SHAPE is compared. */
 function form(p) {
   return ('/' + String(p).replace(/^\/+|\/+$/g, '')).replace(/\/:[A-Za-z_]\w*/g, '/:X');
 }
 
 /**
- * Template-Ausdrücke auflösen, dann den Abfrageteil abschneiden.
+ * Resolve template expressions, then cut off the query part.
  */
 function pathFormV1(roh) {
   return form(pathForm(roh));
@@ -37,22 +37,22 @@ function serverRoutes() {
     for (const m of require('./helpers/sources').routesFromSource(src, mount))
       alle.add(`${m[1].toUpperCase()} ${form(mount + '/' + m[2].replace(/^\//, ''))}`);
   };
-  // Einhaengepunkte aus server.ts GELESEN statt abgeschrieben: Eine
-  // abgeschriebene Liste veraltet still. Siehe routerEinhaengungen().
+  // Mount points READ from server.ts instead of copied: a
+  // copied list silently goes stale. See routerEinhaengungen().
   for (const r of routerEinhaengungen()) collect(r.datei, r.mount);
   const v1 = path.join(ROOT, 'routes/api_v1');
   for (const f of fs.readdirSync(v1)) {
     if (!f.endsWith('.ts') || f === 'index.ts' || f === 'middleware.ts') continue;
     collect(path.join(v1, f), '/api/v1');
   }
-  // Und die drei, die direkt in server.ts hängen.
+  // And the three that hang directly in server.ts.
   const srv = ohneKommentare(fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8'));
   for (const m of srv.matchAll(/app\.(get|post|put|delete)\(\s*'(\/api\/[^']+)'/g))
     alle.add(`${m[1].toUpperCase()} ${form(m[2])}`);
   return alle;
 }
 
-/** Alle Aufrufe der Webapp: api('VERB', pfad) und fetch(pfad, { method }). */
+/** All calls of the web app: api('VERB', pfad) and fetch(pfad, { method }). */
 function webCalls() {
   const out = [];
   for (const datei of fs.readdirSync(JS)) {
@@ -68,7 +68,7 @@ function webCalls() {
     for (const m of src.matchAll(/fetch\(\s*/g)) {
       const lit = leseLiteral(src, m.index + m[0].length);
       if (!lit?.text.startsWith('/api/')) continue;
-      // Die Methode steht im zweiten Argument; ohne Angabe ist es GET.
+      // The method is in the second argument; without it, it is GET.
       const rest = src.slice(lit.ende, lit.ende + 300);
       const verb = (rest.match(/method\s*:\s*['"`](\w+)['"`]/)?.[1] ?? 'GET').toUpperCase();
       out.push({ datei, zeile: rowOf(m.index), verb, pfad: pathFormV1(lit.text) });
@@ -81,8 +81,8 @@ test('every address of the web app exists on the server', () => {
   const server = serverRoutes();
   const aufrufe = webCalls();
 
-  // Selbstbeweis in beide Richtungen: Findet eines der Muster nichts, wäre die
-  // Fehlerliste leer und der Test grün, ohne etwas geprüft zu haben.
+  // Self-proof in both directions: if one of the patterns finds nothing, the
+  // error list would be empty and the test green without having checked anything.
   assert.ok(server.size >= 120, `Nur ${server.size} Server-Routen gefunden — Muster veraltet?`);
   assert.ok(aufrufe.length >= 100, `Nur ${aufrufe.length} Webapp-Aufrufe gefunden — Muster veraltet?`);
 
@@ -103,7 +103,7 @@ test('every address of the web app exists on the server', () => {
 });
 
 /**
- * Und die Gegenrichtung: Was kann nur die Webapp?
+ * And the opposite direction: what can only the web app do?
  */
 const TRASH =
   'Papierkorb: vorerst nur in der Webapp. Löschen in der App landet trotzdem ' +
@@ -264,7 +264,7 @@ const NUR_WEB = new Map([
       'prüfen.',
   ],
 
-  // Vier Adressen, die die App KANNTE und nicht mehr aufruft
+  // Four addresses the app KNEW and no longer calls
   [
     '/api/v1/sets/:X/instructions',
     'Verwirft die hinterlegten Anleitungen eines Sets und lässt die ' +
@@ -314,17 +314,17 @@ const NUR_WEB = new Map([
 ]);
 
 test('what only the web app can do has a reason', () => {
-  // Die Retrofit-Routen der App (shared/app-schnittstelle.json); `{x}` wird zu `:X`.
+  // The app's Retrofit routes (shared/app-schnittstelle.json); `{x}` becomes `:X`.
   const appPaths = new Set(
     require('./helpers/contract')
       .appSchnittstelle()
       .routen.map(r => form(r.pfad.replace(/\{[^}]+\}/g, ':X'))),
   );
-  // GEMESSEN sind es 94 Adressen.
+  // MEASURED, there are 94 addresses.
   assert.ok(appPaths.size >= 60, `Nur ${appPaths.size} App-Adressen — Muster veraltet?`);
 
   const webPaths = new Set(webCalls().map(a => a.pfad));
-  // GEMESSEN sind es 68.
+  // MEASURED, there are 68.
   assert.ok(webPaths.size >= 50, `Nur ${webPaths.size} Webapp-Adressen — Muster veraltet?`);
 
   const nurWeb = [...webPaths].filter(p => !appPaths.has(p)).sort();
@@ -340,10 +340,10 @@ test('what only the web app can do has a reason', () => {
       'damit ihn der Nächste nicht neu herleiten muss.',
   );
 
-  // Dieselbe Regel wie bei jeder Ausnahmeliste in diesem Baum: Ein Eintrag,
-  // der nichts mehr beschreibt, sieht aus wie eine Entscheidung und ist doch
-  // bloss eine Vermutung. Zieht die App eine dieser Adressen nach, muss der
-  // Eintrag ROUTE — sonst deckt er still die nächste Lücke mit ab.
+  // The same rule as for every exception list in this tree: an entry
+  // that no longer describes anything looks like a decision and is merely
+  // a guess. If the app catches up with one of these addresses, the entry
+  // must become ROUTE — otherwise it silently covers the next gap as well.
   const veraltet = [...NUR_WEB.keys()].filter(p => !nurWeb.includes(p)).sort();
   assert.deepEqual(
     veraltet,

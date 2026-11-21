@@ -1,5 +1,5 @@
 /**
- * Ein NEU angelegtes Set wird in beiden Erfassungs-Routen gleich beantwortet.
+ * A NEWLY created set is answered the same in both capture routes.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -7,19 +7,19 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-// Der Nachzug nach dem Erfassen haengt an einem setTimeout und laeuft NACH
-// diesem Test, gegen einen dann geschlossenen Pool. Gleiche Vorsichtsmassnahme
-// wie in set-add-exists-db.test.js.
+// The follow-up after capturing hangs on a setTimeout and runs AFTER
+// this test, against a pool that is closed by then. The same precaution
+// as in set-add-exists-db.test.js.
 let posedAddSet = null;
 let positionCalled = 0;
 const Module = require('node:module');
 const _realRequire = Module.prototype.require;
 Module.prototype.require = function (name, ...rest) {
   const m = _realRequire.call(this, name, ...rest);
-  // Gestellt wird das Anlegen; das Ergänzen im Strom ohne Netz.
+  // The creation is set up; the completion in the stream without network.
   if (typeof name === 'string' && /[/\\]addSet(\.js)?$/.test(name))
     return new Proxy(m, {
-      // Die Fabrik bindet beim Bau (mit()): Der Ersatz prüft die Stellung erst beim Aufruf.
+      // The factory binds at build time (mit()): the replacement only checks the setting when called.
       get: (t, k) => {
         if (k === 'setSupplement')
           return (sk, ...a) => (posedAddSet !== null ? Promise.resolve({ name: 'Testset' }) : t[k](sk, ...a));
@@ -46,9 +46,9 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
 
   const NUTZER = `neu-form-${process.pid}`;
   const basis = 96000 + (process.pid % 900);
-  const DA = `${basis}-1`; // existiert, fuer Schritt 1
-  const NEW_A = `${basis + 100}-1`; // existiert nicht, fuer den Strom
-  const NEW_B = `${basis + 200}-1`; // existiert nicht, fuer die Token-Route
+  const DA = `${basis}-1`; // exists, for step 1
+  const NEW_A = `${basis + 100}-1`; // does not exist, for the stream
+  const NEW_B = `${basis + 200}-1`; // does not exist, for the token route
 
   const aufraeumen = async () => {
     for (const sn of [DA, NEW_A, NEW_B]) {
@@ -61,7 +61,7 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
   await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
   await aufraeumen();
-  await holdsSet(db, uid, DA, 0); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsSet(db, uid, DA, 0); // quantity 0: the acquisition behind it carries it
   await db.run(
     `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,10,'N',1)`,
@@ -71,11 +71,11 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
   const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
 
   try {
-    // ── 1. Die Praemisse, mit der ECHTEN Funktion ────────────────────────────
+    // ── 1. The premise, with the REAL function ────────────────────────────
     //
-    // Stuende `success` schon im Ergebnis von setErfassen(), pruefte alles Weitere
-    // nichts: Die Routen muessten es dann gar nicht erst hinzufuegen. Der
-    // „exists"-Zweig laeuft rein auf der Datenbank und braucht kein Netz.
+    // If `success` already stood in the result of setErfassen(), everything further would check
+    // nothing: the routes would then not have to add it in the first place. The
+    // „exists" branch runs purely on the database and needs no network.
     const { setErfassen } = require('./helpers/sources').areaPage('sets');
     const echt = await setErfassen({ requester: uid, setNumber: DA });
     assert.equal(echt.action, 'exists', 'der Aufbau des Tests stimmt nicht mehr');
@@ -85,10 +85,10 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
       'setErfassen() liefert jetzt selbst ein success — dann sagt dieser Test nichts mehr ueber die Routen',
     );
 
-    // ── 2. Der Strom: das `done`-Ereignis ───────────────────────────────────
+    // ── 2. The stream: the `done` event ───────────────────────────────────
     //
-    // Gestellt wird GENAU die Form, die setErfassen() fuer ein neues Set
-    // zurueckgibt.
+    // What is set up is EXACTLY the form that setErfassen()
+    // returns for a new set.
     posedAddSet = async e => ({
       action: 'added',
       set_number: e.setNumber,
@@ -130,9 +130,9 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     const fertig = ereignisse.find(e => e.step === 'done');
     assert.ok(fertig, `kein done-Ereignis im Strom: ${roh}`);
 
-    // DIE Zusicherung. `=== true` und nicht `.ok()`: Ein fehlendes Feld ist
-    // `undefined` und waere mit einer weichen Pruefung durchgerutscht — genau
-    // der Zustand, den Marco gemeldet hat.
+    // THE assertion. `=== true` and not `.ok()`: a missing field is
+    // `undefined` and would have slipped through with a soft check — exactly
+    // the state that Marco reported.
     assert.equal(
       fertig.success,
       true,
@@ -142,7 +142,7 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     assert.equal(fertig.action, 'added');
     assert.equal(fertig.set_number, NEW_A);
 
-    // ── 3. Die Token-Route mit demselben Ergebnis ───────────────────────────
+    // ── 3. The token route with the same result ───────────────────────────
     const vorher2 = positionCalled;
     const token = await fetch(`${base}/api/v1/sets`, {
       method: 'POST',
@@ -154,11 +154,11 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
     assert.ok(positionCalled > vorher2, 'setErfassen() wurde auf der Token-Route nicht gerufen');
     assert.equal(tb.success, true);
 
-    // ── 4. Eine Antwort, eine Form ──────────────────────────────────────────
+    // ── 4. One response, one form ──────────────────────────────────────────
     //
-    // Beide Wege reichen DASSELBE Ergebnis durch. Laufen ihre Formen
-    // auseinander, haengt es wieder am gewaehlten Weg, ob ein Client die
-    // Antwort lesen kann — und das war der Fehler.
+    // Both paths pass THE SAME result through. If their forms
+    // drift apart, it depends on the chosen path again whether a client can read the
+    // response — and that was the error.
     const felder = o =>
       Object.keys(o)
         .filter(k => k !== 'step')
@@ -170,8 +170,8 @@ test('a newly created set is answered the same in both routes', { concurrency: 1
         `${JSON.stringify(felder(tb))} — dieselbe Auskunft in zwei Formen`,
     );
 
-    // 5. Die App verlangt nichts, was der Server nicht schickt: die Pflichtfelder ihres
-    // Modells (shared/app-schnittstelle.json, aus ihrem Quelltext erzeugt).
+    // 5. The app demands nothing that the server does not send: the required fields of its
+    // model (shared/app-schnittstelle.json, generated from its source text).
     const model = require('./helpers/contract').appSchnittstelle().modelle.AddSetResponse;
     assert.ok(model && model.felder.length >= 5, 'Modell AddSetResponse nicht gefunden — umbenannt?');
     const zeilen = model.felder.map(name => ({ name, pflicht: model.pflicht.includes(name) }));

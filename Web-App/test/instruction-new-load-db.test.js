@@ -1,26 +1,26 @@
 /**
- * Geteilte Anleitungen ersetzen (löschen und neu holen) darf nur der
- * Verwalter; wer das Set im Haushalt hat, holt nur fehlende. Sonst war eine
- * Anleitung für alle weg, wenn die Quellen beim Neuladen nichts lieferten.
+ * Only the administrator may replace shared instructions (delete and refetch);
+ * whoever has the set in the household only fetches missing ones. Otherwise an
+ * instruction was gone for everyone if the sources delivered nothing on reloading.
  *
- * Gegenprobe (am 27.10. gemessen): die Prüfung auf findSetInScope entfernt →
- * rot: „ein fremdes Konto" (200, die Anleitung war gelöscht).
+ * Counter-check (measured on 27.10.): the check for findSetInScope removed →
+ * red: “a foreign account" (200, the instruction was deleted).
  *
- * Dazu einmal je Set und Tag für alle Konten zusammen; der Verwalter
- * ist frei. Gegenproben (am 30.10. gemessen):
- *   A  instructionNewLoadAllowed() nicht gefragt → rot: „ein zweites Neuladen
- *      am selben Tag“
- *   B  die Prüfung possibleSetNumber() entfernt → rot: „eine Nummer mit
- *      Pfadteilen“ (404 statt 400)
- * Gegenproben (am 02.11.2026 gemessen):
- *   C  die Prüfung auf anzahlAnleitungen() entfernt → rot: „wer das Set hat,
- *      ersetzt keine geteilte Anleitung“ (200 statt 403)
- *   D  deleteInstructions() wieder für alle → rot: „ein fremdes Konto“ und C
- * Seit 05.11.2026 lädt ein Auftrag, die Route antwortet 202. Gegenprobe:
- *   E  anleitungEinreihen() in der Route nicht gerufen → rot: „das Neuladen
- *      steht als Auftrag an“
+ * Plus once per set and day for all accounts together; the administrator
+ * is free. Counter-checks (measured on 30.10.):
+ *   A  instructionNewLoadAllowed() not asked → red: “a second reload
+ *      on the same day”
+ *   B  the check possibleSetNumber() removed → red: “a number with
+ *      path parts” (404 instead of 400)
+ * Counter-checks (measured on 02.11.2026):
+ *   C  the check for anzahlAnleitungen() removed → red: “whoever has the set
+ *      does not replace a shared instruction” (200 instead of 403)
+ *   D  deleteInstructions() again for everyone → red: “a foreign account” and C
+ * Since 05.11.2026 a job loads, the route answers 202. Counter-check:
+ *   E  anleitungEinreihen() not called in the route → red: “the reload
+ *      is pending as a job”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -36,7 +36,7 @@ const { testServer } = require('./helpers/server');
 const { adminWithFactor } = require('./helpers/admin');
 const { holdsSet, catalogSet } = require('./helpers/inventory');
 
-// Kein Abruf bei den Quellen: Das Neuladen findet hier nichts.
+// No fetch at the sources: the reload finds nothing here.
 const anlPath = require.resolve(path.join(require('./helpers/sources').DIST, 'src/catalog/instructions.js'));
 const echt = require(anlPath);
 require.cache[anlPath].exports = Object.assign({}, echt, { setAnleitungenLaden: async () => [] });
@@ -61,7 +61,7 @@ test('reload instructions', { concurrency: 1 }, async t => {
         )
       ).id,
     );
-  // ids[1] arbeitet unten als Verwalter.
+  // ids[1] works as administrator below.
   await adminWithFactor(_req, ids[1]);
   await catalogSet(db, SET, { name: 'Anleitungsprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 0 });
   await holdsSet(db, ids[0], SET, 1);

@@ -1,17 +1,17 @@
 /**
- * Rechteentzug und Kontoloeschung muessen die offene Sitzung erreichen.
+ * Revoking rights and deleting accounts must reach the open session.
  *
- * Gegenproben (am 28.10. gemessen):
- *   A  bestaetigePasswort() aus PUT /users/:id/admin entfernt → rot:
+ * Counter-checks (measured on 28.10.):
+ *   A  bestaetigePasswort() removed from PUT /users/:id/admin → red:
  *      „Rechte entziehen ohne Verwalterpasswort"
- *   B  protokolliere() vor dem Löschen entfernt → rot: Protokoll ohne
+ *   B  protokolliere() before deleting removed → red: log without
  *      „konto_geloescht"
  *
- * Das Ziel ist Verwalter: Entzug und Löschung werden seit Runde 29 angekündigt und
- * wirken im Aufräumlauf (src/account/adminActions.ts); der Test führt ihn aus.
+ * The target is an admin: since round 29 revocation and deletion are announced and
+ * take effect in the cleanup run (src/account/adminActions.ts); the test executes it.
  *
- * Voraussetzung: Test-DB (Inhalt wird angefasst!) via TEST_DATABASE_URL.
- * Ohne DB: skip. Ausfuehren: REQUIRE_DB=1 npm test
+ * Prerequisite: test DB (contents are touched!) via TEST_DATABASE_URL.
+ * Without DB: skip. Run: REQUIRE_DB=1 npm test
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -81,14 +81,14 @@ test("a change of rights and a deletion end the target's session", { concurrency
     assert.ok(a.cookie, 'Ohne Set-Cookie gibt es keine Sitzung');
     return a.cookie.split(';')[0];
   };
-  // Gezaehlt wird ueber den Inhalt, nicht ueber die Gesamtzahl der Zeilen: Im
-  // Store liegen auch Sitzungen anderer Tests.
+  // Counted via the content, not via the total number of rows: the
+  // store also holds sessions of other tests.
   const sitzungen = async uid =>
     Number(
       (await db.get("SELECT COUNT(*)::int AS n FROM user_sessions WHERE sess::jsonb->>'userId' = $1", [String(uid)])).n,
     );
 
-  /** Die Ankündigung fällig machen und den Aufräumlauf ausführen. */
+  /** Make the announcement due and run the cleanup run. */
   const faellig = async () => {
     await db.run(`UPDATE admin_takeovers SET effective_at = NOW() - INTERVAL '1 minute' WHERE target_id = $1`, [
       idTarget,
@@ -125,11 +125,11 @@ test("a change of rights and a deletion end the target's session", { concurrency
         'denn session.isAdmin wird nie nachgefuehrt',
     );
 
-    // ── 2. Kein Rauswurf ohne echte Aenderung ───────────────────────────────
+    // ── 2. No kick-out without a real change ───────────────────────────────
     //
-    // Sonst wuerde ein Verwalter, der einen bestehenden Zustand nur bestaetigt,
-    // eine fremde Sitzung ohne Grund beenden — und sich selbst aussperren,
-    // wenn er es an seinem eigenen Konto tut.
+    // Otherwise an admin who merely confirms an existing state would
+    // end a foreign session without reason — and lock himself out
+    // if he does it on his own account.
     await anmelden(ZIEL);
     assert.equal(await sitzungen(idTarget), 1, 'Vorbedingung fuer den Nicht-Wechsel');
     const nochmal = await ruf(AUTH + `/users/${idTarget}/admin`, {
@@ -145,12 +145,12 @@ test("a change of rights and a deletion end the target's session", { concurrency
     );
     assert.equal(await sitzungen(idTarget), 1, 'Ohne echte Aenderung darf keine Sitzung enden');
 
-    // ── 2b. Ein unbekanntes Konto ───────────────────────────────────────────
+    // ── 2b. An unknown account ───────────────────────────────────────────
     //
-    // Die Existenzpruefung haengt seit dem Umbau am vorgezogenen SELECT statt
-    // an r.changes. Ohne diese Zusicherung waere ihr Wegfall unbemerkt
-    // geblieben — die Route antwortete dann mit 200 auf eine Kennung, die es
-    // nicht gibt.
+    // Since the rebuild the existence check hangs on the preceding SELECT instead of
+    // on r.changes. Without this assertion its removal would have gone
+    // unnoticed — the route would then answer with 200 to an identifier that does
+    // not exist.
     const unbekannt = await ruf(AUTH + '/users/99999999/admin', {
       method: 'PUT',
       headers: { cookie: chefCookie },
@@ -158,7 +158,7 @@ test("a change of rights and a deletion end the target's session", { concurrency
     });
     assert.equal(unbekannt.status, 404, 'Ein nicht vorhandenes Konto muss 404 ergeben, nicht 200');
 
-    // ── 3. Und die Gegenrichtung: Rechte ERTEILEN ───────────────────────────
+    // ── 3. And the opposite direction: GRANTING rights ───────────────────────────
     const vergabe = await ruf(AUTH + `/users/${idTarget}/admin`, {
       method: 'PUT',
       headers: { cookie: chefCookie },
@@ -198,7 +198,7 @@ test("a change of rights and a deletion end the target's session", { concurrency
       'Vorbedingung: Das Konto ist wirklich geloescht',
     );
 
-    // ── 5. Jede Verwalteraktion steht im Protokoll — auch die Löschung ──────
+    // ── 5. Every admin action stands in the log — also the deletion ──────
     const prot = await db.all(`SELECT action, target_name FROM admin_log WHERE target_id = $1 ORDER BY id`, [idTarget]);
     assert.deepEqual(
       prot.map(p => p.action),

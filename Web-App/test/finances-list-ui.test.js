@@ -1,22 +1,22 @@
 /**
- * Finanzen mit vielen Positionen (UI-Prüfung 17, Abläufe M16), echtes Bündel
+ * Finances with many items (UI review 17, flows M16), real bundle
  * in jsdom:
- *   - 250 Sets zeigen höchstens 100 Zeilen; kommt das Tabellenende in Sicht
- *     (Markierung #fin-sentinel), folgt der nächste Block, bis alles da ist.
- *   - Die Suche filtert über alle Positionen, nicht nur die gezeigten.
- *   - Die Köpfe Name/Kaufpreis/Wert/G&V sind Knöpfe mit aria-sort; ein Klick
- *     sortiert, ein zweiter dreht die Richtung.
- *   - Die Legende zeigt ihre Zeichen als Markup, nicht als Text „<span“.
+ *   - 250 sets show at most 100 rows; when the table end comes into view
+ *     (marker #fin-sentinel), the next block follows until everything is there.
+ *   - The search filters over all items, not only the shown ones.
+ *   - The headers name/purchase price/value/G&L are buttons with aria-sort; a click
+ *     sorts, a second one turns the direction.
+ *   - The legend shows its signs as markup, not as text “<span”.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  FIN_BLOCK = 100000 → rot: „blockweise beim Scrollen“
- *   E  (07.11.2026) in finSentinelBinden() den Beobachter nicht angelegt →
- *      rot: „blockweise beim Scrollen“ (Zeilen bleiben bei 100)
- *   B  in zeichneFinanzTabellen die Zeile `if (_finSort.feld) sets.sort(…)`
- *      entfernt → rot: „Sortierköpfe mit aria-sort“
- *   C  passt() liefert immer true → rot: „Suche über alle Positionen“
- *   D  (13.11.2026) in legende() die Zeichen weggelassen (eintrag() ohne
- *      .legende-zeichen) → rot: „Legende zeigt Zeichen“ (0 statt 3)
+ * Counter-checks (measured 05.11.2026, each alone, bundle rebuilt):
+ *   A  FIN_BLOCK = 100000 → red: “block by block when scrolling”
+ *   E  (07.11.2026) in finSentinelBinden() the observer not created →
+ *      red: “block by block when scrolling” (rows stay at 100)
+ *   B  in zeichneFinanzTabellen the line `if (_finSort.feld) sets.sort(…)`
+ *      removed → red: “sort headers with aria-sort”
+ *   C  passt() always returns true → red: “search over all items”
+ *   D  (13.11.2026) in legende() the signs omitted (eintrag() without
+ *      .legende-zeichen) → red: “legend shows signs” (0 instead of 3)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -77,7 +77,7 @@ async function openFinances(anzahl) {
     },
     { browserLanguage: 'de-DE' },
   );
-  // jsdom kennt kein Scrollen: Die Beobachter werden mitgeschrieben, der Test meldet „in Sicht“ selbst.
+  // jsdom knows no scrolling: the observers are recorded, the test reports “in view” itself.
   o.observer = [];
   o.w.IntersectionObserver = class {
     constructor(callback) {
@@ -96,7 +96,7 @@ async function openFinances(anzahl) {
   await warte(() => o.d.querySelectorAll('#fin-tbl tbody tr[data-arg]').length > 0, 4000);
   return o;
 }
-/** Das Tabellenende kommt in Sicht: Der letzte lebende Beobachter der Markierung meldet es. */
+/** The table end comes into view: the last living observer of the marker reports it. */
 function inSicht(o) {
   const b = o.observer.filter(x => !x.getrennt && x.el?.id === 'fin-sentinel').at(-1);
   if (!b) return false;

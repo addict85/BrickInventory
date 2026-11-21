@@ -1,23 +1,23 @@
 /**
- * Befunde der UI-Prüfung vom 01.11.2026, am echten Bündel in jsdom: was die
- * Oberfläche aus einer Serverantwort macht (Beschriftung, Rückmeldung,
- * Zustand der Umschalter), nicht welche Zeile im Quelltext steht.
+ * Findings of the UI check of 01.11.2026, on the real bundle in jsdom: what the
+ * UI makes of a server response (label, feedback,
+ * state of the toggles), not which line stands in the source text.
  *
- * Gegenproben (01.11.2026 gemessen, je einzeln zurückgedreht):
- *   A  groupNumber ohne das Entfernen der Trenner → rot „Gutscheinnummer“
- *   B  role="alert" an #lerr entfernt → rot „Anmeldefehler“
- *   C  aria-pressed in setChartPeriod nicht nachgezogen → rot „Zeitraum“
- *   D  ps-total wieder nur total_parts → rot „Teile-Zahl“
- *   E  priceRow ohne Beschriftung (art = '') → rot „Preis auf der Kachel“
- *   F  diagrammNichtDa im Fehlerzweig von loadFinance entfernt → rot „offline“
- *   G  Teile-Leerzustand wieder „Keine Teile gefunden“ ohne Knopf → rot „Teile-Suche ohne Treffer“
- *   H  fehlerKasten wieder als roher Text → rot „Hintergrundarbeiten“
+ * Counter-checks (measured 01.11.2026, each reverted individually):
+ *   A  groupNumber without removing the separators → red „Gutscheinnummer“
+ *   B  role="alert" removed on #lerr → red „Anmeldefehler“
+ *   C  aria-pressed not updated in setChartPeriod → red „Zeitraum“
+ *   D  ps-total again only total_parts → red „Teile-Zahl“
+ *   E  priceRow without a label (art = '') → red „Preis auf der Kachel“
+ *   F  diagrammNichtDa removed in the error branch of loadFinance → red „offline“
+ *   G  parts empty state again „Keine Teile gefunden“ without a button → red „Teile-Suche ohne Treffer“
+ *   H  fehlerKasten again as raw text → red „Hintergrundarbeiten“
  *
- * Gegenproben (13.11.2026 gemessen):
- *   I  in monitor.js zeile() `wartet` fest false → rot „verschobener Auftrag wartet“
- *      (Fehlerkasten und „Versuch 3 von 5“ in der Zeile)
- *   J  den Fehlerkasten wieder für jeden Status ausser 'laeuft' → rot: derselbe
- *      Test (Fehlerkasten beim abgebrochenen)
+ * Counter-checks (measured 13.11.2026):
+ *   I  in monitor.js zeile() `wartet` fixed false → red „verschobener Auftrag wartet“
+ *      (error box and „Versuch 3 von 5“ in the row)
+ *   J  the error box again for every status except 'laeuft' → red: the same
+ *      test (error box for the aborted one)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -81,7 +81,7 @@ test('login error is read aloud (role=alert) and stays', async () => {
 });
 
 test('period and filter of the finances report their state (aria-pressed)', async () => {
-  // Zwei Messpunkte: Ohne Verlauf sind die Zeitraum-Knöpfe gesperrt.
+  // Two measurement points: without history the period buttons are locked.
   const { w, d } = await openUi({
     '/v1/finance/portfolio-history': {
       success: true,
@@ -182,7 +182,7 @@ test('offline: the chart says “not available” with reason and button instead
   });
   try {
     await reiter(w, 'finance');
-    // Grund und Knopf stehen einmal, seit UX-Prüfung 24 (M2) oben im Diagrammkasten; die Liste darunter bleibt leer.
+    // Reason and button stand once, since UX check 24 (M2) at the top of the chart box; the list below stays empty.
     await warte(() => /nicht erreichbar/.test(text(d.getElementById('portfolio-chart'))));
     assert.match(text(d.getElementById('portfolio-chart')), /Keine Verbindung zum Server.*Erneut versuchen/);
     assert.equal(text(d.getElementById('fin-tbl')), '');
@@ -196,9 +196,9 @@ test('offline: the chart says “not available” with reason and button instead
   }
 });
 
-// UX-Prüfung 24 (M2): Ohne geladenen Stand fallen die Karten weg, statt „—“ ohne Fehlerbezug zu zeigen; die
-// Zeitraumknöpfe sind gesperrt. Gegenprobe (14.11.2026): in finanzenFehlen() `hidden = true` entfernt → rot
-// (Karten sichtbar); das Sperren der Knöpfe entfernt → rot (Zeitraum bedienbar).
+// UX check 24 (M2): without a loaded state the cards drop away instead of showing „—“ without error reference; the
+// period buttons are locked. Counter-check (14.11.2026): `hidden = true` removed in finanzenFehlen() → red
+// (cards visible); the locking of the buttons removed → red (period operable).
 test('offline: the key figure cards of the finances drop, the period buttons are locked', async () => {
   const netzweg = () => {
     throw new TypeError('Failed to fetch');

@@ -1,12 +1,12 @@
 /**
- * Anmeldekarte in jsdom: Der Wechsel zwischen Anmelden, Registrieren und „Passwort vergessen“ setzt
- * den Fokus ins erste Feld (sonst stand er auf BODY), „Passwort vergessen“ heisst so, erklärt sich und
- * sendet mit Enter ab.
+ * Login card in jsdom: switching between login, registration and „Passwort vergessen“ puts
+ * the focus into the first field (before, it stood on BODY), „Passwort vergessen“ is called that, explains itself and
+ * submits with Enter.
  *
- * Gegenproben (16.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in showPanel() den Fokusteil gestrichen → rot: „Fokus beim Wechsel“ (BODY statt forgot-email)
- *   B  #forgot-form wieder <div> statt <form> → rot: „Enter sendet ab“ (kein POST forgot-password)
- *   C  reset.title wieder „Neues Passwort“ → rot: „Titel“
+ * Counter-checks (measured 16.11.2026, each on its own, bundle rebuilt):
+ *   A  the focus part deleted in showPanel() → red: “focus when switching” (BODY instead of forgot-email)
+ *   B  #forgot-form again <div> instead of <form> → red: „Enter sendet ab“ (no POST forgot-password)
+ *   C  reset.title again „Neues Passwort“ → red: „Titel“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

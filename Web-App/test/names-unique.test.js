@@ -1,8 +1,8 @@
 /**
- * Ein Funktionsname bedeutet eine Sache.
+ * A function name means one thing.
  *
- * Gegenprobe (durchgefuehrt): einen Namen aus ALLOWED entfernt -> rot; die
- * settings-Fassung wieder effectiveCondition genannt -> rot.
+ * Counter-check (carried out): a name removed from ALLOWED -> red; the
+ * settings version named effectiveCondition again -> red.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,7 +11,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-/** Name -> warum er mehrfach vorkommen darf. */
+/** Name -> why it may occur more than once. */
 const ALLOWED = new Map([
   [
     'run',
@@ -54,24 +54,24 @@ test('a function name means one thing', () => {
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/[^\n]*$/gm, '');
     const rel = path.relative(ROOT, f);
-    // Auch generische Funktionen (`function all<T = any>(`).
+    // Generic functions too (`function all<T = any>(`).
     for (const m of code.matchAll(/^(?:export )?(?:async )?function (\w+)(?:<[^>(]*>)?\(/gm)) {
       gefunden++;
       if (!wo.has(m[1])) wo.set(m[1], new Set());
       wo.get(m[1]).add(rel);
     }
   }
-  // Selbstnachweis: Faende die Suche kaum Funktionen, waere die Regel leer wahr.
+  // Self-proof: if the search found hardly any functions, the rule would be vacuously true.
   assert.ok(gefunden >= 300, `Nur ${gefunden} Funktionen gefunden — die Suche greift nicht mehr`);
 
   const doppelt = [];
   const gebraucht = new Set();
   for (const [name, orte] of wo) {
     if (orte.size < 2) continue;
-    // Ein erlaubter Name wird nicht uebersprungen, sondern VERBUCHT: Nur so
-    // faellt auf, wenn er laengst nur noch an einer Stelle steht und der
-    // Eintrag nichts mehr beschreibt. Ein toter Eintrag sieht aus wie eine
-    // Entscheidung und ist doch bloss eine Vermutung, sobald keiner nachsieht.
+    // An allowed name is not skipped but BOOKED: only that way it
+    // becomes noticeable when it has long stood in only one place and the
+    // entry describes nothing any more. A dead entry looks like a
+    // decision and yet is merely a guess as soon as nobody checks.
     if (ALLOWED.has(name)) {
       gebraucht.add(name);
       continue;

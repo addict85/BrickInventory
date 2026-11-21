@@ -1,18 +1,18 @@
 /**
- * Einstellungen am Desktop (1280 px) bei 100 % und 200 % Schrift, Designs Stein (brick) und classic:
- * Die Abschnittsliste links kürzt keinen Eintrag (kein hartes Abschneiden), die Spalte wächst mit der Schrift.
+ * Settings on the desktop (1280 px) at 100 % and 200 % font, themes stone (brick) and classic:
+ * the section list on the left truncates no entry (no hard cut-off), the column grows with the font.
  *
- * Gegenprobe (08.11.2026 gemessen): in styles.css die Spalte wieder auf `minmax(170px,210px)` gesetzt
- *   → rot bei 200 %: „Benutzerverwaltung“ und „Erscheinungsbild“ ragen über die Spalte hinaus.
+ * Counter-check (measured 08.11.2026): in styles.css the column set back to `minmax(170px,210px)`
+ *   → red at 200 %: „Benutzerverwaltung“ and „Erscheinungsbild“ stick out beyond the column.
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Without Chrome (CHROME_BIN, google-chrome, chromium) it is skipped.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 
-/** Je Eintrag: ragt sein Text über den Eintrag, ragt der Eintrag über die Spalte, steht der Text sichtbar? */
+/** Per entry: does its text stick out beyond the entry, does the entry stick out beyond the column, is the text visible? */
 const MEASURE = `(() => {
   const nav = document.querySelector('#global-settings-grid > .einst-nav'), n = nav.getBoundingClientRect();
   const funde = [];

@@ -1,19 +1,19 @@
 /**
- * Die Oberfläche liest die Antworten von api() mit den Typen des Vertrags:
- * frontend-types/contract.d.ts ist aus docs/openapi.json erzeugt, und
- * frontend-types/api.d.ts ordnet jedem Pfad seine Route zu. Geprüft wird mit
- * tsc an einer Probe, welche Zugriffe durchgehen und welche nicht.
+ * The UI reads the responses of api() with the contract's types:
+ * frontend-types/contract.d.ts is generated from docs/openapi.json, and
+ * frontend-types/api.d.ts assigns each path its route. Checked with
+ * tsc on a probe which accesses pass and which do not.
  *
- * Gegenproben (05.11.2026 gemessen):
- *   A  in contract.d.ts SetsResponse.sets in SetItems umbenannt → rot: „die
- *      eingecheckten Typen sind aus openapi.json erzeugt“
- *   B  in api.d.ts Genaueste weggelassen (alle passenden Routen statt der
- *      genauesten) → rot: „api(): jeder Pfad bekommt die Antwort seiner Route“
- *      und „/v1/sets/:nr/parts-list trifft nur seine Route“
- *   C  in api.d.ts FehlerZu durch ApiFehler ersetzt → rot: „ohne Prüfung auf
- *      success ist ein Feld undefined, nicht unbekannt“
- *   D  in kauf-dialoge.js einen Pfad als Variable statt Vorlage → rot:
- *      „api()-Pfade stehen als Literal oder Vorlage da“ (13 statt 12)
+ * Counter-checks (measured 05.11.2026):
+ *   A  in contract.d.ts SetsResponse.sets renamed to SetItems → red: “the
+ *      checked-in types are generated from openapi.json”
+ *   B  in api.d.ts Genaueste omitted (all matching routes instead of the
+ *      most specific) → red: “api(): every path gets the response of its route”
+ *      and “/v1/sets/:nr/parts-list hits only its route”
+ *   C  in api.d.ts FehlerZu replaced by ApiFehler → red: “without checking
+ *      success a field is undefined, not unknown”
+ *   D  in kauf-dialoge.js a path as a variable instead of a template → red:
+ *      “api() paths are written as literal or template” (13 instead of 12)
  */
 const { isAppModule } = require('../scripts/build-frontend');
 const test = require('node:test');
@@ -35,7 +35,7 @@ test('the checked-in types are generated from openapi.json', () => {
   );
 });
 
-/** Prüft eine Probe gegen die Typen; liefert die Meldungen je Zeile. @param {string} probe */
+/** Checks a probe against the types; returns the messages per line. @param {string} probe */
 function pruefe(probe) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'vertrag-typen-'));
   try {
@@ -83,7 +83,7 @@ const nr = String(Math.random());
 `;
 
 test('api(): every path gets the response of its route', () => {
-  // Jede Zeile ab der dritten soll genau dann rot sein, wenn sie mit FEHLT endet.
+  // Every line from the third on should be red exactly when it ends with FEHLT.
   const faelle = [
     "api('GET', '/v1/sets').then(d => { if (d.success) zahl(d.total); });",
     "api('GET', '/v1/sets').then(d => { if (d.success) zahl(d.gibtsnicht); }); // FEHLT",
@@ -112,14 +112,14 @@ test('/v1/sets/:nr/parts-list only hits its route', () => {
 });
 
 test('without checking success a field is undefined, not unknown', () => {
-  // Unter strict: `d.total` ist number | undefined, mit Rückfall also eine Zahl.
+  // Under strict: `d.total` is number | undefined, so with a fallback a number.
   const m = pruefe(HEADER + "api('GET', '/v1/sets').then(d => { zahl(d.total ?? 0); });\n");
   assert.deepEqual(Object.values(m), []);
 });
 
 test('api() paths are written as a literal or template', () => {
-  // Nur dann kennt tsc die Route. Ein zusammengesetzter Pfad (Variable,
-  // `'/v1/x/' + nr`) bleibt ungeprüft; ihre Zahl darf sinken, nie steigen.
+  // Only then does tsc know the route. A composed path (variable,
+  // `'/v1/x/' + nr`) stays unchecked; their number may sink, never rise.
   const LIMIT = 12;
   const js = path.join(ROOT, 'public', 'js');
   const offen = [];

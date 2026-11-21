@@ -1,11 +1,11 @@
 /**
- * „Kann ich das bauen?" in der Webapp, in jsdom (echtes Bündel). Die App ruft denselben
- * Endpunkt (shared/app-schnittstelle.json, test/app-interface.test.js).
+ * “Can I build this?" in the web app, in jsdom (real bundle). The app calls the same
+ * endpoint (shared/app-schnittstelle.json, test/app-interface.test.js).
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen, Bündel neu gebaut):
- *   A  plFuelleBestand() schickt für 3001 die BrickLink-Nummer 3001b → rot: „Webapp: …“
- *   B  `nurLose ? eintrag.lose : eintrag.gesamt` vertauscht → rot: „Webapp: …“
- *   C  `?accounts=own` immer angehängt → rot: „Webapp: …“ (mit Unterkonten)
+ * Counter-checks (measured 10.11.2026, each alone, reverted, bundle rebuilt):
+ *   A  plFuelleBestand() sends the BrickLink number 3001b for 3001 → red: “web app: …”
+ *   B  `nurLose ? eintrag.lose : eintrag.gesamt` swapped → red: “web app: …”
+ *   C  `?accounts=own` always appended → red: “web app: …” (with sub-accounts)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,7 +14,7 @@ const path = require('node:path');
 
 const WEB = path.join(__dirname, '..');
 const { ohneKommentare } = require('./helpers/sources');
-// Kommentare ABSTREIFEN, und zwar hier schon beim Lesen.
+// STRIP comments, already here while reading.
 const lies = p => ohneKommentare(fs.readFileSync(p, 'utf8'));
 const web = rel => lies(path.join(WEB, rel));
 
@@ -55,7 +55,7 @@ test('web app: asks the endpoint in Rebrickable notation, distinguishes loose an
 
     d.getElementById('btn-pl-bestand').click();
     assert.ok(await warte(() => anfragen.length === 1 && feld() === '5'), `alles: ${feld()}`);
-    // Mit der BrickLink-Nummer fände der Server nichts — und „nicht gefunden“ sieht aus wie „habe ich nicht“.
+    // With the BrickLink number the server would find nothing — and “not found” looks like “don't have it”.
     assert.deepEqual(anfragen[0].teile, [{ part_number: '3001', color_id: 4 }]);
     assert.match(anfragen[0].url, /\/api\/v1\/parts\/owned\?accounts=own$/, 'ohne Haken zählt der Haushalt mit');
     assert.doesNotMatch(d.getElementById('pl-status').textContent, /\bpl\./, 'Statustext ohne Übersetzung');
@@ -76,9 +76,9 @@ test('web app: asks the endpoint in Rebrickable notation, distinguishes loose an
 });
 
 test('both languages are maintained', () => {
-  // Ein fehlender Schlüssel fällt in dieser Webapp nicht auf: t() gibt den
-  // Schlüsselnamen zurück, und „pl.only_loose" sieht auf den ersten Blick aus
-  // wie ein Text.
+  // A missing key does not stand out in this web app: t() returns the
+  // key name, and “pl.only_loose" looks at first glance like
+  // a text.
   for (const datei of ['public/locales/de.js', 'public/locales/en.js']) {
     const s = web(datei);
     for (const k of [

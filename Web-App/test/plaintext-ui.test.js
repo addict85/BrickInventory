@@ -1,5 +1,5 @@
 /**
- * Kein fester Text an einer Stelle, die der Nutzer liest.
+ * No fixed text in a place that the user reads.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -45,16 +45,16 @@ test('no fixed text in textContent, placeholder, title, toast, confirm or alert'
     for (const muster of LOWER)
       for (const m of src.matchAll(muster)) {
         geprueft++;
-        // Mindestens zwei zusammenhängende Buchstaben — „…" ist kein Text.
+        // At least two consecutive letters — „…" is not text.
         if (!/[^\W\d_]{2,}/u.test(m[1])) continue;
         const zeile = src.slice(0, m.index).split('\n').length;
         fest.push(`${rel}:${zeile}  „${m[1].slice(0, 50)}"`);
       }
-  // Selbstbeweis: Greift kein Muster mehr, wäre die Liste leer und der Test
-  // grün, ohne etwas geprüft zu haben.
-  // Seit dem 27.10. sind es 0: Die Literale waren Emoji („✅", „⏳") und sind
-  // der Symbolfamilie gewichen. Der Selbstbeweis prüft deshalb die Muster an
-  // einer Probe — jedes muss dort genau einmal greifen.
+  // Self-proof: if no pattern triggers any more, the list would be empty and the test
+  // green without having checked anything.
+  // Since 27.10. there are 0: the literals were emoji („✅", „⏳") and have
+  // given way to the symbol family. The self-proof therefore checks the patterns on
+  // a probe — each must trigger there exactly once.
   const probe = `a.textContent = 'Hallo'; b.title = "Welt"; toast('Text'); toast("Text"); confirm('Ja?'); alert('Nein');`;
   for (const muster of LOWER)
     assert.equal([...probe.matchAll(muster)].length, 1, `Das Muster ${muster} greift nicht mehr`);

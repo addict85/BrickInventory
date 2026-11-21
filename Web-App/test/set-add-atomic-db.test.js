@@ -1,30 +1,30 @@
 /**
- * Ein Set erfassen: Prüfen und Anlegen in einem Schritt, ohne Netz in der
- * Anfrage; Katalog, Bild und Marktpreis holt der Auftrag „nacharbeit/ergaenzen“.
+ * Adding a set: check and create in one step, without network in the
+ * request; catalog, image and market price are fetched by the job „nacharbeit/ergaenzen“.
  *
- * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in setErfassen() den Aufruf repo.addLockSet() entfernt → rot:
- *      „gleichzeitig erfasst, genau einmal angelegt“ (8 statt 1 'added')
- *   B  in setErfassen() vor dem Anlegen `await setAngaben(sn)` eingefügt → rot:
- *      „die Anfrage fragt kein Netz …“ (Netzaufrufe 1 statt 0)
- *   C  in setErfassen() placeJobOne() weggelassen → rot: „… und stellt den Auftrag ein“
- *   D  in setSupplement() die Schleife über die Erfassungen ohne Preis entfernt →
- *      rot: „der Auftrag ergänzt Katalog und Kaufpreis“ (Preis null)
- *   E  (10.11.) in rememberCatalogPlaceholder() (src/catalog/repository/setMaster.ts) das
- *      INSERT INTO rb_sets entfernt → rot:
- *      alle drei Teile (set_catalog_rb_sets_fkey; die Route antwortet 409 statt 200)
- *   F  (10.11.) in rememberSetCatalog() `WHERE rb_sets.herkunft = 'api'` zu 'csv' →
- *      rot: „der Auftrag ergänzt …“ (Name „Set …“ statt „Testset“)
+ * Counter-checks (measured 09.11.2026, each on its own):
+ *   A  the call repo.addLockSet() removed in setErfassen() → red:
+ *      “added concurrently, created exactly once” (8 instead of 1 'added')
+ *   B  in setErfassen() `await setAngaben(sn)` inserted before creating → red:
+ *      “the request asks no network …” (network calls 1 instead of 0)
+ *   C  placeJobOne() left out in setErfassen() → red: “… and enqueues the job”
+ *   D  in setSupplement() the loop over the acquisitions without a price removed →
+ *      red: “the job completes catalog and purchase price” (price null)
+ *   E  (10.11.) in rememberCatalogPlaceholder() (src/catalog/repository/setMaster.ts) the
+ *      INSERT INTO rb_sets removed → red:
+ *      all three parts (set_catalog_rb_sets_fkey; the route answers 409 instead of 200)
+ *   F  (10.11.) in rememberSetCatalog() `WHERE rb_sets.herkunft = 'api'` to 'csv' →
+ *      red: “the job completes …” (name „Set …“ instead of „Testset“)
  *
- * Rebrickable, BrickLink, Brickset und der Bildabruf sind an der Verdrahtung gestellt
- * (testSources, testImageWorker) und zählen jeden Netzaufruf. Der Code fragt im Konto
- * (asAccount, Route über testServer) als Laufzeitrolle; Testdaten über die Eigentümerin.
- *   B' (13.11.) B über die gestellten Quellen wiederholt → rot: „die Anfrage fragt
- *      kein Netz …“ (Name „Testset“ schon in der Anfrage) und „der Auftrag …“
- *   G  (13.11.) in setAngaben() (rebrickableKatalog.ts) wieder das importierte holeSet
- *      statt quellen(k) → rot: „der Auftrag ergänzt …“ (kein Netzaufruf gezählt)
+ * Rebrickable, BrickLink, Brickset and the image fetch are set up at the wiring
+ * (testSources, testImageWorker) and count every network call. The code asks in the account
+ * (asAccount, route via testServer) as the runtime role; test data via the owner role.
+ *   B' (13.11.) B repeated via the set-up sources → red: “the request asks
+ *      no network …” (name „Testset“ already in the request) and “the job …”
+ *   G  (13.11.) in setAngaben() (rebrickableKatalog.ts) again the imported holeSet
+ *      instead of quellen(k) → red: “the job completes …” (no network call counted)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -39,7 +39,7 @@ const { testServer } = require('./helpers/server');
 test('add a set without network and without a race', { concurrency: 1 }, async t => {
   const db = await dataOrSkip(t, _req);
   if (!db) return;
-  // Jede Quelle im Netz gestellt und gezählt.
+  // Every source in the network set up and counted.
   const netz = [];
   testSources(t, {
     holeSet: async sn => {
@@ -75,7 +75,7 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
     await db.run('DELETE FROM users WHERE username = ANY($1)', [[MAIN, KIND]]);
   };
   await weg();
-  // Ohne BrickLink-Zugang fragte der Preislauf gar nicht; der Abruf selbst ist gestellt.
+  // Without BrickLink access the price run did not ask at all; the fetch itself is set up.
   await _req('src/settings/settings.js').setGlobalSetting('bricklink_consumer_key', 'test');
   await db.run("INSERT INTO rb_themes (id, name) VALUES (990001, 'Test') ON CONFLICT (id) DO NOTHING");
   const neu = async n =>
@@ -90,7 +90,7 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
   });
 
   await t.test('added concurrently, created exactly once', async () => {
-    // Das Hauptkonto sieht beide Konten; es legt teils für sich, teils für das Kind an.
+    // The main account sees both accounts; it creates partly for itself, partly for the child.
     const fuer = [haupt, kind, haupt, kind, haupt, kind, haupt, kind];
     const r = await Promise.all(
       fuer.map(b =>
@@ -129,7 +129,7 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
       { action: 'added', set_number: SN2, name: `Set ${SN2}`, katalog_offen: true, ergaenzung: 'ausstehend' },
     );
     assert.deepEqual(netz, [], 'Netzaufrufe in der Anfrage');
-    // rb_sets kennt das Set nicht: Die Erfassung legt es als 'api' an, samt set_catalog-Zeile.
+    // rb_sets does not know the set: the capture creates it as 'api', including the set_catalog row.
     assert.deepEqual(
       await db.get(
         `SELECT r.name, r.source, (c.set_number IS NOT NULL) AS katalog
@@ -156,7 +156,7 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
       [SN2],
     );
     assert.deepEqual(kat, { name: 'Testset', year: 2020, thema: 'Test', source: 'api' });
-    // Die Sammlung liest Name, Jahr und Thema über rb_sets.
+    // The collection reads name, year and theme via rb_sets.
     const liste = await _req('src/sets/repository/sets.js').setList(db, [haupt], { seite: null, themen: false });
     const z = liste.sets.find(x => x.set_number === SN2);
     assert.deepEqual({ name: z.name, year: z.year, theme: z.theme }, { name: 'Testset', year: 2020, theme: 'Test' });
@@ -169,7 +169,7 @@ test('add a set without network and without a race', { concurrency: 1 }, async t
       { preis: 42, geschaetzt: true, zustand: 'U' },
     );
     assert.ok(netz.includes(`rebrickable ${SN2}`) && netz.includes(`preis ${SN2}`), JSON.stringify(netz));
-    // Ein zweiter Lauf fragt den Katalog nicht noch einmal: Strom und Auftrag stören sich nicht.
+    // A second run does not ask the catalog again: stream and job do not interfere.
     netz.length = 0;
     await asAccount(haupt, () => sets.setSupplement(SN2, haupt));
     assert.equal(netz.filter(x => x.startsWith('preis')).length, 0, 'der Preis wurde doppelt geholt');

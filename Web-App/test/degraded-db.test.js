@@ -1,15 +1,15 @@
 /**
- * Eine Antwort aus Ersatzwerten sagt das: `degradiert` nennt die Teile, die
- * nach einem Fehler nur eine 0 oder null tragen (src/infra/result.ts, Abstriche).
+ * A response made of substitute values says so: `degradiert` names the parts that
+ * only carry a 0 or null after an error (src/infra/result.ts, Abstriche).
  *
- * Gegenproben (09.11.2026 gemessen, je einzeln):
- *   A  in cacheStatistics() `...ab.angabe()` gestrichen → rot: „die Cache-Zahlen
- *      sagen, welcher Teil fehlt“ (degradiert undefined)
- *   B  in Abstriche.oder() den Eintrag in `teile` weggelassen → rot: beide Teiltests
- *   C  in changeSet() wieder `valueOr(versuche(…))` für den Kaufpreis → rot:
- *      „eine Mengenerhöhung ohne Marktpreis sagt es“
+ * Counter-checks (measured 09.11.2026, each alone):
+ *   A  in cacheStatistics() `...ab.angabe()` deleted → red: “the cache numbers
+ *      say which part is missing” (degradiert undefined)
+ *   B  in Abstriche.oder() the entry in `teile` omitted → red: both subtests
+ *   C  in changeSet() again `valueOr(versuche(…))` for the purchase price → red:
+ *      “a quantity increase without market price says so”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -88,7 +88,7 @@ test('substitute values are named in the response', { concurrency: 1 }, async t 
       [uid, SN],
     );
     const { changeSet } = require('./helpers/sources').areaPage('sets');
-    // Sets fragt den Zustand über die Finanzdienste seines Kontexts (sk.finances).
+    // Sets asks for the condition via the finance services of its context (sk.finances).
     const finanzen = require('./helpers/sources').testArea('finances');
     const stateReal = finanzen.setState;
     finanzen.setState = async (...a) => {

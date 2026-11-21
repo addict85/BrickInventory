@@ -1,20 +1,20 @@
 /**
- * Preisverlauf: ein Punkt je Tag auch für Teile und Figuren. Figurenpreise
- * aus Teilepreisen sind als Schätzung markiert und gelten nie als
- * BrickLink-Preis.
+ * Price history: one point per day for parts and figures too. Figure prices
+ * from part prices are marked as an estimate and never count as a
+ * BrickLink price.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  in Migration 0056 die DELETE-Anweisungen entfernt → rot: „die Migration
- *      räumt doppelte Tagespunkte ab …“ (der eindeutige Index scheitert)
- *   B  in fetchMinifigPrice „AND NOT estimated“ entfernt → rot: „eine
- *      Schätzung im Cache gilt nicht als BrickLink-Preis“ (5 statt 20)
- *   C  in estimateMinifigsPrice die Abdeckung nicht mehr gelesen → rot: „die
- *      Schätzung trägt ihre Abdeckung“
+ * Counter-checks (measured on 28.10.2026):
+ *   A  the DELETE statements removed in migration 0056 → red: “the migration
+ *      clears duplicate daily points …” (the unique index fails)
+ *   B  „AND NOT estimated“ removed in fetchMinifigPrice → red: “an
+ *      estimate in the cache does not count as a BrickLink price” (5 instead of 20)
+ *   C  in estimateMinifigsPrice the coverage no longer read → red: “the
+ *      estimate carries its coverage”
  *
- * BrickLink selbst wird nicht gefragt: https.get ist durch eine Attrappe
- * ersetzt, die immer 20 liefert.
+ * BrickLink itself is not asked: https.get is replaced by a dummy
+ * that always delivers 20.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -32,7 +32,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-// @ts-expect-error — Attrappe mit genau dem, was clients/bricklink.ts benutzt.
+// @ts-expect-error — dummy with exactly what clients/bricklink.ts uses.
 https.get = (_url, _opts, cb) => {
   const req = new EventEmitter();
   setImmediate(() => {

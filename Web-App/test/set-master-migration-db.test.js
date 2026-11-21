@@ -1,20 +1,20 @@
 /**
- * Migration 0105: rb_sets ist die einzige Quelle für Name, Jahr, Thema und
- * Teilezahl; set_catalog wird 1:1 dazu und behält nur die Ergänzungen. Läuft auf
- * einem Altbestand in einem eigenen Schema (search_path), die echte Datenbank
- * bleibt unberührt.
+ * Migration 0105: rb_sets is the only source for name, year, theme and
+ * part count; set_catalog becomes 1:1 to it and only keeps the additions. Runs on
+ * legacy data in its own schema (search_path), the real database
+ * stays untouched.
  *
- * Gegenproben (am 10.11.2026 gemessen, je einzeln in der Migration):
- *   A  das INSERT INTO rb_sets … FROM set_catalog entfernt → rot: die Migration
- *      scheitert an set_catalog_rb_sets_fkey (5008-1 ohne rb_sets-Zeile)
- *   B  das INSERT INTO set_catalog … FROM rb_sets entfernt → rot: „jede rb_sets-Zeile
- *      hat ihre set_catalog-Zeile“ (10497-1 fehlt)
- *   C  `COALESCE(sc.name, 'Set ' || sc.set_number)` durch `sc.name` ersetzt → rot:
- *      „ein Set nur aus set_catalog …“ (null statt „Set 9999-1“)
- *   D  im Themen-Nachschlag `ORDER BY t.parent_id NULLS FIRST, t.id` zu
- *      `ORDER BY t.id DESC` → rot: „… das Thema über seinen Namen“ (2 statt 1)
+ * Counter-checks (measured on 10.11.2026, each on its own in the migration):
+ *   A  the INSERT INTO rb_sets … FROM set_catalog removed → red: the migration
+ *      fails on set_catalog_rb_sets_fkey (5008-1 without an rb_sets row)
+ *   B  the INSERT INTO set_catalog … FROM rb_sets removed → red: “every rb_sets row
+ *      has its set_catalog row” (10497-1 missing)
+ *   C  `COALESCE(sc.name, 'Set ' || sc.set_number)` replaced by `sc.name` → red:
+ *      “a set only from set_catalog …” (null instead of „Set 9999-1“)
+ *   D  in the theme lookup `ORDER BY t.parent_id NULLS FIRST, t.id` to
+ *      `ORDER BY t.id DESC` → red: “… the theme via its name” (2 instead of 1)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -41,7 +41,7 @@ test('migration 0105: set master from rb_sets', { concurrency: 1 }, async t => {
   await c.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`);
   await c.query(`CREATE SCHEMA ${SCHEMA}`);
   await c.query(`SET search_path TO ${SCHEMA}, public`);
-  // Stand vor 0105: rb_sets ohne herkunft, set_catalog mit eigenen Stammspalten.
+  // State before 0105: rb_sets without herkunft, set_catalog with its own master columns.
   for (const tab of ['rb_sets', 'rb_themes', 'set_catalog'])
     await c.query(`CREATE TABLE ${tab} (LIKE public.${tab} INCLUDING ALL)`);
   await c.query('ALTER TABLE rb_sets DROP COLUMN source');

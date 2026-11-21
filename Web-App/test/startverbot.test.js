@@ -1,35 +1,35 @@
 /**
- * In Produktion startet der Server nicht mit dem Beispielpasswort der
- * Datenbank oder einem TRUST_PROXY, das ganzen Netzen glaubt. Geprüft am
- * echten Server: Er muss sich mit Code 1 und einer klaren Meldung beenden,
- * bevor er eine Datenbank braucht.
+ * In production the server does not start with the example password of the
+ * database or a TRUST_PROXY that believes whole networks. Checked on the
+ * real server: it must exit with code 1 and a clear message
+ * before it needs a database.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in server.ts den Aufruf von startBans() entfernt → rot: „der Server
- *      läuft mit dem Beispielpasswort weiter“ (beide Teilprüfungen)
- *   B  in startBans() den TRUST_PROXY-Zweig entfernt → rot nur bei
+ * Counter-checks (measured on 30.10.2026):
+ *   A  the call of startBans() removed in server.ts → red: „der Server
+ *      läuft mit dem Beispielpasswort weiter“ (both subchecks)
+ *   B  the TRUST_PROXY branch removed in startBans() → red only at
  *      „TRUST_PROXY=docker“
- *   C  startBans() ohne die Abfrage auf NODE_ENV → rot: „ausserhalb von
+ *   C  startBans() without the query on NODE_ENV → red: „ausserhalb von
  *      Produktion kein Verbot“
- * Gegenproben (04.11.2026 gemessen):
- *   D  sitzungsGeheimnis() wieder mit `!konfig().production` statt
- *      `konfig().entwicklung` → rot: „ohne NODE_ENV kein öffentliches
- *      Sitzungsgeheimnis“ (beide Fälle starten)
- *   E  der frühe Aufruf von sitzungsGeheimnis() in starte() gestrichen → rot:
- *      dieselbe Prüfung (der Start scheitert erst an der Datenbank, ohne Grund)
- *   F  `start` in package.json ohne NODE_ENV=production → rot: „npm start …“
- *   G  die Meldung zu APP_BASE_URL in server.ts gestrichen → rot: „ohne
- *      APP_BASE_URL im Betrieb …“ (mit der Ausnahme keine Meldung)
- * Gegenproben H4 (04.11.2026 gemessen, je einzeln):
- *   H  in startBans() den Zweig zu APP_BASE_URL entfernt → rot: „ohne
- *      APP_BASE_URL im Betrieb …“ (Code statt 1: Datenbankfehler)
- *   I  APP_BASE_URL_FEHLT_OK nicht ausgewertet → rot: dieselbe Prüfung (mit
- *      der Ausnahme verweigert)
- *   J  die Ausnahme für ROLLE=jobs entfernt → rot: dieselbe Prüfung ({"ROLLE":"jobs"})
- * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   K  'change-me-to-a-long-random-string' aus PLACEHOLDER_SECRETS
- *      gestrichen → rot: „Beispielwert und zu kurzes Sitzungsgeheimnis …“
- *   L  die Mindestlänge in sitzungsGeheimnis() gestrichen → rot: dieselbe Prüfung
+ * Counter-checks (measured 04.11.2026):
+ *   D  sitzungsGeheimnis() again with `!konfig().production` instead of
+ *      `konfig().entwicklung` → red: “without NODE_ENV no public
+ *      session secret” (both cases start)
+ *   E  the early call of sitzungsGeheimnis() deleted in starte() → red:
+ *      the same check (the start only fails at the database, without a reason)
+ *   F  `start` in package.json without NODE_ENV=production → red: „npm start …“
+ *   G  the message on APP_BASE_URL deleted in server.ts → red: “without
+ *      APP_BASE_URL in production …” (with the exception no message)
+ * Counter-checks H4 (measured 04.11.2026, each on its own):
+ *   H  the branch on APP_BASE_URL removed in startBans() → red: “without
+ *      APP_BASE_URL in production …” (code instead of 1: database error)
+ *   I  APP_BASE_URL_FEHLT_OK not evaluated → red: the same check (refused
+ *      with the exception)
+ *   J  the exception for ROLLE=jobs removed → red: the same check ({"ROLLE":"jobs"})
+ * Counter-checks (measured 08.11.2026, each on its own):
+ *   K  'change-me-to-a-long-random-string' deleted from PLACEHOLDER_SECRETS
+ *      → red: “example value and too short session secret …”
+ *   L  the minimum length deleted in sitzungsGeheimnis() → red: the same check
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -41,7 +41,7 @@ const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
 const { startBans } = _req('src/infra/config.js');
 
-/** Server starten und auf sein Ende warten — höchstens `ms`, dann gilt er als laufend. */
+/** Start the server and wait for its end — at most `ms`, then it counts as running. */
 function starte(env, ms = 8000) {
   return new Promise(fertig => {
     const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
@@ -100,8 +100,8 @@ test('without NODE_ENV no public session secret', { timeout: 30_000 }, async () 
     assert.equal(code, 1, log.slice(-400));
     assert.match(log, /SESSION_SECRET .*Start verweigert/);
   }
-  // Ausdrücklich in der Entwicklung gilt das Entwicklungsgeheimnis; der Start
-  // scheitert dann erst an der Datenbank, die es hier nicht gibt.
+  // Explicitly in development the development secret applies; the start
+  // then only fails at the database, which does not exist here.
   const { log } = await starte({ ...ohne, NODE_ENV: 'development', SESSION_SECRET: undefined });
   assert.doesNotMatch(log, /SESSION_SECRET/);
   assert.match(log, /Database initialisation failed/);
@@ -125,7 +125,7 @@ test('without APP_BASE_URL in production: startup refused, only explicitly allow
   assert.equal(ohne.code, 1, ohne.log.slice(-400));
   assert.match(ohne.log, /APP_BASE_URL fehlt im Betrieb: .*Start verweigert/);
   assert.doesNotMatch(ohne.log, /Database initialisation failed/, 'das Verbot kommt vor der Datenbank');
-  // Mit der Ausnahme startet er bis zur Datenbank, laut gemeldet.
+  // With the exception it starts up to the database, reported loudly.
   const erlaubt = await starte({ ...db, APP_BASE_URL_FEHLT_OK: '1' });
   assert.match(erlaubt.log, /❌ \[start\] APP_BASE_URL fehlt im Betrieb \(APP_BASE_URL_FEHLT_OK=1\): Der Host-Filter/);
   assert.match(erlaubt.log, /Database initialisation failed/);

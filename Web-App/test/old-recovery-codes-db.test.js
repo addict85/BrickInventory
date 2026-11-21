@@ -1,17 +1,17 @@
 /**
- * Wiederherstellungscodes alter Art (vor dem 01.11.2026: 10 Zeichen, ungesalzenes SHA-256)
- * gelten nur bis `old_valid_until` (Migration 0122, src/factors/secondFactor.ts). Wer sich mit
- * einem anmeldet, bekommt eine Mail mit der Frist; die Profilseite nennt sie. Ein Code neuer
- * Art hebt die Frist für seinen Satz auf. Über die echte Anmeldung.
+ * Recovery codes of the old kind (before 01.11.2026: 10 characters, unsalted SHA-256)
+ * only apply until `old_valid_until` (migration 0122, src/factors/secondFactor.ts). Whoever logs in with
+ * one gets a mail with the deadline; the profile page names it. A code of the new
+ * kind lifts the deadline for its set. Via the real login.
  *
- * Gegenproben (16.11.2026 gemessen, je einzeln):
- *   A  in verbraucheCode die Bedingung `old_valid_until > NOW()` gestrichen → rot: „ein abgelaufener
- *      Code alter Art gilt nicht mehr“ (200 statt 401)
- *   B  in anmeldepruefung.ts die Mail für 'wiederherstellung_alt' gestrichen → rot: „ein Code
- *      alter Art gilt bis zur Frist, mit Mail …“
- *   C  pruefeCode ohne codesSindNeu() → rot: „ein Code neuer Art hebt die Frist …“
- *   D  in 0122 die Prüfung auf die schon vorhandene Spalte gestrichen → rot: „die Migration
- *      ist wiederholbar …“ (column already exists)
+ * Counter-checks (measured 16.11.2026, each on its own):
+ *   A  in verbraucheCode the condition `old_valid_until > NOW()` deleted → red: “an expired
+ *      code of the old kind no longer applies” (200 instead of 401)
+ *   B  in anmeldepruefung.ts the mail for 'wiederherstellung_alt' deleted → red: “a code
+ *      of the old kind applies until the deadline, with mail …”
+ *   C  pruefeCode without codesSindNeu() → red: “a code of the new kind lifts the deadline …”
+ *   D  in 0122 the check for the already existing column deleted → red: “the migration
+ *      is repeatable …” (column already exists)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -114,8 +114,8 @@ test('recovery codes of the old kind expire', { concurrency: 1, timeout: 120_000
     );
     await db.run('DELETE FROM second_factor_codes WHERE user_id = $1', [uid]);
     await code('neu-ohne-frist', null);
-    // Die Migration kennt noch die Namen von vor 0124; für den Wiederholbarkeits-
-    // Test kurz zurückbenennen, danach sofort wieder zurück.
+    // The migration still knows the names from before 0124; for the repeatability
+    // test rename back briefly, then immediately back again.
     await db.run(`ALTER TABLE second_factor_codes RENAME TO zweiter_faktor_codes;
                   ALTER TABLE zweiter_faktor_codes RENAME COLUMN old_valid_until TO alt_gilt_bis;
                   ALTER TABLE zweiter_faktor_codes RENAME COLUMN consumed_at TO verbraucht_am`);

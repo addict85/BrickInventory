@@ -1,9 +1,9 @@
 /**
- * NUMERIC kommt als Zahl, die in Zehntausendsteln genau bleibt; ein Wert, für den
- * das nicht mehr gilt, wirft, statt still zu runden.
+ * NUMERIC comes as a number that stays exact in ten-thousandths; a value for which
+ * that no longer holds throws instead of silently rounding.
  *
- * Gegenprobe (14.11.2026 gemessen): der Parser wieder `parseFloat(v)` → rot:
- * „jenseits von 2^53/10^4 …“ (Missing expected exception).
+ * Counter-check (measured 14.11.2026): the parser again `parseFloat(v)` → red:
+ * “beyond 2^53/10^4 …” (Missing expected exception).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

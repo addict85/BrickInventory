@@ -1,9 +1,9 @@
 'use strict';
 /**
- * Vorgeladen in jede Testdatei (scripts/test-run.js, `--require`): Text auf
- * stdout geht nach stderr. node:test liest Berichtsrahmen und Text des Kindes
- * aus demselben Strom; folgt Text mit einem Nicht-ASCII-Byte an Stelle 2
- * („✅ …", „╔══…") im selben Lesestück direkt auf einen Rahmen, rechnet der …
+ * Preloaded into every test file (scripts/test-run.js, `--require`): text on
+ * stdout goes to stderr. node:test reads report frames and text of the child
+ * from the same stream; if text with a non-ASCII byte at position 2
+ * (“✅ …", “╔══…") follows a frame directly in the same read chunk, the … computes
  */
 if (process.env.NODE_TEST_CONTEXT === 'child-v8') {
   const roh = process.stdout.write.bind(process.stdout);

@@ -1,13 +1,13 @@
 /**
- * Formularfehler hängen am Feld: aria-invalid markiert es, aria-describedby
- * verweist auf die Meldung, der Fokus springt hinein; Tippen nimmt die
- * Markierung weg. Am echten Bündel in jsdom, Anmeldung und Registrierung.
+ * Form errors hang at the field: aria-invalid marks it, aria-describedby
+ * refers to the message, focus jumps into it; typing removes the
+ * marking. On the real bundle in jsdom, login and registration.
  *
- * Gegenproben (02.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  doLogin ruft formError ohne Felder auf → rot: „falsches Passwort“
- *   B  input-Hörer in formular.js entfernt → rot: „Tippen nimmt die Markierung“
- *   C  Registrierung: Feldliste bei fehlenden Pflichtfeldern leer → rot:
- *      „Registrierung: leere Pflichtfelder“
+ * Counter-checks (measured 02.11.2026, each alone, bundle rebuilt):
+ *   A  doLogin calls formError without fields → red: “wrong password”
+ *   B  input listener removed in formular.js → red: “typing removes the marking”
+ *   C  registration: field list empty for missing required fields → red:
+ *      “registration: empty required fields”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

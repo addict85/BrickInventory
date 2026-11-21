@@ -6,10 +6,10 @@ const path = require('node:path');
 const QUELLE = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'error-capture.js'), 'utf8');
 
 /**
- * Das Auffangnetz faengt nur UNSERE Fehler.
+ * The safety net only catches OUR errors.
  */
 
-/** `fromUs` woertlich aus fehlerfang.js holen und mit gestelltem Ursprung laufen lassen. */
+/** Take `fromUs` literally from fehlerfang.js and run it with a provided origin. */
 function fetchOfUs(ursprung = 'https://lego.bigolin.online') {
   const auf = QUELLE.indexOf('function fromUs(');
   assert.ok(auf > 0, 'fromUs() steht nicht mehr in fehlerfang.js — heisst die Regel noch so?');
@@ -28,7 +28,7 @@ const UNS = 'https://lego.bigolin.online';
 
 test('an extension triggers no error with us', () => {
   const fromUs = fetchOfUs(UNS);
-  // Ein echter Stapel, so wie Chromium ihn schreibt.
+  // A real stack, as Chromium writes it.
   const metamask = withStack(
     'Failed to connect to MetaMask',
     'Error: MetaMask extension not found\n' +
@@ -60,8 +60,8 @@ test('our own errors still arrive', () => {
     true,
     'Ein Fehler aus der Seite selbst wird verschluckt',
   );
-  // Eine Erweiterung, die UNSEREN Code aufruft und dort etwas ausloest, ist
-  // unser Fehler: Der Stapel nennt beide, und eine Adresse von uns genuegt.
+  // An extension that calls OUR code and triggers something there is
+  // our error: the stack names both, and one address of ours suffices.
   assert.equal(
     fromUs(withStack('x', `Error: x\n    at chrome-extension://abc/inpage.js:1:1\n    at ${UNS}/js/app.bundle.js:9:1`)),
     true,
@@ -70,9 +70,9 @@ test('our own errors still arrive', () => {
 });
 
 test('when in doubt the error counts as ours', () => {
-  // Der teurere der beiden Irrtuemer ist der verschwiegene EIGENE Fehler —
-  // genau dagegen gibt es dieses Netz. Ohne Stapel oder ohne erkennbare
-  // Adresse wird deshalb weiter gemeldet.
+  // The more expensive of the two mistakes is the concealed OWN error —
+  // exactly against that this net exists. Without a stack or without a recognizable
+  // address it is therefore still reported.
   const fromUs = fetchOfUs(UNS);
   assert.equal(fromUs('nur ein Text'), true, 'Eine Ablehnung ohne Stapel wird verschluckt');
   assert.equal(fromUs(undefined), true, 'Eine Ablehnung ohne Wert wird verschluckt');
@@ -84,8 +84,8 @@ test('when in doubt the error counts as ours', () => {
 });
 
 test('a foreign host with our name as its start does not count as ours', () => {
-  // `startsWith(origin)` ohne den Schraegstrich wuerde
-  // https://lego.bigolin.online.boeswillig.example als unseren lesen.
+  // `startsWith(origin)` without the slash would read
+  // https://lego.bigolin.online.boeswillig.example as ours.
   const fromUs = fetchOfUs(UNS);
   assert.equal(
     fromUs(withStack('x', `Error: x\n    at ${UNS}.boeswillig.example/w.js:1:1`)),
@@ -95,9 +95,9 @@ test('a foreign host with our name as its start does not count as ours', () => {
 });
 
 test('both listeners go through the check', () => {
-  // Nicht nur der fuer Ablehnungen: `window.onerror` faengt Skriptfehler, und
-  // die einer Erweiterung landen dort genauso.
-  // Klammern gezählt statt `indexOf('});')`: Ohne geschweiften Block träfe das den nächsten Lauscher.
+  // Not only the one for rejections: `window.onerror` catches script errors, and
+  // those of an extension land there just the same.
+  // Braces counted instead of `indexOf('});')`: without a curly block that would hit the next listener.
   const argument = (text, ab) => {
     let tiefe = 0;
     for (let i = text.indexOf('(', ab); i < text.length; i++) {
@@ -123,7 +123,7 @@ test('both listeners go through the check', () => {
 });
 
 test('no leftover debugging in the delivered state', () => {
-  // Der zweite Befund aus derselben Konsole
+  // The second finding from the same console
   const ordner = path.join(__dirname, '..', 'public', 'js');
   const dateien = fs.readdirSync(ordner).filter(n => n.endsWith('.js') && n !== 'app.bundle.js');
   assert.ok(dateien.length >= 10, `Nur ${dateien.length} Skripte — greift die Suche noch?`);

@@ -1,8 +1,8 @@
 /**
- * Angemeldete Geräte: auflisten und aussperren — beide Wege, echte Datenbank.
+ * Signed-in devices: list and lock out — both paths, real database.
  *
- * Gegenprobe (09.11.2026 gemessen): in DELETE /settings/tokens/:tokenId die
- * Bestätigung gestrichen → rot: „ohne Passwort sperrt ein Gerät kein anderes aus“
+ * Counter-check (measured 09.11.2026): in DELETE /settings/tokens/:tokenId the
+ * confirmation deleted → red: “without a password one device locks no other out”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -62,21 +62,21 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     ruf(AUTH + '/login', { method: 'POST', body: { username: NAME, password: PASS, ...extra } });
 
   try {
-    // Drei Anmeldungen: ein Browser und zwei „Telefone" mit eigenen Etiketten.
+    // Three logins: a browser and two “phones" with their own labels.
     const browser = await anmelden();
     assert.equal(browser.status, 200, JSON.stringify(browser.body));
     const telefon = await anmelden({ label: 'Pixel 8', never_expires: true });
     const tablet = await anmelden({ label: 'Tablet', never_expires: true });
-    // Sitzung und Token kommen aus getrennten Anmeldungen: Ein Token-Login legt keine Sitzung an.
+    // Session and token come from separate logins: a token login creates no session.
     const cookie = (await anmelden({ ohne_token: true })).cookie.split(';')[0];
 
-    // ── 1. Über die SESSION (Webapp) ────────────────────────────────────────
+    // ── 1. Via the SESSION (web app) ────────────────────────────────────────
     const perSession = await ruf(SETTINGS + '/tokens', { headers: { cookie } });
     assert.equal(perSession.status, 200, JSON.stringify(perSession.body));
     assert.equal(perSession.body.tokens.length, 3, 'Alle drei Anmeldungen müssen auftauchen');
-    // Die Sitzung ALLEIN sagt nichts darüber, welche Zeile zu ihr gehört —
-    // der Client muss seinen Token mitschicken. Genau das prüft der nächste
-    // Block; hier darf also noch nichts markiert sein.
+    // The session ALONE says nothing about which row belongs to it —
+    // the client must send its token along. Exactly that is checked by the next
+    // block; so nothing may be marked here yet.
     assert.equal(
       perSession.body.tokens.filter(x => x.aktuell).length,
       0,
@@ -89,34 +89,34 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     const markiert = withOwn.body.tokens.filter(x => x.aktuell);
     assert.equal(markiert.length, 1, 'Genau eine Zeile ist „dieses Gerät"');
     assert.equal(markiert[0].label, 'webapp-session');
-    // Der Token selbst darf NICHT herauskommen — nur ein Stück seines Hashes.
+    // The token itself must NOT come out — only a piece of its hash.
     assert.ok(
       !JSON.stringify(withOwn.body).includes(browser.body.token),
       'Der Klartext-Token darf in der Übersicht nicht auftauchen',
     );
 
-    // ── 2. Über den TOKEN (App) ─────────────────────────────────────────────
-    // Vorher war das gar nicht möglich: Die Route hing an der Sitzung, und die
-    // App hat keine.
+    // ── 2. Via the TOKEN (app) ──────────────────────────────────────────────
+    // Previously that was not possible at all: the route hung on the session, and the
+    // app has none.
     const perToken = await ruf(SETTINGS + '/tokens', { headers: { authorization: `Bearer ${telefon.body.token}` } });
     assert.equal(perToken.status, 200, 'Die App muss ihre Zugänge sehen können');
     assert.equal(perToken.body.tokens.length, 3);
     assert.equal(perToken.body.tokens.find(x => x.aktuell)?.label, 'Pixel 8');
-    // Und die Laufzeiten stehen richtig drin — daran hängt die Anzeige.
+    // And the lifetimes are in there correctly — the display depends on that.
     for (const label of ['Pixel 8', 'webapp-session']) {
       const zeile = perToken.body.tokens.find(x => x.label === label);
       assert.equal(zeile.never_expires, false, `${label}: kein Token laeuft mehr „nie" ab`);
       assert.ok(zeile.expires_at, `${label}: ohne Datum hat die Anzeige nichts zu zeigen`);
     }
-    // Der des Telefons laeuft laenger als der des Browsers — sonst waere die
-    // Gleitfrist keine Erleichterung, sondern eine Verschaerfung.
+    // The phone's runs longer than the browser's — otherwise the
+    // sliding period would be no relief but a tightening.
     assert.ok(
       new Date(perToken.body.tokens.find(x => x.label === 'Pixel 8').expires_at) >
         new Date(perToken.body.tokens.find(x => x.label === 'webapp-session').expires_at),
       'Der App-Token muss laenger laufen als die sieben Tage des Browsers',
     );
 
-    // 3. Ein fremdes Gerät aussperren
+    // 3. Lock out a foreign device
     const warmUp = await ruf(AUTH + '/me', { headers: { authorization: `Bearer ${tablet.body.token}` } });
     assert.equal(
       warmUp.body.loggedIn,
@@ -138,9 +138,9 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     assert.equal(weg.status, 200);
     assert.equal(weg.body.deleted, 1);
 
-    // Und zwar WIRKLICH: Der Token des Tablets gilt nicht mehr. Das ist der
-    // Punkt der ganzen Übung — die Zeile zu löschen ist nur die halbe Miete,
-    // wenn der Cache in src/account/tokenCache.ts sie noch bedient.
+    // And REALLY: the tablet's token no longer applies. That is the
+    // point of the whole exercise — deleting the row is only half the job
+    // if the cache in src/account/tokenCache.ts still serves it.
     const tabletTried = await ruf(AUTH + '/me', { headers: { authorization: `Bearer ${tablet.body.token}` } });
     assert.equal(
       tabletTried.status,
@@ -148,13 +148,13 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
       'Der ausgesperrte Zugang gilt weiter — dann nützt die ganze Verwaltung nichts',
     );
 
-    // Die übrigen zwei bleiben.
+    // The other two stay.
     const danach = await ruf(SETTINGS + '/tokens', { headers: { authorization: `Bearer ${telefon.body.token}` } });
     assert.deepEqual(danach.body.tokens.map(x => x.label).sort(), ['Pixel 8', 'webapp-session']);
 
-    // ── 4. Fremde Zugänge sind tabu ─────────────────────────────────────────
-    // Der Filter läuft über user_id. Ohne ihn könnte jeder Angemeldete jeden
-    // beliebigen Zugang entwerten, wenn er den Hash-Anfang errät.
+    // ── 4. Foreign accesses are off limits ──────────────────────────────────
+    // The filter goes via user_id. Without it every logged-in user could invalidate
+    // any access if they guessed the start of the hash.
     await db.run('DELETE FROM users WHERE username = $1', [NAME + '_fremd']);
     await db.run(
       'INSERT INTO users (username,password_hash,is_admin,is_active,email_verified) VALUES ($1,$2,false,true,true)',
@@ -177,12 +177,12 @@ test('list and lock out accesses — via session AND via token', { concurrency: 
     });
     assert.equal(foreignAttempt.body.deleted, 0, 'Ein fremdes Konto darf keinen Zugang entwerten');
 
-    // ── 5. Der %-Fall: Nur die volle Kennung (16 Hex-Zeichen) gilt ─────────
+    // ── 5. The % case: only the full identifier (16 hex characters) applies ──
     const alles = await ruf(SETTINGS + '/tokens/' + encodeURIComponent('%'), {
       method: 'DELETE',
       headers: { authorization: `Bearer ${telefon.body.token}` },
     });
-    // Seit 05.11.2026 weist schon der Vertrag (PATH) die Kennung ab.
+    // Since 05.11.2026 the contract (PATH) already rejects the identifier.
     assert.equal(alles.status, 400, 'Ein "%" als Token-Kennung darf nicht alle Zugänge auf einmal löschen');
   } finally {
     await new Promise(r => srv.close(r));

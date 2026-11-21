@@ -1,8 +1,8 @@
 /**
- * 320 px bei normaler Schrift, englisch (Classic und Noppe): jede Ansicht ohne
- * Überlauf, Abschneiden, Überlappung und zu kleine Tippziele (@einzeln: Chrome).
+ * 320 px at normal font, English (classic and noppe): every view without
+ * overflow, cutting off, overlap and too small tap targets (@einzeln: Chrome).
  *
- * Gegenprobe (03.11.2026 gemessen): `.lager-sinnbild { min-width: 44px }` in
- * mobile.css entfernt → rot: „Sicht lagerorte“ (Tippziel 42 × 44).
+ * Counter-check (measured 03.11.2026): `.lager-sinnbild { min-width: 44px }` removed in
+ * mobile.css → red: „Sicht lagerorte“ (tap target 42 × 44).
  */
 require('./helpers/ui-check').checkLargeFont('schmal');

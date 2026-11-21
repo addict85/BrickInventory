@@ -1,17 +1,17 @@
 /**
- * Eine Annotation fuer einen roten Test traegt die BEGRUENDUNG, nicht nur den
- * Namen.
+ * An annotation for a red test carries the RATIONALE, not only the
+ * name.
  *
- * ── Gegenproben (durchgefuehrt) ─────────────────────────────────────────────
+ * ── Counter-checks (performed) ──────────────────────────────────────────────
  *
- *   a) Fall „die Begruendung steht drin" ist genau der, der VORHER rot gewesen
- *      waere: Die alte Fassung machte aus der `not ok`-Zeile eine Annotation
- *      und nahm die Zeilen darunter nicht mit.
- *   b) Elf rote Tests -> neun ausfuehrliche Annotationen plus EINE
- *      Sammelmeldung, zusammen genau die zehn, die GitHub je Stufe und Schritt
- *      zeigt. Mit einem elften waere die Sammelmeldung die unsichtbare.
- *   c) Die Ueberschrift des spec-Reporters (`✖ failing tests:`) darf keine
- *      Annotation werden — sie ist kein Testname.
+ *   a) the case “the rationale is in it" is exactly the one that would have been red
+ *      BEFORE: the old version made an annotation from the `not ok` line
+ *      and did not take the lines below along.
+ *   b) eleven red tests -> nine detailed annotations plus ONE
+ *      summary message, together exactly the ten that GitHub shows per level and step.
+ *      With an eleventh the summary message would be the invisible one.
+ *   c) the heading of the spec reporter (`✖ failing tests:`) must not become an
+ *      annotation — it is not a test name.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -23,7 +23,7 @@ const { execFileSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 const AWK = path.join(ROOT, '..', '.github', 'rote-tests.awk');
 
-/** Das Auslesewerkzeug auf ein Protokoll anwenden. */
+/** Apply the extraction tool to a log. */
 function annotationen(protokoll) {
   const datei = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'bi-rot-')), 'test.log');
   fs.writeFileSync(datei, protokoll);
@@ -41,8 +41,8 @@ test('annotations for red tests', async t => {
   );
 
   await t.test('the reasoning is in the annotation, not only the name', () => {
-    // Genau die Form, die `npm test` in der CI schreibt (ohne Terminal nimmt
-    // Node 22 TAP) — nachgemessen an einem absichtlich roten Test.
+    // Exactly the form `npm test` writes in CI (without a terminal Node 22
+    // takes TAP) — re-measured on a deliberately red test.
     const log = [
       'TAP version 13',
       '# Subtest: Sitzung: gelesen wird immer',
@@ -75,9 +75,9 @@ test('annotations for red tests', async t => {
     assert.match(m, /expected: 1/, 'die Erwartung fehlt');
     assert.match(m, /actual: 2/, 'der Istwert fehlt');
     assert.match(m, /session-touch-db\.test\.js:78/, 'die Fundstelle fehlt');
-    // Der Stapelabzug bleibt draussen: lang, und die Fundstelle steht schon da.
+    // The stack trace stays out: long, and the location is already there.
     assert.doesNotMatch(m, /TestContext/, 'der Stapelabzug gehoert nicht in die Annotation');
-    // Eine Annotation ist EINE Zeile; Umbrueche stehen als %0A darin.
+    // An annotation is ONE line; line breaks are in it as %0A.
     assert.ok(!m.includes('\n'), 'die Annotation geht ueber mehrere Zeilen und wird abgeschnitten');
     assert.ok(m.includes('%0A'), 'es gibt keine kodierten Umbrueche — alles klebt zusammen');
   });
@@ -109,7 +109,7 @@ test('annotations for red tests', async t => {
       /^::error title=Weitere rote Tests::2 weitere/,
       `die Sammelmeldung fehlt oder zaehlt falsch: ${a[9]}`,
     );
-    // Und sie duerfen nicht alle dasselbe sagen.
+    // And they must not all say the same.
     assert.match(einzeln[0], /Begruendung 1/);
     assert.match(einzeln[8], /Begruendung 9/);
   });
@@ -122,14 +122,14 @@ test('annotations for red tests', async t => {
   });
 
   await t.test('a run without a red test yields no annotation', () => {
-    // Der Rueckfall dafuer steht im Workflow (das Protokollende als Annotation)
-    // — dieses Werkzeug darf dann schweigen, statt etwas zu erfinden.
+    // The fallback for it is in the workflow (the end of the log as an annotation)
+    // — this tool may then stay silent instead of inventing something.
     assert.deepEqual(annotationen('TAP version 13\nok 1 - alles gut\n1..1\n'), []);
   });
 
   await t.test('percent signs in the text do not destroy the annotation', () => {
-    // `%` ist das Fluchtzeichen der Annotationen. Ein Text wie „95 % der Zeilen"
-    // wuerde sonst als Kodierung gelesen und den Rest verschlucken.
+    // `%` is the escape character of the annotations. A text like “95 % of the lines"
+    // would otherwise be read as an encoding and swallow the rest.
     const a = annotationen('not ok 1 - Deckung\n  error: |-\n    nur 95 % erreicht\n  stack: x\n');
     assert.equal(a.length, 1);
     assert.match(a[0], /nur 95 %25 erreicht/, `das Prozentzeichen ist nicht maskiert: ${a[0]}`);

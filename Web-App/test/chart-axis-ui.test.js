@@ -1,12 +1,12 @@
 /**
- * Diagramme ohne leere Fläche und ohne Überdeckung (UI-Prüfung 03.11.2026, N1):
- *   - Der Preisverlauf beginnt beim ersten Marktpreis; ein früherer Kauf steht
- *     als Punkt am linken Rand statt drei leere Monate aufzuspannen.
- *   - Die Beschriftung der Einstand-Linie steht unter der Linie, wenn die …
+ * Charts without empty area and without overlap (UI review 03.11.2026, N1):
+ *   - The price history starts at the first market price; an earlier purchase stands
+ *     as a point at the left edge instead of spanning three empty months.
+ *   - The label of the cost line stands below the line when the …
  *
- * Gegenproben (am 03.11.2026 gemessen):
- *   A  in priceChartSVG wieder `first = axis[0]` → rot: „Achse ab erstem Marktpreis“
- *   B  in referenceLine `darunter` immer false → rot: „Einstand-Beschriftung weicht aus“
+ * Counter-checks (measured on 03.11.2026):
+ *   A  in priceChartSVG back to `first = axis[0]` → red: “axis from the first market price”
+ *   B  in referenceLine `darunter` always false → red: “cost label moves out of the way”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -60,7 +60,7 @@ test('axis from the first market price, purchase at the edge', async () => {
 });
 
 test('cost basis label moves aside', async () => {
-  // Einstand 1530, die Kurve endet bei 1545 — knapp darüber.
+  // Cost 1530, the curve ends at 1545 — just above it.
   const { w, d } = await openUi({
     '/v1/finance/valuation': {
       success: true,

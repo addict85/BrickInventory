@@ -1,13 +1,13 @@
 /**
- * Zustands-Aggregat eines Sets.
+ * Condition aggregate of a set.
  *
- * Aggregat, Zustand beim Anlegen und im Marktpreis: set-state-aggregate-db.test.js.
+ * Aggregate, condition on creation and in the market price: set-state-aggregate-db.test.js.
  *
- * Gegenprobe (08.11.2026): in theme-boot.js apply() ohne ALLOWED-Prüfung →
- * rot „ein unbekannter Theme-Wert setzt nichts zurück“.
- * Gegenprobe (08.11.2026): in acqSave `applySetAggregate(d.set)` gestrichen
- * bzw. applySetAggregate ohne renderGallery() → rot „die Kachel übernimmt den
- * Zustand aus der Antwort des Servers“.
+ * Counter-check (08.11.2026): in theme-boot.js apply() without the ALLOWED check →
+ * red “an unknown theme value resets nothing”.
+ * Counter-check (08.11.2026): `applySetAggregate(d.set)` deleted in acqSave
+ * or applySetAggregate without renderGallery() → red “the tile takes the
+ * condition from the server's response”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -21,18 +21,18 @@ const { openUi, warte } = require('./helpers/ui');
 test('the aggregate rule now exists in only one place', () => {
   const h = require('./helpers/sources').handlerQuelle();
   assert.match(h, /function zustandsAggregat/, 'Der gemeinsame Helfer fehlt');
-  // Weder setsLesen()/readSet() noch die manuellen Listen dürfen die Regel je
-  // eigen ausformulieren — sie steht in conditionFromAcquisitions().
-  // Zwei Parameter, nicht drei: Der dritte war der gespeicherte Zustand der
-  // Stammzeile. Migration 0032 hat ihn den Sets genommen, 0035 den Teilen und
-  // Minifiguren — es gibt keinen Rueckfall mehr, auf den er zeigen koennte.
+  // Neither setsLesen()/readSet() nor the manual lists may ever phrase the rule
+  // on their own — it stands in conditionFromAcquisitions().
+  // Two parameters, not three: the third was the stored condition of the
+  // master row. Migration 0032 took it from the sets, 0035 from the parts and
+  // minifigures — there is no fallback left it could point to.
   checkParameter(h, 'conditionFromAcquisitions', ['acqCount', 'usedCount'], 'der gemeinsame Regel-Helfer fehlt');
-  // Kommentare ausblenden: Der Erklärtext am Helfer zitiert die Regel selbst.
+  // Hide comments: the explanatory text at the helper quotes the rule itself.
   const code = h.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
-  // Der Anker nennt bewusst KEINEN Variablennamen: Er hiess frueher
-  // `usedCount`, und als das Typisieren daraus ein normalisiertes `used`
-  // machte, fand das alte Muster nichts mehr — der Test meldete 0 statt 1.
-  // Gemeint ist die REGEL, nicht ihre Schreibweise. So gefasst faengt er …
+  // The anchor deliberately names NO variable name: it used to be called
+  // `usedCount`, and when the typing made a normalized `used` of it,
+  // the old pattern found nothing any more — the test reported 0 instead of 1.
+  // Meant is the RULE, not its notation. Phrased like this it catches …
   const inlineRules = [...code.matchAll(/\b\w+ > 0 \? 'U'/g)];
   assert.equal(
     inlineRules.length,
@@ -42,9 +42,9 @@ test('the aggregate rule now exists in only one place', () => {
 });
 
 test('an unknown theme value resets nothing', () => {
-  // Das war die Ursache des Flackerns beim Login: showApp() reicht
-  // d.settings.app_theme weiter, und ein fehlender Wert schaltete auf 'classic'
-  // — samt Cache-Vergiftung.
+  // That was the cause of the flicker at login: showApp() passes
+  // d.settings.app_theme on, and a missing value switched to 'classic'
+  // — including cache poisoning.
   const jsdom = require(path.join(ROOT, 'node_modules', 'jsdom'));
   const dom = new jsdom.JSDOM('<!doctype html><html data-theme="brick"><head></head><body></body></html>', {
     runScripts: 'outside-only',
@@ -66,24 +66,24 @@ test('an unknown theme value resets nothing', () => {
 });
 
 test('a manually entered part gets market price and entry', () => {
-  // Zwei Lücken: Der Marktpreis wurde ohne Zustand geholt (also der Neupreis,
-  // auch bei „Gebraucht"), und es entstand gar keine Zeile in
-  // part_acquisitions — der Kaufpreis stand nur in der Stammtabelle, während
-  // Detailansicht und Zustandsregel mit den Erfassungen arbeiten. …
+  // Two gaps: the market price was fetched without a condition (i.e. the new price,
+  // even for „Gebraucht"), and no row arose at all in
+  // part_acquisitions — the purchase price only stood in the master table, while
+  // detail view and condition rule work with the acquisitions. …
   const src =
     fs.readFileSync(path.join(ROOT, 'src/finances/marketPrice.ts'), 'utf8') +
     '\n' +
     fs.readFileSync(path.join(ROOT, 'src/parts/manualParts.ts'), 'utf8');
   const fn = src.slice(src.indexOf('async function addManualPart'), src.indexOf('async function changeManualPart'));
 
-  // Der Zustand muss in die Preisermittlung — sonst kommt der Neupreis, auch
-  // bei „Gebraucht".
+  // The condition must go into the price determination — otherwise the new price comes, even
+  // for „Gebraucht".
   const withoutState = [
     ...src.matchAll(
       /(?:currentPartMarketPrice|currentPartMarketPrice)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?([^)]*)\)/g,
     ),
   ]
-    .filter(m => !m[1].includes('function')) // die Definition selbst nicht
+    .filter(m => !m[1].includes('function')) // not the definition itself
     .filter(m => m[1].split(',').length < 4);
   assert.equal(
     withoutState.length,
@@ -93,19 +93,19 @@ test('a manually entered part gets market price and entry', () => {
       '\nDann fällt die Ermittlung intern auf den Standardzustand zurück, und ein ' +
       'als gebraucht erfasstes Teil bekommt den Neupreis.',
   );
-  // Selbstbeweis: Ohne Fundstellen sagt eine leere Liste nichts.
+  // Self-proof: without occurrences an empty list says nothing.
   const allCalls = [
     ...src.matchAll(
       /(?:currentPartMarketPrice|currentPartMarketPrice)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?/g,
     ),
   ];
   assert.ok(allCalls.length >= 4, `Nur ${allCalls.length} Vorkommen von currentPartMarketPrice( — Muster veraltet?`);
-  // Zwei Pfade: neu angelegt und erneut erfasst — BEIDE brauchen eine
-  // Erfassung. Der zweite endete früher mit `return { action: 'updated' }`,
-  // ohne eine anzulegen; ein abweichendes Erfassungsdatum ging dabei verloren.
+  // Two paths: newly created and captured again — BOTH need an
+  // acquisition. The second used to end with `return { action: 'updated' }`
+  // without creating one; a differing acquisition date got lost in the process.
   //
-  // Geschrieben wird seit hardened-93 über addPurchaseAtTag(), das die
-  // Zeile des Tages im selben Zustand aufstockt statt eine zweite anzulegen.
+  // Since hardened-93 writing happens via addPurchaseAtTag(), which tops up the
+  // row of the day in the same condition instead of creating a second one.
   const writes = [
     ...fn.matchAll(
       /(?:addPurchaseAtTag|bookDailyEntry)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?'part', uid,/g,
@@ -117,7 +117,7 @@ test('a manually entered part gets market price and entry', () => {
     `${writes.length} statt 2 Erfassungs-Schreibvorgänge — Neuanlage und Zweiterfassung brauchen je einen`,
   );
   assert.match(fn, /createdAt: acquiredAt/, 'Das Erfassungsdatum muss übernommen werden');
-  // Die Regel, nicht ihre Schreibweise
+  // The rule, not its notation
   assert.match(
     fn,
     /price: erfassungsPreis/,
@@ -135,16 +135,16 @@ test('a manually entered part gets market price and entry', () => {
 });
 
 test('the minifigure market price asks BrickLink even without a separate BL number', () => {
-  // Der Abruf lief nur, wenn eine abweichende bl_fig_number hinterlegt war.
-  // Bei manuell erfassten Figuren ist das die Ausnahme — meist stimmt die
-  // eigene Nummer mit der BrickLink-Nummer überein. Der Abruf wurde
-  // übersprungen, die Teile-Schätzung übernahm, und die liefert ohne
-  // Teile-Zusammensetzung von Rebrickable nichts: gar kein Preis.
+  // The fetch only ran when a differing bl_fig_number was stored.
+  // For manually captured figures that is the exception — mostly the
+  // own number matches the BrickLink number. The fetch was
+  // skipped, the parts estimate took over, and without a
+  // parts composition from Rebrickable it delivers nothing: no price at all.
   const src = fs.readFileSync(path.join(ROOT, 'src/finances/marketPrice.ts'), 'utf8');
-  // Der Abruf heisst seit einer früheren Runde figMarketPriceWithOrigin: Er liefert
-  // neben dem Preis den Zustand, aus dem dieser stammt. currentMinifigMarketPrice
-  // steht als duenne Huelle daneben und gibt nur die Zahl weiter — geprueft
-  // wird hier der Abruf selbst, nicht die Huelle.
+  // Since an earlier round the fetch is called figMarketPriceWithOrigin: it delivers
+  // next to the price the condition it comes from. currentMinifigMarketPrice
+  // stands next to it as a thin wrapper and only passes the number on — what is checked
+  // here is the fetch itself, not the wrapper.
   const fn = src.slice(
     src.indexOf('async function figMarketPriceWithOrigin'),
     src.indexOf('async function manuellerFigurenkauf'),
@@ -158,16 +158,16 @@ test('the minifigure market price asks BrickLink even without a separate BL numb
     'Der Abruf darf nicht mehr an einer separaten BL-Nummer hängen',
   );
 
-  // Reihenfolge: BrickLink zuerst, Teile-Schätzung nur als Rückfall
+  // Order: BrickLink first, parts estimate only as a fallback
   const iLoop = fn.indexOf('for (const num of');
   const iEst = fn.indexOf('estimateMinifigsPrice');
   assert.ok(iLoop > 0 && iEst > iLoop, 'Die Teile-Schätzung gehört hinter den BrickLink-Abruf');
 
-  // Und sie schätzt im ERMITTELTEN Zustand, nicht im Standardzustand: Ohne
-  // BrickLink-Nummer ist die Schätzung der einzige Preis, den es gibt — lief
-  // sie fest auf „Neu", bekam eine gebraucht erfasste Figur den Neupreis
-  // ihrer Teile. Für Figuren MIT Nummer war der Zustand längst berücksichtigt;
-  // genau der Fall ohne Nummer fiel durch.
+  // And it estimates in the DETERMINED condition, not in the default condition: without
+  // a BrickLink number the estimate is the only price there is — if it
+  // ran fixed on „Neu", a figure captured as used got the new price
+  // of its parts. For figures WITH a number the condition had long been considered;
+  // exactly the case without a number fell through.
   assert.match(
     fn,
     /estimateMinifigsPrice\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?figNumber, userId, effCond\)/,
@@ -189,13 +189,13 @@ test('the minifigure market price asks BrickLink even without a separate BL numb
     'Kein fester Standardzustand mehr in der Schätzung',
   );
 
-  // Und die Bewertung ruft sie je Zustand auf — sonst zeigten zwei Zeilen mit
-  // verschiedenen Zuständen denselben Marktpreis.
+  // And the valuation calls it per condition — otherwise two rows with
+  // different conditions would show the same market price.
   const fc = require('./helpers/sources').finanzQuelle();
-  // viewerId statt uid: Seit der Haushaltssicht sind „wessen Einstellungen"
-  // und „wessen Daten" zwei Grössen. Die Schätzung braucht die EINSTELLUNGEN
-  // (Währung) des fragenden Kontos — und weiterhin den Zustand.
-  // Geschätzt wird im Auftrag preise_nachladen; die Bewertung merkt den Zustand vor.
+  // viewerId instead of uid: since the household view „whose settings"
+  // and „whose data" are two quantities. The estimate needs the SETTINGS
+  // (currency) of the asking account — and still the condition.
+  // Estimating happens in the job preise_nachladen; the valuation queues the condition.
   assert.match(
     fc,
     /art: 'schaetzung', nummer: key, zustand: cond/,
@@ -204,9 +204,9 @@ test('the minifigure market price asks BrickLink even without a separate BL numb
 });
 
 test('the parts estimate lands in cache and history', () => {
-  // Gemeldet: Im Detail-Dialog einer Minifigur OHNE BrickLink-Nummer standen
-  // bei Marktpreis (Neu) und (Gebraucht) nur Striche, der Verlauf blieb leer —
-  // obwohl Kaufpreise in beiden Zuständen erfasst waren.
+  // Reported: in the detail dialog of a minifigure WITHOUT a BrickLink number there were
+  // only dashes at market price (new) and (used), the history stayed empty —
+  // although purchase prices were captured in both conditions.
   const src =
     fs.readFileSync(path.join(ROOT, 'src/finances/marketPrice.ts'), 'utf8') +
     '\n' +
@@ -216,13 +216,13 @@ test('the parts estimate lands in cache and history', () => {
     src.indexOf('async function currentMinifigMarketPrice'),
   );
 
-  // Cache und Verlauf je Zustand prüft test/minifigs-estimate-store-db.test.js.
-  // Nur mit echtem Preis: Ein Nullpunkt sähe im Diagramm aus wie ein Kurssturz.
+  // Cache and history per condition are checked by test/minifigs-estimate-store-db.test.js.
+  // Only with a real price: a zero point would look like a crash in the chart.
   assert.match(est, /if \(priced === 0\) return null;/, 'Ohne bepreiste Teile darf nichts geschrieben werden');
 
-  // Und beim Anlegen muss der ermittelte Preis in die Erfassung
-  // created_at gehört seit der Datumsübernahme zur Spaltenliste.
-  // Beide Wege (Neuanlage und Zweiterfassung), ohne Kommentare gelesen.
+  // And when creating, the determined price must go into the acquisition
+  // Since the date adoption created_at belongs to the column list.
+  // Both paths (new creation and second capture), read without comments.
   const withoutComment = src.replace(/\/\/[^\n]*/g, '');
   const erfassungen = [
     ...withoutComment.matchAll(
@@ -233,9 +233,9 @@ test('the parts estimate lands in cache and history', () => {
 });
 
 test('manual minifigures also create a row on every entry', () => {
-  // Gleicher früher Ausstieg wie bei den Teilen: `if (existing) { … return }`
-  // beendete den Pfad, bevor eine Erfassung entstand. Menge stieg, aber kein
-  // Kaufpreis und kein abweichendes Erfassungsdatum.
+  // The same early exit as with the parts: `if (existing) { … return }`
+  // ended the path before an acquisition arose. The quantity rose, but no
+  // purchase price and no differing acquisition date.
   const src = fs.readFileSync(path.join(ROOT, 'src/minifigs/manualMinifigs.ts'), 'utf8');
   const fn = src.slice(
     src.indexOf('async function addManualMinifig'),
@@ -253,7 +253,7 @@ test('manual minifigures also create a row on every entry', () => {
     `${writes.length} statt 2 Erfassungs-Schreibvorgänge — Neuanlage und Zweiterfassung brauchen je einen`,
   );
   assert.match(fn, /createdAt: acquiredAt/, 'Das Erfassungsdatum muss übernommen werden');
-  // Die Zweiterfassung muss den Preis über dieselbe Funktion ermitteln
+  // The second capture must determine the price via the same function
   assert.match(
     fn,
     /const re = await manualMinifigPurchase\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?uid, \{/,
@@ -262,10 +262,10 @@ test('manual minifigures also create a row on every entry', () => {
 });
 
 test('entries without a purchase price are filled in', () => {
-  // Beim CSV-Import ist das Set oft noch nicht im Preis-Cache, und der
-  // BrickLink-Abruf scheitert bei vielen Sets am Tageskontingent. Die Erfassung
-  // entstand dann ohne Kaufpreis — der Marktpreis erschien später trotzdem,
-  // sobald der Preis-Job den Cache füllte. Genau diese Abweichung war gemeldet.
+  // During the CSV import the set is often not yet in the price cache, and the
+  // BrickLink fetch fails for many sets on the daily quota. The acquisition
+  // then arose without a purchase price — the market price appeared later nevertheless
+  // as soon as the price job filled the cache. Exactly this deviation was reported.
   const job =
     fs.readFileSync(path.join(ROOT, 'src/inventory/purchasePriceBackfill.ts'), 'utf8') +
     fs.readFileSync(path.join(ROOT, 'src/inventory/repository/backfill.ts'), 'utf8');
@@ -275,19 +275,19 @@ test('entries without a purchase price are filled in', () => {
     /async function backfillAcquisitions\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?\)/,
     'Nachtrag fehlt',
   );
-  // Unabhängig von der Set-Zeile: backfillSets() sieht nur Sets mit NULL-Preis
+  // Independent of the set row: backfillSets() only sees sets with a NULL price
   assert.match(
     job,
     /FROM \$\{l\.setErfassungen\(\)\} e\s+WHERE purchase_price IS NULL/,
     'Der Nachtrag muss alle preislosen Erfassungen finden',
   );
-  // Der Zustand der ERFASSUNG bestimmt den Preis, nicht der des Sets
+  // The condition of the ACQUISITION determines the price, not that of the set
   assert.match(
     job,
     /(?:aktuellerMarktpreis|aktuellerMarktpreis)\((?:\s*(?:kx?|sk|t)(?:: \w+)?(?:,\s*|(?=\s*\))))?row\.set_number, row\.user_id, row\.condition \|\| null\)/,
     'Ein gebraucht erfasstes Exemplar braucht den Gebrauchtpreis',
   );
-  // Keine Spiegelung in die sets-Zeile
+  // No mirroring into the sets row
   assert.doesNotMatch(
     job.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, ''),
     /UPDATE sets SET/,
@@ -296,8 +296,8 @@ test('entries without a purchase price are filled in', () => {
   );
   assert.match(job, /\(\) => backfillAcquisitions\(k\)/, 'Der Durchlauf ist nicht eingehängt');
 
-  // Und der Import selbst soll seltener ohne Preis enden
-  // Den Marktpreis aus Cache und Verlauf liest der Set-Dienst über finanzen (Besitzer von price_history).
+  // And the import itself should end without a price less often
+  // The set service reads the market price from cache and history via finanzen (owner of price_history).
   const sets =
     require('./helpers/sources').setCoreSource() +
     fs.readFileSync(path.join(ROOT, 'src/finances/repository/priceCache.ts'), 'utf8');
@@ -309,10 +309,10 @@ test('entries without a purchase price are filled in', () => {
 });
 
 test('new sets fetch the right condition, not the default', () => {
-  // Beim Anlegen eines neuen Sets existiert weder die sets- noch die
-  // set_acquisitions-Zeile schon. conditionsNeededFor() fand daher nichts und
-  // fiel auf 'N' zurück — ein als „Gebraucht" importiertes Set bekam den
-  // Neupreis als Kaufpreis, weil die anschliessende Preisabfrage für 'U' noch …
+  // When creating a new set neither the sets row nor the
+  // set_acquisitions row exists yet. conditionsNeededFor() therefore found nothing and
+  // fell back to 'N' — a set imported as „Gebraucht" got the
+  // new price as purchase price, because the subsequent price query for 'U' still …
   const job = fs.readFileSync(path.join(ROOT, 'src/finances/priceRun.ts'), 'utf8');
   const { hatParameter } = require('./helpers/sources');
   assert.ok(hatParameter(job, 'conditionsNeededFor', 'hintCondition', true), 'Der Hinweis-Parameter fehlt');
@@ -331,8 +331,8 @@ test('new sets fetch the right condition, not the default', () => {
     'preisFuerSetHolen muss den Hinweis weiterreichen',
   );
 
-  // Und aktuellerMarktpreis muss ihn beim Anlegen mitgeben — genau an der
-  // Stelle, wo die Zeile noch nicht existiert.
+  // And aktuellerMarktpreis must pass it along when creating — exactly at the
+  // place where the row does not exist yet.
   const preis = fs.readFileSync(path.join(ROOT, 'src/finances/marketPrice.ts'), 'utf8');
   assert.match(
     preis,
@@ -341,15 +341,15 @@ test('new sets fetch the right condition, not the default', () => {
   );
 });
 
-// Preis- und Verlaufsroute im Zustand des Sets prüft test/price-state-of-sets-db.test.js am Server.
+// Price and history route in the condition of the set are checked on the server by test/price-state-of-sets-db.test.js.
 test('exactly ONE condition resolution for single sets — setState', () => {
-  // Fünfter Fundort desselben Fehlers in dieser Sitzung: valueSets,
-  // aktuellerMarktpreis, gainAndLoss, die Webapp-Verlaufsroute und jetzt die
-  // Android-API hatten je eine eigene Fassung. Ab jetzt genau eine Funktion für
-  // Aufrufer ohne bereits geladene acq_count/used_count-Felder.
+  // Fifth location of the same error in this session: valueSets,
+  // aktuellerMarktpreis, gainAndLoss, the web app history route and now the
+  // Android API each had their own version. From now on exactly one function for
+  // callers without already loaded acq_count/used_count fields.
   const fc = require('./helpers/sources').finanzQuelle();
-  // Nimmt seit der Haushaltssicht auch eine Liste von Konten entgegen — der
-  // Hauptaccount fragt den Zustand eines Sets ab, das einem Unterkonto gehört.
+  // Since the household view it also takes a list of accounts — the
+  // main account queries the condition of a set that belongs to a sub-account.
   checkParameter(fc, 'setState', ['uid', 'setNumber'], 'der gemeinsame Helfer fehlt');
   assert.match(
     fc,
@@ -357,14 +357,14 @@ test('exactly ONE condition resolution for single sets — setState', () => {
     'Der Helfer muss exportiert sein',
   );
 
-  // Beide Aufrufer müssen ihn tatsächlich importieren, nicht eine eigene
-  // Abfrage danebenstellen.
-  // Die Verlaufsrouten rufen ihn nur noch mittelbar auf — über
-  // src/finances/priceHistory.ts, das sich Webapp und Android teilen.
+  // Both callers must really import it, not put an own
+  // query next to it.
+  // The history routes only call it indirectly now — via
+  // src/finances/priceHistory.ts, which web app and Android share.
   const helper = fs.readFileSync(path.join(ROOT, 'src/finances/priceHistory.ts'), 'utf8');
-  // UMFORMULIERT in: Geprüft wurde die Importzeile WÖRTLICH.
-  // Seit dem Fix für die BrickLink-Schlüssel holt priceHistory.ts aus derselben
-  // Datei zwei weitere Namen — die Zeile lautet jetzt
+  // REPHRASED to: the import line was checked LITERALLY.
+  // Since the fix for the BrickLink keys priceHistory.ts fetches two more names
+  // from the same file — the line now reads
   //     import { setState, resolveBlColorId, resolveBlPartNumber } … …
   assert.match(
     helper,
@@ -372,19 +372,19 @@ test('exactly ONE condition resolution for single sets — setState', () => {
     'src/finances/priceHistory.ts muss den gemeinsamen Helfer benutzen',
   );
 
-  // Die Preis-Route der Android-API löst weiterhin selbst auf (sie holt einen
-  // Preis, keinen Verlauf) — genau ein Vorkommen.
+  // The price route of the Android API still resolves by itself (it fetches a
+  // price, not a history) — exactly one occurrence.
   const apiV1 = fs.readFileSync(path.join(ROOT, 'src/sets/prices.ts'), 'utf8');
   const uses = (apiV1.match(/sk\.finances\.setState\(blickfeld, sn\)/g) || []).length;
   assert.equal(uses, 1, 'Die /price-Route muss ihn benutzen; der Verlauf geht über priceHistory.ts');
 });
 
-// Die Datenbank-Sperre des Neuaufbaus prüft test/parts-summary-lock-db.test.js.
+// The database lock of the rebuild is checked by test/parts-summary-lock-db.test.js.
 
 test('CDN requests force IPv4', () => {
-  // Ohne IPv6-Route liefen Bildabrufe stumm bis zur Frist. Der Set-Bild-Download
-  // beim Import geht über den gemeinsamen Abrufhelfer; dass der und der Pool
-  // der Bild-CDNs IPv4 erzwingen, prüft der Test darunter am laufenden Code.
+  // Without an IPv6 route image fetches ran silently until the deadline. The set image download
+  // during import goes via the shared fetch helper; that it and the pool
+  // of the image CDNs force IPv4 is checked by the test below on the running code.
   const setsFile = fs.readFileSync(path.join(ROOT, 'src/images/setImages.ts'), 'utf8');
   assert.match(
     setsFile,
@@ -394,9 +394,9 @@ test('CDN requests force IPv4', () => {
 });
 
 test('IPv4 is forced on ALL outgoing HTTPS calls, not only in the image proxy', async () => {
-  // Der Server hat keine IPv6-Route; ohne family: 4 hängt jede ausgehende
-  // Verbindung stumm bis zur Frist. abruf.ts ist der eine Weg nach draussen.
-  // Gegenprobe (05.11.2026): family: 4 aus https.get in abruf.ts oder aus dem Pool gestrichen → rot.
+  // The server has no IPv6 route; without family: 4 every outgoing
+  // connection hangs silently until the deadline. abruf.ts is the one way out.
+  // Counter-check (05.11.2026): family: 4 deleted from https.get in abruf.ts or from the pool → red.
   const _req = require('./helpers/sources').buildAndRequire();
   const { holeHttps } = _req('src/infra/fetch.js');
   const { oeffneBild } = _req('clients/imageCdn.js');
@@ -420,20 +420,20 @@ test('IPv4 is forced on ALL outgoing HTTPS calls, not only in the image proxy', 
 });
 
 test('the background job for parts and minifigures now creates preview images', () => {
-  // Gemeldet: manuell erfasste Teile (und dasselbe Muster traf auch auf
-  // Minifiguren zu) bekamen nie eine Vorschau. Ursache: Der stündliche
-  // Hintergrund-Job lud das Bild herunter und aktualisierte image_local,
-  // rief aber nie vorschauErzeugenAus() auf — anders als bei Sets (dieselbe …
+  // Reported: manually captured parts (and the same pattern also applied to
+  // minifigures) never got a preview. Cause: the hourly
+  // background job downloaded the image and updated image_local,
+  // but never called vorschauErzeugenAus() — unlike for sets (the same …
   const src = require('./helpers/sources').serverAll();
 
   const partsLoop = src.slice(
     src.indexOf('for (const p of manualParts) {'),
     src.indexOf('for (const f of figsToFetch) {'),
   );
-  // UMFORMULIERT in: Geprüft wurde der WORTLAUT der Zeile
+  // REPHRASED to: the WORDING of the line was checked
   //     const { vorschauErzeugenAus } = require('./src/images/thumbs');
-  // Beim Umbau der späten require() auf echte import-Anweisungen wurde daraus
-  // ein Import am Dateikopf — die Prüfung wurde rot, ohne dass sich ihre …
+  // When converting the late require() into real import statements it became
+  // an import at the file head — the check turned red without its …
   assert.match(src, /vorschauErzeugenAus/, 'vorschauErzeugenAus ist in server.ts nicht mehr verfügbar');
   assert.match(
     partsLoop,
@@ -453,18 +453,18 @@ test('the background job for parts and minifigures now creates preview images', 
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Welche Plaketten die Kachel zeigt (hardened-91)
+// Which badges the tile shows (hardened-91)
 // ═══════════════════════════════════════════════════════════════════════════
-// utils/handlers.ts gibt es seit nicht mehr (aufgeteilt nach …
+// utils/handlers.ts no longer exists since (split by …
 const { buildAndRequire, handlerModule } = require('./helpers/sources');
 const { conditionsFromAcquisitions, conditionFromAcquisitions } = handlerModule(buildAndRequire());
 
 test('mixed entries result in TWO badges', () => {
-  // Der gemeldete Fall: ein Exemplar neu, eines gebraucht. Bisher zeigte die
-  // Kachel nur „Gebraucht" — die Neu-Erfassung war unsichtbar, obwohl sie mit
-  // ihrem eigenen Preis in die Bewertung eingeht.
+  // The reported case: one copy new, one used. Until now the
+  // tile only showed „Gebraucht" — the new acquisition was invisible although it
+  // enters the valuation with its own price.
   assert.deepEqual(conditionsFromAcquisitions(2, 1), ['N', 'U']);
-  // Und die Einzelangabe bleibt daneben, was sie war.
+  // And the single statement next to it stays what it was.
   assert.equal(conditionFromAcquisitions(2, 1), 'U');
 });
 
@@ -474,17 +474,17 @@ test('only one condition results in one badge', () => {
 });
 
 test('without entries “Neu” applies', () => {
-  // Ohne Erfassungen gibt es keinen gespeicherten Wert, der zählte: Fuer
-  // manuelle Positionen traegt sie eine Erfassung nach und prueft danach
-  // nach, dass keine ohne geblieben ist; fuer Teile und Figuren aus einem Set …
+  // Without acquisitions there is no stored value that counted: for
+  // manual positions it fills in an acquisition and checks afterwards
+  // that none remained without one; for parts and figures from a set …
   assert.deepEqual(conditionsFromAcquisitions(0, 0), ['N']);
   assert.equal(conditionFromAcquisitions(0, 0), 'N');
 });
 
 test('the order is fixed: new before used', () => {
-  // Nach Häufigkeit sortiert würden die Plaketten beim nächsten Kauf die
-  // Plätze tauschen — auf einer Kachel, die man überfliegt, fällt genau das
-  // als „hat sich was geändert?" auf.
+  // Sorted by frequency the badges would swap places on the next purchase
+  // — on a tile that one skims, exactly that stands out
+  // as „has something changed?".
   assert.deepEqual(conditionsFromAcquisitions(5, 4), ['N', 'U']);
   assert.deepEqual(conditionsFromAcquisitions(5, 1), ['N', 'U']);
 });
@@ -492,8 +492,8 @@ test('the order is fixed: new before used', () => {
 test('the tiles do not compute the badges themselves', () => {
   const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'components.js'), 'utf8');
   assert.match(gal, /export function condBadges/, 'Eine gemeinsame Fassung für Set-, Teile- und Minifiguren-Kacheln');
-  // Eine Plakette, keine Kopien mit fest eingetragenen Farben statt der CSS-Klassen:
-  // keine Zeile darf eine Zustands-Beschriftung UND eine eigene Farbe tragen.
+  // One badge, no copies with hard-coded colors instead of the CSS classes:
+  // no row may carry a condition label AND an own color.
   for (const f of ['public/js/parts.js', 'public/js/minifigs.js', 'public/js/finances.js']) {
     const lines = fs.readFileSync(path.join(ROOT, f), 'utf8').split('\n');
     const inline = lines.filter(l => /common\.condition_(used|new)/.test(l) && /background:\s*var\(/.test(l));
@@ -502,7 +502,7 @@ test('the tiles do not compute the badges themselves', () => {
 });
 
 test('the purchase price on the tile is quantity-weighted, not the maximum', () => {
-  // MAX(purchase_price) zeigte bei 2x100 und 1x160 den Wert 160.
+  // MAX(purchase_price) showed the value 160 for 2x100 and 1x160.
   const h = require('./helpers/sources').handlerQuelle();
   assert.match(h, /avg_purchase_price/, 'Der gewichtete Kaufpreis fehlt im Aggregat');
   const gal = fs.readFileSync(path.join(ROOT, 'public', 'js', 'collection.js'), 'utf8');
@@ -514,16 +514,16 @@ test('the purchase price on the tile is quantity-weighted, not the maximum', () 
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Anmelden mit E-Mail (hardened-100)
+// Login with email (hardened-100)
 // ═══════════════════════════════════════════════════════════════════════════
 const authModule = buildAndRequire()('src/account/nameRules.js');
 const { loginNameValid, USERNAME_RE, EMAIL_RE } = authModule;
 
 test('the login name may be an e-mail address', () => {
-  // Über dem Feld steht „Benutzername oder E-Mail", und die Abfrage sucht in
-  // beiden Spalten — davor stand aber ein Wächter, der nur das
-  // Benutzernamen-Muster zuliess. Das @ fiel durch, und die Meldung sprach von
-  // erlaubten Zeichen im Benutzernamen.
+  // Above the field stands „Benutzername oder E-Mail", and the query searches in
+  // both columns — but in front of it stood a guard that only allowed the
+  // username pattern. The @ fell through, and the message spoke of
+  // allowed characters in the username.
   assert.ok(loginNameValid('marco@example.com'));
   assert.ok(loginNameValid('marco.meier+lego@sub.example.co.uk'));
   assert.ok(loginNameValid('marco'), 'Benutzername muss weiterhin gehen');
@@ -531,8 +531,8 @@ test('the login name may be an e-mail address', () => {
 });
 
 test('obvious nonsense still does not reach the query', () => {
-  // Der Wächter ist nicht überflüssig: Er hält Müll von der Abfrage und vom
-  // Brute-Force-Zähler fern, der je IP und Anmeldename zählt.
+  // The guard is not superfluous: it keeps garbage away from the query and from the
+  // brute-force counter, which counts per IP and login name.
   for (const bad of [
     '',
     'ab',
@@ -547,18 +547,18 @@ test('obvious nonsense still does not reach the query', () => {
 });
 
 test('registration and profile stay with the username pattern', () => {
-  // Sonst könnte jemand die E-Mail-Adresse eines anderen als Benutzernamen
-  // eintragen und dessen Anmeldung an sich ziehen — der Login sucht in beiden
-  // Spalten.
+  // Otherwise somebody could enter another person's email address as a username
+  // and pull that person's login to himself — the login searches in both
+  // columns.
   assert.equal(USERNAME_RE.test('marco@example.com'), false);
   assert.ok(EMAIL_RE.test('marco@example.com'));
-  // Dass /register diese Regel anwendet, prüft password-rule-db.test.js.
+  // That /register applies this rule is checked by password-rule-db.test.js.
 });
 
 test('both login paths check the same', async () => {
-  // Webapp und Android-API gehen durch checkCredentials(); dort fällt ein
-  // unbrauchbarer Name ab, bevor Zähler oder Datenbank ihn sehen.
-  // Gegenprobe (11.11.2026): die Formprüfung in checkCredentials() gestrichen → rot hier.
+  // Web app and Android API go through checkCredentials(); there an
+  // unusable name is dropped before counter or database see it.
+  // Counter-check (11.11.2026): the form check deleted in checkCredentials() → red here.
   const { checkCredentials } = buildAndRequire()('src/account/loginCheck.js');
   for (const name of ['a b', "' OR 1=1 --", '@example.com'])
     assert.deepEqual(
@@ -582,8 +582,8 @@ test('both login paths check the same', async () => {
 });
 
 test('the tile takes the condition from the server response', async () => {
-  // Die Webapp rechnet die Regel nicht nach: Sie nimmt das Aggregat der PUT-Antwort. Die Liste der Galerie
-  // antwortet danach absichtlich nicht mehr — die Kachel darf nur aus der Antwort auf die Änderung kommen.
+  // The web app does not recompute the rule: it takes the aggregate of the PUT response. The gallery list
+  // deliberately no longer answers afterwards — the tile may only come from the response to the change.
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 1, conditions: ['N'], condition: 'N' };
   let listen = 0;
   const { w, d } = await openUi({

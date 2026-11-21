@@ -1,23 +1,23 @@
 /**
- * Offline sperrt die Oberfläche genau die Knöpfe, deren Aktion Serverzustand
- * ändert (WRITING_ACTIONS in verbindung.js); Lesendes bleibt frei.
- * Jede angemeldete Aktion ist genau einmal eingestuft, sonst rot. In jsdom am
- * Bündel aus main.js, das zusätzlich Registry und Einstufung zeigt.
+ * Offline the UI locks exactly the buttons whose action changes server state
+ * (WRITING_ACTIONS in verbindung.js); reading stays free.
+ * Every registered action is classified exactly once, otherwise red. In jsdom on the
+ * bundle from main.js, which additionally exposes registry and classification.
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln, danach zurückgesetzt):
- *   A  'revokeToken' aus WRITING_ACTIONS gestrichen → rot: „jede
- *      angemeldete Aktion ist genau einmal eingestuft“ und „je Aktion ein Knopf“
- *   B  'legeLagerortAn' nach READING_ACTIONS verschoben → rot: „je Aktion
- *      ein Knopf“
- *   C  schreibt() wieder nach alter Regel (button.bp/.bd, sonst Namens-Regex
- *      SCHREIB_VERBEN) → rot: „je Aktion ein Knopf“, „index.html und Vorlagen“
- *      und „per id verdrahtete Knöpfe“
- *   D  'oeffneReiter' zusätzlich in WRITING_ACTIONS → rot: „genau
- *      einmal eingestuft“ (doppelt) und „je Aktion ein Knopf“ (Lesen gesperrt)
- *   E  data-schreibend an #btn-clr entfernt → rot: „per id verdrahtete
- *      Knöpfe“
- *   F  Klicksperre wieder nur für summary → rot: „index.html und Vorlagen“
- *      (das Löschkreuz der Kachel öffnet offline die Löschabfrage)
+ * Counter-checks (measured 08.11.2026, each on its own, reset afterwards):
+ *   A  'revokeToken' deleted from WRITING_ACTIONS → red: “every
+ *      registered action is classified exactly once” and “one button per action”
+ *   B  'legeLagerortAn' moved to READING_ACTIONS → red: “one button per
+ *      action”
+ *   C  schreibt() again by the old rule (button.bp/.bd, otherwise name regex
+ *      SCHREIB_VERBEN) → red: “one button per action”, “index.html and templates”
+ *      and “buttons wired by id”
+ *   D  'oeffneReiter' additionally in WRITING_ACTIONS → red: “exactly
+ *      once classified” (twice) and “one button per action” (reading locked)
+ *   E  data-schreibend removed on #btn-clr → red: “buttons wired by
+ *      id”
+ *   F  click lock again only for summary → red: “index.html and templates”
+ *      (the delete cross of the tile opens the delete prompt offline)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -28,7 +28,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const JS = path.join(ROOT, 'public', 'js');
 
-/** Das Bündel aus main.js, dazu Registry und Einstufung auf window.__rating. */
+/** The bundle from main.js, plus registry and classification on window.__rating. */
 function buildBundle() {
   const esbuild = require(path.join(ROOT, 'node_modules', 'esbuild'));
   const { allowedStyles } = require(path.join(ROOT, 'scripts', 'build-frontend.js'));
@@ -171,7 +171,7 @@ test('one button per action: exactly the writing ones are locked offline', async
       .filter(k => gesperrt(k) !== s.has(k.getAttribute('data-click')))
       .map(k => `${k.getAttribute('data-click')}: ${gesperrt(k) ? 'gesperrt' : 'frei'}`);
     assert.deepEqual(falsch, []);
-    // Die Aktionen, die die alte Namensregel verfehlte, und Lesen, das frei bleiben muss.
+    // The actions the old name rule missed, and reading that must stay free.
     const knopf = n => kasten.querySelector(`[data-click="${n}"]`);
     for (const n of [
       'legeLagerortAn',
@@ -225,7 +225,7 @@ test('index.html and templates: exactly the writing ones locked offline', async 
     }
     const vorher = new Set([...d.querySelectorAll(SERVED)].filter(k => k.disabled));
     await offline(w);
-    // Danach Gezeichnetes sperrt der Beobachter.
+    // What is drawn afterwards is locked by the observer.
     await sicht(w, 'alarme');
     assert.ok(
       await warte(() => d.querySelector('#alerts-list [data-click="loescheAlarm"]')),
@@ -258,7 +258,7 @@ test('index.html and templates: exactly the writing ones locked offline', async 
       .filter(k => gesperrt(k) !== s.has(k.getAttribute('data-click')))
       .map(k => `${k.getAttribute('data-click')}${k.id ? '#' + k.id : ''}: ${gesperrt(k) ? 'gesperrt' : 'frei'}`);
     assert.deepEqual(falsch, []);
-    // Das Löschkreuz der Kachel ist ein <span> ohne disabled: Der Klick darf nichts auslösen.
+    // The delete cross of the tile is a <span> without disabled: the click must trigger nothing.
     const beforeCalls = aufrufe.length;
     await reiter(w, 'gallery');
     d.querySelector('#gallery .delbtn[data-click="delSetStop"]').click();

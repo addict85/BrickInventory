@@ -1,26 +1,26 @@
 /**
- * Ein Gutschein-PDF darf weder Speicher noch Rechenzeit sprengen.
+ * A voucher PDF must blow up neither memory nor computing time.
  *
- * Gemessen an 8f4f9d3: 299 KB wurden zu 300 MB entpackt (inflateSync ohne
- * Grenze), und das faule Muster `stream\r?\n([\s\S]*?)endstream` sowie der
- * Textoperator-Ausdruck liefen bei offenen Anfängen quadratisch.
+ * Found at 8f4f9d3: 299 KB were unpacked to 300 MB (inflateSync without a
+ * limit), and the lazy pattern `stream\r?\n([\s\S]*?)endstream` as well as the
+ * text operator expression ran quadratically on open beginnings.
  *
- * ── Gegenproben (durchgeführt, Befunde GEMESSEN) ────────────────────────────
+ * ── Counter-checks (carried out, findings MEASURED) ────────────────────────────
  *
- *   a) ohne maxOutputLength → 1 rot (15 MB entpackt, nichts geworfen) und
- *      7 rot (die Bombe wurde mit getippten Werten abgelegt, Status 200)
- *   b) Summengrenze UNPACKED_MAX_BYTES ausgeschaltet → 2 rot
- *   c) Stromzahl nicht gezählt → 3 rot
- *   d) Ströme wieder per faulem Muster gesucht → 4 rot („stream ohne Ende: 7485 ms")
- *   e) Textoperatoren wieder per TEXT_OP_RE → 4 rot („Literal ohne Ende:
- *      5850 ms") und 5 rot (die geschachtelte Klammer fehlte)
- *   f) Betragsmuster wieder mit `\s+`/`+?`/`\s*` → 4 rot („Leerraum im Text: 2693 ms")
- *   g) Schriftwahl nimmt die erste statt der letzten Tf → 6 rot
- *   h) Route ohne den Zweig für PdfTooLarge → 7 rot (Status 200)
- *   i) Upload-Grenze wieder 20 MB → 8 rot (2,5 MB wurden abgelegt)
+ *   a) without maxOutputLength → 1 red (15 MB unpacked, nothing thrown) and
+ *      7 red (the bomb was stored with typed values, status 200)
+ *   b) sum limit UNPACKED_MAX_BYTES switched off → 2 red
+ *   c) stream count not counted → 3 red
+ *   d) streams searched again via the lazy pattern → 4 red („stream ohne Ende: 7485 ms")
+ *   e) text operators again via TEXT_OP_RE → 4 red („Literal ohne Ende:
+ *      5850 ms") and 5 red (the nested parenthesis was missing)
+ *   f) amount pattern again with `\s+`/`+?`/`\s*` → 4 red („Leerraum im Text: 2693 ms")
+ *   g) font choice takes the first instead of the last Tf → 6 red
+ *   h) route without the branch for PdfTooLarge → 7 red (status 200)
+ *   i) upload limit again 20 MB → 8 red (2.5 MB were stored)
  *
- * Voraussetzung für 7 und 8: Test-DB via TEST_DATABASE_URL. Ohne DB: skip,
- * ausser REQUIRE_DB=1.
+ * Prerequisite for 7 and 8: test DB via TEST_DATABASE_URL. Without DB: skip,
+ * unless REQUIRE_DB=1.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,7 +30,7 @@ const path = require('node:path');
 const zlib = require('node:zlib');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-// Vor dem Laden: appPaths rechnet DATA_DIR aus APP_ROOT beim Einlesen aus.
+// Before loading: appPaths computes DATA_DIR from APP_ROOT when reading in.
 const SANDBOX = fs.mkdtempSync(path.join(os.tmpdir(), 'gutschein-bombe-'));
 fs.mkdirSync(path.join(SANDBOX, 'data'), { recursive: true });
 fs.writeFileSync(path.join(SANDBOX, 'package.json'), '{"name":"sandkasten"}');
@@ -49,7 +49,7 @@ test.after(async () => {
   fs.rmSync(SANDBOX, { recursive: true, force: true });
 });
 
-/** Ein PDF aus rohen Strominhalten — genug für pdfText. */
+/** A PDF from raw stream contents — enough for pdfText. */
 function pdfFrom(streams) {
   const teile = [Buffer.from('%PDF-1.4\n')];
   streams.forEach((s, i) => {
@@ -74,7 +74,7 @@ function duration(f) {
   return { fehler, ms: Number(process.hrtime.bigint() - t) / 1e6 };
 }
 
-// Über der Grenze je Strom, unter der Summe: Fall 1 prüft die Grenze je Strom.
+// Above the limit per stream, below the sum: case 1 checks the limit per stream.
 const BOMBE = pdfFrom([zlib.deflateSync(Buffer.alloc(15 * 1024 * 1024))]);
 
 test('1. a stream that unpacks beyond the limit is rejected', () => {
@@ -136,7 +136,7 @@ test('5. valid text operators are still read', () => {
   );
 });
 
-/** Zwei Schriften, eine mit eigener Kodierung; `inhalt` wählt sie per Tf. */
+/** Two fonts, one with its own encoding; `inhalt` chooses them via Tf. */
 async function twoFonts(inhalt) {
   const PL = require('@cantoo/pdf-lib');
   const doc = await PL.PDFDocument.create();
@@ -200,7 +200,7 @@ test('voucher upload: bomb and oversize do not get into storage', { concurrency:
   const uid = (await db.get(`SELECT id FROM users WHERE username='haupt'`)).id;
   const srv = testServer(_req, { sitzung: { userId: uid }, t });
 
-  // Mit getippten Werten: Die Route legt dann auch ein unlesbares PDF ab.
+  // With typed values: the route then also stores an unreadable PDF.
   async function hochladen(pdf, nummer) {
     const fd = new FormData();
     fd.append('file', new Blob([pdf], { type: 'application/pdf' }), 'gutschein.pdf');

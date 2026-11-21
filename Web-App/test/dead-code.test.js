@@ -1,5 +1,5 @@
 /**
- * Funktionen ohne Aufrufer.
+ * Functions without callers.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,7 +8,7 @@ const path = require('node:path');
 
 const { ROOT, ohneKommentare } = require('./helpers/sources');
 
-/** Alle .ts-Quellen des Servers plus die Tests als Referenzkorpus. */
+/** All .ts sources of the server plus the tests as the reference corpus. */
 function dateien(subfolder, extension) {
   const out = [];
   (function walk(d) {
@@ -42,7 +42,7 @@ test('no function without a single caller', () => {
       const name = m[1];
       geprueft++;
       const treffer = (korpus.match(new RegExp(`\\b${name}\\b`, 'g')) || []).length;
-      // 1 Treffer = nur die Deklaration selbst.
+      // 1 hit = only the declaration itself.
       if (treffer <= 1) tot.push(`${path.relative(ROOT, datei)}: ${name}`);
     }
   }
@@ -52,7 +52,7 @@ test('no function without a single caller', () => {
 });
 
 /**
- * Die zweite Haelfte: EXPORTIERTE Namen ohne Aufrufer.
+ * The second half: EXPORTED names without callers.
  */
 test('no exported value without a single caller', () => {
   const quellen = ['routes', 'src', 'jobs', 'db', 'clients', 'startup']
@@ -63,10 +63,10 @@ test('no exported value without a single caller', () => {
 
   const inhalt = new Map(withTests.map(f => [f, ohneKommentare(fs.readFileSync(f, 'utf8'))]));
 
-  // Je Schreibweise EIGENS gezaehlt — siehe den Selbstbeweis unten.
+  // Counted SEPARATELY per notation — see the self-proof below.
   const gefunden = { inline: 0, liste: 0 };
 
-  /** Exportierte WERTE (keine Typen) einer Datei. */
+  /** Exported VALUES (no types) of a file. */
   const exportedValues = src => {
     const namen = new Set();
     for (const m of src.matchAll(/^export\s+(?:async\s+)?(?:function|const|class)\s+(\w+)/gm)) {
@@ -76,9 +76,9 @@ test('no exported value without a single caller', () => {
     for (const m of src.matchAll(/^export\s*\{([^}]*)\}/gm))
       for (const roh of m[1].split(',')) {
         const n = roh.trim().split(' as ').pop().trim();
-        // Grossgeschrieben und ohne Klammern: kann ein Typ sein — die
-        // Unterscheidung ist hier nicht sicher moeglich, also im Zweifel
-        // auslassen. Lieber ein Fund weniger als ein Fehlalarm.
+        // Capitalized and without parentheses: can be a type — the
+        // distinction is not reliably possible here, so when in doubt
+        // leave it out. Better one finding fewer than a false alarm.
         if (n && !/^[A-Z][A-Za-z]*$/.test(n)) {
           namen.add(n);
           gefunden.liste++;
@@ -87,7 +87,7 @@ test('no exported value without a single caller', () => {
     return namen;
   };
 
-  /** Vorkommen in der eigenen Datei, ohne Deklaration und Exportliste. */
+  /** Occurrences in the own file, without declaration and export list. */
   const ownUsage = (src, name) => {
     let n = 0;
     let inExportList = false;
@@ -116,10 +116,10 @@ test('no exported value without a single caller', () => {
     }
   }
 
-  // Selbstbeweis, je Schreibweise EINZELN
+  // Self-proof, per notation INDIVIDUALLY
   //
-  // Nicht als Summe: Ein Selbstbeweis, der Zahlen addiert, deckt das Sterben
-  // eines Summanden zu — genau die Fehlerart, gegen die er gebaut ist.
+  // Not as a sum: a self-proof that adds numbers covers up the death
+  // of one summand — exactly the kind of error it is built against.
   assert.ok(
     gefunden.inline > 70,
     `Nur ${gefunden.inline} Exporte in der Form \`export function x\` gefunden ` +

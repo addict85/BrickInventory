@@ -1,18 +1,18 @@
 /**
- * Der Kontext `t` einer Transaktion entsteht je Verbindung einmal, nicht je Transaktion
- * (db/database.ts connectionAccess, src/infra/area.ts buildContext). Dass er beständig
- * ist, darf nichts umleiten: Ein Nachzügler einer beendeten Transaktion, deren Verbindung
- * schon die nächste trägt, fragt nicht in die fremde hinein. Pool mit einer Verbindung.
+ * The context `t` of a transaction arises once per connection, not per transaction
+ * (db/database.ts connectionAccess, src/infra/area.ts buildContext). That it is persistent
+ * must redirect nothing: a straggler of an ended transaction whose connection
+ * already carries the next one does not query into the foreign one. Pool with one connection.
  *
- * Gegenproben (14.11.2026, je einzeln):
- *   A  in buildContext `fn(ueber(tx.db))` → `fn(buildContext(rebuild(a, tx.db), zugang))` → rot:
- *      „zwei Transaktionen auf einer Verbindung teilen t“
- *   B  in newSpace die Bedingung `runningTx() !== stand` gestrichen → rot: „ein Nachzügler …“
- *      (seine Abfrage lief in der zweiten Transaktion)
- *   C  in connectionAccess `platz.stand = stand` gestrichen → rot: „ein Nachzügler …“
- *      (TransactionEnded auch für die zweite Transaktion selbst)
+ * Counter-checks (14.11.2026, each on its own):
+ *   A  in buildContext `fn(ueber(tx.db))` → `fn(buildContext(rebuild(a, tx.db), zugang))` → red:
+ *      “two transactions on one connection share t”
+ *   B  in newSpace the condition `runningTx() !== stand` deleted → red: “a straggler …”
+ *      (its query ran in the second transaction)
+ *   C  in connectionAccess `platz.stand = stand` deleted → red: “a straggler …”
+ *      (TransactionEnded also for the second transaction itself)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

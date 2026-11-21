@@ -1,30 +1,30 @@
 /**
- * Formulare und Filter auf dem Telefon (390 px), gemessen in Chrome an der echten App:
- * Dialog „Set hinzufügen“, Katalog-Filter und die Abschnittsleiste der Einstellungen.
+ * Forms and filters on the phone (390 px), measured in Chrome on the real app:
+ * dialog „Set hinzufügen“, catalog filters and the section bar of the settings.
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   A  in mobile.css die Regel `.erfassen-raster > .fg:has(> .preis-mit-waehrung)` entfernt
- *      → rot: „Set hinzufügen: Kaufpreis-Platzhalter ganz sichtbar“ („Platzhalter braucht 65 px,
+ * Counter-checks (measured 08.11.2026, each on its own):
+ *   A  the rule `.erfassen-raster > .fg:has(> .preis-mit-waehrung)` removed in mobile.css
+ *      → red: “add set: purchase price placeholder fully visible” („Platzhalter braucht 65 px,
  *      das Feld hat 58 px“)
- *   B  (14.11.2026, Runde 24: Filter hinter dem Knopf) in mobile.css die Regel
- *      `#tab-catalog .filterleiste.offen > :is(#cat-year-from, #cat-year-to)` entfernt
- *      → rot: „Katalog: Filter in vier Zeilen, nichts abgeschnitten“ („stehen in 5 Zeilen“)
- *   C  in styles.css die Pfeil-Regeln der Abschnittsleiste (`.einst-nav[data-mehr*="r"]::after`)
- *      auf das alte Zeichen ohne Knopf (width:2rem, border:0) zurückgesetzt
- *      → rot: „Einstellungen: Pfeil als Knopf, solange rechts Abschnitte liegen“
- *   D  in mobile.js die Zeile `nav.dataset.mehr = …` entfernt → rot: „Einstellungen: Pfeil als
- *      Knopf …“ und „… wechselt am Ende die Seite“ (kein data-mehr)
+ *   B  (14.11.2026, round 24: filters behind the button) the rule
+ *      `#tab-catalog .filterleiste.offen > :is(#cat-year-from, #cat-year-to)` removed in mobile.css
+ *      → red: “catalog: filters in four rows, nothing cut off” („stehen in 5 Zeilen“)
+ *   C  in styles.css the arrow rules of the section bar (`.einst-nav[data-mehr*="r"]::after`)
+ *      reset to the old character without a button (width:2rem, border:0)
+ *      → red: “settings: arrow as a button while there are sections to the right”
+ *   D  the line `nav.dataset.mehr = …` removed in mobile.js → red: “settings: arrow as a
+ *      button …” and “… switches the page at the end” (no data-mehr)
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Without Chrome (CHROME_BIN, google-chrome, chromium) it is skipped.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp } = require('./helpers/app-browser');
 
 /**
- * Breite des längsten Textes eines Feldes gegen die Innenbreite: Ein Platzhalter oder ein Eintrag der
- * Auswahl, der nicht hineinpasst, wird abgeschnitten. Gemessen mit der Schrift des Feldes selbst.
+ * Width of the longest text of a field against the inner width: a placeholder or an entry of the
+ * selection that does not fit in is cut off. Measured with the font of the field itself.
  */
 const TEXT_WIDTH = `(el, texte) => { const cs = getComputedStyle(el), c = document.createElement('canvas').getContext('2d');
   c.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
@@ -73,7 +73,7 @@ test('forms and filters on the phone', { concurrency: 1, timeout: 300_000 }, asy
 
   await t.test('catalog: filters in four rows, nothing cut off', async () => {
     await reiter('catalog');
-    // Seit Runde 24 hinter dem Trichterknopf wie in der Sammlung; aufgeklappt gilt dieselbe Ordnung.
+    // Since round 24 behind the funnel button as in the collection; when expanded the same order applies.
     await b.auswerten(`(() => { const k = document.querySelector('#tab-catalog .filter-knopf');
       if (k.getAttribute('aria-expanded') !== 'true') k.click(); return true; })()`);
     const m = await b.auswerten(`(() => { const breite = ${TEXT_WIDTH};

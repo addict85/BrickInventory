@@ -1,19 +1,19 @@
 /**
- * Eine Absage darf nicht heissen wie die Nutzlast: Die Einladung trägt ihren
- * Code im Feld `code`, eine Absage steht in `fehler` und kommt als 409 mit
- * Satz in der Sprache des Anfragenden zurück. Geprüft an den Haushaltsrouten
- * gegen die Datenbank, an errorText() und an der Haushaltskarte in jsdom.
+ * A refusal must not be named like the payload: the invitation carries its
+ * code in the field `code`, a refusal stands in `fehler` and comes back as 409 with a
+ * sentence in the language of the requester. Checked on the household routes
+ * against the database, on errorText() and on the household card in jsdom.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
- *   A  die Invite-Route entscheidet an `'code' in r` statt `'fehler' in r` →
- *      rot: „Einladen liefert den Code als Nutzlast“ (der Erfolg wird zur
- *      Absage, 500 statt 200)
- *   B  redeemInvitation() meldet `konto_mit_sich_selbst` unter `code` statt
- *      `fehler` → rot: „jede Absage beim Einlösen …“ (200 statt 409)
- *   C  in errorText() die Prüfung `if (!eintrag)` gestrichen → rot:
- *      „errorText fällt bei unbekanntem Code nicht um“ (TypeError)
- *   D  in speichereWaehrung() `await loadHousehold()` gestrichen (Bündel neu
- *      gebaut) → rot: „nach dem Währungswechsel …“ (Karte zeigt weiter EUR)
+ * Counter-checks (measured 10.11.2026, each on its own, reverted):
+ *   A  the invite route decides on `'code' in r` instead of `'fehler' in r` →
+ *      red: “inviting returns the code as payload” (the success becomes a
+ *      refusal, 500 instead of 200)
+ *   B  redeemInvitation() reports `konto_mit_sich_selbst` under `code` instead of
+ *      `fehler` → red: “every refusal on redeeming …” (200 instead of 409)
+ *   C  the check `if (!eintrag)` deleted in errorText() → red:
+ *      “errorText does not fall over on an unknown code” (TypeError)
+ *   D  `await loadHousehold()` deleted in speichereWaehrung() (bundle
+ *      rebuilt) → red: “after the currency change …” (card keeps showing EUR)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,7 +37,7 @@ test('household routes: payload and refusal', { concurrency: 1 }, async t => {
   for (const n of namen)
     ids.push((await db.get('INSERT INTO users (username, password_hash) VALUES ($1,$2) RETURNING id', [n, hash])).id);
   const [a, b, c] = ids;
-  // Konto c führt eine andere Währung: Die Absage trägt Platzhalter.
+  // Account c carries another currency: the refusal carries placeholders.
   await db.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')`, [c]);
   t.after(async () => {
     await db.run('DELETE FROM users WHERE id = ANY($1)', [ids]).catch(() => {});
@@ -57,7 +57,7 @@ test('household routes: payload and refusal', { concurrency: 1 }, async t => {
     assert.equal(r.status, 200, JSON.stringify(r.body));
     return r.body.code;
   };
-  /** Eine Absage: 409, der Code daneben, ein deutscher Satz ohne offene Platzhalter. */
+  /** A refusal: 409, the code next to it, a German sentence without open placeholders. */
   const absage = (r, code) => {
     assert.equal(r.status, 409, `${code}: ${JSON.stringify(r.body)}`);
     assert.equal(r.body.success, false);
@@ -86,12 +86,12 @@ test('household routes: payload and refusal', { concurrency: 1 }, async t => {
     assert.equal(ok.body.linked_to.id, a);
     absage(await post(b, 'redeem', { code: await invitation(a), password: PASS }), 'konto_bereits_verknuepft');
     absage(await post(a, 'redeem', { code: await invitation(b), password: PASS }), 'verknuepfung_erzeugt_kreis');
-    // Die Vorprüfung sagt dasselbe, bevor jemand sein Passwort eingibt.
+    // The pre-check says the same before anybody enters their password.
     absage(await post(a, 'redeem/pruefen', { code: await invitation(b) }), 'verknuepfung_erzeugt_kreis');
   });
 
   await t.test('a cancelled invitation stays redeemable', async () => {
-    // Die Absage gibt den Code frei: Er war nicht der Fehler.
+    // The refusal releases the code: it was not the error.
     const code = await invitation(c);
     absage(await post(a, 'redeem', { code, password: PASS }), 'waehrung_ungleich');
     await db.run(`DELETE FROM user_settings WHERE user_id = $1 AND key = 'currency'`, [c]);
@@ -101,7 +101,7 @@ test('household routes: payload and refusal', { concurrency: 1 }, async t => {
 });
 
 test('errorText does not fall over on an unknown code', () => {
-  // Eine Fehlermeldung ist das Letzte, was selbst noch abstürzen darf.
+  // An error message is the last thing that may still crash itself.
   const { errorText } = _req('src/infra/errorTexts.js');
   const fehler = console.error;
   console.error = () => {};
@@ -119,7 +119,7 @@ test('errorText does not fall over on an unknown code', () => {
 });
 
 test('after the currency change the household card is redrawn', async () => {
-  // Die Karte nennt die Währung; ohne Neuladen stünde bis zum nächsten Seitenaufruf die alte da.
+  // The card names the currency; without reloading the old one would stand there until the next page call.
   let waehrung = 'EUR';
   const { w, d, aufrufe } = await openUi({
     '/v1/settings': (_u, o) => {

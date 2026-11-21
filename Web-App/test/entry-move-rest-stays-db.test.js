@@ -1,15 +1,15 @@
 /**
- * Eine Erfassung verschieben nimmt nur SIE mit — nicht den ganzen Bestand.
+ * Moving an entry only takes IT along — not the whole stock.
  *
- * ── Gegenproben (durchgefuehrt) ─────────────────────────────────────────────
+ * ── Counter-checks (performed) ──────────────────────────────────────────────
  *
- *   a) Mit der alten Zeile (`src.quantity || 1`) ist der erste Fall rot:
- *      „Der Absender hat 0 Erfassungen uebrig, erwartet 1".
- *   b) Der zweite Fall prueft die andere Richtung — wandert die LETZTE
- *      Erfassung, MUSS die Zeile verschwinden. Ohne ihn waere der Test auch
- *      gruen, wenn nie geloescht wuerde.
+ *   a) With the old line (`src.quantity || 1`) the first case is red:
+ *      “the sender has 0 entries left, expected 1".
+ *   b) The second case checks the other direction — if the LAST
+ *      entry moves, the row MUST disappear. Without it the test would also be
+ *      green if nothing were ever deleted.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
  * REQUIRE_DB=1.
  */
 const test = require('node:test');
@@ -58,11 +58,11 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
                 VALUES ('3001',4,'Rot')`);
 
   /**
-   * Eine manuelle Position mit zwei Erfassungen an VERSCHIEDENEN Tagen.
+   * A manual item with two entries on DIFFERENT days.
    *
-   * Verschiedene Tage, weil idx_part_acq_tag_zustand (Migration 0008) je Konto,
-   * Position und Tag nur eine Erfassung erlaubt — mit demselben Datum braeche
-   * das zweite INSERT ab, und der Aufbau waere gar nicht erst herzustellen.
+   * Different days because idx_part_acq_tag_zustand (migration 0008) allows only one entry
+   * per account, item and day — with the same date the second INSERT would
+   * abort, and the setup could not even be created.
    */
   const setup = async () => {
     await db.run(`DELETE FROM part_acquisitions`);
@@ -102,7 +102,7 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
 
   await t.test('the second acquisition moves, the first stays', async () => {
     const erf = await setup();
-    const a = await move(erf[0].id, KIND); // die mit Menge 2
+    const a = await move(erf[0].id, KIND); // the one with quantity 2
     assert.equal(a.status, 200, JSON.stringify(a.body));
 
     const sender = await zaehle(MAIN);
@@ -126,9 +126,9 @@ test('moving one of two acquisitions leaves the rest with the sender', { concurr
   });
 
   await t.test('if the LAST acquisition moves, the row disappears after all', async () => {
-    // Die Gegenrichtung. Ohne sie waere der Fall darueber auch gruen, wenn
-    // nie geloescht wuerde — und eine manuelle Zeile ohne Erfassung ist
-    // Ballast, kein Bestand.
+    // The opposite direction. Without it the case above would also be green if
+    // nothing were ever deleted — and a manual row without an entry is
+    // ballast, not stock.
     const erf = await setup();
     assert.equal((await move(erf[0].id, KIND)).status, 200);
     const zweite = (await db.all(`SELECT id FROM part_acquisitions WHERE user_id=$1`, [MAIN])).map(r => r.id);

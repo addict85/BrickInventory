@@ -1,16 +1,16 @@
 /**
- * downloadFile (clients/rebrickable.ts) holt Anleitungen und Bilder auf die
- * Platte, von wo sie an alle Konten gehen. Nur über https, und eine Datei
- * über der Grenze wird im Strom abgebrochen und nicht abgelegt.
+ * downloadFile (clients/rebrickable.ts) fetches instructions and images onto the
+ * disk, from where they go to all accounts. Only over https, and a file
+ * over the limit is aborted in the stream and not stored.
  *
- * https.get wird abgefangen: Der Test sieht, was abgerufen würde, und
- * liefert selbst die Antwort.
+ * https.get is intercepted: the test sees what would be fetched and
+ * delivers the response itself.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  die Prüfung `url.startsWith('https://')` entfernt und wieder `http`
- *      für http-Adressen → rot: „eine http-Adresse wird abgerufen“
- *   B  den Abbruch im data-Handler entfernt → rot: „die zu grosse Datei
- *      liegt auf der Platte“
+ * Counter-checks (measured on 30.10.2026):
+ *   A  the check `url.startsWith('https://')` removed and again `http`
+ *      for http addresses → red: “an http address is fetched”
+ *   B  the abort in the data handler removed → red: “the too large file
+ *      lies on disk”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,7 +25,7 @@ const { EventEmitter } = require('node:events');
 const _req = require('./helpers/sources').buildAndRequire();
 const { downloadFile } = _req('clients/rebrickable.js');
 
-/** https.get und http.get abfangen; `antwort(url)` liefert { status, kopf, teile }. */
+/** Intercept https.get and http.get; `antwort(url)` returns { status, kopf, teile }. */
 function intercept(t, antwort) {
   const echt = { https: https.get, http: http.get };
   const abgerufen = [];

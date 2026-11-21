@@ -1,20 +1,20 @@
 /**
- * Das Menü oben rechts: jeder Eintrag mit seinem Sinnbild (gemeint sind dieselben wie auf
- * „Mehr“ in der App), keines doppelt.
+ * The menu at the top right: every entry with its icon (meant are the same ones as on
+ * „Mehr“ in the app), none twice.
  *
- * ── Gegenproben (durchgeführt, Ergebnisse abgeschrieben) ────────────────────
+ * ── Counter-checks (carried out, results copied) ────────────────────
  *
- *   A  „Daten" mit #i-lagerort statt #i-daten (die Lage, die Marco gemeldet
- *      hat, damals mit 📦) → ZWEI Fälle rot, und beide zu Recht:
- *        „jeder Eintrag trägt sein Sinnbild"
- *        „kein Sinnbild steht für zwei Dinge"
- *   C  einen Web-Eintrag ohne Zuordnung hinzugefügt
- *      → nur „jeder Menüeintrag ist zugeordnet" rot
+ *   A  „Daten" with #i-lagerort instead of #i-daten (the situation Marco reported,
+ *      back then with 📦) → TWO cases red, and both rightly so:
+ *        “every entry carries its icon”
+ *        “no icon stands for two things”
+ *   C  a web entry without an assignment added
+ *      → only “every menu entry is assigned” red
  *
- * Dass A zwei Fälle trifft, ist kein Mangel, sondern der Punkt: Das doppelte
- * 📦 war gleichzeitig eine Abweichung ZUR APP und eine Doppeldeutigkeit
- * INNERHALB der Webapp. Beides soll auffallen, und jeder Fall sagt etwas
- * anderes dazu.
+ * That A hits two cases is no flaw but the point: the duplicate
+ * 📦 was at the same time a deviation FROM THE APP and an ambiguity
+ * WITHIN the web app. Both should stand out, and each case says something
+ * different about it.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,7 +27,7 @@ const withoutHtmlComments = require('./helpers/sources').withoutHtmlComments;
 const lies = p => fs.readFileSync(p, 'utf8');
 
 /**
- * Die MAPPING — die einzige Stelle, an der sie steht.
+ * The MAPPING — the only place where it stands.
  */
 const MAPPING = [
   {
@@ -77,16 +77,16 @@ const MAPPING = [
   },
 ];
 
-/** Einträge, die es nur auf EINER Seite gibt — ausdrücklich, mit Grund. */
+/** Entries that exist only on ONE side — explicitly, with a reason. */
 const NUR_WEB = {
   'menu.app': 'Der Verweis auf die Android-App. In der App selbst wäre er sinnlos.',
 };
 
-/** Webapp: Schlüssel → Symbol-ID jedes Menüeintrags, aus dem Markup. */
+/** Web app: key → symbol ID of every menu entry, from the markup. */
 function webMenu() {
   const html = withoutHtmlComments(lies(path.join(ROOT, 'public', 'index.html')));
   const auf = html.indexOf('<div class="umenu-pop"');
-  // Bis hinter Abmelden: Die Klappe gliedert sich in Gruppen, ihr erstes </div> schliesst nur die erste.
+  // Up to behind logout: the drawer is divided into groups, its first </div> only closes the first one.
   const zu = html.indexOf('</button>', html.indexOf('id="btn-logout"', auf)) + '</button>'.length;
   assert.ok(auf > 0 && zu > auf, 'Die Menüklappe ist nicht mehr zu finden.');
   return [...html.slice(auf, zu).matchAll(/<button[^>]*>([\s\S]*?)<\/button>/g)].map(m => ({
@@ -97,7 +97,7 @@ function webMenu() {
 
 test('every menu entry is assigned', () => {
   const web = webMenu();
-  // Selbstbeweis: Findet die Ableitung nichts, wären die Schleifen still grün.
+  // Self-proof: if the derivation finds nothing, the loops would be silently green.
   assert.equal(web.length, 10, `${web.length} Web-Einträge abgeleitet statt zehn — greift die Ableitung noch?`);
 
   const webZu = new Set(MAPPING.map(z => z.web));
@@ -125,8 +125,8 @@ test('every entry carries its icon', () => {
 });
 
 test('no icon stands for two things', () => {
-  // Der gemessene Befund vom 17.10.: 📦 stand im Web für „Lagerorte" UND für
-  // „Daten exportieren". In der App waren es längst zwei Symbole.
+  // The measured finding of 17.10.: on the web 📦 stood for „Lagerorte" AND for
+  // „Daten exportieren". In the app there had long been two symbols.
   const doppelt = (eintraege, name) => {
     const gesehen = new Map();
     for (const [schluessel, zeichen] of eintraege) {

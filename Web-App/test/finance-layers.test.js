@@ -6,20 +6,20 @@ const path = require('node:path');
 const ORDNER = path.join(__dirname, '..', 'src/finances/calculation');
 
 /**
- * Die Finanzschicht steht aufeinander — und zwar in EINE Richtung.
+ * The finance layers stack on each other — in ONE direction.
  */
 
-/** Die Reihenfolge — wer weiter unten steht, darf nichts weiter oben holen. */
+/** The order — whoever stands further down may fetch nothing from further up. */
 const SCHICHTEN = ['condition', 'queries', 'prices', 'valuation', 'profitLoss'];
 
 function importsOf(name) {
   const s = fs.readFileSync(path.join(ORDNER, `${name}.ts`), 'utf8');
-  // Nur Geschwister in derselben Schicht-Familie: './x'
+  // Only siblings in the same layer family: './x'
   return [...s.matchAll(/(?:import|from)\s+['"]\.\/(\w+)['"]/g)].map(m => m[1]);
 }
 
 test('the layers are complete', () => {
-  // Selbstbeweis: Fehlt eine Datei, pruefte die Schleife unten Luft.
+  // Self-proof: if a file is missing, the loop below would check thin air.
   const da = fs
     .readdirSync(ORDNER)
     .filter(n => n.endsWith('.ts'))
@@ -40,15 +40,15 @@ test('no layer reaches upwards', () => {
   SCHICHTEN.forEach((name, hoehe) => {
     for (const ziel of importsOf(name)) {
       const targetHeight = SCHICHTEN.indexOf(ziel);
-      if (targetHeight < 0) continue; // kein Geschwister der Schicht
+      if (targetHeight < 0) continue; // not a sibling of the layer
       kanten++;
       if (targetHeight >= hoehe) {
         fehler.push(`${name}.ts holt ${ziel}.ts — das steht gleich hoch oder hoeher`);
       }
     }
   });
-  // Selbstbeweis: GEMESSEN gibt es mehrere Kanten. Faende die Suche keine,
-  // waere die Zusicherung darunter still gruen.
+  // Self-proof: MEASURED there are several edges. If the search found none,
+  // the assertion below would be silently green.
   assert.ok(kanten >= 4, `Nur ${kanten} Abhaengigkeiten zwischen den Schichten gefunden — greift die Suche noch?`);
   assert.deepEqual(
     fehler,
@@ -60,8 +60,8 @@ test('no layer reaches upwards', () => {
 });
 
 test('the facade only passes through', () => {
-  // src/finances/financeCalc.ts ist die Tuer fuer 16 Aufrufstellen. Steht dort wieder
-  // Logik, waechst sie zurueck auf 1529 Zeilen.
+  // src/finances/financeCalc.ts is the door for 16 call sites. If logic stands
+  // there again, it grows back to 1529 lines.
   const facade = fs.readFileSync(path.join(__dirname, '..', 'src/finances/financeCalc.ts'), 'utf8');
   const withoutComment = facade
     .replace(/\/\*[\s\S]*?\*\//g, '')
@@ -79,7 +79,7 @@ test('the facade only passes through', () => {
 });
 
 test('scope is explained in one place', () => {
-  // Ein Name, zwei Bedeutungen
+  // One name, two meanings
   const wurzel = path.join(__dirname, '..');
   const treffer = [];
   (function lauf(d) {

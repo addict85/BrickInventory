@@ -1,32 +1,32 @@
 /**
- * Die Datenbankverbindung steht an EINER Stelle (src/infra/config.ts). Der
- * CSV-Worker hatte eigene Standardwerte (brickinv statt brickinventory) und
- * verband sich ausserhalb von Docker mit einer anderen Datenbank.
+ * The database connection stands in ONE place (src/infra/config.ts). The
+ * CSV worker had its own defaults (brickinv instead of brickinventory) and
+ * connected outside Docker to a different database.
  *
- * Gegenproben (am 27.10. gemessen):
- *   A  in jobs/csvImportWorker.ts wieder `process.env.PGUSER || 'brickinv'`
- *      → rot: „niemand sonst liest die Verbindungsvariablen"
- *   B  in databaseConnection die Zeile für DATABASE_URL entfernt →
- *      rot: „DATABASE_URL geht vor"
- *   C  in standardPasswordInUse den Zweig für connectionString auf
- *      `return false` gesetzt → rot: „das Beispielpasswort wird erkannt"
+ * Counter-checks (measured on 27.10.):
+ *   A  in jobs/csvImportWorker.ts again `process.env.PGUSER || 'brickinv'`
+ *      → red: “nobody else reads the connection variables"
+ *   B  in databaseConnection the line for DATABASE_URL removed →
+ *      red: “DATABASE_URL takes precedence"
+ *   C  in standardPasswordInUse the branch for connectionString set to
+ *      `return false` → red: “the example password is recognized"
  *
- * Seit dem 30.10. liest NUR src/infra/config.ts die Umgebung; ein ungültiger Wert
- * beendet den Start mit einer Meldung je Variable. Gegenproben (D–F in einem
- * Lauf gemessen):
- *   D  in src/http/fileUpload.ts wieder `Number(process.env.UPLOAD_KONTINGENT_MB)`
- *      → rot: „niemand ausser der Konfiguration liest process.env“
- *   E  in ganzzahl() die Grenzprüfung `n < min || n > max` entfernt → rot:
- *      „ungültige Werte: alle auf einmal, mit Namen“ (PORT=0 ging durch)
- *   F  den Import von startup/checkConfig aus server.ts entfernt → rot:
- *      „der Server startet mit falschem Wert nicht“ (Stacktrace aus
- *      src/account/sessionDeadline statt der Meldung)
- *   G  (30.10.) in ladeKonfig `veraltet` immer leer → rot: „ungültige Werte:
- *      alle auf einmal, mit Namen“ (WEB_WORKERS wurde nicht mehr genannt)
- *   H  (11.11.2026) in attestationWurzeln() die Prüfung auf developmentEnvironment
- *      gestrichen → rot: „eigene Attestierungswurzeln nur in Entwicklung und Test“
- *   I  (15.11.2026) in legacyKeyUntil() den Vergleich mit dem Stichtag gestrichen
- *      (jedes gültige Datum gilt) → rot im selben Test (2099-12-31 ging durch)
+ * Since 30.10. ONLY src/infra/config.ts reads the environment; an invalid value
+ * ends the start with one message per variable. Counter-checks (D–F measured in one
+ * run):
+ *   D  in src/http/fileUpload.ts again `Number(process.env.UPLOAD_KONTINGENT_MB)`
+ *      → red: “nobody except the configuration reads process.env”
+ *   E  in ganzzahl() the bounds check `n < min || n > max` removed → red:
+ *      “invalid values: all at once, with names” (PORT=0 got through)
+ *   F  the import of startup/checkConfig removed from server.ts → red:
+ *      “the server does not start with a wrong value” (stack trace from
+ *      src/account/sessionDeadline instead of the message)
+ *   G  (30.10.) in ladeKonfig `veraltet` always empty → red: “invalid values:
+ *      all at once, with names” (WEB_WORKERS was no longer named)
+ *   H  (11.11.2026) in attestationWurzeln() the check for developmentEnvironment
+ *      deleted → red: “own attestation roots only in development and test”
+ *   I  (15.11.2026) in legacyKeyUntil() the comparison with the cutoff date deleted
+ *      (every valid date applies) → red in the same test (2099-12-31 got through)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,13 +1,13 @@
 /**
- * Eine Kachel, mehrere Besitzer — welchen Preis und welche G&V zeigt sie?
+ * One tile, several owners — which price and which P&L does it show?
  *
- * Gegenproben (am 29.10.2026 gemessen):
- *   A  in tileValues() bei mehreren Zeilen die letzte statt der gewichteten
- *      nehmen → rot: „nach Menge gewichtet“ (750 statt 142,9)
- *   B  bei einer Zeile pnl_pct vor baseline_pnl_pct → rot: „der Wert des
- *      Servers bleibt“ (1,1 statt 77,7)
- *   C  in sammlung.js wieder `price: s.current_price` → rot: „das Web
- *      übernimmt die Werte des Servers“
+ * Counter-checks (measured on 29.10.2026):
+ *   A  in tileValues() with several rows take the last instead of the weighted
+ *      one → red: “… weighted by quantity” (750 instead of 142.9)
+ *   B  with one row pnl_pct before baseline_pnl_pct → red: “the server
+ *      value stays” (1.1 instead of 77.7)
+ *   C  in sammlung.js again `price: s.current_price` → red: “the web
+ *      takes over the server values”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,7 +19,7 @@ const { tileValues } = _req('src/finances/setValue.js');
 const kachel = (zeilen, nr) => tileValues(zeilen.map(z => ({ purchase_price: null, pnl_pct: null, ...z }))).get(nr);
 
 test('several owners: the tile price is weighted by quantity', () => {
-  // Der gemessene Fall ohne Erfassungszeilen: zwei Konten, ein Set, 600 und 100.
+  // The measured case without acquisition rows: two accounts, one set, 600 and 100.
   const k = kachel(
     [
       { set_number: '75192-1', quantity: 1, baseline_price: 600, current_price: 850, baseline_pnl_pct: '41.7' },
@@ -43,7 +43,7 @@ test('several owners with entered purchase prices: unchanged', () => {
 });
 
 test('different quantities weigh differently', () => {
-  // Drei Exemplare zu 100, eines zu 500: (3·100 + 500)/4 = 200.
+  // Three copies at 100, one at 500: (3·100 + 500)/4 = 200.
   const k = kachel(
     [
       { set_number: '6346-1', quantity: 3, baseline_price: 100, current_price: 400, baseline_pnl_pct: '300.0' },
@@ -83,8 +83,8 @@ test('without purchase price and without market price there is no percentage and
 });
 
 test('the web takes over the server values', () => {
-  // enrichGalleryWithPrices() mit einer Antwort ausführen und nachsehen, was
-  // an der Kachel ankommt — ohne Browser, über die Modulfunktion selbst.
+  // Run enrichGalleryWithPrices() with a response and look at what
+  // arrives at the tile — without a browser, via the module function itself.
   const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'collection.js'), 'utf8');
   const von = src.indexOf('  setPnlBySet({});');
   const bis = src.indexOf('  // Inject price data into cached sets');

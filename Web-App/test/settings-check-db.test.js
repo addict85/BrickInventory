@@ -1,17 +1,17 @@
 /**
- * Einstellungen eines Kontos nehmen nur bekannte Werte an, und die
- * Konfigurations-Sicherung eines Nicht-Verwalters trägt keine Installation mit.
+ * Settings of an account only accept known values, and the
+ * configuration backup of a non-admin carries no installation along.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  NUTZER_REGELN.currency auf `() => true` → rot: „eine fremde Währung
- *      wird abgewiesen" (200 statt 400, "<img>" gespeichert)
- *   B  NUTZER_REGELN.language auf `() => true` → rot: „eine fremde Währung
- *      wird abgewiesen" (Sprache "xx") und „ein Objekt als Wert wird
- *      abgewiesen" ("[object Object]" gespeichert)
- *   C  `if (istVerwalter(req))` vor dem Export entfernt → rot: „ein
- *      Nicht-Verwalter exportiert keine SMTP-Daten"
+ * Counter-checks (measured on 28.10.2026):
+ *   A  NUTZER_REGELN.currency set to `() => true` → red: “a foreign currency
+ *      is rejected” (200 instead of 400, "<img>" stored)
+ *   B  NUTZER_REGELN.language set to `() => true` → red: “a foreign currency
+ *      is rejected” (language "xx") and “an object as value is
+ *      rejected” ("[object Object]" stored)
+ *   C  `if (istVerwalter(req))` removed before the export → red: “a
+ *      non-administrator does not export SMTP data”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,8 +30,8 @@ test('settings: validation of the values and export per role', { concurrency: 1 
   const NAME = `einst-pruef-${process.pid}`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
   const uid = (await db.get(`INSERT INTO users (username,password_hash) VALUES ($1,'x') RETURNING id`, [NAME])).id;
-  // Schon CHF, damit das Speichern keinen Preis-Job anstösst (sein Zeitgeber
-  // hielte den Testprozess offen).
+  // Already CHF so that saving triggers no price job (its timer
+  // would keep the test process open).
   await db.run(`INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')`, [uid]);
   const smtpBefore = (await db.get(`SELECT value FROM global_settings WHERE key='smtp_host'`))?.value ?? null;
   await db.run(`INSERT INTO global_settings (key,value) VALUES ('smtp_host','mail.intern.example')

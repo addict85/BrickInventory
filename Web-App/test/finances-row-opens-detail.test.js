@@ -1,12 +1,12 @@
 /**
- * Eine Teile- oder Figurenzeile der Finanzübersicht öffnet ihr Detail (#man-detail-modal), auch wenn in den
- * Reitern Teile und Minifiguren eine Suche steht: Die Finanztabelle zeigt den Bestand ohne diese Filter, das
- * Detail muss den Eintrag also auch ohne sie finden.
+ * A part or minifigure row of the finances overview opens its detail (#man-detail-modal), even if a search
+ * stands in the parts and minifigures tabs: the finances table shows the stock without these filters, so the
+ * detail must find the entry without them as well.
  *
- * Gegenprobe (am 07.11.2026 gemessen): openManDetail() in kauf-dialoge.js wieder wie vorher —
- * fehlt der Eintrag im Cache, loadManualParts()/loadManualFigsTable() nachladen (mit Suche des Reiters)
- * → rot: „mit Suche in den Reitern“, Titel { teil: null, figur: null } (der Dialog blieb zu, es kam nur
- * /v1/parts/manual?search=Plate bzw. /v1/minifigs/manual?search=Marty). „ohne Filter“ blieb grün.
+ * Counter-check (measured on 07.11.2026): openManDetail() in kauf-dialoge.js as before —
+ * if the entry is missing in the cache, reload loadManualParts()/loadManualFigsTable() (with the tab's search)
+ * → red: “with search in the tabs”, title { teil: null, figur: null } (the dialog stayed closed, only
+ * /v1/parts/manual?search=Plate or /v1/minifigs/manual?search=Marty came). “without filter” stayed green.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,7 +37,7 @@ const figur = {
   acquisitions: [],
 };
 
-// Wie der Server: Mit Suche (die nichts trifft) bleibt die Liste leer.
+// Like the server: with a search (that hits nothing) the list stays empty.
 const gefiltert = (schluessel, eintrag) => url => ({
   success: true,
   [schluessel]: /[?&]search=/.test(String(url)) ? [] : [eintrag],
@@ -57,7 +57,7 @@ async function oeffne() {
   return o;
 }
 
-/** Zeile anklicken (nicht den Zeilenknopf) und den Dialogtitel zurückgeben; danach wieder schliessen. */
+/** Click the row (not the row button) and return the dialog title; close it again afterwards. */
 async function klicke(o, art) {
   const zeile = o.d.querySelector(`#fin-tbl [data-fin-art="${art}"] tbody tr[data-click="openManDetail"]`);
   assert.ok(zeile, `keine ${art}-Zeile in der Finanztabelle`);

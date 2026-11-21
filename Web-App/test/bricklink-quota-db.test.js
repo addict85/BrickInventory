@@ -1,18 +1,18 @@
 /**
- * Jeder HTTP-Aufruf an BrickLink zählt im Tageskontingent — auch die
- * Rückfälle (sold → stock), die bisher kostenlos mitliefen.
+ * Every HTTP call to BrickLink counts in the daily quota — including the
+ * fallbacks (sold → stock) that used to run along for free.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  die Zählung in bricklinkRequest() entfernt → rot: beide Fälle
- *   B  in fetchPrice wieder kontingentPruefenUndZaehlen statt quotaFree
- *      → rot: beide Fälle (der Vorabcheck zählt mit)
- *   C  in bricklinkRequest den Abbruch bei erschöpftem Kontingent entfernt
- *      → rot: „ein erschöpftes Kontingent hält auch den Rückfall an“
+ * Counter-checks (measured on 28.10.2026):
+ *   A  the count removed in bricklinkRequest() → red: both cases
+ *   B  in fetchPrice back to kontingentPruefenUndZaehlen instead of quotaFree
+ *      → red: both cases (the pre-check counts too)
+ *   C  in bricklinkRequest the abort on an exhausted quota removed
+ *      → red: “an exhausted quota also stops the fallback”
  *
- * BrickLink selbst wird nicht gefragt: https.get ist durch eine Attrappe
- * ersetzt, die für „sold“ nichts und für „stock“ einen Preis liefert.
+ * BrickLink itself is not asked: https.get is replaced by a dummy
+ * that delivers nothing for “sold” and a price for “stock”.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -29,7 +29,7 @@ const db = testData();
 
 /** @type {string[]} */
 const aufrufe = [];
-// @ts-expect-error — Attrappe mit genau dem, was clients/bricklink.ts benutzt.
+// @ts-expect-error — dummy with exactly what clients/bricklink.ts uses.
 https.get = (url, _opts, cb) => {
   const u = new URL(url);
   aufrufe.push(u.pathname + u.search);

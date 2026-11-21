@@ -1,21 +1,21 @@
 /**
- * src/infra/fetch.ts gegen einen echten TLS-Server auf 127.0.0.1: Umleitungen
- * mit relativer, http- und fremder Adresse, Schleifen, zu grosse Körper und
- * Stille dürfen den Prozess nicht beenden; sie werden zu AbrufFehler.
- * setBildHerunterladen läuft über einen Agenten, der jeden Host auf den Testserver
- * lenkt — so sieht der Test den echten Aufrufer, nicht nur den Helfer.
+ * src/infra/fetch.ts against a real TLS server on 127.0.0.1: redirects
+ * with relative, http and foreign addresses, loops, too large bodies and
+ * silence must not end the process; they become AbrufFehler.
+ * setBildHerunterladen runs via an agent that directs every host to the test server
+ * — so the test sees the real caller, not only the helper.
  *
- * Gegenproben (am 01.11.2026 gemessen):
- *   A  in src/images/setImages.ts den alten Abruf (https.get mit
- *      tryGet(res.headers.location)) zurückgeholt → rot: „setBildHerunterladen
- *      übersteht jede Umleitung" (uncaughtException ERR_INVALID_URL)
- *   B  in abruf.ts die Hostliste nur noch für die Startadresse geprüft
- *      (nextRedirect ohne o.hosts, sprung() nur bei u === start) → rot:
- *      „fremder Host wird abgewiesen" und „setBildHerunterladen übersteht …"
- *   C  in abruf.ts die Zählung im data-Handler von holeHttps entfernt → rot:
- *      „Körper ohne Längenangabe über der Grenze"
- *   D  in fremdeAdressen.ts den Kopf-Filter bei Hostwechsel entfernt → rot:
- *      „Authorization bleibt beim Hostwechsel nicht stehen"
+ * Counter-checks (measured on 01.11.2026):
+ *   A  in src/images/setImages.ts the old fetch (https.get with
+ *      tryGet(res.headers.location)) brought back → red: “setBildHerunterladen
+ *      survives every redirect" (uncaughtException ERR_INVALID_URL)
+ *   B  in abruf.ts the host list only checked for the start address
+ *      (nextRedirect without o.hosts, sprung() only at u === start) → red:
+ *      “foreign host is rejected" and “setBildHerunterladen survives …"
+ *   C  in abruf.ts the count in the data handler of holeHttps removed → red:
+ *      “body without length over the limit"
+ *   D  in fremdeAdressen.ts the header filter on host change removed → red:
+ *      “Authorization does not stay on host change"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -80,7 +80,7 @@ const server = https.createServer({ key, cert }, (req, res) => {
   }
 });
 
-/** Jede Verbindung landet beim Testserver; SNI und Zertifikatsprüfung bleiben echt. */
+/** Every connection lands at the test server; SNI and certificate verification stay real. */
 class Umlenker extends https.Agent {
   createConnection(opt, cb) {
     return tls.connect({ ...opt, host: '127.0.0.1', port, ca: cert, servername: opt.servername || opt.host }, cb);
@@ -117,8 +117,8 @@ test('a relative redirect is resolved against the starting address', async () =>
   assert.equal(r.koerper.length, IMAGE.length);
 });
 
-// Gegenprobe (02.11.2026 gemessen): in abruf.ts die Bedingung „nur GET folgt“
-// entfernt → rot (der POST landet als GET auf /bild.jpg, Status 200).
+// Counter-check (measured 02.11.2026): in abruf.ts the condition “only GET follows”
+// removed → red (the POST lands as GET on /bild.jpg, status 200).
 test('a POST follows no redirect', async () => {
   const vorher = gesehen.length;
   const r = await holeHttps(`${basis()}/relativ`, opt({ methode: 'POST', rumpf: '{"a":1}' }));

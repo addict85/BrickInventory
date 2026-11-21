@@ -1,16 +1,16 @@
 /**
- * Der Bereich Sets bekommt Datenbank und Katalog übergeben (src/sets/area.ts):
- * Seine Dienste nehmen, was der Kontext ihnen gibt, nicht den Zugang des
- * Prozesses oder den Katalog einer anderen Verdrahtung.
+ * The sets area gets database and catalog passed in (src/sets/area.ts):
+ * its services take what the context gives them, not the access of the
+ * process or the catalog of another wiring.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln):
- *   A  in src/sets/repository/setDetail.ts setStamm() über `standardDb().get`
- *      statt über den übergebenen Zugang → rot: „Lesen geht über den
- *      übergebenen Zugang“ (keine Abfrage auf rb_sets gezählt)
- *   B  in partListWithRework() wieder `nacharbeit().setTeileAnreichern(sn)` →
- *      rot: „die Anreicherung kommt aus dem Kontext“ (Prozess-Nacharbeit gerufen)
- *   C  (15.11.2026) dort `sn => sk.katalog.enrichSetPartsAn(sn)` durch `async () => {}`
- *      ersetzt → rot: „die Anreicherung kommt aus dem Kontext“ (nichts angestossen)
+ * Counter-checks (measured 10.11.2026, each on its own):
+ *   A  in src/sets/repository/setDetail.ts setStamm() via `standardDb().get`
+ *      instead of via the passed access → red: “reading goes through the
+ *      passed access” (no query on rb_sets counted)
+ *   B  in partListWithRework() again `nacharbeit().setTeileAnreichern(sn)` →
+ *      red: “the enrichment comes from the context” (process follow-up called)
+ *   C  (15.11.2026) there `sn => sk.katalog.enrichSetPartsAn(sn)` replaced by `async () => {}`
+ *      → red: “the enrichment comes from the context” (nothing triggered)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -24,7 +24,7 @@ const { dataOrSkip } = require('./helpers/db');
 const SN = '99871-1';
 const INVENTORY = 987654;
 
-/** Ein Zugang, der jede Abfrage mitschreibt und an den echten weitergibt. */
+/** An access that records every query and passes it on to the real one. */
 function countingAccess(echt, sql) {
   const remember = f => (text, p) => {
     sql.push(text);
@@ -40,7 +40,7 @@ function countingAccess(echt, sql) {
   });
 }
 
-/** Ein Katalog, der mitschreibt, welche Anreicherung angestossen wurde. */
+/** A catalog that records which enrichment was triggered. */
 const recording = notiz => ({
   enrichSetPartsAn: async sn => {
     notiz.push(['enrichSetPartsAn', sn]);

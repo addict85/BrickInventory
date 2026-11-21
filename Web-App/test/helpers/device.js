@@ -1,8 +1,8 @@
 /**
- * Der Schrittschutz der App von der Testseite: ein EC-P-256-Schlüssel wie der
- * des Keystores, mit Attestierungskette hinterlegt für einen App-Token (der
- * Server braucht dafür attestation.UMGEBUNG), und die Freigabe einer Aktion
- * auf dem echten Weg (Challenge holen, signieren, einlösen).
+ * The app's step-up protection from the test side: an EC P-256 key like the
+ * keystore's, stored with an attestation chain for an app token (the
+ * server needs attestation.UMGEBUNG for that), and the approval of an action
+ * the real way (fetch challenge, sign, redeem).
  */
 const { generateKeyPairSync, sign } = require('node:crypto');
 const attestation = require('./attestation');
@@ -12,13 +12,13 @@ function geraeteSchluessel() {
   return { privateKey, oeffentlich: publicKey.export({ format: 'der', type: 'spki' }).toString('base64') };
 }
 
-/** So signiert die App: SHA256withECDSA, DER, Base64. */
+/** This is how the app signs: SHA256withECDSA, DER, Base64. */
 const signiere = (privateKey, text) =>
   sign('sha256', Buffer.from(text, 'utf8'), { key: privateKey, dsaEncoding: 'der' }).toString('base64');
 
 /**
- * Nonce holen, Kette mit ihr als Challenge bauen, hinterlegen. [o] geht an attestation.kette().
- * @param {(weg: string, opt: object) => Promise<{status: number, body: any}>} ruf  ruft /api/v1 + weg
+ * Fetch nonce, build a chain with it as challenge, store it. [o] goes to attestation.kette().
+ * @param {(weg: string, opt: object) => Promise<{status: number, body: any}>} ruf  calls /api/v1 + weg
  * @param {string} token
  */
 async function deposit(ruf, token, o = {}) {
@@ -30,10 +30,10 @@ async function deposit(ruf, token, o = {}) {
 }
 
 /**
- * @param {(weg: string, opt: object) => Promise<{status: number, body: any}>} ruf  ruft /api/v1 + weg
+ * @param {(weg: string, opt: object) => Promise<{status: number, body: any}>} ruf  calls /api/v1 + weg
  * @param {string} token
  * @param {string} aktion
- * @param {{ privateKey: import('node:crypto').KeyObject }} [schluessel]  fehlt er, wird einer erzeugt und hinterlegt
+ * @param {{ privateKey: import('node:crypto').KeyObject }} [schluessel]  if missing, one is created and stored
  */
 async function releaseDevice(ruf, token, aktion, schluessel) {
   let s = schluessel;

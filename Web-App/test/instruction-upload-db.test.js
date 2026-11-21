@@ -1,26 +1,26 @@
 /**
- * Eigene Anleitungen: Der Inhalt muss zum Typ passen, und je Konto ist der
- * Platz begrenzt.
+ * Own instructions: the content must match the type, and space per account
+ * is limited.
  *
- * Gegenproben (am 27.10. gemessen):
- *   A  die Prüfung contentFitsToType() im Upload entfernt → rot: „ein Text als
- *      PDF" (200, die Datei lag im Ordner)
- *   B  die Kontingentprüfung entfernt → rot: „über dem Kontingent"
- *   C  die Besitzprüfung entfernt → rot: „für ein Set, das das Konto nicht
- *      hat" (500 aus dem Fremdschlüssel, die Datei lag im Ordner; 28.10.2026)
- *   D  beforeTheUpload aus der Route entfernt → rot: „abgewiesen, bevor der
- *      Inhalt ankommt“ (keine Antwort, solange der Inhalt fehlt) und „für ein
- *      Set, das das Konto nicht hat“ — die Besitzprüfung steht jetzt dort (28.10.2026)
- *   E  (04.11.2026) chmod der Datei im Upload entfernt → rot: „nur für den Dienst
- *      lesbar“ (0644); privaterFolder() ohne chmod → rot: dieselbe Prüfung
- *      (der schon bestehende Ordner blieb 0755)
- *   F  (14.11.2026) in beforeTheUpload die Gesamtgrenze gestrichen → rot: „über der Grenze
- *      aller Konten …“ (keine Antwort, solange der Inhalt fehlt); zusätzlich die Prüfung
- *      nach dem Schreiben gestrichen → rot: dieselbe (200, die Datei lag im Ordner)
- *   G  (14.11.2026) in POST /vouchers/pdf die Gesamtgrenze gestrichen → rot: dieselbe
- *      Prüfung („Gutschein-PDF“: 422 statt 507)
+ * Counter-checks (measured on 27.10.):
+ *   A  the check contentFitsToType() removed in the upload → red: “a text as
+ *      PDF" (200, the file lay in the folder)
+ *   B  the quota check removed → red: “above the quota"
+ *   C  the ownership check removed → red: “for a set the account does not
+ *      have" (500 from the foreign key, the file lay in the folder; 28.10.2026)
+ *   D  beforeTheUpload removed from the route → red: “rejected before the
+ *      content arrives” (no response as long as the content is missing) and “for a
+ *      set the account does not have” — the ownership check stands there now (28.10.2026)
+ *   E  (04.11.2026) chmod of the file removed in the upload → red: “only readable for the
+ *      service” (0644); privaterFolder() without chmod → red: the same check
+ *      (the already existing folder stayed 0755)
+ *   F  (14.11.2026) in beforeTheUpload the total limit deleted → red: “above the limit
+ *      of all accounts …” (no response as long as the content is missing); additionally the check
+ *      after writing deleted → red: the same (200, the file lay in the folder)
+ *   G  (14.11.2026) in POST /vouchers/pdf the total limit deleted → red: the same
+ *      check (“voucher PDF”: 422 instead of 507)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const { environment, testData } = require('./helpers/sources');
@@ -55,7 +55,7 @@ test('upload an instruction', { concurrency: 1 }, async t => {
   await catalogSet(db, SET, { name: 'Hochladeprobe', year: 2024, theme: 'Test', pieces: 10, minifigs: 0 });
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1, $2)', [uid, SET]);
   const ordner = path.join(DATA_DIR, 'uploads', String(uid));
-  // Leer beginnen: Dieselbe Kontonummer gibt es in den Kopien der anderen Testdateien auch.
+  // Start empty: the same account number also exists in the copies of the other test files.
   fs.rmSync(ordner, { recursive: true, force: true });
   const altQuota = process.env.UPLOAD_KONTINGENT_MB;
   t.after(async () => {
@@ -116,7 +116,7 @@ test('upload an instruction', { concurrency: 1 }, async t => {
   });
 
   await t.test('above the limit of all accounts together: 507, nothing stored', async st => {
-    environment({ UPLOAD_KONTINGENT_MB: '1000', UPLOAD_GESAMT_MB: String(1 / 1024) }); // zusammen 1 KB
+    environment({ UPLOAD_KONTINGENT_MB: '1000', UPLOAD_GESAMT_MB: String(1 / 1024) }); // together 1 KB
     st.after(() => environment({ UPLOAD_GESAMT_MB: undefined }));
     const vorher = dateien().length;
     const r = await hochladen(Buffer.concat([PDF, Buffer.alloc(2048, 0x20)]), 'application/pdf', 'gesamt.pdf');
@@ -127,7 +127,7 @@ test('upload an instruction', { concurrency: 1 }, async t => {
     form.append('file', new Blob([PDF, Buffer.alloc(2048, 0x20)], { type: 'application/pdf' }), 'gutschein.pdf');
     const g = await fetch(`${base}/api/v1/vouchers/pdf`, { method: 'POST', body: form });
     assert.deepEqual([g.status, (await g.json()).code], [507, 'upload_gesamt_voll'], 'Gutschein-PDF');
-    // Schon am Kopf: Antwort, obwohl der Inhalt nie kommt.
+    // Already at the header: a response although the content never comes.
     const upfront = await new Promise((fertig, fehl) => {
       const a = require('node:http').request(
         `${base}/api/v1/sets/${SET}/instructions/upload`,
@@ -146,14 +146,14 @@ test('upload an instruction', { concurrency: 1 }, async t => {
       }, 3000);
     });
     assert.equal(upfront, 507);
-    // Ohne Grenze (Vorgabe 20 GB) geht dasselbe durch.
+    // Without a limit (default 20 GB) the same passes.
     environment({ UPLOAD_GESAMT_MB: undefined });
     assert.equal((await hochladen(PDF, 'application/pdf', 'gesamt.pdf')).status, 200);
   });
 
   await t.test('rejected before the content arrives', async () => {
-    // Nur der Kopf mit 10 MB Content-Length, der Inhalt bleibt aus: Antwortet
-    // der Server trotzdem, hat er vor dem Lesen entschieden.
+    // Only the header with 10 MB Content-Length, the content stays away: if the
+    // server answers anyway, it decided before reading.
     environment({ UPLOAD_KONTINGENT_MB: '1' });
     const http = require('node:http');
     const status = await new Promise((fertig, fehl) => {

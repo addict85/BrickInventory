@@ -1,26 +1,26 @@
 /**
- * Eine Passwortregel für jeden Weg, der ein Passwort setzt: Registrierung,
- * Ändern, Zurücksetzen, Konto anlegen und Passwort setzen durch den
- * Verwalter, das Startpasswort aus ADMIN_PASSWORD. Abgewiesen werden zu kurze,
- * übergrosse (mehr als 1024 Zeichen) und häufige oder aus
- * Datenlecks bekannte Passwörter (mitgelieferte Liste, keine Netzabfrage).
+ * One password rule for every path that sets a password: registration,
+ * changing, resetting, creating an account and setting a password by the
+ * admin, the start password from ADMIN_PASSWORD. Rejected are passwords that are too short,
+ * oversized (more than 1024 characters) and common or known from
+ * data leaks (shipped list, no network query).
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  Listenprüfung in passwordLack() gestrichen → rot: alle Fälle,
- *      zuerst „häufige Passwörter …" (alle fünf Routen nehmen das häufige an)
- *   B  Byte-Grenze gestrichen → rot: „die Regel selbst" und „mehr als 72
- *      Byte …" (danach „ein gutes Passwort …": das Konto gibt es schon)
- *      (14.11.2026, argon2id: Grenze 1024 Zeichen; Längenprüfung gestrichen → rot:
- *      „die Regel selbst“ und „übergrosse Passwörter …“)
- *   E  (14.11.2026) hashe() in src/account/accounts.ts wieder bcrypt mit 12 Runden → rot:
- *      „jeder Weg hasht mit denselben Kosten“ (vier Wege „anders“ statt argon2id)
- *   C  /reset-password prüft wieder nur die Länge → rot: „häufige
- *      Passwörter …" und „mehr als 72 Byte …" (nur diese Route nimmt es an)
- *   D  src/account/startAdmin.ts nimmt ADMIN_PASSWORD ungeprüft → rot: „ein schwaches
- *      ADMIN_PASSWORD …"
+ * Counter-checks (measured 01.11.2026):
+ *   A  list check deleted in passwordLack() → red: all cases,
+ *      first “common passwords …” (all five routes accept the common one)
+ *   B  byte limit deleted → red: “the rule itself” and “more than 72
+ *      bytes …” (afterwards “a good password …”: the account already exists)
+ *      (14.11.2026, argon2id: limit 1024 characters; length check deleted → red:
+ *      “the rule itself” and “oversized passwords …”)
+ *   E  (14.11.2026) hashe() in src/account/accounts.ts again bcrypt with 12 rounds → red:
+ *      “every path hashes with the same costs” (four paths „anders“ instead of argon2id)
+ *   C  /reset-password again only checks the length → red: “common
+ *      passwords …” and “more than 72 bytes …” (only this route accepts it)
+ *   D  src/account/startAdmin.ts takes ADMIN_PASSWORD unchecked → red: “a weak
+ *      ADMIN_PASSWORD …”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL (der letzte Fall legt das
- * Schema neu an).
+ * Prerequisite: test DB via TEST_DATABASE_URL (the last case recreates the
+ * schema).
  */
 const test = require('node:test');
 const { environment, testData } = require('./helpers/sources');
@@ -43,7 +43,7 @@ const { passwordFits, ARGON2_PREFIX } = _req('src/account/passwordHash.js');
 test('the rule itself', () => {
   assert.equal(passwordLack('Brick-Sammlung-2026'), null);
   assert.equal(passwordLack('1234567'), 'passwort_zu_kurz');
-  // Seit dem 04.11.2026 mindestens 12 Zeichen: Die häufigen darunter fallen schon an der Länge.
+  // Since 04.11.2026 at least 12 characters: the common ones below already fail on the length.
   assert.equal(passwordLack('password1'), 'passwort_zu_kurz');
   for (const p of ['ichliebedich', 'Sonnenschein', 'SONNENSCHEIN'])
     assert.equal(passwordLack(p), 'passwort_zu_haeufig', p);
@@ -52,7 +52,7 @@ test('the rule itself', () => {
     'passwort_zu_haeufig',
     'der Benutzername als Passwort',
   );
-  // argon2id liest das ganze Passwort: lange Sätze und Umlaute gehen, nur Übergrösse nicht.
+  // argon2id reads the whole password: long sentences and umlauts work, only oversize does not.
   assert.equal(passwordLack('ä'.repeat(1024)), null, '1024 Zeichen gehen noch');
   assert.equal(passwordLack('a'.repeat(1025)), 'passwort_zu_lang');
 });
@@ -137,7 +137,7 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     assert.match(text, /zu häufig oder aus Datenlecks bekannt/);
   });
 
-  // Über 1024 Zeichen weist schon der Vertrag ab (eingabe_ungueltig), sonst die Regel.
+  // Above 1024 characters the contract already rejects (eingabe_ungueltig), otherwise the rule.
   await t.test('oversized passwords are rejected', async () => {
     const ist = [];
     for (const w of wege('Ä'.repeat(1025))) ist.push((await ruf(w)).replace(/ \S*$/, ''));
@@ -152,8 +152,8 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     await db.run('DELETE FROM users WHERE username = $1', [`regel_vw_${process.pid}`]);
   });
 
-  // Die Anmeldung sucht in Name UND Adresse: Eine fremde Adresse als Name zöge deren Anmeldung an sich.
-  // Gegenprobe (11.11.2026 gemessen): /register lässt neben USERNAME_RE auch eine Adresse zu → rot.
+  // The login searches in name AND address: a foreign address as a name would pull its login to itself.
+  // Counter-check (measured 11.11.2026): /register also allows an address next to USERNAME_RE → red.
   await t.test('registration takes no address as username', async () => {
     assert.equal(
       await ruf([
@@ -169,9 +169,9 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     );
   });
 
-  // Gegenproben (02.11.2026 gemessen): in /change-password wieder
-  // req.session?.username → rot (200 für den eigenen Namen); in
-  // /users/:id/password wieder ohne Namen → rot (200 für den Namen des Ziels).
+  // Counter-checks (measured 02.11.2026): in /change-password again
+  // req.session?.username → red (200 for the own name); in
+  // /users/:id/password again without names → red (200 for the name of the target).
   await t.test('the username is no password, even without a name in the session', async () => {
     const app = routerServer(_req, {
       sitzung: { userId: chef, isAdmin: true },
@@ -197,8 +197,8 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     );
   });
 
-  // Gegenprobe (05.11.2026 gemessen): in /reset-password die zweite Prüfung
-  // mit user.username gestrichen → rot (200, das Passwort ist der Name).
+  // Counter-check (measured 05.11.2026): in /reset-password the second check
+  // with user.username deleted → red (200, the password is the name).
   await t.test('reset: the username is no password', async () => {
     const roh = 'b'.repeat(64);
     await db.run(`UPDATE users SET reset_token = $2, reset_token_expires = NOW() + interval '1 hour' WHERE id = $1`, [
@@ -230,8 +230,8 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     );
   });
 
-  // Gegenprobe (11.11.2026 gemessen): eigenesPasswortAendern() (src/account/loginFlow.ts)
-  // lässt passwort_zu_kurz durch → rot (/change-password 200 statt 400).
+  // Counter-check (measured 11.11.2026): eigenesPasswortAendern() (src/account/loginFlow.ts)
+  // lets passwort_zu_kurz through → red (/change-password 200 instead of 400).
   await t.test('passwords that are too short are rejected on all five paths', async () => {
     const ist = [];
     for (const w of wege('Kurz-12345')) ist.push(await ruf(w));
@@ -241,8 +241,8 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
     );
   });
 
-  // Gegenprobe (11.11.2026 gemessen, damals bcrypt): in setForeignPassword (src/account/accounts.ts)
-  // mit 4 statt BCRYPT_ROUNDS gehasht → rot (PUT /users/:id/password: 4); seit argon2id siehe E im Kopf.
+  // Counter-check (measured 11.11.2026, bcrypt back then): in setForeignPassword (src/account/accounts.ts)
+  // hashed with 4 instead of BCRYPT_ROUNDS → red (PUT /users/:id/password: 4); since argon2id see E in the header.
   await t.test('every path hashes with the same costs', async () => {
     const NEU = `regel_neu_${process.pid}`,
       VW = `regel_vw_${process.pid}`;
@@ -258,9 +258,9 @@ test('password rule on all paths', { concurrency: 1, timeout: 120_000 }, async t
       )
         ? 'argon2id'
         : 'anders';
-    // Über 72 Byte: bcrypt hätte den Rest abgeschnitten, die alte Regel wies es ab.
+    // Above 72 bytes: bcrypt would have cut off the rest, the old rule rejected it.
     const gut = `Brick-Sammlung-2026-${'ä'.repeat(40)}`;
-    // Das eigene Passwort zuletzt: Die Wege davor bestätigen mit PASS.
+    // The own password last: the paths before it confirm with PASS.
     /** @type {[string, string, object, string][]} */
     const schritte = [
       ['POST', '/register', { username: NEU, email: `regel_${process.pid}@example.org`, password: gut }, NEU],

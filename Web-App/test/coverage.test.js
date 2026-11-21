@@ -1,12 +1,12 @@
 /**
- * scripts/coverage.js: aus echten V8-Dateien entsteht ein lcov-Bericht mit
- * Bereichen, und die Schranken machen einen Rückgang rot.
+ * scripts/coverage.js: from real V8 files an lcov report with
+ * scopes is created, and the thresholds turn a decline red.
  *
- * Gegenproben (05.11.2026, je einzeln):
- *   A  Filter in bericht() lässt dist/ nicht mehr durch → „ein Lauf über
- *      dist/ …“ rot (server 0 %)
- *   B  in pruefen() `ist[k] < s - 100` statt `!(ist[k] >= s)` → „unter der Schranke
- *      ist rot …“ rot
+ * Counter-checks (05.11.2026, each alone):
+ *   A  filter in bericht() no longer lets dist/ through → “a run over
+ *      dist/ …” red (server 0 %)
+ *   B  in pruefen() `ist[k] < s - 100` instead of `!(ist[k] >= s)` → “below the threshold
+ *      is red …” red
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -24,7 +24,7 @@ test('a run over dist/ yields lcov and areas', async () => {
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'abdeckung-'));
   try {
     const v8 = path.join(ordner, 'v8');
-    // Ein kleiner echter Lauf: ein Modul aus dist/ laden und eine Funktion aufrufen.
+    // A small real run: load a module from dist/ and call a function.
     const r = spawnSync(
       process.execPath,
       ['-e', "const f = require('./dist/src/infra/errorTexts.js'); console.log(typeof f)"],

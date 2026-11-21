@@ -1,10 +1,10 @@
 /**
- * Eine CSV-Kopfzeile darf die Prototypenkette nicht treffen — geprüft am Einleser des Imports
- * (csvReadIn in src/infra/csvExport.ts), nicht an einer Kopie seiner Einstellungen.
+ * A CSV header must not hit the prototype chain — checked on the import's reader
+ * (csvReadIn in src/infra/csvExport.ts), not on a copy of its settings.
  *
- * Gegenproben (09.11.2026):
- *   A  in csvReadIn() wieder `columns: true` → rot: „eine Spalte __proto__ …“ und „auch constructor …“
- *   B  der Filter verwirft jede Spalte → rot, alle drei; „gewoehnliche Spalten bleiben unberuehrt“ nennt den Grund
+ * Counter-checks (09.11.2026):
+ *   A  in csvReadIn() back to `columns: true` → red: “a column __proto__ …” and “constructor too …”
+ *   B  the filter discards every column → red, all three; “ordinary columns stay untouched” names the reason
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,7 +34,7 @@ test('constructor and prototype are discarded too', () => {
 });
 
 test('ordinary columns stay untouched', () => {
-  // Ein Filter, der ALLES verwirft, bestünde die beiden Regeln oben ebenfalls.
+  // A filter that discards EVERYTHING would also pass the two rules above.
   const r = einlesen('set_number,quantity,note\n10497-1,2,Geschenk\n');
   assert.deepEqual(
     r.map(z => ({ ...z })),

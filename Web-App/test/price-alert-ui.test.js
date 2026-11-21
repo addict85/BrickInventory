@@ -1,23 +1,23 @@
 /**
- * Preisalarm in der Webapp. Sie läuft im echten Bündel (jsdom), mit derselben
- * Ruhezeit wie die App (800 ms). Ob die Meldung zum
- * richtigen Zeitpunkt kommt und je Konto getrennt ist, prüft
- * price-alert-db.test.js gegen echte Daten.
+ * Price alert in the web app. It runs in the real bundle (jsdom), with the same
+ * idle time as the app (800 ms). Whether the message comes at the
+ * right time and is separated per account is checked by
+ * price-alert-db.test.js against real data.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel neu gebaut), in
+ * Counter-checks (measured 10.11.2026, each on its own, bundle rebuilt), in
  * public/js/detail-fields.js:
- *   A  ALARM_REST 800 → 300 → rot: „Webapp: beim Tippen …“ (PUT vor der Ruhezeit)
- *   B  in alarmGetippt die Ruhezeit nicht zurückgesetzt (kein clearTimeout) →
- *      rot: ebenda (drei PUT statt einem)
- *   C  in sendAlarm `const loeschen = zahl == null` → `false` → rot: „Webapp:
- *      ein leeres Feld …“
- *   D  wechsleAlarmZustand ruft speichereAlarm → rot: ebenda (Zustandswechsel schreibt)
- *   E  in showOpenAlerts `if (!marke) return;` entfernt → rot: „Webapp: offene
- *      Alarme …“ (Meldung beim ersten Besuch)
- *   F  dort die Marke aus Date.now() statt d.now → rot: ebenda
- *   I  (12.11.2026) dort die Beträge wieder mit toFixed(2) und dem Code davor →
- *      rot: ebenda („CHF 199.50“ statt „199,50 CHF“)
- *   G  in showAlarmMarker alert_fired/alert_armed vertauscht → rot: „Webapp: beim Tippen …“
+ *   A  ALARM_REST 800 → 300 → red: “web app: saved while typing …” (PUT before the idle time)
+ *   B  in alarmGetippt the idle time not reset (no clearTimeout) →
+ *      red: same place (three PUTs instead of one)
+ *   C  in sendAlarm `const loeschen = zahl == null` → `false` → red: “web app:
+ *      an empty field …”
+ *   D  wechsleAlarmZustand calls speichereAlarm → red: same place (condition change writes)
+ *   E  `if (!marke) return;` removed in showOpenAlerts → red: “web app: open
+ *      alerts …” (message on the first visit)
+ *   F  there the marker from Date.now() instead of d.now → red: same place
+ *   I  (12.11.2026) there the amounts again with toFixed(2) and the code in front →
+ *      red: same place („CHF 199.50“ instead of „199,50 CHF“)
+ *   G  in showAlarmMarker alert_fired/alert_armed swapped → red: “web app: saved while typing …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -26,10 +26,10 @@ const Q = require('./helpers/sources');
 
 const SN = '10305-1';
 const de = Q.loadTranslations().de;
-// Dieselbe Ruhezeit wie in der App (Alarmeingabe.RUHE_MS): Beide speichern beim Tippen.
+// The same idle time as in the app (Alarmeingabe.RUHE_MS): both save while typing.
 const REST = 800;
 
-/** Set-Detail öffnen, wie ein Klick auf die Kachel. */
+/** Open the set detail, like a click on the tile. */
 async function detail(antworten = {}) {
   const o = await openUi({
     [`/v1/sets/${SN}`]: {
@@ -168,8 +168,8 @@ test('web app: open alerts — the first visit only remembers, afterwards the no
     await dann.ruhig();
     assert.ok(dann.aufrufe.some(a => a.url.includes('/v1/alerts/pending?since=2026-11-09T08%3A00%3A00Z')));
     assert.ok(await warte(() => meldungen(dann).some(m => m.includes(SN))), 'keine Meldung');
-    // Währung des Alarms, zwei Stellen, Betrag als Währungsbetrag der Sprache („199,50 CHF“),
-    // wie Alarmabholung.text() der App.
+    // Currency of the alert, two decimals, amount as a currency amount of the language („199,50 CHF“),
+    // like Alarmabholung.text() of the app.
     const geld = v => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'CHF' }).format(v);
     assert.ok(
       meldungen(dann).includes(`${SN}: ${geld(199.5)} (${de['detail.alert_below']} ${geld(200)})`),

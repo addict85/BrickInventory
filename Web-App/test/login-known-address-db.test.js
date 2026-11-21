@@ -1,16 +1,16 @@
 /**
- * Die 30 Tage gemerkte „bekannte Anmeldung“ legt keine Klartext-Adresse in
- * rate_limit_attempts ab, und der Vorrang bekannter Anmeldungen wirkt weiter.
+ * The „known login“ remembered for 30 days stores no plaintext address in
+ * rate_limit_attempts, and the precedence of known logins still works.
  *
- * Gegenproben (am 08.11.2026 gemessen):
- *   A  _knownKey und _successKey nehmen wieder drosselAdresse(ip) statt des
- *      Abdrucks → rot: „keine Klartext-Adresse“
- *   B  adressDigest liefert je Aufruf einen anderen Wert → rot: „bekannt
- *      bleibt bekannt“
- *   C  adressDigest liefert für jede Adresse denselben Wert → rot: „andere
- *      Adresse ist unbekannt“
+ * Counter-checks (measured on 08.11.2026):
+ *   A  _knownKey and _successKey again take drosselAdresse(ip) instead of the
+ *      fingerprint → red: “no plaintext address”
+ *   B  adressDigest delivers a different value per call → red: “known
+ *      stays known”
+ *   C  adressDigest delivers the same value for every address → red: “a different
+ *      address is unknown”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -59,7 +59,7 @@ test('known login: address only stored as a fingerprint', { concurrency: 1 }, as
   await t.test('known stays known', async () => {
     assert.equal(await limiter.knownLogin(IP, name), true);
     assert.equal(await limiter.knownLogin(IP6, name), true);
-    // Dasselbe /64 zählt als dieselbe Adresse.
+    // The same /64 counts as the same address.
     assert.equal(await limiter.knownLogin('2001:db8:1:2:ffff::1', name), true);
   });
 

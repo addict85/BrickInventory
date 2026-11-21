@@ -1,10 +1,10 @@
 /**
- * Eine Regel für den Zustand (src/infra/validate.ts:zustand): 'U' in jeder
- * Schreibung ist gebraucht, 'N' neu, alles andere die Vorgabe.
+ * One rule for the condition (src/infra/validate.ts:zustand): 'U' in any
+ * spelling is used, 'N' new, everything else the default.
  *
- * Gegenproben (am 11.11.2026 gemessen):
- *   A  in zustand() das toUpperCase() entfernt → rot: „klein geschrieben zählt wie gross“
- *   B  die Vorgabe ignoriert (immer 'N') → rot: „Unbekanntes wird zur Vorgabe“
+ * Counter-checks (measured on 11.11.2026):
+ *   A  the toUpperCase() removed in zustand() → red: “lower case counts like upper case”
+ *   B  the default ignored (always 'N') → red: “unknown values become the default”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

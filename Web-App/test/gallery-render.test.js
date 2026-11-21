@@ -1,15 +1,15 @@
 /**
- * Kein Flackern der Kachelwand: geladene Bilder sind sofort sichtbar, und
- * Preise werden in die bestehenden Kacheln nachgetragen statt die Wand neu zu
- * bauen. In jsdom, mit Bildern, die als geladen gelten.
+ * No flickering of the tile wall: loaded images are visible immediately, and
+ * prices are filled into the existing tiles instead of rebuilding the wall.
+ * In jsdom, with images that count as loaded.
  *
- * Gegenproben (05.11.2026, je einzeln, Bündel neu gebaut):
- *   A  die Prüfung `complete` in observeLazyImages UND im MutationObserver von
- *      aktionen.js entfernt → „geladene Bilder …“ rot. Je eine allein bleibt
- *      grün: Beide Wege markieren vor dem nächsten Bild, einer genügt.
- *   B  enrichGalleryWithPrices ruft renderGallery() statt updateGalleryPrices()
- *      → „Preise kommen in die bestehende Kachel …“ rot (neues <img>)
- *   C  Preis-Container ohne `hidden` gerendert → ebenda rot
+ * Counter-checks (05.11.2026, each alone, bundle rebuilt):
+ *   A  the check `complete` removed in observeLazyImages AND in the MutationObserver of
+ *      aktionen.js → “loaded images …” red. Each one alone stays
+ *      green: both paths mark before the next image, one suffices.
+ *   B  enrichGalleryWithPrices calls renderGallery() instead of updateGalleryPrices()
+ *      → “prices come into the existing tile …” red (new <img>)
+ *   C  price container rendered without `hidden` → same place red
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,7 +38,7 @@ const SETS = {
   total: 2,
 };
 
-/** Bilder gelten als fertig geladen, wie aus dem Cache des Browsers. */
+/** Images count as fully loaded, as from the browser's cache. */
 function loadedImages(w) {
   Object.defineProperty(w.HTMLImageElement.prototype, 'complete', { get: () => true });
   Object.defineProperty(w.HTMLImageElement.prototype, 'naturalWidth', { get: () => 120 });

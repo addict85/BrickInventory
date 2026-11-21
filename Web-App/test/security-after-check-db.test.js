@@ -1,19 +1,19 @@
 /**
- * Befunde der zweiten Sicherheitsprüfung am echten Server (dist/server.js).
+ * Findings of the second security review on the real server (dist/server.js).
  *
- * Gegenproben (01.11.2026 gemessen):
- *   N1  `Cache-Control: no-store` im /api-Vorlauf von server.ts gestrichen →
- *       rot: „API und Anmeldewege …" (/api/v1/vouchers ohne Kopf); die
- *       statische Datei bleibt grün, sie hat ihren eigenen.
- *   H4  in asUploadError() die Zuordnung von entity.parse.failed gestrichen →
- *       rot: „kaputtes JSON …" (Antwort nennt „Expected double-quoted property name … at position 18")
- *   H2  router.param() in vertragsRouter() abgeschaltet → rot: „zu grosse IDs …"
- *       (Pfad-Fälle 400 wert_ungueltig aus der zweiten Linie); die Prüfung von
- *       Rumpf und Abfrage in server.ts abgeschaltet → rot (Rumpf-Fälle); beides
- *       und die Zuordnung von 22003 weg → 500. Nur 22003 weg → „PostgreSQL
- *       22003 …" rot.
+ * Counter-checks (measured 01.11.2026):
+ *   N1  `Cache-Control: no-store` deleted in the /api preamble of server.ts →
+ *       red: “API and login paths …” (/api/v1/vouchers without header); the
+ *       static file stays green, it has its own.
+ *   H4  in asUploadError() the mapping of entity.parse.failed deleted →
+ *       red: “broken JSON …” (response names „Expected double-quoted property name … at position 18")
+ *   H2  router.param() switched off in vertragsRouter() → red: “too large IDs …”
+ *       (path cases 400 wert_ungueltig from the second line); the check of
+ *       body and query in server.ts switched off → red (body cases); both
+ *       and the mapping of 22003 gone → 500. Only 22003 gone → „PostgreSQL
+ *       22003 …" red.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,17 +1,17 @@
 /**
- * Beim QR-Code für die App steht ein Hinweis, wenn die Serveradresse mit
- * http:// beginnt — die Android-App nimmt nur noch HTTPS an. Bei https://
- * steht nichts. Die TLS-Fläche der Einstellungen sagt dasselbe ohne HTTPS.
+ * Next to the QR code for the app a hint stands when the server address begins with
+ * http:// — the Android app only accepts HTTPS any more. With https://
+ * nothing stands there. The TLS area of the settings says the same without HTTPS.
  *
- * Gegenproben:
- *   A  (28.10.2026) die Zeile `klartext.hidden = …` auf `true` gesetzt → rot:
- *      „http:// …“
- *   B  (01.11.2026) qr.klartext_hinweis und tls.ohne_https auf dem alten Text
- *      („… geht unverschlüsselt mit“) → rot: „http:// …“ und „ohne HTTPS …“
- *   C  (08.11.2026) in einstellungen.js wieder `let secs = 1800` → rot: „der
- *      Countdown zählt von der Dauer des Servers“; settings.qr.hint in de.js
- *      wieder mit „30 Minuten“ → rot: dort (Hinweis nennt nicht 5 Minuten).
- *      Dass der Server 300 Sekunden nennt, prüft login-rules-db.test.js.
+ * Counter-checks:
+ *   A  (28.10.2026) the line `klartext.hidden = …` set to `true` → red:
+ *      “http:// …”
+ *   B  (01.11.2026) qr.klartext_hinweis and tls.ohne_https at the old text
+ *      („… geht unverschlüsselt mit“) → red: “http:// …” and “without HTTPS …”
+ *   C  (08.11.2026) in einstellungen.js again `let secs = 1800` → red: “the
+ *      countdown counts from the server's duration”; settings.qr.hint in de.js
+ *      again with „30 Minuten“ → red: there (hint does not name 5 minutes).
+ *      That the server names 300 seconds is checked by login-rules-db.test.js.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

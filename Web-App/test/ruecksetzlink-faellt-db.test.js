@@ -1,16 +1,16 @@
 /**
- * Ein offener Rücksetzlink (1 h) fällt, sobald das Passwort auf anderem Weg
- * neu gesetzt oder eine neue E-Mail-Adresse bestätigt wird. Sonst blieb ein Link an
- * eine aufgegebene Adresse oder aus der Zeit vor einem Verwalter-Reset gültig.
+ * An open reset link (1 h) falls as soon as the password is set anew
+ * in another way or a new email address is confirmed. Otherwise a link to
+ * an abandoned address or from the time before an admin reset stayed valid.
  *
- * Gegenprobe (01.11.2026 gemessen): OHNE_RUECKSETZLINK in
- * src/account/repository/accounts.ts auf einen leeren Zusatz gesetzt
- * (`reset_token = reset_token`) → rot: alle drei Wege (200 statt 400).
- * Gegenprobe (11.11.2026 gemessen): der Stand cded051 (Token in der Route
- * gelesen, Passwort danach per `WHERE id = …` geschrieben) → rot: „zwei
- * gleichzeitige …“ (beide 200).
+ * Counter-check (measured 01.11.2026): OHNE_RUECKSETZLINK in
+ * src/account/repository/accounts.ts set to an empty addition
+ * (`reset_token = reset_token`) → red: all three paths (200 instead of 400).
+ * Counter-check (measured 11.11.2026): the state cded051 (token read in the route,
+ * password written afterwards via `WHERE id = …`) → red: “two
+ * concurrent …” (both 200).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,7 +34,7 @@ test('reset links fall with password and address change', { concurrency: 1 }, as
     await db.pool.end().catch(() => {});
   });
   const { base } = testServer(_req, { t });
-  /** Ein Konto mit offenem Link; der Wechsel läuft, dann wird der Link eingelöst. */
+  /** An account with an open link; the change runs, then the link is redeemed. */
   const afterSwitch = async (name, wechsel) => {
     namen.push(name);
     await db.run('DELETE FROM users WHERE username = $1', [name]);

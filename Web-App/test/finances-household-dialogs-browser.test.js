@@ -1,29 +1,29 @@
 /**
- * Befunde der UI-Prüfung 12 im echten Browser, mit einem Haushalt (Unterkonto
- * mit demselben Set): Finanzen nennen je Zeile das Konto und zählen nichts
- * doppelt, Dialoge gegen ein fremdes Konto nennen es, Vorleser hören Logo und
- * Kartennamen nicht doppelt, und am Telefon verdecken weder Toasts den Titel
- * noch der gesperrte Knopf den Inhalt.
+ * Findings of UI review 12 in the real browser, with a household (sub-account
+ * with the same set): finances name the account per row and count nothing
+ * twice, dialogs against a foreign account name it, screen readers do not hear logo and
+ * card names twice, and on the phone neither toasts cover the title
+ * nor the disabled button the content.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel bzw. dist neu gebaut):
- *   A  valueSets sammelt die Käufe wieder nur nach Setnummer →
- *      rot: „Finanzen: ein Kauf je Zeile, mit Konto“ (4 Zeilen Tree House)
- *   B  setsWithEntries ohne GROUP BY → rot: „Finanzen: Summen ohne
- *      Doppelzählung“ (Kaufpreise 2149.97 statt 1739.98)
- *   C  delUser wieder mit tRaw('users.delete.title') und dem Knopf
- *      confirm.btn.konto_loeschen → rot: „Löschdialog nennt das Konto“
- *   D  aria-hidden am Kopf-Logo entfernt → rot: „Logo und Kartennamen
- *      einmal“ (img „BIM 6+“)
- *   E  Platzhalter der Kachel wieder role="img" aria-label=Setname → rot:
- *      „Logo und Kartennamen einmal“ (Titanic zweimal im Namen)
- *   F  openSetItemDetail wieder ohne colorName → rot: „Farbname deutsch“
- *   G  die Regel :root .btn.knopf-schwebend:disabled entfernt → rot:
- *      „offline: Knopf deckend“ (opacity 0.5)
- *   H  #toasts am Telefon wieder oben → rot: „Toast verdeckt den Titel nicht“
- *   I  in api() die frühe Meldung bei 401 entfernt → rot: „401 ohne success“
- *   K  .user-tbl-Regeln in mobile.css entfernt → rot: „Benutzerkarte beginnt
- *      mit dem Namen“
- *   L  axesAmount ohne die Kurzform → rot: „200 %: Achse kurz, Kopf weicht“
+ * Counter-checks (measured 04.11.2026, each alone, bundle or dist rebuilt):
+ *   A  valueSets collects the purchases only by set number again →
+ *      red: “finances: one purchase per row, with account” (4 rows Tree House)
+ *   B  setsWithEntries without GROUP BY → red: “finances: sums without
+ *      double counting” (purchase prices 2149.97 instead of 1739.98)
+ *   C  delUser again with tRaw('users.delete.title') and the button
+ *      confirm.btn.konto_loeschen → red: “delete dialog names the account”
+ *   D  aria-hidden removed from the header logo → red: “logo and card names
+ *      once” (img “BIM 6+”)
+ *   E  placeholder of the tile again role="img" aria-label=set name → red:
+ *      “logo and card names once” (Titanic twice in the name)
+ *   F  openSetItemDetail again without colorName → red: “color name German”
+ *   G  the rule :root .btn.knopf-schwebend:disabled removed → red:
+ *      “offline: button opaque” (opacity 0.5)
+ *   H  #toasts at the top on the phone again → red: “toast does not cover the title”
+ *   I  in api() the early report on 401 removed → red: “401 without success”
+ *   K  .user-tbl rules removed in mobile.css → red: “user card starts
+ *      with the name”
+ *   L  axesAmount without the short form → red: “200 %: axis short, header gives way”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -43,7 +43,7 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
     return;
   }
   const { b, bis, db, ruhig } = app;
-  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  // Startup loads settings and prices afterwards; only then is the state fixed.
   await ruhig();
   const geh = async pfad => {
     await b.auswerten(`location.hash = '#/${pfad}'; true`);
@@ -78,7 +78,7 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
     const z =
       await b.auswerten(`Promise.all([fetch('/api/v1/finance/pnl').then(r => r.json()), fetch('/api/v1/finance/valuation').then(r => r.json())])
       .then(([p, v]) => ({ kauf: p.totals.sets_purchase, markt: v.totals.avg, baum: p.sets.filter(s => s.set_number === '21318-1').map(s => s.quantity) }))`);
-    // 679,99 + 650 + 0 (Geschenk) + 199,99 + 210; Marktwert 712,40 + 801,50 + 163,80 + 2 × 186,20.
+    // 679.99 + 650 + 0 (gift) + 199.99 + 210; market value 712.40 + 801.50 + 163.80 + 2 × 186.20.
     assert.deepEqual(z, { kauf: '1739.98', markt: '2050.10', baum: [2] });
   });
 
@@ -121,7 +121,7 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
       [],
       'das Logo wird nicht vorgelesen',
     );
-    // Seit UI-Prüfung 22 nur Nummer und Name; der Rest ist Beschreibung.
+    // Since UI review 22 only number and name; the rest is description.
     const karte = namen.find(n => n === 'button: 10294-1 Titanic');
     assert.ok(karte, 'Kachel Titanic als Knopf');
     assert.equal(karte.match(/Titanic/g).length, 1, `Name einmal: ${karte}`);
@@ -148,7 +148,7 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
     assert.deepEqual(z, { text: 'z. B. 75192-1', stil: 'italic' });
   });
 
-  // ── Telefon ───────────────────────────────────────────────────────────────
+  // ── Phone ─────────────────────────────────────────────────────────────────
   await telefon(true);
 
   await t.test('wishlist: list before the form', async () => {
@@ -251,7 +251,7 @@ test('finances in the household, delete dialogs, phone', { timeout: 280_000 }, a
   });
 
   await t.test('401 without success ends the session', async () => {
-    // Wie ein vorgeschalteter Proxy: 401 ohne JSON-Feld success.
+    // Like an upstream proxy: 401 without a JSON field success.
     await b.auswerten(`(() => { const f = window.fetch; window.fetch = (u, o) => String(u).includes('/api/v1/wanted')
       ? Promise.resolve(new Response('{"message":"Unauthorized"}', { status: 401, headers: { 'Content-Type': 'application/json' } })) : f(u, o); return true; })()`);
     await geh('merkliste');

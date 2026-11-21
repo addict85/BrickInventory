@@ -1,15 +1,15 @@
 /**
- * Der SMTP-Test ist kein Mail-Relais: an die eigene Adresse des Verwalters
- * geht er ohne Rückfrage (höchstens 10 je Stunde), an jede andere nur mit
- * Passwort — wie das Ändern des Mailservers.
+ * The SMTP test is not a mail relay: to the admin's own address
+ * it goes without a prompt (at most 10 per hour), to any other only with
+ * password — like changing the mail server.
  *
- * Gegenproben (am 07.11.2026 gemessen, je einzeln):
- *   A  die Passwortprüfung für fremde Adressen entfernt → rot: „eine fremde
- *      Adresse braucht das Passwort“ (200 statt 400, Mail ging raus)
- *   B  die Drossel entfernt → rot: „ab der elften Mail in der Stunde
- *      Schluss“ (200 statt 429)
+ * Counter-checks (measured on 07.11.2026, each on its own):
+ *   A  the password check for foreign addresses removed → red: “a foreign
+ *      address needs the password” (200 instead of 400, mail went out)
+ *   B  the throttle removed → red: “from the eleventh mail in an hour
+ *      it stops” (200 instead of 429)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,20 +1,20 @@
 /**
- * Der Bildordner gilt für alle Konten: Was dort unter einer Teile- oder
- * Setnummer liegt, sehen alle. Deshalb holt der Server Bilder nur von
- * Adressen aus dem Katalog, die aus geprüfter Quelle stammen — nie von einer,
- * die ein Client mitschickt oder eingetippt hat.
+ * The image folder applies to all accounts: what lies there under a part or
+ * set number is seen by all. Hence the server only fetches images from
+ * addresses in the catalog that come from a verified source — never from one
+ * a client sends along or typed in.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  imagesFromCatalog() setzt image_url/image_local des Clients nicht mehr
- *      zurück → rot: „der lokale Pfad des Clients bleibt stehen“ und
- *      „die Bildadresse des Clients wird abgerufen“
- *   B  (03.11.2026) teilbilder() liest zusätzlich part_color_custom → rot:
- *      „eine eingetippte Adresse wird für alle abgelegt“
- *   C  setNumberFromImageAddress() wieder mit dem alten, nicht verankerten
- *      Muster auf der ganzen Adresse → rot: „…?/media/sets/10294-1.jpg ergibt
- *      eine Setnummer“
+ * Counter-checks (measured on 30.10.2026):
+ *   A  imagesFromCatalog() no longer resets the client's image_url/image_local
+ *      → red: “the client's local path stays” and
+ *      “the client's image address is fetched”
+ *   B  (03.11.2026) teilbilder() additionally reads part_color_custom → red:
+ *      “a typed-in address is stored for everyone”
+ *   C  setNumberFromImageAddress() again with the old, unanchored
+ *      pattern on the whole address → red: “…?/media/sets/10294-1.jpg yields
+ *      a set number”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -33,7 +33,7 @@ const GUT = `https://cdn.rebrickable.com/media/parts/${T}-gut.jpg`;
 const BOESE = `https://cdn.rebrickable.com/media/parts/${T}-BOESE.jpg`;
 const TAPPED = `https://cdn.rebrickable.com/media/parts/${T}-getippt.jpg`;
 
-/** https.get abfangen: Jede Adresse wird notiert und mit 404 beantwortet. */
+/** Intercept https.get: every address is noted and answered with 404. */
 function intercept(t) {
   const echt = https.get;
   const abgerufen = [];
@@ -86,7 +86,7 @@ test('image sources come from the catalog, not from the client', { concurrency: 
     await db.pool.end().catch(() => {});
   });
 
-  // Geprüfte Adresse im Katalog, eingetippte in den eigenen Angaben eines Kontos.
+  // Verified address in the catalog, typed-in one in an account's own details.
   await db.run(`INSERT INTO part_color_catalog (part_number, color_id, image_url) VALUES ($1, 5, $2)`, [`${T}a`, GUT]);
   const konto = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [T])).id;
   await db.run(`INSERT INTO part_color_custom (user_id, part_number, color_id, image_url) VALUES ($1, $2, 5, $3)`, [

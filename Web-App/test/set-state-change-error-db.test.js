@@ -1,10 +1,10 @@
 /**
- * Scheitert beim Ändern eines Sets das Schreiben des Zustands, meldet changeSet
- * den Fehler, statt mit der alten Menge Erfolg zu melden.
+ * If writing the condition fails when changing a set, changeSet reports
+ * the error instead of reporting success with the old quantity.
  *
- * Gegenprobe (14.11.2026 gemessen): in changeSet() wieder
+ * Counter-check (measured 14.11.2026): in changeSet() again
  * `try { writeInLastEntry(…condition…) } catch (e) { console.error(…) }`
- * → rot: „Missing expected rejection“.
+ * → red: „Missing expected rejection“.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -26,7 +26,7 @@ test('a failed condition change is an error', { concurrency: 1 }, async t => {
   await db.run('DELETE FROM users WHERE username = $1', [name]);
   const uid = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1,'x') RETURNING id`, [name])).id;
   await holdsSet(db, uid, SET, 1, { zustand: 'N' });
-  // Nur dieses Set: Andere Testdateien teilen die Tabelle nicht, aber die Vorlage.
+  // Only this set: other test files do not share the table, but the template.
   await db.exec(`
     CREATE FUNCTION ${FUNKTION}() RETURNS trigger LANGUAGE plpgsql AS $$
     BEGIN

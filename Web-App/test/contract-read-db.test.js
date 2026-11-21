@@ -1,22 +1,22 @@
 /**
- * Jede GET-Route der App gegen ihren Vertrag (src/contract/): echte
- * Antworten auf einem Bestand, in dem keine Liste leer ist — ein Set mit
- * Teilen und Figur, ein manuelles Teil, eine manuelle Figur, Merkliste,
- * Lagerort, Gutschein, Preisalarm, Preise im Cache. Welche Routen die App ruft,
- * steht in shared/app-schnittstelle.json; dass ihre Modelle zum Vertrag passen,
- * prüft der Android-Lauf (tools/vertrag/vertrag-kotlin.test.js).
+ * Every GET route of the app against its contract (src/contract/): real
+ * responses on a stock in which no list is empty — a set with
+ * parts and minifigure, a manual part, a manual minifigure, wishlist,
+ * storage location, voucher, price alert, prices in the cache. Which routes the app calls
+ * is in shared/app-schnittstelle.json; that its models match the contract
+ * is checked by the Android run (tools/vertrag/vertrag-kotlin.test.js).
  *
- * Gegenproben (31.10.2026 gemessen):
- *   A  in src/sets/repository/sets.ts das ::int an used_count entfernt → rot:
- *      „jede Route antwortet“ (/api/v1/sets: 500 vertrag_verletzt, Text statt
- *      Zahl) und „so viele Routen geprüft“
- *   B  MIN_CHECKED auf 59 gesetzt → rot: „so viele Routen geprüft“
- *   C  in src/sets/content.ts `...einePage(…)` aus der Teileliste entfernt →
- *      rot: „jede Route antwortet“ (parts-list: 500 vertrag_verletzt)
- *   D  in src/infra/page.ts slice() durch die ganze Liste ersetzt → rot:
- *      „lange Listen blättern“ (05.11.2026)
+ * Counter-checks (measured 31.10.2026):
+ *   A  in src/sets/repository/sets.ts the ::int on used_count removed → red:
+ *      “every route answers” (/api/v1/sets: 500 vertrag_verletzt, text instead of
+ *      number) and “that many routes checked”
+ *   B  MIN_CHECKED set to 59 → red: “that many routes checked”
+ *   C  in src/sets/content.ts `...einePage(…)` removed from the parts list →
+ *      red: “every route answers” (parts-list: 500 vertrag_verletzt)
+ *   D  in src/infra/page.ts slice() replaced by the whole list → red:
+ *      “long lists page” (05.11.2026)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -41,7 +41,7 @@ const SET = '99074-1',
   FARBE = 5,
   FIGUR = 'kv0001';
 
-/** Routen, die hier nicht laufen können — mit Grund. */
+/** Routes that cannot run here — with reason. */
 const OMITTED = new Map([
   ['/api/v1/sets/info/{setNumber}', 'fragt Rebrickable/Brickset im Netz'],
   ['/api/v1/sets/barcode/{barcode}', 'fragt die Barcode-Dienste im Netz'],
@@ -50,13 +50,13 @@ const OMITTED = new Map([
   ['/api/v1/sets/partslist-pdf/status/{jobId}', 'braucht einen laufenden PDF-Auftrag'],
   ['/api/v1/admin/logs', 'liest app_logs; der Inhalt hängt an fremden Läufen'],
 ]);
-/** Listen, die hier leer bleiben dürfen — mit Grund. */
+/** Lists that may stay empty here — with reason. */
 const EMPTY_ALLOWED = new Map([
   ['/api/v1/admin/brickset-queue .entries', 'füllt nur ein gescheiterter Brickset-Abruf'],
 ]);
-/** Zusätzliche Abfrageparameter, ohne die eine Route nur Leeres liefert. */
+/** Additional query parameters without which a route only delivers empty results. */
 const EXTRA = new Map([['/api/v1/alerts/pending', 'since=2000-01-01T00:00:00Z']]);
-/** Mindestens so viele Routen werden wirklich geprüft — damit die Zahl nicht still sinkt. */
+/** At least this many routes are really checked — so that the number does not silently sink. */
 const MIN_CHECKED = 58;
 
 test('the responses of the app routes keep their contract', { concurrency: 1, timeout: 120_000 }, async t => {
@@ -78,8 +78,8 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
       [`${NAME}_sub`],
     )
   ).id;
-  // Ein Elternkonto und ein getrenntes Konto, damit `parents` und
-  // `former_links` der Haushaltsantwort nicht leer ankommen.
+  // A parent account and a separated account so that `parents` and
+  // `former_links` of the household response do not arrive empty.
   const nebenkonto = async zusatz => {
     await db.run('DELETE FROM users WHERE username = $1', [`${NAME}_${zusatz}`]);
     return (
@@ -92,7 +92,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
   };
   const oben = await nebenkonto('oben'),
     getrennt = await nebenkonto('getrennt');
-  // Globale Kataloge: nur entfernen, was dieser Test selbst angelegt hat.
+  // Global catalogs: only remove what this test created itself.
   const aufraeumen = [];
   const katalog = async (sql, werte, weg, routeValues) => {
     if ((await db.run(sql + ' ON CONFLICT DO NOTHING', werte)).changes) aufraeumen.push([weg, routeValues]);
@@ -109,7 +109,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
     await db.pool.end().catch(() => {});
   });
 
-  // ── Bestand ────────────────────────────────────────────────────────────
+  // ── Stock ──────────────────────────────────────────────────────────────
   await db
     .run(
       `INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')
@@ -222,8 +222,8 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
     sub,
   ]);
   await _req('src/account/deviceToken.js').createToken(uid, 'Vertragsprobe');
-  // Hintergrundarbeiten: ein Auftrag mit Fortschritt und eine Pause, damit
-  // /admin/jobs keine leeren Listen liefert.
+  // Background jobs: a job with progress and a pause so that
+  // /admin/jobs delivers no empty lists.
   const auftrag = await {
     ..._req('src/jobQueue/service.js'),
     ...require('./helpers/sources').testArea('jobQueue').auftraege,
@@ -255,7 +255,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
     [uid, SET],
   );
 
-  // ── Server wie in server.ts ────────────────────────────────────────────
+  // ── Server as in server.ts ─────────────────────────────────────────────
   const app = express();
   app.use(express.json());
   app.use((req, _res, next) => {
@@ -322,8 +322,8 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
   );
   t.diagnostic(`geprüft: ${geprueft}`);
 
-  // Jede Route mit page_size: Seite 2 der Grösse 1 ist leer, total zählt trotzdem
-  // die ganze Liste, und ohne page_size kommt alles.
+  // Every route with page_size: page 2 of size 1 is empty, total still counts
+  // the whole list, and without page_size everything comes.
   const { openapi } = _req('src/contract/openapi.js');
   const paged = Object.entries(openapi().paths)
     .filter(([p, ops]) => !p.includes('{') && ops.get?.parameters?.some(x => x.name === 'page_size'))
@@ -338,7 +338,7 @@ test('the responses of the app routes keep their contract', { concurrency: 1, ti
       if (![...EMPTY_ALLOWED.keys()].some(k => k.startsWith(p + ' '))) pagesError.push(`${p}: keine gefüllte Liste`);
       continue;
     }
-    // Der Katalog hat zehntausende Sets: Er blättert immer, ohne page_size zu 60.
+    // The catalog has tens of thousands of sets: it always pages, without page_size by 60.
     if (p !== '/api/v1/catalog/sets' && ganz.total !== ganz[feld].length)
       pagesError.push(`${p}: ohne page_size nicht alles (${ganz[feld].length}/${ganz.total})`);
     if (zweite[feld]?.length !== Math.max(0, Math.min(1, ganz.total - 1)))

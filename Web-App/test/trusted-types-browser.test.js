@@ -1,19 +1,19 @@
 /**
- * Trusted Types in der echten App (Chrome): Die CSP verlangt sie, Markup
- * kommt nur über setzeHtml()/fuegeHtmlEin() in die Seite, jede andere
- * Zuweisung an innerHTML scheitert mit TypeError, fremde Skript-Adressen
- * ebenso. Die Sammlung baut sich trotzdem auf, und das Protokollfenster
- * (eigenes Dokument, erbt die CSP) zeigt seine Einträge.
+ * Trusted Types in the real app (Chrome): the CSP requires them, markup
+ * only enters the page via setzeHtml()/fuegeHtmlEin(), every other
+ * assignment to innerHTML fails with TypeError, foreign script addresses
+ * likewise. The collection still builds up, and the log window
+ * (own document, inherits the CSP) shows its entries.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln; D am 09.11.2026):
- *   A  die beiden Trusted-Types-Zeilen aus der CSP (server.ts) entfernt → rot:
- *      „die CSP verlangt Trusted Types“ und „innerHTML ausserhalb …“ (kein Fehler)
- *   B  in setzeHtml() wieder `el.innerHTML = einsetzen(inhalt)` (Bündel neu
- *      gebaut) → rot schon beim Start: Die Anmeldemaske erscheint nicht
- *   C  in logviewer.js die Richtlinie weggelassen (Zeichenkette an innerHTML)
- *      → rot: „das Protokollfenster …“
- *   D  report-uri/report-to aus der CSP (server.ts) entfernt → rot: „die CSP
- *      verlangt Trusted Types und meldet Verstösse …“
+ * Counter-checks (measured 05.11.2026, each on its own; D on 09.11.2026):
+ *   A  the two Trusted Types lines removed from the CSP (server.ts) → red:
+ *      “the CSP requires Trusted Types” and “innerHTML outside …” (no error)
+ *   B  in setzeHtml() again `el.innerHTML = einsetzen(inhalt)` (bundle
+ *      rebuilt) → red already at the start: the login form does not appear
+ *   C  the policy left out in logviewer.js (string to innerHTML)
+ *      → red: “the log window …”
+ *   D  report-uri/report-to removed from the CSP (server.ts) → red: “the CSP
+ *      requires Trusted Types and reports violations …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,7 +34,7 @@ test('Trusted Types', { timeout: 180_000 }, async t => {
     assert.match(csp, /(^|; )trusted-types app default(;|$)/, csp);
     assert.match(csp, /(^|; )report-uri \/csp-bericht; report-to csp(;|$)/, csp);
     assert.equal(r.headers.get('reporting-endpoints'), 'csp="/csp-bericht"');
-    // Auch ohne Herkunft, wie der Browser einen Bericht schickt: angenommen, ohne Inhalt.
+    // Also without an origin, as the browser sends a report: accepted, without content.
     const bericht = await fetch(`http://127.0.0.1:${app.port}/csp-bericht`, {
       method: 'POST',
       headers: { 'content-type': 'application/csp-report', 'sec-fetch-site': 'same-origin' },
@@ -69,7 +69,7 @@ test('Trusted Types', { timeout: 180_000 }, async t => {
   });
 
   await t.test('the log window shows its entries', async () => {
-    // Mit Nutzergeste, sonst blockiert Chrome das Fenster und die App meldet es per alert().
+    // With a user gesture, otherwise Chrome blocks the window and the app reports it via alert().
     await app.b.tab('Runtime.evaluate', {
       userGesture: true,
       returnByValue: true,

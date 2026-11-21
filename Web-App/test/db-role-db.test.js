@@ -1,103 +1,103 @@
 /**
- * postgres/app-rolle.sh: Die Migrationsrolle besitzt alles, die Laufzeitrolle
- * von App und Jobs liest und schreibt nur Zeilen; beide ohne Superuser-Rechte.
- * Geprüft an einer bestehenden Installation (Objekte gehören dem Superuser oder
- * noch der Laufzeitrolle mit zu vielen Rechten) und an einer neuen; migriert
- * wird als Migrationsrolle, die Laufzeitrolle prüft nur den Stand.
+ * postgres/app-rolle.sh: the migration role owns everything, the runtime role
+ * of app and jobs only reads and writes rows; both without superuser rights.
+ * Checked on an existing installation (objects belong to the superuser or
+ * still to the runtime role with too many rights) and on a new one; migration
+ * happens as the migration role, the runtime role only checks the state.
  *
- * Gegenproben (am 02.11.2026 gemessen):
- *   A  im Skript die Schleife über pg_class entfernt → rot: „bestehende
- *      Installation“ (Tabellen gehören weiter dem Superuser, ALTER TABLE als
- *      App scheitert)
- *   B  NOSUPERUSER durch SUPERUSER ersetzt → rot: „bestehende Installation“
- *      und „neue Installation“ (rolsuper)
- *   C  die REVOKE-Schleife entfernt → rot: „bestehende Installation“
- *      (pg_execute_server_program bleibt, COPY … PROGRAM geht)
- *   D  den Vergleich mit dem Superuser-Passwort entfernt → rot: „ein gleiches
- *      Passwort wird abgewiesen“
- *   E  in warnAtSuperuser() rolsuper nicht mehr beachtet → rot:
- *      „bestehende Installation“ (der Start warnt auch als App-Rolle)
- *   O  (04.11.2026) in warnAtSuperuser() das Startverbot ohne
- *      DB_SUPERUSER_ERLAUBT gestrichen → rot: „bestehende Installation“
- *      (als Superuser startet die Produktion)
- *   F  PGOPTIONS und `SET search_path` entfernt → rot: „die Migrationsrolle
- *      schiebt dem Superuser nichts unter“ (Operator der Rolle legt eine
- *      Superuser-Rolle an)
- *   G  `ALTER DATABASE … RESET ALL` entfernt → rot: dieselbe Prüfung
- *      (search_path der Datenbank bleibt für spätere Superuser-Sitzungen)
- *   H  `-c role=none` und `SET ROLE NONE` entfernt → rot: dieselbe Prüfung
- *      („untergeschobenes SET role“: die Sitzung läuft als Migrationsrolle)
- *   I  `password_hash` aus der Sperrliste der Leserolle gestrichen → rot:
- *      „die Leserolle sieht keine Geheimnisse“
- *   J  (03.11.2026) `REVOKE TEMPORARY … FROM PUBLIC` gestrichen → rot:
- *      „die Leserolle legt temporäre Tabellen an“
- *   K  (03.11.2026) `api_tokens_consumed` aus der Sperrliste gestrichen →
- *      rot: „SELECT token FROM api_tokens_consumed“
- *   L  (03.11.2026, Allowlist) `password_hash` in die Zeile `users:` von
- *      LESEN_SPALTEN aufgenommen → rot: „die Leserolle sieht keine Geheimnisse“
- *      (SELECT password_hash gelingt) und „… liest genau die Allowlist“
- *   M  die Allowlist-Schleife durch die alte Sperrliste ersetzt (alle Spalten
- *      ausser den bekannten Geheimnissen) → rot: „neue Spalten und Tabellen
- *      bleiben unlesbar“ (users.neues_geheimnis lesbar)
- *   N  in app-rolle.sh `aus_datei DB_APP_PASSWORD` gestrichen → rot:
- *      „Passwörter aus Dateien“ (DB_APP_PASSWORD fehlt)
- *   P  (06.11.2026) die Schleife über vor_migration_* entfernt → rot:
- *      „bestehende Installation“ (permission denied for schema vor_migration_…)
- *   Getrennte Migrationsrolle (11.11.2026, je einzeln; F–H am selben Tag
- *   gegen die Migrationsrolle wiederholt, die jetzt Funktionen anlegen kann):
- *   Q  die Default Privileges für Tabellen gestrichen → rot: „neue Installation“
- *      (permission denied for table schema_migrations) und „was die
- *      Migrationsrolle später anlegt …“ (permission denied for table spaeter)
- *   R  `GRANT CONNECT, TEMPORARY` → nur CONNECT → rot: „… darf kein DROP …“,
- *      „der Katalog-Import tauscht als Laufzeitrolle“ (temporary tables)
- *   S  csvTausch.ts wieder `CREATE UNLOGGED TABLE` → rot: „der Katalog-Import
- *      tauscht als Laufzeitrolle“ (permission denied for schema public)
- *   T  die Datenbank wieder der Laufzeitrolle übergeben → rot: „bestehende
- *      Installation“, „neue Installation“, „… darf kein DROP …“
- *   U  in initSchemaOnce den Zweig für Rollen ohne CREATE gestrichen → rot:
- *      „neue Installation“ (keine Meldung „Die Datenbank ist leer …“)
- *   V  in startup/migrate.ts die Prüfung changeMaySchema() gestrichen →
- *      rot: „… offenen Migrationen“ (der Dienst meldet als Laufzeitrolle Erfolg)
+ * Counter-checks (measured on 02.11.2026):
+ *   A  the loop over pg_class removed in the script → red: “existing
+ *      installation” (tables still belong to the superuser, ALTER TABLE as
+ *      app fails)
+ *   B  NOSUPERUSER replaced by SUPERUSER → red: “existing installation”
+ *      and “new installation” (rolsuper)
+ *   C  the REVOKE loop removed → red: “existing installation”
+ *      (pg_execute_server_program stays, COPY … PROGRAM works)
+ *   D  the comparison with the superuser password removed → red: “an equal
+ *      password is rejected”
+ *   E  in warnAtSuperuser() rolsuper no longer respected → red:
+ *      “existing installation” (the start also warns as app role)
+ *   O  (04.11.2026) in warnAtSuperuser() the start ban without
+ *      DB_SUPERUSER_ERLAUBT deleted → red: “existing installation”
+ *      (production starts as superuser)
+ *   F  PGOPTIONS and `SET search_path` removed → red: “the migration role
+ *      slips nothing under the superuser” (an operator of the role creates a
+ *      superuser role)
+ *   G  `ALTER DATABASE … RESET ALL` removed → red: the same check
+ *      (the database's search_path stays for later superuser sessions)
+ *   H  `-c role=none` and `SET ROLE NONE` removed → red: the same check
+ *      (“slipped-in SET role”: the session runs as the migration role)
+ *   I  `password_hash` deleted from the read role's block list → red:
+ *      “the read role sees no secrets”
+ *   J  (03.11.2026) `REVOKE TEMPORARY … FROM PUBLIC` deleted → red:
+ *      “the read role creates temporary tables”
+ *   K  (03.11.2026) `api_tokens_consumed` deleted from the block list →
+ *      red: “SELECT token FROM api_tokens_consumed”
+ *   L  (03.11.2026, allowlist) `password_hash` added to the line `users:` of
+ *      LESEN_SPALTEN → red: “the read role sees no secrets”
+ *      (SELECT password_hash succeeds) and “… reads exactly the allowlist”
+ *   M  the allowlist loop replaced by the old block list (all columns
+ *      except the known secrets) → red: “new columns and tables
+ *      stay unreadable” (users.neues_geheimnis readable)
+ *   N  in app-rolle.sh `aus_datei DB_APP_PASSWORD` deleted → red:
+ *      “passwords from files” (DB_APP_PASSWORD missing)
+ *   P  (06.11.2026) the loop over vor_migration_* removed → red:
+ *      “existing installation” (permission denied for schema vor_migration_…)
+ *   Separate migration role (11.11.2026, each alone; F–H repeated the same day
+ *   against the migration role, which can now create functions):
+ *   Q  the default privileges for tables deleted → red: “new installation”
+ *      (permission denied for table schema_migrations) and “what the
+ *      migration role creates later …” (permission denied for table spaeter)
+ *   R  `GRANT CONNECT, TEMPORARY` → only CONNECT → red: “… may not DROP …”,
+ *      “the catalog import swaps as runtime role” (temporary tables)
+ *   S  csvTausch.ts again `CREATE UNLOGGED TABLE` → red: “the catalog import
+ *      swaps as runtime role” (permission denied for schema public)
+ *   T  the database handed back to the runtime role → red: “existing
+ *      installation”, “new installation”, “… may not DROP …”
+ *   U  in initSchemaOnce the branch for roles without CREATE deleted → red:
+ *      “new installation” (no message “Die Datenbank ist leer …”)
+ *   V  in startup/migrate.ts the check changeMaySchema() deleted →
+ *      red: “… open migrations” (the service reports success as runtime role)
  *   W  in scripts/rollen-trennen.sh `docker compose run --rm db-rolle`
- *      gestrichen → rot: „scripts/rollen-trennen.sh stellt … um“
- *   X  der Laufzeitrolle TRUNCATE dazugegeben → rot: „… darf kein DROP …“
+ *      deleted → red: “scripts/rollen-trennen.sh converts …”
+ *   X  TRUNCATE added for the runtime role → red: “… may not DROP …”
  *      (Missing expected rejection: TRUNCATE wanted)
- *   Y  in cleanOldBackupsOn das Leeren für fremde Kopien gestrichen →
- *      rot: „was die Migrationsrolle später anlegt …“ (0 statt 1 geleert)
- *   Z  (13.11.2026) die Leserolle wieder NOBYPASSRLS → rot: „der Zeilenschutz
- *      gilt für die Laufzeitrolle …“ (pgweb sieht 0 Zeilen); ebenso mit
- *      `ALTER TABLE sets DISABLE ROW LEVEL SECURITY` vor der Prüfung (die
- *      Laufzeitrolle sieht ohne Konto 1 Zeile)
- *   Systemrolle (13.11.2026, je einzeln):
- *   AA die Systemrolle NOBYPASSRLS → rot: „bestehende Installation“
- *      (rolbypassrls) und „der Zeilenschutz gilt …“ (Systemrolle sieht 0)
- *   AB `aus_datei DB_SYSTEM_PASSWORD` gestrichen → rot: „Passwörter aus
- *      Dateien“ und „scripts/rollen-trennen.sh …“ (DB_SYSTEM_PASSWORD fehlt)
- *   AC die Rechte nur noch für die Laufzeitrolle vergeben → rot: „Laufzeit-
- *      und Systemrolle dürfen …“ und „der Zeilenschutz gilt …“ (permission denied)
+ *   Y  in cleanOldBackupsOn the emptying for foreign copies deleted →
+ *      red: “what the migration role creates later …” (0 instead of 1 emptied)
+ *   Z  (13.11.2026) the read role again NOBYPASSRLS → red: “row security
+ *      applies to the runtime role …” (pgweb sees 0 rows); likewise with
+ *      `ALTER TABLE sets DISABLE ROW LEVEL SECURITY` before the check (the
+ *      runtime role sees 1 row without an account)
+ *   System role (13.11.2026, each alone):
+ *   AA the system role NOBYPASSRLS → red: “existing installation”
+ *      (rolbypassrls) and “row security applies …” (system role sees 0)
+ *   AB `aus_datei DB_SYSTEM_PASSWORD` deleted → red: “passwords from
+ *      files” and “scripts/rollen-trennen.sh …” (DB_SYSTEM_PASSWORD missing)
+ *   AC privileges granted only to the runtime role → red: “runtime
+ *      and system role may …” and “row security applies …” (permission denied)
  *
- *   Kontotabellen (14.11.2026, je einzeln):
- *   AD in 0115 die Schleife über die Rollen gestrichen → rot: „… schon nach der
- *      Migration“ (SELECT password_hash gelingt der Laufzeitrolle)
- *   AE in app-rolle.sh den Block für users/user_sessions gestrichen → rot: „… und
- *      nach jedem Lauf von app-rolle.sh …“ (GRANT ON ALL TABLES gibt beides zurück)
- *   AF die Policy `lesen` auf account_links für alle Befehle (ohne `FOR SELECT`) →
- *      rot: beide (das INSERT in den fremden Haushalt gelingt)
- *   AG in app-rolle.sh die Schleife über vor_migration_* für RLS gestrichen → rot:
- *      „… Kopien vor Migrationen …“ (die Laufzeitrolle liest den Hash der Kopie)
+ *   Account tables (14.11.2026, each alone):
+ *   AD in 0115 the loop over the roles deleted → red: “… already after the
+ *      migration” (SELECT password_hash succeeds for the runtime role)
+ *   AE in app-rolle.sh the block for users/user_sessions deleted → red: “… and
+ *      after every run of app-rolle.sh …” (GRANT ON ALL TABLES gives both back)
+ *   AF the policy `lesen` on account_links for all commands (without `FOR SELECT`) →
+ *      red: both (the INSERT into the foreign household succeeds)
+ *   AG in app-rolle.sh the loop over vor_migration_* for RLS deleted → red:
+ *      “… copies before migrations …” (the runtime role reads the copy's hash)
  *
- *   Zugangsdaten schreibt nur die Systemrolle (Migration 0117, 14.11.2026 gemessen, je einzeln):
- *   AH in 0117 die Schleife über die Rollen leer laufen lassen (`AND false`) → rot: „… schon
- *      nach der Migration“ (die Laufzeitrolle setzt is_admin, das Protokoll ist löschbar)
- *   AI in app-rolle.sh das REVOKE auf users gestrichen → rot: „… und nach jedem Lauf …“
- *      (GRANT ON ALL TABLES gibt INSERT/UPDATE/DELETE zurück)
- *   AJ verwaltungsprotokoll_aufraeumen() als SECURITY INVOKER → rot: beide (die Systemrolle
- *      darf selbst nicht löschen, das Aufräumen scheitert)
- *   AK in app-rolle.sh das REVOKE auf admin_log nur für die Laufzeitrolle → rot:
- *      „… und nach jedem Lauf …“ (die Systemrolle löscht Protokollzeilen)
+ *   Only the system role writes credentials (migration 0117, measured 14.11.2026, each alone):
+ *   AH in 0117 the loop over the roles run empty (`AND false`) → red: “… already
+ *      after the migration” (the runtime role sets is_admin, the log is deletable)
+ *   AI in app-rolle.sh the REVOKE on users deleted → red: “… and after every run …”
+ *      (GRANT ON ALL TABLES gives INSERT/UPDATE/DELETE back)
+ *   AJ verwaltungsprotokoll_aufraeumen() as SECURITY INVOKER → red: both (the system role
+ *      may not delete itself, the cleanup fails)
+ *   AK in app-rolle.sh the REVOKE on admin_log only for the runtime role → red:
+ *      “… and after every run …” (the system role deletes log lines)
  *
- * Voraussetzung: TEST_DATABASE_URL mit Superuser (legt Datenbanken und eine
- * Rolle an) und psql ab Version 15 (\getenv).
+ * Prerequisite: TEST_DATABASE_URL with superuser (creates databases and a
+ * role) and psql from version 15 (\getenv).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -160,7 +160,7 @@ function setUpRole(db, mehr = {}) {
   });
 }
 
-/** Schema und Migrationen in einem eigenen Prozess, wie beim Start. */
+/** Schema and migrations in their own process, as at startup. */
 function schemaAsAccount(dbUrl, call = 'initSchemaOnce') {
   return spawnSync(
     process.execPath,
@@ -200,7 +200,7 @@ async function rightsTheRole(c, rolle = ROLLE) {
   return z;
 }
 
-/** Eine Verbindung als `nutzer`, für einen Block. */
+/** A connection as `nutzer`, for one block. */
 async function als(db, nutzer, pw, fn) {
   const c = new Client({ connectionString: url(db, nutzer, pw) });
   await c.connect();
@@ -242,16 +242,16 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     await admin.query(`CREATE DATABASE ${id(alt)}`);
     const s = schemaAsAccount(url(alt));
     assert.equal(s.status, 0, s.stderr);
-    // NOLOGIN: app-rolle.sh schaltet die Anmeldung selbst ein; ein Rest nach
-    // einem Abbruch ist so kein anmeldbarer Superuser.
+    // NOLOGIN: app-rolle.sh switches on the login itself; a leftover after
+    // an abort is thus not a superuser one can log in as.
     await admin.query(`CREATE ROLE ${id(ROLLE)} NOLOGIN SUPERUSER CREATEROLE`);
     await admin.query(`GRANT pg_execute_server_program TO ${id(ROLLE)}`);
-    // Stand bis Runde 17: Datenbank und Tabellen gehörten der Laufzeitrolle.
+    // State up to round 17: database and tables belonged to the runtime role.
     await admin.query(`ALTER DATABASE ${id(alt)} OWNER TO ${id(ROLLE)}`);
     await als(alt, null, null, c =>
       c.query(`ALTER TABLE users OWNER TO ${id(ROLLE)}; ALTER TABLE sets OWNER TO ${id(ROLLE)}`),
     );
-    // Eine Kopie vor Migrationen, die noch der Superuser angelegt hat.
+    // A copy before migrations that the superuser still created.
     const kopie = new Client({ connectionString: url(alt) });
     await kopie.connect();
     try {
@@ -313,7 +313,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
         'die frühere Eigentümerin ändert noch Tabellen',
       );
       await assert.rejects(app.query("COPY (SELECT 1) TO PROGRAM 'true'"), /permission denied|must be superuser/);
-      // Gelöschte Konten verschwinden auch aus den Kopien; wegräumen darf sie nur die Migrationsrolle.
+      // Deleted accounts also disappear from the copies; only the migration role may remove them.
       await app.query('DELETE FROM vor_migration_20261029195422666.users WHERE id = -1');
       await assert.rejects(app.query('DROP SCHEMA vor_migration_20261029195422666 CASCADE'), /must be owner/);
     });
@@ -365,7 +365,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     assert.equal((await rightsTheRole(admin)).rolsuper, false);
   });
 
-  /** Genau diese Schreibrechte (0117): Zugangsdaten, globale Einstellungen und das Protokoll. */
+  /** Exactly these write privileges (0117): credentials, global settings and the log. */
   const checkAccessRights = async (db, konto) => {
     const frage = (rolle, objekt, type, funktion) =>
       als(db, null, null, c =>
@@ -395,8 +395,8 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     }
     const soll = {};
     for (const k of Object.keys(ist)) soll[k] = false;
-    // Tabellenweit (has_table_privilege prüft hier nur ganze Tabellen; SELECT auf users hat die
-    // Laufzeitrolle spaltenweise ohne password_hash, siehe oben).
+    // Table-wide (has_table_privilege only checks whole tables here; the runtime role has SELECT on users
+    // column-wise without password_hash, see above).
     for (const k of ['app global_settings SELECT', 'app admin_log SELECT', 'app admin_log INSERT']) soll[k] = true;
     for (const t of ['users', 'global_settings'])
       for (const a of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) soll[`sys ${t} ${a}`] = true;
@@ -413,7 +413,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     ).rows.map(z => z.attname);
     assert.deepEqual(spalten, ['first_name', 'last_name'], 'in users schreibt die Laufzeitrolle nur die Namen');
 
-    // Und so, wie eine eingeschleuste Abfrage es versuchte:
+    // And the way an injected query tried it:
     await als(db, ROLLE, PASSWORT, async app => {
       for (const sql of [
         'UPDATE users SET is_admin = true WHERE id = $1',
@@ -427,7 +427,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
         'SELECT verwaltungsprotokoll_aufraeumen() WHERE $1::int > 0',
       ])
         await assert.rejects(app.query(sql, [konto]), /permission denied/, `Laufzeitrolle: ${sql}`);
-      // Den Namen nur am eigenen Konto (0121): ohne Konto keine Zeile, mit Konto die eigene.
+      // The name only on the own account (0121): without an account no row, with an account the own one.
       assert.equal((await app.query(`UPDATE users SET first_name = 'Neu' WHERE id = $1`, [konto])).rowCount, 0);
       await app.query('BEGIN');
       await app.query(`SELECT set_config('app.konto', $1, true)`, [String(konto)]);
@@ -455,7 +455,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     await als(db, null, null, c => c.query('DELETE FROM admin_log WHERE target_id = $1', [konto]));
   };
 
-  /** Was die Laufzeitrolle an Kontotabellen darf; die Systemrolle liest alles. */
+  /** What the runtime role may do on account tables; the system role reads everything. */
   const checkAccountTables = async db => {
     await als(db, null, null, async c => {
       await c.query(`DELETE FROM user_sessions WHERE sid = 'kt-sid'; DELETE FROM users WHERE username LIKE 'kt\\_%'`);
@@ -485,7 +485,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
       ])
         await assert.rejects(app.query(sql), /permission denied/, `Laufzeitrolle: ${sql}`);
       await assert.rejects(app.query(`DELETE FROM user_sessions`), /permission denied/);
-      // Ohne Konto keine Zeile, mit Konto die eigene (0121).
+      // Without an account no row, with an account the own one (0121).
       assert.equal((await app.query('SELECT username FROM users WHERE id = $1', [A])).rowCount, 0);
       await app.query('BEGIN');
       try {
@@ -497,7 +497,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
       await app.query('BEGIN');
       try {
         await app.query(`SELECT set_config('app.konto', $1, true)`, [String(C)]);
-        // Sich selbst in einen fremden Haushalt eintragen hiesse dessen Zeilen sehen.
+        // Entering oneself into a foreign household would mean seeing its rows.
         await assert.rejects(
           app.query('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [C, A]),
           /row-level security/,
@@ -509,7 +509,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
       try {
         await app.query(`SELECT set_config('app.konto', $1, true)`, [String(C)]);
         assert.equal((await app.query('DELETE FROM account_links WHERE main_user_id = $1', [A])).rowCount, 0);
-        // Fremde Verknüpfungen sieht C nicht mehr (0121), auch nicht zum Lesen.
+        // C no longer sees foreign links (0121), not even for reading.
         assert.equal((await app.query('SELECT 1 FROM account_links WHERE main_user_id = $1', [A])).rowCount, 0);
         assert.equal((await app.query('SELECT 1 FROM account_link_invites')).rowCount, 1, 'eigene Einladung');
         await app.query(`SELECT set_config('app.konto', $1, true)`, [String(A)]);
@@ -535,7 +535,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
   await t.test(
     'password hashes and sessions are only read by the system role, already after the migration',
     async () => {
-      // „neue Installation“ hat migriert, ohne app-rolle.sh danach: Das leistet Migration 0115 allein.
+      // “new installation” migrated without app-rolle.sh afterwards: migration 0115 alone achieves that.
       await checkAccountTables(neu);
     },
   );
@@ -560,7 +560,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     const app = new Client({ connectionString: url(neu, MIG, MIG_PW) });
     await app.connect();
     try {
-      // Jede Funktion legt eine Superuser-Rolle an, sobald ein Superuser sie ausführt.
+      // Every function creates a superuser role as soon as a superuser executes it.
       const nutzlast = `IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${BOESE}') THEN
         EXECUTE 'CREATE ROLE ${id(BOESE)} SUPERUSER'; END IF;`;
       await app.query(`CREATE SCHEMA boese`);
@@ -630,8 +630,8 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
           'CREATE TRIGGER probe BEFORE INSERT ON users FOR EACH ROW EXECUTE FUNCTION suppress_redundant_updates_trigger()',
         ])
           await assert.rejects(app.query(sql), /permission denied|must be owner/, `${nutzer} darf: ${sql}`);
-        // Zeilen schreiben, Sequenzen weiterzählen, temporär anlegen: alles, was die App braucht.
-        // (users schreibt die Laufzeitrolle nur teilweise, siehe „Zugangsdaten schreibt nur …“.)
+        // Write rows, advance sequences, create temporary objects: everything the app needs.
+        // (the runtime role only partly writes users, see “only … writes credentials”.)
         const { id: zeile } = (
           await app.query(`INSERT INTO app_logs (level, message) VALUES ('info', 'laufzeitprobe') RETURNING id`)
         ).rows[0];
@@ -687,7 +687,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
       mig.query('DROP TABLE spaeter; DROP SCHEMA vor_migration_20261111000000000 CASCADE'),
     );
 
-    // Eine abgelaufene Kopie: Die Laufzeitrolle leert sie, wegräumen kann sie erst die Migrationsrolle.
+    // An expired copy: the runtime role empties it, only the migration role can remove it.
     const { cleanOldBackupsOn } = require(path.join(ROOT, 'dist', 'db', 'migrate.js'));
     const abfrager = c => ({
       all: async (q, p) => (await c.query(q, p)).rows,
@@ -805,7 +805,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
   await t.test('the read role reads exactly the allowlist', async () => {
     const r = setUpRole(neu);
     assert.equal(r.status, 0, r.stderr);
-    // Jede Spalte der Allowlist gibt es im aktuellen Schema (sonst meldet das Skript sie).
+    // Every column of the allowlist exists in the current schema (otherwise the script reports it).
     assert.doesNotMatch(r.stderr, /fehlt eine der Spalten/, r.stderr);
     const lesbar = async tabelle => {
       const c = new Client({ connectionString: url(neu) });
@@ -865,7 +865,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
       c.query(`INSERT INTO sets (user_id, set_number) SELECT id, '10001-1' FROM users WHERE username = 'leseprobe'`),
     );
     const zaehle = c => c.query('SELECT count(id)::int AS n FROM sets').then(r => r.rows[0].n);
-    // Ohne Konto sieht die Laufzeitrolle auch in users keine Zeile (0121): die Kennung von der Eigentümerin.
+    // Without an account the runtime role sees no row in users either (0121): the identifier comes from the owner.
     const konto = await als(neu, null, null, c =>
       c.query(`SELECT id FROM users WHERE username = 'leseprobe'`).then(r => r.rows[0].id),
     );
@@ -911,7 +911,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     } finally {
       await l.end();
     }
-    // Erst ein Eintrag in der Allowlist gibt die Spalte frei (Kopie des Skripts mit erweiterter Zeile).
+    // Only an entry in the allowlist releases the column (copy of the script with an extended line).
     const fsm = require('node:fs'),
       osm = require('node:os');
     const kopie = path.join(fsm.mkdtempSync(path.join(osm.tmpdir(), 'rolle-liste-')), 'app-rolle.sh');
@@ -1039,7 +1039,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
     assert.match(sys.stderr, /DB_SYSTEM_PASSWORD muss sich von DB_PASSWORD, DB_APP_PASSWORD und DB_MIGRATION_PASSWORD/);
   });
 
-  // `docker` ist ein Stellvertreter: db-rolle und migration laufen wirklich gegen die Test-DB.
+  // `docker` is a stand-in: db-rolle and migration really run against the test DB.
   await t.test(
     'scripts/rollen-trennen.sh converts an installation with the app role as owner, repeatable',
     async tt => {
@@ -1050,7 +1050,7 @@ test('database role of the app', { concurrency: 1, timeout: 180_000 }, async t =
       await admin.query(`CREATE DATABASE ${id(migration)}`);
       const s = schemaAsAccount(url(migration));
       assert.equal(s.status, 0, s.stderr);
-      // Stand bis Runde 17: Datenbank und Tabellen gehören der Laufzeitrolle.
+      // State up to round 17: database and tables belong to the runtime role.
       await admin.query(`ALTER DATABASE ${id(migration)} OWNER TO ${id(ROLLE)}`);
       await als(migration, null, null, c =>
         c.query(`ALTER TABLE users OWNER TO ${id(ROLLE)}; ALTER TABLE sets OWNER TO ${id(ROLLE)}`),

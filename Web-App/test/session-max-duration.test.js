@@ -1,20 +1,20 @@
 /**
- * Eine Webapp-Sitzung endet nach der Höchstdauer, auch wenn sie benutzt wird.
+ * A web app session ends after the maximum duration, even if it is used.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  `app.use(sessionMaxDuration())` in startup/app.ts entfernt → rot in
- *      session-app-db.test.js „nach der Höchstdauer ist niemand mehr angemeldet“
- *   B  in sessionMaxDuration `s.destroy(...)` durch `next()` ersetzt → rot:
- *      „trotz Betrieb endet die Sitzung nach der Höchstdauer"
- *   C  `angemeldetAm` in establishSession nicht gesetzt → rot: „die Anmeldung
- *      setzt den Zeitpunkt" (die Frist begänne erst beim nächsten Aufruf)
- *   Verwalter (14.11.2026 gemessen, je einzeln):
- *   D  in sessionMaxDuration die Leerlaufprüfung für Verwalter gestrichen → rot:
- *      „eine Verwaltersitzung endet nach kurzem Leerlauf …“ (nach dem Leerlauf noch angemeldet)
- *   E  das Nachführen von lastlyAt gestrichen → rot: dieselbe Prüfung („solange sie
- *      arbeitet“: trotz Anfragen abgemeldet)
- *   F  adminMaxMs durch maxMs ersetzt → rot: „… und nach ihrer kürzeren Höchstdauer“
- *   G  in sitzungsfristen() das Math.min für den Leerlauf gestrichen → rot: „Verwalter nie länger …“
+ * Counter-checks (measured on 28.10.2026):
+ *   A  `app.use(sessionMaxDuration())` removed in startup/app.ts → red in
+ *      session-app-db.test.js “after the maximum duration nobody is logged in anymore”
+ *   B  in sessionMaxDuration `s.destroy(...)` replaced by `next()` → red:
+ *      “despite activity the session ends after the maximum duration”
+ *   C  `angemeldetAm` not set in establishSession → red: “login
+ *      sets the timestamp” (the period would only begin on the next call)
+ *   Admins (measured 14.11.2026, each on its own):
+ *   D  the idle check for admins deleted in sessionMaxDuration → red:
+ *      “an administrator session ends after a short idle time …” (still logged in after the idle time)
+ *   E  the carrying along of lastlyAt deleted → red: the same check (“while it
+ *      works”: logged out despite requests)
+ *   F  adminMaxMs replaced by maxMs → red: “… and after its shorter maximum duration”
+ *   G  the Math.min for the idle time deleted in sitzungsfristen() → red: “administrators never longer …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -53,13 +53,13 @@ function testApp(maxMs, verwalter = {}) {
 }
 
 test('maximum duration of the web app session', async t => {
-  // Grosszügige Frist und Wartezeiten ab dem gemessenen Anmeldezeitpunkt: Unter
-  // Last dauert ein Aufruf hunderte Millisekunden, feste Schritte kippten dann.
+  // Generous period and waits from the measured login time: under
+  // load a call takes hundreds of milliseconds, fixed steps then toppled.
   const FRIST = 3_000;
   const { srv, base } = testApp(FRIST);
   t.after(() => new Promise(r => srv.close(r)));
   const r = await fetch(base + '/anmelden', { method: 'POST' });
-  const anmeldung = await r.json(); // die Sitzung steht erst nach dem letzten Byte im Speicher
+  const anmeldung = await r.json(); // the session only stands in the store after the last byte
   const keks = r.headers.get('set-cookie').split(';')[0];
   const wer = async () => (await (await fetch(base + '/wer', { headers: { cookie: keks } })).json()).userId;
 
@@ -79,7 +79,7 @@ test('maximum duration of the web app session', async t => {
   });
 });
 
-/** Anmelden und einen Abrufer für „wer ist angemeldet“ zurückgeben. */
+/** Log in and return a fetcher for „who is logged in“. */
 async function anmelden(base, verwalter) {
   const r = await fetch(`${base}/anmelden${verwalter ? '?verwalter=1' : ''}`, { method: 'POST' });
   const { am } = await r.json();
@@ -94,7 +94,7 @@ test('administrator sessions have shorter periods', async t => {
     t.after(() => new Promise(r => srv.close(r)));
     const chef = await anmelden(base, true);
     const nutzer = await anmelden(base, false);
-    // Arbeiten über länger als den Leerlauf: Jede Anfrage schiebt die Frist.
+    // Work for longer than the idle time: every request pushes the period.
     const bis = Date.now() + LEER * 1.5;
     while (Date.now() < bis) {
       assert.equal(await chef.wer(), 8, 'trotz Anfragen abgemeldet');

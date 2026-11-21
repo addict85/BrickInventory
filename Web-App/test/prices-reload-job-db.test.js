@@ -1,27 +1,27 @@
 /**
- * „Fehlende Preise holen“ (src/jobQueue/service.ts rememberPricesBefore): Je Konto und
- * Währung steht höchstens ein Auftrag offen, der neue Posten aufnimmt — auch bei
- * gleichzeitigen Bewertungen. Läuft einer, kommt höchstens ein Folgeauftrag dazu,
- * und der laufende kann trotzdem zurück (verschoben, gescheitert, unterbrochen),
- * ohne am eindeutigen Schlüssel zu scheitern. Dazu der Fortschritt im Worker.
+ * „Fetch missing prices“ (src/jobQueue/service.ts rememberPricesBefore): per account and
+ * currency at most one job stands open that takes in new items — even with
+ * concurrent valuations. If one runs, at most one follow-up job is added,
+ * and the running one can still go back (postponed, failed, interrupted)
+ * without failing on the unique key. Plus the progress in the worker.
  *
- * Gegenproben (am 13.11.2026 gemessen, je einzeln, dist neu gebaut):
- *   A  in rememberPricesBefore wieder ein Schlüssel je Postenliste (Hash) → rot: „je
- *      Konto und Währung ein offener Auftrag“ (zwei offene) und „gleichzeitig …“
- *   B  in ergaenzePreisAuftrag `DO UPDATE …` durch `DO NOTHING` ersetzt → rot:
- *      „je Konto und Währung …“ (die neuen Posten fehlen)
- *   C  in setMoved wieder fest 'offen' statt OFFEN_ODER_ERSETZT → rot:
- *      „der laufende geht zurück, während sein Folgeauftrag waiting“ (23505)
- *   D  in giveBack dasselbe → rot: derselbe Test (23505 beim Zurückgeben)
- *   E  in belegeAuftrag `waiting = false` entfernt → rot: „verschoben waiting, belegt nicht mehr“
- *   F  in setProgress Math.floor entfernt → rot: „Fortschritt ganzzahlig …“ (5.532)
- *   G  in progressChain `.then(melde, melde)` wieder `.then(melde)` → rot: derselbe Test
- *      (die Meldung nach der gescheiterten scheitert auch)
+ * Counter-checks (measured on 13.11.2026, each on its own, dist rebuilt):
+ *   A  in rememberPricesBefore again one key per item list (hash) → red: “per
+ *      account and currency one open job” (two open ones) and “concurrent …”
+ *   B  in ergaenzePreisAuftrag `DO UPDATE …` replaced by `DO NOTHING` → red:
+ *      “per account and currency …” (the new items are missing)
+ *   C  in setMoved again fixed 'offen' instead of OFFEN_ODER_ERSETZT → red:
+ *      “the running one goes back while its follow-up job waiting” (23505)
+ *   D  the same in giveBack → red: the same test (23505 when giving back)
+ *   E  `waiting = false` removed in belegeAuftrag → red: “postponed waiting, no longer occupies”
+ *   F  Math.floor removed in setProgress → red: “progress in whole numbers …” (5.532)
+ *   G  in progressChain `.then(melde, melde)` again `.then(melde)` → red: the same test
+ *      (the report after the failed one fails too)
  *
- * Wie im Betrieb: Eine Bewertung merkt Preise im Konto vor (asAccount), Testdaten
- * schreibt und liest die Eigentümerin.
+ * As in operation: a valuation queues prices in the account (asAccount), test data
+ * is written and read by the owner role.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -165,7 +165,7 @@ test('fetch missing prices: one job per account and currency', { concurrency: 1 
         ausfuehren: async (_n, k) => {
           await k.fortschritt({ erledigt: 5.532, gesamt: 8 });
           gesehen.push(await stand());
-          // BigInt lässt sich nicht als JSON schreiben: Diese eine Meldung scheitert.
+          // BigInt cannot be written as JSON: this one report fails.
           await assert.rejects(k.fortschritt({ erledigt: 6, gross: 1n }));
           gesehen.push(await k.fortschritt({ erledigt: 7, gesamt: 8 }));
           gesehen.push(await stand());

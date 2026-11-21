@@ -1,13 +1,13 @@
 /**
- * Währungswechsel stösst den Preis-Job an — gegen echte Routen und Tabelle.
+ * A currency change triggers the price job — against real routes and table.
  *
- * Gegenprobe (durchgeführt): den Anstoss in setUserSetting() entfernt →
- * die beiden „stösst an"-Schritte hier werden rot. Am 30.10.2026 mit dem
- * geplanten Auftrag wiederholt: preisJobAnstossen in startup/wiring.ts leer
- * → rot: „EUR → CHF muss den Preis-Job anstossen“. Am 15.11.2026 (Ereignis statt
- * Nacharbeit): onCurrencyChange() in createJobs gestrichen → rot, derselbe Fall.
+ * Counter-check (performed): the trigger removed in setUserSetting() →
+ * the two “triggers" steps here turn red. Repeated on 30.10.2026 with the
+ * scheduled job: preisJobAnstossen in startup/wiring.ts empty
+ * → red: “EUR → CHF must trigger the price job”. On 15.11.2026 (event instead of
+ * follow-up work): onCurrencyChange() deleted in createJobs → red, the same case.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -23,7 +23,7 @@ const db = testData();
 test('a real currency change triggers the price job, a no-op save does not', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
-  // Beobachtet wird der Termin des geplanten Auftrags 'preise'.
+  // What is observed is the date of the scheduled job 'preise'.
   const Z = _req('src/jobQueue/schedule.js');
   await db.run(`DELETE FROM jobs WHERE type = 'preise'`);
   await Z.planeNext('preise');
@@ -62,7 +62,7 @@ test('a real currency change triggers the price job, a no-op save does not', { c
     });
 
   try {
-    // 1) Echte Änderung über die Webapp-Route → der Termin ist jetzt.
+    // 1) Real change via the web app route → the date is now.
     assert.equal(await faellig(), false, 'Vorbedingung: der Lauf liegt in der Zukunft');
     let r = await postWeb({ currency: 'CHF' });
     assert.equal(r.status, 200);
@@ -72,14 +72,14 @@ test('a real currency change triggers the price job, a no-op save does not', { c
       'CHF',
     );
 
-    // 2) Dieselbe Währung nochmal (Formular schickt immer alle Felder) → kein Lauf.
+    // 2) The same currency again (the form always sends all fields) → no run.
     await spaeter();
     r = await postWeb({ currency: 'CHF', language: 'de' });
     assert.equal(r.status, 200);
     await new Promise(res => setTimeout(res, 700));
     assert.equal(await faellig(), false, 'ein Speichern OHNE Währungsänderung darf keinen Lauf kosten');
 
-    // 3) Parität: dieselbe Regel auf der v1-Route.
+    // 3) Parity: the same rule on the v1 route.
     r = await fetch(`${base}/api/v1/settings`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },

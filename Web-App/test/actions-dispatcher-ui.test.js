@@ -1,24 +1,24 @@
 /**
- * Der Dispatcher (js/actions.js) und die Bildfehler in jsdom am Bündel aus
- * main.js, das zusätzlich die Registry auf window legt: Jeder Handlername aus
- * Markup und Vorlagen ist zur Laufzeit angemeldet, ein Klick reicht Argumente,
- * Feldwert und `this` durch, ein Bildfehler wird einmal wiederholt, bevor der
- * Rückfall greift, und das Protokollfenster lädt sein Skript als Datei.
+ * The dispatcher (js/actions.js) and image errors in jsdom on the bundle from
+ * main.js, which additionally puts the registry on window: every handler name from
+ * markup and templates is registered at runtime, a click passes arguments,
+ * field value and `this` through, an image error is retried once before the
+ * fallback applies, and the log window loads its script as a file.
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln, danach zurückgesetzt):
- *   A  `closePwModal,` aus registerActions() in aktionen.js gestrichen → rot:
- *      „jeder Handler aus Markup und Vorlagen ist angemeldet“
- *   B  in handle() die Schleife über data-arg… nach data-arg2 abgebrochen
- *      (Liste ohne data-arg3) → rot: „ein Klick reicht Argumente …“
- *   C  `fn.apply(el, args)` → `fn(...args)` → rot: „ein Klick reicht … this“
- *   D  das `true` (Capture) am error-Hörer entfernt → rot: „ein Bildfehler
- *      wird einmal wiederholt …“ und „der Zoom behält …“ (error steigt nicht auf)
- *   E  der Zweig `if (!el.dataset.retried && el.src)` entfernt → rot: „ein
- *      Bildfehler wird einmal wiederholt …“
- *   F  der Zweig für data-onerror="keep" entfernt → rot: „der Zoom behält …“
- *   G  in openLogViewer wieder `'<script>' + …` statt logviewer.js → rot:
- *      „das Protokollfenster lädt sein Skript als Datei“
- *   H  `import './actions.js';` aus main.js gestrichen → rot: alle Fälle hier
+ * Counter-checks (measured 08.11.2026, each alone, reset afterwards):
+ *   A  `closePwModal,` deleted from registerActions() in aktionen.js → red:
+ *      “every handler from markup and templates is registered”
+ *   B  in handle() the loop over data-arg… stopped after data-arg2
+ *      (list without data-arg3) → red: “a click passes arguments …”
+ *   C  `fn.apply(el, args)` → `fn(...args)` → red: “a click passes … this”
+ *   D  the `true` (capture) removed from the error listener → red: “an image error
+ *      is retried once …” and “the zoom keeps …” (error does not bubble)
+ *   E  the branch `if (!el.dataset.retried && el.src)` removed → red: “an
+ *      image error is retried once …”
+ *   F  the branch for data-onerror="keep" removed → red: “the zoom keeps …”
+ *   G  in openLogViewer back to `'<script>' + …` instead of logviewer.js → red:
+ *      “the log window loads its script as a file”
+ *   H  `import './actions.js';` deleted from main.js → red: all cases here
  */
 const { isAppModule } = require('../scripts/build-frontend');
 const test = require('node:test');
@@ -36,7 +36,7 @@ const { openUi, warte, takt } = require('./helpers/ui');
 
 const PUB = path.join(__dirname, '..', 'public');
 
-/** Handlernamen im Markup und in den Vorlagen (Struktur); ob sie angemeldet sind, sagt die Laufzeit. */
+/** Handler names in the markup and in the templates (structure); whether they are registered is told by the runtime. */
 function namesInMarkup() {
   const quellen = [
     fs.readFileSync(path.join(PUB, 'index.html'), 'utf8'),
@@ -53,7 +53,7 @@ function namesInMarkup() {
   const namen = new Set();
   for (const s of quellen)
     for (const m of s.matchAll(/data-(?:click|change|input|blur|keydown)="([A-Za-z_$][\w$]*)"/g)) namen.add(m[1]);
-  // Der Log-Betrachter läuft im eigenen Fenster mit eigener Tabelle (logviewer-ui.test.js).
+  // The log viewer runs in its own window with its own table (logviewer-ui.test.js).
   for (const n of ['loadLogs', 'renderLogs', 'toggleAuto', 'toggleLevel']) namen.delete(n);
   return [...namen].sort();
 }
@@ -96,7 +96,7 @@ test('a click passes arguments, field value and this through', async () => {
     d.getElementById('p3').click();
     assert.equal(gesehen.length, 2);
     assert.equal(gesehen[0].dies, d.getElementById('p1'), 'this ist das auslösende Element');
-    // data-arg kommt immer als Zeichenkette an; das Ereignis steht zuletzt.
+    // data-arg always arrives as a string; the event comes last.
     assert.deepEqual(gesehen[0].args.slice(0, 3), ['1', 'b', 'c']);
     assert.equal(gesehen[0].args[3]?.type, 'click');
     assert.deepEqual(gesehen[1].args.slice(0, 2), ['k', '42'], 'data-val="1" reicht den Feldwert');
@@ -109,7 +109,7 @@ test('a click passes arguments, field value and this through', async () => {
   }
 });
 
-/** Ein Bild, das nicht lädt: error steigt nicht auf, der Dispatcher hört in der Capture-Phase. */
+/** An image that does not load: error does not bubble, the dispatcher listens in the capture phase. */
 const failure = (w, img) => img.dispatchEvent(new w.Event('error'));
 
 test('an image error is retried once before the fallback applies', async () => {
@@ -133,10 +133,10 @@ test('an image error is retried once before the fallback applies', async () => {
     failure(w, img);
     assert.equal(img.dataset.retried, '1', 'Kein zweiter Versuch vorgemerkt');
     assert.ok(img.getAttribute('src'), 'Das Bild ist nach dem ersten Fehler schon weg');
-    // Nach einer Sekunde dieselbe Adresse noch einmal, über ein frisch gesetztes Attribut.
+    // After one second the same address again, via a freshly set attribute.
     assert.ok(await warte(() => gesetzt.length > 0, 3000), 'Der zweite Versuch kommt nicht');
     assert.equal(gesetzt[0], 'http://localhost/images/sets/1-1.jpg');
-    // Erst der zweite Fehler greift zum Rückfall: die volle Auflösung aus data-orig.
+    // Only the second error resorts to the fallback: the full resolution from data-orig.
     failure(w, img);
     assert.equal(img.getAttribute('src'), '/images/sets/1-1-gross.jpg');
   } finally {
@@ -194,7 +194,7 @@ test('the log window loads its script as a file', async () => {
       skripte.some(s => /\/js\/logviewer\.js/.test(s.src)),
       'logviewer.js fehlt',
     );
-    // Die Daten stehen im Attribut, abgesichert: Das JSON mit seinen Anführungszeichen kommt heil an.
+    // The data is in the attribute, escaped: the JSON with its quotes arrives intact.
     assert.equal(fenster.body.dataset.base, 'http://localhost');
     assert.equal(typeof JSON.parse(fenster.body.dataset.i18n)['log.entries'], 'string');
     assert.equal(fenster.body.hasAttribute('data-auth'), false, 'Die Sitzung meldet das Fenster an, kein Token');

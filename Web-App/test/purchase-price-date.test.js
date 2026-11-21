@@ -1,10 +1,10 @@
 /**
- * Das Datumsfeld im Kaufpreis-Dialog zeigt das Datum in der Sprache des
- * Browsers. Nur wenn die von der App abweicht, steht es darunter noch einmal
- * in der Form der App; sonst stünde dasselbe Datum zweimal da.
+ * The date field in the purchase price dialog shows the date in the language of the
+ * browser. Only if it differs from the app's does it stand below once more
+ * in the app's form; otherwise the same date would stand there twice.
  *
- * Gegenprobe (07.11.2026): in dateField() die Abfrage browserWritesDateHowApp()
- * gestrichen → rot: „deutscher Browser, deutsche App: das Datum steht einmal“.
+ * Counter-check (07.11.2026): the query browserWritesDateHowApp() deleted in dateField()
+ * → red: “German browser, German app: the date appears once”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

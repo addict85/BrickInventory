@@ -1,5 +1,5 @@
 /**
- * Bildanfragen belegen KEINE Datenbankverbindung.
+ * Image requests occupy NO database connection.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -28,7 +28,7 @@ test('a tile wall costs not a single query', { concurrency: 1 }, async t => {
   };
   await weg();
 
-  // Abfragen mitzählen — das ist die Grösse, um die es geht.
+  // Count queries along — that is the quantity that matters.
   let abfragen = 0;
   const realQuery = db.pool.query.bind(db.pool);
   db.pool.query = (...a) => {
@@ -55,7 +55,7 @@ test('a tile wall costs not a single query', { concurrency: 1 }, async t => {
     await t.test('writing away is batched', async () => {
       const vorher = abfragen;
       await IQ._writeBuffer();
-      // Eine Anweisung für alle Notizen; dazu der Abarbeiter-Auftrag und sein NOTIFY.
+      // One statement for all notes; plus the processor job and its NOTIFY.
       assert.ok(
         abfragen - vorher <= 3,
         `${abfragen - vorher} Abfragen zum Wegschreiben von 60 Notizen — das muss ` +
@@ -73,8 +73,8 @@ test('a tile wall costs not a single query', { concurrency: 1 }, async t => {
     });
 
     await t.test('after a restart the knowledge is still there', async () => {
-      // Der Grund, warum es überhaupt in die Datenbank gehört:
-      // Der Speicher eines Prozesses hilft den anderen nicht.
+      // The reason why it belongs in the database at all:
+      // the memory of one process does not help the others.
       IM._emptyForeground();
       assert.equal(IM.isKnownMissing(`${PREFIX}_m7`), false, 'Vorbedingung: der Speicher ist leer');
       await IM._refresh();
@@ -87,13 +87,13 @@ test('a tile wall costs not a single query', { concurrency: 1 }, async t => {
   } finally {
     db.pool.query = realQuery;
     await weg();
-    // Den Pool NICHT hier schliessen: Der Sperr-Test weiter unten braucht ihn
-    // noch. Er schliesst als letzter DB-Test.
+    // Do NOT close the pool here: the lock test further below still needs it.
+    // It closes as the last DB test.
   }
 });
 
 test('a failed resize is not repeated endlessly', () => {
-  // Marcos Log, immer wieder dieselbe Zeile
+  // Marco's log, the same line again and again
   const px = require('./helpers/sources').proxyThumbSource();
   const q = px.slice(px.indexOf('function queueThumb('), px.indexOf('function drainThumbQueue'));
   assert.match(
@@ -101,8 +101,8 @@ test('a failed resize is not repeated endlessly', () => {
     /isKnownMissing\(k, 'thumb:' \+ thumbFile\)/,
     'queueThumb() fragt nicht, ob die Verkleinerung schon einmal gescheitert ist',
   );
-  // Und der Fehlschlag muss festgehalten werden — an BEIDEN Stellen, an denen
-  // er auftreten kann: beim Entpacken selbst und bei der Vorprüfung.
+  // And the failure must be recorded — in BOTH places where
+  // it can occur: when unpacking itself and in the pre-check.
   assert.equal(
     (px.match(/rememberMissing\(k, 'thumb:' \+ thumbFile\)/g) || []).length,
     2,
@@ -112,27 +112,27 @@ test('a failed resize is not repeated endlessly', () => {
 
 test('the browser may remember a 404', () => {
   const px = require('./helpers/sources').proxyThumbSource();
-  // Der Weg heisst jetzt sendPlaceholder
+  // The path is now called sendPlaceholder
   assert.match(px, /function sendPlaceholder\(res(: \w+)?\)/, 'Kein gemeinsamer Weg für ein fehlendes Bild');
   assert.match(
     px,
     /sendPlaceholder[\s\S]{0,600}Cache-Control', 'private, max-age=3600/,
     'Die Antwort trägt keinen Cache-Hinweis — der Browser fragt jedes Mal neu',
   );
-  // Beide Wege müssen ihn benutzen: der Treffer im Merker und die Absage vom CDN.
+  // Both paths must use it: the hit in the marker and the refusal from the CDN.
   assert.match(
     px,
     /isKnownMissing\(cacheKey\)\) return sendPlaceholder\(res\)/,
     'Der Merker-Treffer antwortet ohne Cache-Hinweis',
   );
   assert.match(px, /r\.status === 404 \? sendPlaceholder\(res\)/, 'Die Absage vom CDN antwortet ohne Cache-Hinweis');
-  // 403 (Drosselung) darf NICHT zwischengespeichert werden — dasselbe Argument
-  // wie beim serverseitigen Merker.
+  // 403 (throttling) must NOT be cached — the same argument
+  // as for the server-side marker.
   assert.doesNotMatch(px, /403[\s\S]{0,80}sendPlaceholder/, 'Ein 403 ist eine Drosselung, kein fehlendes Bild');
 });
 
 test('the preview lock occupies NO pool connection', { concurrency: 1 }, async t => {
-  // Marcos Log
+  // Marco's log
   try {
     await db.initSchemaOnce();
   } catch (e) {
@@ -154,15 +154,15 @@ test('the preview lock occupies NO pool connection', { concurrency: 1 }, async t
     await c.query('SELECT pg_advisory_unlock(918273645)');
   } finally {
     await c.end();
-    // Letzter Test mit Datenbank in dieser Datei.
+    // Last test with database in this file.
     await db.pool.end().catch(() => {});
   }
 });
 
 test('the queue has an index on the age', () => {
-  // Der Job sucht alle 20 Sekunden die ÄLTESTEN Einträge. Mit ein paar Dutzend
-  // Zeilen gleichgültig — mit 25 000 (nach „Katalogbilder holen") bedeutet jeder
-  // Lauf sonst einen vollständigen Durchgang samt Sortierung.
+  // Every 20 seconds the job looks for the OLDEST entries. With a few dozen
+  // rows that does not matter — with 25 000 (after “fetch catalog images") every
+  // run would otherwise mean a complete pass including sorting.
   const mig = fs.readFileSync(path.join(ROOT, 'db/migrations/0010-image-wanted-index.sql'), 'utf8');
   assert.match(
     mig,
@@ -172,19 +172,19 @@ test('the queue has an index on the age', () => {
 });
 
 test('the session lock is released on the same connection', () => {
-  // Eine Sitzungssperre gehört der VERBINDUNG, die sie genommen hat. Wird sie
-  // über eine andere freigegeben, tut das nichts — die Sperre bliebe für immer
-  // bestehen, und es entstünde nie wieder ein Vorschaubild. Das ist mir in
-  //  passiert.
+  // A session lock belongs to the CONNECTION that took it. If it is
+  // released via another one, that does nothing — the lock would persist
+  // forever, and no preview image would ever be created again. That actually
+  //  happened to me.
   const px = require('./helpers/sources').proxyThumbSource();
   const i = px.indexOf('async function withPreviewLock');
   assert.ok(i > 0, 'withPreviewLock fehlt');
-  // Die Funktion steht seit einer früheren Runde auf Modulebene statt in einer Closure —
-  // eine Einrückungsebene weniger, also endet sie auf '\n}\n'.
+  // Since an earlier round the function stands at module level instead of in a closure —
+  // one indentation level less, so it ends at '\n}\n'.
   const fn = px.slice(i, px.indexOf('\n}\n', i));
   assert.match(fn, /db\.ownConnection\(\)/, 'Die Sperre nimmt wieder eine Pool-Verbindung');
   assert.doesNotMatch(fn, /db\.pool\.connect\(\)/, 'Pool-Verbindung ist zurück');
-  // Nehmen und Freigeben stehen im Repository und bekommen DIESE Verbindung.
+  // Taking and releasing stand in the repository and get THIS connection.
   assert.match(fn, /sperre\.attemptsLock\(client,/, 'Nehmen nicht auf dem Client');
   assert.match(fn, /sperre\.giveLockFree\(client,/, 'Freigeben nicht auf dem Client');
 });

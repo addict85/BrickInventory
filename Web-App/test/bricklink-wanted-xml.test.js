@@ -1,26 +1,26 @@
 /**
- * Die Wanted-Liste, die der Teileliste-Export zu BrickLink schickt.
+ * The wanted list that the parts list export sends to BrickLink.
  *
- * ── Gegenproben (am 20.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
+ * ── Counter-checks (MEASURED on 20.10., numbers copied down) ─────────────────
  *
- * Ausgangslage beider Dateien zusammen: `# pass 13 / # fail 0`. Jede
- * Gegenprobe ist EINE Änderung, danach zurückgenommen (die Dateien wurden
- * gegen ihre Sicherung verglichen, `diff` sagte identisch).
+ * Starting point of both files together: `# pass 13 / # fail 0`. Every
+ * counter-check is ONE change, reverted afterwards (the files were
+ * compared against their backup, `diff` said identical).
  *
- *   A  die XML-Deklaration wieder vorangestellt (der Zustand von gestern)
- *      → `pass 10 / fail 3`. Rot sind die Fälle 1, 7 und 9 — nicht nur der
- *        erste: Die Deklaration zählt bei der Stückelung mit und wirft auch
- *        die Grössenfälle um.
- *   B  unbekannte Farbe als 0 geschrieben (`Number(p.color) || 0`)
- *      → `pass 12 / fail 1`. Rot ist genau Fall 3.
- *   C  in Zeichen gedeckelt statt in Bytes (`s.length`)
- *      → `pass 12 / fail 1`. Rot ist genau Fall 8 — Fall 7 bleibt grün, weil
- *        seine Posten keine Umlaute tragen. Genau dafür gibt es Fall 8.
- *   D  die Stückelung ganz entfernt (immer ein Stück)
- *      → `pass 11 / fail 2`. Rot sind die Fälle 7 und 8.
- * Gegenproben (08.11.2026 gemessen):
- *   E  `<ITEMTYPE>${p.type}</ITEMTYPE>` ohne esc() → rot: Fall 5
- *   F  in esc() die Ersetzung für ' gestrichen → rot: Fall 5b
+ *   A  the XML declaration prepended again (yesterday's state)
+ *      → `pass 10 / fail 3`. Red are cases 1, 7 and 9 — not only the
+ *        first: the declaration counts in the chunking and also upsets
+ *        the size cases.
+ *   B  unknown color written as 0 (`Number(p.color) || 0`)
+ *      → `pass 12 / fail 1`. Red is exactly case 3.
+ *   C  capped in characters instead of bytes (`s.length`)
+ *      → `pass 12 / fail 1`. Red is exactly case 8 — case 7 stays green because
+ *        its items carry no umlauts. Case 8 exists exactly for that.
+ *   D  chunking removed entirely (always one piece)
+ *      → `pass 11 / fail 2`. Red are cases 7 and 8.
+ * Counter-checks (measured 08.11.2026):
+ *   E  `<ITEMTYPE>${p.type}</ITEMTYPE>` without esc() → red: case 5
+ *   F  in esc() the replacement for ' deleted → red: case 5b
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -52,15 +52,15 @@ test("2. the required fields are there, with BrickLink's kind codes", async () =
     assert.match(xml, new RegExp(`<${tag}>`), `<${tag}> fehlt in:\n${xml}`);
   assert.match(xml, /<ITEMID>3001<\/ITEMID>/);
   assert.match(xml, /<MINQTY>10<\/MINQTY>/);
-  // Eine Minifigur hat keine Farbe. Eine 0 dort hiesse bei BrickLink „not
-  // applicable" — dasselbe wie nichts, nur länger.
+  // A minifigure has no color. A 0 there would mean “not
+  // applicable" at BrickLink — the same as nothing, only longer.
   assert.equal((xml.match(/<COLOR>/g) || []).length, 1, `Es steht mehr als eine COLOR in der Datei:\n${xml}`);
 });
 
 test('3. an UNKNOWN color is not invented', async () => {
-  // Der Kern des dritten Befunds. `null` heisst „keine BrickLink-Nummer
-  // bekannt" und ist etwas anderes als 0: 0 ist bei BrickLink „(Not
-  // Applicable)" und bei Rebrickable SCHWARZ.
+  // The core of the third finding. `null` means “no BrickLink number
+  // known" and is something other than 0: 0 is “(Not
+  // Applicable)" at BrickLink and BLACK at Rebrickable.
   const { buildWantedXml } = await modul();
   const xml = buildWantedXml([{ type: 'P', part: '3001', color: null, qty: 2 }]);
   assert.ok(!/<COLOR>/.test(xml), `Ohne bekannte Farbe darf kein COLOR dastehen:\n${xml}`);
@@ -85,16 +85,16 @@ test('4. condition only if it says something', async () => {
 });
 
 test('5. special characters are escaped, and & first', async () => {
-  // Teilenummern kommen aus dem Bestand; bei einem manuell erfassten Teil hat
-  // sie der Mensch getippt. Ein `&` darin machte sonst die ganze Datei
-  // unlesbar — wegen EINES Zeichens in EINER Zeile.
+  // Part numbers come from the stock; for a manually entered part a
+  // human typed it. An `&` in it would otherwise make the whole file
+  // unreadable — because of ONE character in ONE line.
   const { buildWantedXml } = await modul();
   const xml = buildWantedXml([{ type: 'P', part: 'x<&"1', color: 5, qty: 1 }]);
   assert.match(xml, /<ITEMID>x&lt;&amp;&quot;1<\/ITEMID>/, `Falsch maskiert:\n${xml}`);
-  // Die Reihenfolge: Wird & nicht zuerst ersetzt, wird aus `<` erst `&lt;`
-  // und daraus `&amp;lt;` — BrickLink zeigte dann wörtlich „&lt;".
+  // The order: if & is not replaced first, `<` first becomes `&lt;`
+  // and then `&amp;lt;` — BrickLink then literally showed “&lt;".
   assert.ok(!/&amp;lt;|&amp;quot;/.test(xml), `Doppelt maskiert:\n${xml}`);
-  // Auch die Art: Jedes Textfeld geht durch esc(), nicht nur die Nummer.
+  // The kind too: every text field goes through esc(), not only the number.
   assert.match(buildWantedXml([{ type: 'P<&', part: '1', color: 5, qty: 1 }]), /<ITEMTYPE>P&lt;&amp;<\/ITEMTYPE>/);
 });
 
@@ -114,8 +114,8 @@ test('6. the quantity is at least 1', async () => {
 
 test('7. lists that are too large are cut into pieces BrickLink accepts', async () => {
   const { buildWantedXml, buildWantedXmlPieces, BL_UPLOAD_MAX_BYTES } = await modul();
-  // 3000 Posten sind erreichbar: Eine Teileliste aus mehreren grossen Sets
-  // kommt leicht dorthin, und jedes fehlende Teil ist eine Zeile.
+  // 3000 items are reachable: a parts list from several big sets
+  // easily gets there, and every missing part is a line.
   const alle = Array.from({ length: 3000 }, (_, i) => ({
     type: 'P',
     part: `300${i % 10}`,
@@ -152,9 +152,9 @@ test('7. lists that are too large are cut into pieces BrickLink accepts', async 
 });
 
 test('8. measured in bytes, not in characters', async () => {
-  // Ein Teilename mit Umlaut wird in UTF-8 zu mehr Bytes als er Zeichen hat.
-  // Wer in Zeichen deckelt, liefert Stücke, die BrickLink ablehnt — und zwar
-  // nur bei Umlauten, also genau in Marcos Sprache.
+  // A part name with an umlaut becomes more bytes in UTF-8 than it has characters.
+  // Whoever caps in characters delivers pieces BrickLink rejects — and
+  // only with umlauts, i.e. exactly in Marco's language.
   const { buildWantedXmlPieces } = await modul();
   const grenze = 20000;
   const posten = Array.from({ length: 400 }, (_, i) => ({
@@ -174,8 +174,8 @@ test('8. measured in bytes, not in characters', async () => {
 });
 
 test('9. an empty list yields a valid, empty file', async () => {
-  // Die Gegenrichtung: Ohne diesen Fall wäre auch ein leeres Array „in
-  // Ordnung" — und der Export böte einen Download ohne Inhalt an.
+  // The opposite direction: without this case an empty array would also be “in
+  // order" — and the export would offer a download without content.
   const { buildWantedXmlPieces } = await modul();
   const stuecke = buildWantedXmlPieces([]);
   assert.equal(stuecke.length, 1, 'Genau eine Datei, auch wenn sie leer ist');

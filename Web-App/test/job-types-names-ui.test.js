@@ -1,13 +1,13 @@
 /**
- * Hintergrundarbeiten → „Aufträge je Art“: Jede Auftragsart, die der Server anmeldet
- * (DECLARED_KINDS), erscheint unter ihrem übersetzten Namen, nie als interner Schlüssel.
- * Eine neue Art ohne Eintrag in KIND_NAMES wird hier rot.
+ * Background jobs → “jobs per kind”: every job kind the server registers
+ * (DECLARED_KINDS) appears under its translated name, never as an internal key.
+ * A new kind without an entry in KIND_NAMES turns red here.
  *
- * Gegenproben (16.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in monitor.js den Eintrag katalog_nachzug aus KIND_NAMES gestrichen → rot: „katalog_nachzug“
- *      steht als Schlüssel in der Tabelle (de und en)
- *   B  in en.js monitor.art.katalog_nachzug gestrichen → rot: i18n.test.js (Schlüsselmengen); hier grün,
- *      weil tRaw auf den deutschen Text zurückfällt — die Lücke fängt jener Test.
+ * Counter-checks (measured 16.11.2026, each alone, bundle rebuilt):
+ *   A  in monitor.js the entry katalog_nachzug deleted from KIND_NAMES → red: “katalog_nachzug”
+ *      stands as a key in the table (de and en)
+ *   B  in en.js monitor.art.katalog_nachzug deleted → red: i18n.test.js (key sets); green here
+ *      because tRaw falls back to the German text — that test catches the gap.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

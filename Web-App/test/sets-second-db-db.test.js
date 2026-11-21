@@ -1,35 +1,35 @@
 /**
- * Ein Sets-Bereich mit eigenem Zugang (buildServices(zweite, …)) liest und schreibt nur
- * dort, auch über Haushalt, Einstellungen, Lagerort, Preisalarm, Papierkorb, Katalog (Inventar),
- * Finanzen (fetchPrice, priceHistorySet) und Aufträge. Der Zugang des Prozesses zählt mit und
- * darf keine Anfrage sehen. Das Haushaltsgedächtnis gilt je Zugang, nicht je Konto-ID.
+ * A sets area with its own access (buildServices(zweite, …)) only reads and writes
+ * there, also via household, settings, storage location, price alert, trash, catalog (inventory),
+ * finances (fetchPrice, priceHistorySet) and jobs. The access of the process counts along and
+ * must see no query. The household memory applies per access, not per account ID.
  *
- * Gegenproben (11.11.2026 gemessen, je einzeln):
- *   A  currencyOf() in src/sets/service.ts wieder über getSetting(uid, …) →
- *      rot: „Währung aus der zweiten Datenbank“, „Preisalarm …“ (Währung des
- *      Alarms) und „der Prozesszugang blieb unberührt“
- *   B  deleteSetFor() in src/sets/delete.ts mit
- *      haushaltBereich().schreibbereich(s.nutzer) → rot: „der
- *      Prozesszugang blieb unberührt“
- *   C  setLocationOfSets() wieder über bestandBereich().locationService →
- *      rot: „Lagerort in der zweiten Datenbank“ und „der Prozesszugang …“
+ * Counter-checks (measured 11.11.2026, each on its own):
+ *   A  currencyOf() in src/sets/service.ts again via getSetting(uid, …) →
+ *      red: “currency from the second database”, “price alert …” (currency of the
+ *      alert) and “the process access stayed untouched”
+ *   B  deleteSetFor() in src/sets/delete.ts with
+ *      haushaltBereich().schreibbereich(s.nutzer) → red: “the
+ *      process access stayed untouched”
+ *   C  setLocationOfSets() again via bestandBereich().locationService →
+ *      red: “storage location in the second database” and “the process access …”
  *
- * Gegenproben (11.11.2026 gemessen, je einzeln):
- *   D  setPrice() in src/sets/prices.ts ruft fetchPrice() ohne den Zugang der
- *      Sets → rot: „Marktpreis aus dem Cache der zweiten Datenbank“ und „der
- *      Prozesszugang …“
- *   E  setPriceHistory() ruft priceHistorySet() ohne sk.finances → rot:
- *      „Preisverlauf aus der zweiten Datenbank“ und „der Prozesszugang …“
- *   F  partListOfSets() ruft newestInventory(setNum) ohne sk.katalog → rot:
- *      „Teileliste aus dem Katalog …“ und „der Prozesszugang …“
- *   G  derselbe placeJobOne('bilder', …) ohne sk.auftraege → rot:
- *      „Teileliste … Bilderauftrag dort“ (kein Auftrag in der zweiten) und „der
- *      Prozesszugang …“
- *   H  src/household/household.ts wieder mit einem Gedächtnis für alle Zugänge →
- *      rot: „Haushaltsgedächtnis je Zugang“ (14.11.2026 erneut, das Gedächtnis jetzt im
- *      Fach des Bereichs: gedaechtnis() mit einem Fach für alle → rot, derselbe Test)
+ * Counter-checks (measured 11.11.2026, each on its own):
+ *   D  setPrice() in src/sets/prices.ts calls fetchPrice() without the access of the
+ *      sets → red: “market price from the cache of the second database” and “the
+ *      process access …”
+ *   E  setPriceHistory() calls priceHistorySet() without sk.finances → red:
+ *      “price history from the second database” and “the process access …”
+ *   F  partListOfSets() calls newestInventory(setNum) without sk.katalog → red:
+ *      “parts list from the catalog …” and “the process access …”
+ *   G  the same placeJobOne('bilder', …) without sk.auftraege → red:
+ *      “parts list … image job there” (no job in the second one) and “the
+ *      process access …”
+ *   H  src/household/household.ts again with one memory for all accesses →
+ *      red: “household memory per access” (14.11.2026 again, the memory now in the
+ *      compartment of the area: gedaechtnis() with one compartment for all → red, the same test)
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -48,7 +48,7 @@ const { createDb } = _req('db/database.js');
 const NAME = testName('sets_zweite');
 const SN = '99877-1';
 
-/** Zählt jede Anfrage, die über den Zugang oder seinen Pool geht. */
+/** Counts every query that goes via the access or its pool. */
 function zaehle(zugang) {
   const n = { anfragen: 0 };
   const pool = zugang.pool;
@@ -106,9 +106,9 @@ test('sets with a second access', { concurrency: 1, timeout: 180_000 }, async t 
     `INSERT INTO rb_inventory_parts (inventory_id, part_num, color_id, quantity, is_spare) VALUES (77, '3001', 0, 4, false)`,
   );
 
-  // Wie der Server (startup/wiring.ts), nur über den zweiten Zugang.
+  // Like the server (startup/wiring.ts), only via the second access.
   const { buildServices } = _req('startup/wiring.js');
-  // Dienste ohne Schlüssel dafür rufen die Module über den Kontext dieses Zugangs.
+  // Services without a key for it call the modules via the context of this access.
   const contexts = {};
   const alle = buildServices(zweite, { contexts });
   const sets = alle.sets;
@@ -187,7 +187,7 @@ test('sets with a second access', { concurrency: 1, timeout: 180_000 }, async t 
   });
 
   await t.test('household memory per access', async () => {
-    // Dieselbe Konto-ID, zwei Datenbanken: In der zweiten hat sie ein Unterkonto, im Prozesszugang nicht.
+    // The same account ID, two databases: in the second it has a sub-account, in the process access not.
     const UNTER = 987654;
     await zweite.run("INSERT INTO users (id, username, password_hash) VALUES ($1, 'unter_in_zwei', 'x')", [UNTER]);
     await zweite.run('INSERT INTO account_links (main_user_id, sub_user_id) VALUES ($1, $2)', [uid, UNTER]);

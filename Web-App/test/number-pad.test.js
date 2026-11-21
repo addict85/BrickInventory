@@ -1,10 +1,10 @@
 /**
- * Auf dem Handy erscheint bei Zahlenfeldern die Zahlentastatur.
+ * On the phone, number fields bring up the number keyboard.
  *
- * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
- *   a) inputmode bei #add-price entfernt   → Schritt 1 rot, nennt die Stelle
- *   b) decimal → numeric bei #add-price    → Schritt 2 rot
- *   c) #add-price wieder type="number" (02.11.2026) → Schritt 3 rot, nennt
+ * ── Counter-checks (carried out, result in the commit) ──────────────────────────
+ *   a) inputmode removed on #add-price     → step 1 red, names the place
+ *   b) decimal → numeric on #add-price     → step 2 red
+ *   c) #add-price again type="number" (02.11.2026) → step 3 red, names
  *      public/index.html:1719
  */
 const test = require('node:test');
@@ -14,7 +14,7 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-/** index.html plus alle Frontend-Bausteine — NICHT das gebaute Bündel. */
+/** index.html plus all frontend building blocks — NOT the built bundle. */
 function quellen() {
   const js = fs
     .readdirSync(path.join(ROOT, 'public/js'))
@@ -37,8 +37,8 @@ function numberFields() {
 
 test('1. every type="number" carries an inputmode', () => {
   const felder = numberFields();
-  // Selbstnachweis: Findet die Suche überhaupt etwas? Ohne das wäre eine
-  // leere Liste für immer grün, ohne je ein Feld angesehen zu haben.
+  // Self-proof: does the search find anything at all? Without that an
+  // empty list would be green forever without ever having looked at a field.
   assert.ok(felder.length >= 20, `Nur ${felder.length} Zahlenfelder gefunden — Muster veraltet?`);
 
   const ohne = felder.filter(f => !/inputmode=/i.test(f.tag)).map(f => `${f.datei}:${f.zeile}`);
@@ -52,9 +52,9 @@ test('1. every type="number" carries an inputmode', () => {
 });
 
 test('2. prices and thresholds get `decimal`, not `numeric`', () => {
-  // `numeric` ist ein reiner Ziffernblock — ohne Komma. Bei einem Preisfeld
-  // heisst das: Man kann 12 tippen, aber nicht 12.50. Der Unterschied fällt
-  // erst auf, wenn jemand einen Rappenbetrag eingeben will.
+  // `numeric` is a pure digit pad — without a comma. For a price field
+  // that means: one can type 12, but not 12.50. The difference only becomes
+  // noticeable when somebody wants to enter an amount with cents.
   const falsch = [];
   for (const f of numberFields()) {
     const commaField = /step=["']?0?\.\d/.test(f.tag);
@@ -71,8 +71,8 @@ test('2. prices and thresholds get `decimal`, not `numeric`', () => {
 });
 
 test('3. money fields are text fields: type="number" discards "149,95"', () => {
-  // Chrome liefert für ein Zahlenfeld mit Komma je nach Sprache "" oder 149;
-  // gelesen wird mit readAmount() (money-input.test.js prüft das Verhalten).
+  // Depending on the language, Chrome delivers "" or 149 for a number field with a comma;
+  // it is read with readAmount() (money-input.test.js checks the behavior).
   const falsch = numberFields()
     .filter(f => /inputmode=["']?decimal/i.test(f.tag) && /type=["']?number/.test(f.tag))
     .map(f => `${f.datei}:${f.zeile}`);

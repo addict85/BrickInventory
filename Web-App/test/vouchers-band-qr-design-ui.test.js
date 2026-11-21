@@ -1,17 +1,17 @@
 /**
- * Kleinere Befunde der UI-Prüfung vom 02.11.2026, am echten Bündel in jsdom
- * (mit styles.css, wo es um Sichtbarkeit geht):
- *   - Gutschein-Zeile: „kein PDF“ steht sichtbar da, Löschen ist ein Knopf
- *     wie seine Nachbarn mit Namen; ohne Gutscheine keine Summe, kein …
+ * Smaller findings of the UI check of 02.11.2026, on the real bundle in jsdom
+ * (with styles.css where visibility matters):
+ *   - voucher row: „kein PDF“ stands there visibly, delete is a button
+ *     like its neighbors with a name; without vouchers no sum, no …
  *
- * Gegenproben (02.11.2026 gemessen, je einzeln):
- *   A  voucher-nopdf wieder nur „—“ mit .vh-Text → rot: „Gutscheine …“
- *   B  in ladeGutscheine() das Verbergen von [data-nur-mit-gutscheinen]
- *      entfernt → rot: „ohne Gutscheine …“
- *   C  Regel body:not(:has(…)) #rb-hinweis entfernt → rot: „Rebrickable-Band …“
- *   D  #qr-code:empty-Regel entfernt → rot: „QR-Fläche …“
- *   E  showSettingAccess() nicht aufgerufen → rot: „Kein Zugriff …“
- *   F  Beschreibung weggelassen (nur Werkbank-Hinweis) → rot: „Design …“
+ * Counter-checks (measured 02.11.2026, each on its own):
+ *   A  voucher-nopdf again only „—“ with .vh text → red: “vouchers …”
+ *   B  the hiding of [data-nur-mit-gutscheinen] removed in ladeGutscheine()
+ *      → red: “without vouchers …”
+ *   C  rule body:not(:has(…)) #rb-hinweis removed → red: “Rebrickable banner …”
+ *   D  #qr-code:empty rule removed → red: “QR area …”
+ *   E  showSettingAccess() not called → red: „Kein Zugriff …“
+ *   F  description left out (only werkbank hint) → red: “design …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -50,7 +50,7 @@ test('vouchers: row and actions', async () => {
     assert.match(zeile.querySelector('.voucher-nopdf').textContent.trim(), /^kein PDF$/);
     const loeschen = zeile.querySelector('[data-click="gutscheinLoeschen"]');
     const bearbeiten = zeile.querySelector('[data-click="gutscheinBearbeiten"]');
-    // Beide beschriftet (UI-Prüfung 6, M7), Löschen als Gefahr markiert.
+    // Both labeled (UI check 6, M7), delete marked as danger.
     assert.equal(loeschen.className, bearbeiten.className + ' v-btn-gefahr');
     assert.deepEqual([bearbeiten.textContent.trim(), loeschen.textContent.trim()], ['Bearbeiten', 'Löschen']);
     for (const e of o.d.querySelectorAll('[data-nur-mit-gutscheinen]')) assert.equal(zu(o.w, e), false);

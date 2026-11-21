@@ -1,26 +1,26 @@
 /**
- * Befunde der UI-Prüfung 6 (03.11.2026), am echten Bündel in jsdom: was die
- * Oberfläche aus Serverantworten und Klicks macht.
+ * Findings of UI check 6 (03.11.2026), on the real bundle in jsdom: what the
+ * UI makes of server responses and clicks.
  *
- * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  `if (await setUnbekannt(num)) return;` in doAddSet entfernt → rot:
- *      „unbekannte Setnummer“ (legt sofort an)
- *   B  Filter auf Kauftage in priceChartSVG entfernt → rot: „Preisverlauf“
- *      (Kurve mit 3 statt 2 Punkten)
- *   C  data-change="speichereWaehrung" am Währungsfeld entfernt → rot:
- *      „Konto: Währung wirkt sofort“
- *   D  Rückgängig im Toast von merkpostenLoeschen entfernt → rot: „Merkposten löschen“
- *   (alle acht gemessen: je genau der genannte Test rot, die übrigen grün)
- *   E  LAND_CURRENCY['de-CH'] auf EUR → rot: „Gutscheine: Währung des Ausgabelandes“
- *   F  legeAlarmAn ohne -1-Ergänzung → rot: „Preisalarm in seiner Ansicht“
- *   G  Hinweisspalte der Auftragszeile ohne Fehlerkasten → rot: „Hintergrundarbeiten“
- *   H  fmtDatum in Englisch wieder 2-stellig numerisch → rot: „Datum auf Englisch“
- *   I  (05.11.2026, UI-Prüfung 17 M5) Rückfrage vor dem Währungswechsel aus
- *      speichereWaehrung entfernt → rot: „Konto: Währung wirkt sofort“ (kein
- *      Dialog mit „Marktpreise“)
- *   J  (12.11.2026, UX-Prüfung 19 M3: Zeitplanfelder jetzt in den
- *      Einstellungen) in saveJobTime die Prüfung auf HH:MM entfernt → rot:
- *      „Hintergrundarbeiten“ (aria-invalid fehlt)
+ * Counter-checks (measured 03.11.2026, each on its own):
+ *   A  `if (await setUnbekannt(num)) return;` removed in doAddSet → red:
+ *      “unknown set number” (creates immediately)
+ *   B  filter on purchase days removed in priceChartSVG → red: “price history”
+ *      (curve with 3 instead of 2 points)
+ *   C  data-change="speichereWaehrung" removed on the currency field → red:
+ *      “account: currency applies immediately”
+ *   D  undo removed in the toast of merkpostenLoeschen → red: “delete pending item”
+ *   (all eight measured: each exactly the named test red, the others green)
+ *   E  LAND_CURRENCY['de-CH'] set to EUR → red: “vouchers: currency of the issuing country”
+ *   F  legeAlarmAn without the -1 addition → red: “create price alert in its view”
+ *   G  hint column of the job row without the error box → red: “background jobs”
+ *   H  fmtDatum in English again 2-digit numeric → red: “date in English”
+ *   I  (05.11.2026, UI check 17 M5) prompt before the currency change removed from
+ *      speichereWaehrung → red: “account: currency applies immediately” (no
+ *      dialog with „Marktpreise“)
+ *   J  (12.11.2026, UX check 19 M3: schedule fields now in the
+ *      settings) the check for HH:MM removed in saveJobTime → red:
+ *      “background jobs” (aria-invalid missing)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -114,7 +114,7 @@ test('account: currency applies immediately, password has its own button', async
     const feld = d.getElementById('s-cur');
     feld.value = 'CHF';
     feld.dispatchEvent(new w.Event('change', { bubbles: true }));
-    // Vor dem Wechsel sagt eine Rückfrage, dass die Marktpreise neu geladen werden.
+    // Before the change a prompt says that the market prices are reloaded.
     assert.ok(
       await warte(() => d.getElementById('confirm-modal').style.display === 'flex'),
       'Rückfrage vor dem Währungswechsel',

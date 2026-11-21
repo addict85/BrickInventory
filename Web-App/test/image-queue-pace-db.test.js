@@ -1,32 +1,32 @@
 /**
- * @einzeln: Im parallelen Lauf brach zweimal der Test-Läufer selbst beim
- * Lesen der Ausgabe dieser Datei ab („Unable to deserialize cloned data“);
- * einzeln nie. Ursache in Node ungeklärt, deshalb nacheinander.
+ * @einzeln: in the parallel run the test runner itself twice broke off while
+ * reading this file's output (“Unable to deserialize cloned data”);
+ * alone never. Cause in Node unclear, hence sequentially.
  *
- * Die Taktung des Bild-Hintergrundjobs — und wer sie von aussen sehen kann.
+ * The pacing of the image background job — and who can see it from outside.
  *
- * ── Marcos Log ───────────────────────────────────────────────
+ * ── Marco's log ──────────────────────────────────────────────
  *     [image-queue] 10 bearbeitet: 0 geladen, 0 Vorschau erzeugt, 10 bereits vorhanden
- * fünfmal hintereinander, bei 1113 Notizen in der Warteschlange, und in der
- * Kachel daneben „Job noch nicht gelaufen".
+ * five times in a row, with 1113 notes in the queue, and in the
+ * tile next to it “Job noch nicht gelaufen".
  *
- * Zwei Fehler in einem Bild:
+ * Two bugs in one picture:
  *
- *   1. Das Kontingent von dreissig Anfragen je Minute (Marcos Vorgabe gegen
- *      eine Sperre durch das CDN) wurde auf NOTIZEN angewandt statt auf CDN-
- *      Anfragen. Eine Notiz, für die Bild und Vorschau längst dalagen, kostete
- *      damit dasselbe wie ein Download — 1113 fertige Bilder brauchten so 37
- *      Minuten reines Warten.
+ *   1. The quota of thirty requests per minute (Marco's specification against
+ *      a block by the CDN) was applied to NOTES instead of CDN
+ *      requests. A note for which image and preview were long present thus cost
+ *      the same as a download — 1113 finished images thus needed 37
+ *      minutes of pure waiting.
  *
- *   2. Der Stand des letzten Durchgangs lag im Arbeitsspeicher des Prozesses,
- *      der den Job ausführt. Die Kachel wird aber von irgendeinem der vier
- *      Arbeitsprozesse beantwortet — in drei von vier Fällen also von einem,
- *      der nichts davon weiss.
+ *   2. The state of the last pass lay in the memory of the process
+ *      that executes the job. The tile, however, is answered by any of the four
+ *      worker processes — in three of four cases thus by one
+ *      that knows nothing of it.
  *
- * Beides sind Verhaltensfragen, keine Quelltextfragen. Deshalb misst dieser
- * Test, was der Job TUT, und liest den Kachelstand aus einem ZWEITEN PROCESS.
+ * Both are questions of behavior, not of source text. Hence this
+ * test measures what the job DOES and reads the tile state from a SECOND PROCESS.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,11 +37,11 @@ const { execFileSync } = require('node:child_process');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-// Herunterladen und Verkleinern abfangen — hier zählt, WIE OFT und WANN sie
-// gerufen werden, nicht was sie tun.
+// Intercept download and downscaling — what counts here is HOW OFTEN and WHEN they
+// are called, not what they do.
 const loadTimes = [];
 /**
- * Schalter für den abgefangenen Download.
+ * Switch for the intercepted download.
  */
 let loadFailsFail = false;
 
@@ -49,8 +49,8 @@ const { buildAndRequire, testData, testImageWorker } = require('./helpers/source
 const _req = buildAndRequire();
 testImageWorker(null, {
   setBildLaden: async (_u, sn) => {
-    // Auch der Fehlschlag zählt als Anfrage: Der Roundtrip zum CDN hat
-    // stattgefunden, und genau darum geht es beim Kontingent.
+    // The failure also counts as a request: the round trip to the CDN has
+    // taken place, and exactly that is what the quota is about.
     loadTimes.push(Date.now());
     return loadFailsFail ? null : `/images/sets/${sn}.jpg`;
   },
@@ -63,11 +63,11 @@ const db = testData();
 const IQ = _req('src/images/imageDemandRun.js');
 const { SET_IMAGES_DIR } = _req('src/infra/appPaths.js');
 
-/** Stapelgrösse und Deckel aus dem Modul — der Test wiederholt keine Zahl. */
+/** Batch size and cap from the module — the test repeats no number. */
 const { STAPEL, DURCHGANG_MAX_NOTIZEN: DECKEL } = IQ;
 
 const angelegt = [];
-/** Bild UND Vorschau hinlegen — der Job hat für diese Notiz nichts zu tun. */
+/** Put image AND preview in place — the job has nothing to do for this note. */
 function finishedImage(sn) {
   for (const f of [`${sn}.jpg`, `${sn}_thumb.jpg`]) {
     const p = path.join(SET_IMAGES_DIR, f);
@@ -78,11 +78,11 @@ function finishedImage(sn) {
 const offen = async p =>
   (await db.get(`SELECT COUNT(*)::int c FROM image_wanted WHERE set_number LIKE $1`, [p + '%'])).c;
 /**
- * Notizen einreihen — mit AUFSTEIGENDEM `requested_at`.
+ * Enqueue notes — with ASCENDING `requested_at`.
  *
- * Der Stapel holt `ORDER BY requested_at ASC`. Trägt ein einziges INSERT für
- * alle Zeilen dasselbe NOW() ein, ist die Reihenfolge beliebig — und ein Test,
- * der auf Stapelgrenzen zielt, misst dann Zufall.
+ * The batch fetches `ORDER BY requested_at ASC`. If a single INSERT for
+ * all rows enters the same NOW(), the order is arbitrary — and a test
+ * that targets batch boundaries then measures chance.
  */
 const einreihen = async (praefix, von, bis) => {
   await db.run(
@@ -101,9 +101,9 @@ test('a tick clears finished notes instead of ten every twenty seconds', { concu
     keineDb(t, e);
     return;
   }
-  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
-  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/image-queue.js.
+  // The queue must be emptied BEFORE use, not only the own
+  // prefix — otherwise the batch takes the rows of a predecessor. Rationale
+  // and reproduction in helpers/image-queue.js.
   await emptyQueue(db);
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
 
@@ -129,8 +129,8 @@ test('a tick clears finished notes instead of ten every twenty seconds', { concu
     assert.equal(e.uebersprungen, COUNT, 'Nicht alle wurden als „vorhanden" gezählt');
     assert.equal(e.work, 0, 'Für ein Bild samt Vorschau darf kein Arbeitsschritt anfallen');
     assert.equal(loadTimes.length, 0, 'Es wurde beim CDN angefragt, obwohl alles dalag');
-    // Ohne echte Arbeit darf auch keine Höflichkeitspause anfallen: Sie schützt
-    // das CDN, und das wurde hier nicht angefasst.
+    // Without real work no politeness pause may occur either: it protects
+    // the CDN, and that was not touched here.
     assert.ok(
       duration < 2000,
       `Der Takt brauchte ${duration} ms für reine Übersprünge — dann greift die ` +
@@ -148,20 +148,20 @@ test('the quota applies to real work, not to notes', { concurrency: 1 }, async t
     keineDb(t, e);
     return;
   }
-  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
-  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/image-queue.js.
+  // The queue must be emptied BEFORE use, not only the own
+  // prefix — otherwise the batch takes the rows of a predecessor. Rationale
+  // and reproduction in helpers/image-queue.js.
   await emptyQueue(db);
 
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
   const P = `KO${process.pid}`;
   await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
-  // ── Bewusst über STAPELGRENZEN hinweg ────────────────────────────────────
+  // ── Deliberately across BATCH BOUNDARIES ─────────────────────────────────
   //
-  // Jeder dritte Eintrag muss geladen werden, der Rest liegt fertig da. Die
-  // zehn Anfragen verteilen sich damit über mehrere Stapel — nur so misst der
-  // Abstandstest unten überhaupt eine Stapelgrenze. Lägen alle zehn im ersten
-  // Stapel, bliebe der alte, zu enge Zuschnitt der Pause unentdeckt.
+  // Every third entry must be loaded, the rest lies there finished. The
+  // ten requests thereby spread over several batches — only then does the
+  // spacing test below measure a batch boundary at all. If all ten lay in the first
+  // batch, the old, too narrow cut of the pause would go undetected.
   const COUNT = STAPEL * 4;
   const zuLaden = new Set();
   for (let i = 1; i <= COUNT; i++) {
@@ -185,8 +185,8 @@ test('the quota applies to real work, not to notes', { concurrency: 1 }, async t
       );
       assert.equal(e.work, STAPEL);
       assert.ok((await offen(P)) > 0, 'Der Rest muss liegenbleiben');
-      // Vorbedingung für den Abstandstest: Die zehn Anfragen lagen wirklich in
-      // mehr als einem Stapel.
+      // Precondition for the spacing test: the ten requests really lay in
+      // more than one batch.
       assert.ok(
         e.gesamt > STAPEL,
         `alle ${e.work} Anfragen lagen in einem einzigen Stapel — dann prüft ` +
@@ -216,14 +216,14 @@ test("skips use no quota — Marco's mixed queue", { concurrency: 1 }, async t =
     keineDb(t, e);
     return;
   }
-  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
-  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/image-queue.js.
+  // The queue must be emptied BEFORE use, not only the own
+  // prefix — otherwise the batch takes the rows of a predecessor. Rationale
+  // and reproduction in helpers/image-queue.js.
   await emptyQueue(db);
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
 
-  // Der Normalfall nach dem Knopf „Katalogbilder holen": ein paar fehlende
-  // Bilder, verstreut zwischen hunderten, die längst dalagen.
+  // The normal case after the button “fetch catalog images": a few missing
+  // images, scattered among hundreds that were long present.
   const P = `MX${process.pid}`;
   const DONE = STAPEL * 5,
     ZU_LADEN = 3;
@@ -249,18 +249,18 @@ test("skips use no quota — Marco's mixed queue", { concurrency: 1 }, async t =
 });
 
 test('a tick looks through at most DURCHGANG_MAX_NOTIZEN notes', { concurrency: 1 }, async t => {
-  // Der Deckel ist nötig, weil `existsSync` synchron ist: Ohne ihn liefe eine
-  // Warteschlange aus 25 000 fertigen Bildern in einem Zug durch und hielte
-  // den Event-Loop des Arbeitsprozesses in Schüben auf.
+  // The cap is necessary because `existsSync` is synchronous: without it a
+  // queue of 25 000 finished images would run through in one go and hold up
+  // the worker process's event loop in bursts.
   try {
     await db.initSchemaOnce();
   } catch (e) {
     keineDb(t, e);
     return;
   }
-  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
-  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/image-queue.js.
+  // The queue must be emptied BEFORE use, not only the own
+  // prefix — otherwise the batch takes the rows of a predecessor. Rationale
+  // and reproduction in helpers/image-queue.js.
   await emptyQueue(db);
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
 
@@ -280,16 +280,16 @@ test('a tick looks through at most DURCHGANG_MAX_NOTIZEN notes', { concurrency: 
 });
 
 test('expired notes are really deleted', { concurrency: 1 }, async t => {
-  // Was der Kommentar behauptete und der Code nicht tat
+  // What the comment claimed and the code did not do
   try {
     await db.initSchemaOnce();
   } catch (e) {
     keineDb(t, e);
     return;
   }
-  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
-  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/image-queue.js.
+  // The queue must be emptied BEFORE use, not only the own
+  // prefix — otherwise the batch takes the rows of a predecessor. Rationale
+  // and reproduction in helpers/image-queue.js.
   await emptyQueue(db);
 
   const P = `VF${process.pid}`;
@@ -306,8 +306,8 @@ test('expired notes are really deleted', { concurrency: 1 }, async t => {
   );
 
   try {
-    // Vorbedingung: Der Stapel fasst die alte Notiz gar nicht erst an — genau
-    // deshalb blieb sie liegen.
+    // Precondition: the batch does not even touch the old note — exactly
+    // that is why it stayed.
     const e = await IQ._tickPass();
     assert.equal(e.gesamt, 1, 'Die alte Notiz darf nicht abgearbeitet werden');
     assert.equal(await offen(P), 1, 'Nur die alte Notiz sollte noch liegen');
@@ -326,29 +326,29 @@ test('expired notes are really deleted', { concurrency: 1 }, async t => {
 });
 
 test('ANOTHER process sees that the job has run', { concurrency: 1 }, async t => {
-  // ── Warum als eigener Prozess (Lehre aus einer früheren Runde) ────────────────────
-  // Ein Test, der im selben Prozess prüft, kann diesen Fehler nicht sehen: Der
-  // Merker liegt ja genau dort. Die Kachel wird aber von einem BELIEBIGEN der
-  // vier Arbeitsprozesse beantwortet, und keiner davon führt den Job aus.
-  // Deshalb läuft der Job hier im Kindprozess und gefragt wird im Elternteil.
+  // ── Why as a separate process (lesson from an earlier round) ─────────────────────
+  // A test that checks in the same process cannot see this bug: the
+  // marker lies exactly there. The tile, however, is answered by ANY of the
+  // four worker processes, and none of them executes the job.
+  // Hence the job runs in the child process here and the parent asks.
   try {
     await db.initSchemaOnce();
   } catch (e) {
     keineDb(t, e);
     return;
   }
-  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
-  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/image-queue.js.
+  // The queue must be emptied BEFORE use, not only the own
+  // prefix — otherwise the batch takes the rows of a predecessor. Rationale
+  // and reproduction in helpers/image-queue.js.
   await emptyQueue(db);
 
   await db.run(`DELETE FROM run_state WHERE key='imgqueue_last_run'`);
   const vorher = await db.get(`SELECT value FROM run_state WHERE key='imgqueue_last_run'`);
   assert.equal(vorher, undefined, 'Vorbedingung: noch kein Laufstand abgelegt');
 
-  // Der Kindprozess kennt NICHTS aus diesem hier — er baut nicht, sondern nutzt
-  // das bereits erzeugte dist/ und legt nur einen Takt hin.
-  // Das Kind setzt die Adresse NICHT selbst, es erbt sie über die Umgebung.
+  // The child process knows NOTHING from this one — it does not build but uses
+  // the already generated dist/ and only runs one tick.
+  // The child does NOT set the address itself, it inherits it via the environment.
   execFileSync(
     process.execPath,
     [
@@ -380,7 +380,7 @@ test('ANOTHER process sees that the job has run', { concurrency: 1 }, async t =>
   const stand = JSON.parse(zeile.value);
   assert.ok(Date.now() - stand.zeit < 60_000, 'Der abgelegte Zeitpunkt ist nicht plausibel');
 
-  // Und jetzt bis zur KACHEL
+  // And now up to the TILE
   const IQhier = _req('src/images/imageDemandRun.js');
   IQhier.letzterLauf.zeit = null;
   IQhier.letzterLauf.ergebnis = null;
@@ -423,9 +423,9 @@ test('every exit of the loop has a counter', { concurrency: 1 }, async t => {
     keineDb(t, e);
     return;
   }
-  // Die Warteschlange gehoert VOR dem Benutzen geleert, nicht nur das eigene
-  // Praefix — sonst nimmt der Stapel die Zeilen eines Vorgaengers. Begruendung
-  // und Nachstellung in helpers/image-queue.js.
+  // The queue must be emptied BEFORE use, not only the own
+  // prefix — otherwise the batch takes the rows of a predecessor. Rationale
+  // and reproduction in helpers/image-queue.js.
   await emptyQueue(db);
   const IM = _req('src/images/imageMisses.js');
   fs.mkdirSync(SET_IMAGES_DIR, { recursive: true });
@@ -445,8 +445,8 @@ test('every exit of the loop has a counter', { concurrency: 1 }, async t => {
   });
 
   await t.test('failed download', async () => {
-    // Der abgefangene Download liefert für diesen Teilschritt null — genau ihr
-    // Verhalten bei HTTP 404, Netzwerkfehler oder zu kleiner Antwort.
+    // The intercepted download delivers null for this substep — exactly its
+    // behavior on HTTP 404, network error or too small a response.
     const P = `FD${process.pid}`;
     loadFailsFail = true;
     try {
@@ -469,10 +469,10 @@ test('every exit of the loop has a counter', { concurrency: 1 }, async t => {
   });
 
   await t.test('an image known to be missing costs neither quota nor waiting time', async () => {
-    // rememberMissing('set:…') wurde geschrieben, aber im Job nie gelesen: Eine
-    // Notiz, die über den Proxy erneut entsteht, löste bei jedem Durchgang
-    // wieder einen Roundtrip zu einem Bild aus, das der CDN nachweislich nicht
-    // hat — und verbrauchte dafür einen Platz im Kontingent.
+    // rememberMissing('set:…') was written but never read in the job: a
+    // note that arises anew via the proxy triggered on every pass
+    // again a round trip to an image the CDN demonstrably does not
+    // have — and used up a slot in the quota for it.
     const P = `BF${process.pid}`;
     await db.run(`DELETE FROM image_wanted WHERE set_number LIKE $1`, [P + '%']);
     await db.run(`DELETE FROM image_misses WHERE cache_key LIKE $1`, ['set:' + P + '%']);
@@ -511,8 +511,8 @@ test('every exit of the loop has a counter', { concurrency: 1 }, async t => {
 
 test('clean up', { concurrency: 1 }, async () => {
   for (const f of angelegt) fs.rmSync(f, { force: true });
-  // Letzter Test dieser Datei — nur hier wird der Pool geschlossen. (Lehre aus
-  // Ein früher geschlossener Pool macht jeden folgenden DB-Test
-  // rot, und die Meldung nennt den Grund nicht.)
+  // Last test of this file — only here is the pool closed. (Lesson from
+  // an earlier round: a pool closed earlier makes every following DB test
+  // red, and the message does not name the reason.)
   await db.pool.end().catch(() => {});
 });

@@ -1,21 +1,21 @@
 /**
- * Das Verwaltungsprotokoll hält auch Änderungen an Servereinstellungen fest —
- * Mailserver (wohin die Rücksetzlinks gehen), Zugangsschlüssel,
- * Registrierung: wer, wann, welche Schlüssel, nie die Werte. Ein unverändert
- * zurückgeschicktes Formular schreibt keinen Eintrag.
+ * The admin log also records changes to server settings —
+ * mail server (where the reset links go), access keys,
+ * registration: who, when, which keys, never the values. A form sent back
+ * unchanged writes no entry.
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  protokolliere() in POST /settings gestrichen → rot: beide Fälle
- *   B  der Vergleich mit dem alten Wert gestrichen (jeder gesendete Schlüssel
- *      zählt) → rot: „unverändert …"
- *   C  in saveSettings() die Schreibvorgänge ohne kx.transaktion()
- *      (direkt nacheinander) → rot: „scheitert ein Kontowert …“ (smtp_host
- *      und Protokolleintrag blieben stehen; 13.11.2026 mit `language: 'xx'`)
- *   D  (13.11.2026) die Währung wieder in der Schleife innerhalb von kx.transaktion()
- *      → rot: „eine gültige Währung …“ (500: BesideTheTransaction, weil der
- *      Haushaltswechsel den Systemrahmen braucht)
+ * Counter-checks (measured 01.11.2026):
+ *   A  protokolliere() deleted in POST /settings → red: both cases
+ *   B  the comparison with the old value deleted (every sent key
+ *      counts) → red: “unchanged …”
+ *   C  in saveSettings() the writes without kx.transaktion()
+ *      (directly one after another) → red: “if an account value fails …” (smtp_host
+ *      and log entry remained; 13.11.2026 with `language: 'xx'`)
+ *   D  (13.11.2026) the currency again in the loop inside kx.transaktion()
+ *      → red: “a valid currency …” (500: BesideTheTransaction, because the
+ *      household switch needs the system frame)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

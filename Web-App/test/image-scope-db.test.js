@@ -1,26 +1,26 @@
 /**
- * Anleitungen gibt es nur zu Sets im eigenen Blickfeld (Haushalt
- * eingeschlossen); eine fremde antwortet wie eine fehlende (404). Set- und
- * Teilebilder sind Katalog und gehen an jedes angemeldete Konto (Entscheidung
- * zu Migration 0105). Gefragt wird der echte Server mit echten Dateien unter data/.
+ * Instructions only exist for sets in the own view (household
+ * included); a foreign one answers like a missing one (404). Set and
+ * part images are catalog and go to every logged-in account (decision
+ * on migration 0105). The real server is asked with real files under data/.
  *
- * Gegenproben (01.11.2026 gemessen, A und E am 10.11.2026 neu):
- *   A  imageReleased() prüft sets/ wieder gegen das Blickfeld
- *      (`inScope(uid, stamm, 'nummern')`) → rot: „Set-Bilder gehen an jedes
- *      angemeldete Konto“ (404 statt 200)
- *   B  instructionReleased() in routes/dataFiles.ts entfernt → rot:
- *      „Anleitungen nur zu eigenen Sets“ (200 statt 404)
- *   C  imageReleased() lässt nur sets/ durch (Teile wie Sets geprüft) → rot:
- *      „Teilebilder sind Katalog“ (404)
- *   D  scopeIds() durch [uid] ersetzt → rot: „Anleitungen nur zu eigenen Sets“
- *   E  in setInfoForAccount() (src/sets/content.ts) image_local für Sets ausserhalb
- *      des Blickfelds wieder auf null → rot: „die API nennt das lokale Bild jedes Sets“
- *   F  atHouseholdChange() in bildBlickfeld.ts nicht aufgerufen (60 s
- *      Treffer-Frist bleibt) → rot: „nach dem Lösen der Verknüpfung …“ (200 statt 404)
- *   G  (08.11.2026) deliverImage ohne die 401-Zeile bzw. mit `public` statt
- *      `private` → rot: „ohne Anmeldung kein Bild …“
+ * Counter-checks (measured 01.11.2026, A and E anew on 10.11.2026):
+ *   A  imageReleased() checks sets/ against the view again
+ *      (`inScope(uid, stamm, 'nummern')`) → red: “set images go to every
+ *      logged-in account” (404 instead of 200)
+ *   B  instructionReleased() removed in routes/dataFiles.ts → red:
+ *      “instructions only for own sets” (200 instead of 404)
+ *   C  imageReleased() only lets sets/ through (parts checked like sets) → red:
+ *      “part images are catalog” (404)
+ *   D  scopeIds() replaced by [uid] → red: “instructions only for own sets”
+ *   E  in setInfoForAccount() (src/sets/content.ts) image_local for sets outside
+ *      the view back to null → red: “the API names the local image of every set”
+ *   F  atHouseholdChange() not called in bildBlickfeld.ts (60 s
+ *      hit deadline stays) → red: “after unlinking …” (200 instead of 404)
+ *   G  (08.11.2026) deliverImage without the 401 line or with `public` instead of
+ *      `private` → red: “without login no image …”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

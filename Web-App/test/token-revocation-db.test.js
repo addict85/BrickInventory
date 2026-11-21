@@ -1,23 +1,23 @@
 /**
- * Ein Token-Widerruf wirkt sofort im Token-Cache des Web-Prozesses, nicht
- * erst nach dessen Frist (5 s). Der Cache gilt nur, solange die Horch-
- * Verbindung für fremde Widerrufe steht; fällt sie aus, fragt jede Prüfung
- * die Datenbank (fail closed).
+ * A token revocation takes effect immediately in the token cache of the web process, not
+ * only after its period (5 s). The cache only applies as long as the listen
+ * connection for foreign revocations stands; if it fails, every check asks
+ * the database (fail closed).
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in emptyTokenCache() `_tokenCache.clear()` entfernt → rot: „die
- *      Token-Verwaltung leert den Cache“ und „ein Passwortwechsel …“
- *   B  in tokenForgotten() `_tokenCache.delete(token)` entfernt → rot:
- *      „Abmelden wirkt sofort“
- *   C  (08.11.) TOKEN_TTL_MS wieder 60 s → rot: „ohne Benachrichtigung gilt
- *      ein widerrufener Token höchstens die Cache-Frist“ (Token gilt nach 6 s noch)
- *   D  (09.11.) in cacheUsable() (src/account/tokenCache.ts) nur `return true` → rot:
- *      „ohne Horch-Verbindung gilt der Cache nicht“ (Token gilt nach dem Abriss weiter)
- *   E  (09.11.) in pgNotify.retire() `_listens.clear()` entfernt → rot: dieselbe Stelle
+ * Counter-checks (measured on 30.10.2026):
+ *   A  `_tokenCache.clear()` removed in emptyTokenCache() → red: “the
+ *      token administration clears the cache” and “a password change …”
+ *   B  `_tokenCache.delete(token)` removed in tokenForgotten() → red:
+ *      “logout applies immediately”
+ *   C  (08.11.) TOKEN_TTL_MS again 60 s → red: “without notification a
+ *      revoked token applies at most for the cache period” (token still applies after 6 s)
+ *   D  (09.11.) in cacheUsable() (src/account/tokenCache.ts) only `return true` → red:
+ *      “without a listen connection the cache does not apply” (token still applies after the drop)
+ *   E  (09.11.) `_listens.clear()` removed in pgNotify.retire() → red: the same place
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -56,7 +56,7 @@ test('token revocation applies immediately', { concurrency: 1 }, async t => {
   });
   tokenCache.listenOnTokenRevocation();
   assert.ok(await bis(() => pgNotify.listensTo('token_widerrufen')), 'die Horch-Verbindung kam nicht zustande');
-  /** Ein Token, der im Cache steht; danach ist seine Zeile still gelöscht. */
+  /** A token that stands in the cache; afterwards its row is silently deleted. */
   const inCacheWithoutRow = async () => {
     const token = await auth.createToken(uid, 'Test');
     assert.ok(await auth.nutzerZumToken(token), 'Vorbedingung: der Token gilt');
@@ -94,8 +94,8 @@ test('token revocation applies immediately', { concurrency: 1 }, async t => {
 
   await t.test('without a listen connection the cache does not apply', async () => {
     const token = await inCacheWithoutRow();
-    // Die Verbindung reisst ab, wie bei einem Neustart der Datenbank; bis zum
-    // Wiederverbinden (1 s) käme ein Widerruf aus einem anderen Prozess nicht an.
+    // The connection drops, as with a restart of the database; until
+    // reconnecting (1 s) a revocation from another process would not arrive.
     await db.run(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity
       WHERE datname = current_database() AND pid <> pg_backend_pid() AND query LIKE 'LISTEN "token_widerrufen"%'`);
     assert.ok(await bis(() => !pgNotify.listensTo('token_widerrufen'), 2000), 'der Abriss kam nicht an');

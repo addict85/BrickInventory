@@ -1,16 +1,16 @@
 /**
- * Die Rebrickable-Stufe der Wanted-Auflösung: Nur 404 heisst „unbekannt“, und
- * jeder andere Fehler beendet die Stufe mit Grund, statt die übrigen Posten
- * still als „nicht gefunden“ zu zählen. HTTP läuft über eine Attrappe von
- * https.get, das Kontingent über die echte Datenbank.
+ * The Rebrickable stage of the wanted resolution: only 404 means “unknown”, and
+ * every other error ends the stage with a reason instead of silently counting
+ * the remaining items as “not found”. HTTP runs over a dummy of
+ * https.get, the quota over the real database.
  *
- * Gegenproben (am 11.11.2026 gemessen):
- *   A  in blTeilZuRb() wieder `.catch(() => null)` an beiden rbGet-Aufrufen →
- *      rot: „ohne Schlüssel …“, „Serverfehler 500 …“, „Tageslimit …“
- *   B  in resolveViaRebrickableOn() wieder `catch { rbId = null; }` → rot:
- *      dieselben drei
- *   C  in rbGet() `if (status === 404) return null;` entfernt → rot: „404 ist
- *      unbekannt, der Lauf geht weiter“ (und „Tageslimit …“, Grund stoerung)
+ * Counter-checks (measured 11.11.2026):
+ *   A  in blTeilZuRb() `.catch(() => null)` again on both rbGet calls →
+ *      red: “without a key …”, “server error 500 …”, “daily limit …”
+ *   B  in resolveViaRebrickableOn() `catch { rbId = null; }` again → red:
+ *      the same three
+ *   C  in rbGet() `if (status === 404) return null;` removed → red: “404 is
+ *      unknown, the run continues” (and “daily limit …”, reason stoerung)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,15 +25,15 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
-/** Jede Anfrage bekommt `status` mit leerem JSON-Körper. */
+/** Every request gets `status` with an empty JSON body. */
 async function withResponse(status, lauf) {
   const echt = https.get;
   let anfragen = 0;
-  // @ts-expect-error — Attrappe mit genau dem, was src/infra/fetch.ts benutzt.
+  // @ts-expect-error — dummy with exactly what src/infra/fetch.ts uses.
   https.get = (_u, _o, atResponse) => {
     anfragen++;
     const r = Object.assign(Readable.from([Buffer.from('{}')]), { statusCode: status, headers: {} });
-    // @ts-expect-error — kein vollständiges IncomingMessage
+    // @ts-expect-error — not a complete IncomingMessage
     setImmediate(() => atResponse(r));
     return Object.assign(new EventEmitter(), { destroy: () => {}, end: () => {} });
   };
@@ -76,7 +76,7 @@ test('wanted resolution via Rebrickable aborts with a reason', { concurrency: 1 
     const { ergebnis, anfragen } = await withResponse(404, () => resolveViaRebrickableOn(posten(3)));
     assert.equal(ergebnis.abgebrochen, undefined);
     assert.equal(ergebnis.gefragt, 3);
-    // Je Posten zwei Wege (Nummer selbst, dann der Filter).
+    // Two paths per item (the number itself, then the filter).
     assert.equal(anfragen, 3 * 2);
   });
 

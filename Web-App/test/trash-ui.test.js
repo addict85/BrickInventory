@@ -1,13 +1,13 @@
 /**
- * Papierkorb in jsdom: Gleiche Sets zweier Konten unterscheiden sich in Konto und Menge, auch im Namen
- * der Knöpfe; die Frist sagt, was dann geschieht. Nach dem Wiederherstellen steht der Fokus auf dem
- * Nachbarn, und das „Rückgängig“ desselben Löschens verschwindet.
+ * Trash in jsdom: identical sets of two accounts differ in account and quantity, also in the name
+ * of the buttons; the period says what happens then. After restoring, the focus stands on the
+ * neighbor, and the „Rückgängig“ of the same deletion disappears.
  *
- * Gegenproben (16.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in zeile() die Menge aus Text und Knopfnamen gestrichen → rot: „Konto und Menge“ (je einzeln)
- *   B  loadTrash() ohne Fokus auf den Nachbarn → rot: „Fokus und Toast“ (Fokus auf der Überschrift)
- *   C  in papierkorbWiederherstellen() das Schliessen des Toasts gestrichen → rot: „Fokus und Toast“
- *      (Rückgängig steht noch)
+ * Counter-checks (measured 16.11.2026, each on its own, bundle rebuilt):
+ *   A  in zeile() the quantity deleted from text and button names → red: “account and quantity” (each individually)
+ *   B  loadTrash() without focus on the neighbor → red: “focus and toast” (focus on the heading)
+ *   C  in papierkorbWiederherstellen() the closing of the toast deleted → red: “focus and toast”
+ *      (undo still stands)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

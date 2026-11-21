@@ -1,15 +1,15 @@
 /**
- * Eine Menge kürzen heisst, mehrere Erfassungen zu löschen oder zu kürzen.
- * Scheitert ein Schritt, bleibt alles, wie es war — vorher waren dann nur
- * einige Erfassungen weg, und die Menge stimmte nicht mehr.
+ * Shortening a quantity means deleting or shortening several entries.
+ * If one step fails, everything stays as it was — previously only
+ * some entries were then gone, and the quantity no longer matched.
  *
- * Erzwungen wird der Fehler mit einem Trigger auf der älteren Erfassung.
+ * The error is forced with a trigger on the older entry.
  *
- * Gegenprobe (am 27.10. gemessen): in changeManualPart die Schleife wieder
- * ohne db.transaction (db.run statt tx.run) → rot: „nichts halb gekürzt"
- * (die neuere Erfassung war gelöscht).
+ * Counter-check (measured on 27.10.): in changeManualPart the loop again
+ * without db.transaction (db.run instead of tx.run) → red: “nothing half shortened"
+ * (the newer entry was deleted).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -67,7 +67,7 @@ test('trimming works completely or not at all', { concurrency: 1 }, async t => {
 
   await t.test('nothing half trimmed', async () => {
     assert.deepEqual(await erfassungen(), [3, 2], 'Vorbedingung');
-    // 5 → 1: die neuere (2) weg, die ältere um 2 kürzen — dort greift der Trigger.
+    // 5 → 1: the newer one (2) gone, shorten the older one by 2 — there the trigger applies.
     await assert.rejects(changeManualPart(uid, TEIL, 5, { quantity: 1 }), /erzwungener Fehler/);
     assert.deepEqual(await erfassungen(), [3, 2], 'Die neuere Erfassung ist weg, die ältere nicht gekürzt');
   });

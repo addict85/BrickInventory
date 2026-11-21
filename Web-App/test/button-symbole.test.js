@@ -1,11 +1,11 @@
 /**
- * Kein Knopf trägt ein Text-Plus: Symbole kommen aus der Symbolfamilie
- * (data-ico / <svg class="ico">). „+ Hinzufügen“ unter „Teileliste“ stand
- * als einziger Erfassen-Knopf mit Text-Plus neben Knöpfen mit Symbol. Geprüft
- * nach dem Übersetzen im echten Bündel (jsdom), deutsch und englisch.
+ * No button carries a text plus: icons come from the icon family
+ * (data-ico / <svg class="ico">). “+ Hinzufügen” under “Teileliste” was
+ * the only add button with a text plus next to buttons with an icon. Checked
+ * after translation in the real bundle (jsdom), German and English.
  *
- * Gegenprobe (am 28.10. gemessen): adding.button wieder „+ Hinzufügen“ →
- * rot: „kein Knopf beginnt mit einem Plus (de)“.
+ * Counter-check (measured on 28.10.): adding.button back to “+ Hinzufügen” →
+ * red: “no button starts with a plus (de)”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -17,7 +17,7 @@ for (const sprache of ['de', 'en']) {
     try {
       const knoepfe = [...d.querySelectorAll('button, .btn')];
       assert.ok(knoepfe.length > 100, 'Knöpfe nicht gefunden');
-      // Ein Plus vor einem WORT; das Zoom-Plus im PDF-Betrachter ist ein eigenes Zeichen.
+      // A plus before a WORD; the zoom plus in the PDF viewer is its own character.
       const withPlus = knoepfe.map(k => k.textContent.trim()).filter(t => /^[+＋]\s*\p{L}/u.test(t));
       assert.deepEqual(withPlus, []);
       const pl = d.querySelector('[data-click="plAddSet"]');

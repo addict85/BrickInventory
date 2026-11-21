@@ -1,21 +1,21 @@
 /**
- * Einrichtungs-Assistent: wann er erscheint, wann nicht mehr, und dass der
- * Testknopf nur bekannte Quellen anfasst.
+ * Setup wizard: when it appears, when no longer, and that the
+ * test button only touches known sources.
  *
- * Gegenproben (25.10., gemessen):
- *   A  `!erledigt &&` aus der Bedingung entfernt   → rot: „erscheint nach Fertig weiter"
- *   B  Object.hasOwn in /quelle-testen entfernt   → rot: „__proto__ gilt als Quelle"
- *   C  istVerwalter-Prüfung in /einrichtung weg   → rot: „Nicht-Verwalter sieht den Stand"
- *   D  (04.11.) in quellenAbsage die Zeile für fehlende Schlüssel entfernt
- *      → rot: „fehlender Schlüssel in Klartext" (quelle_test_fehlgeschlagen)
- *   E  (13.11.) in inboundLock() die Prüfung switchMust() entfernt → rot:
- *      „mit dem Startpasswort führt der Eingang nur zum Wechsel“ (200 statt 403)
+ * Counter-checks (25.10., measured):
+ *   A  `!erledigt &&` removed from the condition    → red: „erscheint nach Fertig weiter"
+ *   B  Object.hasOwn removed in /quelle-testen     → red: „__proto__ gilt als Quelle"
+ *   C  istVerwalter check in /einrichtung gone     → red: „Nicht-Verwalter sieht den Stand"
+ *   D  (04.11.) in quellenAbsage the line for missing keys removed
+ *      → red: „fehlender Schlüssel in Klartext" (quelle_test_fehlgeschlagen)
+ *   E  (13.11.) the check switchMust() removed in inboundLock() → red:
+ *      “with the initial password the entry only leads to the change” (200 instead of 403)
  *
- * Über die echte Kette (testServer): Mit dem Startpasswort lässt der Eingang nur
- * den Wechsel zu; die Oberfläche öffnet den Assistenten erst danach (sitzung.js:
- * openApp → Pflichtwechsel → Neuladen → showApp → pruefeEinrichtung).
+ * Via the real chain (testServer): with the initial password the entry only allows
+ * the change; the UI only opens the wizard afterwards (sitzung.js:
+ * openApp → mandatory change → reload → showApp → pruefeEinrichtung).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -77,7 +77,7 @@ test('setup wizard', { concurrency: 1 }, async t => {
     });
 
     await t.test('fresh installation after the mandatory change: open, without password step', async () => {
-      // Wie POST /auth/change-password: Konto und Sitzung vergessen die Pflicht.
+      // Like POST /auth/change-password: account and session forget the obligation.
       await db.run('UPDATE users SET must_change_password = false WHERE id = $1', [uid]);
       delete verwalter.mussPasswortAendern;
       const r = await ruf(V, '/einrichtung');

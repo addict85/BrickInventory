@@ -1,22 +1,22 @@
 /**
- * Menge im Haushalt je Konto: Eine Verringerung nimmt nur Käufe des genannten
- * Kontos weg, sagt, welcher Kauf entfiel, und legt ihn in den Papierkorb, aus
- * dem er Zeile für Zeile zurückkommt (auch ein nur gekürzter Kauf).
+ * Quantity in the household per account: a reduction only takes away purchases of the named
+ * account, says which purchase was dropped, and puts it into the trash, from
+ * which it comes back row by row (even a merely shortened purchase).
  *
- * Gegenproben (12./13.11.2026 gemessen, je einzeln, dist neu gebaut):
- *   A  in changeSet `ziel` wieder fest auf `uid` → rot: „Hauptkonto verringert
- *      das Unterkonto“ (Unterkonto hat noch 1, das eigene 0)
- *   B  putPurchasesInTrash() in changeSet nicht gerufen → rot: „älterer
- *      Kauf bleibt, neuerer kommt zurück“ (kein papierkorb in der Antwort)
- *   C  in placePurchasesAgainHer das Aufstocken der Herkunftszeile
- *      übersprungen → rot: „gekürzter Kauf“ (ohne den geänderten Preis
- *      blieb es grün: die Suche nach dem gleichen Kauf fand die Zeile)
- *   E  das Aufstocken einer gleichen Zeile desselben Tages übersprungen →
- *      rot: „derselbe Kauf am selben Tag“
- *   D  die Schreibfeld-Prüfung (`_wids.includes(ziel)`) entfernt → rot:
- *      „Unterkonto darf das Hauptkonto nicht ändern“
+ * Counter-checks (measured 12./13.11.2026, each on its own, dist rebuilt):
+ *   A  in changeSet `ziel` again fixed to `uid` → red: “main account reduces
+ *      the sub-account” (sub-account still has 1, the own one 0)
+ *   B  putPurchasesInTrash() not called in changeSet → red: “older
+ *      purchase stays, newer one comes back” (no papierkorb in the response)
+ *   C  in placePurchasesAgainHer the topping up of the origin row
+ *      skipped → red: “shortened purchase” (without the changed price
+ *      it stayed green: the search for the same purchase found the row)
+ *   E  the topping up of an identical row of the same day skipped →
+ *      red: “the same purchase … on the same day”
+ *   D  the write scope check (`_wids.includes(ziel)`) removed → red:
+ *      “sub-account may not change the main account”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -93,7 +93,7 @@ test('quantity per account with a way back', { concurrency: 1 }, async t => {
       r.entfallen.map(e => [e.quantity, e.purchase_price]),
       [[1, 80]],
     );
-    // Mit geändertem Preis findet die Suche nach einem gleichen Kauf die Zeile nicht mehr.
+    // With a changed price the search for an identical purchase no longer finds the row.
     const id = r.entfallen[0].id;
     await db.run('UPDATE set_acquisitions SET purchase_price = 85 WHERE id = $1', [id]);
     assert.equal((await pk.placeAgainHer({ schreiber: uid }, r.papierkorb)).type, 'set');

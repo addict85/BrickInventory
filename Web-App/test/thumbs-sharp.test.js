@@ -1,18 +1,18 @@
 /**
- * Vorschaubilder der eigenen Bilder (vorschauErzeugenAus) entstehen mit sharp:
- * höchstens 200 je Seite, Seitenverhältnis erhalten (UX-Prüfung 25, B1).
- * Durchsichtige Bilder bleiben PNG mit Alpha (sonst im Dunkelmodus eine weisse
- * Fläche), deckende werden JPEG auf Weiss. Ohne sharp rechnet Jimp dasselbe.
+ * Previews of the own images (vorschauErzeugenAus) arise with sharp:
+ * at most 200 per side, aspect ratio preserved (UX check 25, B1).
+ * Transparent images stay PNG with alpha (otherwise a white surface in dark
+ * mode), opaque ones become JPEG on white. Without sharp Jimp computes the same.
  *
- * Gegenproben (14.11.2026 gemessen, je einzeln, dist neu gebaut), alle in
+ * Counter-checks (measured 14.11.2026, each on its own, dist rebuilt), all in
  * src/images/thumbs.ts:
- *   A  in verkleinern() die Prüfung `isOpaque` entfernt (immer JPEG auf Weiss)
- *      → rot: „sharp: durchsichtig …“ (jpeg statt png)
- *   B  `fit: 'inside'` → `fit: 'cover'` → rot: „sharp: durchsichtig …“ und
- *      „sharp: deckend …“ (200 × 200); fitJimp() wieder mit cover() → rot:
- *      „ohne sharp …“ (200 × 200)
- *   C  im catch um require('sharp') `throw e` statt Jimp → rot: „ohne sharp …“
- *   D  in jimpPreview() `transparent` fest false → rot: „ohne sharp …“ (jpeg)
+ *   A  the check `isOpaque` removed in verkleinern() (always JPEG on white)
+ *      → red: “sharp: transparent …” (jpeg instead of png)
+ *   B  `fit: 'inside'` → `fit: 'cover'` → red: “sharp: transparent …” and
+ *      “sharp: opaque …” (200 × 200); fitJimp() again with cover() → red:
+ *      “without sharp …” (200 × 200)
+ *   C  in the catch around require('sharp') `throw e` instead of Jimp → red: “without sharp …”
+ *   D  in jimpPreview() `transparent` fixed false → red: “without sharp …” (jpeg)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -29,7 +29,7 @@ const { DATA_DIR } = _req('src/infra/appPaths.js');
 const { vorschauErzeugenAus } = _req('src/images/thumbs.js');
 const ordner = path.join(DATA_DIR, 'images', 'sets');
 
-/** Ein grünes PNG 300 × 200 mit Alphakanal unter /images/sets/; `alpha` 0 = ganz durchsichtig, 1 = deckend. */
+/** A green PNG 300 × 200 with alpha channel under /images/sets/; `alpha` 0 = fully transparent, 1 = opaque. */
 async function put(name, alpha) {
   fs.mkdirSync(ordner, { recursive: true });
   const datei = path.join(ordner, `${name}.png`);
@@ -108,7 +108,7 @@ test('without sharp Jimp computes the same preview', async () => {
 });
 
 test('sharp and Jimp are registered as dependencies', () => {
-  // Ohne Eintrag fehlt sharp im Docker-Image und jede Vorschau liefe über den langsamen Rückfall.
+  // Without an entry sharp is missing in the Docker image and every preview would run via the slow fallback.
   const pkg = require(path.join(ROOT, 'package.json'));
   assert.ok(pkg.dependencies?.sharp, 'sharp fehlt in den dependencies');
   assert.ok(pkg.dependencies?.jimp, 'jimp muss als Rückfall erhalten bleiben');

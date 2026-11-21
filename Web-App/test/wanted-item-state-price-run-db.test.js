@@ -1,19 +1,19 @@
 /**
- * Welchen Zustand holt der Preislauf für einen Merkposten?
+ * Which condition does the price run fetch for a wishlist item?
  *
- * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
- *   a) Die wanted-Abfrage in statesJeSet() entfernt → rot in Zeile 68,
+ * ── Counter-checks (performed, result in the commit) ─────────────────────────
+ *   a) The wanted query removed from statesJeSet() → red in line 68,
  *      „der Merkposten desselben Sets bei einem anderen Nutzer als gebraucht".
- *      NICHT in der Zeile davor: Ohne Merkliste fällt die Funktion hier auf
- *      'N' zurück, und der erste Merkposten ist zufällig auch 'N'. Deshalb steht
- *      derselbe Merkposten zweimal da, einmal je Zustand — die Aussage
- *      „benutzerabhängig" ist erst mit beiden Nutzern geprüft.
- *   b) `for (const c of gewuenscht...)` nur im else-Zweig → „Bestand und
- *      Merkposten in verschiedenen Zuständen ergeben beide" wird rot.
- *   c) Die Erfassungen hinter den Bestand gestellt → „die Erfassungen schlagen
- *      die sets-Zeile" wird rot.
+ *      NOT in the line before: without a wishlist the function falls back to
+ *      'N' here, and the first wishlist item happens to be 'N' too. That is why
+ *      the same wishlist item appears twice, once per condition — the statement
+ *      "user-dependent" is only checked with both users.
+ *   b) `for (const c of gewuenscht...)` only in the else branch → „Bestand und
+ *      Merkposten in verschiedenen Zuständen ergeben beide" turns red.
+ *   c) The acquisitions placed behind the holdings → "the acquisitions beat
+ *      the sets row" turns red.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -28,13 +28,13 @@ const { holdsSet } = require('./helpers/inventory');
 const db = testData();
 const { statesJeSet, conditionsNeededFor } = _req('src/finances/priceRun.js');
 
-/** Sortiert vergleichen: die Reihenfolge in der Menge ist keine Aussage. */
+/** Compare sorted: the order within the set is not a statement. */
 const sortiert = a => [...a].sort();
 
 test('price run: the condition of a wishlist item is that of the user', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
-  // Eigene Nutzer je Prozess — der Test läuft neben anderen auf derselben DB.
+  // Own users per process — the test runs alongside others on the same DB.
   const anlegen = async suffix =>
     (
       await db.get(
@@ -48,9 +48,9 @@ test('price run: the condition of a wishlist item is that of the user', { concur
   const b = await anlegen('b');
 
   try {
-    // ── Zwei Nutzer, DASSELBE Set, verschiedene Merkposten ─────────────────────
-    // Das ist die Frage in einer Zeile: Der Preislauf holt für a den Neupreis
-    // und für b den Gebrauchtpreis — nicht für beide denselben.
+    // ── Two users, the SAME set, different wishlist items ─────────────────────
+    // This is the question in one line: the price run fetches the new price for a
+    // and the used price for b — not the same one for both.
     await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,'10305-1','N')`, [a]);
     await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,'10305-1','U')`, [b]);
 
@@ -66,7 +66,7 @@ test('price run: the condition of a wishlist item is that of the user', { concur
       'und der Merkposten desselben Sets bei einem anderen Nutzer als gebraucht',
     );
 
-    // ── Beide Zustände gewünscht: beide Preise werden gebraucht ─────────────
+    // ── Both conditions wanted: both prices are needed ──────────────────────
     await db.run(`INSERT INTO wanted (user_id, set_number, condition) VALUES ($1,'21318-1','N'),($1,'21318-1','U')`, [
       a,
     ]);
@@ -76,8 +76,8 @@ test('price run: the condition of a wishlist item is that of the user', { concur
       'neu und gebraucht sind zwei Merkposten — für beide braucht das Detail einen Preis',
     );
 
-    // Bestand ohne Merkposten: der Zustand kommt aus der Erfassung
-    await holdsSet(db, a, '75192-1', 0); // Menge 0: die Erfassung dahinter traegt sie
+    // Holding without a wishlist item: the condition comes from the acquisition
+    await holdsSet(db, a, '75192-1', 0); // quantity 0: the acquisition behind it carries it
     await db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, condition) VALUES ($1,'75192-1',1,'U')`,
       [a],
@@ -88,10 +88,10 @@ test('price run: the condition of a wishlist item is that of the user', { concur
       'der Zustand der Erfassung eines eigenen Sets entscheidet',
     );
 
-    // ── Bestand UND Merkposten im anderen Zustand: beide ────────────────────────
-    // Wer ein Set neu besitzt und ein gebrauchtes zweites sucht, wartet auf den
-    // Gebraucht-Preis. Den Neu-Preis braucht die Bewertung trotzdem.
-    await holdsSet(db, a, '42100-1', 0); // Menge 0: die Erfassung dahinter traegt sie
+    // ── Holding AND wishlist item in the other condition: both ────────────────
+    // Whoever owns a set new and looks for a used second one waits for the
+    // used price. The valuation needs the new price anyway.
+    await holdsSet(db, a, '42100-1', 0); // quantity 0: the acquisition behind it carries it
     await db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, condition) VALUES ($1,'42100-1',1,'N')`,
       [a],
@@ -103,13 +103,13 @@ test('price run: the condition of a wishlist item is that of the user', { concur
       'Bestand und Merkposten in verschiedenen Zuständen ergeben beide Abrufe',
     );
 
-    // ── Der Zustand kommt aus der Erfassung ─────────────────────────────────
+    // ── The condition comes from the acquisition ────────────────────────────
     //
-    // Vorher lautete dieser Teilschritt „die Erfassungen schlagen die
-    // sets-Zeile": sets sagte 'N', die Erfassung 'U', Ergebnis 'U'. Mit
-    // Migration 0032 kann es diesen Widerspruch nicht mehr geben — es gibt nur
-    // die Erfassung. Die Aussage bleibt: Sie entscheidet.
-    await holdsSet(db, a, '10276-1', 0); // Menge 0: die Erfassung dahinter traegt sie
+    // Previously this sub-step was called "the acquisitions beat the
+    // sets row": sets said 'N', the acquisition 'U', result 'U'. With
+    // migration 0032 this contradiction can no longer exist — there is only
+    // the acquisition. The statement remains: it decides.
+    await holdsSet(db, a, '10276-1', 0); // quantity 0: the acquisition behind it carries it
     await db.run(
       `INSERT INTO set_acquisitions (user_id, set_number, quantity, condition) VALUES ($1,'10276-1',1,'U')`,
       [a],
@@ -120,12 +120,12 @@ test('price run: the condition of a wishlist item is that of the user', { concur
       'die Erfassung entscheidet ueber den zu holenden Preis',
     );
 
-    // ── Und eine Set-Zeile OHNE Erfassung faellt auf 'N' zurueck ────────────
+    // ── And a set row WITHOUT an acquisition falls back to 'N' ──────────────
     //
-    // Den Fall soll es nach Migration 0032 nicht mehr geben (sie hat
-    // nachgetragen und geprueft); hier wird er von Hand hergestellt. Wichtig
-    // ist, dass dann 'N' herauskommt und nicht eine LEERE Liste — sonst wuerde
-    // fuer dieses Set gar kein Preis geholt, und das faellt niemandem auf.
+    // This case should no longer exist after migration 0032 (it
+    // backfilled and checked); here it is produced by hand. What matters
+    // is that 'N' comes out and not an EMPTY list — otherwise no price
+    // at all would be fetched for this set, and nobody would notice.
     await holdsSet(db, a, '31203-1', 1);
     assert.deepEqual(
       (await statesJeSet(a, ['31203-1'])).get('31203-1'),
@@ -134,16 +134,16 @@ test('price run: the condition of a wishlist item is that of the user', { concur
         'dass fuer dieses Set gar kein Preis geholt wird',
     );
 
-    // ── Ein Set, das dieser Nutzer nirgends führt ───────────────────────────
+    // ── A set this user keeps nowhere ───────────────────────────────────────
     assert.deepEqual(
       (await statesJeSet(b, ['75192-1'])).get('75192-1'),
       ['N'],
       'was dieser Nutzer weder besitzt noch wünscht, fällt auf "neu" zurück',
     );
 
-    // ── Gebündelt und einzeln sind DIESELBE Regel ───────────────────────────
-    // Sie standen vorher als zwei Fassungen da, und nur eine kannte die
-    // Merkliste. Diese Zusicherung hält sie zusammen.
+    // ── Bundled and single are the SAME rule ────────────────────────────────
+    // They used to exist as two versions, and only one knew the
+    // wishlist. This assertion holds them together.
     for (const sn of ['10305-1', '21318-1', '75192-1', '42100-1', '10276-1', '31203-1']) {
       assert.deepEqual(
         sortiert(await conditionsNeededFor(sn, a)),
@@ -152,7 +152,7 @@ test('price run: the condition of a wishlist item is that of the user', { concur
       );
     }
 
-    // ── Der Hinweis (Erfassung, die es noch nicht gibt) ─────────────────────
+    // ── The hint (acquisition that does not exist yet) ──────────────────────
     assert.deepEqual(
       sortiert(await conditionsNeededFor('99999-1', a, 'U')),
       ['U'],
@@ -165,7 +165,7 @@ test('price run: the condition of a wishlist item is that of the user', { concur
       'der Hinweis tritt neben die vorhandenen Erfassungen, er ersetzt sie nicht',
     );
 
-    // ── Eine leere Liste fragt nicht nach ───────────────────────────────────
+    // ── An empty list does not query ────────────────────────────────────────
     assert.equal(
       (await statesJeSet(a, [])).size,
       0,
@@ -178,8 +178,8 @@ test('price run: the condition of a wishlist item is that of the user', { concur
       await db.run(`DELETE FROM sets WHERE user_id=$1`, [uid]).catch(() => {});
       await db.run(`DELETE FROM users WHERE id=$1`, [uid]).catch(() => {});
     }
-    // Ohne das endet der Prozess nie: Der Pool hält offene Verbindungen, und
-    // node:test wartet darauf.
+    // Without this the process never ends: the pool holds open connections, and
+    // node:test waits for them.
     await db.pool.end().catch(() => {});
   }
 });

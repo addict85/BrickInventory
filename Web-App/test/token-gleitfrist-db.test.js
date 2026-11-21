@@ -1,5 +1,5 @@
 /**
- * Die Gleitfrist des App-Tokens — echte Datenbank.
+ * The sliding expiry of the app token — real database.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,7 +8,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
-// Nicht die Vorgabe 90: So zeigt der Test, dass die Frist aus der Konfiguration kommt.
+// Not the default 90: this way the test shows that the period comes from the configuration.
 process.env.TOKEN_IDLE_DAYS = '23';
 
 const { buildAndRequire, einhaengung, testData } = require('./helpers/sources');
@@ -67,7 +67,7 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
     const frist = _req('src/infra/config.js').konfig().tokenIdleDays;
     assert.equal(frist, 23, 'die Frist kommt aus TOKEN_IDLE_DAYS');
 
-    // ── 1. Der App-Token ────────────────────────────────────────────────────
+    // ── 1. The app token ────────────────────────────────────────────────────
     const appA = await ruf(AUTH + '/login', {
       method: 'POST',
       body: { username: NAME, password: PASS, label: 'Android App', never_expires: true },
@@ -76,8 +76,8 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
     const appToken = appA.body.token;
     const appRow = await zeile(appToken);
     assert.equal(appRow.sliding, true, 'Der App-Token muss als gleitend markiert sein');
-    // Auf den Tag genau statt auf die Millisekunde: Zwischen dem INSERT und
-    // dieser Zeile liegt echte Zeit, und NOW() ist die der Datenbank.
+    // Exact to the day instead of to the millisecond: between the INSERT and
+    // this line real time passes, and NOW() is that of the database.
     const daysUntil = d => Math.round((new Date(d).getTime() - Date.now()) / TAG);
     assert.equal(
       daysUntil(appRow.expires_at),
@@ -85,7 +85,7 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
       `Der App-Token muss ${frist} Tage laufen — die Frist steht in TOKEN_IDLE_DAYS`,
     );
 
-    // ── 2. Der Browser-Token gleitet nicht ──────────────────────────────────
+    // ── 2. The browser token does not slide ──────────────────────────────────
     const webA = await ruf(AUTH + '/login', { method: 'POST', body: { username: NAME, password: PASS } });
     const webRow = await zeile(webA.body.token);
     assert.equal(
@@ -95,7 +95,7 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
     );
     assert.equal(daysUntil(webRow.expires_at), 7, 'Die sieben festen Tage des Browsers bleiben');
 
-    // 3. Die stille Erneuerung
+    // 3. The silent renewal
     await db.run("UPDATE api_tokens SET expires_at = NOW() + INTERVAL '3 days' WHERE token = $1", [
       auth.tokenDigest(appToken),
     ]);
@@ -103,9 +103,9 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
     const wer = await ruf(AUTH + '/me', { headers: { authorization: `Bearer ${appToken}` } });
     assert.equal(wer.body?.user?.id, uid, 'Vorbedingung: Die Anfrage muss ueberhaupt durchgehen');
 
-    // Das UPDATE laeuft ohne await im Anfrageweg (fire-and-forget, damit die
-    // Auth keine zwei DB-Runden kostet). Deshalb wird gewartet statt geraten —
-    // ein fester Schlaf waere entweder zu kurz oder Zeitverschwendung.
+    // The UPDATE runs without await in the request path (fire-and-forget, so that
+    // auth does not cost two DB rounds). Hence we wait instead of guess —
+    // a fixed sleep would be either too short or a waste of time.
     await bis(async () => daysUntil((await zeile(appToken)).expires_at) > 3, 2000);
     assert.equal(
       daysUntil((await zeile(appToken)).expires_at),
@@ -114,14 +114,14 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
         'sperrt sich ein taeglich benutztes Telefon nach 90 Tagen selbst aus',
     );
 
-    // Gegenprobe in derselben Lage: Der Browser-Token wird ebenso benutzt und
-    // darf sich NICHT verlaengern.
+    // Counter-check in the same situation: the browser token is used just the same and
+    // must NOT extend itself.
     await db.run("UPDATE api_tokens SET expires_at = NOW() + INTERVAL '3 days' WHERE token = $1", [
       auth.tokenDigest(webA.body.token),
     ]);
     tokenCache.emptyTokenCache();
     await ruf(AUTH + '/me', { headers: { authorization: `Bearer ${webA.body.token}` } });
-    // Die Berührung schreibt last_used; erst danach ist sicher, dass sie die Frist nicht schob.
+    // The touch writes last_used; only afterwards is it certain that it did not push the period.
     assert.ok(
       await bis(
         async () =>
@@ -136,7 +136,7 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
       'Der Browser-Token darf durch Benutzung nicht laenger werden',
     );
 
-    // 4. Altzeilen nachziehen
+    // 4. Update legacy rows
     const alt = 'a'.repeat(64);
     await db.run('DELETE FROM api_tokens WHERE token = $1', [alt]);
     await db.run(
@@ -154,9 +154,9 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
       'Nachgezogen wird ab der letzten Nutzung, nicht ab jetzt — sonst verlaengert die Umstellung jede Altzeile',
     );
 
-    // 5. Eine Altzeile, die nie benutzt wurde, zählt ab ihrer Anlage und fällt.
-    // Gegenprobe (11.11.2026 gemessen): in tokensCleanup() die Summe durch 0
-    // ersetzt → rot „das Aufräumen zählt …“.
+    // 5. A legacy row that was never used counts from its creation and falls.
+    // Counter-check (measured 11.11.2026): in tokensCleanup() the sum replaced by 0
+    // → red „das Aufräumen zählt …“.
     const nie = 'b'.repeat(64);
     await db.run('DELETE FROM api_tokens WHERE token = $1', [nie]);
     await db.run(
@@ -171,10 +171,10 @@ test('the expiry date of the app token slides with use', { concurrency: 1 }, asy
       'eine nie benutzte Altzeile ist nach 40 Tagen über der Frist von 23',
     );
   } finally {
-    // Beides ABGEWARTET, und der Pool wird geschlossen: Ohne das laeuft die
-    // Datei nicht zu Ende, sondern in das 60-Sekunden-Zeitlimit von
-    // `npm test` — die Pruefungen darin sind laengst gruen, die Datei gilt
-    // trotzdem als gescheitert. Genau so ist es beim Schreiben dieses Tests …
+    // Both AWAITED, and the pool is closed: without that the
+    // file does not run to the end but into the 60-second time limit of
+    // `npm test` — the checks in it have long been green, the file counts
+    // as failed nevertheless. Exactly that happened when writing this test …
     await new Promise(r => srv.close(r));
     await db.run('DELETE FROM users WHERE username = $1', [NAME]).catch(() => {});
     await db.pool.end().catch(() => {});

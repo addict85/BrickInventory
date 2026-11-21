@@ -1,20 +1,20 @@
 /**
- * Die Webapp meldet sich nur mit dem httpOnly-Cookie an — ohne Bearer-Token,
- * den ein eingeschleustes Skript aus dem sessionStorage lesen könnte. „Alle
- * anderen abmelden" beendet darum auch die übrigen Browser-Sitzungen.
+ * The web app signs in only with the httpOnly cookie — without a bearer token
+ * that an injected script could read from sessionStorage. “Sign out all
+ * others” therefore also ends the other browser sessions.
  *
- * Gegenproben (am 27.10. gemessen):
- *   A  `ohne_token` in POST /login übergangen → rot: „kein Token für den Browser",
- *      dazu die beiden folgenden (die Zählungen stimmen danach nicht mehr)
- *   B  in /sessions/andere-beenden `AND sid <> $2` entfernt → rot: „die eigene
- *      Sitzung bleibt" (die eigene war mit beendet)
- *   C  (02.11.2026) in /sessions/andere-beenden bestaetigePasswort() entfernt
- *      → rot: „die eigene Sitzung bleibt" (200 statt 400 mit falschem Passwort)
- *   D  (03.11.2026) in signedInResponses() die Sitzung wieder auch mit Token
- *      angelegt → rot: „die App bekommt ihren Token und keine Sitzung" (Keks
- *      neben dem Token) und „die eigene Sitzung bleibt" (drei statt zwei)
+ * Counter-checks (measured 27.10.):
+ *   A  `ohne_token` ignored in POST /login → red: “no token for the browser”,
+ *      plus the two following ones (the counts no longer match afterwards)
+ *   B  in /sessions/andere-beenden `AND sid <> $2` removed → red: “the own
+ *      session stays” (the own one was ended too)
+ *   C  (02.11.2026) in /sessions/andere-beenden bestaetigePasswort() removed
+ *      → red: “the own session stays” (200 instead of 400 with a wrong password)
+ *   D  (03.11.2026) in signedInResponses() the session created again also with
+ *      a token → red: “the app gets its token and no session” (cookie
+ *      next to the token) and “the own session stays” (three instead of two)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -115,7 +115,7 @@ test('browser without token', { concurrency: 1 }, async t => {
   });
 
   await t.test('the own session stays', async () => {
-    await anmelden({ ohne_token: true }); // ein zweiter Browser
+    await anmelden({ ohne_token: true }); // a second browser
     assert.equal(await sitzungen(), 2, 'Vorbedingung: zwei Sitzungen (zwei Browser; die App hat keine)');
     const ohne = await ruf('/settings/sessions/andere-beenden', {
       method: 'POST',

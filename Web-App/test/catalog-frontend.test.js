@@ -1,5 +1,5 @@
 /**
- * Frontend-Tests für public/js/catalog.js in jsdom (devDependency).
+ * Frontend tests for public/js/catalog.js in jsdom (devDependency).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,7 +8,7 @@ const path = require('node:path');
 const { JSDOM } = require('jsdom');
 
 /**
- * import-/export-Syntax aus einer Moduldatei entfernen.
+ * Remove import/export syntax from a module file.
  * @param {string} src
  * @returns {string}
  */
@@ -16,16 +16,16 @@ function stripModuleSyntax(src) {
   const body = src
     .replace(/^import[^;]*;\s*$/gm, '') // import { a, b } from '…';
     .replace(/^export\s+/gm, ''); // export function/const/let/class
-  // registerActions() kommt sonst aus js/registry.js und ist nach dem
-  // Entfernen der Importe nicht definiert. In der Sandbox interessiert die
-  // Anmeldung nicht — dass sie aufgerufen WIRD, prüfen test/csp-actions.test.js
-  // und test/bundle-smoke.test.js gegen den echten Quelltext. …
+  // registerActions() otherwise comes from js/registry.js and is not defined after
+  // removing the imports. In the sandbox the registration does not
+  // matter — that it IS called is checked by test/csp-actions.test.js
+  // and test/bundle-smoke.test.js against the real source text. …
   return (
     'function registerActions() {}\n' + 'function tRaw(k, v) { return typeof t === "function" ? t(k, v) : k; }\n' + body
   );
 }
 
-// Die Ansichts-Bausteine kommen MIT in die Sandbox, nicht als Attrappe.
+// The view building blocks go INTO the sandbox, not as a dummy.
 const BAUSTEINE = stripModuleSyntax(
   fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'components.js'), 'utf8'),
 );
@@ -53,7 +53,7 @@ const dom = new JSDOM(
 
 const w = dom.window;
 
-// ── Mini-Backend: gleiche Semantik wie der (getestete) Server ────────────────
+// ── Mini backend: same semantics as the (tested) server ──────────────────────
 const DATA = [];
 for (let y = 2000; y <= 2026; y++)
   for (let k = 0; k < 3; k++)
@@ -124,7 +124,7 @@ function fakeApi(_method, url) {
   return Promise.resolve({ success: false, error: 'unbekannt: ' + url });
 }
 
-// ── Globale Stubs, wie sie die Bausteine und i18n bereitstellen ────────────────────────
+// ── Global stubs as the building blocks and i18n provide them ──────────────────────────
 Object.assign(w, require('./helpers/markup').markupHelper());
 w.eval(`
   window.G = id => document.getElementById(id);
@@ -146,8 +146,8 @@ w.eval(`
   window.setScrollLabel = fn => { window.__scrollLabelFn = fn; };
 `);
 w.api = fakeApi;
-// jsdom hat keinen IntersectionObserver — Stub fängt den Callback ab, damit
-// der Test das Sichtbarwerden des Sentinels simulieren kann.
+// jsdom has no IntersectionObserver — the stub captures the callback so that
+// the test can simulate the sentinel becoming visible.
 w.eval(`
   window.__ioCallbacks = [];
   window.IntersectionObserver = class {
@@ -155,8 +155,8 @@ w.eval(`
     observe() {} unobserve() {} disconnect() {}
   };
 `);
-// jsdom kennt scrollIntoView nicht (kein Layout). Für den Sprung zählt, WOHIN
-// gescrollt würde — das hält der Stub fest.
+// jsdom does not know scrollIntoView (no layout). For the jump what counts is WHERE
+// it would scroll to — the stub records that.
 w.eval(`
   window.__scrollZiele = [];
   Element.prototype.scrollIntoView = function () { window.__scrollZiele.push(this); };
@@ -173,7 +173,7 @@ const hasYearFilter = u => /[?&]year_(from|to)=/.test(u);
 const bloecke = () => w.document.querySelectorAll('#catalog-grid .cat-page');
 const realTiles = () => w.document.querySelectorAll('#catalog-grid .sc:not(.cat-page-ph)').length;
 const platzhalter = () => w.document.querySelectorAll('#catalog-grid .cat-page-ph').length;
-/** Eine Seite ins Bild schieben — so, wie es der Beobachter meldet. */
+/** Push a page into view — as the observer reports it. */
 const showPage = n => {
   const el = w.document.querySelector(`#catalog-grid .cat-page[data-page="${n}"]`);
   for (const cb of w.__ioCallbacks) cb([{ isIntersecting: true, target: el }]);
@@ -183,26 +183,26 @@ test('catalog frontend: page blocks, year filter, own scroll bar', async () => {
   w.eval('initCatalog()');
   await sleep(80);
 
-  // ── Aufbau: ein Block je Seite über das GANZE Ergebnis ──────────────────
+  // ── Layout: one block per page over the WHOLE result ──────────────────
   check('Erste Anfrage OHNE Jahresfilter', !hasYearFilter(lastSetsReq()), lastSetsReq());
   check('85 Sets, also 2 Seitenblöcke', bloecke().length === 2, bloecke().length);
 
-  // jsdom rechnet KEIN Layout: getBoundingClientRect() liefert überall Nullen,
-  // also hält _loadVisiblePages() jeden Block für sichtbar und lädt sofort
-  // alles. Im Browser passiert das nicht — dort haben die Blöcke echte
-  // Koordinaten. Geprüft wird hier deshalb das ERGEBNIS des Nachladens; dass …
+  // jsdom computes NO layout: getBoundingClientRect() returns zeros everywhere,
+  // so _loadVisiblePages() considers every block visible and loads everything
+  // immediately. In the browser that does not happen — there the blocks have real
+  // coordinates. What is checked here is therefore the RESULT of loading more; that …
   await sleep(80);
   check('alle Seiten geladen (85 Kacheln)', realTiles() === 85, realTiles());
   check('keine Platzhalter mehr übrig', platzhalter() === 0, platzhalter());
 
-  // Eine geladene Seite darf kein zweites Mal geholt werden — sonst löste
-  // jeder Scroll-Schritt denselben Abruf erneut aus.
+  // A loaded page must not be fetched a second time — otherwise every
+  // scroll step would trigger the same fetch again.
   const afterSeite2 = requests.length;
   showPage(2);
   await sleep(60);
   check('geladene Seite wird nicht erneut geholt', requests.length === afterSeite2, requests.length - afterSeite2);
 
-  // ── Der Jahresfilter über die Auswahlfelder BLEIBT ──────────────────────
+  // ── The year filter via the select fields STAYS ──────────────────────
   w.G('cat-year-from').value = '2027';
   fire(w.G('cat-year-from'), 'change');
   await sleep(80);
@@ -214,7 +214,7 @@ test('catalog frontend: page blocks, year filter, own scroll bar', async () => {
   await sleep(80);
   check('ohne Filter wieder alles', hasYearFilter(lastSetsReq()) === false, lastSetsReq());
 
-  // Der Scrollbalken gehört der ganzen Anwendung
+  // The scrollbar belongs to the whole application
   const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
   check('Browser-Balken ausgeblendet (Firefox)', /html\{scrollbar-width:none/.test(css), null);
   check('Browser-Balken ausgeblendet (WebKit)', /html::-webkit-scrollbar\{width:0/.test(css), null);
@@ -222,16 +222,16 @@ test('catalog frontend: page blocks, year filter, own scroll bar', async () => {
 
   const kern = require('./helpers/sources').coreSource();
   check('der Balken rollt die Seite', /window\.scrollTo\(/.test(kern), null);
-  // Ohne diese Beobachtung bliebe der Griff auf seiner alten Grösse, wenn
-  // Kacheln nachladen und die Seite länger wird.
+  // Without this observation the thumb would stay at its old size when
+  // tiles load and the page gets longer.
   check('Griff folgt der wachsenden Seite', /ResizeObserver/.test(kern), null);
 
   const quelle = fs.readFileSync(path.join(__dirname, '..', 'public', 'js', 'catalog.js'), 'utf8');
   check('kein eigener Scrollkasten mehr', !/cat-scroller/.test(quelle), null);
-  // Der Beobachter misst wieder gegen das FENSTER.
+  // The observer measures against the WINDOW again.
   check('Beobachter ohne eigene Wurzel', !/root: G\(/.test(quelle), null);
-  // Und der zweite Weg, der unabhängig vom Beobachter lädt — genau der Fehler,
-  // den Marco gemeldet hat („beim Scrollen erscheinen keine Einträge").
+  // And the second path that loads independently of the observer — exactly the bug
+  // Marco reported (“no entries appear when scrolling").
   check('Seiten laden auch ohne Beobachter', /_loadVisiblePages/.test(quelle), null);
   check(
     'nach dem Füllen wird erneut nachgesehen',
@@ -239,25 +239,25 @@ test('catalog frontend: page blocks, year filter, own scroll bar', async () => {
     null,
   );
   check('Kacheln tragen ihr Jahr', /data-year="/.test(quelle), null);
-  // Ungeladene Seiten sind EIN leerer Block, nicht 60 Kachel-Platzhalter: Bei
-  // 25 000 Sets wären das über 25 000 Elemente auf einmal.
+  // Unloaded pages are ONE empty block, not 60 tile placeholders: with
+  // 25 000 sets that would be over 25 000 elements at once.
   check('leere Seite ist ein einzelner Block', /class="cat-page cat-page-ph" data-page=/.test(quelle), null);
-  // Und seine Höhe wird an der ERSTEN, echten Seite GEMESSEN. Geraten wäre sie
-  // falsch, sobald das Fenster eine andere Spaltenzahl ergibt — dann springt
-  // die Liste beim Nachladen und man verliert die Stelle.
+  // And its height is MEASURED on the FIRST real page. Guessed it would be
+  // wrong as soon as the window yields a different column count — then the list
+  // jumps when loading more and one loses the place.
   check(
     'Höhe wird gemessen, nicht geraten',
     /erste\.offsetHeight/.test(quelle) && /_setPlaceholderHeight\(\)/.test(quelle),
     null,
   );
-  // Der verlässliche Ladeweg: das Scroll-Ereignis selbst, gedrosselt.
+  // The reliable loading path: the scroll event itself, throttled.
   check('Scrollen löst das Nachladen aus', /addEventListener\('scroll', atMovement/.test(quelle), null);
   check(
     'gedrosselt über requestAnimationFrame',
     /requestAnimationFrame\([\s\S]{0,120}_loadVisiblePages/.test(quelle),
     null,
   );
-  // Die Last beim Ziehen
+  // The load while dragging
   check(
     'Blocklagen kommen aus dem Gedächtnis',
     /_catBlockStates/.test(quelle) && /function _measureBlocks/.test(quelle),
@@ -268,16 +268,16 @@ test('catalog frontend: page blocks, year filter, own scroll bar', async () => {
     !/requestAnimationFrame\([\s\S]{0,160}_measureBlocks/.test(quelle),
     null,
   );
-  // 2. Geladen wird erst in der Ruhe; dass das wirkt, misst catalog-move-debounced.test.js.
+  // 2. Loading only happens at rest; that this works is measured by catalog-move-debounced.test.js.
   check('Laden wartet auf Ruhe', /_catLadeTimer = setTimeout\(tun, \d+\)/.test(quelle), null);
-  // Der Beobachter ist entfallen — ein Weg, der immer greift, statt zweier,
-  // die sich ergänzen sollen.
+  // The observer is gone — one path that always applies instead of two
+  // that are supposed to complement each other.
   check('kein zweiter Ladeweg mehr', !/new IntersectionObserver/.test(quelle), null);
   check('der Katalog meldet sein Etikett an', /setScrollLabel\(/.test(quelle), null);
   check('Etikett liest zuerst die sichtbare Kachel', /karte\.dataset\.year/.test(quelle), null);
-  // Und wo nichts geladen ist, wird über die tatsächliche VERTEILUNG gerechnet,
-  // nicht linear geschätzt. Die lineare Fassung zeigte bei 90 % „1966", wo in
-  // Wahrheit 1995 stand — Marcos Befund.
+  // And where nothing is loaded, the computation uses the actual DISTRIBUTION,
+  // not a linear estimate. The linear version showed “1966" at 90 %, where
+  // in truth it was 1995 — Marco's finding.
   check(
     'Etikett rechnet über die Verteilung',
     /_catYearDistribution/.test(quelle) && /year-verteilung/.test(quelle),

@@ -1,18 +1,18 @@
 /**
- * Der eigene Scrollbalken (js/scrollbar.js) für Maus-Nutzer und im Kontrastmodus, gemessen in Chrome.
- * Er bleibt, weil Marco einen eigenen Balken verlangt hat und er die Seite rollt (kein Scrollkasten); die
- * Prüfung hält fest, dass er dabei sichtbar und bedienbar ist.
+ * The own scrollbar (js/scrollbar.js) for mouse users and in contrast mode, measured in Chrome.
+ * It stays because Marco asked for an own bar and it scrolls the page (no scroll box); the
+ * check records that it is visible and usable while doing so.
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   A  den Griff in styles.css wieder `background:var(--s400)` → rot: „Griff hebt sich in jedem
- *      Design ab (3:1)“ (classic hell 2,45:1, brick hell 1,72:1)
- *   B  die forced-colors-Regeln in styles.css entfernt (Verstecken der Browser-Leiste wieder
- *      unbedingt) → rot: „Kontrastmodus: die Leiste des Browsers bleibt“ (Eigenbau sichtbar,
- *      Browser-Leiste 0 px)
- *   C  in rollbalken.js das `mousedown`-Hören entfernt → rot: „Ziehen am Griff rollt die Seite“
+ * Counter-checks (measured 08.11.2026, each on its own):
+ *   A  the thumb in styles.css again `background:var(--s400)` → red: “thumb stands out in every
+ *      design (3:1)” (classic light 2.45:1, brick light 1.72:1)
+ *   B  the forced-colors rules removed in styles.css (hiding the browser bar unconditional
+ *      again) → red: “contrast mode: the browser's bar stays” (own build visible,
+ *      browser bar 0 px)
+ *   C  the `mousedown` listening removed in rollbalken.js → red: “dragging the thumb scrolls the page”
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Without Chrome (CHROME_BIN, google-chrome, chromium) it is skipped.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,7 +25,7 @@ test('scrollbars: visible and usable', { concurrency: 1, timeout: 300_000 }, asy
   const app = await startApp(t, {
     name: `scrollbalken_${process.pid}`,
     allDesigns: true,
-    // Genug Kacheln, dass die Seite höher ist als das Fenster.
+    // Enough tiles that the page is taller than the window.
     bestand: async (db, uid) => {
       for (let i = 0; i < 40; i++) await holdsSet(db, uid, `${10000 + i}-1`, 1, { preis: 10 });
     },

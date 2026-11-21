@@ -1,39 +1,39 @@
 /**
- * UX-Prüfung 23 im echten Chrome, im Haushalt mit Unterkonto: H1, H2, M1–M6
- * und N1–N10. Zuletzt meldet sich der Verwalter ab und ein englisches Konto an.
+ * UX check 23 in real Chrome, in the household with a sub-account: H1, H2, M1–M6
+ * and N1–N10. Finally the admin logs out and an English account logs in.
  *
- * Gegenproben (14.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  Abmelden ohne Neuladen (nur showLogin) → rot: „Abmelden verwirft das
+ * Counter-checks (measured 14.11.2026, each on its own, bundle rebuilt):
+ *   A  logout without reloading (only showLogin) → red: „Abmelden verwirft das
  *      vorige Konto“ (r23_…_kind, „199,99“, „Alle Themen“, „Sets im Katalog“)
- *   B  bim_lang beim Abmelden behalten → rot: ebenda („Anmeldemaske nicht in
+ *   B  bim_lang kept on logout → red: same place („Anmeldemaske nicht in
  *      der Browsersprache“)
- *   C  .mon-tabelle td wieder Flexzeile ohne Umbruch → rot: „Alle Ansichten
- *      bei 390 px“ und „Hintergrundarbeiten“ (407 > 390)
- *   D  loeschWahl() ohne Haushaltsfall → rot: „Löschen im Haushalt“ (Konten fehlen)
- *   E  fokusVerloren() kehrt sofort zurück → rot: ebenda (Fokus nicht auf dem Set)
- *   F  .offline-band wieder top:0;z-index:120 → rot: „Offline-Band“ (Menü verdeckt)
- *   G  ohne den 429-Zweig in clearerReason() → rot: „Drossel“ (Text);
- *      .toast-zu ohne position:absolute → rot: ebenda (✕ 65 px unter der Oberkante)
- *   H  wieder loadGallery() und loadStats() beim Reiterwechsel → rot: „Drossel“
- *      (zweimal /v1/stats)
- *   I  alsKarten() ohne telefonBreite() → rot: „Telefon nur Karten …“ (in Folge
- *      auch „Drossel“ und „Kontrastmodus“: die Tabelle bleibt stehen)
- *   K  „Ø Kaufpreis“ nie gewählt → rot: „Set-Detail“
- *   L  .btn.bp im Kontrastmodus ohne Rand → rot: „Kontrastmodus“ (0px)
- *   M  theme-boot.js setzt data-rb-band nicht → rot: „Startgerüst“
- *   N  (14.11.2026, seit UX-Prüfung 25 ohne Spalte „Stückpreis“) wertMitStueck() auch bei Menge 1 mit
- *      „je …“ → rot: „Finanzen“
- *   O  Zoom-Knopf ohne data-i18n-aria → rot: „Abmelden …“ (aria-label deutsch)
- *   P  „davon N nach Fehler“ nie gezeigt → rot: „Hintergrundarbeiten“
- *   Q  pl.erst_set wieder ohne Grund → rot: „Bauliste“ (Sperre ohne Begründung); seit Runde 24 ohne
- *      Knopf: btn-pl-gen nicht verborgen → rot: „Bauliste“ (sichtbar ohne Set)
- *   R  atPhoneSwitch() zeichnet die Sammlung nicht neu → rot: „Telefon nur
- *      Karten …“ (Zeitüberschreitung), in Folge „Drossel“, „Kontrastmodus“, „Abmelden …“
- *   S  (16.11.2026) in loeschWahl() „aus allen Konten“ wieder als erste (vorgewählte) Möglichkeit →
- *      rot: „Löschen im Haushalt“
+ *   C  .mon-tabelle td again a flex row without wrapping → red: „Alle Ansichten
+ *      bei 390 px“ and „Hintergrundarbeiten“ (407 > 390)
+ *   D  loeschWahl() without the household case → red: „Löschen im Haushalt“ (accounts missing)
+ *   E  fokusVerloren() returns immediately → red: same place (focus not on the set)
+ *   F  .offline-band again top:0;z-index:120 → red: „Offline-Band“ (menu covered)
+ *   G  without the 429 branch in clearerReason() → red: „Drossel“ (text);
+ *      .toast-zu without position:absolute → red: same place (✕ 65 px below the top edge)
+ *   H  again loadGallery() and loadStats() on tab change → red: „Drossel“
+ *      (twice /v1/stats)
+ *   I  alsKarten() without telefonBreite() → red: „Telefon nur Karten …“ (as a consequence
+ *      also „Drossel“ and „Kontrastmodus“: the table stays)
+ *   K  „Ø Kaufpreis“ never chosen → red: „Set-Detail“
+ *   L  .btn.bp in contrast mode without a border → red: „Kontrastmodus“ (0px)
+ *   M  theme-boot.js does not set data-rb-band → red: „Startgerüst“
+ *   N  (14.11.2026, since UX check 25 without the column „Stückpreis“) wertMitStueck() also at quantity 1 with
+ *      „je …“ → red: „Finanzen“
+ *   O  zoom button without data-i18n-aria → red: „Abmelden …“ (aria-label German)
+ *   P  „davon N nach Fehler“ never shown → red: „Hintergrundarbeiten“
+ *   Q  pl.erst_set again without a reason → red: „Bauliste“ (lock without a reason); since round 24 without
+ *      button: btn-pl-gen not hidden → red: „Bauliste“ (visible without a set)
+ *   R  atPhoneSwitch() does not redraw the collection → red: „Telefon nur
+ *      Karten …“ (timeout), as a consequence „Drossel“, „Kontrastmodus“, „Abmelden …“
+ *   S  (16.11.2026) in loeschWahl() „aus allen Konten“ again as the first (preselected) option →
+ *      red: „Löschen im Haushalt“
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Without Chrome (CHROME_BIN, google-chrome, chromium) it is skipped.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -89,9 +89,9 @@ async function setDetail(_t, a) {
   await b.auswerten(CLOSE);
 }
 
-/** Jede Ansicht bei 390 px, alle Klappen offen: Die Seite ist nie breiter als das Fenster. Die allgemeine
- * Prüfung (helpers/ui-check.js) misst mit geschlossenen „Einzelnen Aufträgen“ und ohne
- * gescheiterten Auftrag; so rutschte der Überlauf der Hintergrundarbeiten durch. */
+/** Every view at 390 px, all drawers open: the page is never wider than the window. The general
+ * check (helpers/ui-check.js) measures with closed „Einzelne Aufträge“ and without a
+ * failed job; that is how the overflow of the background jobs slipped through. */
 async function allViews(_t, a) {
   const { b } = a;
   const funde = [];
@@ -167,7 +167,7 @@ async function hintergrund(_t, a) {
 async function finanzen(_t, a) {
   const { b } = a;
   await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-type="sets"] tbody tr')`, 'Finanzen');
-  // Der Stückpreis steht seit UX-Prüfung 25 unter dem Marktwert („je …“), nur bei mehr als einem Stück.
+  // Since UX check 25 the unit price stands below the market value („je …“), only for more than one piece.
   const f = await b.auswerten(`(() => {
     const zeilen = [...document.querySelectorAll('[data-fin-type="sets"] tbody tr')].map(z => ({
       menge: z.querySelector('.qbadge')?.textContent, je: z.querySelector('.fin-wert .fin-je')?.textContent || '' }));
@@ -183,7 +183,7 @@ async function finanzen(_t, a) {
   assert.doesNotMatch(f.linie, /der Positionen mit Marktpreis/, 'Erklärung am Diagramm doppelt');
 }
 
-/** Seit Runde 24 (N11) fehlt „Neu berechnen“ ohne Set ganz; der Leerzustand sagt einmal, was zu tun ist. */
+/** Since round 24 (N11) „Neu berechnen“ is missing entirely without a set; the empty state says once what to do. */
 async function bauliste(_t, a) {
   await geh(a, '#/bauliste', `document.getElementById('tab-partslist').classList.contains('active')`, 'Bauliste');
   const k = await a.b.auswerten(`({ knopf: document.getElementById('btn-pl-gen').checkVisibility(),
@@ -194,7 +194,7 @@ async function bauliste(_t, a) {
 
 async function bars(_t, a) {
   const { b, bis } = a;
-  // Am Rechner Tabelle gewählt, dann schmal: Die Sammlung zeigt Karten, ohne neu zu laden.
+  // Table chosen on the computer, then narrow: the collection shows cards without reloading.
   await geh(a, '#/sammlung', `!!document.querySelector('#gallery .sc')`, 'Sammlung');
   await b.auswerten(`document.getElementById('vl').click(); true`);
   await bis(`!!document.querySelector('#gallery table')`, 'Tabelle');
@@ -215,7 +215,7 @@ async function bars(_t, a) {
         .sort((x, y) => x.getBoundingClientRect().left - y.getBoundingClientRect().left).map(e => e.matches('.filter-knopf') ? 'Filter' + Math.round(e.getBoundingClientRect().width) : e.matches('.suchfeld') ? 'Suche' : e.className)`);
     }
     assert.deepEqual(reihe.gallery, ['Filter44', 'Suche']);
-    // Teile haben zusätzlich Karten/Liste (UX-Prüfung 28, N8); Filter und Suche stehen gleich.
+    // Parts additionally have cards/list (UX check 28, N8); filters and search stand the same.
     assert.deepEqual(reihe.parts, [...reihe.gallery, 'vtgl'], 'Werkzeugleisten uneinheitlich');
   } finally {
     await groesse(b, 1280, false);
@@ -256,7 +256,7 @@ async function drossel(_t, a) {
     await b.auswerten(`document.querySelectorAll('#toasts .toast').forEach(x => x.remove()); true`);
   }
   await groesse(b, 1280, false);
-  // Ein Wechsel zur Sammlung fragt Liste und Kennzahlen je einmal; der Katalog die Jahre nur beim ersten Mal.
+  // A switch to the collection asks list and metrics once each; the catalog the years only the first time.
   await geh(a, '#/katalog', `!!document.querySelector('#catalog-grid .sc')`, 'Katalog');
   await geh(a, '#/teile', `!!document.querySelector('#tab-parts .part-card')`, 'Teile');
   const vorher = b.ereignisse.length;
@@ -320,7 +320,7 @@ async function kontrast(_t, a) {
 
 async function startgeruest(_t, a) {
   const { b, bis } = a;
-  // Das Gerüst misst sich, bevor die App es entfernt; verglichen wird mit der fertigen Seite.
+  // The scaffold measures itself before the app removes it; it is compared with the finished page.
   const { identifier } = await b.tab('Page.addScriptToEvaluateOnNewDocument', {
     source: `document.addEventListener('DOMContentLoaded', () => { const r = s => document.querySelector(s)?.getBoundingClientRect().top;
       window.__sg = { kachel: r('#startgeruest .sg-kacheln i'), band: document.documentElement.hasAttribute('data-rb-band'),
@@ -396,7 +396,7 @@ async function loeschen(_t, a, name) {
 
 async function abmelden(_t, a, name) {
   const { b, bis } = a;
-  // Stand des Verwalters: Benutzer, Hintergrund, Set-Dialog mit Kaufpreisen, Katalog, Finanzen.
+  // State of the admin: users, background, set dialog with purchase prices, catalog, finances.
   await geh(a, '#/einstellungen', `!!document.querySelector('#users-tbl .nutzer-name')`, 'Benutzerverwaltung');
   await geh(a, '#/hintergrund', `!!document.querySelector('#monitor-content .mon-dienste')`, 'Hintergrund');
   await geh(a, '#/katalog', `!!document.querySelector('#catalog-grid .sc')`, 'Katalog');
@@ -412,7 +412,7 @@ async function abmelden(_t, a, name) {
     'Anmeldemaske',
     300,
   );
-  // Der Browser spricht Englisch (Chrome ohne Sprachwahl: en-US), das Konto davor Deutsch.
+  // The browser speaks English (Chrome without a language choice: en-US), the account before it German.
   const mask = { titel: await b.auswerten(`document.title`), knopf: await b.auswerten(text('#btn-login')) };
 
   await b.auswerten(`document.getElementById('lu').value = ${JSON.stringify(`${name}_en`)};
@@ -437,7 +437,7 @@ async function abmelden(_t, a, name) {
   assert.equal(dom.thema, 'All themes');
   assert.equal(dom.zoom, '100% – reset zoom (key 0)');
 
-  // Leere Sammlung: Der Hinweis nennt das Menü erst am Telefon, auch nach dem Wechsel der Breite.
+  // Empty collection: the hint names the menu only on the phone, also after changing the width.
   const hinweis = () => b.auswerten(text('#gallery .empty p'));
   assert.doesNotMatch(await hinweis(), /•••/);
   await groesse(b, 390, true);
@@ -458,7 +458,7 @@ test('logout, deleting in the household, offline banner, contrast mode', {
     name,
     bestand: async (db, uid) => {
       await patternHousehold(db, uid);
-      // Zwei offene Läufe einer Art, einer nach Fehlern: Etikett und langer Hinweis am Telefon.
+      // Two open runs of one kind, one after errors: label and long hint on the phone.
       await db.run(`INSERT INTO jobs (type, due_at, attempts, max_attempts, error_message)
         VALUES ('wechselkurse', NOW() + interval '5 hours', 4, 6, 'getaddrinfo ENOTFOUND www.ecb.europa.eu https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip')`);
       await db.run(`INSERT INTO jobs (type, due_at) VALUES ('wechselkurse', NOW() + interval '6 hours')`);

@@ -1,12 +1,12 @@
 /**
- * Wer sich anmeldet, während die Startfrage „bin ich angemeldet?“ noch
- * unterwegs ist, bleibt angemeldet: Die späte Antwort „nein“ darf die App
- * nicht zurück auf die Anmeldemaske werfen.
+ * Whoever logs in while the start question „bin ich angemeldet?“ is still
+ * on its way stays logged in: the late answer „nein“ must not throw the app
+ * back to the login form.
  *
- * Gegenprobe (31.10.2026 gemessen): in checkAuth() die Zeile `if (angemeldetesKonto) return;`
- * entfernt → rot: „die App bleibt sichtbar“ (#app hat display: none, die
- * Anmeldemaske steht wieder da). Am 11.11.2026 mit ruhig() statt 5 s Pause
- * wiederholt: ebenso rot.
+ * Counter-check (measured 31.10.2026): in checkAuth() the line `if (angemeldetesKonto) return;`
+ * removed → red: „die App bleibt sichtbar“ (#app has display: none, the
+ * login form stands there again). On 11.11.2026 repeated with ruhig() instead of a 5 s pause:
+ * red as well.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,8 +30,8 @@ test('a late startup response "not logged in" does not end the fresh login', {
     t.skip(app.grund);
     return;
   }
-  // startApp kehrt kurz nach der Anmeldung zurück; die Startantwort kommt
-  // 4 s nach dem Laden der Seite. ruhig() wartet, bis sie da ist.
+  // startApp returns shortly after the login; the start response comes
+  // 4 s after loading the page. ruhig() waits until it is there.
   await app.ruhig(15_000);
   const stand = await app.b.auswerten(`({
     app: getComputedStyle(document.getElementById('app')).display,

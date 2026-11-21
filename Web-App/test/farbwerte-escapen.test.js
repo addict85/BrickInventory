@@ -1,6 +1,6 @@
 /**
- * Ein Farbwert aus der Datenbank geht durch escHex(), bevor er in ein
- * style-Attribut kommt.
+ * A color value from the database goes through escHex() before it gets into a
+ * style attribute.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -15,18 +15,18 @@ test('color values only get into the markup via escHex', () => {
   for (const f of fs.readdirSync(JS).filter(n => n.endsWith('.js') && n !== 'app.bundle.js')) {
     const src = fs.readFileSync(path.join(JS, f), 'utf8');
     src.split('\n').forEach((zeile, i) => {
-      // Interpolierte Farbfelder: color_hex, colour_hex, .hex
+      // Interpolated color fields: color_hex, colour_hex, .hex
       for (const m of zeile.matchAll(/\$\{([^{}]*(?:color_hex|colour_hex|\.hex)\b[^{}]*)\}/g)) {
         checked++;
-        // Zwei erlaubte Fassungen derselben Prüfung: escHex() liefert
-        // `#RRGGBB` für style, rawHex() die nackten sechs Ziffern für
-        // Attribute, deren Leser das Doppelkreuz selbst ergänzen.
+        // Two allowed versions of the same check: escHex() delivers
+        // `#RRGGBB` for style, rawHex() the bare six digits for
+        // attributes whose readers add the hash themselves.
         if (!m[1].includes('escHex(') && !m[1].includes('rawHex(')) treffer.push(`${f}:${i + 1}  \${${m[1].trim()}}`);
       }
     });
   }
-  // Selbstbeweis: Ohne Fundstellen sagt eine leere Liste nichts — die Regel
-  // wäre auch dann grün, wenn niemand mehr Farben anzeigte.
+  // Self-proof: without locations an empty list says nothing — the rule
+  // would also be green if nobody displayed colors anymore.
   assert.ok(checked >= 5, `nur ${checked} interpolierte Farbwerte gefunden — Feldname geändert?`);
   assert.deepEqual(
     treffer,

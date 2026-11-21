@@ -1,15 +1,15 @@
 /**
- * Der Lagerort lässt sich beim ERFASSEN setzen — nicht erst danach.
+ * The storage location can be set when CAPTURING — not only afterwards.
  *
- * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
- *   a) Der Lagerort-Aufruf in setErfassen() entfernt       → Schritt 1 rot.
- *   b) desgleichen in addManualPart()                      → Schritt 3 rot.
- *   c) desgleichen in addManualMinifig()                       → Schritt 4 rot.
- *   d) `storage` in uebernimm() nicht durchgereicht        → Schritt 5 rot.
- *   e) minifigs in lagerorte() nicht mitgezählt            → Schritt 6 rot.
- *   f) minifigs in loescheOrt() nicht mitgezählt           → Schritt 7 rot.
+ * ── Counter-checks (carried out, result in the commit) ──────────────────────────
+ *   a) the storage location call removed in setErfassen()  → step 1 red.
+ *   b) likewise in addManualPart()                         → step 3 red.
+ *   c) likewise in addManualMinifig()                      → step 4 red.
+ *   d) `storage` not passed through in uebernimm()         → step 5 red.
+ *   e) minifigs not counted in lagerorte()                 → step 6 red.
+ *   f) minifigs not counted in loescheOrt()                → step 7 red.
  *
- * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL.
+ * Prerequisite: test DB (contents are cleared!) via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -22,11 +22,11 @@ const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
 
 /**
- * Der Lagerort-NAME einer Bestandszeile.
+ * The storage location NAME of a stock row.
  *
- * Seit Migration 0031 traegt die Zeile eine ID; der Name steht im Vorrat. Die
- * Pruefungen unten fragen weiter nach dem Namen — das ist die Aussage, auf die
- * es ankommt — nur der Weg dorthin fuehrt jetzt ueber einen JOIN.
+ * Since migration 0031 the row carries an ID; the name stands in the stock. The
+ * checks below still ask for the name — that is the statement that
+ * matters — only the path there now leads through a JOIN.
  */
 async function locationOf(db, tabelle, bedingung, params) {
   const r = await db.get(
@@ -65,7 +65,7 @@ async function dbReachable() {
   }
 }
 
-/** Steht der Ort im VORRAT? Das ist die Hälfte, die ein blosses UPDATE nicht tut. */
+/** Does the place stand in the STOCK? That is the half a mere UPDATE does not do. */
 async function inStock(uid, name) {
   const r = await db.get('SELECT 1 AS da FROM storage_locations WHERE user_id=$1 AND lower(name)=lower($2)', [
     uid,
@@ -91,7 +91,7 @@ test('storage location when capturing — against a real database', async t => {
   };
 
   await t.test('1. a set comes into the gallery with its storage location', async () => {
-    // Wie der CSV-Import (aufstocken); den Katalog holt der Auftrag, geprüft wird der Lagerort.
+    // Like the CSV import (top up); the job fetches the catalog, the storage location is checked.
     await setService.setErfassen({
       requester: U.ich,
       setNumber: '10179-1',
@@ -105,8 +105,8 @@ test('storage location when capturing — against a real database', async t => {
   });
 
   await t.test('2. the newly typed place lands in the stock', async () => {
-    // Sonst stünde er am Set, fehlte aber in der Auswahlliste, aus der er
-    // gewählt werden soll — Marcos „man kann auch gleich neue Auswahlwerte
+    // Otherwise it would stand on the set but be missing in the selection list it
+    // is supposed to be chosen from — Marco's „man kann auch gleich neue Auswahlwerte
     // erfassen".
     assert.ok(await inStock(U.ich, 'Kiste 3'), 'Der Ort steht am Set, aber nicht im Vorrat.');
   });
@@ -124,7 +124,7 @@ test('storage location when capturing — against a real database', async t => {
   });
 
   await t.test('4. a manually captured minifigure gets its storage location', async () => {
-    // Bis Migration 0024 gab es die Spalte gar nicht.
+    // Until migration 0024 the column did not exist at all.
     await figuren.addManualMinifig(U.ich, { fig_number: 'sw0001', quantity: 1, storage: 'Vitrine' });
     const r = await db.get(
       `SELECT l.name AS storage FROM minifigs t
@@ -144,8 +144,8 @@ test('storage location when capturing — against a real database', async t => {
   });
 
   await t.test('6. the overview counts figures SEPARATELY, not as part kinds', async () => {
-    // „18 Teilesorten" hiesse sonst mal 18 Teilesorten und mal 12 plus 6
-    // Figuren, und niemand könnte der Zahl ansehen, was gemeint ist.
+    // „18 Teilesorten" would otherwise mean 18 part kinds at one time and 12 plus 6
+    // figures at another, and nobody could tell from the number what is meant.
     const liste = await L.lagerorte([U.ich]);
     const vitrine = liste.find(o => o.ort === 'Vitrine');
     assert.ok(vitrine, 'Ein Ort, in dem NUR eine Figur liegt, fehlt in der Übersicht.');
@@ -155,12 +155,12 @@ test('storage location when capturing — against a real database', async t => {
   });
 
   await t.test('7. a place with only one figure in it cannot be deleted', async () => {
-    // Sonst zeigte die Zuordnung der Figur danach auf einen Namen, den der
-    // Vorrat nicht mehr kennt.
+    // Otherwise the assignment of the figure would afterwards point to a name that the
+    // stock no longer knows.
     const ort = await db.get('SELECT id FROM storage_locations WHERE user_id=$1 AND name=$2', [U.ich, 'Vitrine']);
-    // Geprüft wird `code`, nicht der Text: fachfehler() legt die deutsche
-    // Fassung in `message` und den Code daneben (src/infra/errorTexts.ts). Auf
-    // den Text zu prüfen hiesse, die Regel an eine Übersetzung zu hängen.
+    // What is checked is `code`, not the text: fachfehler() puts the German
+    // version into `message` and the code next to it (src/infra/errorTexts.ts). Checking
+    // the text would mean hanging the rule on a translation.
     await assert.rejects(
       () => L.loescheOrt(U.ich, parseInt(ort.id, 10)),
       (/** @type {any} */ e) => e?.code === 'lagerort_in_benutzung',

@@ -1,15 +1,15 @@
 /**
- * Gleichzeitige Fehlversuche kommen nicht an der Anmeldesperre vorbei: Ein
- * Versuch belegt seinen Platz, BEVOR das Passwort geprüft wird. Vorher ergaben
- * 50 parallele Fehlversuche 49 Passwortprüfungen statt 5. Dasselbe gilt für
- * die Bestätigung von Passwort und Code in einer laufenden Sitzung.
+ * Concurrent failed attempts do not get past the login lock: an
+ * attempt occupies its slot BEFORE the password is checked. Before, 50
+ * parallel failed attempts resulted in 49 password checks instead of 5. The same applies to
+ * the confirmation of password and code in a running session.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  loginAllowed wieder mit _read statt _reserviere (Adresse und
- *      Konto) → rot: „20 gleichzeitige Fehlversuche, höchstens 5 Prüfungen“
- *   B  confirmationLocked wieder mit _read → rot: „Bestätigung: …“
+ * Counter-checks (measured on 28.10.2026):
+ *   A  loginAllowed again with _read instead of _reserviere (address and
+ *      account) → red: “20 concurrent failed attempts, at most 5 checks”
+ *   B  confirmationLocked again with _read → red: “confirmation: …”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

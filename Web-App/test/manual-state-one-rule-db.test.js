@@ -1,5 +1,5 @@
 /**
- * Ein manuell erfasstes Stück hat EINEN Zustand — egal, wer danach fragt.
+ * A manually captured piece has ONE condition — no matter who asks for it.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -32,8 +32,8 @@ test('manual parts and figures: list and valuation state the same condition', { 
   const uid = (await db.get('SELECT id FROM users WHERE username=$1', [NAME])).id;
 
   try {
-    // Die Regel: Sobald EINE Erfassung gebraucht ist, gilt das Stueck als
-    // gebraucht. Ohne Erfassung gilt „Neu".
+    // The rule: as soon as ONE acquisition is used, the piece counts as
+    // used. Without an acquisition „Neu" applies.
     const faelle = [
       { nr: '3001', erfassungen: [], erwartet: 'N' },
       { nr: '3002', erfassungen: ['N'], erwartet: 'N' },
@@ -42,7 +42,7 @@ test('manual parts and figures: list and valuation state the same condition', { 
       { nr: '3005', erfassungen: ['N', 'N'], erwartet: 'N' },
     ];
     for (const f of faelle) {
-      // Name und Farbbezeichnung in die Kataloge (Migration 0034).
+      // Name and color label into the catalogs (migration 0034).
       await db.run(
         `INSERT INTO part_catalog (part_number,part_name) VALUES ($1,$2)
                     ON CONFLICT (part_number) DO NOTHING`,
@@ -53,14 +53,14 @@ test('manual parts and figures: list and valuation state the same condition', { 
                     VALUES ($1,4,'Rot') ON CONFLICT (part_number,color_id) DO NOTHING`,
         [f.nr],
       );
-      await holdsPart(db, uid, f.nr, { menge: 0, colorId: 4 }); // Menge 0: die Erfassung dahinter traegt sie
+      await holdsPart(db, uid, f.nr, { menge: 0, colorId: 4 }); // quantity 0: the acquisition behind it carries it
       await db.run(
         `INSERT INTO minifigs_catalog (fig_number,fig_name) VALUES ($1,$2)
                     ON CONFLICT (fig_number) DO NOTHING`,
         ['fig' + f.nr, 'Figur ' + f.nr],
       );
-      await holdsMinifig(db, uid, 'fig' + f.nr, { menge: 0 }); // Menge 0: die Erfassung dahinter traegt sie
-      // Verschiedene Tage, damit „die neueste Erfassung" eindeutig ist.
+      await holdsMinifig(db, uid, 'fig' + f.nr, { menge: 0 }); // quantity 0: the acquisition behind it carries it
+      // Different days, so that „the newest acquisition" is unambiguous.
       for (const [i, z] of f.erfassungen.entries()) {
         await db.run(
           `INSERT INTO part_acquisitions (user_id,part_number,color_id,quantity,unit_price,condition,created_at)
@@ -82,8 +82,8 @@ test('manual parts and figures: list and valuation state the same condition', { 
       valueMinifigs(uid, [uid]),
     ]);
 
-    // Selbstbeweis: Kämen leere Listen zurück, wäre jeder Vergleich darunter
-    // trivial erfüllt und der Test grün, ohne etwas geprüft zu haben.
+    // Self-proof: if empty lists came back, every comparison below would be
+    // trivially fulfilled and the test green without having checked anything.
     for (const [was, l] of [
       ['/parts/manual', liste],
       ['parts-valuation', bewertung.parts],
@@ -119,11 +119,11 @@ test('manual parts and figures: list and valuation state the same condition', { 
       assert.equal(figFromList, f.erwartet, `Figur fig${f.nr}: erwartet ${f.erwartet}, bekommen ${figFromList}`);
     }
 
-    // Und die Hülle der beiden Bewertungen ist gleich geformt. Das oberste
-    // `condition` der Teile-Bewertung trug die PREIS-Vorgabe und stand direkt
-    // neben dem `condition` je Stück, das etwas anderes meint — genau die
-    // Verwechslung, aus der der Fehler oben entstand. Niemand hat es gelesen
-    // (nachgesehen in beiden Clients).
+    // And the envelope of the two valuations is shaped the same. The topmost
+    // `condition` of the parts valuation carried the PRICE default and stood directly
+    // next to the `condition` per piece, which means something else — exactly the
+    // confusion from which the error above arose. Nobody read it
+    // (looked up in both clients).
     assert.deepEqual(Object.keys(bewertung).sort(), [
       'currency',
       'kaufpreise_fremde_waehrung',
@@ -149,7 +149,7 @@ test('manual parts and figures: list and valuation state the same condition', { 
 });
 
 test('the app fetches the manual pieces from their own address', () => {
-  // Was die App ruft, steht in shared/app-schnittstelle.json (aus ihrem Quelltext erzeugt).
+  // What the app calls stands in shared/app-schnittstelle.json (generated from its source text).
   const gerufen = new Set(
     require('./helpers/contract')
       .appSchnittstelle()

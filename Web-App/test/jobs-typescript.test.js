@@ -1,5 +1,5 @@
 /**
- * jobs/ nach TypeScript (Punkt 10).
+ * jobs/ to TypeScript (item 10).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,9 +30,9 @@ test('the build script covers jobs/', () => {
 
 test('the Dockerfile builds jobs/ instead of copying it raw', () => {
   const df = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
-  // Seit der Build nach dist/ schreibt, kommt der gesamte transpilierte Baum
-  // (server.js, db/, routes/, utils/, jobs/) mit EINEM COPY. Die Absicht dieses
-  // Tests ist unverändert: Der Runtime-Stage darf keine .ts-Quelle sehen.
+  // Since the build writes to dist/, the whole transpiled tree
+  // (server.js, db/, routes/, utils/, jobs/) comes with ONE COPY. The intent of this
+  // test is unchanged: the runtime stage must see no .ts source.
   assert.match(
     df,
     /--outdir dist/,
@@ -56,10 +56,10 @@ test('the Dockerfile builds jobs/ instead of copying it raw', () => {
 });
 
 test('named exports instead of module.exports', () => {
-  // In .ts erzeugt module.exports keine benannten Exporte — Aufrufer wie
-  // src/sets/afterAdd.ts importieren aber per Namen (`import { preisFuerSetHolen }`).
-  // csvImportWorker ist der Einstiegspunkt eines eigenen Prozesses
-  // (process.on('message')) und exportiert bewusst nichts.
+  // In .ts module.exports creates no named exports — but callers like
+  // src/sets/afterAdd.ts import by name (`import { preisFuerSetHolen }`).
+  // csvImportWorker is the entry point of its own process
+  // (process.on('message')) and deliberately exports nothing.
   const ENTRYPOINTS = new Set(['csvImportWorker.ts']);
   for (const f of fs.readdirSync(JOBS).filter(f => f.endsWith('.ts'))) {
     const src = fs.readFileSync(path.join(JOBS, f), 'utf8');
@@ -69,8 +69,8 @@ test('named exports instead of module.exports', () => {
 });
 
 test('every job module can be loaded', () => {
-  // Fängt Tippfehler in Exportnamen und zirkuläre Importe ab, die der
-  // Typecheck nicht sieht.
+  // Catches typos in export names and circular imports that the
+  // type check does not see.
   const DIST_JOBS = path.join(ROOT, 'dist', 'jobs');
   assert.ok(
     fs.existsSync(DIST_JOBS),

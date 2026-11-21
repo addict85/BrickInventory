@@ -1,27 +1,27 @@
 /**
- * Einzelne Bedienbefunde in Chrome, an der echten App:
- *   - Bestätigungsdialog: Escape gibt den Fokus an den Auslöser zurück; ist
- *     „Weitere Aktionen“ zugeklappt (es klappt bei der Wahl zu), an dessen <summary>;
- *   - Set-Ansicht: „Teile neu importieren“ (unter „Weitere Aktionen“) ist ein …
+ * Individual usability findings in Chrome, on the real app:
+ *   - Confirmation dialog: Escape returns focus to the trigger; if
+ *     “more actions” is collapsed (it collapses on choosing), to its <summary>;
+ *   - Set view: “reimport parts” (under “more actions”) is a …
  *
- * Gegenproben (02.11.2026 gemessen, je einzeln):
- *   A  rueckziel() in dialoge.js gibt nur `el` zurück → rot:
- *      „Escape bei zugeklapptem Menü: Fokus auf Weitere Aktionen“
- *   B  Knopf wieder mit data-stil="padding:1px 6px;…" und ohne Text → rot:
- *      „Teile neu importieren: beschriftet, 24 px, ohne Inline-Stil“
- *   C  Regel input[type="checkbox"]{width:24px…} entfernt → rot: „Häkchen
- *      Passkeys 24 px“
- *   D  .period-btn:hover wieder ohne @media (hover:hover) → rot:
- *      „Hover nur bei Zeigergeräten“
- *   E  .bs wieder mit border var(--bdr) → rot: „Anmeldemaske“ classic, brick,
- *      werkbank, farbfaecher (Knopfgrenze „Mit Passkey anmelden“)
- *   F  (04.11.) im Set-Dialog die Klasse v-mehr entfernt (Menü bleibt bei
- *      der Wahl offen) → rot: „Escape im Bestätigungsdialog: Fokus zurück
- *      auf Weitere Aktionen“ („Menü klappt bei der Wahl zu“)
- *   G  (07.11.) `checked` am Häkchen #pw-pk in index.html entfernt → rot:
- *      „Passwortwechsel: Passkeys-Häkchen ist vorbelegt“
- *   (Erstlauf: rot an „Passwort vergessen?“ 131×20, „Build …“ 2,97:1 und
- *   brick dunkel „Anmelden“ 2,11:1 — behoben, siehe Commit.)
+ * Counter-checks (measured 02.11.2026, each alone):
+ *   A  rueckziel() in dialoge.js only returns `el` → red:
+ *      “Escape with collapsed menu: focus on more actions”
+ *   B  button again with data-stil="padding:1px 6px;…" and without text → red:
+ *      “reimport parts: labeled, 24 px, without inline style”
+ *   C  rule input[type="checkbox"]{width:24px…} removed → red: “checkbox
+ *      passkeys 24 px”
+ *   D  .period-btn:hover again without @media (hover:hover) → red:
+ *      “hover only on pointer devices”
+ *   E  .bs again with border var(--bdr) → red: “login mask” classic, brick,
+ *      werkbank, farbfaecher (button border “Mit Passkey anmelden”)
+ *   F  (04.11.) the class v-mehr removed in the set dialog (menu stays open
+ *      on choosing) → red: “Escape in the confirmation dialog: focus back
+ *      on more actions” (“menu collapses on choosing”)
+ *   G  (07.11.) `checked` removed from the checkbox #pw-pk in index.html → red:
+ *      “password change: passkeys checkbox is preselected”
+ *   (First run: red at “Passwort vergessen?” 131×20, “Build …” 2.97:1 and
+ *   brick dark “Anmelden” 2.11:1 — fixed, see commit.)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,7 +38,7 @@ test('operation: focus, target sizes, hover, login mask', { timeout: 240_000 }, 
     return;
   }
   const { b, bis, ruhig } = app;
-  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  // Startup loads settings and prices afterwards; only then is the state fixed.
   await ruhig();
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
   await bis(`document.querySelectorAll('#gallery .sc').length >= 4`, 'Kacheln');
@@ -68,7 +68,7 @@ test('operation: focus, target sizes, hover, login mask', { timeout: 240_000 }, 
   });
 
   await t.test('Escape in the confirmation dialog: focus back on "more actions"', async () => {
-    // Das Menü klappt bei der Wahl zu; der sichtbare Auslöser ist dann sein Knopf.
+    // The menu collapses on choosing; the visible trigger is then its button.
     await b.auswerten(
       `document.querySelector('#set-modal details.mehr-menue').open = true; document.getElementById('btn-md').focus(); document.getElementById('btn-md').click(); true`,
     );
@@ -124,20 +124,20 @@ test('operation: focus, target sizes, hover, login mask', { timeout: 240_000 }, 
     assert.deepEqual(frei, []);
   });
 
-  // Anmeldemaske: abmelden, dann jedes Design hell und dunkel messen.
+  // Login mask: log out, then measure every design light and dark.
   await b.auswerten(`window.__alt = true; document.getElementById('btn-logout').click(); true`);
   await bis(
     `!window.__alt && getComputedStyle(document.getElementById('login-screen')).display !== 'none'`,
     'Anmeldemaske',
   );
-  // Abmelden lädt die Seite neu, und sie bringt nur das aktive Design mit: die übrigen wieder dazu.
+  // Logging out reloads the page, and it only brings the active design: add the others again.
   await b.auswerten(`(() => { const v = document.getElementById('design-stile');
     return Promise.all([...v.content.querySelectorAll('link')].map(l => new Promise(r => {
       l.onload = l.onerror = r; v.before(document.adoptNode(l)); }))).then(() => true); })()`);
-  // Der Testserver hat keine Domäne in APP_BASE_URL und blendet Passkey und
-  // „Passwort vergessen?“ aus; gemessen wird die volle Maske.
-  // Erst wenn die jüngste Antwort eingetragen ist: Eine spätere blendete sonst
-  // den eben eingeblendeten Passkey-Knopf wieder aus.
+  // The test server has no domain in APP_BASE_URL and hides passkey and
+  // “Passwort vergessen?”; the full mask is measured.
+  // Only when the latest response is registered: a later one would otherwise hide
+  // the just shown passkey button again.
   await bis(`document.getElementById('login-screen').dataset.anmeldewege === 'geladen'`, 'Anmeldewege abgefragt');
   await b.auswerten(
     `document.getElementById('btn-passkey').hidden = false; document.getElementById('link-forgot').hidden = false; true`,

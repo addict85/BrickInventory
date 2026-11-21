@@ -1,17 +1,17 @@
 /**
- * Kaufpreis ändern → die Kachel zieht mit, auf BEIDEN Wegen.
+ * Change the purchase price → the tile follows, on BOTH paths.
  *
- * Gegenprobe (durchgeführt): in zustandsAggregat() avg_purchase_price
- * auf `MAX(purchase_price)` umgestellt → „Gegenrichtung" wird rot
- * (erwartet 125, bekommen 200). Danach zurückgesetzt.
+ * Counter-check (performed): in zustandsAggregat() avg_purchase_price
+ * switched to `MAX(purchase_price)` → “opposite direction" turns red
+ * (expected 125, got 200). Reset afterwards.
  *
- * FALLE beim Schreiben dieses Tests: Beim ersten Anlauf räumte mein Aufbau
- * zwischen den beiden Läufen nur `sets` weg, nicht `set_acquisitions`. Die
- * Erfassung aus dem ersten Lauf blieb liegen, „die neueste Erfassung" war
- * dadurch eine andere Zeile, und der Test meldete einen Fehler, den es nicht
- * gab. Deshalb hier ausdrücklich beide Tabellen leeren.
+ * TRAP when writing this test: on the first attempt my setup only cleared
+ * `sets` between the two runs, not `set_acquisitions`. The
+ * entry from the first run stayed, “the newest entry" was
+ * therefore another row, and the test reported an error that did not
+ * exist. Hence both tables are explicitly cleared here.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -37,11 +37,11 @@ test('the changed purchase price reaches the tile — web app AND app', { concur
 
   const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
 
-  // Ausgangslage jedes Mal frisch herstellen — inklusive der Erfassungen.
+  // Recreate the starting point fresh every time — including the entries.
   const aufbauen = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
-    await holdsSet(db, uid, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, uid, SN, 0); // Quantity 0: the entry behind it carries it
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,108.00,'U',1)`,
@@ -49,7 +49,7 @@ test('the changed purchase price reaches the tile — web app AND app', { concur
     );
     return (await db.get(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number=$2`, [uid, SN])).id;
   };
-  // Was die Kachel zeigt: das Aggregat aus den Erfassungen, keine gespiegelte Spalte.
+  // What the tile shows: the aggregate from the entries, not a mirrored column.
   const kachel = async () =>
     (await _req('src/sets/read.js').zustandsAggregat(require('./helpers/sources').testContext('sets'), [uid], SN))
       .avg_purchase_price;
@@ -79,13 +79,13 @@ test('the changed purchase price reaches the tile — web app AND app', { concur
       );
     }
 
-    // Gegenrichtung — und hier liegt der Unterschied zu vorher.
+    // Opposite direction — and here lies the difference to before.
     const alt = await aufbauen();
-    // Ein anderer TAG, nicht bloss eine Stunde später: Der Index
-    // idx_set_acq_tag_zustand lässt pro Tag und Set nur EINE Erfassung zu. Mit
-    // „+1 hour" hing der Test an der Uhrzeit des Laufs — abends fiel die
-    // zweite Zeile auf denselben Tag und der Aufbau scheiterte am Index
-    // (in der Suite um 23:xx aufgefallen, mittags wäre es durchgegangen).
+    // Another DAY, not merely an hour later: the index
+    // idx_set_acq_tag_zustand allows only ONE entry per day and set. With
+    // “+1 hour" the test depended on the time of the run — in the evening the
+    // second row fell on the same day and the setup failed on the index
+    // (noticed in the suite at 23:xx, at noon it would have passed).
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity,created_at)
                   VALUES ($1,$2,200.00,'U',1, NOW() + INTERVAL '1 day')`,

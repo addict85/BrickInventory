@@ -1,17 +1,17 @@
 /**
- * Schlägt das Freigeben einer Sitzungssperre fehl (z. B. statement_timeout), geht
- * die Verbindung nicht mit gehaltener Sperre in den Pool zurück, und das
- * Ergebnis des Laufs bleibt erhalten.
+ * If releasing a session lock fails (e.g. statement_timeout), the
+ * connection does not go back into the pool with the lock held, and the
+ * result of the run is preserved.
  *
- * Gegenproben (am 08.11.2026 gemessen):
- *   A  client.release(defekt) wieder client.release() (withSessionLock)
- *      → rot: „withSessionLock: die Sperre ist nach einem Freigabefehler frei“ und „… Fehler des Laufs“
- *   B  die Freigabe ohne .catch (Fehler überdeckt das Ergebnis)
- *      → rot: „withSessionLock: das Ergebnis des Laufs bleibt“ (und die zwei anderen withSessionLock-Fälle)
- *   C  in receiptsSessionLock wieder client.release() ohne Fehler
- *      → rot: „receiptsSessionLock: die Sperre ist nach einem Freigabefehler frei“
+ * Counter-checks (measured on 08.11.2026):
+ *   A  client.release(defekt) again client.release() (withSessionLock)
+ *      → red: “withSessionLock: the lock is free after a release error” and “… error of the run”
+ *   B  the release without .catch (error covers the result)
+ *      → red: “withSessionLock: the result of the run stays” (and the two other withSessionLock cases)
+ *   C  in receiptsSessionLock again client.release() without an error
+ *      → red: “receiptsSessionLock: the lock is free after a release error”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,7 +30,7 @@ test.after(async () => {
 
 const SCHLUESSEL = 7_654_321;
 
-/** Die nächste geliehene Verbindung lässt pg_advisory_unlock scheitern. */
+/** The next borrowed connection makes pg_advisory_unlock fail. */
 function unlockFailsOnce() {
   const echt = testAccess().pool.connect.bind(testAccess().pool);
   const incident = { releaseWithError: /** @type {unknown} */ (undefined), released: false };
@@ -53,7 +53,7 @@ function unlockFailsOnce() {
   return incident;
 }
 
-/** Hält irgendeine Verbindung die Sperre noch? Von einer frischen Sitzung aus gefragt. */
+/** Does any connection still hold the lock? Asked from a fresh session. */
 async function lockFree() {
   const c = await testAccess().pool.connect();
   try {
@@ -67,8 +67,8 @@ async function lockFree() {
 
 test('Sitzungssperre: Freigabefehler', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
-  // Der Pool soll genau eine Verbindung haben, sonst bekäme die Prüfung eine andere
-  // als die, die die Sperre hält, und fände sie "frei".
+  // The pool should have exactly one connection, otherwise the check would get a different one
+  // than the one holding the lock, and would find it "free".
   const maxBefore = testAccess().pool.options.max;
   testAccess().pool.options.max = 1;
   t.after(() => {

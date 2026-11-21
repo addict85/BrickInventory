@@ -1,5 +1,5 @@
 /**
- * Der VORRAT an Lagerorten — gegen eine echte Datenbank.
+ * The STOCK of storage locations — against a real database.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -57,13 +57,13 @@ test('storage location stock against a real database', { concurrency: 1 }, async
     assert.equal(a.war_neu, true);
     assert.equal(a.ort.name, 'Regal A');
 
-    // Gross-/Kleinschreibung entscheidet NICHT: „Regal A" und „regal a" sind
-    // dasselbe Regal. Zwei Einträge dafür wären eine Falle in der
-    // Auswahlliste, nicht eine Wahlmöglichkeit.
+    // Upper/lower case does NOT decide: „Regal A" and „regal a" are
+    // the same shelf. Two entries for it would be a trap in the
+    // selection list, not a choice.
     const b = await L.putLocationAn(U.grandparent, 'regal a');
     assert.equal(b.war_neu, false, '„regal a" wurde als zweiter Ort angelegt');
     assert.equal(b.ort.id, a.ort.id);
-    // Und der ursprüngliche Name bleibt stehen — die erste Schreibweise gewinnt.
+    // And the original name stays — the first spelling wins.
     assert.equal(b.ort.name, 'Regal A');
   });
 
@@ -79,16 +79,16 @@ test('storage location stock against a real database', { concurrency: 1 }, async
       () => L.putLocationAn(U.grandparent, 'x'.repeat(61)),
       (/** @type {any} */ e) => String(e.code) === 'lagerort_zu_lang',
     );
-    // Genau auf der Grenze ist erlaubt — sonst wäre die Zahl in der
-    // Fehlermeldung („höchstens 60") gelogen.
+    // Exactly on the limit is allowed — otherwise the number in the
+    // error message („höchstens 60") would be a lie.
     const rand = await L.putLocationAn(U.grandparent, 'y'.repeat(60));
     assert.equal(rand.war_neu, true);
     await db.run('DELETE FROM storage_locations WHERE id = $1', [rand.ort.id]);
   });
 
   await t.test('every account has its own stock', async () => {
-    // Ein Lagerort ist ein Regal in einer Wohnung. Der Grossvater hat andere
-    // Regale als der Enkel, auch wenn er dessen Sets sehen darf.
+    // A storage location is a shelf in a flat. The grandfather has other
+    // shelves than the grandchild, even if he may see the grandchild's sets.
     await L.putLocationAn(U.enkel, 'Kinderzimmer');
     assert.deepEqual(
       (await L.locationsOf([U.grandparent])).map(o => o.name),
@@ -98,8 +98,8 @@ test('storage location stock against a real database', { concurrency: 1 }, async
       (await L.locationsOf([U.enkel])).map(o => o.name),
       ['Kinderzimmer'],
     );
-    // Und der Grossvater kann beide Listen zusammen abfragen — genau das tut
-    // das Auswahlfeld bei einem Set, das beiden gehört.
+    // And the grandfather can query both lists together — exactly that is what
+    // the selection field does for a set that belongs to both.
     assert.deepEqual(
       (await L.locationsOf([U.grandparent, U.enkel])).map(o => o.name),
       ['Kinderzimmer', 'Regal A'],
@@ -108,9 +108,9 @@ test('storage location stock against a real database', { concurrency: 1 }, async
   });
 
   await t.test('a new place on the SET lands in the stock', async () => {
-    // Marcos „man kann auch gleich neue Auswahlwerte erfassen". Ohne das
-    // stünde der Ort am Set, fehlte aber in der Liste, aus der er beim
-    // nächsten Mal gewählt werden soll.
+    // Marco's „man kann auch gleich neue Auswahlwerte erfassen". Without that
+    // the place would stand on the set but be missing in the list it is supposed
+    // to be chosen from next time.
     await holdsSet(db, U.enkel, '10179-1', 1);
     assert.equal(await L.setLocation('set', [U.enkel], ['10179-1'], 'Unterm Bett'), 1);
     assert.ok(
@@ -120,8 +120,8 @@ test('storage location stock against a real database', { concurrency: 1 }, async
   });
 
   await t.test('a place that hits no row leaves no entry', async () => {
-    // Kein Schreibrecht, falsche Setnummer: Dann soll auch nichts im Vorrat
-    // stehen bleiben. Sonst sammelte die Liste Namen aus Fehlversuchen.
+    // No write permission, wrong set number: then nothing should remain in the
+    // stock either. Otherwise the list would collect names from failed attempts.
     const vorher = (await L.locationsOf([U.grandparent])).length;
     assert.equal(await L.setLocation('set', [U.grandparent], ['99999-1'], 'Geisterkiste'), 0);
     assert.equal(
@@ -134,11 +134,11 @@ test('storage location stock against a real database', { concurrency: 1 }, async
   await t.test('renaming takes the assignments along', async () => {
     const ort = (await L.locationsOf([U.enkel])).find(o => o.name === 'Unterm Bett');
     await L.benenneOrtUm(U.enkel, ort.id, 'Kiste 3');
-    // Die Aussage ist dieselbe wie vorher, der Weg dahin ein anderer: Bis
-    // Migration 0031 schrieb benenneOrtUm() den neuen Namen in drei Tabellen
-    // nach, und genau das konnte eine Schreibweise verfehlen. Jetzt traegt die
-    // Zeile eine ID, es gibt nichts nachzuschreiben — die Pruefung bleibt
-    // trotzdem stehen, weil sie das ERGEBNIS prueft und nicht den Weg.
+    // The statement is the same as before, the path there a different one: until
+    // migration 0031 benenneOrtUm() wrote the new name into three tables,
+    // and exactly that could miss a spelling. Now the row carries
+    // an ID, there is nothing to rewrite — the check stays
+    // nevertheless, because it checks the RESULT and not the path.
     const amSet = await db.get(
       `SELECT l.name AS storage FROM sets t
          LEFT JOIN storage_locations l ON l.id = t.storage_id
@@ -156,8 +156,8 @@ test('storage location stock against a real database', { concurrency: 1 }, async
       (/** @type {any} */ e) => String(e.code) === 'lagerort_doppelt',
       'Zwei Orte mit demselben Namen wären eine Falle in der Auswahlliste',
     );
-    // Der eigene Name auf sich selbst ist dagegen in Ordnung — sonst liesse
-    // sich „Kiste 3" nicht zu „KISTE 3" korrigieren.
+    // Its own name onto itself is fine, on the other hand — otherwise
+    // „Kiste 3" could not be corrected to „KISTE 3".
     await L.benenneOrtUm(U.enkel, ort.id, 'KISTE 3');
     assert.ok((await L.locationsOf([U.enkel])).some(o => o.name === 'KISTE 3'));
   });
@@ -186,14 +186,14 @@ test('storage location stock against a real database', { concurrency: 1 }, async
     await L.loescheOrt(U.enkel, leer.id);
     assert.ok(!(await L.locationsOf([U.enkel])).some(o => o.name === 'Kinderzimmer'));
 
-    // Und nach dem Ausräumen geht auch der belegte.
+    // And after clearing it out the occupied one goes too.
     await db.run('UPDATE sets SET storage_id = NULL WHERE set_number = $1', ['10179-1']);
     await L.loescheOrt(U.enkel, belegt.id);
     assert.deepEqual(await L.locationsOf([U.enkel]), []);
   });
 
   await t.test('an assignment without a place in the stock is no longer possible', async () => {
-    // Was hier vorher stand, und warum es weg ist
+    // What stood here before, and why it is gone
     const frei = (await db.get('SELECT COALESCE(MAX(id),0) + 1000 AS frei FROM storage_locations')).frei;
     await assert.rejects(
       () => db.run('UPDATE sets SET storage_id = $1 WHERE set_number = $2', [frei, '10179-1']),

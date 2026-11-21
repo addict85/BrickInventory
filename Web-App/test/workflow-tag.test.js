@@ -1,24 +1,24 @@
 /**
- * Der freie Tag beim Handstart von docker-publish.yml (inputs.tag) gelangt
- * nur geprüft in tags und build-args: Der Prüfschritt liest ihn über env,
- * lässt nur die Docker-Tag-Form zu und reicht ihn als Ausgabe weiter. Hier
- * läuft das echte Skript des Schritts in bash, mit verschiedenen Eingaben.
+ * The free tag on a manual start of docker-publish.yml (inputs.tag) only gets
+ * into tags and build-args after checking: the check step reads it via env,
+ * allows only the Docker tag form and passes it on as output. Here
+ * the real script of the step runs in bash, with different inputs.
  *
- * Gegenproben (01.11.2026 gemessen, je einzeln):
- *   A  die Regex-Prüfung im Schritt gestrichen → rot: „abgewiesen: zwei Zeilen"
- *      (und die übrigen bösen Eingaben)
- *   B  im merge-Job wieder `${{ inputs.tag }}` statt der Ausgabe → rot:
+ * Counter-checks (measured 01.11.2026, each individually):
+ *   A  the regex check in the step deleted → red: “rejected: …” (two lines)
+ *      (and the other malicious inputs)
+ *   B  in the merge job again `${{ inputs.tag }}` instead of the output → red:
  *      „inputs.tag steht nur in env"
- * Der Handstart baut nur auf main und nur mit grünem CI-Lauf auf dem Commit
- * (`gh` ist hier ein Ersatz, der die Zahl grüner Läufe nennt; `git` ebenso,
- * damit der Test keinen Git-Arbeitsbaum braucht).
- * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   C  die Abfrage der grünen CI gestrichen → rot: „ohne grüne CI kein Image"
- *   D  die Prüfung auf refs/heads/main gestrichen → rot: „Handstart auf einem
+ * The manual start only builds on main and only with a green CI run on the commit
+ * (`gh` is a stand-in here that names the number of green runs; `git` likewise,
+ * so that the test needs no Git working tree).
+ * Counter-checks (measured 03.11.2026, each individually):
+ *   C  the query of the green CI deleted → red: „ohne grüne CI kein Image"
+ *   D  the check for refs/heads/main deleted → red: „Handstart auf einem
  *      Nebenzweig"
- *   E  (04.11.2026) im git-Ersatz eine andere Kurzform → rot: „der Commit
- *      kommt aus git rev-parse“. In einer Kopie ohne .git grün; die Fassung
- *      vor dem Ersatz war dort rot („gültige Tags gehen als Ausgabe weiter“).
+ *   E  (04.11.2026) a different short form in the git stand-in → red: „der Commit
+ *      kommt aus git rev-parse“. Green in a copy without .git; the version
+ *      before the stand-in was red there (“valid tags go on as output”).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -29,7 +29,7 @@ const { spawnSync } = require('node:child_process');
 
 const YML = fs.readFileSync(path.join(__dirname, '..', '..', '.github', 'workflows', 'docker-publish.yml'), 'utf8');
 
-/** Den run-Block des Schritts `id: p` ausschneiden (Einrückung zehn Leerzeichen). */
+/** Cut out the run block of the step `id: p` (indentation ten spaces). */
 function pruefScript() {
   const schritt = YML.split('\n      - id: p\n')[1]?.split(/\n {6}- /)[0] ?? '';
   const zeilen = schritt.split('\n');
@@ -48,8 +48,8 @@ function lauf(tag, { ref = 'refs/heads/main', gruen = '1' } = {}) {
   fs.writeFileSync(aus, '');
   const gh = path.join(path.dirname(aus), 'gh');
   fs.writeFileSync(gh, gruen === null ? '#!/bin/sh\nexit 1\n' : `#!/bin/sh\necho ${gruen}\n`, { mode: 0o755 });
-  // git ebenso als Ersatz: Der Schritt fragt nur nach dem Commit, und der Test
-  // soll auch in einer Kopie ohne .git laufen.
+  // git as a stand-in too: the step only asks for the commit, and the test
+  // should also run in a copy without .git.
   fs.writeFileSync(
     path.join(path.dirname(aus), 'git'),
     `#!/bin/sh

@@ -3,17 +3,17 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-// TREE und nicht ROOT: eigenbruecken.test.js loest jedes `path.join(ROOT, …)`
-// gegen die WEB-Wurzel auf. Ein zweiter Sinn fuer denselben Namen hat in
-// dieser Sitzung schon einmal eine Stunde gekostet.
+// TREE and not ROOT: eigenbruecken.test.js resolves every `path.join(ROOT, …)`
+// against the WEB root. A second meaning for the same name has already
+// cost an hour once in this session.
 const TREE = path.join(__dirname, '..', '..');
 const css = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'themes', 'noppe.css'), 'utf8');
 const glanz = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'themes', 'hochglanz.css'), 'utf8');
 const quelle = JSON.parse(fs.readFileSync(path.join(TREE, 'shared', 'design-tokens.json'), 'utf8'));
 
 /**
- * Das Design "noppe" — der Klemmbaustein als Bauteil der Oberflaeche. Geprüft
- * wird die Webapp; die App zeichnet dasselbe Design aus shared/design-tokens.json.
+ * The theme "noppe" — the clamping brick as a component of the UI. What is checked
+ * is the web app; the app draws the same theme from shared/design-tokens.json.
  */
 
 test('the lid colors come from the SAME source', () => {
@@ -24,9 +24,9 @@ test('the lid colors come from the SAME source', () => {
       'Wiederholung als Rhythmus lesbar bleibt statt als Zufall.',
   );
 
-  // Keine der sechs Farben darf als Hex-Wert im Stylesheet
-  // stehen. Steht sie dort, ist sie abgeschrieben — und eine Abschrift zieht
-  // beim naechsten Mal nicht mit.
+  // None of the six colors may stand as a hex value in the stylesheet.
+  // If it stands there, it is copied — and a copy pulls
+  // along the next time.
   for (const hex of steine) {
     assert.ok(
       !css.toLowerCase().includes(hex.toLowerCase()),
@@ -37,10 +37,10 @@ test('the lid colors come from the SAME source', () => {
 });
 
 test('the brick color runs in step with the brick list', () => {
-  // Modulo sechs, und zwar an derselben Zahl: Laeuft das Web durch sechs und
-  // die App durch vier, zeigt dasselbe Set auf Telefon und Rechner einen
-  // anderen Deckel — und niemand kaeme auf die Idee, das fuer einen Fehler zu
-  // halten, weil die Farbe ja nichts bedeutet. …
+  // Modulo six, and on the same number: if the web cycles through six and
+  // the app through four, the same set shows a different lid on phone and computer
+  // — and nobody would think of considering that an error,
+  // because the color means nothing after all. …
   const webTick = new Set([...css.matchAll(/nth-child\(6n\+?(\d*)\)/g)].map(m => m[1])).size;
   assert.equal(
     webTick,
@@ -51,9 +51,9 @@ test('the brick color runs in step with the brick list', () => {
 });
 
 test('frame and offset shadow are on the same tone', () => {
-  // Kunststoff wirft keine Wolke, er liegt auf: Der Schatten ist derselbe Ton
-  // wie der Rahmen, nur versetzt. Waeren es zwei Toene, saehe die Kante aus
-  // wie ein Druckfehler.
+  // Plastic casts no cloud, it rests on top: the shadow is the same tone
+  // as the border, only offset. If they were two tones, the edge would look
+  // like a misprint.
   const schatten = [...css.matchAll(/--sh\d:([^;]+);/g)].map(m => m[1].trim());
   assert.ok(schatten.length >= 3, `Nur ${schatten.length} Schattenstufen — greift die Suche noch?`);
   for (const s of schatten) {
@@ -70,8 +70,8 @@ test('frame and offset shadow are on the same tone', () => {
 test('the brick color stays rhythm and never becomes information', () => {});
 
 test('the table stays quiet', () => {
-  // Das Laute gehoert an die Raender — Kopfleiste, Knoepfe, Plaketten —, nicht
-  // zwischen die Zahlen. Ein Bestand ist nichts, was man einmal anschaut.
+  // The loud parts belong at the edges — header bar, buttons, badges —, not
+  // between the numbers. An inventory is not something one looks at once.
   const tabelle = css.slice(css.indexOf('table td'));
   assert.ok(tabelle.length > 0, 'Die Tabellenregel ist nicht mehr zu finden');
   assert.ok(
@@ -103,8 +103,8 @@ test('hochglanz inherits the palette instead of copying it', () => {
     'hochglanz fuehrt eine eigene Palette. Es ist dieselbe wie die von noppe — ' +
       'eine Abschrift zieht beim naechsten Mal nicht mit.',
   );
-  // Und der Generator muss daraus wirklich Werte machen, sonst faellt das
-  // Design auf das Grunddesign zurueck und ist blau statt rot.
+  // And the generator must really make values of it, otherwise the
+  // theme falls back to the base theme and is blue instead of red.
   const tokens = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'tokens.css'), 'utf8');
   const block = tokens.slice(tokens.indexOf('[data-theme="hochglanz"]'));
   assert.match(
@@ -116,8 +116,8 @@ test('hochglanz inherits the palette instead of copying it', () => {
 });
 
 test('hochglanz carries only the layers, not the anatomy', () => {
-  // Jede Regel in noppe.css gilt fuer BEIDE Designs — das ist die gemeinsame
-  // Grundlage. hochglanz.css darf sie nicht ein zweites Mal aufstellen.
+  // Every rule in noppe.css applies to BOTH themes — that is the shared
+  // basis. hochglanz.css must not set them up a second time.
   const studRules = [...css.matchAll(/\[data-theme="noppe"\][^{]*\{/g)].length;
   assert.ok(studRules >= 10, `Nur ${studRules} Regeln in noppe.css — greift die Suche noch?`);
   assert.ok(
@@ -125,17 +125,17 @@ test('hochglanz carries only the layers, not the anatomy', () => {
     'hochglanz.css nennt noppe — die gemeinsamen Regeln gehoeren in noppe.css, einmal',
   );
 
-  // Die Anatomie darf hier nicht noch einmal stehen. Diese vier Eigenschaften
-  // bestimmen sie; taucht eine davon hier auf, ist die Datei kein Aufsatz mehr,
-  // sondern ein zweites Design.
+  // The anatomy must not stand here once more. These four properties
+  // determine it; if one of them shows up here, the file is no longer an overlay
+  // but a second theme.
   for (const property of ['--rad:', '--font:', 'border-radius:14px', 'padding-top:26px']) {
     assert.ok(!glanz.includes(property), `hochglanz.css setzt ${property} — das ist Anatomie und steht in noppe.css`);
   }
 });
 
 test('the hard offset shadow survives the lacquer', () => {
-  // Die Kante traegt, auch wenn sie glaenzt. Faellt sie weg, ist es eine
-  // andere Anatomie und nicht dasselbe Design in einem anderen Material.
+  // The edge carries, even when it shines. If it drops away, it is a
+  // different anatomy and not the same theme in another material.
   const karte = glanz.slice(glanz.indexOf('[data-theme="hochglanz"] .card'));
   assert.match(
     karte,
@@ -146,10 +146,10 @@ test('the hard offset shadow survives the lacquer', () => {
 });
 
 test('the light stripe does not lie over the whole tile', () => {
-  // Ein weisser Schleier über weissem Text ist kein Glanz, sondern Grau.
+  // A white veil over white text is no shine but gray.
   const strip = '118deg';
   assert.ok(glanz.includes(strip), 'Der Lichtstreifen fehlt ganz');
-  // Er darf auf dem Bildfeld (.sci) liegen, nicht auf der Kachel (.sc) selbst.
+  // It may lie on the image field (.sci), not on the tile (.sc) itself.
   for (const regel of glanz.split('}')) {
     if (!regel.includes(strip)) continue;
     const kopf = regel.slice(0, regel.indexOf('{'));
@@ -162,22 +162,22 @@ test('the light stripe does not lie over the whole tile', () => {
 });
 
 test('the gloss sits on fixed stops', () => {
-  // Der Lichtabfall ist in CSS ein linear-gradient und in Compose ein
-  // Brush.verticalGradient. Verschiedene Sprachen, dieselben vier Haltepunkte —
-  // laufen sie auseinander, sieht dasselbe Design auf Telefon und Rechner
-  // anders aus, und niemand sucht den Grund in einer Zahl.
+  // The light falloff is a linear-gradient in CSS and a
+  // Brush.verticalGradient in Compose. Different languages, the same four stops —
+  // if they drift apart, the same theme looks different on phone and computer,
+  // and nobody looks for the reason in a number.
   const fromCss = [...glanz.matchAll(/rgba\((?:255,255,255|0,0,0),\.(\d+)\) (\d+)%/g)].map(m => `${m[2]}/${m[1]}`);
   assert.ok(fromCss.length >= 4, `Nur ${fromCss.length} Haltepunkte im CSS — greift die Suche noch?`);
 });
 
 test('the lid is ONE building block, not two', () => {});
 
-/** Die beiden Regeln, die eine Noppenreihe zeichnen. */
+/** The two rules that draw a stud row. */
 const studsRows = () => css.split('}').filter(r => /header::before|\.sc::after/.test(r.slice(0, r.indexOf('{') + 1)));
 
 test('the studs have a round top edge, not a gradient edge', () => {
   const reihen = studsRows();
-  // Selbstbeweis: GEMESSEN sind es zwei — die Kopfleiste und der Kacheldeckel.
+  // Self-proof: MEASURED there are two — the header bar and the tile lid.
   assert.equal(reihen.length, 2, `${reihen.length} Noppenreihen gefunden statt zwei — greift die Suche noch?`);
 
   for (const reihe of reihen) {
@@ -197,9 +197,9 @@ test('the studs have a round top edge, not a gradient edge', () => {
 });
 
 test('bar and lid share ONE stud shape', () => {
-  // Zwei Formen liefen beim naechsten Nachbessern auseinander: Die eine Reihe
-  // bekaeme runde Noppen, die andere behielte ihre alten — und beides steht
-  // auf demselben Bildschirm untereinander.
+  // Two forms would drift apart at the next touch-up: one row
+  // would get round studs, the other would keep its old ones — and both stand
+  // one below the other on the same screen.
   const grund = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'styles.css'), 'utf8');
   const explanations = [...(css + grund).matchAll(/--noppen-form:/g)].length;
   assert.equal(
@@ -212,11 +212,11 @@ test('bar and lid share ONE stud shape', () => {
 });
 
 test('the gloss is in step with the mask', () => {
-  // Die Stelle, an der es still falsch wird
+  // The place where it silently goes wrong
   const masksTicks = [...css.matchAll(/\bmask-size:(\d+)px \d+px/g)].map(m => m[1]);
   const glossTicks = [...glanz.matchAll(/\bbackground-size:(\d+)px \d+px/g)].map(m => m[1]);
-  // Selbstbeweis: GEMESSEN sind es vier Masken-Takte (je Reihe einmal mit und
-  // einmal ohne -webkit-) und zwei Glanz-Takte.
+  // Self-proof: MEASURED there are four mask beats (per row once with and
+  // once without -webkit-) and two shine beats.
   assert.deepEqual(
     [...new Set(masksTicks)].sort(),
     ['22', '24'],
@@ -232,12 +232,12 @@ test('the gloss is in step with the mask', () => {
 });
 
 test('the lid color does not erase the lacquer', () => {
-  // Der Fehler, den diese Zusicherung verhindert
+  // The error this assertion prevents
   const colorRules = css
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .split('}')
     .filter(r => /--stein-\d/.test(r));
-  // Selbstbeweis: GEMESSEN sind es sechs — die Grundregel und fuenf Positionen.
+  // Self-proof: MEASURED there are six — the base rule and five positions.
   assert.equal(
     colorRules.length,
     6,
@@ -261,8 +261,8 @@ const stein = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'themes', 'br
 const grundCss = fs.readFileSync(path.join(TREE, 'Web-App', 'public', 'styles.css'), 'utf8');
 
 test('the stud shape belongs to all designs, not to one', () => {
-  // Sie stand in themes/noppe.css. Solange nur ein Design Noppen zeichnete,
-  // war das richtig; seit es zwei sind, ist es die Stelle, an der sie
+  // It stood in themes/noppe.css. As long as only one theme drew studs,
+  // that was right; since there are two, it is the place where they
   // auseinanderlaufen.
   assert.match(
     grundCss,
@@ -275,11 +275,11 @@ test('the stud shape belongs to all designs, not to one', () => {
       'Stein-Design seine eigene, und genau so ist der Unterschied entstanden.',
   );
   assert.match(stein, /var\(--noppen-form\)/, 'Das Stein-Design benutzt die gemeinsame Noppenform nicht');
-  // Nur die REIHE, nicht jeder Kreis: Die Griffe der Jahres-Schieberegler sind
-  // runde Knoepfe mit einem Glanzpunkt (`circle at 35% 32%`) und sollen das
-  // bleiben. Eine Noppenreihe erkennt man an der Verankerung in Pixeln —
-  // `circle at 8px center`, alle 16px wiederholt. Die erste Fassung verbot
-  // beides und haette zwei richtige Regeln mitgerissen.
+  // Only the ROW, not every circle: the handles of the year sliders are
+  // round buttons with a highlight (`circle at 35% 32%`) and should stay
+  // that. A stud row is recognized by its anchoring in pixels —
+  // `circle at 8px center`, repeated every 16px. The first version forbade
+  // both and would have torn down two correct rules with it.
   const reihen = [...stein.matchAll(/radial-gradient\(circle at \d+px center/g)];
   assert.deepEqual(
     reihen.map(m => m[0]),

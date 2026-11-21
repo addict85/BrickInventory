@@ -1,10 +1,10 @@
 /**
- * Das Port-Feld der SMTP-Einstellungen bleibt in seiner Karte — gemessen in
- * Chrome mit den echten Stylesheets und dem echten Markup der Karte aus
- * index.html, bei 1440 und 390 px Breite.
+ * The port field of the SMTP settings stays in its card — measured in
+ * Chrome with the real stylesheets and the real markup of the card from
+ * index.html, at 1440 and 390 px width.
  *
- * Gegenprobe (am 28.10. gemessen): .host-port .fg{min-width:0} entfernt →
- * rot: „1440: Port ragt … hinaus“.
+ * Counter-check (measured on 28.10.): .host-port .fg{min-width:0} removed →
+ * red: „1440: Port ragt … hinaus“.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,7 +19,7 @@ const STILE = ['tokens.css', 'styles.css', 'mobile.css'];
 
 const { chrome } = require('./helpers/app-browser');
 
-/** Die SMTP-Karte, wie sie in index.html steht. */
+/** The SMTP card as it stands in index.html. */
 function smtpCard() {
   const d = new JSDOM(fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8')).window.document;
   const karte = d.getElementById('smtp-port')?.closest('.ssec');

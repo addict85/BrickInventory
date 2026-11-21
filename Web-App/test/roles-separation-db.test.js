@@ -1,14 +1,14 @@
 /**
- * npm test trennt die Rollen wie im Betrieb (helpers/own-db.js): Die App fragt als
- * Laufzeitrolle (kein Superuser, kein BYPASSRLS, keine Tabelle gehört ihr), der
- * Systemrahmen als Systemrolle, Testdaten schreibt die Eigentümerin. Nur so zeigt ein
- * gewöhnlicher Test einen fehlenden Systemrahmen. Dateien, die das noch umgehen
- * (Marke superuser im Kopf, helpers/system-frame.js geladen), werden weniger, nie mehr.
+ * npm test separates the roles as in production (helpers/own-db.js): the app asks as the
+ * runtime role (no superuser, no BYPASSRLS, no table belongs to it), the
+ * system frame as the system role, the owner role writes test data. Only this way does an
+ * ordinary test show a missing system frame. Files that still bypass this
+ * (superuser marker in the header, helpers/system-frame.js loaded) become fewer, never more.
  *
- * Gegenproben (am 13.11.2026 gemessen, je einzeln):
- *   A  in helpers/own-db.js TEST_DATABASE_URL immer auf den Superuser → rot:
+ * Counter-checks (measured on 13.11.2026, each on its own):
+ *   A  in helpers/own-db.js TEST_DATABASE_URL always to the superuser → red:
  *      „die App fragt als Laufzeitrolle“
- *   B  die Marke `@superuser` in diese Datei gesetzt → rot (Schranke und Rolle)
+ *   B  the marker `@superuser` put into this file → red (limit and role)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

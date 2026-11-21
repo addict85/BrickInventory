@@ -1,18 +1,18 @@
 /**
- * Das aktuelle Passwort in einer laufenden Sitzung: gebremst je Konto und Zugang,
- * Token kann sich nicht selbst vermehren.
+ * The current password in a running session: throttled per account and access,
+ * a token cannot multiply itself.
  *
- * Wer ein Token erbeutet hat, konnte über /change-password, PUT /profile und
- * den zweiten Faktor das Passwort unbegrenzt raten und über /token-create
- * beliebig viele dauerhafte Tokens nachprägen.
+ * Whoever had captured a token could guess the password without limit via
+ * /change-password, PUT /profile and the second factor, and mint any number
+ * of permanent tokens via /token-create.
  *
- * Gegenproben (am 27.10. gemessen):
- *   A  in bestaetigePasswort() die Sperrabfrage entfernt → rot: „nach fünf
- *      Fehlversuchen ist Schluss"
- *   B  in token-create die Sitzungsbedingung entfernt → rot: „ein Token prägt
- *      keinen weiteren"
+ * Counter-checks (measured on 27.10.):
+ *   A  the lock query removed in bestaetigePasswort() → red: “after five
+ *      failed attempts it stops”
+ *   B  the session condition removed in token-create → red: “a token mints
+ *      no further one”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -82,7 +82,7 @@ test('confirm password', { concurrency: 1 }, async t => {
     }
     const r = await post(withSession, '/change-password', { current: PASS, newPassword: 'NeuesPasswort123' });
     assert.equal(r.status, 429, JSON.stringify(r.body));
-    // Dieselbe Bremse gilt für den zweiten Faktor.
+    // The same brake applies to the second factor.
     assert.equal((await post(withSession, '/zweiter-faktor/einrichten', { password: PASS })).status, 429);
   });
 

@@ -1,20 +1,20 @@
 /**
- * Anmelden füllt die Tabellen nicht beliebig (Sicherheitsprüfung Runde 13, H2):
- * je Konto höchstens 50 Sitzungen und 50 Tokens, es fällt der am längsten
- * unbenutzte. Wer sich von einer Adresse sehr oft anmeldet, verliert nur den
- * Vorrang in der bcrypt-Schranke (weiche Grenze), gesperrt wird er nicht.
+ * Logging in does not fill the tables arbitrarily (security review round 13, H2):
+ * per account at most 50 sessions and 50 tokens, the one unused the longest
+ * drops. Whoever logs in very often from one address only loses the
+ * priority in the bcrypt barrier (soft limit), they are not locked out.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  establishSession() ohne limitSessions() → rot: „höchstens 50 Sitzungen …“
- *   B  in capSessions() `ORDER BY expire ASC` → rot: dieselbe Prüfung (die
- *      zuletzt benutzten fielen)
- *   C  createToken() ohne capTokens() → rot: „höchstens 50 Tokens …“
- *   D  capTokens() ohne `ersetzt_durch IS NULL` → rot: dieselbe Prüfung (der
- *      getauschte Token in seiner Überlappung fiel)
- *   E  knownLogin() ohne den Zähler `login-erfolg` → rot: „nach 30
- *      Anmeldungen …“
+ * Counter-checks (measured 04.11.2026, each alone):
+ *   A  establishSession() without limitSessions() → red: “at most 50 sessions …”
+ *   B  in capSessions() `ORDER BY expire ASC` → red: the same check (the
+ *      most recently used ones dropped)
+ *   C  createToken() without capTokens() → red: “at most 50 tokens …”
+ *   D  capTokens() without `ersetzt_durch IS NULL` → red: the same check (the
+ *      exchanged token in its overlap dropped)
+ *   E  knownLogin() without the counter `login-erfolg` → red: “after 30
+ *      logins …”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -72,7 +72,7 @@ test('upper limits for sessions, tokens and priority', { concurrency: 1 }, async
   });
 
   await t.test('at most 50 sessions per account, the most recently used stay', async () => {
-    // 60 alte Sitzungen: alt_00 lief zuerst ab (am längsten unbenutzt), alt_59 zuletzt.
+    // 60 old sessions: alt_00 expired first (unused the longest), alt_59 last.
     for (const [id, n] of [
       [uid, 60],
       [anderer, 3],
@@ -121,7 +121,7 @@ test('upper limits for sessions, tokens and priority', { concurrency: 1 }, async
         [`grenze_${uid}_${String(i).padStart(2, '0')}`, uid, 55 - i],
       );
     }
-    // Der älteste ist schon getauscht und gilt noch in seiner Überlappung.
+    // The oldest is already exchanged and still applies in its overlap.
     await db.run(`UPDATE api_tokens SET replaced_by = $2, last_used = NOW() - INTERVAL '100 hours' WHERE token = $1`, [
       `grenze_${uid}_00`,
       `grenze_${uid}_54`,

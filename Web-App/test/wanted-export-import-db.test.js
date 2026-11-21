@@ -1,30 +1,30 @@
 /**
- * Die Merkliste geht als CSV hinaus und kommt als Merkliste zurück.
+ * The wishlist goes out as CSV and comes back as a wishlist.
  *
- * ── Gegenproben (durchgeführt, Befunde GEMESSEN) ────────────────────────────
+ * ── Counter-checks (carried out, findings MEASURED) ────────────────────────────
  *
- *   a) archive.append für merkliste.csv entfernt → 1, 2, 3 rot; 4, 5, 6 grün
- *   b) created_at im Import weggelassen          → 3 rot (Datum wird heute)
- *   c) writeTargetOrNull im Import entfernt     → 5 rot
- *   d) condition im Export weggelassen           → 2 UND 3 rot
+ *   a) archive.append for merkliste.csv removed → 1, 2, 3 red; 4, 5, 6 green
+ *   b) created_at left out in the import        → 3 red (date becomes today)
+ *   c) writeTargetOrNull removed in the import  → 5 red
+ *   d) condition left out in the export         → 2 AND 3 red
  *
- * Zwei Dinge daran sind nicht so ausgegangen, wie ich sie vorher aufgeschrieben
- * hatte, und beide stehen hier, weil sie etwas über den Test sagen:
+ * Two things about it did not turn out the way I had written them down
+ * beforehand, and both stand here because they say something about the test:
  *
- * Bei (a) wurden im ERSTEN Versuch fünf Fälle rot statt drei. 4 und 5 lasen
- * `csvText` aus Fall 1 weiter und 4 verliess sich zusätzlich auf die von Fall 3
- * gefüllte Tabelle — sie fielen also mit, ohne selbst etwas gefunden zu haben.
- * Eine Meldung, die auf den Import zeigt, während der Fehler im Export liegt,
- * ist schlechter als keine. Seitdem bauen 4, 5 und 6 ihre Datei selbst
- * (csvFromItem) und 4 stellt seine Vorbedingung selbst her. Fall 3 behält die
- * Kopplung — genau sie IST der Rundlauf.
+ * With (a) five cases turned red on the FIRST attempt instead of three. 4 and 5 kept reading
+ * `csvText` from case 1, and 4 additionally relied on the table filled by case 3
+ * — so they fell along without having found anything themselves.
+ * A message that points at the import while the error lies in the export
+ * is worse than none. Since then 4, 5 and 6 build their file themselves
+ * (csvFromItem) and 4 establishes its precondition itself. Case 3 keeps the
+ * coupling — it exactly IS the round trip.
  *
- * Bei (d) hatte ich nur Fall 2 erwartet. Rot wurde auch 3, und das ist richtig:
- * Ohne Zustandsspalte legt der Import (75192-1, U) als (75192-1, N) an, und
- * damit ist die Liste nicht wiederhergestellt. Die Vorhersage war zu eng, nicht
- * der Befund falsch.
+ * With (d) I had only expected case 2. 3 turned red too, and that is right:
+ * without the condition column the import creates (75192-1, U) as (75192-1, N), and
+ * with that the list is not restored. The prediction was too narrow, not
+ * the finding wrong.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
  * REQUIRE_DB=1.
  */
 const test = require('node:test');
@@ -48,7 +48,7 @@ let MAIN = 0,
   KIND = 0,
   FREMD = 0;
 
-/** Die drei Merkposten des Aufbaus — zwei Sets, eines in beiden Zuständen. */
+/** The three wishlist items of the setup — two sets, one in both conditions. */
 const ITEM = [
   { sn: '75192-1', c: 'N', am: '2024-03-01' },
   { sn: '75192-1', c: 'U', am: '2024-05-17' },
@@ -82,12 +82,12 @@ async function setup() {
   }
 }
 
-/** Eine Datei aus dem ZIP holen — ohne Entpack-Bibliothek. */
+/** Get one file out of the ZIP — without an unzip library. */
 function fromZip(buf, name) {
   const zlib = require('node:zlib');
-  // Die lokalen Dateikopf-Signaturen durchgehen (PK\003\004). Das genuegt
-  // hier: Das Archiv ist unverschluesselt, ohne Zip64 und ohne Spannung, und
-  // archiver schreibt je Datei genau einen solchen Kopf.
+  // Walk the local file header signatures (PK\003\004). That suffices
+  // here: the archive is unencrypted, without Zip64 and without spanning, and
+  // archiver writes exactly one such header per file.
   for (let i = 0; i + 30 <= buf.length; i++) {
     if (buf.readUInt32LE(i) !== 0x04034b50) continue;
     const methode = buf.readUInt16LE(i + 8);
@@ -96,10 +96,10 @@ function fromZip(buf, name) {
     const datName = buf.slice(i + 30, i + 30 + namLen).toString('utf-8');
     if (datName !== name) continue;
     const start = i + 30 + namLen + extraLen;
-    // Gepackte Groesse steht im Kopf nur, wenn kein Datendeskriptor benutzt
-    // wird (Bit 3 des Flaggenfelds). archiver stroemt und setzt das Bit —
-    // dann ist die Groesse 0 und der Rest des Puffers wird entpackt, bis
-    // zlib das Ende des Stroms erkennt. inflateRawSync kann das.
+    // The compressed size is in the header only if no data descriptor is used
+    // (bit 3 of the flags field). archiver streams and sets the bit —
+    // then the size is 0 and the rest of the buffer is inflated until
+    // zlib detects the end of the stream. inflateRawSync can do that.
     const roh = buf.slice(start);
     if (methode === 0) return roh.toString('utf-8');
     return zlib.inflateRawSync(roh, { finishFlush: zlib.constants.Z_SYNC_FLUSH }).toString('utf-8');
@@ -108,15 +108,15 @@ function fromZip(buf, name) {
 }
 
 /**
- * Dieselbe CSV, aus ITEM gebaut statt aus dem Export geholt: Fälle 4 und 5 fragen nach
- * dem Import allein und sollen nicht rot werden, wenn der Export bricht. Fall 3 bleibt
- * gekoppelt, er ist der Rundlauf.
+ * The same CSV, built from ITEM instead of fetched from the export: cases 4 and 5 ask about
+ * the import alone and should not turn red when the export breaks. Case 3 stays
+ * coupled, it is the round trip.
  */
 function csvFromItem() {
   return 'set_number,condition,created_at\n' + ITEM.map(p => `${p.sn},${p.c},${p.am}`).join('\n') + '\n';
 }
 
-/** Zeilen einer CSV als Objekte — die Kopfzeile bestimmt die Schluessel. */
+/** Rows of a CSV as objects — the header row determines the keys. */
 function csvRows(text) {
   const withoutBom = text.replace(/^﻿/, '');
   const [kopf, ...rest] = withoutBom.trim().split(/\r?\n/);
@@ -155,8 +155,8 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
       'merkliste.csv liegt NICHT im Archiv. Marcos Vorgabe war „analog den anderen ' +
         'Seiten" — die drei anderen liegen dort, diese muss es auch.',
     );
-    // Und die drei bestehenden sind noch da: Ein Export, der die neue Datei
-    // mitbringt und eine alte verliert, ist kein Fortschritt.
+    // And the three existing ones are still there: an export that brings the new
+    // file along and loses an old one is no progress.
     for (const n of ['sets.csv', 'teile.csv', 'minifiguren.csv']) {
       assert.ok(fromZip(buf, n) !== null, `${n} ist aus dem Archiv verschwunden`);
     }
@@ -206,10 +206,10 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
     for (const p of ITEM) {
       const z = wieder.find(x => x.set_number === p.sn && x.condition === p.c);
       assert.ok(z, `(${p.sn}, ${p.c}) kam nicht zurück`);
-      // Der Kern von Punkt 3: Das Datum ist das ALTE, nicht heute. „Auf der
-      // Liste seit" ist die einzige Angabe, die ein Merkposten über sich
-      // selbst macht — ein Import, der sie auf heute setzt, verliert sie für
-      // die ganze Liste auf einmal.
+      // The core of point 3: the date is the OLD one, not today. „Auf der
+      // Liste seit" is the only statement a wishlist item makes about
+      // itself — an import that sets it to today loses it for
+      // the whole list at once.
       assert.equal(
         z.am,
         p.am,
@@ -220,9 +220,9 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
   });
 
   await t.test('4. a second import duplicates nothing and shifts no date', async () => {
-    // Die Gegenrichtung zu Fall 3: Der Import muss auch auf eine GEFUELLTE
-    // Liste anwendbar sein. Ohne diesen Fall waere ein Import „richtig", der
-    // nur auf der leeren Tabelle funktioniert.
+    // The opposite direction to case 3: the import must also be applicable to a
+    // FILLED list. Without this case an import that only works on the empty table
+    // would count as "correct".
     const einlesen = async () => {
       const fd = new FormData();
       fd.append('file', new Blob([csvFromItem()], { type: 'text/csv' }), 'merkliste.csv');
@@ -244,9 +244,9 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
   });
 
   await t.test('5. nothing can be imported into a FOREIGN account', async () => {
-    // writeTargetOrNull prueft die RICHTUNG, nicht bloss die Mitgliedschaft.
-    // „fremd" ist kein Unterkonto von „haupt" — ohne diese Pruefung schriebe
-    // eine hochgeladene Datei in jedes Konto der Installation.
+    // writeTargetOrNull checks the DIRECTION, not merely the membership.
+    // 'fremd' is not a sub-account of 'haupt' — without this check an uploaded
+    // file would write into every account of the installation.
     const fd = new FormData();
     fd.append('file', new Blob([csvFromItem()], { type: 'text/csv' }), 'merkliste.csv');
     fd.append('owner_user_id', String(FREMD));
@@ -258,9 +258,9 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
       'Das fremde Konto hat trotz Ablehnung Merkposten bekommen',
     );
 
-    // Gegenrichtung: in das eigene UNTERkonto darf importiert werden. Ohne
-    // diesen Fall waere die Regel auch erfuellt, wenn JEDER owner_user_id
-    // abgelehnt wuerde.
+    // Opposite direction: importing into one's own SUB-account is allowed. Without
+    // this case the rule would also be satisfied if EVERY owner_user_id
+    // were rejected.
     const fd2 = new FormData();
     fd2.append('file', new Blob([csvFromItem()], { type: 'text/csv' }), 'merkliste.csv');
     fd2.append('owner_user_id', String(KIND));
@@ -274,10 +274,10 @@ test('wishlist: round trip over the real addresses', { concurrency: 1 }, async t
   });
 
   await t.test('6. a file without a condition column takes the account default', async () => {
-    // Nicht diese Route entscheidet den Standardzustand, sondern
-    // conditionOrDefault() in src/wanted/wanted.ts — also die Einstellung des Kontos.
-    // Geprueft wird, dass die Route ihn NICHT selbst setzt: Auf 'U' gestellt,
-    // muss eine Zeile ohne Zustand als 'U' landen.
+    // It is not this route that decides the default condition, but
+    // conditionOrDefault() in src/wanted/wanted.ts — i.e. the account's setting.
+    // What is checked is that the route does NOT set it itself: set to 'U',
+    // a row without a condition must end up as 'U'.
     await db.run(
       `INSERT INTO user_settings (user_id, key, value) VALUES ($1,'user_default_condition','U')
                   ON CONFLICT (user_id, key) DO UPDATE SET value='U'`,

@@ -1,10 +1,10 @@
 /**
- * Findet Fänge im Quelltext: `catch (e) { … }`, `catch { … }` und `.catch(e => …)`.
- * Kommentare und Zeichenketten werden vorher ausgeblendet (gleich lang), damit ein
- * `catch` im Text nicht zählt und die Fundstelle im Original bleibt.
+ * Finds catches in the source text: `catch (e) { … }`, `catch { … }` and `.catch(e => …)`.
+ * Comments and strings are blanked out beforehand (same length) so that a
+ * `catch` in text does not count and the location stays the original one.
  */
 
-/** Ersetzt Kommentare und den Inhalt von Zeichenketten durch Leerzeichen bzw. `x`. */
+/** Replaces comments and the content of strings with spaces or `x`. */
 function mask(s) {
   let o = '',
     i = 0;
@@ -35,7 +35,7 @@ function mask(s) {
           i += 2;
           continue;
         }
-        // In `${…}` steht Code: Er bleibt sichtbar, Klammern zählen mit.
+        // In `${…}` there is code: it stays visible, braces count along.
         if (c === '`' && s[i] === '$' && s[i + 1] === '{') {
           let tiefe = 1;
           o += '${';
@@ -70,7 +70,7 @@ function schliesst(s, i, auf, zu) {
   return -1;
 }
 
-/** Anweisungen der obersten Ebene eines Rumpfs (grob: an `;` getrennt). */
+/** Top-level statements of a body (roughly: split at `;`). */
 function instructions(rumpf) {
   const r = [];
   let t = 0,
@@ -90,8 +90,8 @@ function instructions(rumpf) {
 }
 
 /**
- * Jeder Fang einer Datei mit maskiertem Rumpf (`rumpf`), Originaltext (`roh`) und Zeile.
- * Bei `.catch(…)` nur Pfeilfunktionen: `.catch(logAndContinue('x'))` zählt eine andere Ratsche.
+ * Every catch of a file with masked body (`rumpf`), original text (`roh`) and line.
+ * For `.catch(…)` only arrow functions: `.catch(logAndContinue('x'))` is counted by another ratchet.
  */
 function catches(quelle) {
   const s = mask(quelle);
@@ -127,9 +127,9 @@ function catches(quelle) {
 const LOG = /^(?:void\s+)?(?:console\.\w+|reportError|log|warn)\s*\(/;
 
 /**
- * „Nur melden und weiter“: kein `throw`, mindestens eine Meldung, sonst höchstens ein
- * `return …`, `continue` oder `break`. Ein Ersatzwert nach der Meldung zählt mit, er ist
- * reportAndDeliver ohne den Namen.
+ * “Only report and continue”: no `throw`, at least one report, otherwise at most one
+ * `return …`, `continue` or `break`. A substitute value after the report counts too, it is
+ * reportAndDeliver without the name.
  */
 function onlyReported(f) {
   if (/\bthrow\b/.test(f.rumpf)) return false;
@@ -141,7 +141,7 @@ function onlyReported(f) {
   );
 }
 
-/** Ohne Meldung an die Oberfläche oder ins Protokoll, ohne `throw`: Der Fehler ist weg. */
+/** Without a report to the UI or into the log, without `throw`: the error is gone. */
 const REPORTS_UI =
   /\bthrow\b|\b(?:toast|show\w*|report\w*|setze(?:Fehler|Status)\w*|error\w*|console\.\w+|reject|alert)\s*\(|\.(?:textContent|hidden)\s*=/;
 function stillImBrowser(f) {

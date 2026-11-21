@@ -1,17 +1,17 @@
 /**
- * Jeder Web-Prozess hält seinen eigenen Token-Zwischenspeicher (60 s). Ein
- * Widerruf in einem Prozess meldet sich über NOTIFY, die anderen leeren ihren
- * Speicher sofort — ein widerrufener Token gilt dort nicht bis zu einer Minute weiter.
+ * Every web process holds its own token cache (60 s). A
+ * revocation in one process announces itself via NOTIFY, the others clear their
+ * cache immediately — a revoked token does not keep applying there for up to a minute.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  in listenOnTokenRevocation() das pgNotify.listen() entfernt → rot: „ein
- *      Widerruf aus einem anderen Prozess gilt sofort“
- *   B  reportRevocation() in emptyTokenCache() entfernt → rot: „ein Widerruf hier
- *      meldet sich bei den anderen“
+ * Counter-checks (measured 04.11.2026, each on its own):
+ *   A  the pgNotify.listen() removed in listenOnTokenRevocation() → red: “a
+ *      revocation from another process applies immediately”
+ *   B  reportRevocation() removed in emptyTokenCache() → red: “a revocation here
+ *      notifies the others”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -39,7 +39,7 @@ test('token revocation across all processes', { concurrency: 1 }, async t => {
       [NAME],
     )
   ).id;
-  // Der „andere Prozess“: eine eigene Verbindung, die löscht, meldet und mithört.
+  // The „other process“: an own connection that deletes, notifies and listens along.
   const anderer = new Client({ connectionString: process.env.DATABASE_URL });
   await anderer.connect();
   t.after(async () => {
@@ -49,8 +49,8 @@ test('token revocation across all processes', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   tokenCache.listenOnTokenRevocation();
-  // Steht die Horch-Verbindung, leert sie einmal den Speicher; das darf nicht
-  // mitten in den ersten Fall fallen. Ein eigener Horcher meldet, wann es so weit ist.
+  // Once the listen connection stands, it clears the store once; that must not
+  // fall into the middle of the first case. An own listener reports when that is the case.
   let bereit = false;
   const fertig = () => {
     bereit = true;

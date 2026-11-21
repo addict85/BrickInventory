@@ -1,24 +1,24 @@
 /**
- * Höchstens so viele bcrypt-Läufe gleichzeitig, wie die Schranke zulässt
- * (src/account/bcryptLimit.ts); dahinter eine begrenzte Warteschlange mit
- * Frist, alles darüber bekommt 503 server_ausgelastet — bei der Anmeldung und
- * bei jeder Passwortbestätigung.
+ * At most as many concurrent bcrypt runs as the barrier allows
+ * (src/account/bcryptLimit.ts); behind it a bounded queue with a
+ * deadline, everything beyond gets 503 server_ausgelastet — at login and
+ * on every password confirmation.
  *
- * Gegenproben (am 03.11.2026 gemessen, je einzeln):
- *   A  in newLimit() die Grenze der Warteschlange entfernt → rot: beide
- *      Tests (der Überzählige wartete, statt abgewiesen zu werden)
- *   B  checkCredentials() ohne bcryptSchranke.mit() → rot: „bei voller
- *      Schranke …“ (die Anmeldung lief durch)
- *   C  checkConfirmation() ohne bcryptSchranke.mit() → rot: „bei voller
- *      Schranke …“ (die Passwortbestätigung lief durch)
+ * Counter-checks (measured on 03.11.2026, each alone):
+ *   A  in newLimit() the queue limit removed → red: both
+ *      tests (the surplus one waited instead of being rejected)
+ *   B  checkCredentials() without bcryptSchranke.mit() → red: “with a full
+ *      barrier …” (the login got through)
+ *   C  checkConfirmation() without bcryptSchranke.mit() → red: “with a full
+ *      barrier …” (the password confirmation got through)
  *
- * Wer sich von dieser Adresse mit diesem Namen zuletzt angemeldet hat, wartet
- * vorne und wird nicht wegen der Länge der Schlange abgewiesen (Runde 12, H3).
- * Gegenproben (04.11.2026 gemessen):
- *   D  in newLimit() `priority` übergangen → rot: „Vorrang …“ und „bei
- *      voller Schranke …“ (die bekannte Anmeldung steht nicht in der Schlange)
- *   E  checkCredentials() ohne knownLogin() (immer false) → rot:
- *      „bei voller Schranke …“ (dasselbe)
+ * Whoever last logged in from this address with this name waits
+ * at the front and is not rejected because of the queue length (round 12, H3).
+ * Counter-checks (measured 04.11.2026):
+ *   D  in newLimit() `priority` ignored → red: “priority …” and “with a
+ *      full barrier …” (the known login is not in the queue)
+ *   E  checkCredentials() without knownLogin() (always false) → red:
+ *      “with a full barrier …” (the same)
  *
  * REQUIRE_DB=1.
  */
@@ -61,7 +61,7 @@ test('the limit lets n run, m wait and rejects the rest', async () => {
   offen.shift()('b');
   await b;
   assert.deepEqual(s.stand(), { laufend: 0, wartend: 0 });
-  // Frist: wer zu lange wartet, wird abgewiesen und gibt seinen Platz in der Schlange frei.
+  // Deadline: whoever waits too long is rejected and frees their place in the queue.
   const x = s.mit(blockiert),
     y = s.mit(blockiert);
   await assert.rejects(
@@ -132,7 +132,7 @@ test('with a full limit, login and password confirmation answer 503', { concurre
     return { status: r.status, body: await r.json() };
   };
 
-  // Alle Plätze und die ganze Warteschlange belegen.
+  // Occupy all slots and the whole queue.
   const kerne = Math.max(2, os.availableParallelism());
   const offen = [];
   const belegt = [];
@@ -164,7 +164,7 @@ test('with a full limit, login and password confirmation answer 503', { concurre
   const danach = await post('/login', { username: NAME, password: PASS });
   assert.equal(danach.status, 200, JSON.stringify(danach.body));
 
-  // Jetzt ist die Anmeldung von hier bekannt: Sie wartet vorne, eine fremde wird abgewiesen.
+  // Now the login from here is known: it waits at the front, a foreign one is rejected.
   for (let i = 0; i < kerne * 9; i++) belegt.push(bcryptSchranke.mit(() => new Promise(r => offen.push(r))));
   try {
     delete sitzung.userId;

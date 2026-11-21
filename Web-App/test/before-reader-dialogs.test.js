@@ -1,12 +1,12 @@
 /**
- * Vorleser: Jeder Dialog hat einen Namen, und Meldungen werden angesagt —
- * Fehler sofort. Am echten Bündel in jsdom.
+ * Screen reader: every dialog has a name, and messages are announced —
+ * errors immediately. On the real bundle in jsdom.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  aria-labelledby an set-modal entfernt → rot: „jeder Dialog hat einen
- *      Namen“ (set-modal)
- *   B  role="alert" für Fehlermeldungen entfernt → rot: „Meldungen werden
- *      angesagt“
+ * Counter-checks (measured on 28.10.2026):
+ *   A  aria-labelledby removed from set-modal → red: “every dialog has a
+ *      name” (set-modal)
+ *   B  role="alert" for error messages removed → red: “messages are
+ *      announced”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -40,7 +40,7 @@ test('messages are announced', async () => {
   try {
     const container = d.getElementById('toasts');
     assert.equal(container.getAttribute('aria-live'), 'polite');
-    // Ein Import ohne Datei meldet einen Fehler.
+    // An import without a file reports an error.
     d.getElementById('csv-file').dispatchEvent(new w.Event('change', { bubbles: true }));
     await warte(() => container.querySelector('.toast.error'));
     assert.equal(container.querySelector('.toast.error').getAttribute('role'), 'alert');

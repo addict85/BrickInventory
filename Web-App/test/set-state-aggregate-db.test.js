@@ -1,28 +1,28 @@
 /**
- * Zustand und Aggregat eines Sets gegen die Datenbank: was set-condition-aggregate.test.js
- * vorher als Muster im Quelltext suchte, hier an Ergebnissen.
+ * Condition and aggregate of a set against the database: what set-condition-aggregate.test.js
+ * used to search for as a pattern in the source text, here on results.
  *
- * Gegenproben (08.11.2026 gemessen, jeweils zurückgenommen):
- *   A  zustandsAggregat ohne max_purchase_price → rot „readSet liefert
- *      dieselben Aggregatfelder …“
- *   B  changeAcquisition gibt die nackte Antwort ohne withSetAggregate zurück →
- *      rot „beide Wege einer Erfassung …“ (und der folgende Fall, der auf
- *      dessen Teil aufbaut)
- *   C  POST /api/v1/sets reicht `null` statt des Zustands an setErfassen → rot
- *      „der im Formular gewählte Zustand kommt beim Anlegen an“
- *   D  aktuellerMarktpreis: `if (!condition)` → `if (true)` → rot „ein
- *      ausdrücklich angefragter Zustand …“ und „der Marktpreis als Kaufpreis …“
- *   E  conditionFromAcquisitions liefert bei Erfassungen immer 'N' → rot
- *      „readSet …“ und „manuelle Teile und Minifiguren …“
- *   F  sampleAcquisitions sortiert nach `added_at` → rot „die Preis-Probe …“;
- *      ohne `price_cache: cacheRows` in der Antwort ebenso
- *   G  priceFor() in setValue.ts nimmt immer den Neupreis → rot „gainAndLoss
- *      bewertet nach dem Zustand der Erfassungen“ (effectiveCondition allein
- *      auf 'N' gestellt bleibt grün: Mit Erfassungen gilt deren Zustand)
- *   H  (09.11.2026) Route und Vertrag der Preis-Probe wieder als GET → rot
- *      „die Preis-Probe …“ (GET 200 statt 404)
+ * Counter-checks (measured 08.11.2026, each reverted):
+ *   A  zustandsAggregat without max_purchase_price → red “readSet delivers
+ *      the same aggregate fields …”
+ *   B  changeAcquisition returns the bare response without withSetAggregate →
+ *      red “both paths of an entry …” (and the following case, which builds on
+ *      its part)
+ *   C  POST /api/v1/sets passes `null` instead of the condition to setErfassen → red
+ *      “the condition selected in the form arrives on creation”
+ *   D  aktuellerMarktpreis: `if (!condition)` → `if (true)` → red “an
+ *      explicitly requested condition …” and “the market price as purchase price …”
+ *   E  conditionFromAcquisitions always delivers 'N' with acquisitions → red
+ *      “readSet …” and “manual parts and minifigures …”
+ *   F  sampleAcquisitions sorts by `added_at` → red “the price probe …”;
+ *      likewise without `price_cache: cacheRows` in the response
+ *   G  priceFor() in setValue.ts always takes the new price → red “gainAndLoss
+ *      values by the condition of the entries” (effectiveCondition alone
+ *      set to 'N' stays green: with acquisitions their condition applies)
+ *   H  (09.11.2026) route and contract of the price probe again as GET → red
+ *      “the price probe …” (GET 200 instead of 404)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -30,8 +30,8 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-// Der Nachzug nach dem Erfassen läuft sonst nach dem Test gegen einen
-// geschlossenen Pool; setErfassen lässt sich für die Route stellen.
+// The follow-up after capturing otherwise runs after the test against a
+// closed pool; setErfassen can be set up for the route.
 /** @type {null | ((...a: unknown[]) => Promise<unknown>)} */
 let posedAddSet = null;
 const Module = require('node:module');
@@ -40,7 +40,7 @@ Module.prototype.require = function (/** @type {string} */ name, /** @type {any[
   const m = _realRequire.call(this, name, ...rest);
   if (typeof name === 'string' && /[/\\]addSet(\.js)?$/.test(name))
     return new Proxy(m, {
-      // Die Fabrik bindet beim Bau (mit()): Der Ersatz prüft die Stellung erst beim Aufruf.
+      // The factory binds at build time (mit()): the replacement only checks the setting when called.
       get: (t, k) => (k === 'setErfassen' ? (sk, ...a) => (posedAddSet ? posedAddSet(...a) : t[k](sk, ...a)) : t[k]),
     });
   return m;
@@ -131,7 +131,7 @@ test('condition and aggregate of a set', { concurrency: 1 }, async t => {
       ifPresent: 'aufstocken',
     });
     assert.equal(r.action, 'updated', 'Aufbau: der Aufstock-Weg ohne Katalog und Netz');
-    // Den geschätzten Preis trägt die Nacharbeit nach; mit Katalog fragt sie kein Netz.
+    // The follow-up work fills in the estimated price; with a catalog it asks no network.
     await catalogSet(db, SN, { name: 'Zustand', image_local: `/images/sets/${SN}.jpg` });
     await setSupplement(SN, uid);
     const neu = await db.get(
@@ -214,7 +214,7 @@ test('condition and aggregate of a set', { concurrency: 1 }, async t => {
   });
 
   await t.test('the price probe runs without a server error', async () => {
-    // Per GET löste schon ein Link einer fremden Seite (Lax-Cookie) den Abruf aus.
+    // Via GET a link of a foreign site (lax cookie) already triggered the fetch.
     const perLink = await fetch(`${base}/api/v1/admin/price-probe?set=${SN}&live=1`);
     assert.equal(perLink.status, 404, 'die Probe lässt sich per GET auslösen');
     const r = await anfrage('POST', '/admin/price-probe', { set: SN });

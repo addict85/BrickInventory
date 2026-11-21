@@ -1,10 +1,10 @@
 /**
- * Passwortfelder gehören in ein <form> — und das Absenden darf nichts laden.
+ * Password fields belong in a <form> — and submitting must load nothing.
  *
- * ── Gegenproben (durchgeführt) ──────────────────────────────────────────────
+ * ── Counter-checks (carried out) ──────────────────────────────────────────────
  *
- *   a) preventDefault() aus dem Lauscher entfernt → Fall 2 rot.
- *   b) type="button" an btn-login entfernt → Fall 3 rot.
+ *   a) preventDefault() removed from the listener → case 2 red.
+ *   b) type="button" removed on btn-login → case 3 red.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,12 +16,12 @@ const ROOT = path.join(__dirname, '..');
 const HTML = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 
 /**
- * Nur den Formular-Lauscher aus js/actions.js herausschneiden.
+ * Cut only the form listener out of js/actions.js.
  *
- * Dieselbe Technik wie in test/app-scrollbar.test.js: Die ganze Datei
- * auszuwerten hiesse, den halben Verteiler mitsamt Registry nachzubauen. Der
- * Schnitt haengt an der Kommentarmarke — verschwindet sie, faellt dieser Test
- * aus, und das ist gewollt: Dann ist der Lauscher umgebaut worden.
+ * The same technique as in test/app-scrollbar.test.js: evaluating the whole file
+ * would mean rebuilding half the dispatcher including the registry. The
+ * cut hangs on the comment marker — if it disappears, this test fails,
+ * and that is intended: then the listener has been rebuilt.
  */
 function listenerCode() {
   const roh = fs.readFileSync(path.join(ROOT, 'public', 'js', 'actions.js'), 'utf8');
@@ -33,7 +33,7 @@ function listenerCode() {
   return stueck;
 }
 
-/** Das echte index.html in jsdom, mit dem Lauscher davor. */
+/** The real index.html in jsdom, with the listener in front. */
 function stage() {
   const dom = new JSDOM(HTML, { runScripts: 'outside-only' });
   dom.window.eval(listenerCode());
@@ -59,8 +59,8 @@ test('every password field of a HUMAN lies in a form', () => {
       'Passwortmanager dort kein Speichern mehr an.',
   );
 
-  // Und die Gegenrichtung: Die fuenf duerfen auch kein `autocomplete` haben,
-  // das sie doch wieder als Anmeldedaten ausweist.
+  // And the opposite direction: the five must not have an `autocomplete` either
+  // that marks them as login data after all.
   for (const id of ohne) {
     const ac = d.getElementById(id).getAttribute('autocomplete');
     assert.equal(
@@ -107,10 +107,10 @@ test('submitting does NOT reload the page but presses the button', () => {
 });
 
 test('the submit buttons carry type="button"', () => {
-  // Der Grund steht im Kopf: Ohne type="button" ist ein <button> in einem
-  // <form> ein ABSENDEknopf. Der Lauscher drückt ihn, sein Klick löst wieder
-  // submit aus, und das geht so weiter, bis der Zähler oben mehr als eins
-  // zählt oder der Browser abbricht.
+  // The reason stands in the header: without type="button" a <button> in a
+  // <form> is a SUBMIT button. The listener presses it, its click triggers
+  // submit again, and so it goes on until the counter above counts more than one
+  // or the browser aborts.
   const d = new JSDOM(HTML).window.document;
   const falsch = [];
   for (const f of d.querySelectorAll('form')) {

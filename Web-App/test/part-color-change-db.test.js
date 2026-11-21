@@ -1,66 +1,66 @@
 /**
- * Die Farbe eines manuell erfassten Teils NACHTRÄGLICH ändern.
+ * Change the color of a manually captured part AFTERWARDS.
  *
- * ── Gegenproben (am 19.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
+ * ── Counter-checks (MEASURED on 19.10., numbers copied) ──────────────────
  *
- * Ausgangslage: `# pass 8 / # fail 0` (vor den drei Bild-Fällen vom 20.10.,
- * seither `# pass 11 / # fail 0`). Jede Gegenprobe ist EINE Änderung,
- * danach zurückgenommen (die Dateien wurden gegen ihre Sicherung verglichen).
+ * Starting point: `# pass 8 / # fail 0` (before the three image cases of 20.10.,
+ * since then `# pass 11 / # fail 0`). Every counter-check is ONE change,
+ * reverted afterwards (the files were compared against their backup).
  *
- *   A  das Addieren gleicher Tage weggelassen (`vereint = { changes: 0 }`,
- *      UPDATE und DELETE davor gestrichen)
- *      → `pass 6 / fail 2`. Rot ist genau Fall 3, mit dem echten Grund:
+ *   A  the adding of identical days left out (`vereint = { changes: 0 }`,
+ *      UPDATE and DELETE before it deleted)
+ *      → `pass 6 / fail 2`. Exactly case 3 is red, with the real reason:
  *        `500 duplicate key value violates unique constraint
  *        "idx_part_acq_tag_zustand"`.
- *   B  kein Zusammenlegen der Bestandszeilen (immer `UPDATE parts SET
+ *   B  no merging of the stock rows (always `UPDATE parts SET
  *      color_id`)
- *      → `pass 4 / fail 4`. Rot sind die Fälle 2, 3 und 4, alle drei mit
+ *      → `pass 4 / fail 4`. Cases 2, 3 and 4 are red, all three with
  *        `duplicate key value violates unique constraint
- *        "idx_parts_eindeutig"` — jeder Fall, in dem die Zielfarbe schon
- *        dasteht. Marcos Normalfall.
- *   C  rememberPartColor() nicht gerufen
- *      → `pass 6 / fail 2`. Rot ist Fall 1: „Der Farbkatalog nennt die Farbe
- *        „undefined" — erwartet „Red" aus rb_colors". Das ist der Farbpunkt
- *        ohne Beschriftung.
- *   D  in der Route `V.colorId(req.body?.color_id)` statt der Absage
- *      → `pass 6 / fail 2`. Rot ist Fall 5: Status 200 statt 400 — die
- *        fehlende Farbe wurde zur 0.
- *   E  `AND source = 'manual'` aus der Quellabfrage entfernt
- *      → `pass 6 / fail 2`. Rot ist Fall 6: Status 200, das Set-Teil wurde
- *        umgefärbt.
- *   F  die Abkürzung `if (alt === neu)` entfernt
- *      → `pass 6 / fail 2`. Rot ist Fall 7, und das Gemessene ist schlimmer
- *        als die Zahl: Die Zeile findet sich SELBST als Ziel, addiert ihre
- *        Erfassung auf sich (`vereint: 1`, Menge 5 → 10) und löscht sich
- *        danach als „Quelle". Am laufenden Server mit einem Teil in Farbe 4,
- *        Menge 5, und dem Aufruf 4 → 4:
+ *        "idx_parts_eindeutig"` — every case in which the target color already
+ *        stands there. Marco's normal case.
+ *   C  rememberPartColor() not called
+ *      → `pass 6 / fail 2`. Case 1 is red: „Der Farbkatalog nennt die Farbe
+ *        „undefined" — erwartet „Red" aus rb_colors". That is the color dot
+ *        without a label.
+ *   D  in the route `V.colorId(req.body?.color_id)` instead of the refusal
+ *      → `pass 6 / fail 2`. Case 5 is red: status 200 instead of 400 — the
+ *        missing color became 0.
+ *   E  `AND source = 'manual'` removed from the source query
+ *      → `pass 6 / fail 2`. Case 6 is red: status 200, the set part was
+ *        recolored.
+ *   F  the shortcut `if (alt === neu)` removed
+ *      → `pass 6 / fail 2`. Case 7 is red, and what was measured is worse
+ *        than the number: the row finds ITSELF as the target, adds its
+ *        acquisition onto itself (`vereint: 1`, quantity 5 → 10) and then deletes itself
+ *        as the „source". On the running server with a part in color 4,
+ *        quantity 5, and the call 4 → 4:
  *
- *            vorher  parts: [ { color_id: 4 } ]   erf: [ { 4, 5 } ]
- *            nachher parts: [ ]                   erf: [ ]
+ *            before  parts: [ { color_id: 4 } ]   erf: [ { 4, 5 } ]
+ *            after   parts: [ ]                   erf: [ ]
  *
- *        Ein Verklicken auf dieselbe Farbe hätte das Teil gelöscht.
+ *        A misclick on the same color would have deleted the part.
  *
- * ── Die drei Bild-Fälle, Gegenproben vom 20.10. ─────────────────────────────
+ * ── The three image cases, counter-checks of 20.10. ─────────────────────────────
  *
- * Marcos Befund: „Wenn ich die Farbe der manuell erfassten Teile ändere wird
- * das Bild nicht aktualisiert." Ausgangslage `# pass 11 / # fail 0`.
+ * Marco's finding: „Wenn ich die Farbe der manuell erfassten Teile ändere wird
+ * das Bild nicht aktualisiert." Starting point `# pass 11 / # fail 0`.
  *
- *   G  (entfallen am 28.10.2026: Seit Migration 0062 führen die Setlisten
- *      keine eigenen Bilder mehr, ihre stehen an der Farbe — der Fall
- *      „aus den Set-Teilelisten" ist derselbe wie „vorhanden".)
- *   H  die Frage, ob schon ein Bild dasteht, abgeschaltet
- *      (`if (false && lokal?.bildQuelle === 'farbe')`; am 28.10.2026 neu
- *      gemessen) → `pass 9 / fail 2`. Rot ist „ein schon vorhandenes
- *      Farbbild wird nicht überschrieben": „Die Antwort sagt „null" —
- *      erwartet „vorhanden"". Die Oberfläche hängt ihren Hinweis an diese
- *      Antwort.
- *   I  bei „nichts gefunden" trotzdem `'vorhanden'` gemeldet
- *      → `pass 9 / fail 2`. Rot ist „kennt niemand ein Bild, sagt die Antwort
- *        das": Ein geratenes „vorhanden" nimmt der Oberfläche den Hinweis, und
- *        Marco stünde ein zweites Mal vor einem leeren Platz, ohne zu wissen,
- *        warum.
+ *   G  (dropped on 28.10.2026: since migration 0062 the set lists carry
+ *      no images of their own any more, theirs stand at the color — the case
+ *      “from the set parts lists” is the same as “vorhanden”.)
+ *   H  the question whether an image already stands there switched off
+ *      (`if (false && lokal?.bildQuelle === 'farbe')`; re-measured on
+ *      28.10.2026) → `pass 9 / fail 2`. Red is “an already existing color image
+ *      is not overwritten”: „Die Antwort sagt „null" —
+ *      erwartet „vorhanden"". The UI hangs its hint on this
+ *      response.
+ *   I  on „nothing found" `'vorhanden'` reported anyway
+ *      → `pass 9 / fail 2`. Red is “if nobody knows an image, the response says
+ *        so”: a guessed „vorhanden" takes the hint away from the UI, and
+ *        Marco would stand in front of an empty spot a second time without knowing
+ *        why.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
  * REQUIRE_DB=1.
  */
 const test = require('node:test');
@@ -102,9 +102,9 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
   const UID = (await db.get(`SELECT id FROM users WHERE username='marco'`)).id;
 
   await db.run(`INSERT INTO part_catalog (part_number,part_name) VALUES ('3001','Brick 2x4')`);
-  // Farbe 4 steht im Farbkatalog, Farbe 0 ist die, die der Import erfunden
-  // hat. rb_colors ist die Quelle, aus der die Änderung Name und Farbcode
-  // holt, wenn der Aufrufer keine mitgibt.
+  // Color 4 stands in the color catalog, color 0 is the one the import invented.
+  // rb_colors is the source from which the change fetches name and color code
+  // when the caller passes none.
   await db.run(`INSERT INTO rb_colors (id,name,rgb,bl_color_id)
                 VALUES (4,'Red','C91A09',5), (7,'Blue','0055BF',7)`);
 
@@ -136,8 +136,8 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     await db.run(`DELETE FROM part_acquisitions`);
     await db.run(`DELETE FROM parts`);
     await db.run(`DELETE FROM part_color_catalog`);
-    // Die Set-Teilelisten sind seit dem 20.10. die erste Bildquelle der
-    // Farbänderung — ohne Leeren trüge der nächste Fall das Bild des vorigen.
+    // Since 20.10. the set parts lists are the first image source of the
+    // color change — without clearing, the next case would carry the image of the previous one.
     await db.run(`DELETE FROM set_parts`);
   };
   const farbImage = async farbe =>
@@ -177,10 +177,10 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
         'Kaufpreis vom Teil abgeschnitten und die Stückzahl der neuen Zeile null',
     );
 
-    // Farbbezeichnung und Farbcode: Ohne Katalogeintrag für (3001, 4) zeigt
-    // die Teileliste einen Farbpunkt ohne Beschriftung — genau der Zustand,
-    // über den Marco sich beim Import beschwert hat. Der Aufrufer hat hier
-    // NICHTS mitgegeben; die Werte müssen aus rb_colors kommen.
+    // Color label and color code: without a catalog entry for (3001, 4) the
+    // parts list shows a color dot without a label — exactly the state
+    // Marco complained about during the import. The caller passed
+    // NOTHING here; the values must come from rb_colors.
     const kat = await db.get(
       `SELECT color_name, color_hex FROM part_color_catalog
         WHERE part_number='3001' AND color_id=4`,
@@ -200,8 +200,8 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
                   VALUES ($1,'3001',0,'manual'), ($1,'3001',4,'manual')`,
       [UID],
     );
-    // Verschiedene Tage: idx_part_acq_tag_zustand lässt je Position und Tag nur eine
-    // Erfassung zu, der Aufbau wäre sonst nicht herzustellen.
+    // Different days: idx_part_acq_tag_zustand allows only one acquisition per position
+    // and day, the setup could not be produced otherwise.
     await db.run(
       `INSERT INTO part_acquisitions
                     (user_id,part_number,color_id,quantity,unit_price,condition,created_at)
@@ -253,9 +253,9 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     );
 
     const a = await aendere('3001', 0, { color_id: 4 });
-    // Ohne das Addieren VOR dem Umzug läuft das UPDATE in idx_part_acq_tag_zustand
-    // und die ganze Anfrage scheitert mit 500 — aber nur an einem Tag, an dem
-    // beide Erfassungen zufällig zusammenfallen.
+    // Without the adding BEFORE the move the UPDATE runs into idx_part_acq_tag_zustand
+    // and the whole request fails with 500 — but only on a day on which
+    // both acquisitions happen to coincide.
     assert.equal(
       a.status,
       200,
@@ -360,9 +360,9 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
   });
 
   await t.test('the same color again is no change', async () => {
-    // Die Gegenrichtung: Die Fälle oben wären auch grün, wenn die Funktion
-    // einfach JEDES Mal löschte und neu schriebe. Hier passiert nichts, und
-    // die Antwort sagt es.
+    // The opposite direction: the cases above would be green too if the function
+    // simply deleted and rewrote EVERY time. Here nothing happens, and
+    // the response says so.
     await leeren();
     await db.run(
       `INSERT INTO parts (user_id,part_number,color_id,source)
@@ -389,7 +389,7 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
     );
   });
 
-  // Das Bild der neuen Farbe (Marcos Befund vom 20.10.)
+  // The image of the new color (Marco's finding of 20.10.)
 
   await t.test('an already existing color image is not overwritten', async () => {
     await leeren();
@@ -429,9 +429,9 @@ test('the color of a manual part can be changed afterwards', { concurrency: 1 },
 
     const a = await aendere('3001', 4, { color_id: 7 });
     assert.equal(a.status, 200, JSON.stringify(a.body));
-    // Ohne Rebrickable-Schlüssel gibt lookupPart() sofort null zurück; in
-    // dieser Umgebung gibt es keinen. Gemessen wird also der Fall „nichts
-    // gefunden" — und der darf die Änderung NICHT mitnehmen.
+    // Without a Rebrickable key lookupPart() returns null immediately; in
+    // this environment there is none. So what is measured is the case „nothing
+    // found" — and that must NOT take the change along.
     assert.equal(
       a.body.bild,
       null,

@@ -1,19 +1,19 @@
 /**
- * Ströme und Sammelberichte geben keinen internen Fehlertext an den Client:
- * Ein Fachfehler kommt mit Code und Satz an, alles andere (SQL, Pfade,
- * fremde APIs) als „interner_fehler“ — der Text steht nur im Protokoll.
+ * Streams and summary reports give no internal error text to the client:
+ * a domain error arrives with code and sentence, everything else (SQL, paths,
+ * foreign APIs) as “interner_fehler” — the text only stands in the log.
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  in POST /sets/add-stream wieder `error: fehlertext(e)` → rot: „der
- *      Erfassungsstrom nennt keinen internen Text“
- *   A2 (09.11.2026) im Strom nach gescheitertem Ergänzen `ergaenzung` weggelassen
- *      → rot: „der Erfassungsstrom …“ (das Set ist angelegt, die Antwort muss es sagen)
- *   B  im Merklisten-CSV-Import wieder `error: e?.message` → rot: „der
- *      CSV-Bericht nennt keinen internen Text“
- *   C  handleRouteError() ohne den Zweig für Fachfehler mit Code → rot: „ein
- *      Fachfehler kommt mit seinem Code an“
+ * Counter-checks (measured 01.11.2026):
+ *   A  in POST /sets/add-stream again `error: fehlertext(e)` → red: “the
+ *      add stream names no internal text”
+ *   A2 (09.11.2026) in the stream after a failed completion `ergaenzung` omitted
+ *      → red: “the add stream …” (the set is created, the response must say so)
+ *   B  in the wishlist CSV import again `error: e?.message` → red: “the
+ *      CSV report names no internal text”
+ *   C  handleRouteError() without the branch for domain errors with code → red: “a
+ *      domain error arrives with its code”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,15 +34,15 @@ const replace = (rel, zusatz) => {
   require.cache[pfad].exports = Object.assign({}, require.cache[pfad].exports, zusatz);
 };
 const { fileError, errorText } = _req('src/infra/errorTexts.js');
-// Vor dem Laden der Routen: Die Dienste werfen, was im Betrieb aus der Datenbank käme.
-// Die Merkliste eine Ebene tiefer: Der Import läuft als Auftrag und ruft den Dienst intern.
+// Before loading the routes: the services throw what would come from the database in production.
+// The wishlist one level deeper: the import runs as a job and calls the service internally.
 replace('src/wanted/repository/wanted.js', {
   markSetWanted: async () => {
     throw new Error(GEHEIM);
   },
 });
-// Angelegt wird ohne Netz; scheitern kann danach nur das Ergänzen im offenen Strom.
-// Die Sets-Dienste des Prozesses mit zwei ersetzten; die Routen bekommen dieselben (routerFrom).
+// Creation happens without network; afterwards only the completion in the open stream can fail.
+// The process's sets services with two replaced; the routes get the same ones (routerFrom).
 Object.assign(require('./helpers/sources').testArea('sets'), {
   setErfassen: async e => {
     if (e.setNumber === 'FACH-1') throw fileError('ungueltig', 'setnummer_ungueltig');
@@ -94,7 +94,7 @@ test('no internal error text to the client', { concurrency: 1 }, async t => {
   await t.test('the acquisition stream names no internal text', async () => {
     const letztes = await strom('GEHEIM-1', 'en');
     assert.ok(!JSON.stringify(letztes).includes('geheime_tabelle'), JSON.stringify(letztes));
-    // Angelegt ist das Set schon: Das Ende sagt, dass ein Auftrag ergänzt, statt „Fehler“.
+    // The set is already created: the end says that a job completes it, instead of “error”.
     assert.equal(letztes.step, 'done');
     assert.equal(letztes.success, true);
     assert.equal(letztes.ergaenzung, 'ausstehend');

@@ -1,14 +1,14 @@
 /**
- * Teile, Figuren und Anleitungen eines Sets hängen per Fremdschlüssel am Set
- * ihres Kontos; Quelle und Status haben geschlossene Wertemengen.
+ * Parts, figures and instructions of a set hang via foreign key on the set
+ * of their account; source and status have closed value sets.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  parts_set_fk ohne ON DELETE CASCADE angelegt → rot: „ein gelöschtes
- *      Set nimmt seinen Inhalt mit“
- *   B  in Migration 0058 die Ausnahme im Prüfblock entfernt → rot: „eine
- *      Altlast hält die Migration nicht an“
+ * Counter-checks (measured on 28.10.2026):
+ *   A  parts_set_fk created without ON DELETE CASCADE → red: “a deleted
+ *      set takes its contents along”
+ *   B  the exception in the check block removed in migration 0058 → red: “a
+ *      legacy issue does not stop the migration”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -57,8 +57,8 @@ test('set contents and value sets', { concurrency: 1 }, async t => {
       await holdsMinifig(db, k, 'sw0001', { setNumber: SN });
       await db.run(`INSERT INTO instructions (user_id, set_number, url) VALUES ($1, $2, 'x.pdf')`, [k, SN]);
     }
-    // Die Erfassungen zuerst: set_acquisitions sperrt das Löschen eines Sets
-    // mit Bestand absichtlich (set_acquisitions_bestand_fkey).
+    // The acquisitions first: set_acquisitions deliberately blocks deleting a set
+    // with inventory (set_acquisitions_bestand_fkey).
     await db.run('DELETE FROM set_acquisitions WHERE user_id = $1 AND set_number = $2', [uid, SN]);
     await db.run('DELETE FROM sets WHERE user_id = $1 AND set_number = $2', [uid, SN]);
     for (const tab of ['parts', 'minifigs', 'instructions']) {
@@ -79,7 +79,7 @@ test('set contents and value sets', { concurrency: 1 }, async t => {
       }),
       /parts_set_fk/,
     );
-    // Erst Inhalt, dann Set — in EINER Transaktion zulässig.
+    // First contents, then set — allowed in ONE transaction.
     await db.transaction(async tx => {
       await tx.run(`INSERT INTO parts (user_id, set_number, part_number, color_id) VALUES ($1, $2, '3002', 0)`, [
         uid,
@@ -104,7 +104,7 @@ test('set contents and value sets', { concurrency: 1 }, async t => {
     const c = await db.pool.connect();
     try {
       await c.query('BEGIN');
-      // Die Migration stammt aus der Zeit vor 0083: deren Tabellen für die Dauer der Probe nachstellen.
+      // The migration dates from the time before 0083: recreate its tables for the duration of the probe.
       await c.query(`CREATE TABLE instruction_queue (set_number TEXT, status TEXT,
                        CONSTRAINT instruction_queue_status_check CHECK (status IN ('pending','done','failed')))`);
       await c.query('ALTER TABLE import_status RENAME TO csv_import_jobs');

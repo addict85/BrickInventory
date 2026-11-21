@@ -1,20 +1,20 @@
 /**
- * Eine E-Mail-Adresse ist eine reine Adresse: kein Anzeigename, keine Liste,
- * kein Leer- oder Steuerzeichen. nodemailer las `x1<opfer@…>` als Anzeigenamen
- * und stellte an opfer@… zu, während Vergabeprüfung und Zieldrossel eine
- * andere Zeichenkette zählten. Der Versand prüft das ein zweites Mal und gibt
- * die eine Adresse als Umschlag vor.
+ * An e-mail address is a pure address: no display name, no list,
+ * no whitespace or control character. nodemailer read `x1<opfer@…>` as a display name
+ * and delivered to opfer@…, while assignment check and target throttle counted a
+ * different string. Sending checks that a second time and sets
+ * the one address as the envelope.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  EMAIL_RE wieder /^[^\s@]+@[^\s@]+\.[^\s@]+$/ → rot: „Registrierung
- *      nimmt nur reine Adressen“, „Passwort vergessen und Bestätigung …“,
- *      „das Profil …“ (200 statt 400), „Bestandsdaten werden gemeldet“
- *   B  die Prüfung isSingleRecipient() in sendMail() entfernt → rot: „der
- *      Versand lehnt eine gespeicherte Liste ab“
- *   C  `envelope` in sendMail() entfernt → rot: „der Umschlag nennt genau die
- *      eine Adresse“
+ * Counter-checks (measured 04.11.2026, each alone):
+ *   A  EMAIL_RE back to /^[^\s@]+@[^\s@]+\.[^\s@]+$/ → red: “registration
+ *      only takes pure addresses”, “forgot password and confirmation …”,
+ *      “the profile …” (200 instead of 400), “existing data is reported”
+ *   B  the check isSingleRecipient() removed in sendMail() → red: “sending
+ *      rejects a stored list”
+ *   C  `envelope` removed in sendMail() → red: “the envelope names exactly the
+ *      one address”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -64,7 +64,7 @@ test('only plain email addresses', { concurrency: 1 }, async t => {
       [k, v],
     );
   await setze('registration_enabled', '1');
-  await setze('smtp_host', '192.0.2.25'); // eine Adresse: Ein Name müsste auflösen (src/infra/targetAddress.ts)
+  await setze('smtp_host', '192.0.2.25'); // one address: a name would have to resolve (src/infra/targetAddress.ts)
   await setze('smtp_user', 'versand');
   await setze('smtp_from', 'BrickInventory <absender@example.org>');
   const NAME = `rein_${P}`;
@@ -84,7 +84,7 @@ test('only plain email addresses', { concurrency: 1 }, async t => {
     await db.pool.end().catch(() => {});
   });
   const { base } = testServer(_req, { sitzung: { userId: uid, username: NAME }, t });
-  // Die IP-Drossel (5/h) soll die Prüfung der Adresse nicht verdecken.
+  // The IP throttle (5/h) should not hide the check of the address.
   const rufe = async (methode, pfad, body) => {
     await db.run("DELETE FROM rate_limit_attempts WHERE key ~ '^(register|forgot|bestaetigung)'");
     const r = await fetch(`${base}/api/v1/auth${pfad}`, {

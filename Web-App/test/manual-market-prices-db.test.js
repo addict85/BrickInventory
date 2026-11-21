@@ -1,5 +1,5 @@
 /**
- * Manuell erfasste Teile und Figuren tragen ihren Marktpreis mit.
+ * Manually captured parts and figures carry their market price along.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -37,23 +37,23 @@ test('manual lists carry the market price from the cache', async t => {
     await db.run("INSERT INTO users (id,username,password_hash) VALUES ($1,'mpreis','x') ON CONFLICT (id) DO NOTHING", [
       U,
     ]);
-    // Die Farbe muss sich auf sich selbst abbilden, sonst liegt der
-    // Cache-Schlüssel woanders — fetchPartPrice übersetzt beides, bevor es liest.
+    // The color must map onto itself, otherwise the
+    // cache key lies elsewhere — fetchPartPrice translates both before it reads.
     await db.run(
       "INSERT INTO rb_colors (id,name,bl_color_id) VALUES ($1,'Rot',$1) ON CONFLICT (id) DO UPDATE SET bl_color_id=$1",
       [FARBE],
     );
-    // Der Zustand steht seit Migration 0035 in der Erfassung. Dieser Test
-    // prueft den Marktpreis OHNE Erfassung, also bleibt es beim Vorgabewert
-    // 'N', den conditionFromAcquisitions() ohne Erfassungen liefert.
-    // bl_fig_number ist mit Migration 0037 weg; dieselbe Nummer in beiden …
+    // Since migration 0035 the condition stands in the acquisition. This test
+    // checks the market price WITHOUT an acquisition, so it stays at the default value
+    // 'N' that conditionFromAcquisitions() delivers without acquisitions.
+    // bl_fig_number is gone with migration 0037; the same number in both …
     await holdsMinifig(db, U, FIG, { menge: 1 });
     await holdsPart(db, U, TEIL, { menge: 1, colorId: FARBE });
 
-    // ── 2 zuerst: OHNE Cache-Eintrag ───────────────────────────────────────
-    // Diese Reihenfolge ist Absicht. Stünde sie hinten, könnte ein Fehler in
-    // Zusicherung 1 sie nie erreichen — und gerade sie schützt davor, dass
-    // die Liste bei fehlendem Preis scheitert statt leer zu bleiben.
+    // ── 2 first: WITHOUT a cache entry ───────────────────────────────────────
+    // This order is intended. If it stood at the end, an error in
+    // assertion 1 could never reach it — and precisely it protects against
+    // the list failing instead of staying empty when a price is missing.
     const figsWithout = await MF.readManualMinifigs([U], U);
     const partsWithout = await H.manualPartsList([U], U);
     assert.equal(figsWithout.length, 1, 'die Figur muss auch ohne Preis in der Liste stehen');
@@ -61,7 +61,7 @@ test('manual lists carry the market price from the cache', async t => {
     assert.equal(figsWithout[0].avg_price, null, 'ohne Cache-Eintrag bleibt der Marktpreis leer');
     assert.equal(partsWithout[0].avg_price, null, 'ohne Cache-Eintrag bleibt der Marktpreis leer');
 
-    // ── 1. MIT Cache-Eintrag ───────────────────────────────────────────────
+    // ── 1. WITH a cache entry ───────────────────────────────────────────────
     await db.run(
       `INSERT INTO minifig_price_cache (fig_number,condition,currency_code,avg_price,qty_avg_price,fetched_at)
                   VALUES ($1,'N','EUR',12.5,12,NOW())`,

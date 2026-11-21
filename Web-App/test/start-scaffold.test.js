@@ -1,20 +1,20 @@
 /**
- * Startgerüst: Beim ersten Laden steht sofort ein Gerüst (Kopf, Leiste,
- * Kacheln) statt einer weissen Seite. Seine Regeln stehen inline in
- * index.html und sind über ihren Hash in der CSP freigegeben; die grossen
- * Stylesheets und Skripte folgen erst danach. Sobald Anmeldung oder App
- * dastehen, verschwindet das Gerüst.
+ * Start skeleton: on the first load a skeleton stands immediately (header, bar,
+ * tiles) instead of a white page. Its rules stand inline in
+ * index.html and are released via their hash in the CSP; the big
+ * stylesheets and scripts only follow afterwards. As soon as login or app
+ * stand there, the skeleton disappears.
  *
- * Gegenproben (am 03.11.2026 gemessen):
- *   A  ein Zeichen im <style id="startstil"> geändert, Hash nicht neu
- *      gerechnet (statische Kopie) → rot: „der Hash passt zum ausgelieferten Block“
- *   B  startgeruestWeg() in showApp() entfernt → rot: „angemeldet: Gerüst weg“
- *   C  styles.css wieder im <head> → rot: „vor dem ersten Stylesheet“
- *   D  (08.11.2026) die zwei Regeln für [data-theme=brick] aus dem Startstil
- *      gestrichen → rot: „Stein (Blau): Kopf blau, Grund blaugrau“
- *   E  in startPageHtml() das Setzen von data-abgemeldet gestrichen → rot:
- *      „ohne Sitzung: keine App-Kacheln im Gerüst“; die Regel
- *      [data-abgemeldet] im Startstil gestrichen → ebenso rot
+ * Counter-checks (measured on 03.11.2026):
+ *   A  a character changed in <style id="startstil">, hash not recomputed
+ *      (static copy) → red: “the hash matches the delivered block”
+ *   B  startgeruestWeg() removed in showApp() → red: “logged in: skeleton gone”
+ *   C  styles.css again in the <head> → red: “before the first stylesheet”
+ *   D  (08.11.2026) the two rules for [data-theme=brick] deleted from the start style
+ *      → red: “Stein (blue): header blue, background blue-gray”
+ *   E  the setting of data-abgemeldet deleted in startPageHtml() → red:
+ *      “without a session: no app tiles in the skeleton”; the rule
+ *      [data-abgemeldet] deleted in the start style → likewise red
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,7 +27,7 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { startPageStyleHash, startPageHtml, stripComments } = _req('src/profile/indexHtml.js');
 const { openUi, warte } = require('./helpers/ui');
-// startPageHtml() fragt das Design aus der Datenbank; offen hielte der Pool den Lauf an.
+// startPageHtml() asks the database for the theme; left open, the pool would stall the run.
 test.after(() =>
   testData()
     .pool.end()
@@ -77,7 +77,7 @@ test('Stein (blue): header blue, background blue-gray', () => {
   const html = fs
     .readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8')
     .replace('<html lang="de">', '<html lang="de" data-theme="brick">');
-  // JSDOM führt Skripte standardmässig nicht aus und lädt keine fremden: Das Gerüst steht allein da.
+  // By default JSDOM runs no scripts and loads no foreign ones: the skeleton stands alone.
   const w = new JSDOM(html).window;
   try {
     const kopf = w.getComputedStyle(w.document.querySelector('#startgeruest .sg-kopf'));

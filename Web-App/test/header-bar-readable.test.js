@@ -1,17 +1,17 @@
 /**
- * Was in der Kopfleiste steht, ist auf ihr lesbar: Die echte Kopfleiste aus
- * index.html (Menüklappe offen) in jedem Design, hell und dunkel, in Chrome
- * gemessen — jeder Text gegen den Grund, auf dem er wirklich steht. Weil
- * gerendert wird, fällt auch eine Design-Regel über eine ID auf (die frühere
- * Regel-Ableitung aus Klassen sah sie nicht und brauchte ein eigenes Verbot).
+ * What stands in the header is readable on it: the real header from
+ * index.html (menu flap open) in every design, light and dark, measured
+ * in Chrome — every text against the background it really stands on. Because
+ * it is rendered, a design rule via an ID also shows up (the former
+ * rule derivation from classes did not see it and needed its own ban).
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln) — an themes/brick.css
- * angehängt, jeweils rot mit der Fundstelle:
- *   A  `[data-theme="brick"] header .umenu-abmelden{color:#fff}` (weiss auf der
- *      weissen Klappe — der Fehler, den die Regel einst übersah)
- *   B  `[data-theme="brick"] header .logo .marke span{color:#3d5a80}` (Farbe
- *      der Leiste)
- *   C  `[data-theme="brick"] header #btn-logout{color:#fff}` (über eine ID)
+ * Counter-checks (measured 10.11.2026, each alone) — appended to themes/brick.css,
+ * each red with the location:
+ *   A  `[data-theme="brick"] header .umenu-abmelden{color:#fff}` (white on the
+ *      white flap — the bug the rule once overlooked)
+ *   B  `[data-theme="brick"] header .logo .marke span{color:#3d5a80}` (color
+ *      of the bar)
+ *   C  `[data-theme="brick"] header #btn-logout{color:#fff}` (via an ID)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -35,7 +35,7 @@ const STILE = [
 ];
 const DESIGNS = ['classic', 'brick', 'werkbank', 'farbfaecher', 'noppe', 'hochglanz'];
 
-/** Die Kopfleiste wie im Betrieb: data-stil als Stil (styles.js), Klappe offen, Name gesetzt. */
+/** The header as in production: data-stil as style (styles.js), flap open, name set. */
 function kopfleiste() {
   const html = require('./helpers/sources').withoutHtmlComments(fs.readFileSync(P('public', 'index.html'), 'utf8'));
   const kopf = html
@@ -109,13 +109,13 @@ test('every text in the header bar is readable in every theme', t => {
   const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
   assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
   const werte = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
-  // Je Design: Marke, Name, sieben Sichten und Abmelden — mindestens zehn Texte.
+  // Per design: brand, name, seven views and log out — at least ten texts.
   assert.ok(werte.length >= 11 * 10, `${werte.length} Messungen — greift die Auswahl noch?`);
   assert.ok(
     werte.some(w => /brick hell: Abmelden/.test(w.name)),
     'Abmelden wird nicht gemessen',
   );
-  // 4,5:1 — die WCAG-Schwelle für normalen Text; die Kopfleiste hat nur kleine Schrift.
+  // 4.5:1 — the WCAG threshold for normal text; the header only has small text.
   assert.deepEqual(
     werte.filter(w => w.wert < 4.5).map(w => `${w.name} ${w.wert}:1`),
     [],

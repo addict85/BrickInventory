@@ -1,46 +1,46 @@
 /**
- * Die App am Telefon (390 × 844, mobile) — gemessen in Chrome am echten
- * Server mit den echten Stylesheets.
+ * The app on the phone (390 × 844, mobile) — measured in Chrome on the real
+ * server with the real stylesheets.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  chartWidth() liefert immer 700 → rot: „Diagrammschrift
- *      Finanzen“ (5,6 px) und die Set-Ansicht (6,2 px)
- *   B  (29.10.) Marke in der Kopfleiste wieder <h1> → rot: „Sprunglink und genau eine
- *      h1 je Reiter“ (je Reiter zwei h1)
- *   C  (29.10.) Sprunglink aus index.html entfernt → rot: dieselbe Prüfung (erster
- *      Tab-Halt war .ubadge-knopf)
- *   D  (29.10.) --fs-0 wieder .6875rem → rot: „Tippziele und Schrift je
- *      Reiter“ (span.tab-label 11 px); .delbtn wieder 36 px → rot (36×36)
- *   E  (02.11.) in markGroup die Klasse gruppe-aktiv nicht mehr gesetzt
- *      → rot: „Teile und Minifiguren in der Leiste auffindbar“ (aria-current);
- *      (29.10.) `.ntab.ntab-sammlung{display:none}` aus styles.css entfernt
- *      → rot: am Rechner wieder zwei Navigationen (teile: true)
- *   F  (29.10.; 30.10. mit Farbüberschrift über die volle Breite) .parts-list
- *      ohne display:grid → rot: „Teile: ein Raster, Filter als Blatt“ (breit:
- *      12); Klasse filterleiste an der
- *      Teile-Filterzeile entfernt → rot („Die Auswahlfelder stehen offen da“)
- *   G  (29.10.) .merk-erfassen > .btn{height:38px…} entfernt → rot:
- *      „Merkliste: Erfassen-Zeile bündig“ (Knopf 34 px, CSV 39 px, versetzt)
- *   H  (29.10.) <details class="mehr-menue"> um #btn-md entfernt → rot:
- *      „Set-Ansicht: Diagramm, Löschen, Preisalarm“ („Löschen steht offen im
- *      Fuss“); die drei .alarm-zeile-Regeln aus mobile.css entfernt → rot
- *      (Felder neben der Beschriftung)
- *   J  (08.11.) in mobile.css `.alarm-zeile .alarm-preis` wieder flex 1 1 100% und `.alarm-waehrung`
- *      ohne Regel → rot: „Set-Ansicht: Diagramm, Löschen, Preisalarm“ (currencyBeside: false)
- *   I  (29.10.) in loadPartsData wieder loadDisplay() → rot: „Skelett beim
- *      Laden der Teile“; die prefers-reduced-motion-Regel entfernt → rot:
- *      „weniger Bewegung“ (Dialog 0,2 s); die Animation an .tab.active
- *      entfernt → rot (ohne Einstellung keine Übergänge)
- *   J  (29.10.) die Regel `.ssec:not(.einst-aktiv){display:none…}` entfernt
- *      → rot: „Einstellungen: ein Abschnitt je Unterseite“ (sieben sichtbar);
- *      die Telefonregel der Leiste entfernt → rot (Leiste in mehreren Zeilen)
+ * Counter-checks (measured on 28.10.2026):
+ *   A  chartWidth() always delivers 700 → red: “chart font
+ *      finances” (5.6 px) and the set view (6.2 px)
+ *   B  (29.10.) brand in the header bar again <h1> → red: “skip link and exactly one
+ *      h1 per tab” (two h1 per tab)
+ *   C  (29.10.) skip link removed from index.html → red: the same check (first
+ *      tab stop was .ubadge-knopf)
+ *   D  (29.10.) --fs-0 again .6875rem → red: “tap targets and font per
+ *      tab” (span.tab-label 11 px); .delbtn again 36 px → red (36×36)
+ *   E  (02.11.) the class gruppe-aktiv no longer set in markGroup
+ *      → red: “parts and minifigures findable in the bar” (aria-current);
+ *      (29.10.) `.ntab.ntab-sammlung{display:none}` removed from styles.css
+ *      → red: on the computer two navigations again (teile: true)
+ *   F  (29.10.; 30.10. with color heading across the full width) .parts-list
+ *      without display:grid → red: “parts: one grid, filters as a sheet” (breit:
+ *      12); class filterleiste on the
+ *      parts filter row removed → red („Die Auswahlfelder stehen offen da“)
+ *   G  (29.10.) .merk-erfassen > .btn{height:38px…} removed → red:
+ *      “wishlist: capture row aligned” (button 34 px, CSV 39 px, offset)
+ *   H  (29.10.) <details class="mehr-menue"> around #btn-md removed → red:
+ *      “set view: chart, delete, price alert” („Löschen steht offen im
+ *      Fuss“); the three .alarm-zeile rules removed from mobile.css → red
+ *      (fields next to the label)
+ *   J  (08.11.) in mobile.css `.alarm-zeile .alarm-preis` again flex 1 1 100% and `.alarm-waehrung`
+ *      without a rule → red: “set view: chart, delete, price alert” (currencyBeside: false)
+ *   I  (29.10.) in loadPartsData again loadDisplay() → red: “skeleton while
+ *      loading the parts”; the prefers-reduced-motion rule removed → red:
+ *      „weniger Bewegung“ (dialog 0.2 s); the animation on .tab.active
+ *      removed → red (without the setting no transitions)
+ *   J  (29.10.) the rule `.ssec:not(.einst-aktiv){display:none…}` removed
+ *      → red: “settings: one section per subpage” (seven visible);
+ *      the phone rule of the bar removed → red (bar in several rows)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { startApp, warte } = require('./helpers/app-browser');
 const { holdsSet } = require('./helpers/inventory');
 
-/** Kleinste Schrift in px über alle Beschriftungen der Diagramme unter `wurzel`. */
+/** Smallest font in px across all labels of the charts below `wurzel`. */
 const DIAGRAMMSCHRIFT = wurzel => `(() => {
   const svgs = [...document.querySelectorAll(${JSON.stringify(wurzel)} + ' svg.diagramm')];
   return svgs.map(svg => {
@@ -51,7 +51,7 @@ const DIAGRAMMSCHRIFT = wurzel => `(() => {
   });
 })()`;
 
-/** Sichtbare Bedienelemente unter 44 × 44 px und Text unter 12 px. */
+/** Visible controls below 44 × 44 px and text below 12 px. */
 const SMALL = `(() => {
   const sichtbar = e => { const q = e.getBoundingClientRect(); return q.width > 0 && q.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
   const klein = [...document.querySelectorAll('button, a[href], input:not([type=hidden]), select, [role=button], label.btn')]
@@ -72,8 +72,8 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
   const app = await startApp(t, {
     name: `telefon_${process.pid}`,
     telefon: true,
-    // Zwölf Teile in zwölf Farben — der Fall, der vorher zwölf fast leere Zeilen ergab.
-    // Die Teile kommen 1,5 s später, damit das Skelett davor zu sehen ist.
+    // Twelve parts in twelve colors — the case that used to produce twelve almost empty rows.
+    // The parts come 1.5 s later so that the skeleton is visible before.
     intercept: [
       {
         muster: '*/api/v1/parts?*',
@@ -127,8 +127,8 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
     return;
   }
   const { b, bis, ruhig } = app;
-  // Gemessen wird der Endzustand: Ein Dialog, der gerade aufgeht (etwa die
-  // Einrichtung nach der Anmeldung), steht im ersten Bild auf scale(.985).
+  // What is measured is the final state: a dialog that is just opening (say the
+  // setup after the login) stands at scale(.985) in the first frame.
   const rest = () =>
     b.auswerten(`Promise.all(document.getAnimations()
     .filter(a => a.effect?.getComputedTiming().iterations !== Infinity)
@@ -141,7 +141,7 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
 
   await t.test('skeleton while loading the parts', async () => {
     await b.auswerten(`document.querySelector('.ntab[data-tab="parts"]').click(); true`);
-    // Das Skelett kommt nach Kennzahlen und Filtern; die Teile selbst sind 1,5 s verzögert.
+    // The skeleton comes after metrics and filters; the parts themselves are delayed by 1.5 s.
     await bis(`!!document.querySelector('#parts-main .skelett-raster')`, 'Skelett der Teile', 30);
     const s = await b.auswerten(`(() => { const r = document.querySelector('#parts-main .skelett-raster');
       return r && { kacheln: r.querySelectorAll('.part-card.skelett').length, rolle: r.getAttribute('role'), text: r.textContent.trim() }; })()`);
@@ -158,7 +158,7 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
       schrift = [];
     for (const r of tabList) {
       await reiter(r);
-      // Die Einstellungen zeigen je einen Abschnitt; gemessen werden alle.
+      // The settings show one section at a time; all of them are measured.
       const seiten =
         r === 'settings'
           ? await b.auswerten(`[...document.querySelectorAll('.einst-nav a')].map(a => a.dataset.arg)`)
@@ -191,7 +191,7 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
     }
     assert.deepEqual(falsch, []);
     await reiter('gallery');
-    // Der erste Tab-Halt in Dokumentreihenfolge — so springt Tab nach dem Laden hin.
+    // The first tab stop in document order — that is where Tab jumps after loading.
     const fokus = await b.auswerten(`(() => {
       const e = [...document.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')]
         .find(x => x.tabIndex >= 0 && !x.disabled && x.getClientRects().length > 0);
@@ -237,12 +237,12 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
     const telefon = await b.auswerten(`(() => { const s = document.querySelector('.ntab[data-tab="gallery"]');
       return { text: s.innerText.trim(), aktuell: s.getAttribute('aria-current'),
                partsVisible: document.querySelector('.ntab[data-tab="parts"]').getClientRects().length > 0 }; })()`);
-    // Der Platz heisst immer „Sammlung“; welche Ansicht offen ist, sagt der Umschalter oben.
+    // The place is always called „Sammlung“; which view is open is told by the toggle at the top.
     assert.equal(telefon.text, 'Sammlung', 'Der erste Platz der Leiste wechselt seinen Namen');
     assert.equal(telefon.aktuell, 'page');
     assert.equal(telefon.partsVisible, false, 'Am Telefon passen nur fünf Ziele in die Leiste');
-    // Am Rechner EINE Navigation: „Sammlung“ in der Leiste, Sets/Teile/
-    // Minifiguren nur im Umschalter auf der Seite (vorher beides).
+    // On the computer ONE navigation: „Sammlung“ in the bar, sets/parts/
+    // minifigures only in the toggle on the page (before, both).
     await b.tab('Emulation.setDeviceMetricsOverride', {
       width: 1280,
       height: 900,
@@ -314,7 +314,7 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
       await bis(`innerWidth === ${breite}`, 'Fensterbreite');
       await ruhig();
       const m = await messen();
-      // Am Telefon brechen die Felder um; dort zählt nur die gleiche Höhe.
+      // On the phone the fields wrap; there only the equal height counts.
       const zeile = mobil ? m : m.filter(x => x.oben === m[0].oben);
       assert.equal(zeile.length, m.length, `${breite} px: nicht in einer Zeile ${JSON.stringify(m)}`);
       assert.equal(new Set(m.map(x => x.hoehe)).size, 1, `${breite} px: Höhen ${JSON.stringify(m)}`);
@@ -340,8 +340,8 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
     assert.ok(d.kleinste >= 11, `kleinste Beschriftung ${d.kleinste.toFixed(1)} px`);
     assert.equal(d.rolle, 'img');
     assert.match(d.name, /Preisverlauf, .+ bis .+: Neuware zuletzt/);
-    // Set-Detail: Löschen steht hinter „Weitere Aktionen“, der Preisalarm in
-    // einer eigenen Zeile über die volle Breite.
+    // Set detail: delete stands behind „Weitere Aktionen“, the price alert in
+    // a row of its own across the full width.
     const sichtbar = sel => `!!document.querySelector('${sel}')?.checkVisibility({ contentVisibilityAuto: true })`;
     assert.equal(await b.auswerten(sichtbar('#btn-md')), false, 'Löschen steht offen im Fuss');
     await b.auswerten(`document.querySelector('#set-modal .mehr-menue > summary').click(); true`);
@@ -376,8 +376,8 @@ test('phone', { concurrency: 1, timeout: 240_000 }, async t => {
     await b.auswerten(`document.querySelector('#set-modal [data-click="closeModal"]')?.click(); true`);
   });
   await t.test('reduced motion: dialog and tab without animation', async () => {
-    // Ein Probe-Dialog ohne role="dialog", damit die Fokusführung der echten
-    // Dialoge (js/dialogs.js) nicht anspringt.
+    // A sample dialog without role="dialog", so that the focus handling of the real
+    // dialogs (js/dialogs.js) does not kick in.
     const duration = () =>
       b.auswerten(`(() => { const o = document.createElement('div');
       o.className = 'ovl open'; const m = document.createElement('div'); m.className = 'modal'; o.append(m); document.body.append(o);

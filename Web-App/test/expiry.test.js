@@ -1,12 +1,12 @@
 /**
- * Eine Testdatei, die nach ihren Tests nicht endet, wird rot beendet
- * (test/helpers/expiry.js), statt den Lauf bis zum Abbruch der CI anzuhalten.
+ * A test file that does not end after its tests is terminated red
+ * (test/helpers/expiry.js) instead of holding the run until the CI aborts.
  *
- * Gegenproben (10.11.2026 gemessen, Node 26):
- *   A  expiry.js wirkungslos (Bedingung nie wahr) → rot: „ein offener
- *      Server …“ und „ein hängender t.after …“ (das Kind endet nie, ETIMEDOUT)
- *   B  `.unref()` am Zeitgeber nach dem letzten Test gestrichen → rot:
- *      „eine saubere Datei endet sofort …“ (wartet die volle Frist ab)
+ * Counter-checks (measured 10.11.2026, Node 26):
+ *   A  expiry.js ineffective (condition never true) → red: “an open
+ *      server …” and “a hanging t.after …” (the child never ends, ETIMEDOUT)
+ *   B  `.unref()` on the timer after the last test deleted → red:
+ *      “a clean file ends immediately …” (waits out the full deadline)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,12 +19,12 @@ const EXPIRY = path.join(__dirname, 'helpers', 'expiry.js');
 const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'auslauf-'));
 test.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
 
-/** Eine Testdatei in einem eigenen `node --test` laufen lassen, wie test-run.js es tut.
+/** Run a test file in its own `node --test`, as test-run.js does.
  * @param {string} name @param {string} inhalt @param {Record<string, string>} env */
 function lauf(name, inhalt, env) {
   const datei = path.join(ordner, name);
   fs.writeFileSync(datei, `const test = require('node:test');\n${inhalt}\n`);
-  // Ohne diese Marken hielte sich das innere node --test selbst für ein Kind.
+  // Without these markers the inner node --test would consider itself a child.
   const { NODE_TEST_CONTEXT: _k, TEST_AUSLAUF_AKTIV: _a, TEST_DATEI_FRIST_MS: _f, ...rest } = process.env;
   const start = Date.now();
   const r = spawnSync(process.execPath, ['--require', EXPIRY, '--test', '--test-reporter=tap', datei], {

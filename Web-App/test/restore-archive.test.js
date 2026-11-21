@@ -1,17 +1,17 @@
 /**
- * scripts/restore.sh entpackt ein data-Archiv nur, wenn es aus Dateien und
- * Ordnern unter data/ besteht (scripts/archiv-pruefen.sh). Läuft das echte
- * Skript mit einem gültigen Dump: Ein bösartiges Archiv bricht VOR der
- * Rückfrage ab, ein gutes kommt bis zur Rückfrage (dort mit „nein" beendet,
- * docker wird nie erreicht).
+ * scripts/restore.sh only unpacks a data archive if it consists of files and
+ * folders under data/ (scripts/archiv-pruefen.sh). The real
+ * script runs with a valid dump: a malicious archive aborts BEFORE the
+ * confirmation prompt, a good one gets as far as the prompt (ended there with „nein",
+ * docker is never reached).
  *
- * Gegenproben (01.11.2026 gemessen, je einzeln):
- *   A  Aufruf von archiv-pruefen.sh in restore.sh entfernt → rot bei allen
- *      bösartigen Archiven („erreicht die Rückfrage nicht")
- *   B  Prüfung auf Verknüpfungen entfernt → rot: „Verknüpfung nach aussen"
- *      und „harter Link"
- *   C  Prüfung auf ".." entfernt → rot: „Pfad mit .."
- *   D  Prüfung auf data/ entfernt → rot: „absoluter Pfad", „anderer Ordner"
+ * Counter-checks (measured 01.11.2026, each on its own):
+ *   A  call of archiv-pruefen.sh removed in restore.sh → red for all
+ *      malicious archives („erreicht die Rückfrage nicht")
+ *   B  check for links removed → red: „Verknüpfung nach aussen"
+ *      and „harter Link"
+ *   C  check for ".." removed → red: „Pfad mit .."
+ *   D  check for data/ removed → red: „absoluter Pfad", „anderer Ordner"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -30,7 +30,7 @@ test.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
 const DUMP = path.join(tmp, 'db.sql.gz');
 fs.writeFileSync(DUMP, zlib.gzipSync('SELECT 1;\n--\n-- PostgreSQL database dump complete\n--\n'));
 
-/** Ein Archiv aus einem Arbeitsordner bauen; `bauen(ordner)` legt den Inhalt an. */
+/** Build an archive from a working folder; `bauen(ordner)` creates the content. */
 function archive(name, bauen, tarArgs = ['data']) {
   const ordner = path.join(tmp, `quelle-${name}`);
   fs.mkdirSync(path.join(ordner, 'data'), { recursive: true });
@@ -41,7 +41,7 @@ function archive(name, bauen, tarArgs = ['data']) {
   return ziel;
 }
 
-/** restore.sh im leeren Ordner, Eingabe „nein": Weiter als bis zur Rückfrage kommt es nie. */
+/** restore.sh in the empty folder, input „nein": it never gets further than the prompt. */
 function restore(tar) {
   const lauf = path.join(tmp, `lauf-${path.basename(tar)}`);
   fs.mkdirSync(lauf, { recursive: true });
@@ -78,9 +78,9 @@ const BOESE = {
     ),
 };
 
-// db-rolle vorher (Rollen und Besitz für das Einspielen als Migrationsrolle) und danach.
-// Gegenprobe (02.11.2026 gemessen): einen der beiden Aufrufe von db-rolle
-// entfernt → rot. (11.11.2026) den Lauf von migration entfernt → rot.
+// db-rolle before (roles and ownership for restoring as the migration role) and afterwards.
+// Counter-check (measured 02.11.2026): one of the two calls of db-rolle
+// removed → red. (11.11.2026) the run of migration removed → red.
 test('after restoring db-rolle adjusts the roles, migration runs, then app and jobs start', () => {
   const lauf = path.join(tmp, 'lauf-rolle');
   fs.mkdirSync(path.join(lauf, 'schluessel'), { recursive: true });

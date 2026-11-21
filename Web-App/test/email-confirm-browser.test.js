@@ -1,32 +1,32 @@
 /**
- * Der Link aus der Bestätigungsmail öffnet eine Seite mit Knopf; erst der Knopf
- * bestätigt (POST). Angemeldet geht es danach in die Anwendung, abgemeldet
- * steht die Erfolgsmeldung über der Anmeldung.
+ * The link from the confirmation mail opens a page with a button; only the button
+ * confirms (POST). Logged in it then goes into the application, logged out
+ * the success message stands above the login.
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in der Startprüfung `&& !_verifyToken` gestrichen → rot: „angemeldet …“
- *      (die Anwendung öffnet sich, die Bestätigungsseite nie)
- *   B  im Knopf-Handler die Zeilen zu `verified-msg` gestrichen → rot:
- *      „abgemeldet …“ (Zeitüberschreitung: Erfolgsmeldung)
- *   C  der Knopf schickt `token: null` → rot: beide Teilfälle
- *      („Zeitüberschreitung: Anwendung“ bzw. „Erfolgsmeldung …“)
+ * Counter-checks (measured 04.11.2026, each alone, bundle rebuilt):
+ *   A  in the startup check `&& !_verifyToken` deleted → red: “logged in …”
+ *      (the application opens, the confirmation page never)
+ *   B  in the button handler the lines for `verified-msg` deleted → red:
+ *      “logged out …” (timeout: success message)
+ *   C  the button sends `token: null` → red: both subcases
+ *      (“timeout: application” and “success message …”)
  *
- * Vor dem Knopf nennt die Seite das Konto des Links (Sicherheitsprüfung 14, H1).
- * Gegenproben (04.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   D  showConfirmationTarget() ohne Vorschau (Text wie zuvor aus dem Profil)
- *      → rot: beide Teilfälle („Zeitüberschreitung: eigenes Konto genannt“ bzw.
- *      „… Konto des Links genannt“)
- *   E  der Zweig `verify.fremdes_konto` gestrichen → rot: „ein fremder Link …“
- *   F  die Vorschau-Route löst den Link ein (verifyEmailToken) → rot: „das
- *      Öffnen des Links bestätigt nichts“
+ * Before the button the page names the link's account (security review 14, H1).
+ * Counter-checks (measured 04.11.2026, each alone, bundle rebuilt):
+ *   D  showConfirmationTarget() without preview (text from the profile as before)
+ *      → red: both subcases (“timeout: own account named” and
+ *      “… link's account named”)
+ *   E  the branch `verify.fremdes_konto` deleted → red: “a foreign link …”
+ *   F  the preview route redeems the link (verifyEmailToken) → red: “opening
+ *      the link confirms nothing”
  *
- * Der Token steht im Fragment (#token=), das kein Browser an den Server schickt.
- * Gegenproben (13.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   G  sitzung.js liest den Token wieder nur aus location.search → rot:
- *      „angemeldet …“ (Zeitüberschreitung: Bestätigungsseite)
- *   H  den hashchange-Lauscher in sitzung.js gestrichen → rot: „abgemeldet …“
- *      (Zeitüberschreitung: Fehlertext bei falschem Link; ein zweiter Link im
- *      selben Tab ändert nur das Fragment)
+ * The token stands in the fragment (#token=), which no browser sends to the server.
+ * Counter-checks (measured 13.11.2026, each alone, bundle rebuilt):
+ *   G  sitzung.js reads the token only from location.search again → red:
+ *      “logged in …” (timeout: confirmation page)
+ *   H  the hashchange listener in sitzung.js deleted → red: “logged out …”
+ *      (timeout: error text on a wrong link; a second link in the
+ *      same tab only changes the fragment)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -35,7 +35,7 @@ const { startApp } = require('./helpers/app-browser');
 
 const sichtbar = id => `getComputedStyle(document.getElementById('${id}')).display !== 'none'`;
 const text = id => `(document.getElementById('${id}')?.textContent || '')`;
-/** Der Knopf ist frei, sobald die Seite das Konto des Links nennt. */
+/** The button is enabled as soon as the page names the link's account. */
 const accountNamed =
   name => `!document.getElementById('btn-verify').disabled && ${text('verify-ziel')}.includes('„${name}“')
   && ${text('btn-verify')}.includes('„${name}“')`;

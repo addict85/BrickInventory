@@ -1,35 +1,35 @@
 /**
- * Verschlüsselte Sicherungen: backup.sh mit BACKUP_AGE_EMPFAENGER legt nur
- * *.age-Dateien ab (kein Klartext daneben), restore.sh entschlüsselt sie mit
- * BACKUP_AGE_IDENTITAET und prüft danach wie gewohnt. Echtes `age`, `docker`
- * ist ein Stellvertreter, der einen vollständigen Dump liefert bzw. psql spielt.
+ * Encrypted backups: backup.sh with BACKUP_AGE_EMPFAENGER stores only
+ * *.age files (no plain text next to them), restore.sh decrypts them with
+ * BACKUP_AGE_IDENTITAET and then checks as usual. Real `age`, `docker`
+ * is a stand-in that delivers a complete dump or plays psql.
  *
- * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  in backup.sh `rm -f "$1"` nach dem Verschlüsseln gestrichen → rot:
- *      „kein Klartext neben der verschlüsselten Sicherung" (und Teil 2)
- *   B  in restore.sh das Entschlüsseln übergangen (DUMP bleibt *.age) → rot:
- *      „restore.sh spielt die verschlüsselte Sicherung ein" (Endmarke fehlt)
- *   C  in backup.sh die Prüfung auf age am Anfang gestrichen → rot: „ohne age
- *      kein Klartext"
- *   D  (03.11.2026, Vorgabe verschlüsselt) in backup.sh den Abbruch ohne
- *      Empfänger gestrichen (Zweig `else … exit 1`) → rot: „ohne Empfänger
- *      keine Sicherung"
- *   E  die Vorgabe ./backup-empfaenger.txt gestrichen → rot: „die Empfänger
- *      aus backup-empfaenger.txt gelten ohne weitere Angabe" (Abbruch statt .age)
- *   F  BACKUP_KLARTEXT nicht mehr beachtet (Zweig gestrichen) → rot:
- *      „unverschlüsselt nur mit BACKUP_KLARTEXT=ja"
- * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   G  scripts/backup.sh auf Stand 5c2e641 (gzip/tar schreiben ans Ziel, age
- *      danach) → rot: „am Ziel liegt nie Klartext …“ (db_….sql.gz gesehen)
- *   H  in backup.sh das Entfernen von $TEIL im trap gestrichen → rot: „ein Dump
- *      ohne Endmarke hinterlässt nichts am Ziel“
- *   I  in restore.sh den Vorlauf gegen Backslash-Zeilen gestrichen → rot:
- *      „restore.sh weist psql-Befehle im Dump ab“
- * Gegenproben (Runde 13, H4; 04.11.2026 gemessen, je einzeln):
- *   J  in backup.sh `|| echo $? > "$KLAR/tar"` gestrichen → rot: „ein tar-Fehler
- *      bricht ab …“ (Exit 0, Archiv am Ziel)
- *   K  in backup.sh die Prüfung UNLESBAR gestrichen → rot: „eine unlesbare Datei
- *      unter data/ …“ (tar meldete den Fehler erst nach dem Dump)
+ * Counter-checks (measured 03.11.2026, each alone):
+ *   A  in backup.sh `rm -f "$1"` after encrypting deleted → red:
+ *      “no plain text next to the encrypted backup" (and part 2)
+ *   B  in restore.sh decryption skipped (DUMP stays *.age) → red:
+ *      “restore.sh restores the encrypted backup" (end marker missing)
+ *   C  in backup.sh the check for age at the start deleted → red: “without age
+ *      no plain text"
+ *   D  (03.11.2026, default encrypted) in backup.sh the abort without
+ *      recipient deleted (branch `else … exit 1`) → red: “without recipient
+ *      no backup"
+ *   E  the default ./backup-empfaenger.txt deleted → red: “the recipients
+ *      from backup-empfaenger.txt apply without further input" (abort instead of .age)
+ *   F  BACKUP_KLARTEXT no longer respected (branch deleted) → red:
+ *      “unencrypted only with BACKUP_KLARTEXT=ja"
+ * Counter-checks (measured 04.11.2026, each alone):
+ *   G  scripts/backup.sh at state 5c2e641 (gzip/tar write to the target, age
+ *      afterwards) → red: “there is never plain text at the target …” (db_….sql.gz seen)
+ *   H  in backup.sh the removal of $TEIL in the trap deleted → red: “a dump
+ *      without end marker leaves nothing at the target”
+ *   I  in restore.sh the pre-pass against backslash lines deleted → red:
+ *      “restore.sh rejects psql commands in the dump”
+ * Counter-checks (round 13, H4; measured 04.11.2026, each alone):
+ *   J  in backup.sh `|| echo $? > "$KLAR/tar"` deleted → red: “a tar error
+ *      aborts …” (exit 0, archive at the target)
+ *   K  in backup.sh the check UNLESBAR deleted → red: “an unreadable file
+ *      under data/ …” (tar only reported the error after the dump)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,7 +38,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync, execFileSync } = require('node:child_process');
 
-/** Ein hängendes Skript blockiert sonst die Datei und mit ihr den ganzen Lauf. */
+/** Otherwise a hanging script blocks the file and with it the whole run. */
 const CALL_DEADLINE = 120_000;
 
 const ROOT = path.join(__dirname, '..');
@@ -49,7 +49,7 @@ function setup(t, basis = os.tmpdir()) {
   t.after(() => fs.rmSync(tmp, { recursive: true, force: true }));
   const bin = path.join(tmp, 'bin');
   fs.mkdirSync(bin);
-  // exec (restore: psql liest den Dump) schreibt mit, was ankommt; sonst Dump bzw. Ruhe.
+  // exec (restore: psql reads the dump) records what arrives; otherwise dump or silence.
   fs.writeFileSync(
     path.join(bin, 'docker'),
     `#!/bin/sh
@@ -164,7 +164,7 @@ test('the recipients from backup-empfaenger.txt apply without further informatio
     dateien.map(n => n.replace(/_\d{4}-\d\d-\d\d_\d{4}/, '')),
     ['data.tar.gz.age', 'db.sql.gz.age'],
   );
-  // Rundlauf: restore.sh entschlüsselt mit dem privaten Schlüssel und spielt ein.
+  // Round trip: restore.sh decrypts with the private key and restores.
   const [daten, dump] = dateien.map(n => path.join(a.ziel, n));
   fs.rmSync(path.join(a.work, 'data'), { recursive: true });
   const z = a.lauf('restore.sh', [dump, daten], { BACKUP_AGE_IDENTITAET: a.identity }, 'ja\n');
@@ -198,7 +198,7 @@ test('there is never plaintext at the target, not even during the backup', t => 
   const a = setup(t);
   const bin = path.join(a.tmp, 'bin'),
     probe = path.join(a.tmp, 'probe');
-  // Mitten im Dump und nach tar sehen, was am Ziel liegt.
+  // See what lies at the target in the middle of the dump and after tar.
   fs.writeFileSync(
     path.join(bin, 'docker'),
     `#!/bin/sh
@@ -280,14 +280,14 @@ test('a tar error aborts and leaves no archive', t => {
 });
 
 test('an unreadable file under data/ aborts before the dump', t => {
-  // Als root läuft das Skript unten als „nobody“; dessen Weg muss durch alle Ordner
-  // führen. TMPDIR und Arbeitsbaum können privat sein (0700), /tmp ist es nie.
+  // As root the script below runs as “nobody”; its path must lead through all folders.
+  // TMPDIR and the working tree may be private (0700), /tmp never is.
   const a = setup(t, process.getuid() === 0 ? '/tmp' : os.tmpdir());
   const geheim = path.join(a.work, 'data', 'uploads', 'fremd.pdf');
   fs.writeFileSync(geheim, 'nur für den Dienst', { mode: 0o600 });
   let r;
   if (process.getuid() === 0) {
-    // root liest alles: als „nobody“ ausführen, die Datei bleibt bei root.
+    // root reads everything: run as “nobody”, the file stays with root.
     if (spawnSync('setpriv', ['--version']).status !== 0) {
       t.skip('setpriv is missing');
       return;
@@ -311,7 +311,7 @@ test('an unreadable file under data/ aborts before the dump', t => {
     });
   } else {
     fs.chmodSync(geheim, 0o000);
-    // Der Aufbau räumt seinen Ordner zuerst weg; dann gibt es nichts mehr zurückzustellen.
+    // The setup clears its folder first; then there is nothing left to restore.
     t.after(() => {
       if (fs.existsSync(geheim)) fs.chmodSync(geheim, 0o600);
     });

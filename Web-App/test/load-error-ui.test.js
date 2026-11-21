@@ -1,15 +1,15 @@
 /**
- * Ladefehler und fehlende Verbindung — am echten Bündel in jsdom.
+ * Load errors and missing connection — on the real bundle in jsdom.
  *
- * Gegenproben (am 29.10.2026 gemessen):
- *   A  in loadGallery den Aufruf von listLoadError entfernt → rot:
- *      „Sammlung: Serverfehler beim ersten Laden“ (es stand „Noch keine Sets“)
- *      und „… alte Liste bleibt stehen“ (0 statt 2 Kacheln)
- *   B  in ladeMerkliste wieder `d?.merkposten || []` ohne Prüfung → rot:
- *      „jede Liste zeigt ihren Ladefehler“ (Merkliste)
- *   C  in doAddSet wieder toast(e.message) → rot: „Netzfehler beim Erfassen“
+ * Counter-checks (measured on 29.10.2026):
+ *   A  the call of listLoadError removed in loadGallery → red:
+ *      “collection: a server error on the first load” (it said „Noch keine Sets“)
+ *      and “… the old list stays” (0 instead of 2 tiles)
+ *   B  in ladeMerkliste again `d?.merkposten || []` without a check → red:
+ *      “every list shows its load error” (wishlist)
+ *   C  in doAddSet again toast(e.message) → red: “network error when capturing”
  *      („Failed to fetch“)
- *   D  den offline-Hörer in verbindung.js entfernt → rot: „Band ohne Verbindung“
+ *   D  the offline listener in verbindung.js removed → red: “banner without connection”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -83,7 +83,7 @@ test('every list shows its load error with the same building block', async () =>
       ['parts', '#parts-main'],
       ['minifigs', '#figs-list'],
       ['catalog', '#catalog-grid'],
-      // Seit Runde 24 (M2) oben im Diagrammkasten, solange noch nichts geladen war.
+      // Since round 24 (M2) at the top of the chart box, as long as nothing was loaded yet.
       ['finance', '#portfolio-chart'],
     ]) {
       await reiter(w, tab);

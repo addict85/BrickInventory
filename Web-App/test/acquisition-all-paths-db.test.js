@@ -1,11 +1,11 @@
 /**
- * ALLE Erfassungs-Wege im Haushalt — Sets, Teile, Minifiguren, je Ändern und
- * Löschen.
+ * ALL entry paths in the household — sets, parts, minifigures, each change and
+ * delete.
  *
- * Gegenprobe (durchgeführt): schreibbereich in src/collection/acquisitions.ts durch die eigene ID
- * ersetzt → „Set-Erfassung löschen" endet wieder in 404.
+ * Counter-check (performed): schreibbereich in src/collection/acquisitions.ts replaced by the own ID
+ * → “delete set entry" ends in 404 again.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
+ * Prerequisite: test DB via TEST_DATABASE_URL (migrations for account_links).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -46,13 +46,13 @@ test('acquisitions of the sub-account: change and delete for all three element k
     req.apiUser = { user_id: mainId, is_admin: 0 };
     next();
   });
-  // Die Erfassungs-Routen liegen seit einer früheren Runde nur noch hier — eine
-  // Adresse für Webapp UND App.
+  // Since an earlier round the entry routes only live here — one
+  // address for web app AND app.
   app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   const srv = app.listen(0);
   const base = `http://localhost:${srv.address().port}`;
 
-  // Alles gehört dem UNTERKONTO — wie im gemeldeten Fall.
+  // Everything belongs to the SUB-ACCOUNT — as in the reported case.
   const aufbauen = async () => {
     await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [SN]);
     await db.run(`DELETE FROM sets WHERE set_number=$1`, [SN]);
@@ -60,19 +60,19 @@ test('acquisitions of the sub-account: change and delete for all three element k
     await db.run(`DELETE FROM parts WHERE part_number=$1`, [PN]);
     await db.run(`DELETE FROM minifig_acquisitions WHERE fig_number=$1`, [FN]);
     await db.run(`DELETE FROM minifigs WHERE fig_number=$1`, [FN]);
-    await holdsSet(db, subId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, subId, SN, 0); // Quantity 0: the entry behind it carries it
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                   VALUES ($1,$2,10,'N',1)`,
       [subId, SN],
     );
-    await holdsPart(db, subId, PN, { menge: 0, colorId: 4 }); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsPart(db, subId, PN, { menge: 0, colorId: 4 }); // Quantity 0: the entry behind it carries it
     await db.run(
       `INSERT INTO part_acquisitions (user_id,part_number,color_id,unit_price,condition,quantity)
                   VALUES ($1,$2,4,5,'N',1)`,
       [subId, PN],
     );
-    await holdsMinifig(db, subId, FN, { menge: 0 }); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsMinifig(db, subId, FN, { menge: 0 }); // Quantity 0: the entry behind it carries it
     await db.run(
       `INSERT INTO minifig_acquisitions (user_id,fig_number,unit_price,condition,quantity)
                   VALUES ($1,$2,7,'N',1)`,
@@ -138,9 +138,9 @@ test('acquisitions of the sub-account: change and delete for all three element k
       );
     }
 
-    // Löschen muss WIRKLICH löschen. Zwei der Wege prüften früher gar nicht,
-    // ob eine Zeile getroffen wurde: Das DELETE lief ins Leere, die Antwort
-    // meldete trotzdem Erfolg — der Nutzer sah „gelöscht", die Zeile blieb.
+    // Deleting must REALLY delete. Two of the paths used not to check at all
+    // whether a row was hit: the DELETE ran into nothing, the response
+    // still reported success — the user saw “deleted", the row stayed.
     await aufbauen();
     const figId = await acqId('minifig_acquisitions', 'fig_number', FN);
     await fetch(`${base}/api/v1/minifigs/${FN}/acquisitions/${figId}`, { method: 'DELETE' });

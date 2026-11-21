@@ -1,20 +1,20 @@
 'use strict';
 /**
- * Vor `require('node:test')` geladen: Was der Test selbst aufruft (Testdaten über
- * Dienste, Dienste ohne Konto), läuft im Systemrahmen, also
- * über die Systemrolle am Zeilenschutz vorbei. HTTP-Anfragen verlassen ihn
- * (asRequest) und laufen wie im Betrieb. Die Zahl dieser Dateien darf nur sinken
- * (test/roles-separation-db.test.js); eine umgestellte Datei setzt das Konto selbst (asRequest).
+ * Loaded before `require('node:test')`: what the test itself calls (test data via
+ * services, services without an account) runs in the system context, i.e.
+ * via the system role past row security. HTTP requests leave it
+ * (asRequest) and run as in production. The number of these files may only sink
+ * (test/roles-separation-db.test.js); a converted file sets the account itself (asRequest).
  */
 const Module = /** @type {any} */ (require('node:module'));
 const path = require('node:path');
 
 const echt = require('node:test');
-// Erst beim Aufruf: Zum Ladezeitpunkt ist dist/ womöglich noch nicht gebaut.
+// Only on call: at load time dist/ may not be built yet.
 const inSystemContext = (grund, f) =>
   require(path.join(__dirname, '..', '..', 'dist', 'src', 'infra', 'accountContext.js')).inSystemContext(grund, f);
 
-// Die Stelligkeit bleibt: An ihr erkennt node:test einen Test mit done-Rückruf.
+// The arity stays: by it node:test recognizes a test with a done callback.
 const inFrame = f =>
   typeof f === 'function'
     ? Object.defineProperty(
@@ -40,7 +40,7 @@ for (const k of Object.keys(echt))
   else if (k === 'test') test.test = test;
   else if (!(k in test)) Object.defineProperty(test, k, { get: () => echt[k], enumerable: true });
 
-// TEST_OHNE_SYSTEMRAHMEN=1 zeigt, welche Dateien schon ohne den Rahmen grün sind.
+// TEST_OHNE_SYSTEMRAHMEN=1 shows which files are already green without the context.
 const laden = Module._load;
 if (process.env.TEST_OHNE_SYSTEMRAHMEN !== '1')
   Module._load = function (anfrage, ...rest) {

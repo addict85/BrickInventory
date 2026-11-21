@@ -1,17 +1,17 @@
 /**
- * Die Drossel je Adresse (ipThrottle) hält auch gleichzeitigen Anfragen stand.
+ * The per-address throttle (ipThrottle) also withstands concurrent requests.
  *
- * Vorher las sie den Zähler und zählte erst danach hoch: 25 parallele
- * /register kamen alle durch, erlaubt sind 5 je Stunde.
+ * Previously it read the counter and only incremented afterwards: 25 parallel
+ * /register all got through, 5 per hour are allowed.
  *
- * ── Gegenprobe (durchgeführt, Befund GEMESSEN) ──────────────────────────────
+ * ── Counter-check (performed, finding MEASURED) ─────────────────────────────
  *
- *   ipThrottle wieder mit _read + _bump (alte Fassung), viermal laufen lassen
- *   → 1 jedes Mal rot (6 bis 9 von 25 durchgelassen, in Runde 1 oder 2);
- *     2 viermal rot (6 bis 10 Antworten mit 200). Ein einzelner Schub traf
- *     das Rennen nicht immer, deshalb fährt Fall 1 fünf Runden.
+ *   ipThrottle again with _read + _bump (old version), run four times
+ *   → 1 red every time (6 to 9 of 25 let through, in round 1 or 2);
+ *     2 red four times (6 to 10 responses with 200). A single burst did not
+ *     always hit the race, hence case 1 runs five rounds.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
  * REQUIRE_DB=1.
  */
 const test = require('node:test');
@@ -19,7 +19,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-// Links in Mails gibt es nur mit fester Adresse (routes/auth.ts, getBaseUrl).
+// Links in mails only exist with a fixed address (routes/auth.ts, getBaseUrl).
 process.env.APP_BASE_URL = 'http://localhost';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
 
@@ -61,7 +61,7 @@ const parallel = (n, f) => Promise.all(Array.from({ length: n }, f));
 
 test('1. 25 concurrent requests: exactly 5 get through, in every round', async t => {
   if (!(await dbDa(t))) return;
-  // Mehrere Runden: Das Rennen der alten Fassung trat nicht in jedem Schub auf.
+  // Several rounds: the old version's race did not occur in every burst.
   for (let runde = 1; runde <= 5; runde++) {
     await db.run(`DELETE FROM rate_limit_attempts WHERE key LIKE 'parallel-probe|%'`);
     let durch = 0;

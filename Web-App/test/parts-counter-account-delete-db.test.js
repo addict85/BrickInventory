@@ -1,16 +1,16 @@
 /**
- * Auf einer bestehenden Datenbank lässt sich ein Konto mit Teilen löschen.
+ * On an existing database an account with parts can be deleted.
  *
- * Die Zähler-Trigger legt nur der Erststart an; Migration 0050 bringt die
- * Fassung mit Benutzerfilter auf bestehende Datenbanken. Der Test setzt die
- * alte Fassung ein, lässt 0050 erneut laufen und löscht dann ein Konto.
+ * Only the first start creates the counter triggers; migration 0050 brings the
+ * version with a user filter to existing databases. The test inserts the
+ * old version, runs 0050 again and then deletes an account.
  *
- * Gegenprobe (am 28.10.2026 gemessen): den Inhalt von
- * 0050-teilezaehler-nur-bestehende-konten.sql durch `SELECT 1;` ersetzt →
- * rot: „das Löschen eines Kontos mit Teilen gelingt" (23503 auf
+ * Counter-check (measured on 28.10.2026): the content of
+ * 0050-teilezaehler-nur-bestehende-konten.sql replaced by `SELECT 1;` →
+ * red: “deleting an account with parts succeeds” (23503 on
  * parts_version_user_user_id_fkey).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -44,7 +44,7 @@ test('parts counter and account deletion', { concurrency: 1 }, async t => {
   };
   await migriere();
 
-  // Der Stand einer Datenbank vor diesem Update.
+  // The state of a database before this update.
   await db.run(ALT('bump_parts_version_ins', 'neu'));
   await db.run(ALT('bump_parts_version_del', 'alt'));
   await db.run(`DELETE FROM schema_migrations WHERE name = '0050-teilezaehler-nur-bestehende-konten.sql'`);

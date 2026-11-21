@@ -1,14 +1,14 @@
 /**
- * Bei langsamem Netz zeigt die Oberfläche sofort, dass etwas kommt: Das
- * Set-Detail öffnet gleich mit Platzhalter, die Merkliste zeigt
- * Platzhalterzeilen – vorher blieb beides bis zur Antwort leer bzw. zu.
+ * On a slow network the UI shows immediately that something is coming: the
+ * set detail opens right away with a placeholder, the wishlist shows
+ * placeholder rows – before, both stayed empty or closed until the response.
  *
- * Gegenproben (02.11.2026 gemessen, je einzeln):
- *   A  in openModal() das sofortige Öffnen entfernt → rot: „Set-Detail …“
- *      (Dialog vor der Antwort zu)
- *   B  in ladeMerkliste() die Platzhalterzeilen entfernt → rot: „Merkliste …“
- *   C  Lauf-Prüfung in openModal() entfernt → rot: „Set-Detail: geschlossen
- *      bleibt geschlossen“ (Dialog ging nach der Antwort wieder auf)
+ * Counter-checks (measured 02.11.2026, each on its own):
+ *   A  the immediate opening removed in openModal() → red: “set detail …”
+ *      (dialog closed before the response)
+ *   B  the placeholder rows removed in ladeMerkliste() → red: “wishlist …”
+ *   C  run check removed in openModal() → red: “set detail: closed
+ *      stays closed” (dialog opened again after the response)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

@@ -1,30 +1,30 @@
 /**
- * UI-Prüfung 17 im echten Chrome: was die Ansichtsprüfung (oberflaeche-*)
- * nicht misst, weil es Tastenwege oder ein zweites Fenster braucht.
- *   - PDF-Betrachter (Barrierefreiheit H1): Die Seiten nehmen den Fokus,
- *     PageDown rollt, jede Seite heisst „Seite n von m“.
- *   - CSV-Fortschritt (H3): Nach der Dateiwahl liegt der Fokus im Overlay,
- *     zehnmal Tab verlässt es nicht, der Fortschritt steht in role=status.
- *   - Protokollfenster (M4): axe ohne Fund, Stufenknöpfe mit aria-pressed
- *     passend zu .active.
- *   - Fokusring (H4): In Kopf- und Reiterleiste hebt sich der Ring jedes
- *     Bedienelements in allen elf Designzuständen ≥ 3:1 vom Grund ab.
- *   - Abläufe M19, M20, N23: Set-Nummern der Listenansicht einzeilig bei
- *     1440 px; bei 720 × 450 (200 % Zoom) steht der Wert im Set-Detail ohne
- *     Rollen im Bild; bei 360 px ist der schwebende Knopf nach dem Rollen
- *     höchstens 56 px breit.
+ * UI review 17 in real Chrome: what the view check (oberflaeche-*)
+ * does not measure because it needs key paths or a second window.
+ *   - PDF viewer (accessibility H1): the pages take the focus,
+ *     PageDown scrolls, every page is called “page n of m”.
+ *   - CSV progress (H3): after choosing the file the focus lies in the overlay,
+ *     ten times Tab does not leave it, the progress stands in role=status.
+ *   - Log window (M4): axe without finding, level buttons with aria-pressed
+ *     matching .active.
+ *   - Focus ring (H4): in header and tab bar the ring of every
+ *     control stands out ≥ 3:1 from the background in all eleven design states.
+ *   - Flows M19, M20, N23: set numbers of the list view single-line at
+ *     1440 px; at 720 × 450 (200 % zoom) the value in the set detail is in view
+ *     without scrolling; at 360 px the floating button is at most 56 px wide
+ *     after scrolling.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  #pdf-viewer-pages ohne tabindex → rot: „PDF-Betrachter“ (Fokus nicht
- *      in den Seiten, scrollTop 0)
- *   B  in noppe.css --fokus-kopf entfernt → rot: „Fokusring“ (noppe hell,
- *      Kopf 1,0:1)
- *   C  im Protokollfenster aria-pressed am Info-Knopf entfernt → rot:
- *      „Protokollfenster“
- *   D  in mobile.css die Regel `.kopf-weg .knopf-schwebend` entfernt → rot:
- *      „Masse“ (Knopf breiter als 56 px)
- *   E  (06.11.2026) in logviewer.js ein <img> ohne alt angehängt → rot:
- *      „Protokollfenster“ (axe im Rahmen); C am 06.11. im Rahmen wiederholt.
+ * Counter-checks (measured 05.11.2026, each alone, bundle rebuilt):
+ *   A  #pdf-viewer-pages without tabindex → red: “PDF viewer” (focus not
+ *      in the pages, scrollTop 0)
+ *   B  in noppe.css --fokus-kopf removed → red: “focus ring” (noppe light,
+ *      header 1.0:1)
+ *   C  in the log window aria-pressed removed from the info button → red:
+ *      “log window”
+ *   D  in mobile.css the rule `.kopf-weg .knopf-schwebend` removed → red:
+ *      “dimensions” (button wider than 56 px)
+ *   E  (06.11.2026) in logviewer.js an <img> without alt appended → red:
+ *      “log window” (axe in the frame); C repeated on 06.11. in the frame.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -66,7 +66,7 @@ async function pdfViewer(_t, a) {
   assert.deepEqual(namen, ['Seite 1 von 2', 'Seite 2 von 2']);
   assert.ok(await b.auswerten(`document.activeElement?.id === 'pdf-viewer-pages'`), 'Fokus nicht in den Seiten');
   await taste(b, { key: 'PageDown', code: 'PageDown', windowsVirtualKeyCode: 34 });
-  // Unter Last kommt der Bildlauf später an; gewartet wird bis 3 s.
+  // Under load the scrolling arrives later; the wait is up to 3 s.
   await bis(`document.getElementById('pdf-viewer-pages').scrollTop > 0`, 'Bildlauf', 30).catch(() => {});
   assert.ok(
     await b.auswerten(`document.getElementById('pdf-viewer-pages').scrollTop > 0`),
@@ -82,7 +82,7 @@ async function csvProgress(_t, a) {
   const { b, bis } = a;
   await b.auswerten(`document.querySelector('.ntab[data-tab="gallery"]').click(); true`);
   await b.auswerten(datei('#csv-file', 'sets.csv', 'text/csv', 'set_number,quantity\n75192-1,1\n99999-1,abc\n'));
-  // Steht ein Set schon im Bestand, fragt die Oberfläche erst nach.
+  // If a set is already in the stock, the UI asks first.
   await b.auswerten(`new Promise(r => { const t0 = Date.now(); (function w() { const c = document.getElementById('confirm-modal');
       if (c && c.style.display === 'flex') { document.getElementById('cd-confirm').click(); r(true); }
       else if (document.getElementById('progress-overlay').classList.contains('open') || Date.now() - t0 > 5000) r(true); else setTimeout(w, 100); })(); })`);
@@ -112,8 +112,8 @@ async function logWindow(_t, a) {
   const { b, bis } = a;
   await b.auswerten(`document.querySelector('.ntab[data-tab="monitor"]').click(); true`);
   await bis(`!!document.querySelector('[data-click="openLogViewer"]')`, 'Hintergrundarbeiten');
-  // Ein eigenes Fenster wie window.open(), aber im Rahmen derselben Seite: mit eigenen
-  // Trusted-Types-Richtlinien (logviewer.js legt „app“ selbst an) und für axe erreichbar.
+  // A separate window like window.open(), but in the frame of the same page: with its own
+  // Trusted Types policies (logviewer.js creates “app” itself) and reachable for axe.
   await b.auswerten(`window.open = () => { const f = document.createElement('iframe'); f.id = 'lv-rahmen';
     f.title = 'Protokoll'; f.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;border:0;z-index:2147483647';
     document.body.append(f); return f.contentWindow; };
@@ -121,9 +121,9 @@ async function logWindow(_t, a) {
   const im = (/** @type {string} */ ausdruck) =>
     `(() => { const document = window.document.getElementById('lv-rahmen')?.contentDocument; return !!document && (${ausdruck}); })()`;
   await bis(im(`!!document.getElementById('log-wrap') && !!document.getElementById('btn-info')`), 'Protokollfenster');
-  // logviewer.js lädt nach; erst seine erste Liste zeigt, dass die Knöpfe verdrahtet sind.
+  // logviewer.js loads afterwards; only its first list shows that the buttons are wired.
   await bis(im(`/^\\d+ \\/ \\d+/.test(document.getElementById('status')?.textContent || '')`), 'Protokoll geladen');
-  // axe in einer eigenen Welt des Rahmens: Dort gilt die CSP des Rahmens nicht für eval.
+  // axe in its own world of the frame: there the frame's CSP does not apply to eval.
   const { frameTree } = await b.tab('Page.getFrameTree');
   const rahmen = (frameTree.childFrames || []).at(-1)?.frame;
   assert.ok(rahmen, 'kein Rahmen für das Protokollfenster');
@@ -221,7 +221,7 @@ const RING = `(() => {
 
 async function fokusring(_t, a) {
   const { b } = a;
-  // Eine echte Taste zuerst: Danach zeigt Chrome den Ring auch für focus() (:focus-visible).
+  // A real key first: afterwards Chrome shows the ring for focus() too (:focus-visible).
   await taste(b, { key: 'Shift', code: 'ShiftLeft', windowsVirtualKeyCode: 16 });
   const funde = [];
   for (const design of ['classic', 'brick', 'noppe', 'werkbank', 'farbfaecher', 'hochglanz'])
@@ -242,7 +242,7 @@ test('focus, PDF viewer, log window', { concurrency: 1, timeout: 300_000 }, asyn
     t.skip(a.grund);
     return;
   }
-  // Der PDF-Betrachter lädt eine Anleitung hoch; sie bliebe sonst für das nächste Konto mit derselben Nummer liegen.
+  // The PDF viewer uploads an instruction; otherwise it would stay for the next account with the same number.
   t.after(() =>
     require('node:fs').rmSync(require('node:path').join(__dirname, '..', 'data', 'uploads', String(a.uid)), {
       recursive: true,
@@ -253,7 +253,7 @@ test('focus, PDF viewer, log window', { concurrency: 1, timeout: 300_000 }, asyn
   await a.b.auswerten(
     `document.querySelector('#einrichtung-modal.open [data-click="einrichtungSpaeter"]')?.click(); true`,
   );
-  // Das Protokollfenster ersetzt die Seite; es kommt darum zuletzt.
+  // The log window replaces the page; that is why it comes last.
   /** @type {[string, (t: import('node:test').TestContext, a: object) => Promise<void>][]} */
   const pruefungen = [
     ['Fokusring', fokusring],

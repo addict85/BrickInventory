@@ -1,22 +1,22 @@
 /**
- * Gesundheitsprüfung am echten Server: anonym geht nur der Status hinaus,
- * `live` antwortet ohne Datenbank, `ready` fragt sie und meldet 503, wenn sie
- * fehlt. Der Startzustand geht anonym nur mit seinen bekannten Feldern hinaus.
+ * Health check on the real server: anonymously only the status goes out,
+ * `live` answers without a database, `ready` asks it and reports 503 when it is
+ * missing. The startup state goes out anonymously only with its known fields.
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  in /api/v1/health `startup` wieder für alle → rot: „anonym nur der Status"
- *   B  /api/v1/health/ready ohne databaseResponds() (immer 200) → rot: „ohne Datenbank
- *      meldet ready 503"
- *   C  startup-status ohne publicStartState() → rot: „der
- *      Startzustand nennt nur seine Felder" (pfad und fehler gingen hinaus)
- *   D  progress im Vertrag wieder z.number().int() → rot: dieselbe Prüfung
- *      (vertrag_verletzt; der Server meldet Schritte mit Anteil, z. B. 2.37)
- *   E  (03.11.2026) startup-status wieder mit Schritt für alle (angemeldet
- *      immer true) → rot: „anonym nur der Fortschritt"
+ * Counter-checks (measured 01.11.2026):
+ *   A  in /api/v1/health `startup` again for everyone → red: “anonymously only the status"
+ *   B  /api/v1/health/ready without databaseResponds() (always 200) → red: “without a database
+ *      ready reports 503"
+ *   C  startup-status without publicStartState() → red: “the
+ *      startup state only names its fields" (pfad and fehler went out)
+ *   D  progress in the contract back to z.number().int() → red: the same check
+ *      (vertrag_verletzt; the server reports steps with a fraction, e.g. 2.37)
+ *   E  (03.11.2026) startup-status again with step for everyone (logged in
+ *      always true) → red: “anonymously only the progress"
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL, deren Benutzer Eigentümer ist.
+ * Prerequisite: test DB via TEST_DATABASE_URL whose user is the owner.
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

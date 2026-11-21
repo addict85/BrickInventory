@@ -1,18 +1,18 @@
 /**
- * Das Benutzermenü verhält sich wie ein Menü nach dem APG-Muster „Menu
- * Button“: Enter und Pfeil öffnen es mit Fokus auf einem Eintrag, Pfeile,
- * Pos1 und Ende wandern, Escape schliesst und gibt den Fokus an den Knopf
- * zurück, eine Wahl setzt ihn auf die Überschrift der neuen Seite. Echte
- * Tastendrücke über das DevTools-Protokoll in Chrome.
+ * The user menu behaves like a menu following the APG pattern „Menu
+ * Button“: Enter and arrow open it with focus on an entry, arrows,
+ * Home and End move, Escape closes and returns the focus to the button,
+ * a choice puts it on the heading of the new page. Real
+ * key presses via the DevTools protocol in Chrome.
  *
- * Gegenproben (02.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  openMenu() ohne Fokus auf den Eintrag → rot: „Enter öffnet und
- *      fokussiert den ersten Eintrag“
- *   B  Pfeil-Behandlung im keydown-Hörer entfernt → rot: „Pfeil ab wandert“
- *   C  closeMenu(true) bei Escape wieder ohne Argument → rot: „Escape
- *      schliesst, Fokus zurück auf den Knopf“
- *   D  focusOnTitle() in oeffneSicht entfernt → rot: „Wahl fokussiert die
- *      Überschrift der Sicht“
+ * Counter-checks (measured 02.11.2026, each on its own, bundle rebuilt):
+ *   A  openMenu() without focus on the entry → red: “Enter opens and
+ *      focuses the first entry”
+ *   B  arrow handling removed in the keydown listener → red: “arrow down moves”
+ *   C  closeMenu(true) on Escape again without an argument → red: “Escape
+ *      closes, focus back on the button”
+ *   D  focusOnTitle() removed in oeffneSicht → red: “choosing focuses the
+ *      heading of the view”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -28,9 +28,9 @@ test('user menu: keyboard following the menu pattern', { timeout: 120_000 }, asy
     return;
   }
   const { b, ruhig } = app;
-  // Der Start lädt Einstellungen und Preise nach; erst danach ist der Zustand fest.
+  // The startup loads settings and prices afterwards; only then is the state fixed.
   await ruhig();
-  // Der Einrichtungsassistent ist ein Dialog und finge Escape ab.
+  // The setup wizard is a dialog and would catch Escape.
   const taste = async key => {
     const k = { key, code: key, windowsVirtualKeyCode: KEYS[key] };
     await b.tab('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...k });
@@ -77,7 +77,7 @@ test('user menu: keyboard following the menu pattern', { timeout: 120_000 }, asy
   });
   await t.test('choosing focuses the heading of the view', async () => {
     await taste('Enter');
-    await taste('ArrowDown'); // der zweite Eintrag, eine Sicht ohne Reiter
+    await taste('ArrowDown'); // the second entry, a view without a tab
     await taste('Enter');
     await ruhig();
     assert.equal(await offen(), false);

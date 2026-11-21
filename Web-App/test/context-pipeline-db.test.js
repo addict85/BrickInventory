@@ -1,17 +1,17 @@
 /**
- * Eine Abfrage mit Konto ausserhalb einer Transaktion (db/database.ts abfrage()):
- * BEGIN mit Kontext, Abfrage und COMMIT gehen in der Pipeline zugleich hinaus. Ein
- * Roundtrip, und der Kontext endet mit der Transaktion, auch wenn die Abfrage scheitert.
- * Geprüft als Laufzeitrolle mit einer einzigen Verbindung, damit jede Anfrage die
- * Verbindung der vorigen erbt.
+ * A query with an account outside a transaction (db/database.ts abfrage()):
+ * BEGIN with context, query and COMMIT go out in the pipeline at once. One
+ * round trip, and the context ends with the transaction, even if the query fails.
+ * Checked as runtime role with a single connection so that every request
+ * inherits the connection of the previous one.
  *
- * Gegenproben (am 13.11.2026 gemessen, je einzeln):
- *   A  contextSql(): set_config(…, false) statt true → rot: „nach einer Anfrage mit
- *      Konto …“, „nach einer gescheiterten …“, „abwechselnd …“
- *   B  abfrage() wieder nacheinander (await je Teil) → rot: „ein Roundtrip …“ (3)
- *   C  in abfrage() ohne 'COMMIT' und ohne die Leerlaufprüfung → rot: „nach einer
- *      Anfrage mit Konto …“, „nach einer gescheiterten …“, „abwechselnd …“; ohne
- *      'COMMIT' allein grün: Die Prüfung verwirft die Verbindung.
+ * Counter-checks (measured on 13.11.2026, each alone):
+ *   A  contextSql(): set_config(…, false) instead of true → red: “after a request with
+ *      an account …”, “after a failed …”, “alternating …”
+ *   B  abfrage() sequential again (await per part) → red: “one round trip …” (3)
+ *   C  in abfrage() without 'COMMIT' and without the idle check → red: “after a
+ *      request with an account …”, “after a failed …”, “alternating …”; without
+ *      'COMMIT' alone green: the check discards the connection.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -29,7 +29,7 @@ const { asRequest } = _req('src/infra/accountContext.js');
 const als = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
 const ids = zeilen => [...new Set(zeilen.map(z => Number(z.user_id)))].sort((x, y) => x - y);
 
-/** Zählt Richtungswechsel: Schickt der Client nach einer Antwort wieder, beginnt ein neuer Roundtrip. */
+/** Counts direction changes: if the client sends again after a response, a new round trip begins. */
 function countingBroker(ziel) {
   const stand = { roundtrips: 0, responseKam: true };
   const srv = net.createServer(a => {
@@ -61,7 +61,7 @@ test('context per query in the pipeline', { concurrency: 1 }, async t => {
   if (!process.env.TEST_DB_EIGEN_URL || (await zugang.asSuperuserConnected()))
     return missingPrecondition(t, 'die App läuft als Superuser (nur npm test trennt Rollen)');
   const k = dbKonfigFromEnvironment();
-  // Testdaten schreibt die Eigentümerin, am Zeilenschutz vorbei.
+  // The owner writes the test data, bypassing row security.
   const eigen = createDb({ ...k, verbindung: { connectionString: process.env.TEST_DB_EIGEN_URL }, system: null });
   const app = createDb({ ...k, pool: { ...k.pool, max: 1 } });
   t.after(async () => {

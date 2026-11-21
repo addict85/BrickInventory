@@ -1,67 +1,67 @@
 /**
- * Zeilenschutz (Migrationen 0111, 0112): Ohne Filter auf user_id sieht und
- * ändert eine Anfrage nur Zeilen ihres Kontos und seiner direkten Unterkonten,
- * ohne Konto keine. Den Systemrahmen trägt eine Rolle mit BYPASSRLS, keine
- * Einstellung der Sitzung. Geprüft mit zwei Rollen ohne Eigentum über
- * createDb(), wie im Betrieb (der Testbenutzer ist Superuser).
+ * Row security (migrations 0111, 0112): without a filter on user_id a query sees and
+ * changes only rows of its account and of its direct sub-accounts,
+ * without an account none. The system context is carried by a role with BYPASSRLS, not by a
+ * setting of the session. Checked with two roles without ownership via
+ * createDb(), as in production (the test user is a superuser).
  *
- * Gegenproben Systemrolle (am 13.11.2026 gemessen, je einzeln):
- *   K  Policy wieder mit `current_setting('app.system') = 'an' OR …` (0112
- *      geändert, Datenbank neu) → rot: „kein Schalter der Sitzung …“
- *   L  in createDb() den Systempool weggelassen (immer pool) → rot: „kein
- *      Schalter …“, „im Systemrahmen …“, „ein Auftrag …“,
- *      „wer einem Haushalt …“, „ein Währungswechsel …“, „Aufträge und …“,
- *      „die Anmeldung …“
- *   M  jobs aus der Liste in 0112 gestrichen → rot: „Aufträge und
- *      Zugangsdaten …“
- *   N  in createAccount() zugaenge wieder mit bindeZugang → rot: „die Anmeldung
- *      findet den Token …“ (Token ungültig, Widerruf löscht nichts)
- *   O  in txStand() die Prüfung des Pools gestrichen → rot: „inSystemContext
- *      mitten in der Transaktion …“ (lief in ihr, ohne Fehler)
- *   P  der Worker wie vorher (ganzer Lauf in imAuftragsrahmen(), inNamesOfJob()
- *      mit imNamenVon) → rot: „ein Auftrag läuft im Systemrahmen nur, wenn …“
- *      (ohne Marke [A,B,C], Konto [A,B,C])
- *   Q  nur inNamesOfJob() mit imNamenVon statt asRequest → rot: dasselbe
- *      (Konto [A,B,C]: der Systemrahmen des Aufrufers bleibt)
+ * Counter-checks system role (measured on 13.11.2026, each on its own):
+ *   K  policy again with `current_setting('app.system') = 'an' OR …` (0112
+ *      changed, database rebuilt) → red: “no session switch …”
+ *   L  the system pool left out in createDb() (always pool) → red: “no
+ *      … switch …”, “in the system context …”, “a job …”,
+ *      “whoever joins a household …”, “a currency change …”, “jobs and …”,
+ *      “login …”
+ *   M  jobs deleted from the list in 0112 → red: “jobs and
+ *      credentials …”
+ *   N  in createAccount() zugaenge again with bindeZugang → red: “login
+ *      finds the token …” (token invalid, revocation deletes nothing)
+ *   O  the check of the pool deleted in txStand() → red: „inSystemContext
+ *      mitten in der Transaktion …“ (ran inside it, without an error)
+ *   P  the worker as before (whole run in imAuftragsrahmen(), inNamesOfJob()
+ *      with imNamenVon) → red: “a job runs in the system context only if …”
+ *      (without marker [A,B,C], account [A,B,C])
+ *   Q  only inNamesOfJob() with imNamenVon instead of asRequest → red: the same
+ *      (account [A,B,C]: the caller's system context stays)
  *
- * Gegenproben Systemrahmen je Funktion (14.11.2026 gemessen, je einzeln):
- *   R  in src/account/context.ts passkeys.desKontos und konten.accessesOfAccount wieder
- *      in die Liste des Systemrahmens → rot: „ein Konto liest seine Passkeys und
- *      Tokens …“ (Konto A sah den Passkey und den Token von C)
- *   S  pdfAuftraege wieder ganz mit bindeImSystemrahmen und ohne `AND user_id = $2`
- *      in pdfAuftragZeile → rot: „ein PDF-Auftrag eines fremden Kontos …“
+ * Counter-checks system context per function (measured 14.11.2026, each on its own):
+ *   R  in src/account/context.ts passkeys.desKontos and konten.accessesOfAccount again
+ *      in the list of the system context → red: “an account reads its passkeys and
+ *      tokens …” (account A saw the passkey and the token of C)
+ *   S  pdfAuftraege again entirely with bindeImSystemrahmen and without `AND user_id = $2`
+ *      in pdfAuftragZeile → red: “a PDF job of a foreign account …”
  *
- * Gegenprobe Zugangsdaten nur des eigenen Kontos (Migration 0114, 14.11.2026 gemessen):
- *   T  in 0114 wieder `user_id = ANY (zeilenschutz_konten())` statt `= zeilenschutz_konto()`
- *      → rot: „Zugangsdaten des Unterkontos bleiben …“ (A sah den Passkey von B)
- *   U  (Migration 0118) in 0118 `vouchers` aus der Liste gestrichen → rot: „Gutscheine und
- *      Idempotenzeinträge des Unterkontos …“ (A sah den Gutschein von B); ebenso mit `idempotency`
+ * Counter-check credentials only of the own account (migration 0114, measured 14.11.2026):
+ *   T  in 0114 again `user_id = ANY (zeilenschutz_konten())` instead of `= zeilenschutz_konto()`
+ *      → red: “credentials of the sub-account stay …” (A saw the passkey of B)
+ *   U  (migration 0118) `vouchers` deleted from the list in 0118 → red: “… vouchers and
+ *      idempotency entries of the sub-account” (A saw the voucher of B); likewise with `idempotency`
  *
- * Gegenproben Zeilenschutz (13.11.2026, vor der Systemrolle):
- * Gegenproben (am 13.11.2026 gemessen, je einzeln):
- *   A  vor den Tests `ALTER TABLE sets DISABLE ROW LEVEL SECURITY` → rot:
- *      „mit Konto A …“, „ein Unterkonto …“, „ohne Konto …“, „fremde user_id …“,
- *      „inSystemContext mitten …“, „ein Signal-Handler …“, „eine Anfrage erbt …“;
- *      nur die Policy entfernt (RLS an) → dieselben und „ein Auftrag …“ (0 Zeilen)
- *   B  in contextSql() (db/database.ts) immer '' → rot: alle Teiltests
- *   C  set_config(…, false) statt true für app.konto → rot: „ohne Konto …“ (die
- *      Verbindung trägt Konto A weiter) und „im Systemrahmen …“
- *   D  zeilenschutz_konten() ohne die Unterkonten → rot: „mit Konto A …“,
- *      „ohne Konto …“, „fremde user_id …“, „ein Signal-Handler …“
- *   E  in imAuftragsrahmen() die Marke KONTOUEBERGREIFEND nicht beachtet → rot: „ein Auftrag …“
- *   F  nach ROLLBACK TO SAVEPOINT stand.kontext nicht zurückgesetzt → rot:
- *      „inSystemContext mitten … Sicherungspunkt“ (Konto A sah nur B)
- *   G  in Benachrichtigung.listen() AsyncResource.bind weggelassen → rot: „ein
- *      Signal-Handler …“ (er fragt im Rahmen von C)
- *   H  asRequest() ohne Leeren des Systemrahmens → rot: „eine Anfrage erbt …“
- *   I  in redeemInvitation() die Währungen ohne inSystemContext() gelesen →
- *      rot: „wer einem Haushalt beitritt …“ (das Hauptkonto liest sich als EUR)
- *   J  in setzeHaushaltswaehrung() ohne inSystemContext() → rot: „ein
- *      Währungswechsel erreicht …“ (row-level security beim Enkelkonto)
+ * Counter-checks row security (13.11.2026, before the system role):
+ * Counter-checks (measured on 13.11.2026, each on its own):
+ *   A  before the tests `ALTER TABLE sets DISABLE ROW LEVEL SECURITY` → red:
+ *      “with account A …”, “a sub-account …”, „ohne Konto …“, “foreign user_id …”,
+ *      „inSystemContext mitten …“, “a signal handler …”, “a request inherits …”;
+ *      only the policy removed (RLS on) → the same and “a job …” (0 rows)
+ *   B  in contextSql() (db/database.ts) always '' → red: all subtests
+ *   C  set_config(…, false) instead of true for app.konto → red: „ohne Konto …“ (the
+ *      connection carries account A on) and “in the system context …”
+ *   D  zeilenschutz_konten() without the sub-accounts → red: “with account A …”,
+ *      „ohne Konto …“, “foreign user_id …”, “a signal handler …”
+ *   E  in imAuftragsrahmen() the marker KONTOUEBERGREIFEND not respected → red: “a job …”
+ *   F  after ROLLBACK TO SAVEPOINT stand.kontext not reset → red:
+ *      „inSystemContext mitten … Sicherungspunkt“ (account A saw only B)
+ *   G  AsyncResource.bind left out in Benachrichtigung.listen() → red: “a
+ *      signal handler …” (it queries in the context of C)
+ *   H  asRequest() without clearing the system context → red: “a request inherits …”
+ *   I  in redeemInvitation() the currencies read without inSystemContext() →
+ *      red: “whoever joins a household …” (the main account reads itself as EUR)
+ *   J  in setzeHaushaltswaehrung() without inSystemContext() → red: “a
+ *      currency change also reaches …” (row-level security at the grandchild account)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL mit Superuser (legt eine Rolle an).
+ * Prerequisite: test DB via TEST_DATABASE_URL with superuser (creates a role).
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -81,7 +81,7 @@ const SYSTEM = testName('zeilsys');
 const als = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
 const ids = rows => [...new Set(rows.map(z => Number(z.user_id)))].sort((x, y) => x - y);
 
-/** Alle Bereiche über einen Zugang, wie startup/wiring.ts sie baut, samt ihren Kontexten. */
+/** All areas via one access, as startup/wiring.ts builds them, including their contexts. */
 const buildWith = z => {
   const contexts = {};
   const d = _req('startup/wiring.js').buildServices(z, {
@@ -96,7 +96,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
   if (!su) return;
   if (!(await su.asSuperuserConnected())) return missingPrecondition(t, 'kein Superuser');
   await cleanRemainder(su.pool, 'rows');
-  // Konten eines abgebrochenen Laufs (zs_…) sähe der Systemrahmen sonst mit.
+  // Otherwise the system context would also see accounts of an aborted run (zs_…).
   await su.run("DELETE FROM users WHERE username LIKE 'zs\\_%'");
   for (const [r, rls] of [
     [ROLLE, 'NOBYPASSRLS'],
@@ -109,7 +109,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
       GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO ${id(r)};
       GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO ${id(r)}`);
   }
-  // Eine Verbindung: So zeigt sich, ob ein Konto an ihr hängen bleibt.
+  // One connection: this way it shows whether an account sticks to it.
   const k = dbKonfigFromEnvironment();
   const app = createDb({
     verbindung: k.verbindung,
@@ -174,7 +174,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
       ),
       /row-level security/,
     );
-    // row_security = off macht aus dem stillen Filter einen Fehler, nicht einen Freibrief.
+    // row_security = off turns the silent filter into an error, not a blank check.
     await assert.rejects(afterToggle('SET LOCAL row_security = off', 'SELECT user_id FROM sets'), /row-level security/);
     assert.deepEqual(ids(await inSystemContext('test', allSets)), [A, B, C]);
   });
@@ -204,7 +204,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
       als(A, () => app.run('UPDATE sets SET user_id = $1 WHERE user_id = $2', [C, A])),
       rls,
     );
-    // Für das Unterkonto darf das Hauptkonto schreiben; ein UPDATE ohne Filter trifft nur den Haushalt.
+    // The main account may write for the sub-account; an UPDATE without a filter only hits the household.
     await als(A, () => app.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10002-1')`, [B]));
     assert.equal((await als(A, () => app.run('UPDATE sets SET updated_at = NOW()'))).changes, 3);
     assert.equal((await als(C, () => app.run('DELETE FROM sets'))).changes, 1);
@@ -243,12 +243,12 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
     });
     await A_.placeJobOne('wechselkurse', {}, { schluessel: `rows-${process.pid}` });
     assert.equal(await w.processOne(), true);
-    // Auch aus einem Systemrahmen heraus (server.ts startet die Jobs in einem).
+    // Also from within a system context (server.ts starts the jobs in one).
     await A_.placeJobOne('nacharbeit', { set_number: '10001-1', user_id: A }, { userId: A, maxAttempts: 1 });
     assert.equal(await inSystemContext('test', () => w.processOne()), true);
     await A_.placeJobOne('preise', {}, { schluessel: `rows-${process.pid}` });
     assert.equal(await w.processOne(), true);
-    // Mit Konto zählt das Konto, auch bei einer markierten Art.
+    // With an account the account counts, even for a marked kind.
     await A_.placeJobOne('preise', {}, { userId: A, schluessel: `rows-a-${process.pid}` });
     assert.equal(await w.processOne(), true);
     assert.deepEqual(gesehen, {
@@ -260,7 +260,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
     });
   });
 
-  // Mitten in einer Konto-Transaktion fragte der Systemrahmen über die Systemrolle neben ihr: abgewiesen.
+  // In the middle of an account transaction the system context asked via the system role next to it: rejected.
   await t.test(
     'inSystemContext in the middle of the transaction is rejected; an account switch follows even after a savepoint',
     async () => {
@@ -272,7 +272,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
             () => 'lief neben der Transaktion',
             e => e.constructor.name,
           );
-          // Über den Zugang der Transaktion (tx.db), sonst UnboundQuery.
+          // Via the access of the transaction (tx.db), otherwise UnboundQuery.
           await als(A, () =>
             tx.db.transaction(async inner => {
               await n(inner);
@@ -288,7 +288,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
 
   await t.test('a signal handler queries in the context in which it registered', async () => {
     const kanal = `zeilen_${process.pid}`;
-    // Die Horch-Verbindung entsteht im Rahmen von C; der Handler von A darf ihn nicht erben.
+    // The listening connection arises in the context of C; the handler of A must not inherit it.
     await new Promise(fertig => als(C, () => app.notification.listen(kanal, () => fertig(null))));
     const gesehen = new Promise(fertig =>
       als(A, () =>
@@ -302,7 +302,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
   });
 
   await t.test("whoever joins a household compares with the main account's currency", async () => {
-    // Die Dienste über den Zugang mit Zeilenschutz, wie im Betrieb.
+    // The services via the access with row security, as in production.
     const haushalt = serviceWith(app).household;
     const D = await konto('neu');
     await su.run(`INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'EUR')`, [D]);
@@ -386,7 +386,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
     st.after(() => su.run('DELETE FROM passkeys WHERE user_id = ANY($1)', [[A, C]]));
     st.after(() => su.run('DELETE FROM api_tokens WHERE user_id = ANY($1)', [[A, C]]));
     const request = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
-    // Das eigene Konto: sichtbar, ohne Systemrahmen.
+    // The own account: visible, without system context.
     assert.deepEqual(
       (await request(A, () => d.factors.accountPasskeys(A))).map(p => p.name),
       ['eigen'],
@@ -395,7 +395,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
       (await request(A, () => d.account.sitzungen.accessesList(A))).map(z => z.label),
       ['eigen'],
     );
-    // Ein fremdes Konto, auch mit dessen ID gefragt: nichts, und nichts zu löschen.
+    // A foreign account, even asked with its ID: nothing, and nothing to delete.
     assert.deepEqual(await request(A, () => d.factors.accountPasskeys(C)), []);
     assert.deepEqual(await request(A, () => d.account.sitzungen.accessesList(C)), []);
     const pkC = await su.get('SELECT id FROM passkeys WHERE user_id = $1', [C]);
@@ -419,7 +419,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
       for (const tab of ['passkeys', 'second_factor', 'api_tokens'])
         await su.run(`DELETE FROM ${tab} WHERE user_id = ANY($1)`, [[A, B]]);
     });
-    // Ohne Filter und mit der ID des Unterkontos: nichts. Der Bestand des Unterkontos bleibt sichtbar.
+    // Without a filter and with the ID of the sub-account: nothing. The inventory of the sub-account stays visible.
     for (const sql of [
       'SELECT user_id FROM passkeys',
       'SELECT user_id FROM second_factor',
@@ -430,7 +430,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
     const request = f => asRequest({ apiUser: { user_id: A } }, f);
     assert.deepEqual(await request(() => d.factors.accountPasskeys(B)), []);
     assert.deepEqual(await request(() => d.account.sitzungen.accessesList(B)), []);
-    // Anlegen für das Unterkonto: abgewiesen, auch wo der Zeilenschutz der Bestände es erlaubt.
+    // Creating for the sub-account: rejected, even where the row security of the inventories allows it.
     const rls = /row-level security/;
     for (const sql of [
       `INSERT INTO passkeys (user_id, credential_id, public_key) VALUES ($1, 'pk-fremd-${pid}', '\\x00')`,
@@ -444,7 +444,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
         sql,
       );
     assert.equal((await als(A, () => app.run('DELETE FROM api_tokens WHERE user_id = $1', [B]))).changes, 0);
-    // Das Unterkonto selbst sieht und ändert seine Zugangsdaten weiter.
+    // The sub-account itself still sees and changes its credentials.
     assert.deepEqual(ids(await als(B, () => app.all('SELECT user_id FROM passkeys'))), [B]);
     await als(B, () => app.run(`INSERT INTO api_tokens (token, user_id) VALUES ($1, $2)`, [`zt-b2-${pid}`, B]));
   });
@@ -481,7 +481,7 @@ test('row security of the account tables', { concurrency: 1 }, async t => {
     st.after(() => su.run('DELETE FROM jobs WHERE dedupe_key = $1', [`pdf:${kennung}`]));
     const request = (uid, f) => asRequest({ apiUser: { user_id: uid } }, f);
     assert.equal((await request(C, () => d.catalog.pdf.lies(kennung, C)))?.user_id, C);
-    // Mit der eigenen ID gefragt (wie die Route): keiner; mit der fremden: der Zeilenschutz verbirgt ihn.
+    // Asked with the own ID (like the route): none; with the foreign one: the row security hides it.
     assert.equal(await request(A, () => d.catalog.pdf.lies(kennung, A)), null);
     assert.equal(await request(A, () => d.catalog.pdf.lies(kennung, C)), null);
     await request(A, () => d.catalog.pdf.loesche(kennung, C));

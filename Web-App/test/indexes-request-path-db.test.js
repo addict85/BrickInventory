@@ -1,5 +1,5 @@
 /**
- * Drei Indizes für Abfragen, die im Anfragepfad ohne sie die ganze Tabelle lesen.
+ * Three indexes for queries that would read the whole table in the request path without them.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -10,18 +10,18 @@ const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const db = testData();
 
-// idx_parts_blnum stand hier und ist weg: Er war ein Teilindex auf
-// parts.bl_part_number, und Migration 0037 hat die Spalte geloescht (die
-// BrickLink-Nummer steht jetzt in bl_mapping). Postgres entfernt
-// abhaengige Indizes beim DROP COLUMN selbst.
+// idx_parts_blnum stood here and is gone: it was a partial index on
+// parts.bl_part_number, and migration 0037 deleted the column (the
+// BrickLink number now stands in bl_mapping). Postgres removes
+// dependent indexes itself on DROP COLUMN.
 const EXPECTED = ['idx_set_figuren_fig', 'idx_sets_setnum'];
 
 /**
- * Den Plan einer Abfrage holen — ohne Tabellenscan-Ausweg.
+ * Fetch the plan of a query — without the table scan escape.
  *
- * Eine EIGENE Verbindung, weil `SET enable_seqscan` an der Sitzung hängt: Über
- * den Pool kann die nächste Abfrage auf einer anderen Verbindung landen, und
- * die Einstellung wäre dort nie gesetzt.
+ * Its OWN connection because `SET enable_seqscan` depends on the session: via
+ * the pool the next query may land on another connection, and
+ * the setting would never be set there.
  */
 async function plan(sql) {
   const c = await db.ownConnection();
@@ -42,13 +42,13 @@ test('request path: the three indexes exist and the planner can take them', asyn
   }
 
   try {
-    // initSchema() direkt, nicht initSchemaOnce(): Letzteres überspringt die
-    // Arbeit, wenn in schema_meta schon die Fassung dieses Deployments steht
-    // (siehe db/database.ts). Für den Test ist genau das falsch — er will
-    // wissen, was der Schema-Aufbau ANLEGT, nicht was er sich sparen darf.
+    // initSchema() directly, not initSchemaOnce(): the latter skips the
+    // work if schema_meta already holds this deployment's version
+    // (see db/database.ts). For the test exactly that is wrong — it wants
+    // to know what the schema setup CREATES, not what it may save itself.
     await db.initSchema();
 
-    // ── 1. Angelegt ────────────────────────────────────────────────────────
+    // ── 1. Created ─────────────────────────────────────────────────────────
     const da = (
       await db.all('SELECT indexname FROM pg_indexes WHERE schemaname = $1 AND indexname = ANY($2)', [
         'public',
@@ -63,19 +63,19 @@ test('request path: the three indexes exist and the planner can take them', asyn
       `db/database.ts legt nicht alle erwarteten Indizes an — gefunden: ${da.join(', ') || '(keine)'}`,
     );
 
-    // GEGENPROBE: Die Abfrage darf nicht einfach alles bestätigen.
+    // COUNTER-CHECK: the query must not simply confirm everything.
     const invented = await db.all('SELECT indexname FROM pg_indexes WHERE schemaname = $1 AND indexname = ANY($2)', [
       'public',
       ['idx_gibt_es_nicht'],
     ]);
     assert.equal(invented.length, 0, 'Gegenprobe: die Index-Abfrage meldet auch erfundene Namen als vorhanden');
 
-    // ── 2. Der Planer kann sie nehmen ──────────────────────────────────────
+    // ── 2. The planner can take them ───────────────────────────────────────
     //
-    // Die BrickLink-Nachschlage zuerst, und dafuer braucht es die
-    // MIGRATIONEN: bl_mapping wird in 0037 angelegt, nicht in
-    // db/basis.sql (eine Tabelle gehoert an genau eine Stelle,
-    // scripts/check-schema-am-start.js prueft das).
+    // The BrickLink lookup first, and for that the
+    // MIGRATIONS are needed: bl_mapping is created in 0037, not in
+    // db/basis.sql (a table belongs in exactly one place,
+    // scripts/check-schema-am-start.js checks that).
     const c0 = await db.pool.connect();
     try {
       await _req('db/migrate.js').runMigrations(c0);
@@ -83,7 +83,7 @@ test('request path: the three indexes exist and the planner can take them', asyn
       c0.release();
     }
 
-    // Zeichengleich die Abfrage aus src/catalog/blMapping.ts (blFetchNumber).
+    // Character for character the query from src/catalog/blMapping.ts (blFetchNumber).
     const blPlan = await plan(
       `SELECT COALESCE(bl_id, rb_id) AS nr FROM bl_mapping
         WHERE type = 'part' AND rb_id = 'x'`,
@@ -100,10 +100,10 @@ test('request path: the three indexes exist and the planner can take them', asyn
     const setPlan = await plan(`SELECT user_id FROM sets WHERE set_number = 'x' ORDER BY user_id`);
     assert.match(setPlan, /idx_sets_setnum/, `Plan:\n${setPlan}`);
 
-    // GEGENPROBE zur BrickLink-Nachschlage: Eine Spalte, auf der KEIN Index
-    // sitzt, muss zu einem Tabellenscan fuehren. Sonst waere die
-    // Zusicherung oben blind dafuer, ob der Planer ueberhaupt zwischen
-    // beidem unterscheidet.
+    // COUNTER-CHECK for the BrickLink lookup: a column with NO index on it
+    // must lead to a table scan. Otherwise the
+    // assertion above would be blind to whether the planner distinguishes
+    // between the two at all.
     const withoutIndex = await plan(`SELECT rb_id FROM bl_mapping WHERE fetched_at < NOW()`);
     assert.match(
       withoutIndex,

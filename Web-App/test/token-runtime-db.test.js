@@ -1,11 +1,11 @@
 /**
- * Die waehlbare Laufzeit eines QR-Zugangs — und wer sie waehlen darf.
+ * The selectable lifetime of a QR access — and who may select it.
  *
- * Gegenprobe (am 28.10. gemessen): in /qr-token die Prüfung von Sitzung und
- * Passwort entfernt → rot im Schritt „0. Ein Code nur mit Sitzung UND
+ * Counter-check (measured on 28.10.): the check of session and
+ * password removed in /qr-token → red in the step „0. Ein Code nur mit Sitzung UND
  * Passwort"
- * Gegenprobe (am 03.11. gemessen): in /qr-token `?? APP_MAX_DURATION_DAYS`
- * entfernt → rot „Ohne Wahl gilt die Höchstdauer von 180 Tagen"
+ * Counter-check (measured on 03.11.): in /qr-token `?? APP_MAX_DURATION_DAYS`
+ * removed → red „Ohne Wahl gilt die Höchstdauer von 180 Tagen"
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -15,10 +15,10 @@ const fs = require('node:fs');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.SESSION_SECRET = 'test-secret-lang-genug-fuer-die-pruefung';
-// Seit der QR-Code die Adresse des Servers traegt (src/infra/basisUrl.ts), ist
-// APP_BASE_URL eine VORBEDINGUNG der Route: Ohne sie sagt sie mit 503 ab,
-// damit kein Code mit der Browseradresse hinausgeht. Diese Datei prueft etwas
-// anderes — hier wird die Vorbedingung nur erfuellt, nicht geprueft. Das tut
+// Since the QR code carries the address of the server (src/infra/basisUrl.ts),
+// APP_BASE_URL is a PRECONDITION of the route: without it it refuses with 503,
+// so that no code goes out with the browser address. This file checks something
+// else — here the precondition is only fulfilled, not checked. That is done by
 // test/qr-address.test.js.
 process.env.APP_BASE_URL = 'https://lego.example.org';
 
@@ -38,7 +38,7 @@ const bcrypt = require(path.join(ROOT, 'node_modules', 'bcryptjs'));
 const NAME = `qr_laufzeit_${process.pid}`,
   PASS = 'richtigesPasswort1';
 
-/** Wie viele Tage liegt dieser Zeitpunkt in der Zukunft? */
+/** How many days in the future does this point in time lie? */
 const daysAhead = wert => (new Date(wert).getTime() - Date.now()) / 86400_000;
 
 test('QR access: the lifetime is chosen by the creator, not by the redeemer', { concurrency: 1 }, async t => {
@@ -75,7 +75,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
   };
   const koppeln = (qr, keks) =>
     pairQr((p, body, kopf) => ruf(p, { method: 'POST', headers: kopf, body }), qr, { cookie: keks });
-  /** Die api_tokens-Zeile zu einem ausgegebenen Klartext-Token. */
+  /** The api_tokens row for an issued plaintext token. */
   const zeile = token =>
     db.get('SELECT expires_at, hard_expires_at, sliding FROM api_tokens WHERE token = $1', [auth.tokenDigest(token)]);
 
@@ -84,10 +84,10 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     assert.equal(an.status, 200, `Anmeldung scheiterte: ${JSON.stringify(an.body)}`);
     const keks = an.cookie.split(';')[0];
 
-    // ── 0. Ein Code nur mit Sitzung UND Passwort ──────────────────────────
-    // Sonst machte ein erbeuteter Token (oder eine offene Sitzung) über den
-    // QR-Weg einen neuen Dauerzugang — ohne das Passwort, das /token-create
-    // für genau denselben Zweck verlangt.
+    // ── 0. A code only with session AND password ──────────────────────────
+    // Otherwise a captured token (or an open session) would create a new permanent access via the
+    // QR path — without the password that /token-create
+    // demands for exactly the same purpose.
     const withoutPw = await ruf('/qr-token', {
       method: 'POST',
       headers: { cookie: keks },
@@ -108,7 +108,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     });
     assert.equal(perToken.status, 403, 'Mit einem Token allein darf kein neuer Zugang entstehen');
 
-    // ── 1. Die Wahl landet bei der Nonce ───────────────────────────────────
+    // ── 1. The choice lands at the nonce ───────────────────────────────────
     const sechs = await ruf('/qr-token', {
       method: 'POST',
       headers: { cookie: keks },
@@ -117,7 +117,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     assert.equal(sechs.status, 200, JSON.stringify(sechs.body));
     assert.equal(sechs.body.token_days, 180, 'Sechs Monate sind 180 Tage');
 
-    // ── 2. Beim Einloesen entstehen BEIDE Fristen ──────────────────────────
+    // ── 2. Redeeming creates BOTH periods ──────────────────────────
     const ein = await koppeln(sechs.body, keks);
     assert.equal(ein.status, 200, JSON.stringify(ein.body));
     const z = await zeile(ein.body.token);
@@ -132,18 +132,18 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
       'Die gleitende Frist (90 Tage) liegt frueher — sie greift zuerst, genau wie zugesagt',
     );
 
-    // ── 3. Der Einloeser kann sich NICHTS aussuchen ────────────────────────
+    // ── 3. The redeemer can choose NOTHING ────────────────────────
     //
-    // Dieselbe Anfrage wie oben, nur ohne Wahl beim Erzeugen und mit einem
-    // Wunsch im Rumpf der EINLOESUNG. Faellt diese Zusicherung, ist die
-    // ganze Neuerung eine Schwachstelle statt einer Haertung.
+    // The same request as above, only without a choice when creating and with a
+    // wish in the body of the REDEMPTION. If this assertion falls, the
+    // whole innovation is a vulnerability instead of a hardening.
     const ohne = await ruf('/qr-token', { method: 'POST', headers: { cookie: keks }, body: { password: PASS } });
     assert.equal(ohne.body.token_days, 180, 'Ohne Wahl gilt die Höchstdauer von 180 Tagen');
     const versuch = await ruf('/qr-login', {
       method: 'POST',
       body: { token: ohne.body.token, gueltigkeit: 'unbegrenzt', token_days: 3650 },
     });
-    // Der Vertrag kennt beim Einlösen keinen Wunsch: 400, und der Code bleibt unverbraucht.
+    // The contract knows no wish when redeeming: 400, and the code stays unused.
     assert.deepEqual([versuch.status, versuch.body.code], [400, 'feld_unbekannt'], JSON.stringify(versuch.body));
     const eingeloest = await koppeln(ohne.body, keks);
     assert.equal(eingeloest.status, 200, JSON.stringify(eingeloest.body));
@@ -154,7 +154,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     );
     assert.ok(zv.expires_at, 'Und erst recht keine unbegrenzte: Der Zugang muss die gewoehnliche Gleitfrist tragen');
 
-    // 3b. „Unbegrenzt" heisst wirklich unbegrenzt
+    // 3b. „Unlimited" really means unlimited
     const ewig = await ruf('/qr-token', {
       method: 'POST',
       headers: { cookie: keks },
@@ -185,11 +185,11 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     tokenCache.tokenForgotten(rawForever);
     assert.ok(await auth.nutzerZumToken(rawForever), 'Und er muss nach dem Aufraeumen noch gelten');
 
-    // ── 4. Ein Wert ausserhalb der Liste weist nicht ab, er waehlt nichts ──
+    // ── 4. A value outside the list does not reject, it chooses nothing ──
     //
-    // Auch `constructor`: Ein direkter Zugriff auf die Tabelle lieferte dafuer
-    // die geerbte Object-Funktion — wahrheitswertig, und damit waere sie als
-    // Tageszahl an die Datenbank gegangen (fromTable, src/infra/validate).
+    // Also `constructor`: a direct access to the table delivered for it
+    // the inherited Object function — truthy, and thus it would have gone
+    // to the database as a number of days (fromTable, src/infra/validate).
     for (const nonsense of ['99m', 'constructor', '__proto__', 999999]) {
       const r = await ruf('/qr-token', {
         method: 'POST',
@@ -200,10 +200,10 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
       assert.equal(r.body.token_days, 180, `„${nonsense}" darf nur die Vorgabe von 180 Tagen ergeben`);
     }
 
-    // ── 5. Die feste Frist sperrt auch dann aus, wenn die gleitende offen ist ──
+    // ── 5. The fixed period locks out even when the sliding one is open ──
     //
-    // Der eigentliche Zweck der zweiten Spalte. Ohne die Bedingung in
-    // nutzerZumToken() waere sie nur Zierde.
+    // The actual purpose of the second column. Without the condition in
+    // nutzerZumToken() it would only be decoration.
     const abgelaufen = await ruf('/qr-token', {
       method: 'POST',
       headers: { cookie: keks },
@@ -215,7 +215,7 @@ test('QR access: the lifetime is chosen by the creator, not by the redeemer', { 
     await db.run(`UPDATE api_tokens SET hard_expires_at = NOW() - INTERVAL '1 day' WHERE token = $1`, [
       auth.tokenDigest(roh),
     ]);
-    tokenCache.tokenForgotten(roh); // sonst antwortet bis zu eine Minute der Cache
+    tokenCache.tokenForgotten(roh); // otherwise the cache answers for up to a minute
     assert.equal(
       await auth.nutzerZumToken(roh),
       null,
@@ -241,12 +241,12 @@ test('QR access: the UI chooses when CREATING, not when redeeming', () => {
       'an der eine Laufzeit gewaehlt werden koennte',
   );
 
-  // Und die Auswahl muss es im Markup ueberhaupt geben — ein Feld, das
-  // einstellungen.js liest, aber niemand fuellt, waere still wirkungslos.
+  // And the selection must exist in the markup at all — a field that
+  // einstellungen.js reads but nobody fills would be silently ineffective.
   const html = fs.readFileSync(path.join(ROOT, 'public/index.html'), 'utf8');
   assert.ok(/id="qr-validity"/.test(html), 'Das Auswahlfeld fehlt in der Oberflaeche');
 
-  // Und die Auswahl deckt sich mit der Liste des Servers
+  // And the selection matches the list of the server
   const serverList = [...auth.RUNTIME_CHOICES];
   for (const w of serverList) assert.notEqual(auth.runtimeDays(w), null, `${w} kennt der Server nicht`);
   const markupList = [...html.matchAll(/<option value="(\w+)" data-i18n="qr\.validity_/g)].map(m => m[1]);

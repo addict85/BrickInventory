@@ -1,30 +1,30 @@
 /**
- * Eine zu grosse Datei bekommt 413, ein falscher Dateityp 415 — jeweils mit
- * Code, damit Web und App „zu gross“ statt „Interner Serverfehler“ sagen.
- * Gemessen am echten Server, weil die Abbildung im globalen Fehlerweg von
- * server.ts greift: multer meldet seine Grenzen ohne Status.
+ * A file that is too large gets 413, a wrong file type 415 — each with a
+ * code, so that web and app say „zu gross“ instead of „Interner Serverfehler“.
+ * Measured on the real server, because the mapping applies in the global error path of
+ * server.ts: multer reports its limits without a status.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in handleRouteError() asUploadError() nicht aufgerufen → rot:
- *      „zu gross: 413 mit Code“ (500 statt 413, Gutschein und Wanted-Liste)
- *   B  im fileFilter der Gutscheine wieder `new Error('nur_pdf')` → rot:
- *      „falscher Typ: 415 mit Code“ (500 statt 415)
- *   C  im fileFilter der Anleitungen wieder `new Error('Nur PDF, JPG oder
- *      PNG')` → rot: „falscher Typ: 415 mit Code“ (500 statt 415)
- * Gegenproben (01.11.2026 gemessen):
- *   D  der pfadgenaue Parser in server.ts entfernt (Stand vorher: Limit nur im
- *      PDF-Router, hinter dem allgemeinen) → rot: „die Teileliste des
- *      PDF-Auftrags darf grösser sein“ (413 statt 200)
- *   E  sein Limit auf alle Pfade (app.use statt app.post auf den Pfad) → rot:
- *      „… andere Routen nicht“ (200 statt 413)
- * Gegenproben (04.11.2026 gemessen):
- *   F  readBody wieder vor Sitzung und Eingang (server.ts) → rot: „ohne
- *      Anmeldung wird kein Rumpf gelesen“ und „die Teileliste …“ (vor der
- *      Sitzung gilt jede Anfrage als unangemeldet)
- *   G  in readBody die 16-KB-Grenze für Unangemeldete gestrichen → rot:
- *      „… und auf den Anmelderouten höchstens 16 KB“ (401 statt 413)
+ * Counter-checks (measured on 30.10.2026):
+ *   A  asUploadError() not called in handleRouteError() → red:
+ *      “too large: 413 with code” (500 instead of 413, voucher and wanted list)
+ *   B  in the fileFilter of the vouchers again `new Error('nur_pdf')` → red:
+ *      “wrong type: 415 with code” (500 instead of 415)
+ *   C  in the fileFilter of the instructions again `new Error('Nur PDF, JPG oder
+ *      PNG')` → red: “wrong type: 415 with code” (500 instead of 415)
+ * Counter-checks (measured 01.11.2026):
+ *   D  the path-specific parser removed in server.ts (state before: limit only in the
+ *      PDF router, behind the general one) → red: “the parts list of the
+ *      PDF job may be larger” (413 instead of 200)
+ *   E  its limit on all paths (app.use instead of app.post on the path) → red:
+ *      “… other routes not” (200 instead of 413)
+ * Counter-checks (measured 04.11.2026):
+ *   F  readBody again before session and entrance (server.ts) → red: “without
+ *      login no body is read” and “the parts list …” (before the
+ *      session every request counts as not logged in)
+ *   G  the 16 KB limit for those not logged in deleted in readBody → red:
+ *      “… and on the login routes at most 16 KB” (401 instead of 413)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -142,7 +142,7 @@ test('upload limits', { concurrency: 1, timeout: 180_000 }, async t => {
     const j = await r.json().catch(() => null);
     return { status: r.status, code: j?.code ?? null };
   };
-  // Etwa 1 MB: 3000 Posten in der Form, die Web und App schicken.
+  // About 1 MB: 3000 items in the form that web and app send.
   const teile = Array.from({ length: 3000 }, (_, i) => ({
     part_number: `3001-${i}`,
     bl_part_number: `3001-${i}`,
@@ -188,12 +188,12 @@ test('upload limits', { concurrency: 1, timeout: 180_000 }, async t => {
   };
 
   await t.test('without login no body is read', async () => {
-    // Kaputtes JSON: Gelesen gäbe es 400, ungelesen bleibt es bei der 401 des Eingangs.
+    // Broken JSON: read, it would give 400; unread it stays at the entrance's 401.
     assert.equal((await anonym('/sets/partslist-pdf', '{' + ' '.repeat(1024 * 1024))).status, 401);
   });
 
   await t.test('… and on the login routes at most 16 KB', async () => {
-    // Der Ballast im Feld `label`: Ein unbekanntes Feld wäre vor der Anmeldung schon 400.
+    // The ballast in the field `label`: an unknown field would already be 400 before login.
     const mit = n => JSON.stringify({ username: 'niemand', password: 'x'.repeat(20), label: 'y'.repeat(n) });
     assert.equal((await anonym('/auth/login', mit(10 * 1024))).status, 401, 'eine gewöhnliche Anmeldung passt');
     assert.deepEqual(await anonym('/auth/login', mit(20 * 1024)), { status: 413, code: 'anfrage_zu_gross' });

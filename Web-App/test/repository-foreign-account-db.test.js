@@ -1,22 +1,22 @@
 /**
- * Zweite Linie im Repository: Die schreibenden Funktionen für Erfassungen
- * ändern, löschen und verschieben nur Zeilen der übergebenen Konten, auch wenn
- * ein Aufrufer die Prüfung im Schreib-Blickfeld vergisst. Gemessen gegen die
- * echte Datenbank, die Funktionen werden direkt gerufen.
+ * Second line in the repository: the writing functions for acquisitions
+ * change, delete and move only rows of the passed accounts, even if
+ * a caller forgets the check in the write scope. Measured against the
+ * real database, the functions are called directly.
  *
- * Gegenproben (am 08.11.2026 gemessen, je einzeln):
- *   A  in setEntryQuantity() `AND user_id = ANY($3)` entfernt → rot:
- *      „Menge, Preis, Zustand und Datum einer fremden Erfassung bleiben“
- *   B  dasselbe in shortenEntry() → rot: „eine fremde manuelle Erfassung
- *      lässt sich weder kürzen noch entfernen“
- *   C  in deleteEntry() (src/inventory/repository/acquisitions.ts) die Konten-Bedingung entfernt → rot: „eine
- *      fremde Erfassung lässt sich nicht aus einem Verschieben löschen“
- *   D  in removeManual() `AND user_id = $2` bei der Bestandszeile entfernt
- *      → rot: „die Bestandszeile eines fremden Kontos bleibt“
- *   (Jeweils auch die eigene Seite: „Gegenprobe: mit dem richtigen Konto
- *   wirkt dieselbe Funktion“ bleibt grün.)
+ * Counter-checks (measured on 08.11.2026, each on its own):
+ *   A  `AND user_id = ANY($3)` removed in setEntryQuantity() → red:
+ *      “quantity, price, condition and date of a foreign entry stay”
+ *   B  the same in shortenEntry() → red: “a foreign manual entry
+ *      can neither be shortened nor removed”
+ *   C  the account condition removed in deleteEntry() (src/inventory/repository/acquisitions.ts) → red: “a
+ *      foreign entry cannot be deleted from a move”
+ *   D  in removeManual() `AND user_id = $2` removed on the inventory row
+ *      → red: “the inventory row of a foreign account stays”
+ *   (In each case also the own side: “counter-check: with the right account
+ *   the same function works” stays green.)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -51,7 +51,7 @@ test('repository only writes to passed accounts', { concurrency: 1 }, async t =>
   });
   const ein = fn => db.transaction(fn);
 
-  // Je Erfassung ein eigener Satz: Pro Tag und Set ist nur eine Erfassung erlaubt.
+  // One set per acquisition: per day and set only one acquisition is allowed.
   let zaehler = 0;
   const setEntry = async uid => {
     const sn = `7519${++zaehler}-1`;

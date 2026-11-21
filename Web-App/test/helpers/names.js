@@ -1,8 +1,8 @@
 /**
- * Ist ein Funktionsname englisch? Gezählt wird das erste Wort (das Verb), weil
- * es den Namen trägt: `fetchPrice`, `getSetInfo`, `isDecodable`. „set“ allein
- * zählt nicht, es ist im Bereich das (LEGO-)Set (`setErfassen`); englisch ist
- * es erst mit einem englischen Wort danach (`setUserSetting`).
+ * Is a function name English? What counts is the first word (the verb), because
+ * it carries the name: `fetchPrice`, `getSetInfo`, `isDecodable`. “set” alone
+ * does not count, in the domain it is the (LEGO) set (`setErfassen`); it is English
+ * only with an English word after it (`setUserSetting`).
  */
 const VERBS = new Set(
   (

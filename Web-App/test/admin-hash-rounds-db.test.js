@@ -1,14 +1,14 @@
 /**
- * Das beim ersten Start angelegte Verwalterkonto hat dieselben Hash-Kosten
- * wie jedes andere Passwort. Mit weniger antwortete ein Fehlversuch gegen
- * „admin“ messbar schneller als gegen einen unbekannten Namen.
+ * The administrator account created at first start has the same hash cost
+ * as every other password. With less, a failed attempt against
+ * “admin” answered measurably faster than against an unknown name.
  *
- * Gegenprobe (am 28.10.2026 gemessen; seit 09.11. in src/account/startAdmin.ts): wieder
- * `hashSync(plainPassword, 10)` → rot (10 statt 12).
- * Gegenprobe (14.11.2026, argon2id): in hashePasswordImmediately `timeCost: 1` → rot
- * (Präfix mit t=1 statt t=2).
+ * Counter-check (measured on 28.10.2026; since 09.11. in src/account/startAdmin.ts): back to
+ * `hashSync(plainPassword, 10)` → red (10 instead of 12).
+ * Counter-check (14.11.2026, argon2id): in hashePasswordImmediately `timeCost: 1` → red
+ * (prefix with t=1 instead of t=2).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL (das Schema wird neu angelegt).
+ * Prerequisite: test DB via TEST_DATABASE_URL (the schema is recreated).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

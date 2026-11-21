@@ -1,20 +1,20 @@
 /**
- * Befunde der UX-Prüfung vom 30.10.2026, am echten Bündel in jsdom:
- *   - Kaufpreis 0: „Geschenk“ statt Prozent in Kachel, Finanztabelle und
- *     Set-Detail; der Kaufpreis steht als „0,00 €“ da.
- *   - Seiten hinter dem Menü: kein Reiter bleibt markiert, der Seitenname …
+ * Findings of the UX review of 30.10.2026, on the real bundle in jsdom:
+ *   - Purchase price 0: “gift” instead of a percentage in tile, finances table and
+ *     set detail; the purchase price stands as “0,00 €”.
+ *   - Pages behind the menu: no tab stays marked, the page name …
  *
- * Gegenproben (am 30.10.2026 gemessen; B bis F zusammen angewendet, jede
- * machte genau ihren eigenen Fall rot):
- *   A  pnlBadge ohne den Geschenk-Zweig → rot: „Geschenk in Kachel, Tabelle
- *      und Detail“ (Kachel zeigte „+163.700,0 %“)
- *   B  in oeffneSicht markGroup(null) entfernt → rot: „Menüseite:
- *      kein Reiter markiert“ (aria-current an „Sammlung“)
- *   C  smeta-text wieder mit substring(0,12) → rot: „Thema ganz“
- *   D  referenceLine im Wertdiagramm nicht gezeichnet → rot: „Wertdiagramm“
- *   E  setChartPeriod wieder über alle .period-btn → rot: „Zeitraum ohne
- *      Verlauf“ (der Chip „Alle“ verlor active)
- *   F  de 'gallery.add.price_ph' wieder „79.99“ → rot: „Platzhalter je Sprache“
+ * Counter-checks (measured on 30.10.2026; B to F applied together, each
+ * made exactly its own case red):
+ *   A  pnlBadge without the gift branch → red: “gift in tile, table
+ *      and detail” (tile showed “+163.700,0 %”)
+ *   B  markGroup(null) removed in oeffneSicht → red: “menu page:
+ *      no tab marked” (aria-current on “Sammlung”)
+ *   C  smeta-text again with substring(0,12) → red: “theme in full”
+ *   D  referenceLine not drawn in the value chart → red: “value chart”
+ *   E  setChartPeriod again over all .period-btn → red: “period without
+ *      history” (the chip “Alle” lost active)
+ *   F  de 'gallery.add.price_ph' back to “79.99” → red: “placeholder per language”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -23,7 +23,7 @@ const path = require('node:path');
 const { openUi, reiter, sicht, warte, takt } = require('./helpers/ui');
 
 const text = el => (el?.textContent || '').replace(/\s+/g, ' ').trim();
-// jsdom formatiert je nach Umgebung „1.500 €“ oder „EUR 1’500“; verglichen wird ohne Trenner.
+// jsdom formats “1.500 €” or “EUR 1’500” depending on the environment; compared without separators.
 const zahl = s => {
   const o = s.replace(/[’'\s\u00a0]/g, '');
   return /,\d\d/.test(o) ? o.replace(/\./g, '').replace(/,/g, '.') : o;
@@ -59,7 +59,7 @@ const SETS = {
     currency: 'EUR',
     totals: { grand_total: '350', purchase: '199.99' },
     sets: [
-      // Der Server schickt bei Kaufpreis 0 kein Prozent mehr; die Kachel darf es auch nicht zeigen, wenn doch.
+      // The server no longer sends a percentage at purchase price 0; the tile must not show it even if it does.
       { set_number: '10300-1', kachel_preis: 163.8, kachel_pnl_pct: 1637000 },
       { set_number: '21318-1', kachel_preis: 186.2, kachel_pnl_pct: -6.9 },
     ],
@@ -110,7 +110,7 @@ test('gift in tile, table and detail', async () => {
   try {
     await warte(() => /\d/.test(text(d.querySelector('[data-price-for="10300-1"]'))));
     const kachel = text(d.querySelector('[data-price-for="10300-1"]'));
-    // Seit der UI-Prüfung 13 als Plakette beim Zustand, nicht im Preiskasten.
+    // Since UI review 13 as a badge next to the condition, not in the price box.
     assert.match(
       text(d.querySelector('[data-price-for="10300-1"]').closest('.sc').querySelector('.splaketten')),
       /Geschenk/,
@@ -131,7 +131,7 @@ test('gift in tile, table and detail', async () => {
     await reiter(w, 'gallery');
     d.querySelector('#gallery [data-click="openModal"]').click();
     await warte(() => text(d.getElementById('m-market-rows')).includes('Geschenk'));
-    // Seit UX-Prüfung 24 (N6) auch in der Kaufpreiszeile „Geschenk“ statt „0,00 €“.
+    // Since UX review 24 (N6) also in the purchase price row “gift” instead of “0,00 €”.
     assert.match(text(d.getElementById('m-acq-summary')), /Geschenk/, 'Kaufpreis im Detail');
     assert.doesNotMatch(zahl(text(d.getElementById('m-acq-summary'))), /0\.00/, 'Kaufpreis im Detail als Betrag');
     assert.match(d.getElementById('m-img').getAttribute('src'), /set-placeholder\.svg$/);
@@ -178,7 +178,7 @@ test('import as one menu', async () => {
         tab,
       );
       const menue = leiste.querySelector('details');
-      // Dazu kommt beim Set-Menü "Letzter Import" (UI-Prüfung 17 M4), verborgen, solange es keinen gibt.
+      // Plus in the set menu "last import" (UI review 17 M4), hidden as long as there is none.
       assert.equal(menue.querySelectorAll('.import-klappe > :not([hidden])').length, 3, `${tab}: drei Importwege`);
       menue.open = true;
       d.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));

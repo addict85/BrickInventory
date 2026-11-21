@@ -1,15 +1,15 @@
 /**
- * Kein Index ist der Anfang eines anderen derselben Tabelle, und jeder
- * Fremdschlüssel hat einen Index, der mit seinen Spalten beginnt — geprüft am
- * Katalog der migrierten Datenbank (Migration 0068).
+ * No index is the start of another of the same table, and every
+ * foreign key has an index that starts with its columns — checked on the
+ * catalog of the migrated database (migration 0068).
  *
- * Gegenproben (am 29.10.2026 gemessen, je auf frischer Datenbank):
- *   A  `DROP INDEX IF EXISTS idx_sets_user` aus 0068 entfernt → rot: „kein
- *      Index ist der Anfang eines anderen“ (sets: idx_sets_user)
- *   B  `CREATE INDEX idx_minifigs_set` aus 0068 entfernt → rot: „jeder
- *      Fremdschlüssel hat einen Index“ (minifigs_set_fk)
+ * Counter-checks (measured on 29.10.2026, each on a fresh database):
+ *   A  `DROP INDEX IF EXISTS idx_sets_user` removed from 0068 → red: “no
+ *      index is the start of another” (sets: idx_sets_user)
+ *   B  `CREATE INDEX idx_minifigs_set` removed from 0068 → red: “every
+ *      foreign key has an index” (minifigs_set_fk)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,7 +19,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { accessOrSkip } = require('./helpers/db');
 
-/** Spalten und Operatorklassen als normale Arrays (int2vector beginnt bei 0). */
+/** Columns and operator classes as normal arrays (int2vector starts at 0). */
 const INDIZES = `
   SELECT i.indexrelid, i.indrelid, c.relname AS name, t.relname AS tabelle,
          i.indisunique AS eindeutig, i.indpred IS NOT NULL AS teil, i.indexprs IS NOT NULL AS ausdruck,

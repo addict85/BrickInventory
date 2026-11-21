@@ -1,12 +1,12 @@
 /**
- * Eine leere oder abgeschnittene Datei ist kein Bild.
+ * An empty or truncated file is not an image.
  *
- * ── Gegenproben (durchgeführt) ──────────────────────────────────────────────
+ * ── Counter-checks (performed) ──────────────────────────────────────────────
  *
- *   a) Die Schranke entfernt → Fall 1 und 2 rot.
- *   b) Ein ECHTES kleines Bild muss weiter durchgehen (Fall 3) — sonst hätte
- *      die Schranke einfach alles abgewiesen und die Fälle davor wären
- *      bedeutungslos.
+ *   a) the barrier removed → cases 1 and 2 red.
+ *   b) a REAL small image must still pass (case 3) — otherwise the
+ *      barrier would simply have rejected everything and the cases before would be
+ *      meaningless.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,7 +19,7 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const _req = require('./helpers/sources').buildAndRequire();
 const { readableImage } = _req('src/images/imageGuard.js');
 
-/** Eine Datei mit genau diesem Inhalt, in einem eigenen Verzeichnis. */
+/** A file with exactly this content, in its own directory. */
 function datei(name, inhalt) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bildschranke-'));
   const p = path.join(dir, name);
@@ -39,8 +39,8 @@ test('an EMPTY file is rejected', async () => {
 });
 
 test('a TRUNCATED file is rejected', async () => {
-  // Die ersten drei Bytes eines JPEG, dann nichts mehr: genau das Bild eines
-  // abgebrochenen Downloads.
+  // The first three bytes of a JPEG, then nothing more: exactly the picture of an
+  // aborted download.
   const p = datei('halb.jpg', Buffer.from([0xff, 0xd8, 0xff]));
   assert.equal(
     await readableImage(p),
@@ -50,11 +50,11 @@ test('a TRUNCATED file is rejected', async () => {
 });
 
 test('a REAL small image still goes through', async () => {
-  // Der Kern. Ohne diesen Fall wäre die Schranke auch dann „richtig", wenn sie
-  // ALLES abwiese — und dann gäbe es gar keine Vorschaubilder mehr.
+  // The core. Without this case the barrier would also be “right" if it
+  // rejected EVERYTHING — and then there would be no preview images at all anymore.
   //
-  // Ein 1×1-GIF, 35 Byte: das kleinste vollständige Bild, das sich hinschreiben
-  // lässt, und mit 35 Byte deutlich über der Schranke von 10.
+  // A 1×1 GIF, 35 bytes: the smallest complete image that can be written
+  // down, and at 35 bytes clearly above the barrier of 10.
   const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
   assert.equal(gif.length, 42, `Die Probe ist ${gif.length} Byte gross — erwartet 42`);
   const p = datei('eins.gif', gif);
@@ -67,7 +67,7 @@ test('a REAL small image still goes through', async () => {
 });
 
 test('a file that does not exist is rejected', async () => {
-  // Das war schon vorher so (der catch unten in readableImage) und bleibt es —
-  // hier festgehalten, damit die neue Schranke diesen Weg nicht verdeckt.
+  // That was already so before (the catch below in readableImage) and stays so —
+  // recorded here so that the new barrier does not hide this path.
   assert.equal(await readableImage('/gibt/es/nicht/x.jpg'), false);
 });

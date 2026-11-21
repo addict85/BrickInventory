@@ -1,17 +1,17 @@
 /**
- * db/rows.ts (scripts/row-types.js) bindet die Zeilentypen der Repositories an das
- * Schema. Geprüft an der echten Datenbank: Jede Tabelle und Spalte samt NULL steht dort
- * so, und jeder Spaltentyp kommt über den Zugang (createDb) als der JavaScript-Typ an,
- * den die Datei verspricht.
+ * db/rows.ts (scripts/row-types.js) binds the row types of the repositories to the
+ * schema. Checked against the real database: every table and column including NULL stands there
+ * like this, and every column type arrives via the access (createDb) as the JavaScript type
+ * the file promises.
  *
- * Gegenproben (14.11.2026, je einzeln):
- *   A  in scripts/row-types.js `numeric` unter 'string' statt 'number' → rot: „jeder
- *      Spaltentyp kommt so an“ (numeric(12,4): erwartet string, kam number)
- *   B  den NUMERIC-Leser in db/database.ts gestrichen → rot: dieselbe Stelle, umgekehrt
- *   C  in db/rows.ts eine Spalte von price_cache gelöscht → rot: „db/rows.ts ist erzeugt“
- *      (der Aufruf `scripts/row-types.js --pruefen` endet mit 1)
+ * Counter-checks (14.11.2026, each on its own):
+ *   A  in scripts/row-types.js `numeric` under 'string' instead of 'number' → red: “every
+ *      column type arrives …” (numeric(12,4): expected string, came number)
+ *   B  the NUMERIC reader deleted in db/database.ts → red: the same place, reversed
+ *   C  a column of price_cache deleted in db/rows.ts → red: “db/rows.ts is generated”
+ *      (the call `scripts/row-types.js --pruefen` ends with 1)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -25,7 +25,7 @@ const _req = buildAndRequire();
 const { dataOrSkip } = require('./helpers/db');
 const Z = require('../scripts/row-types');
 
-/** Je PostgreSQL-Typ ein Wert; `typeof` bzw. Klasse, wie node-pg ihn liefert. */
+/** One value per PostgreSQL type; `typeof` or class, as node-pg delivers it. */
 const PROBE = {
   text: "'x'",
   integer: '1',
@@ -67,7 +67,7 @@ test('row types against the database', { concurrency: 1 }, async t => {
 
   await t.test('every table and column including NULL is like this in the database', async () => {
     const zeilen = await db.all(
-      // pg_attribute statt information_schema: Das zeigt nur Spalten, die die Laufzeitrolle lesen darf.
+      // pg_attribute instead of information_schema: the latter only shows columns that the runtime role may read.
       `SELECT c.relname AS t, a.attname AS s, NOT a.attnotnull AS n
          FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid JOIN pg_namespace ns ON ns.oid = c.relnamespace
         WHERE ns.nspname = 'public' AND c.relkind IN ('r', 'p') AND a.attnum > 0 AND NOT a.attisdropped

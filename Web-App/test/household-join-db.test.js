@@ -1,21 +1,21 @@
 /**
- * Einem Haushalt beitreten geht nur mit dem eigenen Passwort, und der Inhaber
- * bekommt eine Mail. Danach liest und schreibt das Hauptkonto den Bestand; mit
- * einem erbeuteten Token allein soll sich das nicht einrichten lassen.
+ * Joining a household only works with the own password, and the owner
+ * gets a mail. Afterwards the main account reads and writes the stock; with
+ * a captured token alone this should not be settable.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  bestaetigePasswort() aus der Route entfernt → rot: „ohne Passwort keine
- *      Verknüpfung“
- *   B  die Hinweis-Mail nicht verschickt → rot: „mit Passwort verknüpft, und
- *      der Inhaber erfährt es“
- * Gegenprobe (01.11.2026 gemessen): Code-Pflicht in der Route entfernt → rot:
- *   „mit zweitem Faktor braucht es auch den Code“
- * Gegenprobe (01.11.2026 gemessen): maskAddress() im Konsolenweg des Mailers
- *   umgangen → rot: „mit Passwort verknüpft, und der Inhaber erfährt es“
- * Gegenprobe (04.11.2026 gemessen): accountThrottled() aus redeem/pruefen
- *   entfernt → rot: „die Prüfung eines Codes ist je Konto gebremst“ (200 statt 429)
+ * Counter-checks (measured on 28.10.2026):
+ *   A  bestaetigePasswort() removed from the route → red: “without password no
+ *      link”
+ *   B  the hint mail not sent → red: “linked with password, and
+ *      the owner learns of it”
+ * Counter-check (measured 01.11.2026): code requirement removed in the route → red:
+ *   “with a second factor it also needs the code”
+ * Counter-check (measured 01.11.2026): maskAddress() bypassed in the mailer's console path
+ *   → red: “linked with password, and the owner learns of it”
+ * Counter-check (measured 04.11.2026): accountThrottled() removed from redeem/pruefen
+ *   → red: “checking a code is throttled per account” (200 instead of 429)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -120,7 +120,7 @@ test('join household', { concurrency: 1 }, async t => {
     }
     assert.equal(r.status, 200, JSON.stringify(r.body));
     assert.equal(await verknuepft(), true);
-    // Die Konsole landet in app_logs: Die Adresse steht dort nur maskiert.
+    // The console lands in app_logs: the address only stands there masked.
     assert.ok(
       zeilen.some(z => z.includes(`An:      ${KIND[0]}…@example.org`)),
       zeilen.join('\n'),
@@ -140,7 +140,7 @@ test('join household', { concurrency: 1 }, async t => {
     const ohne = await einloesen({ code, password: PASS });
     assert.equal(ohne.status, 400, JSON.stringify(ohne.body));
     assert.equal(ohne.body.code, 'zweiter_faktor_noetig');
-    // Die Hinweis-Mail abwarten: Spät auf stdout geschrieben, stört sie den Testlauf.
+    // Wait for the hint mail: written to stdout late, it disturbs the test run.
     const zeilen = [],
       echt = console.log;
     console.log = (...a) => {

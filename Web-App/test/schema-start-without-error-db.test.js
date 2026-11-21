@@ -1,9 +1,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-// Voraussetzung: Test-DB via TEST_DATABASE_URL — wie in den uebrigen
-// *-db.test.js. Ohne diese Zeile griffe der Start auf DATABASE_URL zu und
-// damit auf die echte Datenbank.
+// Prerequisite: test DB via TEST_DATABASE_URL — as in the other
+// *-db.test.js. Without this line the start would access DATABASE_URL and
+// thereby the real database.
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const { buildAndRequire, testData } = require('./helpers/sources');
@@ -12,13 +12,13 @@ const { dataOrSkip } = require('./helpers/db');
 const db = testData();
 
 /**
- * Der Schemastart darf keinen Fehler verschlucken.
+ * The schema start must not swallow an error.
  */
 test('the schema start reports no swallowed error', async t => {
-  // Der Pool wird IM NACHLAUF geschlossen, nicht am Ende des Rumpfes: Sonst
-  // bleibt er bei einer scheiternden Zusicherung offen, der Prozess endet
-  // nicht, und aus einem roten Test wird ein haengender — der schlechteste
-  // aller Ausgaenge, weil niemand die Meldung zu sehen bekommt.
+  // The pool is closed IN THE AFTERMATH, not at the end of the body: otherwise
+  // it stays open on a failing assertion, the process does not end,
+  // and a red test becomes a hanging one — the worst
+  // of all outcomes, because nobody gets to see the message.
   t.after(async () => {
     await db.pool.end().catch(() => {});
   });

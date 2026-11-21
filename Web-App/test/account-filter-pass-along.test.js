@@ -1,26 +1,26 @@
 /**
- * Was der Kontofilter neu lädt, muss den Kontofilter auch mitschicken. Am
- * echten Bündel in jsdom: Haushalt mit einem Unterkonto, je Reiter den Filter
- * auf das Unterkonto stellen und jede Anfrage danach ansehen.
+ * Whatever the account filter reloads must also send the account filter. On the
+ * real bundle in jsdom: household with a sub-account, per tab set the filter
+ * to the sub-account and look at every request afterwards.
  *
- * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   A  in onScopeChange beim Reiter Teile `loadManualParts()` gestrichen →
- *      rot (die manuellen Teile werden nicht neu geladen)
- *   B  in manualQuery() `addScopeParam(p, view)` gestrichen → rot (die
- *      manuellen Teile und Figuren kommen ohne accounts)
- *   C  in onScopeChange beim Reiter Minifiguren `loadManualFigsTable()`
- *      gestrichen → grün: loadMinifigs() holt die manuellen Figuren selbst mit
- *      (mit Filter), der Fall ist also abgedeckt, nur nicht doppelt.
+ * Counter-checks (measured 08.11.2026, each alone):
+ *   A  in onScopeChange for the parts tab `loadManualParts()` deleted →
+ *      red (the manual parts are not reloaded)
+ *   B  in manualQuery() `addScopeParam(p, view)` deleted → red (the
+ *      manual parts and minifigures come without accounts)
+ *   C  in onScopeChange for the minifigures tab `loadManualFigsTable()`
+ *      deleted → green: loadMinifigs() fetches the manual minifigures itself
+ *      (with filter), so the case is covered, just not twice.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { openUi, reiter } = require('./helpers/ui');
 
-// Der CSV-Importstatus wird im Takt abgefragt, nicht vom Filterwechsel: Fällt
-// eine Abfrage in das Fenster, ist sie kein Abruf hinter dem Kontofilter.
+// The CSV import status is polled on a timer, not by the filter change: if
+// a poll falls into the window, it is not a fetch behind the account filter.
 const BACKGROUND = new Set(['/api/v1/sets/import/csv/status']);
 
-/** Was jeder Reiter nach dem Wechsel neu holen muss — mit dem Filter. */
+/** What every tab must refetch after the change — with the filter. */
 const NEW_LOADED = {
   gallery: ['/v1/sets', '/v1/stats'],
   parts: ['/v1/parts', '/v1/parts/manual', '/v1/parts/stats', '/v1/parts/colors', '/v1/parts/categories'],

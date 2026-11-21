@@ -1,19 +1,19 @@
 /**
- * Der Start des Job-Prozesses trägt jede Hintergrundarbeit als Auftrag ein.
+ * The start of the job process registers every background job as a job.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in startJobs() `pullPlanBefore('csv_sync', …)` entfernt → rot: „jede
- *      geplante Art hat einen Termin“ (der Katalog stand erst um 03:00 an).
- *      `planeAll()` allein zu entfernen bleibt grün: Heute zieht der Start
- *      jede geplante Art vor und legt sie dabei an; planeAll() deckt eine
- *      künftige Art ab, die nicht vorgezogen wird.
- *   B  in startJobs() die Schleife über FOLLOWUP_RUNS entfernt → rot: „jeder
- *      Nachlauf ist einmal eingestellt“
- *   C  startJobWorker() aus startJobs() entfernt → rot: „der Worker läuft an“
- *   D  (05.11.2026) das Lebenszeichen ohne Blick auf den Worker geschrieben →
- *      rot: „das Lebenszeichen folgt dem Worker“ (es kam auch ohne Worker)
+ * Counter-checks (measured on 30.10.2026):
+ *   A  in startJobs() `pullPlanBefore('csv_sync', …)` removed → red: “every
+ *      scheduled kind has a date” (the catalog was only due at 03:00).
+ *      Removing `planeAll()` alone stays green: today the start pulls forward
+ *      every scheduled kind and creates it in the process; planeAll() covers a
+ *      future kind that is not pulled forward.
+ *   B  in startJobs() the loop over FOLLOWUP_RUNS removed → red: “every
+ *      follow-up run is enqueued once”
+ *   C  startJobWorker() removed from startJobs() → red: “the worker starts”
+ *   D  (05.11.2026) the heartbeat written without looking at the worker →
+ *      red: “the heartbeat follows the worker” (it came even without a worker)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -43,7 +43,7 @@ const { warte } = require('./helpers/time');
 
 test('starting the job process queues everything as a job', { concurrency: 1 }, async t => {
   const db = testData();
-  /** Was startJobs zurückgibt: Der Test hält es wie server.ts. */
+  /** What startJobs returns: the test holds it like server.ts. */
   const runs = [];
   t.after(async () => {
     for (const lauf of runs)

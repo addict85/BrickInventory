@@ -1,12 +1,12 @@
 /**
- * Der Vertrag ist die Eingabeprüfung der Gutscheine: Er formt Nummer, PIN und Währung ins Fachformat
- * und weist mit dem Code der Regel ab; der Dienst bekommt nur Geprüftes.
+ * The contract is the input validation of the vouchers: it shapes number, PIN and currency into the domain format
+ * and rejects with the code of the rule; the service only gets checked values.
  *
- * Gegenproben (15.11.2026 gemessen, je einzeln):
- *   A  in src/contract/vouchers.ts `number: VOUCHER_NUMBER` → `number: z.string()` → rot:
- *      „Nummer, PIN und Währung kommen im Fachformat an“ und „unbrauchbare Werte …“
- *   B  in voucherPinOrMask() die Maske nicht durchgelassen → rot: „beim Ändern darf die
- *      Maske zurückkommen …“
+ * Counter-checks (measured 15.11.2026, each on its own):
+ *   A  in src/contract/vouchers.ts `number: VOUCHER_NUMBER` → `number: z.string()` → red:
+ *      “number, PIN and currency arrive in the domain format” and “… unusable values …”
+ *   B  in voucherPinOrMask() the mask not let through → red: “when changing the
+ *      mask may come back …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -17,7 +17,7 @@ const { routen } = _req('src/contract/vouchers.js');
 const anlegen = routen['POST /api/v1/vouchers'].eingabe;
 const aendern = routen['PUT /api/v1/vouchers/:id'].eingabe;
 
-/** Der Code, mit dem der Vertrag abweist (wie der Vertragsrouter ihn liest). */
+/** The code with which the contract rejects (as the contract router reads it). */
 function code(schema, rumpf) {
   const r = schema.safeParse(rumpf);
   if (r.success) return null;

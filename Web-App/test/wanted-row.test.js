@@ -1,16 +1,16 @@
 /**
- * Die Merklisten-Zeile der Webapp: kein Übernahme-Knopf, dafür der Marktpreis.
- * Und der Lagerort steht im Detail der manuellen Einträge. Die Webapp läuft im
- * echten Bündel (jsdom), der Server gegen die Test-DB.
+ * The web app's wishlist row: no takeover button, the market price instead.
+ * And the storage location is in the detail of the manual entries. The web app
+ * runs in the real bundle (jsdom), the server against the test DB.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, Bündel bzw. dist neu gebaut):
- *   A  in merkliste.js zeile() den Marktpreis weggelassen → rot: „die Webapp-Zeile …“
- *   B  dort den Papierkorb entfernt → rot: ebenda
- *   C  in teile.js den Papierkorb der manuellen Kachel entfernt → rot: „manuelle
- *      Einträge …“
- *   D  in manuell-detail.js die Lagerortzeile entfernt → rot: ebenda
- *   E  in partsList.ts manualParts `NULL::text AS storage` → rot: „die Abfrage
- *      der manuellen Teile …“
+ * Counter-checks (measured 10.11.2026, each individually, bundle or dist rebuilt):
+ *   A  market price omitted in the row of wanted.js → red: “the web app row …”
+ *   B  the trash removed there → red: same place
+ *   C  trash of the manual tile removed in parts.js → red: “manual
+ *      entries …”
+ *   D  storage location row removed in manual-detail.js → red: same place
+ *   E  in partsList.ts manualParts `NULL::text AS storage` → red: “the query
+ *      of the manual parts …”
  */
 require('./helpers/system-frame');
 const test = require('node:test');

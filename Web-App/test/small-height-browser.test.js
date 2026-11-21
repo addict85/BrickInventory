@@ -1,20 +1,20 @@
 /**
- * Geringe Höhe (200 % Zoom = 640 × 450): Der Kopf weicht beim Rollen nach
- * unten und kommt beim Rollen nach oben zurück, die untere Leiste bleibt
- * schmal (seit Runde 27 der Name neben dem Symbol, unter 600 px nur Symbole),
- * und das weggeklickte Rebrickable-Band bleibt auch in einer neuen Sitzung weg.
+ * Low height (200 % zoom = 640 × 450): the header gives way when scrolling
+ * down and comes back when scrolling up, the bottom bar stays
+ * narrow (since round 27 the name next to the symbol, below 600 px only symbols),
+ * and the dismissed Rebrickable banner stays away even in a new session.
  *
- * Gegenproben (am 03.11.2026 gemessen):
- *   A  in mobile.js die Klasse kopf-weg nie gesetzt → rot: „Kopf weicht
- *      beim Rollen“
- *   B  die Regel `.ntab .tab-label { position:absolute … }` für geringe Höhe
- *      entfernt → rot: „untere Leiste schmal, Namen bleiben“ (59 px); seit
- *      15.11.2026 die Regel für 601–640 px (`flex-direction: row`) → rot: ebenda
- *   C  rbHinweisWeg/showRbHint wieder mit sessionStorage → rot: „Band
- *      bleibt weg, auch nach neuer Sitzung“
+ * Counter-checks (measured on 03.11.2026):
+ *   A  the class kopf-weg never set in mobile.js → red: “header gives
+ *      way when scrolling”
+ *   B  the rule `.ntab .tab-label { position:absolute … }` for low height
+ *      removed → red: “bottom bar narrow, names stay” (59 px); since
+ *      15.11.2026 the rule for 601–640 px (`flex-direction: row`) → red: same place
+ *   C  rbHinweisWeg/showRbHint again with sessionStorage → red: “banner
+ *      stays away, even after a new session”
  *
- * Ohne Chrome (CHROME_BIN, google-chrome, chromium) wird übersprungen.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Without Chrome (CHROME_BIN, google-chrome, chromium) it is skipped.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

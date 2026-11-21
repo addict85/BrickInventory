@@ -3,29 +3,29 @@
  * call each other. Its keys become fewer, never more: whatever only one area needs
  * itself, it calls through its own functions.
  *
- * Gezählt wird am gebauten Satz, nicht im Quelltext: Ein Schlüssel aus einem Spread
- * oder einer Hilfsfunktion (imageServices im Katalog) zählt so mit, eine Teilfläche
- * (konto.sitzungen.*) mit jedem ihrer Dienste. Der Zugang ist ein Stummel; der
- * Bau fragt die Datenbank nicht.
+ * Counted on the built set, not in the source text: a key from a spread
+ * or a helper function (imageServices in the catalog) thus counts too, a sub-surface
+ * (konto.sitzungen.*) with each of its services. The access is a stub; the
+ * build does not query the database.
  *
- * Gegenproben (15.11.2026):
- *   B  in src/vouchers/area.ts `batchCreate` wieder in den Satz → rot „Zahl
+ * Counter-checks (15.11.2026):
+ *   B  in src/vouchers/area.ts `batchCreate` back into the set → red „Zahl
  *      der Dienstschlüssel“
- *   C  in src/parts/area.ts `readParts` wieder `partsList` (wie das Repository im
- *      Kontext) → rot „Dienst heisst wie ein Teil des Kontexts“ (parts.partsList)
- *   D  `setzeAktiv: mit(k)(accountsService.setzeAktiv)` zurück in src/account/area.ts → rot
- *      „Zahl der Dienstschlüssel“ (547, erlaubt 546)
- *   E  in routes/auth/secondFactor.ts `d.factors.renewCodes` durch einen
- *      Platzhalter ersetzt → rot „ohne Aufrufer“ (factors.renewCodes)
- *   F  JE_AREA.konto auf 88 → rot „Schlüssel je Bereich“ (konto 89, erlaubt 88)
+ *   C  in src/parts/area.ts `readParts` again `partsList` (like the repository in the
+ *      context) → red „Dienst heisst wie ein Teil des Kontexts“ (parts.partsList)
+ *   D  `setzeAktiv: mit(k)(accountsService.setzeAktiv)` back in src/account/area.ts → red
+ *      „Zahl der Dienstschlüssel“ (547, allowed 546)
+ *   E  in routes/auth/secondFactor.ts `d.factors.renewCodes` replaced by a
+ *      placeholder → red „ohne Aufrufer“ (factors.renewCodes)
+ *   F  JE_AREA.konto set to 88 → red „Schlüssel je Bereich“ (konto 89, allowed 88)
  *
- * Rohe Weitergaben (ein Dienst ist das Repository selbst, k.repo.f oder mit(k.db, repo.f)):
- * Gegenproben (15.11.2026):
- *   G  `validToken: k.zugaenge.validToken` zurück in src/account/area.ts → rot „Zahl
- *      der Dienstschlüssel“ (538, erlaubt 537) und „roh weiterreichen“ (konto.validToken)
- *   H  'catalog.catalogStatus' aus RAW_ALLOWED gestrichen → rot „roh weiterreichen“ (die Form
- *      mit(k.db, setStamm.catalogStatus), über den Bau als Repository-Funktion erkannt)
- *   I  JE_AREA.factors auf 17 → rot „Schlüssel je Bereich“ (factors 18, erlaubt 17)
+ * Raw pass-throughs (a service is the repository itself, k.repo.f or mit(k.db, repo.f)):
+ * Counter-checks (15.11.2026):
+ *   G  `validToken: k.zugaenge.validToken` back in src/account/area.ts → red „Zahl
+ *      der Dienstschlüssel“ (538, allowed 537) and „roh weiterreichen“ (konto.validToken)
+ *   H  'catalog.catalogStatus' deleted from RAW_ALLOWED → red „roh weiterreichen“ (the form
+ *      mit(k.db, setStamm.catalogStatus), recognized via the build as a repository function)
+ *   I  JE_AREA.factors set to 17 → red „Schlüssel je Bereich“ (factors 18, allowed 17)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -35,7 +35,7 @@ const path = require('node:path');
 const { buildAndRequire, ROOT, ohneKommentare } = require('./helpers/sources');
 const _req = buildAndRequire();
 
-/** Ein Satz Dienste über einem Zugang, der nichts beantwortet; `contexts` nimmt die Kontexte auf. */
+/** A set of services over an access that answers nothing; `contexts` takes up the contexts. */
 function satz(contexts = undefined) {
   const stummel = {
     inTransaction: () => false,
@@ -46,10 +46,10 @@ function satz(contexts = undefined) {
   return _req('startup/wiring.js').buildServices(stummel, { contexts });
 }
 
-/** Die Klienten der Fremdquellen sind kein Dienst, sondern deren Inhalt; sie zählen als einer. */
+/** The clients of the external sources are not a service but its content; they count as one. */
 const GANZ = new Set(['quellen', 'drossel']);
 
-/** Jeder Dienst als `bereich.name` oder `bereich.teil.name`. */
+/** Every service as `bereich.name` or `bereich.teil.name`. */
 function leaves(x, vor) {
   return Object.entries(/** @type {Record<string, unknown>} */ (x)).flatMap(([n, v]) => {
     if (n === 'ueber') return [];
@@ -58,7 +58,7 @@ function leaves(x, vor) {
   });
 }
 
-/** Je Bereich höchstens so viele; ein neuer Dienst verdrängt einen alten. */
+/** At most this many per area; a new service displaces an old one. */
 const JE_AREA = {
   throttle: 10,
   settings: 22,
@@ -74,7 +74,7 @@ const JE_AREA = {
   images: 29,
   catalog: 64,
   finances: 36,
-  inventory: 43, // mit den Schreibwegen, die sets, parts und figuren abgaben (Tabellenbesitz)
+  inventory: 43, // with the write paths that sets, parts and figuren handed over (table ownership)
   sets: 41,
   parts: 13,
   minifigs: 8,
@@ -84,7 +84,7 @@ const JE_AREA = {
   management: 28,
 };
 
-/** Quelltext ausserhalb der Tests, ohne Kommentare, je Datei (Pfad ab ROOT). */
+/** Source text outside the tests, without comments, per file (path from ROOT). */
 function quellen() {
   const aus = new Map();
   (function lauf(d) {
@@ -123,14 +123,14 @@ test('service keys become fewer, never more, and each has a caller', () => {
     .map(([b, n]) => `${b} ${n}, erlaubt ${JE_AREA[b] ?? 'keine Schranke'}`);
   assert.deepEqual(toMuch, [], 'Schlüssel je Bereich');
 
-  // testArea() und jeder Leser nähmen sonst den Dienst, wo das Repository gemeint ist.
+  // testArea() and every reader would otherwise take the service where the repository is meant.
   const gleich = schluessel.filter(s => {
     const [b = '', k = ''] = s.split('.');
     return typeof contexts[b]?.[k] === 'object' && contexts[b][k] !== null;
   });
   assert.deepEqual(gleich, [], 'Dienst heisst wie ein Teil des Kontexts');
 
-  // Gerufen über den Satz (`d.account.…`, `k.konto.…`) oder genannt in Pick<…>; die Fabrik des Bereichs zählt nicht.
+  // Called via the set (`d.account.…`, `k.konto.…`) or named in Pick<…>; the factory of the area does not count.
   const q = quellen();
   const ohne = schluessel.filter(s => {
     const name = s.split('.').at(-1);
@@ -142,7 +142,7 @@ test('service keys become fewer, never more, and each has a caller', () => {
   assert.deepEqual(ohne, [], 'Schlüssel ohne Aufrufer ausserhalb der Tests');
 });
 
-/** Dienste, die ein Repository roh weiterreichen, mit Grund; die Liste wird kürzer, nie länger. */
+/** Services that pass a repository through raw, with a reason; the list gets shorter, never longer. */
 const RAW_ALLOWED = {
   'jobQueue.belegeAuftrag': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
   'jobQueue.giveBack': 'Pacht des Workers (jobs/jobWorker.ts): die Regel steht im SQL der Warteschlange',
@@ -176,7 +176,7 @@ const RAW_ALLOWED = {
     'Set-Stammdaten in der Transaktion der Set-Erfassung: Der Katalog schreibt sie, sets ruft im eigenen t',
 };
 
-/** Je Bereich die Funktionen seiner Repositories, wie der Bau sie lädt. */
+/** Per area the functions of its repositories, as the build loads them. */
 function repositoryFunctions(b, q) {
   const raus = new Set();
   for (const rel of q.keys())
@@ -185,7 +185,7 @@ function repositoryFunctions(b, q) {
   return raus;
 }
 
-/** `name: mit(k.db, modul.f)` in der Fabrik, mit f aus einem Repository des Bereichs. */
+/** `name: mit(k.db, modul.f)` in the factory, with f from a repository of the area. */
 function boundRepositories(b, leavesOfArea, q) {
   const factory = q.get(`src/${b}/bereich.ts`) ?? q.get(`src/${b}/area.ts`);
   if (!factory) return [];
@@ -207,7 +207,7 @@ test('no service key passes a repository through raw', () => {
   const roh = new Set();
   for (const [b, x] of Object.entries(d)) {
     const leavesOfArea = leaves(x, b);
-    // Derselbe Funktionswert wie im Kontext (k.repo.f, ...k.repo): Der Dienst ist das Repository.
+    // The same function value as in the context (k.repo.f, ...k.repo): the service is the repository.
     const inContext = new Set(
       Object.entries(contexts[b] ?? {})
         .filter(([n, teil]) => n !== 'db' && teil && typeof teil === 'object')

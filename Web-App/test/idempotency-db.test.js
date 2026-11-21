@@ -1,18 +1,18 @@
 /**
- * Idempotency-Key: Die Wiederholung einer schreibenden Anfrage bekommt die
- * gespeicherte Antwort und wirkt kein zweites Mal. Geprüft am echten Server
- * (Anmeldung, Middleware-Reihenfolge, Route) und am Dienst (laufend,
- * Serverfehler, Aufräumen).
+ * Idempotency-Key: the repetition of a writing request gets the
+ * stored response and has no second effect. Checked on the real server
+ * (login, middleware order, route) and on the service (running,
+ * server error, cleanup).
  *
- * Gegenproben (31.10.2026 gemessen):
- *   A  app.use('/api/v1', idempotency) in server.ts gestrichen → rot:
- *      „Wiederholung wirkt nicht zweimal" (Menge 4 statt 3), kein Replay-Kopf
- *   B  in begin() den Vergleich des Fingerabdrucks entfernt → rot:
- *      „anderer Inhalt unter demselben Schlüssel" (200 statt 422)
- *   C  end() merkt auch 5xx → rot: „ein Serverfehler gibt den Schlüssel frei"
- *   D  cleanupIdempotency ohne Frist (alles löschen) → rot: der frische Eintrag fehlt
+ * Counter-checks (measured 31.10.2026):
+ *   A  app.use('/api/v1', idempotency) deleted in server.ts → red:
+ *      “repetition does not act twice" (quantity 4 instead of 3), no replay header
+ *   B  in begin() the fingerprint comparison removed → red:
+ *      “different content under the same key" (200 instead of 422)
+ *   C  end() also remembers 5xx → red: “a server error frees the key"
+ *   D  cleanupIdempotency without deadline (delete everything) → red: the fresh entry is missing
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

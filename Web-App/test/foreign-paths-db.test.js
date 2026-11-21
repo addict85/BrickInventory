@@ -1,20 +1,20 @@
 /**
- * Eine Setnummer aus der Anfrage bleibt in der Adresse bei Rebrickable genau
- * EIN Pfadsegment. Roh eingesetzt führte `x/../../users` mit dem API-Schlüssel
- * des Servers an eine andere Stelle der API, `?…` hängte eigene Parameter an.
+ * A set number from the request stays exactly ONE path segment in the address at
+ * Rebrickable. Inserted raw, `x/../../users` led with the server's API key
+ * to another place of the API, `?…` appended own parameters.
  *
- * Geprüft zweimal: GET /sets/:setNumber/parts-list weist solche Nummern am
- * Eingang ab (Vertrag: PATH), und dahinter baut holeSetTeile() die Adresse mit
- * abgefangenem https.get.
+ * Checked twice: GET /sets/:setNumber/parts-list rejects such numbers at the
+ * entrance (contract: PATH), and behind it holeSetTeile() builds the address with
+ * intercepted https.get.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in getAllSetPartsApi() wieder `${n}` statt `${pathSegment(n)}` → rot:
- *      „verlässt das Pfadsegment“
- *   B  pathSegment() ohne die Prüfung auf Punktsegmente → rot: „„..“ geht durch“
- *   C  (05.11.2026) setNumber in PATH ohne Muster (TEXT) → rot: „kommt am
- *      Eingang durch“
+ * Counter-checks (measured on 30.10.2026):
+ *   A  in getAllSetPartsApi() again `${n}` instead of `${pathSegment(n)}` → red:
+ *      “leaves the path segment”
+ *   B  pathSegment() without the check for dot segments → red: ““..” gets through”
+ *   C  (05.11.2026) setNumber in PATH without pattern (TEXT) → red: “gets through at the
+ *      entrance”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -58,7 +58,7 @@ test('the set number from the request stays a path segment', { concurrency: 1 },
   const echt = https.get;
   const abgerufen = [];
   /** @type {any} */ (https).get = (url, opt, cb) => {
-    // httpsGetRobust ruft mit Optionen statt Adresse.
+    // httpsGetRobust calls with options instead of an address.
     abgerufen.push(typeof url === 'string' ? url : `https://${url.hostname}${url.path}`);
     const fertig = typeof opt === 'function' ? opt : cb;
     const req = /** @type {any} */ (new EventEmitter());

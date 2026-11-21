@@ -1,12 +1,12 @@
 /**
- * AES-GCM öffnet nur mit vollem 16-Byte-Tag (src/infra/secret.ts): Ein Geheimtext mit
- * gekürztem Tag oder zu kurzer Wert ist unlesbar, ein regulärer bleibt lesbar.
+ * AES-GCM only opens with the full 16-byte tag (src/infra/secret.ts): a ciphertext with
+ * a shortened tag or a value that is too short is unreadable, a regular one stays readable.
  *
- * Gegenproben (16.11.2026 gemessen):
- *   A  in oeffne() `authTagLength` und die Mindestlänge gestrichen → rot: „ein 4-Byte-Tag …“
- *      (der leere Klartext wurde angenommen, Wert und Datei)
- *   B  nur die Mindestlänge gestrichen (authTagLength bleibt) → grün: Node lehnt dann den
- *      kurzen Tag selbst ab; die Mindestlänge ist zweite Linie, rot wird nur A
+ * Counter-checks (measured 16.11.2026):
+ *   A  `authTagLength` and the minimum length deleted in oeffne() → red: “a 4-byte tag …”
+ *      (the empty plain text was accepted, value and file)
+ *   B  only the minimum length deleted (authTagLength stays) → green: Node then rejects the
+ *      short tag itself; the minimum length is the second line, only A turns red
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -17,7 +17,7 @@ const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
 const g = _req('src/infra/secret.js');
 
-/** Derselbe Teilschlüssel wie v2Key(): Der Test fälscht, was ein Angreifer probieren würde. */
+/** The same subkey as v2Key(): the test forges what an attacker would try. */
 const v2 = Buffer.from(
   crypto.hkdfSync(
     'sha256',

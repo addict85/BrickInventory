@@ -1,23 +1,23 @@
 /**
- * Jede schreibende Route prüft den Typ ihrer Eingabe: mit eigenem Schema aus
- * dem Vertrag, sonst mit FLAT_INPUT (nur einfache Werte und Listen davon).
- * Ein Objekt statt eines Textes ({"$ne":1}) ist 400, bevor die Route läuft.
+ * Every writing route checks the type of its input: with its own schema from
+ * the contract, otherwise with FLAT_INPUT (only simple values and lists of them).
+ * An object instead of a text ({"$ne":1}) is 400 before the route runs.
  *
- * Gegenproben (am 03.11.2026 gemessen):
- *   A  in checkInput() ohne Rückfall auf FLAT_INPUT (Routen ohne
- *      Schema laufen durch) → rot: beide Tests
- *   B  FLAT_INPUT als z.record(z.string(), z.unknown()) → rot: beide Tests
- *   C  (05.11.2026) Eingabeschema von PUT /api/v1/sets/:setNumber entfernt
- *      → rot: „jede schreibende Route hat ein Eingabeschema"
- *   E  (05.11.2026) in alsSchema (validate.ts) die Objektprüfung gestrichen
- *      → rot: „jede schreibende Route weist ein Objekt …" (wanted …/uebernehmen:
- *      quantity {"$ne":1} galt als „fehlt" und wurde 1)
- *   D  (05.11.2026) WITHOUT_BODY als z.looseObject({}) → rot: „jede schreibende
- *      Route weist ein Objekt …" für alle Routen ohne Rumpf
- *   F  (05.11.2026) das Schema von POST /api/v1/sets/add-stream entfernt → rot:
- *      „jede schreibende Route hat ein Eingabeschema"
+ * Counter-checks (measured on 03.11.2026):
+ *   A  in checkInput() without fallback to FLAT_INPUT (routes without
+ *      schema pass) → red: both tests
+ *   B  FLAT_INPUT as z.record(z.string(), z.unknown()) → red: both tests
+ *   C  (05.11.2026) input schema of PUT /api/v1/sets/:setNumber removed
+ *      → red: “every writing route has an input schema"
+ *   E  (05.11.2026) in alsSchema (validate.ts) the object check deleted
+ *      → red: “every writing route rejects an object …" (wanted …/uebernehmen:
+ *      quantity {"$ne":1} counted as “missing" and became 1)
+ *   D  (05.11.2026) WITHOUT_BODY as z.looseObject({}) → red: “every writing
+ *      route rejects an object …" for all routes without body
+ *   F  (05.11.2026) the schema of POST /api/v1/sets/add-stream removed → red:
+ *      “every writing route has an input schema"
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -93,7 +93,7 @@ test('nested values on writing routes', { concurrency: 1 }, async t => {
     const durch = [];
     for (const [k, r] of routen) {
       const [methode, pfad] = k.split(' ');
-      // Das erste Feld, das laut Vertrag kein Objekt nimmt (passkey: `antwort` ist eins).
+      // The first field that according to the contract takes no object (passkey: `antwort` is one).
       const form = r.eingabe?.shape ?? {};
       const feld = Object.keys(form).find(f => !form[f].safeParse({ $ne: 1 }).success) ?? 'feld';
       const a = await sende(methode, pfad.replace(/:\w+/g, '1'), { [feld]: { $ne: 1 } });

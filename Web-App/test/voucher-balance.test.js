@@ -1,9 +1,9 @@
 /**
- * Die Guthaben-Abfrage — ohne eine einzige Verbindung nach draussen.
+ * The balance query — without a single connection to the outside.
  *
- * ── Gegenproben (durchgefuehrt, Befunde GEMESSEN) ───────────────────────────
+ * ── Counter-checks (carried out, findings MEASURED) ───────────────────────────
  *
- * Sie stehen am Ende der Datei bei den Zusicherungen, auf die sie wirken.
+ * They stand at the end of the file with the assertions they act on.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,18 +12,18 @@ const path = require('node:path');
 
 const _req = require('./helpers/sources').buildAndRequire();
 const G = _req('src/vouchers/balanceLookup.js');
-/** Der Sitzungsvorrat, den sonst das Fach der Gutschein-Dienste hält. */
+/** The session store that the compartment of the voucher services otherwise holds. */
 const vorrat = new Map();
 
 const NUMBER = '5045076374450011166';
 const PIN = '5225';
 
 /**
- * Ein Token, der in fuenf Minuten ablaeuft oder in einer Stunde.
+ * A token that expires in five minutes or in one hour.
  *
- * Echter JWT-Aufbau (drei Teile, base64url), weil `jwtAblauf` ihn liest —
- * eine erfundene Zeichenkette ergaebe Ablauf 0, und dann waere jeder Test
- * unbeabsichtigt der Fall „Token nicht lesbar".
+ * Real JWT structure (three parts, base64url), because `jwtAblauf` reads it —
+ * an invented string would give expiry 0, and then every test would
+ * unintentionally be the case „token not readable".
  */
 function token(secondsValid) {
   const kopf = Buffer.from('{"alg":"none"}').toString('base64url');
@@ -35,7 +35,7 @@ function token(secondsValid) {
   return `${kopf}.${nutz}.x`;
 }
 
-/** Eine Antwort, wie `fetch` sie liefert — nur die vier benutzten Stuecke. */
+/** A response as `fetch` delivers it — only the four pieces used. */
 function antwort({ status = 200, json = {}, text = '', cookies = [] } = {}) {
   return {
     ok: status >= 200 && status < 300,
@@ -59,12 +59,12 @@ const BALANCE_RESPONSE = {
 };
 
 /**
- * Ein Abruf-Doppel: beantwortet die drei Adressen des Ablaufs und schreibt
- * mit, was gefragt wurde.
+ * A fetch double: answers the three addresses of the flow and records
+ * what was asked.
  *
- * `antworten` erlaubt je Adresse eine eigene Antwort oder eine Liste (dann
- * wird sie in der Reihenfolge der Aufrufe abgearbeitet) — damit laesst sich
- * „erst 401, dann 200" nachstellen, ohne eine Zustandsmaschine zu schreiben.
+ * `antworten` allows its own response per address or a list (then
+ * it is worked through in the order of the calls) — that way
+ * „first 401, then 200" can be recreated without writing a state machine.
  */
 function double(antworten = {}) {
   const protokoll = [];
@@ -74,7 +74,7 @@ function double(antworten = {}) {
       if (!url.includes(muster)) continue;
       return Array.isArray(wert) ? (wert.shift() ?? antwort({ status: 500 })) : wert;
     }
-    // Vorgabe: Seite laedt, Login gibt einen Keks mit Token, Abfrage liefert
+    // Default: page loads, login gives a cookie with a token, query delivers
     // 250 CHF.
     if (url.includes('/gift-cards/balance')) return antwort({ text: '<html></html>' });
     if (url.includes('/Login')) return antwort({ cookies: [`gqauth=${token(3600)}; Path=/`] });
@@ -99,7 +99,7 @@ test('balance query', async t => {
       ['/de-ch/gift-cards/balance', '/api/graphql/Login', '/api/graphql/giftCardBalanceQuery'],
       'Die drei Schritte des Prototyps, in dieser Reihenfolge',
     );
-    // Alle drei Adressen auf demselben, einzigen erlaubten Host.
+    // All three addresses on the same, single allowed host.
     for (const p of protokoll) {
       assert.equal(
         new URL(p.url).host,
@@ -127,7 +127,7 @@ test('balance query', async t => {
 
   await t.test('3. a 401 with a token FROM THE POOL leads to exactly one retry', async () => {
     vorrat.clear();
-    // Erst eine Abfrage, damit eine Sitzung im Vorrat liegt.
+    // First one query, so that a session lies in the store.
     const leadTime = double();
     await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: leadTime.abruf });
 
@@ -175,7 +175,7 @@ test('balance query', async t => {
     );
     assert.equal(protokoll.filter(p => p.url.includes('giftCardBalanceQuery')).length, 1);
 
-    // Und schon die SEITE kann 403 geben — dann ist es derselbe Fall.
+    // And already the PAGE can give 403 — then it is the same case.
     vorrat.clear();
     const b = double({ 'gift-cards/balance': antwort({ status: 403, text: 'blocked' }) });
     await assert.rejects(
@@ -187,10 +187,10 @@ test('balance query', async t => {
   });
 
   await t.test('5b. after bot protection the next attempt starts with a fresh session', async () => {
-    // Woher dieser Fall kommt
+    // Where this case comes from
     vorrat.clear();
 
-    // 1. Eine Sitzung aufbauen und benutzen.
+    // 1. Build up a session and use it.
     const a = double();
     await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: a.abruf });
     assert.equal(
@@ -199,7 +199,7 @@ test('balance query', async t => {
       'Selbstnachweis: es wurde eine Sitzung aufgebaut',
     );
 
-    // 2. Der Bot-Schutz schlägt zu.
+    // 2. The bot protection strikes.
     const b = double({ giftCardBalanceQuery: antwort({ status: 403, text: 'blocked' }) });
     await assert.rejects(
       () => G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: b.abruf }),
@@ -211,8 +211,8 @@ test('balance query', async t => {
       'Selbstnachweis: dieser Versuch lief noch über die GEMERKTE Sitzung',
     );
 
-    // 3. Der nächste Versuch (nach der Pause, die hier nicht nachgestellt
-    //    wird — sie steht in der Schranke) muss die Seite neu laden.
+    // 3. The next attempt (after the pause, which is not recreated
+    //    here — it stands in the throttle) must reload the page.
     const c = double();
     await G.fetchBalance(vorrat, NUMBER, PIN, { locale: 'de-CH', abruf: c.abruf });
     assert.equal(
@@ -231,9 +231,9 @@ test('balance query', async t => {
 
   await t.test('6. the PIN is in NO text that goes out', async () => {
     vorrat.clear();
-    // Der boeseste Fall: Die Gegenseite wirft die Eingabe in ihrer
-    // Fehlermeldung zurueck. Ohne verdecke() landete die PIN damit im
-    // Serverprotokoll und in der Antwort an den Browser.
+    // The nastiest case: the other side throws the input back in its
+    // error message. Without verdecke() the PIN would thereby end up in the
+    // server log and in the response to the browser.
     const echo = `Invalid gift card ${NUMBER} with pin ${PIN}`;
     const { abruf } = double({
       giftCardBalanceQuery: antwort({ status: 400, text: echo }),
@@ -251,7 +251,7 @@ test('balance query', async t => {
       },
     );
 
-    // Und derselbe Weg fuer einen GraphQL-Fehler im Rumpf (HTTP 200).
+    // And the same path for a GraphQL error in the body (HTTP 200).
     vorrat.clear();
     const b = double({
       giftCardBalanceQuery: antwort({ json: { errors: [{ message: echo }] } }),
@@ -264,19 +264,19 @@ test('balance query', async t => {
 
   await t.test('7. verdecke() alone — even without an error case', () => {
     assert.equal(G.redact(`Karte ${NUMBER}, PIN ${PIN}`, NUMBER, PIN), 'Karte …1166, PIN …');
-    // Mehrfaches Vorkommen, und eine PIN, die zufaellig IN der Nummer steckt
-    // (hier „5045" am Anfang): Beide Ersetzungen muessen vollstaendig sein.
+    // Multiple occurrences, and a PIN that happens to sit IN the number
+    // (here „5045" at the beginning): both replacements must be complete.
     assert.ok(
       !G.redact(`${NUMBER} ${NUMBER} 5045`, NUMBER, '5045').includes('5045076'),
       'Die Nummer darf nirgends stehenbleiben',
     );
     assert.equal(G.redact('nichts dabei', NUMBER, PIN), 'nichts dabei');
-    // Ohne PIN (nicht jede Karte hat eine) darf verdecke() nicht stolpern.
+    // Without a PIN (not every card has one) verdecke() must not stumble.
     assert.equal(G.redact(`Karte ${NUMBER}`, NUMBER, null), 'Karte …1166');
   });
 
   await t.test('8. the country cannot redirect the address', async () => {
-    // Was ich hier erwartet hatte, und was gemessen herauskam
+    // What I had expected here, and what came out when measured
     vorrat.clear();
     const { abruf, protokoll } = double();
     await G.fetchBalance(vorrat, NUMBER, PIN, { locale: '../../boese.example.com/x', abruf }).catch(() => null);
@@ -290,9 +290,9 @@ test('balance query', async t => {
       );
     }
 
-    // Die Pruefung, die der ROUTE die Absage erlaubt, bevor sie fragt: Ein
-    // Land ausserhalb der Liste ergibt eine Adresse, die es bei LEGO nicht
-    // gibt — die Absage gehoert vor den Aufruf, nicht in einen 404.
+    // The check that allows the ROUTE to refuse before it asks: a
+    // country outside the list results in an address that does not exist at LEGO
+    // — the refusal belongs before the call, not into a 404.
     assert.equal(G.countryAllowed('de-CH'), true);
     assert.equal(G.countryAllowed('../../boese.example.com/x'), false);
     assert.equal(G.countryAllowed('de-XX'), false);
@@ -300,7 +300,7 @@ test('balance query', async t => {
   });
 
   await t.test('5c. a login with errors in the body continues as LoginAbgelehnt', async () => {
-    // Gegenprobe (14.11.2026): im Fang von baueSitzung `throw e` gestrichen → rot (Gast-Token-Fehler).
+    // Counter-check (14.11.2026): `throw e` deleted in the catch of baueSitzung → red (guest token error).
     vorrat.clear();
     const { abruf } = double({ Login: antwort({ json: { errors: [{ message: 'gesperrt' }] } }) });
     await assert.rejects(
@@ -310,9 +310,9 @@ test('balance query', async t => {
   });
 
   await t.test("9. the web app's select field carries exactly the allowed countries", () => {
-    // Zwei Listen fuer eine Sache laufen auseinander: Im HTML steht, was der
-    // Mensch waehlen kann, in LAENDER, was die Route annimmt. Waere im HTML
-    // ein Land zu viel, bekaeme der Nutzer eine Absage statt eines Guthabens.
+    // Two lists for one thing drift apart: the HTML holds what the
+    // human can choose, LAENDER what the route accepts. If the HTML had
+    // one country too many, the user would get a refusal instead of a balance.
     const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
     const block = html.slice(html.indexOf('<select id="gutschein-land"'));
     const werte = [...block.slice(0, block.indexOf('</select>')).matchAll(/<option value="([^"]+)"/g)].map(m => m[1]);

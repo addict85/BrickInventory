@@ -1,25 +1,25 @@
 /**
- * Die Hostlisten prüfen Namen; src/infra/targetAddress.ts prüft die Adresse, auf
- * die ein Name auflöst. Das DNS ist hier eine Attrappe: `ziel.fake.test`
- * und die erlaubten Hosts lösen auf, was der Teiltest vorgibt.
+ * The host lists check names; src/infra/targetAddress.ts checks the address
+ * a name resolves to. The DNS here is a dummy: `ziel.fake.test`
+ * and the allowed hosts resolve to what the subtest specifies.
  *
- * Gegenproben (11.11.2026 gemessen, je einzeln):
- *   A  in abruf.ts ohne `lookup: publicLookup` → rot: „ein erlaubter
- *      Host, der intern auflöst …“ (grund 'netz' statt 'adresse')
- *   B  in clients/imageCdn.ts den Pool ohne `lookup` → rot: „auch der Pool …“
- *   C  `*.lego.com` wieder in ALLOWED_DOWNLOAD_HOSTS → rot: „von LEGO nur …“
- *   D  in checkingLookup() ohne den Filter (alle Adressen weiter) → rot:
- *      „gemischte Antworten …“
- * Eingebettete IPv4 (12.11.2026 gemessen, je einzeln):
- *   E  normalisiert() gibt die Adresse unverändert zurück → rot: „NAT64 …
- *      zählt wie die IPv4-Adresse darin“ (64:ff9b::7f00:1 galt als öffentlich)
- *      und „… Container-Netz auch über NAT64“
- *   F  '2002::/16' aus INTERN gestrichen → rot: „6to4 und Teredo …“
- *   G  in normalisiert() die IPv4-kompatiblen (::/96) nicht erkannt → rot:
- *      „IPv4-kompatible Adressen …“ (::127.0.0.1 galt als öffentlich und
- *      erreichte den Mailserver im Container)
- *   H  (15.11.2026) die Dokumentationsnetze, 192.88.99.0/24 und fec0::/10 aus INTERN
- *      gestrichen → rot: „Dokumentations-, 6to4-Relais- und Site-Local-Netze …“
+ * Counter-checks (measured 11.11.2026, each on its own):
+ *   A  in abruf.ts without `lookup: publicLookup` → red: “an allowed
+ *      host that resolves internally …” (grund 'netz' instead of 'adresse')
+ *   B  in clients/imageCdn.ts the pool without `lookup` → red: “the image proxy pool also …”
+ *   C  `*.lego.com` again in ALLOWED_DOWNLOAD_HOSTS → red: “from LEGO only …”
+ *   D  in checkingLookup() without the filter (all addresses go on) → red:
+ *      “mixed responses …”
+ * Embedded IPv4 (measured 12.11.2026, each on its own):
+ *   E  normalisiert() returns the address unchanged → red: „NAT64 …
+ *      zählt wie die IPv4-Adresse darin“ (64:ff9b::7f00:1 counted as public)
+ *      and „… Container-Netz auch über NAT64“
+ *   F  '2002::/16' deleted from INTERN → red: „6to4 und Teredo …“
+ *   G  in normalisiert() the IPv4-compatible ones (::/96) not recognized → red:
+ *      “IPv4-compatible addresses …” (::127.0.0.1 counted as public and
+ *      reached the mail server in the container)
+ *   H  (15.11.2026) the documentation networks, 192.88.99.0/24 and fec0::/10 deleted from INTERN
+ *      → red: “documentation, 6to4 relay and site-local networks …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -31,7 +31,7 @@ const { holeHttps, AbrufFehler } = _req('src/infra/fetch.js');
 const { oeffneBild } = _req('clients/imageCdn.js');
 const { hostAllowed, ALLOWED_DOWNLOAD_HOSTS } = _req('src/infra/foreignAddresses.js');
 
-/** @param {Record<string, string[]>} antworten  Host → Adressen */
+/** @param {Record<string, string[]>} antworten  host → addresses */
 function withDns(t, antworten) {
   const echt = dns.lookup;
   const gefragt = [];
@@ -90,7 +90,7 @@ test('documentation, 6to4 relay and site-local networks are not a public target'
     '::ffff:203.0.113.5',
   ])
     assert.equal(Z.publicAddress(ip), false, ip);
-  // Die Nachbarn bleiben öffentlich: Die Netze sind nicht zu weit gefasst.
+  // The neighbors stay public: the networks are not drawn too wide.
   for (const ip of ['192.0.3.1', '198.51.101.1', '203.0.114.1', '192.88.100.1', 'fe00::1'])
     assert.equal(Z.publicAddress(ip), true, ip);
 });
@@ -168,7 +168,7 @@ test('NAT64 and IPv4-mapped addresses: the IPv4 address inside counts', () => {
   for (const ip of ['2606:4700::1111', 'fe80::1%eth0', '64:ff9b:1::1', '1.2.3.4']) assert.equal(Z.normalisiert(ip), ip);
   for (const ip of ['64:ff9b::7f00:1', '64:ff9b::10.0.0.1', '64:ff9b::a9fe:a9fe', '::ffff:192.168.1.1'])
     assert.equal(Z.publicAddress(ip), false, `NAT64 zählt wie die IPv4-Adresse darin: ${ip}`);
-  // Hinter DNS64 bekommt ein reiner IPv4-Dienst eine NAT64-Adresse; die bleibt erreichbar.
+  // Behind DNS64 a pure IPv4 service gets a NAT64 address; it stays reachable.
   assert.equal(Z.publicAddress('64:ff9b::808:808'), true);
 });
 

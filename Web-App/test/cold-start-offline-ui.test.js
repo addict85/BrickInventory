@@ -1,14 +1,14 @@
 /**
- * Kaltstart ohne Server (UI-Prüfung 17, Abläufe M18), echtes Bündel in
- * jsdom: Antwortet /api nicht, steht nach höchstens acht Sekunden „Server
- * nicht erreichbar“ mit einem Knopf „Erneut versuchen“ da. Ist der Server
- * zurück, holt der Knopf den Start sofort nach, und der Hinweis verschwindet.
+ * Cold start without server (UI review 17, flows M18), real bundle in
+ * jsdom: if /api does not answer, after at most eight seconds “server
+ * not reachable” appears with a button “try again”. When the server is
+ * back, the button catches up on the start immediately, and the hint disappears.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln, Bündel neu gebaut):
- *   A  in waitForStartup den Aufruf zeigeOffline(true) entfernt → rot: „ohne
- *      Server“ (kein Hinweis nach 8 s)
- *   B  knopf.onclick nicht gesetzt → rot: „ohne Server“ (die Anmeldung kam
- *      erst mit dem nächsten Takt, nicht sofort)
+ * Counter-checks (measured 05.11.2026, each alone, bundle rebuilt):
+ *   A  in waitForStartup the call zeigeOffline(true) removed → red: “without
+ *      server” (no hint after 8 s)
+ *   B  knopf.onclick not set → red: “without server” (the login only came
+ *      with the next tick, not immediately)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -38,7 +38,7 @@ test('without server: hint and try again', async () => {
     stand.weg = false;
     const vorher = o.aufrufe.length;
     knopf.click();
-    // Der normale Takt nach einem Fehler sind zwei Sekunden; der Knopf muss schneller sein.
+    // The normal tick after an error is two seconds; the button must be faster.
     assert.ok(
       await warte(() => o.d.getElementById('login-screen').style.display === 'flex', 500),
       'Knopf holt den Start nicht sofort nach',

@@ -1,33 +1,33 @@
 /**
- * Eine neue E-Mail-Adresse gilt erst nach dem Link an sie (Sicherheitsprüfung
- * Runde 12, N1). Bis dahin bleibt die alte, und die neue belegt nichts: Ihr
- * Inhaber kann sich mit ihr registrieren, und Passwort-vergessen findet über
- * eine unbestätigte Adresse kein Konto. Seit Runde 13 (N1) legt auch eine …
+ * A new e-mail address only applies after the link to it (security review
+ * round 12, N1). Until then the old one stays, and the new one occupies nothing: its
+ * owner can register with it, and forgot-password finds no account via
+ * an unconfirmed address. Since round 13 (N1) a … also creates
  *
- * Gegenproben (04.11.2026 gemessen, je einzeln):
- *   A  PUT /profile schreibt die Adresse wieder sofort nach users.email → rot:
- *      „eine neue Adresse gilt erst nach dem Link“
- *   B  registerAccount() schreibt die Adresse wieder nach users.email → rot:
- *      „die ausstehende Adresse belegt nichts“ und „beim Einlösen …“
- *   C  activeAccountAfterEmail() ohne `AND email_verified` → rot: „Passwort
- *      vergessen nur für bestätigte Adressen“
- *   D  assertLoginAllowed() ohne die Bedingung `registration_pending` → rot: „eine
- *      fremde Registrierung sperrt die Adresse nicht“ (mallory meldet sich an)
- *   E  adoptEmailNew() ohne OHNE_RUECKSETZLINK → rot: „eingelöst gilt die
- *      neue Adresse“ (der Rücksetzlink an die alte Adresse gilt weiter)
- *   F  in 0096 die Bedingung `NOT registration_pending` gestrichen → rot:
- *      „Migration 0096 …“; in 0097 `email = NULL` gestrichen → rot: „Migrationen
- *      0096 und 0097 …“ (auf frischer DB gemessen, sonst greift die Prüfsumme)
- *   G  reportPendingAddresses() ohne Abfrage (leere Liste) → rot: dieselbe Prüfung
- *   H  renewEmailTokenIfFree() ohne `HAVING COUNT(*) = 1` → rot: „ein neuer
- *      Link nur für die einzige offene Registrierung“
- *   I  die Vorschau nennt auch new_email (Name und Adresse) → rot: „die
- *      Vorschau nennt nur den Benutzernamen“
- *   K  die Vorschau ruft verifyEmailToken() → rot: „… löst nicht ein“
- *   L  POST /register übergibt `mehrere` nicht → rot: „bei mehreren offenen
- *      Registrierungen trägt die Mail den Hinweis“
+ * Counter-checks (measured 04.11.2026, each alone):
+ *   A  PUT /profile writes the address to users.email immediately again → red:
+ *      “a new address only applies after the link”
+ *   B  registerAccount() writes the address to users.email again → red:
+ *      “the pending address occupies nothing” and “on redeeming …”
+ *   C  activeAccountAfterEmail() without `AND email_verified` → red: “forgot
+ *      password only for confirmed addresses”
+ *   D  assertLoginAllowed() without the condition `registration_pending` → red: “a
+ *      foreign registration does not lock the address” (mallory logs in)
+ *   E  adoptEmailNew() without OHNE_RUECKSETZLINK → red: “once redeemed the
+ *      new address applies” (the reset link to the old address still applies)
+ *   F  in 0096 the condition `NOT registration_pending` deleted → red:
+ *      “migration 0096 …”; in 0097 `email = NULL` deleted → red: “migrations
+ *      0096 and 0097 …” (measured on a fresh DB, otherwise the checksum applies)
+ *   G  reportPendingAddresses() without a query (empty list) → red: the same check
+ *   H  renewEmailTokenIfFree() without `HAVING COUNT(*) = 1` → red: “a new
+ *      link only for the only open registration”
+ *   I  the preview also names new_email (name and address) → red: “the
+ *      preview only names the username”
+ *   K  the preview calls verifyEmailToken() → red: “… does not redeem”
+ *   L  POST /register does not pass `mehrere` → red: “with several open
+ *      registrations the mail carries the hint”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -172,7 +172,7 @@ test('new email address only after confirmation', { concurrency: 1 }, async t =>
       assert.equal((await ruf('POST', '/forgot-password', { email })).status, 200);
     const opfer = await db.get('SELECT reset_token FROM users WHERE username = $1', [`opfer_${P}`]);
     assert.equal(opfer.reset_token, null, 'Rücksetzlink über eine unbestätigte Adresse');
-    // Gegenstück: Über die bestätigte Adresse entsteht einer, sonst prüfte der Fall nichts.
+    // Counterpart: via the confirmed address one is created, otherwise the case checks nothing.
     assert.notEqual((await carol()).reset_token, null);
   });
 
@@ -299,9 +299,9 @@ test('new email address only after confirmation', { concurrency: 1 }, async t =>
         offen: await neu('offen', [false, true, 'h3', '2 hours']),
         fest: await neu('fest', [true, false, null, '0 hours']),
       };
-      // Migration 0096 ist Geschichte und nennt die Spalten noch unter ihrem
-      // alten Namen; 0124 (längst angewandt) hätte sie sonst gleich danach
-      // umbenannt, wie bei einer echten Reihenfolge der Migrationen.
+      // Migration 0096 is history and still names the columns by their
+      // old name; 0124 (applied long ago) would otherwise have renamed them
+      // right afterwards, as in a real order of migrations.
       await c.query(`ALTER TABLE users RENAME COLUMN new_email TO email_neu`);
       await c.query(`ALTER TABLE users RENAME COLUMN new_email_token TO email_neu_token`);
       await c.query(`ALTER TABLE users RENAME COLUMN new_email_until TO email_neu_bis`);
@@ -354,8 +354,8 @@ test('new email address only after confirmation', { concurrency: 1 }, async t =>
           [`reg_${P}`, adr('reg'), `best_${P}`, adr('best')],
         )
       ).rows.map(r => r.id);
-      // Migration 0097 ist Geschichte und nennt die Spalten noch unter ihrem
-      // alten Namen; siehe Begründung bei Migration 0096 weiter oben.
+      // Migration 0097 is history and still names the columns by their
+      // old name; see the rationale at migration 0096 further up.
       await c2.query(`ALTER TABLE users RENAME COLUMN new_email TO email_neu`);
       await c2.query(`ALTER TABLE users RENAME COLUMN new_email_token TO email_neu_token`);
       await c2.query(`ALTER TABLE users RENAME COLUMN new_email_until TO email_neu_bis`);

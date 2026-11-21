@@ -1,16 +1,16 @@
 /**
- * Die Teile-Zusammenfassung veraltet, wenn sich ein kopierter Text ändert:
- * der Name eines Lagerorts oder ein Katalogeintrag.
+ * The parts summary becomes outdated when a copied text changes:
+ * the name of a storage location or a catalog entry.
  *
- * Gegenproben (am 28.10.2026 gemessen):
- *   A  in 0052 den Trigger auf storage_locations weggelassen → rot: „ein
- *      umbenannter Lagerort entwertet die Zusammenfassung“
- *   B  in summaryFresh den Vergleich des Katalogstands entfernt → rot: „ein
- *      geänderter Teilename entwertet sie ebenso“ (seit Migration 0079: „ein
- *      geänderter Teilename ist sofort nachgezogen“, siehe
+ * Counter-checks (measured on 28.10.2026):
+ *   A  the trigger on storage_locations left out in 0052 → red: “a
+ *      renamed storage location invalidates the summary”
+ *   B  in summaryFresh the comparison of the catalog state removed → red: “a
+ *      changed part name invalidates it as well” (since migration 0079: “a
+ *      changed part name is updated immediately”, see
  *      parts-catalog-incremental-db.test.js)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 require('./helpers/system-frame');
 const test = require('node:test');

@@ -1,15 +1,15 @@
 /**
- * Geheimnisse dürfen aus Dateien kommen (Docker-Secrets): X_FILE statt X für
- * SESSION_SECRET, PGPASSWORD, DATABASE_URL und ADMIN_PASSWORD. Ohne X_FILE
- * bleibt alles wie bisher.
+ * Secrets may come from files (Docker secrets): X_FILE instead of X for
+ * SESSION_SECRET, PGPASSWORD, DATABASE_URL and ADMIN_PASSWORD. Without X_FILE
+ * everything stays as before.
  *
- * Gegenproben (03.11.2026 gemessen, je einzeln):
- *   A  in ladeKonfig secretsFromFiles() nicht aufgerufen → rot: „das
- *      Sitzungsgeheimnis kommt aus der Datei" und „beide gesetzt ist ein Fehler"
- *   B  den abschliessenden Zeilenumbruch nicht entfernt → rot: „das
- *      Sitzungsgeheimnis …" und „das Datenbankpasswort …"
- *   C  in databaseConnection den Aufruf gestrichen → rot: „das
- *      Datenbankpasswort kommt aus der Datei"
+ * Counter-checks (measured 03.11.2026, each on its own):
+ *   A  secretsFromFiles() not called in ladeKonfig → red: “the
+ *      session secret comes from the file” and “both set is an error”
+ *   B  the trailing line break not removed → red: “the
+ *      session secret …” and “the database password …”
+ *   C  the call deleted in databaseConnection → red: “the
+ *      database password comes from the file”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

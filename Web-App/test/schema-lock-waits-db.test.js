@@ -1,15 +1,15 @@
 /**
- * Wartet der Start auf den Prozess, der gerade migriert, bricht er nicht am
- * statement_timeout der Pool-Verbindung ab (57014), sondern wartet, bis die
- * Sperre frei ist.
+ * If the start waits for the process that is currently migrating, it does not abort at the
+ * statement_timeout of the pool connection (57014) but waits until the
+ * lock is free.
  *
- * Gegenprobe (am 07.11.2026 gemessen): `SET statement_timeout = 0` vor dem
- * pg_advisory_lock in initSchemaOnce() entfernt → rot: „wartet länger als
- * statement_timeout“ (Abbruch mit 57014 nach rund einer Sekunde).
+ * Counter-check (measured on 07.11.2026): `SET statement_timeout = 0` before the
+ * pg_advisory_lock removed in initSchemaOnce() → red: “waits longer than
+ * statement_timeout” (abort with 57014 after about one second).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  *
- * @superuser (Ratsche in test/roles-separation-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -48,7 +48,7 @@ test('schema lock: waiting takes longer than statement_timeout', async t => {
         ergebnis = e;
       },
     );
-    // Der Wartende steht seit mehr als dem doppelten statement_timeout an der Sperre.
+    // The waiting one has been standing at the lock for more than twice the statement_timeout.
     const wartet = await bis(
       async () =>
         (

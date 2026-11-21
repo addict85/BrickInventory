@@ -1,39 +1,39 @@
 /**
- * Zwei Zustände am selben Tag sind ZWEI Erfassungen, mit eigenen Preisen.
+ * Two conditions on the same day are TWO entries, with their own prices.
  *
- * ── Gegenproben (am 21.10. GEMESSEN, Zahlen abgeschrieben) ──────────────────
+ * ── Counter-checks (MEASURED on 21.10., numbers copied down) ─────────────────
  *
- * Ausgangslage `# pass 6 / # fail 0` (fünf Fälle und ihre Hülle).
+ * Starting point `# pass 6 / # fail 0` (five cases and their shell).
  *
- *   A  `AND COALESCE(condition, 'N') = $…` aus addPurchaseAtTag
- *      entfernt (der Stand von Marcos Befund)
- *      → `pass 2 / fail 4`. Rot sind DREI Fälle: „zwei Zustände, zwei
- *        Zeilen" (`1 Zeile(n) statt 2`), „jede Zeile behält ihren eigenen
- *        Preis" und „der Datums-Endpunkt sieht den Zustand an" — der letzte
- *        nur mittelbar, weil die N-Zeile, die er sucht, gar nicht entstand.
- *        „Derselbe Zustand stockt weiterhin auf" bleibt grün: Diese Hälfte
- *        der Regel ändert sich nicht.
- *   B  Migration 0040 zurückgenommen (alter Index ohne Zustand)
- *      → `pass 1 / fail 5`. Rot sind VIER Fälle. Der Index verhindert die
- *        zweite Zeile schon in der Datenbank, und alles, was auf ihr aufbaut,
- *        fällt mit. Das ist der Beleg, dass die Migration trägt und nicht
- *        nur der Code.
- *   C  den Zustand aus purchaseAtSameTag entfernt
- *      → `pass 4 / fail 2`. Rot: „der Datums-Endpunkt sieht den Zustand an".
- *        Ohne ihn lehnt der Bearbeiten-Pfad ab, was der Anlege-Pfad gerade
- *        erlaubt — genau der Widerspruch, wegen dem diese Fassung einmal
- *        verworfen wurde.
+ *   A  `AND COALESCE(condition, 'N') = $…` removed from addPurchaseAtTag
+ *      (the state of Marco's finding)
+ *      → `pass 2 / fail 4`. Red are THREE cases: “two conditions, two
+ *        rows" (`1 row(s) instead of 2`), “every row keeps its own
+ *        price" and “the date endpoint looks at the condition" — the last
+ *        only indirectly, because the N row it searches for was never created.
+ *        “The same condition still tops up" stays green: this half
+ *        of the rule does not change.
+ *   B  migration 0040 reverted (old index without condition)
+ *      → `pass 1 / fail 5`. Red are FOUR cases. The index already prevents the
+ *        second row in the database, and everything that builds on it
+ *        falls with it. That is the proof that the migration carries and not
+ *        only the code.
+ *   C  the condition removed from purchaseAtSameTag
+ *      → `pass 4 / fail 2`. Red: “the date endpoint looks at the condition".
+ *        Without it the edit path rejects what the create path just
+ *        allowed — exactly the contradiction for which this version was once
+ *        discarded.
  *
- * Gegenproben zu Migration 0047 (am 28.10. gemessen):
- *   D  addPurchaseAtTag wieder als Lesen-Rechnen-Schreiben (Stand vor
- *      0047) → rot: „gleichzeitige Erfassungen gehen nicht verloren" (weniger
- *      als 12) und „gleicher Preis stockt auf …" (Mischpreis 3)
- *   E  price_estimated aus Index und Einfügen entfernt → rot: „ein
- *      eingesetzter Marktpreis ist als geschätzt gekennzeichnet"
- *   F  den Währungs-Trigger der Migration entfernt → rot: alle Fälle, weil
- *      die Pflichtspalte currency ohne ihn jedes Einfügen abweist
+ * Counter-checks for migration 0047 (measured on 28.10.):
+ *   D  addPurchaseAtTag again as read-compute-write (state before
+ *      0047) → red: “concurrent entries are not lost" (fewer
+ *      than 12) and “equal price tops up …" (mixed price 3)
+ *   E  price_estimated removed from index and insert → red: “an
+ *      inserted market price is marked as estimated"
+ *   F  the migration's currency trigger removed → red: all cases, because
+ *      without it the required column currency rejects every insert
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip, ausser
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip, unless
  * REQUIRE_DB=1.
  */
 require('./helpers/system-frame');
@@ -75,7 +75,7 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
   const UID = (await db.get(`INSERT INTO users (username,password_hash) VALUES ('marco','x') RETURNING id`)).id;
   const TAG = '2026-10-21';
 
-  /** Die Erfassungen eines Teils, vergleichbar aufbereitet. */
+  /** The entries of a part, prepared for comparison. */
   const zeilen = async nr =>
     (
       await db.all(
@@ -120,8 +120,8 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
   });
 
   await t.test('the same price tops up, a different price gets a row of its own', async () => {
-    // Seit Migration 0047: Kein Mischpreis mehr. Gleiche Käufe eines Tages
-    // werden addiert (verlustfrei), verschiedene Preise bleiben getrennt.
+    // Since migration 0047: no more mixed price. Equal purchases of a day
+    // are added (lossless), different prices stay separate.
     await addPurchaseAtTag('part', UID, ['3002', 4], {
       quantity: 2,
       price: 2.0,
@@ -151,7 +151,7 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
   });
 
   await t.test('concurrent acquisitions do not get lost', async () => {
-    // Web und App erfassen dasselbe Teil im selben Augenblick.
+    // Web and app enter the same part at the same moment.
     await Promise.all(
       Array.from({ length: 12 }, () =>
         addPurchaseAtTag('part', UID, ['3004', 1], { quantity: 1, price: 1.0, condition: 'N', createdAt: TAG }),
@@ -215,8 +215,8 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
   });
 
   await t.test('the unique index carries the rule, not only the code', async () => {
-    // Migration 0040. Ohne den Index hätte ein Weg, der am Helfer vorbei
-    // schreibt, freie Bahn — genau dafür gibt es ihn seit 0008.
+    // Migration 0040. Without the index a path that writes past the helper
+    // would have free rein — exactly for that it has existed since 0008.
     await db.run(
       `INSERT INTO part_acquisitions (user_id, part_number, color_id, quantity, condition, created_at)
        VALUES ($1,'3003',4,1,'N',$2::date)`,
@@ -241,8 +241,8 @@ test('one acquisition per day, condition, price and currency', { concurrency: 1 
   });
 
   await t.test('the date endpoint looks at the condition', async () => {
-    // Der zweite Schritt, ohne den die Fassung schon einmal verworfen wurde:
-    // Der Bearbeiten-Pfad darf nicht ablehnen, was der Anlege-Pfad erlaubt.
+    // The second step without which the version was already discarded once:
+    // the edit path must not reject what the create path allows.
     const n = await db.get(
       `SELECT id FROM part_acquisitions WHERE user_id=$1 AND part_number='3001'
          AND condition='N'`,

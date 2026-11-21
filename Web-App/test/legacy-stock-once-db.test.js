@@ -1,17 +1,17 @@
 /**
- * Die Umschlüsselung des Altbestands läuft einmal je Datenbank, nicht bei
- * jedem Start: Danach steht eine Marke im Laufzustand. Fehlt sie (frische
- * Datenbank, zurückgespielte ältere Sicherung), läuft sie wieder.
+ * The re-keying of the legacy data runs once per database, not at
+ * every start: afterwards a marker stands in the run state. If it is missing (fresh
+ * database, restored older backup), it runs again.
  *
- * Gegenproben (05.11.2026 gemessen):
- *   A  die Abfrage der Marke in legacyStockUpgrade(require('./helpers/sources').testServices()) gestrichen → rot:
- *      „der zweite Start lässt den Altbestand in Ruhe“
- *   B  setzeZustand(LEGACY_STOCK_BRAND, …) gestrichen → rot: „der erste Start
- *      rüstet auf und setzt die Marke“ und „der zweite Start …“
+ * Counter-checks (measured 05.11.2026):
+ *   A  the query of the marker in legacyStockUpgrade(require('./helpers/sources').testServices()) deleted → red:
+ *      “the second start leaves the legacy data alone”
+ *   B  setzeZustand(LEGACY_STOCK_BRAND, …) deleted → red: “the first start
+ *      upgrades and sets the marker” and “the second start …”
  *
- * Dass die Umschlüsselung selbst wirkt, zeigen geheimnis-kontext-db und
- * gutscheinnummer-verschluesselt-db auf frischer Datenbank.
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * That the re-keying itself works is shown by secret-context-db and
+ * voucher-number-encrypted-db on a fresh database.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');

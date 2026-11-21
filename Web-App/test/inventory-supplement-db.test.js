@@ -1,9 +1,9 @@
 /**
- * Ein Rebrickable-Inventar wird ueberall nach denselben Kandidaten gesucht.
+ * A Rebrickable inventory is searched for by the same candidates everywhere.
  *
- * Gegenproben (durchgefuehrt): siehe unten am jeweiligen Teilschritt.
+ * Counter-checks (performed): see below at the respective substep.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -22,7 +22,7 @@ const { newestInventory } = _req('src/catalog/rbInventory.js');
 test('an inventory is found under both spellings', { concurrency: 1 }, async t => {
   if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
-  // rb_inventories.id ist kein SERIAL — die Nummern kommen aus der CSV.
+  // rb_inventories.id is not a SERIAL — the numbers come from the CSV.
   const idBlank = 900000 + (process.pid % 10000) * 2;
   const idWithV = idBlank + 1;
   const NR = `${9000000 + (process.pid % 100000)}`;
@@ -31,9 +31,9 @@ test('an inventory is found under both spellings', { concurrency: 1 }, async t =
   await aufraeumen();
 
   try {
-    // 1. BLANK geschrieben: Die Datenbank legt die Nummer mit Anhang ab.
-    //    Gegenprobe (30.10.2026): Trigger rb_inventories_setnummer entfernt
-    //    → rot („wird mit Versionsanhang abgelegt“: 9xxxxxx statt 9xxxxxx-1).
+    // 1. Written BLANK: the database stores the number with a suffix.
+    //    Counter-check (30.10.2026): trigger rb_inventories_setnummer removed
+    //    → red (“is stored with a version suffix”: 9xxxxxx instead of 9xxxxxx-1).
     await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1,$2,1)', [idBlank, NR]);
     assert.equal(
       (await db.get('SELECT set_num FROM rb_inventories WHERE id = $1', [idBlank])).set_num,
@@ -51,7 +51,7 @@ test('an inventory is found under both spellings', { concurrency: 1 }, async t =
       'Auch mit Versionsanhang in der Eingabe muss die blanke Zeile gefunden werden',
     );
 
-    // 2. Liegt beides vor, gewinnt die hoechste version — nicht die blanke.
+    // 2. If both are present, the highest version wins — not the blank one.
     await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1,$2,2)', [idWithV, `${NR}-1`]);
     assert.equal(await newestInventory(NR), idWithV);
   } finally {
@@ -61,7 +61,7 @@ test('an inventory is found under both spellings', { concurrency: 1 }, async t =
 });
 
 test('the inventory lookup lives in only one place', () => {
-  // Gefunden, nicht aufgezaehlt.
+  // Found, not enumerated.
   const dateien = [];
   const gehen = d => {
     for (const e of fs.readdirSync(d, { withFileTypes: true })) {
@@ -79,7 +79,7 @@ test('the inventory lookup lives in only one place', () => {
     }
   };
   gehen(ROOT);
-  // Selbstnachweis: Faende die Suche nichts, waere die Regel leer wahr.
+  // Self-proof: if the search found nothing, the rule would be vacuously true.
   assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
 
   const stellen = [];
@@ -88,14 +88,14 @@ test('the inventory lookup lives in only one place', () => {
       .readFileSync(f, 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/^\s*\/\/[^\n]*$/gm, '');
-    // Nur der Nachschlag EINER Zeile. Die Sammelabfrage in
-    // partsCatalogEnrich (WHERE set_num = ANY(...), ohne LIMIT) beantwortet
-    // eine andere Frage und bleibt, wo sie ist.
+    // Only the lookup of ONE row. The bulk query in
+    // partsCatalogEnrich (WHERE set_num = ANY(...), without LIMIT) answers
+    // a different question and stays where it is.
     for (const m of code.matchAll(/FROM rb_inventories[\s\S]{0,200}?LIMIT 1/g))
       stellen.push(path.relative(ROOT, f) + (m ? '' : ''));
   }
-  // Gegenprobe: den alten SELECT in routes/api_v1/catalog.ts wieder
-  // eingesetzt → rot.
+  // Counter-check: the old SELECT in routes/api_v1/catalog.ts reinserted
+  // → red.
   assert.deepEqual(
     stellen,
     ['src/catalog/repository/catalogMaster.ts'],

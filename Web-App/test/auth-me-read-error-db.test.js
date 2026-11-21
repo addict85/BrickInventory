@@ -1,16 +1,16 @@
 /**
- * GET /auth/me bei einem Lesefehler: 503 statt „nicht angemeldet“ oder 401.
- * Mit 401 verwürfe die App ihren Token, und der Browser zeigte die
- * Anmeldemaske, obwohl die Sitzung gilt. Der Fehler kommt aus dem Pool, wie
- * bei einer abgerissenen Verbindung; der Rest läuft echt.
+ * GET /auth/me on a read error: 503 instead of “not logged in” or 401.
+ * With 401 the app would discard its token, and the browser would show the
+ * login mask although the session is valid. The error comes from the pool, as
+ * with a broken connection; the rest runs for real.
  *
- * Gegenprobe (11.11.2026 gemessen): der frühere catch-Zweig (Token → 401
- * token_ungueltig, sonst 200 loggedIn: false) → rot in beiden Teiltests.
- * Gegenprobe (16.11.2026 gemessen): checkSessionVersion reicht den Lesefehler wieder als
- * next(e) durch → rot: „mit Sitzung …“ (500 interner_fehler; die Sitzungsversion wird ohne
- * Horch-Verbindung nicht mehr zwischengespeichert, src/account/sessionVersion.ts).
+ * Counter-check (measured 11.11.2026): the former catch branch (token → 401
+ * token_ungueltig, otherwise 200 loggedIn: false) → red in both subtests.
+ * Counter-check (measured 16.11.2026): checkSessionVersion passes the read error on again as
+ * next(e) → red: “with session …” (500 interner_fehler; the session version is no longer
+ * cached without a listen connection, src/account/sessionVersion.ts).
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -46,10 +46,10 @@ test('/auth/me on a read error', { concurrency: 1 }, async t => {
     const r = await fetch(`${base}/api/v1/auth/me`, { headers: kopf });
     return { status: r.status, body: await r.json() };
   };
-  /** Jede Abfrage scheitert, solange `work` läuft. */
+  /** Every query fails while `work` runs. */
   const withError = async work => {
-    // Mit Konto holt sich die Datenbankschicht eine eigene Verbindung (Zeilenschutz): beide Wege,
-    // in allen Pools der App (Laufzeit-, System- und Web-Systemrolle).
+    // With an account the database layer takes its own connection (row security): both paths,
+    // in all pools of the app (runtime, system and web system role).
     const zugang = require('./helpers/sources').testAccess();
     const pools = [...new Set([zugang.pool, zugang.systemPool, zugang.systemWebPool])];
     const echt = pools.map(p => ({ query: p.query, connect: p.connect }));

@@ -1,14 +1,14 @@
 /**
- * Der Set-Bilder-Nachlauf lädt nur Bilder zu Sets mit Bezug und fragt ein
- * bildloses Set (404) nicht bei jedem Start erneut.
+ * The set images follow-up only loads images for sets with a reference and does not ask
+ * an imageless set (404) again on every start.
  *
- * Gegenproben (durchgeführt):
- * - Bezug-Bedingung aus setImagesWithoutFile entfernt → „nur Katalog“ steht in der
- *   Auswahl, Teil 1 rot.
- * - rememberMissing im Nachlauf entfernt → der 404-Satz steht im zweiten Lauf wieder
- *   in der Auswahl, Teil 2 rot.
+ * Counter-checks (carried out):
+ * - reference condition removed from setImagesWithoutFile → „nur Katalog“ stands in the
+ *   selection, part 1 red.
+ * - rememberMissing removed in the follow-up → the 404 set stands in the selection again
+ *   in the second run, part 2 red.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip.
  */
 require('./helpers/system-frame');
 const test = require('node:test');
@@ -16,7 +16,7 @@ const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-/** Abgefangener Download: Statuscode je Set, kein Netz. */
+/** Intercepted download: status code per set, no network. */
 const antworten = new Map();
 const angefragt = [];
 
@@ -80,7 +80,7 @@ test('set image follow-up run: only sets with a reference, 404 rests', { concurr
       );
       const m = await db.get(`SELECT reason FROM image_misses WHERE cache_key = $1`, ['set:' + imageless]);
       assert.match(m?.reason ?? '', /404/);
-      // Ohne Statuscode (Netzaussetzer) bleibt das Set in der Auswahl.
+      // Without a status code (network outage) the set stays in the selection.
       assert.deepEqual(await eigene(), [gehalten]);
     });
   } finally {
