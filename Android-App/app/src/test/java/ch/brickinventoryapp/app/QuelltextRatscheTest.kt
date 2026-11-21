@@ -130,6 +130,8 @@ class QuelltextRatscheTest {
         File(m, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
     }.filterNot { "GENERATED from shared/design-tokens.json" in it.readText() }
 
+    private val counterCheck = Regex("Gegenprobe|Counter-check", RegexOption.IGNORE_CASE)
+
     private fun isComment(t: String) = t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")
 
     /** Prosazeilen je Kommentarblock (//-Folge gleicher Einrückung oder /* … */), ohne KDoc-Tags. */
@@ -249,11 +251,11 @@ class QuelltextRatscheTest {
             f.readLines().filter { z ->
                 val t = z.trim()
                 (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) &&
-                    kennung.containsMatchIn(t) && !t.contains("Gegenprobe", ignoreCase = true)
+                    kennung.containsMatchIn(t) && !counterCheck.containsMatchIn(t)
             }.map { "${f.name}: ${it.trim()}" }
         }
         // Wer was gemeldet hat und in welchem Nachtrag, steht im Commit, nicht im Testkopf.
-        val narrative = Regex("""Nachtr[aä]g\w*\s+[0-9]|\bMarcos?\b|Woher dies|\bLauf [0-9]{2,}|CI-Lauf|\bRunde [0-9]+""")
+        val narrative = Regex("""Nachtr[aä]g\w*\s+[0-9]|\bMarcos?\b|Woher dies|\bLauf [0-9]{2,}|CI-Lauf|\bRunde [0-9]+|Addendum\w*\s+[0-9]|\bRun [0-9]{2,}|CI run|\bRound [0-9]+""")
         val tells = dateien.flatMap { f ->
             f.readLines().filter { z ->
                 val t = z.trim()
@@ -282,7 +284,7 @@ class QuelltextRatscheTest {
         var anfang = -1
         val paragraph = mutableListOf<String>()
         fun schliessen() {
-            if (paragraph.size > 5 && !paragraph.first().startsWith("Gegenprobe")) findings += anfang + 1
+            if (paragraph.size > 5 && !paragraph.first().let { it.startsWith("Gegenprobe") || it.startsWith("Counter-check") }) findings += anfang + 1
             paragraph.clear()
         }
         for ((i, z) in zeilen.withIndex()) {
