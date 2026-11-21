@@ -50,11 +50,11 @@ import ch.brickinventoryapp.state.ui.viewmodel.Texte
 import ch.brickinventoryapp.state.ui.viewmodel.sequenceSignOut
 
 /**
- * Merkliste und Merkposten-Detail — was man haben möchte, getrennt vom Besitz.
+ * Wishlist and wishlist-item detail — what one would like to have, separate from ownership.
  *
- * Wie ein Merkposten angelegt, übernommen oder gefiltert wird, entscheidet der
- * Server (utils/merkliste.ts); hier wird nur gefragt und gezeigt. Suche,
- * Zustand und Sortierung stehen im [SavedStateHandle].
+ * How a wishlist item is created, taken over or filtered is decided by the
+ * server (utils/merkliste.ts); here it is only asked for and shown. Search,
+ * condition and sorting live in the [SavedStateHandle].
  */
 @HiltViewModel
 class MerklisteViewModel @Inject constructor(
@@ -94,13 +94,13 @@ class MerklisteViewModel @Inject constructor(
         stateFilter = Zustand.aus(gemerkt[STATE]),
         sorting = Merksortierung.aus(gemerkt[SORTING]),
     ))
-    /** Ein Merkposten, der erst gelöscht wird, wenn die Snackbar ohne „Rückgängig“ endet. */
+    /** A wishlist item that is only deleted once the snackbar ends without „Rückgängig“. */
     data class ReservedWantedItem(val setNumber: String, val zustand: Zustand, val besitzer: Int?, val name: String)
 
     private val _reserved = MutableStateFlow<ReservedWantedItem?>(null)
     val vorgemerkt: StateFlow<ReservedWantedItem?> = _reserved.asStateFlow()
 
-    /** Die Quelle der Liste für die eingestellten Filter; [loadWanted] wählt sie. */
+    /** The source of the list for the configured filters; [loadWanted] chooses it. */
     private val quelle = MutableStateFlow<Flow<Local<WantedItemView>>>(flowOf(Local(emptyList(), null)))
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -108,8 +108,8 @@ class MerklisteViewModel @Inject constructor(
         quelle.flatMapLatest { it }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     /**
-     * Die Liste zeigt nur die Quelle — die Ablage, über gewählte Konten die Kontosicht —,
-     * auch offline Angelegtes oder Gelöschtes sofort. Der vorgemerkte Posten fehlt darin.
+     * The list shows only the source — the store, or, over selected accounts, the account view —,
+     * including what was added or deleted offline, right away. The item pending deletion is missing from it.
      */
     val wantedState: StateFlow<WantedUiState> = _wantedState
         .abgeleitet(liste) { st, l ->
@@ -120,15 +120,15 @@ class MerklisteViewModel @Inject constructor(
         }
 
     init {
-        // Wer die Liste zeigt, bekommt sie frisch; die Quelle danach folgt der Ablage selbst.
+        // Whoever shows the list gets it fresh; the source after that follows the store itself.
         observeLoadOn(_wantedState) { loadWanted() }
     }
 
     private val _wantedItemDetailState = MutableStateFlow(WantedItemDetailUiState())
     val wantedItemDetailState: StateFlow<WantedItemDetailUiState> = _wantedItemDetailState.asStateFlow()
 
-    // Ein eigener Auftrag für die Suche: Ein neuer Tastendruck bricht den
-    // wartenden Abruf ab, geladen wird erst nach der Pause.
+    // A job of its own for the search: a new keystroke cancels the
+    // waiting fetch, and loading only happens after the pause.
     private var suchJob: Job? = null
 
     private fun accountQuery(f: WantedUiState): Kontosicht.RememberQuery? =
@@ -150,7 +150,7 @@ class MerklisteViewModel @Inject constructor(
             val konto = accountQuery(f)
             quelle.value = konto?.let { kontosicht.merkliste.observe(it) }
                 ?: merkliste.observeWanted(f.query.trim().ifBlank { null }, f.stateFilter, f.sorting)
-            // Der Abruf füllt nur die Quelle; gezeigt wird sie (wantedState).
+            // The fetch only fills the source; it is shown by wantedState.
             val r = konto?.let { kontosicht.merkliste.refresh(it) } ?: merkliste.refreshWanted()
             when (r) {
                 is Ergebnis.Erfolg -> _wantedState.update { it.copy(abruf = Laden.Daten(Unit, r.stand)) }
@@ -206,39 +206,39 @@ class MerklisteViewModel @Inject constructor(
     }
 
     /**
-     * Löschen mit „Rückgängig“ wie in der Galerie: Der Posten verschwindet sofort, der
-     * Server erfährt es erst mit [executeWantedItemDelete]. Mit ihm gingen Schwelle,
-     * Richtung und „auf der Liste seit“ verloren. Ein früher vorgemerkter wird zuerst gelöscht.
+     * Delete with „Rückgängig“ as in the gallery: the item disappears right away, the
+     * server learns of it only with [executeWantedItemDelete]. With it, threshold,
+     * direction and "on the list since" would be lost. An earlier pending deletion is deleted first.
      */
     override fun deleteWantedItem(setNumber: String, zustand: Zustand, besitzer: Int?) {
         executeWantedItemDelete()
-        // Die gezeigte Liste, nicht die rohe: Ohne Filter steht der Posten nur in der Ablage.
+        // The shown list, not the raw one: without filters the item is only in the store.
         val name = wantedState.value.merkposten
             .firstOrNull { it.setNumber == setNumber && it.condition == zustand }?.name ?: setNumber
         _reserved.value = ReservedWantedItem(setNumber, zustand, besitzer, name)
     }
 
-    /** Der vorgemerkte Posten bleibt; er stand die ganze Zeit in der Quelle. */
+    /** The item pending deletion remains; it was in the source the whole time. */
     fun wantedItemUndo(nur: ReservedWantedItem? = null) {
         if (_reserved.value == null || (nur != null && _reserved.value != nur)) return
         _reserved.value = null
     }
 
-    /** [nur]: nur diesen Posten — eine abgelöste Snackbar führt nicht den nächsten aus. */
+    /** [nur]: only this item — a superseded snackbar does not carry out the next one. */
     fun executeWantedItemDelete(nur: ReservedWantedItem? = null) {
         val v = _reserved.value ?: return
         if (nur != null && v != nur) return
         _reserved.value = null
         viewModelScope.launch {
             when (val r = merkliste.deleteWantedItem(v.setNumber, v.zustand, v.besitzer)) {
-                // „genommen“ stand schon in der Snackbar mit „Rückgängig“; die Ablage hat ihn nicht mehr.
+                // „genommen“ was already in the snackbar with „Rückgängig“; the store no longer has it.
                 is Ergebnis.Erfolg -> Unit
                 is Ergebnis.Fehler -> meldungen.zeige(meldungen.meldungFuerSnackbar(r)?.let { meldungen.text(R.string.vm_error, it) })
             }
         }
     }
 
-    /** Aus dem Merkposten wird Besitz; der Server entscheidet, was mit Eintrag und Alarm geschieht. */
+    /** The wishlist item becomes a possession; the server decides what happens to the entry and the alert. */
     override fun adoptWantedItem(
         setNumber: String, zustand: Zustand, besitzer: Int?,
         anzahl: Int, purchasePriceRaw: String, recordedAs: Zustand?,
@@ -259,7 +259,7 @@ class MerklisteViewModel @Inject constructor(
         }
     }
 
-    /** Katalogdaten, Preise und Verlauf eines Merkpostens — je für sich, was fehlt, bleibt leer. */
+    /** Catalog data, prices and history of a wishlist item — each on its own; whatever is missing stays empty. */
     override fun wantedItemDetailOf(setNumber: String): StateFlow<WantedItemDetailUiState> =
         Observed(wantedItemDetailState) { loadWantedItemDetail(setNumber) }
 
@@ -308,8 +308,8 @@ class MerklisteViewModel @Inject constructor(
 }
 
 /**
- * Einen Merkposten anlegen und sagen, was daraus wurde. Geteilt mit der
- * Erfassung: Ein Scan aus der Merkliste heraus legt ebenfalls einen an.
+ * Create a wishlist item and report what became of it. Shared with
+ * capture: a scan out of the wishlist also creates one.
  */
 internal suspend fun createWantedItem(
     merkliste: WantedRepository, texts: Texte, setNumber: String, zustand: Zustand, besitzer: Int?,

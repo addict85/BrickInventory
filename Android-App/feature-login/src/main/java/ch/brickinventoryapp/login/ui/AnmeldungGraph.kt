@@ -22,19 +22,19 @@ import ch.brickinventoryapp.login.ui.screens.ServerStartAnzeige
 import ch.brickinventoryapp.login.ui.screens.SetupScreen
 import ch.brickinventoryapp.login.ui.viewmodel.AnmeldungViewModel
 
-/** Was die Anmeldung von der App braucht: wohin es nach dem Anmelden geht, weiss nur sie. */
+/** What sign-in needs from the app: only the app knows where it goes after signing in. */
 interface LoginNavigation {
     val navController: NavHostController
 
-    /** Die Anmeldung ist gelungen; die Anmeldeziele verlassen den Stapel. */
+    /** Sign-in succeeded; the sign-in destinations leave the stack. */
     fun angemeldet()
 }
 
 /**
- * Einrichtung und Anmeldung als eigener Teilgraph ([LoginTarget.Bereich]): Eine
- * QR-Anmeldung beginnt in der Einrichtung und läuft nach dem Wechsel zur Anmeldung
- * weiter. Das ViewModel hängt deshalb am Eintrag des Teilgraphen und endet mit ihm.
- * [beginn] ist Einrichtung oder Anmeldung.
+ * Setup and sign-in as their own subgraph ([LoginTarget.Bereich]): a
+ * QR sign-in begins in setup and continues after switching to sign-in.
+ * The ViewModel is therefore tied to the subgraph's entry and ends with it.
+ * [beginn] is setup or sign-in.
  */
 fun NavGraphBuilder.loginGraph(navigation: LoginNavigation, beginn: LoginTarget) {
     navigation<LoginTarget.Bereich>(startDestination = beginn) {
@@ -43,22 +43,22 @@ fun NavGraphBuilder.loginGraph(navigation: LoginNavigation, beginn: LoginTarget)
     }
 }
 
-/** Das ViewModel des Teilgraphen, an dessen Eintrag gebunden. */
+/** The subgraph's ViewModel, bound to its entry. */
 @Composable
 private fun loginViewModel(navController: NavHostController, entry: NavBackStackEntry): AnmeldungViewModel {
     val bereich = remember(entry) { navController.getBackStackEntry<LoginTarget.Bereich>() }
     return hiltViewModel(bereich)
 }
 
-/** Serveradresse eintragen oder per QR-Code übernehmen. */
+/** Enter the server address or take it over via QR code. */
 private fun NavGraphBuilder.setupTarget(navController: NavHostController) {
     composable<LoginTarget.Setup> { entry ->
         val loginVm = loginViewModel(navController, entry)
         val state by loginVm.state.collectAsStateWithLifecycle()
         SetupScreen(
             currentUrl = state.serverUrl,
-            // Ein anderer Server meldet über den vollen Weg der App ab, bevor die
-            // neue Adresse gilt (AnmeldungViewModel.saveServerUrl).
+            // A different server signs out via the app's full path, before the
+            // new address takes effect (AnmeldungViewModel.saveServerUrl).
             onSave = { url ->
                 if (loginVm.saveServerUrl(url)) {
                     navController.navigate(LoginTarget.Login) {
@@ -66,10 +66,10 @@ private fun NavGraphBuilder.setupTarget(navController: NavHostController) {
                     }
                 }
             },
-            // Erst nach der Bestätigung im Einrichtungsbildschirm; die Anmeldung
-            // springt nach Erfolg in die Galerie.
+            // Only after the confirmation in the setup screen; sign-in
+            // jumps to the gallery on success.
             onQrScanned = { qr, pinInput ->
-                // Der Gerätename steht im Browser bei der Frage „Gerät koppeln?“.
+                // The device name appears in the browser at the question „Gerät koppeln?“.
                 loginVm.loginWithQrToken(qr.url, qr.token, fingerabdruck = qr.fingerabdruck,
                     pinSwitchInput = pinInput, geraet = Build.MODEL.orEmpty().ifBlank { "Android App" })
                 navController.navigate(LoginTarget.Login) {
@@ -82,7 +82,7 @@ private fun NavGraphBuilder.setupTarget(navController: NavHostController) {
     }
 }
 
-/** Anmelden, Registrieren und Passkey; während der Server startet, sein Fortschritt. */
+/** Sign in, register and passkey; while the server is starting, its progress. */
 private fun NavGraphBuilder.loginTarget(navigation: LoginNavigation) {
     val navController = navigation.navController
     composable<LoginTarget.Login> { entry ->
@@ -91,14 +91,14 @@ private fun NavGraphBuilder.loginTarget(navigation: LoginNavigation) {
         val anmeldeZustand by loginVm.anmeldeState.collectAsStateWithLifecycle()
         val aktivitaet = LocalContext.current
         val passkeys = remember(aktivitaet) { CredentialManagerQuery(aktivitaet) }
-        // Einmal beim Betreten: Steht die Registrierung ueberhaupt offen?
-        // Ohne Anmeldung erreichbar — die Frage kommt ja, bevor es ein
-        // Konto gibt. `Unit` als Schluessel: genau einmal je Aufbau, nicht
-        // bei jeder Zustandsaenderung.
+        // Once on entering: is registration even open?
+        // Reachable without signing in — the question does come before there
+        // is an account. `Unit` as the key: exactly once per setup, not
+        // on every state change.
         LaunchedEffect(Unit) { loginVm.openCheckRegistration() }
-        // Startet der Server gerade, steht statt des Formulars der Fortschritt: Die
-        // Netzmeldung klänge nach einem Fehler. `startupStatus` hat nur einen Wert,
-        // wenn der Server antwortet und `ready` verneint.
+        // If the server is currently starting, the progress stands in place of the form: a
+        // network message would sound like an error. `startupStatus` only has a value
+        // when the server answers and denies `ready`.
         val serverStart = state.startupStatus
         if (serverStart != null) {
             ServerStartAnzeige(serverStart)
@@ -117,7 +117,7 @@ private fun NavGraphBuilder.loginTarget(navigation: LoginNavigation) {
             onLogin = { user, pw, code -> loginVm.login(user, pw, code) },
             vollerZugriff = anmeldeZustand.vollerZugriff,
             onVollerZugriff = { loginVm.setFullAccess(it) },
-            // Die Abfrage hängt an der Activity (Auswahldialog des Systems); das ViewModel lebt länger.
+            // The query is tied to the Activity (the system's picker dialog); the ViewModel lives longer.
             onPasskey = { loginVm.signInPasskey(passkeys) },
             passkeyStattCode = anmeldeZustand.passkeyStattCode,
             onPasskeyStattCode = { user, pw -> loginVm.passkeyStattCode(user, pw, passkeys) },
@@ -131,9 +131,9 @@ private fun NavGraphBuilder.loginTarget(navigation: LoginNavigation) {
             }
         )
         anmeldeZustand.qrAccount?.let { QrAccountQuestion(it, loginVm::decideQrAccount) }
-        // Ausserhalb des if/else: Meldet sich jemand an, waehrend der Server
-        // noch startet — moeglich, weil der Wechsel jederzeit kommen kann —,
-        // soll der Sprung in die Galerie trotzdem passieren.
+        // Outside the if/else: if someone signs in while the server
+        // is still starting — possible, because the switch can happen at any time —,
+        // the jump to the gallery should happen anyway.
         LaunchedEffect(state.isLoggedIn) {
             if (state.isLoggedIn) navigation.angemeldet()
         }

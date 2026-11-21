@@ -5,14 +5,14 @@ import kotlinx.coroutines.ensureActive
 import java.io.InputStream
 import java.io.OutputStream
 
-/** Schreibt eine geladene PDF an ein Ziel, abseits des Hauptfadens (PdfBetrachterViewModel). */
+/** Writes a loaded PDF to a destination, off the main thread (PdfBetrachterViewModel). */
 fun interface PdfSchreiber {
     suspend fun schreibe(quelle: PdfQuelle, ziel: OutputStream)
 }
 
 /**
- * Kopiert in Stücken und prüft vor jedem, ob der Auftrag noch gilt. Eine Anleitung
- * hat bis zu 300 MB; bricht der Druckdialog ab, soll nicht der Rest noch kopiert werden.
+ * Copies in chunks and checks before each one whether the job is still valid. An instruction manual
+ * can be up to 300 MB; if the print dialog is cancelled, the rest should not still be copied.
  */
 internal suspend fun copyAbbrechbar(ein: InputStream, aus: OutputStream, stueck: Int = 64 * 1024): Long {
     val puffer = ByteArray(stueck)

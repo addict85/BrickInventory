@@ -31,13 +31,13 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Die Job-Karten der Überwachung, gezeichnet mit festem Zustand: Der Zeitplan, den der
- * Server mit den Jobs schickt, steht an seiner Karte, und die zwei Bilderknöpfe lösen
- * Verschiedenes aus — Bestandsbilder nachladen gegen Katalogbilder einreihen.
+ * Monitoring's job cards, rendered with a fixed state: the schedule the
+ * server sends with the jobs stands at its card, and the two image buttons trigger
+ * different things — reloading stock images versus queuing catalog images.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   monitoring-ohne-zeitplan          die Karte bekommt den Zeitplan nicht → rot „der Zeitplan …“
- *   monitoring-bilderknoepfe-gleich   der Katalogknopf lädt Bestandsbilder → rot „die zwei Bilderknöpfe …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   monitoring-ohne-zeitplan          the card does not get the schedule → red “the schedule …”
+ *   monitoring-bilderknoepfe-gleich   the catalog button loads stock images → red “the two image buttons …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -67,7 +67,7 @@ class MonitoringJobsDisplayTest {
         compose.waitForIdle()
     }
 
-    /** Rollt die Liste, die [ziel] enthält; neben ihr rollen kleinere Reihen. */
+    /** Scrolls the list containing [ziel]; smaller rows next to it scroll along. */
     private fun roleTo(ziel: SemanticsMatcher) {
         val listen = compose.onAllNodes(hasScrollAction()).fetchSemanticsNodes().size
         assertTrue("Nichts gefunden, das zu ${ziel.description} rollt", (0 until listen).any { i ->

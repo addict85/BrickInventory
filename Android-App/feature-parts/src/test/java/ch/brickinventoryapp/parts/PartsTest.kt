@@ -41,23 +41,23 @@ import ch.brickinventoryapp.model.data.Ersatzteilwahl
 import ch.brickinventoryapp.model.ui.ListView
 
 /**
- * Teile- und Figurenliste als Ablauf geprüft. Ihre Quellen sind Flüsse (im Gerät
- * die Ablage oder die Kontosicht, das wählt das ViewModel); der Abruf füllt nur
- * die Quelle und schreibt hier mit, für welchen Zustand er gerufen wurde.
+ * The parts and figures list checked as a flow. Their sources are flows (on the device
+ * the store or the account view, chosen by the ViewModel); the fetch only fills
+ * the source and here records which state it was called for.
  *
- * Gegenproben (kotlinc gegen Teile.kt, Fassung mit einem Lademodus):
- *   A  in loadParts() den Zustand vor dem Entprellen gelesen → rot „die Filter des
- *      Zustands erreichen Quelle und Abruf“ (Suche fehlt)
- *   B  vergissScroll() in setFilter() entfernt → rot „ein Filterwechsel vergisst
- *      die Scrollstelle“
- *   C  die Figurenkennzahlen in denselben Auftrag wie die Liste gelegt → rot „die
- *      Figurenliste wartet nicht auf die Kennzahlen“
- *   D  in Listenfolge.abbrechen() `folgen.forEach { it.cancel() }` entfernt → rot „nach
- *      einem Filterwechsel schreibt die alte Quelle nicht mehr hinein“
- *   E  in ausgang() den Zweig „ohne Netz mit Stand“ entfernt → rot „ohne Netz
- *      bleiben die Figuren stehen“
- *   F  in folge() die Prüfung auf den Stand entfernt → rot „eine nie geladene
- *      Quelle zeigt nichts und leert nichts“
+ * Counter-checks (kotlinc against Teile.kt, version with one load mode):
+ *   A  in loadParts() the state read before the debounce → red “the state's
+ *      filters reach the source and the fetch” (search missing)
+ *   B  vergissScroll() removed in setFilter() → red “a filter change forgets
+ *      the scroll position”
+ *   C  the figure key figures put into the same job as the list → red “the
+ *      figures list does not wait for the key figures”
+ *   D  in Listenfolge.abbrechen() `folgen.forEach { it.cancel() }` removed → red “after
+ *      a filter change the old source no longer writes into it”
+ *   E  in ausgang() the branch "without network, with a cached state" removed → red “without network
+ *      the figures stay as they are”
+ *   F  in folge() the check on the cached state removed → red “a source
+ *      never loaded shows nothing and empties nothing”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PartsTest {
@@ -89,12 +89,12 @@ class PartsTest {
     private var vergessen = 0
 
     /**
-     * Im Vordergrund des Takts, damit advanceUntilIdle auch die Abrufe abwartet
-     * (backgroundScope zählt dort nicht); als Kind des Hintergrunds endet er mit dem Test.
+     * In the foreground of the clock, so that advanceUntilIdle also waits out the fetches
+     * (backgroundScope does not count there); as a child of the background it ends with the test.
      */
     private fun TestScope.foreground() = CoroutineScope(coroutineContext + Job(backgroundScope.coroutineContext[Job]))
 
-    // Wie die Filterspalten in Room: Der Suchtext trifft Nummer oder Name, die Farbe den Farbnamen.
+    // Like the filter columns in Room: the search text matches the number or name, the color the color name.
     private fun TestScope.teile() = Teile(
         scope = foreground(), quelle = metrics, reportError = {}, vergissScroll = { vergessen++ },
         listen = PartsLocal(
@@ -147,9 +147,9 @@ class PartsTest {
     fun `the list follows the source, even without a fetch`() = runTest {
         val t = teile()
         t.laden(); runCurrent()
-        // Vorgabe ist „nach Farbe“ (TeileOrdnung): Blue vor Red, nicht die Reihenfolge der Quelle.
+        // The default is "by color" (TeileOrdnung): blue before red, not the source's order.
         assertEquals(listOf("3023", "3001"), t.state.value.parts.map { it.partNumber })
-        // Offline erfasst: Die Ablage ändert sich, die Liste folgt.
+        // Entered offline: the store changes, the list follows.
         manuelleTeile.value = Local(listOf(ManualPartView(partNumber = "neu", quantity = 3)), 2L)
         runCurrent()
         assertEquals(listOf("neu" to 3), t.state.value.manualParts!!.map { it.partNumber to it.quantity })

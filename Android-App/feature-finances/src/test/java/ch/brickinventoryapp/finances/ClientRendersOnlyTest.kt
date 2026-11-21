@@ -13,12 +13,12 @@ import java.math.BigDecimal
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Die App rechnet keine Geldbeträge nach — sie zeigt, was der Server liefert.
+ * The app does not recompute any money amounts — it shows what the server delivers.
  *
- * ── Was diese Prüfung NICHT beanstandet ─────────────────────────────────────
- * Summen über Stückzahlen (`sumOf { it.quantity }`). Die sind Anzeige: „x7"
- * neben einer Zeile. Erst wo GELD summiert wird, entsteht eine zweite Fassung
- * einer Geschäftsregel.
+ * ── What this check does NOT flag ─────────────────────────────────────
+ * Sums over quantities (`sumOf { it.quantity }`). Those are display: „x7"
+ * next to a row. Only where MONEY is summed does a second version of a
+ * business rule arise.
  */
 class ClientRendersOnlyTest {
 
@@ -27,8 +27,8 @@ class ClientRendersOnlyTest {
         val dateien = Quellen.unter("ui")
         val money = Regex("""sumOf\s*\{[^}]{0,120}?\.(price|Price|value|Value|total|Total|purchase|Purchase)\w*""")
         val treffer = mutableListOf<String>()
-        // Untergrenze: Ein Dateilauf, der nichts findet, lässt
-        // jede Sammelprüfung darunter stillschweigend bestehen.
+        // Lower bound: a file scan that finds nothing lets
+        // every batch check below it pass silently.
         check(dateien.size >= 20) {
             "Zu wenige Kotlin-Dateien unter ui/ (${dateien.size}) — Pfad veraltet?"
         }
@@ -47,9 +47,9 @@ class ClientRendersOnlyTest {
     }
 
     /**
-     * Seit dem 30.10. ausgeführt: finanzSummen() (finances/ui/Finanzzeilen.kt) wählt den
-     * Gesamtwert, beide Kopfkarten rufen sie. Gegenprobe (gemessen): dort
-     * grand_total übergangen → rot (0.20 statt 4894.77).
+     * Run since 30.10.: finanzSummen() (finances/ui/Finanzzeilen.kt) chooses the
+     * total value, both header cards call it. Counter-check (measured): there
+     * grand_total ignored → red (0.20 instead of 4894.77).
      */
     @Test
     fun `the total value comes from the server`() {
@@ -63,9 +63,9 @@ class ClientRendersOnlyTest {
             "Eine Kopfkarte liest den Gesamtwert nicht mehr über finanzSummen() — dann rechnet " +
                 "sie ihn wieder selbst, und die Webapp tut dasselbe auf ihre Art."
         }
-        // Das Modellfeld muss es geben, sonst liest der Ausdruck oben ins Leere.
-        // Alle Modelldateien: Vorher stand hier ein Dateiname,
-        // und die Klassen liegen seither nach Sachgebieten verteilt.
+        // The model field must exist, otherwise the expression above reads into nothing.
+        // All model files: previously a file name stood here,
+        // and since then the classes are distributed by subject area.
         val models = File(Quellen.root, "contract")
             .listFiles { f -> f.extension == "kt" }
             .orEmpty().sortedBy { it.name }

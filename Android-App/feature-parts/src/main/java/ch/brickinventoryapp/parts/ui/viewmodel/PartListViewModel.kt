@@ -39,9 +39,9 @@ import ch.brickinventoryapp.state.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.state.ui.viewmodel.sequenceSignOut
 
 /**
- * Die Bauliste: Sets sammeln, auflösen, Bestand abgleichen, PDF erzeugen. Liste und
- * laufende Abrufe liegen hier, damit eine Drehung sie nicht verwirft; die Setnummern
- * stehen zusätzlich im [SavedStateHandle], damit der Weg zum Scanner sie nie kostet.
+ * The build list: collect sets, resolve them, compare the stock, generate a PDF. The list and
+ * running fetches live here, so that a rotation does not discard them; the set numbers
+ * additionally live in the [SavedStateHandle], so the way to the scanner never costs them.
  */
 @HiltViewModel
 class PartListViewModel @Inject constructor(
@@ -74,7 +74,7 @@ class PartListViewModel @Inject constructor(
 
     fun addAdd(nr: String) {
         val nummer = normalized(nr)
-        // Die Zahl nennt die Kopfzeile über den Sets; der Status bleibt für Fehler und Ergebnis.
+        // The number is named by the header above the sets; the status stays for errors and the result.
         setList { z ->
             if (z.sets.any { it.setNumber == nummer }) z.copy(status = Meldung.Resource(R.string.partslist_set_already_added))
             else z.copy(sets = z.sets + PlSet(nummer, nummer), status = null)
@@ -85,7 +85,7 @@ class PartListViewModel @Inject constructor(
         z.copy(sets = z.sets.filterIndexed { i, _ -> i != index }, generated = false)
     }
 
-    /** „Zurücksetzen“ an der Liste: Sets und Teile weg, die Wahl der Schalter bleibt. */
+    /** "Zurücksetzen" on the list: sets and parts gone, the switches' choice stays. */
     fun leere() = setList { it.copy(sets = emptyList(), parts = emptyList(), status = null, generated = false) }
 
     private fun reset() {
@@ -97,8 +97,8 @@ class PartListViewModel @Inject constructor(
     fun setWithSubAccounts(an: Boolean) = _zustand.update { it.copy(withSubAccounts = an) }
 
     /**
-     * Ein Schritt statt zwei: Was im Feld steht, kommt beim Erstellen dazu. Gleiche
-     * Teile mehrerer Sets (BrickLink-Nummer und Farbe) werden zusammengezählt.
+     * One step instead of two: what stands in the field is added on creating. Identical
+     * parts across several sets (BrickLink number and color) are counted together.
      */
     fun erstelle(eingabe: String) {
         if (eingabe.isNotBlank()) addAdd(eingabe)
@@ -125,8 +125,8 @@ class PartListViewModel @Inject constructor(
                 }
             }
             val parts = quelle.sortiert(combined.values)
-            // Zwei Zahlen, zwei Übereinstimmungen: ein <plurals> stimmt nur mit EINER
-            // überein, darum zwei Bruchstücke und ein Rahmen.
+            // Two numbers, two matches: one <plurals> matches only ONE
+            // of them, hence two fragments and a frame.
             val stueck = parts.sumOf { it.quantity }
             val status = Meldung.Resource(R.string.partslist_summary, listOf(
                 Meldung.Menge(R.plurals.partslist_summary_types, parts.size),
@@ -135,7 +135,7 @@ class PartListViewModel @Inject constructor(
         }
     }
 
-    /** „Kann ich das bauen?“ — trägt den eigenen Bestand in die fertige Liste ein. */
+    /** "Kann ich das bauen?" — enters one's own stock into the finished list. */
     fun loadInventory() {
         val z = _zustand.value
         if (z.bestand.laeuft || z.parts.isEmpty()) return
@@ -148,8 +148,8 @@ class PartListViewModel @Inject constructor(
             }
             val fehlen = neu.filter { (it.vorhanden ?: 0) < it.quantity }
             val missingPiece = fehlen.sumOf { it.quantity - (it.vorhanden ?: 0) }
-            // Die Einzahlform lässt die Klammer weg: Fehlt genau EIN Teil, ist auch die
-            // Zahl der verschiedenen eins.
+            // The singular form leaves out the parenthesis: if exactly ONE part is missing, the
+            // count of distinct ones is also one.
             val status = if (fehlen.isEmpty()) Meldung.Resource(R.string.partslist_owned_complete)
             else Meldung.Menge(R.plurals.partslist_owned_missing, missingPiece,
                 listOf(missingPiece, Meldung.Menge(R.plurals.partslist_owned_missing_distinct, fehlen.size)))
@@ -157,7 +157,7 @@ class PartListViewModel @Inject constructor(
         }
     }
 
-    /** Startet den Export als Dienst; das fertige PDF bietet der Bildschirm zum Öffnen an. */
+    /** Starts the export as a service; the screen offers the finished PDF for opening. */
     fun exportiere() {
         val z = _zustand.value
         if (z.pdf.laeuft || z.parts.isEmpty()) return
@@ -182,7 +182,7 @@ class PartListViewModel @Inject constructor(
         PdfStep.DOWNLOAD -> meldungen.text(R.string.pdfexp_downloading)
     }
 
-    /** Nie leer: Ein Abruf spricht wie jeder Abruf, ein gescheiterter Auftrag mit dem Satz des Servers. */
+    /** Never empty: a fetch speaks like every fetch, a failed job with the server's sentence. */
     private fun errorText(grund: PdfFailure): Meldung = when (grund) {
         is PdfFailure.Abruf -> errorMessage(grund.fehler)
         is PdfFailure.Auftrag -> grund.satz?.takeIf { it.isNotBlank() }?.let(Meldung::Text)

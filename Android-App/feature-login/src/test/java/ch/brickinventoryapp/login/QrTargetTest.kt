@@ -6,11 +6,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Eine QR-Anmeldung geht erst nach dem ausdrücklichen Ja zum gezeigten Ziel hinaus,
- * bei jedem Code, auch ohne Fingerabdruck.
+ * A QR sign-in only goes out after an explicit yes to the shown destination,
+ * for every code, even without a fingerprint.
  *
- * Gegenprobe (14.11.2026, kotlinc und JUnit lokal):
- *   A  qrUebernehmbar() ohne `targetConfirmed &&` → rot „ohne Ja zum Ziel …“;
+ * Counter-check (14.11.2026, kotlinc and local JUnit):
+ *   A  qrUebernehmbar() without `targetConfirmed &&` → red “without a yes to the destination …”;
  *      gegenproben/qr-ziel-ohne-ja.patch
  */
 class QrTargetTest {

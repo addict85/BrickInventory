@@ -24,14 +24,14 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Die Startknöpfe und die Warteschlange laufen im ViewModel: Der Bildschirm ruft nur
- * `starte(job)`, Zustand und Meldung kommen aus dem ViewModel, das Zurückstellen nach
- * vier Sekunden in der Testuhr.
+ * The start buttons and the queue run in the ViewModel: the screen only calls
+ * `starte(job)`, state and message come from the ViewModel, resetting after
+ * four seconds happens on the test clock.
  *
- * Gegenproben (Patches unter gegenproben/):
- *   startknopf-bleibt-gestartet      Zurückstellen nach STARTED_MS entfernt → rot „ein Startknopf zeigt …“
- *   startknopf-fehlschlag-still      Fehlschlag ohne Meldung → rot „ein gescheiterter Start meldet …“
- *   warteschlange-fehler-verschluckt Fehler der Warteschlange als leere Liste → rot „eine gescheiterte Warteschlange …“
+ * Counter-checks (patches under gegenproben/):
+ *   startknopf-bleibt-gestartet      resetting after STARTED_MS removed → red “a start button shows …”
+ *   startknopf-fehlschlag-still      failure without a message → red “a failed start reports …”
+ *   warteschlange-fehler-verschluckt queue error treated as an empty list → red “a failed queue …”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MonitoringStartButtonsTest {

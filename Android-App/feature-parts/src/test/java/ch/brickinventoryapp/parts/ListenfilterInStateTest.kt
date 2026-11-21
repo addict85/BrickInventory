@@ -17,37 +17,37 @@ import ch.brickinventoryapp.testing.testPartsRepository
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
- * Ein Listenfilter gehoert in den Zustand der Liste, nicht in den Aufruf.
+ * A list filter belongs in the list's state, not in the call.
  *
- * ── Der Befund ──────────────────────────────────────────────────────────────
- * Die Galerie haelt Suchtext, Thema und Sortierung in GalleryUiState; JEDER
- * Lader liest sie dort. Die Teileliste hielt ihren Suchtext in einer lokalen
- * Variablen des Bildschirms (`var searchQuery by rememberSaveable`) und gab
- * ihn als Argument mit — `loadParts(search = …)`.
+ * ── The finding ──────────────────────────────────────────────────────────────
+ * The gallery holds search text, theme and sorting in GalleryUiState; EVERY
+ * loader reads them there. The parts list held its search text in a local
+ * variable of the screen (`var searchQuery by rememberSaveable`) and passed
+ * it along as an argument — `loadParts(search = …)`.
  *
- * Damit kannte den Filter nur, wer aus dem Suchfeld heraus lud. Alle anderen
- * Wege luden ungefiltert:
+ * That meant only whoever loaded from the search field knew the filter. Every other
+ * path loaded unfiltered:
  *
- *   - `onLoadMore(page)` holte Seite 2 des GANZEN Bestands und haengte sie an
- *     eine gefilterte Seite 1; `partsTotal` kam aus derselben ungefilterten
- *     Abfrage, der Endlos-Scroll rechnete also gegen eine fremde Zahl.
- *   - `onRefresh` gab ausdruecklich `search = null` — die Liste sprang auf den
- *     ganzen Bestand, waehrend das Suchfeld daneben den Text weiter zeigte.
+ *   - `onLoadMore(page)` fetched page 2 of the WHOLE stock and appended it to
+ *     a filtered page 1; `partsTotal` came from the same unfiltered
+ *     query, so infinite scroll was computing against a foreign number.
+ *   - `onRefresh` explicitly passed `search = null` — the list jumped to the
+ *     whole stock while the search field next to it kept showing the text.
  *
- * Dieselbe Form wie beim zweiten Galerie-Lader (GalleryLoadsFilteredTest):
- * Ein Weg fuehrt den Filter mit, ein zweiter nicht. Solange der Filter ein
- * Parameter ist, kann es diesen zweiten Weg immer wieder geben — als Feld im
- * Zustand kann es ihn nicht mehr geben.
+ * The same shape as the gallery's second loader (GalleryLoadsFilteredTest):
+ * one path carries the filter along, a second does not. As long as the filter is a
+ * parameter, this second path can keep reappearing — as a field in the
+ * state, it cannot.
  *
- * ── Warum nur diese drei Namen ──────────────────────────────────────────────
- * `search`, `theme`, `sort` sind die Filter, die eine LISTE einschraenken und
- * neben denen eine Gesamtzahl steht. Genau daraus entsteht der Schaden:
- * geblaetterte Seiten und eine Gesamtzahl aus verschiedenen Abfragen.
+ * ── Why only these three names ──────────────────────────────────────────────
+ * `search`, `theme`, `sort` are the filters that restrict a LIST and
+ * next to which a total count stands. That is exactly where the damage comes from:
+ * paged pages and a total count from different queries.
  *
- * Geprueft werden ALLE Lader unter ui/, nicht nur die des MainViewModel:
- * CatalogViewModel blaettert genauso (ensureCatalogPage) und haelt seine
- * Filter ebenfalls im Zustand. Waere die Regel auf MainViewModel begrenzt,
- * duerfte ausgerechnet der zweite blaetternde Bildschirm sie brechen.
+ * ALL loaders under ui/ are checked, not just MainViewModel's:
+ * CatalogViewModel pages the same way (ensureCatalogPage) and also holds its
+ * filters in the state. If the rule were limited to MainViewModel, of all
+ * screens the second paging one would be allowed to break it.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ListenfilterInStateTest {
@@ -64,8 +64,8 @@ class ListenfilterInStateTest {
                 lader++
                 val name = treffer.groupValues[1]
                 val parameter = treffer.groupValues[2]
-                // Nur der PARAMETERNAME zaehlt, nicht ein Vorgabewert: Sonst
-                // meldete `sort: String = "sort_name"` sich selbst.
+                // Only the PARAMETER NAME counts, not a default value: otherwise
+                // `sort: String = "sort_name"` would report itself.
                 val namen = parameter.split(",").mapNotNull {
                     it.substringBefore(':').trim().takeIf { n -> n.isNotEmpty() }
                 }
@@ -76,8 +76,8 @@ class ListenfilterInStateTest {
             }
         }
 
-        // Selbstbeweis: Findet das Muster keine Lader, waere die Liste leer und
-        // der Test gruen, ohne etwas geprueft zu haben.
+        // Self-proof: if the pattern finds no loaders, the list would be empty and
+        // the test green, without having checked anything.
         assert(lader >= 20) {
             "Nur $lader Lader gefunden — das Muster 'fun loadXyz(' passt nicht mehr."
         }
@@ -92,10 +92,10 @@ class ListenfilterInStateTest {
     }
 
     /**
-     * Ausgeführt: Erste Seite, Nachladen und der Abschnitt der manuellen Teile
-     * tragen Blickfeld und Suchtext (PartsViewModel gegen einen PfadServer ohne Netz).
-     * Gegenprobe: in PartsViewModel.manuelleTeile
-     * `teileSicht` → `null` → rot „… ohne accounts=own“.
+     * Run: the first page, loading more, and the manual parts section
+     * carry the view and the search text (PartsViewModel against a PfadServer without network).
+     * Counter-check: in PartsViewModel.manuelleTeile
+     * `teileSicht` → `null` → red “… ohne accounts=own”.
      */
     @Test
     fun `first page, loading more and manual parts carry view and search text`() {
@@ -108,8 +108,8 @@ class ListenfilterInStateTest {
             val vm = t.merke(PartsViewModel(t.sitzung, t.filter(), t.hinweise, t.changes, t.scrollMemory, testPartsRepository(t.api), t.kontosicht,
                 SavedStateHandle(mapOf("teile_filter" to Teilefilter(suche = "Stein")))))
             vm.setScope(ScopeFilter.View.PARTS, "own")
-            // Seite 1 zieht die manuellen Teile nach; erst danach blättern, sonst
-            // bricht das Nachladen diesen Abruf ab.
+            // Page 1 fetches the manual parts along; only load more after that, otherwise
+            // loading more cancels this fetch.
             assertTrue("manuelle Teile", vm.teileState.value.manualParts != null)
             vm.loadParts(page = 2)
             assertTrue("zweite Seite", paths.requestsAn("page=2").isNotEmpty())
@@ -124,14 +124,14 @@ class ListenfilterInStateTest {
     }
 
     /**
-     * Als Struktur: Die gefilterte Teileliste holt allein die Kontosicht
-     * (core-data, Kontosicht.teileliste); ihr Aufruf nennt beides.
+     * As structure: the filtered parts list fetches only the account view
+     * (core-data, Kontosicht.teileliste); its call names both.
      */
     @Test
     fun `every fetch of the parts list carries view and search text`() {
         val calls = listOf("teile.getParts(")
-        // theme und sort kennt die Teile-API nicht (utils/handlers/parts.ts,
-        // getParts liest color, category, search, spare, set_number, page).
+        // The parts API does not know theme and sort (utils/handlers/parts.ts,
+        // getParts reads color, category, search, spare, set_number, page).
         val pflicht = listOf("accounts", "search")
         val missing = mutableListOf<String>()
         var gefunden = 0
@@ -169,30 +169,30 @@ class ListenfilterInStateTest {
     }
 
     /**
-     * Gesucht wird auf dem Server, nicht im Bildschirm.
+     * The search happens on the server, not in the screen.
      *
-     * ── Der Befund ──────────────────────────────────────────────────────────
-     * MinifigsScreen hielt seinen Suchtext lokal und filterte die schon
-     * geladene Liste selbst:
+     * ── The finding ──────────────────────────────────────────────────────────
+     * MinifigsScreen held its search text locally and filtered the already
+     * loaded list itself:
      *
      *     figs.filter { it.figNumber.contains(search, ignoreCase = true) ||
      *                   it.figName?.contains(search, ignoreCase = true) == true }
      *
-     * Damit stand dieselbe Suchregel zweimal im Baum — einmal hier, einmal in
-     * utils/handlers/minifigs.ts. Und sie waren nicht deckungsgleich: Der
-     * Server sucht VOR der Gruppierung ueber jede fig_name-Zeile, der
-     * Bildschirm danach nur ueber die eine, die MAX(fig_name) uebrig laesst.
+     * That meant the same search rule stood twice in the tree — once here, once in
+     * utils/handlers/minifigs.ts. And they were not identical: the
+     * server searches BEFORE grouping, across every fig_name row, the
+     * screen afterward only across the one that MAX(fig_name) leaves behind.
      *
-     * ── Was geprueft wird ───────────────────────────────────────────────────
-     * Ein `.filter { … contains(…, ignoreCase = true) … }` unter ui/ ist die
-     * Form einer Suche im Bildschirm. Erlaubt bleibt sie, wo die Liste
-     * VOLLSTAENDIG im Speicher liegt und nicht blaettert — dort waere ein
-     * Serverbesuch nur langsamer. Diese Stellen stehen unten mit Grund.
+     * ── What is checked ───────────────────────────────────────────────────
+     * A `.filter { … contains(…, ignoreCase = true) … }` under ui/ is the
+     * shape of a search in the screen. It stays allowed where the list lies
+     * COMPLETELY in memory and does not page — there, a trip to the server would
+     * just be slower. Those spots stand below with a reason.
      */
     @Test
     fun `no search in the screen over a loaded list`() {
-        // Vollstaendig geladene, kurze Listen ohne Blaettern und ohne
-        // Gesamtzahl daneben — hier ist oertliches Filtern richtig.
+        // Fully loaded, short lists without paging and without
+        // a total count next to them — here, local filtering is correct.
         val erlaubt = mapOf(
             "CatalogSections.kt" to
                 "Themenliste des Katalogs: einmal komplett geladen (state.themes), " +
@@ -211,9 +211,9 @@ class ListenfilterInStateTest {
             }
         }
 
-        // Selbstbeweis: Findet das Muster gar nichts, waere die Liste leer und
-        // der Test gruen, ohne etwas geprueft zu haben. Erwartet wird
-        // mindestens die eine begruendete Stelle.
+        // Self-proof: if the pattern finds nothing at all, the list would be empty and
+        // the test green, without having checked anything. At least the one
+        // justified spot is expected.
         assert(gefunden.isNotEmpty()) {
             "Kein einziges oertliches Filtern gefunden — das Muster passt nicht mehr."
         }
@@ -229,8 +229,8 @@ class ListenfilterInStateTest {
                 "Grund in die Liste `erlaubt` oben."
         }
 
-        // Eine Zeile, die niemand mehr braucht, ist eine Erlaubnis, die niemand
-        // prueft — dieselbe Regel wie in den Waechtern der Webapp.
+        // A line nobody needs anymore is a permission nobody
+        // checks — the same rule as in the web app's guards.
         val veraltet = erlaubt.keys.filterNot { name -> gefunden.any { it.first == name } }
         assert(veraltet.isEmpty()) {
             "Diese Eintraege beschreiben kein oertliches Filtern mehr — streichen:\n  " +

@@ -16,23 +16,23 @@ import ch.brickinventoryapp.testing.testPartsRepository
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
- * Die temporäre Teileliste, ausgeführt gegen einen Testserver: ein Set
- * auflösen und den eigenen Bestand dazu holen.
+ * The temporary parts list, run against a test server: resolve a set
+ * and fetch one's own stock for it.
  *
- * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen parts/ui/Teileliste.kt):
- *   A  Schlüssel des Zusammenfassens auf blNum statt partNumber → rot „ein Set
- *      wird nach Rebrickable-Nummer zusammengefasst …“, „ein Bild vom CDN …“
- *      und „der Bestand fragt …“ (drei Zeilen statt vier)
- *   B  Name aus getSetInfo nicht übernommen (immer setNumber) → rot „ein Set
- *      wird nach Rebrickable-Nummer zusammengefasst …“
- *   C  den Zweig für https-Adressen ohne Proxy durchgereicht → rot „ein Bild vom
- *      CDN läuft über den Server …“
- *   D  in withInventory() immer null statt "own" geschickt → rot „der Bestand fragt
- *      ohne Unterkonten nur das eigene Konto …“
- *   E  in withInventory() lose und gesamt vertauscht → rot, derselbe Fall
- *   F  BestandTeil mit blPartNumber gebaut → rot, derselbe Fall (Rumpf)
- *   G  bei einer Fehlantwort mit leerem Bestand weitergerechnet → rot „ein
- *      Fehler beim Bestand ergibt null …“
+ * Counter-checks (measured 28.10.2026, kotlinc against parts/ui/Teileliste.kt):
+ *   A  the merge key changed to blNum instead of partNumber → red “a set
+ *      is merged by Rebrickable number …”, “an image from the CDN …”
+ *      and “the stock asks …” (three rows instead of four)
+ *   B  name from getSetInfo not taken over (always setNumber) → red “a set
+ *      is merged by Rebrickable number …”
+ *   C  the branch for https addresses passed through without a proxy → red “an image from the
+ *      CDN runs via the server …”
+ *   D  in withInventory() always null sent instead of "own" → red “the stock asks
+ *      only one's own account without sub-accounts …”
+ *   E  in withInventory() loose and total swapped → red, the same case
+ *   F  BestandTeil built with blPartNumber → red, the same case (body)
+ *   G  on a failed answer computed onward with an empty stock → red “an
+ *      error on the stock gives null …”
  */
 class PartListTest {
 

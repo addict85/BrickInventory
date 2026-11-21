@@ -13,17 +13,17 @@ import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.management.ui.screens.MonitoringRoute
 import ch.brickinventoryapp.navigation.Bereichsumgebung
 
-/** Die Verwaltung braucht nur, was jeder Bereich bekommt. */
+/** Management only needs what every area gets. */
 interface ManagementNavigation : Bereichsumgebung
 
 /** Die Verwalterseite. */
 fun NavGraphBuilder.managementGraph(navigation: ManagementNavigation) {
     composable<ManagementTarget.Monitoring> {
-        // Fällt das Verwalterrecht weg, verlässt die Seite sich selbst, statt weiter 403 zu sammeln.
+        // If admin rights are lost, the page leaves on its own instead of continuing to collect 403s.
         val stand by navigation.sitzung.collectAsStateWithLifecycle()
         LaunchedEffect(stand.isAdmin) { if (!stand.isAdmin) navigation.navController.popBackStack() }
         navigation.Reiter(stringResource(R.string.nav_monitoring)) {
-            // Verwalteraktionen nur nach der Gerätesperre; kein Tipp durch eine Überlagerung.
+            // Admin actions only after the device lock; no tap through an overlay.
             Ueberdeckungsschutz()
             Schrittsperre(stringResource(R.string.schritt_verwaltung), Schrittaktion.VERWALTUNG) {
                 MonitoringRoute(appTheme = stand.appTheme, onSettingsNew = { navigation.ladeEinstellungen() })

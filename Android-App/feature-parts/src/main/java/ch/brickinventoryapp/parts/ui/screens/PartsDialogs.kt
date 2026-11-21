@@ -34,29 +34,29 @@ internal fun AddPartDialog(
     onDismiss: () -> Unit,
     onAdd: (Teilerfassung) -> Unit,
     defaultCondition: Zustand = Zustand.NEU,
-    /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
+    /** The household's accounts — without sub-accounts the choice stays hidden. */
     householdMembers: List<MemberView> = emptyList(),
-    /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
+    /** Supply of storage locations — empty means: there are none yet, then one types it. */
     lagerorte: List<String> = emptyList(),
-    /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
+    /** The preselected storage location (starred in settings). Empty means: no default. */
     locationDefault: String = "",
 ) {
     var partNumber by rememberSaveable { mutableStateOf("") }
     var quantity   by rememberSaveable { mutableStateOf("1") }
     var unitPrice  by rememberSaveable { mutableStateOf("") }
-    // Die Id statt der Farbe: ColorView passt in kein Bundle, und nach einer Drehung
-    // stünde sonst wieder „keine Farbe“ da, während alles andere blieb.
+    // The id instead of the color: ColorView does not fit into any bundle, and after a rotation
+    // it would otherwise read "keine Farbe" again while everything else stayed.
     var farbId by rememberSaveable { mutableStateOf<Int?>(null) }
     val selectedColor = colors.firstOrNull { it.id == farbId }
     var condition  by rememberSaveable { mutableStateOf(defaultCondition) }
-    // Schluessel ist die Vorgabe — dieselbe Begruendung wie im Galerie-Dialog:
-    // Sie kommt ueber das Netz und kann nach dem Oeffnen eintreffen.
+    // The key is the default — the same reasoning as in the gallery dialog:
+    // it comes over the network and can arrive after opening.
     var lagerort   by rememberSaveable(locationDefault) { mutableStateOf(locationDefault) }
-    // Vorbelegt mit dem eigenen Konto: Wer nichts wählt, erfasst für sich —
-    // dasselbe Verhalten wie vor der Haushaltssicht.
+    // Pre-filled with one's own account: whoever chooses nothing enters for themselves —
+    // the same behavior as before the household view.
     val eigenes = householdMembers.firstOrNull { it.isSelf }?.id
     var owner by remember(householdMembers) { mutableStateOf(eigenes) }
-    // Wie beim Set: Hinzufügen bleibt bei leerer Nummer antippbar und markiert das Feld.
+    // As for the set: adding stays tappable with an empty number and marks the field.
     var numberMissing by rememberSaveable { mutableStateOf(false) }
 
     fun submit() {
@@ -72,7 +72,7 @@ internal fun AddPartDialog(
         }
     }
 
-    // Geschlossen wird nur über onAdd: Der Aufrufer schliesst dort, ein Fehler lässt alles stehen.
+    // Closed only via onAdd: the caller closes it there, an error leaves everything as is.
     AddDialog(
         titel = stringResource(R.string.parts_add_title),
         bestaetigen = stringResource(R.string.parts_add_button),
@@ -98,8 +98,8 @@ internal fun AddPartDialog(
 }
 
 /**
- * Das Nummernfeld der manuellen Erfassung. Der Fehler erscheint erst nach dem ersten
- * Versuch und am Feld selbst: Vorher schloss der Dialog still, und die Eingaben waren weg.
+ * The manual entry's number field. The error appears only after the first
+ * attempt and at the field itself: before, the dialog closed silently and the input was gone.
  */
 @Composable
 internal fun NumberField(
@@ -133,7 +133,7 @@ private fun FarbChoice(colors: List<ColorView>, gewaehlt: ColorView?, onWahl: (C
             onValueChange = {},
             readOnly = true,
             label = { Text(stringResource(R.string.parts_color_label)) },
-            // Ohne Farbe kein Symbolplatz: Ein leerer Platz rückte „Keine Farbe“ grundlos ein.
+            // Without a color, no icon slot: an empty slot indented "Keine Farbe" for no reason.
             leadingIcon = colorFromHex(gewaehlt?.hex)?.let { swatch ->
                 { Box(Modifier.padding(start = Abstaende.mittel).size(14.dp).clip(CircleShape).background(swatch)) }
             },

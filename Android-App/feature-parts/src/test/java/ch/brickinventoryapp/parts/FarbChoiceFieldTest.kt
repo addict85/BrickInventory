@@ -21,13 +21,13 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Das Farbfeld eines manuell erfassten Teils, gezeichnet: Ohne Farbliste und ohne Namen
- * aus dem Bestand steht „Unbekannte Farbe“, nie die nackte Farbnummer; mit Namen aus
- * dem Bestand steht dieser. Die Schrift ist so gross wie die übrigen Werte (bodyMedium).
+ * The color field of a manually entered part, rendered: without a color list and without a name
+ * from the stock it reads "Unbekannte Farbe", never the bare color number; with a name from
+ * the stock it shows that. The font is as large as the other values (bodyMedium).
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   farbe-als-nummer        Rückfall wieder „Farbe %1$d“ mit der Nummer → rot „ohne Namen steht …“
- *   farbfeld-kleine-schrift Feld wieder in bodySmall → rot „ohne Namen steht …“ (Schriftgrösse)
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   farbe-als-nummer        fallback back to "Farbe %1$d" with the number → red “without a name it reads …”
+ *   farbfeld-kleine-schrift the field back in bodySmall → red “without a name it reads …” (font size)
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH")

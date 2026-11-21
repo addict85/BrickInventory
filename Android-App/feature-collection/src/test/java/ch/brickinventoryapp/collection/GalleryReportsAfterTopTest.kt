@@ -34,17 +34,17 @@ import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
 
 /**
- * Die Galerie sucht, filtert und sortiert nicht selbst: Suchtext, Thema und Sortierung
- * gehen als Ereignis nach oben (zum Server), die Liste bleibt, wie der Server sie
- * schickte, und die Sortierwerte sind die Schlüssel des Servers. Dazu die Zahl der
- * Anleitungen im Kopf. Gezeichnet mit einem festen Zustand und Ereignissen, die
- * mitschreiben.
+ * The gallery does not search, filter or sort itself: search text, theme and sorting
+ * go up as an event (to the server), the list stays as the server
+ * sent it, and the sort values are the server's keys. Plus the number of
+ * instructions in the header. Rendered with a fixed state and events that
+ * get recorded.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   galerie-filtert-selbst      das Raster zeigt nur Sets, deren Name den Suchtext enthält → rot „Suchtext …“
- *   galerie-sortierwert-falsch  „Name A–Z“ meldet name statt name_asc → rot „die Sortierung …“
- *   galerie-thema-verschluckt   die Themenwahl im Filter meldet nichts → rot „ein Thema …“
- *   galerie-ohne-anleitungen    der Chip der Anleitungen fehlt im Kopf → rot „der Kopf nennt …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   galerie-filtert-selbst      the grid shows only sets whose name contains the search text → red “search text …”
+ *   galerie-sortierwert-falsch  „Name A–Z“ reports name instead of name_asc → red “the sorting …”
+ *   galerie-thema-verschluckt   the theme choice in the filter reports nothing → red “a theme …”
+ *   galerie-ohne-anleitungen    the instructions chip is missing from the header → red “the header names …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -95,7 +95,7 @@ class GalleryReportsAfterTopTest {
         compose.onNode(hasSetTextAction()).performTextInput("Lambo")
         compose.waitForIdle()
         assertEquals("Lambo", gesucht.lastOrNull())
-        // Keiner der beiden passt zum Suchtext; gezeigt wird trotzdem, was der Server schickte.
+        // Neither of the two matches the search text; what the server sent is shown anyway.
         compose.onNodeWithText("Millennium Falcon", useUnmergedTree = true).fetchSemanticsNode()
         compose.onNodeWithText("Titanic", useUnmergedTree = true).fetchSemanticsNode()
     }

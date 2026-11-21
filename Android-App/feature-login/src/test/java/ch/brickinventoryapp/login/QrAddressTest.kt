@@ -30,20 +30,20 @@ import ch.brickinventoryapp.testing.testPartsRepository
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
- * Der QR-Dialog ist die einzige Hürde gegen einen untergeschobenen Code. Geprüft
- * mit den Eingaben aus dem Nachweis der Sicherheitsprüfung: Jede sah
- * im Dialog nach `brick.meinserver.ch` aus und führte woandershin.
+ * The QR dialog is the only hurdle against a planted code. Checked
+ * with the inputs from the security review's evidence: every one looked
+ * in the dialog like `brick.meinserver.ch` and led somewhere else.
  *
- * Gegenproben:
- *   A  NetworkPolicy.adressfehler() auf den Stand ad4a297 (nur UNLESBAR/PLAINTEXT)
- *      → rot „Benutzerangabe, Zeilenumbruch und Rueckstrich …“ und „das ViewModel
- *      nimmt eine Adresse mit Benutzerangabe nicht an“
- *   B  in qrAddressInvalid() die Prüfung auf Leer-/Steuerzeichen entfernt → rot
- *      „Leerraum am Rand eines Codes …“
- *   C  in NetworkPolicy.ansicht() `url.host` durch den Rohtext des Hosts ersetzt
- *      (Unicode statt Punycode) → rot „ein internationaler Host erscheint in Punycode …“
- *   D  qrSwitchesServer() liefert immer null → rot „ein Code fuer einen anderen
- *      Host nennt den bisherigen …“
+ * Counter-checks:
+ *   A  NetworkPolicy.adressfehler() reverted to ad4a297 (only UNLESBAR/PLAINTEXT)
+ *      → red “user info, line break and backslash …” and “the ViewModel
+ *      does not accept an address with user info”
+ *   B  in qrAddressInvalid() the check for blank/control characters removed → red
+ *      “whitespace at the edge of a code …”
+ *   C  in NetworkPolicy.ansicht() `url.host` replaced with the host's raw text
+ *      (Unicode instead of Punycode) → red “an international host appears in Punycode …”
+ *   D  qrSwitchesServer() always returns null → red “a code for a different
+ *      host names the previous one …”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class QrAddressTest {
@@ -68,7 +68,7 @@ class QrAddressTest {
             NetworkPolicy.addressError("https://brick.meinserver.ch@evil.example", entwicklung = false))
         assertEquals(NetworkPolicy.AddressError.EXTRA,
             NetworkPolicy.addressError("https://evil.example/x\n\nbrick.meinserver.ch", entwicklung = false))
-        // Was ein echter Server braucht, bleibt erlaubt: Port, Unterpfad, Grossschreibung.
+        // What a real server needs stays allowed: port, subpath, capitalization.
         for (gut in listOf("https://brick.meinserver.ch", "https://nas:8443/brick", "HTTPS://Brick.Example.org/")) {
             assertFalse(gut, qrAddressInvalid(gut))
         }
@@ -102,7 +102,7 @@ class QrAddressTest {
         assertNull("Ohne bisherigen Server kein Wechsel", qrSwitchesServer("", "https://brick.meinserver.ch"))
     }
 
-    // ── Das ViewModel als zweite Linie ─────────────────────────────────────────
+    // ── The ViewModel as a second line ─────────────────────────────────────────
 
     private class Ablage : Anmeldeablage {
         val protokoll = Collections.synchronizedList(mutableListOf<String>())

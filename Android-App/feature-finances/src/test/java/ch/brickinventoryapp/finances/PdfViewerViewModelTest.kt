@@ -29,24 +29,24 @@ import java.io.InputStream
 import java.net.UnknownHostException
 
 /**
- * Der PDF-Betrachter lädt im ViewModel, nicht in der Komposition: Eine Drehung ruft
- * oeffne() erneut, der Download läuft weiter und beginnt nicht von vorn. Mit
- * StandardTestDispatcher und advanceUntilIdle, ohne Netz und ohne Warten.
+ * The PDF viewer loads in the ViewModel, not in the composition: a rotation calls
+ * oeffne() again, the download keeps running and does not start over. With
+ * StandardTestDispatcher and advanceUntilIdle, without network and without waiting.
  *
- * Gegenproben:
- *   A  in oeffne() die Abfrage `pdfUrl == adresse` entfernt
- *      (gegenproben/pdf-drehung-laedt-neu.patch) → rot „a rotation does not reload“
- *   B  den Fortschritt nicht weitergereicht (`{ }` statt `{ _state.value = it }`) →
- *      rot „der Fortschritt kommt im Zustand an …“
- *   C  die Prüfung pdfInViewer() entfernt → rot „eine fremde Adresse wird nicht geladen …“
- *   D  in PdfHolder.halte() die Abfrage `if (zu)` entfernt → rot „eine Quelle, die nach
- *      dem Verlassen ankommt, wird sofort geschlossen“
- *   E  gegenproben/pdf-seite-am-renderer-vorbei.patch → rot „eine Seite
- *      rendert der Lader …“
- *   F  gegenproben/pdf-fehler-ohne-klasse.patch: der Fehler ohne Klasse (nur der rohe
- *      Text) → rot „ein Fehler traegt seine Klasse …“
- *   G  gegenproben/pdf-erneut-tot.patch: erneut() lädt nicht → rot „nach einem Fehler
- *      laedt Erneut versuchen …“
+ * Counter-checks:
+ *   A  in oeffne() the check `pdfUrl == adresse` removed
+ *      (gegenproben/pdf-drehung-laedt-neu.patch) → red “a rotation does not reload”
+ *   B  the progress not passed on (`{ }` instead of `{ _state.value = it }`) →
+ *      red “the progress arrives in the state …”
+ *   C  the check pdfInViewer() removed → red “a foreign address is not loaded …”
+ *   D  in PdfHolder.halte() the check `if (zu)` removed → red “a source that arrives
+ *      after leaving is closed right away”
+ *   E  gegenproben/pdf-seite-am-renderer-vorbei.patch → red “the loader
+ *      renders a page …”
+ *   F  gegenproben/pdf-fehler-ohne-klasse.patch: the error without a class (only the raw
+ *      text) → red “an error carries its class …”
+ *   G  gegenproben/pdf-erneut-tot.patch: erneut() does not load → red “after an error
+ *      Erneut versuchen loads …”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PdfViewerViewModelTest {
@@ -66,7 +66,7 @@ class PdfViewerViewModelTest {
         override fun close() { zu = true }
     }
 
-    /** Lädt nach Vorgabe: meldet [fortschritt], wartet auf [brake], liefert oder wirft. */
+    /** Loads as configured: reports [fortschritt], waits for [brake], delivers or throws. */
     private class Lader(
         val fortschritt: PdfLoadState? = null,
         val brake: CompletableDeferred<Unit>? = null,
@@ -84,7 +84,7 @@ class PdfViewerViewModelTest {
         }
     }
 
-    /** Der Renderer als Attrappe: Gerendert wird im isolierten Prozess, hier nur gezählt. */
+    /** The renderer as a stub: rendering happens in the isolated process, here only counted. */
     private val gerendert = mutableListOf<Int>()
     private val seitenquelle = PdfSeitenQuelle { _, index, _ -> gerendert += index; null }
 
@@ -105,7 +105,7 @@ class PdfViewerViewModelTest {
         val lader = Lader()
         val vm = vm(lader)
         vm.oeffne(INSTRUCTION, SERVER)
-        // Die neue Komposition nach der Drehung ruft oeffne() noch einmal, mitten im Laden.
+        // The new composition after the rotation calls oeffne() once more, in the middle of loading.
         vm.oeffne(INSTRUCTION, SERVER)
         advanceUntilIdle()
         vm.oeffne(INSTRUCTION, SERVER)
@@ -135,7 +135,7 @@ class PdfViewerViewModelTest {
         advanceUntilIdle()
         assertEquals(PdfLoadState.Error(null, PdfError.FREMDER_HOST), vm.state.value)
         assertEquals(emptyList<String>(), lader.adressen)
-        // Kam die Serveradresse erst nach dem ersten Bild, gilt der zweite Aufruf.
+        // If the server address only arrived after the first frame, the second call applies.
         val spaet = vm(lader)
         spaet.oeffne(INSTRUCTION, "")
         spaet.oeffne(INSTRUCTION, SERVER)
@@ -172,7 +172,7 @@ class PdfViewerViewModelTest {
         vm.oeffne(INSTRUCTION, SERVER)
         advanceUntilIdle()
         assertTrue(vm.state.value is PdfLoadState.Error)
-        // Dieselbe Adresse über oeffne() lädt nicht neu (Drehung); nur der Knopf tut es.
+        // The same address via oeffne() does not reload (rotation); only the button does.
         vm.oeffne(INSTRUCTION, SERVER)
         advanceUntilIdle()
         assertEquals(listOf(INSTRUCTION), lader.adressen)
@@ -181,7 +181,7 @@ class PdfViewerViewModelTest {
         advanceUntilIdle()
         assertEquals(listOf(INSTRUCTION, INSTRUCTION), lader.adressen)
         assertEquals(PdfLoadState.Ready(lader.quelle, 12), vm.state.value)
-        // Bereit lädt der Knopf nichts mehr: Er steht nur im Fehlerzustand.
+        // Ready, the button loads nothing anymore: it only appears in the error state.
         vm.erneut()
         advanceUntilIdle()
         assertEquals(2, lader.adressen.size)

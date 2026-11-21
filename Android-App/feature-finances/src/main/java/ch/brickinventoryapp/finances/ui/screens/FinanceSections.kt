@@ -7,10 +7,9 @@ import ch.brickinventoryapp.model.domain.Postenart
 import ch.brickinventoryapp.ui.components.AuswahlChip
 
 /**
- * Die Abschnitte der Finanz-Seite: Portfolio-Diagramm, Kennzahl-Karten,
- * Kategoriefilter und die drei Listen. Wie bei SetDetailSections.kt Erweiterungen
- * auf `LazyListScope` statt @Composable-Funktionen, weil sie Einträge in die Liste
- * eintragen.
+ * The sections of the finances page: portfolio chart, key-figure cards,
+ * category filter and the three lists. As with SetDetailSections.kt, extensions
+ * on `LazyListScope` instead of @Composable functions, because they enter items into the list.
  */
 
 import ch.brickinventoryapp.model.domain.BewertungAnsicht
@@ -58,14 +57,14 @@ import ch.brickinventoryapp.shared.ui.FinanzBild
 import ch.brickinventoryapp.shared.ui.PnlBadge
 
 /**
- * Gesamt-Total: Sets + manuell erfasste Teile + Minifiguren. `valuation` ist hier nicht nullbar: FinanceScreen() steigt bei `null` vorher
- * aus. Die Signatur verlangt den Nicht-Null-Typ, statt im Rumpf `?.` einzustreuen
- * — das hiesse „darf fehlen“ statt „ist hier immer da“.
+ * Grand total: sets + manually entered parts + minifigures. `valuation` is not nullable here: FinanceScreen() bails out beforehand on `null`.
+ * The signature demands the non-null type instead of sprinkling `?.` through the body
+ * — that would mean "may be missing" instead of "is always there here".
  */
 internal fun LazyListScope.financeGrandTotal(valuation: BewertungAnsicht, partsValuation: TeileBewertungAnsicht?, figsValuation: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?, fmtPrice: (String?) -> String) {
         // ── Gesamt-Total: Sets + manuell erfasste Teile + Minifiguren ───────────
         item {
-            // Alle Summanden vom Server; die eigene Addition nur für ältere Server (finanzSummen).
+            // All summands from the server; the app's own addition only for older servers (finanzSummen).
             val sums = finanzSummen(valuation, partsValuation, figsValuation, pnl)
             Spacer(Modifier.height(Abstaende.tiny))
             Card(
@@ -86,7 +85,7 @@ internal fun LazyListScope.financeGrandTotal(valuation: BewertungAnsicht, partsV
                     LabelAndValue(stringResource(R.string.finance_grand_total), fmtPrice(sums.gesamt.toPlainString()),
                         stil = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         labelColor = MaterialTheme.colorScheme.onSurface, valueWeight = FontWeight.Bold)
-                    // Wie die Fussnote im Web: Ohne den Hinweis las sich das Total als Wert aller Positionen.
+                    // As with the footnote on the web: without the note, the total read as the value of all positions.
                     val withoutMarket = financeHeader(valuation, partsValuation, figsValuation, pnl).withoutMarket
                     if (withoutMarket > 0) Text(
                         pluralStringResource(R.plurals.finance_summe_ohne_markt, withoutMarket, withoutMarket),
@@ -100,7 +99,7 @@ internal fun LazyListScope.financeGrandTotal(valuation: BewertungAnsicht, partsV
 
 /** Manuell erfasste Minifiguren, einzeln aufgelistet. */
 internal fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht?, showFigs: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtValue: (Geld?) -> String, onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit) {
-    // ── Manuell erfasste Minifiguren — einzeln auflisten, analog zu den Sets ─
+    // ── Manually entered minifigures — list individually, like the sets ─
     val figsItems = figsValuation?.figs ?: emptyList()
     if (figsItems.isNotEmpty() && showFigs) {
         item {
@@ -108,8 +107,8 @@ internal fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht
                 Modifier.padding(top = Abstaende.klein, bottom = Abstaende.hairline, start = Abstaende.tiny))
         }
         items(minifigRows(figsItems), key = { it.second.schluessel }) { (fig, zeile) ->
-            // Bild über image_local und den Server-Proxy, nicht roh über fig.imageUrl — sonst
-            // fehlte es offline und bei Quellen, die nur der Server erreicht.
+            // Image via image_local and the server proxy, not raw via fig.imageUrl — otherwise
+            // it would be missing offline and for sources only the server can reach.
             val figImg = remember(fig.imageLocal, fig.imageUrl, serverUrl) {
                 resolveThumbUrl(serverUrl, fig.imageLocal, fig.imageUrl)
             }
@@ -129,7 +128,7 @@ internal fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht
             )
         }
         item {
-            // Ebenfalls die Serverzahl — siehe Begründung bei den Teilen.
+            // Also the server's count — see the reasoning for the parts.
             SubtotalRow(stringResource(R.string.finance_subtotal_minifigs),
                 fmtPrice(figsValuation?.totalValue))
         }
@@ -138,17 +137,17 @@ internal fun LazyListScope.financeFigRows(figsValuation: FigurenBewertungAnsicht
 
 /** Manuell erfasste Teile, einzeln aufgelistet. */
 internal fun LazyListScope.financePartRows(partsValuation: TeileBewertungAnsicht?, showParts: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtPrice: (String?) -> String, fmtValue: (Geld?) -> String, onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit) {
-    // ── Manuell erfasste Teile — einzeln auflisten, analog zu den Sets ─────
+    // ── Manually entered parts — list individually, like the sets ─────
     val partsItems = partsValuation?.parts ?: emptyList()
     if (partsItems.isNotEmpty() && showParts) {
         item {
             SectionTitle(stringResource(R.string.finance_section_parts),
                 Modifier.padding(top = Abstaende.klein, bottom = Abstaende.hairline, start = Abstaende.tiny))
         }
-        // Wie bei den Sets: eine vollständige Zeile je Kaufpreis. Ein
-        // Teil, das einmal neu und einmal gebraucht gekauft wurde,
-        // erscheint zweimal — jede Zeile mit dem Marktpreis ihres
-        // Zustands. Ohne Erfassungen bleibt es bei der einen Zeile.
+        // As with the sets: one complete row per purchase price. A
+        // part that was bought once new and once used
+        // appears twice — each row with the market price of its own
+        // condition. Without entries it stays at the one row.
         items(partRows(partsItems), key = { it.second.schluessel }) { (part, zeile) ->
             val partImg = remember(part.imageLocal, part.imageUrl, serverUrl) {
                 resolveThumbUrl(serverUrl, part.imageLocal, part.imageUrl)
@@ -169,16 +168,16 @@ internal fun LazyListScope.financePartRows(partsValuation: TeileBewertungAnsicht
             )
         }
         item {
-            // Die Summe kommt vom Server (total_value), nicht aus den Zeilen: display_value
-            // ist auf zwei Stellen gerundet, total_value auf vier. Über viele Positionen liefe
-            // die eigene Summe gegen die Kopfkachel.
+            // The total comes from the server (total_value), not from the rows: display_value
+            // is rounded to two places, total_value to four. Over many positions, the app's own
+            // sum would drift against the header tile.
             SubtotalRow(stringResource(R.string.finance_subtotal_parts),
                 fmtPrice(partsValuation?.totalValue))
         }
     }
 }
 
-/** Name, Nummer, Menge und Zustand einer Set-Zeile der Finanzen. */
+/** Name, number, quantity and condition of a finances set row. */
 @Composable
 private fun RowScope.FinanceSetDetails(set: ValuationSetView, zeile: FinanceRow) {
     val rowQty = zeile.menge
@@ -192,8 +191,8 @@ private fun RowScope.FinanceSetDetails(set: ValuationSetView, zeile: FinanceRow)
                 Modifier.readAloudAs(stueckzahl(rowQty)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-        // Zustand dieser Erfassung — bei mehreren Karten
-        // desselben Sets das einzige Unterscheidungsmerkmal.
+        // State of this entry — with several cards
+        // of the same set, the only distinguishing feature.
         zeile.zustand?.let {
             Box(Modifier.padding(top = Abstaende.hairline)) {
                 ConditionBadges(listOf(it))
@@ -202,7 +201,7 @@ private fun RowScope.FinanceSetDetails(set: ValuationSetView, zeile: FinanceRow)
     }
 }
 
-/** Eine vollständige Karte JE KAUFPREIS — siehe die Begründung im Rumpf. */
+/** One complete card PER PURCHASE PRICE — see the reasoning in the body. */
 internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets: Boolean, serverUrl: String, imageLoader: ImageLoader, fmtValue: (Geld?) -> String, onSetClick: (String) -> Unit) {
     // Section header
     if (showSets) {
@@ -211,9 +210,9 @@ internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets:
             Modifier.padding(top = Abstaende.tiny, bottom = Abstaende.hairline, start = Abstaende.tiny))
     }
 
-    // Ein Set mit einem Kaufpreis für „Neu“ und einem für „Gebraucht“ erscheint zweimal, jede
-    // Karte mit dem Marktpreis ihres Zustands — sonst würde das neu gekaufte Exemplar mit dem
-    // Gebrauchtpreis bewertet.
+    // A set with one purchase price for „Neu“ and one for „Gebraucht“ appears twice, each
+    // card with the market price of its own condition — otherwise the newly bought copy would be
+    // valued at the used price.
     items(setRows(valuation.sets), key = { it.second.schluessel }) { (set, zeile) ->
         val priceStr    = fmtValue(zeile.wert)
         val rowQty      = zeile.menge
@@ -232,12 +231,12 @@ internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets:
                 Spacer(Modifier.width(Abstaende.mittel))
                 FinanceSetDetails(set, zeile)
                 Spacer(Modifier.width(Abstaende.klein))
-                // Kaufpreis und Marktpreis untereinander, wie in der Webapp. Bei mehreren
-                // Erfassungen steht hier nichts: Die Zahlen stehen dann je Kaufpreis darunter,
-                // eine Summe daneben wäre eine zweite Darstellung derselben Werte.
+                // Purchase price and market price stacked, as in the web app. With several
+                // entries nothing stands here: the numbers then stand per purchase price below,
+                // a sum next to it would be a second rendering of the same values.
                 Column(horizontalAlignment = Alignment.End) {
-                    // Ohne Marktpreis ein Wort statt eines Strichs in der Preisfarbe: Der
-                    // blaue Strich sah aus wie ein Wert.
+                    // Without a market price, a word instead of a dash in the price color: the
+                    // blue dash looked like a value.
                     when {
                         set.noPrice || set.error != null || zeile.wert == null ->
                             Text(stringResource(R.string.detail_price_none_yet), color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -254,8 +253,8 @@ internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets:
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    // Entwicklung gegen den Kaufpreis DIESER Erfassung —
-                    // vom Server, hier wird nichts nachgerechnet.
+                    // Trend against the purchase price of THIS entry —
+                    // from the server, nothing is recalculated here.
                     rowPnl?.let {
                         Box(Modifier.padding(top = Abstaende.hairline)) { PnlBadge(it, zeile.gewinn?.let { g -> gainText(g, fmtValue) }) }
                     }
@@ -267,10 +266,10 @@ internal fun LazyListScope.financeSetRows(valuation: BewertungAnsicht, showSets:
 }
 
 /**
- * Die Filterleiste des Reiters — additiv. „Alle“ ist kein vierter Zustand, sondern
- * die leere Auswahl: gewählt, wenn nichts eingeschränkt ist; ein Klick räumt die
- * Auswahl weg. Die drei übrigen schalten ihre Zeilenart einzeln zu und ab. Die
- * Menge liegt im FinanceUiState; warum, steht dort.
+ * The tab's filter bar — additive. „Alle“ is not a fourth state, but
+ * the empty selection: selected when nothing is restricted; a click clears the
+ * selection. The remaining three toggle their row kind individually. The
+ * set lives in FinanceUiState; why, is stated there.
  */
 internal fun LazyListScope.financeCategoryFilter(
     aktive: Set<String>,
@@ -278,8 +277,8 @@ internal fun LazyListScope.financeCategoryFilter(
     onAll: () -> Unit,
 ) {
     item {
-        // Beschriftet und direkt über den Zeilen: Unter dem Diagramm war unklar, ob die
-        // Chips auch die Kurve filtern. Sie wählen nur die Positionen darunter.
+        // Labelled and directly above the rows: under the chart it was unclear whether the
+        // chips also filtered the curve. They only select the positions beneath them.
         SectionTitle(stringResource(R.string.finance_positionen),
             Modifier.padding(top = Abstaende.klein))
     }
@@ -303,7 +302,7 @@ internal fun LazyListScope.financeCategoryFilter(
     }
 }
 
-/** Ein Chip der Filterleiste — drei Aufrufer, ein Aussehen. */
+/** A chip of the filter bar — three callers, one look. */
 @Composable
 private fun CategoryChip(
     schluessel: String,
@@ -318,12 +317,12 @@ private fun CategoryChip(
     )
 }
 
-/** Die Kennzahl-Karten über der Liste. */
+/** The key-figure cards above the list. */
 @OptIn(ExperimentalLayoutApi::class)
 internal fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, partsValuation: TeileBewertungAnsicht?, figsValuation: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?, fmtPrice: (String?) -> String) {
     item {
-        // Im Dunkeln primaryContainer statt primary: Das helle primary der dunklen
-        // Fassungen (Stein: Hellblau) war als ganze Kachel grell.
+        // In the dark theme primaryContainer instead of primary: the bright primary of the dark
+        // versions (Stein: light blue) was glaring as a whole tile.
         val dunkel = MaterialTheme.colorScheme.surface.luminance() < 0.5f
         val flaeche = if (dunkel) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.primary
         val auf = if (dunkel) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onPrimary
@@ -340,14 +339,14 @@ internal fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, part
                     style = MaterialTheme.typography.labelMedium
                 )
                 Spacer(Modifier.height(6.dp))
-                // totals.avg statt qtyAvg: Marktpreis ist avg_price, der mengengewichtete
-                // Schnitt liegt systematisch darunter (gleiche Umstellung wie in der Webapp).
+                // totals.avg instead of qtyAvg: the market price is avg_price, the quantity-weighted
+                // average lies systematically below it (the same change as in the web app).
                 val sums = finanzSummen(valuation, partsValuation, figsValuation, pnl)
-                // Einstand, Marktwert und G/V aus einer Basis (financeHeader), sonst passten die drei
-                // Zahlen nicht zusammen; ältere Server ohne Basis zeigen den Gesamtwert wie bisher.
+                // Cost basis, market value and P&L from one basis (financeHeader), otherwise the three
+                // numbers would not add up; older servers without a basis show the total value as before.
                 val kopf = financeHeader(valuation, partsValuation, figsValuation, pnl)
-                // FlowRow: Bei grosser Schrift rückt die Gewinn-Plakette unter den Betrag,
-                // statt ihn zu quetschen.
+                // FlowRow: at large font the profit badge moves under the amount,
+                // instead of squeezing it.
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
                         if (kopf.wert.signum() > 0) fmtPrice(kopf.wert.toPlainString())
@@ -361,8 +360,8 @@ internal fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, part
                     )
                     val pnlPct = kopf.guvPercent
                     if (pnlPct != null) {
-                        // Gewinn grün, Verlust rot wie überall sonst; auf weissem Grund, weil die
-                        // Statusfarben nur auf surface 4,5:1 zusagen, nicht auf primary.
+                        // Profit green, loss red as everywhere else; on a white background, because the
+                        // status colors only meet 4.5:1 on surface, not on primary.
                         val status = LocalStatusFarben.current
                         Surface(
                             shape = Formen.chip,
@@ -379,8 +378,8 @@ internal fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, part
                         }
                     }
                 }
-                // „davon Teile“ nur ohne Basis: Der Basis-Marktwert lässt Positionen ohne
-                // Kaufpreis aus, ein „davon“ aus allen Teilen könnte grösser sein als er.
+                // „davon Teile“ only without a basis: the basis market value leaves out positions without
+                // a purchase price, a „davon“ built from all parts could be larger than it.
                 if (!kopf.withBase && sums.partsAndMinifigs.signum() > 0) {
                     Spacer(Modifier.height(Abstaende.tiny))
                     Text(
@@ -389,8 +388,8 @@ internal fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, part
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
-                // Kaufsumme und G/V in einer Zeile, die bei Bedarf umbricht: Untereinander waren
-                // es mit Betrag, Bezeichnung und Rechenhinweis vier Textebenen in einer Kachel.
+                // Purchase sum and P&L in one row that wraps when needed: stacked, that was
+                // four text levels in one tile, with amount, label and calculation note.
                 if (kopf.baseKnown) {
                     Spacer(Modifier.height(Abstaende.tiny))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
@@ -410,9 +409,9 @@ internal fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, part
                 Spacer(Modifier.height(Abstaende.gross))
                 HorizontalDivider(color = auf.copy(alpha = 0.2f))
                 Spacer(Modifier.height(Abstaende.mittel))
-                // Die Spanne der Sets zu Tiefst- und Höchstpreis. Der Schnitt nur, wenn er
-                // vom Betrag oben abweicht (Teile und Figuren dazu) — sonst stand dieselbe
-                // Zahl zweimal da.
+                // The sets' range to the lowest and highest price. The average only when it
+                // deviates from the amount above (plus parts and figures) — otherwise the same
+                // number stood there twice.
                 Text(stringResource(R.string.finance_range_label), color = auf,
                     style = MaterialTheme.typography.labelMedium)
                 Spacer(Modifier.height(Abstaende.tiny))
@@ -427,14 +426,14 @@ internal fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, part
         }
     }
     item {
-        // Wie gerechnet wurde, unter der Kachel statt in ihr: Sie trägt die Zahlen, der
-        // Hinweis die Herkunft — wie die Zeile im Web (fin-basis), nur leiser.
+        // How it was computed, under the tile instead of inside it: it carries the numbers, the
+        // note the origin — like the row on the web (fin-basis), just quieter.
         val kopf = financeHeader(valuation, partsValuation, figsValuation, pnl)
         val withoutMarket = if (kopf.withoutMarket > 0) pluralStringResource(R.plurals.finance_basis_ohne_markt,
             kopf.withoutMarket, kopf.withoutMarket, fmtPrice(kopf.withoutMarketCost.toPlainString())) else null
         val withoutPurchase = if (kopf.withoutPurchase > 0) pluralStringResource(R.plurals.finance_basis_ohne_kauf,
             kopf.withoutPurchase, kopf.withoutPurchase, fmtPrice(kopf.withoutPurchaseValue.toPlainString())) else null
-        // Wie das Web (finance.fremde_waehrung_n): fehlende Kaufpreise nennen statt still weglassen.
+        // As on the web (finance.fremde_waehrung_n): name missing purchase prices instead of silently leaving them out.
         val fremde = foreignPurchasePrices(valuation, partsValuation, figsValuation, pnl)
         val zeilen = listOfNotNull(
             if (kopf.baseRowVisible) pluralStringResource(R.plurals.finance_basis_gerechnet, kopf.gesamt,
@@ -455,5 +454,5 @@ internal fun LazyListScope.financeSummaryCards(valuation: BewertungAnsicht, part
         }
     }
 
-    // Kategorie-Filter — Galerie-Stil: Single-Select, Alle setzt zurück
+    // Category filter — gallery style: single-select, "All" resets
 }

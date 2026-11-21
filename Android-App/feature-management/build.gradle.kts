@@ -1,4 +1,4 @@
-// Monitoring für Verwalter: Zwischenspeicher, Kontingente, Protokoll, Jobs.
+// Monitoring for admins: cache, quotas, log, jobs.
 plugins {
     alias(libs.plugins.brickinventory.android.feature)
 }

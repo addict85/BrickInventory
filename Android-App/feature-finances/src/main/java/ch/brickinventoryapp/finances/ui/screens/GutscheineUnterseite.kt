@@ -17,9 +17,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import ch.brickinventoryapp.finances.ui.GutscheinUiState
 
 /**
- * Gutscheine — der erste Eintrag der Liste, weil sie im Laden gebraucht werden:
- * einen Fingertipp entfernt, ohne dass man an ihnen vorbeirollt, wenn man etwas
- * anderes sucht.
+ * Vouchers — the first entry of the list, because they are needed in the
+ * store: one tap away, without having to scroll past them when looking for
+ * something else.
  */
 @Composable
 fun VouchersRoute(
@@ -29,17 +29,17 @@ fun VouchersRoute(
 ) {
     val voucherState by gvm.state.collectAsStateWithLifecycle()
     Sichtschutz()
-    // PIN kopieren und Gutscheine löschen: kein Tipp durch eine Überlagerung.
+    // Copy the PIN and delete vouchers: no tap through an overlay.
     Ueberdeckungsschutz()
-    // Kopiert wird über SecretClipboard (nach einer Minute wieder leer); die
-    // Rückmeldung läuft über den Snackbar des ViewModels wie alle anderen Meldungen.
+    // Copying goes via SecretClipboard (empty again after one minute); the
+    // feedback runs through the ViewModel's snackbar like every other message.
     val context = androidx.compose.ui.platform.LocalContext.current
     val etikett = stringResource(R.string.vouchers_title)
-    // Die Liste lädt, sobald diese Seite den Zustand beobachtet (GutscheinViewModel),
-    // nicht beim Öffnen der Einstellungen. Der Klartext lebt nur, solange die Seite vorne steht.
+    // The list loads as soon as this page observes the state (GutscheinViewModel),
+    // not when the settings are opened. The plain text only lives as long as the page is in front.
     DisposableEffect(Unit) { onDispose { gvm.leaveVouchers() } }
     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_STOP) { gvm.forgetPlaintext() }
-    // Nummer und PIN zusammen sind Geld: als Geheimnis markiert, nach einer Minute weg.
+    // Number and PIN together are money: marked as a secret, gone after one minute.
     val job = voucherState.copyTo
     LaunchedEffect(job) {
         if (job == null) return@LaunchedEffect
@@ -71,9 +71,9 @@ fun VouchersRoute(
 }
 
 /**
- * Die Seite der Gutscheine: „Hinzufügen“ schwebt als Hauptaktion, Guthaben aller Karten
- * und PDF stehen im Menü der Leiste. Drei breite Knöpfe über der Liste schoben die
- * Karten aus dem Bild. [karte] bekommt, ob das Formular zum Anlegen offen ist.
+ * The vouchers page: „Hinzufügen“ floats as the main action, the balance of all cards
+ * and the PDF sit in the bar's menu. Three wide buttons above the list pushed the
+ * cards out of view. [karte] gets whether the create form is open.
  */
 @Composable
 fun VouchersPage(

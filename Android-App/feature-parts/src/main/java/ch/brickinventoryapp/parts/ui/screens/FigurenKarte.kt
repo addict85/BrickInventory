@@ -45,13 +45,13 @@ import ch.brickinventoryapp.shared.ui.mengeAusSet
 @Composable
 internal fun ManualFigTile(fig: ManualMinifigView, serverUrl: String, imageLoader: ImageLoader,
                   waehrung: Waehrung, onEdit: () -> Unit) {
-    // Vorschaubild mit Rückfall auf volle Auflösung — siehe
+    // Thumbnail with a fallback to full resolution — see
     // util/BildRueckfall.kt, rememberTileImageWithFallback().
     val (bild, onBildFehler) =
         rememberTileImageWithFallback(serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
-    // Alles Weitere steht in ManuelleKachel (ManualItemComposables.kt), die auch die
-    // Teile benutzen — damit Zustands- und Besitzer-Plaketten nicht nur in einem
-    // Zwilling nachgezogen werden.
+    // Everything else lives in ManuelleKachel (ManualItemComposables.kt), which the
+    // parts also use — so that condition and owner badges are not maintained in only
+    // one twin.
     ManuelleKachel(
         bildUrl = bild,
         onBildFehler = onBildFehler,
@@ -73,7 +73,7 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
     val qty = fig.totalQuantity ?: fig.quantity
 
     Card(
-        // Antippen oeffnet den Detail-Dialog — wie bei den Teilen daneben.
+        // Tapping opens the detail dialog — as with the parts next to it.
         modifier = Modifier.fillMaxWidth().heightIn(min = 196.dp)
             .semantics { selected = ausgewaehlt }
             .then(if (ausgewaehlt) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, Formen.leiste) else Modifier)
@@ -84,13 +84,13 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
     ) {
         Column {
             Box(Modifier.fillMaxWidth().height(110.dp)) {
-                // Vorschaubild mit Rückfall auf volle Auflösung — siehe
+                // Thumbnail with a fallback to full resolution — see
                 // util/BildRueckfall.kt, rememberTileImageWithFallback().
                 val (figImg, onFigImgError) = rememberTileImageWithFallback(serverUrl, fig.imageLocal, fig.imageUrl, fullViaProxy = true)
                 ProduktBild(
                     model = figImg,
                     imageLoader = imageLoader,
-                    // Ohne Beschreibung: Der Name steht darunter, TalkBack las ihn sonst zweimal.
+                    // Without a description: the name stands below it, TalkBack would otherwise read it twice.
                     contentDescription = null,
                     onState = { st ->
                         if (st is coil3.compose.AsyncImagePainter.State.Error) onFigImgError()
@@ -98,8 +98,8 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                     modifier = Modifier.fillMaxSize()
                         .clip(Formen.kachelBildEcken),
                     contentScale = ContentScale.Fit,
-                    // Bildgrund über die ganze Kachelbreite wie bei Sets und Teilen: Das hohe
-                    // Figurenbild stand sonst schmal in der Mitte mit weissen Rändern.
+                    // Image background across the whole tile width as with sets and parts: the tall
+                    // figure image otherwise stood narrow in the middle with white margins.
                     bildgrund = true,
                     innerGap = Abstaende.tiny,
                 )
@@ -109,20 +109,20 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                         shape = Formen.marke,
                         modifier = Modifier.align(Alignment.TopEnd).padding(Abstaende.tiny)
                     ) {
-                        // Die Menge-Plakette: „×N“ auf einer manuell erfassten Kachel, „N×“ auf
-                        // einer Kachel aus einem Set — die Regel der Webapp (`man-tile` mit
-                        // `qbadge` ×N, `part-card` mit `part-qty` N×).
+                        // The quantity badge: "×N" on a manually entered tile, "N×" on
+                        // a tile from a set — the web app's rule (`man-tile` with
+                        // `qbadge` ×N, `part-card` with `part-qty` N×).
                         Text(mengeAusSet(qty), Modifier.padding(horizontal = 5.dp, vertical = Abstaende.hairline)
                             .readAloudAs(stueckzahl(qty)),
                             color = MaterialTheme.colorScheme.onPrimary,
                             style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                     }
                 }
-                // Zustand nur bei manuell erfassten Minifiguren (aus Sets übernommene haben keinen
-                // eigenen). Die Besitzer-Plakette dagegen immer: „Wem gehört das?“ stellt sich bei
-                // einer Figur aus dem Set eines Kindes genauso, und diese Liste lädt nur
-                // `source=set`. Ohne Haushalt ist `owners` leer und OwnerBadges kehrt sofort
-                // zurück. Column statt Box: zwei Plaketten übereinander, nicht am selben Punkt.
+                // Condition only for manually entered minifigures (ones taken over from sets have none
+                // of their own). The owner badge, however, always: "whose is this?" comes up just
+                // the same for a figure from a child's set, and this list only loads
+                // `source=set`. Without a household, `owners` is empty and OwnerBadges returns
+                // right away. Column instead of Box: two badges stacked, not at the same point.
                 Column(Modifier.align(Alignment.BottomStart).padding(Abstaende.tiny),
                     verticalArrangement = Arrangement.spacedBy(Abstaende.hairline)) {
                     if (fig.source == Herkunft.MANUELL) ConditionBadges(fig.conditions, fig.condition)
@@ -144,7 +144,7 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                 Text(fig.figNumber, Modifier.readAloudAs(stringResource(R.string.cd_figur_nummer, fig.figNumber)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-                // Die Nummer steht schon darüber; ohne Namen dieselbe Nummer noch einmal sah wie ein Name aus.
+                // The number already stands above it; without a name, the same number again looked like a name.
                 val figName = fig.figName
                 if (figName != null) {
                     Text(catalogName(figName),
@@ -155,8 +155,8 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
                     Text(stringResource(R.string.name_unknown), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                // Gemeinsamer Helfer (util/DatumFormat.kt): Er kommt auch mit Zeitstempeln ohne
-                // Millisekunden zurecht.
+                // A shared helper (util/DatumFormat.kt): it also handles timestamps without
+                // milliseconds.
                 val dateLabel = remember(fig.setAddedAt) {
                     fmtTag(fig.setAddedAt, DateYear.SHORT)
                 }
@@ -169,10 +169,10 @@ fun MinifigCard(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,
 }
 
 /**
- * Eine Figur als Tabellenzeile: Bild, Nummer, Name, Menge, Erfassungsdatum — was
- * die Tabelle der Webapp zeigt (renderFigs in minifigs.js). Keine Spalten
- * „Quelle“ und Papierkorb: Diese Liste lädt nur `source=set`, beide wären
- * konstant.
+ * A figure as a table row: image, number, name, quantity, entry date — what
+ * the web app's table shows (renderFigs in minifigs.js). No columns
+ * for "source" or trash can: this list only loads `source=set`, and both would be
+ * constant.
  */
 @Composable
 internal fun MinifigTableRow(fig: FigurAnsicht, serverUrl: String, imageLoader: ImageLoader,

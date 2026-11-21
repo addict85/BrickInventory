@@ -27,19 +27,19 @@ import ch.brickinventoryapp.testing.TestApi
 import ch.brickinventoryapp.testing.text
 
 /**
- * Das Gutschein-ViewModel, im Takt gegen Antworten in fester Reihenfolge.
+ * The voucher ViewModel, in step against answers in a fixed order.
  *
- * Möglich, seit es aus MainViewModel herausgelöst ist und Texte über eine
- * Schnittstelle bekommt statt über den Context.
+ * Possible since it was separated out of MainViewModel and gets its
+ * texts through an interface instead of through the Context.
  *
- * Gegenproben:
- *  - In speichere() die 422-Übernahme entfernt (nur Meldung): „aus dem PDF
- *    Gelesenes landet im Formular" rot — Nummer leer.
- *  - Die PDF-Prüfung `typ != "application/pdf"` entfernt: „eine Nicht-PDF-Datei
- *    geht nicht zum Server" rot — ein Abruf statt keinem.
- *  - Im finally von questionAllBalanceAb() wieder `lade()` statt
- *    `loadVouchers()`: „abgebrochener Lauf räumt auf und lädt neu" rot — die
- *    abgebrochene Coroutine lädt nicht mehr (zwei Abrufe statt drei).
+ * Counter-checks:
+ *  - In speichere() the 422 takeover removed (message only): "what was read
+ *    from the PDF ends up in the form" red — number empty.
+ *  - The PDF check `typ != "application/pdf"` removed: "a non-PDF file
+ *    does not go to the server" red — one fetch instead of none.
+ *  - In the finally of questionAllBalanceAb() back to `lade()` instead of
+ *    `loadVouchers()`: "a cancelled run cleans up and reloads" red — the
+ *    cancelled coroutine no longer loads (two fetches instead of three).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class VoucherViewModelTest {
@@ -53,7 +53,7 @@ class VoucherViewModelTest {
 
     private fun antwort(rumpf: String, code: Int = 200) = TestApi.antwort(rumpf, code)
 
-    /** Ohne die Uhr vorzustellen: Eine Wartezeit des Servers bleibt sichtbar stehen. */
+    /** Without advancing the clock: a server wait period visibly stays put. */
     private fun bis(was: String, bedingung: () -> Boolean) {
         clock.runCurrent()
         assertTrue(was, bedingung())
@@ -97,7 +97,7 @@ class VoucherViewModelTest {
         val s = vm.state.value
         assertEquals(1, s.edited)
         assertEquals("6000111122223333", s.nummer)
-        // Ganze Beträge ohne „.0" — was im Feld steht, tippt der Nutzer weiter.
+        // Whole amounts without ".0" — what stands in the field is what the user keeps typing.
         assertEquals("50", s.betrag)
         vm.editVoucher(2)
         assertEquals("25.5", vm.state.value.betrag)
@@ -148,8 +148,8 @@ class VoucherViewModelTest {
         assertEquals("t${R.string.vouchers_balance_alle_fertig}", kanal.text)
     }
 
-    // Gegenprobe (02.11.2026 gemessen): `|| d.grund == "konto"` im ViewModel
-    // gestrichen → rot, auch /vouchers/2/guthaben wurde abgefragt (2 statt 1).
+    // Counter-check (measured 02.11.2026): `|| d.grund == "konto"` removed in the ViewModel
+    // → red, /vouchers/2/guthaben was also queried (2 instead of 1).
     @Test
     fun `the account limit aborts the pass`() {
         server.enqueue(antwort(twoCards))
@@ -159,7 +159,7 @@ class VoucherViewModelTest {
         server.enqueue(antwort("""{"success":false,"code":"zu_viele_anfragen","error":"Zu viele Abfragen","grund":"konto","wartenSek":1800}""", 429))
         server.enqueue(antwort(twoCards))
         vm.questionAllBalanceAb()
-        // Liste, eine Abfrage, dann das Neuladen im finally – keine zweite Karte.
+        // List, one query, then the reload in the finally — no second card.
         clock.advanceUntilIdle()
         bis("neu geladen") { server.requestCount >= 3 }
         val paths = List(server.requestCount) { server.takeRequest().path.orEmpty() }

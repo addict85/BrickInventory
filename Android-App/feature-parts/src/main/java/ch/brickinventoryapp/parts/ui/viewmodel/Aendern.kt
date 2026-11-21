@@ -9,9 +9,9 @@ import ch.brickinventoryapp.state.ui.viewmodel.Meldungen
 import kotlinx.coroutines.launch
 
 /**
- * Die Erfolgsmeldung nach dem Erfassen, samt Herkunft des Kaufpreises: BrickLink führt
- * zu vielen Teilen nur einen Zustand, der Server nennt in `price_from_condition`, aus
- * welchem der Wert stammt.
+ * The success message after entering, along with the origin of the purchase price: BrickLink
+ * maps many parts to only one condition, and the server names in `price_from_condition`
+ * which one the value comes from.
  */
 internal fun entryMessage(meldungen: Meldungen, angelegt: Boolean, nummer: String?, priceFromState: Zustand?): String {
     val kopf = meldungen.text(if (angelegt) R.string.vm_added else R.string.vm_updated, nummer)
@@ -24,9 +24,9 @@ internal fun entryMessage(meldungen: Meldungen, angelegt: Boolean, nummer: Strin
 }
 
 /**
- * Die ändernden Wege von Teilen und Figuren: rufen und melden; die Listen ändert das
- * Repository in der Ablage. Ein Fehlschlag ohne Satz bleibt still — dann hat ihn die
- * Sitzungsschicht schon gemeldet.
+ * The changing paths of parts and figures: call and report; the repository changes the
+ * lists in the store. A failure without a sentence stays silent — then the
+ * session layer has already reported it.
  */
 internal fun ViewModel.aendere(
     meldungen: Meldungen, successSet: String, danach: () -> Unit = {},

@@ -69,7 +69,7 @@ import ch.brickinventoryapp.shared.ui.partsBreakdown
 import ch.brickinventoryapp.model.ui.ListView
 import ch.brickinventoryapp.parts.ui.PartsSessionUiState
 
-/** Was der Teile-Reiter zeigt; die Route sammelt es aus den Flüssen. */
+/** What the parts tab shows; the route collects it from the flows. */
 internal data class TeileZustand(
     val state: PartsSessionUiState,
     val blick: ScopeUiState,
@@ -77,7 +77,7 @@ internal data class TeileZustand(
     val storageState: LagerUiState,
 )
 
-/** Der Teile-Reiter am Navigationsziel: reicht Zustand und Aktionen an [PartsScreen]. */
+/** The parts tab at the navigation destination: passes state and actions to [PartsScreen]. */
 @Composable
 fun PartsRoute(
     vm: PartsViewModel,
@@ -99,15 +99,15 @@ internal fun PartsScreen(
     aktionen: TeileAktionen,
     imageLoader: ImageLoader,
     /**
-     * Öffnet die Detailansicht eines manuell erfassten Teils. Bleibt Parameter,
-     * weil nur der Navigationsgraph den NavController kennt.
+     * Opens the detail view of a manually entered part. Stays a parameter,
+     * because only the navigation graph knows the NavController.
      */
     onOpenDetail: (partNumber: String, colorId: Int) -> Unit = { _, _ -> },
     /**
-     * Scroll-Zustand der Liste. Kommt von aussen, weil das Ziel beim Öffnen der
-     * Detailansicht verlassen und danach neu zusammengesetzt wird — ein
-     * `rememberLazyGridState()` hier drin würde zurückgesetzt, die Liste spränge nach
-     * oben.
+     * The list's scroll state. Comes from outside, because the destination is left when the
+     * detail view opens and is recomposed afterward — a
+     * `rememberLazyGridState()` in here would be reset, and the list would jump
+     * to the top.
      */
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
@@ -115,7 +115,7 @@ internal fun PartsScreen(
     val blick = zustand.blick
     val partsState = zustand.partsState
     val storageState = zustand.storageState
-    // Das Teil, dessen Detail daneben offen ist (breites Fenster); seine Kachel ist markiert.
+    // The part whose detail is open next to it (wide window); its tile is marked.
     val gewaehlt = LocalOpenDetail.current
 
     val parts = partsState.parts
@@ -134,8 +134,8 @@ internal fun PartsScreen(
         ?: ScopeFilter.ALL
     val manualParts = partsState.manualParts ?: emptyList()
 
-    // Aktualisieren behält den Suchtext — sonst spränge die Liste auf den ganzen
-    // Bestand, während das Feld den Text weiter zeigt. Wie in der Galerie (onRefresh =
+    // Refreshing keeps the search text — otherwise the list would jump to the whole
+    // stock while the field kept showing the text. As in the gallery (onRefresh =
     // loadSets()).
     val onRefresh: () -> Unit = { aktionen.loadParts() }
     val onSearch: (String) -> Unit = aktionen::setPartsQuery
@@ -145,17 +145,17 @@ internal fun PartsScreen(
     val storageMode = storageState.modi[ScopeFilter.View.PARTS] ?: ""
     val onStorageChange: (String) -> Unit = { aktionen.setStorageFilter(ScopeFilter.View.PARTS, it) }
     val ansicht = partsState.filter.ansicht
-    // Der VORRAT an Lagerorten (nicht die belegten Orte): Beim Erfassen soll
-    // auch ein leeres Regal zur Wahl stehen.
+    // The SUPPLY of storage locations (not the occupied ones): on entry,
+    // even an empty shelf should be offered as a choice.
     val locationStock = storageState.eigene.map { it.name }
 
-    // Das Feld zeigt, was im Zustand steht. `remember(...)` darauf geschlüsselt statt
-    // `rememberSaveable`: Der Text lebt im ViewModel, und nach dem Zurücknavigieren
-    // soll das Feld zum tatsächlichen Filter der Liste passen, nicht zu einem eigenen
-    // Gedächtnis.
+    // The field shows what is in the state. `remember(...)` keyed on that instead of
+    // `rememberSaveable`: the text lives in the ViewModel, and after navigating back
+    // the field should match the list's actual filter, not its own
+    // memory.
     var searchQuery by remember(partsState.filter.suche) { mutableStateOf(partsState.filter.suche) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
-    // Dedup nur neu berechnen, wenn sich die Daten aendern — nicht bei jeder Recomposition
+    // Recompute the dedup only when the data changes — not on every recomposition.
     val distinctParts = remember(parts) { parts.distinctBy { "${it.partNumber}-${it.colorId}" } }
     val endReached by remember {
         derivedStateOf {
@@ -166,9 +166,9 @@ internal fun PartsScreen(
     LaunchedEffect(endReached) { if (endReached) onLoadMore(currentPage + 1) }
 
     var showFilter by rememberSaveable { mutableStateOf(false) }
-    // Farbe und Kategorie — die beiden Filterlisten der Webapp (teile.js,
-    // loadPartsFilters). Die Umrechnung auf die gemeinsame Form steht hier: Die beiden
-    // Antworten tragen verschiedene Feldnamen, alles andere ist gleich.
+    // Color and category — the web app's two filter lists (teile.js,
+    // loadPartsFilters). The conversion to the shared shape lives here: the two
+    // answers carry different field names, everything else is the same.
     val farbe = farbTranslator()
     val farbEntries = remember(partsState.partsFilterColors, farbe) {
         partsState.partsFilterColors.mapNotNull { f ->
@@ -189,17 +189,17 @@ internal fun PartsScreen(
         }
     }
 
-    // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SearchWithFilter).
+    // From large font on, "Erfassen" stands in the button row below the search (SearchWithFilter).
     val gross = largeFont()
     val addText = stringResource(R.string.parts_add)
-    // Suche und „Filter“: Konto, Lagerort, Ersatzteile, Farbe, Kategorie
-    // und die Ansicht stehen im Blatt, die Kennzahlen rollen mit dem Raster.
+    // Search and "filter": account, storage location, spare parts, color, category
+    // and the view sit in the sheet, the key figures scroll along with the grid.
     val partsFiltered = searchQuery.isNotBlank() || Filterzahl.teile(householdMembers, scopeMode, lagerorte,
         storageMode, partsState.filter.ersatz, partsState.filter.farbe, partsState.filter.kategorie) > 0
     val anzeige = loadingIndicator(parts.isNotEmpty() || manualParts.isNotEmpty(), isLoading, errorText, partsFiltered)
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
-        // Im Fehlerzustand weder Suche noch Filter — ohne Liste gibt es nichts zu suchen.
+        // In the error state neither search nor filter — without a list there is nothing to search.
         if (anzeige != LoadingIndicator.FEHLER) SearchWithFilter(
             wert = searchQuery,
             onValue = { searchQuery = it; onSearch(it) },
@@ -219,7 +219,7 @@ internal fun PartsScreen(
         } else if (anzeige == LoadingIndicator.FEHLER) {
             StateHint { ErrorHint(errorText, onRefresh, fehler?.art) }
         } else if (anzeige == LoadingIndicator.NO_HITS) {
-            // Die Kennzahlen meinen die ganze Sammlung; ohne Treffer bleibt der Weg zurück.
+            // The key figures mean the whole collection; without a hit, the way back remains.
             if (stats != null) Box(Modifier.padding(Abstaende.mittel)) { PartsMetrics(stats) }
             StateHint {
                 NoHitsHint()
@@ -233,7 +233,7 @@ internal fun PartsScreen(
                 }, colors = nebenKnopfFarben(), border = nebenKnopfRand()) { Text(stringResource(R.string.search_clear_all)) }
             }
         } else if (anzeige == LoadingIndicator.LEER) {
-            // Leer ohne Kennzahlen: „82 Stück“ neben „Keine Teile“ widersprach sich.
+            // Empty without key figures: "82 Stück" next to "Keine Teile" contradicted itself.
             StateHint {
                 HintText(ImageVector.vectorResource(R.drawable.ic_parts_bricks), stringResource(R.string.parts_none),
                     stringResource(R.string.parts_leer_text))
@@ -244,7 +244,7 @@ internal fun PartsScreen(
                 LazyVerticalGrid(
                     state = gridState,
                     columns = ReadableColumns(120.dp),
-                    // Unten Platz für den Erfassen-Knopf, sonst verdeckt er die letzte Reihe.
+                    // Space at the bottom for the entry button, otherwise it covers the last row.
                     contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel,
                         end = Abstaende.mittel, bottom = FabSpace),
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
@@ -253,8 +253,8 @@ internal fun PartsScreen(
                     if (stats != null) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "parts-stats") { PartsMetrics(stats) }
                     }
-                    // Manuell erfasste Teile als Grid-Sektion statt in einer FlowRow über dem Grid:
-                    // So scrollt alles als eine Liste, nicht nur der Set-Teil.
+                    // Manually entered parts as a grid section instead of in a FlowRow above the grid:
+                    // this way everything scrolls as one list, not just the set part.
                     if (manualParts.isNotEmpty()) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "manual-header") {
                             SectionHeader(stringResource(R.string.parts_manual_section))
@@ -276,18 +276,18 @@ internal fun PartsScreen(
                             }
                         }
                     }
-                    // In der Tabellenansicht nimmt jede Zeile die ganze Breite (span =
-                    // maxLineSpan). Derselbe Raster-Container, sonst wären Scrollstand,
-                    // Endlos-Nachladen und die manuelle Sektion doppelt zu pflegen. Die manuellen
-                    // Einträge bleiben in beiden Ansichten Kacheln, wie in der Webapp
-                    // (#manual-parts-list hängt nicht an parts-view).
+                    // In the table view every row takes the whole width (span =
+                    // maxLineSpan). The same grid container, otherwise scroll position,
+                    // infinite loading and the manual section would need maintaining twice. The manual
+                    // entries stay tiles in both views, as in the web app
+                    // (#manual-parts-list is not tied to parts-view).
                     items(
                         distinctParts,
                         key = { "${it.partNumber}-${it.colorId}" },
                         span = { if (ansicht == ListView.TABLE) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
                     ) { part ->
-                        // BEIDE Ansichten oeffnen denselben Dialog — eine
-                        // Ansicht darf nicht koennen, was die andere nicht kann.
+                        // BOTH views open the same dialog — one
+                        // view must not be able to do what the other cannot.
                         val oeffne = { aktionen.openSetItem(part.partNumber, part.colorId) }
                         Moved {
                             if (ansicht == ListView.TABLE) PartTableRow(part, serverUrl, imageLoader, oeffne)
@@ -296,7 +296,7 @@ internal fun PartsScreen(
                         }
                     }
                     if (isLoading) {
-                        // Fester Schlüssel wie bei den Kopfzeilen darüber — Begründung in
+                        // A fixed key as for the headers above — reasoning in
                         // GalleryScreen.kt.
                         item(key = "parts-loading-more", span = { GridItemSpan(maxLineSpan) }) {
                             Box(Modifier.fillMaxWidth().padding(Abstaende.gross), Alignment.Center) {
@@ -309,8 +309,8 @@ internal fun PartsScreen(
         }
     }
 
-        // Eine Regel für alle Reiter (wie Galerie und Merkliste): Kein „+“ im Fehlerzustand,
-        // und leer steht der Knopf schon mitten im Bild.
+        // One rule for all tabs (like gallery and wishlist): no "+" in the error state,
+        // and empty, the button already stands in the middle of the image.
         if (!gross && anzeige != LoadingIndicator.FEHLER && anzeige != LoadingIndicator.LEER) AddFab(
             addText, { showAddDialog = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
@@ -348,11 +348,11 @@ internal fun PartsScreen(
         )
     }
 
-    // Gelöscht wird im Detail (ManualItemDetailScreen, showDeleteConfirm), nicht auf
-    // der Kachel.
+    // Deleted in the detail (ManualItemDetailScreen, showDeleteConfirm), not on
+    // the tile.
 }
 
-/** Die Kennzahlen der Teile — erste Zeile des Rasters, sie rollt mit. */
+/** The parts' key figures — first row of the grid, it scrolls along. */
 @Composable
 private fun PartsMetrics(stats: PartsMetricsView) {
     MetricsSeries {
@@ -363,7 +363,7 @@ private fun PartsMetrics(stats: PartsMetricsView) {
     }
 }
 
-/** Die Reihenfolgen der Webapp (parts-ordnung), in derselben Bauform wie Galerie und Merkliste. */
+/** The web app's sort orders (parts-ordnung), in the same shape as gallery and wishlist. */
 @Composable
 private fun PartsSorting(gewaehlt: Teilefilter.Order, onWahl: (Teilefilter.Order) -> Unit) {
     SortierMenu(
@@ -379,7 +379,7 @@ private fun Teilefilter.Order.beschriftung(): Int = when (this) {
     Teilefilter.Order.QUANTITY -> R.string.parts_ordnung_menge
 }
 
-/** Die wirkenden Filter der Teile als Chips; jeder fällt einzeln weg, wie im Blatt. */
+/** The parts' active filters as chips; each one can be removed individually, as in the sheet. */
 @Composable
 private fun partsFilterChips(
     partsState: PartsUiState,

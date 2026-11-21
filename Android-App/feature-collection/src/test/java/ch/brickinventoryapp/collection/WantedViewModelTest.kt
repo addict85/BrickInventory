@@ -30,30 +30,30 @@ import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
- * Das Merklisten-ViewModel, ausgeführt gegen einen PfadServer ohne Netz. Die Wartezeiten
- * (Suchpause, Ruhezeit des Preisalarms) laufen auf der Testuhr.
+ * The wishlist ViewModel, run against a PfadServer without network. The waiting periods
+ * (search pause, debounce of the price alert) run on the test clock.
  *
- * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen MerklisteViewModel.kt):
- *   A  in setWantedSearch() das Schreiben in den SavedStateHandle entfernt
- *      → rot „Suche, Zustand und Sortierung überstehen …“
- *   B  die Suchpause entfernt (sofort laden) → rot „die Suche wartet die Pause ab
- *      und filtert die Ablage mit dem letzten Text“
- *   C  in LocalApplication.sets den Zweig WantedItemAdopted entfernt → rot
- *      „eine Übernahme nimmt den Merkposten aus der Ablage und legt das Set dort an“
- *   D  im Preisalarm das Nachladen der Alarme des offenen Postens entfernt →
- *      rot „ein Preisalarm im Merkposten wird entprellt gespeichert …“
- *   E  in loadWanted die Quelle ohne Suchtext gewählt → rot „die Liste folgt der
- *      Ablage, auch gefiltert“ (99999-1 erscheint unter „10294“)
- *   F  wantedState sieht die Quelle nicht an (gegenproben/merkliste-ohne-ablage.patch)
- *      → rot „Liste geladen“: Der Abruf schreibt nur in die Ablage.
- *   G  deleteWantedItem() löscht wieder sofort am Server
- *      (gegenproben/merkposten-loeschen-sofort.patch) → rot „ein geloeschter Merkposten …“
- *      („Noch kein DELETE“)
- *   H  deleteWantedItem() liest den Namen aus der rohen Liste statt aus der gezeigten
- *      (gegenproben/merkposten-name-ohne-ablage.patch) → rot „ein geloeschter Merkposten …“
- *      (Titanic erwartet, 10294-1 bekommen; nur in der CI messbar)
- *   merkliste-laedt-nicht-beim-zeigen  (gegenproben/) observeLoadOn der Liste gestrichen
- *      → rot „list and detail load as soon as someone shows them“
+ * Counter-checks (measured 28.10.2026, kotlinc against MerklisteViewModel.kt):
+ *   A  in setWantedSearch() the writing to the SavedStateHandle removed
+ *      → red “search, condition and sorting survive …”
+ *   B  the search pause removed (load immediately) → red “the search waits out the pause
+ *      and filters the store with the last text”
+ *   C  in LocalApplication.sets the branch WantedItemAdopted removed → red
+ *      “a takeover removes the wishlist item from the store and creates the set there”
+ *   D  in the price alert the reload of the open item's alerts removed →
+ *      red “a price alert on a wishlist item is saved debounced …”
+ *   E  in loadWanted the source chosen without the search text → red “the list follows
+ *      the store, filtered too” (99999-1 appears under „10294“)
+ *   F  wantedState does not look at the source (gegenproben/merkliste-ohne-ablage.patch)
+ *      → red “list loaded”: the fetch only writes into the store.
+ *   G  deleteWantedItem() deletes immediately on the server again
+ *      (gegenproben/merkposten-loeschen-sofort.patch) → red “a deleted wishlist item …”
+ *      (“no DELETE yet”)
+ *   H  deleteWantedItem() reads the name from the raw list instead of the shown one
+ *      (gegenproben/merkposten-name-ohne-ablage.patch) → red “a deleted wishlist item …”
+ *      (Titanic expected, 10294-1 received; measurable only in the CI)
+ *   merkliste-laedt-nicht-beim-zeigen  (gegenproben/) observeLoadOn of the list removed
+ *      → red “list and detail load as soon as someone shows them”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class WantedViewModelTest {
@@ -122,7 +122,7 @@ class WantedViewModelTest {
             val f = neu.wantedState.value
             assertEquals(Triple("Titanic", Zustand.GEBRAUCHT, Merksortierung.PREIS_ABSTEIGEND), Triple(f.query, f.stateFilter, f.sorting))
             neu.loadWanted()
-            // Die Filter gelten der Ablage; der Abruf füllt sie ganz.
+            // The filters apply to the store; the fetch fills it completely.
             assertEquals(listOf(Zustand.GEBRAUCHT), neu.wantedState.value.merkposten.map { it.condition })
             val anfrage = paths.requestsAn("GET /api/v1/wanted").single()
             assertTrue(anfrage, "search=" !in anfrage && "condition=" !in anfrage)
@@ -181,8 +181,8 @@ class WantedViewModelTest {
 
         vm.setPriceAlert("10294-1", Alarmrichtung.UNTER, "4", Zustand.NEU)
         vm.setPriceAlert("10294-1", Alarmrichtung.UNTER, "450", Zustand.NEU)
-        // Gespeichert führt der Server 450; der Zustand liest die Ablage nur beim Laden,
-        // ohne Nachladen bliebe er bei 500.
+        // Saved, the server holds 450; the state reads the store only when loading,
+        // without a reload it would stay at 500.
         paths.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[{"set_number":"10294-1","condition":"N","direction":"unter","threshold":450.0}]}"""
         clock.advanceTimeBy(900)
         assertEquals("Nur die letzte Eingabe wird gespeichert", 1, paths.requestsAn("PUT /api/v1/sets/10294-1/alert").size)

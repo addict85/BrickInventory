@@ -25,7 +25,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ch.brickinventoryapp.model.ui.ListView
 
-/** Die Abrufe neben der Teileliste: Kennzahlen und Filterwerte; Blickfeld setzt der Aufrufer. */
+/** The fetches next to the parts list: key figures and filter values; the caller sets the view. */
 internal interface PartsSource {
     suspend fun partsMetrics(): Ergebnis<PartsMetricsView?>
     suspend fun filterColors(): Ergebnis<List<FilterColorView>>
@@ -34,9 +34,9 @@ internal interface PartsSource {
 }
 
 /**
- * Die Listen für einen Filter, und wie sie gefüllt werden — die einzige Quelle der Anzeige
- * wie in der Galerie: die Ablage, wo Konto, Lagerort oder „In Sets“ es verlangen die
- * Kontosicht. Der Abruf füllt nur die Quelle.
+ * The lists for a filter, and how they are filled — the display's only source,
+ * as in the gallery: the store, or, where account, storage location or "In Sets" demand it,
+ * the account view. The fetch only fills the source.
  */
 internal class PartsLocal(
     val teile: (PartsUiState) -> Flow<Local<TeilAnsicht>>,
@@ -44,7 +44,7 @@ internal class PartsLocal(
     val refresh: suspend (PartsUiState) -> Ergebnis<Unit>,
 )
 
-/** Dasselbe für die Figuren. */
+/** The same for the figures. */
 internal class MinifigsLocal(
     val figuren: (MinifigsUiState) -> Flow<Local<FigurAnsicht>>,
     val manualMinifigs: (MinifigsUiState) -> Flow<Local<ManualMinifigView>>,
@@ -53,9 +53,9 @@ internal class MinifigsLocal(
 )
 
 /**
- * Folgt der Ablage und meldet den Abruf — gemeinsam für Teile und Figuren. Ein neuer
- * Auftrag bricht den alten ab: Eine langsame alte Antwort überschriebe sonst eine neuere,
- * und beim Tippen löscht jeder Tastendruck den entprellten vorigen.
+ * Follows the store and reports the fetch — shared for parts and figures. A new
+ * job cancels the old one: a slow old answer would otherwise overwrite a newer one,
+ * and while typing, every keystroke clears the debounced previous one.
  */
 internal class Listenfolge<S>(
     private val scope: CoroutineScope,
@@ -66,7 +66,7 @@ internal class Listenfolge<S>(
     private var folgen: List<Job> = emptyList()
     private var job: Job? = null
 
-    /** Eine nie geladene Liste (ohne Stand) leert nichts. */
+    /** A list never loaded (without a cached state) clears nothing. */
     fun <T> sequence(quelle: Flow<Local<T>>, neu: (S, List<T>) -> S): Job =
         scope.launch { quelle.collect { l -> if (l.stand != null) zustand.update { st -> neu(st, l.liste) } } }
 
@@ -80,7 +80,7 @@ internal class Listenfolge<S>(
 
     fun sequenceAll(neu: List<Job>) { folgen = neu }
 
-    /** Ohne Netz bleibt die Ablage mit ihrem Stand; ohne Ablage ist es ein Fehler. */
+    /** Without network, the store stays with its cached state; without a store it is an error. */
     fun ausgang(r: Ergebnis<Unit>, stand: Long?, fertig: (S, Long?) -> S, fehler: (S, Ergebnis.Fehler) -> S) {
         when {
             r is Ergebnis.Erfolg -> zustand.update { fertig(it, null) }
@@ -99,32 +99,32 @@ internal class Listenfolge<S>(
 }
 
 /**
- * Zustand der Teileliste und wie er sich ändert — wie die Galerie: privater Fluss,
- * benannte Methoden, Quellen von aussen. Die Filter liest jeder Lader aus dem Zustand:
- * So passen Quelle und Abruf immer zu dem, was die Filterchips zeigen.
+ * The parts list's state and how it changes — like the gallery: a private flow,
+ * named methods, sources from outside. Every loader reads the filters from the state:
+ * this way source and fetch always match what the filter chips show.
  */
 internal class Teile(
     private val scope: CoroutineScope,
     private val quelle: PartsSource,
     reportError: (Ergebnis.Fehler) -> Unit,
-    /** Filterwechsel: Die gemerkte Scrollstelle zeigt auf eine andere Liste. */
+    /** Filter change: the remembered scroll position points at a different list. */
     private val vergissScroll: () -> Unit,
     suchPause: Long = 350,
     private val listen: PartsLocal,
-    /** Jeder neue Filter, damit der Aufrufer ihn merken kann. */
+    /** Every new filter, so that the caller can remember it. */
     private val filterChanged: (Teilefilter) -> Unit = {},
 ) {
     private val _state = MutableStateFlow(PartsUiState())
     val state: StateFlow<PartsUiState> = _state.asStateFlow()
     private val sequence = Listenfolge(scope, _state, reportError, suchPause)
 
-    /** Alles steht auf einmal da; eine weitere Seite gibt es nicht mehr. */
+    /** Everything is there at once; there is no further page. */
     fun laden(seite: Int = 1, debounced: Boolean = false) {
         if (seite > 1) return
         sequence.starte(debounced) { loadParts() }
     }
 
-    /** Nach dem Entprellen gelesen: Der zuletzt gestartete Auftrag sieht den neuesten Filter. */
+    /** Read after the debounce: the most recently started job sees the newest filter. */
     private suspend fun loadParts() {
         val st = _state.value
         sequence.sequenceAll(listOf(
@@ -141,15 +141,15 @@ internal class Teile(
         loadMetrics()
     }
 
-    /** Kennzahlen sind Beiwerk: Ein Fehlschlag lässt die Liste stehen. */
+    /** Key figures are an extra: a failure leaves the list as is. */
     suspend fun loadMetrics() {
         (quelle.partsMetrics() as? Ergebnis.Erfolg)
             ?.let { s -> _state.update { it.copy(partsStats = s.data) } }
     }
 
     /**
-     * Einen neuen Filter setzen. Ein Klick ist ein fertiger Wunsch; nur das Tippen der Suche
-     * wird entprellt. Die Ordnung sortiert nur um: Die ganze Liste liegt schon vor.
+     * Set a new filter. A click is a finished wish; only typing in the search
+     * is debounced. Sort order only reorders: the whole list is already there.
      */
     fun setFilter(neu: Teilefilter) {
         val alt = _state.value.filter
@@ -162,8 +162,8 @@ internal class Teile(
     }
 
     /**
-     * Farb- und Kategorieliste der Filter. Still bei Fehlern: Ein fehlender
-     * Filter ist kein Grund, die Liste zurückzuhalten oder zu stören.
+     * The filters' color and category list. Silent on errors: a missing
+     * filter is no reason to hold back the list or interrupt it.
      */
     fun loadFilter() {
         scope.launch {
@@ -174,7 +174,7 @@ internal class Teile(
         }
     }
 
-    /** Farbauswahl im Erfassungsdialog; fehlt sie, tippt man die Farb-ID. */
+    /** Color choice in the entry dialog; if it is missing, one types the color ID. */
     fun loadColors() {
         scope.launch {
             (quelle.allColors() as? Ergebnis.Erfolg)?.data
@@ -182,17 +182,17 @@ internal class Teile(
         }
     }
 
-    /** Einen gemerkten Filter übernehmen, ohne zu laden. */
+    /** Take over a remembered filter, without loading. */
     fun placeFilterAgain(f: Teilefilter) = _state.update { it.copy(filter = f) }
 
-    /** Abmelden: nichts vom vorigen Konto stehen lassen, laufende Abrufe verwerfen. */
+    /** Sign out: leave nothing of the previous account behind, discard running fetches. */
     fun reset() {
         sequence.abbrechen()
         _state.value = PartsUiState()
     }
 }
 
-/** Zustand der Figurenliste, gebaut wie [Teile]. */
+/** State of the figures list, built like [Teile]. */
 internal class Figuren(
     private val scope: CoroutineScope,
     reportError: (Ergebnis.Fehler) -> Unit,
@@ -209,9 +209,9 @@ internal class Figuren(
     }
 
     /**
-     * Figurenliste laden. Die Kennzahlen kommen nebenher und zeigen den ganzen
-     * Bestand — beim Tippen nicht, sonst zählte jeder Tastendruck neu, ohne
-     * Auftrag, der ihn abbrechen könnte.
+     * Load the figures list. The key figures come along and show the whole
+     * stock — not while typing, otherwise every keystroke would recount, with no
+     * job that could cancel it.
      */
     fun laden(debounced: Boolean = false) {
         if (!debounced) scope.launch { loadMetrics() }
@@ -236,10 +236,10 @@ internal class Figuren(
         laden(debounced = true)
     }
 
-    /** Karten oder Tabelle; ohne Neuladen, die Felder sind schon da. */
+    /** Cards or table; without a reload, the fields are already there. */
     fun setView(wert: ListView) = _zustand.update { it.copy(minifigsView = wert) }
 
-    /** Gemerkte Suche und Ansicht übernehmen, ohne zu laden. */
+    /** Take over a remembered search and view, without loading. */
     fun placeAgain(suche: String, ansicht: ListView) =
         _zustand.update { it.copy(minifigsQuery = suche, minifigsView = ansicht) }
 

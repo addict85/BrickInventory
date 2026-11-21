@@ -18,11 +18,11 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 /**
- * Der Dialog nach einem gescannten Code: Das Ziel steht hervorgehoben da, und
- * „Übernehmen“ geht erst nach dem Haken „Ja, <host> ist mein Server“.
+ * The dialog after a scanned code: the destination stands out highlighted, and
+ * „Übernehmen“ only works after the checkbox „Ja, <host> ist mein Server“.
  *
- * Gegenprobe (Robolectric, nur in der CI messbar; Job `gegenproben`):
- *   (a) der Knopf wieder ohne den Haken frei → rot „uebernommen wird erst nach dem Ja …“
+ * Counter-check (Robolectric, measurable only in the CI; job `gegenproben`):
+ *   (a) the button free again without the checkbox → red “taken over only after the yes …”
  *       (gegenproben/qr-dialog-ohne-ja.patch)
  */
 @RunWith(RobolectricTestRunner::class)

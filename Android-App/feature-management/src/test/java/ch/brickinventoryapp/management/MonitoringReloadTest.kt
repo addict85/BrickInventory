@@ -14,13 +14,13 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Nach einer Änderung in der Überwachung steht da, was der Server daraus gemacht hat:
- * Ein gesetzter Zeitplan wird neu geholt (der Server normalisiert „7:5“ zu „07:05“),
- * und after clearing the cache the numbers come anew. Gegen einen Testserver.
+ * After a change in monitoring, what the server made of it is shown:
+ * a set schedule is fetched anew (the server normalizes "7:5" to "07:05"),
+ * and after clearing the cache the numbers come anew. Against a test server.
  *
- * Gegenproben (Patches unter gegenproben/, lokal nicht übersetzbar, misst die CI):
- *   zeitplan-ohne-nachladen   loadJobs() nach setJobSchedule entfernt → rot „nach dem Setzen …“
- *   cache-leeren-ohne-zahlen  loadCacheAndLimits() nach clearCache entfernt → rot „nach dem Leeren …“
+ * Counter-checks (patches under gegenproben/, not compilable locally, measured by CI):
+ *   zeitplan-ohne-nachladen   loadJobs() removed after setJobSchedule → red “after setting …”
+ *   cache-leeren-ohne-zahlen  loadCacheAndLimits() removed after clearCache → red “after clearing …”
  */
 class MonitoringReloadTest {
 

@@ -14,8 +14,8 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Die Antworten des Servers gehen verlustfrei durch die Serialisierung; wie sie in der
- * Ablage liegen, prüfen AblageformTest und StoreVersionTest mit der eigenen Zeilenform.
+ * The server's answers pass through serialization without loss; how they lie in the
+ * store is checked by AblageformTest and StoreVersionTest with their own row form.
  */
 class ResponseCacheContractTest {
 
@@ -33,8 +33,8 @@ class ResponseCacheContractTest {
         assertEquals(decoded.sets.size, round.sets.size)
         assertEquals("75192-1", round.sets[0].setNumber)
         assertEquals("Falcon", round.sets[0].name)
-        // Verschachtelte Listen sind der Punkt, an dem eine relationale
-        // Zwischenschicht TypeConverter gebraucht hätte.
+        // Nested lists are the point at which a relational
+        // intermediate layer would have needed a TypeConverter.
         assertEquals(1, round.sets[0].instructions.size)
         assertEquals(2, round.sets[0].quantity)
     }
@@ -62,8 +62,8 @@ class ResponseCacheContractTest {
 
     @Test
     fun `unknown fields do not break the cache`() {
-        // Der Server darf seine Antwort erweitern, ohne dass ein alter
-        // Cache-Eintrag unlesbar wird.
+        // The server may extend its answer without an old
+        // cache entry becoming unreadable.
         val raw = """{"success":true,"sets":[{"set_number":"1-1","neues_feld":42}],"noch_eins":"x"}"""
         val decoded = json.decodeFromString(SetsResponse.serializer(), raw)
         assertEquals(1, decoded.sets.size)
@@ -71,12 +71,12 @@ class ResponseCacheContractTest {
 }
 
 /**
- * Preisfelder der Finanz-Antwort.
+ * Price fields of the finance answer.
  *
- * Der Marktpreis ist seit der serverseitigen Umstellung `avg_price`, nicht der
- * mengengewichtete Schnitt — der liegt systematisch darunter und war der Grund,
- * warum die App im Finanzen-Reiter und im Detail-Dialog einen zu niedrigen Wert
- * zeigte. Dazu liefert der Server jetzt den mengengewichteten Kaufpreis mit.
+ * Since the server-side change the market price is `avg_price`, not the
+ * quantity-weighted average — that lies systematically below it and was the reason
+ * why the app showed too low a value in the finances tab and in the detail dialog.
+ * On top of that the server now also delivers the quantity-weighted purchase price.
  */
 class ValuationPriceFieldsTest {
 
@@ -95,7 +95,7 @@ class ValuationPriceFieldsTest {
 
     @Test
     fun `missing fields break nothing`() {
-        // Ältere Server liefern total_avg und purchase_price nicht.
+        // Older servers do not deliver total_avg and purchase_price.
         val s = json.decodeFromString(ValuationSet.serializer(),
             """{"set_number":"1-1","qty_avg_price":10.0,"total_qty_avg":"10.00"}""")
         assertEquals(null, s.totalAvg)
@@ -105,12 +105,12 @@ class ValuationPriceFieldsTest {
 }
 
 /**
- * Bildauflösung für Minifiguren.
+ * Image resolution for minifigures.
  *
- * Der Server legt Minifiguren-Bilder seit der Erweiterung des img-dl-Laufs
- * lokal unter /images/ ab und liefert sie über express.static — deutlich
- * schneller als über das CDN. Die App nutzte aber ausschliesslich `image_url`
- * und kannte `image_local` gar nicht; sie hätte von der Änderung nichts gehabt.
+ * Since the extension of the img-dl run, the server stores minifigure images
+ * locally under /images/ and serves them via express.static — noticeably
+ * faster than via the CDN. But the app used only `image_url` exclusively
+ * and did not know `image_local` at all; it would have gained nothing from the change.
  */
 class MinifigImageFieldTest {
 
@@ -125,7 +125,7 @@ class MinifigImageFieldTest {
         )
         assertEquals("/images/sets/fig-000140.jpg", fig.imageLocal)
 
-        // Auflösung wie im Screen: lokal gewinnt, sonst absolute CDN-Adresse
+        // Resolution as in the screen: local wins, otherwise absolute CDN address
         val serverUrl = "https://lego.example.org"
         val bild = fig.imageUrl
         val resolved = when {
@@ -138,7 +138,7 @@ class MinifigImageFieldTest {
 
     @Test
     fun `without image_local the CDN address stays`() {
-        // Solange der Hintergrundlauf das Bild noch nicht geholt hat.
+        // As long as the background run has not yet fetched the image.
         val fig = json.decodeFromString(
             Minifig.serializer(),
             """{"fig_number":"fig-1","image_url":"https://cdn.rebrickable.com/y.jpg"}"""
@@ -158,12 +158,12 @@ class MinifigImageFieldTest {
 }
 
 /**
- * Wiederholversuch für Galerie-Kacheln nach einem Ladefehler.
+ * Retry for gallery tiles after a load error.
  *
- * Beobachtet: Kacheln blieben leer, das Bild erschien aber sofort, sobald man
- * das betroffene Set öffnete — ein Hinweis auf einen einmaligen, transienten
- * Fehlschlag beim ersten Ladeversuch. Coil versucht eine fehlgeschlagene
- * Anfrage nicht von sich aus erneut.
+ * Observed: tiles stayed empty, but the image appeared right away as soon as
+ * the affected set was opened — a sign of a one-off, transient
+ * failure on the first load attempt. Coil does not retry a failed
+ * request on its own.
  */
 class GalleryImageRetryTest {
 
@@ -183,11 +183,11 @@ class GalleryImageRetryTest {
         assert(src.contains("AsyncImagePainter.State.Error && retryNonce == 0")) {
             "Der Wiederholversuch muss auf GENAU EINMAL begrenzt sein"
         }
-        // Coil 3 kennt keine Parameter mehr; nachgesehen in den Quellen von
-        // coil-core 3.3.0 ist memoryCacheKeyExtra der Nachfolger. Geprüft wird
-        // weiter das WAS (ein unterscheidbares Merkmal an der Anfrage), nicht
-        // der Name einer Bibliotheksfunktion — der Name steht hier nur, weil
-        // ein Textvergleich nichts anderes kann.
+        // Coil 3 no longer knows this parameter; checked in the sources of
+        // coil-core 3.3.0, memoryCacheKeyExtra is the successor. What is checked
+        // remains the WHAT (a distinguishable feature of the request), not
+        // the name of a library function — the name is only here because
+        // a text comparison can do nothing else.
         assert(src.contains(".memoryCacheKeyExtra(\"retry\", retryNonce.toString())")) {
             "Die Anfrage braucht ein unterscheidbares Merkmal, sonst könnte Coil " +
             "sie mit dem fehlgeschlagenen Vorgänger verwechseln"

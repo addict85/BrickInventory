@@ -51,11 +51,11 @@ import ch.brickinventoryapp.ui.components.ScanButton
 import ch.brickinventoryapp.ui.components.StateHint
 import ch.brickinventoryapp.ui.components.withFont
 
-// ── Sortierung wie Webapp und PDF ──
+// ── Sort order like the web app and PDF ──
 //
-// Beide sortieren mit localeCompare: Farben nach ICU-Collation (de), Teilenummern
-// ICU mit numerischen Segmenten. Der ICU-RuleBasedCollator ist die Entsprechung
-// auf Android; eine eigene Sortierung wich sichtbar ab.
+// Both sort with localeCompare: colors by ICU collation (de), part numbers by
+// ICU with numeric segments. The ICU RuleBasedCollator is the counterpart
+// on Android; a custom sort visibly deviated.
 internal val plColorCollator: android.icu.text.Collator =
     android.icu.text.Collator.getInstance(java.util.Locale.GERMAN)
 
@@ -66,8 +66,8 @@ private val plPartCollator: android.icu.text.Collator =
 internal fun comparePartNumbers(a: String, b: String): Int = plPartCollator.compare(a, b)
 
 /**
- * Die Bauliste am Navigationsziel: holt das ViewModel, nimmt einen Scan an und
- * öffnet ein fertiges PDF. Der Bildschirm darunter bekommt nur Zustand und Ereignisse.
+ * The build list at the navigation destination: fetches the ViewModel, accepts a scan and
+ * opens a finished PDF. The screen underneath only gets state and events.
  */
 @Composable
 fun PartsListRoute(
@@ -92,7 +92,7 @@ fun PartsListRoute(
             onBarcodeConsumed()
         }
     }
-    // Das fertige PDF einmal zur Auswahl anbieten; ein Activity-Start gehört nicht ins ViewModel.
+    // Offer the finished PDF for sharing once; an Activity start does not belong in the ViewModel.
     LaunchedEffect(zustand.pdfFile) {
         if (zustand.pdfFile != null) {
             ctx.startActivity(partListsSelection(ctx, openWith))
@@ -121,8 +121,8 @@ fun PartsListRoute(
     )
 }
 
-// ExperimentalLayoutApi für die FlowRow der Set-Chips — über der Funktion, weil ein
-// @OptIn im Rumpf nicht übersetzt.
+// ExperimentalLayoutApi for the FlowRow of the set chips — on the function, because an
+// @OptIn in the body does not compile.
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PartsListScreen(
@@ -133,32 +133,32 @@ fun PartsListScreen(
     onFuegeHinzu: (String) -> Unit = {},
     onEntferne: (Int) -> Unit = {},
     onLeere: () -> Unit = {},
-    /** Nimmt die getippte Nummer mit: ein Schritt statt zwei. */
+    /** Takes the typed number along: one step instead of two. */
     onErstelle: (String) -> Unit = {},
-    /** „Kann ich das bauen?“ — den eigenen Bestand zu dieser Liste holen. */
+    /** "Can I build this?" — fetch one's own stock for this list. */
     onLadeBestand: () -> Unit = {},
     onNurLose: (Boolean) -> Unit = {},
     onMitUnterkonten: (Boolean) -> Unit = {},
     onExportPdf: () -> Unit = {},
     onPdfFehlerGesehen: () -> Unit = {},
-    /** Fortschritt des laufenden PDF-Exports („…noch ~Xs“), null ohne Export. */
+    /** Progress of the running PDF export ("…noch ~Xs"), null without an export. */
     pdfStatus: String? = null,
     /**
-     * Hat dieses Konto Unterkonten? Nur dann steht die Wahl „Unterkonten mit
-     * einbeziehen“ da — ein Schalter ohne Wirkung ist schlechter als keiner.
+     * Does this account have sub-accounts? Only then does the choice "Unterkonten mit
+     * einbeziehen" appear — a switch with no effect is worse than none.
      */
     hatUnterkonten: Boolean = false,
     /**
-     * Scroll-Zustand von aussen: Der Bildschirm wird beim Weg zum Barcode-Scanner
-     * verlassen; ein eigener State wäre bei der Rückkehr zurückgesetzt.
+     * Scroll state from outside: the screen is left on the way to the barcode scanner;
+     * a state of its own would be reset on returning.
      */
     listState: LazyListState = rememberLazyListState(),
-    /** Der Scan blieb ohne Setnummer → Cursor ins Set-Feld, Tastatur offen. */
+    /** The scan came back without a set number → cursor into the set field, keyboard open. */
     manuelleErfassungAnfordern: Boolean = false,
     onManuelleErfassungQuittiert: () -> Unit = {},
 ) {
-    // Nur das Eingabefeld und die offene Rückfrage sind Zustand des Bildschirms; alles
-    // andere hält das ViewModel.
+    // Only the input field and the open confirmation prompt are the screen's own state; everything
+    // else is held by the ViewModel.
     var setInput  by rememberSaveable { mutableStateOf("") }
     var clearAsk by rememberSaveable { mutableStateOf(false) }
     val setFeldFokus = remember { FocusRequester() }
@@ -192,13 +192,13 @@ fun PartsListScreen(
     }
 
     Column(Modifier.fillMaxSize()) {
-        // ── Erfolgloser Scan setzt den Cursor ins Set-Feld ──
+        // ── An unsuccessful scan sets the cursor into the set field ──
         //
-        // Das Gegenstück zum Erfassungsdialog der anderen Bildschirme.
+        // The counterpart to the other screens' entry dialog.
         LaunchedEffect(manuelleErfassungAnfordern) {
             if (manuelleErfassungAnfordern) {
                 kotlinx.coroutines.delay(120)
-                try { setFeldFokus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
+                try { setFeldFokus.requestFocus() } catch (_: Exception) { /* dialog already closed */ }
                 onManuelleErfassungQuittiert()
             }
         }
@@ -209,14 +209,14 @@ fun PartsListScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein), verticalAlignment = Alignment.CenterVertically) {
                     OutlinedTextField(
                         value = setInput,
-                        // Filter und Tastaturwahl wie jedes Setnummernfeld (util/NumericInput.kt).
-                        // „Fertig“ und das „+“ im Feld nehmen das Set in die Liste: ein Weg hinein,
-                        // ein Knopf zum Erstellen.
+                        // Filter and keyboard choice like every set-number field (util/NumericInput.kt).
+                        // "Fertig" and the "+" in the field take the set into the list: one way in,
+                        // one button to create it.
                         onValueChange = { setInput = NumericInput.setNumber(it) },
                         keyboardOptions = NumericInput.setNumberKeyboard(ImeAction.Done),
                         keyboardActions = KeyboardActions(onDone = { if (setInput.isNotBlank()) addSet(setInput) }),
-                        // Beschriftung statt Platzhalter: Der lange Platzhalter brach im Feld
-                        // zweizeilig um und verschwand beim Tippen.
+                        // Label instead of placeholder: the long placeholder wrapped into two
+                        // lines in the field and disappeared while typing.
                         label = { Text(stringResource(R.string.gallery_set_number)) },
                         modifier = Modifier.weight(1f).focusRequester(setFeldFokus),
                         singleLine = true,
@@ -229,20 +229,20 @@ fun PartsListScreen(
                             }
                         }
                     )
-                    // Derselbe Scan-Knopf wie neben jeder Suche; ein schwebender Knopf mitten
-                    // in einer Zeile sah aus wie der eine Hauptknopf des Bildschirms.
+                    // The same scan button as next to every search; a floating button in the middle
+                    // of a row looked like the screen's one main button.
                     ScanButton(onScanBarcode)
                 }
 
-                // Die gesammelten Sets mit ihrem Zurücksetzen: Es leert diese Liste und steht
-                // deshalb bei ihr, nicht frei unter den Knöpfen. Ohne Inhalt fehlt es ganz.
+                // The collected sets with their reset: it clears this list and so stands
+                // next to it, not floating free below the buttons. Without content it is missing entirely.
                 if (sets.isNotEmpty() || generated) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Text(quantities.getQuantityString(R.plurals.partslist_sets_in_list, sets.size, sets.size),
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.weight(1f))
-                        // Mit Rückfrage: Zurücksetzen wirft Sets und erstellte Liste weg.
+                        // With a confirmation prompt: resetting discards the sets and the created list.
                         TextButton(
                             onClick = { clearAsk = true },
                             colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
@@ -263,23 +263,23 @@ fun PartsListScreen(
                     }
                 }
 
-                // Eine Hauptsache in voller Breite: Erstellen, mit der Zahl der Sets, die es
-                // nimmt — das getippte eingeschlossen.
+                // One main action at full width: create, with the number of sets it
+                // takes — the typed one included.
                 val anzahl = sets.size + (if (setInput.isNotBlank() && sets.none { it.setNumber == normalized(setInput) }) 1 else 0)
                 Button(
                     onClick = { erstellen() },
                     enabled = anzahl > 0 && !isLoading,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt: Sonst
-                    // schrumpfte der Knopf, und die Zeile spränge. Kreisel und Symbol sind
-                    // beide 16 dp breit.
+                    // Only the icon turns into a spinner, the label stays: otherwise
+                    // the button would shrink and the row would jump. Spinner and icon are
+                    // both 16 dp wide.
                     if (isLoading) CircularProgressIndicator(Modifier.size(16.dp),
                         color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
                     else Icon(Icons.AutoMirrored.Filled.ListAlt, null, Modifier.size(withFont(16.dp)))
                     Spacer(Modifier.width(Abstaende.tiny))
                     Text(stringResource(R.string.partslist_generate))
-                    // Die Zahl als Plakette: „(2 Sets)“ brach bei 200 % in eine zweite Zeile.
+                    // The number as a badge: "(2 Sets)" wrapped into a second line at 200 %.
                     if (anzahl > 0) {
                         val vorgelesen = pluralStringResource(R.plurals.partslist_generate_anzahl, anzahl, anzahl)
                         Spacer(Modifier.width(Abstaende.klein))
@@ -294,39 +294,39 @@ fun PartsListScreen(
                     PdfButton(zustand.pdf.laeuft, zustand.pdf.errorMessage?.satz(), onExportPdf, onPdfFehlerGesehen)
                 }
 
-                // ── Eigener Bestand: eine Zeile für sich ──
+                // ── Own stock: a row of its own ──
                 //
-                // Die Zeile darüber stellt die Liste zusammen und gibt sie weiter; der Bestand
-                // trägt Zahlen in die fertige Liste ein. „nur lose Teile“ steht neben dem Knopf,
-                // weil die Wahl von Frage zu Frage wechselt.
+                // The row above puts the list together and passes it on; the stock
+                // enters numbers into the finished list. "nur lose Teile" stands next to the button,
+                // because the choice changes from question to question.
                 if (generated && parts.isNotEmpty()) {
-                    // Läuft im ViewModel: Eine Drehung bricht den Abgleich nicht ab.
+                    // Runs in the ViewModel: a rotation does not abort the comparison.
                     val bestandLaeuft = zustand.bestand.laeuft
-                    // Untereinander: Die Beschriftung der Wahl ist lang und passt auf einem
-                    // 360-dp-Telefon nicht neben den Knopf.
+                    // Stacked: the choice's label is long and does not fit next to the button
+                    // on a 360-dp phone.
                     Column(verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
-                        // Umrandet: Ein zweiter gefüllter Knopf stritt mit „Bauliste erstellen“
-                        // um die Hauptsache.
+                        // Outlined: a second filled button fought with "Bauliste erstellen"
+                        // over being the main action.
                         OutlinedButton(
                             onClick = onLadeBestand,
                             enabled = !bestandLaeuft,
                             colors = nebenKnopfFarben(),
                             border = nebenKnopfRand(!bestandLaeuft),
                         ) {
-                            // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt: Sonst
-                            // schrumpfte der Knopf, und die Zeile spränge. Kreisel und Symbol sind
-                            // beide 16 dp breit.
+                            // Only the icon turns into a spinner, the label stays: otherwise
+                            // the button would shrink and the row would jump. Spinner and icon are
+                            // both 16 dp wide.
                             if (bestandLaeuft) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                             else Icon(Icons.Default.Inventory2, null, Modifier.size(withFont(16.dp)))
                             Spacer(Modifier.width(Abstaende.tiny))
                             Text(stringResource(R.string.partslist_fill_owned))
                         }
                         BoxRow(stringResource(R.string.partslist_only_loose), onlyLose, onNurLose)
-                        // Zweite Wahl, andere Frage: Die erste sagt, WELCHE ART
-                        // Teile zaehlt, diese sagt, WESSEN. Beide wirken
-                        // zusammen — „nur manuell erfasste" plus „mit
-                        // Unterkonten" zaehlt die manuell erfassten Teile des
-                        // ganzen Haushalts.
+                        // Second choice, a different question: the first says WHICH KIND of
+                        // parts counts, this one says WHOSE. Both act
+                        // together — "nur manuell erfasste" plus "mit
+                        // Unterkonten" counts the manually entered parts of the
+                        // whole household.
                         if (hatUnterkonten) {
                             BoxRow(stringResource(R.string.partslist_include_subs), withSubAccounts, onMitUnterkonten)
                         }
@@ -338,7 +338,7 @@ fun PartsListScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
-                // Live-Countdown während der PDF-Erstellung (nur wenn ein Export läuft).
+                // Live countdown while the PDF is being created (only while an export is running).
                 pdfStatus?.let { txt ->
                     // Sichtbar jede Sekunde, angesagt alle zehn.
                     ThrottledAnnouncement(txt)
@@ -349,7 +349,7 @@ fun PartsListScreen(
         }
 
         if (!generated || parts.isEmpty()) {
-            // Derselbe Leerzustand wie jede Liste (StateHint): mittig, mit Rand.
+            // The same empty state as every list (StateHint): centered, with a border.
             if (!isLoading) StateHint {
                 HintText(Icons.AutoMirrored.Filled.ListAlt,
                     stringResource(R.string.partslist_empty_title), stringResource(R.string.partslist_empty_hint))
@@ -357,7 +357,7 @@ fun PartsListScreen(
             return@Column
         }
 
-        // Gruppieren und Sortieren memoisiert: `parts` ändert sich bei einer Recomposition selten.
+        // Grouping and sorting memoized: `parts` rarely changes on a recomposition.
         val colorGroups = remember(parts) { buildListsGroups(parts) }
         val withInventory = parts.any { it.vorhanden != null }
         LazyColumn(state = listState, contentPadding = PaddingValues(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.gross)) {

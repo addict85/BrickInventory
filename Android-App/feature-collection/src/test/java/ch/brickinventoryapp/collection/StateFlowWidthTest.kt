@@ -7,17 +7,17 @@ import org.junit.Test
 import java.lang.reflect.Modifier
 
 /**
- * Ein Zustandsfluss ist so teuer wie die Zahl seiner Sammler: Jede Änderung an
- * AppUiState rekomponiert alle Bildschirme, die ihn sammeln. Die Galerie-Felder
- * (der lauteste Zustand) bleiben darum in GalleryUiState, und AppUiState wächst
- * nicht wieder. Geprüft an den übersetzten Klassen, nicht am Quelltext; dass ein
- * abgeleiteter Teil nur echte Änderungen meldet, prüft DerivedStateTest.
+ * A state flow is as expensive as the number of its collectors: every change to
+ * AppUiState recomposes every screen that collects it. The gallery fields
+ * (the noisiest state) therefore stay in GalleryUiState, and AppUiState does not grow
+ * again. Checked against the compiled classes, not against the source; that a
+ * derived part only reports real changes is checked by DerivedStateTest.
  *
- * Gegenproben:
- *   A  `val sets: List<SetAnsicht> = emptyList()` in AppUiState ergänzt → rot
- *      „Diese Galerie-Felder stehen wieder in AppUiState: sets“
- *   B  ein Probefeld in AppUiState ergänzt → rot „AppUiState hat 11 Felder
- *      (erlaubt: 10)“
+ * Counter-checks:
+ *   A  `val sets: List<SetAnsicht> = emptyList()` added to AppUiState → red
+ *      “these gallery fields are back in AppUiState: sets”
+ *   B  a test field added to AppUiState → red “AppUiState has 11 fields
+ *      (allowed: 10)”
  */
 class StateFlowWidthTest {
 
@@ -33,7 +33,7 @@ class StateFlowWidthTest {
 
     @Test
     fun `the common state does not grow again`() {
-        // Wer hier aufschlägt, prüft, ob das Feld wirklich allen gehört, statt die Zahl zu heben.
+        // Whoever lands here checks whether the field really belongs to everyone, instead of raising the number.
         val n = felder(AppUiState::class.java).size
         assertTrue("AppUiState hat $n Felder (erlaubt: 10)", n <= 10)
     }

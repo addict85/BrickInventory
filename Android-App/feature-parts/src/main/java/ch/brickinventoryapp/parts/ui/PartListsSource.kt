@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.parts.ui
 
-/** Woher die Bauliste ihre Zeilen holt; im ViewModel-Test ein Double ohne Netz. */
+/** Where the parts list gets its rows from; a double without network in the ViewModel test. */
 interface PartListsSource {
     suspend fun resolveSetOn(setNumber: String, serverUrl: String): Pair<String, List<PlPart>>
     suspend fun withInventory(teile: List<PlPart>, onlyLose: Boolean, withSubAccounts: Boolean): List<PlPart>?
-    /** Wie Webapp und PDF: nach Farbe, darin nach Teilenummer (BrickLink-Nummer, wo es sie gibt). */
+    /** As in the web app and PDF: by color, then by part number (BrickLink number, where there is one). */
     fun sortiert(teile: Collection<PlPart>): List<PlPart>
 }

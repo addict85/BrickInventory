@@ -2,15 +2,15 @@ package ch.brickinventoryapp.login.ui
 
 import kotlinx.serialization.Serializable
 
-/** Die Ziele der Anmeldung; die App beginnt in einem von ihnen. */
+/** The sign-in destinations; the app starts in one of them. */
 @Serializable
 sealed interface LoginTarget {
     @Serializable data object Setup : LoginTarget
     @Serializable data object Login : LoginTarget
 
     /**
-     * Der Teilgraph aus Einrichtung und Anmeldung. Kein Ziel, sondern der Halter des
-     * ViewModels, das beide teilen; darum steht er nicht in der Liste der Ziele.
+     * The subgraph made of setup and sign-in. Not a destination but the holder of the
+     * ViewModel they share; that is why it is not in the list of destinations.
      */
     @Serializable data object Bereich
 }

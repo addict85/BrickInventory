@@ -4,27 +4,27 @@ import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.security.isFingerprint
 
 /**
- * Der Inhalt eines Anmelde-QR-Codes: `{"url": …, "token": "bim:…", "fp": …}`.
- * `fp` ist optional — SHA-256 des SubjectPublicKeyInfo, Base64. Ist es da, pinnt
- * die App genau diesen Schlüssel und fragt beim ersten Kontakt nicht nach.
+ * The content of a sign-in QR code: `{"url": …, "token": "bim:…", "fp": …}`.
+ * `fp` is optional — SHA-256 of the SubjectPublicKeyInfo, Base64. If it is there, the
+ * app pins exactly this key and does not ask on first contact.
  */
 data class QrLoginPayload(val url: String, val token: String, val fingerabdruck: String? = null)
 
-/** http lehnt erst der Dialog ab, mit Anleitung; diese Fehler machen den Code ungültig. */
+/** http is rejected only by the dialog, with an explanation; these errors make the code invalid. */
 private val QR_REJECTED = setOf(NetworkPolicy.AddressError.UNLESBAR, NetworkPolicy.AddressError.USER_INPUT,
     NetworkPolicy.AddressError.EXTRA)
 
 /**
- * Geprüft vor dem Trimmen: Ein Code hat keinen Grund für Leerraum, aber mit einem
- * Zeilenumbruch stellte ein Angreifer im Dialog einen zweiten, harmlosen Namen hin.
+ * Checked before trimming: a code has no reason for whitespace, but with a
+ * line break an attacker could place a second, harmless-looking name in the dialog.
  */
 internal fun qrAddressInvalid(url: String): Boolean =
     url.any { it.isWhitespace() || it.isISOControl() } ||
         NetworkPolicy.addressError(url, NetworkPolicy.entwicklung) in QR_REJECTED
 
 /**
- * Ein unlesbares `fp` macht den ganzen Code ungültig: Stillschweigend ohne Pin
- * weiterzumachen hiesse, die Prüfung, die der Server verlangt, wegzulassen.
+ * An unreadable `fp` makes the whole code invalid: silently continuing without
+ * a pin would mean leaving out the check the server demands.
  */
 internal fun parseQrPayload(raw: String): QrLoginPayload? = try {
     val obj = org.json.JSONObject(raw)
@@ -35,22 +35,22 @@ internal fun parseQrPayload(raw: String): QrLoginPayload? = try {
         url.isBlank() || !token.startsWith("bim:") -> null
         qrAddressInvalid(url) -> null
         fp != null && !isFingerprint(fp) -> null
-        // Ein Pin über http ergibt nichts: Es gibt dort kein Zertifikat.
+        // A pin over http gives nothing: there is no certificate there.
         fp != null && !url.trim().lowercase().startsWith("https://") -> null
         else -> QrLoginPayload(url, token, fp)
     }
 } catch (_: Exception) { null }
 
 /**
- * Übernehmen erst nach dem ausdrücklichen Ja zum gezeigten Ziel: Einen Code kann jeder
- * vorhalten, und wer nur auf „Übernehmen“ tippt, hat den Namen darüber nicht gelesen.
+ * Taken over only after an explicit yes to the shown destination: anyone can
+ * hold up a code, and whoever just taps „Übernehmen“ has not read the name above it.
  */
 internal fun qrUebernehmbar(gesperrt: Boolean, targetConfirmed: Boolean, abtippen: Boolean, eingabe: String): Boolean =
     !gesperrt && targetConfirmed && (!abtippen || eingabe.isNotBlank())
 
 /**
- * Der Host des bisherigen Servers, wenn der Code woandershin führt: Das Ja meldet
- * dort ab und schickt alles Weitere an den neuen Server, also sagt der Dialog es.
+ * The host of the previous server, if the code leads elsewhere: the yes signs out
+ * there and sends everything else to the new server, so the dialog says so.
  */
 internal fun qrSwitchesServer(bisher: String, code: String): String? {
     if (bisher.isBlank() || NetworkPolicy.sameOrigin(bisher, NetworkPolicy.normalize(code))) return null

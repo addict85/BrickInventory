@@ -19,15 +19,15 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * Die Reihenfolge der Teile wie parts-ordnung der Webapp: nach Farbe, Name oder Menge, mit
- * denselben Schlüsseln wie der Server. Umsortieren lädt nichts nach und übersteht einen
- * Prozess-Tod wie die übrigen Filter.
+ * The order of the parts like parts-ordnung in the web app: by color, name or quantity, with
+ * the same keys as the server. Reordering loads nothing anew and survives a
+ * process death like the other filters.
  *
- * Gegenproben (gemessen mit kotlinc gegen TeileOrdnung.kt und Attrappen von TeilAnsicht und
- * PartsUiState; der ViewModel-Teil braucht Android und misst in der CI):
- *   teile-menge-aufsteigend   QUANTITY ohne Descending → rot „jede Reihenfolge …“
- *   teile-name-ohne-farbe     NAME ohne den zweiten Schlüssel Farbe → rot „jede Reihenfolge …“
- *   teile-ordnung-vergessen   setPartsOrder schreibt nicht in den SavedStateHandle → rot „die Reihenfolge …“
+ * Counter-checks (measured with kotlinc against TeileOrdnung.kt and stubs of TeilAnsicht and
+ * PartsUiState; the ViewModel part needs Android and is measured in the CI):
+ *   teile-menge-aufsteigend   QUANTITY without Descending → red “every order …”
+ *   teile-name-ohne-farbe     NAME without the second key, color → red “every order …”
+ *   teile-ordnung-vergessen   setPartsOrder does not write to the SavedStateHandle → red “the order …”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PartsOrderTest {
@@ -35,7 +35,7 @@ class PartsOrderTest {
     private fun teil(nummer: String, name: String?, farbe: String?, menge: Int, farbId: Int = 0) =
         TeilAnsicht(partNumber = nummer, partName = name, colorId = farbId, colorName = farbe, totalQuantity = menge)
 
-    // Weiss hat die kleinere Farb-Id als Tan: Fehlt die Farbe als Schlüssel, kippt die Reihenfolge.
+    // White has a lower color id than Tan: without color as a key, the order flips.
     private val weiss = teil("3001", "Brick 2 x 4", "White", 10, 15)
     private val tan = teil("3001", "Brick 2 x 4", "Tan", 5, 19)
     private val platte = teil("3020", "Plate 2 x 4", "Blue", 50, 1)
@@ -52,7 +52,7 @@ class PartsOrderTest {
             sortiert(alle, Teilefilter.Order.QUANTITY))
     }
 
-    // ── Am ViewModel: umsortieren, ohne nachzuladen, und gemerkt ──
+    // ── At the ViewModel: reordering, without reloading, and remembered ──
 
     private val clock = TestCoroutineScheduler()
     private val takt = UnconfinedTestDispatcher(clock)

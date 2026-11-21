@@ -23,7 +23,7 @@ import ch.brickinventoryapp.shared.ui.AccountFilterSection
 import ch.brickinventoryapp.shared.ui.LocationFilterSection
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 
-/** Das Filterblatt der Teile: Konto, Lagerort, Ersatzteile, Farbe und Kategorie, Ansicht. */
+/** The parts' filter sheet: account, storage location, spare parts, color and category, view. */
 @Composable
 internal fun TeileFilterBlatt(
     aktionen: TeileAktionen,
@@ -41,7 +41,7 @@ internal fun TeileFilterBlatt(
     val ersatz = partsState.filter.ersatz
     val farbe = partsState.filter.farbe
     val kategorie = partsState.filter.kategorie
-    // Nur zurücksetzen, was abweicht: Jede Änderung lädt die Liste neu.
+    // Only reset what deviates: every change reloads the list.
     val reset: () -> Unit = {
         if (Filterzahl.konto(householdMembers, scopeMode) > 0) onScopeChange(ScopeFilter.ALL)
         if (Filterzahl.lager(lagerorte, storageMode) > 0) onStorageChange("")
@@ -53,8 +53,8 @@ internal fun TeileFilterBlatt(
     FilterSheetFrame(onSchliessen = onSchliessen, resetOn = reset.takeIf { aktiv > 0 }) {
         AccountFilterSection(householdMembers, scopeMode, onScopeChange)
         LocationFilterSection(lagerorte, storageMode, onStorageChange, afterShare = true)
-        // Ersatzteile — dieselbe Wahl wie parts-spare in der Webapp,
-        // gefiltert auf dem SERVER (partsSpare im Zustand).
+        // Spare parts — the same choice as parts-spare in the web app,
+        // filtered on the SERVER (partsSpare in the state).
         FilterSection(stringResource(R.string.filter_section_spare)) {
             for ((wert, text) in listOf(
                 Ersatzteilwahl.ALLE to R.string.parts_filter_all,

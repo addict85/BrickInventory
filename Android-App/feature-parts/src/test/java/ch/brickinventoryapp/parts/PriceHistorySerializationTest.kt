@@ -15,20 +15,20 @@ import org.junit.Test
 import ch.brickinventoryapp.model.json.BrickJson
 
 /**
- * Client-seitiger API-Vertrag für den Preisverlauf und die Bewertung.
+ * Client-side API contract for the price history and the valuation.
  *
- * Der Verlaufs-Endpunkt liefert beide Zustände getrennt, dazu fertige
- * Diagrammdaten. Ändert sich die Form, fällt das sonst erst am Gerät auf — und
- * dort als leeres Diagramm ohne Fehlermeldung.
+ * The history endpoint delivers both conditions separately, plus ready-made
+ * chart data. If the shape changes, that would otherwise only show up on the device — and
+ * there as an empty chart without an error message.
  *
- * Die Beträge stehen bewusst teils als STRING im Testdatensatz: Postgres
- * liefert NUMERIC als Zeichenkette, und der Server reicht die Verlaufszeilen
- * unverändert durch. Der Json-Parser der App ist deshalb lenient konfiguriert —
- * genau das wird hier mitgeprüft.
+ * The amounts deliberately stand partly as a STRING in the test data: Postgres
+ * delivers NUMERIC as a string, and the server passes the history rows
+ * through unchanged. The app's JSON parser is therefore configured to be lenient —
+ * that is exactly what is checked here too.
  */
 class PriceHistorySerializationTest {
 
-    // Gleiche Konfiguration wie AppModule.provideJson()
+    // Same configuration as AppModule.provideJson()
     private val json = BrickJson
 
     private val payload = """{
@@ -96,9 +96,9 @@ class PriceHistorySerializationTest {
 
     @Test
     fun `only one condition added gives exactly one row`() {
-        // Der Server liefert keinen Eintrag für Zustände ohne Erfassung —
-        // sonst stünde dort ein Marktpreis ohne Bezugsgrösse und die
-        // Prozentangabe daneben wäre gegen nichts gerechnet.
+        // The server delivers no entry for conditions without an entry —
+        // otherwise there would be a market price without a reference figure, and the
+        // percentage next to it would be computed against nothing.
         val r = json.decodeFromString<PriceHistoryResponse>("""{
             "success": true, "set_number": "10290-1", "currency": "CHF", "condition": "N",
             "by_condition": {"N": {"market_price": 148.72, "purchase_price": 120.0, "pnl_pct": "23.9", "pnl_prozent": 23.9}},
@@ -114,8 +114,8 @@ class PriceHistorySerializationTest {
 
     @Test
     fun `an old response without the new fields does not break`() {
-        // Falls App und Server einmal auseinanderlaufen: lieber ein leeres
-        // Diagramm als ein Absturz im Detail-Dialog.
+        // In case the app and the server ever drift apart: better an empty
+        // chart than a crash in the detail dialog.
         val r = json.decodeFromString<PriceHistoryResponse>(
             """{"success": true, "set_number": "75192-1", "currency": "CHF"}""")
         assertTrue(r.historyNew.isEmpty())
@@ -145,11 +145,11 @@ class PriceHistorySerializationTest {
         val set = v.sets.first()
         assertEquals(2, set.acquisitions.size)
         assertTrue(set.mixed)
-        // Das ist der Kern: Die Neu-Erfassung wird NICHT mit dem
-        // Gebrauchtpreis bewertet, obwohl das Set als gebraucht geführt wird.
+        // That is the core of it: the newly entered one is NOT valued at the
+        // used price, even though the set is tracked as used.
         assertEquals(250.0, set.acquisitions[0].avgPrice!!, 0.0001)
         assertEquals(140.0, set.acquisitions[1].avgPrice!!, 0.0001)
-        // Und die Zeilensummen ergeben zusammen die Set-Summe.
+        // And the row sums together add up to the set sum.
         val sum = set.acquisitions.sumOf { it.totalAvg!!.toDouble() }
         assertEquals(set.totalAvg!!.toDouble(), sum, 0.0001)
     }
@@ -168,10 +168,10 @@ class PriceHistorySerializationTest {
 
     @Test
     fun `the tile gets a list of the added conditions`() {
-        // Ein Exemplar neu, eines gebraucht: Die Kachel zeigte bisher nur
-        // „Gebraucht", weil `condition` ein Aggregat ist und nur einen Wert
-        // kennt. `conditions` trägt beide — entschieden wird das auf dem
-        // Server, die App rechnet nichts nach.
+        // One copy new, one used: the tile previously only showed
+        // "Gebraucht", because `condition` is an aggregate and knows only one
+        // value. `conditions` carries both — that is decided on the
+        // server, the app computes nothing itself.
         val r = json.decodeFromString<SetsResponse>("""{
             "success": true, "count": 1,
             "sets": [{"set_number": "75192-1", "condition": "U",
@@ -181,13 +181,13 @@ class PriceHistorySerializationTest {
         val set = r.sets.first()
         assertEquals(listOf(Zustand.NEU, Zustand.GEBRAUCHT), set.conditions)
         assertEquals(Zustand.GEBRAUCHT, set.condition)
-        // Der gewichtete Kaufpreis, nicht das Maximum: 2x100 und 1x160 → 120.
+        // The weighted purchase price, not the maximum: 2x100 and 1x160 → 120.
         assertEquals(120.0, set.avgPurchasePrice!!, 0.0001)
     }
 
     @Test
     fun `an old response without conditions stays usable`() {
-        // Dann sieht die Kachel aus wie bisher — eine Plakette aus `condition`.
+        // Then the tile looks as before — a badge from `condition`.
         val r = json.decodeFromString<SetsResponse>("""{
             "success": true, "sets": [{"set_number": "10290-1", "condition": "N"}]
         }""")
@@ -208,8 +208,8 @@ class PriceHistorySerializationTest {
 
     @Test
     fun `manual parts also deliver one row per purchase price`() {
-        // Dieselbe Form wie bei Sets — der Finanzen-Reiter zeigt für alle drei
-        // Arten dasselbe Muster.
+        // The same shape as for sets — the finances tab shows the same pattern
+        // for all three kinds.
         val v = json.decodeFromString<PartsValuationResponse>("""{
             "success": true, "currency": "CHF", "total_value": "3.20",
             "parts": [{
@@ -227,8 +227,8 @@ class PriceHistorySerializationTest {
         val part = v.parts.first()
         assertEquals(2, part.acquisitions.size)
         assertEquals(listOf(Zustand.NEU, Zustand.GEBRAUCHT), part.conditions)
-        // Menge 2 in EINER Zeile — zwei Erfassungen am selben Tag im selben
-        // Zustand fasst der Server zusammen (utils/acquisitions.ts).
+        // Quantity 2 in ONE row — two entries on the same day in the same
+        // condition are merged by the server (utils/acquisitions.ts).
         assertEquals(2, part.acquisitions[0].quantity)
         val sum = part.acquisitions.sumOf { it.totalAvg!!.toDouble() }
         assertEquals(part.displayValue!!.toDouble(), sum, 0.0001)
@@ -236,10 +236,10 @@ class PriceHistorySerializationTest {
 
     @Test
     fun `the history of a part fits into the same model as that of a set`() {
-        // Die neuen Routen /api/v1/parts/…/price-history und
-        // /api/v1/minifigs/…/price-history liefern denselben Umschlag ohne die
-        // Set-Felder. Die müssen auf ihren Vorgaben landen statt zu werfen —
-        // sonst bliebe der Dialog leer, ohne dass jemand sähe warum.
+        // The new routes /api/v1/parts/…/price-history and
+        // /api/v1/minifigs/…/price-history deliver the same envelope without the
+        // set fields. Those must land on their defaults instead of throwing —
+        // otherwise the dialog would stay empty, with nobody seeing why.
         val r = json.decodeFromString<PriceHistoryResponse>("""{
             "success": true, "currency": "CHF",
             "by_condition": {"N": {"market_price": 0.6, "purchase_price": 0.5, "pnl_pct": "20.0", "pnl_prozent": 20.0}},
@@ -256,7 +256,7 @@ class PriceHistorySerializationTest {
         assertEquals(1, r.byCondition.present().size)
         assertEquals(2, r.historyNew.size)
         assertEquals(1, r.chart.values.size)
-        // Set-Felder bleiben leer, ohne dass das Parsen scheitert.
+        // Set fields stay empty, without the parsing failing.
         assertNull(r.pnlPct)
         assertNull(r.purchasePrice)
     }

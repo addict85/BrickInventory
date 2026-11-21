@@ -17,38 +17,38 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Ein Gutschein-PDF (Nummer und PIN) kommt nie auf die Platte: Der
- * Betrachter bekommt dafür keine Datei, lädt in den Speicher und rendert aus einem
- * memfd. Was ältere Fassungen in ihren Ordner legten, verschwindet beim Abmelden und
- * Start. Anleitungen bleiben im Zwischenspeicher.
+ * A voucher PDF (number and PIN) never lands on disk: the
+ * viewer gets no file for it, loads into memory and renders from a
+ * memfd. What older versions placed in their own folder disappears on signing out and
+ * on startup. Instruction manuals stay in the cache.
  *
- * Ausgeführt: Ablage und Löschen gegen ein echtes Verzeichnis; das Laden in den
- * Speicher prüft PdfInStorageTest (core-data). Dass der Betrachter diesen Weg nimmt,
- * braucht ein Gerät; das hält die Struktur-Prüfung unten fest.
+ * Run: storage and deletion against a real directory; the loading into
+ * memory is checked by PdfInStorageTest (core-data). That the viewer takes this path
+ * needs a device; the structure check below records that.
  *
- * Gegenproben (30.10.2026, gemessen mit kt-b2/bau.sh):
- *   A  in pdfAblage() `vertraulich` übergangen (immer cacheDir) → rot „ein
- *      Gutschein-PDF bekommt keine Datei …“
- *   D  pdfMaySavedBecome() immer true → rot „ein
- *      Gutschein-PDF laesst sich nicht herunterladen …“
- *   E  im PdfViewerScreen `if (speicherbar)` um den Knopf entfernt
- *      → rot „Betrachter, Abmelden und Start räumen auf“ (Knopf ungeschützt)
- *   F  in pdfAblage() wieder `pdfUrl.hashCode()` als Name → rot
- *      „der Dateiname haengt an der ganzen Adresse …“
- *   G  showsVouchers() wieder `"/api/v1/vouchers/" in pdfUrl` →
- *      rot „Gutscheine erkennt der Pfad …“
- * Gegenproben:
- *   H  pdfAblage() gibt auch für vertrauliche PDFs eine Datei im Zwischenspeicher
- *      → rot „ein Gutschein-PDF bekommt keine Datei …“;
+ * Counter-checks (30.10.2026, measured with kt-b2/bau.sh):
+ *   A  in pdfAblage() `vertraulich` ignored (always cacheDir) → red “a
+ *      voucher PDF gets no file …”
+ *   D  pdfMaySavedBecome() always true → red “a
+ *      voucher PDF cannot be downloaded …”
+ *   E  in PdfViewerScreen the `if (speicherbar)` around the button removed
+ *      → red “viewer, sign-out and start clean up” (button unprotected)
+ *   F  in pdfAblage() back to `pdfUrl.hashCode()` as the name → red
+ *      “the file name depends on the whole address …”
+ *   G  showsVouchers() back to `"/api/v1/vouchers/" in pdfUrl` →
+ *      red “vouchers are recognized by the path …”
+ * Counter-checks:
+ *   H  pdfAblage() also returns a cache file for confidential PDFs
+ *      → red “a voucher PDF gets no file …”;
  *      gegenproben/gutschein-pdf-auf-platte.patch
- *   I  im Lader (damals PdfViewerScreen) `if (ablage == null)` durch `if (false)` ersetzt → rot
- *      „viewer, sign-out and start clean up“ (Speicherweg nicht gewählt)
- * Gegenproben:
- *   J  im PdfViewerScreen den Drucken-Knopf vor `if (speicherbar)` gezogen → rot
- *      „viewer, sign-out and start clean up“ (Drucken ungeschützt);
+ *   I  in the loader (then PdfViewerScreen) `if (ablage == null)` replaced with `if (false)` → red
+ *      “viewer, sign-out and start clean up” (memory path not taken)
+ * Counter-checks:
+ *   J  in PdfViewerScreen the print button pulled ahead of `if (speicherbar)` → red
+ *      “viewer, sign-out and start clean up” (printing unprotected);
  *      gegenproben/gutschein-drucken.patch
- *   K  in logout() die Zeile `raeumeAnleitungenAuf(` gestrichen → rot „Betrachter,
- *      Abmelden und Start raeumen auf“ (Anleitungen überleben das Abmelden)
+ *   K  in logout() the line `raeumeAnleitungenAuf(` removed → red “viewer,
+ *      sign-out and start clean up” (instruction manuals survive signing out)
  */
 class VoucherPdfStoreTest {
 
@@ -68,7 +68,7 @@ class VoucherPdfStoreTest {
         assertEquals(cache, pdfAblage(cache, anleitung, showsVouchers(anleitung))?.parentFile)
     }
 
-    /** Zwei Adressen mit gleichem hashCode() teilten sich sonst eine Datei. */
+    /** Two addresses with the same hashCode() would otherwise have shared one file. */
     @Test
     fun `the file name depends on the whole address, not on 32 bits`() {
         val x = "https://brick.example/api/v1/vouchers/Aa/pdf"
@@ -88,7 +88,7 @@ class VoucherPdfStoreTest {
         assertFalse("Die Abfrage ist kein Pfad", showsVouchers("$anleitung?von=/api/v1/vouchers/7"))
     }
 
-    /** Gutschein-PDFs, die ältere Fassungen im eigenen Ordner ablegten. */
+    /** Voucher PDFs that older versions placed in their own folder. */
     @Test
     fun `sign-out and start empty the folder, instructions stay`() {
         val g = anlegen(File(File(cache, PDF_CONFIDENTIAL_FOLDER), "pdfview_alt.pdf"))
@@ -109,7 +109,7 @@ class VoucherPdfStoreTest {
     @Test
     fun `viewer, sign-out and start clean up`() {
         val viewer = Quellen.withoutComments(Quellen.lies("finances/ui/screens/PdfViewerScreen.kt"))
-        // Laden und Halten liegen seit M1 im Lader und im ViewModel.
+        // Loading and holding have lived in the loader and the ViewModel since M1.
         val lader = Quellen.withoutComments(Quellen.lies("finances/ui/pdf/AnleitungsLader.kt") + Quellen.lies("finances/ui/pdf/PdfQuelle.kt") +
             Quellen.lies("data/AnleitungsRepository.kt"))
         val vm = Quellen.withoutComments(Quellen.lies("finances/ui/viewmodel/PdfBetrachterViewModel.kt"))
@@ -122,7 +122,7 @@ class VoucherPdfStoreTest {
             Regex("""override fun onCleared\(\)\s*\{\s*offen\.close\(\)""").containsMatchIn(vm))
         assertTrue("Herunterladen steht ohne Prüfung da",
             Regex("""if \(speicherbar\) \{\s*((?:ch\.brickinventoryapp\.ui\.components\.)?MitTooltip\([^\n]*\{\s*)?IconButton\(onClick = \{ (melde\()?savePdfToDownloads\(""").containsMatchIn(viewer))
-        // Der Druckdialog bietet „Als PDF speichern“: Drucken nur, wo auch Speichern erlaubt ist.
+        // The print dialog offers „Als PDF speichern“: printing only where saving is also allowed.
         val geschuetzt = viewer.substringAfter("if (speicherbar) {").substringBefore("\n                    }\n")
         assertTrue("Drucken steht ohne Prüfung da", viewer.split("printPdf(ctx,").size == 2 && "printPdf(ctx," in geschuetzt)
         val abmelden = Quellen.function(Quellen.withoutComments(Quellen.lies("data/SitzungsBereinigung.kt")), "suspend fun raeumeAuf(")

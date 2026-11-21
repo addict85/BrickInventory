@@ -60,7 +60,7 @@ import ch.brickinventoryapp.model.domain.Figurenordnung
 import ch.brickinventoryapp.ui.components.SortierMenu
 import ch.brickinventoryapp.model.ui.ListView
 
-/** Was der Figuren-Reiter zeigt; die Route sammelt es aus den Flüssen. */
+/** What the figures tab shows; the route collects it from the flows. */
 internal data class FigurenZustand(
     val sitzung: PartsSessionUiState,
     val blick: ScopeUiState,
@@ -68,7 +68,7 @@ internal data class FigurenZustand(
     val lager: LagerUiState,
 )
 
-/** Der Figuren-Reiter am Navigationsziel: reicht Zustand und Aktionen an [MinifigsScreen]. */
+/** The figures tab at the navigation destination: passes state and actions to [MinifigsScreen]. */
 @Composable
 fun MinifigsRoute(
     vm: MinifigsViewModel,
@@ -89,9 +89,9 @@ internal fun MinifigsScreen(
     zustand: FigurenZustand,
     aktionen: FigurenAktionen,
     imageLoader: ImageLoader,
-    /** Öffnet die Detailansicht — nur der Graph kennt den NavController. */
+    /** Opens the detail view — only the graph knows the NavController. */
     onOpenDetail: (figNumber: String) -> Unit = { _ -> },
-    /** Scroll-Zustand von aussen: Das Ziel wird beim Öffnen eines Details verworfen. */
+    /** Scroll state from outside: the target is discarded when a detail is opened. */
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
     val state = zustand.sitzung
@@ -111,37 +111,37 @@ internal fun MinifigsScreen(
         ?: ScopeFilter.ALL
     val manualFigs = partsState.manualFigs ?: emptyList()
     val storageState = zustand.lager
-    // Die Figur, deren Detail daneben offen ist (breites Fenster); ihre Kachel ist markiert.
+    // The figure whose detail is open next to it (wide window); its tile is marked.
     val gewaehlt = LocalOpenDetail.current
 
     val onRefresh: () -> Unit = { aktionen.loadMinifigs() }
     val onScopeChange: (String) -> Unit = { aktionen.setScope(ScopeFilter.View.MINIFIGS, it) }
-    // Der VORRAT an Lagerorten (nicht die belegten Orte): Beim Erfassen soll
-    // auch ein leeres Regal zur Wahl stehen.
+    // The SUPPLY of storage locations (not the occupied ones): on entry,
+    // even an empty shelf should be offered as a choice.
     val locationStock = storageState.eigene.map { it.name }
 
-    // Suchtext aus dem Zustand, gefiltert wird auf dem Server — wie bei den Teilen und
-    // in der Galerie, damit die Suchregel nur einmal existiert (Begründung in
-    // PartsRepository.getMinifigs). remember(partsState.minifigsQuery): Das Feld hält
-    // den Text beim Tippen selbst, übernimmt aber einen von aussen gesetzten (Leeren
-    // beim Abmelden, Wiederherstellen).
+    // Search text from the state, filtering happens on the server — as with the parts and
+    // in the gallery, so that the search rule exists only once (reasoning in
+    // PartsRepository.getMinifigs). remember(partsState.minifigsQuery): the field holds
+    // the text itself while typing, but takes over one set from outside (clearing
+    // on sign-out, restoring).
     var search by remember(partsState.minifigsQuery) { mutableStateOf(partsState.minifigsQuery) }
     val ansicht = partsState.minifigsView
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
 
     var showFilter by rememberSaveable { mutableStateOf(false) }
 
-    // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SearchWithFilter).
+    // From large font on, "Erfassen" stands in the button row below the search (SearchWithFilter).
     val gross = largeFont()
     val addText = stringResource(R.string.minifigs_add)
-    // Vorher stand der Fall „keine Treffer“ hinter derselben Bedingung wie „leer“
-    // und war unerreichbar; ein Ladefehler sah aus wie eine leere Sammlung.
+    // Previously the "no results" case stood behind the same condition as "empty"
+    // and was unreachable; a load error looked like an empty collection.
     val minifigsFiltered = search.isNotBlank() || Filterzahl.konto(householdMembers, scopeMode) > 0
     val anzeige = loadingIndicator(figs.isNotEmpty() || manualFigs.isNotEmpty(), isLoading, errorText, minifigsFiltered)
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize()) {
-        // Suche und „Filter“: Konto und Ansicht stehen im Blatt, die Kennzahlen rollen mit
-        // dem Raster. Im Fehlerzustand nicht — ohne Liste gibt es nichts zu suchen.
+        // Search and "filter": account and view sit in the sheet, the key figures scroll along
+        // with the grid. Not in the error state — without a list there is nothing to search.
         if (anzeige != LoadingIndicator.FEHLER) SearchWithFilter(
             wert = search,
             onValue = { search = it; aktionen.setMinifigsQuery(it) },
@@ -164,7 +164,7 @@ internal fun MinifigsScreen(
             LoadingIndicator.LOADS ->
                 SkeletonRaster(ReadableColumns(140.dp), kachelHoehe = 196.dp)
             LoadingIndicator.FEHLER -> StateHint { ErrorHint(errorText, onRefresh, fehler?.art) }
-            // Wie der leere Teile-Reiter: Satz und Handlung, keine Kennzahlen neben „leer“.
+            // Like the empty parts tab: sentence and action, no key figures next to "empty".
             LoadingIndicator.LEER -> StateHint {
                 HintText(Icons.Default.Person, stringResource(R.string.minifigs_none),
                     stringResource(R.string.minifigs_leer_text))
@@ -181,19 +181,19 @@ internal fun MinifigsScreen(
                 LazyVerticalGrid(
                     columns = ReadableColumns(140.dp),
                     state = gridState,
-                    // Unten Platz für den Erfassen-Knopf, sonst verdeckt er die letzte Reihe.
+                    // Space at the bottom for the entry button, otherwise it covers the last row.
                     contentPadding = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel,
                         end = Abstaende.mittel, bottom = FabSpace),
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                     verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
                 ) {
-                    // Nach dem Inhalt gefragt, nicht nach der geladenen Seite: Die
-                    // Zahlen meinen die ganze Sammlung, auch während einer Suche.
+                    // Asked for the content, not the loaded page: the
+                    // numbers mean the whole collection, even during a search.
                     if (minifigStats.types > 0 || minifigStats.totalQuantity > 0) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "figs-stats") { MinifigsMetrics(minifigStats) }
                     }
-                    // Manuelle Figuren als Grid-Sektion — eine durchgehende
-                    // Scroll-Liste statt fixem Block über dem Grid (s. PartsScreen).
+                    // Manual figures as a grid section — one continuous
+                    // scroll list instead of a fixed block above the grid (see PartsScreen).
                     if (manualFigs.isNotEmpty()) {
                         item(span = { GridItemSpan(maxLineSpan) }, key = "manual-header") {
                             SectionHeader(stringResource(R.string.minifigs_manual_section))
@@ -215,10 +215,10 @@ internal fun MinifigsScreen(
                             }
                         }
                     }
-                    // Wie bei den Teilen: In der Tabellenansicht nimmt jede Zeile die ganze Breite,
-                    // der Raster-Container bleibt derselbe. Die manuellen Figuren bleiben in beiden
-                    // Ansichten Kacheln — wie #manual-figs-list in der Webapp, das nicht an
-                    // figs-view hängt.
+                    // As with the parts: in the table view every row takes the whole width,
+                    // the grid container stays the same. The manual figures stay tiles in both
+                    // views — like #manual-figs-list in the web app, which is not tied to
+                    // figs-view.
                     itemsIndexed(
                         figs,
                         key = { index, fig -> "${fig.figNumber}_${fig.source}_$index" },
@@ -237,7 +237,7 @@ internal fun MinifigsScreen(
         }
     }
 
-        // Wie Galerie, Teile und Merkliste: kein „+“ im Fehlerzustand, leer steht es im Bild.
+        // Like the gallery, parts and wishlist: no "+" in the error state, empty it stands in the image.
         if (!gross && anzeige != LoadingIndicator.FEHLER && anzeige != LoadingIndicator.LEER) AddFab(
             addText, { showAddDialog = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
@@ -269,16 +269,16 @@ internal fun MinifigsScreen(
         )
     }
 
-    // Gelöscht wird im Detail (ManualItemDetailScreen, showDeleteConfirm) — an
-    // derselben Stelle wie beim Set.
+    // Deleted in the detail (ManualItemDetailScreen, showDeleteConfirm) — at
+    // the same spot as for the set.
 }
 
-/** Die Kennzahlen der Minifiguren — erste Zeile des Rasters, sie rollt mit. */
+/** The minifigures' key figures — first row of the grid, it scrolls along. */
 @Composable
 private fun MinifigsMetrics(minifigStats: MinifigsMetricsView) {
     MetricsSeries {
-        // Zahlen vom Server (getMinifigStats): Aus der Liste gerechnet fehlten
-        // die manuell erfassten Figuren, die hier ausgefiltert sind.
+        // Numbers from the server (getMinifigStats): computed from the list, the
+        // manually entered figures, which are filtered out here, would be missing.
         GalleryStatChip(minifigStats.types, R.plurals.minifigs_stat_types)
         GalleryStatChip(minifigStats.totalQuantity, R.plurals.minifigs_stat_total)
         GalleryStatChip(minifigStats.manual, R.plurals.minifigs_stat_manual)

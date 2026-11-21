@@ -22,11 +22,11 @@ internal fun AddMinifigDialog(
     onDismiss: () -> Unit,
     onAdd: (Figurenerfassung) -> Unit,
     defaultCondition: Zustand = Zustand.NEU,
-    /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
+    /** The household's accounts — without sub-accounts the choice stays hidden. */
     householdMembers: List<MemberView> = emptyList(),
-    /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
+    /** Supply of storage locations — empty means: there are none yet, then one types it. */
     lagerorte: List<String> = emptyList(),
-    /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
+    /** The preselected storage location (starred in settings). Empty means: no default. */
     locationDefault: String = "",
 ) {
     var figNumber  by rememberSaveable { mutableStateOf("") }
@@ -34,11 +34,11 @@ internal fun AddMinifigDialog(
     var quantity   by rememberSaveable { mutableStateOf("1") }
     var unitPrice  by rememberSaveable { mutableStateOf("") }
     var condition  by rememberSaveable { mutableStateOf(defaultCondition) }
-    // Schluessel ist die Vorgabe — dieselbe Begruendung wie im Galerie-Dialog:
-    // Sie kommt ueber das Netz und kann nach dem Oeffnen eintreffen.
+    // The key is the default — the same reasoning as in the gallery dialog:
+    // it comes over the network and can arrive after opening.
     var lagerort   by rememberSaveable(locationDefault) { mutableStateOf(locationDefault) }
-    // Vorbelegt mit dem eigenen Konto: Wer nichts wählt, erfasst für sich —
-    // dasselbe Verhalten wie vor der Haushaltssicht.
+    // Pre-filled with one's own account: whoever chooses nothing enters for themselves —
+    // the same behavior as before the household view.
     val eigenes = householdMembers.firstOrNull { it.isSelf }?.id
     var owner by remember(householdMembers) { mutableStateOf(eigenes) }
     var numberMissing by rememberSaveable { mutableStateOf(false) }
@@ -46,7 +46,7 @@ internal fun AddMinifigDialog(
     fun submit() {
         if (figNumber.isBlank()) numberMissing = true
         else if (!entryInvalid(quantity, unitPrice)) {
-            // Siehe erfassungsWerte() — dieselbe Umrechnung wie im Teile-Dialog.
+            // See erfassungsWerte() — the same conversion as in the parts dialog.
             val w = erfassungsWerte(quantity, unitPrice, condition, owner, householdMembers)
             onAdd(Figurenerfassung(
                 nummer = figNumber,
@@ -57,7 +57,7 @@ internal fun AddMinifigDialog(
         }
     }
 
-    // Wie AddPartDialog: Geschlossen wird nur über onAdd, ein Fehler lässt alles stehen.
+    // Like AddPartDialog: closed only via onAdd, an error leaves everything as is.
     AddDialog(
         titel = stringResource(R.string.minifigs_add_title),
         bestaetigen = stringResource(R.string.minifigs_add_button),
@@ -73,7 +73,7 @@ internal fun AddMinifigDialog(
         OutlinedTextField(
             value = blFigNumber, onValueChange = { blFigNumber = it },
             label = { Text(stringResource(R.string.minifigs_bl_number)) },
-            // Der Hinweis zur BrickLink-Nummer gehört ans Feld, nicht als lose Zeile darunter.
+            // The hint about the BrickLink number belongs at the field, not as a loose row below it.
             supportingText = { Text(stringResource(R.string.minifigs_bl_hint)) },
             placeholder = { Text(stringResource(R.string.minifigs_bl_number_placeholder)) },
             modifier = Modifier.fillMaxWidth(), singleLine = true,

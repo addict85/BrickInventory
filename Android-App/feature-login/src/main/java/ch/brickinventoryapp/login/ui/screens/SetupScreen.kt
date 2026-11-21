@@ -41,29 +41,29 @@ import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.Lesebreite
 
 /**
- * Server einrichten: per QR-Code oder von Hand, nur mit https. Steht noch eine
- * http-Adresse aus einer älteren Fassung da, erklärt eine Karte oben den Weg.
+ * Set up a server: via QR code or by hand, https only. If an
+ * http address from an older version is still there, a card at the top explains the path.
  */
 @Composable
 fun SetupScreen(
     currentUrl: String,
     onSave: (url: String) -> Unit,
-    /** Zweiter Wert: der abgeschriebene Fingerabdruck, wenn [mussAbtippen] ihn verlangt, sonst null. */
+    /** Second value: the typed-off fingerprint, if [mussAbtippen] demands it, otherwise null. */
     onQrScanned: ((QrLoginPayload, String?) -> Unit)? = null,
     entwicklung: Boolean = NetworkPolicy.entwicklung,
-    /** Der gemerkte Pin für Adresse und Fingerabdruck des Codes, wenn er abweicht. */
+    /** The remembered pin for the code's address and fingerprint, if it deviates. */
     bisherigerPin: (url: String, fingerabdruck: String?) -> String? = { _, _ -> null },
-    /** Ob der Fingerabdruck des Codes abzutippen ist (AnmeldungViewModel.mussAbtippen); im Zweifel ja. */
+    /** Whether the code's fingerprint needs to be typed off (AnmeldungViewModel.mussAbtippen); when in doubt, yes. */
     mussAbtippen: (url: String, fingerabdruck: String?) -> Boolean = { _, fp -> fp != null },
 ) {
     var url          by rememberSaveable { mutableStateOf(currentUrl) }
     var showScanner  by rememberSaveable { mutableStateOf(false) }
-    // Saveable: Nach einer Drehung stünde der Scan sonst kommentarlos wieder bei null.
+    // Saveable: after a rotation the scan would otherwise silently be back at null.
     var scanInvalid by rememberSaveable { mutableStateOf(false) }
-    // Ein QR-Code kann von jedem stammen: Die Adresse wird erst nach einem Ja übernommen.
-    // Nicht saveable: Der Code trägt ein Anmeldetoken, und gesicherter Zustand landet bei
-    // Prozesstod auf der Platte (wie Passwort und Code in LoginScreen). Nach einer
-    // Drehung scannt man ihn noch einmal.
+    // A QR code can come from anyone: the address is only taken over after a yes.
+    // Not saveable: the code carries a sign-in token, and saved state lands on
+    // disk on a process death (like the password and code in LoginScreen). After a
+    // rotation, one simply scans it again.
     var qrSuggestion  by remember { mutableStateOf<QrLoginPayload?>(null) }
     val keyboard     = LocalSoftwareKeyboardController.current
     val altbestand   = NetworkPolicy.plaintextLegacyStock(currentUrl, entwicklung)
@@ -108,16 +108,16 @@ fun SetupScreen(
         )
     }
 
-    // Kopf (Marke, Hinweis zum Altbestand) und Handlung (QR, Adresse, Weiter) als zwei
-    // Teile: Im Querformat stehen sie nebeneinander, sonst lag „Weiter“ unter dem Falz.
+    // Header (brand, hint about an old entry) and action (QR, address, next) as two
+    // parts: in landscape they sit side by side, otherwise „Weiter“ was below the fold.
     val headerPart: @Composable ColumnScope.() -> Unit = {
         BrandsHeader(subtitle = stringResource(R.string.setup_subtitle))
 
         if (altbestand) {
             Spacer(Modifier.height(Abstaende.gross))
-            // Ein Hinweis mit Anleitung, kein Fehler: neutrale Fläche mit Rahmen und Schloss,
-            // denn es geht um Verschlüsselung. primaryContainer war in Noppe rosa und sah
-            // mit dem Infosymbol nach Störung aus. Die Schritte als Liste statt Fliesstext.
+            // A hint with instructions, not an error: a neutral surface with a border and lock,
+            // because it is about encryption. primaryContainer was pink in Noppe and looked
+            // like a malfunction with the info icon. The steps as a list instead of flowing text.
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface,
@@ -134,8 +134,8 @@ fun SetupScreen(
                         listOf(R.string.setup_altbestand_schritt_qr, R.string.setup_altbestand_schritt_adresse)
                             .forEachIndexed { i, schritt ->
                                 Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                                    // Feste Ziffernspalte mit Tabellenziffern: „1.“ ist schmaler als
-                                    // „2.“, und die Schritte begannen verschieden weit rechts.
+                                    // A fixed digit column with tabular figures: "1." is narrower than
+                                    // "2.", and the steps started at different distances from the left.
                                     Text("${i + 1}.", Modifier.width(withFont(20.dp)),
                                         style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
                                         fontWeight = FontWeight.SemiBold)
@@ -152,8 +152,8 @@ fun SetupScreen(
     val handlungsPart: @Composable ColumnScope.() -> Unit = {
         Spacer(Modifier.height(Abstaende.huge))
 
-        // Der QR-Code ist der empfohlene Weg (Adresse und Zertifikat in einem Schritt) und
-        // deshalb gefüllt, bis eine Adresse von Hand dasteht: Dann ist „Weiter“ der Weg.
+        // The QR code is the recommended path (address and certificate in one step) and
+        // is therefore filled, until an address stands there by hand: then „Weiter“ is the path.
         Hauptknopf(
             haupt = !addressReady,
             onClick = { scanInvalid = false; showScanner = true },
@@ -174,7 +174,7 @@ fun SetupScreen(
 
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             HorizontalDivider(Modifier.weight(1f))
-            // Der Abstand kommt aus dem Padding, nicht aus Leerzeichen im Text; sonst stiessen die Linien an.
+            // The spacing comes from the padding, not from spaces in the text; otherwise the lines would touch.
             Text(stringResource(R.string.setup_or_manual), style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = Abstaende.mittel))
@@ -183,8 +183,8 @@ fun SetupScreen(
 
         Spacer(Modifier.height(Abstaende.gross))
 
-        // Die gemeinsame Karte (AppKarte) statt einer eigenen: surface mit Erhebung wie jede
-        // Karte der App, Innenabstand aus der Skala.
+        // The shared card (AppKarte) instead of one of its own: a surface with elevation like every
+        // card in the app, inner spacing from the scale.
         AppKarte {
             Column(Modifier.padding(Abstaende.gross)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -219,16 +219,16 @@ fun SetupScreen(
                     isError = fehler != null,
                 )
                 Spacer(Modifier.height(Abstaende.gross))
-                // Gefüllt: Tonal lag er auf der Karte fast unsichtbar (1,02:1) und sah aktiv
-                // aus wie gesperrt. Gesperrt bleibt er blass, bis die Adresse taugt.
+                // Filled: tonal, it sat almost invisible on the card (1.02:1) and looked active
+                // when it was actually disabled. Disabled, it stays pale until the address is valid.
                 Button(
                     onClick = ::save, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                     enabled = addressReady,
                 ) { Text(stringResource(R.string.setup_continue), fontWeight = FontWeight.Bold) }
             }
         }
-        // Hier angeboten, weil kaum jemand nach der Einrichtung die Einstellungen durchsucht.
-        // Ohne Anbieter (Vorschau, Test) fehlt die Karte, wie in den Einstellungen.
+        // Offered here because hardly anyone searches the settings after setup.
+        // Without a provider (preview, test) the card is missing, as in the settings.
         LocalAppLock.current?.let { lock ->
             Spacer(Modifier.height(Abstaende.gross))
             AppKarte {
@@ -239,8 +239,8 @@ fun SetupScreen(
                 }
             }
         }
-        // Aus der App-Fassung statt als Literal: versionName entsteht bei jedem Build
-        // (app/build.gradle.kts). Ohne Namen (Vorschau, Test) bliebe nur „Build “ stehen.
+        // From the app's build info instead of as a literal: versionName is generated on every build
+        // (app/build.gradle.kts). Without a name (preview, test) only "Build " would be left standing.
         val fassung = LocalAppVersion.current.name
         if (fassung.isNotBlank()) {
             Spacer(Modifier.height(Abstaende.gross))
@@ -253,10 +253,10 @@ fun SetupScreen(
         }
     }
 
-    // Rollbar wie die Anmeldung (bei 200 % Schrift reichte die Höhe nicht), mittig
-    // solange es passt, und auf dem Tablet nicht breiter als ein Formular.
+    // Scrollable like sign-in (at 200 % font the height was not enough), centered
+    // as long as it fits, and on the tablet no wider than a form.
     BoxWithConstraints(Modifier.fillMaxSize().outsideTheSystemBars()) {
-        // In Row- und Column-Lambdas ist der Empfänger von BoxWithConstraints gesperrt (DslMarker).
+        // In Row and Column lambdas, BoxWithConstraints's receiver is locked (DslMarker).
         val hoehe = maxHeight
         if (maxWidth > hoehe && maxWidth >= ACROSS_TWO_COLUMN) {
             Row(
@@ -286,12 +286,12 @@ fun SetupScreen(
     }
 }
 
-/** Gefüllt als Hauptaktion, sonst tonal: Es gibt immer nur EINE gefüllte Aktion. */
+/** Filled as the main action, otherwise tonal: there is always only ONE filled action. */
 @Composable
 private fun Hauptknopf(haupt: Boolean, onClick: () -> Unit, modifier: Modifier, inhalt: @Composable RowScope.() -> Unit) {
     if (haupt) Button(onClick = onClick, modifier = modifier, content = inhalt)
     else FilledTonalButton(onClick = onClick, modifier = modifier, content = inhalt)
 }
 
-/** Ab dieser Breite stehen Kopf und Handlung im Querformat nebeneinander. */
+/** From this width on, header and action sit side by side in landscape. */
 private val ACROSS_TWO_COLUMN = 840.dp

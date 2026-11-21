@@ -34,14 +34,14 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Das Server-Protokoll der Überwachung zeigt zu jeder Zeile die Uhrzeit, wie die
- * Webapp, und lässt sich nach Stufe und Text filtern. Gefiltert wird im Gerät: Die
- * Zeilen sind schon geladen, ein Abruf je Tastendruck wäre nur Wartezeit.
+ * Monitoring's server log shows the time for every row, like the
+ * web app, and can be filtered by level and text. Filtering happens on the device: the
+ * rows are already loaded, a fetch per keystroke would just be a wait.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   protokoll-ohne-uhrzeit          die Zeile zeigt loggedAt nicht → rot „jede Zeile nennt …“
- *   protokoll-stufe-filtert-nicht   ein abgewählter Stufen-Chip blendet nichts aus → rot „eine abgewaehlte Stufe …“
- *   protokoll-suche-filtert-nicht   der Suchtext blendet nichts aus → rot „die Suche …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   protokoll-ohne-uhrzeit          the row does not show loggedAt → red “every row names …”
+ *   protokoll-stufe-filtert-nicht   a deselected level chip hides nothing → red “a deselected level …”
+ *   protokoll-suche-filtert-nicht   the search text hides nothing → red “the search …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -61,7 +61,7 @@ class MonitoringLogDisplayTest {
     private val info = LogRowView(1, "info", "Preislauf gestartet", Instant.parse("2026-11-10T08:15:30Z"))
     private val fehler = LogRowView(2, "error", "Abruf bei BrickLink gescheitert", Instant.parse("2026-11-10T09:42:07Z"))
 
-    /** Zeichnet die Überwachung mit zwei Protokollzeilen und klappt das Protokoll auf. */
+    /** Renders monitoring with two log rows and expands the log. */
     private fun openShow() {
         val zustand = MonitoringState(MonitoringUiState(), BackgroundUiState(), ManagementUiState(protokoll = listOf(info, fehler)),
             mapOf(VorwaermNetwork.WLAN to true, VorwaermNetwork.MOBILE to false, VorwaermNetwork.ROAMING to false), Design.CLASSIC, 0L)
@@ -76,7 +76,7 @@ class MonitoringLogDisplayTest {
         assertEquals("Geladene Zeilen holt das Aufklappen nicht noch einmal", 0, logFetches)
     }
 
-    /** Rollt die Liste, die [ziel] enthält; neben ihr rollen kleinere Reihen. */
+    /** Scrolls the list containing [ziel]; smaller rows next to it scroll along. */
     private fun roleTo(ziel: SemanticsMatcher) {
         val listen = compose.onAllNodes(hasScrollAction()).fetchSemanticsNodes().size
         assertTrue("Nichts gefunden, das zu ${ziel.description} rollt", (0 until listen).any { i ->
@@ -91,7 +91,7 @@ class MonitoringLogDisplayTest {
     fun `every line names its time`() {
         openShow()
         for (zeile in listOf(info, fehler)) {
-            // Wie die Zeile sie zeigt: nach der 12/24-Stunden-Einstellung des Geräts.
+            // The way the row shows it: by the device's 12/24-hour setting.
             val timeOfDay = fmtUhrzeit(zeile.loggedAt, appNumberLocale(), DateFormat.is24HourFormat(compose.activity))!!
             assertEquals("Uhrzeit $timeOfDay zu „${zeile.message}“", 1, anzahl(timeOfDay))
         }

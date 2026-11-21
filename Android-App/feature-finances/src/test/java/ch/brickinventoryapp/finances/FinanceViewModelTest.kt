@@ -24,19 +24,19 @@ import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
- * Das Finanz-ViewModel, ausgeführt gegen einen PfadServer ohne Netz.
+ * The finance ViewModel, run against a PfadServer without network.
  *
- * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen FinanceViewModel.kt):
- *   A  in toggleFinanceCategory() das Schreiben in den SavedStateHandle
- *      entfernt → rot „Zeilenarten und Zeitraum überstehen …“
- *   B  im init das Sammeln von `changes.inventoryChanged()` entfernt → rot „eine Änderung
- *      am Bestand in der Ablage lädt die Bewertung nach“
- *   C  in afterFilter() die Bedingung auf FINANCE umgekehrt → rot „der
- *      Kontofilter des Reiters reist mit …“
- *   D  in zuruecksetzen() das Leeren des Zustands entfernt → rot „nach dem
- *      Abmelden ist nichts mehr da“
- *   finanzen-laden-ohne-verlauf  beim Beobachten nur die Bewertung geladen → rot „wer die
- *      Finanzen sieht …“
+ * Counter-checks (measured 28.10.2026, kotlinc against FinanceViewModel.kt):
+ *   A  in toggleFinanceCategory() the writing to the SavedStateHandle
+ *      removed → red “row kinds and period survive …”
+ *   B  in init the collecting of `changes.inventoryChanged()` removed → red “a change
+ *      to the store's stock reloads the valuation”
+ *   C  in afterFilter() the condition reversed for FINANCE → red “the
+ *      tab's account filter travels along …”
+ *   D  in zuruecksetzen() the clearing of the state removed → red “after
+ *      signing out nothing is left”
+ *   finanzen-laden-ohne-verlauf  only the valuation loaded when observed → red “whoever
+ *      opens finances …”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class FinanceViewModelTest {
@@ -54,8 +54,8 @@ class FinanceViewModelTest {
             "/api/v1/finance/valuation" to """{"success":true,"currency":"CHF","sets":[
                 {"set_number":"75192-1","name":"Falke"}]}""",
             "/api/v1/finance/portfolio-history" to """{"success":true,"period":"month","points":[]}""",
-            // Vollständig nach DTO: Wirft das Einlesen, reicht Retrofit den Fehler über
-            // Dispatchers.Default weiter, und der Test läuft nicht mehr im Takt.
+            // Fully via DTO: if the parsing throws, Retrofit passes the error on via
+            // Dispatchers.Default, and the test no longer runs in lockstep.
             "/api/v1/finance/parts-valuation" to """{"success":true,"total_value":"0.00","parts":[]}""",
             "/api/v1/finance/minifigs-valuation" to """{"success":true,"total_value":"0.00","figs":[]}""",
         )
@@ -97,7 +97,7 @@ class FinanceViewModelTest {
     fun `a change of the stock in the store reloads the valuation`() {
         paths.antworten["/api/v1/sets"] = """{"success":true,"total":1,"sets":[{"set_number":"75192-1","name":"Falke"}]}"""
         val vm = vm()
-        // Ein anderer Bereich holt die Sets in die Ablage; die Bewertung folgt ihr.
+        // A different area fetches the sets into the store; the valuation follows it.
         runBlocking { t.sets().aktualisiereSets() }
         assertTrue("Bewertung geladen", vm.financeState.value.valuation != null)
         assertEquals("75192-1", vm.financeState.value.valuation?.sets?.single()?.setNumber)
@@ -112,7 +112,7 @@ class FinanceViewModelTest {
         assertTrue(paths.requestsAn("/finance/valuation").single().contains("accounts=own"))
         assertTrue(paths.requestsAn("/portfolio-history").single().contains("accounts=own"))
 
-        // Der Filter einer ANDEREN Ansicht lädt hier nichts.
+        // The filter of a DIFFERENT view loads nothing here.
         assertTrue("Bewertung vollständig", paths.requestsAn("/finance/pnl").isNotEmpty())
         val vorher = paths.requests.size
         vm.setScope(ScopeFilter.View.GALLERY, "own")

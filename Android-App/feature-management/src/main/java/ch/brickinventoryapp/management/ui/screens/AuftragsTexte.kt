@@ -3,10 +3,10 @@ package ch.brickinventoryapp.management.ui.screens
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.model.domain.JobStatus
 
-// Die Texte zu Aufträgen gehören zur Anzeige: Das UI-Modell in core-model kennt
-// keine Android-Ressourcen.
+// The texts for jobs belong to the display: the UI model in core-model knows
+// no Android resources.
 
-/** Text eines Auftragszustands; DONE und UNBEKANNT zeigen keinen. */
+/** Text of a job state; DONE and UNBEKANNT show none. */
 internal val JobStatus.statusText: Int?
     get() = when (this) {
         JobStatus.OFFEN -> R.string.hintergrund_offen
@@ -16,7 +16,7 @@ internal val JobStatus.statusText: Int?
         JobStatus.DONE, JobStatus.UNBEKANNT -> null
     }
 
-/** Die Namen der Arten wie in der Webapp (monitor.art.*); unbekannte zeigt die Liste roh. */
+/** The names of the kinds as in the web app (monitor.art.*); unknown ones are shown raw by the list. */
 internal fun jobKindText(art: String): Int? = when (art) {
     "nacharbeit" -> R.string.art_nacharbeit
     "bilder" -> R.string.art_bilder

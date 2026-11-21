@@ -5,8 +5,8 @@ import java.text.Collator
 import java.util.Locale
 
 /**
- * Dieselben Schlüssel wie der Server (teileListe.ts, ordnungSql), damit die Ablage ohne Netz
- * gleich sortiert wie die Webapp. Der letzte Schlüssel macht die Reihenfolge eindeutig.
+ * The same keys as the server (teileListe.ts, ordnungSql), so that the store sorts the same
+ * way as the web app without network. The last key makes the order unambiguous.
  */
 internal fun sortiert(teile: List<TeilAnsicht>, order: Teilefilter.Order): List<TeilAnsicht> {
     val text = nullsLast<String>(Collator.getInstance(Locale.GERMAN))

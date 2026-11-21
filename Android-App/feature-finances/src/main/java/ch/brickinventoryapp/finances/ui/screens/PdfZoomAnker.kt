@@ -2,18 +2,18 @@ package ch.brickinventoryapp.finances.ui.screens
 
 import kotlin.math.roundToInt
 
-// Die Rechnung, mit der ein Zoomschritt den Punkt zwischen den Fingern
-// festhaelt. Ohne Compose, damit sie ohne Geraet geprueft werden kann;
-// PdfPages fuettert sie mit dem Layout der letzten Messung.
+// The calculation by which a zoom step holds fixed the point between the fingers.
+// Without Compose, so that it can be checked without a device;
+// PdfPages feeds it the layout from the last measurement.
 
-/** Eine sichtbare Seite: oberer Rand im Sichtfeld und Hoehe, in Pixeln. */
+/** A visible page: top edge in the viewport and height, in pixels. */
 internal data class PagesSituation(val index: Int, val oben: Int, val hoehe: Int)
 
 /**
- * Wohin die Liste nach einem Zoom um den Faktor [f] rollt, damit der Punkt auf
- * Hoehe [anchorY] des Sichtfelds stehen bleibt. Die Seiten wachsen mit dem
- * Faktor, Rand und Abstaende nicht.
- * @return erste Seite und Versatz fuer scrollToItem; null ohne sichtbare Seite
+ * Where the list scrolls to after a zoom by factor [f], so that the point stays at
+ * height [anchorY] of the viewport. The pages grow with the
+ * factor, margin and spacing do not.
+ * @return first page and offset for scrollToItem; null without a visible page
  */
 internal fun zoomZielY(
     pages: List<PagesSituation>, anchorY: Float, f: Float, edgeTop: Int, abstand: Int,
@@ -25,8 +25,8 @@ internal fun zoomZielY(
         d <= unter.hoehe -> d * f
         else -> unter.hoehe * f + (d - unter.hoehe)
     }
-    // Liegt die Seite nach dem Schritt unterhalb der Oberkante, beginnt die
-    // Liste mit einer frueheren; deren Hoehe kennt die Messung meist schon.
+    // If the page lies below the top edge after the step, the
+    // list starts with an earlier one; the measurement usually already knows its height.
     val heights = pages.associate { it.index to it.hoehe }
     var index = unter.index
     var versatz = edgeTop - anchorY + dNew
@@ -38,8 +38,8 @@ internal fun zoomZielY(
 }
 
 /**
- * Die waagerechte Rollposition, bei der der Punkt [anchorX] des Sichtfelds
- * stehen bleibt. [edge] ist der feste Rand links der Seiten.
+ * The horizontal scroll position at which the point [anchorX] of the viewport
+ * stays put. [edge] is the fixed margin to the left of the pages.
  */
 internal fun zoomZielX(scroll: Int, anchorX: Float, edge: Float, f: Float): Int =
     (edge + (scroll + anchorX - edge) * f - anchorX).roundToInt().coerceAtLeast(0)

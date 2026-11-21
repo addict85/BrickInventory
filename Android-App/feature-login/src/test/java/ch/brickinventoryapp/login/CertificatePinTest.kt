@@ -42,103 +42,103 @@ import java.security.cert.CertificateException
 import javax.net.ssl.SSLEngine
 
 /**
- * Pinning des eigenen Servers, über echtes TLS gegen einen Testserver: Wurzel →
- * Zwischenstelle → Blatt „localhost“, dazu ein fremdes selbst signiertes Blatt.
- * Die Zertifikate sind feste Testdaten (100 Jahre gültig).
+ * Pinning of our own server, over real TLS against a test server: root →
+ * intermediate → leaf "localhost", plus a foreign self-signed leaf.
+ * The certificates are fixed test data (valid for 100 years).
  *
- * Gegenproben:
- *   A  in pruefe() ohne Pin `return kettenPruefung()` statt nachzufragen → rot
- *      „ohne Pin geht beim ersten Kontakt nichts hinaus“
- *   B  fitsToPin() nur `indexOfFirst >= 0` (ohne Pfadprüfung) → rot „ein
- *      fremdes Blatt mit angehängter echter Zwischenstelle passt nicht“
- *   C  bei abweichendem Pin `return` statt zu melden → rot „ein anderer
- *      Schlüssel unter dem gemerkten Pin wird nicht still angenommen“
- *   D  der Vergleich mit ownServer() entfernt (alle Hosts gepinnt) → rot
- *      „fremde Hosts prüft nur die Kette“
- *   E  parseQrPayload() übernimmt ein unlesbares fp → rot „ein QR-Code mit
- *      unlesbarem Fingerabdruck gilt nicht“
- *   F  in pruefe() wieder `chain[0]` statt `chain.last()` → rot
- *      „ohne Pin geht beim ersten Kontakt nichts hinaus …“ (Blatt statt
- *      Zwischenstelle) und „ein erneuertes Blatt unter der bestätigten Wurzel …“
- *      (nach der Erneuerung GEAENDERT)
- *   G  fingerprintReadable() wieder in Vierergruppen → rot „der
- *      Fingerabdruck steht da wie in der Webapp“
- *   H  in pruefe() fremde Hosts wieder mit `kette` statt
- *      `foreignHosts` → rot „Nutzer-CAs gelten nur fuer den eigenen Server …“
- *   I  in pruefe() wieder `spkiFingerprint(chain.last())` statt der Wurzel
- *      aus dem System → rot „eine oeffentliche CA bietet ihre Wurzel an …“
- *      und „ohne Pin geht beim ersten Kontakt nichts hinaus …“
- *   J  in CertificateQuestion.bestaetige() die Bedingung für GEAENDERT entfernt →
- *      rot „ein geaenderter Schluessel gilt erst mit abgeschriebenem …“
- *   K  bestaetigtFingerabdruck() mit `>= 4` statt `>= 16` → rot „ein
- *      geaenderter Schluessel …“ (vier getippte Zeichen genügten); ebenso
- *      FINGERPRINT_TYPE_IN = 16 statt 24 → rot dort („16 Zeichen (64 Bit) …“)
- *   L  in bestaetige() wieder nur GEAENDERT prüfen (`f.art == GEAENDERT &&`)
- *      → rot „ohne bekannte CA genuegt ein Tipp nicht …“
- *   M  die Zeile `if (pin != null && oeffentlich && pin in
- *      systemRoots) return` entfernt → rot „eine oeffentliche CA …“, „ein
- *      geaenderter Schluessel …“ (Stand vor dem Wurzel-Pin, siehe X)
- *   N  dort ohne `&& pin in systemRoots` → rot „ein oeffentlicher Pin …“
- *      („Eine eigene CA bleibt an ihren Schlüssel gebunden“) und „ein anderer
- *      Schluessel unter dem gemerkten Pin …“
- *   O  `viaUserCa -> NUTZER_CA` wieder ERSTKONTAKT → rot „ueber eine
- *      Nutzer-CA genuegt …“ („Ein Tipp genügt nicht“) und „Nutzer-CAs gelten …“
- *   P  in checkServerTrusted ohne Socket `if (!fitsToPin(chain, pin))` →
- *      `if (pin.isEmpty())` → rot „ohne Host faellt ein gepinnter Server …“
- *   Q  fingerprintStart() ohne `.take(11)` → rot „der gezeigte Anfang …“
- * Gegenproben:
- *   R  in pruefe() ohne Handshake-Sitzung wieder `mit(foreignHosts)` → rot „ohne
- *      Handshake-Sitzung gilt der Pin des eigenen Servers“
- *   S  RenewableTlsFactory.erneuere() ohne Wirkung → rot „nach dem Erneuern prueft
- *      eine neue Verbindung die Kette wieder“ (die Sitzung wurde wiederaufgenommen)
- * Gegenprobe:
- *   T  in pruefe() wieder `if (pin != null && fitsToPin(chain, pin)) return` (auch
- *      für eine System-Wurzel) → rot „ein Pin auf eine System-Wurzel gilt nur mit der
- *      System-Pruefung …“; gegenproben/wurzelpin-ohne-ct.patch
- * Gegenproben zum Pin aus dem gescannten Code (lokal gemessen):
- *   U  in pruefe() wieder `if (publicPin && oeffentlich) return` (ohne
- *      `!fromCode`) → rot „ein Code mit System-Wurzel muss genau diese Wurzel …“;
+ * Counter-checks:
+ *   A  in pruefe() without a pin `return kettenPruefung()` instead of asking → red
+ *      “without a pin, nothing goes out on first contact”
+ *   B  fitsToPin() only `indexOfFirst >= 0` (without a path check) → red “a
+ *      foreign leaf with a real intermediate attached does not fit”
+ *   C  on a deviating pin `return` instead of reporting → red “a different
+ *      key under the remembered pin is not silently accepted”
+ *   D  the comparison with ownServer() removed (all hosts pinned) → red
+ *      “foreign hosts are checked only by the chain”
+ *   E  parseQrPayload() takes an unreadable fp → red “a QR code with an
+ *      unreadable fingerprint is not valid”
+ *   F  in pruefe() back to `chain[0]` instead of `chain.last()` → red
+ *      “without a pin, nothing goes out on first contact …” (leaf instead of
+ *      intermediate) and “a renewed leaf under the confirmed root …”
+ *      (CHANGED after the renewal)
+ *   G  fingerprintReadable() back to groups of four → red “the
+ *      fingerprint is shown as in the web app”
+ *   H  in pruefe() foreign hosts back to `kette` instead of
+ *      `foreignHosts` → red “user CAs apply only to our own server …”
+ *   I  in pruefe() back to `spkiFingerprint(chain.last())` instead of the root
+ *      from the system → red “a public CA offers its root …”
+ *      and “without a pin, nothing goes out on first contact …”
+ *   J  in CertificateQuestion.bestaetige() the condition for CHANGED removed →
+ *      red “a changed key only counts once typed off …”
+ *   K  bestaetigtFingerabdruck() with `>= 4` instead of `>= 16` → red “a
+ *      changed key …” (four typed characters were enough); likewise
+ *      FINGERPRINT_TYPE_IN = 16 instead of 24 → red there (“16 characters (64 bits) …”)
+ *   L  in bestaetige() back to checking only CHANGED (`f.art == GEAENDERT &&`)
+ *      → red “without a known CA, a tap is not enough …”
+ *   M  the line `if (pin != null && oeffentlich && pin in
+ *      systemRoots) return` removed → red “a public CA …”, “a
+ *      changed key …” (the state before the root pin, see X)
+ *   N  there without `&& pin in systemRoots` → red “a public pin …”
+ *      (“a user's own CA stays bound to its key”) and “a different
+ *      key under the remembered pin …”
+ *   O  `viaUserCa -> NUTZER_CA` back to FIRST_CONTACT → red “via a
+ *      user CA a tap is enough …” (“A tap is not enough”) and “user CAs apply …”
+ *   P  in checkServerTrusted without a socket `if (!fitsToPin(chain, pin))` →
+ *      `if (pin.isEmpty())` → red “without a host, a pinned server falls back …”
+ *   Q  fingerprintStart() without `.take(11)` → red “the shown start …”
+ * Counter-checks:
+ *   R  in pruefe() without a handshake session back to `mit(foreignHosts)` → red “without a
+ *      handshake session, our own server's pin applies”
+ *   S  RenewableTlsFactory.erneuere() without effect → red “after renewing,
+ *      a new connection checks the chain again” (the session was resumed)
+ * Counter-check:
+ *   T  in pruefe() back to `if (pin != null && fitsToPin(chain, pin)) return` (also
+ *      for a system root) → red “a pin on a system root only counts with the
+ *      system check …”; gegenproben/wurzelpin-ohne-ct.patch
+ * Counter-checks for the pin from the scanned code (measured locally):
+ *   U  in pruefe() back to `if (publicPin && oeffentlich) return` (without
+ *      `!fromCode`) → red “a code with a system root must name exactly that root …”;
  *      gegenproben/code-wurzel-ungeprueft.patch
- *   V  in bestaetige() die Zeile für CODE_ABWEICHUNG entfernt → rot „ein Code mit
- *      System-Wurzel …“ (abgetippt bestätigt); gegenproben/code-abweichung-bestaetigbar.patch
- *   W  bei abweichendem Pin immer GEAENDERT → rot „ein Code mit eigener CA …“;
+ *   V  in bestaetige() the line for CODE_ABWEICHUNG removed → red “a code with a
+ *      system root …” (confirmable once typed off); gegenproben/code-abweichung-bestaetigbar.patch
+ *   W  on a deviating pin always CHANGED → red “a code with its own CA …”;
  *      gegenproben/code-abweichung-als-rueckfrage.patch
- * Gegenproben zum öffentlichen Pin (12.11.2026, kotlinc gegen ServerVertrauen.kt):
- *   X  carriesPin() wieder `situation.oeffentlich && (!fromCode || …)` (jede öffentliche Kette) →
- *      rot „ein oeffentlicher Pin haelt eine Kette unter fremder Wurzel an …“;
+ * Counter-checks for the public pin (12.11.2026, kotlinc against ServerVertrauen.kt):
+ *   X  carriesPin() back to `situation.oeffentlich && (!fromCode || …)` (any public chain) →
+ *      red “a public pin holds onto a chain under a foreign root …”;
  *      gegenproben/oeffentlicher-pin-jede-wurzel.patch
- *   Y  in carriesPin() und withoutHost() ohne sameOperator() → rot „eine neue Wurzel
- *      desselben Betreibers …“ und „ohne Host gilt ein oeffentlicher Pin …“;
+ *   Y  in carriesPin() and withoutHost() without sameOperator() → red “a new root
+ *      of the same operator …” and “without a host, a public pin applies …”;
  *      gegenproben/wurzelfamilie-fragt-neu.patch
- *   Z  withoutHost() wieder `pin in systemRoots → system()` → rot „ohne Host gilt ein
- *      oeffentlicher Pin …“; gegenproben/ohne-host-jede-wurzel.patch
- * Gegenproben zur Abschrift (12.11.2026, kotlinc):
- *   AA in Abschrift.von() zu kurz wieder FITS_NOT → rot „eine Abschrift mit
- *      Doppelpunkten ist zu kurz …“; gegenproben/abschrift-zu-kurz-unerkannt.patch
- *   (Die Doppelpunkte beim Tippen prüft core-ui, AbschriftformTest.)
- * Gegenproben zum zweiten Pin und zu den CA-Familien (14.11.2026, kotlinc gegen
- * ServerVertrauen.kt, JUnit lokal):
- *   AB in pruefe() wieder `if (carriesPin(…)) return` ohne checkSheet() → rot „ein neuer
- *      Serverschluessel unter derselben oeffentlichen Wurzel …“;
+ *   Z  withoutHost() back to `pin in systemRoots → system()` → red “without a host, a
+ *      public pin applies …”; gegenproben/ohne-host-jede-wurzel.patch
+ * Counter-checks for the transcript (12.11.2026, kotlinc):
+ *   AA in Abschrift.von() too short back to FITS_NOT → red “a transcript with
+ *      colons is too short …”; gegenproben/abschrift-zu-kurz-unerkannt.patch
+ *   (The colons while typing are checked by core-ui, AbschriftformTest.)
+ * Counter-checks for the second pin and the CA families (14.11.2026, kotlinc against
+ * ServerVertrauen.kt, local JUnit):
+ *   AB in pruefe() back to `if (carriesPin(…)) return` without checkSheet() → red “a new
+ *      server key under the same public root …”;
  *      gegenproben/blattpin-ungeprueft.patch
- *   AC sameOperator() wieder über das O= im Subjekt → rot „dasselbe O= im Subjekt
- *      macht noch keine Familie …“; gegenproben/familie-nach-subjekt.patch
- *   AD in bestaetige() das Abtippen beim Erstkontakt nicht geprüft (`freiwillig` auch mit
- *      Eingabe) → rot „beim Erstkontakt darf man abtippen …“;
+ *   AC sameOperator() back to the O= in the subject → red “the same O= in the subject
+ *      does not yet make a family …”; gegenproben/familie-nach-subjekt.patch
+ *   AD in bestaetige() typing it off on first contact not checked (`freiwillig` even with
+ *      input) → red “on first contact, typing it off is optional …”;
  *      gegenproben/erstkontakt-abschrift-ungeprueft.patch
- *   AE in checkSheet() `|| fromCode` gestrichen → rot „ein Code vom angemeldeten Bildschirm
- *      tauscht den Serverschluessel …“; gegenproben/blattpin-code-fragt.patch
- * Gegenproben zum neuen Serverschlüssel ohne CT-Pflicht (Prüfung 476e4a4, M1; CI):
- *   AF transcriptNeeded für SCHLUESSEL_NEU wieder `false` → rot „ein neuer Serverschluessel
- *      unter derselben oeffentlichen Wurzel …“ („Ohne CT-Pflicht genügt ein Tipp nicht“);
+ *   AE in checkSheet() `|| fromCode` removed → red “a code from the signed-in screen
+ *      swaps the server key …”; gegenproben/blattpin-code-fragt.patch
+ * Counter-checks for the new server key without a CT requirement (check 476e4a4, M1; CI):
+ *   AF transcriptNeeded for SCHLUESSEL_NEU back to `false` → red “a new server key
+ *      under the same public root …” (“without a CT requirement, a tap is not enough”);
  *      gegenproben/schluessel-neu-ein-tipp.patch
- *   AG checkSheet() reicht ctForced nicht weiter → rot „mit CT-Pflicht genuegt …“;
+ *   AG checkSheet() does not pass ctForced on → red “with a CT requirement …”;
  *      gegenproben/schluessel-neu-ohne-ct-wissen.patch
- * Gegenproben zum Erstkontakt ohne CT-Pflicht (Tiefprüfung A-S-5; kotlinc, JUnit lokal):
- *   AH transcriptNeeded für ERSTKONTAKT wieder `false` → rot „ohne CT-Pflicht genuegt beim
- *      Erstkontakt kein Tipp …“; gegenproben/erstkontakt-ein-tipp-ohne-ct.patch
- *   AI pruefe() meldet den Erstkontakt ohne ctForced → rot „beim Erstkontakt mit
- *      CT-Pflicht genuegt der Vergleich“; gegenproben/erstkontakt-ohne-ct-wissen.patch
+ * Counter-checks for first contact without a CT requirement (deep review A-S-5; kotlinc, local JUnit):
+ *   AH transcriptNeeded for ERSTKONTAKT back to `false` → red “without a CT requirement, on
+ *      first contact, no tap is enough …”; gegenproben/erstkontakt-ein-tipp-ohne-ct.patch
+ *   AI pruefe() reports first contact without ctForced → red “on first contact with
+ *      a CT requirement, the comparison is enough”; gegenproben/erstkontakt-ohne-ct-wissen.patch
  */
 class CertificatePinTest {
 
@@ -148,7 +148,7 @@ class CertificatePinTest {
         val map = mutableMapOf<String, String>()
         override fun pin(schluessel: String) = map[schluessel]
         override fun rememberPin(schluessel: String, fingerabdruck: String) { map[schluessel] = fingerabdruck; fromCode.remove(schluessel) }
-        /** Wie DevicesStore.holdBefore: gilt, ist aber noch nicht bestätigt. */
+        /** Like DevicesStore.holdBefore: valid, but not yet confirmed. */
         val fromCode = mutableSetOf<String>()
         fun holdBefore(schluessel: String, fingerabdruck: String) { map[schluessel] = fingerabdruck; fromCode += schluessel }
         override fun fromCode(schluessel: String) = schluessel in fromCode
@@ -157,7 +157,7 @@ class CertificatePinTest {
     @After
     fun zu() = server.shutdown()
 
-    /** Der Server zeigt Blatt und Zwischenstelle, wie Caddy es tut. */
+    /** The server shows the leaf and the intermediate, as Caddy does. */
     private fun starte(schluessel: String = LEAF_KEY, kette: List<String> = listOf(LEAF, INTER)) {
         val ks = KeyStore.getInstance("PKCS12").apply { load(null) }
         val key = KeyFactory.getInstance("EC").generatePrivate(PKCS8EncodedKeySpec(Base64.getDecoder().decode(schluessel)))
@@ -169,7 +169,7 @@ class CertificatePinTest {
         server.start()
     }
 
-    /** Das „System“: vertraut nur den genannten Wurzeln. */
+    /** The "system": trusts only the named roots. */
     private fun system(vararg roots: String): X509ExtendedTrustManager {
         val ks = KeyStore.getInstance("PKCS12").apply { load(null) }
         roots.forEachIndexed { i, w -> ks.setCertificateEntry("w$i", zert(w)) }
@@ -211,7 +211,7 @@ class CertificatePinTest {
         assertTrue("Nach der Bestätigung gilt der Pin", fetch(system(ROOT)))
     }
 
-    /** Die letzten 24 Hex-Zeichen, wie sie jemand aus der Webapp abschreibt. */
+    /** The last 24 hex characters, the way someone types them off from the web app. */
     private fun abgeschrieben() = fingerprintReadable(frage.offen.value!!.fingerabdruck).takeLast(35)
 
     @Test
@@ -244,10 +244,10 @@ class CertificatePinTest {
     }
 
     /**
-     * Caddy mit `sign_with_root`: Die Kette ist Blatt + Wurzel, und der QR-Code
-     * trägt den Fingerabdruck der WURZEL. Sie genügt als Pin.
-     * Gegenprobe: in fitsToPin nur das Blatt prüfen
-     * (`indexOfFirst { … }` → `if (spkiFingerprint(chain[0]) == pin) 0 else -1`) → rot.
+     * Caddy with `sign_with_root`: the chain is leaf + root, and the QR code
+     * carries the ROOT's fingerprint. That is enough as a pin.
+     * Counter-check: in fitsToPin check only the leaf
+     * (`indexOfFirst { … }` → `if (spkiFingerprint(chain[0]) == pin) 0 else -1`) → red.
      */
     @Test
     fun `the root from the QR code suffices as pin if the chain is leaf and root`() {
@@ -259,9 +259,9 @@ class CertificatePinTest {
     }
 
     /**
-     * Caddy erneuert sein Blatt alle paar Stunden mit neuem Schlüssel. Wer von Hand
-     * einrichtet und beim ersten Kontakt bestätigt, darf danach keine Warnung
-     * „Zertifikat geändert“ sehen, solange die Wurzel dieselbe ist.
+     * Caddy renews its leaf every few hours with a new key. Anyone who sets up
+     * by hand and confirms on first contact must not see a warning
+     * "Zertifikat geändert" afterward, as long as the root stays the same.
      */
     @Test
     fun `a renewed leaf under the confirmed root applies without a new question`() {
@@ -273,8 +273,8 @@ class CertificatePinTest {
         assertTrue(frage.confirm(pins, abgeschrieben()))
         assertTrue(fetch(system(FOREIGN)))
 
-        // Derselbe Server nach der Erneuerung; ein neuer Testserver braucht einen
-        // neuen Port, der bestätigte Pin zieht mit.
+        // The same server after the renewal; a new test server needs a
+        // new port, the confirmed pin carries over.
         val pin = pins.pin(eigener())!!
         server.shutdown()
         server = MockWebServer()
@@ -285,9 +285,9 @@ class CertificatePinTest {
     }
 
     /**
-     * Let's Encrypt sendet Blatt und Zwischenstelle, die Wurzel kennt das System.
-     * Gepinnt wird die Wurzel: Wechselt die CA die Zwischenstelle, fragt die App
-     * nicht neu — sonst lernte man, „Zertifikat geändert“ wegzutippen.
+     * Let's Encrypt sends the leaf and the intermediate, the system knows the root.
+     * The root is what gets pinned: if the CA changes the intermediate, the app does
+     * not ask again — otherwise one would learn to tap away "Zertifikat geändert".
      */
     @Test
     fun `a public CA offers its root, a new intermediate does not ask again`() {
@@ -357,7 +357,7 @@ class CertificatePinTest {
         assertTrue("Die Kette hat das System samt CT geprüft", frage.confirm(pins))
     }
 
-    /** Android 11–15: Ohne CT ginge eine fehlausgestellte Kette irgendeiner öffentlichen CA mit einem Tipp durch. */
+    /** Android 11–15: without CT, a misissued chain from any public CA would get through with a tap. */
     @Test
     fun `without CT requirement a tap is not enough on first contact, the fingerprint is transcribed`() {
         starte()
@@ -374,7 +374,7 @@ class CertificatePinTest {
         assertTrue(fetch(system(ROOT)))
     }
 
-    /** Den Vergleichswert hat openssl gerechnet, unabhängig von der App. */
+    /** The comparison value was computed by openssl, independent of the app. */
     @Test
     fun `the fingerprint is shown as in the web app`() {
         assertEquals(RENEWED_ROOT_HEX, fingerprintReadable(spkiFingerprint(zert(RENEWED_ROOT))))
@@ -397,7 +397,7 @@ class CertificatePinTest {
         assertNull("Für fremde Hosts gibt es nichts zu bestätigen", frage.offen.value)
     }
 
-    /** Nutzer-CA ist hier ROOT, das System kennt nur FOREIGN. */
+    /** The user CA here is ROOT, the system only knows FOREIGN. */
     @Test
     fun `user CAs apply only to the own server, never to foreign hosts`() {
         starte()
@@ -411,7 +411,7 @@ class CertificatePinTest {
         assertEquals("Für den eigenen Server zählt die Nutzer-CA", CertificateUnresolved.Art.NUTZER_CA, frage.offen.value?.art)
     }
 
-    /** Nutzer-CA ist ROOT: Wer sie einschleust, soll nicht mit einem Tipp durchkommen. */
+    /** The user CA is ROOT: whoever smuggles it in should not get through with a tap. */
     @Test
     fun `via a user CA a tap is not enough on first contact`() {
         starte()
@@ -425,10 +425,10 @@ class CertificatePinTest {
     }
 
     /**
-     * Ohne CT-Pflicht (Android 11–15) wäre „irgendeine öffentlich gültige Kette“ kein
-     * Pinning: Eine fehlausgestellte Kette einer anderen CA ginge durch. Der Pin auf eine
-     * System-Wurzel verlangt darum diese Wurzel; eine andere fragt wie ein neuer Schlüssel,
-     * mit Abtippen. Ein Pin auf eine eigene CA deckt ohnehin keine öffentliche Kette.
+     * Without a CT requirement (Android 11–15), "any publicly valid chain" would not be
+     * pinning: a misissued chain from a different CA would get through. The pin on a
+     * system root therefore demands exactly that root; a different one asks like a new key,
+     * with typing it off. A pin on a private CA covers no public chain anyway.
      */
     @Test
     fun `a public pin stops a chain under a foreign root, even if the system accepts it`() {
@@ -461,10 +461,10 @@ class CertificatePinTest {
     }
 
     /**
-     * Let's Encrypt wechselt Zwischenstellen (R10, R11, E5, E6 …) und Wurzeln derselben
-     * Familie (ISRG Root X1 → X2). Beides darf nicht nach einem neuen Fingerabdruck fragen,
-     * sonst lernt man, die Warnung wegzutippen. Erkannt wird die Familie an einer festen
-     * Liste (CA_FAMILIES, hier PROBE_FAMILY); ohne CT gilt sie nur, wenn das System beide kennt.
+     * Let's Encrypt changes intermediates (R10, R11, E5, E6 …) and roots of the same
+     * family (ISRG Root X1 → X2). Neither may ask for a new fingerprint,
+     * otherwise one learns to tap away the warning. The family is recognized from a
+     * fixed list (CA_FAMILIES, here PROBE_FAMILY); without CT it only applies if the system knows both.
      */
     @Test
     fun `a new root of the same operator applies without a new question`() {
@@ -490,10 +490,10 @@ class CertificatePinTest {
     }
 
     /**
-     * Ein Pin auf eine System-Wurzel heisst „öffentlich gültig“, und dazu gehört die
-     * CT-Prüfung des Systems. Schickt der Server die Wurzel mit, darf der Abgleich mit
-     * dem Pin diese Prüfung nicht ersetzen. Das „System“ hier kennt die Wurzel, lehnt
-     * aber jede Kette ab, wie es eine nicht protokollierte Ausstellung täte.
+     * A pin on a system root means "publicly valid", and that includes the
+     * system's CT check. If the server sends the root along, comparing it against
+     * the pin must not replace that check. The "system" here knows the root but
+     * rejects every chain, the way an unlogged issuance would.
      */
     @Test
     fun `a pin on a system root applies only with the system check, even if the server sends it along`() {
@@ -520,8 +520,8 @@ class CertificatePinTest {
     }
 
     /**
-     * Der Code nennt eine System-Wurzel, der Server zeigt eine Kette unter einer anderen,
-     * ebenfalls öffentlichen. Gemerkt gälte das (Wurzelwechsel); aus dem Code nicht.
+     * The code names a system root, the server shows a chain under a different,
+     * also public one. Remembered, that would count (a root change); from the code it does not.
      */
     @Test
     fun `a code with a system root must hit exactly this root, a deviation aborts`() {
@@ -544,7 +544,7 @@ class CertificatePinTest {
         assertNull(frage.offen.value)
     }
 
-    /** Der Code nennt die eigene CA, der Server zeigt eine öffentlich gültige Kette. */
+    /** The code names a private CA, the server shows a publicly valid chain. */
     @Test
     fun `a code with its own CA aborts on a foreign public chain instead of asking`() {
         starte()
@@ -560,7 +560,7 @@ class CertificatePinTest {
         assertEquals("Ein gemerkter Pin fragt weiter nach", CertificateUnresolved.Art.GEAENDERT, frage.offen.value?.art)
     }
 
-    /** Die Fassung ohne Socket kennt den Host nicht; ein Pin des eigenen Servers gilt trotzdem. */
+    /** The version without a socket does not know the host; our own server's pin still applies. */
     @Test
     fun `without a host a pinned server does not fall back to the system CAs`() {
         val tm = PinTrust(system(FOREIGN), pins, ownServer = { "nas:8443" }, frage = frage, foreignHosts = system(FOREIGN))
@@ -571,7 +571,7 @@ class CertificatePinTest {
         tm.checkServerTrusted(arrayOf(zert(LEAF), zert(INTER)), "ECDHE_ECDSA")
     }
 
-    /** Ohne Host dieselbe Regel für einen öffentlichen Pin: seine Wurzel oder eine desselben Betreibers. */
+    /** Without a host, the same rule for a public pin: its root or one of the same operator. */
     @Test
     fun `without a host a public pin applies only to its root and its family`() {
         val sys = system(OEFF_ROOT, OEFF2_ROOT, FAM_X1, FAM_X2)
@@ -585,7 +585,7 @@ class CertificatePinTest {
         tm.checkServerTrusted(arrayOf(zert(FAM_BLATT2), zert(FAM_ZW2)), "ECDHE_ECDSA")
     }
 
-    /** Die Fassung mit Socket, aber ohne Handshake-Sitzung: dieselbe Regel wie ohne Socket. */
+    /** The version with a socket but without a handshake session: the same rule as without a socket. */
     @Test
     fun `without a handshake session the own server's pin applies`() {
         val tm = PinTrust(system(FOREIGN), pins, ownServer = { "nas:8443" }, frage = frage, foreignHosts = system(FOREIGN))
@@ -599,9 +599,9 @@ class CertificatePinTest {
     }
 
     /**
-     * Eine wiederaufgenommene TLS-Sitzung prüft keine Kette. Nach dem Ausschalten der
-     * Nutzer-CAs baut die App den Kontext neu (ServerClient.kt); danach muss eine neue
-     * Verbindung wieder geprüft werden.
+     * A resumed TLS session checks no chain. After turning off
+     * user CAs, the app rebuilds the context (ServerClient.kt); after that a new
+     * connection must be checked again.
      */
     @Test
     fun `after renewal a new connection checks the chain again`() {
@@ -637,7 +637,7 @@ class CertificatePinTest {
         assertFalse("Die alte Sitzung wurde ohne Prüfung wieder aufgenommen", fetch())
     }
 
-    /** Der Dialog zeigt vor dem Abtippen nur den Anfang; das Abzutippende steht nicht da. */
+    /** The dialog shows only the start before typing it off; what needs to be typed off is not shown. */
     @Test
     fun `the shown beginning reveals nothing of the part to be typed`() {
         val fp = spkiFingerprint(zert(RENEWED_ROOT))
@@ -650,8 +650,8 @@ class CertificatePinTest {
     }
 
     /**
-     * Die Webapp zeigt `AB:CD:…`; wer 24 sichtbare Zeichen samt Doppelpunkten abschrieb,
-     * hatte nur 16 Hex und bekam „passt nicht“. Jetzt heisst das „zu kurz“.
+     * The web app shows `AB:CD:…`; whoever typed off 24 visible characters including colons
+     * only had 16 hex and got "does not fit". Now that is called "too short".
      */
     @Test
     fun `a transcript with colons is too short, not wrong`() {
@@ -690,8 +690,8 @@ class CertificatePinTest {
     }
 
     /**
-     * Nach einer Erneuerung mit neuem Schlüssel unter derselben öffentlichen Wurzel. Pins ziehen
-     * mit auf den neuen Port des Testservers, wie bei einem Neustart desselben Servers.
+     * After a renewal with a new key under the same public root. Pins carry over
+     * to the test server's new port, as with a restart of the same server.
      */
     private fun newServer(sheetKey: String, kette: List<String>) {
         val alt = eigener()
@@ -800,7 +800,7 @@ class CertificatePinTest {
         fun zert(b64: String): X509Certificate = CertificateFactory.getInstance("X.509")
             .generateCertificate(Base64.getDecoder().decode(b64).inputStream()) as X509Certificate
 
-        /** Die Probe-Wurzeln X1 und X2 als eine Familie, wie ISRG Root X1 und X2 in [CA_FAMILIES]. */
+        /** The test roots X1 and X2 as one family, like ISRG Root X1 and X2 in [CA_FAMILIES]. */
         val PROBE_FAMILY: Map<String, String> by lazy {
             mapOf(spkiFingerprint(zert(FAM_X1)) to "Probe CA", spkiFingerprint(zert(FAM_X2)) to "Probe CA")
         }
@@ -808,20 +808,20 @@ class CertificatePinTest {
         const val ROOT = "MIIBlTCCATugAwIBAgIUCbgn7Upu9fEAMGToKKauXo+baGUwCgYIKoZIzj0EAwIwFzEVMBMGA1UEAwwMQnJpY2sgV3VyemVsMCAXDTI2MTAzMDE1NDI1OFoYDzIxMjYxMDA2MTU0MjU4WjAXMRUwEwYDVQQDDAxCcmljayBXdXJ6ZWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAR8FJcl3BEyvVpJgfQ/T5qw/+pweuS6179KUZKyiCZGxiBp5q11Lyk/Z/qZ3lYWC8vf5F1vn/BNqU7bbKB3HhkPo2MwYTAdBgNVHQ4EFgQUXGDtWh02N49g+YF9OEkqvnoC1EgwHwYDVR0jBBgwFoAUXGDtWh02N49g+YF9OEkqvnoC1EgwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwCgYIKoZIzj0EAwIDSAAwRQIhALnFIf/TxItrcCD4WHUT6D3XfqsMqHQ8Rx7Qjc7304s4AiADtT8yG+NtvZHTDM/cmC/eJWf/LsA1xnJTA5yXuGlxzg=="
         const val INTER = "MIIBlzCCAT2gAwIBAgIUQyjZ8Us4p6zbuUu9OD8NEe+rg0IwCgYIKoZIzj0EAwIwFzEVMBMGA1UEAwwMQnJpY2sgV3VyemVsMCAXDTI2MTAzMDE1NDI1OFoYDzIxMjYxMDA2MTU0MjU4WjAZMRcwFQYDVQQDDA5CcmljayBad2lzY2hlbjBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABKHmNbAOfGEGwyrPGQynBjdkBGW5x/8pNc/Lcpad3cW5GqsvY5WChv5QSJhnj/3jWqC/9hIcIgoOR6w1OsgpN16jYzBhMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBS/HkuEroFohODqD2wk4HPnlSdDQDAfBgNVHSMEGDAWgBRcYO1aHTY3j2D5gX04SSq+egLUSDAKBggqhkjOPQQDAgNIADBFAiAb/nz4SUy5/d2t/ci7w0eBD9c7HadJ4CcVtCs4ugUuFwIhAJAxMmuBap9q2jYYNRmSymGdOBt78fT12KETYQ4uWnaO"
         const val LEAF = "MIIBxDCCAWqgAwIBAgIUGKFt31uRyQEpo2/dyXJUnyNBQvQwCgYIKoZIzj0EAwIwGTEXMBUGA1UEAwwOQnJpY2sgWndpc2NoZW4wIBcNMjYxMDMwMTU0MjU4WhgPMjEyNjEwMDYxNTQyNThaMBQxEjAQBgNVBAMMCWxvY2FsaG9zdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMRphX3E9F+1CxrClvKYvhQLC1GyRMM0KV6hemBqhqJ4ErxTmWWsCmCaLxc9ai0HRRVGcwRaTUYN2zwUwOruxrqjgZIwgY8wDAYDVR0TAQH/BAIwADAOBgNVHQ8BAf8EBAMCB4AwEwYDVR0lBAwwCgYIKwYBBQUHAwEwGgYDVR0RBBMwEYIJbG9jYWxob3N0hwR/AAABMB8GA1UdIwQYMBaAFL8eS4SugWiE4OoPbCTgc+eVJ0NAMB0GA1UdDgQWBBTYiTrV8idg50suxhBOzVR4ehDuXjAKBggqhkjOPQQDAgNIADBFAiEAqVWMQNoCR/Qv0iDKhwjlSmbIpcj4QkkvEwOLQJjmWVkCIHbT27kp+E5rJEcyBRHjRi8lrrqHGMcGJY3hZQXm0rOc"
-        /** Nur für diesen Test erzeugt; schützt nichts. */
-        /** Caddy sign_with_root: Blatt direkt von der Wurzel signiert (openssl). */
+        /** Generated only for this test; protects nothing. */
+        /** Caddy sign_with_root: leaf signed directly by the root (openssl). */
         const val WURZEL = "MIIBlTCCATugAwIBAgIUWfsD4SFXkS/uYDWYXA+OWZbAS0owCgYIKoZIzj0EAwIwFzEVMBMGA1UEAwwMQ2FkZHkgV3VyemVsMCAXDTI2MTAzMDIyMjg0NFoYDzIxMjYxMDA2MjIyODQ0WjAXMRUwEwYDVQQDDAxDYWRkeSBXdXJ6ZWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASudcnAk+7NFzlNgXJlzLpv1WNLgSrYkYdxzHKOI9CAGktSDWCmqhJfXKbJezy/XJtJhb8No+g98CcCX+K4RZ7wo2MwYTAdBgNVHQ4EFgQULpDKa+iFWhIS/Vl4s94pdZYH43QwHwYDVR0jBBgwFoAULpDKa+iFWhIS/Vl4s94pdZYH43QwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwCgYIKoZIzj0EAwIDSAAwRQIgDuvgqOOE7zjj0LE3ZMADdJ6CbM9zLc9uZyPLXQIcJ24CIQDvseM//f4Ymtat2eDiE0guayf6MFBXQwVmUEAs/h5jsA=="
         const val ROOT_SHEET = "MIIBwjCCAWigAwIBAgIUJ5bQK16akXTtVJGiddkeeCeimhAwCgYIKoZIzj0EAwIwFzEVMBMGA1UEAwwMQ2FkZHkgV3VyemVsMCAXDTI2MTAzMDIyMjg0NFoYDzIxMjYxMDA2MjIyODQ0WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQkCXdFDKqjNGrBKlNNRxL4eL+CDWRzYEeNTxLPedxdqAmZELd0QILkTpIU3gnrMSNC92sr9JqJMj6bI6rbtqwHo4GSMIGPMAwGA1UdEwEB/wQCMAAwDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBoGA1UdEQQTMBGCCWxvY2FsaG9zdIcEfwAAATAdBgNVHQ4EFgQUAZczQX6xjqiWuzi8ceAiL8aMRSgwHwYDVR0jBBgwFoAULpDKa+iFWhIS/Vl4s94pdZYH43QwCgYIKoZIzj0EAwIDSAAwRQIhAIDDuQsj3wEuClpl1bZMDbJQ1fnXG3pDWbfkcK9Nbkj1AiAoe+I71U9V5jog/wz5Y5bOc2YbEAw1q+grLMsqMP1jUA=="
         const val ROOT_SHEET_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgqZs7tPJIE6CpMc2pY0PdwG3yxUHoNpKYXMHNMTymB+KhRANCAAQkCXdFDKqjNGrBKlNNRxL4eL+CDWRzYEeNTxLPedxdqAmZELd0QILkTpIU3gnrMSNC92sr9JqJMj6bI6rbtqwH"
         const val LEAF_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg84oF2kTvPuV0IbWxEBoJyR56Fy+0F8JahbFGp5BLWNyhRANCAATEaYV9xPRftQsawpbymL4UCwtRskTDNCleoXpgaoaieBK8U5llrApgmi8XPWotB0UVRnMEWk1GDds8FMDq7sa6"
-        /** Eine Wurzel mit zwei Blättern verschiedener Schlüssel: die Erneuerung bei Caddy. */
+        /** A root with two leaves of different keys: the renewal with Caddy. */
         const val RENEWED_ROOT = "MIIBpzCCAU2gAwIBAgIUJTOasEJOl0Pf7j0Qu01Sy8psgtYwCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVQ2FkZHkgV3VyemVsIEVybmV1ZXJ0MCAXDTI2MTEwMTA3MjY1MVoYDzIxMjYxMDA4MDcyNjUxWjAgMR4wHAYDVQQDDBVDYWRkeSBXdXJ6ZWwgRXJuZXVlcnQwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAATiMyAJAa2zn6z/XzWP4N3gXVIwrNsjX3N7XNaRTwZl+kMBDrdiCWGvXlzeW4SlhxzXNuRKMVZspa9oLozWu4Ylo2MwYTAdBgNVHQ4EFgQUqmjAp54LnvWA/rxJuUqmA46NfbUwHwYDVR0jBBgwFoAUqmjAp54LnvWA/rxJuUqmA46NfbUwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwCgYIKoZIzj0EAwIDSAAwRQIhAKkqowjQxkTgYQT0X1D1/pH9AqbLfH4GRWLX/6l6x65yAiAvBcvxLwaniZ8UBE66GQyRR7OQqpBWiCvnVItju+uT7A=="
         const val RENEWED_ROOT_HEX = "8E:04:B3:9F:BF:A3:2D:A2:18:32:DB:2F:50:22:4C:2D:DE:96:AF:3A:0E:CA:01:05:95:E8:5F:1E:00:69:84:AB"
         const val RENEWED_BLATT1 = "MIIBxzCCAW6gAwIBAgIUNED1j2vQniFdnw4NBBoyn5y9NsswCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVQ2FkZHkgV3VyemVsIEVybmV1ZXJ0MCAXDTI2MTEwMTA3MjY1MVoYDzIxMjYxMDA4MDcyNjUxWjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARo3O3gBYVKoZ258LnBNzokFNZYa9re0sQVASwdqdtSNmwkXYr3Oin1u7J8CHuUKU5Wnj239xhxTcysx1s75gkAo4GPMIGMMAkGA1UdEwQCMAAwDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBoGA1UdEQQTMBGCCWxvY2FsaG9zdIcEfwAAATAdBgNVHQ4EFgQUvoABbHxaUxwgnYAuitc4oBTOhSYwHwYDVR0jBBgwFoAUqmjAp54LnvWA/rxJuUqmA46NfbUwCgYIKoZIzj0EAwIDRwAwRAIgJd7x9uBMAYsvqpKWq3OPtjOWKNHFEDca2A6bL+jKAigCIGwQ/YZBhOwuQgG9IZYsbsN/WOVzMgL0kInoq8EnJdFr"
         const val RENEWED_BLATT1_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQghRyFpO/jlqgF52U0y5wFGuYiEhYlqjn1ua2/I+YlOlKhRANCAARo3O3gBYVKoZ258LnBNzokFNZYa9re0sQVASwdqdtSNmwkXYr3Oin1u7J8CHuUKU5Wnj239xhxTcysx1s75gkA"
         const val RENEWED_BLATT2 = "MIIByTCCAW6gAwIBAgIUNED1j2vQniFdnw4NBBoyn5y9NswwCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVQ2FkZHkgV3VyemVsIEVybmV1ZXJ0MCAXDTI2MTEwMTA3MjY1MVoYDzIxMjYxMDA4MDcyNjUxWjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARW/sryEYeErhUzXKqmM/ZH8rtumVlk4/NOugkM98U5wWirXfFozbsceyOHTb6cZdwtsOb+R3MjM1T8yhe8ZBHYo4GPMIGMMAkGA1UdEwQCMAAwDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBoGA1UdEQQTMBGCCWxvY2FsaG9zdIcEfwAAATAdBgNVHQ4EFgQUrufLzJG5jvOE0ZNVIgUuFsKOjt8wHwYDVR0jBBgwFoAUqmjAp54LnvWA/rxJuUqmA46NfbUwCgYIKoZIzj0EAwIDSQAwRgIhALePJ9a9k9vdjKBxDuPGn9kIP5juXHCBuHjy49hb5EH1AiEA/qkkQkBKdBYF7ECQnwAnobnpIyIcGyfQ/MN1UO/z2dE="
         const val RENEWED_BLATT2_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgSfcmm6eyJEzmbUxAk9UHevRKVQMhEqMn242fIEhY7aWhRANCAARW/sryEYeErhUzXKqmM/ZH8rtumVlk4/NOugkM98U5wWirXfFozbsceyOHTb6cZdwtsOb+R3MjM1T8yhe8ZBHY"
-        /** Öffentliche CA im Kleinen: eine Wurzel, zwei Zwischenstellen mit je einem Blatt (openssl). */
+        /** A public CA in miniature: one root, two intermediates each with one leaf (openssl). */
         const val OEFF_ROOT = "MIIBpDCCAUmgAwIBAgIUZIFCnfxNIQRpMPTNwW7BSSFDv80wCgYIKoZIzj0EAwIwHjEcMBoGA1UEAwwTT2VmZmVudGxpY2hlIFd1cnplbDAgFw0yNjExMDExNTU3MDdaGA8yMTI2MTAwODE1NTcwN1owHjEcMBoGA1UEAwwTT2VmZmVudGxpY2hlIFd1cnplbDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMYW+yzOBBNjAat0l/sP4W3ZgRVDK5kCmFCH5Dv7185TkPr5k7scjn/974EXTVvZDYU1LPsZmW3gXy0FNGysUC+jYzBhMB0GA1UdDgQWBBRCHCEEa57KCCRJiaZxWSJ9GDEjCTAfBgNVHSMEGDAWgBRCHCEEa57KCCRJiaZxWSJ9GDEjCTAPBgNVHRMBAf8EBTADAQH/MA4GA1UdDwEB/wQEAwIBBjAKBggqhkjOPQQDAgNJADBGAiEAp6GVM9JkGHL6UnRaaidFdJ2KXTkT5dVarFiyfXTEfDACIQDl6sX2VT243lSNJtFFpU3znF+GxV7T8KstC/lIGpQA/g=="
         const val OEFF_ROOT_HEX = "F4:5D:D3:BE:46:44:4D:61:F1:CD:DE:03:92:B3:C5:8A:73:F3:33:DC:60:9D:AC:42:BD:C0:BB:CC:FE:19:E0:FB"
         const val OEFF_ZW_A = "MIIBoDCCAUagAwIBAgIUAQU1sXdBgqFF38Hi+ijuOG1hvwYwCgYIKoZIzj0EAwIwHjEcMBoGA1UEAwwTT2VmZmVudGxpY2hlIFd1cnplbDAgFw0yNjExMDExNTU3MDdaGA8yMTI2MTAwODE1NTcwN1owGzEZMBcGA1UEAwwQWndpc2NoZW5zdGVsbGUgYTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABOWdioVQKAOBRw6UiEyIXBhIl95junXb8p6oGzTDkKJWw4zE7efq82EiL0JrvnkWQziXaTCAzYqVk3xnwHqv4KSjYzBhMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgEGMB0GA1UdDgQWBBTQ5IolVueozviLke93UtJ6G3Y0EDAfBgNVHSMEGDAWgBRCHCEEa57KCCRJiaZxWSJ9GDEjCTAKBggqhkjOPQQDAgNIADBFAiEA/5LLzEGDA7tkDnrGKtFmUDSyWyNizCD47OaVWdjPKjsCIFH/YtymGArW/cxrFfMpLjvPzmV3bh2fen18oGROYQLj"
@@ -830,11 +830,11 @@ class CertificatePinTest {
         const val OEFF_SHEET_A_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgHVYb+/H8EyhvizzUS3y9TAt7FlkQtQTQ67/8+ih/YaihRANCAASOpGFJ/GekpbxJWldr609pG3pWXCrYKa2WsGaazUsOLCHRbmeivSOaYgB/4MrYGsqkCDN21M+zKXGZOMgamd7O"
         const val OEFF_SHEET_B = "MIIBxjCCAWygAwIBAgIUMZo/EI4H/XOHp4BTSLv9bt1IR58wCgYIKoZIzj0EAwIwGzEZMBcGA1UEAwwQWndpc2NoZW5zdGVsbGUgYjAgFw0yNjExMDExNTU3MDdaGA8yMTI2MTAwODE1NTcwN1owFDESMBAGA1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE2E8WBySJmiIWknMzbepPni3bP68iZpP3c2WwBCqoEMZb8ppgaIFnfP4x8FfQwxmbblOfnAK9qIpIMMOKcqJLhKOBkjCBjzAMBgNVHRMBAf8EAjAAMA4GA1UdDwEB/wQEAwIHgDATBgNVHSUEDDAKBggrBgEFBQcDATAaBgNVHREEEzARgglsb2NhbGhvc3SHBH8AAAEwHQYDVR0OBBYEFG5BwbuRc8QPiyQocRkuaHnm7J03MB8GA1UdIwQYMBaAFD+g/sw4Ni1an0bLOzoy0M8GYkgwMAoGCCqGSM49BAMCA0gAMEUCIQCvJtbBc2pqUGlh8evmznKK1G/O8iW531jJlET2gYW5KwIgDINFCTJgae8SPreE2VipqiyzSncwBRglIT3Sw1EcC6M="
         const val OEFF_SHEET_B_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg7LsVCGLBPHR5qR7tBe+zQWeT/RemLJNrPJ7SFpGNHwyhRANCAATYTxYHJImaIhaSczNt6k+eLds/ryJmk/dzZbAEKqgQxlvymmBogWd8/jHwV9DDGZtuU5+cAr2oikgww4pyokuE"
-        /** Eine zweite öffentliche Wurzel mit Blatt, für den Wurzelwechsel (openssl). */
+        /** A second public root with a leaf, for the root change (openssl). */
         const val OEFF2_ROOT = "MIIBqDCCAU2gAwIBAgIUeQfiSvXaOs9VQ7JOTGuYq9+9io8wCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVT2VmZmVudGxpY2hlIFd1cnplbCAyMCAXDTI2MTEwMjA0NDcyMFoYDzIxMjYxMDA5MDQ0NzIwWjAgMR4wHAYDVQQDDBVPZWZmZW50bGljaGUgV3VyemVsIDIwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARXPBIUHUcx0gndNtCFWOsc9VK1UCPYVdTt/elmdGtOr+QqU+2kj82x5bM5PwwxyeTMI0l/0m7+IhRHasjTD3wAo2MwYTAdBgNVHQ4EFgQUNiOkY9V+q2qKkLNO3YzYDvJSMtgwHwYDVR0jBBgwFoAUNiOkY9V+q2qKkLNO3YzYDvJSMtgwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwCgYIKoZIzj0EAwIDSQAwRgIhAOtFyStygsxuZ82WUpQfgs4yEc9yd5SHXzEeM5gxXWiHAiEAxq1QdZDQEZLbpSZkktaMa/gUng+ruXUCb7bbSSw+VW4="
         const val OEFF2_SHEET = "MIIByjCCAXGgAwIBAgIUBZldxIW8pDuyAwDmNEUH+CvVA/8wCgYIKoZIzj0EAwIwIDEeMBwGA1UEAwwVT2VmZmVudGxpY2hlIFd1cnplbCAyMCAXDTI2MTEwMjA0NDcyMFoYDzIxMjYxMDA5MDQ0NzIwWjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAR3UZCup1reCVwcdpUWXuBroLN2Ae2orBEjO/63RFn9ppwOTZcXNQbuX2J20HqKFM7F5pgpPdZWoCx5CuuTDLkco4GSMIGPMAwGA1UdEwEB/wQCMAAwDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBoGA1UdEQQTMBGCCWxvY2FsaG9zdIcEfwAAATAdBgNVHQ4EFgQU0+JHa2fUKgS1c8Qpf2MPvkf10x0wHwYDVR0jBBgwFoAUNiOkY9V+q2qKkLNO3YzYDvJSMtgwCgYIKoZIzj0EAwIDRwAwRAIgaI3NXaJqaJPF9F3F5MA/uHYXmLEMDGlz2rerz62IXIACIGGccRCorHmF04MB3oFogbyx7s3cjhOWNIM2PivVGTsj"
         const val OEFF2_SHEET_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgkJUGxWpt9r1Mxq/Kodx7mWejKYEWCr0nz2zAkQCUrm2hRANCAAR3UZCup1reCVwcdpUWXuBroLN2Ae2orBEjO/63RFn9ppwOTZcXNQbuX2J20HqKFM7F5pgpPdZWoCx5CuuTDLkc"
-        /** Eine Wurzelfamilie (O=Probe CA, X1 und X2) mit je Zwischenstelle und Blatt (openssl). */
+        /** A root family (O=Probe CA, X1 and X2) each with an intermediate and a leaf (openssl). */
         const val FAM_X1 = "MIIB1zCCAX2gAwIBAgIUJzODbuMp49O7i9PzkV2w30gxC1IwCgYIKoZIzj0EAwIwODELMAkGA1UEBhMCQ0gxETAPBgNVBAoMCFByb2JlIENBMRYwFAYDVQQDDA1Qcm9iZSBSb290IFgxMCAXDTI2MTExMjIyNDIxNloYDzIxMjYxMDE5MjI0MjE2WjA4MQswCQYDVQQGEwJDSDERMA8GA1UECgwIUHJvYmUgQ0ExFjAUBgNVBAMMDVByb2JlIFJvb3QgWDEwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAARUuNHmd9ah+QgGgJ69U5FFqEDfJHZTcplKMoUTx9uqtnXkt0nNga3rKkFE8nUBs+mQxbxhs6H8hJONXLPoj/3do2MwYTAdBgNVHQ4EFgQU5H1nzHcaWbbCNal8WpErpY3lI58wHwYDVR0jBBgwFoAU5H1nzHcaWbbCNal8WpErpY3lI58wDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwCgYIKoZIzj0EAwIDSAAwRQIgHnVYf7Uk3an/+ENuf4UmjAXTNj1LVXRhn6GnI157qXoCIQDYdqvLYvqR9Uf6AynUCULrbJPWP8cnnakq5zfbO76rOw=="
         const val FAM_X2 = "MIIB2DCCAX2gAwIBAgIUZheftwIsVO/Lw4GKHC17PDM9IW4wCgYIKoZIzj0EAwIwODELMAkGA1UEBhMCQ0gxETAPBgNVBAoMCFByb2JlIENBMRYwFAYDVQQDDA1Qcm9iZSBSb290IFgyMCAXDTI2MTExMjIyNDIxNloYDzIxMjYxMDE5MjI0MjE2WjA4MQswCQYDVQQGEwJDSDERMA8GA1UECgwIUHJvYmUgQ0ExFjAUBgNVBAMMDVByb2JlIFJvb3QgWDIwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASVMxFZrHfC3rLaN+X+89rBSb9Y5FQM/jyQsho9YVNduoktegRSTXsgo2/c0bc3n0jcvm1LjpgA3kR7UrjuqhB1o2MwYTAdBgNVHQ4EFgQUSWxTgGmf7qCPhpF4+oTEdFfbt1AwHwYDVR0jBBgwFoAUSWxTgGmf7qCPhpF4+oTEdFfbt1AwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwCgYIKoZIzj0EAwIDSQAwRgIhAO4LW747aWqnQQLBec/8WFJVoyFn0ZPFQrCj9kS9iOheAiEAykAmF3X2ienlupzTv9sg0H4idHw7+TrhBzq1ttXUkAo="
         const val FAM_ZW1 = "MIIB1TCCAXugAwIBAgIUcxqXDLMucdnJUvdXSU200z/6CpEwCgYIKoZIzj0EAwIwODELMAkGA1UEBhMCQ0gxETAPBgNVBAoMCFByb2JlIENBMRYwFAYDVQQDDA1Qcm9iZSBSb290IFgxMCAXDTI2MTExMjIyNDIxNloYDzIxMjYxMDE5MjI0MjE2WjAzMQswCQYDVQQGEwJDSDERMA8GA1UECgwIUHJvYmUgQ0ExETAPBgNVBAMMCFByb2JlIFIxMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAESI0Y95hHR15r9CTFyMw2fg66mx/UMLiGlBb5h5iRfEz8XkHrCfY8gH3hy5Fy+yKOj9RdQzMaYhj+Pjovl/HIwKNmMGQwEgYDVR0TAQH/BAgwBgEB/wIBADAOBgNVHQ8BAf8EBAMCAQYwHQYDVR0OBBYEFCKWzIu4eTvpk2kmEcALVu++zsPCMB8GA1UdIwQYMBaAFOR9Z8x3Glm2wjWpfFqRK6WN5SOfMAoGCCqGSM49BAMCA0gAMEUCIQD5+HD2WNxENATDGHNxHydbh7TyR9JOSYMA27b3qslWrgIgVlCWtn8GGQMCDZCUcr5qG2dFquSChq0d30PJlOAEkwQ="

@@ -24,33 +24,33 @@ internal interface PartListsModule {
 }
 
 /**
- * Die temporäre Teileliste: Ein Set in seine Teile und Figuren auflösen und
- * den eigenen Bestand dazu holen. Ohne Zustand — die Liste hält
- * PartListViewModel; hier stehen nur die Abläufe gegen die Repositories.
+ * The temporary parts list: resolve a set into its parts and figures and
+ * fetch one's own stock for them. Stateless — the list is held by
+ * PartListViewModel; here only the flows against the repositories live.
  */
 internal class Teileliste @Inject constructor(
     private val katalog: SetKatalogRepository,
     private val partsRepo: PartsRepository,
 ) : PartListsSource {
-    /** Name und Zeilen eines Sets; gleiche Teile (Rebrickable-Nummer + Farbe) zusammengefasst. */
+    /** Name and rows of a set; identical parts (Rebrickable number + color) merged. */
     override suspend fun resolveSetOn(setNumber: String, serverUrl: String): Pair<String, List<PlPart>> {
         return fangeAusserAbbruch {
-            // Die CSV-Endpunkte hängen nicht am Konto und gehen für jedes Set.
+            // The CSV endpoints are not tied to the account and work for any set.
             val partsResult = katalog.getSetPartsList(setNumber)
             val figsResult  = katalog.getSetMinifigsList(setNumber)
-            // Der Name kommt aus dem Katalog (/sets/info), nicht aus dem eigenen
-            // Bestand: In die Teileliste trägt man gerade Sets ein, die man nicht hat.
+            // The name comes from the catalog (/sets/info), not from one's own
+            // stock: one is entering exactly the sets into the parts list that one does not have.
             val setName = (katalog.getSetInfo(setNumber) as? Ergebnis.Erfolg)
                 ?.data?.takeIf { it.isNotBlank() } ?: setNumber
-            // Zusammengefasst wird nach der Rebrickable-Nummer, weil der Bestand
-            // (withInventory) danach gefragt wird. Mehrere Rebrickable-Teile teilen sich
-            // oft eine BrickLink-Nummer; nach ihr zusammengefasst galt ein vorhandenes
-            // Teil als fehlend. Angezeigt wird weiterhin die BrickLink-Nummer.
+            // Merged by the Rebrickable number, because the stock
+            // (withInventory) is queried by it. Several Rebrickable parts often
+            // share one BrickLink number; merging by that one made an existing
+            // part count as missing. The BrickLink number is still what is shown.
             val deduped = mutableMapOf<String, PlPart>()
             if (partsResult is Ergebnis.Erfolg) {
                 for (p in partsResult.data) combineTogether(deduped, "${p.partNumber}|${p.colorId}", partRow(p, serverUrl))
             }
-            // Figuren als Ganzes, nicht in ihre Teile zerlegt — wie in der Webapp.
+            // Figures as a whole, not broken down into their parts — as in the web app.
             if (figsResult is Ergebnis.Erfolg) {
                 for (f in figsResult.data) combineTogether(deduped, "fig:${f.figNumber}", minifigRow(f, serverUrl))
             }
@@ -58,7 +58,7 @@ internal class Teileliste @Inject constructor(
         }.getOrElse { Pair(setNumber, listOf()) }
     }
 
-    /** Eine Zeile unter [key] ablegen; gibt es sie schon, zählt nur die Menge dazu. */
+    /** File a row under [key]; if it already exists, only its quantity is added. */
     private fun combineTogether(deduped: MutableMap<String, PlPart>, key: String, zeile: PlPart) {
         val existing = deduped[key]
         deduped[key] = existing?.copy(quantity = existing.quantity + zeile.quantity) ?: zeile
@@ -81,22 +81,22 @@ internal class Teileliste @Inject constructor(
     }
 
     /**
-     * Bilder immer über den Server: image_local und Pfade sind serverrelativ,
-     * rohe CDN-Adressen brauchen die Kopfzeilen des Proxys.
+     * Images always via the server: image_local and paths are server-relative,
+     * raw CDN addresses need the proxy's headers.
      */
     private fun imageViaServer(serverBase: String, imageLocal: String?, bild: String?): String? = when {
         imageLocal != null -> "$serverBase$imageLocal"
         bild == null -> null
         bild.startsWith("/") -> "$serverBase$bild"
         bild.startsWith("https://") || bild.startsWith("http://") ->
-            // Noch nicht über den Server geleitet: Coil darf kein CDN direkt fragen.
+            // Not yet routed through the server: Coil must not ask a CDN directly.
             "$serverBase$IMG_PROXY?url=${java.net.URLEncoder.encode(bild, "UTF-8")}"
         else -> "$serverBase$bild"
     }
 
     private fun minifigRow(f: FigurAnsicht, serverUrl: String) = PlPart(
         partNumber   = f.figNumber,
-        blPartNumber = f.figNumber,  // Figurennummern sind die BrickLink-Nummern
+        blPartNumber = f.figNumber,  // Figure numbers are the BrickLink numbers
         partName     = f.figName ?: f.figNumber,
         colorName    = "Minifiguren",
         colorHex     = "f5a800",
@@ -108,10 +108,10 @@ internal class Teileliste @Inject constructor(
     )
 
     /**
-     * „Kann ich das bauen?" — dieselbe Liste mit gesetztem `vorhanden`, oder
-     * null bei einem Fehler. [onlyLose] zählt nur Teile, die in keinem Set
-     * stecken (sonst müsste man ein anderes Set zerlegen); [withSubAccounts]
-     * false fragt nur das eigene Konto.
+     * "Can I build this?" — the same list with `vorhanden` set, or
+     * null on an error. [onlyLose] counts only parts that are not stuck in any
+     * set (otherwise one would have to take apart a different set); [withSubAccounts]
+     * false queries only one's own account.
      */
     override suspend fun withInventory(
         teile: List<PlPart>,
@@ -119,12 +119,12 @@ internal class Teileliste @Inject constructor(
         withSubAccounts: Boolean,
     ): List<PlPart>? {
         if (teile.isEmpty()) return teile
-        // Gefragt wird in der REBRICKABLE-Schreibweise: Genau die steht auch in
-        // der eigenen Teile-Tabelle. Die BrickLink-Nummer daneben ist fuer den
-        // Export da und taugt fuer den Abgleich nicht.
+        // Queried in REBRICKABLE spelling: that is exactly what also stands in
+        // the parts table itself. The BrickLink number next to it is there for
+        // the export and is not suited for matching.
         val anfrage = teile.map { PartialKey(nummer = it.partNumber, farbe = it.colorId) }
-        // Das Blickfeld kommt aus dieser Ansicht, nicht aus dem Kontofilter des
-        // Teile-Reiters. `null` heisst „alle Konten“.
+        // The view comes from this screen, not from the parts tab's account
+        // filter. `null` means "all accounts".
         val antwort = partsRepo.getOwnedParts(anfrage, if (withSubAccounts) null else Kontoauswahl.Eigene)
         val bestand = (antwort as? Ergebnis.Erfolg)?.data ?: return null
         return teile.map { p ->

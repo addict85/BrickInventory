@@ -39,26 +39,26 @@ import kotlin.math.roundToInt
 import ch.brickinventoryapp.ui.components.MitTooltip
 
 /**
- * Minus, Faktor, Plus — unten in der Mitte: Die Kopfzeile trägt schon Zurück,
- * Drucken und Herunterladen, und mehr Knöpfe liessen dem Titel kaum Platz; unten
- * ist der Daumen. Immer sichtbar, weil die Leiste hier der verlässliche Weg zum
- * Zoomen ist — die Geste kann gegen das Rollen verlieren. Der Faktor steht als
- * Zahl da, nicht als Farbe.
+ * Minus, factor, plus — at the bottom in the middle: the header already carries back,
+ * print and download, and more buttons would leave the title little room; the
+ * bottom is where the thumb is. Always visible, because here the bar is the reliable way to
+ * zoom — the gesture can lose against scrolling. The factor stands there as a
+ * number, not as a color.
  */
 @Composable
 internal fun ZoomBar(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifier = Modifier) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = modifier
-            // Farben aus dem Farbschema, nicht Schwarz mit Alpha: Dahinter liegt
-            // surfaceVariant, und im Dunkelmodus wäre ein schwarzes Plättchen unsichtbar. Für
-            // surface/onSurfaceVariant sichert Material3 den Kontrast in beiden Modi zu.
+            // Colors from the color scheme, not black with alpha: behind it lies
+            // surfaceVariant, and in dark mode a black tile would be invisible. For
+            // surface/onSurfaceVariant, Material3 guarantees the contrast in both modes.
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), shape = Formen.chip)
             .padding(horizontal = Abstaende.tiny)
     ) {
-        // Am Anschlag abgeschaltet. `enabled` ist fuer Tastatur und Screenreader
-        // verbindlich; die Ausgrauung ist nur die Begleitung davon, nicht das
-        // Signal.
+        // Switched off at the limit. `enabled` is binding for the
+        // keyboard and screen reader; the greying-out is only the accompaniment to that, not the
+        // signal.
         MitTooltip(stringResource(R.string.pdfview_zoom_out)) {
             IconButton(
                 onClick = { setzeZoom(zoom / PDF_ZOOM_STEP) },
@@ -67,13 +67,13 @@ internal fun ZoomBar(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifier
                 Icon(Icons.Default.ZoomOut, contentDescription = stringResource(R.string.pdfview_zoom_out))
             }
         }
-        // Der Faktor ist zugleich der Knopf „zurück auf 100 %“. defaultMinSize, damit er
-        // ein 48-dp-Berührungsziel ist wie die Knöpfe daneben.
+        // The factor is at the same time the button "back to 100 %". defaultMinSize, so that it is
+        // a 48-dp touch target like the buttons next to it.
         Box(
             modifier = Modifier
-                // onClickLabel statt nur clickable: Vorgelesen wuerde sonst
-                // „125 Prozent, Doppeltippen zum Aktivieren" — und was dann
-                // passiert, bliebe offen.
+                // onClickLabel instead of just clickable: otherwise it would read out
+                // „125 Prozent, Doppeltippen zum Aktivieren" — and what then
+                // happens would stay open.
                 .clickable(
                     onClickLabel = stringResource(R.string.pdfview_zoom_reset),
                     role = Role.Button,
@@ -100,15 +100,15 @@ internal fun ZoomBar(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifier
 }
 
 /**
- * Was ein Zoomschritt von der Geste bis zur naechsten Messung braucht. Kein
- * Compose-Zustand: Nur das Messen liest es, neu zeichnen soll es nichts.
+ * What a zoom step needs from the gesture to the next measurement. Not a
+ * Compose state: only the measuring reads it, it should trigger no redraw.
  */
 internal class ZoomAnker {
-    /** Wo im Sichtfeld der naechste Schritt ansetzt; null = Mitte. */
+    /** Where in the viewport the next step takes hold; null = center. */
     var point: Offset? = null
-    /** Mitte der aufliegenden Finger im Sichtfeld, laufend nachgefuehrt. */
+    /** Center of the resting fingers in the viewport, continuously tracked. */
     var finger: Offset? = null
-    /** Bei welchem Zoom die Liste zuletzt gemessen wurde. */
+    /** At which zoom the list was last measured. */
     var measuredAt = 0f
     /** Waagerechtes Ziel, gesetzt beim Messen, eingeloest beim Platzieren. */
     var pendingX: Int? = null
@@ -124,21 +124,21 @@ internal fun PdfPages(
     val vertical = rememberLazyListState()
     val geste = rememberTransformableState { _, zoomChange, _, _ -> setzeZoom(zoom * zoomChange, anker.finger) }
 
-    // Solange zwei Finger aufliegen, rollt die Liste nicht: Die LazyColumn sieht die
-    // Bewegung vor dem transformable und gewönne eine leicht senkrechte
-    // Zwei-Finger-Geste. Gezählt wird im Initial-Durchgang, ohne etwas zu
-    // beanspruchen.
+    // While two fingers are resting, the list does not scroll: the LazyColumn sees the
+    // movement before the transformable and would claim a slightly vertical
+    // two-finger gesture. This is counted in the initial pass, without claiming
+    // anything.
     var zweiFinger by remember { mutableStateOf(false) }
 
-    // pointerInput(Unit) wird nicht neu aufgesetzt, damit eine laufende Geste nicht
-    // abreisst; ohne rememberUpdatedState sähe der Doppeltipp für immer den ersten
-    // `zoom`.
+    // pointerInput(Unit) is not set up anew, so that a running gesture does not
+    // break off; without rememberUpdatedState the double tap would see the first
+    // `zoom` forever.
     val zoomJetzt by rememberUpdatedState(zoom)
     val setzeZoomJetzt by rememberUpdatedState(setzeZoom)
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        // Die Seitenbreite OHNE den Rand, den die Liste ringsum legt — sonst
-        // waere die gerenderte Bitmap um zweimal Abstaende.klein zu breit.
+        // The page width WITHOUT the margin that the list puts all around it — otherwise
+        // the rendered bitmap would be too wide by twice spacing.small.
         val pagesWidth = (this.maxWidth - Abstaende.klein * 2) * zoom
         val renderWidthPx = with(dichte) {
             ((this@BoxWithConstraints.maxWidth - Abstaende.klein * 2).toPx() * renderLevel(zoom))
@@ -147,10 +147,10 @@ internal fun PdfPages(
         Box(
             Modifier
                 .fillMaxSize()
-                // Der Zoom haelt den Punkt zwischen den Fingern fest. Gerechnet wird
-                // hier, beim Messen: Nur hier liegen das Layout des alten Zooms und
-                // der neue Zoom zugleich vor, und die neue Breite gilt schon fuer
-                // die Rollgrenze. Ein Effekt danach kaeme ein Bild zu spaet.
+                // The zoom holds fixed the point between the fingers. This is computed
+                // here, in the measuring: only here are the layout of the old zoom and
+                // the new zoom both available at once, and the new width already applies to
+                // the scroll limit. An effect afterward would arrive one frame too late.
                 .layout { messbar, grenzen ->
                     val f = if (anker.measuredAt > 0f) zoom / anker.measuredAt else 1f
                     anker.measuredAt = zoom
@@ -168,8 +168,8 @@ internal fun PdfPages(
                     }
                     val space = messbar.measure(grenzen)
                     layout(space.width, space.height) {
-                        // Erst jetzt kennt horizontalScroll die neue Breite; vorher
-                        // kappte es das Ziel an der alten.
+                        // Only now does horizontalScroll know the new width; before
+                        // that it capped the target at the old one.
                         anker.pendingX?.let { ziel ->
                             anker.pendingX = null
                             waagrecht.dispatchRawDelta((ziel - waagrecht.value).toFloat())
@@ -177,9 +177,9 @@ internal fun PdfPages(
                         space.place(0, 0)
                     }
                 }
-                // Reihenfolge: transformable stands behind horizontalScroll und sieht die Bewegung
-                // zuerst. Andersherum könnte das waagerechte Rollen eine Zwei-Finger-Geste für
-                // sich beanspruchen, und der Zoom käme nie zum Zug.
+                // Order: transformable sits behind horizontalScroll and sees the movement
+                // first. The other way around, horizontal scrolling could claim a two-finger gesture for
+                // itself, and the zoom would never get its turn.
                 .horizontalScroll(waagrecht)
                 .transformable(state = geste, canPan = { false })
                 .pointerInput(Unit) {
@@ -189,7 +189,7 @@ internal fun PdfPages(
                             val e = awaitPointerEvent(PointerEventPass.Initial)
                             val auf = e.changes.filter { it.pressed }
                             zweiFinger = auf.size >= 2
-                            // Diese Ebene rollt waagerecht mit; ins Sichtfeld umgerechnet.
+                            // This layer scrolls horizontally along; converted into the viewport.
                             anker.finger = if (!zweiFinger) null else Offset(
                                 auf.map { it.position.x }.average().toFloat() - waagrecht.value,
                                 auf.map { it.position.y }.average().toFloat(),
@@ -198,9 +198,9 @@ internal fun PdfPages(
                     }
                 }
                 .pointerInput(Unit) {
-                    // Doppeltipp: der verlaessliche Weg mit einem Finger. Tipp-
-                    // Erkenner beanspruchen keine Zuege (sie brechen beim
-                    // Schwellwert ab), streiten also mit dem Rollen nicht.
+                    // Double tap: the reliable way with one finger. Tap
+                    // recognizers do not claim drags (they abort at the
+                    // threshold), so they do not fight with scrolling.
                     detectTapGestures(onDoubleTap = { p ->
                         setzeZoomJetzt(
                             if (zoomJetzt > PDF_ZOOM_MIN + 0.01f) PDF_ZOOM_MIN else PDF_ZOOM_DOPPELTIPP,
@@ -230,9 +230,9 @@ internal fun PdfPages(
 private fun PdfPage(quelle: PdfQuelle, index: Int, renderWidthPx: Int, rendere: SeitenRenderer) {
     var bitmap by remember(quelle, index) { mutableStateOf<Bitmap?>(null) }
 
-    // remember ohne, LaunchedEffect mit renderWidthPx: Beim Stufenwechsel bleibt die
-    // alte Bitmap stehen, bis die neue da ist. Ein Ladekreis hätte eine andere Höhe
-    // und verlöre beim Zoomen die Stelle in der Anleitung.
+    // remember without, LaunchedEffect with renderWidthPx: on a step change the
+    // old bitmap stays up until the new one is there. A loading spinner would have a different height
+    // and would lose the place in the instruction manual while zooming.
     LaunchedEffect(quelle, index, renderWidthPx) {
         val neu = rendere(quelle, index, renderWidthPx)
         if (neu != null) bitmap = neu

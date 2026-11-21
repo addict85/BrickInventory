@@ -43,16 +43,16 @@ import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
 
 /**
- * Die Setkachel der Galerie: Bei 200 % Schrift bricht weder Betrag noch Prozent um,
- * und tiles of a row are equally high, wie lang ihr Name auch ist; ein kurzer Name
- * lässt dafür keine Leerzeile unter sich.
+ * The gallery's set tile: at 200 % font neither the amount nor the percentage wraps,
+ * and tiles of a row are equally high, however long their name is; a short name
+ * therefore leaves no blank line underneath it.
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   grosse-schrift-kachel-row       Prozent wieder neben dem Betrag in einer Row → rot „Kachel …“
- *   kachel-hoehe-nach-inhalt        die fehlende Namenszeile ohne Ausgleich → rot „Kacheln einer Reihe …“
- *   kachel-ausgleich-nur-bei-bedarf Ausgleich nur bei fehlender Zeile, kostet dann einen Spaltenabstand
- *                                   mehr → rot „Kacheln einer Reihe …“ (1 dp)
- *   kachel-name-zwei-feste-zeilen   wieder minLines = 2 am Namen → rot „ein kurzer Name …“
+ * Counter-checks (patches under gegenproben/, measured only in the CI — Robolectric):
+ *   grosse-schrift-kachel-row       percentage next to the amount in a Row again → red “tile …”
+ *   kachel-hoehe-nach-inhalt        the missing name line without compensation → red “tiles of a row …”
+ *   kachel-ausgleich-nur-bei-bedarf compensation only when a line is missing, then costs one column gap
+ *                                   more → red “tiles of a row …” (1 dp)
+ *   kachel-name-zwei-feste-zeilen   minLines = 2 on the name again → red “a short name …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

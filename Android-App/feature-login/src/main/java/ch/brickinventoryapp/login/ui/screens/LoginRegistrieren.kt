@@ -39,11 +39,11 @@ internal fun RegistrierFields(
     var email    by rememberSaveable { mutableStateOf("") }
     var vorname  by rememberSaveable { mutableStateOf("") }
     var nachname by rememberSaveable { mutableStateOf("") }
-    // Passwörter nur in remember, siehe oben.
+    // Passwords only in remember, see above.
     var pw1      by remember { mutableStateOf("") }
     var pw2      by remember { mutableStateOf("") }
-    // Was HERE schiefgeht, bevor ueberhaupt gesendet wird. Getrennt vom
-    // Serverfehler, sonst ueberschreibt das eine das andere.
+    // What goes wrong HERE before anything is even sent. Separate from the
+    // server error, otherwise one would overwrite the other.
     var ownError by rememberSaveable { mutableStateOf<String?>(null) }
 
     val reqFields  = stringResource(R.string.register_req_fields)
@@ -52,10 +52,10 @@ internal fun RegistrierFields(
 
     LoginTitle(stringResource(R.string.register_title))
 
-    // Nach einer erfolgreichen Registrierung stehen nur noch die Meldung und
-    // der Weg zurueck — die Felder waeren jetzt nur eine Einladung, dasselbe
-    // Konto ein zweites Mal anzulegen. Genauso macht es die Webapp
-    // (`reg-form` verbergen, `reg-success` zeigen).
+    // After a successful registration, only the message and the
+    // way back are left — the fields would now just be an invitation to
+    // create the same account a second time. The web app does the same
+    // (hiding `reg-form`, showing `reg-success`).
     if (meldung != null) {
         FormMessage(meldung, fehler = false)
     } else {
@@ -76,7 +76,7 @@ internal fun RegistrierFields(
                 keyboardType = KeyboardType.Email),
             keyboardActions = next)
         NamedFields(vorname, { vorname = it }, nachname, { nachname = it }, namesSideBySide, next)
-        // Die Mindestlänge steht von Anfang an da, nicht erst als Fehler nach dem Senden.
+        // The minimum length is shown from the start, not only as an error after sending.
         PasswordField(pw1, { pw1 = it }, stringResource(R.string.login_password), Modifier.fillMaxWidth(),
             art = PasswordKind.NEU, hinweis = pluralStringResource(R.plurals.passwort_mindestens, PASSWORD_MIN_CHARS, PASSWORD_MIN_CHARS),
             imeAction = ImeAction.Next, keyboardActions = next)
@@ -86,12 +86,12 @@ internal fun RegistrierFields(
         val showTo = ownError ?: fehler
         if (showTo != null) FormMessage(showTo, fehler = true)
 
-        // Dieselbe Regel wie beim Anmelden: leer gesperrt, darüber steht, was fehlt.
+        // The same rule as for sign-in: disabled when empty, what is missing stands above it.
         val vollstaendig = nutzer.isNotBlank() && email.isNotBlank() && pw1.isNotBlank()
         LoadButton(stringResource(R.string.register_button), laeuft = laeuft, aktiv = vollstaendig, fehlt = reqFields) {
-            // Dieselben Prüfungen wie im Web-Formular, in derselben Reihenfolge; die
-            // Längengrenze (PASSWORD_MIN_CHARS) ist die des Servers (routes/auth.ts). Hier
-            // vorweggenommen, damit man dafür keine Runde über das Netz braucht.
+            // The same checks as in the web form, in the same order; the
+            // length limit (PASSWORD_MIN_CHARS) is the server's (routes/auth.ts). Anticipated
+            // here, so that it needs no round trip over the network.
             ownError = when {
                 passwordToShort(pw1) -> toShort
                 pw1 != pw2     -> unequal
@@ -108,8 +108,8 @@ internal fun RegistrierFields(
 }
 
 /**
- * Vor- und Nachname; auf dem Tablet in einer Zeile: Sechs Felder untereinander
- * schoben „Registrieren“ unter den Falz.
+ * First and last name; in one row on the tablet: six fields stacked
+ * pushed „Registrieren“ below the fold.
  */
 @Composable
 private fun NamedFields(

@@ -34,10 +34,10 @@ import ch.brickinventoryapp.model.domain.PlaintextView
 import ch.brickinventoryapp.ui.theme.Formen
 
 /**
- * Ein Gutschein als Karte: links Nummer (in Vierergruppen, weil neunzehn Ziffern an
- * der Kasse nicht abzulesen sind), Betrag und Stand der Abfrage, rechts ein Menü mit
- * Guthaben, PDF, Bearbeiten und Löschen. Nummer und PIN kopiert ein Tipp. Jede
- * Aktion geht über GENAU EINEN Rückruf; die Gerätesperre davor setzt GutscheineCard
+ * A voucher as a card: number on the left (in groups of four, because nineteen digits
+ * cannot be read off at the checkout), amount and balance-query status, a menu on the right with
+ * balance, PDF, edit and delete. A tap copies number and PIN. Every
+ * action goes through EXACTLY ONE callback; the device lock before it is set by GutscheineCard
  * (geschuetzt).
  */
 @Composable
@@ -51,19 +51,19 @@ internal fun GutscheinKarte(
     onKopieren: (isNumber: Boolean) -> Unit,
     onBalance: () -> Unit,
     balanceRunning: Boolean,
-    /** Nummer und PIN im Klartext, wenn sie auf dieser Seite schon geholt sind. */
+    /** Number and PIN in plain text, if they have already been fetched for this page. */
     klartext: PlaintextView?,
     modifier: Modifier = Modifier,
 ) {
     var menu by rememberSaveable { mutableStateOf(false) }
-    // Die ganze Nummer nur bei aufgedecktem PIN; sonst die Maske des Servers.
+    // The whole number only with the PIN revealed; otherwise the server's mask.
     val nummer = inGroupsOfFour(if (pinSichtbar && klartext != null) klartext.number else g.number)
 
     OutlinedCard(modifier) {
       Column(Modifier.padding(start = Abstaende.mittel, top = Abstaende.tiny, bottom = Abstaende.klein),
              verticalArrangement = Arrangement.spacedBy(Abstaende.hairline)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // Kopiert wird der Klartext ohne Vierergruppen: Ein Bezahlfeld nimmt sie nicht an.
+            // What gets copied is the plain text without groups of four: a payment field does not accept them.
             KopierRow(stringResource(R.string.vouchers_cd_copy_number, nummer), { onKopieren(true) },
                 Modifier.weight(1f)) {
                 Text(nummer, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
@@ -76,8 +76,8 @@ internal fun GutscheinKarte(
                     }
                 }
                 DropdownMenu(menu, { menu = false }) {
-                    // Guthaben NUR mit PIN: LEGO fragt Nummer UND PIN ab; ohne PIN wäre
-                    // der Eintrag eine Falle, die immer dieselbe Absage erzeugt.
+                    // Balance ONLY with a PIN: LEGO asks for number AND PIN; without a PIN
+                    // the entry would be a trap producing the same rejection every time.
                     if (g.pin != null) MenuEntry(stringResource(R.string.vouchers_menu_balance),
                         stringResource(R.string.vouchers_cd_balance, nummer), Icons.Default.Sync,
                         enabled = !balanceRunning) { menu = false; onBalance() }
@@ -95,7 +95,7 @@ internal fun GutscheinKarte(
         VoucherAmount(g)
         val pin = g.pin
         if (pin != null) Row(verticalAlignment = Alignment.CenterVertically) {
-            // Der PIN ist auch VERDECKT antippbar: Kopieren heisst nicht ansehen.
+            // The PIN is also tappable while HIDDEN: copying does not mean viewing.
             val pinText = stringResource(R.string.vouchers_pin) + ": " + if (pinSichtbar) klartext?.pin ?: pin else "••••"
             KopierRow(stringResource(R.string.vouchers_cd_copy_pin, nummer), { onKopieren(false) }) {
                 Text(pinText, style = MaterialTheme.typography.bodyMedium)
@@ -103,7 +103,7 @@ internal fun GutscheinKarte(
             val pinToggle = stringResource(if (pinSichtbar) R.string.vouchers_pin_hide else R.string.vouchers_pin_show)
             MitTooltip(pinToggle) {
                 IconButton(onClick = switchOnPin) {
-                    // In primary wie das Kopiersymbol daneben: gleichrangige Handlungen, eine Farbe.
+                    // In primary like the copy icon next to it: actions of equal rank, one color.
                     Icon(
                         if (pinSichtbar) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                         contentDescription = pinToggle,
@@ -116,7 +116,7 @@ internal fun GutscheinKarte(
     }
 }
 
-/** Ein Eintrag im Gutscheinmenü: sichtbarer Text, vorgelesen mit der Nummer. */
+/** An entry in the voucher menu: visible text, read out along with the number. */
 @Composable
 private fun MenuEntry(
     text: String,
@@ -135,8 +135,8 @@ private fun MenuEntry(
 }
 
 /**
- * Eine antippbare Zeile, die etwas kopiert: mindestens 48 dp hoch, mit sichtbarem
- * Kopiersymbol am Ende. Die Beschreibung nennt, WAS kopiert wird.
+ * A tappable row that copies something: at least 48 dp tall, with a visible
+ * copy icon at the end. The description names WHAT is copied.
  */
 @Composable
 private fun KopierRow(
@@ -154,18 +154,18 @@ private fun KopierRow(
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
     ) {
         inhalt()
-        // Dieselbe Grösse an Nummer und PIN (vorher 24 und 18 dp).
+        // The same size for number and PIN (previously 24 and 18 dp).
         Icon(Icons.Default.ContentCopy, null, Modifier.size(withFont(18.dp)), tint = MaterialTheme.colorScheme.primary)
     }
 }
 
-/** Betrag und Stand der letzten Guthabenabfrage. */
+/** Amount and status of the last balance query. */
 @Composable
 private fun VoucherAmount(g: VoucherView) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
         modifier = Modifier.padding(end = Abstaende.mittel)) {
         Text(fmtMoney(g.amount, g.currency), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        // Der Stand der Abfrage als Etikett und im Wort, nicht nur als Farbe.
+        // The status of the query as a label and in words, not only as a color.
         val stand = fmtTag(g.guthabenGeprueftAm)
         Surface(shape = Formen.etikett, color = MaterialTheme.colorScheme.surfaceContainerHigh) {
             Text(

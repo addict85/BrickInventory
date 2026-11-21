@@ -10,18 +10,18 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Die zwei Zeilen der Finanztabelle zeigen dasselbe.
+ * The two rows of the finance table show the same thing.
  *
- * Gegenprobe: in partRows() `acq?.purchasePrice ?:
- * p.purchasePrice` durch `p.purchasePrice` ersetzt → rot „beide Aufrufstellen
- * reichen den Kaufpreis durch“ (150.0 statt 120.0).
+ * Counter-check: in partRows() `acq?.purchasePrice ?:
+ * p.purchasePrice` replaced with `p.purchasePrice` → red “both call sites
+ * pass the purchase price through” (150.0 instead of 120.0).
  */
 class FinanceRowsEqualTest {
 
     @Test
     fun `both call sites pass the purchase price through`() {
-        // Die Erfassung geht vor dem Eintrag: Bei mehreren Kaeufen hat jede Zeile
-        // ihren eigenen Kaufpreis, genau wie bei den Sets.
+        // The entry takes priority over the item: with several purchases, every row has
+        // its own purchase price, exactly as with the sets.
         val kaeufe = listOf(ValuationPurchaseView(id = 1, purchasePrice = Geld.aus(120.0)),
                             ValuationPurchaseView(id = 2, purchasePrice = Geld.aus(80.0)))
         val teil = ManualPartView(id = 1, partNumber = "3001", purchasePrice = Geld.aus(150.0), acquisitions = kaeufe)

@@ -5,11 +5,11 @@ import ch.brickinventoryapp.model.domain.Zustand
 import ch.brickinventoryapp.model.file.FileRef
 
 /**
- * Was das Set-Detail auslöst. Der Bildschirm kennt nur diese Schnittstelle;
- * so lässt er sich mit einem festen Zustand zeigen, ohne Hilt und Server.
+ * What the set detail triggers. The screen knows only this interface;
+ * that way it can be shown with a fixed state, without Hilt and server.
  */
 interface SetDetailAktionen {
-    /** Alles neu holen; geladen wird beim Erzeugen, nicht vom Bildschirm. */
+    /** Fetch everything anew; loading happens on creation, not from the screen. */
     fun refresh()
     fun setPriceAlert(setNumber: String, richtung: Alarmrichtung, roh: String, zustand: Zustand)
     fun changeQuantityUm(setNumber: String, schritt: Int)

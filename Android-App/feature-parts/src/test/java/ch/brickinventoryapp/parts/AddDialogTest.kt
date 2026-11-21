@@ -33,15 +33,15 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.shadows.ShadowDialog
 
 /**
- * Teil und Minifigur erfassen: Eine unvollständige Eingabe schliesst den Dialog nicht, das
- * Feld sagt, was fehlt; erst eine gültige Erfassung geht hinaus. Ein ausgefüllter Dialog
- * schliesst weder durch Danebentippen noch durch Zurück ohne Rückfrage (AddDialog).
+ * Entering a part and a minifigure: an incomplete input does not close the dialog, the
+ * field says what is missing; only a valid entry goes out. A filled-in dialog
+ * closes neither by tapping beside it nor by back without a confirmation prompt (AddDialog).
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   teil-erfassen-schliesst-still  Hinzufügen ruft wieder submit() und onDismiss() → rot „ohne Teilenummer …“
- *   figur-erfassen-schliesst-still dasselbe im Figuren-Dialog → rot „ohne Figurnummer …“
- *   erfassen-verwirft-ohne-frage   Zurück schliesst auch Ausgefülltes sofort → rot „Zurueck fragt …“
- *   erfassen-daneben-schliesst     addClosable lässt Danebentippen immer zu → rot „daneben tippen …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   teil-erfassen-schliesst-still  "Hinzufügen" calls submit() and onDismiss() again → red “without a part number …”
+ *   figur-erfassen-schliesst-still the same in the figures dialog → red “without a figure number …”
+ *   erfassen-verwirft-ohne-frage   back also closes filled-in input right away → red “back asks …”
+ *   erfassen-daneben-schliesst     addClosable always allows tapping beside it → red “tapping beside it …”
  */
 @RunWith(RobolectricTestRunner::class)
 class AddDialogTest {
@@ -82,7 +82,7 @@ class AddDialogTest {
         compose.waitForIdle()
     }
 
-    /** Zurück, wie es das System an das oberste Dialogfenster gibt. */
+    /** Back, as the system gives it to the topmost dialog window. */
     @Suppress("DEPRECATION")
     private fun zurueck() {
         compose.runOnUiThread { ShadowDialog.getLatestDialog().onBackPressed() }

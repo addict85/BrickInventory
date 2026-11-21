@@ -8,27 +8,27 @@ import kotlin.math.abs
 import kotlin.math.floor
 
 /**
- * Beim Zoomen bleibt der Punkt zwischen den Fingern stehen.
+ * While zooming, the point between the fingers stays fixed.
  *
- * Gerechnet wird an einem Modell der Seitenliste: gleich hohe Seiten, fester
- * Rand und Abstand, so wie PdfPages sie legt. Vor und nach dem Schritt wird
- * bestimmt, welche Stelle welcher Seite unter dem Anker liegt.
+ * Computed on a model of the page list: pages of equal height, a fixed
+ * margin and spacing, exactly as PdfPages lays them out. Before and after the step,
+ * it is determined which spot of which page lies under the anchor.
  *
- * Gegenproben (am 27.10. mit kotlinc gemessen):
- *   A  zoomZielY bekommt anchorY = 0 statt des Fingerpunkts (das alte Verhalten:
- *      die Oberkante bleibt stehen) → rot: „bleibt stehen", „Geste aus kleinen
- *      Schritten", „Herauszoomen"
- *   B  zoomZielX rechnet ohne Rand (rand = 0) → rot: „waagerecht"
- *   C  die Rueckwaertssuche in zoomZielY entfernt → rot: „bleibt stehen",
- *      „Geste aus kleinen Schritten", „Herauszoomen"
+ * Counter-checks (measured 27.10. with kotlinc):
+ *   A  zoomZielY gets anchorY = 0 instead of the finger point (the old behavior:
+ *      the top edge stays fixed) → red: "stays fixed", "gesture of small
+ *      steps", "zooming out"
+ *   B  zoomZielX computes without the margin (rand = 0) → red: "horizontal"
+ *   C  the backward search in zoomZielY removed → red: "stays fixed",
+ *      "gesture of small steps", "zooming out"
  */
 class PdfZoomAnchorTest {
 
     private val edge = 16
     private val abstand = 16
-    private val baseHeight = 1400f      // Seitenhoehe bei 1x
+    private val baseHeight = 1400f      // page height at 1x
 
-    /** Die Liste bei Zoom [z], erste Seite [erste] um [versatz] nach oben gerollt. */
+    /** The list at zoom [z], first page [erste] scrolled up by [versatz]. */
     private inner class Liste(val z: Float, val erste: Int, val versatz: Int) {
         val h get() = baseHeight * z
         val schritt get() = h + abstand
@@ -37,7 +37,7 @@ class PdfZoomAnchorTest {
             PagesSituation(i, (edge - versatz + (i - erste) * schritt).toInt(), h.toInt())
         }
 
-        /** Seite und Anteil (0..1) unter der Sichthoehe [y]. */
+        /** Page and fraction (0..1) under viewport height [y]. */
         fun place(y: Float): Pair<Int, Float> {
             val inhalt = y + erste * schritt + versatz - edge
             val seite = floor(inhalt / schritt).toInt()
@@ -68,8 +68,8 @@ class PdfZoomAnchorTest {
 
     @Test
     fun `a gesture of many small steps does not drift`() {
-        // So kommt eine Zwei-Finger-Geste an: ein Faktor je Bild. Jeder
-        // Rundungsfehler bliebe stehen und summierte sich.
+        // This is how a two-finger gesture arrives: one factor per frame. Every
+        // rounding error would stay fixed and accumulate.
         val y = 1400f
         var liste = Liste(1f, 7, 500)
         val start = liste.place(y)
@@ -80,8 +80,8 @@ class PdfZoomAnchorTest {
 
     @Test
     fun `when zooming out the list starts with an earlier page`() {
-        // Anker knapp unter der Oberkante: Die Seite darunter rueckt nach unten,
-        // und die vorige Seite muss oben ins Bild.
+        // Anchor just below the top edge: the page beneath moves down,
+        // and the previous page has to come into view at the top.
         val vorher = Liste(3f, 5, 100)
         val y = 400f
         val after = vorher.zoom(0.5f, y)
@@ -99,10 +99,10 @@ class PdfZoomAnchorTest {
 
     @Test
     fun `horizontally the point stays put, even from 1x`() {
-        val breite = 1048f                  // Seitenbreite bei 1x, ohne Rand
+        val breite = 1048f                  // page width at 1x, without the margin
         var z = 1f
         var scroll = 0
-        val x = 900f                        // rechts im Bild
+        val x = 900f                        // right in view
         val share = { (scroll + x - edge) / (breite * z) }
         val start = share()
         repeat(20) { scroll = zoomZielX(scroll, x, edge.toFloat(), 1.08f); z *= 1.08f }

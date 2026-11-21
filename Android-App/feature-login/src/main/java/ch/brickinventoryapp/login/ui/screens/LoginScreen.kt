@@ -41,10 +41,10 @@ import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.Lesebreite
 
 /**
- * Anmelden, Konto anlegen, Link zum Zurücksetzen anfordern — wie die Webapp. Drei
- * Formulare in einem Bildschirm, damit der Zurück-Knopf „zurück zur Anmeldung“
- * heisst. Das neue Passwort setzt die Weboberfläche: Den Link abzufangen bräuchte
- * einen Intent-Filter auf eine Adresse, die jeder selbst einstellt.
+ * Sign in, create an account, request a reset link — like the web app. Three
+ * forms in one screen, so that the back button means "back to sign-in".
+ * The web UI sets the new password: intercepting the link would need
+ * an intent filter on an address that everyone sets themselves.
  */
 @Composable
 fun LoginScreen(
@@ -64,44 +64,44 @@ fun LoginScreen(
     onChangeServer: () -> Unit,
     vollerZugriff: Boolean = false,
     onVollerZugriff: (Boolean) -> Unit = {},
-    /** null: kein Passkey-Knopf (etwa in Vorschau und Test). */
+    /** null: no passkey button (for instance in preview and test). */
     onPasskey: (() -> Unit)? = null,
     passkeyStattCode: Boolean = false,
     onPasskeyStattCode: (String, String) -> Unit = { _, _ -> },
-    /** Nach einem QR-Scan: der Code, den man im Browser eintippt. */
+    /** After a QR scan: the code one types into the browser. */
     qrBestaetigung: String? = null,
 ) {
     var username by rememberSaveable { mutableStateOf("") }
-    // remember, nicht rememberSaveable: Gesicherter Zustand landet im Bundle und bei
-    // Prozesstod auf der Platte (ActivityManager) — kein Ort für Passwörter und Codes.
+    // remember, not rememberSaveable: saved state ends up in the bundle and on a
+    // process death on disk (ActivityManager) — no place for passwords and codes.
     var password by remember { mutableStateOf("") }
     var code     by remember { mutableStateOf("") }
     val focusMgr = LocalFocusManager.current
-    // Ein untergeschobener Tipp meldet hier an oder bestätigt einen Passkey. Den
-    // Sichtschutz für ein aufgedecktes Passwort bringt das PasswordField selbst mit.
+    // A planted tap can sign in here or confirm a passkey. The
+    // visual protection for a revealed password is brought along by the PasswordField itself.
     Ueberdeckungsschutz()
 
-    // Passwort, Code und Adresse lernt die Tastatur nicht mit.
+    // The keyboard does not learn password, code or address.
     KeyboardWithoutLearn {
     val kopf: @Composable ColumnScope.() -> Unit = {
-            // Derselbe Kopf wie beim Einrichten, das direkt davor kommt.
+            // The same header as during setup, which comes right before this.
             BrandsHeader()
             Spacer(Modifier.height(Abstaende.mittel))
 
-            // Der Chip wechselt den Server: TalkBack nennt das samt Adresse (die Fläche fasst
-            // die Beschreibung mit ihrer Rolle „Schaltfläche“ zusammen). Die Adresse bricht
-            // um statt gekürzt zu werden: Genau sie prüft man vor dem Anmelden.
+            // The chip switches the server: TalkBack names that along with the address (the surface
+            // combines the description with its role „Schaltfläche“). The address wraps
+            // instead of being truncated: it is exactly what one checks before signing in.
             val changeServer = stringResource(R.string.login_server_aendern, serverUrl)
             Surface(
                 onClick = onChangeServer,
-                // Surface(onClick) setzt keine Rolle: TalkBack hörte sonst nur die Adresse.
+                // Surface(onClick) sets no role: TalkBack would otherwise only read the address.
                 modifier = Modifier.semantics {
                     role = Role.Button
                     contentDescription = changeServer
                 },
                 shape = Formen.chip,
                 color = MaterialTheme.colorScheme.surface,
-                // outline: Der Rand ist die einzige Grenze des Chips und braucht 3:1.
+                // outline: the border is the chip's only boundary and needs 3:1.
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
             ) {
                 Row(Modifier.heightIn(min = 32.dp).padding(horizontal = Abstaende.klein, vertical = Abstaende.tiny),
@@ -148,9 +148,9 @@ fun LoginScreen(
                 }
             }
     }
-    // Rollbar und mittig, solange es passt: Mit Tastatur oder grosser Schrift läge der
-    // Hauptknopf sonst unerreichbar unter dem Rand. Im Querformat Marke und Formular
-    // nebeneinander wie beim Einrichten, sonst lag „Registrieren“ unter dem Falz.
+    // Scrollable and centered as long as it fits: with a keyboard or large font, the
+    // main button would otherwise sit unreachably below the fold. In landscape, brand and form
+    // sit side by side as during setup, otherwise „Registrieren“ was below the fold.
     BoxWithConstraints(Modifier.fillMaxSize().outsideTheSystemBars()) {
         val hoehe = maxHeight
         if (maxWidth > hoehe && maxWidth >= ACROSS_TWO_COLUMN) {
@@ -185,9 +185,9 @@ fun LoginScreen(
 }
 
 /**
- * Welches Konto auf welchem Server der Code anmeldet, bevor die App den Zugang
- * übernimmt: Ein untergeschobener Code meldete sonst still ins Konto eines anderen
- * an, und alles Erfasste landete dort. Wegtippen heisst Nein.
+ * Which account on which server the code signs in to, before the app
+ * takes over the access: a planted code would otherwise silently sign in to someone
+ * else's account, and everything entered would end up there. Tapping away means no.
  */
 @Composable
 internal fun QrAccountQuestion(konto: QrAccount, onQrAccount: (uebernehmen: Boolean) -> Unit) {
@@ -210,13 +210,13 @@ internal fun QrAccountQuestion(konto: QrAccount, onQrAccount: (uebernehmen: Bool
     )
 }
 
-/** Ab dieser Breite im Querformat stehen Marke und Formular nebeneinander (wie SetupScreen). */
+/** From this width on, in landscape, brand and form sit side by side (like SetupScreen). */
 private val ACROSS_TWO_COLUMN = 840.dp
 
 /**
- * Eine stehende Meldung im Formular — Fehler rot, Bestätigung ruhig. Eine Fassung
- * für Anmelden, Registrieren und Vergessen, damit Abstand und Randform überall
- * gleich bleiben.
+ * A persistent message in the form — error red, confirmation calm. One version
+ * for sign-in, register and forgot, so that spacing and border shape stay the
+ * same everywhere.
  */
 @Composable
 internal fun FormMessage(text: String, fehler: Boolean) {
@@ -238,7 +238,7 @@ internal fun FormMessage(text: String, fehler: Boolean) {
             )
             Text(
                 text,
-                // Angesagt: Nach „Anmelden“ hörte eine blinde Person sonst nichts.
+                // Announced: after „Anmelden“ a blind person otherwise heard nothing.
                 modifier = Modifier.announce(),
                 color = if (fehler) MaterialTheme.colorScheme.onErrorContainer
                         else MaterialTheme.colorScheme.onSecondaryContainer,
@@ -248,7 +248,7 @@ internal fun FormMessage(text: String, fehler: Boolean) {
     }
 }
 
-/** Ein Knopf, der laedt: Kringel statt Beschriftung, solange etwas laeuft. */
+/** A button that loads: a spinner instead of a label while something is running. */
 @Composable
 internal fun LoadButton(text: String, laeuft: Boolean, aktiv: Boolean, fehlt: String? = null, onClick: () -> Unit) {
     // Ein gesperrter Hauptknopf sagt, was fehlt: Blass allein liess raten, warum.

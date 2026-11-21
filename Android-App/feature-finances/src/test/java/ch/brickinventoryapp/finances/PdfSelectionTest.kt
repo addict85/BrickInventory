@@ -7,11 +7,11 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Die Route des PDF-Betrachters trägt nur einen Schlüssel; Adresse samt Ticket und
- * Titel liegen in der PdfSelection und kommen dort unverändert zurück.
+ * The PDF viewer's route carries only one key; the address along with its ticket and
+ * title live in the PdfSelection and come back from there unchanged.
  *
- * Gegenprobe (gegenproben/pdf-auswahl-vergisst.patch): hole() liefert immer null →
- * rot „Adresse und Titel kommen unveraendert zurueck“.
+ * Counter-check (gegenproben/pdf-auswahl-vergisst.patch): hole() always returns null →
+ * red “address and title come back unchanged”.
  */
 class PdfSelectionTest {
 

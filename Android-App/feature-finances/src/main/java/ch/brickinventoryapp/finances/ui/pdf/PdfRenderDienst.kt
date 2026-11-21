@@ -33,10 +33,10 @@ private const val DIMENSIONS = IBinder.FIRST_CALL_TRANSACTION + 2
 private const val MISSING = -1
 
 /**
- * PDFs kommen inhaltlich von Dritten, pdfium ist nativer Code. Gerendert wird darum in
- * einem isolierten Prozess (Manifest: isolatedProcess) ohne Berechtigungen, Dateien,
- * Token und Ablageschlüssel. Er bekommt den Deskriptor nur lesend und schreibt Pixel in
- * einen Speicher, dessen Grösse der Hauptprozess festlegt; Objekte gibt er keine zurück.
+ * PDFs come in content from third parties, pdfium is native code. Rendering therefore happens in
+ * an isolated process (manifest: isolatedProcess) without permissions, files,
+ * tokens or storage keys. It gets the descriptor read-only and writes pixels into
+ * a buffer whose size the main process sets; it returns no objects.
  */
 internal class PdfRenderDienst : Service() {
     override fun onBind(intent: Intent?): IBinder = Renderer()
@@ -46,7 +46,7 @@ internal class PdfRenderDienst : Service() {
             if (code != PAGE_COUNT && code != PAGE && code != DIMENSIONS) return super.onTransact(code, data, reply, flags)
             data.enforceInterface(INTERFACE)
             val antwort = checkNotNull(reply)
-            // PdfRenderer ist nicht thread-safe; Binder-Fäden kommen gleichzeitig.
+            // PdfRenderer is not thread-safe; binder threads arrive concurrently.
             synchronized(this) {
                 val pfd = data.readFileDescriptor()
                 val ergebnis = fangeAusserAbbruch {
@@ -70,7 +70,7 @@ internal class PdfRenderDienst : Service() {
             return reader.openPage(index).use { intArrayOf(it.width, it.height) }
         }
 
-        /** Rendert in die Masse des Hauptprozesses und kopiert die Pixel in dessen Speicher. */
+        /** Renders at the main process's dimensions and copies the pixels into its buffer. */
         private fun seite(reader: PdfRenderer, data: Parcel): IntArray? {
             val index = data.readInt()
             val w = data.readInt()
@@ -97,27 +97,27 @@ internal class PdfRenderDienst : Service() {
 }
 
 /**
- * Baut die Seite im Hauptprozess aus dem geteilten Speicher: Masse und Format stammen
- * von hier, aus dem Renderer kommen nur Pixel. Null, wenn der Puffer nicht genau passt.
+ * Builds the page in the main process from the shared memory: dimensions and format come
+ * from here, only pixels come from the renderer. Null if the buffer does not fit exactly.
  */
 internal fun bitmapFromBuffer(puffer: ByteBuffer, dimensions: PagesDimensions): Bitmap? {
     if (puffer.capacity() != dimensions.bytes) return null
     return createBitmap(dimensions.breite, dimensions.hoehe).also { it.copyPixelsFromBuffer(puffer) }
 }
 
-/** Die Seite der App: bindet den Dienst einmal und reicht Deskriptoren hinüber. */
+/** The app's side: binds the service once and hands descriptors across. */
 @Singleton
 internal class PdfRenderConnection @Inject constructor(@param:ApplicationContext private val ctx: Context) {
     private val lock = Mutex()
     @Volatile private var binder: IBinder? = null
 
-    /** Seitenzahl; wirft, wenn das PDF nicht lesbar ist oder die Zahl nicht stimmen kann (der Lader lädt dann neu). */
+    /** Page count; throws if the PDF is not readable or the number cannot be right (the loader then reloads). */
     suspend fun seitenzahl(quelle: PdfQuelle): Int =
         call(PAGE_COUNT, quelle, {}, ::zahlen)?.singleOrNull()?.let(::checkPageCount) ?: throw IOException("PDF nicht lesbar")
 
     /**
-     * Eine Seite in der Breite [widthPx]; null, wenn sie sich nicht rendern lässt. Der
-     * Renderer nennt erst die Seitenkanten, dann füllt er einen Speicher fester Grösse.
+     * A page at width [widthPx]; null if it cannot be rendered. The
+     * renderer first states the page edges, then fills a buffer of fixed size.
      */
     suspend fun seite(quelle: PdfQuelle, index: Int, widthPx: Int): Bitmap? = fangeAusserAbbruch {
         val kanten = call(DIMENSIONS, quelle, { writeInt(index) }, ::zahlen)?.takeIf { it.size == 2 } ?: return null
@@ -136,7 +136,7 @@ internal class PdfRenderConnection @Inject constructor(@param:ApplicationContext
         }
     }.getOrNull()
 
-    /** Die Antwort des Renderers: Anzahl, dann so viele Zahlen; höchstens zwei, sonst gilt sie nicht. */
+    /** The renderer's answer: a count, then that many numbers; at most two, otherwise it does not count. */
     private fun zahlen(r: Parcel): IntArray? {
         val n = r.readInt()
         if (n !in 0..2) return null
@@ -145,7 +145,7 @@ internal class PdfRenderConnection @Inject constructor(@param:ApplicationContext
 
     private suspend fun <T> call(code: Int, quelle: PdfQuelle, arguments: Parcel.() -> Unit, lies: (Parcel) -> T): T =
         lock.withLock {
-            // Ein abgestürzter Renderer (etwa an einem bösartigen PDF) wird einmal neu gebunden.
+            // A crashed renderer (say, from a malicious PDF) is rebound once.
             try {
                 send(connected(), code, quelle, arguments, lies)
             } catch (_: DeadObjectException) {
@@ -176,7 +176,7 @@ internal class PdfRenderConnection @Inject constructor(@param:ApplicationContext
     private suspend fun connect(): IBinder = suspendCancellableCoroutine { continuation ->
         val connection = object : ServiceConnection {
             override fun onServiceConnected(name: ComponentName?, service: IBinder) {
-                // Nach einem Absturz verbindet das System von selbst neu.
+                // After a crash the system reconnects on its own.
                 if (continuation.isActive) continuation.resume(service) else binder = service
             }
             override fun onServiceDisconnected(name: ComponentName?) { binder = null }

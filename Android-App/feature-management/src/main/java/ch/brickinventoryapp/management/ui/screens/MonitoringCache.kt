@@ -33,7 +33,7 @@ import ch.brickinventoryapp.ui.components.SelectionField
 import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.shared.ui.ConditionToggle
 
-/** Was der Cache-Abschnitt auslöst; MonitoringRoute verdrahtet die ViewModels. */
+/** What the cache section triggers; MonitoringRoute wires up the ViewModels. */
 class CacheEvents(
     val defaultState: (Zustand) -> Unit,
     val clearStore: () -> Unit,
@@ -47,14 +47,14 @@ class CacheEvents(
 @Composable
 internal fun CacheAndLimitsSection(
     monState: MonitoringUiState,
-    /** Die Netzerlaubnisse fürs Vorwärmen (WLAN, mobil, Roaming), Geräte-Einstellungen. */
+    /** The network permissions for pre-warming (Wi-Fi, mobile, roaming), device settings. */
     networks: Map<VorwaermNetwork, Boolean>,
-    /** Das wirksame Design, wenn der Server noch keine Vorgabe nannte. */
+    /** The effective theme when the server has not named a default yet. */
     effectiveDesign: Design,
     storeBytes: Long,
     events: CacheEvents,
 ) {
-    // Derselbe Abstand und Rand wie zwischen den übrigen Karten der Seite.
+    // The same spacing and border as between the page's other cards.
     Column(verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
         CacheCard(monState, networks, storeBytes, events)
         RenderingCard(monState.defaultDesign ?: effectiveDesign, events.design)
@@ -62,7 +62,7 @@ internal fun CacheAndLimitsSection(
     }
 }
 
-/** Preis-Cache: Zahlen, Vorgaben, Vorschau-Ablage, Netze, Dauer und Leeren. */
+/** Price cache: numbers, defaults, preview store, networks, duration and clearing. */
 @Composable
 private fun CacheCard(
     monState: MonitoringUiState,
@@ -76,8 +76,8 @@ private fun CacheCard(
     val cacheTtl   = monState.cacheTtl
     val defaultCondition = monState.defaultState
 
-    // Bedienzustand: was gerade bearbeitet und halb eingetippt ist. Bleibt hier
-    // und speicherbar — das ueberlebt auch den Prozesstod, ein ViewModel nicht.
+    // Editing state: what is currently being edited and half-typed. Stays here
+    // and saveable — that survives a process death too, a ViewModel does not.
     var editingTtl by rememberSaveable { mutableStateOf(false) }
     var ttlInput   by rememberSaveable { mutableStateOf("24") }
     LaunchedEffect(cacheTtl, editingTtl) {
@@ -94,22 +94,22 @@ private fun CacheCard(
             // Default condition (Neu/Gebraucht)
             DefaultStateRow(defaultCondition, events.defaultState)
 
-            // Die vier Blöcke stehen untereinander in der Column: In einer Row teilten sie
-            // sich die Breite, die FlowRows brachen jeden Chip um, und es entstanden grosse
-            // leere Abstände.
+            // The four blocks stack in the Column: in a Row they shared
+            // the width, the FlowRows wrapped every chip, and large empty
+            // gaps appeared.
 
-            // ── Vorschau-Ablage ──
+            // ── Preview store ──
             //
-            // Sie liegt unter filesDir und wird von Android nicht geräumt; deshalb muss man
-            // sie hier sehen und leeren können. `remember`, nicht `rememberSaveable`: Die Zahl
-            // ist eine Messung der Platte und stünde nach einem Prozesstod falsch da
-            // (ScreenStateTest, Sorte „gemessen“).
+            // It lives under filesDir and is not cleared by Android; that is why one must
+            // be able to see and clear it here. `remember`, not `rememberSaveable`: the number
+            // is a measurement of the disk and would be wrong after a process death
+            // (ScreenStateTest, kind "gemessen").
             PreviewStoreRow(storeBytes, events.clearStore)
 
-            // ── In welchen Netzen darf vorgewärmt werden ──
+            // ── On which networks pre-warming is allowed ──
             //
-            // Drei unabhängige Schalter, je einer für eine Lage; die Begründung steht an den
-            // Schlüsseln in DevicesStore (VORWAERMEN_*).
+            // Three independent switches, one per situation; the reasoning stands at the
+            // keys in DevicesStore (VORWAERMEN_*).
             VorwaermNetworkChoice(networks, events.netz)
 
             // Cache TTL
@@ -125,10 +125,10 @@ private fun CacheCard(
                 },
             )
 
-            // ── Leeren ──
+            // ── Clearing ──
             //
-            // Mit Rückfrage: Jeder Neuaufbau kostet Anfragen aus dem gemeinsamen
-            // Tageskontingent; ein Fehlgriff nimmt allen anderen Kontingent weg.
+            // With a confirmation prompt: every rebuild costs requests from the shared
+            // daily quota; a mistake takes quota away from everyone else.
             CacheClearButtons(
                 onPrices = { clearEverything = false; showClearQuestion = true },
                 onEverything = { clearEverything = true; showClearQuestion = true },
@@ -149,16 +149,16 @@ private fun CacheCard(
 }
 
 /**
- * Das Design, das für alle gilt, die keines gewählt haben — eine eigene Karte: Im
- * Preisspeicher stand es zwischen Netzen und Cache-Dauer, wo es niemand sucht.
- * loadSettings() danach zieht das wirksame Design neu.
+ * The theme that applies to everyone who has not chosen one — a card of its own: in
+ * the price cache it stood between networks and cache duration, where nobody looks for it.
+ * loadSettings() afterward pulls the effective theme anew.
  */
 @Composable
 private fun RenderingCard(gewaehlt: Design, onWahl: (Design) -> Unit) {
     AppKarte {
         Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) {
             SectionTitle(stringResource(R.string.monitoring_darstellung_vorgabe))
-            // Eine Wahl aus sechs: ein Feld mit Menü wie in den Einstellungen.
+            // A choice of six: a field with a menu, as in the settings.
             SelectionField(
                 beschriftung = stringResource(R.string.monitoring_theme),
                 modifier = Modifier.fillMaxWidth(),
@@ -170,7 +170,7 @@ private fun RenderingCard(gewaehlt: Design, onWahl: (Design) -> Unit) {
     }
 }
 
-/** Wie viel im Cache liegt: Preise, davon veraltet, Teilelisten, Katalog. */
+/** How much is in the cache: prices, how many stale, parts lists, catalog. */
 @Composable
 private fun CacheNumbers(cs: CacheMetricsView) {
     Row(Modifier.fillMaxWidth(), Arrangement.SpaceAround) {
@@ -181,11 +181,11 @@ private fun CacheNumbers(cs: CacheMetricsView) {
     }
 }
 
-/** Der Zustand, mit dem neue Erfassungen beginnen (Neu oder Gebraucht). */
+/** The condition new entries start with (new or used). */
 @Composable
 private fun DefaultStateRow(defaultCondition: Zustand, onSelect: (Zustand) -> Unit) {
-    // Beschriftung über der Wahl: Neben ihr blieb der Wahl so wenig Breite, dass
-    // „Gebraucht“ im Wort umbrach.
+    // Label above the choice: next to it, the choice had so little width left that
+    // „Gebraucht“ wrapped mid-word.
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
         Text(stringResource(R.string.monitoring_default_condition),
             style = MaterialTheme.typography.bodyMedium,
@@ -194,7 +194,7 @@ private fun DefaultStateRow(defaultCondition: Zustand, onSelect: (Zustand) -> Un
     }
 }
 
-/** Belegung der Vorschau-Ablage in MB und der Knopf, sie zu leeren. */
+/** The preview store's usage in MB and the button to clear it. */
 @Composable
 private fun PreviewStoreRow(storeBytes: Long, clearOn: () -> Unit) {
     Row(
@@ -214,9 +214,9 @@ private fun PreviewStoreRow(storeBytes: Long, clearOn: () -> Unit) {
 }
 
 /**
- * Je Netzlage ein Schalter, ob dort vorgewärmt werden darf, und der Hinweis zum gemessenen
- * WLAN. Schalter statt Chips: Drei ungewählte Chips sahen aus wie drei Knöpfe, ob ein
- * Netz erlaubt ist, sah man nicht.
+ * One switch per network situation, whether pre-warming is allowed there, and the note about the measured
+ * Wi-Fi. Switches instead of chips: three unselected chips looked like three buttons, and whether a
+ * network was allowed could not be seen.
  */
 @Composable
 private fun VorwaermNetworkChoice(networks: Map<VorwaermNetwork, Boolean>, onNetwork: (VorwaermNetwork, Boolean) -> Unit) {
@@ -238,15 +238,15 @@ private fun VorwaermNetworkChoice(networks: Map<VorwaermNetwork, Boolean>, onNet
             Switch(checked = erlaubt, onCheckedChange = null)
         }
     }
-    // Ein gemessenes WLAN — der Hotspot eines anderen Telefons —
-    // zaehlt als Mobilfunk. Das steht hier, weil es sonst wie ein
-    // kaputter Schalter aussieht: „Ich bin doch im WLAN."
+    // A measured Wi-Fi — another phone's hotspot —
+    // counts as mobile data. This is stated here because otherwise it
+    // looks like a broken switch: "But I'm on Wi-Fi."
     Text(stringResource(R.string.monitoring_vorwaermen_hinweis),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
-/** Die beiden Leeren-Knöpfe; sie öffnen nur die Rückfrage. */
+/** The two clear buttons; they only open the confirmation prompt. */
 @Composable
 private fun CacheClearButtons(onPrices: () -> Unit, onEverything: () -> Unit) {
     Row(
@@ -268,7 +268,7 @@ private fun CacheClearButtons(onPrices: () -> Unit, onEverything: () -> Unit) {
     }
 }
 
-/** Cache-Dauer in Stunden: angezeigt oder, nach „Bearbeiten“, als Eingabefeld. */
+/** Cache duration in hours: shown, or, after „Bearbeiten“, as an input field. */
 @Composable
 private fun CacheDurationRow(
     dauer: String,
@@ -326,10 +326,10 @@ private fun CacheDurationRow(
     }
 }
 
-/** Rückfrage vor dem Leeren: Jeder Neuaufbau kostet Anfragen aus dem gemeinsamen Tageskontingent. */
+/** Confirmation prompt before clearing: every rebuild costs requests from the shared daily quota. */
 @Composable
 private fun CacheClearQuestion(alles: Boolean, onSchliessen: () -> Unit, clearOn: () -> Unit) {
-    // Die gemeinsame Rückfrage: Sie nennt ihren Titel als Überschrift und Fenstername.
+    // The shared confirmation prompt: it names its title as the heading and window name.
     Prompt(
         titel = stringResource(if (alles) R.string.monitoring_cache_clear_all else R.string.monitoring_cache_clear_prices),
         text = stringResource(R.string.monitoring_cache_clear_hint),

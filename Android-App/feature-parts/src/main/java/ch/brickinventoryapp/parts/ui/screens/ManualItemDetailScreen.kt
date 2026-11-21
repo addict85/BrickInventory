@@ -53,9 +53,9 @@ import ch.brickinventoryapp.shared.ui.SectionCard
 import ch.brickinventoryapp.shared.ui.WertKacheln
 
 /**
- * Detailansicht eines manuell erfassten Teils / einer Minifigur — als ganzer Screen wie bei
- * den Sets, weil der Inhalt (Bild, Mengenwahl, Kaufpreise und Marktpreise je Zustand,
- * Preisverlauf, Löschen) für einen AlertDialog zu lang ist.
+ * Detail view of a manually entered part / minifigure — as a whole screen, like for
+ * the sets, because the content (image, quantity choice, purchase and market prices per
+ * condition, price history, delete) is too long for an AlertDialog.
  */
 @Composable
 fun ManualItemDetailRoute(
@@ -70,11 +70,11 @@ fun ManualItemDetailRoute(
     onBack: () -> Unit,
     onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit,
     onFarbeGeaendert: (neueFarbe: Int) -> Unit = {},
-    /** Bietet die Liste dahinter „Rückgängig“ an? Dann merkt Löschen nur vor. */
+    /** Does the list behind it offer „Rückgängig“? Then deleting is only marked pending. */
     rueckgaengig: Boolean = false,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    // Nur die Liste des Eintrags beobachten: Sie lädt beim Beobachten, die andere bliebe ungenutzt.
+    // Observe only the entry's list: it loads when observed, the other one would stay unused.
     val teileZustand = if (type == Postenart.FIG) PartsUiState() else teile.teileState.collectAsStateWithLifecycle().value
     val minifigsState = if (type == Postenart.FIG) figuren.minifigsState.collectAsStateWithLifecycle().value else MinifigsUiState()
     val manDetailState by remember(type, id, colorId) { vm.purchasesOf(type, id, colorId) }.collectAsStateWithLifecycle()
@@ -87,14 +87,14 @@ fun ManualItemDetailRoute(
     )
 }
 
-/** Was die Detailansicht eines manuellen Eintrags zeigt. */
+/** What a manual entry's detail view shows. */
 internal data class EinzelstueckZustand(
     val state: AppUiState,
     val teile: PartsUiState,
     val figuren: MinifigsUiState,
     val manDetailState: ManualItemDetailUiState,
     val lagerZustand: LagerUiState,
-    /** Bietet die Liste dahinter „Rückgängig“ an? Dann merkt Löschen nur vor. */
+    /** Does the list behind it offer „Rückgängig“? Then deleting is only marked pending. */
     val rueckgaengig: Boolean = false,
 )
 
@@ -103,23 +103,23 @@ internal data class EinzelstueckZustand(
 internal fun ManualItemDetailScreen(
     zustand: EinzelstueckZustand,
     kaeufe: KaeufeAktionen,
-    /** Die Zeile des Eintrags und das Ändern, Löschen, Umfärben. */
+    /** The entry's row and changing, deleting, recoloring. */
     teile: TeileAktionen,
     figuren: FigurenAktionen,
     type: Postenart,
     id: String,            // partNumber / figNumber
     colorId: Int = OHNE_FARBE,
-    /** Aus der Navigation — bis die Bewertung geladen ist, steht er in der Leiste. */
+    /** From the navigation — it stands in the bar until the valuation is loaded. */
     fallbackTitle: String,
     imageLoader: ImageLoader,
     onBack: () -> Unit,
     onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit,
     /**
-     * Die Farbe wurde geändert — der Screen muss mit der neuen Farbe neu geöffnet
-     * werden: Sie ist Teil der Kennung (Route
-     * manual_detail/{type}/{id}/{colorId}/{title}) und der Suche unten (`it.colorId ==
-     * colorId`); sonst stünde er leer da, obwohl die Änderung geklappt hat. Vorgabe
-     * leer, weil eine Figur keine Farbe hat.
+     * The color was changed — the screen must be reopened with the new color:
+     * it is part of the identity (route
+     * manual_detail/{type}/{id}/{colorId}/{title}) and of the search below (`it.colorId ==
+     * colorId`); otherwise it would stand empty even though the change succeeded. Default
+     * empty, because a figure has no color.
      */
     onFarbeGeaendert: (neueFarbe: Int) -> Unit = {},
 ) {
@@ -133,9 +133,9 @@ internal fun ManualItemDetailScreen(
     val isFig = type == Postenart.FIG
     val currency = state.currency
 
-    // Name und Bild kommen aus derselben Liste wie im Reiter (/parts/manual bzw.
-    // /minifigs/manual); sie, die Farbauswahl und die Käufe laden die ViewModels beim
-    // Beobachten, auch nach einem Tiefenlink oder Prozessneustart.
+    // Name and image come from the same list as in the tab (/parts/manual or
+    // /minifigs/manual); it, the color choice and the purchases are loaded by the ViewModels when
+    // observed, also after a deep link or a process restart.
 
     val fig  = if (isFig) minifigsState.manualFigs?.find { it.figNumber == id } else null
     val part = if (!isFig) teileZustand.manualParts?.find {
@@ -153,7 +153,7 @@ internal fun ManualItemDetailScreen(
     val accent = LocalAkzentflaechen.current
     Scaffold(
         topBar = {
-            // Derselbe Kopf wie jedes Detail (DetailTopAppBar).
+            // The same header as every detail (DetailTopAppBar).
             DetailTopAppBar(
                 titel = title,
                 onZurueck = onBack,
@@ -180,7 +180,7 @@ internal fun ManualItemDetailScreen(
             contentPadding = PaddingValues(bottom = Abstaende.veryLarge),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            // ── Kopf: Bild und Kennzahlen, derselbe wie beim Teil aus einem Set ──
+            // ── Header: image and key figures, the same as for a part from a set ──
             item {
                 val labelNumber = stringResource(
                     if (isFig) R.string.detail_fig_number else R.string.detail_part_number)
@@ -195,9 +195,9 @@ internal fun ManualItemDetailScreen(
                     Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.mittel))
             }
 
-            // ── Wert-Kacheln wie im Set-Detail, in jedem Design ───────────────
+            // ── Value tiles like in the set detail, in every theme ───────────────
             item {
-                // Dieselben Wörter wie im Set-Detail: ein Gerüst, ein Text für „kein Preis“.
+                // The same words as in the set detail: one scaffold, one text for „kein Preis“.
                 WertKacheln(
                     markt = (fig?.avgPrice ?: part?.avgPrice)?.let { fmtMoney(it, currency) }
                         ?: stringResource(R.string.detail_price_none_yet),
@@ -208,12 +208,12 @@ internal fun ManualItemDetailScreen(
                 )
             }
 
-            // ── Details: Menge und Kaufpreise ──────────────────────────────────
+            // ── Details: quantity and purchase prices ──────────────────────────────────
             item {
                 SectionCard(title = stringResource(R.string.detail_section_item)) {
-                    // Menge folgt der Summe der Erfassungen, sobald es welche
-                    // gibt — nach dem Löschen einer Erfassung stimmt der Zähler
-                    // damit ohne eigenes Nachhalten.
+                    // Quantity follows the sum of the entries, as soon as there are
+                    // any — after deleting an entry the counter is correct this
+                    // way without keeping its own count.
                     val acqTotal = if (manDetailState.acquisitions.isNotEmpty())
                         manDetailState.acquisitions.sumOf { it.quantity } else quantity
                     var qty by remember(acqTotal) { mutableIntStateOf(acqTotal) }
@@ -223,10 +223,10 @@ internal fun ManualItemDetailScreen(
                         onFewer = {
                             if (qty > 1) {
                                 qty--
-                                // owner: Besitzer der KARTE. Im Haushalt zeigt
-                                // der manuelle Bereich die Eintraege aller
-                                // Konten; ohne die Angabe schreibt der Server
-                                // in die Zeile des Aufrufers.
+                                // owner: owner of the CARD. In the household, the
+                                // manual section shows the entries of all
+                                // accounts; without this value the server writes
+                                // into the caller's row.
                                 if (isFig) figuren.updateMinifig(id, qty, fig?.unitPrice?.asDouble(), fig?.blFigNumber, owner = fig?.userId)
                                 else teile.updatePart(id, colorId, qty, part?.unitPrice?.asDouble(), part?.condition, owner = part?.userId)
                             }
@@ -238,10 +238,10 @@ internal fun ManualItemDetailScreen(
                         },
                     )
 
-                    // ── Farbe (nur Teile) — änderbar ──
+                    // ── Color (parts only) — editable ──
                     //
-                    // Für den Fall, dass die Farbe falsch geladen wurde. Das Feld steht immer da,
-                    // auch ohne Farbnamen — gerade dieses Teil ist das, das korrigiert werden muss.
+                    // For the case that the color was loaded wrong. The field always stands there,
+                    // even without a color name — this particular part is exactly the one that needs correcting.
                     if (!isFig) {
                         HorizontalDivider(Modifier.padding(vertical = Abstaende.tiny),
                             color = MaterialTheme.colorScheme.outlineVariant)
@@ -269,11 +269,11 @@ internal fun ManualItemDetailScreen(
                     HorizontalDivider(Modifier.padding(vertical = Abstaende.tiny),
                         color = MaterialTheme.colorScheme.outlineVariant)
 
-                    // ── Lagerort ──
+                    // ── Storage location ──
                     //
-                    // Dasselbe Bedienelement und derselbe entprellte Weg wie im Set-Detail und im
-                    // Dialog der Teile aus Sets; nur die Adresse hängt am Typ, weil eine Figur
-                    // keine Farbe hat.
+                    // The same control and the same debounced path as in the set detail and the
+                    // dialog for parts from sets; only the address depends on the type, because a figure
+                    // has no color.
                     Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.hairline),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically) {
@@ -282,8 +282,8 @@ internal fun ManualItemDetailScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                         LocationField(
                             wert = (if (isFig) fig?.storage else part?.storage) ?: "",
-                            // Der VORRAT, nicht die belegten Orte: Auch ein
-                            // leeres Regal soll zur Wahl stehen.
+                            // The SUPPLY, not the occupied locations: even an
+                            // empty shelf should be offered as a choice.
                             stock = lagerZustand.eigene.map { it.name },
                             onValue = { kaeufe.setManualLocation(type, id, colorId, it) },
                             modifier = Modifier.padding(start = Abstaende.gross)
@@ -294,8 +294,8 @@ internal fun ManualItemDetailScreen(
                     HorizontalDivider(Modifier.padding(vertical = Abstaende.tiny),
                         color = MaterialTheme.colorScheme.outlineVariant)
 
-                    // Dieselbe Zusammenfassung wie im Set-Detail — eine Zeile je
-                    // Kaufpreis, Bearbeiten führt auf den Kaufpreis-Screen.
+                    // The same summary as in the set detail — one row per
+                    // purchase price, editing leads to the purchase-price screen.
                     AcquisitionSummarySection(
                         acquisitions = manDetailState.acquisitions,
                         currency = currency,
@@ -304,11 +304,11 @@ internal fun ManualItemDetailScreen(
                 }
             }
 
-            // ── Marktpreis je Zustand und Verlauf ──
+            // ── Market price per condition and history ──
             //
-            // Der Ladezustand gehört in die Bedingung: Sonst erschiene der Abschnitt erst mit
-            // der Antwort, und bis dahin wäre „lädt noch“ nicht von „keine Marktpreise“ zu
-            // unterscheiden — wie priceFetch in SetDetailSections.kt.
+            // The loading state belongs in the condition: otherwise the section would only appear with
+            // the answer, and until then "still loading" could not be told apart from
+            // "no market prices" — like priceFetch in SetDetailSections.kt.
             val history = manDetailState.priceHistory
             val byCond  = history?.byCondition
             val chart   = history?.chart
@@ -338,16 +338,16 @@ internal fun ManualItemDetailScreen(
                 onSchliessen = { showDeleteConfirm = false },
                 deleteOn = {
                     showDeleteConfirm = false
-                    // Auch hier der Besitzer der Karte — sonst loescht der
-                    // Server die Zeile des Aufrufers statt der angezeigten.
+                    // Here too the card's owner — otherwise the
+                    // server deletes the caller's row instead of the shown one.
                     when {
                         isFig && rueckgaengig -> figuren.minifigDeleteReserve(id, fig?.userId, title)
                         isFig -> figuren.deleteMinifig(id, fig?.userId)
                         rueckgaengig -> teile.partDeleteReserve(id, colorId, part?.userId, title)
                         else -> teile.deletePart(id, colorId, part?.userId)
                     }
-                    // Der Eintrag ist weg — dieser Screen zeigte sonst eine
-                    // Karteileiche mit Mengenwahl und Kaufpreisen.
+                    // The entry is gone — this screen would otherwise show a
+                    // dead card with a quantity choice and purchase prices.
                     onBack()
                 },
             )
@@ -364,7 +364,7 @@ internal fun ManualItemDetailScreen(
     }
 }
 
-/** Menge mit Minus und Plus; was eine Änderung schreibt, entscheidet der Aufrufer. */
+/** Quantity with minus and plus; what a change writes is decided by the caller. */
 @Composable
 private fun QuantitiesRow(menge: Int, onFewer: () -> Unit, onMore: () -> Unit) {
     Row(
@@ -389,10 +389,10 @@ private fun QuantitiesRow(menge: Int, onFewer: () -> Unit, onMore: () -> Unit) {
     }
 }
 
-/** Rückfrage vor dem Löschen des Teils bzw. der Figur. */
+/** Confirmation prompt before deleting the part or the figure. */
 @Composable
 private fun DeleteQuestion(isFig: Boolean, title: String, onSchliessen: () -> Unit, deleteOn: () -> Unit) {
-    // Die gemeinsame Rückfrage wie beim Set: Titel als Überschrift und Fenstername, Text rollbar.
+    // The shared confirmation prompt as for the set: the title as the heading and window name, scrollable text.
     Prompt(
         titel = stringResource(if (isFig) R.string.minifigs_delete_title else R.string.parts_delete_title),
         text = stringResource(if (isFig) R.string.minifigs_delete_text else R.string.parts_delete_text, title),

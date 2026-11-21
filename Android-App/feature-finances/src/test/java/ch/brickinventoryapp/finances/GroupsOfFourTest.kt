@@ -5,13 +5,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Gutscheinnummern stehen in gleichmässigen Vierergruppen, gleich wie der
- * Herausgeber sie getrennt hat.
+ * Voucher numbers stand in even groups of four, the same way the
+ * issuer separated them.
  *
- * Gegenprobe: `filter { it.isLetterOrDigit() }` entfernt →
- * rot in den beiden Tests mit Trennzeichen.
- * Gegenprobe: die Ausnahme für die Maske entfernt → rot
- * „the server's mask stays“ („3333“ statt „…3333“).
+ * Counter-check: `filter { it.isLetterOrDigit() }` removed →
+ * red in both tests with separators.
+ * Counter-check: the exception for the mask removed → red
+ * “the server's mask stays” (“3333” instead of “…3333”).
  */
 class GroupsOfFourTest {
 

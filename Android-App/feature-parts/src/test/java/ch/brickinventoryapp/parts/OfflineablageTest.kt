@@ -25,19 +25,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Die lokale Ablage: Was offline bearbeitet wird, steht sofort in der Liste;
- * eine Serverantwort ersetzt die Liste, und was noch wartet, liegt danach
- * wieder darüber. Je Konto getrennt.
+ * The local store: what is edited offline shows up in the list right away;
+ * a server answer replaces the list, and whatever is still pending afterward lies
+ * on top of it again. Separated per account.
  *
- * Gegenproben:
- *   A  in Offlineablage.uebernimm die Schleife über den Ausgang entfernt → rot
- *      „a server response swallows no pending change“ (Menge 1 statt 2)
- *   B  in Offlineablage.puffere `applyAn` weggelassen → rot „offline Bearbeitetes
- *      steht sofort in der Liste“
- *   C  in StorageInventory.cleanOther den Filter umgedreht → rot „ein anderes
- *      Konto sieht nichts davon“
- *   D  in VouchersRepository.withoutSecret `pin = null` entfernt → rot
- *      „a voucher lies without PIN and full number“
+ * Counter-checks:
+ *   A  in Offlineablage.uebernimm the loop over the outbox removed → red
+ *      “a server response swallows no pending change” (quantity 1 instead of 2)
+ *   B  in Offlineablage.puffere `applyAn` left out → red “what was edited offline
+ *      shows up in the list right away”
+ *   C  in StorageInventory.cleanOther the filter reversed → red “a different
+ *      account sees none of it”
+ *   D  in VouchersRepository.withoutSecret `pin = null` removed → red
+ *      “a voucher lies without PIN and full number”
  */
 class OfflineablageTest {
 
@@ -68,7 +68,7 @@ class OfflineablageTest {
     fun `a server response swallows no pending change`() = runBlocking {
         ablage.adopt(Slots.SETS, listOf(set("10001-1", 1)).map { it.alsAnsicht() })
         ablage.buffer(Editing.SetMenge("10001-1", 1))
-        // Der Server kennt die Änderung noch nicht und liefert den alten Stand.
+        // The server does not know about the change yet and delivers the old state.
         ablage.adopt(Slots.SETS, listOf(set("10001-1", 1).copy(name = "Neu vom Server")).map { it.alsAnsicht() })
         val s = ablage.lies(Slots.SETS)!!.liste.single()
         assertEquals(2, s.quantity)
@@ -98,7 +98,7 @@ class OfflineablageTest {
         konto = "b"
         assertEquals(emptyList<SetItem>(), ablage.lies(Slots.SETS)!!.liste)
         assertEquals(0, ablage.offene().first())
-        // Sobald Konto b etwas vom Server bekommt, ist die Liste von a weg.
+        // As soon as account b gets something from the server, a's list is gone.
         ablage.adopt(Slots.SETS, listOf(set("30001-1", 1)).map { it.alsAnsicht() })
         konto = "a"
         assertEquals(emptyList<SetItem>(), ablage.lies(Slots.SETS)!!.liste)

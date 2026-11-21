@@ -18,20 +18,20 @@ import ch.brickinventoryapp.data.DownloadFailed
 import ch.brickinventoryapp.model.ui.Fehlerklasse
 
 /**
- * Woher der Betrachter liest. Eine Schnittstelle, damit das ViewModel ohne Gerät
- * prüfbar ist; die Seiten rendert [oeffne], Drucken und Herunterladen lesen [inbox].
+ * Where the viewer reads from. An interface, so that the ViewModel can be
+ * checked without a device; [oeffne] renders the pages, printing and downloading read [inbox].
  */
 interface PdfQuelle : Closeable {
     fun oeffne(): ParcelFileDescriptor
     fun inbox(): InputStream
 }
 
-/** Wie weit der Betrachter ist; Fehler tragen den Text der Ursache oder einen [grund]. */
+/** How far the viewer has got; errors carry the cause's text or a [grund]. */
 sealed class PdfLoadState {
     data class Downloading(val pct: Int, val bytes: Long, val total: Long) : PdfLoadState()
     data object Rendering : PdfLoadState()
     data class Ready(val quelle: PdfQuelle, val pageCount: Int) : PdfLoadState()
-    /** [klasse] wählt Überschrift und Rat wie überall in der App; [message] ist höchstens ein Zusatz. */
+    /** [klasse] chooses heading and advice as everywhere in the app; [message] is at most an addition. */
     data class Error(
         val message: String?,
         val grund: PdfError = PdfError.UNBEKANNT,
@@ -39,7 +39,7 @@ sealed class PdfLoadState {
     ) : PdfLoadState()
 }
 
-/** Welche Art Fehler ein gescheiterter Download war; der Satz der Ausnahme ist Technik, keine Auskunft. */
+/** What kind of error a failed download was; the exception's sentence is technical, not informative. */
 internal fun pdfErrorClass(e: Throwable): Fehlerklasse {
     val status = (e as? DownloadFailed)?.status
     return when {
@@ -51,12 +51,12 @@ internal fun pdfErrorClass(e: Throwable): Fehlerklasse {
     }
 }
 
-/** Fehler ohne eigenen Text; den Satz wählt die Oberfläche in der Sprache der App. */
+/** Error without its own text; the UI chooses the sentence in the app's language. */
 enum class PdfError { FREMDER_HOST, DOWNLOAD, UNBEKANNT }
 
 /**
- * Hält die Quelle, solange der Betrachter steht. Kommt sie erst nach dem Verlassen an
- * (der Download lief noch), wird sie sofort geschlossen statt bis zum Prozessende zu leben.
+ * Holds the source for as long as the viewer stands. If it only arrives after leaving
+ * (the download was still running), it is closed right away instead of living until the process ends.
  */
 class PdfHolder : Closeable {
     private var quelle: PdfQuelle? = null
@@ -82,14 +82,14 @@ class PdfHolder : Closeable {
 }
 
 /**
- * Ein Bereich ohne Namen auf der Platte. PdfRenderer braucht einen Deskriptor, in dem er
- * springen kann; der Klartext soll aber nirgends liegen, wo ihn ein Dateizugriff findet.
- * Der Bereich vergeht mit [close] oder spätestens mit dem Prozess, auch nach einem Absturz.
- * Hinüber in den Renderer geht er nur unveränderlich: versiegelt bzw. nur lesend geöffnet.
+ * An area without a name on disk. PdfRenderer needs a descriptor it can seek
+ * within; but the plain text must never sit anywhere a file access could find it.
+ * The area dies with [close] or at the latest with the process, even after a crash.
+ * It only ever crosses over to the renderer immutable: sealed, or opened read-only.
  */
 internal class PdfArea(private val bereich: ParcelFileDescriptor, private val openInbox: () -> InputStream) : PdfQuelle {
-    // Ein eigener Deskriptor je Zugriff (PdfRenderer schliesst ihn mit); alle Duplikate
-    // teilen die Leseposition, also vorn beginnen wie bei einer frisch geöffneten Datei.
+    // A descriptor of its own per access (PdfRenderer closes it along); all duplicates
+    // share the read position, so they start at the front like a freshly opened file.
     override fun oeffne(): ParcelFileDescriptor =
         bereich.dup().also { Os.lseek(it.fileDescriptor, 0, OsConstants.SEEK_SET) }
 
@@ -97,7 +97,7 @@ internal class PdfArea(private val bereich: ParcelFileDescriptor, private val op
     override fun close() = bereich.close()
 
     companion object {
-        /** Ein Gutschein-PDF (Nummer und PIN): nur im memfd. */
+        /** A voucher PDF (number and PIN): only in the memfd. */
         fun speicher(inhalt: ByteArray): PdfArea {
             val bereich = memfd()
             fangeAusserAbbruch {
@@ -110,7 +110,7 @@ internal class PdfArea(private val bereich: ParcelFileDescriptor, private val op
             return PdfArea(bereich) { ByteArrayInputStream(inhalt) }
         }
 
-        /** Eine Anleitung aus der verschlüsselten Ablage; grosse nicht in den Arbeitsspeicher ([INSTRUCTION_IN_STORAGE_UNTIL]). */
+        /** An instruction manual from the encrypted store; large ones not into working memory ([INSTRUCTION_IN_STORAGE_UNTIL]). */
         fun anleitung(ablage: InstructionStore, datei: File, anzeige: File): PdfArea {
             val inStorage = datei.length() <= INSTRUCTION_IN_STORAGE_UNTIL
             val (schreiber, bereich) = if (inStorage) memfd().let { it to it } else nameless(anzeige)
@@ -141,7 +141,7 @@ internal class PdfArea(private val bereich: ParcelFileDescriptor, private val op
             }
         }
 
-        // Linux-Konstanten (uapi/linux/fcntl.h, memfd.h); OsConstants führt sie nicht öffentlich.
+        // Linux constants (uapi/linux/fcntl.h, memfd.h); OsConstants does not expose them publicly.
         private const val MFD_ALLOW_SEALING = 2
         private const val F_ADD_SEALS = 1033
         private const val F_SEAL_SEAL = 1
@@ -149,14 +149,14 @@ internal class PdfArea(private val bereich: ParcelFileDescriptor, private val op
         private const val F_SEAL_GROW = 4
         private const val F_SEAL_WRITE = 8
 
-        /** Nach dem Füllen: Niemand, auch nicht der Renderer mit seinem Duplikat, ändert den Inhalt noch. */
+        /** After filling: nobody, not even the renderer with its duplicate, changes the content anymore. */
         private fun seal(fd: FileDescriptor) {
             Os.fcntlInt(fd, F_ADD_SEALS, F_SEAL_WRITE or F_SEAL_SHRINK or F_SEAL_GROW or F_SEAL_SEAL)
         }
 
-        // Der Name ist gelöscht, bevor ein Byte Klartext hineinkommt; was bleibt, erreichen
-        // nur die offenen Deskriptoren. Ein Absturz dazwischen hinterlässt eine leere Datei.
-        // Zum Schreiben einer, der gleich wieder zugeht; an den Renderer geht nur der lesende.
+        // The name is deleted before a single byte of plain text goes in; what remains is reachable
+        // only through the open descriptors. A crash in between leaves behind an empty file.
+        // One descriptor is for writing and closes again right away; only the reading one goes to the renderer.
         private fun nameless(folder: File): Pair<ParcelFileDescriptor, ParcelFileDescriptor> {
             folder.mkdirs()
             val datei = File.createTempFile("anzeige", ".pdf", folder)

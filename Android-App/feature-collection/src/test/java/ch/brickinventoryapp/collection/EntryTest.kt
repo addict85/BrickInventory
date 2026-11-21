@@ -8,10 +8,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Die Prüfanzeige vor dem Erfassen: zeigen und wieder räumen.
+ * The check display before adding: show it and clear it again.
  *
- * Gegenprobe (am 27.10. gemessen, kotlinc gegen Erfassung.kt): fertig() ohne
- * Wirkung → rot: „done clears the display, even after a phase change".
+ * Counter-check (measured 27.10., kotlinc against Erfassung.kt): fertig() with no
+ * effect → red: „done clears the display, even after a phase change".
  */
 class EntryTest {
 

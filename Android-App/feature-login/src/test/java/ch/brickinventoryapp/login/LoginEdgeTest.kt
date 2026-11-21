@@ -53,18 +53,18 @@ import kotlin.math.roundToInt
 import java.util.Locale
 
 /**
- * Anmelden, Registrieren und Einrichten stehen ohne Gerüst auf dem ganzen Fenster
- * (enableEdgeToEdge). Ausgeführt mit gemeldeten Leisten (Status 24 dp, Gesten 48 dp)
+ * Sign-in, register and setup stand without a frame on the whole window
+ * (enableEdgeToEdge). Run with reported bars (status 24 dp, gestures 48 dp)
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   anmeldung-hinter-tastatur     imePadding() aus outsideTheSystemBars → rot „Registrieren bleibt …“
- *   anmeldung-unter-leisten       systemBarsPadding() aus outsideTheSystemBars → rot „Anmelden beginnt …“
- *   erweitert-ohne-zustand        Semantik am Knopf „Erweitert“ entfernt → rot „Erweitert meldet …“
- *   registrieren-tablet-einspaltig  zweispaltig erst ab 4000 dp → rot „auf dem Tablet …“
- *   weiter-wieder-tonal           „Weiter“ wieder FilledTonalButton → rot „Weiter hebt sich …“
- *   adresse-langes-etikett        setup_url_label wieder „Serveradresse der BrickInventory Manager Web-App“
- *                                 → rot „das Adressfeld traegt ein kurzes Etikett …“ (zwei Zeilen)
- *   anmelden-gesperrt-ohne-felder Knopf wieder nur mit Name und Passwort aktiv → rot „Anmelden bleibt tippbar …“
+ * Counter-checks (patches under gegenproben/, measured only in the CI — Robolectric):
+ *   anmeldung-hinter-tastatur     imePadding() removed from outsideTheSystemBars → red “Registrieren stays …”
+ *   anmeldung-unter-leisten       systemBarsPadding() removed from outsideTheSystemBars → red “Anmelden starts …”
+ *   erweitert-ohne-zustand        semantics removed from the „Erweitert“ button → red “Erweitert reports …”
+ *   registrieren-tablet-einspaltig  two columns only from 4000 dp → red “on the tablet …”
+ *   weiter-wieder-tonal           „Weiter“ back to FilledTonalButton → red “Weiter stands out …”
+ *   adresse-langes-etikett        setup_url_label back to „Serveradresse der BrickInventory Manager Web-App“
+ *                                 → red “the address field carries a short label …” (two lines)
+ *   anmelden-gesperrt-ohne-felder button active again only with a name and password → red “Anmelden stays tappable …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -102,7 +102,7 @@ class LoginEdgeTest {
         onRegistrieren = { _, _, _, _, _ -> }, onPasswortVergessen = {}, onChangeServer = {},
     )
 
-    /** Meldet Leisten und Tastatur wie ein Gerät, auf dem die App unter die Leisten zeichnet. */
+    /** Reports bars and keyboard like a device on which the app draws under the bars. */
     private fun bars(keyboard: Int = 0) {
         val b = WindowInsetsCompat.Builder()
             .setInsets(WindowInsetsCompat.Type.statusBars(), Insets.of(0, px(24).roundToInt(), 0, 0))
@@ -117,7 +117,7 @@ class LoginEdgeTest {
 
     private fun hoehe() = compose.onRoot().fetchSemanticsNode().boundsInRoot.height
 
-    /** Die Rollfläche ist der sichtbare Ausschnitt: Sie muss zwischen den Leisten liegen. */
+    /** The scroll area is the visible viewport: it must lie between the bars. */
     private fun checkBetweenBars(was: String) {
         val flaeche = compose.onNode(hasScrollAction()).fetchSemanticsNode().boundsInRoot
         assertTrue("$was beginnt unter der Statusleiste: ${flaeche.top / dichte} dp", flaeche.top >= px(24) - 1f)
@@ -153,7 +153,7 @@ class LoginEdgeTest {
         checkBetweenBars("Einrichten")
     }
 
-    /** Gesperrt und blass liess der Knopf raten, warum nichts geschieht; jetzt sagt es das Feld. */
+    /** Disabled and pale, the button left one guessing why nothing happens; now the field says so. */
     @Test
     fun `sign-in stays tappable and names at the field what is missing for empty fields`() {
         var logins = 0
@@ -178,7 +178,7 @@ class LoginEdgeTest {
         }
     }
 
-    /** Ein Satz als Etikett brach schon bei 100 % Schrift um und stand beim Tippen über dem Feld. */
+    /** A sentence as a label already wrapped at 100 % font and stood over the field while typing. */
     @Test
     fun `the address field carries a short label in one line, the explanation is below`() {
         zeige { SetupScreen(currentUrl = "", onSave = {}, entwicklung = false) }
@@ -236,7 +236,7 @@ class LoginEdgeTest {
         return (hell + 0.05) / (dunkel + 0.05)
     }
 
-    /** Die Fläche eines Knopfs, links innen in halber Höhe — dort steht keine Schrift. */
+    /** A button's surface, inside left at half height — no text stands there. */
     private fun flaeche(id: Int): Color {
         val bild = compose.onNode(hasText(text(id)) and hasClickAction()).captureToImage().toPixelMap()
         return bild[bild.width / 16, bild.height / 2]
@@ -244,7 +244,7 @@ class LoginEdgeTest {
 
     @Test
     fun `Next stands out in every design from the card and from the disabled state`() {
-        // Ein setContent je Test: Design und Adresse wechseln über den Zustand.
+        // One setContent per test: theme and address switch via the state.
         var fall by mutableStateOf(Triple("classic", false, "https://brick.fritz.box"))
         var karte = Color.Unspecified
         compose.setContent {

@@ -26,30 +26,30 @@ import ch.brickinventoryapp.finances.ui.FinanceRow
 import ch.brickinventoryapp.finances.ui.financeHeader
 
 /**
- * Die Finanzseite zeigt die Zahlenfelder des Servers (wert_gesamt,
- * pnl_prozent, kaufpreise_fremde_waehrung) und rechnet selbst gebildete
- * Geldsummen in BigDecimal. Die Textfelder im Testdatensatz tragen absichtlich
- * andere Werte: Liest die App sie, wird der Test rot.
+ * The finances page shows the server's number fields (wert_gesamt,
+ * pnl_prozent, kaufpreise_fremde_waehrung) and itself computes only
+ * money sums in BigDecimal. The text fields in the test data deliberately
+ * carry different values: if the app reads them, the test turns red.
  *
- * Gegenproben:
- *   A  in setRows() `wert = acq?.wertGesamt ?: s.wertGesamt` durch
- *      `acq?.totalAvg?.toDoubleOrNull()` ersetzt → rot „jede Erfassung zeigt
- *      ihren eigenen Wert und ihre G&V als Zahl“ (999.99 statt 240.67)
- *   B  in finanzSummen() die Rückfallsumme mit Double gebildet → rot „ohne
- *      grand_total addiert die App exakt“ (0.30000000000000004)
- *   C  in foreignPurchasePrices() ohne pnl nur valuation gelesen → rot „Teile und
- *      Figuren lesen dieselben Zahlenfelder“ (1 statt 4)
- *   D  in voucherSum() `distinct().singleOrNull()` durch `firstOrNull()` ersetzt
- *      → rot „Gutscheine in zwei Währungen ergeben keine Summe“
- *   E  Patch finanzen-kauf-je-stueck: kaufGesamt ohne Menge → rot „Kauf und Gewinn
- *      stehen auf der Grundlage des Marktwerts“ (400.0 statt 800.0); nur CI
- *   F  financeHeader nimmt purchase und grand_total statt der Basis (wie Patch
- *      finanzen-kopf-ohne-basis, dort gegen UisRulesTest gemessen) → rot
- *      „the header card computes on the server's basis“ (Einstand 1680 statt 1500);
- *      von Hand durchgespielt, kein Android-SDK in der Sitzung
- *   G  in financeHeader() die Rückkehr für ältere Server entfernt → rot „ohne
- *      Basisfelder bleibt die Kopfkarte wie bisher“ (baseKnown true); von Hand
- *      durchgespielt, nicht gemessen (kein Android-SDK in der Sitzung)
+ * Counter-checks:
+ *   A  in setRows() `wert = acq?.wertGesamt ?: s.wertGesamt` replaced
+ *      with `acq?.totalAvg?.toDoubleOrNull()` → red “every entry shows
+ *      its own value and its P&L as a number” (999.99 instead of 240.67)
+ *   B  in finanzSummen() the fallback sum formed with Double → red “without
+ *      grand_total the app adds exactly” (0.30000000000000004)
+ *   C  in foreignPurchasePrices() without pnl only valuation read → red “parts and
+ *      figures read the same number fields” (1 instead of 4)
+ *   D  in voucherSum() `distinct().singleOrNull()` replaced with `firstOrNull()`
+ *      → red “vouchers in two currencies give no sum”
+ *   E  patch finanzen-kauf-je-stueck: kaufGesamt without quantity → red “purchase and profit
+ *      stand on the same basis as the market value” (400.0 instead of 800.0); CI only
+ *   F  financeHeader takes purchase and grand_total instead of the basis (as with patch
+ *      finanzen-kopf-ohne-basis, measured there against UisRulesTest) → red
+ *      “the header card computes on the server's basis” (cost basis 1680 instead of 1500);
+ *      played through by hand, no Android SDK in the session
+ *   G  in financeHeader() the early return for older servers removed → red “without
+ *      basis fields the header card stays as before” (baseKnown true); played through
+ *      by hand, not measured (no Android SDK in the session)
  */
 class FinanceNumbersTest {
 
@@ -141,9 +141,9 @@ class FinanceNumbersTest {
     }
 
     /**
-     * Der Marktwert einer Zeile gilt für alle Stück (wert_gesamt), der Kaufpreis des
-     * Servers je Stück. Kauf und Gewinn der Karte stehen auf derselben Grundlage wie
-     * der Marktwert — sonst las sich Titanic ×2 (CHF 899.90, Kauf 400) wie +125 %.
+     * A row's market value applies to all copies (wert_gesamt), the server's purchase price
+     * to each copy. Purchase and profit of the card stand on the same basis as
+     * the market value — otherwise Titanic ×2 (CHF 899.90, purchase 400) would read as +125 %.
      */
     @Test
     fun `purchase and profit stand on the basis of the market value`() {
@@ -153,7 +153,7 @@ class FinanceNumbersTest {
         assertEquals(Geld.aus(99.9), zwei.gewinn)
         val eins = zwei.copy(menge = 1, wert = Geld.aus(0.3), kaufpreis = Geld.aus(0.1))
         assertEquals(Geld.aus(0.1), eins.kaufGesamt)
-        // BigDecimal: 0.3 - 0.1 ist als Double 0.19999999999999998.
+        // BigDecimal: 0.3 - 0.1 as a Double is 0.19999999999999998.
         assertEquals(Geld.aus(0.2), eins.gewinn)
         assertNull(zwei.copy(wert = null).gewinn)
         assertNull(zwei.copy(kaufpreis = null).kaufGesamt)
@@ -163,8 +163,8 @@ class FinanceNumbersTest {
         BrickJson.decodeFromString(PnlResponse.serializer(), """{"success": true, "totals": $totals}""").alsAnsicht()
 
     /**
-     * Einstand, Marktwert und G/V der Kopfkarte aus der Basis des Servers: Aus allen
-     * Positionen gerechnet stünde Einstand 1680 neben Marktwert 1712.40 und +14.2 %.
+     * Cost basis, market value and P&L of the header card from the server's basis: computed
+     * from all positions, cost basis would be 1680 next to market value 1712.40 and +14.2 %.
      */
     @Test
     fun `the header card computes on the server's basis`() {
@@ -195,7 +195,7 @@ class FinanceNumbersTest {
         assertEquals(false, k.baseRowVisible)
     }
 
-    /** Keine Position mit beiden Preisen: Summen aller Positionen, keine G/V gegen nichts. */
+    /** No position with both prices: sums of all positions, no P&L against nothing. */
     @Test
     fun `without a valued position there is no P and L`() {
         val k = financeHeader(bewertung, null, null, pnl("""{"purchase": "180.00",

@@ -40,80 +40,80 @@ import ch.brickinventoryapp.security.CertificateUnresolved
 import ch.brickinventoryapp.security.CertificateQuestion
 
 /**
- * Das Anmelde-ViewModel, ausgeführt gegen einen PfadServer ohne Netz und eine Ablage im
- * Speicher.
+ * The sign-in ViewModel, run against a PfadServer without network and a store in
+ * memory.
  *
- * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen AnmeldungViewModel.kt):
- *   A  in angemeldet() loginBegins() NACH dem Token → rot „eine Anmeldung
- *      leert die Filter, legt den Token ab …“ (die Reihenfolge wird mitgeschrieben)
- *   B  beim zweiten Faktor den Fehler auch ohne Code gezeigt → rot „beim ersten
- *      Mal fragt der zweite Faktor nur nach dem Code“
- *   C  in qrFailed() den Satz immer gesetzt → rot „ein zweiter QR-Anlauf
- *      nach gelungener Anmeldung meldet keinen Fehler“
- *   D  zuruecksetzen() leer → rot „after sign-out the form is empty“
- *   E  in setUpOne() den Aufruf sessionService.abmelden() entfernt → rot „ein anderer Server
- *      meldet vor der neuen Adresse ab“ (der QR-Weg meldet seit S2 erst nach dem Ja ab, siehe AC)
- *   F  sameOrigin() durch `!=` der rohen Texte ersetzt → rot „derselbe
- *      Server mit Schrägstrich meldet nicht ab“
- *   G  in saveServerUrl() die Prüfung adressfehler() entfernt → rot
- *      „eine http-Adresse wird nicht gespeichert“
- *   H  in loginWithQrToken() die Prüfung entfernt → rot „ein
- *      QR-Code mit http-Adresse …“ (Adresse gespeichert, qr-login gerufen)
- *   I  rememberPin() in loginWithQrToken() nach qrLogin() → rot „ein
- *      QR-Code mit Fingerabdruck pinnt vor der ersten Anfrage“ (Test seit O–Q
- *      umgeschrieben: vorgehalten statt gemerkt)
- *   O  in loginWithQrToken() wieder rememberPin() statt holdBefore() vor qrLogin() →
- *      rot „a failed QR code leaves no pin“ und „… haelt den
- *      Pin … vor“
- *   P  die Prüfung bisherigerPin() vor dem Start entfernt → rot „ein QR-Code
- *      mit anderem Schluessel ersetzt den Pin nie still“
- *   R  die Prüfung bestaetigtFingerabdruck() in loginWithQrToken()
- *      durch `pinSwitchInput == null` ersetzt (jede Eingabe genügt) → rot
- *      „a QR code with a different key never silently replaces the pin“ (falsch
- *      abgeschriebener Wert angenommen)
- *   Q  das finally mit forgetRetained() entfernt → rot „ein gescheiterter
- *      QR-Code hinterlaesst keinen Pin“ (Zeitüberschreitung, nichts vergessen)
- *   J  LoginRequest wieder mit festem neverExpires = true → rot
- *      „a token without expiry only via https“ (http-Teil)
- *   K  PasskeyAnmeldung mit mitToken = false → rot „mit Passkey
- *      anmelden legt den Token ab …“
- *   L  Abgebrochen wie NoPasskey mit Satz → rot „ein
- *      abgebrochener Passkey-Dialog …“
- *   M  SecondFactorRoutes im AccountRepository nicht gelesen → rot
- *      „der zweite Faktor nimmt den Passkey …“ (Knopf fehlt)
- *   N  passkeyStattCode() reicht den Passkey nicht an login() →
- *      rot „der zweite Faktor nimmt den Passkey …“ (kein passkey im Rumpf)
- *   S  in fetchPasskey() RpIdFinding.FOREIGN durchgelassen → rot
- *      „Optionen fuer eine fremde Domain …“ und „Optionen ohne rpId … zweiten Faktor“
- *   T  RpIdFinding.MISSING durchgelassen → rot „Optionen ohne rpId …“
- *   U  checkRpId() mit ignoreCase und Unterdomänen (`host.endsWith("." + rpId)`)
- *      → rot „Optionen fuer eine fremde Domain …“
- *   V  die Prüfung der Adresse nach dem Dialog entfernt → rot „wechselt die
- *      Adresse waehrend des Passkey-Dialogs …“
- *   W  FINGERPRINT_TYPE_IN = 16 → rot „ein QR-Code mit anderem Schluessel
- *      ersetzt den Pin nie still“ (16 Zeichen angenommen)
- *   X  mussAbtippen() ohne Pin wieder `false` (Stand davor: ein Tipp
- *      genügte beim ersten Einrichten) → rot „ein eigener Schluessel aus dem
- *      QR-Code gilt beim ersten Einrichten nur abgetippt“;
+ * Counter-checks (measured 28.10.2026, kotlinc against AnmeldungViewModel.kt):
+ *   A  in angemeldet() loginBegins() AFTER the token → red “a sign-in
+ *      clears the filters, stores the token …” (the order is recorded)
+ *   B  on the second factor the error shown even without a code → red “the
+ *      first time, the second factor only asks for the code”
+ *   C  in qrFailed() the sentence always set → red “a second QR attempt
+ *      after a successful sign-in reports no error”
+ *   D  zuruecksetzen() empty → red “after sign-out the form is empty”
+ *   E  in setUpOne() the call sessionService.abmelden() removed → red “a different server
+ *      signs out before the new address” (since S2 the QR path only signs out after the yes, see AC)
+ *   F  sameOrigin() replaced with `!=` of the raw texts → red “the
+ *      same server with a trailing slash does not sign out”
+ *   G  in saveServerUrl() the check adressfehler() removed → red
+ *      “an http address is not saved”
+ *   H  in loginWithQrToken() the check removed → red “a
+ *      QR code with an http address …” (address saved, qr-login called)
+ *   I  rememberPin() in loginWithQrToken() after qrLogin() → red “a
+ *      QR code with a fingerprint pins before the first request” (test rewritten
+ *      since O–Q: held, not remembered)
+ *   O  in loginWithQrToken() back to rememberPin() instead of holdBefore() before qrLogin() →
+ *      red “a failed QR code leaves no pin” and “… holds the
+ *      pin …”
+ *   P  the check bisherigerPin() before the start removed → red “a QR code
+ *      with a different key never silently replaces the pin”
+ *   R  the check bestaetigtFingerabdruck() in loginWithQrToken()
+ *      replaced with `pinSwitchInput == null` (any input is enough) → red
+ *      “a QR code with a different key never silently replaces the pin” (wrongly
+ *      typed-off value accepted)
+ *   Q  the finally with forgetRetained() removed → red “a failed
+ *      QR code leaves no pin behind” (timeout, nothing forgotten)
+ *   J  LoginRequest back to a fixed neverExpires = true → red
+ *      “a token without expiry only via https” (http part)
+ *   K  PasskeyAnmeldung with mitToken = false → red “signing in with a
+ *      passkey stores the token …”
+ *   L  cancelled treated as NoPasskey with a sentence → red “a
+ *      cancelled passkey dialog …”
+ *   M  SecondFactorRoutes not read in AccountRepository → red
+ *      “the second factor accepts the passkey …” (button missing)
+ *   N  passkeyStattCode() does not pass the passkey to login() →
+ *      red “the second factor accepts the passkey …” (no passkey in the body)
+ *   S  in fetchPasskey() RpIdFinding.FOREIGN let through → red
+ *      “options for a foreign domain …” and “options without an rpId … second factor”
+ *   T  RpIdFinding.MISSING let through → red “options without an rpId …”
+ *   U  checkRpId() with ignoreCase and subdomains (`host.endsWith("." + rpId)`)
+ *      → red “options for a foreign domain …”
+ *   V  the check on the address after the dialog removed → red “the
+ *      address changes during the passkey dialog …”
+ *   W  FINGERPRINT_TYPE_IN = 16 → red “a QR code with a different key
+ *      never silently replaces the pin” (16 characters accepted)
+ *   X  mussAbtippen() without a pin back to `false` (the state before: a tap
+ *      was enough on first setup) → red “a private key from the
+ *      QR code only counts, on first setup, once typed off”;
  *      gegenproben/qr-pin-ohne-abtippen.patch
- *   Y  in pairQr() die Frage nach dem Konto übergangen (immer Ja) →
- *      rot „eine QR-Anmeldung zeigt Konto und Server …“; gegenproben/qr-ohne-kontofrage.patch
- *   Z  beim Nein discardQr() nicht gerufen → rot „ein Nein zum gezeigten
- *      Konto …“; gegenproben/qr-nein-ohne-verwerfen.patch
- * Gegenproben zum Serverwechsel per QR (12.11.2026 angelegt; ohne Gradle nur in der CI messbar):
- *   AC loginWithQrToken() wieder mit setUpOne() vor dem Abruf (sofort abmelden) → rot
- *      „ein Nein zum Konto eines anderen Servers …“ und „… erst nach dem Ja …“;
+ *   Y  in pairQr() the question about the account skipped (always yes) →
+ *      red “a QR sign-in shows the account and server …”; gegenproben/qr-ohne-kontofrage.patch
+ *   Z  on a no, discardQr() not called → red “a no to the shown
+ *      account …”; gegenproben/qr-nein-ohne-verwerfen.patch
+ * Counter-checks for the server switch via QR (added 12.11.2026; measurable only in CI without Gradle):
+ *   AC loginWithQrToken() back to calling setUpOne() before the fetch (sign out right away) → red
+ *      “a no to a different server's account …” and “… only after the yes …”;
  *      gegenproben/qr-wechsel-meldet-sofort-ab.patch
- *   AD in qrFailed() ohne `!pairingWithSwitch` → rot „scheitert die Kopplung mit
- *      einem anderen Server …“ (Fehler verschluckt); gegenproben/qr-wechsel-fehler-verschluckt.patch
- *   AE in leavePreviousServer() ohne `kopplungsziel(null)` → rot „… erst nach dem Ja …“
- *      (abgemeldet, solange die Anfragen noch an den neuen Server gingen);
+ *   AD in qrFailed() without `!pairingWithSwitch` → red “if the pairing fails with
+ *      a different server …” (error swallowed); gegenproben/qr-wechsel-fehler-verschluckt.patch
+ *   AE in leavePreviousServer() without `kopplungsziel(null)` → red “… only after the yes …”
+ *      (signed out while requests were still going to the new server);
  *      gegenproben/qr-wechsel-abmelden-am-neuen.patch
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoginViewModelTest {
 
-    /** Schreibt mit, was in welcher Reihenfolge abgelegt wird. */
+    /** Records what is stored in which order. */
     private class Ablage(var url: String = "https://server") : Anmeldeablage {
         val protokoll = Collections.synchronizedList(mutableListOf<String>())
         override suspend fun serverUrlJetzt() = url
@@ -135,7 +135,7 @@ class LoginViewModelTest {
     private lateinit var ablage: Ablage
     private lateinit var frage: CertificateQuestion
 
-    /** Die Filterablage meldet ihr Leeren in dasselbe Protokoll; [roots] spielt die System-Wurzeln. */
+    /** The filter store reports its clearing into the same log; [roots] plays the system roots. */
     private fun vm(roots: Set<String> = emptySet()): AnmeldungViewModel {
         val viewStore = object : FilterStore by StorageStore() {
             override suspend fun everythingForgotten() { ablage.protokoll += "filter-leer" }
@@ -179,10 +179,10 @@ class LoginViewModelTest {
     }
 
     /**
-     * Ohne das Häkchen ein Token mit Scope "app": Das Kontorecht allein macht in
-     * der App keinen Verwalter, der Server wiese dessen Aufrufe mit 403 ab.
-     * Gegenprobe: in AnmeldungViewModel `r.data.verwalter`
-     * → `r.data.user?.isAdmin == true` → rot „Verwalterkonto ohne Häkchen …“.
+     * Without the checkbox, a token with scope "app": the account right alone does not make
+     * an admin in the app, the server would reject its calls with 403.
+     * Counter-check: in AnmeldungViewModel `r.data.verwalter`
+     * → `r.data.user?.isAdmin == true` → red “admin account without the checkbox …”.
      */
     @Test
     fun `admin account without the check mark signs in without admin rights`() {
@@ -241,7 +241,7 @@ class LoginViewModelTest {
         assertEquals(fp, ablage.pins["brick.example.org:443"])
     }
 
-    /** Der Handshake des ersten qr-login fragt nach dem Zertifikat und bricht ab (503 statt TLS). */
+    /** The first qr-login's handshake asks for the certificate and aborts (503 instead of TLS). */
     private fun firstContactOnFirstQrLogin() {
         paths.antworten["/api/v1/auth/qr-login"] = """{"success":true,"wartet":true,"abholung":"h","code":"123456","expires_in":300}"""
         paths.antworten["/api/v1/auth/qr-login/abholen"] = """{"success":true,"wartet":false,"token":"abc","user":{"id":1,"username":"marco"}}"""
@@ -314,18 +314,18 @@ class LoginViewModelTest {
         assertTrue(paths.requestsAn("qr-login").isEmpty())
         assertEquals(fpAlt, ablage.pins["brick.example.org:443"])
 
-        // Ein Tipp mit falsch abgeschriebenem Wert genügt ebenso wenig.
+        // A tap with a wrongly typed-off value is just as insufficient.
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp,
             pinSwitchInput = "09:09:09:09:09:09:09:09:09:09:09:09")
         assertEquals("t${R.string.setup_qr_pin_wechsel_abgelehnt}", vm.anmeldeState.value.anmeldung.errorMessage.text)
         assertTrue("Falsch abgeschrieben: nichts", paths.requestsAn("qr-login").isEmpty())
 
-        // 16 Zeichen (64 Bit) genügen nicht mehr.
+        // 16 characters (64 bits) are no longer enough.
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp,
             pinSwitchInput = "07:07:07:07:07:07:07:07")
         assertEquals("t${R.string.setup_qr_pin_wechsel_abgelehnt}", vm.anmeldeState.value.anmeldung.errorMessage.text)
 
-        // Die letzten 24 Hex-Zeichen des neuen Fingerabdrucks, wie aus der Webapp abgeschrieben.
+        // The last 24 hex characters of the new fingerprint, as typed off from the web app.
         vm.loginWithQrToken("https://brick.example.org/", "bim:x", fingerabdruck = fp,
             pinSwitchInput = "07:07:07:07:07:07:07:07:07:07:07:07")
         vm.decideQrAccount(true)
@@ -425,9 +425,9 @@ class LoginViewModelTest {
     }
 
     /**
-     * Früher meldete der Scan den bisherigen Server sofort ab; ein abgelehnter oder
-     * verfallener Code liess dann gar keine Anmeldung zurück. Jetzt koppelt die App
-     * nebenher und verlässt den bisherigen Server erst nach dem Ja zum Konto.
+     * Previously the scan signed out of the previous server right away; a rejected or
+     * expired code then left no sign-in at all. Now the app pairs
+     * alongside and leaves the previous server only after the yes to the account.
      */
     @Test
     fun `a QR code for a different server signs out only after the yes to the account`() {
@@ -518,7 +518,7 @@ class LoginViewModelTest {
         assertFalse(vm.anmeldeState.value.anmeldung.laeuft)
     }
 
-    /** Schreibt mit, welche Optionen ankamen, und antwortet mit [ergebnis]. */
+    /** Records which options arrived, and answers with [ergebnis]. */
     private class FakePasskey(val ergebnis: PasskeyResult) : PasskeyQuery {
         val optionen = mutableListOf<String>()
         override suspend fun fetch(optionsJson: String): PasskeyResult { optionen += optionsJson; return ergebnis }
@@ -572,7 +572,7 @@ class LoginViewModelTest {
         paths.codes["/api/v1/auth/passkey/anmelden/optionen"] = 503
         val fake = FakePasskey(passkeyResponse)
         vm.signInPasskey(fake)
-        // Der Satz des Servers, aus der Fehlerschicht wie beim Passwort.
+        // The server's sentence, from the error layer as with the password.
         assertTrue("Fehler des Servers", vm.anmeldeState.value.anmeldung.errorMessage.text == "Passkeys brauchen eine Domain")
         assertTrue("Ohne Optionen wird der Credential Manager nicht gefragt", fake.optionen.isEmpty())
     }
@@ -599,7 +599,7 @@ class LoginViewModelTest {
         assertFalse(vm.anmeldeState.value.passkeyStattCode)
     }
 
-    /** Optionen mit [rpId] (null: ohne Feld) für die Adresse https://brick.example.org. */
+    /** Options with [rpId] (null: without the field) for the address https://brick.example.org. */
     private fun foreignOptions(rpId: String?): FakePasskey {
         val feld = rpId?.let { ",\"rpId\":\"$it\"" } ?: ""
         paths.antworten["/api/v1/auth/passkey/anmelden/optionen"] = """{"success":true,"optionen":{"challenge":"ch-1"$feld}}"""

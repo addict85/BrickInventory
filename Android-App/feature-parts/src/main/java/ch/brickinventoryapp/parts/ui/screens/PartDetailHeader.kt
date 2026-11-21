@@ -25,9 +25,9 @@ import ch.brickinventoryapp.ui.theme.Formen
 import coil3.ImageLoader
 
 /**
- * Der Kopf jedes Teile- und Figurendetails, ob selbst erfasst oder aus einem Set: Bild zum
- * Vergrössern und die Kennzahlen als Chips. Darunter folgen nur die Abschnitte, die der
- * Eintrag hat; zwei eigene Bauformen liessen dasselbe Teil je nach Herkunft anders aussehen.
+ * The header of every part and figure detail, whether self-entered or from a set: an image to
+ * enlarge and the key figures as chips. Below it follow only the sections the
+ * entry has; two separate layouts would make the same part look different depending on origin.
  */
 @Composable
 internal fun PartDetailHeader(
@@ -66,5 +66,5 @@ internal fun PartDetailHeader(
     }
 }
 
-/** Höhe des Bilds im Kopf; im Blatt und auf der eigenen Seite dieselbe. */
+/** Height of the image in the header; the same in the sheet and on its own page. */
 internal val PART_IMAGE_HEIGHT = 200.dp

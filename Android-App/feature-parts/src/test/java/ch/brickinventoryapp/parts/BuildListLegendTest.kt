@@ -19,14 +19,14 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Die Bauliste mit eingetragenem Bestand: Über der Liste steht die Legende der Farben,
- * jede Zeile schreibt „Benötigt“ und „Vorhanden“ aus, und die Minifiguren stehen in
- * einer eigenen Gruppe am Ende statt unter „(Keine Farbe)“ zwischen den Teilen.
+ * The build list with the stock entered: above the list stands the color legend,
+ * every row spells out "Benötigt" and "Vorhanden", and the minifigures stand in
+ * their own group at the end instead of under "(Keine Farbe)" between the parts.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   bauliste-ohne-legende      die Legende fehlt → rot „ueber der Liste steht …“
- *   bauliste-pille-als-zeichen „Vorhanden“ wieder als „8/12“ → rot „ueber der Liste steht …“
- *   bauliste-figuren-gemischt  Figuren wieder nach Farbe gruppiert → rot „die Minifiguren …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   bauliste-ohne-legende      the legend is missing → red “above the list stands …”
+ *   bauliste-pille-als-zeichen "Vorhanden" back to "8/12" → red “above the list stands …”
+ *   bauliste-figuren-gemischt  figures grouped by color again → red “the minifigures …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH-w411dp-h2400dp-port-xxhdpi")

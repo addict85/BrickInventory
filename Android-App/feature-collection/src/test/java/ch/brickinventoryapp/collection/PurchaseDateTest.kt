@@ -27,12 +27,12 @@ import org.robolectric.annotation.Config
 import java.util.Locale
 
 /**
- * Das Kaufdatum in der Kaufpreis-Verwaltung: mit Etikett, in der Datumsform der
- * App-Sprache, als Knopf in voller Tippgrösse, der sagt, was er tut.
+ * The purchase date in purchase price management: with a label, in the date format of the
+ * app language, as a button in full tap size, that says what it does.
  *
- * Gegenprobe (gegenproben/kaufdatum-klein-ohne-etikett.patch, nur in der CI — Robolectric):
- *   ohne minimumInteractiveComponentSize und ohne onClickLabel → rot „das Kaufdatum ist ein
- *   beschrifteter Knopf …“
+ * Counter-check (gegenproben/kaufdatum-klein-ohne-etikett.patch, only in the CI — Robolectric):
+ *   without minimumInteractiveComponentSize and without onClickLabel → red “the purchase date is a
+ *   labelled button …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "en-rGB")
@@ -58,7 +58,7 @@ class PurchaseDateTest {
             }
         }
         compose.waitForIdle()
-        // Englisch mit Monatsnamen, nicht die feste deutsche Form mit Punkten.
+        // English with month names, not the fixed German form with dots.
         val button = compose.onNode(hasClickAction())
         compose.onNodeWithText("3 Sep 2026", useUnmergedTree = true).fetchSemanticsNode("Datum nicht in der Form der Sprache")
         compose.onNodeWithText(ctx.getString(R.string.acq_gekauft_am), useUnmergedTree = true).fetchSemanticsNode("Etikett fehlt")

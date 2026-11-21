@@ -1,4 +1,4 @@
-// Teile und Minifiguren, eigene Einträge und Teilelisten.
+// Parts and minifigures, manual entries and parts lists.
 plugins {
     alias(libs.plugins.brickinventory.android.feature)
 }
@@ -18,8 +18,8 @@ dependencies {
     implementation(project(":core-resources"))
 
     testImplementation(project(":core-testing"))
-    // Die Testserver antworten im Wire-Format.
+    // The test servers answer in the wire format.
     testImplementation(project(":core-contract"))
-    // Die Tests bauen Ablage und Bearbeitungen selbst.
+    // The tests build the store and edits themselves.
     testImplementation(project(":core-offline"))
 }

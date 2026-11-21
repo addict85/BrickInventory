@@ -14,9 +14,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 
-// rememberSaveable liegt im UNTERPAKET runtime.saveable — der Sammelimport
-// darueber deckt es nicht ab (Kotlin-Sternimporte gelten nicht fuer
-// Unterpakete). Genau daran ist Lauf 81 gescheitert.
+// rememberSaveable lives in the SUBPACKAGE runtime.saveable — the wildcard import
+// above it does not cover that (Kotlin star imports do not apply to
+// subpackages). That is exactly what tripped up round 81.
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,10 +39,10 @@ import ch.brickinventoryapp.shared.ui.LocationField
 import ch.brickinventoryapp.parts.ui.screens.PartDetailHeader
 
 /**
- * Detail für ein Teil / eine Figur aus einem Set, auf dem Telefon als Blatt von unten:
- * Bild mit Zoom und die Sets, die es verwenden, mit Link zum Set-Detail. Ein Blatt
- * statt eines Dialogs, weil Lagerort und Liste Platz brauchen und das Wischen nach
- * unten schliesst wie überall.
+ * Detail for a part / figure from a set, on the phone as a sheet from the bottom:
+ * an image with zoom and the sets that use it, with a link to the set detail. A sheet
+ * instead of a dialog, because storage location and list need room and swiping
+ * down closes it as everywhere else.
  */
 @Composable
 internal fun SetItemDetailDialog(
@@ -57,8 +57,8 @@ internal fun SetItemDetailDialog(
 }
 
 /**
- * Dasselbe Detail als rechte Hälfte neben der Liste (Tablet, Listen-Detail wie in
- * der Merkliste): Titel mit Schliessen-Knopf, darunter der Inhalt, rollbar.
+ * The same detail as the right half next to the list (tablet, list-detail as in
+ * the wishlist): title with a close button, the content below it, scrollable.
  */
 @Composable
 internal fun SetItemDetailArea(
@@ -84,21 +84,21 @@ private fun SetItemDetail(
     alsDialog: Boolean,
 ) {
     val farbe = farbTranslator()
-    // Die Auswahlliste gehört dem Besitzer des Teils; sie kommt mit dem Kopf (PartsViewModel).
+    // The selection list belongs to the part's owner; it comes with the header (PartsViewModel).
     if (!zustand.offen) return
 
-    // rememberSaveable, nicht remember: Der geöffnete Zoom ist eine Entscheidung des
-    // Nutzers und muss eine Drehung überstehen — wie an den übrigen Zoom-Stellen.
+    // rememberSaveable, not remember: the opened zoom is a decision of the
+    // user and must survive a rotation — as at the other zoom spots.
     var showZoom by rememberSaveable { mutableStateOf(false) }
-    // stringResource() geht nur ausserhalb des LazyColumn-Rumpfs — dort ist
-    // kein Composable-Kontext fuer jedes Element noetig, und einmal lesen
-    // reicht.
+    // stringResource() only works outside the LazyColumn's body — there
+    // no Composable context is needed for every item, and reading it once
+    // is enough.
     val openLabel = stringResource(R.string.setitem_open_set)
     val kopf = zustand.kopf
-    // Volle Aufloesung UEBER den Server-Proxy — bei Teilen und Figuren ist das
-    // ausdruecklich so entschieden (siehe resolveFullUrlViaProxy), damit kein
-    // Geraet am Server vorbei direkt mit dem CDN spricht. Genau dieselbe Wahl
-    // trifft der Dialog fuer manuell erfasste Teile.
+    // Full resolution VIA the server proxy — for parts and figures this is
+    // deliberately decided this way (see resolveFullUrlViaProxy), so that no
+    // device talks directly to the CDN past the server. The dialog for manually
+    // entered parts makes exactly the same choice.
     val bild = kopf?.let { resolveFullUrlViaProxy(serverUrl, it.imageLocal, it.imageUrl) }
 
     val titel: @Composable () -> Unit = {
@@ -122,8 +122,8 @@ private fun SetItemDetail(
                         color = MaterialTheme.colorScheme.error,
                     )
                     else -> {
-                        // Derselbe Kopf wie beim selbst erfassten Teil; nur die Abschnitte darunter
-                        // hängen an der Herkunft.
+                        // The same header as for a self-entered part; only the sections below it
+                        // depend on the origin.
                         val kategorie = categoryTranslator()
                         val chips = buildList {
                             add(stringResource(R.string.setitem_total_qty) to mengeAusSet(kopf?.totalQuantity ?: 0))
@@ -133,10 +133,10 @@ private fun SetItemDetail(
                         }
                         PartDetailHeader(bild, imageLoader, kopf?.name, chips, onZoom = { showZoom = true })
                         Spacer(Modifier.height(Abstaende.klein))
-                        // Nur für Teile (kopf.colorId ist bei Figuren null): Eine Minifigur
-                        // steckt in ihrem Set, dessen Ort im Set-Detail steht — ein zweiter
-                        // Ort könnte auseinanderlaufen. Bearbeitbar wie in der Webapp; das
-                        // Feld schreibt auf alle Zeilen dieses Teil-Farb-Paares.
+                        // Only for parts (kopf.colorId is null for figures): a minifigure
+                        // is stuck in its set, whose location stands in the set detail — a second
+                        // location could drift apart. Editable as in the web app; the
+                        // field writes to every row of this part-color pair.
                         val headerColor = kopf?.colorId
                         if (kopf != null && headerColor != null) {
                             Row(Modifier.fillMaxWidth().padding(vertical = Abstaende.hairline),
@@ -167,18 +167,18 @@ private fun SetItemDetail(
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         } else {
-                            // LazyColumn mit Hoehenbegrenzung: Ein Teil kann in
-                            // Dutzenden Sets stecken, und ein Dialog, der ueber
-                            // den Bildschirmrand hinauswaechst, laesst sich
-                            // nicht mehr schliessen.
+                            // LazyColumn with a height limit: a part can be
+                            // stuck in dozens of sets, and a dialog that grows
+                            // beyond the screen edge can no longer be
+                            // closed.
                             LazyColumn(Modifier.fillMaxWidth().heightIn(max = 220.dp)) {
                                 items(zustand.sets, key = { it.setNumber + "-" + it.ownerUserId }) { s ->
-                                    // ── Bild, Nummer, Bezeichnung, Menge ──
+                                    // ── Image, number, name, quantity ──
                                     //
-                                    // Erst das kleine Bild, dann Nummer, dann Name — wie im Reiter
-                                    // Finanzen. Dafür gibt es TabellenZeile; eine eigene Zeile
-                                    // hätte festen Eckenradius und keinen Rückfall auf die volle
-                                    // Auflösung ohne Vorschaubild.
+                                    // First the small image, then number, then name — as in the
+                                    // finances tab. TabellenZeile exists for that; a row of its
+                                    // own would have a fixed corner radius and no fallback to the full
+                                    // resolution without a thumbnail.
                                     val (bildUrl, onBildFehler) =
                                         rememberTileImageWithFallback(serverUrl, s.imageLocal, s.imageUrl)
                                     TabellenZeile(
@@ -188,14 +188,14 @@ private fun SetItemDetail(
                                         menge = s.quantity,
                                         imageLoader = imageLoader,
                                         onBildFehler = onBildFehler,
-                                        // onClickLabel sagt der Sprachausgabe, was das Antippen tut
-                                        // — ohne liest sie nur die Setnummer vor. In der Webapp
-                                        // steht derselbe Text als title-Attribut.
+                                        // onClickLabel tells the screen reader what tapping does
+                                        // — without it, it only reads out the set number. In the web app
+                                        // the same text is the title attribute.
                                         onClickLabel = openLabel,
                                         onClick = {
-                                            // Erst schliessen, dann oeffnen:
-                                            // Sonst laege der Dialog ueber dem
-                                            // Set-Detail.
+                                            // Close first, then open:
+                                            // otherwise the dialog would lie
+                                            // over the set detail.
                                             aktionen.closeSetItem()
                                             onOpenSet(s.setNumber)
                                         },
@@ -208,7 +208,7 @@ private fun SetItemDetail(
             }
     }
 
-    // Schliessen links wie in jedem Detailkopf (DetailTopAppBar), im Blatt wie neben der Liste.
+    // Close on the left as in every detail header (DetailTopAppBar), in the sheet as next to the list.
     val schliessen = { aktionen.closeSetItem() }
     if (alsDialog) {
         ModalBottomSheet(onDismissRequest = schliessen) {

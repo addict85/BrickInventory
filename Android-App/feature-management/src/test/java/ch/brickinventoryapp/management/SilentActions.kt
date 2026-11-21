@@ -3,7 +3,7 @@ package ch.brickinventoryapp.management
 import ch.brickinventoryapp.management.ui.viewmodel.Jobstart
 import ch.brickinventoryapp.management.ui.viewmodel.MonitoringActions
 
-/** Aktionen, die nichts tun; ein Test überschreibt nur, was er zählt. */
+/** Actions that do nothing; a test only overrides what it counts. */
 open class SilentActions : MonitoringActions {
     override fun refresh() = Unit
     override fun showQueue() = Unit

@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import ch.brickinventoryapp.ui.components.Sichtschutz
 import ch.brickinventoryapp.finances.ui.viewmodel.showsVouchers
 
-/** Ein Gutschein-PDF trägt Nummer und PIN: kein Bildschirmfoto, solange es angezeigt wird. */
+/** A voucher PDF carries number and PIN: no screenshot while it is being shown. */
 @Composable
 internal fun VoucherPdfProtection(pdfUrl: String) {
     if (showsVouchers(pdfUrl)) Sichtschutz()

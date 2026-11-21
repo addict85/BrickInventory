@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.login.ui.screens
 
 /*
- * Autofokus: CONTROL_AF_MODE_CONTINUOUS_PICTURE an Preview UND ImageAnalysis, weil
- * CameraX alle Use Cases zu einem Request zusammenführt; kein periodisches
- * startFocusAndMetering, das lässt den Fokus wandern. Beides prüft
- * CameraFocusConfigTest — bei Rot den Code richten, nicht den Test.
+ * Autofocus: CONTROL_AF_MODE_CONTINUOUS_PICTURE on both Preview AND ImageAnalysis, because
+ * CameraX merges all use cases into one request; no periodic
+ * startFocusAndMetering, which lets the focus drift. CameraFocusConfigTest checks
+ * both — on red, fix the code, not the test.
  */
 
 import ch.brickinventoryapp.ui.theme.Formen
@@ -60,9 +60,9 @@ import ch.brickinventoryapp.ui.screens.rememberCameraPermission
 import ch.brickinventoryapp.ui.screens.tippZumFokus
 
 /**
- * Rückfrage nach einem gescannten Code: Er kann von jedem stammen, darum nennt sie das
- * Ziel und lässt bei Bedarf den Fingerabdruck abtippen. [onUebernehmen] bekommt den
- * abgetippten Wert oder null, wenn nichts abzutippen war.
+ * Confirmation prompt for a scanned code: it can come from anyone, so it names the
+ * destination and lets the fingerprint be typed off if needed. [onUebernehmen] gets the
+ * typed-off value, or null if there was nothing to type off.
  */
 @Composable
 internal fun QrVorschlagDialog(
@@ -75,10 +75,10 @@ internal fun QrVorschlagDialog(
     onUebernehmen: (abgetippt: String?) -> Unit,
 ) {
     val qrLocked = NetworkPolicy.addressError(vorschlag.url, entwicklung) != null
-    // Ein Code mit anderem Schlüssel als dem bestätigten: wie „Zertifikat geändert“, mit beiden Werten.
+    // A code with a different key than the confirmed one: like "certificate changed", with both values.
     val bisher = remember(vorschlag) { bisherigerPin(vorschlag.url, vorschlag.fingerabdruck) }
     val abtippen = remember(vorschlag) { mussAbtippen(vorschlag.url, vorschlag.fingerabdruck) }
-    // Wie CertificateDialog: Ein Code kann von jedem stammen, also den neuen Wert abschreiben lassen.
+    // Like CertificateDialog: a code can come from anyone, so have the new value typed off.
     var eingabe by remember(vorschlag) { mutableStateOf("") }
     var finding by remember(vorschlag) { mutableStateOf<Transcript?>(null) }
     var targetConfirmed by remember(vorschlag) { mutableStateOf(false) }
@@ -87,15 +87,15 @@ internal fun QrVorschlagDialog(
         containerColor = fensterFlaeche(),
         onDismissRequest = onAbbrechen,
         modifier = Modifier.semantics { paneTitle = titel },
-        // Wie CertificateDialog: Daneben tippen verwirft nichts Abgetipptes, Zurück nur ein leeres Feld.
+        // Like CertificateDialog: tapping next to it discards nothing typed off, back only clears the field.
         properties = DialogProperties(dismissOnBackPress = eingabe.isEmpty(), dismissOnClickOutside = false),
         title = { Text(titel, Modifier.semantics { heading() }) },
         text = {
-            // Die Bestätigung schickt die Anmeldung an diesen Server: kein Tippen durch eine Überlagerung.
+            // The confirmation sends the sign-in to this server: no tap through an overlay.
             Ueberdeckungsschutz()
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                // Geparst statt roh: Ein Code wie `https://mein.server@fremd.example` oder mit
-                // Zeilenumbruch zeigte sonst einen Namen, der nicht das Ziel ist.
+                // Parsed instead of raw: a code like `https://mein.server@fremd.example` or with
+                // a line break would otherwise show a name that is not the destination.
                 val ansicht = remember(vorschlag) { NetworkPolicy.ansicht(vorschlag.url) }
                 val sofarHost = remember(vorschlag, currentUrl) { qrSwitchesServer(currentUrl, vorschlag.url) }
                 Text(stringResource(R.string.setup_qr_ziel))
@@ -123,14 +123,14 @@ internal fun QrVorschlagDialog(
                     Text(stringResource(R.string.zert_bisher), style = MaterialTheme.typography.labelMedium)
                     Text(fingerprintReadable(bisher), fontFamily = FontFamily.Monospace,
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    // Wie CertificateDialog: Den neuen Wert nennt der Code selbst, abgetippt
-                    // wird er aus der Webapp; hier steht nur sein Anfang.
+                    // Like CertificateDialog: the code itself names the new value, it is typed off
+                    // from the web app; only its start stands here.
                     Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
                     Text(fingerprintStart(fp), fontFamily = FontFamily.Monospace,
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 } else if (fp != null) {
-                    // Erstes Einrichten: Ohne Tippen gilt nur eine System-Wurzel; einen eigenen
-                    // Schlüssel könnte der Code eines Fremden genauso nennen.
+                    // First setup: without typing it off, only a system root applies; a code
+                    // from someone else could just as well name its own key.
                     Text(stringResource(if (abtippen) R.string.setup_qr_pin_abtippen else R.string.setup_qr_pin),
                         color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     Text(stringResource(R.string.zert_beginnt_mit), style = MaterialTheme.typography.labelMedium)
@@ -185,7 +185,7 @@ internal fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> U
     LaunchedEffect(Unit) {
         if (!cameraPermission.granted) cameraPermission.requests()
     }
-    // Das Bild zeigt einen Anmeldecode: In einer Aufnahme meldete er ein fremdes Gerät an.
+    // The image shows a sign-in code: in a photo it would sign in a foreign device.
     Sichtschutz()
 
     Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -198,8 +198,8 @@ internal fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> U
                         if (!frozen) { frozen = true; onResult(value) }
                     }
                 )
-                // Rahmen und Hinweis in der gemeinsamen Ueberlagerung — siehe
-                // KameraErlaubnis.kt. Eigen bleibt nur das Quadrat.
+                // Frame and hint in the shared overlay — see
+                // KameraErlaubnis.kt. Only the square stays its own.
                 CameraOverlay(
                     hinweis = if (frozen) stringResource(R.string.setup_qr_detected)
                               else stringResource(R.string.setup_qr_scan_hint),
@@ -215,7 +215,7 @@ internal fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> U
                 }
             }
             else -> {
-                // Eintippen heisst zurück zur Einrichtung: Dort steht das Adressfeld.
+                // Typing it in means back to setup: that is where the address field is.
                 CameraPermissionHint(stringResource(R.string.scanner_camera_zweck_qr),
                     stringResource(R.string.scanner_adresse_eintippen), onDismiss,
                     cameraPermission.permanentDenied) { cameraPermission.erlauben() }
@@ -229,9 +229,9 @@ internal fun QrSetupScannerScreen(onResult: (String) -> Unit, onDismiss: () -> U
     }
 }
 
-// ExperimentalGetImage gehört hierher: Das Einverständnis für imageProxy.image ist
-// diese Annotation; `@ExperimentalGetImage` an der lokalen Variablen wäre die
-// Markierung (Lint: UnsafeOptInUsageError).
+// ExperimentalGetImage belongs here: the consent for imageProxy.image is
+// this annotation; `@ExperimentalGetImage` on the local variable would be the
+// marker (Lint: UnsafeOptInUsageError).
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class, ExperimentalGetImage::class)
 @Composable
 internal fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
@@ -246,20 +246,20 @@ internal fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
         )
     }
 
-    // remember() räumt nicht auf (wie im Barcodescanner): Ohne dieses DisposableEffect
-    // überleben Analyse-Thread und ML-Kit-Client jeden Besuch des Setup-Screens. Der
-    // kontinuierliche Autofokus bleibt davon unberührt.
+    // remember() does not clean up (as in the barcode scanner): without this DisposableEffect
+    // the analysis thread and the ML Kit client would survive every visit to the setup screen. The
+    // continuous autofocus is unaffected by this.
     DisposableEffect(Unit) {
         onDispose {
-            try { scanner.close() } catch (_: Exception) { /* beim Verlassen schon geschlossen */ }
+            try { scanner.close() } catch (_: Exception) { /* already closed on leaving */ }
             executor.shutdown()
         }
     }
 
     val imageAnalyzer = remember {
-        // Aufbau samt AF-Modus: ui/screens/KameraAufbau.kt. 1280x720 statt 1920x1080 wie
-        // im Barcodescanner: Hier wird ein QR-Code mit grossen Modulen gelesen, und
-        // weniger Auflösung lässt Kamera und Vorschau mehr Rechenzeit.
+        // Setup including AF mode: ui/screens/KameraAufbau.kt. 1280x720 instead of 1920x1080 as
+        // in the barcode scanner: here a QR code with large modules is read, and
+        // less resolution leaves the camera and preview more compute time.
         imageAnalyse(1280, 720)
             .also { analysis ->
                 analysis.setAnalyzer(executor) { imageProxy ->
@@ -281,9 +281,9 @@ internal fun QrCameraPreview(frozen: Boolean, onQrFound: (String) -> Unit) {
     AndroidView(
         factory = { ctx ->
             val previewView = cameraPreview(ctx)
-            // Anbieter holen, Vorschau bauen, binden: KameraAufbau.kt. Kein
-            // atError: Ist die Kamera nicht verfügbar, bleibt die Vorschau
-            // bewusst leer — anders als im Scanner, der einen Hinweis zeigt.
+            // Fetch the provider, build the preview, bind it: KameraAufbau.kt. No
+            // atError: if the camera is not available, the preview deliberately
+            // stays empty — unlike in the scanner, which shows a hint.
             kameraBinden(
                 ctx = ctx,
                 previewView = previewView,

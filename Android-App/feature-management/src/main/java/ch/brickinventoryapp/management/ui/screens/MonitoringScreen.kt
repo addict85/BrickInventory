@@ -45,7 +45,7 @@ import ch.brickinventoryapp.ui.theme.centeredUntil
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.withFont
 
-/** Was die Verwaltungsseite zeigt; die Route sammelt es aus den Flüssen. */
+/** What the management page shows; the route collects it from the flows. */
 data class MonitoringState(
     val monState: MonitoringUiState,
     val hintergrund: BackgroundUiState,
@@ -56,13 +56,13 @@ data class MonitoringState(
 )
 
 /**
- * Die Verwaltungsseite am Navigationsziel. Die Abfrage alle fünf Sekunden läuft nur,
- * solange die Seite zu sehen ist (repeatOnLifecycle); alles andere lädt das ViewModel.
+ * The management page at the navigation destination. The query every five seconds only runs
+ * while the page is visible (repeatOnLifecycle); the ViewModel loads everything else.
  */
 @Composable
 internal fun MonitoringRoute(
     appTheme: Design,
-    /** Design oder Vorgabe-Zustand geändert: Die App lädt ihre Einstellungen nach. */
+    /** Theme or default state changed: the app reloads its settings. */
     onSettingsNew: () -> Unit,
     mon: MonitoringViewModel = hiltViewModel(),
     geraet: GeraeteEinstellungenViewModel = hiltViewModel(),
@@ -103,17 +103,17 @@ internal fun MonitoringRoute(
 @Composable
 fun MonitoringScreen(zustand: MonitoringState, aktionen: MonitoringActions, cacheEvents: CacheEvents) {
     val monState = zustand.monState
-    // Aufgeklappt gehört dem Menschen: rememberSaveable übersteht auch den Prozesstod.
+    // Expanded belongs to the person: rememberSaveable survives a process death too.
     var queueOpen by rememberSaveable { mutableStateOf(false) }
 
-    // Mittig in Formularbreite wie die Einstellungen: Auf dem Tablet zogen sich die Karten
-    // sonst über die ganze Breite, Knopf und Zustand eines Auftrags standen weit auseinander.
+    // Centered at form width like the settings: on the tablet the cards otherwise
+    // stretched across the whole width, and a job's button and state ended up far apart.
     LazyColumn(
         modifier = Modifier.fillMaxSize().centeredUntil(Lesebreite.formular),
             contentPadding = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.mittel),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Kein eigener Titel: Die Leiste darüber nennt die Seite schon (VerwaltungGraph).
+            // No title of its own: the bar above already names the page (VerwaltungGraph).
             item {
                 Row(Modifier.fillMaxWidth(), Arrangement.End, Alignment.CenterVertically) {
                     if (monState.aktualisiert) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
@@ -135,8 +135,8 @@ fun MonitoringScreen(zustand: MonitoringState, aktionen: MonitoringActions, cach
                     zustand.storeBytes, cacheEvents)
             }
 
-            // Keine eigene Rechteprüfung: Massgeblich ist der Server (sonst 403), eine
-            // dritte Stelle, die „ist das ein Verwalter“ entscheidet, wäre eine zweite Wahrheit.
+            // No rights check of its own: the server is authoritative (otherwise 403); a
+            // third place that decides "is this an admin" would be a second truth.
             item { LogSection(zustand.verwaltung, aktionen) }
 
             items(monState.jobs.entries.toList(), key = { it.key }) { (key, job) ->
@@ -161,7 +161,7 @@ fun MonitoringScreen(zustand: MonitoringState, aktionen: MonitoringActions, cach
 private fun JobCard(
     jobKey: String,
     job: JobStateView,
-    /** Zeitplan dieses Jobs, oder null — dann steht die Zeile nicht da. */
+    /** This job's schedule, or null — then the row is not shown. */
     schedule: ScheduleView?,
     queueOpen: Boolean,
     queue: Laden<List<BricksetEntryView>>,
@@ -179,7 +179,7 @@ private fun JobCard(
                 "csvImport" -> StartButton(Jobstart.CSV_ABGLEICH, buttons, Icons.Default.Sync, R.string.monitoring_sync_now, starte)
                 "priceJob" -> StartButton(Jobstart.PREISLAUF, buttons, Icons.Default.Refresh, R.string.monitoring_price_update, starte)
                 "imgDl" -> {
-                    // Der erste holt die Bilder des Bestands nach, der zweite die des Katalogs (wie in der Webapp).
+                    // The first one fetches the stock's images, the second the catalog's (as in the web app).
                     StartButton(Jobstart.BESTANDSBILDER, buttons, Icons.Default.Download, R.string.monitoring_redownload_missing, starte)
                     StartButton(Jobstart.KATALOGBILDER, buttons, Icons.Default.Download, R.string.monitoring_catalog_images, starte)
                 }
@@ -205,7 +205,7 @@ private fun JobCard(
     }
 }
 
-/** Name, Stand, Fortschritt und Zusatz eines Jobs. */
+/** Name, state, progress and addition of a job. */
 @Composable
 private fun JobHeader(jobKey: String, job: JobStateView) {
     val statusColor = when (job.status) {
@@ -250,7 +250,7 @@ private fun JobHeader(jobKey: String, job: JobStateView) {
     }
 }
 
-/** Ein Startknopf: seine Beschriftung, solange er nicht läuft, sonst „startet…“ oder was er gestartet hat. */
+/** A start button: its label while it is not running, otherwise "starting…" or what it started. */
 @Composable
 private fun StartButton(job: Jobstart, buttons: Map<Jobstart, Meldung>, icon: ImageVector, beschriftung: Int, onStart: (Jobstart) -> Unit) {
     val text = buttons[job]?.satz() ?: stringResource(beschriftung)

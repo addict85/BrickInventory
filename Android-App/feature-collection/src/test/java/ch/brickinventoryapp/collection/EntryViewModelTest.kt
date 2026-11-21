@@ -36,39 +36,39 @@ import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.testing.text
 
 /**
- * Das Erfassungs-ViewModel: Scan, Erfassen über die Setnummer, Prüfanzeige.
- * Der Ereignisstrom des Anlegens ist nachgebaut ([SetCreator]), alles andere
- * läuft im Takt gegen einen PfadServer; „unterwegs“ heisst zurückgehalten.
+ * The entry ViewModel: scan, add by set number, check display.
+ * The event stream of creating is simulated ([SetCreator]); everything else
+ * runs in step against a PfadServer; "in flight" means held back.
  *
- * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen EntryViewModel.kt):
- *   A  in showExisting() `exists` ignoriert (immer false) → rot „ein
- *      gescanntes Set, das schon da ist, wird geöffnet …“
- *   B  das `finally` in resolveBarcode() entfernt → rot „ein erfolgloser Scan
- *      öffnet die manuelle Erfassung …“ (die Prüfanzeige bleibt stehen)
- *   C  beim Anlegen den Stammdaten-Schritt nicht angezeigt → rot „das Anlegen
- *      zeigt die Schritte des Servers …“
- *   D  einen leeren Fehler als Satz des Servers gewertet → rot „ein
- *      abgebrochener Ereignisstrom ist ein Netzfehler …“
- *   E  in confirmAddBarcode() die Sperre `if (stand.hinzufuegen.laeuft) return` entfernt →
- *      rot „ein zweiter Klick auf Bestätigen …“; ebenso, wenn der Dialog erst
- *      nach der Antwort schliesst oder der Eigentümer nicht mitgeht
- *   F  `hinzufuegen = Vorgang.Fertig` nach der Antwort entfernt → rot „ein Fehlschlag beim
- *      Bestätigen …“ und „ein zweiter Klick …“
- *   G  im Teilelisten-Zweig das `return` entfernt → rot „aus der Teileliste
- *      wird nichts angelegt …“
- *   H  in useScannedSetNumber() die Vorabfrage übersprungen → rot „die
- *      Texterkennung fragt den Server …“ und „ein Fehler der Vorabfrage …“
- *   I  in showExisting() bei einem Fehler weitergemacht → rot „ein Fehler
- *      der Vorabfrage bricht ab …“
- *   J  bei gescheiterter Katalogabfrage keine manuelle Erfassung → rot „jeder
- *      erfolglose Weg …“
- *   K  in abortCheckAb() den Job nicht abgebrochen → rot „der Abbruch …“
- *      und „das Abmelden …“
- *   L  in zuruecksetzen() die Prüfung nicht abgebrochen → rot „das Abmelden
- *      räumt die Prüfanzeige mit“
- *   M  im Fehlerzweig von resolveBarcode() wieder immer „nicht gefunden“ →
- *      rot „ein Serverfehler beim Scan heisst nicht …“; den Code nicht
- *      abgefragt (immer die Meldung) → rot „ein erfolgloser Scan …“
+ * Counter-checks (measured 28.10.2026, kotlinc against EntryViewModel.kt):
+ *   A  in showExisting() `exists` ignored (always false) → red “a
+ *      scanned set that is already there gets opened …”
+ *   B  the `finally` in resolveBarcode() removed → red “an unsuccessful scan
+ *      opens the manual entry …” (the check display stays up)
+ *   C  when creating, the master-data step not shown → red “creating
+ *      shows the server's steps …”
+ *   D  an empty error treated as a sentence from the server → red “an
+ *      aborted event stream is a network error …”
+ *   E  in confirmAddBarcode() the guard `if (stand.hinzufuegen.laeuft) return` removed →
+ *      red “a second click on confirm …”; likewise if the dialog only
+ *      closes after the answer or the owner is not carried along
+ *   F  `hinzufuegen = Vorgang.Fertig` removed after the answer → red “a failure on
+ *      confirm …” and “a second click …”
+ *   G  the `return` removed in the parts-list branch → red “nothing is added
+ *      from the parts list …”
+ *   H  in useScannedSetNumber() the pre-check skipped → red “text
+ *      recognition asks the server …” and “an error of the pre-check …”
+ *   I  in showExisting() carried on after an error → red “an error
+ *      of the pre-check aborts …”
+ *   J  no manual entry on a failed catalog lookup → red “every
+ *      unsuccessful path …”
+ *   K  in abortCheckAb() the job not cancelled → red “the abort …”
+ *      and “signing out …”
+ *   L  in zuruecksetzen() the check not cancelled → red “signing out
+ *      clears the check display too”
+ *   M  in the error branch of resolveBarcode() again always „nicht gefunden“ →
+ *      red “a server error on scan does not mean …”; the code not
+ *      checked (always the message) → red “an unsuccessful scan …”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class EntryViewModelTest {
@@ -78,13 +78,13 @@ class EntryViewModelTest {
     private lateinit var paths: PfadServer
     private lateinit var t: TestDienste
 
-    /** Lässt die Testuhr laufen, bis nichts mehr ansteht, und prüft dann [bedingung]. */
+    /** Lets the test clock run until nothing is pending, then checks [bedingung]. */
     private fun bis(was: String, bedingung: () -> Boolean) {
         clock.advanceUntilIdle()
         assertTrue(was, bedingung())
     }
 
-    /** Wie NumbersTexts, aber mit den Argumenten — der Test prüft auch, WAS eingesetzt wurde. */
+    /** Like NumbersTexts, but with the arguments — the test also checks WHAT was substituted. */
     private object TextsWithArguments : Texte {
         override fun text(id: Int, vararg args: Any?) = "t$id" + args.joinToString("") { "|$it" }
         override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id:$anzahl"
@@ -92,7 +92,7 @@ class EntryViewModelTest {
         override fun angemeldet() = true
     }
 
-    /** Spielt die Schritte ab und schreibt die Prüfphasen mit, die dabei zu sehen waren. */
+    /** Plays back the steps and records the check phases that were seen along the way. */
     private class Creator(val schritte: List<SetCreateStep>) : SetCreator {
         var vm: EntryViewModel? = null
         val gesehen = mutableListOf<CheckPhase?>()
@@ -169,13 +169,13 @@ class EntryViewModelTest {
         assertEquals(listOf(CheckPhase.ANLEGEN_STAMMDATEN, CheckPhase.ANLEGEN_BILD, CheckPhase.ANLEGEN_ABSCHLUSS),
             creator.gesehen.take(3))
         assertEquals("t${R.string.vm_added}|75192-1", t.meldungen.text)
-        // Name und Bild kennt erst der Server: Die Ablage holt die Galerie nach.
+        // Name and image are known only to the server: the store fetches the gallery afterwards.
         bis("nachgezogen") { paths.requestsAn("GET /api/v1/sets?").isNotEmpty() }
     }
 
     /**
-     * Gegenprobe (am 28.10.2026 gemessen, kotlinc): den Zweig `katalogOffen`
-     * entfernt → rot, gemeldet wird „hinzugefügt“ (vm_added).
+     * Counter-check (measured 28.10.2026, kotlinc): the branch `katalogOffen`
+     * removed → red, "added" is reported (vm_added).
      */
     @Test
     fun `without a catalog the creation reports saved, not added`() {
@@ -199,8 +199,8 @@ class EntryViewModelTest {
         val vm = vm(Creator(listOf(SetCreateStep.Fehler(""))))
         vm.addSet(Erfassungswunsch("75192-1"))
         bis("gemeldet") { t.meldungen.text != null }
-        // Ein Netzfehler wird über meldung() formuliert ("fehler"); ein Satz
-        // des Servers käme unverändert — hier leer — und sagte nichts.
+        // A network error is formulated via meldung() ("fehler"); a sentence
+        // from the server would come unchanged — here empty — and say nothing.
         assertEquals("t${R.string.vm_add_failed}|75192-1|fehler", t.meldungen.text)
     }
 
@@ -218,7 +218,7 @@ class EntryViewModelTest {
         assertNull(vm.barcodeState.value.result)
     }
 
-    /** Ein Scan bis zum Bestätigungsdialog (Quelle Galerie, also ohne Vorabfrage). */
+    /** A scan up to the confirmation dialog (source gallery, i.e. without the pre-check). */
     private fun untilToDialog(): EntryViewModel {
         val vm = vm()
         vm.resolveBarcode("5702016616316")
@@ -232,7 +232,7 @@ class EntryViewModelTest {
         paths.ausbleibend += "/api/v1/sets"
         val vm = untilToDialog()
         vm.confirmAddBarcode(Erfassungswunsch("75192-1", besitzer = 2))
-        // Der Dialog schliesst sofort, und angelegt wird im Hintergrund — ohne Prüfanzeige.
+        // The dialog closes right away, and creation happens in the background — without a check display.
         assertNull(vm.barcodeState.value.result)
         assertTrue(vm.barcodeState.value.hinzufuegen.laeuft)
         assertNull(vm.entryState.value.check)

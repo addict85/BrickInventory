@@ -22,20 +22,20 @@ import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.ScrollPositionKeeper
 import ch.brickinventoryapp.navigation.Bereichsumgebung
 
-/** Was die Finanzen von der App brauchen: Set und Einzelstück gehören anderen Bereichen. */
+/** What finances need from the app: set and individual item belong to other areas. */
 interface FinancesNavigation : Bereichsumgebung {
     fun openSet(setNumber: String)
     fun openSinglePiece(art: Postenart, id: String, colorId: Int, titel: String)
 
-    /** Der PDF-Betrachter; die Route trägt nur einen Schlüssel (PdfSelection). */
+    /** The PDF viewer; the route carries only one key (PdfSelection). */
     fun showPdf(url: String, titel: String) = navController.navigate(FinanzZiel.PdfViewer(PdfSelection.put(url, titel)))
 }
 
-/** Finanzen, Gutscheine und der PDF-Betrachter. */
+/** Finances, vouchers and the PDF viewer. */
 fun NavGraphBuilder.financesGraph(navigation: FinancesNavigation) {
     val navController = navigation.navController
     composable<FinanzZiel.Finance> {
-        // Ein Zustand je Besuch; die Stelle hält allein der ScrollMemory (Keeper unten).
+        // One state per visit; only the ScrollMemory (Keeper below) holds the position.
         val financeListState = remember { LazyListState() }
         val finanzen: FinanceViewModel = hiltViewModel()
         val financeState by finanzen.financeState.collectAsStateWithLifecycle()
@@ -46,10 +46,10 @@ fun NavGraphBuilder.financesGraph(navigation: FinancesNavigation) {
             FinanceRoute(
                 vm = finanzen,
                 imageLoader = navigation.bilder,
-                // Klick auf eine Zeile öffnet dieselbe Detailansicht wie in der Galerie.
+                // Clicking a row opens the same detail view as in the gallery.
                 onSetClick = navigation::openSet,
-                // Den Namen gibt die angeklickte Zeile mit, sonst stünde bis zum ersten
-                // Laden die nackte Nummer in der Leiste.
+                // The clicked row supplies the name along with it, otherwise the bare
+                // number would stand in the bar until the first load.
                 onManualClick = { type, id, colorId, name ->
                     navigation.openSinglePiece(type, id, colorId, name ?: id)
                 },
@@ -58,14 +58,14 @@ fun NavGraphBuilder.financesGraph(navigation: FinancesNavigation) {
         }
     }
     composable<FinanzZiel.Gutscheine> {
-        // Am Ziel: Klartext und PIN enden mit der Seite. Der PDF-Betrachter liegt
-        // darüber, die Seite bleibt also bestehen, solange er offen ist.
+        // On the target: plain text and PIN end with the page. The PDF viewer lies
+        // above it, so the page stays alive as long as it is open.
         val voucherVm: GutscheinViewModel = hiltViewModel()
         val state by navigation.sitzung.collectAsStateWithLifecycle()
         val gutscheine by voucherVm.state.collectAsStateWithLifecycle()
-        // Ein freigegebenes Gutschein-PDF (eines oder alle): Das Ziel mit Ticket
-        // steht im Zustand, die Navigation macht der Graph. Der Titel wird AUSSERHALB
-        // des LaunchedEffect gelesen: stringResource ist @Composable.
+        // A released voucher PDF (one or all): the target with the ticket
+        // lives in the state, the graph does the navigation. The title is read OUTSIDE
+        // the LaunchedEffect: stringResource is @Composable.
         val exportTitle = stringResource(R.string.vouchers_export)
         LaunchedEffect(gutscheine.pdfTarget) {
             val ziel = gutscheine.pdfTarget ?: return@LaunchedEffect
@@ -80,7 +80,7 @@ fun NavGraphBuilder.financesGraph(navigation: FinancesNavigation) {
         val ziel = backStackEntry.toRoute<FinanzZiel.PdfViewer>()
         val pdf = remember(ziel.schluessel) { PdfSelection.fetch(ziel.schluessel) }
         if (pdf == null) {
-            // Nach einem Prozess-Tod ist die Auswahl weg: zurück, statt leer zu zeigen.
+            // After a process death the selection is gone: go back instead of showing it empty.
             LaunchedEffect(Unit) { navController.popBackStack() }
             return@composable
         }

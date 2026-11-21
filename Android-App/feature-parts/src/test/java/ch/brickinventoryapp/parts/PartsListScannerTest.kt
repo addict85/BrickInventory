@@ -5,17 +5,17 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Der Barcode-Scanner der TEILELISTE zeigt keine Erfassungsfelder.
+ * The PARTS LIST's barcode scanner shows no entry fields.
  */
 class PartsListScannerTest {
 
-    // Der Dialog steht in BarcodeResultDialog.kt; der Erfassungsrahmen zeigt ihn über dem scannenden Ziel.
+    // The dialog lives in BarcodeResultDialog.kt; the capture frame shows it above the scanning target.
     private val src: String by lazy {
         File(Quellen.root, "collection/ui/Erfassungsrahmen.kt").readText() + "\n" +
             File(Quellen.root, "collection/ui/dialogs/BarcodeResultDialog.kt").readText()
     }
 
-    /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */
+    /** Hide comments — the explanatory texts name the checked patterns themselves. */
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
@@ -27,7 +27,7 @@ class PartsListScannerTest {
             "Die Erfassungsfelder stehen nicht mehr unter der Herkunfts-Bedingung — aus der " +
                 "Teileliste wären sie wirkungslos, würden aber wie eine echte Eingabe aussehen"
         }
-        // Alle drei Felder müssen NACH der Bedingung stehen.
+        // All three fields must stand AFTER the condition.
         for ((pattern, name) in listOf(
             "OwnerPicker("            to "Eigentümer-Auswahl",
             "barcode_purchase_price"  to "Kaufpreis-Feld",

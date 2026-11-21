@@ -30,20 +30,20 @@ import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
- * „Keine Farbe“ ist 9999 wie auf dem Server (utils/validate.ts, KEINE_FARBE);
- * 0 ist Schwarz. Die App schickt für ein Teil ohne Farbe 9999, zeigt 9999 als
- * „keine Farbe“ und nimmt ein fehlendes color_id nicht als Schwarz.
+ * "Keine Farbe" is 9999 as on the server (utils/validate.ts, KEINE_FARBE);
+ * 0 is black. The app sends 9999 for a part without a color, shows 9999 as
+ * "keine Farbe" and does not take a missing color_id as black.
  *
- * Gegenproben:
- *   A  in Teilerfassung die Vorgabe `farbId = 0` → rot „ein Teil
- *      ohne Farbe geht als 9999 hinaus“ ("color_id":0)
- *   B  in PartsRepository.setPartColor den Namen auch bei KEINE_FARBE
- *      mitgeschickt → rot „no color as a new color sends no name“
- *   C  in farbName() die Prüfung auf KEINE_FARBE entfernt → rot „9999 heisst
- *      keine Farbe, 0 bleibt Schwarz“ ([No Color/Any Color] statt keine)
- *   D  in withoutNoColor() `!= KEINE_FARBE` durch `!= 0` ersetzt → rot ebenda
- *   E  Part.colorId wieder mit Vorgabe 0 → rot „ein fehlendes color_id ist
- *      keine Farbe, nicht Schwarz“
+ * Counter-checks:
+ *   A  in Teilerfassung the default `farbId = 0` → red “a part
+ *      without a color goes out as 9999” ("color_id":0)
+ *   B  in PartsRepository.setPartColor the name sent along even for KEINE_FARBE
+ *      → red “no color as a new color sends no name”
+ *   C  in farbName() the check for KEINE_FARBE removed → red “9999 means
+ *      no color, 0 stays black” ([No Color/Any Color] instead of none)
+ *   D  in withoutNoColor() `!= KEINE_FARBE` replaced with `!= 0` → red there as well
+ *   E  Part.colorId back to a default of 0 → red “a missing color_id is
+ *      no color, not black”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class NoColorTest {
@@ -78,7 +78,7 @@ class NoColorTest {
         assertTrue("Teil erfasst", paths.requestsAn("POST /api/v1/parts").isNotEmpty())
         val k = bodyTo("POST /api/v1/parts")
         assertTrue(k, k.contains("\"color_id\":9999"))
-        // Auch ein mitgegebener Name gehört nicht zu „keine Farbe“.
+        // A name sent along does not count as "keine Farbe" either.
         vm().addPart(Teilerfassung("3002", KEINE_FARBE, "[No Color/Any Color]", "05131D"))
         assertTrue("zweites Teil", paths.requestsAn("POST /api/v1/parts").size == 2)
         val k2 = paths.koerper[paths.requests.indexOfLast { it == "POST /api/v1/parts" }]

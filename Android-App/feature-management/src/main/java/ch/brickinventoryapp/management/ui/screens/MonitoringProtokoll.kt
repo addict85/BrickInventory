@@ -33,17 +33,17 @@ import ch.brickinventoryapp.ui.components.SegmentChoice
 import ch.brickinventoryapp.ui.components.Suchfeld
 
 /**
- * Das Server-Protokoll, wie „Logs“ in der Webapp. Nicht von selbst geladen: bis zu
- * 5000 Zeilen, und wer die Überwachung öffnet, will meist die Job-Karten.
+ * The server log, like "Logs" in the web app. Not loaded on its own: up to
+ * 5000 lines, and whoever opens monitoring usually wants the job cards.
  */
-// Für die FlowRow der Stufenschalter; an der Funktion, weil ein @OptIn im Rumpf vor einer
-// nachgestellten Lambda nicht übersetzt.
+// For the FlowRow of the level switches; on the function, because an @OptIn in the body before a
+// trailing lambda does not compile.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun LogSection(verwaltung: ManagementUiState, aktionen: MonitoringActions) {
     var offen by rememberSaveable { mutableStateOf(false) }
-    // Beides gehoert dem Menschen und uebersteht deshalb eine Drehung — die
-    // Zeilen selbst kommen ohnehin vom Server nach.
+    // Both belong to the person and therefore survive a rotation — the
+    // rows themselves are fetched fresh from the server anyway.
     var hiddenLevels by rememberSaveable { mutableStateOf(setOf<String>()) }
     var logSearch by rememberSaveable { mutableStateOf("") }
 
@@ -58,18 +58,18 @@ internal fun LogSection(verwaltung: ManagementUiState, aktionen: MonitoringActio
 
             AnimatedVisibility(offen) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    // Dieselben Spannen wie die Webapp anbietet. Der Server
-                    // begrenzt selbst auf 2880 Minuten.
+                    // The same spans the web app offers. The server
+                    // itself caps it at 2880 minutes.
                     SegmentChoice(
                         optionen = listOf(15, 60, 240, 1440).map { it to stringResource(R.string.admin_log_minutes, it) },
                         gewaehlt = verwaltung.logMinutes,
                         onWahl = aktionen::chooseLog,
                     )
                     LogErrorOrEmpty(verwaltung)
-                    // ── Stufen und Suche, wie in der Weboberfläche ──
+                    // ── Levels and search, as in the web UI ──
                     //
-                    // Gefiltert wird hier, nicht auf dem Server: Die Zeilen sind schon geladen, ein
-                    // Abruf je Tastendruck wäre nur Wartezeit.
+                    // Filtering happens here, not on the server: the rows are already loaded, a
+                    // fetch per keystroke would just be a wait.
                     val stufen = remember(verwaltung.protokoll) {
                         verwaltung.protokoll.mapNotNull { it.level?.lowercase() }.distinct().sorted()
                     }
@@ -104,7 +104,7 @@ internal fun LogSection(verwaltung: ManagementUiState, aktionen: MonitoringActio
     }
 }
 
-/** Der Fehler statt der Leermeldung: „keine Einträge“ wäre falsch, wenn der Abruf scheiterte. */
+/** The error instead of the empty message: „keine Einträge“ would be wrong if the fetch had failed. */
 @Composable
 private fun LogErrorOrEmpty(verwaltung: ManagementUiState) {
     val fehler = verwaltung.abruf.errorMessage
@@ -118,7 +118,7 @@ private fun LogErrorOrEmpty(verwaltung: ManagementUiState) {
     }
 }
 
-/** Titel, Ladekringel oder Neu-laden, und der Knopf zum Auf- und Zuklappen. */
+/** Title, loading spinner or reload, and the button to expand and collapse. */
 @Composable
 private fun LogHeader(laedt: Boolean, offen: Boolean, loadOnNew: () -> Unit, toggleOn: () -> Unit) {
     Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
@@ -137,8 +137,8 @@ private fun LogHeader(laedt: Boolean, offen: Boolean, loadOnNew: () -> Unit, tog
             }
             MitTooltip(stringResource(if (offen) R.string.common_collapse else R.string.common_expand)) {
             IconButton(onClick = toggleOn) {
-                // Beschreibt die WIRKUNG des Tippens, nicht das
-                // gezeigte Zeichen — genau das braucht TalkBack.
+                // Describes the EFFECT of tapping, not the
+                // shown symbol — that is exactly what TalkBack needs.
                 Icon(
                     if (offen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     stringResource(
@@ -149,7 +149,7 @@ private fun LogHeader(laedt: Boolean, offen: Boolean, loadOnNew: () -> Unit, tog
     }
 }
 
-/** Ein Schalter je Stufe; gewählt heisst: Die Zeilen dieser Stufe stehen da. */
+/** One switch per level; selected means: this level's rows are shown. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun LogLevels(stufen: List<String>, hiddenLevels: Set<String>, onLevel: (String) -> Unit) {
@@ -164,14 +164,14 @@ private fun LogLevels(stufen: List<String>, hiddenLevels: Set<String>, onLevel: 
     }
 }
 
-/** Eine Zeile des Protokolls: Uhrzeit, Stufe, Meldung. */
+/** One row of the log: time, level, message. */
 @Composable
 private fun LogEntry(zeile: LogRowView) {
     Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-        // Die Uhrzeit zuerst — wie in der Weboberflaeche.
-        // `logged_at` kam seit jeher mit und wurde nie
-        // gezeigt; ohne sie ist eine Protokollzeile kaum zu
-        // gebrauchen.
+        // The time first — as in the web UI.
+        // `logged_at` has been there all along and was never
+        // shown; without it a log row is barely
+        // usable.
         Text(fmtUhrzeit(zeile.loggedAt, appNumberLocale(), twentyFourHours()) ?: "",
             style = MaterialTheme.typography.bodySmall,
             fontFamily = FontFamily.Monospace,

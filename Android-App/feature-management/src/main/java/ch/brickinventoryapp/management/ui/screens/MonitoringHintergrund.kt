@@ -40,9 +40,9 @@ import ch.brickinventoryapp.model.ui.laedt
 import ch.brickinventoryapp.ui.satz
 
 /**
- * Die Hintergrundarbeiten aus der Auftragstabelle, wie in der Webapp. Die
- * Warnung ohne Job-Prozess steht oben: Ohne ihn bewegt sich keiner der
- * Aufträge darunter, und das soll man nicht aus stehenden Zahlen erraten müssen.
+ * The background work from the job table, as in the web app. The
+ * warning about no job process stands at the top: without it none of the
+ * jobs below it moves, and that should not have to be guessed from static numbers.
  */
 @Composable
 internal fun BackgroundSection(
@@ -55,7 +55,7 @@ internal fun BackgroundSection(
     val ansicht = zustand.ansicht
     AppKarte {
         Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-            // „Aufträge“, nicht noch einmal der Name der Seite: Er steht schon darüber.
+            // „Aufträge“, not the page name again: it already stands above.
             Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
                 SectionTitle(stringResource(R.string.hintergrund_auftraege))
                 if (zustand.abruf.laedt) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -86,9 +86,9 @@ internal fun BackgroundSection(
 }
 
 /**
- * Die Aufträge einer Art unter ihrem Kopf mit „Jetzt“ und „Leeren“. Leeren fragt nach:
- * Entfernte Aufträge kommen nicht wieder. TalkBack hört bei jedem Knopf die Auftragsart,
- * sonst stünden fünfmal „Leeren“ untereinander.
+ * The jobs of one kind under their header with „Jetzt“ and „Leeren“. Clearing asks first:
+ * removed jobs do not come back. TalkBack reads the job kind with every button,
+ * otherwise „Leeren“ would stand five times in a row.
  */
 @Composable
 private fun JobGroup(
@@ -127,7 +127,7 @@ private fun JobGroup(
         retryOn = { retryOn(a.id) })
 }
 
-/** Ein Auftrag; seine Knöpfe heissen „Auftrag abbrechen“, nicht „Abbrechen“ wie in jedem Dialog. */
+/** A job; its buttons are called „Auftrag abbrechen“, not „Abbrechen“ as in every other dialog. */
 @Composable
 private fun JobRow(a: JobView, kindName: String, onAbbrechen: () -> Unit, retryOn: () -> Unit) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -152,7 +152,7 @@ private fun JobRow(a: JobView, kindName: String, onAbbrechen: () -> Unit, retryO
     }
 }
 
-/** Ein Knopf an einem Auftrag; vorgelesen mit Art und Set („Auftrag abbrechen: Bilder eines Sets 75192-1“). */
+/** A button on a job; read out with kind and set („Auftrag abbrechen: Bilder eines Sets 75192-1“). */
 @Composable
 private fun JobButton(aktion: String, wer: String, onClick: () -> Unit) {
     val name = stringResource(R.string.aktion_fuer, aktion, wer)

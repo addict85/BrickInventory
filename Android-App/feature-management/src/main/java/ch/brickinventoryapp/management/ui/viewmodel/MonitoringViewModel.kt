@@ -33,42 +33,42 @@ import ch.brickinventoryapp.state.ui.errorMessage
 import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 
 /**
- * Was der Monitoring-Bildschirm vom Server weiss — nur Serverdaten. Was gerade
- * bearbeitet wird (aufgeklappt, halb getippte Zahl), bleibt im Composable in
+ * What the monitoring screen knows from the server — server data only. What is
+ * currently being edited (expanded, a half-typed number) stays in the composable, in
  * `rememberSaveable`.
  */
 data class MonitoringUiState(
     val jobs: Map<String, JobStateView> = emptyMap(),
     /**
-     * Zeitplan je Job, mit derselben Antwort wie `jobs` (`schedules`): damit die App
-     * zeigt, wann ein Job das nächste Mal läuft, und es ändern kann.
+     * Schedule per job, with the same answer as `jobs` (`schedules`): so that the app
+     * shows when a job runs next, and can change it.
      */
     val jobSchedules: Map<String, ScheduleView> = emptyMap(),
     val queue: Laden<List<BricksetEntryView>> = Laden.Daten(emptyList()),
-    /** Was ein laufender oder eben gestarteter Knopf statt seiner Beschriftung zeigt. */
+    /** What a running or just-started button shows instead of its label. */
     val buttons: Map<Jobstart, Meldung> = emptyMap(),
     val aktualisiert: Boolean = false,
     val cacheStats: CacheMetricsView? = null,
     val apiLimits: ApiLimitsView? = null,
     val cacheTtl: String = "24",
     val defaultState: Zustand = Zustand.NEU,
-    /** Das Design, das der Verwalter allen vorgibt — nicht das eigene des Kontos. */
+    /** The theme the admin sets for everyone — not the account's own. */
     val defaultDesign: Design? = null,
-    /** Der Server sagte `nur_admins`: Die Abfrageschleife hört auf, statt alle 5 s erneut abgewiesen zu werden. */
+    /** The server said `nur_admins`: the poll loop stops instead of being rejected again every 5 s. */
     val accessRevoked: Boolean = false,
 )
 
 private fun entzogen(r: Ergebnis<*>) = r is Ergebnis.Fehler && r.code == Fehlercode.NUR_ADMINS
 
-/** Die Hintergrundarbeiten (Auftragstabelle); die Ansicht bleibt stehen, während neu geholt wird. */
+/** The background work (job table); the view stays up while it is being fetched anew. */
 data class BackgroundUiState(
     val ansicht: BackgroundView? = null,
     val abruf: Laden<Unit> = Laden.Daten(Unit),
 )
 
 /**
- * Der Monitoring-Bildschirm holt seine Daten über dieses ViewModel statt aus den Composables,
- * damit die Ladelogik ohne Compose-Laufzeit prüfbar ist.
+ * The monitoring screen fetches its data through this ViewModel instead of from the composables,
+ * so that the loading logic can be checked without a Compose runtime.
  */
 @HiltViewModel
 class MonitoringViewModel @Inject constructor(
@@ -84,7 +84,7 @@ class MonitoringViewModel @Inject constructor(
         observeLoadOn(_state) { viewModelScope.launch { loadCacheAndLimits(); loadDesignDefault() } }
     }
 
-    /** Das Server-Protokoll — eigener Fluss, es lädt nur auf Wunsch. */
+    /** The server log — its own flow, it only loads on request. */
     private val _managementState = MutableStateFlow(ManagementUiState())
     val managementState = _managementState.asStateFlow()
 
@@ -104,9 +104,9 @@ class MonitoringViewModel @Inject constructor(
     val hintergrund = _background.asStateFlow()
 
     /**
-     * Hält Aufträge und Hintergrundarbeiten aktuell, bis der Aufrufer endet (die Seite
-     * ist nicht mehr zu sehen) oder der Server das Verwalterrecht verneint; dann
-     * fragte jeder weitere Takt nur noch ein 403 ab.
+     * Keeps jobs and background work current until the caller ends (the page
+     * is no longer visible) or the server denies admin rights; otherwise
+     * every further tick would just fetch another 403.
      */
     suspend fun haltAktuell() {
         while (!_state.value.accessRevoked) {
@@ -128,9 +128,9 @@ class MonitoringViewModel @Inject constructor(
     }
 
     /**
-     * Abbrechen, wiederholen, starten, leeren: Das Ergebnis ist die Meldung — bei 409
-     * der Satz des Servers, denn nur er weiss, warum der Auftrag
-     * inzwischen nicht mehr passt. Danach wird die Liste neu geholt, so oder so.
+     * Cancel, retry, start, clear: the result is the message — on a 409
+     * the server's sentence, because only it knows why the job
+     * no longer fits in the meantime. The list is reloaded afterward, either way.
      */
     internal suspend fun abortJobAb(id: String): Meldung =
         afterJob(verwaltung.abortJobAb(id)) { Meldung.Resource(R.string.hintergrund_abgebrochen_ok) }
@@ -146,8 +146,8 @@ class MonitoringViewModel @Inject constructor(
     internal suspend fun emptyJobKind(art: String): Meldung =
         afterJob(verwaltung.emptyJobKind(art)) { Meldung.Menge(R.plurals.hintergrund_geleert, it) }
 
-    // Im viewModelScope, nicht im Scope des Bildschirms: Wer die Seite verlässt,
-    // bricht die Aktion nicht ab, und der Satz geht nicht am Zustand vorbei.
+    // In the viewModelScope, not the screen's scope: leaving the page
+    // does not abort the action, and the sentence does not bypass the state.
     override fun cancelJob(id: String) = melde { abortJobAb(id) }
     override fun retryJob(id: String) = melde { repeatJob(id) }
     override fun auftragsArtStarten(art: String, name: String) = melde { starteAuftragsArt(art, name) }
@@ -155,7 +155,7 @@ class MonitoringViewModel @Inject constructor(
 
     private val _settingsNew = MutableStateFlow(false)
 
-    /** Design oder Vorgabe-Zustand geändert: Die App lädt ihre Einstellungen nach und quittiert. */
+    /** Theme or default state changed: the app reloads its settings and acknowledges. */
     val settingsNew = _settingsNew.asStateFlow()
 
     fun einstellungenGeladen() {
@@ -169,7 +169,7 @@ class MonitoringViewModel @Inject constructor(
     fun saveLimits(rebrickable: Int, bricklink: Int, brickset: Int) =
         gespeichert(R.string.monitoring_limits_saved) { setLimits(rebrickable, bricklink, brickset) }
 
-    // Nur ein Erfolg meldet sich; ein Fehlschlag lässt den angezeigten Stand stehen.
+    // Only a success reports itself; a failure leaves the shown state as is.
     private fun gespeichert(satz: Int = R.string.monitoring_cache_saved, einstellungen: Boolean = false, aktion: suspend () -> Boolean) {
         viewModelScope.launch {
             if (!aktion()) return@launch
@@ -231,7 +231,7 @@ class MonitoringViewModel @Inject constructor(
         viewModelScope.launch { meldungen.zeige(if (aktion()) erfolg else failure) }
     }
 
-    /** Wiederholt einen hängengebliebenen Eintrag; lädt die Liste danach neu. */
+    /** Retries a stuck entry; reloads the list afterward. */
     internal suspend fun repeatEntry(setNummer: String): Boolean {
         val ok = verwaltung.retryBricksetEntry(setNummer) is Ergebnis.Erfolg
         if (ok) loadQueue()
@@ -239,9 +239,9 @@ class MonitoringViewModel @Inject constructor(
     }
 
     /**
-     * Entfernt einen Eintrag, in der Anzeige vorweggenommen. Scheitert der Server,
-     * wird neu geladen statt die alte Kopie zurückgeschrieben — dazwischen kann sich
-     * am Server anderes geändert haben.
+     * Removes an entry, anticipated in the display. If the server fails,
+     * it reloads instead of writing the old copy back — something else may
+     * have changed on the server in between.
      */
     internal suspend fun removeEntry(setNummer: String): Boolean {
         _state.update { s ->
@@ -254,9 +254,9 @@ class MonitoringViewModel @Inject constructor(
     }
 
     /**
-     * Ein Startknopf zeigt „startet…“, nach Erfolg vier Sekunden lang, was geschah, dann
-     * wieder seine Beschriftung; ein Fehlschlag geht als Meldung in die Snackbar. Gesperrt
-     * wird vor dem launch, sonst startete ein Doppeltipp zweimal.
+     * A start button shows "starting…", then for four seconds after success what happened, then
+     * its label again; a failure goes into the snackbar as a message. It is disabled
+     * before the launch, otherwise a double tap would start it twice.
      */
     override fun starte(job: Jobstart) {
         if (job in _state.value.buttons) return
@@ -278,7 +278,7 @@ class MonitoringViewModel @Inject constructor(
     private fun setButton(job: Jobstart, stand: Meldung?) =
         _state.update { it.copy(buttons = if (stand == null) it.buttons - job else it.buttons + (job to stand)) }
 
-    /** Startet den Job; zurück kommt, was der Knopf danach zeigt, oder null bei einem Fehlschlag. */
+    /** Starts the job; returns what the button shows afterward, or null on a failure. */
     internal suspend fun startJob(job: Jobstart): Meldung? {
         val gestartet = Meldung.Resource(R.string.monitoring_started)
         return when (job) {
@@ -286,7 +286,7 @@ class MonitoringViewModel @Inject constructor(
                 .takeIf { verwaltung.triggerCsvSync() is Ergebnis.Erfolg }
             Jobstart.PREISLAUF -> gestartet.takeIf { verwaltung.triggerPriceJob() is Ergebnis.Erfolg }
             Jobstart.BESTANDSBILDER -> gestartet.takeIf { verwaltung.redownloadMissingImages() is Ergebnis.Erfolg }
-            // Die Bilder des Katalogs, nicht die des Bestands daneben.
+            // The catalog's images, not the stock's next to it.
             Jobstart.KATALOGBILDER -> gestartet.takeIf { verwaltung.queueCatalogImages() is Ergebnis.Erfolg }
             Jobstart.INSTRUCTIONS -> (verwaltung.reimportInstructions() as? Ergebnis.Erfolg)?.data
                 ?.let { Meldung.Menge(R.plurals.monitoring_reimport_enqueued, it) }
@@ -294,9 +294,9 @@ class MonitoringViewModel @Inject constructor(
     }
 
     /**
-     * Cache-Zahlen, API-Grenzwerte, Cache-Dauer und Vorgabe-Zustand in einem Zug —
-     * nacheinander, weil es parallel nicht sichtbar schneller wäre, die Reihenfolge
-     * der Zustandsänderungen aber unbestimmt.
+     * Cache numbers, API limits, cache duration and default state in one
+     * go — one after another, because it would not be visibly faster in parallel, while
+     * the order of the state changes would become unpredictable.
      */
     internal suspend fun loadCacheAndLimits() {
         (verwaltung.getCacheStats() as? Ergebnis.Erfolg)?.let { r ->
@@ -320,8 +320,8 @@ class MonitoringViewModel @Inject constructor(
     }
 
     /**
-     * Cache leeren und die Zahlen sofort neu holen — sonst stünden die alten da, und
-     * nichts zeigte, dass etwas passiert ist.
+     * Clear the cache and fetch the numbers again right away — otherwise the old
+     * ones would stay up, and nothing would show that something happened.
      */
     internal suspend fun emptyCache(alles: Boolean): Boolean {
         val ok = verwaltung.clearCache(alles) is Ergebnis.Erfolg
@@ -330,8 +330,8 @@ class MonitoringViewModel @Inject constructor(
     }
 
     /**
-     * Zeitplan eines Jobs setzen und neu holen, weil der Server normalisiert („7:5“ →
-     * „07:05“, mindestens fünf Minuten): Es soll dastehen, was gilt.
+     * Set a job's schedule and fetch it anew, because the server normalizes it ("7:5" →
+     * "07:05", at least five minutes): it should show what applies.
      */
     override fun setSchedule(name: String, zeit: String?, minuten: Int?) {
         viewModelScope.launch {
@@ -346,8 +346,8 @@ class MonitoringViewModel @Inject constructor(
     }
 
     /**
-     * Die Vorgabe aus /settings/theme. Ein älterer Server kennt `vorgabe` noch
-     * nicht; dort war das wirksame Design zugleich die Vorgabe.
+     * The default from /settings/theme. An older server does not know `vorgabe`
+     * yet; there, the effective theme was also the default.
      */
     internal suspend fun loadDesignDefault() {
         (konto.getAppTheme() as? Ergebnis.Erfolg)?.let { r ->
@@ -356,9 +356,9 @@ class MonitoringViewModel @Inject constructor(
     }
 
     /**
-     * Das globale Design umstellen. `loadSettings()` beim Aufrufer zieht den neuen
-     * Wert in den Zustand und merkt ihn, damit die Anzeige sofort wechselt und den
-     * Kaltstart überlebt.
+     * Switch the global theme. `loadSettings()` at the caller pulls the new
+     * value into the state and remembers it, so that the display switches right away and
+     * survives a cold start.
      */
     internal suspend fun setzeDesign(theme: Design): Boolean {
         val ok = verwaltung.setAppTheme(theme) is Ergebnis.Erfolg
@@ -377,9 +377,9 @@ class MonitoringViewModel @Inject constructor(
     }
 
     /**
-     * Vorgabe-Zustand (neu/gebraucht) setzen, in der Anzeige vorweggenommen; scheitert
-     * der Aufruf, wird zurückgestellt, sonst behauptete die Oberfläche etwas, das nie
-     * gespeichert wurde.
+     * Set the default condition (new/used), anticipated in the display; if
+     * the call fails, it is rolled back, otherwise the UI would claim something that was never
+     * saved.
      */
     internal suspend fun setDefaultState(zustand: Zustand): Boolean {
         val vorher = _state.value.defaultState
@@ -390,8 +390,8 @@ class MonitoringViewModel @Inject constructor(
     }
 }
 
-/** Abstand der Abfragen, solange das Monitoring zu sehen ist. */
+/** Spacing of the polls, for as long as monitoring is visible. */
 private const val TICK_MS = 5_000L
 
-/** So lange zeigt ein Startknopf, dass er gestartet hat. */
+/** For this long, a start button shows that it has started. */
 private const val STARTED_MS = 4_000L

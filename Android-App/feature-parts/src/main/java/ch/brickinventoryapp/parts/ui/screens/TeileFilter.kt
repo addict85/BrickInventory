@@ -43,14 +43,14 @@ import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.util.fmtInt
 
 /**
- * Ein Filtereintrag der Teileliste: Wert, Beschriftung, Anzahl, Farbpunkt. Eine
- * gemeinsame Form für Farbe und Kategorie: Die Listen kommen von verschiedenen
- * Adressen mit verschiedenen Feldnamen, sehen aber gleich aus und werden gleich
- * bedient — zwei Fassungen liefen auseinander.
+ * A filter entry of the parts list: value, label, count, color dot. A
+ * shared shape for color and category: the lists come from different
+ * addresses with different field names, but look the same and are handled
+ * the same — two versions had drifted apart.
  *
- * @param wert   Was als `color=` bzw. `category=` mitreist. "" heisst „alle“.
- * @param anzahl Verschiedene Teile — dieselbe Zahl, die die Webapp zeigt.
- * @param farbe  Farbpunkt, nur bei der Farbliste.
+ * @param wert   What travels along as `color=` or `category=`. "" means "all".
+ * @param anzahl Distinct parts — the same number the web app shows.
+ * @param farbe  Color dot, only for the color list.
  */
 internal data class PartsFilterEntry(
     val wert: String,
@@ -60,10 +60,10 @@ internal data class PartsFilterEntry(
 )
 
 /**
- * Farbe und Kategorie als zwei aufklappbare Filter — wie die beiden Filterlisten
- * der Webapp (teile.js, `loadPartsFilters` → `#color-filter` und
- * `#cat-filter`), jede mit der Anzahl daneben. `getParts` reicht `color` und
- * `category` an den Server.
+ * Color and category as two expandable filters — like the web app's two
+ * filter lists (teile.js, `loadPartsFilters` → `#color-filter` and
+ * `#cat-filter`), each with the count next to it. `getParts` passes `color` and
+ * `category` to the server.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,8 +76,8 @@ internal fun PartsFilterRow(
     onCategory: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Nichts geladen, nichts anzubieten: Ein Chip „Farbe" ohne Inhalt waere ein
-    // Versprechen, das das Antippen nicht einloest.
+    // Nothing loaded, nothing to offer: a chip "Farbe" without content would be a
+    // promise that tapping it does not keep.
     if (farben.isEmpty() && kategorien.isEmpty()) return
 
     var openColor by rememberSaveable { mutableStateOf(false) }
@@ -130,10 +130,10 @@ internal fun PartsFilterRow(
 }
 
 /**
- * Das Auswahlblatt — eine Fassung fuer beide Listen.
+ * The selection sheet — one version for both lists.
  *
- * „Alle" steht oben und ist immer da; ohne diesen Eintrag liesse sich ein
- * gesetzter Filter nur ueber den Zurueck-Weg wieder loswerden.
+ * "Alle" sits at the top and is always there; without this entry, a
+ * set filter could only be cleared via the back path.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -161,7 +161,7 @@ private fun FilterSheet(
     }
 }
 
-/** Eine Zeile des Auswahlblatts. */
+/** One row of the selection sheet. */
 @Composable
 private fun FilterRow(
     text: String,

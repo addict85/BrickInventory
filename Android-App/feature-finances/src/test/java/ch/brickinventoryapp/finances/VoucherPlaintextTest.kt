@@ -36,24 +36,24 @@ import ch.brickinventoryapp.testing.TestApi
 import ch.brickinventoryapp.testing.text
 
 /**
- * Gutscheine mit maskierter Liste: Nummer und PIN, PDF und Löschen erst nach
- * Passwort (und Code), der Klartext nur im ViewModel. Gegen einen Testserver.
+ * Vouchers with a masked list: number and PIN, PDF and delete only after a
+ * password (and code), the plain text only in the ViewModel. Against a test server.
  *
- * Gegenproben:
- *  A  In bestaetige() `codeNoetig = … || fehler.code in FACTOR_CODES` auf
- *     `it.confirmation.codeNoetig` zurückgesetzt → rot „PIN aufdecken …“
- *     (Codefeld erscheint nicht).
- *  B  In verlange() den Klartext-Kurzweg entfernt (immer neue Rückfrage) → rot
- *     „PIN aufdecken …“ (kopieren fragt erneut, statt zu kopieren).
- *  C  forgetPlaintext() leert `klartext` nicht → rot „PIN aufdecken …“.
- *  D  In bestaetige() die Offline-Meldung beim Löschen entfernt (immer
- *     texte.meldung) → rot „offline wird nicht geloescht …“.
- *  E  withTicket() hängt das Ticket nicht an → rot „PDF und Export …“.
- *  F  editVoucher() nimmt `g.pin` nicht mehr, sondern "" → rot
- *     „Bearbeiten schickt die Maske …“ (PIN würde gelöscht bzw. fehlt).
- *  G  inputViaMask() gibt immer `neu` zurück → rot „the mask is a whole“.
- *  H  pdfWithOnceTicket() immer false → rot „PDF und Export …“ (der Betrachter
- *     versuchte ein verbrauchtes Ticket erneut).
+ * Counter-checks:
+ *  A  In bestaetige() `codeNoetig = … || fehler.code in FACTOR_CODES` reset
+ *     to `it.confirmation.codeNoetig` → red “revealing a PIN …”
+ *     (code field does not appear).
+ *  B  In verlange() the plain-text shortcut removed (always a new prompt) → red
+ *     “revealing a PIN …” (copying asks again instead of copying).
+ *  C  forgetPlaintext() does not clear `klartext` → red “revealing a PIN …”.
+ *  D  In bestaetige() the offline message on deleting removed (always
+ *     texte.meldung) → red “offline it is not deleted …”.
+ *  E  withTicket() does not attach the ticket → red “PDF and export …”.
+ *  F  editVoucher() no longer takes `g.pin`, but "" instead → red
+ *     “editing sends the mask …” (the PIN would be cleared or missing).
+ *  G  inputViaMask() always returns `neu` → red “the mask is a whole”.
+ *  H  pdfWithOnceTicket() always false → red “PDF and export …” (the viewer
+ *     retried a used-up ticket).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class VoucherPlaintextTest {
@@ -66,7 +66,7 @@ class VoucherPlaintextTest {
     private fun antwort(rumpf: String, code: Int = 200) = TestApi.antwort(rumpf, code)
     private fun warteBis(was: String, bedingung: () -> Boolean) = TestApi.warteBis(was, bedingung)
 
-    /** So antwortet der Server: nur die Maske. */
+    /** This is how the server answers: only the mask. */
     private val maskiert = """{"success":true,"vouchers":[
         {"id":1,"number":"…3333","pin":"•••","amount":50,"currency":"CHF","hat_pdf":true}]}"""
     private val klartext = """{"success":true,"id":1,"number":"6000111122223333","pin":"1234"}"""
@@ -118,7 +118,7 @@ class VoucherPlaintextTest {
         assertEquals("1234", vm.state.value.klartext[1]?.pin)
         assertEquals("123456", JSONObject(server.takeRequest().body.readUtf8()).getString("code"))
 
-        // Schon da: Kopieren fragt nicht noch einmal und kopiert den Klartext.
+        // Already there: copying does not ask again and copies the plain text.
         vm.copyVoucher(1, isNumber = true)
         assertEquals(CopyJob("6000111122223333", true), vm.state.value.copyTo)
         assertNull(vm.state.value.confirmation)
@@ -128,7 +128,7 @@ class VoucherPlaintextTest {
         assertTrue(vm.state.value.klartext.isEmpty())
         assertTrue(vm.state.value.pinSichtbar.isEmpty())
         assertNull(vm.state.value.copyTo)
-        // Nach dem Verlassen wieder mit Passwort.
+        // With a password again after leaving.
         vm.copyVoucher(1, isNumber = false)
         assertEquals(VoucherStep.PIN_COPY, vm.state.value.confirmation?.schritt)
     }

@@ -39,7 +39,7 @@ import ch.brickinventoryapp.ui.components.catalogName
 import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.util.fmtInt
 
-/** PDF der fertigen Liste; ein Fehler kommt als Dialog. Der Export läuft im ViewModel. */
+/** PDF of the finished list; an error comes as a dialog. The export runs in the ViewModel. */
 @Composable
 internal fun PdfButton(exportRunning: Boolean, pdfError: String?, onExport: () -> Unit, onErrorSeen: () -> Unit) {
     if (pdfError != null) {
@@ -53,14 +53,14 @@ internal fun PdfButton(exportRunning: Boolean, pdfError: String?, onExport: () -
             text = { Text(pdfError) }
         )
     }
-    // Umrandet wie jede Nebenaktion: Die getönte Fläche lag im hellen Design kaum über dem Grund.
+    // Outlined like every secondary action: the tinted surface was barely visible above the background in the light theme.
     OutlinedButton(
         onClick = onExport,
         enabled = !exportRunning,
         colors = nebenKnopfFarben(),
         border = nebenKnopfRand(!exportRunning),
     ) {
-        // Nur das Symbol wird zum Kreisel, die Beschriftung bleibt (wie oben).
+        // Only the icon turns into a spinner, the label stays (as above).
         if (exportRunning) CircularProgressIndicator(Modifier.size(16.dp),
             strokeWidth = 2.dp)
         else Icon(Icons.Default.PictureAsPdf, null, Modifier.size(withFont(16.dp)))
@@ -69,7 +69,7 @@ internal fun PdfButton(exportRunning: Boolean, pdfError: String?, onExport: () -
     }
 }
 
-/** Kopf einer Farbgruppe: Farbpunkt, Name und wie viele Teile und Typen sie hat; [colorName] null = Minifiguren. */
+/** Header of a color group: color dot, name and how many parts and types it has; [colorName] null = minifigures. */
 @Composable
 internal fun FarbGroupsHeader(colorName: String?, colorParts: List<PlPart>) {
     val quantities = androidx.compose.ui.platform.LocalResources.current
@@ -90,8 +90,8 @@ internal fun FarbGroupsHeader(colorName: String?, colorParts: List<PlPart>) {
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(Abstaende.klein))
-        // Uebereinstimmung mit %2$d (den Typen) — %1$d traegt
-        // nur ein „×" und kein Wort.
+        // Agreement with %2$d (the types) — %1$d carries
+        // only an "×" and no word.
         Text(quantities.getQuantityString(R.plurals.partslist_group_summary,
                 colorParts.size, colorParts.sumOf { it.quantity }, colorParts.size),
             style = MaterialTheme.typography.bodySmall,
@@ -107,9 +107,9 @@ internal fun PartListRow(
     imageLoader: ImageLoader,
 ) {
     val ctx = LocalContext.current
-    // part.imageUrl ist schon aufgelöst (ui/Teileliste.kt); ein zweites
-    // resolveThumbUrl() wickelte die Proxy-Adresse doppelt ein. Nur ein relativer Pfad
-    // bekommt den Server davor.
+    // part.imageUrl is already resolved (ui/Teileliste.kt); a second
+    // resolveThumbUrl() would wrap the proxy address a second time. Only a relative path
+    // gets the server prepended.
     val imgUrl = remember(part.imageUrl, serverUrl) {
         part.imageUrl?.let { url ->
             if (url.startsWith("/")) "$serverUrl$url" else url
@@ -147,9 +147,9 @@ internal fun PartListRow(
 }
 
 /**
- * Was die Liste braucht und was im Bestand liegt, ausgeschrieben statt „×12“ und „✓ 8“:
- * Ohne Legende las niemand, welche Zahl welche war. Unter dem Namen statt rechts daneben,
- * damit bei grosser Schrift der Name nicht auf ein Wort je Zeile schrumpft.
+ * What the list needs and what is in stock, spelled out instead of "×12" and "✓ 8":
+ * without a legend nobody could read which number was which. Below the name instead of next to it,
+ * so that at large font the name does not shrink to one word per line.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -159,7 +159,7 @@ private fun QuantitiesPills(part: PlPart) {
         Pill(stringResource(R.string.partslist_benoetigt, fmtInt(part.quantity)),
             if (part.isFig) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.primaryContainer,
             if (part.isFig) MaterialTheme.colorScheme.onTertiaryContainer else MaterialTheme.colorScheme.onPrimaryContainer)
-        // Grün, wenn es reicht, sonst rot mit dem Fehlbetrag: „kann ich das bauen?“ beim Überfliegen.
+        // Green if it is enough, otherwise red with the shortfall: "can I build this?" at a glance.
         part.vorhanden?.let { habe ->
             val reicht = habe >= part.quantity
             Pill(
@@ -180,7 +180,7 @@ private fun Pill(text: String, flaeche: Color, schrift: Color) {
     }
 }
 
-/** Die Legende über der Liste, sobald der Bestand eingetragen ist. */
+/** The legend above the list, once the stock has been entered. */
 @Composable
 internal fun BuildListsLegend() {
     Text(stringResource(R.string.partslist_legende), style = MaterialTheme.typography.bodySmall,
@@ -188,8 +188,8 @@ internal fun BuildListsLegend() {
 }
 
 /**
- * Teile nach Farbe, die Minifiguren als eigene Gruppe am Ende (Schlüssel null): Sie haben
- * keine Farbe und standen sonst zwischen den Teilen unter „(Keine Farbe)“.
+ * Parts by color, minifigures as their own group at the end (key null): they have
+ * no color and otherwise stood between the parts under „(Keine Farbe)“.
  */
 internal fun buildListsGroups(parts: List<PlPart>): List<Pair<String?, List<PlPart>>> {
     val afterNumber = Comparator<PlPart> { a, b ->
@@ -202,4 +202,4 @@ internal fun buildListsGroups(parts: List<PlPart>): List<Pair<String?, List<PlPa
     return if (figuren.isEmpty()) farben else farben + (null to figuren.sortedWith(afterNumber))
 }
 
-// Den PDF-Export führt PartListViewModel.exportPartsPdf über den Vordergrund-Dienst.
+// PartListViewModel.exportPartsPdf runs the PDF export via the foreground service.

@@ -46,38 +46,38 @@ import androidx.compose.ui.text.style.TextAlign
 import ch.brickinventoryapp.finances.ui.viewmodel.pdfMaySavedBecome
 
 /**
- * In-App PDF-Viewer für grosse Anleitungen: Der Download läuft streamend und
- * verschlüsselt auf die Platte ([InstructionStore]; Gutscheine nur in den Speicher),
- * angezeigt wird aus einem Bereich ohne Namen ([PdfQuelle]). PdfRenderer rendert die
- * Seiten einzeln. „Herunterladen“ kopiert die geladene Anleitung, statt sie über den
- * DownloadManager neu zu holen — der kennt den Bearer-Token nicht.
+ * In-app PDF viewer for large instruction manuals: the download runs streamed and
+ * encrypted onto disk ([InstructionStore]; vouchers only into memory),
+ * displayed from an area without a name ([PdfQuelle]). PdfRenderer renders the
+ * pages one by one. „Herunterladen“ copies the loaded instruction manual instead of fetching it again via the
+ * DownloadManager — that one does not know the bearer token.
  */
 // ── Zoom ──
 //
-// Der Faktor gilt auf „Seite füllt die Breite“; 1 ist deshalb der untere Anschlag,
-// wie im Bildzoom und in der Weboberfläche.
+// The factor applies to "page fills the width"; 1 is therefore the lower limit,
+// as in the image zoom and in the web UI.
 internal const val PDF_ZOOM_MIN = 1f
 internal const val PDF_ZOOM_MAX = 5f
-internal const val PDF_ZOOM_STEP = 1.25f      // ein Druck auf + bzw. −
-internal const val PDF_ZOOM_DOPPELTIPP = 2.5f    // Doppeltipp aus 1x heraus
+internal const val PDF_ZOOM_STEP = 1.25f      // one tap on + or −
+internal const val PDF_ZOOM_DOPPELTIPP = 2.5f    // double tap out of 1x
 
 /**
- * In welcher Stufe gerendert wird — 1-, 2- oder 3-mal die Behälterbreite. Stufen
- * statt stufenlos: Der Faktor ändert sich mit jedem Bild der Geste, und jeder
- * Wechsel kostet einen PdfRenderer-Durchlauf; so sind es auf dem Weg von 1x nach
- * 5x höchstens zwei.
+ * At which step it is rendered — 1, 2 or 3 times the container width. Steps
+ * instead of stepless: the factor changes with every frame of the gesture, and every
+ * change costs one PdfRenderer pass; this way it is at most two on the way from 1x to
+ * 5x.
  */
 internal fun renderLevel(zoom: Float): Int = ceil(zoom).toInt().coerceIn(1, 3)
 
 /**
- * Der Betrachter am Navigationsziel: holt das ViewModel und stösst das Laden an.
- * Der Bildschirm darunter bekommt nur noch den Zustand.
+ * The viewer at the navigation destination: fetches the ViewModel and triggers the loading.
+ * The screen underneath now only gets the state.
  */
 @Composable
 internal fun PdfViewerRoute(
     pdfUrl: String,
     title: String,
-    /** Nur Adressen dieses Servers lädt der Betrachter (pdfInViewer). */
+    /** The viewer loads only addresses of this server (pdfInViewer). */
     serverUrl: String,
     onBack: () -> Unit,
     vm: PdfBetrachterViewModel = hiltViewModel(),
@@ -100,35 +100,35 @@ internal fun PdfViewerRoute(
 internal fun PdfViewerScreen(
     state: PdfLoadState,
     title: String,
-    /** Herunterladen und Drucken nur, wo die Datei das Gerät verlassen darf (keine Gutscheine). */
+    /** Download and print only where the file may leave the device (no vouchers). */
     speicherbar: Boolean,
     onBack: () -> Unit,
-    /** Rendert eine Seite abseits des Hauptfadens (PdfSeitenQuelle). */
+    /** Renders a page off the main thread (PdfSeitenQuelle). */
     rendereSeite: SeitenRenderer,
-    /** Schreibt die Datei für den Druck, abseits des Hauptfadens (PdfBetrachterViewModel.schreiber). */
+    /** Writes the file for printing, off the main thread (PdfBetrachterViewModel.schreiber). */
     schreibe: PdfSchreiber,
-    /** „Erneut versuchen“ im Fehlerzustand (PdfBetrachterViewModel.erneut). */
+    /** „Erneut versuchen“ in the error state (PdfBetrachterViewModel.erneut). */
     onErneut: () -> Unit,
 ) {
     val ctx = LocalContext.current
-    // Rückmeldungen von Drucken und Herunterladen als Snackbar im eigenen Gerüst: Ein
-    // Toast verschwand, bevor TalkBack ihn fertig gelesen hatte, und trug kein Design.
+    // Feedback from printing and downloading as a snackbar in the app's own scaffold: a
+    // Toast disappeared before TalkBack had finished reading it, and carried no design.
     val meldungen = remember { SnackbarHostState() }
     val bereich = rememberCoroutineScope()
     val melde: (String?) -> Unit = { text -> if (text != null) bereich.launch { meldungen.showSnackbar(text) } }
-    // Der Zoom gehoert hierher und nicht in PdfPages: Die Knoepfe sitzen in der
-    // Kopfzeile, die Geste in der Liste, und der Faktor wird unten angezeigt —
-    // drei Stellen, eine Wahrheit.
+    // The zoom belongs here and not in PdfPages: the buttons sit in the
+    // header, the gesture in the list, and the factor is shown at the bottom —
+    // three places, one truth.
     var zoom by remember { mutableFloatStateOf(PDF_ZOOM_MIN) }
     val anker = remember { ZoomAnker() }
-    // Geste und Doppeltipp zoomen um ihren Punkt, die Knoepfe (null) um die Mitte.
+    // Gesture and double tap zoom around their point, the buttons (null) around the center.
     val setzeZoom = { neu: Float, point: Offset? ->
         anker.point = point
         zoom = neu.coerceIn(PDF_ZOOM_MIN, PDF_ZOOM_MAX)
     }
 
-    // Bildschirm WÄHREND DES LADENS anlassen: Geht das Display aus, trennt Android
-    // (je nach Gerät/WLAN-Sleep) kurz das Netzwerk. Danach wieder frei (Akku).
+    // Keep the screen on WHILE LOADING: if the display goes off, Android
+    // briefly disconnects the network (depending on device/Wi-Fi sleep). Free again afterward (battery).
     val isLoading = state is PdfLoadState.Downloading || state is PdfLoadState.Rendering
     DisposableEffect(isLoading) {
         val window = ctx.findActivity()?.window
@@ -140,13 +140,13 @@ internal fun PdfViewerScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(meldungen) },
         topBar = {
-            // Der Setname als Überschrift, bei grosser Schrift zweizeilig.
+            // The set name as the heading, two lines at large font.
             DetailTopAppBar(
                 titel = title.ifBlank { "PDF" }, onZurueck = onBack, schliessen = false,
                 actions = {
-                    // Erst im Zustand Ready: Beide Knöpfe arbeiten auf der geladenen
-                    // Datei, ein eigener Download kennte den Bearer-Token nicht. Beide nur,
-                    // wo Speichern erlaubt ist: Der Druckdialog bietet „Als PDF speichern“.
+                    // Only in state Ready: both buttons work on the loaded
+                    // file, a download of its own would not know the bearer token. Both only
+                    // where saving is allowed: the print dialog offers „Als PDF speichern“.
                     val s = state
                     if (s is PdfLoadState.Ready) {
                         if (speicherbar) {
@@ -202,7 +202,7 @@ private fun DownloadProgress(s: PdfLoadState.Downloading) {
             if (s.total > 0) {
                 CircularProgressIndicator(progress = { s.pct / 100f })
                 Text(stringResource(R.string.pdfview_loading_pct, s.pct), Modifier.clearAndSetSemantics {})
-                // Der Prozentwert tickt; angesagt wird er alle zehn Sekunden.
+                // The percentage ticks; it is announced every ten seconds.
                 ThrottledAnnouncement(stringResource(R.string.pdfview_loading_pct, s.pct))
                 Text(
                     "${formatMb(s.bytes)} / ${formatMb(s.total)}",
@@ -232,9 +232,9 @@ private fun CenteredLoading(text: String) {
 }
 
 /**
- * Überschrift und Rat nach der Fehlerklasse wie überall in der App, der Text der
- * Ausnahme („HTTP 503“) nur als Ursache darunter. Eine fremde Adresse lädt auch beim
- * zweiten Mal nicht: dort nur der Satz, ohne „Erneut versuchen“.
+ * Heading and advice by error class as everywhere in the app, the exception's
+ * text („HTTP 503“) only as a cause underneath. A foreign address does not load on the
+ * second try either: there only the sentence, without „Erneut versuchen“.
  */
 @Composable
 private fun PdfErrorDisplay(s: PdfLoadState.Error, onErneut: () -> Unit) {
@@ -245,7 +245,7 @@ private fun PdfErrorDisplay(s: PdfLoadState.Error, onErneut: () -> Unit) {
     }
 }
 
-/** Fehler ohne Ursachentext: der Satz in der Sprache der App. */
+/** Error without a cause text: the sentence in the app's language. */
 @Composable
 private fun errorText(grund: PdfError): String = when (grund) {
     PdfError.FREMDER_HOST -> stringResource(R.string.pdfview_fremder_host)
@@ -253,8 +253,8 @@ private fun errorText(grund: PdfError): String = when (grund) {
     PdfError.UNBEKANNT -> stringResource(R.string.pdfview_unknown_error)
 }
 
-// Druckt die bereits geladene PDF-Datei über das System-Druckframework. Gibt bei einem
-// Fehler die Meldung zurück; das Gelingen zeigt der Druckdialog selbst.
+// Prints the already loaded PDF file via the system print framework. On an
+// error returns the message; success is shown by the print dialog itself.
 private fun printPdf(ctx: Context, quelle: PdfQuelle, title: String, schreiber: PdfSchreiber, bereich: CoroutineScope): String? {
     return fangeAusserAbbruch {
         val printManager = ctx.getSystemService(Context.PRINT_SERVICE) as PrintManager
@@ -267,19 +267,19 @@ private fun printPdf(ctx: Context, quelle: PdfQuelle, title: String, schreiber: 
 }
 
 /**
- * Die geladene PDF-Datei in den Download-Ordner kopieren — ohne zweiten Download:
- * Der DownloadManager kennt unseren Bearer-Token nicht und legte die 401-Antwort
- * als „anleitung.pdf“ ab. Kopieren geht auch offline. Über den MediaStore, der
- * keine Berechtigung braucht. Gibt die Meldung für die Snackbar zurück.
+ * Copy the loaded PDF file into the Downloads folder — without a second download:
+ * the DownloadManager does not know our bearer token and would store the 401 answer
+ * as „anleitung.pdf“. Copying also works offline. Via the MediaStore, which
+ * needs no permission. Returns the message for the snackbar.
  */
 private fun savePdfToDownloads(ctx: Context, quelle: PdfQuelle, title: String): String {
     return fangeAusserAbbruch {
         val safe = (title.ifBlank { "anleitung" }).replace(Regex("[^A-Za-z0-9._-]"), "_")
         val name = if (safe.endsWith(".pdf", true)) safe else "$safe.pdf"
 
-        // IS_PENDING blendet die Datei aus,
-        // solange geschrieben wird — sonst könnte eine andere App sie
-        // halbfertig öffnen.
+        // IS_PENDING hides the file
+        // while it is being written — otherwise another app could
+        // open it half-finished.
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, name)
             put(MediaStore.Downloads.MIME_TYPE, "application/pdf")
@@ -299,7 +299,7 @@ private fun savePdfToDownloads(ctx: Context, quelle: PdfQuelle, title: String): 
     }
 }
 
-/** Der Satz zuerst; der Text der Ausnahme nur als Zusatz, er ist oft Technik („EACCES“). */
+/** The sentence comes first; the exception's text only as an addition, it is often technical („EACCES“). */
 private fun withCause(satz: String, e: Throwable): String =
     e.message?.takeIf { it.isNotBlank() }?.let { "$satz ($it)" } ?: satz
 
@@ -315,10 +315,10 @@ private fun Context.findActivity(): Activity? {
 private fun formatMb(bytes: Long): String {
     if (bytes <= 0) return "0 MB"
     val mb = bytes / 1_048_576.0
-    // Locale AUSDRUECKLICH: `String.format` ohne Locale nimmt ohnehin die
-    // voreingestellte — Lint beanstandet, dass das nicht dasteht, und damit
-    // hat es recht. Hier ist getDefault() auch das Richtige: Die Zahl wird
-    // ANGEZEIGT, ein deutscher Nutzer erwartet „1,5 MB" mit Komma.
+    // Locale EXPLICITLY: `String.format` without a Locale takes the
+    // default one anyway — Lint flags that this is not written out, and it is
+    // right to. Here getDefault() is also the correct choice: the number is being
+    // DISPLAYED, and a German-speaking user expects „1,5 MB" with a comma.
     return if (mb >= 1024) String.format(java.util.Locale.getDefault(), "%.2f GB", mb / 1024)
            else String.format(java.util.Locale.getDefault(), "%.1f MB", mb)
 }

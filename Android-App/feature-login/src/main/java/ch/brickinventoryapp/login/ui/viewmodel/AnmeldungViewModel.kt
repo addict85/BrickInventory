@@ -54,13 +54,13 @@ import ch.brickinventoryapp.state.ui.Scope
 import ch.brickinventoryapp.state.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.state.ui.viewmodel.sequenceSignOut
 
-/** So oft fragt die App nach dem QR-Scan, ob der Browser die Kopplung bestätigt hat. */
+/** How often the app asks, after the QR scan, whether the browser has confirmed the pairing. */
 internal const val QR_QUERY_MS = 2_000L
 
 /**
- * Server einrichten, anmelden (Passwort, zweiter Faktor, Passkey, QR), Konto anlegen,
- * Passwort vergessen. An die Activity gebunden, weil der QR-Weg die Einrichtung
- * verlässt, während die Anmeldung noch läuft.
+ * Set up a server, sign in (password, second factor, passkey, QR), create an account,
+ * forgot password. Bound to the Activity, because the QR path
+ * leaves setup while sign-in is still running.
  */
 @HiltViewModel
 class AnmeldungViewModel @Inject constructor(
@@ -84,9 +84,9 @@ class AnmeldungViewModel @Inject constructor(
     internal val anmeldeState: StateFlow<LoginUiState> = _loginState.asStateFlow()
 
     /**
-     * Nur eine https-Adresse wird gespeichert; false heisst abgelehnt, die
-     * Einrichtung bleibt stehen. Ein anderer Server meldet vorher ganz ab
-     * (über den SitzungsDienst, den Weg der App), denn der Token gehört dem alten.
+     * Only an https address is saved; false means rejected, setup
+     * stays put. A different server signs out completely beforehand
+     * (via the SitzungsDienst, the app's usual path), because the token belongs to the old one.
      */
     fun saveServerUrl(url: String): Boolean {
         val neu = NetworkPolicy.normalize(url)
@@ -106,14 +106,14 @@ class AnmeldungViewModel @Inject constructor(
         viewModelScope.launch { withPassword(username, password, code) }
     }
 
-    /** Der Passkey ersetzt den Code des zweiten Faktors; Name und Passwort gehen mit. */
+    /** The passkey replaces the second-factor code; name and password go along. */
     internal fun passkeyStattCode(username: String, password: String, abfrage: PasskeyQuery) {
         viewModelScope.launch {
             withPassword(username, password, null) { fetchPasskey(PASSKEY_SECOND_FACTOR, abfrage) }
         }
     }
 
-    /** Ohne Passwort: Der Credential Manager bietet die Passkeys dieses Servers an. */
+    /** Without a password: the Credential Manager offers this server's passkeys. */
     internal fun signInPasskey(abfrage: PasskeyQuery) {
         viewModelScope.launch {
             _loginState.update { it.copy(anmeldung = Vorgang.Laeuft) }
@@ -125,7 +125,7 @@ class AnmeldungViewModel @Inject constructor(
         }
     }
 
-    /** [passkey] läuft vor dem Senden: Ein abgebrochener Dialog soll keine halbe Anmeldung hinterlassen. */
+    /** [passkey] runs before sending: a cancelled dialog should not leave behind a half sign-in. */
     private suspend fun withPassword(username: String, password: String, code: String?,
                                     passkey: (suspend () -> JsonObject?)? = null) {
         val url = ablage.serverUrlJetzt()
@@ -142,10 +142,10 @@ class AnmeldungViewModel @Inject constructor(
         }
     }
 
-    /** [withCode]: Ein zweiter Faktor wurde mitgeschickt; dann ist ein Nein des Servers ein Fehler. */
+    /** [withCode]: a second factor was sent along; then a no from the server is an error. */
     private suspend fun afterResponse(antwort: Anmeldung, benutzer: String, withCode: Boolean) {
-        // In eine lokale Variable: Das Modell liegt in core-model, über die
-        // Modulgrenze prüft Kotlin `!= null` nicht für den Aufruf darunter.
+        // Into a local variable: the model lives in core-model, and across the
+        // module boundary Kotlin does not check `!= null` for the call below it.
         val newToken = antwort.token
         when {
             antwort.zweiterFaktor -> _loginState.update { it.copy(codeNoetig = true,
@@ -161,10 +161,10 @@ class AnmeldungViewModel @Inject constructor(
     }
 
     /**
-     * null, wenn es nicht weitergeht; der Zustand sagt dann schon, warum. Die
-     * rpId muss der Host der eingerichteten Adresse sein (util/PasskeyHerkunft),
-     * und die Adresse darf sich bis zur Antwort nicht ändern: Sonst ginge die
-     * Signatur an einen anderen Server als den, dessen Optionen geprüft wurden.
+     * null if it does not continue; the state already says why in that case. The
+     * rpId must be the host of the configured address (util/PasskeyHerkunft),
+     * and the address must not change until the answer: otherwise the
+     * signature would go to a different server than the one whose options were checked.
      */
     private suspend fun fetchPasskey(zweck: String, abfrage: PasskeyQuery): JsonObject? {
         _loginState.update { it.copy(anmeldung = Vorgang.Laeuft) }
@@ -197,13 +197,13 @@ class AnmeldungViewModel @Inject constructor(
 
     private fun scope() = if (_loginState.value.vollerZugriff) TOKEN_SCOPE_FULL else TOKEN_SCOPE_APP
 
-    /** Das Häkchen „mit Verwalterrechten“ im Anmeldeformular. */
+    /** The „mit Verwalterrechten“ checkbox in the sign-in form. */
     fun setFullAccess(an: Boolean) = _loginState.update { it.copy(vollerZugriff = an) }
 
     /**
-     * Erst nach der Bestätigung im Einrichtungsbildschirm: Die Adresse kommt aus dem Code.
-     * Sein Fingerabdruck gilt schon für die erste Anfrage, gemerkt wird er aber erst nach
-     * gelungener Anmeldung.
+     * Only after the confirmation in the setup screen: the address comes from the code.
+     * Its fingerprint already applies to the first request, but it is only remembered after
+     * a successful sign-in.
      */
     fun loginWithQrToken(
         serverUrl: String, token: String, fingerabdruck: String? = null,
@@ -218,37 +218,37 @@ class AnmeldungViewModel @Inject constructor(
         viewModelScope.launch {
             _loginState.update { it.copy(anmeldung = Vorgang.Laeuft) }
             if (schluessel != null && fingerabdruck != null) ablage.holdBefore(schluessel, fingerabdruck)
-            // Angemeldet bei einem anderen Server: Er bleibt, bis Browser und Konto-Ja die
-            // Kopplung bestätigen (pairQr); ein Abbruch liesse sonst gar keine Anmeldung zurück.
+            // Signed in to a different server: it stays until the browser and account-yes confirm the
+            // pairing (pairQr); a cancel would otherwise leave no sign-in at all.
             val switch = sitzung.state.value.isLoggedIn && !NetworkPolicy.sameServer(ablage.serverUrlJetzt(), neu)
             pairingWithSwitch = switch
             try {
                 if (switch) ablage.kopplungsziel(neu) else ablage.saveServerUrl(neu)
                 when (val r = afterCertificateQuestion(neu) { konto.qrLogin(token, geraet) }) {
                     is Ergebnis.Erfolg -> pairQr(r.data, QrTarget(neu, schluessel, fingerabdruck, switch))
-                    // Eine Absage ohne Satz heisst hier: Der Code gilt nicht.
+                    // A rejection without a sentence means here: the code is not valid.
                     is Ergebnis.Fehler -> qrFailed(
                         if (r is Ergebnis.Fehler.Absage) Meldung.Resource(R.string.err_qr_login_failed) else errorMessage(r))
                 }
             } finally {
                 pairingWithSwitch = false
                 if (switch) ablage.kopplungsziel(null)
-                // Nach rememberPin ein No-op; sonst bleibt nichts vom Code zurück.
+                // A no-op after rememberPin; otherwise nothing of the code remains.
                 if (schluessel != null) ablage.forgetRetained(schluessel)
             }
         }
     }
 
-    /** Wohin ein QR-Code koppelt und ob dafür der bisherige Server verlassen wird. */
+    /** Where a QR code pairs to and whether that leaves the previous server. */
     private class QrTarget(val adresse: String, val schluessel: String?, val fingerabdruck: String?, val switch: Boolean)
 
-    /** Solange eine Kopplung neben der bisherigen Anmeldung läuft, ist ihr Scheitern ein Fehler (qrFailed). */
+    /** As long as a pairing runs alongside the existing sign-in, its failure is an error (qrFailed). */
     private var pairingWithSwitch = false
 
     /**
-     * Ein Erstkontakt bricht den Handshake ab, bevor der Dialog beantwortet ist. Nach
-     * dem Ja gilt der Pin, die Anfrage ging nie hinaus: ein zweiter Versuch, statt
-     * „Keine Verbindung“ zu zeigen und den Nutzer neu scannen zu lassen.
+     * A first contact aborts the handshake before the dialog is answered. After
+     * the yes the pin applies, the request never went out: a second attempt, instead of
+     * showing "no connection" and making the user scan again.
      */
     private suspend fun <T> afterCertificateQuestion(adresse: String, abruf: suspend () -> Ergebnis<T>): Ergebnis<T> {
         val r = abruf()
@@ -258,19 +258,19 @@ class AnmeldungViewModel @Inject constructor(
         return if (ablage.rememberedPin(schluessel) != null) abruf() else r
     }
 
-    /** Wartet die Kopplung auf das Ja oder Nein zum gezeigten Konto ([LoginUiState.qrAccount]). */
+    /** The pairing waits for the yes or no to the shown account ([LoginUiState.qrAccount]). */
     private var qrDecision: CompletableDeferred<Boolean>? = null
 
-    /** Das Ja oder Nein zum Konto, das der Server nach der Bestätigung im Browser nennt. */
+    /** The yes or no to the account that the server names after the confirmation in the browser. */
     fun decideQrAccount(uebernehmen: Boolean) {
         qrDecision?.complete(uebernehmen)
     }
 
     /**
-     * Der Pin wird erst gemerkt, wenn der Browser die Kopplung bestätigt und man das
-     * gezeigte Konto angenommen hat: Ein abgelehnter, verfallener oder untergeschobener
-     * Code darf keinen Schlüssel und keinen Token zurücklassen. Das Warten auf das Ja
-     * bleibt in dieser Koroutine, damit der vorgehaltene Pin bis zur Abholung gilt.
+     * The pin is only remembered once the browser confirms the pairing and the
+     * shown account has been accepted: a rejected, expired or planted
+     * code must leave behind no key and no token. Waiting for the yes stays
+     * in this coroutine, so that the held pin is valid until it is collected.
      */
     private suspend fun pairQr(antwort: QrPairing, ziel: QrTarget) {
         val abholung = antwort.abholung
@@ -296,8 +296,8 @@ class AnmeldungViewModel @Inject constructor(
     }
 
     /**
-     * Erst jetzt, mit dem Token des neuen Servers in der Hand: Die Kopplung endet, damit
-     * das Abmelden den bisherigen Server erreicht und dessen Token dort entwertet.
+     * Only now, with the new server's token in hand: the pairing ends, so that
+     * signing out reaches the previous server and invalidates its token there.
      */
     private suspend fun leavePreviousServer(neu: String) {
         ablage.kopplungsziel(null)
@@ -326,9 +326,9 @@ class AnmeldungViewModel @Inject constructor(
     }
 
     /**
-     * Warum der Code nicht angenommen wird, als Satz; null, wenn er gilt. Ein fremder
-     * Schlüssel aus dem Code gilt nur abgetippt (mussAbtippen), sonst bliebe der Pin
-     * des Angreifers gemerkt.
+     * Why the code is not accepted, as a sentence; null if it is valid. A foreign
+     * key from the code only counts when typed off (mussAbtippen), otherwise the
+     * attacker's pin would stay remembered.
      */
     private fun qrRejected(serverUrl: String, neu: String, fingerabdruck: String?, eingabe: String?): Int? {
         when (NetworkPolicy.addressError(serverUrl, NetworkPolicy.entwicklung)) {
@@ -343,8 +343,8 @@ class AnmeldungViewModel @Inject constructor(
     }
 
     /**
-     * Der gemerkte Pin für die Adresse, wenn er von [fingerabdruck] abweicht —
-     * dann fragt der Einrichtungsbildschirm nach (bisher/neu), bevor er anmeldet.
+     * The remembered pin for the address, if it deviates from [fingerabdruck] —
+     * then the setup screen asks (old/new) before signing in.
      */
     fun bisherigerPin(serverUrl: String, fingerabdruck: String?): String? {
         if (fingerabdruck == null) return null
@@ -353,9 +353,9 @@ class AnmeldungViewModel @Inject constructor(
     }
 
     /**
-     * Muss der Fingerabdruck des Codes aus der Webapp abgetippt werden? Ohne Abtippen
-     * gilt nur der schon bestätigte Pin oder eine System-Wurzel: Deren Kette muss
-     * ohnehin öffentlich gültig sein, ein fremder Schlüssel aus dem Code nicht.
+     * Must the code's fingerprint from the web app be typed off? Without typing it off,
+     * only the already confirmed pin or a system root applies: its chain must
+     * be publicly valid anyway, a foreign key from the code need not be.
      */
     fun mussAbtippen(serverUrl: String, fingerabdruck: String?): Boolean {
         if (fingerabdruck == null) return false
@@ -365,8 +365,8 @@ class AnmeldungViewModel @Inject constructor(
     }
 
     /**
-     * Fragt, bis der Browser die Kopplung bestätigt oder ablehnt; null heisst gescheitert,
-     * der Zustand sagt dann schon, warum. Nach der Frist des Codes fragt die App nicht weiter.
+     * Asks until the browser confirms or rejects the pairing; null means failed,
+     * the state then already says why. After the code's deadline the app does not ask further.
      */
     private suspend fun waitOnConfirmation(abholung: String, seconds: Int): QrAbholstand? {
         val ende = System.currentTimeMillis() + seconds * 1000L
@@ -381,7 +381,7 @@ class AnmeldungViewModel @Inject constructor(
         return qrFailed(Meldung.Resource(R.string.err_qr_login_failed))
     }
 
-    /** Ein zweiter QR-Anlauf nach einer gelungenen Anmeldung ist kein Fehler (siehe qrError). */
+    /** A second QR attempt after a successful sign-in is not an error (see qrError). */
     private fun qrFailed(satz: Meldung): QrAbholstand? {
         val alreadySignedIn = sitzung.state.value.isLoggedIn && !pairingWithSwitch
         _loginState.update { it.copy(qrBestaetigung = null, qrAccount = null,
@@ -390,8 +390,8 @@ class AnmeldungViewModel @Inject constructor(
     }
 
     /**
-     * Jede Anmeldung beginnt mit „alle Konten“ — VOR dem Token: Er stösst das
-     * Laden von Konten und Filtern an, und das soll den geleerten Stand sehen.
+     * Every sign-in starts with "all accounts" — BEFORE the token: it triggers the
+     * loading of accounts and filters, and that should see the cleared state.
      */
     private suspend fun angemeldet(token: String, benutzer: String, admin: Boolean) {
         scopeService.loginBegins()
@@ -400,7 +400,7 @@ class AnmeldungViewModel @Inject constructor(
         sitzung.angemeldet(admin)
     }
 
-    /** Ohne Antwort bleibt der Link verborgen: Ein Knopf ins Leere ist schlechter als keiner. */
+    /** Without an answer, the link stays hidden: a button leading nowhere is worse than none. */
     fun openCheckRegistration() {
         viewModelScope.launch {
             when (val r = konto.getRegistrationStatus()) {
@@ -411,8 +411,8 @@ class AnmeldungViewModel @Inject constructor(
     }
 
     fun showLoginForm(formular: AnmeldeFormular) {
-        // Meldung und Fehler gehen mit, sonst stünde die Bestätigung der
-        // Registrierung noch im Formular „Passwort vergessen“.
+        // The message and error go along, otherwise the registration's confirmation
+        // would still be showing in the "forgot password" form.
         _loginState.update { it.copy(formular = formular, meldung = null, hinweis = null, konto = it.konto.withoutError()) }
     }
 
@@ -425,12 +425,12 @@ class AnmeldungViewModel @Inject constructor(
                 vorname = vorname.trim().ifBlank { null },
                 nachname = nachname.trim().ifBlank { null },
                 passwort = passwort,
-                // Die Sprache der Oberfläche steuert Bestätigungs-E-Mail und Kontoeinstellung.
+                // The UI's language controls the confirmation email and the account setting.
                 sprache = meldungen.text(R.string.lang_code),
             )
             when (val r = konto.register(anfrage)) {
                 is Ergebnis.Erfolg -> {
-                    // Ohne Mailversand wartet man sonst auf eine E-Mail, die nie kommt.
+                    // Without mail sending, one would otherwise wait for an email that never comes.
                     _loginState.update { it.copy(konto = Vorgang.Fertig,
                         meldung = r.data.meldung?.let(Meldung::Text) ?: Meldung.Resource(R.string.register_done),
                         hinweis = if (r.data.withoutMailversand) Meldung.Resource(R.string.register_console_hint) else null) }
@@ -441,8 +441,8 @@ class AnmeldungViewModel @Inject constructor(
     }
 
     /**
-     * Die Antwort des Servers ist absichtlich immer dieselbe; sie wird
-     * unverändert gezeigt, sonst verriete die App, was der Server verschweigt.
+     * The server's answer is deliberately always the same; it is
+     * shown unchanged, otherwise the app would give away what the server keeps secret.
      */
     fun passwortVergessen(email: String) {
         viewModelScope.launch {

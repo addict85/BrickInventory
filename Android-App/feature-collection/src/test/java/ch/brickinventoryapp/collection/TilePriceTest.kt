@@ -14,33 +14,33 @@ import ch.brickinventoryapp.collection.ui.tilePrices
 import ch.brickinventoryapp.collection.ui.kachelQuelle
 
 /**
- * Preis und G&V auf der Galeriekachel: vom Server (kachel_preis,
- * kachel_pnl_pct), bei älteren Servern die frühere Rechnung der App (Übergang).
+ * Price and P&L on the gallery tile: from the server (kachel_preis,
+ * kachel_pnl_pct), on older servers the app's earlier calculation (transition).
  *
- * Gegenproben:
- *   S  in tilePrices() immer tilePriceBeforeServer() genommen → rot „die
- *      Kachel nimmt Betrag und G&V des Servers“ (800,0 statt 812,5)
- *   T  die Bedingung auf `e.kachelPreis != null` verkürzt → rot ebenda am
- *      zweiten Set (nur kachel_pnl_pct gesetzt)
+ * Counter-checks:
+ *   S  in tilePrices() tilePriceBeforeServer() always taken → red “the
+ *      tile takes the server's amount and P&L” (800.0 instead of 812.5)
+ *   T  the condition shortened to `e.kachelPreis != null` → red at the same
+ *      place on the second set (only kachel_pnl_pct set)
  *
- * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen TilePrice.kt):
- *   A  bei mehreren Zeilen die erste genommen statt gewichtet → rot „zwei
- *      Zustände …“ (750,0 statt 191,7)
- *   B  nur pnl_pct gelesen, baseline_pnl_pct nicht → rot „eine Zeile ohne
- *      Kaufpreis …“
- *   C  in tileAmount() den Kaufpreis vor den Marktpreis gestellt → rot
- *      „der Marktpreis geht vor …“
+ * Counter-checks (measured 28.10.2026, kotlinc against TilePrice.kt):
+ *   A  with several rows the first one taken instead of weighted → red “two
+ *      states …” (750.0 instead of 191.7)
+ *   B  only pnl_pct read, not baseline_pnl_pct → red “a row without
+ *      a purchase price …”
+ *   C  in tileAmount() the purchase price put ahead of the market price → red
+ *      “the market price takes priority …”
  *
- * Gegenprobe:
- *   Q  in kachelQuelle() `preis.quelle == "kauf"` nicht beachtet → rot „die
- *      Quelle des Servers …“ (MARKT statt PURCHASE); in der Oberfläche misst es
+ * Counter-check:
+ *   Q  in kachelQuelle() `preis.quelle == "kauf"` not honored → red “the
+ *      server's source …” (MARKT instead of PURCHASE); measured in the UI by
  *      gegenproben/kachel-quelle-ignoriert.patch
  */
 class TilePriceTest {
 
     @Test
     fun `the tile takes the server's amount and P&L`() {
-        // Die alten Felder ergäben 800,0 und 14,3; der Server hat im Haushalt gewichtet.
+        // The old fields would give 800.0 and 14.3; the server weighted across the household.
         val p = tilePrices(listOf(
             PnlSetZeile(setNumber = "75192-1", quantity = 1, currentPrice = 800.0, baselinePrice = 700.0, pnlPct = null, baselinePnlPct = "14.3",
                         kachelPreis = 812.5, kachelPnlPct = 16.1),
@@ -84,12 +84,12 @@ class TilePriceTest {
         val set = SetAnsicht(setNumber = "21318-1")
         assertEquals(TileSource.PURCHASE, kachelQuelle(set, p["21318-1"]))
         assertEquals(TileSource.MARKT, kachelQuelle(set, TilePrice(Geld.aus(812.5), 16.1, "markt")))
-        // Ältere Server ohne kachel_quelle lieferten nur Marktpreise.
+        // Older servers without kachel_quelle delivered only market prices.
         assertEquals(TileSource.MARKT, kachelQuelle(set, TilePrice(Geld.aus(812.5), 16.1)))
         assertEquals(TileSource.PURCHASE, kachelQuelle(SetAnsicht(setNumber = "1-1", avgPurchasePrice = Geld.aus(40.0)), null))
         assertNull(kachelQuelle(set, null))
     }
 }
 
-/** Die Zeilen wie der Server sie schickt, abgebildet wie im FinancesRepository. */
+/** The rows as the server sends them, mapped as in FinancesRepository. */
 private fun tilePrices(z: List<PnlSetZeile>) = tilePrices(z.map { it.alsAnsicht() })

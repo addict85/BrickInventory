@@ -42,11 +42,11 @@ import ch.brickinventoryapp.parts.ui.PartsSessionUiState
 import ch.brickinventoryapp.session.abgeleitet
 
 /**
- * Der Teile-Reiter: Liste, Filter, Erfassen und Ändern manueller Teile, dazu der Dialog
- * „in welchen Sets steckt dieses Teil“. Die Figuren haben ihr eigenes [MinifigsViewModel].
+ * The parts tab: list, filter, entering and editing manual parts, plus the dialog
+ * "which sets is this part in". The figures have their own [MinifigsViewModel].
  *
- * Der [Teilefilter] liegt im [SavedStateHandle] und übersteht den Prozesstod; Konto und
- * Lagerort nicht, die gelten nur im Speicher (Blickfeld).
+ * The [Teilefilter] lives in the [SavedStateHandle] and survives a process death; account and
+ * storage location do not, they apply only in memory (the view).
  */
 @HiltViewModel
 class PartsViewModel @Inject constructor(
@@ -85,8 +85,8 @@ class PartsViewModel @Inject constructor(
     private val partsStorage get() = filter.storageFor(ScopeFilter.View.PARTS)?.ifBlank { null }
 
     /**
-     * Konto und Lagerort teilen die Mengen auf, „In Sets“ zählt die Tabelle: Das
-     * rechnet nur der Server (Kontosicht). Sonst gilt die Ablage.
+     * Account and storage location split the quantities, "In Sets" counts the table: only
+     * the server computes that (account view). Otherwise the store applies.
      */
     private fun partsQuery(st: PartsUiState): Kontosicht.PartsQuery? {
         val f = st.filter
@@ -119,7 +119,7 @@ class PartsViewModel @Inject constructor(
         filterChanged = { gemerkt[F_FILTER] = it },
     )
 
-    /** Jede Quelle füllen, die der Zustand zeigt; die Tabelle allein lässt die manuellen in der Ablage. */
+    /** Fill every source the state shows; the table alone leaves the manual ones in the store. */
     private suspend fun refreshParts(st: PartsUiState): Ergebnis<Unit> {
         val liste = partsQuery(st) ?: return repo.refreshParts()
         val r = kontosicht.teileliste.refresh(liste)
@@ -127,7 +127,7 @@ class PartsViewModel @Inject constructor(
         return manualQuery(st)?.let { kontosicht.manuelleTeile.refresh(it) } ?: repo.refreshManualParts()
     }
 
-    /** Ein manuelles Teil, das erst gelöscht wird, wenn die Snackbar ohne „Rückgängig“ endet. */
+    /** A manual part that is only deleted once the snackbar ends without „Rückgängig“. */
     data class ReservedPart(val partNumber: String, val colorId: Int, val owner: Int?, val name: String)
 
     val loeschen = Loeschvormerkung<ReservedPart>(viewModelScope) { v ->
@@ -146,20 +146,20 @@ class PartsViewModel @Inject constructor(
         afterHeader = filter::loadLocationStock)
     override val setItemState: StateFlow<SetItemUiState> = inSets.zustand
 
-    // Entprellt wie der Preisalarm: Wer „Kiste 3“ tippt, soll nicht fünf halbe
-    // Orte im Vorrat hinterlassen, und der Auftrag überlebt das Zurückgehen.
+    // Debounced like the price alert: whoever types "Kiste 3" should not leave five half
+    // locations in the supply, and the job survives navigating back.
     private var storageJob: Job? = null
 
     init {
-        // Die Liste folgt der Ablage selbst; die Kennzahlen rechnet der Server darüber.
+        // The list follows the store itself; the server computes the key figures from it.
         viewModelScope.launch { changes.partsChanged().collect { teile.loadMetrics() } }
         gemerkt.get<Teilefilter>(F_FILTER)?.let(teile::placeFilterAgain)
-        // Wer den Reiter oder ein Einzelstück zeigt, bekommt Liste, Farbkatalog und Filterlisten;
-        // die beiden Filterlisten kommen von zwei Adressen (PartsApi.getPartsFilterColors).
+        // Whoever shows the tab or a single item gets the list, color catalog and filter lists;
+        // the two filter lists come from two addresses (PartsApi.getPartsFilterColors).
         loadPerServer(sitzung, partsObserved) { loadParts(); loadPartsColors(); loadPartsFilters() }
     }
 
-    // ── Liste und Filter ─────────────────────────────────────────────────────
+    // ── List and filter ─────────────────────────────────────────────────────
 
     override fun loadParts(page: Int, debounce: Boolean) = teile.laden(seite = page, debounced = debounce)
     fun loadPartsFilters() = teile.loadFilter()
@@ -173,7 +173,7 @@ class PartsViewModel @Inject constructor(
     override fun setPartsColorFilter(wert: ColorPicker) = filtere { it.copy(farbe = wert) }
     override fun setPartsCategoryFilter(wert: Kategoriewahl) = filtere { it.copy(kategorie = wert) }
 
-    // ── Erfassen und Ändern ──────────────────────────────────────────────────
+    // ── Entering and editing ──────────────────────────────────────────────────
 
     override fun addPart(erfassung: Teilerfassung) {
         val e = erfassung
@@ -202,8 +202,8 @@ class PartsViewModel @Inject constructor(
         }
 
     /**
-     * Die Farbe eines manuellen Teils ändern. Die Farbe ist Teil des Schlüssels
-     * und der Route der Detailansicht — [onFertig] öffnet sie mit der neuen.
+     * Change a manual part's color. The color is part of the key
+     * and the detail view's route — [onFertig] opens it with the new one.
      */
     override fun setzeTeilFarbe(partNumber: String, colorId: Int, neueFarbe: Int,
                        farbName: String?, farbHex: String?,
@@ -214,7 +214,7 @@ class PartsViewModel @Inject constructor(
         }
     }
 
-    // ── „In welchen Sets steckt das?“ ────────────────────────────────────────
+    // ── "Which sets is this in?" ────────────────────────────────────────
 
     override fun openSetItem(nummer: String, colorId: Int) = inSets.oeffne(nummer, colorId)
 

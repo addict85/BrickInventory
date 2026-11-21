@@ -1,4 +1,4 @@
-// Finanzen, Gutscheine und der PDF-Betrachter.
+// Finances, vouchers and the PDF viewer.
 plugins {
     alias(libs.plugins.brickinventory.android.feature)
 }
@@ -20,8 +20,8 @@ dependencies {
     implementation(project(":core-resources"))
 
     testImplementation(project(":core-testing"))
-    // Die Testserver antworten im Wire-Format.
+    // The test servers answer in the wire format.
     testImplementation(project(":core-contract"))
-    // Die Testfabriken nennen die Ablagechiffre in ihren Signaturen.
+    // The test factories name the store cipher in their signatures.
     testImplementation(project(":core-security"))
 }

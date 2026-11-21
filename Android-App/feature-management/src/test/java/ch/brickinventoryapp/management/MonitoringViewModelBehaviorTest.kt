@@ -25,15 +25,15 @@ import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.model.ui.laedt
 
 /**
- * Das Monitoring-ViewModel gegen einen MockWebServer: vorweggenommene Zustände mit
- * Rücknahme bei Fehlschlag, der Takt, Design und Protokoll. MockWebServer liefert der
- * Reihe nach, unabhängig vom Pfad; jeder Test legt so viele Antworten hin, wie das
- * ViewModel Abrufe macht.
+ * The monitoring ViewModel against a MockWebServer: anticipated states with
+ * a rollback on failure, the poll clock, theme and log. MockWebServer delivers in
+ * order, independent of the path; each test lays down as many answers as the
+ * ViewModel makes fetches.
  *
- * Gegenproben: in loadJobs() `accessRevoked` nicht
- * gesetzt → rot „ein 403 nur_admins beendet die Abfrage …“;
- * gegenproben/monitoring-takt-ohne-ende.patch (haltAktuell() mit `while (true)`)
- * → rot „der Takt fragt Auftraege und Hintergrund ab …“ (läuft bis zur Zeitgrenze).
+ * Counter-checks: in loadJobs() `accessRevoked` not
+ * set → red “a 403 nur_admins ends the polling …”;
+ * gegenproben/monitoring-takt-ohne-ende.patch (haltAktuell() with `while (true)`)
+ * → red “the clock polls jobs and background …” (runs until the time limit).
  */
 class MonitoringViewModelBehaviorTest {
 
@@ -54,8 +54,8 @@ class MonitoringViewModelBehaviorTest {
 
         val client = OkHttpClient.Builder()
             .readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build()
-        // Dieselbe Json-Konfiguration wie in di/AppModule — sonst prüfte der
-        // Test eine Nachsicht, die es in der App nicht gibt.
+        // The same JSON config as in di/AppModule — otherwise the
+        // test would check a leniency the app does not have.
         val json = BrickJson
         val api = Retrofit.Builder()
             .baseUrl(server.url("/"))
@@ -105,9 +105,9 @@ class MonitoringViewModelBehaviorTest {
         vm.loadQueue()
         assert(vm.state.value.queue.dataOrNull()?.size == 2) { "Vorbedingung: zwei Einträge erwartet" }
 
-        // Nur EINE Antwort: Bei Erfolg wird bewusst NICHT neu geladen — der
-        // vorweggenommene Zustand ist dann schon der richtige, und ein zweiter
-        // Abruf je Löschung wäre pure Last.
+        // Only ONE answer: on success it is deliberately NOT reloaded — the
+        // anticipated state is then already the correct one, and a second
+        // fetch per deletion would be pure load.
         server.enqueue(antwort("""{"success":true}"""))
         val ok = vm.removeEntry("75192")
 
@@ -127,15 +127,15 @@ class MonitoringViewModelBehaviorTest {
             {"set_number":"75192","attempts":1},{"set_number":"10294","attempts":3}]}"""))
         vm.loadQueue()
 
-        // Der Löschversuch scheitert. Danach fragt das ViewModel neu — und
-        // bekommt beide Einträge zurück, denn gelöscht wurde nichts.
+        // The delete attempt fails. After that the ViewModel asks again — and
+        // gets both entries back, because nothing was deleted.
         server.enqueue(antwort("""{"error":"kaputt"}""", 500))
         server.enqueue(antwort("""{"success":true,"count":2,"entries":[
             {"set_number":"75192","attempts":1},{"set_number":"10294","attempts":3}]}"""))
         val ok = vm.removeEntry("75192")
 
         assert(!ok) { "Ein 500 darf nicht als Erfolg zurückkommen" }
-        // DAS ist die Zusage: Der vorweggenommene Zustand wurde zurückgenommen.
+        // THIS is the proof: the anticipated state was rolled back.
         assert(vm.state.value.queue.dataOrNull()?.map { it.setNumber } == listOf("75192", "10294")) {
             "Der Eintrag bleibt verschwunden, obwohl der Server abgelehnt hat: " +
                 "${vm.state.value.queue.dataOrNull()?.map { it.setNumber }}"
@@ -147,8 +147,8 @@ class MonitoringViewModelBehaviorTest {
         server.enqueue(antwort("""{"success":true,"count":1,"entries":[{"set_number":"75192","attempts":1}]}"""))
         vm.loadQueue()
 
-        // Fehlschlag — und inzwischen ist am Server ein ANDERER Eintrag
-        // dazugekommen. Eine zurückgeschriebene Kopie zeigte ihn nicht.
+        // Failure — and in the meantime a DIFFERENT entry has been
+        // added on the server. A written-back copy would not show it.
         server.enqueue(antwort("""{"error":"kaputt"}""", 500))
         server.enqueue(antwort("""{"success":true,"count":2,"entries":[
             {"set_number":"75192","attempts":1},{"set_number":"42100","attempts":1}]}"""))
@@ -161,13 +161,13 @@ class MonitoringViewModelBehaviorTest {
         }
     }
 
-    // ── Das vorgegebene Design ───────────────────────────────────────────────
+    // ── The default theme ───────────────────────────────────────────────
     //
-    // Gegenproben (30.10.2026 gemessen):
-    //   A  loadDesignDefault() nimmt r.data.theme statt vorgabe → rot „die
-    //      Auswahl zeigt die Vorgabe, nicht das eigene Design“
-    //   B  setzeDesign() übernimmt den Wert nicht → rot „ein gesetztes Design
-    //      ist sofort die Vorgabe …“
+    // Counter-checks (measured 30.10.2026):
+    //   A  loadDesignDefault() takes r.data.theme instead of vorgabe → red “the
+    //      selection shows the default, not the own theme”
+    //   B  setzeDesign() does not take over the value → red “a set theme
+    //      is immediately the default …”
 
     @Test
     fun `the selection shows the default, not the own design`() = runTest {
@@ -251,10 +251,10 @@ class MonitoringViewModelBehaviorTest {
         }
     }
 
-    // ── Das Server-Protokoll (aus MainViewModel hierher gezogen) ────────────
+    // ── The server log (moved here from MainViewModel) ────────────
     //
-    // Gegenprobe: in loadLog() den Fehlerzweig ohne `abruf =
-    // ladefehler(r)` → „an error in the log ends the loading" rot.
+    // Counter-check: in loadLog() the error branch without `abruf =
+    // ladefehler(r)` → “an error in the log ends the loading" red.
 
     @Test
     fun `the log comes with the chosen period`() = runTest {

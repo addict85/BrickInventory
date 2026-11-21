@@ -5,29 +5,29 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Der Kategoriefilter der Finanzen bleibt stehen — und laesst sich haeufen.
+ * The category filter of finances stays put — and can be combined.
  *
- * ── Was daran was war ───────────────────────────────────────────────────────
- * Der Filter lag im Bildschirm:
+ * ── What was wrong with it ───────────────────────────────────────────────────
+ * The filter lived in the screen:
  *
  *     val activeCategory = remember { mutableStateOf("alle") }
  *
- * `remember` haelt einen Wert ueber eine Rekomposition — nicht ueber das
- * Verlassen der Komposition. Ein Klick auf eine Zeile fuehrt in einen anderen
- * Bildschirm, der Finanzen-Reiter verlaesst die Komposition, und beim
- * Zurueckkommen faengt `remember` von vorn an: „alle".
+ * `remember` holds a value across a recomposition — not across
+ * leaving the composition. A click on a row leads into a different
+ * screen, the finances tab leaves the composition, and on
+ * returning `remember` starts over: "alle".
  *
- * Das ist dieselbe Regel wie bei den Listenfiltern
- * (ListenfilterInStateTest): Ein Filter, der eine Ansicht einschraenkt,
- * gehoert in den Zustand dieser Ansicht. `rememberSaveable` waere die kleinere
- * Antwort gewesen und bleibt trotzdem falsch — es rettet ueber den Prozesstod,
- * aber nicht ueber das Verlassen der Komposition.
+ * This is the same rule as for the list filters
+ * (ListenfilterInStateTest): a filter that restricts a view
+ * belongs in that view's state. `rememberSaveable` would have been the smaller
+ * answer and would still be wrong — it survives a process death,
+ * but not leaving the composition.
  *
- * ── Zwei Haelften, weil eine allein still falsch werden kann ────────────────
- *  1. AM VERHALTEN: Die Mengenrechnung stimmt — dazunehmen, wegnehmen, und die
+ * ── Two halves, because one alone can quietly become wrong ────────────────
+ *  1. ON BEHAVIOR: the quantity math is correct — adding, removing, and
  *     an empty selection shows everything.
- *  2. AM QUELLTEXT: Der Bildschirm haelt den Filter nicht wieder selbst.
- *     Haelfte 1 bliebe gruen, waehrend der Filter wieder verloren ginge.
+ *  2. ON THE SOURCE: the screen does not hold the filter itself again.
+ *     Half 1 would stay green while the filter got lost again.
  */
 class FinanceFilterStaysTest {
 
@@ -59,9 +59,9 @@ class FinanceFilterStaysTest {
             .withToggledCategory("parts")
 
         assert(z.kategorien.isEmpty()) { "Der zweite Klick raeumt die Wahl wieder weg" }
-        // Und die leere Menge heisst wieder ALLE — nicht „nichts". Eine Ansicht,
-        // die nach dem Abwaehlen leer bliebe, waere kein Filter, sondern eine
-        // leere Seite.
+        // And the empty set again means ALL — not "nothing". A view
+        // that stayed empty after deselecting would not be a filter but a
+        // blank page.
         assert(z.zeigt("sets") && z.zeigt("parts") && z.zeigt("figs")) {
             "Die leere Auswahl muss wieder alles zeigen"
         }
@@ -79,8 +79,8 @@ class FinanceFilterStaysTest {
         assert(src.contains("financeState.zeigt(")) {
             "Der Bildschirm soll die Sichtbarkeit aus dem Zustand lesen"
         }
-        // Die Regel „leer heisst alle" darf nur EINMAL geschrieben stehen. Vorher
-        // stand sie dreimal im Bildschirm (showSets/showParts/showFigs).
+        // The rule "empty means all" may be written down only ONCE. Previously
+        // it stood three times in the screen (showSets/showParts/showFigs).
         assert(!src.contains("kategorien.isEmpty() ||")) {
             "Die Regel „leere Auswahl heisst alle\" steht wieder im Bildschirm statt " +
                 "in FinanceUiState.zeigt()"

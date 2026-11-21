@@ -13,28 +13,28 @@ import ch.brickinventoryapp.model.domain.TeileBewertungAnsicht
 import java.math.BigDecimal
 
 /**
- * Was eine Karte der Finanzliste zeigt. Die Zahlen kommen fertig gerundet vom
- * Server (wert_gesamt, pnl_prozent); gerechnet wird nur Kauf mal Menge, in Geld.
+ * What a card of the finance list shows. The numbers come already rounded from the
+ * server (wert_gesamt, pnl_prozent); only purchase times quantity, in money, is computed here.
  */
 data class FinanceRow(
     val schluessel: String,
     val menge: Int,
-    /** Marktwert der Zeile; null = kein Marktpreis. */
+    /** Market value of the row; null = no market price. */
     val wert: Geld?,
     val kaufpreis: Geld?,
-    /** Zustand der Erfassung; null bei einem Eintrag ohne Erfassungen. */
+    /** State of the entry; null for an item without entries. */
     val zustand: Zustand?,
     val pnlProzent: Double?,
 ) {
     /**
-     * Der Kauf aller Stück der Zeile. Der Server liefert den Kaufpreis je Stück, den
-     * Marktwert aber für die ganze Zeile (wert_gesamt); nebeneinander gestellt las sich
-     * „Kauf: 400“ neben „899.90“ bei zwei Stück wie ein Gewinn von 125 %.
+     * The purchase of all copies of the row. The server delivers the purchase price per copy, but the
+     * market value for the whole row (wert_gesamt); placed side by side,
+     * „Kauf: 400“ next to „899.90“ with two copies read like a profit of 125 %.
      */
     val kaufGesamt: Geld?
         get() = kaufpreis?.let { it * menge.coerceAtLeast(1) }
 
-    /** Gewinn oder Verlust in Geld, auf derselben Grundlage wie [pnlProzent]. */
+    /** Profit or loss in money, on the same basis as [pnlProzent]. */
     val gewinn: Geld?
         get() {
             val w = wert ?: return null
@@ -44,9 +44,9 @@ data class FinanceRow(
 }
 
 /**
- * Eine Karte je Kaufpreis, sobald es mehrere gibt — jede mit dem Marktpreis
- * ihres Zustands. Sonst eine Karte für den Eintrag (die einzige Erfassung oder
- * keine).
+ * One card per purchase price, as soon as there are several — each with the market price
+ * of its own condition. Otherwise one card for the item (the single entry or
+ * none).
  */
 private fun <T> perPurchasePrice(eintraege: List<T>, entries: (T) -> List<ValuationPurchaseView>) =
     eintraege.flatMap { e ->
@@ -62,7 +62,7 @@ fun setRows(sets: List<ValuationSetView>): List<Pair<ValuationSetView, FinanceRo
             wert = acq?.wertGesamt ?: s.wertGesamt,
             kaufpreis = acq?.purchasePrice ?: s.purchasePrice,
             zustand = acq?.condition,
-            // Mit Erfassung gilt nur deren G&V: Fehlt ihr Kaufpreis, gibt es keine.
+            // With an entry only its own P&L counts: if its purchase price is missing, there is none.
             pnlProzent = if (acq != null) acq.pnlProzent else s.pnlProzent,
         )
     }
@@ -81,7 +81,7 @@ internal fun minifigRows(figs: List<ManualMinifigView>): List<Pair<ManualMinifig
             acq?.condition, acq?.pnlProzent ?: f.pnlProzent)
     }
 
-/** Die drei Teilsummen und der Gesamtwert der Finanzseite. */
+/** The three subtotals and the total value of the finances page. */
 data class FinanceSums(val sets: BigDecimal, val teile: BigDecimal, val figuren: BigDecimal, val gesamt: BigDecimal) {
     val partsAndMinifigs: BigDecimal get() = teile + figuren
 }
@@ -89,9 +89,9 @@ data class FinanceSums(val sets: BigDecimal, val teile: BigDecimal, val figuren:
 private fun betrag(text: String?): BigDecimal = text?.trim()?.toBigDecimalOrNull() ?: BigDecimal.ZERO
 
 /**
- * Der Gesamtwert kommt vom Server (grand_total). Fehlt er (älterer Server),
- * addiert die App die drei Serversummen — in BigDecimal, weil 0.1 + 0.2 als
- * Double nicht 0.3 ist und die Summe sonst neben der Kopfkachel abwiche.
+ * The total value comes from the server (grand_total). If it is missing (older server),
+ * the app adds the three server sums — in BigDecimal, because 0.1 + 0.2 as a
+ * Double is not 0.3, and otherwise the sum would deviate next to the header tile.
  */
 fun finanzSummen(valuation: BewertungAnsicht, parts: TeileBewertungAnsicht?, figs: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?): FinanceSums {
     val sets = betrag(valuation.totals.avg)
@@ -102,8 +102,8 @@ fun finanzSummen(valuation: BewertungAnsicht, parts: TeileBewertungAnsicht?, fig
 }
 
 /**
- * Wie viele Kaufpreise in einer anderen Währung fehlen. /finance/pnl zählt über
- * alle drei Arten; ohne diese Antwort die Zahlen der drei Bewertungen.
+ * How many purchase prices in a different currency are missing. /finance/pnl counts across
+ * all three kinds; without this answer, the numbers of the three valuations.
  */
 internal fun foreignPurchasePrices(valuation: BewertungAnsicht?, parts: TeileBewertungAnsicht?, figs: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?): Int =
     pnl?.totals?.kaufpreiseFremdeWaehrung
@@ -111,18 +111,18 @@ internal fun foreignPurchasePrices(valuation: BewertungAnsicht?, parts: TeileBew
             (figs?.kaufpreiseFremdeWaehrung ?: 0))
 
 /**
- * Was die Kopfkarte zeigt. [withBase]: Der Server hat Positionen mit Kauf- UND
- * Marktpreis gerechnet; dann stammen Einstand, Marktwert und G/V aus dieser einen
- * Basis, damit Einstand + G/V = Marktwert gilt (wie im Web, basisAus).
- * [baseKnown] ist false bei älteren Servern ohne diese Felder.
+ * What the header card shows. [withBase]: the server computed positions with BOTH purchase AND
+ * market price; then cost basis, market value and P&L come from this one
+ * basis, so that cost basis + P&L = market value holds (as on the web, basisAus).
+ * [baseKnown] is false on older servers without these fields.
  */
 internal data class FinanceHeader(
     val baseKnown: Boolean,
     val withBase: Boolean,
-    /** null = nicht bekannt (älterer Server). */
+    /** null = not known (older server). */
     val cost: BigDecimal?,
     val wert: BigDecimal,
-    /** null = keine G/V (ohne Basis). */
+    /** null = no P&L (without a basis). */
     val guvAmount: BigDecimal?,
     val guvPercent: Double?,
     val gesamt: Int = 0,
@@ -132,14 +132,14 @@ internal data class FinanceHeader(
     val withoutPurchase: Int = 0,
     val withoutPurchaseValue: BigDecimal = BigDecimal.ZERO,
 ) {
-    /** Die Basiszeile steht nur, wenn gerechnet wurde und etwas fehlt — sonst sagt sie nichts. */
+    /** The basis row only appears when computed and something is missing — otherwise it says nothing. */
     val baseRowVisible: Boolean get() = withBase && (withoutMarket > 0 || withoutPurchase > 0)
 }
 
 /**
- * Ohne Basisfelder (älterer Server) bleibt die Karte, wie sie war: Gesamtwert und
- * pnl_prozent. Mit Basis, aber ohne eine bewertete Position, stehen die Summen aller
- * Positionen da und keine G/V — eine Prozentzahl gegen nichts wäre erfunden.
+ * Without basis fields (older server) the card stays as it was: total value and
+ * pnl_prozent. With a basis, but without a valued position, the sums of all
+ * positions stand there and no P&L — a percentage against nothing would be made up.
  */
 internal fun financeHeader(valuation: BewertungAnsicht, parts: TeileBewertungAnsicht?, figs: FigurenBewertungAnsicht?, pnl: GewinnAnsicht?): FinanceHeader {
     val alle = finanzSummen(valuation, parts, figs, pnl).gesamt

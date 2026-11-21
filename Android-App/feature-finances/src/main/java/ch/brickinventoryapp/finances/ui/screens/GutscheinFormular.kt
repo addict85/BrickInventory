@@ -35,9 +35,9 @@ import ch.brickinventoryapp.ui.components.SelectionField
 import ch.brickinventoryapp.ui.components.Knopfzeile
 
 /**
- * Das Formular zum Anlegen und Ändern als Blatt von unten, gleich ganz offen: Halb offen
- * lagen die Knöpfe unter dem Rand. Die Felder rollen, die Knöpfe stehen fest am Fuss
- * über der Tastatur.
+ * The form for creating and editing as a sheet from the bottom, right away fully open: half open
+ * the buttons sat beneath the edge. The fields scroll, the buttons stay fixed at the bottom
+ * above the keyboard.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,7 +49,7 @@ internal fun GutscheinFormularBlatt(
     onSpeichern: () -> Unit,
     onSchliessen: () -> Unit,
 ) {
-    // Speichern bleibt antippbar und markiert dann, was fehlt, wie beim Set-Dialog.
+    // Save stays tappable and then marks what is missing, as with the set dialog.
     var geprueft by rememberSaveable { mutableStateOf(false) }
     val fehler = if (geprueft) voucherError(zustand.nummer, zustand.betrag, pdfGewaehlt) else emptyList()
     val numberMissing = VoucherField.NUMMER in fehler
@@ -105,18 +105,18 @@ internal fun GutscheinFormularBlatt(
                 value = zustand.betrag,
                 onValueChange = { onFeld(null, null, NumericInput.price(it), null) },
                 label = { Text(stringResource(R.string.vouchers_amount)) },
-                // Dieselbe Prüfung wie bei den Preisfeldern der Galerie; ob der Betrag Pflicht
-                // ist und wie hoch er sein darf, entscheidet allein der Server.
+                // The same check as for the gallery's price fields; whether the amount is mandatory
+                // and how high it may be is decided solely by the server.
                 isError = amountMissing || NumericInput.priceInvalid(zustand.betrag),
                 supportingText = {
                     if (NumericInput.priceInvalid(zustand.betrag)) Text(stringResource(R.string.erfassen_preis_ungueltig), Modifier.announce())
                     else if (amountMissing) Text(stringResource(R.string.vouchers_amount_invalid), Modifier.announce())
                 },
                 singleLine = true,
-                // price/priceKeyboard und nicht ganzzahl: Ein Gutschein kann
-                // auf Rappen lauten. `price` laesst GENAU EIN Trennzeichen zu
-                // — „12.3.4" waere sonst tippbar und floege erst beim
-                // Umwandeln auf, dann als stiller Nullbetrag.
+                // price/priceKeyboard and not an integer: a voucher can
+                // be denominated in cents. `price` allows EXACTLY ONE separator
+                // — „12.3.4" would otherwise be typeable and would only surface
+                // on conversion, and then as a silent zero amount.
                 keyboardOptions = NumericInput.priceKeyboard(),
                 modifier = Modifier.weight(1f).focusRequester(amountFocus),
             )
@@ -170,12 +170,12 @@ internal fun GutscheinFormularBlatt(
     }
 }
 
-/** Ein Feld des Gutscheinformulars, das vor dem Speichern fehlt oder unlesbar ist. */
+/** A field of the voucher form that is missing or unreadable before saving. */
 internal enum class VoucherField { NUMMER, AMOUNT }
 
 /**
- * Was vor dem Speichern fehlt, in der Reihenfolge der Felder. Mit PDF liest der Server,
- * was leer ist; ein unlesbarer Betrag bleibt auch dann ein Fehler.
+ * What is missing before saving, in field order. With a PDF, the server reads
+ * what is empty; an unreadable amount stays an error regardless.
  */
 internal fun voucherError(nummer: String, betrag: String, withPdf: Boolean): List<VoucherField> = buildList {
     if (!withPdf && nummer.isBlank()) add(VoucherField.NUMMER)
@@ -183,10 +183,10 @@ internal fun voucherError(nummer: String, betrag: String, withPdf: Boolean): Lis
     if (if (withPdf) betrag.isNotBlank() && unlesbar else unlesbar) add(VoucherField.AMOUNT)
 }
 
-/** Ist das Blatt schon zu, wirft requestFocus; dann gibt es nichts mehr zu fokussieren. */
+/** If the sheet is already closed, requestFocus throws; then there is nothing left to focus. */
 private fun FocusRequester.focusIfDa() {
-    try { requestFocus() } catch (_: IllegalStateException) { /* Blatt schon zu */ }
+    try { requestFocus() } catch (_: IllegalStateException) { /* sheet already closed */ }
 }
 
-/** Dieselben Waehrungen wie in der Webapp (public/index.html). */
+/** The same currencies as in the web app (public/index.html). */
 private val CURRENCIES = listOf("CHF", "EUR", "USD", "GBP", "SEK", "NOK", "AUD", "CAD", "DKK")

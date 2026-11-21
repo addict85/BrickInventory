@@ -7,30 +7,30 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Der PDF-Betrachter kann zoomen — und bleibt dabei scharf, ohne den Speicher
- * zu sprengen.
+ * The PDF viewer can zoom — and stays sharp while doing so, without blowing
+ * up memory.
  *
- * ── Was hier geprueft wird, und was NICHT ───────────────────────────────────
+ * ── What is checked here, and what is NOT ───────────────────────────────────
  *
- * GERECHNET wird die Rechnung: [renderLevel] und [bitmapDimensions] sind genau
- * deshalb aus PdfViewerScreen herausgezogen, dass sie ohne Geraet laufen. Die
- * Flaechenbegrenzung mit der Wurzel ist die Stelle, an der ein Vorzeichen- oder
- * Wurzelfehler nicht auffaellt: Die Anzeige sieht richtig aus, nur der Speicher
- * laeuft voll oder das Bild bleibt grob.
+ * COMPUTED is the calculation: [renderLevel] and [bitmapDimensions] were pulled out of
+ * PdfViewerScreen for exactly this reason, so that they run without a device. The
+ * area limit with the square root is the spot where a sign or
+ * root error would not stand out: the display looks correct, only the memory
+ * fills up or the image stays coarse.
  *
- * GELESEN wird der Rest, weil hier kein Compose laeuft: dass die
- * Modifier-Reihenfolge stimmt, dass `canPan = { false }` dasteht und dass die
- * alte Bitmap beim Stufenwechsel stehen bleibt. Das sind Aussagen ueber den
- * Bauteil, nicht ueber das Verhalten — aber es sind die drei Entscheidungen,
- * die ein spaeterer Eingriff versehentlich umdrehen kann, ohne dass es auffaellt.
+ * READ is the rest, because no Compose runs here: that the
+ * modifier order is correct, that `canPan = { false }` is present, and that the
+ * old bitmap stays up on a step change. These are statements about the
+ * component, not about behavior — but they are the three decisions
+ * that a later change can accidentally reverse without it standing out.
  *
- * NICHT geprueft, und nur auf dem Geraet zu sehen: ob die Zwei-Finger-Geste
- * gegen das Rollen der LazyColumn gewinnt. Aus der Quelle von foundation
- * (gestures/Transformable.kt, DragGestureDetector.kt) folgt, dass sie sich
- * nicht in die Quere kommen und dass im Zweifel die Liste rollt statt beides zu
- * tun; welche von beiden bei einer fast senkrechten Geste zuerst am Schwellwert
- * ist, entscheidet die Hardware. Darum gibt es ausserdem den Doppeltipp und die
- * zwei Knoepfe in der Kopfzeile.
+ * NOT checked, and visible only on the device: whether the two-finger gesture
+ * wins against the LazyColumn's scrolling. From the source of foundation
+ * (gestures/Transformable.kt, DragGestureDetector.kt) it follows that they do
+ * not get in each other's way and that, in doubt, the list scrolls instead of
+ * doing both; which of the two is first past the threshold on an almost vertical
+ * gesture is decided by the hardware. That is why there is also the double tap and the
+ * two buttons in the header.
  */
 class PdfZoomTest {
 
@@ -38,9 +38,9 @@ class PdfZoomTest {
 
     @Test
     fun `without zoom it renders at single width, with zoom higher`() {
-        // Stufe 1 gilt NUR bei genau 1x. Das ist gewollt: Solange nicht gezoomt
-        // ist, soll der Betrachter so viel Speicher brauchen wie bisher; sobald
-        // gezoomt ist, zaehlt Schaerfe mehr.
+        // Level 1 applies ONLY at exactly 1x. That is intentional: as long as there is no
+        // zoom, the viewer should use as much memory as before; once
+        // zoomed, sharpness matters more.
         assert(renderLevel(1f) == 1) { "1x muss Stufe 1 sein, war ${renderLevel(1f)}" }
         assert(renderLevel(1.25f) == 2) { "1,25x muss Stufe 2 sein, war ${renderLevel(1.25f)}" }
         assert(renderLevel(2f) == 2) { "2x muss Stufe 2 sein, war ${renderLevel(2f)}" }
@@ -50,16 +50,16 @@ class PdfZoomTest {
 
     @Test
     fun `the level stays at three no matter how far it is zoomed`() {
-        // Der obere Anschlag des Zooms ist 5x; eine spaetere Erhoehung darf die
-        // Renderaufloesung nicht mitreissen. Darum bis 100 geprueft.
+        // The upper limit of the zoom is 5x; raising it later must not drag the
+        // render resolution along with it. Hence checked up to 100.
         var z = 1f
         while (z <= 100f) {
             val stufe = renderLevel(z)
             assert(stufe in 1..3) { "Stufe $stufe bei Zoom $z liegt ausserhalb 1..3" }
             z += 0.37f
         }
-        // Und die Gegenrichtung: ein unsinniger Wert darf nicht unter 1 fallen,
-        // sonst waere die Bitmap 0 Pixel breit.
+        // And the opposite direction: a nonsensical value must not fall below 1,
+        // otherwise the bitmap would be 0 pixels wide.
         assert(renderLevel(0f) == 1) { "Zoom 0 muss Stufe 1 ergeben" }
         assert(renderLevel(-3f) == 1) { "Ein negativer Zoom muss Stufe 1 ergeben" }
     }
@@ -69,8 +69,8 @@ class PdfZoomTest {
         val (w, h) = bitmapDimensions(1080, A4)
         assert(w == 1080) { "1080 px liegen weit unter der Grenze, geliefert wurde $w" }
         assert(h == (1080 * A4).toInt()) { "Hoehe $h passt nicht zu 1080 x $A4" }
-        // Gegenprobe zur Grenze selbst: Dieser Fall darf sie nicht beruehren,
-        // sonst sagt er nichts ueber den unbegrenzten Weg aus.
+        // Counter-check for the limit itself: this case must not touch it,
+        // otherwise it says nothing about the unbounded path.
         assert(w.toLong() * h < PDF_BITMAP_MAX_PX) {
             "Der Fall liegt schon an der Grenze (${w.toLong() * h}) — dann prueft er " +
                 "nicht den unbegrenzten Weg."
@@ -79,8 +79,8 @@ class PdfZoomTest {
 
     @Test
     fun `above the limit it is capped, in both directions`() {
-        // 3240 px ist die Stufe 3 eines 1080-px-Geraets — der Fall, der in
-        // Wirklichkeit auftritt.
+        // 3240 px is level 3 of a 1080-px device — the case that
+        // actually occurs in practice.
         val gewuenscht = 3240
         val (w, h) = bitmapDimensions(gewuenscht, A4)
 
@@ -93,9 +93,9 @@ class PdfZoomTest {
             "Nach dem Kappen sind es noch ${w.toLong() * h} Pixel, erlaubt sind " +
                 "$PDF_BITMAP_MAX_PX. Dann greift der Riegel nicht."
         }
-        // Das Seitenverhaeltnis muss bleiben. Nur die Breite zu kappen waere der
-        // naheliegende Fehler — die Seite waere dann gestaucht, und zwar so
-        // wenig, dass man es fuer die Anleitung selbst halten koennte.
+        // The aspect ratio must be preserved. Capping only the width would be the
+        // obvious mistake — the page would then be squashed, and by so
+        // little that one might take it for the instruction manual itself.
         val verhaeltnis = h.toFloat() / w.toFloat()
         assert(kotlin.math.abs(verhaeltnis - A4) < 0.01f) {
             "Seitenverhaeltnis nach dem Kappen $verhaeltnis statt $A4 — die Seite waere verzerrt."
@@ -116,14 +116,14 @@ class PdfZoomTest {
                 }
             }
         }
-        // Eine Breite von 0 oder weniger darf keine leere Bitmap ergeben.
+        // A width of 0 or less must not yield an empty bitmap.
         for (b in listOf(0, -1, -5000)) {
             val (w, h) = bitmapDimensions(b, A4)
             assert(w >= 1 && h >= 1) { "Breite $b ergab $w x $h" }
         }
     }
 
-    // ── Die drei Entscheidungen, die man versehentlich umdrehen kann ─────────
+    // ── The three decisions that can accidentally be reversed ─────────
 
     private val quelle: String by lazy {
         Quellen.withoutComments(Quellen.lies("finances/ui/screens/PdfSeiten.kt"))
@@ -158,10 +158,10 @@ class PdfZoomTest {
 
     @Test
     fun `on a level change the old page stays`() {
-        // remember OHNE die Renderbreite, LaunchedEffect MIT ihr: nur so wird neu
-        // gerendert, ohne dass die Anzeige vorher leer wird. Verglichen werden die
-        // Schluessel mit den Parametern von PdfPage, nicht feste Namen.
-        // Gegenprobe: gegenproben/pdf-bitmap-an-renderbreite.patch → rot hier.
+        // remember WITHOUT the render width, LaunchedEffect WITH it: only this way is it
+        // re-rendered without the display first going blank. The
+        // keys compared are PdfPage's parameters, not fixed names.
+        // Counter-check: gegenproben/pdf-bitmap-an-renderbreite.patch → red here.
         val kopf = Regex("""fun PdfPage\((\w+): PdfQuelle, (\w+): Int, (\w+): Int[,)]""").find(quelle)
         assert(kopf != null) { "PdfPage(quelle: PdfQuelle, index: Int, renderBreite: Int) nicht gefunden." }
         val (pdf, seite, breite) = kopf!!.destructured
@@ -189,14 +189,14 @@ class PdfZoomTest {
 
     @Test
     fun `the double tap reads the current zoom, not the one from back then`() {
-        // pointerInput(Unit) wird absichtlich nicht neu aufgesetzt — sonst riss
-        // jede Neuberechnung eine laufende Geste ab. Dafuer haelt der Block die
-        // Huelle der ERSTEN Komposition fest. Liest der Doppeltipp `zoom`
-        // unmittelbar, sieht er fuer immer 1 und zoomt nur noch hinein.
+        // pointerInput(Unit) is deliberately not set up anew — otherwise
+        // every recalculation would break off a running gesture. For this, the block holds fixed the
+        // closure of the FIRST composition. If the double tap reads `zoom`
+        // directly, it sees 1 forever and only ever zooms in.
         //
-        // Das ist der Fehler, der beim Ausprobieren nicht auffaellt: Hineinzoomen
-        // geht, und dass das Zurueckzoomen nicht geht, haelt man fuer die
-        // Bedienung.
+        // That is the kind of bug that does not stand out when trying it: zooming in
+        // works, and that zooming back out does not work gets blamed on the
+        // operation.
         assert(quelle.contains("val zoomJetzt by rememberUpdatedState(zoom)")) {
             "Es gibt kein rememberUpdatedState fuer den Zoom mehr — dann liest der " +
                 "Doppeltipp den eingefrorenen Wert aus der ersten Komposition."
@@ -215,10 +215,10 @@ class PdfZoomTest {
 
     @Test
     fun `during a two-finger gesture the list does not scroll`() {
-        // Die eine Schwaeche, die beim Bauen schon benannt war: Die LazyColumn
-        // ist das TIEFERE Glied und sieht die Bewegung vor dem transformable.
-        // Geht eine Geste auch nur ein wenig senkrecht auseinander, beansprucht
-        // sie die Liste — und gezoomt wird nicht.
+        // The one weakness that was already named while building it: the LazyColumn
+        // is the DEEPER member and sees the movement before the transformable.
+        // If a gesture diverges even a little vertically, it
+        // claims the list — and no zooming happens.
         assert(quelle.contains("userScrollEnabled = !zweiFinger")) {
             "Die Liste rollt waehrend einer Zwei-Finger-Geste weiter. Dann gewinnt " +
                 "sie den Streit um die Bewegung und der Zoom kommt nicht zum Zug."
@@ -227,8 +227,8 @@ class PdfZoomTest {
             "Die Finger werden nicht mehr im Initial-Durchgang gezaehlt. Nur dort " +
                 "sieht der Zaehler sie VOR der Liste; im Main-Durchgang kaeme er zu spaet."
         }
-        // Der Zaehler darf NICHTS beanspruchen — sonst ist es derselbe Streit
-        // mit vertauschten Rollen.
+        // The counter must claim NOTHING — otherwise it is the same conflict
+        // with the roles swapped.
         val block = Regex(
             "awaitPointerEventScope \\{(.*?)\\n {16}\\}", RegexOption.DOT_MATCHES_ALL
         ).find(quelle)?.groupValues?.get(1)
@@ -240,8 +240,8 @@ class PdfZoomTest {
 
     @Test
     fun `the zoom computes with the finger point when measuring`() {
-        // Die Rechnung selbst prueft PdfZoomAnchorTest. Hier nur, dass sie dort
-        // aufgerufen wird, wo altes Layout und neuer Zoom zugleich vorliegen.
+        // The calculation itself is checked by PdfZoomAnchorTest. Here only that it is
+        // called where the old layout and the new zoom are both available at once.
         val measure = Regex("""\.layout \{ messbar, grenzen ->(.*?)\n {16}\}""", RegexOption.DOT_MATCHES_ALL)
             .find(quelle)?.groupValues?.get(1)
         assert(measure != null) { "Kein .layout { messbar, grenzen -> ... } vor dem Rollen mehr." }

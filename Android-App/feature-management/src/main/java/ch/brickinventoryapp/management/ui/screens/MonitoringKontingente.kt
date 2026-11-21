@@ -24,22 +24,22 @@ import ch.brickinventoryapp.ui.components.SectionTitle
 import ch.brickinventoryapp.ui.components.MitTooltip
 import ch.brickinventoryapp.ui.components.withFont
 
-/** Die Tageskontingente mit dem Bearbeitungszustand ihrer Grenzen. */
+/** The daily quotas with the editing state of their limits. */
 @Composable
 internal fun QuotaSection(monState: MonitoringUiState, events: CacheEvents) {
     val cacheStats = monState.cacheStats
     val apiLimits  = monState.apiLimits
-    // Halb eingetippte Grenzen gehören dem Menschen und bleiben speicherbar.
+    // Half-typed limits belong to the person and stay saveable.
     var editingLimits by rememberSaveable { mutableStateOf(false) }
     var rbInput    by rememberSaveable { mutableStateOf("0") }
     var blInput    by rememberSaveable { mutableStateOf("0") }
     var bsInput    by rememberSaveable { mutableStateOf("0") }
 
-    // Die Eingabefelder mit den geladenen Werten vorbelegen — aber nur, solange
-    // NICHT bearbeitet wird. Das Speichern laedt die Grenzwerte selbst neu; ohne
-    // die Bedingung schriebe diese Antwort dem Benutzer die halb getippte Zahl
-    // wieder um. Vorher stand die Vorbelegung im einmaligen Ladevorgang und
-    // konnte das nicht — jetzt haengt sie am Zustand und koennte es.
+    // Pre-fill the input fields with the loaded values — but only as long as
+    // editing is NOT happening. Saving reloads the limits itself; without
+    // that condition, this answer would overwrite the user's half-typed
+    // number again. Previously the pre-fill lived in the one-time load and
+    // could not do that — now it is tied to the state and could.
     LaunchedEffect(apiLimits, editingLimits) {
         val al = apiLimits
         if (al != null && !editingLimits) {
@@ -59,7 +59,7 @@ internal fun QuotaSection(monState: MonitoringUiState, events: CacheEvents) {
         onBricklink = { blInput = it },
         onRebrickable = { rbInput = it },
         onSpeichern = {
-            // Das Nachladen der Grenzwerte steht im ViewModel.
+            // Reloading the limits lives in the ViewModel.
             events.limits(rbInput.toIntOrNull() ?: 0, blInput.toIntOrNull() ?: 0, bsInput.toIntOrNull() ?: 0)
             editingLimits = false
         },
@@ -67,8 +67,8 @@ internal fun QuotaSection(monState: MonitoringUiState, events: CacheEvents) {
 }
 
 /**
- * Die Tageskontingente der drei Dienste; im Bearbeiten-Modus mit Eingabefeldern für
- * die Grenzen. [inputs] in der Reihenfolge Brickset, BrickLink, Rebrickable.
+ * The daily quotas of the three services; in edit mode with input fields for
+ * the limits. [inputs] in the order Brickset, BrickLink, Rebrickable.
  */
 @Composable
 private fun QuotaCard(
@@ -127,11 +127,11 @@ private fun RateLimitRow(
         pct > 0.7f -> LocalStatusFarben.current.warnung
         else       -> MaterialTheme.colorScheme.primary
     }
-    // ── Das Zeichen, nicht nur die Farbe ──
+    // ── The symbol, not just the color ──
     //
-    // Gelb gegen Rot fällt bei Rot-Grün-Schwäche zusammen; die Farbe sollte aber auf
-    // einen Blick sagen „hier wird es eng“. Ein Zeichen davor trägt das ohne Farbe.
-    // Eine Schwelle reicht — wie eng, sagt die Zahl daneben.
+    // Yellow against red collapses for red-green color blindness; but the color should
+    // say at a glance "it's getting tight here". A symbol in front of it carries that without color.
+    // One threshold is enough — the number next to it says how tight.
     val eng = pct > 0.7f
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {

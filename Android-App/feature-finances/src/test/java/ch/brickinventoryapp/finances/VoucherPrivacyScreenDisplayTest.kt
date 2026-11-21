@@ -25,14 +25,14 @@ import ch.brickinventoryapp.testing.NumbersTexts
 import ch.brickinventoryapp.testing.PfadServer
 
 /**
- * Gutscheinseite und Gutschein-PDF setzen FLAG_SECURE, ausgeführt; eine
- * Bauanleitung im selben Betrachter nicht. Ersetzt die Quelltext-Prüfung in
+ * The vouchers page and a voucher PDF set FLAG_SECURE, run; an
+ * instruction manual in the same viewer does not. Replaces the source check in
  * feature-finances/VoucherPrivacyScreenTest.
  *
- * Gegenproben (Robolectric, misst die CI; Job `gegenproben`):
- *   gutscheinseite-ohne-sichtschutz  Sichtschutz() aus VouchersRoute entfernt → rot
- *                                    „die Gutscheinseite …“
- *   gutschein-pdf-ohne-sichtschutz   VoucherPdfProtection ohne Sichtschutz → rot „ein Gutschein-PDF …“
+ * Counter-checks (Robolectric, measured by CI; job `gegenproben`):
+ *   gutscheinseite-ohne-sichtschutz  Sichtschutz() removed from VouchersRoute → red
+ *                                    “the vouchers page …”
+ *   gutschein-pdf-ohne-sichtschutz   VoucherPdfProtection without Sichtschutz → red “a voucher PDF …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

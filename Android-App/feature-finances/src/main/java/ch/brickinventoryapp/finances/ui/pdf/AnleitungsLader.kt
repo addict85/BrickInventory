@@ -21,7 +21,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import javax.inject.Inject
 
-/** Lädt ein PDF für den Betrachter; [offen] bekommt die Quelle, bevor sie zurückkommt. */
+/** Loads a PDF for the viewer; [offen] gets the source before it comes back. */
 interface PdfLoader {
     suspend fun lade(pdfUrl: String, offen: PdfHolder, onZustand: (PdfLoadState) -> Unit): Pair<PdfQuelle, Int>
 }
@@ -34,24 +34,24 @@ internal interface PdfLoaderModule {
 }
 
 /**
- * Download, Ablage und Aufbereitung grosser Anleitungen, ausserhalb der Komposition:
- * Eine Drehung baut den Bildschirm neu, der Download im ViewModel läuft weiter.
- * Anleitungen gehen streamend und verschlüsselt auf die Platte ([InstructionStore]),
- * Gutscheine nur in den Speicher.
+ * Download, storage and preparation of large instruction manuals, outside the composition:
+ * a rotation rebuilds the screen, the download in the ViewModel keeps running.
+ * Instruction manuals go onto disk streamed and encrypted ([InstructionStore]),
+ * vouchers only into memory.
  */
 internal class AnleitungsLader @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
-    /** Das Netz liegt in der Datenschicht; hier nur Ablage, Aufbereitung und Seitenzahl. */
+    /** The network lives in the data layer; here only storage, preparation and page count. */
     private val netz: AnleitungsRepository,
     private val anleitungen: InstructionStore,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
-    /** Zählt die Seiten im isolierten Prozess (PdfRenderDienst), zugleich die Lesbarkeitsprobe. */
+    /** Counts the pages in the isolated process (PdfRenderDienst), at the same time the readability test. */
     private val renderer: PdfRenderConnection,
 ) : PdfLoader {
 
     override suspend fun lade(pdfUrl: String, offen: PdfHolder, onZustand: (PdfLoadState) -> Unit): Pair<PdfQuelle, Int> {
-        // Ein Gutschein-PDF trägt Nummer und PIN: keine Datei (ablage == null), nur ein
-        // Speicherbereich, der mit dem Betrachter vergeht.
+        // A voucher PDF carries number and PIN: no file (ablage == null), only a
+        // memory area that dies with the viewer.
         val vertraulich = showsVouchers(pdfUrl)
         val ablage = pdfAblage(ctx.cacheDir, pdfUrl, vertraulich)
         return if (ablage == null) {
@@ -62,10 +62,10 @@ internal class AnleitungsLader @Inject constructor(
     }
 
     /**
-     * Laden und Seiten zählen — mit einem Selbstheilungsversuch: Ältere Fassungen
-     * schrieben direkt unter den fertigen Namen und konnten dort eine abgeschnittene
-     * Datei hinterlassen. Scheitert das Öffnen, wird der Zwischenspeicher dieser
-     * Anleitung verworfen und einmal neu geladen; ein zweiter Fehlschlag geht durch.
+     * Load and count pages — with one self-healing attempt: older versions
+     * wrote directly under the finished name and could leave a truncated
+     * file there. If opening fails, this instruction manual's cache
+     * is discarded and reloaded once; a second failure goes through.
      */
     private suspend fun loadAndCount(
         url: String,
@@ -100,8 +100,8 @@ internal class AnleitungsLader @Inject constructor(
     }
 
     /**
-     * Der Weg für vertrauliche PDFs: ganz in den Speicher ([AnleitungsRepository.loadInTheStorage]), ohne
-     * Teildatei und ohne Wiederaufnahme, dann in einen memfd ([PdfArea.speicher]).
+     * The path for confidential PDFs: entirely into memory ([AnleitungsRepository.loadInTheStorage]), without
+     * a partial file and without resuming, then into a memfd ([PdfArea.speicher]).
      */
     private suspend fun ladeInDenSpeicherUndZaehle(
         url: String,

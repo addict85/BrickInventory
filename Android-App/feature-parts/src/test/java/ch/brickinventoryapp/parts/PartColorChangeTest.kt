@@ -18,26 +18,26 @@ import ch.brickinventoryapp.testing.testPartsRepository
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
- * Die Farbe eines manuell erfassten Teils nachtraeglich aendern — App-Seite.
+ * Changing a manually entered part's color after the fact — the app side.
  *
- * ── Was hier geprueft wird und was NICHT ────────────────────────────────────
+ * ── What is checked here and what is NOT ────────────────────────────────────
  *
- * Was die Aenderung TUT — Umziehen oder Zusammenlegen, Erfassungen vom
- * gleichen Tag addieren, ein Set-Teil abweisen — prueft der Server gegen eine
- * echte Datenbank: Web-App/test/part-color-change-db.test.js. Eine zweite,
- * schwaechere Fassung davon gehoert nicht hierher.
+ * What the change DOES — moving or merging, adding together entries from the
+ * same day, rejecting a set part — is checked by the server against a
+ * real database: Web-App/test/part-color-change-db.test.js. A second,
+ * weaker version of that does not belong here.
  *
- * Hier stehen die drei Aussagen, die nur auf DIESER Seite nachweisbar sind:
+ * Here stand the three statements that can only be proven on THIS side:
  *
- *   1. Die App ruft denselben Dienst wie die Webapp: Die Logik steht einmal im
- *      Backend, beide Oberflächen benutzen sie.
+ *   1. The app calls the same service as the web app: the logic lives once in the
+ *      backend, both UIs use it.
  *
- * ── Gegenproben ─────────────────────────────────────────────────────────────
+ * ── Counter-checks ─────────────────────────────────────────────────────────────
  *
- * Fall 1 und 4 laufen gegen einen PfadServer ohne Netz (PartsViewModel, PartsRepository),
- * Fall 2 und 3 lesen Bildschirm und Graph. Gemessen:
- *   A  in PartsApi die Adresse auf "…/colour" → rot „die App ruft denselben
- *      Dienst wie die Webapp“
+ * Cases 1 and 4 run against a PfadServer without network (PartsViewModel, PartsRepository),
+ * cases 2 and 3 read the screen and the graph. Measured:
+ *   A  in PartsApi the address to "…/colour" → red “the app calls the same
+ *      service as the web app”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PartColorChangeTest {
@@ -67,17 +67,17 @@ class PartColorChangeTest {
     }
 
     /**
-     * Die ALTE Farbe im Pfad, die NEUE im Körper: Der Pfad sagt, welche Zeile
-     * gemeint ist, der Körper, wohin sie soll. owner ist der Besitzer der KARTE —
-     * im Haushalt zeigt der manuelle Bereich alle Konten, ohne ihn änderte der
-     * Server die eigene Zeile statt der angezeigten.
+     * The OLD color in the path, the NEW one in the body: the path says which row
+     * is meant, the body where it should go. owner is the owner of the CARD —
+     * in the household the manual section shows all accounts, without it the
+     * server would change the caller's own row instead of the one shown.
      */
     @Test
     fun `the app calls the same service as the web app`() {
         var geoeffnet: Int? = null
         vm().setzeTeilFarbe("3001", 5, 11, owner = 7) { geoeffnet = it }
         assertTrue("neu geöffnet", geoeffnet != null)
-        // Die Ablage zieht die Farbe selbst nach; gezählt wird nur der Aufruf.
+        // The store fetches the color itself afterward; only the call is counted.
         assertEquals(listOf("PUT /api/v1/parts/3001/5/color?owner=7"), paths.requestsAn("/color"))
         val koerper = paths.koerper[paths.requests.indexOfFirst { "/color" in it }]
         assertTrue(koerper, koerper.contains("\"color_id\":11"))
@@ -102,9 +102,9 @@ class PartColorChangeTest {
                 RegexOption.DOT_MATCHES_ALL
             ).containsMatchIn(graph)
         )
-        // Erst zurueck, dann hin: Bliebe der alte Eintrag im Rueckweg stehen,
-        // landete ein Zurueck-Tipp auf genau der Farbe, die gerade korrigiert
-        // wurde.
+        // Back first, then forward: if the old entry stayed on the way back,
+        // a back tap would land on exactly the color that was just being
+        // corrected.
         assertTrue(
             "Vor dem neuen Aufruf fehlt das popBackStack() — der alte Eintrag mit " +
                 "der falschen Farbe bliebe im Rueckweg stehen.",
@@ -122,10 +122,10 @@ class PartColorChangeTest {
 
     @Test
     fun `the color row does not depend on an existing color name`() {
-        // Der Aufruf von FarbWahlFeld darf nicht unter einer Bedingung stehen,
-        // die den Farbnamen verlangt. Geprueft wird der Block VOR dem Aufruf:
-        // Die naechste Bedingung darueber ist `if (!isFig) {` — und sonst
-        // nichts.
+        // The call to FarbWahlFeld must not stand under a condition
+        // that demands the color name. What is checked is the block BEFORE the call:
+        // the next condition above it is `if (!isFig) {` — and nothing
+        // else.
         val i = screen.indexOf("FarbWahlFeld(")
         assertTrue(
             "FarbWahlFeld wird im Detailbildschirm nicht aufgerufen — dann gibt es " +
@@ -142,8 +142,8 @@ class PartColorChangeTest {
                 "und genau das ist der Fall, der korrigiert werden muss.",
             !lastCondition.contains("colorName")
         )
-        // Und die Gegenrichtung im Feld selbst: Ohne Farbliste (kein Netz, kein
-        // Rebrickable-Schluessel) muss die heutige Farbe trotzdem dastehen.
+        // And the opposite direction, in the field itself: without a color list (no network, no
+        // Rebrickable key) today's color must still be shown.
         assertTrue(
             "FarbWahlFeld faellt ohne Farbliste nicht auf den heutigen Namen zurueck — " +
                 "dann stuende dort ein leeres Feld.",
@@ -158,13 +158,13 @@ class PartColorChangeTest {
 
     @Test
     fun `the same color again triggers no request`() {
-        // Zwei Stellen, und beide mit Grund: Das Feld schickt den Rueckruf
-        // nicht los (spart die Anfrage UND das Neuoeffnen), das ViewModel
-        // bricht ebenfalls ab (es ist der Weg, den jeder Aufrufer nimmt).
+        // Two places, and both with a reason: the field does not send the callback
+        // (saves the request AND reopening), the ViewModel
+        // also aborts (it is the path every caller takes).
         //
-        // Der Server weist den Fall ohnehin ab, ohne etwas zu aendern — aber
-        // „der Server faengt es schon" ist kein Grund, eine Anfrage zu
-        // schicken, deren Antwort ein Neuaufbau des Bildschirms ist.
+        // The server rejects the case anyway, without changing anything — but
+        // "the server will catch it" is no reason to send a request
+        // whose answer is a rebuild of the screen.
         vm().setzeTeilFarbe("3001", 5, 5)
         assertTrue("setzeTeilFarbe bricht bei gleicher Farbe nicht ab: ${paths.requests}", paths.requestsAn("/color").isEmpty())
         assertTrue(

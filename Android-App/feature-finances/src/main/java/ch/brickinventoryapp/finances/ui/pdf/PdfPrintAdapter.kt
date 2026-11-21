@@ -16,9 +16,9 @@ import kotlinx.coroutines.launch
 import java.io.FileOutputStream
 
 /**
- * Druckt eine geladene PDF über das System. Android ruft onWrite auf dem Hauptfaden;
- * kopiert wird darum über [schreiber] in [bereich], und ein Abbruch im Druckdialog
- * beendet das Kopieren, statt die ganze Datei noch zu schreiben.
+ * Prints a loaded PDF via the system. Android calls onWrite on the main thread;
+ * copying therefore happens via [schreiber] into [bereich], and a cancel in the
+ * print dialog stops the copying instead of still writing the whole file.
  */
 internal class PdfPrintAdapter(
     private val quelle: PdfQuelle,

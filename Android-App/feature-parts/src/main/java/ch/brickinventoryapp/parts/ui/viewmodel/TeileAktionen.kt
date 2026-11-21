@@ -16,18 +16,18 @@ import ch.brickinventoryapp.state.ui.viewmodel.Filterwahl
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Was die Bildschirme auslösen können. Sie kennen nur diese Schnittstellen, nicht die
- * ViewModels: So lassen sie sich mit einem festen Zustand und einer Attrappe zeigen,
- * ohne Hilt und ohne Server.
+ * What the screens can trigger. They know only these interfaces, not the
+ * ViewModels: this way they can be shown with a fixed state and a stub,
+ * without Hilt and without a server.
  */
 internal interface SetItemAktionen {
-    /** [colorId] zählt nur bei Teilen; eine Figur öffnet ihr eigenes ViewModel. */
+    /** [colorId] only counts for parts; a figure opens its own ViewModel. */
     fun openSetItem(nummer: String, colorId: Int = KEINE_FARBE)
     fun closeSetItem()
     fun setPartLocation(nummer: String, farbe: Int, ort: String)
 }
 
-/** Ein ViewModel mit dem Detail „in welchen Sets steckt das“, wie es Liste und Detail lesen. */
+/** A ViewModel with the detail "which sets is this in", as the list and detail read it. */
 internal interface WithSetItem : SetItemAktionen, Filterwahl {
     val setItemState: StateFlow<SetItemUiState>
 }
@@ -49,7 +49,7 @@ internal interface TeileAktionen : SetItemAktionen {
     fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?,
                    condition: Zustand? = null, owner: Int? = null)
     fun deletePart(partNumber: String, colorId: Int, owner: Int? = null)
-    /** Löschen mit „Rückgängig“; ohne Liste dahinter, die es anbietet, gleich löschen. */
+    /** Delete with "Rückgängig"; without a list behind it to offer that, delete right away. */
     fun partDeleteReserve(partNumber: String, colorId: Int, owner: Int?, name: String) =
         deletePart(partNumber, colorId, owner)
     fun setzeTeilFarbe(partNumber: String, colorId: Int, neueFarbe: Int,
@@ -67,7 +67,7 @@ internal interface FigurenAktionen : SetItemAktionen {
     fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String? = null,
                       condition: Zustand? = null, owner: Int? = null)
     fun deleteMinifig(figNumber: String, owner: Int? = null)
-    /** Löschen mit „Rückgängig“; ohne Liste dahinter, die es anbietet, gleich löschen. */
+    /** Delete with "Rückgängig"; without a list behind it to offer that, delete right away. */
     fun minifigDeleteReserve(figNumber: String, owner: Int?, name: String) = deleteMinifig(figNumber, owner)
     fun setMinifigsOrder(wert: Figurenordnung) = Unit
 

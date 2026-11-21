@@ -26,12 +26,12 @@ import ch.brickinventoryapp.state.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.state.ui.viewmodel.sequenceSignOut
 
 /**
- * Der Finanz-Reiter: Bewertung von Sets, Teilen und Figuren, Gewinn und
- * Verlust, Verlauf des Portfolios.
+ * The finance tab: valuation of sets, parts and figures, profit and
+ * loss, portfolio history.
  *
- * Gewählte Zeilenarten und Zeitraum stehen im [SavedStateHandle]: Sie sind eine
- * Entscheidung des Nutzers und sollen einen Prozess-Tod überstehen, die
- * geladenen Zahlen dagegen kommen beim nächsten Öffnen ohnehin frisch.
+ * Chosen row kinds and period live in the [SavedStateHandle]: they are a
+ * decision of the user and should survive a process death, while the
+ * loaded numbers come fresh again on the next open anyway.
  */
 @HiltViewModel
 class FinanceViewModel @Inject constructor(
@@ -47,7 +47,7 @@ class FinanceViewModel @Inject constructor(
 
     init {
         sequenceSignOut(sitzung) { reset() }
-        // Die Bewertung rechnet der Server über den Bestand der Ablage; ändert der sich, gilt sie nicht mehr.
+        // The valuation is computed by the server from the store's stock; if that changes, it is no longer valid.
         viewModelScope.launch { changes.inventoryChanged().collect { loadValuation() } }
     }
 
@@ -69,7 +69,7 @@ class FinanceViewModel @Inject constructor(
     val financeState: StateFlow<FinanceUiState> = _financeState.asStateFlow()
 
     init {
-        // Wer die Finanzen sieht, lädt, was fehlt; ein Zurückkehren lädt nichts doppelt.
+        // Whoever opens finances loads what is missing; returning does not load anything twice.
         observeLoadOn(_financeState) {
             val s = _financeState.value
             if (s.valuation == null && !s.bewertung.laedt) loadValuation()
@@ -89,8 +89,8 @@ class FinanceViewModel @Inject constructor(
             when (val r = finanzen.getValuation(konto)) {
                 is Ergebnis.Erfolg -> {
                     _financeState.update { it.copy(valuation = r.data, bewertung = Laden.Daten(Unit)) }
-                    // Die Währung des Kontos kommt mit der Bewertung; das
-                    // AppViewModel merkt sie sich für den nächsten Start.
+                    // The account's currency comes along with the valuation; the
+                    // AppViewModel remembers it for the next start.
                     sitzung.waehrungUebernommen(r.data.currency)
                 }
                 is Ergebnis.Fehler -> {
@@ -107,7 +107,7 @@ class FinanceViewModel @Inject constructor(
         }
     }
 
-    /** Den Verlauf für den gewählten Zeitraum neu holen. */
+    /** Fetch the history for the chosen period anew. */
     fun loadPortfolioHistory() = loadPortfolioHistory(_financeState.value.historyPeriod)
 
     override fun loadPortfolioHistory(period: String) {

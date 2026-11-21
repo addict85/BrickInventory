@@ -28,14 +28,14 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Der Preis-Cache der Überwachung leert erst nach einer Rückfrage: Jeder Neuaufbau kostet
- * Anfragen aus dem gemeinsamen Tageskontingent, ein Fehlgriff nähme allen anderen etwas
- * weg. Bestätigt wird im gewählten Umfang, Abbrechen leert nichts. Bei den Netzen des
- * Vorwärmens steht der Hinweis zum gemessenen WLAN.
+ * Monitoring's price cache only clears after a confirmation prompt: every rebuild costs
+ * requests from the shared daily quota, and a mistake would take something away from
+ * everyone else. Confirming happens in the chosen scope, cancel clears nothing. For the
+ * pre-warming networks, the note about the measured Wi-Fi stands there.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   cache-leeren-ohne-frage    „Alles leeren“ leert sofort → rot „das Leeren fragt …“
- *   vorwaermen-hinweis-fehlt   der Hinweis zum gemessenen WLAN fehlt → rot „bei den Netzen …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   cache-leeren-ohne-frage    „Alles leeren“ clears right away → red “clearing asks …”
+ *   vorwaermen-hinweis-fehlt   the note about the measured Wi-Fi is missing → red “at the networks …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

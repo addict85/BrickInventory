@@ -6,39 +6,38 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Der GEMEINSAME Korpus: Web-App und Android-App muessen dieselbe Setnummer
- * lesen.
+ * The SHARED corpus: the web app and the Android app must read the same set number.
  *
- * ── Warum eine gemeinsame Datei ─────────────────────────────────────────────
+ * ── Why a shared file ─────────────────────────────────────────────
  *
- * Dieselbe Frage — „welche Zahl in diesem Text ist die Setnummer?" — wird
- * zweimal beantwortet: hier in Kotlin fuer die Texterkennung (offline, in der
- * Kameraschleife) und in Web-App/utils/produkttitel.ts fuer Haendlertitel. Ein
- * gemeinsamer Aufruf geht nicht; ein gemeinsamer PRUEFKORPUS schon.
+ * The same question — "which number in this text is the set number?" — is
+ * answered twice: here in Kotlin for text recognition (offline, in the
+ * camera loop) and in Web-App/utils/produkttitel.ts for dealer titles. A
+ * shared call is not possible; a shared TEST CORPUS is.
  *
- * GEMESSEN, bevor es ihn gab:
+ * MEASURED, before it existed:
  *
- *   Regel                                    Server   App
- *   Mengenangabe („3696 Pcs") aussortieren     ja     NEIN
- *   Jahreszahl zuruecksetzen                   ja     NEIN
- *   nach Stellenzahl ordnen                   NEIN     ja
- *   dreistellige Setnummern (375, 928)        NEIN    NEIN
+ *   Rule                                       Server   App
+ *   filter out a quantity statement ("3696 Pcs")  yes    NO
+ *   reset a year number                            yes    NO
+ *   order by digit count                           NO     yes
+ *   three-digit set numbers (375, 928)             NO     NO
  *
- * Beide Fassungen beantworteten dieselbe Frage unterschiedlich, und keine
- * Pruefung sagte etwas dazu.
+ * The two versions answered the same question differently, and no
+ * check said anything about it.
  *
- * ── Warum hier nichts aufgezaehlt steht ─────────────────────────────────────
+ * ── Why nothing is listed here ─────────────────────────────────────
  *
- * Die Faelle stehen in shared/setnummer-korpus.json, samt Begruendung je Fall.
- * Ein neuer Fall wird EINMAL eingetragen und prueft ab sofort beide Apps.
- * Die Gegenprobe auf der anderen Seite ist Web-App/test/set-number-corpus.test.js.
+ * The cases live in shared/setnummer-korpus.json, along with the reasoning for each case.
+ * A new case is entered ONCE and from then on checks both apps.
+ * The counter-check on the other side is Web-App/test/set-number-corpus.test.js.
  *
- * Selbstbeweis ueber Mindestzahlen: Ginge das Einlesen schief, waere die
- * Schleife leer und der Test gruen, ohne etwas geprueft zu haben.
+ * Self-proof via minimum counts: if the reading in went wrong, the
+ * loop would be empty and the test green, without having checked anything.
  */
 class SetNumberCorpusTest {
 
-    /** Pfad relativ zum Modulverzeichnis `Android-App/app` — wie in ApkNameTest. */
+    /** Path relative to the module directory `Android-App/app` — as in ApkNameTest. */
     private val korpus by lazy {
         JSONObject(File("../../shared/setnummer-korpus.json").readText())
             .getJSONArray("faelle")
@@ -64,16 +63,16 @@ class SetNumberCorpusTest {
             if (erwartet != null && erwartet.length == 3) threeDigit++
         }
 
-        // Selbstbeweis 1: Der Korpus wurde wirklich gelesen und ist nicht leer.
+        // Self-proof 1: the corpus was really read and is not empty.
         assert(korpus.length() >= 15) {
             "Nur ${korpus.length()} Faelle im Korpus — Datei geschrumpft oder falscher Pfad?"
         }
-        // Selbstbeweis 2: Beide Richtungen sind vertreten. Ohne das koennte der
-        // Korpus zu lauter Nulltreffern verkommen und trotzdem gruen sein.
+        // Self-proof 2: both directions are represented. Without this the
+        // corpus could degrade into nothing but misses and still be green.
         assert(withExpectation >= 10) { "nur $withExpectation Faelle mit erwarteter Nummer" }
         assert(withoutCandidate >= 2) { "nur $withoutCandidate Faelle, die gar nichts liefern duerfen" }
-        // Selbstbeweis 3: Der Anlass dieser Runde — dreistellige Altsets — ist
-        // abgedeckt. Faellt die Unterstuetzung wieder raus, wird es rot.
+        // Self-proof 3: the occasion for this round — three-digit legacy sets — is
+        // covered. If support drops out again, it turns red.
         assert(threeDigit >= 2) { "nur $threeDigit dreistellige Setnummern im Korpus" }
     }
 }

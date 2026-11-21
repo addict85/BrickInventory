@@ -27,23 +27,23 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Die Galerie als Ablauf geprüft — ohne ViewModel und Netz. Ihre Quelle ist ein
- * Fluss (im Gerät die Ablage oder die Kontosicht); der Abruf füllt nur die Quelle
- * und schreibt hier mit, wofür er gerufen wurde.
+ * The gallery tested as a flow — without a ViewModel or network. Its source is a
+ * flow (on the device the store, or the account view); the fetch only fills the source
+ * and here records what it was called for.
  *
- * Gegenproben (kotlinc gegen Galerie.kt, Dezember-Fassung mit einem Lademodus):
- *   A  in laden() `sequenceJob?.cancel()` entfernt → rot „nach einem Filterwechsel zeigt
- *      die Galerie nur die neue Quelle“ (die alte Quelle schreibt weiter hinein)
- *   B  in laden() den Zweig „ohne Netz mit Stand“ entfernt → rot „ohne Netz bleibt
- *      die Quelle stehen, mit ihrem Stand“
- *   C  in laden() `galleryFehler = errorMessage(r)` entfernt → rot „ein
- *      Ladefehler wird zur Fehleranzeige mit Grund“
- *   D  `galleryFehler = null` beim neuen Versuch entfernt → rot „ein
- *      erfolgreicher neuer Versuch raeumt den Fehler weg“
- *   E  in galleryDisplay() die Zweige FEHLER und LEER vertauscht → rot
- *      „ein Ladefehler …" und „eine leere Sammlung …"
- *   F  in laden() `if (l.stand == null) return@collect` entfernt → rot „eine nie
- *      geladene Quelle leert die Galerie nicht“
+ * Counter-checks (kotlinc against Galerie.kt, December version with one load mode):
+ *   A  in laden() `sequenceJob?.cancel()` removed → red “after a filter change
+ *      the gallery shows only the new source” (the old source keeps writing into it)
+ *   B  in laden() the branch "without network, with a cached state" removed → red “without network
+ *      the source stays as is, with its cached state”
+ *   C  in laden() `galleryFehler = errorMessage(r)` removed → red “a
+ *      load error becomes an error display with a reason”
+ *   D  `galleryFehler = null` removed on a new attempt → red “a
+ *      successful retry clears the error”
+ *   E  in galleryDisplay() the branches FEHLER and LEER swapped → red
+ *      “a load error …” and “an empty collection …”
+ *   F  in laden() `if (l.stand == null) return@collect` removed → red “a source
+ *      never loaded does not empty the gallery”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GalleryTest {
@@ -52,7 +52,7 @@ class GalleryTest {
 
     private fun kurz(l: List<SetAnsicht>) = l.map { "${it.setNumber}x${it.quantity}" }
 
-    /** Die Quelle je Thema; [aktualisiert] schreibt mit, für welches Thema gefüllt wurde. */
+    /** The source per theme; [aktualisiert] records which theme it was filled for. */
     private class Quelle(
         start: Local<SetAnsicht> = Local(
             listOf(SetAnsicht(setNumber = "1-1"), SetAnsicht(setNumber = "2-1", theme = "Star Wars")),
@@ -64,8 +64,8 @@ class GalleryTest {
     }
 
     /**
-     * Im Vordergrund des Takts, damit advanceUntilIdle auch die Abrufe abwartet
-     * (backgroundScope zählt dort nicht); als Kind des Hintergrunds endet er mit dem Test.
+     * In the foreground of the clock, so that advanceUntilIdle also waits out the fetches
+     * (backgroundScope does not count there); as a child of the background it ends with the test.
      */
     private fun TestScope.foreground() = CoroutineScope(coroutineContext + Job(backgroundScope.coroutineContext[Job]))
 
@@ -84,7 +84,7 @@ class GalleryTest {
         val g = galerie(q)
         g.laden(); advanceUntilIdle()
         assertEquals(listOf("1-1x1", "2-1x1"), kurz(g.state.value.sets))
-        // Offline +2 auf Set 1 und ein neues Set: Die Ablage ändert sich, die Galerie folgt.
+        // Offline +2 on set 1 and a new set: the store changes, the gallery follows.
         q.ablage.value = Local(listOf(set(3), set(1, 3), set(2, thema = "Star Wars")), 2L)
         runCurrent()
         assertEquals(listOf("3-1x1", "1-1x3", "2-1x1"), kurz(g.state.value.sets))

@@ -1,19 +1,19 @@
 package ch.brickinventoryapp.login.ui
 
 /**
- * Der Aufruf an den Credential Manager. Er braucht eine Activity und die
- * Play-Dienste; das ViewModel braucht nur sein Ergebnis und bekommt die Abfrage
- * deshalb vom Bildschirm gereicht (im Test ein Fake).
+ * The call to the Credential Manager. It needs an Activity and the
+ * Play services; the ViewModel only needs its result and is therefore handed
+ * the query from the screen (a fake in the test).
  */
 internal fun interface PasskeyQuery {
-    /** [optionsJson]: die WebAuthn-Optionen des Servers, unverändert. */
+    /** [optionsJson]: the server's WebAuthn options, unchanged. */
     suspend fun fetch(optionsJson: String): PasskeyResult
 }
 
 internal sealed interface PasskeyResult {
-    /** Die Antwort des Authenticators als WebAuthn-JSON, für den Server. */
+    /** The authenticator's answer as WebAuthn JSON, for the server. */
     data class Antwort(val json: String) : PasskeyResult
-    /** Dialog geschlossen: Das ist eine Entscheidung, kein Fehler. */
+    /** Dialog closed: that is a decision, not an error. */
     data object Abgebrochen : PasskeyResult
     data object NoPasskey : PasskeyResult
     data class Fehler(val grund: String?) : PasskeyResult

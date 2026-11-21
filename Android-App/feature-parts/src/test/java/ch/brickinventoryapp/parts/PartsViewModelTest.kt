@@ -30,32 +30,32 @@ import ch.brickinventoryapp.testing.text
 import ch.brickinventoryapp.parts.ui.Teilefilter
 
 /**
- * Teile- und Figuren-ViewModel, ausgeführt gegen die Regeln eines PfadServers ohne Netz
- * (imTakt): Abrufe und Ablage laufen in der Testuhr, kein Test wartet in Echtzeit.
- * Ein Prozesstod ist ein neues ViewModel mit demselben SavedStateHandle in neuen Diensten.
+ * Parts and figures ViewModel, run against the rules of a PfadServer without network
+ * (imTakt): fetches and the store run on the test clock, no test waits in real time.
+ * A process death is a new ViewModel with the same SavedStateHandle in new services.
  *
- * Gegenproben:
- *   A  in PartsViewModel `filterChanged` nicht mehr in den SavedStateHandle geschrieben
- *      → rot „Filter und Ansicht überstehen …“
- *   teile-kontofilter-gemerkt  (gegenproben/) der Kontofilter mit im SavedStateHandle und nach
- *      dem Prozesstod wieder gesetzt → rot „… der Kontofilter nicht“
- *   figuren-suche-vergessen    (gegenproben/) MinifigsViewModel liest die Suche nicht zurück
- *      → rot „Suche und Ansicht der Figuren überstehen …“
- *   teile-laden-beim-zeigen    (gegenproben/) loadPerServer im PartsViewModel ohne loadPartsColors
- *      → rot „wer den Reiter zeigt, bekommt …“
- *   B  in LocalApplication.manuelleTeile den Zweig TeilAendern entfernt → rot „ein
- *      geändertes Teil steht in der Ablage …“
- *   C  in aendere() wieder `fehler ?: text(err_unknown)` → rot „ein Fehler,
- *      den die Sitzungsschicht schon meldet, bleibt still“
- *   D  in setPartLocation() die Ruhezeit entfernt → rot „der Lagerort wird
- *      entprellt gespeichert …“
- *   E  getManualParts ohne Lagerort, oder getManualMinifigs ohne Suchtext →
- *      je rot „Suchtext und Lagerort erreichen auch die manuell erfassten …“
- *   F  getMinifigStats ohne Blickfeld → rot „der Kontofilter der Figuren …“
- *   G  in BrickApiService bei getManualParts bzw. getManualMinifigs
- *      `@Query("search")` zu `@Query("suche")` → je rot „Suchtext und
- *      Lagerort erreichen auch die manuell erfassten …“ (Zeitüberschreitung
- *      „manuelle Teile“ bzw. „manuelle Figuren“)
+ * Counter-checks:
+ *   A  in PartsViewModel `filterChanged` no longer written to the SavedStateHandle
+ *      → red “filter and view survive …”
+ *   teile-kontofilter-gemerkt  (gegenproben/) the account filter kept in the SavedStateHandle and
+ *      restored after a process death → red “… not the account filter”
+ *   figuren-suche-vergessen    (gegenproben/) MinifigsViewModel does not read the search back
+ *      → red “search and view of the figures survive …”
+ *   teile-laden-beim-zeigen    (gegenproben/) loadPerServer in PartsViewModel without loadPartsColors
+ *      → red “whoever shows the tab gets …”
+ *   B  in LocalApplication.manuelleTeile the branch TeilAendern removed → red “a
+ *      changed part is in the store …”
+ *   C  in aendere() back to `fehler ?: text(err_unknown)` → red “an error
+ *      the session layer already reports stays silent”
+ *   D  in setPartLocation() the debounce removed → red “the storage location is
+ *      saved debounced …”
+ *   E  getManualParts without a storage location, or getManualMinifigs without a search text →
+ *      each red “search text and storage location also reach the manually entered …”
+ *   F  getMinifigStats without the view → red “the figures' account filter …”
+ *   G  in BrickApiService for getManualParts or getManualMinifigs
+ *      `@Query("search")` changed to `@Query("suche")` → each red “search text and
+ *      storage location also reach the manually entered …” (timeout
+ *      "manuelle Teile" or "manuelle Figuren")
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PartsViewModelTest {
@@ -158,8 +158,8 @@ class PartsViewModelTest {
 
     @Test
     fun `search text and storage location also reach the manually added pieces`() {
-        // Sonst filtert der Text die Set-Teile, und die manuellen Kacheln
-        // darüber bleiben stehen.
+        // Otherwise the text filters the set parts, and the manual tiles
+        // above them stay as is.
         val vm = vm()
         vm.setStorageFilter(ScopeFilter.View.PARTS, "Keller")
         vm.setPartsQuery("stein")
@@ -168,7 +168,7 @@ class PartsViewModelTest {
         val teile = paths.requestsAn("GET /api/v1/parts/manual?").last { "search=stein" in it }
         assertTrue(teile, "storage=Keller" in teile)
 
-        // Ohne Kontofilter sucht die Figurensuche in der Ablage; abgerufen wird ungefiltert.
+        // Without an account filter, figure search searches the store; the fetch is unfiltered.
         val fig = minifigsVm()
         fig.setMinifigsQuery("han")
         fig.loadMinifigs()

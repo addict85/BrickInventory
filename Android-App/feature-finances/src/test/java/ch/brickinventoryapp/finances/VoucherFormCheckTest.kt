@@ -7,11 +7,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Was „Speichern“ im Gutscheinformular markiert, bevor etwas hinausgeht; das erste Feld
- * bekommt den Cursor. Mit PDF liest der Server, was leer ist.
+ * What „Speichern“ marks in the voucher form before anything goes out; the first field
+ * gets the cursor. With a PDF the server reads what is empty.
  *
- * Gegenprobe (gemessen lokal, JVM):
- *   gutschein-pdf-verlangt-nummer  Nummer auch mit PDF Pflicht → rot „mit PDF …“
+ * Counter-check (measured locally, JVM):
+ *   gutschein-pdf-verlangt-nummer  the number mandatory even with a PDF → red “with a PDF …”
  */
 class VoucherFormCheckTest {
 

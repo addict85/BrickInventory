@@ -30,14 +30,14 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Die Knöpfe der Hintergrundarbeiten, gezeichnet: „Leeren“ einer Auftragsart und
- * „Löschen“ eines Brickset-Eintrags fragen erst nach, Abbrechen in der Rückfrage tut
- * nichts. Jeder Knopf nennt TalkBack, woran er wirkt (Auftragsart, Set).
+ * The background work's buttons, rendered: "Leeren" for a job kind and
+ * "Löschen" for a Brickset entry ask first, cancel in the confirmation prompt does
+ * nothing. Every button tells TalkBack what it acts on (job kind, set).
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   auftraege-leeren-ohne-frage   „Leeren“ ruft clearOn sofort → rot „Leeren fragt …“
- *   brickset-loeschen-ohne-frage  das Löschsymbol löscht sofort → rot „Loeschen eines Brickset-Eintrags …“
- *   auftrag-knopf-ohne-art        Auftragsknöpfe ohne contentDescription → rot „jeder Knopf nennt …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   auftraege-leeren-ohne-frage   „Leeren“ calls clearOn right away → red “Leeren asks …”
+ *   brickset-loeschen-ohne-frage  the delete icon deletes right away → red “deleting a Brickset entry …”
+ *   auftrag-knopf-ohne-art        job buttons without contentDescription → red “every button tells …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH")

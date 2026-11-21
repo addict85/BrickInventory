@@ -41,9 +41,9 @@ import ch.brickinventoryapp.ui.components.SettingsCard
 import ch.brickinventoryapp.ui.components.SecretKopierWarning
 
 /**
- * Gutscheine — LEGO-Geschenkkarten im eigenen Profil, möglichst einfach erreichbar
- * und wie in der Webapp beim Profil. Eine eigene Datei, damit SettingsScreen.kt
- * überschaubar bleibt.
+ * Vouchers — LEGO gift cards in one's own profile, reachable as simply as possible
+ * and as in the web app's profile. A file of its own, so that SettingsScreen.kt
+ * stays manageable.
  */
 @Composable
 fun GutscheineCard(
@@ -55,55 +55,55 @@ fun GutscheineCard(
     onSpeichern: (android.net.Uri?) -> Unit,
     deleteOn: (Int) -> Unit,
     openOnPdf: (id: Int) -> Unit,
-    /** Nummer oder PIN dieses Gutscheins in die Zwischenablage; braucht den Klartext. */
+    /** Puts this voucher's number or PIN on the clipboard; needs the plain text. */
     onKopieren: (id: Int, isNumber: Boolean) -> Unit,
     /**
-     * Das Guthaben dieser Karte bei LEGO abfragen und speichern. Der Server erlaubt
-     * eine Abfrage je 30 Sekunden über alle Benutzer; der Lauf über alle Karten taktet
-     * sich deshalb selbst.
+     * Query this card's balance at LEGO and save it. The server allows
+     * one query every 30 seconds across all users; the run across all cards therefore
+     * paces itself.
      */
     onBalance: (Int) -> Unit,
     /** Den laufenden Durchgang anhalten. */
     cancelOnBalance: () -> Unit,
-    /** Die Liste nach einem Ladefehler neu holen. */
+    /** Fetch the list anew after a load error. */
     onErneut: () -> Unit,
-    /** Passwort und Code der offenen Rückfrage ([GutscheinUiState.confirmation]). */
+    /** Password and code of the open prompt ([GutscheinUiState.confirmation]). */
     onBestaetigen: (passwort: String, code: String?) -> Unit,
     cancelOnConfirmation: () -> Unit,
-    /** Ob das Formular zum Anlegen offen ist; der Knopf dazu steht auf der Seite (VouchersPage). */
+    /** Whether the create form is open; its button sits on the page (VouchersPage). */
     neu: Boolean = false,
     onNew: (Boolean) -> Unit = {},
 ) {
-    // Die gewählte Datei lebt nur im Formular — eine Uri ist eine Berechtigung dieses
-    // Bildschirms, kein Datum des Kontos. rememberSaveable, weil sie eine Wahl des
-    // Menschen ist und eine Drehung überstehen soll; Uri ist Parcelable.
+    // The chosen file lives only in the form — a Uri is a permission of this
+    // screen, not a datum of the account. rememberSaveable, because it is a choice made by
+    // the person and should survive a rotation; Uri is Parcelable.
     var pdfUri by rememberSaveable { mutableStateOf<android.net.Uri?>(null) }
     val selection = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> pdfUri = uri }
     val geschuetzt = protectedStep()
-    // Das Formular steht in einem Blatt, nicht dauerhaft unter der Liste: Auf dem
-    // Telefon lag es sonst bei jedem Besuch im Weg. Offen zum Anlegen ([neu]) oder
-    // solange ein Gutschein bearbeitet wird; nach erfolgreichem Speichern (Felder
-    // leer) geht es von selbst zu, bei einer Absage bleibt es mit den Eingaben offen.
+    // The form sits in a sheet, not permanently under the list: on the
+    // phone it otherwise got in the way on every visit. Open for creating ([neu]) or
+    // for as long as a voucher is being edited; after a successful save (fields
+    // empty) it closes on its own, on a rejection it stays open with the input.
     var gesendet by rememberSaveable { mutableStateOf(false) }
-    // An den Feldern festgemacht, nicht nur am Speichern: Ein schneller Server
-    // wechselt true → false, ohne dass eine Zusammensetzung dazwischen liegt.
+    // Tied to the fields, not only to saving: a fast server
+    // flips true → false without a composition in between.
     LaunchedEffect(gesendet, zustand.speichern.laeuft, zustand.nummer, zustand.edited) {
         if (gesendet && !zustand.speichern.laeuft) {
             gesendet = false
             if (zustand.nummer.isEmpty() && zustand.edited == null) onNew(false)
         }
     }
-    // Ohne Kopf: Die Karte ist allein auf ihrer Seite, deren Leiste „Gutscheine“ schon nennt.
+    // Without a header: the card stands alone on its page, whose bar already names „Gutscheine“.
     SettingsCard(title = null, icon = Icons.Default.Redeem) {
       BoxWithConstraints {
-        // Ab Tabletbreite zwei Karten nebeneinander: Eine Gutscheinkarte über 1000 dp
-        // zog Nummer und Menü weit auseinander.
+        // From tablet width on, two cards side by side: a voucher card over 1000 dp
+        // pulled number and menu far apart.
         val breit = maxWidth >= 720.dp
         Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-        // Hinzufügen schwebt als Hauptaktion über der Seite, Guthaben und PDF stehen im Menü
-        // der Leiste (VoucherMenu): Drei breite Knöpfe untereinander schoben die Karten
-        // aus dem Bild. Der Fortschritt der Guthaben-Abfrage bleibt hier: Bei einer Abfrage
-        // je 30 Sekunden dauern vier Karten gut anderthalb Minuten.
+        // Adding floats as the main action above the page, balance and PDF sit in the bar's
+        // menu (VoucherMenu): three wide buttons stacked pushed the cards
+        // out of view. The balance query's progress stays here: with a query
+        // every 30 seconds, four cards take a good minute and a half.
         zustand.balanceRun?.let { BalanceRunRow(it, cancelOnBalance) }
         EmptyOrError(zustand, onErneut)
 
@@ -111,7 +111,7 @@ fun GutscheineCard(
             GutscheinKarte(
                 g = g,
                 pinSichtbar = g.id in zustand.pinSichtbar,
-                // Verdecken braucht keine Bestätigung, aufdecken schon.
+                // Hiding needs no confirmation, revealing does.
                 switchOnPin = {
                     if (g.id in zustand.pinSichtbar) switchOnPin(g.id) else geschuetzt { switchOnPin(g.id) }
                 },
@@ -128,7 +128,7 @@ fun GutscheineCard(
         VoucherRaster(zustand.gutscheine, breit, karte)
         if (zustand.gutscheine.isNotEmpty()) SecretKopierWarning()
 
-        // Die Summe — nur bei EINER Waehrung (voucherSum).
+        // The sum — only for a SINGLE currency (voucherSum).
         val sum = voucherSum(zustand.gutscheine)
         if (sum != null) {
             HorizontalDivider(Modifier.padding(vertical = Abstaende.klein))
@@ -154,8 +154,8 @@ fun GutscheineCard(
 }
 
 /**
- * Nummer und PIN, die PDFs und Löschen: erst nach der Gerätesperre (Schrittschutz),
- * danach fragt das ViewModel nach Passwort und Code.
+ * Number and PIN, the PDFs and delete: only after the device lock (step guard),
+ * after that the ViewModel asks for password and code.
  */
 @Composable
 private fun protectedStep(): (() -> Unit) -> Unit {
@@ -184,8 +184,8 @@ private fun VoucherRaster(
 }
 
 /**
- * Wie weit die Guthaben-Abfrage aller Karten ist, mit Abbrechen: Bei einer Abfrage je
- * 30 Sekunden dauern vier Karten gut anderthalb Minuten.
+ * How far the balance query for all cards has got, with cancel: with one query every
+ * 30 seconds, four cards take a good minute and a half.
  */
 @Composable
 private fun BalanceRunRow(lauf: BalanceRun, onAbbrechen: () -> Unit) {
@@ -207,9 +207,9 @@ private fun BalanceRunRow(lauf: BalanceRun, onAbbrechen: () -> Unit) {
 }
 
 /**
- * Ohne Gutscheine: der Ladefehler mit Rat seiner Klasse und neuem Versuch, sonst der
- * Leerzustand wie jede Liste (Symbol, Titel, wozu die Seite da ist). Kein eigener Knopf
- * für den Stapel-Import: Die Datei geht über das Feld im Formular.
+ * Without vouchers: the load error with its class's advice and a retry, otherwise the
+ * empty state like every list (icon, title, what the page is for). No button of its own
+ * for a bulk import: the file goes through the field in the form.
  */
 @Composable
 private fun EmptyOrError(zustand: GutscheinUiState, onErneut: () -> Unit) {
@@ -224,7 +224,7 @@ private fun EmptyOrError(zustand: GutscheinUiState, onErneut: () -> Unit) {
     }
 }
 
-/** Passwort und Code vor Löschen, PDF oder Klartext ([GutscheinUiState.confirmation]). */
+/** Password and code before deleting, a PDF or plain text ([GutscheinUiState.confirmation]). */
 @Composable
 private fun VoucherPrompt(
     zustand: GutscheinUiState,
@@ -252,8 +252,8 @@ private fun VoucherPrompt(
 }
 
 /**
- * Die Hauptaktion der Seite: einen Gutschein anlegen. Die Fassung mit Inhalt, nicht die mit
- * `text`/`icon`: Jene nimmt den Text aus der Semantik, vorgelesen würde nur „Schaltfläche“.
+ * The page's main action: add a voucher. The version with content, not the one with
+ * `text`/`icon`: that one takes the text from the semantics, which would read out only „Schaltfläche“.
  */
 @Composable
 internal fun VoucherAdd(onClick: () -> Unit) {
@@ -265,9 +265,9 @@ internal fun VoucherAdd(onClick: () -> Unit) {
 }
 
 /**
- * Was für alle Gutscheine gilt, im Menü der Leiste: das Guthaben aller Karten abfragen
- * (eine nach der anderen) und alle als EIN PDF im Betrachter. Beides selten, darum
- * nicht als Knopf über der Liste.
+ * What applies to all vouchers, in the bar's menu: query the balance of all cards
+ * (one after another) and all of them as ONE PDF in the viewer. Both rare, so
+ * not as a button above the list.
  */
 @Composable
 internal fun VoucherMenu(zustand: GutscheinUiState, onBalanceAll: () -> Unit, exportOn: () -> Unit) {
@@ -282,15 +282,15 @@ internal fun VoucherMenu(zustand: GutscheinUiState, onBalanceAll: () -> Unit, ex
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.vouchers_balance_all)) },
                 leadingIcon = { Icon(Icons.Default.Sync, null) },
-                // Nur mit PIN lässt sich ein Guthaben abfragen; läuft schon eine Abfrage, wartet sie.
+                // A balance can only be queried with a PIN; if a query is already running, it waits.
                 enabled = zustand.balanceRun == null && zustand.gutscheine.any { !it.pin.isNullOrBlank() },
                 onClick = { offen = false; onBalanceAll() },
             )
             DropdownMenuItem(
                 text = { Text(stringResource(R.string.vouchers_export)) },
                 leadingIcon = { Icon(Icons.Default.PictureAsPdf, null) },
-                // Ohne Gutscheine aus: Der Server antwortete mit 404, ein Betrachter mit
-                // Fehlermeldung wäre der umständlichste Weg zu „du hast noch keine“.
+                // Without vouchers out: the server answered with 404, a viewer with
+                // an error message would be the most roundabout way to say „du hast noch keine“.
                 enabled = zustand.gutscheine.isNotEmpty(),
                 onClick = { offen = false; geschuetzt(exportOn) },
             )

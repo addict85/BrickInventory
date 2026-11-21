@@ -16,13 +16,13 @@ import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
- * Wer die Galerie über gewählte Konten lädt, führt mit, was die Galerie anzeigt:
- * Die Kontosicht fragt den Server mit Blickfeld, Suche, Thema und Sortierung,
- * und zwar jede Seite — sonst hinge an einer gefilterten ersten Seite eine
- * ungefilterte zweite.
+ * Whoever loads the gallery over selected accounts carries along what the gallery shows:
+ * the account view asks the server with the view, search, theme and sorting,
+ * and does so for every page — otherwise a filtered first page would have
+ * an unfiltered second page hanging off it.
  *
- * Gegenprobe: in GalleryViewModel.accountQuery die Suche auf null gesetzt → rot
- * „jede Seite der Kontosicht trägt Blickfeld und Filter“.
+ * Counter-check: in GalleryViewModel.accountQuery the search set to null → red
+ * “every page of the account view carries the view and the filters”.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GalleryLoadsFilteredTest {

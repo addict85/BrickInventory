@@ -53,8 +53,8 @@ internal fun AnmeldeFelder(
     onPasskeyStattCode: ((String, String) -> Unit)?,
 ) {
     LoginTitle(stringResource(R.string.login_title))
-    // Der Knopf bleibt tippbar; ein Tipp mit leeren Feldern zeigt am Feld, was fehlt.
-    // Gesperrt und blass liess er raten, warum nichts geschieht.
+    // The button stays tappable; a tap with empty fields shows at the field what is missing.
+    // Disabled and pale, it left one guessing why nothing happens.
     var versucht by rememberSaveable { mutableStateOf(false) }
     val nameMissing = versucht && username.isBlank()
     val passwordMissing = versucht && password.isBlank()
@@ -71,7 +71,7 @@ internal fun AnmeldeFelder(
         isError = nameMissing,
         supportingText = if (nameMissing) ({ Text(stringResource(R.string.login_username_fehlt)) }) else null,
         leadingIcon = { Icon(Icons.Default.Person, null) },
-        // Für den Passwortmanager: Er füllt nur, was er als Anmeldefeld erkennt.
+        // For the password manager: it only fills what it recognizes as a sign-in field.
         modifier = Modifier.fillMaxWidth().semantics { contentType = ContentType.Username }, singleLine = true,
         shape = Formen.feld,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -93,8 +93,8 @@ internal fun AnmeldeFelder(
             }),
     )
 
-    // Erst sichtbar, wenn der Server den zweiten Faktor verlangt.
-    // Text statt Zahl: Auch ein Wiederherstellungscode (Buchstaben) passt hinein.
+    // Only visible once the server demands the second factor.
+    // Text instead of number: a recovery code (letters) fits in it too.
     if (codeNoetig) {
         OutlinedTextField(
             value = code, onValueChange = { onCode(it.take(24)) },
@@ -102,8 +102,8 @@ internal fun AnmeldeFelder(
             isError = codeMissing,
             supportingText = { Text(stringResource(if (codeMissing) R.string.login_code_fehlt else R.string.login_code_hint)) },
             leadingIcon = { Icon(Icons.Default.Key, null) },
-            // Kein SmsOtpCode: Der Code kommt aus einer Authenticator-App, nicht per SMS, und
-            // Compose kennt keinen Autofill-Typ für TOTP. Das System bot sonst SMS-Codes an.
+            // No SmsOtpCode: the code comes from an authenticator app, not by SMS, and
+            // Compose has no autofill type for TOTP. The system otherwise offered SMS codes.
             modifier = Modifier.fillMaxWidth(), singleLine = true,
             shape = Formen.feld,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done, keyboardType = KeyboardType.Ascii),
@@ -113,14 +113,14 @@ internal fun AnmeldeFelder(
 
     if (error != null) FormMessage(error, fehler = true)
 
-    // Ohne Häkchen ein Token ohne Verwalterrechte, auch für ein Verwalterkonto. Das
-    // Häkchen setzen fragt die Gerätesperre: Ein Token mit Scope voll darf alles.
-    // Eingeklappt unter „Erweitert“: Zum Sammeln braucht es niemand, und offen schob
-    // es bei 200 % den Anmeldeknopf aus dem ersten Bild.
+    // Without the checkbox, a token without admin rights, even for an admin account. Checking the
+    // box asks for the device lock: a token with scope "voll" can do anything.
+    // Collapsed under „Erweitert“: hardly anyone needs it to collect, and open
+    // it pushed the sign-in button out of the first frame at 200 %.
     val protection = LocalSchrittschutz.current
     val fullReason = stringResource(R.string.schritt_voller_zugriff)
     var extended by rememberSaveable { mutableStateOf(vollerZugriff) }
-    // Der Zustand für TalkBack: Ob der Bereich offen ist, sah man sonst nur.
+    // The state for TalkBack: whether the section is open was otherwise only visible.
     val zustand = stringResource(if (extended) R.string.zustand_ausgeklappt else R.string.zustand_eingeklappt)
     TextButton(onClick = { extended = !extended }, modifier = Modifier.semantics {
         stateDescription = zustand
@@ -129,8 +129,8 @@ internal fun AnmeldeFelder(
         Text(stringResource(R.string.login_erweitert))
         Icon(if (extended) Icons.Default.ExpandLess else Icons.Default.ExpandMore, null)
     }
-    // Oben bündig: Das Häkchen gehört zur ersten Zeile, nicht zur Mitte des Blocks
-    // (bei grosser Schrift drei Zeilen).
+    // Flush at the top: the checkbox belongs to the first line, not the middle of the block
+    // (three lines at large font).
     if (extended) Row(verticalAlignment = Alignment.Top,
         modifier = Modifier.fillMaxWidth().toggleable(value = vollerZugriff, role = Role.Checkbox,
             onValueChange = { an -> if (an) protection.confirm(fullReason) { onVollerZugriff(true) } else onVollerZugriff(false) })) {
@@ -144,7 +144,7 @@ internal fun AnmeldeFelder(
 
     LoadButton(stringResource(R.string.login_button), laeuft = isLoading, aktiv = true, onClick = anmelden)
 
-    // Statt des Codes: Name und Passwort von oben gehen mit, der Passkey ersetzt nur den Code.
+    // Instead of the code: name and password from above go along, the passkey only replaces the code.
     if (codeNoetig && onPasskeyStattCode != null) {
         OutlinedButton(onClick = { onPasskeyStattCode(username, password) },
             enabled = !isLoading && username.isNotBlank() && password.isNotBlank(),
@@ -166,9 +166,9 @@ internal fun AnmeldeFelder(
         }
     }
 
-    // Der Registrier-Link erscheint NUR bei einem ausdruecklichen `true`.
-    // `null` heisst „noch nicht gefragt" oder „der Server hat nicht
-    // geantwortet" — in beiden Faellen fuehrte der Knopf ins Leere.
+    // The register link appears ONLY on an explicit `true`.
+    // `null` means "not asked yet" or "the server did not
+    // answer" — in both cases the button led nowhere.
     FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
         if (registrierungOffen == true) {
             TextButton(onClick = { onFormular(AnmeldeFormular.REGISTER) }) {
@@ -196,10 +196,10 @@ internal fun ForgottenFields(
     if (meldung != null) {
         FormMessage(meldung, fehler = false)
     } else {
-        // Sagt, WOHIN der Link fuehrt. Er traegt den Token in der Adresse und
-        // oeffnet die Weboberflaeche des Servers — die App kann ihn nicht
-        // abfangen, weil die Serveradresse jeder selbst einstellt und deshalb
-        // in keinem Intent-Filter stehen kann.
+        // Says WHERE the link leads. It carries the token in the address and
+        // opens the server's web UI — the app cannot intercept
+        // it, because everyone sets the server address themselves and it therefore
+        // cannot appear in any intent filter.
         Text(stringResource(R.string.forgot_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,

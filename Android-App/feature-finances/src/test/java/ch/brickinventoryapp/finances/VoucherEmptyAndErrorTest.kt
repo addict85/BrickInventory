@@ -22,13 +22,13 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Die Gutscheinseite ohne Gutscheine: Ein Serverfehler nennt Überschrift und Rat seiner
- * Klasse und bietet einen neuen Versuch; die leere Liste sagt als Überschrift, dass es
- * noch keine gibt, und darunter, wozu die Seite da ist.
+ * The vouchers page without vouchers: a server error names the heading and advice of its
+ * class and offers a retry; the empty list says as a heading that there
+ * are none yet, and underneath, what the page is for.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   gutschein-fehler-ohne-klasse  ErrorHint ohne fehler.art → rot „ein Serverfehler …“
- *   gutschein-leer-nur-satz       Leerzustand wieder nur die graue Zeile → rot „ohne Gutscheine …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   gutschein-fehler-ohne-klasse  ErrorHint without fehler.art → red “a server error …”
+ *   gutschein-leer-nur-satz       empty state again only the gray line → red “without vouchers …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH")

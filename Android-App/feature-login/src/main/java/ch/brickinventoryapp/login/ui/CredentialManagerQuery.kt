@@ -10,14 +10,14 @@ import androidx.credentials.exceptions.GetCredentialException
 import androidx.credentials.exceptions.NoCredentialException
 
 /**
- * [PasskeyQuery] über den Android Credential Manager. Der Auswahldialog des
- * Systems hängt sich an die Activity hinter [context]. Android gibt
- * die Passkeys der Domain nur heraus, wenn ihr assetlinks.json diese App nennt
- * (PASSKEY_ANDROID_ZERTIFIKATE auf dem Server).
+ * [PasskeyQuery] via the Android Credential Manager. The system's picker
+ * dialog attaches to the Activity behind [context]. Android only hands out
+ * a domain's passkeys if its assetlinks.json names this app
+ * (PASSKEY_ANDROID_ZERTIFIKATE on the server).
  */
 internal class CredentialManagerQuery(context: Context) : PasskeyQuery {
 
-    // Die Sprachwahl der App legt einen ContextWrapper um die Activity.
+    // The app's language choice puts a ContextWrapper around the Activity.
     private val activity: Context = generateSequence(context) { (it as? android.content.ContextWrapper)?.baseContext }
         .firstOrNull { it is android.app.Activity } ?: context
 

@@ -24,20 +24,20 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.platform.InterceptPlatformTextInput
 
 /**
- * Die Anmeldung schützt vor überlagerten Fenstern (Tapjacking auf Anmelden und
- * Passkey) und, solange das Passwort sichtbar ist, vor Bildschirmfotos und dem
- * Vorschaubild der App-Übersicht (FLAG_SECURE). Der Wunsch „Vorschau verbergen“
- * bleibt bestehen, wenn das Passwort wieder verdeckt wird.
+ * Sign-in protects against overlaid windows (tapjacking on sign-in and
+ * passkey) and, while the password is visible, against screenshots and the
+ * app overview's preview image (FLAG_SECURE). The request "hide preview"
+ * stays in effect once the password is hidden again.
  *
- * Gegenproben (Robolectric, nur in der CI messbar; Job `gegenproben`):
- *   (a) Ueberdeckungsschutz() aus LoginScreen entfernt → rot „die Anmeldung ist
- *       vor Ueberlagerung geschuetzt …“ (gegenproben/anmeldung-ohne-ueberdeckungsschutz.patch)
- *   (b) Sichtschutz() für das sichtbare Passwort entfernt → rot „ein sichtbares
- *       Passwort …“ (gegenproben/passwort-ohne-sichtschutz.patch)
- *   (c) KeyboardWithoutLearn setzt die Flagge nicht mehr → rot „Passwort
- *       und Code lernt die Tastatur nicht mit“ (gegenproben/tastatur-lernt-mit.patch)
- *   (d) Sichtschutz() aus QrSetupScannerScreen entfernt → rot „der Scanner fuer den
- *       Anmeldecode …“ (gegenproben/qr-scanner-ohne-sichtschutz.patch)
+ * Counter-checks (Robolectric, measurable only in the CI; job `gegenproben`):
+ *   (a) Ueberdeckungsschutz() removed from LoginScreen → red “sign-in is
+ *       protected against overlay …” (gegenproben/anmeldung-ohne-ueberdeckungsschutz.patch)
+ *   (b) Sichtschutz() removed for the visible password → red “a visible
+ *       password …” (gegenproben/passwort-ohne-sichtschutz.patch)
+ *   (c) KeyboardWithoutLearn no longer sets the flag → red “the keyboard
+ *       does not learn password and code” (gegenproben/tastatur-lernt-mit.patch)
+ *   (d) Sichtschutz() removed from QrSetupScannerScreen → red “the scanner for the
+ *       sign-in code …” (gegenproben/qr-scanner-ohne-sichtschutz.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class LoginProtectionTest {
@@ -65,8 +65,8 @@ class LoginProtectionTest {
         compose.waitForIdle()
     }
 
-    // Aussen ein zweiter Abfänger: Er sieht die Anfrage so, wie die Anmeldung sie an die
-    // Tastatur weitergibt, und fragt nach dem EditorInfo, das daraus entstünde.
+    // A second interceptor on the outside: it sees the request the way sign-in passes
+    // it to the keyboard, and asks about the EditorInfo that would result from it.
     @OptIn(ExperimentalComposeUiApi::class)
     @Test
     fun `the keyboard does not learn password and code`() {

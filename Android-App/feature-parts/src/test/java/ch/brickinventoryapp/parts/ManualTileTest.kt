@@ -9,10 +9,10 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Was eine manuell erfasste Kachel und ihr Detail brauchen: den mengengewichteten
- * Kaufpreis vom Server und den Preisverlauf für Teile und Figuren. Was die Kachel
- * zeichnet, prüft ManualTileDisplayTest (app) unter Robolectric; dass der Verlauf
- * für beide Arten geladen wird, PurchasesViewModelTest (core-state) am ViewModel.
+ * What a manually entered tile and its detail need: the quantity-weighted
+ * purchase price from the server and the price history for parts and figures. What the tile
+ * renders is checked by ManualTileDisplayTest (app) under Robolectric; that the history
+ * is loaded for both kinds, by PurchasesViewModelTest (core-state) on the ViewModel.
  */
 class ManualTileTest {
 
@@ -23,10 +23,10 @@ class ManualTileTest {
 
     @Test
     fun `the quantity-weighted purchase price comes from the server`() {
-        // `unit_price` in der Stammzeile ist nur der ZULETZT geschriebene
-        // Einzelpreis. Wer einmal fuer 2.- und einmal fuer 8.- gekauft hat,
-        // saehe dort 8.- statt 5.-. Der Server rechnet es richtig
-        // (utils/handlers/shared.ts) — die App las das Feld nur nicht ein.
+        // `unit_price` in the master row is only the MOST RECENTLY written
+        // unit price. Anyone who bought once for 2.- and once for 8.-
+        // would see 8.- there instead of 5.-. The server computes it correctly
+        // (utils/handlers/shared.ts) — the app simply did not read that field.
         val teil = BrickJson.decodeFromString(PartValuationItem.serializer(),
             """{"part_number":"3001","unit_price":8.0,"avg_purchase_price":5.0}""")
         val figur = BrickJson.decodeFromString(FigValuationItem.serializer(),
@@ -35,8 +35,8 @@ class ManualTileTest {
         assertEquals(5.0, figur.avgPurchasePrice ?: 0.0, 0.0)
     }
 
-    // Die Wert-Kacheln wie im Set-Detail; eine grosse Preiszeile in der Marktpreis-Karte
-    // wiederholte sie (lag bis hierher in PurchasePriceDisplayTest, core-data).
+    // The value tiles like in the set detail; a large price row in the market-price card
+    // repeated them (used to live here, in PurchasePriceDisplayTest, core-data).
     @Test
     fun `the detail view shows value tiles, market price and price history, without a large price row`() {
         val s = code(read("parts/ui/screens/ManualItemDetailScreen.kt"))

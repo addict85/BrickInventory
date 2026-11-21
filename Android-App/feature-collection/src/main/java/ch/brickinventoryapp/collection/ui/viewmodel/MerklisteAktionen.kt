@@ -7,12 +7,12 @@ import ch.brickinventoryapp.model.domain.Merksortierung
 import ch.brickinventoryapp.model.domain.Zustand
 import ch.brickinventoryapp.model.data.ScopeFilter
 
-/** Was Merkliste und Merkposten-Detail auslösen; die Bildschirme kennen nur diese Schnittstelle. */
+/** What the wishlist and wishlist-item detail trigger; the screens know only this interface. */
 internal interface MerklisteAktionen {
     fun loadWanted()
     fun setScope(view: ScopeFilter.View, value: String)
     fun setWantedSearch(q: String)
-    /** null: beide Zustände. */
+    /** null: both states. */
     fun setWantedState(zustand: Zustand?)
     fun setWantedSorting(sorting: Merksortierung)
     fun legeMerkpostenAn(setNumber: String, zustand: Zustand, besitzer: Int? = null)
@@ -25,7 +25,7 @@ internal interface MerklisteAktionen {
     )
     fun loadWantedItemDetail(setNumber: String)
 
-    /** Das Detail eines Merkpostens, wie seine Seite es liest: Wer es zeigt, lädt es. */
+    /** The detail of a wishlist item, as its page reads it: whoever shows it loads it. */
     fun wantedItemDetailOf(setNumber: String): StateFlow<WantedItemDetailUiState>
     fun setPriceAlert(setNumber: String, richtung: Alarmrichtung, roh: String, zustand: Zustand)
 }

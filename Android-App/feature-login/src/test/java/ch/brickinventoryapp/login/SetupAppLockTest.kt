@@ -17,11 +17,11 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 /**
- * Die Einrichtung bietet die App-Sperre an, mit Erklärung und derselben Wahl wie die
- * Einstellungen.
+ * Setup offers the app lock, with an explanation and the same choice as the
+ * settings.
  *
- * Gegenprobe (Robolectric, nur in der CI messbar):
- *   die Karte in SetupScreen entfernt → rot „die Einrichtung bietet die App-Sperre an …“;
+ * Counter-check (Robolectric, measurable only in the CI):
+ *   the card removed from SetupScreen → red “setup offers the app lock …”;
  *   gegenproben/einrichtung-ohne-app-sperre.patch
  */
 @RunWith(RobolectricTestRunner::class)
@@ -55,7 +55,7 @@ class SetupAppLockTest {
         val ctx = compose.activity
         compose.onNodeWithText(ctx.getString(R.string.app_sperre_einrichten)).performScrollTo()
         compose.onNodeWithText(ctx.getString(R.string.app_sperre_titel)).assertExists()
-        // Die gewählte Stufe ist die der Ablage: dieselbe Wahl wie in den Einstellungen.
+        // The chosen level is that of the store: the same choice as in the settings.
         compose.onNodeWithText(ctx.getString(R.string.app_sperre_minuten, AppLock.DEFAULT_MINUTES)).assertExists()
         assertEquals(AppLock.DEFAULT_MINUTES, lock.minuten.value)
     }

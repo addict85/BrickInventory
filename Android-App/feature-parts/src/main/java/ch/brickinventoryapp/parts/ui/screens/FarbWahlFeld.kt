@@ -33,8 +33,8 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 
 /**
- * Die Farbe eines manuell erfassten Teils auswählen — zum Korrigieren, wenn sie
- * beim Import nicht richtig übernommen wurde.
+ * Choose the color of a manually entered part — for correcting it if it
+ * was not taken over correctly on import.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,15 +47,15 @@ internal fun FarbWahlFeld(
     modifier: Modifier = Modifier,
 ) {
     var offen by rememberSaveable { mutableStateOf(false) }
-    // Was die Liste ueber die heutige Farbe weiss, gewinnt gegen die
-    // Bestandszeile: Dort steht der Name, der beim Erfassen mitgeschickt wurde,
-    // und der kann aelter sein als der Katalog. Ohne beides kein „Farbe 5“: Die
-    // Nummer sagt niemandem etwas.
+    // What the list knows about today's color wins against the
+    // stock row: there the name is the one sent along at entry time,
+    // and it can be older than the catalog. Without either, no "Farbe 5": the
+    // number means nothing to anyone.
     val noColor = stringResource(R.string.parts_no_color)
     val name = farbName(farben, aktuell, aktuellerName, noColor)
         ?: stringResource(R.string.parts_color_unknown)
     val hex = if (aktuell == OHNE_FARBE) null else farben.firstOrNull { it.id == aktuell }?.hex ?: currentHex
-    // „Keine Farbe“ steht zur Wahl, damit sich eine falsch übernommene Farbe auch entfernen lässt.
+    // "Keine Farbe" is offered as a choice, so that a wrongly taken-over color can also be removed.
     val wahl = listOf(ColorView(OHNE_FARBE, noColor, null)) + withoutNoColor(farben)
 
     ExposedDropdownMenuBox(
@@ -72,7 +72,7 @@ internal fun FarbWahlFeld(
             modifier = Modifier.fillMaxWidth()
                 .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled = true),
             singleLine = true,
-            // Wie die übrigen Werte der Detailseite, nicht kleiner.
+            // Like the detail page's other values, not smaller.
             textStyle = MaterialTheme.typography.bodyMedium,
             shape = Formen.feld,
         )
@@ -83,9 +83,9 @@ internal fun FarbWahlFeld(
                     leadingIcon = { FarbPoint(c.hex) },
                     onClick = {
                         offen = false
-                        // Dieselbe Farbe nochmal ist keine Aenderung — und der
-                        // Server wuerde sie auch abweisen. Hier abzubrechen
-                        // spart die Anfrage UND das Neuladen des Bildschirms.
+                        // The same color again is not a change — and the
+                        // server would reject it too. Aborting here
+                        // saves the request AND reloading the screen.
                         if (c.id != aktuell) onWahl(c)
                     },
                 )

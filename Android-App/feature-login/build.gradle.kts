@@ -1,4 +1,4 @@
-// Anmelden, Server einrichten und QR-Anmeldung.
+// Sign in, set up a server and QR sign-in.
 plugins {
     alias(libs.plugins.brickinventory.android.feature)
 }
@@ -10,7 +10,7 @@ android {
 dependencies {
     implementation(project(":core-model"))
     implementation(project(":core-data"))
-    // NetworkPolicy: die Serveradresse prüfen.
+    // NetworkPolicy: checking the server address.
     implementation(project(":core-network"))
     implementation(project(":core-security"))
     implementation(project(":core-ui"))
@@ -19,7 +19,7 @@ dependencies {
     implementation(project(":core-resources"))
     implementation(libs.bundles.camera)
     implementation(libs.mlkit.barcode)
-    // Passkeys über den Credential Manager (ui/CredentialManagerQuery.kt).
+    // Passkeys via the Credential Manager (ui/CredentialManagerQuery.kt).
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services)
 

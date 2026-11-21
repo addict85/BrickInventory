@@ -42,15 +42,15 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Das Set-Detail, gezeichnet mit festem Zustand: Kaufpreis, Marktpreis und Mengenregler,
- * wie der Nutzer sie sieht. Ersetzt die Quelltext-Prüfungen in PurchasePriceDisplayTest
- * und ServerComputedValuesTest (core-data las dafür Bildschirme aus feature-collection).
+ * The set detail, rendered with a fixed state: purchase price, market price and quantity slider,
+ * as the user sees them. Replaces the source checks in PurchasePriceDisplayTest
+ * and ServerComputedValuesTest (core-data read screens from feature-collection for that).
  *
- * Gegenproben (Robolectric, nur in der CI messbar; Patches unter gegenproben/):
- *   kaufkachel-letzter-kauf     die Kaufpreis-Kachel zeigt maxPurchasePrice → rot „die Kaufpreis-Kachel …“
- *   marktpreis-doppelt          die Preiskarte zeigt den Marktpreis noch einmal → rot „der Marktpreis …“
- *   mengenregler-ohne-kopplung  `remember(set.setNumber)` ohne set.quantity → rot „der Mengenregler …“
- *   verlauf-fehler-ohne-klasse  ErrorHint des Preisverlaufs ohne historyFetch.art → rot „scheitert der Preisverlauf …“
+ * Counter-checks (Robolectric, measurable only in the CI; patches under gegenproben/):
+ *   kaufkachel-letzter-kauf     the purchase-price tile shows maxPurchasePrice → red “the purchase price tile …”
+ *   marktpreis-doppelt          the price card shows the market price again → red “the market price …”
+ *   mengenregler-ohne-kopplung  `remember(set.setNumber)` without set.quantity → red “the quantity slider …”
+ *   verlauf-fehler-ohne-klasse  ErrorHint of the price history without historyFetch.art → red “if the price history fails …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "de-rCH-w1000dp-h900dp-land")
@@ -105,7 +105,7 @@ class SetDetailDisplayTest {
             }
         }
         compose.waitForIdle()
-        // Die Preiskarte ist da (ihr Titel steht neben dem der Kachel), wiederholt den Betrag aber nicht.
+        // The price card is there (its title stands next to the tile's), but does not repeat the amount.
         assertEquals(2, anzahl(ctx.getString(R.string.detail_section_market)))
         assertEquals(1, anzahl(fmtMoney(1249.9, Waehrung.CHF)))
     }
@@ -126,7 +126,7 @@ class SetDetailDisplayTest {
         compose.waitForIdle()
         assertEquals(listOf(-1), aktionen.schritte)
         assertEquals("der Regler zählt sofort", 1, anzahl("4"))
-        // Fremde Exemplare lassen sich nicht wegnehmen: Der Server deckelt und meldet 3.
+        // Someone else's copies cannot be taken away: the server caps it and reports 3.
         set = falcon.copy(quantity = 3)
         compose.waitForIdle()
         assertEquals(1, anzahl("3"))
@@ -147,7 +147,7 @@ class SetDetailDisplayTest {
         }
         compose.waitForIdle()
         val rat = ctx.getString(R.string.fehler_offline_text)
-        // Die Preiskarte liegt unten in der Liste; welcher Rollbereich sie trägt, hängt an der Breite.
+        // The price card sits at the bottom of the list; which scroll range it carries depends on the width.
         val areas = compose.onAllNodes(hasScrollToNodeAction())
         for (i in areas.fetchSemanticsNodes().indices) {
             try { areas[i].performScrollToNode(hasText(rat)); break } catch (_: AssertionError) { continue }

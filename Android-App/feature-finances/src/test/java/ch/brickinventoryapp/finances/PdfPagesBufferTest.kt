@@ -13,12 +13,12 @@ import org.robolectric.annotation.GraphicsMode
 import java.nio.ByteBuffer
 
 /**
- * Die Seite entsteht im Hauptprozess aus dem geteilten Speicher: genau in den Massen,
- * die er festlegte, und nur, wenn der Speicher genau so gross ist.
+ * The page is built in the main process from the shared memory: exactly at the dimensions
+ * it set, and only if the memory is exactly that size.
  *
- * Gegenprobe (Robolectric, misst die CI):
- *   pdf-puffer-ungeprueft  bitmapFromBuffer() ohne Grössenprüfung → rot „ein Speicher anderer
- *                          Grösse ergibt keine Seite“
+ * Counter-check (Robolectric, measured by CI):
+ *   pdf-puffer-ungeprueft  bitmapFromBuffer() without a size check → red “memory of a different
+ *                          size yields no page”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

@@ -3,10 +3,10 @@ package ch.brickinventoryapp.finances.ui
 import java.util.UUID
 
 /**
- * Adresse und Titel offener PDFs, im Prozess statt in der Route: Die Route landet im
- * gespeicherten Zustand der Activity, eine Gutschein-Adresse trägt ein Ticket und ihr
- * Titel die Gutscheinnummer. Nach einem Prozess-Tod ist der Eintrag weg, der
- * Betrachter geht dann zurück; ein altes Ticket gälte ohnehin nicht mehr.
+ * Address and title of open PDFs, in the process rather than in the route: the route ends up in
+ * the activity's saved state, a voucher address carries a ticket and its
+ * title the voucher number. After a process death the item is gone, the
+ * viewer then goes back; an old ticket would no longer be valid anyway.
  */
 internal object PdfSelection {
     data class Pdf(val url: String, val titel: String)
@@ -16,7 +16,7 @@ internal object PdfSelection {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Pdf>?) = size > AT_MOST
     }
 
-    /** Legt das PDF ab und gibt den Schlüssel für die Route zurück. */
+    /** Stores the PDF and returns the key for the route. */
     fun put(url: String, titel: String): String = synchronized(offen) {
         UUID.randomUUID().toString().also { offen[it] = Pdf(url, titel) }
     }

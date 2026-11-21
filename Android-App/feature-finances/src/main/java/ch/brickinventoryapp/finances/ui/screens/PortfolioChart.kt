@@ -40,20 +40,20 @@ internal fun PortfolioChart(
     periodChangePct: Double? = null,
     onPeriodChange: (String) -> Unit
 ) {
-    // Alle Diagrammfarben aus dem Design, wie `new`/`used` — fest eingetragene stünden
-    // in einem anderen Design als Fremdkörper neben dessen Farben.
+    // All chart colors from the theme, like `new`/`used` — hardcoded ones would
+    // stand out as foreign bodies next to another theme's colors.
     val chart      = LocalChartColors.current
     val lineColor  = chart.linie
     val fillStart  = chart.linie.copy(alpha = 0.18f)
     val mutedColor = chart.gedaempft
     val gridColor  = chart.raster
     val measurer   = rememberTextMeasurer()
-    // Achsen in der kleinsten Rolle der Skala (11 sp) statt 8 sp; der Rand
-    // links und unten richtet sich unten nach der gemessenen Beschriftung.
+    // Axes at the smallest role of the type scale (11 sp) instead of 8 sp; the margin
+    // on the left and bottom is set by the measured label below.
     val axesStyle = MaterialTheme.typography.labelSmall.copy(color = mutedColor)
 
-    // Die Fläche der übrigen Karten: Auf dem grauen Kartenton der Vorgabe hätte die
-    // Achsenschrift weniger Kontrast als überall sonst.
+    // The surface of the other cards: on the default gray card tone, the
+    // axis text would have less contrast than everywhere else.
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(Abstaende.gross)) {
             PortfolioHeader(selectedPeriod, periodChangePct)
@@ -69,8 +69,8 @@ internal fun PortfolioChart(
                         style = MaterialTheme.typography.bodySmall, color = mutedColor)
                 }
                 else -> {
-                    // Eine Zeichenfläche hat keine Semantik; ohne diese Zeile
-                    // überspringt TalkBack das Diagramm ganz.
+                    // A drawing surface has no semantics; without this line
+                    // TalkBack skips the chart entirely.
                     val beschreibung = chartSummary(points, periodChangePct)?.let { z ->
                         val von = fmtMoney(z.anfang, currency)
                         val bis = fmtMoney(z.ende, currency)
@@ -88,7 +88,7 @@ internal fun PortfolioChart(
 
             Spacer(Modifier.height(10.dp))
 
-            // Zeitraum: eine Einfachwahl, darum Segmente wie überall (SegmentChoice).
+            // Period: a single choice, hence segments as everywhere (SegmentChoice).
             SegmentChoice(
                 optionen = listOf(
                     "week" to stringResource(R.string.chart_period_week),
@@ -103,7 +103,7 @@ internal fun PortfolioChart(
     }
 }
 
-/** Titel und Veränderung im Zeitraum; bei grosser Schrift rückt die Plakette darunter. */
+/** Title and change over the period; at large font the badge moves underneath. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PortfolioHeader(selectedPeriod: String, periodChangePct: Double?) {
@@ -116,8 +116,8 @@ private fun PortfolioHeader(selectedPeriod: String, periodChangePct: Double?) {
         if (periodChangePct != null) {
             val pos = periodChangePct >= 0
             val bg  = if (pos) LocalStatusFarben.current.erfolg else LocalStatusFarben.current.fehler
-            // Mit Zeitraum: „+1.3 %“ allein stand neben „G&V +14.2 %“ darunter und
-            // sagte nicht, dass es nur um diese Woche geht.
+            // With a period: „+1.3 %“ alone stood next to „G&V +14.2 %“ below and
+            // did not say that it was only about this week.
             val lbl = stringResource(when (selectedPeriod) {
                 "month" -> R.string.chart_change_month
                 "year" -> R.string.chart_change_year
@@ -132,10 +132,10 @@ private fun PortfolioHeader(selectedPeriod: String, periodChangePct: Double?) {
     }
 }
 
-/** Die drei Farben des Verlaufs aus dem Design: Linie, Fläche darunter, Raster. */
+/** The history's three colors from the theme: line, area beneath, grid. */
 private class HistoryColors(val linie: Color, val flaeche: Color, val raster: Color)
 
-/** Raster, Achsen, Fläche, Linie und Punkte; die Höhe jedes Punkts rechnet der Server (y_frac). */
+/** Grid, axes, area, line and points; the height of each point is computed by the server (y_frac). */
 private fun DrawScope.drawHistory(
     points: List<DiagrammPunkt>,
     yAxis: List<ChartAxis>,
@@ -150,9 +150,9 @@ private fun DrawScope.drawHistory(
     val padB = measurer.measure("0", axesStyle).size.height + 10f
     val r = Rahmen(padL, padT, size.width - padL - padR, size.height - padT - padB, points.size)
     drawYAxis(yAxis, yDimensions, r, farben.raster)
-    // Die Daten unter der Fläche, nie links neben ihr: Die erste steht
-    // bündig am Anfang, die letzte am Ende, damit keine in die Spalte
-    // der Beträge links ragt.
+    // The data labels under the area, never to the left of it: the first stands
+    // flush at the start, the last at the end, so that none juts into the
+    // column of amounts on the left.
     points.forEachIndexed { i, p ->
         if (p.xLabel.isEmpty()) return@forEachIndexed
         val m = measurer.measure(p.xLabel, axesStyle)
@@ -166,14 +166,14 @@ private fun DrawScope.drawHistory(
     zeichneLinie(points, r, farben)
 }
 
-/** Die Zeichenfläche ohne Ränder: wo Punkt i steht und wie hoch ein y_frac des Servers liegt (0 unten, 1 oben). */
+/** The drawing surface without margins: where point i stands and how high a server y_frac lies (0 at the bottom, 1 at the top). */
 private class Rahmen(val links: Float, val oben: Float, val breite: Float, val hoehe: Float, private val n: Int) {
     val unten: Float get() = oben + hoehe
     fun x(i: Int) = links + (if (n == 1) breite / 2f else i.toFloat() / (n - 1) * breite)
     fun y(yFrac: Double) = (oben + hoehe - yFrac.toFloat() * hoehe)
 }
 
-/** Gestrichelte Rasterlinien und die Beträge links daneben (der Server schickt fünf, Index 0 unten). */
+/** Dashed grid lines and the amounts next to them on the left (the server sends five, index 0 at the bottom). */
 private fun DrawScope.drawYAxis(yAxis: List<ChartAxis>, yDimensions: List<TextLayoutResult>, r: Rahmen, raster: Color) {
     yAxis.forEachIndexed { i, ya ->
         val y = r.y(ya.frac)
@@ -183,15 +183,15 @@ private fun DrawScope.drawYAxis(yAxis: List<ChartAxis>, yDimensions: List<TextLa
                 Offset((xd + 3f).coerceAtMost(r.links + r.breite), y), 0.8f)
             xd += 6f
         }
-        // Rechtsbündig und nie unter die Grundlinie: Die unterste
-        // Beschriftung ragte sonst in die Zeile der Daten darunter.
+        // Right-aligned and never below the baseline: the bottommost
+        // label otherwise jutted into the data row below it.
         val m = yDimensions[i]
         val oben = (y - m.size.height / 2f).coerceIn(0f, r.unten - m.size.height)
         drawText(m, topLeft = Offset(r.links - m.size.width - 4f, oben))
     }
 }
 
-/** Die Fläche unter der Linie im Verlauf, die Linie und die Punkte; der letzte hervorgehoben. */
+/** The area under the line in the history, the line and the points; the last one highlighted. */
 private fun DrawScope.zeichneLinie(points: List<DiagrammPunkt>, r: Rahmen, farben: HistoryColors) {
     val n = points.size
     val fp = Path().apply {

@@ -25,14 +25,14 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
- * Der Ladezustand des PDF-Betrachters. Im ViewModel, weil eine Drehung die Komposition
- * neu baut: Ein Download von bis zu 300 MB begänne sonst von vorn, ein Gutschein-PDF
- * im Speicher ginge ganz verloren. Die Quelle schliesst erst das Verlassen.
+ * The loading state of the PDF viewer. In the ViewModel, because a rotation rebuilds the
+ * composition: a download of up to 300 MB would otherwise start over, a voucher PDF
+ * in memory would be lost entirely. Only leaving closes the source.
  */
 @HiltViewModel
 class PdfBetrachterViewModel @Inject constructor(
     private val lader: PdfLoader,
-    /** Rendert die Seiten für den Bildschirm; hier nur durchgereicht. */
+    /** Renders the pages for the screen; only passed through here. */
     val pages: PdfSeitenQuelle,
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
 ) : ViewModel() {
@@ -44,14 +44,14 @@ class PdfBetrachterViewModel @Inject constructor(
     private var adresse: String? = null
     private var server: String = ""
 
-    /** Für jede Komposition gerufen; dieselbe Adresse lädt nur einmal. */
+    /** Called for every composition; the same address loads only once. */
     fun oeffne(pdfUrl: String, serverUrl: String) {
         val bisher = _state.value
         val abgewiesen = bisher is PdfLoadState.Error && bisher.grund == PdfError.FREMDER_HOST
         if (pdfUrl == adresse && !abgewiesen) return
         adresse = pdfUrl
         server = serverUrl
-        // Nur Adressen des eigenen Servers: Geladen wird mit dem Token-Client.
+        // Only addresses of our own server: loaded with the token client.
         if (!pdfInViewer(pdfUrl, serverUrl)) {
             _state.value = PdfLoadState.Error(null, PdfError.FREMDER_HOST)
             return
@@ -68,7 +68,7 @@ class PdfBetrachterViewModel @Inject constructor(
         }
     }
 
-    /** „Erneut versuchen“ im Fehlerzustand: dieselbe Adresse noch einmal, die sonst nur einmal lädt. */
+    /** „Erneut versuchen“ in the error state: the same address once more, which otherwise loads only once. */
     fun erneut() {
         val bisher = adresse ?: return
         if (_state.value !is PdfLoadState.Error) return
@@ -76,7 +76,7 @@ class PdfBetrachterViewModel @Inject constructor(
         oeffne(bisher, server)
     }
 
-    /** Kopiert die geladene Datei für den Druck auf dem IO-Dispatcher; abbrechbar zwischen zwei Stücken. */
+    /** Copies the loaded file for printing on the IO dispatcher; cancellable between two chunks. */
     val schreiber = PdfSchreiber { quelle, ziel -> withContext(io) { quelle.inbox().use { copyAbbrechbar(it, ziel) } } }
 
     override fun onCleared() {

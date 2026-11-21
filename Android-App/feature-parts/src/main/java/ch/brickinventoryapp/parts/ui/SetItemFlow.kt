@@ -13,9 +13,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * „In welchen Sets steckt das?“ für Teile- und Figuren-ViewModel: dieselbe Form, nur die
- * Abfrage unterscheidet sich. [afterHeader] bekommt die Besitzer, deren Lagerorte das Feld
- * vorschlagen soll.
+ * "Which sets is this in?" for the parts and figures ViewModel: the same shape, only the
+ * query differs. [afterHeader] gets the owners whose storage locations the field
+ * should suggest.
  */
 internal class SetItemFlow(
     private val scope: CoroutineScope,
@@ -30,13 +30,13 @@ internal class SetItemFlow(
         _zustand.value = SetItemUiState(art = art, nummer = nummer, colorId = colorId, abruf = Laden.Loads)
         scope.launch {
             val r = abfrage(nummer, colorId)
-            // Inzwischen ein anderes geöffnet? Dann gehört die Antwort nicht mehr hierher.
+            // A different one opened in the meantime? Then the answer no longer belongs here.
             val jetzt = _zustand.value
             if (jetzt.art != art || jetzt.nummer != nummer || jetzt.colorId != colorId) return@launch
             when (r) {
                 is Ergebnis.Erfolg -> {
                     _zustand.update { it.copy(abruf = Laden.Daten(Unit), kopf = r.data.kopf, sets = r.data.sets) }
-                    // Die Vorschläge fürs Lagerortfeld gehören dem Besitzer, nicht dem Betrachter.
+                    // The suggestions for the storage location field belong to the owner, not the viewer.
                     afterHeader(r.data.kopf?.ownerIds ?: emptyList())
                 }
                 is Ergebnis.Fehler -> _zustand.update { it.copy(abruf = loadError(r)) }

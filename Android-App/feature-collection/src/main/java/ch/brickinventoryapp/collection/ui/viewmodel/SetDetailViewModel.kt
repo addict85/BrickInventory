@@ -44,24 +44,24 @@ import ch.brickinventoryapp.state.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.state.ui.viewmodel.sequenceSignOut
 
 /**
- * Wie gross eine Anleitung sein darf — derselbe Wert wie `limits.fileSize` in
- * routes/sets.ts. Die App muss die Grenze kennen, bevor sie 80 MB durchs
- * Mobilfunknetz schickt.
+ * How large an instruction manual may be — the same value as `limits.fileSize` in
+ * routes/sets.ts. The app must know the limit before it sends 80 MB over
+ * the mobile network.
  */
 internal const val INSTRUCTION_MAX_BYTES = 50L * 1024 * 1024
 
 /**
- * Die Typen, die der Server annimmt (INSTR_EXT_BY_MIME in routes/sets.ts). Er
- * leitet daraus die Dateiendung ab; die App filtert schon die Auswahl.
+ * The types the server accepts (INSTR_EXT_BY_MIME in routes/sets.ts). It
+ * derives the file extension from them; the app already filters the selection.
  */
 internal val INSTRUCTION_TYPES = arrayOf("application/pdf", "image/jpeg", "image/png")
 
 /**
- * Die Detailansicht eines Sets: Stammdaten, Preis und Verlauf, Käufe,
- * Preisalarme, Anleitungen, Menge und Lagerort.
+ * The detail view of a set: master data, price and history, purchases,
+ * price alerts, instructions, quantity and storage location.
  *
- * Welches Set, steht im [SavedStateHandle] (Navigationsargument `setNumber`):
- * Nach einem Prozess-Tod öffnet die Ansicht wieder dasselbe Set.
+ * Which set, lives in the [SavedStateHandle] (navigation argument `setNumber`):
+ * after a process death the view opens the same set again.
  */
 @HiltViewModel
 class SetDetailViewModel @Inject constructor(
@@ -80,28 +80,28 @@ class SetDetailViewModel @Inject constructor(
 
     val state: StateFlow<AppUiState> = sitzung.state
 
-    /** Aus der Route set_detail/{setNumber}. */
+    /** From the route set_detail/{setNumber}. */
     val setNumber: String = gemerkt[ARG_SET] ?: ""
 
     private val _setDetailState = MutableStateFlow(SetDetailUiState())
     val setDetailState: StateFlow<SetDetailUiState> = _setDetailState.asStateFlow()
 
     /**
-     * Dieses Set, wie die Galerie es aus der Ablage zeigt: Die Kachel steht da, bis das
-     * Detail geladen ist. Aus derselben Quelle statt aus dem ViewModel der Galerie.
+     * This set, as the gallery shows it from the store: the tile stands there until the
+     * detail is loaded. From the same source instead of from the gallery's ViewModel.
      */
     val vorschau: StateFlow<SetAnsicht?> = sets.observeSets()
         .map { l -> l.liste.firstOrNull { it.setNumber == setNumber } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(PREVIEW_HOLD_MS), null)
 
-    // Je Abschnitt ein Abruf: Ein neuer bricht den laufenden ab, damit keine späte
-    // Antwort eines alten Abrufs die neuere überschreibt.
+    // One fetch per section: a new one cancels the running one, so that no late
+    // answer from an old fetch overwrites the newer one.
     private val laufend = HashMap<Abschnitt, Job>()
 
-    // Nach setNumber und dem Zustand: Ein init davor sähe beide noch nicht belegt.
+    // After setNumber and the state: an init before that would not yet see either assigned.
     init {
         sequenceSignOut(sitzung) { reset() }
-        // Ändert sich dieses Set in der Ablage — hier oder anderswo —, gelten Detail und Käufe nicht mehr.
+        // If this set changes in the store — here or elsewhere — detail and purchases are no longer valid.
         viewModelScope.launch {
             sets.observeSets().map { l -> l.liste.firstOrNull { it.setNumber == setNumber } }
                 .distinctUntilChanged().drop(1).collect {
@@ -110,8 +110,8 @@ class SetDetailViewModel @Inject constructor(
         }
     }
 
-    // Menge, Lagerort und Alarm warten die Ruhezeit ab; die Aufträge laufen im
-    // Scope des ViewModels und überstehen so das Zurückgehen.
+    // Quantity, storage location and alert wait out the debounce period; the jobs run in the
+    // ViewModel's scope and so survive navigating back.
     private var storageJob: Job? = null
     private val alarmInput = Preisalarmeingabe(
         scope = viewModelScope, alerts = alerts,
@@ -120,10 +120,10 @@ class SetDetailViewModel @Inject constructor(
         gespeichert = { sn -> if (sn == setNumber) loadPriceAlerts() },
     )
 
-    // Am Ende der Felder: Die Abrufe brauchen laufend und alarmInput schon belegt.
+    // At the end of the fields: the fetches need laufend and alarmInput already assigned.
     init { refresh() }
 
-    /** Alles, was die Ansicht zeigt, neu holen; beim Erzeugen und auf „Erneut versuchen“. */
+    /** Fetch everything the view shows anew; on creation and on „Erneut versuchen“. */
     override fun refresh() {
         loadDetail()
         loadPrice()
@@ -143,7 +143,7 @@ class SetDetailViewModel @Inject constructor(
         when (val r = katalog.getSetDetail(setNumber)) {
             is Ergebnis.Erfolg -> {
                 _setDetailState.update { it.copy(setDetail = r.data, detailFetch = Laden.Daten(Unit)) }
-                // Die Vorschläge fürs Lagerortfeld gehören dem Besitzer des Sets, nicht dem Betrachter.
+                // The suggestions for the storage location field belong to the set's owner, not the viewer.
                 filter.loadLocationStock(r.data?.owners.orEmpty().map { it.id })
             }
             is Ergebnis.Fehler -> _setDetailState.update { it.copy(detailFetch = loadError(r)) }
@@ -187,13 +187,13 @@ class SetDetailViewModel @Inject constructor(
         alarmInput.setze(setNumber, richtung, roh, zustand)
 
     /**
-     * Die Menge ändern. Die neue Zahl steht sofort in der Ansicht; die übrigen
-     * Bestandsansichten folgen der Ablage, in die das Repository sie schreibt.
+     * Change the quantity. The new number appears in the view right away; the other
+     * stock views follow the store, into which the repository writes it.
      */
     fun setQuantity(setNumber: String, quantity: Int, purchasePrice: Double? = null, condition: Zustand? = null) =
         changeQuantity(setNumber) { sets.setQuantity(setNumber, quantity, purchasePrice, condition) }
 
-    /** Der Regler: ein Schritt, damit gleichzeitige Klicks auf zwei Geräten zusammenzählen. */
+    /** The slider: one step, so that simultaneous clicks on two devices add up. */
     override fun changeQuantityUm(setNumber: String, schritt: Int) =
         changeQuantity(setNumber) { sets.changeQuantityUm(setNumber, schritt) }
 
@@ -213,7 +213,7 @@ class SetDetailViewModel @Inject constructor(
         }
     }
 
-    /** Lagerort des Sets, entprellt; massgeblich ist der normalisierte Ort aus der Antwort. */
+    /** The set's storage location, debounced; what counts is the normalized location from the response. */
     override fun setSetLocation(setNumber: String, ort: String) {
         storageJob?.cancel()
         storageJob = viewModelScope.launch {
@@ -276,5 +276,5 @@ class SetDetailViewModel @Inject constructor(
     }
 }
 
-/** So lange bleibt die Vorschau nach dem letzten Beobachter abonniert (Drehen des Geräts). */
+/** The preview stays subscribed this long after the last observer (rotating the device). */
 private const val PREVIEW_HOLD_MS = 5_000L

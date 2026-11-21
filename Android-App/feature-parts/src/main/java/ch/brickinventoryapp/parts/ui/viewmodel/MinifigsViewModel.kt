@@ -35,9 +35,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Der Figuren-Reiter: Liste, Suche, Erfassen und Ändern manueller Figuren, dazu der
- * Dialog „in welchen Sets steckt diese Figur“. Suche und Ansicht liegen im
- * [SavedStateHandle], der Kontofilter nicht.
+ * The figures tab: list, search, entering and editing manual figures, plus the
+ * dialog "which sets is this figure in". Search and view live in the
+ * [SavedStateHandle], the account filter does not.
  */
 @HiltViewModel
 class MinifigsViewModel @Inject constructor(
@@ -88,7 +88,7 @@ class MinifigsViewModel @Inject constructor(
         return if (r is Ergebnis.Fehler) r else kontosicht.manualMinifigs.refresh(a)
     }
 
-    /** Eine manuelle Figur, die erst gelöscht wird, wenn die Snackbar ohne „Rückgängig“ endet. */
+    /** A manual figure that is only deleted once the snackbar ends without „Rückgängig“. */
     data class ReservedMinifig(val figNumber: String, val owner: Int?, val name: String)
 
     val loeschen = Loeschvormerkung<ReservedMinifig>(viewModelScope) { v ->
@@ -114,7 +114,7 @@ class MinifigsViewModel @Inject constructor(
     init {
         viewModelScope.launch { changes.minifigsChanged().collect { liste.loadMetrics() } }
         liste.placeAgain(gemerkt[F_SEARCH] ?: "", gemerkt[F_VIEW] ?: ListView.KARTEN)
-        // Nur eine leere Liste holen: Die Ablage hält sie danach selbst aktuell.
+        // Only fetch an empty list: the store keeps it current itself afterward.
         loadPerServer(sitzung, minifigsObserved) { if (liste.zustand.value.minifigs.isEmpty()) loadMinifigs() }
     }
 

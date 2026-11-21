@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.management.ui.viewmodel
 
 /**
- * Was die Verwaltungsseite auslöst. Nichts davon wartet: Das ViewModel führt aus,
- * schreibt den Zustand und meldet über den Kanal der App, damit eine Aktion nicht
- * abbricht, wenn der Bildschirm geht.
+ * What the management page triggers. None of it waits: the ViewModel executes,
+ * writes the state and reports through the app's channel, so that an action does not
+ * abort when the screen goes away.
  */
 interface MonitoringActions {
     fun refresh()
@@ -19,5 +19,5 @@ interface MonitoringActions {
     fun clearJobKind(art: String)
 }
 
-/** Die Startknöpfe der Job-Karten; jeder ruft genau einen Endpunkt. */
+/** The job cards' start buttons; each calls exactly one endpoint. */
 enum class Jobstart { CSV_ABGLEICH, PREISLAUF, BESTANDSBILDER, KATALOGBILDER, INSTRUCTIONS }

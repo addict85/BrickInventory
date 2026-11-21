@@ -2,10 +2,10 @@ package ch.brickinventoryapp.parts.ui
 
 import ch.brickinventoryapp.model.domain.OHNE_FARBE
 
-// Die Zeilen der temporären Teileliste. Eigene Datei ohne Compose, damit die
-// Auflösung eines Sets (ui/Teileliste.kt) ohne Oberfläche prüfbar ist.
+// The rows of the temporary parts list. A file of its own without Compose, so that
+// resolving a set (ui/Teileliste.kt) can be checked without a UI.
 
-/** „10294“ heisst „10294-1“ — wie überall, wo eine Setnummer getippt wird. */
+/** "10294" means "10294-1" — as everywhere a set number is typed. */
 internal fun normalized(nr: String): String = if (nr.contains("-")) nr.trim() else "${nr.trim()}-1"
 
 data class PlSet(val setNumber: String, val name: String = "")
@@ -23,9 +23,9 @@ data class PlPart(
     val imageLocal: String? = null,
     val isFig: Boolean = false,
     /**
-     * Wie viele davon im eigenen Bestand liegen — `null`, solange nicht
-     * gefragt wurde.
-     * `null` und `0` sind verschieden: nicht gefragt gegen gefragt und nichts vorhanden.
+     * How many of these are in one's own stock — `null` as long as it has not
+     * been queried.
+     * `null` and `0` differ: not queried versus queried and none present.
      */
     val vorhanden: Int? = null,
 )

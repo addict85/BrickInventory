@@ -54,11 +54,11 @@ internal fun ManualPartTile(part: ManualPartView, serverUrl: String, imageLoader
     val farbe = remember(part.colorHex) {
         colorFromHex(part.colorHex)
     }
-    // Auf Nutzerwunsch läuft auch die volle Auflösung (Rückfall) über
-    // den Server-Proxy, nicht direkt zum CDN — anders als bei Sets/Katalog.
+    // On the user's request, even the full resolution (fallback) runs through
+    // the server proxy, not directly to the CDN — unlike for sets/catalog.
     val (bild, onBildFehler) =
         rememberTileImageWithFallback(serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
-    // Gemeinsame Kachel mit den Minifiguren — siehe ManuelleKachel.
+    // A tile shared with the minifigures — see ManuelleKachel.
     ManuelleKachel(
         bildUrl = bild,
         onBildFehler = onBildFehler,
@@ -76,7 +76,7 @@ internal fun ManualPartTile(part: ManualPartView, serverUrl: String, imageLoader
     )
 }
 
-/** Bildfläche der Teilekachel: wächst mit der Kachel, auf dem Telefon wie bisher rund 90 dp hoch. */
+/** Image area of the part tile: grows with the tile, about 90 dp tall on the phone as before. */
 private const val PART_IMAGE_RATIO = 4f / 3f
 
 @Composable
@@ -87,11 +87,11 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
     val colorObj = remember(part.colorHex) {
         colorFromHex(part.colorHex)
     }
-    // Auf Nutzerwunsch läuft auch die volle Auflösung (Rückfall) über
-    // den Server-Proxy, nicht direkt zum CDN — anders als bei Sets/Katalog.
+    // On the user's request, even the full resolution (fallback) runs through
+    // the server proxy, not directly to the CDN — unlike for sets/catalog.
     val (imageUrl, onImageError) = rememberTileImageWithFallback(serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
-    // Ab grosser Schrift eine Listenzeile wie die Sets: Das Bild über die volle Breite
-    // liess ein Teil je Bildschirm. Die Menge rückt dann vom Bild in den Text.
+    // From large font on, a list row like the sets: the image at full width
+    // left room for one part per screen. The quantity then moves from the image into the text.
     val zeile = largeFont()
     val weich = !movementReduced()
     val menge: @Composable () -> Unit = {
@@ -103,14 +103,14 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
         }
     }
 
-    // Mit der Kachel wachsend statt fest 90 dp: Auf dem Tablet stand sonst ein kleines
-    // Bild über einer breiten Kachel.
+    // Growing with the tile instead of a fixed 90 dp: on the tablet a small
+    // image otherwise stood above a wide tile.
     val canvas: @Composable (Modifier) -> Unit = { flaeche ->
         Box(flaeche) {
             ProduktBild(
                 model = imageUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(weich).build() },
                 imageLoader = imageLoader,
-                // Ohne Beschreibung: Der Name steht darunter, TalkBack las ihn sonst zweimal.
+                // Without a description: the name stands below it, TalkBack would otherwise read it twice.
                 contentDescription = null,
                 onState = { st ->
                     if (st is coil3.compose.AsyncImagePainter.State.Error) onImageError()
@@ -119,8 +119,8 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                     .clip(Formen.kachelBildEcken),
                 contentScale = ContentScale.Fit,
                 fallbackSize = 32.dp,
-                // Der Bildgrund über die ganze Kachelbreite wie bei den Sets: Ein schmales
-                // Bild stand sonst als Kasten mit weissen Rändern in der Karte.
+                // The image background across the whole tile width as with the sets: a narrow
+                // image otherwise stood as a box with white margins in the card.
                 bildgrund = true,
                 innerGap = Abstaende.tiny,
             )
@@ -147,23 +147,23 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
                     ?: androidx.compose.ui.text.AnnotatedString(stringResource(R.string.name_unknown)),
                 style = MaterialTheme.typography.bodySmall,
                 color = if (part.partName == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                // Im Raster immer zwei Zeilen Platz: tiles of a row are equally high,
-                // auch wenn ein Name kurz ist. Die Zeile muss niemandem gleichen.
+                // Always room for two lines in the grid: tiles of a row are equally high,
+                // even when a name is short. The row does not have to resemble anyone else's.
                 minLines = if (zeile) 1 else 2,
                 maxLines = if (zeile) 4 else 2, overflow = TextOverflow.Ellipsis)
             part.colorName?.let {
                 Text(farbTranslator()(it), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
-            // Ersatzteil — Sets enthalten ein Tuetchen davon. Nur wenn es
-            // eines IST: eine Plakette „kein Ersatzteil" an jeder Kachel
-            // waere Rauschen.
+            // Spare part — sets include a small bag of them. Only when it
+            // IS one: a badge "kein Ersatzteil" on every tile
+            // would be noise.
             if (part.isSpare) SparePartBadge(Modifier.padding(top = Abstaende.hairline))
         }
     }
 
     Card(
-        // Antippen öffnet den Detail-Dialog, wie bei manuell erfassten Teilen.
+        // Tapping opens the detail dialog, as for manually entered parts.
         modifier = Modifier.fillMaxWidth().heightIn(min = if (zeile) 0.dp else 164.dp)
             .semantics { selected = ausgewaehlt }
             .then(if (ausgewaehlt) Modifier.border(2.dp, MaterialTheme.colorScheme.primary, Formen.leiste) else Modifier)
@@ -182,10 +182,10 @@ fun PartCard(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
     }
 }
 
-/** Breite des Vorschaubilds, wenn die Kachel bei grosser Schrift eine Listenzeile ist. */
+/** Width of the thumbnail when the tile is a list row at large font. */
 private val ROW_IMAGE_WIDTH = 96.dp
 
-/** Sektions-Überschrift innerhalb der Grids (Manuell erfasst / Aus Sets). */
+/** Section heading inside the grids (manually entered / from sets). */
 @Composable
 internal fun SectionHeader(text: String) {
     SectionTitle(text,
@@ -193,9 +193,9 @@ internal fun SectionHeader(text: String) {
 }
 
 /**
- * Ein Teil als Tabellenzeile.
- * Kategorie und Sets stehen als zweite Zeile darunter, weil sieben Spalten wie in der Webapp auf
- * kein Telefon passen.
+ * A part as a table row.
+ * Category and sets stand as a second line below it, because seven columns like in the
+ * web app fit on no phone.
  */
 @Composable
 internal fun PartTableRow(part: TeilAnsicht, serverUrl: String, imageLoader: ImageLoader,
@@ -205,16 +205,16 @@ internal fun PartTableRow(part: TeilAnsicht, serverUrl: String, imageLoader: Ima
     }
     val (bildUrl, onError) = rememberTileImageWithFallback(
         serverUrl, part.imageLocal, part.imageUrl, fullViaProxy = true)
-    // Kategorie und Sets in einer Zeile, mit „·" getrennt — und nur, was da
-    // ist. Ein leeres „ · " sieht nach einem fehlenden Wert aus.
+    // Category and sets in one line, separated by "·" — and only what is
+    // there. An empty " · " looks like a missing value.
     val ersatzteil = stringResource(R.string.parts_spare_tag)
     val kategorie = categoryTranslator()
     val zweite = listOfNotNull(
         part.categoryName?.takeIf { it.isNotBlank() }?.let(kategorie),
         part.inSets?.takeIf { it.isNotBlank() }?.replace(",", ", "),
-        // In der Tabellenzeile als Wort statt als Plakette: Die Zeile ist auf
-        // Dichte gebaut, eine Flaeche mit eigenem Hintergrund saehe darin aus
-        // wie ein Knopf.
+        // In the table row as a word instead of a badge: the row is built for
+        // density, a surface with its own background would look in it
+        // like a button.
         ersatzteil.takeIf { part.isSpare },
     ).joinToString(" · ").ifBlank { null }
 

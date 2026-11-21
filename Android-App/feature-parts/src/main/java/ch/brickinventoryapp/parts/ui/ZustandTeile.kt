@@ -26,80 +26,80 @@ import ch.brickinventoryapp.model.ui.ListView
 import java.io.Serializable
 
 /**
- * Was die Teileliste filtert und wie sie sie zeigt — ein Wert, der als Ganzes im
- * SavedStateHandle liegt und nach dem Prozesstod wiederkommt. Jeder Lader liest ihn aus
- * dem Zustand, nie als Parameter: Sonst hängte `onLoadMore` eine ungefilterte Seite an.
- * Konto und Lagerort gehören nicht dazu; sie bleiben nur im Speicher (Blickfeld).
+ * What the parts list filters by and how it shows them — a single value that lives as a whole in
+ * the SavedStateHandle and comes back after a process death. Every loader reads it from
+ * the state, never as a parameter: otherwise `onLoadMore` would attach an unfiltered page.
+ * Account and storage location are not part of it; they stay only in memory (the view).
  */
 data class Teilefilter(
     val suche: String = "",
-    /** Wie parts-spare der Webapp. */
+    /** Like the web app's parts-spare. */
     val ersatz: Ersatzteilwahl = Ersatzteilwahl.ALLE,
-    /** Karten oder Tabelle; die Tabelle holt „In Sets“ mit (`with_sets=1`), darum im Filter. */
+    /** Cards or table; the table also fetches "In Sets" (`with_sets=1`), hence in the filter. */
     val ansicht: ListView = ListView.KARTEN,
-    /** Sortiert wird in der Ansicht, die Liste liegt ganz vor. */
+    /** Sorting happens in the view; the list is already fully loaded. */
     val order: Order = Order.FARBE,
-    /** Der Farbname reist als `color=` mit. */
+    /** The color name travels along as `color=`. */
     val farbe: ColorPicker = ColorPicker.Alle,
-    /** Der Wert (`category_name`), nicht die Beschriftung: Der Server filtert danach. */
+    /** The value (`category_name`), not the label: the server filters by it. */
     val kategorie: Kategoriewahl = Kategoriewahl.Alle,
 ) : Serializable {
-    /** Die drei Reihenfolgen der Webapp; die Regeln stehen in sortiert() (TeileOrdnung.kt). */
+    /** The web app's three sort orders; the rules live in sortiert() (TeileOrdnung.kt). */
     enum class Order { FARBE, NAME, QUANTITY }
 
     private companion object {
-        // Fest, sonst rechnet die JVM die Kennung aus der Klassenform, und jede neue Fassung
-        // der App verwürfe den gemerkten Filter.
+        // Fixed, otherwise the JVM would compute the id from the class shape, and every new
+        // version of the app would discard the remembered filter.
         private const val serialVersionUID: Long = 2L
     }
 }
 
-/** Der Teile-Reiter: Liste, Filter mit ihren Auswahllisten, Kennzahlen. */
+/** The parts tab: list, filter with its selection lists, key figures. */
 data class PartsUiState(
     val parts: List<TeilAnsicht> = emptyList(),
     /**
-     * Die manuell erfassten Teile (/parts/manual). null heisst „noch nicht geladen“, leer
-     * „keine vorhanden“: Die Rollposition wartet auf die Liste, auch wenn sie leer ist.
+     * The manually entered parts (/parts/manual). null means "not loaded yet", empty
+     * "none present": the scroll position waits for the list, even when it is empty.
      */
     val manualParts: List<ManualPartView>? = null,
     val partsTotal: Int = 0,
     val partsPage: Int = 1,
     val filter: Teilefilter = Teilefilter(),
-    /** Die Auswahl der beiden Filter mit Anzahl (/parts/colors und /parts/categories). */
+    /** The choice of the two filters with counts (/parts/colors and /parts/categories). */
     val partsFilterColors: List<FilterColorView> = emptyList(),
     val partsCategories: List<CategoryView> = emptyList(),
-    /** Der letzte Abruf; die Liste kommt aus der Ablage und bleibt stehen. */
+    /** The last fetch; the list comes from the store and stays as is. */
     val partsFetch: Laden<Unit> = Laden.Daten(Unit),
-    /** Teileliste aus dem Plattenspeicher: Zeitpunkt der Ablage, sonst null. */
+    /** Parts list from disk storage: the time it was stored, otherwise null. */
     val partsOfflineStatus: Long? = null,
     val partsStats: PartsMetricsView? = null,
-    /** Alle Farben für den Erfassungsdialog. */
+    /** All colors for the entry dialog. */
     val partsColors: List<ColorView> = emptyList(),
 )
 
-/** Der Figuren-Reiter: eigener Zustand, damit Blättern in den Teilen ihn nicht neu zeichnet. */
+/** The figures tab: a state of its own, so that paging through the parts does not redraw it. */
 data class MinifigsUiState(
     val minifigs: List<FigurAnsicht> = emptyList(),
-    /** Die manuell erfassten Figuren, null wie bei [PartsUiState.manualParts]. */
+    /** The manually entered figures, null as for [PartsUiState.manualParts]. */
     val manualFigs: List<ManualMinifigView>? = null,
-    /** Kennzahlen der Kacheln — vom Server, nicht aus der (gefilterten) Liste. */
+    /** Key figures of the tiles — from the server, not from the (filtered) list. */
     val minifigStats: MinifigsMetricsView = MinifigsMetricsView(),
     val minifigsFetch: Laden<Unit> = Laden.Daten(Unit),
     val minifigsOfflineStatus: Long? = null,
-    /** Gesucht wird auf dem Server vor der Gruppierung; eine zweite Suche im Bildschirm träfe anderes. */
+    /** The search happens on the server before grouping; a second search in the screen would hit different things. */
     val minifigsQuery: String = "",
     val minifigsView: ListView = ListView.KARTEN,
     val order: Figurenordnung = Figurenordnung.DEFAULT,
 )
 
 /**
- * Der Detail-Dialog für ein Teil oder eine Figur aus einem Set: Zoom, Menge nur
- * zum Lesen, und in welchen Sets es steckt. Eigener Fluss, weil der Dialog
- * Zwischenstände erzeugt, die jeden Reiter angingen; `offen == null` heisst: kein
- * Dialog. Ein Zustand für beides, weil der Server dieselbe Form liefert.
+ * The detail dialog for a part or figure from a set: zoom, quantity read-only
+ * only, and which sets it is in. Its own flow, because the dialog
+ * produces interim states that concerned every tab; `offen == null` means: no
+ * dialog. One state for both, because the server delivers the same shape.
  */
 data class SetItemUiState(
-    /** null heisst: der Dialog ist zu. */
+    /** null means: the dialog is closed. */
     val art: Postenart? = null,
     val nummer: String = "",
     val colorId: Int = OHNE_FARBE,
@@ -111,31 +111,31 @@ data class SetItemUiState(
 }
 
 /**
- * Die Bauliste im ViewModel: Eine Drehung baut den Bildschirm neu, die erzeugte Liste
- * und ein laufender Abruf bleiben. Die Setnummern überleben auch das Prozessende
- * (SavedStateHandle), die Teile nicht — tausend Zeilen sprengten das Bundle.
+ * The build list in the ViewModel: a rotation rebuilds the screen, the generated list
+ * and a running fetch stay. The set numbers survive even a process end
+ * (SavedStateHandle), the parts do not — a thousand rows would blow up the bundle.
  */
 data class TeilelisteUiState(
     val sets: List<PlSet> = emptyList(),
     val parts: List<PlPart> = emptyList(),
     val generated: Boolean = false,
-    /** Das Erzeugen der Liste; Fehler einzelner Sets nennt [status]. */
+    /** Generating the list; errors on individual sets are named by [status]. */
     val erzeugen: Laden<Unit> = Laden.Daten(Unit),
-    /** Fortschritt, Ergebnis oder Fehler der letzten Handlung; null heisst nichts zu sagen. */
+    /** Progress, result or error of the last action; null means nothing to say. */
     val status: Meldung? = null,
     val onlyLose: Boolean = false,
     val withSubAccounts: Boolean = false,
-    /** Der Abgleich mit dem eigenen Bestand; sein Ergebnis nennt [status]. */
+    /** The comparison with one's own stock; its result is named by [status]. */
     val bestand: Vorgang = Vorgang.Fertig,
     val pdf: Vorgang = Vorgang.Fertig,
-    /** Fertiges PDF, das der Bildschirm einmal zum Öffnen anbietet. */
+    /** Finished PDF that the screen offers once to open. */
     val pdfFile: java.io.File? = null,
 )
 
 /**
- * Was Teile und Figuren aus der Sitzung lesen: Server für die Bilder, Währung und
- * der vorgewählte Zustand beim Erfassen. Nicht die ganze Sitzung, damit eine
- * Änderung an Anmeldung oder Design die Listen nicht neu zeichnet.
+ * What parts and figures read from the session: server for the images, currency and
+ * the preselected condition when entering. Not the whole session, so that a
+ * change to sign-in or theme does not redraw the lists.
  */
 internal data class PartsSessionUiState(
     val serverUrl: String = "",

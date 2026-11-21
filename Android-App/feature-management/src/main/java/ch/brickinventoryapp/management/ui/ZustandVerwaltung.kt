@@ -4,12 +4,12 @@ import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.domain.LogRowView
 
 /**
- * Das Server-Protokoll — eigener Zustand für Verwalter: Es liest genau ein
- * Bildschirm. Die Zeilen bleiben stehen, während ein anderer Zeitraum geholt wird.
+ * The server log — its own state for admins: exactly one screen reads
+ * it. The rows stay up while a different period is being fetched.
  */
 data class ManagementUiState(
     val protokoll: List<LogRowView> = emptyList(),
-    /** Zeitspanne des Protokolls in Minuten — der Server begrenzt auf 2880. */
+    /** Log time span in minutes — the server caps it at 2880. */
     val logMinutes: Int = 15,
     val abruf: Laden<Unit> = Laden.Daten(Unit),
 )

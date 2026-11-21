@@ -36,11 +36,11 @@ import ch.brickinventoryapp.state.ui.viewmodel.Texte
 import ch.brickinventoryapp.state.ui.viewmodel.sequenceSignOut
 
 /**
- * Die Sammlung der Sets: Liste, Filter, Kennzahlen.
+ * The set collection: list, filters, key figures.
  *
- * Die Abläufe (Entprellen, Quelle wechseln) stehen in [Galerie]; dieses
- * ViewModel wählt die Quelle: die Ablage, über gewählte Konten die Kontosicht.
- * Suche, Thema und Sortierung stehen im [SavedStateHandle].
+ * The flows (debouncing, switching source) live in [Galerie]; this
+ * ViewModel chooses the source: the store, or, over selected accounts, the account view.
+ * Search, theme and sorting live in the [SavedStateHandle].
  */
 @HiltViewModel
 class GalleryViewModel @Inject constructor(
@@ -59,7 +59,7 @@ class GalleryViewModel @Inject constructor(
 
     init {
         sequenceSignOut(sitzung) { reset() }
-        // Die Kennzahlen rechnet der Server über den Bestand; ändert er sich in der Ablage, stimmen sie nicht mehr.
+        // The key figures are computed by the server from the stock; if it changes in the store, they are no longer correct.
         viewModelScope.launch { changes.inventoryChanged().collect { loadStats() } }
     }
 
@@ -77,7 +77,7 @@ class GalleryViewModel @Inject constructor(
         }
     }
 
-    /** Über gewählte Konten rechnet nur der Server die Mengen; sonst gilt die Ablage. */
+    /** For selected accounts only the server computes the quantities; otherwise the store applies. */
     private fun accountQuery(g: GalleryUiState): Kontosicht.SetsQuery? =
         filter.accountFor(ScopeFilter.View.GALLERY)?.let {
             Kontosicht.SetsQuery(it, g.galleryQuery.ifBlank { null }, g.galleryTheme.ifBlank { null }, g.gallerySort,
@@ -95,26 +95,26 @@ class GalleryViewModel @Inject constructor(
         reportError = { meldungen.zeige(meldungen.meldungFuerSnackbar(it)) },
         vergissScroll = { scrollMemory.vergiss("gallery") },
     )
-    /** Ein gelöschtes Set, das sich noch zurückholen lässt — die Snackbar „Rückgängig“. */
+    /** A deleted set that can still be brought back — the snackbar's „Rückgängig“. */
     data class ReservedDelete(val setNumber: String, val name: String, val set: SetAnsicht? = null)
 
     private val _reserved = MutableStateFlow<ReservedDelete?>(null)
     val vorgemerkt: StateFlow<ReservedDelete?> = _reserved.asStateFlow()
 
     /**
-     * Die Galerie ohne das vorgemerkte Set: Die Ablage führt es bis zum Löschen beim
-     * Server, und „Rückgängig“ zeigt es so ohne Neuladen wieder.
+     * The gallery without the set pending deletion: the store keeps it until the
+     * server deletion completes, and „Rückgängig“ brings it back this way without a reload.
      */
     private val galleryObserved = Observed(galerie.state
         .abgeleitet(_reserved) { st, v ->
-            // Die Kennzahlen ebenso: Neben zwei Kacheln stand sonst noch „3 Sets“.
+            // The key figures likewise: next to two tiles there would otherwise still be „3 Sets“.
             if (v == null) st else st.copy(sets = st.sets.filterNot { it.setNumber == v.setNumber },
                 stats = st.stats?.let { k -> v.set?.let { withoutSet(k, it) } ?: k })
         })
     val galleryState: StateFlow<GalleryUiState> = galleryObserved
 
     private val _prices = MutableStateFlow<Map<String, TilePrice>>(emptyMap())
-    /** Marktpreis und G&V je Set; eigener Fluss, weil er nach der Liste kommt. */
+    /** Market price and P&L per set; its own flow because it arrives after the list. */
     val preise: StateFlow<Map<String, TilePrice>> = _prices.asStateFlow()
 
     init {
@@ -129,8 +129,8 @@ class GalleryViewModel @Inject constructor(
     fun loadSets() = galerie.laden()
 
     /**
-     * Beim Zeigen (loadPerServer): laden, wenn die Galerie leer ist und ein Server
-     * eingetragen ist; ein Fehlschlag beim Start wird so beim nächsten Betreten wiederholt.
+     * On show (loadPerServer): load when the gallery is empty and a server
+     * is configured; a failure at startup is thus retried on the next visit.
      */
     fun loadIfEmpty() {
         val g = galerie.state.value
@@ -144,9 +144,9 @@ class GalleryViewModel @Inject constructor(
     }
 
     /**
-     * Preis und G&V für die Kacheln. Scheitert der Abruf, bleiben die alten
-     * Werte stehen und die Kachel fällt auf den Kaufpreis zurück; der Fehler
-     * des Reiters kommt aus der Liste, nicht aus dieser Zugabe.
+     * Price and P&L for the tiles. If the fetch fails, the old
+     * values remain and the tile falls back to the purchase price; the tab's
+     * error comes from the list, not from this addition.
      */
     private fun loadPrices() {
         viewModelScope.launch {
@@ -171,9 +171,9 @@ class GalleryViewModel @Inject constructor(
     }
 
     /**
-     * Herunterziehen: Liste, Kennzahlen und die Filterlisten. Scheiterte deren
-     * einziger Abruf beim Start, fehlten Konto- und Lagerfilter sonst bis zum
-     * nächsten Start.
+     * Pull-to-refresh: list, key figures and the filter lists. If their
+     * single fetch at startup had failed, account and storage filters would otherwise be missing until the
+     * next start.
      */
     fun aktualisieren() {
         loadSets()
@@ -185,9 +185,9 @@ class GalleryViewModel @Inject constructor(
     }
 
     /**
-     * Löschen mit „Rückgängig“: Die Kachel verschwindet sofort, der Server erfährt
-     * davon erst mit [executeDelete] — eine Rückfrage allein schützte nicht vor
-     * dem falschen Set. Ein noch offenes früheres Löschen wird zuerst ausgeführt.
+     * Delete with „Rückgängig“: the tile disappears right away, the server learns
+     * of it only with [executeDelete] — a confirmation prompt alone did not protect against
+     * deleting the wrong set. A still-pending earlier deletion is carried out first.
      */
     fun loeschenVormerken(setNumber: String, name: String) {
         executeDelete()
@@ -196,8 +196,8 @@ class GalleryViewModel @Inject constructor(
     }
 
     /**
-     * Das vorgemerkte Set bleibt; es stand die ganze Zeit in der Ablage.
-     * [nur]: nur dieses — die Snackbar eines abgelösten Löschens holt nicht das nächste zurück.
+     * The set pending deletion remains; it was in the store the whole time.
+     * [nur]: only this one — the snackbar of a superseded deletion does not bring back the next one.
      */
     fun rueckgaengig(nur: ReservedDelete? = null) {
         val v = _reserved.value ?: return
@@ -206,8 +206,8 @@ class GalleryViewModel @Inject constructor(
     }
 
     /**
-     * [nur]: nur dieses. Endet die Snackbar eines abgelösten Löschens, darf sie das
-     * neue nicht ausführen — sonst wäre es ohne „Rückgängig“ gelöscht.
+     * [nur]: only this one. When the snackbar of a superseded deletion ends, it must not
+     * carry out the new one — otherwise it would be deleted without „Rückgängig“.
      */
     fun executeDelete(nur: ReservedDelete? = null) {
         val v = _reserved.value ?: return
@@ -216,7 +216,7 @@ class GalleryViewModel @Inject constructor(
         deleteSet(v.setNumber, successReport = false)
     }
 
-    /** [successReport] aus, wenn „gelöscht“ schon in der Snackbar mit „Rückgängig“ stand. */
+    /** [successReport] off, when „gelöscht“ was already in the snackbar together with „Rückgängig“. */
     fun deleteSet(setNumber: String, successReport: Boolean = true) {
         viewModelScope.launch {
             val (geloescht, satz) = setLoeschen(sets, meldungen, setNumber)
@@ -245,7 +245,7 @@ class GalleryViewModel @Inject constructor(
     }
 }
 
-/** Die Kennzahlen ohne [set] — solange sein Löschen vorgemerkt ist. */
+/** The key figures without [set] — for as long as its deletion is pending. */
 internal fun withoutSet(k: MetricsView, set: SetAnsicht): MetricsView {
     val teile = (set.pieces ?: 0) * set.quantity
     return k.copy(
@@ -259,8 +259,8 @@ internal fun withoutSet(k: MetricsView, set: SetAnsicht): MetricsView {
 }
 
 /**
- * Ein Set löschen: gelungen, und der Satz für den Meldungskanal. Geteilt mit
- * dem Set-Detail, das denselben Weg anbietet.
+ * Delete a set: success, and the sentence for the message channel. Shared with
+ * the set detail, which offers the same path.
  */
 internal suspend fun setLoeschen(sets: SetsRepository, texts: Texte, setNumber: String, name: String = setNumber): Pair<Boolean, String?> =
     when (val r = sets.deleteSet(setNumber)) {

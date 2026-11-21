@@ -35,37 +35,37 @@ import ch.brickinventoryapp.testing.testPartsRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * Offline bearbeiten von Anfang bis Ende: Repository, Ausgang und Sender gegen
- * einen Testserver, der die Verbindung auf Wunsch abreisst.
+ * Editing offline from start to end: repository, outbox and sender against
+ * a test server that can drop the connection on request.
  *
- * Gegenproben:
- *   A  in Offlineablage.schreibe (Abruf.kt) den Zweig für transiente Fehler entfernt → rot
- *      „ohne Verbindung geht die Menge in den Ausgang“ (Ergebnis.Fehler statt gepuffert)
- *   B  in Offlineablage.schreibe (Abruf.kt) die Prüfung `ablage.wartet()` entfernt → rot
- *      „if something waits, new things go behind it“ (die zweite Änderung ging direkt raus)
- *   C  in ServerSender für SetMenge `quantity = schritt` statt `quantityDelta` →
- *      rot „gesendet wird der Schritt“
- *   D  in Offlineablage.refreshPaged (Abruf.kt) auch bei einem Fehler die leere
- *      Liste übernommen → rot „ohne Verbindung bleibt die Liste in der Ablage“
- *   (E–I gemessen)
- *   E  in Offlineablage.schreibe (Abruf.kt) beim Puffern nach dem direkten Versuch einen neuen
- *      Schlüssel nehmen (`buffer(bearbeitung)`) → rot „… denselben Schlüssel“
- *   F  in PartsRepository.deletePart wieder direkt `sicherAufrufen` statt `schreibe` →
- *      rot „offline gelöscht …“ (Ergebnis.Fehler statt gepuffert)
- *   G  in LocalApplication bei TeilLoeschen `filterNot` → `filter` → rot „… verschwindet sofort“
- *   H  in PartsRepository.updatePart kein Schritt → rot „… als Menge und Schritt“
- *   J  gegenproben/ausgang-schritt-verloren.patch: Stueckaenderung.asRequest ohne quantity_delta → rot, derselbe Test
- *   I  in ServerSender beim Löschen `classify` statt `deleteClassify` → rot
- *      „ein schon gelöschtes Teil …“ (404 verworfen und gemeldet)
+ * Counter-checks:
+ *   A  in Offlineablage.schreibe (Abruf.kt) the branch for transient errors removed → red
+ *      “without a connection the quantity goes into the outbox” (Ergebnis.Fehler instead of buffered)
+ *   B  in Offlineablage.schreibe (Abruf.kt) the check `ablage.wartet()` removed → red
+ *      “if something waits, new things go behind it” (the second change went out directly)
+ *   C  in ServerSender for SetMenge `quantity = schritt` instead of `quantityDelta` →
+ *      red “what is sent is the step”
+ *   D  in Offlineablage.refreshPaged (Abruf.kt) the empty list taken over even on an
+ *      error → red “without a connection the list stays in the store”
+ *   (E–I measured)
+ *   E  in Offlineablage.schreibe (Abruf.kt) take a new key when buffering after the direct
+ *      attempt (`buffer(bearbeitung)`) → red “… the same key”
+ *   F  in PartsRepository.deletePart back to directly `sicherAufrufen` instead of `schreibe` →
+ *      red “deleted offline …” (Ergebnis.Fehler instead of buffered)
+ *   G  in LocalApplication for TeilLoeschen `filterNot` → `filter` → red “… disappears right away”
+ *   H  in PartsRepository.updatePart no step → red “… as quantity and step”
+ *   J  gegenproben/ausgang-schritt-verloren.patch: Stueckaenderung.asRequest without quantity_delta → red, the same test
+ *   I  in ServerSender on delete `classify` instead of `deleteClassify` → red
+ *      “an already deleted part …” (404 discarded and reported)
  */
 class OfflineEditingTest {
 
     private class Server {
         @Volatile var offline = false
-        /** Die nächste Anfrage kommt an, ihre Antwort geht verloren (Funkloch nach dem Senden). */
+        /** The next request arrives, its answer is lost (a dead zone after sending). */
         @Volatile var responseLose = false
         val requests: MutableList<String> = Collections.synchronizedList(mutableListOf())
-        /** Je Anfrage „METHODE pfad“ → Idempotency-Key, null ohne. */
+        /** Per request "METHOD path" → Idempotency-Key, null without one. */
         val schluessel: MutableList<Pair<String, String?>> = Collections.synchronizedList(mutableListOf())
         val codes: MutableMap<String, Pair<Int, String>> = Collections.synchronizedMap(mutableMapOf())
         val mock = MockWebServer().apply {
@@ -95,10 +95,10 @@ class OfflineEditingTest {
 
     private val s = Server()
     private val cacheDir = File(System.getProperty("java.io.tmpdir"), "bim-offline-${System.nanoTime()}")
-    /** Der Test behält den Ausgang, um nachzusehen; die Ablage zeigt ihn nicht. */
+    /** The test keeps the outbox to inspect it; the store does not show it. */
     private val ausgang = StorageExit()
     private val ablage = Offlineablage(StorageInventory(), ausgang, { "konto" })
-    /** Ohne Netz: Die Verbindung kommt gar nicht erst zustande, wie im Funkloch. */
+    /** Without network: the connection never comes about in the first place, as in a dead zone. */
     private val api = retrofit2.Retrofit.Builder().baseUrl(s.mock.url("/"))
         .client(okhttp3.OkHttpClient.Builder().addInterceptor { kette ->
             if (s.offline) throw ConnectException("kein Netz")
@@ -158,8 +158,8 @@ class OfflineEditingTest {
         s.offline = true
         repo.changeQuantityUm("10001-1", 1)
         s.offline = false
-        // Der Server ist wieder da, aber der Ausgang ist noch nicht gesendet:
-        // Eine direkte Anfrage überholte die erste Änderung.
+        // The server is back, but the outbox has not been sent yet:
+        // a direct request overtook the first change.
         val r = repo.changeQuantityUm("10001-1", 1)
         assertTrue(r is Ergebnis.Erfolg && r.gepuffert)
         assertEquals(emptyList<String>(), s.requests.filter { it.startsWith("PUT") })

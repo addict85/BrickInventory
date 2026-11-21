@@ -43,23 +43,23 @@ import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
- * Die Bauliste lebt im ViewModel: Liste, laufender Abruf und Status überstehen
- * eine Drehung, die Setnummern auch das Prozessende. Ohne Netz (Doubles für
- * Quelle und Export) und mit StandardTestDispatcher statt Warten.
+ * The build list lives in the ViewModel: list, running fetch and status survive
+ * a rotation, the set numbers also a process end. Without network (doubles for
+ * the source and export) and with StandardTestDispatcher instead of waiting.
  *
- * Gegenproben:
- *   A  in erstelle() den Schlüssel `"${p.blPartNumber ?: p.partNumber}|${p.colorName}"`
- *      durch `"${p.partNumber}|${p.colorName}|${combined.size}"` ersetzt
- *      (gegenproben/bauliste-ohne-zusammenfassen.patch) → rot „gleiche Teile
- *      mehrerer Sets werden zusammengezaehlt“
- *   B  in aendere() das Merken im SavedStateHandle entfernt → rot „die Setnummern
- *      ueberleben das Prozessende …“
- *   C  zuruecksetzen() nicht überschrieben → rot „a sign-out empties the build list“
- *   D  in exportiere() die Datei nicht in den Zustand übernommen → rot „ein fertiges
- *      PDF wird einmal angeboten …“
- *   E  gegenproben/pdf-fehler-leer.patch: errorText() gibt für einen gescheiterten
- *      Auftrag wieder nur den Satz des Servers (auch leer) → rot „ein Fehler hat immer
- *      einen Satz …“ (nur in der CI messbar)
+ * Counter-checks:
+ *   A  in erstelle() the key `"${p.blPartNumber ?: p.partNumber}|${p.colorName}"`
+ *      replaced with `"${p.partNumber}|${p.colorName}|${combined.size}"`
+ *      (gegenproben/bauliste-ohne-zusammenfassen.patch) → red “identical parts
+ *      across several sets are counted together”
+ *   B  in aendere() the remembering in the SavedStateHandle removed → red “the set numbers
+ *      survive a process end …”
+ *   C  zuruecksetzen() not overridden → red “a sign-out empties the build list”
+ *   D  in exportiere() the file not taken into the state → red “a finished
+ *      PDF is offered once …”
+ *   E  gegenproben/pdf-fehler-leer.patch: errorText() for a failed
+ *      job again returns only the server's sentence (even empty) → red “an error always has
+ *      a sentence …” (measurable only in the CI)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PartListViewModelTest {
@@ -176,7 +176,7 @@ class PartListViewModelTest {
         quelle.bestand = listOf(teil("3001", 4).copy(vorhanden = 1), teil("3002", 1).copy(vorhanden = 1))
         vm.loadInventory()
         advanceUntilIdle()
-        // Drei Stück fehlen, von einem Teil: die Mengenform mit der Zahl der Stücke.
+        // Three copies missing, of one part: the quantity form with the number of copies.
         assertEquals("m${R.plurals.partslist_owned_missing}:3", vm.zustand.value.status.text)
         assertEquals(listOf(1, 1), vm.zustand.value.parts.map { it.vorhanden })
         quelle.bestand = null
@@ -207,7 +207,7 @@ class PartListViewModelTest {
         advanceUntilIdle()
         ohne.exportiere()
         advanceUntilIdle()
-        // Der Abruf spricht wie jeder Abruf (errorMessage), nicht leer.
+        // The fetch speaks like every fetch (errorMessage), not empty.
         assertTrue(ohne.zustand.value.pdf is Vorgang.Fehlgeschlagen)
         ohne.pdfErrorSeen()
         assertEquals(Vorgang.Fertig, ohne.zustand.value.pdf)

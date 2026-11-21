@@ -13,15 +13,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Was der isolierte PDF-Renderer meldet, gilt als fremd: Seitenzahl und Seitenkanten
- * prüft der Hauptprozess, die Grösse des geteilten Speichers legt er selbst fest.
- * (Dass kein Bitmap-Parcel ausgepackt wird, prüft ModulgrenzenTest.)
+ * What the isolated PDF renderer reports counts as untrusted: the main process checks
+ * page count and page edges, and sets the shared memory's size itself.
+ * (That no Bitmap parcel is ever unpacked is checked by ModulgrenzenTest.)
  *
- * Gegenproben (lokal mit kotlinc gemessen):
- *   pdf-seitenzahl-ungeprueft  checkPageCount() lässt jede Zahl durch → rot „eine Seitenzahl
- *                              ausserhalb …“
- *   pdf-masse-ungeprueft       pagesDimensions() ohne Prüfung der Seitenkanten → rot „Seitenkanten
- *                              ausserhalb des Formats …“
+ * Counter-checks (measured locally with kotlinc):
+ *   pdf-seitenzahl-ungeprueft  checkPageCount() lets every number through → red “a page count
+ *                              outside …”
+ *   pdf-masse-ungeprueft       pagesDimensions() without checking the page edges → red “page edges
+ *                              outside the format …”
  */
 class PdfLimitsTest {
 

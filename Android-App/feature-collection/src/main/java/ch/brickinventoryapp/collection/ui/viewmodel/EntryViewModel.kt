@@ -258,18 +258,18 @@ class EntryViewModel @Inject constructor(
     }
 
     /**
-     * Ein Set über die Setnummer erfassen (Galerie, Katalog).
+     * Add a set by its set number (gallery, catalog).
      *
-     * Ob es schon im Blickfeld steht, beantwortet der Server im Aufruf selbst
-     * (`action = "exists"`, ohne zu schreiben); die Prüfanzeige zeigt die
-     * Schritte des Ereignisstroms und verschwindet mit der Antwort, nicht erst
-     * nach dem Nachladen.
+     * Whether it is already in view is answered by the server in the call itself
+     * (`action = "exists"`, without writing); the check display shows the
+     * steps of the event stream and disappears with the answer, not only
+     * after the reload.
      */
     fun addSet(wish: Erfassungswunsch) {
         viewModelScope.launch {
             val eingabe = wish.setNumber.trim()
             val lagerort = wish.lagerort?.trim()?.takeIf { it.isNotEmpty() }
-            // Nur für die Anzeige auf die Grundvariante; angelegt wird mit der Eingabe.
+            // Only for display, reduced to the base variant; it is created with the entered value.
             val sn = if (eingabe.contains("-")) eingabe else "$eingabe-1"
             val streamed = try {
                 erfassung.zeige(sn, CheckPhase.BESTAND)
@@ -291,8 +291,8 @@ class EntryViewModel @Inject constructor(
             } finally {
                 erfassung.fertig()
             }
-            // Ohne Verbindung kein Ereignisstrom: dann der gewöhnliche Aufruf, der in
-            // den Ausgang geht, statt das Erfassen scheitern zu lassen.
+            // Without a connection there is no event stream: then the ordinary call, which
+            // goes into the outbox, instead of letting the add fail.
             val r = if (streamed is Ergebnis.Fehler && streamed.transient)
                 sets.addSet(eingabe, wish.menge, wish.kaufpreis, wish.zustand, wish.besitzer, lagerort)
             else streamed
@@ -315,8 +315,8 @@ class EntryViewModel @Inject constructor(
     }
 
     /**
-     * In der Ablage steht das Set schon mit Nummer und Menge; Name, Bild und Preise
-     * kennt erst der Server. Steht dort noch eine Ergänzung aus, erst nach ihr holen.
+     * In the store the set already has its number and quantity; name, image and prices
+     * are known only to the server. If a sync is still pending there, fetch only after it.
      */
     private fun supplementStore(antwort: SetRecorded) {
         viewModelScope.launch {
@@ -325,12 +325,12 @@ class EntryViewModel @Inject constructor(
         }
     }
 
-    /** Ein Fehlschlag beim Erfassen nennt Setnummer und Grund — sonst sieht man nur, dass nichts geschah. */
+    /** A failure while adding names the set number and the reason — otherwise all one sees is that nothing happened. */
     private fun reportFailedEntry(setNumber: String, grund: String?) {
         meldungen.zeige(meldungen.text(R.string.vm_add_failed, setNumber, grund ?: meldungen.text(R.string.pdfexp_unknown_error)))
     }
 
-    /** Der Abbrechen-Knopf der Prüfanzeige: Ein laufender Scan wird abgebrochen, die Anzeige geräumt. */
+    /** The cancel button of the check display: a running scan is aborted, the display cleared. */
     override fun abortCheckAb() {
         erfassungsJob?.cancel()
         erfassungsJob = null
@@ -343,5 +343,5 @@ class EntryViewModel @Inject constructor(
     }
 }
 
-/** Der Auftrag beginnt sofort, im Ereignisstrom nach einer Minute. */
+/** The job starts right away, in the event stream after one minute. */
 private const val SUPPLEMENT_AFTER_MS = 70_000L

@@ -29,20 +29,20 @@ import ch.brickinventoryapp.testing.TestApi
 import ch.brickinventoryapp.testing.text
 
 /**
- * Die Hintergrundarbeiten im Monitoring: laden, abbrechen, wiederholen — das
- * ViewModel gegen einen Testserver mit den Antworten der Auftragstabelle.
+ * The background work in monitoring: load, cancel, retry — the
+ * ViewModel against a test server with the job table's answers.
  *
- * Gegenproben:
- *   A  in HintergrundAnsichten `abbrechbar` auch für FEHLER → rot „was man mit
- *      einem Auftrag tun darf, steht schon fest“
- *   B  in MonitoringViewModel.afterJob das Neuladen entfernt → rot „Abbrechen
- *      meldet Erfolg und lädt neu“ (nur eine GET-Anfrage)
- *   C  bei Ergebnis.Fehler den Erfolgssatz statt errorMessage → rot „ein 409
- *      zeigt den Satz des Servers“
- *   D  `jobProcessRunning = true` fest → rot „without a job process the warning is shown“
- * Gegenprobe: melde()
- *   startet die Aktion, legt den Satz aber nicht in den Kanal → rot „eine Aktion
- *   laeuft im ViewModel …“
+ * Counter-checks:
+ *   A  in HintergrundAnsichten `abbrechbar` also true for FEHLER → red “what one may
+ *      do with a job is already fixed”
+ *   B  in MonitoringViewModel.afterJob the reload removed → red “cancel
+ *      reports success and reloads” (only one GET request)
+ *   C  on Ergebnis.Fehler the success sentence instead of errorMessage → red “a 409
+ *      shows the server's sentence”
+ *   D  `jobProcessRunning = true` fixed → red “without a job process the warning is shown”
+ * Counter-check: melde()
+ *   starts the action but does not put the sentence into the channel → red “an action
+ *   runs in the ViewModel …”
  */
 class BackgroundWorkTest {
 
@@ -92,7 +92,7 @@ class BackgroundWorkTest {
         assertFalse(vm.hintergrund.value.ansicht!!.jobProcessRunning)
     }
 
-    /** Die Aktion läuft im viewModelScope; der Satz kommt über den Meldungskanal, nicht über den Bildschirm. */
+    /** The action runs in the viewModelScope; the sentence arrives via the message channel, not via the screen. */
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `an action runs in the ViewModel and reports via the state`() = runBlocking {

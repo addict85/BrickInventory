@@ -53,14 +53,14 @@ import ch.brickinventoryapp.shared.ui.ScopeFilterChip
 import ch.brickinventoryapp.shared.ui.localAxis
 import ch.brickinventoryapp.shared.ui.localValues
 
-/** Was der Finanzen-Reiter zeigt; die Route sammelt es aus den Flüssen. */
+/** What the finances tab shows; the route collects it from the flows. */
 internal data class FinanzZustand(
     val state: AppUiState,
     val blick: ScopeUiState,
     val financeState: FinanceUiState,
 )
 
-/** Der Finanzen-Reiter am Navigationsziel: reicht Zustand und Aktionen an [FinanceScreen]. */
+/** The finances tab at the navigation destination: passes state and actions to [FinanceScreen]. */
 @Composable
 fun FinanceRoute(
     vm: FinanceViewModel,
@@ -81,11 +81,11 @@ internal fun FinanceScreen(
     zustand: FinanzZustand,
     aktionen: FinanzAktionen,
     imageLoader: ImageLoader,
-    /** Klick auf ein Set — nur der Graph kennt den NavController. */
+    /** Click on a set — only the graph knows the NavController. */
     onSetClick: (String) -> Unit = {},
-    /** Klick auf einen manuell erfassten Eintrag, ebenso. */
+    /** Click on a manually entered item, likewise. */
     onManualClick: (type: Postenart, id: String, colorId: Int, name: String?) -> Unit = { _, _, _, _ -> },
-    /** Scroll-Zustand von aussen: Das Ziel wird beim Öffnen eines Details verworfen. */
+    /** Scroll state from outside: the target is discarded when a detail is opened. */
     listState: LazyListState = rememberLazyListState(),
 ) {
     val state = zustand.state
@@ -100,8 +100,8 @@ internal fun FinanceScreen(
     val historyLoading = financeState.verlauf.laedt
     val historyPeriod = financeState.historyPeriod
     val historyPeriodChangePct = financeState.historyPeriodChangePct
-    // Achsen in der Sprache der Anzeige: Die Konfiguration ist der Schlüssel, damit ein
-    // Sprachwechsel neu formatiert, ohne neu zu laden.
+    // Axes in the display's language: the configuration is the key, so that a
+    // language change reformats without reloading.
     val konfig = androidx.compose.ui.platform.LocalConfiguration.current
     val zahlen = remember(konfig) {
         numbersLocale(konfig.locales[0], java.util.Locale.getDefault())
@@ -109,7 +109,7 @@ internal fun FinanceScreen(
     val historyPoints = remember(financeState.historyPoints, financeState.historyDays, zahlen) {
         localAxis(financeState.historyPoints, financeState.historyDays, zahlen)
     }
-    // Bei grosser Schrift kurz („1,7k“): Ausgeschrieben nahm die Achse ein Drittel der Breite.
+    // Short at large font („1.7k“): written out, the axis took up a third of the width.
     val compact = largeFont()
     val historyYAxis = remember(financeState.historyYAxis, financeState.historyCurrency, valuation?.currency, zahlen, compact) {
         val w = financeState.historyCurrency ?: valuation?.currency
@@ -127,13 +127,13 @@ internal fun FinanceScreen(
     val onRefresh: () -> Unit = { aktionen.loadValuation(); aktionen.loadPortfolioHistory(financeState.historyPeriod) }
 
     val currencyCode = valuation?.currency ?: Waehrung.EUR
-    // Gemeinsame Fassung (util/NumberFormatUtils.kt): Die Stellung von Symbol und
-    // Betrag entscheidet die Sprache, wie in der Webapp.
+    // Shared version (util/NumberFormatUtils.kt): the position of symbol and
+    // amount is decided by the language, as in the web app.
     fun fmtPrice(v: String?): String = fmtMoneyOrDash(v, currencyCode)
     fun fmtValue(v: Geld?): String = fmtMoneyOrDash(v, currencyCode)
 
-    // Ohne Bewertung: laden, gescheitert (mit Grund und neuem Versuch) oder
-    // wirklich keine Preise — vorher sah ein Fehler aus wie „keine Preisdaten“.
+    // Without a valuation: loading, failed (with a reason and a retry) or
+    // genuinely no prices — before, an error looked like „keine Preisdaten“.
     if (valuation == null) {
         val errorText = valuationError?.meldung?.satz()
         LoadState(
@@ -163,9 +163,9 @@ internal fun FinanceScreen(
         return
     }
 
-    // Der Kategoriefilter kommt aus dem Zustand des Reiters, nicht aus einem
-    // `remember` — sonst stünde er nach jedem Ausflug in ein Detail wieder auf „alle“
-    // (siehe FinanceUiState.kategorien). Leere Menge heisst: keine Einschränkung.
+    // The category filter comes from the tab's state, not from a
+    // `remember` — otherwise it would reset to „alle“ after every excursion into a detail
+    // (see FinanceUiState.kategorien). An empty set means: no restriction.
     val kategorien = financeState.kategorien
     val showSets  = financeState.zeigt("sets")
     val showParts = financeState.zeigt("parts")
@@ -175,15 +175,15 @@ internal fun FinanceScreen(
       BoxWithConstraints(Modifier.fillMaxSize()) {
         val edge = PaddingValues(horizontal = Abstaende.gross, vertical = Abstaende.mittel)
         val abstand = Arrangement.spacedBy(10.dp)
-        // Überblick: Kontofilter, Kopfkachel, dann der Verlauf — der Marktwert ist die erste
-        // Frage, die Kurve erklärt ihn. Die Summe steht nach den Zeilen.
+        // Overview: account filter, header tile, then the history — the market value is the first
+        // question, the curve explains it. The sum stands after the rows.
         val overview: androidx.compose.foundation.lazy.LazyListScope.() -> Unit = {
-            // Kontofilter — erscheint nur bei einem Hauptkonto mit Unterkonten. Er gilt für
-            // ALLE Zahlen dieses Reiters: Kurve, Kacheln, Sets, Teile und Minifiguren.
+            // Account filter — appears only for a main account with sub-accounts. It applies to
+            // ALL numbers of this tab: curve, tiles, sets, parts and minifigures.
             if (householdMembers.size > 1) {
                 item {
-                    // Rechtsbündig, nur in diesem Reiter: Galerie, Teile und Minifiguren bleiben
-                    // linksbündig, weil dort Suchfeld und Filterleiste daneben stehen.
+                    // Right-aligned, only in this tab: gallery, parts and minifigures stay
+                    // left-aligned, because a search field and a filter bar sit next to them there.
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         ScopeFilterChip(members = householdMembers, current = scopeMode, onSelect = onScopeChange)
                     }
@@ -191,8 +191,8 @@ internal fun FinanceScreen(
             }
             financeSummaryCards(valuation, partsValuation, figsValuation, pnl, ::fmtPrice)
             item {
-                // Ohne Marktwert keine Entwicklung, wie im Web: Der Verlauf trüge dann nur
-                // Kaufpreise, und „+0.0 %“ neben „—“ behauptete Stillstand.
+                // Without a market value there is no trend, as on the web: the history would then carry only
+                // purchase prices, and „+0.0 %“ next to „—“ would claim no movement.
                 val withValue = financeHeader(valuation, partsValuation, figsValuation, pnl).wert.signum() > 0
                 PortfolioChart(
                     points = historyPoints, yAxis = historyYAxis,
@@ -213,10 +213,10 @@ internal fun FinanceScreen(
             financePartRows(partsValuation, showParts, serverUrl, imageLoader, ::fmtPrice, ::fmtValue, onManualClick)
             financeFigRows(figsValuation, showFigs, serverUrl, imageLoader, ::fmtPrice, ::fmtValue, onManualClick)
         }
-        // Ab Tabletbreite zwei Spalten wie die Set-Detailseite: links der Überblick, rechts
-        // die Zeilen. Einspaltig lagen Betrag und Bezeichnung einer Zeile eine Armlänge auseinander.
-        // Die Summe schliesst die Zeilen rechts ab: Links unter dem Überblick stand sie
-        // neben einer halb leeren rechten Spalte.
+        // From tablet width on, two columns like the set detail page: the overview on the left, the
+        // rows on the right. Single-column, the amount and label of a row sat an arm's length apart.
+        // The sum closes off the rows on the right: on the left, under the overview, it stood
+        // next to a half-empty right column.
         if (twoSpaltig(maxWidth.value)) {
             Row(Modifier.fillMaxSize()) {
                 LazyColumn(Modifier.weight(1f).fillMaxHeight(), contentPadding = edge, verticalArrangement = abstand) {
@@ -243,32 +243,32 @@ internal fun FinanceScreen(
 internal fun ManualFinanceRow(
     imageUrl: String?,
     imageLoader: ImageLoader,
-    /** Öffnet den Detail-Dialog — analog zur Set-Zeile, die auf den Screen führt. */
+    /** Opens the detail dialog — analogous to the set row, which leads to the screen. */
     onClick: (() -> Unit)? = null,
     title: String,
     blId: String,
     quantity: Int,
     priceStr: String,
     /**
-     * Kaufpreis dieser Erfassung, schon formatiert; null = keiner hinterlegt. Wie in
-     * der Set-Zeile (FinanceSections.kt) und in beiden Tabellen der Webapp
-     * (public/js/finanzen.js, pmRow, `detail.purchase_price`), damit die Zeilen
-     * gleich viel sagen.
+     * Purchase price of this entry, already formatted; null = none on record. As in
+     * the set row (FinanceSections.kt) and in both tables of the web app
+     * (public/js/finanzen.js, pmRow, `detail.purchase_price`), so that the rows
+     * say the same amount of information.
      */
     purchaseStr: String? = null,
-    /** [purchaseStr] gilt für alle Stück der Zeile, wie der Marktwert daneben. */
+    /** [purchaseStr] applies to all copies of the row, like the market value next to it. */
     purchaseGesamt: Boolean = false,
-    /** Zustand dieser Erfassung; null = Eintrag ohne Erfassungen. */
+    /** State of this entry; null = item without entries. */
     condition: Zustand? = null,
-    /** Entwicklung gegen den Kaufpreis dieser Erfassung (vom Server, pnl_prozent). */
+    /** Trend against the purchase price of this entry (from the server, pnl_prozent). */
     pnlProzent: Double? = null,
-    /** Dieselbe Entwicklung in Geld, schon formatiert mit Vorzeichen. */
+    /** The same trend in money, already formatted with a sign. */
     gainStr: String? = null,
 ) {
-    // Zwei Karten statt einer mit `enabled`: Material3 hat für die anklickbare
-    // Karte eine eigene Überladung, und eine Card mit onClick = {} sähe zwar
-    // gleich aus, gäbe aber Ripple und Rollenbeschreibung auch dort, wo es
-    // nichts zu klicken gibt.
+    // Two cards instead of one with `enabled`: Material3 has its own overload
+    // for the clickable card, and a Card with onClick = {} would look the
+    // same but would also give ripple and a role description where there
+    // is nothing to click.
     val cardModifier = Modifier.fillMaxWidth()
     val cardShape = Formen.leiste
     val cardColors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
@@ -287,21 +287,21 @@ internal fun ManualFinanceRow(
                         Modifier.readAloudAs(stueckzahl(quantity)),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                // Bei mehreren Zeilen desselben Eintrags ist die Plakette das
-                // einzige Unterscheidungsmerkmal.
+                // With several rows of the same item, the badge is the
+                // only distinguishing feature.
                 condition?.let {
                     Box(Modifier.padding(top = Abstaende.hairline)) { ConditionBadges(listOf(it)) }
                 }
             }
             Spacer(Modifier.width(Abstaende.klein))
             Column(horizontalAlignment = Alignment.End) {
-                // Ein Betrag, keine Handlung: Primärblau steht nur auf Links und Knöpfen.
+                // An amount, not an action: primary blue appears only on links and buttons.
                 Text(priceStr, fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.bodyMedium, maxLines = 1, softWrap = false)
-                // Dieselbe Stelle und dieselbe Beschriftung wie in der
-                // Set-Zeile (FinanceSections.kt) — beide Tabellen sollen
-                // gleich aussehen, und in der Webapp tun sie es.
+                // The same spot and the same label as in the
+                // set row (FinanceSections.kt) — both tables should
+                // look the same, and in the web app they do.
                 purchaseStr?.let {
                     Text(
                         if (purchaseGesamt) stringResource(R.string.finance_purchase_total, it)
@@ -310,8 +310,8 @@ internal fun ManualFinanceRow(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                // Entwicklung wie bei den Sets — gegen den Kaufpreis dieser
-                // Erfassung, gerechnet auf dem Server.
+                // Trend as with the sets — against the purchase price of this
+                // entry, computed on the server.
                 pnlProzent?.let {
                     Box(Modifier.padding(top = Abstaende.hairline)) { PnlBadge(it, gainStr) }
                 }
@@ -328,7 +328,7 @@ internal fun ManualFinanceRow(
     }
 }
 
-/** Gewinn als Betrag mit Vorzeichen, wie die Prozentzahl daneben (fmtProzent). */
+/** Profit as a signed amount, like the percentage next to it (fmtProzent). */
 internal fun gainText(betrag: Geld, fmtValue: (Geld?) -> String): String =
     if (betrag.onRappen().signum() > 0) "+" + fmtValue(betrag) else fmtValue(betrag)
 

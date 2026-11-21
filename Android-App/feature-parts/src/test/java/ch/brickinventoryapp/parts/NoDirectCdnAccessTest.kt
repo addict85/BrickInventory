@@ -9,23 +9,23 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Alle Bilder laufen über den Server — nie direkt vom Gerät zum CDN.
+ * All images run via the server — never directly from the device to the CDN.
  *
- * Nutzerwunsch: "Aus meiner Sicht müsste die Android-App allen Content also
- * auch alle Bilder via Webapp beziehen." Vorher gingen mehrere Bildschirme am
- * Server-Proxy vorbei und luden rohe CDN-Adressen direkt vom Gerät — das war
- * die eigentliche Ursache der Cloudflare-Erkennung, der Nebenläufigkeits-
- * Probleme und des AVIF-Absturzes der letzten drei Runden: Jede dieser
- * "Reparaturen" behandelte ein Symptom des direkten Gerät-zu-CDN-Zugriffs,
- * statt die Ursache zu beheben.
+ * User request: "As I see it, the Android app should source all content, including
+ * all images, via the web app." Previously several screens bypassed the
+ * server proxy and loaded raw CDN addresses directly from the device — that was
+ * the actual cause of the Cloudflare detection, the concurrency
+ * problems and the AVIF crash of the last three rounds: each of these
+ * "fixes" treated a symptom of direct device-to-CDN access
+ * instead of fixing the cause.
  *
- * Dieser Test verlangt für jeden Bildschirm mit einem Bild, dass die Adresse
- * durch resolveThumbUrl()/resolveFullUrl() (oder eine gleichwertige, bereits
- * server-aufgelöste Quelle wie parts/ui/Teileliste.kt) läuft — nie direkt aus
- * einem `.imageUrl`-Feld ohne Auflösung.
+ * This test requires, for every screen with an image, that the address
+ * run through resolveThumbUrl()/resolveFullUrl() (or an equivalent, already
+ * server-resolved source such as parts/ui/Teileliste.kt) — never directly from
+ * an `.imageUrl` field without resolution.
  *
- * Gegenprobe: in resolveImageUrl die volle Auflösung
- * ohne Proxy (`imageUrl` direkt) → rot „resolveImageUrl-Helfer existiert …“.
+ * Counter-check: in resolveImageUrl the full resolution
+ * without the proxy (`imageUrl` directly) → red “resolveImageUrl helper exists …”.
  */
 class NoDirectCdnAccessTest {
 
@@ -35,7 +35,7 @@ class NoDirectCdnAccessTest {
         return f.readText()
     }
 
-    /** Kommentare ausblenden — Erklärtexte nennen die geprüften Muster selbst. */
+    /** Hide comments — the explanatory texts name the checked patterns themselves. */
     private fun code(src: String) = src.lines().joinToString("\n") { line ->
         if (line.trim().startsWith("//")) "" else line
     }
@@ -46,8 +46,8 @@ class NoDirectCdnAccessTest {
             "collection/ui/screens/GalerieKarte.kt",
             "collection/ui/screens/SetDetailScreen.kt",
             "parts/ui/screens/TeileKarte.kt",
-            // FinanceScreen.kt wurde aufgeteilt — die Kacheln mit den Bildern
-            // stehen in FinanceSections.kt.
+            // FinanceScreen.kt was split up — the tiles with the images
+            // live in FinanceSections.kt.
             "finances/ui/screens/FinanceSections.kt",
             "parts/ui/screens/FigurenKarte.kt",
             "catalog/ui/screens/KatalogKarte.kt",
@@ -55,8 +55,8 @@ class NoDirectCdnAccessTest {
         )
         for (rel in screensWithOwnResolution) {
             val fn = code(read(rel))
-            // rememberTileImageWithFallback() zählt ebenfalls:
-            // Der Helfer in ui/util/BildRueckfall.kt ruft intern resolveThumbUrl()
+            // rememberTileImageWithFallback() counts too:
+            // the helper in ui/util/BildRueckfall.kt internally calls resolveThumbUrl()
             assert(fn.contains("resolveThumbUrl(") || fn.contains("resolveFullUrl(") ||
                    fn.contains("rememberTileImageWithFallback(")) {
                 "$rel lädt ein Bild, ohne resolveThumbUrl()/resolveFullUrl() oder den " +
@@ -67,8 +67,8 @@ class NoDirectCdnAccessTest {
 
     @Test
     fun `resolveImageUrl helper exists and covers both cases`() {
-        // Externe Adressen laufen über den Server-Proxy, lokal abgelegte Bilder
-        // kommen direkt vom eigenen Server und gehen vor.
+        // External addresses run via the server proxy, locally stored images
+        // come directly from one's own server and take priority.
         val cdn = "https://cdn.rebrickable.com/media/sets/75192-1.jpg"
         for (adresse in listOf(resolveThumbUrl("http://nas", null, cdn), resolveFullUrl("http://nas", null, cdn))) {
             assertTrue(adresse, adresse!!.startsWith("http://nas/api/v1/img-proxy?url="))
@@ -79,9 +79,9 @@ class NoDirectCdnAccessTest {
 
     @Test
     fun `PartsListScreen does not wrap an already resolved address twice`() {
-        // parts/ui/Teileliste.kt löst part.imageUrl bereits auf (das prüft
-        // PartListTest am Ergebnis); ein zweites resolveThumbUrl() hier
-        // wickelte die Proxy-Adresse doppelt ein.
+        // parts/ui/Teileliste.kt already resolves part.imageUrl (checked by
+        // PartListTest on the result); a second resolveThumbUrl() here
+        // would wrap the proxy address a second time.
         val screen = code(Quellen.bildschirm("parts/ui/screens/PartsListScreen.kt"))
         assert(!screen.contains("resolveThumbUrl(") && !screen.contains("resolveFullUrl(")) {
             "Die Teileliste darf part.imageUrl NICHT durch resolveThumbUrl() schicken — " +

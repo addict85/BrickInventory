@@ -25,14 +25,14 @@ import ch.brickinventoryapp.ui.components.Prompt
 import ch.brickinventoryapp.ui.components.withFont
 
 /**
- * Die Abschnitte der Überwachungsseite unterhalb der Job-Liste — ganze Funktionen
- * aus MonitoringScreen.kt, keine zerschnittenen Rümpfe.
+ * The sections of the monitoring page below the job list — whole functions
+ * from MonitoringScreen.kt, not chopped-up bodies.
  */
 
 @Composable
 /**
- * `internal`, weil der Aufrufer in einer anderen Datei steht und `private` in
- * Kotlin dateiweit gilt.
+ * `internal`, because the caller lives in a different file and `private` in
+ * Kotlin applies file-wide.
  */
 internal fun BricksetQueueRow(
     entry: BricksetEntryView,
@@ -61,8 +61,8 @@ internal fun BricksetQueueRow(
                 BricksetActions(entry, onRetry, onDelete)
             }
 
-            // Last error expandable. Lokal gelesen: Über die Modulgrenze (core-model)
-            // gibt es keinen Smart Cast.
+            // Last error expandable. Read locally: across the module boundary (core-model)
+            // there is no smart cast.
             val letzterFehler = entry.lastError
             if (!letzterFehler.isNullOrBlank()) {
                 TextButton(
@@ -94,8 +94,8 @@ internal fun BricksetQueueRow(
 }
 
 /**
- * Erneut versuchen und Löschen eines Eintrags der Brickset-Warteschlange. Löschen fragt
- * nach, und beide Symbole nennen TalkBack das Set: Untereinander stand sonst nur „Löschen“.
+ * Retry and delete for an entry of the Brickset queue. Delete asks first,
+ * and both icons tell TalkBack the set: stacked, there would otherwise just be „Löschen“ twice.
  */
 @Composable
 private fun BricksetActions(
@@ -137,11 +137,11 @@ private fun BricksetActions(
 }
 
 /**
- * Der Zeitplan eines Jobs — anzeigen und ändern, wie in der Webapp. Tägliche Jobs
- * haben eine Uhrzeit, der Preis-Job einen Abstand in Minuten; der Server
- * unterscheidet am Feld und normalisiert beides („7:5“ → „07:05“, mindestens fünf
- * Minuten). Deshalb wird nach dem Speichern neu geladen: Es soll dastehen, was
- * gilt.
+ * A job's schedule — shown and changed, as in the web app. Daily jobs
+ * have a time of day, the price job a spacing in minutes; the server
+ * distinguishes by field and normalizes both ("7:5" → "07:05", at least five
+ * minutes). That is why it reloads after saving: it should show what
+ * applies.
  */
 @Composable
 internal fun ScheduleRow(
@@ -191,7 +191,7 @@ internal fun ScheduleRow(
     }
 }
 
-/** Das Eingabefeld des Zeitplans mit Speichern und Abbrechen. */
+/** The schedule's input field with save and cancel. */
 @Composable
 private fun ScheduleInput(
     daily: Boolean,
@@ -205,12 +205,12 @@ private fun ScheduleInput(
         OutlinedTextField(
             value = eingabe,
             onValueChange = {
-                // Bei Minuten nur Ziffern; bei der Uhrzeit auch der
-                // Doppelpunkt — sonst liesse sich „03:00" nicht tippen.
+                // For minutes only digits; for the time of day also the
+                // colon — otherwise "03:00" could not be typed.
                 onInput(if (daily) it.filter { z -> z.isDigit() || z == ':' }.take(5)
                           else NumericInput.quantity(it))
             },
-            // Aus den Sprachdateien: Auch „min“ steht im Bild und wird gelesen.
+            // From the language files: "min" is also in the image and gets read out.
             suffix = { if (!daily) Text(stringResource(R.string.monitoring_schedule_unit)) },
             modifier = Modifier.width(if (daily) 96.dp else 90.dp),
             singleLine = true,

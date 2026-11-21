@@ -25,10 +25,10 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.outsideTheSystemBars
 
 /**
- * „Der Server startet gerade“ — mit Fortschritt statt einer Fehlermeldung, wie die
- * Webapp über /v1/startup-status. Der erste Start einer Neuinstallation holt den
- * Rebrickable-Katalog und dauert viele Minuten; eine allgemeine Netzmeldung liesse
- * dabei App oder Server kaputt aussehen, obwohl alles richtig läuft.
+ * „Der Server startet gerade“ — with progress instead of an error message, like the
+ * web app via /v1/startup-status. A fresh install's first start fetches the
+ * Rebrickable catalog and takes many minutes; a generic network message would
+ * make the app or server look broken, even though everything is running correctly.
  */
 @Composable
 internal fun ServerStartAnzeige(status: StartStateView, modifier: Modifier = Modifier) {
@@ -44,8 +44,8 @@ internal fun ServerStartAnzeige(status: StartStateView, modifier: Modifier = Mod
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
             )
-            // Der Schritt kommt fertig uebersetzt vom Server — dieselbe
-            // Zeichenkette, die die Webapp anzeigt.
+            // The step arrives already translated from the server — the same
+            // string the web app displays.
             status.schritt?.takeIf { it.isNotBlank() }?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -61,7 +61,7 @@ internal fun ServerStartAnzeige(status: StartStateView, modifier: Modifier = Mod
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold)
             } else {
-                // Der Server hat noch nicht gezaehlt: unbestimmt, aber sichtbar.
+                // The server has not counted yet: indeterminate, but visible.
                 LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth().height(6.dp).clip(MaterialTheme.shapes.small),
                 )
@@ -71,8 +71,8 @@ internal fun ServerStartAnzeige(status: StartStateView, modifier: Modifier = Mod
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.height(Abstaende.tiny))
-            // Der Satz, der die Geduld erklaert. Ohne ihn sieht ein Balken, der
-            // sich minutenlang kaum bewegt, wie ein Haenger aus.
+            // The sentence that explains the patience. Without it, a bar that
+            // barely moves for minutes looks like it is stuck.
             Text(
                 stringResource(R.string.startup_hint),
                 style = MaterialTheme.typography.bodySmall,

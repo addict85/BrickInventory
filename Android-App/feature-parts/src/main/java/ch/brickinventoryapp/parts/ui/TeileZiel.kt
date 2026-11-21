@@ -5,7 +5,7 @@ import ch.brickinventoryapp.model.domain.Postenart
 import ch.brickinventoryapp.ui.Reiterziel
 import kotlinx.serialization.Serializable
 
-/** Die Ziele von Teilen und Minifiguren. */
+/** The destinations of parts and minifigures. */
 @Serializable
 sealed interface TeileZiel {
     @Serializable data object Parts : TeileZiel, Reiterziel {
@@ -16,7 +16,7 @@ sealed interface TeileZiel {
     }
     @Serializable data object PartsList : TeileZiel
 
-    /** Detail eines manuell erfassten Teils oder einer Figur. */
+    /** Detail of a manually entered part or figure. */
     @Serializable data class ManualItemDetail(
         val art: Postenart,
         val id: String,

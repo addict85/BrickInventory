@@ -29,40 +29,40 @@ import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
- * Das Galerie-ViewModel, ausgeführt gegen einen PfadServer ohne Netz.
+ * The gallery ViewModel, run against a PfadServer without network.
  *
- * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen GalleryViewModel.kt):
- *   A  im init die gemerkte Suche nicht übernommen → rot „Suche, Thema und
- *      Sortierung überstehen …“
- *   B  in afterFilter() die Bedingung umgekehrt → rot „Konto- und Lagerfilter
- *      der Galerie reisen mit …“
- *   C  in SetsRepositoryImpl.deleteSet den Nachzug `SetRemoved` weggelassen → rot
- *      „ein gelöschtes Set verschwindet aus der Ablage …“ (Kachel bleibt)
- *   D  in LocalApplication.sets den Zweig SetSummary entfernt → rot „ein
- *      geänderter Kauf ändert die Kachel, ohne die Liste neu zu holen“
- *   E  im init von GalleryViewModel das Sammeln von `changes.inventoryChanged()` entfernt
- *      → rot „ein erfasstes Teil lädt die Kennzahlen …“ und „ein gelöschtes Set …“
- *   F  vergissScroll auf "parts" statt "gallery" → rot „ein Filterwechsel
- *      vergisst die Rollposition der Galerie und nur sie“
- *   G  tilePrices() ohne kachel_preis/kachel_pnl_pct → rot „die
- *      Kennzahlen bringen Preis und G&V …“ (800,0 statt 812,5)
- *   G  in loadStats() loadPrices() entfernt → rot „die Kennzahlen bringen
- *      Preis und G&V …“
- *   H  in loeschenVormerken() sofort deleteSet() aufgerufen →
- *      rot „vorgemerktes Loeschen …“ und „Rueckgaengig …“ (DELETE schon gesendet)
- *   I  in galleryState das Ausfiltern des vorgemerkten Sets entfernt → rot
- *      „vorgemerktes Loeschen nimmt die Kachel sofort weg …“
- *   J in galleryState die Kennzahlen nicht angepasst
- *      (gegenproben/galerie-kennzahlen-beim-loeschen.patch) → rot „die Kennzahlen
- *      zaehlen das vorgemerkte Set nicht …“ (2 statt 1 Set)
- *   K  in executeDelete() die Prüfung auf [nur] entfernt
- *      (gegenproben/galerie-abgeloestes-loeschen.patch) → rot „die Snackbar eines
- *      abgeloesten Loeschens fuehrt das naechste nicht aus“ (DELETE für 75192-1)
- *   L  in loadIfEmpty() die Prüfung auf eine leere Liste entfernt → rot „beim
- *      Zeigen laedt die Galerie nur, wenn sie leer ist“ (zwei Abrufe)
- *   galerie-laedt-nicht-beim-zeigen  (gegenproben/) loadPerServer der Galerie gestrichen → rot
- *      „wer die Galerie zeigt, stoesst das Laden an …“
- *   K, L und die letzte nur in der CI messbar (Android-Klassen im Testlauf).
+ * Counter-checks (measured 28.10.2026, kotlinc against GalleryViewModel.kt):
+ *   A  in init the remembered search not taken over → red “search, theme and
+ *      sorting survive …”
+ *   B  in afterFilter() the condition reversed → red “account and storage filters
+ *      of the gallery travel along …”
+ *   C  in SetsRepositoryImpl.deleteSet the follow-up `SetRemoved` left out → red
+ *      “a deleted set disappears from the store …” (tile remains)
+ *   D  in LocalApplication.sets the branch SetSummary removed → red “a
+ *      changed purchase changes the tile, without fetching the list anew”
+ *   E  in the init of GalleryViewModel the collecting of `changes.inventoryChanged()` removed
+ *      → red “an added part loads the key figures …” and “a deleted set …”
+ *   F  vergissScroll on "parts" instead of "gallery" → red “a filter change
+ *      forgets the scroll position of the gallery and only that one”
+ *   G  tilePrices() without kachel_preis/kachel_pnl_pct → red “the
+ *      key figures bring price and P&L …” (800.0 instead of 812.5)
+ *   G  in loadStats() loadPrices() removed → red “the key figures bring
+ *      price and P&L …”
+ *   H  in loeschenVormerken() deleteSet() called immediately →
+ *      red “pending deletion …” and “undo …” (DELETE already sent)
+ *   I  in galleryState the filtering out of the pending set removed → red
+ *      “pending deletion removes the tile right away …”
+ *   J in galleryState the key figures not adjusted
+ *      (gegenproben/galerie-kennzahlen-beim-loeschen.patch) → red “the key figures
+ *      do not count the pending set …” (2 instead of 1 set)
+ *   K  in executeDelete() the check for [nur] removed
+ *      (gegenproben/galerie-abgeloestes-loeschen.patch) → red “the snackbar of a
+ *      superseded deletion does not carry out the next one” (DELETE for 75192-1)
+ *   L  in loadIfEmpty() the check for an empty list removed → red “on
+ *      show the gallery only loads if it is empty” (two fetches)
+ *   galerie-laedt-nicht-beim-zeigen  (gegenproben/) loadPerServer of the gallery removed → red
+ *      “whoever shows the gallery triggers the loading …”
+ *   K, L and the last only measurable in the CI (Android classes in the test run).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class GalleryViewModelTest {
@@ -120,7 +120,7 @@ class GalleryViewModelTest {
             val neu = vm(gemerkt, t)
             val g = neu.galleryState.value
             assertEquals(Triple("Falke", "Technic", Setsortierung.JAHR), Triple(g.galleryQuery, g.galleryTheme, g.gallerySort))
-            // Die Filter gelten der Ablage; der Abruf füllt sie ganz, ohne Filter.
+            // The filters apply to the store; the fetch fills it completely, without filters.
             neu.loadSets()
             val abruf = fetches(paths).single()
             assertTrue(abruf, "search=" !in abruf && "theme=" !in abruf && "sort=" !in abruf)
@@ -208,11 +208,11 @@ class GalleryViewModelTest {
         vm.loadSets()
         vm.loeschenVormerken("10294-1", "Titanic")
         val erstes = vm.vorgemerkt.value
-        // Ein zweites Löschen führt das erste aus und merkt sich das zweite vor.
+        // A second deletion carries out the first and marks the second as pending.
         vm.loeschenVormerken("75192-1", "Falke")
         assertTrue("erstes gelöscht", paths.requestsAn("DELETE /api/v1/sets/10294-1").isNotEmpty())
         val zweites = vm.vorgemerkt.value
-        // Die Snackbar des ersten endet erst jetzt (abgelöst) — sie darf das zweite nicht anfassen.
+        // The first one's snackbar only ends now (superseded) — it must not touch the second.
         vm.executeDelete(erstes)
         vm.rueckgaengig(erstes)
         assertEquals("Falke", vm.vorgemerkt.value?.name)
@@ -253,10 +253,10 @@ class GalleryViewModelTest {
         vm.loadSets()
         assertTrue("Liste geladen", vm.galleryState.value.sets.size == 2)
         val vorher = fetches().size
-        // Gezählt ab hier: Die erste Ladung holt die Kennzahlen schon selbst.
+        // Counted from here: the first load already fetches the key figures itself.
         val numbersBefore = paths.requestsAn("GET /api/v1/stats").size
 
-        // So schreibt HouseholdRepository die Antwort des Servers in die Ablage.
+        // This is how HouseholdRepository writes the server's answer into the store.
         runBlocking { t.ablage.applyAn(FollowUp.SetSummary(Setzusammenfassung(setNumber = "75192-1", zustand = Zustand.GEBRAUCHT, states = listOf(Zustand.GEBRAUCHT), gebraucht = 1,
             highestPurchasePrice = null, purchasePriceCut = null))) }
         assertTrue("Kennzahlen neu", paths.requestsAn("GET /api/v1/stats").size > numbersBefore)
@@ -266,15 +266,15 @@ class GalleryViewModelTest {
 
     @Test
     fun `an added part loads the key figures, not the set list`() {
-        // Die Galerie zeigt Teile- und Figurenzahl aus den Kennzahlen; ohne
-        // Nachladen bliebe sie nach dem Erfassen eines Teils stehen.
+        // The gallery shows the part and minifigure count from the key figures; without
+        // a reload it would stay unchanged after adding a part.
         val vm = vm()
         vm.loadSets()
         assertTrue("Liste geladen", vm.galleryState.value.sets.size == 2)
         val listBefore = fetches().size
         val numbersBefore = paths.requestsAn("GET /api/v1/stats").size
 
-        // So wendet PartsRepository ein erfasstes Teil in der Ablage an.
+        // This is how PartsRepository applies an added part in the store.
         runBlocking { t.ablage.applyAn(Editing.TeilErfassen(Teilerfassung(nummer = "3001", farbId = 5, menge = 2))) }
         assertEquals("Kennzahlen nach Teilen", numbersBefore + 1, paths.requestsAn("GET /api/v1/stats").size)
         assertEquals("Ein Teil ändert die Set-Liste nicht", listBefore, fetches().size)
@@ -282,8 +282,8 @@ class GalleryViewModelTest {
 
     @Test
     fun `a filter change forgets the scroll position of the gallery and only that`() {
-        // Die gemerkte Stelle zeigte sonst auf Sets, die in der neuen Liste
-        // woanders oder gar nicht stehen.
+        // The remembered position otherwise pointed at sets that stand
+        // elsewhere or not at all in the new list.
         t.scrollMemory.merke("gallery", 40, 3)
         t.scrollMemory.merke("parts", 7, 0)
         val vm = vm()

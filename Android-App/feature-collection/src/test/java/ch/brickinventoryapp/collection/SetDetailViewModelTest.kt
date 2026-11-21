@@ -36,25 +36,25 @@ import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
- * Das Set-Detail-ViewModel, ausgeführt gegen einen PfadServer ohne Netz.
+ * The set detail ViewModel, run against a PfadServer without network.
  *
- * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen SetDetailViewModel.kt):
- *   A  setNumber nicht aus dem SavedStateHandle, sondern "" → alle vier rot,
- *      zuerst „das Set kommt aus dem SavedStateHandle …“
- *   B  in SetsRepositoryImpl.setQuantity `r.quantity ?: quantity` durch `quantity`
- *      ersetzt → rot „eine geänderte Menge steht sofort da und in der Ablage“ (5 statt 3)
- *   C  im init von SetDetailViewModel `firstOrNull { it.setNumber == setNumber }`
- *      durch die ganze Liste ersetzt → rot „ein geänderter Kauf eines anderen Sets lädt hier nichts“
- *   D  in der Preisalarmeingabe `gespeichert` leer gelassen → rot „ein gespeicherter
- *      Preisalarm wird neu geladen“
- *   E  in changeQuantityUm() wieder UpdateQuantityRequest(quantity = schritt)
- *      → rot „der Regler schickt einen Schritt …“
- *   F  `init { refresh() }` gestrichen (der Bildschirm lud früher selbst)
- *      → rot „the set comes from the SavedStateHandle and everything is loaded on creation“
- *   G  in starte() das Abbrechen des laufenden Abrufs gestrichen
- *      → rot „a new fetch cancels the running one of the same section“ (2 statt 1)
- *   H  in loadPrice() und loadHistory() den Fehler wieder verworfen
- *      → rot „scheitern Preis und Verlauf, steht der Fehler im Zustand …“
+ * Counter-checks (measured 28.10.2026, kotlinc against SetDetailViewModel.kt):
+ *   A  setNumber not from the SavedStateHandle, but "" → all four red,
+ *      first “the set comes from the SavedStateHandle …”
+ *   B  in SetsRepositoryImpl.setQuantity `r.quantity ?: quantity` replaced
+ *      with `quantity` → red “a changed quantity appears right away, there and in the store” (5 instead of 3)
+ *   C  in the init of SetDetailViewModel `firstOrNull { it.setNumber == setNumber }`
+ *      replaced with the whole list → red “a changed purchase of a different set loads nothing here”
+ *   D  in the price alert input `gespeichert` left empty → red “a saved
+ *      price alert is loaded anew”
+ *   E  in changeQuantityUm() back to UpdateQuantityRequest(quantity = schritt)
+ *      → red “the slider sends a step …”
+ *   F  `init { refresh() }` removed (the screen used to load itself)
+ *      → red “the set comes from the SavedStateHandle and everything is loaded on creation”
+ *   G  in starte() the cancelling of the running fetch removed
+ *      → red “a new fetch cancels the running one of the same section” (2 instead of 1)
+ *   H  in loadPrice() and loadHistory() the error discarded again
+ *      → red “if price and history fail, the error stands in the state …”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SetDetailViewModelTest {
@@ -91,8 +91,8 @@ class SetDetailViewModelTest {
     }
 
     /**
-     * Nach dem PUT hat der Server 3; das Nachladen nach der Meldung muss dieselbe
-     * Zahl liefern, sonst überschreibt es die 3, bevor der Test sie sieht.
+     * After the PUT the server has 3; the reload after the message must deliver the same
+     * number, otherwise it overwrites the 3 before the test sees it.
      */
     private fun serverHatAfterwardsThree() {
         paths.antworten["/api/v1/sets/75192-1"] =
@@ -106,7 +106,7 @@ class SetDetailViewModelTest {
         val vm = vm()
         assertEquals("75192-1", vm.setNumber)
         geladen(vm)
-        // Die Alarme kommen über die Übersicht des Kontos in die Ablage, nicht je Set.
+        // The alerts arrive in the store via the account overview, not per set.
         assertTrue("alle fünf Abrufe", listOf("/75192-1/price-history", "/75192-1/price?", "GET /api/v1/alerts").all { p -> paths.requests.any { p.removeSuffix("?") in it } })
         assertEquals("Falke", vm.setDetailState.value.setDetail?.name)
     }
@@ -117,8 +117,8 @@ class SetDetailViewModelTest {
         val vm = vm()
         geladen(vm)
         serverHatAfterwardsThree()
-        // Gewünscht 5, der Server deckelt auf 3 (fremde Exemplare lassen sich
-        // nicht wegnehmen): Es gilt seine Zahl, nicht die eigene Annahme.
+        // Wanted 5, the server caps it to 3 (someone else's copies cannot
+        // be taken away): its number applies, not the client's own assumption.
         vm.setQuantity("75192-1", 5)
         assertTrue("Menge da", vm.setDetailState.value.setDetail?.quantity == 3)
         val abgelegt = runBlocking { t.sets().observeSets().first().liste.single() }
@@ -147,7 +147,7 @@ class SetDetailViewModelTest {
         geladen(vm)
         val vorher = paths.requestsAn("GET /api/v1/sets/75192-1/acquisitions").size
 
-        // So schreibt HouseholdRepository die Zusammenfassung des Servers in die Ablage.
+        // This is how HouseholdRepository writes the server's summary into the store.
         runBlocking { t.ablage.applyAn(FollowUp.SetSummary(Setzusammenfassung(setNumber = "10294-1", zustand = Zustand.GEBRAUCHT, states = listOf(Zustand.GEBRAUCHT), gebraucht = 1,
             highestPurchasePrice = null, purchasePriceCut = null))) }
         assertEquals(vorher, paths.requestsAn("GET /api/v1/sets/75192-1/acquisitions").size)
@@ -167,7 +167,7 @@ class SetDetailViewModelTest {
         paths.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[{"set_number":"75192-1","condition":"N","direction":"unter","threshold":450.0}]}"""
         clock.advanceTimeBy(900)
         assertEquals(1, paths.requestsAn("PUT /api/v1/sets/75192-1/alert").size)
-        // Der Zustand liest die Ablage nur beim Laden: ohne Nachladen bliebe er leer.
+        // The state reads the store only when loading: without a reload it would stay empty.
         assertTrue("neu geladen", paths.requestsAn("GET /api/v1/alerts").size > vorher)
         assertEquals(listOf(Geld.aus(450.0)), vm.setDetailState.value.preisalarme.map { it.schwelle })
     }
@@ -180,7 +180,7 @@ class SetDetailViewModelTest {
         val vm = vm()
         vm.refresh()
         paths.freigeben()
-        // Der erste Abruf ist abgebrochen und bekommt keine Antwort mehr; nur der zweite kommt an.
+        // The first fetch is cancelled and gets no answer anymore; only the second one arrives.
         assertEquals(1, priceFetches())
         assertTrue("Preis da", vm.setDetailState.value.setPrice != null)
         assertEquals(false, vm.setDetailState.value.priceFetch.laedt)
