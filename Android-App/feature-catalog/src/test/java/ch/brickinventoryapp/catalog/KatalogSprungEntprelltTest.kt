@@ -16,77 +16,76 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Ein Zug an der Jahresleiste holt EINE Seite, nicht hundert.
+ * One drag on the year bar fetches ONE page, not a hundred.
  *
- * ── Was gemessen wurde, bevor etwas geaendert wurde ─────────────────────────
- * Zuerst war die Datenbank verdaechtig — ein `ORDER BY year DESC … LIMIT 60
- * OFFSET <gross>` wird bei grossen Spruengen teuer. An 25'000 Sets mit
- * realistischer Jahresverteilung nachgemessen: Seite 1 braucht 1,0 ms, die
- * Mitte 9,2 ms, das Ende 19,9 ms, der COUNT(*) je Seite 1,8 ms. Selbst der
- * schlechteste Fall bleibt weit unter einer Sekunde. Die Sekunden kommen NICHT
- * von dort — und die Webapp springt mit derselben Datenbank sofort.
+ * ── What was measured before anything was changed ─────────────────────────
+ * The database looked suspicious at first — an `ORDER BY year DESC … LIMIT 60
+ * OFFSET <large>` gets expensive on big jumps. Measured against 25,000 sets with
+ * a realistic year distribution: page 1 takes 1.0 ms, the
+ * middle 9.2 ms, the end 19.9 ms, the COUNT(*) per page 1.8 ms. Even the
+ * worst case stays well under a second. The seconds do NOT
+ * come from there — and the web app jumps instantly with the same database.
  *
- * ── Die Ursache, und mein eigener Fehlgriff dabei ───────────────────────────
- * Es gibt ZWEI Wege, auf denen eine Seite angefordert wird:
+ * ── The cause, and my own misstep along the way ───────────────────────────────
+ * There are TWO paths by which a page gets requested:
  *
- *   1. der Rueckruf der Leiste (`onScrollTo`) — er laeuft bei jedem
- *      Beruehrungspunkt;
- *   2. der Sichtfenster-Lader — er laeuft, wann immer sich das sichtbare
- *      Fenster aendert.
+ *   1. the bar's callback (`onScrollTo`) — it runs on every
+ *      touch point;
+ *   2. the viewport loader — it runs whenever the visible
+ *      window changes.
  *
- * Beide Wege werden entprellt, auch Weg 2: Die Leiste ROLLT die Liste wirklich
- * an jede Zwischenposition (ihr Rueckruf setzt ueber `state.scrollTo` ein
- * `gridState.scrollToItem`). Weg 2 sah damit jeden einzelnen Punkt des Zuges
- * und forderte dort sonst drei Seiten an.
+ * Both paths are debounced, path 2 included: the bar really SCROLLS the list
+ * to every intermediate position (its callback sets a
+ * `gridState.scrollToItem` via `state.scrollTo`). Path 2 thus saw every single
+ * point of the drag and would otherwise request three pages there.
  *
- * Die Ruhe steht jetzt im Sichtfenster-Lader. Sie deckt beide Wege ab, denn
- * beide enden dort. Genau so macht es die Webapp seit jeher
- * (js/katalog.js, `_ladeSichtbareSeiten`, 150 ms) — und genau deshalb ist
- * die Webapp schnell.
+ * The stillness now lives in the viewport loader. It covers both paths, because
+ * both end up there. That's exactly what the web app has always done
+ * (js/katalog.js, `_ladeSichtbareSeiten`, 150 ms) — and exactly why
+ * the web app is fast.
  *
- * ── Wie geprueft wird ───────────────────────────────────────────────────────
- * Die Ruhe steht im ViewModel (Sichtfensterlader) und laeuft
- * hier mit StandardTestDispatcher: ein Zug mit hundert Fenstern, virtuelle Zeit,
- * gezaehlte Abrufe. Dass die Leiste selbst nicht laedt, bleibt am Quelltext.
+ * ── How it's checked ───────────────────────────────────────────────────────
+ * The stillness lives in the ViewModel (Sichtfensterlader) and runs
+ * here with StandardTestDispatcher: one drag with a hundred windows, virtual time,
+ * counted fetches. That the bar itself doesn't load stays a source-text check.
  *
- * Gegenproben:
- *   A  `collectLatest` durch `collect` ersetzt
- *      (gegenproben/sichtfenster-ohne-entprellung.patch) → rot „der
- *      Sichtfenster-Lader wartet …“ (jedes Fenster des Zuges wird geladen)
- *   B  `delay(restMs)` entfernt → rot, derselbe Fall (laedt vor der Ruhe)
- *   C  den Vorlauf `(von - 1)..(bis + 1)` auf `von..bis` verkuerzt → rot, derselbe Fall
+ * Counter-checks:
+ *   A  `collectLatest` replaced by `collect`
+ *      (gegenproben/sichtfenster-ohne-entprellung.patch) → red "der
+ *      Sichtfenster-Lader wartet …" (every window of the drag gets loaded)
+ *   B  `delay(restMs)` removed → red, the same case (loads before the stillness)
+ *   C  the lead `(von - 1)..(bis + 1)` shortened to `von..bis` → red, the same case
  */
 class KatalogSprungEntprelltTest {
 
     @Test
     fun `a drag over the bar touches very many pages`() {
-        // Ein gewoehnliches Telefon: Leiste ueber die volle Hoehe, Griff 36dp
-        // bei dreifacher Dichte. Der Katalog hat rund 25'000 Sets.
+        // An ordinary phone: bar at the full height, handle 36dp
+        // at triple density. The catalog has around 25,000 sets.
         val hoehe = 1800
         val handle = 108
         val total = 25_000
 
-        // Jeder Pixel, den der Finger auf dem Weg von oben nach unten
-        // ueberstreicht — genau die Punkte, an denen die Liste weitergerollt
-        // wird und der Sichtfenster-Lader ein neues Fenster sieht.
+        // Every pixel the finger sweeps over on the way from top to
+        // bottom — exactly the points where the list keeps scrolling
+        // and the viewport loader sees a new window.
         val pages = (0..hoehe).map { y ->
             val share = CatalogYearMath.shareFrom(y.toFloat(), hoehe, handle)
             CatalogYearMath.numberFrom(share, total) / CATALOG_PAGE_SIZE + 1
         }.toSet()
 
-        // GEMESSEN, nicht behauptet: Der Weg beruehrt JEDE Seite des Katalogs
-        // — 417 von 417. Auf 1692 Pixeln Spur liegen 25'000 Sets, also rund
-        // 15 je Pixel; eine Seitengrenze wird demnach alle vier Pixel
-        // ueberschritten.
+        // MEASURED, not asserted: the path touches EVERY page of the catalog
+        // — 417 of 417. 25,000 sets sit on 1692 pixels of track, so around
+        // 15 per pixel; a page boundary is therefore crossed roughly every four pixels.
         //
-        // Wie viele Abrufe daraus WERDEN, entscheidet die Zahl der
-        // Beruehrungspunkte: Zwei aufeinanderfolgende liegen bei jeder
-        // gewoehnlichen Zuggeschwindigkeit weiter als vier Pixel auseinander,
-        // also trifft praktisch jeder eine andere Seite. Bei 60 bis 120
-        // Punkten je Sekunde sind das ueber hundert Abrufe fuer einen Zug —
-        // jeder ueber 60 Sets, keiner abgebrochen, und der API-Client laesst
-        // nur eine Handvoll gleichzeitig zu. Die Zielseite steht dann hinter
-        // allen anderen in der Schlange: drei bis fünf Sekunden.
+        // How many fetches that turns into is decided by the number of
+        // touch points: two consecutive ones are, at any ordinary
+        // drag speed, more than four pixels apart,
+        // so practically every one hits a different page. At 60 to 120
+        // points per second that's over a hundred fetches for one drag —
+        // each for over 60 sets, none canceled, and the API client allows
+        // only a handful at once. The target page then sits behind
+        // all the others in the queue: three to five seconds.
         val totalPages = (total - 1) / CATALOG_PAGE_SIZE + 1
         assert(pages.size >= totalPages - 1) {
             "Der Weg beruehrt nur ${pages.size} von $totalPages Seiten. Dann " +
@@ -102,7 +101,7 @@ class KatalogSprungEntprelltTest {
         val geladen = mutableListOf<Int>()
         val bereich = CoroutineScope(StandardTestDispatcher(testScheduler))
         val lader = Sichtfensterlader(bereich, VIEWPORT_REST_MS) { geladen += it }
-        // Ein Zug ueber die Leiste: hundert Fenster, alle 10 ms eines, Seite fuer Seite.
+        // One drag across the bar: a hundred windows, one every 10 ms, page by page.
         for (seite in 1..100) {
             lader.sichtbar(seite, seite + 1)
             advanceTimeBy(10)
@@ -111,7 +110,7 @@ class KatalogSprungEntprelltTest {
         advanceUntilIdle()
         assertEquals("Nur das letzte Fenster, mit einer Seite Vorlauf in beide Richtungen",
             listOf(99, 100, 101, 102), geladen)
-        // Seite 1 hat keinen Vorgaenger: kein Abruf fuer Seite 0.
+        // Page 1 has no predecessor: no fetch for page 0.
         geladen.clear()
         lader.sichtbar(1, 1)
         advanceUntilIdle()
@@ -131,11 +130,11 @@ class KatalogSprungEntprelltTest {
                 "hundert Abrufe je Zug (siehe die Messung im ersten Test)."
         }
 
-        // Und kein zweiter, eigener Sprung-Abruf daneben: Der stand hier
-        // einmal (`zielSeite` samt eigenem LaunchedEffect) und war die
-        // Behebung an der falschen Schicht — er nahm dem Rueckruf seinen
-        // Abruf, liess den Sichtfenster-Lader aber unveraendert weiterlaufen.
-        // Zwei Fassungen derselben Regel laufen ausserdem auseinander.
+        // And no second, separate jump fetch next to it: that used to sit here
+        // once (`zielSeite` with its own LaunchedEffect) and was the
+        // fix at the wrong layer — it took the fetch away from the callback
+        // but left the viewport loader running unchanged.
+        // Two versions of the same rule also drift apart.
         assert(!src.contains("zielSeite")) {
             "Der eigene Sprung-Abruf ist wieder da. Er ist ueberfluessig, seit die " +
                 "Ruhe im Sichtfenster-Lader steht — dort enden BEIDE Wege."

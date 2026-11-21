@@ -10,36 +10,36 @@ import ch.brickinventoryapp.model.domain.PriceHistoryView
 import ch.brickinventoryapp.model.ui.Laden
 
 /**
- * Die Merkliste — was man haben möchte, getrennt vom Besitz. Eigener Zustand statt
- * eines Felds in AppUiState: Er ändert sich nur auf diesem Bildschirm, und ein
- * Feld im Haupt-Zustand rekomponierte bei jedem Laden den ganzen Baum.
+ * The watchlist — what you'd like to have, separate from what you own. Its own state instead of
+ * a field in AppUiState: it only changes on this screen, and a
+ * field in the main state would recompose the whole tree on every load.
  */
 data class WantedUiState(
     val merkposten: List<WantedItemView> = emptyList(),
-    /** Der letzte Abruf vom Server; die Liste selbst kommt aus der Ablage. */
+    /** The last fetch from the server; the list itself comes from the cache. */
     val abruf: Laden<Unit> = Laden.Daten(Unit),
-    // Drei Werte hier; der vierte, der Inhaber, steht wie in jeder Ansicht in
-    // AppUiState.scopeModes — dieselbe Wahl unter demselben Schlüssel wie in Galerie, Teilen,
-    // Minifiguren und Finanzen.
-    /** Suchtext — trifft Nummer UND Name. Leer heisst: kein Filter. */
+    // Three values here; the fourth, the owner, lives as in every view in
+    // AppUiState.scopeModes — the same choice under the same key as in gallery, parts,
+    // minifigures and finances.
+    /** Search text — matches number AND name. Empty means: no filter. */
     val query: String = "",
-    /** null: beide Zustände. */
+    /** null: both conditions. */
     val stateFilter: Zustand? = null,
     val sorting: Merksortierung = Merksortierung.DEFAULT,
 )
 
 /**
- * Was das Detail eines Merkpostens zusätzlich braucht — eigener Zustand wie beim
- * Set-Detail, weil er sich nur ändert, solange genau ein Detail offen ist. Der
- * Merkposten selbst steht nicht hier: Er liegt in der geladenen Liste, eine zweite
- * Kopie liefe beim Löschen oder Übernehmen auseinander.
+ * What a watchlist item's detail additionally needs — its own state as with the
+ * set detail, because it only changes while exactly one detail is open. The
+ * watchlist item itself isn't here: it lives in the loaded list, a second
+ * copy would drift apart on delete or redeem.
  */
 data class WantedItemDetailUiState(
     /**
-     * Welches Set dieses Detail zeigt — gesetzt, sobald geladen wird, vor jeder Antwort.
-     * Daran erkennt setPriceAlert(), dass der Bildschirm offen ist und die Alarme
-     * nachgeladen werden dürfen; das Merkposten-Detail lädt kein SetDetail, an dem es sonst
-     * zu sehen wäre.
+     * Which set this detail shows — set as soon as loading starts, before any response.
+     * setPriceAlert() recognizes from this that the screen is open and the alerts
+     * may be refetched; the watchlist-item detail loads no SetDetail where that would otherwise
+     * be visible.
      */
     val setNumber: String? = null,
     /** Thema, Teile, Minifiguren, BrickLink, Preisvergleich. */
@@ -47,12 +47,12 @@ data class WantedItemDetailUiState(
     /** Der HISTORY. Die aktuellen Preise stehen in [preise] — siehe dort. */
     val history: PriceHistoryView? = null,
     /**
-     * Die aktuellen Marktpreise, frisch geholt. Getrennt von [history], weil sie aus
-     * einer anderen Quelle kommen und früher da sind: Der Verlauf liest nur
-     * price_cache, diese Antwort füllt ihn — so stehen die Preise sofort da.
+     * The current market prices, freshly fetched. Separate from [history], because they come
+     * from a different source and arrive earlier: the history only reads
+     * price_cache, this response fills it — so the prices are there right away.
      */
     val preise: WantedItemPricesView? = null,
     val abruf: Laden<Unit> = Laden.Daten(Unit),
-    /** Die Preisalarme dieses Sets — dieselben wie im Set-Detail. */
+    /** This set's price alerts — the same ones as in the set detail. */
     val preisalarme: List<PriceAlertView> = emptyList(),
 )

@@ -22,12 +22,12 @@ import ch.brickinventoryapp.model.file.FileRef
 import ch.brickinventoryapp.ui.components.Subpage
 
 /**
- * Die Unterseiten der Einstellungen: je Rubrik eine Seite mit Titel und
- * Zurück-Pfeil, damit das Seltene nicht so viel Platz bekommt wie das Häufige. Die
- * Karten liegen je Rubrik in Einstellungen*.kt.
+ * The settings' subpages: one page per category with a title and
+ * back arrow, so the rare doesn't take as much space as the frequent. The
+ * cards for each category live in Einstellungen*.kt.
  */
 
-/** Der Melde-Schalter mit den Geräte-Einstellungen verdrahtet. */
+/** The notification switch wired up with the device settings. */
 @Composable
 internal fun PriceAlertToggleRoute(geraet: GeraeteEinstellungenViewModel = hiltViewModel()) {
     val an by geraet.alarmMessagesAn.collectAsStateWithLifecycle()
@@ -35,9 +35,9 @@ internal fun PriceAlertToggleRoute(geraet: GeraeteEinstellungenViewModel = hiltV
 }
 
 /**
- * Preisalarme — die Übersicht und der Melde-Schalter auf einer Seite: zwei Karten
- * mit fast demselben Namen wären zwei Rubriken, und der Schalter steht dort, wo
- * man ihn sucht.
+ * Price alerts — the overview and the notification switch on one page: two cards
+ * with almost the same name would be two categories, and the switch sits where
+ * one looks for it.
  */
 @Composable
 fun PreisalarmeRoute(
@@ -47,7 +47,7 @@ fun PreisalarmeRoute(
     snackbarHostState: SnackbarHostState,
     onSetClick: (String) -> Unit,
     onZurueck: () -> Unit,
-    /** Der Melde-Schalter; als Platz, weil er sein eigenes ViewModel holt. */
+    /** The notification switch; as a slot, because it fetches its own ViewModel. */
     reportToggle: @Composable () -> Unit = { PriceAlertToggleRoute() },
 ) {
     val uebersicht by vm.alarmOverview.collectAsStateWithLifecycle()
@@ -96,7 +96,7 @@ fun HouseholdRoute(
     onZurueck: () -> Unit,
 ) {
     val haushalt by vm.householdState.collectAsStateWithLifecycle()
-    // Einladung einlösen und Konten trennen: kein Tipp durch eine Überlagerung.
+    // Redeem invitation and unlink accounts: no tap through an overlay.
     Ueberdeckungsschutz()
     Subpage(stringResource(R.string.household_title), snackbarHostState, onZurueck) {
         HouseholdCard(
@@ -110,20 +110,20 @@ fun HouseholdRoute(
     }
 }
 
-/** Konto und angemeldete Geraete — beides betrifft den Zugang. */
+/** Account and signed-in devices — both concern access. */
 @Composable
 fun AccountRoute(
     snackbarHostState: SnackbarHostState,
-    // An das Ziel gebunden: Profil, Geräte und ein halb eingerichteter
-    // zweiter Faktor leben nur, solange die Seite offen ist.
+    // Tied to the destination: profile, devices and a half-set-up
+    // second factor only live as long as the page is open.
     konto: AccountViewModel = hiltViewModel(),
     onZurueck: () -> Unit,
 ) {
     val kontoZustand by konto.accountPage.collectAsStateWithLifecycle()
     val geraeteZustand by konto.geraeteState.collectAsStateWithLifecycle()
     val zfZustand by konto.secondFactorState.collectAsStateWithLifecycle()
-    // Profil, Design, Geräte und zweiter Faktor laden beim Beobachten ihres Zustands (AccountViewModel).
-    // Passwort, zweiter Faktor, Geräte: Ein untergeschobener Tipp schaltete hier Schutz ab.
+    // Profile, design, devices and second factor load while observing their state (AccountViewModel).
+    // Password, second factor, devices: a slipped-in tap turned off protection here.
     Ueberdeckungsschutz()
     Subpage(stringResource(R.string.konto_title), snackbarHostState, onZurueck,
         breite = Lesebreite.formular) {

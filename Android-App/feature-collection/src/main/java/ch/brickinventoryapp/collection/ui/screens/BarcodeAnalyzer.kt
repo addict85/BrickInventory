@@ -15,22 +15,21 @@ import java.util.concurrent.Executors
 import ch.brickinventoryapp.ui.screens.imageAnalyse
 
 /**
- * Der Bildanalyse-Teil des Barcode-Scanners: Barcode-Leser, Texterkennung,
- * Bestätigungszählung und Drosselung. Getrennt von der Einbettung der Kamera-Vorschau, weil
- * wer an der Erkennung arbeitet, mit PreviewView, Lebenszyklus und Fokus-Gesten nichts zu tun
- * hat.
+ * The image-analysis part of the barcode scanner: barcode reader, text recognition,
+ * confirmation counting and throttling. Separate from embedding the camera preview, because
+ * whoever works on recognition has nothing to do with PreviewView, lifecycle and focus gestures.
  */
-// Einverständnis für imageProxy.image: `@androidx.annotation.OptIn` ist die Form
-// für einen in Java definierten Marker — `@ExperimentalGetImage` an der lokalen
-// Variablen wäre die Markierung, kein Einverständnis (Lint:
-// UnsafeOptInUsageError). Dasselbe Muster wie in KameraAufbau.kt.
+// Opt-in for imageProxy.image: `@androidx.annotation.OptIn` is the form
+// for a marker defined in Java — `@ExperimentalGetImage` on the local
+// variable would be the annotation, not the opt-in (Lint:
+// UnsafeOptInUsageError). The same pattern as in KameraAufbau.kt.
 @androidx.annotation.OptIn(ExperimentalGetImage::class)
 @Composable
 internal fun rememberBarcodeAnalyzer(
     frozen: Boolean,
     ocrEnabled: Boolean,
     onBarcodeFound: (String) -> Unit,
-    /** Per Texterkennung gelesene SETNUMMER — braucht KEINE EAN-Auflösung. */
+    /** SET NUMBER read via text recognition — needs NO EAN resolution. */
     onSetNumberFound: (String) -> Unit,
     onStatus: (String) -> Unit,
     confirmingHint: String,
@@ -43,10 +42,10 @@ internal fun rememberBarcodeAnalyzer(
     var confirmCount = remember { 0 }
     val CONFIRM_NEEDED = 2
     /**
-     * Mindestabstand zwischen zwei Texterkennungen: klein genug, dass eine
-     * vorgehaltene Anleitung sofort gelesen wird, gross genug, dass der Analyse-Thread
-     * zwischendurch frei wird und der Fokus nicht träge wirkt. Der Barcode-Leser läuft
-     * weiterhin auf jedem Bild.
+     * Minimum gap between two text recognitions: small enough that a
+     * held-up instruction booklet is read right away, large enough that the analysis thread
+     * gets free in between and focus doesn't feel sluggish. The barcode reader keeps
+     * running on every frame regardless.
      */
     val OCR_INTERVALL_MS = 700L
     val letzteOcr = remember { java.util.concurrent.atomic.AtomicLong(0L) }
@@ -61,25 +60,24 @@ internal fun rememberBarcodeAnalyzer(
                 .build()
         )
     }
-    // Texterkennung neben dem Barcode-Leser. DEFAULT_OPTIONS ist das lateinische
-    // Modell — es liegt fest im APK, lädt also nichts nach.
+    // Text recognition next to the barcode reader. DEFAULT_OPTIONS is the Latin
+    // model — it's bundled in the APK, so it downloads nothing.
     val textRecognizer = remember { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
     DisposableEffect(Unit) { onDispose { textRecognizer.close() } }
 
-    // remember() hat keinen Aufräum-Hook: Ohne dieses DisposableEffect blieben
-    // Analyse-Thread und ML-Kit-Client (native Ressourcen) bei jedem Besuch des
-    // Scanners liegen. Die Kamera selbst hängt am lifecycleOwner und wird von CameraX
-    // entbunden.
+    // remember() has no cleanup hook: without this DisposableEffect, the
+    // analysis thread and ML Kit client (native resources) would leak on every visit
+    // to the scanner. The camera itself hangs on the lifecycleOwner and is released by CameraX.
     DisposableEffect(Unit) {
         onDispose {
-            try { barcodeScanner.close() } catch (_: Exception) { /* beim Verlassen schon geschlossen */ }
+            try { barcodeScanner.close() } catch (_: Exception) { /* already closed on leaving */ }
             executor.shutdown()
         }
     }
     val imageAnalyzer = remember {
-        // Aufbau samt AF-Modus: ui/screens/KameraAufbau.kt — dieselbe
-        // Einstellung wie im SetupScreen, nur mit mehr Aufloesung fuer
-        // kleine EAN-Striche und die Texterkennung.
+        // Setup including AF mode: ui/screens/KameraAufbau.kt — the same
+        // settings as in SetupScreen, only with more resolution for
+        // small EAN bars and text recognition.
         imageAnalyse(1920, 1080)
             .also { analysis ->
                 analysis.setAnalyzer(executor) { imageProxy ->
@@ -98,10 +96,10 @@ internal fun rememberBarcodeAnalyzer(
                                 else onStatus(confirmingHint)
                                 imageProxy.close()
                             } else {
-                                // Kein Barcode im Bild → Texterkennung. Die Reihenfolge ist
-                                // Absicht: Der Barcode ist eindeutig, die gelesene Zahl nur
-                                // wahrscheinlich — auf der Verpackung gewinnt der Barcode, die
-                                // Texterkennung greift auf der Anleitung.
+                                // No barcode in the frame → text recognition. The order is
+                                // deliberate: the barcode is unambiguous, the read number only
+                                // probable — on the box the barcode wins, text
+                                // recognition applies on the instructions.
                                 val jetzt = System.currentTimeMillis()
                                 if (jetzt - letzteOcr.get() < OCR_INTERVALL_MS) {
                                     onStatus(aimHint)
@@ -111,8 +109,8 @@ internal fun rememberBarcodeAnalyzer(
                                 letzteOcr.set(jetzt)
 
                                 if (!ocrEnabled) {
-                                    // Texterkennung hier nicht gewünscht — nur der Zielhinweis, und
-                                    // der Bildpuffer muss trotzdem freigegeben werden.
+                                    // Text recognition not wanted here — only the target hint, and
+                                    // the image buffer must still be released.
                                     onStatus(aimHint)
                                     imageProxy.close()
                                     return@addOnSuccessListener
@@ -121,9 +119,9 @@ internal fun rememberBarcodeAnalyzer(
                                     .addOnSuccessListener { result ->
                                         val candidate = setNumberCandidates(result.text).firstOrNull()
                                         if (candidate != null) {
-                                            // Dieselbe Mehrfachbestätigung wie beim
-                                            // Barcode: Eine einzelne Fehllesung soll
-                                            // nicht sofort einen Dialog auslösen.
+                                            // The same multi-confirmation as for the
+                                            // barcode: a single misread shouldn't
+                                            // immediately trigger a dialog.
                                             if (candidate == lastValue) confirmCount++
                                             else { lastValue = candidate; confirmCount = 1 }
                                             if (confirmCount >= CONFIRM_NEEDED) onSetNumberFound(candidate)
@@ -136,11 +134,11 @@ internal fun rememberBarcodeAnalyzer(
                             }
                         }
                         .addOnFailureListener { onStatus(errorHint); imageProxy.close() }
-                    // Kein addOnCompleteListener: Am Barcode-Task feuerte er, sobald dieser „kein
-                    // Barcode“ meldete, und schloss das Bild, auf dem die Texterkennung gerade erst
-                    // anfing — still ohne Ergebnis. Darum schliesst jeder Ausgang den Bildpuffer
-                    // selbst, genau einmal: Barcode gefunden, Barcode-Fehler, Texterkennung aus,
-                    // Texterkennung fertig.
+                    // No addOnCompleteListener: on the barcode task it fired as soon as it
+                    // reported "no barcode" and closed the frame that text recognition was
+                    // only just starting on — silently, with no result. That's why every exit closes the image buffer
+                    // itself, exactly once: barcode found, barcode error, text recognition off,
+                    // text recognition done.
                 }
             }
     }

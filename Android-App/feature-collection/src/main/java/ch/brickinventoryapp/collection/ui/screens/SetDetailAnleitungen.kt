@@ -37,15 +37,15 @@ import ch.brickinventoryapp.ui.util.openExtern
 import ch.brickinventoryapp.shared.ui.SectionCard
 
 /**
- * Anleitungen — ansehen, hinzufügen und entfernen. Die Karte steht auch ohne
- * Anleitung, weil sie den Weg trägt, eine erste hinzuzufügen.
+ * Manuals — view, add and remove. The card exists even with no
+ * manual, because it carries the path to add a first one.
  */
 internal fun LazyListScope.setDetailInstructionsSection(
     set: SetAnsicht, detailState: SetDetailUiState, serverUrl: String,
     onOpenPdf: (url: String, title: String) -> Unit,
     onInstructionChoose: () -> Unit,
     onAnleitungLoeschen: (Int) -> Unit,
-    /** Kein Programm öffnet die Adresse — der Bildschirm meldet es in seinem Gerüst. */
+    /** No app opens the address — the screen reports it in its own scaffold. */
     onNoApp: () -> Unit,
 ) {
         // ── Instructions section ───────────────────────────────────────────
@@ -74,8 +74,8 @@ internal fun LazyListScope.setDetailInstructionsSection(
                             )
                             InstructionRow(instr, serverUrl, onOpenPdf, onAnleitungLoeschen, onNoApp)
                         }
-                        // Der Weg, eine erste Anleitung hinzuzufügen — unter der Liste, weil das
-                        // Ansehen häufiger ist; höchstens Bedienbreite, auf dem Tablet nicht über die Spalte.
+                        // The path to add a first manual — below the list, because
+                        // viewing is more common; at most control width, not across the column on the tablet.
                         OutlinedButton(
                             onClick = onInstructionChoose,
                             modifier = Modifier.padding(top = Abstaende.klein).fillMaxWidth(),
@@ -92,7 +92,7 @@ internal fun LazyListScope.setDetailInstructionsSection(
         }
 }
 
-/** Eine Anleitung: Die ganze Zeile öffnet sie, der Papierkorb daneben entfernt eine eigene. */
+/** A manual: the whole row opens it, the trash icon next to it removes its own. */
 @Composable
 private fun InstructionRow(
     instr: InstructionView,
@@ -102,22 +102,22 @@ private fun InstructionRow(
     onNoApp: () -> Unit,
 ) {
     val ctx = LocalContext.current
-    // Kein `?token=` an der Adresse: Der Sitzungstoken läge sonst im
-    // Backstack, als Text unter der Anleitung und im Zugriffsprotokoll. Der
-    // In-App-Betrachter lädt über den geteilten Client, der den
-    // Authorization-Kopf setzt (di/ServerClient.kt).
+    // No `?token=` in the address: the session token would otherwise sit in the
+    // back stack, as text under the manual and in the access log. The
+    // in-app viewer loads via the shared client, which sets the
+    // Authorization header (di/ServerClient.kt).
     val eigene = instr.localPath?.let { ownAddress(serverUrl, it) }
     val openUrl = eigene ?: instr.url
 
-    // Die ganze Zeile öffnet die Anleitung — sie sah aus wie ein Verweis.
-    // Das Symbol rechts ist nur ein Hinweis, kein zweites Ziel für dieselbe
-    // Handlung. Der Papierkorb liegt neben, nicht in der antippbaren Zeile,
-    // damit ein Fehlgriff nicht löscht.
+    // The whole row opens the manual — it looked like a reference.
+    // The icon on the right is only a hint, not a second destination for the same
+    // action. The trash icon sits beside, not inside, the tappable row,
+    // so a mistap doesn't delete.
     val oeffneAnleitung: () -> Unit = {
         if (eigene != null) {
             onOpenPdf(eigene, instr.description ?: "")
         } else if (!openExtern(ctx, externeAddress(instr.url))) {
-            // Rückmeldung statt Stille, siehe CatalogDetailScreen.
+            // Feedback instead of silence, see CatalogDetailScreen.
             onNoApp()
         }
     }
@@ -129,11 +129,11 @@ private fun InstructionRow(
         Row(
             Modifier
                 .weight(1f)
-                // clickable VOR padding: So gehoert der
-                // Innenabstand zur Antippflaeche, und der
-                // Druckkreis deckt die ganze Zeilenhoehe.
-                // Umgekehrt blieben oben und unten je ein
-                // paar totes Pixel.
+                // clickable BEFORE padding: this way the
+                // inner padding belongs to the tap area, and the
+                // press ripple covers the whole row height.
+                // The other way round, a few dead pixels would remain
+                // at the top and bottom.
                 .clickable(role = Role.Button, onClick = oeffneAnleitung)
                 .heightIn(min = 48.dp)
                 .padding(vertical = Abstaende.tiny),
@@ -157,8 +157,8 @@ private fun InstructionRow(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            // Dieselbe Flaeche wie der frühere Knopf, damit
-            // die Zeilen so breit bleiben wie bisher.
+            // The same surface as the earlier button, so
+            // the rows stay as wide as before.
             Box(Modifier.size(36.dp), Alignment.Center) {
                 Icon(
                     Icons.AutoMirrored.Filled.OpenInNew, null,
@@ -171,7 +171,7 @@ private fun InstructionRow(
     }
 }
 
-/** Das PDF-Zeichen vorn in der Zeile; nur Hinweis, nicht antippbar für sich. */
+/** The PDF icon at the front of the row; only a hint, not tappable on its own. */
 @Composable
 private fun PdfTile() {
     Surface(
@@ -190,10 +190,10 @@ private fun PdfTile() {
 }
 
 /**
- * Entfernen nur bei selbst hochgeladenen Anleitungen (`isManual`):
- * Beide Quellen bringen eine `id`, und weil ihre Zähler unabhängig
- * laufen, könnte ein Klick sonst die gleichnamige eigene Anleitung
- * treffen.
+ * Removal only for self-uploaded manuals (`isManual`):
+ * both sources deliver an `id`, and because their counters run
+ * independently, a click could otherwise hit the
+ * same-named own manual.
  */
 @Composable
 private fun InstructionDelete(instr: InstructionView, onAnleitungLoeschen: (Int) -> Unit) {

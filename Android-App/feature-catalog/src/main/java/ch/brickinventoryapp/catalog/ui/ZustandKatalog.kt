@@ -8,28 +8,28 @@ import ch.brickinventoryapp.model.domain.CatalogThemeView
 import ch.brickinventoryapp.model.ui.Laden
 
 /**
- * Katalog-Zustand — eigener Flow (wie SetDetail/CsvImport): Suche und
- * Paging aktualisieren häufig; als Teil von AppUiState würde jede
- * Katalog-Seite die gesamte App rekomponieren.
+ * Catalog state — its own flow (like SetDetail/CsvImport): search and
+ * paging update frequently; as part of AppUiState, every
+ * catalog page would recompose the whole app.
  */
 data class CatalogUiState(
-    /** Der letzte Abruf der ersten Seite; geladene Seiten bleiben stehen, solange neu geholt wird. */
+    /** The last fetch of the first page; loaded pages stay visible while refetching. */
     val abruf: Laden<Unit> = Laden.Daten(Unit),
     /**
-     * Geladene Seiten, nach Seitennummer. Eine Karte statt einer Liste, weil die
-     * Zeitleiste rechts schnell scrollt statt filtert: Wer auf 2005 springt, landet
-     * mitten im Bestand. Die Ansicht führt deshalb alle `total` Plätze und lädt die
-     * Seite, die gerade sichtbar wird — vorwärts wie rückwärts; was noch fehlt, steht
-     * als Platzhalter.
+     * Loaded pages, by page number. A map instead of a list, because the
+     * timeline on the right scrolls fast instead of filtering: whoever jumps to 2005
+     * lands in the middle of the inventory. The view therefore keeps all `total` slots
+     * and loads the page that's becoming visible — forward and backward; what's still
+     * missing stands in as a placeholder.
      */
     val loadedPages: Map<Int, List<KatalogSetAnsicht>> = emptyMap(),
     val loadingPages: Set<Int> = emptySet(),
     val total: Int = 0,
     /**
-     * Sprungziel des Scrubbers — die laufende Nummer, zu der gescrollt werden
-     * soll. Die Ansicht führt den Sprung aus und meldet ihn mit
-     * catalogScrollConsumed() zurück; ohne das Zurücksetzen liesse sich
-     * dasselbe Jahr kein zweites Mal anspringen.
+     * The scrubber's jump target — the running number to scroll to. The
+     * view carries out the jump and reports it back with
+     * catalogScrollConsumed(); without that reset, the same year
+     * couldn't be jumped to a second time.
      */
     val scrollTo: Int? = null,
     // Filter
@@ -42,13 +42,13 @@ data class CatalogUiState(
     val yearMin: Int? = null,
     val yearMax: Int? = null,
     /**
-     * Wie viele Sets je Jahr, mit den aktuellen Filtern und in der Reihenfolge der
-     * Liste — die Zahlen, aus denen die Leiste rechts ihr Etikett rechnet (siehe
-     * CatalogYearMath), wie in der Webapp. Jahrgänge ohne Jahr sind schon weggeworfen,
-     * ebenfalls wie dort.
+     * How many sets per year, with the current filters and in the list's
+     * order — the numbers the bar on the right computes its label from (see
+     * CatalogYearMath), as in the web app. Years without a year are already dropped,
+     * same as there.
      */
     val yearDistribution: List<JahrAnzahlAnsicht> = emptyList(),
     // Detail
-    /** Ein Fehler steht hier statt des Kringels, mit Grund und „Erneut versuchen“. */
+    /** An error stands here instead of the spinner, with a reason and "Try again". */
     val detail: Laden<CatalogDetailView> = Laden.Loads,
 )

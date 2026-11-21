@@ -22,38 +22,38 @@ import ch.brickinventoryapp.ui.LoadingIndicator
 import ch.brickinventoryapp.ui.loadingIndicator
 
 /**
- * Der Zustand der Galerie und wie er sich ändert — an EINER Stelle.
- * Der Fluss ist privat, Änderungen gehen über benannte Methoden: So schreibt nicht jede Datei des
- * Moduls hinein.
+ * The gallery's state and how it changes — in ONE place.
+ * The flow is private, changes go through named methods: that way not every file of the
+ * module writes into it.
  */
 internal class Galerie(
     private val scope: CoroutineScope,
     /**
-     * Die Liste für die Filter eines Zustands — die einzige Quelle der Anzeige: die
-     * Ablage, über gewählte Konten die Kontosicht. Was offline geändert wird, steht
-     * so sofort da.
+     * The list for a state's filters — the display's only source: the
+     * cache, via chosen accounts the account view. What's changed offline shows up
+     * right away this way.
      */
     private val quelle: (GalleryUiState) -> Flow<Local<SetAnsicht>>,
-    /** Füllt die Quelle des Zustands; die Antwort selbst zeigt niemand. */
+    /** Fills the state's source; no one looks at the response itself. */
     private val refresh: suspend (GalleryUiState) -> Ergebnis<Unit>,
     private val fetchMetrics: suspend () -> Ergebnis<MetricsView?>,
     private val reportError: (Ergebnis.Fehler) -> Unit,
-    /** Filterwechsel: Die gemerkte Scrollstelle zeigt auf eine andere Liste. */
+    /** Filter change: the remembered scroll position points to a different list. */
     private val vergissScroll: () -> Unit,
     private val suchPause: Long = 350,
 ) {
     private val _state = MutableStateFlow(GalleryUiState())
     val state: StateFlow<GalleryUiState> = _state.asStateFlow()
 
-    // Ein neuer Auftrag bricht den alten ab: Eine späte Antwort eines alten
-    // Filters landete sonst mit gemischtem Inhalt in der neuen Liste.
+    // A new job cancels the old one: a late response from an old
+    // filter would otherwise land with mixed content in the new list.
     private var sequenceJob: Job? = null
     private var listJob: Job? = null
     private var suchJob: Job? = null
 
     /**
-     * Mit den eingestellten Filtern: der Quelle folgen und sie füllen. Ohne Netz
-     * bleibt die abgelegte Liste stehen, mit ihrem Stand.
+     * With the configured filters: follow the source and fill it. Without network
+     * the cached list stays as is, with its own state.
      */
     fun laden() {
         listJob?.cancel()
@@ -72,7 +72,7 @@ internal class Galerie(
         listJob = scope.launch {
             _state.update { it.copy(abruf = Laden.Loads) }
             val r = refresh(st)
-            // Ohne Netz zählt, was die Quelle schon hält; sie hat sich durch den Fehlschlag nicht geändert.
+            // Without network, what the source already holds counts; it hasn't changed from the failure.
             val stand = if (r is Ergebnis.Fehler && r.transient) liste.first().stand else null
             when {
                 r is Ergebnis.Erfolg -> _state.update { it.copy(abruf = Laden.Daten(Unit), offlineStatus = null) }
@@ -86,7 +86,7 @@ internal class Galerie(
         }
     }
 
-    /** Suchtext: entprellt, damit nicht jeder Tastendruck eine Abfrage auslöst. */
+    /** Search text: debounced, so not every keypress triggers a query. */
     fun setzeSuche(q: String) {
         vergissScroll()
         _state.update { it.copy(galleryQuery = q) }
@@ -106,7 +106,7 @@ internal class Galerie(
         laden()
     }
 
-    /** Kennzahlen im Kopf; ein Fehlschlag bleibt still — sie sind Beiwerk. */
+    /** Figures in the header; a failure stays silent — they're a nice-to-have. */
     fun loadMetrics() {
         scope.launch {
             val r = fetchMetrics()
@@ -114,11 +114,11 @@ internal class Galerie(
         }
     }
 
-    /** Gemerkte Filter übernehmen, ohne zu laden — das tut der Bildschirm beim Betreten. */
+    /** Take over remembered filters without loading — the screen does that on entering. */
     fun placeFilterAgain(suche: String, thema: String, sorting: Setsortierung) =
         _state.update { it.copy(galleryQuery = suche, galleryTheme = thema, gallerySort = sorting) }
 
-    /** Abmelden: nichts vom vorigen Konto stehen lassen, laufende Abrufe verwerfen. */
+    /** Sign out: leave nothing from the previous account standing, discard running fetches. */
     fun reset() {
         listJob?.cancel()
         sequenceJob?.cancel()
@@ -127,17 +127,17 @@ internal class Galerie(
     }
 }
 
-/** Die Themen der abgelegten Sets für den Filter; der Server schickt sie sonst mit Seite 1. */
+/** The themes of the cached sets for the filter; the server otherwise only sends them with page 1. */
 private fun themesFrom(sets: List<SetAnsicht>): List<String> =
     sets.mapNotNull { it.theme?.takeIf(String::isNotBlank) }.distinct().sorted()
 
-/** Was die Galerie zeigt, wenn noch keine Kachel da ist — oder eben die Liste. */
+/** What the gallery shows when no tile exists yet — or else the list. */
 internal typealias GalleryDisplay = LoadingIndicator
 
 /**
- * Ein Ladefehler und eine leere Sammlung verlangen Verschiedenes: das eine
- * „Erneut versuchen", das andere „Set erfassen". Geladene Sets gehen vor —
- * ein gescheitertes Neuladen lässt die alte Liste stehen.
+ * A load error and an empty collection call for different things: one
+ * "Try again", the other "Add set". Loaded sets take priority —
+ * a failed reload leaves the old list standing.
  */
 internal fun galleryDisplay(g: GalleryUiState, gefiltert: Boolean): GalleryDisplay =
     loadingIndicator(g.sets.isNotEmpty(), g.abruf.laedt, g.abruf is Laden.Fehler, gefiltert)

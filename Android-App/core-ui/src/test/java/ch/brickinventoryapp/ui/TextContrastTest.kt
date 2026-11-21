@@ -16,34 +16,34 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Jede Schriftrolle erreicht auf jeder Fläche, auf der Material sie zeichnet,
- * 4,5:1 (WCAG 1.4.3) — in allen sechs Designs, hell und in der dunklen Fassung.
- * Dazu sind Fehler- und Hauptfarbe unterscheidbar, damit Rot nicht doppelt spricht.
+ * Every text role reaches 4.5:1 (WCAG 1.4.3) on every surface Material draws
+ * it on — in all six designs, light and in the dark version.
+ * On top of that, error and main color are distinguishable, so red doesn't speak twice.
  *
- * Gegenproben:
- *   A  alte Farben: beide ersten Tests rot, 33 Paare unter 4,5:1, darunter
- *      brick.onSurfaceVariant/background 3,91, classic …/surfaceContainerHighest 3,85,
- *      noppe.primary/background 4,44, onError/error in allen dunklen Fassungen 4,48;
- *      der dritte rot mit noppe 0,03 und noppe/dunkel 0,13.
- *   B  brick.onSurfaceVariant zurück auf #6B7785 → rot (3,91 auf background)
- *   C  noppe.primary zurück auf NoppeRot → rot: „Hauptfarbe zu nah …“ (0,13)
+ * Counter-checks:
+ *   A  old colors: both first tests red, 33 pairs under 4.5:1, among them
+ *      brick.onSurfaceVariant/background 3.91, classic …/surfaceContainerHighest 3.85,
+ *      noppe.primary/background 4.44, onError/error in all dark versions 4.48;
+ *      the third red with noppe 0.03 and noppe/dunkel 0.13.
+ *   B  brick.onSurfaceVariant back to #6B7785 → red (3.91 on background)
+ *   C  noppe.primary back to NoppeRot → red: „Hauptfarbe zu nah …“ (0.13)
  *
- * Diagrammfarben :
- *   D  in diagrammFarben() gedaempft wieder fest #94A3B8 → rot „Diagrammschrift …“
- *      mit classic 2,56 auf surface und 2,07 auf surfaceContainerHighest
+ * Chart colors:
+ *   D  gedaempft hardcoded back to #94A3B8 in diagrammFarben() → red „Diagrammschrift …“
+ *      with classic 2.56 on surface and 2.07 on surfaceContainerHighest
  *
- * Akzentflächen :
- *   E  in akzentflaechen() die Stein-Flächen auch im Dunkeln (wie vor M5: Leisten in
- *      primary/secondary, Marktwert Petrol) → rot „im Dunkeln leuchtet …“ mit
- *      brick/dunkel.leiste 0,45, .detailLeiste 0,63, .markt 0,17
+ * Accent surfaces:
+ *   E  the brick surfaces also in the dark in akzentflaechen() (as before M5: bars in
+ *      primary/secondary, market value petrol) → red „im Dunkeln leuchtet …“ with
+ *      brick/dunkel.leiste 0.45, .detailLeiste 0.63, .markt 0.17
  *
- * Gegenproben der Farbrollen (thema.py gegen Compose Desktop; Patches unter gegenproben/):
- *   container-ohne-stauchung   → rot classic.primary/surfaceContainerHighest 4,18
- *   primarycontainer-blau50    → rot classic.primary/primaryContainer 4,24
- *   inverseprimary-ungeprueft  → rot farbfaecher.inversePrimary/inverseSurface 3,73
- *   gebraucht-linie-blass      → rot noppe.gebraucht/surface 2,61
- *   reiteranzeige-blass        → rot classic.anzeige/leiste 1,02
- *   warnfarbe-hell             → rot classic.warnung/surface 1,95
+ * Counter-checks for the color roles (thema.py against Compose Desktop; patches under gegenproben/):
+ *   container-ohne-stauchung   → red classic.primary/surfaceContainerHighest 4.18
+ *   primarycontainer-blau50    → red classic.primary/primaryContainer 4.24
+ *   inverseprimary-ungeprueft  → red farbfaecher.inversePrimary/inverseSurface 3.73
+ *   gebraucht-linie-blass      → red noppe.gebraucht/surface 2.61
+ *   reiteranzeige-blass        → red classic.anzeige/leiste 1.02
+ *   warnfarbe-hell             → red classic.warnung/surface 1.95
  */
 class TextContrastTest {
 
@@ -59,9 +59,9 @@ class TextContrastTest {
     }
 
     /**
-     * Achsen und Hinweise im Diagramm sind Schrift: 4,5:1 auf jeder Fläche, auf der
-     * eine Karte liegen kann. Die Linien sind Grafik und brauchen 3:1 (WCAG 1.4.11),
-     * auch die Gebraucht-Linie.
+     * Axes and hints in the chart are text: 4.5:1 on every surface a card can sit
+     * on. The lines are graphics and need 3:1 (WCAG 1.4.11),
+     * the used line included.
      */
     @Test
     fun `chart text and lines are readable`() {
@@ -76,7 +76,7 @@ class TextContrastTest {
         assertTrue("Diagrammschrift oder -linie zu schwach: $fehler", fehler.isEmpty())
     }
 
-    /** Schrift auf Fläche, so wie Material3 die Rollen paart; dazu Schrift in Haupt-, Fehler- und Gewinnfarbe. */
+    /** Text on surface, the way Material3 pairs the roles; plus text in main, error and profit color. */
     private fun textPairs(f: Fassung): Map<String, Pair<Color, Color>> {
         val s = f.s
         val surfaces = mapOf("surface" to s.surface, "background" to s.background,
@@ -88,7 +88,7 @@ class TextContrastTest {
             pairs["onSurface/$n"] = s.onSurface to fl
             pairs["onSurfaceVariant/$n"] = s.onSurfaceVariant to fl
         }
-        // Dialoge, Menüs und Blätter liegen auf den Containerstufen; ihre Textknöpfe sind primary.
+        // Dialogs, menus and sheets sit on the container steps; their text buttons are primary.
         for ((n, fl) in surfaces) {
             pairs["primary/$n"] = s.primary to fl
             pairs["error/$n"] = s.error to fl
@@ -115,7 +115,7 @@ class TextContrastTest {
 
     private fun accent(f: Fassung) = akzentflaechen(checkNotNull(Design.aus(f.name.substringBefore('/'))), f.name.endsWith("/dunkel"), f.s)
 
-    /** App-Leisten und Wert-Kacheln: Schrift auf ihrer Fläche wie jede andere Rolle. */
+    /** App bars and value tiles: text on their surface like any other role. */
     @Test
     fun `bars and value tiles carry readable text`() {
         val fehler = versions.flatMap { f ->
@@ -128,9 +128,9 @@ class TextContrastTest {
     }
 
     /**
-     * Im Dunkeln keine hellen Flächen (Material 3: Container-Rollen): Eine Leiste oder
-     * Kachel heller als die Schrift auf ihr leuchtet auf Schwarz und zieht den Blick
-     * vom Inhalt weg. Gemessen als relative Luminanz; onSurface liegt bei rund 0,8.
+     * No light surfaces in the dark (Material 3: container roles): a bar or
+     * tile lighter than the text on it glows on black and pulls the eye
+     * away from the content. Measured as relative luminance; onSurface sits around 0.8.
      */
     @Test
     fun `in the dark no bar and no tile glows`() {
@@ -142,7 +142,7 @@ class TextContrastTest {
         assertTrue("Helle Fläche im Dunkeln: $fehler", fehler.isEmpty())
     }
 
-    /** Der Marktwert ist der wichtigste Wert der Detailseite; seine Kachel hebt sich stärker ab als der Kaufpreis. */
+    /** The market value is the detail page's most important value; its tile stands out more than the purchase price. */
     @Test
     fun `the market value tile is more prominent than the purchase price tile`() {
         val fehler = versions.mapNotNull { f ->
@@ -161,7 +161,7 @@ class TextContrastTest {
         assertTrue("Unter 4,5:1: $fehler", fehler.isEmpty())
     }
 
-    /** Das gewählte Ziel der Navigation ist an der Fläche seiner Anzeige erkennbar, nicht nur am Farbton. */
+    /** The navigation's selected destination is recognizable by its indicator's surface, not only by its hue. */
     @Test
     fun `the indicator of the selected tab stands out from bar and side bar`() {
         val fehler = versions.flatMap { f ->
@@ -176,7 +176,7 @@ class TextContrastTest {
         assertTrue("Gewählter Reiter kaum erkennbar: $fehler", fehler.isEmpty())
     }
 
-    /** Warnfarbe zeichnet Balken und Symbole (Monitoring, CSV-Bericht): Grafik braucht 3:1. */
+    /** Warning color draws bars and icons (monitoring, CSV report): graphics need 3:1. */
     @Test
     fun `warning color is visible as a graphic on every surface`() {
         val fehler = versions.flatMap { f ->
@@ -198,9 +198,9 @@ class TextContrastTest {
     }
 
     /**
-     * Löschen und Fehler dürfen nicht wie die Hauptfarbe aussehen. Maß ist der
-     * Abstand im RGB-Raum (0 bis 1,73): Blau gegen Rot liegt über 0,8, das
-     * Noppe-Rot #D91F26 neben #B91C1C bei 0,13.
+     * Delete and error must not look like the main color. The measure is the
+     * distance in RGB space (0 to 1.73): blue against red is above 0.8, the
+     * noppe red #D91F26 next to #B91C1C at 0.13.
      */
     @Test
     fun `error color deviates clearly from the primary color`() {

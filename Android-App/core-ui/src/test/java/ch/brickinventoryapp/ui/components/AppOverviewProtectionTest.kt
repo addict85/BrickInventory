@@ -17,18 +17,18 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 
 /**
- * Mit eingeschalteter App-Sperre zeigt die App-Übersicht kein Vorschaubild, auch wenn
- * „Vorschau verbergen“ aus ist: ab Android 13 über setRecentsScreenshotEnabled(false),
- * darunter über FLAG_SECURE. Ohne Sperre bleibt beides frei.
+ * With the app lock switched on, the app overview shows no preview image, even if
+ * "hide preview" is off: from Android 13 via setRecentsScreenshotEnabled(false),
+ * below that via FLAG_SECURE. Without the lock both stay free.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   uebersicht-ohne-sperrschutz    AppOverviewProtection() tut nichts → rot in beiden Tests
- *   uebersicht-flag-ab-33          auch ab Android 13 nur FLAG_SECURE → rot „ab Android 13 …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   uebersicht-ohne-sperrschutz    AppOverviewProtection() does nothing → red in both tests
+ *   uebersicht-flag-ab-33          only FLAG_SECURE even from Android 13 → red „ab Android 13 …“
  */
 @RunWith(RobolectricTestRunner::class)
 class AppOverviewProtectionTest {
 
-    /** Merkt die Aufrufe, statt sie an den Systemdienst zu geben, den Robolectric nicht nachbildet. */
+    /** Records the calls instead of handing them to the system service, which Robolectric doesn't replicate. */
     class OverviewProbe : ComponentActivity() {
         val vorschau = mutableListOf<Boolean>()
         override fun setRecentsScreenshotEnabled(enabled: Boolean) { vorschau += enabled }

@@ -8,13 +8,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Wohin der Knopf im Kamera-Hinweis führt: Hat Android die Frage gesperrt („nicht mehr
- * fragen“), kehrt sie sofort mit Nein zurück — der Knopf führt dann in die
- * App-Einstellungen. Das Öffnen des Scanners fragt immer nur das System.
+ * Where the button in the camera notice leads: if Android has blocked the question
+ * ("don't ask again"), it returns No right away — the button then leads into the
+ * app settings. Opening the scanner always only asks the system.
  *
- * Gegenprobe:
- *   KameraErlaubnis.erlauben() fragt immer das System (gegenproben/kamera-gesperrt-toter-knopf.patch)
- *   → rot „if the question is blocked, the button leads into the settings“
+ * Counter-check:
+ *   KameraErlaubnis.erlauben() always asks the system (gegenproben/kamera-gesperrt-toter-knopf.patch)
+ *   → red „if the question is blocked, the button leads into the settings“
  */
 class CameraPermissionTest {
 

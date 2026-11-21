@@ -8,19 +8,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Die beiden Prüfungen des Selbst-Updaters ohne Android: Liegt die Adresse aus
- * version.json in unserer Release-Ablage, und darf die Signatur des geladenen APK
- * die laufende ersetzen (auch nach einer Schlüsselrotation)?
+ * The self-updater's two checks without Android: does the address from
+ * version.json sit in our release store, and may the loaded APK's signature
+ * replace the running one (even after a key rotation)?
  *
- * Gegenproben:
- *   A  in liesBelow() den Vergleich des Hosts entfernt → rot „nur Adressen in
- *      der Release-Ablage“ (fremder Host mit gleichem Pfad)
- *   B  in liesBelow() `ziel.pathSegments.size == folder.size + 1` entfernt →
- *      rot „only addresses in the release store“ (Unterordner)
- *   C  signatureFollows() als `alt.aktuell == neu.aktuell` → rot „ein rotierter
+ * Counter-checks:
+ *   A  the host comparison removed from liesBelow() → red „nur Adressen in
+ *      der Release-Ablage“ (foreign host with the same path)
+ *   B  `ziel.pathSegments.size == folder.size + 1` removed from liesBelow() →
+ *      red „only addresses in the release store“ (subfolder)
+ *   C  signatureFollows() as `alt.aktuell == neu.aktuell` → red „ein rotierter
  *      Schluessel mit dem laufenden in der Ahnenreihe passt“
- *   D  im Zweig mit einem Signierer die Ahnenreihe des ALTEN geprüft
- *      (`neu.aktuell.single() in alt.ancestors`) → rot „ein Rueckschritt …“
+ *   D  in the single-signer branch the OLD one's ancestry checked
+ *      (`neu.aktuell.single() in alt.ancestors`) → red „ein Rueckschritt …“
  */
 class UpdateCheckTest {
 

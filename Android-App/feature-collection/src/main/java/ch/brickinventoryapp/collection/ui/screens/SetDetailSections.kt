@@ -11,9 +11,9 @@ import ch.brickinventoryapp.model.domain.Postenart
 import ch.brickinventoryapp.model.domain.Zustand
 
 /**
- * Die Abschnitte der Set-Detailseite. Erweiterungen auf LazyListScope und keine
- * Composables, weil sie Einträge in die LazyColumn der Seite eintragen; die
- * Inhalte darin sind Composables.
+ * The set detail page's sections. Extensions on LazyListScope, not
+ * Composables, because they enter items into the page's LazyColumn; the
+ * content inside them are Composables.
  */
 
 import ch.brickinventoryapp.model.domain.KaufAnsicht
@@ -79,17 +79,17 @@ import ch.brickinventoryapp.shared.ui.StatChipV2
 import ch.brickinventoryapp.shared.ui.WertKacheln
 
 /**
- * Marktpreis je Zustand und Verlauf. Die grosse Preiszeile steht nicht mehr hier: Markt-,
- * Kaufpreis und G&V stehen in jedem Design in den Wert-Kacheln oben, eine Zeile hier
- * wiederholte sie mit einer Prozentangabe aus dem Gesamtvergleich über den Zeilen je Zustand.
+ * Market price per condition and history. The big price row no longer lives here: market,
+ * purchase price and P&L sit in the value tiles above in every design, a row here
+ * would repeat them with a percentage from the overall comparison above the per-condition rows.
  */
 internal fun LazyListScope.setDetailPriceSection(
     detailState: SetDetailUiState, price: SetPriceView?, history: PriceHistoryView?, currency: Waehrung, onErneut: () -> Unit,
 ) {
     if (price != null && !price.noPrice || detailState.priceFetch !is Laden.Daten) {
         item {
-            // „Preisverlauf“, sobald ein Verlauf da ist: Direkt über der Karte steht schon
-            // die Kachel „Marktpreis“, zweimal derselbe Titel las sich wie ein Doppel.
+            // "Price history" as soon as a history exists: right above the card already sits
+            // the "Market price" tile, the same title twice read like a duplicate.
             val verlauf = history?.chart?.values?.isNotEmpty() == true || detailState.historyFetch.laedt
             SectionCard(title = stringResource(if (verlauf) R.string.detail_section_price_history else R.string.detail_section_market)) {
                 PriceCardContent(detailState, price, history, currency, onErneut)
@@ -108,13 +108,13 @@ private fun PriceCardContent(
     } else if (price == null && priceError != null) {
         ErrorHint(priceError.meldung.satz(), onErneut, priceError.art)
     } else if (price != null && !price.noPrice) {
-        // Je Zustand eine Zeile, aber nur bei mehr als einem: Mit einem einzigen
-        // Zustand stünden Preis und G&V der Wert-Kacheln oben gleich noch einmal da.
+        // One row per condition, but only with more than one: with a single
+        // condition, price and P&L would stand there again, same as the value tiles above.
         history?.byCondition?.let { byCond ->
             if (byCond.present().size > 1) MarketPriceByCondition(byCond, currency)
         }
-        // Preis und Verlauf sind zwei Abrufe; der Hinweis verhindert, dass das
-        // Diagramm später kommentarlos in die Karte springt.
+        // Price and history are two fetches; the hint prevents the
+        // chart from later jumping into the card with no explanation.
         val chart = history?.chart
         if (chart != null && chart.values.isNotEmpty()) {
             Spacer(Modifier.height(Abstaende.klein))
@@ -129,20 +129,20 @@ private fun PriceCardContent(
     }
 }
 
-/** Stammdaten: Nummer, Menge (änderbar), Erfassungsdatum. */
+/** Core data: number, quantity (changeable), entry date. */
 internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: String, lagerZustand: LagerUiState, aktionen: SetDetailAktionen, acquisitions: List<KaufAnsicht>, currency: Waehrung, fmtDate: (Instant?) -> String, onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit) {
     // ── Set details section ────────────────────────────────────────────
     item {
         SectionCard(title = stringResource(R.string.detail_section_details)) {
             DetailRow2(stringResource(R.string.detail_set_number), setNumber)
-            // Ohne Datum keine Zeile: „Hinzugefügt —“ sagt nichts.
+            // Without a date, no row: "Added —" says nothing.
             if (set.addedAt != null) DetailRow2(stringResource(R.string.detail_added), fmtDate(set.addedAt))
-            // ── Lagerort ──
+            // ── Storage location ──
             //
-            // Auswahlfeld mit der Möglichkeit, neue Orte zu erfassen. Die Liste gehört dem
-            // Besitzer des Sets; das SetDetailViewModel holt sie mit dem Detail.
-            // Bei grosser Schrift steht das Feld unter der Bezeichnung in voller Breite:
-            // 180 dp neben „Lagerort“ reichten bei 200 % nicht einmal für den Platzhalter.
+            // A picker field with the option to add new locations. The list belongs to the
+            // set's owner; SetDetailViewModel fetches it with the detail.
+            // At large font size, the field sits below the label at full width:
+            // 180 dp next to "Storage location" wasn't even enough for the placeholder at 200%.
             val storageLabel: @Composable () -> Unit = {
                 Text(stringResource(R.string.detail_storage),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -168,8 +168,8 @@ internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: S
                     wert = set.storage ?: "",
                     stock = lagerZustand.stock.map { it.name },
                     onValue = { aktionen.setSetLocation(setNumber, it) },
-                    // Der ganze Rest der Zeile: Mit fester Breite war „No storage location“
-                    // abgeschnitten, und auf dem Tablet stand das Feld halb so breit wie die Karte.
+                    // The rest of the row: at a fixed width, "No storage location" was
+                    // cut off, and on the tablet the field stood half as wide as the card.
                     modifier = Modifier.padding(start = Abstaende.gross).weight(1f),
                 )
             }
@@ -177,11 +177,11 @@ internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: S
                 Modifier.padding(vertical = Abstaende.tiny),
                 color = MaterialTheme.colorScheme.outlineVariant
             )
-            // Mengenregler, an set.quantity gekoppelt: Der Server kann eine Verringerung
-            // deckeln und meldet die wirkliche Menge zurück; ohne die Kopplung behielte der
-            // Regler seine Annahme.
+            // Quantity stepper, tied to set.quantity: the server can cap a decrease
+            // and reports back the real quantity; without the link, the stepper would keep
+            // its own assumption.
             var qty by remember(set.setNumber, set.quantity) { mutableIntStateOf(set.quantity) }
-            // Ein leiser Takt je Schritt: Die Zahl ändert sich, ohne dass man hinsehen muss.
+            // A quiet tick per step: the number changes without needing to look.
             val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
             val takt = { haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.SegmentTick) }
             Row(
@@ -220,7 +220,7 @@ internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: S
                 }
             }
 
-            // Kaufpreis — kompakte Zusammenfassung + Button zum Verwalten
+            // Purchase price — compact summary + button to manage
             val capturedSetNumber = set.setNumber
             val capturedSetTitle  = set.name ?: set.setNumber
             AcquisitionSummarySection(
@@ -234,15 +234,15 @@ internal fun LazyListScope.setDetailDetailsSection(set: SetAnsicht, setNumber: S
     }
 }
 
-/** Wert-Kacheln über den Angaben — in jedem Design (WertKacheln, core-ui). */
+/** Value tiles above the details — in every design (WertKacheln, core-ui). */
 internal fun LazyListScope.setDetailValueTiles(set: SetAnsicht, price: SetPriceView?, pnlPct: Double?, fmtPrice: (Geld?) -> String) {
     item(key = "wertkacheln") {
-        // avg_price zuerst: Marktpreis ist der einfache Schnitt, nicht der mengengewichtete.
+        // avg_price first: the market price is the plain average, not the quantity-weighted one.
         val marktpreis = price?.takeUnless { it.noPrice }?.let { it.avgPrice ?: it.qtyAvgPrice }
         val kaufpreis = set.displayPurchasePrice
         val difference = if (marktpreis != null && kaufpreis != null) marktpreis - kaufpreis else null
         WertKacheln(
-            // Dieselben Wörter wie Finanzen und Merkliste statt eines Strichs, der wie ein Wert aussah.
+            // The same words as finances and watchlist instead of a dash that looked like a value.
             markt = marktpreis?.let(fmtPrice) ?: stringResource(R.string.detail_price_none_yet),
             kauf = kaufpreis?.let(fmtPrice) ?: stringResource(R.string.detail_purchase_none),
             pnl = pnlPct,
@@ -272,15 +272,15 @@ internal fun LazyListScope.setDetailStatChips(set: SetAnsicht) {
     }
 }
 
-/** Das grosse Set-Bild samt Nachladeversuch und Zoom-Auslöser. */
+/** The large set image with retry attempt and zoom trigger. */
 internal fun LazyListScope.setDetailHeroImage(
     set: SetAnsicht,
     imageUrl: String?,
     imageLoader: ImageLoader,
     /**
-     * Nachladeversuch. Als MutableState und nicht als Int: Der Fehlerzweig
-     * SETZT ihn (`detailRetry.intValue = 1`), um Coil zu einem zweiten Anlauf zu
-     * bewegen — ein einfacher Int wäre hier nur eine Kopie.
+     * Retry attempt. As a MutableState and not an Int: the error branch
+     * SETS it (`detailRetry.intValue = 1`) to make Coil try a second
+     * time — a plain Int would only be a copy here.
      */
     detailRetry: androidx.compose.runtime.MutableIntState,
     detailScope: CoroutineScope,
@@ -322,8 +322,8 @@ internal fun LazyListScope.setDetailHeroImage(
                         .clickable(enabled = imageUrl != null, onClickLabel = stringResource(R.string.cd_bild_vergroessern), role = Role.Button) { onZoom() },
                     contentScale = ContentScale.Fit,
                     fallbackSize = 64.dp,
-                    // Weisser Grund über die ganze Kartenbreite: Das Bild stand sonst schmaler
-                    // als seine Karte, mit harten Kanten links und rechts.
+                    // White background across the whole card width: the image otherwise stood narrower
+                    // than its card, with hard edges on the left and right.
                     bildgrund = true,
                     innerGap = Abstaende.mittel,
                 )
@@ -333,43 +333,43 @@ internal fun LazyListScope.setDetailHeroImage(
 }
 
 /**
- * Preisalarm — „sag Bescheid, wenn das Set unter X fällt“. Eigene Karte, weil der
- * Alarm zum Konto gehört, nicht zum Set, und beim Verschieben nicht mitwandert.
- * Gespeichert wird beim Tippen nach einer Ruhezeit (Alarmeingabe.RUHE_MS, im
- * ViewModel, damit sie das Verlassen überlebt): Am Telefon kommt der Fokuswechsel
- * oft nie.
+ * Price alert — "let me know when this set falls below X". Its own card, because the
+ * alert belongs to the account, not the set, and doesn't move with it on a move.
+ * Saved on typing after a quiet period (Alarmeingabe.RUHE_MS, in the
+ * ViewModel so it survives leaving): on the phone the focus change
+ * often never happens.
  */
 internal fun LazyListScope.setDetailAlarmSection(
     setNumber: String,
     alerts: List<PriceAlertView>,
     currency: Waehrung,
     onSet: (setNumber: String, richtung: Alarmrichtung, roh: String, zustand: Zustand) -> Unit,
-    /** Aus, wo die Liste selbst schon einen Rand hat (Merkposten-Detail). */
+    /** Off, where the list itself already has a margin (watchlist-item detail). */
     outerGap: Boolean = true,
 ) {
     item {
-        // Fuer WELCHEN Zustand der Alarm gilt. Neu und gebraucht liegen oft
-        // um ein Vielfaches auseinander; wer ein gebrauchtes Exemplar sucht,
-        // hatte bisher keine Moeglichkeit, darauf zu warten.
+        // For WHICH condition the alert applies. New and used often sit
+        // far apart; whoever is looking for a used copy had no way
+        // to wait for it until now.
         var zustand by rememberSaveable {
             mutableStateOf(ALARM_STATE_DEFAULT)
         }
         val alarm = alerts.firstOrNull { it.condition == zustand }
         SectionCard(title = stringResource(R.string.detail_alert), outerGap = outerGap) {
-            // Der Zustandswechsel LOADS nur — er speichert nicht. Ein Wechsel
-            // ist die Frage „was steht fuer gebraucht?", keine Eingabe. Wuerde
-            // hier gespeichert, legte schon das Umschalten einen Alarm im
-            // neuen Zustand an. Dass `alarm` oben am Zustand haengt, erledigt
-            // das Laden von selbst: Die Liste traegt beide.
+            // The condition switch only LOADS — it doesn't save. A switch
+            // is the question "what's set for used?", not an input. If
+            // it saved here, switching alone would already create an alert in the
+            // new condition. That `alarm` hangs on the condition above
+            // takes care of this on its own via loading: the list carries both.
             SegmentChoice(
                 optionen = listOf(Zustand.NEU to stringResource(R.string.condition_new), Zustand.GEBRAUCHT to stringResource(R.string.condition_used)),
                 gewaehlt = zustand,
                 onWahl = { zustand = it },
             )
             Spacer(Modifier.height(Abstaende.klein))
-            // Schluessel ist der Alarm selbst: Kommt einer vom Server (geladen
-            // oder gerade gespeichert), soll das Feld ihn zeigen statt den
-            // alten Text zu behalten.
+            // Key is the alert itself: if one comes from the server (loaded
+            // or just saved), the field should show it instead of keeping
+            // the old text.
             var richtung by rememberSaveable(alarm?.richtung) {
                 mutableStateOf(alarm?.richtung ?: Alarmrichtung.UNTER)
             }
@@ -377,9 +377,9 @@ internal fun LazyListScope.setDetailAlarmSection(
                 mutableStateOf(alarm?.let { if (it.schwelle.positive) fmtEingabe(it.schwelle) else "" } ?: "")
             }
 
-            // Segmente statt eines Auswahlfelds: genau zwei Möglichkeiten, beide ohne
-            // Aufklappen lesbar. Die Richtung geht nur mit, wenn eine Schwelle dasteht — sonst
-            // liefe der Aufruf auf ein Löschen hinaus.
+            // Segments instead of a picker field: exactly two options, both readable
+            // without expanding. The direction only goes along if a threshold is given — otherwise
+            // the call would amount to a delete.
             SegmentChoice(
                 optionen = listOf(Alarmrichtung.UNTER to stringResource(R.string.detail_alert_chip_below),
                                   Alarmrichtung.UEBER to stringResource(R.string.detail_alert_chip_above)),
@@ -387,9 +387,9 @@ internal fun LazyListScope.setDetailAlarmSection(
                 onWahl = { neu -> richtung = neu
                     if (schwelle.isNotBlank()) onSet(setNumber, neu, schwelle, zustand) },
             )
-            // Unter den Chips in voller Breite: neben ihnen blieb bei grosser Schrift kein Platz.
-            // Gespeichert wird nach der Ruhezeit im ViewModel (ein Aufruf, nicht je Taste); die
-            // Zeile darunter bestätigt, was der Server angenommen hat.
+            // Below the chips at full width: next to them there was no room left at large font size.
+            // Saved after the quiet period in the ViewModel (one call, not per keystroke); the
+            // row below confirms what the server accepted.
             OutlinedTextField(
                 value = schwelle,
                 onValueChange = { roh ->
@@ -401,7 +401,7 @@ internal fun LazyListScope.setDetailAlarmSection(
                 supportingText = {
                     Text(
                         if (alarm == null) stringResource(R.string.detail_alert_hint)
-                        // Der Merker sagt, ob schon gemeldet wurde — sonst fragt man sich, warum keine Mail mehr kommt.
+                        // The marker says whether it's already been reported — otherwise you'd wonder why no more mail arrives.
                         else stringResource(
                             R.string.detail_alert_saved,
                             stringResource(if (alarm.richtung == Alarmrichtung.UEBER) R.string.detail_alert_above else R.string.detail_alert_below),
@@ -418,6 +418,6 @@ internal fun LazyListScope.setDetailAlarmSection(
     }
 }
 
-// Kaufen und Preisvergleich stehen nicht am Set-Detail: Es zeigt ein Set, das man
-// besitzt; beide Knöpfe gibt es im Katalog- und im Merkposten-Detail. Die Felder
-// bleiben im Modell, weil der Server sie schickt und die Merkliste sie liest.
+// Buy and price comparison don't sit on the set detail: it shows a set you
+// own; both buttons live in the catalog and watchlist-item detail. The fields
+// stay in the model because the server sends them and the watchlist reads them.

@@ -14,18 +14,18 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Jedes Design belegt die Rollen, die Dialoge, Menüs, Snackbar und Textfelder
- * lesen, mit eigenen Farben statt mit der lila Grundpalette von Material3.
+ * Every design fills the roles that dialogs, menus, snackbar and text fields
+ * read, with its own colors instead of Material3's purple base palette.
  *
- * Gegenprobe: `.let { supplementRoles(…) }` in farbschema() entfernt — beide
- * Tests rot (surfaceContainer* gleich der Grundpalette, im dunklen Werkbank-
- * Design zudem die Stufen falsch herum). tertiaryContainer in StudColors
- * entfernt — der erste Test rot für "noppe" und "hochglanz".
+ * Counter-check: `.let { supplementRoles(…) }` removed from farbschema() — both
+ * tests red (surfaceContainer* equal to the base palette, and in the dark werkbank
+ * design the steps also reversed). tertiaryContainer removed from StudColors
+ * — the first test red for "noppe" and "hochglanz".
  *
- * Gegenprobe Rahmen (28.10., ohne Android-SDK am Nachbau gemessen: dieselbe
- * Formel in Python, Flächenstufen in Oklab gemischt wie Compose): mit den alten
- * outline-Werten rot für classic (1,00:1 gegen surfaceContainerHighest), brick
- * (1,19), werkbank (1,03) und farbfaecher (1,01); noppe blieb grün (13,8).
+ * Counter-check for borders (Oct 28, measured on a rebuild without the Android SDK: the same
+ * formula in Python, surface steps mixed in Oklab like Compose): with the old
+ * outline values red for classic (1.00:1 against surfaceContainerHighest), brick
+ * (1.19), werkbank (1.03) and farbfaecher (1.01); noppe stayed green (13.8).
  */
 class ColorRolesTest {
 
@@ -57,9 +57,9 @@ class ColorRolesTest {
     )
 
     /**
-     * Gegenprobe:
-     * mit dem alten #16A34A rot für classic (3,30:1 auf surface), farbfaecher
-     * und noppe; mit #15803D rot für noppe (4,43:1 auf background).
+     * Counter-check:
+     * with the old #16A34A red for classic (3.30:1 on surface), farbfaecher
+     * and noppe; with #15803D red for noppe (4.43:1 on background).
      */
     @Test
     fun `profit color is readable as text on every surface`() {
@@ -105,7 +105,7 @@ class ColorRolesTest {
                 val k = Contrast.verhaeltnis(frame, flaeche.toArgb())
                 if (k < Contrast.FRAME) fehler += "$d.outline/$name " + "%.2f".format(k)
             }
-            // Trennlinien nehmen outlineVariant; es muss der leisere Ton bleiben.
+            // Dividers take outlineVariant; it must stay the quieter tone.
             val quiet = Contrast.verhaeltnis(s.outlineVariant.toArgb(), s.surface.toArgb())
             if (quiet >= Contrast.verhaeltnis(frame, s.surface.toArgb())) fehler += "$d.outlineVariant"
         }
@@ -113,9 +113,9 @@ class ColorRolesTest {
     }
 
     /**
-     * Das Ladeskelett (Skelett.kt) zeichnet skeletonTone auf background.
-     * Gegenprobe: in skeletonTone surfaceVariant zurückgegeben →
-     * rot „Ladekacheln heben sich …“ (classic 1,05, brick 1,03, farbfaecher 1,05, noppe 1,07).
+     * The loading skeleton (Skelett.kt) draws skeletonTone on background.
+     * Counter-check: skeletonTone returning surfaceVariant →
+     * red „Ladekacheln heben sich …“ (classic 1.05, brick 1.03, farbfaecher 1.05, noppe 1.07).
      */
     @Test
     fun `loading tiles stand out from the background`() {
@@ -128,7 +128,7 @@ class ColorRolesTest {
     }
 
     private companion object {
-        /** Keine Textgrenze, aber sichtbar: deutlich über den gemessenen 1,05:1. */
+        /** No text threshold, but visible: well above the measured 1.05:1. */
         const val SKELETON_CONTRAST = 1.2
     }
 
@@ -139,7 +139,7 @@ class ColorRolesTest {
             val s = f.schema
             val stufen = listOf(s.surface, s.surfaceContainerLow, s.surfaceContainer,
                 s.surfaceContainerHigh, s.surfaceContainerHighest).map { it.luminance() }
-            // Im Hellen wird jede Stufe dunkler, im Dunklen heller.
+            // In the light every step gets darker, in the dark lighter.
             val correct = if (f.dunkel) stufen.zipWithNext().all { (a, b) -> b > a }
                           else stufen.zipWithNext().all { (a, b) -> b < a }
             assertTrue("$d: Helligkeit der Stufen $stufen", correct)
@@ -147,10 +147,10 @@ class ColorRolesTest {
     }
 
     /**
-     * Werkbank ist ein eigenes Design, nicht „Klassisch dunkel“ unter anderem Namen: warmes
-     * Graphit und Messing gegen kühles Anthrazit und Blau, wie themes/werkbank.css.
-     * Gegenprobe werkbank-wie-klassisch-dunkel: Werkbank wieder mit den kühlen Flächen und
-     * Hellblau als Zweitfarbe → rot.
+     * Werkbank is its own design, not "classic dark" under another name: warm
+     * graphite and brass against cool anthracite and blue, as in themes/werkbank.css.
+     * Counter-check werkbank-wie-klassisch-dunkel: werkbank given the cool surfaces again
+     * with light blue as the secondary color → red.
      */
     @Test
     fun `Workbench and Classic dark differ in surface and accent`() {

@@ -20,13 +20,13 @@ import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowDialog
 
 /**
- * Ein aufgedecktes Passwort in einer Rückfrage steht sofort unter FLAG_SECURE, auch
- * wenn die App-Übersicht nicht verborgen ist: Der Dialog hat ein eigenes
- * Fenster, das den Schutz der Seite erst bei seinem nächsten Neuaufbau übernähme.
+ * A revealed password in a prompt is under FLAG_SECURE right away, even
+ * if the app overview isn't hidden: the dialog has its own
+ * window, which would only pick up the page's protection on its next rebuild.
  *
- * Gegenprobe (Robolectric, misst die CI; Job `gegenproben`):
- *   sichtschutz-ohne-dialogfenster  Sichtschutz() setzt nur das Fenster der Activity →
- *                                   rot „ein aufgedecktes Passwort im Dialog …“
+ * Counter-check (Robolectric, measured by CI; job `gegenproben`):
+ *   sichtschutz-ohne-dialogfenster  Sichtschutz() only sets the Activity's window →
+ *                                   red „ein aufgedecktes Passwort im Dialog …“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -50,7 +50,7 @@ class DialogPrivacyScreenTest {
                     fehler = null, laeuft = false, onBestaetigen = { _, _ -> }, onAbbrechen = {})
             }
         }
-        // Tippen baut den Dialog neu auf; danach ändert nur noch das Auge seinen Inhalt.
+        // Tapping rebuilds the dialog; after that only the eye changes its content.
         compose.onNode(hasSetTextAction()).performTextInput("geheim-123")
         compose.waitForIdle()
         assertFalse("Verdeckt braucht der Dialog keinen Schutz", geschuetzt(dialogWindow()))

@@ -23,23 +23,23 @@ import java.security.cert.CertificateFactory
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Die Fassungsbeschreibung des Selbst-Updaters ist mit dem eigenen
- * Beschreibungsschlüssel signiert: Wer nur Schreibrecht am Repository hat, kann ein
- * Update weder unterdrücken noch auf ein anderes APK umleiten. Signiert wird wie im
- * Signierjob (`openssl dgst -sha256 -sign`, ECDSA P-256). Die Signatur des
- * APK-Schlüssels (Feld `signatur`, früherer Übergangsweg) gilt nicht mehr.
+ * The self-updater's version description is signed with its own
+ * description key: whoever only has write access to the repository can neither
+ * suppress an update nor redirect it to a different APK. Signed as in the
+ * signing job (`openssl dgst -sha256 -sign`, ECDSA P-256). The APK key's
+ * signature (field `signatur`, a former transition path) no longer counts.
  *
- * Gegenproben:
- *   A  checkedDescription() ohne die Zeile `if (!echt) return null`
- *      → rot „ein fremder Schluessel …“, „veraenderte Daten …“ und „eine
+ * Counter-checks:
+ *   A  checkedDescription() without the line `if (!echt) return null`
+ *      → red „ein fremder Schluessel …“, „veraenderte Daten …“ and „eine
  *      unsignierte version.json …“; gegenproben/update-beschreibung-ungeprueft.patch
- *   B  checksumFits() vergleicht nur als Präfix (`startsWith`) und ohne die
- *      Leer-Abfrage → rot „the APK must carry the signed checksum“
- *   C  isAllowedApkAddress() ohne VERSION_LABEL.matches → rot „nur Fassungsetiketten …“
- *   D  SignedDescription liest wieder das Feld `signatur` als Beschreibungssignatur
- *      (`@SerialName("signatur")`) → rot „the signature of the APK key no longer applies“;
+ *   B  checksumFits() compares only as a prefix (`startsWith`) and without the
+ *      empty check → red „the APK must carry the signed checksum“
+ *   C  isAllowedApkAddress() without VERSION_LABEL.matches → red „nur Fassungsetiketten …“
+ *   D  SignedDescription reads the `signatur` field as the description signature again
+ *      (`@SerialName("signatur")`) → red „the signature of the APK key no longer applies“;
  *      gegenproben/beschreibung-ohne-schluesseltrennung.patch
- *   E  descriptionKey() nur den ersten Block (`.take(1)`) → rot „waehrend
+ *   E  descriptionKey() only the first block (`.take(1)`) → red „waehrend
  *      eines Schluesselwechsels gelten alter und neuer Schluessel“
  */
 class UpdateSignatureTest {
@@ -50,7 +50,7 @@ class UpdateSignatureTest {
 
     private fun ecKey(): KeyPair = KeyPairGenerator.getInstance("EC").apply { initialize(256) }.generateKeyPair()
 
-    /** Signiert wie der Signierjob: `openssl dgst -sha256 -sign` mit einem EC-Schlüssel. */
+    /** Signed like the signing job: `openssl dgst -sha256 -sign` with an EC key. */
     private fun signiere(paar: KeyPair, daten: String = DATA): String = Base64.getEncoder().encodeToString(
         Signature.getInstance("SHA256withECDSA").run { initSign(paar.private); update(b64.decode(daten)); sign() })
 
@@ -93,9 +93,9 @@ class UpdateSignatureTest {
     }
 
     /**
-     * FOREIGN_SIG ist eine gültige ECDSA-Signatur über DATA (openssl, Schlüssel von FOREIGN_ZERT).
-     * Im Feld `signatur`, wo frühere Releases die APK-Signatur trugen, zählt sie nicht mehr;
-     * nur im Feld des Beschreibungsschlüssels und nur, wenn die App diesen Schlüssel kennt.
+     * FOREIGN_SIG is a valid ECDSA signature over DATA (openssl, key from FOREIGN_ZERT).
+     * In the `signatur` field, where older releases carried the APK signature, it no longer counts;
+     * only in the description key's field, and only if the app knows that key.
      */
     @Test
     fun `the signature of the APK key no longer applies`() {
@@ -122,7 +122,7 @@ class UpdateSignatureTest {
             checkedDescription(shell(signiere(alt)), descriptionKey(pem(neu))))
     }
 
-    /** Die Datei, die die App liest: nur Kommentare oder lesbare EC-Schlüssel. */
+    /** The file the app reads: only comments or readable EC keys. */
     @Test
     fun `the app's key file contains only readable keys`() {
         val datei = File(Quellen.project, "core-resources/src/main/res/raw/beschreibungs_schluessel.pem")

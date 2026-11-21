@@ -11,11 +11,11 @@ import android.os.SystemClock
 import java.util.UUID
 
 /**
- * Ein Clip für Geheimnisse (Gutschein-Nummer und PIN, TOTP-Schlüssel,
- * Wiederherstellungscodes, Einladungscode). Ab Android 13 zeigt das System den
- * Inhalt dann nicht in der Kopier-Vorschau; Tastaturen schlagen ihn nicht vor.
- * Der Schlüssel als Text, weil ClipDescription.EXTRA_IS_SENSITIVE erst ab API 33
- * existiert und ältere Geräte ihn ebenso lesen dürfen.
+ * A clip for secrets (voucher number and PIN, TOTP key,
+ * recovery codes, invite code). From Android 13 the system then doesn't show the
+ * content in the copy preview; keyboards don't suggest it.
+ * The key as text, because ClipDescription.EXTRA_IS_SENSITIVE only exists
+ * from API 33, and older devices may read it the same way regardless.
  */
 internal fun secretClip(etikett: String, text: String, kennung: String? = null): ClipData =
     ClipData.newPlainText(etikett, text).apply {
@@ -26,20 +26,20 @@ internal fun secretClip(etikett: String, text: String, kennung: String? = null):
     }
 
 /**
- * Erst ab Android 13 hält das System einen als geheim markierten Clip aus Kopier-Vorschau
- * und Tastaturverlauf heraus. Darunter steht er dort im Klartext: Kopieren gibt es dann
- * nur, wo es keinen anderen Weg gibt, und mit Warnung ([SecretKopierWarning]).
+ * Only from Android 13 does the system keep a clip marked sensitive out of the copy
+ * preview and keyboard history. Below that it sits there in plain text: copying then
+ * only exists where there is no other way, and with a warning ([SecretKopierWarning]).
  */
 fun secretCopyable(sdk: Int): Boolean = sdk >= Build.VERSION_CODES.TIRAMISU
 
-/** Derselbe Wert wie ClipDescription.EXTRA_IS_SENSITIVE. */
+/** The same value as ClipDescription.EXTRA_IS_SENSITIVE. */
 internal const val IS_SECRET = "android.content.extra.IS_SENSITIVE"
 private const val SECRET_ID = "ch.brickinventoryapp.geheim_kennung"
 
 /**
- * Kopiert ein Geheimnis und nimmt es nach [SECRET_FLOW_MS] wieder heraus, wenn
- * dort noch derselbe Clip liegt (secretStep). Am Haupt-Looper statt im Scope
- * des Bildschirms: Der endet beim Verlassen der Seite, und das Geheimnis bliebe.
+ * Copies a secret and takes it back out after [SECRET_FLOW_MS] if
+ * the same clip is still there (secretStep). On the main looper instead of the
+ * screen's scope: that ends when leaving the page, and the secret would remain.
  */
 object SecretClipboard {
     @Volatile private var kennung: String? = null
@@ -54,7 +54,7 @@ object SecretClipboard {
         Handler(Looper.getMainLooper()).postDelayed({ pruefe(app) }, SECRET_FLOW_MS)
     }
 
-    /** Auch beim Zurückkommen in die App (MainActivity): Im Hintergrund ist die Ablage nicht lesbar. */
+    /** Also on returning to the app (MainActivity): the clipboard is not readable in the background. */
     fun pruefe(ctx: Context) {
         val cm = ctx.applicationContext.getSystemService(ClipboardManager::class.java) ?: return
         val clip = runCatching { cm.primaryClip }.getOrNull()

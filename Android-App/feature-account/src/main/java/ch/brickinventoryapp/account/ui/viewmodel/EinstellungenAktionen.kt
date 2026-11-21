@@ -6,7 +6,7 @@ import ch.brickinventoryapp.model.domain.Waehrung
 import ch.brickinventoryapp.model.domain.Zustand
 import ch.brickinventoryapp.model.domain.LocationEntryView
 
-/** Was die Einstellungen und ihre Unterseiten am Konto ändern; die Karten kennen nur diese Schnittstelle. */
+/** What settings and its subpages change on the account; the cards only know this interface. */
 interface EinstellungenAktionen {
     fun saveSettings(currency: Waehrung, condition: Zustand)
     fun saveUserDefaultCondition(condition: Zustand?)
@@ -14,13 +14,13 @@ interface EinstellungenAktionen {
     fun changeAlarmThreshold(setNumber: String, condition: Zustand, richtung: Alarmrichtung, schwelle: Geld)
     fun setAlarmThreshold(setNumber: String, condition: Zustand, richtung: Alarmrichtung, roh: String)
     fun deleteAlarm(setNumber: String, condition: Zustand)
-    /** Einen Alarm anlegen wie in der Web-App: Setnummer, Zustand, Richtung und Schwelle (roh). */
+    /** Create an alert as in the web app: set number, condition, direction and threshold (raw). */
     fun putAlarmAn(setNumber: String, condition: Zustand, richtung: Alarmrichtung, roh: String)
     fun loadOwnLocations()
     fun putLocationAn(name: String)
     fun nameLocationUm(id: Int, name: String)
     fun switchLocationDefault(id: Int, isDefault: Boolean)
     fun deleteLocation(id: Int)
-    /** Löschen mit „Rückgängig“; ohne Seite, die es anbietet, gleich löschen. */
+    /** Delete with "Undo"; without a page that offers it, delete right away. */
     fun locationDeleteReserve(ort: LocationEntryView) = deleteLocation(ort.id)
 }

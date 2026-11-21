@@ -36,27 +36,27 @@ internal fun WantedItemRow(
     w: WantedItemView, serverUrl: String, imageLoader: coil3.ImageLoader,
     gewaehlt: Boolean,
     onOeffnen: () -> Unit,
-    /** Im Raster mit Nachbarn: gleiche Höhe erzwingen. Auf dem Telefon nicht — dort blieb eine Leerzeile. */
+    /** In the grid with neighbors: force equal height. Not on the phone — there a blank line stayed. */
     multiColumn: Boolean = false,
 ) {
-    // Die ganze Karte öffnet das Detail — wie die Kachel in der Galerie. Sie
-    // trägt keinen Knopf, tut also auf ihrer ganzen Fläche dasselbe;
-    // Übernehmen und Löschen stehen im Detail. Steht das Detail daneben, trägt
-    // die geöffnete Karte einen Rahmen in der Hauptfarbe.
+    // The whole card opens the detail — like the tile in the gallery. It
+    // carries no button, so it does the same thing across its whole surface;
+    // taking over and deleting live in the detail. If the detail sits next to it,
+    // the open card carries a border in the main color.
     Card(
         Modifier.fillMaxWidth()
             .semantics { selected = gewaehlt }
             .clickable(role = Role.Button, onClick = onOeffnen),
         border = if (gewaehlt) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
-        // Dieselbe Karte wie Galerie und Finanzen (AppKarte): Die graue Fläche der
-        // Vorgabe-Card war ein dritter Kartenstil für dieselbe Ebene.
+        // The same card as gallery and finances (AppKarte): the gray surface of the
+        // default card was a third card style for the same level.
         shape = Formen.karte,
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
     ) {
-        // Ohne Preis im Cache war der Preisjob seit dem Eintragen noch nicht da. „Preis
-        // folgt“ steht dann in der Zeile mit Nummer und Jahr: Allein rechts unten liess es
-        // eine leere Zeile in der Karte.
+        // Without a price in the cache, the price job hasn't run since it was entered. "Price
+        // coming" then sits in the row with number and year: alone at the bottom right it left
+        // an empty line in the card.
         val preis = w.marktpreis
         Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
@@ -70,11 +70,11 @@ internal fun WantedItemRow(
                     bildgrund = true,
                 )
                 Column(Modifier.weight(1f)) {
-                    // Kein Name heisst: Der Katalog kennt das Set nicht. Der
-                    // benannte Preis dafuer, dass die Merkliste keine zweite
-                    // Kopie der Stammdaten fuehrt (Migration 0021).
-                    // Immer zwei Zeilen Platz wie in der Galerie: Im Tablet-Raster stand eine
-                    // Karte mit kurzem Namen niedriger als ihre Nachbarn.
+                    // No name means: the catalog doesn't know the set. Named for the
+                    // reason that the watchlist keeps no second
+                    // copy of the core data (migration 0021).
+                    // Always room for two lines as in the gallery: in the tablet grid, a
+                    // card with a short name used to sit lower than its neighbors.
                     Text(w.name ?: w.setNumber, fontWeight = FontWeight.SemiBold, minLines = if (multiColumn) 2 else 1, maxLines = 2,
                         overflow = TextOverflow.Ellipsis)
                     Text(
@@ -90,8 +90,8 @@ internal fun WantedItemRow(
                     )
                 }
             }
-            // FlowRow: Bei grosser Schrift rückt der Preis unter die Plaketten, statt sie zu quetschen.
-            // Mindesthöhe einer Plakette, auch ohne Inhalt: Karten mit und ohne Plakette sind gleich hoch.
+            // FlowRow: at large font size, the price moves under the badges instead of squeezing them.
+            // Minimum badge height, even without content: cards with and without a badge are the same height.
             FlowRow(if (multiColumn) Modifier.heightIn(min = 32.dp) else Modifier,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                     verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
@@ -102,11 +102,11 @@ internal fun WantedItemRow(
                         icon = if (a.ausgeloest) Icons.Default.NotificationsActive else Icons.Default.Alarm,
                     )
                 }
-                // „Habe ich das inzwischen?" meint das BLICKFELD: Beim
-                // Grossvater heisst „ich habe es" auch „der Enkel hat es".
+                // "Do I have this by now?" means the BLICKFELD: for a
+                // grandfather account, "I have it" also means "the sub-account has it".
                 if (w.owned) InfoBadge(stringResource(R.string.wanted_owned), icon = Icons.Default.Check)
                 Spacer(Modifier.weight(1f))
-                // Marktpreis statt Knopf: In die Sammlung übernommen wird im Merkposten-Detail.
+                // Market price instead of a button: taking it into the collection happens in the watchlist-item detail.
                 if (preis != null) {
                     Text(fmtMoney(preis, w.waehrung), fontWeight = FontWeight.Bold,
                          maxLines = 1, softWrap = false, modifier = Modifier.align(Alignment.CenterVertically))
@@ -116,5 +116,5 @@ internal fun WantedItemRow(
     }
 }
 
-/** Mindestbreite einer Spalte der Merkliste. */
+/** Minimum width of a watchlist column. */
 internal val WANTED_COLUMN = 340.dp

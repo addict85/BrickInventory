@@ -1,4 +1,4 @@
-// Die eigenen Sets: Galerie, Set-Detail, Merkliste, Käufe, Vergleich und Erfassen per Scanner.
+// One's own sets: gallery, set detail, watchlist, purchases, comparison and entry by scanner.
 plugins {
     alias(libs.plugins.brickinventory.android.feature)
 }
@@ -10,7 +10,7 @@ android {
 dependencies {
     implementation(project(":core-model"))
     implementation(project(":core-data"))
-    // openExtern und ownAddress.
+    // openExtern and ownAddress.
     implementation(project(":core-network"))
     implementation(project(":core-ui"))
     implementation(project(":core-ui-inventory"))
@@ -23,8 +23,8 @@ dependencies {
     implementation(libs.mlkit.textrec)
 
     testImplementation(project(":core-testing"))
-    // Die Testserver antworten im Wire-Format.
+    // The test servers answer in wire format.
     testImplementation(project(":core-contract"))
-    // Die Tests bauen Ablage und Bearbeitungen selbst.
+    // The tests build the cache and edits themselves.
     testImplementation(project(":core-offline"))
 }

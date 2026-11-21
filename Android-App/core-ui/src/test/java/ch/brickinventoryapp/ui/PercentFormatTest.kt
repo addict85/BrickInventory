@@ -11,16 +11,16 @@ import java.util.Locale
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Prozente kommen aus fmtProzent(): eine Nachkommastelle, Vorzeichen bei ≠ 0,
- * Zeichen und Abstand nach der App-Sprache.
+ * Percentages come from fmtProzent(): one decimal place, sign when ≠ 0,
+ * symbol and spacing per the app language.
  *
- * Gegenproben:
- *   A  das Runden vor dem Vorzeichen entfernt → rot „was auf null rundet, …“
- *      („-0.0%“)
- *   B  das Plus weggelassen → rot „ein Gewinn trägt ein Plus …“
- *   C  getNumberInstance statt getPercentInstance (Zahl ohne Zeichen) → rot
- *      „ein Gewinn …“ und „ein Verlust …“
- *   D  in PortfolioChart.kt wieder "%.1f%%".format → rot „kein Bildschirm …“
+ * Counter-checks:
+ *   A  rounding removed before the sign → red „was auf null rundet, …“
+ *      ("-0.0%")
+ *   B  the plus left out → red „ein Gewinn trägt ein Plus …“
+ *   C  getNumberInstance instead of getPercentInstance (number without symbol) → red
+ *      „ein Gewinn …“ and „ein Verlust …“
+ *   D  "%.1f%%".format back in PortfolioChart.kt → red „kein Bildschirm …“
  */
 class PercentFormatTest {
 
@@ -29,7 +29,7 @@ class PercentFormatTest {
     @After
     fun zu() = Locale.setDefault(vorher)
 
-    /** Was die Plattform für die App-Sprache aus einem Anteil macht. */
+    /** What the platform makes of a ratio for the app language. */
     private fun platform(share: Double) = NumberFormat.getPercentInstance(appNumberLocale())
         .apply { minimumFractionDigits = 1; maximumFractionDigits = 1 }.format(share)
 

@@ -60,13 +60,13 @@ import ch.brickinventoryapp.shared.ui.ScopeFilterRow
 import ch.brickinventoryapp.ui.components.Suchfeld
 
 /**
- * Der Schlüssel einer Zeile: Nummer, Zustand und Konto. Dasselbe Set kann neu und
- * gebraucht und bei zwei Konten dastehen; mit der Nummer allein verlöre Compose
- * die Zuordnung.
+ * A row's key: number, condition and account. The same set can stand new and
+ * used and under two accounts; the number alone would lose Compose
+ * the mapping.
  */
 private fun wantedItemKey(w: WantedItemView) = "${w.setNumber}|${w.condition.kennung}|${w.userId}"
 
-/** Was Merkliste und Merkposten-Detail zeigen; die Route sammelt es aus den Flüssen. */
+/** What the watchlist and watchlist-item detail show; the route gathers it from the flows. */
 internal data class MerklisteZustand(
     val appState: AppUiState,
     val blick: ScopeUiState,
@@ -75,7 +75,7 @@ internal data class MerklisteZustand(
     val lagerZustand: LagerUiState,
 )
 
-/** Merkliste und Detail am Navigationsziel: ein ViewModel für beide Hälften. */
+/** Watchlist and detail at the navigation destination: one ViewModel for both halves. */
 @Composable
 fun WantedRoute(
     vm: MerklisteViewModel,
@@ -94,8 +94,8 @@ fun WantedRoute(
 }
 
 /**
- * „von der Merkliste genommen“ mit „Rückgängig“. Gelöscht wird erst, wenn die Snackbar
- * ohne Rückgängig endet — auch wenn sie verschwindet, weil man die Merkliste verlässt.
+ * "removed from watchlist" with "Undo". Only deleted once the snackbar ends
+ * without Undo — even if it disappears because you leave the watchlist.
  */
 @Composable
 fun WantedItemUndoRoute(vm: MerklisteViewModel, snackbarHostState: SnackbarHostState) {
@@ -115,7 +115,7 @@ fun WantedItemUndoRoute(vm: MerklisteViewModel, snackbarHostState: SnackbarHostS
     }
 }
 
-/** Das Merkposten-Detail als eigene Seite (Telefon). */
+/** The watchlist-item detail as its own page (phone). */
 @Composable
 internal fun WantedItemDetailRoute(
     vm: MerklisteViewModel,
@@ -134,9 +134,9 @@ internal fun WantedItemDetailRoute(
 }
 
 /**
- * Die Merkliste — als Liste, weil sie gelesen und abgearbeitet wird: Nummer, Jahr,
- * Zustand und Preisalarm nebeneinander, wie in der Webapp. Die Regeln stehen am
- * Server (utils/merkliste.ts); der Bildschirm zeigt und ruft.
+ * The watchlist — as a list, because it's read and worked through: number, year,
+ * condition and price alert side by side, as in the web app. The rules live on the
+ * server (utils/merkliste.ts); the screen shows and calls.
  */
 @Composable
 internal fun MerklisteScreen(
@@ -145,41 +145,41 @@ internal fun MerklisteScreen(
     imageLoader: coil3.ImageLoader,
     onScan: () -> Unit,
     onOeffnen: (String, Zustand) -> Unit,
-    /** Setnummer und Zustand des Merkpostens, dessen Detail daneben offen ist. */
+    /** Set number and condition of the watchlist item whose detail is open next to it. */
     gewaehlt: Pair<String, Zustand>? = null,
 ) {
     val zustand = ansicht.liste
-    // Die Bildadressen zeigen auf den eigenen Server (Proxy), nicht roh aufs
-    // CDN — dieselbe Regel wie in Galerie, Teilen und Finanzen.
+    // The image addresses point to one's own server (proxy), not raw at the
+    // CDN — the same rule as in gallery, parts and finances.
     val appState = ansicht.appState
     val blick = ansicht.blick
 
-    // Übernommen wird über das Detail (MerkpostenDetailScreen), wo Anzahl, Kaufpreis
-    // und Zustand zur Wahl stehen; die Zeile zeigt dafür den Marktpreis.
+    // Taking it over goes through the detail (MerkpostenDetailScreen), where quantity, purchase price
+    // and condition are chosen; the row shows the market price for that.
     var openMask by rememberSaveable { mutableStateOf(false) }
 
-    // ── Der Filter ──
+    // ── The filter ──
     //
-    // Dieselben Bausteine in derselben Reihenfolge wie in der Galerie: Kontofilter,
-    // Suchfeld, Chips. Kein Lagerortfilter — was man nicht hat, liegt nirgends; dafür
-    // der Zustand, weil dasselbe Set neu und gebraucht dastehen kann.
+    // The same building blocks in the same order as in the gallery: account filter,
+    // search field, chips. No storage-location filter — what you don't own sits nowhere; but
+    // the condition, because the same set can stand new and used.
     val scopeMode = blick.scopeModes[ScopeFilter.View.MERKLISTE]
         ?: ScopeFilter.ALL
-    // Das Eingabefeld haelt seinen Text selbst (Tippen bleibt fluessig); die
-    // Entprellung liegt im ViewModel. Wechselt der Wert von aussen, zieht das
-    // Feld nach — dieselbe Zeile wie in der Galerie.
+    // The input field holds its own text (typing stays smooth); the
+    // debouncing lives in the ViewModel. If the value changes from outside, the
+    // field follows — the same line as in the gallery.
     var searchInput by remember(zustand.query) { mutableStateOf(zustand.query) }
 
-    // Zwei Leermeldungen: „Noch keine Merkposten“ sagt etwas über die Liste,
-    // „nichts gefunden“ über den Filter; ein Ladefehler eine dritte.
+    // Two empty messages: "No watchlist items yet" says something about the list,
+    // "nothing found" about the filter; a load error a third.
     val gefiltert = zustand.query.isNotBlank() ||
         zustand.stateFilter != null ||
         scopeMode != ScopeFilter.ALL
     val fehler = zustand.abruf.errorMessage?.satz()
     val anzeige = loadingIndicator(zustand.merkposten.isNotEmpty(), zustand.abruf.laedt, fehler, gefiltert)
     Box(Modifier.fillMaxSize()) {
-        // Volle Breite wie jedes Raster (Lesebreite.kt): Mittig auf 840 dp stand der Preis
-        // auf dem Tablet 1200 px vom Titel entfernt; im Raster bleibt er neben ihm.
+        // Full width like every grid (Lesebreite.kt): centered at 840 dp, the price stood
+        // 1200 px from the title on the tablet; in the grid it stays next to it.
         Column(Modifier.fillMaxSize()) {
             ScopeFilterRow(
                 members  = blick.householdMembers,
@@ -187,10 +187,10 @@ internal fun MerklisteScreen(
                 onSelect = { aktionen.setScope(ScopeFilter.View.MERKLISTE, it) },
             )
 
-            // Scannen neben der Suche wie in der Galerie: unten schwebt nur EIN Knopf. Im
-            // Fehlerzustand weder Suche noch Filter — es gibt nichts zu durchsuchen.
-            // Ohne Merkposten weder Suche noch Filter: Die Leermeldung bietet Merken und
-            // Scannen an, ein zweiter Scan-Knopf darüber wäre derselbe Weg noch einmal.
+            // Scan next to search as in the gallery: only ONE button floats at the bottom. In the
+            // error state, neither search nor filter — there's nothing to search.
+            // Without watchlist items, neither search nor filter: the empty message offers watchlisting and
+            // scanning, a second scan button above would be the same path twice.
             val withHeader = anzeige != LoadingIndicator.FEHLER && anzeige != LoadingIndicator.LEER
             if (withHeader) Row(
                 Modifier.fillMaxWidth(),
@@ -212,8 +212,8 @@ internal fun MerklisteScreen(
                 ScanButton({ onScan() }, Modifier.padding(end = 14.dp))
             }
 
-            // Der Zustand schränkt die Liste ein: ein Filter, also Chips wie in Galerie und
-            // Finanzen; Segmente stehen nur für Ansichten (Sets | Teile | Minifiguren).
+            // The condition narrows the list: a filter, hence chips as in gallery and
+            // finances; segments are only for views (sets | parts | minifigures).
             if (withHeader) StateFilterChips(
                 gewaehlt = zustand.stateFilter,
                 onWahl = { aktionen.setWantedState(it) },
@@ -225,8 +225,8 @@ internal fun MerklisteScreen(
                     anzeige = anzeige,
                     fehler = fehler,
                     onErneut = { aktionen.loadWanted() },
-                    // Wie die leere Galerie: sagen, wozu die Liste da ist, und beide Wege
-                    // zum ersten Eintrag anbieten — dieselben wie die Knöpfe unten rechts.
+                    // Like the empty gallery: say what the list is for, and offer both paths
+                    // to the first entry — the same ones as the buttons at the bottom right.
                     leer = {
                         HintText(Icons.Default.BookmarkBorder, stringResource(R.string.wanted_empty),
                             stringResource(R.string.wanted_empty_hint))
@@ -253,7 +253,7 @@ internal fun MerklisteScreen(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
-                        // Platz für den Erfassen-Knopf: Ohne ihn verdeckt er die letzte Zeile.
+                        // Room for the add button: without it, it would cover the last row.
                         contentPadding = PaddingValues(bottom = FabSpace),
                     ) {
                         items(zustand.merkposten, key = ::wantedItemKey) { w ->
@@ -269,8 +269,8 @@ internal fun MerklisteScreen(
             }
         }
 
-        // Ein Knopf wie in der Galerie; Scannen steht neben der Suche. Im Fehlerzustand
-        // nicht, und leer auch nicht: Dort steht „Set merken“ schon mitten im Bild.
+        // A button as in the gallery; scan sits next to search. Not in the error state,
+        // and not empty either: there "Watchlist set" already sits in the middle of the image.
         if (anzeige != LoadingIndicator.FEHLER && anzeige != LoadingIndicator.LEER) AddFab(
             stringResource(R.string.wanted_add_title), { openMask = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
@@ -291,9 +291,9 @@ internal fun MerklisteScreen(
 }
 
 /**
- * Die Merkliste mit dem Detail des geöffneten Merkpostens daneben, wenn
- * [sideBySide] (breites Fenster, listAndDetail()); sonst öffnet [onOpenSingle]
- * das Detail als eigene Seite. Ein Zustand für beide Hälften: dasselbe ViewModel.
+ * The watchlist with the open item's detail next to it, when
+ * [sideBySide] (wide window, listAndDetail()); otherwise [onOpenSingle] opens
+ * the detail as its own page. One state for both halves: the same ViewModel.
  */
 @Composable
 internal fun WantedAndDetail(
@@ -315,7 +315,7 @@ internal fun WantedAndDetail(
         ListAndDetail(
             liste = liste,
             detail = {
-                // key: Ein anderer Merkposten ist ein anderes Detail (Dialoge, Zoom zu).
+                // key: a different watchlist item is a different detail (dialogs, zoom close).
                 androidx.compose.runtime.key(selection) {
                     val detail by remember { aktionen.wantedItemDetailOf(selection.first) }.collectAsStateWithLifecycle()
                     MerkpostenDetailScreen(ansicht = ansicht.copy(detail = detail), aktionen = aktionen, setNumber = selection.first, condition = selection.second,
@@ -326,7 +326,7 @@ internal fun WantedAndDetail(
     } else liste()
 }
 
-/** Alle | Neu | Gebraucht als Filterchips; bei grosser Schrift brechen sie um statt abzuschneiden. */
+/** All | New | Used as filter chips; at large font size they wrap instead of being cut off. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StateFilterChips(gewaehlt: Zustand?, onWahl: (Zustand?) -> Unit, modifier: Modifier = Modifier) {

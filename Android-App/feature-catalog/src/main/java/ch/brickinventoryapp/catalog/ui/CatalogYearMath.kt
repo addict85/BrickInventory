@@ -4,46 +4,46 @@ import ch.brickinventoryapp.model.domain.JahrAnzahlAnsicht
 import kotlin.math.roundToInt
 
 /**
- * Reine Mathematik der Jahres-Leiste (CatalogScreen) — ein eigenes Objekt, damit
- * sie ohne Compose in JUnit prüfbar ist.
+ * Pure math of the year bar (CatalogScreen) — its own object, so it's
+ * checkable in JUnit without Compose.
  */
 internal object CatalogYearMath {
 
     /**
-     * Anteil (0..1) an der Leiste zu einer Berührung bei y Pixeln. Wie in der Webapp
-     * (js/rollbalken.js → rollen): Der Griff liegt mittig unter dem Finger,
-     * umgerechnet wird auf die Spur ohne Griffhöhe.
+     * Fraction (0..1) along the bar for a touch at y pixels. As in the web app
+     * (js/rollbalken.js → rollen): the handle sits centered under the finger,
+     * converted onto the track without the handle's height.
      */
     fun shareFrom(y: Float, heightPx: Int, thumbHeightPx: Int): Float {
         val track = (heightPx - thumbHeightPx).coerceAtLeast(1)
         return ((y - thumbHeightPx / 2f) / track).coerceIn(0f, 1f)
     }
 
-    /** Vertikaler Offset (Pixel) der Griff-Oberkante zu einem Anteil. */
+    /** Vertical offset (pixels) of the handle's top edge for a fraction. */
     fun thumbOffset(share: Float, heightPx: Int, thumbHeightPx: Int): Int =
         (share.coerceIn(0f, 1f) * (heightPx - thumbHeightPx).coerceAtLeast(0)).roundToInt()
 
-    /** Laufende Nummer im Gesamtergebnis zu einem Anteil. */
+    /** Running number in the total result for a fraction. */
     fun numberFrom(share: Float, total: Int): Int {
         if (total <= 0) return 0
         return (share.coerceIn(0f, 1f) * (total - 1)).roundToInt()
     }
 
-    /** Anteil zu einer laufenden Nummer — die Gegenrichtung zu numberFrom. */
+    /** Fraction for a running number — the reverse direction of numberFrom. */
     fun anteilAusNummer(nummer: Int, total: Int): Float {
         if (total <= 1) return 0f
         return (nummer.toFloat() / (total - 1)).coerceIn(0f, 1f)
     }
 
     /**
-     * Das Jahr, das neben dem Griff steht — in derselben Reihenfolge wie die Webapp
+     * The year that stands next to the handle — in the same order as the web app
      * (js/katalog.js → _jahrAnPosition):
      *
-     *   Erste Wahl:  das Jahr der Kachel an dieser Stelle. Ist sie geladen, ist das die Wahrheit und keine Rechnung.
-     *   Zweite Wahl: die Verteilung, für noch leere Bereiche.
+     *   First choice:  the year of the tile at that spot. If it's loaded, that's the truth, not a calculation.
+     *   Second choice: the distribution, for still-empty areas.
      *
-     * @param geladen liefert das Jahr zu einer laufenden Nummer, oder null, wenn diese
-     *         Stelle noch nicht geladen ist
+     * @param geladen delivers the year for a running number, or null if that
+     *         spot isn't loaded yet
      */
     fun yearFor(
         share: Float, total: Int, verteilung: List<JahrAnzahlAnsicht>,
@@ -51,9 +51,9 @@ internal object CatalogYearMath {
     ): Int? = geladen(numberFrom(share, total)) ?: yearAnPosition(share, total, verteilung)
 
     /**
-     * Welches Jahr liegt an diesem Anteil der Liste? Wie in der Webapp
-     * (js/katalog.js → _jahrAnPosition): Aus dem Anteil wird eine laufende Nummer,
-     * die durch die Verteilung wandert, bis sie in einen Jahrgang fällt.
+     * Which year sits at this fraction of the list? As in the web app
+     * (js/katalog.js → _jahrAnPosition): a fraction becomes a running number,
+     * which walks through the distribution until it falls into a year.
      */
     fun yearAnPosition(share: Float, total: Int, verteilung: List<JahrAnzahlAnsicht>): Int? {
         if (verteilung.isEmpty() || total <= 0) return null
@@ -65,7 +65,7 @@ internal object CatalogYearMath {
         return verteilung.last().year
     }
 
-    /** Die erste laufende Nummer eines Jahrgangs; null, wenn die Verteilung ihn nicht kennt. */
+    /** The first running number of a year; null if the distribution doesn't know it. */
     fun numberOfYear(jahr: Int, verteilung: List<JahrAnzahlAnsicht>): Int? {
         var nummer = 0
         for (entry in verteilung) {

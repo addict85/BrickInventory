@@ -8,9 +8,9 @@ import ch.brickinventoryapp.ui.Reiterziel
 import kotlinx.serialization.Serializable
 
 /**
- * Die Ziele der Sammlung als typsichere Routen: Navigation kodiert die Werte selbst
- * und liest sie mit `toRoute()` zurück. Andere Bereiche öffnen sie nur über die
- * Rückrufe ihrer Navigationsschnittstelle, die die App erfüllt.
+ * The collection's destinations as type-safe routes: navigation encodes the values itself
+ * and reads them back with `toRoute()`. Other areas only open them via
+ * the callbacks of their navigation interface, which the app fulfills.
  */
 @Serializable
 sealed interface SammlungZiel {
@@ -19,13 +19,13 @@ sealed interface SammlungZiel {
     }
     @Serializable data object Wanted : SammlungZiel
 
-    /** Dasselbe Set kann neu und gebraucht auf der Merkliste stehen; erst der Zustand macht es eindeutig. */
+    /** The same set can be on the watchlist new and used; only the condition makes it unambiguous. */
     @Serializable data class MerkpostenDetail(val setNumber: String, val condition: Zustand) : SammlungZiel
     @Serializable data class SetDetail(val setNumber: String) : SammlungZiel
     @Serializable data class BarcodeScanner(val herkunft: Scannerherkunft) : SammlungZiel
     @Serializable data object Comparison : SammlungZiel
 
-    /** Käufe eines Sets, Teils oder einer Figur. */
+    /** Purchases of a set, a part or a figure. */
     @Serializable data class AcquisitionManagement(
         val art: Postenart,
         val id: String,

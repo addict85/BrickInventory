@@ -23,17 +23,17 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Drei Segmente, eines mit einer Beschriftung über zwei Zeilen und gewählt: Alle drei
- * sind gleich hoch, aber nicht höher als nötig, und das Häkchen neben der langen
- * Beschriftung bleibt im Segment.
+ * Three segments, one with a two-line label and selected: all three
+ * are the same height, but no taller than needed, and the checkmark next to the
+ * long label stays inside the segment.
  *
- * NATIVE, weil die Vorgabe LEGACY Text nicht wirklich misst: Die lange Beschriftung
- * brach nie um, und beide Gegenproben blieben grün.
+ * NATIVE, because the default LEGACY Text doesn't really measure: the
+ * long label never wrapped, and both counter-checks stayed green.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   segmente-ungleich-hoch       Segmentzeile ohne height(IntrinsicSize.Min): fillMaxHeight
- *                                streckt jedes Segment auf die ganze Höhe → rot „alle Segmente …“
- *   segment-haekchen-ueber-rand  Beschriftung wieder mit der vollen Innenbreite → rot „das Haekchen …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   segmente-ungleich-hoch       segment row without height(IntrinsicSize.Min): fillMaxHeight
+ *                                stretches each segment to the full height → red „alle Segmente …“
+ *   segment-haekchen-ueber-rand  label back with the full inner width → red „das Haekchen …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

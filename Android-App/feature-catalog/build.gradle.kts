@@ -1,4 +1,4 @@
-// Der Set-Katalog mit Detailansicht.
+// The set catalog with a detail view.
 plugins {
     alias(libs.plugins.brickinventory.android.feature)
 }
@@ -20,6 +20,6 @@ dependencies {
     implementation(project(":core-resources"))
 
     testImplementation(project(":core-testing"))
-    // Die Testserver antworten im Wire-Format.
+    // The test servers answer in wire format.
     testImplementation(project(":core-contract"))
 }

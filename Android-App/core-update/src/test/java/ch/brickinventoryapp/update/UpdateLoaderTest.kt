@@ -24,17 +24,17 @@ import java.io.File
 import java.io.IOException
 
 /**
- * Der APK-Download der Datenschicht: Fortschritt als Fluss, ein Abbruch lässt keine
- * Teildatei zurück, und beide Abrufe haben eine Obergrenze. Ein Client ohne Netz
- * liefert die Bytes.
+ * The data layer's APK download: progress as a flow, an abort leaves no
+ * partial file behind, and both fetches have an upper bound. A client without network
+ * delivers the bytes.
  *
- * Gegenprobe (05.11.2026, gemessen mit kotlinc lokal; gegenproben/update-abbruch-behaelt-teildatei.patch):
- *   im Abbruch-Zweig von UpdateLoader.loadApk `ziel.delete()` entfernt → rot
+ * Counter-check (Nov 5, 2026, measured with kotlinc locally; gegenproben/update-abbruch-behaelt-teildatei.patch):
+ *   `ziel.delete()` removed from the abort branch of UpdateLoader.loadApk → red
  *   „an aborted download leaves no partial file“.
- * Gegenproben (Patches unter gegenproben/, lokal mit kotlinc gemessen):
- *   update-apk-ohne-grenze      die Prüfung `geladen > obergrenze` entfernt → rot
+ * Counter-checks (patches under gegenproben/, measured locally with kotlinc):
+ *   update-apk-ohne-grenze      the check `geladen > obergrenze` removed → red
  *                               „ein APK, das mehr bringt als angekündigt …“
- *   update-json-unbegrenzt      body.string() statt peekBody(UPDATE_JSON_MAX_BYTES) → rot
+ *   update-json-unbegrenzt      body.string() instead of peekBody(UPDATE_JSON_MAX_BYTES) → red
  *                               „die Beschreibung wird höchstens …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -49,7 +49,7 @@ class UpdateLoaderTest {
             .body(apk.toResponseBody("application/octet-stream".toMediaType())).build()
     }.build()
 
-    /** Ein Client, der [bytes] als Antwort auf jede Anfrage liefert. */
+    /** A client that delivers [bytes] as the response to every request. */
     private fun liefert(bytes: ByteArray) = OkHttpClient.Builder().addInterceptor { kette ->
         Response.Builder().request(kette.request()).protocol(Protocol.HTTP_1_1).code(200).message("x")
             .body(bytes.toResponseBody("application/octet-stream".toMediaType())).build()
@@ -71,14 +71,14 @@ class UpdateLoaderTest {
     @Test
     fun `an aborted download leaves no partial file`() = runTest {
         val lader = UpdateLoader(client, AppVersion("2.10", 10), StandardTestDispatcher(testScheduler))
-        // take(1) bricht nach der ersten Meldung ab, mitten in der Leseschleife.
+        // take(1) breaks off after the first update, in the middle of the read loop.
         assertEquals(1, lader.loadApk(beschreibung(), ziel).take(1).toList().size)
         assertFalse("Die Teildatei bleibt nach dem Abbruch liegen", ziel.exists())
     }
 
     @Test
     fun `an APK that brings more than announced aborts and leaves nothing`() = runTest {
-        // Angekündigt 100 kB; erlaubt sind die Ankündigung und ein MB, nicht mehr.
+        // Announced 100 kB; what's allowed is the announcement plus one MB, no more.
         val toMuch = ByteArray(2 * 1024 * 1024) { 7 }
         val lader = UpdateLoader(liefert(toMuch), AppVersion("2.10", 10), StandardTestDispatcher(testScheduler))
         val fehler = runCatching { lader.loadApk(beschreibung().copy(apkSize = 100L * 1024), ziel).toList() }.exceptionOrNull()

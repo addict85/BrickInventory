@@ -1,4 +1,4 @@
-// Einstellungen: Konto, Haushalt, Lagerorte, CSV, Alarme und Aktualisierung.
+// Settings: account, household, storage locations, CSV, alerts and updates.
 plugins {
     alias(libs.plugins.brickinventory.android.feature)
 }
@@ -19,6 +19,6 @@ dependencies {
     implementation(project(":core-resources"))
 
     testImplementation(project(":core-testing"))
-    // UpdateViewModelTest baut eine Vertrauensablage (PinStore aus core-security).
+    // UpdateViewModelTest builds a trust store (PinStore from core-security).
     testImplementation(project(":core-security"))
 }

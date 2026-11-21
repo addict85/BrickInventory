@@ -8,13 +8,13 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 /**
- * Lädt die Seiten eines Sichtfensters erst, wenn die Liste [restMs] ruht. Die Leiste
- * rollt beim Ziehen durch jede Zwischenposition; ohne Ruhe stünde die Zielseite hinter
- * Hunderten angeforderter Seiten. `collectLatest` verwirft das wartende Fenster, statt es
- * nur aufzuschieben. Eine Seite Vorlauf in beide Richtungen.
+ * Loads a viewport's pages only once the list has been still for [restMs]. The bar
+ * scrolls through every intermediate position while dragging; without stillness the
+ * target page would sit behind hundreds of requested pages. `collectLatest` discards the
+ * waiting window instead of merely postponing it. One page of lead in each direction.
  */
 internal class Sichtfensterlader(bereich: CoroutineScope, restMs: Long, lade: (Int) -> Unit) {
-    // replay = 1: Ein Fenster, das vor dem Sammler kommt, geht nicht verloren.
+    // replay = 1: a window that arrives before the collector isn't lost.
     private val fenster = MutableSharedFlow<Pair<Int, Int>>(replay = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
     init {
@@ -26,7 +26,7 @@ internal class Sichtfensterlader(bereich: CoroutineScope, restMs: Long, lade: (I
         }
     }
 
-    /** Erste und letzte sichtbare Seite; jeder Aufruf startet die Ruhezeit neu. */
+    /** First and last visible page; every call restarts the quiet period. */
     fun sichtbar(von: Int, bis: Int) {
         fenster.tryEmit(von to bis)
     }

@@ -30,9 +30,9 @@ import ch.brickinventoryapp.ui.util.fmtTag
 import ch.brickinventoryapp.ui.components.SettingsCard
 
 /**
- * Angemeldete Geräte: die ausgestellten Zugänge sehen und aussperren.
- * Der eigene Zugang hat keinen Knopf: Wer ihn entwertet, meldet sich selbst ab, und dafür gibt es
- * Abmelden.
+ * Signed-in devices: see and lock out the issued access tokens.
+ * One's own access has no button: whoever revokes it signs themself out, and that's what
+ * Sign out is for.
  */
 @Composable
 internal fun DevicesCard(
@@ -69,8 +69,8 @@ internal fun DevicesCard(
             OutlinedButton(onClick = onReload, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
                 Text(stringResource(R.string.tokens_reload))
             }
-            // Nur anbieten, wenn es wirklich andere gibt — ein Knopf, der
-            // immer „es gibt keine anderen" meldet, ist schlimmer als keiner.
+            // Only offer it if there really are others — a button that
+            // always reports "there are no others" is worse than none at all.
             if (zustand.geraete.count { !it.aktuell } > 0) {
                 OutlinedButton(
                     onClick = { onQuestion(null) },
@@ -81,8 +81,8 @@ internal fun DevicesCard(
         }
     }
 
-    // Rückfrage mit Passwort: Ein Zugang, der weg ist, kommt nicht wieder, und
-    // ein erbeuteter Zugang allein soll die anderen nicht abmelden können.
+    // Confirmation with password: an access token that's gone doesn't come back, and
+    // a stolen access token alone shouldn't be able to sign out the others.
     val frage = zustand.prompt
     if (frage != null) {
         val betroffen = zustand.geraete.count { !it.aktuell }
@@ -99,7 +99,7 @@ internal fun DevicesCard(
     }
 }
 
-/** Ein angemeldetes Gerät: Bezeichnung, Marken, Daten und, ausser beim eigenen, Aussperren. */
+/** A signed-in device: name, make, dates and, except for one's own, a lock-out. */
 @Composable
 private fun DeviceRow(g: DeviceView, redeemOn: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically,
@@ -117,7 +117,7 @@ private fun DeviceRow(g: DeviceView, redeemOn: () -> Unit) {
                         color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = Abstaende.hairline))
                 }
-                // Ein Zugang mit Verwalterrechten soll in der Liste auffallen.
+                // An access with admin rights should stand out in the list.
                 if (g.vollerZugriff) Surface(
                     shape = Formen.chip,
                     color = MaterialTheme.colorScheme.tertiaryContainer,

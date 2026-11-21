@@ -3,9 +3,9 @@ package ch.brickinventoryapp.update.util
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /**
- * Liegt [url] als APK unter [basis]? Geparst und Segment für Segment verglichen:
- * Ein Textvergleich liesse `…/apk-neuste.angreifer.tld/x.apk`, `…/../x.apk` oder
- * Varianten mit Benutzerangabe, Port oder Fragment durch.
+ * Does [url] sit as an APK under [basis]? Parsed and compared segment by segment:
+ * a text comparison would let `…/apk-neuste.angreifer.tld/x.apk`, `…/../x.apk` or
+ * variants with user info, port or fragment through.
  */
 internal fun liesBelow(url: String, basis: String): Boolean {
     val ziel = url.toHttpUrlOrNull() ?: return false
@@ -17,14 +17,14 @@ internal fun liesBelow(url: String, basis: String): Boolean {
         ziel.pathSegments.last().let { it.endsWith(".apk") && it.length > 4 }
 }
 
-/** Die Signatur eines Pakets: die aktuellen Schlüssel und die Ahnenreihe (APK-Signatur v3). */
+/** A package's signature: the current keys and the ancestry (APK signature v3). */
 data class Signatur(val aktuell: Set<String>, val ancestors: List<String>)
 
 /**
- * Darf ein APK mit [neu] die App mit [alt] ersetzen? Wie Android: mit mehreren
- * Signierern genau dieselben; mit einem darf der neue Schlüssel ein Nachfolger
- * sein (Schlüsselrotation) — dann steht der laufende in der Ahnenreihe des neuen.
- * Mengengleichheit lehnte jede Rotation ab. Leer heisst unbekannt, also nein.
+ * May an APK with [neu] replace the app with [alt]? Like Android: with multiple
+ * signers exactly the same ones; with one, the new key may be a successor
+ * (key rotation) — then the running one is in the new one's ancestry.
+ * Set equality rejected every rotation. Empty means unknown, so no.
  */
 internal fun signatureFollows(alt: Signatur, neu: Signatur): Boolean = when {
     alt.aktuell.isEmpty() || neu.aktuell.isEmpty() -> false

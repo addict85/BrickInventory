@@ -7,12 +7,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Was „Passwort ändern“ beim Absenden markiert, in der Reihenfolge der Felder; das erste
- * bekommt den Cursor (Konto und Startpasswort).
+ * What "change password" marks on submit, in the order of the fields; the first
+ * gets the cursor (account and start password).
  *
- * Gegenprobe (gemessen lokal, JVM):
- *   passwort-wiederholung-ungeprueft  Prüfung der Wiederholung entfernt → rot „verschiedene
- *                                     Wiederholung …“ und „leer …“
+ * Counter-check (measured locally, JVM):
+ *   passwort-wiederholung-ungeprueft  repetition check removed → red „verschiedene
+ *                                     Wiederholung …“ and „leer …“
  */
 class PasswordSwitchTest {
 

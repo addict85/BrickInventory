@@ -57,7 +57,7 @@ import ch.brickinventoryapp.update.util.UpdateFresh
 import ch.brickinventoryapp.update.util.permissionIntent
 import ch.brickinventoryapp.ui.components.SettingsCard
 
-/** Was die Einstellungen zeigen; die Route sammelt es aus vier Flüssen dreier ViewModels. */
+/** What settings shows; the route gathers it from four flows of three ViewModels. */
 data class EinstellungenZustand(
     val appState: AppUiState,
     val updateZustand: UpdateUiState,
@@ -69,7 +69,7 @@ data class EinstellungenZustand(
     val userCa: Boolean,
 )
 
-/** Die Einstellungen am Navigationsziel; Darstellung, Vertrauen und Update leben an der Activity. */
+/** Settings at the navigation destination; display, trust and update live on the Activity. */
 @Composable
 internal fun SettingsRoute(
     vm: SettingsViewModel,
@@ -92,16 +92,16 @@ internal fun SettingsRoute(
         zustand = EinstellungenZustand(appState, updateZustand, helligkeit, design, systemfarben,
             hidePreview, widgetValues, userCa),
         aktionen = vm, update = selbstUpdate, darstellung = darstellung,
-        // Einschalten fragt erst nach (UserCaDialog in MainActivity).
+        // Turning it on asks first (UserCaDialog in MainActivity).
         onNutzerCa = { if (it) vertrauen.userCa.requests() else vertrauen.userCa.turnOff() },
         onLogout = onLogout, onServerWechseln = onServerWechseln, scrollState = scrollState,
     )
 }
 
 /**
- * Die Einstellungen — wenige Karten statt eines Stapels: Anzeige & Preise (jede
- * Wahl gilt sofort), Server und Aktualisierung. Die Rubriken mit eigener Seite liegen auf „Mehr“
- * (MehrBildschirm.kt) und in EinstellungenUnterseiten.kt.
+ * Settings — a few cards instead of a stack: display & prices (every
+ * choice applies right away), server and update. The categories with their own page sit on "More"
+ * (MehrBildschirm.kt) and in EinstellungenUnterseiten.kt.
  */
 @Composable
 fun SettingsScreen(
@@ -110,18 +110,18 @@ fun SettingsScreen(
     update: UpdateAktionen,
     darstellung: DarstellungAktionen,
     onNutzerCa: (Boolean) -> Unit,
-    /** Abmelden — nur der Graph kennt den NavController. */
+    /** Sign out — only the graph knows the NavController. */
     onLogout: () -> Unit,
     /**
-     * Zur Server-Einrichtung wechseln — ein Rückruf, weil nur der Graph den
-     * NavController kennt. Ohne Vorgabewert, damit eine vergessene Weitergabe nicht
-     * übersetzt statt einen Knopf ohne Wirkung zu ergeben.
+     * Switch to server setup — a callback, because only the graph
+     * knows the NavController. No default value, so a forgotten pass-through
+     * fails to compile instead of producing a button with no effect.
      */
     onServerWechseln: () -> Unit,
     /**
-     * Rollposition — von AUSSEN, aus demselben Grund wie bei den Finanzen:
-     * Der Weg in die Detailansicht verwirft dieses Ziel, und ein
-     * `rememberScrollState()` hier drin waere bei der Rueckkehr zurueckgesetzt.
+     * Scroll position — from OUTSIDE, for the same reason as in finances:
+     * the route into the detail view discards this destination, and a
+     * `rememberScrollState()` in here would be reset on returning.
      */
     scrollState: ScrollState,
 ) {
@@ -134,9 +134,9 @@ fun SettingsScreen(
     val defaultPriceCondition = appState.defaultPriceCondition
     val language = appState.language
 
-    // Rückfall auf die globale Vorgabe des Servers beim Erfassen
-    // (`defaultPriceCondition`), nicht auf die Preisgrundlage für Bewertungen. `null`
-    // heisst: keine eigene Vorgabe — nicht dasselbe wie NEU.
+    // Falls back to the server's global default on entry
+    // (`defaultPriceCondition`), not to the pricing basis for valuations. `null`
+    // means: no own default — not the same as NEW.
     val ownDefault = userDefaultCondition
     val effectiveUserDefault = ownDefault ?: defaultPriceCondition
 
@@ -146,20 +146,20 @@ fun SettingsScreen(
             .verticalScroll(scrollState)
             .centeredUntil(Lesebreite.formular)
             .padding(horizontal = Abstaende.gross, vertical = Abstaende.gross),
-        // gross statt der blanken 10 dp von vorher: Die Karten sind jetzt
-        // wenige und gross, und zwischen ihnen soll Luft sein.
+        // gross instead of the bare 10 dp from before: the cards are now
+        // few and large, and there should be air between them.
         verticalArrangement = Arrangement.spacedBy(Abstaende.gross)
     ) {
-        // Hier steht nur, was eine Einstellung im engeren Sinn ist: Anzeige & Preise,
-        // Server, Update-Prüfung. Die Rubriken mit eigener Seite liegen in der
-        // Seite „Mehr“, einen Tipper näher.
+        // Here stands only what a setting is in the narrow sense: display & prices,
+        // server, update check. The categories with their own page sit in the
+        // "More" page, one tap further away.
         //
-        // ── 2. Anzeige & Preise ──
+        // ── 2. Display & prices ──
         SettingsCard(title = stringResource(R.string.settings_group_display),
                      icon = Icons.Default.Tune) {
-            // Jede Wahl gilt sofort und meldet sich: früher wirkten Sprache und Darstellung
-            // sofort, Währung und Zustände erst über einen Knopf darunter — zwei Regeln auf
-            // einer Karte, und wer den Knopf übersah, verlor die Wahl.
+            // Every choice applies right away and announces itself: previously language and
+            // display took effect right away, currency and conditions only via a button
+            // below them — two rules on one card, and whoever missed the button lost the choice.
             SelectionField(
                 stringResource(R.string.settings_language),
                 listOf("system" to stringResource(R.string.settings_language_system),
@@ -169,7 +169,7 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            // Darstellung je Gerät: System folgt dem Telefon, Hell und Dunkel gelten immer.
+            // Display per device: System follows the phone, Light and Dark always apply.
             Signature(stringResource(R.string.settings_dark_label))
             val helligkeit = zustand.helligkeit
             val design = zustand.design
@@ -182,12 +182,12 @@ fun SettingsScreen(
                 gewaehlt = helligkeit, onWahl = { darstellung.setHelligkeit(it) },
                 enabled = selectable,
             )
-            // Werkbank ist schon dunkel: Die Wahl ist aus, und der Satz sagt, warum.
+            // Werkbank is already dark: the choice is off, and the sentence says why.
             if (!selectable) Text(stringResource(R.string.settings_hell_fest), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
 
-            // Material You: zusätzlich zu den sechs Designs, je Gerät. Erst ab
-            // Android 12 gibt es Systemfarben; darunter fehlt der Schalter ganz.
+            // Material You: in addition to the six designs, per device. System colors only
+            // exist from Android 12; below that the switch is missing entirely.
             if (android.os.Build.VERSION.SDK_INT >= SYSTEMFARBEN_AB_SDK) {
                 val systemfarben = zustand.systemfarben
                 Row(
@@ -204,7 +204,7 @@ fun SettingsScreen(
                 }
             }
 
-            // Je Gerät, Vorgabe aus: Wer die Übersicht anderen zeigt, will keine Vorschau.
+            // Per device, default off: whoever shows the overview to others wants no preview.
             val hidePreview = zustand.hidePreview
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -219,10 +219,10 @@ fun SettingsScreen(
                 Switch(checked = hidePreview, onCheckedChange = null)
             }
 
-            // Je Gerät, Vorgabe aus: Wer das Telefon teilt, sperrt die App nach einer Weile im Hintergrund.
+            // Per device, default off: whoever shares the phone locks the app after a while in the background.
             LocalAppLock.current?.let { AppLockChoice(it) }
 
-            // Je Gerät, Vorgabe aus: Das Widget liegt ohne Entsperren auf dem Startbildschirm.
+            // Per device, default off: the widget sits on the home screen without unlocking.
             val widgetValues = zustand.widgetValues
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -239,7 +239,7 @@ fun SettingsScreen(
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            // Währung und Preisgrundlage gehen zusammen an den Server (ein Endpunkt).
+            // Currency and pricing basis go to the server together (one endpoint).
             SelectionField(
                 stringResource(R.string.settings_currency),
                 Waehrung.SELECTABLE.map { it to it.code },
@@ -257,10 +257,10 @@ fun SettingsScreen(
                 gewaehlt = priceCondition, onWahl = { aktionen.saveSettings(currency, it) },
             )
 
-            // ── Mein Zustand beim Hinzufügen ──
+            // ── My state when adding ──
             //
-            // Drei Möglichkeiten, damit es einen Weg zurück zur Vorgabe des Servers gibt; der
-            // Hinweis nennt, worauf sie steht.
+            // Three options, so there's a way back to the server's default; the
+            // hint names what it's based on.
             Signature(stringResource(R.string.settings_default_condition))
             val wirkt = if (effectiveUserDefault == Zustand.GEBRAUCHT) stringResource(R.string.condition_used)
                         else stringResource(R.string.condition_new)
@@ -278,8 +278,8 @@ fun SettingsScreen(
 
         // ── 3. Server ──
         //
-        // Die Serveradresse ist eine Einstellung wie Währung und Sprache, keine Handlung
-        // an der laufenden Sitzung.
+        // The server address is a setting like currency and language, not an action
+        // on the running session.
         val userCa = zustand.userCa
         ServerCard(
             serverUrl = appState.serverUrl,
@@ -299,7 +299,7 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(Abstaende.klein))
 
-        // Dieselbe Rückfrage wie unter „Mehr“: Abmelden ist von beiden Stellen gleich schwer.
+        // The same confirmation as under "More": signing out is equally hard from either place.
         var signOutAsks by rememberSaveable { mutableStateOf(false) }
         if (signOutAsks) Prompt(
             titel = stringResource(R.string.logout_confirm_title),
@@ -332,9 +332,9 @@ private fun Signature(text: String) {
 }
 
 /**
- * Mit welchem Server die App spricht — und der Weg, ihn zu wechseln. Die Adresse
- * steht dabei, weil man genau deshalb hinsieht; bei zwei Installationen (Test und
- * Betrieb) ist das der Unterschied zu falschen Daten.
+ * Which server the app talks to — and the way to switch it. The address
+ * sits alongside, because that's exactly why one looks at it; with two installs
+ * (test and production) that's the difference from wrong data.
  */
 @Composable
 private fun ServerCard(
@@ -352,25 +352,25 @@ private fun ServerCard(
             Spacer(Modifier.width(Abstaende.klein))
             Text(stringResource(R.string.main_menu_change_server))
         }
-        // Je Gerät und sofort wirksam (util/ServerVertrauen.kt); ausgeschaltet nur System-CAs.
-        // Nur für den eigenen Server; Updates und fremde Hosts prüfen immer gegen das System.
-        // Hinweis in der Fehlerfarbe: Es ist ein Risiko, keine Komforteinstellung.
+        // Per device and effective right away (util/ServerVertrauen.kt); switched off, only system CAs.
+        // Only for one's own server; updates and foreign hosts always check against the system.
+        // Notice in the error color: it's a risk, not a convenience setting.
         ToggleRow(stringResource(R.string.settings_nutzer_ca), userCa, onNutzerCa,
             hinweis = stringResource(R.string.settings_nutzer_ca_hint), hintColor = MaterialTheme.colorScheme.error)
     }
 }
 
 /**
- * Selbstaktualisierung aus dem GitHub-Release: beim Start still prüfen, nie von
- * allein laden, und hier ein Knopf zum Nachsehen. Die laufende Fassung steht immer
- * da, sonst wäre „Aktuell“ ohne Beleg. Herunterladen und Installieren sind zwei
- * Knöpfe, weil dazwischen ein Ausflug zur Erlaubnis „Pakete installieren“ liegen
- * kann.
+ * Self-update from the GitHub release: check silently on start, never
+ * load on its own, and here a button to check manually. The running version always
+ * shows, otherwise "Up to date" would have no evidence. Download and install are two
+ * buttons, because there can be a detour to the "install packages" permission
+ * in between.
  */
 @Composable
 private fun UpdateCard(
-    // `updateZustand`, nicht `zustand`: Die Prüfung „welcher Name trägt in dieser
-    // Datei welchen Zustandstyp“ unterscheidet keine Gültigkeitsbereiche.
+    // `updateZustand`, not `zustand`: the check "which name carries which
+    // state type in this file" doesn't distinguish scopes.
     updateZustand: UpdateUiState,
     onPruefen: () -> Unit,
     onLaden: () -> Unit,
@@ -393,9 +393,9 @@ private fun UpdateCard(
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.primary,
             )
-            // Nur nach einer Pruefung: Vorher waere „aktuell" eine Aussage
-            // ueber etwas, das niemand nachgesehen hat. Eine veraltete Quelle
-            // ist nie „aktuell“ (Hinweis darunter).
+            // Only after a check: beforehand "current" would be a claim
+            // about something no one has looked at. A stale source
+            // is never "current" (notice below).
             updateZustand.geprueft && !sourceStale(updateZustand.frische) -> Text(
                 stringResource(R.string.update_current, versionsName()),
                 style = MaterialTheme.typography.bodySmall,
@@ -443,8 +443,8 @@ private fun UpdateCard(
         }
 
         Spacer(Modifier.height(Abstaende.mittel))
-        // 48 dp hoch wie „Abmelden“: Material zeichnet 40 dp, und der Knoten zum Tippen und
-        // Vorlesen wäre nur so hoch wie die Zeichnung.
+        // 48 dp high like "Sign out": Material draws 40 dp, and the node for tapping and
+        // reading would only be as tall as the drawing.
         val buttonHeight = Modifier.heightIn(min = 48.dp)
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
             verticalAlignment = Alignment.CenterVertically) {
@@ -455,8 +455,8 @@ private fun UpdateCard(
                 }
                 Text(stringResource(R.string.update_check))
             }
-            // Herunterladen nur, wenn es etwas zu holen gibt; Installieren
-            // nur, wenn es schon auf der Platte liegt.
+            // Download only if there's something to fetch; Install
+            // only once it's already on disk.
             if (neuere != null && !updateZustand.readyToInstallation) {
                 Button(onClick = onLaden, modifier = buttonHeight, enabled = updateZustand.fortschritt == null) {
                     Text(stringResource(R.string.update_download))
@@ -471,7 +471,7 @@ private fun UpdateCard(
     }
 }
 
-/** Je Gerät: Die Prüfung beim Start ist eine Anfrage an GitHub (Datenschutz). */
+/** Per device: the check on start is a request to GitHub (privacy). */
 @Composable
 private fun StartpruefungRow(an: Boolean, onSwitch: (Boolean) -> Unit) {
     Row(
@@ -488,7 +488,7 @@ private fun StartpruefungRow(an: Boolean, onSwitch: (Boolean) -> Unit) {
     }
 }
 
-/** Mit wem die App spricht (MASVS-PRIVACY): dieselbe Liste wie in PLAYSTORE.md. */
+/** Who the app talks to (MASVS-PRIVACY): the same list as in PLAYSTORE.md. */
 @Composable
 private fun PrivacyCard(startpruefung: Boolean, onStartpruefung: (Boolean) -> Unit) {
     SettingsCard(title = stringResource(R.string.datenschutz_titel), icon = Icons.Default.PrivacyTip) {

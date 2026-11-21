@@ -27,12 +27,12 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 /**
- * Der Einladungscode wie der TOTP-Schlüssel: Kopieren erst ab Android 13, wo das
- * System den Clip aus Vorschau und Tastaturverlauf heraushält. Darunter bleibt
- * Teilen; der Code geht ohnehin auf ein anderes Gerät.
+ * The invite code like the TOTP key: copying only from Android 13, where the
+ * system keeps the clip out of the preview and keyboard history. Below that, sharing
+ * remains; the code goes to a different device anyway.
  *
- * Gegenprobe (Patch unter gegenproben/, Robolectric, misst die CI):
- *   einladung-kopieren-vor-33  der Kopierknopf ohne secretCopyable() → rot „unter Android 13 …“
+ * Counter-check (patch under gegenproben/, Robolectric, measured by CI):
+ *   einladung-kopieren-vor-33  the copy button without secretCopyable() → red "unter Android 13 …"
  */
 @RunWith(RobolectricTestRunner::class)
 class InvitationCopyTest {
@@ -51,7 +51,7 @@ class InvitationCopyTest {
             elternkonten = emptyList(), subAccounts = emptyList(), openInvites = 1, formerLinks = emptyList())
         compose.setContent {
             BrickInventoryManagerTheme {
-                // Wie in der Unterseite: eine rollbare Spalte.
+                // As in the subpage: a scrollable column.
                 CompositionLocalProvider(LocalSdkLevel provides stufe.value) {
                     Column(Modifier.verticalScroll(rememberScrollState())) {
                         HouseholdCard(HouseholdUiState(status = status, inviteCode = "ABCD-1234"),

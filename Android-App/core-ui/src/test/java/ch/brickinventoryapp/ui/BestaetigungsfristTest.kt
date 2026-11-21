@@ -6,14 +6,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Wie lange eine Bestätigung per Gerätesperre trägt (ui/components/Schrittschutz).
- * Die Abfrage selbst (BiometricPrompt) braucht ein Gerät; die Gutscheinseite prüft
- * AblaufTest mit einem Schrittschutz, der nie bestätigt.
+ * How long a device-lock confirmation lasts (ui/components/Schrittschutz).
+ * The prompt itself (BiometricPrompt) needs a device; the voucher page checks
+ * expiry with a step guard that never confirms.
  *
- * Gegenproben:
- *   A  gilt() mit `<=` statt `<` → rot „after one minute it asks again“
- *   B  vergiss() ohne Wirkung → rot „whoever leaves the app is asked again“
- *   C  gilt() ohne Bestätigung `true` (`bis?.let { … } != false`) → rot „ohne
+ * Counter-checks:
+ *   A  gilt() with `<=` instead of `<` → red „after one minute it asks again“
+ *   B  vergiss() without effect → red „whoever leaves the app is asked again“
+ *   C  gilt() without confirmation `true` (`bis?.let { … } != false`) → red „ohne
  *      Bestaetigung gilt nichts“ und „wer die App verlaesst …“
  */
 class BestaetigungsfristTest {

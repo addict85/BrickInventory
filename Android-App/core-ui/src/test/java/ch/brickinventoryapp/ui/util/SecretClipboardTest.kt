@@ -14,13 +14,13 @@ import org.robolectric.shadows.ShadowLooper
 import java.util.concurrent.TimeUnit
 
 /**
- * Was die App an Geheimnissen kopiert, trägt die Markierung, die Android 13
- * auswertet: keine Vorschau des Inhalts, kein Tastaturvorschlag. Nach einer
- * Minute ist es wieder weg — nur wenn dort noch unser Clip liegt.
+ * What the app copies as secrets carries the marker that Android 13
+ * reads: no content preview, no keyboard suggestion. After a
+ * minute it is gone again — only if our clip is still there.
  *
- * Gegenproben (Robolectric, nur in der CI messbar; Job `gegenproben`):
- *   (a) in secretClip() die Zeile mit IS_SECRET entfernt → rot (vorgesehen)
- *   (b) in SecretClipboard.pruefe() der Zweig LEEREN ohne Wirkung → rot
+ * Counter-checks (Robolectric, measurable only in CI; job `gegenproben`):
+ *   (a) the line with IS_SECRET removed from secretClip() → red (intended)
+ *   (b) the LEEREN branch in SecretClipboard.pruefe() has no effect → red
  *       „ein kopiertes Geheimnis ist nach einer Minute weg …“
  *       (gegenproben/zwischenablage-leert-nicht.patch)
  */

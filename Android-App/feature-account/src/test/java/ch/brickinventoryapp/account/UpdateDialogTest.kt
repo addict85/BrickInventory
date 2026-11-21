@@ -26,15 +26,15 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Der Update-Hinweis beim Start, gezeichnet: Er fragt nur — geladen wird erst auf
- * „Jetzt aktualisieren“, nie beim Zeigen —, und nach „Später“ fragt er in diesem
- * App-Lauf nicht wieder. Dass „Später“ im Zustand landet und beim Abmelden verfällt,
- * prüft UpdateViewModelTest.
+ * The update notice on start, rendered: it only asks — loading starts only on
+ * "Update now", never on just showing it — and after "Later" it doesn't ask again in this
+ * app run. That "Later" lands in the state and expires on sign-out is
+ * checked by UpdateViewModelTest.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   update-dialog-laedt-selbst   LaunchedEffect lädt beim Zeigen → rot „der Hinweis fragt …“
- *   update-spaeter-vergessen     dialogRejected nicht beachtet → rot „nach Später …“
- *   version-leer                 versionsName() ohne Rückfall → rot „ohne bekannte Version …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   update-dialog-laedt-selbst   LaunchedEffect loads on show → red "der Hinweis fragt …"
+ *   update-spaeter-vergessen     dialogRejected ignored → red "nach Später …"
+ *   version-leer                 versionsName() without a fallback → red "ohne bekannte Version …"
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -48,7 +48,7 @@ class UpdateDialogTest {
     private val neu = UpdateBeschreibung(versionCode = 20, versionName = "2.20",
         apkUrl = "https://github.com/x/y/releases/download/android-v2.20/BrickInventory.apk")
 
-    /** Zählt, was der Dialog auslöst; „Später“ setzt den Zustand wie das ViewModel. */
+    /** Counts what the dialog triggers; "Later" sets the state like the ViewModel does. */
     private class Aktionen(val spaeter: () -> Unit = {}) : UpdateAktionen {
         var geladen = 0
         var closed = 0

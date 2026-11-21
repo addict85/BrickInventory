@@ -49,9 +49,9 @@ import ch.brickinventoryapp.ui.components.SettingsCard
 import ch.brickinventoryapp.shared.ui.Zustandszeile
 
 /**
- * Alle Preisalarme an einem Ort — ändern und löschen wie im Web. Der letzte Preis
- * steht dabei, weil eine Schwelle ohne ihn nicht zu beurteilen ist; die Zeile
- * öffnet das Set nur, wenn es in der Sammlung liegt.
+ * All price alerts in one place — change and delete as in the web. The last price
+ * sits alongside, because a threshold can't be judged without it; the row
+ * only opens the set if it's in the collection.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -62,9 +62,9 @@ internal fun PreisalarmeCard(
     serverUrl: String,
     onSetClick: (String) -> Unit,
 ) {
-    // Die Rueckfrage haelt die ZEILE fest, nicht nur ein Ja/Nein: Der Text
-    // nennt das Set, und beim Bestaetigen braucht es beide Teile des
-    // Schluessels (Set und Zustand).
+    // The confirmation records the ROW, not just a yes/no: the text
+    // names the set, and confirming needs both parts of the
+    // key (set and condition).
     var deleteAsks by remember { mutableStateOf<PriceAlertView?>(null) }
 
     SettingsCard(
@@ -75,34 +75,34 @@ internal fun PreisalarmeCard(
             stringResource(R.string.alerts_intro_more), stil = MaterialTheme.typography.bodySmall,
             thema = stringResource(R.string.alerts_group))
 
-        // `geladen` und nicht nur „Liste leer": Beim Aufbau stuende sonst kurz
-        // „keine Alarme gesetzt", obwohl noch gar nichts abgerufen wurde.
+        // `geladen`, not just "list empty": on build it would otherwise briefly
+        // say "no alerts set", even though nothing has been fetched yet.
         if (uebersicht.geladen && uebersicht.alerts.isEmpty()) {
             Text(stringResource(R.string.alerts_empty),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         for (a in uebersicht.alerts) {
-            // Schluessel ist (Set, Zustand) — beides, sonst traegt das Feld des
-            // einen Alarms den Wert des anderen, wenn ein Set beide hat.
-            // Als Betrag wie überall („750.00“), nicht als Rohzahl „750.0“.
+            // Key is (set, condition) — both, otherwise one alert's field would
+            // carry the other's value when a set has both.
+            // As an amount like everywhere else ("750.00"), not as a raw number "750.0".
             var wert by rememberSaveable(a.setNumber + a.condition) {
                 mutableStateOf(fmtEingabe(a.schwelle))
             }
-            // Reihenfolge wie in den Finanzen und in der Webapp: heruntergeladene
-            // Kopie, eigene Adresse, Katalog. Fuer ein Set, das man nicht besitzt,
-            // bleibt nur die letzte — und das ist beim Preisalarm der haeufige Fall.
+            // Order as in finances and the web app: downloaded
+            // copy, own address, catalog. For a set one doesn't own, only
+            // the last one is left — and that's the common case for a price alert.
             val bildUrl = resolveThumbUrl(serverUrl, a.imageLocal, a.imageUrl)
                 ?: a.setImgUrl
-            // Nur anklickbar, wenn es die Detailansicht ueberhaupt gibt. `Modifier`
-            // ohne `clickable` heisst zugleich: kein Wellenschlag beim Tippen, also
-            // sieht man dem Eintrag an, dass da nichts kommt.
+            // Only clickable if the detail view even exists. `Modifier`
+            // without `clickable` also means: no ripple on tap, so
+            // the entry visibly shows there's nothing to go to.
             val zeile = if (a.besitzt)
                 Modifier.fillMaxWidth().clickable(onClickLabel = stringResource(R.string.cd_set_oeffnen), role = Role.Button) { onSetClick(a.setNumber) }
             else Modifier.fillMaxWidth()
-            // Abstand innerhalb eines Alarms: Er ist ein Kind der Karte, deren Abstände hier
-            // nicht greifen. Aussen zwischen Kopf und Schwelle, innen haarfein zwischen
-            // Nummer, Name und Plakette, damit die drei eine Einheit bleiben.
+            // Spacing within an alert: it's a child of the card, whose spacings don't
+            // apply here. Outside between header and threshold, inside hairline-thin between
+            // number, name and badge, so the three stay a unit.
             Column(zeile.padding(vertical = Abstaende.tiny),
                    verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 Row(verticalAlignment = Alignment.CenterVertically,
@@ -110,8 +110,8 @@ internal fun PreisalarmeCard(
                     FinanzBild(bildUrl, imageLoader, a.name)
                     Column(Modifier.weight(1f),
                            verticalArrangement = Arrangement.spacedBy(Abstaende.hairline)) {
-                        // Der Name zuerst wie in der Sammlung; Nummer und Zustand leiser
-                        // darunter. Ohne Namen trägt die Nummer die Zeile.
+                        // Name first as in the collection; number and condition quieter
+                        // below. Without a name, the number carries the row.
                         val zustand = if (a.condition == Zustand.GEBRAUCHT)
                             stringResource(R.string.condition_used)
                         else stringResource(R.string.condition_new)
@@ -121,8 +121,8 @@ internal fun PreisalarmeCard(
                         Text(if (a.name != null) "${a.setNumber} · $zustand" else zustand,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        // FlowRow: In einer Row nahm die Plakette die ganze Breite, und „zuletzt …“
-                        // brach Zeichen für Zeichen um. So rückt der Preis darunter, wenn es eng wird.
+                        // FlowRow: in a Row the badge took the whole width, and "last …"
+                        // wrapped character by character. This way the price below moves when it gets tight.
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                             verticalArrangement = Arrangement.spacedBy(Abstaende.hairline)) {
                             AlarmZustandPlakette(a.ausgeloest)
@@ -134,8 +134,8 @@ internal fun PreisalarmeCard(
                             }
                         }
                     }
-                    // Leise wie jede Zeilenaktion: Rot je Zeile übertönte die Preise; die
-                    // Rückfrage danach trägt das Gewicht.
+                    // Quiet like every row action: red per row would drown out the prices; the
+                    // confirmation afterward carries the weight.
                     MitTooltip(stringResource(R.string.alerts_delete_fuer, a.name ?: a.setNumber)) {
                         IconButton(onClick = { deleteAsks = a }) {
                             Icon(Icons.Default.Delete, stringResource(R.string.alerts_delete_fuer, a.name ?: a.setNumber),
@@ -143,12 +143,12 @@ internal fun PreisalarmeCard(
                         }
                     }
                 }
-                // Ein Speichermodell wie im Set- und Merkposten-Detail: Getipptes speichert nach
-                // der Ruhezeit von selbst (im ViewModel, damit es das Verlassen übersteht), die
-                // Zeile darunter bestätigt. Die Richtung nennt die Wahl darüber; das Feld heisst
-                // „Schwelle“, statt sie ein zweites Mal zu nennen.
+                // A save model like in the set and watchlist detail: typed text saves on its own
+                // after the quiet period (in the ViewModel, so it survives leaving), the
+                // row below confirms it. The choice above names the direction; the field is called
+                // "threshold" instead of naming it a second time.
                 val zahl = Alarmeingabe.zahl(wert)
-                // Die Richtung umschaltbar wie in der Web-App; gespeichert wird sofort.
+                // The direction can be toggled as in the web app; saved right away.
                 SegmentChoice(
                     optionen = listOf(Alarmrichtung.UNTER to stringResource(R.string.detail_alert_chip_below),
                                       Alarmrichtung.UEBER to stringResource(R.string.detail_alert_chip_above)),
@@ -164,10 +164,10 @@ internal fun PreisalarmeCard(
                     },
                     singleLine = true,
                     label = { Text(stringResource(R.string.alerts_schwelle)) },
-                    // Vorangestellt wie jeder Betrag der App („CHF 750.00“).
+                    // Prefixed like every amount in the app ("CHF 750.00").
                     prefix = { Text(a.currencyCode.code + "\u00A0") },
-                    // Nur „Gespeichert“: Richtung, Betrag und Zustand stehen schon in Feld und
-                    // Plakette, die ganze Wiederholung darunter verdoppelte jede Zeile.
+                    // Just "Saved": direction, amount and condition already sit in the field and
+                    // badge, repeating all of it below would double every line.
                     supportingText = {
                         if (zahl == a.schwelle) Row(verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(Abstaende.hairline)) {
@@ -176,12 +176,12 @@ internal fun PreisalarmeCard(
                         } else Text(stringResource(R.string.detail_alert_hint))
                     },
                     keyboardOptions = NumericInput.priceKeyboard(),
-                    // „Fertig“ speichert sofort, ohne die Ruhezeit abzuwarten.
+                    // "Done" saves right away, without waiting for the quiet period.
                     keyboardActions = KeyboardActions(onDone = {
                         if (zahl != null && zahl != a.schwelle) aktionen.changeAlarmThreshold(a.setNumber, a.condition, a.richtung, zahl)
                     }),
                     shape = Formen.feld,
-                    // Ein Betrag, keine Zeile Text: auf dem Tablet nicht über die ganze Karte.
+                    // An amount, not a line of text: doesn't span the whole card on a tablet.
                     modifier = Modifier.betragsbreite(),
                 )
                 Announcement(if (zahl == a.schwelle) stringResource(R.string.vm_saved) else null)
@@ -190,8 +190,8 @@ internal fun PreisalarmeCard(
         AlarmCreate(aktionen)
     }
 
-    // Rueckfrage vor dem Loeschen — wie in der Webapp. Ein Alarm ist mit einem
-    // Fingertipp weg und kommt nicht wieder; die Schwelle muesste man neu suchen.
+    // Confirmation before deleting — as in the web app. An alert is gone with one
+    // tap and doesn't come back; the threshold would have to be found again.
     deleteAsks?.let { a ->
         Prompt(
             titel = stringResource(R.string.alerts_delete),
@@ -207,8 +207,8 @@ internal fun PreisalarmeCard(
 }
 
 /**
- * „Preisalarm anlegen“ wie in der Web-App: Setnummer, Zustand, Richtung und Schwelle.
- * Ohne Nummer oder Schwelle bleibt der Knopf gesperrt, und der Satz darüber sagt warum.
+ * "Create price alert" as in the web app: set number, condition, direction and threshold.
+ * Without a number or a threshold the button stays disabled, and the line above says why.
  */
 @Composable
 private fun AlarmCreate(aktionen: EinstellungenAktionen) {
@@ -246,9 +246,9 @@ private fun AlarmCreate(aktionen: EinstellungenAktionen) {
 }
 
 /**
- * Breite der Felder und Wahlen eines Alarms: Ein Betrag über die ganze Tabletkarte läse sich
- * als Textzeile, darum [AMOUNT_WIDTH]. Ist die Karte kaum breiter (Telefon), füllen sie sie
- * und enden am selben Rand wie Kopf und Trennlinie, statt ein paar dp davor.
+ * Width of an alert's fields and choices: an amount across the whole tablet card would read
+ * as a line of text, hence [AMOUNT_WIDTH]. If the card is barely wider (phone), they fill it
+ * and end at the same edge as the header and divider, instead of a few dp before it.
  */
 private fun Modifier.betragsbreite(): Modifier = layout { messbar, grenzen ->
     val breite = when {
@@ -264,16 +264,16 @@ private val AMOUNT_WIDTH = 320.dp
 private val PHONE_CARD = 420.dp
 
 /**
- * „Aktiv“ oder „Ausgelöst“ ohne Farbe lesbar: Wort und Form (gefüllt/umrandet) tragen
- * es je einzeln. Farbe nur als Zugabe und nicht grün gegen rot — bei Rot-Grün-Schwäche
- * wäre das zweimal dasselbe. `secondaryContainer` bringt jedes Design als
- * „hervorgehoben, nicht dringend“ mit.
+ * "Active" or "Triggered" readable without color: word and shape (filled/outlined) carry
+ * it each on their own. Color only as an extra, and not green against red — with
+ * red-green color blindness that would be the same thing twice. `secondaryContainer` brings
+ * every design its own "highlighted, not urgent" look.
  */
 @Composable
 private fun AlarmZustandPlakette(ausgeloest: Boolean) {
     val text = stringResource(if (ausgeloest) R.string.alerts_fired else R.string.alerts_armed)
-    // Gefuellt = aktiv, umrandet = ausgeloest. Die Flaeche ist der Unterschied,
-    // den man auch dann sieht, wenn die beiden Farben gleich aussehen.
+    // Filled = active, outlined = triggered. The surface is the difference
+    // you still see even when the two colors look the same.
     Surface(
         shape = Formen.chip,
         color = if (ausgeloest) Color.Transparent
@@ -281,17 +281,17 @@ private fun AlarmZustandPlakette(ausgeloest: Boolean) {
         border = if (ausgeloest)
             BorderStroke(1.dp, MaterialTheme.colorScheme.outline) else null,
     ) {
-        // Ein Wort, eine Zeile: Was der ausgelöste Alarm abwartet, sagt die Zeile unter dem Feld.
+        // One word, one line: the line below the field says what the triggered alert is waiting for.
         Text(
             text,
             maxLines = 1,
             style = MaterialTheme.typography.bodySmall,
-            // Auch das Gewicht traegt mit: Ein aktiver Alarm ist der Zustand,
-            // auf den es ankommt.
+            // The weight carries it too: an active alert is the state
+            // that matters.
             fontWeight = if (ausgeloest) FontWeight.Normal else FontWeight.SemiBold,
             color = if (ausgeloest) MaterialTheme.colorScheme.onSurfaceVariant
                     else MaterialTheme.colorScheme.onSecondaryContainer,
-            // Innenabstand wie ein Chip: Mit 4 dp berührte „Ausgelöst“ den Rand.
+            // Padding like a chip: at 4 dp "Triggered" touched the edge.
             modifier = Modifier.padding(
                 horizontal = Abstaende.klein, vertical = Abstaende.hairline),
         )
@@ -299,25 +299,25 @@ private fun AlarmZustandPlakette(ausgeloest: Boolean) {
 }
 
 /**
- * Der Schalter für die Preisalarm-Meldungen auf diesem Gerät; die E-Mail des
- * Servers ist die kontobezogene Hälfte. Die Berechtigung (ab Android 13) wird erst
- * hier erfragt, wo daneben steht, wofür sie ist. Der Schalter bleibt an, auch wenn
- * sie verweigert wird: Er sagt „ich will das“, die Berechtigung „das System lässt
- * es zu“ — wer sie später erteilt, bekommt die Meldungen ohne weiteres Zutun.
+ * The switch for price-alert notifications on this device; the server's email is
+ * the account-wide half. The permission (from Android 13) is asked here for the
+ * first time, right next to what it's for. The switch stays on even if
+ * it's refused: it says "I want this", the permission "the system allows
+ * it" — whoever grants it later gets the notifications without any further action.
  */
 @Composable
 fun PriceAlertCard(an: Boolean, toggleOn: (Boolean) -> Unit) {
     val frage = androidx.activity.compose.rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { /* Antwort egal — Begruendung im Kommentar ueber dieser Funktion. */ }
+    ) { /* The answer doesn't matter — reasoning in the comment above this function. */ }
 
     SettingsCard(
         title = stringResource(R.string.detail_alert),
         icon = Icons.Default.Notifications,
     ) {
         ToggleRow(stringResource(R.string.alert_notify), an, { neu ->
-            // Die Berechtigung ZUERST und auf dem Hauptthread: Sie öffnet einen
-            // Systemdialog, und der gehört nicht hinter eine Hintergrundarbeit.
+            // The permission FIRST and on the main thread: it opens a
+            // system dialog, and that doesn't belong behind background work.
             if (neu && Build.VERSION.SDK_INT >= 33) {
                 frage.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }

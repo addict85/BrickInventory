@@ -17,7 +17,7 @@ import ch.brickinventoryapp.shared.ui.FilterChoice
 import ch.brickinventoryapp.shared.ui.AccountFilterSection
 import ch.brickinventoryapp.shared.ui.LocationFilterSection
 
-/** Das Filterblatt mit den Werten der Galerie. */
+/** The filter sheet with the gallery's values. */
 @Composable
 internal fun GalerieFilter(zustand: GalleryState, events: GalleryEvents, onSchliessen: () -> Unit) {
     GalleryFilterSheet(
@@ -29,9 +29,9 @@ internal fun GalerieFilter(zustand: GalleryState, events: GalleryEvents, onSchli
 }
 
 /**
- * Konto, Lagerort und Thema der Galerie. Angewandt wird jede Wahl sofort auf dem
- * Server; das Blatt bleibt offen, damit man mehrere setzen kann. Die Sortierung
- * hat ihr eigenes Menü neben dem Filterknopf.
+ * Account, storage location and theme of the gallery. Every choice applies right away on the
+ * server; the sheet stays open, so several can be set. Sorting
+ * has its own menu next to the filter button.
  */
 @Composable
 private fun GalleryFilterSheet(
@@ -40,7 +40,7 @@ private fun GalleryFilterSheet(
     themen: List<String>, thema: String, onTheme: (String) -> Unit,
     onSchliessen: () -> Unit,
 ) {
-    // Nur zurücksetzen, was abweicht: Jede Änderung lädt die Liste neu.
+    // Only reset what differs: every change reloads the list.
     val reset: () -> Unit = {
         if (Filterzahl.konto(members, konto) > 0) onAccount(ScopeFilter.ALL)
         if (Filterzahl.lager(orte, lager) > 0) onStorage("")

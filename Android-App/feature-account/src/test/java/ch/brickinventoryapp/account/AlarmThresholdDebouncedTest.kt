@@ -23,12 +23,12 @@ import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
- * Die Preisalarm-Übersicht speichert wie Set- und Merkposten-Detail beim Tippen,
- * entprellt im ViewModel: eine Anfrage mit dem letzten Wert, erst nach der Ruhezeit.
+ * The price-alert overview saves on typing like the set and watchlist detail,
+ * debounced in the ViewModel: one request with the last value, only after the quiet period.
  *
- * Gegenprobe (gegenproben/alarmschwelle-ohne-entprellung.patch, nur in der CI
- * gemessen): in setAlarmThreshold() den wartenden Auftrag nicht abgebrochen → rot
- * „getippte Schwelle speichert nach der Ruhezeit einmal“ (zwei PUT, auch „4“).
+ * Counter-check (gegenproben/alarmschwelle-ohne-entprellung.patch, measured only in
+ * CI): in setAlarmThreshold() the pending job not canceled → red
+ * "getippte Schwelle speichert nach der Ruhezeit einmal" (two PUTs, "4" included).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AlarmThresholdDebouncedTest {

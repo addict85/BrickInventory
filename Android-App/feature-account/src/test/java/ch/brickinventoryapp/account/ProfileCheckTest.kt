@@ -7,11 +7,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Was „Profil speichern“ markiert, bevor das Passwort abgefragt wird; das erste Feld
- * bekommt den Cursor.
+ * What "Save profile" marks before the password is asked for; the first field
+ * gets the cursor.
  *
- * Gegenprobe (gemessen lokal, JVM):
- *   profil-email-ungeprueft  leere E-Mail nicht gemeldet → rot „leer …“
+ * Counter-check (measured locally, JVM):
+ *   profil-email-ungeprueft  empty email not reported → red "leer …"
  */
 class ProfileCheckTest {
 

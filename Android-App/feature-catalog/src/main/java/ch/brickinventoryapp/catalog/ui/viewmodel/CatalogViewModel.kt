@@ -35,26 +35,26 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 /**
- * Wie lange die Liste ruhig stehen muss, bevor ihre sichtbaren Seiten geholt werden:
- * 150 ms wie in der Webapp (`_ladeSichtbareSeiten`). Ein Zug über die ganze Leiste
- * fällt so auf einen Abruf zusammen; kürzer als ein Berührungsabstand entprellte nichts.
+ * How long the list must stay still before its visible pages are fetched:
+ * 150 ms as in the web app (`_ladeSichtbareSeiten`). A drag across the whole bar
+ * thus collapses into one fetch; shorter than a touch interval wouldn't debounce anything.
  */
 internal const val VIEWPORT_REST_MS = 150L
 
 /**
- * Der Katalog als eigenes ViewModel: Suche, Liste und Detail haben Jobs und eine
- * Filter-Generation, die als Felder einer Instanz gehören und nicht prozessweit.
- * Nicht über hiltViewModel(): Liste und Detail sind zwei NavHost-Ziele, und zwei
- * Instanzen sähen das „besitze ich“ des Details nicht in der Liste. Deshalb hält
- * es wie das AppViewModel die Activity.
+ * The catalog as its own ViewModel: search, list and detail have jobs and a
+ * filter generation, which belong as fields of one instance, not process-wide.
+ * Not via hiltViewModel(): list and detail are two NavHost destinations, and two
+ * instances wouldn't see the detail's "I own this" in the list. That's why
+ * it, like AppViewModel, is held by the Activity.
  */
 @HiltViewModel
 class CatalogViewModel @Inject constructor(
     private val katalog: CatalogRepository,
     private val meldungen: MeldungsKanal,
-    /** Texte in der Sprache der App und Fehlermeldungen wie überall (AppTexte). */
+    /** Texts in the app's language and error messages like everywhere else (AppTexte). */
     private val texts: Texte,
-    /** Merkliste und Preisalarm: Das Detail zeigt den Posten und legt ihn an, ohne die Sammlung zu kennen. */
+    /** Watchlist and price alert: the detail shows the item and creates it, without knowing the collection. */
     private val merkliste: WantedRepository,
     private val alerts: AlarmRepository,
     private val rollgedaechtnis: ScrollMemory,
@@ -64,28 +64,29 @@ class CatalogViewModel @Inject constructor(
     val state = _catalogState.asStateFlow()
 
     init {
-        // Erst wer den Katalog sieht, lädt ihn; ein Zurückkehren lädt nur, was noch fehlt.
+        // Only whoever sees the catalog loads it; returning only loads what's still missing.
         observeLoadOn(_catalogState) {
             val s = _catalogState.value
             if (s.loadedPages.isEmpty() && !s.abruf.laedt) { loadCatalogMeta(); loadCatalogSets() }
         }
     }
 
-    // Entprellte Suche: pro Tastendruck wird der vorherige Lade-Job
-    // abgebrochen, geladen wird erst 350ms nach dem letzten.
+    // Debounced search: each keypress cancels the previous load
+    // job, loading only starts 350 ms after the last one.
     private var catalogSearchJob: Job? = null
 
-    // Aktiver Listen-/Seiten-Lade-Job: Ein Filterwechsel bricht die laufende
-    // Ladung SOFORT ab — inklusive ihrer Retry-Wartezeiten. Ohne das
-    // blockierte ein haengender Request (z.B. wenn parallele CDN-Bilddownloads
-    // die Verbindung saettigen und API-Calls in Timeouts laufen) ueber
-    // isLoading minutenlang jede weitere Interaktion im Katalog.
+    // Active list/page load job: a filter change cancels the running
+    // load IMMEDIATELY — including its retry wait times. Without that,
+    // a hanging request (e.g. when parallel CDN image downloads
+    // saturate the connection and API calls run into timeouts) would block
+    // every further interaction in the catalog for minutes via
+    // isLoading.
     private var catalogListJob: Job? = null
     private var catalogDetailJob: Job? = null
 
-    // Filter-Generation: Antworten einer aelteren Generation werden verworfen —
-    // verhindert, dass eine spaete Seite-2-Antwort des ALTEN Filters an die
-    // neue Liste angehaengt wird (gemischte Inhalte + doppelte LazyGrid-Keys).
+    // Filter generation: responses from an older generation are discarded —
+    // prevents a late page-2 response of the OLD filter from being
+    // appended to the new list (mixed content + duplicate LazyGrid keys).
     private var catalogGeneration = 0
 
     override fun loadCatalogMeta() {
@@ -94,21 +95,21 @@ class CatalogViewModel @Inject constructor(
                 is Ergebnis.Erfolg -> _catalogState.update {
                     it.copy(themes = r.data.themen, yearMin = r.data.jahrMin, yearMax = r.data.jahrMax)
                 }
-                is Ergebnis.Fehler -> { /* Meta ist optional — Filter bleiben leer, Liste geht trotzdem */ }
+                is Ergebnis.Fehler -> { /* Meta is optional — filters stay empty, the list still works */ }
             }
         }
     }
 
     /**
-     * Erste Seite mit den aktuellen Filtern laden (ersetzt alles Geladene).
-     * Bricht eine laufende Ladung ab (cancel-and-replace).
+     * Load the first page with the current filters (replaces everything loaded).
+     * Cancels a running load (cancel-and-replace).
      */
     override fun loadCatalogSets() {
         val gen = ++catalogGeneration
         catalogListJob?.cancel()
         catalogListJob = viewModelScope.launch {
-            // Auch die gemerkte Stelle vergessen: Nach einem Filterwechsel zeigte sie auf
-            // Sets, die es in der neuen Liste nicht mehr gibt.
+            // Also forget the remembered position: after a filter change it pointed to
+            // sets that no longer exist in the new list.
             rollgedaechtnis.vergiss(KatalogZiel.Catalog.rollSchluessel)
             _catalogState.update {
                 it.copy(abruf = Laden.Loads,
@@ -117,7 +118,7 @@ class CatalogViewModel @Inject constructor(
             }
             loadYearDistribution(gen)
             val s = _catalogState.value
-            // Wiederholt wird im Repository, knapp: Der Fehlerzustand hat einen eigenen Knopf.
+            // Retrying happens in the repository, briefly: the error state has its own button.
             val r = katalog.getCatalogSets(
                 q = s.query.ifBlank { null }, themeId = s.themeId,
                 yearFrom = s.year, yearTo = s.year, sort = s.sort, page = 1
@@ -138,14 +139,14 @@ class CatalogViewModel @Inject constructor(
     }
 
     /**
-     * Die Seite laden, auf der ein sichtbar gewordener Platz liegt — beim Scrollen in
-     * beide Richtungen und nach einem Sprung. Geladene oder ladende Seiten werden
-     * übersprungen; Antworten einer älteren Filter-Generation verworfen, sonst hinge
-     * eine späte Seite des alten Filters in der neuen Liste.
+     * Load the page a slot that became visible sits on — while scrolling in
+     * either direction and after a jump. Loaded or loading pages are
+     * skipped; responses from an older filter generation are discarded, otherwise
+     * a late page of the old filter would hang around in the new list.
      */
     private val viewport = Sichtfensterlader(viewModelScope, VIEWPORT_REST_MS, ::ensureCatalogPage)
 
-    /** Was das Raster gerade zeigt (Seiten, 1-basiert); geladen wird erst, wenn es ruht. */
+    /** What the grid currently shows (pages, 1-based); only loaded once it's still. */
     override fun catalogVisible(firstPage: Int, lastPage: Int) = viewport.sichtbar(firstPage, lastPage)
 
     fun ensureCatalogPage(seite: Int) {
@@ -155,7 +156,7 @@ class CatalogViewModel @Inject constructor(
         val gen = catalogGeneration
         _catalogState.update { it.copy(loadingPages = it.loadingPages + seite) }
         viewModelScope.launch {
-            // Wiederholt wird im Repository, knapp: Der Fehlerzustand hat einen eigenen Knopf.
+            // Retrying happens in the repository, briefly: the error state has its own button.
             val r = katalog.getCatalogSets(
                 q = s.query.ifBlank { null }, themeId = s.themeId,
                 yearFrom = s.year, yearTo = s.year, sort = s.sort, page = seite
@@ -174,9 +175,9 @@ class CatalogViewModel @Inject constructor(
     }
 
     /**
-     * Die Jahresverteilung zu den aktuellen Filtern holen — vom Server, weil nur er
-     * die Filter kennt; einmal je Listenaufbau wie in der Webapp. `gen` verwirft die
-     * Antwort, wenn der Filter inzwischen gewechselt hat.
+     * Fetch the year distribution for the current filters — from the server, because only it
+     * knows the filters; once per list build as in the web app. `gen` discards the
+     * response if the filter has changed in the meantime.
      */
     private fun loadYearDistribution(gen: Int) {
         viewModelScope.launch {
@@ -185,8 +186,8 @@ class CatalogViewModel @Inject constructor(
                 q = s.query.ifBlank { null }, themeId = s.themeId, sort = s.sort)
             if (gen != catalogGeneration) return@launch
             if (r is Ergebnis.Erfolg) {
-                // Jahrgaenge OHNE Jahr wegwerfen — genau wie die Webapp es tut.
-                // Ihre Zahl bleibt in `total` enthalten; siehe
+                // Drop years WITHOUT a year — exactly as the web app does.
+                // Their count stays included in `total`; see
                 // CatalogYearMath.yearAnPosition.
                 _catalogState.update { it.copy(yearDistribution = r.data.filter { j -> j.year != null }) }
             }
@@ -194,15 +195,15 @@ class CatalogViewModel @Inject constructor(
     }
 
     /**
-     * Die Leiste rechts rollt die Liste an eine Stelle. Die Nummer geht über den
-     * Zustand an die Ansicht, weil dort gerollt wird; catalogScrollConsumed() setzt
-     * sie zurück, sonst liesse sich dieselbe Stelle kein zweites Mal anfahren.
+     * The bar on the right scrolls the list to a spot. The number goes to the
+     * view through the state, because scrolling happens there; catalogScrollConsumed() resets
+     * it, otherwise the same spot couldn't be jumped to a second time.
      */
     override fun scrollCatalogTo(nummer: Int) {
         _catalogState.update { it.copy(scrollTo = nummer) }
     }
 
-    /** Die Ansicht meldet, dass sie gesprungen ist. */
+    /** The view reports that it has jumped. */
     override fun catalogScrollConsumed() {
         _catalogState.update { it.copy(scrollTo = null) }
     }
@@ -232,11 +233,11 @@ class CatalogViewModel @Inject constructor(
     }
 
     // ── Detail ────────────────────────────────────────────────────────────────────
-    /** Der Merkposten zu [setNumber] aus der Ablage der Merkliste; null, solange das Set nicht darauf steht. */
+    /** The watchlist item for [setNumber] from the watchlist cache; null as long as the set isn't on it. */
     fun gemerkt(setNumber: String): Flow<WantedItemView?> =
         merkliste.observeWanted().map { l -> l.liste.firstOrNull { it.setNumber == setNumber } }
 
-    /** Merken und, wenn eine Schwelle dasteht, den Preisalarm gleich mit. */
+    /** Watchlist, and if a threshold is given, the price alert right along with it. */
     fun merke(w: Merkwunsch) {
         viewModelScope.launch {
             when (val r = merkliste.legeMerkpostenAn(w.setNumber, w.zustand, w.konto)) {
@@ -253,11 +254,11 @@ class CatalogViewModel @Inject constructor(
     fun loadCatalogDetail(setNumber: String) {
         catalogDetailJob?.cancel()
         catalogDetailJob = viewModelScope.launch {
-            // Die Merkliste in die Ablage, damit [gemerkt] den Posten kennt; still, das Detail zählt.
+            // The watchlist into the cache, so [gemerkt] knows the item; silent, the detail counts.
             launch { merkliste.refreshWanted() }
             _catalogState.update { it.copy(detail = Laden.Loads) }
-            // Der Fehler gehört in den Zustand, nicht in eine Snackbar: Der Bildschirm hat
-            // ohne Detail nichts zu zeigen und braucht einen Grund und „Erneut versuchen“.
+            // The error belongs in the state, not in a snackbar: the screen has
+            // nothing to show without the detail and needs a reason and "Try again".
             when (val r = katalog.getCatalogSetDetail(setNumber)) {
                 is Ergebnis.Erfolg -> {
                     val detail = r.data
@@ -271,13 +272,13 @@ class CatalogViewModel @Inject constructor(
     }
 
     /**
-     * Ein aufgenommenes Set als „besitze ich“ markieren. Das Aufnehmen gehört der
-     * Galerie, das Markieren dem Katalog; der Graph ruft beides nacheinander, damit
-     * die Abhängigkeit an der Aufrufstelle steht.
+     * Mark an added set as "I own this". Adding belongs to the
+     * gallery, marking to the catalog; the graph calls both in sequence, so
+     * the dependency sits at the call site.
      */
     fun markCaptured(setNumber: String, quantity: Int) {
-        // Das „besitze ich“-Abzeichen sofort setzen, ohne neu zu laden — über alle
-        // geladenen Seiten, weil die Kachel auf jeder stehen kann.
+        // Set the "I own this" badge right away, without reloading — across all
+        // loaded pages, because the tile can sit on any of them.
         _catalogState.update { st ->
             val mark: (KatalogSetAnsicht) -> KatalogSetAnsicht = {
                 if (it.setNumber == setNumber)

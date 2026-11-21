@@ -8,31 +8,31 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Die Jahres-Leiste rechnet über die DISTRIBUTION, nicht linear.
+ * The year bar calculates over the DISTRIBUTION, not linearly.
  *
- * ── Der Fehler, den das verhindert ──────────────────────────────────────────
- * Hier stand vorher ein lineares Modell: oben yearMax, unten yearMin, die
- * Strecke dazwischen gleichmässig auf die Jahre verteilt; die Leiste zeigte
- * 1965 und lud die Sets von 1999.
+ * ── The bug this prevents ──────────────────────────────────────────
+ * A linear model used to sit here: yearMax at the top, yearMin at the
+ * bottom, the stretch between evenly split across the years; the bar showed
+ * 1965 and loaded the sets from 1999.
  *
- * Die Annahme dahinter — in jedem Jahr läge gleich viel — stimmt nicht: Der
- * weitaus grösste Teil des Katalogs stammt aus den letzten Jahrzehnten.
+ * The assumption behind it — that every year holds the same amount — is wrong: by
+ * far the largest part of the catalog comes from the last few decades.
  *
- * Die Zahlen unten sind dieser Fall im Kleinen: drei Jahrgänge, von denen der
- * neueste neunzig von hundert Sets stellt. Bei neun Zehnteln der Leiste steht
- * man deshalb IMMER NOCH im neuesten Jahrgang — linear gerechnet käme dort der
- * älteste heraus.
+ * The numbers below are this case in miniature: three years, of which the
+ * newest accounts for ninety of a hundred sets. At nine tenths of the bar, you're
+ * therefore STILL in the newest year — calculated linearly, that spot would give
+ * the oldest.
  *
- * Dieselbe Rechnung steht in der Webapp (js/katalog.js → _jahrAnPosition).
- * Dass beide sie haben und keine von beiden linear schätzt, prüft
- * Web-App/test/catalog-frontend.test.js über beide Quellbäume.
+ * The same calculation lives in the web app (js/katalog.js → _jahrAnPosition).
+ * Web-App/test/catalog-frontend.test.js checks, across both source trees, that
+ * both have it and neither estimates linearly.
  */
 class CatalogYearMathTest {
 
-    private val H = 1000      // Leistenhöhe in px
-    private val T = 36        // Griffhöhe in px
+    private val H = 1000      // Bar height in px
+    private val T = 36        // Handle height in px
 
-    /** Neueste zuerst — dieselbe Reihenfolge, in der die Liste steht. */
+    /** Newest first — the same order the list is in. */
     private val DISTRIBUTION = listOf(
         JahrAnzahlAnsicht(2024, 90),
         JahrAnzahlAnsicht(2010, 7),
@@ -44,8 +44,8 @@ class CatalogYearMathTest {
 
     @Test
     fun `nine tenths down is not yet at the oldest year`() {
-        // Linear käme hier 1965 heraus. Tatsächlich reicht der
-        // Jahrgang 2024 bis zur laufenden Nummer 89, und 0.9 * 99 = 89.
+        // Linear would give 1965 here. In fact the
+        // 2024 year goes up to running number 89, and 0.9 * 99 = 89.
         assertEquals(2024, jahr(0.9f))
     }
 
@@ -53,14 +53,14 @@ class CatalogYearMathTest {
     fun `the edges hit the first and the last year`() {
         assertEquals(2024, jahr(0f))
         assertEquals(1965, jahr(1f))
-        // Ausserhalb wird geklemmt, nicht gerechnet.
+        // Clamped outside the range, not computed.
         assertEquals(2024, jahr(-2f))
         assertEquals(1965, jahr(5f))
     }
 
     @Test
     fun `the boundary between two years lies at the right number`() {
-        // Nummer 89 ist die letzte von 2024, Nummer 90 die erste von 2010.
+        // Number 89 is the last of 2024, number 90 the first of 2010.
         assertEquals(89, CatalogYearMath.numberFrom(0.9f, TOTAL))
         assertEquals(2024, jahr(89f / 99f))
         assertEquals(2010, jahr(90f / 99f))
@@ -84,10 +84,10 @@ class CatalogYearMathTest {
 
     @Test
     fun `a loaded tile beats the calculation`() {
-        // Erste Wahl wie in der Webapp: Ist die Stelle geladen, gilt ihr Jahr —
-        // auch wenn die Verteilung etwas anderes ergäbe.
+        // First choice as in the web app: if the slot is loaded, its year applies —
+        // even if the distribution would give something else.
         assertEquals(1999, CatalogYearMath.yearFor(0.9f, TOTAL, DISTRIBUTION) { 1999 })
-        // Nicht geladen -> die Rechnung.
+        // Not loaded -> the calculation.
         assertEquals(2024, CatalogYearMath.yearFor(0.9f, TOTAL, DISTRIBUTION) { null })
     }
 
@@ -109,20 +109,20 @@ class CatalogYearMathTest {
         for (n in 0 until TOTAL) {
             assertEquals(n, CatalogYearMath.numberFrom(CatalogYearMath.anteilAusNummer(n, TOTAL), TOTAL))
         }
-        // Eine Liste mit einem einzigen Eintrag hat keine Strecke.
+        // A list with a single entry has no span.
         assertEquals(0f, CatalogYearMath.anteilAusNummer(0, 1), 0f)
         assertEquals(0, CatalogYearMath.numberFrom(0.5f, 0))
     }
 
     @Test
     fun `degenerate cases do not crash`() {
-        // Leiste kleiner als der Griff (extrem kleines Layout)
+        // Bar smaller than the handle (extremely small layout)
         val a = CatalogYearMath.shareFrom(10f, 20, T)
         assertTrue(a in 0f..1f)
         assertEquals(0, CatalogYearMath.thumbOffset(a, 20, T))
-        // Verteilung deckt weniger ab als `total` — Sets ohne Jahr zählen in
-        // `total` mit, stehen aber nicht in der Verteilung. Dann gilt der
-        // letzte Jahrgang, genau wie in der Webapp.
+        // Distribution covers less than `total` — sets without a year count in
+        // `total` but don't appear in the distribution. Then the
+        // last year applies, exactly as in the web app.
         assertEquals(1965, CatalogYearMath.yearAnPosition(1f, 500, DISTRIBUTION))
     }
 }

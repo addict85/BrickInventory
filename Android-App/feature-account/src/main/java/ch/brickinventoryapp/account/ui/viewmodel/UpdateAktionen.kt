@@ -3,10 +3,10 @@ package ch.brickinventoryapp.account.ui.viewmodel
 import ch.brickinventoryapp.account.ui.UpdateUiState
 import kotlinx.coroutines.flow.StateFlow
 
-/** Was Update-Hinweis und Update-Karte auslösen. */
+/** What the update notice and update card trigger. */
 interface UpdateAktionen {
     fun pruefeAufUpdate(still: Boolean = false)
-    /** Die stille Prüfung beim Start, nur wenn der Schalter des Geräts an ist. */
+    /** The silent check on start, only if the device's switch is on. */
     fun pruefeBeimStart()
     fun setStartpruefung(an: Boolean)
     fun closeUpdateHint()
@@ -14,7 +14,7 @@ interface UpdateAktionen {
     fun cancelLoad()
     fun startInstallation()
 
-    /** Aktionen samt Zustand, wie der Hinweis sie liest; so zeigt ihn ein Test ohne Download. */
+    /** Actions plus state, as the notice reads them; this is how a test shows it without a download. */
     interface WithState : UpdateAktionen {
         val zustand: StateFlow<UpdateUiState>
     }

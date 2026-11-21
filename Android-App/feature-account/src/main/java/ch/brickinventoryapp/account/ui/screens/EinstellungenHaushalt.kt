@@ -44,12 +44,12 @@ import ch.brickinventoryapp.ui.util.LocalSdkLevel
 import ch.brickinventoryapp.ui.util.secretCopyable
 
 /**
- * Haushalt: verknüpfte Konten, Konto einladen, Einladung annehmen — drei Abschnitte
- * mit Überschrift. In einer Karte standen beide Abläufe ungegliedert untereinander,
- * und niemand sah, welcher für welches Konto gedacht ist.
+ * Household: linked accounts, invite an account, accept an invitation — three sections
+ * with a heading. In one card both flows sat ungrouped one below the other,
+ * and no one could tell which was meant for which account.
  *
- * Einladen und Annehmen darf jedes Konto (auch Unterkonten und Hauptkonten
- * mehrerer Unterkonten); was der Server nicht erlaubt, sagt seine Meldung.
+ * Any account may invite and accept (sub-accounts and main accounts of
+ * several sub-accounts included); whatever the server doesn't allow, its message says.
  */
 @Composable
 internal fun HouseholdCard(
@@ -61,35 +61,35 @@ internal fun HouseholdCard(
     onVerwerfen: (Int) -> Unit,
 ) {
     val st = state.status
-    // remember, nicht rememberSaveable: Gesicherter Zustand landet im Bundle und bei
-    // Prozesstod auf der Platte (ActivityManager) — kein Ort für Passwörter und Codes.
+    // remember, not rememberSaveable: saved state lands in the Bundle and, on
+    // process death, on disk (ActivityManager) — no place for passwords and codes.
     var code by remember { mutableStateOf("") }
     var passwort by remember { mutableStateOf("") }
     var faktorCode by remember { mutableStateOf("") }
     LaunchedEffect(state.eingeloest) { if (state.eingeloest > 0) code = "" }
-    // Über SecretClipboard statt LocalClipboard: Sie nimmt den Code nach
-    // einer Minute wieder heraus, auch wenn die Seite dann schon zu ist.
+    // Via SecretClipboard instead of LocalClipboard: it takes the code back out
+    // after a minute, even if the page is already closed by then.
     val context = LocalContext.current
-    // Das Etikett eines ClipData ist auf manchen Android-Oberflächen sichtbar und
-    // gehört darum in die Sprachdateien. Geholt hier, weil der Klick-Rumpf nicht
-    // @Composable ist.
+    // A ClipData's label is visible on some Android UIs and therefore
+    // belongs in the language files. Fetched here because the click handler isn't
+    // @Composable.
     val invitationLabel = stringResource(R.string.household_invite_label)
-    // Trennen nimmt einem Hauptkonto die Sicht auf fremde Daten; zurück geht es nur
-    // über eine neue Einladung. Darum fragt es nach, mit dem Namen des Kontos.
-    // Gemerkt wird Konto-ID und ob es ein Hauptkonto ist.
+    // Unlinking takes a main account's view of someone else's data away; getting
+    // back needs a new invitation. That's why it asks first, with the account's name.
+    // Remembers the account ID and whether it's a main account.
     var trennen by rememberSaveable { mutableStateOf<Int?>(null) }
     var separatesParent by rememberSaveable { mutableStateOf(false) }
 
-    // Zwei Sätze vorn, der Rest auf Wunsch: Sechs Zeilen Erklärung vor dem ersten
-    // Knopf las niemand.
+    // Two sentences up front, the rest on request: six lines of explanation before
+    // the first button, nobody read them.
     ErklaerText(stringResource(R.string.household_intro),
         stringResource(R.string.household_intro_more), thema = stringResource(R.string.household_title))
 
-    // Ein Konto kann zugleich Unterkonto (auch mehrerer Hauptkonten) und
-    // Hauptkonto eigener Unterkonten sein: beide Listen unabhängig.
+    // An account can be both a sub-account (of several main accounts too) and
+    // a main account of its own sub-accounts: both lists are independent.
     val eltern = st?.elternkonten.orEmpty()
-    // Nur Unterkonten: Die Karte heisst gleich so, statt „Verknüpfte Konten“ und
-    // darunter „Unterkonten“ als zweite Überschrift zu zeigen.
+    // Sub-accounts only: the card is named for that directly, instead of showing
+    // "Linked accounts" with "Sub-accounts" as a second heading below it.
     val onlySubAccounts = eltern.isEmpty() && st?.subAccounts?.isNotEmpty() == true
     if (st != null) Abschnitt(stringResource(if (onlySubAccounts) R.string.household_state_main else R.string.household_linked)) {
         if (eltern.isNotEmpty()) {
@@ -163,7 +163,7 @@ internal fun HouseholdCard(
                         fmtStatus(bis, appNumberLocale(), twentyFour = twentyFourHours(), jahr = DateYear.OHNE)),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            // Der Code gehört auf ein anderes Gerät: teilen und kopieren, beide gleich gewichtet.
+            // The code belongs on a different device: share and copy, both weighted equally.
             val shareTitle = stringResource(R.string.household_invite_section)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 OutlinedButton(onClick = { partsCodes(context, shareTitle, listOf(c)) }, modifier = Modifier.weight(1f),
@@ -172,7 +172,7 @@ internal fun HouseholdCard(
                     Spacer(Modifier.width(Abstaende.klein))
                     Text(stringResource(R.string.household_invite_teilen))
                 }
-                // Unter Android 13 sähe die Tastatur den Code; Teilen bleibt dort der Weg.
+                // Below Android 13 the keyboard would see the code; sharing stays the way there.
                 if (secretCopyable(LocalSdkLevel.current)) OutlinedButton(
                     onClick = { SecretClipboard.copy(context, invitationLabel, c) },
                     modifier = Modifier.weight(1f), colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
@@ -188,19 +188,19 @@ internal fun HouseholdCard(
         Text(stringResource(R.string.household_redeem_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        // Beschriftet mit dem, was hineingehört; „Einladung annehmen“ ist die Überschrift.
+        // Labeled with what belongs in it; "Accept invitation" is the heading.
         OutlinedTextField(
             value = code, onValueChange = { code = it }, singleLine = true,
             label = { Text(stringResource(R.string.household_invite_label)) },
             modifier = Modifier.fillMaxWidth(), shape = Formen.feld,
         )
-        // Nach einem Fehlversuch ist das Feld leer und rot, bis wieder getippt wird.
+        // After a failed attempt the field is empty and red, until typed in again.
         val passwordWrong = state.passwordWrong && passwort.isEmpty()
         PasswordField(passwort, { passwort = it }, stringResource(R.string.household_redeem_password),
             Modifier.fillMaxWidth(),
             hinweis = if (passwordWrong) stringResource(R.string.household_redeem_password_wrong) else null,
             faulty = passwordWrong)
-        // Bei aktivem zweitem Faktor verlangt der Server dessen Code (oder einen Wiederherstellungscode).
+        // With the second factor active, the server requires its code (or a recovery code).
         if (state.factorNeeded) {
             val factorWrong = state.factorWrong && faktorCode.isEmpty()
             OutlinedTextField(
@@ -215,14 +215,14 @@ internal fun HouseholdCard(
                 shape = Formen.feld,
             )
         }
-        // Meldung des Servers (Währung weicht ab, schon verknüpft) direkt über dem Knopf,
-        // nicht am Seitenende unter allen Abschnitten.
+        // The server's message (currency differs, already linked) right above the button,
+        // not at the page's end below every section.
         state.abruf.errorMessage?.takeUnless { state.passwordWrong || state.factorWrong }?.let {
             Text(it.satz(), Modifier.announce(), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.error)
         }
         val bereit = code.isNotBlank() && passwort.isNotEmpty() && (!state.factorNeeded || faktorCode.isNotBlank())
-        // Wie bei der Anmeldung: Ein gesperrter Knopf sagt, was fehlt.
+        // As at sign-in: a disabled button says what's missing.
         if (!bereit) LockReason(stringResource(if (state.factorNeeded) R.string.household_redeem_sperrgrund_faktor
                                               else R.string.household_redeem_sperrgrund))
         Button(onClick = { onRedeemInvite(code, passwort, faktorCode.takeIf { state.factorNeeded }); passwort = ""; faktorCode = "" },
@@ -248,7 +248,7 @@ internal fun HouseholdCard(
     }
 }
 
-/** Ein verknüpftes Konto mit seiner einen Aktion; TalkBack hört „Entfernen: lena“, nicht nur „Entfernen“. */
+/** A linked account with its one action; TalkBack hears "Remove: lena", not just "Remove". */
 @Composable
 private fun AccountRow(name: String, aktion: String, onAction: () -> Unit) {
     val beschreibung = stringResource(R.string.aktion_fuer, aktion, name)

@@ -7,14 +7,14 @@ import org.junit.Test
 import java.security.ProviderException
 
 /**
- * Der Schlüssel des Schrittschutzes und der App-Sperre entsteht zuerst im
- * StrongBox-Chip; nur wenn der Chip fehlt oder ablehnt (ProviderException, auch
- * StrongBoxUnavailableException), im TEE. Ein anderer Fehler fällt nicht still zurück.
+ * The key for step protection and the app lock is created first in the
+ * StrongBox chip; only if the chip is missing or refuses (ProviderException, also
+ * StrongBoxUnavailableException), in the TEE. Any other error does not fall back silently.
  *
- * Gegenproben (lokal mit kotlinc gemessen):
- *   A  strongBoxFirst() fragt gleich `erzeuge(false)` → rot „zuerst StrongBox, …“;
+ * Counter-checks (measured locally with kotlinc):
+ *   A  strongBoxFirst() asks `erzeuge(false)` directly → red „zuerst StrongBox, …“;
  *      gegenproben/geraeteschluessel-ohne-strongbox.patch
- *   B  der Rückfall fängt jede Ausnahme → rot „ein anderer Fehler …“;
+ *   B  the fallback catches every exception → red „ein anderer Fehler …“;
  *      gegenproben/geraeteschluessel-strongbox-faengt-alles.patch
  */
 class StrongBoxFirstTest {

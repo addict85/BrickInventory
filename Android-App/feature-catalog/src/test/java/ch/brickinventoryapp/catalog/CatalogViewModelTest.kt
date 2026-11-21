@@ -50,20 +50,20 @@ import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.testing.text
 
 /**
- * Das CatalogViewModel ausgeführt: Api ohne Netz, Texte als Ressourcennummern,
- * Zeit virtuell. Die Entprellung der Suche ist damit ohne Warten prüfbar.
+ * The CatalogViewModel run: API with no network, texts as resource numbers,
+ * virtual time. The search debounce is thus checkable without waiting.
  *
- * Gegenproben:
- *   katalog-suche-ohne-entprellen  setCatalogQuery() lädt sofort → rot „die Suche wartet …“
- *   katalog-seite-doppelt          ensureCatalogPage() ohne Prüfung „lädt schon“ → rot „eine Seite …“
- *   katalog-filter-behaelt-rolle   loadCatalogSets() ohne `rollgedaechtnis.vergiss` → rot „ein Filterwechsel …“
- *   katalog-merkt-ohne-alarm       merke() ohne setPreisalarm → rot „merken legt den Posten an …“
- *   katalog-alarm-falsche-richtung merke() schickt immer „unter“ → rot „merken legt den Posten an …“
- *   katalog-merkposten-unbekannt   gemerkt() vergleicht die Setnummer nicht → rot „das Detail kennt …“
- *   katalog-verteilung-ohne-filter loadYearDistribution() ohne `themeId` → rot „die Jahresverteilung …“
- *   katalog-detail-fehler-verschluckt loadCatalogDetail() legt den Fehler nicht in den
- *                                  Zustand → rot „scheitert das Detail, steht der Grund …“
- *   katalog-laedt-nicht-beim-beobachten  beim Beobachten nur die Metadaten geladen → rot „wer den Katalog sieht …“
+ * Counter-checks:
+ *   katalog-suche-ohne-entprellen  setCatalogQuery() loads right away → red "die Suche wartet …"
+ *   katalog-seite-doppelt          ensureCatalogPage() without the "already loading" check → red "eine Seite …"
+ *   katalog-filter-behaelt-rolle   loadCatalogSets() without `rollgedaechtnis.vergiss` → red "ein Filterwechsel …"
+ *   katalog-merkt-ohne-alarm       merke() without setPreisalarm → red "merken legt den Posten an …"
+ *   katalog-alarm-falsche-richtung merke() always sends "below" → red "merken legt den Posten an …"
+ *   katalog-merkposten-unbekannt   gemerkt() doesn't compare the set number → red "das Detail kennt …"
+ *   katalog-verteilung-ohne-filter loadYearDistribution() without `themeId` → red "die Jahresverteilung …"
+ *   katalog-detail-fehler-verschluckt loadCatalogDetail() doesn't put the error into the
+ *                                  state → red "scheitert das Detail, steht der Grund …"
+ *   katalog-laedt-nicht-beim-beobachten  only the metadata loaded on observing → red "wer den Katalog sieht …"
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CatalogViewModelTest {
@@ -93,7 +93,7 @@ class CatalogViewModelTest {
         }
     }
 
-    /** Der Suchtext der Listenabrufe, in Reihenfolge. */
+    /** The search text of the list fetches, in order. */
     private fun gesucht() = synchronized(fake.arguments) {
         fake.arguments.filter { it.first == "getCatalogSets" }.map { it.second.first() }
     }
@@ -134,7 +134,7 @@ class CatalogViewModelTest {
         advanceUntilIdle()
         vm.ensureCatalogPage(2)
         advanceUntilIdle()
-        // Die Ansicht schreibt ihre Stelle in den ScrollMemory, die eine Quelle aller Reiter.
+        // The view writes its position into ScrollMemory, the one source for every tab.
         t.scrollMemory.merke(KatalogZiel.Catalog.rollSchluessel, 40, 12)
         assertEquals(setOf(1, 2), vm.state.value.loadedPages.keys)
 
@@ -190,7 +190,7 @@ class CatalogViewModelTest {
         assertEquals("Die Liste ist da, ein zweiter Abruf wäre nur Last", 1, gesucht().size)
     }
 
-    /** Die Jahre liegen nur auf dem Server; geholt mit denselben Filtern wie die Liste. */
+    /** The years only exist on the server; fetched with the same filters as the list. */
     @Test
     fun `the year distribution comes from the server, with the list's filters`() = withVm { vm ->
         fake.antworten["getCatalogSets"] = seite("10294-1")

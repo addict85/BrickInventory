@@ -47,7 +47,7 @@ import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtTag
 import ch.brickinventoryapp.model.file.FileRef
 
-/** Das Set-Detail am Navigationsziel: sammelt die Flüsse und reicht sie an [SetDetailScreen]. */
+/** The set detail at the navigation destination: gathers the flows and passes them to [SetDetailScreen]. */
 @Composable
 fun SetDetailRoute(
     setNumber: String,
@@ -71,7 +71,7 @@ fun SetDetailRoute(
     )
 }
 
-/** Was das Set-Detail zeigt. */
+/** What the set detail shows. */
 internal data class SetDetailZustand(
     val state: AppUiState,
     val detailState: SetDetailUiState,
@@ -84,19 +84,19 @@ internal fun SetDetailScreen(
     setNumber: String,
     zustand: SetDetailZustand,
     aktionen: SetDetailAktionen,
-    /** Das Set aus der geladenen Galerie — sofort sichtbar, bis das Detail da ist. */
+    /** The set from the loaded gallery — visible right away, until the detail is there. */
     vorschau: SetAnsicht? = null,
     serverUrl: String,
-    // Die AsyncImage-Aufrufe brauchen diesen Loader: Coils Standard-Loader hängt den
-    // Bearer-Token nicht an (den setzt nur der Client aus di/NetzModule.kt), und der
-    // Server verlangt für alle Bilder eine Anmeldung — sonst bliebe der Dialog mit 401
-    // still leer.
+    // The AsyncImage calls need this loader: Coil's default loader doesn't attach the
+    // bearer token (only the client from di/NetzModule.kt sets that), and the
+    // server requires sign-in for every image — otherwise the dialog would silently
+    // stay empty with a 401.
     imageLoader: ImageLoader,
     onBack: () -> Unit,
     onDelete: (String) -> Unit,
     /**
-     * Fängt die Liste darunter das Löschen mit „Rückgängig“ auf? Dann löscht der Papierkorb
-     * ohne Rückfrage — eine Sicherung genügt. Ohne Liste (Einstieg von aussen) fragt er.
+     * Does the list below catch the deletion with "Undo"? Then the trash icon deletes
+     * without a confirmation — one safeguard is enough. Without a list (entry from outside), it asks.
      */
     rueckgaengigMoeglich: Boolean = false,
     onNavigateToAcqMgmt: (type: Postenart, id: String, colorId: Int, title: String) -> Unit = { _, _, _, _ -> },
@@ -104,8 +104,8 @@ internal fun SetDetailScreen(
 ) {
     val state       = zustand.state
     val detailState = zustand.detailState
-    // Die Galerie-Liste dient hier nur als Rueckfall, solange das Detail noch
-    // laedt — deshalb der eigene Fluss statt des ganzen App-Zustands.
+    // The gallery list only serves as a fallback here, while the detail is still
+    // loading — hence its own flow instead of the whole app state.
     val set       = detailState.setDetail?.takeIf { it.setNumber == setNumber }
                  ?: vorschau?.takeIf { it.setNumber == setNumber }
     val price     = detailState.setPrice?.takeIf { it.setNumber == setNumber }
@@ -126,14 +126,14 @@ internal fun SetDetailScreen(
     fun fmtDate(zeit: Instant?) = fmtTag(zeit) ?: "—"
 
     val accent = LocalAkzentflaechen.current
-    // Snackbar im eigenen Gerüst statt Toast: bleibt lesbar, bis TalkBack fertig ist.
+    // Snackbar in its own scaffold instead of Toast: stays readable until TalkBack is done.
     val meldungen = remember { SnackbarHostState() }
     val noAppText = stringResource(R.string.common_no_app_to_open)
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     Scaffold(
         snackbarHost = { SnackbarHost(meldungen) },
         topBar = {
-            // Derselbe Kopf wie in Katalog, Merkliste und Teilen (DetailTopAppBar).
+            // The same header as in catalog, watchlist and parts (DetailTopAppBar).
             DetailTopAppBar(
                 titel = set?.name ?: setNumber,
                 onZurueck = onBack,
@@ -144,9 +144,9 @@ internal fun SetDetailScreen(
                     actionIconContentColor = accent.onDetailBar,
                 ),
                 actions = {
-                    // Kein Verschieben-Knopf: Verschoben wird über den Kaufpreis, Zeile für Zeile —
-                    // ein Set mit drei Erfassungen sind drei Käufe, die verschiedenen Kindern gehören
-                    // können. Der Server erzwingt dasselbe (move ohne acquisition_ids: 400).
+                    // No move button: moving happens via the purchase price, row by row —
+                    // a set with three entries is three purchases that can belong to different
+                    // children. The server enforces the same (move without acquisition_ids: 400).
                     MitTooltip(stringResource(R.string.cd_set_delete, set?.name ?: setNumber)) {
                         IconButton(onClick = {
                             haptics.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
@@ -162,7 +162,7 @@ internal fun SetDetailScreen(
     ) { padding ->
 
         if (set == null) {
-            // Ohne Detail und ohne Vorschau: laden oder gescheitert — nie ein Kringel ohne Ende.
+            // Without a detail and without a preview: loading or failed — never a spinner with no end.
             val fehler = detailState.detailFetch as? Laden.Fehler
             if (fehler != null) {
                 StateHint(Modifier.padding(padding)) {
@@ -172,21 +172,21 @@ internal fun SetDetailScreen(
             return@Scaffold
         }
 
-        // Volle Auflösung — wie der Detail-Dialog der Webapp (admin.js, "m-img",
-        // fullUrl()). Vorschau-Karte und Zoom benutzen dieselbe Adresse.
+        // Full resolution — like the web app's detail dialog (admin.js, "m-img",
+        // fullUrl()). The preview card and zoom use the same address.
         val imageUrl = resolveFullUrl(serverUrl, set.imageLocal, set.imageUrl)
-        // Einmaliger, verzögerter Wiederholversuch — wie in der Galerie-Kachel: Direkt
-        // nach dem Erfassen ist die Datei auf dem Server oft noch nicht fertig, und Coil
-        // versucht von sich aus nie erneut; die Fläche bliebe leer bis zum nächsten
-        // Öffnen.
+        // One delayed retry — as in the gallery tile: right
+        // after entering, the file is often not ready yet on the server, and Coil
+        // never retries on its own; the area would stay empty until the next
+        // open.
         val detailRetryState = remember(set.setNumber, imageUrl) { mutableIntStateOf(0) }
         val detailScope = rememberCoroutineScope()
         val zoomImageUrl = imageUrl
 
-        // Die Dateiauswahl für eine Anleitung. Hier und nicht im Abschnitt darunter: Ein
-        // `LazyListScope` ist kein Composable-Kontext, und ein Starter, der beim Scrollen
-        // neu entstünde, verlöre seine Rückmeldung. Die Typenliste kommt aus
-        // SetDetailFeature — dieselbe, die der Server annimmt.
+        // The file picker for a manual. Here and not in the section below: a
+        // `LazyListScope` isn't a Composable context, and a launcher recreated on
+        // scroll would lose its callback. The type list comes from
+        // SetDetailFeature — the same one the server accepts.
         val instructionSelection = androidx.activity.compose.rememberLauncherForActivityResult(
             androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
         ) { uri -> if (uri != null) aktionen.loadInstructionHigh(setNumber, FileRef(uri.toString())) }
@@ -211,10 +211,10 @@ internal fun SetDetailScreen(
                 onNoApp = { coroutineScope.launch { meldungen.showSnackbar(noAppText) } },
             )
         }
-        // Ab „expanded“ zwei Spalten — Bild und Preise links, Angaben, Alarm und
-        // Anleitungen rechts: Einspaltig lagen Bezeichnung und Wert einer Zeile auf dem
-        // Tablet eine Armlänge auseinander. Einspaltig kommen die Preise vor den Angaben:
-        // Der Wert ist die erste Frage an ein Set, nicht das Erfassungsdatum.
+        // Two columns from "expanded" on — image and prices on the left, details, alert and
+        // manuals on the right: single-column, a row's label and value sat an
+        // arm's length apart on the tablet. Single-column, the prices come before the details:
+        // the value is the first question about a set, not the entry date.
         BoxWithConstraints(Modifier.fillMaxSize().padding(padding)) {
             val edge = PaddingValues(bottom = Abstaende.veryLarge)
             if (twoSpaltig(maxWidth.value)) {
@@ -225,8 +225,8 @@ internal fun SetDetailScreen(
                     }
                 }
             } else {
-                // Eine Spalte mit einer Höchstbreite für alle Karten: Auf dem Tablet hochkant stand
-                // der Preisverlauf (SectionCard, Lesebreite) schmaler als die Kacheln darüber.
+                // One column with a max width for all cards: in portrait on the tablet,
+                // the price history (SectionCard, Lesebreite) sat narrower than the tiles above it.
                 val lateral = ((maxWidth - DETAIL_COLUMN) / 2).coerceAtLeast(0.dp)
                 CompositionLocalProvider(LocalSpaltenkarte provides true) {
                     LazyColumn(Modifier.fillMaxSize(),
@@ -241,7 +241,7 @@ internal fun SetDetailScreen(
             val name = set.name ?: setNumber
             Prompt(
                 titel = stringResource(R.string.gallery_delete_title),
-                // Bei mehreren Exemplaren sagt der Satz, dass alle gemeint sind.
+                // With several copies, the sentence says all of them are meant.
                 text = if (set.quantity > 1) pluralStringResource(R.plurals.gallery_delete_text_exemplare, set.quantity, set.quantity, name)
                        else stringResource(R.string.gallery_delete_text, name),
                 bestaetigen = stringResource(R.string.common_delete),
@@ -252,9 +252,9 @@ internal fun SetDetailScreen(
         }
 
         if (showImageZoom && zoomImageUrl != null) {
-            // Gemeinsame Umsetzung mit dem Katalog-Detail
-            // (ui/components/ZoomableImageDialog.kt), damit Gesten- und Zustandslogik nur
-            // einmal existieren.
+            // Shared implementation with the catalog detail
+            // (ui/components/ZoomableImageDialog.kt), so the gesture and state logic only
+            // exists once.
             ZoomableImageDialog(
                 imageUrl = zoomImageUrl,
                 contentDescription = set.name,
@@ -265,5 +265,5 @@ internal fun SetDetailScreen(
     }
 }
 
-/** Höchstbreite der einspaltigen Detailseite: die Lesebreite samt dem Rand der Karten. */
+/** Max width of the single-column detail page: the reading width plus the cards' margin. */
 private val DETAIL_COLUMN = Lesebreite.formular + Abstaende.gross * 2

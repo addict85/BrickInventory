@@ -28,9 +28,9 @@ import ch.brickinventoryapp.shared.ui.Zustandszeile
 import ch.brickinventoryapp.shared.ui.entryInvalid
 
 /**
- * Ein Set erfassen. Zur Wahl steht der VORRAT an Lagerorten, nicht die belegten:
- * Die Filterliste enthält nur, worin schon etwas liegt; beim Erfassen soll auch
- * ein leeres Regal zur Wahl stehen.
+ * Enter a set. The STOCK of storage locations is on offer, not the occupied ones:
+ * the filter list only contains places where something already sits; entering should
+ * also offer an empty shelf as an option.
  */
 @Composable
 internal fun GalerieErfassen(zustand: GalleryState, events: GalleryEvents, onSchliessen: () -> Unit) {
@@ -44,13 +44,13 @@ internal fun GalerieErfassen(zustand: GalleryState, events: GalleryEvents, onSch
     )
 }
 
-/** Ohne Haushalt gar nichts mitschicken — der Server bleibt dann beim eigenen Konto. */
+/** Without a household, send nothing at all — the server then stays on one's own account. */
 private fun ownerForEntry(mitglieder: List<MemberView>, gewaehlt: Int?): Int? =
     if (mitglieder.size > 1) gewaehlt else null
 
-/** Ist der Dialog schon zu, wirft requestFocus; dann gibt es nichts mehr zu fokussieren. */
+/** If the dialog is already closed, requestFocus throws; then there's nothing left to focus. */
 private fun FocusRequester.openFocusIf() {
-    try { requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
+    try { requestFocus() } catch (_: Exception) { /* dialog already closed */ }
 }
 
 @Composable
@@ -60,8 +60,8 @@ private fun FocusAfterPause(ziel: FocusRequester) = LaunchedEffect(Unit) {
 }
 
 /**
- * Der Hinweis am Setnummer-Feld (null: nichts zu beanstanden). Vor dem ersten Versuch zu
- * erfassen bleibt das Feld ruhig, damit "75192-" beim Tippen nicht schon als Fehler gilt.
+ * The hint on the set-number field (null: nothing to flag). Before the first attempt to
+ * save, the field stays quiet, so "75192-" doesn't already count as an error while typing.
  */
 private fun numberError(nummer: String, geprueft: Boolean): Int? = when {
     !geprueft -> null
@@ -75,42 +75,42 @@ fun AddSetDialog(
     onDismiss: () -> Unit,
     onAdd: (Erfassungswunsch) -> Unit,
     defaultCondition: Zustand = Zustand.NEU,
-    /** Konten des Haushalts — ohne Unterkonten bleibt die Auswahl verborgen. */
+    /** Household accounts — without sub-accounts, the picker stays hidden. */
     householdMembers: List<MemberView> = emptyList(),
-    /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
+    /** Stock of storage locations — empty means: there are none yet, then it's typed in. */
     lagerorte: List<String> = emptyList(),
     /**
-     * Der Ort, der schon dastehen soll (der Stern aus den Einstellungen); leer heisst
-     * keine Vorgabe.
+     * The location that should already show (the star from settings); empty means
+     * no default.
      */
     vorgabe: String = "",
-    /** Nur Tests: Ein blinkender Cursor lässt Robolectric nie zur Ruhe kommen. */
+    /** Tests only: a blinking cursor never lets Robolectric settle. */
     immediatelyFocus: Boolean = true,
 ) {
     var setNumber by rememberSaveable { mutableStateOf("") }
     var quantity  by rememberSaveable { mutableStateOf("1") }
-    // Schlüssel ist die Vorgabe: Kommt sie erst nach dem Öffnen des Dialogs, übernimmt
-    // das Feld sie; was jemand inzwischen getippt hat, bleibt, weil sich die Vorgabe
-    // nur einmal ändert.
+    // Key is the default: if it only arrives after the dialog opens, the field
+    // takes it over; whatever someone has typed in the meantime stays, because the default
+    // only changes once.
     var lagerort  by rememberSaveable(vorgabe) { mutableStateOf(vorgabe) }
 
-    // ── Der Cursor steht sofort im Set-Feld ──
+    // ── The cursor lands in the set field right away ──
     //
-    // LaunchedEffect(Unit) läuft einmal je Anzeige; die kurze Pause davor braucht es,
-    // weil das Feld beim ersten Durchlauf noch nicht angeordnet ist und requestFocus()
-    // sonst ins Leere liefe.
+    // LaunchedEffect(Unit) runs once per display; the short pause before it is needed
+    // because the field isn't laid out yet on the first pass and requestFocus()
+    // would otherwise hit nothing.
     val setFeldFokus = remember { FocusRequester() }
     if (immediatelyFocus) FocusAfterPause(setFeldFokus)
     var purchasePrice by rememberSaveable { mutableStateOf("") }
     var condition by rememberSaveable { mutableStateOf(defaultCondition) }
-    // Vorbelegt mit dem eigenen Konto: Wer nichts wählt, erfasst für sich —
-    // dasselbe Verhalten wie vor der Haushaltssicht.
+    // Pre-filled with one's own account: whoever chooses nothing enters for themself —
+    // the same behavior as before the household view.
     var owner by remember(householdMembers) {
         mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
     }
     val keyboard  = LocalSoftwareKeyboardController.current
-    // Hinzufügen bleibt antippbar und markiert dann das leere Feld: Grau ohne Grund liess
-    // raten, warum nichts geschah.
+    // Add stays tappable and then marks the empty field: gray with no reason left
+    // you guessing why nothing happened.
     var numberMissing by rememberSaveable { mutableStateOf(false) }
 
     fun submit() {
@@ -118,7 +118,7 @@ fun AddSetDialog(
             numberMissing = true
             if (immediatelyFocus) setFeldFokus.openFocusIf()
         } else if (!entryInvalid(quantity, purchasePrice)) {
-            // Bei unlesbarer Menge oder unlesbarem Preis bleibt der Dialog offen; die Felder zeigen den Fehler.
+            // On an unreadable quantity or price the dialog stays open; the fields show the error.
             onAdd(Erfassungswunsch(
                 setNumber = setNumber,
                 menge = quantity.toIntOrNull() ?: 1,
@@ -130,7 +130,7 @@ fun AddSetDialog(
         }
     }
 
-    // Derselbe Rahmen wie jede Erfassung (AddDialog): Titel links, ohne Symbol.
+    // The same frame as every entry (AddDialog): title on the left, without an icon.
     AddDialog(
         titel = stringResource(R.string.gallery_add_set_title),
         bestaetigen = stringResource(R.string.gallery_add),
@@ -138,12 +138,12 @@ fun AddSetDialog(
         onAbbrechen = onDismiss,
         geaendert = setNumber.isNotBlank() || quantity != "1" || purchasePrice.isNotEmpty() ||
             condition != defaultCondition || lagerort != vorgabe,
-        // Ohne eigene Zeile „Bitte Set-Nummer eingeben“: Dreimal derselbe Hinweis schob bei
-        // 200 % die Knöpfe aus dem Bild; was fehlt, sagt das Feld erst beim Tippen.
+        // Without its own "please enter set number" line: the same hint three times
+        // at 200% pushed the buttons out of frame; what's missing is said by the field once typing starts.
     ) {
         OwnerPicker(householdMembers, owner, { owner = it })
-        // Das Beispiel als Hilfetext wie im Merkposten-Dialog: Ein Platzhalter verschwand
-        // mit dem Fokus, und der Dialog fokussiert das Feld sofort.
+        // The example as help text as in the watchlist-item dialog: a placeholder would disappear
+        // with focus, and the dialog focuses the field right away.
         OutlinedTextField(
             value = setNumber,
             onValueChange = { setNumber = NumericInput.setNumber(it) },

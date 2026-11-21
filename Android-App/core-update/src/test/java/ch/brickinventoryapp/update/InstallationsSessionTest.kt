@@ -23,13 +23,13 @@ import org.robolectric.Shadows.shadowOf
 import java.io.File
 
 /**
- * Das Selbst-Update installiert über eine PackageInstaller-Sitzung, nicht über
- * einen impliziten Intent; die Antwort des Systems landet im eigenen Empfänger.
+ * The self-update installs via a PackageInstaller session, not via
+ * an implicit intent; the system's response lands in our own receiver.
  *
- * Gegenproben (Robolectric, nur in der CI messbar; Job `gegenproben`):
- *   im Empfänger der Zweig STATUS_PENDING_USER_ACTION ohne Wirkung → rot „verlangt
+ * Counter-checks (Robolectric, measurable only in CI; job `gegenproben`):
+ *   the STATUS_PENDING_USER_ACTION branch in the receiver has no effect → red „verlangt
  *   das System eine Bestaetigung …“ (gegenproben/installer-ohne-bestaetigung.patch)
- *   im Empfänger EXTRA_INTENT wieder ungeprüft gestartet → rot „eine Bestaetigung,
+ *   EXTRA_INTENT in the receiver launched unchecked again → red „eine Bestaetigung,
  *   die nicht zum System-Installer fuehrt …“ (gegenproben/installer-ziel-ungeprueft.patch)
  */
 @RunWith(RobolectricTestRunner::class)
@@ -46,7 +46,7 @@ class InstallationsSessionTest {
         assertNull("Kein Intent an andere Apps", shadowOf(app).nextStartedActivity)
     }
 
-    /** Ein Paket mit einer Activity für den Bestätigungsdialog, als System-App oder nicht. */
+    /** A package with an Activity for the confirmation dialog, as a system app or not. */
     private fun installer(paket: String, system: Boolean): ComponentName {
         val komponente = ComponentName(paket, "$paket.InstallStart")
         val pm = shadowOf(app.packageManager)
