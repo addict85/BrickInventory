@@ -76,11 +76,10 @@ class CatalogViewModel @Inject constructor(
     private var catalogSearchJob: Job? = null
 
     // Active list/page load job: a filter change cancels the running
-    // load IMMEDIATELY — including its retry wait times. Without that,
-    // a hanging request (e.g. when parallel CDN image downloads
-    // saturate the connection and API calls run into timeouts) would block
-    // every further interaction in the catalog for minutes via
-    // isLoading.
+    // load IMMEDIATELY, including its retry wait times. Without that, a
+    // hanging request (e.g. parallel CDN image downloads saturating the
+    // connection) would block every further catalog interaction for
+    // minutes via isLoading.
     private var catalogListJob: Job? = null
     private var catalogDetailJob: Job? = null
 
