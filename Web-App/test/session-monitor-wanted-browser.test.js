@@ -211,11 +211,7 @@ async function newAfterError(b, bis, tab, ziel, pfad) {
       `${tab}: Gerüst statt altem Fehler`,
       25,
     );
-    await bis(
-      `!document.querySelector('${ziel} [aria-busy="true"], ${ziel} .fehler-zustand')`,
-      `${tab}: geladen`,
-      100,
-    );
+    await bis(`!document.querySelector('${ziel} [aria-busy="true"], ${ziel} .fehler-zustand')`, `${tab}: geladen`, 100);
   } finally {
     await aus();
   }
