@@ -12,10 +12,10 @@ import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * Abgelaufene Sitzung, ImageLoader-Lebensdauer und Hintergrund-Polling.
+ * Expired session, ImageLoader lifetime, and background polling.
  *
- * Der 401 ist ausgeführt geprüft; der Rest liest Quelltext (Gerät und
- * Compose fehlen hier).
+ * The 401 is tested, run; the rest reads source code (device and
+ * Compose are missing here).
  */
 class SessionAndLifecycleTest {
 
@@ -25,7 +25,7 @@ class SessionAndLifecycleTest {
         return f.readText()
     }
 
-    /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */
+    /** Hide the comments — the explanatory text names the checked patterns itself. */
     private fun code(src: String): String {
         val withoutBlocks = src.replace(Regex("""/\*.*?\*/""", RegexOption.DOT_MATCHES_ALL), "")
         return withoutBlocks.lines()
@@ -36,9 +36,9 @@ class SessionAndLifecycleTest {
     // ── Abgelaufene Sitzung (HTTP 401) ───────────────────────────────────────
 
     /**
-     * Ein 401 ist von einem gewöhnlichen Serverfehler unterscheidbar — sonst bliebe
-     * ein abgelaufener Token unerkannt. Ausgeführt gegen einen Testserver.
-     * Gegenprobe: in sicherAufrufen() 401 als Server statt Abgewiesen → rot.
+     * A 401 can be told apart from an ordinary server error — otherwise
+     * an expired token would go unrecognized. Run against a test server.
+     * Counter-check: in sicherAufrufen() 401 mapped as Server instead of Abgewiesen → red.
      */
     @Test
     fun `sicherAufrufen reports 401 as rejected`() {
@@ -86,7 +86,7 @@ class SessionAndLifecycleTest {
                 "LaunchedEffect endet erst beim Verlassen des Screens, nicht beim " +
                 "Wechsel in den Hintergrund — die App pollt dann weiter."
         }
-        // Die Schleife selbst steht im ViewModel (haltAktuell, MonitoringViewModelBehaviorTest).
+        // The loop itself lives in the ViewModel (haltAktuell, MonitoringViewModelBehaviorTest).
         val loop = src.indexOf("mon.haltAktuell()")
         val guard = src.indexOf("repeatOnLifecycle")
         assert(loop >= 0) { "Poll-Schleife nicht gefunden — Test veraltet?" }

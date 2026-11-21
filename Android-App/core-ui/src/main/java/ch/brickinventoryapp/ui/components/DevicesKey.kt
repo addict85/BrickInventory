@@ -10,21 +10,21 @@ import java.security.PublicKey
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
 
-/** Der Schlüssel hinter dem Schrittschutz; der Server kennt seinen öffentlichen Teil. */
+/** The key behind the step guard; the server knows its public part. */
 internal object DevicesKey : KeystoreKey("schrittschutz")
 
-/** Der Schlüssel hinter der App-Sperre; ein eigener, damit Verwerfen den des Servers nicht trifft. */
+/** The key behind the app lock; its own, so discarding it doesn't affect the server's. */
 internal object AppLockKey : KeystoreKey("app_sperre")
 
 /**
- * Ein Keystore-Schlüssel EC P-256, der nur je Benutzung nach starker Biometrie oder
- * Gerätesperre signiert (Dauer 0). Ein neu eingerichteter Fingerabdruck macht ihn
- * ungültig; dann entsteht ein neuer — das Einrichten verlangte schon die Gerätesperre.
+ * A Keystore key EC P-256 that only signs per use after strong biometrics or
+ * the screen lock (validity 0). A newly enrolled fingerprint invalidates it;
+ * then a new one is created — setting it up already required the screen lock.
  */
 internal open class KeystoreKey(private val alias: String) : Entsperrschluessel, AttestierbarerKey {
     private fun speicher() = KeyStore.getInstance(KEYSTORE).apply { load(null) }
 
-    /** Eine zum Signieren vorbereitete Signatur; signieren kann sie erst nach der Freigabe. */
+    /** A signature prepared for signing; it can only sign after the release. */
     override fun signatur(): Signature {
         val ks = speicher()
         val schluessel = ks.getKey(alias, null) as? PrivateKey ?: erzeuge()
@@ -40,7 +40,7 @@ internal open class KeystoreKey(private val alias: String) : Entsperrschluessel,
 
     override fun discard() = speicher().deleteEntry(alias)
 
-    /** Immer ein neuer Schlüssel: Die Challenge steht in seinem Zertifikat, der alte trägt eine verbrauchte. */
+    /** Always a new key: the challenge lives in its certificate, the old one carries a spent one. */
     override fun createWithAttestation(challenge: ByteArray): List<ByteArray> {
         val ks = speicher()
         ks.deleteEntry(alias)

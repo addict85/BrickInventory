@@ -9,13 +9,13 @@ import org.junit.Test
 import java.io.IOException
 
 /**
- * Die zwei Schlüssel der Geräteablage: Namen von Einträgen verraten nichts über den Server,
- * und eine Angabe unter dem Entsperr-Schlüssel ist bei gesperrtem Gerät „später“, nicht „weg“.
+ * The two keys of the device store: names of entries reveal nothing about the server,
+ * and a value under the unlock key is „later“ when the device is locked, not „gone“.
  *
- * Gegenproben (kotlinc und JUnit lokal):
- *   A  name() gibt die Bindung selbst zurück → rot „ein Name verraet den Server nicht …“;
+ * Counter-checks (kotlinc and JUnit locally):
+ *   A  name() returns the binding itself → red „ein Name verraet den Server nicht …“;
  *      gegenproben/pin-name-im-klartext.patch
- *   B  openDetail() holt den Schlüssel innerhalb der Prüfung (gesperrt wird „weg“) → rot
+ *   B  openDetail() fetches the key inside the check (locked becomes „gone“) → red
  *      „locked an entry is readable later, not gone“; gegenproben/angabe-gesperrt-wie-weg.patch
  */
 class VertrauenschiffreTest {

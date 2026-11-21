@@ -9,10 +9,10 @@ import androidx.compose.ui.Modifier
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Der Rahmen einer Einstellungs-Rubrik. Öffentlich in core-ui, weil Einstellungen
- * und Gutscheine ihn teilen — eine zweite Fassung sähe irgendwann anders aus.
- * Ohne [title] kein Kopf: Ist die Karte allein auf ihrer Seite, nennt die Leiste
- * darüber sie schon, und derselbe Titel zweimal las sich wie ein Fehler.
+ * The frame of a settings section. Public in core-ui, because settings
+ * and vouchers share it — a second implementation would eventually look different.
+ * Without [title], no header: if the card is alone on its page, the bar
+ * above it already names it, and the same title twice read like an error.
  */
 @Composable
 fun SettingsCard(
@@ -21,8 +21,8 @@ fun SettingsCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     AppKarte {
-        // Der Abstand zwischen den Kindern einer Karte steht einmal hier, damit jede Karte
-        // ihn bekommt, ohne dass jemand daran denkt.
+        // The spacing between a card's children lives here once, so every card
+        // gets it without anyone having to think of it.
         Column(
             Modifier.padding(Abstaende.gross),
             verticalArrangement = Arrangement.spacedBy(Abstaende.klein),

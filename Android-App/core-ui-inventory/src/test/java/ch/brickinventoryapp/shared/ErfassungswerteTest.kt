@@ -9,17 +9,17 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Die Erfassungsdialoge lesen Preis und Menge wie die Zahlenfelder (NumericInput).
+ * The capture dialogs read price and quantity like the number fields (NumericInput).
  *
- * Gegenprobe (gegenproben/erfassung-liest-preis-roh.patch): erfassungsWerte liest den
- * Preis wieder mit replace und toDoubleOrNull → rot „die Erfassung liest den Preis …".
+ * Counter-check (gegenproben/erfassung-liest-preis-roh.patch): erfassungsWerte reads the
+ * price with replace and toDoubleOrNull again → red „die Erfassung liest den Preis …".
  */
 class ErfassungswerteTest {
 
     @Test
     fun `adding reads the price like the field and reports unreadable input`() {
         val haushalt = emptyList<MemberView>()
-        // Locale-unabhängig: zwei Trenner sind nie ein Einzelfall.
+        // Locale-independent: two separators are never a special case.
         assertEquals(Geld.aus(1299.0), erfassungsWerte("2", "1.299,00", Zustand.NEU, null, haushalt).preis)
         assertEquals(Geld.aus(1299.5), erfassungsWerte("2", "1,299.50", Zustand.NEU, null, haushalt).preis)
         assertEquals(false, entryInvalid("", ""))

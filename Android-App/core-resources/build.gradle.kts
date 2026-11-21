@@ -1,6 +1,6 @@
-// Texte (beide Sprachen), Schriften und die Bilder, die der Code nennt: Jedes
-// Modul liest dieselbe R-Klasse (ch.brickinventoryapp.resources.R), statt dass
-// Texte nach dem Modul getrennt werden, das sie zuerst brauchte.
+// Texts (both languages), fonts and the images the code refers to: every
+// module reads the same R class (ch.brickinventoryapp.resources.R), instead of
+// texts being split up by the module that first needed them.
 plugins {
     alias(libs.plugins.brickinventory.android.library)
 }

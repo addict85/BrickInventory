@@ -38,24 +38,24 @@ import ch.brickinventoryapp.ui.components.movementReduced
 import ch.brickinventoryapp.ui.util.fmtInt
 
 /**
- * Eine Zeile der Tabellenansicht — für Teile und Figuren, wie die beiden gleich
- * gebauten Tabellen der Webapp; eine Fassung, damit sie sich nicht
- * auseinanderentwickeln. Keine echten Spalten: Sieben Spalten müsste man am
- * Telefon seitwärts schieben, die breiten stehen deshalb als zweite Zeile
- * darunter.
+ * A row of the table view — for parts and figures, like the web app's two
+ * identically built tables; one implementation, so they don't
+ * drift apart. No real columns: seven columns would have to be scrolled sideways
+ * on the phone, which is why the wide ones sit as a second row
+ * below.
  *
- * @param bildUrl     Vorschaubild, oder null
- * @param nummer      Teile- bzw. Figurennummer (Schreibmaschinenschrift)
- * @param name        Bezeichnung
- * @param menge       rechts stehende Menge
- * @param farbe       Farbpunkt vor dem Namen (nur Teile)
- * @param secondRow Kategorie/Sets bzw. Erfassungsdatum, oder null
- * @param onBildFehler Rückfall auf die volle Auflösung
+ * @param bildUrl     preview image, or null
+ * @param nummer      part or figure number (monospace)
+ * @param name        label
+ * @param menge       quantity shown on the right
+ * @param farbe       color dot before the name (parts only)
+ * @param secondRow category/sets resp. capture date, or null
+ * @param onBildFehler fallback to the full resolution
  *         (rememberTileImageWithFallback)
- * @param onClick Antippen der ganzen Zeile, oder null für „nicht anklickbar“
- * @param onClickLabel Was das Antippen tut, für die Sprachausgabe — sonst sagt sie
- *         nur „Doppeltippen zum Aktivieren“. Vorbelegt mit null für Aufrufer ohne
- *         eigenen Text.
+ * @param onClick tapping the whole row, or null for „not clickable“
+ * @param onClickLabel what tapping does, for voice output — otherwise it only
+ *         says „double-tap to activate“. Defaults to null for callers without
+ *         text of their own.
  */
 @Composable
 fun TabellenZeile(
@@ -72,8 +72,8 @@ fun TabellenZeile(
     onClickLabel: String? = null,
 ) {
     val ctx = LocalContext.current
-    // onClick: Beide Ansichten öffnen denselben Dialog wie in der Webapp; eine Ansicht
-    // soll nicht weniger können als die andere. `null` heisst nicht anklickbar.
+    // onClick: both views open the same dialog as in the web app; one view
+    // shouldn't do less than the other. `null` means not clickable.
     Surface(
         modifier = modifier.fillMaxWidth()
             .let {
@@ -91,7 +91,7 @@ fun TabellenZeile(
                 ProduktBild(
                     model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!movementReduced()).build() },
                     imageLoader = imageLoader,
-                    // Ohne Beschreibung: Der Name steht daneben, TalkBack las ihn sonst zweimal.
+                    // Without a description: the name sits next to it, TalkBack would otherwise read it twice.
                     contentDescription = null,
                     onState = { st ->
                         if (st is AsyncImagePainter.State.Error) onBildFehler()
@@ -114,7 +114,7 @@ fun TabellenZeile(
     }
 }
 
-/** Nummer mit Farbpunkt, Name und zweite Zeile: die Mitte einer [TabellenZeile]. */
+/** Number with color dot, name and second row: the middle of a [TabellenZeile]. */
 @Composable
 private fun TablesText(nummer: String, name: String?, farbe: Color?, secondRow: String?, modifier: Modifier) {
     Column(modifier) {
@@ -135,7 +135,7 @@ private fun TablesText(nummer: String, name: String?, farbe: Color?, secondRow: 
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        // Katalognamen sind englisch; TalkBack spricht sie so aus (catalogName).
+        // Catalog names are in English; TalkBack pronounces them that way (catalogName).
         Text(
             name?.let { catalogName(it) } ?: AnnotatedString(stringResource(R.string.name_unknown)),
             color = if (name == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
@@ -156,9 +156,9 @@ private fun TablesText(nummer: String, name: String?, farbe: Color?, secondRow: 
 }
 
 /**
- * Die Zustands-Zeile: Beschriftung „Zustand“ und daneben Neu/Gebraucht. Eine
- * Fassung für alle Erfassungsdialoge, damit dieselbe Entscheidung überall gleich
- * aussieht und die Beschriftung mit ihrer festen Breite bündig steht.
+ * The condition row: label „Zustand“ and next to it new/used. One
+ * implementation for all capture dialogs, so the same choice looks the same
+ * everywhere and the label, with its fixed width, lines up flush.
  *
  */
 @Composable
@@ -169,8 +169,8 @@ fun Zustandszeile(
     /** Durchgereicht an [ConditionToggle] — siehe dort. */
     optionen: List<Pair<Zustand, Int>> = STATE_NEW_USED,
 ) {
-    // Ab 130 % Schrift steht die Beschriftung über der Wahl: In der festen Spalte
-    // daneben brach „Zustan|d“ mitten im Wort.
+    // From 130% text size the label sits above the choice: in the fixed column
+    // next to it, „Zustan|d“ broke in the middle of the word.
     if (LocalDensity.current.fontScale > 1.3f) {
         Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
             Text(stringResource(R.string.common_condition), style = MaterialTheme.typography.bodyMedium)
@@ -193,25 +193,25 @@ fun Zustandszeile(
 }
 
 /**
- * Die Vorbelegung von [ConditionToggle] und [Zustandszeile] — an einer Stelle,
- * damit die beiden nicht mit verschiedenen Listen dastehen.
+ * The default of [ConditionToggle] and [Zustandszeile] — in one place,
+ * so the two don't end up with different lists.
  */
 val STATE_NEW_USED: List<Pair<Zustand, Int>> =
     listOf(Zustand.NEU to R.string.condition_new, Zustand.GEBRAUCHT to R.string.condition_used)
 
 /**
- * Neu/Gebraucht als zwei Flächen, neben der Zeile, die es einbaut.
+ * New/used as two surfaces, next to the row that embeds it.
  */
 @Composable
 fun ConditionToggle(
     selected: Zustand,
     onSelect: (Zustand) -> Unit,
     modifier: Modifier = Modifier,
-    /** Wert → Beschriftung, vorbelegt mit „neu / gebraucht“. */
+    /** Value → label, defaulting to „neu / gebraucht“. */
     optionen: List<Pair<Zustand, Int>> = STATE_NEW_USED,
 ) {
-    // Dieselbe Segmentschaltfläche wie jede Einfachwahl der App (SegmentChoice): Die
-    // eigene Fassung mit Flächen ohne Rand liess „Gebraucht“ wie Text aussehen.
+    // The same segmented button as every single choice in the app (SegmentChoice): the
+    // own implementation with borderless surfaces made „Gebraucht“ look like plain text.
     SegmentChoice(
         optionen = optionen.map { (wert, text) -> wert to stringResource(text) },
         gewaehlt = selected,

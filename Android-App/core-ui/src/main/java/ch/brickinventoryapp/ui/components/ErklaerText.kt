@@ -27,9 +27,9 @@ import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Ein Satz vorn, der Rest hinter „Mehr erfahren“: Mehrzeilige Erklärungen vor dem
- * Inhalt las niemand, und bei 200 % Schrift schoben sie ihn um einen halben Bildschirm.
- * [thema] gibt dem Knopf für TalkBack einen eigenen Namen („Mehr zu Preisalarme“).
+ * One sentence up front, the rest behind „Learn more“: nobody read multi-line explanations before
+ * the content, and at 200% text size they pushed it down by half a screen.
+ * [thema] gives the button its own name for TalkBack („Mehr zu Preisalarme“).
  */
 @Composable
 fun ErklaerText(
@@ -40,7 +40,7 @@ fun ErklaerText(
     thema: String? = null,
 ) {
     var offen by rememberSaveable { mutableStateOf(false) }
-    // Nach dem Antippen verschwindet der Knopf; Fokus und Ansage gehen auf den neuen Text.
+    // After tapping, the button disappears; focus and the announcement go to the new text.
     var openFocusAfter by remember { mutableStateOf(false) }
     val ziel = remember { FocusRequester() }
     val name = thema?.let { stringResource(R.string.erklaer_mehr_zu, it) }

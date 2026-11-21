@@ -16,9 +16,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Währung und Design des Kontos an EINER Stelle, der Ablage. Die [Sitzung] leitet
- * sie daraus ab und spiegelt nichts zurück: Zwei Wege in beide Richtungen liessen
- * einen alten Wert den neuen überschreiben.
+ * Currency and theme of the account in ONE place, the store. The [Sitzung] derives
+ * them from it and never mirrors anything back: two paths in both directions would let
+ * an old value overwrite the new one.
  */
 interface Kontowerte {
     val waehrung: StateFlow<Waehrung>
@@ -27,7 +27,7 @@ interface Kontowerte {
     fun setzeDesign(d: Design)
 }
 
-/** Im Speicher: für Tests und Vorschauen ohne Ablage. */
+/** In memory: for tests and previews without a store. */
 class StorageAccountValues(waehrung: Waehrung = Waehrung.EUR, design: Design = Design.DEFAULT) : Kontowerte {
     private val _currency = MutableStateFlow(waehrung)
     private val _design = MutableStateFlow(design)
@@ -38,8 +38,8 @@ class StorageAccountValues(waehrung: Waehrung = Waehrung.EUR, design: Design = D
 }
 
 /**
- * Aus der Ablage (DataStore). Der erste Wert des Designs kommt aus dem synchronen
- * Spiegel, weil das erste Bild vor dem ersten DataStore-Wert entsteht.
+ * From the store (DataStore). The first theme value comes from the synchronous
+ * mirror, because the first frame is rendered before the first DataStore value arrives.
  */
 @Singleton
 class StoreAccountValues @Inject constructor(

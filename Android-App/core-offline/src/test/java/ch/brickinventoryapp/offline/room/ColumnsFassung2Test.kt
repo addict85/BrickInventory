@@ -6,21 +6,21 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Die Migration 2 → 3 liest Zeilen der Fassung 2 mit festen JSON-Proben, wie sie
- * damals abgelegt wurden — unabhängig davon, wie die Modelle heute heissen.
+ * The migration 2 → 3 reads rows of version 2 with fixed JSON samples, exactly as they
+ * were stored back then — regardless of what the models are called today.
  *
- * Gegenproben (lokal mit kotlinc gemessen):
- *   A  MIGRATION_2_3 wieder über die heutigen Modelle (Faecher.SETS.spalten nach
- *      BrickJson.decodeFromString) und in SetItem `set_number` zu `set_nummer`
- *      umbenannt → rot „Set: Nummer, Name, Thema, Jahr“ (die Zeile gälte als unlesbar)
- *   B  in ColumnsFassung2 der Rückfall `?: "N"` bei MERKLISTE entfernt → rot
+ * Counter-checks (measured locally with kotlinc):
+ *   A  MIGRATION_2_3 again via today's models (Faecher.SETS.spalten using
+ *      BrickJson.decodeFromString) and in SetItem `set_number` renamed to
+ *      `set_nummer` → red „Set: Nummer, Name, Thema, Jahr“ (the row would count as unreadable)
+ *   B  in ColumnsFassung2 the fallback `?: "N"` for MERKLISTE removed → red
  *      „Merkposten ohne Zustand“
- *   C  in ColumnsFassung2 `pflicht("set_number")` durch `text("set_number") ?: ""`
- *      ersetzt → rot „Set ohne Nummer ist unlesbar“
+ *   C  in ColumnsFassung2 `pflicht("set_number")` replaced with `text("set_number") ?: ""`
+ *      → red „Set ohne Nummer ist unlesbar“
  */
 class ColumnsFassung2Test {
 
-    // Proben im Format der Fassung 2 (encodeDefaults, Feldnamen des Servers).
+    // Samples in the format of version 2 (encodeDefaults, the server's field names).
     private val set = """{"set_number":"10294-1","name":"Titanic","year":2021,"theme":"Icons","num_parts":9090,
         "condition":"N","storage":"Regal 3","conditions":["N"],"unbekannt":{"x":1}}"""
     private val merkposten = """{"set_number":"75192-1","user_id":2,"name":"Millennium Falcon","year":2017}"""

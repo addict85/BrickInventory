@@ -42,9 +42,9 @@ import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.ui.theme.skeletonTone
 
 /**
- * Kacheln ohne Inhalt, solange die erste Seite lädt. Die Fläche steht schon so
- * da, wie die Liste gleich aussieht — Bildfläche und zwei Textbalken je Kachel,
- * auf Wunsch die Kennzahlenzeile darüber —, damit beim Eintreffen nichts springt.
+ * Tiles without content, as long as the first page is loading. The surface already
+ * looks the way the list will look in a moment — image area and two text bars per
+ * tile, on request the key-figures row above it —, so nothing jumps when it arrives.
  */
 @Composable
 fun SkeletonRaster(
@@ -54,18 +54,18 @@ fun SkeletonRaster(
     anzahl: Int = 12,
     innenabstand: PaddingValues = PaddingValues(Abstaende.mittel),
     abstand: Dp = 10.dp,
-    /** Eine Zeile über die ganze Breite vorweg, wo die Liste Kennzahlen zeigt (Galerie). */
+    /** A row across the full width up front, where the list shows key figures (gallery). */
     headerRow: Boolean = false,
     /**
-     * Seitenverhältnis der Bildfläche, wo die echte Kachel eines hat (Galerie 4:3).
-     * Ohne nimmt das Bild den Rest der Höhe; mit springt beim Eintreffen nichts.
+     * Aspect ratio of the image area, where the real tile has one (gallery 4:3).
+     * Without it, the image takes the rest of the height; with it, nothing jumps when it arrives.
      */
     imageRatio: Float? = null,
 ) {
     val laedt = stringResource(R.string.common_loading)
-    // Ein Schimmer für alle Kacheln: Läuft er über alle gleich, liest es sich als eine
-    // Fläche, die lädt. Der Ton kommt aus skeletonTone (Theme.kt), damit die Kacheln
-    // sich in jedem Design vom Hintergrund abheben.
+    // One shimmer for all tiles: if it runs across all of them together, it reads as one
+    // surface loading. The tone comes from skeletonTone (Theme.kt), so the tiles
+    // stand out from the background in every theme.
     val weg by rememberInfiniteTransition(label = "skelett").animateFloat(
         initialValue = -600f, targetValue = 1800f,
         animationSpec = infiniteRepeatable(tween(1400, easing = LinearEasing), RepeatMode.Restart),
@@ -73,7 +73,7 @@ fun SkeletonRaster(
     )
     val grund = skeletonTone(MaterialTheme.colorScheme)
     val light = skeletonTone(MaterialTheme.colorScheme, 0.04f)
-    // Ohne Bewegung eine ruhige Fläche statt des wandernden Lichts.
+    // Without motion, a calm surface instead of the traveling light.
     val schimmer = if (movementReduced()) SolidColor(grund) else Brush.linearGradient(listOf(grund, light, grund),
         start = Offset(weg, 0f), end = Offset(weg + 600f, 600f))
     LazyVerticalGrid(
@@ -88,7 +88,7 @@ fun SkeletonRaster(
             Box(Modifier.fillMaxWidth().height(SKELETON_HEADER).clip(Formen.karte).background(schimmer))
         }
         items(anzahl, key = { "skelett-$it" }) {
-            // Wie eine Karte: Fläche, darin Bild und zwei Zeilen Text als Balken.
+            // Like a card: a surface, with an image and two lines of text as bars inside.
             Column(
                 Modifier.fillMaxWidth().height(kachelHoehe).clip(Formen.leiste)
                     .background(MaterialTheme.colorScheme.surface).padding(Abstaende.klein),
@@ -103,20 +103,20 @@ fun SkeletonRaster(
     }
 }
 
-/** Höhe der Kennzahlenzeile im Skelett — so hoch wie die echte bei 100 %. */
+/** Height of the key-figures row in the skeleton — as tall as the real one at 100%. */
 private val SKELETON_HEADER = 88.dp
 
 /**
- * Ein Eintrag, der beim Einfügen, Entfernen und Umsortieren gleitet statt zu
- * springen. Als Hülle statt als Parameter jeder Kachel: Die Kacheln werden
- * auch ausserhalb von Listen benutzt, wo animateItem() nicht gilt.
+ * An entry that glides instead of jumping when inserted, removed and
+ * reordered. As a wrapper instead of a parameter on every tile: the tiles are
+ * also used outside lists, where animateItem() doesn't apply.
  */
 @Composable
 fun LazyGridItemScope.Moved(inhalt: @Composable () -> Unit) {
     Box(if (movementReduced()) Modifier else Modifier.animateItem(), propagateMinConstraints = true) { inhalt() }
 }
 
-/** Dasselbe für Einträge einer LazyColumn. */
+/** The same for entries of a LazyColumn. */
 @Composable
 fun LazyItemScope.Moved(inhalt: @Composable () -> Unit) {
     Box(if (movementReduced()) Modifier else Modifier.animateItem(), propagateMinConstraints = true) { inhalt() }

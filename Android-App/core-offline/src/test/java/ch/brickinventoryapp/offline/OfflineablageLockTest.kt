@@ -54,8 +54,8 @@ class OfflineablageLockTest {
     fun `a puffere during a server response is not lost`() = runBlocking {
         ablage.adopt(Slots.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1)).map { it.alsAnsicht() })
         val gate = bestand.hold()
-        // Der Server kennt die Änderung noch nicht: Seine Antwort hat den Ausgang
-        // schon gelesen (leer) und wartet im Schreiben.
+        // The server doesn't know about the change yet: its response already read the
+        // outbox (empty) and is waiting during the write.
         val antwort = launch { ablage.adopt(Slots.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1)).map { it.alsAnsicht() }) }
         yield()
         val offline = launch { ablage.buffer(Editing.SetMenge("10001-1", 1)) }
@@ -81,7 +81,7 @@ class OfflineablageLockTest {
     @Test
     fun `the observed area follows the session without anyone writing`() = runBlocking {
         val sitzung = MutableStateFlow<String?>("a")
-        // Die Punktabfrage bleibt bei „a“: Beobachtet wird allein der Fluss der Sitzung.
+        // The point query stays at „a“: only the flow of the session is observed.
         val ablage = Offlineablage(StorageInventory(), StorageExit(), { "a" }, areaFlow = sitzung)
         ablage.adopt(Slots.SETS, listOf(SetItem(setNumber = "10001-1")).map { it.alsAnsicht() })
         assertEquals(listOf("10001-1"), ablage.observe(Slots.SETS).first().liste.map { it.setNumber })

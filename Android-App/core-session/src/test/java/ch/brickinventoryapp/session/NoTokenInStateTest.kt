@@ -4,11 +4,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Der Token liegt nicht im gemeinsamen UI-Zustand: Den liest jede Oberfläche, den
- * Token braucht nur der Interceptor. Geprüft an der übersetzten Klasse.
+ * The token doesn't live in the shared UI state: every screen reads that, but the
+ * token is only needed by the interceptor. Checked against the compiled class.
  *
- * Gegenprobe: Feld `authToken`
- * wieder in AppUiState → rot „no field of AppUiState carries a token“.
+ * Counter-check: field `authToken`
+ * back in AppUiState → red „no field of AppUiState carries a token“.
  */
 class NoTokenInStateTest {
 

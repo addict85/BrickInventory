@@ -11,17 +11,17 @@ import org.junit.Test
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 
 /**
- * Die Zahl am Knopf „Filter“ zählt, was die Liste wirklich einschränkt — nicht,
- * was nur gemerkt ist, und nicht die Sortierung (eigenes Menü, SortierMenu).
+ * The number on the „Filter“ button counts what really narrows the list — not
+ * what is merely remembered, and not sorting (its own menu, SortierMenu).
  *
- * Gegenproben:
- *   A  in konto() die Prüfung `wert in possible` entfernt → rot „ein Konto,
+ * Counter-checks:
+ *   A  in konto() the check `wert in possible` removed → red „ein Konto,
  *      das nicht mehr zum Haushalt gehört, zählt nicht“
- *   B  in lager() nur auf `isNotBlank` geprüft → rot „ein leerer Lagerort
+ *   B  in lager() only checked against `isNotBlank` → red „ein leerer Lagerort
  *      zählt nicht“
- *   C  in galerie() das Thema nicht gezählt → rot „jede Abweichung zählt
- *      einmal“ (2 statt 3)
- *   D  in teile() die Kategorie vergessen → rot „bei den Teilen zählen …“
+ *   C  in galerie() the theme not counted → red „jede Abweichung zählt
+ *      einmal“ (2 instead of 3)
+ *   D  in teile() the category forgotten → red „bei den Teilen zählen …“
  */
 class FilterzahlTest {
 
@@ -46,7 +46,7 @@ class FilterzahlTest {
     @Test
     fun `an account that no longer belongs to the household does not count`() {
         assertEquals(0, Filterzahl.konto(haushalt, "99"))
-        // Ohne Haushalt gibt es keinen Kontofilter — ein gemerkter Wert wirkt nicht.
+        // Without a household there's no account filter — a remembered value has no effect.
         assertEquals(0, Filterzahl.konto(haushalt.take(1), "own"))
         assertEquals(1, Filterzahl.konto(haushalt, "2"))
     }

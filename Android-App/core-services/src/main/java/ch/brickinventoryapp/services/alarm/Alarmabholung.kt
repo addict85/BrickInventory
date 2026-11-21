@@ -9,66 +9,66 @@ import java.util.Currency
 import java.util.Locale
 
 /**
- * Die Abfrage selbst — ein Typalias, damit die Signatur von [Alarmabholung.fetch]
- * lesbar bleibt. Top-Level, weil Kotlin Typalias nur dort erlaubt.
+ * The query itself — a type alias, so the signature of [Alarmabholung.fetch]
+ * stays readable. Top-level, because Kotlin only allows type aliases there.
  */
 typealias Frage = suspend (String?) -> Abrufergebnis<AlarmabrufView>
 
 /**
- * Was beim Abholen der ausgelösten Preisalarme entschieden wird — ausserhalb des
- * Workers, weil sich ein ListenableWorker nur mit laufendem Android prüfen lässt.
- * Der Worker beschafft den Kontext, ruft hier an und zeigt an, was zurückkommt.
+ * What is decided when fetching triggered price alerts — outside of the
+ * worker, because a ListenableWorker can only be tested with Android running.
+ * The worker obtains the context, calls in here, and displays whatever comes back.
  */
 internal object Alarmabholung {
 
-    /** Was ein Durchgang ergeben hat. */
+    /** What one run produced. */
     sealed interface Ergebnis {
         /**
-         * Geholt. `meldungen` kann leer sein — das ist der Normalfall. `neueMarke` ist
-         * immer zu speichern, auch ohne Meldung: Sonst fragte der nächste Durchgang ab dem
-         * alten Zeitpunkt und brächte dieselbe Meldung ein zweites Mal.
+         * Fetched. `meldungen` may be empty — that's the normal case. `neueMarke` always
+         * has to be stored, even without a notification: otherwise the next run would query from the
+         * old timestamp and bring in the same notification a second time.
          */
         data class Geholt(val meldungen: List<PriceAlertView>, val neueMarke: String) : Ergebnis
 
         /**
-         * Erster Durchgang — es gab noch keine Marke. Bewusst ohne Meldung: Eine frisch
-         * eingerichtete App soll nicht mit Schwellen aufschlagen, die vor Wochen gerissen
-         * sind. Der Server liefert ohne `since` ohnehin eine leere Liste; die
-         * Unterscheidung steht hier, damit sie im Code sichtbar ist und nicht nur
-         * Nebenwirkung einer Serverantwort.
+         * First run — there was no marker yet. Deliberately without a notification: a freshly
+         * set-up app shouldn't open with thresholds that were crossed weeks
+         * ago. The server returns an empty list without `since` anyway; the
+         * distinction is written here on purpose, so it is visible in the code and not just a
+         * side effect of a server response.
          */
         data class Markiert(val neueMarke: String) : Ergebnis
 
-        /** Nicht erreichbar oder abgelehnt — die Marke bleibt, wie sie war. */
+        /** Unreachable or rejected — the marker stays as it was. */
         data object Fehlgeschlagen : Ergebnis
     }
 
     /**
-     * Einen Durchgang machen. Die Abfrage ist ein Parameter, damit ein Unit-Test sie
-     * ohne Retrofit und Plattencache reichen kann — sonst wäre gerade das Entschiedene nur im Betrieb beobachtbar. Wie beim
-     * Mailversand des Servers (utils/preisalarm.ts): Wer entscheidet, bekommt das Wie
-     * gereicht.
+     * Run one pass. The query is a parameter so a unit test can supply it
+     * without Retrofit and the disk cache — otherwise exactly what is decided here would only be observable in production. As with
+     * the server's mail dispatch (utils/preisalarm.ts): whoever decides gets the how
+     * handed in.
      *
-     * @param marke der Zeitpunkt des letzten erfolgreichen Durchgangs, leer beim
-     *         allerersten
+     * @param marke the time of the last successful run, empty on the
+     *         very first one
      */
     suspend fun fetch(marke: String?, frage: Frage): Ergebnis {
         val r = frage(marke?.takeIf { it.isNotBlank() })
         val antwort = (r as? Abrufergebnis.Erfolg)?.data ?: return Ergebnis.Fehlgeschlagen
-        // Ohne `now` keine neue Marke — und ohne neue Marke lieber gar nichts
-        // speichern, als eine falsche. Ein Server, der das Feld nicht kennt,
-        // ist eine aeltere Fassung; dann bleibt es beim Mailversand.
+        // Without `now` there is no new marker — and without a new marker, better store
+        // nothing at all than a wrong one. A server that doesn't know the field
+        // is an older version; then it stays with mail dispatch.
         val neueMarke = antwort.marke?.takeIf { it.isNotBlank() } ?: return Ergebnis.Fehlgeschlagen
         if (marke.isNullOrBlank()) return Ergebnis.Markiert(neueMarke)
         return Ergebnis.Geholt(antwort.alerts, neueMarke)
     }
 
     /**
-     * Der Text einer Meldung — hier und nicht im Worker, damit er sich ohne Android
-     * prüfen lässt. Zwei Nachkommastellen und die Währung des Alarms, nicht die
-     * aktuelle Kontowährung: Die Schwelle wurde in jener Währung gesetzt, und 200 CHF
-     * sind nicht 200 EUR. Der Betrag in der Form von [zahlen] („199,50 CHF“), wie überall
-     * in der App und in der Web-Oberfläche.
+     * The text of a notification — here, not in the worker, so it can be tested without
+     * Android. Two decimal places and the alert's own currency, not the
+     * current account currency: the threshold was set in that currency, and 200 CHF
+     * is not 200 EUR. The amount in the form of [zahlen] („199,50 CHF“), as everywhere
+     * in the app and in the web UI.
      */
     fun text(a: PriceAlertView, unter: String, ueber: String, zahlen: Locale): String {
         val richtung = if (a.richtung == Alarmrichtung.UNTER) unter else ueber

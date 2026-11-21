@@ -14,12 +14,12 @@ import ch.brickinventoryapp.shared.ui.PriceChartMath
 import ch.brickinventoryapp.shared.ui.localValues
 
 /**
- * Achsen, die man lesen kann: Der Preisverlauf beschriftet runde Werte (790/810/840
- * statt 787/801/816), und das Wertdiagramm kürzt bei grosser Schrift auf „1.7k“.
+ * Axes you can actually read: the price history labels round values (790/810/840
+ * instead of 787/801/816), and the value chart abbreviates to „1.7k“ at large text sizes.
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI):
- *   preisachse-krumm       Schritt ohne Rundung → rot „Wertachse des Preisverlaufs …“
- *   wertachse-ausgeschrieben  kompakt ignoriert → rot „grosse Schrift beschriftet …“
+ * Counter-checks (patches under gegenproben/, measured only in CI):
+ *   preisachse-krumm       step without rounding → red „Wertachse des Preisverlaufs …“
+ *   wertachse-ausgeschrieben  compact ignored → red „grosse Schrift beschriftet …“
  */
 class AxesRoundTest {
 
@@ -33,8 +33,8 @@ class AxesRoundTest {
             val b = PriceChartMath.bounds(PriceChartMath.buildLines(verlauf(*series)))!!
             val ticks = PriceChartMath.yTicks(b)
             assertTrue("Alle Werte im Bereich: $ticks", ticks.first() <= series.min() && ticks.last() >= series.max())
-            // Rund heisst: ein Vielfaches der Zehnerpotenz unter einem Viertel der Spanne
-            // (Spanne 60 → Zehner, Spanne 8 → Einer).
+            // Round means: a multiple of the power of ten below a quarter of the span
+            // (span 60 → tens, span 8 → ones).
             val power = Math.pow(10.0, kotlin.math.floor(kotlin.math.log10((ticks.last() - ticks.first()) / 4)))
             for (t in ticks) {
                 val rest = Math.IEEEremainder(t, power)
@@ -49,7 +49,7 @@ class AxesRoundTest {
             ChartAxis("CHF 12'400", Geld.aus(12_400.0)!!, 0.5))
         val de = Locale.forLanguageTag("de-CH")
         assertEquals(listOf("1.7k", "850", "12k"), localValues(axis, Waehrung("CHF"), de, compact = true).map { it.label })
-        // Ohne kompakt bleibt der ausgeschriebene Betrag.
+        // Without compact, the amount stays written out in full.
         assertTrue(localValues(axis, Waehrung("CHF"), de).first().label.contains("CHF"))
     }
 }

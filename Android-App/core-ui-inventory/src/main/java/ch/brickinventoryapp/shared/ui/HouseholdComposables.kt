@@ -25,29 +25,29 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.components.withFont
 
 /**
- * Der Kontofilter, wie ihn eine Bestandsansicht zeigt: links oben, mit dem
- * üblichen Abstand, nur wenn es etwas zu wählen gibt. Eine Zeile für Teile,
- * Minifiguren und Galerie, damit ein abweichender Abstand nicht erst beim
- * Reiterwechsel auffällt.
+ * The account filter, as an inventory view shows it: top left, with the
+ * usual spacing, only when there is something to choose. One function for parts,
+ * minifigs and gallery, so a deviating spacing doesn't only stand out on a
+ * tab change.
  */
 @Composable
 fun ScopeFilterRow(
     members: List<MemberView>,
     current: String,
     onSelect: (String) -> Unit,
-    // ── Der Lagerortfilter steht daneben, nicht darunter ──
+    // ── The storage-location filter sits next to it, not below it ──
     //
-    // Zwei frei kombinierbare Fragen an dieselbe Liste („wessen“ und „wo“) —
-    // nebeneinander sieht man beide Antworten auf einen Blick, wie in der Webapp
-    // (public/index.html, scope-* und storage-* in einer Zeile). Vorgaben, damit
-    // Bildschirme, die nur den Kontofilter brauchen, unverändert aufrufen können.
+    // Two freely combinable questions about the same list („whose“ and „where“) —
+    // side by side you see both answers at a glance, as in the web app
+    // (public/index.html, scope-* and storage-* on one row). Defaults, so
+    // screens that only need the account filter can call it unchanged.
     lagerorte: List<LocationView> = emptyList(),
     storageCurrent: String = "",
     onStorageSelect: (String) -> Unit = {},
 ) {
-    // Beide koennen einzeln entfallen: der Kontofilter ohne Unterkonten, der
-    // Lagerortfilter, solange nirgends ein Ort erfasst ist. Sind beide leer,
-    // entsteht keine Zeile — sonst staende dort ein leerer Streifen.
+    // Both can individually be absent: the account filter without sub-accounts, the
+    // storage-location filter as long as no location is captured anywhere. If both are empty,
+    // no row is produced — otherwise an empty strip would sit there.
     val showAccounts = members.size > 1
     val showStorage  = lagerorte.isNotEmpty()
     if (!showAccounts && !showStorage) return
@@ -66,10 +66,10 @@ fun ScopeFilterRow(
 }
 
 /**
- * Lagerortfilter — dieselbe Form wie der Kontofilter daneben. Eine eigene Funktion
- * statt ScopeFilterChip mit anderen Daten: Die Einträge sind Orte statt Konten und
- * der erste heisst „Alle Lagerorte“ — eine gemeinsame Funktion bräuchte mehr
- * Bedingungen, als sie spart.
+ * Storage-location filter — the same shape as the account filter next to it. A function
+ * of its own instead of ScopeFilterChip with different data: the entries are locations instead of accounts, and
+ * the first one is called „Alle Lagerorte“ — a shared function would need more
+ * conditions than it would save.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,9 +81,9 @@ fun LocationFilterChip(
 ) {
     if (orte.isEmpty()) return
     val alle = stringResource(R.string.filter_storage_all)
-    // Zeigt die gespeicherte Wahl auf einen inzwischen leeren Ort, steht hier
-    // sonst eine leere Beschriftung ueber einer gefilterten Liste — dieselbe
-    // Falle wie beim Kontofilter.
+    // If the stored choice points to a location that's now empty, an empty
+    // label would otherwise sit here above a filtered list — the same
+    // trap as with the account filter.
     val wert = if (orte.any { it.ort == current }) current else ""
     var open by rememberSaveable { mutableStateOf(false) }
 
@@ -119,11 +119,11 @@ fun LocationFilterChip(
 }
 
 /**
- * Kontofilter einer Ansicht — Alle Konten, Eigene, dann jedes Unterkonto
- * namentlich. Nur bei einem Hauptkonto mit Unterkonten: Eine Auswahl mit genau
- * einer Antwort ist keine Wahl. Gefiltert wird auf dem Server (`accounts=`), weil
- * sich hier zwar die Kachelwand sieben liesse, nicht aber die Gesamtzahl und die
- * Bewertung.
+ * Account filter of a view — All accounts, own, then each sub-account
+ * by name. Only for a main account with sub-accounts: a choice with exactly
+ * one answer is no choice. Filtering happens on the server (`accounts=`), because
+ * the tile wall could be sieved here, but not the total count and the
+ * valuation.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -140,8 +140,8 @@ fun ScopeFilterChip(
     )
     if (options.isEmpty()) return
 
-    // Zeigt die gespeicherte Wahl auf ein inzwischen entkoppeltes Konto,
-    // steht hier sonst eine leere Beschriftung über einer gefilterten Liste.
+    // If the stored choice points to an account that's now unlinked,
+    // an empty label would otherwise sit here above a filtered list.
     val value = ScopeFilter.sanitize(current, options)
     val label = options.firstOrNull { it.first == value }?.second ?: options.first().second
     var open by rememberSaveable { mutableStateOf(false) }
@@ -171,23 +171,23 @@ fun ScopeFilterChip(
 }
 
 /**
- * Besitzer-Plaketten — nur im Haushalt. Der Server hängt `owners` nur an, wenn
- * mehrere Konten im Blickfeld sind; im Einzelkonto wäre „gehört mir“ an jeder
- * Kachel Rauschen, im Haushalt ist es die wichtigste Angabe — ohne sie verschiebt
- * man das falsche Exemplar. Mehrere Namen: dasselbe Set in mehreren Konten,
- * bewusst eine Kachel mit der Summe der Mengen.
+ * Owner badges — only in a household. The server only attaches `owners` when
+ * several accounts are in the Blickfeld; in a single account „belongs to me“ on every
+ * tile would be noise, in a household it's the most important piece of information — without it
+ * you'd move the wrong copy. Several names: the same set across several accounts,
+ * deliberately one tile with the sum of the quantities.
  */
-// ExperimentalLayoutApi gilt für FlowRow — die Annotation gehört an die
-// FUNKTION. Ein @OptIn mitten im Rumpf ist keine gültige Anweisung; zusammen
-// mit der Klammerung `(FlowRow(...)) { … }` las Kotlin das als „rufe das
-// Ergebnis auf" und meldete „Unresolved reference 'invoke'".
+// ExperimentalLayoutApi applies to FlowRow — the annotation belongs on the
+// FUNCTION. An @OptIn in the middle of the body is not a valid statement; together
+// with the parenthesization `(FlowRow(...)) { … }` Kotlin read that as „call the
+// result" and reported "Unresolved reference 'invoke'".
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun OwnerBadges(owners: List<AccountView>, modifier: Modifier = Modifier) {
     if (owners.isEmpty()) return
-    // FlowRow statt Row: Zwei Besitzer mit langen Namen sind breiter als die Kachel,
-    // in einer Row schöben sich die Etiketten übereinander. FlowRow bricht um, damit
-    // alle lesbar bleiben.
+    // FlowRow instead of Row: two owners with long names are wider than the tile,
+    // in a Row the labels would overlap. FlowRow wraps, so
+    // all of them stay readable.
     FlowRow(
         modifier,
         horizontalArrangement = Arrangement.spacedBy(3.dp),
@@ -211,9 +211,9 @@ fun OwnerBadges(owners: List<AccountView>, modifier: Modifier = Modifier) {
 }
 
 /**
- * Kontoauswahl beim Erfassen — „Für Konto“. Ohne Haushalt unsichtbar; der Server
- * bleibt dann beim eigenen Konto. Die Konto-ID geht als `owner_user_id` mit; ob
- * sie erlaubt ist, prüft der Server (canWriteFor), nicht die App.
+ * Account choice during capture — „Für Konto“. Invisible without a household; the server
+ * then stays with the own account. The account ID goes along as `owner_user_id`; whether
+ * it's allowed is checked by the server (canWriteFor), not the app.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

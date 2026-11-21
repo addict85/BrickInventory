@@ -3,7 +3,7 @@ package ch.brickinventoryapp.ui.components
 import java.security.PublicKey
 import java.security.Signature
 
-/** Was die App-Sperre vom Keystore braucht; im Test steht ein Software-Schlüssel dafür. */
+/** What the app lock needs from the Keystore; the test provides a software key for it. */
 internal interface Entsperrschluessel {
     fun signatur(): Signature
     fun oeffentlich(): PublicKey
@@ -11,10 +11,10 @@ internal interface Entsperrschluessel {
 }
 
 /**
- * Die App-Sperre fällt erst nach einem Krypto-Vorgang: Die vom Prompt freigegebene
- * Signatur muss eine frische Zufallszahl passend zum öffentlichen Schlüssel signieren —
- * ein eingehakter Erfolgsrückruf ohne echte Freigabe scheitert an sign(). Kann sie nicht
- * signieren (Schlüssel inzwischen ungültig), gibt es einen neuen und genau eine Rückfrage mehr.
+ * The app lock only lifts after a crypto operation: the signature released by the
+ * prompt must sign a fresh random number matching the public key —
+ * a hooked-up success callback without a real release fails at sign(). If it can't
+ * sign (key invalid in the meantime), a new one is created and exactly one more follow-up question.
  */
 internal class AppUnlocking(
     private val schluessel: Entsperrschluessel,
@@ -25,7 +25,7 @@ internal class AppUnlocking(
     fun unlock(weiter: () -> Unit) = versuche(weiter, again = true)
 
     private fun versuche(weiter: () -> Unit, again: Boolean) {
-        // Ohne Schlüssel bleibt die App gesperrt; der Knopf auf dem Sperrschirm fragt erneut.
+        // Without a key, the app stays locked; the button on the lock screen asks again.
         val signatur = runCatching { schluessel.signatur() }.getOrNull() ?: return
         frage(signatur) { released ->
             when {

@@ -29,17 +29,17 @@ import java.nio.file.Files
 import ch.brickinventoryapp.testing.text
 
 /**
- * Der Alarmschalter und die Vorwärm-Netze schreiben über das ViewModel: Der Wunsch
- * wird gespeichert, der Alarm eingeplant, und ein Fehlschlag beim Einplanen kommt
- * mit Klasse und Meldung in den Meldungskanal.
+ * The alert switch and the warm-up networks write via the ViewModel: the wish
+ * is stored, the alert scheduled, and a scheduling failure comes
+ * with class and message into the notification channel.
  *
- * Gegenproben (gegenproben/, lokal mit Attrappen gemessen):
- *   geraet-alarm-nicht-eingeplant  alarmMessages() plant nicht ein
- *                                  → rot „the switch saves and schedules“
- *   geraet-fehler-verschluckt      der Fehler des Einplanens geht nicht in den Kanal
- *                                  → rot „a failure when scheduling is reported“
- *   geraet-ablage-nicht-geleert    clearStore() leert die Vorschau-Ablage nicht
- *                                  → rot „the preview store can be viewed and cleared“
+ * Counter-checks (gegenproben/, measured locally with fakes):
+ *   geraet-alarm-nicht-eingeplant  alarmMessages() doesn't schedule
+ *                                  → red „the switch saves and schedules“
+ *   geraet-fehler-verschluckt      the scheduling error doesn't go into the channel
+ *                                  → red „a failure when scheduling is reported“
+ *   geraet-ablage-nicht-geleert    clearStore() doesn't clear the preview store
+ *                                  → red „the preview store can be viewed and cleared“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class DevicesSettingsViewModelTest {

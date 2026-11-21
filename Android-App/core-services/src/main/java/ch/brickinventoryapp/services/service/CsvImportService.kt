@@ -28,7 +28,7 @@ import javax.inject.Inject
 import ch.brickinventoryapp.data.di.Scopes
 import ch.brickinventoryapp.data.util.LanguageManager
 
-/** Der Vordergrund-Dienst eines laufenden CSV-Imports; im Test ein Zähler. */
+/** The foreground service of a running CSV import; a counter in the test. */
 interface CsvImportDienst {
     fun start()
     fun stop()
@@ -48,44 +48,44 @@ class CsvImportService : Service() {
         const val CHANNEL_ID      = "csv_import_channel"
         const val NOTIFICATION_ID = 42
 
-        // Rückfallebene, falls SSE nicht steht
+        // Fallback for when SSE isn't working
         private const val POLL_INTERVAL_MS = 1500L
         private const val POLL_WINDOW      = 10   // Abfragen je Fenster, dann neuer SSE-Versuch
         private const val MAX_ERRORS       = 10
         private const val GRACE_MS         = 10_000L  // Anlauffenster, siehe applyStatus()
 
         fun start(context: Context) {
-            // startForegroundService kann auf Android 12+ bereits an der
-            // Aufrufstelle werfen, wenn die App im Hintergrund ist
-            // (ForegroundServiceStartNotAllowedException). Das darf die App
-            // nicht abstürzen lassen — die Notification ist nur "nice to have".
+            // startForegroundService can, on Android 12+, already throw at the
+            // call site if the app is in the background
+            // (ForegroundServiceStartNotAllowedException). That must not crash
+            // the app — the notification is only "nice to have".
             try {
                 context.startForegroundService(Intent(context, CsvImportService::class.java))
-            } catch (_: Exception) { /* Hintergrund-Start nicht erlaubt — ignorieren */ }
+            } catch (_: Exception) { /* Background start not allowed — ignore */ }
         }
 
         fun stop(context: Context) {
             try {
                 context.stopService(Intent(context, CsvImportService::class.java))
-            } catch (_: Exception) { /* Dienst schon beendet — nichts mehr zu stoppen */ }
+            } catch (_: Exception) { /* Service already ended — nothing left to stop */ }
         }
     }
 
     @Inject lateinit var dateien: SetDateienRepository
     @Inject lateinit var sseClient: CsvImportSseClient
 
-    // Service-Context in der gewählten App-Sprache: setApplicationLocales()
-    // lokalisiert nur Activities — ohne diesen Wrapper kämen die
-    // Benachrichtigungen unterhalb von Android 13 in der Systemsprache
-    // (bzw. vorher: hartkodiert auf Deutsch).
+    // Service context in the chosen app language: setApplicationLocales()
+    // only localizes activities — without this wrapper, notifications
+    // below Android 13 would come up in the system language
+    // (or earlier: hardcoded to German).
     private val loc: Context by lazy {
         LanguageManager.localizedContext(this)
     }
 
     @Inject lateinit var areas: Scopes
 
-    // Lebt mit dem Dienst (onDestroy bricht ab). lazy, weil Hilt die Felder erst
-    // in super.onCreate() setzt.
+    // Lives with the service (onDestroy cancels it). lazy, because Hilt only sets
+    // the fields in super.onCreate().
     private val serviceScope by lazy { CoroutineScope(SupervisorJob() + areas.io) }
     private var pollJob: Job? = null
 
@@ -103,7 +103,7 @@ class CsvImportService : Service() {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
             )
         }.onFailure {
-            // Ohne Vordergrund (etwa wegen einer Hintergrundsperre) still beenden statt abstürzen.
+            // Without foreground (e.g. due to a background restriction) end quietly instead of crashing.
             stopSelf()
         }
     }
@@ -114,9 +114,9 @@ class CsvImportService : Service() {
     }
 
     /**
-     * Status-Beobachtung: SSE zuerst, Polling nur als Rückfallebene.
-     * Er teilt sich den CsvImportSseClient mit dem ViewModel, statt denselben Endpunkt ein zweites
-     * Mal abzufragen.
+     * Status observation: SSE first, polling only as a fallback.
+     * It shares the CsvImportSseClient with the ViewModel, instead of querying the same endpoint a second
+     * time.
      */
     private fun startWatching() {
         pollJob = serviceScope.launch {
@@ -129,13 +129,13 @@ class CsvImportService : Service() {
 
                 if (!isActive) return@launch
                 if (!sseFailed) {
-                    // Flow regulär beendet → Import ist durch
+                    // Flow ended normally → import is done
                     finishAndStop()
                     return@launch
                 }
 
-                // ── Rückfallebene: pollen, bis SSE wieder steht ──────────────
-                // Ein Fenster von 10 Abfragen (~15s), danach neuer SSE-Versuch.
+                // ── Fallback: poll until SSE works again ──────────────
+                // A window of 10 queries (~15s), then a new SSE attempt.
                 repeat(POLL_WINDOW) {
                     if (!isActive) return@launch
                     when (pollOnce()) {
@@ -154,7 +154,7 @@ class CsvImportService : Service() {
 
     private enum class PollResult { RUNNING, FINISHED, ERROR }
 
-    /** Eine Status-Abfrage der Rückfallebene. */
+    /** One status query of the fallback. */
     private suspend fun pollOnce(): PollResult = fangeAusserAbbruch {
         when (val resp = dateien.getCsvImportStatus()) {
             is Ergebnis.Erfolg ->
@@ -164,10 +164,10 @@ class CsvImportService : Service() {
     }.getOrElse { PollResult.ERROR }
 
     /**
-     * Einzige Stelle, die aus einem Status eine Benachrichtigung macht —
-     * von SSE und Polling gemeinsam genutzt.
+     * The one place that turns a status into a notification —
+     * used jointly by SSE and polling.
      *
-     * @return true solange der Import läuft, false wenn er fertig ist.
+     * @return true as long as the import is running, false once it's done.
      */
     private fun applyStatus(s: CsvImportStatusView): Boolean {
         val running = s.status?.laeuft == true
@@ -175,10 +175,10 @@ class CsvImportService : Service() {
         val total   = s.total
         val current = s.current ?: ""
         if (!running) {
-            // Anlaufschutz: Der Server meldet "idle", bis der Import-Job tatsächlich angelegt
-            // ist.
-            // Der Service startet mit dem Upload; ohne dieses Fenster beendete ihn die erste
-            // idle-Antwort, bevor ein Fortschritt käme.
+            // Startup grace period: the server reports "idle" until the import job has actually
+            // been created.
+            // The service starts with the upload; without this window the first
+            // idle response would end it before any progress could come in.
             if (!sawRunning && System.currentTimeMillis() - startedAtMs < GRACE_MS) return true
             return false
         }
@@ -208,7 +208,7 @@ class CsvImportService : Service() {
                 if (max > 0) setProgress(max, progress, false)
                 else         setProgress(0, 0, true)
             }
-            // Gesperrt nur der Titel, wie die Meldungen in core-data (Sperrbildschirm.kt).
+            // Only the title while locked, like the notifications in core-data (Sperrbildschirm.kt).
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
             .setPublicVersion(NotificationCompat.Builder(this, CHANNEL_ID).setSmallIcon(R.drawable.ic_stat_brick)
                 .setContentTitle(loc.getString(R.string.notif_csv_title)).build())

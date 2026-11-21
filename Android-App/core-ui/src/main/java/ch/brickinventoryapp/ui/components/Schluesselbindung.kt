@@ -8,16 +8,16 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Base64
 
-/** Der Keystore-Teil der Bindung; Robolectric kann keine Attestation, Tests setzen ihn ein. */
+/** The Keystore part of the binding; Robolectric can't do attestation, tests inject it. */
 interface AttestierbarerKey {
-    /** Ein neuer Schlüssel mit [challenge] als Attestation-Challenge; seine Kette als DER, Blatt zuerst. */
+    /** A new key with [challenge] as the attestation challenge; its chain as DER, leaf first. */
     fun createWithAttestation(challenge: ByteArray): List<ByteArray>
 }
 
 /**
- * Nach der Anmeldung: Nonce holen, den Schlüssel mit ihr erzeugen und die Kette
- * hinterlegen. Die Nonce macht die Kette einmalig; ohne sie liesse sich die Kette
- * eines anderen Geräts wieder einreichen.
+ * After signing in: fetch a nonce, generate the key with it, and deposit the chain.
+ * The nonce makes the chain one-time-use; without it, another device's chain
+ * could be resubmitted.
  */
 class Schluesselbindung(
     private val bindung: Schrittbindung,
@@ -26,7 +26,7 @@ class Schluesselbindung(
 ) {
     sealed interface Ausgang {
         data object Gebunden : Ausgang
-        /** Das Gerät kann keinen Schlüssel mit Attestation erzeugen. */
+        /** The device cannot generate a key with attestation. */
         data object WithoutAttestation : Ausgang
         data class Rejected(val meldung: String?) : Ausgang
     }
@@ -39,7 +39,7 @@ class Schluesselbindung(
         val challenge = runCatching { Base64.getUrlDecoder().decode(nonce) }.getOrNull()
             ?: return Ausgang.Rejected(null)
         val kette = withContext(keystore) { runCatching { schluessel.createWithAttestation(challenge) }.getOrNull() }
-        // Ohne Attestation liefert der Keystore nur das selbstsignierte Zertifikat des Schlüssels.
+        // Without attestation, the Keystore only supplies the key's self-signed certificate.
         if (kette == null || kette.size < 2) return Ausgang.WithoutAttestation
         return when (val r = bindung.depositChain(kette)) {
             Schrittantwort.Free -> Ausgang.Gebunden

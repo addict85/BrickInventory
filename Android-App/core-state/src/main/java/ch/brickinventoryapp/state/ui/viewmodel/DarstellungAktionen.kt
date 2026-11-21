@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.state.ui.viewmodel
 
-/** Was die Einstellungen an der Darstellung dieses Geräts ändern. */
+/** What the settings change about this device's appearance. */
 interface DarstellungAktionen {
     fun setLanguage(languageCode: String)
     fun setHelligkeit(wahl: String)

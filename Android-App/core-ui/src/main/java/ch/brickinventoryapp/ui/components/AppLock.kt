@@ -5,15 +5,15 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Sperrt die App, wenn sie länger als die gewählten Minuten im Hintergrund lag.
- * [clock] läuft monoton (elapsedRealtime): Eine verstellte Uhr verlängert nichts, und
- * weil sie den Prozess überlebt, zählt auch eine Rückkehr nach dessen Ende richtig.
- * Nach einem Neustart des Geräts beginnt sie aber neu; [devicesStart] (BOOT_COUNT)
- * erkennt das sicher, auch wenn die neue Uhr schon über dem alten Zeitpunkt steht.
+ * Locks the app if it has sat in the background longer than the chosen minutes.
+ * [clock] runs monotonically (elapsedRealtime): a changed clock extends nothing, and
+ * because it survives the process, a return even after the process ended is counted correctly.
+ * After a device restart, though, it starts over; [devicesStart] (BOOT_COUNT)
+ * detects this reliably, even when the new clock already stands past the old timestamp.
  */
 class AppLock(private val clock: () -> Long, private val ablage: Ablage, private val devicesStart: () -> Int? = { null }) {
 
-    /** Je Gerät; [minuten] 0 heisst aus. [gesperrt] liegt hier, damit Drehen oder Prozessende nicht entsperren. */
+    /** Per device; [minuten] 0 means off. [gesperrt] lives here, so rotating or ending the process doesn't unlock. */
     interface Ablage {
         fun minuten(): Int
         fun setMinutes(minuten: Int)
@@ -36,14 +36,14 @@ class AppLock(private val clock: () -> Long, private val ablage: Ablage, private
         _minutes.value = minuten
     }
 
-    /** onStop: Eine schon gesperrte App behält ihren früheren Zeitpunkt nicht, sie bleibt gesperrt. */
+    /** onStop: an already locked app doesn't keep its earlier timestamp, it stays locked. */
     fun inBackground() {
         if (_locked.value) return
         ablage.rememberBackgroundStart(devicesStart())
         ablage.rememberBackground(clock())
     }
 
-    /** onStart (auch nach einem Neustart des Prozesses). */
+    /** onStart (also after a restart of the process). */
     fun inForeground() {
         val seit = ablage.backgroundSince() ?: return
         val start = ablage.backgroundStart()
@@ -51,8 +51,8 @@ class AppLock(private val clock: () -> Long, private val ablage: Ablage, private
         ablage.rememberBackgroundStart(null)
         val deadline = _minutes.value * MINUTE_MS
         val jetzt = clock()
-        // Nach einem Neustart des Geräts beginnt die Uhr bei null: Ob die Frist ablief, ist offen.
-        // Ein unlesbarer Zähler gilt als anderer Start; ohne gemerkten (ältere Ablage) zählt nur die Uhr.
+        // After a device restart the clock starts at zero: whether the deadline expired is open.
+        // An unreadable counter counts as a different start; without a remembered one (older store), only the clock counts.
         val restarted = start != null && devicesStart() != start
         if (deadline > 0 && (restarted || jetzt < seit || jetzt - seit >= deadline)) setze(true)
     }
@@ -66,23 +66,23 @@ class AppLock(private val clock: () -> Long, private val ablage: Ablage, private
 
     companion object {
         const val MINUTE_MS = 60_000L
-        /** Die Wahl in den Einstellungen; 0 ist aus. */
+        /** The choice in settings; 0 is off. */
         val CHOICE = listOf(0, 1, 5, 15, 30)
 
-        /** Die Vorgabe einer neuen Installation mit Displaysperre. */
+        /** The default for a fresh install with a screen lock. */
         const val DEFAULT_MINUTES = 5
 
         /**
-         * Neu installiert und mit Displaysperre: an. Ein Update ändert nichts, was der Nutzer
-         * bisher hatte; ohne Displaysperre gäbe es nichts, womit sich entsperren liesse.
+         * Freshly installed and with a screen lock: on. An update changes nothing the user
+         * had before; without a screen lock there would be nothing to unlock with.
          */
         fun vorgabe(newInstalled: Boolean, deviceSecured: Boolean): Int =
             if (newInstalled && deviceSecured) DEFAULT_MINUTES else 0
 
         /**
-         * Ob das Widget Geldwerte verdeckt: gesperrt, oder bei eingeschalteter Sperre schon im
-         * Hintergrund. Das Widget wird beim Ablauf der Frist nicht neu gezeichnet; wartete es
-         * darauf, stünden die Beträge bis zum nächsten Lauf offen auf dem Startbildschirm.
+         * Whether the widget hides monetary values: locked, or already in the
+         * background with the lock turned on. The widget isn't redrawn when the deadline expires; if it
+         * waited for that, the amounts would sit exposed on the home screen until the next run.
          */
         fun hiddenWidget(ablage: Ablage): Boolean =
             ablage.gesperrt() || ablage.minuten() > 0 && ablage.backgroundSince() != null

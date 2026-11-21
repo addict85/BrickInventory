@@ -12,12 +12,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Die Benachrichtigung des PDF-Dienstes bildet ihre Sätze aus Fachwerten: Kein
- * Fehler bleibt ohne Satz, auch wenn der Server keinen schickte.
+ * The PDF service's notification builds its strings from field values: no
+ * error is left without a string, even when the server sent none.
  *
- * Gegenprobe (gegenproben/pdf-dienst-fehler-leer.patch, mit kotlinc gemessen):
- *   errorText() nimmt für einen Abruf immer `fehler.message` → rot „jeder Fehler
- *   hat einen Satz …“ mit „Netz(technisch=null) ohne Satz“
+ * Counter-check (gegenproben/pdf-dienst-fehler-leer.patch, measured with kotlinc):
+ *   errorText() always uses `fehler.message` for a fetch error → red „jeder Fehler
+ *   hat einen Satz …“ with „Netz(technisch=null) ohne Satz“
  */
 class PdfServiceTextsTest {
 

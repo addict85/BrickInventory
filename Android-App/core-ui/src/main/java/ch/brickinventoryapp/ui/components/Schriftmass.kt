@@ -8,30 +8,30 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Ab dieser Schriftgrösse stehen Bezeichnung und Wert untereinander statt
- * nebeneinander: Bei 200 % brach „CHF 700.00“ neben „Kaufpreis“ Ziffer für
- * Ziffer um. 1,3 ist die erste Stufe, die Android über „Gross“ anbietet.
+ * From this text size onward, label and value stack instead of
+ * sitting side by side: at 200%, „CHF 700.00“ next to „Kaufpreis“ wrapped digit by
+ * digit. 1.3 is the first step Android offers beyond „Large“.
  */
 const val LARGE_FONT_AB = 1.3f
 
-/** Ist die Schrift so gross, dass Zeilen umgestellt werden ([LARGE_FONT_AB])? */
+/** Is the text size large enough that rows switch layout ([LARGE_FONT_AB])? */
 @Composable
 fun largeFont(): Boolean = LocalDensity.current.fontScale > LARGE_FONT_AB
 
 /**
- * Ein Symbol neben Schrift wächst mit ihr, höchstens aufs Doppelte: Ein Stift von
- * 14 dp neben 32 sp hohem Text war bei 200 % kaum noch zu sehen.
+ * An icon next to text grows with it, at most to double size: a 14 dp pencil
+ * next to 32 sp tall text was barely visible at 200%.
  */
 @Composable
 fun withFont(basis: Dp): Dp = basis * LocalDensity.current.fontScale.coerceIn(1f, 2f)
 
-/** Ab dieser Rasterbreite gilt ein Fenster als breit (Tablet, Querformat). */
+/** From this grid width onward, a window counts as wide (tablet, landscape). */
 private val WIDE_RASTER = 840.dp
 
 /**
- * Rasterspalten mit [mindestens] als Mindestbreite einer Kachel, gewachsen mit der
- * Schrift (höchstens doppelt) und auf breiten Fenstern um die Hälfte: Bei 200 % kürzte
- * eine 110-dp-Kachel jeden Namen, auf dem Tablet standen kleine Kacheln in einer Ecke.
+ * Grid columns with [mindestens] as a tile's minimum width, grown with the
+ * text size (at most doubled) and, on wide windows, by half: at 200% a
+ * 110 dp tile truncated every name, and on the tablet small tiles sat in a corner.
  */
 data class ReadableColumns(val mindestens: Dp) : GridCells {
     override fun Density.calculateCrossAxisCellSizes(availableSize: Int, spacing: Int): List<Int> {
@@ -40,7 +40,7 @@ data class ReadableColumns(val mindestens: Dp) : GridCells {
         return with(GridCells.Adaptive(breite)) { calculateCrossAxisCellSizes(availableSize, spacing) }
     }
 
-    /** Wie viele Spalten das Raster auf [verfuegbar] stellt; dieselbe Rechnung wie beim Auslegen. */
+    /** How many columns the grid sets for [verfuegbar]; the same calculation as during layout. */
     fun Density.anzahl(verfuegbar: Dp, abstand: Dp): Int =
         calculateCrossAxisCellSizes(verfuegbar.roundToPx(), abstand.roundToPx()).size
 }

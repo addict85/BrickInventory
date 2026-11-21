@@ -10,9 +10,9 @@ import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
- * Der Schalter in den Einstellungen plant über diesen Weg ein. Nicht auf dem
- * Hauptthread: WorkManager liest beim ersten Zugriff von der Platte, und das
- * brachte die App zum Absturz.
+ * The switch in settings schedules via this path. Not on the
+ * main thread: WorkManager reads from disk on first access, and that
+ * crashed the app.
  */
 internal class WorkManagerAlarmPlanner @Inject constructor(
     @param:ApplicationContext private val context: Context,

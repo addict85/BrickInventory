@@ -37,16 +37,16 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.resources.R
 
 /**
- * Der Schlüssel des Eintrags, dessen Detail gerade daneben steht — die Liste markiert
- * seine Kachel. Als Local statt Parameter, weil die Liste ihn nur im Zweierbild braucht.
+ * The key of the entry whose detail currently sits next to it — the list marks
+ * its tile. As a Local instead of a parameter, because the list only needs it in the two-pane view.
  */
 val LocalOpenDetail = staticCompositionLocalOf<String?> { null }
 
 /**
- * Liste links, Detail rechts — auf breiten Fenstern ([ch.brickinventoryapp.ui.listAndDetail]).
- * Die Liste behält gut zwei Fünftel, damit ihr Raster zwei Spalten hat; das Detail
- * bekommt den Rest und bleibt damit einspaltig lesbar. Ob nebeneinander, entscheidet
- * der Aufrufer am Fenster, weil auch das Gerüst (Seitenleiste) davon abhängt.
+ * List on the left, detail on the right — on wide windows ([ch.brickinventoryapp.ui.listAndDetail]).
+ * The list keeps a good two-fifths, so its grid has two columns; the detail
+ * gets the rest and thus stays readable in one column. Whether side by side is decided by
+ * the caller based on the window, because the scaffold (side rail) depends on it too.
  */
 @Composable
 fun ListAndDetail(
@@ -64,21 +64,21 @@ fun ListAndDetail(
 }
 
 /**
- * Steht der Bildschirm als rechte Hälfte neben seiner Liste? Dann schliesst sein
- * Knopf oben nur das Detail, und ein Zurück-Pfeil versprach eine Seite, die es nicht
- * gibt — Material zeigt ihn in Liste und Detail nur einspaltig.
+ * Does the screen sit as the right half next to its list? Then its
+ * button at the top only closes the detail, and a back arrow would promise a page that doesn't
+ * exist — Material only shows it in list and detail when single-column.
  */
 val LocalInDetailArea = staticCompositionLocalOf { false }
 
 /**
- * Der Schlüssel, unter dem eine Liste ihr offenes Detail erkennt ([LocalOpenDetail]).
- * Teile tragen die Farbe mit, weil dieselbe Nummer in mehreren Farben eine eigene Kachel hat.
+ * The key under which a list recognizes its open detail ([LocalOpenDetail]).
+ * Parts carry the color along, because the same number in several colors has its own tile.
  */
 fun detailKey(art: String, nummer: String, farbe: Int? = null) = "$art|$nummer|${farbe ?: ""}"
 
 /**
- * Der Knopf oben links einer Detailseite: Zurück auf eigener Seite, Schliessen neben der
- * Liste oder im Blatt ([schliessen]). Immer links, damit man ihn in keinem Bereich sucht.
+ * The button at the top left of a detail page: back on its own page, close next to the
+ * list or in the sheet ([schliessen]). Always on the left, so nobody has to hunt for it in any scope.
  */
 @Composable
 fun BackButton(onClick: () -> Unit, schliessen: Boolean = LocalInDetailArea.current) {
@@ -91,9 +91,9 @@ fun BackButton(onClick: () -> Unit, schliessen: Boolean = LocalInDetailArea.curr
 }
 
 /**
- * Der Kopf jeder Detailansicht: Zurück bzw. Schliessen links, der Name als Überschrift,
- * Aktionen rechts. Ein langer Name bricht in eine zweite Zeile, und die Leiste wächst mit —
- * mit einer Zeile stand bei 200 % nur der Anfang da.
+ * The header of every detail view: back resp. close on the left, the name as the heading,
+ * actions on the right. A long name wraps to a second line, and the bar grows with it —
+ * with a single line, at 200% only the beginning was there.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,7 +114,7 @@ fun DetailTopAppBar(
     TopAppBar(
         title = {
             Column {
-                // Bei grosser Schrift drei Zeilen: Ein Teilename mit 30 Zeichen brauchte sie bei 200 %.
+                // With large text, three lines: a part name with 30 characters needed them at 200%.
                 Text(titel, fontWeight = FontWeight.SemiBold, maxLines = if (largeFont()) 3 else 2, overflow = TextOverflow.Ellipsis,
                     onTextLayout = { zeilen = it.lineCount }, modifier = Modifier.semantics { heading() })
                 if (subtitle != null) Text(subtitle, style = typo.bodySmall, maxLines = 1,

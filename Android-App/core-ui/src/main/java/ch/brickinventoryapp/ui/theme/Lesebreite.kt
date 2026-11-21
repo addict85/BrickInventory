@@ -9,27 +9,27 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Die eine Regel für breite Fenster, damit Raster, Listen und Werkzeugleisten nicht je eigen
- * ausgerichtet sind: Raster nutzen die volle Breite, Liste und Detail stehen ab „expanded“
- * nebeneinander, Formulare mittig auf ihrer Lesebreite.
+ * The one rule for wide windows, so grids, lists and toolbars aren't each
+ * aligned on their own: grids use the full width, list and detail sit side by
+ * side from „expanded“ onward, forms are centered at their reading width.
  */
 object Lesebreite {
     /** Formulare: Anmelden, Einrichten, Einstellungen, „Mehr“. */
     val formular = 560.dp
 
-    /** Unterseiten mit Zeilen aus Bezeichnung und Wert. */
+    /** Sub-pages with rows of label and value. */
     val liste = 840.dp
 
     /**
-     * Eine Zeile aus Bezeichnung und Wert in einer Detailkarte. Über die ganze Tablet-
-     * spalte gezogen, lagen 500 dp zwischen „Jahr“ und „2022“, und das Auge verlor die Zeile.
+     * A row of label and value in a detail card. Stretched across the whole tablet
+     * column, 500 dp sat between „Jahr“ and „2022“, and the eye lost the row.
      */
     val wertzeile = 440.dp
 
-    /** Knöpfe und Eingabefelder in Detailkarten: Mit Telefon-Proportionen über 900 dp wirkten sie unfertig. */
+    /** Buttons and input fields in detail cards: with phone proportions beyond 900 dp, they looked unfinished. */
     val controls = 400.dp
 }
 
-/** Volle Breite bis [max], darüber mittig. */
+/** Full width up to [max], centered above that. */
 fun Modifier.centeredUntil(max: Dp): Modifier =
     fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally).widthIn(max = max).fillMaxWidth()

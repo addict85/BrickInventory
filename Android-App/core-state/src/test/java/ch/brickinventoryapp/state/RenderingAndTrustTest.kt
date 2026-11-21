@@ -28,14 +28,14 @@ import ch.brickinventoryapp.testing.StorageSessionStore
 import ch.brickinventoryapp.session.StoreAccountValues
 
 /**
- * DarstellungViewModel und VertrauenViewModel ausgeführt, mit Ablagen im Speicher
- * statt PreferencesManager und in virtueller Zeit.
+ * DarstellungViewModel and VertrauenViewModel put to the test, with in-memory stores
+ * instead of PreferencesManager and in virtual time.
  *
- * Gegenproben:
- *   design-spaet-gesetzt        StoreAccountValues beginnt mit der Vorgabe statt dem gemerkten Design → rot „der Zustand wird mit …“
- *   widget-nicht-angestossen    `widget.refresh()` gestrichen → rot „eine Wahl wird gemerkt …“
- *   vertrauen-ohne-abwurf       nach trustCertificate() kein `drop.discard()` → rot „ein bestätigter …“
- *   unbekannte-ca-ohne-abtippen in CertificateQuestion.bestaetige() die Abtipp-Pflicht gestrichen → rot „ohne bekannte CA …“
+ * Counter-checks:
+ *   design-spaet-gesetzt        StoreAccountValues starts with the default instead of the remembered theme → red „der Zustand wird mit …“
+ *   widget-nicht-angestossen    `widget.refresh()` removed → red „eine Wahl wird gemerkt …“
+ *   vertrauen-ohne-abwurf       after trustCertificate() no `drop.discard()` → red „ein bestätigter …“
+ *   unbekannte-ca-ohne-abtippen in CertificateQuestion.bestaetige() the typing-in requirement removed → red „ohne bekannte CA …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class RenderingAndTrustTest {
@@ -78,10 +78,10 @@ class RenderingAndTrustTest {
     fun `the state is born with the remembered design`() = runTest(takt) {
         val ablage = StorageRendering().apply { design = Design.NOPPE }
         val konto = StorageSessionStore().apply { design.value = Design.NOPPE }
-        // Wie im Gerät: Währung und Design aus der Ablage, das erste aus dem synchronen Spiegel.
+        // As on the device: currency and theme from the store, the first from the synchronous mirror.
         val sitzung = Sitzung(StoreAccountValues(konto, ablage, backgroundScope))
         val vm = DarstellungViewModel(ablage, sitzung) {}
-        // Ohne einen Schritt des Takts: Das erste Bild zeigt schon das gemerkte Design.
+        // Without a single tick of the clock: the first frame already shows the remembered theme.
         assertEquals(Design.NOPPE, vm.appTheme.value)
         assertEquals(Design.NOPPE, sitzung.state.value.appTheme)
         vm.viewModelScope.cancel()

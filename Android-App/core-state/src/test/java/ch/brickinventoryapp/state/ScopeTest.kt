@@ -18,20 +18,20 @@ import java.io.File
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * Der Blickfeld-Dienst — Kontofilter, Lagerfilter, Haushaltskonten — ausgeführt
- * gegen eine Ablage im Speicher und einen Testserver.
+ * The Blickfeld service — account filter, storage filter, household accounts — run
+ * against an in-memory store and a test server.
  *
- * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen Blickfeld.kt):
- *   A  in loadMembers() den Rückfall auf ALL entfernt → rot „ein Filter auf
+ * Counter-checks (measured 28.10.2026, kotlinc against Blickfeld.kt):
+ *   A  in loadMembers() the fallback to ALL removed → red „ein Filter auf
  *      ein Konto, das nicht mehr dazugehört, fällt auf alle zurück“
- *   B  in loadFilter() das Übernehmen der Lagerfilter entfernt → rot „die
+ *   B  in loadFilter() taking over the storage filters removed → red „die
  *      gemerkten Filter kommen aus der Ablage“
- *   C  in loginBegins() `ablage.everythingForgotten()` entfernt → rot „eine
+ *   C  in loginBegins() `ablage.everythingForgotten()` removed → red „eine
  *      Anmeldung beginnt mit allen Konten“
  */
 class ScopeTest {
 
-    /** Ablage im Speicher, die mitschreibt. */
+    /** In-memory store that records what's written. */
     private class Ablage : FilterStore {
         val konten = mutableMapOf<String, String>()
         val lager = mutableMapOf<String, String>()

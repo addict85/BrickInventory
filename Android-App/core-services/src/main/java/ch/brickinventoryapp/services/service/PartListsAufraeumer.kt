@@ -12,9 +12,9 @@ import ch.brickinventoryapp.data.util.cleanOldPartListOn
 import java.util.concurrent.TimeUnit
 
 /**
- * Löscht die exportierte Teileliste nach [PART_LIST_DEADLINE_MS]: Auch verschlüsselt soll
- * das Inventar nur so lange auf dem Gerät liegen, wie jemand es öffnen will.
- * Die Meldung „fertig, antippen“ verschwindet mit, sie zeigte sonst ins Leere.
+ * Deletes the exported parts list after [PART_LIST_DEADLINE_MS]: even encrypted,
+ * the inventory should only sit on the device as long as someone wants to open it.
+ * The „done, tap to open“ notification disappears with it, since it would otherwise point nowhere.
  */
 internal class PartListsAufraeumer(context: Context, params: WorkerParameters) : Worker(context, params) {
 
@@ -28,7 +28,7 @@ internal class PartListsAufraeumer(context: Context, params: WorkerParameters) :
     companion object {
         private const val NAME = "teileliste-aufraeumen"
 
-        /** REPLACE: Die Frist läuft ab der neusten Teileliste. */
+        /** REPLACE: the deadline runs from the most recent parts list. */
         fun plane(context: Context) {
             val job = OneTimeWorkRequestBuilder<PartListsAufraeumer>()
                 .setInitialDelay(PART_LIST_DEADLINE_MS, TimeUnit.MILLISECONDS)

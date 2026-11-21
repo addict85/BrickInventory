@@ -17,11 +17,11 @@ import javax.crypto.spec.SecretKeySpec
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 
 /**
- * Ein Dateisystem, das jede Datei mit [StoreCipher] verschlüsselt: für den
- * HTTP-Zwischenspeicher der Bilder und die Bauanleitungen, die sonst die Sammlung im
- * Klartext zeigten. In Abschnitten, weil OkHttp sein Journal fortschreibt; jeder ist an
- * Zweck, Dateiname und Lage gebunden. Ein Endmarker nach jedem flush und close macht eine
- * hinten gekürzte Datei unlesbar, statt sie als kürzere gelten zu lassen.
+ * A file system that encrypts every file with [StoreCipher]: for the
+ * HTTP cache of the images and the building instructions, which otherwise showed the collection in
+ * plaintext. In sections, because OkHttp keeps appending to its journal; each one is bound to
+ * purpose, file name and location. An end marker after every flush and close makes a
+ * file truncated at the end unreadable, instead of letting it count as shorter.
  */
 class EncryptedFileSystem(
     delegate: FileSystem,
@@ -31,9 +31,9 @@ class EncryptedFileSystem(
 ) : ForwardingFileSystem(delegate) {
 
     /**
-     * Dateinamen direkt unter [folder] liegen nur als HMAC mit [schluessel] auf der Platte:
-     * OkHttp benennt Einträge nach dem MD5 der Adresse, und bekannte Adressen liessen sich
-     * so nachrechnen. Gelistete Namen tragen [JITTERED] und werden nicht noch einmal gestreut.
+     * File names directly under [folder] are stored on disk only as an HMAC with [schluessel]:
+     * OkHttp names entries after the MD5 of the address, and known addresses could
+     * be recomputed that way. Listed names carry [JITTERED] and are not hashed again.
      */
     class Jitter(val folder: Path, val schluessel: () -> ByteArray)
 
@@ -57,13 +57,13 @@ class EncryptedFileSystem(
         return Ausgang(delegate.appendingSink(jittered(file), mustExist), bindung(file), ab)
     }
 
-    // Wahlfreier Zugriff läse Geheimtext als Inhalt; OkHttp braucht ihn nicht.
+    // Random access would read ciphertext as content; OkHttp doesn't need it.
     override fun openReadOnly(file: Path): FileHandle = throw IOException("kein wahlfreier Zugriff: $file")
 
     override fun openReadWrite(file: Path, mustCreate: Boolean, mustExist: Boolean): FileHandle =
         throw IOException("kein wahlfreier Zugriff: $file")
 
-    /** `.tmp`, `.bkp` (OkHttp) und `.part` (laufender Download) sind dieselbe Datei, nur noch nicht umbenannt. */
+    /** `.tmp`, `.bkp` (OkHttp) and `.part` (an ongoing download) are the same file, just not yet renamed. */
     private fun bindung(file: Path): String {
         var name = file.name
         while (true) {
@@ -76,7 +76,7 @@ class EncryptedFileSystem(
     private inner class Ausgang(private val ziel: Sink, private val bindung: String, private var situation: Long) : Sink {
         private val puffer = Buffer()
 
-        // Fortgeschrieben endet die Datei schon mit einem Marker; eine neue braucht einen, auch leer.
+        // If appended to, the file already ends with a marker; a new one needs one too, even empty.
         private var offen = situation == 0L
 
         override fun write(source: Buffer, byteCount: Long) {
@@ -152,13 +152,13 @@ class EncryptedFileSystem(
         override fun close() = quelle.close()
     }
 
-    /** OkHttp fängt nur IOException; ein gesperrter Keystore soll den Abruf nicht abbrechen. */
+    /** OkHttp only catches IOException; a locked Keystore should not abort the fetch. */
     private fun verschluessle(klar: ByteArray, bindung: String): ByteArray =
         fangeAusserAbbruch { cipher.verschluessle(klar, bindung) }
             .getOrElse { throw it as? IOException ?: IOException("nicht verschlüsselt: $bindung", it) }
 
     companion object {
-        /** Vorsilbe gestreuter Namen; was im gestreuten Ordner ohne sie liegt, stammt von früher. */
+        /** Prefix of hashed names; whatever lies in the hashed folder without it is from before. */
         const val JITTERED = "h-"
         private const val NAME_LENGTH = 16
         private const val SECTION = 64L * 1024
@@ -168,9 +168,9 @@ class EncryptedFileSystem(
 }
 
 /**
- * Die Bild-Zwischenspeicher früherer Fassungen lagen im Klartext: Coils eigener fällt
- * weg, der von OkHttp (derselbe Ordner wie in NetzModule) nur, wenn sein Journal noch
- * lesbar ist. Beim Start, damit nach dem Update keine Kopie der Sammlung offen liegt.
+ * The image caches of earlier versions lay in plaintext: Coil's own one is simply
+ * dropped, the one from OkHttp (the same folder as in NetzModule) only if its journal is still
+ * readable. At startup, so that no copy of the collection is left open after the update.
  */
 fun cleanPlaintextImageCachesOn(cacheDir: File) {
     File(cacheDir, "image_cache").deleteRecursively()
@@ -179,6 +179,6 @@ fun cleanPlaintextImageCachesOn(cacheDir: File) {
         runCatching { File(http, name).bufferedReader().use { it.readLine() } == "libcore.io.DiskLruCache" }.getOrDefault(false)
     }
     if (klartext) http.deleteRecursively()
-    // Einträge unter lesbaren Namen (MD5 der Adresse) älterer Fassungen: Der Cache darf sie verlieren.
+    // Entries under readable names (MD5 of the address) from older versions: the cache may lose them.
     http.listFiles()?.filter { !it.name.startsWith(EncryptedFileSystem.JITTERED) }?.forEach { it.deleteRecursively() }
 }

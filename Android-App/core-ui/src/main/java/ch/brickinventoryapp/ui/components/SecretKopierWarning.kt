@@ -10,9 +10,9 @@ import ch.brickinventoryapp.ui.util.LocalSdkLevel
 import ch.brickinventoryapp.ui.util.secretCopyable
 
 /**
- * Unter Android 13 sehen Tastatur und Kopier-Vorschau, was kopiert wird. Wo Kopieren
- * trotzdem bleibt (Gutscheine: Nummer und PIN wandern in ein Bezahlfeld), steht diese
- * Warnung dabei; ab Android 13 nichts.
+ * On Android 13, the keyboard and the copy preview see what's copied. Where copying
+ * stays anyway (vouchers: number and PIN go into a payment field), this
+ * warning sits next to it; from Android 13 onward, nothing.
  */
 @Composable
 fun SecretKopierWarning(modifier: Modifier = Modifier) {

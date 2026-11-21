@@ -33,10 +33,10 @@ import ch.brickinventoryapp.session.AppUiState
 import ch.brickinventoryapp.session.Sitzung
 
 /**
- * Die Käufe eines Eintrags — Set, manuelles Teil oder manuelle Figur:
- * Kaufpreise, Mengen, Daten, Besitzer, dazu Preisverlauf und Lagerort der
- * manuellen Einträge. Dient der Detailansicht manueller Einträge und der
- * Verwaltung der Käufe.
+ * The purchases of an entry — set, manual part or manual figure:
+ * purchase prices, quantities, dates, owners, plus price history and storage location of
+ * manual entries. Serves the detail view of manual entries and the
+ * management of purchases.
  */
 @HiltViewModel
 class KaeufeViewModel @Inject constructor(
@@ -55,14 +55,14 @@ class KaeufeViewModel @Inject constructor(
 
     init {
         sequenceSignOut(sitzung) { reset() }
-        // Ändert sich der Bestand in der Ablage, stimmen Käufe und Summen des Eintrags vielleicht nicht mehr.
+        // If the inventory changes in the store, the entry's purchases and totals may no longer be correct.
         viewModelScope.launch { changes.inventoryChanged().collect { loadNew() } }
     }
 
     private val _manDetailState = MutableStateFlow(ManualItemDetailUiState())
     val manDetailState: StateFlow<ManualItemDetailUiState> = _manDetailState.asStateFlow()
 
-    /** Die Käufe eines Eintrags, wie seine Seite sie liest: Wer sie zeigt, lädt sie. */
+    /** An entry's purchases, as its page reads them: whoever shows them loads them. */
     fun purchasesOf(type: Postenart, id: String, colorId: Int): StateFlow<ManualItemDetailUiState> =
         Observed(manDetailState) {
             if (type == Postenart.SET) loadAcquisitions(id) else loadManualAcquisitions(type, id, colorId)
@@ -74,7 +74,7 @@ class KaeufeViewModel @Inject constructor(
 
     override fun loadAcquisitions(setNumber: String) = lade(Postenart.SET, setNumber, KEINE_FARBE)
 
-    /** Käufe und Preisverlauf eines manuellen Teils oder einer Figur. */
+    /** Purchases and price history of a manual part or figure. */
     override fun loadManualAcquisitions(type: Postenart, id: String, colorId: Int) {
         lade(type, id, colorId)
         loadManualPriceHistory(type, id, colorId)
@@ -83,7 +83,7 @@ class KaeufeViewModel @Inject constructor(
     private fun lade(type: Postenart, id: String, colorId: Int) {
         viewModelScope.launch {
             _manDetailState.update {
-                // Der Verlauf eines anderen Eintrags darf nicht stehen bleiben.
+                // Another entry's history must not stay on screen.
                 val gleich = it.itemId == id && it.colorId == colorId && it.itemType == type
                 it.copy(purchasesFetch = Laden.Loads, itemType = type, itemId = id, colorId = colorId,
                         priceHistory = if (gleich) it.priceHistory else null)
@@ -120,7 +120,7 @@ class KaeufeViewModel @Inject constructor(
         lade(art, st.itemId, st.colorId)
     }
 
-    // ── Ändern ───────────────────────────────────────────────────────────────
+    // ── Changing ───────────────────────────────────────────────────────────────
 
     override fun updateAcquisition(setNumber: String, acqId: Int, purchasePrice: Double?, condition: Zustand?,
                           quantity: Int?, date: String?) {
@@ -129,7 +129,7 @@ class KaeufeViewModel @Inject constructor(
                 is Ergebnis.Erfolg -> setChanged(r.data.zusammenfassung)
                 is Ergebnis.Fehler -> {
                     meldungen.zeige(meldungen.meldungFuerSnackbar(r))
-                    // Eine abgelehnte Datumsänderung steht sonst weiter im Feld.
+                    // A rejected date change would otherwise stay in the field.
                     if (date != null) loadAcquisitions(setNumber)
                 }
             }
@@ -147,7 +147,7 @@ class KaeufeViewModel @Inject constructor(
         }
     }
 
-    /** Ein Kauf, der erst gelöscht wird, wenn die Snackbar ohne „Rückgängig“ endet. */
+    /** A purchase that is only deleted once the snackbar ends without „undo“. */
     data class ReservedPurchase(val type: Postenart, val id: String, val colorId: Int, val purchaseId: Int)
 
     val purchaseRoute = Loeschvormerkung<ReservedPurchase>(viewModelScope) { v ->
@@ -157,12 +157,12 @@ class KaeufeViewModel @Inject constructor(
     override fun purchaseDeleteReserve(type: Postenart, id: String, colorId: Int, acqId: Int) =
         purchaseRoute.reserve(ReservedPurchase(type, id, colorId, acqId))
 
-    /** Hat die Ablage die neue Summe des Sets schon übernommen, folgt die Kachel; sonst wird der Stand geholt. */
+    /** If the store has already taken over the set's new total, the tile follows; otherwise the state is fetched. */
     private suspend fun setChanged(uebernommen: Boolean) {
         if (!uebernommen) { loadNew(); sets.aktualisiereSets() }
     }
 
-    /** Für manuelle Einträge schickt der Server keine Zusammenfassung; die Ablage holt den Stand. */
+    /** For manual entries the server sends no summary; the store fetches the state. */
     private suspend fun manualNew(type: Postenart) {
         if (type == Postenart.FIG) figuren.refreshMinifigs() else teile.refreshParts()
     }
@@ -199,9 +199,9 @@ class KaeufeViewModel @Inject constructor(
     }
 
     /**
-     * Eigentümer EINER Kaufpreis-Zeile wechseln — der einzige Weg, Bestand
-     * zwischen Konten zu verschieben. [onDone] bekommt Fehler oder null und
-     * die vom Server gemeldeten mitgewanderten Teile und Figuren.
+     * Change the owner of ONE purchase-price row — the only way to move
+     * inventory between accounts. [onDone] gets an error or null and
+     * the parts and figures reported by the server as moved along.
      */
     override fun changeAcquisitionOwner(
         type: Postenart, id: String, colorId: Int, acqId: Int,
@@ -217,7 +217,7 @@ class KaeufeViewModel @Inject constructor(
             when (r) {
                 is Ergebnis.Erfolg -> {
                     onDone(null, r.data.teile, r.data.figuren)
-                    // Mitgewanderte Teile und Figuren: Den Stand aller drei Listen kennt nur der Server.
+                    // Parts and figures moved along: only the server knows the state of all three lists.
                     sets.aktualisiereSets(); teile.refreshParts(); figuren.refreshMinifigs()
                 }
                 is Ergebnis.Fehler -> onDone(meldungen.meldung(r), 0, 0)
@@ -225,7 +225,7 @@ class KaeufeViewModel @Inject constructor(
         }
     }
 
-    /** Lagerort eines manuellen Eintrags, entprellt wie beim Set. */
+    /** Storage location of a manual entry, debounced like for the set. */
     override fun setManualLocation(type: Postenart, id: String, farbe: Int, ort: String) {
         storageJob?.cancel()
         storageJob = viewModelScope.launch {

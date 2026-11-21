@@ -41,13 +41,13 @@ import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
 
 /**
- * Wert-Kacheln und Kaufpreis des Set-Details: Vierstellige Beträge stehen auf einem
- * schmalen Telefon ganz in einer Zeile, und bei 200 % Schrift steht der Kaufpreis
- * unter seiner Bezeichnung.
+ * Value tiles and purchase price of the set detail: four-digit amounts stay on a
+ * narrow phone entirely on one line, and at 200% text size the purchase price sits
+ * below its label.
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   wertkacheln-immer-drei          Wert-Kacheln immer zu dritt nebeneinander → rot „Wert-Kacheln … 100 Prozent“
- *   grosse-schrift-kaufpreis-daneben Kaufpreis neben der Bezeichnung → rot „Kaufpreis …“
+ * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ *   wertkacheln-immer-drei          value tiles always three side by side → red „Wert-Kacheln … 100 Prozent“
+ *   grosse-schrift-kaufpreis-daneben purchase price next to the label → red „Kaufpreis …“
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -84,9 +84,9 @@ class ValueTilesTest {
     }
 
     /**
-     * Prüft je Betrag: eine Zeile, nichts ausgelassen und nicht breiter als seine
-     * Kachel (mit softWrap = false liefe er sonst über den Rand). Kacheln derselben
-     * Reihe sind gleich hoch.
+     * Checks per amount: one line, nothing left out, and not wider than its
+     * tile (with softWrap = false it would otherwise run past the edge). Tiles of the same
+     * row are equally high.
      */
     private fun valueTilesWhole(schrift: Float) {
         val markt = fmtMoney(1712.4, Waehrung.CHF)

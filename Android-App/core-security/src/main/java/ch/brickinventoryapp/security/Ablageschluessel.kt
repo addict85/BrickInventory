@@ -12,15 +12,15 @@ import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * Der Schlüssel der lokalen Ablagen (Bestand, Antwort-Cache, Widget): 32 Zufallsbytes,
- * auf der Platte nur vom Keystore umhüllt ([tresor], eigener Alias). Ein Keystore-Aufruf
- * je Prozess statt einer je Datei; verschlüsselt wird in Software mit einem Schlüssel,
- * der lesbar nur im Speicher der App liegt. Je Zweck ein abgeleiteter ([fuer]).
+ * The key of the local stores (inventory, response cache, widget): 32 random bytes,
+ * wrapped on disk only by the Keystore ([tresor], its own alias). One Keystore call
+ * per process instead of one per file; encryption itself happens in software with a key
+ * that is only readable in the app's memory. One derived key per purpose ([fuer]).
  */
 class Ablageschluessel(private val datei: File, private val tresor: TokenEncryption) {
     @Volatile private var bekannt: ByteArray? = null
 
-    /** Eben neu angelegt: Was mit einem früheren Schlüssel verschlüsselt lag, ist nicht mehr lesbar. */
+    /** Just newly created: whatever was encrypted with an earlier key is no longer readable. */
     @Volatile var newCreated: Boolean = false
         private set
 
@@ -35,13 +35,13 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenEncrypt
                     bekannt = it
                     return it
                 }
-                // Nicht neu anlegen: Das risse die verschlüsselte Datenbank samt Ausgang mit.
+                // Don't create anew: that would tear down the encrypted database along with the outbox.
                 Tresorbefund.Gesperrt -> throw IOException("Keystore gerade nicht bereit")
                 Tresorbefund.Weg -> Unit
             }
         }
         val neu = ByteArray(LENGTH).also(SecureRandom()::nextBytes)
-        // Wie beim Lesen: Ein Keystore, der gesperrt nicht verschlüsselt, heisst „später“.
+        // Same as when reading: a Keystore that doesn't encrypt while locked means „later“.
         val umhuellt = fangeAusserAbbruch { tresor.verschluessle(neu.joinToString("") { "%02x".format(it) }) }
             .getOrElse { throw IOException("Keystore gerade nicht bereit", it) }
         schreibe(umhuellt)
@@ -58,10 +58,10 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenEncrypt
     }
 
     /**
-     * Ein Schlüssel unter dem schwächeren Tresor früherer Fassungen kommt beim ersten
-     * lesbaren Zugriff unter den, der nur entsperrt arbeitet. Derselbe Schlüssel, nur anders
-     * umhüllt: Die Ablagen bleiben lesbar. Scheitert es (gesperrt), beim nächsten Zugriff.
-     * Erst wenn die neue Hülle auf der Platte steht, geht der alte Alias.
+     * A key under the weaker vault of earlier versions is moved, on the first
+     * readable access, under the one that only works unlocked. The same key, just wrapped
+     * differently: the stores stay readable. If that fails (locked), on the next access.
+     * The old alias only goes once the new wrapping is on disk.
      */
     private fun wrapNew(hex: String) {
         fangeAusserAbbruch { schreibe(tresor.verschluessle(hex)) }
@@ -69,19 +69,19 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenEncrypt
             .onFailure { Protokoll.warnung("Ablage", "Ablageschlüssel nicht umgeschlüsselt", it) }
     }
 
-    /** Zählt die Erneuerungen; wer einen abgeleiteten Schlüssel hält, merkt so, dass er veraltet ist. */
+    /** Counts the renewals; whoever holds a derived key notices this way that it has gone stale. */
     @Volatile var stand: Long = 0
         private set
 
     private val beforeRenewal = CopyOnWriteArrayList<() -> Unit>()
 
-    /** Für Ablagen, die den Schlüssel länger halten als einen Zugriff (die Datenbank): zu und weg damit. */
+    /** For stores that hold the key longer than one access (the database): close it and drop it. */
     fun beforeRenewal(listener: () -> Unit) { beforeRenewal += listener }
 
     /**
-     * Krypto-Shredding beim Abmelden: Ein neuer Schlüssel macht alles unlesbar, was mit dem
-     * alten verschlüsselt lag, auch gelöschte Reste auf dem Flash. Unter der Sperre, damit
-     * niemand dazwischen mit dem alten Schlüssel neu öffnet.
+     * Crypto-shredding on sign-out: a new key makes everything unreadable that was
+     * encrypted with the old one, including deleted remnants on flash. Under the lock, so that
+     * nobody reopens with the old key in between.
      */
     @Synchronized
     fun renew() {
@@ -90,12 +90,12 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenEncrypt
         runCatching { tresor.vergiss() }
         bekannt = null
         stand++
-        // Gesperrt entsteht der neue erst beim nächsten Zugriff: Ein Abmelden im Hintergrund
-        // soll nicht scheitern, nur weil das Gerät gerade nichts verschlüsseln lässt.
+        // Locked, the new one is only created on the next access: a sign-out in the background
+        // should not fail just because the device isn't letting anything be encrypted right now.
         fangeAusserAbbruch { fetch() }
     }
 
-    /** Abgeleitet mit HMAC-SHA256: Datenbank und Dateien teilen keinen Schlüssel. */
+    /** Derived with HMAC-SHA256: database and files don't share a key. */
     fun fuer(zweck: String): ByteArray = Mac.getInstance("HmacSHA256").run {
         init(SecretKeySpec(fetch(), "HmacSHA256"))
         doFinal(zweck.toByteArray(Charsets.UTF_8))
@@ -110,10 +110,10 @@ class Ablageschluessel(private val datei: File, private val tresor: TokenEncrypt
 }
 
 /**
- * AES-256-GCM für Dateien der App. Format: Kennung ‖ IV ‖ Geheimtext samt Tag. Die
- * Bindung (Zweck und Dateiname) geht als AAD ein: Eine Datei unter fremdem Namen
- * scheitert an der Prüfung, statt als die andere gelesen zu werden. Ohne
- * Kennung gilt eine Datei als Altbestand im Klartext; der Aufrufer verwirft sie.
+ * AES-256-GCM for the app's files. Format: marker ‖ IV ‖ ciphertext including tag. The
+ * binding (purpose and file name) goes in as AAD: a file under a foreign name
+ * fails the check instead of being read as the other one. Without a
+ * marker a file counts as legacy plaintext; the caller discards it.
  */
 class StoreCipher(private val schluessel: () -> ByteArray) {
 
@@ -125,17 +125,17 @@ class StoreCipher(private val schluessel: () -> ByteArray) {
         return ID + iv + c.doFinal(klartext)
     }
 
-    /** null, wenn die Daten nicht von hier stammen, verändert, anders gebunden oder mit einem anderen Schlüssel sind. */
+    /** null if the data doesn't originate from here, has been altered, bound differently, or is under a different key. */
     fun entschluessle(daten: ByteArray, bindung: String): ByteArray? = oeffne(daten, ID, bindung)
 
     /**
-     * Nur zur einmaligen Übernahme: die Fassung ohne Bindung (Kennung 1). Wer so
-     * liest, legt die Daten sofort gebunden neu ab, damit kein Altbestand bleibt.
+     * Only for a one-time takeover: the version without binding (marker 1). Whoever
+     * reads it this way immediately stores the data newly bound, so no legacy data remains.
      */
     fun entschluessleUnbound(daten: ByteArray): ByteArray? = oeffne(daten, ID_UNBOUND, null)
 
-    // Der Schlüssel ausserhalb von runCatching: Ein gesperrter Keystore (IOException) ist kein
-    // unlesbarer Geheimtext; als null gelesen, löschten Aufrufer die Datei.
+    // The key outside of runCatching: a locked Keystore (IOException) is not an
+    // unreadable ciphertext; read as null, callers would delete the file.
     private fun oeffne(daten: ByteArray, kennung: ByteArray, bindung: String?): ByteArray? {
         if (daten.size <= kennung.size + IV_LENGTH || !daten.copyOfRange(0, kennung.size).contentEquals(kennung)) return null
         val k = SecretKeySpec(schluessel(), "AES")

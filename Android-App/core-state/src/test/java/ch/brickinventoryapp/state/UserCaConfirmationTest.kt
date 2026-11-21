@@ -7,16 +7,16 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Nutzer-CAs gehen nur über die Rückfrage an (AppViewModel.userCa, bedient von
- * den Einstellungen und vom Zertifikatsdialog). Ausschalten braucht keine.
+ * User CAs only turn on via the follow-up question (AppViewModel.userCa, served by
+ * settings and the certificate dialog). Turning off needs none.
  *
- * Gegenproben:
- *   A  anfragen() schaltet direkt ein (`setze(true)`) → rot „anfragen schaltet
- *      nichts ein“ und „cancelling leaves everything off“
- *   B  in bestaetigen() die Abfrage `if (!_question.value) return` entfernt → rot
+ * Counter-checks:
+ *   A  anfragen() turns it on directly (`setze(true)`) → red „anfragen schaltet
+ *      nichts ein“ and „cancelling leaves everything off“
+ *   B  in bestaetigen() the check `if (!_question.value) return` removed → red
  *      „without an open question nothing confirms“
- *   C  abbrechen() ruft `setze(true)` → rot „cancelling leaves everything off“
- *   D  setze() ohne afterChange() → rot „bestaetigen schaltet ein …“ und
+ *   C  abbrechen() calls `setze(true)` → red „cancelling leaves everything off“
+ *   D  setze() without afterChange() → red „bestaetigen schaltet ein …“ and
  *      „turning off works without a question“
  */
 class UserCaConfirmationTest {

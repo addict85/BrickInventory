@@ -30,9 +30,9 @@ import ch.brickinventoryapp.model.domain.PdfProgress
 import ch.brickinventoryapp.model.domain.PdfStep
 
 /**
- * Foreground-Service für den PDF-Export der Teileliste: Er hält den Prozess wach,
- * solange der Auftrag im PdfExportManager läuft (auch in Doze oder ohne Activity),
- * und zeigt dessen Stand als Benachrichtigung in der Sprache der App.
+ * Foreground service for the parts list's PDF export: it keeps the process awake
+ * as long as the job is running in PdfExportManager (even in Doze or without an activity),
+ * and shows its state as a notification in the app's language.
  */
 @AndroidEntryPoint
 class PdfExportService : Service() {
@@ -40,24 +40,24 @@ class PdfExportService : Service() {
     companion object {
         const val CHANNEL_ID      = "pdf_export_channel"
         const val NOTIFICATION_ID = 43
-        /** Die Abschlussmeldung; [PartListsAufraeumer] nimmt sie mit der Datei weg. */
+        /** The completion notification; [PartListsAufraeumer] removes it along with the file. */
         const val DONE_ID = NOTIFICATION_ID + 1
 
         fun start(context: Context) {
-            // Siehe CsvImportService: startForegroundService kann an der
-            // Aufrufstelle werfen, wenn die App im Hintergrund ist. Der
-            // PDF-Export wird zwar vom Nutzer im Vordergrund ausgelöst, aber
-            // wir sichern es defensiv ab, damit die App nie deswegen abstürzt.
+            // See CsvImportService: startForegroundService can throw at the
+            // call site if the app is in the background. The
+            // PDF export is triggered by the user in the foreground, but
+            // we guard it defensively anyway, so the app never crashes because of it.
             try {
                 context.startForegroundService(Intent(context, PdfExportService::class.java))
-            } catch (_: Exception) { /* Hintergrund-Start nicht erlaubt — ignorieren */ }
+            } catch (_: Exception) { /* Background start not allowed — ignore */ }
         }
     }
 
     @Inject internal lateinit var manager: PdfExportManager
 
-    // Siehe CsvImportService: Services bekommen die per-App-Sprache unterhalb
-    // von Android 13 nicht automatisch — Context dafür wrappen.
+    // See CsvImportService: services don't get the per-app language automatically
+    // below Android 13 — wrap the context for that.
     private val loc: Context by lazy {
         LanguageManager.localizedContext(this)
     }
@@ -66,8 +66,8 @@ class PdfExportService : Service() {
 
     @Inject lateinit var areas: Scopes
 
-    // Lebt mit dem Dienst (onDestroy bricht ab). lazy, weil Hilt die Felder erst
-    // in super.onCreate() setzt.
+    // Lives with the service (onDestroy cancels it). lazy, because Hilt only sets
+    // the fields in super.onCreate().
     private val serviceScope by lazy { CoroutineScope(SupervisorJob() + areas.io) }
     private var begleitung: Job? = null
 
@@ -86,7 +86,7 @@ class PdfExportService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // Der Auftrag läuft im Manager; der Dienst zeigt nur seinen Stand und endet mit ihm.
+        // The job runs in the manager; the service only shows its state and ends with it.
         if (begleitung?.isActive != true) {
             begleitung = serviceScope.launch {
                 manager.state.collect { s ->
@@ -141,7 +141,7 @@ class PdfExportService : Service() {
             .apply { tapIntent?.let { setContentIntent(it) } }
             .onlyUnlocked(this, CHANNEL_ID, loc.getString(R.string.notif_pdf_title), R.drawable.ic_stat_brick)
             .build()
-        // Andere ID, damit die Abschluss-Notification das Foreground-Ende überlebt
+        // A different ID, so the completion notification survives the foreground ending
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
             .notify(DONE_ID, n)
     }
@@ -164,10 +164,10 @@ class PdfExportService : Service() {
     }
 }
 
-/** Ein Satz aus den Ressourcen; im Dienst aus dem Context in der Sprache der App, im Test eine Nummer. */
+/** A string from resources; in the service from the context in the app's language, in the test a number. */
 internal typealias Satz = (id: Int, args: List<Any>) -> String
 
-/** Der Satz zu einem Schritt, wie ihn die Benachrichtigung zeigt. */
+/** The string for a step, as the notification shows it. */
 internal fun progressText(f: PdfProgress, satz: Satz): String = when (f.schritt) {
     PdfStep.STARTET -> satz(R.string.pdfexp_starting, emptyList())
     PdfStep.IMAGES_LOAD -> satz(R.string.pdfexp_loading_images, emptyList())
@@ -177,7 +177,7 @@ internal fun progressText(f: PdfProgress, satz: Satz): String = when (f.schritt)
     PdfStep.DOWNLOAD -> satz(R.string.pdfexp_downloading, emptyList())
 }
 
-/** Nie leer: Ohne Satz des Servers spricht der Fehlercode, sonst die Art des Fehlers. */
+/** Never empty: without a string from the server, the error code speaks, otherwise the kind of error. */
 internal fun errorText(grund: PdfFailure, satz: Satz): String = when (grund) {
     is PdfFailure.Auftrag -> grund.satz?.takeIf { it.isNotBlank() } ?: satz(R.string.pdfexp_server_error, emptyList())
     is PdfFailure.Abruf -> grund.fehler.message.takeIf { it.isNotBlank() }

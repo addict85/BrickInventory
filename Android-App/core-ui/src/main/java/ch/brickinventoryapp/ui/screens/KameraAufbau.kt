@@ -20,15 +20,15 @@ import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
 
 /**
- * Der Kamera-Aufbau, den beide Scanner teilen (Barcodescanner und SetupScreen).
- * Eine Datei, weil zwei Fassungen einer Regel an jeder Stelle richtig aussehen und
- * erst auffallen, wenn eine geändert wird — dann arbeitet die andere still weiter.
+ * The camera setup shared by both scanners (barcode scanner and SetupScreen).
+ * One file, because two implementations of a rule each look right on their own and
+ * only stand out once one of them is changed — then the other keeps working silently, unchanged.
  */
 
 /**
- * Eine Bildanalyse mit den Einstellungen, die für beide Scanner gelten.
- * Der AF-Modus steht auch hier, nicht nur an der Vorschau: CameraX führt beide zu einem Request
- * zusammen, und je nach Gerät entscheidet die Analyse mit.
+ * An image analysis with the settings that apply to both scanners.
+ * The AF mode lives here too, not only on the preview: CameraX merges both into one request,
+ * and depending on the device, the analysis has a say too.
  */
 fun imageAnalyse(breite: Int, hoehe: Int): ImageAnalysis =
     ImageAnalysis.Builder()
@@ -42,18 +42,18 @@ fun imageAnalyse(breite: Int, hoehe: Int): ImageAnalysis =
                     )
                 ).build()
         )
-        // Nur das neueste Bild: Ein Rückstau wäre hier Verzögerung, kein Gewinn —
-        // ein Barcode von vor zwei Sekunden interessiert niemanden mehr.
+        // Only the newest frame: a backlog here would be delay, not a gain —
+        // a barcode from two seconds ago interests nobody anymore.
         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-        // YUV, weil ML Kit damit direkt arbeitet; RGBA wäre eine Umwandlung je Bild.
+        // YUV, because ML Kit works with it directly; RGBA would mean a conversion per frame.
         .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
         .build()
 
 /**
- * Kontinuierlichen Autofokus auf einem Use Case erzwingen. Ein einmaliger
- * Fokus-Trigger beim Start ist geräteabhängig unzuverlässig; CONTINUOUS_PICTURE
- * fokussiert selbst nach. Eine Funktion für beide Use Cases, damit der Modus an
- * beiden dieselbe Zeile ist.
+ * Force continuous autofocus on a use case. A one-time
+ * focus trigger at startup is unreliable depending on the device; CONTINUOUS_PICTURE
+ * keeps refocusing on its own. One function for both use cases, so the mode on
+ * both is the same line.
  */
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 fun autofocusPermanent(builder: ImageAnalysis.Builder) {
@@ -63,7 +63,7 @@ fun autofocusPermanent(builder: ImageAnalysis.Builder) {
     )
 }
 
-/** Dasselbe für die Vorschau — siehe [autofocusPermanent]. */
+/** The same for the preview — see [autofocusPermanent]. */
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 fun autofocusPermanent(builder: Preview.Builder) {
     Camera2Interop.Extender(builder).setCaptureRequestOption(
@@ -73,9 +73,9 @@ fun autofocusPermanent(builder: Preview.Builder) {
 }
 
 /**
- * Vorschau und Bildanalyse an den Lebenszyklus binden — für beide Scanner. Das `try` umschliesst
- * den ganzen Rückruf, weil `future.get()` seit CameraX 1.4 wirft, wenn die Kamera belegt ist;
- * `unbindAll()` vorher, sonst hängt eine frühere Bindung.
+ * Bind preview and image analysis to the lifecycle — for both scanners. The `try` wraps
+ * the whole callback, because `future.get()` has thrown since CameraX 1.4 when the camera is busy;
+ * `unbindAll()` beforehand, otherwise an earlier binding lingers.
  */
 fun kameraBinden(
     ctx: Context,
@@ -87,7 +87,7 @@ fun kameraBinden(
 ) {
     val future = ProcessCameraProvider.getInstance(ctx)
     future.addListener({
-        // Siehe Regel 1 oben: Das try umschliesst den GESAMTEN Rueckruf.
+        // See rule 1 above: the try wraps the ENTIRE callback.
         try {
             val provider = future.get()
             val previewBuilder = Preview.Builder()
@@ -105,22 +105,22 @@ fun kameraBinden(
                     )
                 )
             } catch (_: Exception) {
-                // Bewusst still: Das Binden scheitert praktisch nur, wenn der Lebenszyklus schon
-                // beendet ist — dann gibt es niemanden mehr, dem man etwas melden könnte.
-                // atError() gehört an den äusseren Fall, wo die Kamera gar nicht erst verfügbar
-                // ist.
+                // Deliberately silent: binding practically only fails when the lifecycle has already
+                // ended — then there's nobody left to report anything to.
+                // atError() belongs in the outer case, where the camera isn't available at
+                // all in the first place.
             }
         } catch (_: Exception) {
-            // Kamera nicht verfuegbar (belegt, Hardware-Fehler). Was daraus
-            // folgt, entscheidet der Aufrufer: Der Scanner zeigt einen Hinweis
-            // statt eines schwarzen Bildes, der SetupScreen laesst die Vorschau
-            // bewusst leer.
+            // Camera not available (busy, hardware error). What follows
+            // from that is decided by the caller: the scanner shows a hint
+            // instead of a black image, SetupScreen deliberately leaves the preview
+            // empty.
             atError()
         }
     }, ContextCompat.getMainExecutor(ctx))
 }
 
-/** Die Vorschau beider Scanner: füllt die Fläche und rechnet schnell statt kompatibel. */
+/** The preview of both scanners: fills the area and computes fast rather than compatibly. */
 fun cameraPreview(ctx: Context): PreviewView = PreviewView(ctx).apply {
     layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
     scaleType = PreviewView.ScaleType.FILL_CENTER
@@ -128,10 +128,10 @@ fun cameraPreview(ctx: Context): PreviewView = PreviewView(ctx).apply {
 }
 
 /**
- * Tippen stellt an dieser Stelle scharf und misst dort die Belichtung: Bei einer
- * Anleitung dicht vor der Linse liegt der Dauer-Autofokus gern daneben. disableAutoCancel(),
- * sonst fiele die Kamera nach Sekunden auf ihre eigene Wahl zurück. [control] ist null,
- * solange die Kamera nicht gebunden ist.
+ * Tapping focuses at that spot and meters exposure there: with instructions
+ * held close to the lens, continuous autofocus likes to miss. disableAutoCancel(),
+ * otherwise the camera would fall back to its own choice after a few seconds. [control] is null
+ * as long as the camera isn't bound.
  */
 fun tippZumFokus(previewView: PreviewView, control: () -> CameraControl?) {
     previewView.setOnTouchListener { v, ev ->
@@ -141,7 +141,7 @@ fun tippZumFokus(previewView: PreviewView, control: () -> CameraControl?) {
                 .addPoint(point, FocusMeteringAction.FLAG_AE)
                 .disableAutoCancel()
                 .build()
-            // Kamera noch nicht bereit oder schon weg: Der Tipp bleibt ohne Wirkung.
+            // Camera not ready yet or already gone: the tap has no effect.
             runCatching { control()?.startFocusAndMetering(aktion) }
             v.performClick()
         }

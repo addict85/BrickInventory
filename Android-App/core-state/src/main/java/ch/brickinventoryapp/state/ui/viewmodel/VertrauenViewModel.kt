@@ -9,9 +9,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 
 /**
- * Wem die App beim eigenen Server vertraut: ein gezeigtes Zertifikat und die
- * Nutzer-CAs. Ändert sich das Vertrauen, verwirft es die offenen Verbindungen des
- * API-Clients; sie trugen das alte.
+ * Whom the app trusts for its own server: a shown certificate and the
+ * user CAs. If trust changes, it discards the API client's open
+ * connections; they carried the old one.
  */
 @HiltViewModel
 class VertrauenViewModel @Inject constructor(
@@ -20,17 +20,17 @@ class VertrauenViewModel @Inject constructor(
     private val certificateQuestion: CertificateQuestion,
 ) : ViewModel() {
 
-    /** Das Zertifikat, das auf Ja oder Nein wartet (CertificateDialog). */
+    /** The certificate that is waiting for yes or no (CertificateDialog). */
     val zertifikat = certificateQuestion.offen
 
-    /** Auch nutzerinstallierte CAs; an nur nach Bestätigung. */
+    /** Also user-installed CAs; on only after confirmation. */
     val userCa = UserCaToggle(
         lies = prefs::userCaAllowed,
         schreibe = prefs::setUserCa,
         afterChange = drop::discard,
     )
 
-    /** Ja zum gezeigten Zertifikat. Ohne bekannte CA oder geändert nur mit [eingabe]. */
+    /** Yes to the shown certificate. Without a known CA or when changed, only with [eingabe]. */
     fun trustCertificate(eingabe: String? = null): Boolean {
         if (!certificateQuestion.confirm(prefs, eingabe)) return false
         drop.discard()

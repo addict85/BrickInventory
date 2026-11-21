@@ -9,14 +9,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Das Ziel einer angetippten Meldung: nur Setnummern, und nur einmal.
+ * The target of a tapped notification: only set numbers, and only once.
  *
- * Gegenproben:
- *   A  SETNUMMER auf `.+` gelockert → rot „what is not a set number opens nothing“
- *      und „an invalid target does not overwrite a valid one“
- *   B  abholen() mit get() statt getAndSet(null) → rot „it is picked up once“
- *   C  ablegen() legt auch Ungültiges ab (`ziel.set(roh)` vor der Prüfung) → rot
- *      „an invalid target does not overwrite a valid one“ und „was keine
+ * Counter-checks:
+ *   A  SETNUMMER relaxed to `.+` → red „what is not a set number opens nothing“
+ *      and „an invalid target does not overwrite a valid one“
+ *   B  abholen() with get() instead of getAndSet(null) → red „it is picked up once“
+ *   C  ablegen() also stores invalid input (`ziel.set(roh)` before the check) → red
+ *      „an invalid target does not overwrite a valid one“ and „was keine
  *      Setnummer ist …“
  */
 class MeldungseingangTest {
@@ -29,7 +29,7 @@ class MeldungseingangTest {
 
     @Test
     fun `what is not a set number opens nothing`() {
-        // Pfad-, Query- und Steuerzeichen würden Teil der Navigationsroute.
+        // Path, query and control characters would become part of the navigation route.
         for (roh in listOf(null, "", " ", "75192-1/../settings", "75192-1?x=1", "a b", "75192-1\n",
                 "x".repeat(21), "%2e%2e", "set_detail/1", "ä-1"))
             assertNull("„$roh“ gilt als Setnummer", setNumberFromMessage(roh))

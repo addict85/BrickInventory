@@ -40,58 +40,58 @@ import java.security.Signature
 import kotlin.coroutines.resume
 
 /**
- * Vor einem heiklen Schritt (Gutschein-PIN, Wiederherstellungscodes, Verwaltung)
- * die Gerätesperre fragen: Wer das entsperrte Telefon kurz in der Hand hat, soll
- * dort nicht weiterkommen. [weiter] läuft nur nach Bestätigung.
+ * Asks for the screen lock before a sensitive step (voucher PIN, recovery codes, management):
+ * whoever briefly holds the unlocked phone shouldn't get
+ * further there. [weiter] only runs after confirmation.
  */
 fun interface Schrittschutz {
     fun confirm(grund: String, weiter: () -> Unit)
 
-    /** Für einen Schritt, den der Server prüft: Die Bestätigung gilt dort nur für [aktion]. */
+    /** For a step the server checks: the confirmation only applies there to [aktion]. */
     fun confirm(grund: String, aktion: Schrittaktion, weiter: () -> Unit) = confirm(grund, weiter)
 }
 
-/** Derselbe Schutz, immer für [aktion]: So bleiben Aufrufe mit zwei Argumenten an den Server gebunden. */
+/** The same protection, always for [aktion]: this keeps calls with two arguments bound to the server. */
 fun Schrittschutz.fuer(aktion: Schrittaktion): Schrittschutz {
     val basis = this
     return Schrittschutz { grund, weiter -> basis.confirm(grund, aktion, weiter) }
 }
 
 /**
- * Ohne Anbieter geschieht nichts: Vergässe eine Activity ihn, wäre der Schutz
- * sonst still aus. MainActivity setzt [DevicesStepProtection], Tests ihren eigenen.
+ * Without a provider, nothing happens: if an activity forgot it, the protection
+ * would otherwise be silently off. MainActivity sets [DevicesStepProtection], tests their own.
  */
 val LocalSchrittschutz = staticCompositionLocalOf { Schrittschutz { _, _ -> } }
 
 /**
- * Fingerabdruck (starke Biometrie), sonst PIN, Muster oder Passwort des Geräts. Ohne
- * Sperre gibt es nichts zu prüfen; dann warnt [withoutLock], statt still durchzulassen.
- * Bestätigt ist erst, was der Keystore freigibt und, für eine [Schrittaktion] mit
- * Kennung, der Server mit der Signatur über seine Challenge annimmt ([Schrittablauf]).
+ * Fingerprint (strong biometrics), otherwise the device's PIN, pattern or password. Without
+ * a lock, there's nothing to check; then [withoutLock] warns, instead of silently letting it through.
+ * Confirmed is only what the Keystore releases and, for a [Schrittaktion] with
+ * an identifier, what the server accepts with the signature over its challenge ([Schrittablauf]).
  */
-// [subtitle] und [noKey] kommen von aussen: Unter Android 13 trägt die
-// Activity die System- statt der App-Sprache, den lokalisierten Context kennt core-ui nicht.
+// [subtitle] and [noKey] come from outside: below Android 13 the
+// activity carries the system language instead of the app's, core-ui doesn't know the localized context.
 class DevicesStepProtection(
     private val activity: FragmentActivity,
     private val noKey: () -> Unit = {},
     private val bindung: Schrittbindung = Schrittbindung.OHNE,
-    /** Der Server lehnte ab; null: keine Antwort. */
+    /** The server rejected it; null: no response. */
     private val abgelehnt: (meldung: String?) -> Unit = {},
-    /** Das Gerät kann keinen Schlüssel mit Attestation erzeugen; heikle Schritte gehen dann nur in der Webapp. */
+    /** The device cannot generate a key with attestation; sensitive steps then only work in the web app. */
     private val withoutAttestation: () -> Unit = {},
     private val subtitle: () -> String,
 ) : Schrittschutz {
-    // Je Aktion: Die Freigabe am Server gilt auch nur für eine.
+    // Per action: the release on the server also applies only to one.
     private val deadlines = mutableMapOf<Schrittaktion, Bestaetigungsfrist>()
     private val flow = Schrittablauf(bindung, Schrittfreigabe(DevicesKey::oeffentlich))
 
-    /** Die Rückfrage ohne Displaysperre; MainActivity zeigt sie mit [WithoutLockWarning]. */
+    /** The follow-up question without a screen lock; MainActivity shows it with [WithoutLockWarning]. */
     val withoutLock = WithoutLock()
 
-    /** Beim Verlassen der App (MainActivity.onStop): Danach wird wieder gefragt. */
+    /** On leaving the app (MainActivity.onStop): asked again afterwards. */
     fun vergiss() = deadlines.values.forEach(Bestaetigungsfrist::vergiss)
 
-    /** Nach der Anmeldung: Nur dann nimmt der Server den Schlüssel an ([Schluesselbindung]). */
+    /** After signing in: only then does the server accept the key ([Schluesselbindung]). */
     fun bindAnServer() {
         if (activity.getSystemService<KeyguardManager>()?.isDeviceSecure != true) return
         activity.lifecycleScope.launch {
@@ -115,8 +115,8 @@ class DevicesStepProtection(
             withoutLock.frage(grund) { deadline.confirmed(); weiter() }
             return
         }
-        // Ohne gebundenen Schlüssel kein Weiter: Ein Rückfall auf die blosse Rückfrage
-        // wäre genau der Weg, den ein eingehakter Rückruf öffnet.
+        // Without a bound key, no proceeding: a fallback to the bare follow-up question
+        // would be exactly the path a hooked-up callback opens.
         val signatur = runCatching { DevicesKey.signatur() }.getOrNull() ?: return noKey()
         activity.lifecycleScope.launch {
             when (val a = flow.confirm(aktion) { unlock(grund, signatur) }) {
@@ -127,7 +127,7 @@ class DevicesStepProtection(
         }
     }
 
-    /** Die vom Keystore freigegebene Signatur; null bei Abbruch oder Fehler der Sperre. */
+    /** The signature released by the Keystore; null on cancellation or a lock error. */
     private suspend fun unlock(grund: String, signatur: Signature): Signature? = suspendCancellableCoroutine { weiter ->
         val callback = object : BiometricPrompt.AuthenticationCallback() {
             override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
@@ -140,8 +140,8 @@ class DevicesStepProtection(
         val info = BiometricPrompt.PromptInfo.Builder()
             .setTitle(grund)
             .setSubtitle(subtitle())
-            // Seit minSdk 30 immer starke Biometrie oder die Gerätesperre, nie Klasse-2-Gesicht;
-            // beides kann der Keystore-Schlüssel freigeben (DevicesKey).
+            // Since minSdk 30 always strong biometrics or the screen lock, never class-2 face;
+            // the Keystore key can release for both (DevicesKey).
             .setAllowedAuthenticators(BIOMETRIC_STRONG or DEVICE_CREDENTIAL)
             .build()
         BiometricPrompt(activity, ContextCompat.getMainExecutor(activity), callback)
@@ -150,9 +150,9 @@ class DevicesStepProtection(
 }
 
 /**
- * Ein Schritt, der ohne Displaysperre wartet: Wer ein Gerät ohne Sperre
- * benutzt, soll wissen, dass PIN, Codes und Verwaltung dort jedem offenstehen, der
- * das Telefon kurz hat. Ein Ja gilt wie eine Bestätigung bis zur Frist.
+ * A step that waits without a screen lock: whoever uses a device without a
+ * lock should know that PIN, codes and management are there open to anyone who
+ * briefly has the phone. A yes counts as a confirmation until the deadline.
  */
 class WithoutLock {
     class Waiting(val grund: String, val weiter: () -> Unit)
@@ -175,7 +175,7 @@ class WithoutLock {
     }
 }
 
-/** Die Rückfrage zu [WithoutLock]; Wegtippen bricht ab, ein überlagerter Tipp zählt nicht. */
+/** The follow-up question for [WithoutLock]; tapping away cancels it, an overlapping tap doesn't count. */
 @Composable
 fun WithoutLockWarning(withoutLock: WithoutLock) {
     val w = withoutLock.wartet ?: return
@@ -199,12 +199,12 @@ fun WithoutLockWarning(withoutLock: WithoutLock) {
 }
 
 /**
- * Zeigt [inhalt] erst nach der Bestätigung und fragt beim Öffnen von selbst.
- * Verlässt die App den Vordergrund, ist der Bereich wieder gesperrt.
+ * Shows [inhalt] only after confirmation and asks on its own when it opens.
+ * If the app leaves the foreground, the area is locked again.
  */
 @Composable
 fun Schrittsperre(grund: String, aktion: Schrittaktion = Schrittaktion.LOKAL, inhalt: @Composable () -> Unit) {
-    // Eine Seite hinter der Gerätesperre ist heikel: kein untergeschobener Tipp.
+    // A page behind the screen lock is sensitive: no tap slipped in underneath.
     Ueberdeckungsschutz()
     val basis = LocalSchrittschutz.current
     val protection = remember(basis, aktion) { basis.fuer(aktion) }

@@ -23,25 +23,25 @@ import ch.brickinventoryapp.network.di.Zugangslage
 import ch.brickinventoryapp.testing.testAccountRepository
 
 /**
- * Der erste Test in diesem Projekt, der VERHALTEN ausführt statt Quelltext zu
- * lesen.
+ * The first test in this project that runs BEHAVIOR instead of reading
+ * source code.
  *
- * ── Warum das bisher nicht ging ──────────────────────────────
+ * ── Why this wasn't possible before ──────────────────────────────
  *
- * `testImplementation(libs.junit)` war die einzige Testabhängigkeit. Ohne
- * Testbibliothek für Koroutinen und ohne HTTP-Attrappe blieb nur, den
- * Quelltext nach Mustern abzusuchen — daher lasen 41 von 47 Testdateien Text.
+ * `testImplementation(libs.junit)` was the only test dependency. Without a
+ * test library for coroutines and without an HTTP fake, all that was left was
+ * scanning the source code for patterns — which is why 41 of 47 test files read text.
  *
- * Hier läuft jetzt ein echter HTTP-Server im Test, und geprüft wird die
- * Abbildung: Was macht das Repository aus
- * einer Antwort? Die Gegenprobe dafür ist der Server selbst — antwortet er
- * anders, muss sich das Ergebnis ändern.
+ * Here a real HTTP server now runs in the test, and what's checked is the
+ * mapping: what does the repository make
+ * of a response? The counter-check for that is the server itself — if it
+ * answers differently, the result has to change.
  *
- * Zwei Dinge waren dafür nötig und sind der eigentliche Gewinn:
- *  - [ResponseCache] lässt sich mit einem Wegwerf-Verzeichnis bauen statt mit
- *    einem `Context`.
- *  - Die Zuordnung Ursache → Text liegt in `fehlerTextId()` und braucht keinen
- *    `Context` mehr (siehe ErrorTextsTest).
+ * Two things were needed for this and are the actual gain:
+ *  - [ResponseCache] can be built with a throwaway directory instead of
+ *    a `Context`.
+ *  - The mapping from cause to text lives in `fehlerTextId()` and no longer needs a
+ *    `Context` (see ErrorTextsTest).
  */
 class BrickRepositoryErrorMappingTest {
 
@@ -49,15 +49,15 @@ class BrickRepositoryErrorMappingTest {
     private lateinit var repo: AccountRepository
     private lateinit var cacheDir: File
 
-    /** Kurze Fristen: Der Zeitüberschreitungs-Fall soll den Lauf nicht bremsen. */
+    /** Short timeouts: the timeout case shouldn't slow down the run. */
     private fun buildRepo(readDeadlineMs: Long = 1_000, guard: okhttp3.Interceptor? = null): AccountRepository {
         val client = OkHttpClient.Builder()
             .apply { guard?.let { addInterceptor(it) } }
             .readTimeout(readDeadlineMs, TimeUnit.MILLISECONDS)
             .connectTimeout(readDeadlineMs, TimeUnit.MILLISECONDS)
             .build()
-        // Dieselbe Json-Konfiguration wie in di/AppModule — sonst prüfte der
-        // Test eine Nachsicht, die es in der App nicht gibt.
+        // The same JSON configuration as in di/AppModule — otherwise the
+        // test would be checking a leniency the app doesn't have.
         val json = BrickJson
         val api = Retrofit.Builder()
             .baseUrl(server.url("/"))
@@ -65,10 +65,10 @@ class BrickRepositoryErrorMappingTest {
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .build()
             .create(BrickApiService::class.java)
-        // AccountRepository statt BrickRepository: getMe() liegt
-        // seit der Aufteilung dort. Geprueft wird hier die Fehlerumsetzung in
-        // sicherAufrufen() — die steht in Abruf.kt und ist fuer alle fuenf
-        // Teil-Repositories dieselbe; getMe ist nur das Vehikel.
+        // AccountRepository instead of BrickRepository: getMe() has lived
+        // there since the split. What's checked here is the error mapping in
+        // sicherAufrufen() — that lives in Abruf.kt and is the same for all five
+        // sub-repositories; getMe is only the vehicle.
         return testAccountRepository(api)
     }
 
@@ -94,8 +94,8 @@ class BrickRepositoryErrorMappingTest {
 
     @Test
     fun `error body of the server wins over the own classification`() = runTest {
-        // Der Server kennt seine Fälle genauer als jede Aufzählung in der App —
-        // und antwortet in der Sprache des Kontos.
+        // The server knows its own cases more precisely than any enumeration in the app —
+        // and answers in the account's language.
         server.enqueue(
             MockResponse().setResponseCode(409)
                 .setBody("""{"success":false,"error":"Für dieses Datum gibt es schon einen Kaufpreis"}""")
@@ -121,9 +121,9 @@ class BrickRepositoryErrorMappingTest {
 
     @Test
     fun `401 is reported as expired session and not as transient`() = runTest {
-        // Die Unterscheidung ist der Grund für eine eigene Art: Ein
-        // Wiederholen behebt einen 401 nie, und cached() darf ihn nicht mit
-        // einer alten Antwort von der Platte überdecken.
+        // The distinction is the reason for a kind of its own: a
+        // retry never fixes a 401, and cached() must not cover it up with
+        // an old response from disk.
         server.enqueue(MockResponse().setResponseCode(401).setBody(""))
         val e = fehler(repo.getMe())
         assert(e is Ergebnis.Fehler.Abgewiesen) { "Art war $e" }
@@ -147,10 +147,10 @@ class BrickRepositoryErrorMappingTest {
     }
 
     /**
-     * Eine gespeicherte http-Adresse: Der Wächter des Release-Builds lehnt ab, und
-     * daraus wird ein eigener Satz mit Anleitung statt „keine Verbindung“.
-     * Gegenprobe: den Zweig für PlaintextRejected in
-     * sicherAufrufen() entfernt → rot (Netz, vorübergehend).
+     * A stored http address: the release build's guard rejects it, and
+     * that becomes a dedicated message with instructions instead of „no connection“.
+     * Counter-check: removed the branch for PlaintextRejected in
+     * sicherAufrufen() → red (Netz, vorübergehend).
      */
     @Test
     fun `a rejected http request is not a network error and not temporary`() = runTest {
@@ -169,14 +169,14 @@ class BrickRepositoryErrorMappingTest {
 
     @Test
     fun `a valid response is a success`() = runTest {
-        // Gegenprobe zu allen Fehlerfällen: Ohne sie könnte die Abbildung auch
-        // dann grün sein, wenn schlicht ALLES als Fehler endet.
+        // Counter-check for all error cases: without it the mapping could also be
+        // green if simply EVERYTHING ended up as an error.
         server.enqueue(
             MockResponse().setResponseCode(200)
                 .setBody("""{"success":true,"user":{"id":1,"username":"marco"}}""")
         )
-        // `when` statt Cast: Ergebnis hat genau zwei Varianten, also ist es
-        // erschöpfend — und der Smart Cast im Zweig liefert den Typ mit.
+        // `when` instead of a cast: Ergebnis has exactly two variants, so it's
+        // exhaustive — and the smart cast in the branch supplies the type along with it.
         when (val r = repo.getMe()) {
             is Ergebnis.Erfolg -> assert(r.data?.benutzer == "marco") { "Konto nicht gelesen: ${r.data}" }
             is Ergebnis.Fehler   -> assert(false) { "Erwartet wurde Erfolg, kam: $r" }

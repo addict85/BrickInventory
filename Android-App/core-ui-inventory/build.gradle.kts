@@ -1,7 +1,7 @@
-// Fachliche Bausteine, die mehrere Bereiche teilen: Filterblatt, Haushalt- und
-// Lagerortwahl, eigene Einträge, Preisdiagramm und Wertkacheln. Ein Kernmodul, kein
-// Bereich: nur Darstellung, kennt Modelle, Texte und core-ui, aber weder Daten- noch
-// Zustandsschicht (ModulgrenzenTest), damit kein Bereich hierüber an einen anderen kommt.
+// Domain building blocks shared by several scopes: filter sheet, household and
+// storage-location choice, own entries, price chart and value tiles. A core module, not a
+// scope: display only, knows models, texts and core-ui, but neither the data nor
+// the state layer (ModulgrenzenTest), so no scope can reach another one through this.
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.unittests)
@@ -10,7 +10,7 @@ plugins {
 
 android {
     namespace = "ch.brickinventoryapp.core.uiinventory"
-    // Oberflächentests unter Robolectric lesen Texte und Schriften aus den Ressourcen.
+    // UI tests under Robolectric read texts and fonts from the resources.
     testOptions.unitTests.isIncludeAndroidResources = true
 }
 
@@ -20,7 +20,7 @@ dependencies {
     implementation(project(":core-resources"))
 
     testImplementation(project(":core-testing"))
-    // Der Diagrammtest baut seine Punkte aus Serverantworten; nur der Test kennt den Vertrag.
+    // The chart test builds its points from server responses; only the test knows the contract.
     testImplementation(project(":core-contract"))
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.robolectric)

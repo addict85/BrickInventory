@@ -13,9 +13,9 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 
 /**
- * FilterChip, dessen Wahl man auch ohne Farbunterschied sieht: Häkchen vorn
- * (wenn der Aufrufer kein eigenes Symbol setzt) und ein Rand in primary. Die
- * Füllung allein lag in den dunklen Fassungen nur 1,2:1 über der Fläche.
+ * A FilterChip whose selection you can see even without a color difference: a checkmark in front
+ * (unless the caller sets its own icon) and a border in primary. The
+ * fill alone sat at only 1.2:1 against the surface in the dark themes.
  */
 @Composable
 fun AuswahlChip(
@@ -40,8 +40,8 @@ fun AuswahlChip(
         trailingIcon = trailingIcon,
         border = FilterChipDefaults.filterChipBorder(
             enabled = enabled, selected = selected,
-            // outline statt outlineVariant: Der Rand eines ungewählten Chips ist seine einzige
-            // Grenze und braucht 3:1 zur Fläche; outlineVariant lag bei 1,1–1,2:1.
+            // outline instead of outlineVariant: the border of an unselected chip is its only
+            // boundary and needs 3:1 against the surface; outlineVariant sat at 1.1–1.2:1.
             borderColor = MaterialTheme.colorScheme.outline,
             selectedBorderColor = MaterialTheme.colorScheme.primary, selectedBorderWidth = 1.dp,
         ),

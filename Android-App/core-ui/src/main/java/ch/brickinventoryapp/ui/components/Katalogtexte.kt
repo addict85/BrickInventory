@@ -8,29 +8,29 @@ import androidx.compose.ui.text.intl.LocaleList
 import ch.brickinventoryapp.model.ui.ColorGerman
 import ch.brickinventoryapp.model.ui.CategoryGerman
 
-/** Ist die Oberfläche deutsch? Die Katalogdaten von Rebrickable sind es nie. */
+/** Is the UI in German? Rebrickable's catalog data never is. */
 @Composable
 private fun deutsch(): Boolean = LocalConfiguration.current.locales[0].language == "de"
 
 /**
- * Farbnamen in der Sprache der App, wie in der Webapp (colorName): „Trans-Klar“
- * statt „Trans-Clear“. Als Funktion, damit auch Listen ausserhalb der Komposition
- * (Filtereinträge in remember) übersetzt werden.
+ * Color names in the app's language, as in the web app (colorName): „Trans-Klar“
+ * instead of „Trans-Clear“. As a function, so lists outside the composition too
+ * (filter entries in remember) get translated.
  */
 @Composable
 fun farbTranslator(): (String) -> String =
     if (deutsch()) ColorGerman::translate else { name -> name }
 
-/** Teilekategorien in der Sprache der App, wie die Farben daneben („Steine“ statt „Bricks“). */
+/** Part categories in the app's language, like the colors next to them („Steine“ instead of „Bricks“). */
 @Composable
 fun categoryTranslator(): (String) -> String =
     if (deutsch()) CategoryGerman::translate else { name -> name }
 
 /**
- * Teile- und Figurennamen bleiben englisch: Der Server liefert keine deutschen,
- * und eine Wort-für-Wort-Übersetzung („Fliese 1 x 2 mit Nut“) träfe die Namen,
- * unter denen man ein Teil bei BrickLink sucht, nicht. Ausgezeichnet sind sie als
- * Englisch, damit TalkBack sie englisch ausspricht statt deutsch zu buchstabieren.
+ * Part and figure names stay in English: the server supplies none in German,
+ * and a word-for-word translation („Fliese 1 x 2 mit Nut“) would miss the names
+ * under which a part is searched for on BrickLink. They're tagged as
+ * English, so TalkBack pronounces them in English instead of spelling them out in German.
  */
 @Composable
 fun catalogName(name: String): AnnotatedString =

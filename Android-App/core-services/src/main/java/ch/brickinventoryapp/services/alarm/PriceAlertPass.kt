@@ -21,13 +21,13 @@ import kotlinx.coroutines.flow.first
 import java.util.Locale
 import javax.inject.Inject
 
-/** Ein Abruf der ausgelösten Preisalarme; der Worker stündlich, die App beim Öffnen. */
+/** One fetch of triggered price alerts; the worker hourly, the app on opening. */
 interface PriceAlertRepository {
-    /** @return false nur, wenn der Server nicht erreichbar war. */
+    /** @return false only when the server was not reachable. */
     suspend fun pass(): Boolean
 }
 
-/** Nachfragen, anzeigen, Marke setzen — mit den Ablagen aus dem Konstruktor statt aus einem EntryPoint. */
+/** Query, display, set marker — with the stores from the constructor instead of from an EntryPoint. */
 internal class PriceAlertPass @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val alerts: AlarmRepository,
@@ -36,14 +36,14 @@ internal class PriceAlertPass @Inject constructor(
     private val startziel: Startziel,
 ) : PriceAlertRepository {
     /**
-     * Ein Durchgang: nachfragen, anzeigen, Marke setzen. Hier statt in doWork(), weil
-     * auch das Öffnen der App abholt (wie die Webapp beim Anmelden) — sonst käme eine
-     * Meldung bis zu eine Stunde zu spät. Doppelte Meldungen verhindert die Marke:
-     * Jeder Durchgang fragt „seit wann?“ und schreibt die Zeit des Servers zurück.
+     * One run: query, display, set marker. Here instead of in doWork(), because
+     * opening the app also fetches (like the web app on sign-in) — otherwise a
+     * notification could come up to an hour late. The marker prevents duplicate notifications:
+     * every run asks „since when?“ and writes the server's time back.
      *
-     * @return false nur, wenn der Server nicht erreichbar war. Abgeschaltet oder
-     *         abgemeldet ist ein erfolgreicher Durchgang ohne Arbeit — ein retry()
-     *         versuchte vergeblich weiter.
+     * @return false only when the server was not reachable. Disabled or
+     *         signed out is a successful run with nothing to do — a retry()
+     *         would keep trying in vain.
      */
     override suspend fun pass(): Boolean {
         if (!alarm.alarmMessagesAn.first()) return true
@@ -60,9 +60,9 @@ internal class PriceAlertPass @Inject constructor(
 
             is Alarmabholung.Ergebnis.Geholt -> {
                 zeige(e.meldungen)
-                // IMMER speichern, auch ohne Meldung — sonst fragt der
-                // naechste Durchgang wieder ab dem alten Zeitpunkt und
-                // bringt dieselbe Meldung ein zweites Mal.
+                // ALWAYS store it, even without a notification — otherwise the
+                // next run would query from the old timestamp again and
+                // bring in the same notification a second time.
                 alarm.setAlarmBrand(e.neueMarke)
                 true
             }
@@ -70,15 +70,14 @@ internal class PriceAlertPass @Inject constructor(
     }
 
     /**
-     * Die Meldungen anzeigen — eine je gerissener Schwelle, gruppiert unter einer
-     * Zusammenfassung: Man will ohne die App zu öffnen wissen, welcher Alarm gefallen
-     * ist.
+     * Show the notifications — one per crossed threshold, grouped under a
+     * summary: you want to know which alert fired without opening the app.
      */
     private fun zeige(meldungen: List<PriceAlertView>) {
         if (meldungen.isEmpty()) return
-        // Ab Android 13 ist POST_NOTIFICATIONS eine Laufzeitberechtigung.
-        // Ohne sie wirft notify() nicht, es passiert schlicht nichts —
-        // deshalb hier pruefen, statt sich auf das Ausbleiben zu verlassen.
+        // From Android 13, POST_NOTIFICATIONS is a runtime permission.
+        // Without it notify() doesn't throw, it simply does nothing —
+        // which is why this checks it rather than relying on the absence of a crash.
         if (android.os.Build.VERSION.SDK_INT >= 33 &&
             ContextCompat.checkSelfPermission(
                 context, android.Manifest.permission.POST_NOTIFICATIONS
@@ -90,26 +89,26 @@ internal class PriceAlertPass @Inject constructor(
             NotificationChannel(
                 PreisalarmWorker.CHANNEL,
                 context.getString(R.string.alert_channel_name),
-                // DEFAULT, nicht HIGH: Ein Preisalarm ist wichtig, aber
-                // nicht dringend — er soll nicht ueber den Bildschirm
-                // fahren, waehrend jemand etwas anderes tut.
+                // DEFAULT, not HIGH: a price alert is important, but
+                // not urgent — it shouldn't slide over the screen
+                // while someone is doing something else.
                 NotificationManager.IMPORTANCE_DEFAULT,
             ).apply { description = context.getString(R.string.alert_channel_desc) }
         )
 
-        // In der Sprache der App: Vor Android 13 sähe der Hintergrund sonst die des Systems.
+        // In the app's language: before Android 13 the background would otherwise see the system's.
         val texts = LanguageManager.localizedContext(context)
         val unter = texts.getString(R.string.detail_alert_below)
         val ueber = texts.getString(R.string.detail_alert_above)
         val zahlen = numbersLocale(texts.resources.configuration.locales[0], Locale.getDefault())
         val nm = NotificationManagerCompat.from(context)
         for ((i, a) in meldungen.withIndex()) {
-            // ── Antippen öffnet das Set ──
+            // ── Tapping opens the set ──
             //
-            // Ziel ist der nicht exportierte Einstieg der App (Startziel); er reicht an die
-            // laufende App weiter. Ein requestCode je Set, sonst lieferte das System denselben
-            // PendingIntent und die ältere Meldung öffnete das falsche Set. Die Klasse kommt
-            // als Klasse, nicht als Name über Class.forName(), damit R8 sie ohne Keep-Regel behält.
+            // The target is the app's own, non-exported entry point (launch target); it passes it on to the
+            // running app. One requestCode per set, otherwise the system would deliver the same
+            // PendingIntent and an older notification would open the wrong set. The class comes in
+            // as a class, not as a name via Class.forName(), so R8 keeps it without a keep rule.
             val ziel = Intent(context, startziel.aktivitaet).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
                 putExtra(PreisalarmWorker.EXTRA_SET, a.setNumber)
@@ -118,14 +117,14 @@ internal class PriceAlertPass @Inject constructor(
                 context,
                 (a.setNumber + a.condition).hashCode(),
                 ziel,
-                // IMMUTABLE ist ab Android 12 Pflicht, wenn nicht
-                // ausdruecklich MUTABLE verlangt wird. Wir fuellen den
-                // Intent vollstaendig, also gibt es nichts zu ergaenzen.
+                // IMMUTABLE is mandatory from Android 12 unless
+                // MUTABLE is explicitly requested. We fill the
+                // intent completely, so there's nothing left to add.
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
             val n = PreisalarmWorker.meldung(context, Alarmabholung.text(a, unter, ueber, zahlen), tippen)
-            // Die Setnummer als ID: Zwei Meldungen zum selben Set
-            // ueberschreiben sich, statt sich zu stapeln.
+            // The set number as the ID: two notifications for the same set
+            // overwrite each other instead of stacking.
             nm.notify(PreisalarmWorker.CHANNEL + a.setNumber + a.condition, i + 1, n)
         }
     }

@@ -14,8 +14,8 @@ import ch.brickinventoryapp.ui.theme.centeredUntil
 import ch.brickinventoryapp.ui.theme.Lesebreite
 
 /**
- * Der Rahmen jeder Unterseite: Titel, Zurück-Pfeil, darunter der Inhalt mit einem
- * Abstand zwischen den Karten.
+ * The frame of every sub-page: title, back arrow, the content below it with
+ * spacing between the cards.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,23 +23,23 @@ fun Subpage(
     titel: String,
     snackbarHostState: SnackbarHostState,
     onZurueck: () -> Unit,
-    /** Formulare schmaler als Listen: Ein Eingabefeld über 800 dp liest sich nicht mehr als eines. */
+    /** Forms narrower than lists: an input field beyond 800 dp no longer reads as one. */
     breite: androidx.compose.ui.unit.Dp = Lesebreite.liste,
-    /** Aktionen der ganzen Seite oben rechts, etwa ein Überlaufmenü. */
+    /** Actions for the whole page at the top right, e.g. an overflow menu. */
     aktionen: @Composable RowScope.() -> Unit = {},
-    /** Die Hauptaktion als schwebender Knopf; der Inhalt hält unten Platz für ihn frei. */
+    /** The main action as a floating button; the content keeps room free for it at the bottom. */
     primaryAction: (@Composable () -> Unit)? = null,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
     Scaffold(
-        // ── Eigener Snackbar-Halter ──
+        // ── Its own snackbar host ──
         //
-        // Die Meldungen laufen über einen Fluss (vm.snackbar), und AppNavigation zeigt sie
-        // auf `snackbarHostState`; der Halter dafür steht im Reiter-Gerüst, das hier nicht
-        // in der Komposition ist. Ohne diese Zeile gingen „Gutschein gespeichert“, „250
-        // CHF“ und jede Absage der Guthaben-Abfrage still verloren.
+        // The messages run through a flow (vm.snackbar), and AppNavigation shows them
+        // on `snackbarHostState`; the host for that lives in the tab scaffold, which isn't
+        // in this composition here. Without this line, „Gutschein gespeichert“, „250
+        // CHF“ and every rejection of the balance query would silently get lost.
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        // Der Kopf der Detailseiten: Überschrift, bei grosser Schrift zweizeilig statt abgeschnitten.
+        // The header of the detail pages: heading, on two lines instead of truncated with large text.
         topBar = { DetailTopAppBar(titel, onZurueck, schliessen = false, actions = aktionen) },
         floatingActionButton = { primaryAction?.invoke() },
     ) { innen ->
@@ -48,18 +48,18 @@ fun Subpage(
                 .fillMaxSize()
                 .padding(innen)
                 .verticalScroll(rememberScrollState())
-                // Auf dem Tablet mittig auf Lesebreite: Eine Zeile über 1200 dp liest sich
-                // nicht mehr in einem Zug.
+                // Centered at reading width on the tablet: a row past 1200 dp no longer
+                // reads in one sweep.
                 .centeredUntil(breite)
                 .padding(horizontal = Abstaende.gross, vertical = Abstaende.gross),
             verticalArrangement = Arrangement.spacedBy(Abstaende.gross),
         ) {
             inhalt()
-            // Der schwebende Knopf deckt sonst die letzte Zeile zu.
+            // The floating button would otherwise cover the last row.
             if (primaryAction != null) Spacer(Modifier.height(PRIMARY_ACTION_SPACE))
         }
     }
 }
 
-/** Höhe eines schwebenden Knopfs samt seinem Abstand zum Rand. */
+/** Height of a floating button including its margin to the edge. */
 private val PRIMARY_ACTION_SPACE = 72.dp

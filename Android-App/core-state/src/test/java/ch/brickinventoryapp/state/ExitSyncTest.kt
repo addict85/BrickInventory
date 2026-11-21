@@ -25,26 +25,26 @@ import org.junit.Test
 import java.util.Collections
 
 /**
- * Der Ausgang wird der Reihe nach gesendet; ein Posten geht genau einmal raus.
- * Läuft gegen die Logik ([Abgleich], [Offlineablage]) mit Ablagen im Speicher
- * und einem Sender, der aufschreibt, was er bekommt.
+ * The outbox is sent in order; an item goes out exactly once.
+ * Runs against the logic ([Abgleich], [Offlineablage]) with in-memory stores
+ * and a sender that records what it receives.
  *
- * Gegenproben:
- *   A  in StorageExit.erster `minByOrNull` → `maxByOrNull` → rot u. a. „eine
- *      Ablehnung verwirft …“ (gesendet [3, 2, 1] statt [1, 2, 3])
- *   B  in Abgleich bei Spaeter `return` weggelassen (weiter mit dem nächsten) →
- *      rot „what goes later holds up everything behind it“ (FERTIG statt LATER)
- *   C  in Abgleich die Sperre entfernt (`lock.withLock` → `run`) → rot
- *      „two runs at once send nothing twice“ (gesendet [1, 1, 2])
- *   D  in einordnen 401 aus der Ausnahmeliste genommen → rot „eine abgelaufene
+ * Counter-checks:
+ *   A  in StorageExit.erster `minByOrNull` → `maxByOrNull` → red, among others, „eine
+ *      Ablehnung verwirft …“ (sent [3, 2, 1] instead of [1, 2, 3])
+ *   B  in Abgleich for Spaeter `return` left out (continues with the next one) →
+ *      red „what goes later holds up everything behind it“ (FERTIG instead of LATER)
+ *   C  in Abgleich the lock removed (`lock.withLock` → `run`) → red
+ *      „two runs at once send nothing twice“ (sent [1, 1, 2])
+ *   D  in einordnen 401 taken out of the exception list → red „eine abgelaufene
  *      Sitzung verwirft nichts“
- *   E  in Abgleich.verwirf das Festhalten weggelassen (gegenproben/verworfen-nicht-
- *      festgehalten.patch) → rot „eine Ablehnung verwirft und hält sie fest …“
- *   (F und G gemessen)
+ *   E  in Abgleich.verwirf the recording left out (gegenproben/verworfen-nicht-
+ *      festgehalten.patch) → red „eine Ablehnung verwirft und hält sie fest …“
+ *   (F and G measured)
  *   F  in Abgleich.lauf `p.schluessel` → `java.util.UUID.randomUUID().toString()`
- *      → rot „Die Wiederholung trägt denselben Schlüssel“
- *   G  in deleteClassify die 404-Ausnahme entfernt → rot „beim Löschen …“
- *   H  in Abgleich.lauf die Bereichsprüfung vor dem Senden entfernt → rot „ein
+ *      → red „Die Wiederholung trägt denselben Schlüssel“
+ *   G  in deleteClassify the 404 exception removed → red „beim Löschen …“
+ *   H  in Abgleich.lauf the scope check removed before sending → red „ein
  *      Konto-Wechsel vor dem Senden …“ (gegenproben/ausgang-ohne-pruefung-vor-senden.patch)
  */
 class ExitSyncTest {
@@ -63,7 +63,7 @@ class ExitSyncTest {
         }
     }
 
-    /** Ablage und Ausgang getrennt in der Hand: Der Test sieht im Ausgang nach, die Ablage zeigt ihn nicht. */
+    /** Store and outbox held separately: the test checks the outbox, the store doesn't show it. */
     private class Welt(bereich: suspend () -> String? = { "konto-a" }) {
         val ausgang = StorageExit()
         val ablage = Offlineablage(StorageInventory(), ausgang, bereich)
@@ -115,7 +115,7 @@ class ExitSyncTest {
         yield()
         collector.cancel()
         assertEquals(listOf(1, 2, 3), numbers(s))
-        // Erst jetzt gefragt: Ein flüchtiges Ereignis wäre ohne Beobachter verloren.
+        // Only asked now: a transient event would be lost without an observer.
         val verworfen = sync.discarded().first().single()
         assertEquals("1002-1", verworfen.ziel)
         assertEquals("gibt es nicht", verworfen.meldung)
@@ -133,7 +133,7 @@ class ExitSyncTest {
         val sync = w.sync(s)
         val erster = async { sync.send() }
         val zweiter = async { sync.send() }
-        // Beide Läufe sind gestartet, der erste hängt im Senden des ersten Postens.
+        // Both runs have started, the first is hanging in sending the first item.
         repeat(5) { yield() }
         s.brake!!.complete(Unit)
         erster.await(); zweiter.await()
@@ -180,7 +180,7 @@ class ExitSyncTest {
         }
         val a = w.ablage
         for (n in 1..2) a.buffer(menge(n))
-        // Der Lauf beginnt unter konto-a, vor dem ersten Senden gilt schon konto-b.
+        // The run starts under konto-a; before the first send, konto-b already applies.
         switchAfterQuery = true
         val s = Sender()
         assertEquals(Abgleichsergebnis.NOT_SIGNED_IN, w.sync(s).send())

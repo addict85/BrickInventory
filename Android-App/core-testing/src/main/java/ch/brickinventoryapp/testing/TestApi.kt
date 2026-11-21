@@ -54,10 +54,10 @@ import java.lang.reflect.Type
 import java.lang.reflect.WildcardType
 import java.util.WeakHashMap
 
-/** Die angezeigte Meldung als Satz, wie NumbersTexts ihn bildet; null ohne Meldung. */
+/** The displayed message as a string, the way NumbersTexts builds it; null without a message. */
 val MeldungsKanal.text: String? get() = meldung.value.text
 
-/** Eine Meldung als prüfbarer Satz: „t<id>(werte)“, „m<id>:<anzahl>“ oder der Text selbst. */
+/** A message as a checkable string: „t<id>(werte)“, „m<id>:<anzahl>“ or the text itself. */
 val Meldung?.text: String?
     get() = when (this) {
         null -> null
@@ -66,10 +66,10 @@ val Meldung?.text: String?
         is Meldung.Menge -> "m$id:$anzahl"
     }
 
-/** Gemeinsames Gerüst der ViewModel-Tests, die gegen einen Testserver laufen. */
+/** Shared scaffold of the ViewModel tests that run against a test server. */
 object TestApi {
 
-    /** Dieselbe Json-Konfiguration wie in di/AppModule. */
+    /** The same JSON configuration as in di/AppModule. */
     fun fuer(server: MockWebServer): BrickApiService = fuer(server.url("/").toString(),
         OkHttpClient.Builder().readTimeout(2, TimeUnit.SECONDS).connectTimeout(2, TimeUnit.SECONDS).build())
 
@@ -84,8 +84,8 @@ object TestApi {
     }
 
     /**
-     * Ein Client, der jede Anfrage an [server] schickt — wie der Wächter der App die
-     * Platzhalter-Adresse auf den eingetragenen Server umschreibt.
+     * A client that sends every request to [server] — like the app's guard
+     * rewrites the placeholder address to the configured server.
      */
     fun umgeleitet(server: MockWebServer): OkHttpClient = OkHttpClient.Builder()
         .addInterceptor { kette ->
@@ -98,7 +98,7 @@ object TestApi {
         MockResponse().setResponseCode(code)
             .setHeader("Content-Type", "application/json").setBody(rumpf)
 
-    /** Wartet auf echte Netzantworten; viewModelScope läuft auf dem Test-Main. */
+    /** Waits for real network responses; viewModelScope runs on the test main thread. */
     fun warteBis(was: String, bedingung: () -> Boolean) {
         val ende = System.currentTimeMillis() + 5000
         while (!bedingung()) {
@@ -108,7 +108,7 @@ object TestApi {
     }
 }
 
-/** Gibt die Ressourcennummer zurück — der Test prüft, WELCHER Text kam. */
+/** Returns the resource number — the test checks WHICH text arrived. */
 object NumbersTexts : Texte {
     override fun text(id: Int, vararg args: Any?) = "t$id"
     override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id:$anzahl"
@@ -117,29 +117,29 @@ object NumbersTexts : Texte {
 }
 
 /**
- * Ein Testserver, der nach PFAD antwortet statt nach Reihenfolge — ViewModels
- * stellen mehrere Abrufe nebeneinander. Unbekannte Pfade bekommen 404; jede
- * Anfrage wird mitgeschrieben (Methode, Pfad samt Abfrage).
+ * A test server that answers by PATH instead of by order — ViewModels
+ * fire several fetches side by side. Unknown paths get 404; every
+ * request is recorded (method, path including query).
  */
 class PfadServer(vararg rules: Pair<String, String>) {
     val server = MockWebServer()
     val antworten: MutableMap<String, String> = Collections.synchronizedMap(linkedMapOf(*rules))
     val requests: MutableList<String> = Collections.synchronizedList(mutableListOf())
-    /** Die Rümpfe in derselben Reihenfolge wie [requests]. */
+    /** The bodies in the same order as [requests]. */
     val koerper: MutableList<String> = Collections.synchronizedList(mutableListOf())
-    /** Abweichender Statuscode je Pfad, z. B. 401 für „Sitzung abgelaufen“. */
+    /** A deviating status code per path, e.g. 401 for „session expired“. */
     val codes: MutableMap<String, Int> = Collections.synchronizedMap(mutableMapOf())
-    /** Antwort erst nach so vielen Millisekunden — für „was geschieht, solange der Server rechnet“. */
+    /** Answers only after this many milliseconds — for „what happens while the server is computing“. */
     val delayed: MutableMap<String, Long> = Collections.synchronizedMap(mutableMapOf())
-    /** Im Takt: Pfade, deren Antwort zurückgehalten wird, bis [freigeben] sie schickt. */
+    /** Held back: paths whose response is withheld until [freigeben] sends it. */
     val ausbleibend: MutableSet<String> = Collections.synchronizedSet(mutableSetOf())
     private val held: MutableList<() -> Unit> = Collections.synchronizedList(mutableListOf())
-    /** Antwortet vor den Regeln, etwa aus einer Reihe ([RowsServer]); null heisst: nach Pfad. */
+    /** Answers ahead of the rules, e.g. from a sequence ([RowsServer]); null means: by path. */
     var priority: ((methode: String, pfad: String) -> Pair<Int, String>?)? = null
-    /** Im Takt: Antworten, die nicht zum DTO passten; [pruefeEinlesen] scheitert an ihnen. */
+    /** Held back: responses that didn't fit the DTO; [pruefeEinlesen] fails on them. */
     val readError: MutableList<String> = Collections.synchronizedList(mutableListOf())
 
-    /** Schreibt die Anfrage mit und liefert Statuscode und Rumpf nach den Regeln. */
+    /** Records the request and returns status code and body according to the rules. */
     private fun answer(methode: String, pfad: String, rumpf: String): Pair<Int, String> {
         requests += "$methode $pfad"
         koerper += rumpf
@@ -164,9 +164,9 @@ class PfadServer(vararg rules: Pair<String, String>) {
     }
 
     /**
-     * Dieselben Regeln ohne Netz: Ein Interceptor antwortet, und OkHttp führt den Abruf
-     * im aufrufenden Faden aus. Mit Test-Dispatchern läuft ein ViewModel samt Abruf so in
-     * der Testuhr, und kein Test wartet in Echtzeit. Statt verzögert gibt es [ausbleibend].
+     * The same rules without a network: an interceptor answers, and OkHttp runs the fetch
+     * on the calling thread. With test dispatchers, a ViewModel including the fetch thus runs on
+     * the test clock, and no test waits in real time. Instead of delayed, there is [ausbleibend].
      */
     fun imTakt(): BrickApiService {
         val client = OkHttpClient.Builder().addInterceptor { kette ->
@@ -193,10 +193,10 @@ class PfadServer(vararg rules: Pair<String, String>) {
         anfrage.url.encodedPath + (anfrage.url.encodedQuery?.let { "?$it" } ?: "")
 
     /**
-     * Liest die Antwort wie Retrofit gegen das DTO der aufgerufenen Methode. Scheitert das
-     * Einlesen bei Retrofit, kommt der Fehler über Dispatchers.Default zurück und der Test
-     * verlässt den Takt. Ein AssertionError ist keine Exception: Retrofit reicht ihn im
-     * aufrufenden Faden durch, und [pruefeEinlesen] nennt ihn beim Aufräumen.
+     * Reads the response like Retrofit, against the DTO of the called method. If
+     * reading fails at Retrofit, the error comes back via Dispatchers.Default and the test
+     * leaves the clock. An AssertionError is not an exception: Retrofit passes it through on the
+     * calling thread, and [pruefeEinlesen] names it during cleanup.
      */
     private fun checkAgainstDto(anfrage: Request, pfad: String, text: String) {
         val typ = anfrage.tag(Invocation::class.java)?.let { antworttyp(it.method()) } ?: return
@@ -210,8 +210,8 @@ class PfadServer(vararg rules: Pair<String, String>) {
     }
 
     /**
-     * Schickt die zurückgehaltenen Antworten, im aufrufenden Faden. Ein inzwischen
-     * abgebrochener Abruf bekommt keine mehr: So prüft ein Test, dass Abbrechen wirkt.
+     * Sends the held-back responses, on the calling thread. A fetch that has
+     * since been cancelled gets no more: this is how a test checks that cancelling works.
      */
     fun freigeben() {
         ausbleibend.clear()
@@ -219,7 +219,7 @@ class PfadServer(vararg rules: Pair<String, String>) {
         jetzt.forEach { it() }
     }
 
-    /** Scheitert, wenn eine Antwort im Takt nicht zum DTO passte. */
+    /** Fails if a held-back response didn't fit the DTO. */
     fun pruefeEinlesen() {
         val fehler = synchronized(readError) { readError.toList() }
         if (fehler.isNotEmpty()) {
@@ -231,16 +231,16 @@ class PfadServer(vararg rules: Pair<String, String>) {
     companion object {
         private val herkunft = WeakHashMap<BrickApiService, PfadServer>()
 
-        /** Der Server hinter einem Dienst aus [imTakt], sonst null. */
+        /** The server behind a service from [imTakt], otherwise null. */
         fun von(api: BrickApiService): PfadServer? = synchronized(herkunft) { herkunft[api] }
     }
 
     fun requestsAn(pfad: String): List<String> = synchronized(requests) { requests.filter { pfad in it } }
 
     /**
-     * Ein neuer Prozess bekommt einen eigenen Server mit denselben Antworten und
-     * eigene Dienste. Abrufe, die das alte ViewModel noch unterwegs hat, landen
-     * so nicht in [requests] des neuen — sonst entscheidet die Ankunftsreihenfolge.
+     * A new process gets its own server with the same responses and
+     * its own services. Fetches the old ViewModel still has in flight thus don't
+     * end up in the new one's [requests] — otherwise arrival order would decide.
      */
     fun <T> newProcess(io: CoroutineDispatcher? = null, block: (PfadServer, TestDienste) -> T): T {
         val paths = PfadServer(*antworten.toList().toTypedArray())
@@ -249,7 +249,7 @@ class PfadServer(vararg rules: Pair<String, String>) {
     }
 }
 
-/** Filterablage im Speicher. */
+/** In-memory filter store. */
 class StorageStore : FilterStore {
     val konten = mutableMapOf<String, String>()
     val lager = mutableMapOf<String, String>()
@@ -261,8 +261,8 @@ class StorageStore : FilterStore {
 }
 
 /**
- * Die gemeinsamen Dienste der Bereichs-ViewModels, gegen einen Testserver oder
- * eine [FakeApi]. Mit [io] = Test-Dispatcher läuft auch die Ablage in virtueller Zeit.
+ * The scope ViewModels' shared services, against a test server or
+ * a [FakeApi]. With [io] = test dispatcher, the store too runs in virtual time.
  */
 class TestDienste(val api: BrickApiService, texts: Texte = NumbersTexts, val io: CoroutineDispatcher = Dispatchers.IO) {
 
@@ -272,12 +272,12 @@ class TestDienste(val api: BrickApiService, texts: Texte = NumbersTexts, val io:
     val blickfeld = Scope(StorageStore(), testHouseholdRepository(api), testPartsRepository(api))
     val meldungen = MeldungsKanal()
 
-    /** Eine Ablage für alle Repositories dieses Tests: Was eines schreibt, sehen die Listen der anderen. */
+    /** One store for all of this test's repositories: what one writes, the others' lists see. */
     val ablage = Testablage()
     val kontosicht: Kontosicht = testKontosicht(api, ablage)
     val sync: Bestandsabgleich = testBestandsabgleich(api, ablage)
 
-    /** Dieselbe Instanz, wo ein ViewModel nur liest, wann sich der Bestand geändert hat. */
+    /** The same instance, where a ViewModel only reads when the inventory changed. */
     val changes: Bestandsabgleich get() = sync
     fun sets(): SetsRepository = testSetsRepository(api, ablage)
     fun haushalt(): HouseholdRepository = testHouseholdRepository(api, ablage)
@@ -291,8 +291,8 @@ class TestDienste(val api: BrickApiService, texts: Texte = NumbersTexts, val io:
     val hinweise = Meldungen(meldungen, texts)
 
     /**
-     * Filter setzen läuft wie in der App ausserhalb des ViewModels; [aufraeumen] beendet es.
-     * Erst beim ersten Filter: Tests legen TestDienste vor setMain() an.
+     * Setting a filter runs, like in the app, outside the ViewModel; [aufraeumen] ends it.
+     * Only on the first filter: tests create TestDienste before setMain().
      */
     private val filterAreaLazy = lazy {
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate)
@@ -302,20 +302,20 @@ class TestDienste(val api: BrickApiService, texts: Texte = NumbersTexts, val io:
 
     private val erzeugt = mutableListOf<androidx.lifecycle.ViewModel>()
 
-    /** Merkt sich das ViewModel, damit [aufraeumen] seine Koroutinen beendet. */
+    /** Remembers the ViewModel, so [aufraeumen] can end its coroutines. */
     fun <T : androidx.lifecycle.ViewModel> merke(vm: T): T = vm.also { erzeugt += it }
 
     /**
-     * Vor Dispatchers.resetMain() rufen: Die Sammler auf Abmeldung und
-     * Ablage laufen sonst weiter und stossen auf ein fehlendes Main.
+     * Call before Dispatchers.resetMain(): the collectors on sign-out and the
+     * store otherwise keep running and hit a missing Main.
      */
     fun aufraeumen() {
         val jobs = erzeugt.mapNotNull { it.viewModelScope.coroutineContext[kotlinx.coroutines.Job] }
         erzeugt.forEach { it.viewModelScope.cancel() }
         if (filterAreaLazy.isInitialized()) filterArea.cancel()
-        // Abbrechen allein reicht nicht: Eine Antwort, die schon unterwegs ist,
-        // beendet ihre Koroutine erst danach auf Main. Kommt sie nach resetMain(),
-        // wirft sie im gerade laufenden fremden Test.
+        // Cancelling alone isn't enough: a response already in flight
+        // only ends its coroutine afterwards on Main. If it arrives after resetMain(),
+        // it throws in whichever foreign test happens to be running.
         kotlinx.coroutines.runBlocking {
             kotlinx.coroutines.withTimeoutOrNull(5_000) { jobs.forEach { it.join() } }
         }
@@ -323,7 +323,7 @@ class TestDienste(val api: BrickApiService, texts: Texte = NumbersTexts, val io:
     }
 }
 
-/** Ein Repository gegen einen Testserver; braucht es eine Ablage, bringt seine Fabrik eine mit. */
+/** A repository against a test server; if it needs a store, its factory brings one along. */
 fun <R, T> withRepo(bau: (BrickApiService) -> R, block: (PfadServer, R) -> T): T {
     val paths = PfadServer()
     try {
@@ -331,7 +331,7 @@ fun <R, T> withRepo(bau: (BrickApiService) -> R, block: (PfadServer, R) -> T): T
     } finally { paths.server.shutdown() }
 }
 
-/** Ein Abruf, der auch asynchron gestellt im aufrufenden Faden läuft (PfadServer.imTakt). */
+/** A fetch that runs on the calling thread even when posed asynchronously (PfadServer.imTakt). */
 private class ImmediatelyCall(private val echt: Call, private val staysFrom: (Request, () -> Unit) -> Boolean) : Call by echt {
     override fun enqueue(responseCallback: Callback) {
         if (staysFrom(echt.request()) { senden(responseCallback) }) return
@@ -348,8 +348,8 @@ private class ImmediatelyCall(private val echt: Call, private val staysFrom: (Re
 }
 
 /**
- * Was Retrofit aus der Antwort liest: T aus `suspend fun …(): Response<T>`. Rümpfe ohne
- * DTO (ResponseBody, Unit) liest Retrofit selbst; sie prüft niemand.
+ * What Retrofit reads from the response: T from `suspend fun …(): Response<T>`. Bodies without
+ * a DTO (ResponseBody, Unit) Retrofit reads itself; nobody checks those.
  */
 private fun antworttyp(methode: Method): Type? {
     var typ = (methode.genericParameterTypes.lastOrNull() as? ParameterizedType)?.actualTypeArguments?.singleOrNull()
@@ -360,12 +360,12 @@ private fun antworttyp(methode: Method): Type? {
 }
 
 /**
- * Antworten in fester Reihenfolge wie bei MockWebServer.enqueue, aber im Takt: kein
- * Netzfaden, jede Antwort wird gegen das DTO gelesen. Für Abläufe, die an der
- * Reihenfolge der Abrufe hängen statt am Pfad.
+ * Responses in a fixed order like MockWebServer.enqueue, but held back: no
+ * network thread, every response is read against the DTO. For flows that depend on the
+ * order of fetches rather than on the path.
  */
 class RowsServer {
-    /** Eine gestellte Anfrage, wie RecordedRequest sie zeigte. */
+    /** A posed request, as RecordedRequest showed it. */
     class Anfrage(val method: String, val path: String, val body: Buffer)
 
     private val paths = PfadServer()

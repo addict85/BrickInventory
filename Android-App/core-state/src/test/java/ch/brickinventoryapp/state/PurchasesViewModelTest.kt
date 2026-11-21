@@ -31,31 +31,31 @@ import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.testing.text
 
 /**
- * Das Käufe-ViewModel (Sets, manuelle Teile und Figuren), ausgeführt gegen
- * einen PfadServer ohne Netz.
+ * The purchases ViewModel (sets, manual parts and figures), run against
+ * a PfadServer without a network.
  *
- * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen KaeufeViewModel.kt):
- *   A  in setChanged() die Zusammenfassung nicht übernommen (immer den ganzen Bestand
- *      holen) → rot „ein geänderter Kauf eines Sets schreibt seine Zusammenfassung …“
- *   B  bei einer abgelehnten Datumsänderung nicht neu laden → rot „eine
+ * Counter-checks (measured 28.10.2026, kotlinc against KaeufeViewModel.kt):
+ *   A  in setChanged() the summary not taken over (always fetches the whole inventory
+ *      instead) → red „ein geänderter Kauf eines Sets schreibt seine Zusammenfassung …“
+ *   B  on a rejected date change, doesn't reload → red „eine
  *      abgelehnte Datumsänderung lädt die Liste neu“
- *   C  im Besitzerwechsel die Zahlen der Antwort durch 0 ersetzt, oder das Nachziehen
- *      der Ablage entfernt → rot „ein Besitzerwechsel meldet die mitgewanderten Teile …“
- *   D  in lade() den Verlauf eines anderen Eintrags stehen gelassen → rot
+ *   C  on an owner change, the response's numbers replaced with 0, or dropped the catching-up
+ *      of the store → red „ein Besitzerwechsel meldet die mitgewanderten Teile …“
+ *   D  in lade() left another entry's history standing → red
  *      „the price history of another entry does not stay“
- *   E  in changeForPiece() `purchasePrice = preis` statt
- *      `unitPrice = preis` → rot „ein Set schickt purchase_price, Teile und
- *      Figuren unit_price“ (Teil)
- *   F  in HouseholdRepository.updateAcquisition() changeForPiece statt changeForSet →
- *      rot an derselben Stelle (Set)
- *   G  in updateManualAcquisition() den Rumpf von Hand gebaut,
- *      `UpdateAcquisitionRequest(purchasePrice = unitPrice, …)` → rot an
- *      derselben Stelle (Teil)
- *   H  in loadManualPriceHistory() immer getPartPriceHistory
- *      (gegenproben/kaeufe-verlauf-nur-teile.patch) → rot „der Preisverlauf kommt für
- *      Teile und Figuren …“ (Figur ohne Verlauf; nur in der CI messbar)
- *   kaeufe-laden-nicht-beim-zeigen  (gegenproben/) purchasesOf ohne Abruf beim ersten Beobachter
- *      → rot „die Kaeufe eines Eintrags laden, sobald …“
+ *   E  in changeForPiece() `purchasePrice = preis` instead of
+ *      `unitPrice = preis` → red „ein Set schickt purchase_price, Teile und
+ *      Figuren unit_price“ (part)
+ *   F  in HouseholdRepository.updateAcquisition() changeForPiece instead of changeForSet →
+ *      red at the same spot (set)
+ *   G  in updateManualAcquisition() the body built by hand,
+ *      `UpdateAcquisitionRequest(purchasePrice = unitPrice, …)` → red at
+ *      the same spot (part)
+ *   H  in loadManualPriceHistory() always getPartPriceHistory
+ *      (gegenproben/kaeufe-verlauf-nur-teile.patch) → red „der Preisverlauf kommt für
+ *      Teile und Figuren …“ (figure without history; only measurable in CI)
+ *   kaeufe-laden-nicht-beim-zeigen  (gegenproben/) purchasesOf without a fetch on the first observer
+ *      → red „die Kaeufe eines Eintrags laden, sobald …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PurchasesViewModelTest {
@@ -137,27 +137,27 @@ class PurchasesViewModelTest {
         }
         assertTrue("Antwort", ergebnis != null)
         assertEquals(Triple(null, 12, 2), ergebnis)
-        // Mitgewandert: Den Stand aller drei Listen holt die Ablage vom Server.
+        // Moved along: the store fetches the state of all three lists from the server.
         for (pfad in listOf("GET /api/v1/sets?", "GET /api/v1/parts?", "GET /api/v1/minifigs?")) {
             assertTrue(pfad, paths.requestsAn(pfad).isNotEmpty())
         }
         assertTrue(paths.requestsAn("PUT /api/v1/sets/75192-1/acquisitions/7").isNotEmpty())
     }
 
-    /** Der Rumpf der ersten Anfrage, deren Zeile [anfrage] enthält. */
+    /** The body of the first request, whose row contains [anfrage]. */
     private fun rumpf(anfrage: String): String {
         val i = paths.requests.indexOfFirst { anfrage in it }
         assertTrue(anfrage, i >= 0)
         return paths.koerper[i]
     }
 
-    /** BrickJson schreibt null mit; „gesetzt“ heisst: das Feld trägt eine Zahl. */
+    /** BrickJson also serializes null; „set“ means: the field carries a number. */
     private fun gesetzt(feld: String, json: String) = Regex("\"$feld\":[0-9]").containsMatchIn(json)
 
     @Test
     fun `a set sends purchase_price, parts and figures unit_price`() {
-        // Der Server liest das Preisfeld unter dem Namen seiner Spalte; unter
-        // dem falschen Namen lässt er den Preis still stehen.
+        // The server reads the price field under the name of its column; under
+        // the wrong name, it leaves the price silently unchanged.
         val vm = vm()
         vm.updateAcquisition("75192-1", 7, purchasePrice = 499.0)
         val set = rumpf("PUT /api/v1/sets/75192-1/acquisitions/7")
@@ -177,8 +177,8 @@ class PurchasesViewModelTest {
         val vm = vm()
         vm.loadManualAcquisitions(Postenart.PART, "3001", 5)
         assertTrue("Verlauf geladen", vm.manDetailState.value.priceHistory != null)
-        // 3002 hat keinen Verlauf auf dem Testserver: Er bleibt leer, statt den
-        // von 3001 weiter zu zeigen.
+        // 3002 has no history on the test server: it stays empty, instead of
+        // keeping on showing 3001's.
         vm.loadManualAcquisitions(Postenart.PART, "3002", 5)
         assertTrue("Liste von 3002", vm.manDetailState.value.itemId == "3002" && !vm.manDetailState.value.purchasesFetch.laedt && !vm.manDetailState.value.historyFetch.laedt)
         assertNull(vm.manDetailState.value.priceHistory)

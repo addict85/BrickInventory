@@ -11,8 +11,8 @@ import androidx.compose.ui.window.DialogWindowProvider
 import ch.brickinventoryapp.resources.R
 
 /**
- * Berührungen verwerfen, solange ein fremdes Fenster darüber liegt (Tapjacking; ab Android 12
- * blockiert das System selbst, betroffen ist Android 11).
+ * Discards touches as long as a foreign window sits on top (tapjacking; from Android 12
+ * the system blocks this itself, Android 11 is affected).
  */
 @Composable
 fun Ueberdeckungsschutz() {
@@ -39,11 +39,11 @@ private fun activityWindow(context: android.content.Context): Window? =
         .filterIsInstance<android.app.Activity>().firstOrNull()?.window
 
 /**
- * filterTouchesWhenObscured greift nur, wenn das fremde Fenster genau über dem
- * Tipp liegt. Liegt es daneben (FLAG_WINDOW_IS_PARTIALLY_OBSCURED),
- * kann es Text verdecken oder vortäuschen, während der Tipp durchgeht — darum
- * wird er hier vor dem ganzen Fenster verworfen. Ein laufender Zug endet mit
- * ACTION_CANCEL, damit kein Knopf gedrückt stehen bleibt.
+ * filterTouchesWhenObscured only applies when the foreign window sits exactly over the
+ * tap. If it sits next to it (FLAG_WINDOW_IS_PARTIALLY_OBSCURED),
+ * it can cover or fake text while the tap goes through — that's why
+ * it's discarded here for the whole window. An ongoing gesture ends with
+ * ACTION_CANCEL, so no button stays stuck down.
  */
 internal class PartialHiddenFilter(val alt: Window.Callback) : Window.Callback by alt {
 
@@ -57,7 +57,7 @@ internal class PartialHiddenFilter(val alt: Window.Callback) : Window.Callback b
         return true
     }
 
-    // Standardmethoden der Schnittstelle reicht `by` nicht weiter.
+    // `by` doesn't forward the interface's default methods.
     override fun onProvideKeyboardShortcuts(data: MutableList<KeyboardShortcutGroup>?, menu: Menu?, deviceId: Int) =
         alt.onProvideKeyboardShortcuts(data, menu, deviceId)
 

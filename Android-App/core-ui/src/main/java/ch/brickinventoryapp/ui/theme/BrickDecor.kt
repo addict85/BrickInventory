@@ -15,11 +15,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Der Lichtabfall einer lackierten Fläche — Licht oben, Schatten unten, dieselben
- * Haltepunkte wie in themes/hochglanz.css. Der Lichtsaum ist schmal (0.34 auf 30
- * %), damit er auf dem Telefon die Deckelfarbe nicht wegfrisst; sie ist der Takt
- * des Designs. Zahlen statt design-tokens.json, weil ein Verlauf aus Weiss- und
- * Schwarzanteilen keine Farbe ist, sondern über jeder Grundfarbe liegt.
+ * The light falloff of a glossy surface — light at the top, shadow at the bottom, the same
+ * stops as in themes/hochglanz.css. The light rim is narrow (0.34 at 30%),
+ * so it doesn't eat away the lid color on the phone; that color is the theme's
+ * defining beat. Numbers instead of design-tokens.json, because a gradient of white and
+ * black proportions is not a color, but sits on top of every base color.
  */
 val LackHistory = Brush.verticalGradient(
     0.00f to Color.White.copy(alpha = 0.34f),
@@ -29,15 +29,15 @@ val LackHistory = Brush.verticalGradient(
 )
 
 /**
- * Die Form einer Noppe: unten bündig am Deckel, oben rund — dieselbe wie
- * `--studs-form` in styles.css, an einer Stelle.
+ * The shape of a stud: flush at the bottom with the lid, round at the
+ * top — the same as `--studs-form` in styles.css, in one place.
  */
 val StudsForm = RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
 
 /**
- * Der Lichtabfall auf der Steinkante, dieselben Haltepunkte wie `.sc::before` in
- * themes/brick.css. Schwächer als LackHistory, weil das Stein-Design mattes
- * Plastik ist; ohne ihn wäre die Kante eine Fläche.
+ * The light falloff on the brick edge, the same stops as `.sc::before` in
+ * themes/brick.css. Weaker than LackHistory, because the brick theme is matte
+ * plastic; without it the edge would be flat.
  */
 val BrickEdgesHistory = Brush.verticalGradient(
     0.00f to Color.White.copy(alpha = 0.20f),
@@ -46,60 +46,60 @@ val BrickEdgesHistory = Brush.verticalGradient(
 )
 
 /**
- * Die Masse einer Noppenreihe — dieselben Zahlen wie im CSS, als ein Satz: Die
- * Designs unterscheiden sich genau darin, und verteilt über mehrere Aufrufstellen
- * zöge beim Nachbessern eine nicht mit.
+ * The dimensions of a row of studs — the same numbers as in the CSS, as one record: the
+ * themes differ exactly there, and spread across several call sites, a
+ * fix wouldn't carry over to all of them.
  */
 data class StudsMass(
-    /** Hoehe der Kante insgesamt — `height` der ::before-Regel im CSS. */
+    /** Height of the edge as a whole — `height` of the ::before rule in the CSS. */
     val edgeHeight: Dp,
-    /** Abstand von Noppenmitte zu Noppenmitte — `mask-size` im CSS. */
+    /** Distance from stud center to stud center — `mask-size` in the CSS. */
     val takt: Dp,
     val breite: Dp,
     val hoehe: Dp,
-    /** Einzug links und rechts — `left`/`right` im CSS. */
+    /** Inset left and right — `left`/`right` in the CSS. */
     val edge: Dp,
     /**
-     * Abstand von der Oberkante der Kante — `top` im CSS. Negativ heisst: Die Noppen
-     * stehen über wie an einem echten Stein; dann wird die Reihe ausserhalb der Karte
-     * gezeichnet (StudsSeries).
+     * Distance from the top edge of the border — `top` in the CSS. Negative means: the studs
+     * stick out as on a real brick; then the row is drawn outside the card
+     * (StudsSeries).
      */
     val oben: Dp,
-    /** Füllt die Reihe die ganze Breite? Sonst gelten `anzahl` Stück. */
+    /** Does the row fill the whole width? Otherwise `anzahl` pieces apply. */
     val filling: Boolean,
     val anzahl: Int = 4,
 ) {
-    /** Steht die Reihe über der Kante? Dann gehört sie nicht in die Karte. */
+    /** Does the row stick out past the edge? Then it doesn't belong inside the card. */
     val overhanging: Boolean get() = oben < 0.dp
 
     companion object {
-        /** themes/brick.css: eine Reihe über die ganze Kante, Takt 17. */
+        /** themes/brick.css: one row across the whole edge, beat 17. */
         val Stein = StudsMass(edgeHeight = 22.dp, takt = 17.dp, breite = 10.dp,
                                hoehe = 6.dp, edge = 10.dp, oben = (-6).dp, filling = true)
 
-        /** themes/noppe.css: vier Noppen auf dem Deckel, Takt 22. */
+        /** themes/noppe.css: four studs on the lid, beat 22. */
         val Deckel = StudsMass(edgeHeight = 16.dp, takt = 22.dp, breite = 14.dp,
                                 hoehe = 7.dp, edge = 12.dp, oben = 6.dp, filling = false, anzahl = 4)
     }
 }
 
 /**
- * Noppen-Deckel für Stein-Karten: eine schmale farbige Leiste mit Noppen; das
- * Karten-Clipping rundet ihn oben ab. Die Noppe ist ein Rechteck mit runder
- * Oberkante wie in themes/noppe.css (13 × 6, Radius 4, Abstand 7). `gloss` wölbt
- * den Deckel — ein Parameter statt eines zweiten Bausteins, weil es derselbe
- * Deckel in anderem Material ist.
+ * Stud lid for brick cards: a narrow colored strip with studs; the
+ * card's clipping rounds it off at the top. A stud is a rectangle with a round
+ * top edge, as in themes/noppe.css (13 × 6, radius 4, spacing 7). `gloss` curves
+ * the lid — a parameter instead of a second building block, because it's the same
+ * lid in a different material.
  */
 @Composable
 fun BrickStudCap(
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.primary,
-    /** Ohne Angabe die Hoehe aus `mass` — dann steht keine Zahl am Aufruf. */
+    /** Without one given, the height from `mass` — then no number sits at the call site. */
     height: Dp? = null,
     gloss: Boolean = false,
     mass: StudsMass = StudsMass.Deckel,
     studsColor: Color? = null,
-    /** Lichtabfall ueber der Grundfarbe — siehe BrickEdgesHistory. */
+    /** Light falloff over the base color — see BrickEdgesHistory. */
     verlauf: Brush? = null,
 ) {
     Box(
@@ -110,9 +110,9 @@ fun BrickStudCap(
             .then(if (verlauf != null) Modifier.background(verlauf) else Modifier)
             .then(if (gloss) Modifier.background(LackHistory) else Modifier)
     ) {
-        // Steht die Reihe ueber der Kante, gehoert sie nicht hierher: Eine
-        // Material-Card klippt auf ihre Form, und die Noppen waeren weg. Die
-        // Aufrufstelle zeichnet sie dann neben der Karte (siehe GalleryScreen).
+        // If the row sticks out past the edge, it doesn't belong here: a
+        // Material Card clips to its shape, and the studs would be gone. The
+        // call site then draws them next to the card (see GalleryScreen).
         if (!mass.overhanging) {
             StudsSeries(
                 mass = mass,
@@ -125,9 +125,9 @@ fun BrickStudCap(
 }
 
 /**
- * Nur die Noppen, ohne Kante: Compose kennt kein `overflow:visible`, und die Card
- * klippt auf ihre Form. Deshalb wird die Reihe neben der Karte gezeichnet und per
- * Offset darübergeschoben.
+ * Only the studs, without the edge: Compose has no `overflow:visible`, and the Card
+ * clips to its shape. So the row is drawn next to the card and
+ * pushed over it with an offset.
  */
 @Composable
 fun StudsSeries(
@@ -137,9 +137,9 @@ fun StudsSeries(
     gloss: Boolean = false,
 ) {
     BoxWithConstraints(modifier.fillMaxWidth().height(mass.hoehe)) {
-        // Wie viele Noppen passen auf die Kante? Im CSS rechnet das
-        // `mask-repeat:repeat-x` von selbst aus; hier braucht es die Breite,
-        // und die gibt es erst beim Messen. Genau dafuer BoxWithConstraints.
+        // How many studs fit on the edge? In the CSS,
+        // `mask-repeat:repeat-x` computes this on its own; here it needs the width,
+        // and that only exists once measured. BoxWithConstraints exists for exactly this.
         val anzahl =
             if (mass.filling) (((maxWidth - mass.edge * 2) / mass.takt).toInt()).coerceAtLeast(1)
             else mass.anzahl
@@ -152,9 +152,9 @@ fun StudsSeries(
                     Modifier
                         .size(width = mass.breite, height = mass.hoehe)
                         .clip(StudsForm)
-                        // Die Kuppe: ein Lichtpunkt oben statt einer gleichmaessig
-                        // hellen Scheibe. Derselbe radiale Verlauf wie
-                        // `radial-gradient(ellipse at 50% 20%, …)` im Web.
+                        // The dome: a highlight at the top instead of an evenly
+                        // bright disc. The same radial gradient as
+                        // `radial-gradient(ellipse at 50% 20%, …)` on the web.
                         .then(
                             if (gloss) Modifier.background(
                                 Brush.radialGradient(
@@ -173,9 +173,9 @@ fun StudsSeries(
 }
 
 /**
- * Der schräge Lichtstreifen — die Spiegelung auf Glas. Nur auf dem Bildfeld und
- * auf farbigen Flächen: Über weissem Text wäre ein weisser Schleier Grau statt
- * Glanz.
+ * The diagonal light streak — the reflection on glass. Only on the image area and
+ * on colored surfaces: over white text, a white overlay would be gray instead of
+ * gloss.
  */
 val LightStrip = Brush.linearGradient(
     0.20f to Color.White.copy(alpha = 0.00f),
@@ -185,8 +185,8 @@ val LightStrip = Brush.linearGradient(
 )
 
 /**
- * Im Dunkeln nur ein Hauch: Ein heller Streifen von 0,85 Deckkraft auf dunklem
- * Bildfeld leuchtete wie ein Scheinwerfer und lag unter Menü und Mengenplakette.
+ * In the dark theme only a hint: a bright streak at 0.85 opacity on a dark
+ * image area glowed like a spotlight and sat beneath the menu and the quantity badge.
  */
 private val LightStripDark = Brush.linearGradient(
     0.20f to Color.White.copy(alpha = 0.00f),
@@ -195,7 +195,7 @@ private val LightStripDark = Brush.linearGradient(
     0.56f to Color.White.copy(alpha = 0.00f),
 )
 
-/** Der Lichtstreifen passend zur Helligkeit der Fläche. */
+/** The light streak matched to the brightness of the surface. */
 @Composable
 fun lightStrip(): Brush =
     if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) LightStripDark else LightStrip

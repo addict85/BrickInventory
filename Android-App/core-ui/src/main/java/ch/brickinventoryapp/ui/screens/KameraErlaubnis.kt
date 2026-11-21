@@ -44,7 +44,7 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 
-/** Ob die Kamera erlaubt ist, und wie man danach fragt (siehe [rememberCameraPermission]). */
+/** Whether the camera is allowed, and how to ask for it (see [rememberCameraPermission]). */
 @Stable
 class KameraErlaubnis(
     private val zustand: State<Boolean>,
@@ -54,22 +54,22 @@ class KameraErlaubnis(
 ) {
     val granted: Boolean get() = zustand.value
 
-    /** Das System zeigt keine Frage mehr; erlauben lässt sich nur noch in den App-Einstellungen. */
+    /** The system no longer shows a prompt; it can only be allowed in the app's own settings now. */
     val permanentDenied: Boolean get() = !zustand.value && gesperrt.value
 
-    /** Die Frage des Systems — auch beim Öffnen des Scanners, darum nie die Einstellungen. */
+    /** The system's prompt — also when opening the scanner, which is why never settings. */
     fun requests() = frage()
 
-    /** Der Knopf im Hinweis: Ist die Frage gesperrt, führt er in die Einstellungen statt ins Leere. */
+    /** The button in the hint: if the prompt is locked out, it leads into settings instead of nowhere. */
     fun erlauben() = if (permanentDenied) einstellungen() else frage()
 }
 
 /**
- * Die Kamera-Erlaubnis über ActivityResult der Plattform; accompanist-permissions
- * wird nicht mehr gepflegt. Bei jeder Rückkehr neu gelesen: Sie kann inzwischen in
- * den Systemeinstellungen erteilt oder entzogen worden sein. Eine Ablehnung ohne
- * Begründungswunsch des Systems heisst „nicht mehr fragen“: Dann kehrt die Frage
- * sofort mit Nein zurück, und nur die Einstellungen helfen weiter.
+ * The camera permission via the platform's ActivityResult; accompanist-permissions
+ * is no longer maintained. Re-read on every return: it may have been
+ * granted or revoked in system settings in the meantime. A denial without the system's
+ * wish for a rationale means „don't ask again“: then the prompt
+ * returns immediately with no, and only settings can help further.
  */
 @Composable
 fun rememberCameraPermission(): KameraErlaubnis {
@@ -94,7 +94,7 @@ fun rememberCameraPermission(): KameraErlaubnis {
 private fun cameraGranted(context: Context): Boolean =
     ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
 
-/** Die Seite dieser App in den Systemeinstellungen; fehlt sie (eigenwillige Geräte), geschieht nichts. */
+/** This app's page in system settings; if it's missing (quirky devices), nothing happens. */
 private fun openAppSettings(context: Context) {
     runCatching {
         context.startActivity(
@@ -105,15 +105,15 @@ private fun openAppSettings(context: Context) {
 }
 
 /**
- * „Die Kamera wird gebraucht“ — der Rückfall, wenn die Erlaubnis fehlt; gemeinsam
- * für Barcodescanner und SetupScreen. Weisse Schrift vor dem schwarzen Kamerabild.
- * Er sagt, wozu die Kamera dient, und bietet den Weg ohne sie: Wer nicht erlauben
- * will, soll nicht in einer Sackgasse stehen.
+ * „The camera is needed“ — the fallback when permission is missing; shared
+ * by the barcode scanner and SetupScreen. White text on the black camera image.
+ * It says what the camera is for, and offers the path without it: whoever doesn't
+ * want to allow it shouldn't be stuck in a dead end.
  *
- * @param zweck wozu die Kamera dient (Barcode, QR-Code)
- * @param eintippen Beschriftung des Wegs ohne Kamera, [typeInOn] geht ihn
- * @param verweigert [KameraErlaubnis.permanentDenied]: Dann sagt der Hinweis, wo man
- *        erlaubt, sonst wirkte „Erlauben“ wie ein toter Knopf.
+ * @param zweck what the camera is for (barcode, QR code)
+ * @param eintippen label for the path without the camera, [typeInOn] follows it
+ * @param verweigert [KameraErlaubnis.permanentDenied]: then the hint says where to
+ *        allow it, otherwise „Allow“ would look like a dead button.
  * @param onAllow [KameraErlaubnis.erlauben]
  */
 @Composable
@@ -147,10 +147,10 @@ fun CameraPermissionHint(
 }
 
 /**
- * Die Überlagerung über dem Kamerabild: Rahmen in der Mitte, darunter ein dunkles Schild mit
- * dem Hinweistext — eine Gestaltung für Barcode-Scanner und QR-Aufbau (Gewichtung 0.2 / 0.8,
- * damit der Rahmen etwas über der Mitte sitzt; Schwarz mit 72 % Deckung, Formen.kachel,
- * weisse Schrift in 13 sp).
+ * The overlay over the camera image: a frame in the middle, below it a dark banner with
+ * the hint text — one design for barcode scanner and QR setup (weight 0.2 / 0.8,
+ * so the frame sits slightly above center; black at 72% opacity, Formen.kachel,
+ * white text at 13 sp).
  */
 @Composable
 fun CameraOverlay(

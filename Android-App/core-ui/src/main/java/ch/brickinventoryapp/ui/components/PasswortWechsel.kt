@@ -17,10 +17,10 @@ import ch.brickinventoryapp.model.util.PASSWORD_MIN_CHARS
 import ch.brickinventoryapp.model.util.passwordToShort
 import ch.brickinventoryapp.resources.R
 
-/** Ein Feld des Passwortwechsels, das vor dem Absenden nicht stimmt. */
+/** A field of the password change that isn't valid before submitting. */
 enum class PasswordFieldError { AKTUELL, NEU, WIEDERHOLUNG }
 
-/** Was vor dem Absenden nicht stimmt, in der Reihenfolge der Felder. */
+/** What isn't valid before submitting, in the order of the fields. */
 fun passwordSwitchError(aktuell: String, neu: String, wiederholt: String): List<PasswordFieldError> = buildList {
     if (aktuell.isBlank()) add(PasswordFieldError.AKTUELL)
     if (passwordToShort(neu)) add(PasswordFieldError.NEU)
@@ -28,9 +28,9 @@ fun passwordSwitchError(aktuell: String, neu: String, wiederholt: String): List<
 }
 
 /**
- * Der Zustand des Absendens: Der Knopf bleibt antippbar und markiert dann jedes falsche
- * Feld, der Cursor geht ins erste davon (wie beim Set-Dialog). Ein gesperrter Knopf liess
- * raten, was fehlt.
+ * The state of submitting: the button stays tappable and then marks every wrong
+ * field, the cursor goes into the first of them (as in the set dialog). A locked button left
+ * you guessing what's missing.
  */
 class PasswordSwitchCheck {
     var geprueft by mutableStateOf(false)
@@ -40,7 +40,7 @@ class PasswordSwitchCheck {
     fun submit(aktuell: String, neu: String, wiederholt: String, weiter: () -> Unit) {
         geprueft = true
         val erstes = passwordSwitchError(aktuell, neu, wiederholt).firstOrNull() ?: return weiter()
-        try { fokus.getValue(erstes).requestFocus() } catch (_: IllegalStateException) { /* nicht angeordnet */ }
+        try { fokus.getValue(erstes).requestFocus() } catch (_: IllegalStateException) { /* not arranged */ }
     }
 
     fun reset() { geprueft = false }
@@ -49,7 +49,7 @@ class PasswordSwitchCheck {
 @Composable
 fun rememberPasswordSwitchCheck(): PasswordSwitchCheck = remember { PasswordSwitchCheck() }
 
-/** Aktuelles, neues und wiederholtes Passwort, mit den Fehlern aus [check]. */
+/** Current, new and repeated password, with the errors from [check]. */
 @Composable
 fun PasswordSwitchFields(
     aktuell: String,
@@ -63,7 +63,7 @@ fun PasswordSwitchFields(
 ) {
     val fehler = if (check.geprueft) passwordSwitchError(aktuell, neu, wiederholt) else emptyList()
     val currentMissing = PasswordFieldError.AKTUELL in fehler
-    // Zu kurz und verschieden zeigen sich schon beim Tippen, leer erst nach dem Absenden.
+    // Too short and different show up while typing already, empty only after submitting.
     val newWrong = PasswordFieldError.NEU in fehler || (neu.isNotEmpty() && passwordToShort(neu))
     val verschieden = PasswordFieldError.WIEDERHOLUNG in fehler || (wiederholt.isNotEmpty() && wiederholt != neu)
     PasswordField(aktuell, onCurrent, stringResource(R.string.konto_password_current),

@@ -13,17 +13,17 @@ import ch.brickinventoryapp.model.util.fmtDatum
 import ch.brickinventoryapp.ui.util.withCurrencyGap
 
 /*
- * Achsenbeschriftung der Wertentwicklung in der Sprache der App. Der Server
- * wählt, WELCHE Punkte beschriftet werden, schreibt den Text aber fest in
- * Schweizer Form („03.10“, „CHF 1'234“); aus dem ISO-Tag derselben Antwort
- * (chart.x) entsteht hier „03.10.“ bzw. „03/10“ — dieselbe Form wie jedes andere
- * Datum der App (fmtDatum), nur ohne Jahr.
+ * Axis labels of the value chart in the app's language. The server
+ * chooses WHICH points get a label, but writes the text fixed in
+ * Swiss form („03.10“, „CHF 1'234“); from the ISO day of the same response
+ * (chart.x) this produces „03.10.“ resp. „03/10“ here — the same form as every other
+ * date in the app (fmtDatum), just without the year.
  */
 
-/** Monatsauflösung erkennt man an der Form „MM/YY“, die der Server dann schreibt. */
+/** Monthly resolution is recognized by the form „MM/YY“, which the server then writes. */
 private val MONTHLY = Regex("""\d{2}/\d{2}""")
 
-/** Kurzes Datum für die x-Achse, oder null, wenn [iso] kein Tag ist. */
+/** Short date for the x-axis, or null if [iso] is not a day. */
 fun axesDate(iso: String, monthly: Boolean, locale: Locale): String? {
     val tag = runCatching { LocalDate.parse(iso.take(10)) }.getOrNull() ?: return null
     if (!monthly) return fmtDatum(iso, locale, DateYear.OHNE)
@@ -31,8 +31,8 @@ fun axesDate(iso: String, monthly: Boolean, locale: Locale): String? {
 }
 
 /**
- * Ersetzt die Beschriftung jedes beschrifteten Punkts durch das lokale Datum.
- * Passen [days] nicht Punkt für Punkt, bleibt der Text des Servers stehen.
+ * Replaces the label of every labeled point with the local date.
+ * If [days] doesn't match point for point, the server's text stays as it is.
  */
 fun localAxis(punkte: List<DiagrammPunkt>, days: List<String>, locale: Locale): List<DiagrammPunkt> {
     if (days.size != punkte.size) return punkte
@@ -43,9 +43,9 @@ fun localAxis(punkte: List<DiagrammPunkt>, days: List<String>, locale: Locale): 
 }
 
 /**
- * y-Achse als ganze Beträge in der Währung der Antwort, Tausender nach [locale].
- * [compact] für grosse Schrift: „1,7k“ ohne Währung — ausgeschrieben nahm die Achse
- * bei 200 % ein Drittel der Diagrammbreite; der Betrag steht in der Kopfkarte darüber.
+ * y-axis as whole amounts in the response's currency, thousands per [locale].
+ * [compact] for large text: „1,7k“ without a currency — written out, the axis
+ * took up a third of the chart width at 200%; the amount sits in the header card above it.
  */
 fun localValues(axis: List<ChartAxis>, waehrung: Waehrung, locale: Locale, compact: Boolean = false): List<ChartAxis> {
     if (compact) return axis.map { it.copy(label = compactAmount(it.wert.asDouble(), locale)) }
@@ -59,7 +59,7 @@ fun localValues(axis: List<ChartAxis>, waehrung: Waehrung, locale: Locale, compa
     return axis.map { it.copy(label = withCurrencyGap(nf.format(it.wert.asBigDecimal()))) }
 }
 
-/** Ein Betrag in höchstens vier Zeichen und Einheit: 850, 1,7k, 12k, 1,2M. */
+/** An amount in at most four characters plus unit: 850, 1,7k, 12k, 1,2M. */
 fun compactAmount(wert: Double, locale: Locale): String {
     val nf = NumberFormat.getNumberInstance(locale).apply { maximumFractionDigits = 1; minimumFractionDigits = 0 }
     val betrag = kotlin.math.abs(wert)

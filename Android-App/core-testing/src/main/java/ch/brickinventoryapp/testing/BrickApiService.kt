@@ -11,9 +11,9 @@ import ch.brickinventoryapp.data.api.PartsApi
 import ch.brickinventoryapp.data.api.ManagementApi
 
 /**
- * Alle Bereiche zusammen, nur für Tests: Ein Testserver baut damit jedes
- * Repository. Die App injiziert je Bereich eine Schnittstelle (NetzModule), damit
- * kein Repository mehr sieht als seinen Bereich.
+ * All scopes together, for tests only: a test server builds every
+ * repository with it. The app injects an interface per scope (NetzModule), so
+ * no repository sees more than its own scope.
  */
 interface BrickApiService : AccountApi, ManagementApi, CatalogApi, SetsApi, PartsApi, MinifigsApi,
     HouseholdApi, FinancesApi, VouchersApi
