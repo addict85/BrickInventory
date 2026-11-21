@@ -11,7 +11,7 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 
-/** Im Modul der Dienste, weil core-data deren Klassen nicht kennt; die Schnittstelle AlarmPlanner bleibt dort. */
+/** In the services module, because core-data doesn't know its classes; the AlarmPlanner interface stays there. */
 @Module
 @InstallIn(SingletonComponent::class)
 internal abstract class ServicesModule {

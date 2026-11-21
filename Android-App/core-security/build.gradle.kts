@@ -1,7 +1,7 @@
-// Was Geheimnisse schützt: Token-Tresor im Keystore, Ablageschlüssel und
-// verschlüsselte Ablagen, das TLS-Vertrauen zum eigenen Server, geheime
-// Zwischenablage, Passwort- und Passkey-Regeln. Kennt weder Repositories noch
-// Room: core-offline und core-data bauen darauf auf, nie umgekehrt (ModulgrenzenTest).
+// What protects secrets: the token vault in the Keystore, store keys and
+// encrypted stores, TLS trust towards the app's own server, secret
+// clipboard, password and passkey rules. Knows neither repositories nor
+// Room: core-offline and core-data build on it, never the other way round (ModulgrenzenTest).
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.unittests)
@@ -14,7 +14,7 @@ android {
 
 dependencies {
     implementation(project(":core-model"))
-    // Protokoll: Warnungen des Tresors nur im Debug-Build.
+    // Logging: vault warnings only in the debug build.
     implementation(project(":core-network"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)

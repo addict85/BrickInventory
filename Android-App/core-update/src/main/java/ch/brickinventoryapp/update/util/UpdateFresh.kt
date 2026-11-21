@@ -1,47 +1,48 @@
 package ch.brickinventoryapp.update.util
 
 /**
- * Was die App aus früheren Prüfungen weiss: der höchste gesehene versionCode und
- * der späteste Ausstellungszeitpunkt (Sekunden seit 1970, UTC) einer aktuellen
- * Beschreibung.
+ * What the app knows from earlier checks: the highest versionCode seen and
+ * the latest issue time (seconds since 1970, UTC) of a current
+ * description.
  */
 data class UpdateStatus(val highestCode: Int, val ausgestellt: Long)
 
-/** Wo der [UpdateStatus] liegt: im Gerät der DataStore (UpdateStore), im Test eine Variable. */
+/** Where [UpdateStatus] lives: on the device the DataStore (UpdateStore), in a test a variable. */
 interface UpdateStatusStore {
     suspend fun updateStatus(): UpdateStatus?
     suspend fun rememberUpdateStatus(stand: UpdateStatus)
 
-    /** Beim Start still bei GitHub nachsehen? Je Gerät, Vorgabe an; GitHub sieht dabei die IP. */
+    /** Check silently with GitHub on start? Per device, default on; GitHub sees the IP while doing so. */
     fun startpruefungAn(): Boolean = true
     fun setStartpruefung(an: Boolean) = Unit
 }
 
-/** Wie frisch eine signierte Beschreibung ist ([valueFresh]). */
+/** How fresh a signed description is ([valueFresh]). */
 enum class UpdateFresh {
     AKTUELL,
-    /** Ohne Frist oder nach `gueltigBis`: Seither hat niemand neu signiert. */
+    /** Without a deadline, or past `gueltigBis`: no one has signed again since. */
     ABGELAUFEN,
-    /** Älter als eine schon gesehene Beschreibung oder als die installierte Fassung. */
+    /** Older than an already-seen description or than the installed version. */
     ZURUECKGESETZT,
 }
 
-/** Gibt es etwas zu melden? Vor der ersten Prüfung (null) nicht. */
+/** Is there anything to report? Not before the first check (null). */
 fun sourceStale(frische: UpdateFresh?): Boolean = frische != null && frische != UpdateFresh.AKTUELL
 
 /**
- * Eine zurückgesetzte Beschreibung bietet nichts an, sie hielte auf einer verwundbaren
- * Zwischenfassung fest. Eine abgelaufene schon: Sie ist echt signiert und neuer als alles
- * Bekannte; ohne Angebot bliebe das Gerät nach sieben Tagen ohne Etikett auf der alten
- * Fassung stehen. Den Hinweis, dass es Neueres geben könnte, gibt [sourceStale].
+ * A rolled-back description offers nothing; it would hold on a vulnerable
+ * intermediate version. An expired one does: it is genuinely signed and newer than
+ * anything known; with no offer, the device would, after seven days, remain stuck on
+ * the old version with no label. [sourceStale] gives the hint that something newer might exist.
  */
 fun offerableVersion(b: UpdateBeschreibung, frische: UpdateFresh, laufend: Int): UpdateBeschreibung? =
     b.takeIf { frische != UpdateFresh.ZURUECKGESETZT && isNew(laufend, it.versionCode) }
 
 /**
- * Eine echt signierte, aber alte Beschreibung hält Updates still zurück: Ihre
- * Signatur gilt, sie meldet nur nichts Neues. Darum zählt neben der Signatur die
- * Frist, und keine Beschreibung darf hinter das zurückfallen, was die App schon kennt.
+ * A genuinely signed but old description silently withholds updates: its
+ * signature is valid, it just doesn't report anything new. That's why, besides the
+ * signature, the deadline counts, and no description may fall behind what the app
+ * already knows.
  */
 internal fun valueFresh(b: UpdateBeschreibung, gesehen: UpdateStatus?, laufend: Int, nowSec: Long): UpdateFresh = when {
     b.versionCode < laufend -> UpdateFresh.ZURUECKGESETZT
@@ -52,8 +53,8 @@ internal fun valueFresh(b: UpdateBeschreibung, gesehen: UpdateStatus?, laufend: 
 }
 
 /**
- * Bewertet [b] und schreibt den Stand nur nach einer aktuellen Beschreibung fort:
- * Eine abgelaufene oder ältere darf die Messlatte nicht verschieben.
+ * Evaluates [b] and only advances the stored state after a current description:
+ * an expired or older one must not move the benchmark.
  */
 suspend fun checkFresh(ablage: UpdateStatusStore, b: UpdateBeschreibung, laufend: Int, nowSec: Long): UpdateFresh {
     val gesehen = ablage.updateStatus()

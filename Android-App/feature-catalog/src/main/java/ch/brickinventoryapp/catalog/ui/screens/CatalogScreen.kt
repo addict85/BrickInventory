@@ -43,9 +43,9 @@ import ch.brickinventoryapp.ui.components.ReadableColumns
 import ch.brickinventoryapp.ui.components.withFont
 
 /**
- * Katalog-Screen: gesamter Rebrickable-Set-Katalog, serverseitig paginiert.
- * Aufbau analog GalleryScreen (Suche oben, Filter-Chips, Grid) — Filter
- * laufen aber serverseitig, das Grid lädt beim Scrollen seitenweise nach.
+ * Catalog screen: the whole Rebrickable set catalog, paginated server-side.
+ * Built like GalleryScreen (search on top, filter chips, grid) — but filters
+ * run server-side, the grid fetches pages as it scrolls.
  */
 @Composable
 internal fun CatalogRoute(
@@ -66,35 +66,35 @@ fun CatalogScreen(
     serverUrl: String,
     katalog: KatalogAktionen,
     imageLoader: ImageLoader,
-    /** Klick auf ein Set — nur der Graph kennt den NavController. */
+    /** Clicking a set — only the graph knows the NavController. */
     onSetClick: (String) -> Unit,
-    /** Die eine Quelle der Rollstelle, dieselbe wie bei den anderen Reitern. */
+    /** The one source of the scroll position, the same as for the other tabs. */
     rollgedaechtnis: ScrollMemory = remember { ScrollMemory() },
 ) {
     val onQueryChange: (String) -> Unit = { q -> katalog.setCatalogQuery(q) }
     val onThemeChange: (Int?) -> Unit = { t -> katalog.setCatalogTheme(t) }
     val onYearChange: (Int?) -> Unit = { y -> katalog.setCatalogYear(y) }
     val onSortChange: (Katalogsortierung) -> Unit = { srt -> katalog.setCatalogSort(srt) }
-    /** Das sichtbare Fenster melden; das ViewModel lädt, sobald die Liste ruht. */
+    /** Report the visible window; the ViewModel loads once the list is still. */
     val onVisible: (Int, Int) -> Unit = { von, bis -> katalog.catalogVisible(von, bis) }
-    /** Die Leiste rechts rollt die Liste an eine Stelle — ohne zu filtern. */
+    /** The bar on the right scrolls the list to a spot — without filtering. */
     val onScrollTo: (Int) -> Unit = { nummer -> katalog.scrollCatalogTo(nummer) }
-    /** Meldet, dass der Sprung ausgeführt wurde. */
+    /** Reports that the jump was carried out. */
     val onScrollConsumed: () -> Unit = { katalog.catalogScrollConsumed() }
     val onRefresh: () -> Unit = { katalog.loadCatalogMeta(); katalog.loadCatalogSets() }
 
-    // Als State-Objekte statt per `by`: CatalogFilterRow() setzt sie und braucht
-    // dasselbe Objekt, keine Kopie.
+    // As state objects instead of via `by`: CatalogFilterRow() sets them and needs
+    // the same object, not a copy.
     val showThemeSheet = remember { mutableStateOf(false) }
     val showYearSheet  = remember { mutableStateOf(false) }
 
-    // Ein Zustand je Besuch; die Stelle hält der ScrollMemory. Die Plätze zählen über
-    // `total`, deshalb ist die Liste bereit, sobald die Länge da ist.
+    // One state per visit; ScrollMemory holds the position. The slots count via
+    // `total`, so the list is ready as soon as the length is there.
     val gridState = remember { LazyGridState() }
     ScrollPositionKeeper(KatalogZiel.Catalog.rollSchluessel, gridState, bereit = state.total > 0, speicher = rollgedaechtnis)
 
-    // Die Liste führt alle `total` Plätze; geladen wird die Seite eines sichtbar gewordenen
-    // Platzes, mit einer Seite Vorlauf — so kann die Leiste rechts überallhin springen.
+    // The list keeps all `total` slots; the page of a slot that becomes visible is loaded,
+    // with one page of lead — so the bar on the right can jump anywhere.
     LaunchedEffect(gridState, state.total, state.loadedPages.size) {
         snapshotFlow {
             val sichtbar = gridState.layoutInfo.visibleItemsInfo
@@ -104,15 +104,15 @@ fun CatalogScreen(
         }.collect { (von, bis) -> onVisible(von, bis) }
     }
 
-    // Kein eigener Sprung-Abruf daneben: Beide Wege — Rollen und Leiste — enden im
-    // Sichtfenster-Lader oben, und dessen Ruhe deckt beide ab. Zwei Fassungen
-    // derselben Regel liefen auseinander.
+    // No separate jump fetch next to it: both paths — scrolling and the bar — end in the
+    // viewport loader above, and its quiet period covers both. Two versions
+    // of the same rule drifted apart.
 
-    // Der Griff der Leiste hängt an der Stelle in der Liste wie ein Scrollbalken, wie
-    // in der Webapp: gridState.firstVisibleItemIndex ist die Stelle, das Jahr dazu
-    // liefert die Verteilung (CatalogYearMath).
+    // The bar's handle hangs on the list position like a scrollbar, as
+    // in the web app: gridState.firstVisibleItemIndex is the position, its year comes from
+    // the distribution (CatalogYearMath).
 
-    // Sprungziel des Scrubbers ausführen.
+    // Carry out the scrubber's jump target.
     LaunchedEffect(state.scrollTo) {
         state.scrollTo?.let { ziel ->
             gridState.scrollToItem(ziel.coerceIn(0, (state.total - 1).coerceAtLeast(0)))
@@ -123,7 +123,7 @@ fun CatalogScreen(
     val selectedThemeName = state.themes.firstOrNull { it.id == state.themeId }?.name
         ?.substringAfterLast(" › ")
 
-    // Rechts Platz nur, wenn die Jahres-Leiste dort steht; sonst gleiche Ränder links und rechts.
+    // Space on the right only if the year bar sits there; otherwise the same margins on both sides.
     val withYearsBar = state.sort.afterYear && state.yearDistribution.isNotEmpty()
     val rasterEdge = PaddingValues(start = Abstaende.mittel, top = Abstaende.mittel, bottom = Abstaende.mittel,
         end = if (withYearsBar) TRACK_WIDTH else Abstaende.mittel)
@@ -133,10 +133,10 @@ fun CatalogScreen(
     Column(Modifier.fillMaxSize()) {
         CatalogSearchField(state, onQueryChange, onSortChange)
         CatalogFilterRow(state, selectedThemeName, showThemeSheet, showYearSheet)
-        // Trefferzahl — nicht im Fehlerfall: „0 Sets im Katalog“ stand dort neben dem Fehler.
+        // Hit count — not on error: "0 sets in catalog" used to sit there next to the error.
         if (fehler == null || state.total > 0) Text(
-            // pluralStringResource statt stringResource: „1 Set im Katalog",
-            // nicht „1 Sets".
+            // pluralStringResource instead of stringResource: "1 set in catalog",
+            // not "1 sets".
             pluralStringResource(R.plurals.catalog_result_count, state.total, state.total),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -149,15 +149,15 @@ fun CatalogScreen(
             modifier = Modifier.fillMaxSize()
         ) {
             when {
-                // Dieselben Masse wie das Raster darunter, damit beim Eintreffen nichts springt.
+                // The same dimensions as the grid below it, so nothing jumps on arrival.
                 laedt && state.total == 0 -> SkeletonRaster(
                     ReadableColumns(160.dp), kachelHoehe = 200.dp, innenabstand = rasterEdge,
                 )
-                // Derselbe Fehlerzustand wie Galerie, Teile und Merkliste.
+                // The same error state as gallery, parts and watchlist.
                 fehler != null && state.total == 0 -> StateHint {
                     ErrorHint(fehler.meldung.satz(), onRefresh, fehler.art)
                 }
-                // Mit Suche oder Filter: sagen, woran es liegt, und den Weg zurück anbieten.
+                // With search or filter: say why, and offer a way back.
                 state.total == 0 && gefiltert -> StateHint {
                     NoHitsHint(stringResource(R.string.catalog_no_results))
                     Button(onClick = {
@@ -179,10 +179,10 @@ fun CatalogScreen(
                         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
                         verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
                     ) {
-                        // Ein Platz je Set im ganzen Ergebnis — auch für das,
-                        // was noch nicht geladen ist. Der Schlüssel ist die
-                        // Position, nicht die Setnummer: Ein Platzhalter hat
-                        // noch keine.
+                        // One slot per set across the whole result — including what's
+                        // not yet loaded. The key is the
+                        // position, not the set number: a placeholder has
+                        // none yet.
                         items(count = state.total, key = { it }) { index ->
                             val seite = index / CATALOG_PAGE_SIZE + 1
                             val set = state.loadedPages[seite]?.getOrNull(index % CATALOG_PAGE_SIZE)
@@ -190,11 +190,11 @@ fun CatalogScreen(
                             else CatalogPlaceholderCard()
                         }
                     }
-                    // Die Jahres-Leiste ist Schnell-Scroll, kein Filter: Ziehen rollt die Liste,
-                    // das Etikett zeigt das Jahr der Stelle. Nur bei Sortierung nach Jahr, wie in
-                    // der Webapp — sonst liegen die Jahre verstreut. firstVisibleItemIndex in
-                    // derivedStateOf gelesen, damit der Bildschirm nur bei einer Änderung des
-                    // abgeleiteten Werts neu auswertet (Lint FrequentlyChangingValue).
+                    // The year bar is fast scroll, not a filter: dragging scrolls the list,
+                    // the label shows the position's year. Only when sorted by year, as in
+                    // the web app — otherwise the years are scattered. firstVisibleItemIndex read in
+                    // derivedStateOf, so the screen only re-evaluates on a change of the
+                    // derived value (Lint FrequentlyChangingValue).
                     val visibleNumber by remember(gridState) {
                         derivedStateOf { gridState.firstVisibleItemIndex }
                     }
@@ -203,18 +203,18 @@ fun CatalogScreen(
                             listenNummer = visibleNumber,
                             total = state.total,
                             verteilung = state.yearDistribution,
-                            // Erste Wahl wie in der Webapp: das Jahr der
-                            // Kachel, die an dieser Stelle steht. Genau diese
-                            // Rechnung stand vorher weiter oben im Bildschirm
-                            // und hiess `sichtbaresJahr`.
+                            // First choice as in the web app: the year of the
+                            // tile that sits at this position. This exact
+                            // calculation used to sit further up in the screen
+                            // and was called `sichtbaresJahr`.
                             jahrGeladen = { nummer ->
                                 state.loadedPages[nummer / CATALOG_PAGE_SIZE + 1]
                                     ?.getOrNull(nummer % CATALOG_PAGE_SIZE)?.year
                             },
-                            // Nur ROLLEN, nicht laden: Was an der neuen Stelle
-                            // gebraucht wird, holt der Sichtfenster-Lader —
-                            // entprellt, siehe oben. Ein Abruf an dieser Stelle
-                            // liefe bei JEDEM Beruehrungspunkt.
+                            // Only SCROLL, don't load: what's needed at the new position
+                            // is fetched by the viewport loader —
+                            // debounced, see above. A fetch at this spot
+                            // would run on EVERY touch point.
                             onScrollTo = onScrollTo,
                             modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight()
                         )
@@ -229,11 +229,11 @@ fun CatalogScreen(
     CatalogYearSheet(state, showYearSheet, onYearChange)
 }
 
-/** Eine Zeile der Themen- und Jahreswahl; öffentlich, damit der Barrierefreiheitstest sie zeigen kann. */
+/** A row of the theme and year picker; public so the accessibility test can show it. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThemeRow(label: String, selected: Boolean, onClick: () -> Unit) {
-    // Ein Optionsfeld: TalkBack nennt Rolle und Wahl, das Häkchen allein sah nur, wer sieht.
+    // A radio button: TalkBack names role and choice, the checkmark alone only saw those who could see.
     Surface(
         selected = selected,
         onClick = onClick,
@@ -253,7 +253,7 @@ fun ThemeRow(label: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-/** Beschriftung einer Sortierung; vollständig, damit ein neuer Wert hier auffällt. */
+/** Label for a sort order; spelled out so a new value here stands out. */
 internal fun Katalogsortierung.beschriftung(): String = stringResource(when (this) {
     Katalogsortierung.JAHR_ABSTEIGEND -> R.string.catalog_sort_year_desc
     Katalogsortierung.JAHR_AUFSTEIGEND -> R.string.catalog_sort_year_asc

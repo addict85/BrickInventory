@@ -18,14 +18,14 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Welche Bilder vorgewärmt werden, gegen einen Testserver: die Kacheln aller Reiter der
- * eigenen Sammlung (Sets, Teile, Figuren, manuell erfasste Teile und Figuren), jeweils
- * aus der Quelle des Reiters — mit Kontofilter die Kontosicht — und nichts aus dem
- * Katalog, dessen rund 25'000 Sets die Grenze um ein Vielfaches sprengten.
+ * Which images are warmed up, against a test server: the tiles of all tabs of the
+ * own collection (sets, parts, figures, manually captured parts and figures), each
+ * from the tab's own source — with an account filter, the account view — and nothing from the
+ * catalog, whose roughly 25,000 sets would blow past the limit many times over.
  *
- * Gegenproben (Patches unter gegenproben/):
- *   vorwaermen-ohne-blickfeld  die Teile ohne Kontofilter geholt → rot „vorgewärmt wird …“
- *   vorwaermen-ohne-figuren    die Figuren nicht mehr gesammelt → rot „vorgewärmt wird …“
+ * Counter-checks (patches under gegenproben/):
+ *   vorwaermen-ohne-blickfeld  the parts fetched without the account filter → red „vorgewärmt wird …“
+ *   vorwaermen-ohne-figuren    the figures no longer collected → red „vorgewärmt wird …“
  */
 class CollectionWarmUpTest {
 

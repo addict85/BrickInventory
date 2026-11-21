@@ -9,10 +9,10 @@ import androidx.compose.foundation.selection.selectableGroup
 import ch.brickinventoryapp.ui.components.AuswahlChip
 
 /**
- * Die Abschnitte der Katalogseite: Suchfeld, Filterzeile (Thema, Jahr, Sortierung)
- * und Trefferliste neben dem Raster. Anders als bei SetDetail und Finance
- * gewöhnliche @Composable-Funktionen, weil sie in einer `Column` stehen, nicht in
- * einer LazyColumn.
+ * The catalog page's sections: search field, filter row (theme, year, sort order)
+ * and hit list next to the grid. Unlike SetDetail and Finance,
+ * ordinary @Composable functions, because they sit in a `Column`, not in
+ * a LazyColumn.
  */
 
 import androidx.compose.foundation.layout.*
@@ -41,9 +41,9 @@ import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.components.Suchfeld
 
 /**
- * Filterzeile: Thema und Jahr; sortiert wird über das Menü neben der Suche. Bewusste
- * Ausnahme vom Filterblatt der Sammlung: Der Katalog hat nur diese zwei Filter, beide mit
- * langer, durchsuchbarer Auswahl, und der Chip zeigt den gewählten Wert schon selbst.
+ * Filter row: theme and year; sorting goes through the menu next to search. Deliberate
+ * exception from the collection's filter sheet: the catalog has only these two filters, both with
+ * a long, searchable list, and the chip already shows the chosen value itself.
  */
 @Composable
 internal fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?, showThemeSheet: MutableState<Boolean>, showYearSheet: MutableState<Boolean>) {
@@ -75,11 +75,11 @@ internal fun CatalogFilterRow(state: CatalogUiState, selectedThemeName: String?,
     }
 }
 
-/** Das Suchfeld über der Liste, daneben die Sortierung. */
+/** The search field above the list, sort order next to it. */
 @Composable
 internal fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -> Unit, onSortChange: (Katalogsortierung) -> Unit) {
-    // Suchfeld — derselbe Baustein wie in Galerie, Teilen und Minifiguren
-    // (TabellenZeile.kt), damit der Leeren-Knopf überall gleich heisst.
+    // Search field — the same building block as in gallery, parts and minifigures
+    // (TabellenZeile.kt), so the clear button is named the same everywhere.
     Row(verticalAlignment = Alignment.CenterVertically) {
         Suchfeld(
             wert = state.query,
@@ -97,7 +97,7 @@ internal fun CatalogSearchField(state: CatalogUiState, onQueryChange: (String) -
     }
 }
 
-/** Auswahlblatt für das Jahr. */
+/** Selection sheet for the year. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun CatalogYearSheet(state: CatalogUiState, showYearSheet: MutableState<Boolean>, onYearChange: (Int?) -> Unit) {
@@ -129,7 +129,7 @@ internal fun CatalogYearSheet(state: CatalogUiState, showYearSheet: MutableState
     }
 }
 
-/** Auswahlblatt für das Thema (durchsuchbare Liste). */
+/** Selection sheet for the theme (searchable list). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun CatalogThemeSheet(state: CatalogUiState, showThemeSheet: MutableState<Boolean>, onThemeChange: (Int?) -> Unit) {
@@ -139,8 +139,8 @@ internal fun CatalogThemeSheet(state: CatalogUiState, showThemeSheet: MutableSta
             Column(Modifier.padding(horizontal = Abstaende.gross).padding(bottom = Abstaende.veryLarge)) {
                 Text(stringResource(R.string.catalog_filter_theme), Modifier.semantics { heading() },
                     fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-                // Der gemeinsame Baustein, damit auch dieses Feld einen Leeren-Knopf hat wie alle
-                // anderen Suchfelder.
+                // The shared building block, so this field too has a clear button like every
+                // other search field.
                 Suchfeld(
                     wert = themeFilter,
                     onValue = { themeFilter = it },

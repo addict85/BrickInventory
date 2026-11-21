@@ -40,21 +40,21 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 
 /**
- * Die Jahres-Leiste am rechten Rand, wie in der Webapp. Position ist die Stelle in
- * der Liste, nicht ein linear verteiltes Jahr: Der Katalog stammt überwiegend aus
- * den letzten Jahrzehnten, und das Etikett soll das Jahr zeigen, das an dieser
- * Stelle wirklich liegt (CatalogYearMath.yearAnPosition). Als Row, damit das
- * Etikett über die Kacheln ragen kann, ohne Berührungen abzufangen.
+ * The year bar on the right edge, as in the web app. Position is the spot in
+ * the list, not a linearly distributed year: the catalog comes mostly from
+ * the last few decades, and the label should show the year that's actually at
+ * that spot (CatalogYearMath.yearAnPosition). As a Row, so the
+ * label can stick out over the tiles without catching touches.
  */
 @Composable
 internal fun YearScrubber(
-    /** Stelle in der Liste, an der die Anzeige gerade steht (0 .. total-1). */
+    /** The spot in the list the display is currently at (0 .. total-1). */
     listenNummer: Int,
     total: Int,
     verteilung: List<JahrAnzahlAnsicht>,
-    /** Jahr der Kachel an einer laufenden Nummer — null, wenn nicht geladen. */
+    /** Year of the tile at a running number — null if not loaded. */
     jahrGeladen: (Int) -> Int?,
-    /** Ziehen: zu dieser Stelle rollen. Laeuft waehrend der Bewegung, nicht erst am Ende. */
+    /** Dragging: scroll to this spot. Runs during the movement, not only at the end. */
     onScrollTo: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -64,7 +64,7 @@ internal fun YearScrubber(
     var sprungmenue by rememberSaveable { mutableStateOf(false) }
     val thumbHeightPx = with(LocalDensity.current) { HANDLE_HEIGHT.roundToPx() }
 
-    // Beim Ziehen zeigt der Griff, WOHIN es geht; sonst, WO die Liste steht.
+    // While dragging, the handle shows WHERE it's going; otherwise, WHERE the list is.
     val share = if (dragging) ziehAnteil else CatalogYearMath.anteilAusNummer(listenNummer, total)
     val thumbOffsetY = CatalogYearMath.thumbOffset(share, heightPx, thumbHeightPx)
     val etikett = CatalogYearMath.yearFor(share, total, verteilung, jahrGeladen)
@@ -77,7 +77,7 @@ internal fun YearScrubber(
 
     val jumpName = stringResource(R.string.catalog_jahr_springen)
     Row(modifier) {
-        // Etikett-Spur — nur sichtbar beim Ziehen, faengt keine Beruehrungen.
+        // Label track — only visible while dragging, catches no touches.
         Box(Modifier.fillMaxHeight()) {
             if (dragging && etikett != null) {
                 Surface(
@@ -98,9 +98,9 @@ internal fun YearScrubber(
             }
         }
 
-        // 48 dp Spur wie jede Tippfläche; Ziehen ist nur einer der Wege. TalkBack und
-        // Tastatur öffnen ein Sprungmenü mit den Jahrgängen, weil eine Geste allein für sie
-        // unerreichbar war.
+        // 48 dp track like every tap target; dragging is only one of the paths. TalkBack and
+        // keyboard open a jump menu with the years, because a gesture alone was
+        // unreachable for them.
         Box(
             Modifier
                 .width(TRACK_WIDTH)
@@ -122,8 +122,8 @@ internal fun YearScrubber(
                     )
                 }
                 .pointerInput(total) {
-                    // Neben den Griff getippt: dorthin springen — wie bei einem
-                    // gewoehnlichen Scrollbalken.
+                    // Tapped next to the handle: jump there — as with a
+                    // regular scrollbar.
                     detectTapGestures { offset -> rollen(offset.y) }
                 }
         ) {
@@ -138,7 +138,7 @@ internal fun YearScrubber(
                     .fillMaxHeight()
             ) {}
 
-            // Griff — deckend, damit er sich auf jeder Kachel abhebt; folgt der Liste.
+            // Handle — opaque, so it stands out on every tile; follows the list.
             Surface(
                 color = MaterialTheme.colorScheme.primary,
                 shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp),
@@ -149,7 +149,7 @@ internal fun YearScrubber(
             ) {
                 Box(Modifier.width(HANDLE_WIDTH).height(HANDLE_HEIGHT), Alignment.Center) {
                     if (LocalIsBrickTheme.current) {
-                        // Stein-Design: Griff als Noppe (heller Stud-Punkt)
+                        // Brick design: handle as a stud (lighter stud dot)
                         Surface(
                             color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.55f),
                             shape = androidx.compose.foundation.shape.CircleShape,
@@ -172,7 +172,7 @@ internal fun YearScrubber(
     }
 }
 
-/** Die Jahrgänge der Verteilung zum Antippen; wählbar auch mit TalkBack und Tastatur. */
+/** The distribution's years to tap on; also selectable with TalkBack and keyboard. */
 @Composable
 private fun YearJumpMenu(
     offen: Boolean,
@@ -197,11 +197,11 @@ private fun YearJumpMenu(
     }
 }
 
-/** Eingabe, Leertaste oder die Mitte des Steuerkreuzes öffnen das Sprungmenü. */
+/** Enter, space bar, or the center of the D-pad open the jump menu. */
 private fun KeyEvent.opensMenu(): Boolean =
     type == KeyEventType.KeyUp && (key == Key.Enter || key == Key.Spacebar || key == Key.DirectionCenter)
 
-/** Breite der Tippspur: die Mindestgrösse einer Tippfläche. */
+/** Width of the tap track: the minimum size of a tap target. */
 internal val TRACK_WIDTH = 48.dp
 
 private val HANDLE_WIDTH = 24.dp

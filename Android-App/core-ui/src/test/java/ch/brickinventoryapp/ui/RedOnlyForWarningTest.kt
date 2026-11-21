@@ -9,22 +9,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Rot heisst Verlust oder Fehler. Die Flächen, die einen Wert oder einen Zustand
- * tragen — Hauptfarbe, ihr Container („Neu“-Plakette, Marktwert-Karte im Dunkeln),
- * secondaryContainer (gewählte Chips, Hinweise) und die Marktwert-Kachel —, sind in
- * keinem Design und keiner Fassung rot.
+ * Red means loss or error. The surfaces that carry a value or a state —
+ * main color, its container ("New" badge, market value card in the dark),
+ * secondaryContainer (selected chips, hints) and the market value tile — are
+ * never red in any design or version.
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI):
- *   noppe-container-rot        primaryContainer von Noppe wieder NoppeRotHell
- *                              → rot „value and state surfaces are never red“ (noppe.primaryContainer)
- *   noppe-dunkel-container-rot Noppe im Dunkeln ohne eigenen primaryContainer (wieder #2a1415)
- *                              → rot „value and state surfaces are never red“ (noppe/dunkel.primaryContainer)
+ * Counter-checks (patches under gegenproben/, measured only in CI):
+ *   noppe-container-rot        noppe's primaryContainer back to NoppeRotHell
+ *                              → red „value and state surfaces are never red“ (noppe.primaryContainer)
+ *   noppe-dunkel-container-rot noppe in the dark without its own primaryContainer (back to #2a1415)
+ *                              → red „value and state surfaces are never red“ (noppe/dunkel.primaryContainer)
  */
 class RedOnlyForWarningTest {
 
     private val designs = listOf(Design.CLASSIC, Design.BRICK, Design.WERKBANK, Design.FARBFAECHER, Design.NOPPE, Design.HOCHGLANZ)
 
-    /** Farbton in Grad und Buntheit (max − min der Kanäle); Grau hat keinen Ton. */
+    /** Hue in degrees and chroma (max − min of channels); gray has no hue. */
     private fun toneAndChroma(c: Color): Pair<Float, Float> {
         val r = c.red; val g = c.green; val b = c.blue
         val max = maxOf(r, g, b); val min = minOf(r, g, b); val d = max - min
@@ -37,7 +37,7 @@ class RedOnlyForWarningTest {
         return (if (tone < 0f) tone + 360f else tone) to d
     }
 
-    /** Rot: Ton zwischen 340° und 20° und sichtbar bunt (nicht ein warmes Grau). */
+    /** Red: hue between 340° and 20° and visibly chromatic (not a warm gray). */
     private fun rot(c: Color): Boolean {
         val (tone, chroma) = toneAndChroma(c)
         return chroma >= MIN_CHROMA && (tone >= 340f || tone <= 20f)
@@ -57,7 +57,7 @@ class RedOnlyForWarningTest {
         assertTrue("Rot auf einer Wert- oder Zustandsfläche: $fehler", fehler.isEmpty())
     }
 
-    /** Die Messung selbst: Fehlerrot erkennt sie, Blau, Grau und Sand nicht. */
+    /** The measurement itself: it detects error red, not blue, gray or sand. */
     @Test
     fun `the red measurement separates red from blue, gray and sand`() {
         assertTrue(rot(Color(0xFFB91C1C)))
@@ -66,7 +66,7 @@ class RedOnlyForWarningTest {
     }
 
     private companion object {
-        /** Ab hier ist ein Ton sichtbar; darunter liegen die warmen Grautöne der Flächen. */
+        /** From here a hue is visible; below that lie the warm grays of the surfaces. */
         const val MIN_CHROMA = 0.05f
     }
 }

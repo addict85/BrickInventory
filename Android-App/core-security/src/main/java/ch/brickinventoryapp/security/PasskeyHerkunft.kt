@@ -4,14 +4,14 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
-/** Ob die WebAuthn-Optionen eines Servers zur eingerichteten Adresse gehören. */
+/** Whether a server's WebAuthn options belong to the configured address. */
 enum class RpIdFinding { PASST, MISSING, FOREIGN }
 
 /**
- * Der Credential Manager signiert für jede Domain, deren assetlinks.json diese App
- * nennt — nicht nur für den eingerichteten Server. Ein fremder Server könnte die
- * Optionen des echten durchreichen und mit der Antwort dort anmelden. Darum muss
- * die rpId genau der Host der Adresse sein (der Server setzt rpID = Hostname).
+ * The Credential Manager signs for every domain whose assetlinks.json names this
+ * app — not only for the configured server. A foreign server could pass through the
+ * options of the real one and sign in there with the response. That is why
+ * the rpId must be exactly the host of the address (the server sets rpID = hostname).
  */
 fun checkRpId(optionen: JsonObject, serverUrl: String): RpIdFinding {
     val feld = optionen["rpId"] ?: (optionen["rp"] as? JsonObject)?.get("id")
@@ -21,5 +21,5 @@ fun checkRpId(optionen: JsonObject, serverUrl: String): RpIdFinding {
     return if (rpId == host) RpIdFinding.PASST else RpIdFinding.FOREIGN
 }
 
-/** Der Host der Adresse, für die Meldung. */
+/** The host of the address, for the message. */
 fun hostOf(serverUrl: String): String = serverUrl.trim().toHttpUrlOrNull()?.host ?: serverUrl

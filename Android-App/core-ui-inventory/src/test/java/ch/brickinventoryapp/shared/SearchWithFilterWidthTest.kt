@@ -16,11 +16,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Die Such- und Filterzeile über Galerie, Teilen und Figuren geht auf dem Tablet über die
- * ganze Breite des Rasters. Auf 720 dp begrenzt endete sie mitten über den Kacheln.
+ * The search-and-filter row above gallery, parts and figures spans the whole
+ * width of the grid on the tablet. Limited to 720 dp, it used to end in the middle over the tiles.
  *
- * Gegenprobe (gemessen nur in der CI — Robolectric):
- *   suche-wieder-begrenzt  Suchfeld wieder `widthIn(max = 720.dp)` → rot „auf dem Tablet geht …“
+ * Counter-check (measured only in CI — Robolectric):
+ *   suche-wieder-begrenzt  search field reverted to `widthIn(max = 720.dp)` → red „auf dem Tablet geht …“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "de-rCH-w1280dp-h800dp-land-xhdpi")
@@ -41,7 +41,7 @@ class SearchWithFilterWidthTest {
         compose.waitForIdle()
         val feld = compose.onNode(hasSetTextAction()).fetchSemanticsNode().boundsInRoot
         val breite = feld.width / compose.density.density
-        // Filterknopf und Ränder brauchen gut 100 dp; der Rest gehört dem Feld (vorher höchstens 720).
+        // The filter button and margins need a good 100 dp; the rest belongs to the field (previously at most 720).
         assertTrue("Das Suchfeld ist nur $breite dp breit", breite > 1000f)
     }
 }

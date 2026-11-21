@@ -58,22 +58,22 @@ fun CatalogSetCard(
     imageLoader: ImageLoader,
     serverUrl: String,
     onClick: (String) -> Unit,
-    /** Position in der Kachelwand — nur fuer die Deckelfarbe des Designs "noppe". */
+    /** Position in the tile wall — only for the cap color of the "noppe" design. */
     position: Int = 0
 ) {
     val ctx = LocalContext.current
     val isBrick = LocalIsBrickTheme.current
     val isStud = LocalIsStudTheme.current
     val isGloss = LocalIsGloss.current
-    // Der Thementon des Designs "farbfaecher" — dieselbe Rechnung wie
-    // --faecher-ton in js/katalog.js. Ohne Thema-Nummer gibt es keinen
-    // Streifen, statt eines falschen.
+    // The theme tone of the "farbfaecher" design — the same formula as
+    // --faecher-ton in js/katalog.js. Without a theme number there is no
+    // stripe, instead of a wrong one.
     val tone = if (LocalIsColorSlotsTheme.current) slotsTone(set.themeId) else null
     val ownership = set.ownedQuantity.coerceAtLeast(1)
     val ownershipAnnouncement = if (set.owned) pluralStringResource(R.plurals.cd_in_sammlung, ownership, ownership) else null
-    // Die Noppen stehen über der Karte: Eine Material-Card klippt auf ihre Form.
-    // Deshalb rückt die Karte um die Noppenhöhe nach unten, und die Reihe wird daneben
-    // gezeichnet und darübergelegt — wie `top:-6px` im CSS.
+    // The studs sit above the card: a Material Card clips to its shape.
+    // That's why the card moves down by the stud height, and the row is drawn
+    // next to it and laid on top — like `top:-6px` in the CSS.
     Box {
         AppKarte(
             modifier = Modifier.then(if (isBrick) Modifier.padding(top = StudsMass.Stein.hoehe) else Modifier),
@@ -81,7 +81,7 @@ fun CatalogSetCard(
             onClickLabel = stringResource(R.string.cd_details_oeffnen),
         ) {
             Column {
-                // Die Steinkante und der Steindeckel wie in der Galerie (SetCard).
+                // The brick edge and brick cap as in the gallery (SetCard).
                 if (isBrick) BoxWithConstraints {
                     BrickStudCap(mass = StudsMass.Stein, verlauf = BrickEdgesHistory,
                         height = if (maxWidth < 240.dp) 12.dp else null)
@@ -90,16 +90,16 @@ fun CatalogSetCard(
                 if (tone != null) {
                     Box(Modifier.fillMaxWidth().height(5.dp).background(tone))
                 }
-                // 4:3 wie die Kacheln der Galerie: Eine feste Höhe liess das Bild auf dem
-                // Tablet schmal in der Kachel stehen.
+                // 4:3 like the gallery's tiles: a fixed height left the image standing narrow
+                // in the tile on the tablet.
                 Box(Modifier.fillMaxWidth().aspectRatio(CATALOG_IMAGE_RATIO)) {
-                    // Über den Server auflösen statt roher CDN-Adresse; scheitert die Vorschau,
-                    // Rückfall auf die volle Auflösung vor dem Platzhalter.
+                    // Resolved via the server instead of a raw CDN address; if the preview fails,
+                    // fall back to the full resolution before the placeholder.
                     val (thumbUrl, onThumbError) = rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)
                     ProduktBild(
                         model = thumbUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!movementReduced()).build() },
                         imageLoader = imageLoader,
-                        // Ohne Beschreibung: Der Name steht darunter, TalkBack las ihn sonst zweimal.
+                        // Without a description: the name sits below it, TalkBack would otherwise read it twice.
                         contentDescription = null,
                         onState = { if (it is coil3.compose.AsyncImagePainter.State.Error) onThumbError() },
                         modifier = Modifier.fillMaxSize()
@@ -109,9 +109,9 @@ fun CatalogSetCard(
                         bildgrund = true,
                         innerGap = Abstaende.klein,
                     )
-                    // Die Spiegelung auf der Glasscheibe, nur über dem Bild (LightStrip in BrickDecor.kt).
+                    // The reflection on the glass pane, only above the image (LightStrip in BrickDecor.kt).
                     if (isGloss) Box(Modifier.matchParentSize().background(lightStrip()))
-                    // Eine Pille innerhalb des Bilds wie die Mengenplakette der Galerie; vorgelesen am Ende.
+                    // A pill inside the image like the gallery's quantity badge; read out at the end.
                     if (set.owned) {
                         Surface(
                             color = MaterialTheme.colorScheme.primary,
@@ -127,8 +127,8 @@ fun CatalogSetCard(
                         }
                     }
                 }
-                // Der Name zuerst, wie er vorgelesen wird; Nummer, Jahr und Teile darunter.
-                // Ein kurzer Name lässt keine Lücke; die Zeile fehlt am Fuss (TileBalance).
+                // The name first, as it's read aloud; number, year and parts below it.
+                // A short name leaves no gap; the line is missing at the bottom (TileBalance).
                 var namedRows by remember { mutableIntStateOf(2) }
                 Box {
                     Column(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein),
@@ -143,14 +143,14 @@ fun CatalogSetCard(
                             if (jahr != null) Text("$jahr", Modifier.readAloudAs(stringResource(R.string.cd_jahr, "$jahr")),
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             if ((set.numParts ?: 0) > 0) {
-                                // Dasselbe Teile-Symbol wie im Reiter „Teile" und in der Webapp.
+                                // The same parts icon as in the "Parts" tab and in the web app.
                                 Icon(
                                     ImageVector.vectorResource(R.drawable.ic_parts_bricks),
                                     contentDescription = null,
                                     tint = Color.Unspecified,
                                     modifier = Modifier.size(withFont(13.dp))
                                 )
-                                // Die Zahl mit Wort: „500“ allein neben dem Steinsymbol las sich wie ein Preis.
+                                // The number with a word: "500" alone next to the brick icon read like a price.
                                 val teile = set.numParts ?: 0
                                 Text(pluralStringResource(R.plurals.gallery_stat_parts, teile, fmtInt(teile)),
                                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -170,16 +170,16 @@ fun CatalogSetCard(
     }
 }
 
-/** Seitenverhältnis der Kachelbilder, wie in der Galerie. */
+/** Aspect ratio of tile images, as in the gallery. */
 private const val CATALOG_IMAGE_RATIO = 4f / 3f
 
-/** Abstand der Besitzplakette vom Bildrand, wie in der Galerie. */
+/** Distance of the ownership badge from the image edge, as in the gallery. */
 private val CATALOG_BADGE_EDGE = Abstaende.klein + Abstaende.tiny
 
 /**
- * Platzhalter für einen Platz, dessen Seite noch nicht geladen ist — gleich hoch
- * wie eine echte Kachel, sonst springt die Liste beim Eintreffen, und ein Sprung
- * an eine Jahresgrenze landete daneben.
+ * Placeholder for a slot whose page isn't loaded yet — the same height
+ * as a real tile, otherwise the list jumps on arrival, and a jump
+ * to a year boundary landed off target.
  */
 @Composable
 internal fun CatalogPlaceholderCard() {

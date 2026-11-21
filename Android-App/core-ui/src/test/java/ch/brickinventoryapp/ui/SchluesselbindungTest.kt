@@ -15,15 +15,15 @@ import org.junit.Test
 import java.util.Base64
 
 /**
- * Die Bindung des Geräteschlüssels nach der Anmeldung, ohne Keystore: Der
- * Schlüssel entsteht mit der Nonce des Servers als Attestation-Challenge, die
- * ganze Kette geht zum Server. Ein Gerät ohne Attestation bekommt eine eigene
- * Meldung und schickt nichts; ohne Nonce (auch bei 404) entsteht kein Schlüssel.
+ * The device key's binding after sign-in, without a keystore: the
+ * key is created with the server's nonce as an attestation challenge, the
+ * whole chain goes to the server. A device without attestation gets its own
+ * notice and sends nothing; without a nonce (even on a 404) no key is created.
  *
- * Gegenproben (11.11.2026; lokal mit kotlinc gegen Attrappen, Robolectric entscheidet die CI):
- *   A  die Nonce nicht dekodiert, sondern als UTF-8-Bytes eingesetzt → rot „die Nonce
+ * Counter-checks (Nov 11, 2026; locally with kotlinc against stubs, Robolectric decides CI):
+ *   A  the nonce not decoded but inserted as UTF-8 bytes → red „die Nonce
  *      des Servers wird zur Challenge …“; gegenproben/schluesselbindung-nonce-als-text.patch
- *   B  eine Kette aus nur dem selbstsignierten Zertifikat doch gesendet → rot „ein Geraet
+ *   B  a chain of only the self-signed certificate sent anyway → red „ein Geraet
  *      ohne Attestation …“; gegenproben/schluesselbindung-ohne-attestation-gesendet.patch
  */
 class SchluesselbindungTest {

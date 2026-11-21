@@ -4,41 +4,41 @@ import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import ch.brickinventoryapp.network.util.Protokoll
 
 /**
- * Verschlüsselung für das Bearer-Token; die Umsetzung über den Keystore steht in
- * TokenTresor.kt. Hier, ohne Android-Klassen, damit die Regeln dazu auf der JVM laufen.
+ * Encryption for the bearer token; the implementation via the Keystore is in
+ * TokenTresor.kt. Here, without Android classes, so the rules around it run on the JVM.
  */
 interface TokenEncryption {
-    /** Klartext → speicherbare Zeichenkette. Wirft, wenn die Plattform nicht kann. */
+    /** Plaintext → storable string. Throws if the platform can't do it. */
     fun verschluessle(klartext: String): String
 
-    /** Gespeicherte Zeichenkette → Klartext, oder null wenn sie nicht lesbar ist. */
+    /** Stored string → plaintext, or null if it isn't readable. */
     fun entschluessle(gespeichert: String): String?
 
-    /** Wie [entschluessle], trennt aber „weg“ von „gerade nicht“. Attrappen kennen nur „weg“. */
+    /** Like [entschluessle], but distinguishes „gone“ from „not right now“. Fakes only know „gone“. */
     fun oeffne(gespeichert: String): Tresorbefund =
         entschluessle(gespeichert)?.let { Tresorbefund.Readable(it) } ?: Tresorbefund.Weg
 
-    /** Den Schlüssel selbst löschen: Was er umhüllt hat, ist danach nirgends mehr lesbar. */
+    /** Delete the key itself: whatever it wrapped is afterwards no longer readable anywhere. */
     fun vergiss() = Unit
 
-    /** Liegt [gespeichert] unter einem schwächeren Schlüssel oder Format, als [verschluessle] es jetzt nähme? */
+    /** Is [gespeichert] under a weaker key or format than [verschluessle] would use now? */
     fun veraltet(gespeichert: String): Boolean = false
 
-    /** Nach dem Umschlüsseln: Der Schlüssel des Altbestands hat nichts mehr zu öffnen und geht. */
+    /** After re-encrypting: the legacy key has nothing left to open and is dropped. */
     fun forgetLegacyStock() = Unit
 }
 
-/** Ist das Gerät gerade gesperrt? Im Gerät der KeyguardManager, im Test ein Wert. */
+/** Is the device currently locked? On the device the KeyguardManager, in the test a value. */
 fun interface Geraetesperre {
     fun gesperrt(): Boolean
 }
 
 /**
- * Das Token unter einem Schlüssel, der nur bei entsperrtem Gerät arbeitet ([onlyUnlocked]):
- * Wer ein gesperrtes Gerät ausliest, bekommt den Geheimtext, aber keinen Klartext. Kann er
- * nicht verschlüsseln, wirft er; ein schwächerer Ausweg wäre genau das, was ein gesperrtes
- * Gerät preisgibt. [altbestand] liest nur noch, was frühere Fassungen ohne Bedingung
- * ablegten, bis das nächste Entsperren es umschlüsselt (TokenAblage.levelTokenHigh).
+ * The token under a key that only works while the device is unlocked ([onlyUnlocked]):
+ * whoever reads out a locked device gets the ciphertext, but no plaintext. If it
+ * can't encrypt, it throws; a weaker fallback would be exactly what a locked
+ * device would expose. [altbestand] only still reads what earlier versions without a condition
+ * stored, until the next unlock re-encrypts it (TokenAblage.levelTokenHigh).
  */
 class EntsperrVault(
     private val onlyUnlocked: TokenEncryption,
@@ -63,25 +63,25 @@ class EntsperrVault(
     }
 }
 
-/** Base64 kennt keinen Doppelpunkt: Geheimtexte ohne dieses Präfix stammen vom Schlüssel ohne Bedingung (Altbestand). */
+/** Base64 doesn't know a colon: ciphertexts without this prefix come from the key without a condition (legacy data). */
 internal const val UNLOCKED_PREFIX = "e1:"
 
-/** Was beim Öffnen des Tokens herauskam. */
+/** What came out of opening the token. */
 sealed interface Tresorbefund {
     data class Readable(val klartext: String) : Tresorbefund
 
-    /** Schlüssel weg oder Geheimtext unbrauchbar: Dieses Token kommt nicht wieder. */
+    /** Key gone or ciphertext unusable: this token is not coming back. */
     data object Weg : Tresorbefund
 
-    /** Der Keystore antwortet gerade nicht (Hochfahren, StrongBox); das Token ist noch da. */
+    /** The Keystore just isn't answering right now (startup, StrongBox); the token is still there. */
     data object Gesperrt : Tresorbefund
 }
 
 /**
- * Nur diese Fehler heissen „Token weg“: falscher Schlüssel oder beschädigter
- * Geheimtext (AEADBadTag ist ein BadPadding), ein ungültig gewordener oder
- * unlesbarer Schlüssel, unlesbares Base64. Alles andere kann beim nächsten
- * Versuch gehen und darf nicht abmelden.
+ * Only these errors mean „token gone“: wrong key or corrupted
+ * ciphertext (AEADBadTag is a BadPadding), a key that became invalid or
+ * unreadable, unreadable Base64. Everything else may succeed on the next
+ * attempt and must not trigger a sign-out.
  */
 internal fun vaultErrorPermanent(e: Throwable): Boolean = when (e) {
     is javax.crypto.BadPaddingException -> true
@@ -91,7 +91,7 @@ internal fun vaultErrorPermanent(e: Throwable): Boolean = when (e) {
     else -> false
 }
 
-/** Ein Versuch und bei einem vorübergehenden Fehler genau ein zweiter. */
+/** One attempt and, on a temporary error, exactly one second one. */
 internal fun openWithRetry(attempt: () -> String?): Tresorbefund {
     repeat(2) {
         fangeAusserAbbruch { attempt() }
@@ -101,18 +101,18 @@ internal fun openWithRetry(attempt: () -> String?): Tresorbefund {
     return Tresorbefund.Gesperrt
 }
 
-/** Pausen beim Start: zusammen unter der Wartezeit des Wächters (TokenAblage.waitOnStart). */
+/** Pauses at startup: together under the watchdog's wait time (TokenAblage.waitOnStart). */
 internal val VAULT_ATTEMPT_MS = listOf(250L, 750L, 2_000L)
 
-/** Danach im Hintergrund weiter, höchstens zehn Minuten; der nächste Start versucht es neu. */
+/** After that it keeps going in the background, at most ten minutes; the next start tries again. */
 internal const val VAULT_FOLLOW_UP_MS = 30_000L
 internal const val VAULT_FOLLOW_UP_ATTEMPTS = 20
 
 /**
- * Das Token aus der Ablage für [melde]. Ein gesperrter Keystore meldet nach dem
- * Anlauf einmal „kein Token“ — die Anmeldemaske statt eines hängenden Starts —,
- * löscht aber nichts und meldet das Token nach, sobald es sich öffnen lässt.
- * [alt]: der Klartext aus einer Fassung vor der Verschlüsselung.
+ * The token from the store for [melde]. A locked Keystore reports „no token“ once
+ * right after startup — the sign-in screen instead of a hanging start —,
+ * but deletes nothing, and reports the token afterwards once it can be opened.
+ * [alt]: the plaintext from a version before encryption.
  */
 suspend fun readToken(
     tresor: TokenEncryption,
@@ -127,8 +127,8 @@ suspend fun readToken(
 }
 
 /**
- * Wie [readToken] für jeden Wert unter einem Schlüssel, der nur entsperrt arbeitet (auch
- * Adresse und Name der TokenAblage): [oeffne] je Versuch, [alt] bei „weg“.
+ * Like [readToken] for every value under a key that only works unlocked (also
+ * address and name of the TokenAblage): [oeffne] per attempt, [alt] on „gone“.
  */
 suspend fun readPatient(
     oeffne: () -> Tresorbefund,
@@ -151,8 +151,8 @@ suspend fun readPatient(
                 }
                 if (attempt >= VAULT_ATTEMPT_MS.size + VAULT_FOLLOW_UP_ATTEMPTS) return
                 wait(VAULT_ATTEMPT_MS.getOrElse(attempt) { VAULT_FOLLOW_UP_MS })
-                // Bei gesperrtem Gerät gibt der Schlüssel erst nach dem Entsperren frei:
-                // Diese Zeit zählt nicht, sonst wäre nach einer Nacht die Sitzung weg.
+                // With the device locked, the key only becomes available again after unlocking:
+                // that time doesn't count, otherwise the session would be gone after a night.
                 if (attempt < VAULT_ATTEMPT_MS.size || !lock.gesperrt()) attempt++
             }
         }

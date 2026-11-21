@@ -8,14 +8,14 @@ import ch.brickinventoryapp.testing.testManagementRepository
 import ch.brickinventoryapp.testing.withRepo
 
 /**
- * Das Design des Servers steht schon vor der Anmeldung fest.
+ * The server's theme is already known before sign-in.
  */
 class DesignBeforeLoginTest {
 
     /**
-     * Die Abfrage gegen einen Testserver; das Einbinden ins AppViewModel führt
-     * AppViewModelTest aus. Gegenprobe: `@GET("api/v1/settings/theme")`
-     * auf "…/design" → rot.
+     * The query against a test server; wiring it into the AppViewModel is run by
+     * AppViewModelTest. Counter-check: `@GET("api/v1/settings/theme")`
+     * changed to "…/design" → red.
      */
     @Test
     fun `stage two - the public address is called`() {
@@ -27,13 +27,13 @@ class DesignBeforeLoginTest {
 }
 
 /**
- * Die Ueberwachung kann den Cache nicht nur ANSEHEN.
+ * Monitoring can't only LOOK AT the cache.
  */
 class CacheClearTest {
 
     /**
-     * Gegen einen Testserver. Gegenprobe: in
-     * ManagementRepository.clearCache immer `emptyMap()` → rot.
+     * Against a test server. Counter-check: in
+     * ManagementRepository.clearCache always `emptyMap()` → red.
      */
     @Test
     fun `the app knows the address and both scopes`() = withRepo(::testManagementRepository) { paths, admin ->

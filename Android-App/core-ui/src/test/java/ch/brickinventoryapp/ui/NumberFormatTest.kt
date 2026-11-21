@@ -14,16 +14,16 @@ import java.util.Locale
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Zahlen und Beträge kommen aus EINER Fassung — und die folgt der App-Sprache.
+ * Numbers and amounts come from ONE version — and it follows the app language.
  *
- * Gegenproben Teil 3 :
- *   A  numbersLocale() wieder fest de-CH/en-GB → rot „de-DE schreibt Punkt und
- *      Komma …“ und „ohne passende Landesform …“ (de-AT)
- *   B  das Land ohne Sprachprüfung übernommen → rot „ohne passende Landesform …“
- *      (de mit Gerät en-US ergab de-US)
- *   C  in fmtEingabe() isGroupingUsed nicht abgeschaltet → rot „ein Eingabefeld
+ * Counter-checks part 3:
+ *   A  numbersLocale() fixed back to de-CH/en-GB → red „de-DE schreibt Punkt und
+ *      Komma …“ and „ohne passende Landesform …“ (de-AT)
+ *   B  the country taken without a language check → red „ohne passende Landesform …“
+ *      (de with device en-US gave de-US)
+ *   C  isGroupingUsed not turned off in fmtEingabe() → red „ein Eingabefeld
  *      bekommt den Betrag ohne Tausendertrennung zurück“
- *   D  in AcquisitionManagementScreen.kt wieder "%.2f".format → rot „keine
+ *   D  "%.2f".format back in AcquisitionManagementScreen.kt → red „keine
  *      Ansicht setzt Betrag und Währung selbst zusammen“
  */
 class NumberFormatTest {
@@ -31,11 +31,11 @@ class NumberFormatTest {
     private fun read(rel: String) =
         File(Quellen.root, "$rel").readText()
 
-    /** Kommentare zeilenweise ausblenden — sonst hält der eigene Erklärtext die Prüfung grün. */
+    /** Hide comments line by line — otherwise the explanatory text itself keeps the check green. */
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
-    // ── Teil 1: die Regel ────────────────────────────────────────────────────
+    // ── Part 1: the rule ────────────────────────────────────────────────────
 
     @Test
     fun `no view assembles amount and currency itself`() {
@@ -65,7 +65,7 @@ class NumberFormatTest {
                 "$f baut sich das Währungssymbol selbst — das gehört in fmtMoney(), " +
                     "sonst steht es hier vor und anderswo hinter dem Betrag"
             }
-            // Das Dollarzeichen steht als ${'$'} und nicht als Backslash-$.
+            // The dollar sign is written as ${'$'} and not as a backslash-$.
             assert(!Regex("""\{[^}]*fmt[A-Za-z]*\([^)]*\)[^}]*\}\s*\${'$'}currency""").containsMatchIn(c)) {
                 "$f hängt den Währungscode von Hand an einen formatierten Betrag"
             }
@@ -79,9 +79,9 @@ class NumberFormatTest {
     }
 
     /**
-     * Die Stellung von Symbol und Betrag ist Sache der Landesform (getCurrencyInstance);
-     * von Hand zusammengesetzt stünde das Symbol überall auf derselben Seite.
-     * Gegenprobe betrag-symbol-von-hand (Symbol vor fmtAmount(); kotlinc) → rot hier.
+     * The placement of symbol and amount is up to the locale (getCurrencyInstance);
+     * assembled by hand, the symbol would stand on the same side everywhere.
+     * Counter-check betrag-symbol-von-hand (symbol before fmtAmount(); kotlinc) → red here.
      */
     @Test
     fun `the opposite direction stays the platform's business`() {
@@ -89,14 +89,14 @@ class NumberFormatTest {
         withDevice("en-GB") { assertEquals("€812.50", fmtMoney(812.5, Waehrung("EUR"))) }
     }
 
-    // ── Teil 2: das Ergebnis ─────────────────────────────────────────────────
+    // ── Part 2: the result ─────────────────────────────────────────────────
 
     @Test
     fun `amounts contain number and currency`() {
         val s = fmtMoney(1234.5, Waehrung("CHF"))
         assert(s.contains("1") && s.contains("234")) { "Der Betrag fehlt: $s" }
         assert(s.contains("CHF") || s.contains("Fr")) { "Die Währung fehlt: $s" }
-        // Zwei Nachkommastellen, wie in der Webapp (minimumFractionDigits: 2).
+        // Two decimal places, as in the web app (minimumFractionDigits: 2).
         assert(Regex("""[.,]\d{2}(\D|$)""").containsMatchIn(s)) {
             "Es fehlen die zwei Nachkommastellen: $s"
         }
@@ -104,9 +104,9 @@ class NumberFormatTest {
 
     @Test
     fun `an unknown currency code does not break the display`() {
-        // Kommt vor, wenn der Server einen Code liefert, den die Plattform
-        // nicht kennt. Vorher fiel das in ein catch, das eine ZWEITE
-        // Schreibweise erzeugte — jetzt ist der Rückfall Teil derselben Fassung.
+        // Happens when the server delivers a code the platform doesn't
+        // know. It used to fall into a catch that produced a SECOND
+        // spelling — now the fallback is part of the same version.
         val s = fmtMoney(10.0, Waehrung("XYZ123"))
         assert(s.contains("10")) { "Der Betrag muss auch ohne bekannte Währung erscheinen: $s" }
     }
@@ -127,7 +127,7 @@ class NumberFormatTest {
         assert(Regex("""[.,]\d{2}$""").containsMatchIn(a)) { "zwei Nachkommastellen erwartet: $a" }
     }
 
-    // ── Teil 3: die Landesform folgt dem Gerät, wie im Web ──────────────────
+    // ── Part 3: the locale follows the device, as in the web ──────────────
 
     private fun withDevice(tag: String, block: () -> Unit) {
         val vorher = Locale.getDefault()
@@ -146,7 +146,7 @@ class NumberFormatTest {
     fun `an input field gets the amount back without thousands separator`() {
         withDevice("de-DE") { assertEquals("4894,77", fmtEingabe(4894.77)) }
         withDevice("de-CH") { assertEquals("4894.77", fmtEingabe(4894.77)) }
-        // So liest AcquisitionManagementRow das Feld beim Speichern.
+        // This is how AcquisitionManagementRow reads the field on save.
         withDevice("de-DE") { assertEquals(4894.77, fmtEingabe(4894.77).replace(',', '.').toDouble(), 0.0) }
     }
 
@@ -162,9 +162,9 @@ class NumberFormatTest {
     }
 
     /**
-     * Wie Intl im Web: „CHF 812.50“ mit festem Leerzeichen, nie „CHF812.50“.
-     * Gegenprobe: withCurrencyGap() in fmtMoney entfernt →
-     * rot (en-GB ergab „CHF812.50“).
+     * Like Intl in the web: „CHF 812.50“ with a fixed space, never „CHF812.50“.
+     * Counter-check: withCurrencyGap() removed from fmtMoney →
+     * red (en-GB gave „CHF812.50“).
      */
     @Test
     fun `currency code and amount stand with a non-breaking space`() {

@@ -8,15 +8,15 @@ import androidx.compose.ui.semantics.contentDescription
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.util.fmtInt
 
-/** „12 Stück“ für eine Mengenplakette „×12“: TalkBack las das Zeichen als „mal“. */
+/** „12 Stück“ for a quantity badge „×12“: TalkBack read the symbol as „times“. */
 @Composable
 fun stueckzahl(menge: Int): String = pluralStringResource(R.plurals.cd_stueck, menge, fmtInt(menge))
 
 /**
- * Ersetzt, was TalkBack an diesem Text liest: Kurzformen wie „×12“, „✓“ oder eine
- * nackte Jahreszahl haben vorgelesen keine Bedeutung.
+ * Replaces what TalkBack reads for this text: abbreviations like „×12“, „✓“ or a
+ * bare year number mean nothing when read out loud.
  */
 fun Modifier.readAloudAs(text: String): Modifier = clearAndSetSemantics { contentDescription = text }
 
-/** „a 1 b 2 - c 3 d 4“: Codes Zeichen für Zeichen vorlesen, nicht als Wort („i9j0“). */
+/** „a 1 b 2 - c 3 d 4“: read out codes character by character, not as a word („i9j0“). */
 fun charByChar(code: String): String = code.toList().joinToString(" ")

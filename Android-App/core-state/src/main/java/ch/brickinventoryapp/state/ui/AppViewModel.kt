@@ -16,9 +16,9 @@ import javax.inject.Inject
 import ch.brickinventoryapp.model.ui.ScrollMemory
 
 /**
- * Was MainActivity zeigt: Sitzung, Snackbar, die Pflichtmasken und das Ziel einer
- * angetippten Meldung. Die Arbeit der Sitzung macht der [SitzungsRepository]; er
- * lebt im Bereich der App und startet mit ihr (BrickInventoryApp), nicht mit diesem ViewModel.
+ * What MainActivity displays: session, snackbar, the mandatory screens and the target of a
+ * tapped notification. The session's work is done by [SitzungsRepository]; it
+ * lives in the app's scope and starts with it (BrickInventoryApp), not with this ViewModel.
  */
 @HiltViewModel
 class AppViewModel @Inject constructor(
@@ -36,14 +36,14 @@ class AppViewModel @Inject constructor(
 
     val snackbar = meldungen.meldung
 
-    /** Offline gespeicherte Änderungen, die noch zum Server müssen — für die Leiste im Gerüst. */
+    /** Changes stored offline that still need to reach the server — for the bar in the scaffold. */
     val offeneAenderungen: StateFlow<Int> = ausgangsmelder.offene
     fun clearSnackbar() { meldungen.acknowledge() }
 
-    /** Mit Startpasswort zeigt MainActivity statt der App die Maske zum Ersetzen. */
+    /** With a starting password, MainActivity shows the replacement screen instead of the app. */
     val startPasswordNeeded: StateFlow<Boolean> = passwordRequired.noetig
 
-    /** Verwalterrechte ohne zweiten Faktor: MainActivity zeigt dessen Einrichtung. */
+    /** Admin rights without a second factor: MainActivity shows its setup. */
     val secondFactorNeeded: StateFlow<Boolean> = zweiterFaktorPflicht.noetig
 
     val blickfeld = scopeService.konten
@@ -63,9 +63,9 @@ class AppViewModel @Inject constructor(
     fun loadSettings() = sessionService.ladeEinstellungen()
 
     /**
-     * Zurück im Vordergrund: Ein in der Webapp geänderter Standard-Zustand greift so
-     * auch in einer laufenden Sitzung, und Filterlisten, deren einziger Abruf beim
-     * Start scheiterte, kommen nach. Abgemeldet fragt niemand.
+     * Back in the foreground: a default state changed in the web app then also takes
+     * effect in a running session, and filter lists whose only fetch failed at
+     * startup catch up. Signed out, nobody asks.
      */
     fun inForeground() {
         if (!state.value.isLoggedIn) return
@@ -76,14 +76,14 @@ class AppViewModel @Inject constructor(
 
     // ── Meldung angetippt ────────────────────────────────────────────────────
 
-    /** Der Intent kommt am Rand der App an, und dieser Rand ist die Activity. */
+    /** The intent arrives at the edge of the app, and that edge is the activity. */
     fun setFromMessageRequest(setNummer: String?) {
-        // Auch hier geprüft: Die Nummer wird Teil einer Navigationsroute.
+        // Also checked here: the number becomes part of a navigation route.
         val sn = setNumberFromMessage(setNummer) ?: return
         _messageTarget.value = MessageTargetUiState(sn)
     }
 
-    /** Erledigt — sonst springt die App bei der nächsten Rekomposition erneut. */
+    /** Done — otherwise the app would jump again on the next recomposition. */
     fun setFromMessageAcknowledge() {
         _messageTarget.value = MessageTargetUiState(null)
     }

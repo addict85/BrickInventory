@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.state.ui
 
 /**
- * Was beim Abmelden ausserhalb der Bereiche geleert werden muss — heute das Widget
- * der App. Als Schnittstelle, weil das Widget in der App liegt und dieses Modul
- * sie nicht kennt (di/AppModule.kt bindet es).
+ * What must be cleared on sign-out outside the scopes — today the app's
+ * widget. As an interface, because the widget lives in the app and this module
+ * doesn't know it (di/AppModule.kt binds it).
  */
 fun interface Abmeldehaken {
     suspend fun abgemeldet()

@@ -1,6 +1,6 @@
-// Was die Bereiche teilen, ohne einander zu kennen: Blickfeld, Texte, die Grundlage
-// der Bereichs-ViewModels und der AppViewModel — ohne Compose; die Umgebung der Ziele
-// liegt in core-navigation. Was nur die App kennt (Widget), kommt als Schnittstelle herein.
+// What the scopes share without knowing each other: Blickfeld, texts, the foundation
+// of the scope ViewModels and the AppViewModel — without Compose; the surroundings of destinations
+// live in core-navigation. What only the app knows (widget) comes in as an interface.
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.unittests)
@@ -17,18 +17,18 @@ dependencies {
     implementation(project(":core-data"))
     implementation(project(":core-session"))
     implementation(project(":core-security"))
-    // NetworkPolicy und die Regel, wer einen 401 meldet.
+    // NetworkPolicy and the rule for who reports a 401.
     implementation(project(":core-network"))
     implementation(project(":core-resources"))
     implementation(libs.androidx.core.ktx)
     api(libs.androidx.lifecycle.runtime.ktx)
-    // Die ViewModels hier sind öffentliche Basis aller Bereiche; wer sie
-    // erweitert oder im Test startet, braucht ViewModel und viewModelScope.
+    // The ViewModels here are the public base of all scopes; whoever
+    // extends them or starts them in a test needs ViewModel and viewModelScope.
     api(libs.androidx.lifecycle.viewmodel)
 
     testImplementation(project(":core-testing"))
-    // Die Testserver antworten im Wire-Format.
+    // The test servers answer in the wire format.
     testImplementation(project(":core-contract"))
-    // ExitSyncTest baut Ablage und Ausgang im Speicher.
+    // ExitSyncTest builds the store and the outbox in memory.
     testImplementation(project(":core-offline"))
 }

@@ -15,24 +15,24 @@ import org.junit.Test
 import java.util.Locale
 
 /**
- * Was der stuendliche Abruf ENTSCHEIDET.
+ * What the hourly fetch DECIDES.
  *
- * ── Warum es diesen Test gibt ───────────────────────────────────────────────
+ * ── Why this test exists ───────────────────────────────────────────────
  *
- * Der Worker selbst laeuft nur mit Android. Die Entscheidungen darin sind aber
- * genau die Sorte, die im Betrieb NICHT auffaellt, wenn sie falsch ist:
+ * The worker itself only runs with Android. But the decisions inside it are
+ * exactly the kind that do NOT stand out in production when they are wrong:
  *
- *   * Wird die Marke nicht fortgeschrieben, kommt dieselbe Meldung stuendlich
- *     wieder — und wer sie einmal weggewischt hat, haelt die naechste fuer
- *     eine neue.
- *   * Wird beim ersten Durchgang gemeldet, schlaegt eine frisch eingerichtete
- *     App mit Schwellen auf, die vor Wochen gerissen sind.
+ *   * If the marker isn't advanced, the same notification comes back
+ *     every hour — and whoever dismissed it once takes the next one for
+ *     a new one.
+ *   * If a notification is sent on the very first run, a freshly set-up
+ *     app opens with thresholds that were crossed weeks ago.
  *
- * Alle drei sind Aussagen ueber eine FOLGE von Durchgaengen. Am Quelltext
- * waere nur zu sehen, dass es eine Marke gibt.
+ * All three are statements about a SEQUENCE of runs. In the source code
+ * all you'd see is that a marker exists.
  *
- * Deshalb nimmt [Alarmabholung.fetch] die Abfrage als Parameter entgegen und
- * nicht das BrickRepository — die Begruendung steht dort.
+ * That's why [Alarmabholung.fetch] takes the query as a parameter and
+ * not the BrickRepository — the reasoning is there.
  */
 class AlarmabholungTest {
 
@@ -48,8 +48,8 @@ class AlarmabholungTest {
 
     @Test
     fun `the first pass only marks and reports nothing`() = runTest {
-        // Leer und null muessen sich GLEICH verhalten: Auf einem Geraet, das
-        // die Marke schon einmal geschrieben hat, kann sie leer sein.
+        // Empty and null MUST behave the SAME: on a device that
+        // has already written the marker once, it can be empty.
         for (ohne in listOf(null, "", "   ")) {
             var askedWith: String? = "nicht gefragt"
             val e = Alarmabholung.fetch(ohne) { seit ->
@@ -77,17 +77,17 @@ class AlarmabholungTest {
         assert(e is Alarmabholung.Ergebnis.Geholt) { "$e statt Geholt" }
         e as Alarmabholung.Ergebnis.Geholt
         assert(e.meldungen.size == 2) { "${e.meldungen.size} Meldungen statt zwei" }
-        // Die neue Marke ist die des SERVERS, nicht die mitgegebene und nicht
-        // die Uhr des Telefons. Sonst entscheidet die Gangabweichung darueber,
-        // ob eine Meldung doppelt kommt oder ausfaellt.
+        // The new marker is the SERVER's, not the one passed in and not
+        // the phone's clock. Otherwise clock drift would decide
+        // whether a notification arrives twice or not at all.
         assert(e.neueMarke == "2026-09-19T18:00:00.000Z") { "neueMarke=${e.neueMarke}" }
         assert(askedWith == "2026-09-19T17:30:00.000Z") { "gefragt mit $askedWith" }
     }
 
     @Test
     fun `an empty response is the normal case and still advances the mark`() = runTest {
-        // Ohne das fragte der naechste Durchgang wieder ab dem alten Zeitpunkt
-        // — und die Spanne wuechse mit jeder ruhigen Stunde.
+        // Without this, the next run would query from the old timestamp again
+        // — and the span would grow with every quiet hour.
         val e = Alarmabholung.fetch("2026-09-19T17:30:00.000Z") { antwort() }
         assert(e is Alarmabholung.Ergebnis.Geholt) { "$e statt Geholt" }
         e as Alarmabholung.Ergebnis.Geholt
@@ -100,8 +100,8 @@ class AlarmabholungTest {
         val kaputt = listOf<Pair<String, Ergebnis<AlarmabrufView>>>(
             "Netz weg" to Ergebnis.Fehler.Netz("offline"),
             "Server sagt nein" to Ergebnis.Fehler.Absage(),
-            // Eine aeltere Serverfassung kennt das Feld nicht. Dann lieber gar
-            // keine Marke als eine falsche — es bleibt beim Mailversand.
+            // An older server version doesn't know the field. Then rather no
+            // marker at all than a wrong one — it stays with mail dispatch.
             "kein Zeitpunkt" to Ergebnis.Erfolg(AlarmabrufView(emptyList(), marke = null)),
             "leerer Zeitpunkt" to Ergebnis.Erfolg(AlarmabrufView(emptyList(), marke = "")),
         )
@@ -115,21 +115,21 @@ class AlarmabholungTest {
 
     @Test
     fun `the text names set, price and threshold — in the alert's currency`() {
-        // Nicht in der aktuellen Kontowaehrung: Die Schwelle wurde in jener
-        // Waehrung gesetzt, und 200 CHF sind nicht 200 EUR.
+        // Not in the current account currency: the threshold was set in
+        // that currency, and 200 CHF is not 200 EUR.
         assert(Alarmabholung.text(alarm(), "faellt unter", "steigt ueber", DE_CH) ==
             "10179-1: EUR\u00a0100.00 (faellt unter EUR\u00a0200.00)")
         assert(Alarmabholung.text(alarm(richtung = Alarmrichtung.UEBER, schwelle = 300.0, preis = 350.5),
                                   "faellt unter", "steigt ueber", DE_CH) ==
             "10179-1: EUR\u00a0350.50 (steigt ueber EUR\u00a0300.00)")
-        // Ohne bekannten Preis bleibt die Aussage die Schwelle — ein
-        // erfundener Preis waere schlimmer als keiner.
+        // Without a known price, the statement stays the threshold — a
+        // made-up price would be worse than none.
         assert(Alarmabholung.text(alarm(preis = null), "faellt unter", "steigt ueber", DE_CH) ==
             "10179-1: faellt unter EUR\u00a0200.00")
     }
 
     /**
-     * Gegenprobe: gegenproben/alarm-betrag-fest-us.patch (wieder `Locale.US`) → rot
+     * Counter-check: gegenproben/alarm-betrag-fest-us.patch (`Locale.US` again) → red
      * „the amounts are in the number format of the app language“.
      */
     @Test

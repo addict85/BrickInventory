@@ -40,11 +40,11 @@ import ch.brickinventoryapp.ui.theme.mainButtonColors
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 
 /**
- * Das Konto hat noch sein Startpasswort: Der Server weist bis zum Wechsel jeden
- * Abruf ab (403 `passwort_wechsel_noetig`). Statt einer App voller Fehlermeldungen
- * steht nur diese Maske da, gebaut wie die Maske für den zweiten Faktor (Markenkopf,
- * Lesebreite). Der Wechsel beendet alle Zugänge, danach meldet man sich mit dem neuen
- * Passwort an ([onReplace] meldet bei Erfolg ab).
+ * The account still has its start password: the server rejects every
+ * request with 403 `passwort_wechsel_noetig` until it's changed. Instead of an
+ * app full of error messages, only this mask stands there, built like the
+ * second-factor mask (brand header, reading width). The change ends all access
+ * tokens, after which you sign in with the new password ([onReplace] signs out on success).
  */
 @Composable
 fun StartPasswordMask(
@@ -52,8 +52,8 @@ fun StartPasswordMask(
     onReplace: (aktuell: String, neu: String, code: String?) -> Unit,
     onAbmelden: () -> Unit,
 ) {
-    // remember, nicht rememberSaveable: Gesicherter Zustand landet im Bundle und bei
-    // Prozesstod auf der Platte (ActivityManager) — kein Ort für Passwörter und Codes.
+    // remember, not rememberSaveable: saved state lands in the Bundle and, on
+    // process death, on disk (ActivityManager) — no place for passwords and codes.
     var pwCurrent by remember { mutableStateOf("") }
     var pwNeu by remember { mutableStateOf("") }
     var pwRepeated by remember { mutableStateOf("") }
@@ -62,7 +62,7 @@ fun StartPasswordMask(
     val fokus = LocalFocusManager.current
     val weiter = KeyboardActions(onNext = { fokus.moveFocus(FocusDirection.Down) })
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        // Ein untergeschobener Tipp setzte hier das Passwort des Kontos.
+        // A slipped-in tap set the account's password here.
         Ueberdeckungsschutz()
         Column(
             Modifier.verticalScroll(rememberScrollState()).centeredUntil(Lesebreite.formular)
@@ -70,7 +70,7 @@ fun StartPasswordMask(
             verticalArrangement = Arrangement.spacedBy(Abstaende.mittel),
         ) {
             BrandsHeader(Modifier.fillMaxWidth())
-            // Dieselbe Karte wie Anmelden und Registrieren, das Abmelden darunter wie dort „Zurück“.
+            // The same card as sign-in and registration, sign-out below like "Back" there.
             LoginCard {
                 LoginTitle(stringResource(R.string.startpasswort_titel))
                 Text(stringResource(R.string.startpasswort_text), style = MaterialTheme.typography.bodyMedium)
@@ -89,7 +89,7 @@ fun StartPasswordMask(
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text(stringResource(R.string.konto_password_button)) }
             }
-            // Mittig in voller Breite wie „Zurück zur Anmeldung“: Eingerückt stand es neben nichts.
+            // Centered, full width like "Back to sign-in": indented it stood next to nothing.
             TextButton(onClick = onAbmelden, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.settings_logout)) }
         }
     }

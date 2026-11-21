@@ -10,28 +10,28 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Der Zustand, für den ein Alarm beim Öffnen gezeigt wird — der häufigere Fall. */
+/** The condition an alert is shown for on open — the more common case. */
 internal val ALARM_STATE_DEFAULT = Zustand.NEU
 
 /**
- * Die Schwelle eines Preisalarms, entprellt gespeichert — von Set-Detail und
- * Merkposten-Detail gemeinsam benutzt. Der Auftrag läuft im Scope des
- * ViewModels, damit er das Verlassen des Bildschirms übersteht: Wer tippt und
- * sofort zurückgeht, soll seine Eingabe nicht verlieren.
+ * A price alert's threshold, saved debounced — used jointly by the set detail
+ * and the watchlist-item detail. The job runs in the ViewModel's scope, so
+ * it survives leaving the screen: whoever types and goes back right
+ * away shouldn't lose their input.
  */
 internal class Preisalarmeingabe(
     private val scope: CoroutineScope,
     private val alerts: AlarmRepository,
-    /** Meldung für den Meldungskanal; null heisst: nichts zu sagen. */
+    /** Message for the message channel; null means: nothing to say. */
     private val melde: (String?) -> Unit,
     private val describe: (Ergebnis.Fehler) -> String?,
-    /** Nach dem Speichern: Alarme des Sets neu laden, Übersicht benachrichtigen. */
+    /** After saving: reload the set's alerts, notify the overview. */
     private val gespeichert: (setNumber: String) -> Unit,
     private val rest: Long = Alarmeingabe.RUHE_MS,
 ) {
     private var job: Job? = null
 
-    /** Leere oder unlesbare Eingabe löscht den Alarm dieses Zustands. */
+    /** An empty or unreadable input deletes this condition's alert. */
     fun setze(setNumber: String, richtung: Alarmrichtung, roh: String, zustand: Zustand) {
         job?.cancel()
         job = scope.launch {

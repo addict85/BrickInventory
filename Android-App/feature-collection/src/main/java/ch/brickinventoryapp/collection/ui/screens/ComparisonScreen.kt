@@ -48,9 +48,9 @@ fun ComparisonScreen() {
         }
     }
 
-    // Die Eingabe als Abfragewert kodiert: Ein `#` oder `&` darin veränderte sonst die Adresse.
+    // The input encoded as a query value: a `#` or `&` in it would otherwise change the address.
     val noAppText = stringResource(R.string.common_no_app_to_open)
-    // Snackbar statt Toast wie in den Detailseiten: bleibt lesbar, bis TalkBack fertig ist.
+    // Snackbar instead of Toast as on the detail pages: stays readable until TalkBack is done.
     val meldungen = remember { SnackbarHostState() }
     suspend fun openInBrowser(query: String) {
         val url = "https://www.toppreise.ch/produktsuche".toUri().buildUpon().appendQueryParameter("q", query).build()
@@ -85,15 +85,15 @@ fun ComparisonScreen() {
                 Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(Abstaende.klein)
             ) {
-                // Suchfeld mit Scannen daneben, wie in Galerie und Merkliste: ein Muster für
-                // Scan-Knöpfe statt eines eigenen Tonal-Knopfs mit englischem „Scan“.
+                // Search field with scanning next to it, as in gallery and watchlist: a pattern
+                // for scan buttons instead of its own tonal button with an English "Scan".
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
                 OutlinedTextField(
                     value = searchText,
-                    // Hier tippt man Setnummern und Barcodes, keine Namen — deshalb die
-                    // Zahlentastatur. Der Filter gehört dazu: Eine angeschlossene Tastatur, die
-                    // Zwischenablage und manche Bildschirmtastaturen liefern trotzdem Buchstaben.
+                    // This is where you type set numbers and barcodes, not names — hence the
+                    // numeric keyboard. The filter belongs with it: a connected keyboard, the
+                    // clipboard and some on-screen keyboards deliver letters regardless.
                     onValueChange = {
                         searchText = NumericInput.setNumber(it)
                         if (searchText.isNotBlank()) scannedBarcode = null
@@ -101,10 +101,10 @@ fun ComparisonScreen() {
                     placeholder = { Text(stringResource(R.string.comparison_search_placeholder)) },
                     leadingIcon = { Icon(Icons.Default.Search, null, Modifier.size(withFont(20.dp))) },
                     trailingIcon = {
-                        // `cd_search_clear` statt `comparison_clear`: Letzteres heisst „Löschen“ /
-                        // „Clear“, und TalkBack sagte am Suche-leeren-Knopf das Wort für „Bestand
-                        // vernichten“. Dieses Feld ist kein `Suchfeld`, weil es die Suchtaste der
-                        // Tastatur braucht, und nimmt den Text deshalb von Hand.
+                        // `cd_search_clear` instead of `comparison_clear`: the latter means "delete" /
+                        // "clear", and TalkBack said the word for "destroy
+                        // inventory" at the clear-search button. This field isn't a `Suchfeld`, because it
+                        // needs the keyboard's search key, and therefore takes the text by hand.
                         if (searchText.isNotEmpty()) MitTooltip(stringResource(R.string.cd_search_clear)) {
                             IconButton(onClick = { searchText = "" }) { Icon(Icons.Default.Clear, stringResource(R.string.cd_search_clear)) }
                         }
@@ -145,7 +145,7 @@ fun ComparisonScreen() {
             }
         }
 
-        // Derselbe Hinweis wie jeder Leerzustand der App (Symbol auf runder Fläche).
+        // The same hint as every empty state in the app (icon on a round surface).
         StateHint {
             HintText(Icons.Default.Search,
                 stringResource(R.string.comparison_title), stringResource(R.string.comparison_hint))

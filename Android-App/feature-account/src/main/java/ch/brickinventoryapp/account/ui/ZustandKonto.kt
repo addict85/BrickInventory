@@ -14,59 +14,59 @@ import ch.brickinventoryapp.update.util.UpdateBeschreibung
 import ch.brickinventoryapp.update.util.UpdateFresh
 
 /**
- * Das eigene Konto in den Einstellungen — eigener Zustand, weil nur ein Bildschirm
- * Profil und Passwortwechsel liest. Kein Feld „abgemeldet“: Ein Passwortwechsel
- * meldet ab, logout() setzt alle Flüsse zurück; die Erklärung geht in die
- * Snackbar, die das überlebt.
+ * One's own account in the settings — its own state, because only one screen
+ * reads profile and password change. No field "signed out": a password change
+ * signs out, logout() resets all flows; the explanation goes into the
+ * snackbar, which survives that.
  */
 data class AccountUiState(
-    /** Der Abruf des Profils; das Profil selbst bleibt stehen, während neu geholt wird. */
+    /** The profile fetch; the profile itself stays visible while it's being refetched. */
     val abruf: Laden<Unit> = Laden.Daten(Unit),
     val profile: ProfileView? = null,
-    /** Profil, Passwort oder Design speichern; scheitert es, steht der Grund hier. */
+    /** Save profile, password or design; if it fails, the reason is here. */
     val speichern: Vorgang = Vorgang.Fertig,
-    /** Was das Speichern bewirkt hat. */
+    /** What saving achieved. */
     val meldung: Meldung? = null,
-    /** Der Server verlangt den zweiten Faktor (zweiter_faktor_noetig): Codefeld zeigen. */
+    /** The server requires the second factor (zweiter_faktor_noetig): show the code field. */
     val codeNoetig: Boolean = false,
-    /** Null, solange nicht geladen oder der Server kein Design je Konto kennt. */
+    /** Null as long as it isn't loaded, or the server knows no per-account design. */
     val design: DesignChoice? = null,
 )
 
-/** Das Design des Kontos: wirksam, die Vorgabe des Verwalters und die eigene Wahl (null = Vorgabe). */
+/** The account's design: effective, the admin's default, and the own choice (null = default). */
 data class DesignChoice(val wirksam: Design, val vorgabe: Design, val eigenes: Design?)
 
-/** Zweiter Faktor im Konto: Stand, laufende Einrichtung, frische Codes. */
+/** Second factor on the account: state, ongoing setup, fresh codes. */
 data class ZweiterFaktorUiState(
-    /** Der letzte Schritt: läuft, gelungen oder mit Grund gescheitert. */
+    /** The last step: running, succeeded, or failed with a reason. */
     val abruf: Laden<Unit> = Laden.Daten(Unit),
-    /** null = noch nicht geladen. */
+    /** null = not yet loaded. */
     val aktiv: Boolean? = null,
     val codesUebrig: Int = 0,
-    /** Gesetzt während der Einrichtung, bis der erste Code bestätigt ist. */
+    /** Set during setup, until the first code is confirmed. */
     val geheimnis: String? = null,
     val otpauth: String? = null,
-    /** Die Wiederherstellungscodes — nur unmittelbar nach dem Erzeugen. */
+    /** The recovery codes — only right after creation. */
     val codes: List<String> = emptyList(),
 )
 
 /**
- * Die ausgestellten Zugänge dieses Kontos („Angemeldete Geräte“) — eigener Fluss:
- * nur in den Einstellungen gebraucht, mit eigenen Zwischenständen, die sonst jeden
- * Reiter neu zeichnen liessen.
+ * This account's issued access tokens ("signed-in devices") — its own flow:
+ * only needed in settings, with its own intermediate states, which would otherwise
+ * redraw every tab.
  */
 internal data class DevicesUiState(
-    /** Der Abruf der Liste; ein Fehler steht statt der Liste. */
+    /** The list fetch; an error stands in place of the list. */
     val abruf: Laden<Unit> = Laden.Daten(Unit),
     val geraete: List<DeviceView> = emptyList(),
-    /** Die offene Passwort-Rückfrage vor dem Abmelden; null = keine. */
+    /** The open password prompt before sign-out; null = none. */
     val prompt: DevicesPrompt? = null,
 )
 
 /**
- * Ein fremdes Gerät meldet der Server nur mit Passwort (und Code) ab: Ein
- * erbeuteter Zugang soll den Inhaber nicht aussperren. [tokenId] null heisst
- * „alle anderen“.
+ * The server signs out a foreign device only with password (and code): a
+ * stolen access token must not lock out the owner. [tokenId] null means
+ * "all others".
  */
 internal data class DevicesPrompt(
     val tokenId: String?,
@@ -74,78 +74,78 @@ internal data class DevicesPrompt(
     val operation: Vorgang = Vorgang.Fertig,
 )
 
-/** Zustand der Haushalts-Karte in den Einstellungen. */
+/** State of the household card in settings. */
 data class HouseholdUiState(
-    /** Laden, Einladen, Einlösen, Lösen: läuft, gelungen oder mit dem Grund des Servers gescheitert. */
+    /** Load, invite, redeem, remove: running, succeeded, or failed with the server's reason. */
     val abruf: Laden<Unit> = Laden.Daten(Unit),
     val status: HouseholdStatusView? = null,
-    /** Zuletzt erzeugter Einladungscode — nur bis zum Verlassen der Ansicht. */
+    /** Last created invite code — only until leaving the view. */
     val inviteCode: String? = null,
-    /** Bis wann der Code gilt (Millisekunden seit 1970); null, wenn der Server es nicht sagt. */
+    /** Until when the code is valid (milliseconds since 1970); null if the server doesn't say. */
     val inviteValidUntil: Long? = null,
-    /** Das Passwort beim Einlösen war falsch; das Feld zeigt es an. */
+    /** The password was wrong when redeeming; the field shows it. */
     val passwordWrong: Boolean = false,
-    /** Zählt gelungene Einlösungen — daran leert die Ansicht ihre Felder. */
+    /** Counts successful redemptions — the view clears its fields on that. */
     val eingeloest: Int = 0,
-    /** Der zweite Faktor ist aktiv (oder der Server verlangte seinen Code): Codefeld zeigen. */
+    /** The second factor is active (or the server required its code): show the code field. */
     val factorNeeded: Boolean = false,
-    /** Der Code des zweiten Faktors war falsch; das Feld zeigt es an. */
+    /** The second factor's code was wrong; the field shows it. */
     val factorWrong: Boolean = false,
 )
 
 /**
- * Eine CSV-Datei hochladen — getrennt vom Import-Fortschritt (CsvImportUiState):
- * Das Hochladen dauert Sekunden und endet mit einer Zahl, der Import läuft danach
- * auf dem Server weiter und meldet sich über seinen Kanal. Zwei Vorgänge mit
- * verschiedener Lebensdauer teilen keinen Fortschritt.
+ * Upload a CSV file — separate from the import progress (CsvImportUiState):
+ * the upload takes seconds and ends with a number, the import then keeps
+ * running on the server and reports back over its own channel. Two operations with
+ * different lifetimes don't share a progress state.
  */
 data class CsvUploadUiState(
     val hochladen: Vorgang = Vorgang.Fertig,
-    /** Welche Art gerade hochgeladen wird — fuer die Anzeige am richtigen Knopf. */
+    /** Which kind is currently uploading — for showing it on the right button. */
     val art: CsvImportKind? = null,
     val ergebnis: CsvResultView? = null,
 )
 
 /**
- * Selbstaktualisierung aus dem GitHub-Release (util/AppUpdate.kt). „Gefunden“ und
- * „geladen“ sind zwei Felder, weil beim Start nur geprüft und nie von allein
- * geladen wird. `geprueft` unterscheidet „noch nicht nachgesehen“ von „nichts
- * Neues“, damit der Knopf eine Rückmeldung gibt.
+ * Self-update from the GitHub release (util/AppUpdate.kt). "Found" and
+ * "loaded" are two fields, because on start it only checks and never loads
+ * on its own. `geprueft` distinguishes "not checked yet" from "nothing
+ * new", so the button gives feedback.
  */
 data class UpdateUiState(
     val check: Vorgang = Vorgang.Fertig,
-    /** Wurde in dieser Sitzung schon nachgesehen? */
+    /** Has this session already checked? */
     val geprueft: Boolean = false,
-    /** Die neuere Fassung, oder null: es gibt keine. */
+    /** The newer version, or null: there is none. */
     val newerVersion: UpdateBeschreibung? = null,
-    /** 0..100 waehrend des Ladens, null = es laedt nichts. */
+    /** 0..100 while loading, null = nothing is loading. */
     val fortschritt: Int? = null,
-    /** Das geladene APK wartet auf die Zustimmung des Nutzers. */
+    /** The loaded APK is waiting for the user's consent. */
     val readyToInstallation: Boolean = false,
-    /** Fehlt die Systemerlaubnis „Apps aus unbekannten Quellen"? */
+    /** Is the system permission "install apps from unknown sources" missing? */
     val permissionAbsent: Boolean = false,
     /**
-     * Hat der Nutzer den Hinweis beim Start weggeklickt? Gilt für diesen App-Lauf:
-     * nicht bei jedem Reiterwechsel wieder fragen, beim nächsten Start aber schon. Der
-     * Punkt am Konto-Symbol bleibt stehen.
+     * Has the user dismissed the notice on start? Applies for this app run:
+     * don't ask again on every tab switch, but ask again on the next start. The
+     * dot on the account icon stays.
      */
     val dialogRejected: Boolean = false,
-    /** Ein Satz in Bausteinen; die Oberfläche bildet ihn in ihrer Sprache. */
+    /** A sentence in building blocks; the UI assembles it in its own language. */
     val fehler: Meldung? = null,
     /**
-     * Wie frisch die zuletzt geprüfte Beschreibung war; null vor der ersten Prüfung.
-     * Auch nach der stillen Prüfung gesetzt: Ein Zurückhalten soll man in den
-     * Einstellungen sehen, ohne erst den Knopf zu drücken.
+     * How fresh the last-checked description was; null before the first check.
+     * Also set after the silent check: a withholding should be visible in the
+     * settings without first pressing the button.
      */
     val frische: UpdateFresh? = null,
-    /** Schalter „Beim Start nach Updates suchen“ (je Gerät). */
+    /** Switch "Check for updates on start" (per device). */
     val startpruefung: Boolean = true,
 )
 
 /**
- * Alle Preisalarme des Kontos — die Übersicht in den Einstellungen. `geladen`
- * statt nur einer leeren Liste: Sonst behauptete die Rubrik beim Aufbau kurz, es
- * gebe keine Alarme.
+ * All of the account's price alerts — the overview in settings. `geladen`
+ * instead of just an empty list: otherwise the section would briefly claim on
+ * building that there are no alerts.
  */
 data class AlarmUebersichtUiState(
     val alerts: List<PriceAlertView> = emptyList(),

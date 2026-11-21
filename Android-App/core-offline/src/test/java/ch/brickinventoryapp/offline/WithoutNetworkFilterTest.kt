@@ -34,16 +34,16 @@ import java.lang.reflect.Proxy
 import java.net.ConnectException
 
 /**
- * Suche und Filter beantwortet Room, online wie ohne Netz — mit denselben
- * Abfragen wie im Gerät, gegen eine Api-Attrappe, die online Seiten liefert und
- * offline mit ConnectException scheitert. Läuft nur in der CI.
+ * Room answers search and filter, online as well as without the network — with the same
+ * queries as on the device, against an API fake that delivers pages online and
+ * fails with ConnectException offline. Runs only in CI.
  *
- * Gegenproben (gegenproben/, der CI-Job `gegenproben` verlangt Rot):
- *   ohne-netz-suche-als-muster `%` und `_` nicht maskiert → rot „ein Prozentzeichen …“
- *   ohne-netz-filter-spalte    die Spalte thema bekommt den Lagerort → rot „Suche, Thema …“
- *   galerie-ablage-ungefiltert observeSets übergibt keine Filterspalten → rot „die Galerie filtert in Room …“
- *   teile-nur-seite-eins       refreshPaged bricht nach Seite 1 ab → rot „alle Seiten der Teile …“
- *   teile-farbwahl-verloren    observeParts reicht die Farbwahl nicht weiter → rot „Farbe, Kategorie, Ersatzteile …“
+ * Counter-checks (gegenproben/, the CI job `gegenproben` requires red):
+ *   ohne-netz-suche-als-muster `%` and `_` not escaped → red „ein Prozentzeichen …“
+ *   ohne-netz-filter-spalte    the thema column gets the storage location → red „Suche, Thema …“
+ *   galerie-ablage-ungefiltert observeSets passes no filter columns → red „die Galerie filtert in Room …“
+ *   teile-nur-seite-eins       refreshPaged stops after page 1 → red „alle Seiten der Teile …“
+ *   teile-farbwahl-verloren    observeParts doesn't pass the color choice on → red „Farbe, Kategorie, Ersatzteile …“
  */
 @RunWith(RobolectricTestRunner::class)
 class WithoutNetworkFilterTest {
@@ -90,7 +90,7 @@ class WithoutNetworkFilterTest {
                                       setNumber: String?, excludeManual: String?, accounts: String?, spare: String?,
                                       withSets: String?, storage: String?): Response<PartsResponse> {
             if (offline) throw ConnectException("aus")
-            // Zwei je Seite: So liegt die lokale Liste erst nach Seite 2 ganz da.
+            // Two per page: that way the local list is only complete after page 2.
             val seite = teile.drop((page - 1) * 2).take(2)
             return Response.success(PartsResponse(success = true, total = teile.size, parts = seite))
         }
@@ -170,7 +170,7 @@ class WithoutNetworkFilterTest {
     private companion object {
         const val STATUS = 42L
 
-        /** Jede nicht überschriebene Methode der Schnittstelle ist hier ein Fehler des Tests. */
+        /** Every method of the interface not overridden here is a fault of the test. */
         inline fun <reified A> fake(): A = Proxy.newProxyInstance(A::class.java.classLoader, arrayOf(A::class.java)) { _, m, _ ->
             error("unerwarteter Aufruf ${m.name}")
         } as A

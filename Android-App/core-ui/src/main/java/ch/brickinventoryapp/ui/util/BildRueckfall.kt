@@ -10,14 +10,14 @@ import ch.brickinventoryapp.model.util.resolveFullUrlViaProxy
 import ch.brickinventoryapp.model.util.resolveThumbUrl
 
 /**
- * Vorschaubild mit Rückfall auf die volle Auflösung: Nach einem CSV-Import erzeugt
- * der Server die `_thumb`-Dateien nachträglich, bis dahin antwortet er auf die
- * Vorschau mit 404. Wie data-orig in der Webapp wird beim ersten Fehler
- * gewechselt, statt dieselbe fehlende Datei erneut anzufragen. Rückgabe: die zu
- * ladende Adresse und ein Rückruf für `AsyncImagePainter.State.Error`.
+ * Preview image with fallback to full resolution: after a CSV import the
+ * server generates the `_thumb` files afterwards, and until then responds to
+ * the preview with 404. Like data-orig in the web app, it switches on the
+ * first error instead of requesting the same missing file again. Returns: the
+ * address to load and a callback for `AsyncImagePainter.State.Error`.
  *
- * @param fullViaProxy Rückfall über resolveFullUrlViaProxy() (Teile, Minifiguren)
- *         statt resolveFullUrl()
+ * @param fullViaProxy Fallback via resolveFullUrlViaProxy() (parts, minifigures)
+ *         instead of resolveFullUrl()
  */
 @Composable
 fun rememberTileImageWithFallback(

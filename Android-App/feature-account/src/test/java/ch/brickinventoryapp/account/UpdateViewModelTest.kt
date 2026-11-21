@@ -44,28 +44,28 @@ import java.util.Base64
 import ch.brickinventoryapp.model.ui.Meldung
 
 /**
- * Die Selbstaktualisierung ausgeführt: signierte Beschreibung, Download, Prüfsumme,
- * Signatur, Fassung und Installer, mit einem Gerät im Speicher, einem Client ohne
- * Netz und virtueller Zeit.
+ * The self-update run: signed description, download, checksum,
+ * signature, version and installer, with a device held in memory, a client with no
+ * network and virtual time.
  *
- * Gegenproben:
- *   update-angebot-ohne-frische  Angebot mit isNew statt offerableVersion →
- *                                rot „a reset description offers nothing“
- *   update-vm-abgelaufen-ohne-angebot  Angebot nur bei AKTUELL → rot „eine abgelaufene,
- *                                neuere Beschreibung bietet die Fassung mit Hinweis an“
- *   update-signatur-ungeprueft   die Signaturprüfung nach dem Download entfernt →
- *                                rot „eine fremde Signatur loescht das APK …“
- *   update-zweiter-weg-ungeprueft  startInstallation() ohne signatureFits →
- *                                rot „ohne Erlaubnis wartet das APK …“
- *   update-ohne-obergrenze       die Grenze im Download nie erreicht →
- *                                rot „more than announced is not written“
- *   update-still-mit-fehler      die stille Prüfung meldet Fehler →
- *                                rot „an unsigned description reports only on button press“
- *   update-start-ohne-schalter   pruefeBeimStart() fragt den Schalter nicht →
- *                                rot „ausgeschaltet fragt der Start nicht bei GitHub“
- *   update-abmelden-behaelt      kein Zurücksetzen beim Abmelden → rot „beim Abmelden verfaellt …“
- *   update-ohne-anmeldefolge     die Prüfung beim Anmelden aus dem init gestrichen →
- *                                rot „die Anmeldung prueft still“
+ * Counter-checks:
+ *   update-angebot-ohne-frische  offer with isNew instead of offerableVersion →
+ *                                red "a reset description offers nothing"
+ *   update-vm-abgelaufen-ohne-angebot  offer only on AKTUELL → red "eine abgelaufene,
+ *                                neuere Beschreibung bietet die Fassung mit Hinweis an"
+ *   update-signatur-ungeprueft   the signature check after the download removed →
+ *                                red "eine fremde Signatur loescht das APK …"
+ *   update-zweiter-weg-ungeprueft  startInstallation() without signatureFits →
+ *                                red "ohne Erlaubnis wartet das APK …"
+ *   update-ohne-obergrenze       the limit never reached in the download →
+ *                                red "more than announced is not written"
+ *   update-still-mit-fehler      the silent check reports errors →
+ *                                red "an unsigned description reports only on button press"
+ *   update-start-ohne-schalter   pruefeBeimStart() doesn't ask the switch →
+ *                                red "ausgeschaltet fragt der Start nicht bei GitHub"
+ *   update-abmelden-behaelt      no reset on sign-out → red "beim Abmelden verfaellt …"
+ *   update-ohne-anmeldefolge     the check on sign-in removed from init →
+ *                                red "die Anmeldung prueft still"
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class UpdateViewModelTest {
@@ -77,9 +77,9 @@ class UpdateViewModelTest {
     private val apkAddress = "$UPDATE_RELEASE_BASE/BrickInventory.apk"
     private val apk = ByteArray(200_000) { (it % 251).toByte() }
 
-    /** Antwort je Adresse; der Client geht nie ins Netz. */
+    /** Response per address; the client never goes onto the network. */
     private val antworten = mutableMapOf<String, Pair<Int, ByteArray>>()
-    /** Jede Anfrage des Update-Clients; ins Netz geht keine. */
+    /** Every request of the update client; none goes onto the network. */
     private val angefragt = mutableListOf<String>()
     private val client = OkHttpClient.Builder().addInterceptor { kette ->
         angefragt += kette.request().url.toString()
@@ -116,7 +116,7 @@ class UpdateViewModelTest {
 
     private fun hex(b: ByteArray) = MessageDigest.getInstance("SHA-256").digest(b).joinToString("") { "%02x".format(it) }
 
-    /** Wie der Signierjob: Base64 der Beschreibung und ihre ECDSA-Signatur. */
+    /** Like the signing job: base64 of the description and its ECDSA signature. */
     private fun beschreibung(
         code: Int = 20, groesse: Long = apk.size.toLong(), sha: String = hex(apk), schluessel: KeyPair = own,
         ausgestellt: Long = jetzt - 60, gueltigBis: Long = jetzt + 86_400,
@@ -204,7 +204,7 @@ class UpdateViewModelTest {
 
     @Test
     fun `a foreign signature deletes the APK and does not install`() = runTest(takt) {
-        // Ohne Erlaubnis endet ladeUpdate() vor dem zweiten Weg: Geprüft hat dann nur der Download.
+        // Without permission, ladeUpdate() ends before the second path: only the download has been checked then.
         geraet.signatureGood = false
         geraet.erlaubt = false
         vm.pruefeAufUpdate(still = false)
@@ -238,7 +238,7 @@ class UpdateViewModelTest {
 
     @Test
     fun `more than announced is not written`() = runTest(takt) {
-        // Angekündigt 10 Bytes; erlaubt ist das plus ein Megabyte, geliefert wird mehr.
+        // Announced 10 bytes; allowed is that plus one megabyte, more is delivered.
         val toMuch = ByteArray(1024 * 1024 + 64 * 1024)
         antworten[apkAddress] = 200 to toMuch
         antworten[UPDATE_VERSION_URL] = 200 to beschreibung(groesse = 10, sha = hex(toMuch))
@@ -261,7 +261,7 @@ class UpdateViewModelTest {
         assertTrue(zustand().permissionAbsent)
         assertTrue(zustand().readyToInstallation)
         assertTrue(geraet.installiert.isEmpty())
-        // Während des Ausflugs in die Systemeinstellungen lag die Datei auf der Platte.
+        // The file sat on disk during the detour into the system settings.
         geraet.erlaubt = true
         geraet.signatureGood = false
         vm.startInstallation()
@@ -306,8 +306,8 @@ class UpdateViewModelTest {
 
     @Test
     fun `switched off the start does not ask GitHub, switched on exactly once`() = runTest(takt) {
-        // Das vm aus auf() ist angemeldet und prüft im init, solange der Schalter noch an
-        // ist; diese Prüfung erst ablaufen lassen, sonst zählt sie hier mit.
+        // The vm from auf() is signed in and checks in init as long as the switch is still
+        // on; let that check expire first, otherwise it counts here too.
         advanceUntilIdle()
         angefragt.clear()
         vm.setStartpruefung(false)

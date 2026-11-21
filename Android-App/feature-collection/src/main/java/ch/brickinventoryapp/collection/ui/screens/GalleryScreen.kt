@@ -69,7 +69,7 @@ import ch.brickinventoryapp.shared.ui.storageFilter
 import ch.brickinventoryapp.shared.ui.partsBreakdown
 import ch.brickinventoryapp.collection.ui.TilePrice
 
-/** Was die Galerie zeigt; die Route sammelt es aus den Flüssen der ViewModels. */
+/** What the gallery shows; the route gathers it from the ViewModels' flows. */
 internal data class GalleryState(
     val app: AppUiState,
     val blick: ScopeUiState,
@@ -79,7 +79,7 @@ internal data class GalleryState(
     val lager: LagerUiState,
 )
 
-/** Was die Galerie auslöst; die Route verdrahtet es mit GalleryViewModel und EntryViewModel. */
+/** What the gallery triggers; the route wires it to GalleryViewModel and EntryViewModel. */
 internal class GalleryEvents(
     val suche: (String) -> Unit,
     val thema: (String) -> Unit,
@@ -92,9 +92,9 @@ internal class GalleryEvents(
 )
 
 /**
- * „gelöscht“ mit „Rückgängig“. Gelöscht wird erst, wenn die Snackbar ohne Rückgängig
- * endet — auch wenn sie verschwindet, weil man die Galerie verlässt. Jede Snackbar
- * antwortet nur für ihr Set: Löst ein zweites Löschen sie ab, bleibt dessen Rückgängig.
+ * "deleted" with "Undo". Only deleted once the snackbar ends without Undo —
+ * even if it disappears because you leave the gallery. Every snackbar
+ * answers only for its own set: if a second delete replaces it, its Undo remains.
  */
 @Composable
 internal fun GalleryUndoRoute(vm: GalleryViewModel, snackbarHostState: SnackbarHostState) {
@@ -113,24 +113,24 @@ internal fun GalleryUndoRoute(vm: GalleryViewModel, snackbarHostState: SnackbarH
     }
 }
 
-/** Die Galerie am Navigationsziel: sammelt die Flüsse und reicht Zustand und Ereignisse weiter. */
+/** The gallery at the navigation destination: gathers the flows and passes state and events on. */
 @Composable
 fun GalleryRoute(
     vm: GalleryViewModel,
-    /** Die Erfassung dieses Ziels; der Graph bindet sie an dessen Eintrag. */
+    /** This destination's entry flow; the graph binds it to its entry. */
     erfassung: EntryViewModel,
     imageLoader: ImageLoader,
-    /** Barcode-Scanner öffnen — nur der Graph kennt den NavController. */
+    /** Open the barcode scanner — only the graph knows the NavController. */
     onScanBarcode: () -> Unit,
-    /** Klick auf ein Set, ebenso. */
+    /** Clicking a set, likewise. */
     onSetClick: (String) -> Unit,
-    /** Scroll-Zustand von aussen, damit er den Weg in die Detailansicht übersteht. */
+    /** Scroll state from outside, so it survives the trip to the detail view. */
     gridState: LazyGridState = rememberLazyGridState(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val blick by vm.blickfeld.collectAsStateWithLifecycle()
-    // Eigener Fluss fuer die Galerie: Blaettern, Suchen und Nachladen aendern
-    // nur DIESEN Zustand (siehe GalleryUiState).
+    // Its own flow for the gallery: paging, searching and refetching only change
+    // THIS state (see GalleryUiState).
     val galerie by vm.galleryState.collectAsStateWithLifecycle()
     val preise by vm.preise.collectAsStateWithLifecycle()
     val barcodeState by erfassung.barcodeState.collectAsStateWithLifecycle()
@@ -142,7 +142,7 @@ fun GalleryRoute(
             sorting = vm::setGallerySort,
             konto = { vm.setScope(ScopeFilter.View.GALLERY, it) },
             lagerort = { vm.setStorageFilter(ScopeFilter.View.GALLERY, it) },
-            // Auch die Filterlisten: Sie werden sonst nur beim Start geladen.
+            // The filter lists too: otherwise they'd only load on start.
             aktualisieren = vm::aktualisieren,
             setErfassen = erfassung::addSet,
             manualEntryAcknowledged = { erfassung.manuelleErfassungQuittieren() },
@@ -171,46 +171,46 @@ internal fun GalleryScreen(
     val galerie = zustand.galerie
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
 
-    // ── Erfolgloser Scan öffnet die manuelle Erfassung ──
+    // ── An unsuccessful scan opens manual entry ──
     //
-    // Die erfolglosen Wege (EAN nicht auflösbar, ohne Setnummer, Texterkennung ohne
-    // Treffer) melden sich über ein Feld im Zustand; hier abgeholt und quittiert,
-    // sonst ginge der Dialog beim nächsten Zusammensetzen erneut auf.
+    // The unsuccessful paths (EAN not resolvable, no set number, text recognition with no
+    // hit) report via a field in the state; collected and acknowledged here,
+    // otherwise the dialog would open again on the next recomposition.
     LaunchedEffect(zustand.barcode.manuelleErfassungAnfordern) {
         if (zustand.barcode.manuelleErfassungAnfordern) {
             showAddDialog = true
             events.manualEntryAcknowledged()
         }
     }
-    // Das Eingabefeld hält seinen Text selbst (Tippen bleibt flüssig); die
-    // Entprellung und der Abruf liegen im ViewModel, weil dort auch die
-    // Filter-Generation hängt. Wechselt der Wert von aussen (Anmeldung,
-    // Zurücksetzen), zieht das Feld nach.
+    // The input field holds its own text (typing stays smooth); the
+    // debouncing and the fetch live in the ViewModel, because the
+    // filter generation also lives there. If the value changes from outside (sign-in,
+    // reset), the field follows.
     var searchInput by remember(galerie.galleryQuery) { mutableStateOf(galerie.galleryQuery) }
     var showFilter by rememberSaveable { mutableStateOf(false) }
 
-    // Kein lokales Filtern und keine Themenliste aus `sets`: Der Schirm zeigt, was der
-    // Server geliefert hat — eine zweite Suche hier kennte weder Jahr noch Sortierung,
-    // und die Themen kämen aus der geladenen Seite statt aus dem Bestand.
+    // No local filtering and no theme list from `sets`: the screen shows what the
+    // server delivered — a second search here would know neither year nor sorting,
+    // and the themes would come from the loaded page instead of the whole inventory.
 
     val anzeige = galleryDisplay(galerie, gefiltert = searchInput.isNotBlank() || galerie.galleryTheme.isNotEmpty())
-    // Ab grosser Schrift steht Erfassen in der Knopfzeile unter der Suche (SearchWithFilter).
+    // From large font size on, Add sits in the button row below the search (SearchWithFilter).
     val gross = largeFont()
     val addText = stringResource(R.string.gallery_add_set)
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            // Suche und ein Knopf für alles andere: Konto, Lagerort, Thema und
-            // Sortierung stehen im Blatt; die Kennzahlen rollen mit dem Raster. Scannen
-            // sitzt daneben, damit unten nur EIN Knopf schwebt. Im Fehlerzustand nicht:
-            // Ohne Sammlung gibt es nichts zu suchen.
+            // Search and one button for everything else: account, storage location, theme and
+            // sorting live in the sheet; the figures scroll with the grid. Scanning
+            // sits next to it, so only ONE button floats at the bottom. Not in the error state:
+            // without a collection there's nothing to search.
             if (anzeige != GalleryDisplay.FEHLER && anzeige != GalleryDisplay.LEER) GallerySearch(
                 zustand, events, searchInput, { searchInput = it }, onScanBarcode,
                 onFilter = { showFilter = true }, erfassen = addText to { showAddDialog = true },
             )
 
             OfflineHint(galerie.offlineStatus, onErneut = events.aktualisieren)
-            // Der Kringel des Ziehens nur über einer Liste: Beim ersten Laden zeigt das
-            // Skelett schon, dass etwas kommt, zwei Ladeanzeigen übereinander wirkten unruhig.
+            // The drag spinner only over a list: on the first load the
+            // skeleton already shows that something is coming, two loading indicators stacked felt restless.
             PullToRefreshBox(isRefreshing = galerie.abruf.laedt && anzeige == GalleryDisplay.LISTE,
                              onRefresh = events.aktualisieren, modifier = Modifier.fillMaxSize()) {
                 GalleryContent(anzeige, zustand, searchInput, imageLoader, gridState, onSetClick,
@@ -218,9 +218,9 @@ internal fun GalleryScreen(
             }
         }
 
-        // Erfassen erst, wenn die Sammlung da ist: Im Fehlerzustand gehört der Blick dem
-        // Grund und dem „Erneut versuchen“, nicht einem Knopf, der ins Leere ginge.
-        // Leer auch nicht: Die Leermeldung bietet Erfassen und Scannen selbst an.
+        // Add only once the collection is there: in the error state, attention belongs to the
+        // reason and "Try again", not a button that would go nowhere.
+        // Not empty either: the empty message itself offers Add and Scan.
         if (!gross && anzeige != GalleryDisplay.FEHLER && anzeige != GalleryDisplay.LEER) AddFab(
             addText, { showAddDialog = true },
             Modifier.align(Alignment.BottomEnd).padding(Abstaende.gross),
@@ -231,14 +231,14 @@ internal fun GalleryScreen(
     if (showAddDialog) GalerieErfassen(zustand, events, onSchliessen = { showAddDialog = false })
 }
 
-/** Der Bereich des Kontos und der gewählte Lagerort der Galerie. */
+/** The gallery's account scope and chosen storage location. */
 internal fun GalleryState.accountChoice(): String =
     blick.scopeModes[ScopeFilter.View.GALLERY] ?: ScopeFilter.ALL
 
 internal fun GalleryState.storageChoice(): String =
     lager.modi[ScopeFilter.View.GALLERY] ?: ""
 
-/** Suche, Filterknopf, Scannen und Sortierung über dem Raster. */
+/** Search, filter button, scan and sort above the grid. */
 @Composable
 private fun GallerySearch(
     zustand: GalleryState,
@@ -274,7 +274,7 @@ private fun GallerySearch(
     )
 }
 
-/** Was unter der Suche steht: Skelett, Fehler, leere Sammlung, keine Treffer oder das Raster. */
+/** What sits below the search: skeleton, error, empty collection, no hits, or the grid. */
 @Composable
 private fun GalleryContent(
     anzeige: GalleryDisplay,
@@ -292,15 +292,15 @@ private fun GalleryContent(
     when (anzeige) {
         GalleryDisplay.LOADS -> SkeletonRaster(ReadableColumns(160.dp), kachelHoehe = 252.dp,
             headerRow = true, imageRatio = IMAGE_ASPECT_RATIO)
-        // Fehler und leere Sammlung sehen verschieden aus und bieten
-        // Verschiedenes an: hier den Grund und einen neuen Versuch.
+        // Error and empty collection look different and offer
+        // different things: here the reason and a retry.
         GalleryDisplay.FEHLER -> GalleryHint {
             ErrorHint(galerie.abruf.errorMessage?.satz(), onRefresh,
                 galerie.abruf.errorKind)
         }
         GalleryDisplay.LEER -> GalleryEmpty(addOn, onScanBarcode)
         GalleryDisplay.NO_HITS -> GalleryHint {
-            // Die Kennzahlen meinen die ganze Sammlung — auch ohne Treffer.
+            // The figures refer to the whole collection — even with no hits.
             if (stats != null) GalleryMetrics(stats)
             EmptySymbol(Icons.Default.SearchOff)
             Text(stringResource(R.string.gallery_no_results, suchtext), fontWeight = FontWeight.SemiBold)
@@ -309,7 +309,7 @@ private fun GalleryContent(
     }
 }
 
-/** Die leere Sammlung: Erfassen und Scannen, derselbe Dialog wie der Plus-Knopf. */
+/** The empty collection: add and scan, the same dialog as the plus button. */
 @Composable
 private fun GalleryEmpty(addOn: () -> Unit, onScanBarcode: () -> Unit) {
     GalleryHint {
@@ -319,7 +319,7 @@ private fun GalleryEmpty(addOn: () -> Unit, onScanBarcode: () -> Unit) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center)
-        // Derselbe Dialog wie der Plus-Knopf — kein zweiter Erfassungsweg.
+        // The same dialog as the plus button — no second entry path.
         ButtonStack {
             Button(onClick = addOn, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.Add, null, Modifier.size(withFont(18.dp)))
@@ -335,7 +335,7 @@ private fun GalleryEmpty(addOn: () -> Unit, onScanBarcode: () -> Unit) {
     }
 }
 
-/** Kennzahlen und Kacheln; das Set, dessen Detail daneben offen ist, ist markiert. */
+/** Figures and tiles; the set whose detail is open next to it is marked. */
 @Composable
 private fun GalleryRaster(
     zustand: GalleryState,
@@ -347,9 +347,9 @@ private fun GalleryRaster(
     val stats = galerie.stats
     val gewaehlt = LocalOpenDetail.current
     val spalten = ReadableColumns(160.dp)
-    // Listenzeilen, sobald nur eine Spalte Platz hat oder die Schrift gross ist: Bei 130 %
-    // stand sonst eine Kachel über die ganze Breite, das Bild nahm zwei Drittel der Höhe
-    // und ein Set füllte den Bildschirm.
+    // List rows as soon as only one column fits or the font is large: at 130%
+    // a tile otherwise stood across the full width, the image took two thirds of the height
+    // and one set filled the screen.
     BoxWithConstraints {
     val dichte = LocalDensity.current
     val singleColumn = with(spalten) { dichte.anzahl(maxWidth - Abstaende.mittel * 2, Abstaende.klein) } <= 1
@@ -378,7 +378,7 @@ private fun GalleryRaster(
     }
 }
 
-/** Die Kennzahlen der Sammlung — erste Zeile des Rasters, sie rollt mit. */
+/** The collection's figures — the grid's first row, it scrolls with it. */
 @Composable
 private fun GalleryMetrics(stats: MetricsView) {
     MetricsSeries {
@@ -386,17 +386,17 @@ private fun GalleryMetrics(stats: MetricsView) {
         GalleryStatChip(stats.totalQuantity, R.plurals.gallery_stat_units)
         GalleryStatChip(stats.totalParts, R.plurals.gallery_stat_parts,
             partsBreakdown(stats.partsFromSets, stats.partsSingle))
-        // Alle Kennzahlen immer, auch mit 0: Eine Reihe, deren Chips je nach Bestand
-        // kommen und gehen, liest sich nicht gleich; 0 Figuren ist auch eine Auskunft.
+        // Always all figures, even at 0: a row whose chips come and go depending on the
+        // inventory doesn't read consistently; 0 figures is information too.
         GalleryStatChip(stats.totalMinifigs, R.plurals.gallery_stat_minifigs)
         GalleryStatChip(stats.totalInstructions, R.plurals.gallery_stat_instructions)
     }
 }
 
 /**
- * Mittig, scrollbar und mit Rand: Der Inhalt muss auch im Querformat ganz
- * erreichbar sein, und PullToRefreshBox braucht ein scrollbares Kind, damit
- * Ziehen zum Neuladen weiter geht.
+ * Centered, scrollable and with a margin: the content must be fully
+ * reachable in landscape too, and PullToRefreshBox needs a scrollable child so
+ * pulling to refresh keeps working.
  */
 @Composable
 private fun GalleryHint(inhalt: @Composable ColumnScope.() -> Unit) {
@@ -408,7 +408,7 @@ private fun GalleryHint(inhalt: @Composable ColumnScope.() -> Unit) {
     )
 }
 
-/** Beschriftung einer Sortierung; vollständig, damit ein neuer Wert hier auffällt. */
+/** Label of a sort order; spelled out so a new value here stands out. */
 @Composable
 internal fun Setsortierung.beschriftung(): String = stringResource(when (this) {
     Setsortierung.NEUESTE -> R.string.gallery_sort_added_desc
@@ -422,7 +422,7 @@ internal fun Setsortierung.beschriftung(): String = stringResource(when (this) {
     Setsortierung.MENGE_AUFSTEIGEND -> R.string.gallery_sort_qty_asc
 })
 
-/** Dieselben Beschriftungen für die Merkliste; dort ohne Menge. */
+/** The same labels for the watchlist; without a quantity there. */
 @Composable
 internal fun Merksortierung.beschriftung(): String = stringResource(when (this) {
     Merksortierung.NEUESTE -> R.string.gallery_sort_added_desc

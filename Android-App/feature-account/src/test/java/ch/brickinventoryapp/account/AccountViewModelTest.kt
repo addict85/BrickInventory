@@ -31,40 +31,40 @@ import ch.brickinventoryapp.model.ui.errorMessage
 import ch.brickinventoryapp.model.ui.laedt
 
 /**
- * Das Konto-ViewModel, ausgeführt gegen einen Testserver.
+ * The account ViewModel, run against a test server.
  *
- * Gegenproben:
- *  - In redeemQuestion() die Prüfung `liste.none { it.aktuell }`
- *    entfernt: „ohne erkanntes eigenes Gerät wird nichts entwertet" rot — die
- *    Rückfrage ging auf.
- *  - In redeemConfirm() `codeNoetig` nicht gesetzt: „ein fremdes Gerät
- *    verlangt Passwort und bei Bedarf den Code" rot; das Passwort nicht in den
- *    Rumpf gelegt: dieselbe Prüfung rot (kein "password").
- *  - In aenderePasswort() den Aufruf `sessionService.abmelden()` entfernt: „nach dem
- *    Passwortwechsel wird abgemeldet" rot.
- *  - In zweiterFaktor() `successText` nicht mehr gemeldet: „der bestätigte
- *    zweite Faktor zeigt die Codes" rot an der Meldung.
- *  - In asDevice() `.minOrNull()` → `.maxOrNull()`: „die
- *    Geräteliste zeigt Vollzugriff und die frühere Frist" rot (2027 statt 2026);
- *    `zugaenge` beim Zählen nicht beachtet: „ein schon entwertetes Gerät zählt
- *    nicht“ rot.
- *  - In abgelehnt() `codeNoetig` nicht gesetzt: „ohne Code
- *    verlangt der zweite Faktor …“ und „eine neue E-Mail …“ rot; in aenderePasswort()
- *    den Code nicht an changePassword() gereicht: dieselbe Prüfung rot (kein
- *    "code" im Rumpf).
- *  - In setUpSecondFactorOne() `d.otpauth` ungeprüft übernommen:
- *    „a foreign address instead of otpauth is not opened“ rot.
- *  - Patch gegenproben/profil-ohne-passwort.patch (die Prüfung
- *    `passwort.isNullOrBlank()` in saveProfile() entfernt): „ohne Passwort
- *    fragt das Profil den Server nicht“ rot.
- *  - Patch gegenproben/profil-mail-nicht-gesendet-still.patch (`emailSent` nicht
- *    ausgewertet): „eine neue E-Mail ohne gesendete Mail …“ rot. Patch
- *    gegenproben/profil-neu-laden-loescht-fehler.patch (fetchProfile() nimmt den
- *    Fehler mit withoutError() weg): dieselbe Prüfung rot an „übersteht das Neuladen“.
- *  - Patch gegenproben/konto-laedt-nicht-beim-beobachten.patch (observeLoadOn für
- *    Geräte und zweiten Faktor gestrichen): „Geräte und zweiter Faktor laden, sobald …“ rot.
- *  - Patch gegenproben/kontoseite-laedt-nicht.patch (observeLoadOn der Kontoseite
- *    gestrichen): „Profil und Design laden mit der Kontoseite …“ rot.
+ * Counter-checks:
+ *  - The check `liste.none { it.aktuell }` removed from redeemQuestion():
+ *    "without a recognized own device, nothing is revoked" red — the
+ *    confirmation went ahead.
+ *  - In redeemConfirm() `codeNoetig` not set: "ein fremdes Gerät
+ *    verlangt Passwort und bei Bedarf den Code" red; the password not put into
+ *    the body: same check red (no "password").
+ *  - The call `sessionService.abmelden()` removed from aenderePasswort(): "nach dem
+ *    Passwortwechsel wird abgemeldet" red.
+ *  - In zweiterFaktor() `successText` no longer reported: "der bestätigte
+ *    zweite Faktor zeigt die Codes" red on the message.
+ *  - In asDevice() `.minOrNull()` → `.maxOrNull()`: "die
+ *    Geräteliste zeigt Vollzugriff und die frühere Frist" red (2027 instead of 2026);
+ *    `zugaenge` ignored when counting: "ein schon entwertetes Gerät zählt
+ *    nicht" red.
+ *  - In abgelehnt() `codeNoetig` not set: "ohne Code
+ *    verlangt der zweite Faktor …" and "eine neue E-Mail …" red; in aenderePasswort()
+ *    the code not passed to changePassword(): same check red (no
+ *    "code" in the body).
+ *  - In setUpSecondFactorOne() `d.otpauth` taken unchecked:
+ *    "a foreign address instead of otpauth is not opened" red.
+ *  - Patch gegenproben/profil-ohne-passwort.patch (the check
+ *    `passwort.isNullOrBlank()` removed from saveProfile()): "ohne Passwort
+ *    fragt das Profil den Server nicht" red.
+ *  - Patch gegenproben/profil-mail-nicht-gesendet-still.patch (`emailSent` not
+ *    evaluated): "eine neue E-Mail ohne gesendete Mail …" red. Patch
+ *    gegenproben/profil-neu-laden-loescht-fehler.patch (fetchProfile() clears the
+ *    error with withoutError()): same check red on "übersteht das Neuladen".
+ *  - Patch gegenproben/konto-laedt-nicht-beim-beobachten.patch (observeLoadOn for
+ *    devices and second factor removed): "Geräte und zweiter Faktor laden, sobald …" red.
+ *  - Patch gegenproben/kontoseite-laedt-nicht.patch (observeLoadOn of the account page
+ *    removed): "Profil und Design laden mit der Kontoseite …" red.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AccountViewModelTest {
@@ -80,7 +80,7 @@ class AccountViewModelTest {
 
     private fun antwort(rumpf: String, code: Int = 200) = TestApi.antwort(rumpf, code)
 
-    /** Im Takt ist ein Zustand da, sobald die anstehenden Schritte gelaufen sind, oder nie. */
+    /** On the turn, a state is there once the pending steps have run, or never. */
     private fun bis(was: String, bedingung: () -> Boolean) {
         clock.runCurrent()
         assertTrue(was, bedingung())
@@ -248,7 +248,7 @@ class AccountViewModelTest {
         bis("Fehler") { vm.kontoState.value.speichern.errorMessage != null }
 
         assertFalse(abgemeldet)
-        // Die Absage kommt als Fehlerstatus mit dem Satz des Servers.
+        // The rejection comes as an error status with the server's message.
         assertEquals("Aktuelles Passwort falsch", vm.kontoState.value.speichern.errorMessage.text)
         assertNull(kanal.text)
     }
@@ -265,7 +265,7 @@ class AccountViewModelTest {
         assertNull(z.geheimnis)
         assertFalse(z.abruf.laedt)
         assertEquals("t${R.string.zf_enabled}", kanal.text)
-        // Der Code geht ohne Leerzeichen hinaus.
+        // The code goes out without spaces.
         assertTrue(server.takeRequest().body.readUtf8().contains("\"123456\""))
     }
 

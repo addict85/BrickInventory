@@ -23,13 +23,13 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Die Abschnittskarte des Set-Details: einspaltig auf Lesebreite begrenzt, in einer
- * Spalte des Tablet-Layouts so breit wie die Spalte (abzüglich Rand). Schmaler stand
- * sie mittig in einer 640 dp breiten Spalte, mit leerem Rand links und rechts.
+ * The set detail's section card: limited to reading width in a single column, as wide as
+ * the column (minus margin) in one column of the tablet layout. Narrower, it used to stand
+ * centered in a 640 dp wide column, with an empty margin left and right.
  *
- * Gegenprobe (gemessen nur in der CI — Robolectric):
- *   sectioncard-in-spalte-schmal  SectionCard liest LocalSpaltenkarte nicht (immer centeredUntil)
- *                                 → rot „in a column the card takes the full width“
+ * Counter-check (measured only in CI — Robolectric):
+ *   sectioncard-in-spalte-schmal  SectionCard doesn't read LocalSpaltenkarte (always centeredUntil)
+ *                                 → red „in a column the card takes the full width“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(qualifiers = "de-rCH-w1280dp-h800dp-land-xhdpi")
@@ -38,7 +38,7 @@ class SectionCardWidthTest {
     @get:Rule
     val compose = createComposeRule()
 
-    /** Die Breite des Karteninhalts in dp; er füllt die Karte bis auf ihren Innenrand. */
+    /** The width of the card content in dp; it fills the card up to its inner margin. */
     private fun inhaltsbreite(column: Boolean): Float {
         compose.setContent {
             BrickInventoryManagerTheme {

@@ -59,10 +59,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 
 /**
- * Die Rückfrage vor einer Aktion ohne Weg zurück: Symbol, Titel, ein Satz, die
- * Aktion in Fehlerfarbe rechts. Eine Bauform für Set löschen, Lagerort löschen,
- * Konto trennen und Abmelden — vorher fragte nur das Set nach.
- * Schliessen muss der Aufrufer in [onBestaetigen] selbst.
+ * The follow-up question before an action with no way back: icon, title, a sentence, the
+ * action in error color on the right. One shape for deleting a set, deleting a storage location,
+ * unlinking an account and signing out — previously only the set asked first.
+ * The caller has to close it themselves in [onBestaetigen].
  */
 @Composable
 fun Prompt(
@@ -73,7 +73,7 @@ fun Prompt(
     onAbbrechen: () -> Unit,
     symbol: ImageVector? = null,
 ) {
-    // Titel als Überschrift und Name des Fensters: TalkBack nennt beim Öffnen, worum es geht.
+    // Title as heading and name of the window: TalkBack names what it's about on opening.
     AlertDialog(
         onDismissRequest = onAbbrechen,
         properties = DialogProperties(usePlatformDefaultWidth = false),
@@ -81,7 +81,7 @@ fun Prompt(
         containerColor = fensterFlaeche(),
         icon = symbol?.let { s -> { Icon(s, null, tint = MaterialTheme.colorScheme.error) } },
         title = { Text(titel, Modifier.semantics { heading() }) },
-        // Rollbar: Bei 200 % Schrift reicht ein langer Satz sonst unter die Knöpfe.
+        // Scrollable: at 200% text size a long sentence would otherwise reach under the buttons.
         text = { Text(text, Modifier.verticalScroll(rememberScrollState())) },
         confirmButton = {
             TextButton(onClick = onBestaetigen) { Text(bestaetigen, color = MaterialTheme.colorScheme.error) }
@@ -91,10 +91,10 @@ fun Prompt(
 }
 
 /**
- * Der Rahmen jedes Erfassen-Dialogs: Titel links ohne Symbol, die Felder mit
- * gleichem Abstand untereinander, rechts der volle Knopf. Set, Merkposten,
- * Übernahme und Lagerort sahen vorher je anders aus (Symbol, Mitte, Rundung).
- * Auf dem Telefon mit grosser Schrift als Vollbild ([addFullscreen]).
+ * The frame of every capture dialog: title on the left without an icon, the fields with
+ * equal spacing stacked, the full-width button on the right. Set, wishlist,
+ * takeover and storage location used to each look different (icon, center, rounding).
+ * On the phone with large text as full screen ([addFullscreen]).
  */
 @Composable
 fun AddDialog(
@@ -103,12 +103,12 @@ fun AddDialog(
     onBestaetigen: () -> Unit,
     onAbbrechen: () -> Unit,
     confirmAn: Boolean = true,
-    /** Ob schon etwas eingegeben ist; dann schliesst kein Fehlgriff den Dialog (siehe [addClosable]). */
+    /** Whether something has already been entered; if so, a misstep doesn't close the dialog (see [addClosable]). */
     geaendert: Boolean = false,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
     var discardAsk by rememberSaveable { mutableStateOf(false) }
-    // Zurück und Danebentippen landen hier; Abbrechen und das Kreuz schliessen weiter ohne Frage.
+    // Back and tapping outside end up here; Cancel and the X keep closing without asking.
     val schliessen: () -> Unit = { if (geaendert) { discardAsk = true } else { onAbbrechen() } }
     if (discardAsk) {
         Prompt(
@@ -129,8 +129,8 @@ fun AddDialog(
         modifier = Modifier.windowEdge().semantics { paneTitle = titel },
         containerColor = fensterFlaeche(),
         title = { Text(titel, Modifier.semantics { heading() }) },
-        // Rollbar: Ist die Schrift gross, sind die Felder höher als das Fenster; die
-        // Knöpfe bleiben dabei stehen, nur die Felder rollen.
+        // Scrollable: with large text, the fields are taller than the window; the
+        // buttons stay put, only the fields scroll.
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(Abstaende.mittel)) { inhalt() }
@@ -143,9 +143,9 @@ fun AddDialog(
 }
 
 /**
- * Die Knöpfe am Fuss eines Formulars ausserhalb eines AlertDialogs (Blatt, Karte):
- * Abbrechen links, die Haupthandlung rechts, wie AlertDialog sie ordnet. Bei grosser
- * Schrift rückt der Hauptknopf rechts in die nächste Zeile statt aus dem Bild.
+ * The buttons at the foot of a form outside an AlertDialog (sheet, card):
+ * Cancel on the left, the main action on the right, as AlertDialog orders them. With large
+ * text, the main button moves to the right on the next line instead of off-screen.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -154,7 +154,7 @@ fun Knopfzeile(
     onBestaetigen: () -> Unit,
     onAbbrechen: () -> Unit,
     modifier: Modifier = Modifier,
-    /** Während des Speicherns: Kringel davor, der Hauptknopf nimmt keinen zweiten Tipp an. */
+    /** While saving: a spinner before it, the main button accepts no second tap. */
     laeuft: Boolean = false,
 ) {
     FlowRow(
@@ -170,26 +170,26 @@ fun Knopfzeile(
 }
 
 /**
- * Daneben tippen schliesst ein ausgefülltes Formular nicht: Ein Tipp neben das Fenster
- * verwarf bisher Set, Merkposten oder Lagerort samt allem Getippten. Zurück bleibt an,
- * fragt dann aber erst nach (AddDialog).
+ * Tapping outside doesn't close a filled-in form: a tap next to the window used to
+ * discard a set, wishlist entry or storage location along with everything typed. Back stays as it is,
+ * but asks first (AddDialog).
  */
 fun addClosable(geaendert: Boolean) =
     DialogProperties(dismissOnClickOutside = !geaendert, usePlatformDefaultWidth = false)
 
 /**
- * Der Rand eines schwebenden Dialogs zum Fenster, selbst gesetzt statt der Fensterbreite
- * der Plattform: Die hing vom Gerät ab, und ohne sie stand der Dialog randlos über der
- * ganzen Breite. Mittig steht er von selbst; breiter als 560 dp wird er nicht.
+ * The margin of a floating dialog to the window, set explicitly instead of the platform's
+ * window width: that depended on the device, and without it the dialog stood edge-to-edge over the
+ * full width. It centers itself; it never gets wider than 560 dp.
  */
 fun Modifier.windowEdge(): Modifier = padding(horizontal = WINDOW_EDGE)
 
 private val WINDOW_EDGE = 24.dp
 
 /**
- * Vollbild statt schwebendem Dialog: auf schmalem Fenster ab grosser Schrift. Dort
- * füllte der AlertDialog den Schirm ohnehin, und seine Rollkante schnitt Zeilen mitten
- * durch (Material: „full-screen dialog“ für Eingaben auf dem Telefon).
+ * Full screen instead of a floating dialog: on a narrow window from large text size onward. There,
+ * the AlertDialog filled the screen anyway, and its scroll edge cut lines right in
+ * the middle (Material: „full-screen dialog“ for input on the phone).
  */
 @Composable
 fun addFullscreen(): Boolean {
@@ -198,8 +198,8 @@ fun addFullscreen(): Boolean {
 }
 
 /**
- * Kopf mit Schliessen und Titel, die Felder rollen, der Bestätigen-Knopf steht fest
- * am Fuss in voller Breite: Neben einem Titel in 200 % Schrift hätte er oben keinen Platz.
+ * Header with close and title, the fields scroll, the confirm button sits fixed
+ * at the foot full width: next to a title at 200% text size it would have no room at the top.
  */
 @Composable
 private fun FullscreenAdd(
@@ -239,10 +239,10 @@ private fun FullscreenAdd(
 }
 
 /**
- * Ein Abschnitt einer Unterseite: Karte mit Überschrift. Anders als SettingsCard
- * ohne Symbol und ohne Grossbuchstaben — auf einer Unterseite nennt die App-Leiste
- * die Rubrik schon, der Abschnitt nur seinen Teil davon. Ohne [titel] eine
- * Karte ohne Kopf.
+ * A section of a sub-page: card with a heading. Unlike SettingsCard,
+ * without an icon and without capital letters — on a sub-page the app bar already
+ * names the category, the section only its part of it. Without [titel], a
+ * card without a header.
  */
 @Composable
 fun Abschnitt(
@@ -256,7 +256,7 @@ fun Abschnitt(
             if (innerGap) Modifier.fillMaxWidth().padding(Abstaende.gross) else Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(Abstaende.klein),
         ) {
-            // Dieselbe Überschrift wie jede Karte (Abschnittstitel).
+            // The same heading as every card (section title).
             if (titel != null) SectionTitle(titel,
                 if (innerGap) Modifier else Modifier.padding(start = Abstaende.gross,
                     end = Abstaende.gross, top = Abstaende.gross))
@@ -266,10 +266,10 @@ fun Abschnitt(
 }
 
 /**
- * Die Rückfrage nach dem Passwort vor einem Schritt, den der Server bestätigt haben
- * will. Das Codefeld erst, wenn er den zweiten Faktor verlangt hat ([codeNoetig]);
- * das Passwort bleibt dabei stehen. Beides nur in remember: Gesicherter Zustand
- * landet im Bundle und bei Prozesstod auf der Platte.
+ * The follow-up question for the password before a step the server wants confirmed.
+ * The code field only once it has requested the second factor ([codeNoetig]);
+ * the password stays put. Both only in remember: saved state ends up
+ * in the bundle and, on process death, on disk.
  */
 @Composable
 fun PasswordPrompt(
@@ -284,12 +284,12 @@ fun PasswordPrompt(
 ) {
     var passwort by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
-    // Die Absage rollt ins Bild: Mit dem Codefeld darüber lag sie auf kleinen Schirmen unter
-    // dem Rand der Rückfrage, und man sah nur ein neues Feld ohne den Grund dafür.
+    // The rejection scrolls into view: with the code field above it, it used to sit on small screens below
+    // the edge of the follow-up question, and you'd only see a new field without the reason for it.
     val messageVisible = remember { BringIntoViewRequester() }
     LaunchedEffect(fehler) {
         if (fehler == null) return@LaunchedEffect
-        withFrameNanos { }  // erst wenn die Zeile gesetzt ist
+        withFrameNanos { }  // only once the row is set
         messageVisible.bringIntoView()
     }
     AddDialog(
@@ -299,7 +299,7 @@ fun PasswordPrompt(
         onAbbrechen = onAbbrechen,
         confirmAn = !laeuft && passwort.isNotEmpty() && (!codeNoetig || code.isNotBlank()),
     ) {
-        // Ein Dialog hat sein eigenes Fenster; der Schutz der Seite reicht nicht hinein.
+        // A dialog has its own window; the page's protection doesn't reach into it.
         Ueberdeckungsschutz()
         Text(text, style = MaterialTheme.typography.bodyMedium)
         PasswordField(passwort, { passwort = it }, stringResource(R.string.konto_password_current),
@@ -309,15 +309,15 @@ fun PasswordPrompt(
     }
 }
 
-/** Der Code des zweiten Faktors, den der Server für Passwort, E-Mail und Gutscheine verlangt. */
+/** The second-factor code the server requires for password, email and vouchers. */
 @Composable
 fun SecondFactorCodeField(code: String, onCode: (String) -> Unit) {
     OutlinedTextField(
         value = code, onValueChange = { onCode(it.take(24)) },
         label = { Text(stringResource(R.string.login_code)) },
         supportingText = { Text(stringResource(R.string.login_code_hint)) },
-        // Kein SmsOtpCode: Der Code kommt aus einer Authenticator-App, nicht per SMS, und
-        // Compose kennt keinen Autofill-Typ für TOTP. Das System bot sonst SMS-Codes an.
+        // No SmsOtpCode: the code comes from an authenticator app, not by SMS, and
+        // Compose has no autofill type for TOTP. Otherwise the system offered SMS codes.
         modifier = Modifier.fillMaxWidth(),
         singleLine = true, shape = Formen.feld,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii))

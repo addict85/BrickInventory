@@ -9,28 +9,28 @@ import org.junit.Assert
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Die Masse einer Bestandskachel stehen an EINER Stelle.
+ * The dimensions of an inventory tile live in ONE place.
  *
- * ── Der Befund ──────────────────────────────────────────────────────────────
- * Teile- und Minifiguren-Reiter zeigen dasselbe Raster. Die Masse standen als
- * Zahlen in beiden Bildschirmen:
+ * ── The finding ──────────────────────────────────────────────────────────────
+ * The parts and minifigures tabs show the same grid. The dimensions stood as
+ * numbers in both screens:
  *
  *     modifier = Modifier.width(112.dp).height(178.dp)
  *
- * und dazu zweimal dieselbe Ecke fuer das Bild oben:
+ * and on top of that the same corner for the image above, twice:
  *
  *     .clip(RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
  *
- * Wer eines davon aendert, muss heute alle Fundstellen finden. Weicht eine ab,
- * bricht das Raster oder das Bild steht an den oberen Ecken ueber — und beides
- * faellt erst am Geraet auf.
+ * Whoever changes one of them today has to find all occurrences. If one is off,
+ * the grid breaks or the image overhangs the top corners — and both
+ * only show up on a device.
  *
- * ── Was NICHT zusammengezogen wurde ─────────────────────────────────────────
- * Nur die Geometrie. Der Inhalt der beiden Karten ist verschieden und soll es
- * bleiben: andere Bildquelle (Minifiguren mit Rueckfall auf volle Aufloesung),
- * anderer Platzhalter, andere Mengenmarke, bei den Teilen zusaetzlich der
- * Farbpunkt. Dieselbe Abgrenzung, die AppKarte in Formen.kt schon zieht — sie
- * kapselt die Huelle und laesst den Innenabstand beim Aufrufer.
+ * ── What was NOT merged ─────────────────────────────────────────
+ * Only the geometry. The content of the two cards is different and should
+ * stay that way: a different image source (minifigures with fallback to full
+ * resolution), a different placeholder, a different quantity badge, and for parts
+ * additionally the color dot. The same boundary that AppKarte in Formen.kt
+ * already draws — it encapsulates the shell and leaves the inner padding to the caller.
  */
 class TileDimensionsTest {
 
@@ -75,12 +75,12 @@ class TileDimensionsTest {
     }
 
     /**
-     * Eine Karte mit Text hat eine Mindest-, keine feste Höhe: Bei grosser
-     * Systemschrift wächst der Text, und eine feste Höhe schneidet ihn ab.
-     * Bildflächen IN der Karte dürfen fest sein.
+     * A card with text has a minimum, not a fixed height: with large
+     * system font size the text grows, and a fixed height would cut it off.
+     * Image areas IN the card may be fixed.
      *
-     * Gegenprobe (am 28.10.2026 gemessen, kotlinc): die Set-Karte wieder mit
-     * `Modifier.height(272.dp)` → rot mit „GalerieKarte.kt …“.
+     * Counter-check (measured on Oct 28, 2026, kotlinc): the set card back with
+     * `Modifier.height(272.dp)` → red with „GalerieKarte.kt …“.
      */
     @Test
     fun `cards have no fixed height`() {
@@ -93,10 +93,10 @@ class TileDimensionsTest {
             for ((nr, zeile) in zeilen.withIndex()) {
                 if (!karte.containsMatchIn(zeile)) continue
                 karten++
-                // Der Modifier der Karte steht in ihren ersten Argumentzeilen.
+                // The card's modifier sits in its first argument lines.
                 val kopf = zeilen.subList(nr, minOf(nr + 6, zeilen.size))
-                // Ohne Inhalt (`) {}`) ist es ein Platzhalter: Dessen feste Höhe
-                // hält die Liste ruhig, bis die Seite kommt (CatalogScrubberTest).
+                // Without content (`) {}`) it's a placeholder: its fixed height
+                // keeps the list steady until the page arrives (CatalogScrubberTest).
                 if (kopf.any { it.trim() == ") {}" }) continue
                 val treffer = kopf.indexOfFirst { fixedHeight.containsMatchIn(it) }
                 if (treffer >= 0) violations += "${datei.name}:${nr + treffer + 1}"
@@ -107,10 +107,10 @@ class TileDimensionsTest {
     }
 
     /**
-     * Dasselbe für Knöpfe, Chips und anklickbare Flächen: Sie tragen Text.
+     * The same for buttons, chips and clickable surfaces: they carry text.
      *
-     * Gegenprobe (am 28.10.2026 gemessen, kotlinc): die Periodenchips in
-     * PortfolioChart.kt wieder mit `Modifier.height(28.dp)` → rot mit
+     * Counter-check (measured on Oct 28, 2026, kotlinc): the period chips in
+     * PortfolioChart.kt back with `Modifier.height(28.dp)` → red with
      * „PortfolioChart.kt …“.
      */
     @Test
@@ -134,8 +134,8 @@ class TileDimensionsTest {
     }
 
     /**
-     * Das Kachelbild sitzt oben bündig in der Karte: Seine oberen Ecken haben den Radius
-     * der Leiste, unten keinen. Gegenprobe kachelbild-eigener-radius (12.dp; kotlinc) → rot hier.
+     * The tile image sits flush at the top of the card: its top corners have the
+     * bar's radius, none at the bottom. Counter-check kachelbild-eigener-radius (12.dp; kotlinc) → red here.
      */
     @Test
     fun `image corner and card shape share the radius`() {

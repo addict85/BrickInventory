@@ -53,26 +53,26 @@ import org.robolectric.Shadows
 import android.os.Build
 
 /**
- * Die Maske für den Pflicht-Faktor der Verwalter, ausgeführt: Einrichten erst mit
- * Passwort, der Schlüssel in Vierergruppen, nur Ziffern gehen als Code hinaus, die
- * Notfallcodes vor dem Weiter (und erst mit dem Haken „gesichert“), die Schrittanzeige,
- * der angesagte Hinweis ohne Authenticator-App, Abmelden in jedem Schritt, und bei
- * 200 % Schrift bricht kein Text mitten im Wort um.
+ * The admins' mandatory-factor mask, run through: setup only with
+ * password, the key in groups of four, only digits go out as the code, the
+ * emergency codes before Next (and only with the "secured" checkbox checked), the step indicator,
+ * the announced hint without an authenticator app, sign-out at every step, and at
+ * 200% font size no text wraps mid-word.
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   faktormaske-ohne-passwort      Einrichten auch ohne Passwort → rot „ohne Passwort richtet …“
- *   faktormaske-schluessel-am-stueck  Schlüssel ohne Gruppen → rot „waehrend der Einrichtung …“
- *   faktormaske-ohne-codes         die Codes nie gezeigt → rot „nach der Bestaetigung …“
- *   faktormaske-weiter-ohne-haken  „Weiter“ auch ohne Haken frei → rot „nach der Bestaetigung …“
- *   faktormaske-schritt-fest       Schrittanzeige immer bei Schritt 1 → rot „die Schrittanzeige …“
- *   faktormaske-hinweis-stumm      Hinweis ohne App ohne ansagen() → rot „ohne Authenticator-App …“
- *   faktormaske-abmelden-nur-anfangs  Abmelden nur im ersten Schritt → rot „Abmelden bleibt …“
- *   faktormaske-riesentitel        Überschrift in schmaler Spalte → rot „bei 200 Prozent …“
- *   codes-teilen-ueber-ablage      „Teilen“ legt die Codes in die Zwischenablage → rot „die Notfallcodes lassen sich teilen …“
- *   codes-wieder-kopierbar         ein Knopf kopiert die Codes in die Ablage → rot „kein Knopf der Codes …“
- *   schluessel-kopieren-vor-33     Schlüssel kopierbar ab API 30 → rot „der Schluessel ist erst ab API 33 …“
- *   codes-sichern-als-teilen       „Als Datei speichern“ teilt wieder (ACTION_SEND) → rot „die Notfallcodes
- *                                  lassen sich als Datei speichern …“ (nicht lokal gemessen)
+ * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ *   faktormaske-ohne-passwort      setup also without a password → red "ohne Passwort richtet …"
+ *   faktormaske-schluessel-am-stueck  key without groups → red "waehrend der Einrichtung …"
+ *   faktormaske-ohne-codes         the codes never shown → red "nach der Bestaetigung …"
+ *   faktormaske-weiter-ohne-haken  "Next" free even without the checkbox → red "nach der Bestaetigung …"
+ *   faktormaske-schritt-fest       step indicator always on step 1 → red "die Schrittanzeige …"
+ *   faktormaske-hinweis-stumm      hint without app without ansagen() → red "ohne Authenticator-App …"
+ *   faktormaske-abmelden-nur-anfangs  sign-out only in the first step → red "Abmelden bleibt …"
+ *   faktormaske-riesentitel        heading in a narrow column → red "bei 200 Prozent …"
+ *   codes-teilen-ueber-ablage      "Share" puts the codes on the clipboard → red "die Notfallcodes lassen sich teilen …"
+ *   codes-wieder-kopierbar         a button copies the codes to the clipboard → red "kein Knopf der Codes …"
+ *   schluessel-kopieren-vor-33     key copyable from API 30 → red "der Schluessel ist erst ab API 33 …"
+ *   codes-sichern-als-teilen       "Save as file" shares again (ACTION_SEND) → red "die Notfallcodes
+ *                                  lassen sich als Datei speichern …" (not measured locally)
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -96,7 +96,7 @@ class SecondFactorMaskTest {
 
     private fun text(id: Int) = compose.activity.getString(id)
 
-    /** Die Android-Stufe, nach der die Maske wählt; Robolectric selbst läuft gegen API 35. */
+    /** The Android level the mask picks by; Robolectric itself runs against API 35. */
     private val stufe = mutableStateOf(Build.VERSION.SDK_INT)
 
     private fun zeige(schrift: Float = 1f) {
@@ -106,7 +106,7 @@ class SecondFactorMaskTest {
                 CompositionLocalProvider(
                     LocalDensity provides Density(d.density, schrift),
                     LocalSdkLevel provides stufe.value,
-                    // Die Gerätesperre gilt als bestätigt; geprüft wird die Maske.
+                    // The device lock counts as confirmed; the mask is what's checked.
                     LocalSchrittschutz provides Schrittschutz { _, dann -> dann() },
                 ) {
                     ZweiterFaktorPflichtMaske(
@@ -160,7 +160,7 @@ class SecondFactorMaskTest {
     fun `after confirmation the emergency codes are shown, continuing only with the saved check`() {
         zustand.value = codes
         zeige()
-        // Der Codetext liest sich Zeichen für Zeichen (readAloudAs); sein Text steht nicht im Baum.
+        // The code text reads character by character (readAloudAs); its text isn't in the tree.
         compose.onNodeWithContentDescription("a a a a - b b b b, c c c c - d d d d").assertExists()
         assertTrue("Die Codes stehen im Klartext da: kein Bildschirmfoto", geschuetzt())
         button(R.string.zf_pflicht_weiter).assertIsNotEnabled()
@@ -172,8 +172,8 @@ class SecondFactorMaskTest {
     }
 
     /**
-     * Die Codes gehen auf Tipp an eine App der Wahl (Passwortmanager) — über die Auswahl
-     * des Systems, nicht über die Zwischenablage, deren Verlauf sie behielte.
+     * The codes go, on tap, to an app of choice (password manager) — via the system's
+     * picker, not via the clipboard, which would keep them in its history.
      */
     @Test
     fun `the emergency codes can be shared without filling the clipboard`() {
@@ -193,7 +193,7 @@ class SecondFactorMaskTest {
         assertTrue("Teilen legt nichts in die Zwischenablage", !ablage.hasPrimaryClip())
     }
 
-    /** Bevorzugt eine Datei am Ort der Wahl: Beim Teilen läse die Ziel-App mit. */
+    /** Prefers a file at a location of choice: when sharing, the target app would read along. */
     @Test
     fun `the emergency codes can be saved as a file, that checks saved`() {
         zustand.value = codes
@@ -217,7 +217,7 @@ class SecondFactorMaskTest {
         assertTrue("Speichern legt nichts in die Zwischenablage", !ablage.hasPrimaryClip())
     }
 
-    /** Jeder Knopf des Codeschritts getippt (ausser Abmelden): Die Ablage bleibt leer. */
+    /** Every button of the code step tapped (sign-out excepted): the clipboard stays empty. */
     @Test
     fun `no button of the codes puts them into the clipboard`() {
         zustand.value = codes
@@ -309,7 +309,7 @@ class SecondFactorMaskTest {
         assertTrue("Mitten im Wort umgebrochen: $gebrochen", gebrochen.isEmpty())
     }
 
-    /** Das Layout des Textknotens mit genau [text] (nicht eines Feldes, das ihn trägt). */
+    /** The layout of the text node with exactly [text] (not a field that carries it). */
     private fun layout(text: String): TextLayoutResult {
         val node = compose.onAllNodes(hasText(text), useUnmergedTree = true).fetchSemanticsNodes()
             .first { n -> n.config.getOrNull(SemanticsProperties.EditableText) == null &&
@@ -319,7 +319,7 @@ class SecondFactorMaskTest {
         return ergebnis.single()
     }
 
-    /** Eine Zeile endet zwischen zwei Buchstaben — weder an einem Leerraum noch nach einem Bindestrich. */
+    /** A line ends between two letters — neither at whitespace nor after a hyphen. */
     private fun brichtInWord(t: TextLayoutResult): Boolean {
         val s = t.layoutInput.text.text
         return (0 until t.lineCount - 1).any { zeile ->

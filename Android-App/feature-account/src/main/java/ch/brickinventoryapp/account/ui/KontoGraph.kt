@@ -24,25 +24,25 @@ import ch.brickinventoryapp.state.ui.viewmodel.DarstellungViewModel
 import ch.brickinventoryapp.state.ui.viewmodel.VertrauenViewModel
 
 /**
- * Was die Einstellungen von der App brauchen: Update, Design und Zertifikat leben mit
- * der Activity, weil ihr Hinweis über jedem Bildschirm steht bzw. das Thema der
- * ganzen App bestimmt.
+ * What the settings need from the app: update, design and certificate live with
+ * the Activity, because their notice sits above every screen, or because they
+ * decide the whole app's theme.
  */
 interface AccountNavigation : Bereichsumgebung {
     val update: UpdateViewModel
     val darstellung: DarstellungViewModel
     val vertrauen: VertrauenViewModel
 
-    /** Abgemeldet: zurück zur Anmeldung, ohne Weg zurück in die App. */
+    /** Signed out: back to sign-in, with no way back into the app. */
     fun abgemeldet()
 
-    /** Einen anderen Server eintragen; das gehört der Anmeldung. */
+    /** Entering a different server; that belongs to sign-in. */
     fun openSetup()
 
     fun openSet(setNumber: String)
 }
 
-/** Die Einstellungen und ihre Unterseiten. */
+/** Settings and its subpages. */
 fun NavGraphBuilder.accountGraph(navigation: AccountNavigation) {
     settingsTarget(navigation)
     subpages(navigation)
@@ -50,10 +50,10 @@ fun NavGraphBuilder.accountGraph(navigation: AccountNavigation) {
 
 private fun NavGraphBuilder.settingsTarget(navigation: AccountNavigation) {
     composable<KontoZiel.Settings> {
-        // Ein Zustand je Besuch; die Stelle hält allein der ScrollMemory (Keeper unten).
+        // One state per visit; only ScrollMemory (the keeper below) remembers the position.
         val settingsScrollState = remember { ScrollState(0) }
-        // Die Einstellungen lädt das SettingsViewModel beim Beobachten; Haushalt,
-        // Gutscheine, Profil und Geräte holt jede Unterseite selbst, wenn man sie öffnet.
+        // SettingsViewModel loads the settings while observing; household,
+        // vouchers, profile and devices are each fetched by their own subpage when opened.
         navigation.Reiter(stringResource(R.string.nav_settings)) {
             ScrollPositionKeeper(
                 KontoZiel.Settings.rollSchluessel, settingsScrollState, navigation.rollgedaechtnis)
@@ -61,7 +61,7 @@ private fun NavGraphBuilder.settingsTarget(navigation: AccountNavigation) {
                 vm = hiltViewModel<SettingsViewModel>(),
                 onLogout = { navigation.abmelden(); navigation.abgemeldet() },
                 onServerWechseln = navigation::openSetup,
-                // Die Rubriken führen nicht von hier weiter, sondern stehen auf „Mehr“
+                // The categories don't navigate further from here; they sit on "More"
                 // (MehrBildschirm.kt).
                 scrollState = settingsScrollState,
                 selbstUpdate = navigation.update,
@@ -73,8 +73,8 @@ private fun NavGraphBuilder.settingsTarget(navigation: AccountNavigation) {
 }
 
 /**
- * Die Unterseiten der Einstellungen, ohne untere Leiste: Eine Unterseite trägt einen
- * Zurück-Pfeil und bringt ihren Snackbar-Halter selbst mit.
+ * The settings' subpages, without a bottom bar: a subpage carries a
+ * back arrow and brings its own snackbar host.
  */
 private fun NavGraphBuilder.subpages(navigation: AccountNavigation) {
     val navController = navigation.navController
@@ -86,9 +86,9 @@ private fun NavGraphBuilder.subpages(navigation: AccountNavigation) {
             imageLoader = navigation.bilder,
             serverUrl = state.serverUrl,
             snackbarHostState = snackbarHostState,
-            // Dieselbe Detailansicht wie aus Galerie und Finanzen — ein
-            // zweiter Weg dorthin waere ein zweiter Ort fuer dieselben
-            // Regeln.
+            // The same detail view as from the gallery and finances — a
+            // second route there would be a second place for the same
+            // rules.
             onSetClick = navigation::openSet,
             onZurueck = { navController.popBackStack() },
         )

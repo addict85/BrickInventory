@@ -23,17 +23,17 @@ import ch.brickinventoryapp.shared.ui.OwnerPicker
 import ch.brickinventoryapp.shared.ui.Zustandszeile
 
 /**
- * Anzahl, Kaufpreis und Zustand vor der Übernahme — für ein gerade gekauftes Set
- * ist keine Vorgabe zuverlässig richtig. Dieselben Felder in derselben Reihenfolge
- * wie im Katalog-Dialog. Der Zustand ist mit dem des Merkpostens vorbelegt;
- * welcher Merkposten erledigt ist, entscheidet der Server.
+ * Quantity, purchase price and condition before taking over — no default is
+ * reliably right for a set just bought. The same fields in the same order
+ * as in the catalog dialog. The condition is pre-filled with the watchlist item's;
+ * which watchlist item is fulfilled is decided by the server.
  */
 @Composable
 internal fun UebernahmeDialog(
     merkposten: WantedItemView,
-    /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
+    /** Stock of storage locations — empty means: there are none yet, then it's typed in. */
     lagerorte: List<String> = emptyList(),
-    /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
+    /** The preselected storage location (star in settings). Empty means: no default. */
     locationDefault: String = "",
     onDismiss: () -> Unit,
     onUebernehmen: (Int, String, Zustand, String?) -> Unit,
@@ -41,7 +41,7 @@ internal fun UebernahmeDialog(
     var anzahl   by rememberSaveable { mutableStateOf("1") }
     var preis    by rememberSaveable { mutableStateOf("") }
     var zustand  by rememberSaveable { mutableStateOf(merkposten.condition) }
-    // Schluessel ist die Vorgabe — dieselbe Begruendung wie im Katalog-Dialog.
+    // Key is the default — the same reasoning as in the catalog dialog.
     var lagerort by rememberSaveable(locationDefault) { mutableStateOf(locationDefault) }
 
     AddDialog(
@@ -54,8 +54,8 @@ internal fun UebernahmeDialog(
     ) {
         Text(merkposten.name ?: merkposten.setNumber, style = MaterialTheme.typography.bodyMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-            // NumericInput statt eigener Filterung: Die Regel, was eine Zahl ist (genau ein
-            // Trennzeichen), steht einmal in util/NumericInput.kt.
+            // NumericInput instead of its own filtering: the rule for what counts as a number (exactly one
+            // separator) lives once in util/NumericInput.kt.
             OutlinedTextField(
                 shape = Formen.feld,
                 value = anzahl,
@@ -75,19 +75,19 @@ internal fun UebernahmeDialog(
                 modifier = Modifier.weight(1f),
             )
         }
-        // Mit Beschriftung „Zustand“: Zwei Chips ohne Überschrift sagten nicht, wonach sie fragen.
+        // Labeled "Condition": two chips with no heading didn't say what they ask about.
         Zustandszeile(zustand, { zustand = it })
-        // Lagerort wie bei jeder anderen Erfassung.
+        // Storage location as with every other entry.
         LagerortErfassung(lagerort, lagerorte, { lagerort = it })
     }
 }
 
 /**
- * Die Erfassungsmaske als Dialog, wie AddSetDialog in der Galerie — eine Karte
- * kostete auf jedem Bildschirm Platz. Nummer, Zustand, Konto; Anzahl und Kaufpreis
- * erst bei der Übernahme, ein Merkposten hat beides nicht. Der Cursor steht sofort
- * im Nummernfeld; die kurze Pause davor braucht es, weil das Feld beim ersten
- * Durchlauf noch nicht angeordnet ist.
+ * The entry mask as a dialog, like AddSetDialog in the gallery — a card
+ * would cost room on every screen. Number, condition, account; quantity and purchase price
+ * only on taking over, a watchlist item has neither. The cursor goes into the
+ * number field right away; the short pause before it is needed because the field isn't
+ * laid out yet on the first pass.
  */
 @Composable
 internal fun WantedItemAddDialog(
@@ -98,25 +98,25 @@ internal fun WantedItemAddDialog(
 ) {
     var nummer  by rememberSaveable { mutableStateOf("") }
     var zustand by rememberSaveable { mutableStateOf(defaultCondition) }
-    // Vorbelegt mit dem eigenen Konto — wer nichts waehlt, wuenscht fuer sich.
+    // Pre-filled with one's own account — whoever chooses nothing wants it for themself.
     var besitzer by remember(householdMembers) {
         mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
     }
 
-    // „Auf die Merkliste“ bleibt antippbar und markiert dann das leere Feld: Grau ohne
-    // Grund liess raten, warum nichts geschah.
+    // "Add to watchlist" stays tappable and then marks the empty field: gray with no
+    // reason left you guessing why nothing happened.
     var numberMissing by rememberSaveable { mutableStateOf(false) }
     val numberFocus = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(120)
-        try { numberFocus.requestFocus() } catch (_: Exception) { /* Dialog schon zu */ }
+        try { numberFocus.requestFocus() } catch (_: Exception) { /* dialog already closed */ }
     }
 
     AddDialog(
         titel = stringResource(R.string.wanted_add_title),
         bestaetigen = stringResource(R.string.wanted_add_submit),
-        // Nur mitschicken, wenn es ueberhaupt eine Wahl gab — sonst schreibt der
-        // Server auf das eigene Konto.
+        // Only send if there was a choice at all — otherwise the
+        // server writes to one's own account.
         onBestaetigen = {
             if (nummer.isBlank()) numberMissing = true
             else createOn(nummer, zustand, if (householdMembers.size > 1) besitzer else null)
@@ -128,8 +128,8 @@ internal fun WantedItemAddDialog(
             value = nummer,
             onValueChange = { nummer = NumericInput.setNumber(it) },
             label = { Text(stringResource(R.string.gallery_set_number)) },
-            // Als Hilfetext statt Platzhalter: Der Platzhalter verschwand mit dem
-            // Fokus, und der Dialog fokussiert das Feld sofort.
+            // As help text instead of a placeholder: the placeholder disappeared with
+            // focus, and the dialog focuses the field right away.
             isError = numberMissing && nummer.isBlank(),
             supportingText = {
                 if (numberMissing && nummer.isBlank()) Text(stringResource(R.string.erfassen_nummer_fehlt), Modifier.announce())
@@ -137,16 +137,16 @@ internal fun WantedItemAddDialog(
             },
             singleLine = true,
             shape = Formen.feld,
-            // Dieselbe Tastatur wie im AddSetDialog. Ein Zahlenfeld
-            // ohne Tastaturwahl oeffnet die Buchstabentastatur — die
-            // Regel dazu steht in NumericInputTest.
+            // The same keyboard as in AddSetDialog. A number field
+            // without a keyboard choice opens the letter keyboard — the
+            // rule for that lives in NumericInputTest.
             keyboardOptions = NumericInput.setNumberKeyboard(),
             modifier = Modifier.fillMaxWidth().focusRequester(numberFocus),
         )
-        // Mit Beschriftung „Zustand“: Zwei Chips ohne Überschrift sagten nicht, wonach sie fragen.
+        // Labeled "Condition": two chips with no heading didn't say what they ask about.
         Zustandszeile(zustand, { zustand = it })
-        // Derselbe Waehler wie beim Erfassen eines Sets. Bei einem
-        // Einzelkonto blendet er sich selbst aus (members.size < 2).
+        // The same picker as when entering a set. On a
+        // single account it hides itself (members.size < 2).
         OwnerPicker(householdMembers, besitzer, { besitzer = it })
     }
 }

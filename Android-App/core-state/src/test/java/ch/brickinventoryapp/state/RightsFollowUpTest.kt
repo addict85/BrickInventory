@@ -12,16 +12,16 @@ import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
- * Nach einem 403 `nur_admins` zieht die Sitzung ihr Verwalterrecht aus
- * /auth/me nach — einmal, nicht je abgewiesener Anfrage. Die Kette davor
- * (ServerWaechter meldet nur bei `nur_admins` auf einen Token) prüft
- * ServerGuardTest; die Abfrageschleife der Verwaltung
+ * After a 403 `nur_admins` the session catches up on its admin right from
+ * /auth/me — once, not per rejected request. The chain before that
+ * (ServerWaechter only reports on `nur_admins` for a token) is checked by
+ * ServerGuardTest; the management's query loop by
  * MonitoringViewModelBehaviorTest.
  *
- * Gegenproben:
- *   A  die Abfrage `if (!state.value.isAdmin) return false` entfernt → rot
- *      „ein entzogenes Recht wird einmal nachgezogen …“ (zweiter /me-Abruf)
- *   B  ohne Antwort das Recht behalten (`me !is Erfolg -> return false`) → rot
+ * Counter-checks:
+ *   A  the check `if (!state.value.isAdmin) return false` removed → red
+ *      „ein entzogenes Recht wird einmal nachgezogen …“ (second /me fetch)
+ *   B  without a response, keeps the right (`me !is Erfolg -> return false`) → red
  *      „ohne Antwort von /auth/me gilt das 403“
  */
 class RightsFollowUpTest {

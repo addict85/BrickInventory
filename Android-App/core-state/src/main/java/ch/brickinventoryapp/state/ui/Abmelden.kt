@@ -9,9 +9,9 @@ import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 import javax.inject.Inject
 
 /**
- * Die Reihenfolge des Abmeldens: Zuerst entwertet der Server den Token (beim
- * Serverwechsel ist das noch der alte Server), dann räumt die Datenschicht das Gerät
- * auf, zuletzt leeren Widget, Sitzung und Blickfeld ihren Zustand.
+ * The order of signing out: first the server revokes the token (on a
+ * server change that's still the old server), then the data layer cleans up the device,
+ * and finally widget, session and Blickfeld clear their state.
  */
 class Abmelden @Inject constructor(
     private val cleanup: SitzungsBereinigung,
@@ -20,11 +20,11 @@ class Abmelden @Inject constructor(
     private val blickfeld: Scope,
     private val abmeldung: Abmeldung,
 ) : Abmeldevorgang {
-    /** Liefert, ob der Server den Token erst später entwertet (aus der Warteschlange). */
+    /** Reports whether the server revokes the token only later (from the queue). */
     override suspend fun ausfuehren(): Abmeldeweg? {
         val weg = if (sitzung.state.value.isLoggedIn) abmeldung.atServer() else null
         cleanup.raeumeAuf()
-        // Das Widget zeigt sonst die Zahlen des abgemeldeten Kontos weiter.
+        // Otherwise the widget would keep showing the signed-out account's numbers.
         fangeAusserAbbruch { abmeldehaken.abgemeldet() }
         sitzung.abgemeldet()
         blickfeld.reset()

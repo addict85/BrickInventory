@@ -2,8 +2,8 @@ package ch.brickinventoryapp.account.ui.dialogs
 
 import ch.brickinventoryapp.ui.satz
 import ch.brickinventoryapp.ui.theme.fensterFlaeche
-// Sammel-Importe wie in den Nachbardialogen (BarcodeResultDialog.kt,
-// SetCheckDialog.kt) — siehe die Begruendung dort.
+// Bulk imports as in the neighboring dialogs (BarcodeResultDialog.kt,
+// SetCheckDialog.kt) — see the reasoning there.
 import ch.brickinventoryapp.account.ui.UpdateUiState
 import ch.brickinventoryapp.account.ui.viewmodel.UpdateAktionen
 import androidx.compose.foundation.layout.*
@@ -23,10 +23,10 @@ import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import ch.brickinventoryapp.update.util.permissionIntent
 
 /**
- * „Es gibt eine neue Fassung — jetzt aktualisieren?“ Ein Dialog beim Start, weil
- * ein Punkt am Konto-Symbol leicht übersehen wird. Geladen wird trotzdem nie von
- * allein: Der Dialog fragt, der Ladevorgang beginnt erst auf „Jetzt aktualisieren“
- * — fragen ist nicht automatisch handeln.
+ * "There's a new version — update now?" A dialog on start, because a
+ * dot on the account icon is easy to overlook. Loading still never happens on
+ * its own: the dialog asks, the load only begins on "Update now"
+ * — asking is not the same as automatically acting.
  */
 @Composable
 fun UpdateRoute(selbstUpdate: UpdateAktionen.WithState) {
@@ -47,7 +47,7 @@ internal fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) 
     AlertDialog(
         containerColor = fensterFlaeche(),
         modifier = Modifier.semantics { paneTitle = titel },
-        // Waehrend des Ladens nicht wegtippbar — siehe der Kopf dieser Datei.
+        // Can't be dismissed by tapping away while loading — see the top of this file.
         onDismissRequest = { if (!laedt) schliessen() },
         title = { Text(titel, Modifier.semantics { heading() }) },
         text = {
@@ -56,13 +56,13 @@ internal fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) 
         },
         confirmButton = {
             when {
-                // Die Systemerlaubnis fehlt: Der einzige Knopf, der jetzt
-                // weiterhilft, fuehrt in die Systemeinstellungen.
+                // The system permission is missing: the only button that
+                // helps now leads into the system settings.
                 zustand.permissionAbsent -> TextButton(onClick = {
                     ctx.startActivity(permissionIntent(ctx))
                 }) { Text(stringResource(R.string.update_permission_grant)) }
-                // Liegt schon auf der Platte (etwa weil der System-Installer
-                // abgebrochen wurde): nicht noch einmal laden.
+                // Already on disk (e.g. because the system installer
+                // was cancelled): don't load it again.
                 zustand.readyToInstallation -> TextButton(onClick = { selbstUpdate.startInstallation() }) {
                     Text(stringResource(R.string.update_install))
                 }
@@ -73,9 +73,9 @@ internal fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) 
             }
         },
         dismissButton = {
-            // Waehrend des Ladens kein „Spaeter": Der Vorgang laeuft, und ein
-            // Knopf, der ihn nicht anhaelt, aber so aussieht, waere eine
-            // Zusage, die der Dialog nicht einhalten kann.
+            // No "Later" while loading: the operation is running, and a
+            // button that doesn't stop it but looks like it would would be a
+            // promise the dialog can't keep.
             if (!laedt) TextButton(onClick = schliessen) {
                 Text(stringResource(R.string.update_dialog_later))
             }
@@ -83,7 +83,7 @@ internal fun UpdateDialog(zustand: UpdateUiState, selbstUpdate: UpdateAktionen) 
     )
 }
 
-/** Fassung, Fortschritt und was fehlt — der Text des Dialogs, getrennt vom Rahmen und den Knöpfen. */
+/** Version, progress and what's missing — the dialog's text, separate from the frame and buttons. */
 @Composable
 private fun UpdateContent(zustand: UpdateUiState, versionName: String) {
     Column {

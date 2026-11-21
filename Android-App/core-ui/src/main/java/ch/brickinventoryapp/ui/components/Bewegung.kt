@@ -13,10 +13,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 
 /**
- * Hat die Person „Animationen entfernen“ gewählt (Animator-Dauer 0)? Dann fliegt kein
- * Bild, gleitet keine Kachel und schimmert kein Skelett: Bewegung kann Schwindel
- * auslösen, und wer sie abschaltet, meint alle. Die Einstellung wird beobachtet,
- * weil man sie bei offener App in den Systemeinstellungen umstellt.
+ * Has the person chosen „remove animations“ (animator duration 0)? Then no
+ * image flies, no tile glides and no skeleton shimmers: motion can trigger
+ * dizziness, and whoever turns it off means all of it. The setting is observed,
+ * because it's changed in system settings while the app is open.
  */
 @Composable
 fun movementReduced(): Boolean {

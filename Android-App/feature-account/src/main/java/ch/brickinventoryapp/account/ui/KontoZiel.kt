@@ -3,7 +3,7 @@ package ch.brickinventoryapp.account.ui
 import ch.brickinventoryapp.ui.Reiterziel
 import kotlinx.serialization.Serializable
 
-/** Die Einstellungen und ihre Unterseiten. */
+/** Settings and its subpages. */
 @Serializable
 sealed interface KontoZiel {
     @Serializable data object Settings : KontoZiel, Reiterziel {

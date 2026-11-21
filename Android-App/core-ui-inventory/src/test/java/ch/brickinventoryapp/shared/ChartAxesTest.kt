@@ -12,16 +12,16 @@ import ch.brickinventoryapp.shared.ui.localAxis
 import ch.brickinventoryapp.shared.ui.localValues
 
 /**
- * Die Achsen der Wertentwicklung folgen der App-Sprache statt der festen
- * Schweizer Form des Servers („03.10“, „CHF 1'234“).
+ * The axes of the value development follow the app language instead of the server's
+ * fixed Swiss form („03.10“, „CHF 1'234“).
  *
- * Gegenproben:
- *   A  localAxis gibt `punkte` unverändert zurück → rot: die beiden Tagesfälle
- *      und „month resolution shows month and year“
- *   C  maximumFractionDigits = 2 in localValues → rot: „y-Achse ganze Beträge …“
- * Gegenproben: Tagesbeschriftung wieder "MMM d" → rot
+ * Counter-checks:
+ *   A  localAxis returns `punkte` unchanged → red: the two day cases
+ *      and „month resolution shows month and year“
+ *   C  maximumFractionDigits = 2 in localValues → red: „y-Achse ganze Beträge …“
+ * Counter-checks: day label reverted to "MMM d" → red
  * „English day before month like every date“; withCurrencyGap in localValues
- * entfernt → rot „y-Achse ganze Beträge …“ („CHF1,234“).
+ * removed → red „y-Achse ganze Beträge …“ („CHF1,234“).
  */
 class ChartAxesTest {
 

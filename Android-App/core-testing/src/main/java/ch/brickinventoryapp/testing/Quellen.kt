@@ -3,33 +3,33 @@ package ch.brickinventoryapp.testing
 import java.io.File
 
 /**
- * Gemeinsame Pfade und Schnitte für Strukturprüfungen (Modulgrenzen, Manifest, Build,
- * Verbote). Verhalten prüft ein Test, indem er den Code ausführt, nicht hier.
+ * Shared paths and cuts for structural checks (module boundaries, manifest, build,
+ * bans). Behavior is checked by a test that runs the code, not here.
  */
 object Quellen {
 
-    /** Android-App/, gefunden von jedem Modulordner aus, in dem Gradle die Tests startet. */
+    /** Android-App/, found from any module folder where Gradle starts the tests. */
     val project: File = generateSequence(File("").absoluteFile) { it.parentFile }
         .firstOrNull { File(it, "settings.gradle.kts").isFile }
         ?: error("settings.gradle.kts nicht gefunden über ${File("").absolutePath}")
 
-    /** Die Gradle-Module mit Quelltext, jedes als Ordner unter [project]. */
+    /** The Gradle modules with source code, each as a folder under [project]. */
     val module: List<File> = project.listFiles { f -> File(f, "build.gradle.kts").isFile }.orEmpty().sortedBy { it.name }
 
     /**
-     * Alle Hauptquellen unter ch/brickinventoryapp, über die Module zusammengelegt.
-     * Die Prüfungen fragen nach Regeln der App, nicht nach dem Modul, in dem eine
-     * Datei gerade liegt; eine Kopie je Testlauf erspart jeder Prüfung die Suche.
+     * All main sources under ch/brickinventoryapp, merged across the modules.
+     * The checks ask about the app's rules, not about the module a
+     * file currently lives in; one copy per test run saves every check the search.
      */
     val root: File by lazy { vereint("src/main/java/ch/brickinventoryapp", "quellen") }
 
-    /** Alle Ressourcen (app/ und core-resources/), ebenso zusammengelegt. */
+    /** All resources (app/ and core-resources/), likewise merged. */
     val res: File by lazy { vereint("src/main/res", "res") }
 
-    /** Die Tests aller Module (ohne core-testing, dessen Hilfen Hauptquellen sind). */
+    /** The tests of all modules (without core-testing, whose helpers are main sources). */
     val tests: File by lazy { vereint("src/test/java/ch/brickinventoryapp", "tests") }
 
-    /** Das Manifest der App — das einzige; die Bibliotheken bringen keins mit. */
+    /** The app's manifest — the only one; the libraries don't bring their own. */
     val manifest: File get() = File(project, "app/src/main/AndroidManifest.xml")
 
     private fun vereint(unterpfad: String, name: String): File {
@@ -50,9 +50,9 @@ object Quellen {
     }
 
     /**
-     * Ein Workflow (Vorgabe: der Android-Baulauf), ohne Kommentarzeilen: Ein Kommentar, der
-     * eine alte Schreibweise erklärt, nennt sie und wäre sonst selbst ein Fund. Der Pfad gilt,
-     * weil Gradle die Tests aus dem Modulordner startet.
+     * A workflow (default: the Android build run), without comment lines: a comment
+     * that explains an old spelling names it and would otherwise be a find itself. The path holds,
+     * because Gradle starts the tests from the module folder.
      */
     fun workflow(datei: String = "android.yml"): String {
         val f = File("../../.github/workflows/$datei")
@@ -63,17 +63,17 @@ object Quellen {
         return f.readLines().filterNot { it.trimStart().startsWith("#") }.joinToString("\n")
     }
 
-    /** Eine Quelldatei, relativ zu ch/brickinventoryapp/. */
+    /** A source file, relative to ch/brickinventoryapp/. */
     fun lies(rel: String): String = File(root, rel).readText()
 
     /**
-     * Die Galerie, nach Abschnitten auf Geschwisterdateien verteilt: Eine Regel des
-     * Bildschirms gilt für alle, gleich in welcher Datei der Abschnitt gerade steht.
+     * The gallery, split across sibling files by section: a rule of the
+     * screen applies to all of them, regardless of which file the section currently lives in.
      */
     fun galerie(): String = listOf("GalleryScreen.kt", "GalerieFilter.kt", "GalerieKarte.kt", "GalerieErfassen.kt")
         .joinToString("\n") { lies("collection/ui/screens/$it") }
 
-    /** Bildschirme, die wie die Galerie auf Geschwisterdateien verteilt sind, mit ihren Teilen. */
+    /** Screens that, like the gallery, are split across sibling files, with their parts. */
     private val distributed = mapOf(
         "parts/ui/screens/PartsScreen.kt" to listOf("TeileFilterBlatt.kt", "TeileKarte.kt"),
         "parts/ui/screens/MinifigsScreen.kt" to listOf("FigurenKarte.kt", "FigurenErfassen.kt"),
@@ -86,20 +86,20 @@ object Quellen {
         "login/ui/screens/SetupScreen.kt" to listOf("SetupQr.kt"),
     )
 
-    /** Die Pfade eines Bildschirms samt seinen Teilen; für einen unverteilten nur er selbst. */
+    /** The paths of a screen together with its parts; for an unsplit one, just itself. */
     fun screenFiles(rel: String): List<String> =
         listOf(rel) + distributed[rel].orEmpty().map { rel.substringBeforeLast('/') + "/" + it }
 
     /**
-     * Ein Bildschirm samt seinen Teilen als ein Text: Eine Regel des ganzen Bildschirms
-     * gilt für alle Teile, gleich in welcher Datei ein Abschnitt gerade steht.
+     * A screen together with its parts as one text: a rule of the whole screen
+     * applies to all parts, regardless of which file a section currently lives in.
      */
     fun bildschirm(rel: String): String = screenFiles(rel).joinToString("\n") { lies(it) }
 
     /**
-     * Das Hilt-Modul samt Netz: AppModule, NetzModule und der gemeinsame
-     * Interceptor (ServerClient) liegen getrennt in den di/-Ordnern der Module; wer eine Regel des
-     * Netzwegs prüft, liest alle drei.
+     * The Hilt module along with the network: AppModule, NetzModule and the shared
+     * interceptor (ServerClient) live separately in the modules' di/ folders; whoever checks a rule of the
+     * network path reads all three.
      */
     fun di(): String {
         val dateien = alle().filter { it.parentFile?.name == "di" }.sortedBy { it.name }
@@ -108,8 +108,8 @@ object Quellen {
     }
 
     /**
-     * Alle Zustandsklassen: Sie liegen je Bereich in <stamm>/ui/Zustand*.kt. Mit
-     * Untergrenze, sonst prüfte ein umbenannter Ordner nichts und wäre grün.
+     * All state classes: they live per scope in <stamm>/ui/Zustand*.kt. With a
+     * lower bound, otherwise a renamed folder would check nothing and still be green.
      */
     fun states(): String {
         val dateien = alle().filter { it.parentFile?.name == "ui" && it.name.startsWith("Zustand") }
@@ -119,8 +119,8 @@ object Quellen {
     }
 
     /**
-     * Alle Kotlin-Quelldateien des Hauptbaums, mit Untergrenze: Fände ein falscher Pfad
-     * nichts, bestünde jede Sammelprüfung darauf grün, ohne etwas geprüft zu haben.
+     * All Kotlin source files of the main tree, with a lower bound: if a wrong path
+     * found nothing, every collective check would stay green without having checked anything.
      */
     fun alle(): List<File> {
         val dateien = root.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
@@ -133,8 +133,8 @@ object Quellen {
     }
 
     /**
-     * Alle Quelldateien unterhalb eines Unterordners, z. B. `"ui/screens"`. Verglichen über
-     * invariantSeparatorsPath, weil `path` unter Windows Backslashes liefert und dann nichts fände.
+     * All source files below a subfolder, e.g. `"ui/screens"`. Compared via
+     * invariantSeparatorsPath, because `path` returns backslashes on Windows and would otherwise find nothing.
      */
     fun unter(folder: String): List<File> {
         val pattern = "/${folder.trim('/')}/"
@@ -147,9 +147,9 @@ object Quellen {
     }
 
     /**
-     * Kommentare und Zeichenketten durch Leerzeichen ersetzt, Zeilen und Spalten
-     * bleiben: Ein Fund zeigt so auf die echte Stelle, und ein Dateiname in einem
-     * Text ist kein Aufruf.
+     * Comments and string literals replaced with spaces, lines and columns
+     * stay intact: a find thus points to the real spot, and a file name inside a
+     * string is not a call.
      */
     fun strip(src: String): String {
         val out = StringBuilder(src.length)
@@ -162,7 +162,7 @@ object Quellen {
         return out.toString()
     }
 
-    /** Wo ein Kommentar oder eine Zeichenkette ab [i] endet; [i], wenn dort keine beginnt. */
+    /** Where a comment or string literal starting at [i] ends; [i] if none starts there. */
     private fun endOfCommentOrText(src: String, i: Int): Int = when {
         src.startsWith("//", i) -> src.indexOf('\n', i).let { if (it < 0) src.length else it }
         src.startsWith("/*", i) -> src.indexOf("*/", i + 2).let { if (it < 0) src.length else it + 2 }
@@ -178,9 +178,9 @@ object Quellen {
     }
 
     /**
-     * Kommentare ausblenden, zeilenweise: Kotlin verschachtelt Blockkommentare, und ein
-     * Muster über die ganze Datei verschluckte ab einem Sternchen nach einem Schrägstrich
-     * in einem Kommentar den Rest.
+     * Hide comments, line by line: Kotlin nests block comments, and a
+     * pattern over the whole file would swallow the rest after an asterisk following a slash
+     * inside a comment.
      */
     fun withoutComments(quelle: String): String = quelle.lines().joinToString("\n") { zeile ->
         val t = zeile.trim()
@@ -188,8 +188,8 @@ object Quellen {
     }
 
     /**
-     * Ein Ausschnitt ab dem ersten Vorkommen von [ab], gemessen in Zeilen ohne Kommentare:
-     * Ein Absatz Erklärung mehr über der Fundstelle verschiebt so nichts.
+     * A section from the first occurrence of [ab], measured in lines without comments:
+     * one more paragraph of explanation above the find spot thus shifts nothing.
      */
     fun fenster(quelle: String, ab: String, zeilen: Int): String {
         val clean = withoutComments(quelle)
@@ -200,16 +200,16 @@ object Quellen {
     }
 
     /**
-     * Der Rumpf einer Funktion, ab ihrer Signatur bis zu ihrer schliessenden
-     * Klammer. Genauer als ein festes Fenster, wo es um „steht X in dieser
-     * Funktion?" geht.
+     * The body of a function, from its signature to its closing
+     * brace. More precise than a fixed window, for „does X appear in this
+     * function?".
      */
     fun function(quelle: String, signatur: String): String {
         val clean = withoutComments(quelle)
         val i = clean.indexOf(signatur)
         if (i < 0) return ""
         val rest = clean.substring(i).lines()
-        // Einrückung der Signaturzeile, nicht der Fundstelle: Vor `fun` kann `internal` stehen.
+        // Indentation of the signature line, not of the find spot: `internal` can come before `fun`.
         val rowsStart = clean.lastIndexOf('\n', i) + 1
         val indent = clean.substring(rowsStart).takeWhile { it == ' ' }
         val ende = rest.drop(1).indexOfFirst { it == "$indent}" }
@@ -217,8 +217,8 @@ object Quellen {
     }
 
     /**
-     * Ein Kamerabildschirm samt allem, was zu seiner Kamera gehört: Die Kamera besteht aus
-     * mehreren Dateien, und wer nur eine liest, findet die halbe Regel.
+     * A camera screen together with everything that belongs to its camera: the camera consists of
+     * several files, and whoever reads only one finds half the rule.
      */
     fun cameraSource(rel: String): String = buildString {
         append(bildschirm(rel))

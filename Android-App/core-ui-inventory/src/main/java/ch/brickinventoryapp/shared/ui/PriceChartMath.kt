@@ -6,19 +6,19 @@ import ch.brickinventoryapp.ui.util.appNumberLocale
 import ch.brickinventoryapp.model.util.fmtDatum
 
 /**
- * Rechnen für das Preisdiagramm, ohne Compose und damit prüfbar. Die vom Server
- * vorne aufgefüllten Nullen heissen „kein Wert“ und werden nicht gezeichnet; die
- * x-Achse folgt dem Datum, nicht dem Index. Dieselben Regeln wie im Web
+ * Computation for the price chart, without Compose and thus testable. The zeros
+ * the server pads at the front mean „no value“ and are not drawn; the
+ * x-axis follows the date, not the index. The same rules as on the web
  * (public/js/admin.js, priceChartSVG).
  */
 
-/** Ein gezeichneter Punkt: Tag als Zahl (Tage seit 1970) und Preis. */
+/** A drawn point: day as a number (days since 1970) and price. */
 data class ChartPointXY(val day: Long, val value: Double)
 
-/** Eine Linie: ihr Zustand und ihre echten Punkte. */
+/** A line: its condition and its real points. */
 data class ChartLine(val condition: Zustand, val points: List<ChartPointXY>)
 
-/** Achsenbereich für das Zeichnen. */
+/** Axis range for drawing. */
 data class ChartBounds(
     val minDay: Long, val maxDay: Long,
     val minValue: Double, val maxValue: Double,
@@ -33,7 +33,7 @@ data class ChartBounds(
     fun yFraction(value: Double): Float = (1.0 - (value - minValue) / valueSpan).toFloat()
 }
 
-/** Was TalkBack je Linie sagt: Zeitraum, Anfangs- und Endwert, Tief und Hoch. */
+/** What TalkBack says per line: time span, start and end value, low and high. */
 data class LinesSummary(
     val zustand: Zustand,
     val von: String,
@@ -47,8 +47,8 @@ data class LinesSummary(
 object PriceChartMath {
 
     /**
-     * Die Beschreibung des Diagramms je gezeichneter Linie — eine Zeichenfläche
-     * hat sonst keine Semantik, und TalkBack übersprang den Preisverlauf.
+     * The chart's description per drawn line — a canvas otherwise
+     * has no semantics, and TalkBack skipped the price history.
      */
     fun zusammenfassung(
         lines: List<ChartLine>,
@@ -60,14 +60,14 @@ object PriceChartMath {
             l.points.minOf { it.value }, l.points.maxOf { it.value })
     }
 
-    /** Tage seit 1970 → „31.01.2026“ bzw. „31/01/2026“, dieselbe Schreibweise wie formatDay(). */
+    /** Days since 1970 → „31.01.2026“ resp. „31/01/2026“, the same notation as formatDay(). */
     fun tagText(day: Long, locale: java.util.Locale): String =
         formatDay(java.time.LocalDate.ofEpochDay(day).toString(), locale)
 
     /**
-     * ISO-Tag ("2026-01-31") in Tage seit 1970. Bewusst ohne java.time-Parsing
-     * im Zeichenpfad: Der Aufruf passiert je Punkt, und ein Fehltag durch eine
-     * unerwartete Zeitzone würde die Linie verschieben.
+     * ISO day ("2026-01-31") into days since 1970. Deliberately without java.time parsing
+     * in the drawing path: the call happens per point, and a wrong day from an
+     * unexpected time zone would shift the line.
      */
     fun dayNumber(iso: String): Long? {
         val p = iso.take(10).split("-")
@@ -79,10 +79,10 @@ object PriceChartMath {
     }
 
     /**
-     * Diagrammdaten des Servers in zeichenbare Linien überführen.
+     * Turn the server's chart data into drawable lines.
      *
-     * Verworfen werden: die aufgefüllten Nullen vor `firstRealIndex`, danach
-     * jeder Punkt ohne Preis (preis <= 0) und jede Reihe, die dann leer ist.
+     * Discarded are: the padded zeros before `firstRealIndex`, after that
+     * every point without a price (preis <= 0), and every series that is then empty.
      */
     fun buildLines(chart: PreisDiagrammAnsicht?): List<ChartLine> {
         val series = chart?.values ?: return emptyList()
@@ -96,10 +96,10 @@ object PriceChartMath {
     }
 
     /**
-     * Gemeinsame Skala über alle Linien, weil der Abstand zwischen Neu- und
-     * Gebrauchtpreis der interessante Vergleich ist. 15 % Rand, damit keine Linie am
-     * Rand klebt; gleiche Werte spannen 10 % des Wertes auf. Die Ränder landen auf
-     * runden Werten (siehe [schritt]), damit die Achse 790/800/810 liest statt 787/801/816.
+     * A shared scale across all lines, because the gap between new and
+     * used price is the interesting comparison. 15% margin, so no line sticks to the
+     * edge; equal values span 10% of the value. The edges land on
+     * round values (see [schritt]), so the axis reads 790/800/810 instead of 787/801/816.
      */
     fun bounds(lines: List<ChartLine>): ChartBounds? {
         val pts = lines.flatMap { it.points }
@@ -115,14 +115,14 @@ object PriceChartMath {
         val s = schritt((oben - unten) / 4)
         val minValue = kotlin.math.floor(unten / s) * s
         var maxValue = kotlin.math.ceil(oben / s) * s
-        // Eine gerade Zahl von Schritten, damit auch die Mitte auf einem runden Wert liegt.
+        // An even number of steps, so the middle too lands on a round value.
         if (kotlin.math.round((maxValue - minValue) / s).toLong() % 2L != 0L) maxValue += s
         return ChartBounds(minDay = minDay, maxDay = maxDay, minValue = minValue, maxValue = maxValue)
     }
 
     /**
-     * Ein runder Schritt nahe [roh]: 1, 2 oder 5 mal einer Zehnerpotenz, nie unter
-     * 1 — die Achse zeigt ganze Beträge, und ein kleinerer Schritt stünde doppelt da.
+     * A round step near [roh]: 1, 2 or 5 times a power of ten, never below
+     * 1 — the axis shows whole amounts, and a smaller step would be shown twice over.
      */
     fun schritt(roh: Double): Double {
         if (roh <= 1.0) return 1.0
@@ -131,19 +131,19 @@ object PriceChartMath {
         return faktor * power
     }
 
-    /** Drei Beschriftungen der Wertachse: unten, Mitte, oben — alle drei runde Werte. */
+    /** Three labels on the value axis: bottom, middle, top — all three round values. */
     fun yTicks(b: ChartBounds): List<Double> =
         listOf(b.minValue, (b.minValue + b.maxValue) / 2, b.maxValue)
 
     /**
-     * "2026-01-31" → „31.01.2026“ (de) bzw. „31/01/2026“ (en) — über fmtDatum, damit
-     * die Achse dieselbe Form zeigt wie das Erfassungsdatum darüber. Unbrauchbare
-     * Eingaben bleiben unverändert.
+     * "2026-01-31" → „31.01.2026“ (de) resp. „31/01/2026“ (en) — via fmtDatum, so
+     * the axis shows the same form as the capture date above it. Unusable
+     * input stays unchanged.
      */
     fun formatDay(iso: String, locale: java.util.Locale = appNumberLocale()): String =
         fmtDatum(iso, locale) ?: iso
 
-    /** Erster und letzter Tag der gemeinsamen Achse (für die Randbeschriftung). */
+    /** First and last day of the shared axis (for the edge labels). */
     fun axisRange(chart: PreisDiagrammAnsicht?): Pair<String, String>? {
         val x = chart?.x?.filter { it.isNotBlank() } ?: return null
         if (x.isEmpty()) return null

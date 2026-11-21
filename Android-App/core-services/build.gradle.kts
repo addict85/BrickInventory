@@ -1,6 +1,6 @@
-// Hintergrunddienste mit eigenem Android-Einstieg: CSV-Import und PDF-Export als
-// Vordergrund-Dienste und der stündliche Preisalarm (WorkManager). Hängt an
-// core-data (Repositories, Ablagen); core-data kennt dieses Modul nicht.
+// Background services with their own Android entry point: CSV import and PDF export as
+// foreground services, and the hourly price alert (WorkManager). Depends on
+// core-data (repositories, stores); core-data does not know this module.
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.unittests)
@@ -13,14 +13,14 @@ android {
 
 dependencies {
     implementation(project(":core-data"))
-    // Texte und Symbol der Meldungen: Die R-Klassen sind nicht transitiv.
+    // Texts and icon of the notifications: the R classes are not transitive.
     implementation(project(":core-resources"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.work)
-    // WorkManager allein zöge Lifecycle 2.5.1 ein; die Prüfsummen kennen nur die Reihe der übrigen Module.
+    // WorkManager alone would pull in Lifecycle 2.5.1; the checksums only know the order of the other modules.
     implementation(libs.androidx.lifecycle.runtime.ktx)
-    // @HiltWorker: Der Preisalarm-Arbeiter bekommt seine Abholung im Konstruktor.
+    // @HiltWorker: the price-alert worker gets its fetcher injected via the constructor.
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
 

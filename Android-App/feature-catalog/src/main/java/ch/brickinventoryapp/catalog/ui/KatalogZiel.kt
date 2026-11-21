@@ -3,7 +3,7 @@ package ch.brickinventoryapp.catalog.ui
 import ch.brickinventoryapp.ui.Reiterziel
 import kotlinx.serialization.Serializable
 
-/** Die Ziele des Katalogs. */
+/** The catalog's destinations. */
 @Serializable
 sealed interface KatalogZiel {
     @Serializable data object Catalog : KatalogZiel, Reiterziel {
@@ -12,8 +12,8 @@ sealed interface KatalogZiel {
     @Serializable data class CatalogDetail(val setNumber: String) : KatalogZiel
 
     /**
-     * Liste und Detail als Teilgraph: Beide holen ihr ViewModel an dessen Eintrag,
-     * so sieht die Liste das „besitze ich“ aus dem Detail. Kein Ziel.
+     * List and detail as a sub-graph: both fetch their ViewModel at its entry,
+     * so the list sees "I own this" from the detail. No destination.
      */
     @Serializable data object Bereich
 }

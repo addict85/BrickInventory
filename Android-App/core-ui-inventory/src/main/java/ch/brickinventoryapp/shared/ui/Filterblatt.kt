@@ -57,10 +57,10 @@ import ch.brickinventoryapp.ui.components.Suchfeld
 import ch.brickinventoryapp.model.ui.ListView
 
 /**
- * Suche und daneben ein Knopf „Filter“ — der Kopf über Galerie, Teilen und
- * Minifiguren. Am Telefon stapelten sich dort fünf Zeilen Filter über dem
- * Raster; jetzt liegen sie im Blatt, und die Zahl am Knopf sagt, ob und wie
- * viele davon gerade wirken.
+ * Search, and next to it a „Filter“ button — the header above gallery, parts and
+ * minifigs. On the phone, five rows of filters used to stack above the
+ * grid; now they live in the sheet, and the number on the button says whether and how
+ * many of them currently apply.
  */
 @Composable
 fun SearchWithFilter(
@@ -69,16 +69,16 @@ fun SearchWithFilter(
     platzhalter: String,
     activeFilter: Int,
     onFilter: () -> Unit,
-    /** Scannen als Symbol neben dem Filter; null = kein Scanner auf diesem Bildschirm. */
+    /** Scanning as an icon next to the filter; null = no scanner on this screen. */
     scanOn: (() -> Unit)? = null,
-    /** Das Sortiermenü (SortierMenu) zwischen Filter und Scannen; null = keine Sortierung. */
+    /** The sort menu (SortierMenu) between filter and scan; null = no sorting. */
     sorting: (@Composable () -> Unit)? = null,
     /**
-     * Erfassen mit seiner Beschreibung; steht nur bei grosser Schrift hier, sonst schwebt
-     * es als AddFab. Null = dieser Bildschirm erfasst nichts.
+     * Capture with its description; it only sits here with large text, otherwise
+     * it floats as an AddFab. Null = this screen captures nothing.
      */
     erfassen: Pair<String, () -> Unit>? = null,
-    /** Die wirkenden Filter; sie stehen als Chips unter der Suche und lassen sich einzeln entfernen. */
+    /** The active filters; they sit as chips under the search field and can be removed individually. */
     aktive: List<ActiveFilter> = emptyList(),
 ) {
     Column(Modifier.fillMaxWidth()) {
@@ -98,15 +98,15 @@ private fun SearchAndButtons(
     sorting: (@Composable () -> Unit)?,
     erfassen: Pair<String, () -> Unit>?,
 ) {
-    // So breit wie das Raster darunter (Lesebreite.kt): Endete die Leiste bei 840 dp,
-    // stand sie auf dem Tablet mitten über den Kacheln.
+    // As wide as the grid below it (Lesebreite.kt): if the bar ended at 840 dp,
+    // it stood on the tablet right in the middle over the tiles.
     Box(Modifier.fillMaxWidth()) {
-        // Filter, Sortieren und Scannen gleich: drei Symbole mit Tooltip und Namen für
-        // TalkBack. Auf dem Tablet stand „Filter“ beschriftet neben zwei nackten Symbolen.
-        // Die Zahl am Symbol sagt weiter, wie viele Filter wirken.
+        // Filter, sort and scan all the same: three icons with a tooltip and a name for
+        // TalkBack. On the tablet, „Filter“ was labeled next to two bare icons.
+        // The number on the icon also says how many filters are active.
         val gross = largeFont()
-        // Bei grosser Schrift steht Erfassen in dieser Zeile statt schwebend: Über einer
-        // Liste, die nur zwei Einträge zeigt, verdeckte der schwebende Knopf ihren Text.
+        // With large text, capture sits in this row instead of floating: over a
+        // list that shows only two entries, the floating button covered its text.
         val addHere = erfassen.takeIf { gross }
         val buttons: @Composable () -> Unit = {
             val folgt = scanOn != null || sorting != null || addHere != null
@@ -118,29 +118,29 @@ private fun SearchAndButtons(
                 FilledIconButton(onClick = addHere.second) { Icon(Icons.Default.Add, contentDescription = addHere.first) }
             }
         }
-        // Bei grosser Schrift die Knöpfe unter das Feld: Daneben blieb vom Platzhalter
-        // nur „Suche…“. Ein Filterknopf allein bleibt daneben; auf eigener Zeile stand
-        // er verloren über dem Raster (Teile, Figuren).
+        // With large text, the buttons go below the field: next to it, only „Suche…"
+        // was left of the placeholder. A filter button alone stays next to it; on its own row
+        // it stood lost above the grid (parts, figures).
         val untereinander = gross && (scanOn != null || sorting != null || addHere != null)
         if (untereinander) Column {
             Suchfeld(wert = wert, onValue = onValue, platzhalter = platzhalter, modifier = Modifier.fillMaxWidth())
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically) { buttons() }
         } else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            // Über die ganze Breite, die Knöpfe am rechten Rand des Rasters: Auf 720 dp begrenzt
-            // endete die Zeile auf dem Tablet mitten über den Kacheln, rechts davon leer.
+            // Across the full width, the buttons at the grid's right edge: limited to 720 dp,
+            // the row ended on the tablet right in the middle over the tiles, empty to its right.
             Suchfeld(wert = wert, onValue = onValue, platzhalter = platzhalter, modifier = Modifier.weight(1f))
             buttons()
         }
     }
 }
 
-/** Ein wirkender Filter: was er zeigt und wie er wegfällt. */
+/** An active filter: what it shows and how it's removed. */
 data class ActiveFilter(val text: String, val entfernen: () -> Unit)
 
 /**
- * Die wirkenden Filter unter der Suche, je ein Chip mit Kreuz. Die Zahl am Filterknopf
- * sagte nur „2“; welche zwei, sah man erst im Blatt, und zum Entfernen musste man hinein.
+ * The active filters under the search field, each a chip with an X. The number on the filter button
+ * only said „2“; which two, you only saw inside the sheet, and removing meant going in.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -164,7 +164,7 @@ fun ActiveFilterSeries(filter: List<ActiveFilter>) {
     }
 }
 
-/** Der Kontofilter als Chip, wenn er wirkt; der Name wie im Blatt. */
+/** The account filter as a chip, when active; the name as in the sheet. */
 @Composable
 fun accountFilter(members: List<MemberView>, wert: String, removeOn: () -> Unit): ActiveFilter? {
     if (wert == ScopeFilter.ALL) return null
@@ -176,14 +176,14 @@ fun accountFilter(members: List<MemberView>, wert: String, removeOn: () -> Unit)
     return ActiveFilter(text, removeOn)
 }
 
-/** Der Lagerortfilter als Chip, wenn er wirkt. */
+/** The storage-location filter as a chip, when active. */
 fun storageFilter(orte: List<LocationView>, wert: String, removeOn: () -> Unit): ActiveFilter? =
     wert.takeIf { w -> w.isNotBlank() && orte.any { it.ort == w } }?.let { ActiveFilter(it, removeOn) }
 
 @Composable
 private fun FilterButton(aktiv: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val zustand = if (aktiv > 0) pluralStringResource(R.plurals.filter_active, aktiv, aktiv) else ""
-    // outline statt der Vorgabe outlineVariant (1,1–1,2:1): Der Rand ist die Grenze des Knopfs.
+    // outline instead of the default outlineVariant (1.1–1.2:1): the border is the button's boundary.
     val edge = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
     BadgedBox(
         badge = { if (aktiv > 0) Badge { Text(aktiv.toString()) } },
@@ -202,8 +202,8 @@ private fun FilterButton(aktiv: Int, onClick: () -> Unit, modifier: Modifier = M
 }
 
 /**
- * Das Blatt selbst: Titel, „Zurücksetzen“ und darunter die Abschnitte. Es
- * rollt, weil Themen und Farben lang werden können.
+ * The sheet itself: title, „Reset“ and the sections below it. It
+ * scrolls, because themes and colors can run long.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -212,8 +212,8 @@ fun FilterSheetFrame(
     resetOn: (() -> Unit)?,
     inhalt: @Composable ColumnScope.() -> Unit,
 ) {
-    // Gleich ganz offen: Halb offen stand bei grosser Schrift nur Titel und erster Abschnitt
-    // da, und wer „Zurücksetzen“ suchte, musste erst ziehen.
+    // Fully open right away: half-open, with large text, showed only the title and the first section,
+    // and whoever looked for „Reset" had to drag it open first.
     ModalBottomSheet(onDismissRequest = onSchliessen,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(
@@ -234,8 +234,8 @@ fun FilterSheetFrame(
 }
 
 /**
- * Ein Abschnitt des Blatts: Überschrift und eine umbrechende Reihe Chips. Jeder Abschnitt
- * ist eine Einfachwahl; TalkBack springt per Überschrift von Abschnitt zu Abschnitt.
+ * A section of the sheet: heading and a wrapping row of chips. Each section
+ * is a single choice; TalkBack jumps from section to section by heading.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -251,15 +251,15 @@ fun FilterSection(titel: String, chips: @Composable () -> Unit) {
 }
 
 /**
- * Ein Chip des Blatts, vorgelesen als Optionsfeld. Lange Namen brechen um statt
- * abgeschnitten zu werden; nur bei normaler Schrift ist der Chip schmal begrenzt.
+ * A chip of the sheet, read out as a radio button. Long names wrap instead of
+ * being truncated; only with normal text size is the chip width-constrained.
  */
 @Composable
 fun FilterChoice(text: String, gewaehlt: Boolean, onClick: () -> Unit) {
     ChoiceChip(text, gewaehlt, onClick, if (largeFont()) Modifier else Modifier.widthIn(max = 220.dp))
 }
 
-/** Kontofilter als Abschnitt — nur, wenn es im Haushalt etwas zu wählen gibt. */
+/** Account filter as a section — only when there is something to choose in the household. */
 @Composable
 fun AccountFilterSection(members: List<MemberView>, current: String, onSelect: (String) -> Unit) {
     val optionen = accountOptions(
@@ -275,9 +275,9 @@ fun AccountFilterSection(members: List<MemberView>, current: String, onSelect: (
 }
 
 /**
- * Lagerortfilter als Abschnitt — nur, wenn irgendwo ein Ort erfasst ist. Die Zahl zählt,
- * was der Filter filtert ([afterShare]), mit Einheit: „Keller (42)“ bei drei Sets las
- * sich wie ein Fehler.
+ * Storage-location filter as a section — only when a location is captured anywhere. The number counts
+ * what the filter filters ([afterShare]), with a unit: „Keller (42)“ for three sets read
+ * like an error.
  */
 @Composable
 fun LocationFilterSection(orte: List<LocationView>, current: String, onSelect: (String) -> Unit,
@@ -295,7 +295,7 @@ fun LocationFilterSection(orte: List<LocationView>, current: String, onSelect: (
     }
 }
 
-/** Karten oder Tabelle — keine Filterwahl, aber derselbe Ort wie die Filter. */
+/** Cards or table — not a filter choice, but the same spot as the filters. */
 @Composable
 fun ViewSection(aktuell: ListView, onSwitch: (ListView) -> Unit) {
     FilterSection(stringResource(R.string.filter_section_view)) { ViewToggle(aktuell, onSwitch) }

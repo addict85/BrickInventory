@@ -11,17 +11,17 @@ import java.security.Signature
 import java.security.spec.ECGenParameterSpec
 
 /**
- * Die App-Sperre fällt nur mit einer Signatur des eigenen Schlüssels, nicht mit dem
- * Erfolgsrückruf allein; ein ungültig gewordener Schlüssel wird ersetzt und es wird
- * genau einmal nachgefragt. Der Keystore steht hier als Software-EC-Schlüssel, und
- * „nicht freigegeben“ ist eine Signatur, die nicht signieren kann oder fremd signiert.
+ * The app lock only yields to a signature from its own key, not to the
+ * success callback alone; an invalidated key is replaced and asked exactly once.
+ * The keystore here acts as a software EC key, and
+ * „nicht freigegeben“ is a signature that cannot sign or signs with someone else's key.
  *
- * Gegenproben (09.11.2026 lokal mit kotlinc gemessen):
- *   A  jede vorhandene Signatur entsperrt, ohne zu signieren → rot „fremd signiert …“ und
+ * Counter-checks (measured locally with kotlinc on Nov 9, 2026):
+ *   A  any existing signature unlocks without signing → red „fremd signiert …“ and
  *      „ungueltiger Schluessel …“; gegenproben/app-sperre-ohne-krypto.patch
- *   B  kein neuer Schlüssel nach gescheiterter Signatur → rot „ungueltiger Schluessel …“;
+ *   B  no new key after a failed signature → red „ungueltiger Schluessel …“;
  *      gegenproben/app-sperre-ohne-neuen-schluessel.patch
- *   C  nachfragen ohne Ende → rot „fremd signiert …“ (dritte Rückfrage);
+ *   C  asking without end → red „fremd signiert …“ (third retry);
  *      gegenproben/app-sperre-fragt-ohne-ende.patch
  */
 class AppUnlockingTest {
@@ -43,7 +43,7 @@ class AppUnlockingTest {
     private val schluessel = Schluessel()
     private var entsperrt = 0
 
-    /** Beantwortet jede Rückfrage mit der nächsten Antwort; danach wie ein Abbruch. */
+    /** Answers every retry with the next answer; after that like a cancellation. */
     private fun lauf(vararg antworten: (Signature) -> Signature?): Int {
         var fragen = 0
         AppUnlocking(schluessel) { s, antwort -> antworten.getOrNull(fragen++)?.let { antwort(it(s)) } ?: antwort(null) }
@@ -73,7 +73,7 @@ class AppUnlockingTest {
 
     @Test
     fun `an invalid key is replaced and asked once more`() {
-        // Eine Signatur zum Prüfen statt zum Signieren scheitert an sign() wie ein ungültig gewordener Schlüssel.
+        // A signature made for verifying rather than signing fails at sign() like an invalidated key.
         val canNot: (Signature) -> Signature? = {
             Signature.getInstance(Schrittfreigabe.SIGNATURVERFAHREN).apply { initVerify(schluessel.paar.public) }
         }

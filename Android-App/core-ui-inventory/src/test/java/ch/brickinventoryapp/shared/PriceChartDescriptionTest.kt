@@ -26,11 +26,11 @@ import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
 
 /**
- * Das Preisdiagramm im Set-Detail ist für TalkBack keine leere Fläche: Seine Zeichnung
- * trägt eine Beschreibung mit Zustand, Anfang, Ende, Tief und Hoch jeder Linie.
+ * The price chart in the set detail is not an empty canvas for TalkBack: its drawing
+ * carries a description with condition, start, end, low and high of every line.
  *
- * Gegenprobe (gegenproben/preisdiagramm-stumm.patch, Robolectric, misst die CI): die
- * Semantik am Canvas entfernt → rot „das Preisdiagramm beschreibt …“.
+ * Counter-check (gegenproben/preisdiagramm-stumm.patch, Robolectric, measured by CI): the
+ * semantics removed from the canvas → red „das Preisdiagramm beschreibt …“.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

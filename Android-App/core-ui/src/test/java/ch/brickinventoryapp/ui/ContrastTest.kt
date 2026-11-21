@@ -4,13 +4,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Die Kontrastrechnung, auf die sich ColorRolesTest stützt, gegen Werte, die
- * WCAG und jeder Kontrastrechner nennen.
+ * The contrast calculation ColorRolesTest relies on, against values that
+ * WCAG and every contrast calculator name.
  *
- * Gegenproben (gemessen am 28.10., kotlinc gegen eine Kopie von Kontrast.kt):
- *   A  Linearisierung entfernt (Kanal = wert/255) → rot: „mittleres Grau …"
- *      und „die alte Rahmenfarbe …" (Schwarz/Weiss bleibt 21:1)
- *   B  `+ 0.05` im Nenner entfernt → rot in allen drei Prüfungen
+ * Counter-checks (measured on Oct 28, kotlinc against a copy of Kontrast.kt):
+ *   A  linearization removed (channel = value/255) → red: „mittleres Grau …"
+ *      and „die alte Rahmenfarbe …" (black/white stays 21:1)
+ *   B  `+ 0.05` removed from the denominator → red in all three checks
  */
 class ContrastTest {
 
@@ -24,13 +24,13 @@ class ContrastTest {
 
     @Test
     fun `medium gray on white gives the known 4,54 to 1`() {
-        // #767676 ist das hellste Grau, das auf Weiss 4,5:1 erreicht.
+        // #767676 is the lightest gray that reaches 4.5:1 on white.
         assertEquals(4.54, Contrast.verhaeltnis(farbe(0x767676), farbe(0xFFFFFF)), 0.005)
     }
 
     @Test
     fun `the old border color reaches only 1,23 to 1 on white`() {
-        // Der Befund der UI-Prüfung: outline #E2E8F0 im Grunddesign.
+        // The UI check's finding: outline #E2E8F0 in the base design.
         assertEquals(1.23, Contrast.verhaeltnis(farbe(0xE2E8F0), farbe(0xFFFFFF)), 0.005)
     }
 }

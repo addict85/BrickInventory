@@ -14,14 +14,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Gesperrte Knöpfe und Dialoge in jedem Design, hell und dunkel: Schrift 4,5:1 auf ihrer
- * Fläche, Fläche und Rand eines Knopfs 3:1 auf surface und background, die Schrift eines
- * Dialogs 4,5:1 auf der Dialogfläche und diese 3:1 auf dem abgedunkelten Grund dahinter.
- * Gemessen vorher im Design „noppe“: gesperrte Schrift 2,29:1, Fläche 1,28:1.
+ * Locked buttons and dialogs in every design, light and dark: text 4.5:1 on its
+ * surface, a button's surface and border 3:1 on surface and background, a dialog's
+ * text 4.5:1 on the dialog surface and that surface 3:1 on the dimmed background
+ * behind it. Measured beforehand in the "noppe" design: locked text 2.29:1, surface 1.28:1.
  *
- * Gegenproben (gemessen lokal, JVM):
- *   gesperrt-material-deckkraft  Materials feste Deckkraft (12 % / 38 %) → rot „gesperrte Knoepfe …“
- *   dialog-flaeche-grau          Dialogfläche im Hellen outlineVariant → rot „Dialogschrift haelt …“
+ * Counter-checks (measured locally, JVM):
+ *   gesperrt-material-deckkraft  Material's fixed opacity (12% / 38%) → red „gesperrte Knoepfe …“
+ *   dialog-flaeche-grau          dialog surface at outlineVariant in the light → red „Dialogschrift haelt …“
  */
 class LockedContrastTest {
 
@@ -55,8 +55,8 @@ class LockedContrastTest {
                                           "primary" to s.primary, "error" to s.error)) {
                 if (k(farbe, flaeche) < TEXT) fehler += "$name $rolle %.2f".format(k(farbe, flaeche))
             }
-            // Hinter dem Dialog: die Seite unter der Abdunkelung des Fensters. Nur im Hellen: Im
-            // Dunkeln trägt die Abdunkelung kaum, dort hebt der Tonwert ab (offen, kein Befund).
+            // Behind the dialog: the page under the window's dimming. Only in the light: in the
+            // dark the dimming barely carries, there the tone value is the deciding factor (open, no finding).
             if (s.surface.luminance() < 0.5f) continue
             for ((grund, farbe) in listOf("surface" to s.surface, "background" to s.background)) {
                 val behind = Color.Black.copy(alpha = DIMMING).compositeOver(farbe)
@@ -69,7 +69,7 @@ class LockedContrastTest {
     private companion object {
         const val TEXT = 4.5
         const val GRAPHIC = 3.0
-        /** Abdunkelung hinter einem Dialogfenster (backgroundDimAmount der Plattform). */
+        /** Dimming behind a dialog window (platform's backgroundDimAmount). */
         const val DIMMING = 0.6f
     }
 }

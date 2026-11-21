@@ -27,10 +27,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Die Adressen aller Kacheln der eigenen Sammlung, zum Vorwärmen — aus denselben
- * Quellen wie die Reiter: die Ablage, mit Kontofilter die Kontosicht.
- * Hier und nicht im Vorwärmer, weil nur hier der Kontofilter bekannt ist; der Katalog bleibt
- * draussen, er verdrängte die eigene Sammlung.
+ * The addresses of all tiles in the own collection, for warming up — from the same
+ * sources as the tabs: the store, with the account filter the account view.
+ * Here and not in the warmer, because only here is the account filter known; the catalog stays
+ * out, it would crowd out the own collection.
  */
 internal suspend fun imageAddressesTheCollection(
     sets: SetsRepository, teile: PartsRepository, figuren: MinifigsRepository, kontosicht: Kontosicht,
@@ -49,7 +49,7 @@ internal suspend fun imageAddressesTheCollection(
     val minifigsQuery = blickfeld.accountFor(ScopeFilter.View.MINIFIGS)?.let { Kontosicht.MinifigsQuery(it, null) }
     liste(minifigsQuery, kontosicht.figurenliste, figuren::refreshMinifigs, figuren.observeMinifigs())
         .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
-    // Die manuellen Listen hat refreshParts bzw. refreshMinifigs schon mitgeholt.
+    // refreshParts resp. refreshMinifigs has already fetched the manual lists along.
     liste(partsAccount?.let { Kontosicht.ManualQuery(it, null, null) }, kontosicht.manuelleTeile,
         { Ergebnis.Erfolg(Unit) }, teile.observeManualParts())
         .mapTo(roh) { resolveThumbUrl(basis, it.imageLocal, it.imageUrl) }
@@ -69,9 +69,9 @@ private suspend fun <A, T> liste(abfrage: A?, view: Serversicht<A, T>, refresh: 
 }
 
 /**
- * Wärmt die Vorschaubilder der Sammlung einmal je App-Start vor. Im Bereich der
- * App, nicht des Bildschirms: Ein Drehen soll die Runde weder abbrechen noch eine
- * zweite durch dieselben Bilder starten.
+ * Warms up the collection's preview images once per app start. In the app's
+ * scope, not the screen's: a rotation should neither abort the round nor start a
+ * second one through the same images.
  */
 @Singleton
 class CollectionWarmUp @Inject constructor(
@@ -90,7 +90,7 @@ class CollectionWarmUp @Inject constructor(
         if (!gestartet.compareAndSet(false, true)) return
         bereich.launch {
             delay(VorschauVorwaermer.ANLAUF_MS)
-            // Erst Netzlage und Platz prüfen, sonst kostet jeder Start vier Listenabrufe umsonst.
+            // Check network state and space first, otherwise every start costs four list fetches for nothing.
             if (!vorwaermer.darfStarten()) return@launch
             val basis = fangeAusserAbbruch { prefs.serverUrlJetzt() }.getOrNull().orEmpty()
             if (basis.isBlank()) return@launch

@@ -35,13 +35,13 @@ import ch.brickinventoryapp.ui.listAndDetail
 import ch.brickinventoryapp.navigation.Bereichsumgebung
 import ch.brickinventoryapp.state.ui.viewmodel.KaeufeViewModel
 
-/** Was die Sammlung von der App braucht; die Erfassung hängt am Ziel, das scannt. */
+/** What the collection needs from the app; the entry flow hangs on the destination that scans. */
 interface CollectionNavigation : Bereichsumgebung {
-    /** Den PDF-Betrachter hält die Finanzen-Seite. */
+    /** The finance page holds the PDF viewer. */
     fun openPdf(url: String, titel: String)
 }
 
-/** Galerie, Set-Detail, Käufe, Merkliste, Scanner und Preisvergleich. */
+/** Gallery, set detail, purchases, watchlist, scanner and price comparison. */
 fun NavGraphBuilder.collectionGraph(navigation: CollectionNavigation) {
     galleryTarget(navigation)
     setDetailTarget(navigation)
@@ -65,21 +65,21 @@ fun NavGraphBuilder.collectionGraph(navigation: CollectionNavigation) {
     }
 }
 
-/** Die Galerie; auf breiten Fenstern steht das Set-Detail daneben ([setDetailTarget]). */
+/** The gallery; on wide windows the set detail sits next to it ([setDetailTarget]). */
 private fun NavGraphBuilder.galleryTarget(navigation: CollectionNavigation) {
     val navController = navigation.navController
     composable<SammlungZiel.Gallery> { entry ->
         val galleryVm: GalleryViewModel = hiltViewModel()
-        // Die Galerie lädt beim Beobachten ihres Zustands (GalleryViewModel).
+        // The gallery loads while observing its state (GalleryViewModel).
         val galerie by galleryVm.galleryState.collectAsStateWithLifecycle()
         val erfassung: EntryViewModel = hiltViewModel()
         Erfassungsrahmen(entry, erfassung, navigation.bilder) { navController.navigate(SammlungZiel.SetDetail(it)) }
-        // Ein Zustand je Besuch; die Stelle hält allein der ScrollMemory.
+        // One state per visit; only ScrollMemory holds the position.
         val galleryGridState = remember { LazyGridState() }
         ScrollPositionKeeper(
             SammlungZiel.Gallery.rollSchluessel, galleryGridState, galerie.sets.isNotEmpty(), navigation.rollgedaechtnis)
-        // Das Set-Detail gibt ein gelöschtes Set als Ergebnis an diesen Eintrag zurück;
-        // die Galerie merkt es mit „Rückgängig“ vor. Kein Zugriff auf ihr ViewModel von aussen.
+        // The set detail returns a deleted set as a result to this entry;
+        // the gallery notes it with "Undo". No outside access to its ViewModel.
         val deleteTo by entry.savedStateHandle.getStateFlow<ArrayList<String>?>(DELETE_RESERVE, null)
             .collectAsStateWithLifecycle()
         LaunchedEffect(deleteTo) {
@@ -94,7 +94,7 @@ private fun NavGraphBuilder.galleryTarget(navigation: CollectionNavigation) {
         val oeffnen: (String) -> Unit = { navController.navigate(SammlungZiel.SetDetail(it)) }
         navigation.Reiter(stringResource(R.string.nav_collection)) {
             WithTarget(ziel) {
-            // Auf breiten Fenstern steht die Fläche fürs Detail schon vor dem ersten Tipp da.
+            // On wide windows the space for the detail is already there before the first tap.
             BoxWithConstraints {
                 if (listAndDetail(maxWidth.value)) {
                     GalleryAndDetail(galleryVm, erfassung, navigation.bilder, offen = null, onSetClick = oeffnen,
@@ -109,19 +109,19 @@ private fun NavGraphBuilder.galleryTarget(navigation: CollectionNavigation) {
     }
 }
 
-/** Set-Detail; auf breiten Fenstern mit der Galerie links daneben. */
+/** Set detail; on wide windows with the gallery to the left of it. */
 private fun NavGraphBuilder.setDetailTarget(navigation: CollectionNavigation) {
     val navController = navigation.navController
     composable<SammlungZiel.SetDetail> { backStack ->
         val state by navigation.sitzung.collectAsStateWithLifecycle()
         val setNumber = backStack.toRoute<SammlungZiel.SetDetail>().setNumber
-        // Liegt die Galerie darunter (Startziel), nimmt sie ein gelöschtes Set als Ergebnis
-        // entgegen und bietet „Rückgängig“ an.
+        // If the gallery sits below (start destination), it accepts a deleted set as a result
+        // and offers "Undo".
         val galleryEntry = remember(backStack) {
             runCatching { navController.getBackStackEntry<SammlungZiel.Gallery>() }.getOrNull()
         }
         val detailVm: SetDetailViewModel = hiltViewModel()
-        // Die Kachel aus der Ablage zeigt das Set sofort, bis das Detail da ist.
+        // The tile from the cache shows the set right away, until the detail is there.
         val vorschau by detailVm.vorschau.collectAsStateWithLifecycle()
         val detail: @Composable () -> Unit = {
         SetDetailRoute(
@@ -131,8 +131,8 @@ private fun NavGraphBuilder.setDetailTarget(navigation: CollectionNavigation) {
             serverUrl = state.serverUrl,
             imageLoader = navigation.bilder,
             onBack = { navController.popBackStack() },
-            // Zurück in die Galerie, die das Set mit „Rückgängig“ vormerkt; ohne
-            // Galerie darunter (Einstieg von aussen) wird gleich gelöscht.
+            // Back into the gallery, which marks the set with "Undo"; without
+            // a gallery below (entry from outside) it's deleted right away.
             onDelete = { sn ->
                 val name = detailVm.setDetailState.value.setDetail?.name ?: vorschau?.name ?: sn
                 if (galleryEntry != null) galleryEntry.savedStateHandle[DELETE_RESERVE] = arrayListOf(sn, name)
@@ -146,9 +146,9 @@ private fun NavGraphBuilder.setDetailTarget(navigation: CollectionNavigation) {
             onOpenPdf = navigation::openPdf
         )
         }
-        // Auf breiten Fenstern steht die Galerie links daneben (Lesebreite.kt); ein
-        // anderes Set ersetzt dieses Detail, statt sich darüber zu stapeln. Ohne
-        // gemeinsames Bild: Kachel und Detail sind dann beide zu sehen.
+        // On wide windows the gallery sits to the left of it (Lesebreite.kt); a
+        // different set replaces this detail instead of stacking over it. Without
+        // a shared image: tile and detail are then both visible.
         BoxWithConstraints {
             if (galleryEntry != null && listAndDetail(maxWidth.value))
                 GalleryBesideDetailRoute(navigation, backStack, galleryEntry, setNumber, detail)
@@ -157,7 +157,7 @@ private fun NavGraphBuilder.setDetailTarget(navigation: CollectionNavigation) {
     }
 }
 
-/** Die Galerie links neben dem Set-Detail; ein anderes Set ersetzt das Detail, statt sich zu stapeln. */
+/** The gallery to the left of the set detail; a different set replaces the detail instead of stacking. */
 @Composable
 private fun GalleryBesideDetailRoute(
     navigation: CollectionNavigation,
@@ -167,14 +167,14 @@ private fun GalleryBesideDetailRoute(
     detail: @Composable () -> Unit,
 ) {
     val navController = navigation.navController
-    // Die Liste links ist die Galerie selbst, darum ihr ViewModel; die Rollstelle teilt
-    // sie mit dem Galerie-Ziel über den ScrollMemory.
+    // The list on the left is the gallery itself, hence its ViewModel; the scroll position is
+    // shared with the gallery destination via ScrollMemory.
     val galerie: GalleryViewModel = hiltViewModel(galleryEntry)
     val galerieZustand by galerie.galleryState.collectAsStateWithLifecycle()
     val gridState = remember { LazyGridState() }
     ScrollPositionKeeper(SammlungZiel.Gallery.rollSchluessel, gridState, galerieZustand.sets.isNotEmpty(),
         navigation.rollgedaechtnis)
-    // Die Erfassung der Galerie; den Scan gibt der Scanner diesem Ziel zurück.
+    // The gallery's entry flow; the scanner hands the scan back to this destination.
     val erfassung: EntryViewModel = hiltViewModel(galleryEntry)
     Erfassungsrahmen(entry, erfassung, navigation.bilder) { navController.navigate(SammlungZiel.SetDetail(it)) }
     navigation.Reiter(stringResource(R.string.nav_collection)) {
@@ -196,15 +196,15 @@ private fun GalleryBesideDetailRoute(
 }
 
 /**
- * Die Merkliste steht in der Sammlung: Ein Merkposten ist ein Set, das man noch
- * nicht hat. Der häufigste Weg hinein kommt aus dem Katalog.
+ * The watchlist lives in the collection: a watchlist item is a set one doesn't
+ * have yet. The most common way in comes from the catalog.
  */
 private fun NavGraphBuilder.wantedTargets(navigation: CollectionNavigation) {
     val navController = navigation.navController
     composable<SammlungZiel.Wanted> { entry ->
         val erfassung: EntryViewModel = hiltViewModel()
         Erfassungsrahmen(entry, erfassung, navigation.bilder) { navController.navigate(SammlungZiel.SetDetail(it)) }
-        // Auf breiten Fenstern Liste und Detail nebeneinander (Lesebreite.kt).
+        // List and detail side by side on wide windows (Lesebreite.kt).
         BoxWithConstraints {
             val sideBySide = listAndDetail(maxWidth.value)
             navigation.Reiter(stringResource(R.string.nav_wanted)) {
@@ -224,8 +224,8 @@ private fun NavGraphBuilder.wantedTargets(navigation: CollectionNavigation) {
     }
     composable<SammlungZiel.MerkpostenDetail> { backStack ->
         val ziel = backStack.toRoute<SammlungZiel.MerkpostenDetail>()
-        // Dasselbe ViewModel wie die Liste darunter: Dort läuft die Snackbar mit
-        // „Rückgängig“, nachdem das Detail eines gelöschten Postens zurückgegangen ist.
+        // The same ViewModel as the list below: the snackbar with
+        // "Undo" runs there after a deleted item's detail has returned.
         val liste = remember(backStack) { runCatching { navController.getBackStackEntry<SammlungZiel.Wanted>() }.getOrNull() }
         WantedItemDetailRoute(
             vm = if (liste != null) hiltViewModel<MerklisteViewModel>(liste) else hiltViewModel<MerklisteViewModel>(),
@@ -237,24 +237,24 @@ private fun NavGraphBuilder.wantedTargets(navigation: CollectionNavigation) {
     }
 }
 
-/** Der Scanner; was ein Treffer auslöst, sagt die Herkunft in der Route. */
+/** The scanner; what a hit triggers is told by the origin in the route. */
 private fun NavGraphBuilder.scannerTarget(navigation: CollectionNavigation) {
     val navController = navigation.navController
     composable<SammlungZiel.BarcodeScanner> { entry ->
         val herkunft = entry.toRoute<SammlungZiel.BarcodeScanner>().herkunft
-        // Der Treffer geht an das Ziel darunter; dessen Erfassung löst ihn auf.
+        // The hit goes to the destination below; its entry flow resolves it.
         fun zurueck(wert: String, setnummer: Boolean) {
             navController.previousBackStackEntry?.savedStateHandle?.putScanAb(wert, setnummer, herkunft)
             navController.popBackStack()
         }
         BarcodeScannerScreen(
-            // Texterkennung nur hier: Dieser Scanner bedient „Set hinzufügen“ (Galerie) und
-            // „Teileliste hinzufügen“. Der Preisvergleich hat einen eigenen Aufruf und lässt
-            // den Standard aus.
+            // Text recognition only here: this scanner serves "Add set" (gallery) and
+            // "Add to parts list". The price comparison has its own call and leaves
+            // the default off.
             ocrEnabled = true,
             onResult = { scannedValue -> zurueck(scannedValue, setnummer = false) },
-            // Die Texterkennung liefert die Setnummer fertig — der Umweg über die
-            // EAN-Auflösung entfällt, das spart je Scan bis zu acht Rebrickable-Aufrufe.
+            // Text recognition delivers the set number ready-made — the detour through
+            // EAN resolution is unnecessary, saving up to eight Rebrickable calls per scan.
             onSetNumberResult = { setNumber -> zurueck(setNumber, setnummer = true) },
             onDismiss = { navController.popBackStack() },
             typeInOn = {
@@ -265,5 +265,5 @@ private fun NavGraphBuilder.scannerTarget(navigation: CollectionNavigation) {
     }
 }
 
-/** Schlüssel des Löschergebnisses, das das Set-Detail an die Galerie zurückgibt: Setnummer und Name. */
+/** Key of the delete result the set detail returns to the gallery: set number and name. */
 private const val DELETE_RESERVE = "loeschenVormerken"

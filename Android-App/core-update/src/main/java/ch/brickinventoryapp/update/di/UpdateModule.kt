@@ -11,7 +11,7 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 
-/** Im Modul der Selbstaktualisierung, weil core-data deren Klassen nicht kennt. */
+/** In the self-update module, because core-data doesn't know its classes. */
 @Module
 @InstallIn(SingletonComponent::class)
 internal abstract class UpdateModule {

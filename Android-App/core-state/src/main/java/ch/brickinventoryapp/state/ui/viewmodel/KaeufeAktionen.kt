@@ -5,9 +5,9 @@ import ch.brickinventoryapp.model.domain.Zustand
 import ch.brickinventoryapp.model.domain.KEINE_FARBE
 
 /**
- * Was die Kauf- und Detailbildschirme an den Käufen eines Eintrags ändern.
- * Die Bildschirme kennen nur diese Schnittstelle; ein Test oder eine Vorschau
- * reicht eine Attrappe statt des ViewModels.
+ * What the purchase and detail screens change about an entry's purchases.
+ * The screens know only this interface; a test or a preview
+ * supplies a fake instead of the ViewModel.
  */
 interface KaeufeAktionen {
     fun loadAcquisitions(setNumber: String)
@@ -20,7 +20,7 @@ interface KaeufeAktionen {
         unitPrice: Double? = null, condition: Zustand? = null, quantity: Int? = null, date: String? = null,
     )
     fun deleteManualAcquisition(type: Postenart, id: String, colorId: Int, acqId: Int)
-    /** Löschen mit „Rückgängig“; ohne Snackbar, die es anbietet, gleich löschen. */
+    /** Delete with „undo“; without a snackbar offering it, delete right away. */
     fun purchaseDeleteReserve(type: Postenart, id: String, colorId: Int, acqId: Int) =
         if (type == Postenart.SET) deleteAcquisition(id, acqId) else deleteManualAcquisition(type, id, colorId, acqId)
     fun changeAcquisitionOwner(

@@ -6,11 +6,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Das geladene APK muss die Fassung tragen, die version.json ankündigt, und
- * neuer sein als die laufende App.
+ * The loaded APK must carry the version version.json announces, and
+ * be newer than the running app.
  *
- * Gegenprobe: in versionFits() den
- * Vergleich `inApk == gemeldet` entfernt → rot „ein APK mit anderer Fassung
+ * Counter-check: the comparison `inApk == gemeldet` removed from
+ * versionFits() → red „ein APK mit anderer Fassung
  * als angekuendigt passt nicht“.
  */
 class UpdateVersionTest {

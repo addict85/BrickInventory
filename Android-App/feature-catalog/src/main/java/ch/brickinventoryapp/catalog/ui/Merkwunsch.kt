@@ -4,9 +4,9 @@ import ch.brickinventoryapp.model.domain.Alarmrichtung
 import ch.brickinventoryapp.model.domain.Zustand
 
 /**
- * „Auf die Merkliste“ aus dem Katalog-Detail. Die Schwelle bleibt Text: Leer heisst
- * „kein Alarm“, nicht „Schwelle 0“, und umgewandelt wird an der einen Stelle, die es
- * kann (Alarmeingabe). [konto] ist das Zielkonto, null ohne Haushalt.
+ * "Add to watchlist" from the catalog detail. The threshold stays text: empty means
+ * "no alert", not "threshold 0", and it's converted at the one place that
+ * can do it (Alarmeingabe). [konto] is the target account, null without a household.
  */
 data class Merkwunsch(
     val setNumber: String,

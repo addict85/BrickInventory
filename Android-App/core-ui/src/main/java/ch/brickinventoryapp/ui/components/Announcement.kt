@@ -14,9 +14,9 @@ import androidx.compose.ui.semantics.semantics
 import kotlinx.coroutines.delay
 
 /**
- * Eine Statusmeldung nur für TalkBack, ohne eigene Fläche: Sie steht neben dem
- * sichtbaren Text, wenn dieser in einem Knopf oder Feld liegt, das sonst als Ganzes
- * zur Live-Region würde und jede Änderung ansagte.
+ * A status message for TalkBack only, without a surface of its own: it sits next to the
+ * visible text when that lives in a button or field that would otherwise become a live
+ * region as a whole and announce every change.
  */
 @Composable
 fun Announcement(text: String?, modifier: Modifier = Modifier) {
@@ -24,8 +24,8 @@ fun Announcement(text: String?, modifier: Modifier = Modifier) {
 }
 
 /**
- * Wie [Announcement], aber höchstens alle [gapMs] ein neuer Wortlaut: Ein Countdown,
- * der jede Sekunde angesagt würde, übertönte alles andere.
+ * Like [Announcement], but at most a new wording every [gapMs]: a countdown
+ * announced every second would drown out everything else.
  */
 @Composable
 fun ThrottledAnnouncement(text: String, gapMs: Long = ANNOUNCEMENT_GAP_MS) {

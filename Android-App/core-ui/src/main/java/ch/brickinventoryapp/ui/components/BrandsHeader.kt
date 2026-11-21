@@ -32,15 +32,15 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 
 /**
- * Der Kopf von Einrichten und Anmelden: Logo in gerahmter Kachel, Name, darunter
- * auf Wunsch ein Satz. Beide Bildschirme folgen direkt aufeinander und sahen
- * verschieden aus (Logo ohne Rahmen, Name zweizeilig).
- * Die Kachel liegt auf surface: Auf manchem primary verschwand der rote Stein.
+ * The header of setup and sign-in: logo in a framed tile, name, below it
+ * a sentence on request. Both screens follow right after each other and used to look
+ * different (logo without a frame, name on two lines).
+ * The tile sits on surface: on some primary, the red brick disappeared.
  */
 @Composable
 fun BrandsHeader(modifier: Modifier = Modifier, subtitle: String? = null) {
-    // Bei grosser Schrift klein in einer Zeile: Kachel und zweizeiliger Name nahmen bei
-    // 200 % ein Viertel der Seite, und das erste Feld lag unter dem Falz.
+    // With large text, small on one line: tile and two-line name took up
+    // a quarter of the page at 200%, and the first field sat below the fold.
     if (largeFont()) {
         Column(modifier, horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
@@ -74,9 +74,9 @@ fun BrandsHeader(modifier: Modifier = Modifier, subtitle: String? = null) {
 }
 
 /**
- * Die Karte unter dem Markenkopf: Anmelden, Registrieren, Startpasswort und zweiter
- * Faktor stehen gleich gerahmt da: Frei auf dem Grund und mit anderer Überschrift sähen
- * die Pflichtmasken aus wie eine zweite App.
+ * The card below the brand header: sign-in, register, starting password and second
+ * factor all sit framed the same way: free-floating on the background with a different
+ * heading, the mandatory screens would look like a second app.
  */
 @Composable
 fun LoginCard(modifier: Modifier = Modifier, inhalt: @Composable ColumnScope.() -> Unit) {
@@ -91,7 +91,7 @@ fun LoginCard(modifier: Modifier = Modifier, inhalt: @Composable ColumnScope.() 
     }
 }
 
-/** Die Überschrift in einer [LoginCard] — dieselbe für jede der vier Masken. */
+/** The heading in a [LoginCard] — the same for each of the four screens. */
 @Composable
 fun LoginTitle(text: String) {
     Text(text, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium,

@@ -6,12 +6,12 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Die Farbe eines Teils aus dem Hex-Wert des Servers, an einer Stelle für alle
- * Teile-Bildschirme: mit und ohne „#“, voll deckend, ein unlesbarer Wert ergibt
- * keine Farbe statt einer Ausnahme.
+ * A part's color from the server's hex value, in one place for all
+ * part screens: with and without "#", fully opaque, an unreadable value yields
+ * no color instead of an exception.
  *
- * Gegenprobe: in argbFromHex() die Prüfung
- * auf Hex-Ziffern gestrichen → rot „ein unlesbarer Wert …“ (NumberFormatException);
+ * Counter-check: in argbFromHex() the check
+ * for hex digits removed → red „ein unlesbarer Wert …“ (NumberFormatException);
  * gegenproben/farbe-hex-ungeprueft.patch.
  */
 class ColorFromHexTest {

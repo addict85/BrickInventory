@@ -60,10 +60,10 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 
 /**
- * Genau eine von zwei bis vier gleichrangigen Möglichkeiten (Neu | Gebraucht,
- * Fällt unter | Steigt über): Material sieht dafür die Segmentschaltfläche vor —
- * Chips lesen sich wie Filter. Bei grosser Schrift stehen die Segmente untereinander,
- * damit kein Wort bricht und die Bauform dieselbe bleibt.
+ * Exactly one of two to four equal-ranked options (new | used,
+ * falls below | rises above): Material intends the segmented button for this —
+ * chips read like filters. With large text the segments stack, so
+ * no word breaks and the shape stays the same.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,14 +72,14 @@ fun <T> SegmentChoice(
     gewaehlt: T,
     onWahl: (T) -> Unit,
     modifier: Modifier = Modifier,
-    /** Aus, wenn die Wahl gerade nichts bewirkt; der Aufrufer sagt daneben, warum. */
+    /** Off, when the choice currently has no effect; the caller says why next to it. */
     enabled: Boolean = true,
 ) {
     if (LocalDensity.current.fontScale >= LARGE_FONT_AB) {
         SegmentColumn(optionen, gewaehlt, onWahl, modifier, enabled)
         return
     }
-    // Gleich hoch: Bricht eine Beschriftung in zwei Zeilen, wuchs sonst nur ihr Segment.
+    // Equally tall: if a label wraps to two lines, only its segment used to grow.
     SingleChoiceSegmentedButtonRow(modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
         optionen.forEachIndexed { i, (wert, text) ->
             SegmentedButton(
@@ -95,10 +95,10 @@ fun <T> SegmentChoice(
 }
 
 /**
- * Material misst die Beschriftung mit der vollen Innenbreite und setzt das Häkchen
- * daneben; was übersteht, ragt beidseits in den Innenabstand, bei zwei Zeilen bis über
- * den Rand. Die Beschriftung bekommt deshalb nur so viel Breite, dass das Häkchen
- * [CHECKMARK_AIR] vor dem Rand bleibt. Zwei Zeilen statt „Gebr…“ bei grosser Schrift.
+ * Material measures the label with the full inner width and places the checkmark
+ * next to it; whatever overflows sticks out on both sides into the padding, at two lines past
+ * the edge. The label therefore only gets enough width that the checkmark
+ * stays [CHECKMARK_AIR] before the edge. Two lines instead of „Gebr…“ with large text.
  */
 @Composable
 private fun SegmentLabel(text: String) {
@@ -116,16 +116,16 @@ private fun SegmentLabel(text: String) {
     }
 }
 
-/** Abstand zwischen Häkchen und Beschriftung in Material (SegmentedButton.kt, IconSpacing). */
+/** Gap between checkmark and label in Material (SegmentedButton.kt, IconSpacing). */
 private val CHECKMARK_GAP = 8.dp
 
-/** So weit bleibt das Häkchen mindestens vom Rand des Segments. */
+/** This far the checkmark stays at minimum from the edge of the segment. */
 internal val CHECKMARK_AIR = 2.dp
 
 /**
- * Ein Wechsel zwischen Ansichten (Sets | Teile | Minifiguren) sind immer Segmente, nie
- * Chips, die wie Filter aussähen. Bei grosser Schrift stehen sie untereinander: Seitlich
- * rollend lag „Minifiguren“ ausserhalb des Bilds, ohne dass etwas darauf hinwies.
+ * A switch between views (sets | parts | minifigs) is always segments, never
+ * chips that would look like filters. With large text they stack: scrolling
+ * sideways, „Minifiguren“ sat outside the frame with nothing pointing to it.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -146,9 +146,9 @@ fun <T> ViewToggle(
                 onClick = { onWahl(wert) },
                 shape = SegmentedButtonDefaults.itemShape(index = i, count = optionen.size),
             ) {
-                // Genau so breit wie das Wort: Dann heisst ein Überlauf im Textlayout wirklich
-                // abgeschnitten, nicht bloss „Platz neben dem Wort“ (das Segment reserviert
-                // daneben immer Raum fürs Häkchen).
+                // Exactly as wide as the word: then an overflow in the text layout really
+                // means truncated, not just „room next to the word“ (the segment always
+                // reserves space for the checkmark next to it).
                 Text(text, Modifier.width(IntrinsicSize.Max), maxLines = 1, softWrap = false)
             }
         }
@@ -156,9 +156,9 @@ fun <T> ViewToggle(
 }
 
 /**
- * Segmente untereinander, je über die volle Breite: oben und unten gerundet, dazwischen
- * gerade, die Ränder übereinander. Material kennt nur die Zeile; so bleibt es dieselbe
- * Bauform (Rand, Häkchen, Fläche der Wahl) und wird nicht zur Chipgruppe.
+ * Segments stacked, each the full width: rounded at top and bottom, straight
+ * in between, edges overlapping. Material only knows the row; this way it stays the same
+ * shape (border, checkmark, selection fill) and doesn't become a chip group.
  */
 @Composable
 private fun <T> SegmentColumn(
@@ -199,8 +199,8 @@ private fun <T> SegmentColumn(
                         Icon(Icons.Default.Check, null, Modifier.size(withFont(18.dp)))
                         Spacer(Modifier.width(Abstaende.klein))
                     }
-                    // So breit wie das Wort, wie in der Zeile: Sonst meldet das Textlayout der
-                    // Semantik die ganze Segmentbreite als Überlauf, obwohl das Wort ganz dasteht.
+                    // As wide as the word, like in the row: otherwise the text layout would report
+                    // the whole segment width as overflow to the semantics, even though the word fits entirely.
                     Text(text, Modifier.width(IntrinsicSize.Max), style = MaterialTheme.typography.labelLarge)
                 }
             }
@@ -208,7 +208,7 @@ private fun <T> SegmentColumn(
     }
 }
 
-/** Segmente, deren Sperre lesbar bleibt (lockedColors). */
+/** Segments whose lock state stays readable (lockedColors). */
 @Composable
 private fun segmentColors(): SegmentedButtonColors {
     val g = lockedColors(MaterialTheme.colorScheme)
@@ -219,18 +219,18 @@ private fun segmentColors(): SegmentedButtonColors {
     )
 }
 
-/** Wie die Enden einer Segmentzeile: halbrund bei 48 dp Höhe. */
+/** The ends of a segment row: half-round at 48 dp height. */
 private val COLUMN_ROUNDING = 24.dp
 
 /**
- * Ein Filter-Chip, der genau einen Wert wählt, vorgelesen als Optionsfeld; die Gruppe
- * drumherum trägt `selectableGroup()`. Nur für Filter: Eine Einstellung ist eine
- * [SegmentChoice] oder ein [SelectionField]. Der Text bricht um statt abgeschnitten zu werden.
+ * A filter chip that selects exactly one value, read out as a radio button; the group
+ * around it carries `selectableGroup()`. For filters only: a setting is a
+ * [SegmentChoice] or a [SelectionField]. The text wraps instead of being truncated.
  */
 @Composable
 fun ChoiceChip(text: String, an: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val gesperrt = lockedColors(MaterialTheme.colorScheme)
-    // Surface mit selected/onClick statt Modifier.selectable: so bleibt die Welle in der Chipform.
+    // Surface with selected/onClick instead of Modifier.selectable: this keeps the ripple within the chip shape.
     Surface(
         selected = an,
         onClick = onClick,
@@ -260,9 +260,9 @@ fun ChoiceChip(text: String, an: Boolean, onClick: () -> Unit, modifier: Modifie
 }
 
 /**
- * Die Sortierung: ein Symbol mit Menü, überall dieselbe Bauform (Galerie, Merkliste,
- * Katalog). Sortieren schränkt nichts ein und steht deshalb nicht zwischen den
- * Filter-Chips; ein Punkt am Symbol sagt, dass von [vorgabe] abgewichen wird.
+ * Sorting: an icon with a menu, the same shape everywhere (gallery, wishlist,
+ * catalog). Sorting narrows nothing and therefore doesn't sit between the
+ * filter chips; a dot on the icon says it deviates from [vorgabe].
  */
 @Composable
 fun <T> SortierMenu(
@@ -275,7 +275,7 @@ fun <T> SortierMenu(
     var offen by rememberSaveable { mutableStateOf(false) }
     val aktuell = optionen.firstOrNull { it.first == gewaehlt }?.second ?: ""
     Box(modifier) {
-        // Der Punkt ist Zierde; was er sagt, steht schon im Namen des Knopfs.
+        // The dot is decoration; what it says is already in the button's name.
         BadgedBox(badge = { if (vorgabe != null && gewaehlt != vorgabe) Badge(Modifier.clearAndSetSemantics {}) }) {
             MitTooltip(stringResource(R.string.sort_menu_cd, aktuell)) {
                 OutlinedIconButton(
@@ -287,7 +287,7 @@ fun <T> SortierMenu(
             }
         }
         DropdownMenu(offen, { offen = false }) {
-            // Eine Überschrift sagt, wonach die Einträge fragen.
+            // A heading says what the entries are about.
             Text(stringResource(R.string.filter_section_sort), style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein).semantics { heading() })

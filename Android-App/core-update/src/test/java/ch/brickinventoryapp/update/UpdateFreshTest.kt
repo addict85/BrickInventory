@@ -19,25 +19,25 @@ import java.security.cert.CertificateFactory
 import java.util.Base64
 
 /**
- * Frische der Update-Beschreibung: Wer Schreibrecht am Repository hat,
- * kann eine ältere, echt signierte version-signiert.json wieder hochladen. Die App
- * merkt sich den höchsten gesehenen Stand und meldet eine ältere oder abgelaufene
- * Beschreibung, statt „aktuell“ zu sagen.
+ * Freshness of the update description: whoever has write access to the repository
+ * can re-upload an older, genuinely signed version-signiert.json. The app
+ * remembers the highest state seen and reports an older or expired
+ * description instead of saying "current".
  *
- * Gegenproben:
- *   A  in valueFresh() die Zeile mit `gesehen != null && …` entfernt → rot
+ * Counter-checks:
+ *   A  the line with `gesehen != null && …` removed from valueFresh() → red
  *      „an older genuinely signed description reports a withholding“;
  *      gegenproben/update-zurueckgehalten.patch
- *   B  in valueFresh() `|| b.gueltigBis <= nowSec` entfernt → rot „eine
+ *   B  `|| b.gueltigBis <= nowSec` removed from valueFresh() → red „eine
  *      abgelaufene oder fristlose Beschreibung ist nie aktuell“;
  *      gegenproben/update-ohne-frist.patch
- *   C  in checkFresh() den Stand auch ohne AKTUELL fortgeschrieben → rot
- *      „eine abgelaufene oder fristlose …“ (eine abgelaufene setzte die Messlatte)
- *   D  in offerableVersion() die Bedingung
- *      `frische != UpdateFresh.ZURUECKGESETZT &&` gestrichen → rot „aus einer
+ *   C  in checkFresh() the state advanced even without AKTUELL → red
+ *      „eine abgelaufene oder fristlose …“ (an expired one moved the benchmark)
+ *   D  the condition
+ *      `frische != UpdateFresh.ZURUECKGESETZT &&` removed from offerableVersion() → red „aus einer
  *      zurueckgesetzten Beschreibung wird nichts angeboten“;
  *      gegenproben/update-angebot-trotz-zuruecksetzen.patch
- *   E  offerableVersion() verlangt wieder AKTUELL → rot „eine abgelaufene, neuere
+ *   E  offerableVersion() requires AKTUELL again → red „eine abgelaufene, neuere
  *      Beschreibung wird mit Hinweis angeboten“; gegenproben/update-abgelaufen-ohne-angebot.patch
  */
 class UpdateFreshTest {
@@ -62,7 +62,7 @@ class UpdateFreshTest {
         val ablage = Ablage()
         assertEquals(UpdateFresh.AKTUELL, pruefe(ablage, beschreibung(120)))
         assertEquals(UpdateStatus(120, jetzt - tag), ablage.stand)
-        // Dieselbe Fassung, später neu signiert (Auffrischen), gilt ebenso.
+        // The same version, re-signed later (refresh), counts the same way.
         assertEquals(UpdateFresh.AKTUELL, pruefe(ablage, beschreibung(120, ausgestellt = jetzt)))
         assertEquals(UpdateStatus(120, jetzt), ablage.stand)
         assertFalse(sourceStale(UpdateFresh.AKTUELL))
@@ -77,7 +77,7 @@ class UpdateFreshTest {
             pruefe(ablage, beschreibung(120, ausgestellt = jetzt - 2 * tag)))
         assertEquals("Die Messlatte sinkt nicht", UpdateStatus(120, jetzt - tag), ablage.stand)
         assertTrue(sourceStale(UpdateFresh.ZURUECKGESETZT))
-        // Auch ohne gemerkten Stand: älter als die installierte Fassung.
+        // Even without a remembered state: older than the installed version.
         assertEquals(UpdateFresh.ZURUECKGESETZT, pruefe(Ablage(), beschreibung(90), laufend = 100))
     }
 
@@ -92,23 +92,23 @@ class UpdateFreshTest {
         assertTrue(sourceStale(UpdateFresh.ABGELAUFEN))
     }
 
-    /** Sonst hielte eine ältere, echt signierte Beschreibung auf einer verwundbaren Zwischenfassung fest. */
+    /** Otherwise an older, genuinely signed description would hold on a vulnerable intermediate version. */
     @Test
     fun `nothing is offered from a reset description`() {
         val neu = beschreibung(120)
         assertEquals(neu, offerableVersion(neu, pruefe(Ablage(), neu), laufend = 100))
         assertNull("Nicht neuer als die laufende", offerableVersion(beschreibung(100), UpdateFresh.AKTUELL, 100))
 
-        // Gesehen wurde schon 130; jemand spielt die echt signierte 120 wieder ein.
+        // 130 was already seen; someone replays the genuinely signed 120.
         val zurueck = Ablage(UpdateStatus(130, jetzt - tag))
         val alt = beschreibung(120, ausgestellt = jetzt - 5 * tag)
         assertNull("Zurückgesetzt", offerableVersion(alt, pruefe(zurueck, alt), laufend = 100))
-        // Auch abgelaufen bleibt eine Beschreibung unter dem Gesehenen zurückgesetzt.
+        // Even expired, a description below the seen one stays rolled back.
         val altAndExpired = beschreibung(120, ausgestellt = jetzt - 40 * tag)
         assertNull("Abgelaufen und älter", offerableVersion(altAndExpired, pruefe(zurueck, altAndExpired), laufend = 100))
     }
 
-    /** Nach sieben Tagen ohne neues Etikett bliebe das Gerät sonst auf der alten Fassung stehen. */
+    /** After seven days without a new label the device would otherwise stay stuck on the old version. */
     @Test
     fun `an expired, newer description is offered with a hint`() {
         val ablage = Ablage(UpdateStatus(110, jetzt - 40 * tag))
@@ -123,7 +123,7 @@ class UpdateFreshTest {
 
     @Test
     fun `deadline and issue come from the signed description`() {
-        // Signiert wie im Job `signieren` (openssl dgst -sha256 -sign), ECDSA-Testschlüssel.
+        // Signed as in the `signieren` job (openssl dgst -sha256 -sign), ECDSA test key.
         val schluessel = CertificateFactory.getInstance("X.509")
             .generateCertificate(Base64.getDecoder().decode(ZERT).inputStream()).publicKey.encoded
         val b = checkedDescription("""{"daten":"$DATA","beschreibungssignatur":"$SIG"}""", listOf(schluessel))

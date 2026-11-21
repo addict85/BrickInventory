@@ -17,19 +17,19 @@ import java.security.Signature
 import java.security.spec.ECGenParameterSpec
 
 /**
- * Die Rückfrage per Gerätesperre ist an den Keystore und den Server gebunden:
- * Weiter geht es nur mit einer Signatur, die zum öffentlichen Schlüssel passt, und
- * bei einem Server mit Schrittschutz erst, wenn er sie über seine Challenge annimmt.
+ * The device-lock prompt is bound to the keystore and the server:
+ * it only proceeds with a signature matching the public key, and
+ * with a server that has step protection only once it accepts it via its challenge.
  *
- * Der Keystore läuft nur auf dem Gerät; hier steht ein EC-Schlüsselpaar dafür, und
- * „nicht freigegeben“ ist eine Signatur, die nicht signieren kann oder fremd signiert.
+ * The keystore only runs on the device; here stands an EC key pair for that, and
+ * „nicht freigegeben“ is a signature that cannot sign or signs with someone else's key.
  *
- * Gegenproben (09.11.2026 lokal mit kotlinc gemessen):
- *   A  Schrittfreigabe.unterschrift() nimmt jede vorhandene Signatur → rot „ein anderer
+ * Counter-checks (measured locally with kotlinc on Nov 9, 2026):
+ *   A  Schrittfreigabe.unterschrift() accepts any existing signature → red „ein anderer
  *      Schluessel zaehlt nicht“; gegenproben/schrittschutz-ohne-signatur.patch
- *   B  Schrittablauf geht nach der Sperre weiter, ohne den Server zu fragen → rot
+ *   B  step flow continues past the lock without asking the server → red
  *      „lehnt der Server die Signatur ab …“; gegenproben/schrittablauf-ohne-server.patch
- *   C  eine Absage des Servers fällt auf die Prüfung im Gerät zurück → rot „ohne
+ *   C  a server refusal falls back to the on-device check → red „ohne
  *      Schluessel am Server …“; gegenproben/schrittablauf-absage-im-geraet.patch
  */
 class SchrittfreigabeTest {
@@ -42,7 +42,7 @@ class SchrittfreigabeTest {
     private fun signatur(mit: PrivateKey) =
         Signature.getInstance(Schrittfreigabe.SIGNATURVERFAHREN).apply { initSign(mit) }
 
-    /** Ein Server, der wie routes/api_v1/device.ts prüft: Signatur über genau seine Nachricht. */
+    /** A server that checks like routes/api_v1/device.ts: signature over exactly its message. */
     private class Server(private val schluessel: PublicKey, var challenge: Schrittantwort) : Schrittbindung {
         val releases = mutableListOf<String>()
         override suspend fun challenge(aktion: Schrittaktion) = challenge
@@ -70,7 +70,7 @@ class SchrittfreigabeTest {
 
     @Test
     fun `a signature without authorization does not count`() {
-        // Wie ein Keystore-Schlüssel vor der Freigabe: sign() wirft.
+        // Like a keystore key before unlock: sign() throws.
         assertFalse(freigabe.gilt(Signature.getInstance(Schrittfreigabe.SIGNATURVERFAHREN)))
         assertFalse(freigabe.gilt(null))
     }
@@ -85,7 +85,7 @@ class SchrittfreigabeTest {
 
     @Test
     fun `if the server rejects the signature, it does not continue`() = runBlocking {
-        // Der Server kennt einen anderen Schlüssel als das Gerät (neuer Fingerabdruck, fremdes Gerät).
+        // The server knows a different key than the device (new fingerprint, foreign device).
         val server = Server(paar().public, offen)
         val a = Schrittablauf(server, Schrittfreigabe({ geraet.public })).confirm(Schrittaktion.GUTSCHEIN) { signatur(geraet.private) }
         assertEquals(Schrittablauf.Ausgang.Rejected("abgelehnt"), a)

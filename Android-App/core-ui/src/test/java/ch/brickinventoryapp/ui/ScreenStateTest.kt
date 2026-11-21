@@ -6,65 +6,66 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Bildschirmzustand übersteht Drehung und Prozesstod.
+ * Screen state survives rotation and process death.
  *
- * ── Der Befund ──────────────────────────────────────────────────────────────
+ * ── The finding ──────────────────────────────────────────────────────────────
  *
- * Fast aller Bildschirmzustand lag in `remember { mutableStateOf(...) }`. Das
- * gilt nur je Komposition: Bei einer Bildschirmdrehung, einem Wechsel in den
- * Dunkelmodus oder nachdem Android den Prozess im Hintergrund beendet hat,
- * beginnt alles wieder bei der Vorgabe. Für die Nutzenden heisst das: Suchfeld
- * leer, Filter zurückgesetzt, halb ausgefüllter Dialog weg.
+ * Almost all screen state lived in `remember { mutableStateOf(...) }`. That
+ * holds only per composition: on a screen rotation, a switch into
+ * dark mode, or after Android has killed the process in the background,
+ * everything starts over at the default. For users that means: search field
+ * empty, filters reset, half-filled dialog gone.
  *
- * `rememberSaveable` legt den Wert im Bundle ab und stellt ihn wieder her.
+ * `rememberSaveable` stores the value in the Bundle and restores it.
  *
- * ── Warum NICHT pauschal ────────────────────────────────────────────────────
+ * ── Why NOT blanket ────────────────────────────────────────────────────────
  *
- * Es gibt drei Sorten Zustand, und die Unterscheidung ist der eigentliche
- * Inhalt dieser Prüfung:
+ * There are three kinds of state, and the distinction is the actual
+ * substance of this check:
  *
- *  1. Was der Mensch eingegeben oder gewählt hat — Suchbegriff, Filter,
- *     geöffneter Dialog, Formularfelder. Das SOLL überleben.
+ *  1. What a human has entered or chosen — search term, filter,
+ *     opened dialog, form fields. This SHOULD survive.
  *
- *  2. Was einen laufenden Vorgang beschreibt — `isLoading`, `queueLoading`.
- *     Das darf NICHT überleben: Käme `isLoading = true` nach einer Drehung
- *     zurück, liefe die Koroutine, die es zurücksetzt, nicht mehr — der
- *     Ladekringel bliebe für immer stehen.
+ *  2. What describes an ongoing operation — `isLoading`, `queueLoading`.
+ *     This must NOT survive: if `isLoading = true` came back after a rotation,
+ *     the coroutine that resets it would no longer be running — the
+ *     loading spinner would stay forever.
  *
- *     Dazu gehört auch eine laufende ZIEHGESTE (`dragging`, `ziehAnteil` in
- *     der Jahres-Leiste des Katalogs). Sie stand bis jetzt an `rememberSaveable`
- *     und fiel damit unter keine der beiden Sorten. Käme `dragging = true`
- *     nach einer Drehung zurück, läge kein Finger mehr auf der Leiste — das
- *     Etikett bliebe stehen, bis jemand das nächste Mal zieht. Dieselbe Falle
- *     wie beim Ladekringel, deshalb dieselbe Regel.
+ *     This also includes an ongoing DRAG GESTURE (`dragging`, `ziehAnteil` in
+ *     the catalog's year bar). It used to sit on `rememberSaveable`
+ *     and thus fell under neither of the two kinds. If `dragging = true` came
+ *     back after a rotation, no finger would be on the bar anymore — the
+ *     label would stay put until someone drags next. The same trap
+ *     as with the loading spinner, hence the same rule.
  *
- *  3. Was EINMALIG gemessen wurde — die Belegung der Vorschau-Ablage auf der
- *     Platte. Das darf ebenfalls NICHT überleben, aber aus dem umgekehrten
- *     Grund: Nicht weil der Erzeuger noch liefe, sondern weil ihn NIEMAND mehr
- *     anstösst — die wiederhergestellte Zahl stünde dauerhaft falsch da. Siehe
- *     den Ausdruck `gemessen` weiter unten; dort steht auch, warum eine
- *     Layout-Messung ausdrücklich NICHT dazugehört.
+ *  3. What was measured ONCE — the occupancy of the preview cache on
+ *     disk. This also must NOT survive, but for the opposite
+ *     reason: not because the producer would still be running, but because NO ONE
+ *     refreshes it anymore — the restored number would stand there
+ *     permanently wrong. See the expression `gemessen` further below;
+ *     it also explains why a layout measurement is explicitly NOT
+ *     included.
  *
- *  4. Passwörter und Codes. Das Bundle liegt bei Prozesstod auf der Platte;
- *     sie gehören nicht hinein und werden nach einer Drehung neu eingegeben.
- *     Gegenprobe: `pwNeu` in StartPasswordMask wieder
- *     `rememberSaveable` → rot „Passwoerter und Codes …“; die Ausnahme `geheim`
- *     im ersten Test entfernt → rot „vom Menschen eingegebener Zustand …“.
+ *  4. Passwords and codes. The Bundle sits on disk on process death;
+ *     they don't belong in it and are entered again after a rotation.
+ *     Counter-check: `pwNeu` in StartPasswordMask back on
+ *     `rememberSaveable` → red „Passwoerter und Codes …“; the exception `geheim`
+ *     removed from the first test → red „vom Menschen eingegebener Zustand …“.
  *
- * Dieselbe Falle ist in diesem Baum schon einmal zugeschnappt: ScrollMemory.kt
- * hält in seiner eigenen Erklärung fest, dass der dortige Merker als
- * `rememberSaveable` „die Wiederherstellung nach dem ersten Betreten für immer
- * abschaltete". Deshalb ist die Datei hier ausdrücklich
- * ausgenommen.
+ * The same trap has already snapped shut once in this tree: ScrollMemory.kt
+ * notes in its own explanation that the marker there as
+ * `rememberSaveable` "permanently disabled restoration after the first
+ * visit". That's why this file is explicitly
+ * excluded here.
  */
 class ScreenStateTest {
 
     private val uiRoot = File(Quellen.root, "ui")
 
-    // Alle Oberflächendateien: Jedes Modul hat sein ui/ unter dem eigenen Paketstamm.
+    // All UI files: every module has its ui/ under its own package root.
     private fun kotlinFiles(): List<File> = Quellen.unter("ui")
 
-    /** Zeilen der Form `var x by remember { mutableStateOf(...) }` — ohne Kommentarzeilen. */
+    /** Lines of the form `var x by remember { mutableStateOf(...) }` — without comment lines. */
     private fun stateRows(f: File): List<Pair<Int, String>> =
         f.readLines().mapIndexed { i, z -> (i + 1) to z }
             .filter { (_, z) ->
@@ -76,109 +77,107 @@ class ScreenStateTest {
     private val nameFrom = Regex("""\b(?:var|val)\s+(\w+)\s+by\s+remember""")
 
     /**
-     * Zustand eines LAUFENDEN VORGANGS — der darf nicht wiederhergestellt werden.
+     * State of a RUNNING OPERATION — this must not be restored.
      *
-     * `export` kam nachtraeglich dazu (BrickLink-Wunschliste): Die Liste kannte
-     * „laeuft", „loading", „saving" — aber nicht die Schreibweise, die im Baum
-     * tatsaechlich stand. `isExporting` im PDF-Knopf war deshalb seit jeher
-     * `rememberSaveable` und ist der Fall, gegen den diese Regel gebaut ist:
+     * `export` was added later (BrickLink wishlist): the list knew
+     * "laeuft", "loading", "saving" — but not the spelling actually
+     * used in the tree. `isExporting` on the PDF button had therefore
+     * always been `rememberSaveable` and is the case this rule is built against:
      *
-     * Die Lehre ist die dieser ganzen Reihe: eine Sache in zwei Schreibweisen,
-     * und die Suche kennt nur eine.
+     * The lesson is the same as for this whole series: one thing in two
+     * spellings, and the search only knows one.
      */
     private val transient = Regex("""(?i)lade|loading|busy|running|laeuft|laden|pending|saving|speichert|scanning|scannt|progress|fortschritt|zieh|drag|export|fokus|focus|finger""")
 
-    // ── „finger" kam mit dem Zoom im PDF-Betrachter dazu ────────────────────
+    // ── „finger" was added with the zoom in the PDF viewer ────────────────────
     //
-    // `zweiFinger` in PdfViewerScreen.kt haelt fest, ob GERADE zwei Finger auf
-    // dem Glas liegen; solange sie liegen, rollt die Liste nicht, damit die
-    // Zwei-Finger-Geste zum Zoomen durchkommt.
+    // `zweiFinger` in PdfViewerScreen.kt records whether two fingers are
+    // CURRENTLY on the glass; as long as they are, the list doesn't scroll, so
+    // the two-finger gesture gets through for zooming.
     //
-    // Nach einer Drehung liegt kein Finger mehr auf dem Glas. Ein
-    // wiederhergestelltes „zwei Finger liegen auf" liesse die Liste dauerhaft
-    // gesperrt, bis jemand das naechste Mal mit zwei Fingern hinfasst — die
-    // Liste rollte nicht mehr, und niemand kaeme auf die Ursache.
+    // After a rotation, no finger is on the glass anymore. A
+    // restored "two fingers are down" would leave the list permanently
+    // locked until someone next touches it with two fingers — the
+    // list would no longer scroll, and no one would find the cause.
     //
-    // Das ist dieselbe Falle wie bei der laufenden Ziehgeste (`dragging`)
-    // weiter oben: Ein Wert ueberlebt, das Ereignis, das ihn zuruecksetzt,
-    // ist weg. Eine Fingerzahl beschreibt immer die Geste von jetzt, nie
-    // etwas, das jemand eingegeben hat.
+    // That's the same trap as with the ongoing drag gesture (`dragging`)
+    // further up: a value survives, the event that resets it
+    // is gone. A finger count always describes the gesture of now, never
+    // something a person entered.
 
     /**
-     * Merker der Rollpositions-Wiederherstellung — dürfen ERST RECHT nicht überleben.
+     * Markers for scroll-position restoration — must survive EVEN LESS.
      *
-     * ── Warum das eine eigene Kategorie ist ──────────────────
+     * ── Why this is its own category ──────────────────────
      *
-     * Beim ersten Anlauf dieser Umstellung stand hier nur eine Ausnahme für die
-     * FILE ScrollMemory.kt. CatalogScreen.kt hat aber einen eigenen,
-     * gleichnamigen Merker — dieselbe Mechanik, andere Datei. Der wurde
-     * mitgenommen, und ListScrollPositionTest fiel darüber.
+     * In the first pass of this conversion, only an exception for the
+     * FILE ScrollMemory.kt stood here. But CatalogScreen.kt has its own,
+     * identically-named marker — the same mechanism, a different file. It got
+     * caught too, and ListScrollPositionTest failed over it.
      *
-     * Zu Recht: Überlebt so ein Merker den Ausflug in die Detailseite, gilt die
-     * Liste nach dem allerersten Betreten für immer als wiederhergestellt, und
-     * die Rückkehr springt nie mehr zurück.
+     * Rightly so: if such a marker survives the trip to the detail page, the
+     * list counts as restored forever after the very first visit, and
+     * returning never scrolls back again.
      *
-     * Deshalb wird jetzt die ART des Zustands geprüft, nicht sein Wohnort.
+     * That's why the KIND of state is now checked, not its location.
      */
     private val rollMarker = Regex("""(?i)wiederhergestellt|nutzerGeste|hatteGespeicherte""")
 
     /**
-     * EINMALIG GEMESSENE WERTE — die muessen neu gelesen, nicht wiederhergestellt
-     * werden.
+     * ONE-TIME MEASURED VALUES — these must be read anew, not restored.
      *
-     * Der Fall: `storeBytes` in MonitoringSections.kt haelt fest, wie viele
-     * Bytes die Vorschau-Ablage unter filesDir belegt. Der Wert wird EINMAL
-     * beim Aufbau der Zeile gelesen und danach nur noch vom Leeren-Knopf
-     * nachgefuehrt.
+     * The case: `storeBytes` in MonitoringSections.kt records how many
+     * bytes the preview cache under filesDir occupies. The value is read ONCE
+     * when the row is built and after that only updated by the clear
+     * button.
      *
-     * Stuende er an `rememberSaveable`, kaeme nach einem Prozesstod die Zahl
-     * aus dem Bundle zurueck — die Ablage auf der Platte kann sich in der
-     * Zwischenzeit aber geaendert haben (ein anderer Bildschirm hat sie
-     * gefuellt, Android hat den Prozess zwischen zwei Sitzungen beendet). Es
-     * stuende dann dauerhaft eine falsche Zahl da, denn NICHTS liest sie
-     * nochmals nach. Dieselbe Falle wie beim Ladekringel: ein Wert ueberlebt,
-     * die Seite, die ihn erzeugt, laeuft nicht mehr.
+     * If it sat on `rememberSaveable`, the number would come back from the
+     * Bundle after a process death — but the cache on disk may have
+     * changed in the meantime (another screen filled it, Android killed the
+     * process between two sessions). A wrong number would then
+     * stand there permanently, because NOTHING reads it again. The same trap
+     * as with the loading spinner: a value survives, the page that
+     * produces it is no longer running.
      *
-     * ── Die Abgrenzung, und warum sie nicht „jede Messung" heisst ──────────
+     * ── The boundary, and why it doesn't mean "every measurement" ──────────
      *
-     * `heightPx` in CatalogScreen.kt ist AUCH eine Messung und steht zu Recht
-     * an `rememberSaveable`: Sie kommt aus `onSizeChanged`, und dieser Erzeuger
-     * laeuft nach einer Drehung sofort wieder — der wiederhergestellte Wert
-     * wird im naechsten Layout-Durchgang ohnehin ueberschrieben und
-     * ueberbrueckt nur das eine Bild dazwischen.
+     * `heightPx` in CatalogScreen.kt is ALSO a measurement and rightly sits
+     * on `rememberSaveable`: it comes from `onSizeChanged`, and this producer
+     * runs again right after a rotation — the restored value
+     * gets overwritten in the next layout pass anyway and only
+     * bridges that one frame in between.
      *
-     * Entscheidend ist also nicht, DASS gemessen wurde, sondern ob der
-     * Erzeuger nach der Drehung noch laeuft. Deshalb fasst dieser Ausdruck
-     * nur Messungen einer Ablage-Belegung und nicht Layout-Groessen.
+     * What matters, then, isn't THAT something was measured, but whether the
+     * producer still runs after the rotation. That's why this expression
+     * only covers cache-occupancy measurements, not layout sizes.
      */
     private val gemessen = Regex("""(?i)bytes|belegt|belegung""")
 
     /**
-     * Passwörter und Codes (Sorte 4): nie im Bundle. Ebenso `entsperrt` der
-     * Schrittsperre: Aus dem Bundle zurückgeholt, umginge er die Gerätesperre.
+     * Passwords and codes (kind 4): never in the Bundle. Likewise `entsperrt` of
+     * the step lock: fetched back from the Bundle, it would bypass the device lock.
      */
     private val geheim = Regex("""(?i)passw|^pw(?!$)|^(zf|faktor)?code$|^entsperrt$""")
 
-    /** Werte, die das Bundle nicht aufnehmen kann. */
+    /** Values the Bundle cannot hold. */
     private val notSpeicherbar = Regex("""Offset|listOf|mapOf|setOf|Bitmap""")
 
     /**
-     * ZoomableImageDialog: Skalierung und Versatz gehören zusammen; der Versatz
-     * (Offset) ist nicht speicherbar, also wäre nur die halbe Sache gerettet.
+     * ZoomableImageDialog: scale and offset belong together; the offset
+     * is not saveable, so only half the job would be saved.
      *
-     * ── ScrollMemory.kt stand hier und war überflüssig ──────────────────────
+     * ── ScrollMemory.kt stood here and was unnecessary ──────────────────────
      *
-     * Nachgemessen, nicht vermutet: KEINE Zeile dieser Datei erreicht die
-     * Meldung überhaupt. Ihre vier Merker heissen `wiederhergestellt`,
-     * `hatteGespeicherte` und `nutzerGeste` — allesamt schon von `rollMarker`
-     * erfasst.
+     * Verified, not assumed: NO line of this file reaches the rule at all.
+     * Its four markers are named `wiederhergestellt`,
+     * `hatteGespeicherte` and `nutzerGeste` — all already covered by `rollMarker`.
      *
-     * Die Prüfung hängt an der ART des Zustands (siehe KDoc am rollMarker), nicht
-     * am Wohnort; eine Ausnahme je Datei nähme jeden späteren Zustand mit aus.
+     * The check hinges on the KIND of state (see the KDoc on rollMarker), not
+     * on its location; an exception per file would exempt every later state too.
      */
     private val ausgenommen = setOf("ZoomableImageDialog.kt")
 
-    /** Geheim, flüchtig, Rollmerker, gemessen oder nicht speicherbar: Diese Zustände bleiben bei remember. */
+    /** Secret, transient, scroll marker, measured or not saveable: these states stay on remember. */
     private fun mayForgotten(name: String, zeile: String): Boolean =
         geheim.containsMatchIn(name) || transient.containsMatchIn(name) || rollMarker.containsMatchIn(name) ||
             gemessen.containsMatchIn(name) || notSpeicherbar.containsMatchIn(zeile)
@@ -192,11 +191,11 @@ class ScreenStateTest {
                 if ("rememberSaveable" in z) continue
                 val name = nameFrom.find(z)?.groupValues?.get(1) ?: continue
                 if (mayForgotten(name, z)) continue
-                // Eine ausgenommene Datei wird trotzdem DURCHSUCHT: Ihr Treffer
-                // belegt, dass die Ausnahme noch etwas beschreibt. Wird sie
-                // stattdessen gleich uebersprungen, bleibt ein toter Eintrag
-                // jahrelang stehen und sperrt eine ganze Datei — genau das war
-                // mit ScrollMemory.kt passiert.
+                // An excluded file is still SEARCHED: its match
+                // proves the exception still describes something. If it were
+                // skipped outright instead, a dead entry would stay in place
+                // for years and block a whole file — exactly that is what had
+                // happened with ScrollMemory.kt.
                 if (f.name in ausgenommen) { exceptionUsed += f.name; continue }
                 missed += "${f.name}:$zn  $name"
             }
@@ -256,9 +255,9 @@ class ScreenStateTest {
 
     @Test
     fun `ScrollMemory deliberately uses remember and sticks to it`() {
-        // Nicht der Vollständigkeit halber: Diese Datei hat den Fehler schon
-        // einmal gehabt. Eine spätere Sammel-Umstellung soll sie
-        // nicht versehentlich mitnehmen.
+        // Not for completeness's sake: this file has already had the bug
+        // once before. A later batch conversion shouldn't
+        // accidentally pick it up again.
         val f = File(uiRoot, "ScrollMemory.kt")
         assertTrue("ScrollMemory.kt gibt es nicht mehr — diese Prüfung anpassen", f.exists())
         val zeilen = stateRows(f)

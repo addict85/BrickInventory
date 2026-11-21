@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 import ch.brickinventoryapp.data.DevicesStore
 
-/** Die Messlatte der Selbstaktualisierung (util/UpdateFresh.kt), je Gerät im DataStore. */
+/** The self-update's benchmark (util/UpdateFresh.kt), per device in the DataStore. */
 internal class UpdateStore @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val dataStore: DataStore<Preferences>,
@@ -23,9 +23,9 @@ internal class UpdateStore @Inject constructor(
         const val UPDATE_ON_START = "update_beim_start"
 
         /**
-         * Der höchste gesehene versionCode und der späteste Ausstellungszeitpunkt einer
-         * aktuellen Update-Beschreibung (util/UpdateFresh.kt). Je Gerät; das Abmelden
-         * lässt sie stehen, sonst setzte es die Messlatte für ein Zurückhalten zurück.
+         * The highest versionCode seen and the latest issue time of a
+         * current update description (util/UpdateFresh.kt). Per device; signing out
+         * leaves it as is, otherwise it would reset the benchmark for a withholding.
          */
         val UPDATE_HIGHEST_CODE = intPreferencesKey("update_hoechster_code")
         val UPDATE_ISSUED = longPreferencesKey("update_ausgestellt")
@@ -44,7 +44,7 @@ internal class UpdateStore @Inject constructor(
         }
     }
 
-    /** Synchron lesbar wie das Design: im Spiegel der DevicesStore. */
+    /** Synchronously readable like the design: mirroring DevicesStore. */
     private val spiegel by lazy {
         context.getSharedPreferences(DevicesStore.DESIGN_MIRROR_FILE, Context.MODE_PRIVATE)
     }

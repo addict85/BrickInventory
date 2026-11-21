@@ -25,13 +25,13 @@ import ch.brickinventoryapp.state.ui.viewmodel.AreaFilter
 import ch.brickinventoryapp.state.ui.viewmodel.Filterwahl
 import ch.brickinventoryapp.state.ui.viewmodel.Meldungen
 
-/** Texte, Dateizugriff und Filterablage der geteilten Präsentationsschicht. */
+/** Texts, file access and filter store of the shared presentation layer. */
 @Module
 @InstallIn(SingletonComponent::class)
 object StateModule {
 
-    // Die herausgelösten ViewModels sehen Texte nur über diese Schnittstelle
-    // (Dateien über FileReader aus core-data) — so laufen sie im JVM-Test ohne Context.
+    // The extracted ViewModels only see texts via this interface
+    // (files via FileReader from core-data) — this way they run in the JVM test without a context.
     @Provides
     fun provideTexts(t: AppTexte): Texte = t
 
@@ -44,12 +44,12 @@ object StateModule {
     @Provides
     fun provideFilterStore(a: ScopeFilterStore): FilterStore = a
 
-    // Die ViewModels sehen nur Schnittstellen, damit Tests sie ohne Hilt ersetzen; die Umsetzungen sind Singletons.
+    // The ViewModels only see interfaces, so tests can swap them out without Hilt; the implementations are singletons.
     @Provides fun provideScope(b: ScopeService): Scope = b
-    // Die Sitzung (core-session) lädt nach der Anmeldung über diese Schritte des Blickfelds.
+    // The session (core-session) loads after sign-in via these steps of the Blickfeld.
     @Provides fun provideFilterquelle(b: ScopeService): Filterquelle = b
     @Provides fun provideAusgangsmelder(a: InitialObserver): Ausgangsmelder = a
-    // Ein Merker für alle Reiter: Ein zweiter hätte die Stellen des ersten nicht.
+    // One holder for all tabs: a second one wouldn't have the first one's positions.
     @Provides @Singleton fun provideScrollMemory(): ScrollMemory = ScrollStorage()
     @Provides fun provideMessages(m: AppMessages): Meldungen = m
     @Provides fun provideFilterwahl(f: AreaFilter): Filterwahl = f

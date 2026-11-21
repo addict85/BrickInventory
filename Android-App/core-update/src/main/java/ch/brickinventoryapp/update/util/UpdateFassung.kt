@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.update.util
 
 /**
- * Trägt das geladene APK die angekündigte Fassung, und ist sie neuer als die
- * laufende? version.json kann eine höhere Zahl nennen als das APK hinter der
- * Adresse; installiert würde dann eine alte Fassung (oder Android lehnt sie als
- * Downgrade ab), und die App böte dasselbe Update immer wieder an.
+ * Does the loaded APK carry the announced version, and is it newer than the
+ * running one? version.json can name a higher number than the APK behind the
+ * address; that would install an old version (or Android would reject it as a
+ * downgrade), and the app would keep offering the same update over and over.
  */
 fun versionFits(inApk: Long?, gemeldet: Int, laufend: Int): Boolean =
     inApk != null && inApk == gemeldet.toLong() && inApk > laufend

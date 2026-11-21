@@ -6,12 +6,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Wo die App beginnt. Wer noch eine http-Adresse gespeichert hat, landet in der
- * Einrichtung mit der Anleitung zu https, auch wenn ein Token da ist.
+ * Where the app starts. Whoever still has an http address stored ends up in
+ * setup with instructions for https, even with a token present.
  *
- * Gegenprobe: in startTarget() die Bedingung
- * plaintextLegacyStock() entfernt → rot „eine alte http-Adresse führt in die
- * Einrichtung …“ (SAMMLUNG statt EINRICHTUNG).
+ * Counter-check: in startTarget() the condition
+ * plaintextLegacyStock() removed → red „eine alte http-Adresse führt in die
+ * Einrichtung …“ (SAMMLUNG instead of EINRICHTUNG).
  */
 class StartTargetTest {
 

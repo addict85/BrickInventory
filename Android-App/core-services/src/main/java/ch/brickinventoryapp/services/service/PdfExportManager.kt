@@ -27,7 +27,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.roundToLong
 
-/** Wo der Export steht, als Fachwerte; die Sätze bilden Teileliste und Dienst. */
+/** Where the export stands, as field values; the records form parts list and service. */
 internal sealed interface PdfExportState {
     data object Idle : PdfExportState
     data class Running(val fortschritt: PdfProgress) : PdfExportState
@@ -36,9 +36,9 @@ internal sealed interface PdfExportState {
 }
 
 /**
- * Steuert den PDF-Export: Auftrag starten, per SSE auf den Abschluss warten (Abfrage
- * als Rückfall), PDF herunterladen. Der Auftrag läuft im Bereich der Anwendung, damit
- * er den Bildschirm überlebt; der Vordergrund-Dienst hält dabei nur den Prozess wach.
+ * Controls the PDF export: start the job, wait for completion via SSE (polling
+ * as a fallback), download the PDF. The job runs in the application scope, so
+ * it survives the screen; the foreground service only keeps the process awake while it does.
  */
 @Singleton
 internal class PdfExportManager @Inject constructor(
@@ -53,14 +53,14 @@ internal class PdfExportManager @Inject constructor(
 
     private var job: Job? = null
 
-    /** Ein neuer Auftrag ersetzt einen laufenden; der Zustand steht sofort auf „startet“. */
+    /** A new job replaces a running one; the state immediately switches to „starting“. */
     fun commission(anfrage: Teilelistenauftrag) {
         job?.cancel()
         _state.value = PdfExportState.Running(PdfProgress(PdfStep.STARTET))
         job = areas.application.launch(areas.io) { runFrom(anfrage) }
     }
 
-    /** Fünf Versuche mit wachsender Pause: Das fertige PDF liegt manchmal erst kurz nach der Meldung bereit. */
+    /** Five attempts with a growing pause: the finished PDF is sometimes only ready shortly after the notification. */
     private suspend fun loadPdf(jobId: String): Ergebnis<ByteArray> {
         var ergebnis: Ergebnis<ByteArray> = dateien.downloadPdf(jobId)
         var pause = 2000L
@@ -80,8 +80,8 @@ internal class PdfExportManager @Inject constructor(
             }
             _state.value = PdfExportState.Running(PdfProgress(PdfStep.IMAGES_LOAD))
             val lauf = Lauf()
-            // Neben dem Warten ein Ticker: Aus der Schätzung des Servers (etaSeconds ≈
-            // fehlende Bilder) jede Sekunde die Restzeit, aber nur, solange er erstellt.
+            // Alongside the waiting, a ticker: from the server's estimate (etaSeconds ≈
+            // missing images), the remaining time every second, but only while it's still being created.
             val grund = coroutineScope {
                 val ticker = launch {
                     while (isActive) {
@@ -101,7 +101,7 @@ internal class PdfExportManager @Inject constructor(
             when (val r = loadPdf(jobId)) {
                 is Ergebnis.Erfolg -> {
                     val file = teilelistentresor.put(context.filesDir, context.getExternalFilesDir(null), r.data)
-                    // Auch verschlüsselt bleibt das Inventar nur, solange jemand es öffnen will.
+                    // Even encrypted, the inventory only stays as long as someone wants to open it.
                     runCatching { PartListsAufraeumer.plane(context) }
                     _state.value = PdfExportState.Done(file)
                 }
@@ -112,7 +112,7 @@ internal class PdfExportManager @Inject constructor(
 
     private fun fail(grund: PdfFailure) { _state.value = PdfExportState.Error(grund) }
 
-    /** Wartet per SSE auf den Abschluss, sonst per Abfrage. Null heisst fertig, sonst der Grund. */
+    /** Waits for completion via SSE, otherwise via polling. Null means done, otherwise the reason. */
     private suspend fun waitOnJob(jobId: String, lauf: Lauf): PdfFailure? {
         var ausgang: Ausgang? = null
         strom.observe(jobId).takeWhile { e ->
@@ -125,7 +125,7 @@ internal class PdfExportManager @Inject constructor(
         return (ausgang ?: questionAbUntilDone(jobId, lauf)).grund
     }
 
-    /** Null: läuft noch. */
+    /** Null: still running. */
     private fun applyAn(stand: PdfJobStatus, lauf: Lauf): Ausgang? {
         lauf.rememberDeadline(stand.restSeconds)
         return when (stand.status) {
@@ -140,7 +140,7 @@ internal class PdfExportManager @Inject constructor(
         }
     }
 
-    /** Rückfall ohne Strom: alle 3 s abfragen, höchstens zehn Minuten, höchstens zehn Fehler in Folge. */
+    /** Fallback without a stream: query every 3s, at most ten minutes, at most ten errors in a row. */
     private suspend fun questionAbUntilDone(jobId: String, lauf: Lauf): Ausgang {
         var fehler = 0
         val bis = System.currentTimeMillis() + 10 * 60 * 1000L
@@ -155,15 +155,15 @@ internal class PdfExportManager @Inject constructor(
         return Ausgang(PdfFailure.Abruf(zuletzt))
     }
 
-    /** Wie ein Auftrag endete: [grund] null heisst fertig. */
+    /** How a job ended: [grund] null means done. */
     private class Ausgang(val grund: PdfFailure?)
 
-    /** Was ein einzelner Auftrag über seine Zeit weiss; je Auftrag neu. */
+    /** What a single job knows about its own time; new for each job. */
     private class Lauf {
-        /** Wann das PDF laut erster Schätzung fertig ist, 0 ohne Schätzung. */
+        /** When the PDF will be done according to the first estimate, 0 without an estimate. */
         @Volatile var deadlineMs = 0L
 
-        /** Nur solange der Server erstellt, zeigt der Ticker eine Restzeit. */
+        /** Only while the server is still creating it does the ticker show a remaining time. */
         @Volatile var erstellt = false
 
         fun rememberDeadline(seconds: Double?) {

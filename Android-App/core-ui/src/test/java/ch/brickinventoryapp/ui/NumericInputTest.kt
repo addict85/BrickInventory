@@ -9,28 +9,28 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Zahlenfelder: Zahlenpad und erlaubte Zeichen — eine Fassung.
+ * Number fields: number pad and allowed characters — one version.
  *
- * ── Warum beides zusammengehört ─────────────────────────────────────────────
- * Die Tastaturwahl ist eine BITTE an die Tastatur-App, keine Zusicherung: Viele
- * Tastaturen zeigen auf `Number` trotzdem eine Umschalttaste zu Buchstaben, und
- * über Einfügen aus der Zwischenablage kommt ohnehin alles herein. Deshalb
- * braucht jedes Zahlenfeld beides: den Filter und die Tastaturwahl.
+ * ── Why the two belong together ─────────────────────────────────────────────
+ * The keyboard choice is a REQUEST to the keyboard app, not a guarantee: many
+ * keyboards show a switch key to letters on `Number` regardless, and
+ * pasting from the clipboard lets everything in anyway. That's why
+ * every number field needs both: the filter and the keyboard choice.
  *
- * Hier steht seit dem 28.09. die FILTERUNG — was NumericInput mit einer
- * Eingabe macht — und die Sonderregel für die Setnummernfelder, die ihre
- * Felder an der Beschriftung erkennt. Die Sammelregel „jedes gefilterte Feld
- * zeigt auch die Zahlentastatur" steht in NumberPadTest; siehe die
- * Notiz unten, wo sie vorher stand.
+ * Since Sep 28, this is where the FILTERING lives — what NumericInput does with an
+ * input — and the special rule for the set-number fields, which recognizes its
+ * fields by their label. The collective rule "every filtered field
+ * also shows the number pad" lives in NumberPadTest; see the
+ * note below, where it used to be.
  *
- * Seit 8.11. lässt die Setnummer auch Buchstaben durch (llca30, comcon001), wie
- * normalisiereSetNummer der Web-App; ihre Felder zeigen dafür die Texttastatur.
- * Gegenprobe (gegenproben/setnummer-nur-ziffern.patch): der Filter wieder nur
- * Ziffern und „-" → rot „die Setnummer laesst Buchstaben und Ziffern durch …".
+ * Since Nov 8 the set number also lets letters through (llca30, comcon001), like
+ * the web app's normalizeSetNumber; its fields show the text keyboard for that.
+ * Counter-check (gegenproben/setnummer-nur-ziffern.patch): the filter back to only
+ * digits and "-" → red „die Setnummer laesst Buchstaben und Ziffern durch …".
  *
- * Betrag und Menge: readAmount folgt readAmount der Web-App (format.js).
- * Gegenprobe (gegenproben/betrag-tausenderpunkt.patch): price() schneidet wieder am
- * zweiten Trenner ab → rot „a pasted number with thousands separator keeps its value".
+ * Amount and quantity: readAmount follows the web app's readAmount (format.js).
+ * Counter-check (gegenproben/betrag-tausenderpunkt.patch): price() cuts off again at the
+ * second separator → red „a pasted number with thousands separator keeps its value".
  */
 class NumericInputTest {
 
@@ -42,13 +42,13 @@ class NumericInputTest {
     @Test
     fun `the set number lets letters and digits through, nothing else`() {
         assertEquals("42200", NumericInput.setNumber("42200"))
-        // Wie normalisiereSetNummer der Web-App: Buchstaben und Ziffern, Rest fällt weg.
+        // Like the web app's normalizeSetNumber: letters and digits, the rest is dropped.
         assertEquals("llca30", NumericInput.setNumber("llca30"))
         assertEquals("comcon001", NumericInput.setNumber("comcon001"))
         assertEquals("42200xyz", NumericInput.setNumber("42 200 xyz"))
         assertEquals("PoliceTruck", NumericInput.setNumber("Police Truck!"))
         assertEquals("", NumericInput.setNumber("äö €#"))
-        // Nicht-ASCII-Ziffern (arabisch-indisch) und Umlaute trafen in der Web-App keine Zeile.
+        // Non-ASCII digits (Arabic-Indic) and umlauts didn't hit a line in the web app.
         assertEquals("", NumericInput.setNumber("\u0663\u00e4"))
     }
 
@@ -62,13 +62,13 @@ class NumericInputTest {
 
     @Test
     fun `the variant hyphen stays allowed`() {
-        // LEGO-Setnummern tragen die Variante hinter dem Strich (10179-2). Verböte das
-        // Feld ihn, liesse sich jede Variante ausser der ersten nicht mehr erfassen.
+        // LEGO set numbers carry the variant after the hyphen (10179-2). If the
+        // field forbade it, no variant but the first could be entered anymore.
         assertEquals("10179-2", NumericInput.setNumber("10179-2"))
     }
 
     /**
-     * Gegenprobe: setNumberPattern auf `\d+` verkürzt → "10294-1" rot; auf `.*` geweitet → "--" rot.
+     * Counter-check: setNumberPattern shortened to `\d+` → "10294-1" red; widened to `.*` → "--" red.
      */
     @Test
     fun `a set number has digits and at most one variant`() {
@@ -89,8 +89,8 @@ class NumericInputTest {
     fun `the price takes exactly one separator`() {
         assertEquals("12.50", NumericInput.price("12.50"))
         assertEquals("12,50", NumericInput.price("12,50"))   // deutsche Tastatur
-        // Ohne diese Begrenzung wäre „12.3.4" tippbar und fiele erst beim
-        // Umwandeln auf — dann still als Preis null.
+        // Without this limit, "12.3.4" would be typeable and would only surface on
+        // conversion — then silently turning into a price of null.
         assertEquals("12.34", NumericInput.price("12.3.4"))
         assertEquals("1250", NumericInput.price("CHF 1250"))
     }
@@ -99,7 +99,7 @@ class NumericInputTest {
     fun `an amount is read as in the web app`() {
         val de = '.'
         val en = ','
-        // Beide Schreibweisen mit Tausendertrennung, in jeder Sprache gleich.
+        // Both spellings with thousands separator, the same in every language.
         assertEquals(1299.0, NumericInput.readAmount("1.299,00", de)!!, 0.0)
         assertEquals(1299.0, NumericInput.readAmount("1.299,00", en)!!, 0.0)
         assertEquals(1299.5, NumericInput.readAmount("1,299.50", de)!!, 0.0)
@@ -111,7 +111,7 @@ class NumericInputTest {
         assertEquals(0.5, NumericInput.readAmount(",5", de)!!, 0.0)
         assertEquals(1299.0, NumericInput.readAmount("1'299.00", en)!!, 0.0)
         assertEquals(12.5, NumericInput.readAmount("€ 12,50", de)!!, 0.0)
-        // Ein einzelner Trenner vor drei Ziffern: Tausender nur, wenn er das Gruppenzeichen ist.
+        // A single separator before three digits: a thousands separator only if it is the grouping character.
         assertEquals(1299.0, NumericInput.readAmount("1.299", de)!!, 0.0)
         assertEquals(1.299, NumericInput.readAmount("1.299", en)!!, 0.0)
         assertEquals(1.299, NumericInput.readAmount("1,299", de)!!, 0.0)
@@ -132,15 +132,15 @@ class NumericInputTest {
 
     @Test
     fun `a pasted number with thousands separator keeps its value`() {
-        // Das Abschneiden am zweiten Trenner machte aus „1.299,00" den Preis 1,299.
+        // Cutting off at the second separator turned "1.299,00" into the price 1,299.
         assertEquals("1299,00", NumericInput.price("1.299,00", '.'))
         assertEquals("1299.50", NumericInput.price("1,299.50", ','))
         assertEquals("1299000", NumericInput.price("1.299.000", '.'))
-        // Beim Tippen: der zweite Trenner nach den Tausendern setzt das Dezimalzeichen.
+        // While typing: the second separator after the thousands sets the decimal mark.
         assertEquals("1299,", NumericInput.price("1.299,", '.'))
-        // Kein gültiger Betrag mit zwei Trennern: wie bisher der erste Trenner.
+        // No valid amount with two separators: as before, the first separator wins.
         assertEquals("12.34", NumericInput.price("12.3.4", '.'))
-        // Der gefilterte Text ergibt denselben Wert wie der eingefügte.
+        // The filtered text gives the same value as the pasted one.
         assertEquals(1299.0, NumericInput.readAmount(NumericInput.price("1.299,00", '.'), '.')!!, 0.0)
     }
 
@@ -151,27 +151,27 @@ class NumericInputTest {
         assertEquals(false, NumericInput.quantityInvalid("250"))
         assertEquals(true, NumericInput.quantityInvalid("0"))
         assertEquals(true, NumericInput.quantityInvalid("00"))
-        // Über Int: Das wurde bisher still zu 1.
+        // Over Int: this used to silently become 1.
         assertEquals(true, NumericInput.quantityInvalid("99999999999"))
     }
 
     // ── Die Tastatur ─────────────────────────────────────────────────────────
 
     /**
-     * Jeder OutlinedTextField-Aufruf im Quellbaum: Datei, Zeile, ganzer Aufruf.
+     * Every OutlinedTextField call in the source tree: file, line, whole call.
      *
-     * Das Ende des Aufrufs kommt über die Klammerbilanz, nicht über ein festes
-     * Fenster — ein Fenster reichte in den nächsten Aufruf hinein (die Falle,
-     * die in diesem Projekt schon fünfmal zugeschlagen hat). Gelesen wird ohne
-     * Kommentarzeilen: Sonst genügte ein Kommentar, der den gesuchten Namen
-     * nennt, und die Regel wäre zufrieden.
+     * The call's end is found via bracket balance, not a fixed
+     * window — a window reached into the next call (the trap
+     * that has already struck five times in this project). Read without
+     * comment lines: otherwise a comment that names the sought name
+     * would be enough, and the rule would be satisfied.
      */
     private fun textFields(): List<Triple<String, Int, String>> {
         val dateien = Quellen.root
             .walkTopDown().filter { it.extension == "kt" }.toList()
             .also {
-                // Untergrenze: ein leerer Dateilauf lässt jede
-                // Sammelprüfung darunter stillschweigend bestehen.
+                // Lower bound: an empty file run would let any
+                // collective check below it pass silently.
                 check(it.size >= 20) { "Zu wenige Kotlin-Dateien gefunden (${it.size}) — Pfad veraltet?" }
             }
         val treffer = mutableListOf<Triple<String, Int, String>>()
@@ -198,29 +198,29 @@ class NumericInputTest {
         return treffer
     }
 
-    // ── Hier stand „kein Zahlenfeld steht ohne Tastaturwahl da" ──────────────
+    // ── Here stood „kein Zahlenfeld steht ohne Tastaturwahl da" ──────────────
     //
-    // Die Regel ist nicht weggefallen, sie ist umgezogen: nach
+    // The rule hasn't gone away, it has moved: to
     // NumberPadTest, „wer Zahlen filtert, zeigt auch die
-    // Zahlentastatur". Beide sagten dasselbe — ein Feld mit NumericInput-
-    // Filter braucht die passende Tastatur —, und die Gegenprobe am 28.09.
+    // Zahlentastatur". Both said the same thing — a field with a NumericInput
+    // filter needs the matching keyboard —, and the counter-check on Sep 28.
     //
-    // Geblieben ist die schaerfere der beiden:
-    //   · Sie sieht auch `TextField(`, nicht nur `OutlinedTextField(`.
+    // What remained is the sharper of the two:
+    //   · It also sees `TextField(`, not only `OutlinedTextField(`.
     //
-    // Zwei Fassungen derselben Regel sind nicht doppelt sicher, sondern
-    // gefaehrlich: Wer die eine entschaerft, sieht die andere nicht, und wer
-    // beide sieht, pflegt am Ende nur noch die, die zuerst rot wird.
+    // Two versions of the same rule aren't doubly safe but
+    // dangerous: whoever defuses one doesn't see the other, and whoever
+    // sees both ends up maintaining only the one that turns red first.
 
     @Test
     fun `every set number field takes filter and number pad`() {
-        // Auch ein Feld, das nicht als Zahlenfeld gebaut ist; erkannt an der Beschriftung,
-        // die eine Umbenennung der Zustandsvariablen übersteht.
+        // Also a field that isn't built as a number field; recognized by the label,
+        // which survives a rename of the state variable.
         val felder = textFields().filter { (_, _, block) ->
             Regex("""R\.string\.[A-Za-z0-9_]*set_number[A-Za-z0-9_]*""").containsMatchIn(block)
         }
-        // Drei sind es heute: Galerie („Set hinzufügen"), Merkliste und
-        // Teileliste. Weniger heisst: Die Suche greift nicht mehr.
+        // Three today: gallery ("Add set"), watchlist and
+        // parts list. Fewer means: the search no longer catches it.
         assert(felder.size >= 3) {
             "Nur ${felder.size} Setnummernfelder gefunden — greift die Suche noch?"
         }
@@ -239,8 +239,8 @@ class NumericInputTest {
 
     @Test
     fun `no view filters numbers itself any more`() {
-        // Sonst gäbe es wieder mehrere Fassungen derselben Regel — und die
-        // Preis-Fassung mit nur EINEM Trennzeichen fehlte den anderen.
+        // Otherwise there would again be several versions of the same rule — and the
+        // price version with only ONE separator would be missing from the others.
         val dateien = Quellen.root
             .walkTopDown().filter { it.extension == "kt" && it.name != "NumericInput.kt" }
         for (datei in dateien) {

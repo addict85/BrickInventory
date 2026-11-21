@@ -22,23 +22,23 @@ import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.navigation.Bereichsumgebung
 
 /**
- * Was der Katalog von anderen Bereichen braucht: Erfassen gehört der Galerie, die
- * Ziele der Merkliste der Sammlung. Den Merkposten selbst liest und legt das
- * CatalogViewModel über die Ablage an; ein ViewModel der Merkliste braucht es dafür nicht.
+ * What the catalog needs from other areas: entering belongs to the gallery, the
+ * destinations to the collection's watchlist. The CatalogViewModel reads and creates the
+ * watchlist item itself via the cache; a watchlist ViewModel doesn't need it for that.
  */
 interface CatalogNavigation : Bereichsumgebung {
-    /** Ein Set in die Galerie aufnehmen; die Erfassung hängt an [entry], ihre Prüfanzeige darüber. */
+    /** Add a set to the gallery; entering hangs on [entry], its check display above it. */
     @Composable
     fun erfassen(entry: NavBackStackEntry): (Erfassungswunsch) -> Unit
 
-    /** Das Set in der Galerie. */
+    /** The set in the gallery. */
     fun openSet(setNumber: String)
 
-    /** Der Merkposten über der Merkliste: Dort läuft die Snackbar, wenn er gelöscht wird. */
+    /** The watchlist item above the watchlist: the snackbar runs there when it's deleted. */
     fun openWantedItem(setNumber: String, zustand: Zustand)
 }
 
-/** Die Ziele des Katalogs. */
+/** The catalog's destinations. */
 fun NavGraphBuilder.catalogGraph(navigation: CatalogNavigation) {
     val navController = navigation.navController
     navigation<KatalogZiel.Bereich>(startDestination = KatalogZiel.Catalog) {
@@ -59,7 +59,7 @@ fun NavGraphBuilder.catalogGraph(navigation: CatalogNavigation) {
     }
 }
 
-/** Das Katalog-Detail; eigene Funktion, damit der Graph kurz bleibt. */
+/** The catalog detail; its own function, so the graph stays short. */
 @Composable
 private fun CatalogDetailTarget(navigation: CatalogNavigation, backStack: NavBackStackEntry) {
     val navController = navigation.navController
@@ -69,22 +69,22 @@ private fun CatalogDetailTarget(navigation: CatalogNavigation, backStack: NavBac
     val catSetNumber = backStack.toRoute<KatalogZiel.CatalogDetail>().setNumber
     val catalogState by katalog.state.collectAsStateWithLifecycle()
     val lagerZustand by navigation.lager.collectAsStateWithLifecycle()
-    // Steht das Set schon auf der Merkliste? Dann zeigt das Detail den Posten statt „Auf die Merkliste“.
+    // Is the set already on the watchlist? Then the detail shows the item instead of "Add to watchlist".
     val gemerkt by remember(katalog, catSetNumber) { katalog.gemerkt(catSetNumber) }.collectAsStateWithLifecycle(null)
     val record = navigation.erfassen(backStack)
-    // loadCatalogDetail() meldet über denselben Kanal wie alle ViewModels
-    // (data/MeldungsKanal.kt), eingesammelt in AppNavigation.kt.
+    // loadCatalogDetail() reports over the same channel as every ViewModel
+    // (data/MeldungsKanal.kt), collected in AppNavigation.kt.
     CatalogDetailScreen(
         setNumber = catSetNumber,
-        // Bis das Detail dieses Sets da ist, nicht das zuletzt geöffnete zeigen.
+        // Don't show the last-opened one until this set's detail is there.
         geladen = catalogState.detail.let { if (it is Laden.Daten && it.wert.setNumber != catSetNumber) Laden.Loads else it },
         imageLoader = navigation.bilder,
         serverUrl = state.serverUrl,
         defaultCondition = state.userDefaultCondition ?: Zustand.NEU,
         onLoad = katalog::loadCatalogDetail,
         householdMembers = blick.householdMembers,
-        // Der VORRAT an Lagerorten, nicht die belegten Orte: Beim
-        // Erfassen soll auch ein leeres Regal zur Wahl stehen.
+        // The STOCK of storage locations, not the occupied ones: an empty
+        // shelf should also be selectable when entering.
         lagerorte = lagerZustand.eigene.map { it.name },
         locationDefault = lagerZustand.vorgabe?.name ?: "",
         onAddToGallery = { wish ->
@@ -99,7 +99,7 @@ private fun CatalogDetailTarget(navigation: CatalogNavigation, backStack: NavBac
     )
 }
 
-/** Das ViewModel des Teilgraphen, an dessen Eintrag gebunden. */
+/** The sub-graph's ViewModel, tied to its entry. */
 @Composable
 private fun catalogViewModel(navController: NavHostController, entry: NavBackStackEntry): CatalogViewModel {
     val bereich = remember(entry) { navController.getBackStackEntry<KatalogZiel.Bereich>() }

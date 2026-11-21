@@ -30,10 +30,10 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.theme.Formen
 
 /**
- * Ein Knopf, der klein aussieht ([flaeche] in [form]) und doch 48 × 48 dp Tippfläche hat.
- * Material vergrössert bei kleinen Knöpfen nur das Layout drumherum; der Knoten, den
- * Tippen und TalkBack sehen, bliebe so klein wie die Form. Hier ist er die ganze Fläche,
- * die Welle zeigt sich auf der Form.
+ * A button that looks small ([flaeche] in [form]) and yet has a 48 × 48 dp tap area.
+ * Material only enlarges the layout around small buttons; the node that
+ * taps and TalkBack see would stay as small as the shape. Here it is the whole area,
+ * the ripple shows on the shape.
  */
 @Composable
 fun SmallerButton(
@@ -66,7 +66,7 @@ fun SmallerButton(
     }
 }
 
-/** Plus oder Minus eines Mengenreglers: sichtbar 40 dp tonal wie ein FilledTonalIconButton, getippt 48 dp. */
+/** Plus or minus of a quantity stepper: visibly 40 dp tonal like a FilledTonalIconButton, tapped at 48 dp. */
 @Composable
 fun QuantitiesButton(onClick: () -> Unit, symbol: @Composable RowScope.() -> Unit) = SmallerButton(
     onClick = onClick,

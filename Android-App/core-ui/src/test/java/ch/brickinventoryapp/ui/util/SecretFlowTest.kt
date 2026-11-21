@@ -4,13 +4,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Wann ein kopiertes Geheimnis aus der Zwischenablage verschwindet: nach Ablauf,
- * nur unser eigener Clip, und nie blind, wenn die Ablage nicht lesbar ist.
+ * When a copied secret disappears from the clipboard: after expiry,
+ * only our own clip, and never blindly when the clipboard is not readable.
  *
- * Gegenproben:
- *   A  `!lesbar` aus der WARTEN-Bedingung entfernt → rot „im Hintergrund …“
- *      (FORGOTTEN statt WARTEN: Das Geheimnis bliebe für immer liegen)
- *   B  der Vergleich `idInClip == kennung` durch `true` ersetzt → rot
+ * Counter-checks:
+ *   A  `!lesbar` removed from the WAIT condition → red „im Hintergrund …“
+ *      (FORGOTTEN instead of WAIT: the secret would stay there forever)
+ *   B  the comparison `idInClip == kennung` replaced by `true` → red
  *      „foreign content is not cleared“
  */
 class SecretFlowTest {

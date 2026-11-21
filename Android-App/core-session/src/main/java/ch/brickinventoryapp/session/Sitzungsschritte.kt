@@ -2,21 +2,21 @@ package ch.brickinventoryapp.session
 
 import ch.brickinventoryapp.data.Abmeldeweg
 
-/** Abmelden, wie der SitzungsDienst es auslöst; so läuft dessen Test ohne Context und Bildlader. */
+/** Sign out, the way SitzungsDienst triggers it; this lets its test run without a context and image loader. */
 fun interface Abmeldevorgang {
-    /** Liefert, ob der Server den Token erst später entwertet; null ohne Anmeldung. */
+    /** Reports whether the server revokes the token only later; null without a sign-in. */
     suspend fun ausfuehren(): Abmeldeweg?
 }
 
-/** Der eine Schritt, den der SitzungsDienst vom Vorwärmen kennt. */
+/** The one step that SitzungsDienst knows from warming up. */
 fun interface WarmUp {
     fun kick()
 }
 
 /**
- * Was der SitzungsDienst nach einer Anmeldung nachlädt. Das Blickfeld, das diese
- * Listen hält, liegt im Zustand darüber (core-state); die Sitzung kennt nur diese
- * vier Schritte, sonst hinge sie an den Filtern der Bereiche.
+ * What SitzungsDienst loads after a sign-in. The Blickfeld that holds these
+ * lists lives one layer up, in the state (core-state); the session only knows these
+ * four steps, otherwise it would depend on the scopes' filters.
  */
 interface Filterquelle {
     suspend fun loadFilter()

@@ -3,24 +3,24 @@ package ch.brickinventoryapp.collection.ui
 import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.model.ui.Scannerherkunft
 /**
- * Zustand rund um den Barcode- und OCR-Scanner — eigener Fluss, weil ein Scan
- * viele Zwischenstände erzeugt, die sonst jeden Reiter neu zeichneten. Die Felder
- * tragen keinen `barcode`-Vorsatz; am Zugriffsort steht `barcodeState.setName`.
+ * State around the barcode and OCR scanner — its own flow, because a scan
+ * produces many intermediate states that would otherwise redraw every tab. The fields
+ * carry no `barcode` prefix; at the access point it reads `barcodeState.setName`.
  */
 data class BarcodeUiState(
     val result: String? = null,
     /**
-     * „Öffne die Detailansicht dieses Sets“: Der Scan oder das Erfassen fand ein
-     * Set, das schon in der Sammlung steht. Die Galerie navigiert und quittiert.
+     * "Open this set's detail view": the scan or manual entry found a
+     * set already in the collection. The gallery navigates and acknowledges it.
      */
     val gefundenesSet: String? = null,
-    /** Von wo der laufende Scan kam. */
+    /** Where the running scan came from. */
     val source: Scannerherkunft = Scannerherkunft.GALERIE,
     /**
-     * Der Scan blieb ohne Setnummer → die manuelle Erfassung soll aufgehen, überall wo
-     * der Scanner eingebaut ist. Ein Zustandsfeld statt eines Aufrufs je Bildschirm:
-     * Die erfolglosen Wege liegen im ViewModel, und wer den Scanner einbindet, öffnet
-     * seinen eigenen Erfassen-Dialog.
+     * The scan came back without a set number → manual entry should open, everywhere
+     * the scanner is embedded. A state field instead of a call per screen:
+     * the unsuccessful paths live in the ViewModel, and whoever embeds the scanner opens
+     * its own entry dialog.
      */
     val manuelleErfassungAnfordern: Boolean = false,
     val forPartList: String? = null,
@@ -31,46 +31,46 @@ data class BarcodeUiState(
     val pieces: Int? = null,
     val theme: String? = null,
     val minifigs: Int? = null,
-    /** Wie oft das gescannte Set schon in der Sammlung steht; 0 = gar nicht. */
+    /** How many times the scanned set is already in the collection; 0 = not at all. */
     val ownershipQuantity: Int = 0,
-    // Läuft gerade ein Hinzufügen aus dem Barcode-Dialog? Sperrt den Knopf
-    // gegen den zweiten Klick, der sonst dasselbe Set ein zweites Mal erfasst.
+    // Is an add from the barcode dialog running right now? Locks the button
+    // against a second click, which would otherwise enter the same set a second time.
     val hinzufuegen: Vorgang = Vorgang.Fertig,
     /**
-     * Die angezeigte Nummer ist geraten — der Dialog weist darauf hin. Gesetzt vom
-     * Server (keine abgeglichene EAN, nur ein plausibler Kandidat) und von der App bei
-     * der Texterkennung, wo schon das Lesen eine Vermutung ist.
+     * The displayed number is a guess — the dialog points this out. Set by the
+     * server (no matched EAN, only a plausible candidate) and by the app during
+     * text recognition, where even the reading is a guess.
      */
     val unsicher: Boolean = false,
 )
 
 /**
- * Welche Frage beantwortet die App gerade, bevor ein Set erfasst wird? Der Scanner
- * schliesst sofort und die Prüfung läuft danach; ohne Anzeige scannte man das
- * nächste Set, während das vorige noch geprüft wird. Die Regel: Prüfen ist
- * sichtbar und hält an, Erfassen läuft im Hintergrund — die Anzeige steht, bis
- * feststeht, ob das Set schon da ist.
+ * Which question is the app currently answering before a set is entered? The scanner
+ * closes right away and the check runs afterward; without a display, the
+ * next set would be scanned while the previous one is still being checked. The rule:
+ * checking is visible and halts, entering runs in the background — the display stays
+ * up until it's settled whether the set is already there.
  */
 enum class CheckPhase {
-    /** EAN → Setnummer. Der lange Teil: bis zu acht Rebrickable-Abrufe. */
+    /** EAN → set number. The long part: up to eight Rebrickable calls. */
     BARCODE,
-    /** Steht das Set schon im Blickfeld? */
+    /** Is the set already in view? */
     BESTAND,
-    // ── Die Schritte des Anlegens ──
+    // ── The steps of creating ──
     //
-    // Dieselben drei Schritte, die der Server schickt (add-stream in routes/sets.ts),
-    // damit man bei einem grossen Set sieht, was passiert.
+    // The same three steps the server sends (add-stream in routes/sets.ts),
+    // so you can see what's happening for a large set.
     /** Stammdaten holen — Name, Teilezahl, Jahr. */
     ANLEGEN_STAMMDATEN,
     /** Bild herunterladen. */
     ANLEGEN_BILD,
-    /** Stammdaten und Bild sind durch, es fehlt das Aufraeumen. */
+    /** Core data and image are done, cleanup is missing. */
     ANLEGEN_ABSCHLUSS,
 }
 
 /**
- * @param bezeichner Was gerade geprüft wird — die EAN oder die Setnummer. Ohne
- *   sie sagt der Dialog beim schnellen Scannen nicht, WELCHES Set gemeint ist.
+ * @param bezeichner What's currently being checked — the EAN or the set number. Without
+ *   it, the dialog doesn't say WHICH set is meant during fast scanning.
  */
 data class CheckStep(
     val identifier: String,
@@ -78,9 +78,9 @@ data class CheckStep(
 )
 
 /**
- * Eigener Fluss: Die Prüfung läuft im Barcode-, im Texterkennungs- und im
- * manuellen Weg aus Galerie und Katalog — in BarcodeUiState wäre sie falsch
- * benannt, in AppUiState ginge jeder Zwischenstand jeden Reiter an.
+ * Its own flow: the check runs in the barcode path, the text-recognition path and the
+ * manual path from gallery and catalog — in BarcodeUiState it would be wrongly
+ * named, in AppUiState every intermediate state would concern every tab.
  */
 data class EntryUiState(
     val check: CheckStep? = null,

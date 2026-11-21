@@ -51,11 +51,11 @@ import kotlinx.coroutines.Dispatchers
 import ch.brickinventoryapp.session.SitzungsRepository
 import kotlinx.coroutines.Job
 
-// Testvorgaben gehören nicht in die @Inject-Konstruktoren: Dort bekäme, wer ohne Hilt
-// baut, still eine flüchtige Ablage. Die Fabriken heissen wie die Schnittstellen; wer
-// eine Ablage braucht, bekommt ohne Angabe eine eigene im Speicher.
+// Test defaults don't belong in the @Inject constructors: there, whoever builds without Hilt
+// would silently get a transient store. The factories are named like the interfaces; whoever
+// needs a store gets their own in memory with no argument given.
 
-/** Listen und Ausgang im Speicher, mit festem Bereich; [ausgang] behält der Test, um nachzusehen. */
+/** Lists and outbox in memory, with a fixed scope; the test keeps [ausgang] to check on it. */
 fun Testablage(bereich: String? = "test", ausgang: Ausgang = StorageExit(), planner: ExitPlanner = ExitPlanner {}) =
     Offlineablage(StorageInventory(), ausgang, { bereich }, planner)
 
@@ -99,22 +99,22 @@ fun testManagementRepository(api: ManagementApi): ManagementRepository =
 fun testCatalogRepository(api: CatalogApi, ablage: Offlineablage = Testablage()): CatalogRepository =
     KatalogRepositoryImpl(api, ablage, Wiederholung.EINMAL)
 
-/** Die Sicht über gewählte Konten; mit derselben [ablage] wie die Repositories, damit Schreiben sie neu fragt. */
+/** The view over chosen accounts; with the same [ablage] as the repositories, so writing asks it again. */
 fun testKontosicht(api: BrickApiService, ablage: Offlineablage = Testablage()): Kontosicht =
     Kontosicht(api, api, api, ablage, Wiederholung.EINMAL)
 
-/** Sets, Teile und Figuren auf einer gemeinsamen [ablage]. */
+/** Sets, parts and figures on one shared [ablage]. */
 fun testBestandsabgleich(api: BrickApiService, ablage: Offlineablage): Bestandsabgleich =
     Bestandsabgleich(SetsRepositoryImpl(api, ablage, Wiederholung.EINMAL), MerklisteRepositoryImpl(api, ablage, Wiederholung.EINMAL),
         TeileRepositoryImpl(api, ablage, Wiederholung.EINMAL),
         FigurenRepositoryImpl(api, ablage, Wiederholung.EINMAL), ablage)
 
-/** Die Vertrauenschiffre der Geräteablage mit festem Schlüssel: Robolectric hat keinen Keystore. */
+/** The device store's trust cipher with a fixed key: Robolectric has no Keystore. */
 fun testVertrauenschiffre(schluessel: Byte = 7): Vertrauenschiffre = Vertrauenschiffre { ByteArray(32) { schluessel } }
 
 /**
- * Der SitzungsDienst für Tests von ViewModels, die abmelden lassen: Er zählt nur
- * mit, damit ein Test prüfen kann, ob und wann abgemeldet wurde.
+ * The SitzungsDienst for tests of ViewModels that trigger a sign-out: it only
+ * counts along, so a test can check whether and when a sign-out happened.
  */
 class SessionFake(private val signOutOn: () -> Unit = {}) : SitzungsRepository {
     var signOuts = 0

@@ -47,9 +47,9 @@ import ch.brickinventoryapp.shared.ui.PriceLoadsRow
 import ch.brickinventoryapp.shared.ui.PriceChart
 
 /**
- * Das Detail eines Merkpostens — dieselben Zeilen in derselben Reihenfolge wie das
- * Set-Detail, ohne was ein Merkposten nicht hat (Kaufpreis, Anzahl, Lagerort, Anleitungen;
- * „hinzugefügt“ heisst hier „auf der Liste seit“). Marktpreis und Verlauf zeichnet dieselbe
+ * A watchlist item's detail — the same rows in the same order as the
+ * set detail, minus what a watchlist item doesn't have (purchase price, quantity, storage location, manuals;
+ * "added" here means "on the list since"). Market price and history are drawn by the same
  * PriceChart().
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,31 +64,31 @@ internal fun MerkpostenDetailScreen(
 ) {
     val appState = ansicht.appState
     val blick = ansicht.blick
-    // Der VORRAT an Lagerorten fuer den Uebernahme-Dialog.
+    // The STOCK of storage locations for the take-over dialog.
     val lagerZustand = ansicht.lagerZustand
     val liste    = ansicht.liste
     val detail   = ansicht.detail
     val ctx = LocalContext.current
-    // stringResource statt ctx.getString im Rückruf: Ein aus LocalContext gegriffener
-    // Context liefert nach einem Konfigurationswechsel veraltete Werte (Lint
+    // stringResource instead of ctx.getString in the callback: a context grabbed from
+    // LocalContext delivers stale values after a config change (Lint
     // LocalContextGetResourceValueCall).
     val noAppText = stringResource(R.string.common_no_app_to_open)
-    // Snackbar im eigenen Gerüst statt Toast: bleibt lesbar, bis TalkBack fertig ist.
+    // Snackbar in its own scaffold instead of Toast: stays readable until TalkBack is done.
     val meldungen = remember { SnackbarHostState() }
     val bereich = rememberCoroutineScope()
-    // Derselbe Dialog wie in der Liste, nicht ein zweiter: Anzahl, Kaufpreis
-    // und Zustand muessen hier dieselbe Maske sein.
+    // The same dialog as in the list, not a second one: quantity, purchase price
+    // and condition must be the same mask here.
     var openTakeover by rememberSaveable { mutableStateOf(false) }
-    // Zoom wie in Set- und Katalog-Detail und in der Webapp. rememberSaveable: Wer im
-    // Zoom das Telefon dreht, soll darin bleiben.
+    // Zoom as in the set and catalog detail and in the web app. rememberSaveable: whoever
+    // rotates the phone while zoomed should stay in it.
     var openZoom by rememberSaveable { mutableStateOf(false) }
 
     val merkposten = liste.merkposten.firstOrNull {
         it.setNumber == setNumber && it.condition == condition
     }
 
-    // Der Merkposten ist weg (geloescht oder uebernommen) — dann gehoert dieser
-    // Bildschirm ebenfalls weg, statt eine Leiche zu zeigen.
+    // The watchlist item is gone (deleted or taken over) — then this
+    // screen should be gone too, instead of showing a corpse.
     LaunchedEffect(merkposten == null, liste.abruf.laedt) {
         if (merkposten == null && !liste.abruf.laedt && liste.merkposten.isNotEmpty()) onBack()
     }
@@ -99,10 +99,10 @@ internal fun MerkpostenDetailScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(meldungen) },
         topBar = {
-            // Derselbe Kopf wie Set-, Katalog- und Teile-Detail (DetailTopAppBar).
+            // The same header as the set, catalog and parts detail (DetailTopAppBar).
             DetailTopAppBar(titel = merkposten?.name ?: setNumber, onZurueck = onBack,
-                // Ohne Rückfrage wie in der Webapp: Ein Merkposten ist kein Besitz und schnell
-                // wieder eingetragen. `let`, weil der Merkposten hier oben noch nullbar ist.
+                // Without a confirmation as in the web app: a watchlist item isn't owned and is quickly
+                // re-added. `let`, because the watchlist item up here is still nullable.
                 actions = {
                     merkposten?.let { w ->
                         MitTooltip(stringResource(R.string.common_delete)) {
@@ -121,9 +121,9 @@ internal fun MerkpostenDetailScreen(
             Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) { CircularProgressIndicator() }
             return@Scaffold
         }
-        // Die Adresse EINMAL bestimmen: Vorschaubild und Zoom zeigen sonst
-        // womoeglich zwei verschiedene Bilder — und `resolveFullUrl` liefert
-        // ohnehin schon die volle Aufloesung (kein Thumb).
+        // Determine the address ONCE: the preview image and zoom would otherwise possibly
+        // show two different images — and `resolveFullUrl` already
+        // delivers the full resolution anyway (no thumb).
         val bildUrl = resolveFullUrl(appState.serverUrl,
             detail.katalog?.imageLocal ?: merkposten.imageLocal, merkposten.imageUrl)
 
@@ -137,8 +137,8 @@ internal fun MerkpostenDetailScreen(
                     model = bildUrl,
                     contentDescription = merkposten.name,
                     imageLoader = imageLoader,
-                    // Antippen oeffnet den Zoom — dasselbe Verhalten wie im
-                    // Set- und im Katalog-Detail.
+                    // Tapping opens the zoom — the same behavior as in the
+                    // set and catalog detail.
                     modifier = Modifier.fillMaxWidth().height(Abstaende.huge * 5)
                         .clip(MaterialTheme.shapes.medium)
                         .clickable(enabled = bildUrl != null, onClickLabel = stringResource(R.string.cd_bild_vergroessern), role = Role.Button) { openZoom = true },
@@ -148,14 +148,14 @@ internal fun MerkpostenDetailScreen(
                 )
             }
 
-            // Die Karten begrenzen die Breite (wie im Set-Detail), nicht jedes Element darin.
+            // The cards limit the width (as in the set detail), not every element within them.
             item {
                 AppKarte(Modifier.centeredUntil(Lesebreite.formular)) {
-                    // Mit Abstand zwischen den Zeilen wie im Katalog-Detail: Dicht gestapelt
-                    // las sich die Karte als ein Block.
+                    // With spacing between the rows as in the catalog detail: stacked tightly,
+                    // the card read as one block.
                     Column(Modifier.padding(Abstaende.mittel), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                        // Nur Zeilen mit Wert: Vier Gedankenstriche untereinander sagten nur,
-                        // dass der Katalog das Set nicht kennt.
+                        // Only rows with a value: four dashes in a row only said
+                        // that the catalog doesn't know the set.
                         CatalogDetailRow(stringResource(R.string.detail_set_number), merkposten.setNumber)
                         merkposten.year?.let { CatalogDetailRow(stringResource(R.string.detail_year), it.toString()) }
                         detail.katalog?.themeName?.let { CatalogDetailRow(stringResource(R.string.detail_theme), it) }
@@ -171,10 +171,10 @@ internal fun MerkpostenDetailScreen(
                         CatalogDetailRow(stringResource(R.string.wanted_since),
                             fmtTag(merkposten.createdAt) ?: "—")
 
-                        // ── Der Inhaber, änderbar ──
+                        // ── The owner, changeable ──
                         //
-                        // Derselbe Wähler wie in den Erfassungsmasken; bei einem Einzelkonto
-                        // blendet er sich selbst aus.
+                        // The same picker as in the entry masks; on a single account
+                        // it hides itself.
                         if (blick.householdMembers.size > 1) {
                             Spacer(Modifier.height(Abstaende.klein))
                             OwnerPicker(
@@ -188,10 +188,10 @@ internal fun MerkpostenDetailScreen(
                 }
             }
 
-            // ── Der Preisalarm, editierbar ──
+            // ── The price alert, editable ──
             //
-            // Derselbe Abschnitt wie im Set-Detail: derselbe Eintrag in price_alerts am selben
-            // Schlüssel, und /sets/:sn/alert verlangt keinen Besitz.
+            // The same section as in the set detail: the same entry in price_alerts under the same
+            // key, and /sets/:sn/alert requires no ownership.
             setDetailAlarmSection(merkposten.setNumber, detail.preisalarme, appState.currency, aktionen::setPriceAlert,
                 outerGap = false)
 
@@ -200,8 +200,8 @@ internal fun MerkpostenDetailScreen(
                     Column(Modifier.padding(Abstaende.mittel)) {
                         SectionTitle(stringResource(R.string.detail_section_market))
                         Spacer(Modifier.height(Abstaende.klein))
-                        // Aus der PRICE-Antwort, nicht aus dem Verlauf: Die
-                        // holt frisch, der Verlauf liest nur den Cache.
+                        // From the PRICE response, not from the history: that
+                        // fetches fresh, the history only reads the cache.
                         CatalogDetailRow(stringResource(R.string.condition_new),
                             preis(detail.preise?.current?.new?.avgPrice))
                         CatalogDetailRow(stringResource(R.string.condition_used),
@@ -221,16 +221,16 @@ internal fun MerkpostenDetailScreen(
 
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    // BrickLink und Preisvergleich nebeneinander, darunter mit Abstand die
-                    // Übernahme: oben die Wege nach draussen, unten die Griffe, die etwas
-                    // verändern. Fällt eine Adresse weg, nimmt die andere die ganze Zeile.
+                    // BrickLink and price comparison side by side, with spacing below them the
+                    // take-over: on top the paths outward, below the controls that change
+                    // something. If one address drops out, the other takes the whole row.
                     val adressen = listOfNotNull(
                         detail.katalog?.bricklink?.url?.takeIf { it.isNotBlank() }
                             ?.let { R.string.catalog_buy_bricklink to it },
-                        // Der Katalog liefert dieselbe Adresse, nur mit Namen
-                        // darin („LEGO 75192 Millennium Falcon" statt nur der
-                        // Nummer). Kommt er nicht — 404 fuer ein Set, das
-                        // rb_sets nicht kennt —, steht die vom Merkposten bereit.
+                        // The catalog delivers the same address, only with the name
+                        // in it ("LEGO 75192 Millennium Falcon" instead of just the
+                        // number). If it doesn't come back — 404 for a set that
+                        // rb_sets doesn't know — the watchlist item's own is ready.
                         (detail.katalog?.preisvergleichUrl ?: merkposten.preisvergleichUrl)
                             ?.takeIf { it.isNotBlank() }
                             ?.let { R.string.detail_compare to it },
@@ -254,9 +254,9 @@ internal fun MerkpostenDetailScreen(
                                     colors = nebenKnopfFarben(),
                                     border = nebenKnopfRand(),
                                 ) {
-                                    // Eine Stufe kleiner, aus demselben Grund wie im
-                                    // Katalog-Detail: Zwei Knoepfe teilen sich die
-                                    // Breite, die vorher einer allein hatte.
+                                    // One step smaller, for the same reason as in the
+                                    // catalog detail: two buttons share the
+                                    // width that one alone used to have.
                                     Text(stringResource(beschriftung), maxLines = 1,
                                         overflow = TextOverflow.Ellipsis,
                                         style = MaterialTheme.typography.labelMedium)
@@ -279,14 +279,14 @@ internal fun MerkpostenDetailScreen(
         }
     }
 
-    // Ausserhalb des Scaffolds, damit die Dialoge ueber allem liegen — und mit
-    // `let`, weil `merkposten` hier wieder nullbar ist: Wer waehrend des offenen
-    // Dialogs den letzten Eintrag anderswo loescht, soll keinen Absturz
-    // bekommen, sondern nichts.
+    // Outside the scaffold, so the dialogs sit above everything — and with
+    // `let`, because `merkposten` is nullable again here: whoever deletes the
+    // last entry elsewhere while the dialog is open shouldn't get a crash,
+    // just nothing.
     if (openZoom) merkposten?.let { w ->
-        // Dieselbe Adresse wie das Bild oben, hier neu berechnet, weil `merkposten`
-        // ausserhalb des Scaffold-Rumpfs wieder nullbar ist. Gezeichnet von
-        // ui/components/ZoomableImageDialog.kt wie in Set- und Katalog-Detail.
+        // The same address as the image above, recalculated here because `merkposten`
+        // is nullable again outside the scaffold body. Drawn by
+        // ui/components/ZoomableImageDialog.kt as in the set and catalog detail.
         val zoomUrl = resolveFullUrl(appState.serverUrl,
             detail.katalog?.imageLocal ?: w.imageLocal, w.imageUrl)
         if (zoomUrl != null) {

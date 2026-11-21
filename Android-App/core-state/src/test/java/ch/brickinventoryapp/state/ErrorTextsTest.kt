@@ -8,27 +8,27 @@ import org.junit.Test
 import ch.brickinventoryapp.data.repository.Ergebnis
 
 /**
- * Jede Fehlerursache bekommt einen eigenen Satz — ausgeführt, nicht gelesen.
+ * Every error cause gets its own string — run, not read.
  *
- * Ausgeführt statt gelesen: Eine Textsuche nach `Fehlerart.X ->` fände einen
- * vergessenen Zweig, aber nicht, ob zwei Arten denselben Text zeigen, und sie
- * bräche, sobald jemand die Funktion umformuliert.
+ * Run instead of read: a text search for `Fehlerart.X ->` would find a
+ * forgotten branch, but not whether two kinds show the same text, and it
+ * would break as soon as someone rephrases the function.
  *
- * Möglich wurde der echte Test dadurch, dass die Zuordnung aus `meldung()`
- * herausgelöst ist: `fehlerTextId()` braucht keinen `Context` und ist damit
- * eine ganz normale Funktion. Die Lehre aus Punkt 1 der Durchsicht im Kleinen —
- * was schwer prüfbar ist, ist meistens nur mit etwas verwoben, das es nicht
- * braucht.
+ * The real test became possible because the mapping has been
+ * extracted from `meldung()`: `fehlerTextId()` needs no `Context` and is thus
+ * a completely ordinary function. The lesson from point 1 of the small-scale
+ * review — whatever is hard to test is usually just entangled with something it doesn't
+ * need.
  *
- * Gegenproben:
- *   fehlertext-zeit-wie-netz      Zeitueberschreitung auf err_network gelegt → rot
+ * Counter-checks:
+ *   fehlertext-zeit-wie-netz      timeout mapped onto err_network → red
  *                                 „every error kind has its own text“
- *   fehlerklasse-401-unbekannt    Abgewiesen in fehlerklasse() auf UNBEKANNT → rot
+ *   fehlerklasse-401-unbekannt    Abgewiesen in fehlerklasse() mapped onto UNBEKANNT → red
  *                                 „every error kind has a matching class“
  */
 class ErrorTextsTest {
 
-    /** Je Art ein Beispiel; [name] ist erschöpfend, eine neue Art bricht dort den Build. */
+    /** One example per kind; [name] is exhaustive, a new kind breaks the build there. */
     private val examples = listOf(
         Ergebnis.Fehler.Netz(), Ergebnis.Fehler.Zeitueberschreitung, Ergebnis.Fehler.Abgebrochen,
         Ergebnis.Fehler.LeereAntwort(), Ergebnis.Fehler.Abgewiesen(), Ergebnis.Fehler.Server(500),
@@ -56,9 +56,9 @@ class ErrorTextsTest {
             assert(id != 0) { "$art hat keine Textressource" }
         }
 
-        // Ein Abriss mitten im Strom heisst für den Nutzer dasselbe wie kein Netz
-        // und teilt sich darum dessen Satz; alle anderen müssen unterscheidbar sein.
-        // Zwei Ursachen mit demselben Satz wären für den Nutzer nicht zu trennen.
+        // A break in the middle of the stream means the same thing to the user as no network
+        // and therefore shares its text; all others must be distinguishable.
+        // Two causes with the same text would be indistinguishable for the user.
         val withoutTeardown = zuordnung.filterKeys { it != "Abgebrochen" }
         val doppelt = withoutTeardown.entries
             .groupBy { it.value }
@@ -78,10 +78,10 @@ class ErrorTextsTest {
 
     @Test
     fun `only the server error needs the HTTP code`() {
-        // getString() mit einem überzähligen Argument wirft nicht, sondern
-        // liefert stillschweigend denselben Text — ein falsches Argument hier
-        // fiele also nirgends auf. Umgekehrt zeigte ein fehlendes beim
-        // Serverfehler den Platzhalter „%1$d" im Klartext.
+        // getString() with a surplus argument doesn't throw, but
+        // silently returns the same text — a wrong argument here
+        // would thus go unnoticed anywhere. Conversely, a missing one in the
+        // server-error case showed the placeholder „%1$d" as plain text.
         assert(errorTextArgument(Ergebnis.Fehler.Server(503)) == 503) { "Server braucht den Status" }
         examples.filter { it !is Ergebnis.Fehler.Server }.forEach {
             assert(errorTextArgument(it) == null) { "${name(it)} braucht keinen Code" }
@@ -89,8 +89,8 @@ class ErrorTextsTest {
     }
 
     /**
-     * Jede Art landet in der Klasse, deren Rat zu ihr passt; ein 5xx auch mit eigenem
-     * Satz, ein 4xx mit Satz ist eine Auskunft. Gegenprobe siehe Kopf
+     * Every kind ends up in the class whose advice fits it; a 5xx even with its own
+     * text, a 4xx with text is information. For the counter-check, see the header
      * (fehlerklasse-401-unbekannt).
      */
     @Test

@@ -26,10 +26,10 @@ import ch.brickinventoryapp.model.domain.CsvImportKind
 import ch.brickinventoryapp.account.ui.viewmodel.CSV_MAX_BYTES
 
 /**
- * Eine CSV-Datei hochladen — Sets, Teile, Minifiguren, Merkliste oder Preisalarme,
- * über dieselben Adressen wie die Webapp. Der Fortschritt danach kommt über den
- * bestehenden Kanal: Der Import läuft auf dem Server weiter, auch wenn die App
- * zugeklappt wird.
+ * Upload a CSV file — sets, parts, minifigures, watchlist or price alerts,
+ * via the same addresses as the web app. The progress afterward comes over the
+ * existing channel: the import keeps running on the server even if the app
+ * is closed.
  */
 @Composable
 internal fun CsvImportCard(
@@ -37,19 +37,19 @@ internal fun CsvImportCard(
     onFile: (CsvImportKind, android.net.Uri) -> Unit,
     onSchliessen: () -> Unit,
 ) {
-    // Welche Art beim Antippen gemeint war — der Dateiauswahl-Vertrag liefert nur den
-    // Uri, nicht den Knopf. rememberSaveable, nicht remember: Die Dateiauswahl ist
-    // eine fremde Anwendung, währenddessen darf das System diesen Vorgang beenden;
-    // fiele der Wert auf SETS zurück, landete eine Teile-Datei in der falschen Tabelle.
+    // Which kind was meant by the tap — the file picker contract only delivers the
+    // Uri, not the button. rememberSaveable, not remember: the file picker is
+    // a foreign app, and the system may kill this process while it runs;
+    // if the value fell back to SETS, a parts file would end up in the wrong table.
     var selectedKind by rememberSaveable { mutableStateOf(CsvImportKind.SETS) }
     val selection = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
     ) { uri -> if (uri != null) onFile(selectedKind, uri) }
 
-    // `text/*` UND `text/comma-separated-values`: Manche Dateiverwaltungen
-    // geben einer .csv den Typ `application/vnd.ms-excel`, andere gar keinen.
-    // Zu eng gefiltert waere die Datei in der Auswahl ausgegraut, ohne dass
-    // erkennbar ist, warum.
+    // `text/*` AND `text/comma-separated-values`: some file managers
+    // give a .csv the type `application/vnd.ms-excel`, others none at all.
+    // Filtered too tightly, the file would be grayed out in the picker with
+    // no way to tell why.
     val typen = arrayOf("text/csv", "text/comma-separated-values", "text/plain",
                         "application/vnd.ms-excel", "application/octet-stream")
 
@@ -70,8 +70,8 @@ internal fun CsvImportCard(
             if (i > 0) HorizontalDivider()
             ListItem(
                 headlineContent = { Text(stringResource(titel)) },
-                // Erst auf Deutsch, was drinsteht; die Spaltennamen der Datei leiser darunter
-                // für den, der sie von Hand anlegt. Roh standen sie wie Programmtext da.
+                // What's inside, in German first; the file's column names quieter below
+                // for whoever creates it by hand. Raw, they read like program code.
                 supportingContent = {
                     Column {
                         Text(stringResource(inhalt), style = MaterialTheme.typography.bodySmall)
@@ -81,7 +81,7 @@ internal fun CsvImportCard(
                     }
                 },
                 leadingContent = { Icon(Icons.Default.UploadFile, null, tint = MaterialTheme.colorScheme.primary) },
-                // Der Kreisel steht an der Zeile, deren Import läuft — die anderen bleiben ruhig.
+                // The spinner sits on the row whose import is running — the others stay still.
                 trailingContent = if (csvState.hochladen.laeuft && csvState.art == art) {
                     { CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) }
                 } else null,
@@ -95,16 +95,16 @@ internal fun CsvImportCard(
     CsvFeedback(csvState, onSchliessen)
 }
 
-/** Was der letzte Import gebracht hat, oder warum er scheiterte; beides lässt sich schliessen. */
+/** What the last import brought in, or why it failed; either can be collapsed. */
 @Composable
 private fun CsvFeedback(csvState: CsvUploadUiState, onSchliessen: () -> Unit) {
     val ergebnis = csvState.ergebnis
     if (ergebnis != null) {
         Text(
-            // Vier Zahlen, im Englischen stimmen zwei davon überein („row/rows“,
-            // „error/errors“). Ein <plurals> stimmt nur mit einer überein, darum vier
-            // Bruchstücke in einem Rahmen — auch „neu“ und „aktualisiert“, damit der Rahmen
-            // kein %d trägt, das Lint beanstandet.
+            // Four numbers, in English two of them coincide ("row/rows",
+            // "error/errors"). A <plurals> only matches one, hence four
+            // fragments in one frame — also "new" and "updated", so the frame
+            // carries no %d that Lint would flag.
             stringResource(R.string.csv_upload_result,
                 pluralStringResource(R.plurals.csv_upload_rows, ergebnis.total, ergebnis.total),
                 pluralStringResource(R.plurals.csv_upload_new, ergebnis.newCreated, ergebnis.newCreated),
@@ -121,7 +121,7 @@ private fun CsvFeedback(csvState: CsvUploadUiState, onSchliessen: () -> Unit) {
     }
 }
 
-/** Eine Importart: was sie ist, was drinsteht (Klartext) und wie die Spalten der Datei heissen. */
+/** An import kind: what it is, what's inside (plain text) and what the file's columns are called. */
 private data class CsvKind(
     val art: CsvImportKind,
     val titel: Int,

@@ -19,20 +19,20 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Macht den Ausgang sichtbar: die Zahl offener Änderungen für die Leiste, ein
- * Hinweis, sobald etwas offline gespeichert wurde oder der Server es ablehnte,
- * und der Serverstand der betroffenen Listen in die Ablage, wenn gesendet wurde —
- * die lokale Annahme wird so ersetzt.
+ * Makes the outbox visible: the number of open changes for the bar, a
+ * hint as soon as something was stored offline or the server rejected it,
+ * and the server state of the affected lists into the store once something was sent —
+ * the local assumption is thereby replaced.
  */
 interface Ausgangsmelder {
-    /** Die Zahl offener Änderungen; 0, bis [starte] lief. */
+    /** The number of open changes; 0 until [starte] has run. */
     val offene: StateFlow<Int>
 
-    /** Einmal je Prozess (die Application); ein zweiter Aufruf tut nichts. */
+    /** Once per process (the Application); a second call does nothing. */
     fun starte(scope: CoroutineScope)
 }
 
-/** Für Tests ohne Hilt. */
+/** For tests without Hilt. */
 fun Ausgangsmelder(
     situation: Baseline,
     sync: Bestandsabgleich,
@@ -61,7 +61,7 @@ class InitialObserver @Inject constructor(
         }
         scope.launch { situation.events.collect { melde(it) } }
         scope.launch { situation.discarded().collect { l -> l.firstOrNull()?.let { reportDiscarded(it) } } }
-        // Was vom letzten Mal noch wartet, geht beim Start raus.
+        // Whatever is still waiting from last time goes out at startup.
         scope.launch { situation.planeLeftover() }
     }
 
@@ -71,7 +71,7 @@ class InitialObserver @Inject constructor(
         }
     }
 
-    /** Quittiert erst, wenn der Hinweis an der Reihe war und weggeräumt ist; bis dahin hält ihn die Ablage. */
+    /** Only acknowledges once the hint has had its turn and been cleared away; until then the store holds it. */
     private suspend fun reportDiscarded(v: DiscardedChange) {
         val grund = if (v.unlesbar) Meldung.Resource(R.string.offline_verworfen_unlesbar)
             else v.meldung.ifBlank { null } ?: Meldung.Resource(R.string.offline_verworfen_ohne_grund)
@@ -82,7 +82,7 @@ class InitialObserver @Inject constructor(
         situation.acknowledge(v)
     }
 
-    /** Teile und manuelle Teile kommen mit einem Abruf; so auch die Figuren. */
+    /** Parts and manual parts come with one fetch; so do the figures. */
     private enum class Liste { SETS, MERKLISTE, TEILE, FIGUREN }
 
     private fun listFor(art: StockKind): Liste? = when (art) {
@@ -90,7 +90,7 @@ class InitialObserver @Inject constructor(
         StockKind.MERKLISTE -> Liste.MERKLISTE
         StockKind.TEILE, StockKind.MANUELLE_TEILE -> Liste.TEILE
         StockKind.FIGUREN, StockKind.MANUELLE_FIGUREN -> Liste.FIGUREN
-        // Ändern sich nie über den Ausgang, nur online.
+        // Never change via the outbox, only online.
         StockKind.GUTSCHEINE, StockKind.PREISALARME, StockKind.LAGERORTE,
         StockKind.KENNZAHLEN, StockKind.KATALOG_META -> null
     }
@@ -105,7 +105,7 @@ class InitialObserver @Inject constructor(
     }
 }
 
-/** Das Startbildschirm-Widget neu zeichnen; die App setzt es (AppModule), core-state kennt es nicht. */
+/** Redraw the home-screen widget; the app sets it (AppModule), core-state doesn't know it. */
 fun interface Widgetanstoss {
     suspend fun refresh()
 }

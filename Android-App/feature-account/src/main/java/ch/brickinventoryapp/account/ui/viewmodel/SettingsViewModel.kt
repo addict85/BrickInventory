@@ -47,18 +47,18 @@ import ch.brickinventoryapp.state.ui.viewmodel.sequenceSignOut
 import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 
 /**
- * Wie gross eine CSV-Datei sein darf — derselbe Wert wie CSV_MAX_BYTES in
- * utils/dateiEmpfang.ts. Die App muss die Grenze kennen, bevor sie 20 MB durch
- * ein Mobilfunknetz schickt, um dann eine Absage zu bekommen.
+ * How large a CSV file may be — the same value as CSV_MAX_BYTES in
+ * utils/dateiEmpfang.ts. The app must know the limit before sending 20 MB over
+ * a mobile network only to get a rejection.
  */
 internal const val CSV_MAX_BYTES = 15L * 1024 * 1024
 
 /**
- * Einstellungen und Verwaltung: Währung und Zustand, CSV-Import, Übersicht
- * der Preisalarme, eigene Lagerorte.
+ * Settings and management: currency and condition, CSV import, overview
+ * of price alerts, own storage locations.
  *
- * Was am Gerät hängt (Sprache, Design bei Dunkelheit, Meldungen, Vorwärmen),
- * steht im AppViewModel; dieses ViewModel spricht nur mit dem Server.
+ * What's tied to the device (language, design in the dark, notifications, prewarming)
+ * lives in AppViewModel; this ViewModel only talks to the server.
  */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -76,10 +76,10 @@ class SettingsViewModel @Inject constructor(
     private val sessionObserved = Observed(sitzung.state)
     val state: StateFlow<AppUiState> = sessionObserved
 
-    /** Ein Lagerort, der erst gelöscht wird, wenn die Snackbar ohne „Rückgängig“ endet. */
+    /** A storage location that's only deleted once the snackbar ends without "Undo". */
     val locationRoute = Loeschvormerkung<LocationEntryView>(viewModelScope) { deleteLocation(it.id) }
 
-    /** Die Lagerorte-Seite liest ihn; wer sie öffnet, bekommt die eigenen Orte frisch. */
+    /** The storage-locations page reads it; whoever opens it gets their own locations fresh. */
     private val storageObserved = Observed(filter.storageState.abgeleitet(locationRoute.wert) { st, weg ->
         if (weg == null) st else st.copy(eigene = st.eigene.filterNot { it.id == weg.id })
     })
@@ -87,7 +87,7 @@ class SettingsViewModel @Inject constructor(
 
     init {
         sequenceSignOut(sitzung) { reset() }
-        // Beim Öffnen der Einstellungen, nicht als Dauerabo: Der Zustand ändert sich ausserhalb kaum.
+        // On opening settings, not as a standing subscription: the state barely changes outside it.
         loadPerServer(sitzung, sessionObserved) { viewModelScope.launch { sitzung.ladeEinstellungen(konto) } }
         observeLoadOn(storageObserved) { loadOwnLocations() }
     }
@@ -102,9 +102,9 @@ class SettingsViewModel @Inject constructor(
         observeLoadOn(_alarmOverview) { loadAlarmOverview() }
     }
 
-    // ── Währung und Zustand ──────────────────────────────────────────────────
+    // ── Currency and condition ──────────────────────────────────────────────────
 
-    /** Eine andere Währung oder ein anderer Zustand ändert jeden Preis: Die Ablage holt sie neu. */
+    /** A different currency or condition changes every price: the cache fetches them anew. */
     override fun saveSettings(currency: Waehrung, condition: Zustand) {
         viewModelScope.launch {
             when (val r = konto.updateSettings(currency, condition)) {
@@ -118,12 +118,12 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /** Danach die Einstellungen neu: Der Server löst die wirksame Bedingung auf. */
+    /** Afterward, settings again: the server resolves the effective condition. */
     override fun saveUserDefaultCondition(condition: Zustand?) {
         viewModelScope.launch {
             when (val r = konto.setUserDefaultCondition(condition)) {
                 is Ergebnis.Erfolg -> {
-                    // Die Wahl gilt ohne Speichern-Knopf; ohne diese Meldung bliebe offen, ob sie ankam.
+                    // The choice applies without a save button; without this message it stayed unclear whether it arrived.
                     meldungen.zeige(meldungen.text(R.string.vm_settings_saved))
                     sitzung.ladeEinstellungen(konto)
                 }
@@ -174,7 +174,7 @@ class SettingsViewModel @Inject constructor(
 
     override fun loadAlarmOverview() {
         viewModelScope.launch {
-            // Gezeigt wird die Ablage; ohne Netz die zuletzt geholte Liste samt Meldung.
+            // What's shown is the cache; without network, the last-fetched list plus a message.
             val r = alerts.refreshAlerts()
             if (r is Ergebnis.Fehler) meldungen.zeige(meldungen.meldungFuerSnackbar(r))
             val lokal = alerts.observeAlerts().first()
@@ -189,14 +189,14 @@ class SettingsViewModel @Inject constructor(
         alarmLock { alerts.setPreisalarm(setNumber, richtung, schwelle, condition) }
     }
 
-    /** Getippte Schwellen, die auf ihre Ruhezeit warten — je (Set, Zustand) eine. */
+    /** Typed thresholds waiting out their quiet period — one per (set, condition). */
     private val waitingThresholds = mutableMapOf<Pair<String, Zustand>, Job>()
 
     /**
-     * Speichert beim Tippen, entprellt wie im Set-Detail (Alarmeingabe.RUHE_MS): Die
-     * Übersicht hatte als einzige Stelle einen Speichern-Knopf, der nur bei Änderung
-     * erschien. Im ViewModel, damit die Eingabe das Verlassen der Seite übersteht.
-     * Ein leeres Feld löscht hier nicht — dafür steht der Papierkorb daneben.
+     * Saves while typing, debounced like in the set detail (Alarmeingabe.RUHE_MS): the
+     * overview used to be the only place with a save button that only appeared on
+     * change. In the ViewModel, so the input survives leaving the page.
+     * An empty field doesn't delete here — the trash icon next to it is for that.
      */
     override fun setAlarmThreshold(setNumber: String, condition: Zustand, richtung: Alarmrichtung, roh: String) {
         val schluessel = setNumber to condition
@@ -212,7 +212,7 @@ class SettingsViewModel @Inject constructor(
     override fun deleteAlarm(setNumber: String, condition: Zustand) =
         alarmLock { alerts.deletePriceAlert(setNumber, condition) }
 
-    /** Ohne Bindestrich gilt die erste Fassung („10294“ → „10294-1“), wie beim Erfassen. */
+    /** Without a hyphen, the first version applies ("10294" → "10294-1"), as when entering. */
     override fun putAlarmAn(setNumber: String, condition: Zustand, richtung: Alarmrichtung, roh: String) {
         val nummer = setNumber.trim().let { if (it.isBlank() || it.contains('-')) it else "$it-1" }
         val schwelle = Alarmeingabe.zahl(roh)
@@ -220,7 +220,7 @@ class SettingsViewModel @Inject constructor(
         alarmLock { alerts.setPreisalarm(nummer, richtung, schwelle, condition) }
     }
 
-    /** Ändern und Löschen: rufen, melden, die Übersicht neu, wenn sie schon dasteht. */
+    /** Change and delete: call, report, refresh the overview if it's already showing. */
     private fun alarmLock(tun: suspend () -> Ergebnis<Unit>) {
         viewModelScope.launch {
             when (val r = tun()) {
@@ -231,20 +231,20 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /** Neu vom Server, auch nach eigenem Schreiben: Den Auslöser setzt der Preislauf, nicht die App. */
+    /** Fresh from the server, even after writing it ourselves: the price run sets the trigger, not the app. */
     private fun alertsNew(): Unit = if (_alarmOverview.value.geladen) loadAlarmOverview() else Unit
 
     // ── Lagerorte ────────────────────────────────────────────────────────────
 
     override fun putLocationAn(name: String) = locationLock { teile.putLocationAn(name).evaluate() }
 
-    /** Umbenennen ändert, was an Sets, Teilen und Figuren steht; das Repository zieht die Ablage nach. */
+    /** Renaming changes what's on sets, parts and figures; the repository pulls the cache along. */
     override fun nameLocationUm(id: Int, name: String) {
         val alt = filter.storageState.value.eigene.firstOrNull { it.id == id }?.name.orEmpty()
         locationLock { teile.nameLocationUm(id, alt, name).evaluate() }
     }
 
-    /** Der Stern: Ist der Ort schon Vorgabe, nimmt der zweite Tipp sie wieder weg. */
+    /** The star: if the location is already the default, a second tap takes it away again. */
     override fun switchLocationDefault(id: Int, isDefault: Boolean) =
         locationLock { teile.setLocationDefault(if (isDefault) null else id).evaluate() }
 
@@ -260,7 +260,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /** Eine Absage trägt den Satz des Servers; ein Fehler ohne Satz bleibt still. */
+    /** A rejection carries the server's message; an error with no message stays silent. */
     private fun Ergebnis<Unit>.evaluate(): Pair<Boolean, String?> = when (this) {
         is Ergebnis.Erfolg -> true to null
         is Ergebnis.Fehler -> false to meldungen.meldungFuerSnackbar(this)

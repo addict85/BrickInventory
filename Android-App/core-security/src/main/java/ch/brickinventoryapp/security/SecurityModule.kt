@@ -10,16 +10,16 @@ import dagger.hilt.components.SingletonComponent
 import java.io.File
 import javax.inject.Singleton
 
-/** Die Tresore und Schlüssel der App; die Keystore-Umsetzungen bleiben in diesem Modul. */
+/** The app's vaults and keys; the Keystore implementations stay in this module. */
 @Module
 @InstallIn(SingletonComponent::class)
 internal object SecurityModule {
 
     /**
-     * Die Token-Verschlüsselung als Schnittstelle bereitstellen, nicht als konkrete
-     * Klasse: Die Umsetzung braucht den Android-Keystore und läuft nur auf einem
-     * Gerät. Fest daran gebunden liesse sich die Übernahme-Logik der
-     * TokenAblage nicht auf der JVM prüfen.
+     * Provide token encryption as an interface, not as a concrete
+     * class: the implementation needs the Android Keystore and only runs on a
+     * device. Bound tightly to it, the takeover logic of
+     * TokenAblage could not be tested on the JVM.
      */
     @Provides
     @Singleton
@@ -29,7 +29,7 @@ internal object SecurityModule {
             KeystoreTokenVault(readOnly = true),
         )
 
-    /** Gesperrt heisst hier: Der Schlüssel des Tokens gibt gerade nichts frei (EntsperrVault). */
+    /** Locked here means: the token's key is currently releasing nothing (EntsperrVault). */
     @Provides
     @Singleton
     fun provideGeraetesperre(@ApplicationContext context: Context): Geraetesperre {
@@ -38,9 +38,9 @@ internal object SecurityModule {
     }
 
     /**
-     * Der Schlüssel der lokalen Ablagen (Bestand, Kaufpreise, Ausgang); umhüllt wie das Token
-     * unter einem Alias, der nur entsperrt arbeitet. Der Ausgang braucht keinen eigenen: Senden
-     * geht ohnehin erst mit dem Token, und das öffnet sich auch nur entsperrt.
+     * The key of the local stores (inventory, purchase prices, outbox); wrapped like the token
+     * under an alias that only works unlocked. The outbox doesn't need its own: sending
+     * only happens with the token anyway, and that too only opens unlocked.
      */
     @Provides
     @Singleton
@@ -54,10 +54,10 @@ internal object SecurityModule {
         )
 
     /**
-     * Zwei Schlüssel, die das Abmelden überleben. Der für Pins und Nutzer-CA-Schalter arbeitet
-     * auch gesperrt: Jede TLS-Verbindung fragt ihn, auch die einer Entwertung im Hintergrund.
-     * Adresse, Name, Widget und Aufträge liegen unter dem zweiten, der nur entsperrt arbeitet;
-     * sie braucht erst, wer das Token öffnet, und das geht ohnehin nur entsperrt.
+     * Two keys that survive sign-out. The one for pins and the user-CA switch works
+     * even locked: every TLS connection asks it, including one from a background revocation.
+     * Address, name, widget and orders sit under the second one, which only works unlocked;
+     * only whoever opens the token needs it, and that too only opens unlocked.
      */
     @Provides
     @Singleton
@@ -77,6 +77,6 @@ internal object SecurityModule {
 
     private const val ALIAS_STORE = "brickinventory_ablage"
     private const val ALIAS_DETAILS = "brickinventory_angaben_entsperrt"
-    /** Eigener Alias: Ein bestehender Schlüssel nimmt die Bedingung nachträglich nicht an. */
+    /** Its own alias: an existing key does not take on the condition retroactively. */
     private const val ALIAS_STORE_UNLOCKED = "brickinventory_ablage_entsperrt"
 }

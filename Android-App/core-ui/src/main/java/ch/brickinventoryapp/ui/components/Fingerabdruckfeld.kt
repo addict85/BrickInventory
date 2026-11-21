@@ -23,9 +23,9 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 
 /**
- * Das Feld zum Abtippen eines Fingerabdrucks, für Zertifikatsfrage und QR-Code gleich. Es
- * setzt die Doppelpunkte selbst und zählt nur Hex-Zeichen ([pairTranscriptIn]); [fehler]
- * bekommt die gezählten Zeichen, damit „zu kurz“ sagen kann, wie viele fehlen.
+ * The field for typing in a fingerprint, the same for the certificate question and the QR code. It
+ * inserts the colons itself and only counts hex characters ([pairTranscriptIn]); [fehler]
+ * gets the counted characters, so it can say how many are missing for „too short“.
  */
 @Composable
 fun Fingerabdruckfeld(
@@ -47,8 +47,8 @@ fun Fingerabdruckfeld(
             cursor = place
             onInput(text)
         },
-        // Kurzes Etikett, die Anleitung darunter: Ein Satz als Etikett wurde
-        // abgeschnitten und stand beim Tippen über dem Feld.
+        // Short label, the instructions below it: a sentence as a label used to get
+        // cut off and sat above the field while typing.
         label = { Text(stringResource(R.string.zert_eingabe_etikett)) },
         isError = errorText != null,
         supportingText = {

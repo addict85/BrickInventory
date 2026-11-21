@@ -26,11 +26,11 @@ import ch.brickinventoryapp.state.ui.viewmodel.sequenceSignOut
 import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 
 /**
- * Der Haushalt: Konten verknüpfen, Einladungen, Lösen.
+ * The household: link accounts, invitations, unlinking.
  *
- * Wer dazugehört und was erlaubt ist, entscheidet der Server
- * (utils/household.ts). Fehler stehen in [HouseholdUiState.abruf] und nicht im
- * Meldungskanal: Die Karte zeigt sie, solange sie offen ist.
+ * Who belongs and what's allowed is decided by the server
+ * (utils/household.ts). Errors live in [HouseholdUiState.abruf], not in the
+ * message channel: the card shows them as long as it's open.
  */
 @HiltViewModel
 class HouseholdViewModel @Inject constructor(
@@ -43,7 +43,7 @@ class HouseholdViewModel @Inject constructor(
 
     val state: StateFlow<AppUiState> = sitzung.state
 
-    /** Die Zeit, ab der eine Einladung gilt; in Tests fest, sonst wandert das Ablaufdatum im Bild. */
+    /** The time from which an invitation is valid; fixed in tests, otherwise the expiry date drifts in the image. */
     var jetzt: () -> Long = System::currentTimeMillis
 
     init {
@@ -80,10 +80,10 @@ class HouseholdViewModel @Inject constructor(
     }
 
     /**
-     * Der Server verlangt zum Einlösen das aktuelle Passwort des eigenen
-     * Kontos, denn die Verknüpfung öffnet den eigenen Bestand einem anderen
-     * Konto; bei aktivem zweitem Faktor auch dessen Code. Bei Erfolg lädt der
-     * Status neu.
+     * To redeem, the server requires the current password of one's own
+     * account, because linking opens one's own inventory to another
+     * account; with the second factor active, also its code. On success, the
+     * status reloads.
      */
     fun redeemHouseholdInvite(code: String, passwort: String, faktorCode: String? = null) {
         viewModelScope.launch {
@@ -93,7 +93,7 @@ class HouseholdViewModel @Inject constructor(
                     _householdState.update { it.copy(abruf = Laden.Daten(Unit), eingeloest = it.eingeloest + 1) }
                     accountsChanged(inventoryChanged = false)
                 }
-                // Kennt die App den zweiten Faktor noch nicht, zeigt erst diese Antwort das Codefeld.
+                // If the app doesn't know the second factor yet, only this response shows the code field.
                 is Ergebnis.Fehler -> _householdState.update { it.copy(abruf = redeemError(r),
                     passwordWrong = r.code == Fehlercode.AKTUELLES_PASSWORT_FALSCH, factorWrong = r.code == Fehlercode.ZWEITER_FAKTOR_FALSCH,
                     factorNeeded = it.factorNeeded || r.code == Fehlercode.ZWEITER_FAKTOR_FALSCH) }
@@ -101,7 +101,7 @@ class HouseholdViewModel @Inject constructor(
         }
     }
 
-    /** Vor dem Einlösen: Fehlt das Codefeld, kostete der erste Versuch einen Fehlversuch. */
+    /** Before redeeming: if the code field is missing, the first attempt cost a failed try. */
     private fun checkSecondFactor() {
         viewModelScope.launch {
             val r = konto.secondFactorStatus()
@@ -110,8 +110,8 @@ class HouseholdViewModel @Inject constructor(
     }
 
     /**
-     * Für die Sperre nach Fehlversuchen hat der Server keinen eigenen Code
-     * zugesagt, nur den Status 429; sein Satz nennt die Wartezeit und geht vor.
+     * For the lockout after failed attempts, the server has promised no
+     * dedicated code, only status 429; its message names the wait time and takes precedence.
      */
     private fun redeemError(r: Ergebnis.Fehler): Laden.Fehler = when {
         r.code == Fehlercode.AKTUELLES_PASSWORT_FALSCH -> loadError(r).copy(meldung = Meldung.Resource(R.string.household_redeem_password_wrong))
@@ -121,18 +121,18 @@ class HouseholdViewModel @Inject constructor(
         else -> loadError(r)
     }
 
-    /** [subUserId]: Unterkonto lösen; [mainUserId]: sich von diesem Elternkonto lösen. */
+    /** [subUserId]: unlink a sub-account; [mainUserId]: unlink from this parent account. */
     fun unlinkHousehold(subUserId: Int? = null, mainUserId: Int? = null) {
         viewModelScope.launch {
             when (val r = haushalt.unlinkHousehold(subUserId, mainUserId)) {
                 is Ergebnis.Erfolg -> accountsChanged(inventoryChanged = true)
-                // Ohne Meldung tippt man auf „lösen“, und sichtbar geschieht nichts.
+                // Without a message, you tap "unlink" and visibly nothing happens.
                 is Ergebnis.Fehler -> _householdState.update { it.copy(abruf = loadError(r)) }
             }
         }
     }
 
-    /** Den Hinweis auf ein nicht mehr sichtbares Konto ausblenden. */
+    /** Hide the hint about an account that's no longer visible. */
     fun discardSeparateAccount(subUserId: Int) {
         viewModelScope.launch {
             when (val r = haushalt.discardSeparateAccount(subUserId)) {
@@ -142,7 +142,7 @@ class HouseholdViewModel @Inject constructor(
         }
     }
 
-    /** Neue Konten im Haushalt: Status, Kontofilter und — beim Lösen — der sichtbare Bestand. */
+    /** New accounts in the household: status, account filter and — when unlinking — the visible inventory. */
     private suspend fun accountsChanged(inventoryChanged: Boolean) {
         loadHousehold()
         filter.loadMembers()

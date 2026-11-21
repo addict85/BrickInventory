@@ -73,48 +73,48 @@ import ch.brickinventoryapp.shared.ui.OwnerPicker
 import ch.brickinventoryapp.shared.ui.Zustandszeile
 
 /**
- * Katalog-Detail: Bild, Metadaten (Jahr, Thema, Teile, Minifiguren) und
- * "In Galerie aufnehmen"-Button mit Anzahl/Preis/Zustand-Dialog.
+ * Catalog detail: image, metadata (year, theme, parts, minifigures) and
+ * "Add to gallery" button with a quantity/price/condition dialog.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CatalogDetailScreen(
     setNumber: String,
-    /** Ein Fehler steht mit „Erneut versuchen“ statt des Kringels. */
+    /** An error stands with "Try again" instead of the spinner. */
     geladen: Laden<CatalogDetailView>,
     imageLoader: ImageLoader,
     serverUrl: String,
     defaultCondition: Zustand = Zustand.NEU,
-    /** Mitglieder des Haushalts — die Kontowahl blendet sich ohne sie selbst aus. */
+    /** Household members — the account picker hides itself without them. */
     householdMembers: List<MemberView> = emptyList(),
-    /** Vorrat an Lagerorten fuer den Erfassungsdialog. */
+    /** Stock of storage locations for the entry dialog. */
     lagerorte: List<String> = emptyList(),
-    /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
+    /** The preselected storage location (star in settings). Empty means: no default. */
     locationDefault: String = "",
     onLoad: (String) -> Unit,
     onAddToGallery: (Erfassungswunsch) -> Unit,
-    /** Auf die Merkliste; das Zielkonto wie im Erfassungsdialog und in der Webapp (cat-m-owner). */
+    /** Add to watchlist; the target account as in the entry dialog and the web app (cat-m-owner). */
     onWish: (Merkwunsch) -> Unit,
     onOpenInGallery: (String) -> Unit,
     onBack: () -> Unit,
-    /** Der Merkposten zu diesem Set, falls es schon auf der Merkliste steht. */
+    /** The watchlist item for this set, if it's already on the watchlist. */
     gemerkt: WantedItemView? = null,
-    /** Den Merkposten öffnen — Setnummer und Zustand. */
+    /** Open the watchlist item — set number and condition. */
     onOpenWantedItem: (String, Zustand) -> Unit = { _, _ -> },
 ) {
     val detail = geladen.dataOrNull()
     LaunchedEffect(setNumber) { onLoad(setNumber) }
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var showWishDialog by rememberSaveable { mutableStateOf(false) }
-    // Bildschirmfüllender Zoom wie im Set-Detail — auf Nutzerwunsch auch hier.
+    // Screen-filling zoom as in the set detail — here too, on user request.
     var showImageZoom by rememberSaveable { mutableStateOf(false) }
     val ctx = LocalContext.current
-    // `stringResource` statt `ctx.getString` im Rückruf: Ein aus LocalContext.current
-    // gegriffener Context kann nach einem Konfigurationswechsel (Sprache, Dunkelmodus,
-    // Drehung) veraltete Werte liefern (Lint: LocalContextGetResourceValueCall). In
-    // der Komposition wertet Compose bei einer Änderung neu aus.
+    // `stringResource` instead of `ctx.getString` in the callback: a context grabbed from
+    // LocalContext.current can deliver stale values after a config change (language, dark mode,
+    // rotation) (Lint: LocalContextGetResourceValueCall). In
+    // the composition, Compose re-evaluates it on a change.
     val noAppText = stringResource(R.string.common_no_app_to_open)
-    // Snackbar im eigenen Gerüst statt Toast: bleibt lesbar, bis TalkBack fertig ist.
+    // Snackbar in its own scaffold instead of Toast: stays readable until TalkBack is done.
     val meldungen = remember { SnackbarHostState() }
     val bereich = rememberCoroutineScope()
 
@@ -122,7 +122,7 @@ fun CatalogDetailScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(meldungen) },
-        // Der Name steht in der Leiste wie im Set-Detail (DetailTopAppBar), nicht erst im Inhalt.
+        // The name sits in the bar as in the set detail (DetailTopAppBar), not only in the content.
         topBar = { DetailTopAppBar(titel = detail?.name ?: setNumber, onZurueck = onBack) }
     ) { padding ->
         when {
@@ -137,7 +137,7 @@ fun CatalogDetailScreen(
                 captureOn = { showAddDialog = true },
                 onOpenInGallery = onOpenInGallery,
                 onBrickLink = { url ->
-                    // Nicht still schlucken: Ist kein Browser da, passierte sonst nichts.
+                    // Don't swallow silently: with no browser present, otherwise nothing would happen.
                     if (!openExtern(ctx, externeAddress(url))) {
                         bereich.launch { meldungen.showSnackbar(noAppText) }
                     }
@@ -155,7 +155,7 @@ fun CatalogDetailScreen(
     )
 }
 
-/** Bild und Angaben; ab „expanded“ in zwei Spalten. */
+/** Image and details; two columns from "expanded" on. */
 @Composable
 private fun CatalogDetailContent(
     detail: CatalogDetailView,
@@ -172,13 +172,13 @@ private fun CatalogDetailContent(
 ) {
     val ctx = LocalContext.current
     BoxWithConstraints(modifier.fillMaxSize()) {
-        // Über den Server-Proxy — volle Auflösung; die heruntergeladene Datei geht
-        // vor, derselbe Server-Check wie in der Katalog-Liste.
+        // Via the server proxy — full resolution; the downloaded file takes
+        // priority, the same server check as in the catalog list.
         val fullUrl = remember(detail.setNumber, serverUrl) {
             resolveFullUrl(serverUrl, detail.imageLocal, detail.imageUrl)
         }
-        // Antippen öffnet den Zoom wie im Set-Detail. Weisser Bildgrund, im Dunkeln
-        // gedämpft — wie das Set-Detail, statt einer grellen Fläche.
+        // Tapping opens the zoom as in the set detail. White image background, muted
+        // in the dark — like the set detail, instead of a glaring surface.
         val bild: @Composable (Modifier) -> Unit = { m ->
             ProduktBild(
                 model = fullUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!movementReduced()).build() },
@@ -202,9 +202,9 @@ private fun CatalogDetailContent(
                 onBrickLink = onBrickLink,
             )
         }
-        // Ab „expanded“ zwei Spalten wie das Set-Detail: Bild links, Angaben und
-        // Handlungen rechts. Einspaltig liefen Tabelle und Knöpfe über die ganze
-        // Tablet-Breite, „Jahr“ stand eine Armlänge von „2022“.
+        // Two columns from "expanded" on, like the set detail: image left, details and
+        // actions right. Single-column, the table and buttons ran across the whole
+        // tablet width, "Year" stood an arm's length from "2022".
         if (twoSpaltig(maxWidth.value)) {
             Row(Modifier.fillMaxSize().padding(horizontal = Abstaende.gross),
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.veryLarge)) {
@@ -227,7 +227,7 @@ private fun CatalogDetailContent(
     }
 }
 
-/** Merken, Aufnehmen und Zoom des Katalog-Details; [onSchliessen] schliesst, was offen ist. */
+/** Watchlist, add and zoom of the catalog detail; [onSchliessen] closes whatever is open. */
 @Composable
 private fun CatalogDetailDialogs(
     detail: CatalogDetailView?,
@@ -273,9 +273,9 @@ private fun CatalogDetailDialogs(
     }
 
     if (zoom) {
-        // Dieselbe Adresse wie das Vorschaubild oben: resolveFullUrl() liefert
-        // bereits die volle Auflösung (kein Thumb) — ein zweiter Aufruf mit
-        // anderen Werten würde nur auseinanderlaufen.
+        // The same address as the preview image above: resolveFullUrl() already
+        // delivers the full resolution (no thumb) — a second call with
+        // different values would only drift apart.
         val zoomUrl = resolveFullUrl(serverUrl, detail?.imageLocal, detail?.imageUrl)
         if (zoomUrl != null) {
             ZoomableImageDialog(
@@ -288,13 +288,13 @@ private fun CatalogDetailDialogs(
     }
 }
 
-/** Seitenverhältnis der Setbilder; auf dem Tablet hat das Bild so seine eigene Spalte. */
+/** Aspect ratio of set images; on the tablet the image has its own column this way. */
 private const val IMAGE_RATIO = 4f / 3f
 
-/** Grösser als die Vorlage wird ein Setbild nur unscharf; daneben bleibt Platz für die Angaben. */
+/** Larger than the source, a set image only gets blurry; next to it there's room for the details. */
 private val IMAGE_AT_MOST = 480.dp
 
-/** Die Angaben des Sets als Tabelle, mit Besitz und Merkposten, wenn es sie gibt. */
+/** The set's details as a table, with ownership and the watchlist item, when they exist. */
 @Composable
 private fun CatalogTable(detail: CatalogDetailView, gemerkt: WantedItemView?) {
     Card(shape = Formen.karte, colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))) {
@@ -306,16 +306,16 @@ private fun CatalogTable(detail: CatalogDetailView, gemerkt: WantedItemView?) {
             if (detail.owned) {
                 CatalogDetailRow(stringResource(R.string.catalog_owned), "✓ ×${detail.ownedQuantity}")
             }
-            // Steht das Set schon auf der Merkliste, sagt es die Tabelle — mit Zustand und Alarm.
+            // If the set is already on the watchlist, the table says so — with condition and alert.
             if (gemerkt != null) CatalogDetailRow(stringResource(R.string.catalog_auf_merkliste), wantedItemText(gemerkt))
         }
     }
 }
 
 /**
- * Nummer, Angaben und Handlungen; der Name steht in der Leiste. Die eigenen Handlungen
- * zuerst (Aufnehmen, Merken), der Weg nach draussen als Textknopf mit Pfeil darunter:
- * Er stand über ihnen und sah aus wie die Haupthandlung.
+ * Number, details and actions; the name sits in the bar. The app's own actions
+ * first (add, watchlist), the path outward as a text button with an arrow below:
+ * it used to sit above them and looked like the main action.
  */
 @Composable
 private fun ColumnScope.CatalogDetails(
@@ -326,16 +326,16 @@ private fun ColumnScope.CatalogDetails(
     onOpenInGallery: (String) -> Unit,
     onBrickLink: (String) -> Unit,
 ) {
-    // Nicht antippbar, darum nicht in der Farbe der Links und Knöpfe.
+    // Not tappable, hence not in the color of links and buttons.
     Text(detail.setNumber, color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
 
     CatalogTable(detail, gemerkt)
 
-    // Untereinander in voller Breite wie im Merkposten-Detail: Nebeneinander war
-    // „Zur Sammlung hinzufügen“ schon bei normaler Schrift gekürzt. Aufnehmen ist die
-    // häufigere Handlung und steht oben und gefüllt, Merken darunter umrandet.
-    // Höchstens Bedienbreite: Auf dem Tablet liefen die Knöpfe sonst über die ganze Spalte.
+    // Stacked at full width as in the watchlist-item detail: side by side,
+    // "Add to collection" was already truncated at normal font size. Adding is the
+    // more frequent action and sits on top, filled, watchlisting below, outlined.
+    // At most control width: on the tablet the buttons otherwise ran across the whole column.
     val button = Modifier.widthIn(max = Lesebreite.controls).fillMaxWidth()
     Button(onClick = captureOn, modifier = button) {
         Icon(Icons.Default.Add, null, Modifier.size(withFont(18.dp)))
@@ -343,7 +343,7 @@ private fun ColumnScope.CatalogDetails(
         Text(stringResource(if (detail.owned) R.string.catalog_add_again else R.string.catalog_add_to_gallery),
             textAlign = TextAlign.Center)
     }
-    // Gemerkt: zum Merkposten statt ein zweites Mal merken.
+    // Watchlisted: go to the watchlist item instead of watchlisting a second time.
     OutlinedButton(onClick = rememberOn, modifier = button, colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
         Icon(if (gemerkt != null) Icons.Default.Bookmark else Icons.Default.BookmarkAdd, null, Modifier.size(withFont(18.dp)))
         Spacer(Modifier.width(Abstaende.klein))
@@ -358,13 +358,13 @@ private fun ColumnScope.CatalogDetails(
         }
     }
 
-    // Die Kauf-URL kommt fertig vom Server — für Gear und Bücher wären Parameter und
-    // Nummer anders als bei Sets; der Rückfall bleibt für ältere Server. Bei
-    // Sammelminifiguren liefert der Server eine Such-URL und exact = false.
+    // The buy URL comes ready-made from the server — for gear and books the parameters and
+    // number would differ from sets; the fallback stays for older servers. For
+    // collectible minifigures the server delivers a search URL and exact = false.
     val bl = detail.bricklink
     val blUrl = bl?.url ?: BrickLinkUrls.searchFor(detail.setNumber)
     val blLabel = if (bl != null && !bl.exact) R.string.catalog_search_bricklink else R.string.catalog_buy_bricklink
-    // So breit wie die Knöpfe darüber: Mittig für sich stand er auf dem Tablet neben ihrer Achse.
+    // As wide as the buttons above: centered on its own it stood off their axis on the tablet.
     TextButton(onClick = { onBrickLink(blUrl) }, modifier = button) {
         Icon(Icons.Default.ShoppingCart, null, Modifier.size(withFont(18.dp)))
         Spacer(Modifier.width(Abstaende.klein))
@@ -374,7 +374,7 @@ private fun ColumnScope.CatalogDetails(
     }
 }
 
-/** „Neu, Alarm unter CHF 349.00“ — Zustand und Alarm eines Merkpostens in einer Zeile. */
+/** "New, alert below CHF 349.00" — condition and alert of a watchlist item in one line. */
 @Composable
 private fun wantedItemText(m: WantedItemView): String {
     val zustand = stringResource(if (m.condition == Zustand.GEBRAUCHT) R.string.condition_used else R.string.condition_new)
@@ -385,33 +385,33 @@ private fun wantedItemText(m: WantedItemView): String {
     return listOfNotNull(zustand, alarm).joinToString(", ")
 }
 
-/** Anzahl/Preis/Zustand abfragen — wie AddSetDialog, aber ohne Setnummern-Feld. */
+/** Ask quantity/price/condition — like AddSetDialog, but without a set-number field. */
 @Composable
 private fun CatalogAddDialog(
     setName: String,
     defaultCondition: Zustand,
     householdMembers: List<MemberView>,
-    /** Vorrat an Lagerorten — leer heisst: es gibt noch keine, dann wird getippt. */
+    /** Stock of storage locations — empty means: there are none yet, then it's typed in. */
     lagerorte: List<String>,
-    /** Der vorausgewählte Lagerort (Stern in den Einstellungen). Leer heisst: keine Vorgabe. */
+    /** The preselected storage location (star in settings). Empty means: no default. */
     locationDefault: String = "",
     onDismiss: () -> Unit,
-    /** Ohne Setnummer: Die setzt das Detail, zu dem der Dialog gehört. */
+    /** Without a set number: the detail the dialog belongs to sets it. */
     onAdd: (Erfassungswunsch) -> Unit
 ) {
     var quantity      by rememberSaveable { mutableStateOf("1") }
     var purchasePrice by rememberSaveable { mutableStateOf("") }
     var condition     by rememberSaveable { mutableStateOf(defaultCondition) }
-    // Schluessel ist die Vorgabe: Sie kommt ueber das Netz und kann nach dem
-    // Oeffnen eintreffen. Eine eigene Eingabe bleibt stehen, weil sich die
-    // Vorgabe danach nicht mehr aendert.
+    // Key is the default: it comes over the network and can arrive after
+    // opening. An own input stays as is, because the default
+    // doesn't change after that.
     var lagerort      by rememberSaveable(locationDefault) { mutableStateOf(locationDefault) }
-    // Vorbelegt mit dem eigenen Konto, genau wie im Galerie-Dialog.
+    // Pre-filled with one's own account, exactly as in the gallery dialog.
     val eigenes = householdMembers.firstOrNull { it.isSelf }?.id
     var owner         by remember(householdMembers) { mutableStateOf(eigenes) }
 
-    // Der gemeinsame Rahmen (AddDialog): Titel als Überschrift und Fenstername, rollbar
-    // und bei grosser Schrift Vollbild; vorher fehlte beides.
+    // The shared frame (AddDialog): title as heading and window name, scrollable
+    // and full-screen at large font sizes; both were missing before.
     AddDialog(
         titel = stringResource(R.string.catalog_add_to_gallery),
         bestaetigen = stringResource(R.string.catalog_add_confirm),
@@ -420,8 +420,8 @@ private fun CatalogAddDialog(
             menge = quantity.toIntOrNull() ?: 1,
             kaufpreis = NumericInput.readMoney(purchasePrice),
             zustand = condition,
-            // Ohne Haushalt gar nichts mitschicken — der Server bleibt dann
-            // beim eigenen Konto (gleiche Regel wie im Galerie-Dialog).
+            // Without a household, send nothing at all — the server then stays
+            // on one's own account (same rule as in the gallery dialog).
             besitzer = if (householdMembers.size > 1) owner else null,
             lagerort = lagerort.trim().takeIf { it.isNotEmpty() },
         )) },
@@ -431,9 +431,9 @@ private fun CatalogAddDialog(
             lagerort != locationDefault || owner != eigenes,
     ) {
         Text(setName, fontWeight = FontWeight.SemiBold)
-        // Blendet sich bei weniger als zwei Mitgliedern selbst aus.
+        // Hides itself with fewer than two members.
         OwnerPicker(householdMembers, owner, { owner = it })
-        // Menge und Preis wie im Erfassen-Dialog der Galerie: gefiltert und mit der passenden Tastatur.
+        // Quantity and price as in the gallery's entry dialog: filtered and with the matching keyboard.
         OutlinedTextField(
             shape = Formen.feld,
             value = quantity,
@@ -460,16 +460,16 @@ private fun CatalogAddDialog(
 }
 
 /**
- * Zustand und Preisalarm für einen Merkposten. Keine Anzahl und kein Kaufpreis:
- * Ein Merkposten hat beides nicht, es wird erst bei der Übernahme gefragt. Der
- * Alarm ist optional und steht unter eigener Überschrift — wer nur merken will,
- * lässt das Feld leer.
+ * Condition and price alert for a watchlist item. No quantity and no purchase price:
+ * a watchlist item has neither, those are only asked when taking it over. The
+ * alert is optional and sits under its own heading — whoever just wants to watchlist
+ * it leaves the field empty.
  */
 @Composable
 private fun MerkpostenDialog(
     setName: String,
     defaultCondition: Zustand,
-    /** Konten des Haushalts — ohne Unterkonten blendet sich die Wahl selbst aus. */
+    /** Household accounts — without sub-accounts, the picker hides itself. */
     householdMembers: List<MemberView>,
     onDismiss: () -> Unit,
     onWish: (Zustand, Alarmrichtung, String, Int?) -> Unit,
@@ -477,25 +477,25 @@ private fun MerkpostenDialog(
     var zustand  by rememberSaveable { mutableStateOf(defaultCondition) }
     var richtung by rememberSaveable { mutableStateOf(Alarmrichtung.UNTER) }
     var schwelle by rememberSaveable { mutableStateOf("") }
-    // Vorbelegt mit dem eigenen Konto, genau wie im Erfassungsdialog daneben.
+    // Pre-filled with one's own account, exactly as in the entry dialog next to it.
     var konto    by remember(householdMembers) {
         mutableStateOf(householdMembers.firstOrNull { it.isSelf }?.id)
     }
 
-    // Derselbe Rahmen wie „Set merken“ in der Merkliste und jedes Erfassen.
+    // The same frame as "Watchlist set" in the watchlist and every entry.
     AddDialog(
         titel = stringResource(R.string.wanted_add_submit),
         bestaetigen = stringResource(R.string.wanted_add_submit),
         onBestaetigen = { onWish(zustand, richtung, schwelle,
-            // Ohne Haushalt gar nichts mitschicken — dann bleibt der Server
-            // beim eigenen Konto (gleiche Regel wie im Erfassungsdialog).
+            // Without a household, send nothing at all — then the server stays
+            // on one's own account (same rule as in the entry dialog).
             if (householdMembers.size > 1) konto else null) },
         onAbbrechen = onDismiss,
         geaendert = schwelle.isNotEmpty() || zustand != defaultCondition || richtung != Alarmrichtung.UNTER,
     ) {
                 Text(setName, style = MaterialTheme.typography.bodyMedium)
-                // Zielkonto wie beim Erfassen; blendet sich bei weniger als
-                // zwei Mitgliedern selbst aus.
+                // Target account as when entering; hides itself with fewer than
+                // two members.
                 OwnerPicker(householdMembers, konto, { konto = it })
                 Zustandszeile(zustand = zustand, onZustand = { zustand = it })
                 HorizontalDivider()
@@ -507,8 +507,8 @@ private fun MerkpostenDialog(
                     gewaehlt = richtung,
                     onWahl = { richtung = it },
                 )
-                // Eine Schwelle ist ein Preis — dieselbe Eingaberegel und
-                // dieselbe Tastatur wie ueberall (util/NumericInput.kt).
+                // A threshold is a price — the same input rule and
+                // the same keyboard as everywhere (util/NumericInput.kt).
                 OutlinedTextField(
                     shape = Formen.feld,
                     value = schwelle,

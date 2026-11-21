@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
-/** Startet den Vordergrund-Dienst mit dem Auftrag; der Context bleibt hier und erreicht kein ViewModel. */
+/** Starts the foreground service with the job; the context stays here and never reaches a ViewModel. */
 internal class ServiceExport @Inject constructor(
     private val manager: PdfExportManager,
     @param:ApplicationContext private val ctx: Context,
@@ -30,7 +30,7 @@ internal class ServiceExport @Inject constructor(
         return when (val r = manager.state.first { it is PdfExportState.Done || it is PdfExportState.Error }) {
             is PdfExportState.Done -> ExportResult.Datei(r.file)
             is PdfExportState.Error -> ExportResult.Fehler(r.grund)
-            // Ohne else-Zweig, damit ein neuer Zustand hier auffällt; first{} lässt beide nicht durch.
+            // Without an else branch, so a new state stands out here; first{} doesn't let both through.
             is PdfExportState.Idle, is PdfExportState.Running ->
                 ExportResult.Fehler(PdfFailure.Abruf(Ergebnis.Fehler.Unbekannt()))
         }

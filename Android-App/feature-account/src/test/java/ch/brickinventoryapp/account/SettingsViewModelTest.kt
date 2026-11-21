@@ -33,33 +33,33 @@ import ch.brickinventoryapp.model.ui.Laden
 import ch.brickinventoryapp.model.ui.errorMessage
 
 /**
- * Einstellungen und Haushalt, ausgeführt gegen einen PfadServer ohne Netz.
+ * Settings and household, run against a PathServer with no network.
  *
- * Gegenproben (am 28.10.2026 gemessen, kotlinc gegen SettingsViewModel.kt
- * und HouseholdViewModel.kt):
- *   A  in changeAlarmThreshold() die Prüfung auf > 0 entfernt → rot „eine
- *      Schwelle von null geht nicht hinaus“
- *   B  in alarmLock() `alertsNew()` entfernt → rot „ein geänderter Alarm lädt
- *      die Übersicht nach“
- *   C  in nameLocationUm() den alten Namen leer gelassen → rot „ein umbenannter
- *      Lagerort heisst auch an den Sets in der Ablage neu“ („Kiste“ blieb stehen)
- *   D  in saveSettings() nur die Sets nachziehen → rot „eine andere Währung …“
- *   E  in accountsChanged() die Haushaltskonten nicht neu geladen → rot „eine
- *      eingelöste Einladung lädt Status und Haushaltskonten“
- *   F  im Repository das Passwort nicht mitgeschickt → rot „eine eingelöste
- *      Einladung …“ (Rumpf ohne password)
- *   G  in redeemHouseholdInvite() `passwordWrong` nicht gesetzt → rot „ein
- *      falsches Passwort beim Einlösen markiert das Feld“
- *   H  in redeemError() den Zweig für die Sperre entfernt → rot „nach zu
- *      vielen Fehlversuchen …“ (statt des eigenen Satzes kam „fehler“)
- *   I  im Repository `faktor_code` nicht in den Rumpf → rot „bei
- *      aktivem zweitem Faktor geht dessen Code …“
- *   J  in checkSecondFactor() `r.data.aktiv` → `false` → rot
- *      „bei aktivem zweitem Faktor …“ (Zeitüberschreitung Codefeld)
- *   K  im Fehlerzweig `factorNeeded` nicht gesetzt → rot „verlangt
- *      der Server den Code …“
- *   L  in saveUserDefaultCondition() die Erfolgsmeldung entfernt →
- *      rot „the default condition reports the saving“ (Zeitüberschreitung Meldung)
+ * Counter-checks (measured on Oct 28, 2026, kotlinc against SettingsViewModel.kt
+ * and HouseholdViewModel.kt):
+ *   A  the check for > 0 removed from changeAlarmThreshold() → red "eine
+ *      Schwelle von null geht nicht hinaus"
+ *   B  `alertsNew()` removed from alarmLock() → red "ein geänderter Alarm lädt
+ *      die Übersicht nach"
+ *   C  the old name left empty in nameLocationUm() → red "ein umbenannter
+ *      Lagerort heisst auch an den Sets in der Ablage neu" ("Kiste" stayed)
+ *   D  saveSettings() only pulling the sets along → red "eine andere Währung …"
+ *   E  the household accounts not reloaded in accountsChanged() → red "eine
+ *      eingelöste Einladung lädt Status und Haushaltskonten"
+ *   F  the password not sent in the repository → red "eine eingelöste
+ *      Einladung …" (body without password)
+ *   G  `passwordWrong` not set in redeemHouseholdInvite() → red "ein
+ *      falsches Passwort beim Einlösen markiert das Feld"
+ *   H  the lockout branch removed from redeemError() → red "nach zu
+ *      vielen Fehlversuchen …" ("fehler" came instead of the own sentence)
+ *   I  `faktor_code` not in the body in the repository → red "bei
+ *      aktivem zweitem Faktor geht dessen Code …"
+ *   J  `r.data.aktiv` → `false` in checkSecondFactor() → red
+ *      "bei aktivem zweitem Faktor …" (code field timed out)
+ *   K  `factorNeeded` not set in the error branch → red "verlangt
+ *      der Server den Code …"
+ *   L  the success message removed from saveUserDefaultCondition() →
+ *      red "the default condition reports the saving" (message timed out)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsViewModelTest {
@@ -143,7 +143,7 @@ class SettingsViewModelTest {
     fun `a different currency applies immediately and the store fetches the stock again`() {
         val vm = vm()
         vm.saveSettings(Waehrung.CHF, Zustand.GEBRAUCHT)
-        // Jeder Preis ändert sich: Die Ablage holt Sets, Teile und Figuren neu.
+        // Every price changes: the cache refetches sets, parts and figures.
         for (pfad in listOf("GET /api/v1/sets?", "GET /api/v1/parts?", "GET /api/v1/minifigs?")) {
             assertTrue(pfad, paths.requestsAn(pfad).isNotEmpty())
         }

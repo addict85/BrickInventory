@@ -52,22 +52,22 @@ import ch.brickinventoryapp.testing.text
 import ch.brickinventoryapp.model.ui.Meldung
 
 /**
- * Der SitzungsDienst ausgeführt: Abmelden bei 401 und zu alter Anmeldung,
- * Rechteentzug, Design und Serverstart. Ohne Netz (FakeApi) und in virtueller
- * Zeit (StandardTestDispatcher), damit „nichts geschieht“ prüfbar ist, ohne zu warten.
+ * SitzungsDienst put to the test: signing out on 401 and on a too-old sign-in,
+ * right revocation, theme and server startup. Without a network (FakeApi) and in virtual
+ * time (StandardTestDispatcher), so „nothing happens“ is testable without waiting.
  *
- * Gegenproben:
- *   abmelden-ohne-sitzungspruefung  `isLoggedIn` im 401-Zweig gestrichen → rot „ein 401 …“
- *   rechte-ohne-meldung             die Meldung beim Rechteentzug gestrichen → rot „entzogene …“
- *   design-nicht-gemerkt            der Spiegel nach saveAppTheme gestrichen → rot „das Design …“
- *   serverstart-ohne-ende           `r.data.ready` aus der Abbruchbedingung → rot „der Serverstart …“
- *   abgelaufen-vor-dem-start        der 401-Sammler mit drop(1) → rot „ein 401 vor dem Start …“
- *   anmeldung-ohne-abbruch          in sequenceLogin `collect` statt `collectLatest` und die
- *                                   Schritte in `bereich` statt im Bereich der Anmeldung → rot
- *                                   „eine späte Antwort des alten Kontos …“ (CHF statt USD)
- *   waehrung-zurueckgespiegelt      in starte() wieder `sitzung.state.map { it.currency }…
- *                                   collect { prefs.saveCurrency(it) }` → rot „Währung und Design
- *                                   kommen aus der Ablage …“ (eine Schreibung statt keiner)
+ * Counter-checks:
+ *   abmelden-ohne-sitzungspruefung  `isLoggedIn` removed from the 401 branch → red „ein 401 …“
+ *   rechte-ohne-meldung             the notification on right revocation removed → red „entzogene …“
+ *   design-nicht-gemerkt            the mirror after saveAppTheme removed → red „das Design …“
+ *   serverstart-ohne-ende           `r.data.ready` removed from the stop condition → red „der Serverstart …“
+ *   abgelaufen-vor-dem-start        the 401 collector with drop(1) → red „ein 401 vor dem Start …“
+ *   anmeldung-ohne-abbruch          in sequenceLogin `collect` instead of `collectLatest` and the
+ *                                   steps in `bereich` instead of the sign-in's own scope → red
+ *                                   „eine späte Antwort des alten Kontos …“ (CHF instead of USD)
+ *   waehrung-zurueckgespiegelt      in starte() restored `sitzung.state.map { it.currency }…
+ *                                   collect { prefs.saveCurrency(it) }` → red „Währung und Design
+ *                                   kommen aus der Ablage …“ (one write instead of none)
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SessionServiceTest {
@@ -77,12 +77,12 @@ class SessionServiceTest {
     private val ablage = StorageSessionStore()
     private var currencyWritten = 0
 
-    /** Die Ablage, wie der Dienst sie sieht; zählt, ob er die Währung zurückschreibt. */
+    /** The store, as the service sees it; counts whether it writes the currency back. */
     private val prefs = object : Sitzungsablage by ablage {
         override suspend fun saveCurrency(cur: Waehrung) { currencyWritten++; ablage.saveCurrency(cur) }
     }
 
-    /** Währung und Design aus derselben Ablage, wie StoreAccountValues im Gerät. */
+    /** Currency and theme from the same store, like StoreAccountValues on the device. */
     private val sitzung = Sitzung(object : Kontowerte {
         override val waehrung: StateFlow<Waehrung> = ablage.waehrung
         override val design: StateFlow<Design> = ablage.design
@@ -90,7 +90,7 @@ class SessionServiceTest {
         override fun setzeDesign(d: Design) { ablage.design.value = d }
     })
 
-    /** Je Anmeldung eine Antwort auf /settings: Verzögerung und Währung. */
+    /** One response to /settings per sign-in: delay and currency. */
     private val einstellungen = ArrayDeque<Pair<Long, Waehrung>>()
     private val expiredSignal = SessionExpiredSignal()
     private val rights = RightsSignal()
@@ -107,7 +107,7 @@ class SessionServiceTest {
         Dispatchers.resetMain()
     }
 
-    /** Erzeugt und startet den Dienst, führt [block] aus und beendet seine Koroutinen. */
+    /** Creates and starts the service, runs [block], and ends its coroutines. */
     private fun withVm(block: suspend TestScope.(SitzungsDienst) -> Unit) = runTest(takt) {
         val bereich = CoroutineScope(SupervisorJob() + takt)
         val echt = testAccountRepository(fake.api)
@@ -220,7 +220,7 @@ class SessionServiceTest {
         angemeldet()
         runCurrent()
         advanceTimeBy(100)
-        // Ein anderes Konto meldet sich an, bevor das alte seine Einstellungen bekam.
+        // A different account signs in before the old one got its settings.
         ablage.token.value = "anderes"
         advanceUntilIdle()
         assertEquals(Waehrung("USD"), sitzung.state.value.currency)

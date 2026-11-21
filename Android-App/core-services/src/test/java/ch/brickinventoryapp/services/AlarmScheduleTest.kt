@@ -12,21 +12,21 @@ import org.junit.Test
 import kotlin.coroutines.CoroutineContext
 
 /**
- * Den Preisalarm einzuplanen darf die App nicht schliessen: WorkManager fährt beim ersten
- * Zugriff hoch und kann dabei scheitern. Ausgeführt gegen einen Context ohne App, an dem
- * WorkManager.getInstance() wirft; dass das ViewModel den Fehler meldet, prüft
+ * Scheduling the price alert must not crash the app: WorkManager boots up on first
+ * access and can fail doing so. Run against a context without an app, where
+ * WorkManager.getInstance() throws; that the ViewModel reports the error is checked by
  * DevicesSettingsViewModelTest.
  *
- * Gegenproben (Patches unter gegenproben/, misst die CI):
- *   einplanen-wirft         einplanen() reicht den Fehler weiter (getOrThrow) → rot „einplanen meldet …“
- *   planer-im-aufrufer      WorkManagerAlarmPlanner ohne withContext(io) → rot „der Planer wechselt …“
+ * Counter-checks (patches under gegenproben/, measured by CI):
+ *   einplanen-wirft         einplanen() passes the error on (getOrThrow) → red „einplanen meldet …“
+ *   planer-im-aufrufer      WorkManagerAlarmPlanner without withContext(io) → red „der Planer wechselt …“
  */
 class AlarmScheduleTest {
 
-    /** Ohne Application: WorkManager findet keine Konfiguration und wirft. */
+    /** Without an Application: WorkManager finds no configuration and throws. */
     private val withoutApp = object : ContextWrapper(null) {}
 
-    /** Zählt, wie oft Arbeit auf ihn wechselt. */
+    /** Counts how often work switches to it. */
     private class CountingDispatcher : CoroutineDispatcher() {
         var switch = 0
         override fun dispatch(context: CoroutineContext, block: Runnable) {

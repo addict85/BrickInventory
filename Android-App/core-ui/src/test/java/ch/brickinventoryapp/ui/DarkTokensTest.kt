@@ -18,23 +18,23 @@ import java.io.File
 import java.awt.Color
 
 /**
- * Die dunkle Fassung je Design kommt aus denselben Tokens wie im Web
- * (shared/design-tokens.json, Abschnitt `dunkel`), und ihre Rollen sind lesbar.
+ * The dark version for each design comes from the same tokens as the web
+ * (shared/design-tokens.json, `dunkel` section), and its roles are readable.
  *
- * Dass DunkelTokens.kt die Quelle wiedergibt, prüft der Generator selbst
- * (`generate-design-tokens.js --pruefen` im Android-Lauf, Job vertrag).
+ * That DunkelTokens.kt reflects the source is checked by the generator itself
+ * (`generate-design-tokens.js --pruefen` in the Android run, job vertrag).
  *
- * Gegenproben:
- *   B  den Eintrag "farbfaecher" umbenannt → rot „jedes Design der Quelle hat
+ * Counter-checks:
+ *   B  the "farbfaecher" entry renamed → red „jedes Design der Quelle hat
  *      seine dunkle Fassung“
- *   C  in darkToken() `erbt` nicht aufgelöst → rot „hochglanz erbt die Farben
- *      von noppe“ und die drei Prüfungen der Rollen (b600 fehlt, es greift classic)
- *   D  outline auf s400 statt s500 → rot „borders stand out with 3 to 1“
- *   E  onPrimary auf "txt" statt "auf-primaer" → rot „Text auf Flächen ist lesbar“
- * Gegenproben:
- *   F  darkBrickDecor() mit den hellen Noppen (#6d94b8) → rot „die
+ *   C  `erbt` not resolved in darkToken() → red „hochglanz erbt die Farben
+ *      von noppe“ and the three role checks (b600 missing, classic kicks in)
+ *   D  outline at s400 instead of s500 → red „borders stand out with 3 to 1“
+ *   E  onPrimary at "txt" instead of "auf-primaer" → red „Text auf Flächen ist lesbar“
+ * Counter-checks:
+ *   F  darkBrickDecor() with the light studs (#6d94b8) → red „die
  *      Stein-Dekoration wird im Dunkeln dunkel“
- *   G  die Schrift auf der Schieferkachel weiss gelassen → rot ebenda
+ *   G  the text on the slate tile left white → red there too
  */
 class DarkTokensTest {
 
@@ -82,7 +82,7 @@ class DarkTokensTest {
         val fehler = mutableListOf<String>()
         for (d in DunkelTokens.designs.keys) {
             val r = darkRoles(checkNotNull(Design.aus(d)))
-            // surfaceContainerHighest liegt zehn Prozent Richtung onSurface; s300 ist heller.
+            // surfaceContainerHighest sits ten percent toward onSurface; s300 is lighter.
             for ((name, flaeche) in mapOf("surface" to r.surface, "background" to r.background,
                     "surfaceVariant" to r.surfaceVariant, "s300" to argb(DunkelTokens.basis.getValue("s300")))) {
                 if (k(r.outline, flaeche) < Contrast.FRAME) fehler += "$d.outline/$name"
@@ -102,8 +102,8 @@ class DarkTokensTest {
     }
 
     /**
-     * Wie [data-dunkel] im Web: Noppen und Schieferkachel aus der dunklen Fassung.
-     * Fest eingesetzt blieben die hellen Töne von „brick“ auch im Dunkeln stehen.
+     * Like [data-dunkel] in the web: studs and slate tile from the dark version.
+     * Hardcoded, the light tones of "brick" stayed on even in the dark.
      */
     @Test
     fun `the stone decoration becomes dark in the dark`() {
@@ -117,10 +117,10 @@ class DarkTokensTest {
     }
 
     /**
-     * Ein Akzent je Design: Gewählte Chips und der Tonal-Knopf (secondaryContainer)
-     * stehen im Dunkeln im Farbton der Hauptfarbe oder neutral — classic und brick
-     * zeigten Bernstein neben Hellblau („Weiter“ braun/gold unter dem blauen QR-Knopf).
-     * Gegenprobe: classic wieder auf a100/a-schrift → rot.
+     * One accent per design: selected chips and the tonal button (secondaryContainer)
+     * sit in the dark in the hue of the main color or neutral — classic and brick
+     * showed amber next to light blue ("Weiter" brown/gold under the blue QR button).
+     * Counter-check: classic put back on a100/a-schrift → red.
      */
     @Test
     fun `in the dark every design carries an accent`() {

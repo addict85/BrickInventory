@@ -49,18 +49,18 @@ import ch.brickinventoryapp.ui.util.secretCopyable
 import ch.brickinventoryapp.model.util.otpauthAddress
 import ch.brickinventoryapp.ui.components.SettingsCard
 
-/** Der vorgeschlagene Name; den Ort wählt der Nutzer im Speicherdialog des Systems. */
+/** The suggested name; the user picks the location in the system's save dialog. */
 internal const val CODES_FILE = "brickinventory-wiederherstellungscodes.txt"
 
-/** false, wenn der gewählte Ort nicht beschreibbar war; dann bleibt „Teilen“. */
+/** false if the chosen location wasn't writable; then "Share" remains. */
 internal fun writeCodes(resolver: ContentResolver, ziel: Uri, codes: List<String>): Boolean = runCatching {
     resolver.openOutputStream(ziel, "wt")?.use { it.write((codes.joinToString("\n") + "\n").toByteArray()) } != null
 }.getOrDefault(false)
 
 /**
- * Die Codes als Datei an einen Ort der Wahl (ACTION_CREATE_DOCUMENT): Beim Teilen läse die
- * Ziel-App mit, und manche legen den Text in ihren Verlauf oder in eine Cloud. [onSecured]
- * hakt „gesichert“ an, sobald die Datei geschrieben ist.
+ * The codes as a file to a chosen location (ACTION_CREATE_DOCUMENT): when sharing, the
+ * target app would read along, and some put the text in their history or a cloud. [onSecured]
+ * ticks "secured" as soon as the file is written.
  */
 @Composable
 internal fun rememberCodesSecure(codes: List<String>, onSecured: () -> Unit): () -> Unit {
@@ -73,9 +73,9 @@ internal fun rememberCodesSecure(codes: List<String>, onSecured: () -> Unit): ()
 }
 
 /**
- * Die Notfallcodes an eine App der Wahl (Passwortmanager, Notizen): nur auf Tipp und
- * über die Auswahl des Systems, nicht über die Zwischenablage, deren Verlauf sie behielte.
- * Zweite Wahl nach [rememberCodesSecure], für Geräte ohne Dokumentanbieter.
+ * The emergency codes to an app of choice (password manager, notes): only on tap and
+ * via the system's picker, not via the clipboard, which would keep them in its history.
+ * Second choice after [rememberCodesSecure], for devices without a document provider.
  */
 internal fun partsCodes(ctx: Context, titel: String, codes: List<String>) {
     val senden = Intent(Intent.ACTION_SEND).apply {
@@ -86,7 +86,7 @@ internal fun partsCodes(ctx: Context, titel: String, codes: List<String>) {
     runCatching { ctx.startActivity(Intent.createChooser(senden, titel)) }
 }
 
-/** false, wenn keine App den Link nimmt (Manifest: <queries> für otpauth). */
+/** false if no app takes the link (manifest: <queries> for otpauth). */
 internal fun openWithSelection(ctx: Context, uri: String, titel: String): Boolean {
     val ansicht = Intent(Intent.ACTION_VIEW, uri.toUri())
     if (ansicht.resolveActivity(ctx.packageManager) == null) return false
@@ -94,12 +94,12 @@ internal fun openWithSelection(ctx: Context, uri: String, titel: String): Boolea
 }
 
 /**
- * Zweiter Faktor: einrichten, abschalten, neue Wiederherstellungscodes.
+ * Second factor: set up, disable, new recovery codes.
  *
- * Auf dem Telefon braucht es keinen QR-Code: Der otpauth-Link oeffnet die
- * Authenticator-App. Immer über die Auswahl des Systems: Der Link trägt das
- * Geheimnis, und eine App, die sich als Standard dafür eingetragen hat, bekäme es
- * sonst unbemerkt. Fehlt eine, bleibt der Schluessel zum Abtippen (ab API 33 auch zum Kopieren).
+ * On the phone it needs no QR code: the otpauth link opens the
+ * authenticator app. Always via the system's picker: the link carries the
+ * secret, and an app registered as the default for it would otherwise get it
+ * unnoticed. If none is set, the key stays for typing in by hand (from API 33 also for copying).
  */
 @Composable
 internal fun ZweiterFaktorCard(
@@ -110,12 +110,12 @@ internal fun ZweiterFaktorCard(
     onAbschalten: (String, String) -> Unit,
     onZurueck: () -> Unit,
 ) {
-    // Passwörter nur in remember, siehe oben.
+    // Passwords only in remember, see above.
     var zfPassword by remember { mutableStateOf("") }
     var zfCode     by remember { mutableStateOf("") }
     var withoutApp    by rememberSaveable { mutableStateOf(false) }
     var secured  by rememberSaveable(zfZustand.codes) { mutableStateOf(false) }
-    // Bestätigen bleibt antippbar; ohne Code markiert es das Feld und setzt den Cursor hinein.
+    // Confirm stays tappable; without a code it marks the field and puts the cursor in it.
     var codeMissing  by rememberSaveable { mutableStateOf(false) }
     val codeFocus = remember { FocusRequester() }
     val selectionTitle = stringResource(R.string.zf_open_app)
@@ -125,12 +125,12 @@ internal fun ZweiterFaktorCard(
     val kopieren: (String) -> Unit = { text ->
         SecretClipboard.copy(context, keyLabel, text)
     }
-    // Neue Codes und ein neuer Schlüssel erscheinen gleich danach im Klartext: erst
-    // nach der Gerätesperre (Schrittschutz), zusätzlich zu Passwort bzw. Code.
+    // New codes and a new key appear in plain text right after: only
+    // behind the device lock (step protection), in addition to password or code.
     val protection = LocalSchrittschutz.current.fuer(Schrittaktion.ZWEITER_FAKTOR)
     val codesReason = stringResource(R.string.schritt_codes)
-    // Felder leeren, sobald ein Schritt gelungen ist — sonst stuende das
-    // Passwort beim naechsten Schritt noch da.
+    // Clear the fields as soon as a step succeeds — otherwise the
+    // password would still be there at the next step.
     LaunchedEffect(zfZustand.aktiv, zfZustand.geheimnis, zfZustand.codes) { zfPassword = ""; zfCode = "" }
 
     SettingsCard(title = stringResource(R.string.zf_title), icon = Icons.Default.Security) {
@@ -160,7 +160,7 @@ internal fun ZweiterFaktorCard(
                 Sichtschutz()
                 Text(stringResource(R.string.zf_codes_title), fontWeight = FontWeight.SemiBold)
                 Text(stringResource(R.string.zf_codes_hint), style = MaterialTheme.typography.bodySmall)
-                // Zeichen für Zeichen vorgelesen: Als Wort las TalkBack „i9j0“.
+                // Read out character by character: as a word, TalkBack read "i9j0".
                 Text(zfZustand.codes.joinToString("\n"),
                     fontFamily = FontFamily.Monospace,
                     modifier = Modifier.readAloudAs(zfZustand.codes.joinToString(", ") { charByChar(it) }))
@@ -170,7 +170,7 @@ internal fun ZweiterFaktorCard(
                 CodesSecured(secured) { secured = it }
                 Button(onClick = onZurueck, enabled = secured) { Text(stringResource(R.string.zf_codes_done)) }
             }
-            // 2. Einrichtung laeuft: Schluessel in die App, Code bestaetigen.
+            // 2. Setup running: key into the app, confirm the code.
             zfZustand.geheimnis != null -> {
                 Sichtschutz()
                 Text(stringResource(R.string.zf_step_app), style = MaterialTheme.typography.bodySmall)
@@ -202,7 +202,7 @@ internal fun ZweiterFaktorCard(
                     laeuft = zfZustand.abruf.laedt,
                 )
             }
-            // 3. Aktiv: neue Codes oder abschalten.
+            // 3. Active: new codes or disable.
             zfZustand.aktiv == true -> {
                 Text(pluralStringResource(R.plurals.zf_active, zfZustand.codesUebrig, zfZustand.codesUebrig),
                     color = MaterialTheme.colorScheme.primary)

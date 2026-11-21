@@ -5,41 +5,41 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Abstaende und Schriftgroessen kommen aus der Skala — und die Ausnahmen
- * werden weniger, nie mehr.
+ * Spacings and font sizes come from the scale — and the exceptions
+ * get fewer, never more.
  *
- * ── Warum eine RATSCHE und keine harte Regel ────────────────────────────────
+ * ── Why a RATCHET and not a hard rule ────────────────────────────────
  *
- * Gemessen, bevor irgendetwas geaendert wurde: Die App benutzte kein 4er- oder
- * 8er-Raster, sondern ein 2-dp-Kontinuum — 8 (106-mal), 6 (60), 12 (54),
- * 4 (51), 16 (44), 10 (41), 2 (28), 14 (26) … Auf die uebliche Skala
- * (2/4/8/12/16/24/32) fallen 304 dieser Stellen exakt; 175 nicht.
+ * Measured before anything was changed: the app used no 4- or
+ * 8-grid, but a 2-dp continuum — 8 (106 times), 6 (60), 12 (54),
+ * 4 (51), 16 (44), 10 (41), 2 (28), 14 (26) … On the usual scale
+ * (2/4/8/12/16/24/32) 304 of these spots fall exactly; 175 do not.
  *
- * Die exakten wurden umgestellt — nachgewiesen ohne jede Verschiebung: Die
- * Verteilung der tatsaechlichen Werte ist vor und nach dem Umbau dieselbe.
+ * The exact ones were converted — proven without any shift: the
+ * distribution of the actual values is the same before and after the conversion.
  *
- * Die uebrigen NICHT. Eine 6 auf 4 oder 8 zu ziehen ist keine Aufraeumarbeit,
- * sondern eine GESTALTUNGSaenderung: Die Stelle verschiebt sich sichtbar. Das
- * entscheidet, wer die App vor sich hat, nicht wer den Quelltext umschreibt —
- * und mit 60 Stellen allein fuer die 6 ist es auch keine Kleinigkeit.
+ * The rest were NOT. Pulling a 6 to 4 or 8 is not cleanup
+ * but a DESIGN change: the spot shifts visibly. That is
+ * decided by whoever has the app in front of them, not by whoever rewrites the source —
+ * and with 60 spots for the 6 alone it's also not a small thing.
  *
- * Eine harte Regel („nur noch Skalenwerte") waere deshalb entweder sofort rot
- * oder muesste 181 Ausnahmen aufzaehlen — und eine Ausnahmeliste dieser Laenge
- * liest niemand mehr. Die Ratsche loest beides: Sie haelt den Stand fest, laesst
- * ihn sinken und schlaegt an, sobald er steigt. Neue Bildschirme bekommen damit
- * die Skala, ohne dass der Bestand angefasst werden muss.
+ * A hard rule ("scale values only") would therefore either go red right away
+ * or would have to list 181 exceptions — and an exception list of that
+ * length nobody reads anymore. The ratchet solves both: it holds the
+ * current state, lets it fall, and trips as soon as it rises. New screens get
+ * the scale this way, without touching the existing ones.
  *
- * ── Was ausdruecklich NICHT dazugehoert ─────────────────────────────────────
+ * ── What is explicitly NOT included ─────────────────────────────────
  *
- * `size(16.dp)` an einem Symbol, die Hoehe einer Karte, eine Strichstaerke —
- * das sind GROESSEN, keine Abstaende. Ein Abstands-Token dort waere falsch:
- * Wer die Kachelhoehe aendert, will nicht alle Innenabstaende mitaendern.
- * Geprueft werden deshalb nur padding, Arrangement.spacedBy, PaddingValues und
- * Spacer.
+ * `size(16.dp)` on an icon, a card's height, a stroke width —
+ * those are SIZES, not spacings. A spacing token there would be wrong:
+ * whoever changes the tile height doesn't want to change all inner padding with it.
+ * Only padding, Arrangement.spacedBy, PaddingValues and
+ * Spacer are checked.
  */
 class AbstandsskalaTest {
 
-    /** Nur echte ABSTANDS-Stellen — nicht Groessen. Siehe KDoc. */
+    /** Only real SPACING spots — not sizes. See KDoc. */
     private val spacingPattern = listOf(
         Regex("""\bspacedBy\((\d+)\.dp\)"""),
         Regex("""\bpadding\((\d+)\.dp\)"""),
@@ -49,7 +49,7 @@ class AbstandsskalaTest {
     )
     private val fontPattern = Regex("""\bfontSize = (\d+)\.sp""")
 
-    /** Die Bildschirme — ui/theme selbst ist die Skala und zaehlt nicht mit. */
+    /** The screens — ui/theme itself is the scale and doesn't count. */
     private fun quellen(): List<Pair<String, String>> =
         Quellen.unter("ui")
             .filter { "theme" !in it.path.split(File.separator) }
@@ -61,25 +61,25 @@ class AbstandsskalaTest {
 
     @Test
     fun `the scale is used at all`() {
-        // ── Selbstnachweis: findet die Suche ueberhaupt etwas? ───────────
+        // ── Self-check: does the search even find anything? ───────────
         //
-        // Das ist die eigentliche Aufgabe dieser Pruefung. Wird der Ordner
-        // umbenannt oder greift `quellen()` nicht mehr, zaehlt die Ratsche
-        // unten NULL — und null ist kleiner als jede Schranke. Sie waere dann
-        // fuer immer gruen, ohne je wieder etwas anzusehen.
+        // That is the actual point of this check. If the folder is
+        // renamed or `quellen()` no longer catches it, the ratchet
+        // below counts ZERO — and zero is less than any limit. It would
+        // then stay green forever, without ever looking at anything again.
         //
-        // Hier stand zuerst eine andere Begruendung: die Ratsche merke einen
-        // ZURUECKGEDREHTEN Umbau nicht. Das ist falsch, und die Gegenprobe hat
-        // es gezeigt: Die Ratsche zaehlt jede Zahl an einer Abstandsstelle,
-        // nicht nur die neben der Skala. Wer ein Token durch seine alte Zahl
-        // ersetzt, laesst die Zahl steigen und faellt auf. Die falsche
-        // Begruendung steht hier, weil eine gemessene Widerlegung mehr wert
-        // ist als ihre stille Entfernung.
+        // An earlier version of this reasoning stood here: that the ratchet
+        // wouldn't notice a REVERTED conversion. That is wrong, and the counter-check
+        // showed it: the ratchet counts every number at a spacing spot,
+        // not only those next to the scale. Whoever replaces a token with its
+        // old number makes the number rise and gets caught. The wrong
+        // reasoning stays here, because a measured refutation is worth more
+        // than quietly removing it.
         //
-        // Die zweite Zahl unten bleibt trotzdem: Sie haelt fest, wie weit die
-        // Umstellung gediehen war, und macht ein schleichendes Zurueckdrehen
-        // ueber viele Dateien sichtbar, das die Ratsche einzeln je Datei zwar
-        // meldet, in der Summe aber nicht beziffert.
+        // The second number below stays anyway: it records how far the
+        // conversion had progressed, and makes a creeping reversal
+        // across many files visible that the ratchet does report per file,
+        // but doesn't tally up in total.
         val alle = quellen()
         assert(alle.size >= 30) { "Nur ${alle.size} Bildschirmdateien gefunden — Ordner umbenannt?" }
         val text = alle.joinToString("\n") { it.second }
@@ -96,13 +96,13 @@ class AbstandsskalaTest {
     }
 
     /**
-     * Schriftgrössen kommen aus EINER Skala, der von Material. Bis zum 28.10.
-     * lief daneben `Schrift.*` mit eigenen Stufen (10/12/14/16/20/24 sp).
+     * Font sizes come from ONE scale, Material's. Until Oct 28, `Schrift.*`
+     * ran alongside it with its own steps (10/12/14/16/20/24 sp).
      *
-     * Gegenproben (gemessen am 28.10., Kopie des Quellbaums, in TabellenZeile.kt
-     * `style = MaterialTheme.typography.bodySmall` ersetzt):
-     *   durch `fontSize = Schrift.klein` → rot hier
-     *   durch `fontSize = 12.sp` → rot in „die Zahl der Schriftgroessen …"
+     * Counter-checks (measured on Oct 28, copy of the source tree, in TabellenZeile.kt
+     * `style = MaterialTheme.typography.bodySmall` replaced):
+     *   by `fontSize = Schrift.klein` → red here
+     *   by `fontSize = 12.sp` → red in „die Zahl der Schriftgroessen …"
      */
     @Test
     fun `there is only Material's type scale`() {
@@ -115,28 +115,28 @@ class AbstandsskalaTest {
 
     @Test
     fun `the number of spacings still written as numbers only sinks`() {
-        // GEMESSEN beim Anlegen: 181, dann 180 (die Design-Auswahl in
-        // MonitoringSections ist auf die Skala gewandert), jetzt 178. Ganz
-        // oben stehen 6 (59-mal), 10 (41) und
-        // 14 (26) — die drei Werte, die es auf einer Zweier-Skala nicht gibt.
+        // MEASURED when created: 181, then 180 (the design picker in
+        // MonitoringSections moved onto the scale), now 178. At the very
+        // top are 6 (59 times), 10 (41) and
+        // 14 (26) — the three values that don't exist on a two-step scale.
         //
-        // 180 -> 178: Die beiden Knopfreihen im Katalog- und im
-        // Merkposten-Detail brauchten einen kleineren Innenabstand, damit zwei
-        // Knoepfe nebeneinander passen. Der erste Versuch schrieb dafuer
-        // `vertical = 8.dp` — und genau das hat diese Ratsche gemeldet, bevor
-        // es in den Hauptzweig kam. Es ist `Abstaende.klein`, derselbe Wert
-        // mit Namen; die drei neuen Stellen zaehlen damit nicht mit, und eine
-        // alte faellt weg.
+        // 180 -> 178: the two button rows in the catalog and the
+        // watchlist detail needed smaller inner padding so that two
+        // buttons fit side by side. The first attempt wrote
+        // `vertical = 8.dp` for that — and exactly that is what this ratchet
+        // caught before it reached main. It is `Abstaende.klein`, the same value
+        // with a name; the three new spots therefore don't count, and one
+        // old one drops out.
         //
-        // 178 -> 176: Der Umbau der Einstellungen (16.10.) hat zwei blanke
-        // Zahlen mitgenommen — die 10 dp zwischen den vierzehn Karten (jetzt
-        // Abstaende.gross zwischen vieren) und den Innenabstand des Kastens
-        // „Aktuelle Einstellungen", der ersatzlos entfallen ist.
+        // 178 -> 176: the settings rework (Oct 16) took along two bare
+        // numbers — the 10 dp between the fourteen cards (now
+        // Abstaende.gross between four) and the inner padding of the
+        // „Aktuelle Einstellungen" box, which was dropped without replacement.
         //
-        // Diese Zahl darf SINKEN, wenn jemand bewusst entscheidet, eine dieser
-        // Gruppen auf die Skala zu ziehen. Sie darf nicht steigen: Ein neuer
-        // Bildschirm hat keinen Grund, einen Abstand zu erfinden, den es noch
-        // nicht gibt.
+        // This number may FALL if someone deliberately decides to move one of
+        // these groups onto the scale. It may not rise: a new
+        // screen has no reason to invent a spacing that doesn't
+        // exist yet.
         val ist = zaehle(spacingPattern)
         assert(ist <= 176) {
             "$ist Abstaende stehen noch als Zahl da, gemessen waren es 176. " +
@@ -147,26 +147,26 @@ class AbstandsskalaTest {
 
     @Test
     fun `the number of font sizes still written as numbers only sinks`() {
-        // GEMESSEN beim Anlegen: 55. Groesster Posten ist 13.sp (22-mal) —
-        // direkt neben 12.sp (24-mal). Zwei Groessen, die sich um einen Punkt
-        // unterscheiden, sind nebeneinander nicht als Unterschied lesbar; das
-        // ist der Kandidat, den man als Erstes zusammenlegen wuerde.
+        // MEASURED when created: 55. Biggest item is 13.sp (22 times) —
+        // right next to 12.sp (24 times). Two sizes that differ by one
+        // point are not readable as a difference side by side; that
+        // is the candidate you'd merge first.
         //
-        // 54 -> 51: Die drei Chips der Filterzeile
-        // (HouseholdComposables) standen auf 13.sp und stehen jetzt auf
-        // Schrift.klein. Anlass war ein vierter Chip daneben — der
-        // Lagerortfilter. Zwei Groessen nebeneinander, die sich um einen
-        // Punkt unterscheiden, sind genau der Fall, den der Absatz darueber
-        // beschreibt; ihn beim Hinzufuegen des vierten stehen zu lassen
-        // haette die Zahl auf 55 gehoben.
+        // 54 -> 51: the three chips in the filter row
+        // (HouseholdComposables) were at 13.sp and are now at
+        // Schrift.klein. The trigger was a fourth chip next to them — the
+        // storage location filter. Two sizes next to each other that differ by one
+        // point are exactly the case the paragraph above
+        // describes; leaving it as is when adding the fourth
+        // would have pushed the number to 55.
         //
-        // 55 -> 54: Genau dieser Kandidat ist zweimal gefallen.
+        // 55 -> 54: exactly this candidate fell twice.
         //
-        // 51 -> 2 (27.10.): Die rohen Groessen sind auf Rollen der Material-
-        // Skala umgestellt (bodyMedium, labelSmall, titleMedium …).
+        // 51 -> 2 (Oct 27): the raw sizes were converted to Material
+        // scale roles (bodyMedium, labelSmall, titleMedium …).
         //
-        // 2 -> 0 (28.10.): Auch die Achsen des Portfolio-Diagramms nehmen jetzt
-        // labelSmall statt 8 sp.
+        // 2 -> 0 (Oct 28): the portfolio chart's axes now also take
+        // labelSmall instead of 8 sp.
         val ist = zaehle(listOf(fontPattern))
         assert(ist <= 0) {
             "$ist Schriftgroessen stehen als Zahl da. Nimm eine Rolle aus " +

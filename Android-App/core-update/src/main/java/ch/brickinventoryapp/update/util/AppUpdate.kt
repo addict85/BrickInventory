@@ -22,48 +22,48 @@ import ch.brickinventoryapp.data.util.UPDATE_FOLDER
 import ch.brickinventoryapp.model.util.fangeAusserAbbruch
 
 /**
- * Die App aktualisiert sich selbst aus dem GitHub-Release: beim Start still
- * prüfen, nie von allein laden. Es geht, weil der versionCode monoton steigt
- * (VERSION_CODE_BASE + Anzahl Commits, app/build.gradle.kts).
+ * The app updates itself from the GitHub release: check silently on start,
+ * never load on its own. Works because the versionCode rises monotonically
+ * (VERSION_CODE_BASE + commit count, app/build.gradle.kts).
  */
 
-/** Alle Release-Anhänge des Repositorys; darunter je Fassung ein unveränderliches Etikett. */
+/** All of the repository's release assets; among them an immutable label per version. */
 internal const val UPDATE_RELEASE_ROOT = "https://github.com/addict85/BrickInventory/releases/download"
 
 /**
- * Die Anhänge der als „Latest“ markierten Release; Releases sind unveränderlich,
- * ein fester Ort darin also nur über diese Umleitung. GitHub leitet auf
- * `…/download/<etikett>/…` weiter; folgen darf nur UpdateRedirects (core-data).
+ * The assets of the release marked "Latest"; releases are immutable,
+ * so a fixed location in them only via this redirect. GitHub redirects to
+ * `…/download/<label>/…`; only UpdateRedirects (core-data) may follow it.
  */
 const val UPDATE_RELEASE_BASE = "https://github.com/addict85/BrickInventory/releases/latest/download"
 
 /**
- * Die signierte Beschreibung der neusten Fassung; geschrieben vom Signierjob. Wem
- * sie trauen darf, entscheidet allein ihre Signatur, nicht der Ort, der sie lieferte.
+ * The signed description of the newest version; written by the signing job. Whom
+ * it may trust is decided solely by its signature, not by where it came from.
  */
 const val UPDATE_VERSION_URL = "$UPDATE_RELEASE_BASE/version-signiert.json"
 
-/** Ein Fassungsetikett des Workflows (android-v…); sein Anhang wird nie ersetzt. */
+/** A version label from the workflow (android-v…); its asset is never replaced. */
 private val VERSION_LABEL = Regex("android-v[0-9A-Za-z._-]{1,40}")
 
 /**
- * Absolute Obergrenze für das APK: Die erwartete Grösse steht in version.json, und
- * der wird nicht blind vertraut — ohne Grenze liefe der Speicher voll, bevor die
- * Signaturprüfung dran ist. 300 MB bei rund 46 MB APK fangen ein Fass ohne Boden,
- * nicht ein gewachsenes APK.
+ * Absolute upper bound for the APK: the expected size is in version.json, and
+ * it is not trusted blindly — without a bound, memory would fill up before the
+ * signature check gets to run. 300 MB against a roughly 46 MB APK catches a bottomless
+ * stream, not a grown APK.
  */
 internal const val UPDATE_MAX_BYTES: Long = 300L * 1024 * 1024
 
 /**
- * Obergrenze für version.json (fünf Felder): Sie wird als Zeichenkette gelesen,
- * und eine manipulierte Antwort soll die App nicht umbringen können.
+ * Upper bound for version.json (five fields): it is read as a string,
+ * and a tampered response must not be able to crash the app.
  */
 internal const val UPDATE_JSON_MAX_BYTES: Long = 64L * 1024
 
 /**
- * Was in version.json steht. `apkUrl` wird trotzdem geprüft
- * ([isAllowedApkAddress]): Einer Adresse zu folgen, weil sie in einer geladenen
- * Datei stand, ist die gefährliche Stelle eines Selbst-Updaters.
+ * What's in version.json. `apkUrl` is still checked
+ * ([isAllowedApkAddress]): following an address because it was in a loaded
+ * file is the dangerous spot of any self-updater.
  */
 @Serializable
 data class UpdateBeschreibung(
@@ -71,37 +71,37 @@ data class UpdateBeschreibung(
     @SerialName("versionName") val versionName: String,
     @SerialName("apkUrl") val apkUrl: String,
     /**
-     * Der Git-Commit, aus dem gebaut wurde — eine Herkunftsangabe, keine Prüfsumme:
-     * Die käme aus derselben Datei wie die Adresse. Abgesichert wird das APK durch
-     * HTTPS und [signatureFits]. Mit Standardwert, damit eine ältere version.json
-     * nicht scheitert.
+     * The git commit the build came from — provenance, not a checksum:
+     * that would come from the same file as the address. The APK's integrity is
+     * secured by HTTPS and [signatureFits]. With a default value, so an older
+     * version.json doesn't fail.
      */
     @SerialName("commit") val commit: String = "",
     @SerialName("apkSize") val apkSize: Long = 0,
     /**
-     * SHA-256 des APK. Trägt nur, weil die Beschreibung signiert ist
-     * ([checkedDescription]); in einer unsignierten Datei fälschte man sie mit.
+     * SHA-256 of the APK. Only carries weight because the description is signed
+     * ([checkedDescription]); in an unsigned file it would be forged along with it.
      */
     @SerialName("apkSha256") val apkSha256: String = "",
     /**
-     * Wann signiert wurde und bis wann das gilt (Sekunden seit 1970, UTC). Ohne sie
-     * liesse sich eine ältere, echt signierte Beschreibung unbemerkt wieder
-     * hochladen ([valueFresh]); fehlen sie, gilt die Beschreibung als abgelaufen.
+     * When it was signed and until when that holds (seconds since 1970, UTC). Without
+     * them, an older, genuinely signed description could be re-uploaded
+     * unnoticed ([valueFresh]); if missing, the description counts as expired.
      */
     @SerialName("ausgestellt") val ausgestellt: Long = 0,
     @SerialName("gueltigBis") val gueltigBis: Long = 0,
 )
 
 /**
- * Ist die gemeldete Fassung neuer? Echt grösser: Mit `!=` böte die App nach einem
- * zurückgenommenen Build ein Downgrade an, das Android mit
- * INSTALL_FAILED_VERSION_DOWNGRADE ablehnt.
+ * Is the reported version newer? Strictly greater: with `!=` the app would offer a
+ * downgrade after a reverted build, which Android rejects with
+ * INSTALL_FAILED_VERSION_DOWNGRADE.
  */
 internal fun isNew(laufend: Int, gemeldet: Int): Boolean = gemeldet > laufend
 
 /**
- * Zeigt die Adresse in unsere Release-Ablage — die neuste oder das Etikett einer
- * Fassung? Geparst verglichen, siehe [liesBelow].
+ * Does the address point into our release store — the newest, or a version's
+ * label? Compared parsed, see [liesBelow].
  */
 fun isAllowedApkAddress(url: String): Boolean {
     if (liesBelow(url, UPDATE_RELEASE_BASE)) return true
@@ -110,25 +110,25 @@ fun isAllowedApkAddress(url: String): Boolean {
 }
 
 /**
- * Die Signatur eines APK als Fingerabdruck. `null`, wenn nicht lesbar oder nicht
- * signiert — dann wird nicht installiert; „unbekannt“ gilt nie als „passt“.
+ * An APK's signature as a fingerprint. `null` if unreadable or not
+ * signed — then it isn't installed; "unknown" never counts as "matches".
  */
 private fun fingerabdruecke(ctx: Context, apk: File): Signatur? {
     val pm = ctx.packageManager
     val info = pm.getPackageArchiveInfo(apk.absolutePath, PackageManager.GET_SIGNING_CERTIFICATES) ?: return null
-    // Der Paketname muss stimmen, sonst signiert ein fremdes Paket mit
-    // demselben Schluessel sich hier durch.
+    // The package name must match, otherwise a foreign package signed with
+    // the same key could slip through here.
     if (info.packageName != ctx.packageName) return null
     return signatures(info)
 }
 
-/** Der versionCode im geladenen APK; `null`, wenn es nicht lesbar ist. */
-@Suppress("DEPRECATION") // die Fassung mit PackageInfoFlags gibt es erst ab API 33
+/** The versionCode in the loaded APK; `null` if it isn't readable. */
+@Suppress("DEPRECATION") // the version with PackageInfoFlags only exists from API 33
 fun apkVersion(ctx: Context, apk: File): Long? =
     ctx.packageManager.getPackageArchiveInfo(apk.absolutePath, 0)
         ?.let { androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(it) }
 
-/** Dieselbe Ermittlung fuer die INSTALLIERTE App. */
+/** The same lookup for the INSTALLED app. */
 private fun ownFingerprints(ctx: Context): Signatur? {
     val pm = ctx.packageManager
     val info = runCatching { pm.getPackageInfo(ctx.packageName, PackageManager.GET_SIGNING_CERTIFICATES) }.getOrNull() ?: return null
@@ -136,8 +136,8 @@ private fun ownFingerprints(ctx: Context): Signatur? {
 }
 
 /**
- * Die Signatur aus einem PackageInfo samt Ahnenreihe (v3-Rotation). `null` bei
- * fehlender Signatur: „unbekannt“ gilt nie als „passt“.
+ * The signature from a PackageInfo including its ancestry (v3 rotation). `null` if
+ * there's no signature: "unknown" never counts as "matches".
  */
 private fun signatures(info: android.content.pm.PackageInfo): Signatur? {
     fun hex(s: Array<android.content.pm.Signature>?) = s.orEmpty().map { sig ->
@@ -150,9 +150,9 @@ private fun signatures(info: android.content.pm.PackageInfo): Signatur? {
 }
 
 /**
- * Stammt das APK vom Schlüssel der laufenden App oder von seinem Nachfolger
- * ([signatureFollows])? Bei Unklarheit falsch — eine Prüfung, die im Zweifel
- * durchwinkt, ist keine.
+ * Does the APK come from the running app's key or its successor
+ * ([signatureFollows])? False when unclear — a check that waves things
+ * through when in doubt is no check at all.
  */
 fun signatureFits(ctx: Context, apk: File): Boolean {
     val neu = fingerabdruecke(ctx, apk) ?: return false
@@ -161,23 +161,23 @@ fun signatureFits(ctx: Context, apk: File): Boolean {
 }
 
 /**
- * Darf die App Pakete installieren? Eine Erlaubnis je App; bei minSdk
- * 30 entfällt die Frage auf keinem Gerät.
+ * May the app install packages? One permission per app; at minSdk
+ * 30 the question doesn't come up on any device.
  */
 fun installMay(ctx: Context): Boolean =
     ctx.packageManager.canRequestPackageInstalls()
 
-/** Fuehrt in die Systemeinstellung, in der die Erlaubnis erteilt wird. */
+/** Leads to the system setting where the permission is granted. */
 fun permissionIntent(ctx: Context): Intent =
     Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
         .setData("package:${ctx.packageName}".toUri())
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 
 /**
- * Übergibt das geprüfte APK über eine PackageInstaller-Sitzung direkt dem System.
- * Ein impliziter ACTION_VIEW ginge an jede App, die sich als Installer ausgibt;
- * hier landen die Bytes in der Sitzung, und die Antwort kommt an einen eigenen,
- * nicht exportierten Empfänger. Blockiert: im Hintergrund aufrufen.
+ * Hands the checked APK straight to the system via a PackageInstaller session.
+ * An implicit ACTION_VIEW would go to any app posing as an installer;
+ * here the bytes land in the session, and the response reaches our own,
+ * non-exported receiver. Blocking: call in the background.
  */
 fun install(ctx: Context, apk: File) {
     val installer = ctx.packageManager.packageInstaller
@@ -193,7 +193,7 @@ fun install(ctx: Context, apk: File) {
                     sitzung.fsync(aus)
                 }
             }
-            // MUTABLE ab Android 12, weil das System den Status einträgt; das Ziel ist ausdrücklich genannt.
+            // MUTABLE from Android 12, because the system fills in the status; the target is named explicitly.
             val antwort = PendingIntent.getBroadcast(ctx, id,
                 Intent(ctx, InstallationsEmpfaenger::class.java).setPackage(ctx.packageName),
                 PendingIntent.FLAG_UPDATE_CURRENT or
@@ -206,21 +206,21 @@ fun install(ctx: Context, apk: File) {
     }
 }
 
-/** Was die Installation meldet, wenn sie scheitert; UpdateViewModel zeigt es an. */
+/** What the installation reports on failure; UpdateViewModel displays it. */
 object Installationsmeldung {
     val fehler = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 }
 
-/** Die Aktion des Bestätigungsdialogs einer Installer-Sitzung (im SDK nur als SystemApi benannt). */
+/** The confirmation dialog action of an installer session (named only as SystemApi in the SDK). */
 internal const val INSTALLATION_CONFIRM = "android.content.pm.action.CONFIRM_INSTALL"
 
 /**
- * Wohin die Bestätigung führt, wenn das ein System-Installer ist, sonst `null`.
- * Die Absicht kommt zwar nur über unsere PendingIntent; ungeprüft weitergereicht
- * würde der Empfänger aber zum Sprungbrett zu einer beliebigen Activity samt
- * Uri-Rechten. Gestartet wird danach genau die geprüfte Komponente.
+ * Where the confirmation leads, if it is a system installer, else `null`.
+ * The intent does come only via our own PendingIntent; passed on unchecked,
+ * though, the receiver would become a springboard to any Activity,
+ * Uri permissions included. Only the checked component is then launched.
  */
-@Suppress("DEPRECATION") // die Fassungen mit ResolveInfoFlags gibt es erst ab API 33
+@Suppress("DEPRECATION") // the versions with ResolveInfoFlags only exist from API 33
 internal fun installerZiel(pm: PackageManager, confirmation: Intent): ComponentName? {
     val rights = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
         Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or Intent.FLAG_GRANT_PREFIX_URI_PERMISSION
@@ -234,9 +234,9 @@ internal fun installerZiel(pm: PackageManager, confirmation: Intent): ComponentN
 }
 
 /**
- * Die Antwort der Installer-Sitzung. Verlangt das System eine Bestätigung, zeigt
- * es dafür seinen eigenen Dialog (EXTRA_INTENT), aber nur, wenn er zum
- * System-Installer führt ([installerZiel]).
+ * The installer session's response. If the system demands confirmation, it
+ * shows its own dialog for that (EXTRA_INTENT), but only if it leads to the
+ * system installer ([installerZiel]).
  */
 internal class InstallationsEmpfaenger : BroadcastReceiver() {
     override fun onReceive(ctx: Context, intent: Intent) {
@@ -262,11 +262,11 @@ internal class InstallationsEmpfaenger : BroadcastReceiver() {
         else intent.getParcelableExtra(Intent.EXTRA_INTENT)
 }
 
-/** Die Datei, in die geladen wird. Immer dieselbe — ein altes APK ist Ballast. */
+/** The file it loads into. Always the same one — an old APK is dead weight. */
 fun updateFile(ctx: Context): File =
     File(File(ctx.filesDir, UPDATE_FOLDER).apply { mkdirs() }, "BrickInventory.apk")
 
-/** Die Gerätefunktionen dieser Datei hinter [UpdateDevice]. */
+/** The device functions of this file, behind [UpdateDevice]. */
 internal class AndroidUpdateDevice @Inject constructor(@param:ApplicationContext private val ctx: Context) : UpdateDevice {
     override fun descriptionKey(): List<ByteArray> = descriptionKey(
         ctx.resources.openRawResource(R.raw.beschreibungs_schluessel).bufferedReader().use { it.readText() })

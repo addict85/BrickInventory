@@ -22,9 +22,9 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Schalter mit Beschriftung als EIN Bedienelement: Die ganze Zeile schaltet, und
- * TalkBack liest Name, Rolle und Zustand zusammen. Das Steuerelement selbst zeigt nur
- * an (`onCheckedChange = null`); daneben ein eigener Rückruf hiesse „Aus, Schalter“.
+ * A switch with a label as ONE control: the whole row toggles it, and
+ * TalkBack reads name, role and state together. The control itself only displays
+ * (`onCheckedChange = null`); a separate callback next to it would say „off, switch“.
  */
 @Composable
 fun ToggleRow(
@@ -35,7 +35,7 @@ fun ToggleRow(
     Switch(checked = an, onCheckedChange = null, enabled = enabled)
 }
 
-/** Wie [ToggleRow], mit dem Kästchen vor dem Text. */
+/** Like [ToggleRow], with the checkbox before the text. */
 @Composable
 fun BoxRow(
     text: String, an: Boolean, toggleOn: (Boolean) -> Unit, modifier: Modifier = Modifier,

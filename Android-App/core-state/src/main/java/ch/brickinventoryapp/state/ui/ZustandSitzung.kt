@@ -6,59 +6,58 @@ import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.model.data.ScopeFilter
 
 /*
- * Die Zustandsklassen liegen je Bereich in ui/Zustand*.kt; hier, was neben der
- * Sitzung (core-session, AppUiState) gilt: Filter, Lagerorte, das Meldungsziel.
- * Was sich oft ändert, hat eigene Flüsse, damit nicht alle AppUiState-Konsumenten
- * neu zeichnen.
+ * The state classes live per area in ui/Zustand*.kt; here, what applies alongside
+ * the session (core-session, AppUiState): filter, storage locations, the notification target.
+ * Whatever changes often has its own flows, so not every AppUiState consumer
+ * has to redraw.
  */
 
-/** Kontofilter und Haushaltskonten — gehalten von [Scope]. */
+/** Account filter and household accounts — held by [Scope]. */
 data class ScopeUiState(
     /**
-     * Kontofilter je Ansicht. Er reist als
-     * `accounts=` mit und wird nur auf dem Server übersetzt, damit Liste, Gesamtzahl,
-     * Kennzahlen und Summen zusammenpassen.
+     * Account filter per view. It travels along as
+     * `accounts=` and is only resolved on the server, so list, total count,
+     * key figures and sums stay consistent.
      */
     val scopeModes: Map<ScopeFilter.View, String> = emptyMap(),
     /**
-     * Konten des Haushalts, eigenes zuerst. Mehr als einer heisst: Hauptkonto
-     * mit Unterkonten — erst dann erscheinen Kontofilter, Kontoauswahl beim
-     * Erfassen und der Verschieben-Weg.
+     * The household's accounts, own first. More than one means: a main account
+     * with sub-accounts — only then does an account filter appear, account choice during
+     * capture, and the move path.
      */
     val householdMembers: List<MemberView> = emptyList(),
 )
 
 /**
- * Lagerortfilter — eigener Fluss: AppUiState sammeln viele Bildschirme, und jede
- * Änderung zöge sie mit; die Lagerorte lesen nur Galerie und Teile. Der
- * Kontofilter bleibt in AppUiState, weil ihn mehr Ansichten und das Erfassen
- * brauchen.
+ * Storage-location filter — a flow of its own: many screens collect AppUiState, and every
+ * change would drag them along; only gallery and parts read the storage locations. The
+ * account filter stays in AppUiState, because more views and capture need it.
  */
 data class LagerUiState(
-    /** Gewaehlter Lagerort JE ANSICHT — leer heisst „nicht gefiltert". */
+    /** Chosen storage location PER VIEW — empty means „not filtered“. */
     val modi: Map<ScopeFilter.View, String> = emptyMap(),
-    /** Die belegten Lagerorte im Blickfeld — speist den FILTER. */
+    /** The occupied storage locations in the Blickfeld — feeds the FILTER. */
     val orte: List<LocationView> = emptyList(),
     /**
-     * Der Vorrat für das gerade offene Detail — was zur Wahl steht. Nicht [orte]
-     * (belegte Orte des Blickfelds), sondern die wählbaren Orte des Besitzers; beim
-     * Set des Enkels die seinen.
+     * The stock for the detail that's currently open — what's available to choose. Not [orte]
+     * (the Blickfeld's occupied locations), but the owner's selectable locations; for the
+     * grandchild's set, theirs.
      */
     val stock: List<LocationEntryView> = emptyList(),
-    /** Die EIGENEN Orte — fuer die Verwaltung in den Einstellungen. */
+    /** One's OWN locations — for management in settings. */
     val eigene: List<LocationEntryView> = emptyList(),
     /**
-     * Der Ort, der beim Erfassen schon dasteht (der Stern); null heisst keine Vorgabe.
-     * Kommt mit [eigene] aus derselben Antwort — Vorrat und Stern sind eine Auskunft.
+     * The location already set during capture (the star); null means no default.
+     * Comes with [eigene] from the same response — stock and star are one piece of information.
      */
     val vorgabe: LocationEntryView? = null,
 )
 
 /**
- * Welches Set eine angetippte Preisalarm-Meldung öffnen soll. Eigener Fluss, weil
- * ihn nur Activity und NavHost anfassen. null heisst „nichts offen“; quittiert
- * wird sofort nach dem Navigieren, sonst spränge die App bei der nächsten
- * Rekomposition erneut ins Detail.
+ * Which set a tapped price-alert notification should open. A flow of its own, because
+ * only the activity and NavHost touch it. null means „nothing open“; acknowledged
+ * right after navigating, otherwise the app would jump back into the detail on
+ * the next recomposition.
  */
 data class MessageTargetUiState(
     val setNummer: String? = null,

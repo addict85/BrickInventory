@@ -17,10 +17,10 @@ import dagger.assisted.AssistedInject
 import java.util.concurrent.TimeUnit
 
 /**
- * Holt stündlich ab, ob ein Preisalarm ausgelöst hat, und meldet es. Abholen statt
- * Push: Push hiesse Firebase und fremde Server für jede Meldung, und schneller als
- * der stündliche Preislauf des Servers entsteht keine Meldung. Den Akku schonen
- * NetworkType.CONNECTED, Doze und die Bündelung des JobSchedulers.
+ * Fetches hourly whether a price alert has triggered, and reports it. Fetching instead of
+ * push: push would mean Firebase and a third-party server for every notification, and no notification
+ * can arise faster than the server's hourly price run anyway. NetworkType.CONNECTED,
+ * Doze and the JobScheduler's batching save battery.
  */
 @HiltWorker
 class PreisalarmWorker @AssistedInject constructor(
@@ -29,20 +29,20 @@ class PreisalarmWorker @AssistedInject constructor(
     private val abholung: PriceAlertRepository,
 ) : CoroutineWorker(context, params) {
 
-    // erfolg=false heisst NUR „der Server war nicht erreichbar". Alles andere
-    // — abgeschaltet, nicht angemeldet, nichts Neues — ist ein erfolgreicher
-    // Durchgang, der nichts zu tun hatte.
+    // erfolg=false means ONLY „the server was not reachable“. Everything else
+    // — disabled, signed out, nothing new — is a successful
+    // run that had nothing to do.
     override suspend fun doWork(): androidx.work.ListenableWorker.Result =
-        // retry(): Der Server ist gerade nicht da. WorkManager versucht es mit
-        // wachsendem Abstand erneut, statt eine Stunde zu warten.
+        // retry(): the server just isn't there right now. WorkManager tries again with
+        // a growing interval, instead of waiting a full hour.
         if (abholung.pass()) androidx.work.ListenableWorker.Result.success()
         else androidx.work.ListenableWorker.Result.retry()
 
     companion object {
         /**
-         * Die Setnummer, die eine angetippte Meldung öffnen soll — hier, weil wer den
-         * Intent baut, seinen Inhalt bestimmt. Lesen darf es nur der nicht exportierte
-         * MeldungsEinstieg der App.
+         * The set number that a tapped notification should open — here, because whoever
+         * builds the intent determines its contents. Only the app's own, non-exported
+         * MeldungsEinstieg may read it.
          */
         const val EXTRA_SET = "preisalarm_set"
 
@@ -50,14 +50,14 @@ class PreisalarmWorker @AssistedInject constructor(
         internal const val CHANNEL = "preisalarm"
 
         /**
-         * Einplanen oder abbestellen. KEEP statt UPDATE, damit ein häufiges Öffnen der App
-         * den nächsten Lauf nicht immer wieder nach hinten schiebt. Wirft nie: WorkManager
-         * fährt beim ersten Zugriff hoch und kann dabei scheitern; am Schalter auf dem
-         * Hauptthread brachte das die App zum Absturz. Die Absicherung steht hier einmal
-         * statt an jeder Aufrufstelle.
+         * Schedule or unschedule. KEEP instead of UPDATE, so that frequently opening the app
+         * doesn't keep pushing the next run further back. Never throws: WorkManager
+         * boots up on first access and can fail doing so; at the switch on the
+         * main thread that crashed the app. The safeguard lives here once,
+         * instead of at every call site.
          *
-         * @return null bei Erfolg, sonst der Fehler, damit der Aufrufer ihn zeigen kann —
-         *         ein Schalter auf „an“ ohne Meldung soll nicht unbemerkt bleiben.
+         * @return null on success, otherwise the error, so the caller can show it —
+         *         a switch left „on“ without a notification should not go unnoticed.
          */
         fun einplanen(context: Context, an: Boolean): Throwable? = runCatching {
             val wm = WorkManager.getInstance(context)
@@ -73,8 +73,8 @@ class PreisalarmWorker @AssistedInject constructor(
         }.exceptionOrNull()
 
         /**
-         * Auf dem gesperrten Bildschirm nur „Preisalarm“: Set und Preis verrieten jedem,
-         * der das Telefon sieht, was im Regal steht und was es wert ist.
+         * On the locked screen only „Preisalarm“: set and price would reveal to anyone
+         * who sees the phone what's in the shelf and what it's worth.
          */
         fun meldung(context: Context, text: String, tippen: PendingIntent?): android.app.Notification {
             val oeffentlich = NotificationCompat.Builder(context, CHANNEL)

@@ -37,9 +37,9 @@ import ch.brickinventoryapp.ui.LoadingIndicator
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Laden, Fehler, Leer, Kein Treffer und Inhalt — derselbe Baustein für jeden
- * Bildschirm mit geladenem Inhalt, damit kein Fehler mehr wie eine leere Liste
- * aussieht. Der Fehler nennt den Grund und bietet „Erneut versuchen“ an.
+ * Loading, error, empty, no results and content — the same building block for every
+ * screen with loaded content, so no error looks like an empty list
+ * anymore. The error names the reason and offers „try again“.
  */
 @Composable
 fun LoadState(
@@ -62,7 +62,7 @@ fun LoadState(
     }
 }
 
-/** Der Kringel in der Mitte, für Bildschirme ohne eigenes Skelett. */
+/** The spinner in the middle, for screens without their own skeleton. */
 @Composable
 fun LoadCircle(modifier: Modifier = Modifier) {
     val text = stringResource(R.string.common_loading)
@@ -72,8 +72,8 @@ fun LoadCircle(modifier: Modifier = Modifier) {
 }
 
 /**
- * Mittig und rollbar: Auf einem kleinen Telefon im Querformat passt der Hinweis
- * samt Knöpfen sonst nicht hin, und PullToRefresh braucht etwas zum Ziehen.
+ * Centered and scrollable: on a small phone in landscape, the hint plus
+ * buttons otherwise don't fit, and PullToRefresh needs something to pull.
  */
 @Composable
 fun StateHint(modifier: Modifier = Modifier, inhalt: @Composable ColumnScope.() -> Unit) {
@@ -85,7 +85,7 @@ fun StateHint(modifier: Modifier = Modifier, inhalt: @Composable ColumnScope.() 
     )
 }
 
-/** Symbol, Überschrift und ein erklärender Satz — die Form aller Hinweise. */
+/** Icon, heading and an explanatory sentence — the shape of every hint. */
 @Composable
 fun HintText(symbol: ImageVector, titel: String, text: String? = null) {
     EmptySymbol(symbol)
@@ -96,11 +96,11 @@ fun HintText(symbol: ImageVector, titel: String, text: String? = null) {
 }
 
 /**
- * Der Fehler wird angesagt (liveRegion), sobald er erscheint. Ohne Empfänger,
- * damit ihn jede Fläche einbetten kann, auch eine Karte in den Einstellungen.
- * Mit [klasse] stehen Symbol, Überschrift und Rat dieser Klasse da; der Satz der
- * Datenschicht nur dort, wo er mehr sagt als die Überschrift (Code, Servertext).
- * [klasse] ohne Vorgabe: Wer sie wegliess, zeigte einen Serverfehler ohne Rat.
+ * The error is announced (liveRegion) as soon as it appears. Without a receiver,
+ * so any surface can embed it, including a card in settings.
+ * With [klasse], icon, heading and advice of that class are shown; the data layer's
+ * sentence only where it says more than the heading (code, server text).
+ * [klasse] with no default: whoever left it out showed a server error without advice.
  */
 @Composable
 fun ErrorHint(fehler: String?, onErneut: () -> Unit, klasse: Fehlerklasse?) {

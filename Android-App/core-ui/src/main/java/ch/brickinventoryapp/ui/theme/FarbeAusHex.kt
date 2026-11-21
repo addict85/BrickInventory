@@ -3,9 +3,9 @@ package ch.brickinventoryapp.ui.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * Die Farbe eines Teils aus dem Hex-Wert des Servers ("rrggbb", mit oder ohne "#",
- * auch "aarrggbb"); null, wenn er fehlt oder keiner ist. Eine Stelle statt acht,
- * damit Fehlerfall und Deckkraft überall gleich ausfallen.
+ * The color of a part from the server's hex value ("rrggbb", with or without "#",
+ * also "aarrggbb"); null if it's missing or not one. One place instead of eight,
+ * so the error case and opacity come out the same everywhere.
  */
 fun argbFromHex(hex: String?): Long? {
     val roh = hex?.trim()?.removePrefix("#") ?: return null
@@ -17,5 +17,5 @@ fun argbFromHex(hex: String?): Long? {
     }
 }
 
-/** [argbFromHex] als Compose-Farbe. */
+/** [argbFromHex] as a Compose color. */
 fun colorFromHex(hex: String?): Color? = argbFromHex(hex)?.let { Color(it) }

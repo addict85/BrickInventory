@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.catalog.ui.viewmodel
 
 import ch.brickinventoryapp.model.domain.Katalogsortierung
-/** Was der Katalog-Reiter auslöst; der Bildschirm kennt nur diese Schnittstelle. */
+/** What the catalog tab triggers; the screen only knows this interface. */
 interface KatalogAktionen {
     fun loadCatalogMeta()
     fun loadCatalogSets()

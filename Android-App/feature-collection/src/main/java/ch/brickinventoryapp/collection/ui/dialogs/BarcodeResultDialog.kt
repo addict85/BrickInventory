@@ -49,11 +49,11 @@ import ch.brickinventoryapp.shared.ui.PurchasePriceField
 import ch.brickinventoryapp.ui.util.fmtInt
 
 /**
- * Der Dialog nach einem erfolgreichen Barcode-Scan: Set (oder Teileliste)
- * bestätigen, Menge, Kaufpreis, Zustand und Eigentümer erfassen.
+ * The dialog after a successful barcode scan: confirm the set (or parts list
+ * entry), enter quantity, purchase price, condition and owner.
  *
- * Die Bedingung `if (barcodeState.result != null)` bleibt beim Aufrufer: So steht
- * an einer Stelle, wann er erscheint, und hier nur, wie er aussieht.
+ * The condition `if (barcodeState.result != null)` stays with the caller: that way
+ * when it appears stands in one place, and here only how it looks.
  */
 @Composable
 internal fun BarcodeResultRoute(vm: EntryViewModel, imageLoader: ImageLoader) {
@@ -64,7 +64,7 @@ internal fun BarcodeResultRoute(vm: EntryViewModel, imageLoader: ImageLoader) {
     BarcodeResultDialog(BarcodeDialogZustand(state, blick, barcodeState, lagerZustand), vm, imageLoader)
 }
 
-/** Was der Barcode-Dialog zeigt. */
+/** What the barcode dialog shows. */
 data class BarcodeDialogZustand(
     val state: AppUiState,
     val blick: ScopeUiState,
@@ -79,33 +79,33 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
     val barcodeState = zustand.barcodeState
     if (barcodeState.result == null) return
 
-    // Je gescanntem Barcode neu, und über eine Drehung hinweg (rememberSaveable): Preis
-    // und Lagerort gingen beim Drehen verloren.
+    // Fresh per scanned barcode, and across a rotation (rememberSaveable): price
+    // and storage location got lost on rotating.
     var barcodeQuantity by rememberSaveable(barcodeState.result) { mutableStateOf("1") }
     var barcodePriceText by rememberSaveable(barcodeState.result) { mutableStateOf("") }
     var barcodeCondition by rememberSaveable(barcodeState.result) { mutableStateOf(state.userDefaultCondition ?: Zustand.NEU) }
-    // Eigentümer wie im Galerie-Dialog vorbelegen: das eigene Konto. Repository, API
-    // und Server nehmen ihn entgegen, also muss auch dieser Weg ihn abfragen.
+    // Pre-fill the owner as in the gallery dialog: one's own account. The repository, API
+    // and server all accept it, so this path has to ask for it too.
     var barcodeOwner by rememberSaveable(barcodeState.result, blick.householdMembers) {
         mutableStateOf(blick.householdMembers.firstOrNull { it.isSelf }?.id)
     }
-    // Lagerort zurückgesetzt auf die Vorgabe, nicht auf leer, damit sie bei einer
-    // Neuerfassung vorausgewählt ist; die Vorgabe kann nach dem Scan eintreffen.
+    // Storage location reset to the default, not to empty, so it's
+    // preselected on a new entry; the default can arrive after the scan.
     val lagerZustand = zustand.lagerZustand
     val storageDefault = lagerZustand.vorgabe?.name ?: ""
     var barcodeLocation by rememberSaveable(barcodeState.result, storageDefault) { mutableStateOf(storageDefault) }
     val forPartList = barcodeState.source == Scannerherkunft.TEILELISTE
-    // Derselbe Rahmen wie „Set erfassen“: Titel, Felder untereinander, rechts der volle Knopf.
+    // The same frame as "Add set": title, fields stacked, the full-width button on the right.
     AddDialog(
         titel = if (forPartList) stringResource(R.string.main_barcode_add_partslist)
                 else stringResource(R.string.main_barcode_add_set),
         bestaetigen = stringResource(R.string.barcode_add),
-        // Die Sperre gegen die Doppelerfassung sitzt in confirmAddBarcode(); hier sieht man,
-        // dass das Tippen angekommen ist.
+        // The lock against double entry sits in confirmAddBarcode(); here you just see
+        // that the tap registered.
         confirmAn = !barcodeState.hinzufuegen.laeuft,
         onBestaetigen = {
             if (forPartList) {
-                // Nur die Nummer: Aus der Teileliste entsteht kein Bestand.
+                // Only the number: no inventory item comes from a parts list entry.
                 aktionen.confirmAddBarcode(Erfassungswunsch(barcodeState.result))
             } else {
                 aktionen.confirmAddBarcode(Erfassungswunsch(
@@ -113,22 +113,22 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
                     menge = barcodeQuantity.toIntOrNull()?.coerceAtLeast(1) ?: 1,
                     kaufpreis = NumericInput.readMoney(barcodePriceText),
                     zustand = barcodeCondition,
-                    // Ohne Haushalt gar nichts mitschicken — der Server bleibt dann beim
-                    // eigenen Konto (gleiche Regel wie im Galerie-Dialog).
+                    // Without a household, send nothing at all — the server then stays on
+                    // one's own account (same rule as in the gallery dialog).
                     besitzer = if (blick.householdMembers.size > 1) barcodeOwner else null,
                     lagerort = barcodeLocation.trim().takeIf { it.isNotEmpty() },
                 ))
             }
         },
-        // Während des Hinzufügens nicht schliessbar — der Aufruf läuft noch.
+        // Can't be closed while adding — the call is still running.
         onAbbrechen = { if (!barcodeState.hinzufuegen.laeuft) aktionen.cancelBarcode() },
     ) {
-                // ── Hinweis bei geratener Nummer ──
+                // ── Notice for a guessed number ──
                 //
-                // Der Dialog zeigt Bild und Namen; der Hinweis sagt, wann man hinsehen muss
-                // (Server ohne EAN-Abgleich, utils/barcodeQuelle.ts, oder Texterkennung). Oben und
-                // in der Warnfarbe, aber ohne den Vorgang zu sperren: Der Treffer ist oft richtig,
-                // und Bestätigen soll ein Blick sein, kein Klick mehr.
+                // The dialog shows image and name; the notice says when a closer look is needed
+                // (server with no EAN match, utils/barcodeQuelle.ts, or text recognition). Above, and
+                // in the warning color, but without blocking the operation: the hit is often right,
+                // and confirming should be a glance, not a click more.
                 if (barcodeState.unsicher) {
                     Surface(
                         color = MaterialTheme.colorScheme.errorContainer,
@@ -161,7 +161,7 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
                     contentScale = ContentScale.Fit,
                     fallbackSize = 56.dp,
                 )
-                // Name und Nummer gehören zusammen, wie auf der Schachtel; der Hinweis folgt danach.
+                // Name and number belong together, as on the box; the notice follows after.
                 Column(verticalArrangement = Arrangement.spacedBy(Abstaende.hairline)) {
                     if (barcodeState.setName != null)
                         Text(barcodeState.setName, fontWeight = FontWeight.Bold,
@@ -177,7 +177,7 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
                             }
                     }
                 }
-                // Wie im Katalog: Wer ein Set schon hat, soll es sehen, bevor er es ein zweites Mal erfasst.
+                // As in the catalog: whoever already has a set should see it before entering it a second time.
                 if (barcodeState.ownershipQuantity > 0 && !forPartList)
                     InfoBadge(stringResource(R.string.barcode_schon_besessen, barcodeState.ownershipQuantity), icon = Icons.Default.Check)
                 HorizontalDivider()
@@ -199,20 +199,20 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
                             Text(stringResource(R.string.main_barcode_figs), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                 }
-                // Erfassungsfelder nur beim Erfassen in die Sammlung. Aus der Teileliste entsteht
-                // kein Bestand — confirmAddBarcode() reicht im Zweig TEILELISTE nur
-                // die Nummer weiter. Eigentümer, Kaufpreis und Zustand wären dort Felder ohne
-                // Wirkung, die aussehen wie eine Eingabe, die zählt. Bild, Name, Nummer und
-                // Kennzahlen bleiben: Sie helfen zu prüfen, ob das richtige Set gescannt wurde.
+                // Entry fields only when entering into the collection. No inventory item comes
+                // from a parts list entry — confirmAddBarcode() only passes the
+                // number on in the TEILELISTE branch. Owner, purchase price and condition would be fields with no
+                // effect there, looking like input that counts. Image, name, number and
+                // figures stay: they help check that the right set was scanned.
                 if (barcodeState.source != Scannerherkunft.TEILELISTE) {
-                    // Kaufpreis direkt beim Erfassen (optional) — leer lassen übernimmt
-                    // serverseitig den aktuellen Marktpreis (gleiche Logik wie Webapp).
-                    // OwnerPicker blendet sich ohne Haushalt selbst aus
-                    // (members.size < 2 → return), deshalb keine Bedingung hier.
+                    // Purchase price right at entry (optional) — leaving it empty takes over
+                    // the current market price server-side (same logic as the web app).
+                    // OwnerPicker hides itself without a household
+                    // (members.size < 2 → return), hence no condition here.
                     OwnerPicker(
                         blick.householdMembers, barcodeOwner, { barcodeOwner = it }
                     )
-                    // Dieselben Felder wie „Set hinzufügen“: Beschriftung, Hilfezeile, Prüfung.
+                    // The same fields as "Add set": label, help line, check.
                     CountField(barcodeQuantity, { barcodeQuantity = it }, stringResource(R.string.gallery_quantity_hint))
                     PurchasePriceField(barcodePriceText, { barcodePriceText = it }, stringResource(R.string.barcode_purchase_price))
                     Zustandszeile(
@@ -221,8 +221,8 @@ fun BarcodeResultDialog(zustand: BarcodeDialogZustand, aktionen: ErfassungAktion
                     )
                     LagerortErfassung(
                         barcodeLocation,
-                        // Der VORRAT, nicht die belegten Orte: Beim Erfassen soll
-                        // auch ein leeres Regal zur Wahl stehen.
+                        // The STOCK, not the occupied locations: entering should
+                        // also offer an empty shelf as an option.
                         lagerZustand.eigene.map { it.name },
                         { barcodeLocation = it }
                     )

@@ -4,13 +4,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Telefon unten, ab 600 dp Fensterbreite links als Seitenleiste.
+ * Phone at the bottom, from 600 dp window width on the left as a side bar.
  *
- * Gegenproben (gemessen am 28.10., kotlinc gegen ui/Navigationsart.kt):
- *   A  `>=` durch `>` ersetzt → rot: „exactly at the threshold the side bar appears"
- *   B  Schwelle auf 840 gesetzt → rot: dieselbe Prüfung und „ein kleines Tablet"
- *   C  LARGE_WIDTH_DP auf 600 → rot „two columns only from 840 dp“
- *   D  in listAndDetail() `>` statt `>=` → rot „Liste und
+ * Counter-checks (measured on Oct 28, kotlinc against ui/Navigationsart.kt):
+ *   A  `>=` replaced by `>` → red: „exactly at the threshold the side bar appears"
+ *   B  threshold set to 840 → red: the same check and „ein kleines Tablet"
+ *   C  LARGE_WIDTH_DP at 600 → red „two columns only from 840 dp“
+ *   D  `>` instead of `>=` in listAndDetail() → red „Liste und
  *      Detail nebeneinander ab 840 dp“
  */
 class NavigationModeTest {

@@ -5,9 +5,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Die sichtbare Prüfung vor dem Erfassen eines Sets. Privater Fluss: Die
- * Anzeige muss an jedem Ausgang wieder verschwinden, und das lässt sich nur
- * prüfen, solange es genau zwei Wege gibt, sie zu setzen und zu räumen.
+ * The visible check before entering a set. A private flow: the
+ * display must disappear again at every exit, and that can only be
+ * checked as long as there are exactly two paths to set and clear it.
  */
 internal class Erfassung {
     private val _state = MutableStateFlow(EntryUiState())

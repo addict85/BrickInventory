@@ -8,10 +8,10 @@ import androidx.compose.ui.platform.InterceptPlatformTextInput
 import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 
 /**
- * Jedes Textfeld in [inhalt] bittet die Tastatur, nichts zu lernen
- * (IME_FLAG_NO_PERSONALIZED_LEARNING): Passwörter, Codes, Gutschein-Nummer und PIN
- * gehören nicht in die Vorschläge oder das Wörterbuch der Tastatur. Compose kennt
- * die Flagge nicht als KeyboardOptions, also beim Start der Eingabe gesetzt.
+ * Every text field in [inhalt] asks the keyboard to learn nothing
+ * (IME_FLAG_NO_PERSONALIZED_LEARNING): passwords, codes, voucher numbers and PINs
+ * don't belong in the keyboard's suggestions or dictionary. Compose doesn't know
+ * the flag as a KeyboardOptions, so it's set when input starts.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable

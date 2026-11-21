@@ -29,17 +29,17 @@ import androidx.fragment.app.FragmentActivity
 import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 
-/** Die App-Sperre der Activity; ohne Anbieter zeigen die Einstellungen keine Wahl. */
+/** The activity's app lock; without a provider, settings shows no choice. */
 val LocalAppLock = staticCompositionLocalOf<AppLock?> { null }
 
 /**
- * Fingerabdruck oder Gerätesperre, gebunden an einen eigenen Keystore-Schlüssel: Erst
- * dessen Signatur hebt die Sperre auf (AppUnlocking), nicht der Rückruf allein.
- * Ohne Displaysperre gibt es keinen solchen Schlüssel und nichts zu fragen; dann geht es weiter.
+ * Fingerprint or screen lock, bound to a dedicated Keystore key: only
+ * its signature lifts the lock (AppUnlocking), not the callback alone.
+ * Without a screen lock there is no such key and nothing to ask; then it just continues.
  */
 fun unlockWithDevicesLock(activity: FragmentActivity, titel: String, subtitle: String, weiter: () -> Unit) {
     if (activity.getSystemService<KeyguardManager>()?.isDeviceSecure != true) return weiter()
-    // Seit minSdk 30 kann der Schlüssel beides freigeben (KeystoreKey).
+    // Since minSdk 30 the key can authorize both (KeystoreKey).
     val info = BiometricPrompt.PromptInfo.Builder().setTitle(titel).setSubtitle(subtitle)
         .setAllowedAuthenticators(BIOMETRIC_STRONG or DEVICE_CREDENTIAL).build()
     AppUnlocking(AppLockKey) { signatur, antwort ->
@@ -52,7 +52,7 @@ fun unlockWithDevicesLock(activity: FragmentActivity, titel: String, subtitle: S
     }.unlock(weiter)
 }
 
-/** Deckt die App ab, bis entsperrt ist; fragt beim Erscheinen von selbst. */
+/** Covers the app until unlocked; asks on its own when it appears. */
 @Composable
 fun AppLockScreen(unlockOn: () -> Unit) {
     Ueberdeckungsschutz()
@@ -67,7 +67,7 @@ fun AppLockScreen(unlockOn: () -> Unit) {
     }
 }
 
-/** Die Wahl in den Einstellungen; ohne Displaysperre nur das Ausschalten. */
+/** The choice in settings; without a screen lock only turning it off. */
 @Composable
 fun AppLockChoice(lock: AppLock) {
     val minuten by lock.minuten.collectAsState()

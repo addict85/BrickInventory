@@ -37,12 +37,12 @@ import ch.brickinventoryapp.state.ui.viewmodel.Meldungen
 import ch.brickinventoryapp.state.ui.viewmodel.sequenceSignOut
 
 /**
- * Sets erfassen: Barcode und Texterkennung, das Erfassen über die Setnummer
- * (Galerie, Katalog) und die Prüfanzeige „wird geprüft“.
+ * Entering sets: barcode and text recognition, entering via the set number
+ * (gallery, catalog) and the "checking" display.
  *
- * An das Ziel gebunden, das scannt oder erfasst (Erfassungsrahmen): Der Scanner
- * gibt seinen Treffer dorthin zurück, Prüfung und Bestätigung stehen über diesem
- * Ziel, und kein anderes Ziel liest die Ergebnisse.
+ * Tied to the destination that scans or enters (Erfassungsrahmen): the scanner
+ * hands its result back there, checking and confirmation sit above that
+ * destination, and no other destination reads the results.
  */
 @HiltViewModel
 class EntryViewModel @Inject constructor(
@@ -69,24 +69,24 @@ class EntryViewModel @Inject constructor(
     val entryState: StateFlow<EntryUiState> = erfassung.state
 
     /**
-     * Die laufende Prüfung eines Scans, damit sie abgebrochen werden kann —
-     * hängt die Gegenstelle, will man trotzdem weiterscannen. Das Anlegen
-     * selbst steht nicht hier: Es schreibt bereits und lässt sich nicht
-     * folgenlos abbrechen.
+     * A scan's running check, so it can be canceled —
+     * the other end hangs if you want to keep scanning anyway. Creating
+     * itself isn't here: it already writes and can't be
+     * canceled without consequences.
      */
     private var erfassungsJob: Job? = null
 
     /**
-     * Einen Barcode auflösen. Die Prüfanzeige steht, bis die Frage beantwortet
-     * ist; ein neuer Scan bricht den alten ab, sonst beantwortete die Anzeige
-     * eine Frage, die niemand mehr stellt.
+     * Resolve a barcode. The checking display stands until the question is answered;
+     * a new scan cancels the old one, otherwise the display would answer
+     * a question nobody is asking anymore.
      */
     fun resolveBarcode(value: String, herkunft: Scannerherkunft = Scannerherkunft.GALERIE) {
         erfassungsJob?.cancel()
         _barcodeState.update { it.copy(source = herkunft) }
         erfassungsJob = viewModelScope.launch {
-            // Sechs Rückwege, vier davon vorzeitig: Nur das `finally` räumt die
-            // Anzeige verlässlich weg.
+            // Six return paths, four of them early: only the `finally` reliably
+            // clears the display.
             try {
                 erfassung.zeige(value, CheckPhase.BARCODE)
                 when (val r = setCatalog.resolveBarcode(value)) {
@@ -106,8 +106,8 @@ class EntryViewModel @Inject constructor(
                             minifigs = r.data.minifigs, unsicher = r.data.unsicher, hinzufuegen = Vorgang.Fertig,
                             ownershipQuantity = 0,
                         ) }
-                        // „Schon in deiner Sammlung (×N)“: Der Katalog kennt den eigenen Bestand;
-                        // eigener Auftrag, damit die Prüfanzeige nicht auf ihn wartet.
+                        // "Already in your collection (×N)": the catalog knows one's own
+                        // inventory; its own job, so the checking display doesn't wait on it.
                         viewModelScope.launch {
                             val antwort = katalog.getCatalogSetDetail(setNum)
                             val ownership = if (antwort is Ergebnis.Erfolg) antwort.data else null
@@ -116,8 +116,8 @@ class EntryViewModel @Inject constructor(
                         }
                     }
                     is Ergebnis.Fehler -> {
-                        // „Nicht gefunden“ nur, wenn der Server das sagt; ein Netzfehler
-                        // ist keine Auskunft über den Barcode.
+                        // "Not found" only if the server says so; a network error
+                        // tells you nothing about the barcode.
                         meldungen.zeige(if (r.code == Fehlercode.BARCODE_KEIN_SET) meldungen.text(R.string.vm_barcode_not_found, value)
                                           else meldungen.meldungFuerSnackbar(r))
                         _barcodeState.update { it.copy(result = null, manuelleErfassungAnfordern = true) }
@@ -130,9 +130,9 @@ class EntryViewModel @Inject constructor(
     }
 
     /**
-     * Eine erkannte Setnummer (Texterkennung) übernehmen. Gefragt wird der
-     * Server, ob das Set schon im Blickfeld steht — nicht die geladene Liste,
-     * die nur eine Seite und nicht die Unterkonten kennt.
+     * Take over a recognized set number (text recognition). The
+     * server is asked whether the set is already in view — not the loaded list,
+     * which only knows one page and not the sub-accounts.
      */
     fun useScannedSetNumber(raw: String, herkunft: Scannerherkunft = Scannerherkunft.GALERIE) {
         erfassungsJob?.cancel()
@@ -172,8 +172,8 @@ class EntryViewModel @Inject constructor(
     }
 
     /**
-     * Steht das Set schon im Blickfeld? Dann öffnet die Galerie es, und es
-     * wird nicht erfasst. Wahr heisst: erledigt (gefunden oder Fehler gemeldet).
+     * Is the set already in view? Then the gallery opens it, and it
+     * isn't entered. True means: done (found or error reported).
      */
     private suspend fun showExisting(setNum: String): Boolean {
         erfassung.zeige(setNum, CheckPhase.BESTAND)
@@ -193,12 +193,12 @@ class EntryViewModel @Inject constructor(
         }
     }
 
-    /** Die Galerie hat zum gefundenen Set navigiert. */
+    /** The gallery has navigated to the found set. */
     fun gallerySearchFoundConsumed() {
         _barcodeState.update { it.copy(gefundenesSet = null) }
     }
 
-    /** Der Bestätigungsdialog nach einem Scan: merken, an die Teileliste geben oder anlegen. */
+    /** The confirmation dialog after a scan: watchlist, hand to the parts list, or enter. */
     override fun confirmAddBarcode(wish: Erfassungswunsch) {
         val setNum = wish.setNumber
         val stand = _barcodeState.value
@@ -223,7 +223,7 @@ class EntryViewModel @Inject constructor(
             when (val r = sets.addSet(setNum, wish.menge.coerceAtLeast(1), wish.kaufpreis, wish.zustand,
                                       wish.besitzer, wish.lagerort?.trim()?.takeIf { it.isNotEmpty() })) {
                 is Ergebnis.Erfolg -> {
-                    // Offline gespeichert: Den Hinweis gibt der Ausgangsmelder, mit Zahl.
+                    // Saved offline: the outbox reporter gives the notice, with a count.
                     if (!r.gepuffert) meldungen.zeige(meldungen.text(
                         if (r.data.katalogOffen) R.string.vm_set_added_no_catalog else R.string.vm_set_added,
                         if (r.data.katalogOffen) setNum else r.data.name ?: setNum))
@@ -243,7 +243,7 @@ class EntryViewModel @Inject constructor(
         result = null, setName = null, imageUrl = null, imageLocal = null, year = null,
         pieces = null, theme = null, minifigs = null, hinzufuegen = Vorgang.Fertig, unsicher = false, ownershipQuantity = 0)
 
-    /** Die Eingabe öffnen, ohne dass ein Scan voranging (Kamera nicht erlaubt). */
+    /** Open manual entry, without a scan having happened first (camera not permitted). */
     fun manuellErfassen(herkunft: Scannerherkunft) {
         _barcodeState.update { it.copy(source = herkunft, manuelleErfassungAnfordern = true) }
     }
@@ -252,7 +252,7 @@ class EntryViewModel @Inject constructor(
         _barcodeState.update { it.copy(manuelleErfassungAnfordern = false) }
     }
 
-    /** Die Teileliste hat die gescannte Setnummer übernommen. */
+    /** The parts list has taken over the scanned set number. */
     fun clearBarcodeForPartsList() {
         _barcodeState.update { it.copy(forPartList = null) }
     }

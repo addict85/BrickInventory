@@ -39,11 +39,11 @@ import ch.brickinventoryapp.state.ui.loadError
 import ch.brickinventoryapp.state.ui.viewmodel.observeLoadOn
 
 /**
- * Das eigene Konto: Profil, Passwort, angemeldete Geräte, zweiter Faktor.
+ * One's own account: profile, password, signed-in devices, second factor.
  *
- * An das Ziel der Konto-Seite gebunden, nicht an die Activity: Profil,
- * Geräteliste und ein halb eingerichtetes TOTP-Geheimnis leben nur, solange
- * die Seite offen ist, und kein Abmelden muss sie eigens wegräumen.
+ * Tied to the account page's destination, not to the Activity: profile,
+ * device list and a half-set-up TOTP secret only live as long as
+ * the page is open, and no sign-out needs to clean them up separately.
  */
 @HiltViewModel
 class AccountViewModel @Inject constructor(
@@ -61,8 +61,8 @@ class AccountViewModel @Inject constructor(
     val secondFactorState = _secondFactorState.asStateFlow()
 
     /**
-     * Der Kontozustand, wie ihn die Kontoseite liest: Nur wer sie öffnet, lädt Profil und
-     * Design. Die Startpasswort-Maske liest [kontoState] und lädt nichts.
+     * The account state, as the account page reads it: only whoever opens it loads profile and
+     * design. The start-password mask reads [kontoState] and loads nothing.
      */
     private val pageObserved = Observed(kontoState)
     val accountPage: StateFlow<AccountUiState> = pageObserved
@@ -73,7 +73,7 @@ class AccountViewModel @Inject constructor(
         observeLoadOn(_secondFactorState) { loadSecondFactor() }
     }
 
-    // ── Profil und Passwort ──────────────────────────────────────────────────
+    // ── Profile and password ──────────────────────────────────────────────────
 
     fun loadProfile() {
         viewModelScope.launch {
@@ -82,7 +82,7 @@ class AccountViewModel @Inject constructor(
         }
     }
 
-    /** Lässt einen Fehler stehen, den das Speichern davor gesetzt hat (Mail nicht gesendet). */
+    /** Leaves an error standing that the save set beforehand (mail not sent). */
     private suspend fun fetchProfile() {
         when (val r = konto.getProfile()) {
             is Ergebnis.Erfolg -> _accountState.update {
@@ -96,7 +96,7 @@ class AccountViewModel @Inject constructor(
         benutzername: String, email: String, vorname: String, nachname: String, passwort: String? = null,
         code: String? = null,
     ) {
-        // Der Server verlangt das Passwort für jede Profiländerung; ohne es gar nicht erst fragen.
+        // The server requires the password for every profile change; don't even ask without it.
         if (passwort.isNullOrBlank()) {
             _accountState.update { it.copy(speichern = Vorgang.Fehlgeschlagen(Meldung.Resource(R.string.konto_profil_password_needed)), meldung = null) }
             return
@@ -106,7 +106,7 @@ class AccountViewModel @Inject constructor(
             val aenderung = Profilaenderung(
                 benutzer = benutzername.trim(),
                 email = email.trim(),
-                // Leer heisst „nicht angegeben", nicht „leerer Vorname".
+                // Empty means "not given", not "empty first name".
                 vorname = vorname.trim().ifBlank { null },
                 nachname = nachname.trim().ifBlank { null },
                 passwortAktuell = passwort,
@@ -114,8 +114,8 @@ class AccountViewModel @Inject constructor(
             )
             when (val r = konto.updateProfile(aenderung)) {
                 is Ergebnis.Erfolg -> {
-                        // Eine neue Adresse gilt erst nach dem Link: „gespeichert“ allein liesse
-                        // glauben, sie gelte schon, und ohne Mail wartet sie umsonst.
+                        // A new address only takes effect after the link: "saved" alone would
+                        // suggest it already applies, and without the mail it waits for nothing.
                         val newAddress = r.data.newAddress
                         val withoutMail = newAddress && !r.data.mailSent
                         _accountState.update { it.copy(codeNoetig = false,
@@ -125,7 +125,7 @@ class AccountViewModel @Inject constructor(
                                 else -> Meldung.Resource(R.string.konto_saved)
                             },
                             speichern = beendet(if (withoutMail) Meldung.Resource(R.string.konto_email_nicht_gesendet) else null)) }
-                        // Neu holen: Der Server normalisiert, die Karte zeigt seinen Stand.
+                        // Fetch again: the server normalizes, the card shows its state.
                         fetchProfile()
                     }
                 is Ergebnis.Fehler -> abgelehnt(r)
@@ -134,9 +134,9 @@ class AccountViewModel @Inject constructor(
     }
 
     /**
-     * Bei aktivem zweitem Faktor verlangt der Server für Passwort und E-Mail einen
-     * Code. Fehlt er, merkt sich der Zustand das; die Oberfläche zeigt das Feld,
-     * und die nächste Anfrage trägt ihn mit. Ein falscher Code lässt das Feld stehen.
+     * With the second factor active, the server requires a code for password and email.
+     * If it's missing, the state remembers that; the UI shows the field,
+     * and the next request carries it along. A wrong code leaves the field standing.
      */
     private fun abgelehnt(r: Ergebnis.Fehler) = _accountState.update {
         it.copy(speichern = gescheitert(r),
@@ -144,9 +144,9 @@ class AccountViewModel @Inject constructor(
     }
 
     /**
-     * Passwort ändern. Der Server verwirft danach ALLE Token des Kontos, auch
-     * diesen; deshalb geht es danach den vollen Abmeldeweg der App. Die
-     * Erklärung kommt in den Snackbar — die Kontokarte ist danach weg.
+     * Change password. The server then invalidates ALL of the account's tokens, this
+     * one included; that's why it goes through the app's full sign-out path afterward. The
+     * explanation goes into the snackbar — the account card is gone by then.
      */
     fun aenderePasswort(aktuell: String, neu: String, code: String? = null) {
         viewModelScope.launch {
@@ -162,9 +162,9 @@ class AccountViewModel @Inject constructor(
         }
     }
 
-    // ── Design des Kontos ────────────────────────────────────────────────────
+    // ── Account design ────────────────────────────────────────────────────
 
-    /** Mit Token liefert /settings/theme das Design DIESES Kontos samt Vorgabe. */
+    /** With a token, /settings/theme delivers THIS account's design plus the default. */
     fun loadDesign() {
         viewModelScope.launch {
             val r = konto.getAppTheme()
@@ -173,8 +173,8 @@ class AccountViewModel @Inject constructor(
     }
 
     /**
-     * Eigenes Design wählen; null heisst Vorgabe des Verwalters. Die Antwort nennt
-     * das wirksame Design, und das gilt sofort in der ganzen App.
+     * Choose your own design; null means the admin's default. The response names
+     * the effective design, and it applies right away across the whole app.
      */
     fun chooseDesign(eigenes: Design?) {
         viewModelScope.launch {
@@ -188,14 +188,14 @@ class AccountViewModel @Inject constructor(
         }
     }
 
-    /** Ohne `vorgabe` ist der Server älter und kennt kein Design je Konto: dann keine Auswahl. */
+    /** Without `vorgabe` the server is older and knows no per-account design: then no choice. */
     private fun designChoice(a: Designstand) =
         a.vorgabe?.let { DesignChoice(a.wirksam ?: it, it, a.eigenes) }
 
-    /** Meldung/Fehler der Kontokarte wegräumen, wenn der Nutzer weitertippt. */
+    /** Clear the account card's message/error once the user types on. */
     fun accountMessageRoute() = _accountState.update { it.copy(meldung = null, speichern = it.speichern.withoutError()) }
 
-    // ── Angemeldete Geräte ───────────────────────────────────────────────────
+    // ── Signed-in devices ───────────────────────────────────────────────────
 
     fun loadDevices() {
         viewModelScope.launch {
@@ -208,9 +208,9 @@ class AccountViewModel @Inject constructor(
     }
 
     /**
-     * Die Rückfrage vor dem Abmelden öffnen; [tokenId] null heisst alle anderen.
-     * Ohne als „aktuell" erkanntes Gerät wird nichts entwertet — sonst träfe es
-     * womöglich das eigene.
+     * Opens the confirmation before signing out; [tokenId] null means all others.
+     * Without a device recognized as "current", nothing is revoked — otherwise it might
+     * hit one's own.
      */
     fun redeemQuestion(tokenId: String?) {
         val liste = _devicesState.value.geraete
@@ -226,7 +226,7 @@ class AccountViewModel @Inject constructor(
 
     fun cancelRedeem() = _devicesState.update { it.copy(prompt = null) }
 
-    /** Passwort und, wenn der Server ihn verlangt hat, Code; eine Absage lässt die Rückfrage offen. */
+    /** Password and, if the server demanded it, code; a refusal leaves the prompt open. */
     fun redeemConfirm(passwort: String, code: String?) {
         val frage = _devicesState.value.prompt ?: return
         if (frage.operation.laeuft) return
@@ -236,7 +236,7 @@ class AccountViewModel @Inject constructor(
             val fehler: Ergebnis.Fehler? = if (frage.tokenId != null) {
                 when (val r = konto.revokeToken(frage.tokenId, anfrage)) {
                     is Ergebnis.Erfolg -> {
-                        // deleted = 0: schon weg (anderes Gerät war schneller) — die Liste stimmt danach wieder.
+                        // deleted = 0: already gone (another device was faster) — the list is correct again after this.
                         meldungen.zeige(Meldung.Resource(if (r.data > 0) R.string.tokens_revoked else R.string.tokens_already_gone))
                         null
                     }
@@ -290,7 +290,7 @@ class AccountViewModel @Inject constructor(
     fun secondFactorBack() =
         _secondFactorState.update { it.copy(geheimnis = null, otpauth = null, codes = emptyList(), abruf = Laden.Daten(Unit)) }
 
-    /** Ein Schritt: laden anzeigen, fragen, Ergebnis eintragen oder Fehler zeigen. */
+    /** A step: show loading, ask, record the result, or show an error. */
     private fun <T> zweiterFaktor(
         abruf: suspend () -> Ergebnis<T>,
         successText: Int? = null,

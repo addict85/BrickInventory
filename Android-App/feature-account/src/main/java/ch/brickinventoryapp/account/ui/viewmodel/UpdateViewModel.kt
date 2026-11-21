@@ -38,10 +38,10 @@ import ch.brickinventoryapp.update.util.UpdateStatusStore
 import ch.brickinventoryapp.model.ui.Meldung
 
 /**
- * Selbstaktualisierung: nachsehen, laden, installieren lassen. Beim Start still
- * prüfen, nie von allein laden, dazu ein Knopf in den Einstellungen. Die stille
- * Prüfung meldet keinen Fehler: Wer ohne Netz startet, hat nichts gefragt; wer den
- * Knopf drückt, schon.
+ * Self-update: check, load, offer to install. Check silently on start,
+ * never load on its own, plus a button in settings. The silent
+ * check reports no error: whoever starts without network hasn't asked; whoever
+ * presses the button has.
  */
 @HiltViewModel
 class UpdateViewModel @Inject constructor(
@@ -60,21 +60,21 @@ class UpdateViewModel @Inject constructor(
     private var loadJob: Job? = null
 
     init {
-        // Beim Abmelden zuruecksetzen: Ein Fortschritt oder „bereit zur
-        // Installation" erschiene dem naechsten Nutzer sonst als sein Vorgang.
+        // Reset on sign-out: progress or "ready to
+        // install" would otherwise appear to the next user as their own operation.
         viewModelScope.launch {
             anmeldestand.authTokenState.map { it.isNullOrBlank() }.distinctUntilChanged().drop(1)
                 .filter { abgemeldet -> abgemeldet }
                 .collect { _state.value = UpdateUiState(startpruefung = updateStatus.startpruefungAn()) }
         }
-        // Mit jeder Anmeldung still nach einer neuen Fassung sehen (wenn der Schalter an ist):
-        // kein Ladebalken, keine Meldung ohne Netz. Hier, weil die Frage der ganzen App gilt.
+        // Check silently for a new version on every sign-in (if the switch is on):
+        // no loading bar, no message without network. Here because the question applies to the whole app.
         viewModelScope.launch {
             anmeldestand.authTokenState.map { !it.isNullOrBlank() }.distinctUntilChanged()
                 .filter { angemeldet -> angemeldet }
                 .collect { pruefeBeimStart() }
         }
-        // Die Installer-Sitzung antwortet an einen Empfänger, nicht hierher (util/AppUpdate.kt).
+        // The installer session answers to a receiver, not here (util/AppUpdate.kt).
         viewModelScope.launch {
             Installationsmeldung.fehler.filter { it != null }.collect { grund ->
                 Installationsmeldung.fehler.value = null
@@ -84,10 +84,10 @@ class UpdateViewModel @Inject constructor(
     }
 
     /**
-     * Gibt es eine neuere Fassung?
+     * Is there a newer version?
      *
-     * @param still Beim Start `true`: kein Ladebalken, keine Fehlermeldung. Auf
-     *        Knopfdruck `false` — dann sieht der Nutzer beides.
+     * @param still `true` on start: no loading bar, no error message. On
+     *        button press, `false` — then the user sees both.
      */
     override fun pruefeBeimStart() {
         if (updateStatus.startpruefungAn()) pruefeAufUpdate(still = true)
@@ -103,9 +103,9 @@ class UpdateViewModel @Inject constructor(
             _state.update { it.copy(check = if (still) Vorgang.Fertig else Vorgang.Laeuft, fehler = null) }
             fangeAusserAbbruch {
                 val roh = repo.fetchDescription()
-                // Nur eine signierte Beschreibung zählt: Schreibrecht am Repository allein
-                // reicht dann nicht, um ein Update zu unterdrücken oder umzuleiten. Danach
-                // wird die Adresse trotzdem geprüft, nicht geglaubt.
+                // Only a signed description counts: write access to the repository alone
+                // isn't enough then to suppress or redirect an update. After that
+                // the address is still checked, not just trusted.
                 val beschreibung = withContext(io) {
                     checkedDescription(roh, geraet.descriptionKey())
                 }
@@ -117,8 +117,8 @@ class UpdateViewModel @Inject constructor(
                     }
                     return@launch
                 }
-                // Aus einer zurückgesetzten Beschreibung kein Angebot, aus einer abgelaufenen
-                // eines mit Hinweis; die Einstellungen sagen, warum (offerableVersion).
+                // No offer from a rolled-back description, one with a hint from an expired
+                // one; settings say why (offerableVersion).
                 val frische = checkFresh(updateStatus, beschreibung, repo.runningVersion.code, System.currentTimeMillis() / 1000)
                 _state.update {
                     it.copy(check = Vorgang.Fertig, geprueft = true,
@@ -134,19 +134,19 @@ class UpdateViewModel @Inject constructor(
     }
 
     /**
-     * „Später“ im Start-Hinweis: für diesen App-Lauf nicht mehr fragen. Der Zustand
-     * bleibt — es gibt weiterhin eine neuere Fassung, und der Punkt am Konto-Symbol
-     * sagt das weiter. Weggeklickt ist nur die Frage, nicht der Befund.
+     * "Later" in the start notice: don't ask again for this app run. The state
+     * stays — there's still a newer version, and the dot on the account icon
+     * keeps saying so. Only the question is dismissed, not the finding.
      */
     override fun closeUpdateHint() {
         _state.update { it.copy(dialogRejected = true) }
     }
 
     /**
-     * Lädt das APK und bietet es zur Installation an. Drei Bedingungen, bevor etwas
-     * installiert wird: 1. Die Adresse zeigt in unsere Release-Ablage (schon in der Prüfung,
-     * hier nochmal — zwischen Prüfung und Klick kann ein neuer Zustand stehen). 2. Die
-     * Signatur stimmt mit der installierten App überein.
+     * Loads the APK and offers it for installation. Three conditions before anything
+     * is installed: 1. The address points into our release store (already checked,
+     * here again — a new state can appear between the check and the tap). 2. The
+     * signature matches the installed app.
      */
     override fun ladeUpdate() {
         val fassung = _state.value.newerVersion ?: return
@@ -178,7 +178,7 @@ class UpdateViewModel @Inject constructor(
         }
     }
 
-    /** Der Download bricht ab, die Teildatei löscht die Datenschicht; ein neuer Versuch beginnt von vorn. */
+    /** The download aborts, the data layer deletes the partial file; a new attempt starts from scratch. */
     override fun cancelLoad() {
         loadJob?.cancel()
         loadJob = null
@@ -186,9 +186,9 @@ class UpdateViewModel @Inject constructor(
     }
 
     /**
-     * Der Text zur ersten Prüfung, die das geladene APK nicht besteht, sonst null. Erst
-     * die signierte Prüfsumme (genau dieses APK), dann die Signatur, dann die Fassung —
-     * alles, bevor der Nutzer gefragt wird (util/AppUpdate.kt).
+     * The text for the first check the loaded APK fails, else null. First
+     * the signed checksum (exactly this APK), then the signature, then the version —
+     * all before the user is asked (util/AppUpdate.kt).
      */
     private fun invalidApk(beschreibung: UpdateBeschreibung, ziel: File): Int? = when {
         !checksumFits(ziel, beschreibung.apkSha256) -> R.string.update_pruefsumme_falsch
@@ -198,17 +198,17 @@ class UpdateViewModel @Inject constructor(
     }
 
     /**
-     * Öffnet den System-Installer für das geladene APK. Zwei Aufrufer: das Ende von
-     * [ladeUpdate] und der Knopf „Installieren“ nach nachträglich erteilter Erlaubnis.
-     * Die Signatur wird erneut geprüft, weil die Datei während des Ausflugs in die
-     * Systemeinstellungen auf der Platte liegt.
+     * Opens the system installer for the loaded APK. Two callers: the end of
+     * [ladeUpdate] and the "Install" button after the permission was granted
+     * later. The signature is checked again, because the file sat on disk
+     * during the detour into the system settings.
      */
     override fun startInstallation() {
         val gemeldet = _state.value.newerVersion?.versionCode ?: 0
         val checksum = _state.value.newerVersion?.apkSha256.orEmpty()
         viewModelScope.launch {
-            // Rund 46 MB hashen und zwei APK-Analysen: auf dem Hauptfaden droht ein ANR.
-            // Die Reihenfolge bleibt; `&&` bricht beim ersten Fehlschlag ab.
+            // Hashing roughly 46 MB plus two APK analyses: an ANR threatens on the main thread.
+            // The order stays; `&&` breaks off on the first failure.
             val geprueft = withContext(io) {
                 val datei = geraet.updateFile()
                 val echt = datei.isFile && checksumFits(datei, checksum) && geraet.signatureFits(datei) &&

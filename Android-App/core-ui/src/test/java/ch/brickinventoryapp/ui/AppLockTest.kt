@@ -7,21 +7,21 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Die App-Sperre: neu installiert mit Displaysperre an, sonst aus; an, sperrt sie erst nach
- * Ablauf der Minuten im Hintergrund, und eine neue Activity (Drehen, Prozessende) entsperrt
- * nicht von selbst.
+ * The app lock: freshly installed with screen lock on, otherwise off; when on, it only locks after
+ * the configured minutes in the background elapse, and a new Activity (rotation, process death) doesn't
+ * unlock it on its own.
  *
- * Gegenproben (09.11.2026 lokal mit kotlinc gemessen):
- *   A  in inForeground() jede Rückkehr gesperrt (`jetzt - seit >= 0`) → rot „vor Ablauf
+ * Counter-checks (measured locally with kotlinc on Nov 9, 2026):
+ *   A  in inForeground() every return locked (`jetzt - seit >= 0`) → red „vor Ablauf
  *      der Frist fragt die App nicht“; gegenproben/app-sperre-sofort.patch
- *   B  der Zustand nur im Speicher (`MutableStateFlow(false)`) → rot „eine neue Activity
+ *   B  state only in memory (`MutableStateFlow(false)`) → red „eine neue Activity
  *      entsperrt nicht“; gegenproben/app-sperre-vergisst-beim-drehen.patch
- *   C  in inForeground() der Vergleich des Gerätestarts gestrichen (`restarted = false`)
- *      → rot „locked after a reboot, even if the clock is already further“;
+ *   C  in inForeground() the device-boot comparison removed (`restarted = false`)
+ *      → red „locked after a reboot, even if the clock is already further“;
  *      gegenproben/app-sperre-ohne-geraetestart.patch
- *   D  (kotlinc) hiddenWidget() nur `ablage.gesperrt()` → rot „das Widget
+ *   D  (kotlinc) hiddenWidget() only `ablage.gesperrt()` → red „das Widget
  *      verdeckt seine Betraege, sobald die Sperre greifen kann“; gegenproben/widget-trotz-sperre.patch
- *   E  (kotlinc) vorgabe() immer 0 → rot „neu installiert mit Displaysperre …“;
+ *   E  (kotlinc) vorgabe() always 0 → red „neu installiert mit Displaysperre …“;
  *      gegenproben/app-sperre-vorgabe-aus.patch
  */
 class AppLockTest {

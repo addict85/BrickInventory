@@ -17,16 +17,16 @@ import ch.brickinventoryapp.ui.components.StateHint
 import coil3.ImageLoader
 
 /**
- * Galerie links, Set-Detail rechts — auf breiten Fenstern (ab 840 dp, listAndDetail()),
- * schon bevor ein Set gewählt ist: Sonst füllte die Galerie das Tablet, und erst ein
- * Tipp verriet, dass es dort Liste und Detail nebeneinander gibt.
+ * Gallery on the left, set detail on the right — on wide windows (from 840 dp, listAndDetail()),
+ * even before a set is chosen: otherwise the gallery filled the tablet, and only a
+ * tap revealed that list and detail sit side by side there.
  */
 @Composable
 fun GalleryAndDetail(
     galerie: GalleryViewModel,
     erfassung: EntryViewModel,
     imageLoader: ImageLoader,
-    /** Das Set, dessen Detail rechts steht; null, solange keines gewählt ist. */
+    /** The set whose detail sits on the right; null as long as none is chosen. */
     offen: String?,
     onSetClick: (String) -> Unit,
     onScanBarcode: () -> Unit,

@@ -24,13 +24,13 @@ import ch.brickinventoryapp.ui.components.withFont
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Die eigenen Lagerorte verwalten, je Benutzer.
- * Nur die eigenen: Fremde Regale umzubenennen wäre ein Versehen — lesen weit, schreiben eng.
+ * Manage one's own storage locations, per user.
+ * Only one's own: renaming someone else's shelves by mistake would be easy — read wide, write narrow.
  */
 @Composable
 internal fun LocationsCard(lager: LagerUiState, aktionen: EinstellungenAktionen) {
-    // Welcher Dialog offen ist, überlebt eine Drehung: Wer gerade umbenennt, soll
-    // danach nicht vor der Liste stehen.
+    // Which dialog is open survives a rotation: whoever is renaming something right now
+    // shouldn't stand in front of the list again afterward.
     var neu by rememberSaveable { mutableStateOf(false) }
     var umbenennen by rememberSaveable { mutableStateOf<Int?>(null) }
     var loeschen by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -56,8 +56,8 @@ internal fun LocationsCard(lager: LagerUiState, aktionen: EinstellungenAktionen)
         }
     }
 
-    // Hinzufügen in einer Unterseite: Knopf in voller Breite wie in Konto und Haushalt.
-    // Der schwebende Knopf gehört dem Hauptobjekt eines Reiters (Sets, Merkposten).
+    // Add in a subpage: full-width button as in account and household.
+    // The floating button belongs to a tab's main object (sets, watchlist items).
     Button(onClick = { neu = true }, modifier = Modifier.fillMaxWidth()) {
         Icon(Icons.Default.Add, null, Modifier.size(withFont(18.dp)))
         Spacer(Modifier.width(Abstaende.klein))
@@ -72,8 +72,8 @@ internal fun LocationsCard(lager: LagerUiState, aktionen: EinstellungenAktionen)
         onAbbrechen = { neu = false },
     )
     lager.eigene.firstOrNull { it.id == umbenennen }?.let { ort ->
-        // Umbenennen schreibt alle Zuordnungen mit um — darum ein eigener Schritt mit
-        // „Speichern“ statt Speichern beim Tippen.
+        // Renaming rewrites every assignment along with it — hence its own step with
+        // "Save" instead of saving while typing.
         LocationNameDialog(
             titel = stringResource(R.string.storage_rename_title),
             start = ort.name,
@@ -95,9 +95,9 @@ internal fun LocationsCard(lager: LagerUiState, aktionen: EinstellungenAktionen)
 }
 
 /**
- * Eine Zeile: Name, darunter „Vorgabe“, rechts Stern und Menü. Der Stern ist ein
- * Schalter: TalkBack sagt „an/aus“ und nennt den Ort wie das Menü daneben; sichtbar
- * unterscheidet er sich in der Form (gefüllt/umrissen), nicht nur in der Farbe.
+ * A row: name, "Default" below it, star and menu on the right. The star is a
+ * switch: TalkBack says "on/off" and names the location like the menu next to it; visibly
+ * it differs in shape (filled/outlined), not only in color.
  */
 @Composable
 private fun LocationRow(
@@ -144,7 +144,7 @@ private fun LocationRow(
     )
 }
 
-/** Name eines Lagerorts eingeben — für Neu und Umbenennen dieselbe Maske. */
+/** Enter a storage location's name — the same form for new and renaming. */
 @Composable
 private fun LocationNameDialog(
     titel: String,

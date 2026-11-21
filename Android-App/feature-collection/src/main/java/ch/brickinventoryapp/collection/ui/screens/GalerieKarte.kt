@@ -78,40 +78,40 @@ fun SetCard(
     serverUrl: String,
     imageLoader: ImageLoader,
     onClick: (String) -> Unit,
-    /** Position in der Kachelwand — nur fuer die Deckelfarbe des Designs "noppe". */
+    /** Position in the tile wall — only for the cap color of the "noppe" design. */
     position: Int = 0,
-    /** Marktpreis und G&V; fehlt beides, steht der Kaufpreis da (wie im Web). */
+    /** Market price and P&L; if both are missing, the purchase price shows (as in the web). */
     preis: TilePrice? = null,
     waehrung: Waehrung = Waehrung.EUR,
-    /** Steht das Detail dieses Sets daneben? Dann trägt die Kachel einen Rahmen. */
+    /** Is this set's detail open next to it? Then the tile gets a border. */
     ausgewaehlt: Boolean = false,
-    /** Als Listenzeile statt als Kachel; das Raster entscheidet es nach Schrift und Spalten. */
+    /** As a list row instead of a tile; the grid decides it by font size and columns. */
     zeile: Boolean = largeFont(),
 ) {
-    // Vorschaubild über den Server, mit Rückfall auf die volle Auflösung, solange die
-    // `_thumb`-Datei fehlt (nach einem CSV-Import erzeugt der Server sie nachträglich)
-    // — wie data-orig in der Webapp; siehe util/BildRueckfall.kt.
+    // Preview image via the server, with fallback to full resolution as long as
+    // the `_thumb` file is missing (the server generates it after a CSV import)
+    // — like data-orig in the web app; see util/BildRueckfall.kt.
     val (imageUrl, onImageError) = rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)
 
-    // Einmaliger, verzögerter Wiederholversuch nach einem Ladefehler: Direkt nach dem
-    // Erfassen ist das Bild auf dem Server oft noch nicht fertig, und Coil wiederholt
-    // eine gescheiterte Anfrage nie von selbst. An Setnummer und Adresse gebunden,
-    // damit eine wiederverwendete Kachel neu zählt; memoryCacheKeyExtra("retry", …)
+    // One delayed retry after a load error: right after
+    // entering, the image is often not ready yet on the server, and Coil never retries
+    // a failed request on its own. Tied to set number and address,
+    // so a reused tile counts anew; memoryCacheKeyExtra("retry", …)
     var retryNonce by remember(set.setNumber, imageUrl) { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
 
     val isBrick = LocalIsBrickTheme.current
     val isStud = LocalIsStudTheme.current
     val isGloss = LocalIsGloss.current
-    // Im Design "farbfaecher" trägt jede Kachel den Ton ihres Themas als Streifen, wie
-    // im Katalog. Die Galerie kennt nur den Namen; derselbe Name ergibt denselben Ton.
+    // In the "farbfaecher" design, every tile carries its theme's tone as a stripe, as
+    // in the catalog. The gallery only knows the name; the same name gives the same tone.
     val tone = if (LocalIsColorSlotsTheme.current)
         slotsTone(set.theme?.hashCode()) else null
 
-    // In der Listenzeile rücken die Plaketten vom Bild in den Text: Das Bild ist dort zu klein.
+    // In the list row, the badges move from the image into the text: the image is too small there.
     val pct = preis?.pnlPct
     val betrag = tileAmount(set, preis)
-    // Was die Plaketten auf dem Bild sagen, liest TalkBack am Ende der Kachel: zuerst der Name.
+    // What the badges on the image say, TalkBack reads at the end of the tile: the name comes first.
     val guvAnnouncement = if (pct != null && betrag != null) stringResource(
         if (pct >= 0) R.string.gallery_pnl_gewinn else R.string.gallery_pnl_verlust, fmtProzent(pct)) else null
     val quantityAnnouncement = if (set.quantity > 1) pluralStringResource(R.plurals.gallery_stat_units, set.quantity, fmtInt(set.quantity)) else null
@@ -122,22 +122,22 @@ fun SetCard(
         QuantityBadge(set)
     }) else null
 
-    // Die Bildfläche; in der Zeile ohne Plaketten und links statt oben gerundet.
+    // The image area; without badges in the row and rounded on the left instead of the top.
     val canvas: @Composable (Modifier) -> Unit = { flaeche ->
         TileImage(flaeche, set, imageUrl, imageLoader, retryNonce, zeile, isBrick, isGloss, guv, menge,
             onState = { st ->
                 if (st is coil3.compose.AsyncImagePainter.State.Error && retryNonce == 0) {
-                    // Verzögert, nicht im selben Moment: Direkt nach
-                    // dem Erfassen erzeugt der Server die Vorschau
-                    // erst noch.
+                    // Delayed, not on the same moment: right after
+                    // entering, the server is still only generating the
+                    // preview.
                     scope.launch {
                         kotlinx.coroutines.delay(1000)
                         retryNonce = 1
                     }
                 } else if (st is coil3.compose.AsyncImagePainter.State.Error) {
-                    // Auch der zweite Versuch scheiterte — jetzt auf
-                    // die volle Auflösung ausweichen (fehlende
-                    // _thumb-Datei ist der häufigste Grund).
+                    // The second attempt also failed — now fall back
+                    // to the full resolution (a missing
+                    // _thumb file is the most common reason).
                     onImageError()
                 }
             })
@@ -150,9 +150,9 @@ fun SetCard(
 }
 
 /**
- * G&V als Marke: In der Preiszeile brach sie neben „je Stück“ um, und die Kachel
- * wurde höher als ihre Nachbarin. Pfeil und Ansage „Gewinn …“: Eine nackte Zahl
- * sagte nur, wer die Finanzen kennt.
+ * P&L as a badge: in the price line it wrapped next to "each", and the tile
+ * grew taller than its neighbor. Arrow and "Profit …" announcement: a bare
+ * number only told whoever already understands finance.
  */
 @Composable
 private fun GuvBadge(pct: Double) {
@@ -172,7 +172,7 @@ private fun GuvBadge(pct: Double) {
     }
 }
 
-/** Die Stückzahl als Marke, vorgelesen als Einheiten statt als „x2“. */
+/** The quantity as a badge, read aloud as units instead of as "x2". */
 @Composable
 private fun QuantityBadge(set: SetAnsicht) {
     Surface(color = MaterialTheme.colorScheme.primary, shape = Formen.etikett) {
@@ -183,7 +183,7 @@ private fun QuantityBadge(set: SetAnsicht) {
     }
 }
 
-/** Bild der Kachel mit Spiegelung und, ausser in der Zeile, den Plaketten darauf. */
+/** The tile's image with reflection and, except in the row, the badges on it. */
 @Composable
 private fun TileImage(
     modifier: Modifier,
@@ -199,7 +199,7 @@ private fun TileImage(
     onState: (AsyncImagePainter.State) -> Unit,
 ) {
     val ctx = LocalContext.current
-    // Weich einblenden nur, wenn Bewegung erwünscht ist (movementReduced).
+    // Fade in softly only if motion is wanted (movementReduced).
     val weich = !movementReduced()
     Box(modifier) {
         SharedImage(set.setNumber) { bild ->
@@ -208,12 +208,12 @@ private fun TileImage(
                     .memoryCacheKeyExtra("retry", retryNonce.toString())
                     .crossfade(weich).build() },
                 imageLoader = imageLoader,
-                // Ohne Beschreibung: Die Kachel fasst ihren Inhalt zusammen, und der
-                // Name stand darunter schon als Text — TalkBack las ihn zweimal.
+                // Without a description: the tile summarizes its content, and the
+                // name already stood below it as text — TalkBack would read it twice.
                 contentDescription = null,
                 onState = onState,
-                // Randlos bis an die Kartenkanten: Der weisse Bildgrund nimmt die Fläche
-                // ein, die ContentScale.Fit neben dem Bild frei lässt.
+                // Edge to edge, flush with the card's corners: the white image background fills the
+                // space ContentScale.Fit leaves free next to the image.
                 modifier = bild
                     .fillMaxSize()
                     .then(when {
@@ -227,12 +227,12 @@ private fun TileImage(
                 innerGap = Abstaende.klein,
             )
         }
-        // Die Spiegelung auf der Glasscheibe: über dem Bild, aber UNTER Plaketten und
-        // Menü, damit die Bedienelemente auf eigener Fläche stehen (lightStrip()).
+        // The reflection on the glass pane: above the image, but UNDER badges and
+        // menu, so the controls sit on their own surface (lightStrip()).
         if (isGloss) Box(Modifier.matchParentSize().background(lightStrip()))
-        // Die Kachel trägt keine zerstörerische Aktion: Gelöscht wird im Detail,
-        // mit Rückfrage und danach „Rückgängig“. Plaketten mit Abstand innerhalb
-        // des Bilds (BADGE_EDGE): Auf dessen Rand sassen sie über der Ecke.
+        // The tile carries no destructive action: deletion happens in the detail,
+        // with a confirmation and "Undo" after. Badges with padding inside
+        // the image (BADGE_EDGE): on its edge they sat over the corner.
         if (!zeile) {
             if (guv != null) Box(Modifier.align(Alignment.TopStart).padding(BADGE_EDGE).clearAndSetSemantics {}) { guv() }
             if (menge != null) Box(Modifier.align(Alignment.TopEnd).padding(BADGE_EDGE).clearAndSetSemantics {}) { menge() }
@@ -241,9 +241,9 @@ private fun TileImage(
 }
 
 /**
- * Zustand und Besitzer unter dem Bild statt darüber: Über dem Bild brauchten sie
- * einen freien Streifen, der als Lücke zwischen Bild und „Neu“ stand.
- * Der Name zuerst, sichtbar wie vorgelesen: TalkBack las vorher Zustand und Nummer davor.
+ * Condition and owner below the image instead of above: above the image they needed
+ * a free stripe, which sat as a gap between the image and "New".
+ * The name first, visibly as it's read aloud: TalkBack used to read condition and number before it.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -257,11 +257,11 @@ private fun TileTexts(
     preis: TilePrice?,
     betrag: Geld?,
     waehrung: Waehrung,
-    /** Was die Bildplaketten sagen; TalkBack liest es nach dem Preis. */
+    /** What the image badges say; TalkBack reads it after the price. */
     announce: List<String>,
 ) {
-    // Ein einzeiliger Name lässt keine Leerzeile unter sich; damit die Rasterreihe gleich hoch
-    // bleibt, steht die fehlende Zeile am Fuss der Kachel (TileBalance).
+    // A one-line name leaves no blank line below it; so the grid row stays the same
+    // height, the missing line sits at the foot of the tile (TileBalance).
     var namedRows by remember { mutableIntStateOf(2) }
     Box(modifier) {
         Column(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein), verticalArrangement = Arrangement.spacedBy(1.dp)) {
@@ -271,8 +271,8 @@ private fun TileTexts(
             Text(set.setNumber, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Column(Modifier.padding(vertical = Abstaende.hairline), verticalArrangement = Arrangement.spacedBy(Abstaende.hairline)) {
-                // In der Zeile stehen die Plaketten vor dem Zustand in einer Reihe: Jede
-                // eigene Zeile kostete bei 200 % ein Drittel der nächsten Zeile.
+                // In the row, the badges sit before the condition in one line: each
+                // on its own line cost a third of the next line at 200%.
                 if (zeile) FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny),
                     verticalArrangement = Arrangement.spacedBy(Abstaende.hairline),
@@ -281,13 +281,13 @@ private fun TileTexts(
                     menge?.invoke()
                     ConditionBadges(set.conditions, set.condition)
                 } else ConditionBadges(set.conditions, set.condition)
-                // Wem gehört dieses Exemplar? Ohne die Angabe verschiebt
-                // man im Haushalt das falsche.
+                // Who owns this copy? Without that information, you'd
+                // move the wrong one in the household.
                 OwnerBadges(set.owners)
             }
-            // Thema und Teilezahl in einer Zeile: Getrennt stand meist eine davon leer.
-            // Im Farbfächer ein Punkt im Ton der Kartenleiste davor: So liest sich die
-            // Leiste als Thema, nicht nur als Farbe.
+            // Theme and part count in one line: separate, usually one of them sat empty.
+            // In farbfaecher, a dot in the card bar's tone before it: that way the
+            // bar reads as a theme, not just a color.
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
                 if (tone != null && !set.theme.isNullOrBlank()) Box(Modifier.size(8.dp).background(tone, CircleShape))
                 Text(themeAndParts(set.theme, set.pieces?.let { fmtInt(it) + stringResource(R.string.gallery_pieces_suffix) }),
@@ -297,20 +297,20 @@ private fun TileTexts(
             TileAmountRows(set, zeile, preis, betrag, waehrung)
             if (!zeile) TileBalance(2 - namedRows)
         }
-        // Ohne Fläche: nur die Ansage der Bildplaketten, nach dem Preis.
+        // Without a surface: only the image badges' announcement, after the price.
         val badges = announce.takeIf { !zeile && it.isNotEmpty() }
         if (badges != null) Box(Modifier.semantics { contentDescription = badges.joinToString(", ") })
     }
 }
 
-/** Woher der Betrag kommt, darunter der Betrag und, bei mehreren Stück, „je Stück“. */
+/** Where the amount comes from, below it the amount and, for more than one piece, "each". */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TileAmountRows(set: SetAnsicht, zeile: Boolean, preis: TilePrice?, betrag: Geld?, waehrung: Waehrung) {
-    // Wie im Web eine Zeile darüber, was der Betrag ist: Ohne Marktpreis ist es
-    // der Kaufpreis (kachel_quelle), unbeschriftet las er sich als Marktwert.
-    // Leer ohne Betrag, damit Kacheln einer Reihe gleich hoch bleiben; in der
-    // Zeile steht die Bezeichnung vor dem Betrag, wenn die Breite reicht.
+    // As in the web, a line above saying what the amount is: without a market price it's
+    // the purchase price (kachel_quelle), unlabeled it read as market value.
+    // Empty without an amount, so tiles in a row stay the same height; in the
+    // row, the label sits before the amount if the width allows.
     val quelle = when (if (betrag != null) kachelQuelle(set, preis) else null) {
         TileSource.MARKT -> stringResource(R.string.gallery_card_market)
         TileSource.PURCHASE -> stringResource(R.string.gallery_card_paid)
@@ -319,8 +319,8 @@ private fun TileAmountRows(set: SetAnsicht, zeile: Boolean, preis: TilePrice?, b
     if (!zeile) Text(quelle, style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         maxLines = 1, overflow = TextOverflow.Ellipsis)
-    // FlowRow und je eine Zeile: Reicht die Breite nicht, rückt „je Stück“ unter
-    // den Betrag, statt Zeichen für Zeichen umzubrechen.
+    // FlowRow with one line each: if the width doesn't suffice, "each" moves under
+    // the amount instead of wrapping character by character.
     if (betrag != null) FlowRow(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
         if (zeile) Text(quelle, style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false,
@@ -329,8 +329,8 @@ private fun TileAmountRows(set: SetAnsicht, zeile: Boolean, preis: TilePrice?, b
             fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.align(Alignment.CenterVertically))
-        // Der Betrag gilt je Stück; die Finanzen zeigen dasselbe Set mit dem Wert
-        // aller Stück, und ohne Hinweis passten die Zahlen nicht zusammen.
+        // The amount applies per piece; the finances show the same set with the value
+        // of all pieces, and without the hint the numbers wouldn't match up.
         if (set.quantity > 1) Text(stringResource(R.string.gallery_price_each),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -339,9 +339,9 @@ private fun TileAmountRows(set: SetAnsicht, zeile: Boolean, preis: TilePrice?, b
 }
 
 /**
- * Die Noppen stehen über der Karte: Eine Material-Card klippt auf ihre Form.
- * Deshalb rückt die Karte um die Noppenhöhe nach unten, und die Reihe wird daneben
- * gezeichnet und darübergelegt — wie `top:-6px` im CSS.
+ * The studs sit above the card: a Material Card clips to its shape.
+ * That's why the card moves down by the stud height, and the row is drawn
+ * next to it and laid on top — like `top:-6px` in the CSS.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -367,23 +367,23 @@ private fun TileFrame(
             onClickLabel = stringResource(R.string.cd_details_oeffnen),
         ) {
             Column {
-                // Die Steinkante mit den Massen aus themes/brick.css (StudsMass.Stein), wie im
-                // Web über die ganze Breite. Nur die Kante liegt in der Karte; die Noppen werden
-                // daneben gezeichnet, weil die Card sie abschnitte.
-                // Auf der schmalen Telefonkachel eine schlankere Kante: 22 dp nahmen dort dem Bild
-                // sichtbar Platz; ab Tabletbreite die volle Höhe wie im Web.
+                // The brick edge with the dimensions from themes/brick.css (StudsMass.Stein), as in
+                // the web across the full width. Only the edge sits in the card; the studs are drawn
+                // next to it, because the Card would clip them.
+                // A slimmer edge on the narrow phone tile: 22 dp there visibly took room from the
+                // image; from tablet width the full height as in the web.
                 if (isBrick) BoxWithConstraints {
                     BrickStudCap(mass = StudsMass.Stein, verlauf = BrickEdgesHistory,
                         height = if (maxWidth < 240.dp) 12.dp else null)
                 }
-                // Der Steindeckel des Designs "noppe" — Position modulo sechs,
-                // genau wie `.sc:nth-child(6n+…)` in themes/noppe.css. Dieselbe
-                // Bauform wie beim Stein-Design, nur hoeher und in wechselnder
-                // Farbe; deshalb derselbe Baustein statt eines zweiten.
+                // The "noppe" design's brick cap — position modulo six,
+                // exactly like `.sc:nth-child(6n+…)` in themes/noppe.css. The same
+                // building block as the brick design, only taller and in
+                // varying color; hence the same component instead of a second one.
                 if (isStud) BrickStudCap(color = brickTone(position), gloss = isGloss)
                 if (tone != null) Box(Modifier.fillMaxWidth().height(5.dp).background(tone))
-                // 4:3 wie die Setbilder selbst: Eine feste Höhe liess bei ContentScale.Fit
-                // eine Lücke zwischen Bild und Text.
+                // 4:3 like the set images themselves: a fixed height left a gap between the image
+                // and text with ContentScale.Fit.
                 if (zeile) Row(verticalAlignment = Alignment.Top) {
                     canvas(Modifier.width(ROW_IMAGE_WIDTH).aspectRatio(IMAGE_ASPECT_RATIO))
                     texts(Modifier.weight(1f))
@@ -401,18 +401,18 @@ private fun TileFrame(
     }
 }
 
-/** Breite des Vorschaubilds, wenn die Kachel bei grosser Schrift eine Listenzeile ist. */
+/** Width of the preview image when the tile is a list row at large font size. */
 private val ROW_IMAGE_WIDTH = 96.dp
 
-/** Seitenverhältnis der Bildfläche einer Kachel — das der Setbilder. */
+/** Aspect ratio of a tile's image area — that of the set images. */
 internal const val IMAGE_ASPECT_RATIO = 4f / 3f
 
-/** Plaketten auf dem Bild: Innenabstand des Bilds plus ein Rand, damit sie nicht auf seiner Ecke sitzen. */
+/** Badges on the image: the image's inner padding plus a margin, so they don't sit on its corner. */
 private val BADGE_EDGE = Abstaende.klein + Abstaende.tiny
 
 /**
- * „Star Wars · 7’541 Teile“ — das Thema halbfett statt blau: Blau heisst in der App
- * „antippbar“, und das Thema auf der Kachel ist es nicht (Filter im Blatt).
+ * "Star Wars · 7,541 parts" — the theme in semibold instead of blue: blue means
+ * "tappable" in the app, and the theme on the tile isn't (filter is in the sheet).
  */
 @Composable
 private fun themeAndParts(thema: String?, teile: String?): androidx.compose.ui.text.AnnotatedString =
