@@ -23,11 +23,11 @@ import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
 
 /**
- * Die Kennzahlen von Sammlung, Teilen und Figuren (alle elf) mit 1 und mit 2, auf
- * Deutsch und Englisch: Bei 1 steht die Einzahl („1 Exemplar“, „1 copy“), nie „1 Sets“.
+ * The key figures of collection, parts and figures (all eleven) with 1 and with 2, in
+ * German and English: at 1 the singular is shown („1 Exemplar“, „1 copy“), never „1 Sets“.
  *
- * Gegenprobe (Patch unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   kennzahl-immer-mehrzahl   GalleryStatChip fragt den Plural immer mit 2 → rot „bei 1 …“ (de und en)
+ * Counter-check (patch under gegenproben/, measured only in CI — Robolectric):
+ *   kennzahl-immer-mehrzahl   GalleryStatChip always asks for the plural with 2 → red „bei 1 …“ (de and en)
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -48,7 +48,7 @@ class MetricsPluralTest {
         R.plurals.parts_stat_types, R.plurals.parts_stat_colors, R.plurals.parts_stat_total,
     )
 
-    /** Alle Texte der Leiste, wie TalkBack sie bekommt. */
+    /** All the bar's texts, as TalkBack receives them. */
     private fun leiste(sprache: String, anzahl: Int): String {
         RuntimeEnvironment.setQualifiers("$sprache-w411dp-h891dp-port-xxhdpi")
         Locale.setDefault(Locale.forLanguageTag(sprache.replace("-r", "-")))

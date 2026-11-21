@@ -14,25 +14,25 @@ import javax.crypto.AEADBadTagException
 import javax.crypto.BadPaddingException
 
 /**
- * Ein vorübergehender Keystore-Fehler meldet nicht ab. Bisher ergab
- * jede Ausnahme beim Entschlüsseln „kein Token“, auch ein KeyStoreException beim
- * Hochfahren oder ein hängender StrongBox-Chip.
+ * A temporary Keystore error must not trigger a sign-out. Until now
+ * any exception during decryption resulted in „no token“, including a KeyStoreException during
+ * startup or a stalled StrongBox chip.
  *
- * Gegenproben:
- *   A  vaultErrorPermanent() immer true (der alte Stand: jeder Fehler = weg) →
- *      rot „only a permanent error means token gone“ und „ein vorübergehender
+ * Counter-checks:
+ *   A  vaultErrorPermanent() always true (the old state: every error = gone) →
+ *      red „only a permanent error means token gone“ and „ein vorübergehender
  *      Fehler wird einmal wiederholt“
- *   B  openWithRetry() mit `repeat(1)` → rot „… wird einmal wiederholt“
- *   C  readToken() meldet bei Gesperrt sofort „“ (`melde(alt ?: ""); return`) →
- *      rot „ein gesperrter Keystore beim Start …“ und „… nachgemeldet“
- *   D  readToken() hört nach dem Anlauf auf (`return` nach dem ersten „“) → rot
+ *   B  openWithRetry() with `repeat(1)` → red „… wird einmal wiederholt“
+ *   C  readToken() reports „“ immediately when locked (`melde(alt ?: ""); return`) →
+ *      red „ein gesperrter Keystore beim Start …“ and „… nachgemeldet“
+ *   D  readToken() stops after startup (`return` after the first „“) → red
  *      „ein länger gesperrter Keystore meldet das Token nach“
- * Gegenproben zum Schlüssel, der nur bei entsperrtem Gerät arbeitet (lokal gemessen):
- *   E  readToken() zählt jeden Versuch (`attempt++` ohne Bedingung) → rot „bei
+ * Counter-checks for the key that only works on an unlocked device (measured locally):
+ *   E  readToken() counts every attempt (`attempt++` unconditionally) → red „bei
  *      gesperrtem Geraet wartet das Lesen …“; gegenproben/sperre-zaehlt-versuche.patch
- *   G  EntsperrVault.oeffne() immer über `onlyUnlocked` → rot „ein Geheimtext ohne
+ *   G  EntsperrVault.oeffne() always via `onlyUnlocked` → red „ein Geheimtext ohne
  *      Praefix …“; gegenproben/entsperrtresor-vergisst-altbestand.patch
- * Dass EntsperrVault nie auf den Schlüssel ohne Bedingung ausweicht, prüft StoreUnlockedTest.
+ * That EntsperrVault never falls back to the key without a condition is checked by StoreUnlockedTest.
  */
 class VaultLockTest {
 
@@ -65,7 +65,7 @@ class VaultLockTest {
         assertEquals(Tresorbefund.Weg, openWithRetry { null })
     }
 
-    /** Liefert der Reihe nach [findings], danach immer den letzten. */
+    /** Delivers [findings] in order, then always the last one. */
     private class Sequence(vararg findings: Tresorbefund) : TokenEncryption {
         private val rest = ArrayDeque(findings.toList())
         override fun verschluessle(klartext: String) = klartext
@@ -85,8 +85,8 @@ class VaultLockTest {
     }
 
     /**
-     * Eine Nacht gesperrt: weit mehr Versuche, als der Nachlauf erlaubt. Danach entsperrt
-     * und lesbar; das Token muss zurückkommen, sonst stünde morgens die Anmeldemaske da.
+     * Locked overnight: far more attempts than the retry window allows. Afterwards unlocked
+     * and readable; the token must come back, otherwise the sign-in screen would be there in the morning.
      */
     @Test
     fun `with a locked device reading waits without a deadline and reports the token after unlocking`() {

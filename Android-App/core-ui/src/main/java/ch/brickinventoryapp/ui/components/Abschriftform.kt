@@ -1,12 +1,12 @@
 package ch.brickinventoryapp.ui.components
 
-/** Was beim Abtippen zählt: Buchstaben und Ziffern, ohne Doppelpunkte und Leerzeichen (wie Abschrift.von). */
+/** What counts while typing it in: letters and digits, without colons and spaces (like Abschrift.von). */
 internal fun transcriptChars(text: String): Int = text.count { it.isLetterOrDigit() }
 
 /**
- * Die Abschrift in Paaren mit Doppelpunkt, wie die Webapp sie zeigt, und die Stelle für den
- * Cursor danach: hinter demselben getippten Zeichen wie vorher. Text mit anderen Zeichen
- * (ein eingefügtes Base64) bleibt, wie er ist.
+ * The transcript in pairs with colons, as the web app shows it, and the cursor
+ * position afterwards: right after the same typed character as before. Text with other characters
+ * (an inserted Base64) is left as it is.
  */
 internal fun pairTranscriptIn(text: String, cursor: Int): Pair<String, Int> {
     if (text.any { it.uppercaseChar() !in HEX && it != ':' && !it.isWhitespace() }) return text to cursor

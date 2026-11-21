@@ -9,7 +9,7 @@ import ch.brickinventoryapp.state.ui.fehlerTextId
 import ch.brickinventoryapp.state.ui.withTechnicalCause
 import javax.inject.Inject
 
-/** In der Sprache der App, nicht des Systems: Die Textquelle holt sie über LanguageManager. */
+/** In the app's language, not the system's: the text source fetches it via LanguageManager. */
 class AppTexte @Inject constructor(
     private val quelle: Textquelle,
     private val prefs: Anmeldestand,

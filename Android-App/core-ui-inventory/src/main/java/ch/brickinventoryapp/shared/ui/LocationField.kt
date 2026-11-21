@@ -21,9 +21,9 @@ import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.Formen
 
 /**
- * Das Lagerort-Feld: auswählen oder neu eintippen, in einem Bedienelement — ein
- * ExposedDropdownMenuBox klappt auf wie ein Auswahlfeld und nimmt trotzdem
- * Getipptes an, das Gegenstück zur `datalist` der Webapp.
+ * The storage-location field: choose or type a new one, in one control — an
+ * ExposedDropdownMenuBox opens like a dropdown and still accepts
+ * typed input, the counterpart to the web app's `datalist`.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,24 +33,24 @@ fun LocationField(
     onValue: (String) -> Unit,
     modifier: Modifier = Modifier,
     /**
-     * Was im leeren Feld steht. In den Detailansichten „Kein Lagerort“ — ein Beispiel
-     * wie „z. B. Kiste 3“ im Auswahlrahmen las sich dort wie ein gesetzter Ort; das
-     * Beispiel steht nur beim Erfassen (LagerortErfassung).
+     * What sits in the empty field. In the detail views „Kein Lagerort“ — an example
+     * like „z. B. Kiste 3“ in the choice frame read there like a set location; the
+     * example only appears during capture (LagerortErfassung).
      */
     platzhalter: String = stringResource(R.string.detail_storage_none),
-    /** Beschriftung im Feld; mit ihr steht das Beispiel als Hilfetext darunter statt als Platzhalter. */
+    /** Label in the field; with it, the example sits as help text below it instead of as a placeholder. */
     beschriftung: String? = null,
 ) {
-    // Schluessel ist der Wert von aussen: Kommt ein anderer (anderes Set, oder
-    // der normalisierte Wert nach dem Speichern), soll das Feld ihn zeigen
-    // statt den alten Text zu behalten.
+    // Schluessel is the value from outside: if a different one arrives (a different set, or
+    // the normalized value after saving), the field should show it
+    // instead of keeping the old text.
     var text by rememberSaveable(wert) { mutableStateOf(wert) }
-    // rememberSaveable, nicht remember: Wer beim Wählen eines
-    // Orts das Telefon dreht, soll die Liste weiter offen sehen. Dass sie nur
-    // erscheint, wenn es passende Orte gibt, macht es unschädlich.
+    // rememberSaveable, not remember: whoever rotates the phone while choosing a
+    // location should still see the list open. That it only
+    // appears when there are matching locations makes this harmless.
     var offen by rememberSaveable { mutableStateOf(false) }
-    // Was zur Auswahl steht, waehrend getippt wird: nur die passenden. Bei
-    // dreissig Regalen ist eine ungefilterte Liste keine Hilfe mehr.
+    // What's available to choose while typing: only the matching ones. With
+    // thirty shelves, an unfiltered list is no longer a help.
     val passend = stock.filter { it.contains(text.trim(), ignoreCase = true) }
 
     ExposedDropdownMenuBox(
@@ -67,16 +67,16 @@ fun LocationField(
             singleLine = true,
             label = beschriftung?.let { { Text(it) } },
             placeholder = if (beschriftung == null) {
-                // Feldschrift wie jedes Eingabefeld: Kleiner als die Beschriftung daneben sah
-                // „Kein Lagerort“ wie eine Fussnote aus.
+                // Field text like any input field: smaller than the label next to it,
+                // „Kein Lagerort“ looked like a footnote.
                 { Text(platzhalter, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             } else null,
             supportingText = beschriftung?.let { { Text(platzhalter) } },
             trailingIcon = {
                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = offen)
             },
-            // So breit, wie der Aufrufer es vorgibt: Ohne Breite blieb das Feld bei Materials
-            // 280 dp stehen — im Dialog schmaler als die anderen, im Detail halb so breit.
+            // As wide as the caller dictates: without a width the field stuck at Materials'
+            // 280 dp — narrower than the others in the dialog, half as wide in the detail.
             modifier = Modifier.menuAnchor(
                 ExposedDropdownMenuAnchorType.PrimaryEditable, true)
                 .fillMaxWidth(),
@@ -96,10 +96,10 @@ fun LocationField(
 }
 
 /**
- * Dasselbe Feld im Erfassen-Dialog: Beschriftung im Feld und volle Breite wie die
- * Felder darüber, damit sich der Lagerort schon beim Erfassen setzen lässt — in
- * Galerie, Barcode, Katalog, Merkliste und bei manuellen Teilen und Figuren. In den
- * Detailansichten steht das Feld schmal neben seiner Beschriftung.
+ * The same field in the capture dialog: label in the field and full width like the
+ * fields above it, so the storage location can be set already during capture — in
+ * gallery, barcode, catalog, wishlist and for manual parts and figures. In the
+ * detail views the field sits narrow next to its label.
  */
 @Composable
 fun LagerortErfassung(
@@ -108,8 +108,8 @@ fun LagerortErfassung(
     onValue: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Ein Hinweis für jede Erfassung, mit Vorrat und ohne: Zwei Sätze für dasselbe Feld
-    // liessen die Dialoge verschieden aussehen.
+    // A hint for every capture, with and without stock: two different strings for the same field
+    // would make the dialogs look different.
     LocationField(wert = wert, stock = stock, onValue = onValue,
                  modifier = modifier.fillMaxWidth(), platzhalter = stringResource(R.string.detail_storage_ph),
                  beschriftung = stringResource(R.string.detail_storage))

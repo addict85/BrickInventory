@@ -20,12 +20,12 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * Laden beim Beobachten statt per LaunchedEffect: Wer den Zustand zeigt, stösst den Abruf an,
- * je Serveradresse einmal und nach einer Pause ohne Beobachter wieder.
+ * Loading on observation instead of via LaunchedEffect: whoever displays the state triggers the fetch,
+ * once per server address and again after a pause without an observer.
  *
- * Gegenproben (gegenproben/, :core-state:test):
- *   jeserver-ohne-distinct       loadPerServer ohne distinctUntilChanged → rot „loadPerServer lädt je Adresse …“
- *   beobachtet-ruft-jedes-mal    Beobachtet ruft observeOn bei jedem Sammler → rot „Beobachtet zählt …“
+ * Counter-checks (gegenproben/, :core-state:test):
+ *   jeserver-ohne-distinct       loadPerServer without distinctUntilChanged → red „loadPerServer lädt je Adresse …“
+ *   beobachtet-ruft-jedes-mal    Beobachtet calls observeOn on every collector → red „Beobachtet zählt …“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class LoadOnObserveTest {

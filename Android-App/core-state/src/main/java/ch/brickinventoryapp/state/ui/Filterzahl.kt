@@ -9,11 +9,11 @@ import ch.brickinventoryapp.model.domain.accountOptions
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 
 /**
- * Wie viele Filter gerade wirken — die Zahl am Knopf „Filter“. Gezählt wird
- * nur, was die Liste wirklich einschränkt; die Sortierung hat ihr eigenes Menü
- * mit eigenem Punkt (SortierMenu). Ein gemerktes
- * Konto, das nicht mehr zum Haushalt gehört, und ein Ort, in dem nichts mehr
- * liegt, zeigen ohnehin alles (dieselbe Regel wie im Blatt).
+ * How many filters currently apply — the number on the „Filter“ button. Only what
+ * really narrows the list is counted; sorting has its own menu
+ * with its own item (SortierMenu). A remembered
+ * account that no longer belongs to the household, and a location that no longer holds
+ * anything, show everything anyway (the same rule as on the sheet).
  */
 object Filterzahl {
 

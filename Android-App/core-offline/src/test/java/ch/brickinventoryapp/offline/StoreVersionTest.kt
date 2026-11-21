@@ -23,14 +23,14 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 
 /**
- * Jedes Fach liegt in eigener Zeilenform mit Fassung, nicht als Servermodell: Jedes Feld des
- * Fachtyps übersteht die Ablage, eine Zeile, wie sie vor der eigenen Form auf der Platte lag, bleibt
- * lesbar, und an unknown version is unreadable instead of misread.
+ * Each compartment lives in its own row shape with a version, not as the server model: every
+ * field of the compartment type survives the store, a row as it lay on disk before its own
+ * shape stays readable, and an unknown version is unreadable instead of misread.
  *
- * Gegenproben (Patches unter gegenproben/):
- *   ablage-figur-feld-umbenannt     in MinifigRow `fig_number` ohne SerialName → rot „eine alte Zeile …“
- *   ablage-kauf-feld-vertauscht     in Ablagezeilen.kauf avgPrice und purchasePrice vertauscht → rot „jedes Feld …“
- *   ablage-fassung-ignoriert        dekodiere() liest jede Fassung mit dem heutigen Leser → rot „eine unbekannte Fassung …“
+ * Counter-checks (patches under gegenproben/):
+ *   ablage-figur-feld-umbenannt     in MinifigRow `fig_number` without SerialName → red „eine alte Zeile …“
+ *   ablage-kauf-feld-vertauscht     in Ablagezeilen.kauf avgPrice and purchasePrice swapped → red „jedes Feld …“
+ *   ablage-fassung-ignoriert        dekodiere() reads every version with today's reader → red „eine unbekannte Fassung …“
  */
 class StoreVersionTest {
 
@@ -66,7 +66,7 @@ class StoreVersionTest {
 
     @Test
     fun `every field of every compartment survives the store`() {
-        // Die Füllwerte sind lesbare Zeitpunkte: Ein null überstünde jede Ablage.
+        // The filler values are readable timestamps: a null would outlive every store.
         listOf(figur.alsAnsicht().setAddedAt, kauf.alsAnsicht().createdAt, gutschein.alsAnsicht().guthabenGeprueftAm, alarm.alsAnsicht().lastlyAt)
             .forEach { assertNotNull(it) }
         assertEquals(figur.alsAnsicht(), rund(Slots.FIGUREN, figur.alsAnsicht()))
@@ -84,7 +84,7 @@ class StoreVersionTest {
         assertEquals(false, "4711" in text)
     }
 
-    /** So lagen die Zeilen, als die Ablage noch das Servermodell schrieb: eingefroren, nicht neu erzeugt. */
+    /** How the rows lay when the store still wrote the server model: frozen, not newly generated. */
     @Test
     fun `an old row of every compartment stays readable`() {
         assertEquals(Minifig(figNumber = "sw0001", figName = "Luke", quantity = 2, owners = listOf(konto)).alsAnsicht(),

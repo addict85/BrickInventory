@@ -7,9 +7,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.takeWhile
 
 /**
- * Folgt dem SSE-Strom, bis [weiter] false liefert (Import fertig: true) oder der
- * Strom scheitert (false). Ein Abbruch geht weiter, damit der Dienst beim Beenden
- * nicht in die Rückfallebene läuft und dort weiterpollt.
+ * Follows the SSE stream until [weiter] returns false (import done: true) or the
+ * stream fails (false). A cancellation is passed on, so the service doesn't fall
+ * into the fallback and keep polling there while shutting down.
  */
 internal suspend fun folgeStrom(
     strom: Flow<CsvImportSseClient.Event>,

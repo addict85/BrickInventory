@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Wo die gewählten Filter je Ansicht liegen — im Gerät eine DataStore-Datei, im Test eine Map. */
+/** Where the chosen filters per view live — on the device a DataStore file, in the test a map. */
 interface FilterStore {
     suspend fun konto(view: ScopeFilter.View): String
     suspend fun lager(view: ScopeFilter.View): String
@@ -36,12 +36,12 @@ class ScopeFilterStore @Inject constructor(
 }
 
 /**
- * Was der Nutzer gerade sieht: Kontofilter je Ansicht, Lagerortfilter, die
- * Konten des Haushalts und die Lagerorte.
+ * What the user is currently viewing: account filter per view, storage-location filter, the
+ * household's accounts and the storage locations.
  *
- * Ein Singleton, weil Galerie, Teile, Finanzen, Merkliste und Einstellungen
- * dieselben Konten und Orte zeigen. Wer einen Filter ändert, lädt danach seine
- * eigene Liste nach; der Blickfeld-Dienst selbst lädt keine Bestandsdaten.
+ * A singleton, because gallery, parts, finances, wishlist and settings
+ * show the same accounts and locations. Whoever changes a filter afterwards reloads its
+ * own list; the Blickfeld service itself loads no inventory data.
  */
 interface Scope : Filterquelle {
     val konten: StateFlow<ScopeUiState>
@@ -55,7 +55,7 @@ interface Scope : Filterquelle {
     fun reset()
 }
 
-/** Für Tests ohne Hilt. */
+/** For tests without Hilt. */
 fun Scope(
     ablage: FilterStore,
     haushalt: HouseholdRepository,
@@ -74,11 +74,11 @@ class ScopeService @Inject constructor(
     private val _storage = MutableStateFlow(LagerUiState())
     override val lager: StateFlow<LagerUiState> = _storage.asStateFlow()
 
-    /** Wessen Bestand die Ansicht zeigt, oder null für „alle Konten“. */
+    /** Whose inventory the view shows, or null for „all accounts“. */
     override fun accountFor(view: ScopeFilter.View): Kontoauswahl? =
         Kontoauswahl.aus(ScopeFilter.asQuery(_accounts.value.scopeModes[view]))
 
-    /** Der Wert für `storage=`, oder null für „alle Orte“. */
+    /** The value for `storage=`, or null for „all locations“. */
     override fun storageFor(view: ScopeFilter.View): String? = ScopeFilter.storageAsQuery(_storage.value.modi[view])
 
     override suspend fun setAccount(view: ScopeFilter.View, wert: String) {
@@ -91,7 +91,7 @@ class ScopeService @Inject constructor(
         _storage.update { it.copy(modi = it.modi + (view to wert)) }
     }
 
-    /** Die gemerkten Filter aus der Ablage — einmal nach der Anmeldung. */
+    /** The remembered filters from the store — once after signing in. */
     override suspend fun loadFilter() {
         val konten = ScopeFilter.View.entries.associateWith { ablage.konto(it) }
         val lager = ScopeFilter.View.entries.associateWith { ablage.lager(it) }
@@ -100,9 +100,9 @@ class ScopeService @Inject constructor(
     }
 
     /**
-     * Die Konten des Haushalts. Ein gemerkter Filter auf ein Konto, das nicht
-     * mehr dazugehört, fällt auf „alle“ zurück — sonst bliebe die Liste leer,
-     * ohne dass ein sichtbarer Filter es erklärt.
+     * The household's accounts. A remembered filter on an account that no
+     * longer belongs falls back to „all“ — otherwise the list would stay empty
+     * without a visible filter explaining it.
      */
     override suspend fun loadMembers() {
         val r = haushalt.getHouseholdMembers() as? Ergebnis.Erfolg ?: return
@@ -118,21 +118,21 @@ class ScopeService @Inject constructor(
         }
     }
 
-    /** Die belegten Orte im Blickfeld der Galerie — sie speisen den Lagerfilter. */
+    /** The occupied locations in the gallery's Blickfeld — they feed the storage filter. */
     override suspend fun ladeLagerorte() {
         val r = teile.getLocations(accountFor(ScopeFilter.View.GALLERY))
         val orte = (r as? Ergebnis.Erfolg)?.data ?: return
         _storage.update { it.copy(orte = orte) }
     }
 
-    /** Der Vorrat der Besitzer eines Sets — Vorschläge im Lagerortfeld. */
+    /** The stock of a set's owners — suggestions for the storage-location field. */
     override suspend fun loadStock(besitzer: List<Int>) {
         val r = teile.getLocationStock(besitzer)
         val orte = (r as? Ergebnis.Erfolg)?.data ?: return
         _storage.update { it.copy(stock = orte) }
     }
 
-    /** Die eigenen Orte samt Vorgabe — für Erfassen und Verwaltung; gezeigt wird, was die Ablage danach hat. */
+    /** One's own locations including the default — for capture and management; what the store then has is shown. */
     override suspend fun loadOwnLocations() {
         teile.refreshLocationStock()
         val stock = teile.observeLocationStock().first().liste
@@ -142,9 +142,9 @@ class ScopeService @Inject constructor(
     }
 
     /**
-     * Jede Anmeldung beginnt mit „alle Konten“: Ein Filter, der das Abmelden
-     * überlebt, liesse die Sammlung beim nächsten Mal halbiert aussehen, ohne
-     * dass etwas darauf hinweist. Dieselbe Regel wie in der Webapp.
+     * Every sign-in starts with „all accounts“: a filter that survives signing out
+     * would make the collection look halved next time, with nothing pointing
+     * to why. The same rule as in the web app.
      */
     override suspend fun loginBegins() {
         ablage.everythingForgotten()

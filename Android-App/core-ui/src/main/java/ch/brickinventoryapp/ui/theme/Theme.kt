@@ -14,36 +14,36 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import ch.brickinventoryapp.resources.R
 
-// Ermöglicht Composables zu erkennen, ob das "Stein (Blau)"-Design aktiv ist,
-// um strukturelle Stein-Elemente (Noppen-Deckel, Salbei-Badges …) nur dort zu zeigen.
+// Lets composables recognize whether the "Stein (Blau)" theme is active,
+// so structural brick elements (stud lid, sage badges …) are only shown there.
 val LocalIsBrickTheme = staticCompositionLocalOf { false }
 
-// Dasselbe fuer den Farbfaecher: Nur dort tragen die Kacheln einen
-// Themenstreifen. Ein eigener Merker statt eines Vergleichs auf den
-// Design-Namen quer durch die Bildschirme — sonst muesste jede Stelle den
-// Namen kennen.
+// The same for the color fan: only there do the tiles carry a
+// theme stripe. A dedicated flag instead of a comparison against the
+// theme name across the screens — otherwise every spot would have to know the
+// name.
 val LocalIsColorSlotsTheme = staticCompositionLocalOf { false }
 
 /**
- * Traegt die Kachel im Design "noppe" einen Steindeckel?
+ * Does the tile carry a stud lid in the "noppe" theme?
  *
- * Wie [LocalIsColorSlotsTheme]: Die Kachel selbst soll in allen Designs
- * dieselbe Auszeichnung behalten, und nur dieses Local entscheidet, ob der
- * Deckel dazukommt.
+ * Like [LocalIsColorSlotsTheme]: the tile itself should keep the same
+ * markup in every theme, and only this Local decides whether the
+ * lid is added.
  */
 val LocalIsStudTheme = staticCompositionLocalOf { false }
 
 /**
- * Trägt die Oberfläche den Lack des Designs "hochglanz"? Getrennt von
- * [LocalIsStudTheme]: "hochglanz" ist "noppe" in anderem Material; die Kachel
- * fragt beides, ein Local mit drei Zuständen erzwänge überall eine Fallunterscheidung.
+ * Does the surface carry the gloss of the "hochglanz" theme? Separate from
+ * [LocalIsStudTheme]: "hochglanz" is "noppe" in a different material; the tile
+ * asks both, a Local with three states would force a case distinction everywhere.
  */
 val LocalIsGloss = staticCompositionLocalOf { false }
 
-// BrandBlue, BrandBlueDark, BrandBlueLight und BrandBlue50 stehen in
-// DesignTokens.kt — erzeugt aus shared/design-tokens.json, damit sie mit der
-// Webapp nicht auseinanderlaufen koennen. Gleiche Datei, gleiches Paket, also
-// hier ohne Import nutzbar.
+// BrandBlue, BrandBlueDark, BrandBlueLight and BrandBlue50 live in
+// DesignTokens.kt — generated from shared/design-tokens.json, so they can't
+// drift apart from the web app. Same file, same package, so
+// usable here without an import.
 
 // Keep BrandRed for accents / G&V
 val BrandRed        = Color(0xFFE63329)
@@ -53,41 +53,41 @@ val BrandYellow     = Color(0xFFF5A800)
 private val LightColors = lightColorScheme(
     primary             = BrandBlue,
     onPrimary           = Color.White,
-    // BrandBlue50 trug primary nur mit 4,24:1; der hellere Ton hält 4,5:1.
+    // BrandBlue50 carried primary at only 4.24:1; the lighter tone holds 4.5:1.
     primaryContainer    = BrandBlueLight,
     onPrimaryContainer  = BrandBlueDark,
     secondary           = BrandBlueDark,
     onSecondary         = Color.White,
     secondaryContainer  = BrandBlueLight,
     onSecondaryContainer = BrandBlueDark,
-    // BrandRed selbst trägt weisse Schrift nur mit 4,3:1.
+    // BrandRed itself carries white text at only 4.3:1.
     tertiary            = BrandRedDark,
     onTertiary          = Color.White,
     tertiaryContainer   = Color(0xFFFFDAD6),
     onTertiaryContainer = BrandRedDark,
-    // --s100 der Webapp: Compose führt drei Ebenen (background, surface,
-    // surfaceVariant), das Web zwei. Mit --s50 wären background und surfaceVariant
-    // gleich, und Etiketten und Platzhalter darauf verschwänden.
+    // --s100 of the web app: Compose has three levels (background, surface,
+    // surfaceVariant), the web has two. With --s50, background and surfaceVariant
+    // would be equal, and labels and placeholders on top of it would disappear.
     background          = Color(0xFFF1F5F9),  // --s100
     surface             = Color.White,
     surfaceVariant      = Color(0xFFF8FAFC),
     onSurface           = Color(0xFF1E293B),
-    // --s600 statt --s500: Sekundärtext liegt auch auf den Containerstufen.
+    // --s600 instead of --s500: secondary text also sits on the container levels.
     onSurfaceVariant    = Color(0xFF475569),
-    // outline umrandet Bedienelemente (Textfelder) und braucht 3:1 gegen jede
-    // Fläche; der helle Ton taugt nur für Trennlinien.
+    // outline borders controls (text fields) and needs 3:1 against any
+    // surface; the light tone is only good for dividers.
     outline             = Color(0xFF748399),
     outlineVariant      = Color(0xFFE2E8F0),
     error               = Color(0xFFB91C1C),
 )
 
-// ── Stein-Design (blau) — gedämpftes Schieferblau, passend zur Webapp ──────────
-// SlateBlue, SlateBlueDark, SlateBlueLight und Petrol stehen in
-// DesignTokens.kt (erzeugt, siehe oben).
+// ── Brick theme (blue) — muted slate blue, matching the web app ──────────────
+// SlateBlue, SlateBlueDark, SlateBlueLight and Petrol live in
+// DesignTokens.kt (generated, see above).
 val PetrolLight      = Color(0xFFCFE3E8)
 val BrickSand        = Color(0xFFE9DED0)  // "Gebraucht"-Akzent (Container)
 val BrickSandText    = Color(0xFF5C4A2E)
-val BrickSay        = Color(0xFFE1EBE2)  // "Neu"-Akzent (Container, Salbeigrün)
+val BrickSay        = Color(0xFFE1EBE2)  // "New" accent (container, sage green)
 val BrickSayText    = Color(0xFF4A6B52)
 val BrickStud        = Color(0xFF6E8CB0)  // Noppen-/Deckelfarbe (heller Schiefer)
 
@@ -111,17 +111,17 @@ private val BrickBlueColors = lightColorScheme(
     onSurfaceVariant    = Color(0xFF56616E),
     outline             = Color(0xFF768391),
     outlineVariant      = Color(0xFFCDD7E2),
-    // Derselbe Ton wie die Statusfarbe „fehler“; #C0564E trug weisse Schrift nur mit 4,48:1.
+    // The same tone as the "error" status color; #C0564E carried white text at only 4.48:1.
     error               = Color(0xFFA34B3C),
 )
 
 // ── Diagrammfarben je Zustand ────────────────────────────────────────────────
 /**
- * Farben der Verlaufslinien aus dem Design, wie --chart-new/--chart-used im Web. Im
- * Stein-Design Salbeigrün und Sand, dieselben Farben wie die Zustands-Plaketten,
- * als Vollton, weil die Container auf weissem Grund kaum zu sehen wären. Die
- * Vorgaben von [linie] und [raster] sind die klassischen Werte; [gedaempft] ist
- * Schrift (Achsen, Hinweise) und kommt deshalb aus [diagrammFarben].
+ * Colors of the history lines from the theme, like --chart-new/--chart-used on the
+ * web. In the brick theme, sage green and sand, the same colors as the
+ * condition badges, as a solid tone, because the containers would barely be visible on a white
+ * background. The defaults of [linie] and [raster] are the classic values; [gedaempft] is
+ * for text (axes, hints) and therefore comes from [diagrammFarben].
  */
 data class ChartColors(
     val new: Color,
@@ -131,12 +131,12 @@ data class ChartColors(
     val gedaempft: Color = Color(0xFF56616E),
 )
 
-// Die vier Chart*-Farben stehen in DesignTokens.kt (erzeugt, siehe oben) —
-// samt der Begruendung, warum die Gebraucht-Linie im Stein-Design Sand ist.
+// The four Chart*-colors live in DesignTokens.kt (generated, see above) —
+// including the reasoning for why the used line is sand in the brick theme.
 
-// Werkbank (dunkel): darkColorScheme, weil einige Bausteine (Textfeld-Rahmen,
-// Rippel) ihre Helligkeit daran ablesen. Werte wie themes/werkbank.css: warmes Graphit
-// und Messing statt Anthrazit mit Blau, sonst glich es „Klassisch dunkel“ (DunkelTokens.kt).
+// Werkbank (dark): darkColorScheme, because some components (text-field borders,
+// ripple) read their brightness from it. Values as in themes/werkbank.css: warm graphite
+// and brass instead of anthracite with blue, otherwise it would match „Classic dark“ (DunkelTokens.kt).
 private val WerkbankColors = darkColorScheme(
     primary              = WerkbankAzur,
     onPrimary            = Color(0xFF1E1608),
@@ -152,9 +152,9 @@ private val WerkbankColors = darkColorScheme(
     onTertiaryContainer  = Color(0xFFD9A84E),
     background           = Color(0xFF17140F),
     surface              = Color(0xFF211C16),
-    // Muss sich von surface unterscheiden — dieselbe Ueberlegung wie im
-    // Grunddesign: Flaechen, die mit surfaceVariant AUF surface liegen,
-    // verschwaenden sonst.
+    // Must differ from surface — the same reasoning as in the
+    // base theme: surfaces that sit WITH surfaceVariant ON surface
+    // would otherwise disappear.
     surfaceVariant       = Color(0xFF2C261E),
     onSurface            = Color(0xFFECE4D8),
     onSurfaceVariant     = Color(0xFFA89C8B),
@@ -163,11 +163,11 @@ private val WerkbankColors = darkColorScheme(
     error                = Color(0xFFE07A72),
 )
 
-// ── Farbfaecher ─────────────────────────────────────────────────────────────
+// ── Color fan ─────────────────────────────────────────────────────────────
 //
-// Graue Bedienung: Die Markenfarbe ist hier fast schwarz, damit die
-// Themenfarben (FaecherFarben in DesignTokens.kt) die einzigen bunten
-// Flaechen sind und deshalb etwas bedeuten.
+// Gray control: the brand color here is near-black, so the
+// theme colors (FaecherFarben in DesignTokens.kt) are the only colorful
+// surfaces and thus mean something.
 private val ColorSlotsColors = lightColorScheme(
     primary              = FaecherTinte,
     onPrimary            = Color.White,
@@ -191,10 +191,10 @@ private val ColorSlotsColors = lightColorScheme(
     error                = Color(0xFFB91C1C),
 )
 
-// Noppe: weisse Flächen, Tintenkante; Werte aus DesignTokens.kt.
-// `outline` ist die TINTE, weil in diesem Design der Rahmen trägt, nicht der Schatten.
-// Rot steht in keiner Rolle, nur auf den Steindeckeln: In Wertkarte, „Neu“-Plakette
-// und Knöpfen las es sich als Verlust oder Fehler. Blau führt, Gelb ist der Akzent.
+// Noppe: white surfaces, ink edge; values from DesignTokens.kt.
+// `outline` is the INK, because in this theme the border carries it, not the shadow.
+// Red appears in no role, only on the stud lids: in the value card, the „New“ badge
+// and buttons it read as loss or error. Blue leads, yellow is the accent.
 private val StudBlue = Color(0xFF1A5FB8)
 private val StudBlueLight = Color(0xFFE3EDFA)
 private val StudYellowLight = Color(0xFFFFF3C4)
@@ -219,15 +219,15 @@ private val StudColors = lightColorScheme(
     onSurface            = NoppeTinte,
     onSurfaceVariant     = Color(0xFF5A6270),
     outline              = NoppeTinte,
-    // Derselbe Wert, den supplementRoles() vorher aus surface und onSurface mischte.
+    // The same value that supplementRoles() previously blended from surface and onSurface.
     outlineVariant       = Color(0xFFD7D8DA),
     error                = Color(0xFFB91C1C),
 )
 
 /**
- * Nunito, die Schrift des Designs "noppe": Die Systemschrift bleibt auch bei 900
- * kantig. Drei statische Schnitte statt des variablen, der FontVariation und damit
- * eine API-Stufe bräuchte; dieselben Formen wie public/vendor/fonts/ im Web.
+ * Nunito, the font of the "noppe" theme: the system font stays
+ * angular even at 900. Three static cuts instead of the variable one, which would need
+ * FontVariation and thus a higher API level; the same shapes as public/vendor/fonts/ on the web.
  */
 private val NunitoFamily = FontFamily(
     Font(R.font.nunito_regular, FontWeight.Normal),
@@ -236,9 +236,9 @@ private val NunitoFamily = FontFamily(
 )
 
 /**
- * Plus Jakarta Sans — die Schrift der Webapp (styles.css --font) für alle
- * Designs ausser "noppe". Statische Schnitte aus dem Variablen Schnitt der
- * Webapp, aus demselben Grund wie bei Nunito oben.
+ * Plus Jakarta Sans — the web app's font (styles.css --font) for all
+ * themes except "noppe". Static cuts from the web app's variable
+ * cut, for the same reason as with Nunito above.
  */
 private val JakartaFamily = FontFamily(
     Font(R.font.plus_jakarta_sans_regular, FontWeight.Normal),
@@ -249,9 +249,9 @@ private val JakartaFamily = FontFamily(
 )
 
 /**
- * Die Material-Skala mit einer anderen Familie. Nur die Familie wird
- * getauscht, keine Grösse und kein Gewicht — sonst verschöbe ein Designwechsel
- * die ganze Oberfläche, und AbstandsskalaTest hätte recht damit, das zu melden.
+ * The Material scale with a different family. Only the family is
+ * swapped, no size and no weight — otherwise a theme change would shift the
+ * whole UI, and AbstandsskalaTest would be right to report it.
  */
 private fun withFamily(f: FontFamily): Typography = Typography().let { t ->
     Typography(
@@ -273,7 +273,7 @@ private fun withFamily(f: FontFamily): Typography = Typography().let { t ->
     )
 }
 
-/** Die Typografie des Designs "noppe": dieselbe Skala, andere Schrift. */
+/** The typography of the "noppe" theme: the same scale, a different font. */
 private val StudTypography: Typography = withFamily(NunitoFamily)
 private val BrandsTypography: Typography = withFamily(JakartaFamily)
 

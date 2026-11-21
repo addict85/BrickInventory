@@ -16,15 +16,15 @@ import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
- * Verwalterrechte ohne zweiten Faktor: Anmeldung und /auth/me nennen das Feld
- * `zweiterFaktorPflicht`; nach dem Anmelden übernimmt die Sitzung es aus /me und
- * meldet die Pflicht, damit die Einrichtungsmaske erscheint. Den Weg über ein
- * 403 prüft ServerGuardTest.
+ * Admin rights without a second factor: sign-in and /auth/me name the field
+ * `zweiterFaktorPflicht`; after signing in, the session takes it over from /me and
+ * reports the requirement, so the setup screen appears. The path via a
+ * 403 is checked by ServerGuardTest.
  *
- * Gegenproben:
- *   faktorpflicht-aus-me-ignoriert   adoptAccount() meldet nicht → rot „auth me mit Pflicht …“
- *   faktorpflicht-immer              adoptAccount() meldet immer → rot „auth me ohne Pflicht …“
- *   faktorpflicht-feld-umbenannt     User liest `zweiter_faktor_pflicht` → rot „Anmeldung und auth me …“
+ * Counter-checks:
+ *   faktorpflicht-aus-me-ignoriert   adoptAccount() doesn't report → red „auth me mit Pflicht …“
+ *   faktorpflicht-immer              adoptAccount() always reports → red „auth me ohne Pflicht …“
+ *   faktorpflicht-feld-umbenannt     User reads `zweiter_faktor_pflicht` → red „Anmeldung und auth me …“
  */
 class SecondFactorTakeoverTest {
 

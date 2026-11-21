@@ -11,7 +11,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 
-/** Die Bereiche sehen nur die Schnittstellen der Sitzung; die Umsetzungen sind Singletons. */
+/** The scopes see only the session's interfaces; the implementations are singletons. */
 @Module
 @InstallIn(SingletonComponent::class)
 object SessionModule {

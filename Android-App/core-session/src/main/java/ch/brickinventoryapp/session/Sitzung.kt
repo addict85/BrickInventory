@@ -15,59 +15,59 @@ import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.model.domain.StartStateView
 
 /**
- * Die Sitzung der App: Server, Anmeldung, Einstellungen des Kontos. Geändert wird sie
- * nur über diese benannten Schritte; ein allgemeines „ändere“ liesse jeden Bildschirm
- * beliebige Felder setzen, und niemand wüsste mehr, wer die Währung überschrieb.
+ * The app's session: server, sign-in, account settings. It is only changed
+ * via these named steps; a generic „change“ would let every screen set
+ * arbitrary fields, and nobody would know anymore who overwrote the currency.
  */
 interface Sitzung {
     val state: StateFlow<AppUiState>
 
     /**
-     * Zählt die Abmeldungen. Ein Zustand statt eines Ereignisses: Ein Sammler, der
-     * gerade nicht lief, verlöre ein Ereignis; einen Zähler liest er beim nächsten Mal.
+     * Counts the sign-outs. A state instead of an event: a collector that
+     * wasn't running right then would miss an event; a counter it reads the next time around.
      */
     val signOuts: StateFlow<Long>
 
-    /** Die Anmeldung ist gelungen; das Verwalterrecht gilt bis zur nächsten Antwort von /auth/me. */
+    /** Sign-in succeeded; the admin right holds until the next response from /auth/me. */
     fun angemeldet(admin: Boolean)
 
-    /** Adresse und Token haben sich geändert (SitzungsDienst folgt der Ablage). */
+    /** Address and token have changed (SitzungsDienst follows the store). */
     fun anmeldungGeaendert(serverUrl: String, angemeldet: Boolean)
 
-    /** /auth/me hat das Verwalterrecht genannt. */
+    /** /auth/me has named the admin right. */
     fun verwalterGeaendert(admin: Boolean)
 
-    /** Der Server hat Währung und Bedingung des Kontos gespeichert. */
+    /** The server has stored the account's currency and condition. */
     fun einstellungenGespeichert(currency: Waehrung, priceCondition: Zustand)
 
-    /** Die Einstellungen des Kontos vom Server; die Bedingung ist die aufgelöste (Nutzer → global → „N“). */
+    /** The account's settings from the server; the condition is the resolved one (user → global → „N“). */
     fun einstellungenGeladen(currency: Waehrung, priceCondition: Zustand, defaultPriceCondition: Zustand, userDefaultCondition: Zustand?)
 
-    /** Eine Antwort des Servers nennt die Währung des Kontos (etwa die Bewertung). */
+    /** A server response names the account's currency (e.g. the valuation). */
     fun waehrungUebernommen(currency: Waehrung)
 
     fun spracheGeaendert(language: String)
 
-    /** Das wirksame Design, z. B. nach einer Wahl im Konto; es geht in die Ablage, der Zustand folgt ihr. */
+    /** The effective theme, e.g. after a choice in the account; it goes into the store, the state follows it. */
     fun setzeDesign(theme: Design)
 
-    /** Startzustand des Servers, solange er nicht bereit ist; null heisst durch oder nicht erreichbar. */
+    /** The server's startup state, as long as it isn't ready; null means through or not reachable. */
     fun serverstartGeaendert(stand: StartStateView?)
 
     /**
-     * Der Server bleibt eingetragen — abgemeldet heisst nicht „anderer Server“.
-     * Das Design bleibt, bis die Vorgabe des Servers da ist; sonst blitzte „classic“ auf.
+     * The server stays set up — signed out doesn't mean „different server“.
+     * The theme stays until the server's default arrives; otherwise „classic“ would flash up.
      */
     fun abgemeldet()
 }
 
-/** Für Tests und Vorschauen ohne Hilt. */
+/** For tests and previews without Hilt. */
 fun Sitzung(werte: Kontowerte = StorageAccountValues()): Sitzung = SessionState(werte)
 
 /**
- * Ein Singleton und kein Feld eines ViewModels, weil jeder Bildschirm die Sitzung
- * liest, aber jedes Bereichs-ViewModel nur so lange lebt wie sein Ziel. Währung
- * und Design leitet sie aus [Kontowerte] ab; sie hält keine eigene Kopie.
+ * A singleton and not a field of a ViewModel, because every screen reads the
+ * session, but every scope ViewModel only lives as long as its target. It derives
+ * currency and theme from [Kontowerte]; it holds no copy of its own.
  */
 @Singleton
 class SessionState @Inject constructor(private val werte: Kontowerte) : Sitzung {
@@ -110,7 +110,7 @@ class SessionState @Inject constructor(private val werte: Kontowerte) : Sitzung 
 
     override fun serverstartGeaendert(stand: StartStateView?) = _state.update { it.copy(startupStatus = stand) }
 
-    /** Die Währung des Kontos gilt nicht mehr; das Design bleibt bis zur Vorgabe des Servers. */
+    /** The account's currency no longer applies; the theme stays until the server's default arrives. */
     override fun abgemeldet() {
         werte.setCurrency(AppUiState().currency)
         _state.update { AppUiState(serverUrl = it.serverUrl) }
@@ -119,9 +119,9 @@ class SessionState @Inject constructor(private val werte: Kontowerte) : Sitzung 
 }
 
 /**
- * Die Einstellungen des Kontos vom Server in die Sitzung. Das Design nicht:
- * /settings nennt in app_theme die Vorgabe des Verwalters, das des Kontos kommt
- * von /settings/theme (SitzungsDienst).
+ * The account's settings from the server into the session. Not the theme:
+ * /settings names the admin's default in app_theme, the account's own comes
+ * from /settings/theme (SitzungsDienst).
  */
 suspend fun Sitzung.ladeEinstellungen(konto: AccountRepository) {
     val r = konto.getSettings()
@@ -132,23 +132,23 @@ suspend fun Sitzung.ladeEinstellungen(konto: AccountRepository) {
 }
 
 /**
- * Nach einem 403 `nur_admins`: das Verwalterrecht aus /auth/me nachziehen. Nur
- * aus dem Verwalterzustand heraus — wiederholte 403 (eine pollende Seite)
- * lösen so höchstens einen Abruf aus. @return true, wenn das Recht wegfiel
+ * After a 403 `nur_admins`: catch up on the admin right from /auth/me. Only
+ * from the admin state — repeated 403s (a polling screen) thereby
+ * trigger at most one fetch. @return true if the right was lost
  */
 suspend fun Sitzung.followUpRights(konto: AccountRepository): Boolean {
     if (!state.value.isAdmin) return false
     val me = konto.getMe()
-    // Ohne Antwort gilt das 403: Der Server hat das Recht eben verneint.
+    // Without a response, the 403 stands: the server has just denied the right.
     val verwalter = me is Ergebnis.Erfolg && me.data?.verwalter == true
     verwalterGeaendert(verwalter)
     return !verwalter
 }
 
 /**
- * Nach dem Anmelden: Verwalterrecht und Pflicht zum zweiten Faktor aus /auth/me.
- * /me antwortet auch ohne eingerichteten Faktor; so steht die Einrichtungsmaske
- * da, bevor die übrigen Abrufe mit 403 scheitern. Ohne Antwort bleibt alles, wie es ist.
+ * After signing in: admin right and the requirement for a second factor from /auth/me.
+ * /me also answers without a configured factor; this way the setup screen
+ * appears before the other requests fail with 403. Without a response, everything stays as it is.
  */
 suspend fun Sitzung.adoptAccount(
     konto: AccountRepository,
@@ -162,9 +162,9 @@ suspend fun Sitzung.adoptAccount(
 }
 
 /**
- * Ein gescheiterter QR-Anlauf, während die App schon angemeldet ist, ist kein
- * Fehler: Der Scanner löste doppelt aus, der erste Anlauf hat den einmaligen
- * Token verbraucht und angemeldet. Gibt die Meldung zurück, oder null.
+ * A failed QR startup while the app is already signed in is not an
+ * error: the scanner fired twice, the first run already consumed the one-time
+ * token and signed in. Returns the message, or null.
  */
 fun <T : Any> qrError(alreadySignedIn: Boolean, meldung: T): T? =
     if (alreadySignedIn) null else meldung

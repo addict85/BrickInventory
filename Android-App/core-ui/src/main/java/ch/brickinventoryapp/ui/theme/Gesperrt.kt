@@ -10,16 +10,16 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 
 /**
- * Farben gesperrter Knöpfe. Materials feste Deckkraft (12 % Fläche, 38 % Schrift) ergab
- * im Design „noppe“ 2,3:1 für die Schrift und 1,3:1 für die Fläche; hier hält die Schrift
- * 4,5:1 auf ihrer Fläche und die Fläche bzw. der Rand 3:1 auf surface und background.
+ * Colors of locked buttons. Material's fixed opacity (12% surface, 38% text) produced
+ * 2.3:1 for the text and 1.3:1 for the surface in the „noppe“ theme; here the text holds
+ * 4.5:1 on its surface, and the surface resp. border 3:1 against surface and background.
  */
 data class LockedColors(
-    /** Fläche eines vollen oder tonalen Knopfs. */
+    /** Surface of a filled or tonal button. */
     val flaeche: Color,
-    /** Schrift und Symbol auf [flaeche]. */
+    /** Text and icon on [flaeche]. */
     val aufFlaeche: Color,
-    /** Schrift eines Knopfs ohne Fläche (Text- und umrandeter Knopf). */
+    /** Text of a button without a surface (text and outlined buttons). */
     val schrift: Color,
     /** Rand eines umrandeten Knopfs. */
     val edge: Color,
@@ -34,20 +34,20 @@ fun lockedColors(s: ColorScheme): LockedColors {
     return LockedColors(flaeche, aufFlaeche, schrift, edge)
 }
 
-/** Fläche eines Dialogs: im Hellen surface, damit er sich vom abgedunkelten Grund klar abhebt. */
+/** Surface of a dialog: in light mode surface, so it clearly stands out from the darkened background. */
 fun fensterFlaeche(s: ColorScheme): Color = if (s.surface.luminance() > 0.5f) s.surface else s.surfaceContainerHigh
 
 @Composable
 fun fensterFlaeche(): Color = fensterFlaeche(MaterialTheme.colorScheme)
 
-/** Der volle Hauptknopf mit lesbarer Sperre. */
+/** The filled main button with a readable lock state. */
 @Composable
 fun mainButtonColors(): ButtonColors {
     val g = lockedColors(MaterialTheme.colorScheme)
     return ButtonDefaults.buttonColors(disabledContainerColor = g.flaeche, disabledContentColor = g.aufFlaeche)
 }
 
-/** Der tonale Knopf mit lesbarer Sperre. */
+/** The tonal button with a readable lock state. */
 @Composable
 fun toneButtonColors(): ButtonColors {
     val g = lockedColors(MaterialTheme.colorScheme)
@@ -55,8 +55,8 @@ fun toneButtonColors(): ButtonColors {
 }
 
 /**
- * Mischt von [von] schrittweise zu [zu] und, reicht das nicht, weiter zu Schwarz bzw.
- * Weiss, bis [gegen] [ziel]:1 erreicht ist.
+ * Blends step by step from [von] to [zu] and, if that's not enough, further toward black resp.
+ * white, until [gegen] reaches [ziel]:1.
  */
 private fun hin(von: Color, zu: Color, gegen: Color, ziel: Float): Color {
     val ende = if (zu.luminance() < gegen.luminance()) Color.Black else Color.White
@@ -69,14 +69,14 @@ private fun hin(von: Color, zu: Color, gegen: Color, ziel: Float): Color {
     return c
 }
 
-/** Mischt [farbe] von den [reasons]n weg, bis sie gegen jeden [ziel]:1 hält. */
+/** Blends [farbe] away from the [reasons], until it holds [ziel]:1 against each. */
 private fun elevated(farbe: Color, reasons: List<Color>, ziel: Float): Color =
     reasons.fold(farbe) { c, grund -> withContrast(c, grund, ziel) }
 
-/** Anteil von onSurface in der gesperrten Fläche und im Rand, vor dem Anheben auf 3:1. */
+/** Share of onSurface in the locked surface and in the border, before raising it to 3:1. */
 private const val LOCKED_SURFACE = 0.12f
 
-/** Anteil von onSurface in gesperrter Schrift, vor dem Anheben auf 4,5:1. */
+/** Share of onSurface in locked text, before raising it to 4.5:1. */
 private const val LOCKED_FONT = 0.5f
 
 private const val TEXT_CONTRAST_LOCKED = 4.5f

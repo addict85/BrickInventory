@@ -13,21 +13,21 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 
 /**
- * Der Keystore-Tresor selbst, mit einem Schlüsselbund im Speicher statt des AndroidKeyStore:
- * Neue Geheimtexte tragen eine AAD, alte ohne bleiben lesbar und werden umgeschlüsselt; der
- * Altbestand legt keinen Schlüssel an, und nach dem Umschlüsseln ist sein Alias weg.
+ * The Keystore vault itself, with a key bundle in memory instead of the AndroidKeyStore:
+ * new ciphertexts carry an AAD, old ones without stay readable and get re-encrypted; the
+ * legacy path creates no key, and after re-encrypting its alias is gone.
  *
- * Gegenproben (kotlinc und JUnit lokal):
- *   tresor-ohne-aad              verschluessle() ohne updateAAD → rot „ein neuer Geheimtext traegt
+ * Counter-checks (kotlinc and JUnit locally):
+ *   tresor-ohne-aad              verschluessle() without updateAAD → red „ein neuer Geheimtext traegt
  *                                die AAD …“
- *   altbestand-legt-schluessel-an  schluessel() erzeugt auch im Altbestand → rot „der Altbestand
+ *   altbestand-legt-schluessel-an  schluessel() also creates one in the legacy path → red „der Altbestand
  *                                legt keinen Schluessel an …“
- *   ablage-alter-alias-bleibt    wrapNew() ohne forgetLegacyStock → rot „nach dem Umschluesseln
+ *   ablage-alter-alias-bleibt    wrapNew() without forgetLegacyStock → red „nach dem Umschluesseln
  *                                ist der alte Alias der Ablage weg …“
  */
 class KeystoreLegacyStockTest {
 
-    /** Wie der Keystore, aber im Speicher; merkt sich, welche Aliase je angelegt wurden. */
+    /** Like the Keystore, but in memory; remembers which aliases were ever created. */
     private class Bund : Keychain {
         val schluessel = mutableMapOf<String, SecretKey>()
         val angelegt = mutableListOf<String>()
@@ -42,7 +42,7 @@ class KeystoreLegacyStockTest {
 
     private val datei = File(folder, "ablage.schluessel")
 
-    /** Was der Ablageschlüssel geschrieben hat: ein Ergebnis des Laufs, kein Quelltext. */
+    /** What Ablageschluessel wrote: a result of the run, not source code. */
     private fun abgelegt() = datei.readBytes().decodeToString()
 
     @After
@@ -50,7 +50,7 @@ class KeystoreLegacyStockTest {
         folder.deleteRecursively()
     }
 
-    /** Ein Geheimtext, wie ihn Fassungen vor der AAD ablegten: Base64( IV ‖ Geheimtext ), ohne Präfix. */
+    /** A ciphertext as versions before the AAD stored it: Base64( IV ‖ ciphertext ), without a prefix. */
     private fun alterCiphertext(alias: String, klartext: String): String {
         val k = bund.schluessel.getOrPut(alias) { KeyGenerator.getInstance("AES").apply { init(256) }.generateKey() }
         val c = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE, k) }
@@ -67,7 +67,7 @@ class KeystoreLegacyStockTest {
         val neu = tresor.verschluessle("token-neu")
         assertFalse(tresor.veraltet(neu))
         assertEquals(Tresorbefund.Readable("token-neu"), tresor.oeffne(neu))
-        // Präfix abgeschnitten: Liest der Tresor das als Altbestand ohne AAD, war keine gesetzt.
+        // Prefix stripped off: if the vault reads this as legacy data without AAD, none had been set.
         assertEquals("Ohne Präfix gilt der neue Geheimtext nicht", Tresorbefund.Weg, tresor.oeffne(neu.substringAfter(":")))
     }
 
@@ -83,7 +83,7 @@ class KeystoreLegacyStockTest {
 
     @Test
     fun `after rekeying the old alias of the store is gone, the key stays the same`() {
-        // Der Stand früherer Fassungen: Ablageschlüssel ohne Präfix und AAD unter dem Alias ohne Bedingung.
+        // The state of earlier versions: store key without a prefix and AAD, under the alias without a condition.
         val hex = "ab".repeat(32)
         datei.writeText(alterCiphertext("brickinventory_ablage", hex))
         val tresor = EntsperrVault(

@@ -13,7 +13,7 @@ import androidx.compose.runtime.snapshotFlow
 import ch.brickinventoryapp.model.ui.ScrollMemory
 
 /**
- * Die Reihenfolge ist die ganze Regel: erst zurückspringen, dann melden.
+ * The order is the whole rule: jump back first, then report.
  */
 @Composable
 fun ScrollPositionKeeper(
@@ -22,23 +22,23 @@ fun ScrollPositionKeeper(
     bereit: Boolean,
     speicher: ScrollMemory,
     /**
-     * Wie viele Einträge können nachträglich oben in die Liste kommen? Beim Betreten
-     * der Teile sind die Set-Teile meist vor den manuellen da; LazyGrid hält beim
-     * Einfügen den sichtbaren Eintrag fest, und die manuellen landen über dem
-     * Sichtfenster. Deshalb eine ausdrückliche Korrektur, sobald die Nachzügler da
-     * sind.
+     * How many entries can later arrive at the top of the list? On entering
+     * parts, the set parts are usually there before the manual ones; LazyGrid holds the
+     * visible entry fixed when inserting, and the manual ones end up above the
+     * viewport. Hence an explicit correction as soon as the latecomers
+     * are there.
      */
     obenNachziehend: Int = 0,
 ) {
     var wiederhergestellt by remember { mutableStateOf(false) }
-    // Gab es eine gespeicherte Position? Nur dann ist ein Sprung nach oben
-    // falsch — wer aus der Detailansicht zurückkommt, will an seine Stelle.
+    // Was there a stored position? Only then is a jump to the top
+    // wrong — whoever comes back from the detail view wants to return to their spot.
     var hatteGespeicherte by remember { mutableStateOf(false) }
-    // Hat sich die Liste bewegt, bevor die Nachzügler da waren? `isScrollInProgress`
-    // heisst hier nur eine Geste: Der einzige programmatische Bildlauf ist die
-    // Korrektur unten, und die läuft nur ohne wiederhergestellte Position.
-    // (`interactionSource` wäre sauberer; ob LazyGridState es in dieser
-    // Compose-Fassung hat, ist nicht belegt.)
+    // Did the list move before the latecomers arrived? `isScrollInProgress`
+    // here means only a gesture: the only programmatic scroll is the
+    // correction below, and that only runs without a restored position.
+    // (`interactionSource` would be cleaner; whether LazyGridState has it in this
+    // Compose version is not established.)
     var nutzerGeste by remember { mutableStateOf(false) }
 
     LaunchedEffect(gridState) {
@@ -56,8 +56,8 @@ fun ScrollPositionKeeper(
         wiederhergestellt = true
     }
 
-    // Nachzügler oben: an den Anfang, aber nur wenn niemand etwas anderes
-    // wollte — weder eine gespeicherte Position noch eine eigene Wischgeste.
+    // Latecomers at the top: go to the start, but only if nobody wanted
+    // anything else — neither a stored position nor their own swipe gesture.
     LaunchedEffect(obenNachziehend) {
         if (obenNachziehend > 0 && !hatteGespeicherte && !nutzerGeste &&
             gridState.firstVisibleItemIndex > 0
@@ -73,7 +73,7 @@ fun ScrollPositionKeeper(
     }
 }
 
-/** Dasselbe für eine LazyColumn. */
+/** The same for a LazyColumn. */
 @Composable
 fun ScrollPositionKeeper(
     schluessel: String,
@@ -96,11 +96,11 @@ fun ScrollPositionKeeper(
 }
 
 /**
- * Dasselbe für eine gewöhnliche Column(verticalScroll(…)). Sie hat kein „bereit“:
- * Ihre Höhe wächst, während die Karten Daten bekommen, und ScrollState.value lässt
- * sich nicht über maxValue setzen — ein zu früher Sprung würde gekappt und die
- * Stelle wäre verloren. Deshalb wird gewartet, bis die Seite so hoch ist, wie die
- * Stelle tief liegt.
+ * The same for an ordinary Column(verticalScroll(…)). It has no „ready": its
+ * height grows while the cards receive data, and ScrollState.value can't
+ * be set beyond maxValue — too early a jump would be clamped and the
+ * position lost. So it waits until the page is as tall as the
+ * position sits deep.
  */
 @Composable
 fun ScrollPositionKeeper(
@@ -108,12 +108,12 @@ fun ScrollPositionKeeper(
     scrollState: ScrollState,
     speicher: ScrollMemory,
 ) {
-    // Der Merker darf den Ausflug NICHT überleben — `remember` und nicht
-    // `rememberSaveable`, aus demselben Grund wie oben.
+    // The holder must NOT survive the outing — `remember` and not
+    // `rememberSaveable`, for the same reason as above.
     var wiederhergestellt by remember { mutableStateOf(false) }
-    // Die gemerkte Stelle EINMAL lesen und festhalten: Der Melder unten
-    // schreibt laufend, und ein zweites Lesen später läse den eigenen
-    // Zwischenstand.
+    // Read the remembered position ONCE and hold onto it: the reporter below
+    // keeps writing continuously, and a second read later would read its
+    // own interim state.
     val ziel = remember { speicher.lies(schluessel).first }
 
     LaunchedEffect(scrollState.maxValue) {
@@ -125,18 +125,18 @@ fun ScrollPositionKeeper(
     }
     LaunchedEffect(scrollState, wiederhergestellt) {
         if (!wiederhergestellt) return@LaunchedEffect
-        // Der zweite Platz bleibt leer: Eine Column hat nur EINE Zahl, keinen
-        // Eintrag mit Versatz darin. Ihn mit etwas zu füllen wäre eine Angabe,
-        // die niemand liest und die beim nächsten Leser wie eine gilt.
+        // The second slot stays empty: a Column has only ONE number, no
+        // entry with an offset in it. Filling it with something would be a value
+        // nobody reads, and which a later reader would take as real.
         snapshotFlow { scrollState.value }.collect { speicher.merke(schluessel, it, 0) }
     }
 }
 
 /**
- * Ein Reiter wurde unten angetippt → seine gemerkte Rollposition verwerfen: „Ich
- * komme zurück“ behält die Stelle, „ich gehe auf diesen Reiter“ fängt oben an, wo
- * die manuell erfassten Einträge stehen. Die Routennamen sind zugleich die
- * Schlüssel des Merkers, damit es keine zweite Zuordnung gibt.
+ * A tab was tapped at the bottom → discard its remembered scroll position: „I'm
+ * coming back“ keeps the position, „I'm going to this tab“ starts at the top, where
+ * the manually captured entries sit. The route names double as the
+ * holder's keys, so there's no second mapping.
  */
 fun ScrollMemory.vergissReiter(route: String) {
     vergiss(route)

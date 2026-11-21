@@ -22,22 +22,22 @@ import org.junit.Assert.assertSame
 import org.junit.Test
 
 /**
- * Der AppViewModel ausgeführt: Er reicht Sitzung, Pflichten und Meldungen an die
- * Activity durch und entscheidet zwei Dinge selbst — was im Vordergrund nachgeladen
- * wird und welches Set eine angetippte Meldung öffnen darf.
+ * The AppViewModel put to the test: it passes session, mandatory screens and notifications on to the
+ * activity and decides two things itself — what gets reloaded in the foreground
+ * and which set a tapped notification may open.
  *
- * Gegenproben (je ein Patch unter gegenproben/):
- *   app-vordergrund-ohne-sitzung   inForeground() ohne `if (!state.value.isLoggedIn) return`
- *                                  → rot „abgemeldet laedt der Vordergrund nichts nach“
- *   app-meldungsziel-ungeprueft    setFromMessageRequest() ohne setNumberFromMessage
- *                                  → rot „eine angetippte Meldung oeffnet nur eine gueltige Setnummer“
- *   app-meldung-nicht-quittiert    clearSnackbar() ruft quittiere() nicht → rot „die Snackbar …“
+ * Counter-checks (one patch each under gegenproben/):
+ *   app-vordergrund-ohne-sitzung   inForeground() without `if (!state.value.isLoggedIn) return`
+ *                                  → red „abgemeldet laedt der Vordergrund nichts nach“
+ *   app-meldungsziel-ungeprueft    setFromMessageRequest() without setNumberFromMessage
+ *                                  → red „eine angetippte Meldung oeffnet nur eine gueltige Setnummer“
+ *   app-meldung-nicht-quittiert    clearSnackbar() doesn't call quittiere() → red „die Snackbar …“
  */
 class AppViewModelTest {
 
     private val t = TestDienste(FakeApi().api)
 
-    /** Zählt, was der AppViewModel bei der Sitzung auslöst. */
+    /** Counts what the AppViewModel triggers on the session. */
     private class Sitzungsschritte : SitzungsRepository {
         val called = mutableListOf<String>()
         override fun starte() { called += "starte" }
@@ -76,7 +76,7 @@ class AppViewModelTest {
         assertEquals("75192-1", vm.messageTarget.value.setNummer)
         vm.setFromMessageAcknowledge()
         assertNull(vm.messageTarget.value.setNummer)
-        // Die Nummer wird Teil einer Route: Was keine Setnummer ist, öffnet nichts.
+        // The number becomes part of a route: whatever is not a set number opens nothing.
         vm.setFromMessageRequest("../../konto")
         assertNull(vm.messageTarget.value.setNummer)
         vm.setFromMessageRequest(null)

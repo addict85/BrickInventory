@@ -4,19 +4,19 @@ import ch.brickinventoryapp.model.ui.theme.Design
 import ch.brickinventoryapp.model.ui.theme.Helligkeit
 
 /**
- * Was gezeichnet wird: das Design des Servers, bei Bedarf in seiner dunklen
- * Fassung — oder mit [systemfarben] die Farben des Hintergrundbilds (Material You).
+ * What is drawn: the server's theme, in its dark variant where
+ * needed — or, with [systemfarben], the colors of the wallpaper (Material You).
  */
 data class Darstellung(val design: Design, val dunkel: Boolean, val systemfarben: Boolean = false)
 
-/** Ab Android 12 (API 31) liefert das System eigene Farbschemata. */
+/** From Android 12 (API 31) onward, the system supplies its own color schemes. */
 const val SYSTEMFARBEN_AB_SDK = 31
 
 /**
- * [helligkeit] (Helligkeit.SYSTEM/LIGHT/DARK) entscheidet, ob die dunkle Fassung
- * DESSELBEN Designs gilt wie im Web (data-dunkel), nicht ein anderes Design.
- * Werkbank ist schon dunkel und bleibt, wie es ist. Systemfarben haben immer eine
- * dunkle Fassung; unter Android 12 gibt es sie nicht, dann gilt das Design.
+ * [helligkeit] (Helligkeit.SYSTEM/LIGHT/DARK) decides whether the dark variant
+ * applies for the SAME theme as on the web (data-dunkel), not a different theme.
+ * Werkbank is already dark and stays as it is. System colors always have a
+ * dark variant; below Android 12 they don't exist, then the theme applies.
  */
 fun darstellung(
     design: Design, helligkeit: String, systemDark: Boolean,
@@ -32,9 +32,9 @@ fun darstellung(
 }
 
 /**
- * Wirkt die Wahl Hell/Dunkel bei diesem Design? Nicht bei einem Design ohne dunkle
- * Fassung (Werkbank ist schon dunkel) — die Einstellungen schalten die Wahl dann ab,
- * statt einen Schalter ohne Wirkung anzubieten.
+ * Does the light/dark choice have any effect for this theme? Not for a theme without a dark
+ * variant (Werkbank is already dark) — settings then disable the choice,
+ * instead of offering a switch with no effect.
  */
 fun brightnessSelectable(design: Design, systemfarben: Boolean = false, sdk: Int = 0): Boolean =
     (systemfarben && sdk >= SYSTEMFARBEN_AB_SDK) || hatDarkVersion(design)

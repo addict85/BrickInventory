@@ -21,18 +21,18 @@ import javax.net.ssl.SSLSocket
 import javax.net.ssl.X509ExtendedTrustManager
 
 /**
- * Welchen Zertifizierungsstellen die Clients des eigenen Servers vertrauen: nur
- * den System-CAs, oder auf ausdrückliche Einstellung zusätzlich den vom Nutzer
- * installierten. Je Verbindungsaufbau gefragt, damit der Schalter ohne Neustart
- * wirkt. Eine nutzerinstallierte CA kann jeder einschleusen, der kurz ans Gerät
- * kommt oder es verwaltet — darum ist die Vorgabe aus (DevicesStore).
+ * Which certificate authorities the clients of the app's own server trust: only
+ * the system CAs, or, on explicit setting, additionally the ones the user
+ * installed. Asked on every connection setup, so the switch takes effect without a restart.
+ * A user-installed CA can be planted by anyone who briefly gets hold of the device
+ * or manages it — which is why the default is off (DevicesStore).
  */
-// Eigener TrustManager mit Absicht: Er reicht an die System-Prüfung weiter und
-// wählt nur, ob Nutzer-CAs mitzählen.
+// Own TrustManager on purpose: it delegates to the system check and
+// only chooses whether user CAs count too.
 @Suppress("CustomX509TrustManager")
 class ChoiceTrust(
     private val system: X509ExtendedTrustManager,
-    /** Erst beim ersten Bedarf: Der CA-Speicher liest Hunderte Zertifikate von der Platte. */
+    /** Only on first need: the CA store reads hundreds of certificates from disk. */
     private val withUser: Lazy<X509ExtendedTrustManager>,
     private val userAllowed: () -> Boolean,
 ) : X509ExtendedTrustManager() {
@@ -48,7 +48,7 @@ class ChoiceTrust(
     override fun checkServerTrusted(chain: Array<X509Certificate>, authType: String) =
         wahl().checkServerTrusted(chain, authType)
 
-    // Die App weist sich nicht per Zertifikat aus; Client-Prüfungen bleiben beim System.
+    // The app doesn't identify itself via a certificate; client checks stay with the system.
     override fun checkClientTrusted(chain: Array<X509Certificate>, authType: String, socket: Socket?) =
         system.checkClientTrusted(chain, authType, socket)
 
@@ -61,85 +61,85 @@ class ChoiceTrust(
     override fun getAcceptedIssuers(): Array<X509Certificate> = wahl().acceptedIssuers
 }
 
-/** SHA-256 über den SubjectPublicKeyInfo, Base64 — die Form des QR-Felds `fp`. */
+/** SHA-256 over the SubjectPublicKeyInfo, Base64 — the form of the QR field `fp`. */
 fun spkiFingerprint(zertifikat: X509Certificate): String =
     Base64.getEncoder().encodeToString(MessageDigest.getInstance("SHA-256").digest(zertifikat.publicKey.encoded))
 
-/** Ein Fingerabdruck im Format von `fp`: Base64 von genau 32 Bytes. */
+/** A fingerprint in the format of `fp`: Base64 of exactly 32 bytes. */
 fun isFingerprint(text: String?): Boolean =
     text != null && runCatching { Base64.getDecoder().decode(text.trim()).size == 32 }.getOrDefault(false)
 
 /**
- * Was der Dialog vor dem Abtippen zeigt: nur die ersten 8 Hex-Zeichen, zur
- * Orientierung, welche Zeile in der Webapp gemeint ist. Abgetippt werden die
- * letzten 24 ([Transcript.confirmed]); stünden sie hier, schriebe man sie vom
- * Bildschirm des Angreifers ab statt aus der zweiten Quelle.
+ * What the dialog shows before typing it in: only the first 8 hex characters, for
+ * orientation on which row in the web app is meant. The last 24 are typed in
+ * ([Transcript.confirmed]); if they stood here too, one would copy them from the
+ * attacker's screen instead of from the second source.
  */
 fun fingerprintStart(fp: String): String = fingerprintReadable(fp).take(11) + " …"
 
 /**
- * Für die Anzeige: Hex in Paaren mit Doppelpunkt, genau wie die Webapp ihn unter
- * „Server-Zertifikat“ zeigt (`fp_hex`). Gleiche Schreibweise heisst: Zeichen für
- * Zeichen vergleichbar, ohne umzurechnen.
+ * For display: hex in pairs with colons, exactly as the web app shows it under
+ * „Server-Zertifikat“ (`fp_hex`). Same notation means: comparable character for
+ * character, without converting.
  */
 fun fingerprintReadable(fp: String): String =
     runCatching { Base64.getDecoder().decode(fp) }.getOrNull()
         ?.joinToString(":") { "%02X".format(it) } ?: fp
 
-/** Unter diesem Schlüssel gilt ein Pin: Host und Port, ohne Schema und Pfad. */
+/** Under this key a pin applies: host and port, without scheme and path. */
 fun pinKey(serverUrl: String): String? {
     val url = serverUrl.trim().trimEnd('/').toHttpUrlOrNull() ?: return null
     return if (url.isHttps) "${url.host.lowercase()}:${url.port}" else null
 }
 
-/** Der zweite Pin eines Servers: der Schlüssel seines Blatts, neben dem Pin der Wurzel. */
+/** The second pin of a server: the key of its leaf, alongside the pin of the root. */
 fun sheetPinKey(schluessel: String): String = "$schluessel#blatt"
 
 /**
- * Zeigt ein Fingerabdruck auf eine System-Wurzel (ohne Nutzer-CAs)? Ein solcher Pin
- * verlangt ohnehin eine öffentlich gültige, CT-geprüfte Kette; jeder andere aus einer
- * fremden Quelle (QR-Code) gilt erst abgetippt.
+ * Does a fingerprint point to a system root (without user CAs)? Such a pin
+ * requires a publicly valid, CT-checked chain anyway; any other one from a
+ * foreign source (QR code) only counts once typed in.
  */
 fun interface SystemRoots {
     fun contains(fingerabdruck: String): Boolean
 }
 
-/** Die gemerkten Pins: im Gerät SharedPreferences (DevicesStore), im Test eine Map. */
+/** The remembered pins: on the device SharedPreferences (DevicesStore), in the test a map. */
 interface PinStore {
     fun pin(schluessel: String): String?
     fun rememberPin(schluessel: String, fingerabdruck: String)
 
     /**
-     * Stammt der Pin aus einem eben gescannten Code (vorgehalten, noch nicht gemerkt)?
-     * Dann muss der Server genau ihn zeigen, auch über eine öffentliche CA.
+     * Does the pin come from a code just scanned (held, not yet remembered)?
+     * Then the server must show exactly that one, even via a public CA.
      */
     fun fromCode(schluessel: String): Boolean = false
 }
 
 /**
- * Eine Verbindung, über die nur der Nutzer entscheiden kann. Sie bricht den
- * Handshake ab, bevor ein Token hinausgeht; die Oberfläche fragt nach
+ * A connection that only the user can decide on. It aborts the
+ * handshake before a token goes out; the UI asks
  * ([CertificateQuestion]).
  */
 class CertificateUnresolved(
     val schluessel: String,
     val fingerabdruck: String,
     val art: Art,
-    /** Bei [Art.GEAENDERT] und [Art.SCHLUESSEL_NEU]: der gemerkte Pin. */
+    /** For [Art.GEAENDERT] and [Art.SCHLUESSEL_NEU]: the remembered pin. */
     val erwartet: String? = null,
-    /** Der Schlüssel des Blatts; mit dem Ja zum Wurzel-Pin wird er zum zweiten Pin. */
+    /** The leaf's key; with a yes to the root pin it becomes the second pin. */
     val blatt: String? = null,
-    /** Prüft das System selbst Certificate Transparency (ab Android 16, network_security_config)? */
+    /** Does the system itself check Certificate Transparency (from Android 16, network_security_config)? */
     val ctForced: Boolean = false,
 ) : CertificateException("Zertifikat von $schluessel nicht bestätigt ($art)") {
-    /** Wo das Ja den [fingerabdruck] ablegt. */
+    /** Where a yes stores the [fingerabdruck]. */
     val storeKey: String get() = if (art == Art.SCHLUESSEL_NEU) sheetPinKey(schluessel) else schluessel
 
     /**
-     * Gilt ein Ja nur mit einer Abschrift aus zweiter Quelle? Ohne CT-Pflicht (Android 11–15)
-     * beim Erstkontakt und beim neuen Serverschlüssel ja: Sonst genügte eine fehlausgestellte
-     * Kette irgendeiner öffentlichen CA und ein Tipp. Eine Abweichung vom Code ist gar nicht
-     * zu bestätigen.
+     * Does a yes only count with a transcript from a second source? Without CT requirement (Android 11–15)
+     * on first contact and on a new server key, yes: otherwise a misissued
+     * chain from any public CA plus a tap would suffice. A deviation from the code can never
+     * be confirmed.
      */
     val transcriptNeeded: Boolean get() = when (art) {
         Art.CODE_ABWEICHUNG -> false
@@ -149,36 +149,36 @@ class CertificateUnresolved(
 
     enum class Art {
         /**
-         * Erster Kontakt, die Kette ist öffentlich gültig: Fingerabdruck zeigen und bestätigen
-         * lassen, ohne CT-Pflicht erst abgetippt ([transcriptNeeded]).
+         * First contact, the chain is publicly valid: show the fingerprint and have it
+         * confirmed, typed in only without CT requirement ([transcriptNeeded]).
          */
         ERSTKONTAKT,
-        /** Keine bekannte Stelle hat das Zertifikat ausgestellt (selbst ausgestellt, interne CA). */
+        /** No known authority issued the certificate (self-issued, internal CA). */
         UNBEKANNTE_CA,
         /**
-         * Gültig nur über eine nutzerinstallierte CA (Schalter an). Abzutippen wie
-         * [UNBEKANNTE_CA]: Eine solche CA schleust ein, wer das Gerät kurz hat.
+         * Valid only via a user-installed CA (switch on). To be typed in like
+         * [UNBEKANNTE_CA]: such a CA is planted by whoever briefly has the device.
          */
         NUTZER_CA,
-        /** Der Server zeigt einen anderen Schlüssel als den gemerkten. */
+        /** The server shows a different key than the remembered one. */
         GEAENDERT,
         /**
-         * Der Server zeigt einen anderen Schlüssel als der eben gescannte Code. Nicht zu
-         * bestätigen: Code und Server sollten aus derselben Quelle stammen.
+         * The server shows a different key than the code just scanned. Not to be
+         * confirmed: code and server should originate from the same source.
          */
         CODE_ABWEICHUNG,
         /**
-         * Gleiche öffentliche Wurzel, aber ein anderer Serverschlüssel als der gemerkte
-         * (Erneuerung mit neuem Schlüssel oder eine fehlausgestellte Kette derselben CA).
-         * Abzutippen, solange das System kein CT verlangt ([transcriptNeeded]).
+         * Same public root, but a different server key than the remembered one
+         * (renewal with a new key, or a misissued chain from the same CA).
+         * To be typed in as long as the system doesn't require CT ([transcriptNeeded]).
          */
         SCHLUESSEL_NEU,
     }
 }
 
 /**
- * Was gerade auf eine Entscheidung wartet. Der Handshake läuft auf einem
- * OkHttp-Faden; die Oberfläche liest hier und zeigt einen Dialog.
+ * What is currently waiting for a decision. The handshake runs on an
+ * OkHttp thread; the UI reads this and shows a dialog.
  */
 interface CertificateQuestion {
     val offen: StateFlow<CertificateUnresolved?>
@@ -186,7 +186,7 @@ interface CertificateQuestion {
     fun confirm(pins: PinStore, eingabe: String? = null): Boolean
     fun verwerfen()
 
-    /** Für Tests ohne Hilt. */
+    /** For tests without Hilt. */
     companion object {
         operator fun invoke(): CertificateQuestion = CertificatePrompt()
     }
@@ -198,16 +198,16 @@ internal class CertificatePrompt @Inject constructor() : CertificateQuestion {
     override val offen: StateFlow<CertificateUnresolved?> = _open.asStateFlow()
 
     override fun melde(frage: CertificateUnresolved) {
-        // Ein schon offener Dialog bleibt stehen; mehrere Abrufe scheitern gleichzeitig.
+        // An already open dialog stays as it is; several fetches fail at the same time.
         if (_open.value == null) _open.value = frage
     }
 
     /**
-     * Ja: Ab jetzt gilt genau dieser Schlüssel für diesen Server. Wo
-     * [CertificateUnresolved.transcriptNeeded] gilt, nur mit [eingabe] aus einer zweiten
-     * Quelle ([Transcript.confirmed]): Ein Tipp allein wäre genau das, was ein Angreifer
-     * dazwischen braucht. Beim Erstkontakt mit CT-Pflicht ist das Abtippen freiwillig; wer
-     * es tut, muss richtig tippen.
+     * Yes: from now on exactly this key applies for this server. Where
+     * [CertificateUnresolved.transcriptNeeded] applies, only with [eingabe] from a second
+     * source ([Transcript.confirmed]): a tap alone would be exactly what an attacker in
+     * between would need. On first contact with a CT requirement, typing it in is optional; whoever
+     * does it must type it correctly.
      */
     override fun confirm(pins: PinStore, eingabe: String?): Boolean {
         val f = _open.value ?: return false
@@ -226,29 +226,29 @@ internal class CertificatePrompt @Inject constructor() : CertificateQuestion {
 }
 
 /**
- * Pinning für den eigenen Server: Ist ein Pin gemerkt (QR-Feld `fp` oder
- * bestätigter Erstkontakt), muss ein Zertifikat der gezeigten Kette ihn tragen,
- * und die Kette muss bis dahin lückenlos signiert sein — dann gilt sie auch ohne
- * bekannte CA. Ohne Pin wird nie still vertraut. Andere Hosts (Bild-CDN)
+ * Pinning for the app's own server: if a pin is remembered (QR field `fp` or
+ * confirmed first contact), a certificate of the shown chain must carry it,
+ * and the chain must be unbroken up to that point — then it is trusted even without
+ * a known CA. Without a pin, trust is never silent. Other hosts (image CDN)
  */
-// Das Pinning braucht ihn: Er prüft die Kette per PKIX bis zum Pin bzw. über
-// ChoiceTrust und lehnt ab, was der Nutzer nicht bestätigt hat.
+// The pinning needs it: it checks the chain via PKIX up to the pin or via
+// ChoiceTrust, and rejects whatever the user hasn't confirmed.
 @Suppress("CustomX509TrustManager")
 class PinTrust(
-    /** Für den eigenen Server: [ChoiceTrust], also auf Wunsch mit Nutzer-CAs. */
+    /** For the app's own server: [ChoiceTrust], i.e. on request with user CAs. */
     private val kette: X509ExtendedTrustManager,
     private val pins: PinStore,
-    /** [pinKey] des eingerichteten Servers, oder null. */
+    /** [pinKey] of the configured server, or null. */
     private val ownServer: () -> String?,
     private val frage: CertificateQuestion,
     /**
-     * Für alle anderen Hosts: nur System-CAs. Der Schalter für Nutzer-CAs gilt dem
-     * eigenen Server; ein Bild-CDN soll eine Firmen- oder Schad-CA nie annehmen.
+     * For all other hosts: only system CAs. The switch for user CAs applies to the
+     * app's own server; an image CDN should never accept a corporate or rogue CA.
      */
     private val foreignHosts: X509ExtendedTrustManager,
-    /** Wurzeln, zwischen denen ein öffentlicher Pin still wechseln darf ([CA_FAMILIES]). */
+    /** Roots between which a public pin may silently switch ([CA_FAMILIES]). */
     private val families: Map<String, String> = CA_FAMILIES,
-    /** Ab Android 16 prüft das System CT; dann genügt für einen neuen Serverschlüssel ein Tipp. */
+    /** From Android 16 the system checks CT; then a tap suffices for a new server key. */
     private val ctForced: Boolean = false,
 ) : X509ExtendedTrustManager() {
 
@@ -258,14 +258,14 @@ class PinTrust(
     private fun pruefe(chain: Array<X509Certificate>, schluessel: String?, mit: (X509ExtendedTrustManager) -> Unit) {
         if (schluessel == null) return withoutHost(chain) { mit(foreignHosts) }
         if (chain.isEmpty() || schluessel != ownServer()) return mit(foreignHosts)
-        // Ohne Pin wird nie still vertraut; was die Rückfrage ist, sagt die Lage der Kette.
+        // Without a pin, trust is never silent; what the follow-up question is depends on the chain's status.
         val pin = pins.pin(schluessel) ?: throw situation(chain, mit).let {
             gemeldet(CertificateUnresolved(schluessel, it.fingerabdruck, it.kindWithoutPin, blatt = spkiFingerprint(chain[0]),
                 ctForced = ctForced))
         }
         val fromCode = pins.fromCode(schluessel)
-        // Ein Pin auf eine System-Wurzel gilt nur über die System-Prüfung samt Certificate
-        // Transparency: Schickt der Server die Wurzel mit, umginge der Abgleich die CT-Prüfung.
+        // A pin on a system root only counts via the system check including Certificate
+        // Transparency: if the server sends the root along, the comparison would bypass the CT check.
         val publicPin = pin in systemRoots
         if (!publicPin && fitsToPin(chain, pin)) return
         val situation = situation(chain, mit)
@@ -274,7 +274,7 @@ class PinTrust(
         throw gemeldet(CertificateUnresolved(schluessel, situation.fingerabdruck, art, erwartet = pin, blatt = spkiFingerprint(chain[0])))
     }
 
-    /** Wie die Kette gilt und woran sie hängt. Öffentlich heisst: allein mit den System-CAs, nie über eine Nutzer-CA. */
+    /** How the chain is valid and what it is anchored to. Public means: only via the system CAs, never via a user CA. */
     private fun situation(chain: Array<X509Certificate>, mit: (X509ExtendedTrustManager) -> Unit): Kettenlage {
         val oeffentlich = runCatching { mit(foreignHosts) }.isSuccess
         val viaUserCa = !oeffentlich && runCatching { mit(kette) }.isSuccess
@@ -287,19 +287,19 @@ class PinTrust(
     }
 
     /**
-     * Ein öffentlicher Pin bindet an die gepinnte Wurzel oder eine andere desselben Betreibers:
-     * Ohne CT-Pflicht (Android 11–15) genügte sonst jede fehlausgestellte Kette irgendeiner CA.
-     * Zwischenstellen (R10 → R11) und Wurzeln einer Familie (ISRG X1 → X2) wechseln still;
-     * ein anderer Betreiber fragt wie ein geänderter Schlüssel. Ein Code verlangt genau seine Wurzel.
+     * A public pin binds to the pinned root or another one from the same operator:
+     * without a CT requirement (Android 11–15) any misissued chain from any CA would otherwise suffice.
+     * Intermediates (R10 → R11) and roots of a family (ISRG X1 → X2) switch silently;
+     * a different operator is treated like a changed key. A code demands exactly its root.
      */
     private fun carriesPin(situation: Kettenlage, pin: String, publicPin: Boolean, fromCode: Boolean): Boolean =
         if (publicPin) situation.oeffentlich && (situation.fingerabdruck == pin || !fromCode && sameOperator(pin, situation.fingerabdruck))
         else situation.viaUserCa && situation.root != null && situation.fingerabdruck == pin
 
     /**
-     * Unter einer öffentlichen Wurzel genügt jede Kette dieser CA; der Schlüssel des Blatts
-     * grenzt sie auf diesen Server ein. Fehlt er (ältere Fassung), wird er jetzt gemerkt;
-     * ein Code vom angemeldeten Bildschirm tauscht ihn ohne Frage, sonst fragt die App.
+     * Under a public root, any chain from that CA suffices; the leaf's key
+     * narrows it down to this server. If it's missing (older version), it is now remembered;
+     * a code from the signed-in screen swaps it without a question, otherwise the app asks.
      */
     private fun checkSheet(blatt: X509Certificate, schluessel: String, fromCode: Boolean) {
         val neu = spkiFingerprint(blatt)
@@ -310,13 +310,13 @@ class PinTrust(
             erwartet = gemerkt, ctForced = ctForced))
     }
 
-    /** Beide sind System-Wurzeln derselben bekannten Familie; das O= im Subjekt wählt jede CA selbst. */
+    /** Both are system roots of the same known family; the O= in the subject is chosen by each CA itself. */
     private fun sameOperator(a: String, b: String): Boolean {
         if (a !in systemRoots || b !in systemRoots) return false
         return families[a]?.let { it == families[b] } ?: false
     }
 
-    /** Die System-Wurzeln nach Fingerabdruck: Ein Pin auf eine davon heisst „öffentlich gültig“. */
+    /** The system roots by fingerprint: a pin on one of them means „publicly valid“. */
     private val systemRoots: Map<String, X509Certificate> by lazy {
         foreignHosts.acceptedIssuers.associateBy(::spkiFingerprint)
     }
@@ -335,9 +335,9 @@ class PinTrust(
         withoutHost(chain) { foreignHosts.checkServerTrusted(chain, authType) }
 
     /**
-     * Ohne Host (keine Handshake-Sitzung, keine Fassung mit Socket) ist nicht zu
-     * sagen, ob es der eigene Server ist. Hat er einen eigenen Pin, muss die Kette
-     * ihn tragen: Sonst genügte eine System-CA, wo der Pin eine bestimmte Stelle verlangt.
+     * Without a host (no handshake session, no version with a socket) there is no way to
+     * tell whether it's the app's own server. If it has its own pin, the chain must
+     * carry it: otherwise a system CA would suffice where the pin demands a specific authority.
      */
     private fun withoutHost(chain: Array<X509Certificate>, system: () -> Unit) {
         val pin = ownServer()?.let(pins::pin)
@@ -365,10 +365,10 @@ class PinTrust(
 }
 
 /**
- * Vertrauen für einen Server, der nicht (mehr) der eingerichtete sein muss: die
- * nachgeholte Entwertung nach einem Serverwechsel. Es gilt [pin] unter [schluessel]
- * wie für den eigenen Server. Eine Abweichung fragt niemanden (eigene
- * [CertificateQuestion]) und merkt nichts — sie bricht den Handshake nur ab.
+ * Trust for a server that no longer has to be the configured one: the
+ * deferred revocation after a server change. [pin] under [schluessel] applies
+ * just as for the app's own server. A deviation asks no one (its own
+ * [CertificateQuestion]) and remembers nothing — it only aborts the handshake.
  */
 fun trustJob(
     kette: X509ExtendedTrustManager,
@@ -385,10 +385,10 @@ fun trustJob(
 }
 
 /**
- * Trägt ein Zertifikat der Kette den Pin, und ist alles darunter von ihm aus
- * gültig signiert? Nur den Pin irgendwo in der Kette zu finden genügte nicht:
- * Das Zertifikat einer internen CA ist öffentlich, ein Angreifer könnte es an
- * seine eigene Kette hängen.
+ * Does a certificate of the chain carry the pin, and is everything below it
+ * validly signed from there? Just finding the pin somewhere in the chain would not suffice:
+ * the certificate of an internal CA is public, an attacker could attach it to
+ * their own chain.
  */
 fun fitsToPin(chain: Array<X509Certificate>, pin: String): Boolean {
     val i = chain.indexOfFirst { spkiFingerprint(it) == pin }
@@ -402,10 +402,10 @@ fun fitsToPin(chain: Array<X509Certificate>, pin: String): Boolean {
 }
 
 /**
- * Darf das Blatt einen Server ausweisen? Die PKIX-Prüfung bis zum Pin fragt den
- * Zweck nicht; ohne diese Prüfung ginge unter einer gepinnten eigenen CA auch ein
- * Zertifikat für Code-Signatur oder E-Mail durch. Ohne EKU-Erweiterung ist jeder
- * Zweck erlaubt (RFC 5280).
+ * May the leaf identify a server? The PKIX check up to the pin does not ask about the
+ * purpose; without this check, a certificate for code signing or email would also pass
+ * under a pinned, in-house CA. Without an EKU extension, every
+ * purpose is allowed (RFC 5280).
  */
 internal fun forServer(blatt: X509Certificate): Boolean {
     val purposes = runCatching { blatt.extendedKeyUsage }.getOrElse { return false } ?: return true
@@ -413,9 +413,9 @@ internal fun forServer(blatt: X509Certificate): Boolean {
 }
 
 /**
- * Wurzeln (SPKI-SHA-256, Base64) je Betreiber, zwischen denen ein öffentlicher Pin ohne
- * Frage wechselt. Fest statt aus dem O= des Subjekts: Das schreibt jede CA hinein, was sie
- * will. Werte mit openssl aus den Wurzeln gerechnet (Mozilla-Speicher, 14.11.2026).
+ * Roots (SPKI-SHA-256, Base64) per operator, between which a public pin switches without
+ * asking. Fixed rather than taken from the subject's O=: every CA writes into that whatever it
+ * wants. Values computed with openssl from the roots (Mozilla store, 14.11.2026).
  */
 val CA_FAMILIES: Map<String, String> = mapOf(
     "C5+lpZ7tcVwmwQIMcRtPbsQtWLABXhQzejna0wHFr8M=" to "Let's Encrypt", // ISRG Root X1
@@ -433,9 +433,9 @@ private const val EKU_SERVER = "1.3.6.1.5.5.7.3.1"
 private const val EKU_EACH = "2.5.29.37.0"
 
 /**
- * Die Stelle aus dem Vertrauensspeicher, die das oberste gesendete Zertifikat
- * ausgestellt hat (oder es selbst ist). Server senden die Wurzel meist nicht mit;
- * ohne diesen Schritt wäre der Pin eine Zwischenstelle, die die CA austauscht.
+ * The authority from the trust store that issued the topmost sent certificate
+ * (or is it itself). Servers mostly don't send the root along; without this step
+ * the pin would be an intermediate, which the CA can replace.
  */
 internal fun anker(chain: Array<X509Certificate>, vertraut: Array<X509Certificate>): X509Certificate? {
     val oben = chain.lastOrNull() ?: return null
@@ -445,20 +445,20 @@ internal fun anker(chain: Array<X509Certificate>, vertraut: Array<X509Certificat
 }
 
 /**
- * Hat jemand den Fingerabdruck aus einer zweiten Quelle abgeschrieben (Webapp,
- * Zertifikatsanzeige des Browsers)?
+ * Has someone copied the fingerprint from a second source (web app,
+ * the browser's certificate display)?
  */
 internal const val FINGERPRINT_TYPE_IN = 24
 
 /**
- * Was eine Abschrift taugt. Der Dialog sagt „zu kurz“ anders als „passt nicht“: Die Webapp
- * zeigt `AB:CD:…`, und wer 24 sichtbare Zeichen samt Doppelpunkten abschrieb, hatte nur 16 Hex.
+ * What a transcript is good for. The dialog says „too short“ differently from „doesn't match“: the
+ * web app shows `AB:CD:…`, and whoever copied 24 visible characters including colons only had 16 hex digits.
  */
 enum class Transcript {
     LEER, TO_SHORT, FITS_NOT, PASST;
 
     companion object {
-        /** So viele Hex-Zeichen vom Ende des Fingerabdrucks; Doppelpunkte und Leerzeichen zählen nicht. */
+        /** That many hex characters from the end of the fingerprint; colons and spaces don't count. */
         const val NEEDED = FINGERPRINT_TYPE_IN
 
         fun confirmed(eingabe: String?, fp: String): Boolean = von(eingabe, fp) == PASST
@@ -478,14 +478,14 @@ enum class Transcript {
     }
 }
 
-/** Wie eine Kette gilt: allein mit den System-CAs, nur über eine Nutzer-CA oder gar nicht; dazu ihr Anker. */
+/** How a chain is valid: only with the system CAs, only via a user CA, or not at all; plus its anchor. */
 private class Kettenlage(
     val oeffentlich: Boolean,
     val viaUserCa: Boolean,
     val root: X509Certificate?,
     val fingerabdruck: String,
 ) {
-    /** Ohne Pin eine Frage an den Menschen: Erstkontakt, Nutzer-CA oder unbekannte CA. */
+    /** Without a pin, a question to the human: first contact, user CA, or unknown CA. */
     val kindWithoutPin: CertificateUnresolved.Art get() = when {
         oeffentlich -> CertificateUnresolved.Art.ERSTKONTAKT
         viaUserCa -> CertificateUnresolved.Art.NUTZER_CA

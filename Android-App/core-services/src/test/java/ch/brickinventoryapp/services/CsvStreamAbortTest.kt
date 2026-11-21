@@ -14,11 +14,11 @@ import org.junit.Test
 import java.io.IOException
 
 /**
- * Der CSV-Strom schluckt Netzfehler und fällt aufs Abfragen zurück, das Abbrechen
- * aber nicht: Ein abgebrochener Import liefe sonst weiter.
+ * The CSV stream swallows network errors and falls back to polling, but not
+ * cancellation: a cancelled import would otherwise keep running.
  *
- * Gegenprobe: strom-schluckt-abbruch — folgeStrom mit `catch (_: Exception)`
- *   → rot „folgeStrom reicht …“
+ * Counter-check: strom-schluckt-abbruch — folgeStrom with `catch (_: Exception)`
+ *   → red „folgeStrom reicht …“
  */
 class CsvStreamAbortTest {
 

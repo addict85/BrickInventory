@@ -5,10 +5,10 @@ import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
 /**
- * Zwei Schlüssel, die das Abmelden überleben. [schluessel] arbeitet auch gesperrt, weil Pins
- * und Nutzer-CA-Schalter über jede TLS-Verbindung entscheiden; ein Fehler heisst „nicht vertraut“.
- * [angaben] arbeitet nur entsperrt: Adresse, Name und Aufträge verraten, wo das Konto liegt.
- * Darum dort drei Ausgänge ([openDetail]); ohne eigenen (Tests) gilt der erste auch dafür.
+ * Two keys that survive sign-out. [schluessel] also works locked, because pins
+ * and the user-CA switch decide on every TLS connection; an error there means „not trusted“.
+ * [angaben] only works unlocked: address, name and orders reveal where the account lives.
+ * Which is why there are three outcomes there ([openDetail]); without its own (tests) the first applies there too.
  */
 class Vertrauenschiffre(
     angaben: (() -> ByteArray)? = null,
@@ -27,23 +27,23 @@ class Vertrauenschiffre(
     }.getOrNull()
 
     /**
-     * Ein Name für einen Eintrag, der nichts über [bindung] verrät (etwa Host und Port eines
-     * Pins). HMAC unter einem eigenen, abgeleiteten Schlüssel; null, wenn der Keystore nicht kann.
+     * A name for an entry that reveals nothing about [bindung] (e.g. host and port of a
+     * pin). HMAC under a dedicated, derived key; null if the Keystore can't do it.
      */
     fun name(bindung: String): String? = runCatching {
         val namensschluessel = hmac(vertrauen(), NAMEN)
         Base64.getUrlEncoder().withoutPadding().encodeToString(hmac(namensschluessel, bindung)).take(NAME_LENGTH)
     }.getOrNull()
 
-    /** null, wenn der Schlüssel gerade nicht arbeitet (gesperrt): Dann wird nichts abgelegt. */
+    /** null if the key isn't working right now (locked): then nothing is stored. */
     fun verschluessleDetail(wert: String, bindung: String): String? = runCatching {
         val k = angaben()
         Base64.getEncoder().encodeToString(StoreCipher { k }.verschluessle(wert.toByteArray(Charsets.UTF_8), ANGABE + bindung))
     }.getOrNull()
 
-    /** Lesbar, weg (verändert, fremd gebunden, anderer Schlüssel) oder gesperrt (später noch einmal). */
+    /** Readable, gone (altered, bound to something else, different key), or locked (try again later). */
     fun openDetail(gespeichert: String, bindung: String): Tresorbefund {
-        // Der Schlüssel ausserhalb der Prüfung: Kann er gerade nicht, ist der Wert nicht weg.
+        // The key outside the check: if it just can't work right now, the value isn't gone.
         val k = runCatching { angaben() }.getOrElse { return Tresorbefund.Gesperrt }
         val roh = runCatching { Base64.getDecoder().decode(gespeichert) }.getOrElse { return Tresorbefund.Weg }
         return StoreCipher { k }.entschluessle(roh, ANGABE + bindung)

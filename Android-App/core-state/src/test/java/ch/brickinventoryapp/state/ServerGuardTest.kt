@@ -23,45 +23,45 @@ import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.network.util.VersionsHint
 
 /**
- * Der Wächter aller Anfragen an den eigenen Server, ausgeführt gegen einen
- * Testserver über http auf localhost. Das darf nur der Debug-Build; die Tests der
- * Regeln für Token und Köpfe laufen darum mit `entwicklung = true`, die Tests des
- * Klartext-Verbots mit beiden Werten.
+ * The guard for all requests to the app's own server, run against a
+ * test server over http on localhost. Only the debug build may do that; the tests of the
+ * rules for tokens and headers therefore run with `entwicklung = true`, the tests of the
+ * plaintext ban with both values.
  *
- * Gegenproben (am 29.10.2026 gemessen, kotlinc gegen network/di/ServerWaechter.kt):
- *   B  `tokenBelongsHere` immer true → rot „der Token geht nur an den Server,
- *      der ihn ausgab“ und „ein selbst gesetzter Kopf …“
- *   C  `ourServer` ohne isSameOrigin (nur serverUrl.isNotBlank()) → rot
+ * Counter-checks (measured 29.10.2026, kotlinc against network/di/ServerWaechter.kt):
+ *   B  `tokenBelongsHere` always true → red „der Token geht nur an den Server,
+ *      der ihn ausgab“ and „ein selbst gesetzter Kopf …“
+ *   C  `ourServer` without isSameOrigin (only serverUrl.isNotBlank()) → red
  *      „a foreign host gets neither token nor language“
- *   D  das Nachfassen entfernt → rot „a request without a token reaches for the new one“
- *   E  die 401-Meldung ohne `tokenSentAlong` → rot „ein 401 ohne Token meldet
- *      nicht ab“ und „the token goes only to the server that issued it“
- *   F  den Pfad des Servers beim Umschreiben weggelassen → rot „der Platzhalter
+ *   D  the retry removed → red „a request without a token reaches for the new one“
+ *   E  the 401 report without `tokenSentAlong` → red „ein 401 ohne Token meldet
+ *      nicht ab“ and „the token goes only to the server that issued it“
+ *   F  the server's path left out while rewriting the placeholder → red „der Platzhalter
  *      wird auf den Server samt Pfad umgeschrieben“
- *   G  ownHeaders() nicht aufgerufen → rot „der eigene Server bekommt Sprache
+ *   G  ownHeaders() not called → red „der eigene Server bekommt Sprache
  *      und Fassung“
- *   I  die Prüfung connectionAllowed() im Wächter entfernt → rot
- *      „im Release-Build erreicht keine http-Anfrage den Server …“ und „auch der
+ *   I  the check connectionAllowed() removed in the guard → red
+ *      „im Release-Build erreicht keine http-Anfrage den Server …“ and „auch der
  *      Debug-Build schickt http nur …“
- *   K  im Wächter `entwicklung` fest auf true → rot „im
+ *   K  in the guard `entwicklung` fixed to true → red „im
  *      Release-Build erreicht keine http-Anfrage den Server …“
- *   H  /settings/theme vom Token ausgenommen (`mitToken` falsch für
- *      Pfade auf "/settings/theme") → rot „the account's design is fetched with the token“
- *   J  im Wächter die Meldung über versionsHint() entfernt → rot „ein
- *      Server mit hoeherer Mindestfassung meldet App zu alt …“ (leere Liste statt APP_ZU_ALT)
- *   L  rightsRevoked() bei jedem 403 → rot „ein 403 nur_admins …“
- *   M  CONFIRMATION_NEEDED nicht beachtet (jeder 401 meldet ab) →
- *      rot „eine falsche Passwortbestaetigung meldet nicht ab“
- *   N  im Wächter die Zeile für PASSWORT_WECHSEL_NOETIG entfernt →
- *      rot „ein 403 passwort_wechsel_noetig verlangt das neue Passwort …“
- *   O  wieder die alte Regel (selbst gesetzter Kopf nur weg, wenn er
- *      der jetzige Token ist) → rot „ein selbst gesetzter Kopf mit einem aelteren
- *      Token …“ und „nach dem Abmelden geht kein selbst gesetzter Kopf hinaus …“
- *   P  nur `!tokenBelongsHere` statt `!mitToken` → rot „nach dem Abmelden …“
- *   R  wieder `herkunft == null ||` in tokenBelongsHere →
- *      rot „a token without binding goes to no server“ (gegenproben/token-ohne-bindung-gesendet.patch)
- *   Q  gegenproben/waechter-ohne-faktorpflicht.patch nimmt
- *      die Zeile für ZWEITER_FAKTOR_PFLICHT heraus → rot „ein 403 zweiter_faktor_pflicht …“
+ *   H  /settings/theme excluded from the token (`mitToken` false for
+ *      paths at "/settings/theme") → red „the account's design is fetched with the token“
+ *   J  in the guard the report via versionsHint() removed → red „ein
+ *      Server mit hoeherer Mindestfassung meldet App zu alt …“ (empty list instead of APP_ZU_ALT)
+ *   L  rightsRevoked() on every 403 → red „ein 403 nur_admins …“
+ *   M  CONFIRMATION_NEEDED not honored (every 401 signs out) →
+ *      red „eine falsche Passwortbestaetigung meldet nicht ab“
+ *   N  in the guard the line for PASSWORT_WECHSEL_NOETIG removed →
+ *      red „ein 403 passwort_wechsel_noetig verlangt das neue Passwort …“
+ *   O  the old rule restored (a self-set header is only removed if it
+ *      is the current token) → red „ein selbst gesetzter Kopf mit einem aelteren
+ *      Token …“ and „nach dem Abmelden geht kein selbst gesetzter Kopf hinaus …“
+ *   P  only `!tokenBelongsHere` instead of `!mitToken` → red „nach dem Abmelden …“
+ *   R  `herkunft == null ||` restored in tokenBelongsHere →
+ *      red „a token without binding goes to no server“ (gegenproben/token-ohne-bindung-gesendet.patch)
+ *   Q  gegenproben/waechter-ohne-faktorpflicht.patch removes
+ *      the line for ZWEITER_FAKTOR_PFLICHT → red „ein 403 zweiter_faktor_pflicht …“
  */
 class ServerGuardTest {
 
@@ -72,14 +72,14 @@ class ServerGuardTest {
     private val entzogen = AtomicInteger()
     private val switch = AtomicInteger()
     private val faktor = AtomicInteger()
-    /** Rumpf je Pfad für Antworten mit Fehlercode. */
+    /** Body per path for responses with an error code. */
     private val bodies = Collections.synchronizedMap(mutableMapOf<String, String>())
 
     private inner class Lage(
         var url: String,
         var tokens: ArrayDeque<String> = ArrayDeque(listOf(TOKEN)),
         var herkunft: String? = null,
-        /** false: ein Token älterer Fassungen ohne Bindung. */
+        /** false: a token from older versions without binding. */
         val gebunden: Boolean = true,
     ) : Zugangslage {
         override fun serverUrl() = url
@@ -146,7 +146,7 @@ class ServerGuardTest {
         assertEquals(1, abgelaufen.get())
     }
 
-    /** Ohne Token lieferte der Server die Vorgabe statt des Designs dieses Kontos. */
+    /** Without a token the server returned the default instead of this account's theme. */
     @Test
     fun `the account's design is fetched with the token`() {
         fetch(client(Lage(basis())), "http://localhost:3000/api/v1/settings/theme")
@@ -176,7 +176,7 @@ class ServerGuardTest {
         assertNull(requestsAn("/api/v1/csv").single().second)
     }
 
-    /** Ein Tausch, der den Serverwechsel überdauert, trägt den Token des alten Servers. */
+    /** A swap that outlives the server change carries the old server's token. */
     @Test
     fun `a self-set header with an older token is dropped for a foreign origin`() {
         val situation = Lage(basis(), herkunft = "http://anderer.example:3000")
@@ -207,7 +207,7 @@ class ServerGuardTest {
 
     @Test
     fun `a server with a higher minimum version reports app too old instead of a read error`() {
-        // So antwortet der Server einer alten App: 426 samt beiden Fassungen im Kopf.
+        // How the server of an old app answers: 426 together with both versions in the header.
         val neuer = (APP_API_VERSION + 1).toString()
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest) = MockResponse().setResponseCode(426)
@@ -227,7 +227,7 @@ class ServerGuardTest {
 
     @Test
     fun `a foreign host gets neither token nor language`() {
-        // Derselbe Testserver unter seiner IP ist für den Wächter ein anderer Host.
+        // The same test server under its IP is a different host for the guard.
         val fremd = server.url("/bild.jpg").newBuilder().host("127.0.0.1").build().toString()
         fetch(client(Lage(server.url("/").newBuilder().host("localhost").build().toString()), api = false), fremd)
         val r = server.takeRequest()
@@ -238,7 +238,7 @@ class ServerGuardTest {
 
     @Test
     fun `a request without a token reaches for the new one`() {
-        // Die erste Lesung liefert noch keinen Token, die zweite den frisch abgelegten.
+        // The first read doesn't yet return a token, the second returns the freshly stored one.
         codes["/api/v1/sets"] = 401
         val situation = Lage(basis(), tokens = ArrayDeque(listOf("", TOKEN)))
         fetch(client(situation), "http://localhost:3000/api/v1/sets")
@@ -255,7 +255,7 @@ class ServerGuardTest {
         assertEquals(0, abgelaufen.get())
     }
 
-    /** Die Regel des Release-Builds: kein http, auch nicht zum Gerät selbst. */
+    /** The release build's rule: no http, not even to the device itself. */
     @Test
     fun `in the release build no http request reaches the server, not even localhost`() {
         val c = client(Lage(basis()), entwicklung = false)
@@ -271,7 +271,7 @@ class ServerGuardTest {
         assertEquals(0, abgelaufen.get())
     }
 
-    /** Der Debug-Build darf http nur zu den drei Hosts seiner Network-Security-Config. */
+    /** The debug build may use http only for the three hosts of its network security config. */
     @Test
     fun `the debug build also sends http only to the device and the emulator host`() {
         for (adresse in listOf("http://nas:3000", "http://192.168.1.50:3000", "http://brick.example.org")) {

@@ -8,14 +8,14 @@ import org.junit.Test
 import ch.brickinventoryapp.session.qrError
 
 /**
- * „Etwas ist schiefgelaufen" muss sagen, WAS schiefgelaufen ist.
+ * „Something went wrong“ has to say WHAT went wrong.
  *
- * ── Was hier geprüft wird ───────────────────────────────────────────────────
+ * ── What is checked here ───────────────────────────────────────────────────
  *
- * Beide Richtungen, denn beide sind Regeln:
+ * Both directions, because both are rules:
  *
- *  1. Bei UNBEKANNT wird die Ursache ANGEHÄNGT — sonst ist die Meldung wieder
- *     nichtssagend.
+ *  1. For UNBEKANNT the cause is APPENDED — otherwise the message is
+ *     meaningless again.
  */
 class CauseVisibleTest {
 
@@ -32,7 +32,7 @@ class CauseVisibleTest {
 
     @Test
     fun `without a cause the sentence stays unchanged`() {
-        // Kein technischer Text vorhanden: Es darf keine leere Klammer entstehen.
+        // No technical text present: no empty parenthesis must result.
         assertEquals("Etwas ist schiefgelaufen",
             withTechnicalCause("Etwas ist schiefgelaufen", Ergebnis.Fehler.Unbekannt(null)))
         assertEquals("Etwas ist schiefgelaufen",
@@ -41,15 +41,15 @@ class CauseVisibleTest {
 
     @Test
     fun `with named causes the library text stays out`() {
-        // Die Gegenrichtung, und sie ist die wichtigere: Ein Test, der nur
-        // Punkt 1 prüft, wäre auch dann grün, wenn die Ursache ÜBERALL
-        // angehängt würde — also genau die Regel bräche, um die es geht.
+        // The opposite direction, and it's the more important one: a test that only
+        // checks point 1 would also be green if the cause were appended
+        // EVERYWHERE — i.e. it would break exactly the rule this is about.
         for (art in listOf(Ergebnis.Fehler.Netz("Socket closed"), Ergebnis.Fehler.Zeitueberschreitung,
                            Ergebnis.Fehler.Server(500), Ergebnis.Fehler.Abgewiesen(),
                            Ergebnis.Fehler.LeereAntwort("Socket closed"), Ergebnis.Fehler.Abgebrochen,
                            Ergebnis.Fehler.Klartext)) {
-            // Netz und LeereAntwort tragen selbst einen technischen Text; die übrigen
-            // stehen dabei, damit eine künftige Ursache mit Text hier auffällt.
+            // Netz and LeereAntwort already carry a technical text themselves; the rest
+            // are listed so a future cause with a text stands out here.
             assertEquals(
                 "Bei $art darf kein englischer Bibliothekstext an den Satz geraten",
                 "Keine Verbindung",
@@ -60,8 +60,8 @@ class CauseVisibleTest {
 }
 
 /**
- * Ein zweiter QR-Anlauf darf keine Fehlermeldung erzeugen, wenn die Anmeldung
- * bereits steht.
+ * A second QR startup must not produce an error message if the sign-in
+ * is already in place.
  */
 class QrSecondAttemptTest {
 
@@ -72,10 +72,10 @@ class QrSecondAttemptTest {
 
     @Test
     fun `not signed in - the error stays`() {
-        // Die Gegenrichtung, und sie ist die wichtigere: Würde die Meldung
-        // IMMER unterdrückt, bliebe ein echter Fehlschlag (falscher Server,
-        // abgelaufener Code beim ERSTEN Versuch) für den Nutzer unsichtbar —
-        // er stünde vor einem Anmeldebildschirm, der nichts sagt.
+        // The opposite direction, and it's the more important one: if the message
+        // were ALWAYS suppressed, a real failure (wrong server,
+        // expired code on the FIRST attempt) would stay invisible to the user —
+        // they'd be looking at a sign-in screen that says nothing.
         assertEquals("Ungültiges oder abgelaufenes Token",
             qrError(false, "Ungültiges oder abgelaufenes Token"))
     }

@@ -6,11 +6,11 @@ import ch.brickinventoryapp.model.domain.MemberView
 import ch.brickinventoryapp.ui.util.NumericInput
 
 /**
- * Die vier Eingaben, wie der Server sie braucht — eine Umrechnung für beide
- * Dialoge: Eine leere Anzahl heisst eins, der Preis wird wie in der Web-App gelesen
- * (NumericInput.readAmount), und ohne Haushalt geht kein Besitzer mit, damit der
- * Server beim eigenen Konto bleibt. Eine unlesbare Eingabe wird hier nicht still zu
- * eins oder „kein Preis": Wer speichert, fragt vorher [entryInvalid].
+ * The four inputs, as the server needs them — one conversion for both
+ * dialogs: an empty quantity means one, the price is read like in the web app
+ * (NumericInput.readAmount), and without a household no owner goes along, so the
+ * server stays with its own account. An unreadable input isn't silently turned into
+ * one or „no price" here: whoever saves asks [entryInvalid] first.
  */
 data class EntryValues(
     val anzahl: Int,
@@ -20,8 +20,8 @@ data class EntryValues(
 )
 
 /**
- * @param haushalt Die Konten des Haushalts — bei hoechstens einem geht KEIN
- *                 Besitzer mit.
+ * @param haushalt The household's accounts — with at most one, NO
+ *                 owner goes along.
  */
 fun erfassungsWerte(
     anzahl: String,
@@ -36,6 +36,6 @@ fun erfassungsWerte(
     besitzer = if (haushalt.size > 1) besitzer else null,
 )
 
-/** Ob Anzahl oder Preis etwas Unlesbares tragen; dann speichert der Dialog nicht, und das Feld sagt warum. */
+/** Whether quantity or price carry something unreadable; if so the dialog doesn't save, and the field says why. */
 fun entryInvalid(anzahl: String, preis: String): Boolean =
     NumericInput.quantityInvalid(anzahl) || NumericInput.priceInvalid(preis)

@@ -9,10 +9,10 @@ import ch.brickinventoryapp.model.ui.Vorgang
 import ch.brickinventoryapp.data.repository.errorTextToCode
 
 /**
- * Welche Textressource gehört zu welchem Fehler? Eine eigene, reine Funktion
- * statt einer Zeile in `meldung()`, damit die Zuordnung ohne `Context` und ohne
- * Android-Laufzeit prüfbar ist. `meldung()` holt den Satz und bevorzugt die
- * Servermeldung — das braucht einen Context, die Zuordnung nicht.
+ * Which text resource belongs to which error? A dedicated, pure function
+ * instead of a line in `meldung()`, so the mapping is testable without `Context` and without
+ * the Android runtime. `meldung()` fetches the string and prefers the
+ * server message — that needs a context, the mapping doesn't.
  */
 fun fehlerTextId(f: Ergebnis.Fehler): Int = when (f) {
     is Ergebnis.Fehler.Netz, Ergebnis.Fehler.Abgebrochen -> R.string.err_network
@@ -26,9 +26,9 @@ fun fehlerTextId(f: Ergebnis.Fehler): Int = when (f) {
 }
 
 /**
- * Die Klasse eines Ladefehlers für Symbol, Überschrift und Rat (Fehlerklasse). Ein
- * Status ab 500 zählt als Server, auch mit eigenem Satz; ein 4xx mit Satz ist eine
- * Auskunft des Servers (Eingabe, Recht), kein Ausfall.
+ * The class of a loading error for icon, heading and advice (error class). A
+ * status of 500 or above counts as server, even with its own message; a 4xx with a message is
+ * information from the server (input, right), not a failure.
  */
 fun errorClass(f: Ergebnis.Fehler): Fehlerklasse = when (f) {
     is Ergebnis.Fehler.Abgewiesen -> Fehlerklasse.LOGIN
@@ -39,16 +39,16 @@ fun errorClass(f: Ergebnis.Fehler): Fehlerklasse = when (f) {
 }
 
 /**
- * Der Platzhalter des Satzes, oder null: Nur der Text zu [Ergebnis.Fehler.Server] trägt
- * einen (`%1$d` für den HTTP-Status). `getString()` wirft bei einem fehlenden Argument
- * nicht verlässlich, sondern liefert still einen falschen Text.
+ * The string's placeholder, or null: only the text for [Ergebnis.Fehler.Server] carries
+ * one (`%1$d` for the HTTP status). `getString()` doesn't reliably throw on a missing
+ * argument, but silently returns a wrong text.
  */
 fun errorTextArgument(f: Ergebnis.Fehler): Int? = (f as? Ergebnis.Fehler.Server)?.status
 
 /**
- * Der Fehler als Meldung für den Zustand, ohne Context und ohne fertigen Satz: der Satz
- * des Servers, sonst der zu seinem Code, sonst der zur Art. Die technische Ursache gehört
- * ins Log, nicht in die Anzeige.
+ * The error as a message for the state, without a context and without a finished string: the server's
+ * own message, otherwise the one for its code, otherwise the one for its kind. The technical cause belongs
+ * in the log, not in the display.
  */
 fun errorMessage(f: Ergebnis.Fehler): Meldung {
     if (f.message.isNotBlank()) return Meldung.Text(f.message)
@@ -56,20 +56,20 @@ fun errorMessage(f: Ergebnis.Fehler): Meldung {
     return Meldung.Resource(fehlerTextId(f), listOfNotNull(errorTextArgument(f)))
 }
 
-/** Ein gescheiterter Abruf für den Zustand: Art für Symbol und Rat, Meldung für den Satz. */
+/** A failed fetch for the state: kind for icon and advice, message for the string. */
 fun loadError(f: Ergebnis.Fehler): Laden.Fehler = Laden.Fehler(errorClass(f), errorMessage(f))
 
-/** Eine gescheiterte Handlung für den Zustand; der Satz entsteht beim Zeichnen. */
+/** A failed action for the state; the string is produced while drawing. */
 fun gescheitert(f: Ergebnis.Fehler): Vorgang.Fehlgeschlagen = Vorgang.Fehlgeschlagen(errorMessage(f))
 
-/** Ein Abruf als [Laden]; der Stand der Ablage geht mit, damit „offline“ sichtbar bleibt. */
+/** A fetch as [Laden]; the store's state goes along, so „offline“ stays visible. */
 fun <T> Ergebnis<T>.loadAs(): Laden<T> = when (this) {
     is Ergebnis.Erfolg -> Laden.Daten(data, stand)
     is Ergebnis.Fehler -> loadError(this)
 }
 
 /**
- * Die technische Ursache anhängen — aber nur, wo der Satz allein nichts sagt.
+ * Append the technical cause — but only where the string alone says nothing.
  */
 internal fun withTechnicalCause(satz: String, f: Ergebnis.Fehler): String =
     if (f is Ergebnis.Fehler.Unbekannt && !f.technical.isNullOrBlank()) "$satz (${f.technical})"

@@ -8,22 +8,22 @@ import ch.brickinventoryapp.shared.ui.mengeAusSet
 import ch.brickinventoryapp.shared.ui.mengeManuell
 
 /**
- * Die Mengen-Plakette auf einer Kachel steht ueberall gleich herum.
+ * The quantity badge on a tile faces the same way everywhere.
  *
- * ── Welche Schreibweise wo gilt ─────────────────────────────────────────────
+ * ── Which notation applies where ─────────────────────────────────────────────
  *
- * Nicht geraten, sondern aus der Webapp gelesen. Dort ist die Regel eindeutig:
+ * Not guessed, but read from the web app. There, the rule is unambiguous:
  *
- *     man-tile   → <span class="qbadge">×N</span>    manuell erfasst
- *     part-card  → <div class="part-qty">N×</div>    aus einem Set
+ *     man-tile   → <span class="qbadge">×N</span>    manually captured
+ *     part-card  → <div class="part-qty">N×</div>    from a set
  *
- * (public/js/minifigs.js Zeilen 327 und 486 fuer die manuellen Kacheln,
- * public/js/parts.js Zeile 300 und minifigs.js Zeile 272 fuer die aus
- * Sets.) Von den vier Stellen der App entsprach genau EINE dieser Regel.
+ * (public/js/minifigs.js lines 327 and 486 for the manual tiles,
+ * public/js/parts.js line 300 and minifigs.js line 272 for the ones from
+ * sets.) Of the app's four places, exactly ONE matched this rule.
  *
- * Die Textressource `minifigs_qty_badge` ist ersatzlos weg: „%1$d×" stand in
- * beiden Sprachen zeichengleich da. Ein Rechenzeichen ist kein Satz, und die
- * elf anderen Mengenangaben der App schreiben es auch direkt hin.
+ * The text resource `minifigs_qty_badge` is gone, without a replacement: „%1$d×" stood
+ * identical in both languages. An arithmetic symbol is not a sentence, and the
+ * eleven other quantity figures in the app also write it in directly.
  */
 class QuantityBadgeTest {
 
@@ -34,8 +34,8 @@ class QuantityBadgeTest {
 
     /**
      */
-    // Gegenproben: mengeAusSet() zurück auf "$menge×" → rot;
-    // mengeManuell() auf "$menge×" → rot.
+    // Counter-checks: mengeAusSet() reverted to "$menge×" → red;
+    // mengeManuell() to "$menge×" → red.
     @Test
     fun `the quantity stands everywhere as a symbol before the number`() {
         assertEquals("×3", mengeManuell(3))
@@ -43,8 +43,8 @@ class QuantityBadgeTest {
     }
 
     /**
-     * Die Schreibweise selbst prüft der Test darüber; hier nur, dass alle vier
-     * Kacheln sie benutzen. Ohne das könnte eine wieder eine eigene bauen.
+     * The notation itself is checked by the test above; here only that all four
+     * tiles use it. Without this, one could start building its own again.
      */
     @Test
     fun `all tiles get the badge from the same place`() {
@@ -66,9 +66,9 @@ class QuantityBadgeTest {
 
     @Test
     fun `the text resource for the badge is gone and is not used again`() {
-        // Eine Ressource, die in beiden Sprachen dasselbe Zeichen enthaelt, sagt
-        // nur, dass hier jemand uebersetzen koennte — und genau das hat den
-        // Unterschied ueberhaupt erst verdeckt.
+        // A resource that contains the same character in both languages only
+        // says that someone could translate here — and that's exactly what
+        // hid the difference in the first place.
         for (datei in listOf("values/strings.xml", "values-de/strings.xml")) {
             val xml = File(Quellen.res, "$datei").readText()
             assert(!xml.contains("minifigs_qty_badge")) {

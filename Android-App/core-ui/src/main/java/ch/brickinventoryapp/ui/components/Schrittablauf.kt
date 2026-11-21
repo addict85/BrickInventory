@@ -6,16 +6,16 @@ import ch.brickinventoryapp.model.step.Schrittbindung
 import java.security.Signature
 
 /**
- * Eine Bestätigung von der Challenge bis zur Freigabe am Server, ohne Android:
- * Erst fragt der Server, dann die Gerätesperre ([entsperren] liefert die vom
- * Keystore freigegebene Signatur), zuletzt prüft der Server die Signatur. Weiter
- * geht es nur, wenn beide Seiten zugestimmt haben.
+ * A confirmation from the challenge to the release on the server, without Android:
+ * first the server asks, then the screen lock ([entsperren] supplies the signature
+ * released by the Keystore), and finally the server checks the signature. It
+ * only proceeds if both sides agreed.
  */
 class Schrittablauf(private val bindung: Schrittbindung, private val freigabe: Schrittfreigabe) {
 
     sealed interface Ausgang {
         data object Weiter : Ausgang
-        /** Die Sperre wurde abgebrochen oder lieferte keine gültige Signatur. */
+        /** The lock was cancelled or didn't produce a valid signature. */
         data object Abgebrochen : Ausgang
         data class Rejected(val meldung: String?) : Ausgang
     }
@@ -26,7 +26,7 @@ class Schrittablauf(private val bindung: Schrittbindung, private val freigabe: S
             is Schrittantwort.Challenge -> c.nachricht.toByteArray(Charsets.UTF_8)
             is Schrittantwort.Rejected -> return Ausgang.Rejected(c.meldung)
             Schrittantwort.Free -> return Ausgang.Rejected(null)
-            // Ohne Bindung am Server bleibt die Prüfung im Gerät: eine frische Nonce.
+            // Without a binding on the server, the check stays on the device: a fresh nonce.
             Schrittantwort.NotBound -> freigabe.nonce()
         }
         val signature = freigabe.signature(entsperren(), nachricht) ?: return Ausgang.Abgebrochen

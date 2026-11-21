@@ -13,12 +13,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Wer nur einen Teil von AppUiState braucht (die Wurzel der App nur das Design), leitet ihn
- * ab und darf nur dessen Änderungen sehen; sonst rekomponierte jede Änderung der Sitzung
- * die ganze Oberfläche.
+ * Whoever needs only part of AppUiState (the app's root only the theme) derives it
+ * and may only see its changes; otherwise every change to the session would recompose
+ * the whole UI.
  *
- * Gegenprobe: abgeleitet() ohne distinctUntilChanged (gegenproben/abgeleitet-meldet-alles.patch)
- * → rot „a derived state reports only real changes“ ([classic, classic, classic, noppe]).
+ * Counter-check: abgeleitet() without distinctUntilChanged (gegenproben/abgeleitet-meldet-alles.patch)
+ * → red „a derived state reports only real changes“ ([classic, classic, classic, noppe]).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class DerivedStateTest {

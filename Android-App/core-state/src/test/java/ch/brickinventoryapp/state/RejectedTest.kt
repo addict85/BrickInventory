@@ -8,29 +8,29 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Nach dem Anmelden darf kein „Ungültiger oder abgelaufener Token" stehen
- * bleiben — und niemand darf den Token wieder nachlaufend lesen.
+ * After signing in, no „invalid or expired token“ may remain —
+ * and nobody may read the token again on a lagging basis.
  *
- * ── Was NICHT bewiesen ist ──────────────────────────────────────────────────
+ * ── What is NOT proven ──────────────────────────────────────────────────
  *
- * Welche Anfrage den 401 bekam, war ohne Logcat nicht festzustellen. Diese
- * Datei prüft deshalb ausdrücklich nicht
- * „der Fehler ist weg", sondern zwei Regeln, die die KLASSE schliessen. Wer
- * das später liest, soll den Unterschied sehen.
+ * Which request got the 401 could not be determined without Logcat. This
+ * file therefore deliberately does not check
+ * „the error is gone“, but two rules that close off the CLASS. Whoever
+ * reads this later should see the difference.
  *
- * Belegt war nur, was der Fall ausschliesst: Die App blieb angemeldet, und der
- * Interceptor meldet jeden 401 MIT mitgeschicktem Token als abgelaufene
- * Sitzung. Also ging die Anfrage ohne Token hinaus.
+ * Only what the case rules out was established: the app stayed signed in, and the
+ * interceptor reports every 401 WITH a token sent along as an expired
+ * session. So the request went out without a token.
  *
- * ── Gegenproben (durchgeführt, Ergebnis im Commit) ──────────────────────────
- *   a) Methodenbedingung entfernt      → „ein fehlgeschlagener Login" rot
- *   b) !hadAuthHeader entfernt         → „ein wirklich ungültiger Token" rot
- *   c) eine Datei wieder auf authToken.first() → die Quellenregel rot
- *   d) `angemeldet` in reportsTheSessionLayer ignoriert → „ein falsches
- *      Passwort bleibt ein falsches Passwort" rot
- *   e) in Texte.meldungFuerSnackbar() immer meldung(fehler) → „die Snackbar
- *      schweigt …" rot
- * Dass der Interceptor die Regel anwendet, prüft ServerGuardTest ausgeführt.
+ * ── Counter-checks (carried out, result in the commit) ──────────────────────────
+ *   a) method condition removed      → „ein fehlgeschlagener Login" red
+ *   b) !hadAuthHeader removed         → „ein wirklich ungültiger Token" red
+ *   c) one file set back to authToken.first() → the source rule red
+ *   d) `angemeldet` in reportsTheSessionLayer ignored → „ein falsches
+ *      Passwort bleibt ein falsches Passwort" red
+ *   e) in Texte.meldungFuerSnackbar() always meldung(fehler) → „die Snackbar
+ *      schweigt …" red
+ * That the interceptor applies the rule is checked, run, by ServerGuardTest.
  */
 class RejectedTest {
 
@@ -46,9 +46,9 @@ class RejectedTest {
 
     @Test
     fun `a really invalid token is not retried`() {
-        // Trug die Anfrage bereits einen Token und wurde trotzdem abgewiesen,
-        // ist er ungültig. Diese Bedingung schliesst zugleich jede Schleife
-        // aus: Der zweite Anlauf TRÄGT den Kopf.
+        // If the request already carried a token and was rejected anyway,
+        // it's invalid. This condition also rules out any loop
+        // at the same time: the second attempt CARRIES the header.
         assert(!followUpMay(401, ourServer = true, hadAuthHeader = true, methode = "GET")) {
             "Ein 401 trotz mitgeschicktem Token wird wiederholt — das ist entweder " +
                 "sinnlos oder eine Endlosschleife."
@@ -57,9 +57,9 @@ class RejectedTest {
 
     @Test
     fun `a failed login is not retried`() {
-        // POST /auth/login antwortet mit 401 auf ein falsches Passwort. Ein
-        // zweiter Anlauf zählte denselben Versuch doppelt — gegen die Drossel
-        // des Servers und gegen die Kontosperre.
+        // POST /auth/login answers with 401 for a wrong password. A
+        // second attempt would count the same try twice — against the server's
+        // throttling and against the account lockout.
         assert(!followUpMay(401, ourServer = true, hadAuthHeader = false, methode = "POST")) {
             "Ein fehlgeschlagener Anmeldeversuch geht ein zweites Mal hinaus und " +
                 "zählt doppelt gegen die Kontosperre."
@@ -88,14 +88,14 @@ class RejectedTest {
         }
     }
 
-    // ── Eine abgelaufene Sitzung ist EINE Meldung, nicht zwei ──────────────
+    // ── An expired session is ONE message, not two ──────────────
 
     @Test
     fun `a 401 in the signed-in state belongs to the session layer`() {
-        // Zwei Faelle, EINE Antwort: Bei einem echten Ablauf meldet der
-        // Interceptor „Sitzung abgelaufen" und meldet ab; bei einem Wettlauf
-        // beim Anmelden ist ueberhaupt nichts zu melden. In beiden Faellen hat
-        // der Abruf dem Nutzer nichts zu sagen.
+        // Two cases, ONE answer: on a real expiry the interceptor reports
+        // „Sitzung abgelaufen" and signs out; on a race while signing in
+        // there is nothing to report at all. In both cases
+        // the fetch has nothing to tell the user.
         assert(reportsTheSessionLayer(unauthorized = true, angemeldet = true)) {
             "Der Abruf redet wieder ueber einen 401, den die Sitzungsschicht " +
                 "schon behandelt hat — entweder doppelt (echter Ablauf) oder " +
@@ -105,9 +105,9 @@ class RejectedTest {
 
     @Test
     fun `a wrong password stays a wrong password`() {
-        // Der Server antwortet auf ein falsches Passwort mit demselben 401 und
-        // demselben Satz. Wer nicht angemeldet ist, hat aber keine Sitzung, die
-        // ablaufen koennte — „Sitzung abgelaufen" waere dort schlicht gelogen.
+        // The server answers a wrong password with the same 401 and
+        // the same message. But whoever isn't signed in has no session that
+        // could expire — „Sitzung abgelaufen" would simply be a lie there.
         assert(!reportsTheSessionLayer(unauthorized = true, angemeldet = false)) {
             "Ein fehlgeschlagener Anmeldeversuch wird als abgelaufene Sitzung " +
                 "gemeldet — der Nutzer sucht dann nach einem Problem, das es nicht gibt."
@@ -125,9 +125,9 @@ class RejectedTest {
 
     @Test
     fun `the snackbar stays silent instead of showing a different sentence`() {
-        // Ausgeführt an Texte, der einen Stelle für alle ViewModels: Ein 401
-        // bei vorliegendem Token gibt null (der Kanal zeigt nichts), ohne Token
-        // bleibt der Satz — dann heisst 401 „falsches Passwort".
+        // Run against Texte, the one place for all ViewModels: a 401
+        // with a token present returns null (the channel shows nothing), without a token
+        // the message stays — then 401 means „wrong password".
         fun texts(mitToken: Boolean) = object : Texte {
             override fun text(id: Int, vararg args: Any?) = "t$id"
             override fun menge(id: Int, anzahl: Int, vararg args: Any?) = "m$id"
@@ -148,8 +148,8 @@ class RejectedTest {
 
     @Test
     fun `no snackbar gets the sentence past the rule`() {
-        // Wer in die Snackbar schreibt, geht ueber meldungFuerSnackbar(); eine neue
-        // Stelle mit meldung() faellt hier auf.
+        // Whoever writes into the snackbar goes through meldungFuerSnackbar(); a new
+        // spot using meldung() stands out here.
         val treffer = mutableListOf<String>()
         val schreibt = Regex("""\bzeigeMeldung\(|\b(?:meldungen|kanal)\.zeige\(""")
         var schreiber = 0
@@ -171,26 +171,26 @@ class RejectedTest {
         }
     }
 
-    // ── Und niemand liest den Token wieder nachlaufend ──────────────────
+    // ── And nobody reads the token again on a lagging basis ──────────────────
 
     @Test
     fun `no file reads authToken or serverUrl bypassing the DataStore`() {
-        // `authToken`/`serverUrl` sind die DataStore-Flüsse und LAUFEN NACH:
-        // Zwischen saveAuthToken() und der fertigen Plattenschreibung tragen
-        // sie noch den alten Wert. Genau in diesem Fenster feuert jede
-        // Anmeldung ihre ersten Abrufe. tokenJetzt()/serverUrlJetzt() nehmen
-        // erst den führenden Speicherwert.
+        // `authToken`/`serverUrl` are the DataStore flows and LAG BEHIND:
+        // between saveAuthToken() and the finished disk write, they
+        // still carry the old value. Every sign-in fires its first fetches
+        // exactly in this window. tokenJetzt()/serverUrlJetzt() only pick up
+        // the leading stored value.
         //
         val treffer = mutableListOf<String>()
         for (datei in Quellen.alle()) {
-            // invariantSeparatorsPath und nicht path: Auf Windows — und dort
-            // wird dieses Projekt gebaut — liefert `path` Backslashes, und der
-            // Schnitt ginge ins Leere (siehe Quellen.unter()).
+            // invariantSeparatorsPath and not path: on Windows — and this
+            // project is built there — `path` returns backslashes, and the
+            // cut would miss (see Quellen.unter()).
             val name = datei.invariantSeparatorsPath.substringAfter("ch/brickinventoryapp/")
             if (name.endsWith("TokenAblage.kt")) continue
             val code = Quellen.withoutComments(datei.readText())
-            // Ohne `prefs.` davor: Der Manager heisst nicht ueberall gleich,
-            // und die Regel gilt dem Fluss, nicht dem Variablennamen.
+            // Without `prefs.` in front: the manager isn't named the same
+            // everywhere, and the rule applies to the flow, not the variable name.
             if (Regex("""\.(authToken|serverUrl)\.first\(\)""").containsMatchIn(code))
                 treffer += name
         }

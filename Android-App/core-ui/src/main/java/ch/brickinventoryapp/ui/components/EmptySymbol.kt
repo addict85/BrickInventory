@@ -14,12 +14,12 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Das grosse Symbol über einem leeren Zustand, immer auf derselben runden Fläche:
- * Einmal mit, einmal ohne Fläche sahen die Leerzustände nach zwei Mustern aus.
+ * The large icon above an empty state, always on the same round surface:
+ * with a surface sometimes and without one other times, the empty states looked like two patterns.
  *
- * Statt Emoji: Die sehen je nach Hersteller anders aus, tragen eigene Farben,
- * die kein Design kennt, und TalkBack liest ihren Namen vor. Ohne Beschreibung,
- * weil der Text daneben die Aussage trägt.
+ * Instead of an emoji: those look different depending on the manufacturer, carry their own colors
+ * that no theme knows, and TalkBack reads out their name. Without a description,
+ * because the text next to it carries the meaning.
  */
 @Composable
 fun EmptySymbol(bild: ImageVector, groesse: Dp = 40.dp) {

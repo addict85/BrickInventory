@@ -10,9 +10,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
- * Löschen mit „Rückgängig“, wie bei Sets und Merkliste: Der Eintrag fehlt sofort in der
- * Anzeige, der Server erfährt es erst mit [ausfuehren]. So braucht „Rückgängig“ keinen
- * Weg zurück am Server und wirkt auch offline.
+ * Delete with „undo“, as for sets and the wishlist: the entry disappears from the
+ * display immediately, the server only learns of it with [ausfuehren]. This way „undo“ needs no
+ * path back on the server and also works offline.
  */
 class Loeschvormerkung<T : Any>(
     private val scope: CoroutineScope,
@@ -21,26 +21,26 @@ class Loeschvormerkung<T : Any>(
     private val _value = MutableStateFlow<T?>(null)
     val wert: StateFlow<T?> = _value.asStateFlow()
 
-    /** Ein noch offenes früheres Löschen wird zuerst ausgeführt: Es hat keine Snackbar mehr. */
+    /** A still-open earlier deletion is carried out first: it no longer has a snackbar. */
     fun reserve(entry: T) {
         ausfuehren()
         _value.value = entry
     }
 
-    /** [nur]: nur dieser Eintrag; die Snackbar eines abgelösten Löschens holt nicht den nächsten zurück. */
+    /** [nur]: only this entry; the snackbar of a superseded deletion doesn't bring the next one back. */
     fun rueckgaengig(nur: T? = null) {
         val v = _value.value ?: return
         if (nur != null && v != nur) return
         _value.value = null
     }
 
-    /** [nur]: nur dieser Eintrag; sonst wäre der nächste ohne „Rückgängig“ gelöscht. */
+    /** [nur]: only this entry; otherwise the next one would be deleted without „undo“. */
     fun ausfuehren(nur: T? = null) {
         val v = _value.value ?: return
         if (nur != null && v != nur) return
         _value.value = null
-        // Sofort und nicht abbrechbar: Endet die Snackbar, weil man die Seite verlässt, geht
-        // das ViewModel gleich mit, und das Löschen darf dabei nicht verloren gehen.
+        // Immediately and not cancellable: if the snackbar ends because the page is left,
+        // the ViewModel goes with it right away, and the deletion must not be lost in the process.
         scope.launch(start = CoroutineStart.UNDISPATCHED) { withContext(NonCancellable) { loeschen(v) } }
     }
 }

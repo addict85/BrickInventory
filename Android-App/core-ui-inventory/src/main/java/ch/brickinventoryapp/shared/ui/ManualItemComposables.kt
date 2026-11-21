@@ -48,11 +48,11 @@ import ch.brickinventoryapp.ui.components.largeFont
 import ch.brickinventoryapp.ui.components.withFont
 
 /**
- * Gemeinsame Composables für manuell erfasste Teile UND Minifiguren.
- * Beide Typen haben identische Acquisition-Logik — kein Code-Duplikat.
+ * Shared composables for manually captured parts AND minifigs.
+ * Both types have identical acquisition logic — no code duplication.
  */
 
-// ── Compact read-only acquisition summary (wie im Set-Detail) ─────────────────
+// ── Compact read-only acquisition summary (as in the set detail) ─────────────────
 
 @Composable
 fun AcquisitionSummarySection(
@@ -60,8 +60,8 @@ fun AcquisitionSummarySection(
     currency: Waehrung,
     onEditPrices: () -> Unit
 ) {
-    // Bei grosser Schrift die Käufe UNTER die Bezeichnung: Neben ihr blieb für
-    // „CHF 700.00“ so wenig Breite, dass der Betrag Ziffer für Ziffer umbrach.
+    // With large text, the purchases go UNDER the label: next to it there was
+    // so little width left for „CHF 700.00“ that the amount wrapped digit by digit.
     val untereinander = largeFont()
     val ausrichtung = if (untereinander) Alignment.Start else Alignment.End
     val kaeufe: @Composable () -> Unit = {
@@ -73,7 +73,7 @@ fun AcquisitionSummarySection(
                 acquisitions.forEach { acq -> PurchaseRow(acq, currency) }
             }
             Spacer(Modifier.height(Abstaende.tiny))
-            // Sichtbar klein unter den Käufen, getippt in 48 dp.
+            // Visibly small below the purchases, tapped in 48 dp.
             SmallerButton(onClick = onEditPrices,
                 form = ButtonDefaults.outlinedShape,
                 flaeche = Modifier.heightIn(min = 28.dp),
@@ -111,8 +111,8 @@ fun AcquisitionSummarySection(
 }
 
 /**
- * Ein Kauf: Menge, Zustand, Betrag. FlowRow, damit der Betrag bei wenig Platz als
- * Ganzes in die nächste Zeile rückt; er selbst bricht nie um.
+ * A purchase: quantity, condition, amount. FlowRow, so the amount, with little space, moves
+ * to the next line as a whole; it itself never wraps.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -123,7 +123,7 @@ private fun PurchaseRow(acq: KaufAnsicht, currency: Waehrung) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         Box(middle) { ConditionBadge(acq.condition) }
-        // Ohne Betrag sagt die Zeile, dass keiner erfasst ist; sonst stand „×2 Neu“ allein da.
+        // Without an amount, the row says none is captured; otherwise „×2 Neu“ stood there alone.
         val preis = acq.effectivePrice
         if (preis != null) {
             Text(fmtMoney(preis, currency), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium,
@@ -138,10 +138,10 @@ private fun PurchaseRow(acq: KaufAnsicht, currency: Waehrung) {
 // ── Condition badge (shared by sets, parts, figs) ────────────────────────────
 
 /**
- * Eine Plakette je erfasstem Zustand. `condition` ist ein Aggregat mit einem Wert
- * und verschwiege die Neu-Erfassung neben einer gebrauchten. Welche es gibt,
- * entscheidet der Server (`conditions`); ältere Antworten ohne das Feld fallen auf
- * `condition` zurück.
+ * One badge per captured condition. `condition` is an aggregate with a single value
+ * and would hide the new-condition entry next to a used one. Which ones exist
+ * is decided by the server (`conditions`); older responses without the field fall back to
+ * `condition`.
  */
 @Composable
 fun ConditionBadges(conditions: List<Zustand>, fallback: Zustand? = null) {
@@ -154,7 +154,7 @@ fun ConditionBadges(conditions: List<Zustand>, fallback: Zustand? = null) {
 @Composable
 fun ConditionBadge(condition: Zustand) {
     val isUsed = condition == Zustand.GEBRAUCHT
-    // Salbei nur im hellen Stein-Design: Im Dunkeln leuchtete die helle Pille auf der dunklen Karte.
+    // Sage only in the light stone theme: in the dark theme, the light pill glowed on the dark card.
     val isBrick = LocalIsBrickTheme.current && MaterialTheme.colorScheme.surface.luminance() > 0.5f
     val bgColor = when {
         isUsed  -> MaterialTheme.colorScheme.secondaryContainer
@@ -181,8 +181,8 @@ fun ConditionBadge(condition: Zustand) {
 }
 
 /**
- * Ersatzteil-Plakette in der Form von [ConditionBadge], aber im ruhigen
- * Flächenton: Ein Ersatzteil ist eine Nebeninformation, kein Zustand.
+ * Replacement-part badge in the shape of [ConditionBadge], but in a calm
+ * fill color: a replacement part is secondary information, not a condition.
  */
 @Composable
 fun SparePartBadge(modifier: Modifier = Modifier) {
@@ -198,8 +198,8 @@ fun SparePartBadge(modifier: Modifier = Modifier) {
 }
 
 /**
- * Eine Auskunft in Chipform, nicht antippbar: Ein AssistChip mit leerem
- * onClick sah aus wie ein Knopf, wurde als Knopf vorgelesen und tat nichts.
+ * A piece of information in chip form, not tappable: an AssistChip with an empty
+ * onClick looked like a button, was read out as a button, and did nothing.
  */
 @Composable
 fun InfoBadge(text: String, modifier: Modifier = Modifier, icon: androidx.compose.ui.graphics.vector.ImageVector? = null) {
@@ -213,21 +213,21 @@ fun InfoBadge(text: String, modifier: Modifier = Modifier, icon: androidx.compos
     }
 }
 
-// Hier stehen nur Bausteine, die Set-Detail und ManualItemDetailScreen beide benutzen
-// (AcquisitionSummarySection, ConditionBadge(s), Kaufpreis-Editor), damit beide Seiten
-// Kaufpreise gleich zeigen.
+// Only building blocks here that both the set detail and ManualItemDetailScreen use
+// (AcquisitionSummarySection, ConditionBadge(s), purchase-price editor), so both pages
+// show purchase prices the same way.
 
 /**
- * Der Fuss einer Kachel für einen manuell erfassten Eintrag: der Preis, wie auf
- * der `man-tile` der Webapp und in derselben Reihenfolge:
+ * The footer of a tile for a manually captured entry: the price, as on
+ * the web app's `man-tile` and in the same order:
  *
  *   avg_purchase_price ?? unit_price ?? purchase_price
  *
- * Der erste ist mengengewichtet über alle Erfassungen; der zweite nur der zuletzt
- * geschriebene Einzelpreis.
+ * The first is quantity-weighted across all captured purchases; the second is only the most recently
+ * written single price.
  *
- * @param preis    roher Betrag; null = keiner hinterlegt, dann steht „noch kein Preis“ da
- * @param waehrung Währungscode aus den Einstellungen
+ * @param preis    raw amount; null = none stored, then it says „noch kein Preis“
+ * @param waehrung currency code from settings
  */
 @Composable
 fun ManualTileFooter(preis: Geld?, waehrung: Waehrung) {
@@ -243,24 +243,24 @@ fun ManualTileFooter(preis: Geld?, waehrung: Waehrung) {
 }
 
 /**
- * Anzahl, Kaufpreis und Zustand — was jede manuelle Erfassung hat, ob Teil oder
- * Figur; eine Fassung, damit beide Dialoge gleich aussehen. Der Zustand bleibt
- * beim Aufrufer in `rememberSaveable`, damit er eine Drehung übersteht. Die Nummer
- * bleibt draussen: Sie ist der echte Unterschied der beiden Dialoge.
+ * Quantity, purchase price and condition — what every manual capture has, whether part or
+ * figure; one implementation, so both dialogs look alike. The state stays
+ * with the caller in `rememberSaveable`, so it survives a rotation. The number
+ * stays outside: it's the real difference between the two dialogs.
  */
 @Composable
 fun ErfassungsFelder(
     anzahl: String,
     onCount: (String) -> Unit,
-    /** Was gezählt wird („Anzahl gleicher Teile“). */
+    /** What is being counted („quantity of identical parts“). */
     countHint: String,
     preis: String,
     onPrice: (String) -> Unit,
     zustand: Zustand,
     onZustand: (Zustand) -> Unit,
     /**
-     * Lagerort und sein Vorrat — hier, weil er zum selben Block gehört wie die übrigen
-     * Erfassungsfelder.
+     * Storage location and its stock — here, because it belongs to the same block as the other
+     * capture fields.
      */
     lagerort: String = "",
     onLocation: (String) -> Unit = {},
@@ -273,8 +273,8 @@ fun ErfassungsFelder(
 }
 
 /**
- * Das Anzahlfeld jeder Erfassung, immer mit Hilfezeile: Ohne sie standen die Felder
- * ungleich weit auseinander, und ein Dialog liess eine leere Lücke.
+ * The quantity field of every capture, always with a help line: without it the fields
+ * stood unevenly spaced apart, and one dialog left an empty gap.
  */
 @Composable
 fun CountField(wert: String, onValue: (String) -> Unit, hinweis: String) {
@@ -293,8 +293,8 @@ fun CountField(wert: String, onValue: (String) -> Unit, hinweis: String) {
 }
 
 /**
- * Das Kaufpreisfeld jeder Erfassung. Der Hinweis steht als Hilfezeile statt als
- * Platzhalter: Der verschwand mit dem ersten Tippen.
+ * The purchase-price field of every capture. The hint sits as a help line instead of a
+ * placeholder: that one disappeared on the first keystroke.
  */
 @Composable
 fun PurchasePriceField(wert: String, onValue: (String) -> Unit, beschriftung: String, onFertig: (() -> Unit)? = null) {
@@ -314,10 +314,10 @@ fun PurchasePriceField(wert: String, onValue: (String) -> Unit, beschriftung: St
 }
 
 /**
- * Die Kachel eines manuell erfassten Teils oder einer Figur — eine Fassung, damit
- * Plaketten und Fuss nicht nur in einer nachgezogen werden. Hinein kommen nur die
- * drei Unterschiede (Farbpunkt, Farbzeile, Bezeichnung); Grösse, Form, Ersatzbild
- * und Reihenfolge gehören zur Kachel.
+ * The tile of a manually captured part or figure — one implementation, so
+ * badges and footer don't need to be ported in just one of them. Only the
+ * three differences go in (color dot, color row, label); size, shape, placeholder image
+ * and order belong to the tile.
  */
 @Composable
 fun ManuelleKachel(
@@ -337,7 +337,7 @@ fun ManuelleKachel(
 ) {
     val ctx = LocalContext.current
     Card(
-        onClick = onEdit,  // ganze Karte klickbar — öffnet den Kaufpreis/Anzahl-Dialog, analog Sets
+        onClick = onEdit,  // whole card clickable — opens the purchase-price/quantity dialog, like sets
         modifier = Modifier.width(Formen.kachelBreite).heightIn(min = Formen.kachelHoehe),
         shape = Formen.leiste,
         elevation = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung),
@@ -348,7 +348,7 @@ fun ManuelleKachel(
                 ProduktBild(
                     model = bildUrl?.let { ImageRequest.Builder(ctx).data(it).crossfade(!movementReduced()).build() },
                     imageLoader = imageLoader,
-                    // Ohne Beschreibung: Der Name steht darunter, TalkBack las ihn sonst zweimal.
+                    // Without a description: the name sits below it, TalkBack would otherwise read it twice.
                     contentDescription = null,
                     onState = { st ->
                         if (st is coil3.compose.AsyncImagePainter.State.Error) onBildFehler()
@@ -362,10 +362,10 @@ fun ManuelleKachel(
                     shape = Formen.marke,
                     modifier = Modifier.align(Alignment.TopEnd).padding(3.dp),
                 ) {
-                    // Die Menge-Plakette: „×N" auf einer MANUELL erfassten Kachel,
-                    // „N×" auf einer Kachel aus einem Set. Das ist keine Laune,
-                    // sondern die Regel der Webapp — `man-tile` traegt dort ein
-                    // `qbadge` mit ×N, `part-card` ein `part-qty` mit N×.
+                    // The quantity badge: „×N" on a MANUALLY captured tile,
+                    // „N×" on a tile from a set. That's not a whim,
+                    // but the web app's rule — there, `man-tile` carries a
+                    // `qbadge` with ×N, `part-card` a `part-qty` with N×.
                     Text(mengeManuell(menge), Modifier.padding(horizontal = Abstaende.tiny, vertical = 1.dp).readAloudAs(stueckzahl(menge)),
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
@@ -382,8 +382,8 @@ fun ManuelleKachel(
                         }
                     }
                 }
-                // Kein Papierkorb auf der Kachel: Die Karte öffnet das Detail, und dort steht er
-                // an derselben Stelle wie beim Set.
+                // No trash icon on the tile: the card opens the detail, and it sits there
+                // in the same spot as for the set.
             }
             Column(Modifier.padding(horizontal = 6.dp, vertical = Abstaende.tiny)) {
                 Text(name, style = MaterialTheme.typography.bodySmall,
@@ -394,9 +394,9 @@ fun ManuelleKachel(
                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Box(Modifier.padding(top = 3.dp)) { ConditionBadges(states, zustand) }
-                // Wem gehört der Eintrag? Der Server hängt owners nur an, wenn
-                // mehrere Konten im Blickfeld sind — im Einzelkonto stünde an
-                // jeder Kachel „gehört mir".
+                // Who owns the entry? The server only attaches owners when
+                // several accounts are in the Blickfeld — in a single account, „gehört mir" would sit on
+                // every single tile.
                 OwnerBadges(besitzer, Modifier.padding(top = Abstaende.hairline))
                 ManualTileFooter(preis = preis, waehrung = waehrung)
             }

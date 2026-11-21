@@ -18,19 +18,19 @@ import ch.brickinventoryapp.ui.util.fmtInt
 import ch.brickinventoryapp.ui.components.largeFont
 
 /**
- * Eine Kennzahl als Text: Zahl fett, Bezeichnung daneben. Keine eigene Fläche — die
- * kräftigen Pillen sahen aus wie Knöpfe, taten aber nichts. Zahl und Wort aus einem
- * Plural, sonst stand „1 Exemplare“; zusammengefasst vorgelesen als eine Fundstelle.
+ * A key figure as text: number bold, label next to it. No surface of its own — the
+ * bold pills looked like buttons but did nothing. Number and word from one
+ * plural, otherwise it read „1 Exemplare“; read out together as one finding.
  */
 @Composable
 fun GalleryStatChip(anzahl: Int, plural: Int, detail: String? = null) {
     val zahl = fmtInt(anzahl)
     val text = pluralStringResource(plural, anzahl, zahl)
-    // Bei grosser Schrift steht die Aufschlüsselung auf eigener Zeile: In der Zeile brach sie
-    // mitten in der Klammer („40 /einzeln“).
+    // With large text, the breakdown goes on its own row: in the row it broke
+    // right in the middle of the parenthesis („40 /einzeln“).
     val separator = if (largeFont()) "\n(" else "\u2002("
-    // Die Aufschlüsselung klein in derselben Zeile: Als zweite Zeile darunter war die
-    // Kennzahl breiter als ihr Wert und liess eine Lücke vor der nächsten.
+    // The breakdown small in the same row: as a second row below, the
+    // key figure was wider than its value and left a gap before the next one.
     val klein = MaterialTheme.typography.labelSmall.fontSize
     val place = text.indexOf(zahl)
     Text(
@@ -50,16 +50,16 @@ fun GalleryStatChip(anzahl: Int, plural: Int, detail: String? = null) {
     )
 }
 
-/** Zahl und Wort bleiben zusammen („42 aus Sets“); umbrechen darf die Zeile nur zwischen den Teilen. */
+/** Number and word stay together („42 aus Sets“); the row may only wrap between the parts. */
 private fun inseparable(text: String) = text.replace(' ', '\u00A0')
 
 private const val DIVIDER = " · "
 
 /**
- * Die Kennzahlen über Sets, Teilen, Figuren und im Detail — eine ruhige Fläche
- * (surfaceContainerLow, ohne Rand und Schatten), damit keine nach Bedienelement aussieht.
- * Sie brechen um, auch bei 200 %: Wischbar war bei grosser Schrift nur ein Teil zu
- * sehen, und den Pfeil am Rand konnte man nicht antippen.
+ * The key figures above sets, parts, figures and in the detail — a calm surface
+ * (surfaceContainerLow, without border or shadow), so none of them looks like a control.
+ * They wrap, even at 200%: scrollable, with large text only part of it was
+ * visible, and the arrow at the edge couldn't be tapped.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -74,8 +74,8 @@ fun MetricsSeries(modifier: Modifier = Modifier, inhalt: @Composable () -> Unit)
 }
 
 /**
- * „144 aus Sets · 250 einzeln“ unter der Teilezahl, wie in der Webapp — nur wenn
- * es einzeln erfasste Teile gibt; sonst wäre die Zeile die Zahl darüber noch einmal.
+ * „144 aus Sets · 250 einzeln“ under the parts count, as in the web app — only when
+ * there are individually captured parts; otherwise the row would just be the number above it again.
  */
 @Composable
 fun partsBreakdown(fromSets: Int?, einzeln: Int?): String? =

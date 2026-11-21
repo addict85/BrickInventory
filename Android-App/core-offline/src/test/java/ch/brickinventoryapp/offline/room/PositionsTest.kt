@@ -5,14 +5,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Wo eine Zeile nach einer lokalen Bearbeitung steht: Bleibende Zeilen behalten ihre
- * Position, damit [InventoryDao.sameAn] nur die geänderten schreibt.
+ * Where a row stands after a local edit: rows that remain keep their
+ * position, so that [InventoryDao.sameAn] writes only the changed ones.
  *
- * Gegenproben (kotlinc und JUnit gegen Positionen.kt, Patches unter gegenproben/):
- *   positionen-immer-neu    positionen() zählt immer von vorn
- *                           → rot „ein Loeschen in der Mitte …“ und „neue Zeilen …“
- *   positionen-davor-falsch neue Zeilen vor der ersten bleibenden ab `danach + 1`
- *                           → rot „neue Zeilen nehmen freie Positionen …“ (die Reihenfolge kippt)
+ * Counter-checks (kotlinc and JUnit against Positionen.kt, patches under gegenproben/):
+ *   positionen-immer-neu    positionen() always counts from the start
+ *                           → red „ein Loeschen in der Mitte …“ and „neue Zeilen …“
+ *   positionen-davor-falsch new rows before the first remaining one start at `danach + 1`
+ *                           → red „neue Zeilen nehmen freie Positionen …“ (the order shifts)
  */
 class PositionsTest {
 

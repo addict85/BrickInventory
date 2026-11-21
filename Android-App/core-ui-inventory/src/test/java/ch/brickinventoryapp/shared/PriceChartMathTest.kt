@@ -13,19 +13,19 @@ import java.util.Locale
 import ch.brickinventoryapp.shared.ui.PriceChartMath
 
 /**
- * Diagramm-Mathematik für den Preisverlauf (shared/ui/PriceChartMath.kt).
+ * Chart math for the price history (shared/ui/PriceChartMath.kt).
  *
- * Die beiden Fehler, die hier abgesichert werden, sind am Gerät kaum als
- * Fehler zu erkennen — sie sehen wie echte Preisbewegungen aus:
+ * The two bugs guarded against here are hardly recognizable as
+ * bugs on the device — they look like real price movements:
  *
- *   1. Die vom Server vorne aufgefüllten NULLEN als Punkt gezeichnet ergeben
- *      eine Linie, die bei null beginnt und senkrecht hochspringt. Das sieht
- *      aus wie ein Kurssturz, den es nie gab.
+ *   1. The ZEROS the server pads at the front, drawn as a point, produce
+ *      a line that starts at zero and jumps straight up. That looks
+ *      like a price crash that never happened.
  *
- * Dazu die Beschreibung für TalkBack. Gegenproben:
- *   A  in zusammenfassung() Anfang und Ende nach Index statt nach Tag → rot „die
+ * Plus the description for TalkBack. Counter-checks:
+ *   A  in zusammenfassung() start and end by index instead of by day → red „die
  *      Beschreibung nennt je Linie Zeitraum, Anfang, Ende, Tief und Hoch“
- *   B  die Semantik am Canvas prüft PriceChartDescriptionTest (app) gezeichnet;
+ *   B  the semantics on the canvas is checked by PriceChartDescriptionTest (app), drawn;
  *      gegenproben/preisdiagramm-stumm.patch
  */
 class PriceChartMathTest {
@@ -39,7 +39,7 @@ class PriceChartMathTest {
 
     @Test
     fun `padded zeros before firstRealIndex are not drawn`() {
-        // Gebraucht setzt erst am dritten Messpunkt ein.
+        // Used only starts in at the third data point.
         val chart = PreisDiagrammAnsicht(
             values = listOf(
                 series("N", 0, "2026-01-01" to 100.0, "2026-02-01" to 110.0, "2026-03-01" to 120.0),
@@ -56,8 +56,8 @@ class PriceChartMathTest {
 
     @Test
     fun `a 0 after firstRealIndex also counts as no value`() {
-        // Der Server füllt nur vorne auf — eine 0 mittendrin wäre ein Preis von
-        // null Franken, den es nicht gibt. Sicherheitshalber trotzdem raus.
+        // The server only pads at the front — a 0 in the middle would be a price of
+        // zero francs, which doesn't exist. Removed anyway, just to be safe.
         val chart = PreisDiagrammAnsicht(
             values = listOf(series("N", 0, "2026-01-01" to 100.0, "2026-02-01" to 0.0)),
             x = listOf("2026-01-01", "2026-02-01")
@@ -81,9 +81,9 @@ class PriceChartMathTest {
 
     @Test
     fun `the x position comes from the date, not from the index`() {
-        // Zwei Reihen unterschiedlicher Länge: Der gemeinsame letzte Tag muss
-        // bei beiden an derselben Stelle landen, der spätere Beginn der
-        // zweiten Reihe weiter rechts.
+        // Two series of different length: the shared last day has to
+        // land at the same spot for both, the second series' later start
+        // further to the right.
         val chart = PreisDiagrammAnsicht(
             values = listOf(
                 series("N", 0, "2026-01-01" to 100.0, "2026-07-01" to 110.0),
@@ -107,8 +107,8 @@ class PriceChartMathTest {
 
     @Test
     fun `both series share one scale`() {
-        // Der interessante Vergleich ist der ABSTAND zwischen Neu und
-        // Gebraucht; getrennte Skalen machen genau den unsichtbar.
+        // The interesting comparison is the GAP between new and
+        // used; separate scales would make exactly that invisible.
         val chart = PreisDiagrammAnsicht(
             values = listOf(
                 series("N", 0, "2026-01-01" to 200.0),
@@ -119,13 +119,13 @@ class PriceChartMathTest {
         val b = PriceChartMath.bounds(PriceChartMath.buildLines(chart))!!
         assertTrue(b.minValue < 100.0)
         assertTrue(b.maxValue > 200.0)
-        // Gebraucht liegt tiefer als Neu (y wird von oben gemessen).
+        // Used sits lower than new (y is measured from the top).
         assertTrue(b.yFraction(100.0) > b.yFraction(200.0))
     }
 
     @Test
     fun `all values equal still give a usable span`() {
-        // Sonst wäre die Spanne 0 und die Division im Zeichencode undefiniert.
+        // Otherwise the span would be 0 and the division in the drawing code undefined.
         val chart = PreisDiagrammAnsicht(
             values = listOf(series("N", 0, "2026-01-01" to 50.0, "2026-02-01" to 50.0)),
             x = listOf("2026-01-01", "2026-02-01")
@@ -156,7 +156,7 @@ class PriceChartMathTest {
 
     @Test
     fun `the description names period, start, end, low and high per line`() {
-        // Ungeordnet geliefert: Anfang und Ende richten sich nach dem Tag.
+        // Delivered out of order: start and end are determined by the day.
         val chart = PreisDiagrammAnsicht(
             values = listOf(
                 series("N", 0, "2026-03-01" to 120.0, "2026-01-01" to 100.0, "2026-02-01" to 90.0),

@@ -10,11 +10,11 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /**
- * Verschlüsselung für das Bearer-Token. Das Token öffnet ein Konto auf dem Server und läuft
- * erst nach TOKEN_IDLE_DAYS Untätigkeit ab.
+ * Encryption for the bearer token. The token opens an account on the server and expires
+ * only after TOKEN_IDLE_DAYS of inactivity.
  */
 
-/** Wo die Schlüssel liegen: im Gerät der AndroidKeyStore, im Test ein Bund im Speicher. */
+/** Where the keys live: on the device the AndroidKeyStore, in the test a bundle in memory. */
 internal interface Keychain {
     fun fetch(alias: String): SecretKey?
     fun erzeuge(alias: String, onlyUnlocked: Boolean): SecretKey
@@ -30,15 +30,15 @@ internal object AndroidKeychain : Keychain {
 
     override fun erzeuge(alias: String, onlyUnlocked: Boolean): SecretKey {
         val gen = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, KEYSTORE)
-        // StrongBox (eigener Sicherheitschip) wo vorhanden: Der Schlüssel bleibt
-        // auch bei einer kompromittierten TEE im Chip. Ohne Chip wirft generateKey,
-        // dann gilt der Keystore wie bisher. Der Chip ist langsam; entschlüsselt
-        // wird nur bei neuem Geheimtext.
+        // StrongBox (a dedicated security chip) where available: the key stays
+        // protected even with a compromised TEE in the chip. Without a chip generateKey throws,
+        // and then the Keystore behaves as before. The chip is slow; decryption
+        // only happens for new ciphertext.
         try {
             gen.init(vaultSpec(alias, onlyUnlocked).setIsStrongBoxBacked(true).build())
             return gen.generateKey()
         } catch (_: java.security.ProviderException) {
-            // StrongBoxUnavailableException ist eine davon; weiter ohne Chip.
+            // StrongBoxUnavailableException is one of those; carry on without the chip.
         }
         gen.init(vaultSpec(alias, onlyUnlocked).build())
         return gen.generateKey()
@@ -48,18 +48,18 @@ internal object AndroidKeychain : Keychain {
 }
 
 /**
- * Die echte Umsetzung über den Android-Keystore.
+ * The real implementation via the Android Keystore.
  *
- * Ablageformat: `a1:` Base64( IV ‖ Geheimtext ), mit AAD; ältere Geheimtexte ohne `a1:`
- * und ohne AAD bleiben lesbar und gelten als [veraltet]. Den IV wählt der Keystore
- * (setRandomizedEncryptionRequired bleibt an).
+ * Storage format: `a1:` Base64( IV ‖ ciphertext ), with AAD; older ciphertexts without `a1:`
+ * and without AAD stay readable and count as [veraltet]. The Keystore chooses the IV
+ * (setRandomizedEncryptionRequired stays on).
  */
-// [alias]: Die lokalen Ablagen umhüllen ihren Schlüssel unter einem eigenen (Ablageschluessel).
+// [alias]: the local stores wrap their key under one of their own (Ablageschluessel).
 internal class KeystoreTokenVault(
     private val alias: String = ALIAS,
-    /** setUnlockedDeviceRequired: Token und Ablagen (EntsperrVault), nicht das Vertrauen (Pins). */
+    /** setUnlockedDeviceRequired: token and stores (EntsperrVault), not trust (pins). */
     private val onlyUnlocked: Boolean = false,
-    /** Altbestand: nur lesen. Ein fehlender Schlüssel heisst „weg“; ein neuer könnte nichts Altes öffnen. */
+    /** Legacy data: read-only. A missing key means „gone“; a new one could never open something old. */
     private val readOnly: Boolean = false,
     private val bund: Keychain = AndroidKeychain,
 ) : TokenEncryption {
@@ -76,11 +76,11 @@ internal class KeystoreTokenVault(
         return PREFIX_AAD + Base64.getEncoder().encodeToString(c.iv + geheim)
     }
 
-    /** Für Aufrufer, die nur „lesbar oder nicht“ kennen; ein gesperrter Keystore ist hier auch null. */
+    /** For callers who only know „readable or not“; a locked Keystore also reads as null here. */
     override fun entschluessle(gespeichert: String): String? = (oeffne(gespeichert) as? Tresorbefund.Readable)?.klartext
 
-    // Fehlt der Schlüssel, ist der Geheimtext weg (null). KeyStoreException, ProviderException
-    // u. Ä. beim Hochfahren dagegen gelten als vorübergehend (vaultErrorPermanent).
+    // If the key is missing, the ciphertext is gone (null). KeyStoreException, ProviderException
+    // and similar during startup, on the other hand, count as temporary (vaultErrorPermanent).
     override fun oeffne(gespeichert: String): Tresorbefund = openWithRetry {
         val withAad = gespeichert.startsWith(PREFIX_AAD)
         val roh = Base64.getDecoder().decode(gespeichert.removePrefix(PREFIX_AAD))
@@ -99,21 +99,21 @@ internal class KeystoreTokenVault(
 
     companion object {
         private const val ALIAS = "brickinventory_auth_token"
-        /** Eigener Alias: Ein bestehender Schlüssel nimmt die Bedingung nachträglich nicht an. */
+        /** Its own alias: an existing key does not take on the condition retroactively. */
         const val ALIAS_UNLOCKED = "brickinventory_auth_token_entsperrt"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
         private const val IV_LENGTH = 12      // GCM-Standard
         private const val GCM_TAG_BITS = 128
-        /** Base64 kennt keinen Doppelpunkt. Wer `a1:` abschneidet, scheitert an der AAD, statt alt zu lesen. */
+        /** Base64 doesn't know a colon. Whoever strips `a1:` fails on the AAD, instead of reading it as legacy data. */
         private const val PREFIX_AAD = "a1:"
         private val AAD = "token".toByteArray(Charsets.UTF_8)
     }
 }
 
 /**
- * Keine Nutzerauthentifizierung: Ausgang, Preisalarm und Abmeldeauftrag laufen ohne
- * Nutzer. [onlyUnlocked] sperrt den Schlüssel, solange das Gerät gesperrt ist; was
- * dann im Hintergrund wartet, steht in readToken und redemptionStep.
+ * No user authentication: outbox, price alert and sign-out order run without a
+ * user. [onlyUnlocked] locks the key as long as the device is locked; whatever
+ * is then waiting in the background is described in readToken and redemptionStep.
  */
 internal fun vaultSpec(alias: String, onlyUnlocked: Boolean): KeyGenParameterSpec.Builder =
     KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)

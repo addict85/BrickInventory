@@ -52,14 +52,14 @@ import ch.brickinventoryapp.ui.util.fmtAmount
 import ch.brickinventoryapp.ui.util.fmtMoney
 import ch.brickinventoryapp.ui.util.fmtMoneyWhole
 
-// Geteilte Detail-Composables, Preis-Chart und Kaufpreis-Erfassungszeile: Set-,
-// Merkposten-, Teile- und Finanzansicht zeigen sie gleich, darum in core-ui.
+// Shared detail composables, price chart and purchase-price capture row: set,
+// wishlist, parts and finance views all show them the same way, hence in core-ui.
 // ── Shared composables ─────────────────────────────────────────────────────────
 
 /**
- * Eine Angabe in der Kennzahlen-Fläche einer Detailseite: Bezeichnung, dann der Wert
- * fett („Jahr 2017“). Als Text in [MetricsSeries], nicht als erhabene Pille — die
- * sah antippbar aus.
+ * A piece of information in a detail page's key-figures area: label, then the value in
+ * bold („Jahr 2017“). As text in [MetricsSeries], not as a raised pill — that
+ * looked tappable.
  */
 @Composable
 fun StatChipV2(label: String, value: String) {
@@ -79,13 +79,13 @@ fun StatChipV2(label: String, value: String) {
 @Composable
 fun SectionCard(
     title: String,
-    /** Ohne, wenn die Liste selbst einen Rand hat: Die Karte stand sonst schmaler als ihre Nachbarn. */
+    /** Without one, if the list itself has a margin: otherwise the card stood narrower than its neighbors. */
     outerGap: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    // Die Karte begrenzt die Breite, nicht jedes Element darin: Sonst endeten Werte, Felder
-    // und Knöpfe auf dem Tablet an verschiedenen Stellen mitten in der Karte. In einer
-    // Spalte ist die Spalte die Grenze; schmaler stand die Karte mittig in einem Rand.
+    // The card limits the width, not every element inside it: otherwise values, fields
+    // and buttons on the tablet ended at different points in the middle of the card. In a
+    // single column, the column is the limit; narrower, the card stood centered inside a margin.
     val breite = if (LocalSpaltenkarte.current) Modifier.fillMaxWidth() else Modifier.centeredUntil(Lesebreite.formular)
     AppKarte(breite
         .then(if (outerGap) Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.tiny) else Modifier)) {
@@ -96,7 +96,7 @@ fun SectionCard(
     }
 }
 
-/** true in einer Spalte des zweispaltigen Tablet-Layouts: [SectionCard] nimmt dann ihre volle Breite. */
+/** true in one column of the two-column tablet layout: [SectionCard] then takes its full width. */
 val LocalSpaltenkarte = staticCompositionLocalOf { false }
 
 @Composable
@@ -105,9 +105,9 @@ fun DetailRow2(label: String, value: String) {
 }
 
 /**
- * Preisverlauf mit zwei Linien (neu und gebraucht) samt Legende, gerechnet in
- * ui/PriceChartMath.kt. Farben aus dem Design (LocalChartColors), dieselben wie die
- * Zustands-Plaketten und --chart-new/--chart-used im Web.
+ * Price history with two lines (new and used) plus legend, computed in
+ * ui/PriceChartMath.kt. Colors from the theme (LocalChartColors), the same as the
+ * condition badges and --chart-new/--chart-used on the web.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -122,23 +122,23 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: Waehrung) {
     fun colorFor(cond: Zustand) = if (cond == Zustand.GEBRAUCHT) chartColors.used else chartColors.new
     fun labelFor(cond: Zustand) = if (cond == Zustand.GEBRAUCHT) labelUsed else labelNew
 
-    // Tief und Hoch über BEIDE Reihen — dieselbe Skala. Kein „Aktuell“: Den heutigen
-    // Preis zeigt jede Karte schon darüber, er stand sonst dreimal da.
+    // Low and high across BOTH series — the same scale. No „Current“: the current
+    // price is already shown above by each card, it would otherwise stand there three times.
     val allValues = lines.flatMap { it.points }.map { it.value }
     val deepHigh = stringResource(R.string.price_chart_low_high,
         fmtMoney(allValues.min(), waehrung),
         fmtMoney(allValues.max(), waehrung))
-    // Unter drei Messpunkten ist eine Linie keine Aussage: Zwei Punkte ohne Achse
-    // lasen sich wie ein Trend. Dann Tief und Hoch und ein Satz, warum kein Diagramm.
+    // Below three data points a line makes no statement: two points without an axis
+    // read like a trend. Then low and high and a sentence why there's no chart.
     if (lines.maxOf { it.points.size } < MIN_POINTS_HISTORY) {
         Text(deepHigh, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
         Text(stringResource(R.string.price_chart_too_few), style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
         return
     }
-    // Legende oben neben Tief und Hoch: Zwischen Fläche und Zeitachse las sie sich wie
-    // eine Beschriftung der Achse. Nur Zustände mit Linie — ein Eintrag ohne Linie
-    // sähe nach fehlenden Daten aus.
+    // Legend on top next to low and high: between the fill and the time axis it read like
+    // a label on the axis. Only conditions with a line — an entry without a line
+    // would look like missing data.
     FlowRow(
         Modifier.fillMaxWidth().padding(bottom = Abstaende.klein),
         horizontalArrangement = Arrangement.spacedBy(Abstaende.gross),
@@ -149,7 +149,7 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: Waehrung) {
         lines.forEach { line ->
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
-                // Dasselbe Muster wie die Linie: gestrichelt oder durchgezogen, mit ihrer Endmarke.
+                // The same pattern as the line: dashed or solid, with its end mark.
                 Canvas(Modifier.size(width = 28.dp, height = 10.dp)) {
                     val stil = linesStyle(line.condition)
                     val middle = Offset(size.width - 5.dp.toPx(), size.height / 2)
@@ -166,7 +166,7 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: Waehrung) {
 
     val gridColor = MaterialTheme.colorScheme.outlineVariant
     val surfaceCol = MaterialTheme.colorScheme.surface
-    // Wie im Wertdiagramm (PortfolioChart): ohne Beschreibung überspringt TalkBack die Fläche.
+    // As in the value chart (PortfolioChart): without a description TalkBack skips the canvas.
     val beschreibung = PriceChartMath.zusammenfassung(lines).map { z ->
         stringResource(R.string.price_chart_summary, labelFor(z.zustand), z.von, z.bis,
             fmtAmount(z.anfang), fmtAmount(z.ende),
@@ -174,7 +174,7 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: Waehrung) {
     }.joinToString("; ")
     val axis = PriceChartMath.yTicks(bounds).reversed()
     Row(Modifier.fillMaxWidth().height(withFontHeight(120.dp))) {
-    // Die Wertachse: oben, Mitte, unten — an den Hilfslinien, auf ganze Beträge gerundet.
+    // The value axis: top, middle, bottom — at the guide lines, rounded to whole amounts.
     Column(Modifier.fillMaxHeight().padding(end = Abstaende.klein),
         verticalArrangement = Arrangement.SpaceBetween, horizontalAlignment = Alignment.End) {
         axis.forEach { v ->
@@ -188,14 +188,14 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: Waehrung) {
     Canvas(modifier = Modifier.weight(1f).fillMaxHeight().semantics { contentDescription = beschreibung }) {
         val w = size.width
         val h = size.height
-        // So weit eingerückt wie die halbe Zeile der Achsenbeschriftung: Die Linien
-        // stehen dann auf Höhe ihrer Zahlen.
+        // Indented as far as half the row of the axis label: the lines
+        // then line up with the height of their numbers.
         val topPad = edgeTop
         val usableH = (h - topPad * 2).coerceAtLeast(1f)
         fun px(day: Long) = bounds.xFraction(day) * w
         fun py(v: Double) = topPad + bounds.yFraction(v) * usableH
 
-        // Waagerechte Hilfslinien an den drei Achsenwerten.
+        // Horizontal guide lines at the three axis values.
         PriceChartMath.yTicks(bounds).forEach { v ->
             val y = py(v)
             drawLine(gridColor, Offset(0f, y), Offset(w, y), strokeWidth = 1f)
@@ -211,8 +211,8 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: Waehrung) {
                 return@forEach
             }
 
-            // Fläche unter der Linie — nur als leiser Verlauf, damit sich zwei
-            // Flächen übereinander nicht gegenseitig unlesbar machen.
+            // Fill under the line — only as a faint gradient, so two
+            // fills on top of each other don't make each other unreadable.
             val fill = Path().apply {
                 moveTo(pts.first().x, h)
                 pts.forEach { lineTo(it.x, it.y) }
@@ -228,15 +228,15 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: Waehrung) {
             }
             drawPath(path, color, style = Stroke(width = PRICE_LINE_WIDTH.toPx(), pathEffect = strich(stil)))
 
-            // Endpunkt: heller Ring, damit er auch dort sichtbar bleibt, wo
-            // sich beide Linien treffen.
+            // End point: a light ring, so it stays visible even where
+            // the two lines meet.
             endMarker(surfaceCol, stil, pts.last(), 4.dp.toPx())
             endMarker(color, stil, pts.last(), 2.5.dp.toPx())
         }
     }
     }
 
-    // Randbeschriftung der Zeitachse — die gemeinsame Achse des Servers.
+    // Edge label of the time axis — the server's shared axis.
     PriceChartMath.axisRange(chart)?.let { (first, last) ->
         Row(
             Modifier.fillMaxWidth().padding(top = Abstaende.hairline),
@@ -252,15 +252,15 @@ fun PriceChart(chart: PreisDiagrammAnsicht, waehrung: Waehrung) {
     }
 }
 
-/** Ab so vielen Messpunkten einer Reihe zeigt PriceChart eine Linie. */
+/** From this many data points in a series onward, PriceChart shows a line. */
 const val MIN_POINTS_HISTORY = 3
 
-/** Breite der Preislinien: 3 px waren auf einem dichten Telefon kaum ein Strich. */
+/** Width of the price lines: 3 px were barely a stroke on a high-density phone. */
 val PRICE_LINE_WIDTH = 2.dp
 
 /**
- * Neu und Gebraucht unterscheiden sich auch in der Form, nicht nur im Farbton
- * (WCAG 1.4.1): Gebraucht gestrichelt und mit eckiger Endmarke.
+ * New and used also differ in shape, not just in hue
+ * (WCAG 1.4.1): used is dashed and has a square end mark.
  */
 data class LinesStyle(val dashed: Boolean, val angular: Boolean)
 
@@ -275,14 +275,14 @@ private fun DrawScope.endMarker(farbe: Color, stil: LinesStyle, middle: Offset, 
     else drawCircle(farbe, radius = radius, center = middle)
 }
 
-/** Das Diagramm wächst mit der Schrift, damit die Achsenzahlen nicht ineinanderlaufen. */
+/** The chart grows with the text size, so the axis numbers don't run into each other. */
 @Composable
 private fun withFontHeight(basis: Dp): Dp = withFont(basis)
 
 /**
- * market price and development per condition. Eine Zeile erscheint nur, wenn der Server
- * für diesen Zustand eine Erfassung kennt; ohne Markt- oder Kaufpreis bleibt die
- * Prozentangabe leer, statt gegen nichts zu rechnen.
+ * Market price and development per condition. A row only appears when the server
+ * knows a capture for that condition; without a market or purchase price the
+ * percentage stays empty, instead of computing against nothing.
  */
 @Composable
 fun MarketPriceByCondition(
@@ -307,8 +307,8 @@ fun MarketPriceByCondition(
             val wert: @Composable () -> Unit = {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                    // Der Preis in Schriftfarbe statt primary: In „noppe“ war primary Rot, ein Preis
-                    // sah aus wie ein Fehler. Ohne Preis ein Wort statt eines Strichs.
+                    // The price in text color instead of primary: in „noppe“ primary was red, a price
+                    // looked like an error. Without a price, a word instead of a dash.
                     val markt = data.marketPrice
                     if (markt != null) {
                         Text(fmtMoney(markt, currency),
@@ -321,7 +321,7 @@ fun MarketPriceByCondition(
                     data.pnlPct?.let { PnlBadge(it) }
                 }
             }
-            // Wie LabelAndValue: bei grosser Schrift untereinander.
+            // Like LabelAndValue: stacked with large text.
             if (gross) Column(Modifier.fillMaxWidth().padding(vertical = Abstaende.tiny)) {
                 bezeichnung(Modifier)
                 wert()
@@ -337,9 +337,9 @@ fun MarketPriceByCondition(
 }
 
 /**
- * „Preis wird geladen“ — Kringel und Text nebeneinander, eine Fassung für
- * Marktpreis, Preisverlauf und das Detail manueller Teile, damit die nächste
- * Änderung nicht drei Stellen suchen muss.
+ * „Preis wird geladen“ — spinner and text side by side, one implementation for
+ * market price, price history and the manual-parts detail, so the next
+ * change doesn't have to hunt through three spots.
  */
 @Composable
 fun PriceLoadsRow(modifier: Modifier = Modifier) {
@@ -355,11 +355,11 @@ fun PriceLoadsRow(modifier: Modifier = Modifier) {
     }
 }
 
-/** Prozent-Plakette — grün im Plus, Fehlerfarbe im Minus. */
+/** Percentage badge — green in the positive, error color in the negative. */
 @Composable
 fun PnlBadge(
     pct: Double,
-    /** Derselbe Wert in Geld; mit ihm sagt die Plakette, wie viel, nicht nur wie stark. */
+    /** The same value in money; with it the badge says how much, not just how strongly. */
     betrag: String? = null,
 ) {
     val color = when {
@@ -376,13 +376,13 @@ fun PnlBadge(
     }
 }
 
-/** Wie die drei Wert-Kacheln stehen: nebeneinander, Marktwert über den zwei anderen oder untereinander. */
+/** How the three value tiles stand: side by side, market value above the other two, or stacked. */
 enum class TileArrangement { DREI, ONE_VIA_TWO, STACKED }
 
 /**
- * Die Anordnung, in der der breiteste Betrag ([demand], samt Innenabstand) in
- * seiner Kachel einzeilig Platz hat. Gemessen statt an der Schriftgrösse
- * entschieden: „CHF 1’712.40“ passte schon bei 100 % auf 360 dp nicht in ein Drittel.
+ * The arrangement where the widest amount ([demand], including inner padding) fits
+ * on one line in its tile. Decided by measuring rather than by font
+ * size: „CHF 1’712.40“ already didn't fit a third at 100% on 360 dp.
  */
 fun tileArrangement(breite: Dp, demand: Dp, abstand: Dp): TileArrangement = when {
     demand <= (breite - abstand * 2) / 3 -> TileArrangement.DREI
@@ -391,30 +391,30 @@ fun tileArrangement(breite: Dp, demand: Dp, abstand: Dp): TileArrangement = when
 }
 
 /**
- * Marktwert, Kaufpreis und G&V oben auf jeder Detailseite, in jedem Design: Die Frage
- * „was ist es wert?“ beantwortet die Seite zuerst. Ein Betrag bricht nie um; reicht
- * die Breite nicht, rückt erst der Marktwert über die beiden anderen, dann alles
- * untereinander. tiles of a row are equally high.
+ * Market value, purchase price and P&L at the top of every detail page, in every theme: the question
+ * „what is it worth?“ is answered by the page first. An amount never wraps; if
+ * the width doesn't suffice, first the market value moves above the other two, then everything
+ * stacks. Tiles of a row are equally high.
  */
 @Composable
 fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier = Modifier, pnlBetrag: String? = null) {
     val farben = MaterialTheme.colorScheme
     val accent = LocalAkzentflaechen.current
     val status = LocalStatusFarben.current
-    // Betrag und Prozent wie in den Finanzen („+CHF 112.50 · +16.1 %“), nicht nur Prozent.
+    // Amount and percentage as in finances („+CHF 112.50 · +16.1 %“), not just percentage.
     val pnlParts = pnl?.let { listOfNotNull(pnlBetrag, fmtProzent(it)) } ?: listOf("—")
     val pnlSingleLine = pnlParts.joinToString(" · ")
     val marketTile: @Composable (Modifier) -> Unit = { m ->
         ValueTile(stringResource(R.string.detail_section_market), markt, accent.markt, accent.onMarket, m)
     }
-    // Kaufpreis und G&V gleich gebaut (surface mit Rand), der Marktwert allein hervorgehoben:
-    // Drei Kartenstile nebeneinander wirkten zufällig. Die Statusfarben halten 4,5:1 nur auf surface.
+    // Purchase price and P&L built the same way (surface with border), the market value highlighted alone:
+    // three card styles side by side looked arbitrary. The status colors only hold 4.5:1 on surface.
     val purchaseTile: @Composable (Modifier) -> Unit = { m ->
         ValueTile(stringResource(R.string.detail_purchase_price), kauf, accent.kauf, accent.onPurchase, m,
             edge = farben.outlineVariant)
     }
     val pnlTile: @Composable (Modifier, String) -> Unit = { m, pnlText ->
-        // Nur die Zahl in Grün oder Rot: Die Beschriftung in Statusfarbe las sich wie ein Urteil.
+        // Only the number in green or red: the label in a status color read like a verdict.
         ValueTile(stringResource(R.string.detail_pnl_tile), pnlText, farben.surface,
             when { pnl == null -> farben.onSurfaceVariant; pnl < 0 -> status.fehler; else -> status.erfolg },
             m, edge = farben.outlineVariant, beschriftung = farben.onSurfaceVariant)
@@ -427,7 +427,7 @@ fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier = 
             meter.measure(text, stil, softWrap = false, maxLines = 1).size.width.toDp()
         } + Abstaende.mittel * 2 + 2.dp
         val demand = listOf(markt, kauf, pnlSingleLine).maxOf { breite(it) }
-        // Passt „Betrag · Prozent“ nicht einmal in die volle Breite, stehen beide untereinander.
+        // If „amount · percent“ doesn't even fit the full width, both go stacked.
         val pnlText = if (breite(pnlSingleLine) > maxWidth) pnlParts.joinToString("\n") else pnlSingleLine
         val abstand = Abstaende.klein
         val equalHigh = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
@@ -453,7 +453,7 @@ fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier = 
     }
 }
 
-/** Eine Kachel der Wertreihe: Bezeichnung klein, Betrag gross, ohne Umbruch im Betrag. */
+/** A tile of the value row: label small, amount large, never wrapping within the amount. */
 @Composable
 private fun ValueTile(label: String, wert: String, flaeche: Color, schrift: Color, modifier: Modifier = Modifier,
                        edge: Color? = null, beschriftung: Color = schrift) {
@@ -466,7 +466,7 @@ private fun ValueTile(label: String, wert: String, flaeche: Color, schrift: Colo
             .semantics(mergeDescendants = true) {},
     ) {
         Text(label, color = beschriftung, style = MaterialTheme.typography.labelMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-        // Umbrüche nur dort, wo der Aufrufer sie setzt: ein Betrag bricht nie in sich.
+        // Line breaks only where the caller sets them: an amount never wraps on its own.
         Text(wert, color = schrift, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
             maxLines = wert.count { it == '\n' } + 1, softWrap = false)
     }

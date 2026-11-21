@@ -28,34 +28,34 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Was die Sitzung über die Bildschirme hinweg tut: anmelden und abmelden
- * nachziehen, Einstellungen und Design des Kontos laden. Die Bereiche lesen die
- * [Sitzung]; auslösen dürfen sie nur diese Schritte.
+ * What the session does across screens: catch up on sign-in and sign-out,
+ * load account settings and theme. Scopes read the
+ * [Sitzung]; only these steps are allowed to trigger it.
  */
 interface SitzungsRepository {
-    /** Beginnt, der Ablage und den Signalen des Servers zu folgen; ein zweiter Aufruf tut nichts. */
+    /** Starts following the store and the server's signals; a second call does nothing. */
     fun starte()
 
-    /** Der Job lässt einen Serverwechsel warten, bis alles weg ist. */
+    /** The job lets a server change wait until everything is gone. */
     fun abmelden(): Job
 
-    /** Der zweite Faktor ist bestätigt: Was bis dahin mit 403 abgewiesen wurde, jetzt laden. */
+    /** The second factor is confirmed: load now whatever was rejected with 403 until then. */
     fun secondFactorConfigured()
 
-    /** Einstellungen und Design des Kontos; das Design kommt von /settings/theme. */
+    /** Account settings and theme; the theme comes from /settings/theme. */
     fun ladeEinstellungen()
 
-    /** Die Haushaltskonten entscheiden, ob und mit welchen Einträgen der Kontofilter erscheint. */
+    /** The household accounts decide whether and with which entries the account filter appears. */
     fun loadMembers()
 
-    /** Eine Abfrage für Galerie und Teile, damit beide denselben Stand zeigen. */
+    /** One query for gallery and parts, so both show the same state. */
     fun ladeLagerorte()
 }
 
 /**
- * Ein Singleton im Bereich der App statt eines Activity-ViewModels: Die Sitzung
- * lebt so lange wie der Prozess, und ein 401 während einer Drehung oder ohne
- * sichtbare Activity darf nicht ungehört bleiben.
+ * A singleton in the app's scope instead of an activity ViewModel: the session
+ * lives as long as the process, and a 401 during a rotation or without a
+ * visible activity must not go unheard.
  */
 @Singleton
 class SitzungsDienst @Inject constructor(
@@ -79,17 +79,17 @@ class SitzungsDienst @Inject constructor(
     override fun starte() {
         if (!gestartet.compareAndSet(false, true)) return
         reportFailedRedemption()
-        // Währung und Design liest die Sitzung aus der Ablage (Kontowerte); hier
-        // fragt nur der Server, ob sich das Design geändert hat.
+        // The session reads currency and theme from the store (Kontowerte); here
+        // only the server is asked whether the theme has changed.
         bereich.launch {
             launch { loadDesign() }
             trackServerStart()
         }
         bereich.launch { sequenceLogin() }
         bereich.launch { prefs.language.collect { sitzung.spracheGeaendert(it) } }
-        // Ein 401 auf einen Token, der an einen ausgewiesenen Server ging; ein
-        // Fehlversuch beim Anmelden meldet nicht ab. Die Ablage statt der Sitzung:
-        // Beim Kaltstart kann der 401 vor dem ersten Abgleich der Sitzung kommen.
+        // A 401 on a token that went to an identified server; a
+        // failed sign-in attempt doesn't trigger a sign-out. The store instead of the session:
+        // on a cold start the 401 can arrive before the session's first sync.
         bereich.launch {
             sessionExpired.abgelaufen.filter { it }.collect {
                 sessionExpired.acknowledge()
@@ -99,7 +99,7 @@ class SitzungsDienst @Inject constructor(
                 }
             }
         }
-        // Ein 403 `nur_admins`: Recht nachziehen; die Meldung nur beim Übergang.
+        // A 403 `nur_admins`: catch up on the right; the notification only on the transition.
         bereich.launch {
             rights.entzogen.filter { it }.collect {
                 rights.acknowledge()
@@ -108,8 +108,8 @@ class SitzungsDienst @Inject constructor(
         }
     }
 
-    // Eine nachgeholte Abmeldung, die endgültig scheiterte (EntwertungsWorker): Die
-    // Benachrichtigung kann fehlen, also hier noch einmal, einmalig.
+    // A deferred sign-out that finally failed (EntwertungsWorker): the
+    // notification can be missing, so once more here, just once.
     private fun reportFailedRedemption() {
         prefs.failedRedemptions().firstOrNull()?.let { server ->
             meldungen.zeige(Meldung.Resource(R.string.abmeldung_gescheitert_text,
@@ -119,9 +119,9 @@ class SitzungsDienst @Inject constructor(
     }
 
     /**
-     * Nur eine echte Änderung von Adresse oder Token lädt neu. Je Anmeldung ein
-     * eigener Bereich, den der nächste Wechsel abbricht: Eine späte Antwort des
-     * alten Kontos schriebe sonst in die neue Sitzung.
+     * Only a real change of address or token triggers a reload. A dedicated scope
+     * per sign-in, which the next change cancels: a late response from the
+     * old account would otherwise write into the new session.
      */
     private suspend fun sequenceLogin() {
         combine(prefs.serverUrl, prefs.authToken) { url, token -> url to token }
@@ -136,8 +136,8 @@ class SitzungsDienst @Inject constructor(
             abmelden()
             return
         }
-        // Eine alte http-Adresse führt in die Einrichtung (startTarget); Abrufe
-        // dorthin scheiterten nur und füllten die Leiste mit Netzfehlern.
+        // An old http address leads into setup (startTarget); requests
+        // there would only fail and fill the bar with network errors.
         if (token.isNotBlank() && url.isNotBlank() &&
             !NetworkPolicy.plaintextLegacyStock(url, NetworkPolicy.entwicklung)) {
             anmeldung.launch { sitzung.adoptAccount(konto, zweiterFaktorPflicht) }
@@ -153,7 +153,7 @@ class SitzungsDienst @Inject constructor(
         ladeEinstellungen()
     }
 
-    /** Nach dem Anmelden: Filter, Konten, Orte und die Galerie in die Ablage; die Bereiche zeigen sie. */
+    /** After signing in: filter, accounts, locations and the gallery into the store; the scopes display them. */
     private fun afterLogin(anmeldung: CoroutineScope) {
         anmeldung.launch { blickfeld.loadFilter() }
         anmeldung.launch { blickfeld.loadMembers() }
@@ -162,12 +162,12 @@ class SitzungsDienst @Inject constructor(
         anmeldung.launch { sync.sets() }
     }
 
-    /** Die Bereichs-ViewModels leeren sich auf [Sitzung.signOuts]. */
+    /** The scope ViewModels clear themselves on [Sitzung.signOuts]. */
     override fun abmelden(): Job = bereich.launch {
         if (abmeldevorgang.ausfuehren() == Abmeldeweg.CAUGHT_UP) {
             meldungen.zeige(Meldung.Resource(R.string.vm_abmelden_nachgeholt))
         }
-        // Das Design des Kontos gilt nicht mehr; ohne Token liefert der Server die Vorgabe.
+        // The account's theme no longer applies; without a token the server returns the default.
         bereich.launch { loadDesign() }
     }
 
@@ -186,14 +186,14 @@ class SitzungsDienst @Inject constructor(
         anmeldung.launch { loadDesign() }
     }
 
-    /** Angemeldet das Design des Kontos, sonst die Vorgabe; im Fehlerfall bleibt das gemerkte. */
+    /** Signed in, the account's theme, otherwise the default; on error the remembered one stays. */
     private suspend fun loadDesign() {
         if (prefs.serverUrlJetzt().isBlank()) return
         val r = konto.getAppTheme()
         if (r is Ergebnis.Erfolg) r.data.wirksam?.let(sitzung::setzeDesign)
     }
 
-    /** Ohne Zeitlimit: Der erste Start des Servers kann viele Minuten dauern. */
+    /** No time limit: the server's first start can take many minutes. */
     private suspend fun trackServerStart() {
         if (prefs.serverUrlJetzt().isBlank()) return
         while (true) {

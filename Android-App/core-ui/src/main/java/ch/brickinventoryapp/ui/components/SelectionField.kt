@@ -25,9 +25,9 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.theme.Formen
 
 /**
- * Eine Wahl aus einer längeren Liste (Sprache, Währung, Design, Sperrzeit) als Feld mit
- * Menü: Chips dafür lasen sich wie Filter und füllten bei 200 % Schrift mehrere Zeilen.
- * Das Feld nennt die Wahl, das Menü zeigt sie mit Häkchen.
+ * A choice from a longer list (language, currency, theme, lock timeout) as a field with
+ * a menu: chips for this read like filters and filled several lines at 200% text size.
+ * The field names the choice, the menu shows it with a checkmark.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +37,7 @@ fun <T> SelectionField(
     gewaehlt: T,
     onWahl: (T) -> Unit,
     modifier: Modifier = Modifier,
-    /** Aus, wenn die Wahl gerade nichts bewirkt; der Aufrufer sagt daneben, warum. */
+    /** Off, when the choice currently has no effect; the caller says why next to it. */
     enabled: Boolean = true,
 ) {
     var offen by rememberSaveable { mutableStateOf(false) }

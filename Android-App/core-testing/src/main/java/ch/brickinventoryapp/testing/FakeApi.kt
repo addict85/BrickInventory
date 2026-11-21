@@ -12,18 +12,18 @@ import java.lang.reflect.Proxy
 import java.util.Collections
 
 /**
- * Die Api ohne Netz: Jede Methode antwortet sofort aus [antworten] (nach
- * Methodenname), sonst mit 404. Ohne Threads und Wartezeit, damit ein
- * StandardTestDispatcher den ganzen Ablauf eines ViewModels in virtueller Zeit steuert.
+ * The API without a network: every method answers immediately from [antworten] (by
+ * method name), otherwise with 404. Without threads and wait time, so a
+ * StandardTestDispatcher can drive a ViewModel's whole flow in virtual time.
  */
 class FakeApi {
     val antworten: MutableMap<String, Any> = Collections.synchronizedMap(mutableMapOf())
 
-    /** Abweichender Statuscode je Methode, z. B. 500 für „Server kaputt“. */
+    /** A deviating status code per method, e.g. 500 for „server broken“. */
     val codes: MutableMap<String, Int> = Collections.synchronizedMap(mutableMapOf())
     val calls: MutableList<String> = Collections.synchronizedList(mutableListOf())
 
-    /** Die Argumente je Aufruf (ohne die Continuation), für „mit welchem Filter“. */
+    /** The arguments per call (without the continuation), for „with which filter“. */
     val arguments: MutableList<Pair<String, List<Any?>>> = Collections.synchronizedList(mutableListOf())
 
     val api: BrickApiService = Proxy.newProxyInstance(
@@ -51,7 +51,7 @@ class FakeApi {
     }
 }
 
-/** Die Sitzungsablage im Speicher; was das AppViewModel merkt, steht in den Flüssen. */
+/** The in-memory session store; what the AppViewModel remembers lives in the flows. */
 class StorageSessionStore : Sitzungsablage {
     val server = MutableStateFlow("")
     val token = MutableStateFlow("")

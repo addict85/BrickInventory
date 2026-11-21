@@ -12,21 +12,21 @@ import java.io.IOException
 import java.util.Base64
 
 /**
- * Der Ablageschlüssel (Bestand, Kaufpreise, Ausgang) liegt unter dem Keystore-Schlüssel, der nur
- * entsperrt arbeitet (EntsperrVault). Ein Altbestand unter dem Schlüssel ohne Bedingung wird beim
- * ersten lesbaren Zugriff umgeschlüsselt, ohne dass eine Ablage unlesbar wird; gesperrt entsteht
- * kein neuer Schlüssel, und eine Ablage meldet „gesperrt“ statt „unlesbar“ (sonst löschte sie).
- * Neu verschlüsselt wird nur noch unter der Entsperr-Bedingung, nie mit einem Ausweg.
+ * The store key (inventory, purchase prices, outbox) sits under the Keystore key that only
+ * works unlocked (EntsperrVault). A legacy entry under the key without a condition gets re-encrypted
+ * on the first readable access, without a store ever becoming unreadable; while locked
+ * no new key is created, and a store reports „locked“ instead of „unreadable“ (otherwise it would delete it).
+ * Re-encryption only ever happens under the unlock condition, never with a fallback.
  *
- * Gegenproben (kotlinc und JUnit lokal):
- *   A  in hole() `if (tresor.veraltet(umhuellt)) wrapNew(…)` gestrichen → rot „ein Altbestand
+ * Counter-checks (kotlinc and JUnit locally):
+ *   A  in hole() `if (tresor.veraltet(umhuellt)) wrapNew(…)` removed → red „ein Altbestand
  *      … kommt beim ersten Lesen unter den entsperrten …“; gegenproben/ablage-bleibt-ohne-sperre.patch
- *   C  in StoreCipher.oeffne() den Schlüssel wieder in runCatching → rot „gesperrt entsteht kein
- *      neuer Schluessel …“ (null statt IOException); gegenproben/ablage-gesperrt-wie-unlesbar.patch
- *   D  EntsperrVault.verschluessle() weicht wieder auf den Altbestand-Schlüssel aus → rot
+ *   C  in StoreCipher.oeffne() the key wrapped in runCatching again → red „gesperrt entsteht kein
+ *      neuer Schluessel …“ (null instead of IOException); gegenproben/ablage-gesperrt-wie-unlesbar.patch
+ *   D  EntsperrVault.verschluessle() falls back to the legacy key again → red
  *      „locked the unlock vault stores nothing under the weaker key“;
  *      gegenproben/entsperrtresor-mit-ausweg.patch
- *   E  erneuere() ruft hole() ohne fangeAusserAbbruch → rot „Abmelden bei gesperrtem Geraet …“;
+ *   E  erneuere() calls hole() without fangeAusserAbbruch → red „Abmelden bei gesperrtem Geraet …“;
  *      gegenproben/ablage-erneuern-gesperrt-wirft.patch
  */
 class StoreUnlockedTest {
@@ -34,7 +34,7 @@ class StoreUnlockedTest {
     private val folder = File(System.getProperty("java.io.tmpdir"), "bim-entsperrt-${System.nanoTime()}").apply { mkdirs() }
     private val datei = File(folder, "ablage.schluessel")
 
-    /** Was der Ablageschlüssel geschrieben hat: ein Ergebnis des Laufs, kein Quelltext. */
+    /** What Ablageschluessel wrote: a result of the run, not source code. */
     private fun abgelegt() = datei.readBytes().decodeToString()
 
     @After
@@ -43,8 +43,8 @@ class StoreUnlockedTest {
     }
 
     /**
-     * Wie ein Keystore-Schlüssel: jedes Mal ein anderer Geheimtext (wie mit neuem IV), [gesperrt] wie
-     * bei gesperrtem Gerät, [kaputt]: verschlüsseln geht nicht.
+     * Like a Keystore key: a different ciphertext every time (as with a new IV), [gesperrt] like
+     * on a locked device, [kaputt]: encryption doesn't work.
      */
     private class Probetresor(private val marke: String) : TokenEncryption {
         var gesperrt = false
@@ -66,7 +66,7 @@ class StoreUnlockedTest {
     private val immer = Probetresor("i:")
     private fun neu() = Ablageschluessel(datei, EntsperrVault(entsperrt, immer))
 
-    /** Der Stand vor dieser Fassung: Schlüssel unter `brickinventory_ablage`, eine Ablage damit verschlüsselt. */
+    /** The state before this version: key under `brickinventory_ablage`, one store encrypted with it. */
     private fun altbestand(): Pair<ByteArray, ByteArray> {
         val alt = Ablageschluessel(datei, immer)
         val geheim = StoreCipher { alt.fuer("bestand") }.verschluessle("Kaufpreis 499.99".toByteArray(), "b")
@@ -93,7 +93,7 @@ class StoreUnlockedTest {
             neu().fetch()
             fail("Gesperrt darf kein Schlüssel herauskommen")
         } catch (_: IOException) {
-            // erwartet: Keystore gerade nicht bereit
+            // expected: Keystore not ready right now
         }
         assertEquals("Nichts neu angelegt", vorher, abgelegt())
         try {
@@ -126,7 +126,7 @@ class StoreUnlockedTest {
             tresor.verschluessle("neu-getauscht")
             fail("Gesperrt darf kein Geheimtext unter dem Schlüssel ohne Bedingung entstehen")
         } catch (_: IllegalStateException) {
-            // erwartet: der Entsperr-Schlüssel arbeitet gerade nicht
+            // expected: the unlock key isn't working right now
         }
         entsperrt.gesperrt = false
         assertTrue(tresor.verschluessle("neu-getauscht").startsWith(UNLOCKED_PREFIX + "n:"))
@@ -143,7 +143,7 @@ class StoreUnlockedTest {
             k.fetch()
             fail("Gesperrt entsteht kein neuer Schlüssel")
         } catch (_: IOException) {
-            // erwartet: später
+            // expected: later
         }
         entsperrt.gesperrt = false
         assertFalse("Ein neuer Schlüssel", alt.contentEquals(k.fetch()))

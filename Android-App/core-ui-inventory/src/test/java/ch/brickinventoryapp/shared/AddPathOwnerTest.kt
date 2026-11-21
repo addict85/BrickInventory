@@ -11,10 +11,10 @@ import ch.brickinventoryapp.shared.ui.EntryValues
 import ch.brickinventoryapp.shared.ui.erfassungsWerte
 
 /**
- * Jeder Erfassungsweg lässt den Eigentümer wählen — auch der Barcode-Scanner.
+ * Every capture path lets you choose the owner — including the barcode scanner.
  *
- * Gegenprobe (durchgeführt): ownerUserId aus dem confirmAddBarcode-Aufruf
- * entfernt → der erste Teilschritt wird rot.
+ * Counter-check (carried out): ownerUserId removed from the confirmAddBarcode
+ * call → the first sub-step turns red.
  */
 class AddPathOwnerTest {
 
@@ -24,14 +24,14 @@ class AddPathOwnerTest {
         return f.readText()
     }
 
-    /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */
+    /** Hide the comments — the explanatory text names the checked patterns itself. */
     private fun code(src: String) = src.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
     fun `the barcode dialog shows the selection`() {
-        // Der Dialog steht in BarcodeResultDialog.kt; der Erfassungsrahmen zeigt ihn. Beide
-        // Dateien, damit die Regel gefunden wird, wo sie steht.
+        // The dialog lives in BarcodeResultDialog.kt; the capture frame shows it. Both
+        // files, so the rule is found wherever it lives.
         val nav = code(read("collection/ui/Erfassungsrahmen.kt") + "\n" + read("collection/ui/dialogs/BarcodeResultDialog.kt"))
         assert(nav.contains("OwnerPicker(")) {
             "im Barcode-Dialog fehlt die Eigentümer-Auswahl — OwnerPicker blendet sich " +
@@ -40,8 +40,8 @@ class AddPathOwnerTest {
         assert(nav.contains("blick.householdMembers")) {
             "die Auswahl braucht die Haushaltsmitglieder aus dem Zustand"
         }
-        // Ohne Haushalt darf nichts mitgeschickt werden — sonst überschriebe die
-        // App eine Server-Vorgabe mit einer ID, die niemand gewählt hat.
+        // Without a household, nothing may be sent along — otherwise the
+        // app would overwrite a server default with an ID nobody chose.
         assert(nav.contains("blick.householdMembers.size > 1")) {
             "ohne Haushalt darf kein Eigentümer mitgeschickt werden (gleiche Regel wie im Galerie-Dialog)"
         }
@@ -49,7 +49,7 @@ class AddPathOwnerTest {
 
     @Test
     fun `all adding paths ask for the owner`() {
-        // Wächter gegen den nächsten vergessenen Weg.
+        // Guard against the next forgotten path.
         val routes = listOf(
             "collection/ui/screens/GalerieErfassen.kt" to "Set über die Galerie",
             "parts/ui/screens/PartsDialogs.kt"    to "manuelles Teil",
@@ -63,9 +63,9 @@ class AddPathOwnerTest {
     }
 
     /**
-     * Die Umrechnung der Eingaben steht an einer Stelle (erfassungsWerte): Die Dialoge benutzen sie (Struktur), und sie wird hier ausgeführt.
-     * Gegenprobe: in erfassungsWerte `haushalt.size > 1` →
-     * `haushalt.size > 0` → rot „without a household no owner goes along“.
+     * The conversion of the inputs lives in one place (erfassungsWerte): the dialogs use it (structure), and it is run here.
+     * Counter-check: in erfassungsWerte `haushalt.size > 1` →
+     * `haushalt.size > 0` → red „without a household no owner goes along“.
      */
     @Test
     fun `without a household no owner goes along`() {

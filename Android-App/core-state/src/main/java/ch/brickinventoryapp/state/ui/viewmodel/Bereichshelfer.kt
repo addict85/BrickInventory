@@ -26,16 +26,16 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-/** Meldungen in den einen Kanal der App, samt den Texten, aus denen sie entstehen. */
+/** Notifications into the app's one channel, along with the strings they're built from. */
 interface Meldungen : Texte {
     /** Null zeigt nichts. */
     fun zeige(text: String?)
 
-    /** Eine überholte Meldung zurücknehmen, etwa nach einem gelungenen zweiten Scan. */
+    /** Retract an outdated notification, e.g. after a successful second scan. */
     fun acknowledge()
 }
 
-/** Für Tests ohne Hilt. */
+/** For tests without Hilt. */
 fun Meldungen(kanal: MeldungsKanal, texts: Texte): Meldungen = AppMessages(kanal, texts)
 
 class AppMessages @Inject constructor(
@@ -47,46 +47,46 @@ class AppMessages @Inject constructor(
 }
 
 /**
- * Konto- und Lagerortfilter, wie ein Bereich sie zeigt und setzt. Die Bildschirme
- * lesen `blickfeld` und `storageState` am ViewModel; dieses reicht die Filterwahl
- * per Delegation durch, statt sie von einer Basisklasse zu erben.
+ * Account and storage-location filter, as a scope displays and sets them. The screens
+ * read `blickfeld` and `storageState` on the ViewModel; this passes the filter choice
+ * through by delegation, instead of inheriting it from a base class.
  */
 interface Filterwahl {
     val blickfeld: StateFlow<ScopeUiState>
     val storageState: StateFlow<LagerUiState>
 
-    /** Der Wert für `accounts=`, oder null für „alle Konten“. */
+    /** The value for `accounts=`, or null for „all accounts“. */
     fun accountFor(view: ScopeFilter.View): Kontoauswahl?
 
-    /** Der Wert für `storage=`, oder null für „alle Orte“. */
+    /** The value for `storage=`, or null for „all locations“. */
     fun storageFor(view: ScopeFilter.View): String?
 
     fun setScope(view: ScopeFilter.View, value: String)
     fun setStorageFilter(view: ScopeFilter.View, value: String)
 
-    /** Vorschläge fürs Lagerortfeld: die Orte der Besitzer des gezeigten Eintrags. */
+    /** Suggestions for the storage-location field: the locations of the owners of the shown entry. */
     fun loadLocationStock(besitzer: List<Int>)
 
-    /** Die eigenen Orte samt Vorgabe — für die Erfassungsdialoge. */
+    /** One's own locations including the default — for the capture dialogs. */
     fun loadOwnLocations()
 
-    /** Für Bereiche, die nach dem Setzen ihre Liste neu laden. */
+    /** For scopes that reload their list after setting it. */
     suspend fun setAccount(view: ScopeFilter.View, value: String)
     suspend fun setzeLager(view: ScopeFilter.View, value: String)
 
-    /** Nach einer Änderung im Bereich, deren Ergebnis der Aufrufer abwartet. */
+    /** After a change in the scope whose result the caller waits for. */
     suspend fun loadMembers()
     suspend fun ladeLagerorte()
     suspend fun ownLocationsNew()
 }
 
-/** Für Tests ohne Hilt. */
+/** For tests without Hilt. */
 fun Filterwahl(dienst: Scope, bereich: CoroutineScope): Filterwahl = AreaFilter(dienst, bereich)
 
 /**
- * Im Bereich der App: Ein Filter, den jemand gesetzt hat, wird gemerkt, auch wenn
- * der Bildschirm gleich danach verschwindet. Der Blickfeld-Zustand ist ein
- * Singleton und verträgt jeden Faden.
+ * In the app's scope: a filter that someone set is remembered, even if
+ * the screen disappears right after. The Blickfeld state is a
+ * singleton and tolerates any thread.
  */
 class AreaFilter @Inject constructor(
     private val dienst: Scope,
@@ -108,18 +108,18 @@ class AreaFilter @Inject constructor(
 }
 
 /**
- * Nach einer Abmeldung leert der Bereich, was dem vorigen Konto gehörte; der
- * nächste Nutzer auf demselben Gerät sähe es sonst. drop(1): Der Zähler steht
- * beim Sammeln schon auf seinem Wert, und der ist keine neue Abmeldung.
+ * After a sign-out, the scope clears whatever belonged to the previous account; the
+ * next user on the same device would otherwise see it. drop(1): the counter already
+ * stands at its value when collecting starts, and that is not a new sign-out.
  */
 fun ViewModel.sequenceSignOut(sitzung: Sitzung, reset: () -> Unit) {
     viewModelScope.launch { sitzung.signOuts.drop(1).collect { reset() } }
 }
 
 /**
- * Lädt, sobald [zustand] seinen ersten Beobachter bekommt, und wieder nach jeder Pause ohne:
- * Das Betreten der Seite stösst das Laden an, nicht ein LaunchedEffect des Bildschirms.
- * Kein stateIn, damit `.value` auch ohne Beobachter stimmt.
+ * Loads as soon as [zustand] gets its first observer, and again after every pause without one:
+ * entering the page triggers the load, not a LaunchedEffect of the screen.
+ * No stateIn, so `.value` is correct even without an observer.
  */
 fun ViewModel.observeLoadOn(zustand: MutableStateFlow<*>, laden: () -> Unit) {
     viewModelScope.launch {
@@ -128,17 +128,17 @@ fun ViewModel.observeLoadOn(zustand: MutableStateFlow<*>, laden: () -> Unit) {
 }
 
 /**
- * Lädt, solange [zustand] beobachtet wird, für jede Serveradresse einmal: beim Betreten der
- * Seite und wieder, wenn die Adresse wechselt, während sie offen ist. Ohne Adresse nichts.
+ * Loads as long as [zustand] is observed, once per server address: on entering the
+ * page, and again if the address changes while it's open. Nothing without an address.
  */
 fun ViewModel.loadPerServer(sitzung: Sitzung, zustand: MutableStateFlow<*>, laden: () -> Unit) =
     loadPerServer(sitzung, zustand.subscriptionCount, laden)
 
-/** Dasselbe für einen durchgereichten Fluss. */
+/** The same for a passed-through flow. */
 fun ViewModel.loadPerServer(sitzung: Sitzung, zustand: Observed<*>, laden: () -> Unit) =
     loadPerServer(sitzung, zustand.observer, laden)
 
-/** Wie [observeLoadOn] für einen durchgereichten Fluss. */
+/** Like [observeLoadOn] for a passed-through flow. */
 fun ViewModel.observeLoadOn(zustand: Observed<*>, laden: () -> Unit) {
     viewModelScope.launch {
         zustand.observer.map { it > 0 }.distinctUntilChanged().collect { if (it) laden() }
@@ -154,9 +154,9 @@ private fun ViewModel.loadPerServer(sitzung: Sitzung, observer: StateFlow<Int>, 
 }
 
 /**
- * Ein fremder Zustand mit gezählten Beobachtern: So kann ein ViewModel beim Betreten der Seite
- * laden, auch wenn es den Fluss nur durchreicht (etwa die Sitzung), oder je Eintrag, den die
- * Seite zeigt ([observeOn] läuft, sobald der erste Beobachter kommt).
+ * A foreign state with counted observers: this way a ViewModel can load on entering the page,
+ * even if it only passes the flow through (e.g. the session), or per entry that the
+ * page displays ([observeOn] runs as soon as the first observer arrives).
  */
 @OptIn(ExperimentalForInheritanceCoroutinesApi::class)
 class Observed<T>(private val quelle: StateFlow<T>, private val observeOn: () -> Unit = {}) : StateFlow<T> {

@@ -14,9 +14,9 @@ import coil3.ImageLoader
 import ch.brickinventoryapp.ui.components.ProduktBild
 
 /**
- * Das Vorschaubild einer Finanzzeile — 52 dp, Rückfall auf das gemeinsame Ersatzbild. Eine Funktion
- * für die Set-Zeile (FinanceSections.kt) und die Zeile für manuelle Einträge, weil
- * beide in derselben Tabelle stehen und jede Abweichung sofort auffiele.
+ * The preview image of a finance row — 52 dp, falling back to the shared placeholder. One function
+ * for the set row (FinanceSections.kt) and the row for manual entries, because
+ * both sit in the same table and any deviation would stand out immediately.
  */
 @Composable
 fun FinanzBild(imageUrl: String?, imageLoader: ImageLoader, beschreibung: String?) {

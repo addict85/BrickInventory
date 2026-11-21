@@ -23,8 +23,8 @@ import ch.brickinventoryapp.ui.theme.Formen
 import ch.brickinventoryapp.model.ui.ListView
 
 /**
- * Umschalter Karten/Tabelle als zwei Chips: Bei zwei Möglichkeiten wäre ein
- * Aufklappmenü ein Klick zu viel, und die Wahl ist ohne Öffnen sichtbar.
+ * Cards/table switch as two chips: with two possibilities, a
+ * dropdown menu would be one click too many, and the choice is visible without opening it.
  */
 @Composable
 fun ViewToggle(
@@ -44,10 +44,10 @@ fun ViewToggle(
 }
 
 /**
- * Das Suchfeld für Galerie, Teile, Minifiguren und Katalog. Eine Fassung, damit
- * auch der Leeren-Knopf überall gleich heisst: `cd_search_clear` beschreibt die
- * Wirkung — „Löschen“ hätte TalkBack-Nutzern das Wort für „Bestand vernichten“
- * vorgelesen.
+ * The search field for gallery, parts, minifigs and catalog. One implementation, so
+ * the clear button is also named the same everywhere: `cd_search_clear` describes the
+ * effect — „Löschen“ would have read TalkBack users the word for „destroy the
+ * inventory“.
  */
 @Composable
 fun Suchfeld(
@@ -56,9 +56,9 @@ fun Suchfeld(
     platzhalter: String,
     modifier: Modifier = Modifier,
 ) {
-    // Bei normaler Schrift eine Zeile: Ein umbrechender Platzhalter machte das Feld doppelt
-    // so hoch wie den Filterknopf daneben. Bei grosser Schrift bricht er um, statt bei
-    // „Nummer oder…“ abzureissen.
+    // With normal text size, one line: a wrapping placeholder made the field twice
+    // as tall as the filter button next to it. With large text it wraps instead of
+    // cutting off at „Nummer oder…“.
     val zeilen = if (largeFont()) PLACEHOLDER_ROWS_LARGE else 1
     OutlinedTextField(
         value = wert,
@@ -74,7 +74,7 @@ fun Suchfeld(
                 }
             }
         },
-        // Der Platzhalter verschwindet mit der ersten Eingabe; der Name des Felds bleibt.
+        // The placeholder disappears on the first keystroke; the field's name stays.
         modifier = modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = Abstaende.klein)
             .semantics { contentDescription = platzhalter },
         singleLine = true,

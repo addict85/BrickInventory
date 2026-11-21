@@ -20,9 +20,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Einstellungen dieses Geräts (Preisalarm-Meldungen, Netze fürs Vorwärmen). Die
- * Bildschirme zeigen nur Zustand und melden Wünsche; Schreiben und Einplanen
- * laufen hier, im viewModelScope, und überleben so das Verlassen der Seite.
+ * This device's settings (price-alert notifications, networks for warming up). The
+ * screens only show state and report wishes; writing and scheduling
+ * run here, in the viewModelScope, and so survive leaving the page.
  */
 @HiltViewModel
 class GeraeteEinstellungenViewModel @Inject constructor(
@@ -35,15 +35,15 @@ class GeraeteEinstellungenViewModel @Inject constructor(
     val alarmMessagesAn: StateFlow<Boolean> =
         einstellungen.alarmMessagesAn.stateIn(viewModelScope, SharingStarted.WhileSubscribed(ABO_FOLLOW_UP_MS), false)
 
-    /** Vorgabe bis zum ersten Lesen: nur WLAN. */
+    /** Default until the first read: Wi-Fi only. */
     val vorwaermen: StateFlow<Map<VorwaermNetwork, Boolean>> = combine(
         VorwaermNetwork.entries.map { netz -> einstellungen.warmUpAllowed(netz) },
     ) { werte -> VorwaermNetwork.entries.zip(werte.toList()).toMap() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(ABO_FOLLOW_UP_MS), WARM_UP_DEFAULT)
 
     /**
-     * Der Wunsch gilt sofort, auch wenn das Einplanen scheitert; der Fehlschlag
-     * kommt mit Klasse und Meldung in die Snackbar, damit „an“ ohne Wirkung auffällt.
+     * The wish applies immediately, even if scheduling fails; the failure
+     * comes with class and message into the snackbar, so „on“ without effect stands out.
      */
     fun alarmMessages(an: Boolean) {
         viewModelScope.launch {
@@ -60,10 +60,10 @@ class GeraeteEinstellungenViewModel @Inject constructor(
 
     private val _storeBytes = MutableStateFlow(vorschau.belegt())
 
-    /** Belegter Platz der Vorschau-Ablage; sie räumt niemand ausser dem Nutzer. */
+    /** Occupied space of the preview cache; nobody but the user clears it. */
     val storeBytes: StateFlow<Long> = _storeBytes.asStateFlow()
 
-    /** Füllt sich beim Blättern wieder; offline ist danach nichts mehr da. */
+    /** Fills up again while scrolling; nothing is left offline afterwards. */
     fun clearStore() {
         vorschau.leeren()
         _storeBytes.value = vorschau.belegt()
@@ -74,7 +74,7 @@ class GeraeteEinstellungenViewModel @Inject constructor(
         val WARM_UP_DEFAULT: Map<VorwaermNetwork, Boolean> =
             mapOf(VorwaermNetwork.WLAN to true, VorwaermNetwork.MOBILE to false, VorwaermNetwork.ROAMING to false)
 
-        /** Eine Drehung beendet das Abo nicht; erst wer die Seite verlässt, lässt die Ablage ruhen. */
+        /** A rotation doesn't end the subscription; only leaving the page lets the store rest. */
         private const val ABO_FOLLOW_UP_MS = 5_000L
     }
 }

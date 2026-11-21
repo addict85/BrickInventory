@@ -9,9 +9,9 @@ import androidx.compose.ui.semantics.semantics
 import ch.brickinventoryapp.resources.R
 
 /**
- * Der Punkt für eine bereitliegende neue Version — an „Mehr“ und an den
- * Einstellungen. Ein Badge ohne Text sagt der Sprachausgabe nichts; die
- * Beschreibung nennt, wofür er steht.
+ * The dot for a new version waiting — on „More“ and on
+ * settings. A badge without text says nothing to voice output; the
+ * description names what it stands for.
  */
 @Composable
 fun UpdatePoint(modifier: Modifier = Modifier) {

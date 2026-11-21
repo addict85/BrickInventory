@@ -5,20 +5,20 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Nutzer-CAs für den eigenen Server: Einschalten nur über [requests] und
- * [bestaetigen], weil eine installierte CA (Firma, Schadsoftware) den Verkehr
- * mitlesen kann. Ausschalten senkt das Risiko und geht ohne Frage.
+ * User CAs for the app's own server: turning on only via [requests] and
+ * [bestaetigen], because an installed CA (company, malware) can
+ * read along with the traffic. Turning off lowers the risk and needs no question.
  */
 class UserCaToggle(
     lies: () -> Boolean,
     private val schreibe: (Boolean) -> Unit,
-    /** Offene Verbindungen trugen das alte Vertrauen. */
+    /** Open connections carried the old trust. */
     private val afterChange: () -> Unit,
 ) {
     private val _an = MutableStateFlow(lies())
     val an: StateFlow<Boolean> = _an.asStateFlow()
 
-    /** Wartet die Frage auf Ja oder Nein? Der Dialog liest hier. */
+    /** Is the question waiting for yes or no? The dialog reads this. */
     private val _question = MutableStateFlow(false)
     val frage: StateFlow<Boolean> = _question.asStateFlow()
 

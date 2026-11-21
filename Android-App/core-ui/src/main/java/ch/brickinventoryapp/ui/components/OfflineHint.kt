@@ -34,21 +34,21 @@ import ch.brickinventoryapp.model.util.fmtStatus
 import ch.brickinventoryapp.ui.util.appNumberLocale
 import ch.brickinventoryapp.ui.util.twentyFourHours
 
-/** Wie viele Änderungen im Ausgang warten — das Gerüst setzt es, der Offline-Hinweis nennt es mit. */
+/** How many changes are waiting in the outbox — the scaffold sets it, the offline hint names it along. */
 val LocalOpenChanges = compositionLocalOf { 0 }
 
 /**
- * Zählt die Offline-Hinweise, die gerade stehen. Steht einer, nennt er die wartenden
- * Änderungen selbst, und die Ausgangsleiste des Gerüsts tritt zurück: Zwei lose
- * Zeilen übereinander widersprachen sich („wird gesendet“ über „offline“).
+ * Counts the offline hints currently shown. If one is shown, it names the waiting
+ * changes itself, and the scaffold's outbox bar steps back: two loose
+ * rows stacked contradicted each other („sending" over „offline“).
  */
 val LocalOfflineHints = staticCompositionLocalOf<MutableIntState?> { null }
 
 /**
- * Ein Banner über einer Liste, die nicht vom Server kommt, sondern aus dem
- * Plattenspeicher, samt der Änderungen, die auf die nächste Verbindung warten.
- * Ohne Fläche ging es zwischen Umschalter und Suche unter; bei `null` nichts.
- * [onErneut] holt die Liste neu: Ohne Knopf blieb nur das Ziehen, und das sieht man nicht.
+ * A banner over a list that doesn't come from the server but from
+ * disk storage, together with the changes waiting for the next connection.
+ * Without a surface it got lost between the switcher and the search field; with `null`, nothing.
+ * [onErneut] fetches the list again: without a button, only pulling was left, and that can't be seen.
  */
 @Composable
 fun OfflineHint(stand: Long?, modifier: Modifier = Modifier, onErneut: (() -> Unit)? = null) {
@@ -70,9 +70,9 @@ fun OfflineHint(stand: Long?, modifier: Modifier = Modifier, onErneut: (() -> Un
 }
 
 /**
- * Das Banner über dem Inhalt, solange Änderungen im Ausgang warten — auf jedem
- * Reiter, weil man offline überall etwas ändern kann. Angesagt, damit TalkBack die
- * Zahl nennt, wenn sie sich ändert.
+ * The banner above the content as long as changes are waiting in the outbox — on every
+ * tab, because you can change something offline anywhere. Announced, so TalkBack names
+ * the number when it changes.
  */
 @Composable
 fun ExitBar(anzahl: Int, modifier: Modifier = Modifier) {
@@ -86,9 +86,9 @@ fun ExitBar(anzahl: Int, modifier: Modifier = Modifier) {
 }
 
 /**
- * Neutrale Fläche mit Rahmen: Offline ist kein Fehler, die Änderungen sind gesichert.
- * tertiaryContainer war in Classic und Noppe rot und meldete einen Fehler, wo keiner
- * ist; Rot bleibt dem verworfenen Abgleich (Snackbar aus dem Ausgangsmelder).
+ * A neutral surface with a border: offline is not an error, the changes are safely stored.
+ * tertiaryContainer was red in Classic and Noppe and reported an error where there is
+ * none; red stays reserved for a discarded sync (snackbar from the outbox reporter).
  */
 @Composable
 private fun NoticeBanner(

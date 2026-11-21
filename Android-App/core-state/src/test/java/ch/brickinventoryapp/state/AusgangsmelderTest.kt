@@ -20,31 +20,31 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Der Ausgang ist sichtbar: Zahl und Hinweis, sobald etwas offline gespeichert
- * wurde; der Serverstand der betroffenen Listen in die Ablage, wenn gesendet
- * wurde; ein Satz mit Grund, wenn der Server ablehnte.
+ * The outbox is visible: count and hint as soon as something has been stored
+ * offline; the affected lists' server state into the store once something
+ * was sent; a message with a reason if the server rejected it.
  *
- * Gegenproben:
- *   A  in Ausgangsmelder.starte den Hinweis bei steigender Zahl entfernt → rot
+ * Counter-checks:
+ *   A  in Ausgangsmelder.starte the hint on a rising count removed → red
  *      „offline Gespeichertes wird gemeldet“
- *   B  für MANUELLE_TEILE `null` statt Liste.TEILE → rot „gesendet holt die
+ *   B  for MANUELLE_TEILE `null` instead of Liste.TEILE → red „gesendet holt die
  *      betroffenen Listen in die Ablage“
- *   C  `e.meldung` statt `e.meldung.ifBlank { … }` → rot „ohne Grund vom Server
+ *   C  `e.meldung` instead of `e.meldung.ifBlank { … }` → red „ohne Grund vom Server
  *      steht ein eigener Satz da“
- *   D  `situation.planeLeftover()` beim Start weggelassen → rot „was vom letzten
+ *   D  `situation.planeLeftover()` left out at startup → red „was vom letzten
  *      Mal wartet, wird beim Start eingeplant“
- *   E  in InitialObserver.starte die Prüfung `gestartet` entfernt → rot „ein zweiter
- *      Start folgt dem Ausgang nicht doppelt“ (2 statt 1)
- *   F  in reportDiscarded die Abfrage `v.unlesbar` gestrichen → rot „ein nach dem Update
- *      unlesbarer Posten wird als solcher gemeldet“ (nur in der CI messbar)
- *   (B, D und E lokal mit kotlinc gemessen)
- *   gegenproben/verworfen-sofort-quittiert.patch (reportDiscarded quittiert gleich nach
- *      zeige) → rot „ein Verworfenes bleibt, bis sein Hinweis weggeräumt ist“
+ *   E  in InitialObserver.starte the check `gestartet` removed → red „ein zweiter
+ *      Start folgt dem Ausgang nicht doppelt“ (2 instead of 1)
+ *   F  in reportDiscarded the check `v.unlesbar` removed → red „ein nach dem Update
+ *      unlesbarer Posten wird als solcher gemeldet“ (only measurable in CI)
+ *   (B, D and E measured locally with kotlinc)
+ *   gegenproben/verworfen-sofort-quittiert.patch (reportDiscarded acknowledges right after
+ *      zeige) → red „ein Verworfenes bleibt, bis sein Hinweis weggeräumt ist“
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class AusgangsmelderTest {
 
-    /** Der Ausgang von aussen gesehen, ohne Ablage: Zahl, Ereignisse und Verworfenes setzt der Test. */
+    /** The outbox as seen from outside, without a store: the test sets count, events and discarded items. */
     private class Lage : Baseline {
         val zahl = MutableStateFlow(0)
         val gemeldet = MutableSharedFlow<Abgleichsereignis>(extraBufferCapacity = 4)

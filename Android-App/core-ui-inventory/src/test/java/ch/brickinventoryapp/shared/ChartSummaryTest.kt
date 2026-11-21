@@ -8,15 +8,15 @@ import org.junit.Test
 import ch.brickinventoryapp.shared.ui.chartSummary
 
 /**
- * Die Zusammenfassung, die PortfolioChart als contentDescription vorliest.
+ * The summary that PortfolioChart reads out as contentDescription.
  *
- * Gegenproben (gemessen am 28.10., kotlinc gegen eine Kopie von
+ * Counter-checks (measured 28.10., kotlinc against a copy of
  * shared/ui/ChartSummary.kt):
- *   A  die Zahl des Servers übergangen (immer selbst gerechnet) → rot „die
+ *   A  the server's figure bypassed (always computed itself) → red „die
  *      Veraenderung des Servers geht vor"
- *   B  `von` aus dem ersten Punkt statt aus der ersten Beschriftung → rot
+ *   B  `von` taken from the first point instead of the first label → red
  *      „the period comes from the outermost labels"
- *   C  Grenze `< 2` → `< 1` → rot „a single point is not a history"
+ *   C  threshold `< 2` → `< 1` → red „a single point is not a history"
  */
 class ChartSummaryTest {
 

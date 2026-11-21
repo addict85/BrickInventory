@@ -22,15 +22,15 @@ import androidx.compose.ui.unit.sp
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Die Überschrift einer Karte oder eines Abschnitts in einer Kartenliste: kleine
- * Versalien wie eine Overline. Eine Fassung statt vier — Set-Detail, Einstellungen,
- * Haushalt und Finanzen zeigten dieselbe Ebene in vier Stilen.
+ * The heading of a card or a section in a card list: small
+ * caps like an overline. One implementation instead of four — set detail, settings,
+ * household and finances used to show the same level in four styles.
  */
 @Composable
 fun SectionTitle(text: String, modifier: Modifier = Modifier, symbol: ImageVector? = null) {
     val vorgelesen = AnnotatedString(text)
     Row(
-        // Vorgelesen wird der Text, wie er geschrieben ist, nicht in Versalien buchstabiert.
+        // The text is read out as written, not spelled out letter by letter in caps.
         modifier.clearAndSetSemantics { heading(); this.text = vorgelesen },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein),
@@ -47,9 +47,9 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier, symbol: ImageVecto
 }
 
 /**
- * Die Überschrift einer Gruppe in einer Liste ohne Karten (Seite „Mehr“): derselbe
- * Stil wie [SectionTitle], mit Trennlinie davor. Ein eigener Stil in der
- * Hauptfarbe liess dieselbe Ebene anders aussehen als in Einstellungen und Detail.
+ * The heading of a group in a card-less list (the „More“ page): the same
+ * style as [SectionTitle], with a divider before it. A separate style in the
+ * primary color made the same level look different than in settings and detail.
  */
 @Composable
 fun GroupTitle(text: String, modifier: Modifier = Modifier, separator: Boolean = true) {

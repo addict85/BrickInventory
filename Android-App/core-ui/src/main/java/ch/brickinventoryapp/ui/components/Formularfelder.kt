@@ -33,21 +33,21 @@ import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.Formen
 
 /**
- * Ein Text, der nach einer Handlung erscheint, wird angesagt: Ohne Live-Region hört
- * eine blinde Person nach „Anmelden“ nichts und weiss nicht, dass es scheiterte.
+ * A text that appears after an action is announced: without a live region, a
+ * blind person hears nothing after „Sign in“ and doesn't know it failed.
  */
 fun Modifier.announce(): Modifier = semantics { liveRegion = LiveRegionMode.Polite }
 
 /**
- * Steht über einem gesperrten Hauptknopf und sagt, was fehlt: Blass allein liess
- * raten, warum er nicht geht (wie beim Anmelden).
+ * Sits above a locked main button and says what's missing: pale alone left you
+ * guessing why it wouldn't go (as during sign-in).
  */
 @Composable
 fun LockReason(text: String) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
-/** Eine Fehlerzeile unter einem Formular, in Fehlerfarbe und angesagt. */
+/** An error line below a form, in error color and announced. */
 @Composable
 fun ErrorRow(text: String, modifier: Modifier = Modifier) {
     Text(text, modifier.announce(), color = MaterialTheme.colorScheme.error,
@@ -57,20 +57,20 @@ fun ErrorRow(text: String, modifier: Modifier = Modifier) {
 @Composable
 fun ErrorRow(meldung: Meldung, modifier: Modifier = Modifier) = ErrorRow(meldung.satz(), modifier)
 
-/** Was ins Feld gehört — davon hängt ab, was der Passwortmanager anbietet. */
+/** What the field is for — this decides what the password manager offers. */
 enum class PasswordKind {
-    /** Das bestehende Passwort: Der Manager setzt es ein. */
+    /** The existing password: the manager fills it in. */
     AKTUELL,
-    /** Ein neues Passwort: Der Manager schlägt ein starkes vor und merkt es sich. */
+    /** A new password: the manager suggests a strong one and remembers it. */
     NEU,
-    /** Die Wiederholung des neuen. */
+    /** The repeat of the new one. */
     WIEDERHOLUNG,
 }
 
 /**
- * Jedes Passwortfeld der App: mit Autofill-Art, Passworttastatur und dem Auge zum
- * Aufdecken. Solange das Passwort sichtbar ist, gilt der Sichtschutz — ein
- * aufgedecktes Passwort gehört in kein Bildschirmfoto, egal auf welcher Seite.
+ * Every password field of the app: with an autofill type, a password keyboard and the eye to
+ * reveal it. As long as the password is visible, the privacy screen applies — a
+ * revealed password belongs in no screenshot, whichever page it's on.
  */
 @Composable
 fun PasswordField(
@@ -79,7 +79,7 @@ fun PasswordField(
     beschriftung: String,
     modifier: Modifier = Modifier,
     art: PasswordKind = PasswordKind.AKTUELL,
-    /** Hilfe- oder Fehlertext unter dem Feld; mit [faulty] in Fehlerfarbe. */
+    /** Help or error text below the field; in error color with [faulty]. */
     hinweis: String? = null,
     faulty: Boolean = false,
     imeAction: ImeAction = ImeAction.Done,
@@ -92,8 +92,8 @@ fun PasswordField(
         value = wert,
         onValueChange = onValue,
         label = { Text(beschriftung) },
-        // Das Schloss überall, nicht nur in der Anmeldung: So erkennt man ein Passwortfeld
-        // auf jeder Seite gleich.
+        // The lock icon everywhere, not only at sign-in: this way a password field is recognized
+        // the same way on every page.
         leadingIcon = { Icon(Icons.Default.Lock, null) },
         trailingIcon = {
             val toggle = stringResource(if (sichtbar) R.string.cd_password_hide else R.string.cd_password_show)

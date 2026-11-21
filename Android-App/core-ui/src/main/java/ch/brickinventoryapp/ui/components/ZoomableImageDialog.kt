@@ -44,11 +44,11 @@ import ch.brickinventoryapp.ui.theme.Abstaende
 import kotlin.math.roundToInt
 
 /**
- * Bild bildschirmfuellend anzeigen, mit Zoom und Verschieben.
- * Eine Komponente für Set-Detail und Katalog, damit die Gestenlogik nicht doppelt steht.
+ * Show an image full screen, with zoom and panning.
+ * One component for set detail and catalog, so the gesture logic doesn't exist twice.
  *
- * Zoomen geht auch ohne zwei Finger (WCAG 2.5.1): Doppeltipp und die Leiste unten mit
- * Minus, Faktor (zurück auf 100 %) und Plus, wie im PDF-Betrachter.
+ * Zooming also works without two fingers (WCAG 2.5.1): double-tap and the bar at the bottom with
+ * minus, factor (back to 100%) and plus, like in the PDF viewer.
  */
 @Composable
 fun ZoomableImageDialog(
@@ -88,7 +88,7 @@ fun ZoomableImageDialog(
                 imageLoader = imageLoader,
                 contentDescription = contentDescription,
                 fallbackSize = 96.dp,
-                // Der Dialog folgt dem Design; nur das Bild steht auf (im Dunkeln gedämpftem) Weiss.
+                // The dialog follows the theme; only the image sits on (dimmed in the dark theme) white.
                 bildgrund = true,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -107,7 +107,7 @@ fun ZoomableImageDialog(
     }
 }
 
-/** Minus, Faktor und Plus; der Faktor ist zugleich „zurück auf 100 %“. */
+/** Minus, factor and plus; the factor doubles as „back to 100%“. */
 @Composable
 private fun ImageZoomBar(zoom: Float, setzeZoom: (Float) -> Unit, modifier: Modifier) {
     Row(
@@ -141,7 +141,7 @@ private const val ZOOM_MAX = 6f
 private const val ZOOM_STEP = 1.5f
 private const val ZOOM_DOPPELTIPP = 2f
 
-/** Oben rechts auf eigenem Kreis: Das Bild füllt den Schirm, der Knopf muss sich davon abheben. */
+/** Top right on its own circle: the image fills the screen, the button must stand out from it. */
 @Composable
 private fun BoxScope.CloseButton(onDismiss: () -> Unit) {
     MitTooltip(stringResource(R.string.detail_close), Modifier.align(Alignment.TopEnd)) {

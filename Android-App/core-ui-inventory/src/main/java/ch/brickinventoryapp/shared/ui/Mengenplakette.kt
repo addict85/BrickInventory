@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.shared.ui
 
 /**
- * Die Mengenplakette, überall „×3“: In der Prüfung lasen „3×“ (aus einem Set) und
- * „×3“ (manuell, Galerie, Finanzen) nebeneinander wie zwei verschiedene Angaben.
- * Zwei Namen bleiben, damit die Aufrufer sagen, woher die Menge kommt.
+ * The quantity badge, everywhere „×3“: under review, „3×“ (from a set) and
+ * „×3“ (manual, gallery, finances) read side by side like two different pieces of information.
+ * Two names remain, so callers say where the quantity comes from.
  */
 fun mengeManuell(menge: Int): String = "×$menge"
 

@@ -9,39 +9,39 @@ import ch.brickinventoryapp.testing.testSetFilesRepository
 import ch.brickinventoryapp.testing.testPartsRepository
 import ch.brickinventoryapp.testing.TestApi
 
-/** Ein Testserver für [block], danach heruntergefahren. */
+/** A test server for [block], shut down afterwards. */
 private fun <T> withServer(block: (PfadServer) -> T): T {
     val paths = PfadServer()
     try { return block(paths) } finally { paths.server.shutdown() }
 }
 
 /**
- * Der Teile-Reiter filtert nach Farbe und Kategorie — wie die Webapp.
+ * The parts tab filters by color and category — like the web app.
  *
- * ── Der eigentlich bemerkenswerte Teil ──────────────────────────────────────
+ * ── The actually notable part ──────────────────────────────────────
  *
- * Die Leitung lag bereits: `BrickApiService.getParts` deklariert
- * `@Query("color")` und `@Query("category")` seit jeher, und
- * `PartsRepository.getParts` reicht beide durch. GESETZT hat sie nie jemand.
+ * The wiring was already there: `BrickApiService.getParts` has declared
+ * `@Query("color")` and `@Query("category")` all along, and
+ * `PartsRepository.getParts` passes both through. Nobody ever SET them.
  *
- * Eine halbfertige Funktion faellt in keiner der bestehenden Pruefungen auf:
- * Ein Parameter mit Vorgabewert ist kein toter Code, und ein Zustandsfeld gab
- * es dafuer nicht. Deshalb dieser Test — er haelt fest, dass die beiden Werte
- * auch WIRKLICH mitgeschickt werden.
+ * A half-finished function stands out in none of the existing checks:
+ * a parameter with a default value is not dead code, and there was no
+ * state field for it. Hence this test — it confirms that the two values
+ * are REALLY sent along.
  *
- * Ausgeführt gegen einen Testserver: Was das Repository wirklich abruft. Dass
- * die Filter aus dem Zustand mitreisen und die Scrollstelle vergessen, prüft
- * PartsTest.
+ * Run against a test server: what the repository actually fetches. That
+ * the filters travel along from the state and the scroll position is forgotten
+ * is checked by PartsTest.
  *
- * Gegenprobe: in PartsRepository.getPartsFilterColors
- * `accounts` nicht weitergereicht → rot „die App ruft beide Filterlisten …“.
+ * Counter-check: in PartsRepository.getPartsFilterColors
+ * `accounts` not passed on → red „die App ruft beide Filterlisten …“.
  */
 class PartsFilterTest {
 
     @Test
     fun `the app calls both filter lists with the view`() = withServer { paths ->
-        // Beide mit `accounts`: Sonst zaehlten sie im Haushalt anders als die
-        // Liste darunter — genau der Fehler, den der Server dabei hatte.
+        // Both with `accounts`: otherwise they would count differently in the household than the
+        // list below them — exactly the bug the server had here.
         val teile = testPartsRepository(TestApi.fuer(paths.server))
         runBlocking {
             teile.getPartsFilterColors(konten = Kontoauswahl.Eigene)
@@ -53,7 +53,7 @@ class PartsFilterTest {
 }
 
 /**
- * Der CSV-Import laesst sich abbrechen — wie in der Webapp.
+ * The CSV import can be cancelled — like in the web app.
  */
 class CsvAbortTest {
 
