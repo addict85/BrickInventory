@@ -24,7 +24,7 @@ import ch.brickinventoryapp.model.domain.TeileBewertungAnsicht
 import ch.brickinventoryapp.model.domain.asMoney
 import ch.brickinventoryapp.model.util.zeitpunkt
 
-/** total_parts ist hier schon die Summe; set_parts fehlt bei älteren Servern, dann aus der Differenz. */
+/** total_parts is already the sum here; set_parts is missing on older servers, then from the difference. */
 fun DashboardStats.alsAnsicht() = MetricsView(
     totalSets = totalSets,
     totalQuantity = totalQuantity,

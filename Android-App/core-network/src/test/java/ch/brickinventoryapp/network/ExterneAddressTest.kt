@@ -13,13 +13,13 @@ import org.junit.Test
  * Which addresses from server data the app hands to the browser (https only) and
  * how a `local_path` becomes our own server's address (resolved, never foreign).
  *
- * Gegenproben:
- *   A  in externeAddress(), removed `.takeIf { it.isHttps }` → red "nur https
- *      geht an den Browser" (http let through)
- *   B  in ownAddress(), removed the same-host check → red "ein
- *      local_path bleibt auf dem eigenen Server"
+ * Counter-checks:
+ *   A  in externeAddress(), removed `.takeIf { it.isHttps }` → red “only https
+ *      goes to the browser” (http let through)
+ *   B  in ownAddress(), removed the same-host check → red “a
+ *      local_path stays on the own server”
  *   D  pdfInViewer() without the origin
- *      check (`ziel.isHttps || serverUrl.isNotBlank()`) → red "the PDF viewer loads only from the own server"
+ *      check (`ziel.isHttps || serverUrl.isNotBlank()`) → red “the PDF viewer loads only from the own server”
  */
 class ExterneAddressTest {
 

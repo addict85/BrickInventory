@@ -19,12 +19,12 @@ import org.robolectric.annotation.Config
 import ch.brickinventoryapp.R as AppR
 
 /**
- * Das Widget in der Auswahl des Startbildschirms (ab Android 12): Es trägt eine
- * Beschreibung und eine Vorschau, und die Vorschau lässt sich als RemoteViews aufbauen
- * (nur solche Layouts zeigt der Startbildschirm) und nennt Titel und Wert.
+ * The widget in the home screen's picker (from Android 12): it carries a
+ * description and a preview, and the preview can be built as RemoteViews
+ * (the home screen only shows such layouts) and names title and value.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   widget-ohne-vorschau   previewLayout und description aus xml-v31 entfernt → rot „das Widget traegt …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   widget-ohne-vorschau   previewLayout and description removed from xml-v31 → red “the widget carries …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH")

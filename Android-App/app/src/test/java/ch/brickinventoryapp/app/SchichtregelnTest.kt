@@ -5,23 +5,23 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Welche Schicht welche Importe nicht haben darf. ModulgrenzenTest prüft die
- * Build-Dateien; hier steht, was innerhalb der Module gilt.
- * Eine Strukturprüfung: Sie liest Importzeilen, keine Kommentare.
+ * Which layer must not have which imports. ModulgrenzenTest checks the
+ * build files; here stands what applies within the modules.
+ * A structure check: it reads import lines, not comments.
  *
- * Gegenproben (05.11.2026, gemessen mit kotlinc lokal, je ein Patch in gegenproben/):
- *   schicht-viewmodel-android   `import android.net.Uri` in GutscheinViewModel → rot „ein ViewModel …“
- *   schicht-viewmodel-okhttp    `import okhttp3.OkHttpClient` in UpdateViewModel → rot „Präsentation …“
- *   schicht-praesentation-netz  `import retrofit2.Response` in GalleryScreen → rot „Präsentation …“
+ * Counter-checks (05.11.2026, measured locally with kotlinc, one patch each in gegenproben/):
+ *   schicht-viewmodel-android   `import android.net.Uri` in GutscheinViewModel → red “a ViewModel …”
+ *   schicht-viewmodel-okhttp    `import okhttp3.OkHttpClient` in UpdateViewModel → red “presentation …”
+ *   schicht-praesentation-netz  `import retrofit2.Response` in GalleryScreen → red “presentation …”
  *   schicht-bereich-api         `import ch.brickinventoryapp.data.api.SetsApi` in MerklisteViewModel
- *                               → rot „ein Bereich kennt die Retrofit-Schnittstellen nicht“
- *   schicht-zustand-api         `import ch.brickinventoryapp.data.api.AccountApi` in AppTexte → dasselbe rot
- *   zustand-texte-mit-context   `import android.content.Context` in AppTexte → rot „core-state and core-session know no Context“
- *   schicht-zustand-context     `import android.content.Context` in Sitzung.kt (core-session) → rot
- *                               „core-state and core-session know no Context“
- *   bereich-mehr-wireformat     ein Import eines Antworttyps in CatalogViewModel → rot
- *                               „ein Bereich kennt … das Wire-Format nur core-data“
- *   bereich-kennt-umsetzung     `import …KatalogRepositoryImpl` in CatalogViewModel → rot, derselbe Test
+ *                               → red “an area does not know the Retrofit interfaces”
+ *   schicht-zustand-api         `import ch.brickinventoryapp.data.api.AccountApi` in AppTexte → the same red
+ *   zustand-texte-mit-context   `import android.content.Context` in AppTexte → red “core-state and core-session know no Context“
+ *   schicht-zustand-context     `import android.content.Context` in Sitzung.kt (core-session) → red
+ *                               “core-state and core-session know no Context“
+ *   bereich-mehr-wireformat     an import of a response type in CatalogViewModel → red
+ *                               “an area does not know … only core-data knows the wire format”
+ *   bereich-kennt-umsetzung     `import …KatalogRepositoryImpl` in CatalogViewModel → red, the same test
  */
 class SchichtregelnTest {
 
@@ -62,10 +62,10 @@ class SchichtregelnTest {
     }
 
     /**
-     * Auch der Zustand nicht: Er sieht Repositories und Ergebnis, nicht den Retrofit-Weg dahinter.
-     * Das Wire-Format übersetzt nur core-data (Abbildungen in core-contract); jedes andere
-     * Modul, auch die Ablage, nimmt Fachtypen. Die Kante dazu prüft Modulkanten. Die Umsetzungen
-     * der Repositories sind öffentlich, weil core-testing sie baut; benutzen darf sie sonst niemand.
+     * Not the state either: it sees repositories and Ergebnis, not the Retrofit path behind them.
+     * Only core-data translates the wire format (mappings in core-contract); every other
+     * module, the store too, takes domain types. Modulkanten checks the edge for it. The implementations
+     * of the repositories are public because core-testing builds them; nobody else may use them.
      */
     @Test
     fun `an area does not know the Retrofit interfaces, only core-data knows the wire format`() {
@@ -79,7 +79,7 @@ class SchichtregelnTest {
         assert(implementation.isEmpty()) { "Repository-Umsetzungen ausserhalb von core-data und core-testing:\n  " + implementation.joinToString("\n  ") }
     }
 
-    /** Texte und Dateien kommen über Textquelle und FileReader aus core-data, ohne Ausnahme. */
+    /** Texts and files come via Textquelle and FileReader from core-data, without exception. */
     @Test
     fun `core-state and core-session know no Context`() {
         val f = violations({ it.modul in setOf("core-state", "core-session") }) {

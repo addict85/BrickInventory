@@ -1,26 +1,26 @@
 package ch.brickinventoryapp.model.file
 
 /**
- * Eine vom Nutzer gewählte Datei, wie die Oberfläche sie nennt (die Zeichenkette
- * einer content://-Adresse). Kein android.net.Uri: Das ViewModel reicht sie nur an
- * den [FileReader] weiter und bleibt so ohne Android-Typen prüfbar.
+ * A file chosen by the user, as the UI names it (the string
+ * of a content:// address). No android.net.Uri: the ViewModel only passes it on to
+ * the [FileReader] and thus stays testable without Android types.
  */
 @JvmInline
 value class FileRef(val wert: String)
 
-/** Was [FileReader.readAtMost] fand: Medientyp und Inhalt, oder eine zu grosse Datei. */
+/** What [FileReader.readAtMost] found: media type and content, or a file that is too large. */
 sealed interface Gelesen {
     class Inhalt(val typ: String?, val bytes: ByteArray) : Gelesen
     data object ToLarge : Gelesen
 }
 
-/** Liest eine vom Nutzer gewählte Datei: Medientyp und Inhalt, oder null. */
+/** Reads a file chosen by the user: media type and content, or null. */
 interface FileReader {
     suspend fun lies(datei: FileRef): Pair<String?, ByteArray>?
 
-    /** Höchstens [grenze] Bytes; eine grössere Datei kommt nie ganz in den Speicher. null: nicht lesbar. */
+    /** At most [grenze] bytes; a larger file never comes into memory completely. null: not readable. */
     suspend fun readAtMost(datei: FileRef, grenze: Long): Gelesen? =
         lies(datei)?.let { (typ, bytes) -> if (bytes.size > grenze) Gelesen.ToLarge else Gelesen.Inhalt(typ, bytes) }
-    /** Der angezeigte Dateiname, oder null, wenn ihn die Quelle nicht nennt. */
+    /** The displayed file name, or null if the source does not name it. */
     suspend fun name(datei: FileRef): String? = null
 }

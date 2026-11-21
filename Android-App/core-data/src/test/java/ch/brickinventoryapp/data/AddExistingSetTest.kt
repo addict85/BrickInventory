@@ -10,29 +10,29 @@ import ch.brickinventoryapp.testing.testSetCatalogRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * Ein bereits erfasstes Set wird geöffnet, nicht stillschweigend erhöht — gleich ob
- * über Barcode, Texterkennung oder Nummer. Die Regel liegt auf dem Server
- * (utils/setAdd.ts): Das Erfassen antwortet mit `action = "exists"` und schreibt
- * nichts, damit sie nicht zwischen den Clients auseinanderläuft.
+ * An already added set is opened, not silently increased — whether
+ * via barcode, text recognition or number. The rule lies on the server
+ * (utils/setAdd.ts): adding answers with `action = "exists"` and writes
+ * nothing, so that it does not drift apart between the clients.
  *
- * Ausgeführt geprüft wird das in EntryViewModelTest (Nummern-Weg,
- * Scanner, Texterkennung, Fehler der Vorabfrage). Hier: die Vorabfrage gegen
- * einen Testserver und die Struktur, dass die Galerie den Auslöser auswertet.
+ * This is checked, executed, in EntryViewModelTest (number path,
+ * scanner, text recognition, error of the pre-query). Here: the pre-query against
+ * a test server and the structure that the gallery evaluates the trigger.
  *
- * Gegenprobe: an getSetExists ein
- * `@Query("accounts") accounts: String? = "own"` → rot „die Existenzprüfung
- * schickt keinen Kontofilter mit“.
+ * Counter-check: on getSetExists an
+ * `@Query("accounts") accounts: String? = "own"` → red “the existence check
+ * sends no account filter”.
  */
 class AddExistingSetTest {
 
-    /** Kommentare ausblenden — die Erklärtexte nennen die geprüften Muster selbst. */
+    /** Hide comments — the explanatory texts name the checked patterns themselves. */
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     /**
-     * Die Frage lautet „habe ich das schon?", nicht „sehe ich das gerade?". Ohne
-     * accounts nimmt der Server sein Standard-Blickfeld — Haupt- UND Unterkonten, und
-     * ein Set eines Unterkontos gilt als vorhanden.
+     * The question is „do I have this already?", not „do I see this right now?". Without
+     * accounts the server takes its default view — main AND sub-accounts, and
+     * a set of a sub-account counts as present.
      */
     @Test
     fun `the existence check sends no account filter`() {
@@ -48,12 +48,12 @@ class AddExistingSetTest {
 
     @Test
     fun `the trigger is also evaluated and reset again`() {
-        // Ein gesetzter Auslöser ohne Empfänger wäre wirkungslos — und ohne
-        // Zurücksetzen liesse sich dasselbe Set kein zweites Mal öffnen.
-        // Der Erfassungsrahmen wertet aus, der Graph navigiert.
+        // A set trigger without a receiver would be ineffective — and without
+        // resetting the same set could not be opened a second time.
+        // The adding frame evaluates, the graph navigates.
         val nav = code(File(Quellen.root, "collection/ui/Erfassungsrahmen.kt").readText() + "\n" +
             File(Quellen.root, "collection/ui/SammlungGraph.kt").readText())
-        // Geprueft wird das FIELD, nicht der Name des Zustands davor.
+        // The FIELD is checked, not the name of the state before.
         assert(Regex("""\w+\.gefundenesSet""").containsMatchIn(nav)) {
             "die Galerie beobachtet den Auslöser nicht — es passiert dann gar nichts"
         }

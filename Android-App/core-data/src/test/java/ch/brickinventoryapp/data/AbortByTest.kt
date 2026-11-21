@@ -9,13 +9,13 @@ import org.junit.Test
 import java.io.IOException
 
 /**
- * Wer Fehler schluckt, schluckt das Abbrechen nicht: Ein abgebrochener Aufrufer liefe
- * sonst weiter, als wäre nichts geschehen. Geprüft wird die gemeinsame Hilfe; dass niemand
- * sie mit einem breiten Fang umgeht, hält QuelltextRatscheTest.
+ * Whoever swallows errors does not swallow the cancellation: a cancelled caller would
+ * otherwise keep running as if nothing had happened. The common helper is checked; that nobody
+ * bypasses it with a broad catch is held by QuelltextRatscheTest.
  *
- * Gegenproben:
- *   fang-schluckt-abbruch   fangeAusserAbbruch ohne Abbruch-Zweig → rot „fangeAusserAbbruch reicht …“
- *   start-schluckt-abbruch  ein Aufräumschritt mit `catch (_: Exception)` → rot in QuelltextRatscheTest
+ * Counter-checks:
+ *   fang-schluckt-abbruch   fangeAusserAbbruch without cancellation branch → red “fangeAusserAbbruch passes …”
+ *   start-schluckt-abbruch  a cleanup step with `catch (_: Exception)` → red in QuelltextRatscheTest
  */
 class AbortByTest {
 

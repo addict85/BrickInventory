@@ -1,5 +1,5 @@
 package ch.brickinventoryapp.model.data
 
-/** Welche Teile die Liste zeigt: alle, ohne oder nur Ersatzteile (parts-spare der Webapp). */
+/** Which parts the list shows: all, without or only spare parts (parts-spare of the web app). */
 
 enum class Ersatzteilwahl { ALLE, OHNE, NUR }

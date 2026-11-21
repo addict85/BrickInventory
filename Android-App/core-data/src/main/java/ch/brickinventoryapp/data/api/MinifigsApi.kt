@@ -21,7 +21,7 @@ import ch.brickinventoryapp.contract.ManualFigsResponse
 import ch.brickinventoryapp.contract.MinifigStatsResponse
 
 /**
- * Die Figurenliste abfragen — für den Figuren-Reiter und den Inhalt eines Sets.
+ * Query the figure list — for the figures tab and the content of a set.
  */
 interface MinifigsQueryApi {
 
@@ -45,9 +45,9 @@ interface MinifigsApi : MinifigsQueryApi {
         @Query("accounts") accounts: String? = null,
     ): Response<VerwendendeSetsResponse>
 
-    // Seit Migration 0024 traegt auch eine Minifigur einen Lagerort. Eigene
-    // Adresse, weil sie keine Farbe hat — sonst muesste die Route eine 0
-    // mitschleppen, die nichts bedeutet.
+    // Since migration 0024 a minifigure carries a storage location too. Own
+    // address because it has no color — otherwise the route would have to drag along a 0
+    // that means nothing.
     @PUT("api/v1/minifigs/{figNumber}/storage")
     suspend fun setFigStorage(
         @Path("figNumber") figNumber: String,
@@ -72,14 +72,14 @@ interface MinifigsApi : MinifigsQueryApi {
     @DELETE("api/v1/minifigs/{figNumber}")
     suspend fun deleteMinifig(
         @Path("figNumber") figNumber: String,
-        // Wie bei deletePart: null = eigenes Konto.
+        // As with deletePart: null = own account.
         @Query("owner") owner: Int? = null,
         @Header("Idempotency-Key") schluessel: String? = null,
     ): Response<GenericResponse>
 
     /**
-     * Die manuell erfassten Figuren, mit Suchtext. Ohne Lagerort, weil es den Filter
-     * bei den Minifiguren in keiner Oberfläche gibt.
+     * The manually added figures, with search text. Without storage location because the filter
+     * does not exist for minifigures in any UI.
      */
     @GET("api/v1/minifigs/manual")
     suspend fun getManualMinifigs(

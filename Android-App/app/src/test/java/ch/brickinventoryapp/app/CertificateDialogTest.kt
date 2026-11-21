@@ -29,34 +29,34 @@ import org.robolectric.RobolectricTestRunner
 import java.util.Base64
 
 /**
- * Was der Zertifikatsdialog zeigt: Wo abgetippt wird, steht der abzutippende Teil
- * nicht auf dem Bildschirm (nur der Anfang); beim Erstkontakt über eine öffentliche
- * CA der ganze Fingerabdruck zum Vergleichen.
+ * What the certificate dialog shows: where typing is required, the part to be typed
+ * is not on the screen (only the beginning); on first contact via a public
+ * CA the whole fingerprint for comparison.
  *
- * Gegenproben (Robolectric, nur in der CI messbar; Job `gegenproben`):
- *   (a) im Dialog wieder `fingerprintReadable(frage.fingerabdruck)` statt des
- *       Anfangs → rot „whoever types it sees no part that is to be typed“
+ * Counter-checks (Robolectric, measurable only in CI; job `gegenproben`):
+ *   (a) in the dialog again `fingerprintReadable(frage.fingerabdruck)` instead of the
+ *       beginning → red “whoever types it sees no part that is to be typed”
  *       (gegenproben/zertifikat-zeigt-alles.patch)
- *   (b) `writeOff` nur für GEAENDERT → rot „ueber eine Nutzer-CA …“
+ *   (b) `writeOff` only for GEAENDERT → red “via a user CA …”
  *       (gegenproben/nutzerca-ein-tipp.patch)
- *   (c) CertificateDialog ohne den Zweig für CODE_ABWEICHUNG → rot „weicht der
- *       Server vom Code ab …“ (gegenproben/code-abweichung-im-dialog.patch)
- *   (d) das Feld wieder mit dem ganzen Satz als Etikett, ohne Erklärung darunter →
- *       rot „das Feld traegt ein kurzes Etikett …“ (gegenproben/zertifikat-satz-als-etikett.patch)
- *   (e) Fingerabdruckfeld ohne pairTranscriptIn() (keine Doppelpunkte) → rot „die Abschrift
- *       bekommt beim Tippen Doppelpunkte …“ (gegenproben/abschrift-ohne-paare.patch)
- *   (f) in transcriptError() TO_SHORT wie FITS_NOT → rot „zu kurz und falsch …“
+ *   (c) CertificateDialog without the branch for CODE_ABWEICHUNG → red “if the
+ *       server deviates from the code …” (gegenproben/code-abweichung-im-dialog.patch)
+ *   (d) the field again with the whole sentence as label, without explanation below →
+ *       red “the field carries a short label …” (gegenproben/zertifikat-satz-als-etikett.patch)
+ *   (e) fingerprint field without pairTranscriptIn() (no colons) → red “the transcript
+ *       gets colons …” (gegenproben/abschrift-ohne-paare.patch)
+ *   (f) in transcriptError() TO_SHORT like FITS_NOT → red “too short and wrongly …”
  *       (gegenproben/abschrift-zu-kurz-wie-falsch.patch)
- *   (g) schliessbar() mit `dismissOnClickOutside = true` → rot „daneben tippen schliesst
- *       den Dialog nie …“ (gegenproben/zertifikat-daneben-verworfen.patch)
- *   (h) `writeOff` auch für SCHLUESSEL_NEU → rot „ein neuer Serverschluessel steht
- *       ganz da …“ (gegenproben/schluessel-neu-abtippen.patch)
- *   (i) der Knopf „stattdessen abtippen“ entfernt → rot „beim Erstkontakt laesst sich
- *       stattdessen abtippen …“ (gegenproben/erstkontakt-ohne-abtippen.patch)
- *   (j) `writeOff` für SCHLUESSEL_NEU wieder immer aus → rot „ohne CT-Pflicht wird ein
- *       neuer Serverschluessel abgetippt …“ (gegenproben/schluessel-neu-dialog-ohne-feld.patch)
- *   (k) `writeOff` beim Erstkontakt wieder nur auf Wunsch → rot „ohne CT-Pflicht wird beim
- *       Erstkontakt abgetippt …“ (gegenproben/erstkontakt-dialog-ein-tipp.patch)
+ *   (g) schliessbar() with `dismissOnClickOutside = true` → red “tapping outside never closes
+ *       the dialog …” (gegenproben/zertifikat-daneben-verworfen.patch)
+ *   (h) `writeOff` also for SCHLUESSEL_NEU → red “with CT requirement a new server key is
+ *       shown in full …” (gegenproben/schluessel-neu-abtippen.patch)
+ *   (i) the button „stattdessen abtippen“ removed → red “on first contact it can be
+ *       typed instead …” (gegenproben/erstkontakt-ohne-abtippen.patch)
+ *   (j) `writeOff` for SCHLUESSEL_NEU always off again → red “without CT requirement a
+ *       new server key is typed …” (gegenproben/schluessel-neu-dialog-ohne-feld.patch)
+ *   (k) `writeOff` on first contact again only on request → red “without CT requirement it is
+ *       typed on first contact …” (gegenproben/erstkontakt-dialog-ein-tipp.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class CertificateDialogTest {
@@ -89,8 +89,8 @@ class CertificateDialogTest {
         feld().fetchSemanticsNode().config.getOrNull(SemanticsProperties.EditableText)?.text.orEmpty()
 
     /**
-     * Die Webapp zeigt `AB:CD:…`. Wer „24 Zeichen“ samt Doppelpunkten abschrieb, hatte nur 16
-     * Hex. Das Feld setzt die Doppelpunkte selbst und zählt nur, was zählt.
+     * The web app shows `AB:CD:…`. Whoever copied „24 Zeichen“ including colons had only 16
+     * hex. The field sets the colons itself and counts only what counts.
      */
     @Test
     fun `the transcript gets colons and a character counter while typing`() {
@@ -127,7 +127,7 @@ class CertificateDialogTest {
         assertEquals(0, gezeigt(ctx.getString(R.string.zert_eingabe_zu_kurz, 24, 24)))
     }
 
-    /** Ein Tipp daneben verwarf das halb Abgetippte; Zurück gilt nur, solange nichts getippt ist. */
+    /** A tap outside discarded the half-typed input; Back applies only as long as nothing is typed. */
     @Test
     fun `tapping outside never closes the dialog, back only without input`() {
         assertFalse(closable("").dismissOnClickOutside)
@@ -227,7 +227,7 @@ class CertificateDialogTest {
         assertEquals(hex.replace(":", "").takeLast(24), angenommen?.replace(":", ""))
     }
 
-    /** Android 11–15: Ohne CT ginge eine fehlausgestellte Kette mit einem Tipp durch. */
+    /** Android 11–15: without CT a misissued chain would get through with a tap. */
     @Test
     fun `without CT requirement it is typed on first contact, a tap is not enough`() {
         var angenommen: String? = null

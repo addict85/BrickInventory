@@ -7,9 +7,9 @@ import ch.brickinventoryapp.account.ui.viewmodel.UpdateViewModel
 import ch.brickinventoryapp.state.ui.viewmodel.VertrauenViewModel
 
 /**
- * Die ViewModels, die so lange leben wie die Activity — nur, was über jedem Ziel
- * liegt: die Sitzung (MainActivity liest selbst daraus), der Update-Hinweis, der
- * CSV-Import, das Design und die Zertifikatsfrage. Alles andere hängt an seinem Ziel.
+ * The ViewModels that live as long as the activity — only what lies above every
+ * destination: the session (MainActivity reads from it itself), the update hint, the
+ * CSV import, the design and the certificate question. Everything else hangs on its destination.
  */
 class ActivityState(
     val app: AppViewModel,

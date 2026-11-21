@@ -3,16 +3,16 @@ package ch.brickinventoryapp.model.domain
 import java.io.Serializable
 
 /**
- * Die Farbwahl des Teilefilters. Der Server filtert nach dem Farbnamen (`color=`), deshalb
- * trägt die Wahl den Namen; „alle“ ist eine eigene Wahl statt eines leeren Textes. Serializable,
- * weil der Teilefilter im SavedStateHandle liegt.
+ * The color choice of the parts filter. The server filters by the color name (`color=`), therefore
+ * the choice carries the name; „all“ is a choice of its own instead of an empty text. Serializable,
+ * because the parts filter lies in the SavedStateHandle.
  */
 sealed interface ColorPicker : Serializable {
     data object Alle : ColorPicker
 
     data class Farbe(val name: String) : ColorPicker
 
-    /** Der Wert für Abfrage und Ablage; null heisst alle. */
+    /** The value for query and store; null means all. */
     val wert: String? get() = (this as? Farbe)?.name
 
     companion object {
@@ -20,7 +20,7 @@ sealed interface ColorPicker : Serializable {
     }
 }
 
-/** Die Kategoriewahl; gewählt wird der Wert des Servers (`category_name`), nicht die Beschriftung. */
+/** The category choice; chosen is the server's value (`category_name`), not the label. */
 sealed interface Kategoriewahl : Serializable {
     data object Alle : Kategoriewahl
 

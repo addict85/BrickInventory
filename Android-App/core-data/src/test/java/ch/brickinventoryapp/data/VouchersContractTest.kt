@@ -18,35 +18,35 @@ import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * Gutscheine — LEGO-Geschenkkarten im eigenen Profil.
+ * Vouchers — LEGO gift cards in one's own profile.
  *
- * Gutscheine werden mit Nummer, PIN und Betrag von Hand erfasst oder aus dem PDF
- * gelesen; beides macht der Server, die App ruft nur seine Dienste.
+ * Vouchers are entered by hand with number, PIN and amount or read from the PDF;
+ * both are done by the server, the app only calls its services.
  *
- * ── Was dieser Test prueft, und was NICHT ───────────────────────────────────
+ * ── What this test checks, and what NOT ─────────────────────────────────────
  *
- * Adressen und Ablage laufen gegen einen Testserver; der Rest liest Quelltext,
- * weil er Bildschirme betrifft. Was die Routen TUN — wer welchen Gutschein sehen darf,
- * wie aus dem PDF die drei Werte werden —, prueft der Server gegen eine echte
- * Datenbank (Web-App/test/vouchers-db.test.js) und braucht hier keine
- * zweite, schwaechere Fassung.
+ * Addresses and store run against a test server; the rest reads source text,
+ * because it concerns screens. What the routes DO — who may see which voucher,
+ * how the three values come out of the PDF — is checked by the server against a real
+ * database (Web-App/test/vouchers-db.test.js) and needs no
+ * second, weaker version here.
  *
- * Hier steht die eine Aussage, die NUR auf dieser Seite nachweisbar ist: dass
- * die App dieselben Dienste benutzt und keine eigenen baut — das laeuft am
- * leichtesten auseinander.
+ * Here stands the one statement that is provable ONLY on this side: that
+ * the app uses the same services and builds none of its own — that drifts apart
+ * most easily.
  *
- * Gegenproben: in VouchersRepository.liste() den Abruf
- * mit cached("gutscheine", …) umhüllt → rot „die Liste wird nicht
- * zwischengespeichert“; @PUT("api/v1/vouchers/{id}") auf POST → rot „die App
- * ruft dieselben Adressen wie die Webapp“.
+ * Counter-checks: in VouchersRepository.liste() the fetch
+ * wrapped with cached("gutscheine", …) → red “the list is not
+ * cached”; @PUT("api/v1/vouchers/{id}") to POST → red “the app
+ * calls the same addresses as the web app”.
  *
- * Gegenproben:
- *  - Löschen wieder als @DELETE ohne Rumpf (Bestätigung nicht mitgeschickt) → rot
- *    „Löschen, Klartext und PDF-Freigabe tragen Passwort und Code“.
- *  - pdfRelease() ruft für id=null die Route des einzelnen PDFs (mit id 0) → rot
- *    „the app calls the same addresses as the web app“.
- *  - Klartext in liste() mit cached("gutscheine-klartext", …) abgelegt → rot
- *    „the plaintext is not cached“.
+ * Counter-checks:
+ *  - deleting again as @DELETE without body (confirmation not sent along) → red
+ *    “deleting, plaintext and PDF release carry password and code”.
+ *  - pdfRelease() calls the route of the single PDF (with id 0) for id=null → red
+ *    “the app calls the same addresses as the web app”.
+ *  - plaintext in liste() stored with cached("gutscheine-klartext", …) → red
+ *    “the plaintext is not cached”.
  */
 class VouchersContractTest {
 
@@ -56,19 +56,19 @@ class VouchersContractTest {
         return f.readText()
     }
 
-    /** Kommentare ausblenden — die Erklaertexte nennen die geprueften Muster selbst. */
+    /** Hide comments — the explanatory texts name the checked patterns themselves. */
     private fun code(src: String) = src.lines().joinToString("\n") { z ->
         if (z.trim().startsWith("//") || z.trim().startsWith("*")) "" else z
     }
 
     private val repo by lazy { code(lies("data/repository/GutscheineRepositoryImpl.kt")) }
     private val feature by lazy { code(lies("finances/ui/viewmodel/GutscheinViewModel.kt")) }
-    // Die Karte samt ihren Geschwisterdateien: Liste, Formular und Einzelkarte.
+    // The card including its sibling files: list, form and single card.
     private val karte by lazy {
         code(listOf("GutscheineCard.kt", "GutscheinFormular.kt", "GutscheinKarte.kt").joinToString("\n") { lies("finances/ui/screens/$it") })
     }
 
-    /** Gutscheine gegen einen Testserver, mit Plattenablage in einem Wegwerf-Ordner. */
+    /** Vouchers against a test server, with disk storage in a throwaway folder. */
     private fun <T> withServer(block: (PfadServer, VouchersRepository, File) -> T): T {
         val paths = PfadServer("/api/v1/vouchers" to """{"success":true,"vouchers":[
             {"id":5,"number":"1234-5678","pin":"9876","amount":50.0,"currency":"CHF"}]}""")
@@ -81,8 +81,8 @@ class VouchersContractTest {
     }
 
     /**
-     * EIN Dienst im Backend, beide Apps daran — der Router routes/api_v1/vouchers.ts.
-     * Andere Adressen hiessen zwei Umsetzungen.
+     * ONE service in the backend, both apps on it — the router routes/api_v1/vouchers.ts.
+     * Other addresses would mean two implementations.
      */
     @Test
     fun `the app calls the same addresses as the web app`() = withServer { paths, repo, _ ->
@@ -103,7 +103,7 @@ class VouchersContractTest {
             "POST /api/v1/vouchers/5/pdf-freigabe", "POST /api/v1/vouchers/export/pdf-freigabe"), paths.requests.toList())
     }
 
-    /** Ohne Rumpf antwortet der Server mit 400: Löschen und Klartext verlangen die Bestätigung. */
+    /** Without a body the server answers with 400: deleting and plaintext require the confirmation. */
     @Test
     fun `deleting, plaintext and PDF release carry password and code`() = withServer { paths, repo, _ ->
         val b = Confirmation(passwort = "geheim", code = "123456")
@@ -134,9 +134,9 @@ class VouchersContractTest {
 
     @Test
     fun `the PDF is sent to the SERVER and not read in the app`() {
-        // Der Auszug steht in Web-App/utils/gutscheinPdf.ts — EINMAL, fuer
-        // beide Apps. Eine zweite Leselogik in Kotlin muesste mit ihr Schritt
-        // halten, und die Webapp braeuchte eine dritte.
+        // The excerpt lives in Web-App/src/vouchers/pdfParsing.ts — ONCE, for
+        // both apps. A second reading logic in Kotlin would have to keep pace
+        // with it, and the web app would need a third.
         assert(repo.contains("MultipartBody.Part.createFormData(\"file\"")) {
             "Die Datei muss als multipart zum Server gehen."
         }
@@ -150,14 +150,14 @@ class VouchersContractTest {
 
     @Test
     fun `the three values are not checked in the app`() {
-        // `pruefeWerte` in routes/api_v1/vouchers.ts entscheidet, welche
-        // Nummer, welcher Betrag und welche Waehrung gueltig sind — einmal,
-        // fuer beide Apps. Eine zweite Pruefung hier liefe irgendwann
-        // auseinander, und dann waere unklar, welche gilt.
+        // `checkValues` in src/vouchers/service.ts decides which
+        // number, which amount and which currency are valid — once,
+        // for both apps. A second check here would drift apart
+        // at some point, and then it would be unclear which one applies.
         //
-        // Die eine Ausnahme ist `toDoubleOrNull`: Das ist keine Regel, sondern
-        // die Umwandlung von Text in eine Zahl, bevor sie ueberhaupt
-        // verschickt werden kann.
+        // The one exception is `toDoubleOrNull`: that is no rule but
+        // the conversion of text into a number before it can be
+        // sent at all.
         for (verboten in listOf("Regex(", "matches(", "length in ", "startsWith(\"50")) {
             assert(!feature.contains(verboten)) {
                 "In der App steht eine eigene Pruefung der Gutscheinwerte ($verboten)."
@@ -167,10 +167,10 @@ class VouchersContractTest {
 
     @Test
     fun `missing values from the PDF are taken over into the form`() {
-        // Der Server antwortet mit 422 und dem, was er LESEN KONNTE. Ohne
-        // diese Uebernahme stuende der Nutzer vor leeren Feldern, obwohl die
-        // Nummer sehr wohl im PDF stand — und muesste neunzehn Ziffern
-        // abtippen, die der Server schon kennt.
+        // The server answers with 422 and what it COULD READ. Without
+        // this takeover the user would face empty fields although the
+        // number was in the PDF after all — and would have to type nineteen digits
+        // that the server already knows.
         assert(feature.contains("Gutscheinspeicherung.Incomplete") && repo.contains("a.gelesen")) {
             "Die aus dem PDF gelesenen Werte werden nicht uebernommen."
         }
@@ -182,20 +182,20 @@ class VouchersContractTest {
 
     @Test
     fun `the PIN is hidden by default`() {
-        // Nicht aus Sicherheitsglauben — wer den Bildschirm sieht, ist
-        // angemeldet —, sondern gegen die Schulter daneben. Die Umkehrung
-        // steht gleich mit: Es muss sich auch aufdecken lassen, sonst ist der
-        // PIN unbrauchbar.
+        // Not out of security belief — whoever sees the screen is
+        // signed in — but against the shoulder next to you. The reverse
+        // is stated as well: it must also be revealable, otherwise the
+        // PIN is useless.
         assert(karte.contains("\"••••\"")) { "Der PIN steht unverdeckt in der Liste." }
         assert(karte.contains("pinSichtbar")) { "Der PIN laesst sich nicht aufdecken." }
     }
 
     @Test
     fun `the PDF is not stored on the device`() {
-        // Nummer und PIN sind alles, was zum Einloesen noetig ist. Der
-        // vorhandene PdfViewerScreen laedt die Adresse mit dem angemeldeten
-        // Client; eine eigene Kopie im Cache waere ein zweiter Ort fuer
-        // dieselben Zahlen — und zwar einer, der das Abmelden ueberlebt.
+        // Number and PIN are everything needed for redeeming. The
+        // existing PdfViewerScreen loads the address with the signed-in
+        // client; an own copy in the cache would be a second place for
+        // the same numbers — and one that survives sign-out at that.
         for (verboten in listOf("cacheDir", "writeBytes", "getExternalFilesDir", "MediaStore")) {
             assert(!feature.contains(verboten) && !repo.contains(verboten)) {
                 "Das Gutschein-PDF wird auf dem Geraet abgelegt ($verboten)."
@@ -205,9 +205,9 @@ class VouchersContractTest {
 
     @Test
     fun `number and PIN can be copied by tapping`() {
-        // Antippen kopiert, weil Nummer und PIN meist in ein Bezahlfeld wandern.
-        // Beide Zeilen sind KopierZeilen: ganze Zeile antippbar (clickable), 48 dp hoch, mit
-        // Kopiersymbol. Die Höhe und die Beschreibung prüft UisRulesTest am Bildschirm.
+        // Tapping copies, because number and PIN mostly go into a payment field.
+        // Both rows are KopierZeilen: whole row tappable (clickable), 48 dp high, with
+        // copy icon. Height and description are checked by UisRulesTest on the screen.
         assert(karte.contains("clickable(role = Role.Button, onClickLabel = beschreibung, onClick = onKopieren)")) {
             "Die Kopierzeile ist nicht mehr antippbar."
         }
@@ -217,8 +217,8 @@ class VouchersContractTest {
         assert(karte.contains("{ onKopieren(false) }")) {
             "Der PIN laesst sich nicht durch Antippen kopieren."
         }
-        // Die ROHE Nummer, nicht die in Vierergruppen gezeigte: Die
-        // Gruppierung ist eine Lesehilfe, ein Bezahlfeld nimmt sie nicht an.
+        // The RAW number, not the one shown in groups of four: the
+        // grouping is a reading aid, a payment field does not accept it.
         assert(!karte.contains("onKopieren(g.number.chunked")) {
             "Kopiert wird die gruppierte Anzeige statt der echten Nummer."
         }
@@ -226,8 +226,8 @@ class VouchersContractTest {
 
     @Test
     fun `the voucher no longer has a note`() {
-        // Der Server kennt keine Notiz mehr; ein Rest in der App waere eine Zeile,
-        // die er nicht beantwortet.
+        // The server no longer knows a note; a remainder in the app would be a row
+        // it does not answer.
         for (datei in listOf(karte, feature)) {
             assert(!datei.contains("notiz") && !datei.contains(".note")) {
                 "In der App steht noch eine Notiz am Gutschein."
@@ -236,13 +236,13 @@ class VouchersContractTest {
     }
 
     /**
-     * Die Gutscheine sind der erste Eintrag der Seite „Mehr“ (MehrBildschirm.kt), damit
-     * man sie an der Kasse ohne Suchen findet. Geprueft wird die Reihenfolge, nicht bloss
-     * das Vorkommen: Wer etwas Neues einbaut, setzt es gern oben hin.
+     * The vouchers are the first entry of the „Mehr“ page (MehrBildschirm.kt), so that
+     * one finds them at the checkout without searching. Checked is the order, not merely
+     * the occurrence: whoever builds in something new likes to put it at the top.
      */
     @Test
     fun `the vouchers are at the very top of the More page`() {
-        // Die Seite zeichnet die Gruppen ab 0; der erste Eintrag ist der erste der Gruppe 0.
+        // The page draws the groups from 0; the first entry is the first of group 0.
         val quelle = code(lies("app/MehrBildschirm.kt"))
         val seite = quelle.substringAfter("fun MehrBildschirm(").substringBefore("fun MehrGruppeInhalt(")
         assert(Regex("""for \(i in 0 until""").containsMatchIn(seite)) { "Die Seite Mehr beginnt nicht mit Gruppe 0" }
@@ -255,13 +255,13 @@ class VouchersContractTest {
     }
 
     /**
-     * Die Rubriken liegen NICHT mehr in den Einstellungen.
+     * The sections NO longer lie in the settings.
      *
-     * Die Gegenrichtung zur Zusicherung darueber. Ohne sie waere beides
-     * gleichzeitig gruen: die Eintraege auf „Mehr“ UND eine vergessene
-     * Kopie im Einstellungsbildschirm. Zwei Wege zu derselben Seite sieht man
-     * im Quelltext nicht, wohl aber auf dem Bildschirm — und hier gibt es
-     * keinen Emulator, in dem das auffiele.
+     * The opposite direction to the assertion above. Without it both would
+     * be green at the same time: the entries on „Mehr“ AND a forgotten
+     * copy in the settings screen. Two ways to the same page cannot be seen
+     * in the source text, but they can on the screen — and here there is
+     * no emulator in which that would stand out.
      */
     @Test
     fun `the settings no longer lead to the sections themselves`() {
@@ -280,8 +280,8 @@ class VouchersContractTest {
     }
 
     /**
-     * Die anderen Repositories legen Antworten auf der Platte ab. Eine Liste mit
-     * Nummern und PINs gehört dort nicht hin, auch nicht für fünf Minuten.
+     * The other repositories store responses on disk. A list with
+     * numbers and PINs does not belong there, not even for five minutes.
      */
     @Test
     fun `the list is not cached`() = withServer { _, repo, folder ->

@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.model.domain
 
 /**
- * Ein angemeldetes Gerät, wie die Geräteliste es zeigt. Die Frist ist schon
- * entschieden: Von gleitender und fester Frist zählt die frühere — der Tag, an
- * dem das Gerät ausgesperrt wird.
+ * A signed-in device as the device list shows it. The deadline is already
+ * decided: of sliding and fixed deadline the earlier one counts — the day on
+ * which the device is locked out.
  */
 
 data class DeviceView(

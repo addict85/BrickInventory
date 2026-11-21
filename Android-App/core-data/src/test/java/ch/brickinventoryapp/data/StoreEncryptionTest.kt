@@ -17,21 +17,21 @@ import java.io.File
 import java.io.IOException
 
 /**
- * Lokale Ablagen liegen verschlüsselt: Widget und Vorschau mit AES-GCM, der
- * Bestand mit SQLCipher; der gemeinsame Schlüssel nur vom Keystore umhüllt. Hier
- * steht eine Attrappe für den Keystore, die den Klartext sichtbar verändert;
- * SQLCipher selbst läuft nur auf dem Gerät.
+ * Local stores lie encrypted: widget and preview with AES-GCM, the
+ * stock with SQLCipher; the shared key only wrapped by the keystore. Here
+ * a dummy stands in for the keystore that visibly changes the plaintext;
+ * SQLCipher itself runs only on the device.
  *
- * Gegenproben:
- *   B  Ablageschluessel.hole() legt bei Gesperrt einen neuen Schlüssel an (wie bei
- *      Weg) → rot „a locked keystore does not replace the key“
- *   C  Ablageschluessel.fuer() gibt den gemeinsamen Schlüssel statt eines
- *      abgeleiteten zurück → rot „der Schluessel entsteht einmal …“ und „Klartext
- *      und fremde Daten gelten nicht“ (Widget und Cache teilten einen Schlüssel)
- *   D  in StoreCipher beide `updateAAD(…)` gestrichen → rot „eine
- *      Datei unter fremdem Namen gilt nicht“; gegenproben/ablage-ohne-bindung.patch
- *   F in erneuere() `bekannt = null` gestrichen →
- *      rot „nach dem Erneuern ist alles Alte unlesbar …“
+ * Counter-checks:
+ *   B  Ablageschluessel.hole() creates a new key on Gesperrt (as on
+ *      Weg) → red “a locked keystore does not replace the key”
+ *   C  Ablageschluessel.fuer() returns the shared key instead of a
+ *      derived one → red “the key is created once …” and “plaintext
+ *      and foreign data do not count” (widget and cache shared a key)
+ *   D  in StoreCipher both `updateAAD(…)` struck → red “a
+ *      file under a foreign name does not count”; gegenproben/ablage-ohne-bindung.patch
+ *   F in erneuere() `bekannt = null` struck →
+ *      red “after renewal everything old is unreadable …”
  */
 class StoreEncryptionTest {
 
@@ -42,7 +42,7 @@ class StoreEncryptionTest {
         folder.deleteRecursively()
     }
 
-    /** Wie der Keystore: verändert den Text umkehrbar; [situation] steuert, was oeffne() meldet. */
+    /** Like the keystore: changes the text reversibly; [situation] controls what oeffne() reports. */
     private class Tresor : TokenEncryption {
         var situation: Tresorbefund? = null
         override fun verschluessle(klartext: String) = "umhuellt:" + klartext.reversed()

@@ -9,12 +9,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Kontofilter des Haushalts.
+ * Account filter of the household.
  *
- * Übersetzt wird der Wert ausschliesslich auf dem Server; die App reicht ihn
- * als `accounts=` durch. Prüfbar bleibt hier, was die App selbst entscheidet:
- * welche Einträge die Auswahl hat, wann sie verborgen bleibt und wann der Wert
- * überhaupt mitgeschickt wird.
+ * The value is translated exclusively on the server; the app passes it
+ * through as `accounts=`. What stays checkable here is what the app decides itself:
+ * which entries the selection has, when it stays hidden and when the value
+ * is sent along at all.
  */
 class ScopeFilterTest {
 
@@ -23,8 +23,8 @@ class ScopeFilterTest {
 
     @Test
     fun `without sub-accounts there is nothing to choose`() {
-        // Eine Auswahl mit genau einer möglichen Antwort ist keine Wahl,
-        // sondern eine Frage, die sich nicht stellt — sie bleibt verborgen.
+        // A selection with exactly one possible answer is no choice
+        // but a question that does not arise — it stays hidden.
         assertTrue(accountOptions(listOf(m(1, "ich", true)), "A", "E").isEmpty())
         assertTrue(accountOptions(emptyList(), "A", "E").isEmpty())
     }
@@ -40,24 +40,24 @@ class ScopeFilterTest {
 
     @Test
     fun `no collective sub-accounts entry any more`() {
-        // Entfallen: Der Eintrag beantwortete nur „nicht
-        // mir" und stand zwischen zwei Einträgen, die dieselbe Frage genauer
-        // beantworten. Auch bei mehreren Kindern darf er nicht wieder
-        // auftauchen.
+        // Dropped: the entry only answered „not
+        // me" and stood between two entries that answer the same question more
+        // precisely. Even with several children it must not show up
+        // again.
         val opts = accountOptions(
             listOf(m(1, "eltern", true), m(2, "lea"), m(3, "nino")), "Alle", "Eigene")
         assertTrue(opts.none { it.first == "subs" })
         assertEquals(4, opts.size)
     }
 
-    // Gegenprobe (am 28.10. gemessen): die frühere Einrückung nach `tiefe`
-    // wieder eingebaut → rot mit "   enkel" statt "enkel".
+    // Counter-check (measured on 28.10.): the earlier indentation by `tiefe`
+    // built in again → red with "   enkel" instead of "enkel".
     @Test
     fun `every sub-account is in it flat, even if an older server sends levels`() {
-        // Rechte gelten nur entlang direkter Verknüpfungen; jedes Konto in der
-        // Liste ist ein direktes Unterkonto. Ein älterer Server schickt noch
-        // tiefe = 2 — eingerückt sähe das nach einer Rangordnung aus, die es
-        // nicht mehr gibt.
+        // Rights apply only along direct links; every account in the
+        // list is a direct sub-account. An older server still sends
+        // tiefe = 2 — indented, that would look like a hierarchy that
+        // no longer exists.
         val opts = accountOptions(
             listOf(m(1, "eltern", self = true),
                    m(2, "kind"),
@@ -70,7 +70,7 @@ class ScopeFilterTest {
 
     @Test
     fun `a missing level does not move into nothing`() {
-        // Auch ein unerwarteter Wert (0 bei einem Unterkonto) ändert nichts am Namen.
+        // Even an unexpected value (0 for a sub-account) changes nothing about the name.
         val opts = accountOptions(
             listOf(m(1, "ich", self = true), m(2, "lea")),
             "Alle", "Eigene")
@@ -79,9 +79,9 @@ class ScopeFilterTest {
 
     @Test
     fun `all is not sent`() {
-        // Weglassen hält die Adressen kurz — und trifft im Repository den
-        // Zweig, der die Antwort zwischenspeichert: Eine gefilterte Sicht darf
-        // dort nicht unter demselben Schlüssel landen wie die volle.
+        // Leaving it out keeps the addresses short — and hits the branch in the repository
+        // that caches the response: a filtered view must not end up
+        // there under the same key as the full one.
         assertNull(ScopeFilter.asQuery(null))
         assertNull(ScopeFilter.asQuery(""))
         assertNull(ScopeFilter.asQuery(ScopeFilter.ALL))
@@ -91,8 +91,8 @@ class ScopeFilterTest {
 
     @Test
     fun `a choice of an unlinked account falls back to All`() {
-        // Sonst stünde in der Auswahl eine leere Beschriftung über einer
-        // unerklärlich gefilterten Liste.
+        // Otherwise the selection would show an empty label above an
+        // inexplicably filtered list.
         val opts = accountOptions(listOf(m(1, "eltern", true), m(2, "lea")), "Alle", "Eigene")
         assertEquals("2", ScopeFilter.sanitize("2", opts))
         assertEquals(ScopeFilter.ALL, ScopeFilter.sanitize("99", opts))
@@ -101,11 +101,11 @@ class ScopeFilterTest {
 
     @Test
     fun `every view has its own key`() {
-        // Wer in der Galerie den ganzen Haushalt sieht, will in den Finanzen
-        // womöglich nur die eigenen Zahlen.
+        // Whoever sees the whole household in the gallery may want only the own
+        // numbers in the finances.
         //
-        // Die Merkliste filtert wie die Sets, samt Inhaber. Diese Prüfung meldet
-        // jede neue Ansicht, und genau dafür steht sie hier:
+        // The wishlist filters like the sets, including owner. This check reports
+        // every new view, and that is exactly what it stands here for:
         val keys = ScopeFilter.View.entries.map { it.key }
         assertEquals(listOf("gallery", "parts", "minifigs", "finance", "merkliste"), keys)
         assertEquals(keys.size, keys.toSet().size)

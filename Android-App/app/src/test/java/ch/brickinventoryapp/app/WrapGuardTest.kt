@@ -66,27 +66,27 @@ import ch.brickinventoryapp.management.ui.viewmodel.MonitoringViewModel
 import kotlinx.coroutines.runBlocking
 
 /**
- * Kein Text bricht Zeichen für Zeichen oder im Wort um, keiner ragt über seinen Platz,
- * kein Knopf und keine Überschrift wird gekürzt: Preisalarme, Sammlung, Set-Detail,
- * Katalog-Detail und Anmeldung auf dem Telefon (411 dp) bei 100 und 200 % Schrift, dazu
- * die Hintergrundarbeiten (100 %, 360 dp) und das Set-Detail mit fünfstelligen Beträgen (360 dp).
+ * No text breaks character by character or within a word, none protrudes beyond its space,
+ * no button and no heading is truncated: price alerts, collection, set detail,
+ * catalog detail and sign-in on the phone (411 dp) at 100 and 200 % font, plus
+ * background work (100 %, 360 dp) and the set detail with five-digit amounts (360 dp).
  *
- * Gemessen am Textlayout jedes Textknotens: schmaler als etwa drei Zeichen, mehr Zeilen
- * als Wörter, ein Zeilenende zwischen zwei Buchstaben, eine Zeile breiter als der Text.
+ * Measured on the text layout of every text node: narrower than about three characters, more lines
+ * than words, a line end between two letters, a line wider than the text.
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   preisalarm-zeile-gequetscht      Plakette und „zuletzt …“ wieder in einer Row, die Plakette
- *                                    wieder mit dem langen Text → rot „Preisalarme bei 100 Prozent“
- *                                    („zuletzt CHF 449.95“ in 17 Zeilen bei 3 Wörtern)
- *   katalog-knoepfe-nebeneinander    Aufnehmen und Merken wieder nebeneinander, je eine Zeile mit
- *                                    Auslassung → rot „Katalog-Detail bei 100 Prozent“
- *                                    („Zur Sammlung hinzufügen“ gekürzt)
- *   standard-zustand-in-der-zeile    „Standard-Zustand“ wieder neben der Wahl → rot
- *                                    „Hintergrundarbeiten bei 100 Prozent“ (auf 360 dp „Gebraucht“
- *                                    im Wort gebrochen)
- *   gewinn-in-einer-zeile            Gewinn/Verlust wieder stets einzeilig → rot „Set-Detail schmal
- *                                    bei 200 Prozent“ („+CHF 20’200.90 · +19.2%“ ragt über die Kachel,
- *                                    gemessen an der natürlichen Breite)
+ * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ *   preisalarm-zeile-gequetscht      badge and „zuletzt …“ again in one Row, the badge
+ *                                    again with the long text → red “price alerts at 100 percent”
+ *                                    („zuletzt CHF 449.95“ in 17 lines for 3 words)
+ *   katalog-knoepfe-nebeneinander    add and remember again side by side, each one line with
+ *                                    ellipsis → red “catalog detail at 100 percent”
+ *                                    („Zur Sammlung hinzufügen“ truncated)
+ *   standard-zustand-in-der-zeile    „Standard-Zustand“ again next to the choice → red
+ *                                    “background work at 100 percent” (on 360 dp „Gebraucht“
+ *                                    broken within the word)
+ *   gewinn-in-einer-zeile            profit/loss again always single-line → red “narrow set detail
+ *                                    at 200 percent” („+CHF 20’200.90 · +19.2%“ protrudes beyond the tile,
+ *                                    measured at the natural width)
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -105,7 +105,7 @@ class WrapGuardTest {
         world.close()
     }
 
-    /** Wie ScreenPhotoTest: den Hauptlooper treiben, bis die Daten da sind und die Welt ruht. */
+    /** Like ScreenPhotoTest: drive the main looper until the data is there and the world rests. */
     private fun drive(name: String, bereit: () -> Boolean) =
         driveUntil(name, requests = { world.paths.requests.size }, bereit = bereit)
 
@@ -126,19 +126,19 @@ class WrapGuardTest {
         }
         drive("$name (angezeigt)", bereit)
         compose.waitForIdle()
-        // Die Uhr anhalten und vorstellen: Einblendungen sind dann fertig gelaufen.
+        // Stop the clock and advance: fade-ins have then run to completion.
         compose.mainClock.autoAdvance = false
         repeat(20) {
             compose.mainClock.advanceTimeBy(100)
             shadowOf(Looper.getMainLooper()).idle()
         }
         val (texts, findings) = collect(compose.onRoot(useUnmergedTree = true).fetchSemanticsNode(), wholeRow)
-        // Leere Bildschirme prüfen nichts.
+        // Empty screens check nothing.
         assertTrue("$name: nur $texts Textknoten — sind die Daten da?", texts >= 5)
         assertTrue("$name: ${findings.joinToString("; ")}", findings.isEmpty())
     }
 
-    /** Das Textlayout eines Knotens, ausser bei Eingabefeldern (deren Inhalt rollt). */
+    /** The text layout of a node, except for input fields (whose content scrolls). */
     private fun layout(n: SemanticsNode): TextLayoutResult? {
         if (n.config.getOrNull(SemanticsActions.SetText) != null) return null
         val liste = mutableListOf<TextLayoutResult>()
@@ -149,9 +149,9 @@ class WrapGuardTest {
     private fun textNode(n: SemanticsNode): Int = (if (layout(n) != null) 1 else 0) + n.children.sumOf { textNode(it) }
 
     /**
-     * Zählt die Textknoten und sammelt Befunde. Ein „Knopf“ ist ein Knoten mit der Rolle
-     * Schaltfläche und höchstens zwei Texten darunter: Eine anklickbare Kachel trägt
-     * die Rolle auch, darf ihren Namen aber nach zwei Zeilen kürzen.
+     * Counts the text nodes and collects findings. A „button“ is a node with the role
+     * button and at most two texts below it: a clickable tile carries
+     * the role too, but may truncate its name after two lines.
      */
     private fun collect(root: SemanticsNode, wholeRow: Boolean): Pair<Int, List<String>> {
         val findings = mutableListOf<String>()
@@ -170,7 +170,7 @@ class WrapGuardTest {
         return texts to findings
     }
 
-    /** Was an einem gesetzten Text auffällt: zu schmal, Buchstabe je Zeile, gekürzt in Knopf oder Überschrift. */
+    /** What stands out about a set text: too narrow, a letter per line, truncated in a button or heading. */
     private fun anomalies(l: TextLayoutResult, button: Boolean, kopf: Boolean, wholeRow: Boolean): List<String> {
         val findings = mutableListOf<String>()
         val text = l.layoutInput.text.text
@@ -184,8 +184,8 @@ class WrapGuardTest {
         if (l.lineCount >= 3 && l.lineCount > 2 * words)
             findings += "$wo in ${l.lineCount} Zeilen bei $words Wörtern"
         findings += inWordOrViaTheEdge(l, wo, em, wholeRow)
-        // Nur die Auslassung zählt: Breite, Höhe und maxLines melden unter
-        // Robolectric auch bei ungekürzten Texten einen Überlauf (Schriftmetrik).
+        // Only the ellipsis counts: width, height and maxLines also report an overflow under
+        // Robolectric for untruncated texts (font metrics).
         val gekuerzt = (0 until l.lineCount).any { l.isLineEllipsized(it) }
         if ((button || kopf) && gekuerzt) findings += "$wo gekürzt (${if (button) "Knopf" else "Überschrift"}; " +
             "Zeilen ${l.lineCount}, Breite ${l.size.width}/${l.multiParagraph.width.toInt()}, " +
@@ -194,14 +194,14 @@ class WrapGuardTest {
     }
 
     /**
-     * „Gebrauch|t“: ein Zeilenende zwischen zwei Buchstaben oder Ziffern bricht das Wort
-     * selbst. Und eine Zeile, breiter als ihr Platz: Der Rest ist abgeschnitten. Gemessen
-     * wird die Breite der Zeile, nicht ihr rechtes Ende: Das Textlayout der Semantik liegt
-     * auf der ganzen Platzgrenze, eine zentrierte Zeile endet dort rechts der Anzeige.
+     * „Gebrauch|t“: a line end between two letters or digits breaks the word
+     * itself. And a line wider than its space: the rest is cut off. Measured
+     * is the width of the line, not its right end: the semantics' text layout lies
+     * on the whole space limit, a centered line ends there to the right of the display.
      *
-     * [wholeRow]: Einen Text ohne Umbruch (softWrap = false) setzt die Semantik neu in
-     * die Platzbreite und bricht ihn dort um; abgeschnitten sieht man ihn nur an seiner
-     * natürlichen Breite. Nur wo verlangt: Die übrigen Bildschirme sind so nicht gemessen.
+     * [wholeRow]: the semantics re-sets a text without wrapping (softWrap = false) into
+     * the space width and wraps it there; cut off it can only be seen at its
+     * natural width. Only where required: the other screens are not measured that way.
      */
     private fun inWordOrViaTheEdge(l: TextLayoutResult, wo: String, em: Float, wholeRow: Boolean): List<String> {
         val text = l.layoutInput.text.text
@@ -233,7 +233,7 @@ class WrapGuardTest {
             override suspend fun lies(datei: FileRef): Pair<String?, ByteArray>? = null
         }))
 
-    /** Ein Alarm scharf, einer ausgelöst mit letztem Preis — die Zeile, die zeichenweise umbrach. */
+    /** One alert armed, one triggered with last price — the row that wrapped character by character. */
     private fun preisalarme(schrift: Float) {
         world.paths.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
             {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF"},
@@ -277,9 +277,9 @@ class WrapGuardTest {
     }
 
     /**
-     * Fünfstellige Beträge auf 360 dp: „+CHF 20’200.90 · +19.2%“ ist bei 200 % breiter als
-     * die Kachel (ein dreistelliger Gewinn passt gerade noch). Der Betrag steht ohne Umbruch,
-     * deshalb misst [pruefe] hier die natürliche Breite.
+     * Five-digit amounts on 360 dp: „+CHF 20’200.90 · +19.2%“ is wider than the tile at 200 %
+     * (a three-digit profit just about fits). The amount stands without wrapping,
+     * which is why [pruefe] measures the natural width here.
      */
     private fun setDetailNarrow(schrift: Float) {
         world.paths.antworten["/api/v1/sets/75192-1"] = """{"success":true,"quantity":1,"set":{"set_number":"75192-1",
@@ -305,9 +305,9 @@ class WrapGuardTest {
     }
 
     /**
-     * Wie das Foto der Hintergrundarbeiten: ein laufender Auftrag, darunter der Preisspeicher.
-     * Auf 360 dp: Das Segment misst seine Beschriftung ohne das Häkchen, auf 411 dp passt
-     * „Gebraucht“ deshalb auch neben „Standard-Zustand“.
+     * Like the photo of the background work: one running job, below it the price cache.
+     * On 360 dp: the segment measures its label without the check mark, which is why on 411 dp
+     * „Gebraucht“ also fits next to „Standard-Zustand“.
      */
     private fun hintergrundarbeiten(schrift: Float) {
         world.paths.antworten["/api/v1/admin/auftraege"] = """{"success":true,
@@ -327,7 +327,7 @@ class WrapGuardTest {
         inImage("Hintergrundarbeiten $schrift", "Gebraucht")
     }
 
-    /** Die Stelle, die eine Gegenprobe kaputt macht, muss geprüft worden sein: Ein fehlender Knoten meldet nichts. */
+    /** The place a counter-check breaks must have been checked: a missing node reports nothing. */
     private fun inImage(name: String, text: String) = assertTrue("$name: kein Text mit „$text“ — die Stelle lag nicht im Bild",
         compose.onAllNodes(hasText(text, substring = true), useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
 
@@ -357,9 +357,9 @@ class WrapGuardTest {
     @Test fun `background work at 100 percent without character wrapping and truncation`() = hintergrundarbeiten(1f)
 
     private companion object {
-        /** Etwa drei schmale Zeichen: Ein Zeichen pro Zeile ist schmaler, „Neu“ breiter. */
+        /** About three narrow characters: one character per line is narrower, „Neu“ wider. */
         const val MIN_WIDTH_EM = 1.2f
-        /** Mehr als ein halbes Zeichen über den Rand; darunter liegt die Ungenauigkeit der Schriftmetrik. */
+        /** More than half a character beyond the edge; below that lies the inaccuracy of the font metrics. */
         const val OVERHANG_EM = 0.5f
     }
 }

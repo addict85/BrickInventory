@@ -9,14 +9,14 @@ import java.util.concurrent.Executors
 import ch.brickinventoryapp.testing.text
 
 /**
- * Zwei Meldungen kurz nacheinander: Die zweite wartet, bis die erste quittiert
- * ist, statt sie zu ersetzen. Geschrieben wird nur über zeige() und quittiere().
+ * Two messages shortly after one another: the second waits until the first is
+ * acknowledged instead of replacing it. Writing happens only via zeige() and quittiere().
  *
- * Gegenproben:
- *   meldung-ueberschreibt   zeige() setzt den Wert direkt → rot „die zweite …“
- *   meldung-doppelt         ohne Vergleich mit der letzten → rot „dieselbe …“ und
- *                           „eine Ressource bleibt …“ (mit kotlinc gemessen: dieselbe
- *                           Ressource kommt zweimal)
+ * Counter-checks:
+ *   meldung-ueberschreibt   zeige() sets the value directly → red “the second …”
+ *   meldung-doppelt         without comparison with the last one → red “the same …” and
+ *                           “a resource stays …” (measured with kotlinc: the same
+ *                           resource comes twice)
  */
 class MessageQueueTest {
 

@@ -110,22 +110,22 @@ import ch.brickinventoryapp.testing.testAccountRepository
 import ch.brickinventoryapp.testing.testPartsRepository
 
 /**
- * Was TalkBack, Tastatur und grosse Schrift an den zentralen Bausteinen vorfinden, als
- * Verhalten geprüft.
+ * What TalkBack, keyboard and large font find at the central building blocks, checked as
+ * behavior.
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   schalter-ohne-namen          Kästchen der Bauliste wieder mit eigenem Rückruf → rot „Kaestchen der Bauliste tragen …“
- *   suchfeld-ohne-namen          Suchfeld ohne contentDescription → rot „Suchfeld behaelt seinen Namen …“
- *   filterwahl-als-kaestchen     FilterChoice wieder als AuswahlChip → rot „Filterwahl ist eine Einfachwahl …“
- *   ansage-ungedrosselt          ThrottledAnnouncement gibt jeden Wortlaut weiter → rot „Statusmeldungen sind Live-Regionen und …“
- *   bildzoom-nur-geste           Zoomleiste im Bilddialog entfernt → rot „Bildzoom geht mit Knoepfen …“
- *   fokus-ohne-rahmen            focusFrame zeichnet nichts → rot „Tastaturfokus zeigt einen Rahmen …“
- *   csv-aufklapper-stumm         Zustand und Aufklappen am CSV-Balken entfernt → rot „CSV-Balken nennt Zustand, Aufklappen …“
- *   themenzeile-ohne-rolle       ThemeRow ohne Optionsfeld-Rolle → rot „Themen- und Jahreswahl melden …“
- *   setkachel-name-hinten        Name der Setkachel wieder unter Nummer und Zustand → rot „Set- und Katalogkachel lesen …“
- *   unterseite-einzeilig         Unterseite wieder mit einzeiligem Titel → rot „lange Titel brechen bei …“
- *   rueckfrage-ohne-ueberschrift Titel der Rückfrage ohne heading → rot „die Rueckfrage nennt ihren …“
- *   notfallcodes-als-wort        Notfallcodes ohne readAloudAs → rot „Notfallcodes werden Zeichen fuer …“
+ * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ *   schalter-ohne-namen          build list checkboxes again with own callback → red “checkboxes of the build list carry …”
+ *   suchfeld-ohne-namen          search field without contentDescription → red “search field keeps its name …”
+ *   filterwahl-als-kaestchen     FilterChoice again as AuswahlChip → red “filter choice is a single choice …”
+ *   ansage-ungedrosselt          ThrottledAnnouncement passes on every wording → red “status messages are live regions and …”
+ *   bildzoom-nur-geste           zoom bar in the image dialog removed → red “image zoom works with buttons …”
+ *   fokus-ohne-rahmen            focusFrame draws nothing → red “keyboard focus shows a frame …”
+ *   csv-aufklapper-stumm         state and expanding removed from the CSV bar → red “CSV bar names state, expanding …”
+ *   themenzeile-ohne-rolle       ThemeRow without radio button role → red “theme and year choice announce …”
+ *   setkachel-name-hinten        name of the set tile again below number and condition → red “set and catalog tile read …”
+ *   unterseite-einzeilig         subpage again with single-line title → red “long titles wrap at …”
+ *   rueckfrage-ohne-ueberschrift title of the confirmation without heading → red “the confirmation names its …”
+ *   notfallcodes-als-wort        emergency codes without readAloudAs → red “emergency codes are read out …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -165,9 +165,9 @@ class AccessibilityTest {
     }
 
     /**
-     * Text oder Beschreibung je Knoten, in der Reihenfolge des Baums unter [n]. Unter
-     * clearAndSetSemantics nichts: Der ungefasste Baum führt die ersetzten Kinder noch,
-     * TalkBack liest sie nicht (wie SemanticsNode.mergeConfig).
+     * Text or description per node, in the order of the tree below [n]. Below
+     * clearAndSetSemantics nothing: the unmerged tree still carries the replaced children,
+     * TalkBack does not read them (like SemanticsNode.mergeConfig).
      */
     private fun vorgelesen(n: SemanticsNode): List<String> {
         val own = n.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty() +
@@ -242,7 +242,7 @@ class AccessibilityTest {
                     )
                 }
             }
-            // Ohne Tipp: Einschalten fragt ab Android 13 die Systemerlaubnis.
+            // Without a tap: turning on asks for the system permission from Android 13.
             checkToggle(ctx.getString(R.string.alert_notify), Role.Switch, false)
             val userCa = ctx.getString(R.string.settings_nutzer_ca)
             compose.onNode(hasText(userCa) and isToggleable()).performScrollTo()
@@ -309,10 +309,10 @@ class AccessibilityTest {
         compose.onNode(hasText("Näher heran") and live, useUnmergedTree = true).fetchSemanticsNode("Scannerhinweis wird nicht angesagt")
         compose.onNode(hasContentDescription(ctx.getString(R.string.common_loading)) and live)
             .fetchSemanticsNode("Laden wird nicht angesagt")
-        // Die Uhr von Hand: Die Ansage darf erst nach zehn Sekunden wechseln.
+        // The clock by hand: the announcement may change only after ten seconds.
         compose.mainClock.autoAdvance = false
-        // Auf dem UI-Faden und sofort gemeldet: Sonst kam die Änderung erst mit der Uhr an,
-        // und auch eine ungedrosselte Ansage zeigte nach 5 s noch den alten Wortlaut.
+        // On the UI thread and reported immediately: otherwise the change only arrived with the clock,
+        // and even an unthrottled announcement still showed the old wording after 5 s.
         compose.runOnUiThread { fortschritt = "Noch 29 s"; Snapshot.sendApplyNotifications() }
         compose.mainClock.advanceTimeBy(5_000)
         compose.onNode(hasContentDescription("Noch 30 s") and live).fetchSemanticsNode("Nach 5 s schon neu angesagt")
@@ -350,8 +350,8 @@ class AccessibilityTest {
                 LaunchedEffect(Unit) { mode.requestInputMode(InputMode.Keyboard) }
                 Surface(color = MaterialTheme.colorScheme.background) {
                     Column {
-                        // Im Tastaturbetrieb setzt Compose den Anfangsfokus auf das erste
-                        // Fokussierbare; ohne diese Ablage trug die Karte ihn schon zu Beginn.
+                        // In keyboard mode Compose sets the initial focus on the first
+                        // focusable; without this decoy the card carried it from the start.
                         Box(Modifier.size(8.dp).focusRequester(ablage).focusable())
                         AppKarte(Modifier.width(200.dp), onClick = {}) { Text("Millennium Falcon", Modifier.width(200.dp)) }
                     }
@@ -419,7 +419,7 @@ class AccessibilityTest {
         }
         val oeffnen = ctx.getString(R.string.cd_details_oeffnen)
         for (name in listOf("Millennium Falcon", "Lion Knights' Castle")) {
-            // Gefunden im zusammengefassten Baum, gelesen im ungefassten: dort steht die Reihenfolge.
+            // Found in the merged tree, read in the unmerged one: the order is there.
             val id = compose.onNode(hasClickAction() and hasText(name, substring = true)).fetchSemanticsNode("Kachel „$name“").id
             val kachel = compose.onNode(SemanticsMatcher("Knoten $id") { it.id == id }, useUnmergedTree = true).fetchSemanticsNode()
             val gelesen = vorgelesen(kachel).filter { it.isNotBlank() }

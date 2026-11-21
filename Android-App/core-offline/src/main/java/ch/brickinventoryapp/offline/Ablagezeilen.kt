@@ -31,9 +31,9 @@ import kotlinx.serialization.Serializable
 import java.time.Instant
 
 /*
- * Die Ablageform jedes Fachs, Fassung 1. Die Feldnamen sind eingefroren auf das, was
- * früher als Servermodell abgelegt wurde: Ältere Zeilen bleiben lesbar, und eine
- * Änderung am Fachtyp ändert nur die Abbildung hier, nicht die Platte.
+ * The store form of every compartment, version 1. The field names are frozen to what
+ * was formerly stored as server model: older rows stay readable, and a
+ * change to the domain type changes only the mapping here, not the disk.
  */
 
 @Serializable
@@ -123,7 +123,7 @@ internal data class PartRow(
     @SerialName("is_spare") val isSpare: Boolean = false,
 )
 
-/** Ein Ort im Vorrat; [vorgabe] markiert den Stern, den der Server neben der Liste schickt. */
+/** A place in the supply; [vorgabe] marks the star the server sends next to the list. */
 @Serializable
 internal data class StockRow(val id: Int, @SerialName("user_id") val userId: Int, val name: String, val vorgabe: Boolean)
 
@@ -149,7 +149,7 @@ internal data class MinifigRow(
     @SerialName("set_added_at") val setAddedAt: String? = null,
 )
 
-/** Ein Kauf an einem manuellen Teil oder einer Figur. */
+/** A purchase on a manual part or a figure. */
 @Serializable
 internal data class ValuationPurchaseRow(
     val id: Int = 0,
@@ -244,7 +244,7 @@ internal data class ManualMinifigRow(
     val storage: String? = null,
 )
 
-/** Ohne PIN: Sie liegt nie auf der Platte (VouchersRepository.withoutSecret). */
+/** Without PIN: it never lies on disk (VouchersRepository.withoutSecret). */
 @Serializable
 internal data class VoucherRow(
     val id: Int = 0,
@@ -274,7 +274,7 @@ internal data class AlarmRow(
     val besitzt: Boolean = true,
 )
 
-/** Die Kennzahlen der Sammlung; [stats] fehlt, wenn der Server keine schickte. */
+/** The key figures of the collection; [stats] is missing if the server sent none. */
 @Serializable
 internal data class MetricsRow(val success: Boolean = true, val stats: MetricsValuesRow? = null)
 
@@ -309,8 +309,8 @@ internal data class CatalogThemeRow(val id: Int = 0, val name: String = "", @Ser
 internal data class CatalogYearRow(val year: Int = 0, val n: Int = 0)
 
 /*
- * Zeile ↔ Fachtyp. Beträge liegen als Zahl, Zeitpunkte als ISO-Text wie früher; was nur die
- * Antwort des Servers trug (Preisspanne, Zwischenspeicher-Merker), bleibt beim Schreiben leer.
+ * Row ↔ domain type. Amounts lie as numbers, points in time as ISO text as before; what only the
+ * server's response carried (price range, cache marker), stays empty when writing.
  */
 internal object Ablagezeilen {
     private fun zeit(t: Instant?) = t?.toString()
@@ -396,7 +396,7 @@ internal object Ablagezeilen {
         wertGesamt = z.wertGesamt.asMoney(), condition = z.condition, conditions = z.conditions, userId = z.accountId,
         owners = z.besitzer.map(::konto), acquisitions = z.acquisitions.map(::kauf), storage = z.storage)
 
-    /** Die PIN fällt hier weg: Sie gehört nie auf die Platte. */
+    /** The PIN is dropped here: it never belongs on disk. */
     fun gutschein(g: VoucherView) = VoucherRow(g.id, g.number, g.amount.asDouble(), g.currency, g.hatPdf, zeit(g.createdAt),
         null, zeit(g.guthabenGeprueftAm))
 
@@ -415,7 +415,7 @@ internal object Ablagezeilen {
         totalQuantity = k.totalQuantity, totalInstructions = k.totalInstructions, totalParts = k.totalParts, setParts = k.partsFromSets,
         manualParts = k.partsSingle, totalMinifigs = k.totalMinifigs))
 
-    /** Eine Zeile ohne Werte (ältere Fassung, Server ohne stats) ist keine Kennzahl, sondern unlesbar. */
+    /** A row without values (older version, server without stats) is no key figure but unreadable. */
     fun metrics(z: MetricsRow) = checkNotNull(z.stats) { "Kennzahlen ohne Werte" }.let { d ->
         MetricsView(totalSets = d.totalSets, totalQuantity = d.totalQuantity, totalInstructions = d.totalInstructions,
             totalParts = d.totalParts, totalMinifigs = d.totalMinifigs, partsFromSets = d.setParts ?: d.manualParts?.let { d.totalParts - it },

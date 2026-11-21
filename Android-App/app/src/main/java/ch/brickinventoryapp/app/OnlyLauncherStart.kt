@@ -5,11 +5,11 @@ import android.os.Bundle
 import androidx.fragment.app.FragmentActivity
 
 /**
- * Basis der exportierten MainActivity. Jede App kann sie starten, und der
- * NavHost liest aus dem Start-Intent Deep-Link-Ziele (deepLinkIds/-Args, data).
- * Deshalb verlieren Extras und Daten ihren Weg, bevor irgendetwas sie sieht:
- * übrig bleibt nur der Launcher-Start. Meldungen kommen über MeldungsEinstieg.
- * FragmentActivity, weil BiometricPrompt (ui/components/Schrittschutz) eine braucht.
+ * Base of the exported MainActivity. Any app can start it, and the
+ * NavHost reads deep link targets from the start intent (deepLinkIds/-Args, data).
+ * That is why extras and data lose their way before anything sees them:
+ * only the launcher start remains. Notifications come via MeldungsEinstieg.
+ * FragmentActivity because BiometricPrompt (ui/components/Schrittschutz) needs one.
  */
 abstract class OnlyLauncherStart : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -18,13 +18,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Teile- und Figuren-Repository geben Fachwerte zurück: Ein `success: false` des Servers
- * ist eine Absage (ihren Satz schickt er mit einem Fehlerstatus), der Bestand der Teileliste ist je gefragtem Teil abgelegt.
+ * Parts and figure repository return domain values: a `success: false` from the server
+ * is a refusal (its sentence it sends with an error status), the stock of the parts list is filed per requested part.
  *
- * Gegenproben (Patches unter gegenproben/):
- *   teile-absage-als-erfolg      putLocationAn() bildet ohne zugesagt ab → rot „ein success false …“
- *   teile-bestand-falscher-schluessel  getOwnedParts() sucht „nummer-farbe“ → rot „der Bestand …“
- *   figur-erfasst-ohne-preiszustand    addMinifig() lässt priceFromCondition weg → rot „das Erfassen …“
+ * Counter-checks (patches under gegenproben/):
+ *   teile-absage-als-erfolg      putLocationAn() maps without zugesagt → red “a success false …”
+ *   teile-bestand-falscher-schluessel  getOwnedParts() looks for „nummer-farbe“ → red “the stock …”
+ *   figur-erfasst-ohne-preiszustand    addMinifig() leaves out priceFromCondition → red “adding a figure …”
  */
 class PartsSlotValuesTest {
 

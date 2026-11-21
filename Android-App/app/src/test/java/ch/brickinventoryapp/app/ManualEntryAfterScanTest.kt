@@ -4,27 +4,27 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Ein erfolgloser Scan führt zur manuellen Erfassung — überall.
+ * An unsuccessful scan leads to manual adding — everywhere.
  *
- * ── Vier erfolglose Wege, ein Feld ──────────────────────────────────────────
- * Alle vier liegen im ViewModel:
+ * ── Four unsuccessful paths, one field ──────────────────────────────────────
+ * All four lie in the ViewModel:
  *
- * Statt in jeden Bildschirm einen Aufruf zu setzen, melden sie sich über
- * `manuelleErfassungAnfordern` im Zustand. Wer den Scanner einbindet, liest das
- * Feld und öffnet SEINE Erfassung — die Galerie einen Dialog, die Teileliste
- * setzt den Cursor in ihr Eingabefeld (dort gibt es keinen Dialog).
+ * Instead of putting a call into every screen, they report via
+ * `manuelleErfassungAnfordern` in the state. Whoever embeds the scanner reads the
+ * field and opens THEIR adding — the gallery a dialog, the parts list
+ * puts the cursor into its input field (there is no dialog there).
  */
 class ManualEntryAfterScanTest {
 
-    // Gemeinsame Fassung statt einer eigenen Kopie je Testdatei — siehe
+    // A common version instead of an own copy per test file — see
     // Quellen.kt.
     private fun lies(rel: String) = Quellen.lies(rel)
     private fun code(src: String) = Quellen.withoutComments(src)
 
     @Test
     fun `every scanner entry reacts to it`() {
-        // Die Galerie öffnet ihren Dialog, die Teileliste setzt den Cursor.
-        // Beide quittieren.
+        // The gallery opens its dialog, the parts list sets the cursor.
+        // Both acknowledge.
         val g = code(lies("collection/ui/screens/GalleryScreen.kt"))
         assert(g.contains("barcode.manuelleErfassungAnfordern") && g.contains("showAddDialog = true")) {
             "Die Galerie öffnet die manuelle Erfassung nach einem erfolglosen Scan nicht"
@@ -45,9 +45,9 @@ class ManualEntryAfterScanTest {
 
     @Test
     fun `the add form puts the cursor into the set field`() {
-        // „Dies soll immer so sein, wenn das Formular angezeigt wird" — deshalb
-        // LaunchedEffect(Unit): Der Dialog wird bei jedem Öffnen neu
-        // zusammengesetzt, also läuft es bei jeder Anzeige genau einmal.
+        // “This should always be so when the form is shown" — hence
+        // LaunchedEffect(Unit): the dialog is composed anew on every opening,
+        // so it runs exactly once per display.
         val g = lies("collection/ui/screens/GalerieErfassen.kt")
         val i = g.indexOf("fun AddSetDialog(")
         assert(i >= 0) { "AddSetDialog nicht gefunden" }
@@ -57,10 +57,10 @@ class ManualEntryAfterScanTest {
         assert(Regex("""LaunchedEffect\(Unit\)[\s\S]{0,400}?requestFocus\(\)""").containsMatchIn(fn)) {
             "Der Cursor wird nicht bei jeder Anzeige ins Set-Feld gesetzt"
         }
-        // Der Anker muss am SET-Feld hängen, nicht an Menge oder Preis.
+        // The anchor must hang on the SET field, not on quantity or price.
         val setField = fn.indexOf("value = setNumber")
         val anchorAtSetField = fn.indexOf("focusRequester(setFeldFokus)")
-        // Im selben Feld heisst: vor dem nächsten Eingabefeld (Menge, Preis).
+        // In the same field means: before the next input field (quantity, price).
         val nextField = fn.indexOf("OutlinedTextField(", setField).let { if (it < 0) fn.length else it }
         assert(setField >= 0 && anchorAtSetField in (setField + 1) until nextField) {
             "Der Fokus-Anker hängt nicht am Set-Feld"

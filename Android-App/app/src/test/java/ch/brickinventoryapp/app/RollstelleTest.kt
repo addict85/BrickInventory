@@ -27,12 +27,12 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Die Rollstelle hat eine Quelle, den ScrollMemory: Ein Ziel legt seinen Listenzustand
- * je Besuch neu an, und nach dem Ausflug ins Detail steht die Liste trotzdem wieder an
- * ihrer Stelle. Ausgeführt mit einem echten NavHost, wie die Reiter der App ihn haben.
+ * The scroll position has one source, the ScrollMemory: a destination creates its list state
+ * anew per visit, and after the excursion into the detail the list is still back at
+ * its position. Executed with a real NavHost, as the app's tabs have it.
  *
- * Gegenprobe (gegenproben/rolle-ohne-rueckkehr.patch): Der Keeper für LazyColumn springt
- * nicht mehr zurück → rot „die Liste steht nach dem Ausflug wieder an ihrer Stelle“.
+ * Counter-check (gegenproben/rolle-ohne-rueckkehr.patch): the keeper for LazyColumn no longer
+ * jumps back → red “the list is back at its position after the excursion”.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)

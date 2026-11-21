@@ -7,12 +7,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Die Teileliste trägt ihre Filter als Typen bis in die API-Schicht; erst dort
- * werden sie zu den Werten, die der Server liest (parts-spare, with_sets).
+ * The parts list carries its filters as types into the API layer; only there
+ * do they become the values the server reads (parts-spare, with_sets).
  *
- * Gegenprobe: gegenproben/ersatzteile-vertauscht.patch, OHNE und NUR in
- * asQuery() vertauscht → rot „every spare part choice has the web app's value“
- * (lokal am ausgeschnittenen PartsApi.kt gemessen).
+ * Counter-check: gegenproben/ersatzteile-vertauscht.patch, OHNE and NUR swapped in
+ * asQuery() → red “every spare part choice has the web app's value”
+ * (measured locally on the cut-out PartsApi.kt).
  */
 class PartsQueryValuesTest {
 

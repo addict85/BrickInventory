@@ -35,15 +35,15 @@ import org.robolectric.RobolectricTestRunner
 import android.content.Context
 
 /**
- * Jedes Ziel steht im Graphen der App, und a path leads to every destination without values.
- * Die Liste der Ziele kommt aus der Serialisierung der Routen jedes Bereichs, nicht
- * von Hand; der Graph ist derselbe, den der NavHost baut ([allTargets]).
+ * Every destination is in the app's graph, and a path leads to every destination without values.
+ * The list of destinations comes from the serialization of the routes of each area, not
+ * by hand; the graph is the same the NavHost builds ([allTargets]).
  *
- * Gegenproben (nur in der CI messbar, Robolectric):
- *   ziel-nicht-registriert   composable<KontoZiel.Konto> fehlt im Graphen
- *                            → rot „every destination is in the app's graph“
- *   ziel-ohne-weg            der Eintrag „CSV-Import“ fehlt auf „Mehr“
- *                            → rot „a path leads to every destination without values“
+ * Counter-checks (measurable only in CI, Robolectric):
+ *   ziel-nicht-registriert   composable<KontoZiel.Konto> missing in the graph
+ *                            → red “every destination is in the app's graph“
+ *   ziel-ohne-weg            the entry „CSV-Import“ missing on “More”
+ *                            → red “a path leads to every destination without values“
  */
 @RunWith(RobolectricTestRunner::class)
 class ReachableRoutesTest {
@@ -53,12 +53,12 @@ class ReachableRoutesTest {
 
     private val ctx: Context = ApplicationProvider.getApplicationContext()
 
-    /** Die Routen jedes Bereichs und der App; ein neuer Bereich gehört in diese Liste. */
+    /** The routes of every area and of the app; a new area belongs in this list. */
     private val routen = listOf(LoginTarget.serializer(), SammlungZiel.serializer(), KatalogZiel.serializer(),
         TeileZiel.serializer(), FinanzZiel.serializer(), KontoZiel.serializer(), ManagementTarget.serializer(),
         AppTarget.serializer())
 
-    /** Serienname je Ziel; für Ziele ohne Werte zugleich der Name ihrer Route. */
+    /** Serial name per destination; for destinations without values also the name of their route. */
     private val targets = routen.flatMap { r ->
         val d = r.descriptor.getElementDescriptor(1)
         (0 until d.elementsCount).map { d.getElementName(it) to d.getElementDescriptor(it).kind }
@@ -76,7 +76,7 @@ class ReachableRoutesTest {
         compose.setContent { nav = rememberNavController() }
         val graph = compose.runOnIdle {
             val environment = TargetEnvironment(nav, coil3.ImageLoader.Builder(ctx).build(), emptyList(), SnackbarHostState()) {
-                // Den Zustand holen erst die Ziele beim Zeichnen; der Graph allein braucht ihn nicht.
+                // Only the destinations fetch the state when drawing; the graph alone does not need it.
                 error("Ziele werden hier nicht gezeichnet")
             }
             nav.createGraph(startDestination = SammlungZiel.Gallery) { allTargets(environment) }
@@ -100,8 +100,8 @@ class ReachableRoutesTest {
             eintraege[i].performScrollTo().performClick()
         }
         compose.waitForIdle()
-        // Material sieht höchstens fünf Reiter vor: die Bestandsziele in der Folge der
-        // Webapp (Merkliste vor Katalog) und „Mehr“.
+        // Material provides at most five tabs: the inventory destinations in the order of the
+        // web app (wishlist before catalog) and “More”.
         assertEquals(listOf(SammlungZiel.Gallery, FinanzZiel.Finance, SammlungZiel.Wanted, KatalogZiel.Catalog, AppTarget.Mehr),
             leiste.map { it.ziel })
         assertEquals("Jeder Eintrag auf „Mehr“ nennt genau ein Ziel", anzahl, ofMore.size)
@@ -110,7 +110,7 @@ class ReachableRoutesTest {
 
         val erreicht = (ofMore + leiste.map { it.ziel } + COLLECTION_TARGETS +
             StartTarget.entries.map(::startRoute)).map(::name).toSet()
-        // Ziele mit Werten öffnet nur, wer die Werte hat (eine Kachel, eine Zeile).
+        // Destinations with values are only opened by whoever has the values (a tile, a row).
         val withoutValues = targets.filterValues { it == StructureKind.OBJECT }.keys
         assertTrue("Nur ${withoutValues.size} Ziele ohne Werte gefunden", withoutValues.size >= 15)
         assertEquals("Ziele ohne Weg dorthin", emptySet<String>(), withoutValues - erreicht)

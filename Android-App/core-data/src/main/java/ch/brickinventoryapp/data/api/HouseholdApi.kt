@@ -16,7 +16,7 @@ import retrofit2.http.PUT
 import retrofit2.http.Path
 
 /**
- * Käufe je Set, Teil und Figur sowie der Haushalt (HouseholdRepository).
+ * Purchases per set, part and figure as well as the household (HouseholdRepository).
  */
 interface HouseholdApi {
 
@@ -80,10 +80,10 @@ interface HouseholdApi {
         @Path("id") id: Int
     ): Response<DeleteWithQuantityResponse>
 
-    // ── Haushalt: Konten verknüpfen ───────────────────────────────────────────
+    // ── Household: link accounts ──────────────────────────────────────────────
     //
-    // Zustimmen muss zwingend BEIDE Seiten: Das Hauptkonto erzeugt einen
-    // Einladungscode, das andere Konto löst ihn in SEINEN Einstellungen ein.
+    // BOTH sides must agree: the main account creates an
+    // invitation code, the other account redeems it in ITS settings.
     @GET("api/v1/settings/household")
     suspend fun getHousehold(): Response<HouseholdStatusResponse>
 
@@ -105,7 +105,7 @@ interface HouseholdApi {
         @Body body: Map<String, Int>
     ): Response<GenericResponse>
 
-    /** Konten des Haushalts — für Kontofilter, Kontoauswahl und Verschieben. */
+    /** Accounts of the household — for account filter, account selection and moving. */
     @GET("api/v1/sets/household-members")
     suspend fun getHouseholdMembers(): Response<HouseholdMembersResponse>
 }

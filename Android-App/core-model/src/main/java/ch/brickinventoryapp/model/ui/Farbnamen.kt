@@ -4,17 +4,17 @@ import ch.brickinventoryapp.model.domain.ColorView
 import ch.brickinventoryapp.model.domain.OHNE_FARBE
 
 /**
- * Die Farbliste ohne ihren Eintrag für KEINE_FARBE („[No Color/Any Color]“):
- * Die Auswahl führt „keine Farbe“ selbst, in der Sprache der App; sonst stünde
- * dieselbe Wahl zweimal da.
+ * The color list without its entry for KEINE_FARBE („[No Color/Any Color]“):
+ * the selection carries „no color“ itself, in the app's language; otherwise
+ * the same choice would stand there twice.
  */
 fun withoutNoColor(farben: List<ColorView>) =
     farben.filter { it.id != OHNE_FARBE }
 
 /**
- * Der Name der heutigen Farbe: KEINE_FARBE heisst [noColor], nie „Farbe
- * 9999“; sonst der Name aus der Liste, dann der gespeicherte. Null, wenn
- * keiner bekannt ist — dann nennt die Anzeige die Nummer.
+ * The name of today's color: KEINE_FARBE is called [noColor], never „Farbe
+ * 9999“; otherwise the name from the list, then the saved one. Null if
+ * none is known — then the display names the number.
  */
 fun farbName(farben: List<ColorView>, aktuell: Int,
              aktuellerName: String?, noColor: String): String? =

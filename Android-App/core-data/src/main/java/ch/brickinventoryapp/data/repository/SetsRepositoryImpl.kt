@@ -28,7 +28,7 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Der Set-Bestand über Retrofit und Ablage; die gemeinsame Abruflogik steht in Abruf.kt. */
+/** The set stock via Retrofit and store; the common fetch logic stands in Abruf.kt. */
 @Singleton
 class SetsRepositoryImpl @Inject constructor(
     private val api: SetsApi,
@@ -49,22 +49,22 @@ class SetsRepositoryImpl @Inject constructor(
     }
 
     override suspend fun setQuantity(setNumber: String, quantity: Int, purchasePrice: Double?, condition: Zustand?): Ergebnis<Int?> =
-        // Der Server kann deckeln (fremde Exemplare bleiben): Es gilt seine Zahl.
+        // The server may cap (foreign copies stay): its number applies.
         ablage.nachgezogen({ r -> FollowUp.SetQuantitySet(setNumber, r.quantity ?: quantity).takeIf { r.success } }) {
             sicherAufrufen { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantity = quantity, quantityDelta = null, purchasePrice = purchasePrice, condition = condition)) }
         }.promised({ it.success }) { it.quantity }
 
-    /** Menge um [schritt] ändern; der Server rechnet unter Bestandssperre. */
+    /** Change the quantity by [schritt]; the server computes under the stock lock. */
     override suspend fun changeQuantityUm(setNumber: String, schritt: Int): Ergebnis<Int?> =
         ablage.schreibe(Editing.SetMenge(setNumber, schritt), { MengeGeaendert(success = true) }) { schluessel ->
             sicherAufrufen { api.updateSetQuantity(setNumber, UpdateQuantityRequest(quantityDelta = schritt), schluessel) }
         }.promised({ it.success }) { it.quantity }
 
-    /** Löschen nur online: Der Papierkorb des Servers entscheidet, was zurückkommt. */
+    /** Delete only online: the server's trash decides what comes back. */
     override suspend fun deleteSet(setNumber: String): Ergebnis<Unit> =
         ablage.nachgezogen({ r -> FollowUp.SetRemoved(setNumber).takeIf { r.success } }) { sicherAufrufen { api.deleteSet(setNumber) } }.erledigt()
 
-    /** Die Galerie aus der Ablage, nach den Filtern der Anzeige; ändert sich auch durch offline Bearbeitetes. */
+    /** The gallery from the store, by the display's filters; also changes through things edited offline. */
     override fun observeSets(suche: String?, thema: String?, lagerort: String?, sort: Setsortierung?): Flow<Local<SetAnsicht>> =
         ablage.observe(Slots.SETS, Filterspalten(suchtext = suche?.ifBlank { null }, thema = thema?.ifBlank { null },
             lagerort = lagerort?.ifBlank { null })).map { l -> l.copy(liste = l.liste.sortiert(setOrder(sort))) }

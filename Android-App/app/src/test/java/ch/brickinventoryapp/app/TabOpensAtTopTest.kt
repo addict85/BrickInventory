@@ -35,14 +35,14 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Ein angetippter Reiter beginnt oben: Das Gerüst meldet das Antippen, bevor es
- * navigiert, damit der Rollmerker die Stelle verwirft, ehe der Bildschirm sie liest.
- * „Ich komme zurück“ behält die Stelle; unterscheiden lässt sich das nur im Gerüst.
+ * A tapped tab starts at the top: the scaffold reports the tap before it
+ * navigates, so that the scroll memory discards the position before the screen reads it.
+ * “I come back” keeps the position; this can only be distinguished in the scaffold.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   reiter-meldet-nach-navigation      onTabAngetippt erst nach toTab → rot „die untere Leiste meldet …“
- *   umschalter-meldet-nach-navigation  im Sammlungs-Umschalter ebenso → rot „der Sammlungs-Umschalter meldet …“
- *   geruest-vergisst-nicht             ReiterGeruest verwirft die Rollposition nicht → rot „kein Reiter-Ziel …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   reiter-meldet-nach-navigation      onTabAngetippt only after toTab → red “the bottom bar reports …”
+ *   umschalter-meldet-nach-navigation  likewise in the collection switcher → red “the collection switcher reports …”
+ *   geruest-vergisst-nicht             ReiterGeruest does not discard the scroll position → red “no tab destination …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -54,7 +54,7 @@ class TabOpensAtTopTest {
 
     private val ctx: Context = ApplicationProvider.getApplicationContext()
 
-    /** Gemeldetes Ziel und ob beim Melden noch die Galerie offen war. */
+    /** Reported destination and whether the gallery was still open when reporting. */
     private val gemeldet = mutableListOf<Pair<Any, Boolean>>()
     private lateinit var nav: NavHostController
 
@@ -105,8 +105,8 @@ class TabOpensAtTopTest {
 
     @Test
     fun `no tab destination builds the scaffold itself`() {
-        // Struktur: ReiterGeruest setzt den Rückruf einmal; ein Ziel, das MainScaffold
-        // selbst baut, müsste ihn wieder von Hand durchreichen.
+        // Structure: ReiterGeruest sets the callback once; a destination that builds MainScaffold
+        // itself would have to pass it through by hand again.
         val targets = Quellen.unter("nav")
         assertTrue("Nur ${targets.size} Dateien unter nav/ — Pfad veraltet?", targets.size >= 3)
         val direkt = targets.filter { Quellen.withoutComments(it.readText()).contains("MainScaffold(") }

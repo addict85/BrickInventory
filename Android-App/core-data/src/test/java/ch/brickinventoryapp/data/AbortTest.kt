@@ -11,13 +11,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * fangeAusserAbbruch fängt Fehler wie runCatching, reicht aber das Abbrechen
- * einer Koroutine weiter: Ein abgebrochener Auftrag läuft nicht als Fehlerfall
- * weiter.
+ * fangeAusserAbbruch catches errors like runCatching, but passes on the cancellation
+ * of a coroutine: a cancelled job does not keep running as an error
+ * case.
  *
- * Gegenprobe (gegenproben/abbruch-verschluckt.patch): der Zweig
- * `catch (abort: CancellationException) { throw abort }` entfernt → rot
- * „ein abgebrochener Auftrag läuft nicht weiter“ und „the cancellation goes through“.
+ * Counter-check (gegenproben/abbruch-verschluckt.patch): the branch
+ * `catch (abort: CancellationException) { throw abort }` removed → red
+ * “a cancelled job does not keep running” and “the cancellation goes through“.
  */
 class AbortTest {
 

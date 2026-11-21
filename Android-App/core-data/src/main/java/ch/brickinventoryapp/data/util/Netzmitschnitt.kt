@@ -4,9 +4,9 @@ import ch.brickinventoryapp.network.util.Protokoll
 import okhttp3.logging.HttpLoggingInterceptor
 
 /**
- * Der Netzmitschnitt des Debug-Builds: nur Anfrage- und Statuszeile, nie Rümpfe
- * (Passwörter, Gutschein-PINs). Die Köpfe mit Token oder Sitzung sind zusätzlich
- * geschwärzt, falls jemand beim Suchen die Stufe hochdreht.
+ * The network log of the debug build: only request and status line, never bodies
+ * (passwords, voucher PINs). The headers with token or session are additionally
+ * redacted in case someone raises the level while searching.
  */
 internal fun networkRecording(
     schreiber: HttpLoggingInterceptor.Logger = HttpLoggingInterceptor.Logger { Protokoll.notiz("OkHttp", it) },

@@ -35,7 +35,7 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 
-/** Die Repositories als Schnittstellen; wer eins braucht, sieht die Umsetzung nicht. */
+/** The repositories as interfaces; whoever needs one does not see the implementation. */
 @Module
 @InstallIn(SingletonComponent::class)
 internal abstract class RepositoryModule {

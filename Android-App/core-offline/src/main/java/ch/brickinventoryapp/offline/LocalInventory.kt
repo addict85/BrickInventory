@@ -9,10 +9,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
 /**
- * Die Spalten, nach denen der Server filtert — an einer Zeile ihre Werte, in einer
- * Abfrage das Muster: Was gesetzt ist, muss gleich sein, [suchtext] enthalten
- * (ohne Gross und Klein). An der Zeile trägt [suchtext] die durchsuchten Felder,
- * durch Zeilenumbrüche getrennt, damit kein Treffer über eine Feldgrenze reicht.
+ * The columns the server filters by — on a row their values, in a
+ * query the pattern: what is set must be equal, [suchtext] contained
+ * (case-insensitive). On the row [suchtext] carries the searched fields,
+ * separated by line breaks, so that no hit reaches across a field boundary.
  */
 data class Filterspalten(
     val suchtext: String? = null,
@@ -23,7 +23,7 @@ data class Filterspalten(
     val ersatzteil: Boolean? = null,
     val zustand: String? = null,
 ) {
-    /** Wie die Abfrage in Room, für die Ablage im Speicher. */
+    /** Like the query in Room, for the in-memory store. */
     fun hits(zeile: Filterspalten): Boolean =
         (suchtext == null || zeile.suchtext.orEmpty().contains(suchtext.lowercase())) &&
             (thema == null || zeile.thema == thema) && (lagerort == null || zeile.lagerort == lagerort) &&
@@ -31,30 +31,30 @@ data class Filterspalten(
             (ersatzteil == null || zeile.ersatzteil == ersatzteil) && (zustand == null || zeile.zustand == zustand)
 }
 
-/** Eine Zeile: Schlüssel, das Modell, wie der Server es geliefert hat (JSON), und seine Filterspalten. */
+/** A row: key, the model as the server delivered it (JSON), and its filter columns. */
 data class LocalRow(val schluessel: String, val inhalt: String, val spalten: Filterspalten = Filterspalten())
 
 /**
- * Die lokale Ablage des Bestands, je Bereich (Server und Konto) getrennt. Im
- * Gerät Room ([ch.brickinventoryapp.offline.room.RoomInventory]); die
- * Schnittstelle hält die Abgleichslogik ohne Android prüfbar. Eine Liste kommt
- * als [Local] mit dem Zeitpunkt, an dem der Server sie zuletzt geliefert hat.
+ * The local store of the stock, separated per area (server and account). On the
+ * device Room ([ch.brickinventoryapp.offline.room.RoomInventory]); the
+ * interface keeps the sync logic testable without Android. A list comes
+ * as [Local] with the point in time at which the server last delivered it.
  */
 interface LocalInventory {
     fun observe(bereich: String, art: StockKind): Flow<Local<LocalRow>>
     suspend fun lies(bereich: String, art: StockKind): Local<LocalRow>
-    /** Nur die Zeilen, die [filter] trifft, in der Reihenfolge der Liste. */
+    /** Only the rows that [filter] matches, in the order of the list. */
     suspend fun filtere(bereich: String, art: StockKind, filter: Filterspalten): Local<LocalRow>
-    /** Ersetzt die Liste; [stand] null heisst „lokal geändert, Serverstand bleibt“. */
+    /** Replaces the list; [stand] null means „changed locally, server state stays“. */
     suspend fun ersetze(bereich: String, art: StockKind, zeilen: List<LocalRow>, stand: Long?)
-    /** Wie [ersetze] ohne Stand, schreibt aber nur neue, geänderte und gelöschte Zeilen. */
+    /** Like [ersetze] without state, but writes only new, changed and deleted rows. */
     suspend fun sameAn(bereich: String, art: StockKind, zeilen: List<LocalRow>)
-    /** Alles löschen, was nicht zu [bereich] gehört — auf dem Gerät ist immer nur ein Konto angemeldet. */
+    /** Delete everything that does not belong to [bereich] — on the device only one account is ever signed in. */
     suspend fun cleanOther(bereich: String)
     suspend fun leere()
 }
 
-/** Im Speicher: für Tests und als Vorgabe, solange keine Datenbank gebunden ist. */
+/** In memory: for tests and as the default as long as no database is bound. */
 class StorageInventory : LocalInventory {
     private val daten = MutableStateFlow<Map<Pair<String, StockKind>, Local<LocalRow>>>(emptyMap())
 

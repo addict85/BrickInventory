@@ -17,17 +17,17 @@ import org.junit.Test
 import java.io.IOException
 
 /**
- * Der Update-Client folgt Umleitungen nur zu GitHub über https: Ein
- * fremdes Umleitungsziel wird nicht einmal verbunden. Mit Testservern statt GitHub;
- * die Regel für GitHub selbst prüft der letzte Fall.
+ * The update client follows redirects only to GitHub via https: a
+ * foreign redirect target is not even connected. With test servers instead of GitHub;
+ * the rule for GitHub itself is checked by the last case.
  *
- * Gegenproben (05.11.2026, gemessen mit kotlinc lokal):
- *   A  in UpdateRedirects die Prüfung `erlaubt(anfrage.url)` entfernt
- *      (gegenproben/update-umleitung-ueberall.patch) → rot „eine Umleitung auf einen fremden Host …“
- *   B  updateTargetAllowed() mit `url.host.endsWith("githubusercontent.com")` ohne Punkt →
- *      rot „nur GitHub und sein CDN …“
- *   C  MAX_REDIRECTS = 1 (Gegenprobe vom 12.11.2026) → rot „der feste Link ueber
- *      releases-latest …“ (IOException „Zu viele Umleitungen“)
+ * Counter-checks (05.11.2026, measured with kotlinc locally):
+ *   A  in UpdateRedirects the check `erlaubt(anfrage.url)` removed
+ *      (gegenproben/update-umleitung-ueberall.patch) → red “a redirect to a foreign host …”
+ *   B  updateTargetAllowed() with `url.host.endsWith("githubusercontent.com")` without dot →
+ *      red “only GitHub and its CDN …”
+ *   C  MAX_REDIRECTS = 1 (Counter-check of 12.11.2026) → red “the fixed link via
+ *      releases-latest …” (IOException „Zu viele Umleitungen“)
  */
 class UpdateRedirectTest {
 
@@ -38,7 +38,7 @@ class UpdateRedirectTest {
     @After
     fun zu() = listOf(start, ziel, fremd).forEach { runCatching { it.shutdown() } }
 
-    /** Wie im Gerät, nur gelten die beiden Testserver als „GitHub“. */
+    /** As on the device, only the two test servers count as „GitHub“. */
     private val client = OkHttpClient.Builder().followRedirects(false).followSslRedirects(false)
         .addInterceptor(UpdateRedirects { url: HttpUrl -> url.port == start.port || url.port == ziel.port })
         .build()
@@ -53,7 +53,7 @@ class UpdateRedirectTest {
         assertEquals("/objekt.apk", ziel.takeRequest().path)
     }
 
-    /** Wie GitHub für `/releases/latest/download/…`: erst auf das Etikett, dann ins CDN. */
+    /** Like GitHub for `/releases/latest/download/…`: first to the tag, then into the CDN. */
     @Test
     fun `the fixed link via releases-latest follows two redirects`() {
         val fassung = "/addict85/BrickInventory/releases/download/android-v1/version-signiert.json"

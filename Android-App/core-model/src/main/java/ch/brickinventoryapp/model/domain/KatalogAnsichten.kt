@@ -36,13 +36,13 @@ data class JahrAnzahlAnsicht(
     val n: Int = 0,
 )
 
-/** Themen und Jahresspanne für die Filter des Katalogs. */
+/** Themes and year range for the catalog's filters. */
 data class CatalogMetaView(val themen: List<CatalogThemeView>, val jahrMin: Int?, val jahrMax: Int?)
 
-/** Eine Seite des Katalogs; [gesamt] zählt alle Treffer des Filters. */
+/** A page of the catalog; [gesamt] counts all hits of the filter. */
 data class CatalogPageView(val sets: List<KatalogSetAnsicht>, val gesamt: Int)
 
-/** Was ein Barcode ergab; [setNumber] leer heisst nicht gefunden, [unsicher] eine geratene Zuordnung. */
+/** What a barcode resulted in; [setNumber] empty means not found, [unsicher] a guessed match. */
 data class BarcodeView(
     val setNumber: String,
     val name: String? = null,

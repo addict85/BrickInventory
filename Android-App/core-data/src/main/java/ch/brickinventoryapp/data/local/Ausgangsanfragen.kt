@@ -15,8 +15,8 @@ import ch.brickinventoryapp.contract.SetAggregate
 import ch.brickinventoryapp.contract.UpdateManualItemRequest
 
 /*
- * Die Anfragen zu den Bearbeitungen der Ablage: Die Ablage hält Fachwerte, erst hier wird
- * daraus das Wire-Format, für den direkten Versuch wie für das Senden aus dem Ausgang.
+ * The requests for the store's edits: the store holds domain values, only here does
+ * the wire format arise from them, for the direct attempt as for sending from the outbox.
  */
 
 internal fun Erfassungswunsch.asRequest() = AddSetRequest(setNumber = setNumber, quantity = menge,

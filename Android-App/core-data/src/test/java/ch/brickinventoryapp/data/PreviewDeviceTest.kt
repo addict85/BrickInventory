@@ -23,15 +23,15 @@ import org.robolectric.shadows.ShadowNetworkCapabilities
 import java.io.File
 
 /**
- * Die Teile des Vorwärmens, die Android brauchen: wo die Vorschau-Ablage liegt, wie
- * die Netzlage aus den Fähigkeiten des Netzes gelesen wird, und dass ab Werk nur im
- * WLAN vorgewärmt wird. Unter Robolectric, mit gesetzten Netzfähigkeiten.
+ * The parts of prewarming that need Android: where the preview store lies, how
+ * the network situation is read from the network's capabilities, and that by default prewarming
+ * happens only on Wi-Fi. Under Robolectric, with set network capabilities.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   vorschau-im-cache           die Ablage unter cacheDir → rot „die Ablage liegt unter filesDir“
- *   netzlage-hotspot-als-wlan   ein gemessenes WLAN gilt als WLAN → rot „ein gemessenes WLAN …“
- *   netzlage-ohne-roaming       Roaming nie erkannt → rot „im Ausland …“
- *   vorwaermen-vorgabe-mobil    Vorgabe für Mobilfunk true → rot „ab Werk nur im WLAN“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   vorschau-im-cache           the store under cacheDir → red “the store lies under filesDir”
+ *   netzlage-hotspot-als-wlan   a metered Wi-Fi counts as Wi-Fi → red “a metered Wi-Fi …”
+ *   netzlage-ohne-roaming       roaming never detected → red “abroad …”
+ *   vorwaermen-vorgabe-mobil    default for mobile true → red “by default warming happens only on Wi-Fi”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -39,7 +39,7 @@ class PreviewDeviceTest {
 
     private val ctx = ApplicationProvider.getApplicationContext<Application>()
 
-    /** Robolectric hat keinen AndroidKeyStore; umhüllt wird hier nur zum Schein. */
+    /** Robolectric has no AndroidKeyStore; wrapping here is only for show. */
     private object Klartresor : TokenEncryption {
         override fun verschluessle(klartext: String) = klartext
         override fun entschluessle(gespeichert: String) = gespeichert
@@ -47,7 +47,7 @@ class PreviewDeviceTest {
 
     private fun situation(transport: Int, vararg capable: Int): Netzlage.Art {
         val cm = ctx.getSystemService(ConnectivityManager::class.java)
-        // Leer angelegt: weder NOT_METERED noch NOT_ROAMING, nur was der Fall setzt.
+        // Created empty: neither NOT_METERED nor NOT_ROAMING, only what the case sets.
         val nc = ShadowNetworkCapabilities.newInstance()
         shadowOf(nc).addTransportType(transport)
         capable.forEach { shadowOf(nc).addCapability(it) }

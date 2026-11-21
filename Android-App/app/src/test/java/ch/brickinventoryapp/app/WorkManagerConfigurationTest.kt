@@ -5,12 +5,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Das Manifest nimmt WorkManagerInitializer heraus (WorkManager fährt auf Abruf hoch, nicht
- * vor onCreate). Dann muss die App selbst die Konfiguration liefern, sonst wirft der erste
- * Zugriff „WorkManager is not initialized properly“ und die Hilt-Worker hätten keine Fabrik.
+ * The manifest removes WorkManagerInitializer (WorkManager starts on demand, not
+ * before onCreate). Then the app must supply the configuration itself, otherwise the first
+ * access throws „WorkManager is not initialized properly“ and the Hilt workers would have no factory.
  *
- * Gegenprobe: BrickInventoryApp ohne Configuration.Provider
- * (gegenproben/app-ohne-workmanager-konfiguration.patch) → rot „die App liefert …“.
+ * Counter-check: BrickInventoryApp without Configuration.Provider
+ * (gegenproben/app-ohne-workmanager-konfiguration.patch) → red “the app supplies …”.
  */
 class WorkManagerConfigurationTest {
 

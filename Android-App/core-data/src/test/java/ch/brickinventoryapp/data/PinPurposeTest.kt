@@ -10,12 +10,12 @@ import java.security.cert.X509Certificate
 import java.util.Base64
 
 /**
- * Unter einer gepinnten eigenen CA gilt nur ein Blatt, das einen Server ausweisen
- * darf: EKU serverAuth, oder gar keine EKU-Erweiterung. Die Zertifikate
- * sind mit openssl erzeugte feste Testdaten (Wurzel, drei Blätter für localhost).
+ * Under a pinned own CA only a leaf that may identify a server counts:
+ * EKU serverAuth, or no EKU extension at all. The certificates
+ * are fixed test data generated with openssl (root, three leaves for localhost).
  *
- * Gegenprobe: in fitsToPin() `|| !forServer(chain[0])` entfernt → rot „ein
- * Zertifikat fuer einen anderen Zweck passt nicht zum Pin“;
+ * Counter-check: in fitsToPin() `|| !forServer(chain[0])` removed → red “a
+ * certificate for a different purpose does not match the pin”;
  * gegenproben/pin-ohne-zweck.patch
  */
 class PinPurposeTest {

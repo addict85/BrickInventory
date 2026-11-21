@@ -1,10 +1,10 @@
-// Das Wire-Format: Anfragen und Antworten des Servers (@Serializable) und ihre Abbildung
-// auf die Anzeigetypen in core-model. Ohne Android wie core-model; es kennt core-model,
-// nicht umgekehrt, damit Fach- und Anzeigetypen nicht am Netzformat hängen.
+// The wire format: requests and responses of the server (@Serializable) and their mapping
+// to the display types in core-model. Without Android like core-model; it knows core-model,
+// not the other way round, so that domain and display types do not depend on the network format.
 plugins {
     alias(libs.plugins.brickinventory.jvm.library)
     alias(libs.plugins.kotlin.serialization)
-    // Lint der App (checkDependencies) schliesst das Modul nur mit diesem Plugin ein.
+    // The app's Lint (checkDependencies) only includes the module with this plugin.
     alias(libs.plugins.android.lint)
 }
 

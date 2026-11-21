@@ -5,19 +5,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Zwei Aufbauregeln der Oberfläche, die nur im Quelltext zu sehen sind (Strukturprüfung).
- * Eine FlowRow in einer Row hat keinen Platz zum Umbrechen und stellt jeden Chip auf eine
- * eigene Zeile; die gemeinsame Tabellenzeile muss der Sprachausgabe sagen, was Antippen tut.
+ * Two layout rules of the UI that can only be seen in the source (structure check).
+ * A FlowRow inside a Row has no room to wrap and puts every chip on its own
+ * line; the common table row must tell the screen reader what tapping does.
  *
- * Gegenproben (Patches unter gegenproben/):
- *   flowrow-in-row          FlowRow der Haushaltsmitglieder in eine Row gelegt → rot „keine FlowRow …“
- *   tabellenzeile-stumm     TabellenZeile reicht onClickLabel nicht an clickable → rot „die Tabellenzeile …“
+ * Counter-checks (patches under gegenproben/):
+ *   flowrow-in-row          FlowRow of the household members put into a Row → red “no FlowRow …”
+ *   tabellenzeile-stumm     TabellenZeile does not pass onClickLabel to clickable → red “the table row …”
  */
 class ComposeLayoutRulesTest {
 
     private val call = Regex("""^(?:[A-Za-z_][\w.]*\.)?([A-Z]\w*)\s*\(""")
 
-    /** Der nächste umschliessende Composable-Aufruf einer Zeile, nach Einrückung gesucht. */
+    /** The nearest enclosing composable call of a line, found by indentation. */
     private fun parent(zeilen: List<String>, nr: Int): Pair<String, Int>? {
         var tiefe = zeilen[nr].length - zeilen[nr].trimStart().length
         for (i in nr - 1 downTo 0) {

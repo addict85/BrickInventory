@@ -10,27 +10,27 @@ import javax.xml.parsers.DocumentBuilderFactory
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Die Network-Security-Config ist die zweite Linie hinter dem Wächter: Im
- * Release-Build verbietet sie Klartext überall, im Debug-Build erlaubt sie ihn
- * genau zu den Hosts, die auch der Wächter durchlässt.
+ * The network security config is the second line behind the guard: in the
+ * release build it forbids cleartext everywhere, in the debug build it allows it
+ * exactly to the hosts the guard lets through as well.
  *
- * Gegenproben:
- *   A  in src/main die base-config wieder auf cleartextTrafficPermitted="true" →
- *      rot „the release build allows cleartext nowhere“
- *   B  in src/debug einen weiteren Host (192.168.1.50) mit Klartext → rot „der
- *      Debug-Build erlaubt Klartext nur …“
- *   C  in src/main ein <certificates src="user" /> → rot „beide Fassungen
- *      vertrauen nur System-CAs“
- *   G  dass die Server-Clients keiner Umleitung selbst folgen, prüft ServerClientsTest
- *      an den gebauten Clients; was der Wächter stattdessen tut, RedirectTest.
- *   H  in src/main die Zeile
- *      <certificateTransparency> der base-config entfernt → rot „der Release-Build
- *      verlangt Certificate Transparency“
+ * Counter-checks:
+ *   A  in src/main the base-config back to cleartextTrafficPermitted="true" →
+ *      red “the release build allows cleartext nowhere”
+ *   B  in src/debug a further host (192.168.1.50) with cleartext → red “the
+ *      debug build allows cleartext only …”
+ *   C  in src/main a <certificates src="user" /> → red “both versions
+ *      trust only system CAs”
+ *   G  that the server clients follow no redirect themselves is checked by ServerClientsTest
+ *      on the built clients; what the guard does instead, RedirectTest.
+ *   H  in src/main the line
+ *      <certificateTransparency> of the base-config removed → red “the release build
+ *      requires Certificate Transparency”
  *   J  gegenproben/debug-ohne-ct.patch: in
- *      src/debug <certificateTransparency> der base-config entfernt → rot „der Debug-Build …“
- *   I  in data_extraction_rules.xml unter device-transfer `database` entfernt → rot
- *      „account data does not leave the device“; gegenproben/workdb-wird-uebertragen.patch
- *   K  in backup_rules.xml `root` entfernt → rot, derselbe Test
+ *      src/debug <certificateTransparency> of the base-config removed → red “the debug build …”
+ *   I  in data_extraction_rules.xml under device-transfer `database` removed → red
+ *      “account data does not leave the device”; gegenproben/workdb-wird-uebertragen.patch
+ *   K  in backup_rules.xml `root` removed → red, the same test
  */
 class NetzsicherheitTest {
 
@@ -74,7 +74,7 @@ class NetzsicherheitTest {
         assertTrue("Ohne Certificate Transparency: " + ohne.map { it.tagName }, areas.isNotEmpty() && ohne.isEmpty())
     }
 
-    /** Wie Release, ausser für die Entwicklungshosts im Klartext; sonst prüfte der Debug-Bau eine andere Kette. */
+    /** Like release, except for the development hosts in cleartext; otherwise the debug build would check another chain. */
     @Test
     fun `the debug build requires Certificate Transparency like release`() {
         val cfg = lies("debug")
@@ -101,10 +101,10 @@ class NetzsicherheitTest {
     private fun Element.ausgenommen(): Set<String> =
         alle("exclude").map { "${it.getAttribute("domain")}:${it.getAttribute("path")}" }.toSet()
 
-    /** Die dritte Linie: Was zum Konto gehört, wandert weder per Transfer noch per Sicherung mit. */
+    /** The third line: what belongs to the account travels neither by transfer nor by backup. */
     @Test
     fun `account data does not leave the device`() {
-        // Ganze Domänen: Eine neue Ablage geht nicht mit, nur weil sie hier fehlt.
+        // Whole domains: a new store does not travel just because it is missing here.
         val noetig = setOf("root:.", "file:.", "database:.", "external:.", "device_root:.")
         val r = rules("data_extraction_rules.xml")
         val listen = mapOf(

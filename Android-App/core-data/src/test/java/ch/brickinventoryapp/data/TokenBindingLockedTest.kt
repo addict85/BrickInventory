@@ -27,17 +27,17 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.io.File
 
 /**
- * Ein Token geht nur an den Server, der es ausgab — auch wenn der Keystore beim
- * Serverwechsel gesperrt ist und der Speicher deshalb „kein Token“ meldet.
- * Echte TokenAblage auf Robolectric, ein Neustart ist eine neue Instanz.
+ * A token goes only to the server that issued it — even if the keystore is locked during
+ * the server switch and memory therefore reports „no token“.
+ * Real TokenAblage on Robolectric, a restart is a new instance.
  *
- * Gegenproben (Robolectric, misst die CI; Job `gegenproben`):
- *   wechsel-nach-speicher        saveServerUrl entscheidet wieder über tokenJetzt() →
- *                                rot „ein gesperrter Keystore …“ (das Token von A liegt noch da)
- *   verworfenes-token-vergessen  kein Auftrag für das verworfene Token → rot, derselbe Test
+ * Counter-checks (Robolectric, measured by CI; job `gegenproben`):
+ *   wechsel-nach-speicher        saveServerUrl decides via tokenJetzt() again →
+ *                                red “a locked keystore …” (the token of A is still there)
+ *   verworfenes-token-vergessen  no job for the discarded token → red, the same test
  *                                („A wird nachgeholt abgemeldet“)
- *   altbestand-ungebunden        bindLegacyStock() nicht aufgerufen → rot „ein Token
- *                                aelterer Fassungen …“
+ *   altbestand-ungebunden        bindLegacyStock() not called → red “a token
+ *                                of older versions …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -47,7 +47,7 @@ class TokenBindingLockedTest {
     private val areas = mutableListOf<CoroutineScope>()
     private val geplant = Collections.synchronizedList(mutableListOf<Entwertungsauftrag>())
 
-    /** Die ersten [sperren] Öffnungen antworten „gesperrt“, danach ist der Keystore wieder da. */
+    /** The first [sperren] openings answer „locked“, afterwards the keystore is back. */
     private class Tresor(sperren: Int) : TokenEncryption {
         private val rest = AtomicInteger(sperren)
         override fun verschluessle(klartext: String) = "ENC:$klartext"
@@ -56,7 +56,7 @@ class TokenBindingLockedTest {
             if (rest.getAndDecrement() > 0) Tresorbefund.Gesperrt else Tresorbefund.Readable(entschluessle(gespeichert))
     }
 
-    /** Je Test eine eigene Datei; DataStore erlaubt je Datei nur eine Instanz im Prozess. */
+    /** One file per test; DataStore allows only one instance per file in the process. */
     private val store = PreferenceDataStoreFactory.create { File(ctx.filesDir, "bindung-${System.nanoTime()}.preferences_pb") }
 
     /** Ein Prozessstart: neue Instanz, eigener Bereich, dieselbe Platte. */
@@ -87,7 +87,7 @@ class TokenBindingLockedTest {
         assertEquals(NetworkPolicy.herkunft(a), runBlocking { erst.tokenStatus().herkunft })
         end()
 
-        // Neustart: Die ersten vier Öffnungen (Anlauf) sind gesperrt, der Speicher meldet "".
+        // Restart: the first four openings (startup) are locked, memory reports "".
         val gesperrt = start(Tresor(4))
         runBlocking {
             assertEquals("Der Anlauf meldet die Anmeldemaske", "", gesperrt.tokenJetzt())
@@ -104,7 +104,7 @@ class TokenBindingLockedTest {
         assertEquals(NetworkPolicy.herkunft(a), geplant.single().herkunft)
         end()
 
-        // Der Keystore ist wieder da: Aus der Platte kommt kein Token von A zurück.
+        // The keystore is back: no token of A comes back from disk.
         val offen = start(Tresor(0))
         assertEquals("", runBlocking { offen.tokenJetzt() })
         assertEquals(b, runBlocking { offen.serverUrlJetzt() })

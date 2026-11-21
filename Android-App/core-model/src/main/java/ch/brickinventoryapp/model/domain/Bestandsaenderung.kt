@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.model.domain
 
-// Was eine Bearbeitung des Bestands trägt, wenn sie im Ausgang wartet oder die Ablage nachzieht.
+// What an edit of the stock carries when it waits in the outbox or the store catches up.
 
-/** Ein Merkposten, der angelegt werden soll; [besitzer] null heisst das eigene Konto. */
+/** A wishlist item that shall be created; [besitzer] null means the own account. */
 data class Merkwunsch(val setNumber: String, val zustand: Zustand = Zustand.NEU, val besitzer: Int? = null)
 
 /**
- * Was an einem manuellen Teil oder einer Figur geändert wird. Mit [schritt] zählen zwei Geräte
- * zusammen (quantity_delta); ein Server ohne nimmt [menge], dann gewinnt der Letzte.
+ * What is changed on a manual part or a figure. With [schritt] two devices add
+ * up (quantity_delta); a server without it takes [menge], then the last one wins.
  */
 data class Stueckaenderung(
     val menge: Int,
@@ -18,8 +18,8 @@ data class Stueckaenderung(
 )
 
 /**
- * Die Kaufsumme eines Sets nach einer Kaufänderung, vollständig: Ein Preis null heisst
- * „keiner erfasst“, nicht „unbekannt“.
+ * The purchase total of a set after a purchase change, complete: a price null means
+ * „none recorded“, not „unknown“.
  */
 data class Setzusammenfassung(
     val setNumber: String,

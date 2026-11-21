@@ -21,31 +21,31 @@ import java.io.IOException
 import java.util.Base64
 
 /**
- * Pins (TOFU) und der Schalter „Nutzer-CAs vertrauen“ liegen verschlüsselt im Spiegel
- * der DevicesStore; Klartext älterer Fassungen wird einmal übernommen und gelöscht.
- * Was sich nicht entschlüsseln lässt, heisst „kein Pin“ bzw. „Schalter aus“ — der
- * Nutzer bestätigt neu, nie gilt ein unprüfbarer Wert als Vertrauen. Ein Neustart ist
- * eine neue Instanz auf denselben SharedPreferences.
+ * Pins (TOFU) and the switch „trust user CAs“ lie encrypted in the mirror
+ * of the DevicesStore; plaintext of older versions is taken over once and deleted.
+ * What cannot be decrypted means „no pin“ or „switch off“ — the
+ * user confirms anew, an uncheckable value never counts as trust. A restart is
+ * a new instance on the same SharedPreferences.
  *
- * Gegenproben (Robolectric, misst die CI; Job `gegenproben`):
- *   vertrauen-pin-klartext           rememberPin() schreibt zusätzlich den Klartext → rot
- *                                    „Pin und Schalter liegen nicht im Klartext“
- *   vertrauen-unlesbar-erlaubt       userCaAllowed() nimmt einen unlesbaren Wert als
- *                                    „an“ → rot „ein veraenderter Wert gilt nicht“
- *   vertrauen-ohne-bindung           Vertrauenschiffre bindet den Namen nicht → rot
- *                                    „a ciphertext under a foreign name does not count“
- *   vertrauen-klartext-bleibt        die Übernahme löscht den Klartext nicht → rot
- *                                    „Klartext wird einmal uebernommen“
- *   vertrauen-marke-uebergangen      die Marke wird nicht geprüft → rot „spaeter
- *                                    hingelegter Klartext gilt nicht“
- *   vertrauen-fehler-als-klartext    rememberPin() legt bei gescheitertem Verschlüsseln
- *                                    Klartext ab → rot „ohne Schluessel bleibt nichts …“
- *   code-pin-ueber-alte-verbindung   holdBefore() ruft die Hörer nicht → rot „ein Pin aus dem
- *                                    Code gilt nur ueber eine neue Verbindung“
- *   pin-namen-ohne-uebernahme        prepareBefore() ohne adoptPinNames() → rot „ein Pin
- *                                    frueherer Fassung kommt unter einen Namen …“
- *   pin-name-mit-host                pinEntry() hängt wieder Host und Port an → rot „kein
- *                                    Eintrag nennt den Server“
+ * Counter-checks (Robolectric, measured by CI; job `gegenproben`):
+ *   vertrauen-pin-klartext           rememberPin() additionally writes the plaintext → red
+ *                                    “pin and switch do not lie in plaintext”
+ *   vertrauen-unlesbar-erlaubt       userCaAllowed() takes an unreadable value as
+ *                                    „on“ → red “a changed value does not count”
+ *   vertrauen-ohne-bindung           Vertrauenschiffre does not bind the name → red
+ *                                    “a ciphertext under a foreign name does not count”
+ *   vertrauen-klartext-bleibt        the takeover does not delete the plaintext → red
+ *                                    “plaintext is taken over once”
+ *   vertrauen-marke-uebergangen      the marker is not checked → red “plaintext
+ *                                    placed later does not count”
+ *   vertrauen-fehler-als-klartext    rememberPin() stores plaintext when encryption
+ *                                    fails → red “without a key nothing stays …”
+ *   code-pin-ueber-alte-verbindung   holdBefore() does not call the listeners → red “a pin from the
+ *                                    code applies only via a new connection”
+ *   pin-namen-ohne-uebernahme        prepareBefore() without adoptPinNames() → red “a pin
+ *                                    of an earlier version goes under a name …”
+ *   pin-name-mit-host                pinEntry() appends host and port again → red “no
+ *                                    entry names the server”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -60,7 +60,7 @@ class TrustEncryptedTest {
     @Before
     fun leer() = spiegel.edit(commit = true) { clear() }
 
-    /** Wie beim App-Start: neue Instanz, prepareBefore() vor dem ersten Verbindungsaufbau. */
+    /** As at app start: new instance, prepareBefore() before the first connection setup. */
     private fun start(cipher: Vertrauenschiffre = testVertrauenschiffre()): DevicesStore {
         val store = PreferenceDataStoreFactory.create { File(ctx.filesDir, "vertrauen-${System.nanoTime()}.preferences_pb") }
         return DevicesStore(ctx, store, cipher).also { it.prepareBefore() }
@@ -174,7 +174,7 @@ class TrustEncryptedTest {
         g0.rememberPin(host, fp)
         val entry = g0.pinEntry(host)!!
         val geheim = spiegel.getString(entry, null)!!
-        // So lag er in früheren Fassungen: derselbe Geheimtext, Host und Port im Namen.
+        // This is how it lay in earlier versions: the same ciphertext, host and port in the name.
         spiegel.edit(commit = true) { remove(entry); putString(DevicesStore.PIN_SECRET_PREFIX + host, geheim) }
         val g = start()
         assertEquals(fp, g.pin(host))
@@ -182,7 +182,7 @@ class TrustEncryptedTest {
         assertEquals(geheim, spiegel.getString(entry, null))
     }
 
-    /** Ein Bit im Geheimtext umdrehen: Das Base64 bleibt gültig, der GCM-Tag nicht. */
+    /** Flip a bit in the ciphertext: the Base64 stays valid, the GCM tag does not. */
     private fun flip(b64: String): String {
         val roh = Base64.getDecoder().decode(b64)
         roh[roh.size - 1] = (roh[roh.size - 1].toInt() xor 1).toByte()
@@ -190,9 +190,9 @@ class TrustEncryptedTest {
     }
 
     /**
-     * Die Server-Clients bauen auf das Signal ihren TLS-Kontext neu und leeren den
-     * Verbindungsvorrat (di/ServerClient); ohne es liefe die Anmeldung über eine schon
-     * offene Verbindung, und der Fingerabdruck aus dem Code würde nie geprüft.
+     * The server clients rebuild their TLS context on the signal and clear the
+     * connection pool (di/ServerClient); without it the sign-in would run via an already
+     * open connection, and the fingerprint from the code would never be checked.
      */
     @Test
     fun `a pin from the code applies only via a new connection`() {

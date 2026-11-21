@@ -17,10 +17,10 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 
 /**
- * Wie ein Posten des Ausgangs auf der Platte liegt (Fassung 1). Ein wartender Posten
- * existiert nur hier; hinge seine Form an den Fachtypen, machte eine Änderung dort ihn
- * nach dem Update unlesbar. Beträge liegen als Zahl wie in Fassung 1. Eine unverträgliche Änderung bekommt eine
- * neue Fassung daneben, Fassung 1 bleibt lesbar.
+ * How an outbox item lies on disk (version 1). A waiting item
+ * exists only here; if its form hung on the domain types, a change there would make it
+ * unreadable after the update. Amounts lie as numbers as in version 1. An incompatible change gets a
+ * new version next to it, version 1 stays readable.
  */
 internal object InitialForm {
     private val form = Ablageform(ItemF1.serializer(), ::asForm, ::asEditing)
@@ -29,7 +29,7 @@ internal object InitialForm {
 
     fun decode(json: Json, text: String): Editing = form.decode(json, text)
 
-    /** Für den Hinweis zu einem unlesbaren Posten: die Nummer, falls sie sich noch finden lässt. */
+    /** For the hint about an unreadable item: the number, if it can still be found. */
     fun targetFrom(json: Json, text: String): String? = runCatching {
         val o = json.parseToJsonElement(text).jsonObject
         val anfrage = o["anfrage"] as? JsonObject
@@ -85,8 +85,8 @@ private fun form(a: Stueckaenderung) = ChangeF1(a.menge, a.stueckpreis?.asDouble
 private fun aenderung(a: ChangeF1) = Stueckaenderung(menge = a.quantity, schritt = a.quantityDelta, stueckpreis = a.unitPrice.asMoney(),
     zustand = a.condition, blNumber = a.blFigNumber)
 
-// Die Feldnamen sind die, unter denen Fassung 1 auf Geräten liegt; Vorgaben decken
-// Posten älterer Apps, denen ein später dazugekommenes Feld fehlt.
+// The field names are those under which version 1 lies on devices; defaults cover
+// items of older apps that lack a field added later.
 
 @Serializable
 internal sealed class ItemF1 {
@@ -138,7 +138,7 @@ internal data class RememberRequestF1(
     @SerialName("owner_user_id") val ownerUserId: Int? = null,
 )
 
-/** 9999 ist „keine Farbe“ (KEINE_FARBE) — hier als Zahl, weil es die Platte so lesen muss. */
+/** 9999 is „no color“ (KEINE_FARBE) — here as a number, because the disk must read it like that. */
 @Serializable
 internal data class PartRequestF1(
     @SerialName("part_number") val partNumber: String,

@@ -51,38 +51,38 @@ import androidx.compose.ui.test.SemanticsMatcher
 import android.os.Build
 
 /**
- * Die Kernabläufe als Oberflächentest auf der JVM (Robolectric): anmelden, Set
- * erfassen, Menge ändern, Gutschein ansehen. Jede Aktion läuft durch die
- * Barrierefreiheitsprüfung (ATF): Ein Knopf ohne Beschriftung, ein zu kleines
- * Ziel oder zu wenig Kontrast lässt den Test scheitern.
+ * The core flows as a UI test on the JVM (Robolectric): sign in, add a
+ * set, change the quantity, view a voucher. Every action runs through the
+ * accessibility check (ATF): a button without a label, a too small
+ * target or too little contrast makes the test fail.
  *
- * Gegenproben (a) und (c) misst der CI-Job `gegenproben` (Android-App/
- * gegenproben/ablauf-*.patch, er verlangt Rot); (b) und (d) sind noch ungemessen:
- *   (a) im Anmeldeknopf `onLogin(password, username, …)` vertauscht → rot
- *       „sign-in passes on name and password“
- *   (b) der Plus-Knopf ohne Beschreibung → ATF rot in „die Menge aendern …“
- *   (c) AddSetDialog übergibt die Anzahl fest als 1 → rot „ein Set erfassen …“
- *   (d) Gutschein-PIN immer sichtbar → rot „ein Gutschein zeigt den PIN …“
- *   (e) in GutscheineCard das Aufdecken ohne Schrittschutz (`switchOnPin(g.id)`
- *       direkt) → rot „without confirming the device lock the PIN stays hidden“
+ * Counter-checks (a) and (c) are measured by the CI job `gegenproben` (Android-App/
+ * gegenproben/ablauf-*.patch, it requires red); (b) and (d) are not measured yet:
+ *   (a) in the sign-in button `onLogin(password, username, …)` swapped → red
+ *       “sign-in passes on name and password”
+ *   (b) the plus button without description → ATF red in “changing the quantity …”
+ *   (c) AddSetDialog passes the quantity as a fixed 1 → red “adding a set …”
+ *   (d) voucher PIN always visible → red “a voucher shows the PIN …”
+ *   (e) in GutscheineCard revealing without step guard (`switchOnPin(g.id)`
+ *       directly) → red “without confirming the device lock the PIN stays hidden”
  *       (gegenproben/gutschein-pin-ohne-geraetesperre.patch)
- *   (f) die Nummer ohne Schrittschutz kopiert → rot „ohne Geraetesperre wird auch die
- *       Nummer nicht kopiert“ (gegenproben/gutschein-nummer-ohne-geraetesperre.patch)
- *   (g) in PasswordPrompt das Codefeld nie gezeigt → rot „die Rueckfrage zeigt das
- *       Codefeld erst auf Verlangen“ (gegenproben/gutschein-rueckfrage-ohne-code.patch)
- *   (g2) die Absage rollt nicht ins Bild → dasselbe rot, „Bitte den Code eingeben.“ ist
- *       nicht zu sehen (gegenproben/rueckfrage-meldung-ausser-sicht.patch; der Stand vor
- *       der Korrektur, rot in der CI auf 0223f52)
- *   (h) im Set-Detail der Papierkorb immer mit Rückfrage → rot „ein Set loescht mit
- *       Rueckgaengig sofort …“ (gegenproben/set-loeschen-doppelt-gesichert.patch)
- *   (i) Hinzufügen ohne Nummer markiert das Feld nicht → rot „ein Set ohne Nummer sagt …“
+ *   (f) the number copied without step guard → red “without device lock the
+ *       number is not copied either” (gegenproben/gutschein-nummer-ohne-geraetesperre.patch)
+ *   (g) in PasswordPrompt the code field never shown → red “the confirmation shows the
+ *       code field only on demand” (gegenproben/gutschein-rueckfrage-ohne-code.patch)
+ *   (g2) the refusal does not scroll into view → the same red, „Bitte den Code eingeben.“ is
+ *       not visible (gegenproben/rueckfrage-meldung-ausser-sicht.patch; the state before
+ *       the fix, red in CI on 0223f52)
+ *   (h) in the set detail the trash always with confirmation → red “a set deletes
+ *       immediately with undo …” (gegenproben/set-loeschen-doppelt-gesichert.patch)
+ *   (i) adding without a number does not mark the field → red “a set without a number says …”
  *       (gegenproben/erfassen-ohne-grund.patch)
- *   (j) GutscheineCard ohne SecretKopierWarning() → rot „unter Android 13 warnt die
- *       Gutscheinseite …“ (gegenproben/gutschein-kopieren-ohne-warnung.patch)
+ *   (j) GutscheineCard without SecretKopierWarning() → red “below Android 13 the
+ *       voucher page warns …” (gegenproben/gutschein-kopieren-ohne-warnung.patch)
  */
 @RunWith(RobolectricTestRunner::class)
-// NATIVE wie bei den Bildschirmfotos: Die Kontrastprüfung des ATF liest ein
-// Bildschirmfoto, und im LEGACY-Grafikmodus von Robolectric gibt es keins.
+// NATIVE as for the screenshots: ATF's contrast check reads a
+// screenshot, and in Robolectric's LEGACY graphics mode there is none.
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class AblaufTest {
 
@@ -115,8 +115,8 @@ class AblaufTest {
         }
         compose.onNodeWithText(ctx.getString(R.string.login_username)).performTextInput("marco")
         compose.onNodeWithText(ctx.getString(R.string.login_password)).performTextInput("geheim")
-        // Wie ein Mensch: erst hinrollen, dann tippen. Der Knopf liegt auf einem
-        // kleinen Bildschirm unter dem Rand.
+        // Like a human: scroll there first, then tap. The button lies below the edge
+        // on a small screen.
         compose.onNode(hasText(ctx.getString(R.string.login_button)) and hasClickAction())
             .performScrollTo().performClick()
         assertEquals(Triple("marco", "geheim", null), gesendet)
@@ -132,7 +132,7 @@ class AblaufTest {
         assertEquals("75192" to 3, erfasst)
     }
 
-    /** Hinzufügen ohne Nummer erfasst nichts, sagt aber am Feld, was fehlt (statt grau ohne Grund). */
+    /** Adding without a number adds nothing but says at the field what is missing (instead of gray without a reason). */
     @Test
     fun `a set without a number says what is missing when tapping Add`() {
         var erfasst = 0
@@ -144,9 +144,9 @@ class AblaufTest {
     }
 
     /**
-     * Jedes Feld von „Set hinzufügen“ trägt eine Hilfezeile; ohne sie standen die Felder
-     * ungleich weit auseinander, und der Hinweis zum Preis verschwand als Platzhalter beim Tippen.
-     * Gegenprobe: Mengenfeld wieder ohne Hilfezeile (nur bei Fehler) → rot, „Anzahl“ fehlt
+     * Every field of “Add set” carries a help line; without it the fields stood
+     * unevenly far apart, and the hint about the price vanished as a placeholder while typing.
+     * Counter-check: quantity field again without help line (only on error) → red, „Anzahl“ missing
      * (gegenproben/erfassen-menge-ohne-hilfezeile.patch).
      */
     @Test
@@ -161,9 +161,9 @@ class AblaufTest {
     }
 
     /**
-     * Eine Nummer, die keine Setnummer ist ("--"), wird nicht erfasst und am Feld erklärt.
-     * Gegenprobe: in numberError() den Zweig `!NumericInput.isSetNumber(nummer)` entfernt
-     * → erfasst steht auf 1 und der Hinweis fehlt, beide Prüfungen rot.
+     * A number that is not a set number ("--") is not added and is explained at the field.
+     * Counter-check: in numberError() the branch `!NumericInput.isSetNumber(nummer)` removed
+     * → added is 1 and the hint is missing, both checks red.
      */
     @Test
     fun `a set with a nonsensical number says what is expected when adding`() {
@@ -187,8 +187,8 @@ class AblaufTest {
                 imageLoader = coil3.ImageLoader.Builder(ctx).build(), onBack = {}, onDelete = {})
         }
         compose.waitUntil(10_000) { vm.setDetailState.value.setDetail != null }
-        // Die Menge steht unter Wert-Kacheln und Marktpreis; auf dem kleinen
-        // Robolectric-Bildschirm (320 × 470 dp) ist sie erst nach dem Rollen da.
+        // The quantity stands below value tiles and market price; on the small
+        // Robolectric screen (320 × 470 dp) it is only there after scrolling.
         val plus = androidx.compose.ui.test.hasContentDescription(ctx.getString(R.string.cd_qty_increase))
         compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction() and
             SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
@@ -198,7 +198,7 @@ class AblaufTest {
         assertTrue(w.paths.koerper.any { it.contains("\"quantity_delta\":1") })
     }
 
-    /** Eine Sicherung genügt: mit „Rückgängig“ darunter keine Rückfrage, ohne sie schon. */
+    /** One safeguard suffices: with “Undo” below no confirmation, without it there is one. */
     @Test
     fun `a set deletes immediately with undo, without undo only after confirmation`() {
         val w = Examples.Welt().also { world = it }
@@ -226,14 +226,14 @@ class AblaufTest {
         compose.onNode(androidx.compose.ui.test.isDialog()).assertExists()
     }
 
-    /** Der Zustand der Gutscheinkarte; die Tests der Rückfrage setzen ihn um. */
+    /** The state of the voucher card; the tests of the confirmation change it. */
     private var zustand by mutableStateOf(GutscheinUiState(gutscheine = listOf(
         Gutschein(id = 7, number = "6061 2345 6789", pin = "4711", amount = 50.0, currency = Waehrung("CHF")).alsAnsicht())))
 
-    /** Die Android-Stufe, nach der die Seite wählt; Robolectric selbst läuft gegen API 35. */
+    /** The Android level the page chooses by; Robolectric itself runs against API 35. */
     private var stufe by mutableStateOf(Build.VERSION.SDK_INT)
 
-    /** Ein Gutschein mit PIN 4711; [protection] steht für die Gerätesperre. */
+    /** A voucher with PIN 4711; [protection] stands for the device lock. */
     private fun showVoucher(protection: Schrittschutz, kopiert: MutableList<String> = mutableListOf()) {
         zeige {
             CompositionLocalProvider(LocalSchrittschutz provides protection, LocalSdkLevel provides stufe) {
@@ -248,7 +248,7 @@ class AblaufTest {
         }
     }
 
-    /** Kopieren bleibt (Nummer und PIN wandern in ein Bezahlfeld), aber unter Android 13 mit Warnung. */
+    /** Copying stays (number and PIN move into a payment field), but below Android 13 with a warning. */
     @Test
     fun `below Android 13 the voucher page warns before copying, from 13 on not`() {
         stufe = 32
@@ -268,7 +268,7 @@ class AblaufTest {
         compose.onNodeWithText("4711", substring = true).assertIsDisplayed()
     }
 
-    /** pruef6 N2: Wer das entsperrte Telefon kurz hat, sieht und kopiert keine PIN. */
+    /** pruef6 N2: whoever briefly has the unlocked phone sees and copies no PIN. */
     @Test
     fun `without confirming the device lock the PIN stays hidden`() {
         val gefragt = mutableListOf<String>()
@@ -282,7 +282,7 @@ class AblaufTest {
         assertEquals(List(2) { ctx.getString(R.string.schritt_gutschein) }, gefragt)
     }
 
-    /** Die Nummer allein ist kein Geld, aber Klartext — auch sie erst nach der Sperre. */
+    /** The number alone is no money but plaintext — it too only after the lock. */
     @Test
     fun `without device lock the number is not copied either`() {
         val gefragt = mutableListOf<String>()
@@ -295,9 +295,9 @@ class AblaufTest {
     }
 
     /**
-     * Die Rückfrage fragt nach dem Passwort; das Codefeld kommt erst, wenn der
-     * Server es verlangt hat. Ohne Eingabe bleibt „Bestätigen“ aus. Getippt wird nicht:
-     * Ein fokussiertes Feld blinkt, und Robolectric käme nie zur Ruhe.
+     * The confirmation asks for the password; the code field comes only when the
+     * server has required it. Without input “Confirm” stays off. Nothing is typed:
+     * a focused field blinks, and Robolectric would never come to rest.
      */
     @Test
     fun `the confirmation shows the code field only on demand`() {

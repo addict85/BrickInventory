@@ -2,16 +2,16 @@ package ch.brickinventoryapp.model.domain
 
 import java.time.Instant
 
-/** „Keine Farbe“ für die Oberfläche — derselbe Wert wie im Server-Modell, ein Name. */
+/** „No color“ for the UI — the same value as in the server model, one name. */
 const val OHNE_FARBE: Int = KEINE_FARBE
 
 /**
- * Was der CSV-Import anbietet. Eine eigene Aufzählung, damit die Auswahl in der
- * Oberfläche nicht am Server-Modell hängt; [asData] übersetzt beim Hochladen.
+ * What the CSV import offers. An own enumeration, so that the choice in the
+ * UI does not hang on the server model; [asData] translates when uploading.
  */
 enum class CsvImportKind { SETS, TEILE, MINIFIGUREN, MERKLISTE, PREISALARME }
 
-/** Startzustand des Servers; [share] ist schon gerechnet (0..1), null ohne Gesamtzahl. */
+/** Startup state of the server; [share] is already calculated (0..1), null without a total. */
 data class StartStateView(
     val bereit: Boolean,
     val schritt: String?,
@@ -22,12 +22,12 @@ data class StartStateView(
     val share: Float? get() = if (gesamt > 0) (fortschritt / gesamt).toFloat().coerceIn(0f, 1f) else null
 }
 
-/** Ein Punkt der Wertentwicklung; [yFrac] ist die Höhe 0..1, wie sie der Server schon gerechnet hat. */
+/** A point of the value development; [yFrac] is the height 0..1 as the server already calculated it. */
 data class DiagrammPunkt(val xLabel: String, val wert: Geld, val yFrac: Double)
 
 data class ChartAxis(val label: String, val wert: Geld, val frac: Double)
 
-/** Der Verlauf des Sammlungswerts: je Tag ein Punkt, die Achse und die Veränderung im Zeitraum. */
+/** The history of the collection value: one point per day, the axis and the change in the period. */
 data class ValueHistoryView(
     val waehrung: Waehrung,
     val changePercent: Double?,
@@ -38,7 +38,7 @@ data class ValueHistoryView(
 
 data class ColorView(val id: Int, val name: String, val hex: String?)
 
-/** Ein Gutschein; [pin] null heisst „keine“ oder „offline nicht abgelegt“. */
+/** A voucher; [pin] null means „none“ or „not stored offline“. */
 data class VoucherView(
     val id: Int,
     val number: String,
@@ -50,7 +50,7 @@ data class VoucherView(
     val guthabenGeprueftAm: Instant?,
 )
 
-/** Ein Preisalarm; [unter] ist die Richtung als Wahrheitswert statt als Wort. */
+/** A price alert; [unter] is the direction as a boolean instead of a word. */
 data class PriceAlertView(
     val setNumber: String,
     val condition: Zustand,
@@ -69,5 +69,5 @@ data class PriceAlertView(
     val unter: Boolean get() = richtung == Alarmrichtung.UNTER
 }
 
-/** Was seit der letzten Marke ausgelöst hat; [marke] ist die Zeit des Servers für die nächste Frage. */
+/** What has triggered since the last mark; [marke] is the server's time for the next question. */
 data class AlarmabrufView(val alerts: List<PriceAlertView>, val marke: String?)

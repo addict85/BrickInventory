@@ -5,31 +5,31 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Bilder und PDFs brauchen serverseitig eine Anmeldung — die App muss sie
- * mitschicken.
+ * Images and PDFs need sign-in on the server side — the app must send it
+ * along.
  *
- * ── Hintergrund ─────────────────────────────────────────────────────────────
- * Ab Server-Fassung 69 verlangt JEDE Bildadresse unter /images/… einen
- * gültigen Bearer-Token; vorher waren Set-Bilder ohne Anmeldung abrufbar
- * (Teile- und Minifiguren-Bilder schon immer mit). Anleitungen unter
- * /data/instructions/… waren durchgehend geschützt.
+ * ── Background ──────────────────────────────────────────────────────────────
+ * From server version 69 on, EVERY image address under /images/… requires a
+ * valid bearer token; before, set images were fetchable without sign-in
+ * (part and minifigure images always with it). Instructions under
+ * /data/instructions/… were protected throughout.
  *
- * Der Bild-Client hatte den Auth-Interceptor bereits — die Umstellung war
- * deshalb weitgehend unkritisch. Ein Pfad lief aber daran vorbei: Der
- * Herunterladen-Knopf im PDF-Betrachter startete über den System-Dienst
- * DownloadManager einen ZWEITEN, nicht authentifizierten Abruf derselben
- * Datei. Das Ergebnis war eine 401-Antwort, die als ".pdf" im Download-Ordner
- * landete — ohne Fehlermeldung, weil der DownloadManager den Statuscode nicht
- * prüft.
+ * The image client already had the auth interceptor — the switch was
+ * therefore largely uncritical. One path went around it though: the
+ * download button in the PDF viewer started, via the system service
+ * DownloadManager, a SECOND, unauthenticated fetch of the same
+ * file. The result was a 401 response that landed as ".pdf" in the download folder
+ * — without an error message, because DownloadManager does not check the
+ * status code.
  *
- * Diese Tests halten die Kette fest.
+ * These tests pin down the chain.
  */
 class MediaAuthTest {
 
     init {
-        // Untergrenze: Alle Prüfungen hier laufen über einen
-        // eigenen Dateilauf und sammeln Verstösse. Fände er nichts, wären sie
-        // allesamt grün, ohne etwas geprüft zu haben.
+        // Lower bound: all checks here run over their
+        // own file walk and collect violations. If it found nothing, they would
+        // all be green without having checked anything.
         check(Quellen.alle().size >= 60) { "Zu wenige Kotlin-Dateien — Pfad veraltet?" }
     }
 
@@ -48,8 +48,8 @@ class MediaAuthTest {
 
     @Test
     fun `images are not loaded bypassing the ImageLoader`() {
-        // Ein eigener HttpURLConnection- oder OkHttp-Aufruf für Bilder hätte den
-        // Interceptor nicht und liefe damit ohne Token.
+        // An own HttpURLConnection or OkHttp call for images would not have the
+        // interceptor and would thus run without a token.
         for (rel in Quellen.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = code(rel.readText())
@@ -59,7 +59,7 @@ class MediaAuthTest {
         }
     }
 
-    // Dass Abmelden den Bild-Cache leert, prüft SignOutCleansEverythingTest (app) ausgeführt.
+    // That signing out clears the image cache is checked, executed, by SignOutCleansEverythingTest (app).
 
     // ── PDFs ─────────────────────────────────────────────────────────────────
 
@@ -80,9 +80,9 @@ class MediaAuthTest {
     fun `the download button appears only once the file is loaded`() {
         val viewer = code(read("finances/ui/screens/PdfViewerScreen.kt"))
         val actions = viewer.substringAfter("actions = {").substringBefore("            )")
-        // Beide Knöpfe arbeiten auf der geladenen Quelle des Ready-Zustands und dürfen
-        // nur dort sichtbar sein. Das Feld wird aus Ready gelesen, nicht fest benannt.
-        // Gegenprobe: gegenproben/pdf-download-ausserhalb-ready.patch → rot hier.
+        // Both buttons work on the loaded source of the Ready state and may
+        // only be visible there. The field is read from Ready, not named fixed.
+        // Counter-check: gegenproben/pdf-download-ausserhalb-ready.patch → red here.
         val zustand = code(read("finances/ui/pdf/PdfQuelle.kt"))
         val feld = Regex("""class Ready\(val (\w+): \w+,""").find(zustand)?.groupValues?.get(1)
         assert(feld != null) { "PdfLoadState.Ready trägt keine geladene Quelle mehr" }
@@ -96,10 +96,10 @@ class MediaAuthTest {
 
     @Test
     fun `the display itself runs via the authenticated client`() {
-        // Geladen wird in der Datenschicht (AnleitungsRepository), nicht im Bildschirm.
+        // Loading happens in the data layer (AnleitungsRepository), not in the screen.
         val viewer = code(read("data/AnleitungsRepository.kt"))
-        // Geprüft wird die Aussage, nicht der Wortlaut des Aufrufs: Der Download läuft
-        // über den injizierten Client, gleich wie die Argumente umbrechen.
+        // What is checked is the statement, not the wording of the call: the download runs
+        // via the injected client, no matter how the arguments wrap.
         val call = Quellen.fenster(viewer, "downloadPdfWithResume(", 8)
         assert(call.isNotEmpty()) { "Der Download-Aufruf fehlt ganz" }
         assert(call.contains("httpClient")) {
@@ -117,10 +117,10 @@ class MediaAuthTest {
 
     @Test
     fun `the app does not assemble image paths itself`() {
-        // Seit Server-Fassung 68 liegen Teile- und Figurenbilder getrennt
-        // (/images/parts/, /images/minifigs/) statt gemeinsam in
-        // /data/part_images/. Die Adresse kommt fertig aus der API — wer sie
-        // selbst zusammensetzt, bricht bei der nächsten Umsortierung.
+        // Since server version 68 part and figure images lie separately
+        // (/images/parts/, /images/minifigs/) instead of together in
+        // /data/part_images/. The address comes ready from the API — whoever
+        // assembles it themselves breaks at the next re-sorting.
         for (rel in Quellen.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = code(rel.readText())
@@ -130,19 +130,19 @@ class MediaAuthTest {
         }
     }
 
-    // ── Erschöpfende when-Ausdrücke ──────────────────────────────────────────
+    // ── Exhaustive when expressions ──────────────────────────────────────────
 
     @Test
     fun `no when over Result uses an else branch`() {
-        // BrickRepository.kt hält ausdrücklich fest: Result ist versiegelt, und
-        // jedes when darüber soll erschöpfend bleiben — damit ein künftiger
-        // dritter Zustand überall als Compilerfehler auffällt statt still in
-        // einem else zu verschwinden.
+        // BrickRepository.kt states explicitly: Result is sealed, and
+        // every when over it shall stay exhaustive — so that a future
+        // third state stands out everywhere as a compiler error instead of silently
+        // disappearing in an else.
         //
-        // Ist die Variable nullable deklariert (var x: Result<T>? = null, wie in
-        // PdfExportManager für die Wiederholschleife), fehlt dem when der
-        // null-Fall. Die Versuchung ist dann ein else — genau das soll hier
-        // auffallen. Richtig ist ein expliziter `null ->`-Zweig.
+        // If the variable is declared nullable (var x: Result<T>? = null, as in
+        // PdfExportManager for the retry loop), the when lacks the
+        // null case. The temptation is then an else — exactly that shall stand
+        // out here. Correct is an explicit `null ->` branch.
         for (f in Quellen.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = f.readText()
@@ -151,14 +151,14 @@ class MediaAuthTest {
                 val block = src.substring(idx, minOf(idx + 2000, src.length))
                 val end = block.indexOf("\n            }")
                 val body = if (end > 0) block.substring(0, end) else block
-                // Beginnt im Fenster ein NEUES when, endet die Zuständigkeit
-                // dieser Prüfung dort. Vorher lief das
-                // 2000-Zeichen-Fenster über das when-über-Result hinaus — in
-                // PartsListFeature.kt bis in ein when über BEDINGUNGEN, wo ein
-                // else-Zweig völlig korrekt und sogar nötig ist (kein sealed
-                // type, also keine Erschöpfung möglich). Das wurde fälschlich
-                // beanstandet und liess sich nur durch sinnlosen Umbau am Code
-                // beheben.
+                // If a NEW when begins in the window, the responsibility
+                // of this check ends there. Before, the
+                // 2000-character window ran past the when-over-Result — in
+                // PartsListFeature.kt into a when over CONDITIONS, where an
+                // else branch is entirely correct and even necessary (no sealed
+                // type, thus no exhaustiveness possible). That was wrongly
+                // flagged and could only be fixed by pointless rebuilding of the
+                // code.
                 val nextWhen = body.indexOf("when ", 1)
                 val bereich = if (nextWhen > 0) body.substring(0, nextWhen) else body
                 assert(!bereich.contains("else ->")) {
@@ -172,9 +172,9 @@ class MediaAuthTest {
 
     @Test
     fun `every AsyncImage uses the injected ImageLoader`() {
-        // Ein AsyncImage ohne den injizierten Loader fällt auf Coils Standard-Loader
-        // zurück, der den Bearer-Token nicht anhängt; der Server antwortet dann mit 401,
-        // und die Fläche bleibt ohne Fehlermeldung leer.
+        // An AsyncImage without the injected loader falls back to Coil's default loader,
+        // which does not attach the bearer token; the server then answers with 401,
+        // and the area stays empty without an error message.
         val offenders = mutableListOf<String>()
         for (f in Quellen.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
@@ -197,8 +197,8 @@ class MediaAuthTest {
 
     @Test
     fun `no UNUSED_PARAMETER suppress on an ImageLoader`() {
-        // Der Suppress war das Symptom: Er hat die Warnung beseitigt, die auf
-        // genau diesen Fehler hingewiesen hätte.
+        // The suppress was the symptom: it removed the warning that would have
+        // pointed to exactly this error.
         for (f in Quellen.root.walkTopDown()
                 .filter { it.extension == "kt" }) {
             val src = f.readText()

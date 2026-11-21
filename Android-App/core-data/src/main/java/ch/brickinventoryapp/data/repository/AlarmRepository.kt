@@ -9,21 +9,21 @@ import ch.brickinventoryapp.model.local.Local
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Preisalarme des Kontos. Die Liste liegt in der Ablage wie die übrigen; ihren
- * Merker `ausgeloest` setzt der Preislauf des Servers, deshalb holt jede Ansicht
- * beim Öffnen [refreshAlerts] und zeigt, was die Ablage dann hat.
+ * Price alerts of the account. The list lies in the store like the others; its
+ * marker `ausgeloest` is set by the server's price run, hence every view fetches
+ * [refreshAlerts] on opening and shows what the store then has.
  */
 interface AlarmRepository {
     /**
-     * Was seit [since] ausgelöst hat. Nie abgelegt: Die Antwort gilt genau einmal —
-     * zweimal gelesen, käme dieselbe Meldung zweimal.
+     * What has triggered since [since]. Never stored: the response applies exactly once —
+     * read twice, the same notification would come twice.
      */
     suspend fun getPendingAlerts(since: String?): Ergebnis<AlarmabrufView>
 
-    /** Die Alarme aus der Ablage; mit [setNumber] nur die dieses Sets. */
+    /** The alerts from the store; with [setNumber] only those of this set. */
     fun observeAlerts(setNumber: String? = null): Flow<Local<PriceAlertView>>
 
-    /** Alle Alarme des Kontos vom Server in die Ablage. */
+    /** All alerts of the account from the server into the store. */
     suspend fun refreshAlerts(): Ergebnis<Unit>
 
     suspend fun setPreisalarm(setNumber: String, richtung: Alarmrichtung, schwelle: Geld,

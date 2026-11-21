@@ -101,47 +101,47 @@ import ch.brickinventoryapp.collection.ui.SammlungZiel
 import ch.brickinventoryapp.parts.ui.TeileZiel
 
 /**
- * Was die Bildschirmfotos zeigen, hier als Regel ausgeführt: Auf dem Tablet liegt der
- * Umschalter rechts der Seitenleiste, ein Ladefehler nennt seine Klasse, und die leere
- * Merkliste bietet beide Wege zum ersten Eintrag. Kachel und Wert-Kacheln prüfen
- * SetTileTest und ValueTilesTest in den Modulen, die sie besitzen.
+ * What the screenshots show, executed here as a rule: on the tablet the
+ * switcher lies to the right of the side bar, a loading error names its class, and the empty
+ * wishlist offers both paths to the first entry. Tile and value tiles are checked by
+ * SetTileTest and ValueTilesTest in the modules that own them.
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   tablet-umschalter-oben          Umschalter auch auf dem Tablet in der App-Leiste → rot „Tablet …“
- *   fehlerhinweis-roher-satz        der Satz der Datenschicht auch bei OFFLINE → rot „Fehlerhinweis …“
- *   merkliste-leer-ohne-knoepfe     Knopf „Set merken“ ohne Beschriftung → rot „leere Merkliste …“
- *   detail-ohne-wertkacheln         Set-Detail ohne Wert-Kacheln → rot „Set-Detail zeigt Marktwert …“
- *   galerie-zwei-knoepfe            Scannen wieder als zweiter schwebender Knopf → rot „Galerie hat einen …“
- *   telefon-kontomenue              Kontosymbol wieder in der App-Leiste → rot „Telefon navigiert ohne …“
- *   teile-raster-fest               Teileraster wieder fest 120 dp → rot „Teile bei 200 Prozent …“
- *   finanzen-einspaltig             Finanzen auch auf dem Tablet einspaltig → rot „Finanzen stehen auf dem Tablet …“
- *   gutschein-pin-klein             PIN-Zeile ohne Mindesthöhe → rot „Gutschein-Knoepfe …“
- *   bildflaeche-ohne-ersatz         ProduktBild ohne Ersatzbild → rot „Galerie zeigt ohne Bild das Ersatzbild“
- *   leiste-klappt-nicht-ein         TopAppBar ohne scrollBehavior → rot „App-Leiste weicht beim Rollen“
- *   merkliste-zustand-als-segmente  Zustandsfilter der Merkliste wieder als Segmente → rot „Merkliste filtert …“
- *   umschalter-chips-bei-200        Sets | Teile | Minifiguren ab 130 % als Chipreihe statt Segmente
- *                                   → rot „der Sammlungs-Umschalter zeigt bei 200 Prozent …“ (Abstand)
- *   umschalter-zeile-bei-200        Segmente auch bei 200 % in einer Zeile → rot „der Sammlungs-Umschalter
- *                                   zeigt bei 200 Prozent …“ („Minifiguren … abgeschnitten“)
- *   merkliste-detail-ersetzt-liste  Merkposten-Detail nie neben der Liste → rot „Tablet zeigt Merkliste und Detail …“
- *   detail-mit-zurueckpfeil         Detail neben der Liste mit Zurück-Pfeil statt X → rot „Tablet zeigt Merkliste und Detail …“
- *   gutschein-formular-immer-offen  Formular wieder fest unter der Liste → rot „Gutschein hinzufuegen oeffnet …“
- *   teile-farben-englisch           Farbnamen unübersetzt, Teilenamen ohne Sprache → rot „Teile nennen Farben …“
- *   merkliste-leer-dreifach         leere Merkliste wieder mit Knopf und Suchzeile → rot „leere Merkliste …“
- *   segmente-bei-grosser-schrift    Einfachwahl auch bei 200 % als Segmente → rot „Einfachwahl bricht …“
- *   einfachwahl-chips-bei-200       Einfachwahl bei 200 % wieder als Chips → rot „Einfachwahl steht bei
- *                                   200 Prozent als Segmente …“
- *   finanzen-kauf-je-stueck         Kauf der Zeile wieder je Stück → rot „Finanzen nennen …“
- *   finanzen-kopf-ohne-basis        Kopfkarte aus allen Positionen statt der Basis → rot „Finanzkopf …“
- *   kachel-quelle-ignoriert         Kachel nennt auch den Kaufpreis „Marktpreis“ → rot „Galeriekachel …“
- *   mehr-ohne-vergleich             Vergleich nicht unter „Mehr“ → rot „Vergleich und Bauliste markieren …“
- *   mehr-pfeil-anders-als-zurueck   Pfeil führt immer auf „Mehr“ → rot „der Pfeil einer Mehr-Unterseite …“
- *   galerie-kachel-gross            Setkachel auch bei 200 % mit Bild über die Breite → rot „Galerie bei 200 Prozent …“
- *   galerie-erfassen-schwebt        Erfassen auch bei 200 % schwebend → rot „Galerie bei 200 Prozent …“
- *   teile-erfassen-schwebt          Erfassen auch bei 200 % schwebend → rot „Teile bei 200 Prozent …“
- *   teile-kachel-gross              Teilekachel auch bei 200 % mit Bild über die Breite → rot „Teile bei 200 Prozent zeigen …“
- *   detail-spalte-ohne-hoechstbreite  Set-Detail einspaltig wieder ohne gemeinsame Höchstbreite
- *                                   → rot „Set-Detail auf dem Tablet hochkant …“
+ * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ *   tablet-umschalter-oben          switcher in the app bar on the tablet too → red “tablet has the switcher …”
+ *   fehlerhinweis-roher-satz        the data layer's sentence also for OFFLINE → red “error hint …”
+ *   merkliste-leer-ohne-knoepfe     button „Set merken“ without label → red “empty wishlist …”
+ *   detail-ohne-wertkacheln         set detail without value tiles → red “set detail shows market value …”
+ *   galerie-zwei-knoepfe            scanning again as a second floating button → red “gallery has a floating button …”
+ *   telefon-kontomenue              account icon again in the app bar → red “phone navigates without …”
+ *   teile-raster-fest               parts grid again fixed 120 dp → red “parts at 200 percent …”
+ *   finanzen-einspaltig             finances single-column on the tablet too → red “finances stand in two columns on the tablet …”
+ *   gutschein-pin-klein             PIN row without minimum height → red “voucher buttons …”
+ *   bildflaeche-ohne-ersatz         ProduktBild without placeholder image → red “gallery without image shows the placeholder image”
+ *   leiste-klappt-nicht-ein         TopAppBar without scrollBehavior → red “app bar yields when scrolling”
+ *   merkliste-zustand-als-segmente  condition filter of the wishlist again as segments → red “wishlist filters …”
+ *   umschalter-chips-bei-200        Sets | Parts | Minifigures from 130 % as a chip row instead of segments
+ *                                   → red “the collection switcher shows all three views as segments at 200 percent …” (gap)
+ *   umschalter-zeile-bei-200        segments in one row at 200 % too → red “the collection switcher
+ *                                   shows all three views as segments at 200 percent …” („Minifiguren … abgeschnitten“)
+ *   merkliste-detail-ersetzt-liste  wishlist item detail never next to the list → red “tablet shows wishlist and detail …”
+ *   detail-mit-zurueckpfeil         detail next to the list with a back arrow instead of X → red “tablet shows wishlist and detail …”
+ *   gutschein-formular-immer-offen  form again fixed below the list → red “adding a voucher opens …”
+ *   teile-farben-englisch           color names untranslated, part names without language → red “parts name colors …”
+ *   merkliste-leer-dreifach         empty wishlist again with button and search row → red “empty wishlist …”
+ *   segmente-bei-grosser-schrift    single choice as segments at 200 % too → red “single choice breaks …”
+ *   einfachwahl-chips-bei-200       single choice at 200 % again as chips → red “single choice stands as
+ *                                   segments …”
+ *   finanzen-kauf-je-stueck         purchase of the row again per piece → red “finances name …”
+ *   finanzen-kopf-ohne-basis        header card from all positions instead of the basis → red “finance header …”
+ *   kachel-quelle-ignoriert         tile also calls the purchase price „Marktpreis“ → red “gallery tile …”
+ *   mehr-ohne-vergleich             comparison not under “More” → red “comparison and build list mark …”
+ *   mehr-pfeil-anders-als-zurueck   arrow always leads to “More” → red “the arrow of a More subpage …”
+ *   galerie-kachel-gross            set tile at 200 % too with an image across the width → red “gallery at 200 percent …”
+ *   galerie-erfassen-schwebt        add floating at 200 % too → red “gallery at 200 percent …”
+ *   teile-erfassen-schwebt          add floating at 200 % too → red “parts at 200 percent …”
+ *   teile-kachel-gross              parts tile at 200 % too with an image across the width → red “parts at 200 percent show …”
+ *   detail-spalte-ohne-hoechstbreite  set detail single-column again without common maximum width
+ *                                   → red “set detail on the tablet in portrait …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -192,16 +192,16 @@ class UisRulesTest {
         val teile = ctx.getString(R.string.nav_parts)
         compose.onAllNodesWithText(teile).assertCountEquals(1)
         val leiste = compose.onAllNodesWithText("Sammlung")
-        // Der Reiter in der Seitenleiste ist der linke der beiden (der andere ist der Titel).
+        // The tab in the side bar is the left one of the two (the other one is the title).
         val tabRight = (0 until 2).map { leiste[it].fetchSemanticsNode().boundsInRoot }.minBy { it.left }.right
         assertTrue("Der Umschalter beginnt rechts der Seitenleiste",
             compose.onNodeWithText(teile).fetchSemanticsNode().boundsInRoot.left >= tabRight)
     }
 
     /**
-     * Sets | Teile | Minifiguren wechselt die Ansicht und bleibt darum auch bei 200 % aus
-     * Segmenten: aneinanderstossend (neben- oder untereinander), keine Beschriftung
-     * abgeschnitten, alle drei ganz im Bild.
+     * Sets | Parts | Minifigures switches the view and therefore stays made of segments at 200 %
+     * too: adjoining (side by side or below each other), no label
+     * cut off, all three fully in view.
      */
     @Test
     fun `the collection switcher shows all three views as segments at 200 percent`() {
@@ -295,12 +295,12 @@ class UisRulesTest {
                 }
             }
         }
-        // Keine zweite und dritte Ebene in der App-Leiste.
+        // No second and third level in the app bar.
         compose.onAllNodesWithContentDescription(ctx.getString(R.string.konto_title)).assertCountEquals(0)
         compose.onAllNodesWithContentDescription(ctx.getString(R.string.nav_more)).assertCountEquals(0)
         compose.onNodeWithText(ctx.getString(R.string.nav_more)).performClick()
         compose.waitForIdle()
-        // Einstellungen und Gutscheine stehen auf derselben Seite, jedes genau einmal.
+        // Settings and vouchers stand on the same page, each exactly once.
         compose.onAllNodesWithText(ctx.getString(R.string.nav_settings)).assertCountEquals(1)
         compose.onAllNodesWithText(ctx.getString(R.string.vouchers_title)).assertCountEquals(1)
     }
@@ -319,7 +319,7 @@ class UisRulesTest {
         compose.onNodeWithText("Serverfehler (500)").fetchSemanticsNode()
     }
 
-    /** Die Welt antwortet im Takt; den Hauptlooper treiben, bis [fertig] gilt. */
+    /** The world responds in ticks; drive the main looper until [fertig] holds. */
     private fun wait(name: String, fertig: () -> Boolean) {
         driveUntil(name, bereit = fertig)
         compose.waitForIdle()
@@ -336,8 +336,8 @@ class UisRulesTest {
             }
             wait("Set-Detail") { vm.setDetailState.value.let { it.setPrice != null && it.priceHistory != null && !it.priceFetch.laedt } }
             compose.onNodeWithText(ctx.getString(R.string.detail_pnl_tile), useUnmergedTree = true).assertIsDisplayed()
-            // Die G&V-Kachel nennt Betrag und Prozent (812.50 − 700.00); der Prozentwert allein steht
-            // weiter unten in der Plakette je Zustand.
+            // The P&L tile names amount and percent (812.50 − 700.00); the percentage alone stands
+            // further down in the badge per condition.
             compose.onNodeWithText("+" + fmtMoney(112.5, Waehrung("CHF")) + " · " + fmtProzent(16.1), useUnmergedTree = true)
                 .assertIsDisplayed()
             compose.onAllNodesWithText(fmtMoney(812.5, Waehrung("CHF")), useUnmergedTree = true)[0].assertIsDisplayed()
@@ -347,8 +347,8 @@ class UisRulesTest {
     }
 
     /**
-     * Tablet hochkant, eine Spalte: Kacheln und Preisverlauf beginnen an derselben Kante.
-     * Vorher stand die Karte auf der Lesebreite mittig, die Kacheln über die ganze Breite.
+     * Tablet in portrait, one column: tiles and price history begin at the same edge.
+     * Previously the card stood centered at reading width, the tiles across the whole width.
      */
     @Test
     fun `set detail on the tablet in portrait has a width for tiles and price history`() {
@@ -363,11 +363,11 @@ class UisRulesTest {
             wait("Set-Detail") { vm.setDetailState.value.let { it.priceHistory != null && !it.historyFetch.laedt && !it.priceFetch.laedt } }
             val dichte = ctx.resources.displayMetrics.density
             val titel = ctx.getString(R.string.detail_section_price_history)
-            // Innen liegen die Kachel 12 dp (mittel), der Titel 16 dp (gross) vom Rand ihrer Fläche.
+            // Inside, the tile lies 12 dp (medium), the title 16 dp (large) from the edge of its surface.
             val kachel = compose.onAllNodes(hasText(ctx.getString(R.string.detail_section_market)))[0]
                 .fetchSemanticsNode().boundsInRoot.left - 12 * dichte
             compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).performScrollToNode(hasText(titel, ignoreCase = true))
-            // Die Überschrift, nicht ihr Text in Versalien darunter: Abschnittstitel trägt beide.
+            // The heading, not its text in capitals below: the section title carries both.
             val karte = compose.onNode(hasText(titel) and androidx.compose.ui.test.isHeading(), useUnmergedTree = true)
                 .fetchSemanticsNode().boundsInRoot.left - 16 * dichte
             assertEquals("Preisverlauf beginnt wie die Kacheln (${karte / dichte} / ${kachel / dichte} dp)",
@@ -377,7 +377,7 @@ class UisRulesTest {
         }
     }
 
-    /** Eine Galerie mit [bilder]; wartet, bis die Sets da sind. */
+    /** A gallery with [bilder]; waits until the sets are there. */
     private fun galleryWith(world: Examples.Welt, bilder: coil3.ImageLoader, schrift: Float = 1f) {
         val vm = world.galerie().also { it.loadSets() }
         val erfassung = world.t.merke(EntryViewModel(world.t.sitzung, world.t.filter(), world.t.hinweise, testSetsRepository(world.t.api), world.t.setCatalog(), world.t.merkliste(),
@@ -395,8 +395,8 @@ class UisRulesTest {
     }
 
     /**
-     * Wie viele der [namen] stehen ganz im Raster? Ungekürzte Lage statt boundsInRoot: Das
-     * Raster schneidet eine halb sichtbare Kachel ab, und abgeschnitten läge sie scheinbar drin.
+     * How many of the [namen] stand fully in the grid? Unclipped position instead of boundsInRoot: the
+     * grid clips a half-visible tile, and clipped it would seemingly lie inside.
      */
     private fun wholeVisible(namen: List<String>): Int {
         val raster = compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).fetchSemanticsNode().boundsInRoot
@@ -409,9 +409,9 @@ class UisRulesTest {
     }
 
     /**
-     * Erfassen-Knöpfe mit [beschreibung], die nicht über der Liste stehen. Bei 200 % gehört
-     * Erfassen in die Zeile unter der Suche; ein schwebender Knopf liegt unterhalb des
-     * Listenanfangs, auch wenn die Liste bei wenigen Sets kürzer ist als der Bildschirm.
+     * Add buttons with [beschreibung] that do not stand above the list. At 200 % add belongs
+     * in the row below the search; a floating button lies below the
+     * start of the list, even if the list is shorter than the screen with few sets.
      */
     private fun addNotViaList(beschreibung: String): List<Rect> {
         val liste = compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction()).fetchSemanticsNode().boundsInRoot
@@ -421,9 +421,9 @@ class UisRulesTest {
     }
 
     /**
-     * Bei 200 % Schrift ist eine Kachel eine Listenzeile, und Erfassen steht über der Liste:
-     * Mit dem Bild über die volle Breite stand ein Set je Bildschirm, und der schwebende
-     * Knopf lag auf dem Text der untersten Kachel.
+     * At 200 % font a tile is a list row, and add stands above the list:
+     * with the image across the full width one set stood per screen, and the floating
+     * button lay on the text of the bottom tile.
      */
     @Test
     fun `gallery at 200 percent shows several sets fully and add lies on none`() {
@@ -461,8 +461,8 @@ class UisRulesTest {
     }
 
     /**
-     * Vergleich und Bauliste erreicht man über „Mehr“: Dort bleibt „Mehr“ gewählt, und der
-     * Pfeil oben führt dorthin zurück wie auf den übrigen Mehr-Unterseiten.
+     * Comparison and build list are reached via “More”: there “More” stays selected, and the
+     * arrow at the top leads back there as on the other More subpages.
      */
     @Test
     fun `comparison and build list mark More and lead back there with Back`() {
@@ -489,7 +489,7 @@ class UisRulesTest {
             }
         }
         val zurueck = ctx.getString(R.string.common_back)
-        // Auf einem Reiter selbst kein Zurück: Er ist eine Wurzel.
+        // On a tab itself no back: it is a root.
         compose.onAllNodesWithContentDescription(zurueck).assertCountEquals(0)
         for ((entry, inhalt) in listOf(R.string.nav_comparison to "Vergleichsseite", R.string.nav_partslist to "Baulistenseite")) {
             compose.onNode(hasText(mehr) and hasClickAction()).performClick()
@@ -501,14 +501,14 @@ class UisRulesTest {
                 .fetchSemanticsNode("„Mehr“ ist auf ${ctx.getString(entry)} nicht gewählt")
             compose.onNodeWithContentDescription(zurueck).performClick()
             compose.waitForIdle()
-            // Zurück auf „Mehr“: dessen Einträge stehen wieder da.
+            // Back on “More”: its entries are there again.
             compose.onNodeWithText(ctx.getString(R.string.vouchers_title)).fetchSemanticsNode()
         }
     }
 
     /**
-     * Kam eine Mehr-Unterseite nicht von „Mehr“, führt der Pfeil oben dorthin, wohin
-     * auch die Zurück-Geste führt: an den vorigen Eintrag, nicht auf „Mehr“.
+     * If a More subpage did not come from “More”, the arrow at the top leads where
+     * the back gesture also leads: to the previous entry, not to “More”.
      */
     @Test
     fun `the arrow of a More subpage goes the same way as the back gesture`() {
@@ -534,7 +534,7 @@ class UisRulesTest {
                 }
             }
         }
-        // Wie aus einem Set heraus: der Vergleich direkt über der Galerie, ohne „Mehr“.
+        // As from within a set: the comparison directly above the gallery, without “More”.
         compose.runOnIdle { nav!!.navigate(SammlungZiel.Comparison) }
         compose.onNodeWithText("Vergleichsseite").fetchSemanticsNode()
         compose.onNodeWithContentDescription(ctx.getString(R.string.common_back)).performClick()
@@ -551,7 +551,7 @@ class UisRulesTest {
     fun `gallery without image shows the placeholder image on every tile`() {
         val world = Examples.Welt(ContextTexts())
         try {
-            // Jede Anfrage scheitert, wie offline oder bei fehlender Vorschau.
+            // Every request fails, as offline or with a missing preview.
             val kaputt = coil3.ImageLoader.Builder(ctx).components {
                 add(object : Interceptor {
                     override suspend fun intercept(chain: Interceptor.Chain) =
@@ -623,15 +623,15 @@ class UisRulesTest {
             assertTrue(namen.size >= 3)
             val dichte = ctx.resources.displayMetrics.density
             for (name in namen) {
-                // Die Kachel ist mit der Schrift gewachsen (120 dp × 2) …
-                // Die Bilder wachsen mit der Kachel: Nicht jede Kachel liegt im sichtbaren Raster.
+                // The tile has grown with the font (120 dp × 2) …
+                // The images grow with the tile: not every tile lies in the visible grid.
                 compose.onNode(androidx.compose.ui.test.hasScrollToNodeAction())
                     .performScrollToNode(hasText(name) and hasClickAction())
                 val kachel = compose.onNode(hasText(name) and hasClickAction()).fetchSemanticsNode().boundsInRoot
                 assertTrue("Kachel von $name nur ${kachel.width / dichte} dp breit", kachel.width / dichte >= 200f)
-                // … und der Name steht ganz da: Die letzte sichtbare Zeile endet mit dem
-                // letzten Zeichen, ohne Auslassung. didOverflowWidth taugt nicht: Robolectric
-                // meldet es bei 342 px Text unter 1119 px Grenze, ganz in einer Zeile.
+                // … and the name stands in full: the last visible line ends with the
+                // last character, without ellipsis. didOverflowWidth is no use: Robolectric
+                // reports it for 342 px text under a 1119 px limit, fully in one line.
                 val ergebnis = mutableListOf<TextLayoutResult>()
                 compose.onNodeWithText(name, useUnmergedTree = true).fetchSemanticsNode()
                     .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(ergebnis)
@@ -647,8 +647,8 @@ class UisRulesTest {
     }
 
     /**
-     * Farben auf Deutsch wie in der Webapp („Trans-Klar“), Teilenamen bleiben englisch,
-     * sind aber als Englisch ausgezeichnet, damit TalkBack sie richtig ausspricht.
+     * Colors in German as in the web app („Trans-Klar“), part names stay English,
+     * but are marked as English so that TalkBack pronounces them correctly.
      */
     @Test
     fun `parts name colors in German and names as English`() {
@@ -689,8 +689,8 @@ class UisRulesTest {
     }
 
     /**
-     * Jeder Gutschein trägt EIN Menü (statt fünf Symbole in unregelmässigen Abständen);
-     * Menü und Einträge nennen die Nummer, die PIN-Zeile ist 48 dp hoch.
+     * Every voucher carries ONE menu (instead of five icons at irregular distances);
+     * menu and entries name the number, the PIN row is 48 dp high.
      */
     @Test
     fun `voucher buttons name the number and the PIN has 48 dp`() {
@@ -708,7 +708,7 @@ class UisRulesTest {
         compose.onNodeWithContentDescription(ctx.getString(R.string.vouchers_cd_balance, nummer)).fetchSemanticsNode()
     }
 
-    /** Das Formular steht nicht dauerhaft unter der Liste, sondern öffnet als Blatt. */
+    /** The form does not stand permanently below the list but opens as a sheet. */
     @Test
     fun `adding a voucher opens the form only on request`() {
         zeige { Gutscheine() }
@@ -719,9 +719,9 @@ class UisRulesTest {
     }
 
     /**
-     * Ein Bauteil je Entscheidungstyp: Der Zustand schränkt die Liste ein und steht als
-     * Filterchips da (Rolle Checkbox, mit Abstand), wie die Filter in Galerie und Finanzen;
-     * Segmente gehören Ansichten. Die Sortierung ist ein Menü hinter einem Symbol.
+     * One component per decision type: the condition narrows the list and stands as
+     * filter chips (role checkbox, with spacing), like the filters in gallery and finances;
+     * segments belong to views. The sorting is a menu behind an icon.
      */
     @Test
     fun `wishlist filters the condition with chips and sorts via a menu`() {
@@ -739,7 +739,7 @@ class UisRulesTest {
             chips.zipWithNext().forEach { (a, b) ->
                 assertTrue("Chips stehen mit Abstand (${a.right / dichte} / ${b.left / dichte} dp)", b.left - a.right >= 4 * dichte)
             }
-            // Die Sortierung steht nicht als Chip mit ihrem Namen da, sondern hinter dem Symbol.
+            // The sorting does not stand as a chip with its name but behind the icon.
             val vorgabe = ctx.getString(R.string.gallery_sort_added_desc)
             compose.onAllNodesWithText(vorgabe).assertCountEquals(0)
             compose.onNodeWithContentDescription(ctx.getString(R.string.sort_menu_cd, vorgabe)).performClick()
@@ -751,9 +751,9 @@ class UisRulesTest {
     }
 
     /**
-     * List-Detail auf dem Tablet: Der geöffnete Merkposten steht rechts neben der
-     * Liste, die Liste bleibt sichtbar, und seine Karte ist als gewählt markiert. Oben
-     * im Detail steht Schliessen statt eines Zurück-Pfeils, der eine Seite versprach.
+     * List detail on the tablet: the opened wishlist item stands to the right of the
+     * list, the list stays visible, and its card is marked as selected. At the top
+     * of the detail stands close instead of a back arrow that promised a page.
      */
     @Test
     fun `tablet shows wishlist and detail side by side`() {
@@ -793,7 +793,7 @@ class UisRulesTest {
             compose.waitForIdle()
             compose.onNodeWithText(ctx.getString(R.string.wanted_add_first)).fetchSemanticsNode()
             compose.onNodeWithText(ctx.getString(R.string.gallery_scan_barcode)).fetchSemanticsNode()
-            // Nur diese beiden Wege: kein schwebender Knopf und kein Scan-Symbol darüber.
+            // Only these two paths: no floating button and no scan icon above.
             compose.onAllNodesWithContentDescription(ctx.getString(R.string.wanted_add_title)).assertCountEquals(0)
             compose.onAllNodesWithContentDescription(ctx.getString(R.string.gallery_scan_barcode)).assertCountEquals(0)
         } finally {
@@ -801,7 +801,7 @@ class UisRulesTest {
         }
     }
 
-    /** Text ganz in einer Zeile: weder umgebrochen noch ausgelassen. */
+    /** Text fully in one line: neither wrapped nor elided. */
     private fun wholeOneRow(text: String) {
         val ergebnis = mutableListOf<TextLayoutResult>()
         compose.onNodeWithText(text, useUnmergedTree = true).fetchSemanticsNode()
@@ -812,8 +812,8 @@ class UisRulesTest {
     }
 
     /**
-     * Eine Einfachwahl bei 200 % auf einem schmalen Telefon: Jede Möglichkeit steht
-     * ganz in einer Zeile. Als Segmente brach „Gebraucht“ zu „Gebrau/cht“.
+     * A single choice at 200 % on a narrow phone: every option stands
+     * fully in one line. As segments „Gebraucht“ broke into „Gebrau/cht“.
      */
     @Test
     fun `single choice breaks no word at 200 percent`() {
@@ -831,8 +831,8 @@ class UisRulesTest {
     }
 
     /**
-     * Bei 200 % bleibt eine Einfachwahl eine Segmentgruppe: untereinander, jede Möglichkeit
-     * über die volle Breite und als Optionsfeld vorgelesen. Als Chips las sie sich wie ein Filter.
+     * At 200 % a single choice stays a segment group: below each other, every option
+     * across the full width and read out as a radio button. As chips it read like a filter.
      */
     @Test
     fun `single choice stands as segments below each other in full width at 200 percent`() {
@@ -858,7 +858,7 @@ class UisRulesTest {
             kotlin.math.abs(unten.top - oben.bottom) <= 2 * dichte)
     }
 
-    /** Titanic ×2: Marktwert und Kauf beide für zwei Stück, der Gewinn auch als Betrag. */
+    /** Titanic ×2: market value and purchase both for two pieces, the profit as an amount too. */
     @Test
     fun `finances name the purchase total and the profit as an amount for two pieces`() {
         val world = Examples.Welt(ContextTexts())
@@ -868,7 +868,7 @@ class UisRulesTest {
             wait("Finanzen") { vm.financeState.value.let { it.valuation != null && !it.bewertung.laedt } }
             val zeile = setRows(vm.financeState.value.valuation!!.sets).map { it.second }
                 .first { it.menge > 1 && it.kaufpreis != null && it.wert != null }
-            // Selbst gerechnet, nicht aus kaufGesamt/gewinn: Sonst prüfte der Test die Rechnung mit sich selbst.
+            // Computed ourselves, not from kaufGesamt/gewinn: otherwise the test would check the calculation with itself.
             val gesamt = zeile.kaufpreis!! * zeile.menge
             val kauf = ctx.getString(R.string.finance_purchase_total, fmtMoney(gesamt, Waehrung("CHF")))
             compose.onNodeWithText(kauf, useUnmergedTree = true).fetchSemanticsNode()
@@ -884,8 +884,8 @@ class UisRulesTest {
         compose.onAllNodesWithText(text, substring = substring, useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty()
 
     /**
-     * Die Kopfkarte zeigt Einstand, G/V und Marktwert aus einer Basis, so dass sie
-     * aufgehen, und nennt darunter die Position ohne Marktpreis — wie das Web.
+     * The header card shows cost, P/L and market value from one basis so that they
+     * add up, and names below it the position without market price — like the web.
      */
     @Test
     fun `finance header shows cost plus P and L equals market value and the basis row`() {
@@ -895,7 +895,7 @@ class UisRulesTest {
             zeige { FinanceRoute(vm = vm, imageLoader = coil3.ImageLoader.Builder(ctx).build()) }
             wait("Finanzen") { vm.financeState.value.let { it.valuation != null && it.pnl != null && !it.bewertung.laedt } }
             compose.waitForIdle()
-            // Die Zahlen der Beispiele, nicht aus financeHeader: Sonst prüfte der Test die Rechnung mit sich selbst.
+            // The numbers of the examples, not from financeHeader: otherwise the test would check the calculation with itself.
             val cost = BigDecimal("1500.00")
             val guv = BigDecimal("212.40")
             val wert = BigDecimal("1712.40")
@@ -905,7 +905,7 @@ class UisRulesTest {
             val guvText = ctx.getString(R.string.finance_guv_zeile, "+" + fmtMoney(guv.toDouble(), Waehrung("CHF")))
             assertTrue(guvText, standsDa(guvText))
             assertTrue("Marktwert", standsDa(fmtMoney(wert.toDouble(), Waehrung("CHF"))))
-            // Der Einstand ALLER Positionen (mit dem Baumhaus) stünde neben einem Marktwert ohne es.
+            // The cost of ALL positions (with the tree house) would stand next to a market value without it.
             val alle = ctx.getString(R.string.finance_einstand_zeile, fmtMoney(1680.0, Waehrung("CHF")))
             assertTrue("kein Einstand aller Positionen", !standsDa(alle))
             val gerechnet = ctx.resources.getQuantityString(R.plurals.finance_basis_gerechnet, 3, 2, 3)
@@ -917,7 +917,7 @@ class UisRulesTest {
         }
     }
 
-    /** Ohne Marktpreis liefert der Server den Kaufpreis (kachel_quelle "kauf"); die Kachel sagt es. */
+    /** Without market price the server delivers the purchase price (kachel_quelle "kauf"); the tile says so. */
     @Test
     fun `gallery tile names the purchase price as purchase price`() {
         val bilder = coil3.ImageLoader.Builder(ctx).build()
@@ -929,7 +929,7 @@ class UisRulesTest {
                     SetCard(SetAnsicht(setNumber = "21318-1", name = "Baumhaus"), "", bilder, {},
                         preis = TilePrice(Geld.aus(180.0), null, "kauf"), waehrung = Waehrung("CHF"))
                 }
-                // Ältere Server ohne kachel_quelle lieferten nur Marktpreise.
+                // Older servers without kachel_quelle delivered only market prices.
                 Box(Modifier.weight(1f)) {
                     SetCard(SetAnsicht(setNumber = "75192-1", name = "Millennium Falcon"), "", bilder, {},
                         preis = TilePrice(Geld.aus(812.5), 16.1), waehrung = Waehrung("CHF"))

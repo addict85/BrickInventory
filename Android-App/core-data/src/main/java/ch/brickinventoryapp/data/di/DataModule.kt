@@ -25,7 +25,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import ch.brickinventoryapp.data.Entwertungsquelle
 import ch.brickinventoryapp.data.cache.CacheOwner
 
-/** Schnittstellen der Datenschicht und ihre Umsetzungen, wo die Datenschicht sie kennt. */
+/** Interfaces of the data layer and their implementations, where the data layer knows them. */
 @Module
 @InstallIn(SingletonComponent::class)
 internal object DataModule {
@@ -34,7 +34,7 @@ internal object DataModule {
     @Singleton
     fun provideJson(): Json = BrickJson
 
-    /** Ein DataStore je Datei und Prozess; über Hilt statt über eine Erweiterung an Context. */
+    /** One DataStore per file and process; via Hilt instead of via an extension on Context. */
     @Provides
     @Singleton
     fun provideDataStore(
@@ -51,8 +51,8 @@ internal object DataModule {
     fun provideCacheOwner(p: TokenAblage): CacheOwner = p
 
     /**
-     * Der Tausch des Tokens. Provider statt direkt: Das Konto-Repository hängt am
-     * api-Client, und der braucht diesen Tausch — ohne den Umweg ein Kreis.
+     * The token swap. Provider instead of directly: the account repository depends on the
+     * api client, and that needs this swap — without the detour a cycle.
      */
     @Provides
     @javax.inject.Singleton

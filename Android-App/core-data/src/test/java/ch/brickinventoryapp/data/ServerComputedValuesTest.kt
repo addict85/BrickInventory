@@ -8,20 +8,20 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Die Oberflächen rechnen nicht — sie zeigen an. Summen und Kennzahlen kommen aus der
- * Antwort des Servers, nicht aus einer Schleife über eine (womöglich gefilterte) Liste;
- * sonst zeigten Webapp und App aus denselben Daten verschiedene Zahlen.
+ * The surfaces do not calculate — they display. Totals and key figures come from the
+ * server's response, not from a loop over a (possibly filtered) list;
+ * otherwise web app and app would show different numbers from the same data.
  *
- * Gegenprobe: in AcquisitionManagementScreen wieder
- * `acquisitions.sumOf { it.quantity }` eingesetzt → der erste Teilschritt wird
- * rot; in MinifigsScreen wieder `figs.size` → der zweite.
+ * Counter-check: in AcquisitionManagementScreen again
+ * `acquisitions.sumOf { it.quantity }` inserted → the first sub-step turns
+ * red; in MinifigsScreen again `figs.size` → the second.
  */
 class ServerComputedValuesTest {
 
     private fun read(rel: String) =
         File(Quellen.root, "$rel").readText()
 
-    /** Kommentare zeilenweise ausblenden — sonst hält der eigene Erklärtext die Prüfung grün. */
+    /** Hide comments line by line — otherwise the own explanatory text keeps the check green. */
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
@@ -40,16 +40,16 @@ class ServerComputedValuesTest {
         val acq = code(read("collection/ui/screens/AcquisitionManagementScreen.kt"))
         assert(acq.contains("totals.quantity")) { "Die Menge muss aus totals kommen" }
         assert(acq.contains("totals.amount")) { "Der Betrag muss aus totals kommen" }
-        // Gegenrichtung: `amount` ist nullable, und die Ansicht darf daraus keine
-        // 0 machen — „nichts erfasst" und „für null gekauft" sind verschieden.
+        // Opposite direction: `amount` is nullable, and the view must not make a
+        // 0 of it — „nothing recorded" and „bought for nothing" are different.
         assert(acq.contains("totals.amount?.let")) {
             "Der fehlende Betrag muss als null behandelt werden, nicht als 0"
         }
     }
 
     /**
-     * Ausgeführt mit dem Json der App. Gegenprobe: die
-     * Vorgabe `= AcquisitionTotals()` entfernt → rot.
+     * Executed with the app's Json. Counter-check: the
+     * default `= AcquisitionTotals()` removed → red.
      */
     @Test
     fun `the response carries the total, with a safe default`() {
@@ -57,7 +57,7 @@ class ServerComputedValuesTest {
             """{"success":true,"acquisitions":[],"totals":{"quantity":3,"amount":42.5,"priced_rows":2}}""")
         assertEquals(3, neu.totals.quantity)
         assertEquals(42.5, neu.totals.amount ?: 0.0, 0.0)
-        // Ältere Serverstände schicken keine Summe; die Antwort scheitert daran nicht.
+        // Older server versions send no total; the response does not fail because of it.
         val alt = BrickJson.decodeFromString(AcquisitionsResponse.serializer(), """{"success":true,"acquisitions":[]}""")
         assertEquals(0, alt.totals.quantity)
     }

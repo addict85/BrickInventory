@@ -10,16 +10,16 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Wer darf welches Feld von `AppUiState` beschreiben? Die Sitzung hält den Zustand privat
- * und ändert ihn nur über benannte Schritte; hier steht, welcher Schritt welche Felder
- * setzt, damit ein Schritt nicht still einen zweiten Weg zu einem fremden Feld öffnet.
+ * Who may write which field of `AppUiState`? The session keeps the state private
+ * and changes it only via named steps; here stands which step sets which fields,
+ * so that a step does not silently open a second path to a foreign field.
  *
- * Gegenprobe: in waehrungUebernommen() `priceCondition` mitgeschrieben
- * (gegenproben/zustand-schritt-zu-breit.patch) → rot „every step of the session sets only its fields“.
+ * Counter-check: in waehrungUebernommen() `priceCondition` written along
+ * (gegenproben/zustand-schritt-zu-breit.patch) → red “every step of the session sets only its fields“.
  */
 class StateDomainBoundaryTest {
 
-    /** Schritt der Sitzung → Felder, die er setzen darf. */
+    /** Step of the session → fields it may set. */
     private val erlaubt = mapOf(
         "angemeldet" to setOf("isLoggedIn", "isAdmin"),
         "anmeldungGeaendert" to setOf("serverUrl", "isLoggedIn"),
@@ -32,7 +32,7 @@ class StateDomainBoundaryTest {
         "serverstartGeaendert" to setOf("startupStatus"),
     )
 
-    /** Die Felder von AppUiState, zum Vergleich vor und nach einem Schritt. */
+    /** The fields of AppUiState, for comparison before and after a step. */
     private val felder: Map<String, (AppUiState) -> Any?> = mapOf(
         "serverUrl" to { it.serverUrl }, "isLoggedIn" to { it.isLoggedIn }, "isAdmin" to { it.isAdmin },
         "currency" to { it.currency }, "priceCondition" to { it.priceCondition },
@@ -40,7 +40,7 @@ class StateDomainBoundaryTest {
         "appTheme" to { it.appTheme }, "startupStatus" to { it.startupStatus }, "language" to { it.language },
     )
 
-    /** Jeder Schritt mit Werten, die sich von der Vorgabe unterscheiden. */
+    /** Every step with values that differ from the default. */
     private val schritte: Map<String, (Sitzung) -> Unit> = mapOf(
         "angemeldet" to { it.angemeldet(admin = true) },
         "anmeldungGeaendert" to { it.anmeldungGeaendert("https://brick.example", true) },

@@ -4,53 +4,53 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Zustand gehört in eine Instanz, nicht auf Dateiebene.
+ * State belongs in an instance, not at file level.
  *
- * ── Der Befund ─────────────────────────────────────────────────────────────
- * Die Feature-Dateien sind Erweiterungsfunktionen auf MainViewModel, und eine
- * Erweiterung hat keine Felder. Was sie trotzdem merken mussten — welcher
- * Lade-Job abzubrechen ist, welche Filter-Generation gerade gilt — stand
- * deshalb als `private var` auf DATEIEBENE:
+ * ── The finding ──────────────────────────────────────────────────────────────
+ * The feature files are extension functions on MainViewModel, and an
+ * extension has no fields. What they had to remember anyway — which
+ * loading job to cancel, which filter generation currently applies — therefore stood
+ * as `private var` at FILE LEVEL:
  *
  *     private var catalogSearchJob, catalogListJob, catalogDetailJob
  *     private var catalogGeneration
  *     private var gallerySearchJob, galleryListJob, galleryGeneration
  *
- * Das ist prozessweiter veränderlicher Zustand. Der Kommentar in
- * CatalogFeature.kt sagte es sogar selbst: „Job-Referenz prozessweit am VM".
- * Es geht nur gut, solange es genau eine Instanz je Prozess gibt. Zwei würden
- * sich Abbruch-Jobs und Generation teilen — die eine Ladung bräche die andere
- * ab, und niemand käme auf die Idee, dort zu suchen.
+ * That is process-wide mutable state. The comment in
+ * CatalogFeature.kt even said so itself: „Job-Referenz prozessweit am VM".
+ * It only works as long as there is exactly one instance per process. Two would
+ * share cancellation jobs and generation — one load would cancel the other,
+ * and nobody would think of looking there.
  *
- * Beim Katalog ist es behoben: Die Funktionen stehen in CatalogViewModel und
- * halten ihre Jobs als Felder.
+ * For the catalog it is fixed: the functions stand in CatalogViewModel and
+ * hold their jobs as fields.
  *
- * ── Und die Galerie? ───────────────────────────────────────────────────────
- * Sie hatte dieselben drei. Ein eigenes GalleryViewModel wäre hier aber die
- * falsche Antwort gewesen: GalleryFeature schreibt siebzehnmal in AppUiState,
- * und `sets` wird in SECHZEHN Dateien gelesen — Barcode, SetDetail, Katalog,
- * Teileliste. Das ist App-Zustand, kein Bildschirmzustand; herausgezogen wäre
- * es dasselbe Gott-Objekt unter neuem Namen, mit Verkabelung in sechzehn
- * Dateien obendrauf.
+ * ── And the gallery? ─────────────────────────────────────────────────────────
+ * It had the same three. An own GalleryViewModel would have been the
+ * wrong answer here though: GalleryFeature writes seventeen times into AppUiState,
+ * and `sets` is read in SIXTEEN files — barcode, SetDetail, catalog,
+ * parts list. That is app state, not screen state; extracted it would be
+ * the same god object under a new name, with wiring in sixteen
+ * files on top.
  *
- * Die drei Variablen sind deshalb FELDER des MainViewModel geworden — genau
- * dort, wo `partsJob` seit jeher steht. Das Projekt kannte die richtige
- * Antwort also schon; die Galerie folgte nur ihrem eigenen Muster nicht.
+ * The three variables have therefore become FIELDS of the MainViewModel — exactly
+ * where `partsJob` has always been. So the project already knew the right
+ * answer; the gallery just did not follow its own pattern.
  *
- * Damit steht keine Ausnahme mehr in der Liste, und die Regel gilt für ui/
- * vollständig.
+ * Thus no exception is left in the list, and the rule applies to ui/
+ * completely.
  *
- * Gegenprobe (durchgeführt): `private var catalogGeneration = 0` wieder auf
- * Dateiebene gelegt → die Prüfung meldet Datei und Zeile. Ohne die Rückgabe
- * meldet sie nichts.
+ * Counter-check (performed): `private var catalogGeneration = 0` put back at
+ * file level → the check reports file and line. Without the return
+ * it reports nothing.
  */
 class NoFileWideStateTest {
 
     /**
-     * Leer — und das soll so bleiben.
+     * Empty — and it should stay that way.
      *
-     * Der zweite Test unten meldet jeden Eintrag, der nicht mehr gebraucht
-     * wird. Ein Eintrag hier ist ein Merkposten, kein Freibrief.
+     * The second test below reports every entry that is no longer
+     * needed. An entry here is a reminder, not a carte blanche.
      */
     private val openStill = emptySet<String>()
 
@@ -61,13 +61,13 @@ class NoFileWideStateTest {
         for (f in dateien) {
             if (f.name in openStill) continue
             Quellen.withoutComments(f.readText()).lines().forEachIndexed { i, z ->
-                // Spalte 0 UND kein `remember`. Der Einzug allein reicht in
-                // diesem Baum nicht: BarcodeResultDialog.kt wurde aus
-                // AppNavigation.kt herausgeloest, ohne den Rumpf neu
-                // einzuruecken — dort stehen `var x by remember { … }` in
-                // Spalte 0 und sind trotzdem im Composable. `remember` GIBT es
-                // nur dort; es ist damit das verlaessliche Unterscheidungs-
-                // merkmal, nicht die Spalte.
+                // Column 0 AND no `remember`. Indentation alone is not enough in
+                // this tree: BarcodeResultDialog.kt was extracted from
+                // AppNavigation.kt without reindenting the body
+                // — there `var x by remember { … }` stand in
+                // column 0 and are still in the composable. `remember` EXISTS
+                // only there; it is thus the reliable distinguishing
+                // feature, not the column.
                 if (Regex("""^(?:private |internal |public )?var \w+""").containsMatchIn(z) &&
                     !z.contains("remember")
                 )
@@ -82,8 +82,8 @@ class NoFileWideStateTest {
 
     @Test
     fun `the exception list contains nothing dead`() {
-        // Dieselbe Regel wie in StateDomainBoundaryTest: Eine Ausnahme, die
-        // niemand mehr braucht, ist eine Erlaubnis, die niemand mehr prueft.
+        // The same rule as in StateDomainBoundaryTest: an exception that
+        // nobody needs any more is a permission that nobody checks any more.
         val tot = openStill.filter { name ->
             val f = Quellen.alle().firstOrNull { it.name == name } ?: return@filter true
             Quellen.withoutComments(f.readText()).lines().none {

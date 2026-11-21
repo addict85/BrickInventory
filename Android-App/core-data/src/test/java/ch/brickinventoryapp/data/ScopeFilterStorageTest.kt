@@ -7,10 +7,10 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Konto- und Lagerortfilter liegen nur im Speicher; die Anmeldung setzt beide zurück.
+ * Account and storage location filter lie only in memory; the sign-in resets both.
  *
- * Gegenprobe (gegenproben/anmeldung-behaelt-lagerfilter.patch): resetAll lässt die
- * lager_-Schlüssel stehen → rot „die Anmeldung setzt auch den Lagerortfilter zurück“.
+ * Counter-check (gegenproben/anmeldung-behaelt-lagerfilter.patch): resetAll leaves the
+ * lager_ keys standing → red “the sign-in also resets the storage location filter”.
  */
 class ScopeFilterStorageTest {
 

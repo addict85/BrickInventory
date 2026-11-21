@@ -18,13 +18,13 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 
 /**
- * Ein Gerät ohne Displaysperre: Gutschein-PIN, Wiederherstellungscodes
- * und Verwaltung gehen dort nicht mehr still auf, die App sagt erst, dass sie
- * ungeschützt sind. Robolectric meldet von sich aus kein gesichertes Gerät.
+ * A device without a screen lock: voucher PIN, recovery codes
+ * and management no longer open silently there, the app first says that they are
+ * unprotected. Robolectric by itself reports no secured device.
  *
- * Gegenprobe: in DevicesStepProtection.bestaetige() ohne Sperre wieder `weiter()`
- * statt `withoutLock.frage(…)` → rot „ohne Displaysperre warnt der Schrittschutz
- * …“ (der Schritt ging still weiter); gegenproben/ohne-sperre-still.patch
+ * Counter-check: in DevicesStepProtection.bestaetige() without lock again `weiter()`
+ * instead of `withoutLock.frage(…)` → red “without a screen lock the step guard warns
+ * …” (the step went on silently); gegenproben/ohne-sperre-still.patch
  */
 @RunWith(RobolectricTestRunner::class)
 class WithoutLockTest {

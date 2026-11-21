@@ -38,18 +38,18 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * Die Clients zum eigenen Server, wie NetzModule sie baut, gegen einen Testserver: Keiner
- * folgt Umleitungen selbst (das tut der Wächter), der Bild-Client läuft über den
- * Host-Wächter, drosselt ohne eine Kachelwand auszuhungern und hat einen
- * Zwischenspeicher, aus dem er offline liefert; der API-Client hat keinen. Coil lädt
- * über genau diesen Bild-Client. Unter Robolectric mit echter Ablage.
+ * The clients to the own server, as NetzModule builds them, against a test server: none
+ * follows redirects itself (the guard does that), the image client runs via the
+ * host guard, throttles without starving a tile wall and has a
+ * cache from which it delivers offline; the API client has none. Coil loads
+ * via exactly this image client. Under Robolectric with a real store.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   server-client-folgt-umleitung  followRedirects(false) in buildInterceptorClient entfernt → rot „kein Server-Client …“
- *   bild-client-ohne-waechter      ImageHostGuard nicht eingehängt → rot „der Bild-Client spricht …“
- *   bild-client-ohne-token         der ServerWaechter aus dem Bild-Client genommen → rot „beide Clients …“
- *   bild-client-ohne-rueckfall     der FORCE_CACHE-Rückfall wirft weiter → rot „ist der Server …“
- *   coil-ohne-bild-client          Coil ohne den Fetcher des Bild-Clients → rot „Coil lädt …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   server-client-folgt-umleitung  followRedirects(false) in buildInterceptorClient removed → red “no server client …”
+ *   bild-client-ohne-waechter      ImageHostGuard not hooked in → red “the image client talks …”
+ *   bild-client-ohne-token         the ServerWaechter taken out of the image client → red “both clients …”
+ *   bild-client-ohne-rueckfall     the FORCE_CACHE fallback keeps throwing → red “if the server is …”
+ *   coil-ohne-bild-client          Coil without the image client's fetcher → red “Coil loads …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -59,7 +59,7 @@ class ServerClientsTest {
     private val bereich = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val server = MockWebServer().apply { start() }
 
-    /** Robolectric hat keinen AndroidKeyStore; umhüllt wird hier nur zum Schein. */
+    /** Robolectric has no AndroidKeyStore; wrapping here is only for show. */
     private object Klartresor : TokenEncryption {
         override fun verschluessle(klartext: String) = klartext
         override fun entschluessle(gespeichert: String) = gespeichert
@@ -99,7 +99,7 @@ class ServerClientsTest {
         }
     }
 
-    /** Der ServerWaechter hängt den Token an (ServerGuardTest); ohne ihn lüde jedes Bild mit 401. */
+    /** The ServerWaechter attaches the token (ServerGuardTest); without it every image would load with 401. */
     @Test
     fun `both clients hook in the server guard`() {
         for ((name, c) in listOf("api" to apiClient(), "bild" to imageClient())) {

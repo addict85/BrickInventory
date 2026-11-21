@@ -12,14 +12,14 @@ import org.junit.Test
  * Tests for util/NetworkPolicy: same origin instead of a prefix comparison, and
  * no plain text except in a debug build, to the device and to the emulator host.
  *
- * Gegenproben:
- *   in herkunft(), dropped the port → red "die Herkunft eines Tokens …"
- *   in connectionAllowed(), dropped `entwicklung &&` → red "https
- *     geht immer, http im Release-Build nie"
- *   ENTWICKLUNGS_HOSTS checked with `startsWith` instead of `in` → red "der
- *     Debug-Build darf http nur …" (localhost.angreifer.tld got through)
- *   normalisiere() without the https prefix → red "die Einrichtung nimmt
- *     nur https an …" (brick.fritz.box unreadable)
+ * Counter-checks:
+ *   in herkunft(), dropped the port → red “the origin of a token …”
+ *   in connectionAllowed(), dropped `entwicklung &&` → red “https
+ *     always works, http never in the release build”
+ *   ENTWICKLUNGS_HOSTS checked with `startsWith` instead of `in` → red “the
+ *     debug build may use http only …” (localhost.angreifer.tld got through)
+ *   normalisiere() without the https prefix → red “the setup accepts
+ *     only https …” (brick.fritz.box unreadable)
  */
 class NetworkPolicyTest {
 

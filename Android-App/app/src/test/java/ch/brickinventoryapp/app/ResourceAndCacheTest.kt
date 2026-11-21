@@ -5,9 +5,9 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Aufbauregeln, die ohne Gerät nur im Quelltext stehen: Kamera-Ressourcen, PDF-Cache-Budget,
- * feste Debug-Version und ein CSV-Statuspfad. Dass Abmelden alle Caches leert, prüft
- * SignOutCleansEverythingTest ausgeführt.
+ * Construction rules that without a device only stand in the source: camera resources, PDF cache budget,
+ * fixed debug version and one CSV status path. That sign-out empties all caches is checked by
+ * SignOutCleansEverythingTest, executed.
  */
 class ResourceAndCacheTest {
 
@@ -22,7 +22,7 @@ class ResourceAndCacheTest {
         return s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
     }
 
-    /** Kamerabildschirm samt Analyse und gemeinsamem Aufbau — siehe [Quellen.cameraSource]. */
+    /** Camera screen including analysis and common setup — see [Quellen.cameraSource]. */
     private fun withAnalyse(rel: String): String = Quellen.cameraSource(rel)
 
     // ── Kamera-Ressourcen ────────────────────────────────────────────────────
@@ -44,9 +44,9 @@ class ResourceAndCacheTest {
         }
     }
 
-    // Die Autofokus-Regel stand hier ein drittes Mal. Sie gehoert nicht zum
-    // Thema dieser Datei (Aufraeumen von Ressourcen) und steht jetzt
-    // vollstaendig in CameraFocusConfigTest.
+    // The autofocus rule stood here a third time. It does not belong to the
+    // topic of this file (cleaning up resources) and now stands
+    // completely in CameraFocusConfigTest.
 
     // ── PDF-Cache ────────────────────────────────────────────────────────────
 
@@ -87,9 +87,9 @@ class ResourceAndCacheTest {
     }
 
     /**
-     * Derselbe Commit ergibt dieselbe Version; die CI holt dafür die ganze
-     * Historie. Gegenprobe: `fetch-depth: 0` aus
-     * android.yml entfernt → rot; `LocalDateTime.now()` zurück → rot.
+     * The same commit yields the same version; CI fetches the whole
+     * history for that. Counter-check: `fetch-depth: 0` removed from
+     * android.yml → red; `LocalDateTime.now()` back → red.
      */
     @Test
     fun `the version comes from Git, not from the clock`() {
@@ -104,7 +104,7 @@ class ResourceAndCacheTest {
         }
     }
 
-    // ── CSV-Status: ein Pfad ─────────────────────────────────────────────────
+    // ── CSV status: one path ─────────────────────────────────────────────────
 
     @Test
     fun `the CSV service shares the SSE client with the ViewModel`() {

@@ -26,9 +26,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Ein Set anlegen — mit Fortschritt, wie die Webapp über /api/v1/sets/add-stream
- * (Stammdaten holen, Bild laden, fertig), damit man bei einem grossen Set sieht,
- * was passiert. Über [sseStream] wie CSV-Import und PDF-Auftrag: ein Leser für alle Ströme.
+ * Create a set — with progress, like the web app via /api/v1/sets/add-stream
+ * (fetch master data, load image, done), so that with a large set one sees
+ * what happens. Via [sseStream] like CSV import and PDF job: one reader for all streams.
  */
 @Singleton
 internal class SetCreateSseClient @Inject constructor(
@@ -38,15 +38,15 @@ internal class SetCreateSseClient @Inject constructor(
 ) : SetCreator {
 
     /**
-     * Kalter Fluss: Die Anfrage geht erst beim Sammeln los. Ein Abbruch des Sammelns
-     * schliesst die Verbindung, das Anlegen am Server läuft weiter — deshalb gibt es
-     * keinen Abbrechen-Knopf. Der letzte Schritt ist immer Fertig, Fehler oder NoConnection.
+     * Cold flow: the request only goes out on collecting. Cancelling the collection
+     * closes the connection, the creation on the server keeps running — hence there is
+     * no cancel button. The last step is always Fertig, Fehler or NoConnection.
      */
     override fun anlegen(
         setNumber: String, quantity: Int, purchasePrice: Geld?,
         condition: Zustand?, ownerUserId: Int?, storage: String?,
     ): Flow<SetCreateStep> {
-        // Adresse und Token setzt der Wächter des Clients, wie bei jedem Abruf.
+        // Address and token are set by the client's guard, as for every fetch.
         val anfrage = Request.Builder()
             .url("${PLACEHOLDER_BASE}api/v1/sets/add-stream")
             .header("Accept", "text/event-stream")
@@ -55,8 +55,8 @@ internal class SetCreateSseClient @Inject constructor(
         return sseStream(client, anfrage) { json.parseToJsonElement(it).jsonObject }.transformWhile { e ->
             val schritt = when (e) {
                 is SseEvent.Daten -> schritt(e.wert)
-                // Ein unlesbares Ereignis könnte das „done“ sein; ein Ende ohne es lässt offen,
-                // ob das Set angelegt wurde. Beides ist ein Abbruch, kein Satz des Servers.
+                // An unreadable event could be the „done“; an end without it leaves open
+                // whether the set was created. Both are an abort, not a sentence of the server.
                 is SseEvent.Unlesbar, SseEvent.Ended -> SetCreateStep.Fehler("")
                 is SseEvent.Gescheitert -> withoutStream(e)
             }
@@ -69,9 +69,9 @@ internal class SetCreateSseClient @Inject constructor(
         this is SetCreateStep.Fertig || this is SetCreateStep.Fehler || this == SetCreateStep.NoConnection
 
     /**
-     * Von Hand gebaut statt über eine Datenklasse: Felder, die nicht gesetzt sind, fehlen
-     * im Rumpf — der Server unterscheidet „kein Kaufpreis“ von „Kaufpreis null“. Freier
-     * Text geht durch den Serialisierer, sonst zerbräche ein Anführungszeichen den Rumpf.
+     * Built by hand instead of via a data class: fields that are not set are missing
+     * in the body — the server distinguishes „no purchase price“ from „purchase price null“. Free
+     * text goes through the serializer, otherwise a quotation mark would break the body.
      */
     private fun createBody(
         setNumber: String, quantity: Int, purchasePrice: Geld?,
@@ -91,8 +91,8 @@ internal class SetCreateSseClient @Inject constructor(
     }
 
     /**
-     * Ein Ereignis des Stroms; null für Unbekanntes. Dieselben Schrittnamen wie in der
-     * Webapp (public/js/sammlung.js): ein Protokoll zwischen zwei Programmen.
+     * An event of the stream; null for unknown ones. The same step names as in the
+     * web app (public/js/collection.js): a protocol between two programs.
      */
     private fun schritt(obj: JsonObject): SetCreateStep? = when (obj["step"]?.jsonPrimitive?.content) {
         "meta" -> SetCreateStep.Stammdaten(obj["set"]?.jsonPrimitive?.content)
@@ -104,9 +104,9 @@ internal class SetCreateSseClient @Inject constructor(
     }
 
     /**
-     * Ohne Ereignisstrom: Die Anfrage kam nie an, der Server lehnte ab, oder er antwortete
-     * in der JSON-Form (das Set stand schon im Blickfeld). Nur „nie angekommen“ darf über
-     * den Ausgang wiederholt werden; ein Abbruch mitten im Strom könnte doppelt anlegen.
+     * Without an event stream: the request never arrived, the server refused, or it answered
+     * in the JSON form (the set was already in view). Only „never arrived“ may be
+     * retried via the outbox; an abort in the middle of the stream could create twice.
      */
     private fun withoutStream(e: SseEvent.Gescheitert): SetCreateStep {
         val code = e.code
@@ -124,7 +124,7 @@ internal class SetCreateSseClient @Inject constructor(
         SetCreateStep.Fehler("")
     }
 
-    /** Aus einer Fehlerantwort den Satz holen, den der Server geschickt hat. */
+    /** Get the sentence the server sent from an error response. */
     private fun errorTextFrom(koerper: String?): String =
         try {
             json.parseToJsonElement(koerper.orEmpty()).jsonObject["error"]?.jsonPrimitive?.content.orEmpty()
@@ -135,7 +135,7 @@ internal class SetCreateSseClient @Inject constructor(
     }
 }
 
-/** Die Antwort auf ein angelegtes Set als Fachwert; „gepuffert“ ist weder angelegt noch vorhanden. */
+/** The response to a created set as a domain value; „buffered“ is neither created nor present. */
 internal fun AddSetResponse.asRecorded() = SetRecorded(
     nummer = setNumber,
     name = name,

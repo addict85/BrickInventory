@@ -23,15 +23,15 @@ import java.util.concurrent.TimeUnit
  * shared reverse proxy, a different application lives under `/andere-app`. One
  * test server, the app under `/brick`.
  *
- * Gegenproben:
- *   A  in the guard, `ourServer` without inBasePath() → red "eine Anfrage ausserhalb
- *      des Pfads geht ohne Token" (Bearer sent to /andere-app)
- *   B  in nextRedirect(), removed the path check → red "eine Umleitung aus
- *      dem Pfad hinaus wird nicht verfolgt" (302 followed, token sent to /andere-app/x)
- *   C  in inBasePath(), `startsWith(basis)` instead of `"$basis/"` → red "ausserhalb …"
+ * Counter-checks:
+ *   A  in the guard, `ourServer` without inBasePath() → red “a request outside
+ *      the path goes without a token” (Bearer sent to /andere-app)
+ *   B  in nextRedirect(), removed the path check → red “a redirect out of
+ *      the path is not followed” (302 followed, token sent to /andere-app/x)
+ *   C  in inBasePath(), `startsWith(basis)` instead of `"$basis/"` → red “a request outside …”
  *      (/brickfremd got the token)
- *   D  ownAddress() without inBasePath() → red "ownAddress bleibt unter dem Pfad"
- *   E  sameServer() going only by origin → red "a different path is a different server"
+ *   D  ownAddress() without inBasePath() → red “ownAddress stays under the path”
+ *   E  sameServer() going only by origin → red “a different path is a different server”
  */
 class BasePathTest {
 

@@ -6,12 +6,12 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Was an die Authenticator-App geht: nur `otpauth://totp|hotp/…`. Lag früher in
- * core-network; die Regel braucht kein Netz, und so kennt feature-account core-network nicht.
+ * What goes to the authenticator app: only `otpauth://totp|hotp/…`. Used to lie in
+ * core-network; the rule needs no network, and this way feature-account does not know core-network.
  *
- * Gegenprobe (kotlinc und JUnit gegen Otpauth.kt, gegenproben/otpauth-jedes-schema.patch):
- *   die Schema-Prüfung in otpauthAddress() entfernt → rot „an die Authenticator-App
- *   geht nur otpauth“ (https durchgelassen)
+ * Counter-check (kotlinc and JUnit against Otpauth.kt, gegenproben/otpauth-jedes-schema.patch):
+ *   the scheme check in otpauthAddress() removed → red “only otpauth goes to the
+ *   authenticator app” (https let through)
  */
 class OtpauthAddressTest {
 

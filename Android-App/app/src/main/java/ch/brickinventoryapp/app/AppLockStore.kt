@@ -7,20 +7,20 @@ import androidx.core.content.edit
 import ch.brickinventoryapp.ui.components.AppLock
 
 /**
- * Die App-Sperre je Gerät, synchron, weil schon das erste Bild nach dem Start davon
- * abhängt. Kein Konto steckt darin: Abmelden lässt sie stehen.
+ * The app lock per device, synchronous because already the first frame after the start
+ * depends on it. No account is in it: sign-out leaves it in place.
  */
 internal class AppLockStore(context: Context) : AppLock.Ablage {
     private val app = context.applicationContext
     private val prefs = app.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
-    /** Beim ersten Lesen einmal festgelegt (AppLock.vorgabe), damit ein späteres Update nichts umstellt. */
+    /** Set once on first read (AppLock.vorgabe) so that a later update changes nothing. */
     override fun minuten(): Int {
         if (!prefs.contains(MINUTES)) prefs.edit { putInt(MINUTES, AppLock.vorgabe(newInstalled(), secured())) }
         return prefs.getInt(MINUTES, 0)
     }
 
-    // Gleiche Zeiten heissen: nie aktualisiert, also diese Installation ist die erste.
+    // Equal times mean: never updated, so this installation is the first.
     private fun newInstalled(): Boolean = runCatching {
         app.packageManager.getPackageInfo(app.packageName, 0).let { it.firstInstallTime == it.lastUpdateTime }
     }.getOrDefault(false)
@@ -33,7 +33,7 @@ internal class AppLockStore(context: Context) : AppLock.Ablage {
     override fun backgroundStart(): Int? = prefs.getInt(START, -1).takeIf { it >= 0 }
     override fun rememberBackgroundStart(start: Int?) = prefs.edit { if (start == null) remove(START) else putInt(START, start) }
     override fun gesperrt(): Boolean = prefs.getBoolean(LOCKED, false)
-    // commit statt apply: Ein Prozessende gleich danach darf die Sperre nicht verlieren.
+    // commit instead of apply: a process end right afterwards must not lose the lock.
     override fun setLocked(an: Boolean) = prefs.edit(commit = true) { putBoolean(LOCKED, an) }
 
     private companion object {
@@ -45,6 +45,6 @@ internal class AppLockStore(context: Context) : AppLock.Ablage {
     }
 }
 
-/** Wie oft das Gerät gestartet wurde; null, wo das System den Zähler nicht liefert. */
+/** How often the device was booted; null where the system does not provide the counter. */
 internal fun devicesStarts(context: Context): Int? =
     runCatching { Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT) }.getOrNull()

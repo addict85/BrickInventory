@@ -45,9 +45,9 @@ import retrofit2.http.Path
 import ch.brickinventoryapp.contract.AppThemeResponse
 
 /**
- * Anmeldung und das eigene Konto: Profil, Passwort, zweiter Faktor, angemeldete
- * Geräte, eigenes Design, eigene Einstellungen (AccountRepository). Einige Adressen
- * gelten ohne Token, weil sie vor der Anmeldung gebraucht werden.
+ * Sign-in and the own account: profile, password, second factor, signed-in
+ * devices, own design, own settings (AccountRepository). Some addresses
+ * apply without a token because they are needed before the sign-in.
  */
 interface AccountApi {
 
@@ -75,10 +75,10 @@ interface AccountApi {
     @POST("api/v1/auth/logout")
     suspend fun logout(): Response<GenericResponse>
 
-    // ── Konto anlegen und Passwort vergessen ──
+    // ── Create account and forgot password ──
     //
-    // Ohne Anmeldung, weil sie gebraucht werden, bevor es einen Token gibt; der Server
-    // lässt sie vor requireLogin stehen (routes/auth.ts).
+    // Without sign-in, because they are needed before there is a token; the server
+    // keeps them before requireLogin (routes/auth.ts).
     @GET("api/v1/auth/registration-status")
     suspend fun getRegistrationStatus(): Response<RegistrationStatusResponse>
 
@@ -98,8 +98,8 @@ interface AccountApi {
     @POST("api/v1/auth/change-password")
     suspend fun changePassword(@Body request: PasswortAenderung): Response<GenericResponse>
 
-    // Zweiter Faktor. Das Zurücksetzen durch einen Verwalter fehlt hier
-    // absichtlich — die Nutzerverwaltung steht nur in der Webapp.
+    // Second factor. The reset by an admin is deliberately missing
+    // here — user management stands only in the web app.
     @GET("api/v1/auth/zweiter-faktor")
     suspend fun secondFactorStatus(): Response<ZweiterFaktorStand>
 
@@ -118,42 +118,42 @@ interface AccountApi {
     @GET("api/v1/auth/me")
     suspend fun getMe(): Response<MeResponse>
 
-    // ── Angemeldete Geraete ──────────────────────────────────────────────────
-    // Beide Adressen gab es schon; sie waren nur sitzungsgebunden und damit
-    // fuer die App nicht erreichbar. Seit der Token-Verwaltung nehmen sie
-    // Sitzung ODER Bearer-Token (requireLoginOrToken), wie der Rest von /api/v1.
+    // ── Signed-in devices ────────────────────────────────────────────────────
+    // Both addresses existed already; they were only session-bound and thus
+    // not reachable for the app. Since the token management they take
+    // session OR bearer token (requireLoginOrToken), like the rest of /api/v1.
     @GET("api/v1/settings/tokens")
     suspend fun getTokens(): Response<TokensResponse>
 
-    // @HTTP statt @DELETE: Retrofit erlaubt bei @DELETE keinen Rumpf, und ein
-    // fremdes Gerät meldet der Server nur mit Passwort und Code ab.
+    // @HTTP instead of @DELETE: Retrofit allows no body for @DELETE, and the
+    // server signs out a foreign device only with password and code.
     @HTTP(method = "DELETE", path = "api/v1/settings/tokens/{tokenId}", hasBody = true)
     suspend fun revokeToken(
         @Path("tokenId") tokenId: String,
         @Body confirmation: ZweiterFaktorAnfrage,
     ): Response<TokenWiderruf>
 
-    /** Alle übrigen Anmeldungen und App-Zugänge in einer Anfrage: Ein Code gilt nur einmal. */
+    /** All other sign-ins and app accesses in one request: a code applies only once. */
     @POST("api/v1/settings/sessions/andere-beenden")
     suspend fun endOther(@Body anfrage: AndereBeendenAnfrage): Response<AndereBeendet>
 
     /**
-     * Den Token tauschen (Rotation). Der alte geht ausdrücklich mit, weil der
-     * Tausch auch dann laufen muss, wenn er gerade erst ersetzt wurde (data/TokenSwap).
-     * Ein `Call` zum direkten Ausführen, nicht `suspend`: Die abgewiesenen Anfragen
-     * warten im Interceptor und belegen den Dispatcher; über ihn käme der Tausch nie dran.
+     * Swap the token (rotation). The old one explicitly goes along because the
+     * swap must also run when it has only just been replaced (data/TokenSwap).
+     * A `Call` for direct execution, not `suspend`: the rejected requests
+     * wait in the interceptor and occupy the dispatcher; via it the swap would never get its turn.
      */
     @POST("api/v1/auth/token-rotieren")
     fun rotateToken(@Header("Authorization") bearer: String): retrofit2.Call<TokenRotation>
 
     /**
-     * Das Design — ohne Anmeldung die Vorgabe des Verwalters (Anmeldebildschirm),
-     * mit Token das des Kontos. Der ServerWaechter hängt den Token an.
+     * The design — without sign-in the admin's default (sign-in screen),
+     * with a token the account's. The ServerWaechter attaches the token.
      */
     @GET("api/v1/settings/theme")
     suspend fun getAppTheme(): Response<AppThemeResponse>
 
-    /** Eigenes Design des Kontos; "" heisst „Vorgabe des Verwalters“. */
+    /** Own design of the account; "" means „the admin's default“. */
     @POST("api/v1/settings/user/theme")
     suspend fun setOwnDesign(@Body body: Map<String, String>): Response<AppThemeResponse>
 
@@ -169,9 +169,9 @@ interface AccountApi {
     suspend fun getDefaultCondition(): Response<DefaultConditionResponse>
 
     // User-level default condition (each user can override).
-    // Muss über /api/v1/ laufen (Bearer-Token) — der frühere
-    // /api/settings/...-Pfad war session-only (requireLogin) und schlug mit
-    // Token still fehl, sodass der in der App gesetzte Default nie ankam.
+    // Must run via /api/v1/ (bearer token) — the former
+    // /api/settings/... path was session-only (requireLogin) and silently failed with a
+    // token, so that the default set in the app never arrived.
     @POST("api/v1/settings/user/default-condition")
     suspend fun setUserDefaultCondition(
         @Body body: Map<String, String>

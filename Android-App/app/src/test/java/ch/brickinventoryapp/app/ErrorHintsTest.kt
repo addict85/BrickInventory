@@ -33,13 +33,13 @@ import org.robolectric.annotation.Config
 import java.util.Locale
 
 /**
- * Wo die App ewig laden oder einen toten Knopf zeigen könnte, steht ein Grund und ein
- * Weg weiter: Katalog-Detail im Fehler, Kamera dauerhaft verweigert.
+ * Where the app could load forever or show a dead button, a reason and a
+ * way forward are shown: catalog detail in error, camera permanently denied.
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   katalog-detail-ewig-laden      Detail ohne Fehlerzweig, nur der Kringel → rot „scheitert das Katalog-Detail, steht …“
- *   kamera-hinweis-ohne-weg        Hinweis zeigt trotz Sperre nur „Erlauben“ → rot „ist die Kamera dauerhaft …“
- *   kamera-hinweis-ohne-zweck      Hinweis ohne Zweck und ohne Eintippen → rot „fehlt die Kamera, sagt …“
+ * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ *   katalog-detail-ewig-laden      detail without error branch, only the spinner → red “if the catalog detail fails, the reason …”
+ *   kamera-hinweis-ohne-weg        hint shows only „Erlauben“ despite the block → red “if the camera is permanently …”
+ *   kamera-hinweis-ohne-zweck      hint without purpose and without typing → red “if the camera is missing, the hint …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "de-rCH-w411dp-h891dp-port-xxhdpi")

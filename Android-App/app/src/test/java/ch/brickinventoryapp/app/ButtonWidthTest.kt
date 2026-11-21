@@ -4,40 +4,40 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Ein arbeitender Knopf darf seine Beschriftung nicht verlieren.
+ * A working button must not lose its label.
  *
- * ── Warum dieselbe Regel hier ───────────────────────────────────────────────
+ * ── Why the same rule here ───────────────────────────────────────────────────
  *
- * Die App macht an derselben Stelle dasselbe, nur mit anderen Mitteln: Drei
- * Knoepfe im Teilelisten-Bildschirm ersetzten waehrend der Arbeit ihren ganzen
- * Inhalt — Symbol UND Beschriftung — durch einen 16.dp-Kreisel. Der Knopf
- * schrumpft damit von seiner Beschriftungsbreite auf Kreiselbreite. Webapp und
- * App sollen gleich aussehen; ein Flackern, das nur in der Webapp behoben ist,
- * waere das Gegenteil.
+ * The app does the same thing in the same place, only with other means: three
+ * buttons in the parts list screen replaced their whole content during work
+ * — icon AND label — with a 16.dp spinner. The button thus
+ * shrinks from its label width to spinner width. Web app and
+ * app should look the same; a flicker fixed only in the web app
+ * would be the opposite.
  *
- * Richtig ist, was SettingsScreen schon vorgemacht hat (Knopf „Suchen"): Der
- * Kreisel tritt NEBEN die Beschriftung, nicht an ihre Stelle.
+ * Right is what SettingsScreen already showed (button „Suchen"): the
+ * spinner steps NEXT to the label, not into its place.
  *
- * ── Was die Regel ausnimmt ──────────────────────────────────────────────────
+ * ── What the rule exempts ────────────────────────────────────────────────────
  *
- * Knoepfe mit festgelegter Breite — fillMaxWidth(), weight(), width(), size().
- * Dort aendert der Tausch nichts an der Breite, und genau so arbeiten der
- * Anmeldeknopf und die CSV-Knoepfe in den Einstellungen.
+ * Buttons with a fixed width — fillMaxWidth(), weight(), width(), size().
+ * There the swap changes nothing about the width, and that is exactly how the
+ * sign-in button and the CSV buttons in the settings work.
  *
- * ── Gegenprobe (durchgefuehrt, Ergebnis im Commit) ──────────────────────────
- * Die drei Stellen in PartsListScreen auf die alte Form zurueckgedreht → die
- * Regel meldet genau diese drei.
+ * ── Counter-check (performed, result in the commit) ──────────────────────────
+ * The three places in PartsListScreen turned back to the old form → the
+ * rule reports exactly these three.
  */
 class ButtonWidthTest {
 
     /**
-     * Kommentarzeilen raus, Zeichenketten leeren.
+     * Remove comment lines, empty strings.
      *
-     * Beides ist noetig: Ein Kommentar, der „Text(" erwaehnt, machte die Regel
-     * sonst blind (diese Falle hat in diesem Projekt schon mehrfach
-     * zugeschlagen), und eine Klammer in einer Zeichenkette wuerfe die
-     * Klammerbilanz um. Zeilenumbrueche bleiben stehen, damit die gemeldete
-     * Zeilennummer stimmt.
+     * Both are necessary: a comment that mentions „Text(" would otherwise make the rule
+     * blind (this trap has struck several times in this project
+     * already), and a bracket in a string would upset the
+     * bracket balance. Line breaks stay so that the reported
+     * line number is right.
      */
     private fun code(roh: String): String {
         val withoutComment = roh.lines().joinToString("\n") {
@@ -62,7 +62,7 @@ class ButtonWidthTest {
                     ende = minOf(j + 1, withoutComment.length)
                 }
                 sb.append("\"\"")
-                // Umbrueche aus mehrzeiligen Zeichenketten erhalten.
+                // Keep line breaks from multi-line strings.
                 repeat(withoutComment.substring(i, ende).count { z -> z == '\n' }) { sb.append('\n') }
                 i = ende
                 continue
@@ -73,7 +73,7 @@ class ButtonWidthTest {
         return sb.toString()
     }
 
-    /** Das Ende der Klammer- bzw. Blockgruppe, die bei [auf] beginnt. */
+    /** The end of the bracket or block group that begins at [auf]. */
     private fun groupEnd(s: String, auf: Int, zu: Char): Int {
         val offen = s[auf]
         var tiefe = 0
@@ -87,8 +87,8 @@ class ButtonWidthTest {
     }
 
     /**
-     * Steht die Beschriftung AUSSCHLIESSLICH im anderen Zweig als der Kreisel ab [spinner]?
-     * Dann verschwindet sie waehrend der Arbeit; steht sie daneben, ist alles gut.
+     * Is the label EXCLUSIVELY in the other branch than the spinner from [spinner]?
+     * Then it disappears during work; if it stands next to it, all is well.
      */
     private fun losesLabel(inhalt: String, spinner: Int): Boolean {
         val sonst = inhalt.indexOf("else", spinner)
@@ -96,7 +96,7 @@ class ButtonWidthTest {
         return branchAfter(inhalt, sonst)?.contains("Text(") == true
     }
 
-    /** Der Zweig hinter `else` ab [sonst]: Block oder einzelner Aufruf. */
+    /** The branch after `else` from [sonst]: block or single call. */
     private fun branchAfter(inhalt: String, sonst: Int): String? {
         var p = sonst + 4
         while (p < inhalt.length && inhalt[p].isWhitespace()) p++
@@ -114,7 +114,7 @@ class ButtonWidthTest {
         return i
     }
 
-    /** Feste Breite: dort aendert der Tausch nichts. */
+    /** Fixed width: there the swap changes nothing. */
     private fun fixedWidth(brackets: String): Boolean =
         brackets.contains("fillMaxWidth") || brackets.contains("weight(") ||
             brackets.contains(".width(") || brackets.contains(".size(")
@@ -123,8 +123,8 @@ class ButtonWidthTest {
     fun `no button hides its label behind the spinner`() {
         val dateien = Quellen.root
             .walkTopDown().filter { it.extension == "kt" }.toList()
-        // Untergrenze: ein leerer Dateilauf liesse die Pruefung stillschweigend
-        // bestehen.
+        // Lower bound: an empty file walk would let the check pass
+        // silently.
         check(dateien.size >= 20) { "Zu wenige Kotlin-Dateien gefunden (${dateien.size}) — Pfad veraltet?" }
 
         val flicker = mutableListOf<String>()
@@ -140,7 +140,7 @@ class ButtonWidthTest {
                 val brackets = s.substring(bracketOn, bracketTo + 1)
                 pos = bracketTo + 1
 
-                // Der Inhalt steht als angehaengter Block hinter den Klammern.
+                // The content stands as a trailing block after the brackets.
                 var m = bracketTo + 1
                 while (m < s.length && s[m].isWhitespace()) m++
                 if (m >= s.length || s[m] != '{') continue

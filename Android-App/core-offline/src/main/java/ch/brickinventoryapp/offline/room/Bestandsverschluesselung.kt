@@ -11,10 +11,10 @@ import java.io.IOException
 import java.util.concurrent.atomic.AtomicReference
 
 /**
- * Die Datenbank des Bestands (Inventar, Kaufpreise, Ausgang) liegt mit SQLCipher
- * verschlüsselt; ihr Schlüssel ist aus dem [Ablageschluessel] abgeleitet. Vorbereitet
- * wird erst beim ersten Öffnen, auf Rooms Faden: Keystore und die einmalige Übernahme
- * eines Klartext-Altbestands gehören nicht auf den Hauptfaden.
+ * The stock database (inventory, purchase prices, outbox) lies encrypted with SQLCipher;
+ * its key is derived from the [Ablageschluessel]. Preparation happens
+ * only on first opening, on Room's thread: keystore and the one-time takeover
+ * of a plaintext legacy stock do not belong on the main thread.
  */
 internal class EncryptedInventoryFactory(
     private val context: Context,
@@ -28,7 +28,7 @@ internal class EncryptedInventoryFactory(
             prepare(datei, passwort, ablage.newCreated)
             SupportOpenHelperFactory(passwort).create(configuration)
         }
-        // Beim Abmelden (Ablageschluessel.erneuere): Mit dem alten Schlüssel bleibt nichts liegen.
+        // On sign-out (Ablageschluessel.erneuere): nothing stays behind with the old key.
         ablage.beforeRenewal {
             helper.schliesse()
             deleteDatabase(datei)
@@ -42,8 +42,8 @@ internal class EncryptedInventoryFactory(
 }
 
 /**
- * Reicht an den eigentlichen Helfer weiter, den es erst beim ersten Zugriff gibt. Nach
- * einem neuen Ablageschlüssel ([stand]) wird er neu gebaut, leer und mit dem neuen.
+ * Passes on to the actual helper, which exists only at first access. After
+ * a new store key ([stand]) it is rebuilt, empty and with the new one.
  */
 private class LaterOpened(
     override val databaseName: String?,
@@ -64,7 +64,7 @@ private class LaterOpened(
         }
     }
 
-    /** Ohne eigene Sperre: Der Aufruf kommt unter der Sperre des Ablageschlüssels. */
+    /** Without its own lock: the call comes under the store key's lock. */
     fun schliesse() {
         innen.getAndSet(null)?.second?.close()
     }
@@ -78,11 +78,11 @@ private class LaterOpened(
     override fun close() = schliesse()
 }
 
-/** SQLCipher nimmt x'…' als fertigen Schlüssel, ohne die langsame Ableitung aus einem Passwort. */
+/** SQLCipher takes x'…' as a ready key, without the slow derivation from a password. */
 internal fun sqlcipherPassword(schluessel: ByteArray): ByteArray =
     ("x'" + schluessel.joinToString("") { "%02x".format(it) } + "'").toByteArray(Charsets.US_ASCII)
 
-/** Liegt hier eine unverschlüsselte SQLite-Datei? Verschlüsselt beginnt sie mit Zufall. */
+/** Is there an unencrypted SQLite file here? Encrypted, it starts with randomness. */
 internal fun isPlaintextDatabase(datei: File): Boolean {
     if (!datei.isFile || datei.length() < HEADER.size) return false
     val anfang = ByteArray(HEADER.size)
@@ -93,9 +93,9 @@ internal fun isPlaintextDatabase(datei: File): Boolean {
 private val HEADER = "SQLite format 3\u0000".toByteArray(Charsets.US_ASCII)
 
 /**
- * Altbestand im Klartext einmal übernehmen (sqlcipher_export). Verschlüsselt mit einem
- * verlorenen Schlüssel ist er nicht mehr zu lesen: Dann beginnt die Ablage leer, der
- * Server hat den Bestand; nur noch nicht gesendete Änderungen gehen verloren.
+ * Take over a plaintext legacy stock once (sqlcipher_export). Encrypted with a
+ * lost key it can no longer be read: then the store starts empty, the
+ * server has the stock; only changes not yet sent are lost.
  */
 private fun prepare(datei: File, passwort: ByteArray, keyNew: Boolean) {
     when {
@@ -111,7 +111,7 @@ private fun encryptPlaintext(datei: File, passwort: ByteArray) {
     val alt = SQLiteDatabase.openDatabase(datei.path, "", null, SQLiteDatabase.OPEN_READWRITE, null, null)
     try {
         val fassung = alt.version
-        // Pfad aus getDatabasePath, Schlüssel nur Hexziffern: nichts, was das SQL bräche.
+        // Path from getDatabasePath, key only hex digits: nothing that would break the SQL.
         alt.rawExecSQL("ATTACH DATABASE '${ziel.path.replace("'", "''")}' AS neu KEY \"${String(passwort, Charsets.US_ASCII)}\"")
         alt.rawExecSQL("SELECT sqlcipher_export('neu')")
         alt.rawExecSQL("PRAGMA neu.user_version = $fassung")

@@ -9,7 +9,7 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 
-/** Die Android-Seite von Texten und Dateien bleibt in core-data; die anderen sehen nur die Schnittstellen. */
+/** The Android side of texts and files stays in core-data; the others see only the interfaces. */
 @Module
 @InstallIn(SingletonComponent::class)
 internal abstract class FileModule {

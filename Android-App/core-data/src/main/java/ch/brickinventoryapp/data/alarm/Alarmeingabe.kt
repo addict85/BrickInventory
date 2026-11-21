@@ -3,32 +3,32 @@ package ch.brickinventoryapp.data.alarm
 import ch.brickinventoryapp.model.domain.Geld
 
 /**
- * Was aus dem, was jemand ins Schwellenfeld tippt, wird. Gespeichert wird beim Tippen,
- * entprellt, wie der Kaufpreis — nicht erst beim Fokusverlust: Am Telefon tippt man die Zahl,
- * schliesst die Tastatur und geht zurück, und dieser Fokuswechsel kommt nie.
+ * What becomes of what someone types into the threshold field. Saved while typing,
+ * debounced, like the purchase price — not only on focus loss: on the phone one types the number,
+ * closes the keyboard and goes back, and that focus change never comes.
  */
 object Alarmeingabe {
 
     /**
-     * Wie lange Ruhe herrschen muss, bevor gespeichert wird. Dieselbe Zahl wie in der
-     * Webapp (ALARM_RUHE in public/js/admin.js), damit sich dasselbe Feld an beiden
-     * Stellen gleich verhält. 800 ms statt 350 wie bei der Suche: Ein Alarm legt etwas
-     * an, und wer zwischen „24“ und „249.90“ kurz überlegt, soll keine Schwelle bei 24
-     * bekommen, die sofort meldet.
+     * How long it must be quiet before saving. The same number as in the
+     * web app (ALARM_RUHE in public/js/admin.js), so that the same field behaves the same
+     * in both places. 800 ms instead of 350 as for the search: an alert creates something,
+     * and whoever briefly ponders between „24“ and „249.90“ should not get a threshold at 24
+     * that reports immediately.
      */
     const val RUHE_MS = 800L
 
     /**
-     * Die getippte Zeichenkette als Betrag — oder `null`, wenn der Alarm weg soll. Das
-     * Feld zu leeren ist die natürliche Geste, einen Alarm loszuwerden; ein eigener
-     * Knopf wäre ein zweiter Weg für dieselbe Absicht.
+     * The typed string as an amount — or `null` if the alert should go away. Emptying the
+     * field is the natural gesture to get rid of an alert; a separate
+     * button would be a second path for the same intent.
      */
     fun zahl(roh: String): Geld? {
         val z = Geld.fromText(roh.replace(',', '.')) ?: return null
-        // Nicht-positive Schwellen sind kein Alarm, sondern einer, der nie
-        // oder immer meldet. Der Server lehnt sie ebenfalls ab
-        // (pruefeEingabe in utils/preisalarm.ts) — hier faengt es die Anfrage
-        // schon vorher ab.
+        // Non-positive thresholds are no alert but one that never
+        // or always reports. The server rejects them as well
+        // (pruefeEingabe in utils/preisalarm.ts) — here it catches the request
+        // even before.
         return z.takeIf { it.positive }
     }
 }

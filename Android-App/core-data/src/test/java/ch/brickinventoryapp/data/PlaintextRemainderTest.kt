@@ -8,12 +8,12 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Nach dem Update räumt die App die Freigaben der alten Klartext-Erlaubnis und die
- * Filter früherer Fassungen weg und lässt alles andere stehen.
+ * After the update the app clears away the permissions of the old cleartext permission and the
+ * filters of earlier versions and leaves everything else standing.
  *
- * Gegenproben: „klartext_netze“ aus der Liste genommen → rot (der Schlüssel blieb stehen);
- * „lager_“ aus FILTER genommen → rot „die Filter frueherer Fassungen gehen …“
- * (kotlinc lokal; gegenproben/filter-bleiben-im-klartext.patch).
+ * Counter-checks: „klartext_netze“ taken out of the list → red (the key stayed);
+ * „lager_“ taken out of FILTER → red “the filters of earlier versions go …”
+ * (kotlinc locally; gegenproben/filter-bleiben-im-klartext.patch).
  */
 class PlaintextRemainderTest {
 

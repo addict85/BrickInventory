@@ -4,9 +4,9 @@ import java.math.BigDecimal
 import java.math.RoundingMode
 
 /**
- * Ein Betrag in Zehntausendsteln, wie der Server ihn hält (NUMERIC(12,4), Web-App/src/infra/geld.ts):
- * ganzzahlig, damit Summen und Vergleiche nicht an Binärbrüchen hängen. Die Währung steht an Konto
- * oder Antwort, nicht an jedem Betrag; ein Feld daneben trägt sie, wo der Server sie nennt.
+ * An amount in ten-thousandths, as the server holds it (NUMERIC(12,4), Web-App/src/infra/geld.ts):
+ * integral, so that totals and comparisons do not hang on binary fractions. The currency stands on account
+ * or response, not on every amount; a field next to it carries it where the server names it.
  */
 @JvmInline
 value class Geld(val tenThousandths: Long) : Comparable<Geld> {
@@ -20,10 +20,10 @@ value class Geld(val tenThousandths: Long) : Comparable<Geld> {
 
     fun asBigDecimal(): BigDecimal = BigDecimal.valueOf(tenThousandths, PLACES)
 
-    /** Auf Rappen, halbe von der Null weg wie onRappen() des Servers. */
+    /** To centimes, halves away from zero like the server's aufRappen(). */
     fun onRappen(): BigDecimal = asBigDecimal().setScale(2, RoundingMode.HALF_UP)
 
-    /** Für das Wire-Format und für Diagrammhöhen; gerechnet wird mit [tenThousandths]. */
+    /** For the wire format and for chart heights; calculation uses [tenThousandths]. */
     fun asDouble(): Double = tenThousandths / FACTOR.toDouble()
 
     override fun toString(): String = asBigDecimal().toPlainString()
@@ -33,17 +33,17 @@ value class Geld(val tenThousandths: Long) : Comparable<Geld> {
         private const val FACTOR = 10_000L
         val NULL = Geld(0)
 
-        /** Wie inZehntel4() des Servers; was keine endliche Zahl ist, ist kein Betrag. */
+        /** Like the server's inZehntel4(); what is not a finite number is not an amount. */
         fun aus(betrag: Double): Geld? = if (betrag.isFinite()) Geld(Math.round(betrag * FACTOR)) else null
 
         fun aus(betrag: BigDecimal): Geld = Geld(betrag.setScale(PLACES, RoundingMode.HALF_UP).unscaledValue().toLong())
 
-        /** Ein Betrag als Text des Servers („12.50“); unlesbar heisst kein Betrag. */
+        /** An amount as the server's text („12.50“); unreadable means no amount. */
         fun fromText(text: String?): Geld? = text?.trim()?.toBigDecimalOrNull()?.let { aus(it) }
     }
 }
 
 fun Double?.asMoney(): Geld? = this?.let { Geld.aus(it) }
 
-/** Für Pflichtfelder: Was keine endliche Zahl ist, zählt als null, statt die ganze Antwort zu verwerfen. */
+/** For required fields: what is not a finite number counts as null instead of discarding the whole response. */
 fun Double.asMoneyRequired(): Geld = Geld.aus(this) ?: Geld.NULL

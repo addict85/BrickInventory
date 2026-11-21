@@ -39,17 +39,17 @@ import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
 
 /**
- * Die Preisalarm-Übersicht unter „Mehr“, gezeichnet gegen den Testserver: Sie holt ihre
- * Alarme selbst, ändert und löscht über die Route des Sets und löscht erst nach der
- * Rückfrage. Eine Zeile öffnet ihr Set nur, wenn es in der Sammlung liegt, und der
- * Zustand steht als Wort da, nicht nur als Farbe — in beiden Sprachen.
+ * The price alert overview under “More”, drawn against the test server: it fetches its
+ * alerts itself, changes and deletes via the set's route and deletes only after the
+ * confirmation. A row opens its set only if it is in the collection, and the
+ * state stands as a word, not only as a color — in both languages.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   preisalarm-laedt-nicht         observeLoadOn der Übersicht gestrichen → rot „die Übersicht holt …“
- *   preisalarm-loescht-sofort      der Mülleimer löscht ohne Rückfrage → rot „die Übersicht holt …“
- *   preisalarm-zeile-immer-offen   jede Zeile anklickbar → rot „eine Zeile öffnet …“
- *   preisalarm-zustand-gleich      die Plakette sagt immer „Aktiv“ → rot „eine Zeile öffnet …“
- *   preisalarm-texte-gleich        alerts_fired gleich alerts_armed (de) → rot „die beiden Zustände …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   preisalarm-laedt-nicht         observeLoadOn of the overview deleted → red “the overview fetches …”
+ *   preisalarm-loescht-sofort      the trash can deletes without confirmation → red “the overview fetches …”
+ *   preisalarm-zeile-immer-offen   every row clickable → red “a row opens …”
+ *   preisalarm-zustand-gleich      the badge always says „Aktiv“ → red “a row opens …”
+ *   preisalarm-texte-gleich        alerts_fired equal to alerts_armed (de) → red “the two states …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -84,7 +84,7 @@ class PriceAlertsDisplayTest {
             override suspend fun lies(datei: FileRef): Pair<String?, ByteArray>? = null
         }))
 
-    /** Zeigt die Übersicht und wartet, bis sie ihre Alarme geholt hat; [geoeffnet] sammelt Klicks auf Sets. */
+    /** Shows the overview and waits until it has fetched its alerts; [geoeffnet] collects clicks on sets. */
     private fun zeige(geoeffnet: MutableList<String> = mutableListOf()): SettingsViewModel {
         world.paths.antworten["/api/v1/alerts"] = alerts
         world.paths.antworten["/api/v1/sets/75192-1/alert"] = """{"success":true}"""

@@ -33,8 +33,8 @@ import ch.brickinventoryapp.security.Transcript
 import androidx.compose.ui.window.DialogProperties
 
 /**
- * Die Frage nach einem Zertifikat, das die App nicht von selbst annimmt. Der Fingerabdruck
- * steht in derselben Schreibweise da wie in der Webapp, damit man ihn vergleichen kann.
+ * The question about a certificate that the app does not accept by itself. The fingerprint
+ * is shown in the same notation as in the web app so that it can be compared.
  */
 @Composable
 fun CertificateDialog(
@@ -48,7 +48,7 @@ fun CertificateDialog(
     else CertificateQuestionDialog(frage, userCaAn, trustOn, onNutzerCa, onAbbrechen)
 }
 
-/** Alles ausser CODE_ABWEICHUNG: Vertrauen nach Vergleich oder Abtippen. */
+/** Everything except CODE_ABWEICHUNG: trust after comparing or typing. */
 @Composable
 private fun CertificateQuestionDialog(
     frage: CertificateUnresolved,
@@ -59,7 +59,7 @@ private fun CertificateQuestionDialog(
 ) {
     var eingabe by rememberSaveable(frage.fingerabdruck) { mutableStateOf("") }
     var finding by remember(frage.fingerabdruck) { mutableStateOf<Transcript?>(null) }
-    // Beim Erstkontakt mit CT-Pflicht freiwillig: Wer abtippt, sieht wie sonst nur den Anfang.
+    // Voluntary on first contact with CT requirement: whoever types sees only the beginning as usual.
     var typeInSelected by rememberSaveable(frage.fingerabdruck) { mutableStateOf(false) }
     val host = frage.schluessel.substringBeforeLast(':')
     val (titel, text) = titleAndText(frage)
@@ -90,11 +90,11 @@ private fun CertificateQuestionDialog(
                         help = stringResource(inputHelp(frage.art)),
                         fehler = { gezaehlt -> transcriptError(finding, gezaehlt) },
                     )
-                    // Unter einer öffentlichen CA trägt der Code keinen Fingerabdruck; dort hilft er nicht.
+                    // Under a public CA the code carries no fingerprint; there it does not help.
                     if (!oeffentlich) Text(stringResource(R.string.zert_geaendert_qr), style = MaterialTheme.typography.bodySmall)
                 }
-                // Die einzige Stelle, an der nach Nutzer-CAs gefragt wird: beim Fehler,
-                // mit Erklärung. Danach fragt der Dialog erneut (NUTZER_CA), wieder zum Abtippen.
+                // The only place where user CAs are asked about: on the error,
+                // with an explanation. Afterwards the dialog asks again (NUTZER_CA), again for typing.
                 if (frage.art == CertificateUnresolved.Art.UNBEKANNTE_CA && !userCaAn) {
                     TextButton(onClick = onNutzerCa) { Text(stringResource(R.string.zert_nutzer_ca)) }
                 }
@@ -109,7 +109,7 @@ private fun CertificateQuestionDialog(
     )
 }
 
-/** Ein geänderter Schlüssel färbt den Knopf als Warnung; sonst der gewohnte Knopf. */
+/** A changed key colors the button as a warning; otherwise the usual button. */
 @Composable
 private fun TrustButton(geaendert: Boolean, aktiv: Boolean, onClick: () -> Unit) {
     TextButton(
@@ -120,12 +120,12 @@ private fun TrustButton(geaendert: Boolean, aktiv: Boolean, onClick: () -> Unit)
     ) { Text(stringResource(if (geaendert) R.string.zert_vertrauen_neu else R.string.zert_vertrauen)) }
 }
 
-/** Lehnt die App ab, obwohl die Abschrift passt, steht trotzdem „passt nicht“ da — sonst bliebe der Dialog stumm. */
+/** If the app rejects although the transcript matches, “does not match” is still shown — otherwise the dialog would stay mute. */
 private fun findingAfter(angenommen: Boolean, eingabe: String, fingerabdruck: String): Transcript? =
     if (angenommen) null
     else Transcript.von(eingabe, fingerabdruck).takeIf { it != Transcript.PASST } ?: Transcript.FITS_NOT
 
-/** Bisheriger und neuer Fingerabdruck; beim Abtippen nur der Anfang. */
+/** Previous and new fingerprint; when typing only the beginning. */
 @Composable
 private fun FingerprintDisplay(frage: CertificateUnresolved, writeOff: Boolean, geaendert: Boolean) {
     frage.erwartet?.let {
@@ -134,20 +134,20 @@ private fun FingerprintDisplay(frage: CertificateUnresolved, writeOff: Boolean, 
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
-    // Was abzutippen ist, steht nicht da: Sonst schriebe man es vom Bildschirm
-    // eines Angreifers ab statt aus der Webapp. Der Anfang zeigt nur, welche Zeile.
+    // What is to be typed is not shown: otherwise one would copy it from an attacker's
+    // screen instead of from the web app. The beginning only shows which line.
     Text(stringResource(if (writeOff) R.string.zert_beginnt_mit else R.string.zert_fingerabdruck),
         style = MaterialTheme.typography.labelMedium)
     Text(if (writeOff) fingerprintStart(frage.fingerabdruck) else fingerprintReadable(frage.fingerabdruck),
         fontFamily = FontFamily.Monospace,
-        // Ohne Abtippen ist der Vergleich die ganze Prüfung: gross genug zum Lesen.
+        // Without typing the comparison is the whole check: large enough to read.
         style = if (writeOff) MaterialTheme.typography.bodySmall else MaterialTheme.typography.titleMedium,
         color = if (geaendert) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface)
 }
 
 /**
- * Server und gescannter Code nennen verschiedene Schlüssel: nichts zu bestätigen, nur
- * zu erklären. Beide Werte stehen ganz da, abgetippt wird hier nichts.
+ * Server and scanned code name different keys: nothing to confirm, only
+ * to explain. Both values are shown in full, nothing is typed here.
  */
 @Composable
 private fun CodeDeviationDialog(frage: CertificateUnresolved, onSchliessen: () -> Unit) {
@@ -174,13 +174,13 @@ private fun CodeDeviationDialog(frage: CertificateUnresolved, onSchliessen: () -
 }
 
 /**
- * Ein Tipp neben den Dialog verwarf das halb Abgetippte. Zurück schliesst nur, solange
- * nichts getippt ist; daneben tippen nie — Abbrechen bleibt der ausdrückliche Weg.
+ * A tap next to the dialog discarded the half-typed input. Back closes only as long as
+ * nothing is typed; tapping outside never — Cancel stays the explicit way.
  */
 internal fun closable(eingabe: String) =
     DialogProperties(dismissOnBackPress = eingabe.isEmpty(), dismissOnClickOutside = false)
 
-/** „Zu kurz“ sagt, wie viel fehlt; „passt nicht“ heisst, die Zeichen stimmen nicht. */
+/** “Too short” says how much is missing; “does not match” means the characters are wrong. */
 @Composable
 private fun transcriptError(finding: Transcript?, gezaehlt: Int): String? = when (finding) {
     null, Transcript.PASST -> null
@@ -188,7 +188,7 @@ private fun transcriptError(finding: Transcript?, gezaehlt: Int): String? = when
     Transcript.FITS_NOT -> stringResource(R.string.zert_eingabe_falsch)
 }
 
-/** Woher die Abschrift kommt: Schlüssel einer öffentlichen CA kennt die Webapp nicht, nur der Browser. */
+/** Where the transcript comes from: the web app does not know keys of a public CA, only the browser does. */
 private fun inputHelp(art: CertificateUnresolved.Art): Int = when (art) {
     CertificateUnresolved.Art.SCHLUESSEL_NEU -> R.string.zert_schluessel_neu_eingabe
     CertificateUnresolved.Art.ERSTKONTAKT -> R.string.zert_erstkontakt_eingabe
@@ -196,7 +196,7 @@ private fun inputHelp(art: CertificateUnresolved.Art): Int = when (art) {
     else -> R.string.zert_unbekannt_eingabe
 }
 
-/** Überschrift und Erklärung je Art der Frage; ohne CT-Pflicht erklärt der Erstkontakt das Abtippen. */
+/** Heading and explanation per kind of question; without CT requirement the first contact explains typing. */
 private fun titleAndText(frage: CertificateUnresolved): Pair<Int, Int> = when (frage.art) {
     CertificateUnresolved.Art.ERSTKONTAKT -> R.string.zert_titel_erstkontakt to
         if (frage.transcriptNeeded) R.string.zert_text_erstkontakt_abtippen else R.string.zert_text_erstkontakt

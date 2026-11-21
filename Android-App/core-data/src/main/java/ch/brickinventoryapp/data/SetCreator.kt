@@ -11,9 +11,9 @@ import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
 
 /**
- * Ein Set anlegen und dabei die Schritte des Servers mitbekommen. Im Gerät
- * über den Ereignisstrom ([SetCreateSseClient]); die Schnittstelle lässt die
- * Erfassung ohne Netz und Einstellungen prüfen.
+ * Create a set and follow the server's steps along the way. On the device
+ * via the event stream ([SetCreateSseClient]); the interface lets
+ * adding be checked without network and settings.
  */
 interface SetCreator {
     fun anlegen(
@@ -22,21 +22,21 @@ interface SetCreator {
     ): Flow<SetCreateStep>
 }
 
-/** Was der Server beim Anlegen meldet; der letzte Schritt ist Fertig, Fehler oder NoConnection. */
+/** What the server reports during creation; the last step is Fertig, Fehler or NoConnection. */
 sealed class SetCreateStep {
     data class Stammdaten(val name: String?) : SetCreateStep()
     object Bild : SetCreateStep()
     object FastDone : SetCreateStep()
     data class Fertig(val ergebnis: SetRecorded) : SetCreateStep()
-    /** Der Satz des Servers; leer: Der Strom brach ab, ob das Set angelegt wurde, ist offen. */
+    /** The server's sentence; empty: the stream broke off, whether the set was created is open. */
     data class Fehler(val meldung: String) : SetCreateStep()
-    /** Keine Verbindung zustande gekommen — die Anfrage hat den Server nie erreicht. */
+    /** No connection established — the request never reached the server. */
     object NoConnection : SetCreateStep()
 }
 
 /**
- * Das Anlegen über den Ereignisstrom zieht die Ablage nach wie jeder andere
- * Schreibweg: Die Galerie zeigt das Set, sobald der Server „fertig“ meldet.
+ * Creating via the event stream updates the store like every other
+ * write path: the gallery shows the set as soon as the server reports „done“.
  */
 internal class CreateWithStore @Inject constructor(
     private val strom: SetCreateSseClient,

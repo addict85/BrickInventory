@@ -86,26 +86,26 @@ import android.os.Looper
 import org.robolectric.Shadows.shadowOf
 
 /**
- * Eine Sprache der Oberfläche, ausgeführt statt im Quelltext gesucht: Filter als Chips,
- * Sortierung der Minifiguren, „hinzufügen“ überall, Primärblau nur für Handlungen, ein Kopf
- * für Teiledetails und ein Wort für „kein Preis“, Lesebreite auf dem Tablet, „Rückgängig“
- * nach dem Löschen, Listenzeilen ab grosser Schrift und eine Jahresleiste für alle.
+ * One language of the UI, executed instead of searched in the source: filters as chips,
+ * sorting of the minifigures, „hinzufügen“ everywhere, primary blue only for actions, one header
+ * for part details and one word for „kein Preis“, reading width on the tablet, „Rückgängig“
+ * after deleting, list rows from large font on and a year bar for all.
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   kaufpreise-volle-breite       Kaufpreise ohne centeredUntil → rot „Kaufpreise stehen auf dem Tablet …“
- *   hintergrund-volle-breite      Hintergrundarbeiten ohne centeredUntil → rot „Hintergrundarbeiten stehen …“
- *   galerie-kachel-bei-130        Listenzeile wieder nur über largeFont() → rot „Galerie zeigt bei 130 …“
- *   jahresleiste-28dp             Spur wieder 28 dp → rot „year bar is 48 dp wide …“
- *   jahresleiste-ohne-sprung      TalkBack-Tipp öffnet kein Menü → rot „Jahresleiste springt …“
- *   thema-wieder-blau             Thema der Kachel wieder in primary → rot „Thema und Nummern …“
- *   teil-erfassen-titel           parts_add_title wieder „Teil erfassen“ → rot „Texte sagen hinzufuegen …“
- *   galerie-ohne-filterchips      Galerie reicht keine aktiven Filter → rot „aktiver Filter steht als Chip …“
- *   figuren-nummer-unsortiert     NUMMER sortiert nicht → rot „minifigures can be sorted“
- *   teil-loescht-sofort           Vormerken löscht gleich → rot „Teil loeschen bietet Rueckgaengig …“
- *   lagerort-gleich-geloescht     Vormerken löscht gleich → rot „Lagerort loeschen bietet Rueckgaengig …“
- *   kauf-loescht-sofort           Vormerken löscht gleich → rot „Kauf loeschen bietet Rueckgaengig …“
- *   teil-ohne-preis-strich        Marktwert ohne Preis wieder „—“ → rot „Teil ohne Marktpreis …“
- *   setitem-eigener-kopf          Teil aus Sets wieder mit 140-dp-Bild → rot „Teil aus Sets hat denselben Kopf …“
+ * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ *   kaufpreise-volle-breite       purchase prices without centeredUntil → red “purchase prices stand in form width on the tablet …”
+ *   hintergrund-volle-breite      background work without centeredUntil → red “background work stands …”
+ *   galerie-kachel-bei-130        list row again only via largeFont() → red “gallery shows list rows at 130 …”
+ *   jahresleiste-28dp             track again 28 dp → red “year bar is 48 dp wide …”
+ *   jahresleiste-ohne-sprung      TalkBack tap opens no menu → red “year bar jumps …”
+ *   thema-wieder-blau             theme of the tile again in primary → red “theme and numbers …”
+ *   teil-erfassen-titel           parts_add_title again „Teil erfassen“ → red “texts say add …”
+ *   galerie-ohne-filterchips      gallery passes no active filters → red “active filter stands as a chip …”
+ *   figuren-nummer-unsortiert     NUMMER does not sort → red “minifigures can be sorted“
+ *   teil-loescht-sofort           marking deletes right away → red “deleting a part offers undo …”
+ *   lagerort-gleich-geloescht     marking deletes right away → red “deleting a storage location offers undo …”
+ *   kauf-loescht-sofort           marking deletes right away → red “deleting a purchase offers undo …”
+ *   teil-ohne-preis-strich        market value without price again „—“ → red “part without market price …”
+ *   setitem-eigener-kopf          part from sets again with 140 dp image → red “part from sets has the same header …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -160,7 +160,7 @@ class UiUniformTest {
 
     private fun requests(praefix: String) = world.paths.requests.filter { it.startsWith(praefix) }
 
-    /** Die Uhr steht; ein halber Moment vergeht, ohne dass die Snackbar abläuft. */
+    /** The clock stands; half a moment passes without the snackbar expiring. */
     private fun kurz() {
         compose.mainClock.autoAdvance = false
         repeat(5) {
@@ -184,11 +184,11 @@ class UiUniformTest {
                                  ownerUserId: Int?, storage: String?): Flow<SetCreateStep> = emptyFlow()
         }))
 
-    // ── Tablet: Lesebreite wie die Einstellungen ──
+    // ── Tablet: reading width like the settings ──
 
     private fun linksAbFormEdge(text: String, wo: String) {
         val links = node(text).boundsInRoot.left / dichte
-        // 1280 dp breit, 560 dp Formular mittig: Der Inhalt beginnt frühestens bei 360 dp.
+        // 1280 dp wide, 560 dp form centered: the content begins at 360 dp at the earliest.
         assertTrue("$wo: „$text“ beginnt bei $links dp, nicht in der mittigen Formularbreite", links >= 360f)
     }
 
@@ -218,7 +218,7 @@ class UiUniformTest {
         linksAbFormEdge(ctx.getString(R.string.hintergrund_auftraege), "Hintergrundarbeiten")
     }
 
-    // ── Grosse Schrift: Listenzeilen statt einer Kachel über die ganze Breite ──
+    // ── Large font: list rows instead of one tile across the whole width ──
 
     @Test
     fun `gallery shows list rows at 130 percent`() {
@@ -228,12 +228,12 @@ class UiUniformTest {
             GalleryRoute(vm = vm, erfassung = erfassung(), imageLoader = bilder, onScanBarcode = {}, onSetClick = {})
         }
         val links = node("Millennium Falcon").boundsInRoot.left / dichte
-        // In der Zeile steht das Bild (96 dp) links neben dem Namen; als Kachel stünde er am Rand.
+        // In the row the image (96 dp) stands left of the name; as a tile it would stand at the edge.
         assertTrue("Galerie bei 130 %: Der Name beginnt bei $links dp, also unter einem Bild über die ganze Breite",
             links >= 100f)
     }
 
-    // ── Jahresleiste: 48 dp und ein Sprungmenü für TalkBack und Tastatur ──
+    // ── Year bar: 48 dp and a jump menu for TalkBack and keyboard ──
 
     private val jumpTargets = mutableListOf<Int>()
 
@@ -275,11 +275,11 @@ class UiUniformTest {
         compose.waitForIdle()
         compose.onNodeWithText("2023").performClick()
         compose.waitForIdle()
-        // 2024 hat zwei Sets: Der Jahrgang 2023 beginnt an der Stelle 2.
+        // 2024 has two sets: the year 2023 begins at position 2.
         assertEquals("Sprungmenü der Jahresleiste", listOf(2), jumpTargets)
     }
 
-    // ── Texte: „hinzufügen“ wie im Web, ein Name für den Preisvergleich ──
+    // ── Texts: „hinzufügen“ as on the web, one name for the price comparison ──
 
     @Test
     fun `texts say add and price comparison`() {
@@ -297,7 +297,7 @@ class UiUniformTest {
         }
     }
 
-    // ── Primärblau nur für Handlungen ──
+    // ── Primary blue only for actions ──
 
     private fun withoutMainColor(text: String, wo: String) {
         val t = layout(node(text))
@@ -317,7 +317,7 @@ class UiUniformTest {
         withoutMainColor("75192-1", "Nummer der Kachel")
     }
 
-    // ── Aktive Filter als Chips, Sortierung der Minifiguren ──
+    // ── Active filters as chips, sorting of the minifigures ──
 
     @Test
     fun `active filter stands as a chip below the search and can be removed`() {
@@ -349,7 +349,7 @@ class UiUniformTest {
         assertEquals("Minifiguren nach Menge", "sw0002", vm.minifigsState.value.minifigs.first().figNumber)
     }
 
-    // ── Rückgängig nach dem Löschen ──
+    // ── Undo after deleting ──
 
     @Test
     fun `deleting a part offers undo and deletes only afterwards`() {
@@ -406,9 +406,9 @@ class UiUniformTest {
         drive("gelöscht") { requests("DELETE /api/v1/sets/75192-1/acquisitions/1").isNotEmpty() }
     }
 
-    // ── Ein Kopf für Teiledetails, ein Wort für „kein Preis“ ──
+    // ── One header for part details, one word for „kein Preis“ ──
 
-    /** Die Bildfläche zum Antippen (verschmolzen mit dem Bild), nicht das eingerückte Bild darin. */
+    /** The image area for tapping (merged with the image), not the indented image inside it. */
     private fun imageHeight(name: String): Float = compose.onAllNodes(hasContentDescription(name))
         .fetchSemanticsNodes().maxOf { it.boundsInRoot.height } / dichte
 
@@ -445,7 +445,7 @@ class UiUniformTest {
         drive("Teil offen") { vm.setItemState.value.kopf != null }
         compose.waitForIdle()
         assertEquals("Kopf des Teils aus Sets", 200f, imageHeight("Brick 2 x 4"), 1f)
-        // Der Chip zeigt die Farbe in der Sprache der App (de-CH), wie beim selbst erfassten Teil.
+        // The chip shows the color in the app's language (de-CH), as for the self-added part.
         assertTrue("Kennzahlen als Chips wie beim selbst erfassten Teil",
             compose.onAllNodes(hasText(ctx.getString(R.string.setitem_color) + " Rot", substring = true), useUnmergedTree = true)
                 .fetchSemanticsNodes().isNotEmpty())

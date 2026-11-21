@@ -27,14 +27,14 @@ import ch.brickinventoryapp.collection.ui.SammlungZiel
 import ch.brickinventoryapp.parts.ui.TeileZiel
 import coil3.ImageLoader
 
-/** Ein Ziel der unteren Leiste: Route, Symbol und Beschriftung. */
+/** A destination of the bottom bar: route, icon and label. */
 data class Reiter(val ziel: Any, val symbol: @Composable () -> Unit, val beschriftung: String)
 
 /**
- * Die Umgebung aller Bereiche: Sie erfüllt jede Navigationsschnittstelle und
- * verbindet die Bereiche, die einander nicht kennen (Katalog → Erfassung und
- * Merkposten, Teileliste → Scan). Die wenigen ViewModels der Activity kommen über
- * [aktivitaet], erst beim Zeigen gelesen — so lässt sich der Graph ohne Hilt bauen.
+ * The environment of all areas: it fulfils every navigation interface and
+ * connects the areas that do not know each other (catalog → adding and
+ * wishlist item, parts list → scan). The few ViewModels of the activity come via
+ * [aktivitaet], read only when shown — so the graph can be built without Hilt.
  */
 class TargetEnvironment(
     override val navController: NavHostController,
@@ -67,7 +67,7 @@ class TargetEnvironment(
     override fun partListsScan(entry: NavBackStackEntry): PartListsScan =
         partListsEntry(entry, bilder, ::openSet, ::PartListsScan)
 
-    // Die Wege zwischen den Bereichen: Nur hier stehen die Routen fremder Bereiche.
+    // The paths between the areas: only here do the routes of foreign areas appear.
 
     override fun angemeldet() = navController.navigate(SammlungZiel.Gallery) {
         popUpTo<LoginTarget.Login> { inclusive = true }

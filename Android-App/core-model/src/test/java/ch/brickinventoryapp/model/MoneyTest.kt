@@ -14,13 +14,13 @@ import java.time.Instant
 import java.util.Locale
 
 /**
- * Geld rechnet in Zehntausendsteln wie der Server (Web-App/src/infra/geld.ts), Zeitpunkte
- * lesen jede Form, die der Server schreibt, und der Kalendertag bleibt der des Servers.
+ * Money calculates in ten-thousandths like the server (Web-App/src/infra/geld.ts), points in time
+ * read every form the server writes, and the calendar day stays that of the server.
  *
- * Gegenproben (Patches unter gegenproben/):
- *   geld-schneidet-ab        Geld.aus schneidet statt zu runden → rot „ein Betrag wird auf vier Stellen gerundet …“
- *   geld-rappen-halb-gerade  onRappen mit HALF_EVEN → rot „rounding to centimes goes half away from zero“
- *   tag-mit-versatz          Instant.kalendertag mit +02:00 statt UTC → rot „der Kalendertag ist der des Servers …“
+ * Counter-checks (patches under gegenproben/):
+ *   geld-schneidet-ab        Geld.aus truncates instead of rounding → red “an amount is rounded to four places …”
+ *   geld-rappen-halb-gerade  onRappen with HALF_EVEN → red “rounding to centimes goes half away from zero”
+ *   tag-mit-versatz          Instant.kalendertag with +02:00 instead of UTC → red “the calendar day is the server's …”
  */
 class MoneyTest {
 
@@ -63,7 +63,7 @@ class MoneyTest {
 
     @Test
     fun `the calendar day is the server's, not that of the device zone`() {
-        // Kurz vor Mitternacht UTC: In einer Zone östlich von UTC wäre es schon der nächste Tag.
+        // Shortly before midnight UTC: in a zone east of UTC it would already be the next day.
         assertEquals("03.09.2026", fmtDatum(Instant.parse("2026-09-03T23:30:00Z"), Locale.GERMANY))
         assertEquals("03.09.26", fmtDatum(zeitpunkt("2026-09-03"), Locale.GERMANY, DateYear.SHORT))
         assertNull(fmtDatum(null as Instant?, Locale.GERMANY))

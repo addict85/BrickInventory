@@ -6,24 +6,24 @@ import ch.brickinventoryapp.model.domain.PdfProgress
 import kotlinx.coroutines.flow.Flow
 import java.io.File
 
-/** Warum ein PDF-Export scheiterte; den Satz bildet die Oberfläche. */
+/** Why a PDF export failed; the UI forms the sentence. */
 sealed interface PdfFailure {
-    /** Ein Abruf scheiterte; die Anzeige formuliert ihn wie jeden anderen Abruf. */
+    /** A fetch failed; the display formulates it like any other fetch. */
     data class Abruf(val fehler: Ergebnis.Fehler) : PdfFailure
 
-    /** Der Server meldet den Auftrag als gescheitert, mit seinem Satz, wenn er einen schickte. */
+    /** The server reports the job as failed, with its sentence if it sent one. */
     data class Auftrag(val satz: String?) : PdfFailure
 }
 
-/** Ausgang eines PDF-Exports: die Datei oder der Grund. */
+/** Outcome of a PDF export: the file or the reason. */
 sealed interface ExportResult {
     data class Datei(val datei: File) : ExportResult
     data class Fehler(val grund: PdfFailure) : ExportResult
 }
 
-/** Der PDF-Export als Vordergrund-Dienst, der länger lebt als der Bildschirm; im Test ein Double. */
+/** The PDF export as a foreground service that lives longer than the screen; in the test a double. */
 interface PartListsExport {
-    /** Wo ein laufender Export steht, null ohne Export. */
+    /** Where a running export stands, null without an export. */
     val fortschritt: Flow<PdfProgress?>
     suspend fun erzeuge(job: Teilelistenauftrag): ExportResult
 }

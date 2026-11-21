@@ -29,7 +29,7 @@ internal object KoroutinenModule {
     @Dispatcher(BrickDispatchers.Main)
     fun haupt(): CoroutineDispatcher = Dispatchers.Main
 
-    // SupervisorJob: Ein gescheiterter Auftrag reisst die anderen nicht mit.
+    // SupervisorJob: a failed job does not drag the others down.
     @Provides
     @Singleton
     @ApplicationScope
@@ -38,8 +38,8 @@ internal object KoroutinenModule {
 }
 
 /**
- * Für Klassen, die Android selbst anlegt (Application, Dienste) und die darum
- * per Feld statt per Konstruktor beliefert werden: ein Typ ohne Qualifier.
+ * For classes that Android creates itself (Application, services) and that are therefore
+ * supplied via a field instead of a constructor: a type without a qualifier.
  */
 class Scopes @Inject constructor(
     @param:ApplicationScope val application: CoroutineScope,

@@ -12,23 +12,23 @@ import ch.brickinventoryapp.testing.TestApi
 import ch.brickinventoryapp.testing.testManagementRepository
 
 /**
- * Drei Verwalter-Handlungen, die die Webapp schon kann, auch in der App: Zeitplan eines
- * Jobs ändern (/v1/admin/job-schedule), fehlende Katalogbilder einreihen
- * (/v1/admin/catalog-images), das globale Design umstellen (/v1/settings/admin/theme).
- * `schedules` aus /api/v1/admin/jobs muss dabei auch gelesen werden, sonst erreicht der
- * Wert niemanden.
+ * Three admin actions the web app can already do, in the app too: change the schedule
+ * of a job (/v1/admin/job-schedule), queue missing catalog images
+ * (/v1/admin/catalog-images), switch the global design (/v1/settings/admin/theme).
+ * `schedules` from /api/v1/admin/jobs must be read in as well, otherwise the
+ * value reaches nobody.
  *
- * Gegen einen Testserver; Zustand und Anzeige prüfen MonitoringReloadTest und
+ * Against a test server; state and display are checked by MonitoringReloadTest and
  * MonitoringJobsDisplayTest (app).
  */
 class ManagementGapsTest {
 
     /**
-     * Ausgeführt gegen einen Testserver. Gegenproben:
-     *   A  `@POST("api/v1/admin/catalog-images")` auf "…/katalogbilder" → rot
-     *   B  setJobSchedule wieder mit `Map<String, Any>` (Stand 8f4f9d3) → rot:
-     *      Der kotlinx-Wandler kann `Any` nicht schreiben, der Zeitplan ging nie
-     *      hinaus. Gefunden beim Umstellen dieses Tests auf einen Testserver.
+     * Executed against a test server. Counter-checks:
+     *   A  `@POST("api/v1/admin/catalog-images")` to "…/katalogbilder" → red
+     *   B  setJobSchedule again with `Map<String, Any>` (state 8f4f9d3) → red:
+     *      the kotlinx converter cannot write `Any`, the schedule never went
+     *      out. Found while switching this test to a test server.
      */
     @Test
     fun `the app calls all three addresses`() {
@@ -49,12 +49,12 @@ class ManagementGapsTest {
         }
     }
 
-    /** Der Server schickt den Zeitplan seit jeher mit; die App liest ihn ein. */
+    /** The server has always sent the schedule along; the app reads it in. */
     @Test
     fun `the schedule is read in and shown`() {
         val r = BrickJson.decodeFromString(JobsResponse.serializer(),
             """{"success":true,"jobs":{},"schedules":{"prices":{"type":"daily","time":"07:05"}}}""")
         assertEquals("07:05", r.schedules["prices"]?.time)
-        // In den Zustand und an die Job-Karte: MonitoringReloadTest und MonitoringJobsDisplayTest (app).
+        // Into the state and onto the job card: MonitoringReloadTest and MonitoringJobsDisplayTest (app).
     }
 }

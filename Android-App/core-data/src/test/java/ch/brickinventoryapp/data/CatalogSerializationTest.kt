@@ -13,16 +13,16 @@ import org.junit.Test
 import ch.brickinventoryapp.model.json.BrickJson
 
 /**
- * Client-seitiger API-Vertrag: Die Katalog-Modelle müssen echte
- * Server-Antworten der /api/v1/catalog-Endpunkte parsen — inklusive unbekannter
- * Zusatzfelder (Server darf erweitern, ohne die App zu brechen) und
- * fehlender optionaler Felder. Die JSON-Payloads entsprechen dem Format,
- * das der Integrationstest des Servers (test/catalog-api.test.js im
- * Manager-Repo) verifiziert.
+ * Client-side API contract: the catalog models must parse real
+ * server responses of the /api/v1/catalog endpoints — including unknown
+ * extra fields (the server may extend without breaking the app) and
+ * missing optional fields. The JSON payloads match the format
+ * that the server's integration test (test/catalog-api.test.js in the
+ * manager repo) verifies.
  */
 class CatalogSerializationTest {
 
-    // Gleiche Konfiguration wie AppModule.provideJson()
+    // Same configuration as AppModule.provideJson()
     private val json = BrickJson
 
     @Test
@@ -83,7 +83,7 @@ class CatalogSerializationTest {
 
     @Test
     fun `unknown extra fields do not break parsing`() {
-        // Server-Erweiterungen (neue Felder) dürfen alte App-Versionen nicht brechen
+        // Server extensions (new fields) must not break old app versions
         val payload = """{
             "success": true, "total": 0, "page": 1, "pages": 1, "sets": [],
             "brandneues_feld": {"x": 1}, "noch_eins": [1, 2, 3]
@@ -126,17 +126,17 @@ class BrickLinkUrlsTest {
 
     @Test
     fun `set number is URL-encoded`() {
-        // Hypothetische Sonderzeichen dürfen die URL nicht zerbrechen
+        // Hypothetical special characters must not break the URL
         val url = BrickLinkUrls.setForSale("10 30-1")
         assertTrue(url.contains("S=10+30-1") || url.contains("S=10%2030-1"))
     }
 }
 
 /**
- * Der Katalog-Detail-Link kommt jetzt fertig vom Server. Diese Tests sichern
- * zweierlei: dass das neue Feld korrekt deserialisiert (auch wenn es fehlt —
- * ältere Server liefern es nicht), und dass der lokale Fallback die
- * BrickLink-Item-Typen richtig abbildet.
+ * The catalog detail link now comes ready from the server. These tests secure
+ * two things: that the new field deserializes correctly (even if it is missing —
+ * older servers do not deliver it), and that the local fallback maps the
+ * BrickLink item types correctly.
  */
 class BrickLinkRefTest {
 
@@ -168,14 +168,14 @@ class BrickLinkRefTest {
 
     @Test
     fun `fallback URL uses the right parameter per type`() {
-        // Set: S= und Nummer MIT Variantensuffix
+        // Set: S= and number WITH variant suffix
         assertTrue(BrickLinkUrls.forSale("75192-1", "SET").contains("?S=75192-1"))
         assertTrue(BrickLinkUrls.forSale("75192-1", "SET").contains("#T=S"))
-        // Gear/Book: G= bzw. B=, BrickLink führt sie ohne Suffix
+        // Gear/Book: G= or B=, BrickLink lists them without suffix
         assertTrue(BrickLinkUrls.forSale("5005358", "GEAR").contains("?G=5005358"))
         assertTrue(BrickLinkUrls.forSale("5005358", "GEAR").contains("#T=G"))
         assertTrue(BrickLinkUrls.forSale("ISBN123", "BOOK").contains("?B=ISBN123"))
-        // Unbekannter Typ fällt auf Set zurück
+        // Unknown type falls back to set
         assertTrue(BrickLinkUrls.forSale("123-1", "WAS_AUCH_IMMER").contains("?S="))
     }
 }

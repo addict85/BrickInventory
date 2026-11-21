@@ -1,10 +1,10 @@
 package ch.brickinventoryapp.model.domain
 
 /**
- * Die Sortierungen der Listen, je Liste ein Typ: Der Server führt je eine Tabelle
- * (SET_SORTS, MERK_SORTS, Katalog), und ein Wert der einen gilt in der anderen nicht.
- * Auf der Leitung und in der Ablage steht die [Setsortierung.kennung]; Unbekanntes
- * liest sich als Vorgabe, wie der Server einen unbekannten Wert behandelt.
+ * The sort orders of the lists, one type per list: the server keeps one table each
+ * (SET_SORTS, MERK_SORTS, catalog), and a value of one does not apply in the other.
+ * On the wire and in the store stands the [Setsortierung.kennung]; unknown
+ * reads as the default, the way the server treats an unknown value.
  */
 
 enum class Setsortierung(val kennung: String) {
@@ -24,7 +24,7 @@ enum class Setsortierung(val kennung: String) {
     }
 }
 
-/** Die Sortierungen der Merkliste (MERK_SORTS): ohne Menge, der Preis ist der Marktpreis. */
+/** The sort orders of the wishlist (MERK_SORTS): without quantity, the price is the market price. */
 enum class Merksortierung(val kennung: String) {
     NEUESTE("added_desc"),
     AELTESTE("added_asc"),
@@ -40,7 +40,7 @@ enum class Merksortierung(val kennung: String) {
     }
 }
 
-/** Die Sortierungen des Katalogs; nach Jahr sortiert zeigt er die Jahresleiste. */
+/** The sort orders of the catalog; sorted by year it shows the year bar. */
 enum class Katalogsortierung(val kennung: String, val afterYear: Boolean = false) {
     JAHR_ABSTEIGEND("year_desc", afterYear = true),
     JAHR_AUFSTEIGEND("year_asc", afterYear = true),
@@ -56,8 +56,8 @@ enum class Katalogsortierung(val kennung: String, val afterYear: Boolean = false
 }
 
 /**
- * Die Reihenfolgen der Minifiguren. Sortiert wird in der App: Der Server liefert die
- * Figuren ganz und nach Name, eine Wahl kennt er nicht. NAME ist seine Reihenfolge.
+ * The orders of the minifigures. Sorting happens in the app: the server delivers the
+ * figures completely and by name, it knows no choice. NAME is its order.
  */
 enum class Figurenordnung {
     NAME, NUMMER, QUANTITY;

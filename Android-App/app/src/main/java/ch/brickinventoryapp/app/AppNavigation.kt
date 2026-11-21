@@ -44,9 +44,9 @@ import ch.brickinventoryapp.app.nav.AppTarget
 import ch.brickinventoryapp.app.nav.moreTarget
 
 /**
- * App-Navigation und Haupt-Gerüst: der NavHost mit allen Routen, die Dialoge, die
- * über jedem Bildschirm stehen, und das MainScaffold (TopBar/BottomBar). Im Paket
- * von MainActivity, damit sie sich ohne Import finden.
+ * App navigation and main scaffold: the NavHost with all routes, the dialogs that
+ * stand above every screen, and the MainScaffold (TopBar/BottomBar). In the package
+ * of MainActivity so that they find each other without an import.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,17 +55,17 @@ fun BrickInventoryRoute(
     imageLoader: coil3.ImageLoader,
 ) {
     val vm = aktivitaet.app
-    // collectAsStateWithLifecycle: Collection stoppt, wenn die App im
-    // Hintergrund ist — kein unnötiges Recomposition-/State-Processing mehr.
+    // collectAsStateWithLifecycle: collection stops when the app is in the
+    // background — no unnecessary recomposition/state processing any more.
     val state by vm.state.collectAsStateWithLifecycle()
     val selbstUpdate = aktivitaet.update
     val navController = rememberNavController()
     val snackbarHostState = remember { SnackbarHostState() }
-    // Rollpositionen hält allein der ScrollMemory: Jedes Ziel legt seinen Listenzustand
-    // selbst an und stellt die Stelle mit ScrollPositionKeeper wieder her.
+    // Only the ScrollMemory holds scroll positions: every destination creates its list state
+    // itself and restores the position with ScrollPositionKeeper.
 
-    // Snackbar aus eigenem Flow — Meldungen rekomponieren so nicht mehr den
-    // gesamten Tree über AppUiState.
+    // Snackbar from its own flow — messages thus no longer recompose the
+    // whole tree via AppUiState.
     val snackbarMsg by vm.snackbar.collectAsStateWithLifecycle()
     val ctx = LocalContext.current
     LaunchedEffect(snackbarMsg) {
@@ -75,52 +75,52 @@ fun BrickInventoryRoute(
         }
     }
 
-    // CSV-Strom, Update-Prüfung und das Nachladen im Vordergrund stossen ViewModels und
-    // Activity an (CsvImportViewModel, UpdateViewModel, MainActivity.onResume), nicht
-    // die Komposition.
+    // CSV stream, update check and reloading in the foreground are triggered by ViewModels and
+    // activity (CsvImportViewModel, UpdateViewModel, MainActivity.onResume), not
+    // by the composition.
 
     val startDest = startRoute(startTarget(state.serverUrl, state.isLoggedIn, NetworkPolicy.entwicklung))
     val root: Any = if (startDest == SammlungZiel.Gallery) SammlungZiel.Gallery else LoginTarget.Bereich
-    // Der Beginn der Anmeldung bleibt, solange sie läuft: Ein anderer baute den Graphen
-    // neu und beendete ihr ViewModel mitten in der QR-Anmeldung.
+    // The start of the sign-in stays as long as it runs: another one would rebuild the graph
+    // and end its ViewModel in the middle of the QR sign-in.
     val loginStart = remember(root) { startDest as? LoginTarget ?: LoginTarget.Setup }
     val bottomNavItems = tabTheBar()
 
-    // ── „Es gibt eine neue Fassung“ — ebenfalls über allem ──
+    // ── “There is a new version” — also above everything ──
     //
-    // Ein Hinweis beim Start mit Ja/Nein, weil ein Punkt in den Einstellungen leicht
-    // übersehen wird. Hier, weil die Frage der ganzen App gilt; die auslösende Prüfung
-    // steht ein paar Zeilen weiter oben.
+    // A hint at start with yes/no, because a dot in the settings is easily
+    // overlooked. Here, because the question concerns the whole app; the triggering check
+    // is a few lines further up.
     UpdateRoute(selbstUpdate)
 
-    // Eine angetippte Preisalarm-Meldung öffnet ihr Set — hier, weil es den
-    // NavController erst in dieser Composition gibt. Nur angemeldet; sonst bleibt
-    // das Ziel stehen und wird nach der Anmeldung eingelöst.
+    // A tapped price alert notification opens its set — here, because the
+    // NavController only exists in this composition. Only signed in; otherwise
+    // the target stays and is redeemed after the sign-in.
     val messageTarget by vm.messageTarget.collectAsStateWithLifecycle()
     LaunchedEffect(messageTarget.setNummer, startDest) {
         val sn = messageTarget.setNummer
         if (sn != null && startDest == SammlungZiel.Gallery) {
             navController.navigate(SammlungZiel.SetDetail(sn))
-            // Sofort quittieren, sonst springt die App bei der naechsten
-            // Rekomposition erneut — dieselbe Regel wie bei der manuellen
-            // Erfassung nach einem erfolglosen Scan.
+            // Acknowledge immediately, otherwise the app jumps again on the next
+            // recomposition — the same rule as for manual
+            // adding after an unsuccessful scan.
             vm.setFromMessageAcknowledge()
         }
     }
 
-    // Der gemeinsame Raum für Elementübergänge (Galerie → Set-Detail); das
-    // vorhersagbare Zurück spielt denselben Übergang rückwärts.
+    // The common scope for element transitions (gallery → set detail); the
+    // predictive back plays the same transition backwards.
     TransitionFrame {
-    // Dezente Übergänge: kurz einblenden und ein Stück nachrücken, zurück in die
-    // Gegenrichtung. Die Vorgabe (700 ms reines Überblenden) wirkte träge.
+    // Subtle transitions: fade in briefly and move up a bit, back in the
+    // opposite direction. The default (700 ms pure crossfade) felt sluggish.
     NavHost(navController, startDestination = root,
         enterTransition = { fadeIn(tween(TRANSITION_MS)) + slideInHorizontally(tween(TRANSITION_MS)) { it / 16 } },
         exitTransition = { fadeOut(tween(TRANSITION_MS / 2)) },
         popEnterTransition = { fadeIn(tween(TRANSITION_MS)) },
         popExitTransition = { fadeOut(tween(TRANSITION_MS / 2)) + slideOutHorizontally(tween(TRANSITION_MS)) { it / 16 } },
     ) {
-        // Kein Zustand hinein: Der NavHost-Builder läuft nur einmal, ein durchgereichter
-        // Wert bliebe die Momentaufnahme des ersten Frames. Die Ziele lesen selbst.
+        // No state passed in: the NavHost builder runs only once, a passed-in
+        // value would stay the snapshot of the first frame. The destinations read themselves.
         allTargets(TargetEnvironment(navController, imageLoader, bottomNavItems,
             snackbarHostState) { aktivitaet }, loginStart)
     }
@@ -128,8 +128,8 @@ fun BrickInventoryRoute(
 }
 
 /**
- * Alle Ziele der App; der NavHost und ReachableRoutesTest bauen denselben Graphen.
- * Jeder Bereich bringt seine Ziele mit, die App setzt sie nur zusammen.
+ * All destinations of the app; the NavHost and ReachableRoutesTest build the same graph.
+ * Every area brings its destinations along, the app only assembles them.
  */
 internal fun androidx.navigation.NavGraphBuilder.allTargets(u: TargetEnvironment, loginStart: LoginTarget = LoginTarget.Setup) {
     loginGraph(u, loginStart)
@@ -142,7 +142,7 @@ internal fun androidx.navigation.NavGraphBuilder.allTargets(u: TargetEnvironment
     moreTarget(u)
 }
 
-/** Wo die App beginnt, je nachdem, ob Server und Anmeldung schon da sind. */
+/** Where the app starts, depending on whether server and sign-in already exist. */
 internal fun startRoute(ziel: StartTarget): Any = when (ziel) {
     StartTarget.EINRICHTUNG -> LoginTarget.Setup
     StartTarget.LOGIN   -> LoginTarget.Login
@@ -150,9 +150,9 @@ internal fun startRoute(ziel: StartTarget): Any = when (ziel) {
 }
 
 /**
- * Vier Bestandsziele und „Mehr“ — Material sieht höchstens fünf vor; der Rest steht
- * gruppiert auf „Mehr“. Symbole ohne Beschreibung: Die Beschriftung steht daneben,
- * sonst liest TalkBack doppelt. Merkliste vor dem Katalog, wie in der Webapp.
+ * Four inventory destinations and “More” — Material provides at most five; the rest stands
+ * grouped on “More”. Icons without description: the label stands next to them,
+ * otherwise TalkBack reads twice. Wishlist before the catalog, as in the web app.
  */
 @Composable
 internal fun tabTheBar(): List<Reiter> {
@@ -173,9 +173,9 @@ internal fun tabTheBar(): List<Reiter> {
 }
 
 /**
- * Den Satz der Snackbar bildet die Oberfläche, in der Sprache der App (LanguageManager);
- * ausserhalb der Komposition, darum nicht über [ch.brickinventoryapp.ui.satz]. Ein Wert,
- * der selbst eine Meldung ist, wird zuerst gebildet.
+ * The UI forms the snackbar sentence, in the app's language (LanguageManager);
+ * outside the composition, hence not via [ch.brickinventoryapp.ui.satz]. A value
+ * that is itself a message is formed first.
  */
 internal fun Meldung.asSet(ctx: Context): String {
     val c = LanguageManager.localizedContext(ctx)
@@ -187,5 +187,5 @@ internal fun Meldung.asSet(ctx: Context): String {
     }
 }
 
-/** Dauer eines Seitenwechsels; kurz genug, dass er nicht aufhält. */
+/** Duration of a page change; short enough not to hold things up. */
 private const val TRANSITION_MS = 220

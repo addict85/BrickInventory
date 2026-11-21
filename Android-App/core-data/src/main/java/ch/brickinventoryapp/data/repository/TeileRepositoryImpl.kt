@@ -46,7 +46,7 @@ import javax.inject.Singleton
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 
 /**
- * Teile, Minifiguren und Farben — über Retrofit; die gemeinsame Abruflogik steht in Abruf.kt.
+ * Parts, minifigures and colors — via Retrofit; the common fetch logic stands in Abruf.kt.
  */
 @Singleton
 class TeileRepositoryImpl @Inject constructor(
@@ -55,7 +55,7 @@ class TeileRepositoryImpl @Inject constructor(
     private val retry: Wiederholung,
 ) : PartsRepository {
 
-    /** Die lokalen Listen nach den Filtern der Anzeige; sie ändern sich auch durch offline Bearbeitetes. */
+    /** The local lists by the display's filters; they also change through things edited offline. */
     override fun observeParts(suche: String?, farbe: ColorPicker, kategorie: Kategoriewahl, spareParts: Ersatzteilwahl): Flow<Local<TeilAnsicht>> =
         ablage.observe(Slots.TEILE, Filterspalten(suchtext = suche?.ifBlank { null }, farbe = farbe.wert,
             kategorie = kategorie.wert, ersatzteil = spareParts.asFeature()))
@@ -71,7 +71,7 @@ class TeileRepositoryImpl @Inject constructor(
         return refreshManualParts()
     }
 
-    /** Eine Liste ohne Seiten: Die Gesamtzahl ist die Länge der Antwort. */
+    /** A list without pages: the total is the length of the response. */
     override suspend fun refreshManualParts(): Ergebnis<Unit> =
         ablage.refreshPaged(Slots.MANUELLE_TEILE, { r -> r.parts.map { it.alsAnsicht() } }, { it.parts.size }, retry) { _ ->
             sicherAufrufen { api.getManualParts(null, null, null) }
@@ -81,9 +81,9 @@ class TeileRepositoryImpl @Inject constructor(
         sicherAufrufen { api.getPartsStats(konten?.anfrage) }.shown { it.stats?.alsAnsicht() }
 
     /**
-     * Die beiden Filterlisten des Teile-Reiters — Farbe und Kategorie. Ohne
-     * Zwischenspeicher: Beide tragen Zählwerte, die sich mit jedem erfassten Teil
-     * ändern; ein Cache zeigte Zahlen, die nicht zur Liste passen.
+     * The two filter lists of the parts tab — color and category. Without
+     * cache: both carry counts that change with every added part;
+     * a cache would show numbers that do not match the list.
      */
     override suspend fun getPartsFilterColors(konten: Kontoauswahl?): Ergebnis<List<FilterColorView>> =
         sicherAufrufen { api.getPartsFilterColors(konten?.anfrage) }.promised({ it.success }, { null }) { r -> r.colors.map { it.alsAnsicht() } }
@@ -92,10 +92,10 @@ class TeileRepositoryImpl @Inject constructor(
         sicherAufrufen { api.getPartsCategories(konten?.anfrage) }.promised({ it.success }, { null }) { r -> r.categories.map { it.alsAnsicht() } }
 
     /**
-     * „Kann ich das bauen?“ — welche Teile einer Liste schon da sind. Ohne
-     * Zwischenspeicher wie getSetsWithPart(): Die Antwort hängt an einer frei
-     * zusammengestellten Liste; ein Eintrag je Liste wäre ein Speicher, den niemand
-     * ungültig macht, wenn ein Teil dazukommt.
+     * „Can I build this?“ — which parts of a list are already there. Without
+     * cache like getSetsWithPart(): the response depends on a freely
+     * assembled list; one entry per list would be a store nobody
+     * invalidates when a part is added.
      */
     override suspend fun getOwnedParts(teile: List<PartialKey>,
                               konten: Kontoauswahl?): Ergebnis<Map<PartialKey, PartInventory>> =
@@ -111,24 +111,24 @@ class TeileRepositoryImpl @Inject constructor(
         }.promised({ it.success }) { it.storage }
 
     /**
-     * Welche Lagerorte belegt sind. Ohne Zwischenspeicher: Die Liste ist klein und
-     * ändert sich bei jedem Eintragen — ein Speicher liesse den gerade angelegten Ort
-     * im Vorschlag fehlen.
+     * Which storage locations are occupied. Without cache: the list is small and
+     * changes with every entry — a cache would let the location just created be missing
+     * from the suggestion.
      */
     override suspend fun getLocations(konten: Kontoauswahl?): Ergebnis<List<LocationView>> =
         sicherAufrufen { api.getLocations(konten?.anfrage) }.promised({ it.success }) { r -> r.orte.map { it.alsAnsicht() } }
 
-    // ── Der Vorrat an Lagerorten ──
+    // ── The supply of storage locations ──
     //
-    // Getrennt von getLocations(): Dort die belegten Orte (für den Filter), hier die
-    // wählbaren (für Auswahlfeld und Einstellungen); ein frisch angelegter Ort steht
-    // nur hier. Ohne Zwischenspeicher, weil sich die Liste genau dann ändert, wenn
-    // jemand hier etwas einträgt.
+    // Separate from getLocations(): there the occupied locations (for the filter), here the
+    // selectable ones (for select field and settings); a freshly created location stands
+    // only here. Without cache, because the list changes exactly when
+    // someone enters something here.
 
     override fun observeLocationStock(): Flow<Local<StockLocationView>> =
         ablage.observe(Slots.LAGERORTE)
 
-    /** Die Vorgabe kommt neben der Liste; in der Ablage trägt sie der Ort selbst. */
+    /** The default comes next to the list; in the store the location itself carries it. */
     override suspend fun refreshLocationStock(): Ergebnis<Unit> =
         ablage.refreshPaged(Slots.LAGERORTE, { r -> r.orte.map { StockLocationView(ort = it.alsAnsicht(), vorgabe = it.id == r.vorgabe?.id) } },
             { it.orte.size }, retry) { _ -> sicherAufrufen { api.getLocationStock(null) } }
@@ -151,17 +151,17 @@ class TeileRepositoryImpl @Inject constructor(
         ablage.nachgezogen({ r -> FollowUp.LocationDeleted(id).takeIf { r.success } }) { sicherAufrufen { api.deleteLocation(id) } }
             .promised({ it.success }) { }
 
-    /** Der vorausgewählte Lagerort (Stern) — `null` schaltet die Vorgabe ab; es gilt, was der Server meldet. */
+    /** The preselected storage location (star) — `null` switches the default off; what the server reports applies. */
     override suspend fun setLocationDefault(id: Int?): Ergebnis<Unit> =
         ablage.nachgezogen({ r -> FollowUp.LocationDefault(r.vorgabe?.id).takeIf { r.success } }) {
             sicherAufrufen { api.setLocationDefault(LagerortVorgabeRequest(id = id)) }
         }.promised({ it.success }) { }
 
-    // ── In welchen Sets steckt dieses Teil / diese Figur? ──
+    // ── In which sets is this part / this figure? ──
     //
-    // Für den Detail-Dialog. Ohne Zwischenspeicher: Die Antwort hängt an genau einem
-    // Teil und wird auf Tastendruck geholt — ein Eintrag je Teil-Farb-Paar würde nie
-    // ungültig, wenn ein Set dazukommt oder verschwindet.
+    // For the detail dialog. Without cache: the response depends on exactly one
+    // part and is fetched at the push of a button — one entry per part-color pair would never
+    // become invalid when a set is added or disappears.
     override suspend fun getSetsWithPart(partNumber: String, colorId: Int,
                                konten: Kontoauswahl?): Ergebnis<UsageView> =
         sicherAufrufen { api.getSetsWithPart(partNumber, colorId, konten?.anfrage) }.promised({ it.success }) { it.alsAnsicht() }
@@ -169,7 +169,7 @@ class TeileRepositoryImpl @Inject constructor(
     override suspend fun getBrickColors(): Ergebnis<List<ColorView>> =
         sicherAufrufen { api.getBrickColors() }.promised({ it.success }, { null }) { r -> r.colors.map { it.alsAnsicht() } }
 
-    /** Ohne Farbe KEINE_FARBE, nie 0 (Schwarz); Name und Code gehören dann nicht dazu. */
+    /** Without a color KEINE_FARBE, never 0 (black); name and code then do not belong to it. */
     override suspend fun addPart(partNumber: String, colorId: Int, colorName: String?, colorHex: String?,
                          quantity: Int, unitPrice: Geld?,
                          condition: Zustand?, ownerUserId: Int?,
@@ -186,10 +186,10 @@ class TeileRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Die Menge reist auch als Schritt von der Menge, die die lokale Liste zeigt
+     * The quantity also travels as a step from the quantity the local list shows
      * (UpdateManualItemRequest.quantityDelta).
      *
-     * @param owner Besitzer der Karte; null = eigenes Konto.
+     * @param owner owner of the card; null = own account.
      */
     override suspend fun updatePart(partNumber: String, colorId: Int, quantity: Int, unitPrice: Double?, condition: Zustand?, owner: Int?): Ergebnis<Unit> {
         val bisher = ablage.lies(Slots.MANUELLE_TEILE)?.liste
@@ -201,18 +201,18 @@ class TeileRepositoryImpl @Inject constructor(
         }.erledigt()
     }
 
-    /** Auch offline: Das Teil verschwindet sofort aus der Liste, der Server erfährt es später. */
+    /** Offline too: the part disappears from the list immediately, the server learns of it later. */
     override suspend fun deletePart(partNumber: String, colorId: Int, owner: Int?): Ergebnis<Unit> =
         ablage.schreibe(Editing.TeilLoeschen(partNumber, colorId, owner), { GenericResponse(success = true) }) { schluessel ->
             sicherAufrufen { api.deletePart(partNumber, colorId, owner, schluessel) }
         }.erledigt()
 
     /**
-     * Die Farbe eines manuell erfassten Teils nachträglich ändern.
+     * Change the color of a manually added part afterwards.
      *
-     * @param colorId   die alte Farbe — sie sagt, welche Zeile gemeint ist.
-     * @param neueFarbe die neue Farbe.
-     * @param owner     Besitzer der Karte; null = eigenes Konto.
+     * @param colorId   the old color — it says which row is meant.
+     * @param neueFarbe the new color.
+     * @param owner     owner of the card; null = own account.
      */
     override suspend fun setPartColor(partNumber: String, colorId: Int, neueFarbe: Int,
                              farbName: String?, farbHex: String?,

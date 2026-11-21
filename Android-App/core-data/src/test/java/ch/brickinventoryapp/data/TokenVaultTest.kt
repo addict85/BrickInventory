@@ -29,39 +29,39 @@ import java.io.File
 import java.io.IOException
 
 /**
- * Das Token liegt nur verschlüsselt, ein Klartext älterer Fassungen gilt nie und wird
- * entfernt, Adresse und Name liegen verschlüsselt, und Abmelden räumt beide Einträge
- * weg — ausgeführt an der echten TokenAblage; ein Neustart ist eine neue Instanz auf
- * derselben Platte.
+ * The token lies only encrypted, a plaintext of older versions never counts and is
+ * removed, address and name lie encrypted, and sign-out clears away both entries
+ * — executed on the real TokenAblage; a restart is a new instance on
+ * the same disk.
  *
- * Gegenproben (Robolectric, misst die CI; Job `gegenproben`):
- *   klartext-bleibt-nach-speichern  saveAuthToken() ohne remove(AUTH_TOKEN) → rot
- *                                   „saving stores only encrypted now“
- *   abmelden-laesst-geheimtext      clearSession() ohne remove(AUTH_TOKEN_ENC) → rot
- *                                   „sign-out removes both entries“
- *   altbestand-nicht-umgeschluesselt  adoptOldToken() ohne umschluesseln(prefs) → rot
- *                                   „ein Token unter dem alten Schluessel kommt beim Start …“
- *   klartext-token-gilt-wieder      der Spiegel liest AUTH_TOKEN wieder als Token → rot
- *                                   „ein Klartext-Token aelterer Fassungen gilt nie …“
- *   angaben-im-klartext             setze() schreibt zusätzlich den Klartext → rot
- *                                   „Adresse und Name liegen nur verschluesselt …“
- *   angaben-ohne-uebernahme         adoptDetails() lässt den Klartext stehen → rot, derselbe Test
- *   angaben-unter-pin-schluessel    verschluessleDetail() nimmt wieder den Schlüssel der Pins →
- *                                   rot „Adresse und Name frueherer Fassungen kommen unter den
- *                                   Entsperr-Schluessel …“
- *   angaben-gesperrt-geloescht      adoptDetails() entfernt die frühere Form auch ohne neue →
- *                                   rot „gesperrt bleibt die fruehere Form liegen …“
- *   hochstufen-erst-beim-start      levelTokenHigh() ohne Wirkung → rot „nach dem Entsperren kommt
- *                                   ein Token …“
- *   token-alter-alias-bleibt        levelTokenHigh() ohne forgetLegacyStock → rot, derselbe Test
+ * Counter-checks (Robolectric, measured by CI; job `gegenproben`):
+ *   klartext-bleibt-nach-speichern  saveAuthToken() without remove(AUTH_TOKEN) → red
+ *                                   “saving stores only encrypted now”
+ *   abmelden-laesst-geheimtext      clearSession() without remove(AUTH_TOKEN_ENC) → red
+ *                                   “sign-out removes both entries”
+ *   altbestand-nicht-umgeschluesselt  adoptOldToken() without umschluesseln(prefs) → red
+ *                                   “a token under the old key goes under the strict one at start”
+ *   klartext-token-gilt-wieder      the mirror reads AUTH_TOKEN as token again → red
+ *                                   “a plaintext token of older versions never counts …”
+ *   angaben-im-klartext             setze() additionally writes the plaintext → red
+ *                                   “address and name lie only encrypted …”
+ *   angaben-ohne-uebernahme         adoptDetails() leaves the plaintext standing → red, the same test
+ *   angaben-unter-pin-schluessel    verschluessleDetail() takes the pins' key again →
+ *                                   red “address and name of earlier versions go under the
+ *                                   unlock key”
+ *   angaben-gesperrt-geloescht      adoptDetails() removes the earlier form even without a new one →
+ *                                   red “locked the earlier form stays …”
+ *   hochstufen-erst-beim-start      levelTokenHigh() without effect → red “after unlocking
+ *                                   a token …”
+ *   token-alter-alias-bleibt        levelTokenHigh() without forgetLegacyStock → red, the same test
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class TokenVaultTest {
 
-    /** Umkehrbar, aber erkennbar anders als der Klartext; [kaputt]: Schlüssel weg. */
+    /** Reversible, but recognizably different from the plaintext; [kaputt]: key gone. */
     private class Attrappe(val kaputt: Boolean = false) : TokenEncryption {
-        /** Wie oft der Schlüssel selbst gelöscht wurde. */
+        /** How often the key itself was deleted. */
         var vergessen = 0
         override fun vergiss() { vergessen++ }
         override fun verschluessle(klartext: String) = "ENC(" + klartext.reversed() + ")"
@@ -73,7 +73,7 @@ class TokenVaultTest {
     private val ctx = ApplicationProvider.getApplicationContext<Context>()
     private val areas = mutableListOf<CoroutineScope>()
 
-    /** Je Test eine eigene Datei; DataStore erlaubt je Datei nur eine Instanz im Prozess. */
+    /** One file per test; DataStore allows only one instance per file in the process. */
     private val store = PreferenceDataStoreFactory.create { File(ctx.filesDir, "tresor-${System.nanoTime()}.preferences_pb") }
 
     private fun start(tresor: TokenEncryption = Attrappe(), cipher: Vertrauenschiffre = testVertrauenschiffre()): TokenAblage {
@@ -129,7 +129,7 @@ class TokenVaultTest {
         assertEquals("anna", runBlocking { neu.username.first() })
     }
 
-    /** Die Angaben unter dem eigenen Schlüssel, die Pins unter einem anderen: so im Gerät (SecurityModule). */
+    /** The details under their own key, the pins under another: as on the device (SecurityModule). */
     private var gesperrt = false
     private val twoKey = Vertrauenschiffre(angaben = {
         if (gesperrt) throw IOException("Keystore gerade nicht bereit")
@@ -214,7 +214,7 @@ class TokenVaultTest {
         assertEquals("", runBlocking { start(Attrappe(kaputt = true)).tokenJetzt() })
     }
 
-    /** Streng wie das Gerät: verschlüsselt nur, solange [gesperrt] nein sagt. */
+    /** Strict like the device: encrypts only as long as [gesperrt] says no. */
     private class Strict(val gesperrt: () -> Boolean) : TokenEncryption {
         override fun verschluessle(klartext: String): String {
             check(!gesperrt()) { "Gerät gesperrt" }
@@ -240,7 +240,7 @@ class TokenVaultTest {
         assertEquals("alt", runBlocking { start(tresor).tokenJetzt() })
     }
 
-    /** Nicht erst beim nächsten Start: Das Entsperren (ACTION_USER_PRESENT) stuft gleich hoch. */
+    /** Not only at the next start: unlocking (ACTION_USER_PRESENT) levels up right away. */
     @Test
     fun `after unlocking a token under the old key goes under the strict one immediately`() {
         put(geheim = "ENC(tla)")

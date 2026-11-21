@@ -26,9 +26,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Gutscheine — LEGO-Geschenkkarten im eigenen Profil. Lokal abgelegt wird die
- * Liste ohne PIN und nur mit den letzten vier Ziffern der Nummer: Offline reicht
- * „welcher Gutschein, wie viel“; Nummer plus PIN wären Geld auf der Platte.
+ * Vouchers — LEGO gift cards in the own profile. Stored locally is the
+ * list without PIN and only with the last four digits of the number: offline
+ * „which voucher, how much“ suffices; number plus PIN would be money on disk.
  */
 @Singleton
 class GutscheineRepositoryImpl @Inject constructor(
@@ -49,19 +49,19 @@ class GutscheineRepositoryImpl @Inject constructor(
         sicherAufrufen { api.changeVoucher(id, angabe.asRequest()) }.gespeichert()
 
     /**
-     * Löschen mit Passwort und Code. Bewusst ohne Ausgang: Ein gepuffertes Löschen
-     * müsste das Passwort bis zum nächsten Netz aufbewahren.
+     * Delete with password and code. Deliberately without outbox: a buffered delete
+     * would have to keep the password until the next network.
      */
     override suspend fun loeschen(id: Int, confirmation: Confirmation): Ergebnis<Unit> =
         sicherAufrufen { api.deleteVoucher(id, confirmation.asRequest()) }.erledigt()
 
-    /** Nummer und PIN im Klartext; nie in Cache oder Ablage. */
+    /** Number and PIN in plaintext; never in cache or store. */
     override suspend fun klartext(id: Int, confirmation: Confirmation): Ergebnis<PlaintextView> =
         sicherAufrufen { api.voucherPlaintext(id, confirmation.asRequest()) }.shown { it.alsAnsicht() }
 
     /**
-     * Ein einmaliges Ticket für das PDF eines Gutscheins, ohne [id] für das PDF
-     * aller. Die eine Stelle für den Freigabe-Vertrag; die Adresse dazu baut
+     * A one-time ticket for the PDF of a voucher, without [id] for the PDF
+     * of all. The one place for the release contract; the address for it is built by
      * voucherPdfAddress() in GutscheinAdressen.kt.
      */
     override suspend fun pdfRelease(id: Int?, confirmation: Confirmation): Ergebnis<String> {
@@ -71,16 +71,16 @@ class GutscheineRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Das Guthaben bei LEGO abfragen. Eine gesperrte Abfrage wird zu success=false,
-     * weil der Durchgang über alle Karten `grund` und `wartenSek` aus dem Rumpf
-     * braucht; andere Fehler bleiben Fehler.
+     * Query the balance at LEGO. A blocked query becomes success=false
+     * because the pass over all cards needs `grund` and `wartenSek` from the body;
+     * other errors stay errors.
      */
     override suspend fun guthaben(id: Int): Ergebnis<Guthabenauskunft> = sicherAufrufen {
         val antwort = api.questionBalanceAb(id)
         if (antwort.isSuccessful) return@sicherAufrufen antwort
         val roh = antwort.errorBody()?.string()
         if (Fehlerrumpf.lies(roh).errorCode !in BALANCE_LOCKED && !isAccountLimit(roh)) {
-            // Der Rumpf ist gelesen; sicherAufrufen bekommt ihn neu, sonst fehlte ihm der Satz.
+            // The body is read; sicherAufrufen gets it anew, otherwise it would lack the sentence.
             return@sicherAufrufen retrofit2.Response.error(antwort.code(),
                 (roh ?: "").toResponseBody("application/json".toMediaType()))
         }
@@ -95,11 +95,11 @@ class GutscheineRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Aus dem PDF anlegen — mit Werten, die man von Hand beisteuert. Leere Felder
-     * werden nicht mitgeschickt (`asPart` gibt null zurück): Auf dem Server gilt „was
-     * mitkommt, gewinnt“, ein leerer Teil überschriebe das Gelesene mit nichts. Der
-     * Medientyp kommt aus der Dateiauswahl, nicht geraten; der Server nimmt nur
-     * `application/pdf` an.
+     * Create from the PDF — with values contributed by hand. Empty fields
+     * are not sent (`asPart` returns null): on the server „what comes along
+     * wins“ applies, an empty part would overwrite what was read with nothing. The
+     * media type comes from the file picker, not guessed; the server accepts only
+     * `application/pdf`.
      */
     override suspend fun fromPdf(
         fileName: String,
@@ -117,13 +117,13 @@ class GutscheineRepositoryImpl @Inject constructor(
                 teil,
                 asPart(nummer), asPart(pin), asPart(betrag), asPart(waehrung),
             )
-            // Bei 422 hat der Server das PDF gelesen, aber nicht genug gefunden; was er
-            // lesen konnte, braucht die Oberfläche zum Vorbelegen. sicherAufrufen behielte nur
-            // Satz und Code, deshalb wird die Antwort hier zu success=false.
+            // With 422 the server has read the PDF but found too little; what it
+            // could read the UI needs for prefilling. sicherAufrufen would keep only
+            // sentence and code, hence the response becomes success=false here.
             if (antwort.code() == 422) {
                 val roh = antwort.errorBody()?.string()
-                // Zu viele Seiten: Gelesen wurde nichts, das Formular hat nichts vorzubelegen.
-                // Ein Fehler mit Satz und Code, sonst hiesse es „unvollständig gelesen“.
+                // Too many pages: nothing was read, the form has nothing to prefill.
+                // An error with sentence and code, otherwise it would say „read incompletely“.
                 val toLang = Fehlerrumpf.lies(roh).errorCode == Fehlercode.PDF_ZU_VIELE_SEITEN
                 val parsed = roh?.takeIf { !toLang }?.let {
                     runCatching { json.decodeFromString<GutscheinAntwort>(it) }.getOrNull()
@@ -140,32 +140,32 @@ class GutscheineRepositoryImpl @Inject constructor(
         }
     }
 
-    // Kein eigener PDF-Download: Der PDF-Betrachter bekommt eine Adresse und lädt sie mit
-    // dem angemeldeten Client (AnleitungsLader — Token, Klartext-Verbot und
-    // 401-Meldung hängen daran). Ein eigener Weg wäre eine zweite Fassung und legte
-    // Nummer und PIN in den Cache des Geräts.
+    // No own PDF download: the PDF viewer gets an address and loads it with
+    // the signed-in client (AnleitungsLader — token, cleartext ban and
+    // 401 message hang on it). An own path would be a second version and would put
+    // number and PIN into the device's cache.
 
     companion object {
-        /** Was offline von einem Gutschein bleibt: keine PIN, von der Nummer die letzten vier Ziffern. */
+        /** What stays of a voucher offline: no PIN, of the number the last four digits. */
         fun withoutSecret(g: VoucherView): VoucherView =
             g.copy(number = if (g.number.length > 4) "…" + g.number.takeLast(4) else g.number, pin = null)
 
-        /** Die Codes, unter denen der Server eine Guthabenabfrage zurückstellt. */
+        /** The codes under which the server defers a balance query. */
         private val BALANCE_LOCKED = setOf(Fehlercode.GUTHABEN_ABSTAND, Fehlercode.GUTHABEN_BOTSCHUTZ)
 
-        /** Die Grenze je Konto teilt den Code mit der allgemeinen Drossel; nur `grund` unterscheidet. */
+        /** The limit per account shares the code with the general throttle; only `grund` distinguishes. */
         private fun isAccountLimit(roh: String?): Boolean = runCatching {
             val o = org.json.JSONObject(roh ?: return false)
             Fehlercode.aus(o.optString("code")) == Fehlercode.ZU_VIELE_ANFRAGEN && o.optString("grund") == "konto"
         }.getOrDefault(false)
     }
 
-    /** Leer heisst „nicht mitschicken" — siehe die Begruendung bei fromPdf(). */
+    /** Empty means „do not send" — see the reasoning at fromPdf(). */
     private fun asPart(wert: String?): okhttp3.RequestBody? =
         wert?.trim()?.takeIf { it.isNotEmpty() }?.toRequestBody("text/plain".toMediaType())
 }
 
-/** Eine Absage beim Anlegen oder Ändern ist ein Fehler mit dem Satz des Servers. */
+/** A refusal when creating or changing is an error with the server's sentence. */
 private fun Ergebnis<GutscheinAntwort>.gespeichert(): Ergebnis<Gutscheinspeicherung> =
     promised({ it.success }, { it.error }) { Gutscheinspeicherung.Gespeichert(it.mehrere?.added, it.mehrere?.updated) }
 

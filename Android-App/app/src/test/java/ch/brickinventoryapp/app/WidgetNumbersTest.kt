@@ -19,23 +19,23 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Die Zahlen des Startbildschirm-Widgets, gerechnet aus echten Antworten des
- * Servers (G&V-Übersicht und Wochenverlauf), und ihre Ablage als Text.
+ * The numbers of the home screen widget, computed from real responses of the
+ * server (P&L overview and weekly history), and their storage as text.
  *
- * Gegenproben:
- *   A  heute aus dem ERSTEN statt dem vorletzten Punkt → rot „heute ist die
- *      Differenz der letzten zwei Tage“
- *   B  gesamt = wert statt wert - kauf → rot „total is value minus purchase price“
- *   C  in gvText() das Pluszeichen entfernt → rot „ein Gewinn trägt ein Plus“
- *   D  widgetDisplay() gibt immer `abgelegt` zurück → rot
- *      „signed out the widget shows no numbers“
- *   E  widgetValues() ohne die Abfrage von
- *      `zeigen` → rot „without permission the amounts are hidden“;
+ * Counter-checks:
+ *   A  today from the FIRST instead of the second-to-last point → red “today is the
+ *      difference of the last two days”
+ *   B  total = value instead of value - purchase → red “total is value minus purchase price“
+ *   C  in gvText() the plus sign removed → red “a profit carries a plus”
+ *   D  widgetDisplay() always returns `abgelegt` → red
+ *      “signed out the widget shows no numbers“
+ *   E  widgetValues() without the query of
+ *      `zeigen` → red “without permission the amounts are hidden“;
  *      gegenproben/widget-zeigt-betraege.patch
- *   F  gegenproben/widget-guv-aus-allen.patch: Basis
- *      übergangen → rot „with a basis value and P&L stand as in the finance card“
- *      (32.40 statt 212.40)
- *   G  ohneToken() immer LEEREN → rot „ohne Token leert der Arbeiter nur abgemeldet …“;
+ *   F  gegenproben/widget-guv-aus-allen.patch: basis
+ *      skipped → red “with a basis value and P&L stand as in the finance card“
+ *      (32.40 instead of 212.40)
+ *   G  ohneToken() always LEEREN → red “without a token the worker clears only when signed out …”;
  *      gegenproben/widget-leert-bei-sperre.patch
  */
 class WidgetNumbersTest {
@@ -101,7 +101,7 @@ class WidgetNumbersTest {
         assertTrue(offen.third.startsWith("+"))
     }
 
-    /** Die Prozentzahl rechnet der Server auf der Basis; der Betrag daneben muss es auch. */
+    /** The server computes the percentage on the basis; the amount next to it must too. */
     @Test
     fun `with a basis value and P&L stand as in the finance card`() {
         val basis = BrickJson.decodeFromString(PnlResponse.serializer(), """{"success":true,"currency":"CHF","totals":{

@@ -5,18 +5,18 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Kein Bildschirm greift an der Zustandsschicht vorbei in die Datenschicht: Ladelogik in
- * einem Composable läuft nur mit Compose-Laufzeit und lässt sich nicht als gewöhnliche
- * Funktion prüfen. Strukturprüfung über alle Bildschirmordner.
+ * No screen reaches past the state layer into the data layer: loading logic in
+ * a composable only runs with the Compose runtime and cannot be checked as an ordinary
+ * function. Structure check across all screen folders.
  *
- * Gegenprobe: `repo.sets.getSets()` in MonitoringScreen.kt → rot „kein Composable
- * ruft das Repository direkt auf“, mit Datei und Zeile.
+ * Counter-check: `repo.sets.getSets()` in MonitoringScreen.kt → red “no composable
+ * calls the repository directly”, with file and line.
  */
 class ScreenHoltDataNotSelfTest {
 
     private val screenFolder = listOf("ui/screens", "ui/dialogs", "ui/components", "shared/ui")
 
-    // Jedes Modul trägt die Ordner unter seinem eigenen Paketstamm; unter() sammelt sie.
+    // Every module carries the folders under its own package root; unter() collects them.
     private fun dateien(): List<File> = screenFolder.flatMap { Quellen.unter(it) }.distinct()
 
     private fun withoutComments(src: String) = src.lines().joinToString("\n") {
@@ -47,11 +47,11 @@ class ScreenHoltDataNotSelfTest {
     }
 
     /**
-     * Bildschirme sehen Fachtypen (model.fach), keine Server-Modelle: Ein neues
-     * Feld oder eine andere Nullbarkeit im DTO soll im Repository oder ViewModel
-     * auffallen, nicht in einem Composable. Ohne Ausnahme.
-     * Gegenprobe: in GutscheineCard.kt wieder
-     * `import ch.brickinventoryapp.contract.Gutschein` → rot, nennt die Datei.
+     * Screens see domain types (model.fach), not server models: a new
+     * field or a different nullability in the DTO should stand out in the repository or ViewModel,
+     * not in a composable. Without exception.
+     * Counter-check: in GutscheineCard.kt again
+     * `import ch.brickinventoryapp.contract.Gutschein` → red, names the file.
      */
     @Test
     fun `no screen knows the server models`() {

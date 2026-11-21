@@ -26,23 +26,23 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Zwei Lesemodelle, klar getrennt: Die Ablage (Room) hält die ungefilterte Sammlung
- * und beantwortet Suche und Filter selbst; die Kontosicht fragt den Server, wo er
- * Mengen je Konto aufteilt — und landet nie in der Ablage.
+ * Two read models, clearly separated: the store (Room) holds the unfiltered collection
+ * and answers search and filter itself; the account view asks the server, where it
+ * splits quantities per account — and never ends up in the store.
  *
- * Gegenproben (kotlinc gegen Kontosicht.kt, Abruf.kt und SetsRepositoryImpl.kt):
- *   A  in Kontosicht.galerie `a.suche` durch `null` ersetzt → rot „jeder Filter der
- *      Kontosicht steht in der Anfrage“
- *   B  in Serversicht.aktualisiere zusätzlich in die Ablage übernommen → rot „die
- *      Kontosicht landet nicht in der Ablage“
- *   C  in allPages die Zeilen nicht nach Schlüssel zusammengefasst (Liste statt Map)
- *      → rot „the account view fetches all pages and no row twice“
- *   D  in Serversicht.beobachte das Sammeln von `ablage.altered` entfernt → rot
- *      „a write shows up in the account view too“
- *   E  in Serversicht.beobachte den Vergleich des Bereichs entfernt → rot „eine
- *      Antwort für ein anderes Konto zeigt die Kontosicht nicht“
- *   F  in refreshPaged auch bei einem Fehler übernommen → rot „die volle
- *      Sicht steht in der Ablage und trägt bei Netzausfall“
+ * Counter-checks (kotlinc against Kontosicht.kt, Abruf.kt and SetsRepositoryImpl.kt):
+ *   A  in Kontosicht.galerie `a.suche` replaced by `null` → red “every filter of the
+ *      account view is in the request”
+ *   B  in Serversicht.aktualisiere additionally taken into the store → red “the
+ *      account view does not end up in the store”
+ *   C  in allPages the rows not merged by key (list instead of map)
+ *      → red “the account view fetches all pages and no row twice”
+ *   D  in Serversicht.beobachte the collecting of `ablage.altered` removed → red
+ *      “a write shows up in the account view too”
+ *   E  in Serversicht.beobachte the comparison of the area removed → red “the
+ *      account view does not show a response for a different account”
+ *   F  in refreshPaged applied even on an error → red “the full
+ *      view is in the store and carries through a network outage”
  */
 class KontosichtTest {
 
@@ -96,12 +96,12 @@ class KontosichtTest {
         val vorher = paths.requestsAn("GET /api/v1/sets?").size
         val gesehen = CompletableDeferred<Unit>()
         val observer = launch { view.galerie.observe(abfrage()).collect { gesehen.complete(Unit) } }
-        // Erst wenn die Sicht beobachtet, zählt die Änderung: veraendert() lässt den ersten Stand weg.
+        // Only once the view observes does the change count: veraendert() leaves out the first state.
         gesehen.await()
         repeat(50) { yield() }
-        // Was ein Repository anwendet, ändert die Ablage — die Kontosicht fragt neu.
+        // What a repository applies changes the store — the account view asks anew.
         ablage.applyAn(Editing.SetErfassen(Erfassungswunsch(setNumber = "12-1")))
-        // Die neue Anfrage läuft über den Testserver, also auf einem fremden Faden.
+        // The new request runs via the test server, thus on a foreign thread.
         withTimeoutOrNull(5_000) { while (paths.requestsAn("GET /api/v1/sets?").size <= vorher) delay(10) }
         observer.cancel()
         assertEquals("neu gefragt", vorher + 1, paths.requestsAn("GET /api/v1/sets?").size)

@@ -20,15 +20,15 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import javax.inject.Inject
 
-/** Was beim Abmelden im Gerät liegen bleibt: Token, Pflichten, Listen, Dateien und Bildspeicher. */
+/** What stays on the device at sign-out: token, obligations, lists, files and image cache. */
 fun interface SitzungsBereinigung {
     suspend fun raeumeAuf()
 }
 
 /**
- * Räumt alles weg, was zum Konto gehört, auch API- und Bildspeicher: Sonst sähe
- * der nächste Nutzer auf dem Gerät fremde Daten. Hier und nicht in der Oberfläche,
- * weil es Dateien, Netz-Caches und die Ablage berührt.
+ * Clears away everything that belongs to the account, API and image caches too: otherwise
+ * the next user on the device would see foreign data. Here and not in the UI,
+ * because it touches files, network caches and the store.
  */
 internal class DevicesCleanup @Inject constructor(
     @param:ApplicationContext private val ctx: Context,
@@ -55,14 +55,14 @@ internal class DevicesCleanup @Inject constructor(
             fangeAusserAbbruch { imageHttpClient.cache?.evictAll() }
             fangeAusserAbbruch { vorschau.leeren() }
         }
-        // Speicher zuerst, sonst schreibt Coil beim nächsten Treffer wieder auf die Platte.
+        // Memory first, otherwise Coil writes to disk again on the next hit.
         fangeAusserAbbruch {
             imageLoader.memoryCache?.clear()
             imageLoader.diskCache?.clear()
         }
-        // Preisalarme nennen Sets und Preise; die Leiste gehört dem abgemeldeten Konto.
+        // Price alerts name sets and prices; the bar belongs to the signed-out account.
         fangeAusserAbbruch { NotificationManagerCompat.from(ctx).cancelAll() }
-        // Zuletzt ein neuer Ablageschlüssel: Reste auf dem Flash sind danach nicht mehr lesbar.
+        // Finally a new store key: remnants on the flash are no longer readable afterwards.
         withContext(io) { fangeAusserAbbruch { ablage.renew() } }
     }
 }

@@ -12,9 +12,9 @@ import ch.brickinventoryapp.offline.Offlineablage.FollowUp
 import ch.brickinventoryapp.offline.Offlineablage.Wirkung
 
 /**
- * Wie eine Bearbeitung die lokale Liste ändert, bevor der Server sie gesehen
- * hat. Bewusst schlicht: Was der Server dazu rechnet (Preise, Namen), kommt mit
- * dem nächsten Abgleich; bis dahin zählt, dass Menge und Eintrag sichtbar sind.
+ * How an edit changes the local list before the server has seen
+ * it. Deliberately simple: what the server calculates for it (prices, names) comes with
+ * the next sync; until then what counts is that quantity and entry are visible.
  */
 internal object LocalApplication {
 
@@ -47,15 +47,15 @@ internal object LocalApplication {
         return liste.map { if (it.setNumber == a.setNumber) it.copy(quantity = it.quantity + a.menge) else it }
     }
 
-    /** Die Zusammenfassung ist vollständig: Ein Preis null heisst „keiner erfasst“, nicht „unbekannt“;
-     * der abgelegte gälte sonst nach dem Löschen des letzten Kaufs weiter. */
+    /** The summary is complete: a price null means „none recorded“, not „unknown“;
+     * otherwise the stored one would still apply after deleting the last purchase. */
     private fun zusammengefasst(s: SetAnsicht, b: FollowUp.SetSummary): SetAnsicht {
         val agg = b.agg
         return s.copy(condition = agg.zustand, conditions = agg.states, usedCount = agg.gebraucht,
             maxPurchasePrice = agg.highestPurchasePrice, avgPurchasePrice = agg.purchasePriceCut)
     }
 
-    /** Den Namen des neuen Besitzers kennt erst der nächste Abgleich; bis dahin die Nummer ohne Namen. */
+    /** The name of the new owner is known only to the next sync; until then the number without a name. */
     private fun verschoben(s: SetAnsicht, b: FollowUp.SetMoved): SetAnsicht {
         if (s.owners.isEmpty()) return s
         val ohne = if (b.alle) s.owners.filterNot { it.id == b.von } else s.owners
@@ -74,7 +74,7 @@ internal object LocalApplication {
         is FollowUp.WantedItemAdopted -> merkliste(liste, Editing.MerkpostenLoeschen(b.setNumber, b.zustand, b.besitzer))
         is FollowUp.WantedItemMoved -> {
             val ziel = rememberKey(WantedItemView(setNumber = b.setNumber, condition = b.zustand, userId = b.zu))
-            // Hatte das Ziel den Posten schon, fasst der Server zusammen: Es bleibt einer.
+            // If the target already had the item, the server merges: one remains.
             val vorhanden = liste.any { rememberKey(it) == ziel }
             liste.mapNotNull {
                 if (it.setNumber != b.setNumber || it.condition != b.zustand || it.userId != b.von) it
@@ -157,11 +157,11 @@ internal object LocalApplication {
         is FollowUp.LocationDeleted, is FollowUp.LocationDefault, is FollowUp.AlarmSet, is FollowUp.AlarmRemoved -> liste
     }
 
-    /** Ein gesetzter Alarm ersetzt den des Sets im selben Zustand; neue stehen vorn wie am Server. */
+    /** A set alert replaces that of the set in the same condition; new ones stand in front as at the server. */
     fun preisalarme(liste: List<PriceAlertView>, b: Wirkung): List<PriceAlertView> = when (b) {
         is FollowUp.AlarmSet -> {
             val alt = liste.firstOrNull { it.setNumber == b.alarm.setNumber && it.condition == b.alarm.condition }
-            // Die Einzelroute schickt weder Name noch Bild; die der Übersicht bleiben stehen.
+            // The single route sends neither name nor image; those of the overview stay.
             val neu = if (alt == null) b.alarm else b.alarm.copy(name = b.alarm.name ?: alt.name,
                 imageLocal = b.alarm.imageLocal ?: alt.imageLocal, imageUrl = b.alarm.imageUrl ?: alt.imageUrl,
                 setImgUrl = b.alarm.setImgUrl ?: alt.setImgUrl)
@@ -174,7 +174,7 @@ internal object LocalApplication {
         is FollowUp.LocationCreated, is FollowUp.LocationDeleted, is FollowUp.LocationDefault -> liste
     }
 
-    /** Der Vorrat folgt Anlegen, Umbenennen, Löschen und dem Stern; höchstens ein Ort trägt ihn. */
+    /** The supply follows creating, renaming, deleting and the star; at most one place carries it. */
     fun lagerorte(liste: List<StockLocationView>, b: Wirkung): List<StockLocationView> = when (b) {
         is FollowUp.LocationCreated ->
             if (liste.any { it.ort.id == b.ort.id }) liste else liste + StockLocationView(ort = b.ort, vorgabe = false)
@@ -188,8 +188,8 @@ internal object LocalApplication {
     }
 
     /**
-     * Mit Schritt zählt die Änderung auf das, was die Liste jetzt zeigt — auch
-     * wenn eine neuere Serverantwort darunterliegt. Ohne Schritt gilt die Menge.
+     * With a step the change counts on top of what the list shows now — even
+     * if a newer server response lies underneath. Without a step the quantity applies.
      */
     private fun newQuantity(bisher: Int, a: Stueckaenderung) =
         a.schritt?.let { bisher + it } ?: a.menge

@@ -10,10 +10,10 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 /**
- * Der einzige Weg, auf dem eine Meldung ein Set öffnet. Nicht exportiert: Nur
- * die eigene PendingIntent erreicht ihn, eine fremde App bekommt eine
- * SecurityException. Er legt das Ziel im Prozess ab und startet die App ohne
- * Extras; die exportierte MainActivity liest keine.
+ * The only way a notification opens a set. Not exported: only
+ * the own PendingIntent reaches it, a foreign app gets a
+ * SecurityException. It stores the target in the process and starts the app without
+ * extras; the exported MainActivity reads none.
  */
 @AndroidEntryPoint
 class MeldungsEinstieg : ComponentActivity() {
@@ -27,9 +27,9 @@ class MeldungsEinstieg : ComponentActivity() {
 }
 
 /**
- * Ablegen und den Start der App bauen. NEW_TASK mit CLEAR_TOP|SINGLE_TOP: Der
- * Einstieg hat keine Task-Affinität, die laufende App erhält so onNewIntent()
- * in ihrer eigenen Task statt einer zweiten Instanz.
+ * Store and build the app's start. NEW_TASK with CLEAR_TOP|SINGLE_TOP: the
+ * entry has no task affinity, the running app thus gets onNewIntent()
+ * in its own task instead of a second instance.
  */
 internal fun forwardMessage(ctx: Context, arrival: Intent?, inbox: Meldungseingang): Intent {
     inbox.ablegen(arrival?.getStringExtra(PreisalarmWorker.EXTRA_SET))

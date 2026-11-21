@@ -13,10 +13,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Der Schrittschutz am Server. Jede Absage, auch ein 404 oder ein Netzfehler, hält
- * den Schritt an: Der Server kennt ihn seit Langem, und ein Rückfall auf die Prüfung
- * im Gerät oder einen Schlüssel ohne Attestation wäre ein Weg, den ein Dritter
- * nur auszulösen bräuchte.
+ * The step guard at the server. Every refusal, also a 404 or a network error, stops
+ * the step: the server has known it for a long time, and a fallback to the check
+ * on the device or to a key without attestation would be a path a third party
+ * would only need to trigger.
  */
 @Singleton
 internal class SchrittbindungImpl @Inject constructor(
@@ -44,7 +44,7 @@ internal class SchrittbindungImpl @Inject constructor(
         is Ergebnis.Fehler -> Schluesselnonce.Rejected(r.message.ifBlank { null })
     }
 
-    /** Den Satz des Servers nur bei seiner Absage: Ein Netzfehler nach der Anmeldung ist keine Meldung wert. */
+    /** The server's sentence only on its refusal: a network error after the sign-in is not worth a message. */
     override suspend fun depositChain(kette: List<ByteArray>): Schrittantwort {
         val anfrage = GeraeteSchluesselAnfrage(kette = kette.map { Base64.getEncoder().encodeToString(it) })
         return when (val r = sicherAufrufen { api.depositChain(anfrage) }) {

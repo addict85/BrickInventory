@@ -16,17 +16,17 @@ import ch.brickinventoryapp.testing.RowsServer
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * PfadServer.imTakt liest jede Antwort gegen das DTO der aufgerufenen Methode. Eine
- * unvollständige Testantwort scheitert so im aufrufenden Faden, statt über
- * Dispatchers.Default zurückzukommen und den Test aus dem Takt zu werfen.
+ * PfadServer.imTakt reads every response against the DTO of the called method. An
+ * incomplete test response thus fails in the calling thread instead of coming back via
+ * Dispatchers.Default and throwing the test out of tick.
  *
- * Gegenproben (gemessen mit kotlinc lokal):
- *   A  in imTakt den Aufruf von checkAgainstDto gestrichen → rot „eine unvollständige
- *      Antwort scheitert …“ (SerializationException statt AssertionError)
- *   B  pruefeEinlesen prüft die Liste nicht → rot „das Aufräumen nennt …“
- *   C  ImmediatelyCall fragt staysFrom nicht → rot „eine zurückgehaltene Antwort …“
- *   D  in senden() `isCanceled` nicht geprüft → rot „ein abgebrochener Abruf …“
- *   E  RowsServer ohne vorrang (nach Pfad statt Reihe) → rot „der RowsServer …“
+ * Counter-checks (measured locally with kotlinc):
+ *   A  in imTakt the call of checkAgainstDto struck → red “an incomplete
+ *      response fails …” (SerializationException instead of AssertionError)
+ *   B  pruefeEinlesen does not check the list → red “the cleanup names …”
+ *   C  ImmediatelyCall does not ask staysFrom → red “a held-back response …”
+ *   D  in senden() `isCanceled` not checked → red “an aborted fetch …”
+ *   E  RowsServer without vorrang (by path instead of order) → red “the RowsServer …”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PathServerInTickTest {

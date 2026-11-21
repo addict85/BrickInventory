@@ -10,8 +10,8 @@ import org.junit.Test
  * Who has to update? The server names its own contract version and the
  * smallest app version it still works with; the app compares against its own.
  *
- * Gegenprobe (measured 27.10. with kotlinc): swapped the two branches in
- * versionsHint → red: "a too old app" and "a too old server".
+ * Counter-check (measured 27.10. with kotlinc): swapped the two branches in
+ * versionsHint → red: “a too old app” and “a too old server”.
  */
 class ApiVersionTest {
 

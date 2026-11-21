@@ -10,23 +10,23 @@ import javax.crypto.spec.SecretKeySpec
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Was die Einstellungen von der Vorschau-Ablage brauchen: Belegung zeigen, leeren. */
+/** What the settings need from the preview store: show the usage, empty it. */
 interface Vorschauablage {
     fun belegt(): Long
     fun leeren()
 }
 
 /**
- * Dauerhafte Ablage der Vorschaubilder — damit die Tabellen ohne Netz stehen.
- * Unter filesDir statt cacheDir: Den Cache darf Android leeren, und als LRU verdrängte ein Blättern
- * im Katalog die eigene Sammlung.
+ * Persistent store of the thumbnails — so that the tables stand without network.
+ * Under filesDir instead of cacheDir: Android may empty the cache, and as an LRU paging through
+ * the catalog displaced one's own collection.
  */
 @Singleton
 class VorschauSpeicher(
-    /** Der Ablageordner; eine Funktion, damit `context` erst beim ersten Zugriff gefragt wird. */
+    /** The store folder; a function so that `context` is only asked on first access. */
     private val root: () -> File,
     private val cipher: StoreCipher,
-    /** Schlüssel der Dateinamen; ohne ihn liesse sich aus einer bekannten Adresse ihr Name rechnen. */
+    /** Key of the file names; without it one could compute the name from a known address. */
     private val namen: () -> ByteArray,
 ) : Vorschauablage {
     @Inject constructor(@ApplicationContext context: Context, ablage: Ablageschluessel) :
@@ -34,64 +34,64 @@ class VorschauSpeicher(
 
     companion object {
         /**
-         * Obergrenze der Ablage: `filesDir` räumt niemand ausser uns. 150 MB fassen bei
-         * rund 15 kB je Vorschau über zehntausend Bilder.
+         * Upper limit of the store: nobody but us cleans up `filesDir`. 150 MB hold
+         * over ten thousand images at about 15 kB per thumbnail.
          */
         const val MAX_BYTES = 150L * 1024 * 1024
 
         /**
-         * Beim Aufraeumen auf vier Fuenftel hinunter, statt jedes Mal knapp an der Grenze
-         * zu arbeiten.
+         * When cleaning up, go down to four fifths instead of working just at the limit
+         * every time.
          */
         private const val TARGET_SHARE = 0.8
 
         /**
-         * So weit darf das Vorwärmen die Ablage füllen: 80 %. Nicht dasselbe wie
-         * [TARGET_SHARE] (wie tief das Aufräumen geht): Das letzte Fünftel bleibt dem, was
-         * jemand wirklich ansieht, sonst löste jeder echte Aufruf ein Aufräumen aus.
+         * This is how far warming may fill the store: 80 %. Not the same as
+         * [TARGET_SHARE] (how deep cleaning up goes): the last fifth stays for what
+         * someone really views, otherwise every real call would trigger a cleanup.
          */
         const val LIMIT_WARM_UP = MAX_BYTES / 5 * 4
 
         /**
-         * Zeitstempel für spekulativ geholte Bilder, kurz nach der Epoche: Aufgeräumt wird
-         * das Älteste zuerst, und ein vorgewärmtes Bild soll vor einem wirklich
-         * angesehenen fliegen. Wird es später angesehen, schreibt der Abgriff in
-         * NetzModule es mit `speculative = false` neu und gibt ihm einen echten Stempel.
+         * Timestamp for speculatively fetched images, shortly after the epoch: cleanup removes
+         * the oldest first, and a warmed image should go before one that was really
+         * viewed. If it is viewed later, the tap in
+         * NetzModule rewrites it with `speculative = false` and gives it a real stamp.
          */
         private const val SPECULATIVE_TIME = 1000L
 
-        /** Nur Vorschaubilder. Die volle Aufloesung gehoert nicht hierher — siehe [isPreview]. */
+        /** Only thumbnails. The full resolution does not belong here — see [isPreview]. */
         private const val PREVIEW_FEATURE = "thumb"
 
-        /** Unterordner der Ablage mit gestreuten Namen; alles andere daneben stammt von älteren Fassungen. */
+        /** Subfolder of the store with hashed names; everything else next to it comes from older versions. */
         private const val ENCRYPTED = "v3"
     }
 
     private val folder: File by lazy {
         val basis = root()
-        // Ein Zwischenspeicher: Klartext (Dateien) und v2 (Namen als SHA-256 der Adresse) werden verworfen.
+        // A cache: plaintext (files) and v2 (names as SHA-256 of the address) are discarded.
         runCatching { basis.listFiles()?.filter { it.name != ENCRYPTED }?.forEach { it.deleteRecursively() } }
         File(basis, ENCRYPTED).also { it.mkdirs() }
     }
 
-    /** Zweck und Dateiname als AAD: Eine Datei unter fremdem Namen gilt nicht als dieses Bild. */
+    /** Purpose and file name as AAD: a file under a foreign name does not count as this image. */
     private fun bindung(datei: File) = "vorschau/${datei.name}"
 
     /**
-     * Gehört diese Adresse zu einem Vorschaubild? Zwei Formen aus util/ImageUrls.kt:
+     * Does this address belong to a thumbnail? Two forms from util/ImageUrls.kt:
      *
-     * - der Proxy mit `&thumb=1`
-     * - eine lokal abgelegte Datei, die der Server `_thumb` benannt hat
+     * - the proxy with `&thumb=1`
+     * - a locally stored file that the server named `_thumb`
      *
-     * Die volle Auflösung bleibt draussen: Sie wird einzeln im Detail angesehen, nicht
-     * in Tabellen.
+     * The full resolution stays out: it is viewed individually in the detail, not
+     * in tables.
      */
     fun isPreview(adresse: String): Boolean =
         adresse.contains("${PREVIEW_FEATURE}=1") || adresse.contains("_$PREVIEW_FEATURE.")
 
     /**
-     * Der Dateiname zu einer Adresse: HMAC-SHA256 mit [namen], nicht der blosse Hash —
-     * sonst verriete ein Name, ob ein bekanntes Set-Bild hier liegt.
+     * The file name for an address: HMAC-SHA256 with [namen], not the bare hash —
+     * otherwise a name would reveal whether a known set image lies here.
      */
     private fun schluessel(adresse: String): String =
         Mac.getInstance("HmacSHA256").apply { init(SecretKeySpec(namen(), "HmacSHA256")) }
@@ -100,14 +100,14 @@ class VorschauSpeicher(
     private fun datei(adresse: String) = File(folder, schluessel(adresse))
 
     /**
-     * Liegt diese Adresse schon hier? Für das Vorwärmen, ohne die Bytes zu lesen —
-     * gefragt ist nur, ob es das Netz braucht.
+     * Does this address already lie here? For warming, without reading the bytes —
+     * the only question is whether it needs the network.
      */
     fun hat(adresse: String): Boolean = datei(adresse).let { it.isFile && it.length() > 0 }
 
     /**
-     * Die abgelegten Bytes — oder null, wenn es sie nicht gibt. Eine unlesbare Datei
-     * (anderer Schlüssel, verändert) wird gelöscht, sonst gälte sie beim Vorwärmen als da.
+     * The stored bytes — or null if they do not exist. An unreadable file
+     * (different key, changed) is deleted, otherwise it would count as present when warming.
      */
     fun lies(adresse: String): ByteArray? {
         val f = datei(adresse)
@@ -117,8 +117,8 @@ class VorschauSpeicher(
     }
 
     /**
-     * Bytes ablegen: erst in eine Nebendatei, dann umbenennen — sonst läge nach einem
-     * Abbruch eine halbe Datei da, die wie ein Bild aussieht.
+     * Store bytes: first into a side file, then rename — otherwise after an
+     * abort a half file would lie there that looks like an image.
      */
     fun schreibe(adresse: String, bytes: ByteArray, speculative: Boolean = false) {
         if (bytes.isEmpty()) return
@@ -133,19 +133,19 @@ class VorschauSpeicher(
         cleanupIfNeeded()
     }
 
-    /** Wie viel liegt hier? Fuer die Anzeige in den Einstellungen. */
+    /** How much lies here? For the display in the settings. */
     override fun belegt(): Long =
         runCatching { folder.listFiles()?.sumOf { it.length() } ?: 0L }.getOrDefault(0L)
 
-    /** Alles wegwerfen — fuer den Knopf in den Einstellungen. */
+    /** Throw everything away — for the button in the settings. */
     override fun leeren() {
         runCatching { folder.listFiles()?.forEach { it.delete() } }
     }
 
     /**
-     * Über der Grenze? Dann die ältesten wegwerfen — nach der letzten Änderung, weil
-     * viele Dateisysteme die Lesezeit nicht mehr führen. Was regelmässig gebraucht
-     * wird, wird ohnehin neu geschrieben.
+     * Above the limit? Then throw away the oldest — by the last modification, because
+     * many file systems no longer keep the access time. What is needed regularly
+     * gets rewritten anyway.
      */
     private fun cleanupIfNeeded() {
         runCatching {

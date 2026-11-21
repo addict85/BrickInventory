@@ -7,64 +7,64 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Ratschen: Zahlen, die nur sinken dürfen. Jede steht genau auf dem gemessenen Wert;
- * steigt sie, ist der Test rot, sinkt sie, verlangt er, die Schranke nachzuziehen.
- * Eine Regex auf den Quelltext bestätigt nur, dass eine Zeile dasteht; gezählt wird,
- * wie viele Testfunktionen das noch tun. Gegenstück zu Web-App/test/ratschen.test.js.
+ * Ratchets: numbers that may only sink. Each stands exactly at the measured value;
+ * if it rises, the test is red, if it sinks, it demands to adjust the limit.
+ * A regex on the source only confirms that a line is there; counted is
+ * how many test functions still do that. Counterpart to Web-App/test/ratschen.test.js.
  *
- * Gegenproben (Patches unter gegenproben/):
- *   schranke-zu-hoch           Schranke der Quelltext-Funktionen +1 → rot „Testfunktionen,
- *                              die Quelltext lesen …“ (gesunken, nachziehen)
- *   helfer-zaehlt-nicht        ein lesender Helfer zählt nicht mehr → rot, derselbe Test
- *   werkzeugausgabe-zaehlt     die Ausgabe eines Werkzeugs zählt wieder als Quelltext → rot „die Ausgabe
- *                              eines Werkzeugs …“ und „Testfunktionen, die Quelltext lesen …“
- *   geschichte-im-testkopf     Nachtragsnummer und Melder im Kopf von TabOpensAtTopTest → rot „lange
- *                              Kommentare im Workflow und in Tests …“
- *   kuerzel-im-bau             ein Prüfkürzel wieder im Kommentar von settings.gradle.kts → rot, derselbe Test
- *   kommentar-zu-lang          sechs Zeilen Prosa über AppViewModel → rot „kein Kommentar hat …“
- *   bau-kommentar-zu-lang      sechs Zeilen in gradle.properties → rot „kein Kommentar in Build …“
- *   verweis-aufs-archiv        ein „Ausführlich: docs/begruendungen/…“ in TokenTresor.kt → rot „kein Verweis
- *                              auf das Begründungsarchiv …“
- *   kdoc-doppelt               ein verwaister KDoc-Block vor Alarmabholung → rot, derselbe Test
- *   detekt-baseline-waechst    Obergrenze eins unter den Einträgen → rot „die detekt-Baseline …“
- *   detekt-baseline-fremde-regel  ein MagicNumber-Eintrag → rot, derselbe Test
- *   start-schluckt-abbruch     macht „kein breiter Fang …“ rot
- *   runcatching-um-suspend     BrickInventoryApp übernimmt das alte Token wieder in runCatching
- *                              → rot „kein runCatching verschluckt …“
- *   runcatching-um-suspend-lambda  Offlineablage ruft die suspend-Quelle (ein Feld vom Typ
- *                              `suspend () -> String?`) in runCatching auf → rot, derselbe Test
- *   voll-qualifiziert          `ch.brickinventoryapp.model.util.fangeAusserAbbruch` ausgeschrieben → rot
- *                              „kein voll qualifizierter Projektname …“ und „voll qualifizierte Namen …“
- *   warten-in-echtzeit         PartsViewModelTest schläft wieder 200 ms → rot „Echtzeit-Warten …“
- *   core-data-oeffentlich      liesBelow ohne internal → rot „die oeffentliche Flaeche der Datenmodule …“
- *   bereich-oeffentlich        qrSwitchesServer ohne internal → rot „die oeffentliche Flaeche der Bereiche …“
- *   erfassung-an-der-activity  EntryViewModel wieder per `by viewModels()` in MainActivity
- *                              → rot „the activity no longer holds ViewModels …“
- *   padding-feste-zahl         DetailRow2 wieder `padding(vertical = 5.dp)` → rot „feste Zahlen in padding …“
- *   abstand-zwischen-feste-zahl  Lagerorte wieder `Spacer(Modifier.width(8.dp))` → rot, derselbe Test
- *   dialog-ohne-fenstername    UpdateDialog ohne paneTitle → rot „kein AlertDialog ohne Fenstername …“
- *   dialog-graue-flaeche       UpdateDialog ohne fensterFlaeche() → rot „every AlertDialog lies on the window surface“
- *   gutschein-eigene-knopfreihe  Gutschein-Formular wieder mit eigener Reihe Speichern | Abbrechen
- *                              → rot „Abbrechen und Hauptknopf stehen nur in der Knopfzeile …“
- *   string-format-ohne-locale  MonitoringScreen wieder `String.format(fmt, sn)` → rot „kein String-format …“
- *   laden-im-bildschirm        SetDetailScreen lädt wieder per LaunchedEffect(setNumber)
- *                              → rot „Bildschirme stossen das Laden nicht …“
- *   merkliste-laedt-wieder     WantedUiState wieder mit einem Feld `nochLaedt: Boolean` → rot
- *                              „Bildschirme stossen das Laden nicht …, Zustaende tragen Laden …“
- *   merkliste-fehler-als-text  WantedUiState mit `errorText: String?` → rot, derselbe Test
- *   konto-speichert-wieder     AccountUiState wieder mit `speichert: Boolean` → rot, derselbe Test
- *   galerie-fehler-als-text    GalleryUiState mit `galleryFehlerSatz: String?` → rot, derselbe Test
- *   fachtyp-preis-als-double   `val betragAlt: Double?` in PurchaseSumsView → rot „Beträge als Double …“
- *   fachtyp-datum-als-text     `val geaendertAm: String?` in KaufAnsicht → rot „Daten als String …“
+ * Counter-checks (patches under gegenproben/):
+ *   schranke-zu-hoch           limit of the source-reading functions +1 → red “test functions
+ *                              that read source …” (sunk, adjust)
+ *   helfer-zaehlt-nicht        a reading helper no longer counts → red, the same test
+ *   werkzeugausgabe-zaehlt     the output of a tool counts as source again → red “the output
+ *                              of a tool …” and “test functions that read source …”
+ *   geschichte-im-testkopf     addendum number and reporter in the header of TabOpensAtTopTest → red “long
+ *                              comments in the workflow and in tests …”
+ *   kuerzel-im-bau             a check abbreviation again in the comment of settings.gradle.kts → red, the same test
+ *   kommentar-zu-lang          six lines of prose above AppViewModel → red “no comment has …”
+ *   bau-kommentar-zu-lang      six lines in gradle.properties → red “no comment in build files …”
+ *   verweis-aufs-archiv        an „Ausführlich: docs/begruendungen/…“ in TokenTresor.kt → red “no reference
+ *                              to the reasoning archive …”
+ *   kdoc-doppelt               an orphaned KDoc block before Alarmabholung → red, the same test
+ *   detekt-baseline-waechst    upper limit one below the entries → red “the detekt baseline …”
+ *   detekt-baseline-fremde-regel  a MagicNumber entry → red, the same test
+ *   start-schluckt-abbruch     makes “no broad catch …” red
+ *   runcatching-um-suspend     BrickInventoryApp takes over the old token in runCatching again
+ *                              → red “no runCatching swallows …”
+ *   runcatching-um-suspend-lambda  Offlineablage calls the suspend source (a field of type
+ *                              `suspend () -> String?`) in runCatching → red, the same test
+ *   voll-qualifiziert          `ch.brickinventoryapp.model.util.fangeAusserAbbruch` written out → red
+ *                              “no fully qualified project name …” and “fully qualified names …”
+ *   warten-in-echtzeit         PartsViewModelTest sleeps 200 ms again → red “real-time waiting …”
+ *   core-data-oeffentlich      liesBelow without internal → red “the public surface of the data modules …”
+ *   bereich-oeffentlich        qrSwitchesServer without internal → red “the public surface of the areas …”
+ *   erfassung-an-der-activity  EntryViewModel again via `by viewModels()` in MainActivity
+ *                              → red “the activity no longer holds ViewModels …”
+ *   padding-feste-zahl         DetailRow2 again `padding(vertical = 5.dp)` → red “fixed numbers in padding …”
+ *   abstand-zwischen-feste-zahl  storage locations again `Spacer(Modifier.width(8.dp))` → red, the same test
+ *   dialog-ohne-fenstername    UpdateDialog without paneTitle → red “no AlertDialog without window name …”
+ *   dialog-graue-flaeche       UpdateDialog without fensterFlaeche() → red “every AlertDialog lies on the window surface“
+ *   gutschein-eigene-knopfreihe  voucher form again with its own row Save | Cancel
+ *                              → red “Cancel and main button stand together only in the button row …”
+ *   string-format-ohne-locale  MonitoringScreen again `String.format(fmt, sn)` → red “no String-format …”
+ *   laden-im-bildschirm        SetDetailScreen loads via LaunchedEffect(setNumber) again
+ *                              → red “screens do not trigger loading …”
+ *   merkliste-laedt-wieder     WantedUiState again with a field `nochLaedt: Boolean` → red
+ *                              “screens do not trigger loading …, states carry loading …”
+ *   merkliste-fehler-als-text  WantedUiState with `errorText: String?` → red, the same test
+ *   konto-speichert-wieder     AccountUiState again with `speichert: Boolean` → red, the same test
+ *   galerie-fehler-als-text    GalleryUiState with `galleryFehlerSatz: String?` → red, the same test
+ *   fachtyp-preis-als-double   `val betragAlt: Double?` in PurchaseSumsView → red „Beträge als Double …“
+ *   fachtyp-datum-als-text     `val geaendertAm: String?` in KaufAnsicht → red „Daten als String …“
  */
 class QuelltextRatscheTest {
 
     private val string = Regex("\"\"\"[\\s\\S]*?\"\"\"|\"(?:\\\\.|[^\"\\\\\n])*\"")
 
-    /** Ohne Kommentare und Zeichenketten: Ein Dateiname wie "GalleryScreen.kt" ist kein Aufruf. */
+    /** Without comments and strings: a file name like "GalleryScreen.kt" is not a call. */
     private fun code(roh: String) = string.replace(Quellen.withoutComments(roh), "\"\"")
 
-    /** Gleichheit: Steigt die Zahl, ist das ein Fehler; sinkt sie, wird die Schranke nachgezogen. */
+    /** Equality: if the number rises, that is an error; if it sinks, the limit is adjusted. */
     private fun ratchet(was: String, limit: Number, gemessen: Number, hinweis: String = "") {
         assertTrue("$was: $gemessen, erlaubt $limit. $hinweis", gemessen.toDouble() <= limit.toDouble())
         assertEquals("$was ist auf $gemessen gesunken — die Schranke von $limit auf $gemessen senken",
@@ -72,15 +72,15 @@ class QuelltextRatscheTest {
     }
 
     /**
-     * Was als Lesen von Quelltext zählt: Quellen.*, Pfade unter src/main, Workflow, Ressourcen,
-     * Dateitext. Die Ausgabe eines gestarteten Werkzeugs (`bufferedReader().readText()`) ist
-     * ein Ergebnis, kein Quelltext.
+     * What counts as reading source: Quellen.*, paths under src/main, workflow, resources,
+     * file text. The output of a started tool (`bufferedReader().readText()`) is
+     * a result, not source.
      */
     private val readsSource = Regex("""Quellen\.|"src/main/|File\("src/main|\.\./\.\./\.github|res/values|(?<!bufferedReader\(\)\.)readText\(\)|readLines\(\)""")
 
     /**
-     * (Testfunktionen, davon lesend) einer Datei. Eine Funktion liest Quelltext, wenn ihr Rumpf
-     * es tut oder einen Wert bzw. eine Funktion der Datei benutzt, die es tut.
+     * (test functions, of which reading) of a file. A function reads source if its body
+     * does or uses a value or function of the file that does.
      */
     internal fun sourceTextFunctions(roh: String): Pair<Int, Int> {
         val c = Quellen.withoutComments(roh)
@@ -125,7 +125,7 @@ class QuelltextRatscheTest {
         assertEquals(2 to 1, sourceTextFunctions(datei))
     }
 
-    /** Die Kotlin-Dateien unter src/main aller Module, ohne die aus den Design-Tokens erzeugten. */
+    /** The Kotlin files under src/main of all modules, without those generated from the design tokens. */
     private fun productionFiles(): List<File> = Quellen.module.flatMap { m ->
         File(m, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
     }.filterNot { "GENERATED from shared/design-tokens.json" in it.readText() }
@@ -134,7 +134,7 @@ class QuelltextRatscheTest {
 
     private fun isComment(t: String) = t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")
 
-    /** Prosazeilen je Kommentarblock (//-Folge gleicher Einrückung oder /* … */), ohne KDoc-Tags. */
+    /** Prose lines per comment block (// sequence of equal indentation or /* … */), without KDoc tags. */
     private fun blocks(zeilen: List<String>): List<Pair<Int, Int>> {
         val ergebnis = mutableListOf<Pair<Int, Int>>()
         var i = 0
@@ -161,7 +161,7 @@ class QuelltextRatscheTest {
         return ergebnis
     }
 
-    /** Prosazeilen ohne KDoc-Tags; ein Tag gilt bis zur nächsten Leerzeile. */
+    /** Prose lines without KDoc tags; a tag applies up to the next empty line. */
     private fun prose(text: List<String>): Int {
         var inTag = false
         return text.count { z ->
@@ -172,7 +172,7 @@ class QuelltextRatscheTest {
 
     @Test
     fun `the comment share sinks, never rises`() {
-        // Ein Anteil, keine Zahl: Er darf sinken, ohne dass jemand nachziehen muss.
+        // A share, not a number: it may sink without anyone having to adjust.
         val SCHRANKE = 22.7
         var zeilen = 0
         var comment = 0
@@ -198,7 +198,7 @@ class QuelltextRatscheTest {
         assert(lang.isEmpty()) { "Kommentare über fünf Zeilen; das Warum kürzen, die Geschichte in den Commit:\n  " + lang.joinToString("\n  ") }
     }
 
-    /** Prosazeilen je `#`-Block (gleiche Einrückung); leere `#`-Zeilen zählen nicht. */
+    /** Prose lines per `#` block (equal indentation); empty `#` lines do not count. */
     private fun hashesBlocks(zeilen: List<String>): List<Pair<Int, Int>> {
         val ergebnis = mutableListOf<Pair<Int, Int>>()
         var i = 0
@@ -214,7 +214,7 @@ class QuelltextRatscheTest {
         return ergebnis
     }
 
-    /** Buildskripte aller Module, build-logic, Katalog und gradle.properties. */
+    /** Build scripts of all modules, build-logic, catalog and gradle.properties. */
     private fun baudateien(): List<File> =
         Quellen.module.map { File(it, "build.gradle.kts") }.filter { it.isFile } +
             listOf("build.gradle.kts", "settings.gradle.kts", "gradle/libs.versions.toml", "gradle.properties")
@@ -243,7 +243,7 @@ class QuelltextRatscheTest {
         val HISTORY = 0
         val wf = File(Quellen.project, "../.github/workflows/android.yml").readLines()
         val wfLang = hashesBlocks(wf).filter { it.second > 5 }
-        // In Tests darf ein Absatz nur dann länger sein, wenn er die Gegenproben aufzählt.
+        // In tests a paragraph may only be longer if it enumerates the counter-checks.
         val dateien = Quellen.tests.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
         val testLang = dateien.flatMap { f -> longParagraphs(f.readLines()).map { "${f.name}:$it" } }
         val kennung = Regex("""[0-9]{2}\.[0-9]{2}\.20[0-9]{2}|\b(?:arch|sec|ux|perf)[0-9]+\b|\bhardened-[0-9]+""")
@@ -254,7 +254,7 @@ class QuelltextRatscheTest {
                     kennung.containsMatchIn(t) && !counterCheck.containsMatchIn(t)
             }.map { "${f.name}: ${it.trim()}" }
         }
-        // Wer was gemeldet hat und in welchem Nachtrag, steht im Commit, nicht im Testkopf.
+        // Who reported what and in which addendum belongs in the commit, not in the test header.
         val narrative = Regex("""Nachtr[aä]g\w*\s+[0-9]|\bMarcos?\b|Woher dies|\bLauf [0-9]{2,}|CI-Lauf|\bRunde [0-9]+|Addendum\w*\s+[0-9]|\bRun [0-9]{2,}|CI run|\bRound [0-9]+""")
         val tells = dateien.flatMap { f ->
             f.readLines().filter { z ->
@@ -269,7 +269,7 @@ class QuelltextRatscheTest {
             history.take(20).joinToString("\n  "))
         ratchet("Geschichte (Nachtrag, Melder, Herkunft) in Testkommentaren", HISTORY, tells.size,
             tells.take(20).joinToString("\n  "))
-        // Im Code und in Build-Dateien nennt ein Kommentar das Warum, nicht die Prüfung, die es fand.
+        // In code and build files a comment names the why, not the check that found it.
         val abbreviation = Regex("""\((?:sec|arch|ux|perf)[0-9]+[^)]*\)|\((?:[HMN][0-9]{1,2})\)|\bNachtrag [0-9]+""")
         val gekuerzt = (productionFiles() + baudateien()).flatMap { f ->
             f.readLines().filter { z -> z.trim().let { isComment(it) || it.startsWith("#") } && abbreviation.containsMatchIn(z) }
@@ -278,7 +278,7 @@ class QuelltextRatscheTest {
         ratchet("Prüfungskürzel in Kommentaren von Code und Bau", 0, gekuerzt.size, gekuerzt.take(20).joinToString("\n  "))
     }
 
-    /** Zeilennummern der Kommentar-Absätze über fünf Prosazeilen, die nicht mit „Gegenprobe“ beginnen. */
+    /** Line numbers of comment paragraphs over five prose lines that do not begin with „Gegenprobe“ or „Counter-check“. */
     private fun longParagraphs(zeilen: List<String>): List<Int> {
         val findings = mutableListOf<Int>()
         var anfang = -1
@@ -301,8 +301,8 @@ class QuelltextRatscheTest {
 
     @Test
     fun `no reference to the reasoning archive, and no KDoc hangs on nothing`() {
-        // Das Archiv docs/begruendungen ist nicht mehr im Baum; das Warum steht im Kommentar,
-        // die Geschichte im Commit. Ein zweiter KDoc-Block direkt davor hängt an nichts.
+        // The archive docs/begruendungen is no longer in the tree; the why stands in the comment,
+        // the history in the commit. A second KDoc block directly before hangs on nothing.
         var kdocs = 0
         val findings = productionFiles().flatMap { f ->
             val z = f.readLines()
@@ -319,7 +319,7 @@ class QuelltextRatscheTest {
         assert(findings.isEmpty()) { "Das Warum in den Kommentar, die Geschichte in den Commit:\n  " + findings.joinToString("\n  ") }
     }
 
-    /** Index der öffnenden Klammer zur schliessenden bei [zu], -1 wenn keine. */
+    /** Index of the opening bracket for the closing one at [zu], -1 if none. */
     private fun openingBracket(c: String, zu: Int): Int {
         var tiefe = 0
         for (i in zu downTo 0) {
@@ -332,7 +332,7 @@ class QuelltextRatscheTest {
     private val widerCatch = Regex("""\}\s*catch\s*\(\s*\w+\s*:\s*(?:Exception|Throwable)\s*\)""")
     private val catchClause = Regex("""\}\s*catch\s*\(\s*\w+\s*:\s*([\w.]+)\s*\)$""")
 
-    /** true, wenn der Fang keinen Abbruch-Zweig hat und sein try-Rumpf [call] enthält; null ohne try. */
+    /** true if the catch has no cancellation branch and its try body contains [call]; null without try. */
     private fun swallowsAbort(c: String, fang: MatchResult, call: Regex): Boolean? {
         var zu = fang.range.first
         var abort = false
@@ -348,7 +348,7 @@ class QuelltextRatscheTest {
         return !abort && call.containsMatchIn(c.substring(auf + 1, zu))
     }
 
-    /** Die Quelltexte der App und ein Muster für den Aufruf einer ihrer suspend-Funktionen. */
+    /** The app's sources and a pattern for calling one of its suspend functions. */
     private val suspendCalls: Pair<Map<File, String>, Pair<Set<String>, Regex>> by lazy {
         val texts = productionFiles().associateWith { code(it.readText()) }
         val namen = texts.values.flatMap { c ->
@@ -357,10 +357,10 @@ class QuelltextRatscheTest {
         texts to (namen to Regex("""\b(?:${namen.joinToString("|")})\s*[({]"""))
     }
 
-    /** Parameter und Felder mit suspend-Funktionstyp (`quelle: suspend () -> T`); nur in ihrer Datei ein Name. */
+    /** Parameters and fields with a suspend function type (`quelle: suspend () -> T`); a name only in their file. */
     private val suspendType = Regex("""\b(\w+)\s*:\s*\(?\s*suspend\b""")
 
-    /** Das Aufrufmuster für [c]: die suspend-Funktionen der App und die suspend-Lambdas der Datei. */
+    /** The call pattern for [c]: the app's suspend functions and the file's suspend lambdas. */
     private fun callIn(c: String): Regex {
         val (namen, _) = suspendCalls.second
         val alle = namen + suspendType.findAll(c).map { it.groupValues[1] }
@@ -369,11 +369,11 @@ class QuelltextRatscheTest {
 
     private val koroutinenBlock = Regex("""\b(?:launch|async|runBlocking|withContext\([^()]*\)|coroutineScope|supervisorScope|flow|runTest)\s*(?:\([^()]*\))?\s*$""")
 
-    /** Läuft die Stelle [ab] in einer suspend-Funktion oder einem Koroutinen-Block? Nur dort gibt es einen Abbruch zu verschlucken. */
+    /** Does the place [ab] run in a suspend function or a coroutine block? Only there is there a cancellation to swallow. */
     private fun inKoroutine(c: String, ab: Int): Boolean {
         val davor = c.substring(maxOf(0, ab - 300), ab)
         val instruction = davor.substring(maxOf(davor.lastIndexOf('{'), davor.lastIndexOf('}')) + 1)
-        // Auch `= gueltig(runCatching {`: Der Ausdruck einer suspend fun läuft ganz in ihr.
+        // Also `= gueltig(runCatching {`: the expression of a suspend fun runs entirely in it.
         if (Regex("""\bsuspend\s+fun\b[^=]*=[^{};]*$""").containsMatchIn(instruction)) return true
         var tiefe = 0
         for (j in ab - 1 downTo 0) {
@@ -393,8 +393,8 @@ class QuelltextRatscheTest {
 
     @Test
     fun `no runCatching swallows the cancellation of a suspending call`() {
-        // runCatching fängt auch die CancellationException wie ein breiter catch; der
-        // abgebrochene Aufrufer liefe weiter. Dafür gibt es fangeAusserAbbruch.
+        // runCatching also catches the CancellationException like a broad catch; the
+        // cancelled caller would keep running. fangeAusserAbbruch exists for that.
         val texts = suspendCalls.first
         var geprueft = 0
         val findings = texts.flatMap { (f, c) ->
@@ -416,9 +416,9 @@ class QuelltextRatscheTest {
 
     @Test
     fun `no broad catch swallows the cancellation of a suspending call`() {
-        // Ein `catch (_: Exception)` um einen suspendierenden Aufruf fängt auch die
-        // CancellationException; der abgebrochene Aufrufer liefe weiter. Dafür gibt
-        // es fangeAusserAbbruch oder einen vorangestellten Abbruch-Zweig.
+        // A `catch (_: Exception)` around a suspending call also catches the
+        // CancellationException; the cancelled caller would keep running. For that there
+        // is fangeAusserAbbruch or a preceding cancellation branch.
         val (texts, suche) = suspendCalls
         val namen = suche.first
         var geprueft = 0
@@ -452,8 +452,8 @@ class QuelltextRatscheTest {
 
     @Test
     fun `real-time waiting in tests becomes less, never more`() {
-        // Ein Test, der schläft, ist langsam und auf einem vollen Runner brüchig. ViewModel-Tests
-        // laufen im Takt (PfadServer.imTakt, Test-Dispatcher); gezählt wird, was noch wartet.
+        // A test that sleeps is slow and brittle on a busy runner. ViewModel tests
+        // run in ticks (PfadServer.imTakt, test dispatcher); counted is what still waits.
         val SLEEP = 2
         val WARTEN = 13
         val dateien = (Quellen.tests.walkTopDown() + File(Quellen.project, "core-testing/src/main").walkTopDown())
@@ -469,7 +469,7 @@ class QuelltextRatscheTest {
 
     private val publicDekl = Regex("""^(?:@[\w.:]+(?:\([^)\n]*\))?\s+)*((?:(?:public|internal|private|protected|data|sealed|abstract|open|enum|inline|value|annotation|const|suspend|operator|infix|tailrec|lateinit|fun interface)\s+)*)(?:fun\s+interface|class|interface|object|typealias|fun|val|var)\s""", RegexOption.MULTILINE)
 
-    /** Öffentliche Deklarationen auf oberster Ebene im Hauptcode der [module]. */
+    /** Public top-level declarations in the main code of the [module]. */
     private fun oeffentlich(module: List<File>, mindestens: Int): Int {
         val dateien = module.flatMap { m ->
             File(m, "src/main").walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
@@ -482,10 +482,10 @@ class QuelltextRatscheTest {
 
     @Test
     fun `the public surface of the data modules does not grow`() {
-        // Was nur das eigene Modul braucht, ist internal: Jede öffentliche Deklaration ist
-        // Schnittstelle für alle Bereiche. Gezählt wird auf oberster Ebene, über core-data und
-        // alles, was aus ihm abgespalten wird; sonst sänke die Zahl beim Verschieben zum Schein.
-        // Darin UPDATE_FOLDER: öffentlich, weil core-data und core-update ihn teilen.
+        // What only the own module needs is internal: every public declaration is
+        // interface for all areas. Counted at the top level, across core-data and
+        // everything split off from it; otherwise the number would sink spuriously when moving.
+        // Among them UPDATE_FOLDER: public because core-data and core-update share it.
         val GRENZE = 222
         val andere = setOf("core-model", "core-contract", "core-resources", "core-ui", "core-ui-inventory", "core-state", "core-navigation", "core-session",
             "core-testing")
@@ -497,8 +497,8 @@ class QuelltextRatscheTest {
 
     @Test
     fun `the public surface of the areas does not grow`() {
-        // Ein Bereich zeigt der App Routen und Ziele; was nur er selbst braucht, ist internal.
-        // Noch öffentlich ist vieles, weil Graphen und Oberflächentests in app liegen.
+        // An area shows the app routes and destinations; what only it needs itself is internal.
+        // Much is still public because graphs and UI tests live in app.
         val GRENZE = 142
         val module = Quellen.module.filter { it.name.startsWith("feature-") }
         assert(module.size >= 7) { "Nur ${module.size} Bereiche — greift die Suche noch?" }
@@ -506,17 +506,17 @@ class QuelltextRatscheTest {
             "Was nur der Bereich braucht, wird internal.")
     }
 
-    /** Alle Kotlin-Dateien unter src/main, ohne Kommentare und Zeichenketten. */
+    /** All Kotlin files under src/main, without comments and strings. */
     private fun hauptcode(): List<Pair<File, String>> = Quellen.module.map { File(it, "src/main") }.filter { it.isDirectory }
         .flatMap { d -> d.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList() }
         .map { it to code(it.readText()) }
 
     @Test
     fun `fixed numbers in padding do not increase`() {
-        // Abstände haben Namen (ui/theme/Abstaende); ein blankes `padding(… 14.dp)` hält sich
-        // an keine Skala, und zwei Karten nebeneinander stehen verschieden weit ein.
+        // Spacings have names (ui/theme/Abstaende); a bare `padding(… 14.dp)` keeps to
+        // no scale, and two cards side by side are indented differently.
         val GRENZE = 46
-        // Ebenso die Abstände zwischen Geschwistern: spacedBy und Spacer.
+        // Likewise the spacings between siblings: spacedBy and Spacer.
         val BETWEEN = 40
         val fest = Regex("""\bpadding\([^()]*?\b\d+(?:\.\d+)?\.dp""")
         val zwischen = Regex("""\bspacedBy\(\d+(?:\.\d+)?\.dp\)|\bSpacer\(Modifier\.(?:height|width)\(\d+(?:\.\d+)?\.dp\)\)""")
@@ -529,14 +529,14 @@ class QuelltextRatscheTest {
 
     @Test
     fun `no String-format without Locale`() {
-        // Ohne Locale formatiert String.format nach dem Gerät, nicht nach der Sprache der App;
-        // stringResource(id, …) oder appNumberLocale() nennen sie ausdrücklich.
+        // Without a Locale String.format formats by the device, not by the app's language;
+        // stringResource(id, …) or appNumberLocale() name it explicitly.
         val ohne = Regex("""\bString\.format\(\s*(?!Locale|appNumberLocale|locale\b|java\.util\.Locale)""")
         val stellen = hauptcode().filter { (_, text) -> ohne.containsMatchIn(text) }.map { it.first.name }
         assertEquals("String.format ohne Locale in $stellen", emptyList<String>(), stellen)
     }
 
-    /** Die Argumente eines Aufrufs bis zur passenden Klammer; [auf] zeigt auf die öffnende. */
+    /** The arguments of a call up to the matching bracket; [auf] points to the opening one. */
     private fun arguments(text: String, auf: Int): String {
         var tiefe = 0
         var i = auf
@@ -549,8 +549,8 @@ class QuelltextRatscheTest {
 
     @Test
     fun `no AlertDialog without window name and heading`() {
-        // Ohne paneTitle sagt TalkBack beim Öffnen nur „Dialog“, ohne heading() findet die
-        // Überschriften-Navigation den Titel nicht. Rueckfrage und AddDialog setzen beides.
+        // Without paneTitle TalkBack only says „Dialog“ when opening, without heading() the
+        // heading navigation does not find the title. Rueckfrage and AddDialog set both.
         val call = Regex("""\bAlertDialog\(""")
         var gesehen = 0
         val ohne = hauptcode().flatMap { (f, text) ->
@@ -568,8 +568,8 @@ class QuelltextRatscheTest {
 
     @Test
     fun `every AlertDialog lies on the window surface`() {
-        // Materials surfaceContainerHigh stand im Hellen grau auf dem abgedunkelten Grund;
-        // fensterFlaeche() nimmt dort surface (Kontrast belegt LockedContrastTest).
+        // Material's surfaceContainerHigh stood gray on the dimmed background in light mode;
+        // fensterFlaeche() takes surface there (contrast proven by LockedContrastTest).
         val call = Regex("""\bAlertDialog\(""")
         var gesehen = 0
         val ohne = hauptcode().flatMap { (f, text) ->
@@ -583,7 +583,7 @@ class QuelltextRatscheTest {
         assertEquals("AlertDialogs ohne fensterFlaeche()", emptyList<String>(), ohne)
     }
 
-    /** Aufruf samt nachgestelltem Block: `Row(…) { … }` oder `Row { … }`; [auf] zeigt auf `(` bzw. `{`. */
+    /** Call including trailing block: `Row(…) { … }` or `Row { … }`; [auf] points to `(` or `{`. */
     private fun callWithBlock(text: String, auf: Int): String {
         val args = if (text[auf] == '(') arguments(text, auf) else ""
         var i = auf + args.length
@@ -600,9 +600,9 @@ class QuelltextRatscheTest {
 
     @Test
     fun `Cancel and main button stand together only in the button row`() {
-        // Im Gutschein-Formular stand Speichern links und Abbrechen rechts, überall sonst
-        // umgekehrt. AlertDialog ordnet selbst; jede andere Knopfreihe nimmt Knopfzeile. Ein
-        // Schliessen-Kreuz neben „OK“ beim Bearbeiten in der Zeile ist kein Abbrechen-Knopf.
+        // In the voucher form Save stood on the left and Cancel on the right, everywhere else
+        // the other way round. AlertDialog orders itself; every other button row takes Knopfzeile. A
+        // close cross next to „OK“ when editing in the row is not a cancel button.
         val series = Regex("""\b(?:Row|FlowRow)\s*[({]""")
         val haupt = Regex("""(?<![\w.])(?:Button|FilledTonalButton)\(""")
         var gesehen = 0
@@ -621,8 +621,8 @@ class QuelltextRatscheTest {
 
     @Test
     fun `the activity no longer holds ViewModels`() {
-        // Activity-weit nur, was über jedem Ziel liegt (ActivityState) und die Pflichtmasken;
-        // alles andere holt sein Ziel mit hiltViewModel() an seinem Eintrag.
+        // Activity-wide only what lies above every destination (ActivityState) and the mandatory forms;
+        // everything else gets its destination with hiltViewModel() at its entry.
         val GRENZE = 6
         val activity = Quellen.module.map { File(it, "src/main") }.filter { it.isDirectory }
             .flatMap { d -> d.walkTopDown().filter { it.isFile && it.name == "MainActivity.kt" }.toList() }
@@ -633,8 +633,8 @@ class QuelltextRatscheTest {
 
     @Test
     fun `no fully qualified project name in the code`() {
-        // Ein Import zeigt die Abhängigkeit im Kopf der Datei; inline bleibt sie
-        // unsichtbar und die Zeile lang. Kommentare und Zeichenketten zählen nicht.
+        // An import shows the dependency at the head of the file; inline it stays
+        // invisible and the line long. Comments and strings do not count.
         val voll = Regex("""(?<![\w.])ch\.brickinventoryapp(?:\.[a-z]\w*)+\.[A-Za-z_]\w*""")
         val dateien = productionFiles() + Quellen.tests.walkTopDown().filter { it.isFile && it.extension == "kt" }
         assert(dateien.size > 500) { "Nur ${dateien.size} Dateien gefunden — greift die Suche noch?" }
@@ -648,7 +648,7 @@ class QuelltextRatscheTest {
 
     @Test
     fun `fully qualified names of foreign packages become fewer`() {
-        // Ausgeschrieben nur bei echter Namensgleichheit, und dann besser mit `import … as`.
+        // Written out only for a real name clash, and then better with `import … as`.
         val MAIN = 187
         val TESTS = 0
         val voll = Regex("""(?<![\w.@])(?:androidx|android|kotlinx|kotlin|java|javax|okhttp3|okio|retrofit2|com|org|coil3|dagger)(?:\.[a-z]\w*)+\.[A-Z]\w*""")
@@ -666,8 +666,8 @@ class QuelltextRatscheTest {
 
     @Test
     fun `screens do not trigger loading via LaunchedEffect, states carry loading and message`() {
-        // Ziel 0: Das ViewModel lädt selbst (init, observeLoadOn); der Bildschirm ruft
-        // höchstens aktualisiere() auf eine Geste hin. Gezählt: LaunchedEffect mit lade…/load…-Aufruf.
+        // Target 0: the ViewModel loads itself (init, observeLoadOn); the screen calls
+        // at most aktualisiere() in response to a gesture. Counted: LaunchedEffect with a lade…/load… call.
         val LOADING = 0
         val effect = Regex("""\bLaunchedEffect\([^)]*\)\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}""")
         val lader = Regex("""\b(?:lade|load)[A-Z]\w*\s*\(""")
@@ -677,9 +677,9 @@ class QuelltextRatscheTest {
         assertTrue("Kein LaunchedEffect gefunden — greift das Muster noch?",
             productionFiles().any { "LaunchedEffect(" in it.readText() })
         ratchet("LaunchedEffect, die laden", LOADING, findings.size, findings.joinToString())
-        // Ein Bildschirmzustand trägt Laden<T> (Abruf) oder Vorgang (Handlung) statt eines Paars
-        // aus `laeuft: Boolean` und `fehler: String?`, und Meldung oder Fehlerklasse statt eines
-        // übersetzten Satzes: Der Satz entsteht beim Zeichnen, in der Sprache von dann.
+        // A screen state carries Laden<T> (fetch) or Vorgang (action) instead of a pair
+        // of `laeuft: Boolean` and `fehler: String?`, and Meldung or error class instead of a
+        // translated sentence: the sentence arises when drawing, in the language of then.
         val ALT = 0
         val TEXT = 0
         val laden = Regex("""(?i)^(laedt\w*|laden|\w*loading|\w*laedt|\w*laeuft|speichert|sendet|prueft|\w*ing)$""")
@@ -699,7 +699,7 @@ class QuelltextRatscheTest {
                 if (isState && typ != "Boolean" && text.containsMatchIn(name)) texts++
             }
         }
-        // Beide Zahlen stehen auf 0; dass das Muster noch greift, zeigt eine alte Form.
+        // Both numbers stand at 0; that the pattern still applies is shown by an old form.
         val unrecognized = listOf("galleryLoading", "bestandLaeuft", "isExporting", "speichert", "laedtPruefung")
             .filterNot { erkannt(laden, it) }
         assertTrue("Das Muster erkennt $unrecognized nicht mehr", unrecognized.isEmpty())
@@ -712,8 +712,8 @@ class QuelltextRatscheTest {
 
     @Test
     fun `domain types carry amounts as Money and points in time as Instant, not as Double and String`() {
-        // Ziel 0, beide erreicht: Gezählt werden Eigenschaften in core-model, deren Name einen Betrag
-        // oder ein Datum nennt. Prozente sind keine Beträge.
+        // Target 0, both reached: counted are properties in core-model whose name names an amount
+        // or a date. Percentages are not amounts.
         val AMOUNTS = 0
         val DATA = 0
         val propertyType = Regex("""\bva[lr]\s+(\w+)\s*:\s*(Double|String)\b""")
@@ -731,11 +731,11 @@ class QuelltextRatscheTest {
         ratchet("Beträge als Double in core-model", AMOUNTS, money.size, "Geld nehmen (model/domain/Geld.kt): $money")
         ratchet("Daten als String in core-model", DATA, days.size, "Instant nehmen, gelesen mit zeitpunkt(): $days")
     }
-    /** Ob [pattern] eine Boolean-Eigenschaft dieses Namens als alte Ladeform zählt. */
+    /** Whether [pattern] counts a Boolean property of this name as an old loading form. */
     private fun erkannt(pattern: Regex, name: String): Boolean =
         eigenschaft.find("    val $name: Boolean = false,")?.destructured?.component1()?.let(pattern::matches) == true
 
-    /** Die Hauptquellen eines Moduls, Zeile für Zeile; die Regeln unten lesen nur Zeilenanfänge. */
+    /** The main sources of a module, line by line; the rules below read only line starts. */
     private fun rowsPerModule(): List<Pair<String, List<String>>> = Quellen.module.flatMap { m ->
         File(m, "src/main/java").walkTopDown().filter { it.isFile && it.extension == "kt" }
             .map { m.name to it.readText().split("\n") }.toList()

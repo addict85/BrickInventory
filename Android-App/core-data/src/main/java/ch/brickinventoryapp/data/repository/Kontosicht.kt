@@ -37,16 +37,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Seitengrösse der Galerie, wie in der Webapp (public/js/sammlung.js): Zwei
- * Grössen ergäben zwei Scroll-Erlebnisse für denselben Bestand.
+ * Page size of the gallery, as in the web app (public/js/collection.js): two
+ * sizes would give two scrolling experiences for the same stock.
  */
 internal const val GALLERY_PAGE_SIZE = 60
 
 /**
- * Die Sicht über gewählte Konten, Lagerorte oder mit „In Sets“: Mengen und
- * Preise je Konto teilt nur der Server auf, die lokale Zeile trägt die Summe
- * aller. Deshalb ein eigenes Lesemodell neben der Ablage, nicht ein zweiter
- * Weg zu denselben Listen.
+ * The view over selected accounts, storage locations or with „In Sets“: quantities and
+ * prices per account are split only by the server, the local row carries the sum
+ * of all. Hence an own read model next to the store, not a second
+ * path to the same lists.
  */
 @Singleton
 class Kontosicht @Inject constructor(
@@ -57,9 +57,9 @@ class Kontosicht @Inject constructor(
     private val retry: Wiederholung,
 ) {
     /**
-     * Ein Lesemodell, das nur der Server füllt: die zuletzt gefragte Liste im
-     * Speicher, nie in Room. Ändert sich die Ablage ([trigger]), fragt es den
-     * Server neu — ein Schreibvorgang zeigt sich so auch hier, ohne Signal.
+     * A read model only the server fills: the most recently requested list in
+     * memory, never in Room. If the store changes ([trigger]), it asks the
+     * server anew — a write thus shows up here too, without a signal.
      */
     class Serversicht<A, T>(
         private val ablage: Offlineablage,
@@ -71,7 +71,7 @@ class Kontosicht @Inject constructor(
 
         private val zuletzt = MutableStateFlow<Eintrag<A, T>?>(null)
 
-        /** Nie geladen heisst Stand null, wie in der Ablage; eine Antwort für ein anderes Konto zählt nicht. */
+        /** Never loaded means state null, as in the store; a response for a different account does not count. */
         fun observe(abfrage: A): Flow<Local<T>> = channelFlow {
             launch { ablage.altered(*trigger).collectLatest { refresh(abfrage) } }
             launch {

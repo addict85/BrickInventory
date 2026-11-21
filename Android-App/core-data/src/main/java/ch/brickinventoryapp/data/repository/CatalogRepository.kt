@@ -8,9 +8,9 @@ import ch.brickinventoryapp.model.domain.CatalogPageView
 import ch.brickinventoryapp.model.domain.Katalogsortierung
 
 /**
- * Der Set-Katalog des Servers.
- * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit
- * Retrofit und Ablage hängen (KatalogRepositoryImpl).
+ * The server's set catalog.
+ * An interface so that ViewModels and tests do not depend on the implementation with
+ * Retrofit and store (KatalogRepositoryImpl).
  */
 interface CatalogRepository {
     suspend fun getCatalogMeta(): Ergebnis<CatalogMetaView>
@@ -28,8 +28,8 @@ interface CatalogRepository {
 }
 
 /**
- * Seitengrösse des Katalogs. Muss zur Rechnung des Servers passen: Der
- * Jahres-Sprung liefert `page` für genau diese Grösse, und aus `offset` leitet
- * die Ansicht die Seite selbst ab.
+ * Page size of the catalog. Must match the server's calculation: the
+ * year jump delivers `page` for exactly this size, and from `offset` the
+ * view derives the page itself.
  */
 const val CATALOG_PAGE_SIZE = 60

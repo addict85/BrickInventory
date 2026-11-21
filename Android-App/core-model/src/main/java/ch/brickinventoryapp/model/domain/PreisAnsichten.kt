@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.model.domain
 
-// Marktpreise und ihr Verlauf je Zustand.
+// Market prices and their history per condition.
 
 data class PreisDiagrammAnsicht(
     val values: List<PriceSeriesView> = emptyList(),
@@ -22,7 +22,7 @@ data class PricePerStateView(
     val new: StateValuationView? = null,
     val used: StateValuationView? = null,
 ) {
-    /** Die Zustände, zu denen es eine Bewertung gibt, neu zuerst. */
+    /** The conditions for which there is a valuation, new first. */
     fun present(): List<Pair<Zustand, StateValuationView>> = buildList {
         new?.let { add(Zustand.NEU to it) }
         used?.let { add(Zustand.GEBRAUCHT to it) }

@@ -13,12 +13,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Set anlegen über den Strom: Ein unlesbares Ereignis ist ein Fehler. Es könnte das
- * Abschlussereignis sein, und ohne Abschluss erfährt der Nutzer nie, ob das Set da ist.
+ * Creating a set via the stream: an unreadable event is an error. It could be the
+ * completion event, and without completion the user never learns whether the set is there.
  *
- * Gegenprobe (Patch gegenproben/anlegen-unlesbar-verschluckt.patch): verarbeite() gibt bei
- * einer unlesbaren Nutzlast wieder still false zurück → rot „ein unlesbares Ereignis
- * endet als Fehler“ (der Strom endet nach den Stammdaten ohne Abschluss).
+ * Counter-check (patch gegenproben/anlegen-unlesbar-verschluckt.patch): verarbeite() silently returns
+ * false again on an unreadable payload → red “an unreadable event
+ * ends as an error” (the stream ends after the master data without completion).
  */
 class SetCreateUnreadableTest {
 

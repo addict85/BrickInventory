@@ -7,16 +7,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Verwalterrechte ohne eingerichteten zweiten Faktor: Bis er bestätigt ist, weist
- * der Server fast jeden Abruf mit 403 `zweiter_faktor_pflicht` ab. Gesetzt vom
- * ServerWaechter und aus /auth/me; die App zeigt dann nur die Einrichtungsmaske.
+ * Admin rights without a set-up second factor: until it is confirmed, the server
+ * rejects almost every fetch with 403 `zweiter_faktor_pflicht`. Set by the
+ * ServerWaechter and from /auth/me; the app then shows only the setup form.
  */
 interface SecondFactorRequired {
     val noetig: StateFlow<Boolean>
     fun melde()
     fun erledigt()
 
-    /** Für Tests ohne Hilt. */
+    /** For tests without Hilt. */
     companion object {
         operator fun invoke(): SecondFactorRequired = SecondFactorState()
     }

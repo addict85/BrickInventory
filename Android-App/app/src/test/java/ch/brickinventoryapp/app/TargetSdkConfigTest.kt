@@ -5,16 +5,16 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Absicherung der Ziel-Plattform (SDK 36 / Android 16).
+ * Safeguarding of the target platform (SDK 36 / Android 16).
  *
- * Der Sprung von 35 auf 36 ist deshalb harmlos, weil das Manifest bestimmte
- * Dinge NICHT tut. Genau das prüft diese Klasse — sonst fällt es erst auf
- * einem Tablet oder beim Zurückwischen auf.
+ * The jump from 35 to 36 is harmless because the manifest does NOT do certain
+ * things. Exactly that is what this class checks — otherwise it only stands out on
+ * a tablet or when swiping back.
  *
- * Die SDK-Stände stehen in build-logic (Sdk.kt); ein Modulskript darf sie nicht
- * überschreiben, sonst prüfte diese Klasse eine Zahl, die nicht gilt.
- * Gegenproben (Patches unter gegenproben/, am 04.11.2026 rot wie angegeben):
- *   sdk-minsdk-gehoben.patch   minSdk in Sdk.kt auf 31 → rot „minSdk is Android 11“
+ * The SDK levels stand in build-logic (Sdk.kt); a module script must not
+ * override them, otherwise this class would check a number that does not apply.
+ * Counter-checks (patches under gegenproben/, red as stated on 04.11.2026):
+ *   sdk-minsdk-gehoben.patch   minSdk in Sdk.kt to 31 → red “minSdk is Android 11“
  */
 class TargetSdkConfigTest {
 
@@ -32,7 +32,7 @@ class TargetSdkConfigTest {
         f.readText()
     }
 
-    /** XML-Kommentare ausblenden — die Erklärtexte nennen die Muster selbst. */
+    /** Hide XML comments — the explanatory texts name the patterns themselves. */
     private fun xmlCode(s: String) =
         s.replace(Regex("""<!--.*?-->""", RegexOption.DOT_MATCHES_ALL), "")
 
@@ -53,7 +53,7 @@ class TargetSdkConfigTest {
         val eigene = scripts.filter { setzen.containsMatchIn(Quellen.withoutComments(it.readText())) }
             .map { it.parentFile!!.name }
         assert(eigene.isEmpty()) { "Diese Module setzen SDK-Stände selbst statt über build-logic: $eigene" }
-        // Und die Konventionen nehmen sie aus Sdk.kt, nicht als eigene Zahl.
+        // And the conventions take them from Sdk.kt, not as their own number.
         val conventions = buildLogic.listFiles { f -> f.extension == "kt" && f.name != "Sdk.kt" }.orEmpty()
         assert(conventions.size >= 2) { "Keine Konventionen unter ${buildLogic.path}" }
         val zahl = Regex("""\b(compileSdk|minSdk|targetSdk)\s*=\s*\d""")
@@ -73,9 +73,9 @@ class TargetSdkConfigTest {
         }
     }
 
-    // Android 11 als Untergrenze: Darunter keine Sicherheitsupdates, und
-    // erst ab 30 bindet die Gerätesperre einen Keystore-Schlüssel samt PIN/Muster
-    // (Schrittschutz). Wer sie senkt, holt die Sonderwege für 8 bis 10 zurück.
+    // Android 11 as the lower bound: below it no security updates, and
+    // only from 30 does the device lock bind a keystore key including PIN/pattern
+    // (Schrittschutz). Whoever lowers it brings back the special paths for 8 to 10.
     @Test
     fun `minSdk is Android 11`() {
         assert(intAfter("minSdk") == 30) {
@@ -107,15 +107,15 @@ class TargetSdkConfigTest {
     }
 
     /**
-     * Wird ein BackHandler eingeführt, muss vorhersagendes Zurückwischen auf
-     * dem Gerät nachgeprüft werden — bis dahin überlässt die App Zurück
-     * komplett der Navigation-Compose-Voreinstellung.
+     * If a BackHandler is introduced, predictive back swiping must be re-checked on
+     * the device — until then the app leaves back
+     * completely to the Navigation Compose default.
      */
     @Test
     fun `there is still no own BackHandler`() {
-        // Untergrenze: Diese Prüfung behauptet eine ABWESENHEIT.
-        // Fände der Dateilauf nichts, wäre sie grün — und zwar genau dann,
-        // wenn sie am wenigsten wert ist.
+        // Lower bound: this check claims an ABSENCE.
+        // If the file walk found nothing, it would be green — exactly when
+        // it is worth least.
         val hits = Quellen.alle()
             .asSequence()
             .filter { kotlinCode(it.readText()).contains("BackHandler(") }

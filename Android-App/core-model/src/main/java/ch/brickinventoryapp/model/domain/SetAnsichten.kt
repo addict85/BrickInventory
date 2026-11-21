@@ -2,7 +2,7 @@ package ch.brickinventoryapp.model.domain
 
 import java.time.Instant
 
-// Sets und Merkposten, wie Galerie, Set-Detail und Merkliste sie zeigen.
+// Sets and wishlist items as gallery, set detail and wishlist show them.
 
 data class SetAnsicht(
     val setNumber: String,
@@ -26,7 +26,7 @@ data class SetAnsicht(
     val bricklink: BrickLinkView? = null,
     val preisvergleichUrl: String? = null,
 ) {
-    /** Der angezeigte Kaufpreis, mengengewichtet — Kachel und Detail zeigen denselben. */
+    /** The displayed purchase price, quantity-weighted — tile and detail show the same. */
     val displayPurchasePrice: Geld? get() = avgPurchasePrice
 }
 

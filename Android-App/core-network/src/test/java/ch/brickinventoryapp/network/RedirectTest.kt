@@ -15,20 +15,20 @@ import org.junit.Test
 import java.util.concurrent.TimeUnit
 
 /**
- * Redirects on the API, SSE and PDF path (pruef6, N1). OkHttp followed a 307
+ * Redirects on the API, SSE and PDF path (review 6, N1). OkHttp followed a 307
  * to any host and sent method and body along — the password from
  * /auth/login, a voucher's PIN. The client therefore follows no redirect
  * (ServerClient.kt, configured the same way here); the guard only follows
  * within the same origin. Two test servers on different ports are two origins.
  *
- * Gegenproben:
- *   A  in nextRedirect(), removed the origin check → red "eine
- *      Umleitung zu einem anderen Host erreicht ihn nicht" (200 from B instead of 307)
- *   B  senden() follows no redirect (just `chain.proceed`) → red "eine
- *      Umleitung auf demselben Server behält Methode, Rumpf und Token" and
- *      "after 303 it continues with GET without a body" (307 resp. 303 reaches the caller)
- *   C  307/308 treated like 303 (always GET) → red "eine Umleitung auf demselben
- *      Server behält …" (GET instead of POST)
+ * Counter-checks:
+ *   A  in nextRedirect(), removed the origin check → red “a
+ *      redirect to a different host does not reach it” (200 from B instead of 307)
+ *   B  senden() follows no redirect (just `chain.proceed`) → red “a
+ *      redirect on the same server keeps method, body and token” and
+ *      “after 303 it continues with GET without a body” (307 resp. 303 reaches the caller)
+ *   C  307/308 treated like 303 (always GET) → red “a redirect on the same
+ *      server keeps …” (GET instead of POST)
  */
 class RedirectTest {
 

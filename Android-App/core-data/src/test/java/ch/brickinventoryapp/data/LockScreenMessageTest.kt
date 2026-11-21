@@ -15,13 +15,13 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 /**
- * Meldungen nennen Server und Fortschritt nur entsperrt; auf dem Sperrbildschirm steht
- * eine Ersatzfassung mit dem Titel allein.
+ * Notifications name server and progress only when unlocked; on the lock screen there is
+ * a public version with the title alone.
  *
- * Gegenproben (Robolectric, nur in der CI messbar; Job `gegenproben`):
- *   abmeldung-meldung-oeffentlich  onlyUnlocked() aus EntwertungsWorker.meldung() gestrichen
- *                                  → rot „die gescheiterte Abmeldung nennt den Server …“
- *   sperrbildschirm-mit-text       die Ersatzfassung übernimmt den Text → rot „die Ersatzfassung …“
+ * Counter-checks (Robolectric, only measurable in CI; job `gegenproben`):
+ *   abmeldung-meldung-oeffentlich  onlyUnlocked() struck from EntwertungsWorker.meldung()
+ *                                  → red “the failed sign-out names the server …”
+ *   sperrbildschirm-mit-text       the public version takes over the text → red “the public version …”
  */
 @RunWith(RobolectricTestRunner::class)
 class LockScreenMessageTest {

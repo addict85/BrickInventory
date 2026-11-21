@@ -55,19 +55,19 @@ import ch.brickinventoryapp.finances.ui.screens.VouchersPage
 import java.util.Locale
 
 /**
- * Bildschirmfotos der Hauptbildschirme mit Beispieldaten (Beispiele), je in
- * drei Designs, hell und dunkel, auf Telefon und Tablet, auf Deutsch (de-CH) wie
- * die meisten Nutzer; Englisch fotografiert ScreenPhotoVariantsTest. Liegen Referenzbilder
- * in src/test/bildschirmfotos, vergleicht die CI gegen sie (verifyRoborazziDebug),
- * sonst nimmt sie auf; eingecheckt werden sie per Workflow (bildschirmfotos=true).
+ * Screenshots of the main screens with sample data (Beispiele), each in
+ * three designs, light and dark, on phone and tablet, in German (de-CH) like
+ * most users; English is photographed by ScreenPhotoVariantsTest. If reference images lie
+ * in src/test/bildschirmfotos, CI compares against them (verifyRoborazziDebug),
+ * otherwise it records; they are checked in via workflow (bildschirmfotos=true).
  *
- * Die Gutscheine stehen als eigene Seite unter „Mehr“; fotografiert wird ihr
- * Baustein (GutscheineCard), weil die Seite ihr ViewModel über Hilt holt.
+ * The vouchers stand as their own page under “More”; photographed is their
+ * building block (GutscheineCard), because the page gets its ViewModel via Hilt.
  *
- * Gegenprobe: Ein Foto, das nichts vergleicht, kann nicht rot werden. Sie ist
- * erst mit eingecheckten Referenzen möglich (eine Farbe in Theme.kt ändern →
- * verifyRoborazziDebug rot) und hier ohne Android-SDK nicht messbar; bis dahin
- * prüft SampleDataTest, dass die Bilder Inhalt zeigen.
+ * Counter-check: a photo that compares nothing cannot turn red. It is
+ * only possible with checked-in references (change a color in Theme.kt →
+ * verifyRoborazziDebug red) and not measurable here without the Android SDK; until then
+ * SampleDataTest checks that the images show content.
  */
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -100,7 +100,7 @@ class ScreenPhotoTest(private val design: String, private val dunkel: Boolean, p
         world.close()
     }
 
-    /** Die Daten kommen vor dem Bildschirm; die Welt antwortet im Takt. */
+    /** The data comes before the screen; the world responds in ticks. */
     private fun bereitstellen(name: String, bereit: () -> Boolean, zustand: () -> Any?) {
         driveUntil(name, requests = { world.paths.requests.size }, zustand = zustand, bereit = bereit)
     }
@@ -115,8 +115,8 @@ class ScreenPhotoTest(private val design: String, private val dunkel: Boolean, p
                 Surface(color = MaterialTheme.colorScheme.background) { inhalt() }
             }
         }
-        // Der Bildschirm lädt beim Erscheinen teils nach (etwa die Käufe). Auch
-        // diese Antworten kommen über den Hauptlooper, also wieder selbst treiben.
+        // The screen partly loads more on appearing (e.g. the purchases). These
+        // responses also come via the main looper, so drive it again.
         bereitstellen("$name (angezeigt)", bereit, zustand)
         compose.waitForIdle()
         val hell = if (dunkel) "dunkel" else "hell"
@@ -141,8 +141,8 @@ class ScreenPhotoTest(private val design: String, private val dunkel: Boolean, p
     @Test
     fun setDetail() {
         val vm = world.setDetail()
-        // Alle Abschnitte, nicht nur das Set: Preis, Verlauf und Käufe kommen
-        // in eigenen Abrufen, und ein Foto mitten im Laden weicht vom Referenzbild ab.
+        // All sections, not only the set: price, history and purchases come
+        // in separate fetches, and a photo in the middle of loading deviates from the reference image.
         val fertig = { vm.setDetailState.value.let { s ->
             s.setDetail != null && s.setPrice != null && s.priceHistory != null && s.acquisitions.isNotEmpty() &&
                 !s.detailFetch.laedt && !s.priceFetch.laedt && !s.historyFetch.laedt && !s.purchasesFetch.laedt } }
@@ -171,7 +171,7 @@ class ScreenPhotoTest(private val design: String, private val dunkel: Boolean, p
     @Test
     fun finanzen() {
         val vm = world.finanzen().also { it.loadValuation(); it.loadPortfolioHistory("week") }
-        // Teile, Figuren und G&V lädt loadValuation() erst nach der Bewertung nach.
+        // loadValuation() loads parts, figures and P&L only after the valuation.
         photo("finanzen", { vm.financeState.value.let { it.valuation != null && it.partsValuation != null &&
             it.figsValuation != null && it.pnl != null && it.historyPoints.isNotEmpty() &&
             !it.bewertung.laedt && !it.verlauf.laedt } }, { vm.financeState.value }) {
@@ -204,7 +204,7 @@ class ScreenPhotoTest(private val design: String, private val dunkel: Boolean, p
         photo("einrichten") { SetupScreen(currentUrl = "https://brick.fritz.box", onSave = {}, entwicklung = false) }
     }
 
-    /** Eine gespeicherte http-Adresse aus einer älteren Fassung: oben die Anleitung zu https. */
+    /** A saved http address from an older version: at the top the instructions for https. */
     @Test
     fun setUpLegacyStock() {
         photo("einrichten-altbestand") { SetupScreen(currentUrl = "http://nas:3000", onSave = {}, entwicklung = false) }
@@ -227,7 +227,7 @@ class ScreenPhotoTest(private val design: String, private val dunkel: Boolean, p
         }
     }
 
-    /** Die Pflichtmasken sind Sackgassen bis zum Ende — deshalb in jedem Design. */
+    /** The mandatory forms are dead ends until the end — hence in every design. */
     @Test
     fun startpasswort() {
         photo("startpasswort") { StartPasswordMask(AccountUiState(), { _, _, _ -> }, {}) }
@@ -240,8 +240,8 @@ class ScreenPhotoTest(private val design: String, private val dunkel: Boolean, p
 }
 
 /**
- * Zwei Gutscheine, einer mit PIN und Guthabenstand, einer ohne — die beiden Zeilenformen —
- * auf ihrer Seite mit Menü in der Leiste und dem schwebenden Knopf zum Anlegen.
+ * Two vouchers, one with PIN and balance, one without — the two row forms —
+ * on their page with a menu in the bar and the floating button for creating.
  */
 @Composable
 internal fun Gutscheine() {
@@ -259,8 +259,8 @@ internal fun Gutscheine() {
 }
 
 /**
- * Texte der ViewModels aus den echten Ressourcen, damit ein Foto „Serverfehler (500)“
- * zeigt statt des Platzhalters „fehler“ der JVM-Tests (NumbersTexts).
+ * Texts of the ViewModels from the real resources, so that a photo shows „Serverfehler (500)“
+ * instead of the placeholder „fehler“ of the JVM tests (NumbersTexts).
  */
 internal class ContextTexts(
     private val ctx: Context = ApplicationProvider.getApplicationContext(),

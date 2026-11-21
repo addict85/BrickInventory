@@ -5,15 +5,15 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Der Scanner darf die Kamera nicht ausbremsen.
+ * The scanner must not slow down the camera.
  */
 class ScannerPerformanceTest {
 
-    // Beide Dateien des Scanners: Der Bildschirm traegt den Tap-to-Focus, die
-    // Drosselung der Texterkennung steht in BarcodeAnalyzer.kt.
-    // Die Reihenfolge-Pruefungen unten bleiben gueltig — barcodeScanner.process(),
-    // letzteOcr und textRecognizer.process() stehen ausschliesslich in der
-    // Analyse-Datei, ihre Reihenfolge zueinander aendert das Voranstellen nicht.
+    // Both files of the scanner: the screen carries the tap-to-focus, the
+    // throttling of text recognition stands in BarcodeAnalyzer.kt.
+    // The order checks below stay valid — barcodeScanner.process(),
+    // letzteOcr and textRecognizer.process() stand exclusively in the
+    // analysis file, prepending does not change their order relative to each other.
     private val src: String by lazy {
         val w = "collection/ui/screens/"
         File(Quellen.root, w + "BarcodeScannerScreen.kt").readText() + "\n" +
@@ -34,8 +34,8 @@ class ScannerPerformanceTest {
         assert(throttle in 1 until ocr) {
             "Die Zeitschranke muss VOR dem Aufruf der Texterkennung greifen"
         }
-        // Der Barcode-Leser darf NICHT gedrosselt sein — er ist billig und soll
-        // sofort auslösen.
+        // The barcode reader must NOT be throttled — it is cheap and should
+        // trigger immediately.
         val barcode = c.indexOf("barcodeScanner.process(")
         assert(barcode in 1 until throttle) {
             "Der Barcode-Leser wurde mitgedrosselt — er soll auf jedem Bild laufen"
@@ -49,12 +49,12 @@ class ScannerPerformanceTest {
             "Ohne Tippen zum Scharfstellen bleibt nur der kontinuierliche Autofokus, " +
                 "der bei nahen Vorlagen lange braucht"
         }
-        // Dass der Tipper den Fokus auch HÄLT (disableAutoCancel), stand hier
-        // als fünfte Kopie derselben Regel. Sie steht jetzt vollständig in
-        // CameraFocusConfigTest, dort für JEDE Datei mit Tap-to-Focus statt für
-        // eine aufgezählte Auswahl — genau daran ist der SetupScreen
-        // vorbeigelaufen. Hier bleibt, was zum Thema dieser Datei gehört: dass
-        // es das Tippen überhaupt gibt.
+        // That the tapper also HOLDS the focus (disableAutoCancel) stood here
+        // as a fifth copy of the same rule. It now stands completely in
+        // CameraFocusConfigTest, there for EVERY file with tap-to-focus instead of for
+        // an enumerated selection — exactly that is what the SetupScreen
+        // slipped past. What remains here is what belongs to this file's topic: that
+        // tapping exists at all.
         assert(c.contains("_kameraCtrl.set(")) {
             "Die Kamerasteuerung wird dem Listener nie übergeben — Tippen bliebe wirkungslos"
         }

@@ -26,18 +26,18 @@ import java.io.RandomAccessFile
 import java.util.Collections
 
 /**
- * Das Vorwärmen der Vorschaubilder, ausgeführt mit echter Ablage, einer vorgegebenen
- * Netzlage und einem Client, der jede Anfrage mitschreibt: Es holt nur, was fehlt,
- * markiert seine Anfragen, hört an der 80-Prozent-Grenze und beim Wechsel aus dem
- * erlaubten Netz nach dem laufenden Schub auf und lässt zwischen den Schüben Luft.
+ * Prewarming the thumbnails, executed with a real store, a given
+ * network state and a client that records every request: it fetches only what is missing,
+ * marks its requests, stops at the 80 percent limit and on leaving the
+ * allowed network after the running batch, and leaves air between the batches.
  *
- * Gegenproben (Patches unter gegenproben/):
- *   vorwaermen-holt-alles          Filter auf isPreview/hat entfernt → rot „es holt nur …“
- *   vorwaermen-ohne-marke          das Tag Vorwaermung entfernt → rot „es holt nur …“
- *   vorwaermen-ueber-die-grenze    Platz je Schub nicht mehr gefragt → rot „ist die Grenze …“
- *   vorwaermen-netz-nur-anfangs    Netzlage je Schub nicht mehr gefragt → rot „verlässt das Gerät …“
- *   vorwaermen-mobil-ungefragt     MOBILE ohne die Erlaubnis → rot „gestartet wird nur …“
- *   vorwaermen-ohne-pause          delay(PAUSE_MS) entfernt → rot „zwischen den Schüben …“
+ * Counter-checks (patches under gegenproben/):
+ *   vorwaermen-holt-alles          filter on isPreview/hat removed → red “it fetches only …”
+ *   vorwaermen-ohne-marke          the tag Vorwaermung removed → red “it fetches only …”
+ *   vorwaermen-ueber-die-grenze    space per batch no longer asked → red “when the limit …”
+ *   vorwaermen-netz-nur-anfangs    network state per batch no longer asked → red “when the device leaves …”
+ *   vorwaermen-mobil-ungefragt     MOBILE without the permission → red “it starts only …”
+ *   vorwaermen-ohne-pause          delay(PAUSE_MS) removed → red “between batches …”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PreviewWarmerTest {
@@ -47,7 +47,7 @@ class PreviewWarmerTest {
     private var situation = Netzlage.Art.WLAN
     private val erlaubt = mutableMapOf(VorwaermNetwork.WLAN to true, VorwaermNetwork.MOBILE to false, VorwaermNetwork.ROAMING to false)
     private val gestellt: MutableList<Request> = Collections.synchronizedList(mutableListOf())
-    /** Läuft nach jeder Anfrage; so ändert ein Test die Lage mitten im Durchlauf. */
+    /** Runs after every request; this way a test changes the state in the middle of the run. */
     private var afterRequest: () -> Unit = {}
 
     private val prefs = object : DevicesSettings {
@@ -71,7 +71,7 @@ class PreviewWarmerTest {
 
     private fun vorschau(nummer: Int) = "https://brick.example/api/v1/images/set/$nummer-1?thumb=1"
 
-    /** Füllt die Ablage bis an die Grenze des Vorwärmens, ohne die Bytes zu schreiben. */
+    /** Fills the store up to the prewarming limit without writing the bytes. */
     private fun fillUntilToLimit() {
         if (!root.walkTopDown().any { it.isFile }) speicher.schreibe(vorschau(1), "x".toByteArray())
         val folder = root.walkTopDown().first { it.isFile }.parentFile!!
@@ -119,9 +119,9 @@ class PreviewWarmerTest {
     }
 
     /**
-     * Jede Lage fragt ihre eigene Erlaubnis. Eine neue Lage fehlt in der Zuordnung und macht
-     * den Test rot, statt still unter eine bestehende Antwort zu fallen.
-     * Gegenprobe (Patch vorwaermen-roaming-wie-mobil): ROAMING fragt die Erlaubnis von MOBILE → rot hier.
+     * Every state asks its own permission. A new state is missing in the mapping and turns
+     * the test red instead of silently falling under an existing answer.
+     * Counter-check (patch vorwaermen-roaming-wie-mobil): ROAMING asks the permission of MOBILE → red here.
      */
     @Test
     fun `every network state follows its own permission`() = runTest {

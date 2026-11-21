@@ -25,18 +25,18 @@ import java.io.File
 import java.util.UUID
 
 /**
- * Das eingecheckte Room-Schema (core-offline/schemas) passt zur Datenbank, und jede
- * frühere Fassung wird mit den Migrationen zur neuesten, ohne dass der Ausgang
- * etwas verliert. Eine ältere Datenbank wird dabei aus ihrem eingecheckten
- * Schema gebaut — wie MigrationTestHelper, ohne room-testing als weitere
- * Abhängigkeit. Läuft nur in der CI (Room braucht Android).
+ * The checked-in Room schema (core-offline/schemas) matches the database, and every
+ * earlier version becomes the newest with the migrations without the outbox
+ * losing anything. An older database is built from its checked-in
+ * schema — like MigrationTestHelper, without room-testing as a further
+ * dependency. Runs only in CI (Room needs Android).
  *
- * Gegenproben misst der CI-Job `gegenproben` (Android-App/gegenproben/, er
- * verlangt Rot): bestand-migration-entfernt, -spalte-falsch, -ohne-schluessel,
- * -ohne-filterspalten (2 → 3 füllt die Filterspalten nicht). Wie 2 → 3 Fassung-2-JSON
- * liest, prüft ColumnsFassung2Test ohne Android.
- * Eine Änderung am Schema der neuesten Fassung taugt nicht als Gegenprobe: Room
- * schreibt es beim Übersetzen neu.
+ * Counter-checks are measured by the CI job `gegenproben` (Android-App/gegenproben/, it
+ * requires red): bestand-migration-entfernt, -spalte-falsch, -ohne-schluessel,
+ * -ohne-filterspalten (2 → 3 does not fill the filter columns). How 2 → 3 reads version-2 JSON
+ * is checked by ColumnsFassung2Test without Android.
+ * A change to the schema of the newest version is no use as a counter-check: Room
+ * rewrites it when compiling.
  */
 @RunWith(RobolectricTestRunner::class)
 class BestandMigrationTest {
@@ -50,7 +50,7 @@ class BestandMigrationTest {
     private fun versions(): List<Int> =
         folder.listFiles().orEmpty().mapNotNull { it.name.removeSuffix(".json").toIntOrNull() }.sorted()
 
-    /** Spalten und Indizes einer Tabelle, so wie SQLite sie meldet. */
+    /** Columns and indices of a table, as SQLite reports them. */
     private fun setup(abfrage: (String) -> Cursor, table: String): List<String> {
         fun zeilen(sql: String, f: (Cursor) -> String) = abfrage(sql).use { c ->
             buildList { while (c.moveToNext()) add(f(c)) }
@@ -63,7 +63,7 @@ class BestandMigrationTest {
         return spalten + indexes.sorted()
     }
 
-    /** Eine leere Datenbank genau nach dem eingecheckten Schema der Fassung [version]. */
+    /** An empty database exactly by the checked-in schema of version [version]. */
     private fun afterSchema(db: SQLiteDatabase, version: Int) {
         val s = schema(version)
         for (e in s["entities"]!!.jsonArray.map { it.jsonObject }) {
@@ -107,16 +107,16 @@ class BestandMigrationTest {
             context.deleteDatabase(name)
             SQLiteDatabase.openOrCreateDatabase(context.getDatabasePath(name).apply { parentFile?.mkdirs() }, null).use { alt ->
                 afterSchema(alt, v)
-                // Ab Fassung 2 trägt jeder Posten seinen Schlüssel schon (Migration 1→2 oder beim Schreiben).
+                // From version 2 on every item already carries its key (migration 1→2 or when writing).
                 for (n in 1..2) {
-                    // So, wie jede bisherige Fassung der App einen Posten schrieb (Ausgangsform Fassung 1).
+                    // The way every previous version of the app wrote an item (outbox form version 1).
                     val b = """{"type":"set_menge","setNumber":"1000$n-1","schritt":$n}"""
                     if (v >= 2) alt.execSQL(
                         "INSERT INTO ausgang (bereich, bearbeitung, erstellt, versuche, schluessel) VALUES ('a', ?, $n, 0, ?)",
                         arrayOf(b, UUID.randomUUID().toString()))
                     else alt.execSQL("INSERT INTO ausgang (bereich, bearbeitung, erstellt, versuche) VALUES ('a', ?, $n, 0)", arrayOf(b))
                 }
-                // Feste Probe der Fassung 2 statt SetItem: Die Migration darf nicht am heutigen Modell hängen.
+                // Fixed sample of version 2 instead of SetItem: the migration must not hang on today's model.
                 val set = """{"set_number":"10002-1","name":"Polizeiwache","theme":"City","storage":"Kiste 2","conditions":[]}"""
                 alt.execSQL("INSERT INTO bestand (bereich, art, schluessel, position, inhalt) VALUES ('a', 'SETS', '10002-1', 0, ?)",
                     arrayOf(set))

@@ -17,25 +17,25 @@ import ch.brickinventoryapp.testing.Quellen
 import ch.brickinventoryapp.update.util.checkedDescription
 
 /**
- * INVARIANTEN.md verweist auf Quelldateien und Testklassen; ein Verweis auf
- * etwas, das umbenannt oder gelöscht wurde, führt Leser in die Irre. Geprüft
- * wird nur, dass es sie gibt, nicht, ob der Test die Regel noch ganz trägt.
+ * INVARIANTEN.md refers to source files and test classes; a reference to
+ * something that was renamed or deleted misleads readers. Only checked
+ * is that they exist, not whether the test still fully carries the rule.
  *
- * Prüfbare Aussagen prüft er selbst: kein FileProvider im Manifest, keine unsignierte
- * Beschreibung, die Teileliste nur verschlüsselt auf der Platte.
+ * Checkable statements it checks itself: no FileProvider in the manifest, no unsigned
+ * description, the parts list only encrypted on disk.
  *
- * Gegenproben:
- *   invarianten-verweis-ins-leere  ein Verweis auf `ui/GalleryFeature.kt` → rot „jede in
- *                                  INVARIANTEN genannte …“
- *   invarianten-fileprovider-zurueck  „FileProvider nur `pdf/`“ wieder in INVARIANTEN → rot, derselbe Test
- *   invarianten-unsigniert-gilt    checkedDescription() nimmt eine Hülle ohne Signatur → rot
- *                                  „no unsigned or foreign-signed description applies“
- *   invarianten-teileliste-klartext  Teilelistentresor.lege() schreibt den Klartext → rot „die
- *                                  Teileliste liegt nur verschluesselt auf der Platte“
+ * Counter-checks:
+ *   invarianten-verweis-ins-leere  a reference to `ui/GalleryFeature.kt` → red “every source file and
+ *                                  test class named in INVARIANTEN …”
+ *   invarianten-fileprovider-zurueck  „FileProvider nur `pdf/`“ again in INVARIANTEN → red, the same test
+ *   invarianten-unsigniert-gilt    checkedDescription() accepts a wrapper without signature → red
+ *                                  “no unsigned or foreign-signed description applies“
+ *   invarianten-teileliste-klartext  Teilelistentresor.lege() writes the plaintext → red “the
+ *                                  parts list lies on disk only encrypted”
  */
 class InvariantsReferencesTest {
 
-    /** `*` steht für beliebige Zeichen innerhalb eines Namens, nie über einen Schrägstrich. */
+    /** `*` stands for any characters within a name, never across a slash. */
     private fun pattern(name: String) = Regex(name.split("*").joinToString("[^/]*") { Regex.escape(it) })
 
     private fun dateien(root: File) = root.walkTopDown().filter { it.isFile }
@@ -57,7 +57,7 @@ class InvariantsReferencesTest {
         assertTrue("jede in INVARIANTEN.md genannte Datei und Testklasse muss es geben; fehlt:\n  " +
             fehlt.joinToString("\n  "), fehlt.isEmpty())
 
-        // Aussagen, die der Code einmal widerlegt hat, und die Struktur hinter „Kein FileProvider“.
+        // Statements the code once refuted, and the structure behind „Kein FileProvider“.
         val outdated = listOf("FileProvider nur", "Klartext für die Ziel-App", "Unsignierte `version.json`")
         assertTrue("überholt in INVARIANTEN.md: ${outdated.filter { it in docs }}", outdated.none { it in docs })
         val manifest = Quellen.manifest.readText()
@@ -67,7 +67,7 @@ class InvariantsReferencesTest {
         assertTrue("TeilelistenProvider nicht exportiert: $teileliste", teileliste?.contains("""android:exported="false"""") == true)
     }
 
-    /** Signiert wie der Job `beschreibung`: Base64 der Daten und ECDSA-Signatur darüber. */
+    /** Signed like the job `beschreibung`: Base64 of the data and an ECDSA signature over it. */
     private fun shell(daten: String, signatur: ByteArray?) = Base64.getEncoder().let { b64 ->
         """{"daten":"${b64.encodeToString(daten.toByteArray())}"""" +
             (signatur?.let { ""","beschreibungssignatur":"${b64.encodeToString(it)}"""" } ?: "") + "}"

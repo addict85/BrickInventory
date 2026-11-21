@@ -31,16 +31,16 @@ import ch.brickinventoryapp.network.di.ServerWaechter
 import ch.brickinventoryapp.network.di.Zugangslage
 
 /**
- * Die Zugangslage des Geräts. Die Werte kommen aus dem Speicherspiegel der
- * TokenAblage; nur beim Kaltstart wird auf die Platte gewartet, ohne
+ * The device's access situation. The values come from the in-memory mirror of the
+ * TokenAblage; only at cold start is the disk waited for, without
  * runBlocking (TokenAblage.waitOnStart).
  */
 private class DevicesAccess(private val prefs: Tokenspiegel) : Zugangslage {
-    // Immer warten, nicht nur ohne Spiegelwert: Erst danach ist auch der alte
-    // Stand der Nutzer-CAs zurückgesetzt. Nach dem Kaltstart kehrt es sofort zurück.
+    // Always wait, not only without a mirror value: only afterwards is the old
+    // state of the user CAs reset too. After the cold start it returns immediately.
     private fun bereit() = prefs.waitOnStart()
-    // Eine QR-Kopplung spricht schon den neuen Server an; der Token bleibt an seine
-    // Herkunft gebunden und geht dorthin nicht mit (ServerWaechter.setHeaders).
+    // A QR pairing already talks to the new server; the token stays bound to its
+    // origin and does not go there (ServerWaechter.setHeaders).
     override fun serverUrl(): String { bereit(); return prefs.kopplungszielState.value ?: prefs.serverUrlState.value.orEmpty() }
     override fun token(): String { bereit(); return prefs.authTokenState.value.orEmpty() }
     override fun tokenOrigin(): String? { bereit(); return prefs.tokenOriginState.value }
@@ -53,21 +53,21 @@ private fun vertrauen(ks: java.security.KeyStore?): javax.net.ssl.X509ExtendedTr
     return tmf.trustManagers.filterIsInstance<javax.net.ssl.X509ExtendedTrustManager>().first()
 }
 
-/** Dieselben System-Wurzeln wie im Pinning (ohne Nutzer-CAs), erst beim ersten Bedarf gelesen. */
+/** The same system roots as in pinning (without user CAs), read only on first need. */
 internal fun systemRoots(): SystemRoots {
     val fingerabdruecke by lazy { vertrauen(null).acceptedIssuers.map { spkiFingerprint(it) }.toSet() }
     return SystemRoots { it in fingerabdruecke }
 }
 
 /**
- * System-CAs nach network_security_config (ohne Nutzer-CAs), dazu der
- * AndroidCAStore samt Nutzer-CAs für die ausdrückliche Einstellung — nur für den
- * eigenen Server; darüber dessen Pinning (util/ServerVertrauen.kt).
+ * System CAs per network_security_config (without user CAs), plus the
+ * AndroidCAStore including user CAs for the explicit setting — only for the
+ * own server; above that its pinning (util/ServerVertrauen.kt).
  */
 private var trustShared: PinTrust? = null
 private var sharedTls: RenewableTlsFactory? = null
 
-/** Ein SSLContext für alle Server-Clients; neu, sobald die Nutzer-CAs umschalten. */
+/** One SSLContext for all server clients; new as soon as the user CAs switch. */
 @Synchronized
 private fun serverTls(prefs: Netzvertrauen, tm: PinTrust): RenewableTlsFactory {
     sharedTls?.let { return it }
@@ -96,30 +96,30 @@ private fun trustServer(prefs: Netzablagen, frage: CertificateQuestion): PinTrus
     ).also { trustShared = it }
 }
 
-/** Ab hier verlangt network_security_config Certificate Transparency für öffentliche CAs. */
+/** From here on network_security_config requires Certificate Transparency for public CAs. */
 private const val ANDROID_16 = 36
 
-/** Token und Vertrauen zusammen: Die Server-Clients brauchen beides, sonst nichts aus den Ablagen. */
+/** Token and trust together: the server clients need both, nothing else from the stores. */
 class Netzablagen @Inject constructor(val token: Tokenspiegel, val vertrauen: Netzvertrauen)
 
-/** API-, Bild- und SSE-Client: derselbe Wächter (ServerWaechter.kt), eigene Zeitgrenzen. */
-@Suppress("LongParameterList") // Ein Baustein für drei Clients; die Teile unterscheiden sich je Client.
+/** API, image and SSE client: the same guard (ServerWaechter.kt), own timeouts. */
+@Suppress("LongParameterList") // One building block for three clients; the parts differ per client.
 internal fun buildInterceptorClient(
     prefs: Netzablagen,
     isApiClient: Boolean,
     sessionExpired: SessionExpiredSignal,
     ctx: android.content.Context,
-    /** Wohin ein Versionshinweis geht; nur der API-Client meldet. */
+    /** Where a version hint goes; only the API client reports. */
     meldungen: MeldungsKanal? = null,
-    /** Wartet auf die Entscheidung über ein unbekanntes Zertifikat. */
+    /** Waits for the decision about an unknown certificate. */
     frage: CertificateQuestion,
-    /** Tauscht den Token, wenn der Server es verlangt; nur für Clients mit Token. */
+    /** Swaps the token when the server requires it; only for clients with a token. */
     rotation: Rotationsanlass? = null,
-    /** Nur der API-Client: Dort kommen die Verwalteraufrufe an. */
+    /** Only the API client: the admin calls arrive there. */
     rights: RightsSignal? = null,
-    /** Nur der API-Client: Mit Startpasswort weist der Server jeden Abruf ab. */
+    /** Only the API client: with a start password the server rejects every fetch. */
     pflicht: PasswordRequired? = null,
-    /** Nur der API-Client: Verwalterrechte ohne zweiten Faktor weist der Server ab. */
+    /** Only the API client: the server rejects admin rights without a second factor. */
     factorRequired: SecondFactorRequired? = null,
 ): OkHttpClient {
     val versionsMessage: ((VersionsHint) -> Unit)? = meldungen?.let { kanal ->
@@ -131,19 +131,19 @@ internal fun buildInterceptorClient(
     }
     val client = OkHttpClient.Builder()
         .apply {
-            // Auch der Bild-Client: Sonst fehlten Bildanfragen im Logcat, und ihr
-            // Fehlen sähe aus wie ein Befund statt wie eine Lücke der Beobachtung.
+            // The image client too: otherwise image requests would be missing in logcat, and their
+            // absence would look like a finding instead of a gap in observation.
             if (BuildConfig.DEBUG) {
                 addInterceptor(networkRecording())
             }
         }
-        // Keine Umleitung am Wächter vorbei: Er sieht nur, was er selbst schickt, und
-        // folgt nur innerhalb derselben Herkunft (ServerWaechter.senden).
+        // No redirect past the guard: it only sees what it sends itself, and
+        // follows only within the same origin (ServerWaechter.senden).
         .followRedirects(false)
         .followSslRedirects(false)
         .addInterceptor(ServerWaechter(DevicesAccess(prefs.token), isApiClient, NetworkPolicy.entwicklung,
             sitzungAbgelaufen = { sessionExpired.notifyExpired() }, versionsMessage = versionsMessage,
-            // Die Sprache aus den Ressourcen: Der Server antwortet in der, die die Oberfläche zeigt.
+            // The language from the resources: the server answers in the one the UI shows.
             ownHeaders = { original, ziel ->
                 if (original.header("Accept-Language") == null) ziel.header("Accept-Language",
                     LanguageManager.localizedContext(ctx)
@@ -155,7 +155,7 @@ internal fun buildInterceptorClient(
             sslSocketFactory(serverTls(prefs.vertrauen, tm), tm)
         }
         .connectTimeout(15, TimeUnit.SECONDS)
-        // Ein Zwischen-Byte-Timeout; die PDF-Erzeugung läuft über Job-Polling.
+        // An inter-byte timeout; PDF generation runs via job polling.
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
     followsTheServer(prefs, client)
@@ -163,9 +163,9 @@ internal fun buildInterceptorClient(
 }
 
 /**
- * Derselbe TLS-Weg wie die Server-Clients (Pins, Nutzer-CAs nur für den eigenen
- * Server), aber ohne den Wächter der App: Den setzt der Entwerter mit dem Token
- * des Auftrags selbst ein.
+ * The same TLS path as the server clients (pins, user CAs only for the own
+ * server), but without the app's guard: the canceller inserts it itself with the job's
+ * token.
  */
 internal fun buildRedemptionBase(
     prefs: Netzablagen,
@@ -182,9 +182,9 @@ internal fun buildRedemptionBase(
     .build()
 
 /**
- * Vertrauen je Entwertungsauftrag (data/Entwertung.kt): der Pin aus dem Auftrag,
- * sonst der gemerkte — Pins bleiben beim Abmelden stehen. Nutzer-CAs wie beim
- * eigenen Server nur auf ausdrückliche Einstellung.
+ * Trust per invalidation job (data/Entwertung.kt): the pin from the job,
+ * otherwise the remembered one — pins stay at sign-out. User CAs as for the
+ * own server only by explicit setting.
  */
 internal fun jobTrustFactory(prefs: Netzvertrauen): (String, String?) -> javax.net.ssl.X509ExtendedTrustManager {
     val system = vertrauen(null)
@@ -197,9 +197,9 @@ internal fun jobTrustFactory(prefs: Netzvertrauen): (String, String?) -> javax.n
 }
 
 /**
- * Beim Wechsel auf einen anderen Server laufende Aufrufe abbrechen; nach dem
- * Umschalten der Nutzer-CAs keine Verbindung mit dem alten Vertrauen weiterbenutzen.
- * Für jeden Client mit eigenem Dispatcher oder Pool (der Bild-Client hat einen).
+ * When switching to a different server, cancel running calls; after
+ * switching the user CAs, do not keep using a connection with the old trust.
+ * For every client with its own dispatcher or pool (the image client has one).
  */
 internal fun followsTheServer(prefs: Netzablagen, client: OkHttpClient) {
     prefs.token.onServerwechsel { client.dispatcher.cancelAll() }

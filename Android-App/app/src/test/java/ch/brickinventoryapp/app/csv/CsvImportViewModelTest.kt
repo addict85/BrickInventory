@@ -40,20 +40,20 @@ import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.testing.text
 
 /**
- * Der Balken des CSV-Imports ausgeführt, ViewModel samt Koordinator: Strom,
- * Vordergrund-Dienst und Ablage im Speicher, Api ohne Netz, Zeit virtuell. So sind
- * die fünf Sekunden „Balken bleibt stehen“ und der wachsende Abstand der
- * Wiederverbindung ohne Warten prüfbar. Das ViewModel startet den Strom selbst,
- * sobald die Sitzung angemeldet ist; kein Bildschirm stösst ihn an.
+ * The CSV import bar executed, ViewModel including coordinator: stream,
+ * foreground service and store in memory, API without network, time virtual. That way
+ * the five seconds „bar stays“ and the growing delay of the
+ * reconnection can be checked without waiting. The ViewModel starts the stream itself
+ * as soon as the session is signed in; no screen triggers it.
  *
- * Gegenproben:
- *   csv-zustand-zuerst  entschieden mit dem schon neuen Zustand → rot „ein laufender Import …“
- *   csv-ohne-nachladen  NACHLADEN ohne `sync.bestand()` → rot „ein laufender Import …“
- *   csv-rueckzug-fest   der Abstand wächst nicht mehr → rot „ein abgerissener Strom …“
- *   csv-abbruch-still   cancelCsvImport() meldet einen Fehler nicht → rot „der Abbruch meldet …“
- *   csv-folgt-doppelt   folge() ohne die Sperre `folgt` → rot „ein laufender Import …“
- *                       (zwei Verbindungen, Dienst zweimal gestartet)
- *   csv-abmelden-laesst-dienst  beim Abmelden kein dienst.stop() → rot „nach dem Abmelden …“
+ * Counter-checks:
+ *   csv-zustand-zuerst  decided with the already new state → red “a running import …”
+ *   csv-ohne-nachladen  NACHLADEN without `sync.bestand()` → red “a running import …”
+ *   csv-rueckzug-fest   the delay no longer grows → red “a broken stream …”
+ *   csv-abbruch-still   cancelCsvImport() does not report an error → red “the cancellation reports …”
+ *   csv-folgt-doppelt   folge() without the lock `folgt` → red “a running import …”
+ *                       (two connections, service started twice)
+ *   csv-abmelden-laesst-dienst  no dienst.stop() on sign-out → red “after sign-out …”
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class CsvImportViewModelTest {
@@ -62,7 +62,7 @@ class CsvImportViewModelTest {
     private val fake = FakeApi()
     private lateinit var t: TestDienste
 
-    /** Je Verbindung eine Folge von Ereignissen; danach bleibt die Verbindung offen. */
+    /** One sequence of events per connection; afterwards the connection stays open. */
     private class Strom(vararg folgen: List<CsvImportSseClient.Event>) : CsvImportStream {
         private val rest = ArrayDeque(folgen.toList())
         val connections = mutableListOf<Long>()
@@ -71,8 +71,8 @@ class CsvImportViewModelTest {
             connections += clock()
             val sequence = rest.removeFirstOrNull() ?: awaitCancellation()
             sequence.forEach { emit(it) }
-            // Wie CsvImportSseClient: Er endet nur mit Failed. Ein sauberes Ende hiesse
-            // für den Beobachter „sofort neu verbinden“ und zählte eine Verbindung zu viel.
+            // Like CsvImportSseClient: it ends only with Failed. A clean end would mean
+            // „reconnect immediately“ for the observer and count one connection too many.
             if (sequence.lastOrNull() !is CsvImportSseClient.Event.Failed) awaitCancellation()
         }
     }
@@ -98,7 +98,7 @@ class CsvImportViewModelTest {
 
     private lateinit var coordinator: CsvImportCoordinator
 
-    /** Angemeldet, wie nach dem Start der App; das ViewModel folgt dem Import von selbst. */
+    /** Signed in, as after the app's start; the ViewModel follows the import by itself. */
     private fun withVm(strom: Strom, dienst: Dienst, block: suspend TestScope.(CsvImportViewModel) -> Unit) = runTest(takt) {
         strom.clock = { testScheduler.currentTime }
         val observer = CsvImportObserver(strom, testSetFilesRepository(fake.api))
@@ -118,7 +118,7 @@ class CsvImportViewModelTest {
         val strom = Strom(listOf(status("running", 1), status("running", 2), status("done", 3)))
         withVm(strom, dienst) { vm ->
             val vorher = fake.callsOf("getSets")
-            // Ein zweiter Folger (etwa ein zweites ViewModel) öffnet keine zweite Verbindung.
+            // A second follower (say a second ViewModel) opens no second connection.
             val zweiter = backgroundScope.launch { coordinator.sequence(t.sitzung.state.map { it.isLoggedIn }) }
             runCurrent()
             assertEquals("Mehrfach gestartet: eine Verbindung", 1, strom.connections.size)

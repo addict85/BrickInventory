@@ -12,20 +12,20 @@ import ch.brickinventoryapp.model.domain.UsageView
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Minifiguren: Bestand und manuell erfasste Figuren.
- * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit
- * Retrofit und Ablage hängen (FigurenRepositoryImpl).
+ * Minifigures: stock and manually added figures.
+ * An interface so that ViewModels and tests do not depend on the implementation with
+ * Retrofit and store (FigurenRepositoryImpl).
  */
 interface MinifigsRepository {
-    /** Die Figuren aus der Ablage nach dem Suchtext; [refreshMinifigs] füllt sie. */
+    /** The figures from the store by search text; [refreshMinifigs] fills them. */
     fun observeMinifigs(suche: String? = null): Flow<Local<FigurAnsicht>>
 
     fun observeManualMinifigs(suche: String? = null): Flow<Local<ManualMinifigView>>
 
-    /** Set-Figuren und manuelle Figuren in die Ablage; gezeigt wird die Ablage. */
+    /** Set figures and manual figures into the store; the store is shown. */
     suspend fun refreshMinifigs(): Ergebnis<Unit>
 
-    /** Der gespeicherte Ort, wie bei PartsRepository.setPartStorage. */
+    /** The saved location, as with PartsRepository.setPartStorage. */
     suspend fun setFigStorage(figNumber: String, ort: String): Ergebnis<String?>
 
     suspend fun addMinifig(figNumber: String, blFigNumber: String? = null, quantity: Int = 1,

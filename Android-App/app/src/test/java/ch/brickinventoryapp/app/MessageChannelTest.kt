@@ -22,55 +22,55 @@ import ch.brickinventoryapp.testing.TestDienste
 import ch.brickinventoryapp.testing.text
 
 /**
- * Es gibt genau EINEN Weg zur Snackbar.
+ * There is exactly ONE path to the snackbar.
  *
- * ── Der Fehler, den diese Regel verhindert ──────────────────────────────────
- * Die Snackbar hat einen Platz auf dem Bildschirm, eingesammelt wird sie an
- * EINER Stelle (AppNavigation.kt). Legt ein ViewModel sich einen eigenen Fluss
- * an, endet der nirgends — es sei denn, jemand baut an JEDEM Ort, an dem
- * dieses ViewModel benutzt wird, eine Weiterleitung ein:
+ * ── The error this rule prevents ─────────────────────────────────────────────
+ * The snackbar has one place on the screen, it is collected in
+ * ONE place (AppNavigation.kt). If a ViewModel creates its own flow,
+ * it ends nowhere — unless someone builds a forwarding into EVERY place where
+ * this ViewModel is used:
  *
  *     val katMeldung by katalog.snackbar.collectAsStateWithLifecycle()
  *     LaunchedEffect(katMeldung) {
  *         katMeldung?.let { vm.showSnackbar(it); katalog.snackbarGelesen() }
  *     }
  *
- * Genau das stand ZWEIMAL in CatalogGraph.kt. Und das ist der gefährliche Teil:
- * Wer ein drittes Ziel hinzufügt und den Block vergisst, bekommt keinen Fehler.
+ * Exactly that stood TWICE in CatalogGraph.kt. And that is the dangerous part:
+ * whoever adds a third destination and forgets the block gets no error.
  *
- * Das ist zugleich die Rechnung des ViewModel-Schnitts, sichtbar gemacht: Jedes
- * herausgelöste ViewModel bringt sonst einen weiteren Kanal mit.
+ * That is at the same time the bill for the ViewModel split, made visible: every
+ * extracted ViewModel would otherwise bring another channel along.
  *
- * Teilschritt 3 und 4 laufen ausgeführt (Kanal, Reflexion, zwei ViewModels
- * gegen einen PfadServer ohne Netz); 1 und 2 sind Struktur über alle Dateien.
+ * Sub-steps 3 and 4 run executed (channel, reflection, two ViewModels
+ * against a PfadServer without network); 1 and 2 are structure across all files.
  *
- * Gegenproben (29.10.2026 gemessen: c, d, e; die übrigen früher, über das
- * Ersatz-Skript im Werkzeugordner):
- *   a) In CatalogViewModel wieder `private val _snackbar = MutableStateFlow<String?>(null)`
- *      eingesetzt → Teilschritt 1 rot.
- *   b) Den Weiterleitungsblock in CatalogGraph.kt wieder eingesetzt
- *      → Teilschritt 2 rot.
- *   c) In MeldungsKanal.zeige() einen zweiten, eigenen MutableStateFlow
- *      beschrieben → Teilschritt 3 rot, dazu „zwei Bereiche …“.
- *   d) `@Singleton` aus MeldungsKanal.kt entfernt → Teilschritt 3 rot. Das ist
- *      der stillste der vier Fälle: Ohne die Annotation bekäme jedes ViewModel
- *      seine eigene Instanz, und dann gäbe es wieder so viele Kanäle wie
- *      ViewModels — nur sähe man es nirgends im Quelltext.
- *   e) In AppMessages zeige() in einen eigenen MutableStateFlow →
- *      Teilschritt 4 rot und „two areas report into the same channel“.
- * Die Warteschlange selbst prüft MessageQueueTest (core-data).
+ * Counter-checks (measured 29.10.2026: c, d, e; the others earlier, via the
+ * stand-in script in the tools folder):
+ *   a) in CatalogViewModel again `private val _snackbar = MutableStateFlow<String?>(null)`
+ *      inserted → sub-step 1 red.
+ *   b) the forwarding block in CatalogGraph.kt inserted again
+ *      → sub-step 2 red.
+ *   c) in MeldungsKanal.zeige() a second, own MutableStateFlow
+ *      written → sub-step 3 red, plus “two areas …”.
+ *   d) `@Singleton` removed from MeldungsKanal.kt → sub-step 3 red. That is
+ *      the quietest of the four cases: without the annotation every ViewModel
+ *      would get its own instance, and then there would again be as many channels as
+ *      ViewModels — only one would see it nowhere in the source.
+ *   e) in AppMessages zeige() into an own MutableStateFlow →
+ *      sub-step 4 red and “two areas report into the same channel“.
+ * The queue itself is checked by MessageQueueTest (core-data).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class MessageChannelTest {
 
-    /** Alle Kotlin-Dateien der App ohne Kommentare. */
+    /** All Kotlin files of the app without comments. */
     private fun allWithoutComments(): List<Pair<String, String>> =
         Quellen.alle().map { it.name to Quellen.withoutComments(it.readText()) }
 
     @Test
     fun `only the message channel holds a snackbar flow`() {
-        // Ein `MutableStateFlow<String?>` unter einem Namen, der nach Meldung
-        // klingt, ist ein zweiter Kanal — egal wie er heisst.
+        // A `MutableStateFlow<String?>` under a name that sounds like a message
+        // is a second channel — no matter what it is called.
         val treffer = allWithoutComments().filter { (name, s) ->
             name != "MeldungsKanal.kt" &&
                 Regex("""val\s+_?\w*(snack|meldung)\w*\s*(:[^=]+)?=\s*MutableStateFlow<String\?>""",
@@ -86,9 +86,9 @@ class MessageChannelTest {
 
     @Test
     fun `nobody forwards messages from ViewModel to ViewModel`() {
-        // Der Block, den es nicht mehr geben soll. Gesucht wird die WIRKUNG
-        // (ein fremder Fluss wird eingesammelt und an showSnackbar gereicht),
-        // nicht der Wortlaut von damals.
+        // The block that should no longer exist. Searched is the EFFECT
+        // (a foreign flow is collected and handed to showSnackbar),
+        // not the wording of back then.
         val treffer = allWithoutComments().filter { (name, s) ->
             name != "AppNavigation.kt" &&
                 Regex("""\w+\.snackbar\.collectAsState""").containsMatchIn(s)
@@ -104,8 +104,8 @@ class MessageChannelTest {
 
     @Test
     fun `the channel is writable and readable from outside`() {
-        // Ohne das kann kein ViewModel ihn benutzen — und der erste, der es
-        // versucht, baut sich wieder einen eigenen.
+        // Without that no ViewModel can use it — and the first one that
+        // tries builds its own again.
         val kanal = MeldungsKanal()
         kanal.zeige("gespeichert")
         assertEquals("AppNavigation.kt sammelt die Nur-Lese-Sicht ein", "gespeichert", kanal.text)
@@ -118,14 +118,14 @@ class MessageChannelTest {
 
     @Test
     fun `all ViewModels use the same channel`() {
-        // Ein ViewModel, das Meldungen erzeugt, aber den Kanal nicht kennt,
-        // hat entweder einen eigenen (Teilschritt 1 faengt das) oder gar keinen
-        // Weg nach draussen. Beides ist ein Fehler.
+        // A ViewModel that produces messages but does not know the channel
+        // has either its own (sub-step 1 catches that) or no
+        // way out at all. Both are an error.
         val schreiber = allWithoutComments().filter { (name, s) ->
             name.endsWith("ViewModel.kt") && Regex("""\bzeigeMeldung\(|\bmeldungen\.zeige\(""").containsMatchIn(s)
         }
         assert(schreiber.isNotEmpty()) { "Kein ViewModel schreibt Meldungen — Muster veraltet?" }
-        // Die Bereichs-ViewModels bekommen ihn als Meldungen (Bereichshelfer.kt).
+        // The area ViewModels get it as Meldungen (Bereichshelfer.kt).
         val helper = allWithoutComments().single { it.first == "Bereichshelfer.kt" }.second
         assert(helper.contains("override fun zeige(text: String?) = kanal.zeige(text)")) {
             "Meldungen reicht nicht mehr in den Kanal der App weiter"
@@ -139,7 +139,7 @@ class MessageChannelTest {
         }
     }
 
-    /** Zwei Bereiche, ein Kanal: Was sie melden, steht dort, wo AppNavigation.kt liest. */
+    /** Two areas, one channel: what they report stands where AppNavigation.kt reads. */
     @Test
     fun `two areas report into the same channel`() {
         Dispatchers.setMain(UnconfinedTestDispatcher())

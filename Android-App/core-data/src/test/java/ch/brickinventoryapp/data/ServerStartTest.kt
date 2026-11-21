@@ -10,18 +10,18 @@ import ch.brickinventoryapp.testing.testManagementRepository
 import ch.brickinventoryapp.testing.withRepo
 
 /**
- * Waehrend der Server startet, zeigt die App den Fortschritt — keinen Fehler. Der erste
- * Start einer Neuinstallation holt den Rebrickable-Katalog und dauert Minuten; eine
- * Netzmeldung liesse App oder Server kaputt aussehen. Wie die Webapp über
+ * While the server starts, the app shows the progress — no error. The first
+ * start of a new installation fetches the Rebrickable catalog and takes minutes; a
+ * network message would make app or server look broken. Like the web app via
  * /v1/startup-status.
  *
- * Die Abfrage läuft gegen einen Testserver; die Auswertung im AppViewModel führt
- * AppViewModelTest aus, die Anzeige liest Quelltext (Gerät und Compose fehlen hier).
+ * The query runs against a test server; the evaluation in AppViewModel is executed by
+ * AppViewModelTest, the display reads source text (device and Compose are missing here).
  *
- * Gegenprobe: in ManagementApi `@GET("api/v1/startup-status")`
- * auf "…/startstatus" → rot „the app queries the startup state“.
- * Gegenprobe: gegenproben/startstatus-ganzzahl.patch
- * macht progress wieder zu Int → rot „a progress with share is read“.
+ * Counter-check: in ManagementApi `@GET("api/v1/startup-status")`
+ * to "…/startstatus" → red “the app queries the startup state”.
+ * Counter-check: gegenproben/startstatus-ganzzahl.patch
+ * makes progress an Int again → red “a progress with share is read”.
  */
 class ServerStartTest {
 
@@ -38,7 +38,7 @@ class ServerStartTest {
 
     @Test
     fun `a progress with share is read`() = withRepo(::testManagementRepository) { paths, admin ->
-        // Der Server meldet Schritte samt Anteil des laufenden (2.37 von 8).
+        // The server reports steps including the share of the running one (2.37 of 8).
         paths.antworten["/api/v1/startup-status"] = """{"ready":false,"step":"Teile","progress":2.37,"total":8}"""
         val r = runBlocking { admin.getStartupStatus() }
         assert(r is Ergebnis.Erfolg) { "Startzustand nicht gelesen: $r" }
@@ -51,8 +51,8 @@ class ServerStartTest {
         assert(s.contains("ServerStartAnzeige(serverStart)")) {
             "Die Anmeldung zeigt den Startfortschritt nicht"
         }
-        // Der Sprung in die Galerie muss AUSSERHALB des if/else stehen: Der
-        // Wechsel auf „fertig" kann jederzeit kommen.
+        // The jump into the gallery must stand OUTSIDE the if/else: the
+        // switch to „finished" can come at any time.
         val anzeige = s.indexOf("ServerStartAnzeige(serverStart)")
         val jump = s.indexOf("LaunchedEffect(state.isLoggedIn)")
         assert(jump > anzeige) { "Test veraltet — die Reihenfolge stimmt nicht mehr" }

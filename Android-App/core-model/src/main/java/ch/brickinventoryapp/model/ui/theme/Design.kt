@@ -11,9 +11,9 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 /**
- * Die Designs — dieselbe Liste wie ALLOWED in js/theme-boot.js und die Whitelist
- * in routes/settings.ts (theme.test.js hält sie zusammen). Auf der Leitung und in
- * der Ablage steht die [kennung].
+ * The designs — the same list as ALLOWED in js/theme-boot.js and the whitelist
+ * in src/contract/globalRules.ts (theme.test.js keeps them together). On the wire and in
+ * the store stands the [kennung].
  */
 @Serializable(with = DesignSerializer::class)
 enum class Design(val kennung: String) {
@@ -27,12 +27,12 @@ enum class Design(val kennung: String) {
     companion object {
         val DEFAULT = CLASSIC
 
-        /** null für leer oder unbekannt: „keine Information“, nicht „zurück auf die Vorgabe“. */
+        /** null for empty or unknown: „no information“, not „back to the default“. */
         fun aus(kennung: String?): Design? = entries.firstOrNull { it.kennung == kennung?.trim() }
     }
 }
 
-/** Schreibt die [Design.kennung]; liest Unbekanntes als [Design.DEFAULT]. */
+/** Writes the [Design.kennung]; reads unknown as [Design.DEFAULT]. */
 object DesignSerializer : KSerializer<Design> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor(Design::class.java.name, PrimitiveKind.STRING)
     override fun serialize(encoder: Encoder, value: Design) = encoder.encodeString(value.kennung)
@@ -40,8 +40,8 @@ object DesignSerializer : KSerializer<Design> {
 }
 
 /**
- * Für Felder, in denen der Server auch nichts sagen darf: Leer oder unbekannt heisst
- * „keine Information“ (null) und darf ein gemerktes Design nicht überschreiben.
+ * For fields in which the server may also say nothing: empty or unknown means
+ * „no information“ (null) and must not overwrite a remembered design.
  */
 @OptIn(ExperimentalSerializationApi::class)
 object DesignOderNichts : KSerializer<Design?> {

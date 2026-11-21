@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.model.ui
 
 /**
- * Farbnamen von Rebrickable auf Deutsch — dieselbe Regel wie colorName() der Webapp
- * (public/i18n.js): Die Namen bleiben in den Daten englisch (BrickLink braucht sie),
- * übersetzt wird nur die Anzeige, Wort für Wort, damit auch neue Farben lesbar
- * werden. Unbekannte Wörter bleiben stehen. Den Wortschatz gleicht ColorGermanTest
- * mit der Webapp ab.
+ * Color names from Rebrickable in German — the same rule as colorName() of the web app
+ * (public/i18n.js): the names stay English in the data (BrickLink needs them),
+ * only the display is translated, word by word, so that new colors become readable
+ * too. Unknown words stay. The vocabulary is compared with the web app by
+ * ColorGermanTest.
  */
 
 object ColorGerman {
@@ -29,7 +29,7 @@ object ColorGerman {
         "unknown" to "Unbekannt", "none" to "Ohne", "no" to "Kein", "color" to "Farbe", "colour" to "Farbe",
     )
 
-    /** Wörter, die im Deutschen mit dem folgenden zusammengeschrieben werden. */
+    /** Words that are written together with the following one in German. */
     val prefixes: Set<String> = setOf(
         "Dunkel", "Hell", "Mittel", "Leucht", "Perl", "Matt", "Neon", "Rötlich", "Bläulich",
         "Gelblich", "Sand", "Metallic", "Chrom", "Satin", "Opal", "Milchig", "Glitzer",
@@ -58,7 +58,7 @@ object ColorGerman {
         return sb.toString().replace(Regex("""\s{2,}"""), " ").trim()
     }
 
-    /** Wie `split(/(\s+|-)/)` in JavaScript: Wörter UND Trenner, in ihrer Reihenfolge. */
+    /** Like `split(/(\s+|-)/)` in JavaScript: words AND separators, in their order. */
     private fun wordsAndSeparator(s: String): List<String> {
         val aus = mutableListOf<String>()
         var rest = 0

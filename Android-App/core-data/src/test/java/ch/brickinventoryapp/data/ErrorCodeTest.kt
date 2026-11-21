@@ -19,23 +19,23 @@ import ch.brickinventoryapp.testing.testAccountRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * Der Fehlercode des Servers (`code` im Rumpf) kommt in `Ergebnis.Fehler.code` an
- * und entscheidet dort, wo nach dem Fall verzweigt wird.
+ * The server's error code (`code` in the body) arrives in `Ergebnis.Fehler.code`
+ * and decides where branching goes by case.
  *
- * Gegenproben:
- *   A  in sicherAufrufen() `code = rumpf.code` weggelassen → rot „der Code des
- *      Servers kommt im Fehler an“
- *   B  in guthaben() wieder nach Status 429 statt nach Code verzweigt → rot
- *      „another 429 stays an error with sentence and code“
- *   C  in guthaben() den gelesenen Rumpf nicht neu übergeben → rot „eine
- *      andere 429 …“ (Code fehlt)
- * Gegenproben:
- *   fehlercode-ohne-verbindungstext   `zu_viele_verbindungen` aus errorTextToCode()
- *      gestrichen → rot „Upload-Sperre, Verbindungsgrenze und Seitengrenze …“
- *   pdf-seitengrenze-als-gelesen      der Code in fromPdf() verfehlt → rot „ein PDF über
- *      der Seitengrenze …“ (wieder ein „halb gelesenes“ PDF statt eines Fehlers)
- * Nicht messbar: die isNull-Prüfung in Fehlerrumpf.lies(). Das org.json der
- * Tests gibt für JSON-null ohnehin "" zurück, das von Android "null".
+ * Counter-checks:
+ *   A  in sicherAufrufen() `code = rumpf.code` omitted → red “the server's code
+ *      arrives in the error”
+ *   B  in guthaben() again branched by status 429 instead of by code → red
+ *      “another 429 stays an error with sentence and code“
+ *   C  in guthaben() the read body not passed anew → red “another
+ *      429 …” (code missing)
+ * Counter-checks:
+ *   fehlercode-ohne-verbindungstext   `zu_viele_verbindungen` deleted from errorTextToCode()
+ *      → red “upload lock, connection limit and page limit …”
+ *   pdf-seitengrenze-als-gelesen      the code missed in fromPdf() → red “a PDF above
+ *      the page limit …” (again a „half-read“ PDF instead of an error)
+ * Not measurable: the isNull check in Fehlerrumpf.lies(). The tests' org.json
+ * returns "" for JSON null anyway, Android's returns "null".
  */
 class ErrorCodeTest {
 

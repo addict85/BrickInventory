@@ -7,15 +7,15 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Oberflächentexte und Bildschirme tragen keine Emoji, sondern Material-Symbole.
+ * UI texts and screens carry no emoji but Material symbols.
  *
- * Emoji sehen je nach Hersteller anders aus, bringen Farben mit, die kein
- * Design kennt, und TalkBack liest ihren Namen mit. Typografische Zeichen wie
- * ✓, ✕ oder ▾ sind keine Emoji und bleiben erlaubt.
+ * Emoji look different depending on the manufacturer, bring colors that no
+ * design knows, and TalkBack reads their name along. Typographic characters like
+ * ✓, ✕ or ▾ are not emoji and stay allowed.
  *
- * Gegenprobe: `Text("📅 …")` in AcquisitionManagementScreen.kt zurückgesetzt —
- * der erste Test rot mit Datei und Zeile; "✅ " vor vm_set_added in
- * values-de/strings.xml — ebenfalls rot. Der dritte Test prüft das Muster selbst.
+ * Counter-check: `Text("📅 …")` restored in AcquisitionManagementScreen.kt —
+ * the first test red with file and line; "✅ " before vm_set_added in
+ * values-de/strings.xml — red as well. The third test checks the pattern itself.
  */
 class NoEmojiTest {
 

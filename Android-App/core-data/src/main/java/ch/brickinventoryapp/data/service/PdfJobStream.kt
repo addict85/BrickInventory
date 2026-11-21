@@ -19,9 +19,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Die Ereignisse eines PDF-Auftrags über den SSE-Client: Adresse und Token setzt dessen
- * Wächter wie bei jedem Abruf, gelesen wird das Modell der Statusabfrage. Was keinen
- * Stand liefert, endet als [Ereignis.Weg]; dann fragt der Aufrufer selbst ab.
+ * The events of a PDF job via the SSE client: its guard sets address and token
+ * as for every fetch, the status query's model is read. What delivers no
+ * state ends as [Ereignis.Weg]; then the caller queries itself.
  */
 @Singleton
 class PdfJobStream @Inject internal constructor(
@@ -31,10 +31,10 @@ class PdfJobStream @Inject internal constructor(
     sealed interface Ereignis {
         data class Stand(val stand: PdfJobStatus) : Ereignis
 
-        /** Kein Strom: alter Server (404), Abriss, Ende oder ein unlesbares Ereignis. */
+        /** No stream: old server (404), break, end or an unreadable event. */
         data object Weg : Ereignis
 
-        /** Der Server weist den Strom ab; [fehler] wie bei jedem Abruf, mit seinem Satz und Code. */
+        /** The server rejects the stream; [fehler] as for every fetch, with its sentence and code. */
         data class Rejected(val fehler: Ergebnis.Fehler) : Ereignis
     }
 
@@ -56,7 +56,7 @@ class PdfJobStream @Inject internal constructor(
         }
     }
 
-    /** Ohne Antwort oder mit 404 gibt es keinen Strom; jeder andere Status ist eine Absage. */
+    /** Without a response or with 404 there is no stream; every other status is a refusal. */
     private fun abgelehnt(e: SseEvent.Gescheitert): Ergebnis.Fehler? {
         val code = e.code
         if (code == null || code == 0 || code == HTTP_NOT_FOUND) return null

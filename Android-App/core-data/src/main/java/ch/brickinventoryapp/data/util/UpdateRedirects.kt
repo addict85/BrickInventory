@@ -5,14 +5,14 @@ import okhttp3.Interceptor
 import okhttp3.Response
 import java.io.IOException
 
-/** Wohin der Update-Client darf: GitHub und sein Ablage-CDN, nur über https auf 443. */
+/** Where the update client may go: GitHub and its storage CDN, only via https on 443. */
 internal fun updateTargetAllowed(url: HttpUrl): Boolean =
     url.isHttps && url.port == 443 && (url.host == "github.com" || url.host.endsWith(".githubusercontent.com"))
 
 /**
- * Der Update-Client folgt Umleitungen selbst und nur zu [erlaubt]: Ein Spiegel ausserhalb
- * von GitHub erführe sonst IP und Zeitpunkt jeder Prüfung. Geprüft wird vor dem Verbinden,
- * darum als Anwendungs-Interceptor bei followRedirects(false) (NetzModule).
+ * The update client follows redirects itself and only to [erlaubt]: a mirror outside
+ * of GitHub would otherwise learn IP and time of every check. Checked before connecting,
+ * hence as an application interceptor with followRedirects(false) (NetzModule).
  */
 internal class UpdateRedirects(private val erlaubt: (HttpUrl) -> Boolean = ::updateTargetAllowed) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {

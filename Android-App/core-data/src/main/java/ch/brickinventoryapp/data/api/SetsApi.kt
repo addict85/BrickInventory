@@ -45,31 +45,31 @@ import ch.brickinventoryapp.contract.SetExistsResponse
 import ch.brickinventoryapp.contract.SetInfoResponse
 
 /**
- * Sets, Anleitungen, Preisalarme, Lagerort je Set, Merkliste, PDF-Export und
- * Teilelisten (SetsRepository). Erbt die Abfragen von Teilen und Figuren, weil
- * der Inhalt eines Sets über dieselben Adressen kommt.
+ * Sets, instructions, price alerts, storage location per set, wishlist, PDF export and
+ * parts lists (SetsRepository). Inherits the queries of parts and figures because
+ * the content of a set comes via the same addresses.
  */
 interface SetsApi : PartsQueryApi, MinifigsQueryApi {
 
-    // Umgezogen nach /api/v1: Seit der Zusammenfuehrung gibt es nur noch EINEN
-    // Adressraum. Der Router dahinter ist derselbe wie vorher — nur die Adresse
-    // hat sich geaendert (siehe server.ts).
+    // Moved to /api/v1: since the merge there is only ONE
+    // address space. The router behind it is the same as before — only the address
+    // has changed (see server.ts).
     @GET("api/v1/sets/import/csv/status")
     suspend fun getCsvImportStatus(): Response<CsvImportStatus>
 
     /**
-     * Einen laufenden CSV-Import abbrechen. Der Server vermerkt nur `cancelled`; schon
-     * angelegte Sets bleiben — abgebrochen heisst „ab hier nicht weiter“, nicht
-     * „rückgängig“, wie in der Webapp.
+     * Cancel a running CSV import. The server only records `cancelled`; already
+     * created sets stay — cancelled means „no further from here“, not
+     * „undo“, as in the web app.
      */
     @POST("api/v1/sets/import/csv/cancel")
     suspend fun cancelCsvImport(): Response<GenericAdminResponse>
 
-    // ── Anleitungen: hinzufügen und entfernen ──
+    // ── Instructions: add and remove ──
     //
-    // Der Server nimmt nur PDF, JPG und PNG an und leitet die Dateiendung aus dem
-    // gemeldeten Typ ab — deshalb kommt der Typ aus der Dateiauswahl und wird nicht
-    // geraten.
+    // The server accepts only PDF, JPG and PNG and derives the file extension from the
+    // reported type — hence the type comes from the file picker and is not
+    // guessed.
     @Multipart
     @POST("api/v1/sets/{setNumber}/instructions/upload")
     suspend fun uploadInstruction(
@@ -85,8 +85,8 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
     ): Response<GenericResponse>
 
     /**
-     * Nur der Name, aus dem gemeinsamen Katalog. Getrennt von getSetDetail: „Wie
-     * heisst dieses Set?“ gibt es auch für fremde Sets, „was habe ich davon?“ nicht.
+     * Only the name, from the common catalog. Separate from getSetDetail: „What is
+     * this set called?“ exists for foreign sets too, „what do I have of it?“ does not.
      */
     @GET("api/v1/sets/info/{setNumber}")
     suspend fun getSetInfo(
@@ -98,17 +98,17 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
         @Path("setNumber") setNumber: String
     ): Response<SetResponse>
 
-    // ── Kontofilter (Haushalt) ──
+    // ── Account filter (household) ──
     //
-    // `accounts`: "all" (Vorgabe), "own", "subs" oder die ID eines Kontos. Der Server
-    // übersetzt ihn in Konto-IDs, damit Liste, Gesamtzahl, Kennzahlen und Summen aus
-    // derselben Menge entstehen — im Gerät gefiltert stimmten die Zahlen nicht. null =
-    // weglassen.
+    // `accounts`: "all" (default), "own", "subs" or the ID of an account. The server
+    // translates it into account IDs so that list, total, key figures and sums arise from
+    // the same set — filtered on the device the numbers did not match. null =
+    // omit.
     @GET("api/v1/sets")
     /**
-     * Galerie — auf dem Server gefiltert, sortiert und seitenweise, mit derselben
-     * Regel wie die Webapp (utils/handlers.ts, getSets); eine eigene Suche im Gerät
-     * kannte weder Jahr noch Sortierung.
+     * Gallery — filtered, sorted and paged on the server, with the same
+     * rule as the web app (utils/handlers.ts, getSets); an own search on the device
+     * knew neither year nor sorting.
      */
     suspend fun getSets(
         @Query("accounts") accounts: String? = null,
@@ -117,7 +117,7 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
         @Query("sort") sort: String? = null,
         @Query("page") page: Int? = null,
         @Query("page_size") pageSize: Int? = null,
-        /** Lagerort — eigener Parameter, nicht Teil der Suche (siehe Server). */
+        /** Storage location — its own parameter, not part of the search (see server). */
         @Query("storage") storage: String? = null
     ): Response<SetsResponse>
 
@@ -145,18 +145,18 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
     ): Response<GenericResponse>
 
     /**
-     * „Kann ich das bauen?" — welche Teile einer Liste schon da sind.
+     * „Can I build this?" — which parts of a list are already there.
      *
-     * POST, obwohl nichts geändert wird: Über tausend Teil-Farb-Paare ergäben eine Adresse,
-     * die kein Proxy durchlässt.
+     * POST although nothing is changed: over a thousand part-color pairs would give an address
+     * that no proxy lets through.
      */
     // ── Preisalarm ──────────────────────────────────────────────────────────
     //
     // Ohne `accounts=`: Ein Alarm gehoert genau EINEM Konto (siehe Preisalarm).
 
     /**
-     * Was seit `since` ausgeloest hat. Ohne `since` liefert der Server nichts
-     * und nur den Zeitpunkt — der erste Aufruf setzt die Marke.
+     * What has triggered since `since`. Without `since` the server delivers nothing
+     * but the point in time — the first call sets the mark.
      */
     @GET("api/v1/alerts/pending")
     suspend fun getPendingAlerts(
@@ -164,8 +164,8 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
     ): Response<PendingAlertsResponse>
 
     /**
-     * Alle Alarme des Kontos für die Übersicht — dieselbe Antwortform wie die
-     * Einzelroute, damit es ein Modell bleibt.
+     * All alerts of the account for the overview — the same response form as the
+     * single route, so that it stays one model.
      */
     @GET("api/v1/alerts")
     suspend fun getAllAlerts(): Response<PreisalarmeResponse>
@@ -187,7 +187,7 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
         @Query("condition") condition: String = "N",
     ): Response<PreisalarmResponse>
 
-    // ── Lagerort je Set (für Teile und Figuren siehe PartsApi) ──
+    // ── Storage location per set (for parts and figures see PartsApi) ──
 
     @PUT("api/v1/sets/{setNumber}/storage")
     suspend fun setSetStorage(
@@ -195,15 +195,15 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
         @Body request: LagerortRequest,
     ): Response<LagerortResponse>
 
-    // ── Merkliste ──
+    // ── Wishlist ──
     //
-    // Der Zustand steht im Pfad, weil er zum Schlüssel gehört: Dasselbe Set neu und
-    // gebraucht sind zwei Einträge.
+    // The condition stands in the path because it belongs to the key: the same set new and
+    // used are two entries.
 
     /**
-     * Die Merkliste mit Suche, Zustand, Sortierung und Inhaber (`accounts`), dieselben
-     * Namen wie bei getSets(). Alle optional, damit ein Aufruf ohne Filter dieselbe
-     * Adresse ergibt.
+     * The wishlist with search, condition, sorting and owner (`accounts`), the same
+     * names as for getSets(). All optional, so that a call without filters gives the same
+     * address.
      */
     @GET("api/v1/wanted")
     suspend fun getMerkliste(
@@ -220,8 +220,8 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
     ): Response<MerkpostenAntwort>
 
     /**
-     * Den Inhaber eines Merkpostens wechseln. PUT, weil nichts Neues entsteht; die
-     * Regel (Aufnahmedatum bleibt, Alarm zieht mit) steht in utils/merkliste.ts.
+     * Change the owner of a wishlist item. PUT because nothing new arises; the
+     * rule (date added stays, alert moves along) stands in utils/merkliste.ts.
      */
     @PUT("api/v1/wanted/{setNumber}/{condition}/inhaber")
     suspend fun moveWantedItem(
@@ -239,9 +239,9 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
     ): Response<GenericResponse>
 
     /**
-     * Marktpreise eines Merkpostens, frisch geholt. Nicht /sets/{sn}/price: Die
-     * antwortet 404, wenn einem das Set nicht gehört — bei einem Merkposten der
-     * Regelfall.
+     * Market prices of a wishlist item, freshly fetched. Not /sets/{sn}/price: that
+     * answers 404 if the set does not belong to one — for a wishlist item the
+     * normal case.
      */
     @GET("api/v1/wanted/{setNumber}/preise")
     suspend fun getWantedItemPrices(
@@ -291,8 +291,8 @@ interface SetsApi : PartsQueryApi, MinifigsQueryApi {
     ): Response<BarcodeResponse>
 
     /**
-     * Set oder einzelne Kaufpreise in ein anderes Konto verschieben; `acquisition_ids`
-     * leer = das ganze Set. Was mitwandert, entscheidet der Server (utils/setMove.ts).
+     * Move a set or individual purchase prices into another account; `acquisition_ids`
+     * empty = the whole set. What moves along is decided by the server (utils/setMove.ts).
      */
     @POST("api/v1/sets/{setNumber}/move")
     suspend fun moveSet(

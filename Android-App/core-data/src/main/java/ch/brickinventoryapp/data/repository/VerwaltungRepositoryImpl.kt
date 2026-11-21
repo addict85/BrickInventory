@@ -25,7 +25,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Betrieb und Datenpflege: CSV-Import, Protokoll, Hintergrundarbeiten, Caches, Kontingente, globale Vorgaben — über Retrofit; die gemeinsame Abruflogik steht in Abruf.kt.
+ * Operation and data maintenance: CSV import, log, background work, caches, quotas, global defaults — via Retrofit; the common fetch logic stands in Abruf.kt.
  */
 @Singleton
 class VerwaltungRepositoryImpl @Inject constructor(
@@ -33,9 +33,9 @@ class VerwaltungRepositoryImpl @Inject constructor(
 ) : ManagementRepository {
 
     /**
-     * Eine CSV-Datei importieren. Die Bytes kommen fertig gelesen herein, weil ein
-     * content://-Verweis den ContentResolver braucht und das Repository keine
-     * Android-Typen kennt; der Dateiname geht fürs Serverprotokoll mit.
+     * Import a CSV file. The bytes come in already read, because a
+     * content:// reference needs the ContentResolver and the repository knows no
+     * Android types; the file name goes along for the server log.
      */
     override suspend fun importCsv(
         art: CsvImportKind, fileName: String, inhalt: ByteArray,
@@ -53,18 +53,18 @@ class VerwaltungRepositoryImpl @Inject constructor(
         }.promised({ it.success }) { it.alsAnsicht() }
     }
 
-    // Server-Protokoll. Die Nutzerverwaltung des Servers bleibt der Webapp vorbehalten
-    // — siehe ManagementApi.
+    // Server log. The server's user management stays reserved for the web app
+    // — see ManagementApi.
     override suspend fun getLog(minuten: Int): Ergebnis<List<LogRowView>> =
         sicherAufrufen { api.getLog(minuten) }.promised({ it.success }) { r -> r.logs.map { it.alsAnsicht() } }
 
     /**
-     * Zeitplan eines Jobs setzen — taeglich (HH:MM) oder als Abstand (Minuten).
+     * Set the schedule of a job — daily (HH:MM) or as an interval (minutes).
      *
-     * Genau EINES von beidem: Der Server liest `time` fuer taegliche Jobs und
-     * `minutes` fuer den Preis-Job und weist alles andere ab. Deshalb hier zwei
-     * benannte Parameter statt eines freien Rumpfes — welcher gilt, entscheidet
-     * der Aufrufer sichtbar.
+     * Exactly ONE of the two: the server reads `time` for daily jobs and
+     * `minutes` for the price job and rejects everything else. Hence two
+     * named parameters here instead of a free body — which one applies is decided
+     * visibly by the caller.
      */
     override suspend fun setJobSchedule(name: String, zeit: String?, minuten: Int?): Ergebnis<Unit> =
         sicherAufrufen {
@@ -78,11 +78,11 @@ class VerwaltungRepositoryImpl @Inject constructor(
     /** Fehlende Katalogbilder einreihen — siehe ManagementApi.queueCatalogImages. */
     override suspend fun queueCatalogImages(): Ergebnis<Unit> = sicherAufrufen { api.queueCatalogImages() }.managed { }
 
-    /** Das globale Design umstellen (nur Verwalter). */
+    /** Switch the global design (admins only). */
     override suspend fun setAppTheme(theme: Design): Ergebnis<Unit> =
         sicherAufrufen { api.setAppTheme(mapOf("theme" to theme.kennung)) }.managed { }
 
-    /** Startzustand des Servers — ohne Anmeldung. */
+    /** Startup state of the server — without sign-in. */
     override suspend fun getStartupStatus(): Ergebnis<StartStateView> = sicherAufrufen { api.getStartupStatus() }.shown { it.alsAnsicht() }
 
     override suspend fun getJobs(): Ergebnis<JobsView> = sicherAufrufen { api.getJobs() }.shown { r ->
@@ -96,12 +96,12 @@ class VerwaltungRepositoryImpl @Inject constructor(
     override suspend fun setCacheTtl(hours: Int): Ergebnis<Unit> = sicherAufrufen { api.setCacheTtl(mapOf("ttl" to hours.toString())) }.managed { }
 
     /**
-     * Cache leeren — nur Preise, oder alles.
+     * Clear the cache — only prices, or everything.
      *
-     * `alles = false` schickt einen LEEREN Rumpf und nicht `all=false`: Der
-     * Server prueft `req.body?.all` auf Wahrheit, beides waere also gleich —
-     * aber ein leerer Rumpf sagt dasselbe kuerzer und kann nicht versehentlich
-     * als „alles" gelesen werden.
+     * `alles = false` sends an EMPTY body and not `all=false`: the
+     * server checks `req.body?.all` for truth, so both would be the same —
+     * but an empty body says the same more briefly and cannot accidentally
+     * be read as „everything".
      */
     override suspend fun clearCache(alles: Boolean): Ergebnis<Unit> =
         sicherAufrufen { api.clearCache(if (alles) mapOf("all" to true) else emptyMap()) }.managed { }
@@ -140,6 +140,6 @@ class VerwaltungRepositoryImpl @Inject constructor(
     override suspend fun setDefaultCondition(condition: Zustand): Ergebnis<Unit> = sicherAufrufen { api.setDefaultCondition(mapOf("condition" to condition.kennung)) }.managed { }
 }
 
-/** Eine Verwalter-Antwort trägt `success`: eine Absage ist ein Fehler, kein Erfolg. */
+/** An admin response carries `success`: a refusal is an error, not a success. */
 private inline fun <R> Ergebnis<GenericAdminResponse>.managed(f: (GenericAdminResponse) -> R): Ergebnis<R> =
     promised({ it.success }, f = f)

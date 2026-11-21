@@ -23,9 +23,9 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
- * Einstellungen dieses Geräts, nicht des Kontos: Darstellung, Vertrauen, Pins, Widget,
- * Vorwärmen und Alarm. Getrennt von der TokenAblage; was schon das erste
- * Bild bestimmt, liegt zusätzlich im synchron lesbaren Spiegel.
+ * Settings of this device, not of the account: display, trust, pins, widget,
+ * warming and alert. Separate from the TokenAblage; what already determines the first
+ * frame additionally lies in the synchronously readable mirror.
  */
 @Singleton
 class DevicesStore @Inject constructor(
@@ -35,72 +35,72 @@ class DevicesStore @Inject constructor(
 ) : DevicesSettings, Darstellungsablage, Netzvertrauen, Alarmablage, Entwertungsprotokoll, Sprachablage, Widgetablage {
     companion object {
         /**
-         * Der synchron lesbare Spiegel des Designs — eigene Datei, damit er
-         * nichts anderes beruehrt. Warum es ihn gibt, steht bei
-         * rememberedDesign() weiter unten.
+         * The synchronously readable mirror of the design — its own file so that it
+         * touches nothing else. Why it exists stands at
+         * rememberedDesign() further below.
          */
         const val DESIGN_MIRROR_FILE = "design_spiegel"
         const val DARK_AFTER_SYSTEM = "dunkel_nach_system"
         const val BRIGHTNESS = "helligkeit"
         const val APP_THEME_MIRROR = "app_theme"
         const val LANGUAGE_MIRROR = "sprache"
-        /** Klartext älterer Fassungen; gelesen nur noch zur einmaligen Übernahme. */
+        /** Plaintext of older versions; read only for the one-time takeover. */
         const val NUTZER_CA = "nutzer_ca"
         const val USER_CA_SECRET = "nutzer_ca_geheim"
-        /** Gesetzt, sobald die Vorgabe „Nutzer-CAs aus“ einmal angewandt wurde. */
+        /** Set as soon as the default „user CAs off“ has been applied once. */
         const val USER_CA_FROM_APPLIED = "nutzer_ca_aus_angewandt"
-        /** Klartext älterer Fassungen, wie [NUTZER_CA]; zugleich die Bindung des Geheimtexts. */
+        /** Plaintext of older versions, like [NUTZER_CA]; at the same time the binding of the ciphertext. */
         const val PIN_PREFIX = "pin:"
-        /** Ältere Fassungen: Host und Port im Namen. Gelesen nur bis zur Übernahme ([PIN_NAME_PREFIX]). */
+        /** Older versions: host and port in the name. Read only until the takeover ([PIN_NAME_PREFIX]). */
         const val PIN_SECRET_PREFIX = "pin_geheim:"
-        /** Der Name aus Vertrauenschiffre.name(): Wer die Datei liest, erfährt den Server nicht. */
+        /** The name from Vertrauenschiffre.name(): whoever reads the file does not learn the server. */
         const val PIN_NAME_PREFIX = "pin_n:"
-        /** Gesetzt nach der Übernahme: Klartext, der danach auftaucht, wird nur noch gelöscht. */
+        /** Set after the takeover: plaintext that appears afterwards is only deleted. */
         const val TRUST_ADOPTED = "vertrauen_uebernommen"
         private const val AN = "an"
         private const val ANGABE = "angabe:"
         const val SYSTEMFARBEN = "systemfarben"
         const val PREVIEW_HIDE = "vorschau_verbergen"
-        /** Klartext älterer Fassungen; gelesen und beim nächsten Schreiben übernommen. */
+        /** Plaintext of older versions; read and taken over on the next write. */
         const val REDEMPTION_FAILED = "entwertung_gescheitert"
         const val REDEMPTION_FAILED_SECRET = "entwertung_gescheitert_geheim"
         const val WIDGET_VALUES = "widget_werte"
         const val WIDGET_STATUS = "widget_stand"
 
         /**
-         * In welchen Netzen darf das Vorwärmen der Vorschaubilder holen? Auf dem Gerät,
-         * nicht beim Konto: Am Telefon mit knappem Tarif will man es anders als am Tablet.
-         * Die drei Schalter sind unabhängig, je einer für eine Lage; eine versteckte
-         * Kopplung sähe aus wie ein kaputter Schalter.
+         * On which networks may the thumbnail warming fetch? On the device,
+         * not with the account: on a phone with a tight plan one wants it differently than on a tablet.
+         * The three switches are independent, one per situation; a hidden
+         * coupling would look like a broken switch.
          */
         val WARM_UP_WIFI    = booleanPreferencesKey("vorwaermen_wlan")
         val WARM_UP_MOBILE   = booleanPreferencesKey("vorwaermen_mobil")
         val WARM_UP_ROAMING = booleanPreferencesKey("vorwaermen_roaming")
 
         val CURRENCY     = stringPreferencesKey("currency")
-        // "system" (folgt der OS-Sprache), "en" oder "de"
+        // "system" (follows the OS language), "en" or "de"
         val LANGUAGE     = stringPreferencesKey("language")
         /**
-         * Das zuletzt bekannte Design des Servers. Gemerkt, weil /settings erst nach der
-         * Anmeldung kommt und Anmelde- und Einrichtungsbildschirm sonst im Standard-Design
-         * erschienen und umsprangen — Stufe eins wie in public/js/theme-boot.js.
-         * Global, deshalb überlebt es das Abmelden.
+         * The most recently known design of the server. Remembered because /settings only comes after
+         * sign-in and the sign-in and setup screens would otherwise appear in the default design
+         * and switch — stage one as in public/js/theme-boot.js.
+         * Global, therefore it survives sign-out.
          */
         val APP_THEME    = stringPreferencesKey("app_theme")
 
         /**
-         * Sollen ausgelöste Preisalarme als Benachrichtigung erscheinen? Je Gerät: Mit
-         * Telefon und Tablet will man die Meldung meist nur an einem. Vorgabe aus —
-         * ungefragte Benachrichtigungen wären eine Überraschung, und ab Android 13 braucht
-         * es ohnehin die Erlaubnis.
+         * Should triggered price alerts appear as notifications? Per device: with
+         * phone and tablet one usually wants the notification on only one. Default off —
+         * unrequested notifications would be a surprise, and from Android 13 it needs
+         * the permission anyway.
          */
         val ALARM_MESSAGES = booleanPreferencesKey("alarm_meldungen")
 
         /**
-         * Der Zeitpunkt des letzten erfolgreichen Abrufs, als ISO-Text vom Server — nicht
-         * die Uhr des Telefons, deren Abweichung über doppelte oder fehlende Meldungen
-         * entschiede (siehe Alarmabholung). Text, weil nur weitergereicht wird und eine
-         * Umrechnung die Zeitzone verlöre.
+         * The point in time of the last successful fetch, as ISO text from the server — not
+         * the phone's clock, whose deviation would decide about duplicate or missing notifications
+         * (see Alarmabholung). Text, because it is only passed on and a
+         * conversion would lose the time zone.
          */
         val ALARM_BRAND = stringPreferencesKey("alarm_marke")
     }
@@ -108,9 +108,9 @@ class DevicesStore @Inject constructor(
     val currency:  Flow<Waehrung> = dataStore.data.map { p -> p[CURRENCY]?.let { Waehrung(it) } ?: Waehrung.EUR }
     val language:  Flow<String> = dataStore.data.map { it[LANGUAGE]   ?: "system" }
 
-    // Vorgabe: nur WLAN. Begruendung an den Schluesseln oben. `?: true` bzw.
-    // `?: false` ist hier die ganze Vorgabe — ein noch nie gesetzter Wert ist
-    // in DataStore schlicht nicht da.
+    // Default: only Wi-Fi. Reasoning at the keys above. `?: true` or
+    // `?: false` is the whole default here — a value never set is
+    // simply not present in DataStore.
     val warmUpWifi:    Flow<Boolean> = dataStore.data.map { it[WARM_UP_WIFI]    ?: true }
     val warmUpMobile:   Flow<Boolean> = dataStore.data.map { it[WARM_UP_MOBILE]   ?: false }
     val warmUpRoaming: Flow<Boolean> = dataStore.data.map { it[WARM_UP_ROAMING] ?: false }
@@ -119,19 +119,19 @@ class DevicesStore @Inject constructor(
     // Vorgabe AUS — Begruendung am Schluessel oben.
     override val alarmMessagesAn: Flow<Boolean> = dataStore.data.map { it[ALARM_MESSAGES] ?: false }
     /**
-     * null = noch nie abgerufen: Beim allerersten Durchgang markiert Alarmabholung nur
-     * und meldet nichts. Ein leerer Text brächte alles Alte auf einmal.
+     * null = never fetched: on the very first pass Alarmabholung only marks
+     * and reports nothing. An empty text would bring everything old at once.
      */
     override val alarmBrand: Flow<String?> = dataStore.data.map { it[ALARM_BRAND] }
 
-    // Synchron lesbarer Spiegel des Designs (SharedPreferences): setContent() läuft
-    // vor dem ersten DataStore-Wert, und das erste Bild entstünde sonst im
-    // Standard-Design. Der DataStore bleibt führend.
+    // Synchronously readable mirror of the design (SharedPreferences): setContent() runs
+    // before the first DataStore value, and the first frame would otherwise arise in the
+    // default design. The DataStore stays leading.
     private val designMirror by lazy {
         context.getSharedPreferences(DESIGN_MIRROR_FILE, Context.MODE_PRIVATE)
     }
 
-    /** Einmalig vor dem ersten Verbindungsaufbau (TokenAblage wartet darauf). */
+    /** Once before the first connection setup (TokenAblage waits for it). */
     fun prepareBefore() {
         adoptOldCaStatus()
         trustAdoptPlaintext()
@@ -141,23 +141,23 @@ class DevicesStore @Inject constructor(
 
     private val userCaListener = CopyOnWriteArrayList<() -> Unit>()
 
-    /** Nach dem Umschalten der Nutzer-CAs und vor einem Pin aus dem Code: neuer TLS-Kontext, offene Verbindungen weg (di/ServerClient). */
+    /** After switching the user CAs and before a pin from the code: new TLS context, open connections gone (di/ServerClient). */
     override fun onUserCaSwitch(listener: () -> Unit) { userCaListener += listener }
 
     suspend fun saveCurrency(cur: Waehrung) {
         dataStore.edit { it[CURRENCY] = cur.code }
     }
     /**
-     * Eine der drei Netzerlaubnisse setzen — eine Funktion mit dem Schlüssel als
-     * Argument statt dreier fast gleicher, die auseinanderlaufen könnten.
+     * Set one of the three network permissions — one function with the key as
+     * argument instead of three almost identical ones that could drift apart.
      */
     suspend fun saveWarmUpNetwork(schluessel: Preferences.Key<Boolean>, erlaubt: Boolean) {
         dataStore.edit { it[schluessel] = erlaubt }
     }
 
     /**
-     * Die Marke fortschreiben. Leere Werte werden nicht geschrieben, sonst ginge die
-     * Unterscheidung „noch nie abgerufen“ verloren.
+     * Advance the mark. Empty values are not written, otherwise the
+     * distinction „never fetched“ would be lost.
      */
     override suspend fun setAlarmBrand(marke: String) {
         if (marke.isBlank()) return
@@ -189,9 +189,9 @@ class DevicesStore @Inject constructor(
     }
 
     /**
-     * Die Sprache synchron für Application.onCreate (unter Android 13), ohne den
-     * DataStore zu blockieren. null = vor dem Spiegel gespeichert; dann liest
-     * [followUpLanguage] sie einmal nach.
+     * The language synchronously for Application.onCreate (below Android 13), without
+     * blocking the DataStore. null = saved before the mirror; then
+     * [followUpLanguage] reads it once afterwards.
      */
     override fun rememberedLanguage(): String? = designMirror.getString(LANGUAGE_MIRROR, null)
 
@@ -202,21 +202,21 @@ class DevicesStore @Inject constructor(
     }
     suspend fun saveAppTheme(theme: Design) {
         dataStore.edit { it[APP_THEME] = theme.kennung }
-        // Und in den synchron lesbaren Spiegel, siehe rememberedDesign(). Beides an
-        // EINER Stelle, damit die zwei Ablagen nicht auseinanderlaufen können.
+        // And into the synchronously readable mirror, see rememberedDesign(). Both in
+        // ONE place so that the two stores cannot drift apart.
         designMirror.edit { putString(APP_THEME_MIRROR, theme.kennung) }
     }
 
     /**
-     * Das zuletzt bekannte Design — synchron, für den allerersten Bildaufbau. Ohne
-     * Eintrag (Neuinstallation) gilt der Standard.
+     * The most recently known design — synchronous, for the very first frame. Without
+     * an entry (new installation) the default applies.
      */
     override fun rememberedDesign(): Design =
         Design.aus(designMirror.getString(APP_THEME_MIRROR, null)) ?: Design.DEFAULT
 
     /**
-     * System, Hell oder Dunkel — je Gerät. Im Spiegel, weil es wie das Design schon
-     * das erste Bild bestimmt; ohne neue Wahl gilt die frühere „dunkel nach System“.
+     * System, light or dark — per device. In the mirror because, like the design, it already
+     * determines the first frame; without a new choice the earlier „dark per system“ applies.
      */
     override fun helligkeit(): String = brightnessApplies(
         designMirror.getString(BRIGHTNESS, null),
@@ -225,9 +225,9 @@ class DevicesStore @Inject constructor(
         designMirror.edit { putString(BRIGHTNESS, wahl) }
     }
     /**
-     * Vertrauen die Clients des eigenen Servers auch nutzerinstallierten CAs
-     * (util/ServerVertrauen.kt)? Je Gerät und synchron: Gefragt wird bei jedem
-     * Verbindungsaufbau.
+     * Do the clients of the own server also trust user-installed CAs
+     * (util/ServerVertrauen.kt)? Per device and synchronous: asked on every
+     * connection setup.
      */
     override fun userCaAllowed(): Boolean {
         trustAdoptPlaintext()
@@ -235,8 +235,8 @@ class DevicesStore @Inject constructor(
         return vertrauenschiffre.entschluessle(geheim, NUTZER_CA) == AN
     }
 
-    // Lässt sich „an“ nicht verschlüsseln, bleibt der Schalter aus: lieber erneut
-    // fragen als eine Erlaubnis ablegen, die niemand prüfen kann.
+    // If „on“ cannot be encrypted, the switch stays off: better to ask again
+    // than to store a permission nobody can check.
     override fun setUserCa(an: Boolean) {
         trustAdoptPlaintext()
         val geheim = if (an) vertrauenschiffre.verschluessle(AN, NUTZER_CA) else null
@@ -245,10 +245,10 @@ class DevicesStore @Inject constructor(
     }
 
     /**
-     * Einmalig vor dem ersten Verbindungsaufbau (der Latch wartet darauf): Nutzer-CAs
-     * aus, auch wenn sie vorher an waren. Wer sie braucht, wird beim ersten
-     * TLS-Fehler gefragt (CertificateQuestion) — eine stille Erlaubnis aus einer
-     * älteren Fassung soll nicht weiter gelten.
+     * Once before the first connection setup (the latch waits for it): user CAs
+     * off, even if they were on before. Whoever needs them is asked on the first
+     * TLS error (CertificateQuestion) — a silent permission from an
+     * older version should not keep applying.
      */
     fun adoptOldCaStatus() {
         if (designMirror.getBoolean(USER_CA_FROM_APPLIED, false)) return
@@ -258,10 +258,10 @@ class DevicesStore @Inject constructor(
     @Volatile private var trustChecked = false
 
     /**
-     * Klartext-Pins und -Schalter älterer Fassungen einmal verschlüsselt übernehmen und
-     * löschen. Danach zeigt die Marke: Klartext, der später auftaucht, hat nicht die App
-     * geschrieben und wird verworfen, nicht übernommen. Scheitert das Verschlüsseln, bleibt
-     * der Klartext liegen und gilt nicht — der nächste Lesezugriff versucht es erneut.
+     * Take over plaintext pins and switches of older versions once, encrypted, and
+     * delete them. Afterwards the mark shows: plaintext that appears later was not written by the app
+     * and is discarded, not taken over. If encrypting fails, the plaintext
+     * stays and does not count — the next read attempts it again.
      */
     @Synchronized
     private fun trustAdoptPlaintext() {
@@ -277,7 +277,7 @@ class DevicesStore @Inject constructor(
         trustChecked = true
     }
 
-    /** Die neuen Einträge zum Klartext; null, sobald einer sich nicht verschlüsseln lässt. */
+    /** The new entries for the plaintext; null as soon as one cannot be encrypted. */
     private fun encryptedLegacyStock(alt: Map<String, *>): Map<String, String>? {
         val neu = mutableMapOf<String, String>()
         for ((k, v) in alt) {
@@ -291,24 +291,24 @@ class DevicesStore @Inject constructor(
     }
 
     /**
-     * Adresse, Name und Herkunft der TokenAblage und Abmeldeaufträge: unter dem Schlüssel, der
-     * nur entsperrt arbeitet und das Abmelden überlebt. null bzw. Gesperrt heisst „jetzt
-     * nicht“; nie ein Rückfall auf Klartext oder auf den Schlüssel der Pins.
+     * Address, name and origin of the TokenAblage and sign-out jobs: under the key that
+     * only works unlocked and survives sign-out. null or Gesperrt means „not
+     * now“; never a fallback to plaintext or to the pins' key.
      */
     internal fun verschluessleDetail(wert: String, name: String): String? = vertrauenschiffre.verschluessleDetail(wert, name)
     internal fun openDetail(geheim: String, name: String): Tresorbefund = vertrauenschiffre.openDetail(geheim, name)
 
-    /** Nur zur Übernahme: So lagen Adresse und Name in früheren Fassungen (unter dem Schlüssel der Pins). */
+    /** Only for the takeover: this is how address and name lay in earlier versions (under the pins' key). */
     internal fun entschluessleOldDetail(geheim: String, name: String): String? = vertrauenschiffre.entschluessle(geheim, ANGABE + name)
 
-    /** Wo der Pin zu [schluessel] liegt; null, wenn der Schlüssel der Pins gerade nicht arbeitet. */
+    /** Where the pin for [schluessel] lies; null if the pins' key is not working right now. */
     internal fun pinEntry(schluessel: String): String? =
         vertrauenschiffre.name(PIN_PREFIX + schluessel)?.let { PIN_NAME_PREFIX + it }
 
     /**
-     * Pins älterer Fassungen tragen Host und Port im Namen. Derselbe Geheimtext (seine Bindung
-     * ist der Host, nicht der Name) kommt unter den abgeleiteten Namen; was sich nicht benennen
-     * lässt, bleibt bis zum nächsten Start liegen und gilt bis dahin weiter (rememberedPin).
+     * Pins of older versions carry host and port in the name. The same ciphertext (its binding
+     * is the host, not the name) goes under the derived name; what cannot be named
+     * stays until the next start and keeps applying until then (rememberedPin).
      */
     @Synchronized
     private fun adoptPinNames() {
@@ -323,10 +323,10 @@ class DevicesStore @Inject constructor(
         }
     }
 
-    // Pins je Host und Port (util/ServerVertrauen.kt); der vorgehaltene (holdBefore) geht vor.
-    // Ein unlesbarer Geheimtext ist kein Pin: Die Verbindung gilt als Erstkontakt, der
-    // Nutzer bestätigt neu. Ein nicht verschlüsselbarer Pin gilt nur bis zum Prozessende
-    // ([unsecured]), nie im Klartext auf der Platte.
+    // Pins per host and port (util/ServerVertrauen.kt); the held one (holdBefore) goes first.
+    // An unreadable ciphertext is no pin: the connection counts as first contact, the
+    // user confirms anew. A pin that cannot be encrypted applies only until the process ends
+    // ([unsecured]), never in plaintext on disk.
     override fun pin(schluessel: String): String? = retained[schluessel] ?: rememberedPin(schluessel)
     fun rememberedPin(schluessel: String): String? {
         trustAdoptPlaintext()
@@ -347,8 +347,8 @@ class DevicesStore @Inject constructor(
         }
         retained.remove(schluessel)
     }
-    // Neuer TLS-Kontext, leerer Verbindungsvorrat: Eine wiederverwendete oder
-    // wiederaufgenommene Verbindung prüfte den Pin aus dem Code nie.
+    // New TLS context, empty connection pool: a reused or
+    // resumed connection never checked the pin from the code.
     fun holdBefore(schluessel: String, fingerabdruck: String) {
         retained[schluessel] = fingerabdruck
         userCaListener.forEach { it() }
@@ -359,17 +359,17 @@ class DevicesStore @Inject constructor(
     private val unsecured = ConcurrentHashMap<String, String>()
 
     /**
-     * Geldwerte im Startbildschirm-Widget zeigen? Je Gerät, Vorgabe aus: Das Widget
-     * ist ohne Entsperren für jeden lesbar, der das Telefon sieht.
+     * Show money values in the home screen widget? Per device, default off: the widget
+     * is readable without unlocking for anyone who sees the phone.
      */
     override fun showWidgetValues(): Boolean = designMirror.getBoolean(WIDGET_VALUES, false)
     override fun showSetWidgetValues(an: Boolean) {
         designMirror.edit { putBoolean(WIDGET_VALUES, an) }
     }
 
-    // Unter dem Schlüssel der Angaben: Gesperrt liest niemand die Zahlen aus der Datei. Das Widget
-    // zeigt dann „leer“ und zeichnet nach dem Entsperren neu (BrickInventoryApp). Ein Stand unter
-    // dem früheren Schlüssel gilt als leer; der nächste Abruf ersetzt ihn.
+    // Under the key of the details: locked nobody reads the numbers from the file. The widget
+    // then shows „empty“ and redraws after unlocking (BrickInventoryApp). A state under
+    // the former key counts as empty; the next fetch replaces it.
     override fun widgetStatus(): String? =
         designMirror.getString(WIDGET_STATUS, null)?.let { (openDetail(it, WIDGET_STATUS) as? Tresorbefund.Readable)?.klartext }
 
@@ -382,16 +382,16 @@ class DevicesStore @Inject constructor(
         designMirror.edit { remove(WIDGET_STATUS) }
     }
 
-    /** Material You statt der Farben des Designs; je Gerät, wirkt ab Android 12. */
+    /** Material You instead of the design's colors; per device, effective from Android 12. */
     override fun systemfarben(): Boolean = designMirror.getBoolean(SYSTEMFARBEN, false)
     override fun setzeSystemfarben(an: Boolean) {
         designMirror.edit { putBoolean(SYSTEMFARBEN, an) }
     }
 
     /**
-     * Kein Vorschaubild in der App-Übersicht, keine Bildschirmfotos; je Gerät. Vorgabe
-     * an: Die Übersicht zeigt Bestand, Preise und Konto jedem, der das Telefon kurz
-     * in der Hand hat. Wer Bildschirmfotos braucht, schaltet es aus.
+     * No thumbnail in the app overview, no screenshots; per device. Default
+     * on: the overview shows stock, prices and account to anyone who briefly
+     * holds the phone. Whoever needs screenshots turns it off.
      */
     override fun hidePreview(): Boolean = designMirror.getBoolean(PREVIEW_HIDE, true)
     override fun setzeVorschauVerbergen(an: Boolean) {
@@ -399,12 +399,12 @@ class DevicesStore @Inject constructor(
     }
 
     /**
-     * Server, an denen eine nachgeholte Abmeldung endgültig scheiterte. Die Meldung
-     * des Arbeiters kann abgeschaltet sein; die App sagt es darum beim nächsten Start
-     * noch einmal (AppViewModel), danach ist die Liste leer.
+     * Servers at which a deferred sign-out finally failed. The worker's
+     * notification may be switched off; the app therefore says it once more on the next start
+     * (AppViewModel), afterwards the list is empty.
      */
-    // Die Adressen verschlüsselt wie die Angaben; eine Liste früherer Fassungen kommt dabei mit.
-    // Gesperrt geht der Eintrag verloren, die Meldung des Arbeiters steht trotzdem da.
+    // The addresses encrypted like the details; a list of earlier versions comes along.
+    // Locked, the entry gets lost, the worker's notification is there anyway.
     override fun rememberFailedRedemption(server: String) {
         val alle = (failedRedemptions() + server).joinToString("\n")
         val geheim = verschluessleDetail(alle, REDEMPTION_FAILED_SECRET)

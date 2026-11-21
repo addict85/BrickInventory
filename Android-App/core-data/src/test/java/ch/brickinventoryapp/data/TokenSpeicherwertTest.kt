@@ -27,15 +27,15 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
- * Der Wächter sieht neuen Token und neue Adresse, BEVOR die erste Anfrage hinausgeht:
- * Die TokenAblage setzt den Speicherwert vor der Plattenschreibung, und ein neuer
- * Prozess bekommt beide aus dem DataStore nachgefüllt. Ausgeführt mit einem DataStore,
- * der jede Schreibung anhält, bis der Test sie freigibt.
+ * The guard sees new token and new address BEFORE the first request goes out:
+ * the TokenAblage sets the memory value before the disk write, and a new
+ * process gets both refilled from the DataStore. Executed with a DataStore
+ * that halts every write until the test releases it.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   token-nach-der-schreibung    _authTokenState erst nach dataStore.edit gesetzt → rot „Token und Adresse …“
- *   adresse-nach-der-schreibung  _serverUrlState erst nach dataStore.edit gesetzt → rot, derselbe Test
- *   token-ohne-nachlauf          der Spiegel für _authTokenState entfernt → rot „ein neuer Prozess …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   token-nach-der-schreibung    _authTokenState set only after dataStore.edit → red “token and address …”
+ *   adresse-nach-der-schreibung  _serverUrlState set only after dataStore.edit → red, the same test
+ *   token-ohne-nachlauf          the mirror for _authTokenState removed → red “a new process …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -49,13 +49,13 @@ class TokenSpeicherwertTest {
         PreferenceDataStoreFactory.create { File(ctx.filesDir, "geraet-${System.nanoTime()}.preferences_pb") },
         testVertrauenschiffre())
 
-    /** Robolectric hat keinen AndroidKeyStore; umhüllt wird hier nur zum Schein. */
+    /** Robolectric has no AndroidKeyStore; wrapping here is only for show. */
     private object Klartresor : TokenEncryption {
         override fun verschluessle(klartext: String) = klartext
         override fun entschluessle(gespeichert: String) = gespeichert
     }
 
-    /** Hält jede Schreibung an, solange [gate] gesetzt ist; [waiting] zählt die angehaltenen. */
+    /** Halts every write as long as [gate] is set; [waiting] counts the halted ones. */
     private class Hesitant(private val echt: DataStore<Preferences>) : DataStore<Preferences> {
         @Volatile var gate: CompletableDeferred<Unit>? = null
         val waiting = AtomicInteger()
@@ -69,7 +69,7 @@ class TokenSpeicherwertTest {
     @After
     fun zu() { bereich.cancel() }
 
-    /** Startet [schreiben], hält es an der Platte an und gibt den Speicherwert in diesem Moment zurück. */
+    /** Starts [schreiben], halts it at the disk and returns the memory value at that moment. */
     private fun duringTheSpelling(store: Hesitant, schreiben: suspend () -> Unit, lies: () -> String?): String? = runBlocking {
         val gate = CompletableDeferred<Unit>()
         store.gate = gate

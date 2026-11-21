@@ -18,7 +18,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
 
-/** [LocalInventory] über Room: Zeilen und Stand je Bereich und Art. */
+/** [LocalInventory] via Room: rows and state per area and kind. */
 internal class RoomInventory @Inject constructor(private val db: InventoryDatabase) : LocalInventory {
     private val dao get() = db.bestand()
 
@@ -39,7 +39,7 @@ internal class RoomInventory @Inject constructor(private val db: InventoryDataba
 
     override suspend fun ersetze(bereich: String, art: StockKind, zeilen: List<LocalRow>, stand: Long?) =
         dao.ersetze(bereich, art.name,
-            // Doppelte Schlüssel verletzten den Primärschlüssel; die spätere Zeile gilt.
+            // Duplicate keys would violate the primary key; the later row applies.
             zeilen.associateBy { it.schluessel }.values.mapIndexed { i, z -> asRow(z, bereich, art, i) },
             stand)
 
@@ -66,13 +66,13 @@ private fun asRow(z: LocalRow, bereich: String, art: StockKind, position: Int) =
         ersatzteil, zustand)
 }
 
-/** „Enthält“ als LIKE-Muster; `%`, `_` und `\` gelten wörtlich wie beim Server (likeSuche.ts). */
+/** „Contains“ as LIKE pattern; `%`, `_` and `\` apply literally as at the server (likeSearch.ts). */
 internal fun containsPattern(suche: String): String =
     "%" + suche.lowercase().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
 
 /**
- * [Ausgang] über Room; jeder Posten liegt in der [InitialForm]. Lesen schreibt nie:
- * Ein unlesbarer Posten bleibt liegen, bis [cleanUnreadable] ihn als verworfen meldet.
+ * [Ausgang] via Room; every item lies in the [InitialForm]. Reading never writes:
+ * an unreadable item stays until [cleanUnreadable] reports it as discarded.
  */
 internal class RoomExit @Inject constructor(
     private val db: InventoryDatabase,
@@ -93,7 +93,7 @@ internal class RoomExit @Inject constructor(
     override suspend fun cleanUnreadable(bereich: String): Int {
         val unlesbar = dao.alle(bereich).filter { lies(it) == null }
         for (z in unlesbar) {
-            // Erst den Hinweis festhalten, dann entfernen: Stirbt der Prozess dazwischen, bleibt der Hinweis.
+            // First record the hint, then remove: if the process dies in between, the hint stays.
             val ziel = InitialForm.targetFrom(json, z.bearbeitung) ?: "?"
             rememberDiscarded(bereich, DiscardedItem(z.schluessel.ifBlank { "posten-${z.id}" }, ziel, "", null, unlesbar = true))
             dao.entferne(z.id)
@@ -105,8 +105,8 @@ internal class RoomExit @Inject constructor(
     override suspend fun attemptFailed(id: Long) = dao.attemptFailed(id)
     override suspend fun leere() = dao.leere()
 
-    // Verworfenes liegt als eigene Art in der Tabelle `bestand`: dauerhaft ohne neues Schema,
-    // und Abmelden (Bestand leeren) räumt es mit.
+    // Discarded items lie as their own kind in the table `bestand`: permanent without a new schema,
+    // and sign-out (clearing the stock) clears them too.
     private val bestand get() = db.bestand()
 
     override suspend fun rememberDiscarded(bereich: String, v: DiscardedItem) {
@@ -131,7 +131,7 @@ internal class RoomExit @Inject constructor(
             ?.let { Ausgangsposten(z.id, it, z.erstellt, z.versuche, z.schluessel) }
 }
 
-/** Die Art, unter der verworfene Posten in `bestand` liegen; keine [StockKind] heisst so. */
+/** The kind under which discarded items lie in `bestand`; no [StockKind] has this name. */
 internal const val DISCARDED = "AUSGANG_VERWORFEN"
 
 @Serializable

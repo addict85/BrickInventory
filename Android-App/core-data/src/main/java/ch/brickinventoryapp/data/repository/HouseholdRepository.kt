@@ -9,9 +9,9 @@ import ch.brickinventoryapp.model.domain.MemberView
 
 import ch.brickinventoryapp.model.domain.Zustand
 /**
- * Der Haushalt: Mitglieder, Einladungen, Konten.
- * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit
- * Retrofit und Ablage hängen (HaushaltRepositoryImpl).
+ * The household: members, invitations, accounts.
+ * An interface so that ViewModels and tests do not depend on the implementation with
+ * Retrofit and store (HaushaltRepositoryImpl).
  */
 interface HouseholdRepository {
     suspend fun getHousehold(): Ergebnis<HouseholdStatusView>

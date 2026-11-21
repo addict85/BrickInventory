@@ -5,17 +5,17 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Die Fokus-Einstellungen des Barcodescanners.
+ * The focus settings of the barcode scanner.
  *
- * ── Der Fehler ──────────────────────────────────────────────────────────────
- * Auf derselben `previewView` standen ZWEI `setOnTouchListener`. Das fügt nicht
- * hinzu, es ERSETZT: Der zweite lief später (im Kamera-Rückruf) und überschrieb
- * den ersten stillschweigend.
+ * ── The error ────────────────────────────────────────────────────────────────
+ * On the same `previewView` there were TWO `setOnTouchListener`. That does not
+ * add, it REPLACES: the second ran later (in the camera callback) and silently
+ * overwrote the first.
  *
- * Wirksam war damit die Fassung mit `setAutoCancelDuration(3, SECONDS)` — und
- * genau davor warnt der Kommentar im Code: „Bewusst mit disableAutoCancel():
+ * Effective was thus the version with `setAutoCancelDuration(3, SECONDS)` — and
+ * exactly that is what the comment in the code warns about: „Bewusst mit disableAutoCancel():
  * Ohne das fällt die Kamera nach wenigen Sekunden auf ihre eigene Wahl zurück."
- * Man tippt, es wird scharf, und Sekunden später ist es wieder weg.
+ * One taps, it becomes sharp, and seconds later it is gone again.
  */
 class CameraFocusConfigTest {
 
@@ -29,8 +29,8 @@ class CameraFocusConfigTest {
 
     @Test
     fun `exactly ONE tap-to-focus listener`() {
-        // Seit der Tipper in KameraAufbau.kt steht (tippZumFokus), setzt ihn jeder
-        // Scanner genau einmal und keiner einen eigenen daneben.
+        // Since the tapper lives in KameraAufbau.kt (tippZumFokus), every scanner sets it
+        // exactly once and none sets its own next to it.
         val anzahl = Regex("""\.setOnTouchListener""").findAll(setup()).count() +
             Regex("""\.setOnTouchListener""").findAll(code(scanner())).count()
         assert(Regex("""\btippZumFokus\(""").findAll(code(scanner())).count() == 1) {
@@ -45,26 +45,26 @@ class CameraFocusConfigTest {
     }
 
     /**
-     * Jede Datei, die Tap-to-Focus anbietet — nicht nur der Scanner.
+     * Every file that offers tap-to-focus — not only the scanner.
      *
-     * Der SetupScreen bietet dasselbe an wie BarcodeScannerScreen.kt; eine Regel,
-     * die nur eine Kopie ansieht, lässt die andere zurück.
+     * The SetupScreen offers the same as BarcodeScannerScreen.kt; a rule
+     * that looks at only one copy leaves the other behind.
      *
-     * Die Liste wird deshalb nicht aufgezählt, sondern GEFUNDEN: Wer eine
-     * dritte Kamera-Ansicht baut, ist sofort mitgeprüft, ohne diese Datei
-     * anzufassen. Eine aufgezählte Liste wäre die dritte Fassung derselben
-     * Regel gewesen.
+     * The list is therefore not enumerated but FOUND: whoever builds a
+     * third camera view is checked immediately, without touching this file.
+     * An enumerated list would have been the third version of the same
+     * rule.
      *
-     * ── Gegenprobe ───────────────────────────────────────
-     * Die erweiterte Prüfung wurde ABSICHTLICH allein veröffentlicht, vor der
-     * Behebung. Der Lauf meldete `354 tests completed, 1 failed`, und zwar
-     * genau diesen Test. Der Fehler war also echt und nicht nachgestellt —
-     * ein künstlich eingebauter Bruch hätte nur gezeigt, dass die Prüfung
-     * greift, nicht dass sie etwas gefunden hat.
+     * ── Counter-check ───────────────────────────────────────
+     * The extended check was DELIBERATELY published alone, before the
+     * fix. The run reported `354 tests completed, 1 failed`, namely
+     * exactly this test. So the error was real and not staged —
+     * an artificially built-in breakage would only have shown that the check
+     * applies, not that it found something.
      *
-     * Gefunden hat den Befund übrigens nicht dieser Test, sondern ein
-     * Vergleich gleicher Codeblöcke über den ganzen Baum. Eine Regel, die an
-     * zwei Stellen steht, sieht an jeder einzelnen Stelle richtig aus.
+     * Incidentally, the finding was not found by this test but by a
+     * comparison of equal code blocks across the whole tree. A rule that stands in
+     * two places looks right in each single place.
      */
     private fun withTapToFocus(): List<File> {
         // Die Bildschirme liegen je Modul unter <stamm>/ui/screens; unter() sammelt alle.
@@ -82,7 +82,7 @@ class CameraFocusConfigTest {
     @Test
     fun `tap-to-focus keeps the focus`() {
         for (datei in withTapToFocus()) {
-            // Der Tipper selbst steht in KameraAufbau.kt; geprüft wird er dort für jeden Nutzer.
+            // The tapper itself lives in KameraAufbau.kt; it is checked there for every user.
             val c = code(datei.readText()) + "\n" + setup()
             assert(c.contains("disableAutoCancel()")) {
                 "${datei.name}: Ohne disableAutoCancel() fällt die Kamera nach " +
@@ -97,22 +97,22 @@ class CameraFocusConfigTest {
     }
 
     /**
-     * Der ganze Kamera-Aufbau steht an EINER Stelle.
+     * The whole camera setup stands in ONE place.
      *
-     * ── Warum die Regel schaerfer wurde ─────────────────────────────────────
-     * Ganz zuerst zaehlte dieser Test das Vorkommen der Zeichenfolge
-     * `CONTROL_AF_MODE_CONTINUOUS_PICTURE` in den einzelnen Bildschirmdateien:
+     * ── Why the rule became stricter ─────────────────────────────────────────
+     * At the very beginning this test counted occurrences of the string
+     * `CONTROL_AF_MODE_CONTINUOUS_PICTURE` in the individual screen files:
      *
-     * Dann hiess sie „wer eine Vorschau baut, muss den AF-Modus setzen" —
-     * die Fassung fuer eine Welt mit zwei Kopien. Seit auch die BINDING
-     * zusammengelegt ist (19 von 23 Zeilen waren zeichengleich), baut niemand
-     * ausser KameraAufbau.kt noch eine Vorschau, eine Bildanalyse oder eine
-     * Bindung. Damit laesst sich das Staerkere pruefen: Es gibt nur einen Ort.
+     * Then it read „whoever builds a preview must set the AF mode" —
+     * the version for a world with two copies. Since the BINDING
+     * has also been merged (19 of 23 lines were character-identical), nobody
+     * except KameraAufbau.kt builds a preview, an image analysis or a
+     * binding any more. That allows checking the stronger rule: there is only one place.
      *
-     * Der Umbau hat diese Pruefung selbst rot gemeldet — sie fand nur noch
-     * EINE Datei mit `Preview.Builder()` und verlangte mindestens zwei. Das
-     * war kein Verstoss, sondern der Beweis, dass die Zusammenlegung gegriffen
-     * hat; die Regel ist der neuen Struktur nachgezogen.
+     * The rework reported this check itself as red — it found only
+     * ONE file with `Preview.Builder()` and required at least two. That
+     * was no violation but the proof that the merge took
+     * effect; the rule has been adjusted to the new structure.
      */
     @Test
     fun `the camera setup lives only in KameraAufbau`() {
@@ -139,10 +139,10 @@ class CameraFocusConfigTest {
 
     @Test
     fun `KameraAufbau sets the AF mode on BOTH use cases`() {
-        // CameraX führt die Konfigurationen aller gebundenen Use Cases zu EINEM
-        // Repeating-Request zusammen. Steht der Modus nur an einem, entscheidet
-        // je nach Gerät der andere mit — und das Bild bleibt unscharf, obwohl
-        // der Code richtig aussieht.
+        // CameraX merges the configurations of all bound use cases into ONE
+        // repeating request. If the mode is only on one, the other decides along
+        // depending on the device — and the image stays blurry although
+        // the code looks right.
         val src = code(Quellen.lies("ui/screens/KameraAufbau.kt"))
         val n = Regex("CONTROL_AF_MODE_CONTINUOUS_PICTURE").findAll(src).count()
         assert(n >= 2) {
@@ -153,8 +153,8 @@ class CameraFocusConfigTest {
 
     @Test
     fun `both scanners get their camera there`() {
-        // Sonst nützt die Regel oben nichts: Wer sich die Kamera selbst bindet,
-        // umgeht autofocusPermanent() — und sieht dabei richtig aus.
+        // Otherwise the rule above is of no use: whoever binds the camera themselves
+        // bypasses autofocusPermanent() — and looks right doing so.
         val nutzer = Quellen.unter("ui/screens")
             .filter { it.name != "KameraAufbau.kt" }
             .filter { code(it.readText()).contains("kameraBinden(") }
@@ -167,7 +167,7 @@ class CameraFocusConfigTest {
 
     @Test
     fun `the tapper lives only in KameraAufbau`() {
-        // Wie Vorschau und Bindung: Eine Kopie im Bildschirm verfehlte die nächste Behebung.
+        // Like preview and binding: a copy in the screen missed the next fix.
         val eigene = withTapToFocus().filter { it.name != "KameraAufbau.kt" && code(it.readText()).contains("startFocusAndMetering(") }
         assert(eigene.isEmpty()) { "Eigener Tap-to-Focus statt tippZumFokus(): ${eigene.joinToString { it.name }}" }
         assert(setup().contains("startFocusAndMetering(")) { "KameraAufbau.kt fokussiert beim Tippen nicht mehr" }
@@ -175,9 +175,9 @@ class CameraFocusConfigTest {
 
     @Test
     fun `no periodic refocusing`() {
-        // Ein im Takt laufendes startFocusAndMetering unterbricht den
-        // kontinuierlichen Autofokus immer wieder. Fokussiert wird NUR beim
-        // Antippen.
+        // A startFocusAndMetering running on a timer interrupts the
+        // continuous autofocus again and again. Focusing happens ONLY on
+        // tapping.
         val pump = Regex(
             """(while\s*\(|delay\s*\(|Timer\(|fixedRate|LaunchedEffect)[\s\S]{0,400}?(startFocusAndMetering|tippZumFokus)""")
         val dateien = withTapToFocus()

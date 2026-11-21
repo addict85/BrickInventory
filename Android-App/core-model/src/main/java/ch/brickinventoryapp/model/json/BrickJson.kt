@@ -3,10 +3,10 @@ package ch.brickinventoryapp.model.json
 import kotlinx.serialization.json.Json
 
 /**
- * Die eine Json-Konfiguration der App für Server, Ablage und Cache; die Datenschicht reicht
- * sie per DI weiter. Unbekannte Felder sind erlaubt, damit der Server Neues schicken darf und
- * eine ältere Ablage lesbar bleibt. Vorgaben werden geschrieben: Was abgelegt ist, hängt so
- * nicht an den Vorgabewerten der Fassung, die es liest.
+ * The one Json configuration of the app for server, store and cache; the data layer passes
+ * it on via DI. Unknown fields are allowed, so that the server may send new things and
+ * an older store stays readable. Defaults are written: what is stored thus does not hang
+ * on the default values of the version that reads it.
  */
 val BrickJson: Json = Json {
     ignoreUnknownKeys = true

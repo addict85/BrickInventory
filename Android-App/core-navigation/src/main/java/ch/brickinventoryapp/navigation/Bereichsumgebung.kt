@@ -11,17 +11,17 @@ import coil3.ImageLoader
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Was jeder Bereich von der App braucht, um seine Ziele zu zeigen. Ein Bereich liefert
- * `NavGraphBuilder.xyzGraph(navigation)`; seine Navigationsschnittstelle erweitert diese
- * und nennt dazu, was er von anderen Bereichen braucht. Die App setzt nur zusammen.
+ * What every area needs from the app to show its destinations. An area delivers
+ * `NavGraphBuilder.xyzGraph(navigation)`; its navigation interface extends this one
+ * and names in addition what it needs from other areas. The app only assembles.
  */
 interface Bereichsumgebung {
     val navController: NavHostController
     val bilder: ImageLoader
     val snackbar: SnackbarHostState
 
-    // Nur, was die Ziele lesen, statt des AppViewModels: Ein Bereich soll nicht über die
-    // Umgebung an alles kommen, was die Activity hält. Gelesen wird erst beim Zeigen.
+    // Only what the destinations read, instead of the AppViewModel: an area shall not get at
+    // everything the activity holds via the environment. Reading happens only when showing.
     val sitzung: StateFlow<AppUiState>
     val blickfeld: StateFlow<ScopeUiState>
     val lager: StateFlow<LagerUiState>
@@ -29,7 +29,7 @@ interface Bereichsumgebung {
     fun ladeEinstellungen()
     fun abmelden()
 
-    /** Ein Ziel der unteren Leiste: Titel oben, Leiste unten, Snackbar dazwischen. */
+    /** A destination of the bottom bar: title on top, bar at the bottom, snackbar in between. */
     @Composable
     fun Reiter(titel: String, inhalt: @Composable () -> Unit)
 }

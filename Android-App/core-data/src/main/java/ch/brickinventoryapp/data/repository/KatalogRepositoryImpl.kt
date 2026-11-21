@@ -15,7 +15,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Der Set-Katalog des Servers — über Retrofit; die gemeinsame Abruflogik steht in Abruf.kt.
+ * The server's set catalog — via Retrofit; the common fetch logic stands in Abruf.kt.
  */
 @Singleton
 class KatalogRepositoryImpl @Inject constructor(
@@ -23,7 +23,7 @@ class KatalogRepositoryImpl @Inject constructor(
     private val ablage: Offlineablage,
     private val retry: Wiederholung,
 ) : CatalogRepository {
-    /** Beim Blättern im Katalog: wenige Versuche, sonst stünde die nächste Seite lange aus. */
+    /** When paging in the catalog: few attempts, otherwise the next page would be outstanding for long. */
     private val tight = retry.atMost(CATALOG_ATTEMPTS)
 
     override suspend fun getCatalogMeta(): Ergebnis<CatalogMetaView> =
@@ -45,8 +45,8 @@ class KatalogRepositoryImpl @Inject constructor(
             .shown { r -> r.set?.takeIf { r.success }?.alsAnsicht() }
 
     /**
-     * Jahresverteilung zu den aktuellen Filtern — die Zahlen, aus denen die
-     * Leiste ihr Etikett rechnet. Einmal je Listenaufbau, nicht beim Rollen.
+     * Year distribution for the current filters — the numbers from which the
+     * bar computes its label. Once per list build, not while scrolling.
      */
     override suspend fun getCatalogYearVerteilung(
         q: String?, themeId: Int?, sort: Katalogsortierung

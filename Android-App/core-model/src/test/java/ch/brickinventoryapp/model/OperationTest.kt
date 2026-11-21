@@ -13,12 +13,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Eine Handlung läuft, ist fertig oder gescheitert; was ein Bildschirm daraus liest,
- * passt zum Fall, und das Wegräumen eines Fehlers hält keinen laufenden Vorgang an.
+ * An action runs, is finished or failed; what a screen reads from it
+ * fits the case, and clearing an error does not stop a running operation.
  *
- * Gegenproben (gegenproben/, :core-model:test):
- *   vorgang-wegraeumen-haelt-an  withoutError() gibt immer Fertig → rot „das Wegräumen …“
- *   vorgang-beendet-ohne-grund   beendet(null) ergibt einen Fehlschlag → rot „beendet ohne Grund …“
+ * Counter-checks (gegenproben/, :core-model:test):
+ *   vorgang-wegraeumen-haelt-an  withoutError() always returns Fertig → red “clearing an error …”
+ *   vorgang-beendet-ohne-grund   beendet(null) gives a failure → red “ended without a reason …”
  */
 class OperationTest {
 

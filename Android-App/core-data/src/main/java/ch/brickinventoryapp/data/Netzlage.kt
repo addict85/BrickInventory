@@ -10,28 +10,28 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * In welcher Art Netz hängt das Gerät? Das Vorwärmen der Vorschaubilder lässt sich
- * je Lage erlauben, denn ein Durchlauf im Ausland ist eine Rechnung. Ein gemessenes
- * WLAN (Hotspot) zählt als Mobilfunk.
+ * What kind of network is the device on? Warming the thumbnails can be
+ * allowed per situation, because a pass abroad is a bill. A metered
+ * Wi-Fi (hotspot) counts as mobile.
  */
 @Singleton
 class Netzlage internal constructor(private val measure: () -> Art) {
-    /** Die Messung über den ConnectivityManager; der interne Weg gibt Tests eine feste Lage. */
+    /** The measurement via the ConnectivityManager; the internal path gives tests a fixed situation. */
     @Inject constructor(@ApplicationContext context: Context) : this({ miss(context) })
 
     /**
-     * Die vier Lagen. Sie schliessen einander aus — das ist der Grund fuer eine
-     * Aufzaehlung statt dreier Ja/Nein-Fragen: Der Aufrufer soll nicht selbst
-     * entscheiden muessen, was gilt, wenn zwei davon zutraefen.
+     * The four situations. They exclude each other — that is the reason for an
+     * enumeration instead of three yes/no questions: the caller should not have to
+     * decide itself what applies if two of them were true.
      */
     enum class Art { KEIN_NETZ, WLAN, MOBILE, ROAMING }
 
     fun aktuell(): Art = measure()
 
     /**
-     * Wann ein vorübergehend gescheiterter Abruf noch einmal geht: mit wachsender
-     * Pause, und ohne Netz gar nicht — dann zeigt die Ablage ihren Stand, und ein
-     * Warten in festen Schritten hielte nur die Ladeanzeige offen.
+     * When a temporarily failed fetch is tried again: with a growing
+     * pause, and without network not at all — then the store shows its state, and
+     * waiting in fixed steps would only keep the loading indicator open.
      */
     @Singleton
     class Wiederholung internal constructor(
@@ -53,7 +53,7 @@ class Netzlage internal constructor(private val measure: () -> Art) {
             return call()
         }
 
-        /** Dieselbe Regel mit weniger Versuchen — wo jemand auf die Antwort wartet und weiterblättern will. */
+        /** The same rule with fewer attempts — where someone waits for the answer and wants to page on. */
         fun atMost(n: Int): Wiederholung = Wiederholung(netz, n.coerceIn(1, versuche), firstPause, wait)
 
         companion object {
@@ -61,10 +61,10 @@ class Netzlage internal constructor(private val measure: () -> Art) {
             const val FIRST_PAUSE_MS = 1_000L
             const val HIGHEST_PAUSE_MS = 16_000L
 
-            /** Für Tests und Abrufe, die selbst nicht wiederholen sollen: genau ein Versuch. */
+            /** For tests and fetches that should not retry themselves: exactly one attempt. */
             val EINMAL = Wiederholung({ Art.WLAN }, 1, 0L, {})
 
-            /** Für Tests: feste Lage, Pausen werden nur mitgeschrieben. */
+            /** For tests: fixed situation, pauses are only recorded. */
             fun forTest(versuche: Int = ATTEMPTS, netz: () -> Art = { Art.WLAN },
                          wait: suspend (Long) -> Unit = {}) = Wiederholung(netz, versuche, FIRST_PAUSE_MS, wait)
         }
@@ -83,15 +83,15 @@ class Netzlage internal constructor(private val measure: () -> Art) {
             return when {
                 capable.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ->
                     if (isRoaming(capable)) Art.ROAMING else Art.MOBILE
-                // Ethernet zaehlt wie WLAN: fest, ungemessen, und auf einem
-                // Tablet in der Dockingstation genau das, was „zu Hause" meint.
+                // Ethernet counts like Wi-Fi: fixed, unmetered, and on a
+                // tablet in the docking station exactly what „at home" means.
                 capable.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
                     capable.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ->
                     if (gemessen) Art.MOBILE else Art.WLAN
-                // Etwas anderes (Bluetooth-Tethering, VPN ohne erkennbaren
-                // Untergrund): vorsichtig als Mobilfunk behandeln. Bei einer
-                // Einstellung, die Datenvolumen kostet, ist die Vorgabe „lieber
-                // nicht" die richtige Richtung fuer den unbekannten Fall.
+                // Something else (Bluetooth tethering, VPN without a recognizable
+                // underlying network): treat cautiously as mobile. For a
+                // setting that costs data volume, the default „rather
+                // not" is the right direction for the unknown case.
                 else -> Art.MOBILE
             }
         }

@@ -6,30 +6,30 @@ import java.io.File
 import java.security.MessageDigest
 
 /**
- * Wem die lokale Ablage gehört: Server und Sitzung. Im Gerät der TokenAblage;
- * die Schnittstelle hält die Ablage ohne DataStore prüfbar.
+ * Whom the local store belongs to: server and session. On the device the TokenAblage;
+ * the interface keeps the store checkable without DataStore.
  */
 fun interface CacheOwner {
-    /** Null, solange kein Server oder kein Token hinterlegt ist. */
+    /** Null as long as no server or no token is stored. */
     suspend fun cacheArea(): String?
 
     /**
-     * Server und Konto, ohne den Token: Der wechselt beim Tausch (Rotation), und
-     * Room-Ablage samt Ausgang müssen das überleben. Null wie [cacheArea].
+     * Server and account, without the token: it changes with the swap (rotation), and
+     * the Room store including outbox must survive that. Null like [cacheArea].
      */
     suspend fun accountArea(): String? = cacheArea()
 
-    /** [accountArea] als Fluss, für wer ihn beobachtet; ohne eigenen Spiegel einmal gefragt. */
+    /** [accountArea] as a flow, for whoever observes it; asked once without an own mirror. */
     fun accountAreaFlow(): Flow<String?> = flow { emit(accountArea()) }
 }
 
-/** Name des Bereichs in der Ablage: gestreut, damit weder Adresse noch Token auf der Platte stehen. */
+/** Name of the area in the store: hashed, so that neither address nor token stand on disk. */
 internal fun areaName(bereich: String): String =
     MessageDigest.getInstance("SHA-256").digest(bereich.toByteArray()).joinToString("") { "%02x".format(it) }.take(32)
 
 /**
- * Der frühere Antwort-Zwischenspeicher (`api-*`) liegt seit der einen Ablage brach. Er
- * hielt Antworten eines Kontos; was niemand mehr liest, soll nicht liegen bleiben.
+ * The former response cache (`api-*`) has lain fallow since the single store. It
+ * held responses of an account; what nobody reads any more should not be left lying around.
  */
 internal fun cleanOldResponseStore(vararg folder: File) {
     for (o in folder) o.listFiles()?.filter { it.isDirectory && it.name.startsWith("api-") }?.forEach { it.deleteRecursively() }

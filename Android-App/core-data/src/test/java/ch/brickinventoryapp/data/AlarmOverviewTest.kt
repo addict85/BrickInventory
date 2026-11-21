@@ -16,21 +16,21 @@ import ch.brickinventoryapp.testing.testAlarmRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * Die Preisalarm-Uebersicht gibt es in der App genauso wie in der Webapp: Ein Alarm,
- * der nur im Detail seines Sets steht, ist nur auffindbar, wenn man das Set schon kennt.
- * Die Webapp prüft die Gegenrichtung (test/webapp-endpoints.test.js).
+ * The price alert overview exists in the app just as in the web app: an alert
+ * that only stands in the detail of its set can only be found if one already knows the set.
+ * The web app checks the opposite direction (test/webapp-endpoints.test.js).
  *
- * Gegenprobe (gegenproben/alarm-besitzt-vorgabe-falsch.patch): Vorgabe von `besitzt`
- * auf false → rot „ein fehlendes besitzt-Feld …“. Laden, Ändern, Löschen nach Rückfrage,
- * Klick und Zustandswörter prüft PriceAlertsDisplayTest gezeichnet.
+ * Counter-check (gegenproben/alarm-besitzt-vorgabe-falsch.patch): default of `besitzt`
+ * to false → red “a missing besitzt field …”. Loading, changing, deleting after confirmation,
+ * click and state words are checked, drawn, by PriceAlertsDisplayTest.
  */
 class AlarmOverviewTest {
 
     private fun quelle(rel: String) = Quellen.withoutComments(Quellen.lies(rel))
 
     /**
-     * Ausgeführt gegen einen Testserver. Gegenprobe: in
-     * SetsApi `@GET("api/v1/alerts")` auf "api/v1/alarme" → rot.
+     * Executed against a test server. Counter-check: in
+     * SetsApi `@GET("api/v1/alerts")` to "api/v1/alarme" → red.
      */
     @Test
     fun `the app fetches all alerts via the common route`() {
@@ -47,11 +47,11 @@ class AlarmOverviewTest {
 
     @Test
     fun `writing goes via the existing route to the set`() {
-        // Zwei Schreibwege zum selben Zustand wären zwei Stellen, an denen die Regeln
-        // auseinanderlaufen; die Übersicht LIEST nur eigenständig. Dass Ändern und
-        // Löschen die Set-Route rufen, prüft SettingsViewModelTest an den
-        // Anfragen. Hier die Annotationen der Schnittstelle, per Reflexion.
-        // Der CSV-Import (POST …/alerts/import/csv) legt an, er ändert keinen Alarm.
+        // Two write paths to the same state would be two places where the rules
+        // drift apart; the overview only READS independently. That changing and
+        // deleting call the set route is checked by SettingsViewModelTest on the
+        // requests. Here the annotations of the interface, via reflection.
+        // The CSV import (POST …/alerts/import/csv) creates, it changes no alert.
         val changing = BrickApiService::class.java.methods.mapNotNull { m ->
             m.getAnnotation(PUT::class.java)?.value
                 ?: m.getAnnotation(DELETE::class.java)?.value
@@ -62,9 +62,9 @@ class AlarmOverviewTest {
     }
 
     /**
-     * Das Vorschaubild kommt wie in den Finanzen über [FinanzBild] und [resolveThumbUrl].
-     * Dass die Zeile ein Bild zeigt und nur ein Set aus der Sammlung öffnet, prüft
-     * PriceAlertsDisplayTest gezeichnet.
+     * The thumbnail comes as in the finances via [FinanzBild] and [resolveThumbUrl].
+     * That the row shows an image and only opens a set from the collection is checked,
+     * drawn, by PriceAlertsDisplayTest.
      */
     @Test
     fun `the row shows the image like the finances`() {
@@ -78,10 +78,10 @@ class AlarmOverviewTest {
     }
 
     /**
-     * Ein fehlendes Feld schaltet die Rubrik nicht ab. Ein älterer Server schickt
-     * `besitzt` nicht mit; mit der Vorgabe `false` hiesse „Feld fehlt" dasselbe wie „Set
-     * gibt es nicht", und keine Zeile wäre mehr klickbar. Im Zweifel versuchen: Ein Klick,
-     * der in einer Fehlermeldung endet, ist besser als eine Liste, in der nichts geht.
+     * A missing field does not switch off the section. An older server does not send
+     * `besitzt`; with the default `false` „field missing" would mean the same as „set
+     * does not exist", and no row would be clickable any more. When in doubt, try: a click
+     * that ends in an error message is better than a list in which nothing works.
      */
     @Test
     fun `a missing besitzt field does not kill the row`() {
@@ -93,13 +93,13 @@ class AlarmOverviewTest {
     }
 
     /**
-     * Die Einstellungen kommen an derselben Stelle zurueck.
+     * The settings come back at the same position.
      *
-     * „Kommt man zurück soll man sich wieder an der gleichen Stelle befinden
-     * (analog wie das bei den Finanzen der Fall ist)."
+     * “When one comes back one should be at the same position again
+     * (analogous to how it is with the finances)."
      *
-     * Der Weg in die Detailansicht verwirft das Ziel; die Stelle muss darum im
-     * ScrollMemory liegen und beim Zurueckkommen ausdruecklich gesetzt werden.
+     * The path into the detail view discards the destination; the position must therefore lie in the
+     * ScrollMemory and be set explicitly when coming back.
      */
     @Test
     fun `the settings remember their scroll position`() {
@@ -112,7 +112,7 @@ class AlarmOverviewTest {
             "Der Rollzustand wird nicht gemerkt — er ueberlebt zwar, aber niemand " +
                 "springt zurueck."
         }
-        // Die Stelle haelt der ScrollMemory, nicht der Zustand: Er entsteht je Besuch neu.
+        // The ScrollMemory holds the position, not the state: it arises anew per visit.
         assert(graph.contains("val settingsScrollState = remember { ScrollState(0) }")) {
             "Die Einstellungen legen ihren Rollzustand nicht im Ziel an"
         }
@@ -124,37 +124,37 @@ class AlarmOverviewTest {
     }
 
     /**
-     * Der Alarmzustand steht als Plakette da, nicht als Kleintext.
+     * The alert state stands as a badge, not as small text.
      *
-     * „Bitte in der Android-App das ‚scharf' analog der Webapp mit einem Label
-     * anstelle des grünen Hackens anzeigen."
+     * “Please show the ‚armed' in the Android app like the web app with a label
+     * instead of the green check mark."
      *
-     * Der gruene Haken war in Wahrheit der SPEICHERN-Knopf: Er stand dauerhaft
-     * neben dem Zahlenfeld und las sich wie eine Zusage. Deshalb zwei Aussagen
-     * in einem Test — die Plakette kommt, und der Knopf hoert auf, dauernd da
-     * zu stehen.
+     * The green check mark was in truth the SAVE button: it stood permanently
+     * next to the number field and read like a confirmation. Hence two statements
+     * in one test — the badge comes, and the button stops standing there
+     * permanently.
      */
     @Test
     fun `the alert state stands as a badge`() {
-        // Dass sie „Aktiv“ und „Ausgelöst“ in Worten zeigt, prüft PriceAlertsDisplayTest.
+        // That it shows „Aktiv“ and „Ausgelöst“ in words is checked by PriceAlertsDisplayTest.
         val s = quelle("account/ui/screens/EinstellungenAlarme.kt")
-        // Der Speichern-Knopf erscheint nur bei einer Aenderung. Ohne diese
-        // Schranke steht wieder dauerhaft ein Symbol daneben, das wie eine
-        // Zustandsanzeige aussieht.
-        // Bis zur Aufteilung der Einstellungen traf `val geaendert =` aus der
-        // Kontokarte; geprüft war damit nichts. Die Schranke ist der Vergleich.
+        // The save button appears only on a change. Without this
+        // barrier a symbol stands permanently next to it again that looks like a
+        // state indicator.
+        // Until the settings were split, `val geaendert =` matched from the
+        // account card; nothing was checked by that. The barrier is the comparison.
         assert(s.contains("zahl != a.schwelle")) {
             "Der Speichern-Knopf steht wieder dauerhaft da und sieht aus wie ein Zustand."
         }
 
-        // ── Der Unterschied darf nicht in der Farbe liegen ──────────────────
+        // ── The difference must not lie in the color ────────────────────────
         //
-        // Rot-Gruen-Schwaeche ist haeufig; „scharf" gegen „nicht mehr scharf" darf nicht
-        // allein an gruen gegen grau haengen.
+        // Red-green deficiency is common; „armed" against „no longer armed" must not
+        // depend on green against gray alone.
         //
-        // Eine Aussage, die nur in der
-        // Farbe steht, steht nirgends. Dieser Test verlangt deshalb einen
-        // Unterschied, den man OHNE Farbe sieht.
+        // A statement that only stands in the
+        // color stands nowhere. This test therefore requires a
+        // difference that one sees WITHOUT color.
         val rumpf = s.substring(s.indexOf("fun AlarmZustandPlakette("))
             .let { it.substring(0, minOf(1200, it.length)) }
         assert(rumpf.contains("BorderStroke(")) {
@@ -164,8 +164,8 @@ class AlarmOverviewTest {
         assert(rumpf.contains("FontWeight.SemiBold")) {
             "Auch das Schriftgewicht unterscheidet die beiden nicht mehr."
         }
-        // Kein Gruen gegen Rot, auch nicht gut gemeint — das waere derselbe
-        // Fehler noch einmal.
+        // No green against red, not even well-meant — that would be the same
+        // error once more.
         for (verboten in listOf("LocalStatusFarben", "colorScheme.error",
                                 "colorScheme.tertiary")) {
             assert(!rumpf.contains(verboten)) {
@@ -175,13 +175,13 @@ class AlarmOverviewTest {
         }
     }
 
-    // Die Gegenrichtung — „hat die WEBAPP die Rubrik auch?" — steht bewusst
-    // NICHT hier. Sie hat dort ihre eigene Regel: Web-App/test/
-    // webapp-endpoints.test.js verlangt, dass eine Adresse, die nur die Webapp
-    // ruft, entweder von der App nachgezogen wird oder einen Grund bei sich
-    // traegt. Genau diese Regel hat den Bau dieser Rubrik ausgeloest.
+    // The opposite direction — „does the WEB APP have the section too?" — deliberately does
+    // NOT stand here. It has its own rule there: Web-App/test/
+    // webapp-endpoints.test.js requires that an address only the web app
+    // calls is either caught up by the app or carries a reason with it.
+    // Exactly this rule triggered building this section.
     //
-    // Ein zweiter Test dafuer hier haette einen Pfad ueber die Baumgrenze
-    // gebraucht, den es in diesem Testbaum nirgends gibt — der erste Entwurf
-    // erfand sich dafuer einen Helfer, den es nicht gab.
+    // A second test for it here would have needed a path across the tree boundary
+    // that exists nowhere in this test tree — the first draft
+    // invented a helper for it that did not exist.
 }

@@ -4,56 +4,56 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Meldungen erscheinen in der Sprache der APP, nicht in der des Systems.
+ * Messages appear in the APP's language, not in the system's.
  *
- * ── Der Fehler, den diese Regel verhindert ──────────────────────────────────
- * `AppCompatDelegate.setApplicationLocales()` lokalisiert nur
- * AppCompat-ACTIVITIES. Der Application-Context behält unterhalb von
- * Android 13 die SYSTEM-Sprache — minSdk ist 30, betroffen sind also
- * Android 11 und 12. Das steht seit Langem in LanguageManager.localizedContext()
+ * ── The error this rule prevents ─────────────────────────────────────────────
+ * `AppCompatDelegate.setApplicationLocales()` only localizes
+ * AppCompat ACTIVITIES. Below Android 13 the application context keeps
+ * the SYSTEM language — minSdk is 30, so affected are
+ * Android 11 and 12. That has long been in LanguageManager.localizedContext()
  *
- * Die ViewModels waren die Lücke: dort standen zweiunddreissig direkte
- * `ctx.getString(...)` auf dem Application-Context. Wer sein Telefon auf
- * Deutsch stehen hat und die App auf Englisch stellt, bekam damit JEDE
- * Snackbar und JEDE Fehlermeldung trotzdem auf Deutsch — ausgerechnet über
- * `meldung()`, die Funktion, die es nur gibt, damit Fehlermeldungen nicht in
- * einer Sprache herauskommen, die der Nutzer nicht gewählt hat.
+ * The ViewModels were the gap: thirty-two direct
+ * `ctx.getString(...)` on the application context stood there. Whoever had their phone set to
+ * German and the app to English thus got EVERY
+ * snackbar and EVERY error message in German anyway — of all things via
+ * `meldung()`, the function that only exists so that error messages do not come out in
+ * a language the user did not choose.
  *
- * Auffallen kann das hier fast nicht: Die App ist auf Deutsch entwickelt, das
- * Prüfgerät steht auf Deutsch, und dann sieht die falsche Sprache aus wie die
- * richtige. Genau deshalb steht die Regel als Test und nicht als Merksatz.
+ * This can hardly stand out here: the app is developed in German, the
+ * test device is set to German, and then the wrong language looks like the
+ * right one. Exactly that is why the rule stands as a test and not as a maxim.
  *
- * ── Was geprüft wird ────────────────────────────────────────────────────────
- * In den ViewModels, den Feature-Dateien und den Services darf `getString(`
- * nur auf einem Empfänger stehen, der in DERSELBEN Datei aus
- * `LanguageManager.localizedContext(...)` stammt. Der Name des Empfängers ist
- * dabei gleichgültig — geprüft wird die Herkunft.
+ * ── What is checked ──────────────────────────────────────────────────────────
+ * In the ViewModels, the feature files and the services `getString(`
+ * may only stand on a receiver that comes from
+ * `LanguageManager.localizedContext(...)` in the SAME file. The receiver's name
+ * does not matter — its origin is checked.
  *
- * NICHT geprüft werden die Bildschirme unter `ui/screens/` und `shared/ui/`: Dort ist `ctx`
- * `LocalContext.current`, also der Activity-Context — und den lokalisiert
- * AppCompatDelegate. Sie mit derselben Regel zu belegen hiesse, eine
- * Umständlichkeit zu erzwingen, die nichts repariert.
+ * NOT checked are the screens under `ui/screens/` and `shared/ui/`: there `ctx`
+ * is `LocalContext.current`, i.e. the activity context — and that one is localized
+ * by AppCompatDelegate. Subjecting them to the same rule would mean forcing a
+ * cumbersomeness that repairs nothing.
  *
- * Gegenproben (durchgeführt, über das Ersatz-Skript im Werkzeugordner):
- *   a) In MainViewModel.text() `localizedContext(ctx)` durch `ctx` ersetzt
- *      → Teilschritt 1 rot (Empfänger stammt nicht mehr aus localizedContext).
- *   b) In GalleryFeature eine Meldung wieder auf `ctx.getString(...)` gestellt
- *      → Teilschritt 1 rot.
- *   c) In CsvImportService `loc` durch `this` ersetzt → Teilschritt 1 rot.
- *      Die Services waren schon richtig; die Probe zeigt, dass sie es bleiben
- *      müssen.
- *   d) Im Helfer `if (args.isEmpty())` entfernt → Teilschritt 3 rot.
+ * Counter-checks (performed, via the stand-in script in the tools folder):
+ *   a) in MainViewModel.text() `localizedContext(ctx)` replaced by `ctx`
+ *      → sub-step 1 red (receiver no longer comes from localizedContext).
+ *   b) in GalleryFeature a message set back to `ctx.getString(...)`
+ *      → sub-step 1 red.
+ *   c) in CsvImportService `loc` replaced by `this` → sub-step 1 red.
+ *      The services were already right; the probe shows that they must
+ *      stay so.
+ *   d) in the helper `if (args.isEmpty())` removed → sub-step 3 red.
  *
- * Beim Schreiben des Ersatz-Skripts fiel ausserdem auf, dass die erste Fassung
- * der Regel die beiden Services als Verstoss meldete: Sie binden ihren Context
- * als `private val loc: Context by lazy { … }` über zwei Zeilen, und das Muster
- * verlangte eine einzeilige Zuweisung. Wäre das so geblieben, hätte die Regel
- * genau die Dateien angeschwärzt, die es richtig machen — und man hätte sie
- * vermutlich entschärft statt korrigiert.
+ * While writing the stand-in script it also stood out that the first version
+ * of the rule reported the two services as a violation: they bind their context
+ * as `private val loc: Context by lazy { … }` across two lines, and the pattern
+ * required a single-line assignment. Had that stayed, the rule would have
+ * blackened exactly the files that do it right — and one would
+ * probably have defused it instead of correcting it.
  */
 class LanguageTheMessagesTest {
 
-    /** Dateien, in denen der Context NICHT von einer Activity kommt. */
+    /** Files in which the context does NOT come from an activity. */
     private fun affectedFiles(): List<Pair<String, String>> =
         Quellen.alle()
             .filter { f ->
@@ -73,14 +73,14 @@ class LanguageTheMessagesTest {
         val fehler = mutableListOf<String>()
         var geprueft = 0
         for ((name, s) in dateien) {
-            // Empfaenger, die in dieser Datei aus localizedContext(...) stammen.
-            // Beide Schreibweisen, und ueber die Zeile hinweg: die Services
-            // binden ihn als `private val loc: Context by lazy { … }`, die
-            // ViewModels als `val c = …` im Rumpf von text().
+            // Receivers that come from localizedContext(...) in this file.
+            // Both spellings, and across the line: the services
+            // bind it as `private val loc: Context by lazy { … }`, the
+            // ViewModels as `val c = …` in the body of text().
             val localized = Regex(
                 """val\s+(\w+)[^\n]*?(?:=|by\s+lazy\s*\{)\s*(?:\n\s*)?[\w.]*localizedContext\(""")
                 .findAll(s).map { it.groupValues[1] }.toSet()
-            // Der Ausdruck kann auch direkt aufgerufen werden:
+            // The expression can also be called directly:
             //   localizedContext(ctx).getString(...)
             val direkt = Regex("""localizedContext\([^)]*\)\s*\.getString\(""")
 
@@ -88,7 +88,7 @@ class LanguageTheMessagesTest {
                 geprueft++
                 val recipient = m.groupValues[1]
                 if (recipient in localized) continue
-                // Zeile mit direktem Aufruf?
+                // Line with a direct call?
                 val zeile = s.substring(s.lastIndexOf('\n', m.range.first) + 1,
                                         (s.indexOf('\n', m.range.first).takeIf { it >= 0 } ?: s.length))
                 if (direkt.containsMatchIn(zeile)) continue
@@ -106,7 +106,7 @@ class LanguageTheMessagesTest {
 
     @Test
     fun `the text source has the helper and uses it`() {
-        // Ohne den Helfer schreibt der naechste Aufrufer wieder ctx.getString().
+        // Without the helper the next caller writes ctx.getString() again.
         for (datei in listOf("data/util/Textquelle.kt")) {
             val s = Quellen.withoutComments(Quellen.lies(datei))
             assert(Regex("""fun text\(id: Int, vararg args: Any\?\)""").containsMatchIn(s)) {
@@ -120,10 +120,10 @@ class LanguageTheMessagesTest {
 
     @Test
     fun `a text without arguments does not run through String-format`() {
-        // getString(id, *leer) formatiert trotzdem. Ein Text mit einem
-        // einzelnen Prozentzeichen — etwa eine Prozentangabe — wuerde dort eine
-        // Ausnahme werfen statt angezeigt zu werden, und zwar erst zur Laufzeit
-        // und nur fuer genau diesen Text.
+        // getString(id, *empty) formats anyway. A text with a
+        // single percent sign — say a percentage — would throw an
+        // exception there instead of being shown, and only at runtime
+        // and only for exactly this text.
         for (datei in listOf("data/util/Textquelle.kt")) {
             val s = Quellen.withoutComments(Quellen.lies(datei))
             assert(s.contains("if (args.isEmpty()) c.getString(id) else c.getString(id, *args)")) {

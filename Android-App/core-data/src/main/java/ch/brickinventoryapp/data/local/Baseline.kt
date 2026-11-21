@@ -3,30 +3,30 @@ package ch.brickinventoryapp.data.local
 import ch.brickinventoryapp.model.local.StockKind
 import kotlinx.coroutines.flow.Flow
 
-/** Was beim Abgleich geschah — die Oberfläche lädt die betroffenen Listen nach. */
+/** What happened during the sync — the UI reloads the affected lists. */
 sealed class Abgleichsereignis {
     data class Sent(val kinds: Set<StockKind>) : Abgleichsereignis()
 }
 
 /**
- * Was die Oberfläche vom Ausgang sieht: die Zahl offener Änderungen und was beim
- * Senden geschah. core-state kennt so weder Ablage noch Bearbeitungen.
+ * What the UI sees of the outbox: the number of open changes and what happened
+ * during sending. core-state thus knows neither store nor edits.
  */
 interface Baseline {
     /**
-     * Eine Bearbeitung, die der Server ablehnte. Kein flüchtiges Ereignis: Sie liegt in der
-     * Ablage, bis ihr Hinweis gezeigt ist. [ziel] benennt sie für den Hinweis („10001-1“);
-     * [unlesbar]: nach einem Update nicht mehr lesbar, nie gesendet.
+     * An edit the server refused. Not a transient event: it lies in the
+     * store until its hint has been shown. [ziel] names it for the hint („10001-1“);
+     * [unlesbar]: no longer readable after an update, never sent.
      */
     data class DiscardedChange(val id: String, val ziel: String, val meldung: String, val httpCode: Int?,
                                    val unlesbar: Boolean = false)
 
     fun offene(): Flow<Int>
     val events: Flow<Abgleichsereignis>
-    /** Abgelehntes, dessen Hinweis noch aussteht; die älteste zuerst. */
+    /** Refused items whose hint is still pending; the oldest first. */
     fun discarded(): Flow<List<DiscardedChange>>
-    /** Der Hinweis zu [v] ist gezeigt. */
+    /** The hint for [v] has been shown. */
     suspend fun acknowledge(v: DiscardedChange)
-    /** Was vom letzten Mal noch wartet, zum Senden einplanen. */
+    /** Schedule for sending what is still waiting from last time. */
     suspend fun planeLeftover()
 }

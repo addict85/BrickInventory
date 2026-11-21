@@ -1,19 +1,19 @@
 package ch.brickinventoryapp.model.ui
 
 /**
- * Der Zustand eines Abrufs für die Oberfläche, eine Form für alle Bildschirme statt
- * je eines Paars `laedt`/`fehler`: Laden, Daten und Fehler schliessen einander aus,
- * und ein `when` darüber muss jeden Fall nennen.
+ * The state of a fetch for the UI, one form for all screens instead of
+ * one pair `laedt`/`fehler` each: loading, data and error exclude each other,
+ * and a `when` over it must name every case.
  */
 sealed interface Laden<out T> {
     data object Loads : Laden<Nothing>
 
-    /** [stand]: Zeitpunkt der Ablage, wenn die Daten offline aus ihr kommen; null heisst frisch. */
+    /** [stand]: time of the store if the data comes from it offline; null means fresh. */
     data class Daten<out T>(val wert: T, val stand: Long? = null) : Laden<T> {
         val offline: Boolean get() = stand != null
     }
 
-    /** Keine Daten: [art] wählt Symbol und Rat, [meldung] ist der Satz dazu. */
+    /** No data: [art] chooses icon and advice, [meldung] is the sentence for it. */
     data class Fehler(val art: Fehlerklasse, val meldung: Meldung) : Laden<Nothing>
 }
 
@@ -23,5 +23,5 @@ val Laden<*>.errorMessage: Meldung? get() = (this as? Laden.Fehler)?.meldung
 
 val Laden<*>.errorKind: Fehlerklasse? get() = (this as? Laden.Fehler)?.art
 
-/** Die Daten, solange es welche gibt; beim Laden und nach einem Fehler null. */
+/** The data, as long as there is any; while loading and after an error null. */
 fun <T> Laden<T>.dataOrNull(): T? = (this as? Laden.Daten<T>)?.wert

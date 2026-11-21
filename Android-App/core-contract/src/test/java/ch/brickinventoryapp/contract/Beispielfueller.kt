@@ -15,24 +15,24 @@ import java.lang.reflect.WildcardType
 import java.time.Instant
 
 /**
- * Baut Server-Modelle, in denen jedes Feld einen eigenen Wert hat, und
- * vergleicht sie mit ihrer Ansicht — über Java-Reflexion, damit jede neue
- * Abbildung in contract/abbildung ohne eigenen Test mitgeprüft wird.
+ * Builds server models in which every field has its own value, and
+ * compares them with their view — via Java reflection, so that every new
+ * mapping in contract/abbildung is checked along without its own test.
  */
 object Beispielfueller {
     private var counter = 0
 
     /**
-     * Die Dateien in contract/abbildung, beim Namen genannt: Unter Gradle
-     * liegen die Hauptklassen in einem Jar, ein Ordner-Durchgang fand dort nichts.
-     * Dass die Liste vollständig ist, prüft UiModelFigureTest am Quelltext.
+     * The files in contract/abbildung, named by name: under Gradle
+     * the main classes lie in a jar, a folder walk found nothing there.
+     * That the list is complete is checked by UiModelFigureTest on the source.
      */
     val ABBILDUNGSDATEIEN = listOf(
         "EinzelAbbildungen", "FinanzAbbildungen", "GutscheinKlartextAbbildung", "HaushaltAbbildungen", "HintergrundAbbildungen",
         "KatalogAbbildungen", "KontoAbbildungen", "PreisAbbildungen", "SetAbbildungen", "TeileAbbildungen", "VerwaltungAbbildungen",
     )
 
-    /** Alle `alsAnsicht(<vertrag.X>)` der Dateien in [ABBILDUNGSDATEIEN]. */
+    /** All `alsAnsicht(<vertrag.X>)` of the files in [ABBILDUNGSDATEIEN]. */
     fun figures(): List<Method> {
         return ABBILDUNGSDATEIEN.map { Class.forName("ch.brickinventoryapp.contract.mapping.${it}Kt") }
             .flatMap { k -> k.methods.filter { it.name == "alsAnsicht" && it.parameterCount == 1 } }
@@ -42,7 +42,7 @@ object Beispielfueller {
 
     private val additions = Class.forName("ch.brickinventoryapp.contract.ErgaenzungenKt").methods.toList()
 
-    /** Ein Wert vom Typ [typ]; Datenklassen über ihren vollständigen Konstruktor, jedes Feld anders. */
+    /** A value of type [typ]; data classes via their full constructor, every field different. */
     fun fill(typ: Type): Any? {
         val k = when (typ) {
             is Class<*> -> typ
@@ -77,8 +77,8 @@ object Beispielfueller {
     }
 
     /**
-     * Vergleicht die gleichnamigen Getter von [dto] und [ansicht], verschachtelt;
-     * Getter ohne Gegenstück landen in [ohne]. Gibt die Zahl der verglichenen Felder.
+     * Compares the getters of the same name of [dto] and [ansicht], nested;
+     * getters without counterpart land in [ohne]. Returns the number of compared fields.
      */
     fun compare(dto: Any?, ansicht: Any?, pfad: String, ohne: MutableSet<String>): Int {
         if (ansicht == null || dto == null || !ansicht.javaClass.name.startsWith("ch.brickinventoryapp.model.domain.")) {
@@ -89,7 +89,7 @@ object Beispielfueller {
         var n = 0
         for (g in getter(k)) {
             val gegen = counterpart(dto, g)
-            // Abgeleitete Werte der erzeugten Typen stehen als Erweiterung in Ergaenzungen.kt.
+            // Derived values of the generated types stand as extensions in Ergaenzungen.kt.
             val extended = additions.firstOrNull { it.name == g.name.substringBefore('-') && it.parameterTypes.singleOrNull() == dto.javaClass }
             val wert = when {
                 gegen != null -> gegen.invoke(dto)
@@ -101,18 +101,18 @@ object Beispielfueller {
         return n
     }
 
-    /** Statische Getter (Herkunft.getEntries) gehören zur Klasse, nicht zum Wert. */
+    /** Static getters (Herkunft.getEntries) belong to the class, not to the value. */
     private fun getter(k: Class<*>): List<Method> = k.methods.filter {
         it.parameterCount == 0 && it.declaringClass == k && !Modifier.isStatic(it.modifiers) &&
             (it.name.startsWith("get") || it.name.startsWith("is"))
     }
 
-    /** Ein Getter auf eine value class trägt einen Anhang (getAmount-…); Geld und Double haben verschiedene. */
+    /** A getter on a value class carries a suffix (getAmount-…); Geld and Double have different ones. */
     private fun counterpart(dto: Any, g: Method): Method? =
         dto.javaClass.methods.firstOrNull { it.name == g.name && it.parameterCount == 0 }
             ?: dto.javaClass.methods.firstOrNull { it.parameterCount == 0 && "-" in g.name && it.name == g.name.substringBefore('-') }
 
-    /** Der Wert des Server-Modells, wie die Abbildung ihn lesen soll: Betrag als Geld, Zeit als Instant. */
+    /** The value of the server model as the mapping should read it: amount as Geld, time as Instant. */
     private fun fachwert(d: Any?, typ: Class<*>): Any? = when {
         d is Double && typ == Geld::class.java -> Geld.aus(d)
         d is Double && typ == Long::class.javaPrimitiveType -> Geld.aus(d)?.tenThousandths
@@ -121,7 +121,7 @@ object Beispielfueller {
         else -> d
     }
 
-    /** Listen und Maps Eintrag für Eintrag, alles andere über [compare]. */
+    /** Lists and maps entry by entry, everything else via [compare]. */
     private fun compareValue(d: Any?, a: Any?, pfad: String, ohne: MutableSet<String>): Int = when {
         a is List<*> && d is List<*> -> {
             assertEquals("$pfad (Länge)", d.size, a.size)

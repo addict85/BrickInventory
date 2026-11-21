@@ -14,30 +14,30 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 /**
- * Preise, Bewertungen, Gewinn und Verlust, Verlauf, Kennzahlen (FinancesRepository).
+ * Prices, valuations, profit and loss, history, key figures (FinancesRepository).
  */
 interface FinancesApi {
 
-    // Kein currency-Parameter: Die Währung bestimmt der Server aus der
-    // Nutzereinstellung. Ein eigener Startwert traf den Cache der eingestellten
-    // Währung nicht, und die Detailansicht zeigte keinen Marktpreis, wo Finanzen und
-    // Kachel einen hatten.
+    // No currency parameter: the server determines the currency from the
+    // user setting. An own default did not hit the cache of the set
+    // currency, and the detail view showed no market price where finances and
+    // tile had one.
     @GET("api/v1/sets/{setNumber}/price")
     suspend fun getSetPrice(
         @Path("setNumber") setNumber: String
     ): Response<SetPriceResponse>
 
-    // Auch hier ohne currency: Diese Route hat den Parameter serverseitig
-    // nie ausgewertet — der Vorgabewert "CHF" hier (gegen "EUR" beim Preis!)
-    // war totes Gewicht und hat die Verwirrung nur vergrössert.
+    // Without currency here too: this route never evaluated the parameter
+    // server-side — the default "CHF" here (against "EUR" for the price!)
+    // was dead weight and only increased the confusion.
     @GET("api/v1/sets/{setNumber}/price-history")
     suspend fun getSetPriceHistory(
         @Path("setNumber") setNumber: String
     ): Response<PriceHistoryResponse>
 
     /**
-     * Preisverlauf eines manuell erfassten Teils, je Zustand. Dieselbe Antwortform wie
-     * beim Set, deshalb dasselbe Modell; die Set-Felder bleiben auf ihren Vorgaben.
+     * Price history of a manually added part, per condition. The same response form as
+     * for the set, hence the same model; the set fields stay at their defaults.
      */
     @GET("api/v1/parts/{partNumber}/{colorId}/price-history")
     suspend fun getPartPriceHistory(

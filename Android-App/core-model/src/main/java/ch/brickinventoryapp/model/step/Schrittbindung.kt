@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.model.step
 
-/** [kennung] ist die Aktion des Servers; ohne sie bleibt die Prüfung im Gerät (vor der Anmeldung). */
+/** [kennung] is the server's action; without it the check stays on the device (before sign-in). */
 
 enum class Schrittaktion(val kennung: String?) {
     GUTSCHEIN("gutschein"),
@@ -9,38 +9,38 @@ enum class Schrittaktion(val kennung: String?) {
     LOKAL(null),
 }
 
-/** Was der Server zu einem Schritt sagt; [Rejected.meldung] null heisst: keine Antwort. */
+/** What the server says about a step; [Rejected.meldung] null means: no response. */
 sealed interface Schrittantwort {
     data class Challenge(val challenge: String, val nachricht: String) : Schrittantwort
     data object Free : Schrittantwort
-    /** Ein Schritt ohne Aktion am Server ([Schrittaktion.LOKAL]): Die Prüfung bleibt im Gerät. */
+    /** A step without action at the server ([Schrittaktion.LOKAL]): the check stays on the device. */
     data object NotBound : Schrittantwort
     data class Rejected(val meldung: String?) : Schrittantwort
 }
 
-/** Die Nonce, die der Keystore-Schlüssel als Attestation-Challenge trägt ([Nonce.wert]: Base64url). */
+/** The nonce the keystore key carries as attestation challenge ([Nonce.wert]: Base64url). */
 sealed interface Schluesselnonce {
     data class Nonce(val wert: String) : Schluesselnonce
     data class Rejected(val meldung: String?) : Schluesselnonce
 }
 
-/** Der Weg zum Server; core-data setzt ihn um, core-ui fragt ihn vor jedem Schritt. */
+/** The path to the server; core-data implements it, core-ui asks it before every step. */
 interface Schrittbindung {
-    /** [Schrittantwort.Challenge], [Schrittantwort.NotBound] oder [Schrittantwort.Rejected]. */
+    /** [Schrittantwort.Challenge], [Schrittantwort.NotBound] or [Schrittantwort.Rejected]. */
     suspend fun challenge(aktion: Schrittaktion): Schrittantwort
-    /** [Schrittantwort.Free] oder [Schrittantwort.Rejected]. */
+    /** [Schrittantwort.Free] or [Schrittantwort.Rejected]. */
     suspend fun freigeben(challenge: String, signatur: ByteArray): Schrittantwort
     /**
-     * Nur gleich nach der Anmeldung. Es gibt keinen Weg ohne Nonce: Der Server nimmt
-     * keinen blossen Schlüssel an, ein Rückfall darauf liesse sich nur erzwingen.
+     * Only right after sign-in. There is no path without nonce: the server accepts
+     * no bare key, a fallback to it could only be forced.
      */
     suspend fun schluesselNonce(): Schluesselnonce = Schluesselnonce.Rejected(null)
 
-    /** Die Attestierungskette (DER je Zertifikat, Blatt zuerst): [Schrittantwort.Free] oder [Schrittantwort.Rejected]. */
+    /** The attestation chain (DER per certificate, leaf first): [Schrittantwort.Free] or [Schrittantwort.Rejected]. */
     suspend fun depositChain(kette: List<ByteArray>): Schrittantwort = Schrittantwort.Rejected(null)
 
     companion object {
-        /** Ohne Server, für Tests und Activities ohne Konto. */
+        /** Without server, for tests and activities without account. */
         val OHNE: Schrittbindung = object : Schrittbindung {
             override suspend fun challenge(aktion: Schrittaktion) = Schrittantwort.NotBound
             override suspend fun freigeben(challenge: String, signatur: ByteArray) = Schrittantwort.Free

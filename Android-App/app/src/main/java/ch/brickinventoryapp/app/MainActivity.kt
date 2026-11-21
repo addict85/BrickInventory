@@ -71,26 +71,26 @@ class MainActivity : OnlyLauncherStart() {
     private val selbstUpdate: UpdateViewModel by viewModels()
     private val csvImport: CsvImportViewModel by viewModels()
 
-    /** Einmal hier geholt, damit kein Ziel selbst im ViewModelStore der Activity sucht. */
+    /** Fetched here once so that no destination searches the activity's ViewModelStore itself. */
     private fun activityState() = ActivityState(
         app = vm, update = selbstUpdate, csvImport = csvImport, darstellung = darstellung, vertrauen = vertrauen,
     )
 
-    // Nur für die Pflichtmasken (Startpasswort, zweiter Faktor), die über allem liegen.
+    // Only for the mandatory forms (start password, second factor) that lie above everything.
     private val startAccountVm: AccountViewModel by viewModels()
 
-    // ImageLoader als Hilt-Singleton aus NetzModule — eine Instanz je Prozess statt je
-    // Activity: Sonst verlöre jede Drehung den Memory-Cache, und zwei
-    // DiskCache-Instanzen liefen auf demselben Verzeichnis.
+    // ImageLoader as a Hilt singleton from NetzModule — one instance per process instead of per
+    // activity: otherwise every rotation would lose the memory cache, and two
+    // DiskCache instances would run on the same directory.
     @Inject lateinit var imageLoader: ImageLoader
 
-    /** Rückfrage per Gerätesperre vor heiklen Schritten; gilt bis die App in den Hintergrund geht. */
+    /** Confirmation via device lock before sensitive steps; valid until the app goes to the background. */
     private val schrittschutz by lazy {
         DevicesStepProtection(this, noKey = {
             android.widget.Toast.makeText(this, LanguageManager.localizedContext(this).getString(R.string.schritt_kein_schluessel),
                 android.widget.Toast.LENGTH_LONG).show()
         }, bindung = schrittbindung, abgelehnt = { meldung ->
-            // Der Satz des Servers sagt, was zu tun ist (neu anmelden, Displaysperre einrichten).
+            // The server's sentence says what to do (sign in again, set up a screen lock).
             Toast.makeText(this, meldung ?: LanguageManager.localizedContext(this).getString(R.string.schritt_server_fehler),
                 Toast.LENGTH_LONG).show()
         }, withoutAttestation = {
@@ -102,21 +102,21 @@ class MainActivity : OnlyLauncherStart() {
         }
     }
 
-    /** Optional, Vorgabe aus: nach N Minuten im Hintergrund erst nach der Gerätesperre weiter. */
+    /** Optional, default off: after N minutes in the background continue only after the device lock. */
     private val appLock by lazy { AppLock(SystemClock::elapsedRealtime, AppLockStore(this)) { devicesStarts(this) } }
 
-    /** Bindet den Schrittschutz an den Server (routes/api_v1/device.ts). */
+    /** Binds the step guard to the server (routes/api_v1/device.ts). */
     @Inject lateinit var schrittbindung: Schrittbindung
 
-    /** Das Ziel einer angetippten Meldung; abgelegt nur vom nicht exportierten MeldungsEinstieg. */
+    /** The target of a tapped notification; stored only by the non-exported MeldungsEinstieg. */
     @Inject lateinit var meldungseingang: Meldungseingang
 
     @Inject lateinit var preisalarme: PriceAlertRepository
 
     /**
-     * Eine angetippte Meldung, waehrend die App schon laeuft (singleTop). Das
-     * Ziel liegt im Meldungseingang; OnlyLauncherStart hat Extras und Daten des
-     * Intents schon entfernt, denn jede App kann diese Activity starten.
+     * A tapped notification while the app is already running (singleTop). The
+     * target lies in the Meldungseingang; OnlyLauncherStart has already removed extras and data
+     * of the intent, because any app can start this activity.
      */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -124,15 +124,15 @@ class MainActivity : OnlyLauncherStart() {
         adoptMessageTarget()
     }
 
-    /** Traegt das abgelegte Set in den Zustand — der NavHost holt es dort ab. */
+    /** Carries the stored set into the state — the NavHost picks it up there. */
     private fun adoptMessageTarget() {
         vm.setFromMessageRequest(meldungseingang.abholen())
     }
 
     /**
-     * Beim Nach-vorn-Kommen einmal nach ausgelösten Preisalarmen fragen, nicht erst
-     * im stündlichen Auftrag. onStart, weil onCreate bei der Rückkehr aus dem
-     * Hintergrund nicht läuft; die Marke des Servers verhindert doppelte Meldungen.
+     * When coming to the front, ask once for triggered price alerts, not only
+     * in the hourly job. onStart, because onCreate does not run when returning from the
+     * background; the server's mark prevents duplicate notifications.
      */
     override fun onStart() {
         super.onStart()
@@ -156,7 +156,7 @@ class MainActivity : OnlyLauncherStart() {
         drawWidgetNew()
     }
 
-    /** Das Widget verdeckt seine Beträge je nach App-Sperre (AppLock.hiddenWidget); es zeichnet nur auf Anstoss neu. */
+    /** The widget hides its amounts depending on the app lock (AppLock.hiddenWidget); it redraws only when prompted. */
     private fun drawWidgetNew() {
         val ctx = applicationContext
         lifecycleScope.launch {
@@ -165,62 +165,62 @@ class MainActivity : OnlyLauncherStart() {
         }
     }
 
-    /** Ein abgelaufenes Geheimnis lässt sich ab Android 10 erst mit Fokus aus der Zwischenablage nehmen. */
+    /** From Android 10 an expired secret can be removed from the clipboard only with focus. */
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) SecretClipboard.pruefe(this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Vor super.onCreate(): Das Startbild ersetzt das Fenster-Theme, bis
-        // Compose das erste Bild gezeichnet hat — kein weisses Aufblitzen.
+        // Before super.onCreate(): the splash screen replaces the window theme until
+        // Compose has drawn the first frame — no white flash.
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        // Die App war zu: Der MeldungsEinstieg hat das Ziel vor dem Start abgelegt.
+        // The app was closed: the MeldungsEinstieg stored the target before the start.
         adoptMessageTarget()
-        // Den Geräteschlüssel gleich nach der Anmeldung hinterlegen: Später nimmt der Server keinen an.
+        // Register the device key right after the sign-in: later the server accepts none.
         lifecycleScope.launch {
             vm.state.map { it.isLoggedIn }.distinctUntilChanged().filter { it }.collect { schrittschutz.bindAnServer() }
         }
 
         setContent {
-            // Global vom Admin gewähltes Design. Bewusst NUR dieses Feld
-            // sammeln: Der komplette AppUiState an dieser Stelle hätte bei
-            // jeder Zustandsänderung die Wurzel der Composition invalidiert
-            // und darüber die ganze App rekomponiert.
+            // Design chosen globally by the admin. Deliberately collect ONLY this field:
+            // the complete AppUiState at this place would have invalidated the root
+            // of the composition on every state change
+            // and recomposed the whole app through it.
             val theme by darstellung.appTheme.collectAsStateWithLifecycle()
             val helligkeit by darstellung.helligkeit.collectAsStateWithLifecycle()
             val systemfarben by darstellung.systemfarben.collectAsStateWithLifecycle()
-            // Über den Zähler von Sichtschutz, damit ein Bildschirm, der ihn selbst
-            // setzt, beim Verlassen den Wunsch des Nutzers nicht aufhebt.
+            // Via the privacy screen counter, so that a screen that sets it itself
+            // does not cancel the user's wish when leaving.
             val hidePreview by darstellung.hidePreview.collectAsStateWithLifecycle()
             if (hidePreview) Sichtschutz(coverage = false)
             AppOverviewProtection(appLock)
             val view = darstellung(theme, helligkeit, isSystemInDarkTheme(), systemfarben, android.os.Build.VERSION.SDK_INT)
             BrickInventoryManagerTheme(theme = view.design, dunkel = view.dunkel, systemfarben = view.systemfarben) {
-                // Die Fassung kennt nur dieses Modul; die Bereiche lesen sie hier.
+                // Only this module knows the version; the areas read it here.
                 CompositionLocalProvider(
                     LocalAppVersion provides AppVersion(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
                     LocalSchrittschutz provides schrittschutz,
                     LocalAppLock provides appLock,
                 ) { KeyboardWithoutLearn {
-                    // App-weit: Gutschein-Nummer und PIN, Passwörter, Codes und
-                    // Einladungen; Setnamen lernt die Tastatur dafür auch nicht mit.
+                    // App-wide: voucher number and PIN, passwords, codes and
+                    // invitations; the keyboard therefore does not learn set names either.
                     val gesperrt by appLock.gesperrt.collectAsStateWithLifecycle()
-                    // Gesperrt liest auch TalkBack nichts darunter vor.
+                    // Locked, TalkBack reads nothing underneath either.
                     Box(if (gesperrt) Modifier.clearAndSetSemantics {} else Modifier) {
                         BrickInventoryRoute(activityState(), imageLoader)
                     }
-                    // Ohne Displaysperre fragt der Schrittschutz hier nach, statt still durchzulassen.
+                    // Without a screen lock the step guard asks here instead of silently letting through.
                     WithoutLockWarning(schrittschutz.withoutLock)
-                    // Mit Startpasswort weist der Server alles ab: nur die Maske, bis es ersetzt ist.
+                    // With a start password the server rejects everything: only the form until it is replaced.
                     val startpasswort by vm.startPasswordNeeded.collectAsStateWithLifecycle()
-                    // Startwert false: Die Maske erscheint erst mit beiden Zuständen,
-                    // und StateFlow.value in der Komposition verbietet Lint.
+                    // Initial value false: the form appears only with both states,
+                    // and Lint forbids StateFlow.value in the composition.
                     val angemeldet by remember { vm.state.map { it.isLoggedIn }.distinctUntilChanged() }
                         .collectAsStateWithLifecycle(false)
-                    // Ebenso Verwalterrechte ohne zweiten Faktor; das Startpasswort kommt zuerst.
+                    // Likewise admin rights without a second factor; the start password comes first.
                     val factorRequired by vm.secondFactorNeeded.collectAsStateWithLifecycle()
                     if (startpasswort && angemeldet) {
                         val kontoZustand by startAccountVm.kontoState.collectAsStateWithLifecycle()
@@ -239,7 +239,7 @@ class MainActivity : OnlyLauncherStart() {
                             onAbmelden = { startAccountVm.secondFactorBack(); vm.logout() },
                         )
                     }
-                    // Über allem: Ein unbekanntes Zertifikat kann jeder Abruf treffen.
+                    // Above everything: any fetch can hit an unknown certificate.
                     val zertifikat by vertrauen.zertifikat.collectAsStateWithLifecycle()
                     val userCa by vertrauen.userCa.an.collectAsStateWithLifecycle()
                     zertifikat?.let { frage ->
@@ -251,7 +251,7 @@ class MainActivity : OnlyLauncherStart() {
                             onAbbrechen = vertrauen::discardCertificate,
                         )
                     }
-                    // Hier und nicht in den Einstellungen: Auch der Zertifikatsdialog fragt an.
+                    // Here and not in the settings: the certificate dialog asks too.
                     val userCaQuestion by vertrauen.userCa.frage.collectAsStateWithLifecycle()
                     if (userCaQuestion) {
                         UserCaDialog(
@@ -259,7 +259,7 @@ class MainActivity : OnlyLauncherStart() {
                             onAbbrechen = vertrauen.userCa::abbrechen,
                         )
                     }
-                    // Zuoberst: Die App-Sperre deckt auch die Pflichtmasken ab.
+                    // Topmost: the app lock also covers the mandatory forms.
                     if (gesperrt) AppLockScreen {
                         val texts = LanguageManager.localizedContext(this@MainActivity)
                         unlockWithDevicesLock(this@MainActivity, texts.getString(R.string.app_sperre_gesperrt),

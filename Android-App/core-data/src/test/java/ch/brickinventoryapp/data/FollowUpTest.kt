@@ -24,26 +24,26 @@ import org.junit.Before
 import org.junit.Test
 
 /**
- * Auch was nur online geht, landet in der Ablage: Jeder Schreibvorgang wendet
- * die Antwort des Servers über applyAn an, damit die Listen, die allein aus der
- * Ablage lesen, sofort stimmen — ohne Signal und ohne neuen Abruf.
+ * What only works online also lands in the store: every write applies
+ * the server's response via applyAn, so that the lists that read solely from the
+ * store are right immediately — without a signal and without a new fetch.
  *
- * Gegenproben (kotlinc und JUnit gegen die Repositories und LocalApplication.kt):
- *   A  in SetsRepositoryImpl.setSetStorage wieder nur `sicherAufrufen` → rot „Menge, Lagerort …“
- *   B  in LocalApplication.merkliste den Zweig WantedItemMoved entfernt → rot
- *      „ein verschobener und ein übernommener Merkposten …“
- *   C  in LocalApplication den Zweig PartColor auf `liste` gesetzt → rot „Lagerort und
- *      Farbe eines Teils …“
- *   D  in TeileRepositoryImpl.nameLocationUm den Nachzug weggelassen → rot „ein
- *      umbenannter Ort heisst überall neu“
- *   E  in Abruf.kt applyInSameAreaAn ohne den Vergleich des Bereichs → rot
- *      „eine Antwort, während das Konto wechselt, …“
- *   F  in nachgezogen() die Wirkung auch ohne `success` angewandt → rot „eine
- *      abgelehnte Änderung ändert die Ablage nicht“
+ * Counter-checks (kotlinc and JUnit against the repositories and LocalApplication.kt):
+ *   A  in SetsRepositoryImpl.setSetStorage again only `sicherAufrufen` → red “quantity, storage location …”
+ *   B  in LocalApplication.merkliste the branch WantedItemMoved removed → red
+ *      “a moved and a taken-over wishlist item …”
+ *   C  in LocalApplication the branch PartColor set to `liste` → red “storage location and
+ *      color of a part …”
+ *   D  in TeileRepositoryImpl.nameLocationUm the follow-up omitted → red “a
+ *      renamed location has the new name everywhere”
+ *   E  in Abruf.kt applyInSameAreaAn without the comparison of the area → red
+ *      “a response while the account changes …”
+ *   F  in nachgezogen() the effect applied even without `success` → red “a
+ *      rejected change does not change the store”
  */
 class FollowUpTest {
 
-    // Der Testserver setzt ihn auf seinem eigenen Faden um.
+    // The test server applies it on its own thread.
     @Volatile private var bereich: String? = "a"
     private val ablage = Offlineablage(StorageInventory(), StorageExit(), { bereich })
     private val paths = PfadServer(
@@ -104,7 +104,7 @@ class FollowUpTest {
     fun `storage location and color of a part and the location of a figure are in the store after the response`() = runBlocking {
         teile.setPartStorage("3001", 5, "regal")
         assertEquals("Regal", ablage.lies(Slots.MANUELLE_TEILE)!!.liste.first { it.colorId == 5 }.storage)
-        // Die neue Farbe hat schon eine Zeile: Der Server legt beide zusammen.
+        // The new color already has a row: the server merges both.
         teile.setPartColor("3001", 5, neueFarbe = 7, farbName = "Grün", farbHex = "00FF00")
         assertEquals(listOf(7 to 6), ablage.lies(Slots.MANUELLE_TEILE)!!.liste.map { it.colorId to it.quantity })
         figuren.setFigStorage("sw0001", "regal")
@@ -121,7 +121,7 @@ class FollowUpTest {
 
     @Test
     fun `a response while the account changes does not change the new store`() = runBlocking {
-        // Das Gerät hält nur ein Konto; das neue lädt sein Set, während die alte Antwort unterwegs ist.
+        // The device holds only one account; the new one loads its set while the old response is on its way.
         paths.priority = { _, _ ->
             bereich = "b"
             runBlocking { ablage.adopt(Slots.SETS, listOf(SetItem(setNumber = "10001-1", quantity = 1)).map { it.alsAnsicht() }) }

@@ -11,22 +11,22 @@ import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
-/** Serveradresse mit Schrägstrich am Ende: Die Helfer schneiden ihn ab. */
+/** Server address with a trailing slash: the helpers cut it off. */
 private const val SERVER = "http://nas:3000/"
 
 /**
- * Vorschaubild-Rückfall auf die volle Auflösung, wenn "_thumb.jpg" (noch)
- * fehlt.
+ * Thumbnail fallback to the full resolution when "_thumb.jpg" is (still)
+ * missing.
  *
- * Gemeldet: Galerie-Kacheln blieben leer, obwohl alle Bilder inzwischen über
- * den Server bezogen werden (kein direkter CDN-Zugriff mehr). Ursache: nach
- * einem CSV-Import legt der Server Original-Bilder sofort ab, erzeugt die
- * "_thumb.jpg"-Varianten aber NACHTRÄGLICH in einer eigenen, langsamen
- * Warteschlange (server.ts, "Generate missing thumbnails"). Der vorherige
- * Wiederholversuch fragte dieselbe (fehlende) Vorschau-Datei ein zweites Mal
- * an — dieselbe 404, keine Besserung. Die Webapp fällt in genau diesem Fall
- * auf die volle Auflösung zurück (public/js/actions.js, data-orig); Android
- * hatte dieses Verhalten bisher nicht.
+ * Reported: gallery tiles stayed empty although all images are meanwhile fetched via
+ * the server (no direct CDN access any more). Cause: after
+ * a CSV import the server stores original images immediately, but creates the
+ * "_thumb.jpg" variants only AFTERWARDS in its own, slow
+ * queue (server.ts, "Generate missing thumbnails"). The previous
+ * retry requested the same (missing) preview file a second time
+ * — the same 404, no improvement. The web app falls back to the full resolution in exactly this case
+ * (public/js/actions.js, data-orig); Android
+ * did not have this behavior so far.
  */
 class ThumbFallbackTest {
 
@@ -48,8 +48,8 @@ class ThumbFallbackTest {
 
     @Test
     fun `imageLocal is taken over unchanged — no own _thumb guess any more`() {
-        // Der Server prüft, ob die Vorschau existiert, und liefert den passenden
-        // Pfad; ein clientseitig geratenes "_thumb.jpg" scheiterte genau dann.
+        // The server checks whether the preview exists and delivers the matching
+        // path; a client-side guessed "_thumb.jpg" failed exactly then.
         assertEquals("http://nas:3000/images/sets/10283-1.jpg",
             resolveThumbUrl(SERVER, "/images/sets/10283-1.jpg", "https://cdn.rebrickable.com/x.jpg"))
         assertEquals("http://nas:3000/images/sets/10283-1_thumb.jpg",
@@ -65,23 +65,23 @@ class ThumbFallbackTest {
         assert(src.contains("onImageError()")) {
             "Der Fehlerfall muss den Rückfall auslösen"
         }
-        // ── Nachgezogen ───────────────────────────────────────
-        // Hier standen zwei Verbote: kein `retryNonce`, kein `setParameter`
-        // (das hiess in Coil 2 so; heute `memoryCacheKeyExtra`).
+        // ── Adjusted ──────────────────────────────────────────
+        // Two prohibitions stood here: no `retryNonce`, no `setParameter`
+        // (that was its name in Coil 2; today `memoryCacheKeyExtra`).
         //
-        // Inzwischen ist der Ablauf ein anderer: Direkt nach dem Erfassen
-        // erzeugt der Server die Vorschau erst noch — der zweite Versuch nach
-        // einer Sekunde trifft sie dann sehr wohl an. GalleryImageRetryTest
-        // (ResponseCacheContractTest.kt) verlangt genau das, und beide Tests
-        // widersprachen sich direkt. Die Verbote sind deshalb entfallen;
-        // geblieben ist die Regel, die BEIDE Fassungen teilen: Am Ende der
-        // Kette muss der Rückfall auf die volle Auflösung stehen.
+        // Meanwhile the flow is a different one: right after adding,
+        // the server still has to create the preview — the second attempt after
+        // one second then does find it. GalleryImageRetryTest
+        // (ResponseCacheContractTest.kt) requires exactly that, and both tests
+        // directly contradicted each other. The prohibitions have therefore been dropped;
+        // what remains is the rule that BOTH versions share: at the end of the
+        // chain the fallback to the full resolution must stand.
     }
 
     @Test
     fun `CatalogSetCard falls back to the full resolution on an error`() {
-        // Das Ersatzbild steht seit ProduktBild (ui/components) an EINER Stelle; die
-        // Katalogkachel reicht nur noch den Fehler an den Rückfall weiter.
+        // The placeholder image stands in ONE place since ProduktBild (ui/components); the
+        // catalog tile only passes the error on to the fallback.
         val src = read("catalog/ui/screens/KatalogKarte.kt")
         assert(src.contains("ProduktBild(")) { "Die Katalogkachel benutzt das gemeinsame Bild mit Ersatz" }
         assert(src.contains("AsyncImagePainter.State.Error) onThumbError()")) {
@@ -91,23 +91,23 @@ class ThumbFallbackTest {
 }
 
 /**
- * Der Bild-Client protokolliert genau wie der API-Client.
+ * The image client logs just like the API client.
  *
- * Ein Logcat zeigte alle API-Aufrufe (/api/v1/sets, /stats, /settings), aber
- * KEINE einzige Bildanfrage — nicht, weil keine gemacht wurden, sondern weil
- * der Logging-Interceptor nur an isApiClient=true hing. Der Bild-Client
- * (isApiClient=false, von Coil benutzt) hatte keinen Interceptor und blieb
- * dadurch für jede Diagnose unsichtbar. Das Fehlen von Bildanfragen im Log
- * war also keine Erkenntnis über das Problem, sondern eine Lücke in der
- * Beobachtbarkeit selbst.
+ * A logcat showed all API calls (/api/v1/sets, /stats, /settings), but
+ * NOT A SINGLE image request — not because none were made, but because
+ * the logging interceptor hung only on isApiClient=true. The image client
+ * (isApiClient=false, used by Coil) had no interceptor and thus stayed
+ * invisible to every diagnosis. The absence of image requests in the log
+ * was therefore no insight into the problem but a gap in
+ * observability itself.
  */
 class ImageClientLoggingTest {
 
     @Test
     fun `HttpLoggingInterceptor no longer hangs only on the API client`() {
-        // Kommentare ausblenden, BEVOR das Fenster geschnitten wird: Ein
-        // wachsender Erklärtext schob die geprüfte Zeile sonst aus den 800
-        // Zeichen — die Regel galt weiter, nur der Ausschnitt war zu kurz.
+        // Hide comments BEFORE the window is cut: a
+        // growing explanatory text otherwise pushed the checked line out of the 800
+        // characters — the rule still applied, only the excerpt was too short.
         val src = Quellen.di().lines()
             .joinToString("\n") { if (it.trim().startsWith("//")) "" else it }
         val start = src.indexOf("internal fun buildInterceptorClient")
@@ -118,35 +118,35 @@ class ImageClientLoggingTest {
         assert(fn.contains("if (BuildConfig.DEBUG) {")) {
             "Beide Clients müssen im Debug-Build protokolliert werden"
         }
-        // Die Umschreibung des Platzhalters prüft ServerGuardTest ausgeführt.
+        // The rewriting of the placeholder is checked by ServerGuardTest, executed.
     }
 }
 
 /**
- * ALLE Bildabrufe laufen über den Server-Proxy — auch die volle Auflösung.
+ * ALL image fetches run via the server proxy — the full resolution too.
  *
- * ── Umgekehrt ────────
- * Diese Klasse verlangte früher das Gegenteil: volle Auflösung direkt vom
- * Gerät zum CDN, weil das für eine einmalige Anzeige schneller sei und den
- * Server entlaste. Das ist die Ausnahme, die die Regel wertlos macht — ein
- * Gerät, das irgendwo doch direkt mit Rebrickable spricht, trifft dort auf
- * Cloudflares Bot-Erkennung. Browser-Kennung, Referer-Kopfzeile, Drosselung
- * und AVIF-Vermeidung in dieser App behandelten allesamt Symptome davon.
+ * ── Reversed ────────
+ * This class used to require the opposite: full resolution directly from the
+ * device to the CDN, because that was supposedly faster for a one-time display and relieved the
+ * server. That is the exception that makes the rule worthless — a
+ * device that somewhere does talk directly to Rebrickable meets
+ * Cloudflare's bot detection there. Browser identifier, referer header, throttling
+ * and AVIF avoidance in this app all treated symptoms of it.
  *
- * Jetzt gilt einheitlich: Vorschau UND volle Auflösung über den Server-Proxy
+ * Now uniformly: preview AND full resolution via the server proxy
  * (ImageUrls.kt, IMG_PROXY).
- * Der Server bringt dort Plattencache, Negativ-Cache und Entpacken mit —
- * Arbeit, die bei einem Direktzugriff wirkungslos bliebe.
+ * The server brings disk cache, negative cache and unpacking there —
+ * work that would be ineffective with direct access.
  *
- * Der Klassenname bleibt, damit die Historie auffindbar ist; geprüft wird
- * jetzt die umgekehrte Aussage.
+ * The class name stays so that the history can be found; checked is
+ * now the reverse statement.
  */
 class FullResolutionBypassesProxyTest {
 
     @Test
     fun `resolveFullUrl routes the full resolution via the server proxy`() {
-        // Kein Gerät spricht direkt mit dem CDN (Cloudflares Bot-Erkennung);
-        // die volle Auflösung trägt kein &thumb=1.
+        // No device talks directly to the CDN (Cloudflare's bot detection);
+        // the full resolution carries no &thumb=1.
         assertEquals("http://nas:3000$IMG_PROXY?url=https%3A%2F%2Fcdn.rebrickable.com%2Fsets%2F1+2.jpg",
             resolveFullUrl(SERVER, null, "https://cdn.rebrickable.com/sets/1 2.jpg"))
         assertEquals("ein Server-Pfad braucht keinen Proxy", "http://nas:3000/media/a.jpg",
@@ -162,10 +162,10 @@ class FullResolutionBypassesProxyTest {
 }
 
 /**
- * Teile und Minifiguren laden den Rückfall (volle Auflösung) über den
- * Server-Proxy — auf Nutzerwunsch, damit auch dort kein Gerät am Server
- * vorbei direkt mit Rebrickable spricht. Sets und Katalog bleiben bewusst
- * bei der direkten CDN-Adresse für ihre eigenen Detail-/Zoom-Dialoge.
+ * Parts and minifigures load the fallback (full resolution) via the
+ * server proxy — at the user's request, so that no device bypasses the server
+ * there either and talks directly to Rebrickable. Sets and catalog deliberately stay
+ * with the direct CDN address for their own detail/zoom dialogs.
  */
 class PartsMinifigsFullResBypassProxyTest {
     private fun read(rel: String): String {
@@ -182,29 +182,29 @@ class PartsMinifigsFullResBypassProxyTest {
 
     @Test
     fun `parts and minifigures pass fullViaProxy = true, sets and catalog do not`() {
-        // ── JEDER Aufruf, nicht eine Anzahl ─────────────────────────────────
+        // ── EVERY call, not a count ─────────────────────────────────────────
         //
-        // Hier stand `partsCount == 2`. Die Zahl war so lange richtig, wie es
-        // genau zwei Aufrufstellen gab — mit der Tabellenansicht kam in jedem
-        // der beiden Bildschirme eine dritte dazu, und der Test meldete „3
-        // statt 2", obwohl die dritte Stelle es GENAUSO richtig macht.
+        // Here stood `partsCount == 2`. The number was right as long as there
+        // were exactly two call sites — with the table view a third one came into each
+        // of the two screens, and the test reported „3
+        // statt 2", although the third place does it JUST as right.
         //
-        // Die Regel steht im Namen dieses Tests: In diesen zwei Bildschirmen
-        // laeuft die volle Aufloesung ueber den Proxy. Also muss JEDER Aufruf
-        // von rememberTileImageWithFallback dort fullViaProxy = true setzen —
-        // eine vergessene Stelle faellt damit auf, eine hinzugefuegte richtige
-        // nicht.
+        // The rule stands in the name of this test: in these two screens
+        // the full resolution runs via the proxy. So EVERY call
+        // of rememberTileImageWithFallback there must set fullViaProxy = true —
+        // a forgotten place thus stands out, an added correct one
+        // does not.
         val call = Regex("""rememberTileImageWithFallback\s*\(([^)]*)\)""")
         for (rel in listOf("parts/ui/screens/PartsScreen.kt", "parts/ui/screens/MinifigsScreen.kt")) {
-            // withoutComments: Beide Dateien ERWAEHNEN den Helfer in einem
-            // Erklaerkommentar („siehe model/util/ImageUrls.kt,
-            // rememberTileImageWithFallback()"). Ohne diesen Schritt meldet
-            // die Pruefung genau diese Erwaehnung als Aufruf ohne
-            // fullViaProxy — beim Nachrechnen ist mir das sofort passiert.
+            // withoutComments: both files MENTION the helper in an
+            // explanatory comment („siehe model/util/ImageUrls.kt,
+            // rememberTileImageWithFallback()"). Without this step the
+            // check reports exactly this mention as a call without
+            // fullViaProxy — when recalculating that happened to me immediately.
             val src = Quellen.withoutComments(Quellen.bildschirm(rel))
             val stellen = call.findAll(src).toList()
-            // Selbstbeweis: Findet das Muster nichts, waere die Schleife leer
-            // und der Test gruen, ohne etwas geprueft zu haben.
+            // Self-proof: if the pattern finds nothing, the loop would be empty
+            // and the test green without having checked anything.
             assert(stellen.size >= 2) {
                 "$rel: nur ${stellen.size} Aufruf(e) von rememberTileImageWithFallback gefunden — Muster veraltet?"
             }
@@ -227,14 +227,14 @@ class PartsMinifigsFullResBypassProxyTest {
 }
 
 /**
- * Set-Detail-Dialog benutzt die volle Auflösung, keine Vorschau — wie die
- * Webapp.
+ * The set detail dialog uses the full resolution, not a preview — like the
+ * web app.
  *
- * Ein früherer Kommentar behauptete, die Webapp mache im Detail-Dialog
- * dieselbe Thumb/Voll-Unterscheidung wie die Kachel — das stimmte nicht.
- * public/js/admin.js zeigt für "m-img" (das Hauptbild im Detail-Dialog)
- * immer fullUrl(), nie eine Vorschau. Android zeigte dort fälschlich
- * resolveThumbUrl().
+ * An earlier comment claimed that the web app makes the same thumb/full
+ * distinction in the detail dialog as the tile — that was not true.
+ * public/js/admin.js always shows fullUrl() for "m-img" (the main image in the detail dialog),
+ * never a preview. Android wrongly showed
+ * resolveThumbUrl() there.
  */
 class SetDetailUsesFullResolutionTest {
     private fun read(rel: String): String {
@@ -259,24 +259,24 @@ class SetDetailUsesFullResolutionTest {
 }
 
 /**
- * resolveFullUrl()/resolveFullUrlViaProxy() entfernen ein "_thumb"-Suffix
- * aus imageLocal, statt es unverändert durchzureichen.
+ * resolveFullUrl()/resolveFullUrlViaProxy() remove a "_thumb" suffix
+ * from imageLocal instead of passing it through unchanged.
  *
- * Gemeldet: Detail und Zoom zeigten bei Sets weiterhin die kleine Vorschau,
- * nicht die volle Auflösung. Ursache: Beim Entfernen des fehlerhaften
- * Rateversuchs (toThumbPath()) wurde auch die GEGENTEILIGE, aber nötige
- * Operation entfernt — das Abschneiden eines bereits vorhandenen
- * "_thumb"-Suffixes für die volle Auflösung. Ohne das lieferten
- * resolveThumbUrl() UND resolveFullUrl() bei gesetztem imageLocal exakt
- * denselben Wert, sobald der Server einen Vorschau-Pfad zurückgab — der
- * Normalfall bei bereits heruntergeladenen Sets. Dieselbe Umkehrung wie
- * fullUrl() in der Webapp (public/js/01-core.js).
+ * Reported: detail and zoom still showed the small preview for sets,
+ * not the full resolution. Cause: when removing the faulty
+ * guess (toThumbPath()) the OPPOSITE but necessary
+ * operation was removed too — cutting off an already existing
+ * "_thumb" suffix for the full resolution. Without that
+ * resolveThumbUrl() AND resolveFullUrl() delivered exactly the same value
+ * with imageLocal set, as soon as the server returned a preview path — the
+ * normal case for already downloaded sets. The same reversal as
+ * fullUrl() in the web app (public/js/01-core.js).
  *
- * Die Adress-Prüfungen dieser Datei rufen die Helfer auf, statt ihren Quelltext
- * zu lesen. Gegenproben:
- *   A  in resolveImageUrl das Entfernen von `_thumb` weggelassen → rot „resolveFullUrl
- *      entfernt …“ und „Vorschau und volle Aufloesung …“
- *   B  `&thumb=1` beim Vorschaubild weggelassen → rot „Vorschaubild laeuft …“
+ * The address checks of this file call the helpers instead of reading their
+ * source. Counter-checks:
+ *   A  in resolveImageUrl the removal of `_thumb` omitted → red “resolveFullUrl
+ *      removes …” and “preview and full resolution …”
+ *   B  `&thumb=1` omitted for the thumbnail → red “thumbnail still runs …”
  */
 class FullResolutionStripsThumbSuffixTest {
 

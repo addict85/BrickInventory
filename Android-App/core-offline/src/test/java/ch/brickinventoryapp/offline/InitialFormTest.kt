@@ -16,18 +16,18 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Der Ausgang liegt in seiner eigenen Form (Fassung 1), nicht als Server-Anfrage. Die
- * Beispiele unten hat die App vor der Trennung geschrieben (Bearbeitung samt AddSetRequest &
- * Co. als JSON); sie liegen so auf Geräten und müssen lesbar bleiben.
+ * The outbox lies in its own form (version 1), not as a server request. The
+ * examples below were written by the app before the separation (edit including AddSetRequest &
+ * co. as JSON); they lie like this on devices and must stay readable.
  *
- * Gegenproben (mit kotlinc gegen core-model und core-offline gemessen):
- *   A  gegenproben/ausgangsform-feldname-geaendert.patch (SetRequestF1 `set_number` → `setNumber`) → rot „liest und schreibt jede
- *      eingefrorene Zeile“ (set_erfassen) und „ein Posten einer älteren App …“
- *   B  in AddSetRequest (setNumber = Servermodell) `@SerialName("set_number")` → `"set_nr"` → bleibt grün:
- *      Eine Änderung am Netzmodell erreicht die Platte nicht mehr
- *   C  in Ausgangsform.targetFrom das Nachsehen in `anfrage` gestrichen → rot „auch ein unlesbarer
- *      Posten nennt seine Nummer“
- *   D  ein Beispiel aus VERSION_1 gestrichen → rot „every kind of version 1 has an example“
+ * Counter-checks (measured with kotlinc against core-model and core-offline):
+ *   A  gegenproben/ausgangsform-feldname-geaendert.patch (SetRequestF1 `set_number` → `setNumber`) → red “reads and writes every
+ *      frozen row” (set_erfassen) and “an item of an older app …”
+ *   B  in AddSetRequest (setNumber = server model) `@SerialName("set_number")` → `"set_nr"` → stays green:
+ *      a change to the network model no longer reaches the disk
+ *   C  in Ausgangsform.targetFrom the lookup in `anfrage` struck → red “even an unreadable
+ *      item names its number”
+ *   D  an example struck from VERSION_1 → red “every kind of version 1 has an example”
  */
 class InitialFormTest {
 

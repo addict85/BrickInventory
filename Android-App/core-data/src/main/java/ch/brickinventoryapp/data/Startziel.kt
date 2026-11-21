@@ -3,7 +3,7 @@ package ch.brickinventoryapp.data
 import android.app.Activity
 
 /**
- * Die Activity, die eine angetippte Meldung öffnet. Die Datenschicht kennt die App
- * nicht; die App reicht ihre Klasse über Hilt herein (di/AppModule.kt).
+ * The activity a tapped notification opens. The data layer does not know the app;
+ * the app passes its class in via Hilt (di/AppModule.kt).
  */
 class Startziel(val aktivitaet: Class<out Activity>)

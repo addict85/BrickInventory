@@ -38,24 +38,24 @@ import kotlinx.coroutines.SupervisorJob
 import java.io.File
 
 /**
- * Schutz auf dem Gerät: Ein Tipp, während ein fremdes Fenster einen Teil des
- * Bildschirms verdeckt, zählt in geschützten Bereichen nicht; ohne Wahl des
- * Nutzers zeigt die App-Übersicht kein Vorschaubild.
+ * Protection on the device: a tap while a foreign window covers part of the
+ * screen does not count in protected areas; without a choice by the
+ * user the app overview shows no thumbnail.
  *
- * Gegenproben (Robolectric, nur in der CI messbar; Job `gegenproben`):
- *   (a) Ueberdeckungsschutz() legt den Filter nicht an → rot „ein teilweise
- *       verdecktes Fenster …“ (gegenproben/teilweise-verdeckt-durchgelassen.patch)
- *   (b) hidePreview() mit Vorgabe false → rot „eine neue Installation
- *       verbirgt die Vorschau …“ (gegenproben/vorschau-vorgabe-aus.patch)
- *   (c) Schrittsperre zeigt den Inhalt ohne Bestätigung (`if (entsperrt || grund.isNotEmpty())`) →
- *       rot „the management shows itself only after the device lock“
+ * Counter-checks (Robolectric, measurable only in CI; job `gegenproben`):
+ *   (a) Ueberdeckungsschutz() does not install the filter → red “a partially
+ *       obscured window …” (gegenproben/teilweise-verdeckt-durchgelassen.patch)
+ *   (b) hidePreview() with default false → red “a new installation
+ *       hides the preview …” (gegenproben/vorschau-vorgabe-aus.patch)
+ *   (c) Schrittsperre shows the content without confirmation (`if (entsperrt || grund.isNotEmpty())`) →
+ *       red “the management shows itself only after the device lock”
  *       (gegenproben/verwaltung-ohne-geraetesperre.patch)
- *   (d) saveServerUrl() ruft die Hörer nicht → rot „ein anderer Server bricht
- *       laufende Aufrufe ab …“ (gegenproben/serverwechsel-ohne-abbruch.patch)
- *   (e) saveServerUrl() vergleicht beim Token nur die Herkunft → rot „ein anderer
- *       Pfad auf demselben Host verwirft den Token“ (gegenproben/pfadwechsel-behaelt-token.patch)
- *   (f) Sichtschutz() ohne Ueberdeckungsschutz() → rot „heikle Seiten sind
- *       vor Ueberlagerung geschuetzt“ (gegenproben/sichtschutz-ohne-ueberdeckung.patch)
+ *   (d) saveServerUrl() does not call the listeners → red “a different server cancels
+ *       running calls …” (gegenproben/serverwechsel-ohne-abbruch.patch)
+ *   (e) saveServerUrl() compares only the origin for the token → red “a different
+ *       path on the same host discards the token” (gegenproben/pfadwechsel-behaelt-token.patch)
+ *   (f) Sichtschutz() without Ueberdeckungsschutz() → red “sensitive pages are
+ *       protected against overlays” (gegenproben/sichtschutz-ohne-ueberdeckung.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class DevicesProtectionTest {
@@ -82,7 +82,7 @@ class DevicesProtectionTest {
             0, 0, 1f, 1f, 0, 0, InputDevice.SOURCE_TOUCHSCREEN, flags)
     }
 
-    /** Ein Tipp, wie das System ihn liefert: über die Rückrufe des Fensters. */
+    /** A tap as the system delivers it: via the window's callbacks. */
     private fun tap(flags: Int) {
         val middle = compose.onNodeWithText("Tippen").fetchSemanticsNode().boundsInWindow.center
         compose.runOnUiThread {
@@ -117,9 +117,9 @@ class DevicesProtectionTest {
     }
 
     /**
-     * Wächter für jede heikle Seite: Wer Sichtschutz oder die Schrittsperre
-     * setzt, bekommt den Schutz vor Überlagerung mit — auch vor der Bestätigung. Nur
-     * der app-weite Wunsch „Vorschau verbergen“ bleibt ohne.
+     * Guard for every sensitive page: whoever sets Sichtschutz or the Schrittsperre
+     * gets the overlay protection along — also before the confirmation. Only
+     * the app-wide wish „Vorschau verbergen“ stays without.
      */
     @Test
     fun `sensitive pages are protected against overlays`() {
@@ -163,7 +163,7 @@ class DevicesProtectionTest {
         compose.onNodeWithText("Verwalteraktion").assertExists()
     }
 
-    /** Token- und Geräteablage auf einem eigenen DataStore, wie Hilt sie verbindet. */
+    /** Token and device store on their own DataStore, as Hilt wires them. */
     private fun stores(): Pair<TokenAblage, DevicesStore> {
         val ctx = ApplicationProvider.getApplicationContext<Context>()
         val store = PreferenceDataStoreFactory.create { File(ctx.filesDir, "test-${System.nanoTime()}.preferences_pb") }
@@ -176,8 +176,8 @@ class DevicesProtectionTest {
     }
 
     /**
-     * Die Verdrahtung für M1 (pruef6): Die Server-Clients hören hier mit (di/ServerClient.followsTheServer).
-     * Ein anderer Pfad auf demselben Host ein anderer Server.
+     * The wiring for M1 (pruef6): the server clients listen in here (di/ServerClient.followsTheServer).
+     * A different path on the same host is a different server.
      */
     @Test
     fun `a different server cancels running calls, the same one does not`() {
@@ -200,7 +200,7 @@ class DevicesProtectionTest {
         assertEquals("Der TLS-Kontext wird nach dem Umschalten neu gebaut", 1, userCa)
     }
 
-    /** Der Token hält nur die Herkunft; den Pfad trägt die bisherige Adresse bei. */
+    /** The token holds only the origin; the previous address contributes the path. */
     @Test
     fun `a different path on the same host discards the token`() {
         val (prefs, _) = stores()

@@ -8,22 +8,22 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * Das Werkzeug des CI-Jobs `gegenproben` (tools/gegenproben.py), ausgeführt in
- * einem Wegwerf-Repository mit einem Gradle-Ersatz: Der schreibt einen
- * JUnit-Bericht, rot genau dann, wenn in der Datei „kaputt“ steht.
+ * The tool of the CI job `gegenproben` (tools/gegenproben.py), executed in
+ * a throwaway repository with a Gradle stand-in: it writes a
+ * JUnit report, red exactly when the file contains „kaputt“.
  *
- * Gegenproben:
- *   A  in miss() `if not rot` gestrichen → rot „eine Gegenprobe, die grün
- *      bleibt, macht den Job rot“
- *   B  einen fehlenden Bericht als rot gezählt (`return True, …`) → rot „ohne
- *      Testbericht zählt nichts als rot“
- *   C  `git apply -R` weggelassen → rot „eine rote Gegenprobe besteht …“
- *      (die Datei bleibt kaputt)
- *   D  in betroffen() immer alle Patches zurückgegeben → rot „auf einem Push misst
- *      es nur …“ (harmlos-anderswo blieb grün) und „ohne betroffenen Patch …“ (Rückgabe 1)
- *   E  `return 0` bei leerer Auswahl gestrichen → rot „ohne betroffenen Patch …“
- *   F  die Leer-Prüfung wieder hinter die Aufteilung auf Teile → rot „auf einem Push
- *      misst es nur …“ (Teil 2/2 gibt 1 zurück, „Keine Gegenproben unter …“)
+ * Counter-checks:
+ *   A  in miss() `if not rot` deleted → red “a counter-check that stays
+ *      green makes the job red”
+ *   B  a missing report counted as red (`return True, …`) → red “without
+ *      a test report nothing counts as red”
+ *   C  `git apply -R` omitted → red “a red counter-check passes …”
+ *      (the file stays broken)
+ *   D  in betroffen() always all patches returned → red “on a push it measures
+ *      only …” (harmlos-anderswo stayed green) and “without an affected patch …” (exit 1)
+ *   E  `return 0` for an empty selection deleted → red “without an affected patch …”
+ *   F  the emptiness check again after the split into parts → red “on a push it
+ *      measures only …” (part 2/2 returns 1, „Keine Gegenproben unter …“)
  */
 class CounterChecksToolTest {
 
@@ -59,7 +59,7 @@ class CounterChecksToolTest {
         return text
     }
 
-    /** Eine Gegenprobe, die [ziel] auf [inhalt] setzt, mit Kopf. */
+    /** A counter-check that sets [ziel] to [inhalt], with header. */
     private fun probe(name: String, inhalt: String, rot: String? = null, ziel: File = datei) {
         ziel.writeText("$inhalt\n")
         val diff = git("diff")
@@ -131,7 +131,7 @@ class CounterChecksToolTest {
         assertEquals(text, 0, code)
         assertTrue(text, text.contains("1 von 2 Gegenproben betroffen") && text.contains("rot macht-kaputt.patch"))
         assertTrue(text, !text.contains("harmlos-anderswo"))
-        // Weniger betroffene Patches als Teile: Der leere Teil ist grün, nicht „keine Gegenproben“.
+        // Fewer affected patches than parts: the empty part is green, not „keine Gegenproben“.
         val (leer, ohne) = lauf(basis, teil = "2/2")
         assertEquals(ohne, 0, leer)
         assertTrue(ohne, ohne.contains("Teil 2/2"))

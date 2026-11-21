@@ -1,23 +1,23 @@
 package ch.brickinventoryapp.model.ui
 
 /**
- * Gemerkte Rollpositionen je Reiter. Liegt unter der Oberfläche, weil der Zustand
- * (AppViewModel) den Merker hält und die Bildschirme ihn nur lesen: So kennt die
- * Zustandsschicht kein Compose-Modul.
+ * Remembered scroll positions per tab. Lies below the UI because the state
+ * (AppViewModel) holds the memory and the screens only read it: this way the
+ * state layer knows no Compose module.
  */
 
 interface ScrollMemory {
     fun lies(schluessel: String): Pair<Int, Int>
     fun merke(schluessel: String, index: Int, offset: Int)
 
-    /** Nach einem Filterwechsel: Die alte Stelle zeigt auf Einträge, die es nicht mehr gibt. */
+    /** After a filter change: the old position points to entries that no longer exist. */
     fun vergiss(schluessel: String)
 }
 
-/** Für Tests ohne Hilt. */
+/** For tests without Hilt. */
 fun ScrollMemory(): ScrollMemory = ScrollStorage()
 
-/** Eine Instanz für die ganze App; Hilt bindet sie im Zustandsmodul als Singleton. */
+/** One instance for the whole app; Hilt binds it as singleton in the state module. */
 class ScrollStorage : ScrollMemory {
     private val positionen = mutableMapOf<String, Pair<Int, Int>>()
 

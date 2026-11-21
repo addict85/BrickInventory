@@ -3,9 +3,9 @@ package ch.brickinventoryapp.model.util
 import java.net.URI
 
 /**
- * Die Adresse für die Authenticator-App: nur `otpauth://totp|hotp/…`. Sie kommt
- * vom Server und geht per ACTION_VIEW hinaus; ein anderes Schema (`intent:`,
- * `https:`, `content:`) öffnete sonst ein beliebiges Ziel und gäbe ihm das Geheimnis.
+ * The address for the authenticator app: only `otpauth://totp|hotp/…`. It comes
+ * from the server and goes out via ACTION_VIEW; another scheme (`intent:`,
+ * `https:`, `content:`) would otherwise open an arbitrary target and give it the secret.
  */
 fun otpauthAddress(url: String?): String? {
     val roh = url?.trim()?.takeIf { it.isNotEmpty() && it.none(Char::isWhitespace) } ?: return null

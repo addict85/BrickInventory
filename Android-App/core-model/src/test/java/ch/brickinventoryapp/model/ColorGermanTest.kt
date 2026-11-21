@@ -6,13 +6,13 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Farbnamen auf Deutsch wie in der Webapp: „Trans-Clear“ hiess in der App
- * „Trans-Clear“, in der Webapp „Trans-Klar“.
+ * Color names in German as in the web app: „Trans-Clear“ was called
+ * „Trans-Clear“ in the app, „Trans-Klar“ in the web app.
  *
- * Gegenproben:
- *   A  in uebersetze() die Vorsilben nicht angehängt → rot „zusammengesetzte
- *      Farben …“ (Dunkel Bläulich Grau)
- *   B  im Wortschatz "tan" entfernt → rot „derselbe Wortschatz …“
+ * Counter-checks:
+ *   A  in uebersetze() the prefixes not attached → red “compound
+ *      colors …” (Dunkel Bläulich Grau)
+ *   B  "tan" removed from the vocabulary → red “the same vocabulary …”
  */
 class ColorGermanTest {
 
@@ -31,12 +31,12 @@ class ColorGermanTest {
         assertEquals("", ColorGerman.translate(""))
     }
 
-    /** Beide Oberflächen sollen dieselbe Farbe gleich nennen. */
+    /** Both UIs shall name the same color the same way. */
     @Test
     fun `the same vocabulary as in the web app`() {
         val js = File("../../Web-App/public/i18n.js").readText()
         val block = js.substring(js.indexOf("const COLOR_WORDS_DE"), js.indexOf("};", js.indexOf("const COLOR_WORDS_DE")))
-        // Schlüssel mit oder ohne Anführung: Der Formatierer lässt sie weg, wo JavaScript sie nicht braucht.
+        // Keys with or without quotes: the formatter leaves them out where JavaScript does not need them.
         val web = Regex("""(?:'([^']+)'|([A-Za-z_]\w*))\s*:\s*'([^']*)'""").findAll(block)
             .associate { (it.groupValues[1].ifEmpty { it.groupValues[2] }) to it.groupValues[3] }
         assert(web.size > 10) { "Im Block COLOR_WORDS_DE nur ${web.size} Wörter gefunden – Muster veraltet?" }

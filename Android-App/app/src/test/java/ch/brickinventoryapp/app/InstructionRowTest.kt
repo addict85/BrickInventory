@@ -4,19 +4,19 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Die GANZE Anleitungszeile oeffnet das PDF — nicht nur das Symbol rechts.
+ * The WHOLE instruction row opens the PDF — not only the icon on the right.
  *
- * ── Warum das eine Pruefung braucht ─────────────────────────────────────────
+ * ── Why this needs a check ─────────────────────────────────────────────────
  *
- * Eine Antippflaeche ist nichts, was man im Quelltext SIEHT: `clickable` steht
- * an einem Modifier, drei Zeilen ueber dem, was es antippbar macht. Wer die
- * Zeile spaeter umbaut — ein Symbol dazu, die Spalten anders geschnitten —,
- * nimmt den Modifier mit und merkt nichts davon, weil alles weiter aussieht wie
- * vorher.
+ * A tap area is nothing one SEES in the source: `clickable` stands
+ * on a modifier, three lines above what it makes tappable. Whoever reworks the
+ * row later — an icon added, the columns cut differently —
+ * takes the modifier along and notices nothing, because everything still looks as
+ * before.
  *
- * Geprueft wird deshalb die STRUKTUR und nicht, dass irgendwo „clickable"
- * vorkommt: Daran haengt die Handlung (`oeffneAnleitung`), am Symbol haengt
- * KEIN zweiter Knopf mehr, und der Papierkorb hat weiter seinen eigenen.
+ * Therefore the STRUCTURE is checked and not that „clickable" occurs
+ * somewhere: the action (`oeffneAnleitung`) hangs on it, NO second button hangs
+ * on the icon any more, and the trash keeps its own.
  */
 class InstructionRowTest {
 
@@ -25,8 +25,8 @@ class InstructionRowTest {
     }
 
     /**
-     * Selbstnachweis gegen die stille Null: Liest diese Pruefung die falsche
-     * Datei, findet sie nichts und waere gruen, ohne etwas geprueft zu haben.
+     * Self-proof against the silent zero: if this check reads the wrong
+     * file, it finds nothing and would be green without having checked anything.
      */
     private fun zeilen(): List<String> {
         assert(quelle.contains("fun LazyListScope.setDetailInstructionsSection")) {
@@ -37,19 +37,19 @@ class InstructionRowTest {
     }
 
     /**
-     * Der ganze Aufruf ab einer Fundzeile — bis die Klammerbilanz wieder auf
-     * null steht.
+     * The whole call from a match line — until the bracket balance is back at
+     * zero.
      *
-     * ── Warum nicht ein paar Zeilen davor ───────────────────────────────────
+     * ── Why not a few lines before ─────────────────────────────────────────
      *
-     * Die erste Fassung dieser Datei schnitt sechs Zeilen oberhalb des Symbols
-     * und sah nach, ob dort ein IconButton steht. Die Gegenprobe gegen den
-     * ALTEN Stand hat sie widerlegt: Dort lagen zwischen `IconButton(` und dem
-     * Symbol siebzehn Zeilen Handlung, das Fenster griff daneben, und die
-     * Pruefung war am kaputten Stand GRUEN. Eine Pruefung, die ihren eigenen
-     * Anlass nicht faengt, prueft nichts.
+     * The first version of this file cut six lines above the icon
+     * and checked whether an IconButton stands there. The counter-check against the
+     * OLD state refuted it: there seventeen lines of action lay between `IconButton(` and the
+     * icon, the window missed, and the
+     * check was GREEN on the broken state. A check that does not catch its own
+     * occasion checks nothing.
      *
-     * Deshalb wird jetzt der Block gelesen statt eine Umgebung geschaetzt.
+     * Therefore the block is now read instead of estimating a surrounding.
      */
     private fun block(ab: Int): String {
         val z = zeilen()
@@ -66,7 +66,7 @@ class InstructionRowTest {
         return sb.toString()
     }
 
-    /** Die Zeilen VOR einem Fundort, Kommentare sind schon raus. */
+    /** The lines BEFORE a match, comments are already out. */
     private fun davor(treffer: String, howMany: Int): String {
         val z = zeilen()
         val i = z.indexOfFirst { it.contains(treffer) }
@@ -78,9 +78,9 @@ class InstructionRowTest {
 
     @Test
     fun `the whole row opens the instructions`() {
-        // In ZEILEN gemessen und nicht in Zeichen (siehe Quellen): Ein
-        // wachsender Erklaerabsatz hat in dieser Reihe schon viermal eine
-        // Pruefung gebrochen, die ein festes Zeichenfenster schnitt.
+        // Measured in LINES and not in characters (see Quellen): a
+        // growing explanatory paragraph has already broken a check four times in this series
+        // that cut a fixed character window.
         assert(Regex("""clickable\([^)]*oeffneAnleitung""").containsMatchIn(quelle)) {
             "Am `clickable` der Anleitungszeile haengt nicht `oeffneAnleitung`. " +
                 "Dann ist wieder nur ein Teil der Zeile antippbar — genau Marcos Befund."
@@ -89,11 +89,11 @@ class InstructionRowTest {
 
     @Test
     fun `opening does not depend on a button`() {
-        // Kein IconButton dieser Datei darf das Oeffnen tragen — weder
-        // unmittelbar (onOpenPdf) noch ueber die benannte Handlung. Ein Knopf
-        // daneben waere ein zweites Ziel fuer dasselbe, und die Sprachausgabe
-        // nennte ihn als eigenes Bedienelement neben der Zeile, die schon
-        // dasselbe tut.
+        // No IconButton of this file may carry the opening — neither
+        // directly (onOpenPdf) nor via the named action. A button
+        // next to it would be a second target for the same thing, and the screen reader
+        // would name it as a separate control next to the row that already
+        // does the same.
         val z = zeilen()
         val guilty = z.indices
             .filter { "IconButton(" in z[it] }
@@ -108,9 +108,9 @@ class InstructionRowTest {
 
     @Test
     fun `the icon stays as a hint`() {
-        // Ohne es sieht die Zeile aus wie Text. Es ist der einzige Hinweis
-        // darauf, dass sich hier etwas oeffnet — Antippflaechen sind
-        // unsichtbar.
+        // Without it the row looks like text. It is the only hint
+        // that something opens here — tap areas are
+        // invisible.
         assert(quelle.contains("Icons.AutoMirrored.Filled.OpenInNew")) {
             "Das Oeffnen-Symbol ist aus der Anleitungszeile verschwunden. Dann " +
                 "ist nicht mehr zu sehen, dass die Zeile etwas tut."
@@ -119,10 +119,10 @@ class InstructionRowTest {
 
     @Test
     fun `the trash stays a separate button`() {
-        // Loeschen darf NICHT an der Zeile haengen: Es liegt ausserhalb des
-        // antippbaren Bereichs, als Geschwister und nicht als Kind. Damit haengt
-        // nichts daran, welcher von zwei verschachtelten Antippbereichen ein
-        // Tippen bekommt — und ein Fehlgriff tut hier weh.
+        // Deleting must NOT hang on the row: it lies outside the
+        // tappable area, as a sibling and not as a child. That way nothing depends
+        // on which of two nested tap areas gets a
+        // tap — and a mistap hurts here.
         assert(davor("onAnleitungLoeschen(id)", 3).contains("IconButton(")) {
             "Das Loeschen einer Anleitung haengt an keinem eigenen Knopf mehr."
         }

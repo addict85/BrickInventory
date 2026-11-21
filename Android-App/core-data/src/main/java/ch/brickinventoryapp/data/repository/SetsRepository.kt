@@ -9,9 +9,9 @@ import ch.brickinventoryapp.model.local.Local
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Der Set-Bestand: die Galerie in der Ablage und was sie ändert. Merkliste,
- * Preisalarme, Katalogauskünfte und Dateien haben je ein eigenes Repository —
- * ein Bildschirm hängt nur an dem, was er braucht.
+ * The set stock: the gallery in the store and what changes it. Wishlist,
+ * price alerts, catalog information and files each have their own repository —
+ * a screen depends only on what it needs.
  */
 interface SetsRepository {
     suspend fun addSet(setNumber: String, quantity: Int = 1, purchasePrice: Geld? = null,
@@ -25,19 +25,19 @@ interface SetsRepository {
     suspend fun deleteSet(setNumber: String): Ergebnis<Unit>
 
     /**
-     * Die Galerie aus der Ablage nach Suche, Thema und Lagerort, sortiert wie am
-     * Server — die Quelle der Anzeige; [aktualisiereSets] füllt sie. Die Sicht über
-     * gewählte Konten ist ein eigenes Lesemodell (Kontosicht).
+     * The gallery from the store by search, theme and storage location, sorted as on the
+     * server — the source of the display; [aktualisiereSets] fills it. The view over
+     * selected accounts is its own read model (Kontosicht).
      */
     fun observeSets(suche: String? = null, thema: String? = null, lagerort: String? = null,
                       sort: Setsortierung? = null): Flow<Local<SetAnsicht>>
 
-    /** Alle Seiten der ungefilterten Galerie in die Ablage; gezeigt wird die Ablage. */
+    /** All pages of the unfiltered gallery into the store; the store is shown. */
     suspend fun aktualisiereSets(): Ergebnis<Unit>
 
     suspend fun moveSet(setNumber: String, fromUserId: Int?, toUserId: Int,
                         acquisitionIds: List<Int>? = null): Ergebnis<Unit>
 
-    /** Lagerort eines Sets setzen. Leerer Text löscht ihn. */
+    /** Set the storage location of a set. Empty text deletes it. */
     suspend fun setSetStorage(setNumber: String, ort: String): Ergebnis<Unit>
 }

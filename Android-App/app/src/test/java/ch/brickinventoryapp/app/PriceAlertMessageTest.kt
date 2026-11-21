@@ -13,12 +13,12 @@ import org.robolectric.RobolectricTestRunner
 import android.content.Context
 
 /**
- * Ein Preisalarm nennt Set und Preis nur entsperrt; auf dem Sperrbildschirm steht
- * eine Ersatzfassung ohne beides.
+ * A price alert names set and price only when unlocked; on the lock screen a
+ * public version without either stands.
  *
- * Gegenprobe (Robolectric, nur in der CI messbar; Job `gegenproben`):
- *   setVisibility(VISIBILITY_PRIVATE) und setPublicVersion() entfernt → rot
- *   „auf dem Sperrbildschirm …“ (gegenproben/preisalarm-oeffentlich.patch)
+ * Counter-check (Robolectric, measurable only in CI; job `gegenproben`):
+ *   setVisibility(VISIBILITY_PRIVATE) and setPublicVersion() removed → red
+ *   “on the lock screen …” (gegenproben/preisalarm-oeffentlich.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class PriceAlertMessageTest {

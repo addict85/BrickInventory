@@ -18,14 +18,14 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Die eine Stelle, die aus einer Fehlerart einen Satz macht, mit echten Ressourcen:
- * Schickt der Server einen Satz, gilt seiner — er kennt den Fall genauer und antwortet
- * in der Sprache des Kontos —, auch bei 401 und mit Fehlercode. Ohne Satz formuliert
- * die App selbst.
+ * The one place that turns an error kind into a sentence, with real resources:
+ * if the server sends a sentence, its sentence applies — it knows the case better and answers
+ * in the account's language —, also for 401 and with an error code. Without a sentence
+ * the app formulates itself.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   servermeldung-ohne-vorrang   die Prüfung auf fehler.message entfernt → rot „der Satz des Servers …“
- *   servermeldung-nach-code      der Fehlercode vor der Servermeldung → rot „der Satz des Servers …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   servermeldung-ohne-vorrang   the check for fehler.message removed → red “the server's sentence …”
+ *   servermeldung-nach-code      the error code before the server message → red “the server's sentence …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

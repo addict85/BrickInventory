@@ -7,19 +7,19 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * tools/manifest-check.py gegen Ausgaben im Format von
- * `aapt2 dump xmltree --file AndroidManifest.xml`, mit der echten Positivliste.
+ * tools/manifest-check.py against outputs in the format of
+ * `aapt2 dump xmltree --file AndroidManifest.xml`, with the real allow list.
  *
- * Gegenproben:
- *   manifest-export-ungeprueft  der Vergleich mit der Positivliste gestrichen → rot
- *                               „eine fremde exportierte Komponente …“
- *   manifest-debuggable-egal    die Prüfung auf debuggable gestrichen → rot „ein debuggable …“
- * ProfileInstallReceiver wieder in manifest-exported.txt →
- *                               rot „herausgenommene Bibliothekskomponenten …“
- * die Schleife über uses-permission gestrichen →
- *                               rot „eine Berechtigung ausserhalb der Liste …“
- *   manifest-telemetrie-ungeprueft  die Prüfung der datatransport-Backends gestrichen →
- *                               rot „ein Telemetrie-Backend von ML Kit …“
+ * Counter-checks:
+ *   manifest-export-ungeprueft  the comparison with the allow list deleted → red
+ *                               “a foreign exported component …”
+ *   manifest-debuggable-egal    the check for debuggable deleted → red “a debuggable …”
+ * ProfileInstallReceiver again in manifest-exported.txt →
+ *                               red “removed library components …”
+ * the loop over uses-permission deleted →
+ *                               red “a permission outside the list …”
+ *   manifest-telemetrie-ungeprueft  the check of the datatransport backends deleted →
+ *                               red “a telemetry backend of ML Kit …”
  */
 class ManifestCheckTest {
 
@@ -78,7 +78,7 @@ class ManifestCheckTest {
         assertTrue(text2, "BIND_APPWIDGET" in text2)
     }
 
-    /** Beide kommen aus Bibliotheken; das Manifest nimmt sie heraus. */
+    /** Both come from libraries; the manifest removes them. */
     @Test
     fun `removed library components are not in the allow list`() {
         for ((art, name, right) in listOf(
@@ -116,7 +116,7 @@ class ManifestCheckTest {
         assertEquals(1, pruefe(manifest(*gut, application = testOnly)).first)
     }
 
-    /** ML Kit meldet über Googles datatransport Nutzungsdaten; die App nimmt dessen Backend heraus. */
+    /** ML Kit reports usage data via Google's datatransport; the app removes its backend. */
     @Test
     fun `a telemetry backend of ML Kit stands out, the service without backend does not`() {
         val dienst = komponente("service", "com.google.android.datatransport.runtime.backends.TransportBackendDiscovery", false)

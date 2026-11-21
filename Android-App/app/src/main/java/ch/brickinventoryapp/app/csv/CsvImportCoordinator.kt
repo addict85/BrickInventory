@@ -18,10 +18,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Folgt einem CSV-Import und steuert dazu den Vordergrund-Dienst. Getrennt vom
- * ViewModel, weil Dienst und Bestandsabgleich Nebenwirkungen der App sind; das
- * ViewModel zeigt nur [zustand]. Ein Singleton, damit ein neues ViewModel nach
- * einer neuen Activity denselben Balken sieht.
+ * Follows a CSV import and controls the foreground service for it. Separate from the
+ * ViewModel because service and stock sync are side effects of the app; the
+ * ViewModel only shows [zustand]. A singleton so that a new ViewModel after
+ * a new activity sees the same bar.
  */
 @Singleton
 class CsvImportCoordinator @Inject constructor(
@@ -34,9 +34,9 @@ class CsvImportCoordinator @Inject constructor(
     private val folgt = AtomicBoolean(false)
 
     /**
-     * Folgt dem Strom, solange [angemeldet] true meldet, und endet mit dem Aufrufer.
-     * Abgemeldet ist der Balken leer und die Verbindung zu; ein laufender Dienst hält an.
-     * Folgt schon jemand, kehrt der Aufruf sofort zurück: eine Verbindung, ein Balken.
+     * Follows the stream as long as [angemeldet] reports true, and ends with the caller.
+     * Signed out the bar is empty and the connection closed; a running service stops.
+     * If someone already follows, the call returns immediately: one connection, one bar.
      */
     suspend fun sequence(angemeldet: Flow<Boolean>) {
         if (!folgt.compareAndSet(false, true)) return
@@ -52,7 +52,7 @@ class CsvImportCoordinator @Inject constructor(
     }
 
     private suspend fun process(s: CsvImportStatusView) {
-        // Vor dem Überschreiben entscheiden — danach wäre „vorher“ schon der neue Zustand.
+        // Decide before overwriting — afterwards “before” would already be the new state.
         val sequence = csvSequence(warBeforeActive = _zustand.value.lauf.laeuft, status = s.status)
         if (sequence == CsvSequence.DIENST_STARTEN) dienst.start()
         _zustand.value = CsvImportUiState(
@@ -74,7 +74,7 @@ class CsvImportCoordinator @Inject constructor(
         }
     }
 
-    /** Der Balken bleibt kurz stehen, damit man das Ergebnis lesen kann. */
+    /** The bar stays briefly so that the result can be read. */
     private suspend fun cleanAb() {
         delay(BAR_STANDS_MS)
         _zustand.value = CsvImportUiState()

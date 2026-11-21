@@ -36,23 +36,23 @@ import java.lang.reflect.Method
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * Die Schnittstelle zum Server ist nach Bereichen geteilt: Jedes Repository
- * sieht nur seinen, jede Adresse steht in genau einem, und Retrofit baut die
- * Bereiche samt geerbter Adressen.
+ * The interface to the server is split by areas: every repository
+ * sees only its own, every address is in exactly one, and Retrofit builds the
+ * areas including inherited addresses.
  *
- * Gegenproben:
- *   A  SetsRepository wieder mit `api: BrickApiService` → rot „jedes Repository
- *      sieht nur seinen Bereich“
- *   B  getMe zusätzlich in VouchersApi deklariert → rot „jede Adresse steht in
- *      genau einem Bereich“
- *   C  `: BestandsInhaltApi` an SetsApi entfernt → übersetzt nicht mehr
- *      (SetsRepository ruft getParts) — die Vererbung trägt
+ * Counter-checks:
+ *   A  SetsRepository again with `api: BrickApiService` → red “every repository
+ *      sees only its area”
+ *   B  getMe additionally declared in VouchersApi → red “every address is in
+ *      exactly one area”
+ *   C  `: BestandsInhaltApi` removed from SetsApi → no longer compiles
+ *      (SetsRepository calls getParts) — the inheritance carries
  *
- * Seit der Teilung in neun Bereiche :
- *   D  CatalogRepository mit `api: AccountApi` → übersetzt nicht (unresolved reference
- *      'getCatalogSets' …) — der Bereich ist im Typ, nicht nur im Namen
- *   E  getMinifigs zusätzlich in MinifigsApi → rot „jede Adresse steht in genau einem
- *      Bereich“ (Doppelt deklariert: {getMinifigs=2})
+ * Since the split into nine areas:
+ *   D  CatalogRepository with `api: AccountApi` → does not compile (unresolved reference
+ *      'getCatalogSets' …) — the area is in the type, not only in the name
+ *   E  getMinifigs additionally in MinifigsApi → red “every address is in exactly one
+ *      area” (Doppelt deklariert: {getMinifigs=2})
  */
 class ApiAreasTest {
 
@@ -71,8 +71,8 @@ class ApiAreasTest {
             SchrittbindungImpl::class to DeviceApi::class.java,
         )
         for ((repo, api) in erwartet) {
-            // Mit Vorgabewert (Offlineablage) erzeugt Kotlin einen zweiten Konstruktor;
-            // der Bereich steht in beiden vorn.
+            // With a default value (Offlineablage) Kotlin generates a second constructor;
+            // the area stands first in both.
             val typ = repo.java.constructors.map { it.parameterTypes.first() }.distinct().single()
             assertEquals(repo.simpleName, api, typ)
         }
@@ -80,7 +80,7 @@ class ApiAreasTest {
 
     @Test
     fun `every address is in exactly one area`() {
-        // Ohne die Hilfsmethoden, die Kotlin für Vorgabewerte erzeugt (…$default).
+        // Without the helper methods Kotlin generates for default values (…$default).
         fun adressen(m: Array<Method>) = m.filter { '$' !in it.name && !it.isSynthetic }.map { it.name }
         val namen = areas.flatMap { b -> adressen(b.java.declaredMethods) }
         val doppelt = namen.groupingBy { it }.eachCount().filterValues { it > 1 }

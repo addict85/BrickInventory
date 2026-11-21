@@ -9,10 +9,10 @@ import javax.inject.Singleton
 import ch.brickinventoryapp.model.data.ScopeFilter
 
 /**
- * Wo die Wahl des Konto- und Lagerortfilters liegt: nur im Speicher. Die Werte nennen Konten
- * und Lagerorte und gelten ohnehin nur bis zur nächsten Anmeldung; auf der Platte lägen sie
- * im Klartext neben der Adresse. Nach einem Prozessende gilt wieder „alle“, wie für die
- * Rollposition. Getrennt von [ScopeFilter], damit die Regeln dort ohne Android auskommen.
+ * Where the choice of the account and storage location filter lies: only in memory. The values name accounts
+ * and storage locations and apply only until the next sign-in anyway; on disk they would lie
+ * in plaintext next to the address. After a process end „all“ applies again, as for the
+ * scroll position. Separate from [ScopeFilter] so that the rules there get by without Android.
  */
 @Singleton
 class ScopeFilterStorage @Inject constructor() {
@@ -29,19 +29,19 @@ class ScopeFilterStorage @Inject constructor() {
     }
 
     /**
-     * Kontofilter aller Ansichten bei jeder Anmeldung zurücksetzen: Ein überlebender
-     * Filter auf ein einzelnes Konto sähe nach dem Login aus, als sei die halbe
-     * Sammlung verschwunden. Der Lagerortfilter gleich mit, aus demselben Grund.
+     * Reset the account filter of all views on every sign-in: a surviving
+     * filter on a single account would look after login as if half the
+     * collection had disappeared. The storage location filter along with it, for the same reason.
      */
     fun resetAll() {
         werte.value = emptyMap()
     }
 
-    // ═══ Lagerortfilter — je Ansicht, wie der Kontofilter (public/js/account-filter.js) ═══
+    // ═══ Storage location filter — per view, like the account filter (public/js/account-filter.js) ═══
 
     private fun storageKey(view: ScopeFilter.View) = "lager_${view.key}"
 
-    /** Leerer Text = nicht gefiltert. */
+    /** Empty text = not filtered. */
     fun storageFlow(view: ScopeFilter.View): Flow<String> =
         werte.map { it[storageKey(view)] ?: "" }
 

@@ -11,13 +11,13 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Kontowahl und Alarmrichtung als Fachtypen: Was der Filter gespeichert hat, wird
- * zur Wahl und wieder zum Wert für `accounts=`; die Richtung liest und schreibt die
- * Wörter des Servers.
+ * Account choice and alarm direction as domain types: what the filter saved becomes
+ * the choice and again the value for `accounts=`; the direction reads and writes the
+ * server's words.
  *
- * Gegenproben (gegenproben/kontoauswahl-konto-falsch.patch, alarmrichtung-ueber-falsch.patch):
- *   Konto.anfrage mit Vorsatz „konto“ → rot „every saved choice becomes the same value again“
- *   UEBER mit der Kennung „über“ → rot „die Richtung liest und schreibt die Wörter des Servers“
+ * Counter-checks (gegenproben/kontoauswahl-konto-falsch.patch, alarmrichtung-ueber-falsch.patch):
+ *   Konto.anfrage with prefix „konto“ → red “every saved choice becomes the same value again”
+ *   UEBER with the identifier „über“ → red “the direction reads and writes the server's words”
  */
 class KontoauswahlTest {
 
@@ -44,7 +44,7 @@ class KontoauswahlTest {
         assertEquals(Alarmrichtung.UEBER, alarm.direction)
         assertEquals("""{"direction":"ueber","threshold":5.0,"condition":"U"}""",
             Json.encodeToString(PreisalarmRequest.serializer(), PreisalarmRequest(direction = Alarmrichtung.UEBER, threshold = 5.0, condition = Zustand.GEBRAUCHT)))
-        // Unbekanntes wie beim Server: „unter“, statt die Liste zu verwerfen.
+        // Unknown as at the server: „unter“, instead of discarding the list.
         assertEquals(Alarmrichtung.UNTER, json.decodeFromString(Preisalarm.serializer(), """{"direction":"seitwaerts"}""").direction)
     }
 }

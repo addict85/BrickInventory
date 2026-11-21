@@ -15,52 +15,52 @@ import okhttp3.Request
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Die Schritte eines CSV-Imports, solange jemand sammelt; im Test eine Folge aus dem Speicher. */
+/** The steps of a CSV import as long as someone collects; in the test a sequence from memory. */
 interface CsvImportStream {
     fun stream(): Flow<CsvImportSseClient.Event>
 }
 
 /**
- * Persistenter SSE-Client für den CSV-Import-Kanal.
- * Die Verbindung bleibt auch ohne laufenden Import offen: Startet ihn jemand auf einem anderen
- * Gerät, kommt das erste Ereignis sofort statt erst beim nächsten Abfragen.
+ * Persistent SSE client for the CSV import channel.
+ * The connection stays open even without a running import: if someone starts one on another
+ * device, the first event comes immediately instead of only at the next poll.
  */
 @Singleton
 class CsvImportSseClient @Inject constructor(
-    // @param: explizit — Kotlin 2.2+ ändert das Default-Ziel von Annotationen auf
-    // val-Konstruktorparametern (künftig Parameter UND Property). Für Dagger/Hilt
-    // zählt der Parameter; der Use-Site-Target macht das eindeutig.
+    // @param: explicit — Kotlin 2.2+ changes the default target of annotations on
+    // val constructor parameters (in future parameter AND property). For Dagger/Hilt
+    // the parameter counts; the use-site target makes that unambiguous.
     @param:SseClient private val client: OkHttpClient,
     private val json: Json
 ) : CsvImportStream {
     sealed class Event {
-        /** Statusänderung vom Server (inkl. idle-Zustand wenn kein Import läuft). */
+        /** Status change from the server (incl. idle state when no import runs). */
         data class Status(val status: CsvImportStatusView) : Event()
         /**
-         * Verbindungsfehler. [technical] ist ausschliesslich fürs Log: Der Aufrufer
-         * (CsvImportService über folgeStrom) fällt auf Polling zurück, dem Nutzer wird
-         * nichts gezeigt — deshalb kein übersetzbarer
-         * Text, sondern die Ursache in technischer Form.
+         * Connection error. [technical] is exclusively for the log: the caller
+         * (CsvImportService via folgeStrom) falls back to polling, the user is
+         * shown nothing — hence no translatable
+         * text but the cause in technical form.
          */
         data class Failed(val technical: String?) : Event()
     }
 
     /**
-     * Öffnet eine persistente SSE-Verbindung und emittiert jeden Status,
-     * den der Server schickt. Schließt sich nur bei Verbindungsfehler.
-     * cold Flow — Verbindung wird beim Collect aufgebaut, beim Cancel geschlossen.
+     * Opens a persistent SSE connection and emits every status
+     * the server sends. Closes only on a connection error.
+     * Cold flow — the connection is established on collect, closed on cancel.
      */
     override fun stream(): Flow<Event> = flow {
-        // Adresse und Token setzt der Wächter des Clients wie bei jedem Abruf; ohne
-        // Anmeldung antwortet der Server 401, und der Aufrufer fragt später wieder.
+        // Address and token are set by the client's guard as for every fetch; without
+        // sign-in the server answers 401, and the caller asks again later.
         val request = Request.Builder()
             .url("${PLACEHOLDER_BASE}api/v1/sets/import/csv/stream")
             .header("Accept", "text/event-stream")
             .build()
 
-        // Verbindung NICHT schließen, solange Status kommen — offen lassen für nächsten Import.
-        // Jedes andere Ende (auch ein unlesbares Ereignis) heisst Failed: Der Aufrufer
-        // reconnectet bzw. pollt, statt auf einen Status zu warten, der nie kommt.
+        // Do NOT close the connection as long as statuses come — leave it open for the next import.
+        // Every other end (also an unreadable event) means Failed: the caller
+        // reconnects or polls instead of waiting for a status that never comes.
         val events = sseStream(client, request) { json.decodeFromString(CsvImportStatus.serializer(), it) }
         emitAll(events.map { e ->
             when (e) {

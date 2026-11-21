@@ -18,9 +18,9 @@ import retrofit2.Retrofit
 import javax.inject.Singleton
 
 /**
- * Je Bereich der Schnittstelle ein Binding (data/api/): Jedes Repository bekommt
- * nur seinen Bereich und kann nichts anderes aufrufen. Ein Retrofit, ein Client —
- * das Netzverhalten steht in NetzModule und ist für alle Bereiche dasselbe.
+ * One binding per area of the interface (data/api/): every repository gets
+ * only its area and cannot call anything else. One Retrofit, one client —
+ * the network behavior stands in NetzModule and is the same for all areas.
  */
 @Module
 @InstallIn(SingletonComponent::class)

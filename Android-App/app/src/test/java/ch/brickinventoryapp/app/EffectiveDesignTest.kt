@@ -14,23 +14,23 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * System, Hell oder Dunkel je Gerät: die dunkle Fassung DESSELBEN Designs bei
- * „Dunkel“ immer, bei „System“ nur, wenn das System dunkel ist; Werkbank ist schon
- * dunkel. Ohne gespeicherte Wahl folgt die App dem System, eine frühere bleibt.
+ * System, light or dark per device: the dark version of the SAME design with
+ * „Dunkel“ always, with „System“ only if the system is dark; Workbench is already
+ * dark. Without a saved choice the app follows the system, an earlier one stays.
  *
- * Gegenproben (29.10.2026, gemessen gegen ui/theme/Darstellung.kt bzw.
+ * Counter-checks (29.10.2026, measured against ui/theme/Darstellung.kt or
  * MainActivity.kt):
- *   A  in darstellung() das `&& systemDark` entfernt → rot „mit Wahl dunkel
- *      nur bei dunklem System, im selben Design“
- *   B  `?: true` → `?: false` → rot „without a saved choice the app follows the system"
- *   C  MainActivity ohne `dunkel = view.dunkel` → rot „MainActivity
- *      zeichnet das wirksame Design“
- *   D  installSplashScreen() hinter super.onCreate() → rot „the start does not flash white"
- *   E  `&& hatDarkVersion(design)` entfernt → rot „Workbench stays as it is“
- *   F  in darstellung() der Zweig `Helligkeit.DARK -> true` entfernt →
- *      rot „Dunkel gilt auch bei hellem System …“
- *   G  in brightnessApplies() die Prüfung auf bekannte Werte entfernt →
- *      rot „die fruehere Ja-Nein-Wahl …“ („blau“ kam durch)
+ *   A  in darstellung() the `&& systemDark` removed → red “with a choice dark
+ *      only with a dark system, in the same design”
+ *   B  `?: true` → `?: false` → red “without a saved choice the app follows the system"
+ *   C  MainActivity without `dunkel = view.dunkel` → red “MainActivity
+ *      draws the effective design”
+ *   D  installSplashScreen() after super.onCreate() → red “the start does not flash white"
+ *   E  `&& hatDarkVersion(design)` removed → red “Workbench stays as it is“
+ *   F  in darstellung() the branch `Helligkeit.DARK -> true` removed →
+ *      red “Dark applies also with a light system …”
+ *   G  in brightnessApplies() the check for known values removed →
+ *      red “the former yes-no choice …” („blau“ got through)
  */
 class EffectiveDesignTest {
 
@@ -66,8 +66,8 @@ class EffectiveDesignTest {
         assertEquals(Darstellung(Design.WERKBANK, false), darstellung(Design.WERKBANK, helligkeit = Helligkeit.SYSTEM, systemDark = true))
     }
 
-    // Die Einstellungen schalten Hell/Dunkel bei Werkbank ab. Gegenprobe (02.11.2026,
-    // kotlinc): brightnessSelectable gibt immer true zurück → rot.
+    // The settings switch off light/dark for Workbench. Counter-check (02.11.2026,
+    // kotlinc): brightnessSelectable always returns true → red.
     @Test
     fun `with Workbench Light and Dark cannot be chosen`() {
         assertTrue(!brightnessSelectable(Design.WERKBANK))
@@ -75,8 +75,8 @@ class EffectiveDesignTest {
         assertTrue(brightnessSelectable(Design.WERKBANK, systemfarben = true, sdk = 31))
     }
 
-    // Gegenprobe: in darstellung() `sdk >= SYSTEMFARBEN_AB_SDK`
-    // entfernt → rot (Android 11); `dynamisch ||` entfernt → rot (Werkbank dunkel).
+    // Counter-check: in darstellung() `sdk >= SYSTEMFARBEN_AB_SDK`
+    // removed → red (Android 11); `dynamisch ||` removed → red (Workbench dark).
     @Test
     fun `system colors apply only from Android 12 and always have a dark version`() {
         assertEquals(Darstellung(Design.CLASSIC, false, systemfarben = false),
@@ -110,8 +110,8 @@ class EffectiveDesignTest {
     }
 
     /**
-     * Bis zum ersten Compose-Bild zeigt Android das Fenster-Theme. War es fest
-     * hell, blitzte im Dunkelmodus Weiss auf.
+     * Until the first Compose frame Android shows the window theme. If it was fixed
+     * light, white flashed in dark mode.
      */
     @Test
     fun `the start does not flash white`() {

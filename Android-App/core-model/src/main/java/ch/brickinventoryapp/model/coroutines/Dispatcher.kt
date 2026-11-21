@@ -2,23 +2,23 @@ package ch.brickinventoryapp.model.coroutines
 
 import javax.inject.Qualifier
 
-// Hier statt in core-data: Ein Bereich fragt nach einem Dispatcher, ohne dafür die
-// Datenschicht und ihre Hilt-Module zu sehen. Gebunden wird in core-data (KoroutinenModule).
+// Here instead of in core-data: an area asks for a dispatcher without seeing the
+// data layer and its Hilt modules for it. Bound in core-data (KoroutinenModule).
 
-/** Welcher Ausführungsort gemeint ist. */
+/** Which place of execution is meant. */
 enum class BrickDispatchers { IO, Default, Main }
 
 /**
- * Wer einen Dispatcher braucht, bekommt ihn hierüber statt fest verdrahtet: Ein
- * Test gibt einen StandardTestDispatcher und steuert die Zeit mit runTest.
+ * Whoever needs a dispatcher gets it through this instead of hard-wired: a
+ * test passes a StandardTestDispatcher and controls time with runTest.
  */
 @Qualifier
 @Retention(AnnotationRetention.RUNTIME)
 annotation class Dispatcher(val wert: BrickDispatchers)
 
 /**
- * Arbeit, die den Bildschirm überleben soll (Startaufräumen, Tokentausch,
- * DataStore-Spiegel): ein Bereich für die ganze App statt vieler ungebundener.
+ * Work that shall outlive the screen (startup cleanup, token swap,
+ * DataStore mirror): one scope for the whole app instead of many unbound ones.
  */
 @Qualifier
 @Retention(AnnotationRetention.RUNTIME)

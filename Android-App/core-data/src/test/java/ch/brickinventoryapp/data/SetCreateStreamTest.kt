@@ -13,15 +13,15 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Set anlegen über den gemeinsamen SSE-Leser (sseStream): Jeder Ausgang endet mit genau
- * einem letzten Schritt, und nur „nie angekommen“ ist NoConnection — nur das darf
- * der Ausgang wiederholen, ohne doppelt anzulegen.
+ * Creating a set via the shared SSE reader (sseStream): every outcome ends with exactly
+ * one last step, and only „never arrived“ is NoConnection — only that may
+ * the outbox retry without creating twice.
  *
- * Gegenproben (Patches unter gegenproben/):
- *   anlegen-json-form-als-abbruch   withoutStream() ohne den Zweig für 2xx → rot „die JSON-Form …“
- *   anlegen-absage-ohne-satz        errorTextFrom() gibt immer "" → rot „eine Absage trägt …“
- *   anlegen-abgelehnt-als-abbruch   sseStream setzt noConnection nie → rot „ohne Server …“
- *   anlegen-ende-ohne-abschluss     Beendet ohne Schritt → rot „ein Ende ohne done …“
+ * Counter-checks (patches under gegenproben/):
+ *   anlegen-json-form-als-abbruch   withoutStream() without the branch for 2xx → red “the JSON form …”
+ *   anlegen-absage-ohne-satz        errorTextFrom() always returns "" → red “a refusal carries …”
+ *   anlegen-abgelehnt-als-abbruch   sseStream never sets noConnection → red “without a server …”
+ *   anlegen-ende-ohne-abschluss     Beendet without step → red “an end without done …”
  */
 class SetCreateStreamTest {
 

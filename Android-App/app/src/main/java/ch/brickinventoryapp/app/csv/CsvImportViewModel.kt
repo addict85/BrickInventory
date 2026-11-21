@@ -16,9 +16,9 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * Der Balken eines laufenden CSV-Imports, auch eines aus der Webapp. Strom und
- * Vordergrund-Dienst steuert der [CsvImportCoordinator]; das ViewModel bindet ihn an
- * die Lebenszeit der Activity und an die Anmeldung, statt eines LaunchedEffect.
+ * The bar of a running CSV import, also one from the web app. Stream and
+ * foreground service are controlled by the [CsvImportCoordinator]; the ViewModel binds it to
+ * the activity's lifetime and to the sign-in, instead of a LaunchedEffect.
  */
 @HiltViewModel
 class CsvImportViewModel @Inject constructor(
@@ -35,7 +35,7 @@ class CsvImportViewModel @Inject constructor(
         viewModelScope.launch { coordinator.sequence(sitzung.state.map { it.isLoggedIn }) }
     }
 
-    /** Abbrechen heisst „ab hier nicht weiter“; angelegte Sets bleiben. */
+    /** Cancelling means “no further from here”; created sets stay. */
     fun cancelCsvImport() {
         viewModelScope.launch {
             when (val r = csvImport.abbrechen()) {

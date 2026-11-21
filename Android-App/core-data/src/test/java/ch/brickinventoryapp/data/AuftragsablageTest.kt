@@ -8,14 +8,14 @@ import org.junit.Test
 import java.io.IOException
 
 /**
- * Ein Abmeldeauftrag liegt in der Datenbank von WorkManager nur als ein Geheimtext unter
- * dem Schlüssel der Angaben: Adresse, Pin und Herkunft stehen nicht lesbar darin. Bei
- * gesperrtem Gerät wartet er, statt aufzugeben.
+ * A sign-out job lies in WorkManager's database only as one ciphertext under
+ * the details' key: address, pin and origin are not readable in it. With a
+ * locked device it waits instead of giving up.
  *
- * Gegenproben (kotlinc und JUnit lokal):
- *   A  ablegen() gibt den Text unverschlüsselt zurück → rot „der Auftrag liegt nur
- *      verschluesselt …“; gegenproben/auftrag-im-klartext.patch
- *   B  lies() macht aus Gesperrt Unlesbar → rot „gesperrt wartet der Auftrag …“;
+ * Counter-checks (kotlinc and JUnit locally):
+ *   A  ablegen() returns the text unencrypted → red “the job lies in the queue only
+ *      encrypted …”; gegenproben/auftrag-im-klartext.patch
+ *   B  lies() turns Gesperrt into Unlesbar → red “locked the job waits …”;
  *      gegenproben/auftrag-gesperrt-aufgegeben.patch
  */
 class AuftragsablageTest {

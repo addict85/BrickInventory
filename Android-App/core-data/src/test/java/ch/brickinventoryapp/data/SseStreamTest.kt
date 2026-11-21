@@ -18,15 +18,15 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * Der gemeinsame SSE-Baustein (sseStream) gegen einen echten Testserver, und der
- * CSV-Client darauf: Ein unlesbares Ereignis darf nicht verschwinden, sonst wartet der
- * Aufrufer auf ein Abschlussereignis, das nie kommt.
+ * The shared SSE building block (sseStream) against a real test server, and the
+ * CSV client on top of it: an unreadable event must not disappear, otherwise the
+ * caller waits for a completion event that never comes.
  *
- * Gegenproben (Patches unter gegenproben/):
- *   sse-unlesbar-verschluckt  onEvent ignoriert eine unlesbare Nutzlast wieder still (kein
- *                             trySend/close) → rot „ein unlesbares Ereignis beendet den
- *                             Strom sichtbar“ (das dritte Ereignis kommt an) und „der
- *                             CSV-Client meldet …“ (Grund ist „stream closed by server“)
+ * Counter-checks (patches under gegenproben/):
+ *   sse-unlesbar-verschluckt  onEvent silently ignores an unreadable payload again (no
+ *                             trySend/close) → red “an unreadable event ends the
+ *                             stream visibly” (the third event arrives) and “the
+ *                             CSV client reports …” (reason is „stream closed by server“)
  */
 class SseStreamTest {
 
@@ -62,7 +62,7 @@ class SseStreamTest {
 
     @Test
     fun `an unreadable event ends the stream visibly`() {
-        // Das zweite Ereignis ist kein JSON; das dritte darf nicht mehr ankommen.
+        // The second event is no JSON; the third must no longer arrive.
         server.enqueue(antwort(
             "data: {\"status\":\"running\"}\n\ndata: das ist kein json\n\ndata: {\"status\":\"done\"}\n\n"))
 
@@ -92,7 +92,7 @@ class SseStreamTest {
 
         assertEquals(1, (events[0] as CsvImportSseClient.Event.Status).status.done)
         val fehler = events[1] as CsvImportSseClient.Event.Failed
-        // Das Ende des Servers wäre „stream closed by server“; hier muss es die Nutzlast sein.
+        // The server's end would be „stream closed by server“; here it must be the payload.
         assertTrue("falscher Grund: ${fehler.technical}", fehler.technical!!.startsWith("unreadable event"))
         assertEquals(2, events.size)
     }

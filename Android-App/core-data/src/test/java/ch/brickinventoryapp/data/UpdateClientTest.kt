@@ -13,14 +13,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Der Client der Selbstaktualisierung, wie Hilt ihn baut: Er geht zu GitHub, nicht zu
- * unserem Server, und trägt darum weder Token noch Sprache; Umleitungen folgt nur der
- * eigene Wächter (UpdateRedirectTest), OkHttp selbst keiner, auch nicht von https
- * auf http. Was hinausginge, fängt ein angehängter Interceptor vor dem Netz ab.
+ * The client of the self-update, as Hilt builds it: it goes to GitHub, not to
+ * our server, and therefore carries neither token nor language; redirects are followed only by the
+ * own guard (UpdateRedirectTest), by OkHttp itself none, not even from https
+ * to http. What would go out is caught by an attached interceptor before the network.
  *
- * Gegenproben (Patches unter gegenproben/, lokal mit kotlinc gemessen):
- *   update-client-mit-token       ein Interceptor setzt Authorization → rot „der Update-Client …“
- *   update-client-folgt-http      followSslRedirects(true) → rot „der Update-Client …“
+ * Counter-checks (patches under gegenproben/, measured locally with kotlinc):
+ *   update-client-mit-token       an interceptor sets Authorization → red “the update client …”
+ *   update-client-folgt-http      followSslRedirects(true) → red “the update client …”
  */
 class UpdateClientTest {
 

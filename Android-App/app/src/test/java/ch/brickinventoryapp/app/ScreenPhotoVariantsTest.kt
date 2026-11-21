@@ -171,22 +171,22 @@ import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.test.performSemanticsAction
 
 /**
- * Was ScreenPhotoTest nicht abdeckt, je einmal statt im vollen Raster (die
- * Laufzeit wächst mit jedem Bild): die drei übrigen Designs, Englisch (en-GB),
- * Schrift 130 % und 200 %, das Gerüst mit App-Leiste und der Seite „Mehr“,
- * Dialoge, Lade-, Fehler- und Leerzustand, das Detail mit vierstelligen Beträgen
- * auf 360 dp, Liste und Detail auf dem Tablet sowie die Unterseiten Lagerorte,
- * Haushalt, CSV-Import und die Bauliste. Wie dort auf Deutsch (de-CH),
- * wo nicht `-en` im Namen steht. Namen wie dort:
- * `<bildschirm>[-variant]_<design>_<hell|dunkel>_<gerät>.png`; Gerät `quer` ist das
- * Telefon im Querformat. Dazu der Katalog als Liste, leere und gescheiterte Reiter,
- * Tablet mit 200 % und die Anmeldung quer und bei 200 %.
+ * What ScreenPhotoTest does not cover, once each instead of in the full grid (the
+ * run time grows with every image): the three remaining designs, English (en-GB),
+ * font 130 % and 200 %, the scaffold with app bar and the page “More”,
+ * dialogs, loading, error and empty state, the detail with four-digit amounts
+ * on 360 dp, list and detail on the tablet as well as the subpages storage locations,
+ * household, CSV import and the build list. As there in German (de-CH),
+ * where `-en` does not stand in the name. Names as there:
+ * `<bildschirm>[-variant]_<design>_<hell|dunkel>_<gerät>.png`; device `quer` is the
+ * phone in landscape. Plus the catalog as a list, empty and failed tabs,
+ * tablet at 200 % and the sign-in in landscape and at 200 %.
  *
- * Gegenprobe wie bei ScreenPhotoTest erst mit eingecheckten Referenzen möglich
- * (eine Farbe in Theme.kt ändern → verifyRoborazziDebug rot); ohne Android-SDK
- * hier nicht messbar. Die Dialoge bei 200 % prüfen dazu, dass die Schrift im
- * Dialogfenster ankommt — Gegenprobe dialog-schrift-nur-lokal: ohne
- * setFontScale → rot „dialogSetAddSchrift200“ (Schrift erreicht den Dialog nicht).
+ * Counter-check as with ScreenPhotoTest only possible with checked-in references
+ * (change a color in Theme.kt → verifyRoborazziDebug red); not measurable
+ * here without the Android SDK. The dialogs at 200 % additionally check that the font
+ * arrives in the dialog window — counter-check dialog-schrift-nur-lokal: without
+ * setFontScale → red “dialogSetAddSchrift200” (font does not reach the dialog).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -210,18 +210,18 @@ class ScreenPhotoVariantsTest {
         world.close()
     }
 
-    /** Wie ScreenPhotoTest.bereitstellen: den Hauptlooper treiben, bis die Welt ruht. */
+    /** Like ScreenPhotoTest.bereitstellen: drive the main looper until the world rests. */
     private fun bereitstellen(name: String, bereit: () -> Boolean, zustand: () -> Any?) {
         driveUntil(name, requests = { world.paths.requests.size }, zustand = zustand, bereit = bereit)
     }
 
-    // Werkbank ist ein dunkles Design ohne helle Fassung; „hell“ im Namen führte in die Irre.
+    // Workbench is a dark design without a light version; „hell“ in the name was misleading.
     private fun pfad(name: String, design: String, dunkel: Boolean, geraet: String) =
         "src/test/bildschirmfotos/${name}_${design}_${if (dunkel || design == "werkbank") "dunkel" else "hell"}_$geraet.png"
 
     /**
-     * Zeigt [inhalt] und wartet auf die Daten; das Foto nimmt der Aufrufer, damit
-     * er vorher tippen (Mehr, Dialog) oder die Uhr anhalten kann (Laden).
+     * Shows [inhalt] and waits for the data; the caller takes the photo so that
+     * it can tap before (More, dialog) or stop the clock (loading).
      */
     private fun zeige(
         name: String, design: String = "classic", dunkel: Boolean = false, geraet: String = "telefon",
@@ -235,8 +235,8 @@ class ScreenPhotoVariantsTest {
             else -> "w411dp-h891dp-port-xxhdpi"
         }
         RuntimeEnvironment.setQualifiers(if (sprache != null) "$sprache-$mask" else mask)
-        // Die Schrift auch in der Konfiguration: Ein Dialog hat sein eigenes Fenster und
-        // nimmt die Dichte von dort, LocalDensity unten reicht nicht hinein.
+        // The font in the configuration too: a dialog has its own window and
+        // takes the density from there, LocalDensity below does not reach into it.
         if (schrift != 1f) RuntimeEnvironment.setFontScale(schrift)
         if (sprache != null) Locale.setDefault(Locale.forLanguageTag(sprache.replace("-r", "-")))
         if (warten) bereitstellen(name, bereit, zustand)
@@ -255,9 +255,9 @@ class ScreenPhotoVariantsTest {
     }
 
     /**
-     * Uhr anhalten und in festen Schritten vorstellen: Das Bild hängt dann nicht davon
-     * ab, wie weit eine Animation (Ladekreis, Einblenden, Rückzug des Zieh-Indikators)
-     * beim Auslösen gerade war. galerie-fehler wich zwischen Aufnahme und Prüfung ab.
+     * Stop the clock and advance in fixed steps: the image then does not depend
+     * on how far an animation (loading circle, fade-in, retraction of the pull indicator)
+     * was when triggering. galerie-fehler deviated between recording and verification.
      */
     private fun pause() {
         compose.mainClock.autoAdvance = false
@@ -322,8 +322,8 @@ class ScreenPhotoVariantsTest {
         photo(name)
     }
 
-    // ── Die drei Designs, die das Raster in ScreenPhotoTest nicht trägt ──
-    // Je ein Test, weil eine Compose-Regel nur einmal je Test zeichnen darf.
+    // ── The three designs the grid in ScreenPhotoTest does not carry ──
+    // One test each, because a Compose rule may draw only once per test.
 
     @Test fun galleryColorSlotsLight() = galleryPhoto("galerie", "farbfaecher")
     @Test fun galleryColorSlotsDark() = galleryPhoto("galerie", "farbfaecher", dunkel = true)
@@ -334,12 +334,12 @@ class ScreenPhotoVariantsTest {
     @Test fun detailGlossyDark() = detailPhoto("set-detail", "hochglanz", dunkel = true)
     @Test fun detailWorkbench() = detailPhoto("set-detail", "werkbank")
 
-    // ── Vierstellige Beträge auf schmalem Telefon (360 dp) ──
-    // Ein Kaufpreis über CHF 1’000 in den Wert-Kacheln: Dort brach „CHF 700.0 / 0“
-    // um, und mit vier Stellen wurde es nur enger.
+    // ── Four-digit amounts on a narrow phone (360 dp) ──
+    // A purchase price above CHF 1’000 in the value tiles: there „CHF 700.0 / 0“
+    // wrapped, and with four digits it only got tighter.
 
-    // Alle Zahlen eines Sets passen zusammen: Marktpreis 1’249.90, Kaufpreis 1’049.00,
-    // also +19.2 %. Vorher stand neben dem teuren Marktpreis noch Kaufpreis 700 und +16.1 %.
+    // All numbers of a set fit together: market price 1’249.90, purchase price 1’049.00,
+    // i.e. +19.2 %. Previously purchase price 700 and +16.1 % stood next to the expensive market price.
     private fun detailExpensivePhoto(name: String, schrift: Float) {
         world.paths.antworten["/api/v1/sets/75192-1/price"] =
             """{"success":true,"set_number":"75192-1","currency":"CHF","avg_price":1249.9,"min_price":1180.0,"max_price":1320.0,"qty_avg_price":1249.9}"""
@@ -362,7 +362,7 @@ class ScreenPhotoVariantsTest {
     @Test fun detailFourDigitNarrow() = detailExpensivePhoto("set-detail-vierstellig", 1f)
     @Test fun detailFourDigitNarrowSchrift200() = detailExpensivePhoto("set-detail-vierstellig-schrift200", 2f)
 
-    // ── Englisch (en-GB): Texte, Zahlen, Beträge und Achsen ──
+    // ── English (en-GB): texts, numbers, amounts and axes ──
 
     @Test fun galleryEnglish() = galleryPhoto("galerie-en", sprache = ENGLISH)
     @Test fun detailEnglish() = detailPhoto("set-detail-en", sprache = ENGLISH)
@@ -378,7 +378,7 @@ class ScreenPhotoVariantsTest {
         photo(name)
     }
 
-    // ── Grosse Schrift: 130 % und 200 % ──
+    // ── Large font: 130 % and 200 % ──
 
     @Test fun signInSchrift130() = signInPhoto("anmelden-schrift130", 1.3f)
     @Test fun signInSchrift200() = signInPhoto("anmelden-schrift200", 2.0f)
@@ -414,7 +414,7 @@ class ScreenPhotoVariantsTest {
         photo("teile-schrift200")
     }
 
-    /** Das Figurenraster wächst mit der Schrift (ReadableColumns): lange Namen ganz lesbar. */
+    /** The figure grid grows with the font (ReadableColumns): long names fully readable. */
     @Test
     fun minifigsSchrift200() {
         val vm = world.figuren().also { it.loadMinifigs() }
@@ -429,7 +429,7 @@ class ScreenPhotoVariantsTest {
         photo("gutscheine-schrift200")
     }
 
-    // ── Gerüst: App-Leiste mit vier Bestandszielen und „Mehr“ ──
+    // ── Scaffold: app bar with four inventory destinations and “More” ──
 
     @Composable
     private fun Scaffold(
@@ -439,11 +439,11 @@ class ScreenPhotoVariantsTest {
         offlineStatus: Long? = null,
     ) {
         val nav = rememberNavController()
-        // Dieselben Reiter wie die App, aus den Ressourcen: Fest deutsche Namen standen
-        // auch im englischen Foto.
+        // The same tabs as the app, from the resources: fixed German names stood
+        // in the English photo too.
         val tab = tabTheBar()
-        // Der Titel folgt dem Ziel wie in der App (ToolsGraph setzt nav_more): Fest
-        // „Sammlung“ zeigte das Foto von „Mehr“ mit dem falschen Titel.
+        // The title follows the destination as in the app (ToolsGraph sets nav_more): a fixed
+        // „Sammlung“ showed the photo of “More” with the wrong title.
         val ziel by nav.currentBackStackEntryAsState()
         val titel = stringResource(if (ziel?.destination?.hasRoute<AppTarget.Mehr>() == true) R.string.nav_more else R.string.nav_collection)
         MainScaffold(
@@ -476,7 +476,7 @@ class ScreenPhotoVariantsTest {
     @Test fun scaffoldPhone() = scaffoldPhoto("telefon")
     @Test fun scaffoldTablet() = scaffoldPhoto("tablet")
 
-    /** Der Umschalter Sets | Teile | Minifiguren bei 200 %: Segmente, seitlich rollbar, kein Wort gebrochen. */
+    /** The switcher Sets | Parts | Minifigures at 200 %: segments, scrollable sideways, no word broken. */
     @Test
     fun scaffoldSchrift200() {
         val galerie = world.galerie().also { it.loadSets(); it.loadStats() }
@@ -486,13 +486,13 @@ class ScreenPhotoVariantsTest {
         photo("geruest-schrift200")
     }
 
-    /** Die Seite „Mehr“: alle übrigen Ziele gruppiert, mit dem Punkt für eine neue Version. */
+    /** The page “More”: all other destinations grouped, with the dot for a new version. */
     private fun morePhoto(geraet: String, dunkel: Boolean, name: String = "mehr", schrift: Float = 1f,
                          sprache: String? = GERMAN) {
         val galerie = world.galerie().also { it.loadSets(); it.loadStats() }
         zeige(name, dunkel = dunkel, geraet = geraet, sprache = sprache, schrift = schrift, bereit = galleryDone(galerie),
             zustand = { galerie.galleryState.value }) { Scaffold(galerie) }
-        // Bei grosser Schrift ist nur das gewählte Ziel beschriftet; die übrigen tragen ihren Namen als Beschreibung.
+        // At large font only the selected destination is labelled; the others carry their name as description.
         val mehr = ApplicationProvider.getApplicationContext<Context>().getString(R.string.nav_more)
         compose.onNode((hasText(mehr) or hasContentDescription(mehr)) and hasClickAction()).performClick()
         compose.waitForIdle()
@@ -507,18 +507,18 @@ class ScreenPhotoVariantsTest {
     // ── Dialoge ──
 
     /**
-     * Fotografiert den offenen Dialog. Bei grosser Schrift prüft es vorher, dass sie
-     * im Dialogfenster ankommt: Mit LocalDensity allein war das 200-%-Foto
-     * byte-gleich mit dem 100-%-Foto und bewies nichts.
+     * Photographs the open dialog. At large font it first checks that the font
+     * arrives in the dialog window: with LocalDensity alone the 200 % photo was
+     * byte-identical to the 100 % photo and proved nothing.
      */
     private fun dialogPhoto(name: String, design: String, dunkel: Boolean, geraet: String, schrift: Float) {
         if (schrift == 1f) {
             compose.onNode(isDialog()).captureRoboImage(pfad(name, design, dunkel, geraet))
             return
         }
-        // Ein Material-Textfeld im Dialogfenster kommt unter Robolectric ab 130 % Schrift
-        // nie zur Ruhe (auch mit Android 13; im Hauptfenster schon). Darum hier am Fenster
-        // selbst messen und fotografieren statt über die Synchronisierung von Compose.
+        // A Material text field in the dialog window never comes to rest under Robolectric from 130 % font
+        // (also with Android 13; in the main window it does). That is why measure and photograph
+        // at the window itself here instead of via Compose's synchronization.
         val looper = shadowOf(Looper.getMainLooper())
         repeat(10) { compose.mainClock.advanceTimeBy(50); looper.idle() }
         val fenster = ShadowDialog.getLatestDialog().window!!.decorView
@@ -533,18 +533,18 @@ class ScreenPhotoVariantsTest {
         collect(root.semanticsOwner.unmergedRootSemanticsNode)
         Assert.assertTrue("$name: Schrift erreicht den Dialog nicht (Skalen $scales)",
             scales.isNotEmpty() && scales.all { it >= schrift - 0.05f })
-        // Selbst gezeichnet: captureRoboImage(View) sucht die Ansicht über Espresso in der
-        // Activity und findet das Dialogfenster dort nicht.
+        // Drawn ourselves: captureRoboImage(View) looks for the view via Espresso in the
+        // activity and does not find the dialog window there.
         val bild = Bitmap.createBitmap(fenster.width, fenster.height, Bitmap.Config.ARGB_8888)
         fenster.draw(Canvas(bild))
         bild.captureRoboImage(pfad(name, design, dunkel, geraet))
     }
 
     /**
-     * Ein Dialog mit Textfeld kommt unter Robolectric nie zur Ruhe, wenn er schon beim
-     * Aufbau dasteht. Darum wie beim Antippen: erst die Fläche, dann bei angehaltener Uhr
-     * auf dem UI-Faden öffnen und schrittweise vorstellen; das Fenster entsteht über den
-     * Hauptlooper, nicht über die Compose-Uhr.
+     * A dialog with a text field never comes to rest under Robolectric if it is already there
+     * during construction. Therefore as with tapping: first the surface, then with the clock stopped
+     * open on the UI thread and advance step by step; the window arises via the
+     * main looper, not via the Compose clock.
      */
     private fun showDialog(
         name: String, dunkel: Boolean = false, geraet: String = "telefon", schrift: Float = 1f,
@@ -563,7 +563,7 @@ class ScreenPhotoVariantsTest {
         }
     }
 
-    /** Die Compose-Wurzel in einem Fensterbaum, ohne auf Ruhe zu warten. */
+    /** The Compose root in a window tree, without waiting for rest. */
     private fun composeRoot(v: View): ViewRootForTest? = when (v) {
         is ViewRootForTest -> v
         is ViewGroup -> (0 until v.childCount).firstNotNullOfOrNull { composeRoot(v.getChildAt(it)) }
@@ -581,7 +581,7 @@ class ScreenPhotoVariantsTest {
     @Test fun deleteDialogSet() = dialogSetDeletePhoto("dialog-set-loeschen", 1f)
     @Test fun dialogSetDeleteSchrift200() = dialogSetDeletePhoto("dialog-set-loeschen-schrift200", 2f)
 
-    /** Die Rückfrage vor dem Abmelden — dieselbe Bauform wie beim Löschen eines Sets. */
+    /** The confirmation before sign-out — the same design as when deleting a set. */
     private fun dialogSignOutPhoto(name: String, dunkel: Boolean, geraet: String, schrift: Float) {
         zeige(name, dunkel = dunkel, geraet = geraet, schrift = schrift) {
             MehrBildschirm({}, isAdmin = false, updateVerfuegbar = true, onAbmelden = {})
@@ -601,12 +601,12 @@ class ScreenPhotoVariantsTest {
             zustand = { vm.wantedState.value }) {
             WantedRoute(vm = vm, imageLoader = bilder, onScan = {}, onOpenSingle = { _, _ -> })
         }
-        // Der Dialog fokussiert sein erstes Feld; der blinkende Cursor lässt
-        // Compose nie ruhig werden. Darum die Uhr anhalten und gezielt vorstellen.
+        // The dialog focuses its first field; the blinking cursor never lets
+        // Compose come to rest. That is why stop the clock and advance deliberately.
         compose.mainClock.autoAdvance = false
         val ctx = ApplicationProvider.getApplicationContext<Context>()
         compose.onNodeWithContentDescription(ctx.getString(R.string.wanted_add_title)).performClick()
-        // Das Dialogfenster entsteht über den Hauptlooper, nicht über die Compose-Uhr.
+        // The dialog window arises via the main looper, not via the Compose clock.
         repeat(3) {
             compose.mainClock.advanceTimeBy(200)
             Shadows.shadowOf(Looper.getMainLooper()).idle()
@@ -617,11 +617,11 @@ class ScreenPhotoVariantsTest {
     @Test fun createDialogWantedItem() = dialogWantedItemPhoto("dialog-merkposten", true, 1f)
     @Test fun dialogWantedItemSchrift200() = dialogWantedItemPhoto("dialog-merkposten-schrift200", false, 2f)
 
-    // ── Liste und Detail nebeneinander (Tablet) ──
+    // ── List and detail side by side (tablet) ──
 
     @Test
     fun wantedWithDetailTablet() {
-        // Das Detail zeigt denselben Preis wie die Zeile daneben (449.95), statt „wird geladen“.
+        // The detail shows the same price as the row next to it (449.95), instead of „wird geladen“.
         world.paths.antworten["/api/v1/wanted/10294-1/preise"] = """{"success":true,"currency":"CHF",
             "current":{"N":{"condition":"N","avg_price":449.95,"min_price":420.0,"max_price":480.0}}}"""
         world.paths.antworten["/api/v1/catalog/sets/10294-1"] = """{"success":true,"set":{"set_number":"10294-1",
@@ -640,8 +640,8 @@ class ScreenPhotoVariantsTest {
             androidx.compose.ui.test.hasClickAction()).performClick()
         // Erst komponieren: Das Detail startet sein Laden selbst (LaunchedEffect).
         compose.waitForIdle()
-        // Erst fotografieren, wenn Preis und Verlauf da sind — sonst stand „Preis wird geladen“
-        // neben dem Preis in der Liste.
+        // Photograph only when price and history are there — otherwise „Preis wird geladen“ stood
+        // next to the price in the list.
         bereitstellen("merkliste-detail (offen)", { vm.wantedItemDetailState.value.let { !it.abruf.laedt && it.preise != null } },
             { vm.wantedItemDetailState.value })
         compose.waitForIdle()
@@ -649,7 +649,7 @@ class ScreenPhotoVariantsTest {
         photo("merkliste-detail", geraet = "tablet")
     }
 
-    /** Galerie und Set-Detail nebeneinander, wie das Tablet sie nach einem Tipp zeigt. */
+    /** Gallery and set detail side by side, as the tablet shows them after a tap. */
     @Test
     fun galleryWithDetailTablet() {
         val galerie = world.galerie().also { it.loadSets(); it.loadStats() }
@@ -664,7 +664,7 @@ class ScreenPhotoVariantsTest {
         photo("galerie-mit-detail", geraet = "tablet")
     }
 
-    // ── Unterseiten und Erfassen, die sonst kein Foto hatten (I2) ──
+    // ── Subpages and adding that had no photo before (I2) ──
 
     private fun einstellungen() = world.t.merke(SettingsViewModel(world.t.sitzung, world.t.filter(), world.t.hinweise, world.t.sync,
         testAccountRepository(world.t.api, world.t.io), testManagementRepository(world.t.api),
@@ -679,8 +679,8 @@ class ScreenPhotoVariantsTest {
     private fun locationsPhoto(name: String, schrift: Float) {
         world.paths.antworten["/api/v1/storage/locations"] = """{"success":true,"orte":[
             {"id":3,"name":"Keller"},{"id":4,"name":"Estrich"},{"id":5,"name":"Regal Wohnzimmer"}]}"""
-        // Vor dem Zeigen laden: zeige() wartet schon vor setContent auf die Daten, und
-        // ohne Aufruf hier fragte erst der Bildschirm selbst.
+        // Load before showing: zeige() already waits for the data before setContent, and
+        // without a call here only the screen itself would ask.
         val vm = einstellungen().also { it.loadOwnLocations() }
         zeige(name, schrift = schrift, bereit = { vm.storageState.value.eigene.size == 3 }, zustand = { vm.storageState.value }) {
             LocationsRoute(vm, remember { SnackbarHostState() }, onZurueck = {})
@@ -716,7 +716,7 @@ class ScreenPhotoVariantsTest {
     @Test fun buildListWithContent() = buildListPhoto("bauliste-inhalt", buildListFilled, 1f)
     @Test fun buildListWithContentSchrift200() = buildListPhoto("bauliste-inhalt-schrift200", buildListFilled, 2f)
 
-    /** Zwei Sets, erzeugt, mit Bestand: Farbgruppen, Mengen und „vorhanden“ stehen im Bild. */
+    /** Two sets, generated, with stock: color groups, quantities and „vorhanden“ stand in the image. */
     private val buildListFilled = TeilelisteUiState(
         sets = listOf(PlSet("75192-1", "Millennium Falcon"), PlSet("21318-1", "Baumhaus")),
         parts = listOf(
@@ -744,8 +744,8 @@ class ScreenPhotoVariantsTest {
     @Test fun dialogMinifigAddSchrift200() = addPhoto("dialog-figur-erfassen-schrift200", figur = true, schrift = 2f)
 
     /**
-     * Teil und Figur erfassen sind intern im Bereich; geöffnet wird wie von Hand über den
-     * Erfassen-Knopf. Danach die Uhr anhalten: Ein Dialog mit Textfeld kommt sonst nie zur Ruhe.
+     * Adding part and figure are internal to the area; opened as by hand via the
+     * add button. Afterwards stop the clock: a dialog with a text field otherwise never comes to rest.
      */
     private fun addPhoto(name: String, figur: Boolean, schrift: Float) {
         val teile = if (figur) null else world.teile().also { it.loadParts() }
@@ -766,13 +766,13 @@ class ScreenPhotoVariantsTest {
         dialogPhoto(name, "classic", false, "telefon", schrift)
     }
 
-    /** Erfassen: der Dialog der Galerie mit Nummer, Menge, Preis, Zustand und Lagerort. */
+    /** Adding: the gallery's dialog with number, quantity, price, condition and storage location. */
     @Test fun addDialogSet() = dialogSetAddPhoto("dialog-set-erfassen", 1f)
 
-    /** Bei 200 % stehen Zustand und Lagerort als Chips bzw. volle Zeile da, nichts bricht im Wort. */
+    /** At 200 % condition and storage location stand as chips or full row, nothing breaks within a word. */
     @Test fun dialogSetAddSchrift200() = dialogSetAddPhoto("dialog-set-erfassen-schrift200", 2f)
 
-    /** Auf dem Tablet steht der Dialog in seiner Material-Breite über der Fläche. */
+    /** On the tablet the dialog stands in its Material width above the surface. */
     @Test fun dialogSetAddTablet() = dialogSetAddPhoto("dialog-set-erfassen", 1f, geraet = "tablet")
 
     private fun dialogSetAddPhoto(name: String, schrift: Float, geraet: String = "telefon") {
@@ -782,8 +782,8 @@ class ScreenPhotoVariantsTest {
         }
         dialogPhoto(name, "classic", false, geraet, schrift)
         if (schrift == 1f && geraet == "telefon") {
-            // Ein Muster für alle Erfassungen: Der Lagerort ist so breit wie die Set-Nummer.
-            // Am Dialogfenster gemessen wie das Foto: Die Synchronisierung wartete ewig.
+            // One pattern for all adding dialogs: the storage location is as wide as the set number.
+            // Measured at the dialog window like the photo: the synchronization waited forever.
             val ctx = ApplicationProvider.getApplicationContext<Context>()
             val root = composeRoot(ShadowDialog.getLatestDialog().window!!.decorView) ?: error("kein Compose im Dialog")
             fun breite(label: Int): Float {
@@ -804,7 +804,7 @@ class ScreenPhotoVariantsTest {
 
     @Test
     fun galleryLoads() {
-        // Die Antwort bleibt aus; die Uhr steht, damit die Ladeanimation ein festes Bild ergibt.
+        // The response stays away; the clock stands so that the loading animation gives a fixed image.
         world.paths.ausbleibend += "/api/v1/sets"
         val galerie = world.galerie().also { it.loadSets() }
         compose.mainClock.autoAdvance = false
@@ -814,8 +814,8 @@ class ScreenPhotoVariantsTest {
     }
 
     /**
-     * Die Sprache des Fotos schon vor dem Laden: Ein ViewModel, das seinen Satz beim Laden
-     * bildet, tat das sonst auf Englisch, und das deutsche Foto zeigte einen englischen Fehler.
+     * The photo's language already before loading: a ViewModel that forms its sentence when
+     * loading otherwise did that in English, and the German photo showed an English error.
      */
     private fun loadGermanBeforeThe() {
         RuntimeEnvironment.setQualifiers(GERMAN)
@@ -844,7 +844,7 @@ class ScreenPhotoVariantsTest {
         photo("merkliste-leer", dunkel = true)
     }
 
-    // ── Bildschirme, die bisher kein Foto hatten ──
+    // ── Screens that had no photo so far ──
 
     private val catalogDetail = CatalogDetailView(
         setNumber = "10305-1", name = "Lion Knights' Castle", year = 2022, themeId = 721, themeName = "Icons",
@@ -864,7 +864,7 @@ class ScreenPhotoVariantsTest {
     }
 
     @Test fun catalogDetailPhone() = catalogDetailPhoto(false, "telefon")
-    /** Beide Handlungen untereinander und ganz lesbar, auch bei 200 %. */
+    /** Both actions below each other and fully readable, also at 200 %. */
     @Test fun catalogDetailSchrift200() = catalogDetailPhoto(false, "telefon", 2f, "katalog-detail-schrift200")
     @Test fun catalogDetailTabletDark() = catalogDetailPhoto(true, "tablet")
 
@@ -877,7 +877,7 @@ class ScreenPhotoVariantsTest {
         photo(name)
     }
 
-    /** Konto: Profil, Design, zweiter Faktor und zwei angemeldete Geräte; auf Wunsch mit beantragter Adresse. */
+    /** Account: profile, design, second factor and two signed-in devices; on request with a requested address. */
     private fun accountPhoto(dunkel: Boolean, geraet: String, name: String = "konto", emailNew: String? = null) {
         val neu = emailNew?.let { ""","new_email":"$it"""" } ?: ""
         world.paths.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
@@ -900,10 +900,10 @@ class ScreenPhotoVariantsTest {
 
     @Test fun accountPhone() = accountPhoto(false, "telefon")
     @Test fun accountTabletDark() = accountPhoto(true, "tablet")
-    /** Die neue Adresse wartet auf ihren Link: Das Feld zeigt die geltende, darunter die beantragte. */
+    /** The new address waits for its link: the field shows the current one, below it the requested one. */
     @Test fun accountEmailPending() = accountPhoto(false, "telefon", "konto-email-ausstehend", "marco.neu@example.org")
 
-    /** Preisalarme: einer scharf, einer schon ausgelöst — im Normalfall mit Name und Bild. */
+    /** Price alerts: one armed, one already triggered — in the normal case with name and image. */
     private fun priceAlertsPhoto(dunkel: Boolean, geraet: String, schrift: Float = 1f, name: String = "preisalarme") {
         world.paths.antworten["/api/v1/alerts"] = """{"success":true,"alerts":[
             {"set_number":"75192-1","condition":"N","direction":"unter","threshold":750.0,"currency_code":"CHF",
@@ -921,11 +921,11 @@ class ScreenPhotoVariantsTest {
     }
 
     @Test fun priceAlertsPhone() = priceAlertsPhoto(false, "telefon")
-    /** Der ausgelöste Alarm bei 200 %: Plakette und letzter Preis brechen um, kein Zeichen einzeln. */
+    /** The triggered alert at 200 %: badge and last price wrap, no single character on its own. */
     @Test fun priceAlertsSchrift200() = priceAlertsPhoto(false, "telefon", 2f, "preisalarme-schrift200")
     @Test fun priceAlertsTabletDark() = priceAlertsPhoto(true, "tablet")
 
-    /** Teil aus Sets: auf dem Tablet rechts neben der Liste, auf dem Telefon als Dialog. */
+    /** Part from sets: on the tablet to the right of the list, on the phone as a dialog. */
     private fun partDetailPhoto(geraet: String, dunkel: Boolean) {
         world.paths.antworten["/api/v1/parts/3001/5/sets"] = """{"success":true,
             "item":{"nummer":"3001","name":"Brick 2 x 4","color_id":5,"color_name":"Red","category_name":"Bricks",
@@ -948,8 +948,8 @@ class ScreenPhotoVariantsTest {
     }
 
     /**
-     * Ein Blatt von unten (ModalBottomSheet) hat ein eigenes Fenster ohne Dialog-Semantik:
-     * fotografiert wird die Wurzel, die [kennung] trägt.
+     * A sheet from below (ModalBottomSheet) has its own window without dialog semantics:
+     * photographed is the root that carries [kennung].
      */
     private fun sheetPhoto(kennung: Int, name: String, design: String, dunkel: Boolean, geraet: String) {
         val text = ApplicationProvider.getApplicationContext<Context>().getString(kennung)
@@ -959,8 +959,8 @@ class ScreenPhotoVariantsTest {
     }
 
     /**
-     * Das Filterblatt der Sammlung mit Lagerort und Thema. Die Beispieldaten hatten
-     * weder Themenliste noch Lagerorte, das Blatt zeigte nur Griff und Titel.
+     * The collection's filter sheet with storage location and theme. The sample data had
+     * neither theme list nor storage locations, the sheet showed only handle and title.
      */
     @Test
     fun filterblattGallery() {
@@ -979,8 +979,8 @@ class ScreenPhotoVariantsTest {
     }
 
     /**
-     * Das Blatt fährt in seinem eigenen Fenster hoch, und dessen Bildaufbau hängt an der
-     * Systemuhr des Loopers: Die Compose-Uhr allein liess es auf halbem Weg stehen.
+     * The sheet slides up in its own window, and its frame rendering depends on the
+     * looper's system clock: the Compose clock alone left it halfway.
      */
     private fun sheetRaise() {
         compose.mainClock.autoAdvance = false
@@ -990,7 +990,7 @@ class ScreenPhotoVariantsTest {
         }
     }
 
-    // ── Pflichtmasken bei 200 % und der letzte Schritt des zweiten Faktors ──
+    // ── Mandatory forms at 200 % and the last step of the second factor ──
 
     @Test
     fun startPasswordSchrift200() {
@@ -1009,7 +1009,7 @@ class ScreenPhotoVariantsTest {
         photo("zweiter-faktor-schrift200")
     }
 
-    /** Schritt 3: die Notfallcodes, „Weiter“ erst nach dem Haken. */
+    /** Step 3: the emergency codes, „Weiter“ only after the check mark. */
     @Test
     fun secondFactorCodes() {
         zeige("zweiter-faktor-codes", dunkel = true) {
@@ -1024,8 +1024,8 @@ class ScreenPhotoVariantsTest {
     @Test fun partDetailTablet() = partDetailPhoto("tablet", false)
 
     /**
-     * Die Meldung nach dem Löschen mit „Rückgängig“ — über der unteren Leiste. Das Set ist
-     * vorgemerkt und damit schon aus dem Raster, wie in der App.
+     * The message after deleting with „Rückgängig“ — above the bottom bar. The set is
+     * marked for deletion and thus already out of the grid, as in the app.
      */
     private fun snackbarPhoto(geraet: String, dunkel: Boolean) {
         val galerie = world.galerie().also { it.loadSets(); it.loadStats() }
@@ -1047,7 +1047,7 @@ class ScreenPhotoVariantsTest {
     @Test fun snackbarPhone() = snackbarPhoto("telefon", false)
     @Test fun snackbarTabletDark() = snackbarPhoto("tablet", true)
 
-    // ── Katalog, leer und Fehler je Reiter, Tablet 200 %, quer ──
+    // ── Catalog, empty and error per tab, tablet 200 %, landscape ──
 
     private val catalogSets = (1..6).map { i ->
         KatalogSetAnsicht(setNumber = "1030$i-1", name = "Beispielset $i",
@@ -1170,7 +1170,7 @@ class ScreenPhotoVariantsTest {
         photo("einrichten", geraet = "quer")
     }
 
-    /** Ohne Netz: Hinweis mit Stand über der Liste, drei Änderungen warten im Ausgang. */
+    /** Without network: hint with state above the list, three changes wait in the outbox. */
     @Test fun offline() = offlinePhoto("offline", 1f)
     @Test fun offlineSchrift200() = offlinePhoto("offline-schrift200", 2f)
 
@@ -1183,8 +1183,8 @@ class ScreenPhotoVariantsTest {
         photo(name)
     }
 
-    // ── Abläufe, die sonst kein Foto hatten: Einstellungen, Update, Scanner, Barcode,
-    // Kaufpreise, Einzelteil, Hintergrundarbeiten, Gutschein, Einladung, CSV-Import ──
+    // ── Flows that had no photo otherwise: settings, update, scanner, barcode,
+    // purchase prices, single part, background work, voucher, invitation, CSV import ──
 
     private val noUpdate = object : UpdateAktionen {
         override fun pruefeAufUpdate(still: Boolean) = Unit
@@ -1215,7 +1215,7 @@ class ScreenPhotoVariantsTest {
                 onLogout = {}, onServerWechseln = {}, scrollState = androidx.compose.foundation.rememberScrollState(),
             )
         }
-        // Die Update-Karte steht weiter unten: Ohne Scrollen fehlte der Fortschritt im Bild.
+        // The update card stands further down: without scrolling the progress was missing from the image.
         update.fortschritt?.let { p ->
             compose.onNodeWithText(ApplicationProvider.getApplicationContext<Context>()
                 .getString(R.string.update_downloading, p)).performScrollTo()
@@ -1233,7 +1233,7 @@ class ScreenPhotoVariantsTest {
         UpdateUiState(geprueft = true, fortschritt = 42,
             newerVersion = UpdateBeschreibung(versionCode = 240, versionName = "2.4.0", apkUrl = "https://brick.example.org/app.apk")))
 
-    // Ohne Kamera nur die Überlagerung: Rahmen, Hinweis, Licht und Schliessen.
+    // Without a camera only the overlay: frame, hint, light and close.
     private fun scannerPhoto(geraet: String) {
         zeige("scanner", geraet = geraet, warten = false) {
             BarcodeScannerScreen(onResult = {}, onDismiss = {}, ohneKamera = true)
@@ -1285,7 +1285,7 @@ class ScreenPhotoVariantsTest {
     @Test fun purchasePricesPhone() = purchasePricesPhoto(false, "telefon")
     @Test fun purchasePricesTabletDark() = purchasePricesPhoto(true, "tablet")
 
-    // Ein manuell erfasstes Teil mit zwei Käufen: Die Beispieldaten haben keine manuellen Teile.
+    // A manually added part with two purchases: the sample data has no manual parts.
     private fun singlePartPhoto(dunkel: Boolean, geraet: String) {
         world.paths.antworten["/api/v1/parts/manual"] = """{"success":true,"parts":[{"id":9,"part_number":"3001",
             "part_name":"Brick 2 x 4","color_id":5,"color_name":"Red","quantity":12,"image_local":"/beispiel/teil1.png",
@@ -1307,7 +1307,7 @@ class ScreenPhotoVariantsTest {
     @Test fun singlePartDetailPhone() = singlePartPhoto(false, "telefon")
     @Test fun singlePartDetailTabletDark() = singlePartPhoto(true, "tablet")
 
-    // Dieselbe Antwort wie in BackgroundWorkTest: ein laufender und ein gescheiterter Auftrag.
+    // The same response as in BackgroundWorkTest: one running and one failed job.
     private fun backgroundPhoto(dunkel: Boolean, geraet: String) {
         world.paths.antworten["/api/v1/admin/auftraege"] = """{"success":true,
             "auftraege":[
@@ -1326,7 +1326,7 @@ class ScreenPhotoVariantsTest {
         runBlocking { vm.loadBackground() }
         val events = CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> })
         zeige("hintergrundarbeiten", dunkel = dunkel, geraet = geraet, warten = false) {
-            // WLAN erlaubt, die übrigen nicht: beide Stellungen der Schalter im Bild.
+            // Wi-Fi allowed, the others not: both switch positions in the image.
             MonitoringScreen(MonitoringState(MonitoringUiState(), vm.hintergrund.value, ManagementUiState(),
                 mapOf(VorwaermNetwork.WLAN to true), Design.CLASSIC, 0L), vm, events)
         }
@@ -1352,7 +1352,7 @@ class ScreenPhotoVariantsTest {
             androidx.compose.ui.test.hasClickAction()).performClick()
         compose.waitForIdle()
         sheetRaise()
-        // Am PIN-Feld erkannt: Der Titel des Blatts steht auch auf dem Knopf darunter.
+        // Recognized by the PIN field: the sheet's title also stands on the button below.
         sheetPhoto(R.string.vouchers_pin, "gutschein-formular", "classic", false, "telefon")
     }
 
@@ -1388,13 +1388,13 @@ class ScreenPhotoVariantsTest {
     @Test fun csvImportRunningPhone() = csvRunningPhoto(false, "telefon")
     @Test fun csvImportRunningTabletDark() = csvRunningPhoto(true, "tablet")
 
-    // ── Was noch kein Referenzbild hatte, je hell, dunkel und 200 % ──
-    // Name mit „-schrift200“ bei grosser Schrift, sonst wie oben. Alles mit festen Daten:
-    // Die Bilder entstehen in der CI und müssen bei jedem Lauf gleich sein.
+    // ── What had no reference image yet, each light, dark and 200 % ──
+    // Name with „-schrift200“ at large font, otherwise as above. Everything with fixed data:
+    // the images are created in CI and must be the same on every run.
 
     private fun stufe(name: String, schrift: Float) = if (schrift == 2f) "$name-schrift200" else name
 
-    /** Anmelden mit Passkey-Knopf; mit [code] die zweite Stufe samt „Passkey statt Code“. */
+    /** Sign in with the passkey button; with [code] the second stage including „Passkey statt Code“. */
     private fun signInPasskeyPhoto(code: Boolean, dunkel: Boolean, schrift: Float) {
         val name = stufe(if (code) "anmelden-code" else "anmelden-passkey", schrift)
         zeige(name, dunkel = dunkel, schrift = schrift) {
@@ -1417,7 +1417,7 @@ class ScreenPhotoVariantsTest {
     @Test fun signInCodeDark() = signInPasskeyPhoto(true, true, 1f)
     @Test fun signInCodeSchrift200() = signInPasskeyPhoto(true, false, 2f)
 
-    /** Der QR-Scanner beim Einrichten ohne Kamera: Robolectric erteilt keine Erlaubnis, es steht der Hinweis da. */
+    /** The QR scanner during setup without a camera: Robolectric grants no permission, the hint stands there. */
     private fun setUpQrPhoto(dunkel: Boolean, schrift: Float) {
         val name = stufe("einrichten-qr", schrift)
         zeige(name, dunkel = dunkel, schrift = schrift) {
@@ -1434,7 +1434,7 @@ class ScreenPhotoVariantsTest {
     @Test fun setUpQrDark() = setUpQrPhoto(true, 1f)
     @Test fun setUpQrSchrift200() = setUpQrPhoto(false, 2f)
 
-    /** Der Hinweis auf eine neue Fassung, wie ihn die App nach der Prüfung zeigt. */
+    /** The hint about a new version, as the app shows it after the check. */
     private fun updateDialogPhoto(dunkel: Boolean, schrift: Float) {
         val name = stufe("dialog-update", schrift)
         val zustand = MutableStateFlow(UpdateUiState(geprueft = true,
@@ -1450,7 +1450,7 @@ class ScreenPhotoVariantsTest {
     @Test fun dialogUpdateDark() = updateDialogPhoto(true, 1f)
     @Test fun dialogUpdateSchrift200() = updateDialogPhoto(false, 2f)
 
-    /** Die Frage nach einem neuen Serverzertifikat mit Fingerabdruck zum Vergleichen. */
+    /** The question about a new server certificate with a fingerprint to compare. */
     private fun certificatePhoto(dunkel: Boolean, schrift: Float) {
         val name = stufe("dialog-zertifikat", schrift)
         val frage = CertificateUnresolved("brick.example.org:443",
@@ -1466,7 +1466,7 @@ class ScreenPhotoVariantsTest {
     @Test fun dialogCertificateDark() = certificatePhoto(true, 1f)
     @Test fun dialogCertificateSchrift200() = certificatePhoto(false, 2f)
 
-    /** Konto, gerollt bis zu [section]: die Liste der Geräte oder der zweite Faktor. */
+    /** Account, scrolled to [section]: the list of devices or the second factor. */
     private fun accountSectionPhoto(name: String, section: Int, dunkel: Boolean, schrift: Float) {
         world.paths.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
             "email":"marco@example.org","first_name":"Marco","last_name":"Muster","email_verified":true}}"""
@@ -1564,7 +1564,7 @@ class ScreenPhotoVariantsTest {
     @Test fun priceAlertsEmptyDark() = priceAlertsEmptyPhoto(true, 1f)
     @Test fun priceAlertsEmptySchrift200() = priceAlertsEmptyPhoto(false, 2f)
 
-    /** Ein Hauptkonto ohne verknüpfte Konten und ohne offene Einladung. */
+    /** A main account without linked accounts and without an open invitation. */
     private fun householdEmptyPhoto(dunkel: Boolean, schrift: Float) {
         val name = stufe("haushalt-leer", schrift)
         world.paths.antworten["/api/v1/settings/household"] = """{"success":true,"is_main":true,"currency":"CHF",
@@ -1619,7 +1619,7 @@ class ScreenPhotoVariantsTest {
     @Test fun vouchersErrorDark() = vouchersErrorPhoto(true, 1f)
     @Test fun vouchersErrorSchrift200() = vouchersErrorPhoto(false, 2f)
 
-    /** Erfasst ohne Netz: Hinweis mit Stand, eine wartende Änderung und die Meldung dazu. */
+    /** Added without network: hint with state, one pending change and the message for it. */
     private fun addOfflinePhoto(dunkel: Boolean, schrift: Float) {
         val name = stufe("erfassen-offline", schrift)
         val galerie = world.galerie().also { it.loadSets(); it.loadStats() }
@@ -1638,7 +1638,7 @@ class ScreenPhotoVariantsTest {
     @Test fun addOfflineDark() = addOfflinePhoto(true, 1f)
     @Test fun addOfflineSchrift200() = addOfflinePhoto(false, 2f)
 
-    /** Der Rahmen um das Ziel mit Tastaturfokus, hier der Preisvergleich auf der Seite „Mehr“. */
+    /** The frame around the destination with keyboard focus, here the price comparison on the page “More”. */
     private fun focusPhoto(dunkel: Boolean, schrift: Float) {
         val name = stufe("fokusrahmen", schrift)
         zeige(name, dunkel = dunkel, schrift = schrift) {
@@ -1658,5 +1658,5 @@ class ScreenPhotoVariantsTest {
     @Test fun focusFrameSchrift200() = focusPhoto(false, 2f)
 }
 
-/** Ein fester Zeitpunkt für Bilder, die ein Datum zeigen (5.11.2026, 23:33 UTC). */
+/** A fixed point in time for images that show a date (5.11.2026, 23:33 UTC). */
 private const val FIXED_TIME = 1_793_921_600_000L

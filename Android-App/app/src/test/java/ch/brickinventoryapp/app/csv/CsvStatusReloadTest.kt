@@ -4,36 +4,36 @@ import ch.brickinventoryapp.model.domain.Laufstatus
 import org.junit.Test
 
 /**
- * Ein abgeschlossener CSV-Import lädt die Daten GENAU EINMAL neu.
+ * A finished CSV import reloads the data EXACTLY ONCE.
  *
- * ── Warum dieser Test jetzt anders aussieht ─────────────────────────────────
- * Bis hierher stand die Prüfung als Textsuche im Quelltext von
- * `MainViewModel.kt`: gesucht wurde die Zeichenfolge
- * `if (!running && warBeforeActive`. Das hält die Formulierung fest, nicht das
- * Verhalten. Eine gleichwertige Umschreibung hätte den Test gebrochen, und —
- * schlimmer — eine Bedingung, die zufällig genauso aussieht, aber mit einem
- * falschen `warBeforeActive` gefüttert wird, wäre grün geblieben.
+ * ── Why this test looks different now ───────────────────────────────────────
+ * Until here the check stood as a text search in the source of
+ * `MainViewModel.kt`: searched was the string
+ * `if (!running && warBeforeActive`. That records the wording, not the
+ * behavior. An equivalent rewrite would have broken the test, and —
+ * worse — a condition that happens to look the same but is fed a
+ * wrong `warBeforeActive` would have stayed green.
  *
- * Seit die Entscheidung als [csvSequence] in einer eigenen Datei steht, braucht
- * sie keinen `Context` — der Test führt sie aus und geht die ganze
- * Übergangstabelle durch. Die Reihenfolge in `handleCsvStatus()` (erst
- * entscheiden, dann den Zustand überschreiben) und das Nachladen prüft
- * CsvImportViewModelTest am ausgeführten ViewModel.
+ * Since the decision stands as [csvSequence] in its own file, it needs
+ * no `Context` — the test executes it and goes through the whole
+ * transition table. The order in `handleCsvStatus()` (first
+ * decide, then overwrite the state) and the reloading are checked by
+ * CsvImportViewModelTest on the executed ViewModel.
  *
- * ── Gegenprobe ───────────────────────────────
- * Im Gegenprobe-Commit gab `csvSequence()` im Fall „fertig" immer NACHLADEN
- * zurück, also ohne `warBeforeActive`.
- * Ergebnis: `351 tests completed, 1 failed`, und zwar
- * `an import finished hours ago does not reload` (Zeile 74).
+ * ── Counter-check ───────────────────────────────
+ * In the counter-check commit `csvSequence()` always returned NACHLADEN in the case
+ * „finished", i.e. without `warBeforeActive`.
+ * Result: `351 tests completed, 1 failed`, namely
+ * `an import finished hours ago does not reload` (line 74).
  *
- * Zwei Dinge stehen damit fest. Erstens greift die Prüfung. Zweitens — und
- * darum ging der ganze Umbau — hätte die frühere Textsuche geschwiegen: Sie
- * sah in MainViewModel.kt nach, und dort steht der Aufruf von `csvSequence()`
- * unverändert richtig da. Der Fehler lag eine Datei weiter.
+ * Two things are thus settled. First, the check applies. Second — and
+ * that was what the whole rework was about — the earlier text search would have stayed silent: it
+ * looked in MainViewModel.kt, and there the call of `csvSequence()`
+ * stands unchanged and correct. The error lay one file further.
  *
- * Nur EIN Test wurde rot, nicht mehrere: `only the transition reloads` ist
- * grün geblieben, weil der Bruch genau dessen Erwartung erfüllt. Ein Test, der
- * bei jedem Bruch anschlägt, prüft zu grob — hier trennt die Tabelle sauber.
+ * Only ONE test turned red, not several: `only the transition reloads` stayed
+ * green because the breakage fulfils exactly its expectation. A test that
+ * fires on every breakage checks too coarsely — here the table separates cleanly.
  */
 class CsvStatusReloadTest {
 
@@ -47,8 +47,8 @@ class CsvStatusReloadTest {
 
     @Test
     fun `an import finished hours ago does not reload`() {
-        // Der Rücksprung: Der Strom meldet „done" weiter, ohne dass
-        // vorher noch etwas lief.
+        // The jump back: the stream keeps reporting „done" without anything
+        // having run before.
         for (status in listOf("done", "cancelled", "finished")) {
             assert(csvSequence(warBeforeActive = false, status = Laufstatus.aus(status)) == CsvSequence.NICHTS) {
                 "Statusmeldung \"$status\" ohne vorherigen Lauf löst ein Nachladen aus. " +
@@ -73,8 +73,8 @@ class CsvStatusReloadTest {
 
     @Test
     fun `pending counts as running`() {
-        // Sonst wirkt die App zwischen Auftragsannahme und erster Zeile
-        // eingefroren: kein Banner, kein Dienst.
+        // Otherwise the app seems frozen between job acceptance and the first line:
+        // no banner, no service.
         assert(importRunning(Laufstatus.WARTET)) { "pending gilt nicht mehr als laufend" }
         assert(importRunning(Laufstatus.LAEUFT)) { "running gilt nicht mehr als laufend" }
         assert(!importRunning(Laufstatus.FERTIG)) { "done gilt als laufend" }
@@ -83,15 +83,15 @@ class CsvStatusReloadTest {
 
     @Test
     fun `an error does not reload`() {
-        // Ein gescheiterter Import hat nichts geliefert, was sich nachzuladen
-        // lohnte — und würde die Liste trotzdem zurücksetzen.
+        // A failed import has delivered nothing worth reloading
+        // — and would reset the list anyway.
         assert(csvSequence(warBeforeActive = true, status = Laufstatus.FEHLER) == CsvSequence.FEHLER_AUFRAEUMEN)
         assert(csvSequence(warBeforeActive = false, status = Laufstatus.FEHLER) == CsvSequence.FEHLER_AUFRAEUMEN)
     }
 
     @Test
     fun `a message without state triggers nothing`() {
-        // status == null heisst nicht „fertig", sondern „unvollständige Meldung".
+        // status == null does not mean „finished" but „incomplete message".
         assert(csvSequence(warBeforeActive = true, status = null) == CsvSequence.NICHTS)
         assert(csvSequence(warBeforeActive = false, status = null) == CsvSequence.NICHTS)
     }

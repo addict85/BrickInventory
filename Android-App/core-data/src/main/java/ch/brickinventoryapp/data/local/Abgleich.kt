@@ -23,35 +23,35 @@ import ch.brickinventoryapp.offline.Offlineablage
 import ch.brickinventoryapp.offline.Ausgang.DiscardedItem
 import ch.brickinventoryapp.data.local.Baseline.DiscardedChange
 
-/** Was der Server zu einer Bearbeitung sagte. */
+/** What the server said about an edit. */
 sealed class Sendeergebnis {
     data object Angenommen : Sendeergebnis()
-    /** Der Server lehnt ab (4xx): Wiederholen ändert nichts, die Bearbeitung wird verworfen. */
+    /** The server refuses (4xx): retrying changes nothing, the edit is discarded. */
     data class Rejected(val meldung: String, val httpCode: Int?) : Sendeergebnis()
-    /** Nicht erreichbar, Zeitüberschreitung, 5xx, Sitzung abgelaufen: später noch einmal. */
+    /** Unreachable, timeout, 5xx, session expired: once more later. */
     data object Later : Sendeergebnis()
 }
 
 fun interface Bearbeitungssender {
-    /** [schluessel] geht als Idempotency-Key mit; er ist bei jeder Wiederholung derselbe. */
+    /** [schluessel] goes along as Idempotency-Key; it is the same on every retry. */
     suspend fun send(b: Editing, schluessel: String): Sendeergebnis
 }
 
 /**
- * Ordnet eine Antwort ein. 401, 408 und 429 sind 4xx, aber kein Urteil über die
- * Bearbeitung — nach erneuter Anmeldung oder etwas Warten gelingt sie. Ein 2xx
- * ohne Rumpf ist angekommen.
+ * Classifies a response. 401, 408 and 429 are 4xx but no verdict on the
+ * edit — after signing in again or some waiting it succeeds. A 2xx
+ * without a body has arrived.
  */
 fun classify(r: Ergebnis<*>): Sendeergebnis = when (r) {
     is Ergebnis.Erfolg -> Sendeergebnis.Angenommen
     is Ergebnis.Fehler -> classifyError(r)
 }
 
-/** Beim Löschen ist „gibt es nicht (mehr)“ das Ziel: Ein 404 ist angekommen, nicht abgelehnt. */
+/** When deleting, „does not exist (any more)“ is the goal: a 404 has arrived, not been refused. */
 fun deleteClassify(r: Ergebnis<*>): Sendeergebnis =
     if (r is Ergebnis.Fehler.Server && r.status == 404) Sendeergebnis.Angenommen else classify(r)
 
-// Ohne HTTP-Status hat der Server nicht geurteilt (Netz, Abriss, Ausnahme): später noch einmal.
+// Without an HTTP status the server has not judged (network, break, exception): once more later.
 private fun classifyError(r: Ergebnis.Fehler): Sendeergebnis = when (r) {
     is Ergebnis.Fehler.LeereAntwort -> Sendeergebnis.Angenommen
     is Ergebnis.Fehler.Server ->
@@ -66,8 +66,8 @@ enum class Abgleichsergebnis {
     FERTIG, LATER, NOT_SIGNED_IN;
 
     /**
-     * Soll der Arbeiter es später noch einmal versuchen? Ohne Anmeldung nicht, ausser
-     * das Gerät ist gesperrt: Dann ist das Token nur noch nicht gelesen (readToken).
+     * Should the worker try again later? Not without sign-in, unless
+     * the device is locked: then the token has merely not been read yet (readToken).
      */
     fun again(deviceLocked: Boolean): Boolean = when (this) {
         LATER -> true
@@ -77,10 +77,10 @@ enum class Abgleichsergebnis {
 }
 
 /**
- * Sendet den Ausgang der Reihe nach. Ein Posten verlässt den Ausgang erst, wenn
- * der Server ihn angenommen oder abgelehnt hat; bei „später“ bleibt er vorn und
- * alles dahinter wartet, damit die Reihenfolge hält. Die Sperre verhindert, dass
- * ein zweiter Lauf (Worker und App zugleich) denselben Posten noch einmal schickt.
+ * Sends the outbox in order. An item leaves the outbox only when
+ * the server has accepted or refused it; on „later“ it stays in front and
+ * everything behind it waits, so that the order holds. The lock prevents
+ * a second run (worker and app at once) from sending the same item once more.
  */
 @Singleton
 class Abgleich @Inject constructor(
@@ -107,7 +107,7 @@ class Abgleich @Inject constructor(
     suspend fun send(): Abgleichsergebnis = lock.withLock {
         val bereich = ablage.bereich() ?: return@withLock Abgleichsergebnis.NOT_SIGNED_IN
         val betroffen = mutableSetOf<StockKind>()
-        // Vor dem Senden: Was sich nicht mehr lesen lässt, wird gemeldet statt übersprungen.
+        // Before sending: what can no longer be read is reported instead of skipped.
         ausgang.cleanUnreadable(bereich)
         try {
             lauf(bereich, betroffen)
@@ -119,8 +119,8 @@ class Abgleich @Inject constructor(
     private suspend fun lauf(bereich: String, betroffen: MutableSet<StockKind>): Abgleichsergebnis {
         var p = ausgang.erster(bereich)
         while (p != null) {
-            // Unmittelbar vor jedem Senden: Der Wächter hängt das Token an, das JETZT
-            // gilt. Nach einem Konto-Wechsel ginge der Posten sonst unter fremdem Konto raus.
+            // Immediately before every send: the guard attaches the token that applies
+            // NOW. After an account switch the item would otherwise go out under a foreign account.
             if (ablage.bereich() != bereich) return Abgleichsergebnis.NOT_SIGNED_IN
             when (val e = sender.send(p.bearbeitung, p.schluessel)) {
                 Sendeergebnis.Angenommen -> {
@@ -142,20 +142,20 @@ class Abgleich @Inject constructor(
     }
 
     private suspend fun discard(bereich: String, p: Ausgangsposten, meldung: String, code: Int?, betroffen: MutableSet<StockKind>) {
-        // Erst festhalten, dann entfernen: Stirbt der Prozess dazwischen, bleibt der Hinweis.
+        // First record, then remove: if the process dies in between, the hint stays.
         ausgang.rememberDiscarded(bereich, DiscardedItem(p.schluessel.ifBlank { "posten-${p.id}" }, p.bearbeitung.ziel, meldung, code))
         ausgang.entferne(p.id)
-        // Die lokale Liste trägt die Bearbeitung noch; neu laden stellt den Serverstand her.
+        // The local list still carries the edit; reloading restores the server state.
         betroffen += p.bearbeitung.art
     }
 
     companion object {
-        /** Mit dem Rückzug von WorkManager rund zwei Tage — dann ist es kein Funkloch mehr. */
+        /** With WorkManager's backoff about two days — then it is no longer a dead spot. */
         const val MAX_ATTEMPTS = 20
     }
 }
 
-/** Sendet eine Bearbeitung mit der Anfrage, die online gegangen wäre (dieselbe Abbildung), samt ihrem Schlüssel. */
+/** Sends an edit with the request that would have gone online (the same mapping), including its key. */
 class ServerSender @Inject constructor(
     private val sets: SetsApi,
     private val teile: PartsApi,

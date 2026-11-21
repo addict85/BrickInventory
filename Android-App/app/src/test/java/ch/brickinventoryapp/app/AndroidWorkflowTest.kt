@@ -8,16 +8,16 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Aufbau des Android-Workflows (Strukturprüfung): Der Gegenproben-Job misst jede
- * Gegenprobe gegen eine echte Testklasse, und der Release-Weg läuft mit festem Werkzeug,
- * nennt das Zertifikat und gibt ausserhalb eines Etiketts kein installierbares APK heraus.
+ * Structure of the Android workflow (structure check): the counter-checks job measures every
+ * counter-check against a real test class, and the release path runs with fixed tooling,
+ * names the certificate and hands out no installable APK outside of a tag.
  *
- * Gegenproben (Patches unter gegenproben/):
- *   gegenproben-job-weich     continue-on-error im Job `gegenproben` → rot „der Gegenproben-Job …“
- *   release-image-wechselnd   Job `signatur` (android-signieren.yml) auf ubuntu-latest → rot „der Release-Weg …“
- *   workflow-image-wechselnd  Job `gegenproben` auf ubuntu-latest → rot „der Release-Weg …“
- *   (lokal) im Kopf von teile-ablage-trotz-konto wieder `Rot: mit Kontofilter gilt die
- *   Antwort des Servers` (eine Meldung, kein Testname) → rot „der Gegenproben-Job …“
+ * Counter-checks (patches under gegenproben/):
+ *   gegenproben-job-weich     continue-on-error in the job `gegenproben` → red “the counter-checks job …”
+ *   release-image-wechselnd   job `signatur` (android-signieren.yml) on ubuntu-latest → red “the release path …”
+ *   workflow-image-wechselnd  job `gegenproben` on ubuntu-latest → red “the release path …”
+ *   (local) in the header of teile-ablage-trotz-konto again `Rot: mit Kontofilter gilt die
+ *   Antwort des Servers` (a message, not a test name) → red “the counter-checks job …”
  */
 class AndroidWorkflowTest {
 
@@ -25,14 +25,14 @@ class AndroidWorkflowTest {
     private val signierweg = Quellen.workflow("android-signieren.yml")
     private val freigabe = Quellen.workflow("android-release.yml")
 
-    /** Der Rumpf eines Jobs bis zum nächsten Job. */
+    /** The body of a job up to the next job. */
     private fun job(name: String, text: String = workflow): String {
         val teil = text.split(Regex("""\n  ${Regex.escape(name)}:\n""")).getOrNull(1)
         assertTrue("Job $name fehlt", teil != null)
         return teil!!.split(Regex("""\n  [\w-]+:\n""")).first()
     }
 
-    /** Der run-Block des Schritts mit diesem Namen. */
+    /** The run block of the step with this name. */
     private fun schritt(name: String, text: String = workflow): String {
         val z = text.lines()
         val i = z.indexOfFirst { it.trim() == "- name: $name" }
@@ -58,8 +58,8 @@ class AndroidWorkflowTest {
             val voll = kopf(p, "Test").orEmpty()
             val datei = File(Quellen.project, "${kopf(p, "Modul")}/src/test/java/${voll.replace('.', '/')}.kt")
             assertTrue("${p.name}: $voll liegt nicht in ${kopf(p, "Modul")}", datei.isFile)
-            // gegenproben.py sucht `Rot` in den Namen der gescheiterten Tests, nicht in deren
-            // Meldungen; ein Meldungstext hiesse „blieb grün“, obwohl der Test rot war.
+            // gegenproben.py searches `Rot` in the names of the failed tests, not in their
+            // messages; a message text would mean „blieb grün“ although the test was red.
             val namen = Regex("""fun `([^`]+)`|fun (\w+)\(""").findAll(datei.readText()).map { it.value }.toList()
             assertTrue("${p.name}: Rot „${kopf(p, "Rot")}“ ist kein Testname in $voll",
                 namen.any { kopf(p, "Rot").orEmpty() in it })

@@ -4,21 +4,21 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * In einer verschlüsselten Liste hat JEDER Eintrag einen Schlüssel.
+ * In a keyed list EVERY item has a key.
  */
 class LazyGridItemKeyTest {
 
     @Test
     fun `no keyless item in a keyed list`() {
-        // Untergrenze über Quellen.alle(): Fände der Dateilauf
-        // nichts, bliebe die Verstossliste leer und der Test grün, ohne etwas
-        // geprüft zu haben.
+        // Lower bound via Quellen.alle(): if the file walk found
+        // nothing, the violation list would stay empty and the test green without having
+        // checked anything.
         val ui = Quellen.unter("ui")
         assert(ui.size >= 20) { "Nur ${'$'}{ui.size} Dateien unter ui/ — Pfad veraltet?" }
-        // Der Aufruf kann über mehrere Zeilen gehen und geschachtelte Klammern
-        // enthalten (`span = { GridItemSpan(maxLineSpan) }`). Eine erste Fassung
-        // ohne DOT_MATCHES_ALL blieb bei der Gegenprobe grün — sie fand den
-        // mehrzeiligen Aufruf gar nicht.
+        // The call can span several lines and contain nested brackets
+        // (`span = { GridItemSpan(maxLineSpan) }`). A first version
+        // without DOT_MATCHES_ALL stayed green in the counter-check — it did not find the
+        // multi-line call at all.
         val entry = Regex(
             """(?<![\w.])item\s*\(((?:[^()]|\([^()]*\))*)\)\s*\{""",
             RegexOption.DOT_MATCHES_ALL)
@@ -26,8 +26,8 @@ class LazyGridItemKeyTest {
 
         for (f in ui) {
             val code = Quellen.strip(f.readText())
-            // Nur Dateien, die überhaupt mit Schlüsseln arbeiten — sonst gibt es
-            // keinen Ersatzschlüssel, der wechseln könnte.
+            // Only files that work with keys at all — otherwise there is
+            // no fallback key that could change.
             if (!code.contains("key =")) continue
             for (m in entry.findAll(code)) {
                 val args = m.groupValues[1]

@@ -6,9 +6,9 @@ import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 /**
- * Anmeldung und Sitzung brauchen Token und Gerät zusammen: Adresse und Token aus der
- * [TokenAblage], Design, Währung und Pins aus der [DevicesStore]. Die beiden Ablagen
- * bleiben getrennt; nur diese Schnittstellen sehen sie gemeinsam.
+ * Sign-in and session need token and device together: address and token from the
+ * [TokenAblage], design, currency and pins from the [DevicesStore]. The two stores
+ * stay separate; only these interfaces see them together.
  */
 internal class AccountStore @Inject constructor(
     private val token: TokenAblage,

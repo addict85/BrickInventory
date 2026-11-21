@@ -22,19 +22,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Sets, Merkposten und Teile liegen in einer eigenen Ablageform: Jedes Feld kommt
- * unverändert zurück, eine Zeile im Format des Servermodells bleibt lesbar, und eine
- * unlesbare Zeile fällt nicht still weg.
+ * Sets, wishlist items and parts lie in their own store form: every field comes
+ * back unchanged, a row in the format of the server model stays readable, and an
+ * unreadable row does not silently disappear.
  *
- * Gegenproben (gegenproben/ablageform-felder-vertauscht.patch, verworfen-still.patch):
- *   in Ablagezeilen.set avg und max des Kaufpreises vertauscht → rot „jedes Feld …“
- *   in Offlineablage.dekodiere verworfen = 0 → rot „eine unlesbare Zeile wird gezählt …“
+ * Counter-checks (gegenproben/ablageform-felder-vertauscht.patch, verworfen-still.patch):
+ *   in Ablagezeilen.set avg and max of the purchase price swapped → red “every field …”
+ *   in Offlineablage.dekodiere verworfen = 0 → red “an unreadable row is counted …”
  */
 class AblageformTest {
 
     private fun <T : Any> rund(fach: Fach<T>, wert: T): T = fach.form.decode(BrickJson, fach.form.encode(BrickJson, wert))
 
-    // Jedes Feld mit eigenem Wert, damit eine Vertauschung auffällt.
+    // Every field with its own value, so that a swap stands out.
     private val set = SetItem(setNumber = "10001-1", name = "Burg", year = 1990, theme = "Castle", pieces = 500, minifigs = 4, quantity = 2, imageUrl = "u", imageLocal = "l", addedAt = "2020-01-01", condition = Zustand.GEBRAUCHT,
         storage = "Kiste 1", conditions = listOf(Zustand.NEU, Zustand.GEBRAUCHT), owners = listOf(KontoName(id = 3, username = "lea")), maxPurchasePrice = 99.5, avgPurchasePrice = 88.25, usedCount = 1,
         instructions = listOf(Instruction(id = 4, url = "a.pdf", description = "Heft 1", localPath = "lokal/a.pdf", isManual = true)), bricklink = BrickLinkRef(type = "GEAR", number = "g1", url = "bl", exact = false, resolved = true), preisvergleichUrl = "pv")
@@ -53,7 +53,7 @@ class AblageformTest {
 
     @Test
     fun `a row in the earlier format stays readable`() {
-        // Das Servermodell selbst als JSON: so liegen Zeilen, die vor der eigenen Ablageform geschrieben wurden.
+        // The server model itself as JSON: this is how rows lie that were written before the own store form.
         val alt = BrickJson.encodeToString(SetItem.serializer(), set)
         assertEquals(set.alsAnsicht(), Slots.SETS.form.decode(BrickJson, alt))
         // Rows from before the English contract carry the alert under its German keys.

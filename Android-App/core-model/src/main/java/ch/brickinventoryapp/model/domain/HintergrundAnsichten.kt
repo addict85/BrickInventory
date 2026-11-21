@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.model.domain
 
-/** Zustand eines Auftrags; was der Server neu einführt, landet bei UNBEKANNT statt zu brechen. */
+/** State of a job; whatever the server newly introduces lands at UNBEKANNT instead of breaking. */
 
 enum class JobStatus {
     OFFEN, LAEUFT, FEHLER, ABGEBROCHEN, DONE, UNBEKANNT;
@@ -14,9 +14,9 @@ enum class JobStatus {
 }
 
 /**
- * Ein Auftrag, wie die Liste ihn zeigt: Was man mit ihm tun darf, ist schon
- * entschieden — dieselbe Regel wie der Server (abbrechen nur offen/läuft,
- * wiederholen nur Fehler/abgebrochen), damit kein Knopf sicher in ein 409 führt.
+ * A job as the list shows it: what one may do with it is already
+ * decided — the same rule as the server (cancel only open/running,
+ * retry only error/cancelled), so that no button surely leads into a 409.
  */
 data class JobView(
     val id: String,
@@ -40,6 +40,6 @@ data class BackgroundView(
     val auftraege: List<JobView>,
     val pausen: List<JobPauseView>,
     val bildbedarf: Int,
-    /** False: Kein Job-Prozess meldet sich — dann bewegt sich keiner der Aufträge. */
+    /** False: no job process reports — then none of the jobs moves. */
     val jobProcessRunning: Boolean,
 )

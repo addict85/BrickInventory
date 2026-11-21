@@ -12,15 +12,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Der Zustand ist im Code ein Typ und auf der Leitung "N" oder "U". Geprüft wird beides
- * an echten Modellen: was hinausgeht, und dass Unbekanntes die Antwort nicht verwirft.
+ * The condition is a type in code and "N" or "U" on the wire. Both are checked
+ * on real models: what goes out, and that unknown values do not discard the response.
  *
- * Gegenproben (durchgeführt, kotlinc + JUnit):
- *   A  serialize schreibt `value.name` statt `kennung` → rot „N and U go out“
+ * Counter-checks (performed, kotlinc + JUnit):
+ *   A  serialize writes `value.name` instead of `kennung` → red “N and U go out”
  *      ("condition":"GEBRAUCHT")
- *   B  deserialize wirft bei Unbekanntem (`?: error(...)`) → rot „ein unbekannter
- *      Zustand verwirft die Antwort nicht“
- *   C  Zustand.aus ohne ignoreCase → rot „lowercase counts too“
+ *   B  deserialize throws on unknown (`?: error(...)`) → red “an unknown
+ *      condition does not discard the response”
+ *   C  Zustand.aus without ignoreCase → red “lowercase counts too”
  */
 class StateTest {
 
@@ -47,7 +47,7 @@ class StateTest {
 
     @Test
     fun `an unknown condition does not discard the response`() {
-        // Wie der Server (`=== 'U' ? 'U' : 'N'`): Unbekanntes gilt als neu.
+        // Like the server (`=== 'U' ? 'U' : 'N'`): unknown counts as new.
         val set = json.decodeFromString(SetItem.serializer(),
             """{"set_number":"75192-1","condition":"X","conditions":["U","?"]}""")
         assertEquals(Zustand.NEU, set.condition)
@@ -64,7 +64,7 @@ class StateTest {
 
     @Test
     fun `the descriptor is an enumeration type under the class name`() {
-        // Navigation erkennt ein Routenfeld daran als Enum und lädt die Klasse über diesen Namen.
+        // Navigation recognizes a route field as enum by it and loads the class via this name.
         assertEquals(Zustand::class.java.name, StateSerializer.descriptor.serialName)
         assertEquals("ENUM", StateSerializer.descriptor.kind.toString())
     }

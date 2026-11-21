@@ -24,24 +24,24 @@ import kotlinx.coroutines.flow.Flow
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 
 /**
- * Teile: Bestand, manuell erfasste Teile, Farben, Lagerorte.
- * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit
- * Retrofit und Ablage hängen (TeileRepositoryImpl).
+ * Parts: stock, manually added parts, colors, storage locations.
+ * An interface so that ViewModels and tests do not depend on the implementation with
+ * Retrofit and store (TeileRepositoryImpl).
  */
 interface PartsRepository {
     /**
-     * Die Teile aus der Ablage nach Suche, Farbe, Kategorie und Ersatzteilen; [refreshParts]
-     * füllt sie. Konto, Lagerort und „In Sets“ rechnet nur der Server: Kontosicht.
+     * The parts from the store by search, color, category and spare parts; [refreshParts]
+     * fills them. Account, storage location and „In Sets“ are computed only by the server: Kontosicht.
      */
     fun observeParts(suche: String? = null, farbe: ColorPicker = ColorPicker.Alle, kategorie: Kategoriewahl = Kategoriewahl.Alle,
                        spareParts: Ersatzteilwahl = Ersatzteilwahl.ALLE): Flow<Local<TeilAnsicht>>
 
     fun observeManualParts(suche: String? = null): Flow<Local<ManualPartView>>
 
-    /** Alle Seiten der Teile und die manuellen Teile in die Ablage; gezeigt wird die Ablage. */
+    /** All pages of the parts and the manual parts into the store; the store is shown. */
     suspend fun refreshParts(): Ergebnis<Unit>
 
-    /** Nur die manuellen Teile — wo die übrigen aus der Kontosicht kommen. */
+    /** Only the manual parts — where the others come from the Kontosicht. */
     suspend fun refreshManualParts(): Ergebnis<Unit>
 
     suspend fun getPartsStats(konten: Kontoauswahl? = null): Ergebnis<PartsMetricsView?>
@@ -54,25 +54,25 @@ interface PartsRepository {
     suspend fun getOwnedParts(teile: List<PartialKey>,
                               konten: Kontoauswahl? = null): Ergebnis<Map<PartialKey, PartInventory>>
 
-    /** Der Ort, wie der Server ihn gespeichert hat; null heisst keiner. */
+    /** The location as the server saved it; null means none. */
     suspend fun setPartStorage(partNumber: String, colorId: Int, ort: String): Ergebnis<String?>
 
     suspend fun getLocations(konten: Kontoauswahl? = null): Ergebnis<List<LocationView>>
 
-    /** Der eigene Vorrat an Lagerorten samt Vorgabe aus der Ablage; [refreshLocationStock] füllt ihn. */
+    /** The own supply of storage locations including default from the store; [refreshLocationStock] fills it. */
     fun observeLocationStock(): Flow<Local<StockLocationView>>
 
     suspend fun refreshLocationStock(): Ergebnis<Unit>
 
     /**
-     * Der Vorrat anderer Besitzer — Vorschläge für das Set eines Unterkontos. Eine
-     * Frage je Set, keine Liste des Kontos, deshalb nicht in der Ablage.
+     * The supply of other owners — suggestions for the set of a sub-account. A
+     * question per set, not a list of the account, hence not in the store.
      */
     suspend fun getLocationStock(besitzer: List<Int>): Ergebnis<List<LocationEntryView>>
 
     suspend fun putLocationAn(name: String): Ergebnis<Unit>
 
-    /** [alt]: der bisherige Name — er steht an Sets, Teilen und Figuren und heisst dort danach neu. */
+    /** [alt]: the previous name — it stands on sets, parts and figures and gets the new name there afterwards. */
     suspend fun nameLocationUm(id: Int, alt: String, name: String): Ergebnis<Unit>
 
     suspend fun deleteLocation(id: Int): Ergebnis<Unit>

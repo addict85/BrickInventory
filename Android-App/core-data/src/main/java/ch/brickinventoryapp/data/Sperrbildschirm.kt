@@ -4,10 +4,10 @@ import android.content.Context
 import androidx.core.app.NotificationCompat
 
 /**
- * Auf dem gesperrten Bildschirm nur der Titel: Texte nennen Server, Dateien oder
- * Fortschritt des Kontos, und das Telefon liegt oft offen herum. Entsperrt gilt
- * die volle Meldung (wie PreisalarmWorker.meldung). Öffentlich, weil der PDF-Dienst
- * in core-services dieselbe Regel braucht.
+ * On the lock screen only the title: texts name server, files or
+ * progress of the account, and the phone often lies around openly. Unlocked
+ * the full notification applies (like PreisalarmWorker.meldung). Public because the PDF service
+ * in core-services needs the same rule.
  */
 fun NotificationCompat.Builder.onlyUnlocked(context: Context, kanal: String, titel: String, symbol: Int): NotificationCompat.Builder =
     setVisibility(NotificationCompat.VISIBILITY_PRIVATE)

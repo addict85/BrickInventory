@@ -21,20 +21,20 @@ import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509ExtendedTrustManager
 
 /**
- * Die nachgeholte Entwertung nach einem Serverwechsel prüft den alten Server mit
- * dessen Pin, über echtes TLS: Der alte Server hat eine eigene CA, wie
- * der typische Heimserver; der eingerichtete ist inzwischen ein anderer. Die
- * Zertifikate sind dieselben festen Testdaten wie in CertificatePinTest.
+ * The deferred invalidation after a server switch checks the old server with
+ * its pin, via real TLS: the old server has its own CA, like
+ * the typical home server; the set-up one is a different one by now. The
+ * certificates are the same fixed test data as in CertificatePinTest.
  *
- * Gegenproben:
- *   A  trustJob() mit `ownServer = { null }` (der alte Server gilt als
- *      fremder Host, nur System-CAs — der ältere Stand) → rot „der alte Server mit
- *      eigener CA wird mit seinem Pin erreicht“ (LATER statt ENTWERTET);
+ * Counter-checks:
+ *   A  trustJob() with `ownServer = { null }` (the old server counts as
+ *      foreign host, only system CAs — the older state) → red “the old server with
+ *      its own CA is reached with its pin” (LATER instead of ENTWERTET);
  *      gegenproben/entwertung-ohne-alten-pin.patch
- *   B  im Entwerter die Ablehnung weder gemerkt (RemembersRejection) noch in der
- *      Ursachenkette gesucht (jeder IOException LATER) → rot „ein anderer
- *      Schluessel unter dem Pin bekommt kein Token …“. In der CI (Conscrypt im
- *      selben JVM) genügte die Suche in der Ursachenkette allein nicht.
+ *   B  in the canceller the rejection neither remembered (RemembersRejection) nor searched in the
+ *      cause chain (LATER for every IOException) → red “a different
+ *      key under the pin gets no token …”. In CI (Conscrypt in the
+ *      same JVM) the search in the cause chain alone was not enough.
  */
 class AlterServerPinTest {
 
@@ -53,7 +53,7 @@ class AlterServerPinTest {
         server.start()
     }
 
-    /** Das „System“: kennt nur eine öffentliche Wurzel, nicht die CA des alten Servers. */
+    /** The „system“: knows only a public root, not the old server's CA. */
     private val system: X509ExtendedTrustManager by lazy {
         val ks = KeyStore.getInstance("PKCS12").apply { load(null) }
         ks.setCertificateEntry("w", zert(ROOT))
@@ -61,7 +61,7 @@ class AlterServerPinTest {
             .apply { init(ks) }.trustManagers.filterIsInstance<X509ExtendedTrustManager>().first()
     }
 
-    /** Wie NetzModule ihn baut: je Auftrag ein Vertrauen für dessen Server und Pin. */
+    /** As NetzModule builds it: one trust per job for its server and pin. */
     private val redeemer = Redeemer(
         OkHttpClient.Builder().connectTimeout(2, TimeUnit.SECONDS).readTimeout(2, TimeUnit.SECONDS).build(),
         entwicklung = false,
@@ -82,7 +82,7 @@ class AlterServerPinTest {
 
     @Test
     fun `a different key under the pin gets no token, and waiting does not help`() {
-        // Ein öffentlich gültiges Zertifikat (System kennt ROOT) genügt nicht, wo der Pin die eigene CA verlangt.
+        // A publicly valid certificate (system knows ROOT) is not enough where the pin requires the own CA.
         starte(LEAF_KEY, listOf(LEAF, INTER))
         val pin = spkiFingerprint(zert(WURZEL))
         assertEquals(Entwertungsergebnis.GIVE_UP, redeemer.redeem(alterServer(), "altes-token", pin))

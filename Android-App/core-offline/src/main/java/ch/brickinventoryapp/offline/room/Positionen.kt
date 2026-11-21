@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.offline.room
 
 /**
- * Positionen für die Schlüssel [neu], wenn bisher [alt] galt: Bleibende Zeilen behalten
- * ihre, neue nehmen freie davor, dazwischen oder dahinter. Nur wenn die Reihenfolge der
- * bleibenden kippt oder kein Platz frei ist, wird von vorn durchgezählt.
+ * Positions for the keys [neu] if [alt] applied so far: staying rows keep
+ * theirs, new ones take free ones before, between or after. Only if the order of the
+ * staying ones tips over or no space is free, counting starts over from the front.
  */
 internal fun positionen(alt: Map<String, Int>, neu: List<String>): List<Int> {
     val ergebnis = IntArray(neu.size)

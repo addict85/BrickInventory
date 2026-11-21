@@ -83,17 +83,17 @@ import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
 
 /**
- * Abläufe über einen Bildschirm hinaus: Löschen mit Rückgängig, Fehler- und Leerzustände
- * des Katalogs, Erfassen nach dem Scan, Merkliste im Katalog, Haushalt.
+ * Flows beyond one screen: deleting with undo, error and empty states
+ * of the catalog, adding after the scan, wishlist in the catalog, household.
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   merkposten-loeschen-sofort         Löschen wieder sofort am Server → rot „ein Merkposten laesst sich …“
- *   katalog-fehler-eigen               eigener Fehlerzustand mit Trefferzahl → rot „der Katalog zeigt im …“
- *   katalog-leer-ohne-zuruecksetzen    leerer Katalog ohne Knopf → rot „ein leerer Katalog mit …“
- *   scanner-ohne-anzahl                Anzahl nicht weitergereicht → rot „die Erfassung nach dem …“
- *   katalog-ohne-merkliste             Detail kennt den Merkposten nicht → rot „das Katalog-Detail zeigt den …“
- *   haushalt-ohne-teilen               Einladung nur zum Kopieren → rot „die Einladung laesst sich …“
- *   teile-fehler-mit-plus              „+“ auch im Fehlerzustand → rot „im Fehlerzustand steht kein …“
+ * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ *   merkposten-loeschen-sofort         deleting again immediately at the server → red “a wishlist item can be …”
+ *   katalog-fehler-eigen               own error state with hit count → red “the catalog shows the same …”
+ *   katalog-leer-ohne-zuruecksetzen    empty catalog without button → red “an empty catalog with …”
+ *   scanner-ohne-anzahl                quantity not passed on → red “adding after the scan …”
+ *   katalog-ohne-merkliste             detail does not know the wishlist item → red “the catalog detail shows the …”
+ *   haushalt-ohne-teilen               invitation only for copying → red “the invitation can be …”
+ *   teile-fehler-mit-plus              „+“ also in the error state → red “in the error state there is no …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -125,7 +125,7 @@ class BereichsablaeufeTest {
         compose.waitForIdle()
     }
 
-    /** Den Hauptlooper treiben, bis [bereit] gilt — der Server antwortet in einem eigenen Faden. */
+    /** Drive the main looper until [bereit] holds — the server responds in its own thread. */
     private fun wait(was: String, bereit: () -> Boolean) {
         try {
             compose.waitUntil(10_000) { shadowOf(Looper.getMainLooper()).idle(); bereit() }
@@ -148,13 +148,13 @@ class BereichsablaeufeTest {
                 }
             }
         }
-        // fmtMoney setzt ein festes Leerzeichen zwischen Code und Betrag.
+        // fmtMoney puts a non-breaking space between code and amount.
         val alarm = ctx.getString(R.string.wanted_alert_below, fmtMoney(349.0, Waehrung("CHF")))
         compose.onAllNodesWithText(alarm, substring = true).fetchSemanticsNodes()
             .let { assertTrue("Alarm vor dem Löschen", it.isNotEmpty()) }
         compose.onNode(hasText("Lion Knights' Castle", substring = true) and hasClickAction()).performClick()
         wait("Detail") { !vm.wantedItemDetailState.value.abruf.laedt }
-        // Ab hier die Uhr von Hand: Sonst liefe die Snackbar im Takt der Testuhr sofort ab.
+        // From here the clock by hand: otherwise the snackbar would expire immediately at the test clock's pace.
         compose.mainClock.autoAdvance = false
         fun schritt() = repeat(5) { compose.mainClock.advanceTimeBy(100); shadowOf(Looper.getMainLooper()).idle() }
         compose.onNodeWithContentDescription(ctx.getString(R.string.common_delete)).performClick()

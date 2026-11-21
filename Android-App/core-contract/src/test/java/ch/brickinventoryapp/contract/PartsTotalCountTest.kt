@@ -7,15 +7,15 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Sammlung (/stats) und Teile-Reiter (/parts/stats) zeigen dieselbe
- * Gesamtzahl samt Aufschlüsselung, wie die Webapp („394 — 144 aus Sets · 250
- * einzeln“). Gelesen wird aus echten Antworten des Servers (Stand 45210d5).
+ * Collection (/stats) and parts tab (/parts/stats) show the same
+ * total including breakdown, like the web app („394 — 144 aus Sets · 250
+ * einzeln“). Read from real responses of the server (state 45210d5).
  *
- * Gegenproben:
- *   A  in PartsStats.alsAnsicht() `+ (manualParts ?: 0)` entfernt → rot
- *      „parts tab and collection show the same number“ (144 statt 394)
- *   B  in DashboardStats.alsAnsicht() den Rückfall `?: manualParts?.let …`
- *      entfernt → rot „ohne set_parts kommt die Aufschlüsselung aus der Differenz“
+ * Counter-checks:
+ *   A  in PartsStats.alsAnsicht() `+ (manualParts ?: 0)` removed → red
+ *      “parts tab and collection show the same number“ (144 instead of 394)
+ *   B  in DashboardStats.alsAnsicht() the fallback `?: manualParts?.let …`
+ *      removed → red “without set_parts the breakdown comes from the difference”
  */
 class PartsTotalCountTest {
 

@@ -15,18 +15,18 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Marke an einer Anfrage, die nur vorwärmt. Ein OkHttp-Tag statt einer Kopfzeile,
- * weil es den Server nichts angeht. Der Abgriff in NetzModule legt danach
- * spekulativ oder gebraucht ab.
+ * Mark on a request that only warms. An OkHttp tag instead of a header,
+ * because it is none of the server's business. The tap in NetzModule then stores it
+ * as speculative or used.
  */
 object WarmUp
 
 /**
- * Bilder im Hintergrund holen, bevor jemand sie aufruft, aus allen Reitern und bis
- * 80 % der Ablage: Sonst lag offline nur vor, was einmal auf dem Bildschirm war.
- * Welche Bilder, entscheidet ui/Vorwaermen.kt, weil die Auswahl am Kontofilter
- * hängt; hier bleibt holen, drosseln und die Grenze. Ohne Coil: Gebraucht werden
- * Bytes auf der Platte, keine Bitmaps im Speicher-Cache.
+ * Fetch images in the background before anyone calls them up, from all tabs and up to
+ * 80 % of the store: otherwise offline only what had once been on the screen was available.
+ * Which images is decided by ui/Vorwaermen.kt, because the selection depends on the account
+ * filter; what remains here is fetching, throttling and the limit. Without Coil: needed are
+ * bytes on disk, not bitmaps in the memory cache.
  */
 @Singleton
 class VorschauVorwaermer @Inject constructor(
@@ -37,25 +37,25 @@ class VorschauVorwaermer @Inject constructor(
 ) {
     companion object {
         /**
-         * Zwei gleichzeitig: Der Bild-Client hat sechs je Host, vier bleiben für das
-         * Sichtbare — die Vorwärmung soll die App nicht ausbremsen.
+         * Two at a time: the image client has six per host, four stay for what is
+         * visible — warming should not slow down the app.
          */
         private const val CONCURRENT = 2
 
-        /** Nach jedem Schub kurz Luft lassen — dieselbe Ruecksicht wie oben. */
+        /** Leave a brief breather after every batch — the same consideration as above. */
         private const val PAUSE_MS = 250L
 
         /**
-         * Erst nach dieser Zeit anfangen: Beim Start konkurrieren Anmeldung und erste
-         * Kachelwand um die Leitung, die Vorwärmung hat es nicht eilig.
+         * Start only after this time: at start sign-in and the first
+         * wall of tiles compete for the line, warming is in no hurry.
          */
         const val ANLAUF_MS = 5_000L
     }
 
     /**
-     * Darf in der aktuellen Netzlage geholt werden (Vorgabe nur WLAN)? Erschöpfend
-     * ohne `else`, damit eine neue Lage hier nicht still unter erlaubt oder verboten
-     * fällt.
+     * May fetching happen in the current network situation (default only Wi-Fi)? Exhaustive
+     * without `else`, so that a new situation does not silently fall under allowed or forbidden
+     * here.
      */
     private suspend fun networkAllowed(): Boolean = when (netz.aktuell()) {
         Netzlage.Art.KEIN_NETZ -> false
@@ -65,42 +65,42 @@ class VorschauVorwaermer @Inject constructor(
     }
 
     /**
-     * Noch Platz unter der Grenze? Vor dem Sammeln gefragt, damit ein voller Speicher
-     * nicht bei jedem Start Listenabrufe kostet.
+     * Still room below the limit? Asked before collecting so that a full store
+     * does not cost list fetches on every start.
      */
     private fun stillSpace(): Boolean =
         vorschau.belegt() < VorschauSpeicher.LIMIT_WARM_UP
 
     /**
-     * Lohnt sich ein Durchlauf? Netz und Platz vor dem Sammeln — ohne Platz gäbe es
-     * nichts abzulegen, im falschen Netz dürfte man nicht, und die Listenabrufe liefen
-     * umsonst.
+     * Is a pass worth it? Network and space before collecting — without space there would be
+     * nothing to store, on the wrong network one would not be allowed to, and the list fetches would run
+     * in vain.
      */
     suspend fun darfStarten(): Boolean = networkAllowed() && stillSpace()
 
     /**
-     * Die übergebenen Adressen holen, bis die Grenze erreicht ist. Still: Fällt etwas
-     * aus, ist die Ablage eben weniger voll. Der Aufrufer sorgt für den
-     * Hintergrund-Dispatcher.
+     * Fetch the passed addresses until the limit is reached. Silently: if something
+     * fails, the store is simply less full. The caller provides the
+     * background dispatcher.
      */
     suspend fun vorwaermen(adressen: List<String>) {
         val offen = adressen
             .distinct()
-            // Nur was die Ablage auch behaelt: Was `isPreview` verneint,
-            // wuerde der Abgriff gar nicht erst schreiben — es zu holen waere
-            // reines Datenvolumen ohne Ertrag. Und was schon daliegt, braucht
-            // das Netz nicht noch einmal.
+            // Only what the store also keeps: what `isPreview` denies
+            // the tap would not even write — fetching it would be
+            // pure data volume without yield. And what already lies there does not need
+            // the network once more.
             .filter { vorschau.isPreview(it) && !vorschau.hat(it) }
 
         for (boost in offen.chunked(CONCURRENT)) {
-            // Je Schub neu messen statt einmal am Anfang: Waehrenddessen legt
-            // auch der normale Betrieb Bilder ab, und ein Zaehler, der das
-            // nicht sieht, liefe an der Grenze vorbei.
+            // Measure anew per batch instead of once at the start: meanwhile
+            // normal operation also stores images, and a counter that does
+            // not see that would run past the limit.
             if (!stillSpace()) return
-            // Die Netzlage AUCH je Schub, nicht nur am Anfang: Ein Durchlauf
-            // dauert Minuten, und wer dabei aus dem WLAN geht, soll nicht den
-            // Rest der Sammlung ueber den Datentarif bekommen. Dasselbe
-            // Argument wie bei der Grenze eine Zeile darueber.
+            // The network situation ALSO per batch, not only at the start: a pass
+            // takes minutes, and whoever leaves the Wi-Fi meanwhile should not get the
+            // rest of the collection over the data plan. The same
+            // argument as for the limit one line above.
             if (!networkAllowed()) return
             coroutineScope { boost.map { async { fetch(it) } }.awaitAll() }
             delay(PAUSE_MS)
@@ -108,8 +108,8 @@ class VorschauVorwaermer @Inject constructor(
     }
 
     /**
-     * Ein Bild holen. Der Rumpf wird gelesen und weggeworfen — abgelegt hat
-     * ihn zu diesem Zeitpunkt schon der Abgriff in NetzModule.
+     * Fetch one image. The body is read and thrown away — the tap in
+     * NetzModule has already stored it at this point.
      */
     private fun fetch(adresse: String) {
         runCatching {
@@ -117,9 +117,9 @@ class VorschauVorwaermer @Inject constructor(
                 .url(adresse)
                 .tag(WarmUp::class.java, WarmUp)
                 .build()
-            // Kein `?.`: `body` ist seit OkHttp 5 nicht nullbar. Der Wert
-            // wird ohnehin verworfen — gelesen wird nur, damit die Antwort
-            // vollstaendig durch den Zwischenspeicher laeuft.
+            // No `?.`: `body` is not nullable since OkHttp 5. The value
+            // is discarded anyway — it is only read so that the response
+            // runs completely through the cache.
             imageClient.newCall(anfrage).execute().use { it.body.bytes() }
         }
     }

@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.model.domain
 
 /**
- * Die Fehlercodes des Servers, nach denen die App verzweigt. Eine Aufzählung statt
- * verstreuter Zeichenketten, damit ein Tippfehler nicht übersetzt und
- * tools/contract/contract-kotlin.test.js jede Kennung gegen components.schemas.Fehlercode prüfen kann.
+ * The server's error codes the app branches on. An enumeration instead of
+ * scattered strings, so that a typo does not compile and
+ * tools/contract/contract-kotlin.test.js can check every identifier against components.schemas.Fehlercode.
  */
 
 enum class Fehlercode(val kennung: String) {
@@ -29,7 +29,7 @@ enum class Fehlercode(val kennung: String) {
     companion object {
         private val afterId = entries.associateBy { it.kennung }
 
-        /** Ein Code, den die App nicht kennt, ist null: Sie verzweigt dann nicht nach ihm. */
+        /** A code the app does not know is null: it then does not branch on it. */
         fun aus(kennung: String?): Fehlercode? = kennung?.let { afterId[it] }
     }
 }

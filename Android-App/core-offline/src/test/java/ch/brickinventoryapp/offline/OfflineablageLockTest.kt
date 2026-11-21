@@ -14,22 +14,22 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Lesen, Ändern und Schreiben einer Liste laufen je (Bereich, Liste) unter einer
- * Sperre: Zwei Schreibvorgänge, die sich überholen, verlieren sonst einen. Der
- * Bestand hält das nächste Schreiben an, bis der Test es freigibt — so liegt der
- * zweite Vorgang genau im Fenster zwischen Lesen und Schreiben des ersten.
+ * Reading, changing and writing a list run per (area, list) under one
+ * lock: two writes that overtake each other otherwise lose one. The
+ * stock halts the next write until the test releases it — this way the
+ * second operation lies exactly in the window between reading and writing of the first.
  *
- * Gegenproben (kotlinc und JUnit gegen Offlineablage.kt):
- *   A  in uebernimm() und puffere() die Sperre entfernt → rot „ein puffere während
- *      einer Serverantwort geht nicht verloren“ (Menge 1 statt 2)
- *   B  in applyAn() die Sperre entfernt → rot „zwei gleichzeitige applyAn zählen
- *      beide“ (Menge 2 statt 3)
- *   C  in Offlineablage `aktuell` aus `areaSource` statt aus `areaFlow` abgeleitet
- *      → rot „the observed area follows the session without anyone writing“
+ * Counter-checks (kotlinc and JUnit against Offlineablage.kt):
+ *   A  in uebernimm() and puffere() the lock removed → red “a puffere during
+ *      a server response is not lost” (quantity 1 instead of 2)
+ *   B  in applyAn() the lock removed → red “two simultaneous applyAn both
+ *      count” (quantity 2 instead of 3)
+ *   C  in Offlineablage `aktuell` derived from `areaSource` instead of `areaFlow`
+ *      → red “the observed area follows the session without anyone writing”
  */
 class OfflineablageLockTest {
 
-    /** Hält das nächste Schreiben (Ersetzen oder Angleichen) an, sobald [hold] gerufen wurde. */
+    /** Halts the next write (replace or align) as soon as [hold] was called. */
     private class HoldingInventory(private val innen: LocalInventory = StorageInventory()) : LocalInventory by innen {
         private var gate: CompletableDeferred<Unit>? = null
         fun hold(): CompletableDeferred<Unit> = CompletableDeferred<Unit>().also { gate = it }

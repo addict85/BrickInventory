@@ -8,14 +8,14 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 
 /**
- * Die eine Json-Konfiguration (Server, Ablage, Cache): streng bei null, nachsichtig bei
- * unbekannten Feldern, Vorgaben werden geschrieben.
+ * The one Json configuration (server, store, cache): strict on null, lenient on
+ * unknown fields, defaults are written.
  *
- * Gegenproben (mit kotlinc gegen core-model gemessen):
- *   A  in BrickJson `coerceInputValues = true` ergänzt → rot „null in einem Feld mit
- *      Standardwert ist ein Fehler“ (success wird still false)
- *   B  `ignoreUnknownKeys = true` gestrichen → rot „unknown fields stay allowed“
- *   C  `encodeDefaults = true` gestrichen → rot „defaults are written along“
+ * Counter-checks (measured with kotlinc against core-model):
+ *   A  in BrickJson `coerceInputValues = true` added → red “null in a field with
+ *      a default value is an error” (success silently becomes false)
+ *   B  `ignoreUnknownKeys = true` struck → red “unknown fields stay allowed”
+ *   C  `encodeDefaults = true` struck → red “defaults are written along”
  */
 class BrickJsonTest {
 

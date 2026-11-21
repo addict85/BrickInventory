@@ -32,16 +32,16 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.text.TextLayoutResult
 
 /**
- * Was TalkBack an Teile-, Figuren- und Katalogkachel und an der Tabellenzeile liest
- * (der zusammengefasste Knoten zum Antippen): der Name genau einmal, kein „×“ und kein
- * „✓“, und jede Menge mit Einheit („12 Stück“, „4'514 Teile“, „Jahr 2022“). Dazu
- * stehen Name, Farbe und zweite Zeile in mindestens 12 sp (nicht labelSmall).
+ * What TalkBack reads on part, figure and catalog tile and on the table row
+ * (the merged node for tapping): the name exactly once, no „×“ and no
+ * „✓“, and every quantity with a unit („12 Stück“, „4'514 Teile“, „Jahr 2022“). In addition
+ * name, color and second line stand in at least 12 sp (not labelSmall).
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   teilekachel-bild-mit-namen    Bild der Teilekachel wieder mit dem Namen beschrieben → rot „Teilekachel …“
- *   menge-als-zeichen             readAloudAs() tut nichts → rot in den vier Vorlese-Tests („×“ bzw. „✓“)
- *   teilename-klein               Teilename wieder labelSmall (11 sp) → rot „Name Farbe und zweite Zeile …“
- *   katalog-teile-ohne-wort       Teilezahl wieder nur als Zahl → rot „Katalogkachel zeigt die Teilezahl …“
+ * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ *   teilekachel-bild-mit-namen    image of the parts tile again described with the name → red “parts tile …”
+ *   menge-als-zeichen             readAloudAs() does nothing → red in the four read-aloud tests („×“ or „✓“)
+ *   teilename-klein               part name again labelSmall (11 sp) → red “name, color and second line …”
+ *   katalog-teile-ohne-wort       parts count again only as a number → red “catalog tile shows the parts count …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -59,7 +59,7 @@ class TileReadAloudTest {
     @After
     fun zu() = Locale.setDefault(vorher)
 
-    /** Beschreibungen und Texte des antippbaren Knotens, in der Reihenfolge des Baums. */
+    /** Descriptions and texts of the tappable node, in the order of the tree. */
     private fun vorgelesen(inhalt: @Composable () -> Unit): String {
         compose.setContent {
             BrickInventoryManagerTheme {
@@ -81,7 +81,7 @@ class TileReadAloudTest {
 
     @Test
     fun `parts tile reads name once and quantity with unit`() {
-        // Mit Bild: Nur dann trägt die Kachel eine Bildbeschreibung, die den Namen doppeln könnte.
+        // With an image: only then does the tile carry an image description that could double the name.
         val teil = TeilAnsicht(partNumber = "3001", partName = "Brick 2 x 4", colorName = "Red", totalQuantity = 12,
             imageUrl = "https://cdn.rebrickable.com/media/parts/3001.png")
         val gelesen = vorgelesen { PartCard(teil, serverUrl = "https://brick.example", imageLoader = bilder, onClick = {}) }
@@ -104,7 +104,7 @@ class TileReadAloudTest {
             listOf("Jahr 2022", "${fmtInt(4514)} Teile", "In der Sammlung, 2 Exemplare", "Set 10305-1"))
     }
 
-    /** Sichtbar, nicht nur vorgelesen: „500“ neben dem Steinsymbol las sich wie ein Preis. */
+    /** Visible, not only read aloud: „500“ next to the brick symbol read like a price. */
     @Test
     fun `catalog tile shows the parts count with a word`() {
         val einer = KatalogSetAnsicht(setNumber = "3001-1", name = "Ein Stein", year = 2022, numParts = 1)
@@ -123,7 +123,7 @@ class TileReadAloudTest {
         }
     }
 
-    /** Schriftgrösse in sp, wie der Text tatsächlich gesetzt wurde. */
+    /** Font size in sp, as the text was actually set. */
     private fun groesse(text: String): Float {
         val ergebnis = mutableListOf<TextLayoutResult>()
         compose.onNode(androidx.compose.ui.test.hasText(text), useUnmergedTree = true).fetchSemanticsNode()

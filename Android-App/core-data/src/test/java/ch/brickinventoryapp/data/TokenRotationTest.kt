@@ -34,29 +34,29 @@ import ch.brickinventoryapp.testing.testAccountRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * Der Tausch des Tokens im echten Netzweg: Wächter, Konto-Repository und
- * TokenSwap über einen Client, gegen einen Testserver, der den alten Token
- * abweist oder den Tausch per Kopfzeile verlangt. Der Testserver spricht http
- * auf localhost; der Wächter läuft darum wie im Debug-Build (entwicklung = true).
+ * The swap of the token in the real network path: guard, account repository and
+ * TokenSwap via one client, against a test server that rejects the old token
+ * or requests the swap via header. The test server speaks http
+ * on localhost; the guard therefore runs as in the debug build (entwicklung = true).
  *
- * Gegenproben:
- *   A  in ServerWaechter den Zweig für 401 `token_rotation_noetig` entfernt →
- *      rot „a rejected old token is swapped and the request retried“
- *      (401 statt 200, Sitzung abgelaufen gemeldet)
- *   B  den Zweig für die Kopfzeile entfernt → rot „die Kopfzeile tauscht im
- *      Hintergrund, einmal“ (Zeitüberschreitung, kein Tausch)
- *   C  AccountApi.rotateToken wieder als `suspend` (über den Dispatcher) →
- *      rot „simultaneously rejected requests do not block the swap“
- *      (Zeitüberschreitung: beide Plätze warten auf den Tausch, der Tausch auf
- *      einen Platz)
- * Gegenproben:
- *   D  in TokenSwap die Prüfung `stand() != vorher` vor der Wiederholung
- *      entfernt → rot „ein Serverwechsel waehrend der Wiederholung …“ (LATER)
- *   E  im Wächter wieder die alte Regel (Kopf nur weg, wenn er der jetzige Token
- *      ist) → rot „ein selbst gesetzter alter Token geht nach dem Serverwechsel …“
- *   F  in AccountRepository.rotateToken() eine feste fremde Herkunft statt der
- *      Anfrage-URL → rot „ein abgewiesener alter Token wird getauscht …“,
- *      „gleichzeitig abgewiesene …“, „die Kopfzeile tauscht …“ (nichts gespeichert)
+ * Counter-checks:
+ *   A  in ServerWaechter the branch for 401 `token_rotation_noetig` removed →
+ *      red “a rejected old token is swapped and the request retried”
+ *      (401 instead of 200, session expired reported)
+ *   B  the branch for the header removed → red “the header swaps in the
+ *      background, once” (timeout, no swap)
+ *   C  AccountApi.rotateToken again as `suspend` (via the dispatcher) →
+ *      red “simultaneously rejected requests do not block the swap”
+ *      (timeout: both slots wait for the swap, the swap for
+ *      a slot)
+ * Counter-checks:
+ *   D  in TokenSwap the check `stand() != vorher` before the retry
+ *      removed → red “a server switch during the retry …” (LATER)
+ *   E  in the guard again the old rule (header only dropped if it is the current
+ *      token) → red “a self-set old token goes out … after the server switch”
+ *   F  in AccountRepository.rotateToken() a fixed foreign origin instead of the
+ *      request URL → red “a rejected old token is swapped …”,
+ *      “simultaneously rejected …”, “the header swaps …” (nothing saved)
  */
 class TokenRotationTest {
 
@@ -65,10 +65,10 @@ class TokenRotationTest {
     private val dir = File(System.getProperty("java.io.tmpdir"), "bim-rot-${System.nanoTime()}")
     @Volatile private var gespeichert = "alt"
     @Volatile private var abgelaufen = 0
-    /** Gesetzt: Der Tausch antwortet so (etwa 503), statt zu tauschen. */
+    /** Set: the swap answers like this (e.g. 503) instead of swapping. */
     @Volatile private var rotationMute: (() -> MockResponse)? = null
 
-    /** Gesetzt nach einem Serverwechsel im Test; sonst der Testserver. */
+    /** Set after a server switch in the test; otherwise the test server. */
     @Volatile private var moved: String? = null
     private fun adresse() = moved ?: server.url("/").toString().trimEnd('/')
     private val situation = object : Zugangslage {
@@ -78,10 +78,10 @@ class TokenRotationTest {
         override fun generation() = limit.generation
     }
     private val limit = TokenLimit()
-    /** Echte Fäden: Der Tausch läuft hier gegen einen echten Testserver. */
+    /** Real threads: the swap runs here against a real test server. */
     private val hintergrund = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    /** Wie PreferencesManager.tokenStatus(): ohne Bindung gilt die eingetragene Adresse. */
+    /** Like PreferencesManager.tokenStatus(): without binding the registered address counts. */
     private fun stand() = TokenStatus(gespeichert, NetworkPolicy.herkunft(adresse()), limit.generation)
 
     private fun swapFor(k: () -> AccountRepository, speichern: (String) -> Unit) = TokenSwap(
@@ -144,8 +144,8 @@ class TokenRotationTest {
     }
 
     /**
-     * Abgewiesene Anfragen warten im Interceptor auf den Tausch und belegen dabei
-     * ihre Plätze im Dispatcher. Braucht der Tausch selbst einen, wartet er ewig.
+     * Rejected requests wait in the interceptor for the swap and occupy
+     * their slots in the dispatcher meanwhile. If the swap itself needs one, it waits forever.
      */
     @Test
     fun `simultaneously rejected requests do not block the swap`() {
@@ -181,9 +181,9 @@ class TokenRotationTest {
     }
 
     /**
-     * Die Antwort auf den Tausch geht verloren, und währenddessen wechselt die App den Server
-     * (saveServerUrl: Token weg, neue Adresse). Der alte Token darf den neuen
-     * Server nie erreichen — weder über eine Wiederholung noch im selbst gesetzten Kopf.
+     * The response to the swap gets lost, and meanwhile the app switches the server
+     * (saveServerUrl: token gone, new address). The old token must never reach the new
+     * server — neither via a retry nor in the self-set header.
      */
     @Test
     fun `a server switch during the retry does not send the old token to the new server`() {
@@ -213,7 +213,7 @@ class TokenRotationTest {
         }
     }
 
-    /** Dasselbe ohne die Prüfung im Tausch: Dann hält der Wächter den Kopf zurück. */
+    /** The same without the check in the swap: then the guard holds back the header. */
     @Test
     fun `a self-set old token goes out without header after the server switch`() {
         val neuer = MockWebServer()

@@ -4,24 +4,24 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Jeder Erfassungsweg fragt nach dem Lagerort — und der Merkposten nach dem Konto.
+ * Every adding path asks for the storage location — and the wishlist item for the account.
  *
- * ── Das Muster dahinter ─────────────────────────────────────────────────────
+ * ── The pattern behind it ───────────────────────────────────────────────────
  *
- * Ein Feld, das an EINEM Erfassungsweg eingebaut wird, fehlt leicht an den
- * anderen vier; deshalb zählt die Regel alle Wege ab.
+ * A field built into ONE adding path is easily missing from the other
+ * four; that is why the rule counts off all paths.
  *
- * Diese Regel zaehlt die Wege ab. Sie kann nicht pruefen, ob das Feld auch
- * gesendet wird — das tun die Datenbankpruefungen der Webapp
- * (test/location-on-add-db.test.js), und beide Oberflaechen rufen
- * dieselben Routen.
+ * This rule counts off the paths. It cannot check whether the field is also
+ * sent — that is done by the web app's database checks
+ * (test/location-on-add-db.test.js), and both UIs call
+ * the same routes.
  *
- * ── Gegenprobe (durchgefuehrt, Ergebnis im Commit) ──────────────────────────
- * Je einen Aufruf entfernt → die Regel meldet genau diesen Weg.
+ * ── Counter-check (performed, result in the commit) ──────────────────────────
+ * One call removed at a time → the rule reports exactly this path.
  */
 class LocationOnAddTest {
 
-    /** Der Rumpf einer Funktion: ab ihrem Namen bis zur naechsten auf Spaltenanfang. */
+    /** The body of a function: from its name to the next one at the start of a column. */
     private fun rumpf(quelle: String, kopf: String): String {
         val i = quelle.indexOf(kopf)
         check(i >= 0) { "$kopf nicht gefunden — umbenannt?" }
@@ -32,8 +32,8 @@ class LocationOnAddTest {
 
     @Test
     fun `every adding path has a storage location field`() {
-        // Fuenf Wege, fuenf Dateien. Weniger als fuenf heisst: Die Suche greift
-        // nicht mehr, und die Regel waere still zufrieden.
+        // Five paths, five files. Fewer than five means: the search no longer
+        // applies, and the rule would be silently satisfied.
         val routes = listOf(
             Triple("collection/ui/screens/GalerieErfassen.kt", "fun AddSetDialog(", "Set hinzufuegen (Galerie)"),
             Triple("catalog/ui/screens/CatalogDetailScreen.kt", "fun CatalogAddDialog(", "Katalog → Galerie"),
@@ -44,8 +44,8 @@ class LocationOnAddTest {
         check(routes.size >= 5) { "Nur ${routes.size} Wege — Liste unvollstaendig?" }
         val ohne = mutableListOf<String>()
         for ((datei, kopf, name) in routes) {
-            // Ohne Kommentarzeilen: Ein Absatz, der das Feld ERKLAERT, nennt es
-            // zwangslaeufig — und die Regel waere damit blind fuer sein Fehlen.
+            // Without comment lines: a paragraph that EXPLAINS the field necessarily
+            // names it — and the rule would thus be blind to its absence.
             val quelle = Quellen.withoutComments(Quellen.lies(datei))
             if (!rumpf(quelle, kopf).contains("LagerortErfassung(")) ohne += name
         }
@@ -56,23 +56,23 @@ class LocationOnAddTest {
     }
 
     /**
-     * Jeder Erfassungsweg STARTET bei der Vorgabe (dem Stern im Lagerort-Vorrat).
+     * Every adding path STARTS at the default (the star in the storage location supply).
      *
-     * „Weiter moechte ich ein Lagerort in den Einstellungen als Default setzen
-     *  koennen. Der soll dann bei einer Neuerfassung bereits vorausgewaehlt
-     *  sein."
+     * “I would also like to be able to set a storage location as default in the
+     *  settings. It should then already be preselected when adding something
+     *  new."
      *
-     * ── Warum dieselbe Liste ein zweites Mal ────────────────────────────────
+     * ── Why the same list a second time ─────────────────────────────────────
      *
-     * Die Pruefung darueber zaehlt ab, welcher Weg ein Lagerortfeld HAT. Diese
-     * hier zaehlt ab, welcher es VORBELEGT — zwei verschiedene Aussagen ueber
-     * dieselben Wege; ein Feld, das an einem Weg eingebaut wird, fehlt leicht an
-     * den anderen.
+     * The check above counts off which path HAS a storage location field. This
+     * one counts off which PRESETS it — two different statements about
+     * the same paths; a field built into one path is easily missing from
+     * the others.
      *
-     * Geprueft wird der STATE und nicht das Feld: Die Vorbelegung steht in
-     * der Zeile, die ihn anlegt. Sechs Halter und nicht fuenf Wege, weil die
-     * manuelle Erfassung zwei hat — Teil und Minifigur teilen das Feld
-     * (ErfassungsFelder), halten den Zustand aber je selbst.
+     * The STATE is checked and not the field: the preset stands in
+     * the line that creates it. Six holders and not five paths, because
+     * manual adding has two — part and minifigure share the field
+     * (ErfassungsFelder) but each hold the state themselves.
      */
     @Test
     fun `every adding path starts at the default storage location`() {
@@ -89,14 +89,14 @@ class LocationOnAddTest {
         for ((datei, kopf, name) in holder) {
             val quelle = Quellen.withoutComments(Quellen.lies(datei))
             val koerper = rumpf(quelle, kopf)
-            // Die Zeile, die den Lagerort-Zustand anlegt. `lagerort` trifft auch
-            // `barcodeLocation` — gewollt, es ist dieselbe Sache.
+            // The line that creates the storage location state. `lagerort` also hits
+            // `barcodeLocation` — intentionally, it is the same thing.
             val zeile = koerper.lines().firstOrNull {
                 Regex("""var \w*(?:[Ll]agerort|[Ll]ocation)\b.*mutableStateOf\(""").containsMatchIn(it)
             }
             if (zeile == null) { leer += "$name (kein Zustand gefunden)"; continue }
-            // `mutableStateOf("")` ist der alte Stand: Start bei leer. Eine
-            // Vorgabe erkennt man daran, dass dort ein NAME steht.
+            // `mutableStateOf("")` is the old state: start at empty. A
+            // default is recognized by a NAME standing there.
             if (Regex("""mutableStateOf\(\s*""\s*\)""").containsMatchIn(zeile)) leer += name
             else if (!zeile.contains("orgabe") && !zeile.contains("efault")) leer += "$name (kein Vorgabe-Wert)"
         }
@@ -109,8 +109,8 @@ class LocationOnAddTest {
 
     @Test
     fun `the wishlist item dialog asks for the account`() {
-        // Der Server nahm owner_user_id seit jeher an (routes/api_v1/wanted.ts),
-        // und die Webapp fragte es ab (cat-m-owner) — nur dieser Dialog nicht.
+        // The server always accepted owner_user_id (routes/api_v1/wanted.ts),
+        // and the web app asked for it (cat-m-owner) — only this dialog did not.
         val quelle = Quellen.withoutComments(Quellen.lies("catalog/ui/screens/CatalogDetailScreen.kt"))
         val koerper = rumpf(quelle, "fun MerkpostenDialog(")
         assert(koerper.contains("OwnerPicker(")) {

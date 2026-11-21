@@ -18,10 +18,10 @@ import kotlinx.coroutines.flow.Flow
 import java.util.UUID
 
 /**
- * Eine Zeile einer lokalen Liste: das Server-Modell als JSON ([inhalt]) und
- * daneben die Spalten, nach denen der Server filtert. Ohne Netz beantwortet
- * dieselbe Abfrage hier die Suche; ein neues Anzeigefeld braucht weiter keine
- * Migration, nur ein neuer Filter.
+ * A row of a local list: the server model as JSON ([inhalt]) and
+ * next to it the columns the server filters by. Without network the
+ * same query answers the search here; a new display field still needs no
+ * migration, only a new filter does.
  */
 @Entity(tableName = "bestand", primaryKeys = ["bereich", "art", "schluessel"])
 internal data class InventoryRow(
@@ -39,13 +39,13 @@ internal data class InventoryRow(
     val zustand: String? = null,
 )
 
-/** Wann der Server eine Liste zuletzt geliefert hat — für „Offline – Stand von …“. */
+/** When the server last delivered a list — for „Offline – Stand von …“. */
 @Entity(tableName = "bestand_stand", primaryKeys = ["bereich", "art"])
 internal data class InventoryStatus(val bereich: String, val art: String, val stand: Long)
 
 /**
- * Ein Posten des Ausgangs; [id] steigt und ist die Reihenfolge des Sendens.
- * [schluessel] ist der Idempotency-Key des Postens (seit Fassung 2).
+ * An outbox item; [id] rises and is the order of sending.
+ * [schluessel] is the item's Idempotency-Key (since version 2).
  */
 @Entity(tableName = "ausgang", indices = [Index("bereich")])
 internal data class ExitRow(
@@ -65,7 +65,7 @@ internal abstract class InventoryDao {
     @Query("SELECT * FROM bestand WHERE bereich = :bereich AND art = :art ORDER BY position")
     abstract suspend fun lies(bereich: String, art: String): List<InventoryRow>
 
-    /** Die Filter wie beim Server; ein null-Parameter schränkt nicht ein. [suche] ist ein LIKE-Muster. */
+    /** The filters as at the server; a null parameter does not restrict. [suche] is a LIKE pattern. */
     @Query("""SELECT * FROM bestand WHERE bereich = :bereich AND art = :art
         AND (:suche IS NULL OR suchtext LIKE :suche ESCAPE '\')
         AND (:thema IS NULL OR thema = :thema) AND (:lagerort IS NULL OR lagerort = :lagerort)
@@ -98,7 +98,7 @@ internal abstract class InventoryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun setStatus(stand: InventoryStatus)
 
-    /** Ganz oder gar nicht: Ein Leser sieht nie eine halb ersetzte Liste. */
+    /** All or nothing: a reader never sees a half-replaced list. */
     @Transaction
     open suspend fun ersetze(bereich: String, art: String, zeilen: List<InventoryRow>, stand: Long?) {
         deleteList(bereich, art)
@@ -107,8 +107,8 @@ internal abstract class InventoryDao {
     }
 
     /**
-     * Die Liste auf [zeilen] bringen und dabei nur Unterschiede schreiben: Eine lokale
-     * Bearbeitung ändert meist eine Zeile, nicht hunderte. Positionen siehe [positionen].
+     * Bring the list to [zeilen] while writing only differences: a local
+     * edit usually changes one row, not hundreds. Positions see [positionen].
      */
     @Transaction
     open suspend fun sameAn(bereich: String, art: String, zeilen: List<InventoryRow>) {
@@ -157,9 +157,9 @@ internal interface ExitDao {
 }
 
 /**
- * Wer das Schema ändert, erhöht die Fassung, schreibt eine Migration und checkt
- * das Schema aus core-offline/schemas ein: Der Ausgang trägt Änderungen, die es nur hier
- * gibt — ein destruktiver Neuanfang verlöre sie.
+ * Whoever changes the schema raises the version, writes a migration and checks in
+ * the schema from core-offline/schemas: the outbox carries changes that exist only
+ * here — a destructive fresh start would lose them.
  */
 @Database(entities = [InventoryRow::class, InventoryStatus::class, ExitRow::class], version = 3, exportSchema = true)
 internal abstract class InventoryDatabase : RoomDatabase() {
@@ -169,15 +169,15 @@ internal abstract class InventoryDatabase : RoomDatabase() {
     companion object {
         const val NAME = "bestand.db"
 
-        /** Alle Migrationen, in der Reihenfolge der Fassungen. */
+        /** All migrations, in the order of the versions. */
         val MIGRATIONS: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
     }
 }
 
 /**
- * 1 → 2: Jeder wartende Posten bekommt seinen Idempotency-Key. Einer, der vor
- * dem Update schon einmal gesendet wurde, trug keinen; ab jetzt hat er einen
- * festen, damit seine weiteren Versuche beim Server nur einmal wirken.
+ * 1 → 2: every waiting item gets its Idempotency-Key. One that was already
+ * sent once before the update carried none; from now on it has a
+ * fixed one, so that its further attempts take effect only once at the server.
  */
 internal val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
@@ -189,10 +189,10 @@ internal val MIGRATION_1_2 = object : Migration(1, 2) {
 }
 
 /**
- * 2 → 3: Filterspalten. Die abgelegten Listen bleiben und bekommen ihre Werte
- * aus dem JSON daneben — sonst fände die Suche ohne Netz bis zum nächsten
- * Abgleich nichts. Gelesen wird über [ColumnsFassung2], nie über die heutigen
- * Modelle; eine unlesbare Zeile fiele beim Lesen ohnehin weg, hier geht sie gleich.
+ * 2 → 3: filter columns. The stored lists stay and get their values
+ * from the JSON next to them — otherwise the search without network would find nothing until the next
+ * sync. Reading goes via [ColumnsFassung2], never via today's
+ * models; an unreadable row would be dropped on reading anyway, here it goes right away.
  */
 internal val MIGRATION_2_3 = object : Migration(2, 3) {
     override fun migrate(db: SupportSQLiteDatabase) {

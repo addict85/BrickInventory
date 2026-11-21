@@ -5,13 +5,13 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Absicherung des CameraX-Sprungs 1.3.4 → 1.6.1.
+ * Safeguarding of the CameraX jump 1.3.4 → 1.6.1.
  *
- * Zwei Dinge macht diese Aktualisierung heikel, und beide prüft diese Klasse:
- *  - Ab 1.4.0 prüft CameraX strenger, ob die Kamera verfügbar ist.
- *    `future.get()` kann werfen, wo 1.3.4 stumm blieb.
- *  - 1.6.0 hat den kompletten Kamera-Unterbau auf CameraPipe umgestellt.
- *    Der Autofokus hängt an `Camera2Interop` und ist damit direkt betroffen.
+ * Two things make this update delicate, and this class checks both:
+ *  - From 1.4.0 CameraX checks more strictly whether the camera is available.
+ *    `future.get()` can throw where 1.3.4 stayed silent.
+ *  - 1.6.0 switched the complete camera base to CameraPipe.
+ *    Autofocus hangs on `Camera2Interop` and is thus directly affected.
  */
 class CameraXUpgradeTest {
 
@@ -25,7 +25,7 @@ class CameraXUpgradeTest {
         return s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
     }
 
-    /** Kamerabildschirm samt Analyse und gemeinsamem Aufbau — siehe [Quellen.cameraSource]. */
+    /** Camera screen including analysis and common setup — see [Quellen.cameraSource]. */
     private fun withAnalyse(rel: String): String = Quellen.cameraSource(rel)
 
     @Test
@@ -42,9 +42,9 @@ class CameraXUpgradeTest {
     }
 
     /**
-     * `future.get()` muss im try stehen, nicht davor. Der Aufruf liefert unter
-     * 1.4.0+ eine Ausnahme, wenn die Kamera belegt oder defekt ist — ungefangen
-     * stürzt die App ab, statt nur kein Bild zu zeigen.
+     * `future.get()` must be inside the try, not before it. Under 1.4.0+ the call
+     * delivers an exception when the camera is busy or defective — uncaught
+     * the app crashes instead of merely showing no image.
      */
     @Test
     fun `the camera provider is fetched safely`() {
@@ -61,21 +61,21 @@ class CameraXUpgradeTest {
         }
     }
 
-    // Hier stand eine zweite Fassung der Autofokus-Regel: Zaehlen von
-    // CONTROL_AF_MODE_CONTINUOUS_PICTURE je Bildschirmdatei plus die Suche nach
-    // einem getakteten Fokus-Trigger. Beides steht jetzt in
-    // CameraFocusConfigTest, und zwar strukturell statt zaehlend: Der AF-Modus
-    // hat seit KameraAufbau.kt genau EINE Stelle, und jede Vorschau holt ihn
-    // dort.
+    // A second version of the autofocus rule used to be here: counting
+    // CONTROL_AF_MODE_CONTINUOUS_PICTURE per screen file plus the search for
+    // a timed focus trigger. Both now live in
+    // CameraFocusConfigTest, structurally instead of counting: the AF mode
+    // has had exactly ONE place since KameraAufbau.kt, and every preview gets it
+    // there.
     //
-    // Aufgefallen ist die Doppelung, als der Kamera-Aufbau zusammengefasst
-    // wurde und diese Pruefung rot wurde — nicht weil die Regel verletzt war,
-    // sondern weil sie an Kopien gemessen hat, die es nicht mehr gibt.
+    // The duplication stood out when the camera setup was merged
+    // and this check turned red — not because the rule was violated,
+    // but because it measured copies that no longer exist.
 
     /**
-     * Die Analyse läuft auf YUV. Wird das auf RGBA umgestellt, greift CameraX
-     * auf libimage_processing_util_jni.so zurück — dieselbe native Bibliothek,
-     * um die es beim 16-KB-Thema geht.
+     * The analysis runs on YUV. If that is switched to RGBA, CameraX falls back
+     * on libimage_processing_util_jni.so — the same native library
+     * the 16 KB topic is about.
      */
     @Test
     fun `image analysis stays on YUV`() {

@@ -4,85 +4,85 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Wo eine Zahl hingehoert, erscheint die Zahlentastatur.
+ * Where a number belongs, the number pad appears.
  *
- * ── Woran man ein Zahlenfeld erkennt ────────────────────────────────────────
+ * ── How to recognize a number field ──────────────────────────────────────────
  *
- * Nicht an der Beschriftung — „Teilenummer" klingt nach Zahl und heisst
- * „3001pb01", „Figurennummer" heisst „sw0001". Eine Zahlentastatur machte
- * beide unbenutzbar.
+ * Not by the label — „Teilenummer" sounds like a number and is
+ * „3001pb01", „Figurennummer" is „sw0001". A number pad would make
+ * both unusable.
  *
- * Sondern daran, dass das Feld seine Eingabe durch einen der Filter aus
- * ui/util/NumericInput.kt schickt. Wer `NumericInput.quantity()` schreibt, hat
- * bereits entschieden, dass hier nur Ziffern hineingehoeren — dann muss die
- * Tastatur mitziehen. Die beiden gehoeren zusammen, und diese Regel haelt
- * genau das fest.
+ * But by the field sending its input through one of the filters from
+ * ui/util/NumericInput.kt. Whoever writes `NumericInput.quantity()` has
+ * already decided that only digits belong here — then the
+ * keyboard must follow. The two belong together, and this rule records
+ * exactly that.
  *
- * ── Warum der Filter nicht reicht und die Tastatur nicht ────────────────────
+ * ── Why the filter is not enough and neither is the keyboard ─────────────────
  *
- * Der Filter ohne Tastatur: Man bekommt die Buchstaben angeboten, tippt sie,
- * und sie verschwinden beim Tippen wieder. Das sieht aus wie ein Fehler.
+ * The filter without keyboard: one is offered the letters, types them,
+ * and they disappear again while typing. That looks like an error.
  *
- * Die Tastatur ohne Filter: Eine angeschlossene Tastatur, die Zwischenablage
- * und manche Bildschirmtastaturen liefern trotzdem Buchstaben. Der Wert
- * landet dann als Text im Feld und faellt erst beim Umwandeln auf — still,
- * als Null.
+ * The keyboard without filter: an attached keyboard, the clipboard
+ * and some on-screen keyboards deliver letters anyway. The value
+ * then lands as text in the field and only stands out on conversion — silently,
+ * as zero.
  *
- * ── Gegenproben ─────────────────────
+ * ── Counter-checks ─────────────────────
  *
- * Zwei Eingriffe in einen Wegwerf-Zweig, einer je Testmethode, beide Anker
- * vorher auf Eindeutigkeit geprueft:
+ * Two interventions in a throwaway branch, one per test method, both anchors
+ * checked for uniqueness beforehand:
  *
- *   a) `keyboardOptions` beim Mengenfeld im Katalog-Detail entfernt, den
- *      `NumericInput.quantity()`-Filter absichtlich stehen gelassen.
- *   b) im Preisvergleich `NumericInput.setNumber(it)` → `it`, die Tastatur
- *      absichtlich stehen gelassen — damit wirklich nur der Filter fehlt.
+ *   a) `keyboardOptions` removed from the quantity field in the catalog detail, the
+ *      `NumericInput.quantity()` filter deliberately left in place.
+ *   b) in the price comparison `NumericInput.setNumber(it)` → `it`, the keyboard
+ *      deliberately left in place — so that really only the filter is missing.
  *
- * GEMESSEN (506 tests completed, 3 failed):
+ * MEASURED (506 tests completed, 3 failed):
  *
  *   NumberPadTest > whoever filters numbers also shows the number pad
  *   NumberPadTest > the price comparison takes digits and hyphen
  *   NumericInputTest   > kein Zahlenfeld steht ohne Tastaturwahl da
  *
- * Erwartet hatte ich ZWEI. Die dritte war kein Zufallstreffer, sondern der
- * eigentliche Fund der Gegenprobe: Es gab die Regel schon, seit dem 22.09.,
- * in NumericInputTest — ich hatte sie ein zweites Mal geschrieben, ohne es zu
- * merken. Ein Eingriff, zwei rote Tests: genau so sieht eine doppelte Regel
- * aus.
+ * I had expected TWO. The third was no chance hit but the
+ * actual find of the counter-check: the rule already existed, since 22.09.,
+ * in NumericInputTest — I had written it a second time without
+ * noticing. One intervention, two red tests: that is exactly what a duplicate rule
+ * looks like.
  *
- * Aufgeloest: Die aeltere, schwaechere Fassung ist entfernt (die Notiz an
- * ihrer Stelle in NumericInputTest sagt, warum diese hier die schaerfere ist);
- * ihre Zeilennummer-Meldung ist hierher uebernommen.
+ * Resolved: the older, weaker version is removed (the note in
+ * its place in NumericInputTest says why this one is the stricter);
+ * its line number report has been taken over here.
  *
- * ── Nachgefahren mit drei isolierten Eingriffen ──────────────
+ * ── Re-run with three isolated interventions ──────────────
  *
- * Danach je EIN Eingriff pro Regel, um die Zuordnung wirklich zu zeigen und
- * nicht bloss zu behaupten. GEMESSEN (506 tests completed, 3 failed):
+ * Afterwards ONE intervention per rule, to really show the mapping and
+ * not merely claim it. MEASURED (506 tests completed, 3 failed):
  *
- *   Tastatur weg im Katalog-Detail, Filter bleibt
+ *   keyboard gone in the catalog detail, filter stays
  *     → whoever filters numbers also shows the number pad
- *   Filter weg bei der Alarmschwelle, Tastatur bleibt
+ *   filter gone at the alert threshold, keyboard stays
  *     → whoever shows the number pad also filters
- *   ImeAction.Search → Done im Preisvergleich
+ *   ImeAction.Search → Done in the price comparison
  *     → the price comparison takes digits and hyphen
  *
- * Drei Eingriffe, drei rote Tests, jeder genau einer — und NumericInputTest
- * schweigt jetzt dazu. Damit ist die Dopplung nicht nur weggeraeumt, sondern
- * ihr Verschwinden auch gemessen.
+ * Three interventions, three red tests, each exactly one — and NumericInputTest
+ * is silent about it now. Thus the duplication is not only cleared away, but
+ * its disappearance is measured too.
  *
- * Was das ueber die Gegenprobe sagt: Sie hat hier nicht bewiesen, dass die
- * Regel greift — das auch —, sondern dass sie eine zu viel war. Ohne sie
- * waeren zwei Fassungen derselben Regel nebeneinander stehen geblieben.
+ * What that says about the counter-check: here it did not prove that the
+ * rule applies — that too —, but that it was one too many. Without it
+ * two versions of the same rule would have stayed side by side.
  */
 class NumberPadTest {
 
     /**
-     * Jeder TextField-Aufruf samt Rumpf und Zeilennummer.
+     * Every TextField call including body and line number.
      *
-     * Die Zeilennummer steht hier, weil die Fehlermeldung sonst nur die Datei
-     * nennt — und CatalogDetailScreen.kt hat sieben Textfelder. Die abgeloeste
-     * Fassung in NumericInputTest konnte das; das sollte beim Umzug nicht
-     * verloren gehen.
+     * The line number stands here because the error message would otherwise only name the
+     * file — and CatalogDetailScreen.kt has seven text fields. The superseded
+     * version in NumericInputTest could do that; that should not get lost
+     * in the move.
      */
     private fun textFields(quelle: String): List<Pair<Int, String>> {
         val blocks = mutableListOf<Pair<Int, String>>()
@@ -111,9 +111,9 @@ class NumberPadTest {
         """keyboardType\s*=\s*KeyboardType\.\w+|NumericInput\.(ganzzahl|preis|setnummer)Tastatur|NumericInput\.(integer|price|setNumber)Keyboard""")
 
     /**
-     * Nur die ZAHLEN-Tastaturen — Email, Password und Phone gehoeren nicht
-     * dazu. `Number` und `Decimal` sind genau die beiden, die NumericInput
-     * ausgibt.
+     * Only the NUMBER keyboards — Email, Password and Phone do not belong
+     * to them. `Number` and `Decimal` are exactly the two that NumericInput
+     * outputs.
      */
     private val numberPad = Regex(
         """KeyboardType\.(Number|Decimal)\b|NumericInput\.(ganzzahl|preis)Tastatur|NumericInput\.(integer|price)Keyboard""")
@@ -130,8 +130,8 @@ class NumberPadTest {
                 if (!keyboard.containsMatchIn(blk)) fehler += "${datei.name}:$zeile"
             }
         }
-        // Selbstnachweis gegen die stille Null: Findet die Suche ueberhaupt
-        // Felder? Ohne das waere eine leere Fehlerliste fuer immer gruen.
+        // Self-proof against the silent zero: does the search find any
+        // fields at all? Without that an empty error list would be green forever.
         assert(gesehen >= 15) { "Nur $gesehen gefilterte Felder gefunden — Muster veraltet?" }
         assert(fehler.isEmpty()) {
             "Diese Felder lassen nur Ziffern zu, bieten aber die Texttastatur an:\n  " +
@@ -141,28 +141,28 @@ class NumberPadTest {
     }
 
     /**
-     * Die Gegenrichtung: Wer die Zahlentastatur zeigt, filtert auch.
+     * The opposite direction: whoever shows the number pad also filters.
      *
-     * ── Warum es diese Regel gibt ───────────────────────────────────────────
+     * ── Why this rule exists ─────────────────────────────────────────────────
      *
-     * Die Regel darueber haengt am FILTER. Damit kann sie ein Feld, das die
-     * Tastatur hat und den Filter nicht, grundsaetzlich nicht sehen — es faellt
-     * schon in der ersten Zeile aus ihrer Schleife. Diese Regel fragt umgekehrt.
+     * The rule above hangs on the FILTER. It thus fundamentally cannot see a field that has the
+     * keyboard and not the filter — it already falls out of its loop
+     * in the first line. This rule asks the other way round.
      *
-     * GEFUNDEN wurden dadurch (gemessen, nicht geschaetzt): 21 Felder mit
-     * Zahlentastatur, davon 2 ohne Filter —
-     *   · SettingsScreen.kt, Schwelle eines bestehenden Preisalarms
-     *   · SetDetailSections.kt, Schwelle beim Anlegen
+     * FOUND thereby (measured, not estimated): 21 fields with a
+     * number pad, of which 2 without filter —
+     *   · SettingsScreen.kt, threshold of an existing price alert
+     *   · SetDetailSections.kt, threshold when creating
      *
-     * ── Warum die fehlende Haelfte hier die gefaehrlichere ist ──────────────
+     * ── Why the missing half here is the more dangerous one ──────────────────
      *
-     * Filter ohne Tastatur ist haesslich: Man tippt Buchstaben und sie
-     * verschwinden wieder. Man SIEHT es.
+     * Filter without keyboard is ugly: one types letters and they
+     * disappear again. One SEES it.
      *
-     * Tastatur ohne Filter ist still. Die Tastaturwahl ist eine Bitte an die
-     * Tastatur-App, keine Zusicherung — eine angestoepselte Tastatur und die
-     * Zwischenablage liefern trotzdem Buchstaben. Im Feld in SettingsScreen
-     * wurde daraus ueber `?: 0.0` eine Schwelle von 0.
+     * Keyboard without filter is silent. The keyboard choice is a request to the
+     * keyboard app, not a guarantee — a plugged-in keyboard and the
+     * clipboard deliver letters anyway. In the field in SettingsScreen
+     * that became a threshold of 0 via `?: 0.0`.
      */
     @Test
     fun `whoever shows the number pad also filters`() {
@@ -176,7 +176,7 @@ class NumberPadTest {
                 if (!filter.containsMatchIn(blk)) fehler += "${datei.name}:$zeile"
             }
         }
-        // Selbstnachweis gegen die stille Null, gemessen am 28.09.: 21.
+        // Self-proof against the silent zero, measured on 28.09.: 21.
         assert(gesehen >= 15) { "Nur $gesehen Felder mit Zahlentastatur — Muster veraltet?" }
         assert(fehler.isEmpty()) {
             "Diese Felder zeigen die Zahlentastatur, lassen aber alles herein:\n  " +
@@ -186,26 +186,26 @@ class NumberPadTest {
     }
 
     /**
-     * Der Preisvergleich im Besonderen.
+     * The price comparison in particular.
      *
-     * Er stand hier nicht zufaellig: Das Feld war eine Freitextsuche, und der
-     * Tausch war gewollt. Steht der Filter wieder auf Freitext, ist die
-     * Entscheidung stillschweigend zurueckgenommen.
+     * It did not stand here by chance: the field was a free-text search, and the
+     * swap was intended. If the filter is back on free text, the
+     * decision is silently taken back.
      *
-     * ── Warum das keine dritte Fassung derselben Regel ist ──────────────────
+     * ── Why this is not a third version of the same rule ──────────────────────
      *
-     * Die beiden Regeln darueber sagen BEDINGT etwas: Wenn ein Feld ein
-     * Zahlenfeld ist, braucht es beide Haelften. Nimmt man diesem Feld Filter
-     * UND Tastatur zugleich, faellt es aus beiden Schleifen und keine der
-     * beiden wird rot — es ist dann eben kein Zahlenfeld mehr.
+     * The two rules above say something CONDITIONALLY: if a field is a
+     * number field, it needs both halves. If one takes filter
+     * AND keyboard from this field at once, it falls out of both loops and neither of the
+     * two turns red — it is then simply no longer a number field.
      *
-     * Diese Regel sagt UNBEDINGT etwas: Dieses eine Feld IST ein Zahlenfeld,
-     * weil das so entschieden ist. Das kann keine Regel
-     * wissen, die Felder nur an ihrer Bauart erkennt — dieselbe Luecke, die in
-     * NumericInputTest schon „every set number field takes filter and number pad"
-     * schliesst.
+     * This rule says something UNCONDITIONALLY: this one field IS a number field,
+     * because that has been decided. No rule can know that
+     * that recognizes fields only by their construction — the same gap that
+     * NumericInputTest already closes with „every set number field takes filter and
+     * number pad".
      *
-     * Dazu die Suchtaste, von der sonst niemand etwas sagt.
+     * Plus the search key, which nobody else says anything about.
      */
     @Test
     fun `the price comparison takes digits and hyphen`() {
@@ -217,9 +217,9 @@ class NumberPadTest {
             "Das Suchfeld zeigt nicht mehr die Zahlentastatur — genau das hat " +
                 "Marco am 28.09. verlangt."
         }
-        // Die Suchtaste MUSS bleiben: Das Feld loest die Suche ueber
-        // ImeAction.Search aus, und ohne sie gaebe es keinen Weg, sie
-        // auszuloesen ausser dem Knopf daneben.
+        // The search key MUST stay: the field triggers the search via
+        // ImeAction.Search, and without it there would be no way to trigger it
+        // except the button next to it.
         assert(s.contains("ImeAction.Search")) {
             "Die Suchtaste der Tastatur ist weg."
         }

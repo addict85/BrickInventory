@@ -1,11 +1,11 @@
 package ch.brickinventoryapp.model.util
 
 /**
- * Die Mindestlaenge eines Passworts — an einer Stelle.
- * Eine Konstante, weil eine an jeder Stelle neu getippte Zahl auseinanderläuft.
+ * The minimum length of a password — in one place.
+ * A constant, because a number typed anew at every place drifts apart.
  */
 
 const val PASSWORD_MIN_CHARS = 12
 
-/** Ist dieses Passwort zu kurz? */
+/** Is this password too short? */
 fun passwordToShort(passwort: String): Boolean = passwort.length < PASSWORD_MIN_CHARS

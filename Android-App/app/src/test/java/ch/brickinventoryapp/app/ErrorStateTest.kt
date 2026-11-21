@@ -40,24 +40,24 @@ import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
- * Laden, Fehler, Leer und Kein Treffer sind verschiedene Zustände — und jeder
- * Bildschirm mit geladenem Inhalt erfährt den Fehler. Vorher zeigten Merkliste,
- * Finanzen, Teile, Figuren und Gutscheine nach einem Fehler „leer“, das
- * Set-Detail einen Kringel ohne Ende. Ausgeführt gegen einen PfadServer ohne Netz, der
- * zuerst 404 antwortet und nach „Erneut versuchen“ Inhalt liefert.
+ * Loading, error, empty and no hit are different states — and every
+ * screen with loaded content learns of the error. Previously wishlist,
+ * finances, parts, figures and vouchers showed „leer“ after an error, the
+ * set detail a spinner without end. Executed against a PfadServer without network that
+ * first responds 404 and delivers content after „Erneut versuchen“.
  *
- * Gegenproben:
- *   A  ladeanzeige(): `fehler != null` hinter `gefiltert` → rot „ein Fehler geht
- *      vor Leer und Kein Treffer …“
- *   B  MerklisteViewModel: `fehler = meldung(r)` entfernt → rot „die Merkliste …“
- *   C  FinanceViewModel: `valuationFehler = null` beim Neuladen entfernt → rot
- *      „die Bewertung …“ (der alte Fehler bliebe nach dem Erfolg stehen)
- *   D  Teile: `partsFehler = beschreibeFehler(r)` entfernt → rot „Teile und Figuren …“
- *   E  SetDetailViewModel: `setDetailFehler = meldung(r)` entfernt → rot „das Set-Detail …“
- *   F  GutscheinViewModel: `fehler = texts.meldung(r)` entfernt → rot „die Gutscheine …“
- * Gegenproben: in FinanceViewModel `valuationFehlerKlasse = …`
- *   entfernt → rot „die Bewertung …“; in Teile.kt `minifigsFehlerKlasse = …`
- *   entfernt → rot „Teile und Figuren …“.
+ * Counter-checks:
+ *   A  ladeanzeige(): `fehler != null` after `gefiltert` → red “an error comes
+ *      before Empty and No hit …”
+ *   B  MerklisteViewModel: `fehler = meldung(r)` removed → red “the wishlist …”
+ *   C  FinanceViewModel: `valuationFehler = null` removed on reload → red
+ *      “the valuation …” (the old error would stay after the success)
+ *   D  parts: `partsFehler = beschreibeFehler(r)` removed → red “parts and figures …”
+ *   E  SetDetailViewModel: `setDetailFehler = meldung(r)` removed → red “the set detail …”
+ *   F  GutscheinViewModel: `fehler = texts.meldung(r)` removed → red “the vouchers …”
+ * Counter-checks: in FinanceViewModel `valuationFehlerKlasse = …`
+ *   removed → red “the valuation …”; in Teile.kt `minifigsFehlerKlasse = …`
+ *   removed → red “parts and figures …”.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ErrorStateTest {
@@ -94,7 +94,7 @@ class ErrorStateTest {
             testCatalogRepository(t.api), testFinancesRepository(t.api), SavedStateHandle()))
         vm.loadWanted()
         assertTrue("Fehler", vm.wantedState.value.abruf.errorMessage != null)
-        // Kein fertiger Satz im Zustand: die Ressource zur Art samt HTTP-Status.
+        // No finished sentence in the state: the resource for the kind plus HTTP status.
         assertEquals(Meldung.Resource(R.string.err_server, listOf(404)), vm.wantedState.value.abruf.errorMessage)
         assertEquals("404 ohne Rumpf ist ein Serverfehler", Fehlerklasse.SERVER, vm.wantedState.value.abruf.errorKind)
 

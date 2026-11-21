@@ -9,24 +9,24 @@ import ch.brickinventoryapp.model.domain.Zustand
 import ch.brickinventoryapp.model.local.Local
 import kotlinx.coroutines.flow.Flow
 
-/** Die Merkliste: Sets, die man noch nicht hat, in der Ablage und ihre Übernahme in den Bestand. */
+/** The wishlist: sets one does not have yet, in the store, and their takeover into the stock. */
 interface WantedRepository {
-    /** Die Merkliste aus der Ablage nach Suche und Zustand, sortiert wie am Server. */
+    /** The wishlist from the store by search and condition, sorted as on the server. */
     fun observeWanted(suche: String? = null, zustand: Zustand? = null,
                            sort: Merksortierung? = null): Flow<Local<WantedItemView>>
 
     /**
-     * Die ungefilterte Merkliste vom Server in die lokale Ablage holen. Zu sehen ist
-     * sie nur über [observeWanted]: ein Weg für die Daten, der Abruf meldet nur
-     * Erfolg oder Fehler.
+     * Fetch the unfiltered wishlist from the server into the local store. It can be seen
+     * only via [observeWanted]: one path for the data, the fetch only reports
+     * success or error.
      */
     suspend fun refreshWanted(): Ergebnis<Unit>
 
-    /** true, wenn der Posten neu ist; false, wenn er schon auf der Liste stand. */
+    /** true if the item is new; false if it was already on the list. */
     suspend fun legeMerkpostenAn(setNumber: String, condition: Zustand,
                                  ownerUserId: Int? = null): Ergebnis<Boolean>
 
-    /** true, wenn er mit einem Posten des Ziels zusammengeführt wurde. */
+    /** true if it was merged with an item of the target. */
     suspend fun moveWantedItem(setNumber: String, condition: Zustand,
                                      ofId: Int, toId: Int): Ergebnis<Boolean>
 
@@ -36,8 +36,8 @@ interface WantedRepository {
     suspend fun getWantedItemPrices(setNumber: String): Ergebnis<WantedItemPricesView>
 
     /**
-     * Der Merkposten geht in den Bestand; die Galerie zieht in derselben Ablage nach.
-     * true, wenn das Set schon im Bestand war und nur die Menge stieg.
+     * The wishlist item goes into the stock; the gallery follows in the same store.
+     * true if the set was already in the stock and only the quantity rose.
      */
     suspend fun adoptWantedItem(setNumber: String, condition: Zustand, quantity: Int = 1,
                                     purchasePrice: Geld? = null, recordedAs: Zustand? = null,

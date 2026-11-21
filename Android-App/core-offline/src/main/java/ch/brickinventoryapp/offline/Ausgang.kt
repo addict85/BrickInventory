@@ -8,9 +8,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 
 /**
- * Ein wartender Eintrag; [id] steigt mit jedem Einreihen und ist damit die Reihenfolge.
- * [schluessel] geht als Idempotency-Key mit: Kam ein Versuch an, nur die Antwort
- * nicht, wirkt die Wiederholung beim Server kein zweites Mal.
+ * A waiting entry; [id] rises with every enqueue and is thus the order.
+ * [schluessel] goes along as Idempotency-Key: if an attempt arrived, only the response
+ * did not, the retry has no second effect at the server.
  */
 data class Ausgangsposten(
     val id: Long,
@@ -21,40 +21,40 @@ data class Ausgangsposten(
 )
 
 /**
- * Änderungen, die gemacht, aber noch nicht beim Server angekommen sind — je
- * Bereich, in der Reihenfolge des Einreihens. Im Gerät eine Room-Tabelle, damit
- * sie einen Neustart der App überleben.
+ * Changes that were made but have not yet arrived at the server — per
+ * area, in the order of enqueuing. On the device a Room table, so that
+ * they survive a restart of the app.
  */
 interface Ausgang {
     /**
-     * Eine Bearbeitung, die der Server ablehnte; [ziel] benennt sie für den Hinweis („10001-1“).
-     * [unlesbar]: Der Posten liess sich nach einem Update nicht mehr lesen und ging nie hinaus.
+     * An edit the server rejected; [ziel] names it for the hint („10001-1“).
+     * [unlesbar]: the item could no longer be read after an update and never went out.
      */
     data class DiscardedItem(val id: String, val ziel: String, val meldung: String, val httpCode: Int?,
                                  val unlesbar: Boolean = false)
 
     fun anzahl(bereich: String): Flow<Int>
     suspend fun einreihen(bereich: String, bearbeitung: Editing, jetzt: Long, schluessel: String): Long
-    /** Nur lesbare Posten; Lesen ändert nichts, Unlesbares räumt erst [cleanUnreadable]. */
+    /** Only readable items; reading changes nothing, unreadable ones are cleared only by [cleanUnreadable]. */
     suspend fun alle(bereich: String): List<Ausgangsposten>
     suspend fun erster(bereich: String): Ausgangsposten?
 
     /**
-     * Unlesbare Posten als verworfen melden und dann entfernen — nie still: Sie tragen
-     * Änderungen, die es nur auf diesem Gerät gibt. Gibt ihre Zahl zurück.
+     * Report unreadable items as discarded and then remove them — never silently: they carry
+     * changes that exist only on this device. Returns their number.
      */
     suspend fun cleanUnreadable(bereich: String): Int
     suspend fun entferne(id: Long)
     suspend fun attemptFailed(id: Long)
     suspend fun leere()
 
-    /** Verworfenes bleibt, bis sein Hinweis gezeigt ist — auch über einen Neustart. */
+    /** Discarded items stay until their hint has been shown — even across a restart. */
     suspend fun rememberDiscarded(bereich: String, v: DiscardedItem)
     fun discarded(bereich: String): Flow<List<DiscardedItem>>
     suspend fun acknowledgeDiscarded(bereich: String, id: String)
 }
 
-/** Im Speicher: für Tests und als Vorgabe, solange keine Datenbank gebunden ist. */
+/** In memory: for tests and as the default as long as no database is bound. */
 class StorageExit : Ausgang {
     private val posten = MutableStateFlow<List<Pair<String, Ausgangsposten>>>(emptyList())
     private val nextId = java.util.concurrent.atomic.AtomicLong(1)

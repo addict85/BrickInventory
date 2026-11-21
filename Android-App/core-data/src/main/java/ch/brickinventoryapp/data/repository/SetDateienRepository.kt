@@ -15,22 +15,22 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Dateien zu Sets, hinein und hinaus: PDF der Teileliste, CSV-Import, Anleitungen. */
+/** Files for sets, in and out: PDF of the parts list, CSV import, instructions. */
 interface SetDateienRepository {
-    /** Nimmt den Auftrag an und nennt seine Nummer. */
+    /** Accepts the job and names its number. */
     suspend fun startPdfJob(job: Teilelistenauftrag): Ergebnis<String>
 
     suspend fun getPdfJobStatus(jobId: String): Ergebnis<PdfJobStatus>
 
-    /** Das fertige PDF; eine zu kleine Antwort ist eine Fehlerseite, kein PDF. */
+    /** The finished PDF; a too small response is an error page, not a PDF. */
     suspend fun downloadPdf(jobId: String): Ergebnis<ByteArray>
 
     suspend fun getCsvImportStatus(): Ergebnis<CsvImportStatusView>
 
-    /** Laufenden CSV-Import abbrechen; schon angelegte Sets bleiben. */
+    /** Cancel the running CSV import; sets already created stay. */
     suspend fun cancelCsvImport(): Ergebnis<Unit>
 
-    /** [typ] ist der Medientyp aus der Dateiauswahl: PDF, JPG oder PNG. */
+    /** [typ] is the media type from the file picker: PDF, JPG or PNG. */
     suspend fun uploadInstruction(
         setNumber: String, fileName: String, typ: String, inhalt: ByteArray, beschreibung: String,
     ): Ergebnis<Unit>
@@ -55,16 +55,16 @@ class SetFilesRepositoryImpl @Inject constructor(private val api: SetsApi) : Set
             is Ergebnis.Erfolg -> a
             is Ergebnis.Fehler -> return a
         }
-        // Ohne @Streaming liegt der Rumpf schon im Speicher; ein Lesefehler ist trotzdem Transport.
+        // Without @Streaming the body already lies in memory; a read error is still transport.
         val bytes = try { r.data.use { it.bytes() } } catch (e: java.io.IOException) {
             return Ergebnis.Fehler.Netz(technical = e.message)
         }
         return if (bytes.size > PDF_MIN_SIZE) Ergebnis.Erfolg(bytes)
-        // Die Grösse gehört ins Log, nicht in die Meldung.
+        // The size belongs in the log, not in the message.
         else Ergebnis.Fehler.LeereAntwort(technical = "PDF ${bytes.size} bytes")
     }
 
-    // Über den api-Client wie jeder Abruf: Adresse und Token setzt der Wächter.
+    // Via the api client like every fetch: the guard sets address and token.
     override suspend fun getCsvImportStatus(): Ergebnis<CsvImportStatusView> =
         sicherAufrufen { api.getCsvImportStatus() }.shown { it.alsAnsicht() }
 
@@ -72,9 +72,9 @@ class SetFilesRepositoryImpl @Inject constructor(private val api: SetsApi) : Set
         sicherAufrufen { api.cancelCsvImport() }.promised({ it.success }) { }
 
     /**
-     * Der Typ wird nicht geraten: Der Server leitet die Dateiendung aus ihm ab und
-     * lehnt alles ausserhalb seiner Liste ab — `application/octet-stream` würde
-     * abgewiesen, obwohl die Datei in Ordnung ist.
+     * The type is not guessed: the server derives the file extension from it and
+     * rejects everything outside its list — `application/octet-stream` would be
+     * rejected although the file is fine.
      */
     override suspend fun uploadInstruction(
         setNumber: String, fileName: String, typ: String, inhalt: ByteArray, beschreibung: String,
@@ -98,5 +98,5 @@ internal fun Teilelistenauftrag.asRequest() = PdfAuftragAnfrage(
 
 internal fun PdfAuftragStand.asStatus() = PdfJobStatus(status = status, fehler = error, restSeconds = etaSeconds)
 
-/** Kleiner ist in der Praxis eine Fehlerseite statt eines PDFs. */
+/** Smaller is in practice an error page instead of a PDF. */
 private const val PDF_MIN_SIZE = 100

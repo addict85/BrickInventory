@@ -10,10 +10,10 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * Wie ein Fachmodell [T] als Zeile in der Ablage liegt: als eigene Form [A] mit Abbildung
- * in beide Richtungen. So folgt die Platte nicht jeder Änderung am Servermodell. Eine
- * unverträgliche Änderung bekommt eine neue [fassung]; die Zeile trägt sie im Feld
- * `fassung`, ohne das Feld ist es Fassung 1, und ältere Fassungen liest [older].
+ * How a domain model [T] lies as a row in the store: as its own form [A] with mapping
+ * in both directions. This way the disk does not follow every change to the server model. An
+ * incompatible change gets a new [fassung]; the row carries it in the field
+ * `fassung`, without the field it is version 1, and older versions are read by [older].
  */
 internal class Ablageform<T, A>(
     private val serializer: KSerializer<A>,

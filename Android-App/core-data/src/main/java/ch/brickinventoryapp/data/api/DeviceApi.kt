@@ -11,7 +11,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST
 
-/** Geräteschlüssel und Freigabe heikler Schritte; nur SchrittbindungImpl braucht ihn, darum nicht in BrickApiService. */
+/** Device key and release of sensitive steps; only SchrittbindungImpl needs it, hence not in BrickApiService. */
 internal interface DeviceApi {
 
     @POST("api/v1/geraet/schluessel")

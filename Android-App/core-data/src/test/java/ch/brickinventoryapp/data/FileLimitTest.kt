@@ -14,16 +14,16 @@ import java.io.ByteArrayInputStream
 import java.io.InputStream
 
 /**
- * Eine gewählte Datei kommt nur bis zur Grenze in den Speicher: Ein Anbieter, der
- * endlos liefert oder eine falsche Grösse nennt, bringt die App nicht zum Absturz.
+ * A chosen file comes into memory only up to the limit: a provider that
+ * delivers endlessly or names a wrong size does not crash the app.
  *
- * Gegenprobe (lokal mit kotlinc gemessen):
- *   datei-ganz-gelesen  readLimited() liest mit readBytes() alles und prüft danach →
- *                       rot „an endless stream is not read beyond the limit“
+ * Counter-check (measured locally with kotlinc):
+ *   datei-ganz-gelesen  readLimited() reads everything with readBytes() and checks afterwards →
+ *                       red “an endless stream is not read beyond the limit“
  */
 class FileLimitTest {
 
-    /** Liefert ohne Ende; zählt, und wirft, sobald weit über die Grenze gelesen wird. */
+    /** Delivers without end; counts, and throws as soon as reading goes far beyond the limit. */
     private class Endless(private val atMost: Long) : InputStream() {
         var gelesen = 0L
         override fun read(): Int {

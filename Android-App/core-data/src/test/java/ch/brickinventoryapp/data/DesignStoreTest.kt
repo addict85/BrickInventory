@@ -15,13 +15,13 @@ import org.robolectric.annotation.Config
 import java.io.File
 
 /**
- * Das Design des Servers wird gemerkt, und zwar zweimal: im DataStore und in einem
- * synchron lesbaren Spiegel, damit schon das erste Bild eines Kaltstarts im richtigen
- * Design entsteht. Dass ein leerer oder unbekannter Wert nichts löscht, hält der Typ
- * (DesignOderNichts, FachtypenTest). Unter Robolectric mit echter Ablage.
+ * The server's design is remembered, and twice: in the DataStore and in a
+ * synchronously readable mirror, so that already the first frame of a cold start arises in the right
+ * design. That an empty or unknown value deletes nothing is held by the type
+ * (DesignOderNichts, FachtypenTest). Under Robolectric with a real store.
  *
- * Gegenprobe (Patch unter gegenproben/, Robolectric, misst die CI):
- *   design-ohne-spiegel   saveAppTheme schreibt den Spiegel nicht → rot „das gemerkte Design …“
+ * Counter-check (patch under gegenproben/, Robolectric, measured by CI):
+ *   design-ohne-spiegel   saveAppTheme does not write the mirror → red “the remembered design …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -39,7 +39,7 @@ class DesignStoreTest {
         assertEquals("Ohne Eintrag gilt der Standard", Design.CLASSIC, jetzt.rememberedDesign())
         jetzt.saveAppTheme(Design.BRICK)
         assertEquals(Design.BRICK, jetzt.appTheme.first())
-        // Ein neuer Start, dessen DataStore noch nichts geliefert hat: nur der Spiegel zählt.
+        // A new start whose DataStore has not delivered anything yet: only the mirror counts.
         assertEquals(Design.BRICK, ablage().rememberedDesign())
     }
 }

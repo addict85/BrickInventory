@@ -47,29 +47,29 @@ import ch.brickinventoryapp.testing.PfadServer
 import ch.brickinventoryapp.testing.TestDienste
 
 /**
- * Beispieldaten für Bildschirmfotos und Oberflächentests: ein PfadServer im Takt mit
- * echten Antworten und die ViewModels der Hauptbildschirme dagegen. Dieser Test
- * prüft auf der JVM, dass jede Liste wirklich ankommt — ein Bildschirmfoto einer
- * leeren Liste zeigte nichts.
+ * Sample data for screenshots and UI tests: a PfadServer in ticks with
+ * real responses and the ViewModels of the main screens against it. This test
+ * checks on the JVM that every list really arrives — a screenshot of an
+ * empty list showed nothing.
  *
- * Gegenprobe: in [Examples.RESPONSES] den Pfad
- * "/api/v1/wanted" vertippt → rot „every main screen gets content“.
- * Gegenproben: im Detailpreis avg_price 799 statt 812.5 →
- * rot „the samples are consistent“; „chart“ aus der Wertentwicklung entfernt →
- * ebenso rot (es blieben die Schweizer Achsentexte des Servers stehen).
- * Gegenproben: bei den Figuren wieder "name" statt
- * "fig_name" → rot „parts and figures carry real names“; den Pfad
- * /api/v1/minifigs/stats entfernt → ebenso rot (keine Kennzahlen).
- * Gegenproben: beim Falcon jedes "wert_gesamt" entfernt → rot
- * „jede Finanzzeile trägt …“ (wert=null); im FinanceViewModel die Punkte wieder beim
- * Laden mit Locale.getDefault() übersetzt → rot „die Finanzachse wird erst beim
- * Zeichnen formatiert“ ([10/27, , 10/29]) und „the samples are consistent“.
- * Gegenprobe: bei den Teilen wieder "quantity" statt
- * "total_quantity" → rot „the parts tiles add up to the total“ (82 gegen 0).
- * Gegenprobe: beim Teil 3039 "image_local" entfernt → rot
- * „every tile has a sample image“ ([(3039, null)]).
- * Gegenprobe: das Baumhaus aus
- * /finance/valuation entfernt → rot „jede Finanzzeile trägt …“ (2 statt 3 Zeilen).
+ * Counter-check: in [Examples.RESPONSES] the path
+ * "/api/v1/wanted" mistyped → red “every main screen gets content“.
+ * Counter-checks: in the detail price avg_price 799 instead of 812.5 →
+ * red “the samples are consistent“; „chart“ removed from the value development →
+ * red as well (the server's Swiss axis texts stayed).
+ * Counter-checks: for the figures again "name" instead of
+ * "fig_name" → red “parts and figures carry real names“; the path
+ * /api/v1/minifigs/stats removed → red as well (no key figures).
+ * Counter-checks: for the Falcon every "wert_gesamt" removed → red
+ * “every finance row carries …” (wert=null); in the FinanceViewModel the points again
+ * translated with Locale.getDefault() when loading → red “the finance axis is formatted
+ * only when drawing” ([10/27, , 10/29]) and “the samples are consistent“.
+ * Counter-check: for the parts again "quantity" instead of
+ * "total_quantity" → red “the parts tiles add up to the total“ (82 against 0).
+ * Counter-check: for part 3039 "image_local" removed → red
+ * “every tile has a sample image“ ([(3039, null)]).
+ * Counter-check: the tree house removed from
+ * /finance/valuation → red “every finance row carries …” (2 instead of 3 rows).
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SampleDataTest {
@@ -88,7 +88,7 @@ class SampleDataTest {
         Dispatchers.resetMain()
     }
 
-    /** Im Takt ist alles schon geladen, wenn der Aufruf zurückkehrt. */
+    /** In ticks everything is already loaded when the call returns. */
     private fun da(was: String, bedingung: () -> Boolean) = assertTrue(was, bedingung())
 
     @Test
@@ -109,7 +109,7 @@ class SampleDataTest {
         assertTrue(finanzen.financeState.value.valuation!!.sets.isNotEmpty())
     }
 
-    /** Die Fotos von Teilen und Figuren zeigen Namen und Kennzahlen, nicht „Name unbekannt“. */
+    /** The photos of parts and figures show names and key figures, not „Name unbekannt“. */
     @Test
     fun `parts and figures carry real names`() {
         val teile = world.teile().also { it.loadParts() }
@@ -124,8 +124,8 @@ class SampleDataTest {
     }
 
     /**
-     * Dieselben Zahlen auf jedem Bildschirm: ein Foto, auf dem der Falcon in der
-     * Galerie anders kostet als im Detail, sähe aus wie ein Fehler der App.
+     * The same numbers on every screen: a photo on which the Falcon costs differently
+     * in the gallery than in the detail would look like an error of the app.
      */
     @Test
     fun `the samples are consistent`() {
@@ -137,8 +137,8 @@ class SampleDataTest {
         assertEquals(falcon.avgPrice, detail.setDetailState.value.setPrice?.avgPrice)
         assertEquals(listOf(Waehrung.CHF), listOf(world.t.sitzung.state.value.currency))
         assertTrue("jeder Kauf hat einen Betrag", detail.setDetailState.value.acquisitions.all { it.effectivePrice != null })
-        // Die Achse trägt Daten, keine Wochentage — chart.x passt Punkt für Punkt, und
-        // übersetzt wird erst in der Sprache der Anzeige.
+        // The axis carries dates, not weekdays — chart.x matches point by point, and
+        // translating happens only in the display language.
         val f = finanzen.financeState.value
         val de = localAxis(f.historyPoints, f.historyDays, Locale.forLanguageTag("de-CH"))
         val en = localAxis(f.historyPoints, f.historyDays, Locale.forLanguageTag("en-GB"))
@@ -147,8 +147,8 @@ class SampleDataTest {
     }
 
     /**
-     * Der Zustand hält die Achse roh; formatiert wird beim Zeichnen. Stünde dort schon
-     * Text in der Sprache des Ladens, zeigte ein Sprachwechsel die alte Form weiter.
+     * The state holds the axis raw; formatting happens when drawing. If text in the
+     * language of loading already stood there, a language switch would keep showing the old form.
      */
     @Test
     fun `the finance axis is formatted only when drawing`() {
@@ -169,8 +169,8 @@ class SampleDataTest {
     }
 
     /**
-     * Jede Kachel der Fotos zeigt ein Bild: Ihre Adresse nennt ein Beispielbild, das
-     * Beispielbilder ohne Netz liefert. Sonst stünde überall der Platzhalter.
+     * Every tile of the photos shows an image: its address names a sample image that
+     * SampleImages delivers without network. Otherwise the placeholder would stand everywhere.
      */
     @Test
     fun `every tile has a sample image`() {
@@ -194,8 +194,8 @@ class SampleDataTest {
     }
 
     /**
-     * Die Mengen der Teilekacheln ergeben die Kennzahl „Stück gesamt“ — ein Foto mit
-     * „82“ oben und „×1“ an jeder Kachel sah aus wie ein Rechenfehler.
+     * The quantities of the parts tiles add up to the key figure „Stück gesamt“ — a photo with
+     * „82“ at the top and „×1“ on every tile looked like a calculation error.
      */
     @Test
     fun `the parts tiles add up to the total`() {
@@ -206,8 +206,8 @@ class SampleDataTest {
     }
 
     /**
-     * Das Finanzfoto zeigt den Normalfall: jede Set-Zeile mit Marktwert, Kaufpreis,
-     * Zustand und G&V, und die Zeilen ergeben zusammen die Kopfkachel.
+     * The finance photo shows the normal case: every set row with market value, purchase price,
+     * condition and P&L, and the rows together add up to the header tile.
      */
     @Test
     fun `every finance row carries price, purchase price, condition and P&L`() {
@@ -215,7 +215,7 @@ class SampleDataTest {
         da("Finanzen") { finanzen.financeState.value.let { it.valuation != null && it.pnl != null } }
         val z = finanzen.financeState.value
         val zeilen = setRows(z.valuation!!.sets).map { it.second }
-        // Zwei bewertete Zeilen und das Baumhaus ohne Marktpreis — der Fall der Basiszeile.
+        // Two valued rows and the tree house without market price — the case of the basis row.
         assertEquals(3, zeilen.size)
         val valued = zeilen.filter { it.wert != null }
         assertEquals(2, valued.size)
@@ -226,21 +226,21 @@ class SampleDataTest {
     }
 }
 
-/** Ein Testserver mit Beispielantworten und die ViewModels dagegen. */
+/** A test server with sample responses and the ViewModels against it. */
 object Examples {
     const val SET = "75192-1"
 
     val RESPONSES = arrayOf(
-        // Eine Währung (CHF) und dieselben Preise überall: Der Falcon kostet in Galerie,
-        // Detail und Finanzen 812.50, gekauft für 700.00; die Titanic 449.95 je Stück.
+        // One currency (CHF) and the same prices everywhere: the Falcon costs 812.50 in gallery,
+        // detail and finances, bought for 700.00; the Titanic 449.95 per piece.
         "/api/v1/sets" to """{"success":true,"total":3,"sets":[
             {"set_number":"75192-1","image_local":"/beispiel/set1.png","name":"Millennium Falcon","year":2017,"theme":"Star Wars","quantity":1,"num_parts":7541},
             {"set_number":"10294-1","image_local":"/beispiel/set2.png","name":"Titanic","year":2021,"theme":"Icons","quantity":2,"num_parts":9090},
             {"set_number":"21318-1","image_local":"/beispiel/set3.png","name":"Baumhaus","year":2019,"theme":"Ideas","quantity":1,"num_parts":3036}]}""",
         "/api/v1/stats" to """{"success":true,"stats":{"total_sets":3,"total_quantity":4,"total_pieces":28757,"total_instructions":2,"total_parts":82,"total_minifigs":3,"set_parts":42,"manual_parts":40}}""",
-        // Das Baumhaus hat noch keinen Marktpreis: Die Kopfkarte rechnet über die zwei
-        // übrigen Positionen (1500 + 212.40 = 1712.40) und nennt es in der Basiszeile, die
-        // Galeriekachel zeigt seinen Kaufpreis als solchen (kachel_quelle "kauf").
+        // The tree house has no market price yet: the header card computes over the two
+        // other positions (1500 + 212.40 = 1712.40) and names it in the basis row, the
+        // gallery tile shows its purchase price as such (kachel_quelle "kauf").
         "/api/v1/finance/pnl" to """{"success":true,"currency":"CHF","totals":{"purchase":"1680.00","current":"1712.40","pnl_prozent":14.2,
             "grand_total":"1712.40","sets_purchase":"1680.00","positionen":3,"positionen_bewertet":2,"positionen_ohne_marktpreis":1,
             "positionen_ohne_kaufpreis":0,"basis_einstand":"1500.00","basis_marktwert":"1712.40","basis_guv_betrag":"212.40",
@@ -248,9 +248,9 @@ object Examples {
             {"set_number":"75192-1","quantity":1,"current_price":812.5,"baseline_price":700,"pnl_pct":"16.1","kachel_preis":812.5,"kachel_pnl_pct":16.1,"kachel_quelle":"markt"},
             {"set_number":"10294-1","quantity":2,"current_price":449.95,"baseline_price":400,"pnl_pct":"12.5","kachel_preis":449.95,"kachel_pnl_pct":12.5,"kachel_quelle":"markt"},
             {"set_number":"21318-1","quantity":1,"current_price":null,"baseline_price":180,"kachel_preis":180.0,"kachel_pnl_pct":null,"kachel_quelle":"kauf"}]}""",
-        // Wie der Server (finances/rechnung/bewertung.ts): wert_gesamt, Kaufpreis, G&V und
-        // je Erfassung eine Zeile mit Zustand. Ohne wert_gesamt zeigt jede Zeile „noch
-        // kein Preis“ unter einer gefüllten Kopfkachel.
+        // Like the server (finances/rechnung/bewertung.ts): wert_gesamt, purchase price, P&L and
+        // one row per acquisition with condition. Without wert_gesamt every row shows „noch
+        // kein Preis“ below a filled header tile.
         "/api/v1/finance/valuation" to """{"success":true,"currency":"CHF","sets":[
             {"set_number":"75192-1","image_local":"/beispiel/set1.png","name":"Millennium Falcon","quantity":1,"avg_price":812.5,"qty_avg_price":812.5,
              "min_price":760.0,"max_price":880.0,"total_avg":"812.50","wert_gesamt":812.5,"purchase_price":700.0,"pnl_prozent":16.1,
@@ -263,7 +263,7 @@ object Examples {
             {"set_number":"21318-1","image_local":"/beispiel/set3.png","name":"Baumhaus","quantity":1,"purchase_price":180.0,"no_price":true,
              "acquisitions":[{"id":3,"condition":"N","quantity":1,"purchase_price":180.0}]}],
             "totals":{"min":"1600.00","avg":"1712.40","max":"1840.00","qty_avg":"1712.40"}}""",
-        // Wie der Server: x_label in Schweizer Form, chart.x mit den ISO-Tagen derselben Punkte.
+        // Like the server: x_label in Swiss form, chart.x with the ISO days of the same points.
         "/api/v1/finance/portfolio-history" to """{"success":true,"currency":"CHF","period":"week","points":[
             {"x_label":"27.10","value":1690.0,"y_frac":0.2},{"x_label":"","value":1701.0,"y_frac":0.5},{"x_label":"29.10","value":1712.4,"y_frac":0.9}],
             "y_axis":[{"label":"CHF 1'680","value":1680.0,"frac":0.0},{"label":"CHF 1'700","value":1700.0,"frac":0.5},{"label":"CHF 1'720","value":1720.0,"frac":1.0}],
@@ -272,8 +272,8 @@ object Examples {
                      "x":["2026-10-27","2026-10-28","2026-10-29"]}}""",
         "/api/v1/finance/parts-valuation" to """{"success":true,"currency":"CHF","parts":[],"total_value":"0.00"}""",
         "/api/v1/finance/minifigs-valuation" to """{"success":true,"currency":"CHF","figs":[],"total_value":"0.00"}""",
-        // Echte, lange Namen wie im Katalog: Ein Foto voller „Name unbekannt“ zeigte
-        // weder Umbruch noch Kürzung.
+        // Real, long names as in the catalog: a photo full of „Name unbekannt“ showed
+        // neither wrapping nor truncation.
         "/api/v1/parts" to """{"success":true,"total":3,"parts":[
             {"part_number":"3001","image_local":"/beispiel/teil1.png","color_id":5,"part_name":"Brick 2 x 4","color_name":"Red","total_quantity":12},
             {"part_number":"3039","image_local":"/beispiel/teil2.png","color_id":1,"part_name":"Slope 45 2 x 2 with Bottom Pin","color_name":"Blue","total_quantity":30},
@@ -285,7 +285,7 @@ object Examples {
             {"fig_number":"sw0002","image_local":"/beispiel/figur2.png","fig_name":"Han Solo (Brown Legs with Holster Pattern)","quantity":1}]}""",
         "/api/v1/minifigs/manual" to """{"success":true,"figs":[]}""",
         "/api/v1/minifigs/stats" to """{"success":true,"stats":{"types":2,"total_quantity":3,"manual":0}}""",
-        // Drei Fälle der Merkliste: mit Preis und Alarm, ohne Preis („Preis folgt“), schon vorhanden.
+        // Three wishlist cases: with price and alert, without price („Preis folgt“), already present.
         "/api/v1/wanted" to """{"success":true,"merkposten":[
             {"set_number":"10305-1","image_local":"/beispiel/set1.png","name":"Lion Knights' Castle","year":2022,"condition":"N","user_id":1,"created_at":"2026-08-21T09:00:00Z",
              "marktpreis":399.9,"waehrung":"CHF","alarm":{"direction":"unter","threshold":349.0,"triggered":false}},
@@ -304,7 +304,7 @@ object Examples {
         "/api/v1/sets/75192-1/alert" to """{"success":true,"alerts":[]}""",
     )
 
-    /** Ein eigener Server je Test; [close] räumt ihn wieder ab. */
+    /** One server per test; [close] tears it down again. */
     class Welt(texts: Texte = NumbersTexts) : AutoCloseable {
         val paths = PfadServer(*RESPONSES)
         val t = TestDienste(paths.imTakt(), texts, io = Dispatchers.Main).also { d -> d.sitzung.waehrungUebernommen(Waehrung.CHF) }
@@ -321,7 +321,7 @@ object Examples {
             object : FileReader { override suspend fun lies(datei: FileRef): Pair<String?, ByteArray>? = null },
             SavedStateHandle(mapOf("setNumber" to SET))))
 
-        /** Die Bauliste ohne Netz: [resolve] liefert Name und Teile je Setnummer. */
+        /** The build list without network: [resolve] delivers name and parts per set number. */
         fun bauliste(resolve: (String) -> Pair<String, List<PlPart>> = { error("nichts aufzulösen") }) =
             t.merke(PartListViewModel(t.sitzung, t.hinweise, object : PartListsSource {
                 override suspend fun resolveSetOn(setNumber: String, serverUrl: String) = resolve(setNumber)

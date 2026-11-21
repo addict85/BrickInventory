@@ -10,77 +10,77 @@ import ch.brickinventoryapp.buildlogic.kanten.Modulkanten
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Die Modulgrenzen, gelesen aus settings.gradle.kts und den build.gradle.kts:
- * app → feature-* → core-*, kein Bereich kennt einen anderen (ohne Ausnahme),
- * feste layering of the core modules, core-model ohne Android, core-ui ohne Fachwissen.
- * Die Kantenregel ist build-logic/…/kanten/Modulkanten.kt; dieselbe führt die Aufgabe
- * modulkantenPruefen in Gradle aus, hier läuft sie gegen die Modulskripte.
+ * The module boundaries, read from settings.gradle.kts and the build.gradle.kts:
+ * app → feature-* → core-*, no area knows another (without exception),
+ * fixed layering of the core modules, core-model without Android, core-ui without domain knowledge.
+ * The edge rule is build-logic/…/kanten/Modulkanten.kt; the task
+ * modulkantenPruefen runs the same in Gradle, here it runs against the module scripts.
  *
- * Gegenproben:
- *   A  feature-collection: `implementation(project(":feature-parts"))` → rot
+ * Counter-checks:
+ *   A  feature-collection: `implementation(project(":feature-parts"))` → red
  *      „feature-collection hängt an feature-parts“
- *   B  core-model: jvm.library durch android.library ersetzt → rot „core-model
+ *   B  core-model: jvm.library replaced by android.library → red „core-model
  *      ist kein reines Kotlin-Modul“
- *   C  core-data: `implementation(project(":core-ui"))` → rot „Schichtung
+ *   C  core-data: `implementation(project(":core-ui"))` → red „Schichtung
  *      der Kernmodule: core-data hängt an [core-ui]“
- *   D  include(":feature-management") aus settings.gradle.kts gestrichen → rot
- *      „jeder Modulordner ist eingebunden“
- *   E  in dependencyResolutionManagement wieder `google()` → rot
- *      „google() only supplies Google's groups“ (Ohne Inhaltsfilter)
- *   F  gegenproben/konvention-mit-modulkante.patch: die Bereichs-Konvention
- *      trägt core-ui ein → rot „conventions add no module edges“
- *   G  in build-logic/settings.gradle.kts `google()` ohne Filter →
- *      rot „Ohne Inhaltsfilter in build-logic/settings.gradle.kts“
- *   I in settings.gradle.kts ein exclusiveContent
- *      gestrichen → rot „exclusiveContent je Block in settings.gradle.kts“
- *   J ein `regex="true"` zurück in
- *      verification-metadata.xml → rot „kein Schlüssel gilt für eine ganze Gruppe …“
- *   K in build-tool-vulnerabilities.txt die Fassung auf 3.15.0
- *      → rot „jede Lücke im Bauwerkzeug …“ (steht nicht in verification-metadata.xml)
- *   H ein `PdfRenderer(` in PdfSeite.kt →
- *      rot „PdfRenderer lives only in the isolated render service“; ebenso
- *      gegenproben/pdf-bitmap-aus-dem-renderer.patch (wieder `Bitmap.CREATOR.createFromParcel`)
- *   L  gegenproben/netz-haengt-an-ablage.patch: core-network bindet Room ein →
- *      rot „core-network hängt an Ablage oder DI“ (layering of the core modules);
- *      erst die CI misst es, lokal gibt es kein Gradle
- *   M  gegenproben/merge-rest-im-baum.patch: eine Datei `Rest.kt.orig` im Baum →
- *      rot „kein Merge-Rest liegt im Baum“ (jeder Modulordner ist eingebunden …)
- *   N  gegenproben/dienste-haengt-an-update.patch: core-services bindet core-update ein →
- *      rot „layering of the core modules: core-services hängt an [core-update]“ (core-data →
- *      core-update fängt schon Gradle als Zyklus)
- *   P  gegenproben/zustand-haengt-an-ui.patch: core-state bindet core-ui ein →
- *      rot „layering of the core modules: core-state hängt an [core-ui]“
- *   Q  gegenproben/gemeinsam-haengt-an-daten.patch: core-ui-inventory bindet core-data ein →
- *      rot „layering of the core modules: core-ui-inventory hängt an [core-data]“
- *   U  gegenproben/offline-haengt-an-daten.patch: core-offline bindet core-ui ein →
- *      rot „layering of the core modules: core-offline hängt an [core-ui]“ (core-data
- *      ginge nicht: Den Zyklus bricht schon Gradle ab, ohne Testbericht)
- *   W  gegenproben/ablage-kennt-wireformat.patch: core-offline bindet core-contract wieder ein →
- *      rot „core-offline kennt das Wire-Format“ (layering of the core modules)
- *   T  gegenproben/bereich-kennt-bereich.patch: feature-parts bindet feature-catalog ein →
- *      rot „feature-parts hängt an feature-catalog“
- *   R  gegenproben/ui-kennt-ansicht.patch: eine core-ui-Datei importiert eine Ansicht aus
- *      model.fach → rot „core-ui kennt Fachmodelle“ (layering of the core modules)
- *   S  gegenproben/ui-neuer-bildschirm.patch: eine neue Datei in core-ui/ui/screens →
- *      rot „core-ui/ui/screens enthält nur die Kamera-Bausteine“ (Schichtung …)
- *   O  gegenproben/fremder-paketstamm.patch: feature-parts bekommt eine Datei im Paket
- *      ch.brickinventoryapp.collection → rot „außerhalb des Paketstamms ihres Moduls“
- *   V  gegenproben/daten-reicht-netz-weiter.patch: core-data bindet core-network per api ein →
- *      rot „Modulkanten per api nur zu core-model: [core-data → core-network]“ (Schichtung …)
- *   X  gegenproben/netz-oeffnet-intent.patch: ExterneAdresse.kt importiert android.content.Intent →
- *      rot „core-network importiert Ablage, Repositories, DI oder Android-Oberfläche“ (Schichtung …)
- *   Y  gegenproben/sitzung-haengt-an-ui.patch: core-session bindet core-ui ein →
- *      rot „layering of the core modules: core-session hängt an core-ui“
- *   Z  gegenproben/konto-haengt-an-tresor.patch: feature-account bindet core-security wieder ein →
- *      rot „feature-account hängt an core-security, das unter dem Zustand liegt“ (kein Bereich hängt …)
- *   AA core-state schaltet wieder brickinventory.android.compose ein → rot „core-state liegt unter
- *      der Oberfläche und schaltet Compose ein“ (Schichtung …; mit kotlinc gemessen, in Gradle bricht
- *      schon AndroidComposeKonvention ab); gegenproben/zustand-darf-oberflaeche.patch → rot „die Kantenregel …“
- *   AB gegenproben/bereichs-viewmodel-im-zustand.patch: ein ViewModel nur eines Bereichs in core-state
- *      → rot „… liegt in core-state ohne Grund in Modulkanten.zustandsViewModels“ (Schichtung …)
- *   W  gegenproben/route-im-kern.patch: eine Route in core-model, die Verwaltung öffnet sie →
- *      rot „feature-management nennt fremde Routentypen: [Zentralziel]“ (kein Bereich hängt …);
- *      lokal mit kotlinc gegen den Baum gemessen, in der CI über Gradle
+ *   D  include(":feature-management") deleted from settings.gradle.kts → red
+ *      “every module folder is included”
+ *   E  in dependencyResolutionManagement again `google()` → red
+ *      “google() only supplies Google's groups“ (Ohne Inhaltsfilter)
+ *   F  gegenproben/konvention-mit-modulkante.patch: the area convention
+ *      adds core-ui → red “conventions add no module edges“
+ *   G  in build-logic/settings.gradle.kts `google()` without filter →
+ *      red „Ohne Inhaltsfilter in build-logic/settings.gradle.kts“
+ *   I in settings.gradle.kts an exclusiveContent
+ *      deleted → red „exclusiveContent je Block in settings.gradle.kts“
+ *   J a `regex="true"` back in
+ *      verification-metadata.xml → red “no key applies to a whole group …”
+ *   K in build-tool-vulnerabilities.txt the version set to 3.15.0
+ *      → red “every vulnerability in the build tooling …” (not in verification-metadata.xml)
+ *   H a `PdfRenderer(` in PdfSeite.kt →
+ *      red “PdfRenderer lives only in the isolated render service“; likewise
+ *      gegenproben/pdf-bitmap-aus-dem-renderer.patch (again `Bitmap.CREATOR.createFromParcel`)
+ *   L  gegenproben/netz-haengt-an-ablage.patch: core-network includes Room →
+ *      red „core-network hängt an Ablage oder DI“ (layering of the core modules);
+ *      only CI measures it, locally there is no Gradle
+ *   M  gegenproben/merge-rest-im-baum.patch: a file `Rest.kt.orig` in the tree →
+ *      red “no merge remnant lies in the tree” (every module folder is included …)
+ *   N  gegenproben/dienste-haengt-an-update.patch: core-services includes core-update →
+ *      red „layering of the core modules: core-services hängt an [core-update]“ (core-data →
+ *      core-update is already caught by Gradle as a cycle)
+ *   P  gegenproben/zustand-haengt-an-ui.patch: core-state includes core-ui →
+ *      red „layering of the core modules: core-state hängt an [core-ui]“
+ *   Q  gegenproben/gemeinsam-haengt-an-daten.patch: core-ui-inventory includes core-data →
+ *      red „layering of the core modules: core-ui-inventory hängt an [core-data]“
+ *   U  gegenproben/offline-haengt-an-daten.patch: core-offline includes core-ui →
+ *      red „layering of the core modules: core-offline hängt an [core-ui]“ (core-data
+ *      would not work: Gradle already aborts the cycle, without a test report)
+ *   W  gegenproben/ablage-kennt-wireformat.patch: core-offline includes core-contract again →
+ *      red „core-offline kennt das Wire-Format“ (layering of the core modules)
+ *   T  gegenproben/bereich-kennt-bereich.patch: feature-parts includes feature-catalog →
+ *      red „feature-parts hängt an feature-catalog“
+ *   R  gegenproben/ui-kennt-ansicht.patch: a core-ui file imports a view from
+ *      model.fach → red „core-ui kennt Fachmodelle“ (layering of the core modules)
+ *   S  gegenproben/ui-neuer-bildschirm.patch: a new file in core-ui/ui/screens →
+ *      red „core-ui/ui/screens enthält nur die Kamera-Bausteine“ (layering …)
+ *   O  gegenproben/fremder-paketstamm.patch: feature-parts gets a file in the package
+ *      ch.brickinventoryapp.collection → red „außerhalb des Paketstamms ihres Moduls“
+ *   V  gegenproben/daten-reicht-netz-weiter.patch: core-data includes core-network via api →
+ *      red „Modulkanten per api nur zu core-model: [core-data → core-network]“ (layering …)
+ *   X  gegenproben/netz-oeffnet-intent.patch: ExterneAdresse.kt imports android.content.Intent →
+ *      red „core-network importiert Ablage, Repositories, DI oder Android-Oberfläche“ (layering …)
+ *   Y  gegenproben/sitzung-haengt-an-ui.patch: core-session includes core-ui →
+ *      red „layering of the core modules: core-session hängt an core-ui“
+ *   Z  gegenproben/konto-haengt-an-tresor.patch: feature-account includes core-security again →
+ *      red „feature-account hängt an core-security, das unter dem Zustand liegt“ (no area depends …)
+ *   AA core-state switches on brickinventory.android.compose again → red „core-state liegt unter
+ *      der Oberfläche und schaltet Compose ein“ (layering …; measured with kotlinc, in Gradle
+ *      AndroidComposeKonvention already aborts); gegenproben/zustand-darf-oberflaeche.patch → red “the edge rule …”
+ *   AB gegenproben/bereichs-viewmodel-im-zustand.patch: a ViewModel of only one area in core-state
+ *      → red „… liegt in core-state ohne Grund in Modulkanten.zustandsViewModels“ (layering …)
+ *   W  gegenproben/route-im-kern.patch: a route in core-model, the management opens it →
+ *      red „feature-management nennt fremde Routentypen: [Zentralziel]“ (no area depends …);
+ *      measured locally with kotlinc against the tree, in CI via Gradle
  */
 class ModulgrenzenTest {
 
@@ -98,13 +98,13 @@ class ModulgrenzenTest {
         Regex("""^\s*(\w+)\(project\(":([\w-]+)"\)\)""", RegexOption.MULTILINE).findAll(bau)
             .map { Dependency(it.groupValues[1], it.groupValues[2]) }.toList()
 
-    /** Was im ausgelieferten Code gilt; Testkonfigurationen zählen nicht. */
+    /** What applies in the shipped code; test configurations do not count. */
     private fun mainDependencies(bau: String): Set<String> =
         dependencies(bau).filter { !it.configuration.startsWith("test") }.map { it.ziel }.toSet()
 
     @Test
     fun `every module folder is included, every included module exists, no merge remnant lies in the tree, and every Kotlin file lies in its module's package root`() {
-        // Eine .orig/.rej wird nie kompiliert, zählt aber für jede Suche über den Baum mit.
+        // A .orig/.rej is never compiled, but counts for every search across the tree.
         val root: File = checkNotNull(project.parentFile)
         val remainder = root.walkTopDown()
             .onEnter { it.name !in setOf(".git", ".claude", ".gradle", "build", "node_modules") }
@@ -115,8 +115,8 @@ class ModulgrenzenTest {
         val folder = module().keys
         assertTrue("Nur ${folder.size} Module gefunden — Suche veraltet?", folder.size >= 12)
         assertEquals("jeder Modulordner ist eingebunden", folder, eingebunden)
-        // Jedes Modul hat seinen eigenen Paketstamm (Tabelle in README.md): Ein Import
-        // verrät so das Modul, und kein Paket verteilt sich auf zwei Module.
+        // Every module has its own package root (table in README.md): an import
+        // thus reveals the module, and no package spreads across two modules.
         val master = mapOf(
             "app" to "app", "core-model" to "model", "core-contract" to "contract", "core-network" to "network", "core-data" to "data",
             "core-security" to "security", "core-offline" to "offline",
@@ -159,8 +159,8 @@ class ModulgrenzenTest {
             assertTrue(falsch.joinToString("\n"), falsch.isEmpty())
             assertTrue("$name kennt keine Kernmodule — Muster veraltet?", mainDependencies(bau).any { it.startsWith("core-") })
         }
-        // Routen: Ein Bereich registriert und öffnet nur eigene Ziele, fremde über die Rückrufe
-        // seiner Navigationsschnittstelle. Eine Route in einem Kernmodul wäre wieder die zentrale Liste.
+        // Routes: an area registers and opens only its own destinations, foreign ones via the callbacks
+        // of its navigation interface. A route in a core module would be the central list again.
         val routesCall = Regex("""\b(?:composable|navigation|popUpTo|getBackStackEntry|toRoute|hasRoute)<([A-Z]\w*)|\bnavigate\(\s*([A-Z]\w*)""")
         val declaration = Regex("""\b(?:class|interface|object)\s+(\w+)""")
         for (name in areas.keys) {
@@ -190,7 +190,7 @@ class ModulgrenzenTest {
         assertTrue("Keine ViewModels in core-state gefunden — Muster veraltet?", stateVms.size >= 3)
         val vmWrong = Modulkanten.stateViewModelViolations(stateVms)
         assertTrue(vmWrong.joinToString("\n"), vmWrong.isEmpty())
-        // core-network ist die untere Netz-Schicht: Ablage, Repositories und Hilt bleiben in core-data.
+        // core-network is the lower network layer: store, repositories and Hilt stay in core-data.
         val netz = kerne.getValue("core-network")
         val libraries = Regex("""\(libs\.([\w.]+)\)""").findAll(netz).map { it.groupValues[1] }.toList()
         val ablage = listOf("androidx.room", "sqlcipher", "hilt", "androidx.hilt", "androidx.datastore", "androidx.work", "retrofit")
@@ -199,16 +199,16 @@ class ModulgrenzenTest {
             Regex("""^import\s+([\w.]+)""", RegexOption.MULTILINE).findAll(f.readText()).map { "${f.name}: ${it.groupValues[1]}" }
         }.toList()
         assertTrue("Nur ${importe.size} Importe in core-network — Pfad veraltet?", importe.size > 20)
-        // Ein Intent ist Oberfläche (core-ui), keine Netzregel.
+        // An intent is UI (core-ui), not a network rule.
         val fremd = importe.filter { Regex(""": (androidx\.room|dagger|javax\.inject|retrofit2|android\.content|ch\.brickinventoryapp\.data\.(repository|lokal|cache))\b""").containsMatchIn(it) }
         assertTrue("core-network importiert Ablage, Repositories, DI oder Android-Oberfläche: $fremd", fremd.isEmpty())
         checkUiWithoutDomainKnowledge()
     }
 
     /**
-     * core-ui ist das Design-System: Theme und Bausteine ohne Fachwissen. Wer einen Fachtyp
-     * (model.fach) oder ein Servermodell (model.data) braucht, ist ein fachlicher Baustein
-     * und gehört in den Bereich oder nach core-ui-inventory; nur Beträge und Währung formatiert es.
+     * core-ui is the design system: theme and building blocks without domain knowledge. Whoever needs a domain type
+     * (model.fach) or a server model (model.data) is a domain building block
+     * and belongs in the area or in core-ui-inventory; it only formats amounts and currency.
      */
     private fun checkUiWithoutDomainKnowledge() {
         val root = File(project, "core-ui/src/main/java")
@@ -217,23 +217,23 @@ class ModulgrenzenTest {
         val fach = Regex("""\bch\.brickinventoryapp\.model\.(data|fach\.(?!(Waehrung|Geld)\b))""")
         val findings = dateien.filter { fach.containsMatchIn(Quellen.withoutComments(it.readText())) }.map { it.relativeTo(root).path }
         assertTrue("core-ui kennt Fachmodelle: $findings", findings.isEmpty())
-        // Die Kamera-Bausteine heissen noch ui.screens; neue Bildschirme oder Bausteine kommen nicht dorthin.
+        // The camera building blocks are still called ui.screens; new screens or building blocks do not go there.
         val screens = File(root, "ch/brickinventoryapp/ui/screens").listFiles().orEmpty().map { it.name }.sorted()
         assertEquals("core-ui/ui/screens enthält nur die Kamera-Bausteine", listOf("KameraAufbau.kt", "KameraErlaubnis.kt"), screens)
     }
 
     /**
-     * Die Regel selbst, an Kanten, die es im Baum nicht gibt.
+     * The rule itself, on edges that do not exist in the tree.
      *
-     * Gegenproben (mit kotlinc gemessen):
-     *   gegenproben/kantenregel-ohne-testausnahme.patch: Testkonfigurationen zählen mit → rot hier
-     *   die api-Zeile gestrichen → rot hier, „Modulkanten per api …“ fehlt
-     *   core-ui in kerne["core-state"] eingetragen → rot hier
-     *   gegenproben/tiefe-kerne-offen.patch: die Regel zu depthCores gestrichen → rot hier
- *   gegenproben/wire-format-fuer-alle.patch: die Regel zu wireKenner gestrichen → rot hier
+     * Counter-checks (measured with kotlinc):
+     *   gegenproben/kantenregel-ohne-testausnahme.patch: test configurations count → red here
+     *   the api line deleted → red here, „Modulkanten per api …“ missing
+     *   core-ui entered in kerne["core-state"] → red here
+     *   gegenproben/tiefe-kerne-offen.patch: the rule for depthCores deleted → red here
+ *   gegenproben/wire-format-fuer-alle.patch: the rule for wireKenner deleted → red here
      *
-     *   in uiViolation `modul in withoutUi &&` gestrichen → rot hier (core-navigation)
-     *   gegenproben/zustand-darf-oberflaeche.patch: core-state fehlt in withoutUi → rot hier
+     *   in uiViolation `modul in withoutUi &&` deleted → red here (core-navigation)
+     *   gegenproben/zustand-darf-oberflaeche.patch: core-state missing in withoutUi → red here
      */
     @Test
     fun `the edge rule forbids area to area, wrong layering, api and core-testing in main code`() {
@@ -254,7 +254,7 @@ class ModulgrenzenTest {
             pruefe("feature-account", "implementation", "core-security"))
         assertEquals(listOf("feature-parts hängt an core-network, das unter dem Zustand liegt"), pruefe("feature-parts", "implementation", "core-network"))
         assertTrue(pruefe("core-neu", "implementation", "core-model").single().endsWith("(core-neu hat keine Regel in Modulkanten.kerne)"))
-        // Erlaubt: Tests sehen mehr, die App sieht alles ausser den Testhilfen, die Schichtung nach unten.
+        // Allowed: tests see more, the app sees everything except the test helpers, the layering downwards.
         assertEquals(emptyList<String>(), pruefe("feature-parts", "testImplementation", "core-testing"))
         assertEquals(emptyList<String>(), pruefe("feature-login", "implementation", "core-security"))
         assertEquals(emptyList<String>(), pruefe("feature-account", "testImplementation", "core-security"))
@@ -274,7 +274,7 @@ class ModulgrenzenTest {
         val bau = module().getValue("core-model")
         val plugins = Regex("""alias\(libs\.plugins\.([\w.]+)\)""").findAll(bau).map { it.groupValues[1] }.toSet()
         assertTrue("core-model ist kein reines Kotlin-Modul: $plugins", "brickinventory.jvm.library" in plugins)
-        // Die JVM-Konvention selbst wendet kotlin.jvm an und kein Android-Plugin.
+        // The JVM convention itself applies kotlin.jvm and no Android plugin.
         val convention = File(project, "build-logic/convention/src/main/kotlin/ch/brickinventoryapp/buildlogic/Konventionen.kt")
             .readText().substringAfter("class JvmLibraryKonvention").substringBefore("\n}\n")
         assertTrue("die JVM-Konvention wendet kotlin.jvm an", "pluginAusKatalog(\"kotlin.jvm\")" in convention)
@@ -294,10 +294,10 @@ class ModulgrenzenTest {
         assertEquals("ein Bereich ohne die App wäre toter Code", areas, app.filter { it.startsWith("feature-") }.toSet())
     }
 
-    /** Plugins wie Abhängigkeiten: google() nur für Googles Gruppen, sonst mavenCentral. */
+    /** Plugins like dependencies: google() only for Google's groups, otherwise mavenCentral. */
     @Test
     fun `google() only supplies Google's groups`() {
-        // build-logic löst AGP und Kotlin für die Konventionen selbst auf.
+        // build-logic resolves AGP and Kotlin for the conventions itself.
         for (datei in listOf("settings.gradle.kts", "build-logic/settings.gradle.kts")) {
             val settings = File(project, datei).readText().lines()
                 .filterNot { it.trim().startsWith("//") }.joinToString("\n")
@@ -305,7 +305,7 @@ class ModulgrenzenTest {
             assertEquals("$datei, pluginManagement und dependencyResolutionManagement: $google", 2, google.size)
             for (z in google) assertTrue("Ohne Inhaltsfilter in $datei: $z", z.startsWith("google { content {") &&
                 listOf("com\\\\.android.*", "com\\\\.google.*", "androidx.*").all { z.contains("includeGroupByRegex(\"$it\")") })
-            // Exklusiv: androidx, com.android und com.google.android nur von Google.
+            // Exclusive: androidx, com.android and com.google.android only from Google.
             val exclusive = Regex("""exclusiveContent \{\s*forRepository \{ google\(\) }\s*filter \{([^\n]*)}""")
                 .findAll(settings).map { it.groupValues[1] }.toList()
             assertEquals("exclusiveContent je Block in $datei", 2, exclusive.size)
@@ -315,9 +315,9 @@ class ModulgrenzenTest {
     }
 
     /**
-     * Die Kanten liest dieser Test aus den Modulskripten. Trüge eine Konvention
-     * selbst eine ein, gälte sie für jedes Modul mit diesem Plugin und stünde
-     * hier nirgends.
+     * This test reads the edges from the module scripts. If a convention added
+     * one itself, it would apply to every module with this plugin and would stand
+     * nowhere here.
      */
     @Test
     fun `conventions add no module edges`() {
@@ -330,8 +330,8 @@ class ModulgrenzenTest {
     }
 
     /**
-     * pdfium parst Dateien von Dritten; nur der Dienst im isolierten Prozess darf es. Zurück
-     * kommen nur Pixel in einen Speicher fester Grösse, nie ein Bitmap-Parcel zum Auspacken.
+     * pdfium parses third-party files; only the service in the isolated process may do so. Only
+     * pixels come back into a buffer of fixed size, never a bitmap parcel to unpack.
      */
     @Test
     fun `PdfRenderer lives only in the isolated render service`() {
@@ -347,9 +347,9 @@ class ModulgrenzenTest {
     }
 
     /**
-     * Ein Schlüssel mit Gruppen-Regex deckte jedes künftige Paket der Gruppe, ohne
-     * Prüfsummeneintrag. Ein neuer Prüfsummenlauf schreibt wieder Regexe:
-     * Dann hier rot, und im Pull-Request werden sie durch die Gruppen ersetzt.
+     * A key with a group regex covered every future package of the group without a
+     * checksum entry. A new checksum run writes regexes again:
+     * then red here, and in the pull request they are replaced by the groups.
      */
     @Test
     fun `no key applies to a whole group via regex`() {
@@ -359,7 +359,7 @@ class ModulgrenzenTest {
         assertEquals("Gruppen-Regex im Vertrauen: $regex", emptyList<String>(), regex)
     }
 
-    /** Lücken im Bauwerkzeug sind begründet, befristet und betreffen eine Fassung, die es gibt. */
+    /** Vulnerabilities in the build tooling are justified, time-limited and concern a version that exists. */
     @Test
     fun `every vulnerability in the build tooling is justified, time-limited and current`() {
         val meta = File(project, "gradle/verification-metadata.xml").readText()

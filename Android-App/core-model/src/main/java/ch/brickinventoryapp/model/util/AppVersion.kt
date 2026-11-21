@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.model.util
 
 /**
- * Name und Code der laufenden App-Fassung. Nur das App-Modul kennt seine
- * BuildConfig; die Bereiche bekommen die Werte über Hilt (ViewModels) und
- * LocalAppVersion (Oberfläche).
+ * Name and code of the running app version. Only the app module knows its
+ * BuildConfig; the areas get the values via Hilt (ViewModels) and
+ * LocalAppVersion (UI).
  */
 
 data class AppVersion(val name: String, val code: Int)

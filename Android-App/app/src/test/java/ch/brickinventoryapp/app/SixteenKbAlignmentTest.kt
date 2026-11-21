@@ -5,13 +5,13 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Absicherung der 16-KB-Speicherseiten-Tauglichkeit.
+ * Safeguarding of the 16 KB memory page compatibility.
  *
- * Vier native Bibliotheken lagen im APK, alle mit 4-KB-Ausrichtung:
+ * Four native libraries lay in the APK, all with 4 KB alignment:
  *
- * Jede dieser Entscheidungen lässt sich mit einer einzigen Zeile in
- * libs.versions.toml wieder rückgängig machen, ohne dass es auffiele —
- * deshalb dieser Test.
+ * Each of these decisions can be undone with a single line in
+ * libs.versions.toml without it standing out —
+ * hence this test.
  */
 class SixteenKbAlignmentTest {
 
@@ -59,8 +59,8 @@ class SixteenKbAlignmentTest {
     }
 
     /**
-     * Ohne diesen Eintrag lädt das Modell erst beim ersten Scan — dann geht der
-     * erste Scan ohne Netz nicht.
+     * Without this entry the model loads only on the first scan — then the
+     * first scan does not work without network.
      */
     @Test
     fun `the barcode module is requested on installation`() {
@@ -74,24 +74,24 @@ class SixteenKbAlignmentTest {
 
     @Test
     fun `DataStore is pinned to ONE version`() {
-        // ── Was diese Pruefung NICHT mehr tut ───────────────────────────────
+        // ── What this check NO longer does ──────────────────────────────────
         //
-        // Hier stand `== "1.1.7"`: eine bestimmte NUMMER, weil 1.2.0 die
-        // 16-KB-Ausrichtung verloren hatte. Das hatte zwei Luecken, und beide
-        // sind grundsaetzlich:
+        // Here stood `== "1.1.7"`: a specific NUMBER, because 1.2.0 had lost the
+        // 16 KB alignment. That had two gaps, and both
+        // are fundamental:
         //
-        //   1. Es prueft die Nummer, nicht die Ausrichtung. Richtet Google
-        //      eine spaetere Fassung wieder aus, bleibt der Riegel trotzdem
-        //      zu. Faellt eine ANDERE Bibliothek zurueck, merkt es niemand.
+        //   1. It checks the number, not the alignment. If Google aligns
+        //      a later version again, the bolt stays closed
+        //      anyway. If ANOTHER library falls back, nobody notices.
         //
-        // Gemessen wird das jetzt am ERGEBNIS: tools/apk-alignment.py liest
-        // die ELF-Koepfe aller .so im gebauten APK und meldet jede Ausrichtung
-        // unter 16 KB. Die Action ruft es nach dem Release-Bau auf.
+        // This is now measured on the RESULT: tools/apk-alignment.py reads
+        // the ELF headers of all .so in the built APK and reports every alignment
+        // below 16 KB. The action calls it after the release build.
         //
-        // Was hier BLEIBT, ist das, was ein Texttest kann und jene Messung
-        // nicht: dass die Fassung ueberhaupt FESTGENAGELT ist. Ohne den
-        // force-Block zoege eine andere Abhaengigkeit die Fassung transitiv
-        // hoch, und das APK waere beim naechsten Mal ein anderes als geprueft.
+        // What REMAINS here is what a text test can do and that measurement
+        // cannot: that the version is PINNED at all. Without the
+        // force block another dependency would pull the version up transitively,
+        // and the APK would next time be different from the checked one.
         assert(Regex("""datastore\s*=\s*"([\d.]+)"""").containsMatchIn(toml)) { "datastore-Version nicht gefunden" }
         val block = gradle.substringAfter("resolutionStrategy", "")
         assert("libs.versions.datastore.get()" in gradle && "force(\"androidx.datastore:\$it:\$datastore\")" in block) {
@@ -108,10 +108,10 @@ class SixteenKbAlignmentTest {
     }
 
     /**
-     * graphics-path kommt sonst transitiv über Compose herein. Der direkte
-     * Eintrag hebt es auf die eigene, neuere Versionslinie — ohne die
-     * Compose-BOM anzufassen, was eine breite Änderung quer durch die
-     * Oberfläche wäre.
+     * graphics-path otherwise comes in transitively via Compose. The direct
+     * entry raises it to its own, newer version line — without
+     * touching the Compose BOM, which would be a broad change across the
+     * UI.
      */
     @Test
     fun `graphics-path is set directly`() {

@@ -4,12 +4,12 @@ import java.time.Instant
 
 import ch.brickinventoryapp.model.data.ScopeFilter
 
-// Konten, Käufe und Lagerorte, wie die Oberfläche sie zeigt.
+// Accounts, purchases and storage locations as the UI shows them.
 
 /**
- * Die Einträge der Kontoauswahl: Alle Konten, Eigene, dann jedes Unterkonto
- * namentlich — ein Eintrag meint immer genau ein Konto. Leer, wenn es nichts zu
- * wählen gibt; dann bleibt die Auswahl verborgen. Paare aus (Wert, Beschriftung).
+ * The entries of the account selection: all accounts, own, then every sub-account
+ * by name — an entry always means exactly one account. Empty if there is nothing to
+ * choose; then the selection stays hidden. Pairs of (value, label).
  */
 fun accountOptions(mitglieder: List<MemberView>, labelAll: String, labelOwn: String): List<Pair<String, String>> {
     if (mitglieder.size < 2) return emptyList()
@@ -42,14 +42,14 @@ data class KaufAnsicht(
     val priceEstimated: Boolean = false,
     val currency: Waehrung? = null,
 ) {
-    /** Sets tragen purchase_price, Teile und Figuren unit_price. */
+    /** Sets carry purchase_price, parts and figures unit_price. */
     val effectivePrice: Geld? get() = purchasePrice ?: unitPrice
 }
 
-/** Die Käufe eines Eintrags samt Summen, aus einer Antwort. */
+/** The purchases of an entry including totals, from one response. */
 data class PurchasesView(val kaeufe: List<KaufAnsicht>, val sums: PurchaseSumsView)
 
-/** Eine Einladung in den Haushalt; [validSeconds] null heisst ohne Frist. */
+/** An invitation into the household; [validSeconds] null means without deadline. */
 data class InvitationView(val code: String, val validSeconds: Int?)
 
 data class PurchaseSumsView(
@@ -69,7 +69,7 @@ data class LocationEntryView(
     val name: String = "",
 )
 
-/** Ein Ort des eigenen Vorrats; [vorgabe] ist der Stern, den das Erfassen vorauswählt. */
+/** A place of the own supply; [vorgabe] is the star that adding preselects. */
 data class StockLocationView(
     val ort: LocationEntryView,
     val vorgabe: Boolean = false,

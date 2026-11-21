@@ -21,25 +21,25 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Die Ablage gehört Server und Sitzung: Nach einem Kontowechsel oder auf einem
- * anderen Server erscheinen offline nie die Daten eines anderen Kontos. Fahrzeug ist
- * CatalogRepository.getCatalogMeta() (Fach KATALOG_META) mit echtem Testserver; der
- * Bereich kommt aus einer Variablen statt aus den Prefs.
+ * The store belongs to server and session: after an account switch or on another
+ * server the data of another account never appears offline. The vehicle is
+ * CatalogRepository.getCatalogMeta() (compartment KATALOG_META) with a real test server; the
+ * area comes from a variable instead of from the prefs.
  *
- * Gegenproben (gegenproben/):
- *   ablage-ein-bereich           uebernimm() ohne cleanOther() → rot „wer schreibt, räumt …“
- *   einzeln-ohne-bereichsvergleich  in reconciledSingle() den Vergleich vorher/nachher
- *                                entfernt → rot „wechselt das Konto während des Abrufs …“
- *   altablage-bleibt             cleanOldResponseStore() räumt nichts → rot „der alte Ablageort …“
- *   fach-uneingeordnet           ein weiteres Fach `PROBE` in Bestandsart → rot
- *                                „the offline store knows exactly the classified compartments“
+ * Counter-checks (gegenproben/):
+ *   ablage-ein-bereich           uebernimm() without cleanOther() → red “whoever writes clears …”
+ *   einzeln-ohne-bereichsvergleich  in reconciledSingle() the before/after comparison
+ *                                removed → red “if the account changes during the fetch …”
+ *   altablage-bleibt             cleanOldResponseStore() clears nothing → red “the old storage location …”
+ *   fach-uneingeordnet           a further compartment `PROBE` in Bestandsart → red
+ *                                “the offline store knows exactly the classified compartments“
  */
 class CacheAreaTest {
 
     /**
-     * Was auf dem Gerät liegt, ist nach Datenklasse eingeordnet (INVARIANTEN.md,
-     * „Daten auf dem Gerät“). Ein neues Fach muss dort eingeordnet werden, bevor
-     * dieser Test wieder grün ist.
+     * What lies on the device is classified by data class (INVARIANTEN.md,
+     * „Daten auf dem Gerät“). A new compartment must be classified there before
+     * this test is green again.
      */
     @Test
     fun `the offline store knows exactly the classified compartments`() {
@@ -54,7 +54,7 @@ class CacheAreaTest {
     private var areas = ArrayDeque<String?>()
     private var bereich: String? = "http://heim:3000\ntoken-a"
 
-    /** Ein Bereich je Abfrage aus der Warteschlange, sonst der feste. */
+    /** One area per query from the queue, otherwise the fixed one. */
     private val quelle: suspend () -> String? = { if (areas.isEmpty()) bereich else areas.removeFirst() }
 
     private fun repo() = testCatalogRepository(TestApi.fuer(server), Offlineablage(bestand, StorageExit(), quelle))

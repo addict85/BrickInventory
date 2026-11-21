@@ -34,26 +34,26 @@ import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 import androidx.core.content.IntentCompat
 
 /**
- * Was eine fremde App erreichen kann: Den Einstieg der Meldungen gar nicht, die
- * exportierte MainActivity nur ohne Ziel. Dazu die Rückfrage für Nutzer-CAs mit
- * Schutz vor überlagerten Fenstern (Tapjacking).
+ * What a foreign app can reach: the notification entry not at all, the
+ * exported MainActivity only without a target. Plus the confirmation for user CAs with
+ * protection against overlaid windows (tapjacking).
  *
- * Gegenproben (Robolectric, nur in der CI messbar; Job `gegenproben`):
- *   (a) MeldungsEinstieg exported="true" → rot „der Einstieg der Meldungen ist
- *       nicht exportiert“ (gegenproben/einstieg-exportiert.patch)
- *   (b) Ueberdeckungsschutz() aus UserCaDialog entfernt → rot „die Rueckfrage
- *       …“ (gegenproben/nutzerca-ohne-ueberdeckungsschutz.patch)
- *   (c) forwardMessage() hängt das Extra an den Start der App → rot „die
- *       eigene Meldung oeffnet ihr Set …“ (gegenproben/einstieg-reicht-extra-durch.patch)
- *   (d) Ueberdeckungsschutz() setzt beim Verlassen nicht zurück → rot „ein
- *       geschuetzter Bildschirm schuetzt die Activity nur, solange er steht“
+ * Counter-checks (Robolectric, measurable only in CI; job `gegenproben`):
+ *   (a) MeldungsEinstieg exported="true" → red “the entry point of the notifications is
+ *       not exported” (gegenproben/einstieg-exportiert.patch)
+ *   (b) Ueberdeckungsschutz() removed from UserCaDialog → red “the confirmation
+ *       …” (gegenproben/nutzerca-ohne-ueberdeckungsschutz.patch)
+ *   (c) forwardMessage() attaches the extra to the app's start → red “the
+ *       own notification opens its set …” (gegenproben/einstieg-reicht-extra-durch.patch)
+ *   (d) Ueberdeckungsschutz() does not reset when leaving → red “a
+ *       protected screen protects the activity only while it is shown”
  *       (gegenproben/ueberdeckung-bleibt-an.patch)
- *   (e) OnlyLauncherStart.onCreate entfernt nichts mehr → rot „ein fremder
- *       Start …“ (gegenproben/start-behaelt-extras.patch)
- *   (f) removeForeignDetails() lässt die Extras stehen → rot „ohne Extras
- *       navigiert …“ und „ein fremder Start …“ (gegenproben/extras-bleiben.patch)
- *   (g) partListsSelection() gibt die Ansicht ohne createChooser zurück → rot
- *       „die Teileliste geht nur ueber die Auswahl …“ (gegenproben/teileliste-ohne-auswahl.patch)
+ *   (e) OnlyLauncherStart.onCreate removes nothing any more → red “a foreign
+ *       start …” (gegenproben/start-behaelt-extras.patch)
+ *   (f) removeForeignDetails() leaves the extras → red “without extras
+ *       a foreign deep link …” and “a foreign start …” (gegenproben/extras-bleiben.patch)
+ *   (g) partListsSelection() returns the view without createChooser → red
+ *       “the parts list goes out only via the system's chooser” (gegenproben/teileliste-ohne-auswahl.patch)
  */
 @RunWith(RobolectricTestRunner::class)
 class ForeignEntryTest {
@@ -114,7 +114,7 @@ class ForeignEntryTest {
         assertFalse("Nach dem Bildschirm bleibt die übrige App ohne", fenster.filterTouchesWhenObscured)
     }
 
-    // Wie Navigation den Pfad zum Ziel im Start-Intent erwartet: Wurzelgraph, dann das Ziel.
+    // How navigation expects the path to the target in the start intent: root graph, then the target.
     private fun attack(nav: NavController) = Intent(Intent.ACTION_MAIN).apply {
         putExtra(NavController.KEY_DEEP_LINK_IDS, intArrayOf(nav.graph.id, nav.graph.findNode("konto")!!.id))
         data = "android-app://androidx.navigation/konto".toUri()
@@ -169,7 +169,7 @@ class ForeignEntryTest {
     }
 }
 
-/** Hält fest, was nach OnlyLauncherStart beim eigenen Code ankommt. */
+/** Records what arrives at the own code after OnlyLauncherStart. */
 class ProbeStart : OnlyLauncherStart() {
     var gesehen: Intent? = null
     var neu: Intent? = null

@@ -4,64 +4,64 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Keine Aussage haengt allein an der Farbe.
+ * No statement depends on color alone.
  *
- * Rot-Grün-Schwäche trifft rund acht Prozent der Männer; eine Aussage, die nur
- * in der Farbe liegt (beim Preisalarm „scharf“ grün gegen grau), steht für sie
- * nicht da.
+ * Red-green deficiency affects about eight percent of men; a statement that lies only
+ * in the color (for the price alert “armed” green against gray) does not exist
+ * for them.
  *
- * [LocalStatusFarben] ist die
- * Stelle, an der Farbe BEDEUTUNG traegt (Erfolg, Warnung, Fehler) — anders
- * als das Material-Schema, das Flaechen einfaerbt. Wer sie benutzt, sagt
- * damit etwas aus, und diese Aussage braucht einen zweiten Traeger.
+ * [LocalStatusFarben] is the
+ * place where color carries MEANING (success, warning, error) — unlike
+ * the Material scheme that colors surfaces. Whoever uses it says
+ * something with it, and that statement needs a second carrier.
  *
- * ── Was die Durchsicht ergeben hat ─────────────────────────────────────────
+ * ── What the review found ────────────────────────────────────────────────────
  *
- * Sieben Fundstellen in sechs Dateien. Sechs trugen ihre Aussage schon
- * doppelt:
+ * Seven occurrences in six files. Six already carried their statement
+ * twice:
  *
- *   MonitoringScreen      Job-Status  → Symbol (Sanduhr, Haken, Fehler, Pause) und Statuswort
- *   SetupScreen           Scanner     → der Hinweistext wechselt mit
- *   BarcodeScannerScreen  Scanner     → derselbe Wechsel
- *   BarcodeScannerScreen  Taschenlampe→ die Knopfbeschriftung wechselt
- *   PortfolioChart        Entwicklung → Vorzeichen und Zahl
- *   SetDetailComponents   PnlBadge    → Vorzeichen und Zahl
- *   CsvImportBanner       Zählung     → Symbolform und Beschriftung darunter
+ *   MonitoringScreen      job status  → icon (hourglass, check, error, pause) and status word
+ *   SetupScreen           scanner     → the hint text changes along
+ *   BarcodeScannerScreen  scanner     → the same change
+ *   BarcodeScannerScreen  flashlight  → the button label changes
+ *   PortfolioChart        development → sign and number
+ *   SetDetailComponents   PnlBadge    → sign and number
+ *   CsvImportBanner       count       → icon shape and label below
  *
- * Die siebte nicht: RateLimitRow hatte drei Stufen (blau, gelb, rot), und nur
- * die Farbe sagte, in welcher man steckt — gelb gegen rot ist genau das Paar,
- * das zusammenfaellt. Die Zahl steht zwar daneben, aber der Zweck der
- * Faerbung war der Blickfang, nicht die Auskunft. Sie hat jetzt ein Zeichen.
+ * The seventh did not: RateLimitRow had three levels (blue, yellow, red), and only
+ * the color said which one you are in — yellow against red is exactly the pair
+ * that merges. The number stands next to it, but the purpose of the
+ * coloring was to catch the eye, not to inform. It now has a symbol.
  *
- * ── Warum eine Liste und keine Suche nach „gibt es Text daneben" ───────────
+ * ── Why a list and not a search for „is there text next to it" ──────────────
  *
- * Ob ein Text die Aussage WIRKLICH traegt, sieht kein Muster. „⏳ running"
- * traegt sie, ein Text, der zufaellig daneben steht, nicht. Die Liste ist
- * deshalb eine Behauptung, die ein Mensch getroffen hat, und der Test haelt
- * nur fest, dass niemand eine NEUE Stelle hinzufuegt, ohne dieselbe Frage
- * gestellt zu haben.
+ * Whether a text REALLY carries the statement, no pattern sees. „⏳ running"
+ * carries it, a text that happens to stand next to it does not. The list is
+ * therefore a claim a human made, and the test only records
+ * that nobody adds a NEW place without having asked the same
+ * question.
  *
- * ── Gegenproben ─────────────────────────────────────
+ * ── Counter-checks ─────────────────────────────────────
  *
- * Zweig claude/gegenproben-farbe, zwei Eingriffe:
+ * Branch claude/gegenproben-farbe, two interventions:
  *
- *   a) MerklisteScreen faerbt neuerdings mit LocalStatusFarben — eine
- *      SIEBTE Datei, ohne dass jemand gefragt haette, was die Stelle sagt
- *        → „whoever uses status colors is on the checked list" rot
- *   b) das Warnsymbol aus RateLimitRow entfernt, `val eng` aber stehen gelassen
- *        → „the quota row does not warn with color alone" rot
+ *   a) MerklisteScreen newly colors with LocalStatusFarben — a
+ *      SEVENTH file, without anyone having asked what the place says
+ *        → “whoever uses status colors is on the checked list" red
+ *   b) the warning symbol removed from RateLimitRow, but `val eng` left in place
+ *        → “the quota row does not warn with color alone" red
  *
- * Ergebnis: 503 Tests, GENAU 2 rot. Der Basislauf 295 auf demselben Stand
- * war gruen.
+ * Result: 503 tests, EXACTLY 2 red. The baseline run 295 on the same state
+ * was green.
  *
- * Bei b) blieb `val eng` mit Absicht stehen. Haette der Eingriff Schwelle
- * UND Zeichen zugleich entfernt, saehe man dem roten Test nicht mehr an,
- * woran er haengt — und eine Gegenprobe, die zwei Dinge auf einmal kaputt
- * macht, beweist keines von beiden.
+ * In b) `val eng` was left in place on purpose. Had the intervention removed threshold
+ * AND symbol at once, one could no longer tell from the red test
+ * what it depends on — and a counter-check that breaks two things at once
+ * proves neither of them.
  */
 class ColorAloneTest {
 
-    /** Die Dateien, deren Farb-Aussage nachweislich einen zweiten Traeger hat. */
+    /** The files whose color statement demonstrably has a second carrier. */
     private val geprueft = setOf(
         "MonitoringScreen.kt",
         "MonitoringKontingente.kt",
@@ -70,9 +70,9 @@ class ColorAloneTest {
         "PortfolioChart.kt",
         "SetDetailComponents.kt",
         "CsvImportBanner.kt",
-        // G&V auf der Set-Karte: Vorzeichen und Zahl wie bei der PnlBadge.
+        // P&L on the set card: sign and number as with the PnlBadge.
         "GalerieKarte.kt",
-        // G&V-Plakette der Finanzkarte: fmtProzent schreibt das Vorzeichen mit.
+        // P&L badge of the finance card: fmtProzent writes the sign along.
         "FinanceSections.kt",
     )
 
@@ -82,9 +82,9 @@ class ColorAloneTest {
             .filter { Quellen.withoutComments(it.readText()).contains("LocalStatusFarben.current") }
             .map { it.name }
             .toSet()
-        // Selbstnachweis: Findet die Suche ueberhaupt etwas? Ohne das waere
-        // eine leere Menge immer eine Teilmenge der Liste — die Regel waere
-        // fuer immer gruen, ohne je etwas anzusehen.
+        // Self-proof: does the search find anything at all? Without that an
+        // empty set would always be a subset of the list — the rule would be
+        // green forever without ever looking at anything.
         assert(nutzer.size >= 5) {
             "Nur ${nutzer.size} Dateien benutzen LocalStatusFarben — Muster veraltet?"
         }
@@ -106,10 +106,10 @@ class ColorAloneTest {
     }
 
     /**
-     * Die eine Stelle, die beim Durchsehen wirklich nur an der Farbe hing.
+     * The one place that really depended only on color during the review.
      *
-     * Sie steht hier einzeln, weil die Liste oben nur sagt „jemand hat
-     * hingesehen". Was dabei herauskam, muss auch halten.
+     * It stands here on its own because the list above only says „someone
+     * looked". What came out of it must hold too.
      */
     @Test
     fun `the quota row does not warn with color alone`() {

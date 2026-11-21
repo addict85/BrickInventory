@@ -4,9 +4,9 @@ import android.os.Looper
 import org.robolectric.Shadows.shadowOf
 
 /**
- * Treibt den Hauptlooper, bis [bereit] gilt und drei weitere Runden weder Anfragen
- * noch Zustand ändern. Die Beispielwelt antwortet im Takt (PfadServer.imTakt), die
- * Beispielbilder laden auf dem Hauptlooper: Alles läuft in diesen Runden, ohne Wanduhr.
+ * Drives the main looper until [bereit] holds and three further rounds change neither requests
+ * nor state. The sample world responds in ticks (PfadServer.imTakt), the
+ * sample images load on the main looper: everything runs in these rounds, without a wall clock.
  */
 fun driveUntil(name: String, requests: () -> Int = { 0 }, zustand: () -> Any? = { null }, bereit: () -> Boolean) {
     var ruhig = 0

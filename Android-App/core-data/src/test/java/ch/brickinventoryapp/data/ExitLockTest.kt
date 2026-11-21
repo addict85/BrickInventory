@@ -6,13 +6,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Der Ausgang bei gesperrtem Gerät: Das Token ist dann nur noch nicht gelesen (sein
- * Schlüssel arbeitet nur entsperrt). Der Arbeiter versucht es später noch einmal,
- * statt den Lauf als erledigt abzuschliessen; die Posten blieben sonst bis zum
- * nächsten Anlass liegen.
+ * The outbox with a locked device: the token has then merely not been read yet (its
+ * key only works unlocked). The worker tries again later
+ * instead of finishing the run as done; the items would otherwise lie until the
+ * next occasion.
  *
- * Gegenprobe (lokal über einen Auszug gemessen): nochmal() mit `NOT_SIGNED_IN -> false` → rot „ohne Token bei
- * gesperrtem Geraet …“; gegenproben/ausgang-ohne-token-fertig.patch
+ * Counter-check (measured locally via an excerpt): nochmal() with `NOT_SIGNED_IN -> false` → red “without a token on a
+ * locked device …”; gegenproben/ausgang-ohne-token-fertig.patch
  */
 class ExitLockTest {
 

@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.model.ui
 
 /**
- * Teilekategorien von Rebrickable auf Deutsch, Wort für Wort wie [ColorGerman]: Neben
- * „Farbe Rot“ stand sonst „Kategorie Bricks“. Unbekannte Wörter bleiben englisch
- * stehen; die Daten selbst bleiben englisch (Filter und Server arbeiten damit).
+ * Part categories from Rebrickable in German, word by word like [ColorGerman]: next to
+ * „Farbe Rot“ there would otherwise stand „Kategorie Bricks“. Unknown words stay
+ * English; the data itself stays English (filters and server work with it).
  */
 
 object CategoryGerman {
@@ -30,7 +30,7 @@ object CategoryGerman {
         "tools" to "Werkzeuge", "weapons" to "Waffen", "costumes" to "Kostüme",
     )
 
-    /** Wörter, die mit dem folgenden zusammengeschrieben werden („Ober“ + „körper“). */
+    /** Words written together with the following one („Ober“ + „körper“). */
     private val prefixes = setOf("Ober", "Unter")
 
     /** „Bricks Sloped“ → „Steine schräg“, „Minifig Upper Body“ → „Minifigur Oberkörper“. */

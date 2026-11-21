@@ -18,20 +18,20 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Die exportierte Teileliste trägt das Inventar und liegt darum nur im
- * app-eigenen filesDir; eine Kopie älterer Fassungen im externen Bereich
- * verschwindet beim nächsten Export.
+ * The exported parts list carries the inventory and therefore lies only in the
+ * app's own filesDir; a copy of older versions in the external area
+ * disappears at the next export.
  *
- * Gegenprobe: in partListsStore()
- * wieder `extern ?: intern` als Wurzel → rot „die Teileliste liegt intern …“.
- * Gegenprobe: in raeumeKontoDateienAuf() die Zeile für
- * UPDATE_FOLDER entfernt → rot „Abmelden raeumt …“ („Das geladene Update bleibt liegen“).
- * Gegenprobe: in
- * cleanOldPartListOn() die Altersprüfung umgedreht (`<` statt `>=`) → rot „nach
- * der Frist verschwindet die Teileliste …“; gegenproben/teileliste-bleibt-liegen.patch
- * Gegenprobe: Teilelistentresor.lege()
- * schreibt den Klartext statt des Geheimtexts → rot „die Teileliste liegt nur
- * verschlüsselt …“; gegenproben/teileliste-im-klartext.patch
+ * Counter-check: in partListsStore()
+ * again `extern ?: intern` as root → red “the parts list lies internally …”.
+ * Counter-check: in raeumeKontoDateienAuf() the line for
+ * UPDATE_FOLDER removed → red “sign-out clears …” („Das geladene Update bleibt liegen“).
+ * Counter-check: in
+ * cleanOldPartListOn() the age check reversed (`<` instead of `>=`) → red “after
+ * the deadline the parts list disappears …”; gegenproben/teileliste-bleibt-liegen.patch
+ * Counter-check: Teilelistentresor.lege()
+ * writes the plaintext instead of the ciphertext → red “the parts list lies only
+ * encrypted …”; gegenproben/teileliste-im-klartext.patch
  */
 class PartListsStoreTest {
 
@@ -67,7 +67,7 @@ class PartListsStoreTest {
         raeumeKontoDateienAuf(intern, null)
     }
 
-    /** Das Inventar nur, solange jemand die Liste öffnen will. */
+    /** The inventory only as long as someone wants to open the list. */
     @Test
     fun `after the deadline the parts list disappears, a fresh one stays`() {
         val liste = partListsStore(intern, null).apply { writeText("Inventar") }

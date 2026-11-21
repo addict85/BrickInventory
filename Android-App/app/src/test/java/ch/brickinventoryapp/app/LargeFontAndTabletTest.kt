@@ -66,20 +66,20 @@ import ch.brickinventoryapp.catalog.ui.KatalogZiel
 import ch.brickinventoryapp.collection.ui.SammlungZiel
 
 /**
- * Grosse Schrift und Tablet, als Verhalten ausgeführt: Navigationsziele stehen
- * bei 200 % in einer Zeile, der Such-Platzhalter der Galerie ist auf dem Telefon nie
- * abgeschnitten.
+ * Large font and tablet, executed as behavior: navigation destinations stand
+ * in one line at 200 %, the gallery's search placeholder is never cut off
+ * on the phone.
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   reiter-bricht-um          Beschriftung wieder als Text ohne Zeilengrenze → rot „Reiterleiste …“
- *   reiter-schrumpft-bis-7sp  Untergrenze wieder fest 7 sp → rot „Reiterleiste schrumpft nie …“
- *   reiter-boden-normalgroesse  Untergrenze wieder die Normalgrösse → rot „Reiterbeschriftung waechst …“
- *   reiter-eigene-groesse     alle beschriftet, jede in eigener Grösse → rot „Reiterleiste bricht …“
- *   suche-neben-filtertext    Filterknopf mit Text schon ab 360 dp → rot „Such-Platzhalter …“
- *   verlauf-ab-zwei-punkten   Linie schon ab zwei Punkten → rot „Preisverlauf …“
- *   teile-detail-als-dialog   Teile-Detail auch auf dem Tablet als Dialog → rot „Tablet zeigt Teil …“
- *   teile-detail-schliessen-rechts  Schliessen wieder rechts vom Titel → rot „Tablet zeigt Teil …“
- *   teile-kachel-ohne-auswahl  offene Kachel nicht markiert → rot „Tablet zeigt Teil …“
+ * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ *   reiter-bricht-um          label again as text without line limit → red “tab bar …”
+ *   reiter-schrumpft-bis-7sp  lower bound again fixed 7 sp → red “tab bar never shrinks …”
+ *   reiter-boden-normalgroesse  lower bound again the normal size → red “tab label grows …”
+ *   reiter-eigene-groesse     all labelled, each in its own size → red “tab bar breaks …”
+ *   suche-neben-filtertext    filter button with text already from 360 dp → red “search placeholder …”
+ *   verlauf-ab-zwei-punkten   line already from two points → red “price history …”
+ *   teile-detail-als-dialog   parts detail as a dialog on the tablet too → red “tablet shows part …”
+ *   teile-detail-schliessen-rechts  close again to the right of the title → red “tablet shows part …”
+ *   teile-kachel-ohne-auswahl  open tile not marked → red “tablet shows part …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -115,7 +115,7 @@ class LargeFontAndTabletTest {
         return ergebnis.single()
     }
 
-    /** Der Textknoten mit genau [text] (nicht ein Feld, das ihn als Platzhalter trägt). */
+    /** The text node with exactly [text] (not a field that carries it as a placeholder). */
     private fun textNode(text: String): SemanticsNode =
         compose.onAllNodes(hasText(text), useUnmergedTree = true).fetchSemanticsNodes()
             .first { n -> n.config.getOrNull(SemanticsProperties.EditableText) == null &&
@@ -134,7 +134,7 @@ class LargeFontAndTabletTest {
             .map { (ziel, text) -> ziel to ctx.getString(text) }
     }
 
-    /** Die sichtbaren Beschriftungen der Leiste; ein Ziel ohne trägt seinen Namen und ist antippbar. */
+    /** The visible labels of the bar; a destination without one carries its name and is tappable. */
     private fun visibleLabels(targets: List<Pair<Any, String>>): List<String> = targets.map { it.second }.filter { text ->
         val sichtbar = compose.onAllNodes(hasText(text), useUnmergedTree = true).fetchSemanticsNodes()
             .any { it.config.getOrNull(SemanticsActions.GetTextLayoutResult) != null }
@@ -167,7 +167,7 @@ class LargeFontAndTabletTest {
         assertTrue("Reiterleiste in verschiedenen Grössen: $sizes", sizes.size == 1)
     }
 
-    /** Bei 200 % stehen die Beschriftungen mindestens anderthalbmal so gross da wie bei 100 %. */
+    /** At 200 % the labels stand at least one and a half times as large as at 100 %. */
     @Test
     fun `tab label grows at 200 percent at least to one and a half times`() {
         val targets = fiveTargets
@@ -198,10 +198,10 @@ class LargeFontAndTabletTest {
     }
 
     /**
-     * Eine Beschriftung, die auch in Normalgrösse nicht passt („Einstellungen“ in einem
-     * Fünftel der Breite bei 130 %), wird nicht kleiner als ohne Vergrösserung: Dann stehen
-     * nur Symbole da, jedes mit seinem Namen für TalkBack. Klein genug für 7 sp muss sie
-     * sein, sonst fiele auch eine tiefere Untergrenze nie ins Gewicht.
+     * A label that does not fit even at normal size („Einstellungen“ in a
+     * fifth of the width at 130 %) does not become smaller than without magnification: then only
+     * icons stand there, each with its name for TalkBack. It must be small enough for 7 sp,
+     * otherwise a lower lower bound would never matter either.
      */
     @Test
     fun `tab bar never shrinks below the normal font size`() {
@@ -231,8 +231,8 @@ class LargeFontAndTabletTest {
         }
     }
 
-    // Gegenprobe zustand-feste-spalte: Beschriftung bei jeder Schrift in der festen
-    // 90-dp-Spalte → rot „Zustandszeile: „Zustand“ steht in 2 Zeilen“.
+    // Counter-check zustand-feste-spalte: label at every font in the fixed
+    // 90 dp column → red „Zustandszeile: „Zustand“ steht in 2 Zeilen“.
     @Test
     fun `state row breaks no word at 200 percent`() {
         zeige(schrift = 2f) { Zustandszeile(zustand = Zustand.NEU, onZustand = {}) }
@@ -242,8 +242,8 @@ class LargeFontAndTabletTest {
     @Test
     fun `search placeholder of the gallery is shown in full on the phone`() = suchPlaceholderWhole(1f)
 
-    // Gegenprobe suche-gross-neben-knoepfen: Knöpfe auch bei grosser Schrift neben
-    // dem Feld → rot „Such-Platzhalter 200 %: … sichtbar bis 5/7“.
+    // Counter-check suche-gross-neben-knoepfen: buttons next to the field even at large
+    // font → red „Such-Platzhalter 200 %: … sichtbar bis 5/7“.
     @Test
     fun `search placeholder of the gallery is shown in full at 200 percent too`() = suchPlaceholderWhole(2f)
 
@@ -275,7 +275,7 @@ class LargeFontAndTabletTest {
         values = listOf(PriceSeriesView("N",
             (1..punkte).map { PricePointView("2026-0$it-01", Geld.aus(700.0 + 10 * it)!!) })))
 
-    /** Zwei Punkte ohne Achse lasen sich wie ein Trend; erst ab drei steht eine Linie da. */
+    /** Two points without an axis read like a trend; only from three does a line appear. */
     @Test
     fun `price history shows no line below three points and names low and high`() {
         val punkte = androidx.compose.runtime.mutableIntStateOf(2)
@@ -297,13 +297,13 @@ class LargeFontAndTabletTest {
             compose.onAllNodes(hasText(toLittle)).fetchSemanticsNodes().isEmpty())
     }
 
-    /** Die Welt antwortet im Takt; den Hauptlooper treiben, bis [fertig] gilt. */
+    /** The world responds in ticks; drive the main looper until [fertig] holds. */
     private fun wait(name: String, fertig: () -> Boolean) {
         driveUntil(name, bereit = fertig)
         compose.waitForIdle()
     }
 
-    /** Listen-Detail wie in der Merkliste: Das Teil steht rechts, die Liste bleibt links stehen. */
+    /** List detail as in the wishlist: the part stands on the right, the list stays on the left. */
     @Test
     fun `tablet shows part and list side by side`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
@@ -330,7 +330,7 @@ class LargeFontAndTabletTest {
             assertTrue("Tablet zeigt Teil rechts der Liste ($liste / $zu)", zu.left >= liste.right)
             assertTrue("Tablet zeigt Teil ohne Dialog",
                 compose.onAllNodes(androidx.compose.ui.test.isDialog()).fetchSemanticsNodes().isEmpty())
-            // Ein Muster für alle Detailköpfe: Schliessen links vom Titel, die Kachel markiert.
+            // One pattern for all detail headers: close to the left of the title, the tile marked.
             val titel = compose.onNode(androidx.compose.ui.test.hasText("Brick 2 x 4") and
                 androidx.compose.ui.test.isHeading()).fetchSemanticsNode().boundsInRoot
             assertTrue("Tablet zeigt Teil mit Schliessen links vom Titel ($zu / $titel)", zu.right <= titel.left)

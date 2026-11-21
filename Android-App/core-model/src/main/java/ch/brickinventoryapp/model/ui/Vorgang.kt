@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.model.ui
 
 /**
- * Eine Handlung des Nutzers (Speichern, Senden, Exportieren) in einer Form statt eines
- * Paars `laeuft`/`fehler`: Sie läuft, ist fertig oder mit einem Grund gescheitert, nie
- * zwei davon zugleich. Was Daten liefert, trägt [Laden].
+ * An action of the user (save, send, export) in one form instead of a
+ * pair `laeuft`/`fehler`: it runs, is finished or failed with a reason, never
+ * two of them at once. What delivers data is carried by [Laden].
  */
 sealed interface Vorgang {
     data object Fertig : Vorgang
@@ -15,8 +15,8 @@ val Vorgang.laeuft: Boolean get() = this is Vorgang.Laeuft
 
 val Vorgang.errorMessage: Meldung? get() = (this as? Vorgang.Fehlgeschlagen)?.meldung
 
-/** Den Grund wegnehmen, wenn ihn niemand mehr sehen soll; ein laufender Vorgang läuft weiter. */
+/** Take away the reason when nobody shall see it any more; a running operation keeps running. */
 fun Vorgang.withoutError(): Vorgang = if (this is Vorgang.Fehlgeschlagen) Vorgang.Fertig else this
 
-/** Ein beendeter Vorgang: mit Grund gescheitert, ohne fertig. */
+/** A finished operation: failed with a reason, without finished. */
 fun beendet(fehler: Meldung?): Vorgang = fehler?.let(Vorgang::Fehlgeschlagen) ?: Vorgang.Fertig

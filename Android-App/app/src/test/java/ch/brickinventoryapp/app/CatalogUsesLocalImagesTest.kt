@@ -10,22 +10,22 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Katalog-Bilder nutzen die vom Server ermittelte, nutzerunabhängige lokale
- * Datei, statt sie hart auf null zu setzen.
+ * Catalog images use the user-independent local file determined by the server
+ * instead of hard-setting it to null.
  *
- * Vorher übergab CatalogScreen.kt/CatalogDetailScreen.kt immer `null` als
- * imageLocal an resolveThumbUrl()/resolveFullUrl() — mit der Begründung, der
- * Katalog kenne keine lokalen Bilder. Das war nur zur Hälfte richtig: Ein
- * ANDERER Nutzer (oder derselbe bei einem früheren Set) kann dieselbe
- * Bilddatei bereits heruntergeladen haben, weil sie nach der Setnummer
- * benannt und nutzerunabhängig ist. Der Server prüft das jetzt und liefert
- * `image_local`, wenn die Datei existiert.
+ * Previously CatalogScreen.kt/CatalogDetailScreen.kt always passed `null` as
+ * imageLocal to resolveThumbUrl()/resolveFullUrl() — with the reasoning that the
+ * catalog knows no local images. That was only half right: a
+ * DIFFERENT user (or the same one with an earlier set) may already have downloaded
+ * the same image file, because it is named after the set number
+ * and is user-independent. The server checks that now and delivers
+ * `image_local` if the file exists.
  *
- * Gegenprobe: in CatalogSetItem.alsAnsicht `imageLocal =
- * null` → rot „catalog models know image_local“.
- * Gegenprobe (lokal, liest nur Quelltext; als Patch nicht übersetzbar): in TeileKarte.kt
- * `serverUrl: String` aus der Signatur von PartTableRow bzw. ManualPartTile genommen →
- * rot „Funktion 'PartTableRow' …“ bzw. „Funktion 'ManualPartTile' …“.
+ * Counter-check: in CatalogSetItem.alsAnsicht `imageLocal =
+ * null` → red “catalog models know image_local”.
+ * Counter-check (local, reads only source; not compilable as a patch): in TeileKarte.kt
+ * `serverUrl: String` taken out of the signature of PartTableRow or ManualPartTile →
+ * red „Funktion 'PartTableRow' …“ or „Funktion 'ManualPartTile' …“.
  */
 class CatalogUsesLocalImagesTest {
 
@@ -41,7 +41,7 @@ class CatalogUsesLocalImagesTest {
 
     @Test
     fun `catalog models know image_local`() {
-        // Gelesen wird, was der Server schickt, und es kommt in der Ansicht an.
+        // What the server sends is read, and it arrives in the view.
         val item = BrickJson.decodeFromString(CatalogSetItem.serializer(),
             """{"set_number": "75192-1", "image_local": "/images/sets/75192-1.jpg"}""").alsAnsicht()
         assertEquals("/images/sets/75192-1.jpg", item.imageLocal)
@@ -53,7 +53,7 @@ class CatalogUsesLocalImagesTest {
     @Test
     fun `catalog screens pass the field through instead of forcing null`() {
         val list = code(Quellen.bildschirm("catalog/ui/screens/CatalogScreen.kt"))
-        // rememberTileImageWithFallback(...) zählt ebenfalls:
+        // rememberTileImageWithFallback(...) counts as well:
         assert(list.contains("resolveThumbUrl(serverUrl, set.imageLocal, set.imageUrl)") ||
                list.contains("rememberTileImageWithFallback(serverUrl, set.imageLocal, set.imageUrl)")) {
             "Die Katalog-Liste muss set.imageLocal durchreichen, nicht null"
@@ -73,10 +73,10 @@ class CatalogUsesLocalImagesTest {
 
     @Test
     fun `CatalogDetailScreen declares and receives serverUrl`() {
-        // Regression: resolveFullUrl() wurde eingebaut, ohne dass die
-        // Funktion serverUrl überhaupt als Parameter kannte — Compile-Fehler
-        // "Unresolved reference 'serverUrl'". Jetzt in der Signatur UND am
-        // einzigen Aufrufort mit state.serverUrl versorgt.
+        // Regression: resolveFullUrl() was built in without the
+        // function knowing serverUrl as a parameter at all — compile error
+        // "Unresolved reference 'serverUrl'". Now in the signature AND
+        // supplied with state.serverUrl at the only call site.
         val screenSrc = read("catalog/ui/screens/CatalogDetailScreen.kt").replace("\n", " ")
         assert(Regex("""fun CatalogDetailScreen\([^)]*serverUrl: String""").containsMatchIn(screenSrc)) {
             "serverUrl fehlt in der Funktionssignatur"
@@ -89,20 +89,20 @@ class CatalogUsesLocalImagesTest {
 
     @Test
     fun `CatalogSetCard is called with serverUrl`() {
-        // Die generische Prüfung oben deckt die SIGNATUR ab; hier zusätzlich
-        // der konkrete Aufruf, der beim gemeldeten Fehler tatsächlich fehlte.
+        // The generic check above covers the SIGNATURE; here additionally
+        // the concrete call that was actually missing in the reported error.
         //
-        // ── Auf die REGEL geprüft, nicht auf den Wortlaut ────
+        // ── Checked for the RULE, not for the wording ────
         //
-        // Vorher stand hier ein contains() auf den ganzen Aufruf, schliessende
-        // Klammer inbegriffen. Diese Zusicherung ist gefallen, als das Design
-        // "noppe" ein fünftes Argument brauchte (die Position der Kachel für
-        // die Deckelfarbe) — obwohl serverUrl unverändert an dritter Stelle
-        // stand und die Sache, um die es hier geht, gar nicht berührt war.
+        // Previously a contains() on the whole call stood here, closing
+        // bracket included. This assertion fell when the design
+        // "noppe" needed a fifth argument (the position of the tile for
+        // the stud color) — although serverUrl stood unchanged in third place
+        // and the matter this is about was not touched at all.
         //
-        // Die Aussage ist „serverUrl steht an dritter Stelle", nicht „der
-        // Aufruf hat genau vier Argumente". Das Zeichen danach darf deshalb
-        // ein Komma sein.
+        // The statement is „serverUrl stands in third place", not „the
+        // call has exactly four arguments". The character after it may therefore
+        // be a comma.
         val src = read("catalog/ui/screens/CatalogScreen.kt")
         assert(Regex("""CatalogSetCard\(set, imageLoader, serverUrl, onSetClick[,)]""")
                 .containsMatchIn(src)) {
@@ -115,16 +115,16 @@ class CatalogUsesLocalImagesTest {
 
     @Test
     fun `every function with a resolveThumbUrl-fullUrl call declares serverUrl itself`() {
-        // Generische Absicherung gegen genau diese Fehlerklasse: zweimal in
-        // Folge wurde resolveThumbUrl()/resolveFullUrl() in eine Funktion
-        // eingebaut, ohne zu prüfen, ob SIE SELBST (nicht nur eine
-        // umgebende Datei) serverUrl als Parameter führt — Compile-Fehler
-        // "Unresolved reference 'serverUrl'", einmal bei CatalogDetailScreen,
-        // einmal bei CatalogSetCard.
+        // Generic safeguard against exactly this error class: twice in
+        // a row resolveThumbUrl()/resolveFullUrl() was built into a function
+        // without checking whether IT ITSELF (not just a
+        // surrounding file) has serverUrl as a parameter — compile error
+        // "Unresolved reference 'serverUrl'", once at CatalogDetailScreen,
+        // once at CatalogSetCard.
         //
-        // Prüfung: Für jede Top-Level-Funktionsdefinition, deren Rumpf einen
-        // resolve*Url(serverUrl, …)-Aufruf enthält, muss "serverUrl: String"
-        // in DERSELBEN Signatur stehen.
+        // Check: for every top-level function definition whose body contains a
+        // resolve*Url(serverUrl, …) call, "serverUrl: String" must
+        // stand in the SAME signature.
         val screensToCheck = listOf(
             "collection/ui/screens/GalerieKarte.kt",
             "collection/ui/screens/SetDetailScreen.kt",
@@ -136,8 +136,8 @@ class CatalogUsesLocalImagesTest {
         ).flatMap { Quellen.screenFiles(it) }
         for (rel in screensToCheck) {
             val raw = read(rel)
-            // Nur Funktionen auf oberster Ebene (Spalte 0), auch internal oder private:
-            // Ohne Sichtbarkeit fiele ein Aufruf der Funktion davor zu.
+            // Only functions at the top level (column 0), also internal or private:
+            // without visibility a call of the function before would count.
             val funcStarts = Regex("""^(?:(?:public|internal|private)\s+)?fun (\w+)\(""", RegexOption.MULTILINE)
                 .findAll(raw).map { it.range.first to it.groupValues[1] }.toList()
             val useIdxs = Regex("""(resolve(Thumb|Full)Url|rememberTileImageWithFallback)\(\s*serverUrl""")
@@ -161,10 +161,10 @@ class CatalogUsesLocalImagesTest {
 
     @Test
     fun `parts, minifigures and catalog use the same fallback as the gallery`() {
-        // Auf Nutzerwunsch auf dasselbe Muster umgestellt wie GalleryScreen.kt:
-        // resolveThumbUrl() allein reicht nicht, wenn die Vorschau (noch)
-        // fehlt — rememberTileImageWithFallback() wechselt bei einem
-        // Ladefehler auf die volle Auflösung.
+        // Switched at the user's request to the same pattern as GalleryScreen.kt:
+        // resolveThumbUrl() alone is not enough when the preview is (still)
+        // missing — rememberTileImageWithFallback() switches to the full
+        // resolution on a loading error.
         val expectations = mapOf(
             "parts/ui/screens/PartsScreen.kt" to 2,      // ManualPartTile, PartCard
             "parts/ui/screens/MinifigsScreen.kt" to 2,   // ManualFigTile, MinifigCard

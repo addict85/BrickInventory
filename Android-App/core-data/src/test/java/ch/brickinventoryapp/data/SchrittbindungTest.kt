@@ -19,19 +19,19 @@ import retrofit2.Retrofit
 import java.util.Base64
 
 /**
- * Die Bindung des Schrittschutzes an den Server: Jede Absage, auch ein 404, und
- * ein Netzfehler halten den Schritt an; nur ein Schritt ohne Aktion am Server
- * bleibt im Gerät. Die Signatur geht als Base64.
+ * The binding of the step protection to the server: every refusal, even a 404, and
+ * a network error stop the step; only a step without action at the server
+ * stays on the device. The signature goes as Base64.
  *
- * Gegenproben (nur in der CI messbar, lokal fehlt das Android-SDK):
- *   A  in challenge() jede Absage und jeden Netzfehler als NotBound → erwartet
- *      rot „a refusal of the server stops“ und „ohne Netz kein Rueckfall …“;
+ * Counter-checks (only measurable in CI, locally the Android SDK is missing):
+ *   A  in challenge() every refusal and every network error as NotBound → expected
+ *      red “a refusal of the server stops” and “without network no fallback …”;
  *      gegenproben/schrittbindung-absage-als-ungebunden.patch
- *   C  in challenge() ein 404 wieder als NotBound (der frühere Rückfall) →
- *      erwartet rot „a 404 on the challenge stops“;
+ *   C  in challenge() a 404 again as NotBound (the former fallback) →
+ *      expected red “a 404 on the challenge stops”;
  *      gegenproben/schrittbindung-404-als-ungebunden.patch
- *   B  in depositChain() die Zertifikate mit dem URL-Alphabet kodiert →
- *      erwartet rot „die Kette geht als Base64 je Zertifikat …“;
+ *   B  in depositChain() the certificates encoded with the URL alphabet →
+ *      expected red “the chain goes to the server as Base64 per certificate …”;
  *      gegenproben/schrittbindung-kette-base64url.patch
  */
 class SchrittbindungTest {

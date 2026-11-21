@@ -1,13 +1,13 @@
 package ch.brickinventoryapp.model.domain
 
 /**
- * Wessen Bestand eine Anfrage meint, wenn nicht alle Konten des Blickfelds. Ein
- * Typ statt des Werts für `accounts=`, damit kein Aufrufer „own“ oder eine Zahl
- * als Text zusammensetzt; übersetzt wird nur auf dem Server (scopeIds).
+ * Whose stock a request means, if not all accounts in view. A
+ * type instead of the value for `accounts=`, so that no caller assembles „own“ or a number
+ * as text; translation happens only on the server (scopeIds).
  */
 
 sealed interface Kontoauswahl {
-    /** Der Wert für `accounts=`. */
+    /** The value for `accounts=`. */
     val anfrage: String
 
     data object Eigene : Kontoauswahl {
@@ -23,7 +23,7 @@ sealed interface Kontoauswahl {
     }
 
     companion object {
-        /** Der gespeicherte Filterwert; null für „alle“, leer oder Unlesbares — dann filtert nichts. */
+        /** The saved filter value; null for „all“, empty or unreadable — then nothing filters. */
         fun aus(wert: String?): Kontoauswahl? = when (val w = wert?.trim().orEmpty()) {
             Eigene.anfrage -> Eigene
             Unterkonten.anfrage -> Unterkonten

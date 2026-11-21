@@ -13,13 +13,13 @@ import org.robolectric.annotation.Config
 import java.util.Locale
 
 /**
- * Die zwei Vorgaben für den Zustand beim Hinzufügen, wie die App sie in beiden Sprachen
- * lädt: Die eigene (Einstellungen) und die für alle Konten (Hintergrundarbeiten) heissen
- * verschieden, und der Hinweis zur eigenen nennt die Wahl, die es wirklich gibt.
+ * The two defaults for the condition when adding, as the app loads them in both languages:
+ * the own one (settings) and the one for all accounts (background work) have different
+ * names, and the hint for the own one names the choice that really exists.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   zwei-vorgaben-gleich-benannt  beide wieder „Standard-Zustand“ → rot „die eigene Vorgabe …“
- *   hinweis-nennt-leer            Hinweis wieder „Leer = globale Vorgabe …“ → rot „der Hinweis …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   zwei-vorgaben-gleich-benannt  both again „Standard-Zustand“ → red “the own default …”
+ *   hinweis-nennt-leer            hint again „Leer = globale Vorgabe …“ → red “the hint …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

@@ -7,17 +7,17 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Das Konto meldet sich noch mit seinem Startpasswort an: Bis es ersetzt ist,
- * weist der Server jeden Abruf mit 403 `passwort_wechsel_noetig` ab. Der
- * ServerWaechter setzt den Zustand, die App zeigt dann die Maske „Startpasswort
- * ersetzen“ statt einer Kette von Fehlermeldungen.
+ * The account still signs in with its start password: until it is replaced,
+ * the server rejects every fetch with 403 `passwort_wechsel_noetig`. The
+ * ServerWaechter sets the state, the app then shows the form „Startpasswort
+ * ersetzen“ instead of a chain of error messages.
  */
 interface PasswordRequired {
     val noetig: StateFlow<Boolean>
     fun melde()
     fun erledigt()
 
-    /** Für Tests ohne Hilt. */
+    /** For tests without Hilt. */
     companion object {
         operator fun invoke(): PasswordRequired = PasswordRequiredState()
     }

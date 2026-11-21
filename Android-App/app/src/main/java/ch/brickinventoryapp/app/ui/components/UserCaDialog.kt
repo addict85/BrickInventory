@@ -18,8 +18,8 @@ import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
 
 /**
- * Die Rückfrage vor dem Einschalten der Nutzer-CAs. Abbrechen ist die Vorgabe
- * (auch Wegtippen); das Ja steht in der Fehlerfarbe, weil es ein Risiko eingeht.
+ * The confirmation before turning on user CAs. Cancel is the default
+ * (also tapping away); the yes is in the error color because it takes a risk.
  */
 @Composable
 fun UserCaDialog(onJa: () -> Unit, onAbbrechen: () -> Unit) {

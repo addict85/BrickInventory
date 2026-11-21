@@ -7,10 +7,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Der Bestand zwischen Ablage und Server, an einer Stelle: wann er sich in der
- * Ablage geändert hat (für Kennzahlen, die der Server darüber rechnet — abgeleitet
- * aus Room, nicht gemeldet), und den Stand des Servers holen, wo ein Schreiben mehr
- * ändert, als die App selbst anwenden kann (Import, Haushalt, Besitzerwechsel).
+ * The stock between store and server, in one place: when it changed in the
+ * store (for key figures the server computes over it — derived
+ * from Room, not reported), and fetching the server's state where a write changes more
+ * than the app can apply itself (import, household, owner change).
  */
 @Singleton
 class Bestandsabgleich @Inject constructor(

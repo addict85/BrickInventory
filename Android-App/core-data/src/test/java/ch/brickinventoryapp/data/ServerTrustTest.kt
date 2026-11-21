@@ -12,18 +12,18 @@ import javax.net.ssl.SSLEngine
 import javax.net.ssl.X509ExtendedTrustManager
 
 /**
- * Nutzerinstallierte CAs gelten nur auf ausdrückliche Einstellung, und erst
- * dann wird der CA-Speicher überhaupt gelesen.
+ * User-installed CAs apply only by explicit setting, and only
+ * then is the CA store read at all.
  *
- * Gegenproben:
- *   A  wahl() immer `withUser.value` → rot „without the setting only the system applies“
- *      und „with the setting the user CAs apply, immediately“
- *   B  checkClientTrusted an wahl() statt an system → rot „Client-Prüfungen
- *      bleiben beim System“
+ * Counter-checks:
+ *   A  wahl() always `withUser.value` → red “without the setting only the system applies”
+ *      and “with the setting the user CAs apply, immediately”
+ *   B  checkClientTrusted on wahl() instead of on system → red “client checks
+ *      stay with the system”
  */
 class ServerTrustTest {
 
-    /** Nimmt nur an, wenn [takesAn]; schreibt mit, welche Prüfung kam. */
+    /** Accepts only if [takesAn]; records which check came. */
     private class Checker(val name: String, val takesAn: Boolean, val log: MutableList<String>) : X509ExtendedTrustManager() {
         private fun pruefe(art: String) {
             log += "$name:$art"

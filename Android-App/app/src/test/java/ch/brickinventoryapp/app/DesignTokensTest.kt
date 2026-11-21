@@ -4,7 +4,7 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Formen und Farben stehen im Design, nicht im Bildschirm.
+ * Shapes and colors live in the design, not in the screen.
  */
 class DesignTokensTest {
 
@@ -52,9 +52,9 @@ class DesignTokensTest {
 
     @Test
     fun `no fixed elevations outside the design`() {
-        // Es gibt zwei: flach (Listen, Abschnitte) und hoch (Anmeldung,
-        // Dialoge, Kennzahlen). Eine dritte Zahl im Bildschirm heisst, dass
-        // jemand eine dritte Bedeutung erfunden hat, ohne sie zu benennen.
+        // There are two: flat (lists, sections) and high (sign-in,
+        // dialogs, key figures). A third number in the screen means that
+        // someone invented a third meaning without naming it.
         val template = Regex(
             """cardElevation\(defaultElevation = \d+\.dp\)"""
         )
@@ -71,10 +71,10 @@ class DesignTokensTest {
 
     @Test
     fun `both designs supply status and chart colors`() {
-        // Ein Design, das eine der beiden Gruppen nicht setzt, fällt auf die
-        // Vorgabe des CompositionLocal zurück — und die ist die klassische.
-        // Im Stein-Design stünde dann wieder ein Preussischblau neben
-        // Salbeigrün, nur diesmal ohne dass es jemandem auffiele.
+        // A design that does not set one of the two groups falls back to the
+        // CompositionLocal's default — and that is the classic one.
+        // In the stone design a Prussian blue would then stand next to
+        // sage green again, only this time without anyone noticing.
         val theme = Quellen.withoutComments(Quellen.lies("ui/theme/Theme.kt"))
         assert(theme.contains("LocalStatusFarben provides")) { "Statusfarben werden nicht bereitgestellt" }
         assert(theme.contains("LocalChartColors  provides") || theme.contains("LocalChartColors provides")) {
@@ -88,11 +88,11 @@ class DesignTokensTest {
     }
 
     /**
-     * Kein Eingabefeld steht in der eckigen Material-Vorgabe: Lagerort- und Auswahlfelder
-     * standen eckig neben runden Textfeldern. Jedes nennt seine Form aus dem Design
-     * (Formen.feld; Suchleisten und Tabellenfelder bewusst eine eigene).
-     * Gegenprobe (gegenproben/lagerort-feld-eckig.patch): `shape = Formen.feld` am
-     * Lagerortfeld entfernt → rot mit „LocationField.kt“.
+     * No input field uses the angular Material default: storage location and selection fields
+     * stood angular next to rounded text fields. Each names its shape from the design
+     * (Formen.feld; search bars and table fields deliberately their own).
+     * Counter-check (gegenproben/lagerort-feld-eckig.patch): `shape = Formen.feld` removed from the
+     * storage location field → red with „LocationField.kt“.
      */
     @Test
     fun `no input field uses the angular default`() {
@@ -124,13 +124,13 @@ class DesignTokensTest {
     }
 
     /**
-     * Eine Knopfform für die ganze App: die Pille der Material-Vorgabe; sonst wechselte sie
-     * im Ablauf Einrichten → Anmelden von Bildschirm zu Bildschirm. Jeder umrandete Knopf
-     * trägt nebenKnopfFarben/-Rand oder ist als Gefahr rot; sonst sah er gesperrt aus.
+     * One button shape for the whole app: the pill of the Material default; otherwise it changed
+     * from screen to screen in the flow setup → sign-in. Every outlined button
+     * carries nebenKnopfFarben/-Rand or is red as a danger; otherwise it looked disabled.
      *
-     * Gegenproben: knopf-mit-eigener-form (`shape = Formen.feld` in LoginScreen.LoadButton)
-     * → rot mit „LoginScreen.kt“; nebenknopf-ohne-farben („Als Datei speichern“ der
-     * Notfallcodes ohne beides) → rot mit „ZweiterFaktorPflichtMaske.kt“.
+     * Counter-checks: knopf-mit-eigener-form (`shape = Formen.feld` in LoginScreen.LoadButton)
+     * → red with „LoginScreen.kt“; nebenknopf-ohne-farben („Als Datei speichern“ of the
+     * emergency codes without both) → red with „ZweiterFaktorPflichtMaske.kt“.
      */
     @Test
     fun `buttons all carry the same shape, secondary buttons the same colors`() {
@@ -139,11 +139,11 @@ class DesignTokensTest {
         val nebenknoepfe = mutableListOf<String>()
         var gesehen = 0
         for (datei in Quellen.alle()) {
-            // Zeichenketten leeren: Eine Klammer darin würfe die Klammerbilanz um.
+            // Empty strings: a bracket in them would upset the bracket balance.
             val s = Quellen.withoutComments(datei.readText())
                 .replace(Regex(""""(?:\\.|[^"\\\n])*""""), "\"\"")
             for (m in call.findAll(s)) {
-                // Die Argumentliste bis zur passenden Klammer; der Inhalt (Lambda) folgt danach.
+                // The argument list up to the matching bracket; the content (lambda) follows after it.
                 var tiefe = 0
                 var ende = m.range.last
                 while (ende < s.length) {
@@ -170,10 +170,10 @@ class DesignTokensTest {
         }
     }
 
-    /** Die Lampe im Scanner liegt auf dem Kamerabild und trägt Weiss auf Schwarz. */
+    /** The lamp in the scanner lies on the camera image and carries white on black. */
     private val VIA_THE_CAMERA_IMAGE = setOf("BarcodeScannerScreen.kt")
 
-    /** Was einem umrandeten Knopf fehlt, oder null. Rot (Gefahr) ersetzt die Farben des Nebenknopfs. */
+    /** What an outlined button lacks, or null. Red (danger) replaces the secondary button's colors. */
     private fun besideButtonError(arguments: String): String? {
         val danger = "colorScheme.error" in arguments
         val edge = Regex("""\bborder\s*=\s*nebenKnopfRand\(([^)]*)\)""").find(arguments)

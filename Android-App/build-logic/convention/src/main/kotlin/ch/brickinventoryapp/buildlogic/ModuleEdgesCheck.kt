@@ -12,14 +12,14 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
 
 /**
- * Prüft die Modulkanten eines Moduls gegen [Modulkanten]. Gradle bricht nur bei einem
- * Zyklus ab, nicht bei einer Kante in die falsche Richtung; diese Aufgabe hängt an `check`
- * und läuft in der CI für alle Module. Die Kanten selbst trägt weiter das Modulskript ein.
+ * Checks the module edges of a module against [Modulkanten]. Gradle only aborts on a
+ * cycle, not on an edge in the wrong direction; this task hangs on `check`
+ * and runs in CI for all modules. The edges themselves are still added by the module script.
  */
 abstract class ModuleEdgesCheck : DefaultTask() {
     @get:Input abstract val modul: Property<String>
 
-    /** Je Kante „konfiguration ziel“, ohne führenden Doppelpunkt. */
+    /** Per edge „configuration target“, without a leading colon. */
     @get:Input abstract val kanten: ListProperty<String>
 
     @TaskAction
@@ -30,7 +30,7 @@ abstract class ModuleEdgesCheck : DefaultTask() {
     }
 }
 
-/** Registriert `modulkantenPruefen` und hängt es an `check`; die Kanten liest es erst beim Bau des Aufgabengraphen. */
+/** Registers `modulkantenPruefen` and hangs it on `check`; it reads the edges only when the task graph is built. */
 internal fun Project.modulkantenPruefen() {
     val task = tasks.register("modulkantenPruefen", ModuleEdgesCheck::class.java) { t ->
         t.group = "verification"

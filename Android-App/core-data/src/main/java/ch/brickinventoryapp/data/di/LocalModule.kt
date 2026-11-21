@@ -68,9 +68,9 @@ import ch.brickinventoryapp.data.SecondFactorRequired
 import ch.brickinventoryapp.data.SecondFactorState
 
 /**
- * Die lokale Ablage: Room (core-offline) für Listen und Ausgang, WorkManager fürs
- * Senden. Die Logik (Offlineablage, Abgleich) kennt nur die Schnittstellen und ist
- * so ohne Android prüfbar.
+ * The local store: Room (core-offline) for lists and outbox, WorkManager for
+ * sending. The logic (Offlineablage, sync) knows only the interfaces and is
+ * thus checkable without Android.
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -104,9 +104,9 @@ internal abstract class LocalModule {
 
     companion object {
         /**
-         * Der Bereich kommt aus dem angemeldeten Konto, gestreut: zum Schreiben jetzt gefragt,
-         * zum Beobachten als StateFlow der Sitzung. Beim ersten Bau räumt sie den früheren
-         * Antwort-Zwischenspeicher, den sie ersetzt.
+         * The area comes from the signed-in account, hashed: asked now for writing,
+         * as the session's StateFlow for observing. On the first build it clears the former
+         * response cache that it replaces.
          */
         @Provides
         @Singleton

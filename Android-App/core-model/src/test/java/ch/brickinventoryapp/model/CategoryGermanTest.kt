@@ -5,11 +5,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Teilekategorien auf Deutsch wie die Farben daneben: Wörter übersetzt, Kommas und
- * Bindestriche bleiben, unbekannte Wörter stehen englisch da.
+ * Part categories in German like the colors next to them: words translated, commas and
+ * hyphens stay, unknown words stand there in English.
  *
- * Gegenprobe: in uebersetze() das Wörterbuch nicht
- * gefragt (`val de = wort`) → rot „bekannte Kategorien …“ („Bricks“ statt „Steine“).
+ * Counter-check: in uebersetze() the dictionary not
+ * asked (`val de = wort`) → red “known categories …” („Bricks“ instead of „Steine“).
  */
 class CategoryGermanTest {
 

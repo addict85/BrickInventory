@@ -19,13 +19,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Preisalarme und der Vorrat an Lagerorten liegen in der Ablage wie die übrigen
- * Listen: Gelesen wird nur dort, Schreiben zieht sie nach, und ohne Netz bleibt
- * der letzte Stand.
+ * Price alerts and the supply of storage locations lie in the store like the other
+ * lists: reading happens only there, writing updates them, and without network
+ * the last state stays.
  *
- * Gegenproben (gegenproben/alarm-ohne-nachzug.patch, vorrat-vorgabe-ohne-nachzug.patch):
- *   in AlarmRepositoryImpl.setPreisalarm nur `sicherAufrufen` → rot „ein gesetzter Alarm …“
- *   in LocalApplication.lagerorte der Zweig LocationDefault auf `liste` → rot „Anlegen, Umbenennen …“
+ * Counter-checks (gegenproben/alarm-ohne-nachzug.patch, vorrat-vorgabe-ohne-nachzug.patch):
+ *   in AlarmRepositoryImpl.setPreisalarm only `sicherAufrufen` → red “a set and a deleted alert …”
+ *   in LocalApplication.lagerorte the branch LocationDefault on `liste` → red “creating, renaming …”
  */
 class AlarmAndStockStoreTest {
 
@@ -67,7 +67,7 @@ class AlarmAndStockStoreTest {
     @Test
     fun `without network the most recently fetched list of alerts stays`() = runBlocking {
         alerts.refreshAlerts()
-        // Im Takt antwortet PfadServer ohne Netz; abschalten hiesse hier nichts.
+        // In ticks PfadServer answers without network; switching it off would mean nothing here.
         paths.priority = { _, _ -> 503 to """{"success":false}""" }
         assertTrue(alerts.refreshAlerts() is Ergebnis.Fehler)
         assertEquals(2, alerts.observeAlerts().first().liste.size)

@@ -18,7 +18,7 @@ import ch.brickinventoryapp.model.domain.HouseholdStatusView
 import ch.brickinventoryapp.model.domain.ProfileView
 import ch.brickinventoryapp.model.domain.LogRowView
 
-/** Verwalterrecht wirkt nur mit vollem Token: Mit "app" antwortet der Server auf Verwalteradressen 403. */
+/** Admin rights only take effect with a full token: with "app" the server answers admin addresses with 403. */
 val LoginResponse.verwalter: Boolean get() = user?.isAdmin == true && tokenInfo?.scope == TOKEN_SCOPE_FULL
 
 fun Profil.alsAnsicht() =

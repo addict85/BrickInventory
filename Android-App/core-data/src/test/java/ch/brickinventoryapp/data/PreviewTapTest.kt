@@ -19,16 +19,16 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Der Abgriff der Vorschau-Ablage im Bild-Client, gegen einen Testserver: Er legt
- * eine geholte Vorschau ab, ohne dem Aufrufer den Rumpf zu nehmen, springt ein, wenn
- * der Server schweigt oder der Zwischenspeicher mit 504 leer ausgeht, und legt die
- * Anfragen des Vorwärmers als spekulativ ab.
+ * The preview store's tap in the image client, against a test server: it stores
+ * a fetched preview without taking the body from the caller, steps in when
+ * the server is silent or the cache comes up empty with 504, and stores the
+ * warmer's requests as speculative.
  *
- * Gegenproben (Patches unter gegenproben/):
- *   abgriff-ohne-rueckfall     im catch wieder werfen statt aus der Ablage → rot „ohne Server …“
- *   abgriff-504-durchgereicht  der 504-Zweig entfernt → rot „ein 504 …“
- *   abgriff-liest-rumpf        body.bytes() statt peekBody → rot „eine geholte Vorschau …“
- *   abgriff-ohne-marke         spekulativ immer false → rot „eine Anfrage des Vorwärmers …“
+ * Counter-checks (patches under gegenproben/):
+ *   abgriff-ohne-rueckfall     in the catch throw again instead of from the store → red “without a server …”
+ *   abgriff-504-durchgereicht  the 504 branch removed → red “a 504 …”
+ *   abgriff-liest-rumpf        body.bytes() instead of peekBody → red “a fetched preview …”
+ *   abgriff-ohne-marke         speculative always false → red “a request of the warmer …”
  */
 class PreviewTapTest {
 

@@ -60,16 +60,16 @@ import ch.brickinventoryapp.testing.testPartsRepository
 import ch.brickinventoryapp.testing.TestApi
 
 /**
- * Nach dem Abmelden bleibt nichts vom Konto: Abmelden.ausfuehren() mit der echten
- * DevicesCleanup und echten Ablagen, jede vorher befüllt, danach leer — und was mit
- * dem alten Ablageschlüssel verschlüsselt lag, ist nicht mehr lesbar. Hier in core-data,
- * weil die Bereinigung modulintern ist; den Widget-Haken vertritt eine Attrappe.
+ * After signing out nothing of the account remains: Abmelden.ausfuehren() with the real
+ * DevicesCleanup and real stores, each filled before, empty afterwards — and what lay
+ * encrypted with the old store key is no longer readable. Here in core-data,
+ * because the cleanup is module-internal; a dummy stands in for the widget hook.
  *
- * Gegenproben (Robolectric, misst die CI; Job `gegenproben`):
- *   abmelden-laesst-vorschau     vorschau.leeren() entfernt → rot „… Vorschau“
- *   abmelden-laesst-teileliste   raeumeKontoDateienAuf entfernt → rot „… Teileliste“
- *   abmelden-laesst-meldungen    cancelAll() entfernt → rot „… Preisalarm-Meldung“
- *   abmelden-ohne-neuen-schluessel  ablage.erneuere() entfernt → rot „… alten Schlüssel“
+ * Counter-checks (Robolectric, measured by CI; job `gegenproben`):
+ *   abmelden-laesst-vorschau     vorschau.leeren() removed → red „… Vorschau“
+ *   abmelden-laesst-teileliste   raeumeKontoDateienAuf removed → red „… Teileliste“
+ *   abmelden-laesst-meldungen    cancelAll() removed → red „… Preisalarm-Meldung“
+ *   abmelden-ohne-neuen-schluessel  ablage.erneuere() removed → red „… alten Schlüssel“
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -87,7 +87,7 @@ class SignOutCleansEverythingTest {
         start()
     }
 
-    /** Robolectric hat keinen AndroidKeyStore; umhüllt wird hier nur zum Schein. */
+    /** Robolectric has no AndroidKeyStore; wrapping here is only for show. */
     private object Klartresor : TokenEncryption {
         override fun verschluessle(klartext: String) = klartext
         override fun entschluessle(gespeichert: String) = gespeichert
@@ -101,7 +101,7 @@ class SignOutCleansEverythingTest {
 
     private fun datei(basis: File, pfad: String) = File(basis, pfad).apply { parentFile?.mkdirs(); writeText("inhalt") }
 
-    /** Teileliste, Update-APK, Anleitung, Widget-Zahlen und eine Preisalarm-Meldung. */
+    /** Parts list, update APK, instruction, widget numbers and a price alert notification. */
     private fun putFilesAndMessageAn(): Triple<File, File, File> {
         val dateien = Triple(datei(ctx.filesDir, "pdf/teileliste.bin"), datei(ctx.filesDir, "update/BrickInventory.apk"),
             datei(ctx.cacheDir, "anleitung_x.bin"))
@@ -150,7 +150,7 @@ class SignOutCleansEverythingTest {
 
         val cleanup = DevicesCleanup(ctx, prefs, AccountDataDeletion(offline), PasswordRequired(),
             SecondFactorRequired(), imageClient, vorschau, loader, Dispatchers.IO, ablage)
-        // Der echte Haken (AppModule) leert die Widget-Zahlen; er liegt in der App.
+        // The real hook (AppModule) clears the widget numbers; it lives in the app.
         val widget = Abmeldehaken { ctx.getSharedPreferences("widget", Context.MODE_PRIVATE).edit().clear().commit() }
         val abmelden = Abmelden(cleanup, widget, sitzung,
             Scope(StorageStore(), testHouseholdRepository(api), testPartsRepository(api)),
@@ -165,7 +165,7 @@ class SignOutCleansEverythingTest {
         assertNull("Kennzahlen", offline.lies(Slots.KENNZAHLEN)?.liste?.takeIf { it.isNotEmpty() })
         assertNull("Bestand", offline.lies(Slots.SETS)?.liste?.takeIf { it.isNotEmpty() })
         assertFalse("Ausgang", offline.wartet())
-        // Auf die Platte gesehen: Die Namen hängen am Ablageschlüssel, und der ist danach ein anderer.
+        // Looked at on disk: the names hang on the store key, and that is a different one afterwards.
         assertTrue("Vorschau", File(ctx.filesDir, "vorschau").walkTopDown().none { it.isFile })
         assertFalse("HTTP-Bildcache", imageClient.cache!!.urls().hasNext())
         assertNull("Coil-Bildcache", coil.openSnapshot("bild"))

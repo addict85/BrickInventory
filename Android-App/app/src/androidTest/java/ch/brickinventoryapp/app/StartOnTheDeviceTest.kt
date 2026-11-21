@@ -9,12 +9,12 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Auf einem echten Android (Gradle Managed Device, Job geraetetests): Hilt, Room samt
- * SQLCipher und der Keystore laufen nur dort, Robolectric ersetzt sie. Die App startet
- * ohne Server bis zur ersten Ansicht und stürzt nicht ab.
+ * On a real Android (Gradle Managed Device, job geraetetests): Hilt, Room including
+ * SQLCipher and the keystore only run there, Robolectric replaces them. The app starts
+ * without a server up to the first view and does not crash.
  *
- * Gegenprobe (lokal nicht messbar, kein Emulator; misst der erste CI-Lauf): in
- * MainActivity.onCreate `error("probe")` → rot „die App startet bis zur ersten Ansicht“.
+ * Counter-check (not measurable locally, no emulator; measured by the first run in CI): in
+ * MainActivity.onCreate `error("probe")` → red “the app starts up to the first view”.
  */
 @RunWith(AndroidJUnit4::class)
 class StartOnTheDeviceTest {

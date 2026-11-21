@@ -24,25 +24,25 @@ import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.testing.testAccountRepository
 
 /**
- * Abmelden ohne Netz lässt das Token am Server nicht gültig: Scheitert
- * der kurze Versuch, geht ein Auftrag in die Warteschlange, der wiederholt, bis der
- * Server bestätigt. Der Arbeiter selbst (WorkManager) läuft nur auf dem Gerät;
- * geprüft werden Abmeldung, Entwerter und die Entscheidung je Lauf.
+ * Signing out without network does not leave the token valid at the server: if
+ * the short attempt fails, a job goes into the queue that retries until the
+ * server confirms. The worker itself (WorkManager) runs only on the device;
+ * checked are sign-out, canceller and the decision per run.
  *
- * Gegenproben:
- *   A  Abmeldung.atServer() ohne planer.plane() → rot „scheitert der Versuch, geht
- *      ein Auftrag in die Warteschlange“
- *   B  classifyRedemption(): 401 als LATER → rot „ein Token, das schon nicht
- *      mehr gilt, braucht keinen Auftrag“ und „der Entwerter …“ (401-Fall)
- *   C  Entwerter ohne eigenen Wächter (basis unverändert) → rot „der Entwerter
- *      schickt genau dieses Token …“ (kein Authorization-Kopf)
- *   D  redemptionStep(): Gesperrt → GIVEN_UP → rot „ein gesperrter Keystore
- *      wartet …“
- *   E in entwerte() die Prüfung der Herkunft entfernt → rot
- *      „ein Auftrag für einen anderen Server schickt nichts“ (gegenproben/entwerter-ohne-herkunft.patch)
- *   F  redemptionStep(): Gesperrt gibt auch bei gesperrtem Gerät nach den Höchstversuchen
- *      auf (`!deviceLocked &&` entfernt) → rot „with a locked device the job does not give up“
- *      (gegenproben/entwertung-gibt-bei-sperre-auf.patch; nur CI)
+ * Counter-checks:
+ *   A  Abmeldung.atServer() without planer.plane() → red “if the attempt fails, a
+ *      job goes into the queue”
+ *   B  classifyRedemption(): 401 as LATER → red “a token that is already no
+ *      longer valid needs no job” and “the canceller …” (401 case)
+ *   C  canceller without its own guard (basis unchanged) → red “the canceller
+ *      sends exactly this token …” (no Authorization header)
+ *   D  redemptionStep(): Gesperrt → GIVEN_UP → red “a locked keystore
+ *      waits …”
+ *   E in entwerte() the check of the origin removed → red
+ *      “a job for a different server sends nothing” (gegenproben/entwerter-ohne-herkunft.patch)
+ *   F  redemptionStep(): Gesperrt gives up after the maximum attempts even with a locked device
+ *      (`!deviceLocked &&` removed) → red “with a locked device the job does not give up”
+ *      (gegenproben/entwertung-gibt-bei-sperre-auf.patch; CI only)
  */
 class RedemptionTest {
 
@@ -154,7 +154,7 @@ class RedemptionTest {
         assertTrue(REDEMPTION_MAX_ATTEMPTS >= 10)
     }
 
-    /** Der Schlüssel des Tokens arbeitet nur entsperrt: Tagelang gesperrt ist kein Fehlschlag. */
+    /** The token's key works only unlocked: locked for days is no failure. */
     @Test
     fun `with a locked device the job does not give up`() {
         val letzter = REDEMPTION_MAX_ATTEMPTS - 1

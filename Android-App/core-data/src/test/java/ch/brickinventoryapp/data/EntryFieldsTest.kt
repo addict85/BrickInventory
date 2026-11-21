@@ -10,15 +10,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Die App liest Schätzkennzeichen und Währung einer Erfassung so, wie der
- * Server sie schickt (GET …/acquisitions, Migration 0047).
+ * The app reads the estimate flag and currency of an acquisition as the
+ * server sends them (GET …/acquisitions, migration 0047).
  *
- * Ein falscher Feldname fällt sonst nirgends auf: Das Feld hat einen
- * Standardwert, und BrickJson übergeht unbekannte Schlüssel.
+ * A wrong field name otherwise stands out nowhere: the field has a
+ * default value, and BrickJson skips unknown keys.
  *
- * Gegenprobe (am 28.10.2026 gemessen, kotlinc mit Serialisierungs-Plugin):
- *   A  @SerialName("price_estimated") in "preis_geschaetzt" geändert → rot:
- *      „estimate flag and currency arrive"
+ * Counter-check (measured 28.10.2026, kotlinc with serialization plugin):
+ *   A  @SerialName("price_estimated") changed to "preis_geschaetzt" → red:
+ *      “estimate flag and currency arrive"
  */
 class EntryFieldsTest {
     private val antwort = """

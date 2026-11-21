@@ -20,26 +20,26 @@ import java.io.File
 import java.time.Instant
 
 /**
- * Die Abbildungen von Server-Modellen auf Fachtypen (model.fach): Was die
- * Oberfläche bekommt, ist schon aufbereitet — Anteile gerechnet, Richtung als
- * Wahrheitswert, die CSV-Art hin und zurück verlustfrei.
+ * The mappings of server models to domain types (model.fach): what the
+ * UI gets is already prepared — shares computed, direction as a
+ * boolean, the CSV kind there and back without loss.
  *
- * Gegenproben:
- *   A  in StartStateView.anteil die Prüfung `gesamt > 0` entfernt → rot
- *      „ohne Gesamtzahl gibt es keinen Anteil“ (Infinity statt null)
- *   B  in CsvImportKind.asData TEILE → CsvKind.SETS → rot „jede CSV-Art kommt
- *      unverändert an“
- *   C  in PriceAlertView.unter `== Alarmrichtung.UNTER` → `UEBER` → rot
- *   D  Hauptklassen als Jar statt Ordner (wie unter Gradle): Die alte Suche über
- *      den Klassenordner → rot „URI is not hierarchical“; mit der Liste grün
- *   E  „TeileAbbildungen“ aus Beispielfueller.ABBILDUNGSDATEIEN gestrichen → rot
- *      „every file with mappings is in the list“ und „Nur 48 Abbildungen“
+ * Counter-checks:
+ *   A  in StartStateView.anteil the check `gesamt > 0` removed → red
+ *      “without a total there is none” (Infinity instead of null)
+ *   B  in CsvImportKind.asData TEILE → CsvKind.SETS → red “every CSV kind arrives
+ *      unchanged”
+ *   C  in PriceAlertView.unter `== Alarmrichtung.UNTER` → `UEBER` → red
+ *   D  main classes as a jar instead of a folder (as under Gradle): the old search via
+ *      the class folder → red „URI is not hierarchical“; with the list green
+ *   E  „TeileAbbildungen“ deleted from Beispielfueller.ABBILDUNGSDATEIEN → red
+ *      “every file with mappings is in the list“ and „Nur 48 Abbildungen“
  *   F  in Profil.alsAnsicht `emailConfirmed = emailVerified` → `= !emailVerified`
- *      → rot „Profil, Haushalt und CSV-Stand …“; elternkonten aus `parents` → rot „ohne parents gilt linked_to“
- *   G  gegenproben/geld-auf-rappen-gerundet.patch: Geld.aus rundet auf Rappen statt auf vier Stellen
- *      → rot „Betraege kommen als Geld auf vier Stellen …“
- *   H  gegenproben/kauf-ohne-zeitpunkt.patch: Acquisition.alsAnsicht reicht createdAt nicht weiter → rot, derselbe Test
- *      und „every mapping carries every field of the same name unchanged“ nicht (Füllwerte sind keine Zeitpunkte)
+ *      → red “profile, household and CSV state …”; elternkonten from `parents` → red „ohne parents gilt linked_to“
+ *   G  gegenproben/geld-auf-rappen-gerundet.patch: Geld.aus rounds to centimes instead of four places
+ *      → red “amounts come as Money to four places …”
+ *   H  gegenproben/kauf-ohne-zeitpunkt.patch: Acquisition.alsAnsicht does not pass createdAt on → red, the same test
+ *      and “every mapping carries every field of the same name unchanged“ not (filler values are no points in time)
  */
 class UiModelFigureTest {
 
@@ -119,10 +119,10 @@ class UiModelFigureTest {
     }
 
     /**
-     * Jede Abbildung `alsAnsicht()` nach model.fach, gegen ein Server-Modell, in dem
-     * jedes Feld einen eigenen Wert trägt: Jedes Feld der Ansicht mit gleichem
-     * Namen kommt unverändert an, verschachtelte Ansichten und Listen ebenso.
-     * Getter ohne Gegenstück stehen in [WITHOUT_COUNTERPART] und sind oben einzeln geprüft.
+     * Every mapping `alsAnsicht()` to model.fach, against a server model in which
+     * every field carries its own value: every field of the view with the same
+     * name arrives unchanged, nested views and lists likewise.
+     * Getters without counterpart stand in [WITHOUT_COUNTERPART] and are checked individually above.
      */
     @Test
     fun `every mapping carries every field of the same name unchanged`() {
@@ -149,11 +149,11 @@ class UiModelFigureTest {
     }
 
     private companion object {
-        /** Abbildungen mit eigener Regel (Status als Aufzählung), geprüft in BackgroundWorkTest. */
+        /** Mappings with their own rule (status as enumeration), checked in BackgroundWorkTest. */
         val OWN_RULES = setOf("Auftrag", "AuftraegeResponse")
-        /** Bewusst umbenannt oder abgeleitet; geprüft in den Einzeltests oben. */
+        /** Deliberately renamed or derived; checked in the individual tests above. */
         val WITHOUT_COUNTERPART = sortedSetOf(
-            // Teile-Gesamtzahl und Aufschlüsselung, geprüft in PartsTotalCountTest.
+            // Parts total and breakdown, checked in PartsTotalCountTest.
             "DashboardStats.getPartsFromSets", "DashboardStats.getPartsSingle",
             "PartsStats.getPartsFromSets", "PartsStats.getPartsSingle", "PartsStats.getTeileGesamt",
             "Preisalarm.getUnter", "Profil.getEmailConfirmed", "StartupStatus.getShare", "StartupStatus.getBereit", "StartupStatus.getFortschritt",
@@ -165,7 +165,7 @@ class UiModelFigureTest {
             "MerkpostenAlarm.getAusgeloest", "MerkpostenAlarm.getRichtung", "MerkpostenAlarm.getSchwelle-lC1rhjU",
             "Preisalarm.getAusgeloest", "Preisalarm.getRichtung", "Preisalarm.getSchwelle-lC1rhjU",
             "Preisalarm.getLastlyAt", "Preisalarm.getLastlyPrice-gIeASGk", "Profil.getEmailNew",
-            // Der Betrag heisst im Fachtyp nach dem, was er ist; geprüft oben in „Preisalarm, Gutschein, Diagramm …“.
+            // The amount is named in the domain type after what it is; checked above in “price alert, voucher, chart …”.
             "ChartPoint.getWert-lC1rhjU", "ChartYAxis.getWert-lC1rhjU", "PriceChartPoint.getPreis-lC1rhjU",
         )
     }

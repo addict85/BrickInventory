@@ -5,14 +5,14 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Suchmuster in Tests müssen im App-Code auch wirklich vorkommen.
+ * Search patterns in tests must really occur in the app code.
  *
- * Gegenprobe (durchgeführt): In AddPathOwnerTest das Muster wieder auf
- * `repo\.addSet\(` zurückgedreht → dieser Test meldet genau diesen Verweis.
+ * Counter-check (performed): in AddPathOwnerTest the pattern turned back to
+ * `repo\.addSet\(` → this test reports exactly this reference.
  */
 class RepoVerweiseInTestsTest {
 
-    /** Kommentarzeilen weg — sie nennen absichtlich frühere Aufrufnamen. */
+    /** Comment lines out — they deliberately name earlier call names. */
     private fun withoutComments(src: String) = src.lines().joinToString("\n") {
         val t = it.trim()
         if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) "" else it
@@ -21,7 +21,7 @@ class RepoVerweiseInTestsTest {
     /** Zeichenketten-Inhalte: erst dreifach zitierte, dann einfach zitierte. */
     private val literale = Regex("\"\"\"(.*?)\"\"\"|\"((?:[^\"\\\\\\n]|\\\\.)*)\"", RegexOption.DOT_MATCHES_ALL)
 
-    /** `repo.x(`, `repo.y.x(` — mit ein- oder zweifach maskierten Punkten. */
+    /** `repo.x(`, `repo.y.x(` — with singly or doubly escaped dots. */
     private val reference = Regex("""repo(?:\\{1,2}\.|\.)(?:\w+(?:\\{1,2}\.|\.))*\w+\\{0,2}\(""")
 
     private fun dateien(folder: File) = folder.walkTopDown()

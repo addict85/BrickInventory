@@ -3,14 +3,14 @@ package ch.brickinventoryapp.data.repository
 import ch.brickinventoryapp.offline.Offlineablage
 import javax.inject.Inject
 
-/** Was beim Abmelden von den Daten des Kontos verschwinden muss: lokale Fächer und Ausgang. */
+/** What must disappear of the account's data at sign-out: local compartments and outbox. */
 internal fun interface AccountDataDeleter {
     suspend fun deleteAccountData()
 }
 
 /**
- * Lokale Fächer und Ausgang gehören dem angemeldeten Konto. Was noch im
- * Ausgang wartet, geht dabei verloren — ein anderes Konto darf es nicht senden.
+ * Local compartments and outbox belong to the signed-in account. What is still waiting
+ * in the outbox gets lost in the process — another account must not send it.
  */
 internal class AccountDataDeletion @Inject constructor(
     private val ablage: Offlineablage,

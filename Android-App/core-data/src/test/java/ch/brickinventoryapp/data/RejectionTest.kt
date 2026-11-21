@@ -8,11 +8,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Ein 2xx mit `success: false` kommt als Ergebnis.Fehler.Absage an (den Satz schickt der Server mit einem Fehlerstatus),
- * ein 2xx mit `success: true` als Ansicht: Kein Aufrufer prüft das Feld des Wire-Formats.
+ * A 2xx with `success: false` arrives as Ergebnis.Fehler.Absage (the sentence the server sends with an error status),
+ * a 2xx with `success: true` as a view: no caller checks the field of the wire format.
  *
- * Gegenprobe (gegenproben/absage-als-erfolg.patch): `promised` gibt immer Erfolg zurück
- * → rot „a refusal of the server is an error“.
+ * Counter-check (gegenproben/absage-als-erfolg.patch): `promised` always returns success
+ * → red “a refusal of the server is an error”.
  */
 class RejectionTest {
 

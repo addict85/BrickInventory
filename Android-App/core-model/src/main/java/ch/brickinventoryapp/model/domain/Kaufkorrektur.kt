@@ -2,7 +2,7 @@ package ch.brickinventoryapp.model.domain
 
 import java.time.LocalDate
 
-/** Was an einem Kauf geändert wird; null heisst unverändert. [besitzer] verschiebt den Kauf in ein anderes Konto. */
+/** What is changed on a purchase; null means unchanged. [besitzer] moves the purchase into another account. */
 data class Kaufkorrektur(
     val preis: Geld? = null,
     val zustand: Zustand? = null,
@@ -12,7 +12,7 @@ data class Kaufkorrektur(
 )
 
 /**
- * Was eine Kaufänderung bewirkt hat: [zusammenfassung], wenn der Server die neue Summe des
- * Sets mitschickte und die Ablage sie übernahm; [teile] und [figuren] wanderten mit.
+ * What a purchase change caused: [zusammenfassung] if the server sent along the new total of the
+ * set and the store took it over; [teile] and [figuren] moved along.
  */
 data class Kaufaenderung(val zusammenfassung: Boolean = false, val teile: Int = 0, val figuren: Int = 0)

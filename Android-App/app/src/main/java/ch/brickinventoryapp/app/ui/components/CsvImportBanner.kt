@@ -40,21 +40,21 @@ fun CsvImportBanner(
     done: Int, total: Int, current: String?,
     ok: Int, warn: Int, err: Int, running: Boolean,
     /**
-     * Abbrechen — nur waehrend der Import laeuft sichtbar.
+     * Cancel — visible only while the import runs.
      *
-     * Die Webapp hat den Knopf seit jeher (sammlung.js, btn-cancel-import).
-     * Die App zeigte denselben Balken und keinen Weg heraus: Ein versehentlich
-     * gestarteter Import ueber hunderte Sets holt zu jedem die Stammdaten und
-     * musste ausgesessen werden.
+     * The web app has always had the button (collection.js, btn-cancel-import).
+     * The app showed the same bar and no way out: an accidentally
+     * started import of hundreds of sets fetches the master data for each and
+     * had to be sat out.
      */
     onAbbrechen: () -> Unit,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val bg  = if (running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer
-    // Der Aufklapper nennt, was er tut und ob er offen ist (TalkBack las nur „3/10, Schaltfläche“).
+    // The expander names what it does and whether it is open (TalkBack only read “3/10, button”).
     val zustand = stringResource(if (expanded) R.string.zustand_ausgeklappt else R.string.zustand_eingeklappt)
     val fortschritt = pluralStringResource(R.plurals.csv_fortschritt, total, done, total)
-    // Angesagt wird in Zehnerschritten, nicht bei jedem Set.
+    // Announced in steps of ten, not for every set.
     val stufe = if (total > 0) done * ANNOUNCEMENT_LEVELS / total else 0
     val angesagt = remember(stufe, running) { fortschritt }
     val ziel = stringResource(if (expanded) R.string.csv_details_verbergen else R.string.csv_details_zeigen)
@@ -83,13 +83,13 @@ fun CsvImportBanner(
                 }
             }
         }
-        // Ausserhalb des Knopfs: Sonst würde der ganze Balken zur Live-Region und jedes Set angesagt.
+        // Outside the button: otherwise the whole bar would become a live region and announce every set.
         if (running) Box(Modifier.announce().semantics { contentDescription = angesagt })
         if (expanded) CsvImportNumbers(ok, warn, err, running)
     }
 }
 
-/** Kopfzeile des Balkens: Fortschritt, Abbrechen und der Pfeil des Aufklappers. */
+/** Header row of the bar: progress, cancel and the expander's arrow. */
 @Composable
 private fun CsvHeaderRow(
     done: Int, total: Int, ok: Int, running: Boolean, expanded: Boolean, fortschritt: String, onAbbrechen: () -> Unit,
@@ -118,13 +118,13 @@ private fun CsvHeaderRow(
                     else MaterialTheme.colorScheme.onSecondaryContainer,
             fontWeight = FontWeight.Bold
         )
-        // In der KOPFzeile, nicht im aufgeklappten Teil: Wer
-        // abbrechen will, soll nicht erst herausfinden muessen,
-        // dass der Balken sich aufklappen laesst. In der Webapp
-        // steht der Knopf ebenfalls dauerhaft da.
+        // In the HEADER row, not in the expanded part: whoever
+        // wants to cancel should not first have to find out
+        // that the bar can be expanded. In the web app
+        // the button is permanently there as well.
         if (running) {
-            // Volle 48 dp: Der Balken wird dadurch etwas höher, dafür
-            // trifft man das Abbrechen auch unterwegs.
+            // Full 48 dp: the bar becomes a bit taller, but in return
+            // one hits Cancel even on the move.
             MitTooltip(stringResource(R.string.csv_cancel)) {
                 IconButton(onClick = onAbbrechen) {
                     Icon(Icons.Default.Close, stringResource(R.string.csv_cancel),
@@ -142,7 +142,7 @@ private fun CsvHeaderRow(
     }
 }
 
-/** Aufgeklappt: Erfolge, Warnungen und Fehler einzeln, nach dem Lauf mit „fertig“. */
+/** Expanded: successes, warnings and errors individually, after the run with “done”. */
 @Composable
 private fun CsvImportNumbers(ok: Int, warn: Int, err: Int, running: Boolean) {
     Surface(
@@ -182,5 +182,5 @@ private fun CsvImportNumbers(ok: Int, warn: Int, err: Int, running: Boolean) {
     }
 }
 
-/** Zehn Ansagen über einen ganzen Import. */
+/** Ten announcements over a whole import. */
 private const val ANNOUNCEMENT_LEVELS = 10

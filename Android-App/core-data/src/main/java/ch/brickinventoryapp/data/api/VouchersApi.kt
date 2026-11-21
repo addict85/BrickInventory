@@ -19,14 +19,14 @@ import retrofit2.http.Path
 import retrofit2.http.Part
 
 /**
- * Gutscheine im eigenen Profil (VouchersRepository).
+ * Vouchers in the own profile (VouchersRepository).
  */
 interface VouchersApi {
 
-    // ── Gutscheine (LEGO-Geschenkkarten im eigenen Profil) ──
+    // ── Vouchers (LEGO gift cards in the own profile) ──
     //
-    // Dieselben Adressen wie die Webapp; requireToken nimmt Sitzung und Bearer an.
-    // Gutscheine gehören streng ihrem Besitzer, deshalb kein `accounts`-Parameter.
+    // The same addresses as the web app; requireToken accepts session and bearer.
+    // Vouchers strictly belong to their owner, hence no `accounts` parameter.
     @GET("api/v1/vouchers")
     suspend fun getVouchers(): Response<GutscheinListe>
 
@@ -39,37 +39,37 @@ interface VouchersApi {
         @Body request: GutscheinRequest,
     ): Response<GutscheinAntwort>
 
-    // @HTTP statt @DELETE: Retrofit erlaubt bei @DELETE keinen Rumpf, der Server
-    // verlangt darin Passwort und Code.
+    // @HTTP instead of @DELETE: Retrofit allows no body for @DELETE, the server
+    // requires password and code in it.
     @HTTP(method = "DELETE", path = "api/v1/vouchers/{id}", hasBody = true)
     suspend fun deleteVoucher(
         @Path("id") id: Int,
         @Body confirmation: ZweiterFaktorAnfrage,
     ): Response<GenericResponse>
 
-    /** Nummer und PIN im Klartext; die Liste trägt nur die Maske. */
+    /** Number and PIN in plaintext; the list carries only the mask. */
     @POST("api/v1/vouchers/{id}/klartext")
     suspend fun voucherPlaintext(
         @Path("id") id: Int,
         @Body confirmation: ZweiterFaktorAnfrage,
     ): Response<GutscheinKlartext>
 
-    /** Ein Ticket für GET /vouchers/{id}/pdf?ticket=…; siehe VouchersRepository.pdfRelease(). */
+    /** A ticket for GET /vouchers/{id}/pdf?ticket=…; see VouchersRepository.pdfRelease(). */
     @POST("api/v1/vouchers/{id}/pdf-freigabe")
     suspend fun voucherPdfRelease(
         @Path("id") id: Int,
         @Body confirmation: ZweiterFaktorAnfrage,
     ): Response<GutscheinPdfFreigabe>
 
-    /** Dasselbe für das PDF aller Gutscheine (GET /vouchers/export/pdf?ticket=…). */
+    /** The same for the PDF of all vouchers (GET /vouchers/export/pdf?ticket=…). */
     @POST("api/v1/vouchers/export/pdf-freigabe")
     suspend fun voucherExportRelease(@Body confirmation: ZweiterFaktorAnfrage): Response<GutscheinPdfFreigabe>
 
     /**
-     * Einen Gutschein aus seinem PDF anlegen. Mitgeschickte Werte gewinnen gegen das
-     * Gelesene; reicht das PDF nicht, antwortet der Server mit 422 und dem, was er
-     * lesen konnte. Die Teile sind optional, weil ein leeres Feld das Gelesene
-     * überschriebe. Enthält die Datei mehrere Gutscheine, antwortet dieselbe Route mit
+     * Create a voucher from its PDF. Values sent along win over what was
+     * read; if the PDF is not enough, the server answers with 422 and what it
+     * could read. The parts are optional because an empty field would overwrite
+     * what was read. If the file contains several vouchers, the same route answers with
      * `mehrere`.
      */
     @Multipart
@@ -83,15 +83,15 @@ interface VouchersApi {
     ): Response<GutscheinAntwort>
 
     /**
-     * Das Guthaben einer Karte bei LEGO abfragen und speichern. Kein Rumpf: Nummer und
-     * PIN liegen schon auf dem Server. Keine Methode für alle Karten — der Server
-     * erlaubt eine Abfrage je 30 Sekunden, die Oberfläche taktet sich selbst durch
-     * diese Route.
+     * Query and save the balance of a card at LEGO. No body: number and
+     * PIN already lie on the server. No method for all cards — the server
+     * allows one query per 30 seconds, the UI paces itself through
+     * this route.
      */
     @POST("api/v1/vouchers/{id}/guthaben")
     suspend fun questionBalanceAb(@Path("id") id: Int): Response<GuthabenAntwort>
 
-    // Keine Methode fuer `GET /vouchers/{id}/pdf` und `GET /vouchers/export/pdf`:
-    // Das PDF holt der PdfViewerScreen selbst ueber seine Adresse (mit Ticket),
-    // mit dem angemeldeten Client der App. Siehe ui/viewmodel/GutscheinAdressen.kt.
+    // No method for `GET /vouchers/{id}/pdf` and `GET /vouchers/export/pdf`:
+    // the PdfViewerScreen fetches the PDF itself via its address (with ticket),
+    // with the app's signed-in client. See ui/viewmodel/GutscheinAdressen.kt.
 }

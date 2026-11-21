@@ -23,25 +23,25 @@ import java.io.File
 import java.io.IOException
 
 /**
- * Der HTTP-Zwischenspeicher der Bilder liegt verschlüsselt: Auf der Platte
- * stehen weder die Bilder noch ihre Adressen, und offline liefert er trotzdem.
- * Ausgeführt mit einem echten OkHttp-Cache gegen einen Testserver.
+ * The HTTP cache of the images lies encrypted: on disk
+ * stand neither the images nor their addresses, and offline it still delivers.
+ * Executed with a real OkHttp cache against a test server.
  *
- * Gegenproben:
- *   A  EncryptedFileSystem reicht source/sink/appendingSink unverändert durch
- *      → rot „der Zwischenspeicher liegt verschluesselt …“;
+ * Counter-checks:
+ *   A  EncryptedFileSystem passes source/sink/appendingSink through unchanged
+ *      → red “the cache lies encrypted …”;
  *      gegenproben/bildcache-klartext.patch
- *   B  bindung() ohne den Dateinamen (nur der Zweck) → rot „eine Datei unter fremdem
- *      Namen gilt nicht …“
- *   C  cleanPlaintextImageCachesOn() ohne die Zeile `if (klartext) http.deleteRecursively()`
- *      → rot „ein Klartext-Zwischenspeicher aelterer Fassungen verschwindet …“
- *   D  im Eingang `if (!abgeschlossen) throw …`
- *      gestrichen → rot „eine hinten gekuerzte Datei gilt nicht …“;
+ *   B  bindung() without the file name (only the purpose) → red “a file under a foreign
+ *      name does not count …”
+ *   C  cleanPlaintextImageCachesOn() without the line `if (klartext) http.deleteRecursively()`
+ *      → red “a plain-text cache of older versions disappears …”
+ *   D  in the input `if (!abgeschlossen) throw …`
+ *      deleted → red “a file truncated at the end does not count …”;
  *      gegenproben/bildcache-ohne-endmarker.patch
- *   E  onPathParameter() reicht den Pfad ungestreut durch → rot „die Namen im
- *      Zwischenspeicher verraten die Adressen nicht“; gegenproben/bildcache-namen-lesbar.patch
- *   F  cleanPlaintextImageCachesOn() ohne das Löschen ungestreuter Namen → rot „ein
- *      Klartext-Zwischenspeicher …“; gegenproben/bildcache-alte-namen-bleiben.patch
+ *   E  onPathParameter() passes the path through unhashed → red “the names in the
+ *      cache do not reveal the addresses”; gegenproben/bildcache-namen-lesbar.patch
+ *   F  cleanPlaintextImageCachesOn() without deleting unhashed names → red “a
+ *      plain-text cache …”; gegenproben/bildcache-alte-namen-bleiben.patch
  */
 class ImageCacheTest {
 
@@ -72,7 +72,7 @@ class ImageCacheTest {
         c.newCall(Request.Builder().url(adresse).build()).execute().use { assertArrayEquals(bild, it.body.bytes()) }
         cache.flush()
 
-        // OkHttp benennt nach dem MD5 der Adresse (Cache.key); kein Name darf ihn oder „journal“ tragen.
+        // OkHttp names by the MD5 of the address (Cache.key); no name may carry it or „journal“.
         val md5 = Cache.key(adresse)
         val namen = folder.listFiles()!!.map { it.name }
         assertTrue("Der Zwischenspeicher hat nichts abgelegt: $namen", namen.size >= 3)
@@ -82,13 +82,13 @@ class ImageCacheTest {
         val offline = Request.Builder().url(adresse).cacheControl(CacheControl.FORCE_CACHE).build()
         c.newCall(offline).execute().use { assertArrayEquals("Offline kommt die Kopie trotzdem", bild, it.body.bytes()) }
         cache.evictAll()
-        // Übrig bleibt nur das Journal (samt Sicherung); ein doppelt gestreuter Name liesse die Einträge liegen.
+        // Only the journal (including backup) remains; a doubly hashed name would leave the entries lying.
         assertTrue("Leeren findet die gestreuten Namen nicht: ${folder.list()?.toList()}", folder.listFiles()!!.size <= 2)
     }
 
     @Test
     fun `the cache lies encrypted and still delivers offline`() {
-        // Grösser als ein Abschnitt (64 KiB), damit auch das Zusammensetzen geprüft ist.
+        // Larger than a section (64 KiB), so that the assembling is checked too.
         val bild = ("SAMMLUNG-75192-" + "x".repeat(200_000)).toByteArray()
         server.enqueue(MockResponse().setBody(Buffer().write(bild)).setHeader("Cache-Control", "max-age=0").setHeader("ETag", "\"1\""))
         server.start()
@@ -129,7 +129,7 @@ class ImageCacheTest {
         val neu = EncryptedFileSystem(FileSystem.SYSTEM, cipher, "bilder",
             EncryptedFileSystem.Jitter(http.apply { mkdirs() }.toOkioPath()) { ByteArray(32) { 8 } })
         neu.sink(File(http, "journal").toOkioPath()).buffer().use { it.writeUtf8("libcore.io.DiskLruCache\n") }
-        // Ein verschlüsselter Eintrag älterer Fassungen unter dem MD5-Namen der Adresse.
+        // An encrypted entry of older versions under the MD5 name of the address.
         fs.sink(File(http, "0f343b0931126a20f133d67c2b018a3b.1").toOkioPath()).buffer().use { it.writeUtf8("x") }
         cleanPlaintextImageCachesOn(cacheDir)
         val bleibt = http.listFiles()!!.map { it.name }
@@ -137,7 +137,7 @@ class ImageCacheTest {
         assertTrue(bleibt.single().startsWith(EncryptedFileSystem.JITTERED))
     }
 
-    /** Ohne Endmarker gälte ein um ganze Abschnitte gekürztes Bild als vollständig. */
+    /** Without the end marker an image truncated by whole sections would count as complete. */
     @Test
     fun `a file truncated at the end does not count, a continued one does`() {
         folder.mkdirs()
@@ -148,16 +148,16 @@ class ImageCacheTest {
         fun lies() = runCatching { fs.source(f.toOkioPath()).buffer().use { it.readByteArray() } }
 
         assertArrayEquals(inhalt, lies().getOrThrow())
-        // Ohne den Endmarker (4 Bytes Länge, 32 Bytes Kennung, IV und Tag).
+        // Without the end marker (4 bytes length, 32 bytes identifier, IV and tag).
         f.writeBytes(ganz.copyOf(ganz.size - 36))
         assertTrue("Ohne Endmarker gilt die Datei", lies().exceptionOrNull() is IOException)
-        // Nur der erste Abschnitt (64 KiB Klartext) samt Längenfeld.
+        // Only the first section (64 KiB plaintext) including length field.
         f.writeBytes(ganz.copyOf(4 + 65_536 + 32))
         assertTrue("Ein gekürztes Bild gilt", lies().exceptionOrNull() is IOException)
         f.writeBytes(ByteArray(0))
         assertTrue("Eine leere Datei gilt", lies().exceptionOrNull() is IOException)
 
-        // Das Journal wird nach jeder Zeile geflusht und fortgeschrieben: Jeder Stand endet mit einem Marker.
+        // The journal is flushed and continued after every line: every state ends with a marker.
         f.writeBytes(ganz)
         fs.appendingSink(f.toOkioPath()).buffer().use { aus ->
             aus.writeUtf8("CLEAN a\n").flush()

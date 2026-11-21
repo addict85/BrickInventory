@@ -4,33 +4,33 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Alle ViewModels sind gewöhnliche ViewModel — keines erbt seinen Context.
+ * All ViewModels are ordinary ViewModels — none inherits its context.
  *
- * ── Warum das mehr ist als Einheitlichkeit ──────────────────────────────────
- * `MainViewModel` war das EINZIGE `AndroidViewModel` im Baum. CatalogViewModel
- * und MonitoringViewModel sind gewöhnliche `ViewModel` und lassen sich den
- * Context einspritzen — genau wie VorschauSpeicher, PreferencesManager und
- * PdfExportManager. Zwei Muster für dieselbe Sache also, und das seltenere war
- * das teurere:
+ * ── Why that is more than uniformity ─────────────────────────────────────────
+ * `MainViewModel` was the ONLY `AndroidViewModel` in the tree. CatalogViewModel
+ * and MonitoringViewModel are ordinary `ViewModel`s and get the
+ * context injected — just like VorschauSpeicher, PreferencesManager and
+ * PdfExportManager. So two patterns for the same thing, and the rarer one was
+ * the more expensive:
  *
- * `AndroidViewModel` verlangt eine echte `Application` im Konstruktor. Damit
- * lässt sich die Klasse in einem JVM-Test nicht bauen — und das ist der Grund,
- * warum der grosse Teil der Android-Tests Quelltext LIEST, statt Code
- * auszuführen. Ein Test kann die Vermutung „loadSets() setzt den Ladezustand"
- * dann nur am Wortlaut prüfen, nicht am Ablauf.
+ * `AndroidViewModel` requires a real `Application` in the constructor. That way
+ * the class cannot be built in a JVM test — and that is the reason
+ * why the large part of the Android tests READS source instead of executing
+ * code. A test can then only check the assumption „loadSets() sets the loading state"
+ * on the wording, not on the flow.
  *
- * Der Context ist derselbe geblieben: `getApplication<Application>()
- * .applicationContext` und Hilts `@ApplicationContext` liefern dasselbe
- * Objekt. Was sich ändert, ist nur, dass er über die Tür hereinkommt statt aus
- * der Oberklasse — und damit in einem Test ersetzbar ist.
+ * The context has stayed the same: `getApplication<Application>()
+ * .applicationContext` and Hilt's `@ApplicationContext` deliver the same
+ * object. What changes is only that it comes in through the door instead of from
+ * the superclass — and thus is replaceable in a test.
  *
- * Diese Prüfung hält den Weg offen. Sie behauptet NICHT, dass es die
- * Verhaltenstests schon gäbe; sie verhindert, dass die Tür wieder zufällt.
+ * This check keeps the path open. It does NOT claim that the
+ * behavior tests already exist; it prevents the door from closing again.
  *
- * Gegenproben (durchgeführt, über das Ersatz-Skript im Werkzeugordner):
- *   a) MainViewModel wieder auf `AndroidViewModel(application)` gestellt
- *      → Teilschritt 1 rot.
- *   b) Den `@ApplicationContext`-Parameter entfernt → Teilschritt 2 rot.
+ * Counter-checks (performed, via the stand-in script in the tools folder):
+ *   a) MainViewModel set back to `AndroidViewModel(application)`
+ *      → sub-step 1 red.
+ *   b) the `@ApplicationContext` parameter removed → sub-step 2 red.
  */
 class ViewModelDesignTest {
 
@@ -56,15 +56,15 @@ class ViewModelDesignTest {
 
     @Test
     fun `whoever needs a context gets it injected`() {
-        // Die Gegenrichtung: Ein ViewModel, das ctx benutzt, muss ihn auch
-        // deklariert haben. Sonst wäre die Regel oben durch einen stillen
-        // Rückgriff auf irgendeine andere Quelle zu umgehen.
+        // The opposite direction: a ViewModel that uses ctx must also have
+        // declared it. Otherwise the rule above could be circumvented by a silent
+        // recourse to some other source.
         for ((name, s) in viewModelFiles()) {
-            // `ctx\.` mit Punkt greift hier nicht mehr: Seit die Meldungen über
-            // LanguageManager.localizedContext(ctx) laufen, steht der Context
-            // fast überall als ARGUMENT, nicht als Empfänger. Die erste Fassung
-            // dieser Regel war damit wirkungslos — aufgefallen an der
-            // Gegenprobe, die grün blieb.
+            // `ctx\.` with a dot no longer applies here: since the messages run via
+            // LanguageManager.localizedContext(ctx), the context stands
+            // almost everywhere as an ARGUMENT, not as receiver. The first version
+            // of this rule was thus ineffective — it stood out in the
+            // counter-check that stayed green.
             if (!Regex("""\bctx\b""").containsMatchIn(s)) continue
             assert(s.contains("@param:ApplicationContext")) {
                 "$name benutzt ctx, bekommt ihn aber nicht über @ApplicationContext"

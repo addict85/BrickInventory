@@ -3,43 +3,43 @@ package ch.brickinventoryapp.data.util
 import java.io.File
 
 /**
- * Was mit einer zwischengespeicherten Anleitung als Nächstes zu tun ist.
- * Der Zustand hängt am Dateinamen: Ein Download schreibt in `<name>.part` und wird erst am Ende
- * umbenannt, also heisst `<name>` vorhanden = vollständig.
+ * What to do next with a cached instruction.
+ * The state depends on the file name: a download writes to `<name>.part` and is only renamed
+ * at the end, so `<name>` present means = complete.
  */
 internal sealed class PdfStep {
-    /** Die Datei liegt vollstaendig vor. Nichts holen. */
+    /** The file is completely there. Fetch nothing. */
     object Fertig : PdfStep()
 
     /**
-     * Ab diesem Byte holen. `ab == 0` heisst „von vorn, ohne Range-Kopfzeile" —
-     * ein `Range: bytes=0-` waere zwar gueltig, aber es fragt nach einem
-     * Teilstueck und bekaeme 206 statt 200. Fuer den ersten Versuch ist die
-     * schlichte Anfrage die richtige.
+     * Fetch from this byte. `ab == 0` means „from the start, without a Range header" —
+     * a `Range: bytes=0-` would be valid, but it asks for a
+     * partial piece and would get 206 instead of 200. For the first attempt the
+     * plain request is the right one.
      */
     data class Holen(val ab: Long) : PdfStep()
 }
 
 /**
- * @param finishedSize Groesse der fertigen Datei, 0 wenn es sie nicht gibt.
- * @param partSize    Groesse der Teildatei, 0 wenn es sie nicht gibt.
+ * @param finishedSize size of the finished file, 0 if it does not exist.
+ * @param partSize    size of the partial file, 0 if it does not exist.
  */
 internal fun pdfStep(finishedSize: Long, partSize: Long): PdfStep = when {
-    // Die fertige Datei schlaegt alles. Liegt daneben noch eine Teildatei,
-    // ist sie ein Ueberbleibsel und wird beim naechsten Aufraeumen entsorgt.
+    // The finished file beats everything. If a partial file still lies next to it,
+    // it is a leftover and gets disposed of at the next cleanup.
     finishedSize > 0L -> PdfStep.Fertig
     partSize > 0L    -> PdfStep.Holen(partSize)
     else                -> PdfStep.Holen(0L)
 }
 
-/** Ordner, in dem ältere Fassungen Gutschein-PDFs ablegten; nur noch zum Aufräumen. */
+/** Folder in which older versions stored voucher PDFs; only kept for cleaning up. */
 const val PDF_CONFIDENTIAL_FOLDER = "pdf_vertraulich"
 
 /**
- * Wo der Betrachter ein PDF ablegt: Anleitungen verschlüsselt im Zwischenspeicher
- * ([InstructionStore]). Ein vertrauliches PDF bekommt keine Datei (null) und bleibt im
- * Speicher ([ladePdfInDenSpeicher]). Der Name ist SHA-256 der Adresse: Bei 32 Bit
- * (hashCode) teilten sich zwei Adressen leicht eine Datei.
+ * Where the viewer stores a PDF: instructions encrypted in the cache
+ * ([InstructionStore]). A confidential PDF gets no file (null) and stays in
+ * memory ([ladePdfInDenSpeicher]). The name is SHA-256 of the address: with 32 bits
+ * (hashCode) two addresses would easily share a file.
  */
 fun pdfAblage(cacheDir: File, pdfUrl: String, vertraulich: Boolean): File? {
     if (vertraulich) return null
@@ -47,15 +47,15 @@ fun pdfAblage(cacheDir: File, pdfUrl: String, vertraulich: Boolean): File? {
     return File(cacheDir, INSTRUCTION_PREFIX + hash.joinToString("") { "%02x".format(it) } + INSTRUCTION_EXTENSION)
 }
 
-/** Gutschein-PDFs älterer Fassungen löschen: beim Start und beim Abmelden. */
+/** Delete voucher PDFs of older versions: at start and at sign-out. */
 fun raeumeVertraulichePdfsAuf(cacheDir: File) {
     File(cacheDir, PDF_CONFIDENTIAL_FOLDER).deleteRecursively()
 }
 
 /**
- * Wohin die Teileliste kommt: Sie trägt das Inventar, also nach filesDir. Kopien
- * älterer Fassungen (extern lesbar unter Android 8/9, intern im Klartext) werden
- * dabei entfernt.
+ * Where the parts list goes: it carries the inventory, so into filesDir. Copies
+ * of older versions (externally readable below Android 8/9, internally in plaintext) are
+ * removed in the process.
  */
 internal fun partListsStore(intern: File, extern: File?): File {
     extern?.let { File(it, "pdf/teileliste.pdf").delete() }
@@ -65,13 +65,13 @@ internal fun partListsStore(intern: File, extern: File?): File {
 }
 
 /**
- * Wie lange die Teileliste liegen bleibt: Die Meldung „fertig, antippen“ öffnet sie
- * später noch. Verschlüsselt ist sie auch dann, aber das Inventar soll nicht länger
- * auf dem Gerät liegen, als jemand es braucht.
+ * How long the parts list stays: the notification „done, tap“ opens it
+ * later still. It is encrypted then too, but the inventory should not lie on the
+ * device longer than someone needs it.
  */
 const val PART_LIST_DEADLINE_MS: Long = 30L * 60 * 1000
 
-/** Löscht die Teileliste, wenn sie älter als [deadline] ist; beim Start und im Auftrag nach dem Export. */
+/** Deletes the parts list if it is older than [deadline]; at start and in the job after the export. */
 fun cleanOldPartListOn(intern: File, jetzt: Long, deadline: Long = PART_LIST_DEADLINE_MS): Boolean {
     File(File(intern, "pdf"), "teileliste.pdf").delete()
     val datei = File(File(intern, "pdf"), PART_LIST_FILE)
@@ -79,15 +79,15 @@ fun cleanOldPartListOn(intern: File, jetzt: Long, deadline: Long = PART_LIST_DEA
 }
 
 /**
- * Wohin das geladene APK kommt; installiert wird per PackageInstaller-Sitzung, ohne FileProvider.
- * Hier und öffentlich, weil core-update dorthin lädt und das Abmelden (unten) ihn räumt.
+ * Where the loaded APK goes; installation happens via a PackageInstaller session, without FileProvider.
+ * Here and public because core-update loads there and sign-out (below) clears it.
  */
 const val UPDATE_FOLDER = "update"
 
 /**
- * Beim Abmelden: Teileliste (Inventar) und geteilte PDFs in beiden Wurzeln, dazu ein
- * geladenes Update. Der Cache allein genügte nicht — filesDir überlebt das Abmelden,
- * und der nächste Nutzer auf dem Gerät öffnete sonst das Inventar des vorigen.
+ * At sign-out: parts list (inventory) and shared PDFs in both roots, plus a
+ * loaded update. The cache alone was not enough — filesDir survives sign-out,
+ * and the next user on the device would otherwise open the previous one's inventory.
  */
 fun raeumeKontoDateienAuf(intern: File, extern: File?) {
     File(intern, "pdf").deleteRecursively()

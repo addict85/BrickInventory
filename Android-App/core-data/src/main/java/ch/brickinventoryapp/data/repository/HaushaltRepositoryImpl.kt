@@ -21,7 +21,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Haushalt und Erfassungen — über Retrofit; die gemeinsame Abruflogik steht in Abruf.kt.
+ * Household and acquisitions — via Retrofit; the common fetch logic stands in Abruf.kt.
  */
 @Singleton
 class HaushaltRepositoryImpl @Inject constructor(
@@ -41,8 +41,8 @@ class HaushaltRepositoryImpl @Inject constructor(
         sicherAufrufen { api.createHouseholdInvite() }.promised({ it.success }) { InvitationView(it.code.orEmpty(), it.expiresIn) }
 
     /**
-     * [passwort]: das aktuelle Passwort des einlösenden Kontos — der Server prüft es.
-     * [faktorCode]: bei aktivem zweitem Faktor dessen Code; nur mitgeschickt, wenn da.
+     * [passwort]: the current password of the redeeming account — the server checks it.
+     * [faktorCode]: with an active second factor its code; only sent if present.
      */
     override suspend fun redeemHouseholdInvite(code: String, passwort: String, faktorCode: String?): Ergebnis<Unit> =
         sicherAufrufen {
@@ -51,8 +51,8 @@ class HaushaltRepositoryImpl @Inject constructor(
         }.erledigt()
 
     /**
-     * [subUserId]: ein Unterkonto lösen. [mainUserId]: sich von diesem einen
-     * Elternkonto lösen. Ohne beides löst der Server alle eigenen Elternkonten.
+     * [subUserId]: unlink a sub-account. [mainUserId]: unlink oneself from this one
+     * parent account. Without either the server unlinks all own parent accounts.
      */
     override suspend fun unlinkHousehold(subUserId: Int?, mainUserId: Int?): Ergebnis<Unit> =
         sicherAufrufen {
@@ -72,7 +72,7 @@ class HaushaltRepositoryImpl @Inject constructor(
                                   condition: Zustand?, quantity: Int?, date: String?,
                                   ownerUserId: Int?): Ergebnis<Kaufaenderung> =
         withSummary { api.updateAcquisition(setNumber, acqId,
-            // changeForSet(): Sets tragen den Preis als `purchase_price`.
+            // changeForSet(): sets carry the price as `purchase_price`.
             changeForSet(purchasePrice, condition, quantity, date, ownerUserId)) }
 
     override suspend fun deleteAcquisition(setNumber: String, acqId: Int): Ergebnis<Kaufaenderung> =
@@ -98,8 +98,8 @@ class HaushaltRepositoryImpl @Inject constructor(
         sicherAufrufen { api.deleteFigAcquisition(figNumber, id) }.promised({ it.success }, { null }) { }
 
     /**
-     * Schickt der Server die neue Summe des Sets mit, übernimmt die Ablage sie, und die
-     * Kachel folgt ohne neue Liste; sonst muss der Aufrufer den Stand holen.
+     * If the server sends the set's new sum along, the store takes it over, and the
+     * tile follows without a new list; otherwise the caller must fetch the state.
      */
     private suspend fun withSummary(call: suspend () -> retrofit2.Response<GenericResponse>): Ergebnis<Kaufaenderung> =
         sicherAufrufen(call).promised({ it.success }) { it }.let { r ->

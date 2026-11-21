@@ -1,45 +1,45 @@
 package ch.brickinventoryapp.buildlogic.kanten
 
-/** Eine Abhängigkeit [von] einem Modul [nach] einem anderen, in der Gradle-Konfiguration [configuration]. */
+/** A dependency [von] one module [nach] another, in the Gradle configuration [configuration]. */
 data class Modulkante(val von: String, val configuration: String, val nach: String) {
-    /** testImplementation, kspTest, androidTestImplementation …: Was nur Tests sehen, liefert die App nicht aus. */
+    /** testImplementation, kspTest, androidTestImplementation …: what only tests see, the app does not ship. */
     val onlyTest: Boolean get() = "test" in configuration.lowercase()
 }
 
 /**
- * Welches Modul wovon abhängen darf: app → feature-* → core-*, kein Bereich kennt einen anderen,
- * die Kernmodule in fester Schichtung. Ohne Gradle-Typen, damit die Konvention (ModuleEdgesCheck)
- * und ModulgrenzenTest dieselbe Regel ausführen statt zwei Abschriften zu pflegen.
+ * Which module may depend on what: app → feature-* → core-*, no area knows another,
+ * the core modules in fixed layering. Without Gradle types, so that the convention (ModuleEdgesCheck)
+ * and ModulgrenzenTest execute the same rule instead of maintaining two copies.
  */
 object Modulkanten {
     val kerne: Map<String, Set<String>> = mapOf(
         "core-model" to emptySet(),
-        // Das Wire-Format kennt Fach- und Anzeigetypen, nicht umgekehrt.
+        // The wire format knows domain and display types, not the other way round.
         "core-contract" to setOf("core-model"),
         "core-resources" to emptySet(),
         "core-network" to setOf("core-model"),
-        // Tresor und TLS-Vertrauen liegen unter Room und Offlineablage.
+        // Vault and TLS trust lie below Room and the offline store.
         "core-security" to setOf("core-model", "core-network"),
         "core-offline" to setOf("core-model", "core-security"),
         "core-data" to setOf("core-model", "core-contract", "core-resources", "core-network", "core-security", "core-offline"),
-        // Sie hängen an core-data, nie umgekehrt und nie aneinander.
+        // They depend on core-data, never the other way round and never on each other.
         "core-update" to setOf("core-resources", "core-data"),
         "core-services" to setOf("core-resources", "core-data"),
         "core-ui" to setOf("core-model", "core-resources"),
-        // Nur Darstellung: Mit Daten oder Zustand würde es zum Umweg, auf dem sich Bereiche doch kennen.
+        // Only presentation: with data or state it would become the detour on which areas know each other after all.
         "core-ui-inventory" to setOf("core-model", "core-resources", "core-ui"),
-        // Die Sitzung liegt unter dem Zustand: Sie kennt weder Filter noch ViewModels.
+        // The session lies below the state: it knows neither filters nor ViewModels.
         "core-session" to setOf("core-model", "core-resources", "core-network", "core-data"),
-        // Der Zustand liegt unter der Oberfläche: Bildschirme lesen ihn, er kennt kein Compose-Bauteil.
+        // The state lies below the UI: screens read it, it knows no Compose component.
         "core-state" to setOf("core-model", "core-resources", "core-network", "core-data", "core-security", "core-session"),
-        // Die Umgebung der Bereiche (NavController, Bilder, Snackbar) über dem Zustand.
+        // The environment of the areas (NavController, images, snackbar) above the state.
         "core-navigation" to setOf("core-model", "core-session", "core-state"),
         "core-testing" to setOf("core-state", "core-session", "core-data", "core-security", "core-offline"),
     )
 
     /**
-     * Netz und Tresor liegen unter dem Zustand; ein Bereich kennt sie nur, wenn er selbst
-     * Server und Zertifikate prüft (Anmeldung) oder Adressen des Servers auflöst.
+     * Network and vault lie below the state; an area knows them only if it checks
+     * server and certificates itself (sign-in) or resolves addresses of the server.
      */
     val depthCores: Map<String, Set<String>> = mapOf(
         "core-network" to setOf("feature-login", "feature-finances", "feature-catalog", "feature-collection"),
@@ -48,28 +48,28 @@ object Modulkanten {
     )
 
     /**
-     * Kernmodule ohne Compose: Zustand, Daten und alles darunter. Ein Compose-Typ dort zöge
-     * Oberfläche unter den Zustand, und über ihn erreichte ein Bereich, was er nicht kennen soll.
+     * Core modules without Compose: state, data and everything below. A Compose type there would pull
+     * UI below the state, and via it an area would reach what it should not know.
      */
     val withoutUi: Set<String> = setOf(
         "core-model", "core-contract", "core-network", "core-security", "core-offline", "core-data", "core-update", "core-services",
         "core-session", "core-state",
     )
 
-    /** Wer core-contract einbindet: Nur die Repositories übersetzen; die Ablage hält Fachtypen. */
+    /** Who includes core-contract: only the repositories translate; the store holds domain types. */
     val wireKenner: Set<String> = setOf("core-data")
 
     private val uisPlugins = setOf("brickinventory.android.compose", "brickinventory.android.feature", "kotlin.compose")
 
-    /** Der Verstoss, wenn [modul] mit [plugins] (Katalognamen wie im Modulskript) Compose einschaltet. */
+    /** The violation if [modul] with [plugins] (catalog names as in the module script) switches on Compose. */
     fun uiViolation(modul: String, plugins: Collection<String>): String? =
         (plugins.toSet() intersect uisPlugins).takeIf { modul in withoutUi && it.isNotEmpty() }
             ?.let { "$modul liegt unter der Oberfläche und schaltet Compose ein: ${it.sorted()}" }
 
     /**
-     * Die ViewModels, die in core-state liegen dürfen, je mit Grund. Ein ViewModel, das nur ein
-     * Bereich braucht, gehört in diesen Bereich; hier liegt nur, was die Activity oder mehrere
-     * Bereiche teilen, die einander nicht kennen dürfen.
+     * The ViewModels that may lie in core-state, each with a reason. A ViewModel that only one
+     * area needs belongs in that area; here only lies what the activity or several
+     * areas share that must not know each other.
      */
     val zustandsViewModels: Map<String, String> = mapOf(
         "AppViewModel" to "Sitzung, Snackbar und Pflichtmasken der Activity; Bereiche sehen ihn nur über die Bereichsumgebung",
@@ -80,15 +80,15 @@ object Modulkanten {
         "GeraeteEinstellungenViewModel" to "Geräteschalter in feature-account und feature-management",
     )
 
-    /** Was zwischen den ViewModels in core-state ([gefunden]) und [zustandsViewModels] nicht stimmt. */
+    /** What does not match between the ViewModels in core-state ([gefunden]) and [zustandsViewModels]. */
     fun stateViewModelViolations(gefunden: Collection<String>): List<String> =
         (gefunden.toSet() - zustandsViewModels.keys).map { "$it liegt in core-state ohne Grund in Modulkanten.zustandsViewModels" } +
             (zustandsViewModels.keys - gefunden.toSet()).map { "$it steht in Modulkanten.zustandsViewModels, liegt aber nicht in core-state" }
 
-    /** Die Verstösse unter [kanten], je einer als Satz; leer, wenn alle erlaubt sind. */
+    /** The violations among [kanten], each as a sentence; empty if all are allowed. */
     fun violations(kanten: Collection<Modulkante>): List<String> = kanten.mapNotNull { k ->
         when {
-            // api reicht ein Modul an jeden weiter, der dieses kennt; nur core-model ist gemeinsame Sprache.
+            // api passes a module on to everyone who knows this one; only core-model is a common language.
             k.configuration == "api" && k.nach != "core-model" ->
                 "Modulkanten per api nur zu core-model: ${k.von} → ${k.nach}"
             k.onlyTest -> null

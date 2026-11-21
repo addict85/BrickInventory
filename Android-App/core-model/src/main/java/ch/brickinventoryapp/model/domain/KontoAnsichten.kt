@@ -2,9 +2,9 @@ package ch.brickinventoryapp.model.domain
 
 import java.time.Instant
 
-// Konto, Haushalt, Server-Protokoll und CSV in den Einstellungen.
+// Account, household, server log and CSV in the settings.
 
-/** Das eigene Profil; [emailConfirmed] statt der 0/1 des Servers. */
+/** The own profile; [emailConfirmed] instead of the server's 0/1. */
 data class ProfileView(
     val id: Int,
     val username: String,
@@ -12,14 +12,14 @@ data class ProfileView(
     val firstName: String?,
     val lastName: String?,
     val emailConfirmed: Boolean,
-    /** Die beantragte neue Adresse, solange ihr Link nicht geöffnet ist. */
+    /** The requested new address, as long as its link has not been opened. */
     val emailNew: String? = null,
 )
 
-/** Ein früher verknüpftes Konto, dessen Trennung noch bestätigt werden kann. */
+/** A formerly linked account whose separation can still be confirmed. */
 data class SeparateAccountView(val id: Int, val username: String, val via: String?)
 
-/** Der Haushalt aus Sicht dieses Kontos; [elternkonten] vereint `parents` und `linked_to`. */
+/** The household from this account's view; [elternkonten] unites `parents` and `linked_to`. */
 data class HouseholdStatusView(
     val isMain: Boolean,
     val isSub: Boolean,
@@ -30,13 +30,13 @@ data class HouseholdStatusView(
     val formerLinks: List<SeparateAccountView>,
 )
 
-/** Eine Zeile des Server-Protokolls. */
+/** A row of the server log. */
 data class LogRowView(val id: Int?, val level: String?, val message: String?, val loggedAt: Instant?)
 
-/** Was ein CSV-Hochladen ergab; [newCreated] gilt für beide Antwortformen des Servers. */
+/** What a CSV upload resulted in; [newCreated] applies to both response forms of the server. */
 data class CsvResultView(val total: Int, val newCreated: Int, val updated: Int, val errors: Int)
 
-/** Ein Stand des laufenden CSV-Imports; fehlende Zahlen sind 0. */
+/** A state of the running CSV import; missing numbers are 0. */
 data class CsvImportStatusView(
     val status: Laufstatus?,
     val total: Int = 0,

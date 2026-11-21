@@ -5,29 +5,29 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Der Scroll-Zustand einer Liste überlebt den Abstecher in eine Detailansicht.
+ * The scroll state of a list survives the detour into a detail view.
  *
- * ── Warum das ein Familienfehler war ────────────────────────────────────────
- * Für die FINANZ-Liste war es längst gelöst: `financeListState` liegt oberhalb
- * des NavHost und wird durchgereicht, samt Begründung im Code. Der KATALOG hat
- * es auf einem eigenen Weg gelöst — er meldet die Position laufend ins
- * ViewModel und springt einmal zurück, sobald die Liste ihre Länge hat (nötig,
- * weil er seitenweise nachlädt und die Länge erst später eintrifft).
+ * ── Why this was a family error ──────────────────────────────────────────────
+ * For the FINANCE list it had long been solved: `financeListState` lies above
+ * the NavHost and is passed down, with reasoning in the code. The CATALOG solved
+ * it in its own way — it reports the position continuously to the
+ * ViewModel and jumps back once as soon as the list has its length (necessary
+ * because it loads page by page and the length arrives only later).
  *
- * Galerie, Teile und Minifiguren führen genauso in eine Detailansicht, hatten
- * aber weder das eine noch das andere — bei den Minifiguren gab es nicht
- * einmal einen benannten Zustand, `LazyVerticalGrid` legte sich intern selbst
- * einen an.
+ * Gallery, parts and minifigures lead into a detail view just the same, but had
+ * neither the one nor the other — for the minifigures there was not
+ * even a named state, `LazyVerticalGrid` created one internally
+ * itself.
  *
- * Wieder das Muster dieses Projekts: eine Regel fehlt am zweiten Weg. Dieser
- * Test prüft deshalb nicht die eine gemeldete Stelle, sondern ALLE Listen, die
- * in ein Detail führen — die nächste neue soll hier auffallen.
+ * Again the pattern of this project: a rule is missing on the second path. This
+ * test therefore does not check the one reported place but ALL lists that
+ * lead into a detail — the next new one should stand out here.
  *
- * Gegenproben (durchgeführt): `gridState`-Parameter aus GalleryScreen entfernt
- * und wieder lokal angelegt → erster Teilschritt rot; die Übergabe in
- * CollectionGraph gestrichen → zweiter Teilschritt rot;
- * gegenproben/rolle-zweite-quelle.patch (die Galerie wieder mit
- * rememberLazyGridState()) → rot „only the ScrollMemory holds the scroll position“.
+ * Counter-checks (performed): `gridState` parameter removed from GalleryScreen
+ * and created locally again → first sub-step red; the handover in
+ * CollectionGraph deleted → second sub-step red;
+ * gegenproben/rolle-zweite-quelle.patch (the gallery again with
+ * rememberLazyGridState()) → red “only the ScrollMemory holds the scroll position“.
  */
 class ListScrollPositionTest {
 
@@ -38,21 +38,21 @@ class ListScrollPositionTest {
     }
 
     /**
-     * Kommentare ausblenden. Ohne das hält der eigene Erklärtext die Prüfung
-     * grün — die Begründungen oben nennen `rememberLazyGridState()` mehrfach
-     * beim Namen, genau das Muster, nach dem hier gesucht wird.
+     * Hide comments. Without that the own explanatory text keeps the check
+     * green — the reasoning above names `rememberLazyGridState()` several times
+     * by name, exactly the pattern searched for here.
      */
     private fun code(src: String) = src.lines()
         .joinToString("\n") { val t = it.trim(); if (t.startsWith("//") || t.startsWith("*") || t.startsWith("/*")) "" else it }
 
-    /** Raster-Reiter, die den Zustand von aussen bekommen. */
+    /** Grid tabs that get their state from outside. */
     private val raster = listOf(
         "collection/ui/screens/GalleryScreen.kt",
         "parts/ui/screens/PartsScreen.kt",
         "parts/ui/screens/MinifigsScreen.kt",
     )
 
-    /** Listen-Reiter, dasselbe mit LazyColumn. */
+    /** List tabs, the same with LazyColumn. */
     private val spalten = listOf(
         "finances/ui/screens/FinanceScreen.kt",
         "parts/ui/screens/PartsListScreen.kt",
@@ -75,10 +75,10 @@ class ListScrollPositionTest {
 
     @Test
     fun `the grid uses the passed state too`() {
-        // Ein Parameter, der nirgends ankommt, ist schlimmer als keiner: Die
-        // Signatur verspricht dann etwas, das nicht passiert. Bei den
-        // Minifiguren war genau das der Ausgangszustand — dort stand am
-        // LazyVerticalGrid gar kein `state`.
+        // A parameter that arrives nowhere is worse than none: the
+        // signature then promises something that does not happen. For the
+        // minifigures exactly that was the starting state — there the
+        // LazyVerticalGrid had no `state` at all.
         for (datei in raster) {
             val src = code(read(datei))
             assert(src.contains("state = gridState")) {
@@ -89,9 +89,9 @@ class ListScrollPositionTest {
 
     @Test
     fun `the list tabs also get their state from outside`() {
-        // Finanzen hatte es seit jeher, die Teileliste nicht — dort führt der
-        // Weg zum Barcode-Scanner aus dem Bildschirm HERAUS; dabei verlässt er
-        // die Komposition.
+        // Finances always had it, the parts list did not — there the
+        // path to the barcode scanner leads OUT of the screen; in doing so it leaves
+        // the composition.
         for (datei in spalten) {
             val src = code(read(datei))
             assert(!src.contains("val listState = rememberLazyListState()")) {
@@ -108,12 +108,12 @@ class ListScrollPositionTest {
 
     @Test
     fun `every tab with a scroll area is covered`() {
-        // ── Warum diese Prüfung existiert ─────────────────────
+        // ── Why this check exists ─────────────────────────────
         //
-        // Gezählt werden alle Reiter, nicht die bekannten: Ein neuer soll hier auffallen.
+        // All tabs are counted, not the known ones: a new one should stand out here.
         //
-        // Diese Prüfung zählt sie. Kommt ein Reiter dazu, der scrollt und in
-        // eine Detailansicht führt, wird sie rot, bis er hier eingetragen ist.
+        // This check counts them. If a tab is added that scrolls and
+        // leads into a detail view, it turns red until it is entered here.
         val abgedeckt = raster + spalten + listOf("catalog/ui/screens/CatalogScreen.kt")
         val ohneRollbereich = listOf("collection/ui/screens/ComparisonScreen.kt")
 
@@ -124,7 +124,7 @@ class ListScrollPositionTest {
                 "rollen hat, in `ohneRollbereich`."
         }
 
-        // Wer in `ohneRollbereich` steht, darf auch wirklich keinen haben.
+        // Whoever is in `ohneRollbereich` must really have none.
         for (datei in ohneRollbereich) {
             val src = code(read(datei))
             assert(!src.contains("LazyColumn") && !src.contains("LazyVerticalGrid") &&
@@ -136,10 +136,10 @@ class ListScrollPositionTest {
 
     @Test
     fun `only the ScrollMemory holds the scroll position`() {
-        // Früher drei Quellen: Zustände oberhalb des NavHost, der ScrollMemory und im
-        // Katalog das ViewModel. Jetzt legt jedes Ziel seinen Zustand je Besuch an
-        // (`remember`, nicht `rememberSaveable`), und nur der ScrollMemory trägt die Stelle
-        // über den Ausflug; RollstelleTest prüft das ausgeführt.
+        // Formerly three sources: states above the NavHost, the ScrollMemory and in the
+        // catalog the ViewModel. Now every destination creates its state per visit
+        // (`remember`, not `rememberSaveable`), and only the ScrollMemory carries the position
+        // across the excursion; RollstelleTest checks that, executed.
         val nav = code(read("app/AppNavigation.kt"))
         for (alt in listOf("Rollzustaende", "rememberLazyGridState", "rememberLazyListState", "rememberScrollState")) {
             assert(!nav.contains(alt)) { "AppNavigation hält wieder Rollzustände ($alt) — eine zweite Quelle" }
@@ -167,15 +167,15 @@ class ListScrollPositionTest {
 
     @Test
     fun `every tab restores its position explicitly`() {
-        // ── Warum das hochgezogene Objekt nicht reichte ───────
+        // ── Why the hoisted object was not enough ─────────────
         //
-        // Ein Zustand oberhalb des NavHost überlebt den Ausflug, aber das Raster misst
-        // beim Wiederanhängen nicht dieselbe Stelle heraus; die Liste stünde verschoben.
+        // A state above the NavHost survives the excursion, but the grid does not measure
+        // out the same position when reattaching; the list would stand shifted.
         //
-        // Nachweislich richtig landet der Weg des Katalogs: mitschreiben und
-        // beim Betreten ausdrücklich scrollToItem() rufen („im Katalog ist sie
-        // auf der korrekten Zeile"). Den nimmt jetzt jeder Reiter — einmal
-        // umgesetzt in ScrollMemory.kt statt dreimal abgeschrieben.
+        // Demonstrably right lands the catalog's path: record along and
+        // explicitly call scrollToItem() on entering („im Katalog ist sie
+        // auf der korrekten Zeile"). Every tab now takes it — implemented once
+        // in ScrollMemory.kt instead of copied three times.
         val col = code(read("collection/ui/SammlungGraph.kt") + read("parts/ui/TeileGraph.kt"))
         val tools = code(read("finances/ui/FinanzenGraph.kt"))
         for (schluessel in listOf("SammlungZiel.Gallery.rollSchluessel", "TeileZiel.Parts.rollSchluessel", "TeileZiel.Minifigs.rollSchluessel")) {
@@ -197,8 +197,8 @@ class ListScrollPositionTest {
             "Die Teileliste stellt ihre Position nicht ausdrücklich wieder her"
         }
 
-        // Und die beiden Fallen von oben dürfen im gemeinsamen Helfer nicht
-        // wieder auftauchen.
+        // And the two traps from above must not show up again
+        // in the common helper.
         val helper = code(read("ui/ScrollMemory.kt"))
         assert(!helper.contains("rememberSaveable")) {
             "Der Merker im Helfer ist `rememberSaveable` — dann überlebt er den " +
@@ -214,64 +214,64 @@ class ListScrollPositionTest {
             "Der Merker steht vor dem Sprung statt danach"
         }
 
-        // Ein Filterwechsel muss die gemerkte Stelle verwerfen: Sie zeigt sonst
-        // auf Sets, die in der neuen Liste woanders oder gar nicht stehen.
+        // A filter change must discard the remembered position: otherwise it points
+        // to sets that stand elsewhere or not at all in the new list.
         val gal = code(read("collection/ui/Galerie.kt"))
         for (fn in listOf("setzeSuche", "setzeThema", "setzeSortierung")) {
-            // Funktionsrumpf statt eines festen Zeichenfensters. Siehe Quellen.kt.
+            // Function body instead of a fixed character window. See Quellen.kt.
             val rumpf = Quellen.function(gal, "fun $fn(")
             assert(rumpf.isNotEmpty()) { "$fn fehlt" }
             assert(rumpf.contains("vergissScroll()")) {
                 "$fn verwirft die gemerkte Rollposition nicht"
             }
         }
-        // Dass dabei die Stelle der GALERIE vergessen wird, prüft
-        // GalleryViewModelTest ausgeführt.
+        // That the GALLERY's position is forgotten along the way is checked by
+        // GalleryViewModelTest, executed.
     }
 
     @Test
     fun `the handle of the year bar follows the list`() {
-        // Steht die Liste an der richtigen Zeile, muss auch der Griff der Leiste
-        // dort stehen und nicht zuoberst.
+        // If the list stands at the right row, the bar's handle must stand
+        // there too and not at the very top.
         //
-        // Der Griff folgte NIE der Liste, sondern nur dem eigenen Ziehen:
-        // previewYear startete auf yearMax, und thumbOffset(yearMax) ist genau
-        // null — also ganz oben. Auch beim Rollen mit dem Finger blieb er
-        // stehen; aufgefallen ist es erst nach der Detailseite, weil dort die
-        // Komposition neu beginnt und ein gezogenes Jahr verlorengeht.
+        // The handle NEVER followed the list, only its own dragging:
+        // previewYear started at yearMax, and thumbOffset(yearMax) is exactly
+        // zero — i.e. at the very top. Even when scrolling with the finger it stayed
+        // put; it only stood out after the detail page, because there the
+        // composition starts anew and a dragged year gets lost.
         //
-        // Seit die Leiste dieselbe ist wie in der Webapp, haengt sie nicht mehr
-        // am JAHR, sondern an der STELLE in der Liste. Die Aussage bleibt: ohne
-        // Ziehen zeigt der Griff, wo man IST.
+        // Since the bar is the same as in the web app, it no longer hangs
+        // on the YEAR but on the POSITION in the list. The statement stays: without
+        // dragging the handle shows where one IS.
         val katalog = code(Quellen.bildschirm("catalog/ui/screens/CatalogScreen.kt"))
         assert(katalog.contains("if (dragging) ziehAnteil else CatalogYearMath.anteilAusNummer(listenNummer, total)")) {
             "Der Griff zeigt weiterhin nur die gezogene Stelle — ohne Ziehen bliebe " +
                 "er dort stehen, wo zuletzt gezogen wurde"
         }
-        // ── Die REGEL, nicht die Schreibweise ────────────────
+        // ── The RULE, not the spelling ─────────────────────
         //
-        // Hier stand `katalog.contains("listenNummer = gridState.firstVisibleItemIndex")`.
-        // Das war genau der Fehler, den der Test direkt darunter als bekanntes
-        // Muster beschreibt: Er prüfte einen WORTLAUT statt die Regel.
+        // Here stood `katalog.contains("listenNummer = gridState.firstVisibleItemIndex")`.
+        // That was exactly the error the test directly below describes as a known
+        // pattern: it checked a WORDING instead of the rule.
         //
-        // Aufgefallen ist es, als `firstVisibleItemIndex` in ein
-        // `derivedStateOf` wanderte — Lint meldete den direkten Zugriff als
-        // FrequentlyChangingValue, weil er den ganzen Bildschirm bei jeder
-        // Änderung neu auswerten lässt. Die Regel blieb unverändert erfüllt,
-        // der Test wurde trotzdem rot.
+        // It stood out when `firstVisibleItemIndex` moved into a
+        // `derivedStateOf` — Lint reported the direct access as
+        // FrequentlyChangingValue, because it makes the whole screen re-evaluate on every
+        // change. The rule stayed fulfilled unchanged,
+        // the test turned red anyway.
         //
-        // Die Regel heisst: Was die Jahresleiste als `listenNummer` bekommt,
-        // muss auf `gridState.firstVisibleItemIndex` ZURÜCKGEHEN — unmittelbar
-        // oder über einen Wert, der genau daraus abgeleitet ist. Eine Konstante,
-        // eine andere Ableitung oder eine fehlende Übergabe sind rot.
+        // The rule is: what the year bar gets as `listenNummer`
+        // must GO BACK to `gridState.firstVisibleItemIndex` — directly
+        // or via a value derived exactly from it. A constant,
+        // another derivation or a missing handover are red.
         //
-        // Gegenproben (durchgeführt, in derselben Logik gegen die echte Datei
-        // und drei verfälschte Fassungen):
-        //   unmittelbare Fassung            -> grün
-        //   über derivedStateOf abgeleitet  -> grün
-        //   listenNummer = 0                -> ROT
-        //   derivedStateOf { 0 }            -> ROT
-        //   Übergabe ganz entfernt          -> ROT
+        // Counter-checks (performed, in the same logic against the real file
+        // and three falsified versions):
+        //   direct version                  -> green
+        //   derived via derivedStateOf      -> green
+        //   listenNummer = 0                -> RED
+        //   derivedStateOf { 0 }            -> RED
+        //   handover removed entirely       -> RED
         val uebergabe = Regex("""listenNummer\s*=\s*([A-Za-z0-9_.]+)""").find(katalog)
         assert(uebergabe != null) {
             "Die Jahresleiste bekommt die Stelle der Liste gar nicht zu sehen — " +

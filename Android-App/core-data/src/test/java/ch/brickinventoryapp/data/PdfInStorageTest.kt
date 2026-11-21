@@ -14,12 +14,12 @@ import org.junit.Test
 import java.io.IOException
 
 /**
- * Ein Gutschein-PDF wird ganz in den Speicher geladen, nie in eine Datei,
- * und nur bis zu einer Obergrenze. Ausgeführt gegen einen Testserver.
+ * A voucher PDF is loaded entirely into memory, never into a file,
+ * and only up to an upper limit. Executed against a test server.
  *
- * Gegenprobe: in ladePdfInDenSpeicher() die
- * Prüfung `inhalt.size() + n > grenze` entfernt → rot „eine Antwort ohne Laenge
- * ueber der Grenze …“; gegenproben/gutschein-pdf-ohne-grenze.patch
+ * Counter-check: in ladePdfInDenSpeicher() the
+ * check `inhalt.size() + n > grenze` removed → red “a response above the limit
+ * is rejected …”; gegenproben/gutschein-pdf-ohne-grenze.patch
  */
 class PdfInStorageTest {
 

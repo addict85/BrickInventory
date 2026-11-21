@@ -1,27 +1,27 @@
 package ch.brickinventoryapp.model.domain
 
 /**
- * Ein Set, das in die Galerie soll: was ein Erfassungsdialog einsammelt. Als
- * Datenklasse, weil die Dialoge und das ViewModel sonst sechs Werte nach ihrer
- * Stellung weiterreichen und zwei vertauschte `Int?` niemand bemerkt.
+ * A set that shall go into the gallery: what an add dialog collects. As a
+ * data class, because otherwise the dialogs and the ViewModel pass on six values by their
+ * position and nobody notices two swapped `Int?`.
  */
 
 data class Erfassungswunsch(
     val setNumber: String,
     val menge: Int = 1,
     val kaufpreis: Geld? = null,
-    /** null: Der Server nimmt die Vorgabe des Kontos. */
+    /** null: the server takes the account's default. */
     val zustand: Zustand? = null,
-    /** null: das eigene Konto. Ob ein anderes erlaubt ist, prüft der Server. */
+    /** null: the own account. Whether another one is allowed is checked by the server. */
     val besitzer: Int? = null,
-    /** null oder leer: kein Lagerort. */
+    /** null or empty: no storage location. */
     val lagerort: String? = null,
 )
 
 /**
- * Was der Server zu einem erfassten Set meldet. [vorhanden]: Es stand schon im
- * Blickfeld, geschrieben wurde nichts. [supplementPending]: Name, Bild und Preise
- * holt ein Auftrag erst noch; wer die Galerie früher nachlädt, sieht sie nicht.
+ * What the server reports for an added set. [vorhanden]: it was already in
+ * view, nothing was written. [supplementPending]: name, image and prices
+ * are still fetched by a job; whoever reloads the gallery earlier does not see them.
  */
 data class SetRecorded(
     val nummer: String?,

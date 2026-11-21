@@ -2,13 +2,13 @@ package ch.brickinventoryapp.data
 
 import kotlinx.coroutines.flow.Flow
 
-/** Die Lagen, in denen Bilder vorgewärmt werden dürfen; je eine eigene Erlaubnis. */
+/** The situations in which images may be warmed; each with its own permission. */
 enum class VorwaermNetwork { WLAN, MOBILE, ROAMING }
 
 /**
- * Einstellungen, die nur dieses Gerät betreffen, nicht das Konto. Eine schmale
- * Schnittstelle statt der DevicesStore, damit ViewModels sie ohne Android prüfen
- * und Bereiche keine DataStore-Schlüssel kennen.
+ * Settings that concern only this device, not the account. A narrow
+ * interface instead of the DevicesStore so that ViewModels can check them without Android
+ * and areas know no DataStore keys.
  */
 interface DevicesSettings {
     val alarmMessagesAn: Flow<Boolean>
@@ -17,7 +17,7 @@ interface DevicesSettings {
     suspend fun warmUpSet(netz: VorwaermNetwork, erlaubt: Boolean)
 }
 
-/** Plant den stündlichen Preisalarm ein oder aus; meldet einen Fehlschlag zurück, statt zu werfen. */
+/** Schedules the hourly price alert on or off; reports a failure back instead of throwing. */
 interface AlarmPlanner {
     suspend fun einplanen(an: Boolean): Throwable?
 }

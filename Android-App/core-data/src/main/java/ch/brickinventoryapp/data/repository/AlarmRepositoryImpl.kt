@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Preisalarme über Retrofit; Setzen und Löschen ziehen die Ablage nach. */
+/** Price alerts via Retrofit; setting and deleting update the store. */
 @Singleton
 class AlarmRepositoryImpl @Inject constructor(
     private val api: SetsApi,
@@ -33,7 +33,7 @@ class AlarmRepositoryImpl @Inject constructor(
     override fun observeAlerts(setNumber: String?): Flow<Local<PriceAlertView>> =
         ablage.observe(Slots.PREISALARME).map { l -> l.copy(liste = l.liste.filter { setNumber == null || it.setNumber == setNumber }) }
 
-    /** Die Übersicht kommt ganz, ohne Seiten. */
+    /** The overview comes whole, without pages. */
     override suspend fun refreshAlerts(): Ergebnis<Unit> =
         ablage.refreshPaged(Slots.PREISALARME, { r -> r.alerts.map { it.alsAnsicht() } }, { it.alerts.size }, retry) { _ ->
             sicherAufrufen { api.getAllAlerts() }

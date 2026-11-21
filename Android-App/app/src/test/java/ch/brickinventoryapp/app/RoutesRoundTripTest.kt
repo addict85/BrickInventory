@@ -22,17 +22,17 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 /**
- * Hin- und Rückweg jeder Route mit Werten durch einen echten NavHost: Was ein Ziel
- * mitbringt, liest `toRoute()` im Ziel genau so zurück — auch Sonderzeichen
- * und die Vorgabe „keine Farbe“. PDF-Adressen reisen nicht in der Route (PdfSelection).
+ * Round trip of every route with values through a real NavHost: what a destination
+ * brings along, `toRoute()` reads back exactly so in the destination — also special characters
+ * and the default “no color”. PDF addresses do not travel in the route (PdfSelection).
  *
- * Gegenprobe (gegenproben/route-feld-transient.patch, nur in der CI messbar):
- *   ManualItemDetail.title als @Transient → rot „titles with special characters arrive unchanged“
- * Gegenprobe (gegenproben/postenart-aus-fest.patch, nur in der CI messbar):
- *   Postenart.aus() liefert immer SET → rot „every item kind arrives as the same one“
- * Gegenprobe (nur in der CI messbar, nicht durchgeführt): StateSerializer mit
- *   PrimitiveKind.STRING statt SerialKind.ENUM → rot „Setnummern und Merkposten
- *   kommen unverändert an“ (Navigation findet keinen NavType für das Feld)
+ * Counter-check (gegenproben/route-feld-transient.patch, measurable only in CI):
+ *   ManualItemDetail.title as @Transient → red “titles with special characters arrive unchanged“
+ * Counter-check (gegenproben/postenart-aus-fest.patch, measurable only in CI):
+ *   Postenart.aus() always returns SET → red “every item kind arrives as the same one“
+ * Counter-check (measurable only in CI, not performed): StateSerializer with
+ *   PrimitiveKind.STRING instead of SerialKind.ENUM → red “set numbers and wishlist items
+ *   arrive unchanged” (navigation finds no NavType for the field)
  */
 @RunWith(RobolectricTestRunner::class)
 class RoutesRoundTripTest {
@@ -40,7 +40,7 @@ class RoutesRoundTripTest {
     @get:Rule
     val compose = createComposeRule()
 
-    /** Was das Ziel beim Aufbau gelesen hat, je Eintrag im Rückstapel. */
+    /** What the destination read on construction, per entry in the back stack. */
     private val gelesen = mutableMapOf<String, Any>()
 
     private lateinit var nav: NavHostController
@@ -62,7 +62,7 @@ class RoutesRoundTripTest {
         compose.waitForIdle()
     }
 
-    /** Navigiert zum Ziel und gibt zurück, was das Ziel gelesen hat. */
+    /** Navigates to the destination and returns what the destination read. */
     private fun hin(ziel: Any): Any {
         compose.runOnIdle { nav.navigate(ziel) }
         compose.waitForIdle()
@@ -119,7 +119,7 @@ class RoutesRoundTripTest {
 
     @Test
     fun `the PDF viewer gets only its key`() {
-        // Adresse (samt Ticket) und Titel bleiben in der PdfSelection (PdfSelectionTest).
+        // Address (including ticket) and title stay in the PdfSelection (PdfSelectionTest).
         aufbauen()
         val pdf = FinanzZiel.PdfViewer("0f8e2c1a-7d3b-4c55-9a0e-1b2c3d4e5f60")
         assertEquals(pdf, hin(pdf))

@@ -5,19 +5,19 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Texterkennung liest die Setnummer von der INSTRUCTION. Dort gibt es keinen Barcode,
- * und die Kamera sieht mehrere Zahlen: Ohne den Filter käme ständig Unsinn heraus.
+ * Text recognition reads the set number from the INSTRUCTION. There is no barcode there,
+ * and the camera sees several numbers: without the filter nonsense would come out constantly.
  *
- * ── Was hier NICHT mehr steht ──────────────────────────────────────────────
- * Die Auswahlregel selbst (welche Zahl im Text die Setnummer ist) wird gegen
- * den gemeinsamen Korpus geprüft, damit Web-App und Android-App dieselbe
- * Antwort geben: SetNumberCorpusTest, shared/setnummer-korpus.json.
+ * ── What is NO longer here ───────────────────────────────────────────────────
+ * The selection rule itself (which number in the text is the set number) is checked against
+ * the common corpus so that web app and Android app give the same
+ * answer: SetNumberCorpusTest, shared/setnummer-korpus.json.
  *
- * BEKANNTE GRENZE, bewusst so gelassen: Sind zwei Zahlen gleich plausibel,
- * kann die falsche gewinnen. Dagegen steht der Bestätigungsdialog mit Bild und
- * Name — und er sagt ausdrücklich, dass die Nummer geraten
- * ist (BarcodeUiState.unsicher). Er ist Teil des Entwurfs, nicht nur
- * Höflichkeit.
+ * KNOWN LIMIT, deliberately left so: if two numbers are equally plausible,
+ * the wrong one can win. Against that stands the confirmation dialog with image and
+ * name — and it explicitly says that the number is
+ * guessed (BarcodeUiState.unsicher). It is part of the design, not just
+ * politeness.
  */
 class OcrSetNumberTest {
 
@@ -26,21 +26,21 @@ class OcrSetNumberTest {
 
     @Test
     fun `text recognition runs ONLY when adding, not in the price comparison`() {
-        // Der Schalter steht auf AUS: So erbt kein künftiger Aufrufer die Texterkennung.
+        // The switch is OFF: that way no future caller inherits text recognition.
         val screen = code(File(Quellen.root,
             "collection/ui/screens/BarcodeScannerScreen.kt").readText())
         assert(screen.contains("ocrEnabled: Boolean = false")) {
             "Der Standard muss AUS sein — sonst bekommt jeder Aufrufer die Texterkennung ungefragt"
         }
 
-        // Der Scanner für Galerie und Teileliste schaltet sie ein …
+        // The scanner for gallery and parts list switches it on …
         val tools = code(File(Quellen.root,
             "collection/ui/SammlungGraph.kt").readText())
         assert(tools.contains("ocrEnabled = true")) {
             "Beim Erfassen fehlt die Texterkennung — genau dort ist sie gewollt"
         }
 
-        // … der Preisvergleich nicht.
+        // … the price comparison does not.
         val comparison = code(File(Quellen.root,
             "collection/ui/screens/ComparisonScreen.kt").readText())
         assert(!comparison.contains("ocrEnabled")) {
@@ -48,10 +48,10 @@ class OcrSetNumberTest {
         }
     }
 
-    // Die Kandidaten-Regel selbst (Suffix, Stellenzahlen, Bestell- und
-    // Elementnummern, Jahre, Mengenangaben, dreistellige Altsets) steht nicht
-    // mehr hier: Sie muss in BEIDEN Apps gleich ausfallen und wird deshalb
-    // gegen den gemeinsamen Korpus geprueft — SetNumberCorpusTest und
-    // shared/setnummer-korpus.json. Hier stand dieselbe Aufzaehlung ein zweites
-    // Mal, und nur die App-Seite war damit gedeckt.
+    // The candidate rule itself (suffix, digit counts, order and
+    // element numbers, years, quantities, three-digit old sets) no longer
+    // stands here: it must come out the same in BOTH apps and is therefore
+    // checked against the common corpus — SetNumberCorpusTest and
+    // shared/setnummer-korpus.json. The same enumeration used to stand here a second
+    // time, and only the app side was covered by it.
 }

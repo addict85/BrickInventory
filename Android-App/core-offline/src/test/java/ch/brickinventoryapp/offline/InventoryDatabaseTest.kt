@@ -23,19 +23,19 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 /**
- * Die Room-Ablage selbst (nur in der CI: Room braucht Android). Dieselben
- * Zusagen wie die Ablagen im Speicher, gegen eine echte SQLite-Datenbank.
+ * The Room store itself (only in CI: Room needs Android). The same
+ * promises as the in-memory stores, against a real SQLite database.
  *
- * Gegenproben: in der CI zu messen, sobald der Lauf grün ist —
- *   A  in InventoryDao.beobachte `ORDER BY position` entfernen → „hält die Reihenfolge“
- *   B  in ExitDao.alle `ORDER BY id` → `ORDER BY id DESC` → „sendet der Reihe nach“
- *   C  in RoomExit.cleanUnreadable das rememberDiscarded streichen → „ein unlesbarer Posten wird
- *      gemeldet …“ (kein Hinweis); in RoomExit.alle wieder entfernen → ebenda (Lesen schreibt)
- *   D  in RoomExit.lies `z.schluessel` → `""` → „ein unlesbarer Posten …“ (Schlüssel kommt nicht zurück)
- *   gegenproben/ablage-aendert-ganze-liste.patch (Offlineablage.aendere ersetzt wieder die
- *      ganze Liste) → rot „a local edit writes only the affected row“
- *   gegenproben/verworfen-nie-quittiert.patch (RoomExit.acknowledgeDiscarded löscht nichts)
- *      → rot „ein verworfener Posten bleibt in der Datenbank, bis …“
+ * Counter-checks: to be measured in CI as soon as the run is green —
+ *   A  in InventoryDao.beobachte remove `ORDER BY position` → “keeps the order”
+ *   B  in ExitDao.alle `ORDER BY id` → `ORDER BY id DESC` → “sends in order”
+ *   C  in RoomExit.cleanUnreadable strike the rememberDiscarded → “an unreadable item is
+ *      reported …” (no hint); in RoomExit.alle remove again → same place (reading writes)
+ *   D  in RoomExit.lies `z.schluessel` → `""` → “an unreadable item …” (key does not come back)
+ *   gegenproben/ablage-aendert-ganze-liste.patch (Offlineablage.aendere replaces the
+ *      whole list again) → red “a local edit writes only the affected row”
+ *   gegenproben/verworfen-nie-quittiert.patch (RoomExit.acknowledgeDiscarded deletes nothing)
+ *      → red “a discarded item stays in the database until …”
  */
 @RunWith(RobolectricTestRunner::class)
 class InventoryDatabaseTest {
@@ -90,7 +90,7 @@ class InventoryDatabaseTest {
         assertEquals(0, ausgang.anzahl("a").first())
     }
 
-    /** Schreibt jedes INSERT, UPDATE und DELETE auf `bestand` in eine Protokolltabelle. */
+    /** Writes every INSERT, UPDATE and DELETE on `bestand` into a log table. */
     private fun writeLog(): () -> List<String> {
         val sql = db.openHelper.writableDatabase
         sql.execSQL("CREATE TABLE protokoll (was TEXT NOT NULL)")
@@ -121,7 +121,7 @@ class InventoryDatabaseTest {
     fun `a discarded item stays in the database until it is acknowledged, and sign-out clears it`() = runBlocking {
         val posten = DiscardedItem("k1", "10001-1", "gibt es nicht", 404)
         ausgang.rememberDiscarded("a", posten)
-        // Ein zweiter Zugang zur selben Datenbank, wie nach einem Neustart der App.
+        // A second access to the same database, as after a restart of the app.
         assertEquals(listOf(posten), RoomExit(db).discarded("a").first())
         assertEquals(emptyList<DiscardedItem>(), ausgang.discarded("b").first())
         assertEquals("keine Liste des Bestands sieht ihn", emptyList<LocalRow>(), bestand.lies("a", StockKind.SETS).liste)

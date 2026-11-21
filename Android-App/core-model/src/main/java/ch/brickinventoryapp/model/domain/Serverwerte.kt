@@ -1,18 +1,18 @@
 package ch.brickinventoryapp.model.domain
 
-// Werte, die der Server festlegt und die auch Fach- und Anzeigetypen brauchen; die
-// Antworttypen selbst liegen in core-contract, das core-model kennt, nicht umgekehrt.
+// Values the server defines and that domain and display types need too; the
+// response types themselves live in core-contract, which knows core-model, not the other way round.
 
-/** So steht ein vorhandener PIN in jeder Gutschein-Antwort; PUT nimmt ihn als „unverändert“. */
+/** This is how an existing PIN stands in every voucher response; PUT takes it as „unchanged“. */
 
 const val VOUCHER_PIN_MASK = "•••"
 
-/** Ob [nummer] die Maske des Servers ist („…1234“) und nicht die Kartennummer. */
+/** Whether [nummer] is the server's mask („…1234“) and not the card number. */
 fun isVoucherMask(nummer: String): Boolean = nummer.startsWith("…")
 
 /**
- * „Keine Farbe“ wie bei Rebrickable ([No Color/Any Color]) und auf dem Server
- * (utils/validate.ts). 0 ist Schwarz: Wer 0 für „keine“ schickt, macht aus
- * einem Teil ohne Farbangabe ein schwarzes.
+ * „No color“ as at Rebrickable ([No Color/Any Color]) and on the server
+ * (src/infra/validate.ts). 0 is black: whoever sends 0 for „none“ turns
+ * a part without color information into a black one.
  */
 const val KEINE_FARBE = 9999

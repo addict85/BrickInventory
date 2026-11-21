@@ -15,7 +15,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
 
-/** Room hinter den Schnittstellen [LocalInventory] und [Ausgang]; Room selbst bleibt in diesem Modul. */
+/** Room behind the interfaces [LocalInventory] and [Ausgang]; Room itself stays in this module. */
 @Module
 @InstallIn(SingletonComponent::class)
 internal abstract class OfflineModule {
@@ -27,7 +27,7 @@ internal abstract class OfflineModule {
         @Singleton
         fun datenbank(@ApplicationContext context: Context, ablage: Ablageschluessel): InventoryDatabase =
             Room.databaseBuilder(context, InventoryDatabase::class.java, InventoryDatabase.NAME)
-                // Verschlüsselt mit SQLCipher; ein Klartext-Altbestand wird beim ersten Öffnen übernommen.
+                // Encrypted with SQLCipher; a plaintext legacy stock is taken over on first opening.
                 .openHelperFactory(EncryptedInventoryFactory(context, ablage))
                 .addMigrations(*InventoryDatabase.MIGRATIONS)
                 .build()

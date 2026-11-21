@@ -29,16 +29,16 @@ import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
 
 /**
- * Die Kacheln manuell erfasster Teile und Figuren zeigen dasselbe wie die Webapp:
- * jeden erfassten Zustand, die Besitzer im Haushalt und den mengengewichteten
- * Kaufpreis vor dem zuletzt geschriebenen. Gezeichnet aus Antworten des Testservers,
- * damit auch das Durchreichen der Felder in jede der beiden Kacheln geprüft ist.
+ * The tiles of manually added parts and figures show the same as the web app:
+ * every added condition, the owners in the household and the quantity-weighted
+ * purchase price before the most recently written one. Drawn from responses of the test server
+ * so that passing the fields into each of the two tiles is checked too.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   kachel-teil-ohne-besitzer       ManualPartTile reicht die Besitzer nicht weiter → rot „Teil zeigt …“
- *   kachel-figur-ohne-zustaende     ManualFigTile reicht die Zustände nicht weiter → rot „Figur zeigt …“
- *   kachel-preis-zuletzt-geschrieben  unit_price vor avg_purchase_price → rot „Teil zeigt …“
- *   figuren-kennzahlen-an-liste     die Kennzahlen der Figuren hängen an der Set-Liste → rot „die Kennzahlen …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   kachel-teil-ohne-besitzer       ManualPartTile does not pass on the owners → red “the manual part shows …”
+ *   kachel-figur-ohne-zustaende     ManualFigTile does not pass on the conditions → red “the manual figure shows …”
+ *   kachel-preis-zuletzt-geschrieben  unit_price before avg_purchase_price → red “the manual part shows …”
+ *   figuren-kennzahlen-an-liste     the figures' key figures hang on the set list → red “the key figures …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -79,7 +79,7 @@ class ManualTileDisplayTest {
         compose.waitForIdle()
     }
 
-    /** Zustände, Besitzer und beide Preise: Gemittelt 5.–, zuletzt geschrieben 8.–. */
+    /** Conditions, owners and both prices: averaged 5.–, most recently written 8.–. */
     private val felder = """"quantity":4,"unit_price":8.0,"avg_purchase_price":5.0,"condition":"U","conditions":["N","U"],""" +
         """"owners":[{"id":2,"username":"Anna"},{"id":3,"username":"Beat"}]"""
 
@@ -117,7 +117,7 @@ class ManualTileDisplayTest {
 
     @Test
     fun `the key figures of the figures stay, even without figures from sets`() {
-        // Sie meinen die ganze Sammlung (/minifigs/stats), nicht die geladene Liste.
+        // They mean the whole collection (/minifigs/stats), not the loaded list.
         world.paths.antworten["/api/v1/minifigs"] = """{"success":true,"figs":[]}"""
         world.paths.antworten["/api/v1/minifigs/manual"] =
             """{"success":true,"figs":[{"id":8,"fig_number":"sw0100","fig_name":"Prinzessin Leia","quantity":1}]}"""

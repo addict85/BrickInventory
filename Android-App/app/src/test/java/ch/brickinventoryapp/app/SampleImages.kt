@@ -11,21 +11,21 @@ import android.graphics.BitmapFactory
 import kotlinx.coroutines.Dispatchers
 
 /**
- * Bilder für die Fototests: Jede Adresse, deren letzter Pfadteil ein Beispielbild
- * unter src/test/resources/beispielbilder nennt („/beispiel/set1.png“), bekommt
- * dieses Bild ohne Netz. Ohne sie zeigten alle Kacheln den Platzhalter, und ein Foto
- * sagte nichts über Bildausschnitt und Lesbarkeit auf einem Bild.
+ * Images for the photo tests: every address whose last path segment names a sample image
+ * under src/test/resources/beispielbilder („/beispiel/set1.png“) gets
+ * this image without network. Without them all tiles would show the placeholder, and a photo
+ * would say nothing about image framing and legibility on an image.
  */
 object SampleImages {
 
-    /** Der Name der Ressource zu [adresse], oder null, wenn es kein Beispielbild gibt. */
+    /** The name of the resource for [adresse], or null if there is no sample image. */
     fun resource(adresse: String): String? {
         val name = adresse.substringBefore('?').substringAfterLast('/')
         val pfad = "beispielbilder/$name"
         return pfad.takeIf { name.endsWith(".png") && javaClass.classLoader?.getResource(it) != null }
     }
 
-    /** Auf dem Hauptlooper: Ein Foto wartet so auf kein Bild aus einem fremden Faden. */
+    /** On the main looper: that way a photo waits for no image from a foreign thread. */
     fun loader(ctx: Context): ImageLoader = ImageLoader.Builder(ctx).components { add(Intercept) }
         .coroutineContext(Dispatchers.Main.immediate).interceptorCoroutineContext(Dispatchers.Main.immediate).build()
 
@@ -33,9 +33,9 @@ object SampleImages {
         override suspend fun intercept(chain: Interceptor.Chain): ImageResult {
             val pfad = (chain.request.data as? String)?.let(::resource) ?: return chain.proceed()
             val bitmap = javaClass.classLoader!!.getResourceAsStream(pfad).use { BitmapFactory.decodeStream(it) }
-            // MEMORY_CACHE, damit Coil nicht überblendet: Robolectric zeichnet für das Foto
-            // ein Bild, und eine Überblendung stand darin noch bei Deckkraft 0 — die
-            // Kacheln mit crossfade(true) blieben leer.
+            // MEMORY_CACHE so that Coil does not crossfade: Robolectric draws one image for the
+            // photo, and a crossfade stood in it still at opacity 0 — the
+            // tiles with crossfade(true) stayed empty.
             return SuccessResult(image = bitmap.asImage(), request = chain.request, dataSource = DataSource.MEMORY_CACHE)
         }
     }

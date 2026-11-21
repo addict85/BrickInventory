@@ -10,14 +10,14 @@ import org.junit.Test
 import java.io.File
 
 /**
- * Der Bestand liegt mit SQLCipher verschlüsselt: Das Passwort ist der fertige
- * Schlüssel als Hex-Literal (kein zweites Ableiten in SQLCipher), und ein
- * Klartext-Altbestand wird an seinem Dateikopf erkannt.
+ * The stock lies encrypted with SQLCipher: the password is the ready
+ * key as hex literal (no second derivation in SQLCipher), and a
+ * plaintext legacy stock is recognized by its file header.
  *
- * Gegenprobe (lokal am ausgeschnittenen Bestandsverschluesselung.kt gemessen):
+ * Counter-check (measured locally on the cut-out Bestandsverschluesselung.kt):
  * gegenproben/bestand-kopf-ungeprueft.patch,
- * isPlaintextDatabase() ohne Vergleich mit dem Kopf → rot „die Datenbank bekommt einen
- * fertigen Schluessel …“ (die verschlüsselte Datei gälte als Klartext).
+ * isPlaintextDatabase() without comparison with the header → red “the database gets a
+ * ready key …” (the encrypted file would count as plaintext).
  */
 class InventoryKeyTest {
 

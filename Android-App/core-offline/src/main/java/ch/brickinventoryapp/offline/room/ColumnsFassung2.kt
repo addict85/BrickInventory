@@ -8,10 +8,10 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.intOrNull
 
 /**
- * Die Filterspalten einer Zeile, wie sie in Fassung 2 als JSON lag — eingefroren:
- * Eine Migration läuft gegen alte Daten, auch Jahre nach einer Umbenennung im
- * Modell. Darum liest sie nur die Felder, die die Spalten brauchen, direkt aus dem
- * JSON statt über die heutigen Modellklassen. null: Die Zeile ist nicht lesbar.
+ * The filter columns of a row as it lay as JSON in version 2 — frozen:
+ * a migration runs against old data, even years after a rename in the
+ * model. Therefore it reads only the fields the columns need, directly from the
+ * JSON instead of via today's model classes. null: the row is not readable.
  */
 internal object ColumnsFassung2 {
 
@@ -42,7 +42,7 @@ internal object ColumnsFassung2 {
 
     private fun JsonObject.zahl(feld: String): Int? = (this[feld] as? JsonPrimitive)?.intOrNull
 
-    /** Ein Pflichtfeld des Modells: Fehlt es, liess sich die Zeile schon in Fassung 2 nicht lesen. */
+    /** A required field of the model: if it is missing, the row could not be read in version 2 either. */
     private fun JsonObject.pflicht(feld: String): String? = text(feld)
 
     private fun suchtext(vararg felder: String?) = felder.filterNotNull().joinToString("\n").lowercase()

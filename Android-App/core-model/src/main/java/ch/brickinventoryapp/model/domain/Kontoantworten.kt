@@ -2,12 +2,12 @@ package ch.brickinventoryapp.model.domain
 
 import ch.brickinventoryapp.model.ui.theme.Design
 
-// Was das Konto-Repository liefert, in Fachwerten: Die Bereiche lesen kein Feld des
-// Wire-Formats, und eine Umbenennung am Server bricht nur die Abbildung in core-data.
+// What the account repository delivers, in domain values: the areas read no field of the
+// wire format, and a rename on the server breaks only the mapping in core-data.
 
 /**
- * Die Antwort auf eine Anmeldung. [verwalter] gilt nur mit vollem Token; [fehler] ist der
- * Satz des Servers, etwa zu einem falschen Code.
+ * The response to a sign-in. [verwalter] applies only with a full token; [fehler] is the
+ * server's sentence, e.g. on a wrong code.
  */
 data class Anmeldung(
     val erfolg: Boolean,
@@ -18,13 +18,13 @@ data class Anmeldung(
     val fehler: String? = null,
 )
 
-/** Wer angemeldet ist, wie der Server es sieht. */
+/** Who is signed in, as the server sees it. */
 data class AccountOwner(val id: Int, val benutzer: String, val verwalter: Boolean, val zweiterFaktorPflicht: Boolean)
 
-/** Eine begonnene QR-Kopplung: [code] zeigt die App zum Vergleich mit dem Browser. */
+/** A started QR pairing: [code] is shown by the app for comparison with the browser. */
 data class QrPairing(val abholung: String, val code: String, val validSeconds: Int)
 
-/** Ein Blick auf die Abholung einer QR-Kopplung: wartend, als Vorschau des Kontos oder mit Token. */
+/** A look at the pickup of a QR pairing: waiting, as a preview of the account or with token. */
 data class QrAbholstand(
     val token: String? = null,
     val benutzer: String? = null,
@@ -33,13 +33,13 @@ data class QrAbholstand(
     val fehler: String? = null,
 )
 
-/** Was der Server ohne Anmeldung anbietet. */
+/** What the server offers without sign-in. */
 data class Registrierungsstand(val offen: Boolean, val passkey: Boolean, val passwortVergessen: Boolean, val mailVersand: Boolean)
 
-/** Ein neues Konto; [withoutMailversand]: Der Link steht im Serverprotokoll statt in einer E-Mail. */
+/** A new account; [withoutMailversand]: the link stands in the server log instead of in an email. */
 data class Registrierung(val meldung: String?, val withoutMailversand: Boolean)
 
-/** Die Angaben eines neuen Kontos; leere Namen heissen „nicht angegeben“. */
+/** The details of a new account; empty names mean „not given“. */
 data class Kontoanlage(
     val benutzer: String,
     val email: String,
@@ -49,7 +49,7 @@ data class Kontoanlage(
     val sprache: String,
 )
 
-/** Eine Profiländerung; [passwortAktuell] verlangt der Server immer, [code] bei zweitem Faktor. */
+/** A profile change; [passwortAktuell] is always required by the server, [code] with a second factor. */
 data class Profilaenderung(
     val benutzer: String,
     val email: String,
@@ -59,20 +59,20 @@ data class Profilaenderung(
     val code: String?,
 )
 
-/** Eine neue Adresse gilt erst nach dem Link; [mailSent] sagt, ob er unterwegs ist. */
+/** A new address applies only after the link; [mailSent] says whether it is on its way. */
 data class ProfilGespeichert(val newAddress: Boolean, val mailSent: Boolean)
 
-/** Wirksames Design, Vorgabe des Verwalters und eigene Wahl; ohne [vorgabe] kennt der Server kein Design je Konto. */
+/** Effective design, the admin's default and own choice; without [vorgabe] the server knows no design per account. */
 data class Designstand(val wirksam: Design?, val vorgabe: Design?, val eigenes: Design?)
 
-/** Passwort und, wenn verlangt, Code des zweiten Faktors für eine heikle Aktion. */
+/** Password and, if required, second-factor code for a sensitive action. */
 data class Confirmation(val passwort: String? = null, val code: String? = null)
 
 data class ZweiterFaktorStand(val aktiv: Boolean, val codesUebrig: Int)
 
 data class ZweiterFaktorEinrichtung(val geheimnis: String?, val otpauth: String?)
 
-/** Die Einstellungen des Kontos; [effectiveState] ist die eigene Vorgabe oder die des Servers. */
+/** The account's settings; [effectiveState] is the own default or that of the server. */
 data class AccountSettings(
     val waehrung: Waehrung,
     val priceState: Zustand,

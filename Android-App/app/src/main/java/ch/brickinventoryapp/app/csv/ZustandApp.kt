@@ -3,11 +3,11 @@ package ch.brickinventoryapp.app.csv
 import ch.brickinventoryapp.model.ui.Vorgang
 
 /**
- * CSV-Import-Fortschritt — eigener Fluss, weil er während eines Imports alle 1.5 s
- * wechselt; so zeichnet nur der Banner neu.
+ * CSV import progress — its own flow, because it changes every 1.5 s during an import;
+ * that way only the banner redraws.
  */
 data class CsvImportUiState(
-    /** Der Import auf dem Server; seine Fehler zählt [err]. */
+    /** The import on the server; [err] counts its errors. */
     val lauf: Vorgang = Vorgang.Fertig,
     val done: Int = 0,
     val total: Int = 0,

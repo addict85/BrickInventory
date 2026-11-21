@@ -1,5 +1,5 @@
 package ch.brickinventoryapp.model.ui
 
-/** Darstellung einer Liste: Karten oder Tabelle (parts-view und figs-view der Webapp). */
+/** Presentation of a list: cards or table (parts-view and figs-view of the web app). */
 
 enum class ListView { KARTEN, TABLE }

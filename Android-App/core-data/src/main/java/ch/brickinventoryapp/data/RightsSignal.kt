@@ -7,10 +7,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Vom ServerWaechter (403 `nur_admins` auf einen Token) zum SitzungsDienst, der
- * das Verwalterrecht nachzieht. Ein Zustand bis zur Quittung: Mehrere 403 kurz
- * hintereinander zählen einmal — eine pollende Verwaltungsseite soll keine
- * Folge von /auth/me-Abrufen auslösen —, und ohne Sammler geht keiner verloren.
+ * From the ServerWaechter (403 `nur_admins` on a token) to the SitzungsDienst, which
+ * follows up the admin right. A state until acknowledgement: several 403s shortly
+ * in a row count once — a polling management page should not trigger a
+ * series of /auth/me fetches —, and without a collector none gets lost.
  */
 @Singleton
 class RightsSignal @Inject constructor() {

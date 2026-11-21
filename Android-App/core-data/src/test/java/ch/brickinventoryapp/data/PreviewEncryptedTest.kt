@@ -12,19 +12,19 @@ import java.io.File
 import java.security.MessageDigest
 
 /**
- * Die Vorschau-Ablage liegt verschlüsselt: Die Bilder der eigenen
- * Sammlung zeigen, welche Sets jemand besitzt. Klartext älterer Fassungen wird
- * verworfen, a file under a foreign name does not count. Ausgeführt gegen ein
- * echtes Verzeichnis.
+ * The preview store lies encrypted: the images of one's own
+ * collection show which sets someone owns. Plaintext of older versions is
+ * discarded, a file under a foreign name does not count. Executed against a
+ * real directory.
  *
- * Gegenproben:
- *   A  schreibe() legt die Bytes wieder unverschlüsselt ab und lies() gibt sie roh
- *      zurück → rot „ein Vorschaubild liegt nicht im Klartext …“;
+ * Counter-checks:
+ *   A  schreibe() stores the bytes unencrypted again and lies() returns them raw
+ *      → red “a thumbnail does not lie in plaintext …”;
  *      gegenproben/vorschau-klartext.patch
- *   B  im Ordner-Aufbau das Löschen der Klartext-Dateien entfernt → rot „Klartext
- *      aelterer Fassungen verschwindet …“
- *   C  schluessel() wieder als SHA-256 der Adresse → rot „der Dateiname verraet die Adresse
- *      nicht …“; gegenproben/vorschau-namen-ungestreut.patch
+ *   B  in the folder setup the deleting of the plaintext files removed → red “plaintext
+ *      of older versions disappears …”
+ *   C  schluessel() again as SHA-256 of the address → red “the file name does not reveal the address
+ *      …”; gegenproben/vorschau-namen-ungestreut.patch
  */
 class PreviewEncryptedTest {
 

@@ -14,13 +14,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Laden, Daten und Fehler schliessen einander aus; was ein Bildschirm daraus liest,
- * passt zum Fall.
+ * Loading, data and error exclude each other; what a screen reads from it
+ * fits the case.
  *
- * Gegenproben (14.11.2026 gemessen, :core-model:test):
- *   A  `offline` liefert `stand == null` → rot „Daten aus der Ablage sind offline …“
- *   B  dataOrNull() gibt auch beim Fehler einen Wert (`as? Laden.Daten<T>` durch
- *      Vorgabe ersetzt) → rot „only data carries a value“
+ * Counter-checks (measured 14.11.2026, :core-model:test):
+ *   A  `offline` delivers `stand == null` → red “data from the store is offline …”
+ *   B  dataOrNull() returns a value even on error (`as? Laden.Daten<T>` replaced by
+ *      default) → red “only data carries a value”
  */
 class LoadTest {
 

@@ -25,9 +25,9 @@ import ch.brickinventoryapp.model.domain.ProfileView
 import kotlinx.serialization.json.JsonObject
 
 /**
- * Das eigene Konto: Anmeldung, Profil, Einstellungen, zweiter Faktor, Token.
- * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit
- * Retrofit und Ablage hängen (KontoRepositoryImpl).
+ * The own account: sign-in, profile, settings, second factor, token.
+ * An interface so that ViewModels and tests do not depend on the implementation with
+ * Retrofit and store (KontoRepositoryImpl).
  */
 interface AccountRepository {
     suspend fun login(serverUrl: String, username: String, password: String, code: String? = null,
@@ -38,9 +38,9 @@ interface AccountRepository {
     suspend fun signInPasskey(serverUrl: String, antwort: JsonObject, scope: String = TOKEN_SCOPE_APP): Ergebnis<Anmeldung>
 
     suspend fun qrLogin(token: String, label: String): Ergebnis<QrPairing>
-    /** [vorschau]: nach der Bestätigung im Browser nur das Konto, noch kein Token. */
+    /** [vorschau]: after confirmation in the browser only the account, no token yet. */
     suspend fun pickUpQr(abholung: String, vorschau: Boolean = false): Ergebnis<QrAbholstand>
-    /** Das Nein nach der Vorschau: Die Kopplung ist danach abgelehnt. */
+    /** The no after the preview: the pairing is refused afterwards. */
     suspend fun discardQr(abholung: String): Ergebnis<Unit>
 
     suspend fun getMe(): Ergebnis<AccountOwner?>
@@ -69,10 +69,10 @@ interface AccountRepository {
 
     suspend fun getTokens(): Ergebnis<List<DeviceView>>
 
-    /** Wie viele Token entwertet wurden; 0, wenn er schon weg war. */
+    /** How many tokens were invalidated; 0 if it was already gone. */
     suspend fun revokeToken(tokenId: String, confirmation: Confirmation): Ergebnis<Int>
 
-    /** Wie viele Zugänge beendet wurden. */
+    /** How many accesses were ended. */
     suspend fun endOther(confirmation: Confirmation): Ergebnis<Int>
 
     suspend fun rotateToken(alterToken: String): Ergebnis<SwappedToken>
@@ -91,6 +91,6 @@ interface AccountRepository {
 
     suspend fun getDefaultCondition(): Ergebnis<Zustand>
 
-    /** null: zurück auf die Vorgabe des Servers. */
+    /** null: back to the server's default. */
     suspend fun setUserDefaultCondition(condition: Zustand?): Ergebnis<Unit>
 }

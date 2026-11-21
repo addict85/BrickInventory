@@ -47,8 +47,8 @@ fun Part.alsAnsicht() = TeilAnsicht(
 )
 
 /**
- * /parts/stats zählt in total_parts nur Teile aus Sets, /stats beide zusammen;
- * ohne die Summe zeigten Sammlung und Teile-Reiter verschiedene Zahlen.
+ * /parts/stats counts in total_parts only parts from sets, /stats both together;
+ * without the sum collection and parts tab would show different numbers.
  */
 fun PartsStats.alsAnsicht() = PartsMetricsView(
     uniqueParts = uniqueParts,

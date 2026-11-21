@@ -9,9 +9,9 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 /**
- * Der Stand eines Laufs am Server (CSV-Import, Hintergrundjobs der Überwachung). Auf
- * der Leitung die [kennung]; ein Wert, den diese Fassung nicht kennt, liest sich als
- * [UNBEKANNT] und zählt weder als laufend noch als fertig.
+ * The state of a run at the server (CSV import, background jobs of the monitoring). On
+ * the wire the [kennung]; a value this version does not know reads as
+ * [UNBEKANNT] and counts neither as running nor as finished.
  */
 @Serializable(with = LaufstatusSerializer::class)
 enum class Laufstatus(val kennung: String) {
@@ -23,7 +23,7 @@ enum class Laufstatus(val kennung: String) {
     ABGEBROCHEN("cancelled"),
     UNBEKANNT("");
 
-    /** `pending` zählt mit: Der Auftrag ist angenommen, die Anzeige soll schon stehen. */
+    /** `pending` counts too: the job is accepted, the display shall already stand. */
     val laeuft: Boolean get() = this == LAEUFT || this == WARTET
 
     companion object {

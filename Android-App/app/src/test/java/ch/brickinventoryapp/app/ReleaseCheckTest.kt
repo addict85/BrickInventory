@@ -9,33 +9,33 @@ import java.security.MessageDigest
 import java.util.Base64
 
 /**
- * Die Prüfungen vor dem Veröffentlichen (tools/release-check.py),
- * ausgeführt gegen Ausgaben im Format von `apksigner verify --print-certs` und
- * gegen Beschreibungen wie die in version-signiert.json einer Release.
+ * The checks before publishing (tools/release-check.py),
+ * executed against outputs in the format of `apksigner verify --print-certs` and
+ * against descriptions like the one in version-signiert.json of a release.
  *
- * Gegenproben:
- *   A  in zertifikat() `fremd = []` → rot „ein fremdes Zertifikat …“
- *   B  in fassung() `neu >= alt_code` ohne Commit-Vergleich → rot „ein älterer
- *      oder gleich alter Stand …“
- *   C  das Muster auf `SHA256 digest` statt `SHA-256 digest` → rot „das hinterlegte
- *      Zertifikat wird angenommen“ (Rückgabe 2 statt 0)
- *   D  tools/release-certificate.sha256 ohne Wert → rot „die hinterlegte Datei nennt …“
- *   E  in beschreibung() `apkSha256` aus `soll` gestrichen → rot „die
- *      signierte Beschreibung muss genau dieses APK nennen“ (ein anderes APK ging durch)
- *   F  in beschreibung() die Zeile `falsch += deadline(…)` gestrichen → rot
- *      „a description without a valid deadline is not published“;
+ * Counter-checks:
+ *   A  in zertifikat() `fremd = []` → red “a foreign certificate …”
+ *   B  in fassung() `neu >= alt_code` without commit comparison → red “an older
+ *      or equally old state …”
+ *   C  the pattern on `SHA256 digest` instead of `SHA-256 digest` → red “the stored
+ *      certificate is accepted” (exit 2 instead of 0)
+ *   D  tools/release-certificate.sha256 without a value → red “the stored file names …”
+ *   E  in beschreibung() `apkSha256` deleted from `soll` → red “the
+ *      signed description must name exactly this APK” (another APK got through)
+ *   F  in beschreibung() the line `falsch += deadline(…)` deleted → red
+ *      “a description without a valid deadline is not published“;
  *      gegenproben/beschreibung-ohne-frist.patch
- *   G  in schluessel() die Zeile `if geliefert[0] not in app`
- *      samt Rückgabe gestrichen → rot „ein Beschreibungsschluessel, den die App nicht
- *      kennt, wird abgelehnt“; gegenproben/beschreibungsschluessel-ungeprueft.patch
- *   H der Übergangsweg wieder mit Rückgabe 0 →
- *      rot „ein Beschreibungsschluessel, den die App nicht kennt …“ (Übergang unsichtbar)
+ *   G  in schluessel() the line `if geliefert[0] not in app`
+ *      including return deleted → red “a description key the app does not
+ *      know is rejected”; gegenproben/beschreibungsschluessel-ungeprueft.patch
+ *   H the transition path again with exit 0 →
+ *      red “a description key the app does not know …” (transition invisible)
  */
 class ReleaseCheckTest {
 
     private val release = "a51ff2f425d94b6f31a06b7805013cc801791b28e58404dc26c7c8298380af06"
 
-    /** Ein öffentlicher EC-Schlüssel als PEM, wie `openssl pkey -pubout` ihn schreibt. */
+    /** A public EC key as PEM, as `openssl pkey -pubout` writes it. */
     private fun pem(): String {
         val paar = KeyPairGenerator.getInstance("EC").apply { initialize(256) }.generateKeyPair()
         return "-----BEGIN PUBLIC KEY-----\n" +
@@ -122,7 +122,7 @@ class ReleaseCheckTest {
         val anderes = datei("anderes-apk")
         val meta = datei("""{"elements":[{"versionCode":200001445,"versionName":"1.2.3"}]}""").path
         val ablage = "https://github.com/addict85/BrickInventory/releases/download/android-v1.2.3"
-        // sha256("apk-inhalt"), Länge 10
+        // sha256("apk-inhalt"), length 10
         val sha = MessageDigest.getInstance("SHA-256").digest("apk-inhalt".toByteArray())
             .joinToString("") { "%02x".format(it) }
         fun daten(code: Long = 200001445, url: String = "$ablage/BrickInventory-200001445.apk", checksum: String = sha) = datei(

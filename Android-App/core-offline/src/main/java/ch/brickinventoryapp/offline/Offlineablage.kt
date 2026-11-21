@@ -27,9 +27,9 @@ import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Eine lokale Liste mit Typ, Schlüssel, ihrer [Ablageform], den Spalten, nach denen
- * sie gefiltert wird, und wie eine [Offlineablage.Wirkung] sie ändert — je Fach
- * getypt, damit die Ablage nichts umwandeln muss.
+ * A local list with type, key, its [Ablageform], the columns by which
+ * it is filtered, and how an [Offlineablage.Wirkung] changes it — typed per
+ * compartment, so that the store does not have to convert anything.
  */
 class Fach<T : Any> internal constructor(
     val art: StockKind,
@@ -42,7 +42,7 @@ class Fach<T : Any> internal constructor(
 object Slots {
     val SETS = Fach(StockKind.SETS, Ablageform(SetRow.serializer(), Ablagezeilen::set, Ablagezeilen::set),
         { it.setNumber }, LocalApplication::sets) {
-        // Wie der Server: Nummer, Name, Thema und Jahr (ohne Jahr „0“).
+        // Like the server: number, name, theme and year (without year „0“).
         Filterspalten(suchtext(it.setNumber, it.name, it.theme.orEmpty(), (it.year ?: 0).toString()),
             thema = it.theme, lagerort = it.storage)
     }
@@ -72,7 +72,7 @@ object Slots {
     val GUTSCHEINE = Fach(StockKind.GUTSCHEINE, Ablageform(VoucherRow.serializer(), Ablagezeilen::gutschein, Ablagezeilen::gutschein),
         { it.id.toString() })
 
-    /** Je Set und Zustand höchstens ein Alarm, wie am Server. */
+    /** At most one alert per set and condition, as at the server. */
     val PREISALARME = Fach(StockKind.PREISALARME, Ablageform(AlarmRow.serializer(), Ablagezeilen::alarm, Ablagezeilen::alarm),
         { "${it.setNumber}|${it.condition.kennung}" }, LocalApplication::preisalarme) {
         Filterspalten(suchtext(it.setNumber, it.name), zustand = it.condition.kennung)
@@ -85,8 +85,8 @@ object Slots {
     }
 
     /**
-     * Einzelne Antworten ohne Liste: je Bereich eine Zeile. Sie liegen wie die Listen in
-     * Room, damit Abmelden, Bereich und Verschlüsselung für alles dieselben sind.
+     * Single responses without a list: one row per area. Like the lists they lie in
+     * Room, so that sign-out, area and encryption are the same for everything.
      */
     val KENNZAHLEN = Fach(StockKind.KENNZAHLEN,
         Ablageform(MetricsRow.serializer(), Ablagezeilen::metrics, Ablagezeilen::metrics), { SINGLE })
@@ -98,49 +98,49 @@ object Slots {
     private fun suchtext(vararg felder: String?) = felder.filterNotNull().joinToString("\n").lowercase()
 }
 
-/** Plant das Senden des Ausgangs; im Gerät über WorkManager (ExitWorker). */
+/** Schedules sending the outbox; on the device via WorkManager (ExitWorker). */
 fun interface ExitPlanner {
     fun plane()
 }
 
 /**
- * Die lokale Wahrheit der Oberfläche: Listen und Ausgang je Bereich (Server und
- * Konto). Der Server bleibt massgeblich — was er liefert, ersetzt die Liste;
- * noch nicht gesendete Bearbeitungen werden danach wieder darübergelegt, damit
- * sie nicht kurz verschwinden, bis der Ausgang leer ist. Gebaut wird sie in
- * core-data, das den Bereich des angemeldeten Kontos kennt.
+ * The local truth of the UI: lists and outbox per area (server and
+ * account). The server stays authoritative — what it delivers replaces the list;
+ * edits not yet sent are laid over it again afterwards, so that
+ * they do not briefly disappear until the outbox is empty. It is built in
+ * core-data, which knows the area of the signed-in account.
  */
 class Offlineablage(
     private val bestand: LocalInventory,
-    /** Ein Test gibt einen StorageExit hinein und sieht dort nach; die Ablage zeigt ihn nicht. */
+    /** A test passes a StorageExit in and looks there; the store does not show it. */
     private val ausgang: Ausgang,
-    /** Der Bereich, wie er jetzt gilt: zum Schreiben und für den Vergleich vor und nach einem Abruf. */
+    /** The area as it applies now: for writing and for the comparison before and after a fetch. */
     private val areaSource: suspend () -> String?,
     private val planner: ExitPlanner = ExitPlanner {},
     private val clock: () -> Long = System::currentTimeMillis,
     private val keySource: () -> String = { UUID.randomUUID().toString() },
     /**
-     * Derselbe Bereich als Fluss, zum Beobachten. Im Gerät ein StateFlow der
-     * Sitzung; ohne ihn fragt jedes neue Beobachten die Quelle einmal.
+     * The same area as a flow, for observing. On the device a StateFlow of the
+     * session; without it every new observation asks the source once.
      */
     areaFlow: Flow<String?> = flow { emit(areaSource()) },
-    /** Wohin eine Meldung über Verworfenes geht; im Gerät das Log. */
+    /** Where a report about discarded items goes; on the device the log. */
     private val protokoll: (String) -> Unit = {},
     private val json: Json = BrickJson,
 ) {
     /**
-     * Was ein Schreibvorgang an den lokalen Listen ändert. Zwei Arten, damit der Typ
-     * sagt, was in den Ausgang darf: [Editing] wartet ohne Netz und wird
-     * nachgesendet; [FollowUp] gibt es nur online und zieht nur die Ablage nach.
+     * What a write changes in the local lists. Two kinds, so that the type
+     * says what may go into the outbox: [Editing] waits without network and is
+     * sent later; [FollowUp] exists only online and only updates the store.
      */
     sealed interface Wirkung {
-        /** Die Listen, die sich ändern. */
+        /** The lists that change. */
         val kinds: Set<StockKind>
     }
 
     /**
-     * Das Ergebnis eines Schreibvorgangs, der nur online geht, für die lokale Liste.
-     * Ohne Ausgang: Was der Server dazu rechnet, bringt der nächste Abgleich.
+     * The result of a write that works only online, for the local list.
+     * Without outbox: what the server calculates for it comes with the next sync.
      */
     sealed interface FollowUp : Wirkung {
         data class SetQuantitySet(val setNumber: String, val menge: Int) : FollowUp {
@@ -155,12 +155,12 @@ class Offlineablage(
             override val kinds get() = setOf(StockKind.SETS)
         }
 
-        /** [alle]: Alle Käufe wandern, der alte Besitzer verschwindet von der Kachel. */
+        /** [alle]: all purchases move, the old owner disappears from the tile. */
         data class SetMoved(val setNumber: String, val von: Int?, val zu: Int, val alle: Boolean) : FollowUp {
             override val kinds get() = setOf(StockKind.SETS)
         }
 
-        /** Ein geänderter Kauf: Der Server schickt die neue Zusammenfassung des Sets mit. */
+        /** A changed purchase: the server sends along the new summary of the set. */
         data class SetSummary(val agg: Setzusammenfassung) : FollowUp {
             override val kinds get() = setOf(StockKind.SETS)
         }
@@ -169,7 +169,7 @@ class Offlineablage(
             override val kinds get() = setOf(StockKind.MERKLISTE)
         }
 
-        /** Der Merkposten geht in die Sammlung: weg aus der Merkliste, dazu in der Galerie. */
+        /** The wishlist item goes into the collection: out of the wishlist, into the gallery. */
         data class WantedItemAdopted(val setNumber: String, val zustand: Zustand, val besitzer: Int?,
                                          val wish: Erfassungswunsch) : FollowUp {
             override val kinds get() = setOf(StockKind.MERKLISTE, StockKind.SETS)
@@ -179,7 +179,7 @@ class Offlineablage(
             override val kinds get() = setOf(StockKind.MANUELLE_TEILE)
         }
 
-        /** Die Farbe ist Teil des Schlüssels: Trifft sie eine vorhandene Zeile, legt der Server beide zusammen. */
+        /** The color is part of the key: if it hits an existing row, the server merges both. */
         data class PartColor(val partNumber: String, val colorId: Int, val neueFarbe: Int, val farbName: String?,
                              val farbHex: String?, val besitzer: Int?) : FollowUp {
             override val kinds get() = setOf(StockKind.MANUELLE_TEILE)
@@ -189,7 +189,7 @@ class Offlineablage(
             override val kinds get() = setOf(StockKind.MANUELLE_FIGUREN)
         }
 
-        /** Ein umbenannter Ort heisst überall neu, wo er stand, auch im Vorrat. */
+        /** A renamed place has the new name everywhere it stood, also in the supply. */
         data class LocationRenamed(val alt: String, val neu: LocationEntryView) : FollowUp {
             override val kinds get() = setOf(StockKind.SETS, StockKind.MANUELLE_TEILE, StockKind.MANUELLE_FIGUREN,
                 StockKind.LAGERORTE)
@@ -203,12 +203,12 @@ class Offlineablage(
             override val kinds get() = setOf(StockKind.LAGERORTE)
         }
 
-        /** null: keine Vorgabe mehr. */
+        /** null: no default any more. */
         data class LocationDefault(val id: Int?) : FollowUp {
             override val kinds get() = setOf(StockKind.LAGERORTE)
         }
 
-        /** Der Server schickt den gespeicherten Alarm zurück; er ersetzt den des Sets im selben Zustand. */
+        /** The server sends back the saved alert; it replaces that of the set in the same condition. */
         data class AlarmSet(val alarm: PriceAlertView) : FollowUp {
             override val kinds get() = setOf(StockKind.PREISALARME)
         }
@@ -221,31 +221,31 @@ class Offlineablage(
     private val aktuell: Flow<String?> = areaFlow.map { gueltig(it) }.distinctUntilChanged()
 
     /**
-     * Eine Sperre je Bereich und Liste: Lesen, Ändern und Schreiben einer Liste
-     * dürfen sich nicht überholen, sonst überschreibt das spätere Schreiben das
-     * frühere (verlorene Änderung).
+     * One lock per area and list: reading, changing and writing a list
+     * must not overtake each other, otherwise the later write overwrites the
+     * earlier one (lost change).
      */
     private val sperren = ConcurrentHashMap<Pair<String, StockKind>, Mutex>()
 
     private fun lock(b: String, art: StockKind) = sperren.getOrPut(b to art) { Mutex() }
 
-    /** Der gültige Bereich, gestreut; null = nicht angemeldet, dann wird nichts abgelegt. */
+    /** The valid area, scattered; null = not signed in, then nothing is stored. */
     suspend fun bereich(): String? = gueltig(fangeAusserAbbruch { areaSource() }.getOrNull())
 
     private fun gueltig(b: String?) = b?.takeIf { it.isNotBlank() }
 
-    /** Was der Server abgelehnt hat und noch nicht gemeldet ist, für den aktuellen Bereich. */
+    /** What the server rejected and has not been reported yet, for the current area. */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun discarded(): Flow<List<DiscardedItem>> =
         aktuell.flatMapLatest { b -> if (b == null) flowOf(emptyList()) else ausgang.discarded(b) }
 
-    /** Der Hinweis zu [id] ist gezeigt; der Posten darf weg. */
+    /** The hint for [id] has been shown; the item may go. */
     suspend fun acknowledgeDiscarded(id: String) {
         val b = bereich() ?: return
         ausgang.acknowledgeDiscarded(b, id)
     }
 
-    /** Wie viele Bearbeitungen noch auf den Server warten. */
+    /** How many edits are still waiting for the server. */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun offene(): Flow<Int> = aktuell.flatMapLatest { b -> if (b == null) flowOf(0) else ausgang.anzahl(b) }
 
@@ -256,16 +256,16 @@ class Offlineablage(
     }
 
     /**
-     * Jede spätere Änderung an einer der [slots] — für Kennzahlen, die der
-     * Server über diese Listen rechnet. Die Ablage ist die Quelle: Was sie nicht
-     * ändert, löst nichts aus.
+     * Every later change to one of the [slots] — for key figures the
+     * server calculates over these lists. The store is the source: what it does not
+     * change triggers nothing.
      */
     fun altered(vararg slots: Fach<*>): Flow<Unit> =
         merge(*slots.map { f -> observe(f).map { it.liste }.distinctUntilChanged().drop(1).map { } }.toTypedArray())
 
     /**
-     * Die lokale Liste, nur mit den Zeilen, die [filter] trifft — bei jeder Änderung
-     * neu gefragt, damit offline Geändertes auch in einer gefilterten Ansicht erscheint.
+     * The local list, only with the rows [filter] matches — asked anew on every change,
+     * so that what was changed offline also appears in a filtered view.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun <T : Any> observe(fach: Fach<T>, filter: Filterspalten): Flow<Local<T>> =
@@ -277,18 +277,18 @@ class Offlineablage(
         return decode(fach, bestand.lies(b, fach.art))
     }
 
-    /** Die lokale Liste, nur mit den Zeilen, die [filter] trifft; null, wenn niemand angemeldet ist. */
+    /** The local list, only with the rows [filter] matches; null if nobody is signed in. */
     suspend fun <T : Any> filtere(fach: Fach<T>, filter: Filterspalten): Local<T>? {
         val b = bereich() ?: return null
         return decode(fach, bestand.filtere(b, fach.art, filter))
     }
 
-    /** Die ganze Liste des Servers übernehmen; noch Wartendes liegt danach wieder darüber. */
+    /** Take over the server's whole list; whatever is still waiting lies over it again afterwards. */
     suspend fun <T : Any> adopt(fach: Fach<T>, liste: List<T>, bereich: String? = null) {
         val b = bereich ?: bereich() ?: return
         bestand.cleanOther(b)
-        // Unter der Sperre: Ein puffere() zwischen dem Lesen des Ausgangs und dem
-        // Schreiben ginge sonst mit der Serverliste verloren.
+        // Under the lock: a puffere() between reading the outbox and
+        // writing would otherwise get lost with the server list.
         lock(b, fach.art).withLock {
             val waiting = ausgang.alle(b).map { it.bearbeitung }.filter { it.art == fach.art }
             var zusammen = liste
@@ -298,8 +298,8 @@ class Offlineablage(
     }
 
     /**
-     * Wartet für den aktuellen Bereich noch etwas (für [art] oder überhaupt)?
-     * Dann muss Neues dahinter, sonst kippt die Reihenfolge.
+     * Is something still waiting for the current area (for [art] or at all)?
+     * Then new things must go behind it, otherwise the order tips over.
      */
     suspend fun wartet(art: StockKind? = null): Boolean {
         val b = bereich() ?: return false
@@ -307,18 +307,18 @@ class Offlineablage(
     }
 
     /**
-     * Ein neuer Idempotency-Key. Er entsteht vor dem ersten Versuch, damit ein
-     * direkter Versuch und seine Wiederholung aus dem Ausgang denselben tragen.
+     * A new Idempotency-Key. It is created before the first attempt, so that a
+     * direct attempt and its retry from the outbox carry the same one.
      */
     fun newKey(): String = keySource()
 
     /**
-     * Bearbeitung in den Ausgang legen und lokal anwenden. false, wenn niemand
-     * angemeldet ist — dann gibt es keinen Ort, dem sie gehört.
+     * Put an edit into the outbox and apply it locally. false if nobody
+     * is signed in — then there is no place it belongs to.
      */
     suspend fun buffer(bearbeitung: Editing, schluessel: String = newKey()): Boolean {
         val b = bereich() ?: return false
-        // Einreihen und Anwenden in einem Zug: uebernimm() sieht beides oder keines.
+        // Enqueue and apply in one go: uebernimm() sees both or neither.
         lock(b, bearbeitung.art).withLock {
             ausgang.einreihen(b, bearbeitung, clock(), schluessel)
             applyAnLocked(bearbeitung.art, bearbeitung, b)
@@ -327,10 +327,10 @@ class Offlineablage(
         return true
     }
 
-    /** Was online gelang, auch lokal anwenden, damit die Liste sofort stimmt. */
+    /** Apply what succeeded online locally too, so that the list is right immediately. */
     suspend fun applyAn(effect: Wirkung, bereich: String? = null) {
         val b = bereich ?: bereich() ?: return
-        // Je Liste nacheinander, nie zwei Sperren zugleich: So kann sich nichts verklemmen.
+        // One list after another, never two locks at once: this way nothing can deadlock.
         for (art in effect.kinds) lock(b, art).withLock { applyAnLocked(art, effect, b) }
     }
 
@@ -341,21 +341,21 @@ class Offlineablage(
         StockKind.MANUELLE_FIGUREN -> aendere(Slots.MANUELLE_FIGUREN, b, w)
         StockKind.PREISALARME -> aendere(Slots.PREISALARME, b, w)
         StockKind.LAGERORTE -> aendere(Slots.LAGERORTE, b, w)
-        // Nur vom Server geliefert, nie lokal bearbeitet.
+        // Only delivered by the server, never edited locally.
         StockKind.TEILE, StockKind.FIGUREN, StockKind.GUTSCHEINE, StockKind.KENNZAHLEN,
         StockKind.KATALOG_META -> Unit
     }
 
-    /** Senden anstossen, z. B. beim Start, falls vom letzten Mal noch etwas wartet. */
+    /** Trigger sending, e.g. at start, in case something is still waiting from last time. */
     fun sendPlane() = runCatching { planner.plane() }
 
-    /** Beim Abmelden: Listen und Ausgang aller Bereiche. */
+    /** On sign-out: lists and outbox of all areas. */
     suspend fun leere() {
         bestand.leere()
         ausgang.leere()
     }
 
-    /** Nur unter der Sperre von ([b], fach.art) aufrufen. */
+    /** Call only under the lock of ([b], fach.art). */
     private suspend fun <T : Any> aendere(fach: Fach<T>, b: String, w: Wirkung) {
         val alt = decode(fach, bestand.lies(b, fach.art))
         bestand.sameAn(b, fach.art, encode(fach, fach.anwenden(alt.liste, w)))
@@ -365,8 +365,8 @@ class Offlineablage(
         liste.map { LocalRow(fach.schluessel(it), fach.form.encode(json, it), fach.spalten(it)) }
 
     /**
-     * Zeilen, die sich nicht mehr lesen lassen, fallen weg statt die Liste zu sperren —
-     * aber nicht still: Ihre Zahl steht in [Local.verworfen] und geht ins [protokoll].
+     * Rows that can no longer be read are dropped instead of blocking the list —
+     * but not silently: their number stands in [Local.verworfen] and goes into the [protokoll].
      */
     private fun <T : Any> decode(fach: Fach<T>, l: Local<LocalRow>): Local<T> {
         val gelesen = l.liste.mapNotNull { z -> runCatching { fach.form.decode(json, z.inhalt) }.getOrNull() }

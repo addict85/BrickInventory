@@ -113,38 +113,38 @@ import ch.brickinventoryapp.testing.testPartsRepository
 import ch.brickinventoryapp.collection.ui.SammlungZiel
 
 /**
- * Befunde der zehnten und elften UI-Prüfung (Android), als Verhalten ausgeführt: Der
- * Erfassen-Knopf steigt über die Snackbar, offline steht ein neutrales Banner statt zweier
- * widersprüchlicher Zeilen, Fehler in Formularen werden angesagt, Passwortfelder
- * kennen Autofill und Auge, Verwalterrechte stehen unter „Erweitert“, der Server-Chip
- * sagt, was er tut, die Kennzahlen brechen in Sammlung und Detail um, das Katalog-Detail nutzt das Tablet, und die Finanzen nennen den Marktwert
- * vor dem Verlauf.
+ * Findings of the tenth and eleventh UI review (Android), executed as behavior: the
+ * add button rises above the snackbar, offline a neutral banner stands instead of two
+ * contradictory lines, errors in forms are announced, password fields
+ * know autofill and eye, admin rights stand under „Erweitert“, the server chip
+ * says what it does, the key figures wrap in collection and detail, the catalog detail uses the tablet, and the finances name the market value
+ * before the history.
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   fab-unter-snackbar          AddFab ohne Abstand zur Snackbar → rot „Erfassen-Knopf steigt …“
- *   offline-zwei-zeilen         Ausgangsleiste auch neben dem Offline-Hinweis → rot „Offline-Hinweis nennt …“
- *   preisalarm-rohzahl          Schwelle wieder als „750.0“ → rot „Preisalarme zeigen die Schwelle …“
- *   fehler-ohne-ansage          ansagen() ohne Live-Region → rot „Fehler der Anmeldung …“
- *   passwortfeld-ohne-autofill  PasswordField ohne contentType → rot „Startpasswort-Maske fuellt …“
- *   startpasswort-volle-breite  Maske ohne Lesebreite → rot „Startpasswort-Maske steht auf dem Tablet …“
- *   verwalterrechte-offen       „Erweitert“ von Anfang an offen → rot „Verwalterrechte stehen eingeklappt …“
- *   kennzahlen-ohne-umbruch     Kennzahlen in einer Row statt FlowRow → rot „Kennzahlen der Sammlung …“
- *   offline-in-fehlerrot        Banner wieder in tertiaryContainer (Classic: rot) → rot „Offline-Hinweis meldet …“
- *   server-chip-ohne-aufgabe    Chip ohne Beschreibung → rot „Server-Chip nennt …“
- *   katalog-einspaltig          Katalog-Detail auch auf dem Tablet einspaltig → rot „Katalog-Detail steht …“
- *   finanzen-verlauf-zuerst     Verlauf wieder vor der Kopfkachel → rot „Finanzen nennen den Marktwert …“
- *   katalog-bild-ohne-grenze    Katalogbild wieder ohne Höchstbreite → rot „Katalog-Detail steht …“
- *   alarme-volle-breite         Preisalarme wieder in Listenbreite → rot „Konto und Preisalarme …“
- *   alarm-feld-tablet-breit     Felder eines Alarms füllen auch die Tabletkarte → rot „Konto und Preisalarme …“
- *   markenkopf-immer-gross      Markenkopf auch bei 200 % gross → rot „Markenkopf bei 200 Prozent …“
- *   bewegung-immer-an           movementReduced() liefert immer false → rot „reduzierte Bewegung …“
- *   einrichtung-einspaltig      Einrichtung auch quer einspaltig → rot „Einrichtung im Querformat …“
- *   detailzeile-volle-breite    Detailzeile ohne Lesebreite → rot „Detailkarten stehen auf dem Tablet …“
- *   bewegung-ohne-beobachter    Einstellung nur einmal gelesen → rot „reduzierte Bewegung folgt einer Aenderung …“
- *   startpasswort-ohne-pruefung Knopf schickt ohne Prüfung ab → rot „Startpasswort-Maske markiert …“
- *   offline-ohne-handlung       Banner ohne „Erneut versuchen“ → rot „Offline-Hinweis bietet an …“
- *   aufschluesselung-bricht     Aufschlüsselung wieder mit Leerzeichen in derselben Zeile → rot
- *                               „Teile-Aufschluesselung bricht bei 200 Prozent …“
+ * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ *   fab-unter-snackbar          AddFab without distance to the snackbar → red “add button rises …”
+ *   offline-zwei-zeilen         outbox bar also next to the offline hint → red “offline hint names …”
+ *   preisalarm-rohzahl          threshold again as „750.0“ → red “price alerts show the threshold …”
+ *   fehler-ohne-ansage          ansagen() without live region → red “errors of the sign-in …”
+ *   passwortfeld-ohne-autofill  PasswordField without contentType → red “start password form fills …”
+ *   startpasswort-volle-breite  form without reading width → red “start password form stands in reading width …”
+ *   verwalterrechte-offen       „Erweitert“ open from the start → red “admin rights stand collapsed …”
+ *   kennzahlen-ohne-umbruch     key figures in a Row instead of FlowRow → red “collection key figures …”
+ *   offline-in-fehlerrot        banner again in tertiaryContainer (Classic: red) → red “offline hint reports …”
+ *   server-chip-ohne-aufgabe    chip without description → red “server chip names …”
+ *   katalog-einspaltig          catalog detail single-column on the tablet too → red “catalog detail stands …”
+ *   finanzen-verlauf-zuerst     history again before the header tile → red “finances name the market value …”
+ *   katalog-bild-ohne-grenze    catalog image again without maximum width → red “catalog detail stands …”
+ *   alarme-volle-breite         price alerts again in list width → red “account and price alerts …”
+ *   alarm-feld-tablet-breit     fields of an alert also fill the tablet card → red “account and price alerts …”
+ *   markenkopf-immer-gross      brand header large at 200 % too → red “brand header at 200 percent …”
+ *   bewegung-immer-an           movementReduced() always returns false → red “reduced motion …”
+ *   einrichtung-einspaltig      setup single-column in landscape too → red “setup in landscape …”
+ *   detailzeile-volle-breite    detail row without reading width → red “detail cards stand in reading width …”
+ *   bewegung-ohne-beobachter    setting read only once → red “reduced motion follows a change …”
+ *   startpasswort-ohne-pruefung button submits without check → red “start password form marks …”
+ *   offline-ohne-handlung       banner without „Erneut versuchen“ → red “offline hint offers …”
+ *   aufschluesselung-bricht     breakdown again with a space in the same line → red
+ *                               “parts breakdown does not break between number and word at 200 percent …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -174,13 +174,13 @@ class ScaffoldAndFormTest {
         compose.waitForIdle()
     }
 
-    /** Die Welt antwortet im Takt; den Hauptlooper treiben, bis [fertig] gilt. */
+    /** The world responds in ticks; drive the main looper until [fertig] holds. */
     private fun wait(name: String, fertig: () -> Boolean) {
         driveUntil(name, bereit = fertig)
         compose.waitForIdle()
     }
 
-    /** Das Gerüst mit einem Reiter; [inhalt] ist die Seite der Sammlung. */
+    /** The scaffold with one tab; [inhalt] is the collection page. */
     @Composable
     private fun Scaffold(meldung: SnackbarHostState, offen: Int = 0, inhalt: @Composable () -> Unit) {
         val nav = rememberNavController()
@@ -265,14 +265,14 @@ class ScaffoldAndFormTest {
                     snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, reportToggle = {})
             }
             wait("Alarme") { vm.alarmOverview.value.geladen }
-            // „750.00“ wie jeder Betrag (de-CH), nicht die Rohzahl „750.0“; das Feld heisst „Schwelle“,
-            // die Richtung steht gewählt in der Wahl darüber (N2 der zweiten UX-Prüfung). „Steigt
-            // über“, weil das Formular zum Anlegen „Fällt unter“ vorwählt.
+            // „750.00“ like every amount (de-CH), not the raw number „750.0“; the field is called „Schwelle“,
+            // the direction stands selected in the choice above (N2 of the second UX review). „Steigt
+            // über“, because the creation form preselects „Fällt unter“.
             compose.onNode(hasSetTextAction() and hasText("750.00")).fetchSemanticsNode()
             compose.onNode(hasSetTextAction() and hasText("750.00") and hasText(ctx.getString(R.string.alerts_schwelle)))
                 .fetchSemanticsNode()
             compose.onNode(hasText(ctx.getString(R.string.detail_alert_chip_above)) and isSelected()).fetchSemanticsNode()
-            // Kein eigener Speichern-Knopf: gespeichert wird wie im Set-Detail beim Tippen.
+            // No own save button: saving happens on typing as in the set detail.
             compose.onAllNodesWithContentDescription(ctx.getString(R.string.settings_save)).assertCountEquals(0)
         } finally {
             world.close()
@@ -305,7 +305,7 @@ class ScaffoldAndFormTest {
         }
     }
 
-    /** Die Autofill-Art eines Feldes: der Wert seiner Semantik, der eine ContentType ist. */
+    /** The autofill kind of a field: the value of its semantics that is a ContentType. */
     private fun autofill(node: SemanticsNode): Any? =
         node.config.firstOrNull { it.value is ContentType }?.value
 
@@ -316,7 +316,7 @@ class ScaffoldAndFormTest {
         assertEquals("Aktuelles, neues und wiederholtes Passwort",
             listOf(ContentType.Password, ContentType.NewPassword, ContentType.NewPassword), felder.map(::autofill))
         compose.onAllNodesWithContentDescription(ctx.getString(R.string.cd_password_show)).assertCountEquals(3)
-        // Die Mindestlänge steht da, bevor getippt wird.
+        // The minimum length stands there before typing.
         compose.onNodeWithText(ctx.resources.getQuantityString(R.plurals.passwort_mindestens, PASSWORD_MIN_CHARS, PASSWORD_MIN_CHARS)).fetchSemanticsNode()
     }
 
@@ -329,7 +329,7 @@ class ScaffoldAndFormTest {
         assertTrue("Feld ${feld.width / dichte} dp breit", feld.width / dichte <= 561f)
     }
 
-    /** Konto und Preisalarme sind Formulare: Lesebreite, und das Betragsfeld bleibt schmal. */
+    /** Account and price alerts are forms: reading width, and the amount field stays narrow. */
     @Test
     fun `account and price alerts stand in form width on the tablet`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
@@ -352,7 +352,7 @@ class ScaffoldAndFormTest {
             wait("Alarme") { vm.alarmOverview.value.geladen }
             val dichte = ctx.resources.displayMetrics.density
             val feld = compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().first().boundsInRoot
-            // Mittig auf 560 dp beginnt die Karte bei 360 dp; in Listenbreite (840 dp) schon bei 220.
+            // Centered on 560 dp the card starts at 360 dp; in list width (840 dp) already at 220.
             assertTrue("Die Karte steht in Formularbreite (Feld ab ${feld.left / dichte} dp)", feld.left / dichte >= 340f)
             assertTrue("Das Betragsfeld ist ${feld.width / dichte} dp breit", feld.width / dichte <= 321f)
         } finally {
@@ -360,19 +360,19 @@ class ScaffoldAndFormTest {
         }
     }
 
-    /** Im Querformat stehen Hinweis und Handlung nebeneinander: „Weiter“ ohne Rollen sichtbar. */
+    /** In landscape hint and action stand side by side: „Weiter“ visible without scrolling. */
     @Test
     fun `setup in landscape shows Next without scrolling`() {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         zeige { SetupScreen(currentUrl = "http://nas:3000", onSave = {}, entwicklung = false) }
         val hoehe = compose.onRoot().fetchSemanticsNode().boundsInRoot.height
-        // Ungekürzt gemessen: boundsInRoot schnitte einen Knopf unter dem Falz am Rand ab.
+        // Measured unclipped: boundsInRoot would cut off a button below the fold at the edge.
         val weiter = compose.onNode(hasText(ctx.getString(R.string.setup_continue)) and hasClickAction()).fetchSemanticsNode()
         val unten = weiter.positionInRoot.y + weiter.size.height
         assertTrue("Weiter endet bei $unten von $hoehe", unten <= hoehe)
     }
 
-    /** Bei 200 % steht der Markenkopf klein in einer Zeile; das erste Feld bleibt oben. */
+    /** At 200 % the brand header stands small in one line; the first field stays at the top. */
     @Test
     fun `brand header at 200 percent takes at most an eighth of the height`() {
         zeige(schrift = 2f) { BrandsHeader() }
@@ -381,7 +381,7 @@ class ScaffoldAndFormTest {
         assertTrue("Markenkopf endet erst bei ${kopf.bottom / dichte} dp", kopf.bottom / dichte <= 891f / 8)
     }
 
-    /** „Animationen entfernen“ (Animator-Dauer 0) wird gelesen; sonst gilt Bewegung. */
+    /** „Animationen entfernen“ (animator duration 0) is read; otherwise motion applies. */
     @Test
     fun `reduced motion follows the system's animator duration`() {
         val resolution = ctx.contentResolver
@@ -392,7 +392,7 @@ class ScaffoldAndFormTest {
         Settings.Global.putFloat(resolution, Settings.Global.ANIMATOR_DURATION_SCALE, 1f)
     }
 
-    /** Umgestellt wird bei offener App in den Systemeinstellungen; die Bewegung folgt sofort. */
+    /** Switched in the system settings while the app is open; the motion follows immediately. */
     @Test
     fun `reduced motion follows a change at runtime`() {
         val resolution = ctx.contentResolver
@@ -412,7 +412,7 @@ class ScaffoldAndFormTest {
         }
     }
 
-    /** Der Hauptknopf bleibt antippbar; leer markiert er das erste Feld und setzt den Cursor hinein. */
+    /** The main button stays tappable; empty it marks the first field and puts the cursor into it. */
     @Test
     fun `start password form marks on submit what is missing and focuses the first field`() {
         var ersetzt = 0
@@ -470,7 +470,7 @@ class ScaffoldAndFormTest {
         }
     }
 
-    /** „82 Teile (42 aus Sets · 40 einzeln)“: Bei 200 % steht die Klammer auf eigener Zeile und bricht nie zwischen Zahl und Wort. */
+    /** „82 Teile (42 aus Sets · 40 einzeln)“: at 200 % the bracket stands on its own line and never breaks between number and word. */
     @Test
     fun `parts breakdown does not break between number and word at 200 percent`() {
         zeige(schrift = 2f) {
@@ -512,8 +512,8 @@ class ScaffoldAndFormTest {
     }
 
     /**
-     * Offline ist kein Fehler (die Änderungen sind gesichert): Die Fläche des Banners
-     * ist nicht rot. Gemessen am Bild, einen Fleck innen am rechten Rand.
+     * Offline is not an error (the changes are saved): the banner's surface
+     * is not red. Measured on the image, a spot inside at the right edge.
      */
     @Test
     fun `offline hint reports no error with a red surface`() {
@@ -529,7 +529,7 @@ class ScaffoldAndFormTest {
         assertTrue("Banner-Fläche rötlich: $p", p.red - p.blue < 0.08f)
     }
 
-    /** Der Chip über der Anmeldung wechselt den Server: Das hört TalkBack als Schaltfläche. */
+    /** The chip above the sign-in switches the server: TalkBack hears that as a button. */
     @Test
     fun `server chip names its task as a button`() {
         var geaendert = 0
@@ -555,8 +555,8 @@ class ScaffoldAndFormTest {
             url = "https://www.bricklink.com/v2/catalog/catalogitem.page?S=10305-1"))
 
     /**
-     * Auf dem Tablet stehen Bezeichnung und Wert nahe beieinander und die Knöpfe in
-     * Bedienbreite; die Teilezahl trägt den Tausendertrenner wie überall.
+     * On the tablet label and value stand close together and the buttons in
+     * operating width; the parts count carries the thousands separator as everywhere.
      */
     @Test
     fun `detail cards stand in reading width on the tablet`() {
@@ -588,7 +588,7 @@ class ScaffoldAndFormTest {
                 onAddToGallery = {}, onWish = {},
                 onOpenInGallery = {}, onBack = {})
         }
-        // Der Name steht einmal da, in der Leiste wie im Set-Detail; die Angaben rechts vom Bild.
+        // The name stands once, in the bar as in the set detail; the details to the right of the image.
         compose.onAllNodesWithText("Lion Knights' Castle").assertCountEquals(1)
         val nummer = compose.onNodeWithText("10305-1").fetchSemanticsNode().boundsInRoot
         val bild = compose.onNode(hasTestTag(IMAGE_FALLBACK), useUnmergedTree = true)

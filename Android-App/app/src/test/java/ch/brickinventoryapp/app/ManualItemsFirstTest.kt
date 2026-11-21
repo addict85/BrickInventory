@@ -44,17 +44,17 @@ import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
 
 /**
- * Teile und Minifiguren beginnen bei den manuell erfassten Einträgen. Die Set-Teile
- * kommen meist zuerst an, und das Raster hält beim Einfügen oben den sichtbaren
- * Eintrag fest; deshalb gehört zur Reihenfolge die Korrektur im Rollmerker, die
- * gespeicherte Stellen und eigene Gesten in Ruhe lässt.
+ * Parts and minifigures start with the manually added entries. The set parts
+ * usually arrive first, and when inserting at the top the grid holds on to the visible
+ * entry; that is why the order includes the correction in the scroll memory that
+ * leaves saved positions and own gestures alone.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   manuelle-teile-unten           der Abschnitt der manuellen Teile hinter den Set-Teilen → rot „Teile: die manuell …“
- *   nachzuegler-ohne-korrektur     die Korrektur rollt nicht mehr an den Anfang → rot „ohne gespeicherte Stelle …“
- *   korrektur-ueber-gespeicherte   die Korrektur ohne !hatteGespeicherte → rot „eine gespeicherte Stelle …“
- *   korrektur-ueber-geste          die Korrektur ohne !nutzerGeste → rot „nach einer eigenen Geste …“
- *   bereit-ohne-manuelle           Teile gelten ohne manualParts als geladen → rot „beide Listen zaehlen …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   manuelle-teile-unten           the section of manual parts behind the set parts → red “parts - the manually …”
+ *   nachzuegler-ohne-korrektur     the correction no longer scrolls to the start → red “without a saved position …”
+ *   korrektur-ueber-gespeicherte   the correction without !hatteGespeicherte → red “a saved position …”
+ *   korrektur-ueber-geste          the correction without !nutzerGeste → red “after an own gesture …”
+ *   bereit-ohne-manuelle           parts count as loaded without manualParts → red “both lists count …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -86,7 +86,7 @@ class ManualItemsFirstTest {
         compose.waitForIdle()
     }
 
-    /** Den Hauptlooper treiben, bis [bereit] gilt. */
+    /** Drive the main looper until [bereit] holds. */
     private fun wait(was: String, bereit: () -> Boolean) {
         try {
             compose.waitUntil(10_000) { shadowOf(Looper.getMainLooper()).idle(); bereit() }
@@ -131,7 +131,7 @@ class ManualItemsFirstTest {
     private val stragglers = mutableStateListOf<String>()
     private lateinit var raster: LazyGridState
 
-    /** Ein Raster wie das der Teile: oben Platz für Nachzügler, darunter 40 Einträge aus Sets. */
+    /** A grid like that of the parts: room for latecomers at the top, below it 40 entries from sets. */
     private fun showRaster() {
         zeige {
             raster = rememberLazyGridState()
@@ -178,8 +178,8 @@ class ManualItemsFirstTest {
 
     @Test
     fun `both lists count as loaded, not only the one from the sets`() {
-        // Verdrahtung im Graphen: Erst wenn auch die manuellen Einträge da sind (null heisst
-        // „noch nicht geladen“), stellt der Merker die Stelle wieder her.
+        // Wiring in the graph: only when the manual entries are there too (null means
+        // “not loaded yet”) does the marker restore the position.
         val graph = Quellen.withoutComments(Quellen.lies("parts/ui/TeileGraph.kt"))
         for ((schluessel, liste) in listOf("TeileZiel.Parts.rollSchluessel" to "manualParts", "TeileZiel.Minifigs.rollSchluessel" to "manualFigs")) {
             val block = Quellen.fenster(graph, "$schluessel, ", 12)

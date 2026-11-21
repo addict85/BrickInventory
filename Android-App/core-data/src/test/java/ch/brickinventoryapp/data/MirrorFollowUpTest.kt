@@ -8,13 +8,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Der Spiegel der Platte im PreferencesManager: Ein Wert, den eine eigene Schreibung
- * schon überholt hat, dreht den Speicher nicht zurück. Sonst hält der Interceptor
- * nach dem Verwerfen kurz wieder den alten Token.
+ * The mirror of the disk in the PreferencesManager: a value that an own write
+ * has already overtaken does not turn the memory back. Otherwise the interceptor
+ * briefly holds the old token again after discarding.
  *
- * Gegenprobe:
- *   in TokenLimit.spiegle() die Prüfung `roh(jetzt()) == r` entfernt → rot
- *   „ein überholter Plattenwert dreht den Speicher nicht zurück“ (war: token-zwischen).
+ * Counter-check:
+ *   in TokenLimit.spiegle() the check `roh(jetzt()) == r` removed → red
+ *   “an outdated disk value does not turn the memory back” (was: token-zwischen).
  */
 class MirrorFollowUpTest {
 
@@ -34,13 +34,13 @@ class MirrorFollowUpTest {
         assertEquals("Der erste Stand der Platte kommt an", "token-alt", speicher)
         assertEquals(1, gelesen)
 
-        // Verwerfen: Speicher zuerst, dann die Platte; die Meldung der Platte kommt zu spät.
+        // Discard: memory first, then the disk; the disk's notification comes too late.
         limit.schreibe { speicher = ""; platte = "" }
         strom.send("token-zwischen")
         testScheduler.runCurrent()
         assertEquals("ein überholter Plattenwert dreht den Speicher nicht zurück", "", speicher)
 
-        // Eine Änderung, die nicht über die Schreibungen kam, gilt.
+        // A change that did not come via the writes counts.
         platte = "token-fremd"
         strom.send("token-fremd")
         testScheduler.runCurrent()

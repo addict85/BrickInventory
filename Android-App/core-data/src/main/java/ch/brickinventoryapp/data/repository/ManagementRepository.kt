@@ -13,9 +13,9 @@ import ch.brickinventoryapp.model.domain.StartStateView
 import ch.brickinventoryapp.model.ui.theme.Design
 
 /**
- * Die Verwaltung des Servers (nur Verwalter), in Ansichten: Das Wire-Format bleibt
- * hinter der Umsetzung (VerwaltungRepositoryImpl). Aktionen ohne verwertbare Antwort
- * liefern Unit; ein `success: false` des Servers kommt als [Ergebnis.Fehler.Absage].
+ * The management of the server (admins only), in views: the wire format stays
+ * behind the implementation (VerwaltungRepositoryImpl). Actions without a usable response
+ * deliver Unit; a `success: false` of the server comes as [Ergebnis.Fehler.Absage].
  */
 interface ManagementRepository {
     suspend fun importCsv(art: CsvImportKind, fileName: String, inhalt: ByteArray): Ergebnis<CsvResultView>
@@ -34,7 +34,7 @@ interface ManagementRepository {
 
     suspend fun getCacheStats(): Ergebnis<CacheMetricsView>
 
-    /** Die Cache-Dauer in Stunden, wie der Server sie schreibt. */
+    /** The cache duration in hours, as the server writes it. */
     suspend fun getCacheTtl(): Ergebnis<String>
 
     suspend fun setCacheTtl(hours: Int): Ergebnis<Unit>
@@ -59,15 +59,15 @@ interface ManagementRepository {
 
     suspend fun repeatJob(id: String): Ergebnis<Unit>
 
-    /** true, wenn wirklich ein Auftrag angelegt wurde; false, wenn schon einer lief. */
+    /** true if a job was really created; false if one was already running. */
     suspend fun starteAuftragsArt(art: String): Ergebnis<Boolean>
 
-    /** Wie viele wartende Aufträge entfernt wurden. */
+    /** How many waiting jobs were removed. */
     suspend fun emptyJobKind(art: String): Ergebnis<Int>
 
     suspend fun triggerCsvSync(): Ergebnis<Unit>
 
-    /** Wie viele Sets zum Neueinlesen eingereiht wurden. */
+    /** How many sets were queued for re-reading. */
     suspend fun reimportInstructions(): Ergebnis<Int>
 
     suspend fun triggerPriceJob(): Ergebnis<Unit>

@@ -29,7 +29,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Minifiguren aus Sets und manuell erfasste — über Retrofit; die gemeinsame Abruflogik steht in Abruf.kt.
+ * Minifigures from sets and manually added ones — via Retrofit; the common fetch logic stands in Abruf.kt.
  */
 @Singleton
 class FigurenRepositoryImpl @Inject constructor(
@@ -38,7 +38,7 @@ class FigurenRepositoryImpl @Inject constructor(
     private val retry: Wiederholung,
 ) : MinifigsRepository {
 
-    /** Die lokalen Listen nach dem Suchtext, wie PartsRepository.observeParts. */
+    /** The local lists by search text, like PartsRepository.observeParts. */
     override fun observeMinifigs(suche: String?): Flow<Local<FigurAnsicht>> =
         ablage.observe(Slots.FIGUREN, Filterspalten(suchtext = suche?.ifBlank { null }))
 
@@ -46,7 +46,7 @@ class FigurenRepositoryImpl @Inject constructor(
         ablage.observe(Slots.MANUELLE_FIGUREN, Filterspalten(suchtext = suche?.ifBlank { null }))
 
     override suspend fun refreshMinifigs(): Ergebnis<Unit> {
-        // Beide Listen kommen ganz, ohne Seiten: Die Gesamtzahl ist die Länge der Antwort.
+        // Both lists come whole, without pages: the total is the length of the response.
         val figuren = ablage.refreshPaged(Slots.FIGUREN, { r -> r.figs.map { it.alsAnsicht() } }, { it.figs.size }, retry) { _ ->
             sicherAufrufen { api.getMinifigs(source = "set") }
         }
@@ -56,7 +56,7 @@ class FigurenRepositoryImpl @Inject constructor(
         }
     }
 
-    /** Dasselbe fuer eine Minifigur — sie hat keine Farbe (Migration 0024). */
+    /** The same for a minifigure — it has no color (migration 0024). */
     override suspend fun setFigStorage(figNumber: String, ort: String): Ergebnis<String?> =
         ablage.nachgezogen({ r -> FollowUp.MinifigLocation(figNumber, r.storage).takeIf { r.success } }) {
             sicherAufrufen { api.setFigStorage(figNumber, LagerortRequest(storage = ort)) }
@@ -76,9 +76,9 @@ class FigurenRepositoryImpl @Inject constructor(
         }
 
     /**
-     * Wie PartsRepository.updatePart: die Menge auch als Schritt.
+     * Like PartsRepository.updatePart: the quantity also as a step.
      *
-     * @param owner Besitzer der Karte; null = eigenes Konto.
+     * @param owner owner of the card; null = own account.
      */
     override suspend fun updateMinifig(figNumber: String, quantity: Int, unitPrice: Double?, blFigNumber: String?, condition: Zustand?, owner: Int?): Ergebnis<Unit> {
         val bisher = ablage.lies(Slots.MANUELLE_FIGUREN)?.liste
@@ -90,7 +90,7 @@ class FigurenRepositoryImpl @Inject constructor(
         }.erledigt()
     }
 
-    /** Auch offline, wie PartsRepository.deletePart. */
+    /** Offline too, like PartsRepository.deletePart. */
     override suspend fun deleteMinifig(figNumber: String, owner: Int?): Ergebnis<Unit> =
         ablage.schreibe(Editing.FigurLoeschen(figNumber, owner), { GenericResponse(success = true) }) { schluessel ->
             sicherAufrufen { api.deleteMinifig(figNumber, owner, schluessel) }

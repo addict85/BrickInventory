@@ -10,27 +10,27 @@ import java.time.ZoneOffset
 import java.util.Locale
 
 /**
- * Der gemeinsame Datumsformatierer — und der Grund, warum es ihn gibt.
+ * The shared date formatter — and the reason why it exists.
  *
- * Es gab die Umwandlung zweimal: einmal ueber `iso.take(10).split("-")`
- * (SetDetailScreen), einmal ueber SimpleDateFormat mit dem festen Muster
- * "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" (MinifigsScreen). Die zweite Fassung fiel bei
- * jedem Zeitstempel OHNE Millisekunden still auf null zurueck — dann stand gar
- * kein Datum da. Genau das prueft der erste Fall unten mit.
+ * The conversion existed twice: once via `iso.take(10).split("-")`
+ * (SetDetailScreen), once via SimpleDateFormat with the fixed pattern
+ * "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" (MinifigsScreen). The second version silently fell
+ * back to null for every timestamp WITHOUT milliseconds — then no date
+ * stood there at all. Exactly that is checked by the first case below as well.
  *
- * Gegenproben: in fmtDatum den Zweig `locale.language !=
- * "en"` immer genommen → rot „one form per language as in the web“; im en-Zweig `DateYear.OHNE`
- * wie VOLL behandelt → ebenso rot; in fmtStatus das Datum wieder fest als
- * dd.MM.yyyy → rot „the state follows the same form“. Englisch wieder „$t/$m/$jj“
- * → rot „je Sprache eine Form …“. timeOfDayFormat() wieder fest „HH:mm“ → rot „die Uhrzeit
- * folgt der 12- oder 24-Stunden-Einstellung …“ (gegenproben/uhrzeit-fest-24-stunden.patch,
- * mit kotlinc gemessen).
+ * Counter-checks: in fmtDatum the branch `locale.language !=
+ * "en"` always taken → red “one form per language as in the web”; in the en branch `DateYear.OHNE`
+ * treated like VOLL → red as well; in fmtStatus the date again fixed as
+ * dd.MM.yyyy → red “the state follows the same form”. English again „$t/$m/$jj“
+ * → red “one form per language …”. timeOfDayFormat() again fixed „HH:mm“ → red “the time
+ * follows the device's 12 or 24 hour setting” (gegenproben/uhrzeit-fest-24-stunden.patch,
+ * measured with kotlinc).
  */
 class DateFormatTest {
 
     private val DE = Locale.forLanguageTag("de-CH")
 
-    /** Wie Intl.DateTimeFormat mit 2-stelligem Tag und Monat in der Webapp (fmtDatum). */
+    /** Like Intl.DateTimeFormat with 2-digit day and month in the web app (fmtDatum). */
     @Test
     fun `one form per language as in the web`() {
         val tag = "2026-08-01T10:00:00Z"
@@ -39,7 +39,7 @@ class DateFormatTest {
         assert(fmtDatum(tag, Locale.forLanguageTag("en-US")) == "Aug 1, 2026")
         assert(fmtDatum(tag, DE, DateYear.OHNE) == "01.08.") { fmtDatum(tag, DE, DateYear.OHNE).toString() }
         assert(fmtDatum(tag, Locale.forLanguageTag("en-GB"), DateYear.OHNE) == "1 Aug")
-        // Keine Ziffernform „dd/mm“ im Englischen: Sie liest sich je nach Land verschieden.
+        // No digit form „dd/mm“ in English: it reads differently depending on the country.
         for (land in listOf("en-GB", "en-US")) {
             val l = Locale.forLanguageTag(land)
             for (j in DateYear.entries) {
@@ -60,8 +60,8 @@ class DateFormatTest {
     }
 
     /**
-     * Fest „HH:mm“ zeigte einem Gerät auf 12 Stunden eine andere Uhr als die Statusleiste.
-     * Die Einstellung des Geräts entscheidet, die Sprache nur die Tageszeit-Wörter.
+     * A fixed „HH:mm“ showed a device set to 12 hours a different clock than the status bar.
+     * The device's setting decides, the language only the day-period words.
      */
     @Test
     fun `the time follows the device's 12 or 24 hour setting`() {
@@ -85,10 +85,10 @@ class DateFormatTest {
     fun `timestamps with and without milliseconds give the same date`() {
         val erwartet = "03.09.2026"
         for (eingabe in listOf(
-            "2026-09-03T15:00:32.194Z",   // mit Millisekunden
-            "2026-09-03T15:00:32Z",       // ohne — die alte Fassung gab hier null
-            "2026-09-03T15:00:32+02:00",  // mit Zonenversatz
-            "2026-09-03",                 // nur der Tag
+            "2026-09-03T15:00:32.194Z",   // with milliseconds
+            "2026-09-03T15:00:32Z",       // without — the old version gave null here
+            "2026-09-03T15:00:32+02:00",  // with zone offset
+            "2026-09-03",                 // only the day
         )) {
             assert(fmtDatum(eingabe, DE) == erwartet) {
                 "fmtDatum(\"$eingabe\") ergab ${fmtDatum(eingabe, DE)}, erwartet $erwartet"
@@ -102,40 +102,40 @@ class DateFormatTest {
     }
 
     /**
-     * Die Uhrzeit fuer das Protokoll — siehe fmtUhrzeit.
+     * The time for the log — see fmtUhrzeit.
      *
-     * ── Warum nicht auf eine feste Uhrzeit geprueft wird ────────────────────
+     * ── Why there is no check against a fixed time ──────────────────────────
      *
-     * fmtUhrzeit rechnet ABSICHTLICH in die Zone des Geraets um (anders als
-     * fmtDatum; die Begruendung steht dort). Eine Zusicherung wie
-     * `== "17:00:32"` waere damit von der Zeitzone der Maschine abhaengig, auf
-     * der der Test laeuft — gruen hier, rot im GitHub-Lauf oder umgekehrt. Ein
-     * Test, der von der Umgebung abhaengt, wird beim ersten roten Lauf
-     * abgeschaltet.
+     * fmtUhrzeit converts DELIBERATELY into the device's zone (unlike
+     * fmtDatum; the reasoning stands there). An assertion like
+     * `== "17:00:32"` would thus depend on the time zone of the machine on
+     * which the test runs — green here, red in the GitHub job or vice versa. A
+     * test that depends on the environment gets switched off at the first red
+     * run.
      *
-     * Geprueft wird deshalb, was UNABHAENGIG von der Zone gilt: die Form, die
-     * Sekunden (die verschiebt keine Zone — halbe Stunden gibt es, halbe
-     * Minuten nicht), und dass eine Stunde Unterschied in der Eingabe eine
-     * Stunde Unterschied in der Ausgabe ergibt.
+     * Therefore what is checked is what holds INDEPENDENTLY of the zone: the form, the
+     * seconds (no zone shifts them — half hours exist, half
+     * minutes do not), and that one hour difference in the input gives one
+     * hour difference in the output.
      */
     @Test
     fun `time has the right form and computes consistently`() {
         for (eingabe in listOf(
-            "2026-09-03T15:00:32.194Z",   // mit Millisekunden
-            "2026-09-03T15:00:32Z",       // ohne
-            "2026-09-03T15:00:32+02:00",  // mit Zonenversatz
-            "2026-09-03T15:00:32",        // ohne Zone — gilt als UTC
+            "2026-09-03T15:00:32.194Z",   // with milliseconds
+            "2026-09-03T15:00:32Z",       // without
+            "2026-09-03T15:00:32+02:00",  // with zone offset
+            "2026-09-03T15:00:32",        // without zone — counts as UTC
         )) {
             val u = fmtUhrzeit(eingabe)
             assert(u != null && Regex("""\d\d:\d\d:\d\d""").matches(u)) {
                 "fmtUhrzeit(\"$eingabe\") ergab $u, erwartet HH:MM:SS"
             }
-            // Nur die SEKUNDEN, nicht Minuten und Sekunden: Es gibt Zonen mit
-            // halbstuendigem Versatz (Indien +05:30), dort verschiebt die
-            // Umrechnung sehr wohl die Minute. Die erste Fassung dieser Zeile
-            // pruefte ":00:32" und waere auf einer Maschine in Kalkutta rot
-            // geworden — eine Zusicherung, die nur zufaellig gilt, weil hier
-            // und im GitHub-Lauf UTC eingestellt ist.
+            // Only the SECONDS, not minutes and seconds: there are zones with
+            // half-hour offset (India +05:30), there the conversion
+            // does shift the minute. The first version of this line
+            // checked ":00:32" and would have turned red on a machine in Kolkata
+            // — an assertion that holds only by chance because here
+            // and in the GitHub job UTC is set.
             assert(u!!.endsWith(":32")) {
                 "fmtUhrzeit(\"$eingabe\") ergab $u — die Sekunden aendert keine Zone"
             }

@@ -8,10 +8,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Ein Weg für flüchtige Meldungen — die Snackbar hat genau einen Platz auf dem
- * Bildschirm, also gibt es genau einen Kanal dorthin. Mit einem Kanal je ViewModel
- * bräuchte jede Stelle, die ein ViewModel benutzt, einen Weiterleitungsblock;
- * fehlt er, verschwinden die Meldungen lautlos.
+ * One path for transient messages — the snackbar has exactly one place on the
+ * screen, so there is exactly one channel to it. With one channel per ViewModel
+ * every place that uses a ViewModel would need a forwarding block;
+ * if it is missing, the messages disappear silently.
  */
 interface MeldungsKanal {
     val meldung: StateFlow<Meldung?>
@@ -21,7 +21,7 @@ interface MeldungsKanal {
     fun zeige(text: String?) = zeige(text?.let(Meldung::Text))
     fun acknowledge()
 
-    /** Für Tests ohne Hilt. */
+    /** For tests without Hilt. */
     companion object {
         operator fun invoke(): MeldungsKanal = MessageQueue()
     }
@@ -33,13 +33,13 @@ internal class MessageQueue @Inject constructor() : MeldungsKanal {
     private val _message = MutableStateFlow<Meldung?>(null)
     private val queue = ArrayDeque<Meldung>()
 
-    /** Die Meldung, die gerade dran ist; null heisst: nichts anzuzeigen. */
+    /** The message whose turn it is; null means: nothing to show. */
     override val meldung: StateFlow<Meldung?> = _message.asStateFlow()
 
     /**
-     * Reiht [meldung] ein; null zeigt nichts. Eine zweite Meldung wartet, bis die
-     * erste quittiert ist, statt sie zu ersetzen. Dieselbe Meldung doppelt
-     * hintereinander kommt nur einmal, und mehr als [PLACES] warten nicht.
+     * Queues [meldung]; null shows nothing. A second message waits until the
+     * first is acknowledged instead of replacing it. The same message twice
+     * in a row comes only once, and no more than [PLACES] wait.
      */
     override fun zeige(meldung: Meldung?) {
         if (meldung == null) return
@@ -52,13 +52,13 @@ internal class MessageQueue @Inject constructor() : MeldungsKanal {
         }
     }
 
-    /** Die angezeigte Meldung ist erledigt (gesehen oder überholt); die nächste rückt nach. */
+    /** The displayed message is done (seen or superseded); the next one moves up. */
     override fun acknowledge() {
         synchronized(queue) { _message.value = queue.removeFirstOrNull() }
     }
 
     private companion object {
-        /** Mehr als ein paar Meldungen hintereinander liest niemand; die ältesten zählen. */
+        /** Nobody reads more than a few messages in a row; the oldest count. */
         const val PLACES = 5
     }
 }

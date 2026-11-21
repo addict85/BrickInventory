@@ -5,20 +5,20 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Absicherung der Aufräumrunde: lokalisierte Service-Benachrichtigungen,
- * Status-Icon und die Teileliste ohne FileProvider. Dass der PDF-Download über den
- * api-Client geht, prüft AnleitungsDownloadTest ausgeführt.
+ * Safeguarding of the cleanup round: localized service notifications,
+ * status icon and the parts list without FileProvider. That the PDF download goes via the
+ * api client is checked by AnleitungsDownloadTest, executed.
  *
- * Alle Prüfungen lesen nur Quell- und Ressourcendateien.
+ * All checks only read source and resource files.
  *
- * Gegenprobe: im Manifest den FileProvider neben den
- * TeilelistenProvider gestellt → rot „die Teileliste geht nur ueber den eigenen
- * Provider“ (gegenproben/fileprovider-extern.patch).
+ * Counter-check: in the manifest the FileProvider put next to the
+ * TeilelistenProvider → red “the parts list goes out only via the own
+ * provider” (gegenproben/fileprovider-extern.patch).
  */
 class ServicePolishTest {
 
     private fun read(rel: String): String {
-        // Quellen und Ressourcen über alle Module; das Manifest liegt in app/.
+        // Sources and resources across all modules; the manifest lies in app/.
         val f = when {
             rel.startsWith("java/ch/brickinventoryapp/") -> File(Quellen.root, rel.removePrefix("java/ch/brickinventoryapp/"))
             rel.startsWith("res/") -> File(Quellen.res, rel.removePrefix("res/"))
@@ -28,7 +28,7 @@ class ServicePolishTest {
         return f.readText()
     }
 
-    /** Kommentare (Kotlin und XML) ausblenden — Erklärtexte nennen die Muster selbst. */
+    /** Hide comments (Kotlin and XML) — explanatory texts name the patterns themselves. */
     private fun code(src: String): String {
         var s = src.replace(Regex("""/\*.*?\*/""", RegexOption.DOT_MATCHES_ALL), "")
         s = s.replace(Regex("""<!--.*?-->""", RegexOption.DOT_MATCHES_ALL), "")
@@ -60,10 +60,10 @@ class ServicePolishTest {
 
     @Test
     fun `services use the localized context`() {
-        // setApplicationLocales() lokalisiert nur Activities. Ein Service, der
-        // getString() auf seinem eigenen Context aufruft, bekommt unterhalb
-        // von Android 13 die SYSTEM-Sprache — der Wrapper aus LanguageManager
-        // ist deshalb Pflicht, sonst ist die Lokalisierung nur scheinbar da.
+        // setApplicationLocales() only localizes activities. A service that
+        // calls getString() on its own context gets the SYSTEM language below
+        // Android 13 — the wrapper from LanguageManager
+        // is therefore mandatory, otherwise the localization is only apparently there.
         for (rel in listOf(
             "java/ch/brickinventoryapp/services/service/CsvImportService.kt",
             "java/ch/brickinventoryapp/services/service/PdfExportService.kt",
@@ -115,7 +115,7 @@ class ServicePolishTest {
         }
     }
 
-    // ── Teileliste ohne Klartext-Freigabe ────────────────────────────────────
+    // ── Parts list without cleartext release ─────────────────────────────────────
 
     @Test
     fun `the parts list goes out only via the own provider, no FileProvider`() {
@@ -137,7 +137,7 @@ class ServicePolishTest {
 
     @Test
     fun `no dead Gson rule in ProGuard`() {
-        // proguard-rules.pro liegt im Modulwurzelverzeichnis, nicht unter src/
+        // proguard-rules.pro lies in the module root directory, not under src/
         val f = File("proguard-rules.pro")
         assert(f.exists()) { "proguard-rules.pro nicht gefunden" }
         assert(!f.readText().contains("SerializedName")) {

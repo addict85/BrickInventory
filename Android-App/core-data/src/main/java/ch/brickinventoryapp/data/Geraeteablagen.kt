@@ -6,8 +6,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
- * Wie die App auf diesem Gerät aussieht. Synchron, weil schon das erste Bild davon
- * abhängt; im Gerät die DevicesStore, im Test eine Fassung im Speicher.
+ * How the app looks on this device. Synchronous because already the first frame
+ * depends on it; on the device the DevicesStore, in the test an in-memory version.
  */
 interface Darstellungsablage {
     fun rememberedDesign(): Design
@@ -23,9 +23,9 @@ interface Darstellungsablage {
 }
 
 /**
- * Die zuletzt geholten Zahlen des Startbildschirm-Widgets, verschlüsselt in der
- * Geräteablage; was im Text steht (JSON), weiss nur das Widget. Synchron, weil
- * Glance ohne Koroutine des Widgets liest.
+ * The most recently fetched numbers of the home screen widget, encrypted in the
+ * device store; only the widget knows what stands in the text (JSON). Synchronous because
+ * Glance reads without the widget's coroutine.
  */
 interface Widgetablage {
     fun widgetStatus(): String?
@@ -33,51 +33,51 @@ interface Widgetablage {
     fun emptyWidgetStatus()
 }
 
-/** Wem die Clients des eigenen Servers vertrauen: gemerkte Pins und der Schalter für Nutzer-CAs. */
+/** Whom the clients of the own server trust: remembered pins and the switch for user CAs. */
 interface Vertrauensablage : PinStore {
     fun userCaAllowed(): Boolean
     fun setUserCa(an: Boolean)
 }
 
-/** Was die Server-Clients zusätzlich brauchen: Nach dem Umschalten der Nutzer-CAs gilt ein neuer TLS-Kontext. */
+/** What the server clients additionally need: after switching the user CAs a new TLS context applies. */
 interface Netzvertrauen : Vertrauensablage {
     fun onUserCaSwitch(listener: () -> Unit)
 }
 
 /**
- * Adresse und Token, wie sie jetzt gelten, für Abrufe am Retrofit-Client vorbei
- * (SSE, Statusabfrage). Gleich nach dem Anmelden steht der Token noch nicht auf
- * der Platte; darum nicht der Fluss, sondern der Speicherwert.
+ * Address and token as they apply now, for fetches bypassing the Retrofit client
+ * (SSE, status query). Right after signing in the token is not yet on
+ * disk; hence not the flow but the in-memory value.
  */
 interface Credentials {
     suspend fun serverUrlJetzt(): String
     suspend fun tokenJetzt(): String
 }
 
-/** Offene Verbindungen trugen das alte Vertrauen; nach jeder Änderung werden sie verworfen. */
+/** Open connections carried the old trust; after every change they are discarded. */
 fun interface Verbindungsabwurf {
     fun discard()
 }
 
-/** Ob jetzt ein Token gilt, als Speicherwert: für Texte und für Zustände, die beim Abmelden verfallen. */
+/** Whether a token applies now, as an in-memory value: for texts and for states that expire on sign-out. */
 interface Anmeldestand {
     val authTokenState: StateFlow<String?>
 }
 
-/** Das Abmelden im Gerät: Token, Herkunft und Benutzername weg, unter der Sperre der Token-Schreibungen. */
+/** Sign-out on the device: token, origin and username gone, under the lock of the token writes. */
 interface SessionEnd {
     suspend fun clearSession()
 }
 
 /**
- * Was der Netzweg synchron vom Token braucht: Speicherspiegel, Generation und den
- * Serverwechsel. Eine eigene Schnittstelle, damit di/ServerClient nur daran hängt.
+ * What the network path needs synchronously from the token: in-memory mirror, generation and the
+ * server switch. An interface of its own so that di/ServerClient depends only on it.
  */
 interface Tokenspiegel {
     val serverUrlState: StateFlow<String?>
     val authTokenState: StateFlow<String?>
     val tokenOriginState: StateFlow<String?>
-    /** Während einer QR-Kopplung mit einem anderen Server dessen Adresse, sonst null (Anmeldeablage.kopplungsziel). */
+    /** During a QR pairing with another server its address, otherwise null (Anmeldeablage.kopplungsziel). */
     val kopplungszielState: StateFlow<String?>
     fun tokenGeneration(): Long
     fun waitOnStart()
@@ -86,27 +86,27 @@ interface Tokenspiegel {
     suspend fun replaceSwappedToken(vorher: TokenStatus, neu: String, requestOrigin: String?): Boolean
 }
 
-/** Einmal beim Start: ein Klartext-Token älterer Fassungen entfernen, einen alten Geheimtext umschlüsseln. */
+/** Once at start: remove a plaintext token of older versions, rekey an old ciphertext. */
 fun interface Tokenuebernahme {
     suspend fun adoptOldToken(): Boolean
 
-    /** Nach dem Entsperren: nur das Umschlüsseln, ohne die übrigen Aufräumarbeiten des Starts. */
+    /** After unlocking: only the rekeying, without the other cleanup tasks of the start. */
     suspend fun levelTokenHigh() = Unit
 }
 
-/** Was der Preisalarm-Arbeiter liest und schreibt: Schalter und Marke des letzten Abrufs. */
+/** What the price alert worker reads and writes: switch and mark of the last fetch. */
 interface Alarmablage {
     val alarmMessagesAn: Flow<Boolean>
     val alarmBrand: Flow<String?>
     suspend fun setAlarmBrand(marke: String)
 }
 
-/** Für den Entwertungs-Arbeiter: ein Server, an dem die nachgeholte Abmeldung endgültig scheiterte. */
+/** For the invalidation worker: a server at which the deferred sign-out finally failed. */
 fun interface Entwertungsprotokoll {
     fun rememberFailedRedemption(server: String)
 }
 
-/** Die Sprache für Application.onCreate unter Android 13, synchron aus dem Spiegel. */
+/** The language for Application.onCreate below Android 13, synchronously from the mirror. */
 interface Sprachablage {
     fun rememberedLanguage(): String?
     suspend fun followUpLanguage(): String

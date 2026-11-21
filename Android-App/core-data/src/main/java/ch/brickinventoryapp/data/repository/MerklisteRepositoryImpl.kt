@@ -28,7 +28,7 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Die Merkliste über Retrofit und Ablage. */
+/** The wishlist via Retrofit and store. */
 @Singleton
 class MerklisteRepositoryImpl @Inject constructor(
     private val api: SetsApi,
@@ -40,7 +40,7 @@ class MerklisteRepositoryImpl @Inject constructor(
         ablage.observe(Slots.MERKLISTE, Filterspalten(suchtext = suche?.ifBlank { null }, zustand = zustand?.kennung))
             .map { l -> l.copy(liste = l.liste.sortiert(rememberOrder(sort))) }
 
-    /** Die Merkliste kommt ganz, ohne Seiten: Die Gesamtzahl ist die Länge der Antwort. */
+    /** The wishlist comes whole, without pages: the total is the length of the response. */
     override suspend fun refreshWanted(): Ergebnis<Unit> =
         ablage.refreshPaged(Slots.MERKLISTE, { r -> r.merkposten.map { it.alsAnsicht() } }, { it.merkposten.size }, retry) { _ ->
             sicherAufrufen { api.getMerkliste(null, null, null, null) }

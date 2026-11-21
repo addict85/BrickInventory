@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.model.domain
 
-// Jobs, Brickset-Warteschlange, Zwischenspeicher und Kontingente im Monitoring.
+// Jobs, Brickset queue, caches and quotas in the monitoring.
 
 data class JobStateView(
     val label: String = "",
@@ -10,7 +10,7 @@ data class JobStateView(
     val sub: String? = null,
 )
 
-/** Die Jobs des Servers und ihr Zeitplan, aus einer Antwort. */
+/** The server's jobs and their schedule, from one response. */
 data class JobsView(
     val jobs: Map<String, JobStateView> = emptyMap(),
     val schedules: Map<String, ScheduleView> = emptyMap(),

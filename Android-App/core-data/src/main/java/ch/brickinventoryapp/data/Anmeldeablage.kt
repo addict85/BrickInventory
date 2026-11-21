@@ -1,31 +1,31 @@
 package ch.brickinventoryapp.data
 
 /**
- * Was die Anmeldung im Gerät ablegt: Serveradresse, Token, Benutzername und den
- * Pin aus dem QR-Code. Im Gerät die [AccountStore]; die Schnittstelle lässt
- * die Anmeldung ohne DataStore prüfen.
+ * What the sign-in stores on the device: server address, token, username and the
+ * pin from the QR code. On the device the [AccountStore]; the interface lets
+ * the sign-in be checked without DataStore.
  */
 interface Anmeldeablage {
     suspend fun serverUrlJetzt(): String
-    /** Eine Adresse mit anderer Herkunft verwirft den Token (er gehört dem alten Server). */
+    /** An address with a different origin discards the token (it belongs to the old server). */
     suspend fun saveServerUrl(url: String)
     suspend fun saveAuthToken(token: String)
     suspend fun saveUsername(name: String)
-    /** Dauerhaft (util/ServerVertrauen.kt); ersetzt einen vorgehaltenen. */
+    /** Permanently (util/ServerVertrauen.kt); replaces a held one. */
     fun rememberPin(schluessel: String, fingerabdruck: String)
-    /** Der dauerhaft gemerkte Pin, ohne einen gerade vorgehaltenen. */
+    /** The permanently remembered pin, without a currently held one. */
     fun rememberedPin(schluessel: String): String?
     /**
-     * Pin aus einem QR-Code nur für den laufenden Verbindungsaufbau: Erst eine
-     * gelungene Anmeldung zeigt, dass Code und Server zusammengehören.
+     * Pin from a QR code only for the current connection setup: only a
+     * successful sign-in shows that code and server belong together.
      */
     fun holdBefore(schluessel: String, fingerabdruck: String)
     fun forgetRetained(schluessel: String)
 
     /**
-     * Für eine QR-Kopplung mit einem anderen Server, solange man noch angemeldet ist:
-     * Anfragen gehen an [url], ohne den Token des bisherigen; dessen Adresse und Token
-     * bleiben, bis die Kopplung gelingt. null beendet sie.
+     * For a QR pairing with another server while still signed in:
+     * requests go to [url] without the previous one's token; its address and token
+     * stay until the pairing succeeds. null ends it.
      */
     fun kopplungsziel(url: String?)
 }

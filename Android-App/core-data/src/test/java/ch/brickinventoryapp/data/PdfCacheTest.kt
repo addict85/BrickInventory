@@ -5,20 +5,20 @@ import ch.brickinventoryapp.data.util.pdfStep
 import org.junit.Test
 
 /**
- * Eine fertig geladene Anleitung wird nicht „fortgesetzt": Nach einem vollständigen
- * Download zeigte `Range: bytes=<Grösse>-` hinter das letzte Byte, und der Server
- * antwortet zu Recht mit 416 (über die Anleitungs-Route als 404). Die Entscheidung
- * „fertig oder ab welchem Byte" ist darum eine reine Funktion und hier ausgeführt;
- * die Serverhälfte prüft Web-App/test/instruction-area.test.js.
+ * A fully loaded instruction is not „resumed": after a complete
+ * download `Range: bytes=<size>-` pointed behind the last byte, and the server
+ * rightly answers with 416 (via the instruction route as 404). The decision
+ * „finished or from which byte" is therefore a pure function and executed here;
+ * the server half is checked by Web-App/test/instruction-area.test.js.
  *
- * Gegenprobe: in pdfStep() den ersten Zweig entfernt, so dass eine fertige Datei
- * wieder als Fortsetzpunkt gilt → der erste Schritt unten wird rot.
+ * Counter-check: in pdfStep() the first branch removed, so that a finished file
+ * again counts as a resume point → the first step below turns red.
  */
 class PdfCacheTest {
 
     @Test
     fun `a finished instruction is not requested again`() {
-        // DER Fall aus der Meldung: 12 MB liegen fertig da.
+        // THE case from the report: 12 MB lie there finished.
         val s = pdfStep(finishedSize = 12_000_000L, partSize = 0L)
         assert(s is PdfStep.Fertig) {
             "Eine vollstaendige Anleitung ergab $s. Damit schickt der Viewer " +
@@ -28,9 +28,9 @@ class PdfCacheTest {
 
     @Test
     fun `a partial file is resumed at its end`() {
-        // Der Fall, fuer den das Fortsetzen ueberhaupt da ist: Die Verbindung
-        // brach bei 3 MB ab. Faellt dieser Schritt, laedt jede abgebrochene
-        // 300-MB-Anleitung wieder von vorn.
+        // The case resuming exists for at all: the connection
+        // broke off at 3 MB. If this step fails, every aborted
+        // 300 MB instruction loads from the start again.
         val s = pdfStep(finishedSize = 0L, partSize = 3_000_000L)
         assert(s == PdfStep.Holen(3_000_000L)) { "Teildatei ergab $s statt Holen(3000000)" }
     }
@@ -43,9 +43,9 @@ class PdfCacheTest {
 
     @Test
     fun `a partial file next to the finished one changes nothing`() {
-        // Kann vorkommen, wenn ein zweiter Download angefangen wurde, waehrend
-        // der erste schon fertig war. Die fertige Datei gewinnt; die Teildatei
-        // raeumt prunePdfCache weg.
+        // Can happen if a second download was started while
+        // the first was already finished. The finished file wins; the partial file
+        // is cleaned away by prunePdfCache.
         val s = pdfStep(finishedSize = 12_000_000L, partSize = 3_000_000L)
         assert(s is PdfStep.Fertig) { "Fertig + Teildatei ergab $s" }
     }

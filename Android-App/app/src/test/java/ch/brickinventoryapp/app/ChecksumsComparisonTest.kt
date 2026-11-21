@@ -6,17 +6,17 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * Die Zusammenfassung des Prüfsummen-Jobs (tools/checksum-compare.py),
- * ausgeführt gegen zwei kleine Metadateien: eine neue, eine entfernte und eine
- * Komponente mit anderer Prüfsumme bei gleicher Fassung.
+ * The summary of the checksums job (tools/checksum-compare.py),
+ * executed against two small metadata files: one new, one removed and one
+ * component with a different checksum at the same version.
  *
- * Gegenproben: in vergleiche() `sa != sn` durch `False`
- * ersetzt → rot „eine geänderte Prüfsumme bei gleicher Fassung fällt auf“;
- * neu_k und weg_k vertauscht → rot „neue und entfernte Komponenten …“.
- * in vertrauen_markdown() `dazu = []` → rot „ein neu
- * vertrauter Schluessel …“; Sortierung ohne `not` (Regex zuletzt) → ebenso rot.
- * In markdown() `neue_gruppen = []` (lokal mit python3 gemessen) → rot „eine neue Gruppe
- * steht offen da …“.
+ * Counter-checks: in vergleiche() `sa != sn` replaced by `False`
+ * → red “a changed checksum with the same version stands out”;
+ * neu_k and weg_k swapped → red “new and removed components …”.
+ * in vertrauen_markdown() `dazu = []` → red “a newly
+ * trusted key …”; sorting without `not` (regex last) → red as well.
+ * In markdown() `neue_gruppen = []` (measured locally with python3) → red “a new group
+ * stands open …”.
  */
 class ChecksumsComparisonTest {
 

@@ -12,10 +12,10 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 /**
- * Zustand eines Postens. Auf der Leitung heisst er "N" oder "U" ([kennung]); im Code
- * steht der Typ, damit kein Vergleich mit einem Buchstaben die Regel nachbaut.
- * Unbekanntes liest sich als [NEU], wie im Server (`=== 'U' ? 'U' : 'N'`): Ein neuer
- * Wert soll nicht die ganze Liste verwerfen.
+ * Condition of an item. On the wire it is called "N" or "U" ([kennung]); in code
+ * stands the type, so that no comparison with a letter rebuilds the rule.
+ * Unknown reads as [NEU], as in the server (`=== 'U' ? 'U' : 'N'`): a new
+ * value shall not discard the whole list.
  */
 @Serializable(with = StateSerializer::class)
 enum class Zustand(val kennung: String) {
@@ -23,14 +23,14 @@ enum class Zustand(val kennung: String) {
     GEBRAUCHT("U");
 
     companion object {
-        /** null für leer oder unbekannt — der Aufrufer entscheidet, was dann gilt. */
+        /** null for empty or unknown — the caller decides what applies then. */
         fun aus(kennung: String?): Zustand? = entries.firstOrNull { it.kennung.equals(kennung?.trim(), ignoreCase = true) }
     }
 }
 
 /**
- * Schreibt die [Zustand.kennung]. Der Deskriptor ist ein Aufzählungstyp unter dem Namen
- * der Klasse, wie der erzeugte: Navigation erkennt daran ein Routenfeld als Enum.
+ * Writes the [Zustand.kennung]. The descriptor is an enum type under the name
+ * of the class, like the generated one: Navigation recognizes a route field as enum by it.
  */
 @OptIn(InternalSerializationApi::class, ExperimentalSerializationApi::class)
 object StateSerializer : KSerializer<Zustand> {

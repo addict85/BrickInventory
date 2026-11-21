@@ -10,19 +10,19 @@ import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
 
-/** Der Stand eines CSV-Imports, auch eines aus der Webapp. */
+/** The state of a CSV import, also one from the web app. */
 interface CsvImportRepository {
     /**
-     * Jeder Stand, solange jemand sammelt. Reisst der Strom ab, wird einmal abgefragt
-     * und mit wachsendem Abstand neu verbunden; schliesst der Server sauber, sofort.
+     * Every state as long as someone collects. If the stream breaks, it queries once
+     * and reconnects with growing delay; if the server closes cleanly, immediately.
      */
     fun observe(): Flow<CsvImportStatusView>
 
-    /** „Ab hier nicht weiter“; schon angelegte Sets bleiben. */
+    /** „No further from here“; sets already created stay. */
     suspend fun abbrechen(): Ergebnis<Unit>
 }
 
-/** Über den SSE-Strom, mit der Statusabfrage als Rückfall. */
+/** Via the SSE stream, with the status query as fallback. */
 class CsvImportObserver @Inject constructor(
     private val strom: CsvImportStream,
     private val dateien: SetDateienRepository,
@@ -44,7 +44,7 @@ class CsvImportObserver @Inject constructor(
                 }
             }.onFailure { tornDown = true }
             if (tornDown) {
-                // Einmal nachsehen, damit der Balken nicht auf dem letzten Stand hängt.
+                // Look once so that the bar does not hang on the last state.
                 questionAb()
                 delay(retreatMs)
                 retreatMs = minOf(retreatMs * 2, RETREAT_MAX_MS)

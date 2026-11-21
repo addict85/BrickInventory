@@ -53,12 +53,12 @@ import java.util.concurrent.TimeUnit
 import ch.brickinventoryapp.data.repository.Ergebnis
 import ch.brickinventoryapp.ui.theme.Abstaende
 /**
- * Die zuletzt geholten Zahlen. Das Widget liest nur hier und zeigt so auch ohne
- * Netz den letzten Stand; holen tut allein [WidgetArbeiter]. Verschlüsselt wie die
- * übrigen Ablagen; ein Klartext-Altbestand gilt als leer.
+ * The most recently fetched numbers. The widget reads only here and thus shows the last state
+ * even without network; only [WidgetArbeiter] fetches. Encrypted like the
+ * other stores; a plaintext legacy stock counts as empty.
  */
 internal object WidgetStore {
-    /** Die frühere eigene Datei; nur noch zum Leeren, damit kein alter Stand liegen bleibt. */
+    /** The former own file; only kept for emptying, so that no old state is left lying around. */
     private const val OLD_FILE = "widget"
 
     private fun ablage(ctx: Context) = EntryPointAccessors.fromApplication(ctx, WidgetAccess::class.java).widgetablage()
@@ -76,8 +76,8 @@ internal object WidgetStore {
 }
 
 /**
- * Was Glance-Widget und Ablage ausserhalb von Hilt brauchen. Ein Widget hat keinen
- * Konstruktor, den Hilt füllen könnte; dort ist der EntryPoint der vorgesehene Weg.
+ * What Glance widget and store need outside of Hilt. A widget has no
+ * constructor Hilt could fill; there the EntryPoint is the intended way.
  */
 @EntryPoint
 @InstallIn(SingletonComponent::class)
@@ -88,8 +88,8 @@ interface WidgetAccess {
 }
 
 /**
- * Holt die Zahlen stündlich über die Repositories — mit deren Plattenspeicher
- * als Rückfall, wenn der Server schweigt.
+ * Fetches the numbers hourly via the repositories — with their disk storage
+ * as fallback when the server is silent.
  */
 @HiltWorker
 class WidgetArbeiter @AssistedInject constructor(
@@ -104,9 +104,9 @@ class WidgetArbeiter @AssistedInject constructor(
         if (fangeAusserAbbruch { refresh(applicationContext) }.getOrDefault(false)) androidx.work.ListenableWorker.Result.success()
         else androidx.work.ListenableWorker.Result.retry()
 
-    /** false: später noch einmal. */
+    /** false: once more later. */
     private suspend fun refresh(ctx: Context): Boolean {
-        // Abgemeldet gibt es nichts zu zeigen; der alte Stand bliebe sonst fremd sichtbar.
+        // Signed out there is nothing to show; the old state would otherwise stay visible to others.
         if (access.tokenJetzt().isBlank()) {
             if (ohneToken(lock.gesperrt()) == WithoutToken.LATER) return false
             WidgetStore.leeren(ctx)
@@ -134,16 +134,16 @@ class WidgetArbeiter @AssistedInject constructor(
     }
 }
 
-/** Sammlungswert, G&V heute und gesamt; ein Tipp öffnet die App. */
+/** Collection value, P&L today and in total; a tap opens the app. */
 class SammlungsWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val access = runCatching { EntryPointAccessors.fromApplication(context, WidgetAccess::class.java) }.getOrNull()
         val angemeldet = fangeAusserAbbruch { access?.credentials()?.tokenJetzt()?.isNotBlank() == true }.getOrDefault(false)
-        // Geldwerte nur, wenn der Nutzer sie auf dem Startbildschirm erlaubt und die App-Sperre nicht greift.
+        // Money values only if the user allows them on the home screen and the app lock does not apply.
         val zeigen = access?.darstellung()?.showWidgetValues() == true &&
             !AppLock.hiddenWidget(AppLockStore(context))
         val zahlen = widgetDisplay(WidgetStore.lies(context), angemeldet)
-        // Die Texte in der Sprache der App, nicht des Systems (LanguageManager).
+        // The texts in the app's language, not the system's (LanguageManager).
         val ctx = LanguageManager.localizedContext(context)
         val titel = ctx.getString(R.string.widget_titel)
         val zeilen = zahlen?.let {
@@ -176,7 +176,7 @@ class SammlungsWidget : GlanceAppWidget() {
     }
 }
 
-/** Meldet das Widget an Android; mit dem ersten Widget beginnt die Aktualisierung. */
+/** Registers the widget with Android; updating begins with the first widget. */
 class SammlungsWidgetEmpfaenger : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = SammlungsWidget()
 

@@ -35,8 +35,8 @@ import ch.brickinventoryapp.contract.ManualPartsResponse
 import ch.brickinventoryapp.model.data.Ersatzteilwahl
 
 /**
- * Die Teileliste abfragen — für den Teile-Reiter und den Inhalt eines Sets;
- * deshalb erben Teile- und Sets-Bereich sie beide.
+ * Query the parts list — for the parts tab and the content of a set;
+ * hence the parts and sets areas both inherit it.
  */
 interface PartsQueryApi {
 
@@ -50,15 +50,15 @@ interface PartsQueryApi {
         @Query("set_number") setNumber: String? = null,
         @Query("exclude_manual") excludeManual: String? = null,
         @Query("accounts") accounts: String? = null,
-        // "0" = ohne Ersatzteile, "1" = nur Ersatzteile, null = alle.
-        // Dieselben drei Werte wie das Auswahlfeld der Webapp (parts-spare);
-        // der Server liest sie in utils/handlers/parts.ts.
+        // "0" = without spare parts, "1" = only spare parts, null = all.
+        // The same three values as the web app's select field (parts-spare);
+        // the server reads them in utils/handlers/parts.ts.
         @Query("spare") spare: String? = null,
-        // "1" holt zusaetzlich, in welchen Sets das Teil steckt. Kostet den
-        // Server eine eigene Abfrage — deshalb nur in der Tabellenansicht,
-        // genau wie in der Webapp (parts-view === 'table').
+        // "1" additionally fetches in which sets the part is. Costs the
+        // server its own query — hence only in the table view,
+        // just like in the web app (parts-view === 'table').
         @Query("with_sets") withSets: String? = null,
-        /** Lagerort — eigener Parameter, nicht Teil der Suche (siehe Server). */
+        /** Storage location — its own parameter, not part of the search (see server). */
         @Query("storage") storage: String? = null
     ): Response<PartsResponse>
 }
@@ -70,20 +70,20 @@ internal fun Ersatzteilwahl.asQuery(): String? = when (this) {
     Ersatzteilwahl.NUR -> "1"
 }
 
-/** `with_sets=1` oder kein Parameter. */
+/** `with_sets=1` or no parameter. */
 internal fun withSetsAsQuery(mitSets: Boolean): String? = if (mitSets) "1" else null
 
 /**
- * Einzelteile, Farben und Lagerorte (PartsRepository). Lagerorte stehen hier,
- * weil ihre Verwaltung im Teile-Reiter liegt; Sets und Figuren lesen sie nur.
+ * Single parts, colors and storage locations (PartsRepository). Storage locations stand here
+ * because their management lies in the parts tab; sets and figures only read them.
  */
 interface PartsApi : PartsQueryApi {
 
-    // ── In welchen Sets steckt dieses Teil / diese Figur? ──
+    // ── In which sets is this part / this figure? ──
     //
-    // Beide Adressen beantwortet dieselbe Funktion (verwendendeSets), deshalb ein
-    // Modell. `accounts` ist das Blickfeld wie sonst, damit der Dialog dasselbe sagt
-    // wie die Liste, aus der man kommt.
+    // The same function (verwendendeSets) answers both addresses, hence one
+    // model. `accounts` is the view as usual, so that the dialog says the same
+    // as the list one comes from.
     @GET("api/v1/parts/{partNumber}/{colorId}/sets")
     suspend fun getSetsWithPart(
         @Path("partNumber") partNumber: String,
@@ -100,24 +100,24 @@ interface PartsApi : PartsQueryApi {
     suspend fun getBrickColors(): Response<BrickColorsResponse>
 
     /**
-     * Die Filterliste Farbe — welche Farben im Bestand vorkommen, mit Anzahl. Nicht
-     * `brick-colors`: Das ist der ganze Farbkatalog für die Auswahl beim Erfassen.
+     * The color filter list — which colors occur in the stock, with count. Not
+     * `brick-colors`: that is the whole color catalog for the selection when adding.
      */
     @GET("api/v1/parts/colors")
     suspend fun getPartsFilterColors(
         @Query("accounts") accounts: String? = null
     ): Response<PartsFilterColorsResponse>
 
-    /** Die Filterliste Kategorie — dieselbe Quelle wie in der Webapp. */
+    /** The category filter list — the same source as in the web app. */
     @GET("api/v1/parts/categories")
     suspend fun getPartsCategories(
         @Query("accounts") accounts: String? = null
     ): Response<PartsCategoriesResponse>
 
     /**
-     * Die Farbe eines manuell erfassten Teils ändern: alte Farbe im Pfad (sie ist Teil
-     * der Kennung der Zeile), neue im Rumpf. `owner` ist der Besitzer der Karte, nicht
-     * der Betrachter — ohne ihn schriebe der Server in die Zeile des Aufrufers.
+     * Change the color of a manually added part: old color in the path (it is part
+     * of the row's identifier), new one in the body. `owner` is the owner of the card, not
+     * the viewer — without it the server would write into the caller's row.
      */
     @PUT("api/v1/parts/{partNumber}/{colorId}/color")
     suspend fun setPartColor(
@@ -127,11 +127,11 @@ interface PartsApi : PartsQueryApi {
         @Query("owner") owner: Int? = null,
     ): Response<TeilFarbeResponse>
 
-    // ── Lagerort ────────────────────────────────────────────────────────────
+    // ── Storage location ────────────────────────────────────────────────────
     //
-    // Setzen trifft ALLE Zeilen des Teil-Farb-Paares bzw. des Sets im
-    // Schreibbereich: Dasselbe Teil steckt in mehreren Sets, und wer „Kiste 3"
-    // eintraegt, meint das Teil, nicht eine seiner Zeilen.
+    // Setting hits ALL rows of the part-color pair or of the set in the
+    // write scope: the same part is in several sets, and whoever enters „Kiste 3"
+    // means the part, not one of its rows.
 
     @PUT("api/v1/parts/{partNumber}/{colorId}/storage")
     suspend fun setPartStorage(
@@ -140,11 +140,11 @@ interface PartsApi : PartsQueryApi {
         @Body request: LagerortRequest,
     ): Response<LagerortResponse>
 
-    // ── Der Vorrat an Lagerorten ──
+    // ── The supply of storage locations ──
     //
-    // Getrennt von getLocations(): Dort steht, was belegt ist (Filter), hier, was zur
-    // Wahl steht — ein neuer Ort ist wählbar und leer. `owner`: wessen Liste, beim Set
-    // des Enkels die seine.
+    // Separate from getLocations(): there stands what is occupied (filter), here what is
+    // available for choice — a new location is selectable and empty. `owner`: whose list, for the set
+    // of the grandchild theirs.
 
     @GET("api/v1/storage/locations")
     suspend fun getLocationStock(
@@ -167,16 +167,16 @@ interface PartsApi : PartsQueryApi {
         @Path("id") id: Int,
     ): Response<LagerortResponse>
 
-    // Der Stern: der Lagerort, der beim Erfassen schon vorausgewählt ist.
-    // EIN Endpunkt fuer setzen und abschalten (id = null), weil es eine
-    // Einstellung mit genau einem Wert ist. Gelesen wird sie nicht hier,
-    // sondern als Feld `vorgabe` der Vorratsantwort darueber.
+    // The star: the storage location that is already preselected when adding.
+    // ONE endpoint for setting and switching off (id = null), because it is a
+    // setting with exactly one value. It is not read here,
+    // but as the field `vorgabe` of the supply response above.
     @PUT("api/v1/storage/default")
     suspend fun setLocationDefault(
         @Body request: LagerortVorgabeRequest,
     ): Response<LagerortVorgabeResponse>
 
-    /** Welche Lagerorte es gibt und was darin liegt — Sets UND Teile. */
+    /** Which storage locations exist and what lies in them — sets AND parts. */
     @GET("api/v1/storage")
     suspend fun getLocations(
         @Query("accounts") accounts: String? = null,
@@ -208,16 +208,16 @@ interface PartsApi : PartsQueryApi {
     suspend fun deletePart(
         @Path("partNumber") partNumber: String,
         @Path("colorId") colorId: Int,
-        // Wessen Karte gemeint war. null = eigenes Konto (Verhalten wie
-        // bisher); ob ein fremdes erlaubt ist, entscheidet der Server.
+        // Whose card was meant. null = own account (behavior as
+        // before); whether a foreign one is allowed is decided by the server.
         @Query("owner") owner: Int? = null,
         @Header("Idempotency-Key") schluessel: String? = null,
     ): Response<GenericResponse>
 
     /**
-     * Die manuell erfassten Teile, mit Suchtext und Lagerort: Der Bildschirm hat ein
-     * Suchfeld über manuellen und Set-Teilen, und beide sollen ihm folgen. Gefiltert
-     * wird am Server (utils/handlers/parts.ts); ohne Parameter kommt alles.
+     * The manually added parts, with search text and storage location: the screen has a
+     * search field over manual and set parts, and both should follow it. Filtering
+     * happens on the server (utils/handlers/parts.ts); without parameters everything comes.
      */
     @GET("api/v1/parts/manual")
     suspend fun getManualParts(

@@ -23,14 +23,14 @@ import ch.brickinventoryapp.model.json.BrickJson
 import ch.brickinventoryapp.testing.testAccountRepository
 
 /**
- * Abmelden entwertet den Token am Server (POST /auth/logout mit dem Token), und
- * zwar begrenzt: Ein schweigender oder fehlender Server hält das Abmelden nicht auf.
+ * Signing out invalidates the token at the server (POST /auth/logout with the token), and
+ * in a bounded way: a silent or missing server does not hold up the sign-out.
  *
- * Gegenproben:
- *   A  withTimeoutOrNull entfernt → rot „ein schweigender Server haelt das
- *      Abmelden nicht auf“ (erst die Lesegrenze des Clients nach 2 s)
- *   B  der catch-Zweig für Exception entfernt → rot „ein fehlender Server …“
- *      (ConnectException fliegt durch)
+ * Counter-checks:
+ *   A  withTimeoutOrNull removed → red “a silent server does not hold up the
+ *      sign-out” (only the client's read limit after 2 s)
+ *   B  the catch branch for Exception removed → red “a missing server …”
+ *      (ConnectException flies through)
  */
 class SignOutAtServerTest {
 

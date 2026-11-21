@@ -17,18 +17,18 @@ import java.util.Collections
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Was die App ins Logcat schreibt: im Release nichts, im Debug-Build weder Token
- * noch Rümpfe, und ausser der Hülle network/util/Protokoll.kt schreibt niemand.
+ * What the app writes to logcat: in release nothing, in the debug build neither token
+ * nor bodies, and apart from the wrapper network/util/Protokoll.kt nobody writes.
  *
- * Gegenproben:
- *   A  in Protokoll.warnung() `if (aktiv)` entfernt → rot „im Release-Build
- *      schreibt die Hülle nichts“
- *   B  networkRecording() mit Level.BODY → rot „der Netzmitschnitt nennt weder
- *      Token noch Rumpf“ (Passwort und Antwortrumpf im Mitschnitt)
- *   C  redactHeader("Authorization") entfernt → rot „… auch mit hochgedrehter
- *      Stufe“ (Bearer-Token im Mitschnitt)
- *   D  in ComparisonScreen.kt wieder `Log.d(…)` eingefügt → rot „ausser der
- *      Hülle schreibt kein Code ins Logcat“
+ * Counter-checks:
+ *   A  in Protokoll.warnung() `if (aktiv)` removed → red “in the release build
+ *      the wrapper writes nothing”
+ *   B  networkRecording() with Level.BODY → red “the network log names neither
+ *      token nor body” (password and response body in the log)
+ *   C  redactHeader("Authorization") removed → red “… even with a raised
+ *      level” (bearer token in the log)
+ *   D  in ComparisonScreen.kt `Log.d(…)` inserted again → red “apart from the
+ *      wrapper no code writes to logcat”
  */
 class LogTest {
 
@@ -87,7 +87,7 @@ class LogTest {
         assertTrue(zeilen.toString(), zeilen.none { "geheim" in it })
     }
 
-    /** Struktur: rohes Logcat, println und printStackTrace gibt es nur in der Hülle. */
+    /** Structure: raw logcat, println and printStackTrace exist only in the wrapper. */
     @Test
     fun `apart from the wrapper no code writes to logcat`() {
         val roh = Regex("""\bandroid\.util\.Log\b|(?<![\w.])Log\.(v|d|i|w|e|wtf|println)\(|\bprintln\(|printStackTrace\(|System\.(out|err)\b""")

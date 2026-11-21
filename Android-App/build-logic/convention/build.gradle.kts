@@ -1,9 +1,9 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-// java-gradle-plugin mit dem Kotlin des Katalogs statt `kotlin-dsl`: kotlin-dsl
-// brächte org.gradle.kotlin und einen zweiten Kotlin-Satz in der eingebetteten
-// Fassung mit, die verification-metadata.xml nicht kennt. So löst dieser Bau
-// nur auf, was die App ohnehin auflöst.
+// java-gradle-plugin with the catalog's Kotlin instead of `kotlin-dsl`: kotlin-dsl
+// would bring org.gradle.kotlin and a second Kotlin set in the embedded
+// version, which verification-metadata.xml does not know. That way this build only
+// resolves what the app resolves anyway.
 plugins {
     `java-gradle-plugin`
     alias(libs.plugins.kotlin.jvm)
@@ -20,10 +20,10 @@ kotlin {
     }
 }
 
-// Nur zum Übersetzen: Zur Laufzeit liefert die App AGP und Kotlin über die
-// Plugins ihres Wurzelskripts, sonst lägen zwei Fassungen im Klassenpfad. Die
-// Koordinaten stehen hier statt unter [libraries], weil Lint den Katalog prüft
-// und die App-Module diese Artefakte nie benutzen; die Fassung bleibt die des Katalogs.
+// Only for compiling: at runtime the app supplies AGP and Kotlin via the
+// plugins of its root script, otherwise two versions would lie on the classpath. The
+// coordinates stand here instead of under [libraries] because Lint checks the catalog
+// and the app modules never use these artifacts; the version stays the catalog's.
 dependencies {
     compileOnly("com.android.tools.build:gradle-api:${libs.versions.agp.get()}")
     compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin:${libs.versions.kotlin.get()}")

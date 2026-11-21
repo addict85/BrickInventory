@@ -1,10 +1,10 @@
-// Die Konventions-Plugins der Module (brickinventory.android.*). Ein eigener
-// Bau, eingebunden über pluginManagement der App; er liest denselben
-// Versionskatalog, damit AGP und Kotlin nur dort eine Nummer haben.
+// The convention plugins of the modules (brickinventory.android.*). A separate
+// build, included via the app's pluginManagement; it reads the same
+// version catalog so that AGP and Kotlin have a number only there.
 pluginManagement {
     repositories {
-        // Googles Android-Gruppen nur von Google: Ein gleichnamiges Paket aus mavenCentral
-        // oder dem Plugin-Portal würde gar nicht erst angefragt.
+        // Google's Android groups only from Google: a package of the same name from mavenCentral
+        // or the plugin portal would not even be requested.
         exclusiveContent {
             forRepository { google() }
             filter { includeGroupByRegex("androidx\\..*"); includeGroupByRegex("com\\.android(\\..*)?"); includeGroupByRegex("com\\.google\\.android\\..*") }
@@ -18,8 +18,8 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        // Googles Android-Gruppen nur von Google: Ein gleichnamiges Paket aus mavenCentral
-        // oder dem Plugin-Portal würde gar nicht erst angefragt.
+        // Google's Android groups only from Google: a package of the same name from mavenCentral
+        // or the plugin portal would not even be requested.
         exclusiveContent {
             forRepository { google() }
             filter { includeGroupByRegex("androidx\\..*"); includeGroupByRegex("com\\.android(\\..*)?"); includeGroupByRegex("com\\.google\\.android\\..*") }

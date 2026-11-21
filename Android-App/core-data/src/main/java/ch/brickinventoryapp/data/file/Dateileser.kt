@@ -23,8 +23,8 @@ internal class AppFileReader @Inject constructor(
     override suspend fun lies(datei: FileRef): Pair<String?, ByteArray>? =
         (readAtMost(datei, FILE_AT_MOST) as? Gelesen.Inhalt)?.let { it.typ to it.bytes }
 
-    // Die Grösse, die der Anbieter nennt, zuerst; sie kann fehlen oder lügen, darum liest
-    // readLimited() ohnehin nur bis zur Grenze.
+    // The size the provider names first; it can be missing or lie, which is why
+    // readLimited() reads only up to the limit anyway.
     override suspend fun readAtMost(datei: FileRef, grenze: Long): Gelesen? = withContext(io) {
         val uri = datei.wert.toUri()
         runCatching {
@@ -52,10 +52,10 @@ internal class AppFileReader @Inject constructor(
     }
 }
 
-/** Die grösste Datei, die ein Upload der App annimmt (Anleitungen); mehr liest [AppFileReader.lies] nie. */
+/** The largest file an upload of the app accepts (instructions); [AppFileReader.lies] never reads more. */
 internal const val FILE_AT_MOST = 50L * 1024 * 1024
 
-/** Bis [grenze] Bytes und eines mehr zur Probe; null, wenn der Strom länger ist. Der Rest bleibt ungelesen. */
+/** Up to [grenze] bytes and one more as a probe; null if the stream is longer. The rest stays unread. */
 internal fun readLimited(ein: InputStream, grenze: Long): ByteArray? {
     val aus = ByteArrayOutputStream()
     val puffer = ByteArray(64 * 1024)

@@ -14,18 +14,18 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Exportierte Komponenten aus Bibliotheken, die die App nicht braucht, stehen nicht
- * im zusammengeführten Manifest. Gelesen über den PackageManager, der nur im Modul
- * app das Manifest der ganzen App kennt; in einem feature-Modul sähe er nur dessen
- * eigenes.
+ * Exported components from libraries the app does not need are not in
+ * the merged manifest. Read via the PackageManager, which only in the module
+ * app knows the manifest of the whole app; in a feature module it would only see its
+ * own.
  *
- * Gegenproben (Robolectric, misst die CI; Job `gegenproben`):
- *   widerrufsdienst-exportiert  tools:node="remove" am RevocationBoundService entfernt →
- *                               rot „Google-Sign-in …“
- *   profilempfaenger-exportiert tools:node="remove" am ProfileInstallReceiver entfernt →
- *                               rot „der Profileinstaller …“
- *   pdf-renderer-im-app-prozess isolatedProcess am PdfRenderDienst entfernt → rot
- *                               „der PDF-Renderer läuft isoliert …“
+ * Counter-checks (Robolectric, measured by CI; job `gegenproben`):
+ *   widerrufsdienst-exportiert  tools:node="remove" removed from RevocationBoundService →
+ *                               red “the revocation service of Google sign-in …”
+ *   profilempfaenger-exportiert tools:node="remove" removed from ProfileInstallReceiver →
+ *                               red “the profile installer …”
+ *   pdf-renderer-im-app-prozess isolatedProcess removed from PdfRenderDienst → red
+ *                               “the PDF renderer runs isolated …”
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -52,7 +52,7 @@ class LibraryComponentsTest {
 
     @Test
     fun `the check sees the manifest at all`() {
-        // Sonst wären beide Tests oben grün, weil der PackageManager gar nichts kennt.
+        // Otherwise both tests above would be green because the PackageManager knows nothing at all.
         val info = ctx.packageManager.getReceiverInfo(
             ComponentName(ctx.packageName, "ch.brickinventoryapp.app.widget.SammlungsWidgetEmpfaenger"), 0)
         assertTrue(info.exported)
@@ -67,7 +67,7 @@ class LibraryComponentsTest {
     }
 
     private companion object {
-        // Die Klasse ist internal in feature-finances; das Manifest nennt sie beim Namen.
+        // The class is internal in feature-finances; the manifest names it by name.
         const val PDF_SERVICE = "ch.brickinventoryapp.finances.ui.pdf.PdfRenderDienst"
     }
 }

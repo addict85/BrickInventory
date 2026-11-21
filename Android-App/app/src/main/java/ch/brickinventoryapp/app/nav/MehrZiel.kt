@@ -10,14 +10,14 @@ import ch.brickinventoryapp.app.openOfMore
 import ch.brickinventoryapp.resources.R
 import kotlinx.serialization.Serializable
 
-/** Die Ziele, die keinem Bereich gehören. */
+/** The destinations that belong to no area. */
 @Serializable
 internal sealed interface AppTarget {
-    /** Alles, was kein Bestandsreiter ist — das fünfte Ziel der unteren Leiste. */
+    /** Everything that is not an inventory tab — the fifth destination of the bottom bar. */
     @Serializable data object Mehr : AppTarget
 }
 
-/** „Mehr“ gehört keinem Bereich: Es führt zu allen, die nicht in der unteren Leiste stehen. */
+/** “More” belongs to no area: it leads to all that are not in the bottom bar. */
 internal fun NavGraphBuilder.moreTarget(u: TargetEnvironment) {
     val navController = u.navController
     composable<AppTarget.Mehr> {

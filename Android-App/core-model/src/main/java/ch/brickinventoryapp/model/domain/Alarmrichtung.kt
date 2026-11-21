@@ -12,8 +12,8 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 
 /**
- * Wann ein Preisalarm meldet. Auf der Leitung "unter" oder "ueber" ([kennung]); im
- * Code der Typ, damit kein Vergleich mit einem Wort die Regel nachbaut.
+ * When a price alert reports. On the wire "unter" or "ueber" ([kennung]); in
+ * code the type, so that no comparison with a word rebuilds the rule.
  */
 @Serializable(with = AlarmrichtungSerializer::class)
 enum class Alarmrichtung(val kennung: String) {
@@ -26,8 +26,8 @@ enum class Alarmrichtung(val kennung: String) {
 }
 
 /**
- * Schreibt die [Alarmrichtung.kennung]. Unbekanntes liest sich als [Alarmrichtung.UNTER],
- * der Vorgabe des Servers: Ein neuer Wert soll nicht die ganze Liste verwerfen.
+ * Writes the [Alarmrichtung.kennung]. Unknown reads as [Alarmrichtung.UNTER],
+ * the server's default: a new value shall not discard the whole list.
  */
 @OptIn(InternalSerializationApi::class, ExperimentalSerializationApi::class)
 object AlarmrichtungSerializer : KSerializer<Alarmrichtung> {

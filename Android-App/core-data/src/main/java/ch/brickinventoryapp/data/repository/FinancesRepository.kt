@@ -11,9 +11,9 @@ import ch.brickinventoryapp.model.domain.ValueHistoryView
 
 import ch.brickinventoryapp.model.domain.Kontoauswahl
 /**
- * Preise, Bewertung, Verlauf und Gewinn/Verlust.
- * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit
- * Retrofit und Ablage hängen (FinanzenRepositoryImpl).
+ * Prices, valuation, history and profit/loss.
+ * An interface so that ViewModels and tests do not depend on the implementation with
+ * Retrofit and store (FinanzenRepositoryImpl).
  */
 interface FinancesRepository {
     suspend fun getSetPrice(setNumber: String): Ergebnis<SetPriceView>

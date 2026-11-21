@@ -8,14 +8,14 @@ import java.io.ByteArrayOutputStream
 import ch.brickinventoryapp.data.DownloadFailed
 import java.io.IOException
 
-/** Obergrenze eines PDFs, das nur im Speicher liegen darf; ein Gutschein-Export hat wenige hundert kB. */
+/** Upper limit of a PDF that may only lie in memory; a voucher export has a few hundred kB. */
 internal const val PDF_STORAGE_MAX_BYTES: Long = 32L * 1024 * 1024
 
 /**
- * Lädt ein vertrauliches PDF (Gutscheine: Nummer und PIN) ganz in den Speicher, ohne
- * Teildatei: Was nie auf der Platte lag, bleibt auch nach einem Absturz nicht liegen.
- * Mit Obergrenze, weil eine Antwort ohne Ende sonst den Speicher füllte. Blockiert:
- * im Hintergrund aufrufen.
+ * Loads a confidential PDF (vouchers: number and PIN) completely into memory, without
+ * a partial file: what never lay on disk does not stay behind after a crash either.
+ * With an upper limit because a response without end would otherwise fill memory. Blocking:
+ * call in the background.
  */
 suspend fun ladePdfInDenSpeicher(
     client: OkHttpClient,
@@ -31,7 +31,7 @@ suspend fun ladePdfInDenSpeicher(
         antwort.body.byteStream().use { ein ->
             val stueck = ByteArray(64 * 1024)
             while (true) {
-                // Verlassen bricht ab, statt eine PIN weiter in den Speicher zu holen.
+                // Leaving cancels instead of fetching a PIN further into memory.
                 currentCoroutineContext().ensureActive()
                 val n = ein.read(stueck)
                 if (n < 0) break

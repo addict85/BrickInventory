@@ -54,25 +54,25 @@ import ch.brickinventoryapp.network.util.NetworkPolicy
 import ch.brickinventoryapp.network.util.Protokoll
 
 /**
- * Anmeldung und das eigene Konto: Profil, Passwort, zweiter Faktor, Geräte, Design und Einstellungen — über Retrofit; die gemeinsame Abruflogik steht in Abruf.kt.
+ * Sign-in and the own account: profile, password, second factor, devices, design and settings — via Retrofit; the common fetch logic stands in Abruf.kt.
  */
 @Singleton
 class KontoRepositoryImpl @Inject constructor(
     private val api: AccountApi,
-    /** Für den blockierenden Tausch. */
+    /** For the blocking swap. */
     @param:Dispatcher(BrickDispatchers.IO) private val io: CoroutineDispatcher,
     private val json: Json = BrickJson,
 ) : AccountRepository {
 
-    // Kein Authorization-Header hier: Der OkHttp-Interceptor in di/ServerClient.kt
-    // setzt "Bearer <token>" für alle Anfragen an unseren Server (aus dem
-    // Speicher-Spiegel der TokenAblage), auch für die SSE-Ströme.
+    // No Authorization header here: the OkHttp interceptor in di/ServerClient.kt
+    // sets "Bearer <token>" for all requests to our server (from the
+    // in-memory mirror of the TokenAblage), also for the SSE streams.
 
     /**
-     * Verlangt der Server den zweiten Faktor, antwortet er mit 401 und
-     * `zweiter_faktor: true`. Das wird hier zu einer gewöhnlichen Antwort mit
-     * success=false umgebogen (wie VouchersRepository.guthaben), sonst gingen
-     * Kennzeichen und Satz in sicherAufrufen verloren. [passkey] ersetzt den Code.
+     * If the server requires the second factor, it answers with 401 and
+     * `zweiter_faktor: true`. That is bent here into an ordinary response with
+     * success=false (like VouchersRepository.guthaben), otherwise
+     * flag and sentence would be lost in sicherAufrufen. [passkey] replaces the code.
      */
     override suspend fun login(serverUrl: String, username: String, password: String, code: String?,
                       scope: String, passkey: JsonObject?): Ergebnis<Anmeldeantwort> {
@@ -95,11 +95,11 @@ class KontoRepositoryImpl @Inject constructor(
         }
     }
 
-    /** Die Optionen für den Credential Manager; [zweck] wie PASSKEY_SIGN_IN. */
+    /** The options for the Credential Manager; [zweck] like PASSKEY_SIGN_IN. */
     override suspend fun passkeyOptions(zweck: String): Ergebnis<JsonObject> =
         sicherAufrufen { api.passkeyOptions(PasskeyOptionenAnfrage(zweck = zweck)) }.shown { it.optionen }
 
-    /** Ohne Passwort; derselbe Token wie bei [login], mit denselben Regeln für den Ablauf. */
+    /** Without a password; the same token as with [login], with the same rules for expiry. */
     override suspend fun signInPasskey(serverUrl: String, antwort: JsonObject, scope: String): Ergebnis<Anmeldung> =
         sicherAufrufen { api.signInPasskey(PasskeyAnmeldungAnfrage(antwort = antwort, scope = scope,
             neverExpires = NetworkPolicy.istHttps(serverUrl))) }.shown { it.asLogin() }
@@ -123,7 +123,7 @@ class KontoRepositoryImpl @Inject constructor(
         r.user?.let { AccountOwner(it.id, it.username, it.isAdmin, it.zweiterFaktorPflicht) }
     }
 
-    // Konto anlegen und Passwort vergessen — beides ohne bestehende Anmeldung.
+    // Create account and forgot password — both without an existing sign-in.
     override suspend fun getRegistrationStatus(): Ergebnis<Registrierungsstand> =
         sicherAufrufen { api.getRegistrationStatus() }.shown {
             Registrierungsstand(it.enabled, it.passkey, it.passwortVergessen, it.mailVersand)
@@ -177,9 +177,9 @@ class KontoRepositoryImpl @Inject constructor(
             .shown { it.zugaenge }
 
     /**
-     * Den Token tauschen; [alterToken] geht ausdrücklich mit (siehe data/TokenSwap).
-     * Synchron auf einem IO-Faden, am Dispatcher von OkHttp vorbei (AccountApi.rotateToken).
-     * Die Herkunft kommt aus der Anfrage, die tatsächlich ging: Nur an sie ist der neue Token gebunden.
+     * Swap the token; [alterToken] explicitly goes along (see data/TokenSwap).
+     * Synchronous on an IO thread, bypassing OkHttp's dispatcher (AccountApi.rotateToken).
+     * The origin comes from the request that actually went: the new token is bound only to it.
      */
     override suspend fun rotateToken(alterToken: String): Ergebnis<SwappedToken> {
         var herkunft: String? = null
@@ -194,14 +194,14 @@ class KontoRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Den Token am Server entwerten, bevor er lokal verschwindet — sonst bliebe er
-     * gültig, bis er verfällt. Höchstens [limitMs]: Abmelden darf nicht am Netz
-     * hängen. Was dann noch offen ist, holt data/Abmeldung nach.
+     * Invalidate the token at the server before it disappears locally — otherwise it would stay
+     * valid until it expires. At most [limitMs]: sign-out must not depend on the
+     * network. What is then still open is caught up by data/Abmeldung.
      */
     override suspend fun signOutAtServer(limitMs: Long): Boolean =
         redeemAtServer(limitMs) == Entwertungsergebnis.ENTWERTET
 
-    /** Wie [signOutAtServer], aber mit dem Grund: Nur LATER lohnt eine Wiederholung. */
+    /** Like [signOutAtServer], but with the reason: only LATER makes a retry worthwhile. */
     override suspend fun redeemAtServer(limitMs: Long): Entwertungsergebnis = fangeAusserAbbruch {
         kotlinx.coroutines.withTimeoutOrNull(limitMs) { classifyRedemption(api.logout().code()) }
             ?: Entwertungsergebnis.LATER.also {
@@ -218,11 +218,11 @@ class KontoRepositoryImpl @Inject constructor(
             AccountSettings(e.currency, e.priceCondition, e.defaultPriceCondition, e.effectiveCondition)
         }
 
-    /** Das wirksame Design: mit Token das des Kontos, sonst die Vorgabe. Siehe AccountApi.getAppTheme. */
+    /** The effective design: with a token the account's, otherwise the default. See AccountApi.getAppTheme. */
     override suspend fun getAppTheme(): Ergebnis<Designstand> =
         sicherAufrufen { api.getAppTheme() }.promised({ it.success }) { Designstand(it.theme, it.vorgabe, it.eigenes) }
 
-    /** Eigenes Design setzen; null stellt auf die Vorgabe des Verwalters zurück ("" auf der Leitung). */
+    /** Set the own design; null resets to the admin's default ("" on the wire). */
     override suspend fun setOwnDesign(theme: Design?): Ergebnis<Designstand> =
         sicherAufrufen { api.setOwnDesign(mapOf("theme" to (theme?.kennung ?: ""))) }
             .promised({ it.success }) { Designstand(it.theme, it.vorgabe, it.eigenes) }
@@ -237,8 +237,8 @@ class KontoRepositoryImpl @Inject constructor(
         sicherAufrufen { api.setUserDefaultCondition(mapOf("condition" to condition?.kennung.orEmpty())) }.promised({ it.success }) { }
 }
 
-/** Die Antwort auf [AccountRepository.login]; [passkeyStattCode], wenn der Server beim
- * zweiten Faktor auch einen Passkey nimmt. */
+/** The response to [AccountRepository.login]; [passkeyStattCode] if the server also
+ * takes a passkey for the second factor. */
 data class Anmeldeantwort(val antwort: Anmeldung, val passkeyStattCode: Boolean = false)
 
 private fun LoginResponse.asLogin() =
@@ -247,6 +247,6 @@ private fun LoginResponse.asLogin() =
 
 private fun Confirmation.asRequest() = ZweiterFaktorAnfrage(password = passwort, code = code)
 
-/** Aus der 401-Antwort auf den zweiten Faktor: Geht statt des Codes ein Passkey? Steht nicht im Vertrag (Fehler trägt Zusatzfelder frei). */
+/** From the 401 response to the second factor: does a passkey work instead of the code? Not in the contract (the error carries extra fields freely). */
 @Serializable
 private data class SecondFactorRoutes(val passkey: Boolean = false)

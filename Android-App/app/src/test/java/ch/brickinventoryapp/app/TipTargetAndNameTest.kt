@@ -59,15 +59,15 @@ import java.lang.reflect.Proxy
 import java.util.Locale
 
 /**
- * Barrierefreiheit der Hauptbildschirme mit Beispieldaten: Jedes antippbare Element hat
- * ein Tippziel von mindestens 48 × 48 dp (Layout oder Tippfläche) und trägt einen Namen
- * (Text, Beschreibung oder Feld); eine Rolle allein sagt nur „Schaltfläche“, nicht welche.
- * Ersetzt die Quelltextsuche nach kleinen IconButtons (TouchTargetSizeTest).
+ * Accessibility of the main screens with sample data: every tappable element has
+ * a tap target of at least 48 × 48 dp (layout or tap area) and carries a name
+ * (text, description or field); a role alone only says „Schaltfläche“, not which one.
+ * Replaces the source search for small IconButtons (TouchTargetSizeTest).
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   tippziel-klein         „Nach Update suchen“ ohne heightIn, Material-Knopf 40 dp → rot „einstellungen“
- *                          (eine 40-dp-Zeile ohne eigene Form blieb grün: touchBoundsInRoot dehnt sie auf 48 dp)
- *   tippziel-ohne-namen    Erfassen-Knopf ohne Beschreibung → rot „galerie“ (ohne Namen)
+ * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ *   tippziel-klein         „Nach Update suchen“ without heightIn, Material button 40 dp → red “einstellungen”
+ *                          (a 40 dp row without its own shape stayed green: touchBoundsInRoot stretches it to 48 dp)
+ *   tippziel-ohne-namen    add button without description → red “galerie” (without name)
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -90,11 +90,11 @@ class TipTargetAndNameTest {
         world.close()
     }
 
-    /** Eine Schnittstelle, deren Aufrufe nichts tun; nur Rückgaben ohne Wert werden gebraucht. */
+    /** An interface whose calls do nothing; only returns without a value are needed. */
     private inline fun <reified T> keine(): T =
         Proxy.newProxyInstance(T::class.java.classLoader, arrayOf(T::class.java)) { _, _, _ -> null } as T
 
-    /** Zeigt [inhalt], sobald [bereit] gilt, und prüft jedes antippbare Element. */
+    /** Shows [inhalt] as soon as [bereit] holds, and checks every tappable element. */
     private fun pruefe(name: String, bereit: () -> Boolean = { true }, inhalt: @Composable () -> Unit) {
         driveUntil(name, requests = { world.paths.requests.size }, bereit = bereit)
         compose.setContent {

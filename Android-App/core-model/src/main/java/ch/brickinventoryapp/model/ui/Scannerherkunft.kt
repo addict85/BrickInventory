@@ -3,21 +3,21 @@ package ch.brickinventoryapp.model.ui
 import kotlinx.serialization.Serializable
 
 /**
- * Von wo der Scanner geöffnet wurde; das entscheidet, was ein Treffer auslöst. Sie
- * reist als Feld der Route mit: Ein Text, der vorher in einem ViewModel gesetzt
- * wurde, galt auch noch beim nächsten Scan von anderswo.
+ * From where the scanner was opened; that decides what a hit triggers. It
+ * travels along as a field of the route: a text that was set in a ViewModel before
+ * also still applied at the next scan from elsewhere.
  */
 @Serializable
 enum class Scannerherkunft {
-    /** Erfassen aus der Galerie: Treffer gehen in den Bestätigungsdialog. */
+    /** Adding from the gallery: hits go into the confirmation dialog. */
     GALERIE,
 
-    /** Suche aus der Galerie: Ein vorhandenes Set wird geöffnet statt erfasst. */
+    /** Search from the gallery: an existing set is opened instead of added. */
     GALERIE_SUCHE,
 
-    /** Die Teileliste übernimmt nur die Nummer, angelegt wird nichts. */
+    /** The parts list takes over only the number, nothing is created. */
     TEILELISTE,
 
-    /** Ein Treffer wird zum Merkposten. */
+    /** A hit becomes a wishlist item. */
     MERKLISTE,
 }

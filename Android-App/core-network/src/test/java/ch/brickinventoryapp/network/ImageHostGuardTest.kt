@@ -19,22 +19,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The image client only loads from our own server; a foreign host — a image
+ * The image client only loads from our own server; a foreign host — an image
  * CDN included — is never requested, not even via a redirect: images come
  * through the server's proxy, a direct path would give third parties the device's IP.
  *
- * Gegenproben:
- *   A  in vorbereitet(), let every request through → red "ein fremder Host wird
- *      nicht angefragt" and "eine Umleitung zu einem fremden Host …"
+ * Counter-checks:
+ *   A  in vorbereitet(), let every request through → red “a foreign host is
+ *      not requested” and “a redirect to a foreign host …”
  *   C  the CDN allowance built back in
- *      (gegenproben/bild-cdn-wieder-frei.patch) → red "auch ein Bild-CDN …"
- *   D  removed the `ownServer(r.url) -> r` branch → red "der eigene Server
- *      bekommt die Anfrage unveraendert" and both redirect tests
- *   E  isOwnImageServer() without `entwicklung &&` → red "localhost gilt nur
- *      im Debug-Build als eigener Server" (200 instead of 403)
+ *      (gegenproben/bild-cdn-wieder-frei.patch) → red “an image CDN …”
+ *   D  removed the `ownServer(r.url) -> r` branch → red “the own server
+ *      gets the request unchanged” and both redirect tests
+ *   E  isOwnImageServer() without `entwicklung &&` → red “localhost counts as own server
+ *      only in the debug build” (200 instead of 403)
  *   F  in intercept(), nextRedirect called without basePath() (the state before
- *      the same host used to be enough) → red "eine Umleitung aus dem Basispfad
- *      heraus geht ohne Token"; gegenproben/bild-umleitung-verlaesst-basispfad.patch
+ *      the same host used to be enough) → red “a redirect out of the base path
+ *      goes without a token”; gegenproben/bild-umleitung-verlaesst-basispfad.patch
  */
 class ImageHostGuardTest {
 
@@ -105,7 +105,7 @@ class ImageHostGuardTest {
         assertTrue(gesehen.isEmpty())
     }
 
-    /** Der Server liegt hinter einem Proxy unter [basis]; derselbe Host trägt andere Anwendungen. */
+    /** The server lies behind a proxy under [basis]; the same host carries other applications. */
     private fun withBase(basis: String) = OkHttpClient.Builder()
         .addInterceptor(ImageHostGuard(
             ownServer = { it.host == server.hostName && it.port == server.port },

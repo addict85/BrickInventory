@@ -2,7 +2,7 @@ package ch.brickinventoryapp.model.domain
 
 import java.time.Instant
 
-// Bewertung, Gewinn und Kennzahlen; Beträge kommen fertig vom Server.
+// Valuation, profit and key figures; amounts come ready from the server.
 
 data class MetricsView(
     val totalSets: Int,
@@ -94,7 +94,7 @@ data class ValuationSetView(
     val noPrice: Boolean = false,
     val acquisitions: List<ValuationPurchaseView> = emptyList(),
     val mixed: Boolean = false,
-    /** Warum zu diesem Set kein Preis da ist; null, wenn es einen gibt. */
+    /** Why there is no price for this set; null if there is one. */
     val error: String? = null,
 )
 

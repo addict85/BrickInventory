@@ -16,16 +16,16 @@ import retrofit2.Response
 import ch.brickinventoryapp.network.util.PlaintextRejected
 
 /*
- * Was die Repositories gemeinsam brauchen, als Funktionen statt als Basisklasse:
- * Ein Repository bekommt die Ablage nur, wenn es einen Offline-Bestand hat. Eine
- * Vorgabe im Konstruktor gäbe den übrigen still eine Ablage, deren Ausgang nie
- * gesendet wird.
+ * What the repositories need in common, as functions instead of a base class:
+ * a repository gets the store only if it has an offline stock. A
+ * default in the constructor would silently give the others a store whose outbox is never
+ * sent.
  */
 
 /**
- * Eine Liste vom Server holen und in die lokale Ablage übernehmen; ist der
- * Server nicht erreichbar, kommt sie aus der Ablage, samt Stand. Ersetzt den
- * JSON-Plattenspeicher für alles, was offline bearbeitet werden kann.
+ * Fetch a list from the server and take it over into the local store; if the
+ * server is unreachable, it comes from the store, including its state. Replaces the
+ * JSON disk cache for everything that can be edited offline.
  */
 internal suspend fun <R, T : Any> Offlineablage.reconciled(
     fach: Fach<T>,
@@ -38,7 +38,7 @@ internal suspend fun <R, T : Any> Offlineablage.reconciled(
     val bereich = bereich()?.takeIf { it == vorher } ?: return frisch
     if (frisch is Ergebnis.Erfolg) {
         adopt(fach, liste(frisch.data), bereich)
-        // Wartet noch etwas im Ausgang, liegt es lokal schon über der Serverantwort.
+        // If something is still waiting in the outbox, it already lies above the server response locally.
         if (!wartet(fach.art)) return frisch
         return Ergebnis.Erfolg(fromLocal(lies(fach)?.liste.orEmpty()))
     }
@@ -49,9 +49,9 @@ internal suspend fun <R, T : Any> Offlineablage.reconciled(
 }
 
 /**
- * Eine blätternde Liste ganz in die Ablage holen, Seite für Seite; gezeigt wird die
- * Ablage. Geschrieben wird erst nach der letzten Seite, sonst schrumpfte die Liste
- * zwischendurch auf Seite 1; wechselt dabei das Konto, wird nichts abgelegt.
+ * Fetch a paging list completely into the store, page by page; the store
+ * is shown. Writing happens only after the last page, otherwise the list would shrink
+ * to page 1 in between; if the account changes meanwhile, nothing is stored.
  */
 internal suspend fun <R, T : Any> Offlineablage.refreshPaged(
     fach: Fach<T>,
@@ -67,7 +67,7 @@ internal suspend fun <R, T : Any> Offlineablage.refreshPaged(
     return Ergebnis.Erfolg(Unit)
 }
 
-/** Alle Seiten einer blätternden Antwort, jede mit der [retry]; doppelte Schlüssel gewinnt die spätere. */
+/** All pages of a paging response, each with the [retry]; for duplicate keys the later one wins. */
 internal suspend fun <R, T> allPages(
     liste: (R) -> List<T>,
     schluessel: (T) -> String,
@@ -87,15 +87,15 @@ internal suspend fun <R, T> allPages(
     return Ergebnis.Erfolg(alle.values.toList())
 }
 
-/** Obergrenze für [allPages], falls der Server eine falsche Gesamtzahl nennt. */
+/** Upper limit for [allPages] in case the server names a wrong total. */
 private const val MAX_PAGES = 500
 
 /**
- * Schreiben mit Ausgang: online direkt; ohne Verbindung — oder wenn schon
- * etwas wartet, damit die Reihenfolge hält — in den Ausgang und lokal
- * angewandt. Dann ist das Ergebnis [Ergebnis.Erfolg.gepuffert] mit [ersatz].
- * Der direkte Versuch und der gepufferte tragen denselben Idempotency-Key:
- * Kam der erste an und nur die Antwort nicht, wirkt der zweite nicht doppelt.
+ * Writing with an outbox: online directly; without a connection — or if something
+ * is already waiting, so that the order holds — into the outbox and applied
+ * locally. Then the result is [Ergebnis.Erfolg.gepuffert] with [ersatz].
+ * The direct attempt and the buffered one carry the same Idempotency-Key:
+ * if the first arrived and only the response did not, the second does not act twice.
  */
 internal suspend fun <T> Offlineablage.schreibe(
     bearbeitung: Editing,
@@ -113,9 +113,9 @@ internal suspend fun <T> Offlineablage.schreibe(
 }
 
 /**
- * Schreiben, das nur online geht: Was gelingt, zieht die Ablage über [effect]
- * nach (null = die Antwort meldet keinen Erfolg). Die Liste bleibt so die einzige
- * Quelle; niemand muss danach „bitte neu laden“ rufen.
+ * Writing that only works online: what succeeds updates the store via [effect]
+ * (null = the response reports no success). The list thus stays the only
+ * source; nobody has to call „please reload“ afterwards.
  */
 internal suspend fun <T> Offlineablage.nachgezogen(
     effect: (T) -> Wirkung?,
@@ -127,24 +127,24 @@ internal suspend fun <T> Offlineablage.nachgezogen(
     return r
 }
 
-/** Wechselte das Konto während des Aufrufs, gehört die Antwort nicht in die neue Ablage. */
+/** If the account changed during the call, the response does not belong in the new store. */
 private suspend fun Offlineablage.applyInSameAreaAn(w: Wirkung, vorher: String?) {
     val b = bereich() ?: return
     if (b == vorher) applyAn(w, b)
 }
 
 /**
- * Wie [reconciled], für eine einzelne Antwort ohne Liste (Kennzahlen, Katalog-Metadaten):
- * eine Zeile je Bereich. Die Ablage springt nur ein, wenn der Server nicht erreichbar war;
- * eine Antwort von ihm (401, 404, 500) ist seine Auskunft und wird nicht überdeckt.
+ * Like [reconciled], for a single response without a list (key figures, catalog metadata):
+ * one row per area. The store only steps in if the server was unreachable;
+ * a response from it (401, 404, 500) is its answer and is not covered up.
  */
-@Suppress("UNCHECKED_CAST") // E ist T oder T?: Was in der Ablage liegt, ist immer ein E.
+@Suppress("UNCHECKED_CAST") // E is T or T?: what lies in the store is always an E.
 internal suspend fun <T : Any, E : T?> Offlineablage.reconciledSingle(fach: Fach<T>, call: suspend () -> Ergebnis<E>): Ergebnis<E> {
     val vorher = bereich()
     val frisch = call()
     val bereich = bereich()?.takeIf { it == vorher } ?: return frisch
     if (frisch is Ergebnis.Erfolg) {
-        // Ohne Wert (eine Antwort ohne stats) bleibt die Ablage, wie sie ist.
+        // Without a value (a response without stats) the store stays as it is.
         frisch.data?.let { adopt(fach, listOf(it as T), bereich) }
         return frisch
     }
@@ -155,11 +155,11 @@ internal suspend fun <T : Any, E : T?> Offlineablage.reconciledSingle(fach: Fach
 }
 
 /**
- * Eine Retrofit-Antwort als Ergebnis: Servermeldung und -code bleiben erhalten,
- * Transportfehler sind als vorübergehend markiert. Top-Level, weil auch der
- * Ausgang (data/lokal) damit sendet, ohne ein Repository zu sein.
+ * A Retrofit response as Ergebnis: server message and code are kept,
+ * transport errors are marked as temporary. Top-level because the
+ * outbox (data/lokal) also sends with it without being a repository.
  */
-@Suppress("TooGenericExceptionCaught") // Die Grenze: jeder Fehler wird hier zu Ergebnis.
+@Suppress("TooGenericExceptionCaught") // The boundary: every error becomes Ergebnis here.
 internal suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebnis<T> {
     return try {
         val response = call()
@@ -167,8 +167,8 @@ internal suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebn
             response.body()?.let { Ergebnis.Erfolg(it) }
                 ?: Ergebnis.Fehler.LeereAntwort()
         } else {
-            // Satz und Code des Servers: der Satz zum Anzeigen, der Code zum Verzweigen.
-            // Fehlt der Satz, formuliert die Anzeige ihn nach der Art.
+            // Sentence and code of the server: the sentence for display, the code for branching.
+            // If the sentence is missing, the display formulates it by kind.
             val rumpf = fangeAusserAbbruch { Fehlerrumpf.lies(response.errorBody()?.string()) }
                 .getOrElse { Fehlerrumpf(null, null) }
             val text = rumpf.text ?: ""
@@ -177,36 +177,36 @@ internal suspend fun <T> sicherAufrufen(call: suspend () -> Response<T>): Ergebn
             else Ergebnis.Fehler.Server(response.code(), text, code)
         }
     } catch (e: kotlinx.coroutines.CancellationException) {
-        // Abgebrochene Coroutines (z.B. Suche-Debounce ersetzt Request) dürfen
-        // nicht als "Netzwerkfehler" im State landen — Cancellation weiterreichen.
+        // Cancelled coroutines (e.g. search debounce replaces request) must
+        // not land in the state as "network error" — pass the cancellation on.
         throw e
     } catch (_: java.net.UnknownHostException) {
-        // Netz ist vorübergehend schon nach seiner Art; die Wiederholung muss es nicht
-        // an der Fehlermeldung erraten.
+        // Network is temporary by its very kind; the retry does not have to guess it
+        // from the error message.
         Ergebnis.Fehler.Netz()
     } catch (_: java.net.ConnectException) {
         Ergebnis.Fehler.Netz()
     } catch (_: java.net.SocketTimeoutException) {
         Ergebnis.Fehler.Zeitueberschreitung
     } catch (_: PlaintextRejected) {
-        // Nicht vorübergehend: Ein zweiter Versuch ginge genauso an http.
+        // Not temporary: a second attempt would go to http just the same.
         Ergebnis.Fehler.Klartext
     } catch (e: java.io.IOException) {
-        // Jede übrige IOException ist ein Transportproblem und wiederholbar, gleich
-        // welchen Untertyp OkHttp wählt. Fehler beim Auswerten der Antwort sind
-        // keine IOException und laufen unten als Unbekannt durch.
+        // Every other IOException is a transport problem and retryable, no matter
+        // which subtype OkHttp chooses. Errors when evaluating the response are
+        // no IOException and pass below as Unbekannt.
         Ergebnis.Fehler.Netz(technical = e.message)
     } catch (e: Exception) {
-        // e.message ist hier durchweg englischer Bibliothekstext ("Socket
-        // closed", "unexpected end of stream") — kein Satz an einen Menschen,
-        // deshalb nur im technischen Feld fürs Protokoll.
+        // e.message here is throughout English library text ("Socket
+        // closed", "unexpected end of stream") — no sentence to a human,
+        // hence only in the technical field for the log.
         Ergebnis.Fehler.Unbekannt(technical = e.message)
     }
 }
 
 /**
- * Ein Erfolg, dessen Rumpf [erfolg] verneint, wird zur Absage mit dem Satz des Servers;
- * sonst [f]. So kennt kein Aufrufer das `success`-Feld des Wire-Formats.
+ * A success whose body [erfolg] negates becomes a refusal with the server's sentence;
+ * otherwise [f]. That way no caller knows the wire format's `success` field.
  */
 internal inline fun <T, R> Ergebnis<T>.promised(erfolg: (T) -> Boolean, satz: (T) -> String?, f: (T) -> R): Ergebnis<R> =
     when (this) {
@@ -215,16 +215,16 @@ internal inline fun <T, R> Ergebnis<T>.promised(erfolg: (T) -> Boolean, satz: (T
         is Ergebnis.Fehler -> this
     }
 
-/** Für Antworten ohne `error` im Vertrag: Ein Fehler kommt dort als HTTP-Fehler, die Absage bleibt ohne Satz. */
+/** For responses without `error` in the contract: an error comes there as an HTTP error, the refusal stays without a sentence. */
 internal inline fun <T, R> Ergebnis<T>.promised(erfolg: (T) -> Boolean, f: (T) -> R): Ergebnis<R> =
     promised(erfolg, { null }, f)
 
-/** Für Aktionen, deren Antwort niemand liest. */
+/** For actions whose response nobody reads. */
 internal fun Ergebnis<*>.withoutContent(): Ergebnis<Unit> = shown { }
 
-/** Die übliche Antwort einer Änderung: zugesagt oder abgesagt, sonst nichts zu lesen. */
+/** The usual response of a change: accepted or refused, nothing else to read. */
 internal fun Ergebnis<GenericResponse>.erledigt(): Ergebnis<Unit> = promised({ it.success }) { }
 
-/** Die Zeilen eines Flusses aus der Ablage abbilden; Stand und verworfene Zeilen bleiben. */
+/** Map the rows of a flow from the store; state and discarded rows stay. */
 internal fun <T, R> Flow<Local<T>>.shown(f: (T) -> R): Flow<Local<R>> =
     map { l -> Local(l.liste.map(f), l.stand, l.verworfen) }

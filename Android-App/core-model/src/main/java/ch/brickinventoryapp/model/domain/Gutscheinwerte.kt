@@ -1,16 +1,16 @@
 package ch.brickinventoryapp.model.domain
 
-// Was das Gutschein-Repository nimmt und liefert, in Fachwerten statt Wire-Typen.
+// What the voucher repository takes and delivers, in domain values instead of wire types.
 
-/** Ein Gutschein, wie ihn das Formular anlegt oder ändert; [pin] null heisst keine. */
+/** A voucher as the form creates or changes it; [pin] null means none. */
 data class Gutscheinangabe(val nummer: String, val pin: String?, val betrag: Geld, val waehrung: Waehrung)
 
-/** Was das Speichern ergab: gespeichert (bei einer Sammel-PDF mit Zahlen) oder unvollständig gelesen. */
+/** What saving resulted in: saved (with numbers for a collective PDF) or read incompletely. */
 sealed interface Gutscheinspeicherung {
-    /** [neu] und [geaendert] nur bei einer PDF mit mehreren Karten. */
+    /** [neu] and [geaendert] only for a PDF with several cards. */
     data class Gespeichert(val neu: Int? = null, val geaendert: Int? = null) : Gutscheinspeicherung
 
-    /** Der Server las die PDF nicht ganz; was er fand, belegt das Formular vor. */
+    /** The server did not read the PDF completely; what it found prefills the form. */
     data class Incomplete(
         val nummer: String? = null,
         val pin: String? = null,
@@ -20,8 +20,8 @@ sealed interface Gutscheinspeicherung {
 }
 
 /**
- * Die Antwort auf eine Guthabenabfrage. Ohne [erfolg] nennt [grund] die Art der Absage
- * („abstand“ mit [wartenSek], „botschutz“, „konto“) und [fehler] den Satz des Servers.
+ * The response to a balance query. Without [erfolg] [grund] names the kind of refusal
+ * („abstand“ with [wartenSek], „botschutz“, „konto“) and [fehler] the server's sentence.
  */
 data class Guthabenauskunft(
     val erfolg: Boolean,

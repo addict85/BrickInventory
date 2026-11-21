@@ -56,10 +56,10 @@ import ch.brickinventoryapp.parts.ui.TeileZiel
 import ch.brickinventoryapp.management.ui.ManagementTarget
 
 /**
- * Das Ziel „Mehr“ der unteren Leiste: alle Seiten, die kein Bestandsreiter sind, in
- * Gruppen auf EINER Seite. Alle Symbole umrandet, wie Material es für Listen vorsieht:
- * Gefüllte neben umrandeten lasen sich wie ein Unterschied, den es nicht gibt. Der
- * Bildschirm nennt nur das Ziel; wie dorthin navigiert wird, entscheidet der Graph
+ * The destination “More” of the bottom bar: all pages that are not an inventory tab, in
+ * groups on ONE page. All icons outlined, as Material intends for lists:
+ * filled next to outlined read like a difference that does not exist. The
+ * screen only names the destination; how it is navigated to is decided by the graph
  * ([openOfMore]).
  */
 @Composable
@@ -70,8 +70,8 @@ fun MehrBildschirm(
     onAbmelden: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // Abmelden beendet die Sitzung auf diesem Gerät; ein Fehltipp im Menü hiesse
-    // Passwort und zweiter Faktor von vorn. Darum fragt es nach wie Set löschen.
+    // Sign-out ends the session on this device; a mistap in the menu would mean
+    // password and second factor from the start. That is why it asks like deleting a set.
     var signOutAsks by rememberSaveable { mutableStateOf(false) }
     if (signOutAsks) Prompt(
         titel = stringResource(R.string.logout_confirm_title),
@@ -83,10 +83,10 @@ fun MehrBildschirm(
     )
     @Composable
     fun Gruppe(nummer: Int, separator: Boolean) = MehrGruppeInhalt(nummer, separator, updateVerfuegbar, onTarget)
-    // Die Servergruppe nur für Verwalter.
+    // The server group only for admins.
     val groups = if (isAdmin) 5 else 4
-    // Auf dem Tablet zwei Spalten, etwa gleich hoch: Preise, Werkzeuge und Server links,
-    // Bestand und Konto rechts. Einspaltig stand die Liste schmal in einer leeren Fläche.
+    // On the tablet two columns of about equal height: prices, tools and server on the left,
+    // stock and account on the right. Single-column the list stood narrow in an empty area.
     BoxWithConstraints(modifier.fillMaxSize()) {
         val twoColumn = maxWidth >= MORE_TWO_COLUMN_AB
         val frame = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
@@ -102,8 +102,8 @@ fun MehrBildschirm(
 }
 
 /**
- * Abmelden zuletzt und abgesetzt, in der Fehlerfarbe: Zwischen „Einstellungen“ und den
- * Servergruppen war es ein Eintrag wie jeder andere und lag dort, wo man weitertippt.
+ * Sign-out last and set apart, in the error color: between “Settings” and the
+ * server groups it was an entry like any other and lay where one keeps tapping.
  */
 @Composable
 private fun SignOutEntry(onKlick: () -> Unit) {
@@ -113,16 +113,16 @@ private fun SignOutEntry(onKlick: () -> Unit) {
 }
 
 /**
- * Je Gruppe ein Block; `separator` fällt am Kopf einer Spalte weg. Eine Gruppe, eine
- * Art Seite: Werkzeuge behalten die untere Leiste, Preise und Verwalten öffnen
- * Unterseiten. Gemischt sah „Vergleich“ neben „Gutscheine“ anders aus als erwartet.
+ * One block per group; `separator` is dropped at the head of a column. One group, one
+ * kind of page: tools keep the bottom bar, prices and management open
+ * subpages. Mixed, “Comparison” next to “Vouchers” looked different than expected.
  */
 @Composable
 private fun MehrGruppeInhalt(nummer: Int, separator: Boolean, updateVerfuegbar: Boolean, onTarget: (Any) -> Unit) {
     when (nummer) {
         0 -> {
             MoreGroup(R.string.nav_group_prices, separator)
-            // Gutscheine zuerst: Die braucht man im Laden.
+            // Vouchers first: they are needed in the shop.
             MehrEintrag(R.string.vouchers_title, Icons.Outlined.Redeem) { onTarget(FinanzZiel.Gutscheine) }
             MehrEintrag(R.string.alerts_group, Icons.Outlined.NotificationsActive) { onTarget(KontoZiel.Preisalarme) }
         }
@@ -140,7 +140,7 @@ private fun MehrGruppeInhalt(nummer: Int, separator: Boolean, updateVerfuegbar: 
         3 -> {
             MoreGroup(R.string.nav_group_account, separator)
             MehrEintrag(R.string.konto_title, Icons.Outlined.AccountCircle) { onTarget(KontoZiel.Konto) }
-            // Der Punkt allein sagte nicht, wofür er steht: Darunter steht es in Worten.
+            // The dot alone did not say what it stands for: below it says so in words.
             MehrEintrag(R.string.nav_settings, Icons.Outlined.Settings, point = updateVerfuegbar) { onTarget(KontoZiel.Settings) }
         }
         else -> {
@@ -151,9 +151,9 @@ private fun MehrGruppeInhalt(nummer: Int, separator: Boolean, updateVerfuegbar: 
 }
 
 /**
- * Öffnet ein Ziel der Seite „Mehr“. Die Einstellungen stapeln sich nicht doppelt; das
- * Monitoring steht wie ein Reiter direkt über dem Start, damit „Zurück“ nicht durch
- * die Verwalterseiten führt.
+ * Opens a destination of the page “More”. The settings do not stack twice; the
+ * monitoring stands like a tab directly above the start so that “Back” does not lead through
+ * the admin pages.
  */
 internal fun NavController.openOfMore(ziel: Any) = when (ziel) {
     KontoZiel.Settings -> navigate(ziel) { launchSingleTop = true }
@@ -165,10 +165,10 @@ internal fun NavController.openOfMore(ziel: Any) = when (ziel) {
     else -> navigate(ziel)
 }
 
-/** Ab dieser Fensterbreite stehen die Gruppen in zwei Spalten. */
+/** From this window width on the groups stand in two columns. */
 private val MORE_TWO_COLUMN_AB = 840.dp
 
-/** Überschrift einer Gruppe — Vorleseprogramme springen von einer zur nächsten. */
+/** Heading of a group — screen readers jump from one to the next. */
 @Composable
 private fun MoreGroup(titel: Int, separator: Boolean) =
     GroupTitle(stringResource(titel), separator = separator)
@@ -182,7 +182,7 @@ private fun MehrEintrag(
         headlineContent = { Text(stringResource(titel), color = farbe) },
         supportingContent = if (point) ({ Text(stringResource(R.string.update_badge)) }) else null,
         leadingContent = { Icon(symbol, null, tint = farbe.takeOrElse { MaterialTheme.colorScheme.onSurfaceVariant }) },
-        // Der Text darunter sagt es schon; der Punkt bleibt ohne zweite Ansage.
+        // The text below already says it; the dot stays without a second announcement.
         trailingContent = if (point) ({ Badge() }) else null,
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         modifier = Modifier.clickable(role = Role.Button, onClick = onKlick),

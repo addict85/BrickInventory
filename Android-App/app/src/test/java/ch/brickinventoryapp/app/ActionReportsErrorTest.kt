@@ -4,40 +4,40 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Was der Nutzer anstösst, meldet sich auch, wenn es scheitert.
+ * What the user triggers also reports when it fails.
  *
- * ── Der Befund ──────────────────────────────────────────────────────────────
- * Von einundzwanzig ändernden Funktionen des ViewModels meldeten neunzehn ihren
- * Fehler. Zwei nicht:
+ * ── The finding ──────────────────────────────────────────────────────────────
+ * Of twenty-one changing functions of the ViewModel, nineteen reported their
+ * error. Two did not:
  *
  *   HouseholdFeature.unlinkHousehold        is Result.Error -> {}
  *   ManualItemFeature.deleteManualAcquisition  is Result.Error -> {}
  *
- * Beide haben einen Zwilling in derselben Datei, der es tut —
+ * Both have a twin in the same file that does —
  * createHouseholdInvite, redeemHouseholdInvite, moveSet,
- * changeAcquisitionOwner auf der einen, updateManualAcquisition auf der
- * anderen Seite. Die Regel stand also längst im Code; diese zwei sind
- * durchgerutscht.
+ * changeAcquisitionOwner on the one, updateManualAcquisition on the
+ * other side. So the rule had long been in the code; these two
+ * slipped through.
  *
- * Für den Nutzer sah es so aus: Er tippt auf „Verknüpfung lösen" oder auf
- * Löschen, und es passiert sichtbar nichts. Kein Erfolg, kein Grund. Man tippt
- * noch einmal.
+ * For the user it looked like this: they tap „Verknüpfung lösen" or
+ * delete, and visibly nothing happens. No success, no reason. One taps
+ * once more.
  *
- * ── Warum nur die ÄNDERNDEN ─────────────────────────────────────────────────
- * Ladewege dürfen still scheitern, wenn das Geladene Beiwerk ist — die
- * Kennzahlen am Kopf der Galerie, die Farbliste im Erfassungsdialog. Beide
- * tragen die Begründung inzwischen im Code. Eine Meldung über eine Zahlenreihe
- * wäre lauter als ihr Verlust.
+ * ── Why only the CHANGING ones ───────────────────────────────────────────────
+ * Loading paths may fail silently when what is loaded is an extra — the
+ * key figures at the top of the gallery, the color list in the add dialog. Both
+ * carry the reasoning in the code by now. A message about a row of numbers
+ * would be louder than its loss.
  *
- * Bei einer Handlung des Nutzers ist es umgekehrt: Er wartet auf eine Antwort.
+ * With an action of the user it is the other way round: they wait for an answer.
  *
- * Die Funktionen werden gefunden, nicht aufgezählt — in
- * den ViewModels statt in den *Feature.kt-Dateien. Gegenprobe (gemessen): in
- * HouseholdViewModel.unlinkHousehold() den Fehlerzweig auf `{}` gesetzt → rot.
+ * The functions are found, not enumerated — in
+ * the ViewModels instead of in the *Feature.kt files. Counter-check (measured): in
+ * HouseholdViewModel.unlinkHousehold() the error branch set to `{}` → red.
  */
 class ActionReportsErrorTest {
 
-    /** Alle Funktionen der ViewModels, je Name. */
+    /** All functions of the ViewModels, per name. */
     private fun viewModelFunctions(): Map<String, String> {
         val dateien = Quellen.unter("ui").filter { it.name.endsWith("ViewModel.kt") }
         assert(dateien.size >= 10) {
@@ -60,7 +60,7 @@ class ActionReportsErrorTest {
 
     @Test
     fun `every changing function reports its error`() {
-        // Ändernd = sie ruft einen schreibenden Weg des Repositories.
+        // Changing = it calls a writing path of the repository.
         val changing = Regex(
             """\b(?:repo|sets|teile|finanzen|haushalt|admin|konto|gutscheine)\.(?:\w+\.)?(add|delete|update|unlink|invite|redeem|create|remove|save|move|change)\w*\(""",
             RegexOption.IGNORE_CASE)

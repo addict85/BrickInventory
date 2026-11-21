@@ -19,47 +19,47 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Der Tausch eines Tokens: speichern vor benutzen, nur einer zugleich, bei
- * verlorener Antwort ein zweiter Versuch mit dem ALTEN Token — und nichts
- * speichern, wenn inzwischen abgemeldet oder der Server gewechselt wurde. Die
- * Ablage hier benutzt dieselbe [TokenLimit] wie der PreferencesManager.
+ * The swap of a token: save before using, only one at a time, on a
+ * lost response a second attempt with the OLD token — and save nothing
+ * if signed out meanwhile or the server was switched. The
+ * store here uses the same [TokenLimit] as the PreferencesManager.
  *
- * Gegenproben:
- *   A  in TokenSwap `speichere(neu)` hinter das `return` verlegt (nicht
- *      gespeichert) → rot „the new token is saved before the swap ends“
- *   B  die Sperre entfernt (`lock.withLock` → direkt) → rot „zwei Anfragen mit
- *      der Kopfzeile tauschen einmal“ (beide GETAUSCHT, also zweimal rotiert)
- *   C  bei einem transienten Fehler sofort LATER statt erneut → rot „eine
- *      verlorene Antwort wird mit dem alten Token wiederholt“
- *   D  den 401-Zweig entfernt → rot „if the old one is no longer valid, pairing must be redone“
- * Gegenproben:
- *   E  in swapLocked() die Prüfung `stand() != vorher` vor der Wiederholung
- *      entfernt → rot „ein Serverwechsel waehrend der Wiederholung …“ (der alte
- *      Token ging noch dreimal hinaus)
- *   F  in TokenLimit.replaceIf() `|| jetzt() != vorher` entfernt → rot
- *      „Abmelden waehrend des Tauschs …“ und „… auch wenn derselbe Token zurueckkommt“
- *   G  dort `requestOrigin != vorher.herkunft` entfernt → rot „ein Token von
- *      einer anderen Herkunft wird nicht gespeichert“
- *   H  in TokenLimit.schreibe() `generation++` entfernt → rot „… auch wenn
- *      derselbe Token zurueckkommt“
- *   I  loginOverdue() mit `TOKEN_MAX_DURATION_DAYS * 24 * 60 * 1000`
- *      (Minuten statt Stunden) → rot „nach 180 Tagen ist die Anmeldung ueberfaellig …“
- * Gegenprobe:
- *   J  noetig() wieder ohne Herkunft und Generation (`stand().token.takeIf …`) →
- *      rot „schon getauscht heisst nicht: den Token einer anderen Sitzung nehmen“
- * Gegenprobe:
- *   K  faellig() tauscht mit runBlocking im Aufrufer statt im übergebenen Bereich →
- *      rot „due swaps in the application scope and returns immediately“
- * Gegenprobe (05.11.2026, gemessen mit kotlinc lokal; tausch-noetig-ohne-frist.patch):
- *   L  neededWaiting() wartet ohne withTimeoutOrNull auf den Tausch → rot „noetig
- *      wartet hoechstens die Frist, der Tausch laeuft weiter“ (keine Rückkehr nach der Frist)
- * Gegenprobe:
- *   M  in swapLocked() die Prüfung `bereit()` entfernt → rot „bei gesperrtem Geraet
- *      wird nicht getauscht …“; gegenproben/tausch-trotz-sperre.patch
+ * Counter-checks:
+ *   A  in TokenSwap `speichere(neu)` moved behind the `return` (not
+ *      saved) → red “the new token is saved before the swap ends”
+ *   B  the lock removed (`lock.withLock` → direct) → red “two requests with
+ *      the header swap once” (both GETAUSCHT, thus rotated twice)
+ *   C  on a transient error LATER immediately instead of again → red “a
+ *      lost response is retried with the old token”
+ *   D  the 401 branch removed → red “if the old one is no longer valid, pairing must be redone”
+ * Counter-checks:
+ *   E  in swapLocked() the check `stand() != vorher` before the retry
+ *      removed → red “a server switch during the retry …” (the old
+ *      token still went out three times)
+ *   F  in TokenLimit.replaceIf() `|| jetzt() != vorher` removed → red
+ *      “sign-out during the swap …” and “… even if the same token comes back”
+ *   G  there `requestOrigin != vorher.herkunft` removed → red “a token from
+ *      a different origin is not saved”
+ *   H  in TokenLimit.schreibe() `generation++` removed → red “… even if
+ *      the same token comes back”
+ *   I  loginOverdue() with `TOKEN_MAX_DURATION_DAYS * 24 * 60 * 1000`
+ *      (minutes instead of hours) → red “after 180 days the sign-in is overdue …”
+ * Counter-check:
+ *   J  noetig() again without origin and generation (`stand().token.takeIf …`) →
+ *      red “already swapped does not mean taking the token of another session”
+ * Counter-check:
+ *   K  faellig() swaps with runBlocking in the caller instead of in the passed scope →
+ *      red “due swaps in the application scope and returns immediately”
+ * Counter-check (05.11.2026, measured with kotlinc locally; tausch-noetig-ohne-frist.patch):
+ *   L  neededWaiting() waits for the swap without withTimeoutOrNull → red “needed
+ *      waits at most the deadline, the swap keeps running” (no return after the deadline)
+ * Counter-check:
+ *   M  in swapLocked() the check `bereit()` removed → red “with a locked device
+ *      there is no swap …”; gegenproben/tausch-trotz-sperre.patch
  */
 class TokenSwapTest {
 
-    /** [hintergrund] nimmt faellig() auf; ohne Angabe ein Bereich, den niemand abarbeitet. */
+    /** [hintergrund] takes up faellig(); without it a scope that nobody processes. */
     private class Welt(
         hintergrund: CoroutineScope = CoroutineScope(Job()),
         warten: Long = TokenSwap.NEEDED_WAIT_MS,
@@ -72,12 +72,12 @@ class TokenSwapTest {
         val protokoll = mutableListOf<String>()
         var antworten: MutableList<Ergebnis<TokenRotation>> = mutableListOf()
         var brake: CompletableDeferred<Unit>? = null
-        /** Läuft in jedem Aufruf des Servers, nach der Bremse. */
+        /** Runs in every call of the server, after the brake. */
         var rotateOn: suspend () -> Unit = {}
 
         fun stand() = TokenStatus(gespeichert, herkunft, limit.generation)
 
-        /** Wie PreferencesManager.clearSession() und saveServerUrl() mit anderem Server. */
+        /** Like PreferencesManager.clearSession() and saveServerUrl() with another server. */
         suspend fun abmelden() = limit.schreibe { gespeichert = ""; herkunft = null }
         suspend fun anmelden(token: String, bei: String) = limit.schreibe { gespeichert = token; herkunft = bei }
 
@@ -198,7 +198,7 @@ class TokenSwapTest {
         assertEquals("alt", w.gespeichert)
     }
 
-    /** Pruef6 M1: „Schon getauscht“ war auch „inzwischen beim neuen Server angemeldet“. */
+    /** Review 6 M1: „already swapped“ was also „meanwhile signed in to the new server“. */
     @Test
     fun `already swapped does not mean taking the token of another session`() = runTest {
         val w = Welt()
@@ -207,12 +207,12 @@ class TokenSwapTest {
         assertEquals("Andere Herkunft und Generation", null, w.tausch.noetig("alt", HERE, g))
         assertEquals("Andere Generation", null, w.tausch.noetig("alt", "https://neu.example:443", g))
         assertEquals("Andere Herkunft", null, w.tausch.noetig("alt", HERE, w.limit.generation))
-        // Dieselbe Sitzung: Eine andere Anfrage hat eben getauscht, ihr Token gilt.
+        // The same session: another request has just swapped, its token counts.
         assertEquals("vom-neuen", w.tausch.noetig("alt", "https://neu.example:443", w.limit.generation))
         assertFalse(w.protokoll.toString(), w.protokoll.any { it.startsWith("rotiere") })
     }
 
-    /** Ein stummer Server hält den Netz-Thread nicht länger als die Frist; gespeichert wird trotzdem. */
+    /** A silent server does not hold the network thread longer than the deadline; it is saved anyway. */
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `needed waits at most the deadline, the swap keeps running`() = runTest {
@@ -228,7 +228,7 @@ class TokenSwapTest {
         assertEquals("Der Tausch lief im Anwendungsbereich weiter", "neu", w.gespeichert)
     }
 
-    /** Mit dem Testtakt statt Warten: Der Tausch läuft erst, wenn der Bereich ihn abarbeitet. */
+    /** With the test clock instead of waiting: the swap runs only when the scope processes it. */
     @OptIn(ExperimentalCoroutinesApi::class)
     @Test
     fun `due swaps in the application scope and returns immediately`() = runTest {

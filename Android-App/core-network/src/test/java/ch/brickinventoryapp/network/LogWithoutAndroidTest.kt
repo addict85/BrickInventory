@@ -12,11 +12,11 @@ import java.io.PrintStream
  * Without Android, the wrapper writes to stderr: in JVM tests android.util.Log is a stub
  * that throws, since the unit tests run without isReturnDefaultValues.
  *
- * Gegenproben:
- *   protokoll-immer-logcat: vorgabe() always picks the Logcat branch → red "ohne Android landet …"
+ * Counter-checks:
+ *   protokoll-immer-logcat: vorgabe() always picks the Logcat branch → red “without Android a warning ends up …”
  *     (locally with kotlinc against android-all: UnsatisfiedLinkError from Log.w; in CI "not mocked")
- *   unittests-mit-vorgabewerten: isReturnDefaultValues = true in the convention → red "eine
- *     Android-Methode wirft …" (only measurable in CI: locally there is no android.jar from AGP)
+ *   unittests-mit-vorgabewerten: isReturnDefaultValues = true in the convention → red “an
+ *     Android method throws …” (only measurable in CI: locally there is no android.jar from AGP)
  */
 class LogWithoutAndroidTest {
 

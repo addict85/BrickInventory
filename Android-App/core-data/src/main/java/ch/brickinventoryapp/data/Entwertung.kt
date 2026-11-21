@@ -17,12 +17,12 @@ import javax.inject.Inject
 import javax.net.ssl.SSLContext
 import javax.net.ssl.X509ExtendedTrustManager
 
-/** Legt einen Auftrag in die dauerhafte Warteschlange (data/local/EntwertungsWorker). */
+/** Puts a job into the persistent queue (data/local/EntwertungsWorker). */
 fun interface RedemptionPlanner {
     fun plane(job: Entwertungsauftrag)
 }
 
-/** Der Auftrag für das jetzige Token, oder null ohne Token (TokenAblage). */
+/** The job for the current token, or null without a token (TokenAblage). */
 fun interface Entwertungsquelle {
     suspend fun entwertungsauftrag(): Entwertungsauftrag?
 }
@@ -30,9 +30,9 @@ fun interface Entwertungsquelle {
 enum class Abmeldeweg { SOFORT, CAUGHT_UP, WITHOUT_JOB }
 
 /**
- * Abmelden am Server: erst der kurze Versuch, und scheitert er, eine Warteschlange,
- * die wiederholt, bis der Server bestätigt. Sonst bliebe ein Token ohne Ablauf
- * gültig, sobald jemand ohne Netz abmeldet.
+ * Sign-out at the server: first the short attempt, and if it fails, a queue
+ * that retries until the server confirms. Otherwise a token without expiry would stay
+ * valid as soon as someone signs out without network.
  */
 class Abmeldung @Inject constructor(
     private val konto: AccountRepository,
@@ -40,7 +40,7 @@ class Abmeldung @Inject constructor(
     private val planner: RedemptionPlanner,
 ) {
     suspend fun atServer(): Abmeldeweg {
-        // Vor dem Versuch: Danach räumt das Abmelden das Token weg.
+        // Before the attempt: afterwards sign-out clears the token away.
         val job = quelle.entwertungsauftrag()
         return when (konto.redeemAtServer()) {
             Entwertungsergebnis.ENTWERTET -> Abmeldeweg.SOFORT
@@ -54,9 +54,9 @@ class Abmeldung @Inject constructor(
 enum class Entwertungsergebnis { ENTWERTET, LATER, GIVE_UP }
 
 /**
- * 401 heisst: Das Token gilt schon nicht mehr, das Ziel ist erreicht. Eine
- * Umleitung (nur innerhalb des Servers verfolgt) oder ein anderer 4xx-Satz wird
- * auch beim zehnten Mal nicht anders; Zeitüberschreitung, 429 und 5xx schon.
+ * 401 means: the token is already no longer valid, the goal is reached. A
+ * redirect (only followed within the server) or another 4xx sentence does not become
+ * different the tenth time either; timeout, 429 and 5xx do.
  */
 internal fun classifyRedemption(code: Int): Entwertungsergebnis = when {
     code in 200..299 || code == 401 -> Entwertungsergebnis.ENTWERTET
@@ -65,21 +65,21 @@ internal fun classifyRedemption(code: Int): Entwertungsergebnis = when {
 }
 
 /**
- * POST /auth/logout mit genau diesem Token an genau diesen Server. Über einen
- * eigenen Wächter: Der der App kennt nach dem Abmelden kein Token mehr und strich
- * den Kopf; dieser hält dieselben Regeln (https, Pfad, Umleitungen) für den Auftrag.
+ * POST /auth/logout with exactly this token to exactly this server. Via an
+ * own guard: the app's one knows no token after sign-out and dropped
+ * the header; this one keeps the same rules (https, path, redirects) for the job.
  */
 class Redeemer(
     private val basis: OkHttpClient,
     private val entwicklung: Boolean,
     /**
-     * TLS-Vertrauen für genau den Server des Auftrags ([pinKey]) mit seinem
-     * Pin. Das gemeinsame der App kennt nur den jetzt eingerichteten Server.
+     * TLS trust for exactly the job's server ([pinKey]) with its
+     * pin. The app's common one only knows the currently set up server.
      */
     private val trustFor: ((schluessel: String, pin: String?) -> X509ExtendedTrustManager)? = null,
 ) {
 
-    /** [herkunft]: wohin das Token gehört; ein Auftrag an einen anderen Server sendet nichts. */
+    /** [herkunft]: where the token belongs; a job for a different server sends nothing. */
     fun redeem(serverUrl: String, token: String, pin: String? = null,
                  herkunft: String? = NetworkPolicy.herkunft(serverUrl)): Entwertungsergebnis {
         val ziel = ownAddress(serverUrl, "api/v1/auth/logout")
@@ -109,10 +109,10 @@ class Redeemer(
         } catch (_: PlaintextRejected) {
             Entwertungsergebnis.GIVE_UP
         } catch (e: java.io.IOException) {
-            // Ein Zertifikat, das nicht zum Pin passt, wird durch Warten nicht passender;
-            // nachfragen kann im Hintergrund niemand.
-            // Gemerkt statt in der Ursachenkette gesucht: Conscrypt reicht die Ausnahme des
-            // Vertrauens nicht immer als Ursache weiter.
+            // A certificate that does not match the pin does not become more matching by waiting;
+            // nobody can ask in the background.
+            // Remembered instead of searched in the cause chain: Conscrypt does not always pass on
+            // the trust's exception as cause.
             if (abgelehnt.get() || generateSequence<Throwable>(e) { it.cause }.take(8).any { it is CertificateUnresolved }) Entwertungsergebnis.GIVE_UP
             else Entwertungsergebnis.LATER
         }
@@ -121,16 +121,16 @@ class Redeemer(
 
 internal enum class Entwertungsschritt { FERTIG, AGAIN, GIVEN_UP }
 
-/** Etwa eine Woche bei WorkManagers Rückzug (30 s, verdoppelt, höchstens 5 h). */
+/** About one week with WorkManager's backoff (30 s, doubled, at most 5 h). */
 internal const val REDEMPTION_MAX_ATTEMPTS = 40
 
 /**
- * Ein Lauf des Arbeiters. Ein gesperrter Keystore ist wie ein fehlendes Netz ein
- * Grund zu warten (util/Tresorbefund); ein verlorener Schlüssel macht das Token
- * auch für einen Dieb unbrauchbar, also gibt es nichts mehr zu tun.
+ * One run of the worker. A locked keystore is, like a missing network, a
+ * reason to wait (util/Tresorbefund); a lost key makes the token
+ * unusable for a thief too, so there is nothing left to do.
  */
-// [deviceLocked]: Der Schlüssel des Tokens gibt erst nach dem Entsperren frei; Warten
-// darauf ist kein Fehlversuch, sonst gäbe ein tagelang gesperrtes Gerät den Auftrag auf.
+// [deviceLocked]: the token's key only releases after unlocking; waiting
+// for it is no failed attempt, otherwise a device locked for days would give up the job.
 internal fun redemptionStep(
     finding: Tresorbefund,
     attempt: Int,
@@ -150,8 +150,8 @@ internal fun redemptionStep(
         }
     }
 
-/** Reicht alles an [innen] weiter und merkt sich, ob ein Zertifikat ungeklärt abgelehnt wurde. */
-// Prüft nichts selbst: jede Entscheidung trifft [innen] (PinTrust).
+/** Passes everything on to [innen] and remembers whether a certificate was rejected without clarification. */
+// Checks nothing itself: [innen] (PinTrust) makes every decision.
 @Suppress("CustomX509TrustManager")
 private class RemembersRejection(
     private val innen: X509ExtendedTrustManager,

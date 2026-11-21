@@ -16,20 +16,20 @@ import java.io.File
 import java.io.IOException
 
 /**
- * Bauanleitungen liegen verschlüsselt im Zwischenspeicher: Auf der Platte steht
- * weder das PDF noch die Setnummer, ein abgebrochener Download lässt sich am richtigen
- * Klartext-Byte fortsetzen, und Abmelden wie Start räumen auf. Ausgeführt gegen ein echtes
- * Verzeichnis; das Entschlüsseln in den memfd braucht ein Gerät (PdfViewerScreen).
+ * Building instructions lie encrypted in the cache: on disk stands
+ * neither the PDF nor the set number, an aborted download can be resumed at the right
+ * plaintext byte, and sign-out as well as start clean up. Executed against a real
+ * directory; decrypting into the memfd needs a device (PdfViewerScreen).
  *
- * Gegenproben:
- *   A  InstructionStore schreibt und liest über FileSystem.SYSTEM statt über
- *      EncryptedFileSystem → rot „eine Anleitung liegt verschluesselt …“;
+ * Counter-checks:
+ *   A  InstructionStore writes and reads via FileSystem.SYSTEM instead of via
+ *      EncryptedFileSystem → red “an instruction lies encrypted …”;
  *      gegenproben/anleitung-klartext.patch
- *   B  in EncryptedFileSystem `.part` aus INTERMEDIATE_STATES gestrichen → rot „ein
- *      abgebrochener Download wird am Klartext-Byte fortgesetzt …“ (die fertige Datei ist
- *      an den Namen der Teildatei gebunden und unlesbar)
- *   C  in raeumeAnleitungenAuf() die Zeile mit INSTRUCTION_PREFIX gestrichen → rot
- *      „Abmelden raeumt alle Anleitungen weg …“; gegenproben/anleitungen-ueberleben-abmelden.patch
+ *   B  in EncryptedFileSystem `.part` deleted from INTERMEDIATE_STATES → red “an
+ *      aborted download is resumed at the plaintext byte …” (the finished file is
+ *      bound to the partial file's name and unreadable)
+ *   C  in raeumeAnleitungenAuf() the line with INSTRUCTION_PREFIX deleted → red
+ *      “sign-out clears all instructions …”; gegenproben/anleitungen-ueberleben-abmelden.patch
  */
 class InstructionStoreTest {
 

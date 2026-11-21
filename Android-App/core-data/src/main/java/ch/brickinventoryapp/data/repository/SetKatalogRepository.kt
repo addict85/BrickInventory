@@ -11,23 +11,23 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Auskünfte zu einem Set beim Erfassen und Nachschlagen: gibt es das schon, was
- * steckt darin, welches Set trägt diesen Barcode. Nichts davon liegt in der
- * Ablage — es sind Fragen an den Server, keine Listen des Kontos.
+ * Information about a set when adding and looking up: does it exist already, what
+ * is in it, which set carries this barcode. None of it lies in the
+ * store — they are questions to the server, not lists of the account.
  */
 interface SetKatalogRepository {
     /**
-     * Steht das Set schon im Blickfeld? Die Nummer, unter der es steht, sonst null; die
-     * Regel (Normalisierung, Haushalt) liegt beim Server.
+     * Is the set already in view? The number under which it stands, otherwise null; the
+     * rule (normalization, household) lies with the server.
      */
     suspend fun getSetExists(setNumber: String): Ergebnis<String?>
 
     suspend fun getSetDetail(setNumber: String): Ergebnis<SetAnsicht?>
 
-    /** Setname aus dem gemeinsamen Katalog, auch für fremde Sets. */
+    /** Set name from the common catalog, also for foreign sets. */
     suspend fun getSetInfo(setNumber: String): Ergebnis<String?>
 
-    /** Die Teile eines Sets aus dem Katalog, je Teil und Farbe eine Zeile. */
+    /** The parts of a set from the catalog, one row per part and color. */
     suspend fun getSetPartsList(setNumber: String): Ergebnis<List<TeilAnsicht>>
 
     suspend fun getSetMinifigsList(setNumber: String): Ergebnis<List<FigurAnsicht>>

@@ -19,7 +19,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Preise, Bewertung, Verlauf und Gewinn/Verlust — über Retrofit; die gemeinsame Abruflogik steht in Abruf.kt.
+ * Prices, valuation, history and profit/loss — via Retrofit; the common fetch logic stands in Abruf.kt.
  */
 @Singleton
 class FinanzenRepositoryImpl @Inject constructor(
@@ -60,6 +60,6 @@ class FinanzenRepositoryImpl @Inject constructor(
         else sicherAufrufen { api.getStats(konten.anfrage) }.shown { it.stats?.alsAnsicht() })
 }
 
-/** Ein Verlauf mit success: false hat keine Punkte, die etwas sagten. */
+/** A history with success: false has no points that said anything. */
 private fun Ergebnis<PriceHistoryResponse>.verlauf(): Ergebnis<PriceHistoryView> =
     promised({ it.success }, { null }) { it.alsAnsicht() }

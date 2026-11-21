@@ -68,10 +68,10 @@ import ch.brickinventoryapp.app.csv.CsvImportUiState
 import ch.brickinventoryapp.app.nav.AppTarget
 
 /**
- * Gemeinsames Gerüst aller eingeloggten Screens: obere Leiste mit Titel und
- * Reiter-Icon, untere Navigation (auf breiten Fenstern die Seitenleiste), Snackbar
- * und der CSV-Import-Balken. Es bekommt alles über seine Parameter und greift auf
- * nichts aus dem umgebenden Composable zu.
+ * Common scaffold of all signed-in screens: top bar with title and
+ * tab icon, bottom navigation (side bar on wide windows), snackbar
+ * and the CSV import bar. It gets everything via its parameters and accesses
+ * nothing from the surrounding composable.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,52 +82,52 @@ fun MainScaffold(
     snackbarHostState: SnackbarHostState,
     csvImportState: kotlinx.coroutines.flow.StateFlow<CsvImportUiState>,
     /**
-     * Laufenden CSV-Import abbrechen — der Knopf im Fortschrittsbalken. Als Rückruf,
-     * weil dieses Gerüst nur Zustand und Rückrufe bekommt, kein ViewModel.
+     * Cancel the running CSV import — the button in the progress bar. As a callback,
+     * because this scaffold only gets state and callbacks, no ViewModel.
      */
     onCsvAbbrechen: () -> Unit,
     /**
-     * Liegt eine neuere Version bereit? Die Prüfung läuft app-weit beim Start; das
-     * Gerüst zeigt den Befund als Punkt am Ziel „Mehr“, dort steht er an den
-     * Einstellungen noch einmal. Geladen wird nie von allein.
+     * Is a newer version available? The check runs app-wide at start; the
+     * scaffold shows the finding as a dot on the destination “More”, where it stands at the
+     * settings once more. Loading never happens by itself.
      */
     updateVerfuegbar: Boolean = false,
     /**
-     * Ein Reiter wurde unten angetippt — seine gemerkte Rollposition verwerfen. „Ich
-     * komme zurück“ behält die Stelle, „ich gehe auf diesen Reiter“ fängt oben an
-     * (dort stehen die manuell erfassten Einträge); unterscheiden lässt sich das nur
-     * hier. Ohne Vorgabewert, damit eine Einbindung, die ihn vergisst, nicht
-     * übersetzt.
+     * A tab was tapped at the bottom — discard its remembered scroll position. “I
+     * come back” keeps the position, “I go to this tab” starts at the top
+     * (where the manually added entries are); this can only be distinguished
+     * here. Without a default value, so that an integration that forgets it does not
+     * compile.
      */
     onTabAngetippt: (Any) -> Unit,
-    /** Offline gespeicherte Änderungen, die noch zum Server müssen; 0 blendet die Leiste aus. */
+    /** Changes saved offline that still have to go to the server; 0 hides the bar. */
     offeneAenderungen: Int = 0,
     content: @Composable () -> Unit
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDest = navBackStackEntry?.destination
     val accent = LocalAkzentflaechen.current
-    // Die App-Leiste weicht beim Rollen nach unten und kommt beim Zurückrollen wieder:
-    // Auf dem Telefon standen sonst Titel und Umschalter dauerhaft über dem Inhalt.
-    // Ein neues Ziel beginnt mit sichtbarer Leiste.
+    // The app bar yields when scrolling down and comes back when scrolling back:
+    // on the phone title and switcher otherwise stood permanently above the content.
+    // A new destination starts with a visible bar.
     val collapse = TopAppBarDefaults.enterAlwaysScrollBehavior()
     LaunchedEffect(currentDest?.id) { collapse.state.heightOffset = 0f }
 
     fun isSelected(screen: Any) =
         currentDest?.hierarchy?.any { d -> d.isOneOf(targetsOf(screen)) } == true
 
-    // Unterseiten von „Mehr“ mit unterer Leiste tragen den Zurück-Pfeil wie die übrigen
-    // Mehr-Unterseiten. Er geht denselben Weg wie die Zurück-Geste: Führten beide an
-    // verschiedene Orte, wüsste man vor dem Tippen nicht, wo man landet. Nur ohne
-    // vorigen Eintrag (Einstieg von aussen) führt er auf „Mehr“.
+    // Subpages of “More” with a bottom bar carry the back arrow like the other
+    // More subpages. It goes the same way as the back gesture: if both led to
+    // different places, one would not know before tapping where one lands. Only without
+    // a previous entry (entry from outside) does it lead to “More”.
     val moreSubpage = currentDest != null && currentDest.isOneOf(MORE) && !currentDest.hasRoute<AppTarget.Mehr>()
     fun backFromMore() {
         if (navController.previousBackStackEntry != null && navController.popBackStack()) return
         if (!navController.popBackStack(AppTarget.Mehr, inclusive = false)) navController.toTab(AppTarget.Mehr)
     }
 
-    // Leiste unten und Seitenleiste teilen sich diesen Weg, damit beide die
-    // Rollposition gleich behandeln.
+    // Bottom bar and side bar share this path so that both treat the
+    // scroll position the same.
     fun tabChoose(screen: Any) {
         onTabAngetippt(screen)
         if (navController.currentBackStackEntry?.destination?.hasRoute<ManagementTarget.Monitoring>() == true) {
@@ -136,21 +136,21 @@ fun MainScaffold(
         navController.toTab(screen)
     }
 
-    // Das Symbol eines Ziels, an „Mehr“ mit dem Punkt für eine neue Version.
+    // The icon of a destination, on “More” with the dot for a new version.
     @Composable
     fun Symbol(screen: Any, icon: @Composable () -> Unit) {
         if (screen == AppTarget.Mehr && updateVerfuegbar) BadgedBox(badge = { UpdatePoint() }) { icon() } else icon()
     }
 
-    // Die Fensterbreite entscheidet, nicht das Gerät: Ein Tablet im geteilten
-    // Bildschirm ist schmal und bekommt die Leiste unten.
-    // Die Snackbar liegt über dem Inhalt; ihre Höhe hebt den Erfassen-Knopf darüber.
+    // The window width decides, not the device: a tablet in split
+    // screen is narrow and gets the bar at the bottom.
+    // The snackbar lies above the content; its height lifts the add button above it.
     var snackbarHeight by remember { mutableIntStateOf(0) }
     val offlineHints = remember { mutableIntStateOf(0) }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val art = navigationMode(maxWidth.value)
-        // Auf breiten Fenstern steht die Seitenleiste über die volle Höhe links, App-Leiste
-        // und Inhalt rechts daneben — dieselben Ziele wie unten, „Mehr“ eingeschlossen.
+        // On wide windows the side bar stands at full height on the left, app bar
+        // and content to the right of it — the same destinations as below, “More” included.
         Row(Modifier.fillMaxSize()) {
         if (art == NavigationMode.SIDEBAR) {
             TabSidebar(bottomNavItems, ::isSelected, ::tabChoose) { screen, icon -> Symbol(screen, icon) }
@@ -160,8 +160,8 @@ fun MainScaffold(
             topBar = {
               Column {
                 TopAppBar(
-                    // Reiner Text wie jeder Material-Titel: Ein Symbol davor las sich bei
-                    // „Mehr“ als Menüknopf. Vorleseprogramme springen zur Überschrift.
+                    // Plain text like every Material title: an icon in front read like a menu button
+                    // on “More”. Screen readers jump to the heading.
                     title = { Text(title, fontWeight = FontWeight.SemiBold, modifier = Modifier.semantics { heading() }) },
                     navigationIcon = {
                         if (moreSubpage) MitTooltip(stringResource(R.string.common_back)) {
@@ -195,13 +195,13 @@ fun MainScaffold(
             snackbarHost = { SnackbarHost(snackbarHostState, Modifier.onSizeChanged { snackbarHeight = it.height }) },
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         ) { padding ->
-            // Globaler CSV-Import-Balken: erscheint auf allen Tabs (wie in der
-            // Webapp), sobald ein Import läuft — egal von wo er gestartet wurde.
+            // Global CSV import bar: appears on all tabs (as in the
+            // web app) as soon as an import runs — no matter where it was started.
             val csvImport by csvImportState.collectAsStateWithLifecycle()
             Row(Modifier.fillMaxSize().padding(padding)) {
                 Column(Modifier.weight(1f).fillMaxHeight()) {
-                    // Auf dem Tablet gehört der Umschalter zum Inhalt, so breit wie Suchfeld
-                    // und Raster darunter. Neben einem offenen Set-Detail bleibt „Sets“ gewählt.
+                    // On the tablet the switcher belongs to the content, as wide as the search field
+                    // and the grid below. Next to an open set detail “Sets” stays selected.
                     if (art == NavigationMode.SIDEBAR && currentDest?.isOneOf(SAMMLUNG + SammlungZiel.SetDetail::class) == true) {
                         CollectionToggle(collectionTarget(currentDest),
                             onWahl = { ziel ->
@@ -209,7 +209,7 @@ fun MainScaffold(
                                 navController.toTab(ziel)
                             })
                     }
-                    // Steht ein Offline-Hinweis, nennt er die wartenden Änderungen selbst.
+                    // If an offline hint is shown, it names the pending changes itself.
                     if (offlineHints.intValue == 0) ExitBar(offeneAenderungen)
                     if (csvImport.lauf.laeuft) {
                         CsvImportBanner(
@@ -234,10 +234,10 @@ fun MainScaffold(
 }
 
 /**
- * Das Gerüst für ein Reiter-Ziel mit allem, was in jedem Ziel gleich ist
- * (Verwerfen der Rollposition, Update-Punkt). Ein neues Ziel kann so
- * nichts vergessen, weil es nichts weiterzureichen gibt. MainScaffold selbst bleibt
- * für Ziele, die abweichen müssen.
+ * The scaffold for a tab destination with everything that is the same in every destination
+ * (discarding the scroll position, update dot). A new destination thus cannot
+ * forget anything, because there is nothing to pass on. MainScaffold itself stays
+ * for destinations that must deviate.
  */
 @Composable
 fun ReiterGeruest(
@@ -259,14 +259,14 @@ fun ReiterGeruest(
         onCsvAbbrechen = { csvImport.cancelCsvImport() },
         // Reiter angetippt → oben anfangen.
         onTabAngetippt = { ziel -> vm.scrollMemory.vergissReiter(rollSchluessel(ziel)) },
-        // Der stille Start-Test hat ein Ergebnis — hier bekommt es einen Ort.
+        // The silent start check has a result — here it gets a place.
         updateVerfuegbar = updateZustand.newerVersion != null,
         offeneAenderungen = offen,
         content = content
     )
 }
 
-/** Ein Ziel der Navigation: Symbol mit Anzeige, darunter die Beschriftung oder (ohne [groesse]) nur ihr Name. */
+/** A navigation destination: icon with indicator, below it the label or (without [groesse]) only its name. */
 @Composable
 private fun TabTarget(
     gewaehlt: Boolean, name: String, groesse: TextUnit?, farben: TabColors,
@@ -288,7 +288,7 @@ private fun TabTarget(
         }
         if (groesse != null) Text(
             name, style = MaterialTheme.typography.labelMedium.copy(fontSize = groesse),
-            // Fett und in Hauptfarbe: Das gewählte Ziel unterscheidet sich auch in der Form.
+            // Bold and in the primary color: the selected destination also differs in shape.
             fontWeight = if (gewaehlt) FontWeight.Bold else FontWeight.Medium,
             color = if (gewaehlt) farben.gewaehlt else farben.ungewaehlt,
             maxLines = 1, softWrap = false, overflow = TextOverflow.Clip,
@@ -297,10 +297,10 @@ private fun TabTarget(
 }
 
 /**
- * Die Leiste unten. Alle Beschriftungen stehen in einer Grösse und schrumpfen höchstens
- * bis zum Anderthalbfachen der Normalgrösse, sonst höbe die Leiste die Systemeinstellung
- * auf. Reicht der Platz dann nicht, ist nur das gewählte Ziel beschriftet und breiter;
- * die übrigen tragen ihren Namen für TalkBack und als Tooltip.
+ * The bottom bar. All labels stand in one size and shrink at most
+ * to one and a half times the normal size, otherwise the bar would override the system setting.
+ * If the space is then not enough, only the selected destination is labelled and wider;
+ * the others carry their name for TalkBack and as a tooltip.
  */
 @Composable
 private fun TabBar(
@@ -313,7 +313,7 @@ private fun TabBar(
     val meter = rememberTextMeasurer()
     val dichte = LocalDensity.current
     Surface(color = farben.leiste) {
-        // Ein Rand links und rechts: Bei 200 % stiess „Mehr“ samt Punkt an den Bildschirmrand.
+        // A margin left and right: at 200 % “More” including the dot hit the screen edge.
         BoxWithConstraints(Modifier.fillMaxWidth().windowInsetsPadding(NavigationBarDefaults.windowInsets)
             .padding(horizontal = BAR_EDGE)) {
             val satz = with(dichte) {
@@ -336,7 +336,7 @@ private fun TabBar(
     }
 }
 
-/** Die Seitenleiste wird so breit, wie die längste Beschriftung in voller Grösse braucht. */
+/** The side bar becomes as wide as the longest label needs at full size. */
 @Composable
 private fun TabSidebar(
     targets: List<Reiter>,
@@ -358,12 +358,12 @@ private fun TabSidebar(
     }
 }
 
-/** Wie die Leiste unten beschriftet ist: alle mit [faktor] der vollen Grösse, oder nur [gewaehlt] mit [gewicht]. */
+/** How the bottom bar is labelled: all with [faktor] of the full size, or only [gewaehlt] with [gewicht]. */
 internal data class TabSet(val alle: Boolean, val faktor: Float, val gewaehlt: Int, val gewicht: Float)
 
 /**
- * Aus den Breiten der Beschriftungen in voller Grösse ([widths], px, ohne [edge]) und der
- * Schriftskala [schrift]: ob alle passen, wie weit sie schrumpfen, sonst wie breit das gewählte Ziel wird.
+ * From the widths of the labels at full size ([widths], px, without [edge]) and the
+ * font scale [schrift]: whether all fit, how far they shrink, otherwise how wide the selected destination becomes.
  */
 internal fun tabSet(widths: List<Float>, gewaehlt: Int, gesamt: Float, edge: Float, minTarget: Float, schrift: Float): TabSet {
     val share = gesamt / widths.size - edge
@@ -377,31 +377,31 @@ internal fun tabSet(widths: List<Float>, gewaehlt: Int, gesamt: Float, edge: Flo
     return TabSet(false, ((frei - edge) / widths[gewaehlt]).coerceIn(floor, 1f), gewaehlt, frei / minTarget)
 }
 
-/** Kleiner als das Anderthalbfache der Normalgrösse wird keine Beschriftung (WCAG 1.4.4). */
+/** No label becomes smaller than one and a half times the normal size (WCAG 1.4.4). */
 private const val TAB_MIN_SCALE = 1.5f
 private val DISPLAY_WIDTH = 56.dp
 private val DISPLAY_HEIGHT = 32.dp
-/** Breite eines unbeschrifteten Ziels: Anzeige und Rand. */
+/** Width of an unlabelled destination: indicator and margin. */
 private val DISPLAY_MIN = 64.dp
 private val BAR_HEIGHT = 80.dp
-/** Abstand der äussersten Ziele zum Bildschirmrand. */
+/** Distance of the outermost destinations to the screen edge. */
 private val BAR_EDGE = 8.dp
 private val SIDEBAR_WIDTH = 80.dp
 
-/** Der Schlüssel der gemerkten Rollposition; Ziele ohne Liste haben keinen eigenen. */
+/** The key of the remembered scroll position; destinations without a list have none of their own. */
 internal fun rollSchluessel(ziel: Any): String = (ziel as? Reiterziel)?.rollSchluessel ?: ziel.toString()
 
-/** Die Ziele des Umschalters Sets | Teile | Minifiguren, in seiner Reihenfolge. */
+/** The destinations of the switcher Sets | Parts | Minifigures, in its order. */
 internal val COLLECTION_TARGETS: List<Any> = listOf(SammlungZiel.Gallery, TeileZiel.Parts, TeileZiel.Minifigs)
 
-/** Sets, Teile und Minifiguren teilen sich in der Leiste EIN Ziel. */
+/** Sets, parts and minifigures share ONE destination in the bar. */
 private val SAMMLUNG: Set<KClass<out Any>> = COLLECTION_TARGETS.map { it::class }.toSet()
 
-/** Seiten mit unterer Leiste, die man über „Mehr“ erreicht — dort bleibt „Mehr“ gewählt. */
+/** Pages with a bottom bar that are reached via “More” — there “More” stays selected. */
 private val MORE: Set<KClass<out Any>> = setOf(AppTarget.Mehr::class, TeileZiel.PartsList::class,
     SammlungZiel.Comparison::class, KontoZiel.Settings::class, ManagementTarget.Monitoring::class)
 
-/** Die Ziele, bei denen ein Ziel der Leiste als gewählt gilt. */
+/** The destinations at which a bar destination counts as selected. */
 private fun targetsOf(screen: Any): Set<KClass<out Any>> = when (screen) {
     SammlungZiel.Gallery -> SAMMLUNG + SammlungZiel.SetDetail::class
     AppTarget.Mehr -> MORE
@@ -410,11 +410,11 @@ private fun targetsOf(screen: Any): Set<KClass<out Any>> = when (screen) {
 
 private fun NavDestination.isOneOf(targets: Set<KClass<out Any>>) = targets.any { hasRoute(it) }
 
-/** Welcher Teil der Sammlung offen ist; neben einem Set-Detail bleibt „Sets“ gewählt. */
+/** Which part of the collection is open; next to a set detail “Sets” stays selected. */
 private fun collectionTarget(ziel: NavDestination): Any =
     COLLECTION_TARGETS.firstOrNull { ziel.hasRoute(it::class) } ?: SammlungZiel.Gallery
 
-/** Wie ein Reiter: Zustand der anderen sichern, nicht doppelt stapeln. */
+/** Like a tab: save the state of the others, do not stack twice. */
 private fun androidx.navigation.NavController.toTab(ziel: Any) =
     navigate(ziel) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
@@ -423,8 +423,8 @@ private fun androidx.navigation.NavController.toTab(ziel: Any) =
     }
 
 /**
- * Sets | Teile | Minifiguren — derselbe Umschalter wie oben in der Webapp. Ein Wechsel
- * der Ansicht, darum Segmente, auch bei 200 % Schrift (dann untereinander).
+ * Sets | Parts | Minifigures — the same switcher as at the top of the web app. A change
+ * of view, hence segments, also at 200 % font (then below each other).
  */
 @Composable
 private fun CollectionToggle(aktuell: Any, onWahl: (Any) -> Unit, modifier: Modifier = Modifier) {
@@ -440,8 +440,8 @@ private fun CollectionToggle(aktuell: Any, onWahl: (Any) -> Unit, modifier: Modi
 }
 
 /**
- * Der Umschalter unter der App-Leiste weicht mit ihr: Bei 200 % Schrift blieben
- * sonst Umschalter und Suche stehen, und vom ersten Set war kaum etwas zu sehen.
+ * The switcher below the app bar yields with it: at 200 % font switcher and search
+ * would otherwise stay, and hardly anything of the first set would be visible.
  */
 private fun Modifier.withBarCollapse(share: () -> Float): Modifier = clipToBounds().layout { messbar, grenzen ->
     val space = messbar.measure(grenzen)

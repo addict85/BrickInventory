@@ -18,13 +18,13 @@ import org.junit.Test
 import java.io.File
 
 /**
- * PDF-Auftrag und CSV-Status laufen wie jeder Abruf durch sicherAufrufen: Ein
- * Netzfehler ist vorübergehend, ein 401 eine Abweisung, und keiner trägt Token oder
- * Adresse selbst — die setzt der Wächter (hier ersetzt durch den Testserver).
+ * PDF job and CSV status run like every fetch through sicherAufrufen: a
+ * network error is temporary, a 401 a rejection, and none carries token or
+ * address itself — those are set by the guard (here replaced by the test server).
  *
- * Gegenprobe (gegenproben/pdf-ohne-sicheraufrufen.patch, nur in der CI messbar):
- *   startPdfJob fängt Ausnahmen wieder selbst und macht daraus Unbekannt → rot
- *   „ein Netzfehler ist vorübergehend …“
+ * Counter-check (gegenproben/pdf-ohne-sicheraufrufen.patch, only measurable in CI):
+ *   startPdfJob catches exceptions itself again and turns them into Unbekannt → red
+ *   “a network error is temporary …”
  */
 class PdfAndCsvFetchTest {
 

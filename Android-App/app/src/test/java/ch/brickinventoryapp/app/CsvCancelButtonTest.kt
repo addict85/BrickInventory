@@ -18,12 +18,12 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Ein laufender CSV-Import lässt sich abbrechen, ohne erst den Balken aufzuklappen: Der
- * Knopf steht zugeklappt in der Kopfzeile, wie in der Webapp; ein fertiger Import zeigt
- * keinen.
+ * A running CSV import can be cancelled without first expanding the bar: the
+ * button stands collapsed in the header row, as in the web app; a finished import shows
+ * none.
  *
- * Gegenprobe (gegenproben/csv-abbrechen-versteckt.patch, Robolectric, misst die CI): der
- * Knopf nur bei aufgeklapptem Balken → rot „ein laufender Import …“.
+ * Counter-check (gegenproben/csv-abbrechen-versteckt.patch, Robolectric, measured by CI): the
+ * button only with an expanded bar → red “a running import …”.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])

@@ -10,7 +10,7 @@ fun AppToken.asDevice(): DeviceView = DeviceView(
     aktuell = aktuell,
     angelegt = createdAt,
     lastlyUsed = lastUsed,
-    // ISO-Zeitstempel lassen sich als Text vergleichen.
+    // ISO timestamps can be compared as text.
     runningAb = listOfNotNull(expiresAt.takeUnless { neverExpires }, hardExpiresAt).minOrNull(),
     vollerZugriff = scope == TOKEN_SCOPE_FULL,
     ipArea = ipRange?.takeIf { it.isNotBlank() },

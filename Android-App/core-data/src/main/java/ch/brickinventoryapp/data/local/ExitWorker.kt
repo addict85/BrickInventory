@@ -19,8 +19,8 @@ import javax.inject.Inject
 import ch.brickinventoryapp.offline.ExitPlanner
 
 /**
- * Sendet den Ausgang, sobald Netz da ist. WorkManager übernimmt Netzbedingung,
- * Rückzug und das Überleben eines Neustarts; die Logik steht in [Abgleich].
+ * Sends the outbox as soon as there is network. WorkManager takes over the network condition,
+ * backoff and surviving a restart; the logic stands in [Abgleich].
  */
 @HiltWorker
 internal class ExitWorker @AssistedInject constructor(
@@ -39,9 +39,9 @@ internal class ExitWorker @AssistedInject constructor(
 }
 
 /**
- * Plant einen Sendelauf. APPEND_OR_REPLACE statt KEEP: Läuft gerade einer und hat
- * den Ausgang schon leer gesehen, käme ein eben eingereihter Posten sonst erst
- * beim nächsten Anlass dran.
+ * Schedules a send run. APPEND_OR_REPLACE instead of KEEP: if one is running and has
+ * already seen the outbox empty, an item just queued would otherwise only get its turn
+ * at the next occasion.
  */
 internal class WorkManagerPlanner @Inject constructor(
     @param:ApplicationContext private val context: Context,

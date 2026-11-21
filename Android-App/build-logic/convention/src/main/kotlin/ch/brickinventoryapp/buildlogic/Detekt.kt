@@ -15,11 +15,11 @@ import org.gradle.process.CommandLineArgumentProvider
 import java.io.File
 
 /**
- * Aufgabe `detekt`: prüft src/main und src/test des Moduls nach config/detekt/detekt.yml
- * und scheitert bei jedem Fund, der nicht in config/detekt/baseline.xml steht. Die
- * Baseline hält nur Länge und Verzweigung fest; tools/detekt-limit.txt lässt sie schrumpfen. Die Kommandozeile statt des Gradle-Plugins:
- * Sie braucht nur die Quellordner und bringt ihr eigenes Kotlin mit, das Plugin müsste
- * sich an die Quellsätze von AGP 9 mit eingebautem Kotlin hängen.
+ * Task `detekt`: checks src/main and src/test of the module against config/detekt/detekt.yml
+ * and fails on every finding that is not in config/detekt/baseline.xml. The
+ * baseline only records length and branching; tools/detekt-limit.txt lets it shrink. The command line instead of the Gradle plugin:
+ * it only needs the source folders and brings its own Kotlin, the plugin would have to
+ * hook into the source sets of AGP 9 with built-in Kotlin.
  */
 class DetektKonvention : Plugin<Project> {
     override fun apply(target: Project) {
@@ -45,16 +45,16 @@ class DetektKonvention : Plugin<Project> {
                 ),
             )
             task.outputs.file(report)
-            // Ohne Quellordner (core-resources) läse detekt sonst das ganze Modul samt build/.
+            // Without source folders (core-resources) detekt would otherwise read the whole module including build/.
             task.onlyIf("das Modul hat Kotlin-Quellen") { !quellen.isEmpty }
         }
         target.tasks.matching { it.name == "check" }.configureEach { it.dependsOn(detekt) }
     }
 
     /**
-     * detekt 1.23 bringt seinen Übersetzer als Bibliothek mit und läuft nur mit der Kotlin-
-     * Fassung, gegen die es gebaut ist; der Katalog nennt sie (detektKotlin), damit kein
-     * anderes Kotlin im Bau sie anhebt.
+     * detekt 1.23 brings its compiler as a library and only runs with the Kotlin
+     * version it is built against; the catalog names it (detektKotlin) so that no
+     * other Kotlin in the build raises it.
      */
     private fun detektConfiguration(target: Project, name: String): Configuration {
         val kotlin = target.libs.findVersion("detektKotlin").get().requiredVersion
@@ -67,7 +67,7 @@ class DetektKonvention : Plugin<Project> {
     }
 }
 
-/** Die Aufrufzeile von detekt; die Felder sind zugleich die Eingaben der Aufgabe. */
+/** The command line of detekt; the fields are at the same time the task's inputs. */
 internal class DetektArguments(
     @get:InputFiles @get:PathSensitive(PathSensitivity.RELATIVE) val quellen: FileCollection,
     @get:InputFile @get:PathSensitive(PathSensitivity.NONE) val rules: File,

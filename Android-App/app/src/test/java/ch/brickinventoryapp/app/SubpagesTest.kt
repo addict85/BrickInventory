@@ -70,29 +70,29 @@ import ch.brickinventoryapp.testing.SessionFake
 import ch.brickinventoryapp.testing.testPartsRepository
 
 /**
- * Die Unterseiten unter „Mehr“ und die Rückfragen vor Aktionen ohne Weg zurück:
- * Abmelden, Lagerort löschen und Unterkonto entfernen fragen nach; Lagerorte sind
- * Zeilen mit Menü statt Dauer-Textfeldern; jede Unterseite nennt ihren Titel einmal;
- * Haushalt gliedert Einladen und Annehmen; CSV-Import zeigt Aktionen mit Spalten;
- * die leere Bauliste steht mittig mit Rand und bietet kein Zurücksetzen an.
+ * The subpages under “More” and the confirmations before actions without a way back:
+ * sign-out, deleting a storage location and removing a sub-account ask first; storage locations are
+ * rows with a menu instead of permanent text fields; every subpage names its title once;
+ * household structures inviting and accepting; CSV import shows actions with columns;
+ * the empty build list stands centered with a margin and offers no reset.
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   abmelden-ohne-rueckfrage     „Abmelden“ unter Mehr meldet sofort ab → rot „Abmelden fragt …“
- *   lagerort-loescht-sofort      Löschen im Menü ohne Rückfrage → rot „Lagerorte stehen als Zeilen …“
- *   haushalt-entfernt-sofort     „Entfernen“ trennt sofort → rot „Haushalt gliedert …“
- *   unterseite-doppelter-titel   CSV-Import wieder mit Kartenkopf → rot „CSV-Import zeigt …“
- *   bauliste-leer-zuruecksetzen  „Zurücksetzen“ auch ohne Sets sichtbar → rot „leere Bauliste …“
- *   lagerort-stern-als-knopf     Stern wieder IconButton ohne Ort → rot „Der Vorgabe-Stern …“
- *   haushalt-entfernen-ohne-name „Entfernen“ ohne Kontonamen → rot „Entfernen nennt …“
- *   preisalarm-nummer-zuerst     Rückfrage nennt wieder nur die Nummer → rot „Preisalarme nennen …“
- *   konto-ohne-wiederholung      Passwort ändern schickt ohne Prüfung ab → rot „Konto wechselt …“
- *   bauliste-zweistufig          Erstellen erst nach „+“ → rot „Bauliste entsteht …“
- *   bauliste-plus-ohne-wirkung   „+“ im Feld nimmt das Set nicht auf → rot „Bauliste nimmt Sets …“
- *   bauliste-leert-sofort        „Zurücksetzen“ leert ohne Rückfrage → rot „Bauliste nimmt Sets …“
- *   konto-profil-ohne-rueckfrage Speichern ohne Passwortdialog → rot „Konto fragt beim Speichern …“
- *   konto-email-ohne-ausstehend  die beantragte Adresse nicht unter dem Feld → rot „Konto nennt …“
- *   abmelden-mitten-im-konto     Abmelden wieder als letzter Eintrag von „Konto und App“, vor der
- *                                Servergruppe → rot „Abmelden steht abgesetzt …“
+ * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ *   abmelden-ohne-rueckfrage     „Abmelden“ under More signs out immediately → red “sign-out asks …”
+ *   lagerort-loescht-sofort      deleting in the menu without confirmation → red “storage locations stand as rows …”
+ *   haushalt-entfernt-sofort     „Entfernen“ unlinks immediately → red “household structures …”
+ *   unterseite-doppelter-titel   CSV import again with card header → red “CSV import shows …”
+ *   bauliste-leer-zuruecksetzen  „Zurücksetzen“ visible even without sets → red “empty build list …”
+ *   lagerort-stern-als-knopf     star again IconButton without location → red “the default star …”
+ *   haushalt-entfernen-ohne-name „Entfernen“ without account name → red “removing names …”
+ *   preisalarm-nummer-zuerst     confirmation names only the number again → red “price alerts name …”
+ *   konto-ohne-wiederholung      changing the password submits without check → red “account changes …”
+ *   bauliste-zweistufig          creating only after „+“ → red “build list is created …”
+ *   bauliste-plus-ohne-wirkung   „+“ in the field does not take the set → red “build list takes sets …”
+ *   bauliste-leert-sofort        „Zurücksetzen“ empties without confirmation → red “build list takes sets …”
+ *   konto-profil-ohne-rueckfrage saving without password dialog → red “account asks for the password when saving …”
+ *   konto-email-ohne-ausstehend  the requested address not below the field → red “account names …”
+ *   abmelden-mitten-im-konto     sign-out again as the last entry of „Konto und App“, before the
+ *                                server group → red “sign-out stands apart …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -123,13 +123,13 @@ class SubpagesTest {
         compose.waitForIdle()
     }
 
-    /** Die Welt antwortet im Takt; den Hauptlooper treiben, bis [fertig] gilt. */
+    /** The world responds in ticks; drive the main looper until [fertig] holds. */
     private fun wait(name: String, fertig: () -> Boolean) {
         driveUntil(name, bereit = fertig)
         compose.waitForIdle()
     }
 
-    /** Die Bauliste, wie der Graph sie zeigt: Route mit ViewModel, ohne Netz. */
+    /** The build list as the graph shows it: route with ViewModel, without network. */
     @Composable
     private fun bauliste(vm: PartListViewModel) =
         PartsListRoute(serverUrl = "", imageLoader = coil3.ImageLoader.Builder(ctx).build(),
@@ -160,7 +160,7 @@ class SubpagesTest {
         assertEquals("Bestätigt meldet ab", 1, abgemeldet)
     }
 
-    /** Zwischen „Einstellungen“ und der Servergruppe lag Abmelden dort, wo man weitertippt. */
+    /** Between „Einstellungen“ and the server group sign-out lay where one keeps tapping. */
     @Test
     fun `sign-out stands apart as the last entry, after the server group`() {
         zeige { MehrBildschirm({}, isAdmin = true, updateVerfuegbar = false, onAbmelden = {}) }
@@ -171,7 +171,7 @@ class SubpagesTest {
         }
     }
 
-    /** Der Punkt an den Einstellungen sagt in Worten, wofür er steht. */
+    /** The dot on the settings says in words what it stands for. */
     @Test
     fun `update dot is labelled`() {
         zeige { MehrBildschirm({}, isAdmin = false, updateVerfuegbar = true, onAbmelden = {}) }
@@ -186,7 +186,7 @@ class SubpagesTest {
         val meldung = SnackbarHostState()
         zeige { LocationsRoute(vm, meldung, onZurueck = {}) }
         wait("Lagerorte") { vm.storageState.value.eigene.size == 3 }
-        // Kein Ort als Dauer-Textfeld, der Titel nur in der App-Leiste.
+        // No location as a permanent text field, the title only in the app bar.
         compose.onAllNodes(hasSetTextAction()).assertCountEquals(0)
         compose.onAllNodesWithText(ctx.getString(R.string.storage_manage), ignoreCase = true).assertCountEquals(1)
         compose.onNodeWithText("Regal Wohnzimmer").fetchSemanticsNode()
@@ -197,8 +197,8 @@ class SubpagesTest {
         compose.waitForIdle()
         assertTrue("Gelöscht vor der Rückfrage: ${world.paths.requests}", world.paths.requests.none { it.startsWith("DELETE") })
         compose.onNodeWithText(ctx.getString(R.string.storage_delete_title)).fetchSemanticsNode()
-        // Bestätigt ist nur vorgemerkt: Der Ort fehlt, der Server erfährt es erst, wenn die
-        // Snackbar ohne „Rückgängig“ endet. Die Uhr steht still, damit sie nicht von selbst abläuft.
+        // Confirmed is only marked: the location is missing, the server learns of it only when the
+        // snackbar ends without „Rückgängig“. The clock stands still so that it does not expire by itself.
         compose.mainClock.autoAdvance = false
         inDialog(ctx.getString(R.string.common_delete)).performClick()
         repeat(5) {
@@ -210,8 +210,8 @@ class SubpagesTest {
         assertTrue("Gelöscht vor Ablauf der Snackbar", world.paths.requests.none { it.startsWith("DELETE") })
         meldung.currentSnackbarData?.dismiss()
         compose.mainClock.autoAdvance = true
-        // Das Ende der Snackbar setzt den LaunchedEffect fort; der läuft auf dem Takt der
-        // Compose-Uhr, den driveUntil (nur der Hauptlooper) nicht weiterschiebt.
+        // The end of the snackbar continues the LaunchedEffect; it runs at the pace of the
+        // Compose clock, which driveUntil (only the main looper) does not advance.
         compose.waitForIdle()
         wait("Löschen") { world.paths.requests.any { it.startsWith("DELETE") && it.endsWith("/storage/locations/3") } }
     }
@@ -230,7 +230,7 @@ class SubpagesTest {
             compose.onNode(hasText(ctx.getString(titel)) and heading).fetchSemanticsNode()
         }
         compose.onAllNodesWithText(ctx.getString(R.string.household_title), ignoreCase = true).assertCountEquals(1)
-        // Das Codefeld trägt ein Label, nicht nur einen Platzhalter.
+        // The code field carries a label, not only a placeholder.
         compose.onNode(hasSetTextAction() and hasText(ctx.getString(R.string.household_invite_label))).fetchSemanticsNode()
 
         compose.onAllNodes(hasText(ctx.getString(R.string.household_remove)) and hasClickAction())[0].performClick()
@@ -331,7 +331,7 @@ class SubpagesTest {
         feld(R.string.konto_password_new).performTextInput("neues-passwort-12")
         feld(R.string.register_password_repeat).performTextInput("anderes-passwort-1")
         compose.waitForIdle()
-        // Antippbar; abgeschickt wird nichts, der Cursor steht in der Wiederholung.
+        // Tappable; nothing is submitted, the cursor stands in the repetition.
         wechseln.performScrollTo().assertIsEnabled().performClick()
         compose.waitForIdle()
         assertEquals("Mit falscher Wiederholung abgeschickt", 0, switched())
@@ -342,7 +342,7 @@ class SubpagesTest {
         wait("Passwortwechsel") { switched() == 1 }
     }
 
-    /** Eine neue Adresse gilt erst nach dem Link: Das Feld zeigt die geltende, darunter die beantragte. */
+    /** A new address applies only after the link: the field shows the current one, below it the requested one. */
     @Test
     fun `account names the requested e-mail below the field`() {
         world.paths.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
@@ -361,7 +361,7 @@ class SubpagesTest {
             .fetchSemanticsNode("Die beantragte Adresse fehlt unter dem Feld")
     }
 
-    /** Geändert wird über die Textaktion, nicht durch Tippen: kein fokussiertes Feld. */
+    /** Changed via the text action, not by typing: no focused field. */
     @Test
     fun `account asks for the password when saving the profile`() {
         world.paths.antworten["/api/v1/auth/profile"] = """{"success":true,"user":{"id":1,"username":"marco",
@@ -379,9 +379,9 @@ class SubpagesTest {
         compose.waitForIdle()
         val speichern = compose.onNode(hasText(ctx.getString(R.string.konto_save)) and hasClickAction())
         speichern.performScrollTo()
-        // Steht auf dieser Seite ein Dialog mit Textfeld, wird Compose unter Robolectric
-        // nicht mehr ruhig. Darum ohne waitForIdle: Uhr anhalten, Looper leeren und das
-        // Dialogfenster bei Robolectric selbst nachsehen.
+        // If a dialog with a text field stands on this page, Compose under Robolectric
+        // no longer comes to rest. Therefore without waitForIdle: stop the clock, drain the looper and
+        // look up the dialog window at Robolectric ourselves.
         compose.mainClock.autoAdvance = false
         speichern.performClick()
         repeat(3) {
@@ -395,7 +395,7 @@ class SubpagesTest {
         Shadows.shadowOf(Looper.getMainLooper()).idle()
     }
 
-    /** Zurücksetzen wirft Sets und Liste weg und fragt darum erst nach. */
+    /** Resetting throws away sets and list and therefore asks first. */
     @Test
     fun `build list takes sets via the plus in the field and resets them only after confirmation`() {
         val vm = world.bauliste()

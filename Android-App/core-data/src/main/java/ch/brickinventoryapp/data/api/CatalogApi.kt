@@ -10,7 +10,7 @@ import retrofit2.http.Query
 import ch.brickinventoryapp.contract.CatalogYearVerteilungResponse
 
 /**
- * Der Set-Katalog des Servers: Themen, Liste, Detail, Jahresverteilung (CatalogRepository).
+ * The server's set catalog: themes, list, detail, year distribution (CatalogRepository).
  */
 interface CatalogApi {
 

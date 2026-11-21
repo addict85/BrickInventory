@@ -21,17 +21,17 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import java.io.FileNotFoundException
 
-/** Der Name, unter dem die Ziel-App die Teileliste sieht. */
+/** The name under which the target app sees the parts list. */
 internal const val PART_LIST_NAME = "teileliste.pdf"
 
-/** Die Adresse der Teileliste beim [TeilelistenProvider]; die Authority steht so im Manifest. */
+/** The address of the parts list at the [TeilelistenProvider]; the authority stands like this in the manifest. */
 internal fun partListsUri(ctx: Context): Uri =
     Uri.Builder().scheme("content").authority("${ctx.packageName}.teileliste").path(PART_LIST_NAME).build()
 
 /**
- * Die Teileliste öffnen, immer über die Auswahl des Systems: Sie trägt das ganze
- * Inventar, und eine App, die sich als Standard für PDFs eingetragen hat, bekäme
- * sie sonst unbemerkt samt Leserecht.
+ * Open the parts list, always via the system's chooser: it carries the whole
+ * inventory, and an app that registered itself as default for PDFs would otherwise get
+ * it unnoticed including read permission.
  */
 fun partListsSelection(ctx: Context, titel: String): Intent {
     val ansicht = Intent(Intent.ACTION_VIEW).apply {
@@ -42,9 +42,9 @@ fun partListsSelection(ctx: Context, titel: String): Intent {
 }
 
 /**
- * Gibt die verschlüsselt abgelegte Teileliste weiter, ohne Klartext auf der Platte:
- * Ein Proxy-Deskriptor liest aus dem Speicher, die Ziel-App darf darin springen.
- * Nicht exportiert; lesen darf nur, wem die Auswahl das Recht für diese Uri gibt.
+ * Passes on the encrypted parts list without plaintext on disk:
+ * a proxy descriptor reads from memory, the target app may seek in it.
+ * Not exported; only whoever the chooser grants the right for this Uri may read.
  */
 class TeilelistenProvider : ContentProvider() {
 
@@ -96,7 +96,7 @@ class TeilelistenProvider : ContentProvider() {
     override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?): Int = 0
 }
 
-/** Ein Klartext im Speicher als Datei; beim Schliessen überschrieben. */
+/** A plaintext in memory as a file; overwritten on closing. */
 private class StorageFile(private val inhalt: ByteArray) : ProxyFileDescriptorCallback() {
     override fun onGetSize(): Long = inhalt.size.toLong()
 

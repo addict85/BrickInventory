@@ -23,15 +23,15 @@ import org.robolectric.annotation.GraphicsMode
 import java.util.Locale
 
 /**
- * Die Zeilen der Finanztabelle zeigen dasselbe wie im Web: den Kaufpreis bei Sets UND
- * bei manuell erfassten Teilen und Figuren. Gezeichnet gegen den Testserver der
- * Beispielwelt, mit einem Teil und einer Figur samt Kaufpreis.
+ * The rows of the finance table show the same as on the web: the purchase price for sets AND
+ * for manually added parts and figures. Drawn against the test server of the
+ * sample world, with a part and a figure including purchase price.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   finanz-manuelle-zeile-ohne-kauf  ManualFinanceRow zeigt den Kaufpreis nicht → rot „Teile und Figuren …“
- *   finanz-teilzeile-ohne-kauf       die Teile reichen den Kaufpreis nicht durch → rot, derselbe Test
- *   finanz-figurzeile-ohne-kauf      die Figuren reichen ihn nicht durch → rot, derselbe Test
- *   finanz-setzeile-ohne-kauf        die Set-Zeile zeigt ihn nicht → rot „die Set-Zeile …“
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   finanz-manuelle-zeile-ohne-kauf  ManualFinanceRow does not show the purchase price → red “parts and figures …”
+ *   finanz-teilzeile-ohne-kauf       the parts do not pass the purchase price through → red, the same test
+ *   finanz-figurzeile-ohne-kauf      the figures do not pass it through → red, the same test
+ *   finanz-setzeile-ohne-kauf        the set row does not show it → red “the set row …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -74,10 +74,10 @@ class FinancePurchasePriceRowsTest {
         compose.waitForIdle()
     }
 
-    /** Rollt zur Zeile mit [betrag] und sieht nach, dass dort der Kaufpreis steht. */
+    /** Scrolls to the row with [betrag] and checks that the purchase price stands there. */
     private fun purchasePriceStands(betrag: String) {
         val zeile = hasText(kaufpreis, substring = true) and hasText(betrag, substring = true)
-        // Neben der Liste rollt auch die Reihe der Kennzahlen; gerollt wird, wer die Zeile hat.
+        // Next to the list the row of key figures scrolls too; whoever has the row is scrolled.
         val listen = compose.onAllNodes(hasScrollAction()).fetchSemanticsNodes().size
         val gefunden = (0 until listen).any { i ->
             runCatching { compose.onAllNodes(hasScrollAction())[i].performScrollToNode(zeile) }.isSuccess

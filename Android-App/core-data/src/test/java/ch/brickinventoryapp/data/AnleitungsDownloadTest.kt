@@ -28,16 +28,16 @@ import java.io.File
 import java.util.Collections
 
 /**
- * Der Download einer Bauanleitung gegen einen Testserver, der beim ersten Abruf mitten im
- * Rumpf abreisst: Geladen wird in die Teildatei, fortgesetzt am Klartext-Byte per Range,
- * erst danach heisst die Datei wie die fertige. Der Abruf geht über den api-Client, also
- * mit dessen Köpfen (Token). Unter Robolectric (Context, WLAN-Sperre), im Takt.
+ * The download of a building instruction against a test server that breaks off in the middle of the
+ * body on the first fetch: loading goes into the partial file, resumed at the plaintext byte via Range,
+ * only afterwards does the file get the finished one's name. The fetch goes via the api client, thus
+ * with its headers (token). Under Robolectric (context, Wi-Fi lock), in ticks.
  *
- * Gegenproben (Patches unter gegenproben/, Robolectric, misst die CI):
- *   anleitung-direkt-ins-ziel   der Download schreibt direkt in die fertige Datei → rot
- *                               „ein abgerissener Download …“ (der Rest gilt als fertig)
- *   anleitung-ohne-range        der Range-Kopf beim Fortsetzen fehlt → rot, derselbe Test
- *   anleitung-eigener-client    ein eigener OkHttpClient statt des api-Clients → rot, derselbe Test
+ * Counter-checks (patches under gegenproben/, Robolectric, measured by CI):
+ *   anleitung-direkt-ins-ziel   the download writes directly into the finished file → red
+ *                               “a broken download …” (the rest counts as finished)
+ *   anleitung-ohne-range        the Range header is missing when resuming → red, the same test
+ *   anleitung-eigener-client    an own OkHttpClient instead of the api client → red, the same test
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)

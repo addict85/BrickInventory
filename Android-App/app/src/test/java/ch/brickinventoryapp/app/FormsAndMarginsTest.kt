@@ -119,31 +119,31 @@ import ch.brickinventoryapp.collection.ui.screens.SetDetailRoute
 import org.robolectric.RuntimeEnvironment
 
 /**
- * Formulare, Ränder und Leisten, als Verhalten geprüft — Telefon 411 dp, de-CH: Feldbeschriftungen,
- * Hilfezeilen, Abstände zum Fensterrand, Tablet nebeneinander.
+ * Forms, margins and bars, checked as behavior — phone 411 dp, de-CH: field labels,
+ * help lines, distances to the window edge, tablet side by side.
  *
- * Gegenproben (Patches unter gegenproben/, gemessen nur in der CI — Robolectric):
- *   kaufpreise-spaltenkoepfe        Spaltenkopf „Zustand“ wieder über den Zeilen → rot „die Kaufpreise tragen Feldbeschriftungen …“
- *   barcode-felder-ohne-hinweis     Barcode-Dialog ohne Hilfezeile unter der Anzahl → rot „Barcode nennt die Nummer …“
- *   barcode-plakette-vor-nummer     „Schon in deiner Sammlung“ wieder zwischen Name und Nummer
- *                                   → rot „Barcode nennt die Nummer …“
- *   preisspeicher-eingerueckt       Preisspeicher wieder mit eigenem Seitenrand → rot „Hintergrundarbeiten mit einem Titel, …“ (Einzug)
- *   hintergrund-titel-doppelt       Karte wieder mit dem Seitennamen → rot „Hintergrundarbeiten mit einem Titel, …“ (zweimal)
- *   hintergrund-titel-im-inhalt     Seitenname wieder über dem Inhalt → rot „Hintergrundarbeiten mit einem Titel, …“
- *   netze-ohne-schalter             Netze ohne Schalterrolle → rot „Hintergrundarbeiten mit einem Titel, …“
- *   gutscheine-anlegen-oben         „Gutschein hinzufügen“ wieder über der Liste → rot „Gutscheine anlegen schwebt, Guthaben …“ (schwebt nicht)
- *   bauliste-zahl-im-text           „(2 Sets)“ wieder als zweiter Text im Knopf → rot „Bauliste erstellen bleibt bei …“
- *   alarm-feld-nennt-richtung       Schwellenfeld wieder mit „Fällt unter“ beschriftet → rot „Preisalarme nennen die Richtung …“
- *   alarm-feld-schmal               Felder auch auf dem Telefon höchstens 320 dp breit → rot „Preisalarme nennen die Richtung …“ (Rand)
- *   gutschein-anlegen-ohne-text     Knopf wieder mit text/icon (Text aus der Semantik genommen)
- *                                   → rot „Gutscheine anlegen schwebt, Guthaben …“
- *   bildflaeche-hell-im-dunkeln     Bildgrund auch im Dunkeln Weiss → rot „im Dunkeln liegt das …“
- *   leiste-ohne-rand                Leiste wieder ohne Rand → rot „die Leiste haelt bei 200 Prozent …“
- *   scanner-schliessen-rechts       Schliessen wieder oben rechts → rot „der Scanner schliesst oben links …“
- *   dialog-ohne-rand                Rückfrage und Erfassen ohne eigenen Rand → rot „Rueckfrage und Erfassen halten …“ (randlos)
- *   sprache-uebersetzt              auf Deutsch wieder „Englisch“ → rot „die Sprachen heissen in …“
- *   portfolio-im-titel              „Wertentwicklung Portfolio“ zurück → rot „die Wertentwicklung heisst nach …“
- *   galerie-ohne-detailflaeche      neben einem offenen Set nur das Detail → rot „auf dem Tablet stehen Galerie …“
+ * Counter-checks (patches under gegenproben/, measured only in CI — Robolectric):
+ *   kaufpreise-spaltenkoepfe        column header „Zustand“ again above the rows → red “the purchase prices carry field labels …”
+ *   barcode-felder-ohne-hinweis     barcode dialog without help line below the quantity → red “barcode names the number …”
+ *   barcode-plakette-vor-nummer     „Schon in deiner Sammlung“ again between name and number
+ *                                   → red “barcode names the number …”
+ *   preisspeicher-eingerueckt       price cache again with its own page margin → red “background work with a title, …” (indent)
+ *   hintergrund-titel-doppelt       card again with the page name → red “background work with a title, …” (twice)
+ *   hintergrund-titel-im-inhalt     page name again above the content → red “background work with a title, …”
+ *   netze-ohne-schalter             networks without switch role → red “background work with a title, …”
+ *   gutscheine-anlegen-oben         „Gutschein hinzufügen“ again above the list → red “creating vouchers floats, balance …” (does not float)
+ *   bauliste-zahl-im-text           „(2 Sets)“ again as a second text in the button → red “creating a build list stays on …”
+ *   alarm-feld-nennt-richtung       threshold field again labelled „Fällt unter“ → red “price alerts name the direction …”
+ *   alarm-feld-schmal               fields also on the phone at most 320 dp wide → red “price alerts name the direction …” (edge)
+ *   gutschein-anlegen-ohne-text     button again with text/icon (text taken from the semantics)
+ *                                   → red “creating vouchers floats, balance …”
+ *   bildflaeche-hell-im-dunkeln     image background white in the dark too → red “in the dark the image lies …”
+ *   leiste-ohne-rand                bar again without margin → red “the bar keeps distance to the screen edge at 200 percent …”
+ *   scanner-schliessen-rechts       close again at the top right → red “the scanner closes top left …”
+ *   dialog-ohne-rand                confirmation and adding without own margin → red “confirmation and adding keep …” (borderless)
+ *   sprache-uebersetzt              in German again „Englisch“ → red “the languages are called in …”
+ *   portfolio-im-titel              „Wertentwicklung Portfolio“ back → red “the value development is named after …”
+ *   galerie-ohne-detailflaeche      next to an open set only the detail → red “on the tablet gallery …”
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -179,16 +179,16 @@ class FormsAndMarginsTest {
         compose.waitForIdle()
     }
 
-    /** Den Hauptlooper treiben, bis [fertig] gilt; die Welt antwortet im Takt. */
+    /** Drive the main looper until [fertig] holds; the world responds in ticks. */
     private fun wait(name: String, fertig: () -> Boolean) {
         driveUntil(name, requests = { world.paths.requests.size }, bereit = fertig)
         compose.waitForIdle()
     }
 
     /**
-     * Öffnet [dialog] wie ein Antippen bei angehaltener Uhr und gibt die Wurzel seines
-     * Fensters zurück: Ein Dialog mit Textfeld kommt unter Robolectric sonst nie zur Ruhe
-     * (wie ScreenPhotoVariantsTest.showDialog).
+     * Opens [dialog] like a tap with the clock stopped and returns the root of its
+     * window: a dialog with a text field otherwise never comes to rest under Robolectric
+     * (like ScreenPhotoVariantsTest.showDialog).
      */
     private fun openDialog(dialog: @Composable () -> Unit): SemanticsNode {
         val offen = mutableStateOf(false)
@@ -212,7 +212,7 @@ class FormsAndMarginsTest {
         else -> null
     }
 
-    /** Alle Texte unter [n] mit ihrer Lage im Fenster. */
+    /** All texts below [n] with their position in the window. */
     private fun texts(n: SemanticsNode): List<Pair<String, Rect>> =
         n.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text to n.boundsInRoot } +
             n.children.flatMap { texts(it) }
@@ -249,7 +249,7 @@ class FormsAndMarginsTest {
 
     // ── Erfassen-Formulare ──
 
-    /** Was jedes Formular unter Anzahl, Preis und Lagerort sagt; die Anzahl je Gegenstand. */
+    /** What every form says below quantity, price and storage location; the quantity per item. */
     private fun checkHints(name: String, texts: List<String>, countHint: Int) {
         for (hinweis in listOf(text(countHint), text(R.string.common_unit_price_placeholder), text(R.string.detail_storage_ph)))
             assertTrue("$name: Hinweis „$hinweis“ fehlt", hinweis in texts)
@@ -305,7 +305,7 @@ class FormsAndMarginsTest {
             MonitoringScreen(MonitoringState(MonitoringUiState(), vm.hintergrund.value, ManagementUiState(),
                 networks, Design.CLASSIC, 0L), vm, CacheEvents({}, {}, { _, _ -> }, {}, {}, {}, { _, _, _ -> }))
         }
-        // Der eine Titel steht in der Leiste (VerwaltungGraph); der Inhalt wiederholt ihn nicht.
+        // The one title stands in the bar (VerwaltungGraph); the content does not repeat it.
         assertEquals("„Hintergrundarbeiten“ unter der Leiste noch einmal", 0,
             compose.onAllNodesWithText(text(R.string.nav_monitoring)).fetchSemanticsNodes().size)
         fun links(id: Int) = compose.onNode(hasText(text(id)), useUnmergedTree = true).fetchSemanticsNode().boundsInRoot.left
@@ -336,9 +336,9 @@ class FormsAndMarginsTest {
             compose.onNodeWithText(text(id)).fetchSemanticsNode("„${text(id)}“ fehlt im Menü")
     }
 
-    // ── Tablet mit Liste und Detail ──
+    // ── Tablet with list and detail ──
 
-    /** Galerie und Set-Detail auf dem Tablet (1280 dp); ohne [offen] steht rechts der Hinweis. */
+    /** Gallery and set detail on the tablet (1280 dp); without [offen] the hint stands on the right. */
     private fun galleryAndDetail(offen: String?) {
         RuntimeEnvironment.setQualifiers("de-rCH-w1280dp-h800dp-land-xhdpi")
         val galerie = world.galerie().also { it.loadSets(); it.loadStats() }
@@ -373,7 +373,7 @@ class FormsAndMarginsTest {
         assertTrue("Hinweis nicht rechts der Liste ($kachel / $hinweis)", kachel.right <= hinweis.left)
     }
 
-    // ── Bauliste bei 200 % ──
+    // ── Build list at 200 % ──
 
     @Test
     fun `creating a build list stays on one line at 200 percent and names the number of sets`() {
@@ -410,7 +410,7 @@ class FormsAndMarginsTest {
                 snackbarHostState = remember { SnackbarHostState() }, onSetClick = {}, onZurueck = {}, reportToggle = {})
         }
         wait("Preisalarme") { vm.alarmOverview.value.geladen && vm.alarmOverview.value.alerts.isNotEmpty() }
-        // Je eine Wahl im Alarm und im Formular zum Anlegen, nicht noch einmal als Feldname.
+        // One choice each in the alert and in the creation form, not once more as a field name.
         assertEquals("„Fällt unter“ doppelt", 2,
             compose.onAllNodes(hasText(text(R.string.detail_alert_chip_below)), useUnmergedTree = true)
                 .fetchSemanticsNodes().count { it.config.getOrNull(SemanticsActions.GetTextLayoutResult) != null })
@@ -419,8 +419,8 @@ class FormsAndMarginsTest {
             n.config.getOrNull(SemanticsProperties.ContentDescription).orEmpty().any { it.startsWith(vorn) }
         }).fetchSemanticsNodes().first().boundsInRoot
         val feld = compose.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().first().boundsInRoot
-        // Der Rand ist das Ende der 48-dp-Tippfläche des Löschknopfs; seine sichtbare Fläche
-        // (40 dp, mittig darin) endet 4 dp davor.
+        // The edge is the end of the 48 dp tap area of the delete button; its visible area
+        // (40 dp, centered within) ends 4 dp before.
         val dichte = ctx.resources.displayMetrics.density
         val edge = loeschen.center.x + 24 * dichte
         assertEquals("Feld endet nicht am Rand der Karte (${feld.right} / $edge)", edge, feld.right, dichte)
@@ -438,13 +438,13 @@ class FormsAndMarginsTest {
         }
         compose.waitForIdle()
         val bild = compose.onNodeWithContentDescription("Bild").captureToImage().asAndroidBitmap()
-        // Links neben dem Bild, das mit „Fit“ mittig steht: nur die Fläche.
+        // Left of the image, which stands centered with „Fit“: only the surface.
         val point = bild.getPixel(2, bild.height / 2)
         val hell = (Farbe.red(point) + Farbe.green(point) + Farbe.blue(point)) / 3
         assertTrue("Bildfläche im Dunkeln hell (Grauwert $hell)", hell < 80)
     }
 
-    // ── Leiste bei 200 %, Scanner ──
+    // ── Bar at 200 %, scanner ──
 
     @Test
     fun `the bar keeps distance to the screen edge at 200 percent`() {
@@ -479,9 +479,9 @@ class FormsAndMarginsTest {
         compose.onNode(hasText(text(R.string.scanner_torch_on)) and hasClickAction()).fetchSemanticsNode("Licht ist kein Knopf")
     }
 
-    // ── Dialoge mit Rand ──
+    // ── Dialogs with margin ──
 
-    /** Der Rahmen des Dialogs: der Knoten mit seinem Fensternamen. */
+    /** The frame of the dialog: the node with its window name. */
     private fun frame(n: SemanticsNode, titel: String): Rect? =
         if (n.config.getOrNull(SemanticsProperties.PaneTitle) == titel) n.boundsInRoot
         else n.children.firstNotNullOfOrNull { frame(it, titel) }
@@ -511,7 +511,7 @@ class FormsAndMarginsTest {
 
     // ── Sprachauswahl ──
 
-    /** Wer die falsche Sprache eingestellt hat, findet seine an ihrem eigenen Namen. */
+    /** Whoever has set the wrong language finds theirs by its own name. */
     @Test
     fun `the languages are called in both languages what they call themselves`() {
         for (sprache in listOf("de-rCH", "en-rGB")) {
@@ -521,7 +521,7 @@ class FormsAndMarginsTest {
         }
     }
 
-    // ── Sammlung statt Portfolio ──
+    // ── Collection instead of portfolio ──
 
     @Test
     fun `the value development is named after the collection`() {

@@ -2,7 +2,7 @@ package ch.brickinventoryapp.model.domain
 
 import java.time.Instant
 
-// Teile und Minifiguren — aus Sets und manuell erfasst.
+// Parts and minifigures — from sets and entered manually.
 
 data class TeilAnsicht(
     val partNumber: String,
@@ -20,7 +20,7 @@ data class TeilAnsicht(
     val isSpare: Boolean = false,
 )
 
-/** [teileGesamt] ist die Gesamtzahl wie in der Sammlung: aus Sets und einzeln erfasst zusammen. */
+/** [teileGesamt] is the total as in the collection: from sets and entered individually together. */
 data class PartsMetricsView(
     val uniqueParts: Int = 0,
     val uniqueColors: Int = 0,
@@ -141,16 +141,16 @@ data class ManualMinifigView(
     val storage: String? = null,
 )
 
-/** In welchen Sets ein Teil oder eine Figur steckt; [kopf] beschreibt den Posten selbst. */
+/** In which sets a part or a figure is contained; [kopf] describes the item itself. */
 data class UsageView(
     val kopf: ComponentHeaderView? = null,
     val sets: List<UsingSetView> = emptyList(),
 )
 
-/** Wonach die Teileliste den eigenen Bestand fragt: Rebrickable-Nummer und Farbe. */
+/** What the parts list asks the own stock for: Rebrickable number and color. */
 data class PartialKey(val nummer: String, val farbe: Int)
 
-/** Wie viele Stück da sind; [lose] zählt nur, was in keinem Set steckt. */
+/** How many pieces there are; [lose] counts only what is in no set. */
 data class PartInventory(val gesamt: Int = 0, val lose: Int = 0)
 
 data class ValuationPurchaseView(

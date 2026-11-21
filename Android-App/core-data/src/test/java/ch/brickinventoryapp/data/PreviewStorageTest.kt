@@ -11,17 +11,17 @@ import java.io.File
 import java.io.RandomAccessFile
 
 /**
- * Die Vorschau-Ablage gegen ein echtes Verzeichnis: Sie nimmt nur Vorschaubilder,
- * hält ihre Obergrenze selbst ein (unter filesDir räumt sonst niemand) und wirft beim
- * Aufräumen Vorgewärmtes vor wirklich Angesehenem weg. Grosse Belegung entsteht als
- * Datei mit Loch (setLength), damit der Test keine 150 MB schreibt.
+ * The preview store against a real directory: it takes only thumbnails,
+ * keeps its upper limit itself (under filesDir nobody else cleans up) and, when
+ * cleaning up, throws away prewarmed before really viewed images. Large usage arises as a
+ * sparse file (setLength), so that the test does not write 150 MB.
  *
- * Gegenproben (Patches unter gegenproben/):
- *   vorschau-nimmt-alles          isPreview() immer true → rot „nur Vorschaubilder …“
- *   vorschau-ohne-obergrenze      schreibe() ruft cleanupIfNeeded() nicht → rot
- *                                 „über der Obergrenze fliegt das Älteste …“
- *   vorschau-spekulativ-frisch    setLastModified für Vorgewärmtes entfernt → rot
- *                                 „ein vorgewärmtes Bild fliegt vor einem angesehenen“
+ * Counter-checks (patches under gegenproben/):
+ *   vorschau-nimmt-alles          isPreview() always true → red “only thumbnails …”
+ *   vorschau-ohne-obergrenze      schreibe() does not call cleanupIfNeeded() → red
+ *                                 “above the upper limit the oldest goes …”
+ *   vorschau-spekulativ-frisch    setLastModified for prewarmed images removed → red
+ *                                 “a warmed image goes before a viewed one”
  */
 class PreviewStorageTest {
 
@@ -32,10 +32,10 @@ class PreviewStorageTest {
     @After
     fun zu() { root.deleteRecursively() }
 
-    /** Der Ordner, in dem die Ablage ihre Dateien hält; nach dem ersten Schreiben bekannt. */
+    /** The folder in which the store keeps its files; known after the first write. */
     private fun folder(): File = root.walkTopDown().first { it.isFile && !it.name.endsWith(".tmp") }.parentFile!!
 
-    /** Eine Datei mit Loch: belegt [bytes] laut Länge, ohne sie zu schreiben. */
+    /** A sparse file: occupies [bytes] by length without writing them. */
     private fun receipts(name: String, bytes: Long, zeit: Long): File =
         File(folder(), name).also { f ->
             RandomAccessFile(f, "rw").use { it.setLength(bytes) }
@@ -73,7 +73,7 @@ class PreviewStorageTest {
         val angesehen = "$basis/set/75192-1?thumb=1"
         val vorgewaermt = "$basis/set/10294-1?thumb=1"
         speicher.schreibe(angesehen, "angesehen".toByteArray())
-        // Älter als das angesehene, aber jünger als jeder vorgewärmte Stempel.
+        // Older than the viewed one, but younger than every prewarmed stamp.
         receipts("gross", VorschauSpeicher.MAX_BYTES - 64, System.currentTimeMillis() - 3_600_000)
 
         speicher.schreibe(vorgewaermt, "vorgewaermt".toByteArray(), speculative = true)

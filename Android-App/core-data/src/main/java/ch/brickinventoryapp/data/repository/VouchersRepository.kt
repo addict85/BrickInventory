@@ -8,9 +8,9 @@ import ch.brickinventoryapp.model.domain.VoucherView
 import ch.brickinventoryapp.model.domain.PlaintextView
 
 /**
- * Gutscheine samt PDF und Guthabenabfrage.
- * Eine Schnittstelle, damit ViewModels und Tests nicht an der Umsetzung mit
- * Retrofit und Ablage hängen (GutscheineRepositoryImpl).
+ * Vouchers including PDF and balance query.
+ * An interface so that ViewModels and tests do not depend on the implementation with
+ * Retrofit and store (GutscheineRepositoryImpl).
  */
 interface VouchersRepository {
     suspend fun liste(): Ergebnis<List<VoucherView>>
