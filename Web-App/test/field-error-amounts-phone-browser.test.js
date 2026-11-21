@@ -51,7 +51,7 @@ async function financesOffline(_t, a) {
   try {
     await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
     // Since round 24 (M2) the error stands at the top of the chart box, the cards drop away.
-    await bis(`!!document.querySelector('#portfolio-chart .error_message-zustand')`, 'Fehlerzustand oben');
+    await bis(`!!document.querySelector('#portfolio-chart .fehler-zustand')`, 'Fehlerzustand oben');
     const z = await b.auswerten(`({
       karten: document.getElementById('fin-sum').checkVisibility() ? 'sichtbar' : 'weg',
       hinweise: document.querySelectorAll('#tab-finance .fval-hinweis').length,
@@ -98,11 +98,11 @@ async function purchasePriceDialog(_t, a) {
     b.auswerten(`(() => { const f = ${feld}; f.focus(); f.value = ${JSON.stringify(wert)};
     f.dispatchEvent(new Event('input', { bubbles: true })); f.value = ${JSON.stringify(wert)}; f.blur(); return true; })()`);
   await eingeben('-5');
-  await bis(`!!document.querySelector('.acq-tabelle .feld-error_message:not([hidden])')`, 'Meldung am Preis');
+  await bis(`!!document.querySelector('.acq-tabelle .feld-fehler:not([hidden])')`, 'Meldung am Preis');
   const m = await b.auswerten(`(() => { const t = document.querySelector('.acq-tabelle'), w = t.closest('.tw');
     const zeile = t.querySelector('tbody tr:first-child'), danach = zeile.nextElementSibling;
-    const meldung = t.querySelector('.feld-error_message');
-    return { text: meldung.textContent, ownRow: !!danach?.classList.contains('feld-error_message-zeile') && danach.contains(meldung),
+    const meldung = t.querySelector('.feld-fehler');
+    return { text: meldung.textContent, ownRow: !!danach?.classList.contains('feld-fehler-zeile') && danach.contains(meldung),
       spalten: danach?.cells[0]?.colSpan, cells: zeile.cells.length, rollt: w.scrollWidth > w.clientWidth + 1,
       headers: [...t.querySelectorAll('thead th')].filter(th => th.getBoundingClientRect().right > w.getBoundingClientRect().right + 1).map(th => th.textContent.trim()),
       zustand: t.querySelector('tbody tr:first-child select').getBoundingClientRect().width }; })()`);
@@ -114,11 +114,11 @@ async function purchasePriceDialog(_t, a) {
   assert.ok(m.zustand >= 80, `„Zustand“ nur ${m.zustand} px breit`);
   await eingeben('12,x');
   await bis(
-    `/„12,x“ ist kein Betrag/.test(${text('.acq-tabelle .feld-error_message')})`,
+    `/„12,x“ ist kein Betrag/.test(${text('.acq-tabelle .feld-fehler')})`,
     'Unlesbares heisst weiter „kein Betrag“',
   );
   await eingeben('199,99');
-  await bis(`document.querySelector('.feld-error_message-zeile')?.hidden === true`, 'Meldungszeile verschwindet');
+  await bis(`document.querySelector('.feld-fehler-zeile')?.hidden === true`, 'Meldungszeile verschwindet');
   await b.auswerten(CLOSE);
 }
 

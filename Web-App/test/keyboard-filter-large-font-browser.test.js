@@ -140,19 +140,19 @@ async function finanzenFehler(_t, a) {
   try {
     await b.auswerten(`location.hash = '#/finanzen'; window.__alt = true; location.reload(); true`);
     await bis(
-      `!window.__alt && !!document.querySelector('#portfolio-chart .error_message-zustand button, #fin-tbl .error_message-zustand button')`,
+      `!window.__alt && !!document.querySelector('#portfolio-chart .fehler-zustand button, #fin-tbl .fehler-zustand button')`,
       'Fehler',
       300,
     );
     await a.ruhig();
-    const m = await b.auswerten(`(() => { const k = document.querySelector('.tab.active .error_message-zustand button');
+    const m = await b.auswerten(`(() => { const k = document.querySelector('.tab.active .fehler-zustand button');
       return { inBox: !!k?.closest('#portfolio-chart'), unten: k?.getBoundingClientRect().bottom, hoehe: innerHeight,
         karten: document.getElementById('fin-sum').checkVisibility(), strich: [...document.querySelectorAll('#fin-sum .fval')].filter(f => f.checkVisibility() && f.textContent.trim() === '—').length }; })()`);
     assert.ok(m.inBox, `Fehler nicht im Diagrammkasten: ${JSON.stringify(m)}`);
     assert.ok(m.unten <= m.hoehe, `„Erneut versuchen“ nicht im ersten Bildschirm: ${JSON.stringify(m)}`);
     assert.equal(m.karten, false, 'Karten ohne Zahl stehen über dem Fehler');
     await b.auswerten(
-      `window.__fehler = false; document.querySelector('#portfolio-chart .error_message-zustand button').click(); true`,
+      `window.__fehler = false; document.querySelector('#portfolio-chart .fehler-zustand button').click(); true`,
     );
     await bis(
       `document.getElementById('fin-sum').checkVisibility() && /€/.test(${text('#fin-einstand')})`,
@@ -419,13 +419,13 @@ async function rueckgaengig(_t, a) {
 
 async function cancelSingleLine(_t, a) {
   const { b, bis } = a;
-  await geh(a, '#/hintergrund', `!!document.querySelector('#jobs-karte .mon-einzeln')`, 'Hintergrund');
+  await geh(a, '#/hintergrund', `!!document.querySelector('#auftraege-karte .mon-einzeln')`, 'Hintergrund');
   await b.auswerten(`document.querySelectorAll('#tab-monitor details').forEach(d => { d.open = true; }); true`);
   await bis(
-    `[...document.querySelectorAll('#jobs-karte .mon-knoepfe .btn')].some(k => k.textContent.trim() === 'Abbrechen')`,
+    `[...document.querySelectorAll('#auftraege-karte .mon-knoepfe .btn')].some(k => k.textContent.trim() === 'Abbrechen')`,
     'Abbrechen',
   );
-  const h = await b.auswerten(`(() => { const k = [...document.querySelectorAll('#jobs-karte .mon-knoepfe .btn')];
+  const h = await b.auswerten(`(() => { const k = [...document.querySelectorAll('#auftraege-karte .mon-knoepfe .btn')];
     const hoehe = t => Math.max(...k.filter(x => x.textContent.trim() === t).map(x => x.getBoundingClientRect().height));
     return { abbrechen: hoehe('Abbrechen'), jetzt: hoehe('Jetzt starten') }; })()`);
   assert.ok(h.abbrechen <= h.jetzt + 1, `„Abbrechen“ bricht um: ${JSON.stringify(h)}`);

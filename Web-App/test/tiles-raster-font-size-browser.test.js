@@ -274,9 +274,9 @@ async function telefon(_t, a) {
       const h = document.querySelector('#tab-monitor .ptitle').getBoundingClientRect();
       return { kopf: k.checkVisibility() && k.textContent, ueberstand: h.bottom - document.querySelector('header').getBoundingClientRect().bottom }; })()`);
     assert.ok(!(doppelt.kopf && doppelt.ueberstand > 0), `Titel doppelt: ${JSON.stringify(doppelt)}`);
-    await bis(`!!document.querySelector('#jobs-karte .mon-einzeln > summary')`, 'Einzelne Aufträge');
+    await bis(`!!document.querySelector('#auftraege-karte .mon-einzeln > summary')`, 'Einzelne Aufträge');
     const zeichen =
-      await b.auswerten(`(() => { const v = getComputedStyle(document.querySelector('#jobs-karte .mon-einzeln > summary'), '::before');
+      await b.auswerten(`(() => { const v = getComputedStyle(document.querySelector('#auftraege-karte .mon-einzeln > summary'), '::before');
       return { inhalt: v.content, breite: parseFloat(v.width) }; })()`);
     assert.ok(zeichen.inhalt !== 'none' && zeichen.breite > 3, `kein Aufklappzeichen (${JSON.stringify(zeichen)})`);
   } finally {

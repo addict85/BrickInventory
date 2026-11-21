@@ -82,7 +82,7 @@ async function financesOffline(_t, a) {
   await b.tab('Network.emulateNetworkConditions', { offline: true, ...NETWORK });
   try {
     await reiter(b, 'finance');
-    await bis(`!!document.querySelector('#portfolio-chart .error_message-zustand')`, 'Diagramm nicht verfügbar');
+    await bis(`!!document.querySelector('#portfolio-chart .fehler-zustand')`, 'Diagramm nicht verfügbar');
     const k = await b.auswerten(`[...document.querySelectorAll('.zeitraum-wahl .period-btn')].map(k => {
       const s = getComputedStyle(k); return { aus: k.disabled, coverage: +s.opacity, zeiger: s.cursor }; })`);
     assert.equal(k.length, 4);
@@ -199,20 +199,20 @@ async function newAfterError(b, bis, tab, ziel, pfad) {
   let aus = async () => {};
   try {
     await reiter(b, tab);
-    await bis(`!!document.querySelector('${ziel} .error_message-zustand')`, `${tab}: Fehlerzustand`);
+    await bis(`!!document.querySelector('${ziel} .fehler-zustand')`, `${tab}: Fehlerzustand`);
     aus = await intercept(b, [{ contains: pfad, tun: spaeter(b, 3000) }]);
   } finally {
     await b.tab('Network.emulateNetworkConditions', { offline: false, ...NETWORK });
   }
   try {
-    await b.auswerten(`document.querySelector('${ziel} .error_message-zustand [data-click]')?.click(); true`);
+    await b.auswerten(`document.querySelector('${ziel} .fehler-zustand [data-click]')?.click(); true`);
     await bis(
-      `!document.querySelector('${ziel} .error_message-zustand') && !!document.querySelector('${ziel} [aria-busy="true"]')`,
+      `!document.querySelector('${ziel} .fehler-zustand') && !!document.querySelector('${ziel} [aria-busy="true"]')`,
       `${tab}: Gerüst statt altem Fehler`,
       25,
     );
     await bis(
-      `!document.querySelector('${ziel} [aria-busy="true"], ${ziel} .error_message-zustand')`,
+      `!document.querySelector('${ziel} [aria-busy="true"], ${ziel} .fehler-zustand')`,
       `${tab}: geladen`,
       100,
     );
@@ -260,7 +260,7 @@ async function createUser(_t, a) {
   const stand = `(() => { const r = id => document.getElementById(id).getBoundingClientRect();
     const sicht = id => !!document.getElementById(id)?.checkVisibility();
     const zeile = document.querySelector('.nutzer-neu').getBoundingClientRect();
-    return { nameError: sicht('nu-n-error_message') ? ${text('#nu-n-error_message')} : '', pwError: sicht('nu-p-error_message') ? ${text('#nu-p-error_message')} : '',
+    return { nameError: sicht('nu-n-fehler') ? ${text('#nu-n-fehler')} : '', pwError: sicht('nu-p-fehler') ? ${text('#nu-p-fehler')} : '',
       nameRule: sicht('nu-n-regel'), pwRule: sicht('nu-p-regel'),
       oben: [r('nu-n').top, r('nu-p').top].map(Math.round), hook: (r('nu-a').top + r('nu-a').bottom) / 2,
       feld: [r('nu-n').top, r('nu-n').bottom], zeile: zeile.width,
@@ -268,7 +268,7 @@ async function createUser(_t, a) {
   await setze('nu-n', '');
   await setze('nu-p', '');
   await b.auswerten(`document.getElementById('btn-cu').click(); true`);
-  await bis(`!!document.getElementById('nu-p-error_message')?.checkVisibility()`, 'Meldungen');
+  await bis(`!!document.getElementById('nu-p-fehler')?.checkVisibility()`, 'Meldungen');
   let s = await b.auswerten(stand);
   assert.equal(s.nameError, 'Bitte einen Benutzernamen eintragen.');
   assert.equal(s.pwError, 'Bitte ein Passwort eintragen.', 'nur eine Meldung auf einmal');
@@ -278,7 +278,7 @@ async function createUser(_t, a) {
   await setze('nu-p', 'Ziegel-Turm-Fenster-42');
   await setze('nu-n', 'a b');
   await b.auswerten(`document.getElementById('btn-cu').click(); true`);
-  await bis(`!!document.getElementById('nu-n-error_message')?.checkVisibility()`, 'Meldung am Namen');
+  await bis(`!!document.getElementById('nu-n-fehler')?.checkVisibility()`, 'Meldung am Namen');
   s = await b.auswerten(stand);
   assert.equal(s.pwError, '');
   assert.equal(s.pwRule, true, 'Passwortregel fehlt');

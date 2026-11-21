@@ -137,11 +137,11 @@ async function hintergrund(_t, a) {
   const { b, bis } = a;
   await groesse(b, 390, true);
   try {
-    await geh(a, '#/hintergrund', `!!document.querySelector('#jobs-karte .mon-einzeln')`, 'Hintergrund');
+    await geh(a, '#/hintergrund', `!!document.querySelector('#auftraege-karte .mon-einzeln')`, 'Hintergrund');
     await b.auswerten(`document.querySelectorAll('#tab-monitor details').forEach(d => { d.open = true; }); true`);
     await a.ruhig(1000);
     const m = await b.auswerten(`({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth,
-      rolle: !!document.querySelector('#jobs-karte .mon-rolle')?.checkVisibility() })`);
+      rolle: !!document.querySelector('#auftraege-karte .mon-rolle')?.checkVisibility() })`);
     assert.ok(m.rolle, 'Testdaten: Etikett „Wiederholung nach Fehler“');
     assert.ok(m.sw <= m.cw, `Seite breiter als das Fenster: ${m.sw} > ${m.cw}`);
   } finally {
