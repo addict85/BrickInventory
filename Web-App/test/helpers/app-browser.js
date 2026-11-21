@@ -180,6 +180,16 @@ async function startApp(t, opt = {}) {
                   ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
       [k],
     );
+  // Without this the startup follow-up (src/management/startFollowUpRuns.ts, step
+  // "anleitungen") fetches and builds a PDF for every held set lacking one — real
+  // network calls, tens of seconds each — and blocks the single Node process for
+  // whichever request lands in that window. Whoever tests that flow seeds its own
+  // shared_instructions row instead of going through startApp().
+  await db.run(
+    `INSERT INTO shared_instructions (set_number, url)
+     SELECT DISTINCT set_number, 'test://uebersprungen' FROM sets
+     ON CONFLICT (set_number, url) DO NOTHING`,
+  );
   t.after(async () => {
     await db
       .run(`DELETE FROM users WHERE id = $1 OR username LIKE $2`, [uid, `${NAME.replace(/_/g, '\\_')}\\_%`])
