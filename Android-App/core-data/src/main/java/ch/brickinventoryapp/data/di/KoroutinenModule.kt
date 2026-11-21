@@ -1,8 +1,8 @@
 package ch.brickinventoryapp.data.di
 
-import ch.brickinventoryapp.model.koroutinen.ApplicationScope
-import ch.brickinventoryapp.model.koroutinen.Dispatcher
-import ch.brickinventoryapp.model.koroutinen.BrickDispatchers
+import ch.brickinventoryapp.model.coroutines.ApplicationScope
+import ch.brickinventoryapp.model.coroutines.Dispatcher
+import ch.brickinventoryapp.model.coroutines.BrickDispatchers
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -29,20 +29,20 @@ internal object KoroutinenModule {
     @Dispatcher(BrickDispatchers.Main)
     fun haupt(): CoroutineDispatcher = Dispatchers.Main
 
-    // SupervisorJob: Ein gescheiterter Auftrag reisst die anderen nicht mit.
+    // SupervisorJob: a failed job does not drag the others down.
     @Provides
     @Singleton
     @ApplicationScope
-    fun anwendungsBereich(@Dispatcher(BrickDispatchers.IO) io: CoroutineDispatcher): CoroutineScope =
+    fun applicationArea(@Dispatcher(BrickDispatchers.IO) io: CoroutineDispatcher): CoroutineScope =
         CoroutineScope(SupervisorJob() + io)
 }
 
 /**
- * Für Klassen, die Android selbst anlegt (Application, Dienste) und die darum
- * per Feld statt per Konstruktor beliefert werden: ein Typ ohne Qualifier.
+ * For classes that Android creates itself (Application, services) and that are therefore
+ * supplied via a field instead of a constructor: a type without a qualifier.
  */
-class Anwendungsbereiche @Inject constructor(
-    @param:ApplicationScope val anwendung: CoroutineScope,
+class Scopes @Inject constructor(
+    @param:ApplicationScope val application: CoroutineScope,
     @param:Dispatcher(BrickDispatchers.IO) val io: CoroutineDispatcher,
     @param:Dispatcher(BrickDispatchers.Main) val haupt: CoroutineDispatcher,
 )

@@ -1,20 +1,20 @@
 /**
- * Portfolio-Kurve: Rechnet die SQL-Fassung dasselbe wie eine unabhängige
- * JavaScript-Fassung derselben Regel?
+ * Portfolio curve: does the SQL version compute the same as an independent
+ * JavaScript version of the same rule?
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
-const { umgebung, testDaten } = require('./helpers/sources');
+const { environment, testData } = require('./helpers/sources');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
 const _req = require('./helpers/sources').buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 
-/** Dieselbe Regel geradeheraus: Tageswerte laden, in JS gruppieren, fortschreiben. */
-async function vergleichsFassung(setNumbers, setQty, currency, condition, dateFilter) {
+/** The same rule straightforwardly: load daily values, group in JS, carry forward. */
+async function comparisonVersion(setNumbers, setQty, currency, condition, dateFilter) {
   const platzhalter = setNumbers.map((_, i) => `$${i + 3}`).join(',');
   const rows = await db.all(
     `SELECT set_number, qty_avg_price, avg_price,
@@ -34,10 +34,10 @@ async function vergleichsFassung(setNumbers, setQty, currency, condition, dateFi
     const p = parseFloat(r.avg_price || 0) || parseFloat(r.qty_avg_price || 0);
     if (p > 0) buckets[k].sets[r.set_number] = p;
   }
-  // Rückschreibung: Jedes Set steht mit seinem ERSTEN bekannten Preis von
-  // Anfang an im Korb. Rückwärts über die Tage laufen und zuweisen lässt am
-  // Ende je Set den frühesten Wert stehen — das ist die ganze Änderung
-  // gegenüber der früheren Fassung, die hier mit einem leeren carry begann.
+  // Backfill: every set stands in the basket with its FIRST known price from
+  // the start. Running backwards over the days and assigning leaves the earliest value
+  // per set standing at the end — that is the whole change
+  // compared to the earlier version, which started here with an empty carry.
   const carry = {};
   for (const k of Object.keys(buckets).sort().reverse()) Object.assign(carry, buckets[k].sets);
 
@@ -51,22 +51,22 @@ async function vergleichsFassung(setNumbers, setQty, currency, condition, dateFi
     })
     .filter(p => p.total > 0);
 
-  // Verdichtung wie früher: erst ab 120 Punkten, letzter Punkt je Monat, der
-  // allererste Punkt bleibt exakt erhalten.
+  // Condensation as before: only from 120 points on, last point per month, the
+  // very first point stays exactly preserved.
   if (punkte.length > 120) {
     const byMonth = new Map();
     for (const p of punkte) byMonth.set(p.month || p.day.slice(0, 7), p);
-    const monatlich = [...byMonth.values()].map(p => ({ ...p, day: p.month || p.day.slice(0, 7) }));
+    const monthly = [...byMonth.values()].map(p => ({ ...p, day: p.month || p.day.slice(0, 7) }));
     const erster = punkte[0];
-    if (monatlich.length && monatlich[0].fullDay !== erster.fullDay) {
-      monatlich[0] = { ...erster, day: erster.month || erster.day.slice(0, 7) };
+    if (monthly.length && monthly[0].fullDay !== erster.fullDay) {
+      monthly[0] = { ...erster, day: erster.month || erster.day.slice(0, 7) };
     }
-    punkte = monatlich;
+    punkte = monthly;
   }
   return punkte;
 }
 
-test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurrency: 1 }, async t => {
+test('the portfolio curve computes the same as the reference version', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -78,7 +78,7 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  // Und die Migrationen, nicht nur das Schema
+  // And the migrations, not only the schema
   const c0 = await db.pool.connect();
   try {
     await _req('db/migrate.js').runMigrations(c0);
@@ -86,24 +86,24 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
     c0.release();
   }
 
-  const { portfolioVerlauf } = _req('src/finanzen/portfolioHistory.js');
+  const { portfolioVerlauf } = _req('src/finances/portfolioHistory.js');
   const getSetting = async (_u, k, d) => (k === 'currency' ? 'CHF' : d);
 
   await db.run("INSERT INTO users (username,password_hash) VALUES ('ph_a','x'),('ph_b','x')");
   const [u1, u2] = (await db.all('SELECT id FROM users ORDER BY id')).map(r => r.id);
 
-  // 30 Sets, hälftig auf zwei Haushaltskonten, verschiedene Mengen.
-  // Nur die Bestandszeilen; die Mengen stehen in den Erfassungen weiter unten
-  // (Migration 0036). `1 + (g%3)` taucht dort genauso auf — dieselbe Formel,
-  // und das ist der Punkt: Sie MUSS uebereinstimmen, sonst gewichtet …
+  // 30 sets, half on each of two household accounts, different quantities.
+  // Only the stock rows; the quantities stand in the acquisitions further down
+  // (migration 0036). `1 + (g%3)` shows up there just the same — the same formula,
+  // and that is the point: it MUST match, otherwise it weights …
   await db.run(
     `INSERT INTO sets (user_id, set_number)
      SELECT (CASE WHEN g%2=0 THEN $1::int ELSE $2::int END), (10000+g)||'-1'
        FROM generate_series(1,30) g`,
     [u1, u2],
   );
-  // Der Name gehoert seit Migration 0033 in den Katalog, und zu jedem Set im
-  // Bestand steht dort eine Zeile.
+  // Since migration 0033 the name belongs in the catalog, and for every set in
+  // the stock a row stands there.
   await db.run(
     `INSERT INTO rb_sets (set_num, name)
      SELECT (10000+g)||'-1', 'Set '||g FROM generate_series(1,30) g
@@ -114,9 +114,9 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
      SELECT (10000+g)||'-1' FROM generate_series(1,30) g
      ON CONFLICT (set_number) DO NOTHING`,
   );
-  // Kaufpreis und Menge je Erfassung — seit Migration 0032 der einzige Ort.
-  // Die Menge MUSS zur sets-Zeile passen, sonst gewichtet portfolioHistory.ts
-  // anders als die Kurve, die dieser Test vergleicht.
+  // Purchase price and quantity per acquisition — since migration 0032 the only place.
+  // The quantity MUST match the sets row, otherwise portfolioHistory.ts weights
+  // differently from the curve that this test compares.
   await db.run(
     `INSERT INTO set_acquisitions (user_id, set_number, quantity, purchase_price, condition)
      SELECT (CASE WHEN g%2=0 THEN $1::int ELSE $2::int END), (10000+g)||'-1', 1 + (g%3), 40, 'N'
@@ -124,9 +124,9 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
     [u1, u2],
   );
 
-  // Preisverlauf mit LÜCKEN: Ein Set schreibt nur jeden dritten Tag. Genau
-  // dort trennt sich Fortschreibung von einfacher Tagessumme — ohne Lücken
-  // wäre der Vergleich wertlos.
+  // Price history with GAPS: one set writes only every third day. Exactly
+  // there carrying forward separates from a simple daily sum — without gaps
+  // the comparison would be worthless.
   await db.run(
     `INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, recorded_at)
      SELECT (10000+g)||'-1', 'N', 'CHF', 30 + g + d*0.1, 31 + g,
@@ -134,8 +134,8 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
        FROM generate_series(1,30) g, generate_series(1,400) d
       WHERE (d + g) % 3 = 0`,
   );
-  // Einzelne Tage zusätzlich mit einem zweiten Zustand und späterer Uhrzeit —
-  // prüft, welcher Wert je Tag gewinnt.
+  // Individual days additionally with a second condition and a later time —
+  // checks which value wins per day.
   await db.run(
     `INSERT INTO price_history (set_number, condition, currency_code, avg_price, qty_avg_price, recorded_at)
      SELECT (10000+g)||'-1', 'U', 'CHF', 20 + g, 21 + g,
@@ -144,9 +144,9 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
       WHERE (d + g) % 3 = 0 AND d % 7 = 0`,
   );
 
-  // Die Mengen aus den Erfassungen (Migration 0036 hat sets.quantity
-  // geloescht). Der JOIN auf `sets` ist dieselbe Einschraenkung wie in
-  // db/bestandsmenge.ts: Eine Erfassung ohne Bestandszeile zaehlt nicht.
+  // The quantities from the acquisitions (migration 0036 deleted
+  // sets.quantity). The JOIN on `sets` is the same restriction as in
+  // db/stockQuantity.ts: an acquisition without a stock row does not count.
   const setsRows = await db.all(
     `SELECT s.set_number, COALESCE(SUM(a.quantity), 0)::int AS quantity
        FROM sets s
@@ -166,37 +166,37 @@ test('die Portfolio-Kurve rechnet dasselbe wie die Vergleichsfassung', { concurr
   };
 
   for (const period of ['week', 'month', 'year', 'max']) {
-    await t.test(`Zeitraum ${period}: gleiche Punkte wie die Vergleichsfassung`, async () => {
-      const alt = await vergleichsFassung(setNumbers, setQty, 'CHF', 'N', filter[period]);
+    await t.test(`period ${period}: same points as the reference version`, async () => {
+      const alt = await comparisonVersion(setNumbers, setQty, 'CHF', 'N', filter[period]);
       const neu = await portfolioVerlauf(u1, [u1, u2], period, db, getSetting);
 
       assert.equal(neu.points.length, alt.length, `andere Anzahl Punkte: ${neu.points.length} statt ${alt.length}`);
 
-      // Die Route liefert {x_label, value, y_frac} — verglichen werden die
-      // WERTE in ihrer Reihenfolge.
+      // The route delivers {x_label, value, y_frac} — compared are the
+      // VALUES in their order.
       for (let i = 0; i < alt.length; i++) {
         const a = alt[i],
           n = neu.points[i];
-        // Rundung: die alte Fassung rechnete in JS-Gleitkomma, die neue in
-        // NUMERIC. Ein Rappen Unterschied ist erlaubt, mehr nicht.
+        // Rounding: the old version computed in JS floating point, the new one in
+        // NUMERIC. One cent of difference is allowed, no more.
         assert.ok(Math.abs(n.value - a.total) <= 0.01, `Punkt ${i} (${a.day}): ${n.value} statt ${a.total}`);
       }
     });
   }
 
-  await t.test('ohne Preisverlauf bleibt die Kurve leer statt zu stürzen', async () => {
+  await t.test('without price history the curve stays empty instead of crashing', async () => {
     await db.run('DELETE FROM price_history');
     await db.run('DELETE FROM price_cache');
     const r = await portfolioVerlauf(u1, [u1, u2], 'max', db, getSetting);
     assert.equal(Array.isArray(r.points), true);
   });
 
-  // Der Pool bleibt offen — der zweite Test in dieser Datei arbeitet auf
-  // demselben Schema weiter und schliesst ihn am Ende.
+  // The pool stays open — the second test in this file keeps working on
+  // the same schema and closes it at the end.
 });
 
-test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, async t => {
-  const db2 = testDaten();
+test('one price entry per set, condition, currency and day', { concurrency: 1 }, async t => {
+  const db2 = testData();
   try {
     await db2.get('SELECT 1');
   } catch (e) {
@@ -204,35 +204,35 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
     return;
   }
 
-  await t.test('doppelte Einträge desselben Tages werden abgewiesen', async () => {
+  await t.test('duplicate entries of the same day are rejected', async () => {
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price)
                    VALUES ('99999-1','N','CHF',10,10)`);
-    // Genau die Klausel, die vorher ins Leere lief: Ohne passenden
-    // Unique-Index legte sie stillschweigend eine zweite Zeile an.
+    // Exactly the clause that used to run into nothing: without a matching
+    // unique index it silently created a second row.
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price)
                    VALUES ('99999-1','N','CHF',99,99) ON CONFLICT DO NOTHING`);
     const n = await db2.get(`SELECT COUNT(*)::int c FROM price_history WHERE set_number='99999-1'`);
     assert.equal(n.c, 1, 'zweite Zeile desselben Tages angelegt — ON CONFLICT greift nicht');
   });
 
-  await t.test('ein anderer Zustand am selben Tag ist erlaubt', async () => {
+  await t.test('a different condition on the same day is allowed', async () => {
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price)
                    VALUES ('99999-1','U','CHF',8,8) ON CONFLICT DO NOTHING`);
     const n = await db2.get(`SELECT COUNT(*)::int c FROM price_history WHERE set_number='99999-1'`);
     assert.equal(n.c, 2, 'Neu und Gebraucht müssen nebeneinander stehen dürfen');
   });
 
-  await t.test('das Aufräumen entfernt alte Zeilen — auch die alten Schnappschüsse', async () => {
-    // Die Ausnahme für '__portfolio__<id>' ist mit einer früheren Runde entfallen: Es
-    // gibt die Schnappschüsse nicht mehr, und Zeilen aus der Zeit davor sollen
-    // von der Aufbewahrungsfrist wegkommen wie alles andere. Eine Ausnahme, die
-    // nichts mehr schützt, hält nur noch Daten fest.
-    const { loescheAltePreise } = _req('src/finanzen/priceHistory.js');
+  await t.test('cleanup removes old rows — including the old snapshots', async () => {
+    // The exception for '__portfolio__<id>' was dropped in an earlier round: the
+    // snapshots no longer exist, and rows from the time before should
+    // be removed by the retention period like everything else. An exception that
+    // protects nothing any more only holds on to data.
+    const { deleteOldPrices } = _req('src/finances/priceHistory.js');
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
                    VALUES ('88888-1','N','CHF',5,5, NOW() - INTERVAL '4000 days'),
                           ('__portfolio__1','N','CHF',7,7, NOW() - INTERVAL '4000 days')`);
-    umgebung({ PRICE_HISTORY_KEEP_DAYS: '1095' });
-    const weg = await loescheAltePreise();
+    environment({ PRICE_HISTORY_KEEP_DAYS: '1095' });
+    const weg = await deleteOldPrices();
     assert.ok(weg >= 2, `nicht alles entfernt: ${weg}`);
     for (const sn of ['88888-1', '__portfolio__1'])
       assert.equal(
@@ -242,21 +242,21 @@ test('ein Preiseintrag je Set, Zustand, Währung und Tag', { concurrency: 1 }, a
       );
   });
 
-  await t.test('PRICE_HISTORY_KEEP_DAYS=0 schaltet das Aufräumen ab', async () => {
-    const { loescheAltePreise } = _req('src/finanzen/priceHistory.js');
+  await t.test('PRICE_HISTORY_KEEP_DAYS=0 switches cleanup off', async () => {
+    const { deleteOldPrices } = _req('src/finances/priceHistory.js');
     await db2.run(`INSERT INTO price_history (set_number,condition,currency_code,avg_price,qty_avg_price,recorded_at)
                    VALUES ('77777-1','N','CHF',5,5, NOW() - INTERVAL '4000 days')`);
-    umgebung({ PRICE_HISTORY_KEEP_DAYS: '0' });
-    assert.equal(await loescheAltePreise(), 0);
+    environment({ PRICE_HISTORY_KEEP_DAYS: '0' });
+    assert.equal(await deleteOldPrices(), 0);
     assert.equal((await db2.get(`SELECT COUNT(*)::int c FROM price_history WHERE set_number='77777-1'`)).c, 1);
-    umgebung({ PRICE_HISTORY_KEEP_DAYS: undefined });
+    environment({ PRICE_HISTORY_KEEP_DAYS: undefined });
   });
 
   await db2.pool.end().catch(() => {});
 });
 
-test('der Mailversand schaltet die Zertifikatsprüfung nirgends ab', () => {
-  // Verhalten: test/smtp-tls-festnageln-db.test.js. Hier nur das Verbot im Quelltext.
+test('mail sending never switches off certificate verification', () => {
+  // Behavior: test/smtp-tls-festnageln-db.test.js. Here only the ban in the source text.
   const fs = require('node:fs');
   const path = require('node:path');
   const { ROOT, ohneKommentare } = require('./helpers/sources');

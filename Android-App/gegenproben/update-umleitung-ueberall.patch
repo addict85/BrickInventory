@@ -1,15 +1,15 @@
 Gegenprobe: Der Update-Client folgt Umleitungen zu jedem Host
 Modul: core-data
-Test: ch.brickinventoryapp.data.UpdateUmleitungTest
-Rot: eine Umleitung auf einen fremden Host
+Test: ch.brickinventoryapp.data.UpdateRedirectTest
+Rot: a redirect to a foreign host is not even connected
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateUmleitungen.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateUmleitungen.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateUmleitungen.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateUmleitungen.kt
-@@ -18,7 +18,6 @@ internal class UpdateUmleitungen(private val erlaubt: (HttpUrl) -> Boolean = ::u
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateRedirects.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateRedirects.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateRedirects.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/UpdateRedirects.kt
+@@ -18,7 +18,6 @@ internal class UpdateRedirects(private val erlaubt: (HttpUrl) -> Boolean = ::u
      override fun intercept(chain: Interceptor.Chain): Response {
          var anfrage = chain.request()
-         repeat(MAX_UMLEITUNGEN + 1) {
+         repeat(MAX_REDIRECTS + 1) {
 -            if (!erlaubt(anfrage.url)) throw IOException("Update-Ziel nicht erlaubt: ${anfrage.url.host}")
              val antwort = chain.proceed(anfrage)
              val ziel = antwort.header("Location")?.takeIf { antwort.isRedirect }?.let(antwort.request.url::resolve)

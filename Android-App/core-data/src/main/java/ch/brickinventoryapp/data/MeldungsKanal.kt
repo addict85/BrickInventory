@@ -8,10 +8,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Ein Weg für flüchtige Meldungen — die Snackbar hat genau einen Platz auf dem
- * Bildschirm, also gibt es genau einen Kanal dorthin. Mit einem Kanal je ViewModel
- * bräuchte jede Stelle, die ein ViewModel benutzt, einen Weiterleitungsblock;
- * fehlt er, verschwinden die Meldungen lautlos.
+ * One path for transient messages — the snackbar has exactly one place on the
+ * screen, so there is exactly one channel to it. With one channel per ViewModel
+ * every place that uses a ViewModel would need a forwarding block;
+ * if it is missing, the messages disappear silently.
  */
 interface MeldungsKanal {
     val meldung: StateFlow<Meldung?>
@@ -19,46 +19,46 @@ interface MeldungsKanal {
 
     /** Ein fertiger Satz; null zeigt nichts. */
     fun zeige(text: String?) = zeige(text?.let(Meldung::Text))
-    fun quittiere()
+    fun acknowledge()
 
-    /** Für Tests ohne Hilt. */
+    /** For tests without Hilt. */
     companion object {
-        operator fun invoke(): MeldungsKanal = MeldungsWarteschlange()
+        operator fun invoke(): MeldungsKanal = MessageQueue()
     }
 }
 
 @Singleton
-internal class MeldungsWarteschlange @Inject constructor() : MeldungsKanal {
+internal class MessageQueue @Inject constructor() : MeldungsKanal {
 
-    private val _meldung = MutableStateFlow<Meldung?>(null)
-    private val warteschlange = ArrayDeque<Meldung>()
+    private val _message = MutableStateFlow<Meldung?>(null)
+    private val queue = ArrayDeque<Meldung>()
 
-    /** Die Meldung, die gerade dran ist; null heisst: nichts anzuzeigen. */
-    override val meldung: StateFlow<Meldung?> = _meldung.asStateFlow()
+    /** The message whose turn it is; null means: nothing to show. */
+    override val meldung: StateFlow<Meldung?> = _message.asStateFlow()
 
     /**
-     * Reiht [meldung] ein; null zeigt nichts. Eine zweite Meldung wartet, bis die
-     * erste quittiert ist, statt sie zu ersetzen. Dieselbe Meldung doppelt
-     * hintereinander kommt nur einmal, und mehr als [PLAETZE] warten nicht.
+     * Queues [meldung]; null shows nothing. A second message waits until the
+     * first is acknowledged instead of replacing it. The same message twice
+     * in a row comes only once, and no more than [PLACES] wait.
      */
     override fun zeige(meldung: Meldung?) {
         if (meldung == null) return
-        synchronized(warteschlange) {
+        synchronized(queue) {
             when {
-                _meldung.value == null -> _meldung.value = meldung
-                meldung == (warteschlange.lastOrNull() ?: _meldung.value) -> Unit
-                warteschlange.size < PLAETZE -> warteschlange.addLast(meldung)
+                _message.value == null -> _message.value = meldung
+                meldung == (queue.lastOrNull() ?: _message.value) -> Unit
+                queue.size < PLACES -> queue.addLast(meldung)
             }
         }
     }
 
-    /** Die angezeigte Meldung ist erledigt (gesehen oder überholt); die nächste rückt nach. */
-    override fun quittiere() {
-        synchronized(warteschlange) { _meldung.value = warteschlange.removeFirstOrNull() }
+    /** The displayed message is done (seen or superseded); the next one moves up. */
+    override fun acknowledge() {
+        synchronized(queue) { _message.value = queue.removeFirstOrNull() }
     }
 
     private companion object {
-        /** Mehr als ein paar Meldungen hintereinander liest niemand; die ältesten zählen. */
-        const val PLAETZE = 5
+        /** Nobody reads more than a few messages in a row; the oldest count. */
+        const val PLACES = 5
     }
 }

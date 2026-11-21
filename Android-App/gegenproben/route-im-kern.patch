@@ -1,7 +1,7 @@
 Gegenprobe: Eine Route liegt wieder in einem Kernmodul, und ein Bereich öffnet sie direkt
 Modul: app
 Test: ch.brickinventoryapp.app.ModulgrenzenTest
-Rot: keiner nennt fremde Routentypen
+Rot: no area depends on another area or on the app, none names foreign route types
 
 diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Zentralziel.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/ui/Zentralziel.kt
 new file mode 100644
@@ -15,20 +15,20 @@ index 0000000..0fb082b
 +
 +@Serializable
 +data object Zentralziel
-diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/VerwaltungGraph.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/VerwaltungGraph.kt
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/VerwaltungGraph.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/VerwaltungGraph.kt
 index a22234f..0ab6c1f 100644
---- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/VerwaltungGraph.kt
-+++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/VerwaltungGraph.kt
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/VerwaltungGraph.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/VerwaltungGraph.kt
 @@ -12,6 +12,7 @@ import ch.brickinventoryapp.ui.components.Schrittsperre
  import ch.brickinventoryapp.ui.components.Ueberdeckungsschutz
- import ch.brickinventoryapp.verwaltung.ui.screens.MonitoringRoute
+ import ch.brickinventoryapp.management.ui.screens.MonitoringRoute
  import ch.brickinventoryapp.navigation.Bereichsumgebung
 +import ch.brickinventoryapp.model.ui.Zentralziel
  
  /** Die Verwaltung braucht nur, was jeder Bereich bekommt. */
- interface VerwaltungNavigation : Bereichsumgebung
-@@ -21,7 +22,7 @@ fun NavGraphBuilder.verwaltungGraph(navigation: VerwaltungNavigation) {
-     composable<VerwaltungZiel.Monitoring> {
+ interface ManagementNavigation : Bereichsumgebung
+@@ -21,7 +22,7 @@ fun NavGraphBuilder.managementGraph(navigation: ManagementNavigation) {
+     composable<ManagementTarget.Monitoring> {
          // Fällt das Verwalterrecht weg, verlässt die Seite sich selbst, statt weiter 403 zu sammeln.
          val stand by navigation.sitzung.collectAsStateWithLifecycle()
 -        LaunchedEffect(stand.isAdmin) { if (!stand.isAdmin) navigation.navController.popBackStack() }

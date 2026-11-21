@@ -1,7 +1,7 @@
 Gegenprobe: die Sprachauswahl nennt Englisch auf Deutsch wieder „Englisch“
 Modul: app
-Test: ch.brickinventoryapp.app.FormulareUndRaenderTest
-Rot: die Sprachen heissen in beiden Sprachen so, wie sie sich selbst nennen
+Test: ch.brickinventoryapp.app.FormsAndMarginsTest
+Rot: the languages are called in both languages what they call themselves
 
 diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/StringResourceParityTest.kt b/Android-App/app/src/test/java/ch/brickinventoryapp/app/StringResourceParityTest.kt
 index 28ded58..946d9d8 100644
@@ -10,16 +10,16 @@ index 28ded58..946d9d8 100644
 @@ -188,7 +188,7 @@ class StringResourceParityTest {
              // Zähler „5/24“ unter dem Fingerabdruckfeld: nur Zahlen.
              "zert_eingabe_zaehler",
-             // Eine Sprache heisst in der Auswahl, wie sie sich selbst nennt (FormulareUndRaenderTest).
+             // Eine Sprache heisst in der Auswahl, wie sie sich selbst nennt (FormsAndMarginsTest).
 -            "settings_language_en", "settings_language_de",
 +            "settings_language_de",
          )
  
-         val en = texte("values/strings.xml")
-diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+         val en = texts("values/strings.xml")
+diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
 index 4d47196..7663e04 100644
---- a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
-+++ b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+--- a/Android-App/core-resources/src/main/res/values-de/strings.xml
++++ b/Android-App/core-resources/src/main/res/values-de/strings.xml
 @@ -18,7 +18,7 @@
      <string name="settings_logout">Abmelden</string>
      <string name="settings_language">Sprache</string>

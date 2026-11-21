@@ -1,11 +1,11 @@
 Gegenprobe: Die Manifest-Prüfung übersieht ein datatransport-Backend (Telemetrie von ML Kit)
 Modul: app
-Test: ch.brickinventoryapp.app.ManifestPruefenTest
-Rot: ein Telemetrie-Backend von ML Kit faellt auf
+Test: ch.brickinventoryapp.app.ManifestCheckTest
+Rot: a telemetry backend of ML Kit stands out, the service without backend does not
 
-diff --git a/Android-App/tools/manifest-pruefen.py b/Android-App/tools/manifest-pruefen.py
---- a/Android-App/tools/manifest-pruefen.py
-+++ b/Android-App/tools/manifest-pruefen.py
+diff --git a/Android-App/tools/manifest-check.py b/Android-App/tools/manifest-check.py
+--- a/Android-App/tools/manifest-check.py
++++ b/Android-App/tools/manifest-check.py
 @@ -107,7 +107,7 @@
              continue
          for eintrag in alle(dienst, 'meta-data'):

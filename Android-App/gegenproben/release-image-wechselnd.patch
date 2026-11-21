@@ -1,7 +1,7 @@
 Gegenprobe: Der Signier-Job läuft auf einem wechselnden Image
 Modul: app
 Test: ch.brickinventoryapp.app.AndroidWorkflowTest
-Rot: der Release-Weg hat festes Werkzeug
+Rot: the release path has fixed tooling, a named certificate and no probe APK to install
 
 diff --git a/.github/workflows/android-signieren.yml b/.github/workflows/android-signieren.yml
 --- a/.github/workflows/android-signieren.yml

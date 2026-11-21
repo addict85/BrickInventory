@@ -1,17 +1,17 @@
 Gegenprobe: der Mülleimer löscht den Preisalarm ohne Rückfrage
 Modul: app
-Test: ch.brickinventoryapp.app.PreisalarmeAnzeigeTest
-Rot: die Uebersicht holt
+Test: ch.brickinventoryapp.app.PriceAlertsDisplayTest
+Rot: the overview fetches its alerts, changes and deletes via the set, deletes only after confirmation
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenAlarme.kt
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/EinstellungenAlarme.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/EinstellungenAlarme.kt
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/EinstellungenAlarme.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/EinstellungenAlarme.kt
 @@ -136,7 +136,7 @@
                      // Leise wie jede Zeilenaktion: Rot je Zeile übertönte die Preise; die
                      // Rückfrage danach trägt das Gewicht.
                      MitTooltip(stringResource(R.string.alerts_delete_fuer, a.name ?: a.setNumber)) {
--                        IconButton(onClick = { fragtLoeschen = a }) {
-+                        IconButton(onClick = { aktionen.loescheAlarm(a.setNumber, a.condition) }) {
+-                        IconButton(onClick = { deleteAsks = a }) {
++                        IconButton(onClick = { aktionen.deleteAlarm(a.setNumber, a.condition) }) {
                              Icon(Icons.Default.Delete, stringResource(R.string.alerts_delete_fuer, a.name ?: a.setNumber),
                                  tint = MaterialTheme.colorScheme.onSurfaceVariant)
                          }

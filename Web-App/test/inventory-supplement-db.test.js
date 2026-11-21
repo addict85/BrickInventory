@@ -1,0 +1,105 @@
+/**
+ * A Rebrickable inventory is searched for by the same candidates everywhere.
+ *
+ * Counter-checks (performed): see below at the respective substep.
+ *
+ * Prerequisite: test DB via TEST_DATABASE_URL.
+ */
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+
+const ROOT = path.join(__dirname, '..');
+const { buildAndRequire, testData } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+const { newestInventory } = _req('src/catalog/rbInventory.js');
+
+test('an inventory is found under both spellings', { concurrency: 1 }, async t => {
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
+
+  // rb_inventories.id is not a SERIAL — the numbers come from the CSV.
+  const idBlank = 900000 + (process.pid % 10000) * 2;
+  const idWithV = idBlank + 1;
+  const NR = `${9000000 + (process.pid % 100000)}`;
+  const aufraeumen = () =>
+    db.run('DELETE FROM rb_inventories WHERE id = ANY($1)', [[idBlank, idWithV]]).catch(() => {});
+  await aufraeumen();
+
+  try {
+    // 1. Written BLANK: the database stores the number with a suffix.
+    //    Counter-check (30.10.2026): trigger rb_inventories_setnummer removed
+    //    → red (“is stored with a version suffix”: 9xxxxxx instead of 9xxxxxx-1).
+    await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1,$2,1)', [idBlank, NR]);
+    assert.equal(
+      (await db.get('SELECT set_num FROM rb_inventories WHERE id = $1', [idBlank])).set_num,
+      `${NR}-1`,
+      'Eine blank geschriebene Nummer wird mit Versionsanhang abgelegt',
+    );
+    assert.equal(
+      await newestInventory(NR),
+      idBlank,
+      'Eine unter der blanken Nummer abgelegte Zeile wird nicht gefunden',
+    );
+    assert.equal(
+      await newestInventory(`${NR}-1`),
+      idBlank,
+      'Auch mit Versionsanhang in der Eingabe muss die blanke Zeile gefunden werden',
+    );
+
+    // 2. If both are present, the highest version wins — not the blank one.
+    await db.run('INSERT INTO rb_inventories (id, set_num, version) VALUES ($1,$2,2)', [idWithV, `${NR}-1`]);
+    assert.equal(await newestInventory(NR), idWithV);
+  } finally {
+    await aufraeumen();
+    await db.pool.end();
+  }
+});
+
+test('the inventory lookup lives in only one place', () => {
+  // Found, not enumerated.
+  const dateien = [];
+  const gehen = d => {
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      if (
+        e.name === 'node_modules' ||
+        e.name === 'dist' ||
+        e.name === 'test' ||
+        e.name === 'scripts' ||
+        e.name.startsWith('.')
+      )
+        continue;
+      const abs = path.join(d, e.name);
+      if (e.isDirectory()) gehen(abs);
+      else if (e.name.endsWith('.ts') && !e.name.endsWith('.d.ts')) dateien.push(abs);
+    }
+  };
+  gehen(ROOT);
+  // Self-proof: if the search found nothing, the rule would be vacuously true.
+  assert.ok(dateien.length >= 40, `Nur ${dateien.length} Quelldateien gefunden — die Suche greift nicht mehr`);
+
+  const stellen = [];
+  for (const f of dateien) {
+    const code = fs
+      .readFileSync(f, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/[^\n]*$/gm, '');
+    // Only the lookup of ONE row. The bulk query in
+    // partsCatalogEnrich (WHERE set_num = ANY(...), without LIMIT) answers
+    // a different question and stays where it is.
+    for (const m of code.matchAll(/FROM rb_inventories[\s\S]{0,200}?LIMIT 1/g))
+      stellen.push(path.relative(ROOT, f) + (m ? '' : ''));
+  }
+  // Counter-check: the old SELECT in routes/api_v1/catalog.ts reinserted
+  // → red.
+  assert.deepEqual(
+    stellen,
+    ['src/catalog/repository/catalogMaster.ts'],
+    'Der Inventar-Nachschlag steht an mehr als einer Stelle — genau daran sind ' +
+      'vier verschiedene Kandidatenregeln entstanden',
+  );
+});

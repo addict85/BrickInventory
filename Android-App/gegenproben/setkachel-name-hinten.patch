@@ -1,22 +1,22 @@
 Gegenprobe: Name der Katalogkachel wieder unter der Setnummer
 Modul: app
-Test: ch.brickinventoryapp.app.BarrierefreiheitTest
-Rot: Set- und Katalogkachel lesen zuerst den Namen und sind Knoepfe mit Ziel
+Test: ch.brickinventoryapp.app.AccessibilityTest
+Rot: set and catalog tile read the name first and are buttons with a target
 
-diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogKarte.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogKarte.kt
---- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogKarte.kt
-+++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/screens/KatalogKarte.kt
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogKarte.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogKarte.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogKarte.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/screens/KatalogKarte.kt
 @@ -133,11 +133,11 @@
                  Box {
                      Column(Modifier.padding(horizontal = Abstaende.mittel, vertical = Abstaende.klein),
-                         verticalArrangement = Arrangement.spacedBy(Abstaende.haar)) {
+                         verticalArrangement = Arrangement.spacedBy(Abstaende.hairline)) {
 -                        Text(set.name ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
--                            maxLines = 2, overflow = TextOverflow.Ellipsis, onTextLayout = { namensZeilen = it.lineCount })
-                         Text(set.setNumber, Modifier.vorgelesenAls(stringResource(R.string.cd_set_nummer, set.setNumber)),
+-                            maxLines = 2, overflow = TextOverflow.Ellipsis, onTextLayout = { namedRows = it.lineCount })
+                         Text(set.setNumber, Modifier.readAloudAs(stringResource(R.string.cd_set_nummer, set.setNumber)),
                              style = MaterialTheme.typography.bodySmall,
                              color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
 +                        Text(set.name ?: "—", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
-+                            maxLines = 2, overflow = TextOverflow.Ellipsis, onTextLayout = { namensZeilen = it.lineCount })
++                            maxLines = 2, overflow = TextOverflow.Ellipsis, onTextLayout = { namedRows = it.lineCount })
                          Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                              val jahr = set.year
-                             if (jahr != null) Text("$jahr", Modifier.vorgelesenAls(stringResource(R.string.cd_jahr, "$jahr")),
+                             if (jahr != null) Text("$jahr", Modifier.readAloudAs(stringResource(R.string.cd_jahr, "$jahr")),

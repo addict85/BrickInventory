@@ -1,24 +1,24 @@
 Gegenprobe: Gesperrte Knöpfe wieder mit Materials fester Deckkraft (12 % Fläche, 38 % Schrift)
 Modul: core-ui
-Test: ch.brickinventoryapp.ui.GesperrtKontrastTest
-Rot: gesperrte Knoepfe halten
+Test: ch.brickinventoryapp.ui.LockedContrastTest
+Rot: disabled buttons keep 4,5 to 1 for text and 3 to 1 for surface and border
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Gesperrt.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Gesperrt.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Gesperrt.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Gesperrt.kt
 @@ -27,10 +27,11 @@
  
- fun gesperrtFarben(s: ColorScheme): GesperrtFarben {
-     val gruende = listOf(s.surface, s.background)
--    val flaeche = abgehoben(lerp(s.surface, s.onSurface, GESPERRT_FLAECHE), gruende, GRAFIK_KONTRAST_GESPERRT)
--    val aufFlaeche = hin(flaeche, s.onSurface, flaeche, TEXT_KONTRAST_GESPERRT)
--    val schrift = abgehoben(lerp(s.surface, s.onSurface, GESPERRT_SCHRIFT), gruende, TEXT_KONTRAST_GESPERRT)
--    val rand = abgehoben(lerp(s.surface, s.onSurface, GESPERRT_FLAECHE), gruende, GRAFIK_KONTRAST_GESPERRT)
+ fun lockedColors(s: ColorScheme): LockedColors {
+     val reasons = listOf(s.surface, s.background)
+-    val flaeche = elevated(lerp(s.surface, s.onSurface, LOCKED_SURFACE), reasons, GRAPHIC_CONTRAST_LOCKED)
+-    val aufFlaeche = hin(flaeche, s.onSurface, flaeche, TEXT_CONTRAST_LOCKED)
+-    val schrift = elevated(lerp(s.surface, s.onSurface, LOCKED_FONT), reasons, TEXT_CONTRAST_LOCKED)
+-    val edge = elevated(lerp(s.surface, s.onSurface, LOCKED_SURFACE), reasons, GRAPHIC_CONTRAST_LOCKED)
 +    val flaeche = lerp(s.surface, s.onSurface, 0.12f)
 +    val aufFlaeche = lerp(flaeche, s.onSurface, 0.38f)
 +    val schrift = lerp(s.surface, s.onSurface, 0.38f)
-+    val rand = lerp(s.surface, s.onSurface, 0.12f)
-+    check(gruende.isNotEmpty())
-     return GesperrtFarben(flaeche, aufFlaeche, schrift, rand)
++    val edge = lerp(s.surface, s.onSurface, 0.12f)
++    check(reasons.isNotEmpty())
+     return LockedColors(flaeche, aufFlaeche, schrift, edge)
  }
  

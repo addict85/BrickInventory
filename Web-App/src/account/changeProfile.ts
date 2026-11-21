@@ -1,0 +1,96 @@
+/** Profile of the own account: name, username and address. A new address only applies
+ * after the link; the mails go through the mail area. */
+import crypto from 'node:crypto';
+import { mailBasisUrl } from '../infra/basisUrl';
+import { fachfehler } from '../infra/errorTexts';
+import { versuche, valueOr } from '../infra/result';
+import { inSystemContext } from '../infra/accountContext';
+import { tokenDigest } from './deviceToken';
+import { accountThrottled } from './targetThrottle';
+import type { Konto as AccountRow } from './repository/accounts';
+import type { AccountContext } from './context';
+
+type Konto = AccountRow;
+export interface ProfileInput {
+  username?: string | undefined;
+  email?: string | null | undefined;
+  first_name?: string | null | undefined;
+  last_name?: string | null | undefined;
+}
+
+export function emailBecomesChanged(user: Konto, email: string | null | undefined): email is string {
+  return !!email && email.toLowerCase() !== String(user.email || '').toLowerCase();
+}
+
+/** After a confirmed password. A new address only applies after the link; until
+ * then the old one applies, and the new one occupies nothing. */
+export async function profilAendern(
+  k: AccountContext,
+  user: Konto,
+  e: ProfileInput,
+): Promise<{ emailChanged: boolean; emailSent?: boolean }> {
+  const nameNew = !!e.username && e.username.toLowerCase() !== String(user.username || '').toLowerCase();
+  const emailNeu = emailBecomesChanged(user, e.email);
+  if (nameNew || emailNeu) {
+    // Every availability check reveals whether an account exists; registration hides that.
+    const zuOft = await accountThrottled(k, 'profil-vergabe', user.id, 10, 60 * 60 * 1000);
+    if (zuOft) fachfehler('zu_viele', 'zu_viele_anfragen', { minuten: zuOft.waitMin });
+    if (nameNew && e.username && (await k.konten.nameTaken(e.username, user.id)))
+      fachfehler('ungueltig', 'benutzername_vergeben');
+  }
+  const felder: Record<string, unknown> = {};
+  if (e.first_name !== undefined) felder.first_name = e.first_name || null;
+  if (e.last_name !== undefined) felder.last_name = e.last_name || null;
+  const speichern = async () => {
+    if (e.username) await k.konten.changeUsernames(user.id, e.username);
+    await k.konten.changeNames(user.id, felder);
+  };
+  if (!emailNeu) {
+    await speichern();
+    return { emailChanged: false };
+  }
+  const email = String(e.email);
+  const token = crypto.randomBytes(32).toString('hex');
+  await k.konten.rememberEmailNew(user.id, email, tokenDigest(token), new Date(k.uhr.jetzt() + 24 * 60 * 60 * 1000));
+  await speichern();
+  return { emailChanged: true, emailSent: await adressMails(k, user, email, token) };
+}
+
+/** Language of the account, not the default. Taken answers like free, otherwise
+ * addresses could be probed; the owner gets a notice instead of the link. */
+async function adressMails(k: AccountContext, user: Konto, email: string, token: string): Promise<boolean> {
+  // Also that of the owner of an address, another account: in the system frame.
+  const sprache = async (uid: number) =>
+    String(
+      valueOr(
+        await versuche(
+          'anmeldung:sprache',
+          inSystemContext('adressmail', () => k.einstellungen.userValue(uid, 'language', 'de')),
+        ),
+        'de',
+      ),
+    );
+  const lang = await sprache(user.id);
+  const basis = mailBasisUrl();
+  let gesendet = false;
+  const inhaber = await k.konten.accountWithEmail(email);
+  if (inhaber && inhaber.id !== user.id) {
+    if (basis)
+      gesendet = valueOr(
+        await versuche(
+          'anmeldung:versuchsmail',
+          k.mail.mailRegistrationAttempt(inhaber.email, await sprache(inhaber.id), 'adresse'),
+        ),
+        { success: false },
+      ).success;
+  } else if (basis) {
+    gesendet = valueOr(
+      await versuche('anmeldung:bestaetigungsmail', k.mail.mailVerification(email, token, basis, lang, 'adresse')),
+      { success: false },
+    ).success;
+  }
+  // The old address learns about it — if it was not the owner, they notice that way.
+  if (user.email)
+    await versuche('anmeldung:hinweis-alte-adresse', k.mail.mailEmailChanged(user.email, user.username, email, lang));
+  return gesendet;
+}

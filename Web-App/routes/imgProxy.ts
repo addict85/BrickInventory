@@ -1,16 +1,16 @@
-/** Der Bild-Proxy (src/bilder/http/bildProxy.ts) unter BEIDEN Adressen: Die alte
- * steht in Datenbankzeilen und installierten Apps. */
+/** The image proxy (src/images/http/imageProxy.ts) under BOTH addresses: the old one
+ * is stored in database rows and installed apps. */
 import type { Express, Request, Response } from 'express';
-import { bildDurchreichen, setNummerAusBildAdresse } from '../src/bilder/http/bildProxy';
-import { waechterFuer } from './api_v1/middleware';
-import { IMG_PROXY_PFAD, IMG_PROXY_PFAD_ALT } from '../src/bilder';
-import type { Dienste } from '../src/dienste';
+import { passThroughImage, setNumberFromImageAddress } from '../src/images/http/imageProxy';
+import { guardFor } from './api_v1/middleware';
+import { IMG_PROXY_PATH, IMG_PROXY_PATH_LEGACY } from '../src/images';
+import type { Dienste } from '../src/services';
 
-function registerImgProxy(app: Express, d: Pick<Dienste, 'konto' | 'bilder'>) {
-  const { requireLoginOrToken, eingangsSperre } = waechterFuer(d.konto);
-  const durchreichen = (req: Request, res: Response) => bildDurchreichen(d, req, res);
-  app.get(IMG_PROXY_PFAD, requireLoginOrToken, eingangsSperre, durchreichen);
-  app.get(IMG_PROXY_PFAD_ALT, requireLoginOrToken, eingangsSperre, durchreichen);
+function registerImgProxy(app: Express, d: Pick<Dienste, 'account' | 'images'>) {
+  const { requireLoginOrToken, inboundLock } = guardFor(d.account);
+  const durchreichen = (req: Request, res: Response) => passThroughImage(d, req, res);
+  app.get(IMG_PROXY_PATH, requireLoginOrToken, inboundLock, durchreichen);
+  app.get(IMG_PROXY_PATH_LEGACY, requireLoginOrToken, inboundLock, durchreichen);
 }
 
-export { registerImgProxy, bildDurchreichen, setNummerAusBildAdresse };
+export { registerImgProxy, passThroughImage, setNumberFromImageAddress };

@@ -1,0 +1,5 @@
+# Obergrenze fuer die Warnungen des Uebersetzungslaufs (Kotlin, KSP, Java, Gradle).
+1
+# Die eine ist Configuration.setVisible(boolean) aus einem Plugin (AGP, Hilt oder
+# KSP); kein Buildskript hier ruft es auf. Faellt sie weg, auf 0 senken.
+# Herleitung und Messlaeufe: git log -p -- Android-App/tools/warnings-limit.txt

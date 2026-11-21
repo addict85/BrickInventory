@@ -1,15 +1,15 @@
 Gegenprobe: ManualPartTile reicht die Besitzer nicht an die gemeinsame Kachel weiter
 Modul: app
-Test: ch.brickinventoryapp.app.ManuelleKachelAnzeigeTest
-Rot: das manuelle Teil zeigt
+Test: ch.brickinventoryapp.app.ManualTileDisplayTest
+Rot: the manual part shows conditions, owners and the averaged purchase price
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/TeileKarte.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/TeileKarte.kt
 index 1b41cb9..43d7a3a 100644
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/TeileKarte.kt
-@@ -70,7 +70,7 @@ fun ManualPartTile(part: ManuellesTeilAnsicht, serverUrl: String, imageLoader: I
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/TeileKarte.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/TeileKarte.kt
+@@ -70,7 +70,7 @@ fun ManualPartTile(part: ManualPartView, serverUrl: String, imageLoader: I
          menge = part.quantity,
-         zustaende = part.conditions,
+         states = part.conditions,
          zustand = part.condition,
 -        besitzer = part.owners,
 +        besitzer = emptyList(),

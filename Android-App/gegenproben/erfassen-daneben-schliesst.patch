@@ -1,16 +1,16 @@
 Gegenprobe: Danebentippen schliesst auch einen ausgefüllten Erfassen-Dialog
-Modul: feature-teile
-Test: ch.brickinventoryapp.teile.ErfassenDialogTest
-Rot: daneben tippen
+Modul: feature-parts
+Test: ch.brickinventoryapp.parts.AddDialogTest
+Rot: tapping outside closes only an empty dialog
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
 index 148a98a..f66848a 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Dialoge.kt
-@@ -136,7 +136,7 @@ fun ErfassenDialog(
-  * fragt dann aber erst nach (ErfassenDialog).
+@@ -136,7 +136,7 @@ fun AddDialog(
+  * fragt dann aber erst nach (AddDialog).
   */
- fun erfassenSchliessbar(geaendert: Boolean) =
+ fun addClosable(geaendert: Boolean) =
 -    DialogProperties(dismissOnClickOutside = !geaendert, usePlatformDefaultWidth = false)
 +    DialogProperties(dismissOnClickOutside = true, usePlatformDefaultWidth = false)
  

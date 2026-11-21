@@ -1,13 +1,13 @@
 'use strict';
 /**
- * Datenbanken für den parallelen Testlauf anlegen und löschen, als eigener
- * Prozess: Der Vorlader (eigene-db.js) muss synchron fertig sein, bevor die
- * Testdatei ihre erste Zeile ausführt.
+ * Create and delete databases for the parallel test run, as a separate
+ * process: the preloader (own-db.js) must be done synchronously before the
+ * test file executes its first line.
  */
 const path = require('node:path');
 const { Client } = require(path.join(__dirname, '..', '..', 'node_modules', 'pg'));
 
-const { rollen } = require('./rollen');
+const { rollen } = require('./roles');
 
 const [, , was, name, vorlage] = process.argv;
 const id = s => `"${String(s).replace(/"/g, '""')}"`;
@@ -17,7 +17,7 @@ const id = s => `"${String(s).replace(/"/g, '""')}"`;
   await c.connect();
   try {
     if (was === 'anlegen') {
-      // Rechte an der Datenbank selbst kopiert TEMPLATE nicht; sie stehen wie in postgres/app-rolle.sh.
+      // TEMPLATE does not copy privileges on the database itself; they stand as in postgres/app-rolle.sh.
       const r = rollen(vorlage);
       await c.query(`CREATE DATABASE ${id(name)} TEMPLATE ${id(vorlage)} OWNER ${id(r.eigen.name)}`);
       await c.query(`REVOKE TEMPORARY ON DATABASE ${id(name)} FROM PUBLIC`);

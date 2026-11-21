@@ -14,35 +14,35 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.theme.Abstaende
-import ch.brickinventoryapp.ui.theme.gesperrtFarben
+import ch.brickinventoryapp.ui.theme.lockedColors
 
 /**
- * Schrift des umrandeten Nebenknopfs in der Hauptfarbe. Die Material-Vorgabe setzt sie
- * in onSurfaceVariant, und im Dunkeln sah „Kopieren“ über einem gesperrten Knopf
- * selbst gesperrt aus.
+ * Text of the outlined secondary button in the primary color. Material's default sets it
+ * in onSurfaceVariant, and in the dark theme, „Kopieren“ on a locked button
+ * itself looked locked.
  */
 @Composable
 fun nebenKnopfFarben(): ButtonColors = ButtonDefaults.outlinedButtonColors(
     contentColor = MaterialTheme.colorScheme.primary,
-    disabledContentColor = gesperrtFarben(MaterialTheme.colorScheme).schrift,
+    disabledContentColor = lockedColors(MaterialTheme.colorScheme).schrift,
 )
 
 /**
- * Rand des Nebenknopfs in outline (≥ 3:1 gegen jede Fläche) statt outlineVariant, das
- * kaum vom Grund abstach; gesperrt heller, aber mit 3:1 noch als Knopf erkennbar.
+ * Border of the secondary button in outline (≥ 3:1 against any surface) instead of outlineVariant, which
+ * barely stood out from the background; locked lighter, but still recognizable as a button at 3:1.
  */
 @Composable
 fun nebenKnopfRand(aktiv: Boolean = true): BorderStroke =
     BorderStroke(1.dp, if (aktiv) MaterialTheme.colorScheme.outline
-                       else gesperrtFarben(MaterialTheme.colorScheme).rand)
+                       else lockedColors(MaterialTheme.colorScheme).edge)
 
 /**
- * Gestapelte Knöpfe gleich breit, so breit wie der breiteste: „Set merken“ stand
- * schmaler über „Barcode scannen“, und die Gruppe wirkte unruhig. Jeder Knopf darin
- * nimmt `Modifier.fillMaxWidth()`.
+ * Stacked buttons equally wide, as wide as the widest one: „Set merken" stood
+ * narrower above „Barcode scannen", and the group looked uneven. Every button in it
+ * takes `Modifier.fillMaxWidth()`.
  */
 @Composable
-fun KnopfStapel(inhalt: @Composable ColumnScope.() -> Unit) {
+fun ButtonStack(inhalt: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.width(IntrinsicSize.Max), horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Abstaende.klein), content = inhalt)
 }

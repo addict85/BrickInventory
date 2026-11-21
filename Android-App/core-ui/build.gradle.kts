@@ -1,5 +1,5 @@
-// Design-System: Theme, Bausteine ohne Fachwissen (Karten, Zeilen, Suchfeld, Dialoge,
-// Kamera) und reine Anzeigeregeln. Fachliche Bausteine liegen in core-ui-bestand.
+// Design system: theme, building blocks without domain knowledge (cards, rows, search field, dialogs,
+// camera) and pure display rules. Domain building blocks live in core-ui-inventory.
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.unittests)
@@ -8,13 +8,13 @@ plugins {
 
 android {
     namespace = "ch.brickinventoryapp.core.ui"
-    // Die Dialogtests lesen Texte aus den Ressourcen.
+    // The dialog tests read texts from the resources.
     testOptions.unitTests.isIncludeAndroidResources = true
 }
 
 dependencies {
     api(project(":core-model"))
-    implementation(project(":core-ressourcen"))
+    implementation(project(":core-resources"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.bundles.camera)
@@ -22,7 +22,7 @@ dependencies {
     implementation(libs.androidx.biometric)
 
     testImplementation(project(":core-testing"))
-    // Zwischenablage und Dialogfenster werden unter Robolectric geprüft.
+    // Clipboard and dialog windows are checked under Robolectric.
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.ext.junit)
     testImplementation(platform(libs.androidx.compose.bom))

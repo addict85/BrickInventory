@@ -1,17 +1,16 @@
 Gegenprobe: Der Wächter übersieht 403 zweiter_faktor_pflicht
-Modul: core-zustand
-Test: ch.brickinventoryapp.zustand.ServerWaechterTest
-Rot: ein 403 zweiter_faktor_pflicht verlangt
+Modul: core-state
+Test: ch.brickinventoryapp.state.ServerGuardTest
+Rot: a 403 zweiter_faktor_pflicht requires the setup without signing out
 
-diff --git a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/di/ServerWaechter.kt b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/di/ServerWaechter.kt
-index ea5f515..c526405 100644
---- a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/di/ServerWaechter.kt
-+++ b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/di/ServerWaechter.kt
+diff --git a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/di/ServerWaechter.kt b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/di/ServerWaechter.kt
+--- a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/di/ServerWaechter.kt
++++ b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/di/ServerWaechter.kt
 @@ -199,7 +199,6 @@ class ServerWaechter(
-         if (antwort.code == 401 && code !in BESTAETIGUNG_NOETIG) sitzungAbgelaufen()
-         if (antwort.code == 403 && code == Fehlercode.NUR_ADMINS) rechteEntzogen()
-         if (antwort.code == 403 && code == Fehlercode.PASSWORT_WECHSEL_NOETIG) passwortWechselNoetig()
+         if (antwort.code == 401 && code !in CONFIRMATION_NEEDED) sitzungAbgelaufen()
+         if (antwort.code == 403 && code == Fehlercode.NUR_ADMINS) rightsRevoked()
+         if (antwort.code == 403 && code == Fehlercode.PASSWORT_WECHSEL_NOETIG) passwordSwitchNeeded()
 -        if (antwort.code == 403 && code == Fehlercode.ZWEITER_FAKTOR_PFLICHT) zweiterFaktorPflicht()
      }
  
-     /** Ein Hinweis auf zu alte App oder zu alten Server, einmal je Lauf. */
+     /** A notice about too old an app or too old a server, once per run. */

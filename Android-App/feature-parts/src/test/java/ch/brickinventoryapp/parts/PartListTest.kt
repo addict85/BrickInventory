@@ -1,0 +1,115 @@
+package ch.brickinventoryapp.parts
+
+import ch.brickinventoryapp.parts.ui.Teileliste
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+import java.net.URLEncoder
+import ch.brickinventoryapp.testing.PfadServer
+import ch.brickinventoryapp.testing.testSetCatalogRepository
+import ch.brickinventoryapp.testing.testPartsRepository
+import ch.brickinventoryapp.testing.TestDienste
+
+/**
+ * The temporary parts list, run against a test server: resolve a set
+ * and fetch one's own stock for it.
+ *
+ * Counter-checks (measured 28.10.2026, kotlinc against parts/ui/Teileliste.kt):
+ *   A  the merge key changed to blNum instead of partNumber → red “a set
+ *      is merged by Rebrickable number …”, “an image from the CDN …”
+ *      and “the stock asks …” (three rows instead of four)
+ *   B  name from getSetInfo not taken over (always setNumber) → red “a set
+ *      is merged by Rebrickable number …”
+ *   C  the branch for https addresses passed through without a proxy → red “an image from the
+ *      CDN runs via the server …”
+ *   D  in withInventory() always null sent instead of "own" → red “the stock asks
+ *      only one's own account without sub-accounts …”
+ *   E  in withInventory() loose and total swapped → red, the same case
+ *   F  BestandTeil built with blPartNumber → red, the same case (body)
+ *   G  on a failed answer computed onward with an empty stock → red “an
+ *      error on the stock gives null …”
+ */
+class PartListTest {
+
+    private lateinit var paths: PfadServer
+    private lateinit var t: TestDienste
+    private lateinit var liste: Teileliste
+
+    private val cdn = "https://cdn.rebrickable.com/media/parts/3001.jpg"
+
+    @Before
+    fun auf() {
+        paths = PfadServer(
+            "/api/v1/sets/info/75192-1" to """{"success":true,"name":"Millennium Falcon"}""",
+            "/api/v1/sets/75192-1/parts-list" to """{"success":true,"parts":[
+                {"part_number":"3001","bl_part_number":"3001","color_id":1,"total_quantity":2,"image_local":"/images/parts/3001.jpg","image_url":"$cdn"},
+                {"part_number":"3001","bl_part_number":"3001","color_id":1,"total_quantity":3},
+                {"part_number":"970c00","bl_part_number":"970c00","color_id":0,"total_quantity":1,"image_url":"$cdn"},
+                {"part_number":"970c11","bl_part_number":"970c00","color_id":0,"total_quantity":1,"image_url":"/images/parts/970c11.jpg"}
+            ]}""",
+            "/api/v1/sets/75192-1/minifigs-list" to """{"success":true,"figs":[
+                {"fig_number":"sw0001","fig_name":"Han","quantity":1,"total_quantity":2}
+            ]}""",
+            "/api/v1/parts/owned" to """{"success":true,"bestand":{
+                "3001|1":{"gesamt":7,"lose":2},
+                "970c11|0":{"gesamt":1,"lose":0}
+            }}""",
+        )
+        t = TestDienste(paths.server)
+        liste = Teileliste(testSetCatalogRepository(t.api), testPartsRepository(t.api))
+    }
+
+    @After
+    fun zu() {
+        t.aufraeumen()
+        paths.server.shutdown()
+    }
+
+    @Test
+    fun `a set is grouped by Rebrickable number and carries the catalog name`() = runBlocking {
+        val (name, zeilen) = liste.resolveSetOn("75192-1", "http://srv/")
+        assertEquals("Millennium Falcon", name)
+        assertEquals(listOf("3001", "970c00", "970c11", "sw0001"), zeilen.map { it.partNumber })
+        assertEquals(5, zeilen.single { it.partNumber == "3001" }.quantity)
+        // Gleiche BrickLink-Nummer, verschiedene Rebrickable-Teile: zwei Zeilen.
+        assertEquals("970c00", zeilen.single { it.partNumber == "970c11" }.blPartNumber)
+        val figur = zeilen.single { it.isFig }
+        assertEquals(2, figur.quantity)
+    }
+
+    @Test
+    fun `an image from the CDN runs via the server and a local image goes first`() = runBlocking {
+        val zeilen = liste.resolveSetOn("75192-1", "http://srv/").second
+        assertEquals("http://srv/images/parts/3001.jpg", zeilen.single { it.partNumber == "3001" }.imageUrl)
+        assertEquals("http://srv/api/v1/img-proxy?url=" + URLEncoder.encode(cdn, "UTF-8"),
+            zeilen.single { it.partNumber == "970c00" }.imageUrl)
+        assertEquals("http://srv/images/parts/970c11.jpg", zeilen.single { it.partNumber == "970c11" }.imageUrl)
+    }
+
+    @Test
+    fun `the stock asks only the own account without sub-accounts and optionally counts only loose parts`() = runBlocking {
+        val zeilen = liste.resolveSetOn("75192-1", "http://srv").second.filter { !it.isFig }
+
+        val lose = liste.withInventory(zeilen, onlyLose = true, withSubAccounts = false)!!
+        assertEquals(listOf(2, 0, 0), lose.map { it.vorhanden })
+        assertTrue(paths.requestsAn("POST /api/v1/parts/owned").single().endsWith("?accounts=own"))
+        val rumpf = paths.koerper[paths.requests.indexOfFirst { "parts/owned" in it }]
+        assertTrue(rumpf, "\"970c11\"" in rumpf)
+
+        val alle = liste.withInventory(zeilen, onlyLose = false, withSubAccounts = true)!!
+        assertEquals(listOf(7, 0, 1), alle.map { it.vorhanden })
+        assertFalse(paths.requestsAn("POST /api/v1/parts/owned").last().contains("accounts"))
+    }
+
+    @Test
+    fun `an error in the stock gives null instead of a list full of zeros`() = runBlocking {
+        paths.codes["/api/v1/parts/owned"] = 500
+        val zeilen = liste.resolveSetOn("75192-1", "http://srv").second
+        assertNull(liste.withInventory(zeilen, onlyLose = false, withSubAccounts = false))
+    }
+}

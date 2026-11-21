@@ -1,17 +1,17 @@
 Gegenprobe: Knöpfe auch bei grosser Schrift neben dem Suchfeld
 Modul: app
-Test: ch.brickinventoryapp.app.GrosseSchriftUndTabletTest
-Rot: Such-Platzhalter der Galerie steht auch bei 200 Prozent
+Test: ch.brickinventoryapp.app.LargeFontAndTabletTest
+Rot: search placeholder of the gallery is shown in full at 200 percent too
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt
-@@ -95,7 +95,7 @@ fun SucheMitFilter(
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt
+@@ -95,7 +95,7 @@ fun SearchWithFilter(
          // nur „Suche…“. Ein Filterknopf allein bleibt daneben; auf eigener Zeile stand
          // er verloren über dem Raster (Teile, Figuren).
-         val untereinander = gross && (onScannen != null || sortierung != null || erfassenHier != null)
+         val untereinander = gross && (scanOn != null || sorting != null || addHere != null)
 -        if (untereinander) Column {
 +        if (false) Column {
-             Suchfeld(wert = wert, onWert = onWert, platzhalter = platzhalter, modifier = Modifier.fillMaxWidth())
+             Suchfeld(wert = wert, onValue = onValue, platzhalter = platzhalter, modifier = Modifier.fillMaxWidth())
              Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End,
-                 verticalAlignment = Alignment.CenterVertically) { knoepfe() }
+                 verticalAlignment = Alignment.CenterVertically) { buttons() }

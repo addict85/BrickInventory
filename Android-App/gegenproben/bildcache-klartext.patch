@@ -1,27 +1,27 @@
 Gegenprobe: der Bild-Zwischenspeicher schreibt wieder im Klartext (VerschluesseltesDateisystem reicht durch, Stand vor sec11 N1)
 Modul: core-data
-Test: ch.brickinventoryapp.data.BildZwischenspeicherTest
-Rot: der Zwischenspeicher liegt verschluesselt
+Test: ch.brickinventoryapp.data.ImageCacheTest
+Rot: the cache lies encrypted and still delivers offline
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/VerschluesseltesDateisystem.kt
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/EncryptedFileSystem.kt
 @@ -47,15 +47,11 @@
-         return s.ordner / (GESTREUT + name)
+         return s.folder / (JITTERED + name)
      }
  
--    override fun source(file: Path): Source = Eingang(delegate.source(gestreut(file)).buffer(), bindung(file))
-+    override fun source(file: Path): Source = delegate.source(gestreut(file))
+-    override fun source(file: Path): Source = Inbox(delegate.source(jittered(file)).buffer(), bindung(file))
++    override fun source(file: Path): Source = delegate.source(jittered(file))
  
 -    override fun sink(file: Path, mustCreate: Boolean): Sink =
--        Ausgang(delegate.sink(gestreut(file), mustCreate), bindung(file), 0L)
-+    override fun sink(file: Path, mustCreate: Boolean): Sink = delegate.sink(gestreut(file), mustCreate)
+-        Ausgang(delegate.sink(jittered(file), mustCreate), bindung(file), 0L)
++    override fun sink(file: Path, mustCreate: Boolean): Sink = delegate.sink(jittered(file), mustCreate)
  
 -    override fun appendingSink(file: Path, mustExist: Boolean): Sink {
--        val ab = delegate.metadataOrNull(gestreut(file))?.size ?: 0L
--        return Ausgang(delegate.appendingSink(gestreut(file), mustExist), bindung(file), ab)
+-        val ab = delegate.metadataOrNull(jittered(file))?.size ?: 0L
+-        return Ausgang(delegate.appendingSink(jittered(file), mustExist), bindung(file), ab)
 -    }
-+    override fun appendingSink(file: Path, mustExist: Boolean): Sink = delegate.appendingSink(gestreut(file), mustExist)
++    override fun appendingSink(file: Path, mustExist: Boolean): Sink = delegate.appendingSink(jittered(file), mustExist)
  
      // Wahlfreier Zugriff läse Geheimtext als Inhalt; OkHttp braucht ihn nicht.
      override fun openReadOnly(file: Path): FileHandle = throw IOException("kein wahlfreier Zugriff: $file")

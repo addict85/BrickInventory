@@ -1,17 +1,17 @@
 Gegenprobe: erfassungsWerte liest den Preis wieder mit replace statt nach der Sprache
-Modul: core-ui-bestand
-Test: ch.brickinventoryapp.gemeinsam.ErfassungswerteTest
-Rot: die Erfassung liest den Preis
+Modul: core-ui-inventory
+Test: ch.brickinventoryapp.shared.ErfassungswerteTest
+Rot: adding reads the price like the field and reports unreadable input
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Erfassungswerte.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Erfassungswerte.kt
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Erfassungswerte.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Erfassungswerte.kt
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Erfassungswerte.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Erfassungswerte.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Erfassungswerte.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Erfassungswerte.kt
 @@ -31,7 +31,7 @@
-     haushalt: List<MitgliedAnsicht>,
- ): ErfassungsWerte = ErfassungsWerte(
+     haushalt: List<MemberView>,
+ ): EntryValues = EntryValues(
      anzahl = anzahl.toIntOrNull() ?: 1,
--    preis = NumericInput.leseGeld(preis),
-+    preis = Geld.ausText(preis.replace(',', '.')),
+-    preis = NumericInput.readMoney(preis),
++    preis = Geld.fromText(preis.replace(',', '.')),
      zustand = zustand,
      besitzer = if (haushalt.size > 1) besitzer else null,
  )

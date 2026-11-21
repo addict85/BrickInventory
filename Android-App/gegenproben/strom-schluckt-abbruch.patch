@@ -1,13 +1,13 @@
 Gegenprobe: folgeStrom fängt wieder jede Exception und schluckt so das Abbrechen
-Modul: core-dienste
-Test: ch.brickinventoryapp.dienste.CsvStromAbbruchTest
-Rot: folgeStrom reicht das Abbrechen weiter
+Modul: core-services
+Test: ch.brickinventoryapp.services.CsvStreamAbortTest
+Rot: folgeStrom passes the cancellation on, a network error means fallback level
 
-diff --git a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/service/CsvStrom.kt b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/service/CsvStrom.kt
---- a/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/service/CsvStrom.kt
-+++ b/Android-App/core-dienste/src/main/java/ch/brickinventoryapp/dienste/service/CsvStrom.kt
+diff --git a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/CsvStrom.kt b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/CsvStrom.kt
+--- a/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/CsvStrom.kt
++++ b/Android-App/core-services/src/main/java/ch/brickinventoryapp/services/service/CsvStrom.kt
 @@ -16,13 +16,13 @@
-     weiter: (CsvImportStandAnsicht) -> Boolean,
+     weiter: (CsvImportStatusView) -> Boolean,
  ): Boolean {
      var gescheitert = false
 -    fangeAusserAbbruch {

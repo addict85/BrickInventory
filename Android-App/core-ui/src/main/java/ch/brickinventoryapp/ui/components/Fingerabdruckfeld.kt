@@ -18,42 +18,42 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import ch.brickinventoryapp.ui.theme.Formen
 
 /**
- * Das Feld zum Abtippen eines Fingerabdrucks, für Zertifikatsfrage und QR-Code gleich. Es
- * setzt die Doppelpunkte selbst und zählt nur Hex-Zeichen ([abschriftInPaaren]); [fehler]
- * bekommt die gezählten Zeichen, damit „zu kurz“ sagen kann, wie viele fehlen.
+ * The field for typing in a fingerprint, the same for the certificate question and the QR code. It
+ * inserts the colons itself and only counts hex characters ([pairTranscriptIn]); [fehler]
+ * gets the counted characters, so it can say how many are missing for „too short“.
  */
 @Composable
 fun Fingerabdruckfeld(
     eingabe: String,
-    onEingabe: (String) -> Unit,
+    onInput: (String) -> Unit,
     noetig: Int,
-    hilfe: String,
+    help: String,
     fehler: @Composable (gezaehlt: Int) -> String?,
     modifier: Modifier = Modifier,
 ) {
     var cursor by rememberSaveable { mutableIntStateOf(eingabe.length) }
-    val gezaehlt = abschriftZeichen(eingabe)
-    val fehlerText = fehler(gezaehlt)
+    val gezaehlt = transcriptChars(eingabe)
+    val errorText = fehler(gezaehlt)
     OutlinedTextField(
         shape = Formen.feld,
         value = TextFieldValue(eingabe, TextRange(cursor)),
         onValueChange = { neu ->
-            val (text, stelle) = abschriftInPaaren(neu.text, neu.selection.end)
-            cursor = stelle
-            onEingabe(text)
+            val (text, place) = pairTranscriptIn(neu.text, neu.selection.end)
+            cursor = place
+            onInput(text)
         },
-        // Kurzes Etikett, die Anleitung darunter: Ein Satz als Etikett wurde
-        // abgeschnitten und stand beim Tippen über dem Feld.
+        // Short label, the instructions below it: a sentence as a label used to get
+        // cut off and sat above the field while typing.
         label = { Text(stringResource(R.string.zert_eingabe_etikett)) },
-        isError = fehlerText != null,
+        isError = errorText != null,
         supportingText = {
             Row(horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
-                Text(fehlerText ?: hilfe, modifier = Modifier.weight(1f))
+                Text(errorText ?: help, modifier = Modifier.weight(1f))
                 Text(stringResource(R.string.zert_eingabe_zaehler, gezaehlt, noetig))
             }
         },

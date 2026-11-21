@@ -1,17 +1,17 @@
 Gegenprobe: Vergleich steht nicht unter „Mehr“ (kein gewählter Reiter, kein Zurück)
 Modul: app
-Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
-Rot: Vergleich und Bauliste markieren Mehr
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: comparison and build list mark More and lead back there with Back
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
 +++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/MainScaffold.kt
-@@ -398,7 +398,7 @@ private val SAMMLUNG: Set<KClass<out Screen>> = SAMMLUNGS_ZIELE.map { it::class
+@@ -398,7 +398,7 @@ private val SAMMLUNG: Set<KClass<out Screen>> = COLLECTION_TARGETS.map { it::class
  
  /** Seiten mit unterer Leiste, die man über „Mehr“ erreicht — dort bleibt „Mehr“ gewählt. */
- private val MEHR: Set<KClass<out Any>> = setOf(AppZiel.Mehr::class, TeileZiel.PartsList::class,
--    SammlungZiel.Comparison::class, KontoZiel.Settings::class, VerwaltungZiel.Monitoring::class)
-+    KontoZiel.Settings::class, VerwaltungZiel.Monitoring::class)
+ private val MORE: Set<KClass<out Any>> = setOf(AppTarget.Mehr::class, TeileZiel.PartsList::class,
+-    SammlungZiel.Comparison::class, KontoZiel.Settings::class, ManagementTarget.Monitoring::class)
++    KontoZiel.Settings::class, ManagementTarget.Monitoring::class)
  
  /** Die Ziele, bei denen ein Ziel der Leiste als gewählt gilt. */
- private fun zieleVon(screen: Any): Set<KClass<out Any>> = when (screen) {
+ private fun targetsOf(screen: Any): Set<KClass<out Any>> = when (screen) {

@@ -1,57 +1,57 @@
 /**
- * Gemeinsame Quelltext-Zugriffe für die statischen Tests. Die Sichten nennen
- * den GEGENSTAND einer Prüfung, nicht den Ablageort: Wandert Code um, ändert
- * sich eine Stelle hier statt zwanzig Prüfungen.
+ * Shared source text accesses for the static tests. The views name
+ * the SUBJECT of a check, not the storage location: if code moves, one
+ * place changes here instead of twenty checks.
  */
-const { istAppModul } = require('../../scripts/build-frontend');
+const { isAppModule } = require('../../scripts/build-frontend');
 const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..', '..');
 
-/** Die App (startup/app.ts, Middleware in ihrer Reihenfolge) und server.ts:
- *  für Prüfungen, bei denen die REIHENFOLGE zählt. Wer den Start meint, nimmt startQuelle(). */
+/** The app (startup/app.ts, middleware in its order) and server.ts:
+ *  for checks where the ORDER counts. Whoever means the start takes startSource(). */
 const serverOnly = () =>
   fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8') +
   '\n' +
   fs.readFileSync(path.join(ROOT, 'server.ts'), 'utf8');
 
 const imgProxy = () =>
-  fs.readFileSync(path.join(ROOT, 'src/bilder/http/bildProxy.ts'), 'utf8') +
+  fs.readFileSync(path.join(ROOT, 'src/images/http/imageProxy.ts'), 'utf8') +
   '\n' +
   fs.readFileSync(path.join(ROOT, 'routes/imgProxy.ts'), 'utf8');
 
-/** Server, Bild-Proxy und Vorschau-Weg: für „kommt X irgendwo vor". Die
- *  Reihenfolge über Dateigrenzen ist bedeutungslos — für indexOf-Vergleiche
- *  serverOnly() oder imgProxy() nehmen. */
-const serverAll = () => serverOnly() + '\n' + imgProxy() + '\n' + proxyThumbQuelle() + '\n' + startQuelle();
+/** Server, image proxy and preview path: for “does X occur anywhere". The
+ *  order across file boundaries is meaningless — for indexOf comparisons
+ *  take serverOnly() or imgProxy(). */
+const serverAll = () => serverOnly() + '\n' + imgProxy() + '\n' + proxyThumbSource() + '\n' + startSource();
 
-/** Die ganze Finanzschicht aneinandergehängt: Die Regeln („nur EINE
- *  Zustandsauflösung") gelten der Schicht, nicht der Fassade financeCalc.ts. */
+/** The whole finance layer concatenated: the rules (“only ONE
+ *  condition resolution") apply to the layer, not to the facade financeCalc.ts. */
 const finanzQuelle = () => {
-  const ordner = path.join(ROOT, 'src/finanzen/rechnung');
-  const teile = [dienstQuelle('src/finanzen/financeCalc.ts')];
+  const ordner = path.join(ROOT, 'src/finances/calculation');
+  const teile = [serviceSource('src/finances/financeCalc.ts')];
   for (const n of fs
     .readdirSync(ordner)
     .filter(x => x.endsWith('.ts'))
     .sort()) {
-    teile.push(dienstQuelle('src/finanzen/rechnung/' + n));
+    teile.push(serviceSource('src/finances/calculation/' + n));
   }
-  // Selbstbeweis: Fände der Helfer die Module nicht, prüften die Regeln nur die
-  // Fassade und wären still grün.
+  // Self-proof: if the helper did not find the modules, the rules would only check the
+  // facade and be silently green.
   if (teile.length < 4) {
-    throw new Error(`finanzQuelle(): nur ${teile.length} Dateien gefunden — liegt src/finanzen/rechnung/ noch da?`);
+    throw new Error(`finanzQuelle(): nur ${teile.length} Dateien gefunden — liegt src/finances/calculation/ noch da?`);
   }
   return teile.join('\n');
 };
 
 /**
- * Baut die .ts-Quellen nach dist/ (nie neben die Quellen) und liefert einen
- * require-Helfer darauf: `buildAndRequire()('src/sets/index.js')`.
+ * Builds the .ts sources to dist/ (never next to the sources) and returns a
+ * require helper for it: `buildAndRequire()('src/sets/index.js')`.
  */
 let _built = false;
 
-/** @returns {number} 0, wenn es das Verzeichnis nicht gibt */
+/** @returns {number} 0 if the directory does not exist */
 function newestMtime(dir, match) {
   if (!fs.existsSync(dir)) return 0;
   let newest = 0;
@@ -67,8 +67,8 @@ function newestMtime(dir, match) {
   return newest;
 }
 
-/** Ohne diese Prüfung baute jede Testdatei in ihrem eigenen Prozess den Baum
- *  neu und riss auf schwacher Hardware die Zeitgrenze des Test-Runners. */
+/** Without this check every test file would rebuild the tree in its own process
+ *  and break the test runner's time limit on weak hardware. */
 function distIsFresh() {
   const dist = path.join(ROOT, 'dist');
   const distAt = newestMtime(dist, /\.js$/);
@@ -77,18 +77,18 @@ function distIsFresh() {
   for (const d of ['db', 'src', 'routes', 'jobs', 'clients', 'startup']) {
     srcAt = Math.max(srcAt, newestMtime(path.join(ROOT, d), /\.ts$/));
   }
-  // Migrationen sind .sql und werden mitkopiert: Eine neue zählt wie eine
-  // geänderte Quelle, eine gelöschte über die Zeit des Verzeichnisses.
+  // Migrations are .sql and are copied along: a new one counts like a
+  // changed source, a deleted one via the time of the directory.
   const mig = path.join(ROOT, 'db/migrations');
   srcAt = Math.max(srcAt, newestMtime(mig, /\.sql$/), fs.existsSync(mig) ? fs.statSync(mig).mtimeMs : 0);
   return distAt >= srcAt;
 }
 
-/** dist/ und Bündel auf den Stand der Quellen bringen, ohne etwas daraus zu laden.
- *  Das Bündel gehört dazu, weil jeder Server mit Oberfläche es ausliefert. */
-function baueDist() {
+/** Bring dist/ and the bundle up to date with the sources without loading anything from them.
+ *  The bundle belongs to it because every server with a UI delivers it. */
+function buildDist() {
   if (_built) return;
-  require('./buendel').stelleBuendelSicher();
+  require('./bundle').placeBundleSafe();
   if (!distIsFresh()) {
     const { execFileSync } = require('node:child_process');
     execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'build-ts.js'), '--outdir', path.join(ROOT, 'dist')], {
@@ -98,190 +98,200 @@ function baueDist() {
   _built = true;
 }
 
-/** Der Zugang der Testdatei: db/database kennt keinen Zugang des Prozesses mehr;
- *  ein Test bekommt ihn wie der Server von seinem Einstieg, hier also von hier. */
+/** The test file's access: db/database no longer knows an access of the process;
+ *  a test gets it like the server from its entry point, here from here. */
 let _testDb = null;
-let _eigenDb = null;
-/** Erzeugen die Zugänge; gesetzt von buildAndRequire(). */
-let _zugangFabrik = null;
-/** Baut Dienste und Kontexte dieser Testdatei; gesetzt von buildAndRequire(). */
-let _dienstFabrik = null;
+let _ownDb = null;
+/** Create the accesses; set by buildAndRequire(). */
+let _accessFactory = null;
+/** Builds services and contexts of this test file; set by buildAndRequire(). */
+let _serviceFactory = null;
 let _gebaut = null;
-/** Ersetzungen (ersetzeDienste), auch vor dem ersten Bau gemerkt. */
+/** Replacements (replaceServices), remembered even before the first build. */
 const _ersatz = [];
 
-/** Die Dienste dieser Testdatei: baueDienste(testZugang()) wie im Server, einmal je Datei. */
+/** The services of this test file: buildServices(testAccess()) as in the server, once per file. */
 /** @returns {any} */
-function testDienste() {
-  if (!_dienstFabrik) throw new Error('testDienste() erst nach buildAndRequire()');
+function testServices() {
+  if (!_serviceFactory) throw new Error('testServices() erst nach buildAndRequire()');
   if (!_gebaut) {
-    _gebaut = _dienstFabrik();
+    _gebaut = _serviceFactory();
     for (const [b, e] of _ersatz) Object.assign(_gebaut.d[b], e);
   }
   return _gebaut.d;
 }
 
-/** Der Kontext eines Bereichs (Repositories, Zugang, Abhängigkeiten) für Tests, die
- *  hineinsehen; die Dienste selbst geben ihn nicht heraus. */
+/** The context of a scope (repositories, access, dependencies) for tests that
+ *  look inside; the services themselves do not hand it out. */
 /** @param {string} bereich @returns {any} */
-function testKontext(bereich) {
-  testDienste();
-  const k = _gebaut.kontexte[bereich];
+function testContext(bereich) {
+  testServices();
+  const k = _gebaut.contexts[bereich];
   if (!k) throw new Error(`kein Kontext für ${bereich}`);
   return k;
 }
 
-/** Ersetzt Dienste eines Bereichs für diese Testdatei, auch für andere Bereiche, die
- *  sie über ihren Kontext rufen (dasselbe Objekt). Vor oder nach dem ersten Bau. */
-function ersetzeDienste(bereich, ersatz) {
+/** Replaces services of a scope for this test file, also for other scopes that
+ *  call them via their context (the same object). Before or after the first build. */
+function replaceServices(bereich, ersatz) {
   _ersatz.push([bereich, ersatz]);
   if (_gebaut) Object.assign(_gebaut.d[bereich], ersatz);
 }
 
-/** Die öffentliche Seite eines Bereichs (index.js) samt seinen Diensten dieser Testdatei:
- *  Was index.js nicht exportiert, reicht beim Aufruf an testDienste()[bereich] weiter,
- *  damit eine Datei die Dienste erst baut, wenn ein Test sie ruft. */
+/** The public side of a scope (index.js) together with its services of this test file:
+ *  whatever index.js does not export is passed on to testServices()[bereich] on call,
+ *  so that a file only builds the services when a test calls them. */
 /** @param {string} bereich @returns {any} */
-function bereichsSeite(bereich) {
+function areaPage(bereich) {
   const modul = require(path.join(ROOT, 'dist', 'src', bereich, 'index.js'));
   return new Proxy(modul, {
-    get: (m, n) => (n in m ? m[n] : (...a) => testDienste()[bereich][n](...a)),
+    get: (m, n) => (n in m ? m[n] : (...a) => testServices()[bereich][n](...a)),
   });
 }
 
-/** Schreibt mit, was die Bilder vormerken (merkeGebraucht, src/bilder/bildbedarf.ts): am Puffer
- *  selbst, damit jeder Weg dorthin zählt. `ende()` hört wieder auf. */
-/** @param {any} [kontext] @returns {{ notizen: [string, string][], ende: () => void }} */
-function bildNotizen(kontext = testKontext('bilder')) {
+/** Records what the images note (rememberUsed, src/images/imageDemand.ts): at the buffer
+ *  itself, so that every path there counts. `ende()` stops again. */
+/** @param {any} [kontext] @returns {{ notes: [string, string][], ende: () => void }} */
+function imageNotes(kontext = testContext('images')) {
   const puffer = kontext.faecher.fach('bildbedarf:puffer', () => new Map());
   /** @type {[string, string][]} */
-  const notizen = [];
+  const notes = [];
   puffer.set = (/** @type {string} */ url, /** @type {string} */ sn) => {
-    notizen.push([url, sn]);
+    notes.push([url, sn]);
     return Map.prototype.set.call(puffer, url, sn);
   };
-  return { notizen, ende: () => delete puffer.set };
+  return { notes, ende: () => delete puffer.set };
 }
 
-/** Wie früher xBereich(): Dienste eines Bereichs, Lesezugriff fällt auf seinen Kontext
- *  zurück. Schreiben geht an die Dienste. */
+/** Like the former xBereich(): services of a scope, read access falls back to its context.
+ *  Writing goes to the services. */
 /** @param {string} bereich @returns {any} */
-function testBereich(bereich) {
+function testArea(bereich) {
   return new Proxy(
     {},
     {
       get: (_z, n) => {
-        const d = testDienste()[bereich];
-        return n in d ? d[n] : testKontext(bereich)[n];
+        const d = testServices()[bereich];
+        return n in d ? d[n] : testContext(bereich)[n];
       },
       set: (_z, n, v) => {
-        testDienste()[bereich][n] = v;
+        testServices()[bereich][n] = v;
         return true;
       },
-      has: (_z, n) => n in testDienste()[bereich] || n in testKontext(bereich),
+      has: (_z, n) => n in testServices()[bereich] || n in testContext(bereich),
       ownKeys: () => [
-        ...new Set([...Reflect.ownKeys(testKontext(bereich)), ...Reflect.ownKeys(testDienste()[bereich])]),
+        ...new Set([...Reflect.ownKeys(testContext(bereich)), ...Reflect.ownKeys(testServices()[bereich])]),
       ],
       getOwnPropertyDescriptor: (_z, n) => {
-        const d = testDienste()[bereich];
-        const quelle = n in d ? d : testKontext(bereich);
+        const d = testServices()[bereich];
+        const quelle = n in d ? d : testContext(bereich);
         return n in quelle ? { value: quelle[n], enumerable: true, configurable: true, writable: true } : undefined;
       },
     },
   );
 }
-let _datenFabrik = null;
-/** Das Bildwerk der Dienste (src/katalog/kontext.ts): eines je Datei, auch wenn sie
- *  buildAndRequire() mehrmals ruft, damit ein ersetzter Teil nicht verloren geht. */
-const _bildwerk = {
+let _dataFactory = null;
+/** The services' image machinery (src/catalog/context.ts): one per file, even if it
+ *  calls buildAndRequire() several times, so that a replaced part does not get lost. */
+const _imageWorker = {
   setBildLaden: (...a) =>
-    require(path.join(ROOT, 'dist', 'src/bilder/setImages.js')).setBildHerunterladen(testKontext('bilder'), ...a),
-  vorschauErzeugen: (...a) => require(path.join(ROOT, 'dist', 'src/bilder/thumbs.js')).vorschauErzeugenAus(...a),
+    require(path.join(ROOT, 'dist', 'src/images/setImages.js')).setBildHerunterladen(testContext('images'), ...a),
+  createPreview: (...a) => require(path.join(ROOT, 'dist', 'src/images/thumbs.js')).vorschauErzeugenAus(...a),
 };
 
-/** Die ersetzten Klienten der Dienste (src/fremdquellen/quellen.ts): leer heisst echt. */
-const _quellen = {};
+/** The replaced clients of the services (src/externalSources/sources.ts): empty means real. */
+const _sources = {};
 
-/** Die Uhr der Dienste dieser Testdatei (k.uhr, stellbareUhr aus src/infra/uhr.ts): Sie läuft
- *  mit der Systemzeit, ein Test springt mit vor(ms) über eine Frist, statt sie abzuwarten. */
-let _uhr = null;
-function testUhr() {
-  if (!_uhr) _uhr = require(path.join(ROOT, 'dist', 'src/infra/uhr.js')).stellbareUhr();
-  return _uhr;
+/** The clock of this test file's services (k.uhr, stellbareClock from src/infra/clock.ts): it runs
+ *  with the system time, a test jumps over a deadline with vor(ms) instead of waiting it out. */
+let _clock = null;
+function testClock() {
+  if (!_clock) _clock = require(path.join(ROOT, 'dist', 'src/infra/clock.js')).stellbareClock();
+  return _clock;
 }
 
 function buildAndRequire() {
-  // Jede Antwort einer Route mit Vertrag läuft in Tests durch ihr Schema (src/http/vertragsRouter.ts).
+  // In tests every response of a route with a contract runs through its schema (src/http/contractRouter.ts).
   process.env.VERTRAG_PRUEFEN ??= '1';
-  // Ohne NODE_ENV gelten die Regeln des Betriebs (Superuser-Verbot, APP_BASE_URL);
-  // ausserhalb von npm test (und mit `@superuser`) ist die Test-DB Superuser, und gestartete Server erben das.
+  // Without NODE_ENV the production rules apply (superuser ban, APP_BASE_URL);
+  // outside npm test (and with `@superuser`) the test DB is superuser, and started servers inherit that.
   process.env.NODE_ENV ??= 'test';
-  baueDist();
-  const V = () => require(path.join(ROOT, 'dist', 'startup/verdrahtung.js'));
-  const dbModul = require(path.join(ROOT, 'dist', 'db/database.js'));
-  // Wie server.ts: Der Zugang legt in einer leeren Datenbank das erste Konto an.
-  const erststart = () => testDienste().konto.legeStartVerwalterAn();
-  const testDb = () => (_testDb ??= dbModul.erzeugeDb(dbModul.dbKonfigAusUmgebung(), { erststart }));
-  _zugangFabrik = testDb;
-  // Dieselbe Verdrahtung wie der Server (baueDienste), gebaut erst beim ersten Gebrauch:
-  // Ein Test stellt Klienten über testQuellen(), auch nach diesem Aufruf.
-  _dienstFabrik = () => {
-    const kontexte = {};
-    // Die Konfiguration, die baueDienste reicht, liest beim Zugriff: Ein Test, der mit
-    // umgebung()/setzeKonfig() einen Wert ändert, sieht ihn auch in k.konfig.
-    const K = require(path.join(ROOT, 'dist', 'src/infra/konfig.js'));
+  buildDist();
+  const V = () => require(path.join(ROOT, 'dist', 'startup/wiring.js'));
+  const dbModule = require(path.join(ROOT, 'dist', 'db/database.js'));
+  // Like server.ts: the access creates the first account in an empty database.
+  const firstStart = () => testServices().account.putStartAdminAn();
+  const testDb = () => (_testDb ??= dbModule.createDb(dbModule.dbKonfigFromEnvironment(), { firstStart }));
+  _accessFactory = testDb;
+  // The same wiring as the server (buildServices), built only on first use:
+  // a test provides clients via testSources(), even after this call.
+  _serviceFactory = () => {
+    const contexts = {};
+    // The configuration that buildServices passes reads on access: a test that
+    // changes a value with umgebung()/setKonfig() also sees it in k.konfig.
+    const K = require(path.join(ROOT, 'dist', 'src/infra/config.js'));
     const konfig = {};
     for (const n of Object.keys(K.konfig()))
       Object.defineProperty(konfig, n, { enumerable: true, get: () => K.konfig()[n] });
-    const d = V().baueDienste(testDb(), {
-      bildwerk: _bildwerk,
-      quellen: _quellen,
-      kontexte,
+    const d = V().buildServices(testDb(), {
+      bildwerk: _imageWorker,
+      quellen: _sources,
+      contexts,
       konfig,
-      uhr: testUhr(),
+      uhr: testClock(),
     });
-    return { d, kontexte };
+    return { d, contexts };
   };
-  // Testdaten legt die Eigentümerin an (am Zeilenschutz vorbei, ohne FORCE); der Code
-  // unter Test fragt über testDb() als Laufzeitrolle wie im Betrieb (helpers/eigene-db.js).
-  const eigenDb = () => (_eigenDb ??= eigentuemerZugang(dbModul, testDb, erststart));
-  _datenFabrik = eigenDb;
+  // The owner creates test data (bypassing row security, without FORCE); the code
+  // under test queries via testDb() as the runtime role as in production (helpers/own-db.js).
+  const ownDb = () => (_ownDb ??= ownerAccess(dbModule, testDb, firstStart));
+  _dataFactory = ownDb;
   return rel => {
-    const m = mitKontext(rel, require(path.join(ROOT, 'dist', rel)));
-    return rel.startsWith('routes/') ? mitKontoDerAnfrage(m) : m;
+    const m = withContext(rel, require(path.join(ROOT, 'dist', rel)));
+    return rel.startsWith('routes/') ? withAccountTheRequest(m) : m;
   };
 }
 
-/** Innere Dienste eines Bereichs nehmen den Kontext als ersten Parameter (src/infra/bereich.ts).
- *  Ein Test, der ein solches Modul direkt lädt, ruft sie mit dem Kontext dieser Testdatei. */
-const _mitKontext = new Map();
-const KONTEXT_FN =
-  /^(?:export )?(?:async )?function (\w+)(?:<[^(]*>)?\(\s*kx?: \w+Kontext\b|^(?:export )?const (\w+) = (?:async )?\(\s*kx?: \w+Kontext\b/gm;
-/** Die Namen der Kontext-Dienste einer Quelle, auch weitergereichte (export { a as b } [from './x']). */
-function kontextNamen(ts, tiefe = 0) {
+/** Inner services of a scope take the context as their first parameter (src/infra/area.ts).
+ *  A test that loads such a module directly calls them with the context of this test file. */
+const _withContext = new Map();
+const CONTEXT_FN =
+  /^(?:export )?(?:async )?function (\w+)(?:<[^(]*>)?\(\s*kx?: \w+(?:Kontext|Context)\b|^(?:export )?const (\w+) = (?:async )?\(\s*kx?: \w+(?:Kontext|Context)\b/gm;
+/** The names of the context services of a source, also passed-on ones (export { a as b } [from './x']). */
+function contextNames(ts, tiefe = 0) {
   const quelle = fs.existsSync(ts) ? fs.readFileSync(ts, 'utf8') : '';
-  const namen = new Set([...quelle.matchAll(KONTEXT_FN)].map(x => x[1] || x[2]));
+  const namen = new Set([...quelle.matchAll(CONTEXT_FN)].map(x => x[1] || x[2]));
   if (tiefe < 2)
     for (const i of quelle.matchAll(/^import \{([^}]*)\} from '(\.[^']+)';/gm)) {
-      const dort = kontextNamen(path.join(path.dirname(ts), `${i[2]}.ts`), tiefe + 1);
+      const dort = contextNames(path.join(path.dirname(ts), `${i[2]}.ts`), tiefe + 1);
       for (const n of i[1].split(',').map(x => x.trim())) if (dort.has(n)) namen.add(n);
     }
   for (const e of quelle.matchAll(/^export \{([^}]*)\}(?: from '(\.[^']+)')?;/gm)) {
-    const quellNamen = e[2] && tiefe < 2 ? kontextNamen(path.join(path.dirname(ts), `${e[2]}.ts`), tiefe + 1) : namen;
+    const quellNames = e[2] && tiefe < 2 ? contextNames(path.join(path.dirname(ts), `${e[2]}.ts`), tiefe + 1) : namen;
     for (const teil of e[1].split(',')) {
       const [a, b = a] = teil.trim().split(/\s+as\s+/);
-      if (a && quellNamen.has(a)) namen.add(b);
+      if (a && quellNames.has(a)) namen.add(b);
     }
   }
   return namen;
 }
-function mitKontext(rel, modul) {
-  const m = /^src\/(\w+)\/(?!index\.js$|bereich\.js$|kontext\.js$|repository\/|http\/)[\w/]+\.js$/.exec(rel);
-  if (!m || !fs.existsSync(path.join(ROOT, 'src', m[1], 'bereich.ts'))) return modul;
-  if (!_mitKontext.has(rel)) {
-    const namen = kontextNamen(path.join(ROOT, rel.replace(/\.js$/, '.ts')));
-    const bereich = () => testKontext(m[1]);
-    _mitKontext.set(
+function withContext(rel, modul) {
+  const m =
+    /^src\/(\w+)\/(?!index\.js$|bereich\.js$|kontext\.js$|area\.js$|context\.js$|repository\/|http\/)[\w/]+\.js$/.exec(
+      rel,
+    );
+  if (
+    !m ||
+    !(
+      fs.existsSync(path.join(ROOT, 'src', m[1], 'bereich.ts')) ||
+      fs.existsSync(path.join(ROOT, 'src', m[1], 'area.ts'))
+    )
+  )
+    return modul;
+  if (!_withContext.has(rel)) {
+    const namen = contextNames(path.join(ROOT, rel.replace(/\.js$/, '.ts')));
+    const bereich = () => testContext(m[1]);
+    _withContext.set(
       rel,
       namen.size
         ? new Proxy(modul, {
@@ -293,20 +303,20 @@ function mitKontext(rel, modul) {
         : modul,
     );
   }
-  return _mitKontext.get(rel);
+  return _withContext.get(rel);
 }
 
-/** Der Zugang der Eigentümerin, wenn der Lauf Rollen trennt, sonst der Testzugang selbst.
- * Wer einen der beiden Pools schliesst, schliesst beide: Früher war es einer. */
-function eigentuemerZugang(dbModul, testDb, erststart) {
+/** The owner's access if the run separates roles, otherwise the test access itself.
+ * Whoever closes one of the two pools closes both: it used to be one. */
+function ownerAccess(dbModule, testDb, firstStart) {
   const url = process.env.TEST_DB_EIGEN_URL;
   if (!url || url === process.env.DATABASE_URL) return testDb();
-  const k = dbModul.dbKonfigAusUmgebung();
-  // Wie server.ts: Der Erststart legt das erste Konto im Systemrahmen an.
-  const { imSystemkontext } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
-  const eigen = dbModul.erzeugeDb(
+  const k = dbModule.dbKonfigFromEnvironment();
+  // Like server.ts: the first start creates the first account in the system context.
+  const { inSystemContext } = require(path.join(ROOT, 'dist', 'src/infra/accountContext.js'));
+  const eigen = dbModule.createDb(
     { ...k, verbindung: { connectionString: url }, system: null },
-    { erststart: () => imSystemkontext('start', erststart) },
+    { firstStart: () => inSystemContext('start', firstStart) },
   );
   const app = testDb();
   const enden = [eigen.pool, app.pool].map(p => {
@@ -318,89 +328,89 @@ function eigentuemerZugang(dbModul, testDb, erststart) {
   return eigen;
 }
 
-/** Wie startup/app.ts (merkeAnfrage vor allen Routen): Ein Router aus routes/, den ein Test
- * selbst einhängt, läuft im Konto seiner Anfrage, sonst sähe er unter dem Zeilenschutz nichts. */
-function mitKontoDerAnfrage(m) {
-  const istRouter = x => typeof x === 'function' && Array.isArray(x.stack) && typeof x.handle === 'function';
-  if (!istRouter(m)) return m;
-  const { alsAnfrage } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
-  const { fehlerAntwort } = require(path.join(ROOT, 'dist', 'src/http/httpAntwort.js'));
-  // Wie startup/app.ts: Den Fehlerweg hängt die App an, nicht der Router.
+/** Like startup/app.ts (rememberRequest before all routes): a router from routes/ that a test
+ * mounts itself runs in the account of its request, otherwise it would see nothing under row security. */
+function withAccountTheRequest(m) {
+  const isRouter = x => typeof x === 'function' && Array.isArray(x.stack) && typeof x.handle === 'function';
+  if (!isRouter(m)) return m;
+  const { asRequest } = require(path.join(ROOT, 'dist', 'src/infra/accountContext.js'));
+  const { errorResponse } = require(path.join(ROOT, 'dist', 'src/http/httpResponse.js'));
+  // Like startup/app.ts: the app attaches the error path, not the router.
   const weiter = (req, res, next) => e =>
-    e && e !== 'route' && e !== 'router' ? fehlerAntwort(e, req, res, next) : next();
+    e && e !== 'route' && e !== 'router' ? errorResponse(e, req, res, next) : next();
   return new Proxy(m, {
-    apply: (ziel, ich, [req, res, next]) => alsAnfrage(req, () => ziel.call(ich, req, res, weiter(req, res, next))),
+    apply: (ziel, ich, [req, res, next]) => asRequest(req, () => ziel.call(ich, req, res, weiter(req, res, next))),
   });
 }
 
-/** Ein Routenmodul mit Fabrik (baueXRouter(d)) als Router, mit den Diensten dieser Testdatei
- *  (testDienste()); ein Modul ohne Fabrik unverändert. */
-function routerAus(_req, rel) {
+/** A route module with a factory (baueXRouter(d)) as a router, with the services of this test file
+ *  (testServices()); a module without a factory unchanged. */
+function routerFrom(_req, rel) {
   const m = _req(rel);
-  const baue = Object.entries(m).find(([n, f]) => /^baue\w*Router$/.test(n) && typeof f === 'function');
-  // Wie startup/app.ts: Der gebaute Router läuft im Konto seiner Anfrage.
-  return baue ? mitKontoDerAnfrage(baue[1](testDienste())) : m;
+  const build = Object.entries(m).find(([n, f]) => /^build\w*Router$/.test(n) && typeof f === 'function');
+  // Like startup/app.ts: the built router runs in the account of its request.
+  return build ? withAccountTheRequest(build[1](testServices())) : m;
 }
 
-/** Der Zugang aus erzeugeDb(), den auch die verdrahteten Dienste dieser Testdatei
- *  benutzen: für Code unter Test, der als Laufzeitrolle fragen soll wie im Betrieb.
- *  Erst nach buildAndRequire(). */
-function testZugang() {
-  if (!_zugangFabrik) throw new Error('testZugang() erst nach buildAndRequire()');
-  return _zugangFabrik();
+/** The access from createDb() that the wired services of this test file also
+ *  use: for code under test that should query as the runtime role as in production.
+ *  Only after buildAndRequire(). */
+function testAccess() {
+  if (!_accessFactory) throw new Error('testAccess() erst nach buildAndRequire()');
+  return _accessFactory();
 }
 
-/** Das Bildwerk, das baueDienste() dieser Datei bekommen hat: Ein Test ersetzt einen Teil
- *  darin, statt das Modul beim Laden umzubiegen. Mit `t` gilt der Ersatz bis zum Ende des Tests.
+/** The image machinery that buildServices() of this file got: a test replaces a part
+ *  in it instead of bending the module on load. With `t` the replacement applies until the end of the test.
  *  @param {{ after: (f: () => void) => void } | null} [t] @param {Record<string, Function>} [ersatz] */
-function testBildwerk(t, ersatz = {}) {
-  const vorher = { ..._bildwerk };
-  Object.assign(_bildwerk, ersatz);
-  t?.after(() => Object.assign(_bildwerk, vorher));
-  return _bildwerk;
+function testImageWorker(t, ersatz = {}) {
+  const vorher = { ..._imageWorker };
+  Object.assign(_imageWorker, ersatz);
+  t?.after(() => Object.assign(_imageWorker, vorher));
+  return _imageWorker;
 }
 
-/** Ruft f im Namen eines Kontos wie eine Anfrage (alsAnfrage): Der Code unter Test sieht
- *  unter dem Zeilenschutz nur dessen Haushalt, wie im Betrieb.
+/** Calls f on behalf of an account like a request (asRequest): the code under test sees
+ *  only its household under row security, as in production.
  *  @template T @param {number} uid @param {() => T} f @param {{ verwalter?: boolean }} [o] @returns {T} */
-function alsKonto(uid, f, o = {}) {
-  const { alsAnfrage } = require(path.join(ROOT, 'dist', 'src/infra/kontoKontext.js'));
-  return alsAnfrage({ apiUser: { user_id: uid, is_admin: !!o.verwalter } }, f);
+function asAccount(uid, f, o = {}) {
+  const { asRequest } = require(path.join(ROOT, 'dist', 'src/infra/accountContext.js'));
+  return asRequest({ apiUser: { user_id: uid, is_admin: !!o.verwalter } }, f);
 }
 
-/** Ersetzt Fremdquellen (Rebrickable, BrickLink, Brickset; Namen wie in baueQuellen(), src/fremdquellen/quellen.ts)
- *  an der Verdrahtung, statt Module beim Laden umzubiegen. Mit `t` bis zum Ende des Tests.
+/** Replaces external sources (Rebrickable, BrickLink, Brickset; names as in buildSources(), src/externalSources/sources.ts)
+ *  at the wiring instead of bending modules on load. With `t` until the end of the test.
  *  @param {{ after: (f: () => void) => void } | null} t @param {Record<string, unknown>} ersatz */
-function testQuellen(t, ersatz) {
-  Object.assign(_quellen, ersatz);
+function testSources(t, ersatz) {
+  Object.assign(_sources, ersatz);
   t?.after(() => {
-    for (const k of Object.keys(ersatz)) delete _quellen[k];
+    for (const k of Object.keys(ersatz)) delete _sources[k];
   });
-  return _quellen;
+  return _sources;
 }
 
-/** Der Zugang der Eigentümerin für Testdaten: Er schreibt am Zeilenschutz vorbei, damit
- *  ein Test Zeilen beliebiger Konten anlegt. Erst beim ersten Gebrauch gebaut, damit eine
- *  Testdatei die Umgebung noch nach dem Aufruf stellen kann. Erst nach buildAndRequire(). */
-function testDaten() {
-  if (!_datenFabrik) throw new Error('testDaten() erst nach buildAndRequire()');
-  return _datenGriff;
+/** The owner's access for test data: it writes past row security so that
+ *  a test creates rows of arbitrary accounts. Only built on first use so that a
+ *  test file can still set the environment after the call. Only after buildAndRequire(). */
+function testData() {
+  if (!_dataFactory) throw new Error('testData() erst nach buildAndRequire()');
+  return _dataHandle;
 }
-const _datenGriff = new Proxy(/** @type {any} */ ({}), { get: (_z, k) => _datenFabrik()[k] });
+const _dataHandle = new Proxy(/** @type {any} */ ({}), { get: (_z, k) => _dataFactory()[k] });
 
-/** Stellt Umgebungsvariablen um (undefined löscht) und lässt konfig() sie neu
- *  lesen: Der Server liest sie einmal beim Start (src/infra/konfig.ts). */
-function umgebung(werte) {
+/** Switches environment variables (undefined deletes) and lets konfig() reread
+ *  them: the server reads them once at startup (src/infra/config.ts). */
+function environment(werte) {
   for (const [k, v] of Object.entries(werte)) {
     if (v === undefined) delete process.env[k];
     else process.env[k] = v;
   }
-  // Noch nicht geladen: Der erste konfig()-Aufruf liest die neuen Werte ohnehin.
-  const datei = path.join(ROOT, 'dist', 'src/infra/konfig.js');
-  if (require.cache[datei]) require(datei).konfigNeuLesen();
+  // Not loaded yet: the first konfig() call reads the new values anyway.
+  const datei = path.join(ROOT, 'dist', 'src/infra/config.js');
+  if (require.cache[datei]) require(datei).readKonfigNew();
 }
 
-/** Beide Sprachdateien zusammen: i18n.js allein liefert ein leeres I18N.
+/** Both language files together: i18n.js alone delivers an empty I18N.
  *  @returns {{de: Record<string,string>, en: Record<string,string>}} */
 function loadTranslations() {
   const vm = require('node:vm');
@@ -420,9 +430,9 @@ const i18nAll = () =>
   fs.readFileSync(path.join(ROOT, 'public', 'i18n.js'), 'utf8') + '\n' + localeSource('de') + '\n' + localeSource('en');
 
 /**
- * Quelltext ohne Kommentare, damit ein Erklärkommentar mit dem gesuchten Namen
- * eine Prüfung nicht grün hält. Nur Blockkommentare am Zeilenanfang: Ein `/*`
- * in einer Zeichenkette (`'/images/*pfad'`) risse sonst Löcher in die Datei.
+ * Source text without comments so that an explanatory comment with the searched name
+ * does not keep a check green. Only block comments at the start of a line: a `/*`
+ * in a string (`'/images/*pfad'`) would otherwise tear holes into the file.
  */
 function ohneKommentare(src) {
   return String(src)
@@ -431,9 +441,9 @@ function ohneKommentare(src) {
 }
 
 /**
- * Quelltext in einer Zeile, wie ihn der Formatierer bei beliebiger Zeilenbreite
- * schriebe: Ein Muster auf eine Anweisung soll nicht daran hängen, wo Biome umbricht
- * (Klammern über mehrere Zeilen, Komma vor der schliessenden Klammer).
+ * Source text in one line, as the formatter would write it at any line width:
+ * a pattern on a statement should not depend on where Biome wraps
+ * (brackets over several lines, comma before the closing bracket).
  */
 function kompakt(src) {
   return String(src)
@@ -443,8 +453,8 @@ function kompakt(src) {
     .replace(/, \}/g, ' }');
 }
 
-/** HTML-Kommentare bis zum Fixpunkt: Ein Rest wie „<!<!---->--“ ergäbe sonst einen neuen. */
-function ohneHtmlKommentare(src) {
+/** HTML comments until the fixed point: a leftover like “<!<!---->--” would otherwise form a new one. */
+function withoutHtmlComments(src) {
   let s = String(src);
   for (let vorher; vorher !== s; ) {
     vorher = s;
@@ -453,160 +463,160 @@ function ohneHtmlKommentare(src) {
   return s;
 }
 
-/** Für `new RegExp`: jedes Sonderzeichen wörtlich. */
-const regexWoertlich = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** For `new RegExp`: every special character literally. */
+const regexLiteral = s => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/** Der Vorschau-Weg des Bild-Proxys (src/bilder/proxyThumbs.ts). */
-function proxyThumbQuelle() {
+/** The preview path of the image proxy (src/images/proxyThumbs.ts). */
+function proxyThumbSource() {
   return [
-    'src/bilder/http/bildProxy.ts',
+    'src/images/http/imageProxy.ts',
     'routes/imgProxy.ts',
-    'src/bilder/proxyThumbs.ts',
-    'src/bilder/imgCacheServe.ts',
-    'src/bilder/http/bildCacheAuslieferung.ts',
+    'src/images/proxyThumbs.ts',
+    'src/images/imgCacheServe.ts',
+    'src/images/http/imageCacheDelivery.ts',
   ]
-    .map(dienstQuelle)
+    .map(serviceSource)
     .join('\n');
 }
 
-/** Die Oberfläche rund um Erfassungen: Set-Detail, Kaufpreis-Modal, Detailfenster
- *  und ihre Bausteine (Lagerort, Preisalarm, Diagramme, Rückfragen). */
-function adminQuelle() {
+/** The UI around entries: set detail, purchase price modal, detail window
+ *  and their building blocks (storage location, price alert, charts, confirmations). */
+function adminSource() {
   const path = require('node:path'),
     fs = require('node:fs');
   const ROOT = path.join(__dirname, '..', '..');
   return [
     'admin.js',
     'set-detail.js',
-    'detailfelder.js',
-    'diagramme.js',
-    'fadenkreuz.js',
-    'rueckfrage.js',
-    'kauf-dialoge.js',
-    'manuell-detail.js',
-    'erfassung-zustand.js',
-    'kaufpreis-anzeige.js',
+    'detail-fields.js',
+    'charts.js',
+    'crosshair.js',
+    'confirm-prompt.js',
+    'purchase-dialogs.js',
+    'manual-detail.js',
+    'entry-state.js',
+    'purchase-price-display.js',
   ]
     .map(f => fs.readFileSync(path.join(ROOT, 'public', 'js', f), 'utf8'))
     .join('\n');
 }
 
-/** Der Weg, auf dem ein Set entsteht oder sich ändert, samt Katalogarbeit. */
-function setKernQuelle() {
+/** The path on which a set is created or changes, including catalog work. */
+function setCoreSource() {
   return [
     ['routes/api_v1/sets.ts'],
     ['routes/api_v1/setsImport.ts'],
-    ['routes/api_v1/setsAnleitungen.ts'],
+    ['routes/api_v1/setsInstructions.ts'],
     ['routes/api_v1/setsLager.ts'],
-    ['src/sets/dienst.ts'],
-    ['src/sets/inhalt.ts'],
+    ['src/sets/service.ts'],
+    ['src/sets/content.ts'],
     ['src/sets/barcode.ts'],
     ['src/sets/csvImport.ts'],
-    ['src/sets/anleitungen.ts'],
-    ['src/sets/preise.ts'],
-    ['src/sets/erfassen.ts'],
-    ['src/katalog/partsImport.ts'],
-    ['src/katalog/minifigsImport.ts'],
-    ['src/sets/setInhaltImport.ts'],
+    ['src/sets/instructions.ts'],
+    ['src/sets/prices.ts'],
+    ['src/sets/addSet.ts'],
+    ['src/catalog/partsImport.ts'],
+    ['src/catalog/minifigsImport.ts'],
+    ['src/sets/setContentImport.ts'],
   ]
-    .map(p => dienstQuelle(p[0]))
+    .map(p => serviceSource(p[0]))
     .join('\n');
 }
 
-/** Die Leseabfragen je Fachbereich als EIN Quelltext. */
+/** The read queries per domain area as ONE source text. */
 const HANDLER_MODULE = [
-  'src/bestand/gemeinsam',
-  'src/haushalt/haushalt',
-  'src/teile/abfragen',
-  'src/sets/lesen',
-  'src/sets/loeschen',
-  'src/figuren/abfragen',
-  'src/bestand/kennzahlen',
+  'src/inventory/shared',
+  'src/household/household',
+  'src/parts/queries',
+  'src/sets/read',
+  'src/sets/delete',
+  'src/minifigs/queries',
+  'src/inventory/metrics',
 ];
 function handlerQuelle() {
-  return HANDLER_MODULE.map(m => dienstQuelle(m + '.ts')).join('\n');
+  return HANDLER_MODULE.map(m => serviceSource(m + '.ts')).join('\n');
 }
 
-/** Das gebaute Modul für einen Namen aus den Leseabfragen. */
-function handlerModul(_req) {
-  // Die Sets-Dienste dieser Testdatei, mit ihrem Kontext gebunden.
-  return Object.assign({}, ...(_req && HANDLER_MODULE.map(m => _req(`${m}.js`))), _req && testDienste().sets);
+/** The built module for a name from the read queries. */
+function handlerModule(_req) {
+  // The sets services of this test file, bound with their context.
+  return Object.assign({}, ...(_req && HANDLER_MODULE.map(m => _req(`${m}.js`))), _req && testServices().sets);
 }
 
-/** server.ts samt Start des Job-Prozesses und der Läufe dort: für „läuft X
- *  beim Start an". */
-function startQuelle() {
+/** server.ts including the start of the job process and the runs there: for “does X
+ *  start up at startup". */
+function startSource() {
   const path = require('node:path'),
     fs = require('node:fs');
   const ROOT = path.join(__dirname, '..', '..');
   const dir = path.join(ROOT, 'startup');
   const teile = [
     'server.ts',
-    'src/katalog/bildNachlauf.ts',
-    'src/verwaltung/startNachlaeufe.ts',
-    'src/verwaltung/aufraeumen.ts',
-    'src/katalog/bildlage.ts',
-  ].map(f => dienstQuelle(f));
+    'src/catalog/imageFollowUp.ts',
+    'src/management/startFollowUpRuns.ts',
+    'src/management/cleanup.ts',
+    'src/catalog/imageState.ts',
+  ].map(f => serviceSource(f));
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {
-      teile.push(dienstQuelle('startup/' + f));
+      teile.push(serviceSource('startup/' + f));
     }
   }
   return teile.join('\n');
 }
 
-/** Die Portfolio-Kurve: Orchestrierung, Rekonstruktion und Diagrammdaten. */
-function portfolioQuelle() {
+/** The portfolio curve: orchestration, reconstruction and chart data. */
+function portfolioSource() {
   const path = require('node:path'),
     fs = require('node:fs');
   const ROOT = path.join(__dirname, '..', '..');
-  const dir = path.join(ROOT, 'src/finanzen/portfolio');
-  const teile = [dienstQuelle('src/finanzen/portfolioHistory.ts')];
+  const dir = path.join(ROOT, 'src/finances/portfolio');
+  const teile = [serviceSource('src/finances/portfolioHistory.ts')];
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.ts'))) {
-      teile.push(dienstQuelle('src/finanzen/portfolio/' + f));
+      teile.push(serviceSource('src/finances/portfolio/' + f));
     }
   }
   return teile.join('\n');
 }
 
-/** Die Grundausstattung des Frontends samt der ausgelagerten Abschnitte. */
-function coreQuelle() {
+/** The basic equipment of the frontend including the outsourced sections. */
+function coreSource() {
   const path = require('node:path'),
     fs = require('node:fs');
   const dir = path.join(__dirname, '..', '..', 'public', 'js');
-  // escapen.js VORNE: esc() gehört zur Grundausstattung, und
-  // test/frontend-escaping.test.js schneidet seinen Sandkasten ab `function esc(s)`.
+  // escaping.js FIRST: esc() belongs to the basic equipment, and
+  // test/frontend-escaping.test.js cuts its sandbox from `function esc(s)`.
   return [
-    'escapen.js',
-    'zustand.js',
-    'ereignisse.js',
+    'escaping.js',
+    'state.js',
+    'events.js',
     'dom.js',
     'format.js',
-    'meldungen.js',
-    'verbindung.js',
+    'messages.js',
+    'connection.js',
     'api.js',
-    'bilder.js',
-    'formular.js',
-    'konto.js',
-    'fortschritt.js',
+    'images.js',
+    'form.js',
+    'account.js',
+    'progress.js',
     'monitor.js',
-    'kontofilter.js',
-    'rollbalken.js',
-    'sitzung.js',
+    'account-filter.js',
+    'scrollbar.js',
+    'session.js',
   ]
     .map(f => fs.readFileSync(path.join(dir, f), 'utf8'))
     .join('\n');
 }
 
 /**
- * Der Kopf einer Funktion bis zur schliessenden Klammer der Parameterliste.
- * Damit nennt eine Prüfung den Parameter, nicht Reihenfolge und Schreibweise
- * aller anderen — die fielen bei jeder Typschärfung um.
- * @returns {string} z.B. "function f(a, b: string | null = null)"
+ * The head of a function up to the closing parenthesis of the parameter list.
+ * That way a check names the parameter, not order and spelling
+ * of all the others — those would break with every type tightening.
+ * @returns {string} e.g. "function f(a, b: string | null = null)"
  */
-function funktionsKopf(src, name) {
-  // Auch mit Typparametern (`function f<T>(`).
+function functionHeader(src, name) {
+  // Also with type parameters (`function f<T>(`).
   const i = Math.max(src.indexOf(`function ${name}(`), src.indexOf(`function ${name}<`));
   if (i < 0) throw new Error(`Funktion ${name} gibt es nicht (mehr)`);
   let depth = 0;
@@ -618,41 +628,41 @@ function funktionsKopf(src, name) {
 }
 
 /**
- * Der RUMPF einer Funktion ohne die umschliessenden Klammern. Gesucht wird
- * `function name(` (unabhängig von Annotationen), und es WIRFT, wenn nichts
- * gefunden wird — ein -1 aus indexOf ergäbe sonst still eine leere Funktion.
- * Das Ende ist die schliessende Klammer in SPALTE 0.
+ * The BODY of a function without the enclosing braces. What is searched for is
+ * `function name(` (regardless of annotations), and it THROWS if nothing
+ * is found — a -1 from indexOf would otherwise silently yield an empty function.
+ * The end is the closing brace in COLUMN 0.
  */
-function funktionsRumpf(src, name) {
-  const kopf = funktionsKopf(src, name);
-  const nachKopf = src.indexOf(kopf) + kopf.length;
-  const auf = src.indexOf('{', nachKopf);
+function functionBody(src, name) {
+  const kopf = functionHeader(src, name);
+  const afterHeader = src.indexOf(kopf) + kopf.length;
+  const auf = src.indexOf('{', afterHeader);
   if (auf < 0) throw new Error(`Rumpf von ${name} beginnt nicht mit {`);
   const zu = src.indexOf('\n}', auf);
   if (zu < 0) throw new Error(`Rumpf von ${name} ist nicht geschlossen`);
   return src.slice(auf + 1, zu);
 }
 
-/** Unabhängig von Typannotation und Position; mit `mitVorgabeNull` zusätzlich
- *  die Vorgabe null (dann dürfen Aufrufer ihn weglassen). */
-function hatParameter(src, name, param, mitVorgabeNull = false) {
-  const kopf = funktionsKopf(src, name);
+/** Regardless of type annotation and position; with `withDefaultNull` additionally
+ *  the default null (then callers may omit it). */
+function hatParameter(src, name, param, withDefaultNull = false) {
+  const kopf = functionHeader(src, name);
   const drin = new RegExp(`\\b${param}\\b`).test(kopf);
   if (!drin) return false;
-  if (!mitVorgabeNull) return true;
+  if (!withDefaultNull) return true;
   return new RegExp(`\\b${param}\\b[^,)]*=\\s*null`).test(kopf);
 }
 
 /**
- * Genau diese Parameter, der Reihe nach, ohne Rücksicht auf Typannotationen,
- * Vorgabewerte oder Zeilenumbrüche: `pruefeParameter(src, 'besitzerAnhaengen',
- * ['uids', 'rows'])`. Ein Muster über den ganzen Kopf fiele um, sobald jemand
- * einen Typ schärft.
- * @param {string} [hinweis] Zusatz für die Fehlermeldung
+ * Exactly these parameters, in order, regardless of type annotations,
+ * default values or line breaks: `checkParameter(src, 'besitzerAnhaengen',
+ * ['uids', 'rows'])`. A pattern over the whole head would break as soon as someone
+ * tightens a type.
+ * @param {string} [hinweis] addition for the error message
  */
-function pruefeParameter(src, name, params, hinweis = '') {
+function checkParameter(src, name, params, hinweis = '') {
   const assert = require('node:assert/strict');
-  const kopf = funktionsKopf(src, name);
+  const kopf = functionHeader(src, name);
   const innen = kopf.slice(kopf.indexOf('(') + 1, kopf.length - 1);
 
   let zuletzt = -1;
@@ -664,34 +674,34 @@ function pruefeParameter(src, name, params, hinweis = '') {
 }
 
 /**
- * Wo welcher Router hängt — aus server.ts GELESEN, nicht abgeschrieben: Eine
- * Prüfung, die die Verdrahtung abschreibt, prüft nicht die Verdrahtung.
+ * Where which router hangs — READ from server.ts, not copied: a
+ * check that copies the wiring does not check the wiring.
  * @returns [{ mount: '/api/v1/sets', datei: '<abs>/routes/sets.ts', name: 'sets' }]
- *          ohne routes/api_v1/* — das ist der Index selbst.
+ *          without routes/api_v1/* — that is the index itself.
  */
-/** @param {{ ohneTeile?: boolean }} [o] ohneTeile: nur die eingehängten Module, nicht die Dateien eines Zusammenbaus */
+/** @param {{ withoutParts?: boolean }} [o] withoutParts: only the mounted modules, not the files of an assembly */
 function routerEinhaengungen(o = {}) {
   const src = ohneKommentare(fs.readFileSync(path.join(ROOT, 'startup/app.ts'), 'utf8'));
-  // `import xRouter from '../routes/x'` oben, `app.use('/api/…', xRouter)` unten.
-  const dateiJeName = new Map(
+  // `import xRouter from '../routes/x'` at the top, `app.use('/api/…', xRouter)` below.
+  const fileJeName = new Map(
     [...src.matchAll(/import\s+(?:\{\s*)?(\w+)(?:\s*\})?\s+from\s+['"](?:\.\.?\/)+(routes\/[^'"]+)['"]/g)].map(m => [
       m[1],
       m[2],
     ]),
   );
   const out = [];
-  // Ein Router mit Fabrik hängt als `baueXRouter(d)` ein.
+  // A router with a factory is mounted as `baueXRouter(d)`.
   for (const m of src.matchAll(/app\.use\(\s*['"](\/api[^'"]*)['"]\s*,\s*(\w+)(?:\(\w+\))?\s*\)/g)) {
-    const datei = dateiJeName.get(m[2]);
+    const datei = fileJeName.get(m[2]);
     if (!datei || datei.startsWith('routes/api_v1')) continue;
     out.push({
       mount: m[1].replace(/\/+$/, ''),
       datei: path.join(ROOT, datei + '.ts'),
       name: datei.replace(/^routes\//, ''),
     });
-    // Ein Zusammenbau (routes/auth.ts) hängt seine Teile unter derselben Adresse ein.
+    // An assembly (routes/auth.ts) mounts its parts under the same address.
     const teile = path.join(ROOT, datei);
-    if (!o.ohneTeile && fs.existsSync(teile) && fs.statSync(teile).isDirectory())
+    if (!o.withoutParts && fs.existsSync(teile) && fs.statSync(teile).isDirectory())
       for (const n of fs
         .readdirSync(teile)
         .filter(n => n.endsWith('.ts'))
@@ -706,9 +716,9 @@ function routerEinhaengungen(o = {}) {
 }
 
 /**
- * Die Adresse an EINER Stelle (startup/app.ts): Ein Prüfstand, der Router von Hand
- * einhängt, bliebe nach einem Umzug grün.
- * @param {string} name Dateiname ohne routes/ und ohne .ts, z. B. 'auth'.
+ * The address in ONE place (startup/app.ts): a test bench that mounts routers by hand
+ * would stay green after a move.
+ * @param {string} name file name without routes/ and without .ts, e.g. 'auth'.
  */
 function einhaengung(name) {
   const treffer = routerEinhaengungen().filter(r => r.name === name);
@@ -718,37 +728,38 @@ function einhaengung(name) {
 }
 
 /**
- * Einen Ausschnitt schneiden — und WERFEN, wenn ein Anker fehlt: `slice(-1)`
- * gäbe sonst einen leeren Ausschnitt, auf dem `assert.doesNotMatch` still grün ist.
- * @param {string} [bis]   bis hierher (muss vorkommen, wenn angegeben), sonst bis zum Ende
- * @param {string} [wozu]  wofür der Ausschnitt gebraucht wird, für die Meldung
+ * Cut a section — and THROW if an anchor is missing: `slice(-1)`
+ * would otherwise give an empty section on which `assert.doesNotMatch` is silently green.
+ * @param {string} [bis]   up to here (must occur if given), otherwise to the end
+ * @param {string} [purpose]  what the section is needed for, for the message
  */
-function abschnitt(quelle, ab, bis, wozu = '') {
+function abschnitt(quelle, ab, bis, purpose = '') {
   const i = String(quelle).indexOf(ab);
   if (i < 0)
     throw new Error(
-      `Ankertext nicht gefunden${wozu ? ` (${wozu})` : ''}: ${JSON.stringify(ab).slice(0, 90)}\n` +
+      `Ankertext nicht gefunden${purpose ? ` (${purpose})` : ''}: ${JSON.stringify(ab).slice(0, 90)}\n` +
         'Der Ausschnitt waere leer, und Zusicherungen darauf pruefen nichts mehr.',
     );
   if (bis === undefined) return String(quelle).slice(i);
   const j = String(quelle).indexOf(bis, i);
-  if (j < 0) throw new Error(`Endanker nicht gefunden${wozu ? ` (${wozu})` : ''}: ${JSON.stringify(bis).slice(0, 90)}`);
+  if (j < 0)
+    throw new Error(`Endanker nicht gefunden${purpose ? ` (${purpose})` : ''}: ${JSON.stringify(bis).slice(0, 90)}`);
   return String(quelle).slice(i, j);
 }
 
 /**
- * Ein Pfad-Literal des Frontends auf seine FORM bringen, einmal für alle
- * Prüfungen. `[^}]*` käme über ein verschachteltes `${…}` nicht hinweg.
- * Ein `${…}` ist nur dann ein Pfadabschnitt, wenn direkt ein `/` davorsteht:
+ * Bring a path literal of the frontend into its SHAPE, once for all
+ * checks. `[^}]*` would not get past a nested `${…}`.
+ * A `${…}` is only a path segment if a `/` stands directly before it:
  *     `/v1/parts/${nr}/${farbe}`            → /v1/parts/:X/:X
  *     `/v1/minifigs/${nr}${owner ? …: ''}`  → /v1/minifigs/:X
- * @param {string} [marke]   Platzhalter je Abschnitt — ':X' oder ':x'
+ * @param {string} [marke]   placeholder per segment — ':X' or ':x'
  */
-function pfadForm(roh, marke = ':X') {
+function pathForm(roh, marke = ':X') {
   let s = String(roh);
   let vor = null;
-  // Innerste zuerst, bis nichts mehr passt — so verschwindet auch ein
-  // verschachtelter Ausdruck vollständig.
+  // Innermost first until nothing matches anymore — so a nested expression
+  // also disappears completely.
   while (vor !== s) {
     vor = s;
     s = s.replace(/\$\{[^{}]*\}/g, '\u0000');
@@ -763,16 +774,16 @@ function pfadForm(roh, marke = ':X') {
       out += marke;
       continue;
     }
-    break; // Anhängsel, kein Abschnitt → hier endet der Pfad
+    break; // suffix, not a segment → the path ends here
   }
   return out.split('?')[0].replace(/'\s*\+.*$/, '');
 }
 
 /**
- * Ein Literal ab `i` mit VERSCHACHTELTEN Template-Ausdrücken: Ein Pfad kann
- * Backticks in seinem Inneren tragen, und jedes `[^`]*` bräche dort ab.
- * @returns {{text: string, ende: number}|null} Inhalt ohne Anführungszeichen
- *   und die Position NACH dem Literal; null, wenn an `i` keines beginnt.
+ * A literal from `i` with NESTED template expressions: a path can
+ * carry backticks inside, and every `[^`]*` would break off there.
+ * @returns {{text: string, ende: number}|null} content without quotes
+ *   and the position AFTER the literal; null if none starts at `i`.
  */
 function leseLiteral(src, i) {
   const anf = src[i];
@@ -793,7 +804,7 @@ function leseLiteral(src, i) {
     if (tiefe > 0) {
       if (c === '{') tiefe++;
       else if (c === '}') tiefe--;
-      // Ein Literal in ${…} wird mitgelesen, damit es die Zählung nicht verwirrt.
+      // A literal in ${…} is read along so that it does not confuse the count.
       else if (c === '`' || c === "'" || c === '"') {
         const inner = leseLiteral(src, j);
         if (inner) {
@@ -811,11 +822,11 @@ function leseLiteral(src, i) {
 }
 
 /**
- * Die Routen einer Router-Datei wie ein Treffer von `router.<verb>('<pfad>'`: [ganz, verb, pfad
- * relativ zu `mount`]. Vertragsrouter nennen den vollen Pfad im Schlüssel (`endpunkt('GET /api/v1/…'`).
+ * The routes of a router file like a hit of `router.<verb>('<pfad>'`: [whole, verb, path
+ * relative to `mount`]. Contract routers name the full path in the key (`endpunkt('GET /api/v1/…'`).
  * @param {string} src @param {string} mount @returns {string[][]}
  */
-function routenAusQuelle(src, mount) {
+function routesFromSource(src, mount) {
   const raus = [];
   for (const m of src.matchAll(/router\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]*)['"`]/g)) raus.push([...m]);
   for (const m of src.matchAll(/\.endpunkt\(\s*['"`](GET|POST|PUT|PATCH|DELETE) ([^'"`]+)['"`]/g)) {
@@ -826,30 +837,30 @@ function routenAusQuelle(src, mount) {
   return raus;
 }
 
-/** Die Dateiliste steht hier, damit test/api-eingang-db.test.js keinen
- *  variablen Pfad liest (test/eigenbruecken.test.js zählt sie). */
-function v1Routen() {
+/** The file list stands here so that test/api-inbox-db.test.js reads no
+ *  variable path (test/eigenbruecken.test.js counts those). */
+function v1Routes() {
   const gefunden = [];
   const lies = (datei, vorne) => {
     const s = fs.readFileSync(path.join(ROOT, datei), 'utf8');
     for (const m of s.matchAll(/(?:router|app)\.(get|post|put|patch|delete)\(\s*['"`]([^'"`]+)['"`]/g))
       gefunden.push([m[1].toUpperCase(), vorne + m[2]]);
-    // Vertragsrouter: Der Schlüssel nennt Methode und vollen Pfad.
+    // Contract routers: the key names method and full path.
     for (const m of s.matchAll(/\.endpunkt\(\s*['"`](GET|POST|PUT|PATCH|DELETE) ([^'"`]+)['"`]/g))
       gefunden.push([m[1], m[2]]);
   };
   for (const f of fs.readdirSync(path.join(ROOT, 'routes/api_v1')).filter(f => f.endsWith('.ts')))
     lies(`routes/api_v1/${f}`, '/api/v1');
-  // Die in server.ts eingehängten Router (auth samt Teilen, gesundheit).
+  // The routers mounted in server.ts (auth including parts, gesundheit).
   for (const r of routerEinhaengungen().filter(r => r.mount.startsWith('/api/v1')))
     lies(path.relative(ROOT, r.datei), r.mount);
   lies('server.ts', '');
   return gefunden.filter(([, p]) => p.startsWith('/api/v1'));
 }
 
-/** Für Prüfungen, die eine Eigenschaft überall verlangen, statt eine
- *  Dateiliste zu führen, die beim nächsten Umzug veraltet. */
-function alleQuellen() {
+/** For checks that require a property everywhere instead of keeping
+ *  a file list that goes stale with the next move. */
+function allSources() {
   const raus = [];
   const lauf = rel => {
     for (const e of fs.readdirSync(path.join(ROOT, rel), { withFileTypes: true })) {
@@ -863,33 +874,35 @@ function alleQuellen() {
   return raus;
 }
 
-/** Prüfungen auf das SQL eines Dienstes meinen seinen Weg zur Datenbank,
- *  nicht die Datei.
- * @param {string} rel Pfad relativ zu ROOT, z. B. 'src/sets/setMove.ts' */
-function dienstQuelle(rel) {
+/** Checks on a service's SQL mean its path to the database,
+ *  not the file.
+ * @param {string} rel path relative to ROOT, e.g. 'src/sets/setMove.ts' */
+function serviceSource(rel) {
   const s = fs.readFileSync(path.join(ROOT, rel), 'utf8');
   const repos = new Set(
     [...ohneKommentare(s).matchAll(/(?:from\s+|import\(\s*|require\(\s*)['"](\.[^'"]*repository[^'"]*)['"]/g)]
       .map(m => path.posix.normalize(path.posix.join(path.posix.dirname(rel), m[1])).replace(/\.js$/, ''))
       .map(z => (fs.existsSync(path.join(ROOT, z + '.ts')) ? z + '.ts' : z + '/index.ts')),
   );
-  // Der Katalog bindet seine Repositories in einer Fabrik (src/katalog/bereich.ts).
+  // The catalog binds its repositories in a factory (src/catalog/area.ts).
   for (const m of ohneKommentare(s).matchAll(/\bkatalog\(\)\.(\w+)\./g))
-    if (fs.existsSync(path.join(ROOT, `src/katalog/repository/${m[1]}.ts`)))
-      repos.add(`src/katalog/repository/${m[1]}.ts`);
-  // Die übrigen Bereiche ebenso (src/<b>/bereich.ts, Zugriff über <b>Bereich()).
+    if (fs.existsSync(path.join(ROOT, `src/catalog/repository/${m[1]}.ts`)))
+      repos.add(`src/catalog/repository/${m[1]}.ts`);
+  // The other scopes likewise (src/<b>/bereich.ts, access via <b>Bereich()).
   for (const m of ohneKommentare(s).matchAll(/\b(\w+)Bereich\(\)\.(\w+)\./g)) {
-    const fabrik = path.join(ROOT, `src/${m[1]}/bereich.ts`);
-    if (!fs.existsSync(fabrik)) continue;
-    const ziel = fs.readFileSync(fabrik, 'utf8').match(new RegExp(`import \\* as ${m[2]} from '\\./([^']+)'`));
+    const factoryFile = ['bereich.ts', 'area.ts'].find(f => fs.existsSync(path.join(ROOT, `src/${m[1]}/${f}`)));
+    if (!factoryFile) continue;
+    const factory = path.join(ROOT, `src/${m[1]}/${factoryFile}`);
+    const ziel = fs.readFileSync(factory, 'utf8').match(new RegExp(`import \\* as ${m[2]} from '\\./([^']+)'`));
     if (ziel && /repository/.test(ziel[1])) repos.add(`src/${m[1]}/${ziel[1]}.ts`);
   }
-  // Über den Kontext des Dienstes (k.repo., k.<bereich>.repo.; t in einer Transaktion).
+  // Via the service's context (k.repo., k.<bereich>.repo.; t in a transaction).
   const eigener = /^src\/(\w+)\//.exec(rel)?.[1];
   const ueber = (b, name) => {
-    const fabrik = path.join(ROOT, `src/${b}/kontext.ts`);
-    if (!b || !fs.existsSync(fabrik)) return;
-    const ziel = fs.readFileSync(fabrik, 'utf8').match(new RegExp(`import \\* as ${name} from '\\./([^']+)'`));
+    const factoryFile = b && ['kontext.ts', 'context.ts'].find(f => fs.existsSync(path.join(ROOT, `src/${b}/${f}`)));
+    const factory = factoryFile && path.join(ROOT, `src/${b}/${factoryFile}`);
+    if (!factory) return;
+    const ziel = fs.readFileSync(factory, 'utf8').match(new RegExp(`import \\* as ${name} from '\\./([^']+)'`));
     if (ziel && /repository/.test(ziel[1])) repos.add(`src/${b}/${ziel[1]}.ts`);
   };
   for (const m of ohneKommentare(s).matchAll(/\b(?:k|kx|sk|t)\.(\w+)\.(\w+)?/g)) {
@@ -899,9 +912,9 @@ function dienstQuelle(rel) {
   return [s, ...[...repos].map(r => fs.readFileSync(path.join(ROOT, r), 'utf8'))].join('\n');
 }
 
-/** Alle Quellen der Oberfläche (public/js ohne Bündel, dazu i18n.js) als EIN
- *  Text: für Prüfungen, die nicht an der Datei hängen sollen, in der eine
- *  Funktion gerade steht. */
+/** All sources of the UI (public/js without the bundle, plus i18n.js) as ONE
+ *  text: for checks that should not depend on the file in which a
+ *  function currently stands. */
 function frontendQuelle() {
   const path = require('node:path'),
     fs = require('node:fs');
@@ -909,7 +922,7 @@ function frontendQuelle() {
   return [
     ...fs
       .readdirSync(path.join(pub, 'js'))
-      .filter(f => istAppModul(f))
+      .filter(f => isAppModule(f))
       .sort()
       .map(f => path.join(pub, 'js', f)),
     path.join(pub, 'i18n.js'),
@@ -918,27 +931,34 @@ function frontendQuelle() {
     .join('\n');
 }
 
-/** Die Anmelderouten: routes/auth.ts setzt sie aus routes/auth/*.ts zusammen. */
-function anmeldeQuelle() {
+/** The login routes: routes/auth.ts assembles them from routes/auth/*.ts. */
+function loginSource() {
   const teile = fs
     .readdirSync(path.join(ROOT, 'routes', 'auth'))
     .filter(n => n.endsWith('.ts'))
     .sort();
-  // Die Abläufe nach der Prüfung stehen seit dem 09.11.2026 in src/konto/anmeldungAblauf.ts.
-  return ['routes/auth.ts', ...teile.map(n => `routes/auth/${n}`), 'src/konto/anmeldungAblauf.ts']
+  // The flows after the check have been in src/account/loginFlow.ts since 09.11.2026.
+  return ['routes/auth.ts', ...teile.map(n => `routes/auth/${n}`), 'src/account/loginFlow.ts']
     .map(f => fs.readFileSync(path.join(ROOT, f), 'utf8'))
     .join('\n');
 }
 
-/** Die Dateien je Ansicht; eine geteilte Ansicht bleibt so unter einem Namen prüfbar. */
-const ANSICHTEN = {
-  einstellungen: ['einstellungen.js', 'zugaenge.js', 'haushalt.js', 'nutzerverwaltung.js', 'alarme.js', 'lagerorte.js'],
+/** The files per view; a split view thus stays checkable under one name. */
+const VIEWS = {
+  einstellungen: [
+    'settings.js',
+    'accesses.js',
+    'household.js',
+    'user-management.js',
+    'alerts.js',
+    'storage-locations.js',
+  ],
 };
 
-/** Alle Dateien einer Ansicht (Schlüssel aus ANSICHTEN) als EIN Text. */
-function ansichtQuelle(/** @type {keyof typeof ANSICHTEN} */ name) {
+/** All files of a view (key from VIEWS) as ONE text. */
+function ansichtQuelle(/** @type {keyof typeof VIEWS} */ name) {
   const js = path.join(ROOT, 'public', 'js');
-  return ANSICHTEN[name].map(f => fs.readFileSync(path.join(js, f), 'utf8')).join('\n');
+  return VIEWS[name].map(f => fs.readFileSync(path.join(js, f), 'utf8')).join('\n');
 }
 
 module.exports = {
@@ -947,52 +967,52 @@ module.exports = {
   imgProxy,
   serverAll,
   finanzQuelle,
-  umgebung,
+  environment,
   buildAndRequire,
-  testZugang,
-  testDaten,
-  testBildwerk,
-  testQuellen,
-  alsKonto,
-  testDienste,
-  testKontext,
-  testBereich,
-  ersetzeDienste,
-  bildNotizen,
-  bereichsSeite,
-  routerAus,
-  baueDist,
+  testAccess,
+  testData,
+  testImageWorker,
+  testSources,
+  asAccount,
+  testServices,
+  testContext,
+  testArea,
+  replaceServices,
+  imageNotes,
+  areaPage,
+  routerFrom,
+  buildDist,
   loadTranslations,
   localeSource,
   i18nAll,
   ohneKommentare,
   kompakt,
-  ohneHtmlKommentare,
-  regexWoertlich,
-  proxyThumbQuelle,
-  adminQuelle,
-  setKernQuelle,
+  withoutHtmlComments,
+  regexLiteral,
+  proxyThumbSource,
+  adminSource,
+  setCoreSource,
   handlerQuelle,
-  handlerModul,
-  startQuelle,
-  portfolioQuelle,
-  coreQuelle,
-  funktionsKopf,
-  funktionsRumpf,
+  handlerModule,
+  startSource,
+  portfolioSource,
+  coreSource,
+  functionHeader,
+  functionBody,
   hatParameter,
-  pruefeParameter,
+  checkParameter,
   routerEinhaengungen,
   einhaengung,
   abschnitt,
-  pfadForm,
+  pathForm,
   leseLiteral,
-  routenAusQuelle,
-  v1Routen,
-  alleQuellen,
-  dienstQuelle,
+  routesFromSource,
+  v1Routes,
+  allSources,
+  serviceSource,
   frontendQuelle,
-  anmeldeQuelle,
+  loginSource,
   ansichtQuelle,
-  testUhr,
+  testClock,
   DIST: path.join(ROOT, 'dist'),
 };

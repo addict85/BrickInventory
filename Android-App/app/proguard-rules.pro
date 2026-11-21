@@ -3,12 +3,12 @@
 # stehen im erzeugten Serializer; Companion, serializer() und INSTANCE hält die Regel, die
 # kotlinx-serialization-core mitbringt (META-INF/com.android.tools/r8). Die Bibliothek lädt
 # selbst nichts über Namen, darum bleibt sie nicht mehr ganz stehen.
-# tools/apk-pruefen.py prüft am fertigen APK, dass ein Modell umbenannt ist.
+# tools/apk-check.py prüft am fertigen APK, dass ein Modell umbenannt ist.
 
 # Navigation lädt den Typ eines Enum-Felds einer Route über seinen Namen (Class.forName);
 # umbenannt fände es ihn nicht. core-model ist reines Kotlin und kennt kein @Keep.
--keep enum ch.brickinventoryapp.model.fach.Postenart { *; }
--keep enum ch.brickinventoryapp.model.fach.Zustand { *; }
+-keep enum ch.brickinventoryapp.model.domain.Postenart { *; }
+-keep enum ch.brickinventoryapp.model.domain.Zustand { *; }
 -keep enum ch.brickinventoryapp.model.ui.Scannerherkunft { *; }
 
 # ── ML Kit / Play Services ────────────────────────────────────────────────────
@@ -37,7 +37,7 @@
 # WorkManagers eigene Regel hält nur den Konstruktor; doWork() ruft allein das
 # Framework, und R8 nahm es einmal samt allem Dahinter heraus (Preisalarm stumm).
 # Nur diese beiden Glieder, nur im eigenen Baum: Der Rest wird geschrumpft und
-# umbenannt wie jede andere Klasse. Geprüft am fertigen APK (tools/apk-pruefen.py).
+# umbenannt wie jede andere Klasse. Geprüft am fertigen APK (tools/apk-check.py).
 -keep class ch.brickinventoryapp.** extends androidx.work.ListenableWorker {
     public <init>(android.content.Context, androidx.work.WorkerParameters);
     *** doWork(...);

@@ -14,37 +14,37 @@ import android.os.ProxyFileDescriptorCallback
 import android.os.storage.StorageManager
 import android.provider.OpenableColumns
 import ch.brickinventoryapp.data.util.Teilelistentresor
-import ch.brickinventoryapp.data.util.liesAusSpeicher
+import ch.brickinventoryapp.data.util.readFromStorage
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import java.io.FileNotFoundException
 
-/** Der Name, unter dem die Ziel-App die Teileliste sieht. */
-internal const val TEILELISTE_NAME = "teileliste.pdf"
+/** The name under which the target app sees the parts list. */
+internal const val PART_LIST_NAME = "teileliste.pdf"
 
-/** Die Adresse der Teileliste beim [TeilelistenProvider]; die Authority steht so im Manifest. */
-internal fun teilelistenUri(ctx: Context): Uri =
-    Uri.Builder().scheme("content").authority("${ctx.packageName}.teileliste").path(TEILELISTE_NAME).build()
+/** The address of the parts list at the [TeilelistenProvider]; the authority stands like this in the manifest. */
+internal fun partListsUri(ctx: Context): Uri =
+    Uri.Builder().scheme("content").authority("${ctx.packageName}.teileliste").path(PART_LIST_NAME).build()
 
 /**
- * Die Teileliste öffnen, immer über die Auswahl des Systems: Sie trägt das ganze
- * Inventar, und eine App, die sich als Standard für PDFs eingetragen hat, bekäme
- * sie sonst unbemerkt samt Leserecht.
+ * Open the parts list, always via the system's chooser: it carries the whole
+ * inventory, and an app that registered itself as default for PDFs would otherwise get
+ * it unnoticed including read permission.
  */
-fun teilelistenAuswahl(ctx: Context, titel: String): Intent {
+fun partListsSelection(ctx: Context, titel: String): Intent {
     val ansicht = Intent(Intent.ACTION_VIEW).apply {
-        setDataAndType(teilelistenUri(ctx), "application/pdf")
+        setDataAndType(partListsUri(ctx), "application/pdf")
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
     return Intent.createChooser(ansicht, titel).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
 }
 
 /**
- * Gibt die verschlüsselt abgelegte Teileliste weiter, ohne Klartext auf der Platte:
- * Ein Proxy-Deskriptor liest aus dem Speicher, die Ziel-App darf darin springen.
- * Nicht exportiert; lesen darf nur, wem die Auswahl das Recht für diese Uri gibt.
+ * Passes on the encrypted parts list without plaintext on disk:
+ * a proxy descriptor reads from memory, the target app may seek in it.
+ * Not exported; only whoever the chooser grants the right for this Uri may read.
  */
 class TeilelistenProvider : ContentProvider() {
 
@@ -54,13 +54,13 @@ class TeilelistenProvider : ContentProvider() {
         fun teilelistentresor(): Teilelistentresor
     }
 
-    private val leser by lazy { Handler(HandlerThread("teileliste").apply { start() }.looper) }
+    private val reader by lazy { Handler(HandlerThread("teileliste").apply { start() }.looper) }
 
     override fun onCreate(): Boolean = true
 
     private fun klartext(uri: Uri): ByteArray {
         val ctx = context ?: throw FileNotFoundException("Kein Kontext")
-        if (uri.path != "/$TEILELISTE_NAME") throw FileNotFoundException("Unbekannt: $uri")
+        if (uri.path != "/$PART_LIST_NAME") throw FileNotFoundException("Unbekannt: $uri")
         return EntryPointAccessors.fromApplication(ctx, Zugang::class.java).teilelistentresor().lies(ctx.filesDir)
             ?: throw FileNotFoundException("Keine Teileliste")
     }
@@ -69,7 +69,7 @@ class TeilelistenProvider : ContentProvider() {
         if (mode != "r") throw FileNotFoundException("Nur lesen")
         val ctx = context ?: throw FileNotFoundException("Kein Kontext")
         val speicher = ctx.getSystemService(Context.STORAGE_SERVICE) as StorageManager
-        return speicher.openProxyFileDescriptor(ParcelFileDescriptor.MODE_READ_ONLY, SpeicherDatei(klartext(uri)), leser)
+        return speicher.openProxyFileDescriptor(ParcelFileDescriptor.MODE_READ_ONLY, StorageFile(klartext(uri)), reader)
     }
 
     override fun query(
@@ -79,7 +79,7 @@ class TeilelistenProvider : ContentProvider() {
         val spalten = projection?.toList() ?: listOf(OpenableColumns.DISPLAY_NAME, OpenableColumns.SIZE)
         val werte = spalten.map {
             when (it) {
-                OpenableColumns.DISPLAY_NAME -> TEILELISTE_NAME
+                OpenableColumns.DISPLAY_NAME -> PART_LIST_NAME
                 OpenableColumns.SIZE -> groesse
                 else -> null
             }
@@ -87,7 +87,7 @@ class TeilelistenProvider : ContentProvider() {
         return MatrixCursor(spalten.toTypedArray(), 1).apply { addRow(werte) }
     }
 
-    override fun getType(uri: Uri): String? = if (uri.path == "/$TEILELISTE_NAME") "application/pdf" else null
+    override fun getType(uri: Uri): String? = if (uri.path == "/$PART_LIST_NAME") "application/pdf" else null
 
     override fun insert(uri: Uri, values: ContentValues?): Uri? = null
 
@@ -96,11 +96,11 @@ class TeilelistenProvider : ContentProvider() {
     override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?): Int = 0
 }
 
-/** Ein Klartext im Speicher als Datei; beim Schliessen überschrieben. */
-private class SpeicherDatei(private val inhalt: ByteArray) : ProxyFileDescriptorCallback() {
+/** A plaintext in memory as a file; overwritten on closing. */
+private class StorageFile(private val inhalt: ByteArray) : ProxyFileDescriptorCallback() {
     override fun onGetSize(): Long = inhalt.size.toLong()
 
-    override fun onRead(offset: Long, size: Int, data: ByteArray): Int = liesAusSpeicher(inhalt, offset, size, data)
+    override fun onRead(offset: Long, size: Int, data: ByteArray): Int = readFromStorage(inhalt, offset, size, data)
 
     override fun onRelease() = inhalt.fill(0)
 }

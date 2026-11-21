@@ -1,18 +1,18 @@
 package ch.brickinventoryapp.model.data
 
 /**
- * Kontofilter des Haushalts, je Ansicht wie in der Webapp: In der Galerie den
- * Haushalt, in den Finanzen die eigenen Zahlen. Auf dem Gerät, weil es eine
- * Ansichtseinstellung ist. Werte: "all" (Vorgabe), "own", "subs" oder die ID eines
- * Kontos; übersetzt nur auf dem Server (scopeIds in utils/household.ts). Eine
- * fremde ID weist er ab — der Filter ist eine Ansichtshilfe, kein Zugriffsweg.
+ * Account filter of the household, per view as in the web app: in the gallery the
+ * household, in the finances the own numbers. On the device, because it is a
+ * view setting. Values: "all" (default), "own", "subs" or the ID of an
+ * account; translated only on the server (scopeIds in src/household/household.ts). A
+ * foreign ID it rejects — the filter is a viewing aid, not an access path.
  */
 
 object ScopeFilter {
 
     /**
-     * Die Ansichten mit eigenem Filter. Die Schlüssel heissen wie in der Webapp
-     * (js/kontofilter.js), damit beide dieselbe Wahl unter demselben Namen speichern.
+     * The views with their own filter. The keys are named as in the web app
+     * (js/account-filter.js), so that both store the same choice under the same name.
      */
     enum class View(val key: String) {
         GALLERY("gallery"), PARTS("parts"), MINIFIGS("minifigs"), FINANCE("finance"),
@@ -22,25 +22,25 @@ object ScopeFilter {
     const val ALL = "all"
 
     /**
-     * Wert für die Anfrage, `null` solange nicht gefiltert wird: Das hält die Adressen
-     * kurz und trifft im Repository den Zweig, der in der Ablage zwischenspeichert —
-     * eine gefilterte Sicht darf dort nicht unter dem Schlüssel der vollen landen.
+     * Value for the request, `null` as long as nothing is filtered: that keeps the addresses
+     * short and hits the branch in the repository that caches in the store —
+     * a filtered view must not end up there under the key of the full one.
      */
     fun asQuery(value: String?): String? =
         if (value.isNullOrBlank() || value == ALL) null else value
 
     /**
-     * Wert für die Anfrage, `null` solange nicht gefiltert wird. Kein Sonderwert „ohne
-     * Lagerort“: „Was muss ich noch einräumen?“ ist eine andere Frage als „wo liegt
-     * X?“ — wie in der Webapp.
+     * Value for the request, `null` as long as nothing is filtered. No special value „without
+     * storage location“: „What do I still have to put away?“ is a different question from „where is
+     * X?“ — as in the web app.
      */
-    fun lagerAsQuery(value: String?): String? =
+    fun storageAsQuery(value: String?): String? =
         if (value.isNullOrBlank()) null else value
 
     /**
-     * Zeigt eine gespeicherte Wahl auf ein entkoppeltes Konto, fällt sie auf „Alle“
-     * zurück — sonst stünde ein leerer Eintrag da und die Liste bliebe unerklärlich
-     * gefiltert.
+     * If a saved choice points to a decoupled account, it falls back to „All“
+     * — otherwise an empty entry would stand there and the list would stay inexplicably
+     * filtered.
      */
     fun sanitize(value: String, options: List<Pair<String, String>>): String =
         if (options.any { it.first == value }) value else ALL

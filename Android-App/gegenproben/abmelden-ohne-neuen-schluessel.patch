@@ -1,15 +1,15 @@
 Gegenprobe: Abmelden behält den Ablageschlüssel (kein Krypto-Shredding)
 Modul: core-data
-Test: ch.brickinventoryapp.data.AbmeldenRaeumtAllesTest
-Rot: nach dem Abmelden ist jede Ablage leer
+Test: ch.brickinventoryapp.data.SignOutCleansEverythingTest
+Rot: after sign-out every store is empty and the old key worthless
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SitzungsBereinigung.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SitzungsBereinigung.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SitzungsBereinigung.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/SitzungsBereinigung.kt
-@@ -63,6 +63,5 @@ internal class GeraeteBereinigung @Inject constructor(
+@@ -63,6 +63,5 @@ internal class DevicesCleanup @Inject constructor(
          // Preisalarme nennen Sets und Preise; die Leiste gehört dem abgemeldeten Konto.
          fangeAusserAbbruch { NotificationManagerCompat.from(ctx).cancelAll() }
          // Zuletzt ein neuer Ablageschlüssel: Reste auf dem Flash sind danach nicht mehr lesbar.
--        withContext(io) { fangeAusserAbbruch { ablage.erneuere() } }
+-        withContext(io) { fangeAusserAbbruch { ablage.renew() } }
      }
  }

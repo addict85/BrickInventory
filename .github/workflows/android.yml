@@ -19,10 +19,10 @@ on:
       - 'shared/**'
       # FarbeDeutschTest gleicht die Farbnamen mit der Webapp ab.
       - 'Web-App/public/i18n.js'
-      - 'Web-App/src/vertrag/**'
+      - 'Web-App/src/contract/**'
       - 'Web-App/scripts/generate-design-tokens.js'
-      - 'Web-App/scripts/vertrag-kotlin-dtos.js'
-      - 'Web-App/scripts/vertrag-kotlin-zuordnung.js'
+      - 'Web-App/scripts/contract-kotlin-dtos.js'
+      - 'Web-App/scripts/contract-kotlin-mapping.js'
       - 'Web-App/docs/openapi.json'
       - '.github/workflows/android.yml'
       - '.github/workflows/android-signieren.yml'
@@ -32,10 +32,10 @@ on:
       - 'shared/**'
       # FarbeDeutschTest gleicht die Farbnamen mit der Webapp ab.
       - 'Web-App/public/i18n.js'
-      - 'Web-App/src/vertrag/**'
+      - 'Web-App/src/contract/**'
       - 'Web-App/scripts/generate-design-tokens.js'
-      - 'Web-App/scripts/vertrag-kotlin-dtos.js'
-      - 'Web-App/scripts/vertrag-kotlin-zuordnung.js'
+      - 'Web-App/scripts/contract-kotlin-dtos.js'
+      - 'Web-App/scripts/contract-kotlin-mapping.js'
       - 'Web-App/docs/openapi.json'
       # Auch ein Fork-PR, der nur den Workflow ändert, bekommt einen Lauf.
       - '.github/workflows/android.yml'
@@ -136,7 +136,7 @@ jobs:
       # auf. Rot bei Abweichung und bei gescheitertem Abruf; eine neuere Fassung
       # wird nur gemeldet, heben entscheidet ein Mensch.
       - name: Gradle-Prüfsumme gegen die amtliche
-        run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
+        run: python3 tools/gradle-wrapper-check.py gradle/wrapper/gradle-wrapper.properties
 
       # Ein Etikett baut, was ausgeliefert wird: mit leerem Gradle-Benutzerverzeichnis,
       # denn Transform-Ausgaben, instrumentierte Jars und übersetzte Skripte nimmt Gradle
@@ -176,10 +176,10 @@ jobs:
       - name: Unit-Tests
         # Mitschnitt, weil Gradle den roten Test einmal mitten ins Protokoll
         # schreibt; pipefail, sonst bestimmt tee den Rückgabewert. core-model
-        # und core-vertrag sind reines Kotlin und haben `test` statt testDebugUnitTest.
+        # und core-contract sind reines Kotlin und haben `test` statt testDebugUnitTest.
         run: |
           set -o pipefail
-          ./gradlew --no-daemon testDebugUnitTest :core-model:test :core-vertrag:test ${{ steps.fotos.outputs.aufgabe }} 2>&1 | tee "$RUNNER_TEMP/test.log"
+          ./gradlew --no-daemon testDebugUnitTest :core-model:test :core-contract:test ${{ steps.fotos.outputs.aufgabe }} 2>&1 | tee "$RUNNER_TEMP/test.log"
 
       # Das Vergleichsbild liegt nur als Artefakt vor, das hier nicht abrufbar ist:
       # Lage und Grösse der Abweichung je rotem Foto stehen deshalb im Log.
@@ -254,7 +254,7 @@ jobs:
         id: bau
         # tee wie bei den Unit-Tests, aus einem zweiten Grund: Die
         # Warnungen des Übersetzers stehen NUR hier. Ohne Mitschnitt kann
-        # `warnungen-zaehlen.py` weiter unten nichts zählen — und „0
+        # `warnings-count.py` weiter unten nichts zählen — und „0
         # Warnungen" wäre dann die beruhigendste aller Falschaussagen.
         #
         # set -o pipefail: ohne das bestimmt tee den Rückgabewert und ein
@@ -300,7 +300,7 @@ jobs:
       - name: Warnungen zählen
         if: ${{ !cancelled() && steps.bau.outcome != 'skipped' }}
         run: |
-          python3 tools/warnungen-zaehlen.py tools/warnungen-obergrenze.txt \
+          python3 tools/warnings-count.py tools/warnings-limit.txt \
             "$RUNNER_TEMP/test.log" "$RUNNER_TEMP/bau.log" "$RUNNER_TEMP/lint.log"
 
       # Lint-Befunde nach Prüferkennung mit Fundorten, statt nur einer Zahl;
@@ -309,7 +309,7 @@ jobs:
       - name: Lint-Befunde zählen
         if: ${{ !cancelled() && steps.lint.outcome != 'skipped' }}
         run: |
-          python3 tools/lint-zaehlen.py tools/lint-obergrenze.txt \
+          python3 tools/lint-count.py tools/lint-limit.txt \
             app/build/reports/lint-results-release.xml
 
       # detekt (Regeln: config/detekt/detekt.yml); jeder Fund ausserhalb von config/detekt/baseline.xml macht den Lauf rot.
@@ -343,7 +343,7 @@ jobs:
       # minCompileSdk gebunden); rot nur, wenn nichts gemessen werden konnte.
       - name: Sind die Abhängigkeiten auf der neuesten Fassung?
         if: ${{ !cancelled() }}
-        run: python3 tools/fassungen-pruefen.py gradle/libs.versions.toml
+        run: python3 tools/versions-check.py gradle/libs.versions.toml
 
       # `always()`: Die Berichte zählen gerade bei einem roten Lauf. Die
       # Hauptversion von upload-artifact ist an der Laufzeit (runs.using in
@@ -439,7 +439,7 @@ jobs:
       sha256_apk: ${{ needs.build.outputs.sha256_apk }}
       sha256_aab: ${{ needs.build.outputs.sha256_aab }}
 
-  # Die Typen in core-vertrag sind aus dem Vertrag erzeugt; ein Android-Lauf soll selbst rot
+  # Die Typen in core-contract sind aus dem Vertrag erzeugt; ein Android-Lauf soll selbst rot
   # sein, wenn die Datei veraltet ist oder eine Route nicht den erzeugten Typ nimmt.
   vertrag:
     if: ${{ github.event_name != 'schedule' && !inputs.pruefsummen && !inputs.bildschirmfotos }}
@@ -464,12 +464,12 @@ jobs:
       # Was die App vom Server braucht (shared/app-schnittstelle.json) und wie sie es liest,
       # gegen docs/openapi.json; dazu die Release-Wege. Die Web-Suite liest keinen Kotlin-Quelltext.
       - name: Routen nehmen die erzeugten Typen, Schnittstelle und Release-Wege
-        run: node --test ../Android-App/tools/vertrag/vertrag-kotlin.test.js ../Android-App/tools/release-wege.test.js
+        run: node --test ../Android-App/tools/contract/contract-kotlin.test.js ../Android-App/tools/release-paths.test.js
       - name: Erzeugte Design-Tokens aktuell
         run: node scripts/generate-design-tokens.js --pruefen
-      # Die erzeugten Antworttypen (core-vertrag, vertrag.erzeugt) passen zu docs/openapi.json.
+      # Die erzeugten Antworttypen (core-contract, vertrag.erzeugt) passen zu docs/openapi.json.
       - name: Erzeugte Kotlin-Typen aktuell
-        run: node --test test/vertrag-kotlin-dtos.test.js
+        run: node --test test/contract-kotlin-dtos.test.js
 
   # Gerätetests (app/src/androidTest) auf einem Emulator, den Gradle anlegt (Managed
   # Device pixel6Api34, ATD-Abbild): Hilt, Room mit SQLCipher und Keystore laufen nur
@@ -492,7 +492,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
+      - run: python3 tools/gradle-wrapper-check.py gradle/wrapper/gradle-wrapper.properties
       # Nur lesen: Den Cache schreibt allein der Baujob (sec17 M1).
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
         with:
@@ -542,7 +542,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
+      - run: python3 tools/gradle-wrapper-check.py gradle/wrapper/gradle-wrapper.properties
       # Nur lesen: Den Cache schreibt allein der Baujob (sec17 M1).
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
         with:
@@ -576,7 +576,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
+      - run: python3 tools/gradle-wrapper-check.py gradle/wrapper/gradle-wrapper.properties
       # Nur lesen: Den Cache schreibt allein der Baujob (sec17 M1).
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
         with:
@@ -589,7 +589,7 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon --continue --write-verification-metadata sha256,pgp --export-keys \
-            testDebugUnitTest :core-model:test :core-vertrag:test recordRoborazziDebug assembleRelease bundleRelease :app:lintRelease detekt \
+            testDebugUnitTest :core-model:test :core-contract:test recordRoborazziDebug assembleRelease bundleRelease :app:lintRelease detekt \
             :app:assembleDebugAndroidTest \
             || echo "::warning::Gradle meldete einen Fehler (Lint oder Test); die Prüfsummen sind trotzdem geschrieben."
           test -s gradle/verification-metadata.xml
@@ -627,7 +627,7 @@ jobs:
         run: |
           set -euo pipefail
           git show HEAD:Android-App/gradle/verification-metadata.xml > "$RUNNER_TEMP/alt.xml" 2>/dev/null || true
-          python3 Android-App/tools/pruefsummen-vergleich.py "$RUNNER_TEMP/alt.xml" "$RUNNER_TEMP/neu/verification-metadata.xml" \
+          python3 Android-App/tools/checksum-compare.py "$RUNNER_TEMP/alt.xml" "$RUNNER_TEMP/neu/verification-metadata.xml" \
             > "$RUNNER_TEMP/pruefsummen-zusammenfassung.md"
           cat "$RUNNER_TEMP/pruefsummen-zusammenfassung.md" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -706,7 +706,7 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - run: python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
+      - run: python3 tools/gradle-wrapper-check.py gradle/wrapper/gradle-wrapper.properties
       # Nur lesen: Den Cache schreibt allein der Baujob (sec17 M1).
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
         with:

@@ -1512,7 +1512,7 @@ Android-API, Sets wie manuelle Einträge. Die Weboberfläche verhinderte das mit
 
 ### Nachweise
 
-`test/erfassen-parallel-db.test.js` fährt zehn echte parallele Aufrufe und
+`test/add-parallel-db.test.js` fährt zehn echte parallele Aufrufe und
 prüft: eine Tageszeile, Menge 10. Dazu der Index (zweite Tageszeile wird
 abgewiesen, ein anderer Tag bleibt erlaubt) und die Prüffunktionen selbst.
 

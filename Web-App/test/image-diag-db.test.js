@@ -1,10 +1,10 @@
 /**
- * Bild-Diagnose: „Warum fehlt das Bild für Set X?" in EINER Antwort.
+ * Image diagnosis: “Why is the image missing for set X?" in ONE response.
  *
- * Gegenprobe (durchgeführt): den Hinweis-Block für „Vorschau fehlt" entfernt →
- * Teilschritt A wird rot.
+ * Counter-check (performed): the hint block for “preview missing" removed →
+ * substep A turns red.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,16 +14,16 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { verwalterMitFaktor } = require('./helpers/verwalter');
-const { haeltSet, katalogSet } = require('./helpers/bestand');
-const db = testDaten();
+const { adminWithFactor } = require('./helpers/admin');
+const { holdsSet, catalogSet } = require('./helpers/inventory');
+const db = testData();
 
-test('die Bild-Diagnose beschreibt jede Lage im Klartext', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+test('the image diagnostics describe every situation in plain text', { concurrency: 1 }, async t => {
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
   const { DATA_DIR } = _req('src/infra/appPaths.js');
@@ -31,8 +31,8 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext', { concurrency: 1 }, a
   fs.mkdirSync(ordner, { recursive: true });
 
   const USER = `diag-${process.pid}`;
-  const MIT = `9000-${process.pid}`; // Datei vorhanden
-  const OHNE = `9001-${process.pid}`; // nichts vorhanden
+  const MIT = `9000-${process.pid}`; // file present
+  const OHNE = `9001-${process.pid}`; // nothing present
   const original = path.join(ordner, `${MIT}.jpg`);
   const vorschau = path.join(ordner, `${MIT}_thumb.jpg`);
 
@@ -41,16 +41,16 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext', { concurrency: 1 }, a
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
   await db.run(`DELETE FROM sets WHERE set_number = ANY($1)`, [[MIT, OHNE]]);
   await db.run(`DELETE FROM set_catalog WHERE set_number = ANY($1)`, [[MIT, OHNE]]);
-  // Der Bestand sagt nur „dieses Konto haelt das Set"; Name und Bildpfad
-  // stehen seit Migration 0033 im Katalog.
-  await haeltSet(db, uid, MIT, 1);
-  await katalogSet(db, MIT, { name: 'Mit Bild', image_local: `/images/sets/${MIT}.jpg` });
-  await haeltSet(db, uid, OHNE, 1);
-  await katalogSet(db, OHNE, { name: 'Ohne alles' });
+  // The stock only says “this account holds the set"; name and image path
+  // have been in the catalog since migration 0033.
+  await holdsSet(db, uid, MIT, 1);
+  await catalogSet(db, MIT, { name: 'Mit Bild', image_local: `/images/sets/${MIT}.jpg` });
+  await holdsSet(db, uid, OHNE, 1);
+  await catalogSet(db, OHNE, { name: 'Ohne alles' });
   await new Jimp({ width: 500, height: 400, color: 0x0000ffff }).write(original);
   fs.rmSync(vorschau, { force: true });
 
-  await verwalterMitFaktor(_req, uid);
+  await adminWithFactor(_req, uid);
   const { base, srv } = testServer(_req, { sitzung: { userId: uid, isAdmin: true }, t });
   const frag = async sn => {
     const r = await fetch(`${base}/api/v1/admin/image-diag/${sn}`);
@@ -59,7 +59,7 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext', { concurrency: 1 }, a
   };
 
   try {
-    // A) Genau Marcos Lage: Original da, Vorschau fehlt.
+    // A) Exactly Marco's situation: original present, preview missing.
     let d = await frag(MIT);
     assert.equal(d.lokal.original.vorhanden, true, 'das Original muss gefunden werden');
     assert.equal(d.lokal.vorschau.vorhanden, false);
@@ -68,15 +68,15 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext', { concurrency: 1 }, a
       `die Diagnose muss die fehlende Vorschau benennen, bekam: ${d.hinweise.join(' | ')}`,
     );
 
-    // B) Nichts bekannt — weder Datei noch Adresse.
+    // B) Nothing known — neither file nor address.
     d = await frag(OHNE);
     assert.ok(
       d.hinweise.some(h => /Weder lokale Datei noch CDN-Adresse/.test(h)),
       `die Diagnose muss „nichts anzeigbar" benennen, bekam: ${d.hinweise.join(' | ')}`,
     );
 
-    // C) Nach der Erzeugung ist alles beisammen — und die Grössen stimmen.
-    await _req('src/bilder/thumbs.js').vorschauErzeugenAus(`/images/sets/${MIT}.jpg`);
+    // C) After generation everything is together — and the sizes are right.
+    await _req('src/images/thumbs.js').vorschauErzeugenAus(`/images/sets/${MIT}.jpg`);
     d = await frag(MIT);
     assert.ok(
       d.hinweise.some(h => /Alles vorhanden/.test(h)),
@@ -87,8 +87,8 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext', { concurrency: 1 }, a
       'die gemeldete Vorschau muss kleiner sein als das Original',
     );
 
-    // Die Diagnose darf NICHTS reparieren — sonst verändert das Werkzeug den
-    // Zustand, den es beschreiben soll.
+    // The diagnosis must repair NOTHING — otherwise the tool changes the
+    // state it is supposed to describe.
     fs.rmSync(vorschau, { force: true });
     await frag(MIT);
     assert.equal(fs.existsSync(vorschau), false, 'die Diagnose hat die Vorschau erzeugt — sie soll nur beobachten');
@@ -102,12 +102,12 @@ test('die Bild-Diagnose beschreibt jede Lage im Klartext', { concurrency: 1 }, a
   }
 });
 
-test('der Set-Bild-Download meldet jeden Fehlschlag', () => {
-  // Bis eine frühere Runde gab es genau EINE Logzeile (die Grössengrenze aus 47);
-  // Statuscode, Netzwerkfehler, Zwergantwort und der umschliessende catch
-  // endeten alle in einem stummen `return null`. Genau diese Stille hat die
-  // Bild-Fehlersuche über fünf Nachträge gestreckt.
-  const src = fs.readFileSync(path.join(ROOT, 'src/bilder/setImages.ts'), 'utf8');
+test('the set image download reports every failure', () => {
+  // Until an earlier round there was exactly ONE log line (the size limit from 47);
+  // status code, network error, dwarf response and the enclosing catch
+  // all ended in a silent `return null`. Exactly this silence stretched
+  // the image debugging over five addenda.
+  const src = fs.readFileSync(path.join(ROOT, 'src/images/setImages.ts'), 'utf8');
   const start = src.indexOf('async function setBildHerunterladen');
   const fn = src
     .slice(start, src.indexOf('\n}\n', start))

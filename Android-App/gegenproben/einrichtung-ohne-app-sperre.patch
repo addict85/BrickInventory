@@ -1,18 +1,18 @@
 Gegenprobe: Die Einrichtung bietet die App-Sperre nicht mehr an
-Modul: feature-anmeldung
-Test: ch.brickinventoryapp.anmeldung.EinrichtungAppSperreTest
-Rot: die Einrichtung bietet die App-Sperre an
+Modul: feature-login
+Test: ch.brickinventoryapp.login.SetupAppLockTest
+Rot: the setup offers the app lock, with an explanation
 
-diff --git a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/SetupScreen.kt b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/SetupScreen.kt
+diff --git a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt
 index 2d7b7a7..774ade8 100644
---- a/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/SetupScreen.kt
-+++ b/Android-App/feature-anmeldung/src/main/java/ch/brickinventoryapp/anmeldung/ui/screens/SetupScreen.kt
+--- a/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt
++++ b/Android-App/feature-login/src/main/java/ch/brickinventoryapp/login/ui/screens/SetupScreen.kt
 @@ -229,7 +229,7 @@ fun SetupScreen(
          }
          // Hier angeboten, weil kaum jemand nach der Einrichtung die Einstellungen durchsucht.
          // Ohne Anbieter (Vorschau, Test) fehlt die Karte, wie in den Einstellungen.
--        LocalAppSperre.current?.let { sperre ->
-+        LocalAppSperre.current?.takeIf { false }?.let { sperre ->
+-        LocalAppLock.current?.let { lock ->
++        LocalAppLock.current?.takeIf { false }?.let { lock ->
              Spacer(Modifier.height(Abstaende.gross))
              AppKarte {
                  Column(Modifier.padding(Abstaende.gross), verticalArrangement = Arrangement.spacedBy(Abstaende.klein)) {

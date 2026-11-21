@@ -1,17 +1,17 @@
 /**
- * Auth-Paritätstest (ohne DB).
+ * Auth parity test (without DB).
  *
- * Gegenproben der am 08.11.2026 gestrichenen Fälle, die jetzt ausgeführt werden:
- * QR-Login ohne Passwort-Material und einmalig → anmeldung-regeln-db A/B;
- * angezeigte QR-Gültigkeit → dort B und qr-klartext-hinweis C; Profil prüft
- * den Benutzernamen → anmeldung-regeln-db C; Login ohne gespeicherten Token →
- * dort D, ein stilles `.catch(() => {})` beim Entwerten der Zugänge verbietet
- * ratschen.test.js („stille Faenge …“).
- * Am 11.11.2026 auf Verhalten umgestellt: Verwalter setzt fremdes Passwort und
- * jeder Passwortweg beendet die Zugänge → auth-sessions-db; gleiche bcrypt-Kosten
- * auf allen Wegen → passwort-regel-db; Gleitfrist und Zählung des Aufräumens →
- * token-gleitfrist-db. Gegenprobe: `ladeKonfig` nimmt TOKEN_IDLE_DAYS=0 an → rot
- * „die Gleitfrist lässt sich nicht abschalten“.
+ * Counter-checks of the cases deleted on 08.11.2026 that are now executed:
+ * QR login without password material and one-time → anmeldung-regeln-db A/B;
+ * displayed QR validity → there B and qr-klartext-hinweis C; profile checks
+ * the username → anmeldung-regeln-db C; login without a stored token →
+ * there D, a silent `.catch(() => {})` when invalidating the accesses is forbidden by
+ * ratschen.test.js (“silent catches …”).
+ * Switched to behavior on 11.11.2026: administrator sets a foreign password and
+ * every password path ends the accesses → auth-sessions-db; equal bcrypt cost
+ * on all paths → passwort-regel-db; sliding period and count of the cleanup →
+ * token-gleitfrist-db. Counter-check: `ladeKonfig` accepts TOKEN_IDLE_DAYS=0 → red
+ * “the sliding period cannot be switched off”.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,18 +19,18 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
-// Nach dist/ bauen statt in-place — siehe helpers/sources.js.
+// Build to dist/ instead of in place — see helpers/sources.js.
 const _req = require('./helpers/sources').buildAndRequire();
-const { assertLoginAllowed } = _req('src/konto/anmeldepruefung.js');
-const { ARGON2_KOSTEN } = _req('src/konto/passwortHash.js');
-const { USERNAME_RE } = _req('src/konto/namensRegeln.js');
-const { escapeLike } = _req('src/konto/geraeteToken.js');
+const { assertLoginAllowed } = _req('src/account/loginCheck.js');
+const { ARGON2_COST } = _req('src/account/passwordHash.js');
+const { USERNAME_RE } = _req('src/account/nameRules.js');
+const { escapeLike } = _req('src/account/deviceToken.js');
 const { ohneKommentare } = require('./helpers/sources');
 
 /**
- * Jeden Anmelde-Handler SUCHEN statt zwei aufzuzählen.
+ * SEARCH every login handler instead of enumerating two.
  */
-function anmeldeHandler() {
+function loginHandler() {
   const dateien = dir =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
       const p = path.join(dir, e.name);
@@ -43,8 +43,8 @@ function anmeldeHandler() {
     for (const m of src.matchAll(
       /(?:router|app)\.(?:(?:post|put)\(\s*'|endpunkt\(\s*'(?:POST|PUT) )([^']*login[^']*)'/g,
     )) {
-      // Der Rumpf reicht bis zur nächsten Routendefinition. Kommentare sind
-      // schon weg — sonst zählte ein Erklärtext, der „password" erwähnt, mit.
+      // The body extends to the next route definition. Comments are
+      // already gone — otherwise an explanatory text mentioning “password" would count.
       const rel = src.slice(m.index + 1).search(/\n\s*(?:router|app)\.[a-z]+\(/);
       const koerper = rel < 0 ? src.slice(m.index) : src.slice(m.index, m.index + 1 + rel);
       treffer.push({ datei: path.relative(ROOT, datei), pfad: m[1], koerper });
@@ -53,83 +53,87 @@ function anmeldeHandler() {
   return treffer;
 }
 
-test('aktives, bestätigtes Konto darf sich anmelden', () => {
+test('an active, confirmed account may log in', () => {
   assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 1, email: 'a@b.c' }), null);
   assert.equal(assertLoginAllowed({ is_active: true, email_verified: true, email: 'a@b.c' }), null);
-  // Konto ganz ohne E-Mail (Alt-Installation, admin/admin) bleibt erlaubt
+  // An account entirely without e-mail (old installation, admin/admin) stays allowed
   assert.equal(assertLoginAllowed({ is_active: 1, email_verified: 0, email: null }), null);
 });
 
-test('deaktiviertes Konto wird abgelehnt — egal ob 0 oder false', () => {
+test('a deactivated account is rejected — whether 0 or false', () => {
   for (const v of [0, false]) {
     const r = assertLoginAllowed({ is_active: v, email_verified: 1, email: 'a@b.c' });
     assert.equal(r?.art, 'verboten', `is_active=${v} muss verboten ergeben`);
   }
 });
 
-test('eine offene Registrierung wird abgelehnt, Admins ausgenommen', () => {
+test('an open registration is rejected, admins excepted', () => {
   const r = assertLoginAllowed({
     is_active: 1,
     email_verified: 0,
     email: null,
     is_admin: 0,
-    registrierung_offen: true,
+    registration_pending: true,
   });
   assert.equal(r?.art, 'verboten');
   assert.equal(r?.unverified, true);
   assert.equal(
-    assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 1, registrierung_offen: true }),
+    assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 1, registration_pending: true }),
     null,
   );
   assert.equal(
-    assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registrierung_offen: false }),
+    assertLoginAllowed({ is_active: 1, email_verified: 0, email: null, is_admin: 0, registration_pending: false }),
     null,
     'ein vom Verwalter angelegtes Konto ohne Adresse',
   );
 });
 
-test('jede Anmeldung mit Passwort läuft über dieselbe Prüfung', () => {
-  const gefunden = anmeldeHandler();
-  // Selbstbeweis: Findet das Muster nichts, wäre die Fehlerliste leer und der
-  // Test grün, ohne etwas geprüft zu haben.
+test('every login with password goes through the same check', () => {
+  const gefunden = loginHandler();
+  // Self-proof: if the pattern finds nothing, the error list would be empty and the
+  // test green without having checked anything.
   assert.ok(gefunden.length >= 2, `Nur ${gefunden.length} Anmelde-Routen gefunden — Muster veraltet?`);
-  const mitPasswort = gefunden.filter(h => /password/.test(h.koerper));
+  const withPassword = gefunden.filter(h => /password/.test(h.koerper));
   assert.equal(
-    mitPasswort.length,
+    withPassword.length,
     1,
-    `${mitPasswort.length} passwortbasierte Anmeldungen: ` +
-      mitPasswort.map(h => `${h.datei} ${h.pfad}`).join(', ') +
+    `${withPassword.length} passwortbasierte Anmeldungen: ` +
+      withPassword.map(h => `${h.datei} ${h.pfad}`).join(', ') +
       ' — es soll genau eine geben.',
   );
 
-  const abweichler = mitPasswort
-    .filter(h => !/\b(pruefeAnmeldedaten|anmelden)\(/.test(h.koerper))
+  const outlier = withPassword
+    .filter(h => !/\b(checkCredentials|anmelden)\(/.test(h.koerper))
     .map(h => `${h.datei}  ${h.pfad}`);
   assert.deepEqual(
-    abweichler,
+    outlier,
     [],
     'Diese Anmeldungen prüfen die Zugangsdaten selbst statt über ' +
-      'pruefeAnmeldedaten() aus src/konto/anmeldepruefung.ts:\n  ' +
-      abweichler.join('\n  ') +
+      'checkCredentials() aus src/account/loginCheck.ts:\n  ' +
+      outlier.join('\n  ') +
       '\nEine zweite Fassung ist schon zweimal auseinandergelaufen: erst fehlten ' +
       'die Konto-Vorbedingungen, dann der Vergleich gegen den Dummy-Hash ' +
-      '(415 ms Unterschied, siehe test/login-zeitgleich-db.test.js).',
+      '(415 ms Unterschied, siehe test/login-time-equal-db.test.js).',
   );
 });
 
-test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
-  // Wer den Zähler selbst hochzählt, hat auch die Passwortprüfung selbst
-  // gebaut — der Aufruf ist damit der zuverlässigste Fingerabdruck einer
-  // zweiten Anmeldefassung, unabhängig davon, wie ihre Route heisst.
-  const zaehler = /\b(anmeldungErlaubt|anmeldungGescheitert|anmeldungGelungen)\s*\(/;
-  const erlaubt = new Set(['src/konto/anmeldepruefung.ts', 'src/konto/loginLimiter.ts']);
+test('the brute-force counter is only served in one place', () => {
+  // Whoever increments the counter themselves has also built the password check
+  // themselves — the call is thus the most reliable fingerprint of a
+  // second login version, regardless of what its route is called.
+  const zaehler = /\b(loginAllowed|loginFailed|loginSucceeded)\s*\(/;
+  const erlaubt = new Set(['src/account/loginCheck.ts', 'src/account/loginLimiter.ts']);
 
-  const sammle = dir =>
+  const collect = dir =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => {
       const p = path.join(dir, e.name);
-      return e.isDirectory() ? sammle(p) : e.name.endsWith('.ts') ? [p] : [];
+      return e.isDirectory() ? collect(p) : e.name.endsWith('.ts') ? [p] : [];
     });
-  const alle = [...sammle(path.join(ROOT, 'routes')), ...sammle(path.join(ROOT, 'src')), path.join(ROOT, 'server.ts')];
+  const alle = [
+    ...collect(path.join(ROOT, 'routes')),
+    ...collect(path.join(ROOT, 'src')),
+    path.join(ROOT, 'server.ts'),
+  ];
   assert.ok(alle.length >= 30, `Nur ${alle.length} Dateien durchsucht — Pfade veraltet?`);
 
   const fremd = alle
@@ -141,36 +145,36 @@ test('der Brute-Force-Zähler wird nur an einer Stelle bedient', () => {
     [],
     'Diese Dateien bedienen den Anmelde-Zähler selbst: ' +
       fremd.join(', ') +
-      ' — die Anmeldung gehört ganz in pruefeAnmeldedaten() (src/konto/anmeldepruefung.ts).',
+      ' — die Anmeldung gehört ganz in checkCredentials() (src/account/loginCheck.ts).',
   );
 
-  // Gegenprobe zur Regel: Die erlaubte Stelle muss ihn auch wirklich bedienen.
-  const zentral = require('./helpers/sources').dienstQuelle('src/konto/anmeldepruefung.ts');
-  for (const name of ['anmeldungErlaubt', 'anmeldungGescheitert', 'anmeldungGelungen'])
-    assert.match(zentral, new RegExp(`\\b${name}\\((?:k, )?ip`), `src/konto/anmeldepruefung.ts ruft ${name} nicht auf`);
+  // Counter-check of the rule: the allowed place must really serve it too.
+  const central = require('./helpers/sources').serviceSource('src/account/loginCheck.ts');
+  for (const name of ['loginAllowed', 'loginFailed', 'loginSucceeded'])
+    assert.match(central, new RegExp(`\\b${name}\\((?:k, )?ip`), `src/account/loginCheck.ts ruft ${name} nicht auf`);
 });
 
-test('die Benutzernamen-Regel', () => {
+test('the username rule', () => {
   assert.ok(USERNAME_RE.test('marco_1'));
   assert.ok(!USERNAME_RE.test('ma'));
   assert.ok(!USERNAME_RE.test('a b'));
   assert.ok(!USERNAME_RE.test('a@b.c'), 'E-Mail-Adresse darf kein Benutzername sein');
 
-  // Dass PUT /profile sie anwendet (auch gross/klein), prüft anmeldung-regeln-db.test.js.
+  // That PUT /profile applies it (also upper/lower case) is checked by login-rules-db.test.js.
 });
 
-test('escapeLike entschärft Platzhalter beim Token-Löschen', () => {
+test('escapeLike defuses wildcards when deleting tokens', () => {
   assert.equal(escapeLike('%'), '\\%');
   assert.equal(escapeLike('a_b'), 'a\\_b');
   assert.equal(escapeLike('abc123'), 'abc123');
 });
 
-test('die Gleitfrist lässt sich nicht abschalten', () => {
-  // „Nie“ gibt es seit Migration 0080 nicht mehr: Ohne Ablauf nur je Gerät,
-  // über HTTPS und mit Rotation (token-scope-rotation-db). Dass die Frist aus
-  // der Konfiguration kommt und das Aufräumen zählt, zeigt token-gleitfrist-db.
-  const { ladeKonfig } = _req('src/infra/konfig.js');
+test('the sliding deadline cannot be switched off', () => {
+  // “Never” no longer exists since migration 0080: without expiry only per device,
+  // over HTTPS and with rotation (token-scope-rotation-db). That the period comes from
+  // the configuration and the cleanup counts is shown by token-gleitfrist-db.
+  const { ladeKonfig } = _req('src/infra/config.js');
   assert.throws(() => ladeKonfig({ TOKEN_IDLE_DAYS: '0' }), /TOKEN_IDLE_DAYS/);
-  assert.equal(ladeKonfig({ TOKEN_IDLE_DAYS: '23' }).tokenLeerlaufTage, 23);
-  assert.ok(ARGON2_KOSTEN.memoryCost >= 19_456 && ARGON2_KOSTEN.timeCost >= 2);
+  assert.equal(ladeKonfig({ TOKEN_IDLE_DAYS: '23' }).tokenIdleDays, 23);
+  assert.ok(ARGON2_COST.memoryCost >= 19_456 && ARGON2_COST.timeCost >= 2);
 });

@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.app.ui.components
 
-import ch.brickinventoryapp.ui.components.ansagen
-import ch.brickinventoryapp.ui.components.vorgelesenAls
+import ch.brickinventoryapp.ui.components.announce
+import ch.brickinventoryapp.ui.components.readAloudAs
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
@@ -25,7 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.Abstaende
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.filled.CheckCircle
@@ -33,29 +33,29 @@ import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Error
 import ch.brickinventoryapp.ui.theme.LocalStatusFarben
 import ch.brickinventoryapp.ui.components.MitTooltip
-import ch.brickinventoryapp.ui.components.mitSchrift
+import ch.brickinventoryapp.ui.components.withFont
 
 @Composable
 fun CsvImportBanner(
     done: Int, total: Int, current: String?,
     ok: Int, warn: Int, err: Int, running: Boolean,
     /**
-     * Abbrechen — nur waehrend der Import laeuft sichtbar.
+     * Cancel — visible only while the import runs.
      *
-     * Die Webapp hat den Knopf seit jeher (sammlung.js, btn-cancel-import).
-     * Die App zeigte denselben Balken und keinen Weg heraus: Ein versehentlich
-     * gestarteter Import ueber hunderte Sets holt zu jedem die Stammdaten und
-     * musste ausgesessen werden.
+     * The web app has always had the button (collection.js, btn-cancel-import).
+     * The app showed the same bar and no way out: an accidentally
+     * started import of hundreds of sets fetches the master data for each and
+     * had to be sat out.
      */
     onAbbrechen: () -> Unit,
 ) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val bg  = if (running) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer
-    // Der Aufklapper nennt, was er tut und ob er offen ist (TalkBack las nur „3/10, Schaltfläche“).
+    // The expander names what it does and whether it is open (TalkBack only read “3/10, button”).
     val zustand = stringResource(if (expanded) R.string.zustand_ausgeklappt else R.string.zustand_eingeklappt)
     val fortschritt = pluralStringResource(R.plurals.csv_fortschritt, total, done, total)
-    // Angesagt wird in Zehnerschritten, nicht bei jedem Set.
-    val stufe = if (total > 0) done * ANSAGE_STUFEN / total else 0
+    // Announced in steps of ten, not for every set.
+    val stufe = if (total > 0) done * ANNOUNCEMENT_LEVELS / total else 0
     val angesagt = remember(stufe, running) { fortschritt }
     val ziel = stringResource(if (expanded) R.string.csv_details_verbergen else R.string.csv_details_zeigen)
 
@@ -72,26 +72,26 @@ fun CsvImportBanner(
                 }
         ) {
             Column(Modifier.padding(horizontal = Abstaende.gross, vertical = Abstaende.klein)) {
-                CsvKopfzeile(done, total, ok, running, expanded, fortschritt, onAbbrechen)
+                CsvHeaderRow(done, total, ok, running, expanded, fortschritt, onAbbrechen)
                 if (running && current != null) {
                     Text(
                         current,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.padding(top = Abstaende.haar)
+                        modifier = Modifier.padding(top = Abstaende.hairline)
                     )
                 }
             }
         }
-        // Ausserhalb des Knopfs: Sonst würde der ganze Balken zur Live-Region und jedes Set angesagt.
-        if (running) Box(Modifier.ansagen().semantics { contentDescription = angesagt })
-        if (expanded) CsvImportZahlen(ok, warn, err, running)
+        // Outside the button: otherwise the whole bar would become a live region and announce every set.
+        if (running) Box(Modifier.announce().semantics { contentDescription = angesagt })
+        if (expanded) CsvImportNumbers(ok, warn, err, running)
     }
 }
 
-/** Kopfzeile des Balkens: Fortschritt, Abbrechen und der Pfeil des Aufklappers. */
+/** Header row of the bar: progress, cancel and the expander's arrow. */
 @Composable
-private fun CsvKopfzeile(
+private fun CsvHeaderRow(
     done: Int, total: Int, ok: Int, running: Boolean, expanded: Boolean, fortschritt: String, onAbbrechen: () -> Unit,
 ) {
     val pct = if (total > 0) done.toFloat() / total else 0f
@@ -99,7 +99,7 @@ private fun CsvKopfzeile(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)
     ) {
-        Icon(Icons.Default.UploadFile, null, Modifier.size(mitSchrift(16.dp)),
+        Icon(Icons.Default.UploadFile, null, Modifier.size(withFont(16.dp)),
             tint = if (running) MaterialTheme.colorScheme.onPrimary
                    else MaterialTheme.colorScheme.onSecondaryContainer)
         LinearProgressIndicator(
@@ -112,19 +112,19 @@ private fun CsvKopfzeile(
         )
         Text(
             if (running) "$done/$total" else stringResource(R.string.csv_ok_count, ok),
-            modifier = if (running) Modifier.vorgelesenAls(fortschritt) else Modifier,
+            modifier = if (running) Modifier.readAloudAs(fortschritt) else Modifier,
             style = MaterialTheme.typography.bodySmall,
             color = if (running) MaterialTheme.colorScheme.onPrimary
                     else MaterialTheme.colorScheme.onSecondaryContainer,
             fontWeight = FontWeight.Bold
         )
-        // In der KOPFzeile, nicht im aufgeklappten Teil: Wer
-        // abbrechen will, soll nicht erst herausfinden muessen,
-        // dass der Balken sich aufklappen laesst. In der Webapp
-        // steht der Knopf ebenfalls dauerhaft da.
+        // In the HEADER row, not in the expanded part: whoever
+        // wants to cancel should not first have to find out
+        // that the bar can be expanded. In the web app
+        // the button is permanently there as well.
         if (running) {
-            // Volle 48 dp: Der Balken wird dadurch etwas höher, dafür
-            // trifft man das Abbrechen auch unterwegs.
+            // Full 48 dp: the bar becomes a bit taller, but in return
+            // one hits Cancel even on the move.
             MitTooltip(stringResource(R.string.csv_cancel)) {
                 IconButton(onClick = onAbbrechen) {
                     Icon(Icons.Default.Close, stringResource(R.string.csv_cancel),
@@ -142,9 +142,9 @@ private fun CsvKopfzeile(
     }
 }
 
-/** Aufgeklappt: Erfolge, Warnungen und Fehler einzeln, nach dem Lauf mit „fertig“. */
+/** Expanded: successes, warnings and errors individually, after the run with “done”. */
 @Composable
-private fun CsvImportZahlen(ok: Int, warn: Int, err: Int, running: Boolean) {
+private fun CsvImportNumbers(ok: Int, warn: Int, err: Int, running: Boolean) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         modifier = Modifier.fillMaxWidth()
@@ -161,8 +161,8 @@ private fun CsvImportZahlen(ok: Int, warn: Int, err: Int, running: Boolean) {
             ).forEach { (v, symbol, l) ->
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
-                        Icon(symbol.first, null, Modifier.size(mitSchrift(16.dp)), tint = symbol.second)
+                        horizontalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
+                        Icon(symbol.first, null, Modifier.size(withFont(16.dp)), tint = symbol.second)
                         Text("$v", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
                     }
                     Text(l, style = MaterialTheme.typography.bodySmall,
@@ -182,5 +182,5 @@ private fun CsvImportZahlen(ok: Int, warn: Int, err: Int, running: Boolean) {
     }
 }
 
-/** Zehn Ansagen über einen ganzen Import. */
-private const val ANSAGE_STUFEN = 10
+/** Ten announcements over a whole import. */
+private const val ANNOUNCEMENT_LEVELS = 10

@@ -1,10 +1,10 @@
-/** Verschoben wird über die Erfassungen: Die Menge beider Konten folgt daraus beim Lesen. */
-import { fachfehler } from '../infra/fehlerTexte';
-import { mitVersion } from '../infra/setNummer';
-import * as repo from './repository/verschieben';
-import type { SetsKontext } from './kontext';
+/** Moving happens via the acquisitions: both accounts' quantities follow from that when reading. */
+import { fachfehler } from '../infra/errorTexts';
+import { withVersion } from '../infra/setNumber';
+import * as repo from './repository/move';
+import type { SetsContext } from './context';
 
-export interface Verschiebung {
+export interface Shift {
   quantity: number;
   acquisitions: number;
   merged: boolean;
@@ -14,43 +14,44 @@ export interface Verschiebung {
   source_emptied: boolean;
 }
 
-/** Nacheinander statt Promise.all: alle Abfragen laufen auf derselben
- * Transaktionsverbindung. */
-async function copyContents(t: SetsKontext, sn: string, fromId: number, toId: number) {
+/** One after another instead of Promise.all: all queries run on the same
+ * transaction connection. */
+async function copyContents(t: SetsContext, sn: string, fromId: number, toId: number) {
   const n = { parts: 0, minifigs: 0, instructions: 0 };
-  for (const tab of ['parts', 'minifigs'] as const) n[tab] = await t.bestand.setInhalt.kopieren(tab, sn, fromId, toId);
-  if (!(await repo.hatAnleitungen(t.db, toId, sn)))
-    n.instructions = await repo.kopiereAnleitungen(t.db, sn, fromId, toId);
+  for (const tab of ['parts', 'minifigs'] as const)
+    n[tab] = await t.inventory.setInhalt.kopieren(tab, sn, fromId, toId);
+  if (!(await repo.hatInstructions(t.db, toId, sn)))
+    n.instructions = await repo.copyInstructions(t.db, sn, fromId, toId);
   return n;
 }
 
-/** In der Transaktion des Aufrufers (`t`), unter der Sperre des Quellbestands.
- * @param acquisitionIds leer = das ganze Set; sonst nur diese Kaufpreis-Zeilen */
-export async function setErfassungenUmhaengen(
-  t: SetsKontext,
+/** In the caller's transaction (`t`), under the lock of the source inventory.
+ * @param acquisitionIds empty = the whole set; otherwise only these purchase price rows */
+export async function setEntriesReassign(
+  t: SetsContext,
   sn: string,
   fromId: number,
   toId: number,
   acquisitionIds?: number[],
-): Promise<Verschiebung> {
-  const src = await repo.setZeile(t.db, fromId, sn);
+): Promise<Shift> {
+  const src = await repo.setRow(t.db, fromId, sn);
   if (!src) fachfehler('nicht_gefunden', 'nicht_gefunden');
 
-  const all = await repo.erfassungenZumVerschieben(t.db, fromId, sn);
+  const all = await repo.moveEntriesTo(t.db, fromId, sn);
   const wanted = acquisitionIds?.length ? all.filter(a => acquisitionIds.includes(parseInt(String(a.id), 10))) : all;
   if (!wanted.length) fachfehler('nicht_gefunden', 'kaufpreis_nicht_gefunden');
 
-  const gesamtQty = all.reduce((s, a) => s + (a.quantity || 1), 0);
+  const totalQty = all.reduce((s, a) => s + (a.quantity || 1), 0);
   const movingQty = wanted.reduce((s, a) => s + (a.quantity || 1), 0);
-  const remaining = Math.max(0, gesamtQty - movingQty);
+  const remaining = Math.max(0, totalQty - movingQty);
 
-  // Stammdaten beschreiben das Set, nicht das Exemplar: Liegt es beim Ziel
-  // schon, genügt das Umhängen der Erfassungen.
-  const dst = await repo.setZeile(t.db, toId, sn);
-  if (!dst) await t.bestand.legeSetAn(toId, sn, src.added_at);
+  // Master data describes the set, not the copy: if it already lies with the target,
+  // reassigning the acquisitions is enough.
+  const dst = await repo.setRow(t.db, toId, sn);
+  if (!dst) await t.inventory.putSetAn(toId, sn, src.added_at);
 
   for (const a of wanted) {
-    await t.bestand.bucheTageserfassung('set', toId, [sn], {
+    await t.inventory.bookDailyEntry('set', toId, [sn], {
       quantity: a.quantity,
       price: a.purchase_price,
       condition: a.condition,
@@ -58,42 +59,42 @@ export async function setErfassungenUmhaengen(
       geschaetzt: a.price_estimated,
       currency: a.currency,
     });
-    await t.bestand.erfassung.loesche('set', a.id, fromId);
+    await t.inventory.erfassung.loesche('set', a.id, fromId);
   }
 
   const counts = await copyContents(t, sn, fromId, toId);
 
-  // Teilverschiebung: Der Absender behält Exemplare und damit Set und Inhalt.
+  // Partial move: the sender keeps copies and therefore set and contents.
   if (remaining > 0) {
     return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst, ...counts, source_emptied: false };
   }
-  await repo.entferneAnleitungen(t.db, fromId, sn);
-  await t.bestand.setInhalt.entfernen([fromId], sn);
+  await repo.removeInstructions(t.db, fromId, sn);
+  await t.inventory.setInhalt.entfernen([fromId], sn);
   return { quantity: movingQty, acquisitions: wanted.length, merged: !!dst, ...counts, source_emptied: true };
 }
 
-/** Konto als Kennung aus der Eingabe; schreibziel() prüft es. */
-type KontoWunsch = string | number | null | undefined;
+/** Account as identifier from the input; schreibziel() checks it. */
+type AccountWish = string | number | null | undefined;
 
-/** Der Einstieg: Drei Erfassungen sind drei Käufe, wer alles will, wählt alle Zeilen. Unter der
- * Sperre des Quellbestands, damit kein zweiter Weg dazwischen bucht. */
-export async function setVerschieben(
-  sk: SetsKontext,
+/** The entry point: three acquisitions are three purchases; whoever wants everything selects all rows. Under the
+ * lock of the source inventory, so that no second path books in between. */
+export async function moveSet(
+  sk: SetsContext,
   uid: number,
   roh: string,
-  von: KontoWunsch,
-  nach: KontoWunsch,
+  von: AccountWish,
+  nach: AccountWish,
   erfassungen: number[],
 ) {
   if (!erfassungen.length) fachfehler('ungueltig', 'kaufpreise_angeben');
-  const sn = mitVersion(roh);
-  const fromId = await sk.haushalt.schreibziel(uid, von ?? uid);
-  const toId = await sk.haushalt.schreibziel(uid, nach);
+  const sn = withVersion(roh);
+  const fromId = await sk.household.schreibziel(uid, von ?? uid);
+  const toId = await sk.household.schreibziel(uid, nach);
   if (fromId === toId) fachfehler('ungueltig', 'quelle_ziel_identisch');
-  // Zwei Verschiebungen in Gegenrichtung sperren die Zeilen beider Konten in umgekehrter Reihenfolge.
-  const r = await sk.transaktion(t => setErfassungenUmhaengen(t, sn, fromId, toId, erfassungen), {
+  // Two moves in opposite directions lock the rows of both accounts in reverse order.
+  const r = await sk.transaktion(t => setEntriesReassign(t, sn, fromId, toId, erfassungen), {
     sperren: [{ konto: fromId, schluessel: sn }],
-    wiederholeBeiKonflikt: true,
+    repeatAtConflict: true,
   });
   return { set_number: sn, from_user_id: fromId, to_user_id: toId, ...r };
 }

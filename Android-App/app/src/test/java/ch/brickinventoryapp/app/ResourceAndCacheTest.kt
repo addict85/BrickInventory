@@ -5,14 +5,14 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Aufbauregeln, die ohne Gerät nur im Quelltext stehen: Kamera-Ressourcen, PDF-Cache-Budget,
- * feste Debug-Version und ein CSV-Statuspfad. Dass Abmelden alle Caches leert, prüft
- * AbmeldenRaeumtAllesTest ausgeführt.
+ * Construction rules that without a device only stand in the source: camera resources, PDF cache budget,
+ * fixed debug version and one CSV status path. That sign-out empties all caches is checked by
+ * SignOutCleansEverythingTest, executed.
  */
 class ResourceAndCacheTest {
 
     private fun read(rel: String): String {
-        val f = File(Quellen.wurzel, "$rel")
+        val f = File(Quellen.root, "$rel")
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
@@ -22,18 +22,18 @@ class ResourceAndCacheTest {
         return s.lines().filterNot { it.trim().startsWith("//") }.joinToString("\n")
     }
 
-    /** Kamerabildschirm samt Analyse und gemeinsamem Aufbau — siehe [Quellen.kameraQuelle]. */
-    private fun mitAnalyse(rel: String): String = Quellen.kameraQuelle(rel)
+    /** Camera screen including analysis and common setup — see [Quellen.cameraSource]. */
+    private fun withAnalyse(rel: String): String = Quellen.cameraSource(rel)
 
     // ── Kamera-Ressourcen ────────────────────────────────────────────────────
 
     @Test
-    fun `beide Kamera-Screens geben Executor und ML-Kit-Client frei`() {
+    fun `both camera screens release executor and ML Kit client`() {
         for ((rel, close) in listOf(
-            "sammlung/ui/screens/BarcodeScannerScreen.kt" to "barcodeScanner.close()",
-            "anmeldung/ui/screens/SetupScreen.kt" to "scanner.close()",
+            "collection/ui/screens/BarcodeScannerScreen.kt" to "barcodeScanner.close()",
+            "login/ui/screens/SetupScreen.kt" to "scanner.close()",
         )) {
-            val src = code(mitAnalyse(rel))
+            val src = code(withAnalyse(rel))
             assert(src.contains("DisposableEffect(Unit)") && src.contains("onDispose")) {
                 "$rel räumt nicht auf. remember() hat KEINEN Aufräum-Hook: Analyse-Thread " +
                     "und ML-Kit-Client (native Ressourcen) überleben sonst jeden Besuch " +
@@ -44,14 +44,14 @@ class ResourceAndCacheTest {
         }
     }
 
-    // Die Autofokus-Regel stand hier ein drittes Mal. Sie gehoert nicht zum
-    // Thema dieser Datei (Aufraeumen von Ressourcen) und steht jetzt
-    // vollstaendig in CameraFocusConfigTest.
+    // The autofocus rule stood here a third time. It does not belong to the
+    // topic of this file (cleaning up resources) and now stands
+    // completely in CameraFocusConfigTest.
 
     // ── PDF-Cache ────────────────────────────────────────────────────────────
 
     @Test
-    fun `der PDF-Ansichts-Cache hat eine Obergrenze`() {
+    fun `the PDF view cache has an upper limit`() {
         val src = code(read("data/AnleitungsRepository.kt"))
         assert(src.contains("private fun prunePdfCache")) {
             "Kein Aufräumen des PDF-Caches. Angesehene Anleitungen bleiben absichtlich " +
@@ -71,7 +71,7 @@ class ResourceAndCacheTest {
     // ── Debug-Version ────────────────────────────────────────────────────────
 
     @Test
-    fun `Debug-Builds haben eine feste Version`() {
+    fun `debug builds have a fixed version`() {
         val bg = File("build.gradle.kts")
         assert(bg.exists()) { "app/build.gradle.kts nicht gefunden" }
         val src = code(bg.readText())
@@ -87,12 +87,12 @@ class ResourceAndCacheTest {
     }
 
     /**
-     * Derselbe Commit ergibt dieselbe Version; die CI holt dafür die ganze
-     * Historie. Gegenprobe: `fetch-depth: 0` aus
-     * android.yml entfernt → rot; `LocalDateTime.now()` zurück → rot.
+     * The same commit yields the same version; CI fetches the whole
+     * history for that. Counter-check: `fetch-depth: 0` removed from
+     * android.yml → red; `LocalDateTime.now()` back → red.
      */
     @Test
-    fun `die Version kommt aus Git, nicht aus der Uhr`() {
+    fun `the version comes from Git, not from the clock`() {
         val src = code(File("build.gradle.kts").readText())
         assert(src.contains("git(\"rev-list\", \"--count\", \"HEAD\")") && src.contains("\"describe\", \"--tags\"")) {
             "versionCode/-Name kommen nicht aus Git"
@@ -104,11 +104,11 @@ class ResourceAndCacheTest {
         }
     }
 
-    // ── CSV-Status: ein Pfad ─────────────────────────────────────────────────
+    // ── CSV status: one path ─────────────────────────────────────────────────
 
     @Test
-    fun `der CSV-Service teilt sich den SSE-Client mit dem ViewModel`() {
-        val src = code(read("dienste/service/CsvImportService.kt"))
+    fun `the CSV service shares the SSE client with the ViewModel`() {
+        val src = code(read("services/service/CsvImportService.kt"))
         assert(src.contains("sseClient")) {
             "CsvImportService pollt wieder eigenständig, statt den CsvImportSseClient " +
                 "zu benutzen — zwei getrennte Implementierungen desselben Sachverhalts"
@@ -123,8 +123,8 @@ class ResourceAndCacheTest {
     }
 
     @Test
-    fun `eine erste idle-Antwort beendet den Service nicht sofort`() {
-        val src = code(read("dienste/service/CsvImportService.kt"))
+    fun `a first idle response does not end the service immediately`() {
+        val src = code(read("services/service/CsvImportService.kt"))
         assert(src.contains("sawRunning") && src.contains("GRACE_MS")) {
             "Kein Anlaufschutz in applyStatus(). Der Service startet im selben Moment " +
                 "wie der Upload; bis der Import-Job angelegt ist, meldet der Server " +

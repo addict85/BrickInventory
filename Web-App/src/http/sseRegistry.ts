@@ -1,7 +1,7 @@
 import { prozessweit } from '../infra/prozessweit';
-// Damit das Herunterfahren Ströme beendet.
+// So that shutting down ends streams.
 
-/** Was hier von einer offenen Antwort gebraucht wird. */
+/** What is needed here from an open response. */
 interface Strom {
   writableEnded?: boolean;
   write(s: string): unknown;
@@ -9,29 +9,29 @@ interface Strom {
   on?(e: 'close', f: () => void): unknown;
 }
 
-const _offen = prozessweit('offeneStroeme', () => new Set<Strom>());
+const _open = prozessweit('offeneStroeme', () => new Set<Strom>());
 
-/** @returns Funktion zum Abmelden — im Aufräumpfad der Route aufrufen. */
+/** @returns function for unsubscribing — call it in the route's cleanup path. */
 export function registerSse(res: Strom): () => void {
-  _offen.add(res);
-  // Trennt der Client, ohne dass die Route aufräumt, bliebe ein toter Eintrag.
-  res.on?.('close', () => _offen.delete(res));
+  _open.add(res);
+  // If the client disconnects without the route cleaning up, a dead entry would remain.
+  res.on?.('close', () => _open.delete(res));
   return () => {
-    _offen.delete(res);
+    _open.delete(res);
   };
 }
 
-/** VOR `httpServer.close()`: Offene Ströme enden nie von selbst. */
+/** BEFORE `httpServer.close()`: open streams never end by themselves. */
 export function closeAllSse(): number {
-  const anzahl = _offen.size;
-  for (const res of [..._offen]) {
+  const anzahl = _open.size;
+  for (const res of [..._open]) {
     try {
       if (!res.writableEnded) res.write('event: shutdown\ndata: {"reason":"shutdown"}\n\n');
       res.end();
     } catch (_) {
-      /* Antwort war schon tot — nur der Eintrag muss weg */
+      /* Response was already dead — only the entry has to go */
     }
-    _offen.delete(res);
+    _open.delete(res);
   }
   return anzahl;
 }

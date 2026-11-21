@@ -1,20 +1,20 @@
 /**
- * Geldbeträge: exakt statt „fast".
+ * Money amounts: exact instead of „almost".
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
-const { haeltSet } = require('./helpers/bestand');
+const db = testData();
+const { holdsSet } = require('./helpers/inventory');
 
 /**
- * Alle Spalten, die Geld führen.
+ * All columns that carry money.
  */
 const GELDSPALTEN = `
   SELECT table_name || '.' || column_name AS spalte, data_type
@@ -24,7 +24,7 @@ const GELDSPALTEN = `
           OR column_name = 'amount' OR column_name LIKE '%\\_amount')
    ORDER BY 1`;
 
-test('Geldbeträge sind exakt', { concurrency: 1 }, async t => {
+test('money amounts are exact', { concurrency: 1 }, async t => {
   try {
     await db.get('SELECT 1');
   } catch (e) {
@@ -43,7 +43,7 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async t => {
     client.release();
   }
 
-  await t.test('eine Neuinstallation hat keine Geldspalte als REAL', async () => {
+  await t.test('a new installation has no money column as REAL', async () => {
     const spalten = await db.all(GELDSPALTEN);
     assert.ok(spalten.length > 15, `nur ${spalten.length} Geldspalten gefunden — die Prüfung liefe ins Leere`);
     const real = spalten.filter(s => s.data_type === 'real' || s.data_type === 'double precision');
@@ -54,9 +54,9 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async t => {
     );
   });
 
-  await t.test('die Migration holt eine alte Datenbank nach', async () => {
-    // Alte Installation nachstellen: Spalte zurück auf REAL, Migration erneut
-    // laufen lassen (Vermerk in schema_migrations entfernen).
+  await t.test('the migration catches up an old database', async () => {
+    // Recreate an old installation: column back to REAL, run the migration
+    // again (remove the note in schema_migrations).
     for (const [tab, sp] of [
       ['sets', 'purchase_price'],
       ['parts', 'purchase_price'],
@@ -66,7 +66,7 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async t => {
     ]) {
       await db.run(`ALTER TABLE ${tab} ADD COLUMN IF NOT EXISTS ${sp} REAL`);
     }
-    // price_market hat 0062 entfernt; 0007 stellt auch ihre Spalten um.
+    // 0062 removed price_market; 0007 also converts its columns.
     await db.run(`CREATE TABLE IF NOT EXISTS price_market (set_number TEXT, currency_code TEXT,
       condition TEXT, qty_avg_price REAL, min_price REAL, max_price REAL)`);
     await db.run('ALTER TABLE set_acquisitions ALTER COLUMN purchase_price TYPE REAL');
@@ -90,7 +90,7 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async t => {
     );
     assert.equal(nachher.data_type, 'numeric', 'Migration hat die Spalte nicht umgestellt');
 
-    // Und den Endzustand wiederherstellen
+    // And restore the final state
     for (const [tab, sp] of [
       ['sets', 'purchase_price'],
       ['parts', 'purchase_price'],
@@ -101,9 +101,9 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async t => {
       await db.run(`ALTER TABLE ${tab} DROP COLUMN IF EXISTS ${sp}`);
     }
     await db.run('DROP TABLE IF EXISTS price_market');
-    // Der Tagesindex (0070) enthält purchase_price. Der Umweg über REAL
-    // hat ihn mit Typumwandlungen umgeschrieben, und ON CONFLICT fände ihn
-    // danach nicht mehr — also in der Fassung der Migration neu anlegen.
+    // The daily index (0070) contains purchase_price. The detour via REAL
+    // rewrote it with type conversions, and ON CONFLICT would no longer find it
+    // afterwards — so create it anew in the version of the migration.
     const mig = require('node:fs').readFileSync(
       require('node:path').join(__dirname, '..', 'db/migrations/0070-erfassungstag.sql'),
       'utf8',
@@ -111,14 +111,15 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async t => {
     const index = /CREATE UNIQUE INDEX idx_set_acq_erfassungstag[^;]+;/.exec(mig);
     assert.ok(index, 'Tagesindex in 0070 nicht gefunden');
     await db.run('DROP INDEX IF EXISTS idx_set_acq_erfassungstag');
-    await db.run(index[0]);
+    // 0070 still knows the column under its old name (before 0124).
+    await db.run(index[0].replace(/\btag\b/, 'day'));
   });
 
-  await t.test('tausend Beträge summieren sich exakt', async () => {
+  await t.test('a thousand amounts add up exactly', async () => {
     await db.run("INSERT INTO users (username,password_hash) VALUES ('geld','x')");
     const uid = (await db.get("SELECT id FROM users WHERE username='geld'")).id;
-    await haeltSet(db, uid, '99001-1', 0); // Menge 0: die Erfassung dahinter traegt sie
-    // 1000 Zeilen à 0.07 — in REAL ergab das 69.99974 statt 70.00.
+    await holdsSet(db, uid, '99001-1', 0); // quantity 0: the acquisition behind it carries it
+    // 1000 rows at 0.07 — in REAL that resulted in 69.99974 instead of 70.00.
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition,created_at)
        SELECT $1, '99001-1', 1, 0.07, 'N', NOW() - (g || ' days')::interval
@@ -130,37 +131,37 @@ test('Geldbeträge sind exakt', { concurrency: 1 }, async t => {
     assert.equal(Number(summe.s), 70, `Summe ${summe.s} statt exakt 70`);
   });
 
-  await t.test('ein gespeicherter Kaufpreis kommt unverändert zurück', async () => {
+  await t.test('a stored purchase price comes back unchanged', async () => {
     const uid = (await db.get("SELECT id FROM users WHERE username='geld'")).id;
-    await haeltSet(db, uid, '99002-1', 0); // Menge 0: die Erfassung dahinter traegt sie
+    await holdsSet(db, uid, '99002-1', 0); // quantity 0: the acquisition behind it carries it
     await db.run(
       `INSERT INTO set_acquisitions (user_id,set_number,quantity,purchase_price,condition)
                   VALUES ($1,'99002-1',1,49.90,'N')`,
       [uid],
     );
 
-    const { setsLesen } = require('./helpers/sources').handlerModul(_req);
+    const { setsLesen } = require('./helpers/sources').handlerModule(_req);
     const r = await setsLesen([uid], { search: '99002' });
     const satz = r.sets.find(s => s.set_number === '99002-1');
     assert.ok(satz, 'Set nicht gefunden');
 
-    // `purchase_price` stand hier mit in der Liste. Die Set-Antwort fuehrt das
-    // Feld seit Migration 0032 nicht mehr (die Spalte ist weg); den Kaufpreis
-    // liefern die beiden Aggregate aus den Erfassungen. Ohne diese Aenderung
-    // pruefte die Schleife ein fehlendes Feld und meldete `NaN !== 49.9`.
+    // `purchase_price` stood here in the list too. Since migration 0032 the set response
+    // no longer carries the field (the column is gone); the purchase price
+    // is delivered by the two aggregates from the acquisitions. Without this change
+    // the loop checked a missing field and reported `NaN !== 49.9`.
     for (const feld of ['avg_purchase_price', 'max_purchase_price']) {
       const wert = Number(satz[feld]);
       assert.equal(wert, 49.9, `${feld} = ${satz[feld]} — genau dieser Gleitkomma-Schwanz ging bisher an den Client`);
-      // Und der Wert überlebt den Weg durch JSON in derselben Form.
+      // And the value survives the way through JSON in the same form.
       assert.equal(JSON.parse(JSON.stringify({ v: wert })).v, 49.9);
     }
   });
 
-  await t.test('die Werte kommen als Zahl an, nicht als Zeichenkette', async () => {
-    // Der pg-Treiber liefert NUMERIC von Haus aus als Zeichenkette. Ohne den
-    // Typ-Parser in db/database.ts würde aus `preis * menge` an hunderten
-    // Stellen eine Zeichenketten-Rechnung, und ein Preis von 0 wäre als
-    // "0.0000" in jeder if-Abfrage wahr.
+  await t.test('the values arrive as a number, not as a string', async () => {
+    // The pg driver delivers NUMERIC as a string out of the box. Without the
+    // type parser in db/database.ts `preis * menge` would become a string calculation
+    // in hundreds of places, and a price of 0 would be true as
+    // "0.0000" in every if query.
     const uid = (await db.get("SELECT id FROM users WHERE username='geld'")).id;
     const zeile = await db.get(
       `SELECT purchase_price FROM set_acquisitions WHERE user_id=$1 AND set_number='99002-1'`,

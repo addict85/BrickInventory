@@ -1,0 +1,128 @@
+package ch.brickinventoryapp.state
+
+import ch.brickinventoryapp.model.ui.Meldung
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import ch.brickinventoryapp.resources.R
+import ch.brickinventoryapp.data.MeldungsKanal
+import ch.brickinventoryapp.data.local.Abgleichsereignis
+import ch.brickinventoryapp.data.local.Baseline
+import ch.brickinventoryapp.data.local.Baseline.DiscardedChange
+import ch.brickinventoryapp.model.local.StockKind
+import ch.brickinventoryapp.state.ui.Ausgangsmelder
+import ch.brickinventoryapp.testing.testBestandsabgleich
+import ch.brickinventoryapp.testing.FakeApi
+import ch.brickinventoryapp.testing.Testablage
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+/**
+ * The outbox is visible: count and hint as soon as something has been stored
+ * offline; the affected lists' server state into the store once something
+ * was sent; a message with a reason if the server rejected it.
+ *
+ * Counter-checks:
+ *   A  in Ausgangsmelder.starte the hint on a rising count removed → red
+ *      „offline Gespeichertes wird gemeldet“
+ *   B  for MANUELLE_TEILE `null` instead of Liste.TEILE → red „gesendet holt die
+ *      betroffenen Listen in die Ablage“
+ *   C  `e.meldung` instead of `e.meldung.ifBlank { … }` → red „ohne Grund vom Server
+ *      steht ein eigener Satz da“
+ *   D  `situation.planeLeftover()` left out at startup → red „was vom letzten
+ *      Mal wartet, wird beim Start eingeplant“
+ *   E  in InitialObserver.starte the check `gestartet` removed → red „ein zweiter
+ *      Start folgt dem Ausgang nicht doppelt“ (2 instead of 1)
+ *   F  in reportDiscarded the check `v.unlesbar` removed → red „ein nach dem Update
+ *      unlesbarer Posten wird als solcher gemeldet“ (only measurable in CI)
+ *   (B, D and E measured locally with kotlinc)
+ *   gegenproben/verworfen-sofort-quittiert.patch (reportDiscarded acknowledges right after
+ *      zeige) → red „ein Verworfenes bleibt, bis sein Hinweis weggeräumt ist“
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+class AusgangsmelderTest {
+
+    /** The outbox as seen from outside, without a store: the test sets count, events and discarded items. */
+    private class Lage : Baseline {
+        val zahl = MutableStateFlow(0)
+        val gemeldet = MutableSharedFlow<Abgleichsereignis>(extraBufferCapacity = 4)
+        val verworfen = MutableStateFlow<List<DiscardedChange>>(emptyList())
+        var geplant = 0
+        override fun offene() = zahl
+        override val events = gemeldet
+        override fun discarded() = verworfen
+        override suspend fun acknowledge(v: DiscardedChange) { verworfen.value = verworfen.value - v }
+        override suspend fun planeLeftover() { geplant++ }
+    }
+
+    @Test
+    fun `things saved offline are reported, sent reloads, rejected says why`() = runTest {
+        val situation = Lage()
+        val fake = FakeApi()
+        val kanal = MeldungsKanal()
+        val melder = Ausgangsmelder(situation, testBestandsabgleich(fake.api, Testablage()), kanal)
+        melder.starte(backgroundScope)
+        runCurrent()
+        assertEquals("was vom letzten Mal wartet, wird beim Start eingeplant", 1, situation.geplant)
+
+        situation.zahl.value = 1
+        runCurrent()
+        assertEquals(1, melder.offene.value)
+        assertEquals("offline Gespeichertes wird gemeldet", Meldung.Menge(R.plurals.offline_ausgang, 1), kanal.meldung.value)
+
+        situation.gemeldet.emit(Abgleichsereignis.Sent(setOf(StockKind.SETS, StockKind.MANUELLE_TEILE)))
+        runCurrent()
+        assertEquals("gesendet holt die betroffenen Listen in die Ablage", listOf(1, 1, 0, 0),
+            listOf("getSets", "getParts", "getMinifigs", "getMerkliste").map { fake.callsOf(it) })
+
+        kanal.acknowledge()
+        situation.verworfen.value = listOf(DiscardedChange("k1", "10001-1", "", 404))
+        runCurrent()
+        assertEquals("ohne Grund vom Server steht ein eigener Satz da",
+            Meldung.Resource(R.string.offline_verworfen, listOf("10001-1", Meldung.Resource(R.string.offline_verworfen_ohne_grund))),
+            kanal.meldung.value)
+    }
+
+    @Test
+    fun `a discarded item stays until its hint is cleared, then the next one comes`() = runTest {
+        val situation = Lage()
+        val kanal = MeldungsKanal()
+        val erstes = DiscardedChange("k1", "10001-1", "gibt es nicht", 404)
+        val zweites = DiscardedChange("k2", "10002-1", "gibt es auch nicht", 404)
+        situation.verworfen.value = listOf(erstes, zweites)
+        Ausgangsmelder(situation, testBestandsabgleich(FakeApi().api, Testablage()), kanal).starte(backgroundScope)
+        runCurrent()
+        assertEquals(Meldung.Resource(R.string.offline_verworfen, listOf("10001-1", "gibt es nicht")), kanal.meldung.value)
+        assertEquals("noch nicht gesehen: bleibt in der Ablage", listOf(erstes, zweites), situation.verworfen.value)
+        kanal.acknowledge()
+        runCurrent()
+        assertEquals(Meldung.Resource(R.string.offline_verworfen, listOf("10002-1", "gibt es auch nicht")), kanal.meldung.value)
+        assertEquals(listOf(zweites), situation.verworfen.value)
+    }
+
+    @Test
+    fun `an item unreadable after the update is reported as such`() = runTest {
+        val situation = Lage()
+        val kanal = MeldungsKanal()
+        situation.verworfen.value = listOf(DiscardedChange("k1", "10001-1", "", null, unlesbar = true))
+        Ausgangsmelder(situation, testBestandsabgleich(FakeApi().api, Testablage()), kanal).starte(backgroundScope)
+        runCurrent()
+        assertEquals("an item unreadable after the update is reported as such",
+            Meldung.Resource(R.string.offline_verworfen, listOf("10001-1", Meldung.Resource(R.string.offline_verworfen_unlesbar))),
+            kanal.meldung.value)
+    }
+
+    @Test
+    fun `a second start does not follow the outbox twice`() = runTest {
+        val situation = Lage()
+        val kanal = MeldungsKanal()
+        val melder = Ausgangsmelder(situation, testBestandsabgleich(FakeApi().api, Testablage()), kanal)
+        melder.starte(backgroundScope)
+        melder.starte(backgroundScope)
+        runCurrent()
+        assertEquals("a second start does not follow the outbox twice", 1, situation.geplant)
+        assertEquals(1, situation.zahl.subscriptionCount.value)
+    }
+}

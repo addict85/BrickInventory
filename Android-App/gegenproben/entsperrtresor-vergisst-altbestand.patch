@@ -1,18 +1,18 @@
 Gegenprobe: Ein Token älterer Fassung (ohne Präfix) wird über den Entsperr-Schlüssel geöffnet und ist weg
-Modul: core-sicherheit
-Test: ch.brickinventoryapp.sicherheit.TresorSperreTest
-Rot: ein Geheimtext ohne Praefix bleibt
+Modul: core-security
+Test: ch.brickinventoryapp.security.VaultLockTest
+Rot: a ciphertext without prefix stays readable via the old key
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Tresorbefund.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Tresorbefund.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Tresorbefund.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Tresorbefund.kt
 @@ -49,8 +49,7 @@
-     override fun entschluessle(gespeichert: String): String? = (oeffne(gespeichert) as? Tresorbefund.Lesbar)?.klartext
+     override fun entschluessle(gespeichert: String): String? = (oeffne(gespeichert) as? Tresorbefund.Readable)?.klartext
  
      override fun oeffne(gespeichert: String): Tresorbefund =
--        if (gespeichert.startsWith(ENTSPERRT_PRAEFIX)) nurEntsperrt.oeffne(gespeichert.removePrefix(ENTSPERRT_PRAEFIX))
+-        if (gespeichert.startsWith(UNLOCKED_PREFIX)) onlyUnlocked.oeffne(gespeichert.removePrefix(UNLOCKED_PREFIX))
 -        else altbestand.oeffne(gespeichert)
-+        nurEntsperrt.oeffne(gespeichert.removePrefix(ENTSPERRT_PRAEFIX))
++        onlyUnlocked.oeffne(gespeichert.removePrefix(UNLOCKED_PREFIX))
  
      override fun veraltet(gespeichert: String): Boolean =
-         !gespeichert.startsWith(ENTSPERRT_PRAEFIX) || nurEntsperrt.veraltet(gespeichert.removePrefix(ENTSPERRT_PRAEFIX))
+         !gespeichert.startsWith(UNLOCKED_PREFIX) || onlyUnlocked.veraltet(gespeichert.removePrefix(UNLOCKED_PREFIX))

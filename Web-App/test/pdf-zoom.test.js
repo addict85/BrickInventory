@@ -1,38 +1,38 @@
 /**
- * Der PDF-Betrachter kann zoomen — und verliert dabei weder die Stelle noch
- * die linke Seitenhaelfte.
+ * The PDF viewer can zoom — and loses neither the position nor
+ * the left half of the page while doing so.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { JSDOM } = require('jsdom');
-const { warte } = require('./helpers/zeit');
+const { warte } = require('./helpers/time');
 
 const QUELLE = path.join(__dirname, '..', 'public', 'js', 'pdfviewer.js');
 
-const BEHAELTER_W = 600;
-const BEHAELTER_H = 400;
-const SEITE_W = 595,
-  SEITE_H = 842; // A4 bei scale 1, so liefert es PDF.js
+const CONTAINER_W = 600;
+const CONTAINER_H = 400;
+const PAGE_W = 595,
+  PAGE_H = 842; // A4 at scale 1, that is how PDF.js delivers it
 const SEITEN = 20;
 
-/** import/export entfernen — die Datei wird hier als klassisches Skript ausgewertet. */
-function ohneModulhuelle(src) {
+/** Remove import/export — the file is evaluated here as a classic script. */
+function withoutModuleShell(src) {
   return src.replace(/^import[^;]*;\s*$/gm, '').replace(/^export\s+/gm, '');
 }
 
 /**
- * Eine Werkbank mit dem echten Betrachter darin.
+ * A workbench with the real viewer in it.
  *
- * @param {(code: string) => string} [umbau] Gegenprobe: baut den Quelltext um,
- *        bevor er ausgewertet wird. Muss etwas aendern, sonst schlaegt es fehl.
+ * @param {(code: string) => string} [rebuild] counter-check: rebuilds the source text
+ *        before it is evaluated. Must change something, otherwise it fails.
  */
-async function werkbank(umbau) {
-  let code = ohneModulhuelle(fs.readFileSync(QUELLE, 'utf8'));
-  if (umbau) {
+async function werkbank(rebuild) {
+  let code = withoutModuleShell(fs.readFileSync(QUELLE, 'utf8'));
+  if (rebuild) {
     const vorher = code;
-    code = umbau(code);
+    code = rebuild(code);
     assert.notEqual(
       code,
       vorher,
@@ -56,20 +56,20 @@ async function werkbank(umbau) {
   );
   const w = dom.window;
 
-  // Masse und Rollstaende von Hand — jsdom rechnet kein Layout.
-  const behaelter = w.document.getElementById('pdf-viewer-pages');
+  // Dimensions and scroll positions by hand — jsdom computes no layout.
+  const container = w.document.getElementById('pdf-viewer-pages');
   let rollX = 0,
     rollY = 0;
-  Object.defineProperty(behaelter, 'clientWidth', { get: () => BEHAELTER_W, configurable: true });
-  Object.defineProperty(behaelter, 'clientHeight', { get: () => BEHAELTER_H, configurable: true });
-  Object.defineProperty(behaelter, 'scrollLeft', {
+  Object.defineProperty(container, 'clientWidth', { get: () => CONTAINER_W, configurable: true });
+  Object.defineProperty(container, 'clientHeight', { get: () => CONTAINER_H, configurable: true });
+  Object.defineProperty(container, 'scrollLeft', {
     get: () => rollX,
     set: v => {
       rollX = Math.max(0, v);
     },
     configurable: true,
   });
-  Object.defineProperty(behaelter, 'scrollTop', {
+  Object.defineProperty(container, 'scrollTop', {
     get: () => rollY,
     set: v => {
       rollY = Math.max(0, v);
@@ -78,10 +78,10 @@ async function werkbank(umbau) {
   });
 
   /**
-   * Gestellter IntersectionObserver — jsdom hat keinen.
+   * Staged IntersectionObserver — jsdom has none.
    */
   const beobachtet = [];
-  let sichtbareSeiten = new Set([1, 2]);
+  let visiblePages = new Set([1, 2]);
   w.IntersectionObserver = class {
     constructor(cb) {
       this.cb = cb;
@@ -91,12 +91,12 @@ async function werkbank(umbau) {
       const n = parseInt(el.dataset.page, 10);
       this.ziele.add(el);
       beobachtet.push(n);
-      // disconnect() hebt die Anmeldung auf, ein spaeteres observe() gilt wieder
-      // — deshalb wird hier das ZIEL geprueft und nicht ein Schalter am
-      // Observer. Mit einem Schalter blieb er nach dem ersten Zoom fuer immer
-      // stumm, und drei Faelle wurden rot, ohne dass am Betrachter etwas fehlte.
+      // disconnect() cancels the registration, a later observe() applies again
+      // — hence the TARGET is checked here and not a switch on the
+      // observer. With a switch it stayed silent forever after the first zoom,
+      // and three cases turned red without anything missing in the viewer.
       setTimeout(() => {
-        if (this.ziele.has(el)) this.cb([{ target: el, isIntersecting: sichtbareSeiten.has(n) }]);
+        if (this.ziele.has(el)) this.cb([{ target: el, isIntersecting: visiblePages.has(n) }]);
       }, 0);
     }
     disconnect() {
@@ -104,12 +104,12 @@ async function werkbank(umbau) {
     }
   };
 
-  // Gestelltes PDF.js. `anhalten` laesst Renderauftraege haengen, bis sie
-  // ausdruecklich freigegeben werden — so laesst sich der Fall bauen, in dem
-  // waehrend eines laufenden Renders gezoomt wird.
-  const offeneRender = [];
+  // Staged PDF.js. `anhalten` lets render jobs hang until they are
+  // explicitly released — this way the case can be built in which
+  // zooming happens during a running render.
+  const openRender = [];
   const optionen = [];
-  const hintergruende = [];
+  const backgrounds = [];
   let anhalten = false;
   w.pdfjsLib = {
     getDocument(o) {
@@ -120,16 +120,16 @@ async function werkbank(umbau) {
           getPage() {
             return Promise.resolve({
               getViewport({ scale }) {
-                return { width: SEITE_W * scale, height: SEITE_H * scale };
+                return { width: PAGE_W * scale, height: PAGE_H * scale };
               },
               render({ viewport, background }) {
-                hintergruende.push(background);
+                backgrounds.push(background);
                 if (!anhalten) return { promise: Promise.resolve(), cancel() {} };
                 let frei;
                 const p = new Promise(r => {
                   frei = r;
                 });
-                offeneRender.push({ frei, breite: Math.round(viewport.width) });
+                openRender.push({ frei, breite: Math.round(viewport.width) });
                 return {
                   promise: p,
                   cancel() {
@@ -148,7 +148,7 @@ async function werkbank(umbau) {
   const aktionen = {};
   w.registerActions = o => Object.assign(aktionen, o);
   w.G = id => w.document.getElementById(id);
-  Object.assign(w, require('./helpers/markup').markupHelfer());
+  Object.assign(w, require('./helpers/markup').markupHelper());
   w.t = k => k;
   w.tRaw = k => k;
   w.eval(code);
@@ -158,40 +158,40 @@ async function werkbank(umbau) {
 
   return {
     w,
-    behaelter,
+    container,
     aktionen,
     warte,
     beobachtet,
-    offeneRender,
+    openRender,
     optionen,
-    hintergruende,
+    backgrounds,
     set anhalten(v) {
       anhalten = v;
     },
     set sichtbar(v) {
-      sichtbareSeiten = new Set(v);
+      visiblePages = new Set(v);
     },
     faktor: () => parseFloat(w.document.getElementById('pdf-viewer-zoom').textContent) / 100,
-    platzhalter: () => [...behaelter.querySelectorAll('.pdf-page-ph')],
-    /** Wo im Dokument liegt die Mitte des Sichtfelds — in Einheiten von Zoom 1? */
-    stelle() {
+    platzhalter: () => [...container.querySelectorAll('.pdf-page-ph')],
+    /** Where in the document lies the middle of the viewport — in units of zoom 1? */
+    place() {
       const f = parseFloat(w.document.getElementById('pdf-viewer-zoom').textContent) / 100;
-      return (behaelter.scrollTop + BEHAELTER_H / 2) / f;
+      return (container.scrollTop + CONTAINER_H / 2) / f;
     },
   };
 }
 
-// Gegenprobe (02.11.2026 gemessen): isEvalSupported in pdfviewer.js
-// gestrichen → rot.
-test('PDF.js lädt ohne eval und ohne Skripte im PDF', async () => {
+// Counter-check (measured 02.11.2026): isEvalSupported deleted in pdfviewer.js
+// → red.
+test('PDF.js loads without eval and without scripts in the PDF', async () => {
   const b = await werkbank();
   assert.equal(b.optionen.length, 1);
   assert.equal(b.optionen[0].isEvalSupported, false);
   assert.equal(b.optionen[0].enableScripting, false);
 });
 
-test('Zoom im PDF-Betrachter', async t => {
-  await t.test('Grundzustand ist 100 % und der Minus-Knopf ist abgeschaltet', async () => {
+test('zoom in the PDF viewer', async t => {
+  await t.test('the initial state is 100 % and the minus button is disabled', async () => {
     const b = await werkbank();
     assert.equal(b.faktor(), 1);
     assert.equal(
@@ -202,14 +202,14 @@ test('Zoom im PDF-Betrachter', async t => {
     assert.equal(b.platzhalter().length, SEITEN);
   });
 
-  await t.test('Platzhalter traegt die auto-Raender', async () => {
+  await t.test('placeholder carries the auto margins', async () => {
     const b = await werkbank();
     const stil = b.platzhalter()[0].style;
     assert.equal(stil.marginLeft, 'auto');
     assert.equal(stil.marginRight, 'auto');
   });
 
-  await t.test('Hineinzoomen vergroessert die Seite und meldet den Faktor', async () => {
+  await t.test('zooming in enlarges the page and reports the factor', async () => {
     const b = await werkbank();
     const vorher = parseFloat(b.platzhalter()[0].style.width);
     b.aktionen.pdfZoomIn();
@@ -222,7 +222,7 @@ test('Zoom im PDF-Betrachter', async t => {
     );
   });
 
-  await t.test('Die Anschlaege halten', async () => {
+  await t.test('the stops hold', async () => {
     const b = await werkbank();
     for (let i = 0; i < 25; i++) b.aktionen.pdfZoomIn();
     await b.warte(40);
@@ -234,13 +234,13 @@ test('Zoom im PDF-Betrachter', async t => {
     assert.equal(b.w.document.getElementById('pdf-viewer-zoom-out').disabled, true);
   });
 
-  await t.test('Der Anker haelt: dieselbe Stelle bleibt in der Mitte', async () => {
+  await t.test('the anchor holds: the same spot stays in the middle', async () => {
     const b = await werkbank();
-    b.behaelter.scrollTop = 7000;
-    const vorher = b.stelle();
+    b.container.scrollTop = 7000;
+    const vorher = b.place();
     b.aktionen.pdfZoomIn();
     await b.warte(40);
-    const nachher = b.stelle();
+    const nachher = b.place();
     assert.ok(
       Math.abs(nachher - vorher) < 1,
       `Die Stelle ist von ${vorher.toFixed(1)} auf ${nachher.toFixed(1)} gewandert ` +
@@ -249,18 +249,18 @@ test('Zoom im PDF-Betrachter', async t => {
     );
   });
 
-  await t.test('Gegenprobe: ohne Ankerrechnung springt es', async () => {
-    // Die Wiederherstellung herausnehmen — die Rollstaende bleiben, wo sie waren.
+  await t.test('counter-check: without the anchor calculation it jumps', async () => {
+    // Take the restoration out — the scroll positions stay where they were.
     const b = await werkbank(code =>
       code
         .replace('container.scrollLeft = dokX * ziel - ax;', '')
         .replace('container.scrollTop = dokY * ziel - ay;', ''),
     );
-    b.behaelter.scrollTop = 7000;
-    const vorher = b.stelle();
+    b.container.scrollTop = 7000;
+    const vorher = b.place();
     b.aktionen.pdfZoomIn();
     await b.warte(40);
-    const nachher = b.stelle();
+    const nachher = b.place();
     assert.ok(
       Math.abs(nachher - vorher) > 100,
       `Ohne Ankerrechnung muesste die Stelle deutlich wandern, sie ging aber nur ` +
@@ -269,7 +269,7 @@ test('Zoom im PDF-Betrachter', async t => {
     );
   });
 
-  await t.test('Nach dem Zoomen werden die sichtbaren Seiten neu gerendert', async () => {
+  await t.test('after zooming the visible pages are re-rendered', async () => {
     const b = await werkbank();
     const vorher = b.beobachtet.length;
     b.aktionen.pdfZoomIn();
@@ -288,32 +288,32 @@ test('Zoom im PDF-Betrachter', async t => {
   });
 
   /**
-   * Ein Render laeuft asynchron. Wird waehrenddessen gezoomt, ist der
-   * Platzhalter beim Fertigwerden eine andere Groesse — die alte Leinwand
-   * haette dort nichts mehr zu suchen.
+   * A render runs asynchronously. If zooming happens meanwhile, the
+   * placeholder has a different size when it finishes — the old canvas
+   * would have no business being there any more.
    *
-   * @param {boolean} mitWaechter false = Gegenprobe, der Generationszaehler
-   *        wird herausgenommen.
-   * @returns {Promise<{ haengen: number[], alteBreiten: number[], soll: number }>} Breiten der Leinwaende, die am Ende haengen.
+   * @param {boolean} withGuard false = counter-check, the generation counter
+   *        is taken out.
+   * @returns {Promise<{ haengen: number[], oldWidths: number[], soll: number }>} widths of the canvases that hang at the end.
    */
-  async function veralteterRender(mitWaechter) {
+  async function staleRender(withGuard) {
     const b = await werkbank(
-      mitWaechter ? undefined : code => code.replace('if (gen !== _pdfZoomGen) {', 'if (false) {'),
+      withGuard ? undefined : code => code.replace('if (gen !== _pdfZoomGen) {', 'if (false) {'),
     );
     b.anhalten = true;
-    b.aktionen.pdfZoomIn(); // Stufe 1: Auftraege bleiben haengen
+    b.aktionen.pdfZoomIn(); // stage 1: jobs stay hanging
     await b.warte(40);
-    assert.ok(b.offeneRender.length > 0, 'Die Werkbank haelt keinen Auftrag an — der Fall misst nichts.');
-    const alte = b.offeneRender.splice(0);
-    const alteBreiten = alte.map(r => r.breite);
+    assert.ok(b.openRender.length > 0, 'Die Werkbank haelt keinen Auftrag an — der Fall misst nichts.');
+    const alte = b.openRender.splice(0);
+    const oldWidths = alte.map(r => r.breite);
 
-    b.aktionen.pdfZoomIn(); // Stufe 2: waehrend Stufe 1 noch laeuft
+    b.aktionen.pdfZoomIn(); // stage 2: while stage 1 is still running
     await b.warte(40);
-    // Erst die NEUEN fertig werden lassen, dann die alten. Genau diese
-    // Reihenfolge ist der Schadensfall: Der alte Durchlauf hat weniger zu
-    // rendern und kommt bei starkem Zoom regelmaessig zuletzt. Andersherum
-    // raeumt der neue hinter ihm auf, und der Fehler bliebe unsichtbar.
-    for (const r of b.offeneRender) r.frei();
+    // First let the NEW ones finish, then the old ones. Exactly this
+    // order is the damage case: the old pass has less to
+    // render and regularly comes last at strong zoom. The other way round
+    // the new one cleans up behind it, and the error would stay invisible.
+    for (const r of b.openRender) r.frei();
     await b.warte(30);
     for (const r of alte) r.frei();
     await b.warte(40);
@@ -325,38 +325,38 @@ test('Zoom im PDF-Betrachter', async t => {
         return c ? c.width : 0;
       })
       .filter(Boolean);
-    return { haengen, alteBreiten, soll: Math.round(parseFloat(b.platzhalter()[0].style.width)) };
+    return { haengen, oldWidths, soll: Math.round(parseFloat(b.platzhalter()[0].style.width)) };
   }
 
-  await t.test('Ein Render, der ueber einen Zoom hinweglaeuft, wird verworfen', async () => {
-    const r = await veralteterRender(true);
+  await t.test('a render that runs across a zoom is discarded', async () => {
+    const r = await staleRender(true);
     const veraltet = r.haengen.filter(w => w !== r.soll);
     assert.deepEqual(
       veraltet,
       [],
-      `Leinwaende mit der alten Aufloesung (${r.alteBreiten.join(', ')}px) haengen in ` +
+      `Leinwaende mit der alten Aufloesung (${r.oldWidths.join(', ')}px) haengen in ` +
         `Platzhaltern, die inzwischen ${r.soll}px breit sind. Sie werden gestreckt ` +
         `— und der neue Durchlauf kehrt oben um, weil schon eine Leinwand da ist. ` +
         `Die Seite bliebe grob. Dagegen steht der Generationszaehler in _renderPdfPage.`,
     );
   });
 
-  await t.test('Gegenprobe: ohne Generationszaehler haengt die alte Leinwand drin', async () => {
-    const r = await veralteterRender(false);
+  await t.test('counter-check: without the generation counter the old canvas hangs in', async () => {
+    const r = await staleRender(false);
     const veraltet = r.haengen.filter(w => w !== r.soll);
     assert.ok(
       veraltet.length > 0,
       `Ohne den Zaehler muesste mindestens eine veraltete Leinwand (eine von ` +
-        `${r.alteBreiten.join(', ')}px) in einem ${r.soll}px breiten Platzhalter ` +
+        `${r.oldWidths.join(', ')}px) in einem ${r.soll}px breiten Platzhalter ` +
         `landen; haengen geblieben sind ${r.haengen.join(', ') || 'gar keine'}. ` +
         `Dann prueft der Fall darueber nichts.`,
     );
   });
 
-  await t.test('Strg + Rad zoomt, Rad allein nicht', async () => {
+  await t.test('Ctrl + wheel zooms, the wheel alone does not', async () => {
     const b = await werkbank();
     const rad = strg =>
-      b.behaelter.dispatchEvent(
+      b.container.dispatchEvent(
         new b.w.WheelEvent('wheel', {
           deltaY: -120,
           ctrlKey: strg,
@@ -374,14 +374,14 @@ test('Zoom im PDF-Betrachter', async t => {
     assert.equal(b.faktor(), 1.25);
   });
 
-  await t.test('Die Zuhoerer haengen nur einmal, auch nach mehrfachem Oeffnen', async () => {
+  await t.test('the listeners only hang once, even after opening several times', async () => {
     const b = await werkbank();
     for (let i = 0; i < 5; i++) {
       b.aktionen.closePdfViewer();
       await b.w.window.openPdfViewer('/data/instructions/BI-3004.pdf', 'Test');
       await b.warte(40);
     }
-    b.behaelter.dispatchEvent(
+    b.container.dispatchEvent(
       new b.w.WheelEvent('wheel', {
         deltaY: -120,
         ctrlKey: true,
@@ -401,18 +401,18 @@ test('Zoom im PDF-Betrachter', async t => {
   });
 });
 
-// Gegenprobe (08.11.2026 gemessen): in pdfviewer.js den Platzhalter wieder `background:#fff` gegeben
-// → rot „Platzhalter ist gedämpft“; `background: '#fff'` aus render() gestrichen → rot „Seite bleibt weiss“.
-test('Platzhalter ist gedämpft, die gerenderte Seite bleibt weiss', async () => {
+// Counter-check (measured 08.11.2026): in pdfviewer.js given the placeholder `background:#fff` again
+// → red „Platzhalter ist gedämpft“; `background: '#fff'` deleted from render() → red „Seite bleibt weiss“.
+test('placeholder is dimmed, the rendered page stays white', async () => {
   const b = await werkbank();
   const grund = b.platzhalter()[0].style.background;
   assert.ok(
     grund && !/^(#fff|#ffffff|white|rgb\(255, ?255, ?255\))$/i.test(grund),
     `Platzhalter ist gedämpft (${grund})`,
   );
-  assert.ok(b.hintergruende.length > 0, 'es wurde gerendert');
+  assert.ok(b.backgrounds.length > 0, 'es wurde gerendert');
   assert.ok(
-    b.hintergruende.every(h => h === '#fff'),
+    b.backgrounds.every(h => h === '#fff'),
     'Seite bleibt weiss',
   );
 });

@@ -1,8 +1,8 @@
 /**
- * Ein async-Handler, der wirft, wird zu einer 500 — ohne eigenen Wrapper.
+ * An async handler that throws becomes a 500 — without its own wrapper.
  *
- * Gegenprobe (am 27.10. gemessen): ein Handler, der nie antwortet, statt des
- * werfenden → rot mit „hängt" — die Sonde erkennt einen Hänger also.
+ * Counter-check (measured on 27.10.): a handler that never answers instead of the
+ * throwing one → red with “hangs" — so the probe recognizes a hang.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -48,10 +48,10 @@ function app() {
   return a;
 }
 
-test('ein werfender async-Handler wird zur 500', async () => {
+test('a throwing async handler becomes a 500', async () => {
   assert.equal(await probe(app(), '/api/boom'), 500);
 });
 
-test('eine werfende async-Middleware ebenso', async () => {
+test('a throwing async middleware likewise', async () => {
   assert.equal(await probe(app(), '/mw/x'), 500);
 });

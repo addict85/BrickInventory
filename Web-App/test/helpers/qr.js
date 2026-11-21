@@ -1,16 +1,16 @@
 /**
- * Der ganze QR-Weg wie App und Browser ihn gehen: Die App meldet sich mit dem
- * Code, der Browser bestätigt mit dem Code, den die App zeigt, die App holt
- * ihren Token ab. Liefert die erste Antwort, die nicht 200 ist, sonst die Abholung.
+ * The whole QR path as app and browser walk it: the app reports with the
+ * code, the browser confirms with the code the app shows, the app collects
+ * its token. Returns the first response that is not 200, otherwise the collection.
  *
  * @typedef {{ status: number, body: any } & Record<string, any>} Antwort
  * @param {(pfad: string, body: object, kopf: Record<string, string>) => Promise<Antwort>} post
- *        POST unter /api/v1/auth
- * @param {{ token: string, kopplung: number }} qr  die Antwort von /qr-token
- * @param {Record<string, string>} [sitzung]  Köpfe der Browser-Sitzung (etwa das Cookie)
+ *        POST under /api/v1/auth
+ * @param {{ token: string, kopplung: number }} qr  the response of /qr-token
+ * @param {Record<string, string>} [sitzung]  headers of the browser session (say the cookie)
  * @returns {Promise<Antwort>}
  */
-async function qrKoppeln(post, qr, sitzung = {}) {
+async function pairQr(post, qr, sitzung = {}) {
   const meldung = await post('/qr-login', { token: qr.token }, {});
   if (meldung.status !== 200) return meldung;
   const ja = await post(`/qr-kopplung/${qr.kopplung}/bestaetigen`, { code: meldung.body.code }, sitzung);
@@ -18,4 +18,4 @@ async function qrKoppeln(post, qr, sitzung = {}) {
   return post('/qr-login/abholen', { abholung: meldung.body.abholung }, {});
 }
 
-module.exports = { qrKoppeln };
+module.exports = { pairQr };

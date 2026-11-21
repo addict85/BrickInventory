@@ -1,7 +1,7 @@
 Gegenprobe: ein neuer Baustein landet wieder in core-ui/ui/screens
 Modul: app
 Test: ch.brickinventoryapp.app.ModulgrenzenTest
-Rot: Schichtung der Kernmodule
+Rot: layering of the core modules
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Kaufzeile.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/Kaufzeile.kt
 new file mode 100644

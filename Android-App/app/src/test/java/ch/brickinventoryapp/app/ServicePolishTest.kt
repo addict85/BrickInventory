@@ -5,30 +5,30 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Absicherung der Aufräumrunde: lokalisierte Service-Benachrichtigungen,
- * Status-Icon und die Teileliste ohne FileProvider. Dass der PDF-Download über den
- * api-Client geht, prüft AnleitungsDownloadTest ausgeführt.
+ * Safeguarding of the cleanup round: localized service notifications,
+ * status icon and the parts list without FileProvider. That the PDF download goes via the
+ * api client is checked by AnleitungsDownloadTest, executed.
  *
- * Alle Prüfungen lesen nur Quell- und Ressourcendateien.
+ * All checks only read source and resource files.
  *
- * Gegenprobe: im Manifest den FileProvider neben den
- * TeilelistenProvider gestellt → rot „die Teileliste geht nur ueber den eigenen
- * Provider“ (gegenproben/fileprovider-extern.patch).
+ * Counter-check: in the manifest the FileProvider put next to the
+ * TeilelistenProvider → red “the parts list goes out only via the own
+ * provider” (gegenproben/fileprovider-extern.patch).
  */
 class ServicePolishTest {
 
     private fun read(rel: String): String {
-        // Quellen und Ressourcen über alle Module; das Manifest liegt in app/.
+        // Sources and resources across all modules; the manifest lies in app/.
         val f = when {
-            rel.startsWith("java/ch/brickinventoryapp/") -> File(Quellen.wurzel, rel.removePrefix("java/ch/brickinventoryapp/"))
+            rel.startsWith("java/ch/brickinventoryapp/") -> File(Quellen.root, rel.removePrefix("java/ch/brickinventoryapp/"))
             rel.startsWith("res/") -> File(Quellen.res, rel.removePrefix("res/"))
-            else -> File(Quellen.projekt, "app/src/main/$rel")
+            else -> File(Quellen.project, "app/src/main/$rel")
         }
         assert(f.exists()) { "Datei nicht gefunden: $rel" }
         return f.readText()
     }
 
-    /** Kommentare (Kotlin und XML) ausblenden — Erklärtexte nennen die Muster selbst. */
+    /** Hide comments (Kotlin and XML) — explanatory texts name the patterns themselves. */
     private fun code(src: String): String {
         var s = src.replace(Regex("""/\*.*?\*/""", RegexOption.DOT_MATCHES_ALL), "")
         s = s.replace(Regex("""<!--.*?-->""", RegexOption.DOT_MATCHES_ALL), "")
@@ -38,11 +38,11 @@ class ServicePolishTest {
     // ── Lokalisierte Foreground-Services ─────────────────────────────────────
 
     @Test
-    fun `Service-Benachrichtigungen kommen aus Ressourcen, nicht hartkodiert`() {
+    fun `service notifications come from resources, not hard-coded`() {
         for (rel in listOf(
-            "java/ch/brickinventoryapp/dienste/service/CsvImportService.kt",
-            "java/ch/brickinventoryapp/dienste/service/PdfExportService.kt",
-            "java/ch/brickinventoryapp/dienste/service/PdfExportManager.kt",
+            "java/ch/brickinventoryapp/services/service/CsvImportService.kt",
+            "java/ch/brickinventoryapp/services/service/PdfExportService.kt",
+            "java/ch/brickinventoryapp/services/service/PdfExportManager.kt",
         )) {
             val src = code(read(rel))
             val hard = Regex(
@@ -59,14 +59,14 @@ class ServicePolishTest {
     }
 
     @Test
-    fun `Services benutzen den lokalisierten Context`() {
-        // setApplicationLocales() lokalisiert nur Activities. Ein Service, der
-        // getString() auf seinem eigenen Context aufruft, bekommt unterhalb
-        // von Android 13 die SYSTEM-Sprache — der Wrapper aus LanguageManager
-        // ist deshalb Pflicht, sonst ist die Lokalisierung nur scheinbar da.
+    fun `services use the localized context`() {
+        // setApplicationLocales() only localizes activities. A service that
+        // calls getString() on its own context gets the SYSTEM language below
+        // Android 13 — the wrapper from LanguageManager
+        // is therefore mandatory, otherwise the localization is only apparently there.
         for (rel in listOf(
-            "java/ch/brickinventoryapp/dienste/service/CsvImportService.kt",
-            "java/ch/brickinventoryapp/dienste/service/PdfExportService.kt",
+            "java/ch/brickinventoryapp/services/service/CsvImportService.kt",
+            "java/ch/brickinventoryapp/services/service/PdfExportService.kt",
         )) {
             assert(code(read(rel)).contains("LanguageManager.localizedContext(this)")) {
                 "$rel ruft getString() ohne LanguageManager.localizedContext() auf"
@@ -79,7 +79,7 @@ class ServicePolishTest {
     }
 
     @Test
-    fun `neue Strings existieren in beiden Sprachen`() {
+    fun `new strings exist in both languages`() {
         val en = read("res/values/strings.xml")
         val de = read("res/values-de/strings.xml")
         for (key in listOf(
@@ -95,13 +95,13 @@ class ServicePolishTest {
     // ── Status-Icon ──────────────────────────────────────────────────────────
 
     @Test
-    fun `Benachrichtigungen benutzen das monochrome Status-Icon`() {
+    fun `notifications use the monochrome status icon`() {
         assert(File(Quellen.res, "drawable/ic_stat_brick.xml").exists()) {
             "drawable/ic_stat_brick.xml fehlt"
         }
         for (rel in listOf(
-            "java/ch/brickinventoryapp/dienste/service/CsvImportService.kt",
-            "java/ch/brickinventoryapp/dienste/service/PdfExportService.kt",
+            "java/ch/brickinventoryapp/services/service/CsvImportService.kt",
+            "java/ch/brickinventoryapp/services/service/PdfExportService.kt",
         )) {
             val src = code(read(rel))
             assert(!src.contains("setSmallIcon(R.mipmap")) {
@@ -115,19 +115,19 @@ class ServicePolishTest {
         }
     }
 
-    // ── Teileliste ohne Klartext-Freigabe ────────────────────────────────────
+    // ── Parts list without cleartext release ─────────────────────────────────────
 
     @Test
-    fun `die Teileliste geht nur ueber den eigenen Provider, kein FileProvider`() {
+    fun `the parts list goes out only via the own provider, no FileProvider`() {
         val manifest = code(read("AndroidManifest.xml"))
         assert(!manifest.contains("FileProvider")) {
             "Das Manifest trägt wieder einen FileProvider — er gibt nur Klartext-Dateien weiter, " +
                 "die Teileliste läge dann wieder offen in filesDir"
         }
-        val eintrag = Regex("""<provider[^>]*TeilelistenProvider[^>]*>""").find(manifest)?.value
+        val entry = Regex("""<provider[^>]*TeilelistenProvider[^>]*>""").find(manifest)?.value
             ?: error("Der TeilelistenProvider fehlt im Manifest")
-        assert(eintrag.contains("android:exported=\"false\"")) { "Der TeilelistenProvider ist exportiert" }
-        assert(eintrag.contains("android:grantUriPermissions=\"true\"")) {
+        assert(entry.contains("android:exported=\"false\"")) { "Der TeilelistenProvider ist exportiert" }
+        assert(entry.contains("android:grantUriPermissions=\"true\"")) {
             "Ohne grantUriPermissions öffnet die gewählte App die Teileliste nicht"
         }
         assert(!File(Quellen.res, "xml/file_paths.xml").exists()) { "file_paths.xml ist zurück" }
@@ -136,8 +136,8 @@ class ServicePolishTest {
     // ── ProGuard ─────────────────────────────────────────────────────────────
 
     @Test
-    fun `keine tote Gson-Regel in ProGuard`() {
-        // proguard-rules.pro liegt im Modulwurzelverzeichnis, nicht unter src/
+    fun `no dead Gson rule in ProGuard`() {
+        // proguard-rules.pro lies in the module root directory, not under src/
         val f = File("proguard-rules.pro")
         assert(f.exists()) { "proguard-rules.pro nicht gefunden" }
         assert(!f.readText().contains("SerializedName")) {

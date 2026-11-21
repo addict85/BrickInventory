@@ -3,11 +3,11 @@ package ch.brickinventoryapp.model.util
 import java.util.Locale
 
 /**
- * Wie das Web: die Landesform des Geräts, wenn sie zur App-Sprache passt
- * (de-DE schreibt 4.894,77, de-CH 4’894.77), sonst de-CH bzw. en-GB. In core-model,
- * weil auch die Preisalarm-Meldung im Hintergrund (core-dienste) ohne Oberfläche formatiert.
+ * Like the web: the device's country form if it matches the app language
+ * (de-DE writes 4.894,77, de-CH 4’894.77), otherwise de-CH or en-GB. In core-model,
+ * because the price alert notification in the background (core-services) also formats without UI.
  */
-fun zahlenLocale(sprache: Locale, geraet: Locale): Locale {
+fun numbersLocale(sprache: Locale, geraet: Locale): Locale {
     val ziel = if (sprache.language == "de") "de" else "en"
     val land = sprache.country.takeIf { sprache.language == ziel && it.length == 2 }
         ?: geraet.country.takeIf { geraet.language == ziel && it.length == 2 }

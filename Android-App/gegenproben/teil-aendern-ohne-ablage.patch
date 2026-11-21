@@ -1,17 +1,17 @@
 Gegenprobe: Ein geändertes Teil ändert die Ablage nicht
-Modul: feature-teile
-Test: ch.brickinventoryapp.teile.TeileViewModelTest
-Rot: ein geaendertes Teil steht in der Ablage
+Modul: feature-parts
+Test: ch.brickinventoryapp.parts.PartsViewModelTest
+Rot: a changed part is in the store without fetching the list again
 
-diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
---- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
-+++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LokaleAnwendung.kt
+diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
+--- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
++++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/LocalApplication.kt
 @@ -93,7 +93,7 @@
-         is Bearbeitung.TeilErfassen -> teilErfasst(liste, b)
-         is Bearbeitung.TeilAendern -> liste.map {
+         is Editing.TeilErfassen -> partRecorded(liste, b)
+         is Editing.TeilAendern -> liste.map {
              if (it.partNumber == b.partNumber && it.colorId == b.colorId && (b.besitzer == null || it.userId == b.besitzer))
--                it.copy(quantity = neueMenge(it.quantity, b.aenderung), unitPrice = b.aenderung.stueckpreis ?: it.unitPrice)
+-                it.copy(quantity = newQuantity(it.quantity, b.aenderung), unitPrice = b.aenderung.stueckpreis ?: it.unitPrice)
 +                it
              else it
          }
-         is Bearbeitung.TeilLoeschen -> liste.filterNot {
+         is Editing.TeilLoeschen -> liste.filterNot {

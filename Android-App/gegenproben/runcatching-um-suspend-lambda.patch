@@ -1,17 +1,17 @@
 Gegenprobe: Offlineablage.bereich ruft die suspend-Quelle wieder in runCatching auf
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: kein runCatching verschluckt
+Rot: no runCatching swallows the cancellation of a suspending call
 
 diff --git a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 --- a/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 +++ b/Android-App/core-offline/src/main/java/ch/brickinventoryapp/offline/Offlineablage.kt
 @@ -185,7 +185,7 @@
-     private fun sperre(b: String, art: Bestandsart) = sperren.getOrPut(b to art) { Mutex() }
+     private fun lock(b: String, art: StockKind) = sperren.getOrPut(b to art) { Mutex() }
  
      /** Der gültige Bereich, gestreut; null = nicht angemeldet, dann wird nichts abgelegt. */
--    suspend fun bereich(): String? = gueltig(fangeAusserAbbruch { bereichQuelle() }.getOrNull())
-+    suspend fun bereich(): String? = gueltig(runCatching { bereichQuelle() }.getOrNull())
+-    suspend fun bereich(): String? = gueltig(fangeAusserAbbruch { areaSource() }.getOrNull())
++    suspend fun bereich(): String? = gueltig(runCatching { areaSource() }.getOrNull())
  
      private fun gueltig(b: String?) = b?.takeIf { it.isNotBlank() }
  

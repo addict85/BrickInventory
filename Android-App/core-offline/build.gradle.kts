@@ -1,7 +1,7 @@
-// Die lokale Wahrheit der Oberfläche: Listen und Ausgang je Konto in Room
-// (SQLCipher), Offlineablage und die lokale Anwendung von Bearbeitungen. Kennt
-// weder Netz noch Repositories: Das Senden (Abgleich, AusgangWorker) liegt in
-// core-data, das hierauf aufbaut (ModulgrenzenTest).
+// The local truth of the UI: lists and outbox per account in Room
+// (SQLCipher), offline store and the local application of edits. Knows
+// neither network nor repositories: sending (sync, ExitWorker) lives in
+// core-data, which builds on this (ModulgrenzenTest).
 plugins {
     alias(libs.plugins.brickinventory.android.library)
     alias(libs.plugins.brickinventory.android.unittests)
@@ -10,21 +10,21 @@ plugins {
 }
 
 ksp {
-    // Room legt hier das Schema je Fassung ab; eingecheckt, damit eine Migration
-    // gegen die frühere Fassung geprüft werden kann (BestandMigrationTest).
+    // Room stores the schema per version here; checked in so that a migration
+    // can be checked against the earlier version (BestandMigrationTest).
     arg("room.schemaLocation", "$projectDir/schemas")
 }
 
 android {
     namespace = "ch.brickinventoryapp.core.offline"
-    // Die Room-Tests laufen unter Robolectric und lesen die Ressourcen.
+    // The Room tests run under Robolectric and read the resources.
     testOptions.unitTests.isIncludeAndroidResources = true
 }
 
 dependencies {
     api(project(":core-model"))
-    // Der Schlüssel der Datenbank kommt aus dem Ablageschlüssel.
-    implementation(project(":core-sicherheit"))
+    // The database key comes from the store key.
+    implementation(project(":core-security"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.room.runtime)
@@ -33,9 +33,9 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     testImplementation(project(":core-testing"))
-    // Die Tests bauen Antworten des Servers, wie core-data sie abbildet; die Ablage selbst kennt sie nicht.
-    testImplementation(project(":core-vertrag"))
-    // Abgleich und Repositories gegen die echte Room-Ablage (BestandDatenbankTest, OhneNetzFilterTest).
+    // The tests build server responses as core-data maps them; the store itself does not know them.
+    testImplementation(project(":core-contract"))
+    // Sync and repositories against the real Room store (InventoryDatabaseTest, WithoutNetworkFilterTest).
     testImplementation(project(":core-data"))
     // Room-Tests laufen unter Robolectric (BestandMigrationTest).
     testImplementation(libs.robolectric)

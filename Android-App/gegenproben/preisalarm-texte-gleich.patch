@@ -1,11 +1,11 @@
 Gegenprobe: „Ausgelöst“ heisst auf Deutsch wie „Aktiv“
 Modul: app
-Test: ch.brickinventoryapp.app.PreisalarmeAnzeigeTest
-Rot: die beiden Zustaende
+Test: ch.brickinventoryapp.app.PriceAlertsDisplayTest
+Rot: the two states say in both languages without color and symbol what applies
 
-diff --git a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
---- a/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
-+++ b/Android-App/core-ressourcen/src/main/res/values-de/strings.xml
+diff --git a/Android-App/core-resources/src/main/res/values-de/strings.xml b/Android-App/core-resources/src/main/res/values-de/strings.xml
+--- a/Android-App/core-resources/src/main/res/values-de/strings.xml
++++ b/Android-App/core-resources/src/main/res/values-de/strings.xml
 @@ -866,7 +866,7 @@
      <string name="alerts_intro">Hier legst du Alarme an, änderst Schwelle und Richtung oder entfernst sie.</string>
      <string name="alerts_empty">Noch kein Preisalarm gesetzt. Lege unten einen an oder in der Detailansicht eines Sets.</string>

@@ -3,34 +3,34 @@ package ch.brickinventoryapp.model.util
 import java.net.URLEncoder
 
 /**
- * Bild-Adressen auflösen — dieselbe Logik wie thumbUrl()/imgUrl() in
- * public/js/01-core.js. Alles ohne `imageLocal` läuft über den Bild-Proxy des
- * Servers: Er liefert eine kleine Vorschau, bringt Referer-Rückfall, Entpacken und
- * Negativ-Cache gegen Cloudflare mit, und sein Plattencache füllt sich auch durch
- * die App.
+ * Resolving image addresses — the same logic as thumbUrl()/imgUrl() in
+ * public/js/images.js. Everything without `imageLocal` runs via the server's image proxy:
+ * it delivers a small preview, brings referer fallback, unpacking and
+ * negative cache against Cloudflare along, and its disk cache also fills through
+ * the app.
  */
 
 /**
- * Die Adresse des Bild-Proxys, an einer Stelle. Der Server bedient die alte
- * Schreibweise /api/img-proxy weiter (gespeicherte Zeilen, ältere Apps); ein
- * gespeicherter Wert beginnt mit „/“ und bekommt ohnehin nur die Serveradresse
- * davor, deshalb braucht es hier keine Erkennung.
+ * The address of the image proxy, in one place. The server keeps serving the old
+ * spelling /api/img-proxy (saved rows, older apps); a
+ * saved value starts with „/“ and only gets the server address in front
+ * anyway, therefore no detection is needed here.
  */
 const val IMG_PROXY = "/api/v1/img-proxy"
 
 /**
- * Bildadresse für eine Kachel oder Liste — klein, mit Vorschaubild wo möglich.
+ * Image address for a tile or list — small, with thumbnail where possible.
  *
- * @param serverUrl Basis-URL des Servers, ohne abschliessenden Schrägstrich
- * @param imageLocal lokal auf dem Server abgelegter Pfad (z. B. "/images/sets/…"),
- *         oder null
- * @param imageUrl rohe Adresse vom Katalog (meist eine absolute CDN-URL) oder ein
- *         relativer Server-Pfad
+ * @param serverUrl base URL of the server, without trailing slash
+ * @param imageLocal path stored locally on the server (e.g. "/images/sets/…"),
+ *         or null
+ * @param imageUrl raw address from the catalog (mostly an absolute CDN URL) or a
+ *         relative server path
  */
 fun resolveThumbUrl(serverUrl: String, imageLocal: String?, imageUrl: String?): String? =
     resolveImageUrl(serverUrl, imageLocal, imageUrl, thumb = true)
 
-/** Bildadresse in voller Auflösung — für Detailansicht und Zoom. */
+/** Image address in full resolution — for detail view and zoom. */
 fun resolveFullUrl(serverUrl: String, imageLocal: String?, imageUrl: String?): String? =
     resolveImageUrl(serverUrl, imageLocal, imageUrl, thumb = false)
 
@@ -38,30 +38,30 @@ private fun resolveImageUrl(serverUrl: String, imageLocal: String?, imageUrl: St
     val base = serverUrl.trimEnd('/')
     return when {
         imageLocal != null -> {
-            // Kein eigenes toThumbPath(): imageLocal ist die Entscheidung des Servers
-            // (resolveImageLocal() in utils/images.ts prüft, ob die Vorschau existiert). Für
-            // die volle Auflösung wird ein vorhandenes `_thumb` entfernt, sonst zeigten Detail
-            // und Zoom dieselbe kleine Vorschau wie die Kachel — wie fullUrl() in der Webapp.
+            // No own toThumbPath(): imageLocal is the server's decision
+            // (resolveImageLocal() in src/images/images.ts checks whether the preview exists). For
+            // the full resolution an existing `_thumb` is removed, otherwise detail
+            // and zoom would show the same small preview as the tile — like fullUrl() in the web app.
             val path = if (thumb) imageLocal
                        else imageLocal.replace(Regex("""_thumb(\.[^.?]+)(\?|$)"""), "$1$2")
             "$base$path"
         }
         imageUrl != null -> {
             if (imageUrl.startsWith("/")) {
-                // Bereits ein Server-Pfad (selten, z. B. Altdaten) — kein CDN,
-                // kein Proxy nötig.
+                // Already a server path (rare, e.g. legacy data) — no CDN,
+                // no proxy needed.
                 "$base$imageUrl"
             } else if (!thumb) {
-                // Volle Auflösung ebenfalls über den Server-Proxy, wie fullUrl() in der Webapp:
-                // Ein Gerät, das irgendwo direkt mit Rebrickable spricht, trifft auf Cloudflares
-                // Bot-Erkennung, und die Arbeit des Proxys bliebe wirkungslos.
+                // Full resolution via the server proxy as well, like fullUrl() in the web app:
+                // a device that talks directly to Rebrickable anywhere hits Cloudflare's
+                // bot detection, and the proxy's work would be without effect.
                 "$base$IMG_PROXY?url=${URLEncoder.encode(imageUrl, "UTF-8")}"
             } else {
-                // Vorschaubild: über den Server-Proxy, nicht direkt vom
-                // Gerät. Derselbe Endpunkt wie die Webapp. &thumb=1 ist hier
-                // korrekt selbst gesteuert — der Proxy-Cache kennt keine
-                // serverseitige Vorab-Entscheidung wie image_local, das
-                // Vorschaubild wird bei Bedarf on-the-fly erzeugt.
+                // Thumbnail: via the server proxy, not directly from the
+                // device. The same endpoint as the web app. &thumb=1 is
+                // correctly self-controlled here — the proxy cache knows no
+                // server-side upfront decision like image_local, the
+                // thumbnail is generated on the fly when needed.
                 val encoded = URLEncoder.encode(imageUrl, "UTF-8")
                 "$base$IMG_PROXY?url=$encoded&thumb=1"
             }
@@ -70,21 +70,21 @@ private fun resolveImageUrl(serverUrl: String, imageLocal: String?, imageUrl: St
     }
 }
 
-// toThumbPath() (Client-seitige "_thumb.jpg"-Konstruktion für lokale Pfade)
-// wurde entfernt — genau sie war die Ursache des Fehlers oben beschrieben.
-// Für lokale Bilder entscheidet ausschliesslich der Server, welche Datei
-// ausgeliefert wird (utils/images.ts, resolveImageLocal()).
+// toThumbPath() (client-side "_thumb.jpg" construction for local paths)
+// was removed — exactly it was the cause of the error described above.
+// For local images only the server decides which file
+// is delivered (src/images/images.ts, resolveImageLocal()).
 
 /**
- * Volle Auflösung über den Server-Proxy — der Rückfall für Teile und Minifiguren.
- * Seit auch resolveFullUrl() über den Proxy geht, liefern beide dieselbe Adresse.
+ * Full resolution via the server proxy — the fallback for parts and minifigures.
+ * Since resolveFullUrl() also goes via the proxy, both deliver the same address.
  */
 fun resolveFullUrlViaProxy(serverUrl: String, imageLocal: String?, imageUrl: String?): String? {
     val base = serverUrl.trimEnd('/')
     return when {
-        // Dasselbe "_thumb"-Entfernen wie in resolveFullUrl() oben nötig —
-        // sonst zeigte der Rückfall bei Teilen/Minifiguren mit lokal
-        // abgelegtem Bild exakt dieselbe Vorschau wie die Kachel.
+        // The same "_thumb" removal as in resolveFullUrl() above is needed —
+        // otherwise the fallback for parts/minifigures with a locally
+        // stored image would show exactly the same preview as the tile.
         imageLocal != null -> "$base${imageLocal.replace(Regex("""_thumb(\.[^.?]+)(\?|$)"""), "$1$2")}"
         imageUrl != null -> {
             if (imageUrl.startsWith("/")) "$base$imageUrl"

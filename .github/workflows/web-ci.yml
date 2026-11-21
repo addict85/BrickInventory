@@ -3,7 +3,7 @@
 # fehlenden Datenbank oder einem fehlenden Chrome einen Fehler statt eines
 # stillen Überspringens. Der paths-Filter schliesst ein, was die Suite liest: shared/
 # (darunter app-schnittstelle.json, was die App vom Server braucht), die aus dem Vertrag
-# erzeugten Kotlin-Typen, workflow-ort.test.js die Workflows und die Wurzeldateien.
+# erzeugten Kotlin-Typen, workflow-location.test.js die Workflows und die Wurzeldateien.
 # Android-Quelltext liest die Suite nicht (test/ratschen.test.js).
 name: CI
 
@@ -13,7 +13,7 @@ on:
     paths:
       - 'Web-App/**'
       - 'shared/**'
-      - 'Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/erzeugt/**'
+      - 'Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/erzeugt/**'
       - '.github/**'
       - 'docs/**'
       - 'README.md'
@@ -22,7 +22,7 @@ on:
     paths:
       - 'Web-App/**'
       - 'shared/**'
-      - 'Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/erzeugt/**'
+      - 'Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/erzeugt/**'
       - '.github/**'
       - 'docs/**'
       - 'README.md'
@@ -42,7 +42,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     # Gemessen 23–30 Minuten (Testlauf mit Abdeckung gut 12, Browser-Dateien gut 14).
-    # Eine hängende Datei beendet test/helpers/auslauf.js; diese Grenze fängt nur den Rest.
+    # Eine hängende Datei beendet test/helpers/expiry.js; diese Grenze fängt nur den Rest.
     timeout-minutes: 45
 
     defaults:
@@ -69,7 +69,7 @@ jobs:
 
     env:
       # Der Superuser legt nur Datenbanken und Rollen an; die Tests verbinden wie im
-      # Betrieb als Laufzeit-, System- und Eigentümerrolle (scripts/test-lauf.js).
+      # Betrieb als Laufzeit-, System- und Eigentümerrolle (scripts/test-run.js).
       TEST_DATABASE_URL: postgres://tester:tester@localhost:5432/cattest
       REQUIRE_DB: '1'
       # Ohne Chrome schlagen die Browser-Tests fehl statt zu überspringen
@@ -78,7 +78,7 @@ jobs:
       # Einige Suiten bauen eine echte Session auf. Der Wert ist beliebig, muss
       # aber die Mindestlänge aus server.ts erfüllen (32 Zeichen).
       SESSION_SECRET: ci-secret-nur-fuer-den-testlauf-lang-genug
-      # npm test (scripts/test-lauf.js) gibt jeder Testdatei eine eigene Kopie
+      # npm test (scripts/test-run.js) gibt jeder Testdatei eine eigene Kopie
       # der Vorlage-Datenbank; vier zugleich passen zu den vier Kernen des
       # Runners und bleiben unter max_connections=100 des Dienstes.
       TEST_PARALLEL: '4'
@@ -144,7 +144,7 @@ jobs:
           "$RUNNER_TEMP/caddy" version
           echo "CADDY_BIN=$RUNNER_TEMP/caddy" >> "$GITHUB_ENV"
 
-      # age für test/backup-verschluesselt.test.js (scripts/backup.sh mit BACKUP_AGE_EMPFAENGER).
+      # age für test/backup-encrypted.test.js (scripts/backup.sh mit BACKUP_AGE_EMPFAENGER).
       - name: age bereitstellen
         run: command -v age || { sudo apt-get update -qq && sudo apt-get install -y -qq age; }
 
@@ -213,7 +213,7 @@ jobs:
 
       # Zeilenabdeckung je Bereich gegen scripts/abdeckung-schranken.json.
       - name: Abdeckung
-        run: node scripts/abdeckung.js pruefen
+        run: node scripts/coverage.js pruefen
 
       - name: Abdeckungsbericht
         if: always()

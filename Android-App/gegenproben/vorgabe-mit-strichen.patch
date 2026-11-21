@@ -1,12 +1,12 @@
 Gegenprobe: Die globale Vorgabe steht wieder zwischen Gedankenstrichen
 Modul: app
 Test: ch.brickinventoryapp.app.StringResourceParityTest
-Rot: ein Begriff je Sache
+Rot: one term per thing in both languages
 
-diff --git a/Android-App/core-ressourcen/src/main/res/values/strings.xml b/Android-App/core-ressourcen/src/main/res/values/strings.xml
+diff --git a/Android-App/core-resources/src/main/res/values/strings.xml b/Android-App/core-resources/src/main/res/values/strings.xml
 index b6aa641..69bf3d8 100644
---- a/Android-App/core-ressourcen/src/main/res/values/strings.xml
-+++ b/Android-App/core-ressourcen/src/main/res/values/strings.xml
+--- a/Android-App/core-resources/src/main/res/values/strings.xml
++++ b/Android-App/core-resources/src/main/res/values/strings.xml
 @@ -23,7 +23,7 @@
      <string name="settings_default_condition">My condition when adding</string>
      <string name="settings_default_condition_effective">Currently in effect: %1$s.</string>

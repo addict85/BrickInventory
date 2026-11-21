@@ -1,14 +1,14 @@
 /**
- * Kopf- und Reiterleiste haften GEMEINSAM — in jedem Design, gemessen in Chrome
- * nach dem Rollen. Haftet nur die Reiterleiste, steht sie auf der Höhe der
- * weggerollten Kopfleiste und schiebt sich über den Inhalt; sitzt sie nicht
- * genau unter der Kopfleiste, klafft eine Lücke oder beide überdecken sich.
+ * Header and tab bar stick SHARED — in every design, measured in Chrome
+ * after scrolling. If only the tab bar sticks, it stands at the height of the
+ * scrolled-away header and slides over the content; if it does not sit
+ * exactly below the header, a gap opens or both overlap.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln, zurückgenommen):
+ * Counter-checks (measured 10.11.2026, each alone, reverted):
  *   A  in themes/noppe.css `[data-theme="noppe"] header{position:relative}` →
- *      rot: „noppe: Kopfleiste rollt weg, Reiterleiste haftet“
- *   B  in styles.css `nav{… top:58px …}` auf `top:50px` → rot: alle Designs
- *      („Reiterleiste bei 50, Kopfleiste endet bei 58“)
+ *      red: “noppe: header scrolls away, tab bar sticks”
+ *   B  in styles.css `nav{… top:58px …}` to `top:50px` → red: all designs
+ *      (“tab bar at 50, header ends at 58”)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,7 +27,7 @@ const DESIGNS = [
     .map(n => n.slice(0, -4)),
 ];
 
-function messe(bin, ordner, design) {
+function measure(bin, ordner, design) {
   const css = ['tokens.css', 'styles.css', ...fs.readdirSync(path.join(PUBLIC, 'themes')).map(n => `themes/${n}`)]
     .map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`)
     .join('');
@@ -62,10 +62,10 @@ function messe(bin, ordner, design) {
   return JSON.parse(m[1].replace(/&quot;/g, '"'));
 }
 
-test('Kopf- und Reiterleiste haften in jedem Design gemeinsam und schliessen aneinander an', t => {
+test('header and tab bar stick together in every theme and connect to each other', t => {
   const bin = chrome();
   if (!bin) {
-    t.skip('kein Chrome gefunden');
+    t.skip('no Chrome found');
     return;
   }
   assert.ok(DESIGNS.length >= 5, `nur ${DESIGNS.length} Designs gefunden`);
@@ -73,18 +73,18 @@ test('Kopf- und Reiterleiste haften in jedem Design gemeinsam und schliessen ane
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const fehler = [];
   for (const d of DESIGNS) {
-    const { kopf, reiter, gerollt } = messe(bin, ordner, d);
+    const { kopf, reiter, gerollt } = measure(bin, ordner, d);
     assert.ok(gerollt > 1000, `${d}: die Seite rollt nicht (${gerollt})`);
-    const kopfHaftet = Math.round(kopf[0]) === 0,
-      reiterSichtbar = reiter[1] > 0;
-    if (kopfHaftet !== reiterSichtbar)
+    const headerSticks = Math.round(kopf[0]) === 0,
+      tabVisible = reiter[1] > 0;
+    if (headerSticks !== tabVisible)
       fehler.push(
-        `${d}: Kopfleiste ${kopfHaftet ? 'haftet' : 'rollt weg'}, Reiterleiste ${reiterSichtbar ? 'haftet' : 'rollt weg'}`,
+        `${d}: Kopfleiste ${headerSticks ? 'haftet' : 'rollt weg'}, Reiterleiste ${tabVisible ? 'haftet' : 'rollt weg'}`,
       );
-    else if (kopfHaftet && Math.round(reiter[0]) !== Math.round(kopf[1]))
+    else if (headerSticks && Math.round(reiter[0]) !== Math.round(kopf[1]))
       fehler.push(`${d}: Reiterleiste bei ${Math.round(reiter[0])}, Kopfleiste endet bei ${Math.round(kopf[1])}`);
   }
   assert.deepEqual(fehler, []);
-  // Die Grundgestaltung heftet beide an; ohne das prüfte der Vergleich oben zweimal „rollt weg“.
-  assert.equal(Math.round(messe(bin, ordner, 'classic').kopf[0]), 0, 'classic: die Kopfleiste haftet nicht');
+  // The base styling pins both; without that the comparison above would check “scrolls away” twice.
+  assert.equal(Math.round(measure(bin, ordner, 'classic').kopf[0]), 0, 'classic: die Kopfleiste haftet nicht');
 });

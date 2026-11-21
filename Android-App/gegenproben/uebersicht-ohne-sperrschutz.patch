@@ -1,17 +1,17 @@
 Gegenprobe: Die App-Sperre lässt das Vorschaubild in der App-Übersicht stehen
 Modul: core-ui
-Test: ch.brickinventoryapp.ui.components.AppUebersichtSchutzTest
-Rot: ab Android 13 verbirgt die Sperre nur das Vorschaubild
+Test: ch.brickinventoryapp.ui.components.AppOverviewProtectionTest
+Rot: from Android 13 the lock hides only the thumbnail, off releases it
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Sichtschutz.kt
 @@ -43,7 +43,7 @@
  @Composable
- fun AppUebersichtSchutz(sperre: AppSperre) {
-     val minuten by sperre.minuten.collectAsState()
+ fun AppOverviewProtection(lock: AppLock) {
+     val minuten by lock.minuten.collectAsState()
 -    if (minuten <= 0) return
 +    if (minuten >= 0) return
-     if (LocalSdkStufe.current < Build.VERSION_CODES.TIRAMISU) {
-         Sichtschutz(ueberdeckung = false)
+     if (LocalSdkLevel.current < Build.VERSION_CODES.TIRAMISU) {
+         Sichtschutz(coverage = false)
          return

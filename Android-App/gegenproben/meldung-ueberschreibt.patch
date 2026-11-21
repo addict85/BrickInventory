@@ -1,17 +1,17 @@
 Gegenprobe: zeige() überschreibt die angezeigte Meldung wieder, statt einzureihen
 Modul: core-data
-Test: ch.brickinventoryapp.data.MeldungsWarteschlangeTest
-Rot: die zweite Meldung wartet auf die Quittung der ersten
+Test: ch.brickinventoryapp.data.MessageQueueTest
+Rot: the second message waits for the acknowledgement of the first
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MeldungsKanal.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MeldungsKanal.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MeldungsKanal.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/MeldungsKanal.kt
-@@ -45,7 +45,7 @@ internal class MeldungsWarteschlange @Inject constructor() : MeldungsKanal {
+@@ -45,7 +45,7 @@ internal class MessageQueue @Inject constructor() : MeldungsKanal {
          if (meldung == null) return
-         synchronized(warteschlange) {
+         synchronized(queue) {
              when {
--                _meldung.value == null -> _meldung.value = meldung
-+                _meldung.value == null || true -> _meldung.value = meldung
-                 meldung == (warteschlange.lastOrNull() ?: _meldung.value) -> Unit
-                 warteschlange.size < PLAETZE -> warteschlange.addLast(meldung)
+-                _message.value == null -> _message.value = meldung
++                _message.value == null || true -> _message.value = meldung
+                 meldung == (queue.lastOrNull() ?: _message.value) -> Unit
+                 queue.size < PLACES -> queue.addLast(meldung)
              }

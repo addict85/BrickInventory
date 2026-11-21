@@ -1,18 +1,18 @@
 Gegenprobe: Die Figurensuche kommt nach dem Prozesstod nicht zurück
-Modul: feature-teile
-Test: ch.brickinventoryapp.teile.TeileViewModelTest
-Rot: Suche und Ansicht der Figuren ueberstehen
+Modul: feature-parts
+Test: ch.brickinventoryapp.parts.PartsViewModelTest
+Rot: search and view of the figures survive a process death, the account filter does not
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/FigurenViewModel.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/FigurenViewModel.kt
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/MinifigsViewModel.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/MinifigsViewModel.kt
 index 22a5a05..6ab79aa 100644
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/FigurenViewModel.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/viewmodel/FigurenViewModel.kt
-@@ -95,7 +95,7 @@ class FigurenViewModel @Inject constructor(
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/MinifigsViewModel.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/viewmodel/MinifigsViewModel.kt
+@@ -95,7 +95,7 @@ class MinifigsViewModel @Inject constructor(
  
      init {
-         viewModelScope.launch { aenderungen.figurenGeaendert().collect { liste.ladeKennzahlen() } }
--        liste.stelleWieder(gemerkt[F_SUCHE] ?: "", gemerkt[F_ANSICHT] ?: Listenansicht.KARTEN)
-+        liste.stelleWieder("", gemerkt[F_ANSICHT] ?: Listenansicht.KARTEN)
+         viewModelScope.launch { changes.minifigsChanged().collect { liste.loadMetrics() } }
+-        liste.placeAgain(gemerkt[F_SEARCH] ?: "", gemerkt[F_VIEW] ?: ListView.KARTEN)
++        liste.placeAgain("", gemerkt[F_VIEW] ?: ListView.KARTEN)
          // Nur eine leere Liste holen: Die Ablage hält sie danach selbst aktuell.
-         ladeJeServer(sitzung, figurenBeobachtet) { if (liste.zustand.value.minifigs.isEmpty()) loadMinifigs() }
+         loadPerServer(sitzung, minifigsObserved) { if (liste.zustand.value.minifigs.isEmpty()) loadMinifigs() }
      }

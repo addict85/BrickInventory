@@ -1,7 +1,7 @@
 /**
- * Statischer XSS-Regressionstest für public/js/.
+ * Static XSS regression test for public/js/.
  */
-const { istAppModul } = require('../scripts/build-frontend');
+const { isAppModule } = require('../scripts/build-frontend');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -10,14 +10,14 @@ const path = require('node:path');
 const JS_DIR = path.join(__dirname, '..', 'public', 'js');
 const FILES = fs
   .readdirSync(JS_DIR)
-  .filter(f => istAppModul(f))
+  .filter(f => isAppModule(f))
   .sort();
 
-// Die Helfer selbst, nicht nachgebaut: escapen.js ist DOM-frei und lädt in Node.
-const helfer = import(require('node:url').pathToFileURL(path.join(JS_DIR, 'escapen.js')).href);
-const loadHelpers = () => helfer;
+// The helpers themselves, not rebuilt: escaping.js is DOM-free and loads in Node.
+const helper = import(require('node:url').pathToFileURL(path.join(JS_DIR, 'escaping.js')).href);
+const loadHelpers = () => helper;
 
-test('esc() neutralisiert alle HTML-Metazeichen inkl. Apostroph', async () => {
+test('esc() neutralizes all HTML metacharacters incl. apostrophe', async () => {
   const { esc } = await loadHelpers();
   assert.equal(esc('<script>'), '&lt;script&gt;');
   assert.equal(esc('a"b'), 'a&quot;b');
@@ -27,9 +27,9 @@ test('esc() neutralisiert alle HTML-Metazeichen inkl. Apostroph', async () => {
   assert.equal(esc(undefined), '');
 });
 
-// Gegenprobe (08.11.2026): „\\“ und Steuerzeichen im Regex von sichereUrl() entfernt → rot: „/\\host“ kam durch.
-test('sichereUrl() lässt nur gleiche Herkunft, http(s) und Bild-Daten durch', async () => {
-  const { sichereUrl } = await loadHelpers();
+// Counter-check (08.11.2026): “\\” and control characters removed from the regex of safeUrl() → red: “/\\host” got through.
+test('safeUrl() only lets same origin, http(s) and image data through', async () => {
+  const { safeUrl } = await loadHelpers();
   for (const gut of [
     '/img/a.png',
     '/',
@@ -38,7 +38,7 @@ test('sichereUrl() lässt nur gleiche Herkunft, http(s) und Bild-Daten durch', a
     'data:image/png;base64,AAAA',
     ' /pfad ',
   ])
-    assert.equal(sichereUrl(gut), gut.trim(), `„${gut}“ fälschlich verworfen`);
+    assert.equal(safeUrl(gut), gut.trim(), `„${gut}“ fälschlich verworfen`);
   for (const schlecht of [
     '//evil.example/x',
     '/\\evil.example/x',
@@ -53,21 +53,21 @@ test('sichereUrl() lässt nur gleiche Herkunft, http(s) und Bild-Daten durch', a
     null,
     undefined,
   ])
-    assert.equal(sichereUrl(schlecht), '', `„${schlecht}“ kam durch`);
+    assert.equal(safeUrl(schlecht), '', `„${schlecht}“ kam durch`);
 });
 
-test('escJs() bricht nicht aus onclick="fn(\'…\')" aus', async () => {
+test('escJs() does not break out of onclick="fn(\'…\')"', async () => {
   const { escJs } = await loadHelpers();
-  // Der klassische Ausbruch: Apostroph schliesst den JS-String, danach Code.
+  // The classic breakout: an apostrophe closes the JS string, code afterwards.
   const payload = "');alert(1);//";
   const out = escJs(payload);
   assert.ok(!/(^|[^\\])'/.test(out), `Apostroph nicht escaped: ${out}`);
   assert.ok(!out.includes('<'), 'Winkelklammer nicht escaped');
-  // Backslash muss verdoppelt werden, sonst entwertet er das folgende \'
+  // A backslash must be doubled, otherwise it neutralizes the following \'
   assert.equal(escJs('a\\'), 'a\\\\');
 });
 
-test('escUrl() lässt nur relative Pfade und http(s) durch', async () => {
+test('escUrl() only lets relative paths and http(s) through', async () => {
   const { escUrl } = await loadHelpers();
   assert.equal(escUrl('https://cdn.rebrickable.com/x.jpg'), 'https://cdn.rebrickable.com/x.jpg');
   assert.equal(escUrl('/data/part_images/x.jpg'), '/data/part_images/x.jpg');
@@ -75,11 +75,11 @@ test('escUrl() lässt nur relative Pfade und http(s) durch', async () => {
   assert.equal(escUrl('  JaVaScRiPt:alert(1)'), '');
   assert.equal(escUrl('//evil.tld/x.jpg'), '', 'protokollrelative URL muss raus');
   assert.equal(escUrl(''), '');
-  // Attribut-Ausbruch über ein Anführungszeichen in der URL
+  // Attribute breakout via a quote in the URL
   assert.ok(!escUrl('https://a/" onerror="alert(1)').includes('"'));
 });
 
-test('escHex() akzeptiert ausschliesslich 6 Hex-Ziffern', async () => {
+test('escHex() exclusively accepts 6 hex digits', async () => {
   const { escHex } = await loadHelpers();
   assert.equal(escHex('FF0000'), '#FF0000');
   assert.equal(escHex('#00ff00'), '#00ff00');
@@ -87,8 +87,8 @@ test('escHex() akzeptiert ausschliesslich 6 Hex-Ziffern', async () => {
   assert.equal(escHex(null, 'var(--s50)'), 'var(--s50)');
 });
 
-// ── Statische Sink-Prüfung ──────────────────────────────────────────────────
-const SAFE = /^\s*(esc|escJs|escUrl|sichereUrl|escHex|escHtml|encodeURIComponent|t)\s*\(/;
+// ── Static sink check ───────────────────────────────────────────────────────
+const SAFE = /^\s*(esc|escJs|escUrl|safeUrl|escHex|escHtml|encodeURIComponent|t)\s*\(/;
 const DATA_FIELD =
   /(set_number|part_number|bl_part_number|fig_number|bl_fig_number|part_name|fig_name|color_name|category_name|image_url|image_local|note|username|theme|last_error)\b/;
 
@@ -96,7 +96,7 @@ function interpolations(attrValue) {
   return [...attrValue.matchAll(/\$\{([^{}]*)\}/g)].map(m => m[1]);
 }
 
-test('kein src/href/data-orig mit ungeprüfter URL', () => {
+test('no src/href/data-orig with an unchecked URL', () => {
   const bad = [];
   for (const f of FILES) {
     const src = fs.readFileSync(path.join(JS_DIR, f), 'utf8');
@@ -109,7 +109,7 @@ test('kein src/href/data-orig mit ungeprüfter URL', () => {
   assert.deepEqual(bad, [], 'URL-Attribute müssen durch escUrl()');
 });
 
-test('kein onXxx-Handler mit ungeprüftem Datenfeld', () => {
+test('no onXxx handler with an unchecked data field', () => {
   const bad = [];
   for (const f of FILES) {
     const src = fs.readFileSync(path.join(JS_DIR, f), 'utf8');
@@ -122,11 +122,11 @@ test('kein onXxx-Handler mit ungeprüftem Datenfeld', () => {
   assert.deepEqual(bad, [], 'Werte in Inline-Handlern müssen durch escJs()');
 });
 
-test('esc/escJs/escUrl/escHex sind genau einmal definiert', () => {
-  // Alle Maskierer liegen in escapen.js (DOM-frei, auch der BrickLink-Export
-  // lädt es). Zwei Fassungen desselben Maskierers liefen schon einmal auseinander.
-  const zuhause = { esc: 'escapen.js', escJs: 'escapen.js', escUrl: 'escapen.js', escHex: 'escapen.js' };
-  for (const [name, datei] of Object.entries(zuhause)) {
+test('esc/escJs/escUrl/escHex are defined exactly once', () => {
+  // All escapers live in escaping.js (DOM-free, the BrickLink export also
+  // loads it). Two versions of the same escaper drifted apart once already.
+  const home = { esc: 'escaping.js', escJs: 'escaping.js', escUrl: 'escaping.js', escHex: 'escaping.js' };
+  for (const [name, datei] of Object.entries(home)) {
     const defs = FILES.filter(f =>
       new RegExp(`function\\s+${name}\\s*\\(`).test(fs.readFileSync(path.join(JS_DIR, f), 'utf8')),
     );
@@ -135,14 +135,14 @@ test('esc/escJs/escUrl/escHex sind genau einmal definiert', () => {
       [datei],
       `${name}() muss genau einmal deklariert sein (in ${datei}) — sonst haengt ` +
         'das Escaping an der Ladereihenfolge, und zwei Fassungen laufen ' +
-        'auseinander. Genau das hat test/wunschliste-xml.test.js schon einmal ' +
+        'auseinander. Genau das hat test/wish-list-xml.test.js schon einmal ' +
         'gemeldet: Die App maskierte, die Webapp nicht.',
     );
   }
 });
 
-test('Übersetzungen für reinen Text laufen über tRaw(), nicht über t()', () => {
-  // Woher dieser Test kommt
+test('translations for plain text go via tRaw(), not via t()', () => {
+  // Where this test comes from
   const jsDir = path.join(__dirname, '..', 'public', 'js');
   const offenders = [];
   for (const f of fs.readdirSync(jsDir)) {
@@ -151,7 +151,7 @@ test('Übersetzungen für reinen Text laufen über tRaw(), nicht über t()', () 
       .split('\n')
       .forEach((l, i) => {
         if (/^\s*(\/\/|\*)/.test(l)) return;
-        // Zuweisung an ein Textziel oder Aufruf einer Funktion, die textContent setzt
+        // Assignment to a text target or call of a function that sets textContent
         if (
           /(\.(?:textContent|value|placeholder|title|alt|label)\s*=\s*|alert\(|confirm\(|toast\(|confirmDelete\()\s*t\(/.test(
             l,
@@ -168,30 +168,30 @@ test('Übersetzungen für reinen Text laufen über tRaw(), nicht über t()', () 
   );
 });
 
-test('serverseitige Fehlermeldungen laufen im HTML-Kontext durch esc()', () => {
-  // Woher dieser Test kommt
+test('server-side error messages go through esc() in the HTML context', () => {
+  // Where this test comes from
   const bad = [];
-  const FELD = /\w+\.(?:error|message)\b/g;
+  const FIELD = /\w+\.(?:error|message)\b/g;
   for (const f of FILES) {
     const src = fs.readFileSync(path.join(JS_DIR, f), 'utf8');
     let ab = 0;
     src.split('\n').forEach((line, i) => {
-      const zeileAb = ab;
+      const rowAb = ab;
       ab += line.length + 1;
       if (/^\s*(\/\/|\*)/.test(line)) return;
-      if (!/<\w/.test(line)) return; // kein HTML-Kontext
+      if (!/<\w/.test(line)) return; // no HTML context
       for (const m of line.matchAll(/\$\{([^}]*)\}/g)) {
-        // In html`` maskiert die Vorlage selbst — ausser der Wert geht durch ungeprueft().
-        const vor = src.lastIndexOf('`', zeileAb + (m.index ?? 0));
-        if (src.slice(vor - 4, vor) === 'html' && !/ungeprueft\(/.test(m[1])) continue;
-        // Zeichenkettenliterale entfernen, damit Übersetzungsschlüssel
-        // ('…error') nicht als Datenfeld gelten.
+        // In html`` the template itself escapes — unless the value goes through rawHtml().
+        const vor = src.lastIndexOf('`', rowAb + (m.index ?? 0));
+        if (src.slice(vor - 4, vor) === 'html' && !/rawHtml\(/.test(m[1])) continue;
+        // Remove string literals so that translation keys
+        // ('…error') do not count as a data field.
         const ausdruck = m[1].replace(/'[^']*'|"[^"]*"|`[^`]*`/g, "''");
-        for (const treffer of ausdruck.matchAll(FELD)) {
+        for (const treffer of ausdruck.matchAll(FIELD)) {
           const danach = ausdruck.slice(treffer.index + treffer[0].length).trimStart();
           if (danach.startsWith('?')) continue; // Bedingungsstellung
           const davor = ausdruck.slice(0, treffer.index);
-          if (/\besc\s*\($/.test(davor)) continue; // bereits maskiert
+          if (/\besc\s*\($/.test(davor)) continue; // already escaped
           bad.push(`${f}:${i + 1}: \${${m[1]}}`);
         }
       }

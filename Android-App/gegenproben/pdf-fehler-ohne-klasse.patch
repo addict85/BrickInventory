@@ -1,16 +1,16 @@
 Gegenprobe: Ein gescheiterter PDF-Download trägt wieder nur den rohen Text, keine Fehlerklasse
-Modul: feature-finanzen
-Test: ch.brickinventoryapp.finanzen.PdfBetrachterViewModelTest
-Rot: ein Fehler traegt seine Klasse und die Ursache als Zusatz
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.PdfViewerViewModelTest
+Rot: an error carries its class and the cause as addition, without a cause it is called download failed
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/viewmodel/PdfBetrachterViewModel.kt
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/viewmodel/PdfBetrachterViewModel.kt
 @@ -62,7 +62,7 @@
-                 onSuccess = { (quelle, seiten) -> PdfLoadState.Ready(quelle, seiten) },
+                 onSuccess = { (quelle, pages) -> PdfLoadState.Ready(quelle, pages) },
                  onFailure = { e ->
-                     if (e is DownloadGescheitert && e.status == null) PdfLoadState.Error(null, PdfFehler.DOWNLOAD)
--                    else PdfLoadState.Error(e.message, klasse = pdfFehlerklasse(e))
+                     if (e is DownloadFailed && e.status == null) PdfLoadState.Error(null, PdfError.DOWNLOAD)
+-                    else PdfLoadState.Error(e.message, klasse = pdfErrorClass(e))
 +                    else PdfLoadState.Error(e.message)
                  },
              )

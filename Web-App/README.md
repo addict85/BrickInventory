@@ -188,7 +188,7 @@ postgres psql -U brickinventory -c "ALTER USER brickinventory PASSWORD
 `compose.yaml` startet zwei Dienste aus demselben Bau: `app` (`ROLLE: web`)
 beantwortet Anfragen, `jobs` (`ROLLE: jobs`) arbeitet die Hintergrundarbeit
 ab — Preise, Anleitungen, Bilder, PDF, Importe, Katalogabgleich, Aufräumen.
-Alles davon steht als Auftrag in der Tabelle `auftraege`, auch die Zeitpläne;
+Alles davon steht als Auftrag in der Tabelle `jobs`, auch die Zeitpläne;
 „Monitoring → Hintergrundarbeiten“ zeigt sie samt Fehlern und lässt sie
 abbrechen, wiederholen oder vorziehen. Ohne Compose (`npm start`) gilt
 `ROLLE=beides`: ein Prozess für alles. Ein Update von einer Fassung mit
@@ -254,7 +254,7 @@ den Commit-Hash in `.git-blame-ignore-revs` (Wurzel) eintragen und
 | | Image (`Dockerfile`, `compose.yaml`) | CI (`web-ci.yml`) | lokal |
 |---|---|---|---|
 | Node | 26 | 26 | `.nvmrc` nennt 26 (`nvm use`) |
-| PostgreSQL | 18 | 18 (Dienst), `pg_dump` 18 | auch 16 läuft; `db-rolle-db` braucht `psql` ab 15, `backup-restore-db` ein `pg_dump` in der Hauptversion des Servers |
+| PostgreSQL | 18 | 18 (Dienst), `pg_dump` 18 | auch 16 läuft; `db-role-db` braucht `psql` ab 15, `backup-restore-db` ein `pg_dump` in der Hauptversion des Servers |
 
 Ein lokaler Lauf mit einer älteren Fassung (etwa Node 22, PostgreSQL 16) ist
 eine Plausibilisierung; ein Unterschied zwischen den Hauptversionen zeigt sich
@@ -442,7 +442,7 @@ REQUIRE_DB=1 npm test -- test/ratschen.test.js   # einzelne Dateien, gleicher Au
 npm run test:seriell                          # alles nacheinander auf der Basis-DB
 ```
 
-`npm test` (`scripts/test-lauf.js`) baut einmal nach `dist/`, legt aus
+`npm test` (`scripts/test-run.js`) baut einmal nach `dist/`, legt aus
 `TEST_DATABASE_URL` eine Vorlage-Datenbank `<name>_vorlage` an (Basis und
 Migrationen) und gibt jeder Testdatei eine eigene Kopie davon. Die Dateien
 laufen parallel (`TEST_PARALLEL`, Vorgabe doppelte Kernzahl, höchstens 8),
@@ -477,11 +477,11 @@ Die betroffenen Dateien überspringen sich dann selbst.
 **Abdeckung:** `npm run abdeckung` (= `npm test -- --abdeckung`) misst Server
 (`dist/`) und Oberfläche (über ein Mess-Bündel mit Sourcemap bis `public/js/`)
 und schreibt `coverage/lcov.info`, `coverage-summary.json` und
-`coverage/bereiche.json`. `node scripts/abdeckung.js pruefen` vergleicht die
+`coverage/bereiche.json`. `node scripts/coverage.js pruefen` vergleicht die
 Bereiche mit `scripts/abdeckung-schranken.json`; die CI macht beides.
 
 Die API gibt es nur unter `/api/v1/`. Ihr Vertrag (zod-Schemata in
-`src/vertrag/`) wird im Testlauf an jeder Antwort geprüft; der Abgleich
+`src/contract/`) wird im Testlauf an jeder Antwort geprüft; der Abgleich
 mit der Android-App liest deren Retrofit-Schnittstelle (`app-endpunkte`).
 
 Regeln für neue Tests stehen in `CLAUDE.md` im Wurzelordner: Ein Test prüft

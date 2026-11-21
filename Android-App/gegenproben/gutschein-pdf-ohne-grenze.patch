@@ -1,7 +1,7 @@
 Gegenprobe: ein Gutschein-PDF ohne Längenangabe wird ohne Obergrenze in den Speicher geladen
 Modul: core-data
-Test: ch.brickinventoryapp.data.PdfImSpeicherTest
-Rot: eine Antwort ueber der Grenze wird abgelehnt
+Test: ch.brickinventoryapp.data.PdfInStorageTest
+Rot: a response above the limit is rejected, even without a length
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfImSpeicher.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfImSpeicher.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/util/PdfImSpeicher.kt

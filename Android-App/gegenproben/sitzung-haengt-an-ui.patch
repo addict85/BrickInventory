@@ -1,16 +1,16 @@
-Gegenprobe: core-sitzung bindet core-ui ein; die Sitzung liegt unter Zustand und Oberfläche
+Gegenprobe: core-session bindet core-ui ein; die Sitzung liegt unter Zustand und Oberfläche
 Modul: app
 Test: ch.brickinventoryapp.app.ModulgrenzenTest
-Rot: Schichtung der Kernmodule
+Rot: layering of the core modules
 
-diff --git a/Android-App/core-sitzung/build.gradle.kts b/Android-App/core-sitzung/build.gradle.kts
---- a/Android-App/core-sitzung/build.gradle.kts
-+++ b/Android-App/core-sitzung/build.gradle.kts
+diff --git a/Android-App/core-session/build.gradle.kts b/Android-App/core-session/build.gradle.kts
+--- a/Android-App/core-session/build.gradle.kts
++++ b/Android-App/core-session/build.gradle.kts
 @@ -17,6 +17,7 @@
      // NetworkPolicy: Adresse einer gescheiterten Abmeldung, Klartext-Altbestand.
-     implementation(project(":core-netz"))
-     implementation(project(":core-ressourcen"))
+     implementation(project(":core-network"))
+     implementation(project(":core-resources"))
 +    implementation(project(":core-ui"))
      // Eigene Flows (AbgeleiteterZustand); ohne Eintrag löst Gradle eine alte Fassung auf.
      implementation(libs.kotlinx.coroutines.android)
-     // Der SitzungsDienst wird in core-zustand geprüft: Seine Tests bauen ihn mit dem Blickfeld zusammen.
+     // Der SitzungsDienst wird in core-state geprüft: Seine Tests bauen ihn mit dem Blickfeld zusammen.

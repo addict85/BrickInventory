@@ -1,84 +1,84 @@
-// Einstiegspunkt des Bündels und die explizite Ladereihenfolge: Kern, Bausteine, Ansichten (Schichten in
-// scripts/build-frontend.js). Jede Datei unter js/ steht hier, weil das Bündel-Skript die Vollständigkeit am
-// Einstieg prüft. Der Importgraph ist kreisfrei (test/frontend-architektur.test.js).
+// Entry point of the bundle and the explicit load order: core, building blocks, views (layers in
+// scripts/build-frontend.js). Every file under js/ is listed here, because the bundle script checks completeness at the
+// entry point. The import graph is cycle-free (test/frontend-architektur.test.js).
 
 // Kern
-import './stile.js';
-import './escapen.js';
-import './ereignisse.js';
-import './ziele.js';
-import './zustand.js';
-import './lader.js';
+import './styles.js';
+import './escaping.js';
+import './events.js';
+import './targets.js';
+import './state.js';
+import './load-guard.js';
 import '../i18n.js';
 
-// Bausteine
+// Building blocks
 import './dom.js';
 import './format.js';
-import './meldungen.js';
-import './verbindung.js';
+import './messages.js';
+import './connection.js';
 import './api.js';
-import './bilder.js';
-import './formular.js';
-import './konto.js';
-import './dialoge.js';
-import './fortschritt.js';
+import './images.js';
+import './form.js';
+import './account.js';
+import './dialogs.js';
+import './progress.js';
 import './monitor.js';
-import './bausteine.js';
-import './rueckfrage.js';
-import './fadenkreuz.js';
-import './diagramme.js';
+import './components.js';
+import './confirm-prompt.js';
+import './crosshair.js';
+import './charts.js';
 
-// Ansichten
-import './detailfelder.js';
-import './konten-orte.js';
-import './sets-tabelle.js';
-import './kennzahlen.js';
-import './sammlung.js';
-import './set-erfassen.js';
+// Views
+import './detail-fields.js';
+import './account-locations.js';
+import './sets-table.js';
+import './metrics.js';
+import './collection.js';
+import './set-add.js';
 import './set-csv-import.js';
-import './teile.js';
-import './teil-erfassen.js';
-import './wertkurve.js';
-import './finanzen.js';
-import './finanz-kennzahlen.js';
-import './einstellungen.js';
-import './zugaenge.js';
-import './haushalt.js';
-import './nutzerverwaltung.js';
-import './alarme.js';
-import './lagerorte.js';
+import './parts.js';
+import './part-add.js';
+import './value-curve.js';
+import './finances.js';
+import './finance-metrics.js';
+import './settings.js';
+import './accesses.js';
+import './household.js';
+import './user-management.js';
+import './alerts.js';
+import './storage-locations.js';
 import './minifigs.js';
 import './admin.js';
 import './set-detail.js';
-import './fehlerfang.js';
+import './error-capture.js';
 import './init.js';
-import './katalog.js';
+import './catalog.js';
 import './mobile.js';
-import './aktionen.js';
+import './actions.js';
 import './pdfviewer.js';
-import './kaufpreis-anzeige.js';
-import './erfassung-zustand.js';
-import './kauf-dialoge.js';
-import './manuell-detail.js';
-import './set-teile.js';
-import './kontofilter.js';
-import './rollbalken.js';
-import './merkliste.js';
-import './gutscheine.js';
-import './guthaben.js';
+import './purchase-price-display.js';
+import './entry-state.js';
+import './purchase-dialogs.js';
+import './manual-detail.js';
+import './set-parts.js';
+import './account-filter.js';
+import './scrollbar.js';
+import './wanted.js';
+import './vouchers.js';
+import './balance.js';
 import './wanted-xml.js';
 import './bricklink-xml.js';
-import './papierkorb.js';
-import './zweiter-faktor.js';
-import './einrichtung.js';
+import './trash.js';
+import './second-factor.js';
+import './setup.js';
 import './passkeys.js';
 import './router.js';
 import './navigation.js';
-import './startkasten.js';
-import './maillink.js';
-import './sitzung.js';
-import './einrichtung-stand.js';
+import './start-box.js';
+import './mail-link.js';
+import './session.js';
+import './setup-status.js';
 
-// Gestartet wird erst nach der Auswertung aller Module.
-import { startApp } from './sitzung.js';
+// Startup happens only after all modules have been evaluated.
+import { startApp } from './session.js';
 startApp();

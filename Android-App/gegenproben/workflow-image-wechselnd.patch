@@ -1,7 +1,7 @@
 Gegenprobe: Der Gegenproben-Job läuft wieder auf ubuntu-latest
 Modul: app
 Test: ch.brickinventoryapp.app.AndroidWorkflowTest
-Rot: der Release-Weg hat festes Werkzeug
+Rot: the release path has fixed tooling, a named certificate and no probe APK to install
 
 diff --git a/.github/workflows/android.yml b/.github/workflows/android.yml
 --- a/.github/workflows/android.yml

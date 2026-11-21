@@ -1,17 +1,17 @@
 Gegenprobe: Die Merkliste lädt nicht mehr, wenn jemand sie zeigt
-Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.MerklisteViewModelTest
-Rot: Liste und Detail laden, sobald jemand sie zeigt
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.WantedViewModelTest
+Rot: list and detail load as soon as someone shows them
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt
 index b7b747b..6ac5dd8 100644
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/viewmodel/MerklisteViewModel.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/viewmodel/MerklisteViewModel.kt
 @@ -121,7 +121,6 @@ class MerklisteViewModel @Inject constructor(
  
      init {
          // Wer die Liste zeigt, bekommt sie frisch; die Quelle danach folgt der Ablage selbst.
--        ladeBeimBeobachten(_merklisteState) { ladeMerkliste() }
+-        observeLoadOn(_wantedState) { loadWanted() }
      }
  
-     private val _merkpostenDetailState = MutableStateFlow(MerkpostenDetailUiState())
+     private val _wantedItemDetailState = MutableStateFlow(WantedItemDetailUiState())

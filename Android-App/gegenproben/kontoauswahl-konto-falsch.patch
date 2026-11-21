@@ -1,12 +1,12 @@
 Gegenprobe: Ein gewähltes Konto geht mit falschem Wert in accounts=
 Modul: core-model
 Test: ch.brickinventoryapp.model.KontoauswahlTest
-Rot: jede gespeicherte Wahl wird wieder derselbe Wert
+Rot: every saved choice becomes the same value again
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Kontoauswahl.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Kontoauswahl.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Kontoauswahl.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Kontoauswahl.kt
 index d1a80d5..4fdc4b5 100644
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Kontoauswahl.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/Kontoauswahl.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Kontoauswahl.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/Kontoauswahl.kt
 @@ -18,7 +18,7 @@ sealed interface Kontoauswahl {
      }
  

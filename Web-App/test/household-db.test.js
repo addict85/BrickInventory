@@ -1,23 +1,23 @@
 /**
- * Haushalt gegen eine ECHTE Datenbank.
+ * Household against a REAL database.
  *
- * Gegenproben zum Haushalt mit mehreren Elternkonten (am 28.10. gemessen):
- *   A  darfSchreibenFuer() wieder über alle Nachfahren → rot: „Rechte gelten nur
- *      entlang einer direkten Verknüpfung"
- *   B  die Prüfung auf eine umgekehrte Verknüpfung entfernt → rot:
- *      „gegenseitig verknüpfen wird abgelehnt"
- *   C  kontenTrennen() ignoriert main_user_id → rot: „ein Konto kann mehreren
- *      Hauptkonten angehören"
- *   D  beim Einlösen den Hinweis nicht gelöscht → rot: „die Umstellung trennt
- *      Ketten und hinterlässt einen Hinweis"
- *   E  (31.10.2026) in lagerKonten() den Ansichtsfilter angewandt
- *      (`blickfeldIds(uid, blickfeldArt(req.query.accounts))`) → rot: „die
- *      Lagerorte eines Unterkontos folgen dem Recht …“
+ * Counter-checks for the household with several parent accounts (measured on 28.10.):
+ *   A  darfSchreibenFuer() again over all descendants → red: “rights only apply
+ *      along a direct link"
+ *   B  the check for a reverse link removed → red:
+ *      “linking mutually is rejected"
+ *   C  unlinkAccounts() ignores main_user_id → red: “an account can belong to several
+ *      main accounts"
+ *   D  the hint not deleted on redeeming → red: “the conversion separates
+ *      chains and leaves a hint"
+ *   E  (31.10.2026) the view filter applied in storageAccounts()
+ *      (`scopeIds(uid, scopeKind(req.query.accounts))`) → red: “the
+ *      storage locations of a sub-account follow the right …”
  *
- * Voraussetzung: Test-DB (Inhalt wird geleert!) via TEST_DATABASE_URL,
- * Default postgres://tester:test@localhost/cattest. Ohne DB: skip.
+ * Prerequisite: test DB (content is emptied!) via TEST_DATABASE_URL,
+ * default postgres://tester:test@localhost/cattest. Without DB: skip.
  */
-require('./helpers/systemrahmen');
+require('./helpers/system-frame');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -25,18 +25,18 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const db = testDaten();
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
-const { haeltFigur, haeltSet, haeltTeil, mengeVon, katalogSet } = require('./helpers/bestand');
+const { holdsMinifig, holdsSet, holdsPart, quantityOf, catalogSet } = require('./helpers/inventory');
 
 /**
- * Die ECHTE Verschiebe-Route aufrufen — mit injizierter Session, wie in
- * test/api-parity.test.js. Der Weg über die Route ist der Punkt: Rechteprüfung,
- * Sperre und Verschmelzen laufen nur dort zusammen; sie im Test nachzubauen
- * hiesse, etwas anderes zu prüfen als das, was im Betrieb läuft.
+ * Call the REAL move route — with an injected session, as in
+ * test/api-parity.test.js. The path via the route is the point: rights check,
+ * lock and merging only come together there; rebuilding them in the test
+ * would mean checking something other than what runs in production.
  */
 let _srv, _base;
 async function startApi() {
@@ -46,9 +46,9 @@ async function startApi() {
     req.session = { userId: _actingAs };
     next();
   });
-  // Die Erfassungs-Routen liegen seit einer früheren Runde nur noch in der gemeinsamen
-  // Fabrik — eine Adresse für Webapp UND App.
-  app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
+  // Since an earlier round the entry routes only live in the shared
+  // factory — one address for web app AND app.
+  app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
   _srv = app.listen(0);
   _base = `http://localhost:${_srv.address().port}`;
 }
@@ -59,10 +59,10 @@ async function apiGet(actor, path) {
   return { status: r.status, body: await r.json().catch(() => null) };
 }
 /**
- * Verschieben geht NUR über die Kaufpreise: acquisition_ids ist Pflicht.
- * Ohne Angabe holt dieser Helfer alle Zeilen des Absenders — „das ganze Set"
- * heisst jetzt „alle seine Kaufpreise", und genau so soll es auch in der
- * Oberfläche aussehen.
+ * Moving ONLY goes via the purchase prices: acquisition_ids is required.
+ * Without input this helper fetches all rows of the sender — “the whole set"
+ * now means “all its purchase prices", and that is exactly how it should look in the
+ * UI too.
  */
 async function moveSet(actor, sn, fromId, toId, acquisitionIds) {
   _actingAs = actor;
@@ -92,9 +92,9 @@ async function seed() {
   await db.run('DROP SCHEMA public CASCADE');
   await db.run('CREATE SCHEMA public');
   await db.initSchema();
-  // initSchema() legt nur die Grundtabellen an; account_links und
-  // account_link_invites kommen aus db/migrations/0005. Ohne diesen Schritt
-  // liefe der Test gegen ein Schema, das es im Betrieb nicht gibt.
+  // initSchema() only creates the base tables; account_links and
+  // account_link_invites come from db/migrations/0005. Without this step
+  // the test would run against a schema that does not exist in production.
   const client = await db.pool.connect();
   try {
     await _req('db/migrate.js').runMigrations(client);
@@ -102,13 +102,13 @@ async function seed() {
     client.release();
   }
 
-  // 'enkel' hängt an kindA: Damit lässt sich prüfen, dass Rechte nicht über
-  // eine Kette weitergereicht werden.
+  // 'enkel' hangs on kindA: this allows checking that rights are not
+  // passed on along a chain.
   for (const name of ['eltern', 'kindA', 'kindB', 'fremd', 'enkel']) {
     await db.run(`INSERT INTO users (username, password_hash) VALUES ($1,'x')`, [name]);
     U[name] = (await db.get('SELECT id FROM users WHERE username=$1', [name])).id;
   }
-  // Alle in derselben Währung — sonst lehnt das Verknüpfen ab (eigener Test).
+  // All in the same currency — otherwise linking rejects (own test).
   for (const id of Object.values(U)) {
     await db.run(
       `INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency','CHF')
@@ -118,21 +118,21 @@ async function seed() {
   }
 }
 
-/** Set + Erfassung für ein Konto anlegen. */
+/** Create set + entry for an account. */
 async function giveSet(uid, sn, qty, price, cond = 'N', day = null) {
-  // Nur die Bestandszeile. Die Menge traegt die Erfassung weiter unten
-  // (kaufAmTagErfassen) — seit Migration 0036 der einzige Ort. Das
-  // frueher noetige `DO UPDATE SET quantity = sets.quantity + $3` faellt damit
-  // weg: Zwei Aufrufe fuer dasselbe Set addieren sich jetzt dadurch, dass
-  // ZWEI Erfassungen entstehen.
-  await haeltSet(db, uid, sn, 0, { egalWennDa: true });
-  // Der Name gehoert seit Migration 0033 in den Katalog, und zu jedem Set im
-  // Bestand MUSS dort eine Zeile stehen (die Migration traegt sie nach und
-  // prueft das). Die Vorlage stellt also die Lage her, die es wirklich gibt.
-  await katalogSet(db, sn, { name: 'Set ' + sn, year: 2020 });
-  // `cond` geht nur noch in die Erfassung — die sets-Zeile hat seit
-  // Migration 0032 keine condition-Spalte mehr.
-  await _req('src/bestand/acquisitions.js').kaufAmTagErfassen('set', uid, [sn], {
+  // Only the stock row. The quantity is carried by the entry further below
+  // (addPurchaseAtTag) — since migration 0036 the only place. The
+  // formerly needed `DO UPDATE SET quantity = sets.quantity + $3` is thus
+  // dropped: two calls for the same set now add up because
+  // TWO entries are created.
+  await holdsSet(db, uid, sn, 0, { anywayIfDa: true });
+  // Since migration 0033 the name belongs in the catalog, and for every set in the
+  // stock a row MUST stand there (the migration fills it in and
+  // checks that). So the template creates the situation that really exists.
+  await catalogSet(db, sn, { name: 'Set ' + sn, year: 2020 });
+  // `cond` only goes into the entry — the sets row has had no condition column
+  // since migration 0032.
+  await _req('src/inventory/acquisitions.js').addPurchaseAtTag('set', uid, [sn], {
     quantity: qty,
     price,
     condition: cond,
@@ -140,7 +140,7 @@ async function giveSet(uid, sn, qty, price, cond = 'N', day = null) {
   });
 }
 
-test('Haushalt gegen echte Datenbank', async t => {
+test('household against a real database', async t => {
   if (!(await dbReachable())) {
     await db.pool.end().catch(() => {});
     keineDb(t);
@@ -150,36 +150,36 @@ test('Haushalt gegen echte Datenbank', async t => {
   await startApi();
 
   const household = {
-    ..._req('src/haushalt/regeln.js'),
-    ..._req('src/haushalt/haushalt.js'),
-    ...require('./helpers/sources').testBereich('haushalt'),
+    ..._req('src/household/rules.js'),
+    ..._req('src/household/household.js'),
+    ...require('./helpers/sources').testArea('household'),
   };
-  const handlers = require('./helpers/sources').handlerModul(_req);
+  const handlers = require('./helpers/sources').handlerModule(_req);
 
-  await t.test('Verknüpfen braucht beide Seiten und dieselbe Währung', async () => {
-    const inv = await household.einladungAnlegen(U.eltern);
+  await t.test('linking needs both sides and the same currency', async () => {
+    const inv = await household.createInvitation(U.eltern);
     assert.ok(inv.code, 'kein Code erzeugt');
 
-    // Andere Währung → Ablehnung, und der Code bleibt benutzbar.
+    // Other currency → rejection, and the code stays usable.
     await db.run(`UPDATE user_settings SET value='EUR' WHERE user_id=$1 AND key='currency'`, [U.kindA]);
-    // Auf den CODE statt auf den deutschen Satz: Den Satz baut erst die Antwort.
-    await assert.rejects(household.einladungEinloesen(U.kindA, inv.code), { code: 'waehrung_ungleich' });
+    // On the CODE instead of the German sentence: only the response builds the sentence.
+    await assert.rejects(household.redeemInvitation(U.kindA, inv.code), { code: 'waehrung_ungleich' });
 
     await db.run(`UPDATE user_settings SET value='CHF' WHERE user_id=$1 AND key='currency'`, [U.kindA]);
-    const ok = await household.einladungEinloesen(U.kindA, inv.code);
+    const ok = await household.redeemInvitation(U.kindA, inv.code);
     assert.equal(ok.linked_to.id, U.eltern);
 
-    // Zweite Einlösung desselben Codes muss scheitern.
-    await assert.rejects(household.einladungEinloesen(U.kindB, inv.code), { code: /einladungscode/ });
+    // A second redemption of the same code must fail.
+    await assert.rejects(household.redeemInvitation(U.kindB, inv.code), { code: /einladungscode/ });
 
-    const inv2 = await household.einladungAnlegen(U.eltern);
-    assert.ok((await household.einladungEinloesen(U.kindB, inv2.code)).linked_to);
+    const inv2 = await household.createInvitation(U.eltern);
+    assert.ok((await household.redeemInvitation(U.kindB, inv2.code)).linked_to);
   });
 
-  await t.test('Blickfeld und Kontofilter', async () => {
-    const all = await household.blickfeldIds(U.eltern, 'all');
-    const own = await household.blickfeldIds(U.eltern, 'own');
-    const subs = await household.blickfeldIds(U.eltern, 'subs');
+  await t.test('scope and account filter', async () => {
+    const all = await household.scopeIds(U.eltern, 'all');
+    const own = await household.scopeIds(U.eltern, 'own');
+    const subs = await household.scopeIds(U.eltern, 'subs');
     assert.deepEqual(
       [...all].sort((a, b) => a - b),
       [U.eltern, U.kindA, U.kindB].sort((a, b) => a - b),
@@ -190,26 +190,26 @@ test('Haushalt gegen echte Datenbank', async t => {
       [U.kindA, U.kindB].sort((a, b) => a - b),
     );
 
-    // Ein Kind sieht nur sich — auch wenn es 'all' fragt.
-    assert.deepEqual(await household.blickfeldIds(U.kindA, 'all'), [U.kindA]);
-    assert.deepEqual(await household.blickfeldIds(U.kindA, 'subs'), [U.kindA]);
+    // A child only sees itself — even if it asks for 'all'.
+    assert.deepEqual(await household.scopeIds(U.kindA, 'all'), [U.kindA]);
+    assert.deepEqual(await household.scopeIds(U.kindA, 'subs'), [U.kindA]);
 
-    // Schreiben: nur die Richtung Eltern → eigenes Kind.
+    // Writing: only the direction parent → own child.
     assert.equal(await household.darfSchreibenFuer(U.eltern, U.kindA), true);
     assert.equal(await household.darfSchreibenFuer(U.kindA, U.kindB), false, 'Geschwister dürfen nicht');
     assert.equal(await household.darfSchreibenFuer(U.kindA, U.eltern), false, 'Kind darf nicht ins Elternkonto');
     assert.equal(await household.darfSchreibenFuer(U.eltern, U.fremd), false);
   });
 
-  await t.test('Rechte gelten nur entlang einer direkten Verknüpfung', async () => {
-    // Nach diesem Block steht: eltern → kindA → enkel.
-    const inv = await household.einladungAnlegen(U.kindA);
+  await t.test('rights only apply along a direct link', async () => {
+    // After this block: eltern → kindA → enkel.
+    const inv = await household.createInvitation(U.kindA);
     assert.ok(inv.code, 'Ein Unterkonto muss selbst einladen dürfen');
-    await household.einladungEinloesen(U.enkel, inv.code);
+    await household.redeemInvitation(U.enkel, inv.code);
 
-    assert.deepEqual(await household.blickfeldIds(U.kindA, 'all'), [U.kindA, U.enkel]);
+    assert.deepEqual(await household.scopeIds(U.kindA, 'all'), [U.kindA, U.enkel]);
     assert.ok(
-      !(await household.blickfeldIds(U.eltern, 'all')).includes(U.enkel),
+      !(await household.scopeIds(U.eltern, 'all')).includes(U.enkel),
       'Über eine Kette darf eltern das Konto enkel nicht sehen — enkel hat nur kindA zugestimmt',
     );
     assert.equal(
@@ -222,7 +222,7 @@ test('Haushalt gegen echte Datenbank', async t => {
     assert.equal(await household.darfSchreibenFuer(U.enkel, U.kindA), false);
   });
 
-  await t.test('die Lagerorte eines Unterkontos folgen dem Recht, nicht dem Ansichtsfilter', async () => {
+  await t.test('the storage locations of a sub-account follow the right, not the view filter', async () => {
     _actingAs = U.kindA;
     const neu = await fetch(`${_base}/api/v1/storage/locations`, {
       method: 'POST',
@@ -247,27 +247,27 @@ test('Haushalt gegen echte Datenbank', async t => {
     );
   });
 
-  await t.test('ein Konto kann mehreren Hauptkonten angehören', async () => {
-    // enkel nimmt zusätzlich die Einladung von eltern an: Jetzt sieht eltern
-    // es direkt, mit eigener Zustimmung.
-    const inv = await household.einladungAnlegen(U.eltern);
-    await household.einladungEinloesen(U.enkel, inv.code);
-    assert.ok((await household.blickfeldIds(U.eltern, 'all')).includes(U.enkel));
+  await t.test('an account can belong to several main accounts', async () => {
+    // enkel additionally accepts eltern's invitation: now eltern sees
+    // it directly, with its own consent.
+    const inv = await household.createInvitation(U.eltern);
+    await household.redeemInvitation(U.enkel, inv.code);
+    assert.ok((await household.scopeIds(U.eltern, 'all')).includes(U.enkel));
     assert.equal(await household.darfSchreibenFuer(U.eltern, U.enkel), true);
 
-    const st = await household.haushaltsStand(U.enkel);
+    const st = await household.householdStatus(U.enkel);
     assert.deepEqual(st.parents.map(p => p.username).sort(), ['eltern', 'kindA']);
     assert.equal(st.is_sub, true);
     assert.ok(st.linked_to, 'Ältere Apps brauchen weiterhin linked_to');
 
-    // Dieselbe Verknüpfung ein zweites Mal ergibt eine verständliche Absage.
-    const nochmal = (await household.einladungAnlegen(U.eltern)).code;
-    await assert.rejects(household.einladungEinloesen(U.enkel, nochmal), { code: 'konto_bereits_verknuepft' });
+    // The same link a second time yields an understandable refusal.
+    const nochmal = (await household.createInvitation(U.eltern)).code;
+    await assert.rejects(household.redeemInvitation(U.enkel, nochmal), { code: 'konto_bereits_verknuepft' });
 
-    // Lösen von EINEM Elternkonto lässt das andere stehen.
-    await household.kontenTrennen(U.enkel, null, U.eltern);
+    // Unlinking from ONE parent account leaves the other in place.
+    await household.unlinkAccounts(U.enkel, null, U.eltern);
     assert.deepEqual(
-      (await household.haushaltsStand(U.enkel)).parents.map(p => p.username),
+      (await household.householdStatus(U.enkel)).parents.map(p => p.username),
       ['kindA'],
     );
     assert.equal(
@@ -278,27 +278,27 @@ test('Haushalt gegen echte Datenbank', async t => {
     assert.equal(await household.darfSchreibenFuer(U.kindA, U.enkel), true);
   });
 
-  await t.test('gegenseitig verknüpfen wird abgelehnt', async () => {
-    // kindA ist Unterkonto von eltern. Nähme eltern eine Einladung von kindA
-    // an, dürften beide beim jeweils anderen schreiben.
-    const inv = await household.einladungAnlegen(U.kindA);
-    await assert.rejects(household.einladungEinloesen(U.eltern, inv.code), { code: 'verknuepfung_erzeugt_kreis' });
-    // Der Code ist nach der Absage wieder frei.
-    // Die Absage hat den Code nicht verbraucht.
-    await household.einladungEinloesen(U.fremd, inv.code);
-    await household.kontenTrennen(U.fremd);
+  await t.test('linking mutually is rejected', async () => {
+    // kindA is a sub-account of eltern. If eltern accepted an invitation from kindA,
+    // both could write at the other.
+    const inv = await household.createInvitation(U.kindA);
+    await assert.rejects(household.redeemInvitation(U.eltern, inv.code), { code: 'verknuepfung_erzeugt_kreis' });
+    // The code is free again after the refusal.
+    // The refusal did not use up the code.
+    await household.redeemInvitation(U.fremd, inv.code);
+    await household.unlinkAccounts(U.fremd);
   });
 
-  await t.test('die Umstellung trennt Ketten und hinterlässt einen Hinweis', async () => {
-    // eltern → kindA → enkel steht. Die Migration erneut laufen lassen, wie
-    // sie auf einer bestehenden Installation liefe.
+  await t.test('the conversion separates chains and leaves a hint', async () => {
+    // eltern → kindA → enkel stands. Run the migration again as
+    // it would run on an existing installation.
     const fs = require('node:fs');
     const sql = fs.readFileSync(path.join(ROOT, 'db/migrations/0046-haushalt-mehrere-eltern.sql'), 'utf8');
     await db.run('DELETE FROM household_former_links');
     await db.exec(sql);
-    household.meldeHaushaltsaenderung();
+    household.reportHouseholdChange();
 
-    const st = await household.haushaltsStand(U.eltern);
+    const st = await household.householdStatus(U.eltern);
     assert.deepEqual(
       st.former_links.map(f => [f.username, f.via]),
       [['enkel', 'kindA']],
@@ -306,47 +306,47 @@ test('Haushalt gegen echte Datenbank', async t => {
     );
     assert.ok(!st.blickfeld.some(m => m.username === 'enkel'));
     assert.deepEqual(
-      (await household.haushaltsStand(U.kindA)).former_links,
+      (await household.householdStatus(U.kindA)).former_links,
       [],
       'Direkte Verknüpfungen sind keine getrennten Ketten',
     );
 
-    // Nimmt enkel die Einladung an, verschwindet der Hinweis von selbst.
-    await household.einladungEinloesen(U.enkel, (await household.einladungAnlegen(U.eltern)).code);
-    assert.deepEqual((await household.haushaltsStand(U.eltern)).former_links, []);
-    await household.kontenTrennen(U.enkel, null, U.eltern);
+    // If enkel accepts the invitation, the hint disappears by itself.
+    await household.redeemInvitation(U.enkel, (await household.createInvitation(U.eltern)).code);
+    assert.deepEqual((await household.householdStatus(U.eltern)).former_links, []);
+    await household.unlinkAccounts(U.enkel, null, U.eltern);
 
-    // Verwerfen löscht nur den eigenen Hinweis.
+    // Discarding only deletes the own hint.
     await db.exec(sql);
-    assert.equal((await household.verwerfeGetrennt(U.kindB, U.enkel)).removed, 0);
-    assert.equal((await household.verwerfeGetrennt(U.eltern, U.enkel)).removed, 1);
-    assert.deepEqual((await household.haushaltsStand(U.eltern)).former_links, []);
+    assert.equal((await household.discardSeparated(U.kindB, U.enkel)).removed, 0);
+    assert.equal((await household.discardSeparated(U.eltern, U.enkel)).removed, 1);
+    assert.deepEqual((await household.householdStatus(U.eltern)).former_links, []);
   });
 
-  await t.test('dasselbe Set in zwei Konten wird zu EINER Zeile', async () => {
+  await t.test('the same set in two accounts becomes ONE row', async () => {
     await giveSet(U.kindA, '75192-1', 1, 100);
     await giveSet(U.kindB, '75192-1', 2, 160);
     await giveSet(U.kindA, '10290-1', 1, 50);
 
-    const r = await handlers.setsLesen(await household.blickfeldIds(U.eltern, 'all'), {});
+    const r = await handlers.setsLesen(await household.scopeIds(U.eltern, 'all'), {});
     const falcon = r.sets.filter(s => s.set_number === '75192-1');
     assert.equal(falcon.length, 1, 'Set erscheint mehrfach');
     assert.equal(falcon[0].quantity, 3, 'Mengen nicht addiert');
     assert.equal(r.total, 2, 'Gesamtzahl zählt Konten statt Sets');
 
-    // Besitzer mit Namen — sonst steht dort nur eine Zahl.
+    // Owner with names — otherwise only a number stands there.
     const owners = (falcon[0].owners || []).map(o => o.username).sort();
     assert.deepEqual(owners, ['kindA', 'kindB']);
 
-    // Kaufpreis mengengewichtet: (1x100 + 2x160)/3 = 140
+    // Purchase price quantity-weighted: (1x100 + 2x160)/3 = 140
     assert.equal(Math.round(falcon[0].avg_purchase_price), 140);
 
-    // Filter: eigene Sicht des Elternkontos ist leer, 'subs' zeigt beide Sets.
-    assert.equal((await handlers.setsLesen(await household.blickfeldIds(U.eltern, 'own'), {})).sets.length, 0);
-    assert.equal((await handlers.setsLesen(await household.blickfeldIds(U.eltern, 'subs'), {})).sets.length, 2);
+    // Filter: the parent account's own view is empty, 'subs' shows both sets.
+    assert.equal((await handlers.setsLesen(await household.scopeIds(U.eltern, 'own'), {})).sets.length, 0);
+    assert.equal((await handlers.setsLesen(await household.scopeIds(U.eltern, 'subs'), {})).sets.length, 2);
 
-    // Und ein Kind sieht nur seine eigenen.
-    const kindB = await handlers.setsLesen(await household.blickfeldIds(U.kindB, 'all'), {});
+    // And a child only sees its own.
+    const kindB = await handlers.setsLesen(await household.scopeIds(U.kindB, 'all'), {});
     assert.deepEqual(
       kindB.sets.map(s => s.set_number),
       ['75192-1'],
@@ -355,23 +355,23 @@ test('Haushalt gegen echte Datenbank', async t => {
     assert.equal(kindB.sets[0].owners, undefined, 'Besitzer-Plakette gehört nicht ins Einzelkonto');
   });
 
-  await t.test('Kennzahlen folgen dem Filter', async () => {
-    const all = await handlers.getStats(await household.blickfeldIds(U.eltern, 'all'));
-    const own = await handlers.getStats(await household.blickfeldIds(U.eltern, 'own'));
+  await t.test('metrics follow the filter', async () => {
+    const all = await handlers.getStats(await household.scopeIds(U.eltern, 'all'));
+    const own = await handlers.getStats(await household.scopeIds(U.eltern, 'own'));
 
-    // Warum hier jetzt 2 steht und vorher 3
+    // Why 2 stands here now and 3 before
     assert.equal(parseInt(all.total_sets, 10), 2, 'verschiedene Sets im Haushalt — wie die Galerie sie zeigt');
     assert.equal(parseInt(all.total_quantity, 10), 4, 'Exemplare: 1 + 2 + 1');
     assert.equal(parseInt(own.total_sets, 10), 0);
   });
 
-  await t.test('Verschieben nimmt Teile, Minifiguren und Anleitungen mit', async () => {
-    // Inhalt für das Set von kindA anlegen — plus ein manuell erfasstes Teil,
-    // das ausdrücklich NICHT mitwandern darf.
-    await haeltTeil(db, U.kindA, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
-    await haeltTeil(db, U.kindA, '3002', { setNumber: '75192-1', menge: 5, colorId: 1 });
-    await haeltTeil(db, U.kindA, '9999', { menge: 3, colorId: 0 });
-    await haeltFigur(db, U.kindA, 'sw0001', { setNumber: '75192-1', menge: 2 });
+  await t.test('moving takes parts, minifigures and instructions along', async () => {
+    // Create contents for kindA's set — plus a manually entered part
+    // that explicitly must NOT move along.
+    await holdsPart(db, U.kindA, '3001', { setNumber: '75192-1', menge: 10, colorId: 4 });
+    await holdsPart(db, U.kindA, '3002', { setNumber: '75192-1', menge: 5, colorId: 1 });
+    await holdsPart(db, U.kindA, '9999', { menge: 3, colorId: 0 });
+    await holdsMinifig(db, U.kindA, 'sw0001', { setNumber: '75192-1', menge: 2 });
     await db.run(`INSERT INTO instructions (user_id,set_number,url) VALUES ($1,'75192-1','http://x/1.pdf')`, [U.kindA]);
 
     const r = await moveSet(U.eltern, '75192-1', U.kindA, U.kindB);
@@ -381,22 +381,22 @@ test('Haushalt gegen echte Datenbank', async t => {
     assert.equal(r.body.minifigs, 1);
     assert.equal(r.body.instructions, 1);
 
-    // Beim Ziel angekommen …
+    // Arrived at the target …
     const atB = await db.get(`SELECT COUNT(*)::int AS n FROM parts WHERE user_id=$1 AND set_number='75192-1'`, [
       U.kindB,
     ]);
     assert.equal(atB.n, 2);
-    // … bei der Quelle weg …
+    // … gone from the source …
     const atA = await db.get(`SELECT COUNT(*)::int AS n FROM parts WHERE user_id=$1 AND set_number='75192-1'`, [
       U.kindA,
     ]);
     assert.equal(atA.n, 0, 'Teile blieben im Quellkonto zurück');
-    // … und das manuelle Teil ist geblieben.
+    // … and the manual part stayed.
     const manual = await db.get(`SELECT COUNT(*)::int AS n FROM parts WHERE user_id=$1 AND source='manual'`, [U.kindA]);
     assert.equal(manual.n, 1, 'ein manuell erfasstes Teil wurde mitverschoben');
 
-    // Seit Migration 0047 bleiben verschiedene Preise eigene Zeilen: 2×160
-    // von kindB und 1×100 von kindA — kein Mischpreis 140.
+    // Since migration 0047 different prices stay separate rows: 2×160
+    // from kindB and 1×100 from kindA — no mixed price 140.
     const rows = await db.all(
       `SELECT quantity, purchase_price FROM set_acquisitions
         WHERE user_id=$1 AND set_number='75192-1' ORDER BY purchase_price`,
@@ -411,8 +411,8 @@ test('Haushalt gegen echte Datenbank', async t => {
       'Die Einzelkäufe müssen beim Verschieben erhalten bleiben',
     );
 
-    // Im Haushalt steht das Set weiterhin einmal, jetzt mit einem Besitzer.
-    const list = await handlers.setsLesen(await household.blickfeldIds(U.eltern, 'all'), {});
+    // In the household the set still stands once, now with one owner.
+    const list = await handlers.setsLesen(await household.scopeIds(U.eltern, 'all'), {});
     const falcon = list.sets.find(s => s.set_number === '75192-1');
     assert.equal(falcon.quantity, 3);
     assert.deepEqual(
@@ -421,11 +421,11 @@ test('Haushalt gegen echte Datenbank', async t => {
     );
   });
 
-  await t.test('verschieben darf nur, wer für beide Konten schreiben darf', async () => {
-    // Ein Kind ins Nachbarkonto: verboten, obwohl beide im selben Haushalt.
+  await t.test('only whoever may write for both accounts may move', async () => {
+    // A child into the neighboring account: forbidden although both are in the same household.
     const bad = await moveSet(U.kindB, '10290-1', U.kindA, U.kindB, [1]);
     assert.equal(bad.status, 403, `erwartet 403, war ${bad.status}`);
-    // Und der Bestand ist unangetastet.
+    // And the stock is untouched.
     const still = await db.get('SELECT COUNT(*)::int AS n FROM sets WHERE user_id=$1 AND set_number=$2', [
       U.kindA,
       '10290-1',
@@ -433,16 +433,16 @@ test('Haushalt gegen echte Datenbank', async t => {
     assert.equal(still.n, 1);
   });
 
-  await t.test('die Finanz-Endpunkte antworten in JEDEM Kontofilter', async () => {
-    // Diese Prüfung gibt es, weil genau hier ein Fehler durchgerutscht ist:
-    // Nach der Umstellung auf user_id = ANY($1) bekam getSetting() die
-    // ID-LISTE statt einer ID, und alle vier Endpunkte antworteten mit
+  await t.test('the finance endpoints answer in EVERY account filter', async () => {
+    // This check exists because exactly here a bug slipped through:
+    // After switching to user_id = ANY($1) getSetting() got the
+    // ID LIST instead of one ID, and all four endpoints answered with
     //   500 invalid input syntax for type integer: "{"2"}" …
     for (const mode of ['all', 'own', 'subs']) {
       const q = mode === 'all' ? '' : `?accounts=${mode}`;
-      // Adressen seit Etappe 5 unter /api/v1 (zusammengelegt) — die Aussage
-      // dieses Tests ist unverändert: Jeder Endpunkt antwortet in JEDEM
-      // Kontofilter, und die Währung kommt vom fragenden Konto.
+      // Addresses under /api/v1 since stage 5 (merged) — the statement
+      // of this test is unchanged: every endpoint answers in EVERY
+      // account filter, and the currency comes from the asking account.
       for (const ep of [
         '/api/v1/finance/valuation',
         '/api/v1/finance/parts-valuation',
@@ -456,36 +456,36 @@ test('Haushalt gegen echte Datenbank', async t => {
         assert.equal(r.body.success, true, `${path} meldet keinen Erfolg`);
       }
     }
-    // Und die Währung stammt IMMER vom fragenden Konto, auch wenn es in der
-    // ID-Liste gar nicht vorkommt (accounts=subs).
+    // And the currency ALWAYS comes from the asking account, even if it does not
+    // occur in the ID list at all (accounts=subs).
     await db.run(`UPDATE user_settings SET value='SEK' WHERE user_id=$1 AND key='currency'`, [U.eltern]);
     const subs = await apiGet(U.eltern, '/api/v1/finance/valuation?accounts=subs');
     assert.equal(subs.body.currency, 'SEK', 'Die Währung kam aus einem Unterkonto statt vom fragenden Konto');
     await db.run(`UPDATE user_settings SET value='CHF' WHERE user_id=$1 AND key='currency'`, [U.eltern]);
   });
 
-  await t.test('Entkoppeln lässt die Daten beim Besitzer', async () => {
-    await household.kontenTrennen(U.eltern, U.kindA);
-    assert.deepEqual(await household.blickfeldIds(U.eltern, 'all'), [U.eltern, U.kindB]);
-    // Das Kind behält seinen Bestand.
-    const kindA = await handlers.setsLesen(await household.blickfeldIds(U.kindA, 'all'), {});
+  await t.test('unlinking leaves the data with the owner', async () => {
+    await household.unlinkAccounts(U.eltern, U.kindA);
+    assert.deepEqual(await household.scopeIds(U.eltern, 'all'), [U.eltern, U.kindB]);
+    // The child keeps its stock.
+    const kindA = await handlers.setsLesen(await household.scopeIds(U.kindA, 'all'), {});
     assert.deepEqual(
       kindA.sets.map(s => s.set_number),
       ['10290-1'],
     );
-    // Und darf sich danach wieder verknüpfen lassen.
-    const inv = await household.einladungAnlegen(U.eltern);
-    await household.einladungEinloesen(U.kindA, inv.code);
+    // And may be linked again afterwards.
+    const inv = await household.createInvitation(U.eltern);
+    await household.redeemInvitation(U.kindA, inv.code);
   });
 
-  await t.test('einzelner Kaufpreis wechselt den Eigentümer', async () => {
-    // Der Kaufpreis ist die Ebene, auf der ein Exemplar existiert: Ein Set mit
-    // drei Erfassungen sind drei Käufe, die verschiedenen Kindern gehören
-    // können. Hier wandert EINE Zeile — die Quelle behält den Rest samt Teilen.
+  await t.test('a single purchase price changes its owner', async () => {
+    // The purchase price is the level at which a copy exists: a set with
+    // three entries is three purchases that may belong to different children.
+    // Here ONE row moves — the source keeps the rest including parts.
     await giveSet(U.kindA, '21318-1', 1, 200, 'N', '2026-01-05');
     await giveSet(U.kindA, '21318-1', 1, 240, 'N', '2026-02-05');
-    await haeltTeil(db, U.kindA, '3020', { setNumber: '21318-1', menge: 4, colorId: 2 });
-    await haeltFigur(db, U.kindA, 'fig-tree', { setNumber: '21318-1', menge: 1 });
+    await holdsPart(db, U.kindA, '3020', { setNumber: '21318-1', menge: 4, colorId: 2 });
+    await holdsMinifig(db, U.kindA, 'fig-tree', { setNumber: '21318-1', menge: 1 });
     await db.run(
       `INSERT INTO instructions (user_id,set_number,url)
                   VALUES ($1,'21318-1','http://x/tree.pdf')`,
@@ -509,35 +509,35 @@ test('Haushalt gegen echte Datenbank', async t => {
     assert.equal(r.status, 200, JSON.stringify(body));
     assert.equal(body.source_emptied, false, 'die Quelle behält ein Exemplar');
 
-    // Mengen stimmen auf beiden Seiten …
-    // Aus den Erfassungen (Migration 0036) — die Spalte gibt es nicht mehr.
-    const qty = async uid => await mengeVon(db, uid, '21318-1');
+    // Quantities match on both sides …
+    // From the entries (migration 0036) — the column no longer exists.
+    const qty = async uid => await quantityOf(db, uid, '21318-1');
     assert.equal(await qty(U.kindA), 1, 'Quelle nicht heruntergezählt');
     assert.equal(await qty(U.eltern), 1);
 
-    // … die Kaufpreise sind je Konto einer …
+    // … the purchase prices are one per account …
     const links = await db.all(
       `SELECT user_id, purchase_price FROM set_acquisitions WHERE set_number='21318-1'
         ORDER BY user_id`,
     );
     assert.equal(links.length, 2, 'Erfassung wurde dupliziert statt verschoben');
 
-    // … und die Teile stehen jetzt bei BEIDEN: Die Quelle behält ihr Exemplar,
-    // das Ziel bekommt eine Kopie. Ein Umhängen hätte die Quelle mit einem
-    // Exemplar ohne Teile zurückgelassen.
-    // Wird EIN Kaufpreis von zweien umgehängt, muss ALLES in beiden Konten …
-    const inBeiden = async table => {
+    // … and the parts now stand at BOTH: the source keeps its copy,
+    // the target gets a copy. Re-hanging would have left the source with a
+    // copy without parts.
+    // If ONE purchase price of two is re-hung, EVERYTHING in both accounts must …
+    const inBoth = async table => {
       const n = async uid =>
         (await db.get(`SELECT COUNT(*)::int AS n FROM ${table} WHERE user_id=$1 AND set_number='21318-1'`, [uid])).n;
       return { quelle: await n(U.kindA), ziel: await n(U.eltern) };
     };
     for (const table of ['sets', 'parts', 'minifigs', 'instructions']) {
-      const r = await inBeiden(table);
+      const r = await inBoth(table);
       assert.equal(r.quelle, 1, `${table}: Quelle verlor den Eintrag trotz verbleibendem Exemplar`);
       assert.equal(r.ziel, 1, `${table}: Ziel bekam keinen Eintrag`);
     }
-    // Und zwar GENAU einmal je Konto — doppelte Zeilen zählte die
-    // Teile-Zusammenfassung zweimal, die Menge steckt in sets.quantity.
+    // And EXACTLY once per account — duplicate rows were counted twice by the
+    // parts summary, the quantity is in sets.quantity.
     const doppelt = await db.get(
       `SELECT COUNT(*)::int AS n FROM parts
         WHERE set_number='21318-1' AND user_id=$1 AND part_number='3020'`,
@@ -546,7 +546,7 @@ test('Haushalt gegen echte Datenbank', async t => {
     assert.equal(doppelt.n, 1, 'Teile wurden mehrfach kopiert');
   });
 
-  await t.test('ein Unterkonto darf keinen Kaufpreis umhängen', async () => {
+  await t.test('a sub-account may not reassign a purchase price', async () => {
     const acq = await db.get(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number='21318-1' LIMIT 1`, [
       U.kindA,
     ]);
@@ -559,13 +559,13 @@ test('Haushalt gegen echte Datenbank', async t => {
     assert.equal(r.status, 403, 'Geschwister-Verschiebung war erlaubt');
   });
 
-  await t.test('der Eigentümerwechsel greift die ZEILE, nicht den Betrachter', async () => {
-    // Woher dieser Test kommt
+  await t.test('the owner change takes the ROW, not the viewer', async () => {
+    // Where this test comes from
     await giveSet(U.kindB, '31120-1', 1, 80);
     const acq = await db.get(`SELECT id FROM set_acquisitions WHERE user_id=$1 AND set_number='31120-1'`, [U.kindB]);
 
-    // GENAU der alte Webapp-Request: Betrachter (eltern) als from_user_id,
-    // obwohl die Zeile kindB gehört. Muss jetzt trotzdem ankommen.
+    // EXACTLY the old web app request: viewer (eltern) as from_user_id,
+    // although the row belongs to kindB. Must arrive anyway now.
     _actingAs = U.eltern;
     const r = await fetch(`${_base}/api/v1/sets/31120-1/acquisitions/${acq.id}`, {
       method: 'PUT',
@@ -578,16 +578,16 @@ test('Haushalt gegen echte Datenbank', async t => {
     const owner = await db.get(`SELECT user_id FROM set_acquisitions WHERE set_number='31120-1'`);
     assert.equal(parseInt(owner.user_id, 10), U.eltern, 'Die Zeile ist nicht angekommen');
 
-    // Die Richtungsprüfung bleibt: Die Zeile gehört jetzt eltern — kindB darf
-    // sie NICHT zurückholen, auch nicht mit dreist passendem from_user_id.
+    // The direction check stays: the row now belongs to eltern — kindB may
+    // NOT fetch it back, not even with a brazenly matching from_user_id.
     _actingAs = U.kindB;
     const zurueck = await fetch(`${_base}/api/v1/sets/31120-1/acquisitions/${acq.id}`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ owner_user_id: U.kindB, from_user_id: U.eltern }),
     });
-    // 403 (fremde Zeile) oder 404 (die Zeilen-ID kann beim Verschmelzen im
-    // Ziel neu vergeben worden sein) — Hauptsache: kein Erfolg.
+    // 403 (foreign row) or 404 (the row ID may have been reassigned in the
+    // target on merging) — the main thing: no success.
     assert.ok(
       [403, 404].includes(zurueck.status),
       `Ein Unterkonto konnte aus dem Hauptkonto ziehen (Status ${zurueck.status})`,
@@ -596,54 +596,54 @@ test('Haushalt gegen echte Datenbank', async t => {
     assert.equal(parseInt(nachher.user_id, 10), U.eltern, 'Die Zeile wanderte zurück');
   });
 
-  await t.test('der Filter kennt einzelne Konten — und greift auch bei manuellen Einträgen', async () => {
-    // Der Filter führt jedes Unterkonto namentlich. Serverseitig heisst das:
-    // accounts=<id>. Eine FREMDE ID darf nicht durchschlagen — sonst wäre der
-    // Filter ein Zugriffsweg statt einer Ansichtshilfe.
-    assert.deepEqual(await household.blickfeldIds(U.eltern, U.kindA), [U.kindA]);
+  await t.test('the filter knows individual accounts — and also applies to manual entries', async () => {
+    // The filter lists every sub-account by name. On the server that means:
+    // accounts=<id>. A FOREIGN ID must not get through — otherwise the
+    // filter would be an access path instead of a view aid.
+    assert.deepEqual(await household.scopeIds(U.eltern, U.kindA), [U.kindA]);
     assert.deepEqual(
-      await household.blickfeldIds(U.eltern, U.fremd),
-      await household.blickfeldIds(U.eltern, 'all'),
+      await household.scopeIds(U.eltern, U.fremd),
+      await household.scopeIds(U.eltern, 'all'),
       'eine kontofremde ID muss auf das ganze Blickfeld zurückfallen',
     );
-    // Ein Unterkonto kann sich damit nicht ins Geschwisterkonto sehen: kindB
-    // steht nicht in seinem Blickfeld, die fremde ID fällt also zurück — auf
-    // kindAs EIGENES Blickfeld, das sein Unterkonto enkel enthält.
-    // Geprüft wird die Aussage, nicht die Liste: Entscheidend ist, dass kindB
-    // nicht darin vorkommt.
-    const ausSichtKindA = await household.blickfeldIds(U.kindA, U.kindB);
-    assert.ok(!ausSichtKindA.includes(U.kindB), 'Der Filter darf kein Geschwisterkonto öffnen');
+    // A sub-account thus cannot look into the sibling account: kindB
+    // is not in its view, so the foreign ID falls back — to
+    // kindA's OWN view, which contains its sub-account enkel.
+    // What is checked is the statement, not the list: what matters is that kindB
+    // does not occur in it.
+    const fromViewKindA = await household.scopeIds(U.kindA, U.kindB);
+    assert.ok(!fromViewKindA.includes(U.kindB), 'Der Filter darf kein Geschwisterkonto öffnen');
     assert.deepEqual(
-      ausSichtKindA,
-      await household.blickfeldIds(U.kindA, 'all'),
+      fromViewKindA,
+      await household.scopeIds(U.kindA, 'all'),
       'Eine fremde ID muss auf das eigene Blickfeld zurückfallen',
     );
 
-    // Manuell erfasste Teile und Minifiguren hängen an eigenen Endpunkten —
-    // gemeldet war, dass der Filter dort nicht greift.
-    await haeltTeil(db, U.kindA, 'm-A', { menge: 1, colorId: 0 });
-    await haeltTeil(db, U.kindB, 'm-B', { menge: 1, colorId: 0 });
-    await haeltFigur(db, U.kindA, 'mf-A', { menge: 1 });
-    await haeltFigur(db, U.kindB, 'mf-B', { menge: 1 });
+    // Manually entered parts and minifigures hang on their own endpoints —
+    // it was reported that the filter does not apply there.
+    await holdsPart(db, U.kindA, 'm-A', { menge: 1, colorId: 0 });
+    await holdsPart(db, U.kindB, 'm-B', { menge: 1, colorId: 0 });
+    await holdsMinifig(db, U.kindA, 'mf-A', { menge: 1 });
+    await holdsMinifig(db, U.kindB, 'mf-B', { menge: 1 });
 
     const nummern = rows => rows.map(r => r.part_number ?? r.fig_number);
-    const nurA = nummern(await handlers.manuelleTeileListe(await household.blickfeldIds(U.eltern, U.kindA)));
-    const alle = nummern(await handlers.manuelleTeileListe(await household.blickfeldIds(U.eltern, 'all')));
-    // kindA hat aus einem früheren Test noch ein manuelles Teil ('9999') —
-    // deshalb auf Enthaltensein prüfen statt auf die exakte Liste.
+    const nurA = nummern(await handlers.manualPartsList(await household.scopeIds(U.eltern, U.kindA)));
+    const alle = nummern(await handlers.manualPartsList(await household.scopeIds(U.eltern, 'all')));
+    // kindA still has a manual part ('9999') from an earlier test —
+    // hence check for containment instead of the exact list.
     assert.ok(nurA.includes('m-A'), 'eigenes Teil fehlt');
     assert.ok(!nurA.includes('m-B'), 'der Filter zeigt das Teil des Geschwisterkontos');
     assert.ok(alle.includes('m-A') && alle.includes('m-B'), 'ohne Filter müssen beide erscheinen');
 
-    const figsA = nummern(await handlers.manuelleFigurenAbfrage(await household.blickfeldIds(U.eltern, U.kindA)));
+    const figsA = nummern(await handlers.readManualMinifigs(await household.scopeIds(U.eltern, U.kindA)));
     assert.ok(figsA.includes('mf-A'));
     assert.ok(!figsA.includes('mf-B'), 'der Filter zeigt die Figur des Geschwisterkontos');
   });
 
-  await t.test('ein Set lässt sich NICHT als Ganzes verschieben', async () => {
-    // Verschoben wird über den Kaufpreis. Ohne acquisition_ids antwortet die
-    // Route mit 400 — die Regel hängt nicht an der Oberfläche, sondern am
-    // Server: Ein Klient, der sie umgeht, bekommt keine Ausnahme.
+  await t.test('a set can NOT be moved as a whole', async () => {
+    // Moving goes via the purchase price. Without acquisition_ids the route answers
+    // with 400 — the rule does not depend on the UI but on the
+    // server: a client that bypasses it gets no exception.
     _actingAs = U.eltern;
     const r = await fetch(`${_base}/api/v1/sets/10290-1/move`, {
       method: 'POST',
@@ -655,10 +655,10 @@ test('Haushalt gegen echte Datenbank', async t => {
     assert.equal(body.code, 'kaufpreise_angeben');
   });
 
-  await t.test('in ein fremdes Konto schreiben — die Richtung entscheidet', async () => {
-    // Warum diese Prüfung hier steht
+  await t.test('writing into a foreign account — the direction decides', async () => {
+    // Why this check stands here
 
-    /** Über die v1-Fabrik anlegen, mit gewähltem Zielkonto. */
+    /** Create via the v1 factory, with a chosen target account. */
     async function anlegen(actor, pfad, koerper) {
       _actingAs = actor;
       const r = await fetch(_base + pfad, {
@@ -669,9 +669,9 @@ test('Haushalt gegen echte Datenbank', async t => {
       return { status: r.status, body: await r.json().catch(() => null) };
     }
 
-    // Eigene, sonst nirgends benutzte Nummern: Die vorherigen Prüfungen legen
-    // 3001/3002/sw0001 für kindA an. Mit denselben Nummern zählte diese Prüfung
-    // fremde Zeilen mit und wäre aus dem falschen Grund rot geworden.
+    // Own numbers not used anywhere else: the previous checks create
+    // 3001/3002/sw0001 for kindA. With the same numbers this check would count
+    // foreign rows and would have turned red for the wrong reason.
     const faelle = [
       {
         name: 'Teile',
@@ -693,7 +693,7 @@ test('Haushalt gegen echte Datenbank', async t => {
       db.get(`SELECT COUNT(*)::int AS c FROM ${tabelle} WHERE ${wo} AND user_id=$1`, [uid]).then(r => r.c);
 
     for (const f of faelle) {
-      // 1. Hauptkonto → eigenes Unterkonto: erlaubt, und es landet DORT.
+      // 1. Main account → own sub-account: allowed, and it lands THERE.
       const hin = await anlegen(U.eltern, f.pfad, { ...f.koerper, owner_user_id: U.kindA });
       assert.equal(hin.status, 200, `${f.name}: Hauptkonto durfte nicht ins eigene Unterkonto schreiben`);
       assert.equal(await zaehle(f.tabelle, f.wo, U.kindA), 1, `${f.name}: gelandet ist es nicht beim gewählten Konto`);
@@ -703,22 +703,22 @@ test('Haushalt gegen echte Datenbank', async t => {
         `${f.name}: es landete beim Absender statt beim Zielkonto`,
       );
 
-      // 2. Unterkonto → Geschwisterkonto: verboten. „Steht im Blickfeld"
-      //    genügt NICHT — kindA und kindB sehen sich gegenseitig nicht einmal.
+      // 2. Sub-account → sibling account: forbidden. “Is in the view"
+      //    does NOT suffice — kindA and kindB do not even see each other.
       const quer = await anlegen(U.kindA, f.pfad, { ...f.koerper, owner_user_id: U.kindB });
       assert.equal(quer.status, 403, `${f.name}: Unterkonto schrieb ins Geschwisterkonto`);
 
-      // 3. Unterkonto → Hauptkonto: verboten. Die Richtung ist EINE.
+      // 3. Sub-account → main account: forbidden. The direction is ONE.
       const rueck = await anlegen(U.kindA, f.pfad, { ...f.koerper, owner_user_id: U.eltern });
       assert.equal(rueck.status, 403, `${f.name}: Unterkonto schrieb ins Hauptkonto`);
 
-      // 4. Konto von ausserhalb des Haushalts: verboten.
+      // 4. Account from outside the household: forbidden.
       const fremd = await anlegen(U.fremd, f.pfad, { ...f.koerper, owner_user_id: U.eltern });
       assert.equal(fremd.status, 403, `${f.name}: ein fremdes Konto schrieb in den Haushalt`);
 
-      // 5. Und in KEINEM der drei abgelehnten Fälle darf still etwas entstehen —
-      //    weder beim Ziel noch beim Absender. Genau das ist der Unterschied
-      //    zwischen „403" und „schreibt heimlich ins eigene Konto".
+      // 5. And in NONE of the three rejected cases may something silently be created —
+      //    neither at the target nor at the sender. Exactly that is the difference
+      //    between “403" and “secretly writes into the own account".
       assert.equal(
         await zaehle(f.tabelle, f.wo, U.kindB),
         0,
@@ -733,8 +733,8 @@ test('Haushalt gegen echte Datenbank', async t => {
       await db.run(`DELETE FROM ${f.tabelle} WHERE ${f.wo}`);
     }
 
-    // Ohne Angabe bleibt es beim eigenen Konto — der Normalfall darf sich
-    // durch die Prüfung nicht ändern.
+    // Without input it stays with the own account — the normal case must not
+    // change through the check.
     const ohne = await anlegen(U.kindA, '/api/v1/parts', { part_number: '99992', color_id: 4, quantity: 1 });
     assert.equal(ohne.status, 200);
     assert.equal(
@@ -745,7 +745,7 @@ test('Haushalt gegen echte Datenbank', async t => {
     await db.run(`DELETE FROM parts WHERE part_number='99992'`);
   });
 
-  await t.test('aufräumen', async () => {
+  await t.test('clean up', async () => {
     _srv?.close();
     await db.pool.end().catch(() => {});
   });

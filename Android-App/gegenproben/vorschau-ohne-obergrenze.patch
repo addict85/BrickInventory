@@ -1,16 +1,16 @@
 Gegenprobe: die Vorschau-Ablage räumt über der Obergrenze nicht mehr auf
 Modul: core-data
-Test: ch.brickinventoryapp.data.VorschauSpeicherTest
-Rot: Obergrenze fliegt das Aelteste
+Test: ch.brickinventoryapp.data.PreviewStorageTest
+Rot: above the upper limit the oldest goes until four fifths are free
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
 +++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/cache/VorschauSpeicher.kt
 @@ -127,7 +127,6 @@
-             // Vorgewaermtes altert sofort — Begruendung an SPEKULATIV_ZEIT.
-             else if (spekulativ) ziel.setLastModified(SPEKULATIV_ZEIT)
+             // Vorgewaermtes altert sofort — Begruendung an SPECULATIVE_TIME.
+             else if (speculative) ziel.setLastModified(SPECULATIVE_TIME)
          }
--        aufraeumenFallsNoetig()
+-        cleanupIfNeeded()
      }
  
      /** Wie viel liegt hier? Fuer die Anzeige in den Einstellungen. */

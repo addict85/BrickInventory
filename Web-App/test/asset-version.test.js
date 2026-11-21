@@ -1,5 +1,5 @@
 /**
- * Jede versionierte Referenz in index.html trägt die Version aus package.json.
+ * Every versioned reference in index.html carries the version from package.json.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -8,17 +8,17 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-test('alle ?v=-Verweise in index.html tragen die Version aus package.json', () => {
+test('all ?v= references in index.html carry the version from package.json', () => {
   const version = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version;
   assert.ok(/^[\w.-]+$/.test(version || ''), `Unbrauchbare Version: ${version}`);
 
   const html = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
-  const verweise = [...html.matchAll(/(?:src|href)="([^"]*\?v=([^"&]*))"/g)];
-  // Selbstbeweis: Findet das Muster nichts, wäre die Prüfung darunter still
-  // grün. GEMESSEN sind es acht.
-  assert.ok(verweise.length >= 5, `Nur ${verweise.length} versionierte Verweise gefunden — Muster veraltet?`);
+  const references = [...html.matchAll(/(?:src|href)="([^"]*\?v=([^"&]*))"/g)];
+  // Self-proof: if the pattern finds nothing, the check below would be silently
+  // green. MEASURED there are eight.
+  assert.ok(references.length >= 5, `Nur ${references.length} versionierte Verweise gefunden — Muster veraltet?`);
 
-  const falsch = verweise.filter(m => m[2] !== version).map(m => `${m[1]}   (erwartet ?v=${version})`);
+  const falsch = references.filter(m => m[2] !== version).map(m => `${m[1]}   (erwartet ?v=${version})`);
   assert.deepEqual(
     falsch,
     [],

@@ -1,16 +1,16 @@
 Gegenprobe: Das Mengenfeld der Erfassung hat wieder nur bei einem Fehler eine Zeile darunter
 Modul: app
 Test: ch.brickinventoryapp.app.AblaufTest
-Rot: jedes Feld beim Set erfassen hat eine Hilfezeile
+Rot: every field when adding a set has a help line, also while typing
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/ManualItemComposables.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/ManualItemComposables.kt
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt
 index ec59d4d..b2b1ef6 100644
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/ManualItemComposables.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/ManualItemComposables.kt
-@@ -280,7 +280,6 @@ fun AnzahlFeld(wert: String, onWert: (String) -> Unit, hinweis: String) {
-         isError = NumericInput.mengeUngueltig(wert),
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/ManualItemComposables.kt
+@@ -280,7 +280,6 @@ fun CountField(wert: String, onValue: (String) -> Unit, hinweis: String) {
+         isError = NumericInput.quantityInvalid(wert),
          supportingText = {
-             if (NumericInput.mengeUngueltig(wert)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.ansagen())
+             if (NumericInput.quantityInvalid(wert)) Text(stringResource(R.string.erfassen_menge_ungueltig), Modifier.announce())
 -            else Text(hinweis)
          },
          modifier = Modifier.fillMaxWidth(), singleLine = true,

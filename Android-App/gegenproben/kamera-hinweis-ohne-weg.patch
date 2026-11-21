@@ -1,18 +1,18 @@
 Gegenprobe: Der Kamera-Hinweis zeigt trotz gesperrter Frage nur „Erlauben“, ohne Erklärung
 Modul: app
-Test: ch.brickinventoryapp.app.FehlerhinweiseTest
-Rot: ist die Kamera dauerhaft verweigert, nennt der Hinweis den Weg ueber die Einstellungen
+Test: ch.brickinventoryapp.app.ErrorHintsTest
+Rot: if the camera is permanently denied, the hint names the way via the settings
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/KameraErlaubnis.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/KameraErlaubnis.kt
 index 4671faf..3404a35 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/KameraErlaubnis.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/screens/KameraErlaubnis.kt
-@@ -137,7 +137,7 @@ fun KameraErlaubnisHinweis(
+@@ -137,7 +137,7 @@ fun CameraPermissionHint(
              }
              Spacer(Modifier.height(Abstaende.mittel))
-             Button(onClick = onErlauben) {
--                Text(stringResource(if (verweigert) R.string.scanner_camera_einstellungen else R.string.scanner_allow))
+             Button(onClick = onAllow) {
+-                Text(stringResource(if (denied) R.string.scanner_camera_einstellungen else R.string.scanner_allow))
 +                Text(stringResource(R.string.scanner_allow))
              }
-             TextButton(onClick = onEintippen, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) {
+             TextButton(onClick = typeInOn, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) {
                  Text(eintippen)

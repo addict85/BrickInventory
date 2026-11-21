@@ -5,23 +5,23 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Welche Schicht welche Importe nicht haben darf. ModulgrenzenTest prüft die
- * Build-Dateien; hier steht, was innerhalb der Module gilt.
- * Eine Strukturprüfung: Sie liest Importzeilen, keine Kommentare.
+ * Which layer must not have which imports. ModulgrenzenTest checks the
+ * build files; here stands what applies within the modules.
+ * A structure check: it reads import lines, not comments.
  *
- * Gegenproben (05.11.2026, gemessen mit kotlinc lokal, je ein Patch in gegenproben/):
- *   schicht-viewmodel-android   `import android.net.Uri` in GutscheinViewModel → rot „ein ViewModel …“
- *   schicht-viewmodel-okhttp    `import okhttp3.OkHttpClient` in UpdateViewModel → rot „Präsentation …“
- *   schicht-praesentation-netz  `import retrofit2.Response` in GalleryScreen → rot „Präsentation …“
+ * Counter-checks (05.11.2026, measured locally with kotlinc, one patch each in gegenproben/):
+ *   schicht-viewmodel-android   `import android.net.Uri` in GutscheinViewModel → red “a ViewModel …”
+ *   schicht-viewmodel-okhttp    `import okhttp3.OkHttpClient` in UpdateViewModel → red “presentation …”
+ *   schicht-praesentation-netz  `import retrofit2.Response` in GalleryScreen → red “presentation …”
  *   schicht-bereich-api         `import ch.brickinventoryapp.data.api.SetsApi` in MerklisteViewModel
- *                               → rot „ein Bereich kennt die Retrofit-Schnittstellen nicht“
- *   schicht-zustand-api         `import ch.brickinventoryapp.data.api.KontoApi` in AppTexte → dasselbe rot
- *   zustand-texte-mit-context   `import android.content.Context` in AppTexte → rot „core-zustand und core-sitzung kennen keinen Context“
- *   schicht-zustand-context     `import android.content.Context` in Sitzung.kt (core-sitzung) → rot
- *                               „core-zustand und core-sitzung kennen keinen Context“
- *   bereich-mehr-wireformat     ein Import eines Antworttyps in CatalogViewModel → rot
- *                               „ein Bereich kennt … das Wire-Format nur core-data“
- *   bereich-kennt-umsetzung     `import …KatalogRepositoryImpl` in CatalogViewModel → rot, derselbe Test
+ *                               → red “an area does not know the Retrofit interfaces”
+ *   schicht-zustand-api         `import ch.brickinventoryapp.data.api.AccountApi` in AppTexte → the same red
+ *   zustand-texte-mit-context   `import android.content.Context` in AppTexte → red “core-state and core-session know no Context“
+ *   schicht-zustand-context     `import android.content.Context` in Sitzung.kt (core-session) → red
+ *                               “core-state and core-session know no Context“
+ *   bereich-mehr-wireformat     an import of a response type in CatalogViewModel → red
+ *                               “an area does not know … only core-data knows the wire format”
+ *   bereich-kennt-umsetzung     `import …KatalogRepositoryImpl` in CatalogViewModel → red, the same test
  */
 class SchichtregelnTest {
 
@@ -36,19 +36,19 @@ class SchichtregelnTest {
         }
     }
 
-    private fun verstoesse(welche: (Datei) -> Boolean, verboten: (String) -> Boolean): List<String> {
+    private fun violations(welche: (Datei) -> Boolean, verboten: (String) -> Boolean): List<String> {
         val geprueft = dateien.filter(welche)
         assert(geprueft.isNotEmpty()) { "Keine Dateien geprüft — Muster veraltet?" }
         return geprueft.flatMap { d -> d.importe.filter(verboten).map { "${d.modul}/${d.name}: $it" } }
     }
 
-    private val WIRE_KENNER = setOf("core-vertrag", "core-data", "core-testing")
+    private val WIRE_KENNER = setOf("core-contract", "core-data", "core-testing")
 
-    private fun praesentation(d: Datei) = d.modul in setOf("core-zustand", "core-sitzung") || d.modul.startsWith("feature-")
+    private fun presentation(d: Datei) = d.modul in setOf("core-state", "core-session") || d.modul.startsWith("feature-")
 
     @Test
-    fun `ein ViewModel kennt weder Android noch Netz noch Bildschirmcode`() {
-        val f = verstoesse({ it.name.endsWith("ViewModel.kt") }) {
+    fun `a ViewModel knows neither Android nor network nor screen code`() {
+        val f = violations({ it.name.endsWith("ViewModel.kt") }) {
             it.startsWith("android.") || it.startsWith("okhttp3.") || it.startsWith("retrofit2.") ||
                 Regex("""\.ui\.(screens|components)\.""").containsMatchIn(it)
         }
@@ -56,35 +56,35 @@ class SchichtregelnTest {
     }
 
     @Test
-    fun `Praesentation holt nichts selbst am Netz`() {
-        val f = verstoesse(::praesentation) { it.startsWith("okhttp3.") || it.startsWith("retrofit2.") }
+    fun `presentation fetches nothing from the network itself`() {
+        val f = violations(::presentation) { it.startsWith("okhttp3.") || it.startsWith("retrofit2.") }
         assert(f.isEmpty()) { "Präsentation mit OkHttp oder Retrofit:\n  " + f.joinToString("\n  ") }
     }
 
     /**
-     * Auch der Zustand nicht: Er sieht Repositories und Ergebnis, nicht den Retrofit-Weg dahinter.
-     * Das Wire-Format übersetzt nur core-data (Abbildungen in core-vertrag); jedes andere
-     * Modul, auch die Ablage, nimmt Fachtypen. Die Kante dazu prüft Modulkanten. Die Umsetzungen
-     * der Repositories sind öffentlich, weil core-testing sie baut; benutzen darf sie sonst niemand.
+     * Not the state either: it sees repositories and Ergebnis, not the Retrofit path behind them.
+     * Only core-data translates the wire format (mappings in core-contract); every other
+     * module, the store too, takes domain types. Modulkanten checks the edge for it. The implementations
+     * of the repositories are public because core-testing builds them; nobody else may use them.
      */
     @Test
-    fun `ein Bereich kennt die Retrofit-Schnittstellen nicht, das Wire-Format nur core-data`() {
-        val f = verstoesse(::praesentation) { it.startsWith("ch.brickinventoryapp.data.api.") }
+    fun `an area does not know the Retrofit interfaces, only core-data knows the wire format`() {
+        val f = violations(::presentation) { it.startsWith("ch.brickinventoryapp.data.api.") }
         assert(f.isEmpty()) { "Bereiche oder Zustand mit Importen aus data.api:\n  " + f.joinToString("\n  ") }
-        val wire = verstoesse({ it.modul !in WIRE_KENNER }) { it.startsWith("ch.brickinventoryapp.vertrag.") }
-        assert(wire.isEmpty()) { "Importe aus core-vertrag ausserhalb von core-data:\n  " + wire.joinToString("\n  ") }
-        val umsetzung = verstoesse({ it.modul !in setOf("core-data", "core-testing") }) {
+        val wire = violations({ it.modul !in WIRE_KENNER }) { it.startsWith("ch.brickinventoryapp.contract.") }
+        assert(wire.isEmpty()) { "Importe aus core-contract ausserhalb von core-data:\n  " + wire.joinToString("\n  ") }
+        val implementation = violations({ it.modul !in setOf("core-data", "core-testing") }) {
             Regex("""^ch\.brickinventoryapp\.data\.repository\.\w+Impl$""").matches(it)
         }
-        assert(umsetzung.isEmpty()) { "Repository-Umsetzungen ausserhalb von core-data und core-testing:\n  " + umsetzung.joinToString("\n  ") }
+        assert(implementation.isEmpty()) { "Repository-Umsetzungen ausserhalb von core-data und core-testing:\n  " + implementation.joinToString("\n  ") }
     }
 
-    /** Texte und Dateien kommen über Textquelle und DateiLeser aus core-data, ohne Ausnahme. */
+    /** Texts and files come via Textquelle and FileReader from core-data, without exception. */
     @Test
-    fun `core-zustand und core-sitzung kennen keinen Context`() {
-        val f = verstoesse({ it.modul in setOf("core-zustand", "core-sitzung") }) {
+    fun `core-state and core-session know no Context`() {
+        val f = violations({ it.modul in setOf("core-state", "core-session") }) {
             it == "android.content.Context" || it.endsWith(".ApplicationContext")
         }
-        assert(f.isEmpty()) { "core-zustand oder core-sitzung mit Context:\n  " + f.joinToString("\n  ") }
+        assert(f.isEmpty()) { "core-state oder core-session mit Context:\n  " + f.joinToString("\n  ") }
     }
 }

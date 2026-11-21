@@ -22,46 +22,46 @@ import androidx.compose.ui.unit.dp
 import ch.brickinventoryapp.ui.theme.Abstaende
 
 /**
- * Schalter mit Beschriftung als EIN Bedienelement: Die ganze Zeile schaltet, und
- * TalkBack liest Name, Rolle und Zustand zusammen. Das Steuerelement selbst zeigt nur
- * an (`onCheckedChange = null`); daneben ein eigener Rückruf hiesse „Aus, Schalter“.
+ * A switch with a label as ONE control: the whole row toggles it, and
+ * TalkBack reads name, role and state together. The control itself only displays
+ * (`onCheckedChange = null`); a separate callback next to it would say „off, switch“.
  */
 @Composable
-fun SchalterZeile(
-    text: String, an: Boolean, onUmschalten: (Boolean) -> Unit, modifier: Modifier = Modifier,
-    hinweis: String? = null, hinweisFarbe: Color = Color.Unspecified, enabled: Boolean = true,
-) = Schaltzeile(text, an, onUmschalten, Role.Switch, modifier, hinweis, hinweisFarbe, enabled,
-    textStil = MaterialTheme.typography.bodyMedium, vorn = false) {
+fun ToggleRow(
+    text: String, an: Boolean, toggleOn: (Boolean) -> Unit, modifier: Modifier = Modifier,
+    hinweis: String? = null, hintColor: Color = Color.Unspecified, enabled: Boolean = true,
+) = Schaltzeile(text, an, toggleOn, Role.Switch, modifier, hinweis, hintColor, enabled,
+    textStyle = MaterialTheme.typography.bodyMedium, vorn = false) {
     Switch(checked = an, onCheckedChange = null, enabled = enabled)
 }
 
-/** Wie [SchalterZeile], mit dem Kästchen vor dem Text. */
+/** Like [ToggleRow], with the checkbox before the text. */
 @Composable
-fun KaestchenZeile(
-    text: String, an: Boolean, onUmschalten: (Boolean) -> Unit, modifier: Modifier = Modifier,
-    hinweis: String? = null, textStil: TextStyle = MaterialTheme.typography.bodyMedium, enabled: Boolean = true,
-) = Schaltzeile(text, an, onUmschalten, Role.Checkbox, modifier, hinweis, Color.Unspecified, enabled, textStil, vorn = true) {
+fun BoxRow(
+    text: String, an: Boolean, toggleOn: (Boolean) -> Unit, modifier: Modifier = Modifier,
+    hinweis: String? = null, textStyle: TextStyle = MaterialTheme.typography.bodyMedium, enabled: Boolean = true,
+) = Schaltzeile(text, an, toggleOn, Role.Checkbox, modifier, hinweis, Color.Unspecified, enabled, textStyle, vorn = true) {
     Checkbox(checked = an, onCheckedChange = null, enabled = enabled)
 }
 
 @Composable
 private fun Schaltzeile(
-    text: String, an: Boolean, onUmschalten: (Boolean) -> Unit, rolle: Role, modifier: Modifier,
-    hinweis: String?, hinweisFarbe: Color, enabled: Boolean, textStil: TextStyle, vorn: Boolean,
-    steuerelement: @Composable RowScope.() -> Unit,
+    text: String, an: Boolean, toggleOn: (Boolean) -> Unit, rolle: Role, modifier: Modifier,
+    hinweis: String?, hintColor: Color, enabled: Boolean, textStyle: TextStyle, vorn: Boolean,
+    control: @Composable RowScope.() -> Unit,
 ) {
     Row(
         modifier.fillMaxWidth().heightIn(min = 48.dp)
-            .toggleable(value = an, enabled = enabled, role = rolle, onValueChange = onUmschalten),
+            .toggleable(value = an, enabled = enabled, role = rolle, onValueChange = toggleOn),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Abstaende.mittel),
     ) {
-        if (vorn) steuerelement()
+        if (vorn) control()
         Column(Modifier.weight(1f)) {
-            Text(text, style = textStil)
+            Text(text, style = textStyle)
             if (hinweis != null) Text(hinweis, style = MaterialTheme.typography.bodySmall,
-                color = if (hinweisFarbe.isSpecified) hinweisFarbe else MaterialTheme.colorScheme.onSurfaceVariant)
+                color = if (hintColor.isSpecified) hintColor else MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        if (!vorn) steuerelement()
+        if (!vorn) control()
     }
 }

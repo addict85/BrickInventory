@@ -5,18 +5,18 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Jeder Text steht in BEIDEN Sprachen, und kein Text steht im Quelltext.
+ * Every text stands in BOTH languages, and no text stands in the source.
  */
 class StringResourceParityTest {
 
-    // Als Konstanten, damit der Dollar nicht in einer Zeichenketten-Vorlage
-    // steht — in Kotlin müsste er dort umständlich maskiert werden, und genau
-    // solche Maskierungen haben in dieser Reihe schon zweimal einen Test
-    // stillschweigend etwas anderes prüfen lassen als beabsichtigt.
+    // As constants so that the dollar does not stand in a string template
+    // — in Kotlin it would have to be escaped awkwardly there, and exactly
+    // such escapes have twice in this series let a test
+    // silently check something other than intended.
     private val DOLLAR = '\u0024'
-    private val AUSDRUCK_AUF = "$DOLLAR{"
-    private val AUSDRUCK_LANG = "\\$DOLLAR\\{[^}]*\\}"
-    private val AUSDRUCK_KURZ = "\\$DOLLAR\\w+"
+    private val EXPRESSION_ON = "$DOLLAR{"
+    private val EXPRESSION_LANG = "\\$DOLLAR\\{[^}]*\\}"
+    private val EXPRESSION_SHORT = "\\$DOLLAR\\w+"
 
     private fun schluessel(datei: String): Set<String> =
         Regex("""<string name="([^"]+)"""")
@@ -24,22 +24,22 @@ class StringResourceParityTest {
             .map { it.groupValues[1] }.toSet()
 
     @Test
-    fun `jeder Text steht in beiden Sprachdateien`() {
+    fun `every text is in both language files`() {
         val en = schluessel("values/strings.xml")
         val de = schluessel("values-de/strings.xml")
         assert(en.size > 300) { "Zu wenige Texte gefunden (${en.size}) — Muster veraltet?" }
 
-        val nurEn = (en - de).sorted()
-        val nurDe = (de - en).sorted()
-        assert(nurEn.isEmpty()) {
+        val onlyEn = (en - de).sorted()
+        val onlyDe = (de - en).sorted()
+        assert(onlyEn.isEmpty()) {
             "Nur in values/, fehlt auf Deutsch (Android zeigt dort still Englisch):\n  " +
-                nurEn.joinToString("\n  ")
+                onlyEn.joinToString("\n  ")
         }
-        // Die Gegenrichtung ist harmloser, aber ebenso ein Fehler: ein
-        // deutscher Eintrag ohne englisches Gegenstück ist toter Ballast,
-        // denn values/ ist die Vorgabesprache und wird immer gelesen.
-        assert(nurDe.isEmpty()) {
-            "Nur in values-de/, ohne Gegenstück in values/:\n  " + nurDe.joinToString("\n  ")
+        // The opposite direction is more harmless, but just as much an error: a
+        // German entry without an English counterpart is dead ballast,
+        // because values/ is the default language and is always read.
+        assert(onlyDe.isEmpty()) {
+            "Nur in values-de/, ohne Gegenstück in values/:\n  " + onlyDe.joinToString("\n  ")
         }
     }
 
@@ -53,154 +53,154 @@ class StringResourceParityTest {
             }
 
     /**
-     * Mengenformen: beide Dateien, dieselben Klassen.
+     * Plural forms: both files, the same classes.
      *
-     * ── Warum es diese Prüfung gibt ──────────────────────────
+     * ── Why this check exists ──────────────────────────────
      *
-     * Die Prüfung oben sucht `<string name=`. `<plurals>` war ihr unsichtbar —
-     * solange es keine gab, war das kein Loch. Mit dem Beheben der zehn
-     * PluralsCandidate-Befunde gibt es sechzehn, und damit wäre eine fehlende
-     * deutsche Einzahlform genau der Fehler, den die Datei oben beschreibt:
+     * The check above searches `<string name=`. `<plurals>` was invisible to it —
+     * as long as there were none, that was no hole. With fixing the ten
+     * PluralsCandidate findings there are sixteen, and with that a missing
+     * German singular form would be exactly the error the file above describes:
      *
-     * Geprüft wird darum dreierlei:
-     *   1. Dieselben Namen in beiden Dateien.
-     *   2. Dieselben Mengenklassen je Name — eine deutsche `<plurals>` ohne
-     *      `one` sieht vollständig aus und ist es nicht.
+     * Therefore three things are checked:
+     *   1. The same names in both files.
+     *   2. The same quantity classes per name — a German `<plurals>` without
+     *      `one` looks complete and is not.
      *
-     * Gegenproben (durchgeführt, in derselben Logik gegen die echten Dateien
-     * und vier verfälschte Fassungen):
-     *   die echten Dateien              -> grün (16 Mengenformen)
-     *   deutsche Einzahlform entfernt   -> ROT
-     *   deutsche Mengenform ganz weg    -> ROT
-     *   Mengenform nur auf Deutsch      -> ROT
-     *   englische Mengenform ohne one   -> ROT
+     * Counter-checks (performed, in the same logic against the real files
+     * and four falsified versions):
+     *   the real files                  -> green (16 plural forms)
+     *   German singular form removed    -> RED
+     *   German plural form gone entirely -> RED
+     *   plural form only in German      -> RED
+     *   English plural form without one -> RED
      */
     @Test
-    fun `jede Mengenform steht in beiden Sprachdateien mit denselben Klassen`() {
+    fun `every plural form is in both language files with the same classes`() {
         val en = mengenformen("values/strings.xml")
         val de = mengenformen("values-de/strings.xml")
 
-        // Selbstnachweis gegen die stille Null: Ohne Treffer liefe alles
-        // darunter ins Leere und wäre trotzdem grün.
+        // Self-proof against the silent zero: without hits everything below would run
+        // into nothing and still be green.
         assert(en.isNotEmpty()) {
             "Keine <plurals> in values/strings.xml gefunden — Muster veraltet?"
         }
 
-        val nurEn = (en.keys - de.keys).sorted()
-        assert(nurEn.isEmpty()) {
+        val onlyEn = (en.keys - de.keys).sorted()
+        assert(onlyEn.isEmpty()) {
             "Mengenform nur in values/, fehlt auf Deutsch (Android zeigt dort still " +
-                "Englisch):\n  " + nurEn.joinToString("\n  ")
+                "Englisch):\n  " + onlyEn.joinToString("\n  ")
         }
-        val nurDe = (de.keys - en.keys).sorted()
-        assert(nurDe.isEmpty()) {
+        val onlyDe = (de.keys - en.keys).sorted()
+        assert(onlyDe.isEmpty()) {
             "Mengenform nur in values-de/, ohne Gegenstück in values/:\n  " +
-                nurDe.joinToString("\n  ")
+                onlyDe.joinToString("\n  ")
         }
 
-        val andereKlassen = en.keys.filter { it in de && en[it] != de[it] }.sorted()
-        assert(andereKlassen.isEmpty()) {
+        val otherClasses = en.keys.filter { it in de && en[it] != de[it] }.sorted()
+        assert(otherClasses.isEmpty()) {
             "Diese Mengenformen haben in den beiden Dateien NICHT dieselben " +
                 "Mengenklassen — die fehlende Fassung fällt still auf Englisch " +
-                "zurück:\n  " + andereKlassen.joinToString("\n  ") {
+                "zurück:\n  " + otherClasses.joinToString("\n  ") {
                     "$it: values=${en[it]?.sorted()} values-de=${de[it]?.sorted()}"
                 }
         }
 
-        val ohneBeide = en.keys.filter { !en.getValue(it).containsAll(listOf("one", "other")) }.sorted()
-        assert(ohneBeide.isEmpty()) {
+        val withoutBoth = en.keys.filter { !en.getValue(it).containsAll(listOf("one", "other")) }.sorted()
+        assert(withoutBoth.isEmpty()) {
             "Diese Mengenformen haben nicht beide Klassen `one` und `other` — dann " +
                 "steht auch bei genau einem Treffer die Mehrzahl da:\n  " +
-                ohneBeide.joinToString("\n  ")
+                withoutBoth.joinToString("\n  ")
         }
     }
 
     /**
-     * Gleicher Text in beiden Dateien heisst: nicht uebersetzt.
+     * The same text in both files means: not translated.
      *
-     * ── Warum der Test oben das nicht faengt ─────────────────
+     * ── Why the test above does not catch this ─────────────────
      *
-     * `jeder Text steht in beiden Sprachdateien` vergleicht NAMEN. Die zehn
-     * Texte der Preisalarm-Rubrik standen brav in beiden Dateien — nur trug
-     * die deutsche denselben englischen Satz; die deutsche App zeigte „rises above".
+     * `every text is in both language files` compares NAMES. The ten
+     * texts of the price alert section stood dutifully in both files — only
+     * the German one carried the same English sentence; the German app showed „rises above".
      *
-     * Der Fehler ist nicht das Vergessen, sondern seine Form: Wer einen neuen
-     * Text anlegt, kopiert den Block in die zweite Datei — und uebersetzt ihn
-     * dann nicht. Beide Dateien sehen danach vollstaendig aus. Kein Schalter
-     * steht auf Rot, keine Zeile fehlt. Deshalb prueft dieser Test nicht
-     * Vollstaendigkeit, sondern Verschiedenheit.
+     * The error is not the forgetting but its form: whoever creates a new
+     * text copies the block into the second file — and then does not
+     * translate it. Both files look complete afterwards. No switch
+     * is on red, no line is missing. That is why this test does not check
+     * completeness but difference.
      *
-     * ── Warum eine Liste und keine Heuristik ────────────────────────────────
+     * ── Why a list and not a heuristic ───────────────────────────────────────
      *
-     * NACHGEMESSEN standen nach der Uebersetzung noch 30 Eintraege in beiden
-     * Dateien gleich, und alle 30 zu Recht: „Sets", „Scan", „OK", „Details",
-     * Formatvorlagen wie `×%1${DOLLAR}d`, die Adresse im Platzhalter. Eine
-     * Heuristik („mindestens zwei richtige Woerter") haette acht der zehn
-     * Alarm-Texte gefunden und dafuer `app_name` und `monitoring_title`
-     * faelschlich gemeldet — also beides falsch: unvollstaendig UND laut.
+     * RE-MEASURED, after the translation 30 entries still stood the same in both
+     * files, and all 30 rightly: „Sets", „Scan", „OK", „Details",
+     * format templates like `×%1${DOLLAR}d`, the address in the placeholder. A
+     * heuristic („at least two real words") would have found eight of the ten
+     * alert texts and in return wrongly reported `app_name` and `monitoring_title`
+     * — so both wrong: incomplete AND loud.
      *
-     * Die Liste ist stattdessen eine Behauptung, die jeder Eintrag einzeln
-     * traegt: „dieser Text lautet in beiden Sprachen gleich, und das ist
-     * gewollt". Neue Texte kommen nicht von selbst hinein — genau das ist der
-     * Zweck. Und wie bei `erlaubt` weiter unten prueft der Test die Liste
-     * selbst mit: Ein Eintrag, der nicht mehr zutrifft, fliegt raus, statt als
-     * alte Entscheidung stehenzubleiben, die niemand mehr nachsieht.
+     * The list is instead a claim that every entry carries
+     * individually: „this text reads the same in both languages, and that is
+     * intended". New texts do not get in by themselves — that is exactly the
+     * purpose. And as with `erlaubt` further below the test checks the list
+     * itself too: an entry that no longer applies is thrown out instead of
+     * staying as an old decision that nobody looks at any more.
      */
     @Test
-    fun `kein Text steht in beiden Sprachen unuebersetzt`() {
-        // Begriffe, Eigennamen und Formatvorlagen, die in beiden Sprachen
-        // gleich lauten. Jeder Eintrag ist eine Entscheidung, keine Nachsicht.
+    fun `no text stays untranslated in both languages`() {
+        // Terms, proper names and format templates that read the same in both
+        // languages. Every entry is a decision, not an indulgence.
         val gewolltGleich = setOf(
-            // Reines Format „Aktion: Name“ für Screenreader, ohne Wörter.
+            // Pure format „Aktion: Name“ for screen readers, without words.
             "aktion_fuer",
             "acq_total_quantity", "app_name", "catalog_sort_name", "chart_period_max",
             "comparison_barcode_label", "csv_ok_count",
             "detail_section_item", "finance_filter_sets",
             "finance_grand_total", "finance_section_sets", "finance_total_sets",
             "gallery_quantity_badge", "gallery_sort_name", "nav_sets",
-            // Listenfuss wie finance_grand_total; „Set 10305-1“ für TalkBack.
+            // List footer like finance_grand_total; „Set 10305-1“ for TalkBack.
             "vouchers_total", "cd_set_nummer",
             "monitoring_theme",
             "monitoring_vorwaermen_roaming",
-            // System und Server heissen in beiden Sprachen so.
+            // System and server are called so in both languages.
             "nav_group_server", "settings_hell_system",
             "common_ok", "common_pdf", "common_hours_short", "common_times",
             "partslist_rb_prefix",
             "setup_build",
             "setup_url_placeholder",
-            // PIN ist in beiden Sprachen PIN — ein Begriff, kein Satz.
+            // PIN is PIN in both languages — a term, not a sentence.
             "vouchers_pin",
-            // Reine Rahmen ohne eigenen Text: Seit die zehn
-            // PluralsCandidate-Befunde behoben sind, setzen diese beiden einen
-            // Satz aus Mengenform-Bruchstuecken zusammen. Sie enthalten nur
-            // Platzhalter und Satzzeichen — uebersetzt wird in den <plurals>.
+            // Pure frames without own text: since the ten
+            // PluralsCandidate findings are fixed, these two assemble a
+            // sentence from plural form fragments. They contain only
+            // placeholders and punctuation — translation happens in the <plurals>.
             "partslist_summary", "csv_upload_result",
-            // Dazugekommen mit dem Gutschein-Import (Stueck 3): auch ein
-            // reiner Rahmen, „%1$s, %2$s". Die beiden Stuecke darin sind die
-            // BESTEHENDEN Mengenformen der CSV-Importe (csv_upload_new,
-            // csv_upload_updated) — uebersetzt wird dort.
+            // Added with the voucher import (piece 3): also a
+            // pure frame, „%1$s, %2$s". The two pieces in it are the
+            // EXISTING plural forms of the CSV imports (csv_upload_new,
+            // csv_upload_updated) — translation happens there.
             "vouchers_import_done",
-            // Die Rueckmeldung der Guthaben-Abfrage: „%1$s: %2$s" — Nummer und
-            // Betrag, kein eigenes Wort. Uebersetzt ist daran nichts, und der
-            // Betrag kommt formatiert von LEGO oder aus „%.2f %s".
+            // The response of the balance query: „%1$s: %2$s" — number and
+            // amount, no own word. Nothing in it is translated, and the
+            // amount comes formatted from LEGO or from „%.2f %s".
             "vouchers_balance_done",
-            // „Filter“ ist auch im Deutschen das Wort für den Knopf und das Blatt.
+            // „Filter“ is also in German the word for the button and the sheet.
             "filter_button", "filter_title",
-            // Zähler „5/24“ unter dem Fingerabdruckfeld: nur Zahlen.
+            // Counter „5/24“ below the fingerprint field: only numbers.
             "zert_eingabe_zaehler",
-            // Eine Sprache heisst in der Auswahl, wie sie sich selbst nennt (FormulareUndRaenderTest).
+            // A language is called in the selection what it calls itself (FormsAndMarginsTest).
             "settings_language_en", "settings_language_de",
         )
 
-        val en = texte("values/strings.xml")
-        val de = texte("values-de/strings.xml")
+        val en = texts("values/strings.xml")
+        val de = texts("values-de/strings.xml")
         assert(en.size > 300) { "Zu wenige Texte gefunden (${en.size}) — Muster veraltet?" }
 
         val gleich = en.keys.filter { it in de && en[it] == de[it] }.toSet()
-        val unuebersetzt = (gleich - gewolltGleich).sorted()
-        assert(unuebersetzt.isEmpty()) {
+        val untranslated = (gleich - gewolltGleich).sorted()
+        assert(untranslated.isEmpty()) {
             "Diese Texte stehen auf Deutsch wortgleich wie auf Englisch — sehr " +
                 "wahrscheinlich beim Anlegen kopiert und nicht uebersetzt:\n  " +
-                unuebersetzt.joinToString("\n  ") { "$it = \"${en[it]}\"" } +
+                untranslated.joinToString("\n  ") { "$it = \"${en[it]}\"" } +
                 "\nIst er wirklich in beiden Sprachen gleich, gehoert er in `gewolltGleich`."
         }
         val veraltet = (gewolltGleich - gleich).sorted()
@@ -211,52 +211,52 @@ class StringResourceParityTest {
     }
 
     /**
-     * Name → Text. Das Muster verlangt ein `">` direkt hinter dem Namen und
-     * überspringt damit jeden Eintrag mit zusätzlichem Attribut.
+     * Name → text. The pattern requires a `">` directly after the name and
+     * thus skips every entry with an additional attribute.
      *
-     * NACHTRAG 161: Bis hierhin war das genau ein Eintrag, `lang_code
-     * translatable="false"`. Den Zusatz gibt es nicht mehr — Lint hatte ihn als
-     * `Untranslatable` beanstandet, und zu Recht: Die Zeichenkette gibt den Code
-     * der aktuellen Sprache und ist absichtlich je Sprachdatei anders, also
-     * sehr wohl zu übersetzen. Sie fällt jetzt in den Vergleich unten und ist
-     * dort harmlos, weil "en" und "de" sich unterscheiden.
+     * Until recently that was exactly one entry, `lang_code
+     * translatable="false"`. The addition no longer exists — Lint had flagged it as
+     * `Untranslatable`, and rightly: the string returns the code
+     * of the current language and is deliberately different per language file, so
+     * very much to be translated. It now falls into the comparison below and is
+     * harmless there because "en" and "de" differ.
      */
-    private fun texte(datei: String): Map<String, String> =
+    private fun texts(datei: String): Map<String, String> =
         Regex("""<string name="([^"]+)">(.*?)</string>""", RegexOption.DOT_MATCHES_ALL)
             .findAll(File(Quellen.res, "$datei").readText())
             .associate { it.groupValues[1] to it.groupValues[2] }
 
     /**
-     * Was einen `common_`-Namen hat, steht nicht noch einmal unter einem zweiten.
+     * What has a `common_` name does not stand again under a second one.
      *
-     * ── Warum das keine erfundene Regel ist ─────────────────────────────────
+     * ── Why this is not an invented rule ─────────────────────────────────────
      *
-     * Die `common_`-Namen gibt es bereits — `common_delete`, `common_cancel`,
-     * `common_quantity`, `common_back`, `common_condition`. Wer sie angelegt
-     * hat, hat die Entscheidung „das ist EIN Text" schon getroffen. Nur
-     * durchgezogen wurde sie nicht: NACHGEMESSEN standen sechzehn weitere
-     * Namen mit demselben Wort in BEIDEN Sprachen daneben — fünfmal „Löschen",
-     * fünfmal „Abbrechen", viermal „Anzahl", zweimal „Zurück".
+     * The `common_` names already exist — `common_delete`, `common_cancel`,
+     * `common_quantity`, `common_back`, `common_condition`. Whoever created them
+     * has already made the decision „this is ONE text". It was just not
+     * carried through: RE-MEASURED, sixteen further names stood next to them
+     * with the same word in BOTH languages — five times „Löschen",
+     * five times „Abbrechen", four times „Anzahl", twice „Zurück".
      *
-     * Was das kostet, ist nicht der Platz, sondern das Auseinanderlaufen: Wer
-     * „Anzahl" in „Menge" ändert, ändert es an einer Stelle, und danach heisst
-     * dasselbe Feld im Teile-Reiter anders als im Figuren-Reiter. Genau das
-     * soll bei zwei Oberflächen, die gleich aussehen sollen, nicht passieren.
+     * What that costs is not the space but the drifting apart: whoever changes
+     * „Anzahl" to „Menge" changes it in one place, and afterwards
+     * the same field is called differently in the parts tab than in the figures tab. Exactly that
+     * should not happen with two UIs that should look the same.
      *
-     * Bewusst NUR gegen `common_`: „Zwei Namen mit gleichem Wert" allein wäre
-     * zu grob — `login_title` und `login_button` heissen beide „Anmelden" und
-     * dürfen sich unabhängig ändern. Der `common_`-Name ist das Zeichen, dass
-     * jemand die Gemeinsamkeit ausdrücklich gewollt hat.
+     * Deliberately ONLY against `common_`: „two names with the same value" alone would be
+     * too coarse — `login_title` and `login_button` are both called „Anmelden" and
+     * may change independently. The `common_` name is the sign that
+     * someone explicitly wanted the commonality.
      */
     /**
-     * Ein Bereich, ein Name — wie im Web (monitor.title): „Hintergrundarbeiten“
-     * bzw. „Background jobs“ (wie nav.monitoring im Web) in Titel, Navigation und Menü, kein „Monitoring“.
-     * Gegenprobe: nav_monitoring auf Englisch wieder „Monitoring“ → rot.
+     * One area, one name — as on the web (monitor.title): „Hintergrundarbeiten“
+     * or „Background jobs“ (like nav.monitoring on the web) in title, navigation and menu, no „Monitoring“.
+     * Counter-check: nav_monitoring in English again „Monitoring“ → red.
      */
     @Test
-    fun `der Bereich heisst ueberall Hintergrundarbeiten`() {
-        val en = texte("values/strings.xml")
-        val de = texte("values-de/strings.xml")
+    fun `the area is called Hintergrundarbeiten everywhere`() {
+        val en = texts("values/strings.xml")
+        val de = texts("values-de/strings.xml")
         for (k in listOf("nav_monitoring", "main_menu_monitoring")) {
             assert(de[k] == "Hintergrundarbeiten") { "$k (de) = ${de[k]}" }
             assert(en[k] == "Background jobs") { "$k (en) = ${en[k]}" }
@@ -266,55 +266,55 @@ class StringResourceParityTest {
     }
 
     /**
-     * Schweizer Schreibung und ein Wort je Sache: kein „ß“, keine Abkürzung „ggü.“, die
-     * App-Version heisst „Version“ (nicht „Fassung“), und die Überschrift der Anmeldung
-     * ist nicht derselbe Text wie ihr Knopf.
-     * Gegenprobe: scanner_close wieder „Schließen“ → rot.
+     * Swiss spelling and one word per thing: no „ß“, no abbreviation „ggü.“, the
+     * app version is called „Version“ (not „Fassung“), and the heading of the sign-in
+     * is not the same text as its button.
+     * Counter-check: scanner_close again „Schließen“ → red.
      */
     @Test
-    fun `deutsche Texte in Schweizer Schreibung und eindeutig`() {
-        val de = texte("values-de/strings.xml")
+    fun `German texts in Swiss spelling and unambiguous`() {
+        val de = texts("values-de/strings.xml")
         val falsch = de.filterValues { "ß" in it || "ggü." in it || Regex("""\bFassung\b""").containsMatchIn(it) }
         assert(falsch.isEmpty()) { "Nicht in Schweizer Schreibung oder mit altem Begriff: ${falsch.keys}" }
-        for (t in listOf(de, texte("values/strings.xml"))) {
+        for (t in listOf(de, texts("values/strings.xml"))) {
             assert(t["login_title"] != t["login_button"]) { "Überschrift und Knopf der Anmeldung gleich: ${t["login_title"]}" }
         }
     }
 
     /**
-     * Ein Wort je Sache (Glossar): „Setnummer“, Listenfüsse „Total“, „Kaufsumme“ für den
-     * Einstand; englisch „Sign in/out“, „Profit/loss“, „administrator rights“.
-     * Gegenprobe (gegenproben/begriff-set-nummer.patch): gallery_set_number wieder
-     * „Set-Nummer“ → rot. Ebenso versalien-im-text (PREISSPEICHER) und
+     * One word per thing (glossary): „Setnummer“, list footers „Total“, „Kaufsumme“ for the
+     * cost; English „Sign in/out“, „Profit/loss“, „administrator rights“.
+     * Counter-check (gegenproben/begriff-set-nummer.patch): gallery_set_number again
+     * „Set-Nummer“ → red. Likewise versalien-im-text (PREISSPEICHER) and
      * vorgabe-mit-strichen („— Global default —“).
      */
     @Test
-    fun `ein Begriff je Sache in beiden Sprachen`() {
+    fun `one term per thing in both languages`() {
         val verboten = mapOf(
-            // Sorten wie in der Web-App, nicht „Teileart“; „Stück gesamt“ hiess in der Galerie „Teile“.
+            // Kinds as in the web app, not „Teileart“; „Stück gesamt“ was called „Teile“ in the gallery.
             "values-de/strings.xml" to listOf(Regex("Set-Nummer"), Regex("""\bSumme\b"""), Regex("Kauf gesamt"),
                 Regex("Teileart|Figurenart|Stück gesamt|Webapp|Android App")),
             "values/strings.xml" to listOf(Regex("""(?i)\blog(?:ged)? (?:in|out)\b"""), Regex("Gain/loss"),
                 Regex("""\badmin rights\b""")),
         )
-        // Auch keine Form im Wort: Versalien setzt Abschnittstitel (vorgelesen wie geschrieben),
-        // und eine Wahl in Gedankenstrichen las sich als Platzhalter.
+        // No form in the word either: capitals are set by section titles (read out as written),
+        // and a choice in dashes read like a placeholder.
         val form = listOf(Regex("""^\p{Lu}[\p{Lu}\- ]{4,}$"""), Regex("""^— .* —$"""))
-        val funde = verboten.flatMap { (datei, muster) ->
-            texte(datei).filterValues { t -> (muster + form).any { it.containsMatchIn(t) } }.map { "$datei ${it.key}: ${it.value}" }
+        val findings = verboten.flatMap { (datei, pattern) ->
+            texts(datei).filterValues { t -> (pattern + form).any { it.containsMatchIn(t) } }.map { "$datei ${it.key}: ${it.value}" }
         }
-        assert(funde.isEmpty()) { "Abweichender Begriff:\n  " + funde.joinToString("\n  ") }
-        rollenNamenPruefen()
+        assert(findings.isEmpty()) { "Abweichender Begriff:\n  " + findings.joinToString("\n  ") }
+        checkRolesNames()
     }
 
     /**
-     * Die Rollen heissen wie im Web „Standard“ und „Administrator“, auch in Zusammensetzungen
-     * („Administratorrechte“); „Verwalter“ und „Benutzer“ als Rolle sind abgelöst.
-     * Gegenprobe (gegenproben/rolle-verwalter.patch): zf_pflicht_kurz wieder „Verwalterrechte …“ → rot.
+     * The roles are called as on the web „Standard“ and „Administrator“, also in compounds
+     * („Administratorrechte“); „Verwalter“ and „Benutzer“ as a role are superseded.
+     * Counter-check (gegenproben/rolle-verwalter.patch): zf_pflicht_kurz again „Verwalterrechte …“ → red.
      */
-    private fun rollenNamenPruefen() {
-        val de = texte("values-de/strings.xml")
-        val en = texte("values/strings.xml")
+    private fun checkRolesNames() {
+        val de = texts("values-de/strings.xml")
+        val en = texts("values/strings.xml")
         assert(de["zf_pflicht_kurz"]?.startsWith("Administratorrechte") == true) { "zf_pflicht_kurz = ${de["zf_pflicht_kurz"]}" }
         val alt = de.filterValues { Regex("""Verwalter|\bBenutzer(?!name)""").containsMatchIn(it) }.keys +
             en.filterValues { Regex("""\b[Aa]dmins?\b""").containsMatchIn(it) }.keys
@@ -322,9 +322,9 @@ class StringResourceParityTest {
     }
 
     @Test
-    fun `kein zweiter Name fuer einen common-Text`() {
-        val en = texte("values/strings.xml")
-        val de = texte("values-de/strings.xml")
+    fun `no second name for a common text`() {
+        val en = texts("values/strings.xml")
+        val de = texts("values-de/strings.xml")
         assert(en.size > 300) { "Zu wenige Texte gefunden (${en.size}) — Muster veraltet?" }
         val gemeinsam = en.keys.filter { it.startsWith("common_") }
         assert(gemeinsam.size >= 3) { "Nur ${gemeinsam.size} common_-Namen — Konvention aufgegeben?" }
@@ -333,9 +333,9 @@ class StringResourceParityTest {
         for (g in gemeinsam.sorted()) {
             for (k in en.keys.sorted()) {
                 if (k == g || k.startsWith("common_")) continue
-                // In BEIDEN Sprachen gleich. Nur Englisch zu vergleichen
-                // fände zufällige Gleichklänge („Sets"/„Sets"), die auf
-                // Deutsch verschieden sind.
+                // The same in BOTH languages. Comparing only English
+                // would find accidental homophones („Sets"/„Sets"), which
+                // differ in German.
                 if (en[k] == en[g] && de[k] == de[g]) doppelt += "$k = $g (\"${en[g]}\")"
             }
         }
@@ -346,43 +346,43 @@ class StringResourceParityTest {
     }
 
     @Test
-    fun `kein Klartext in Text, contentDescription oder Toast`() {
-        // Was gesucht wird, ist ein LITERAL an einer Stelle, die der Nutzer
-        // liest. Bewusst NICHT beanstandet:
-        //  - Emoji und Symbole ("👷", "📅") — die sind in jeder Sprache gleich
-        //    und stehen absichtlich im Code statt in den Sprachdateien.
-        val muster = listOf(
+    fun `no plain text in Text, contentDescription or Toast`() {
+        // What is searched for is a LITERAL at a place the user
+        // reads. Deliberately NOT flagged:
+        //  - emoji and symbols ("👷", "📅") — they are the same in every language
+        //    and stand in the code on purpose instead of in the language files.
+        val pattern = listOf(
             Regex("""Text\(\s*"([^"]{3,})"""),
             Regex("""contentDescription\s*=\s*"([^"]{3,})""""),
             Regex("""Toast\.makeText\([^,]+,\s*"([^"]{3,})"""),
         )
-        // Eigennamen und Abkürzungen, die in jeder Sprache gleich lauten (z. B. PDF: common_pdf).
+        // Proper names and abbreviations that read the same in every language (e.g. PDF: common_pdf).
         val erlaubt = emptySet<String>()
-        val erlaubtGesehen = mutableSetOf<String>()
+        val allowedSeen = mutableSetOf<String>()
 
         val fehler = mutableListOf<String>()
         for (datei in Quellen.alle()) {
-            val s = Quellen.ohneKommentare(datei.readText())
-            for (m in muster) {
+            val s = Quellen.withoutComments(datei.readText())
+            for (m in pattern) {
                 m.findAll(s).forEach { treffer ->
                     val text = treffer.groupValues[1]
-                    if (text in erlaubt) { erlaubtGesehen += text; return@forEach }
-                    // Eine offene Klammer ohne schliessende heisst: Der
-                    // Ausdruck enthält selbst eine Zeichenkette, und der
-                    // Treffer bricht an deren Anführungszeichen ab. So ein
-                    // Bruchstück ist nicht beurteilbar — hier wird nicht
-                    // geraten, sondern übergangen. Ein echter Parser wäre die
-                    // Alternative; für diese Handvoll Fälle lohnt er nicht.
-                    if (text.contains(AUSDRUCK_AUF) && !text.contains("}")) return@forEach
-                    // Ausdrücke entfernen, DANN auf Sprache prüfen: Ohne das
-                    // zählte der Variablenname in einer Einsetzung als Text und
-                    // meldete zwanzig Fehlalarme.
-                    val nurText = text
-                        .replace(Regex(AUSDRUCK_LANG), "")
-                        .replace(Regex(AUSDRUCK_KURZ), "")
-                    // Mindestens zwei aufeinanderfolgende Buchstaben — das
-                    // trennt Sprache von Symbolen und Zahlenformaten.
-                    if (!Regex("""\p{L}\p{L}""").containsMatchIn(nurText)) return@forEach
+                    if (text in erlaubt) { allowedSeen += text; return@forEach }
+                    // An open bracket without a closing one means: the
+                    // expression itself contains a string, and the
+                    // match breaks off at its quotation mark. Such a
+                    // fragment cannot be judged — here nothing is
+                    // guessed but skipped. A real parser would be the
+                    // alternative; for this handful of cases it is not worth it.
+                    if (text.contains(EXPRESSION_ON) && !text.contains("}")) return@forEach
+                    // Remove expressions, THEN check for language: without that
+                    // the variable name in an interpolation counted as text and
+                    // reported twenty false alarms.
+                    val onlyText = text
+                        .replace(Regex(EXPRESSION_LANG), "")
+                        .replace(Regex(EXPRESSION_SHORT), "")
+                    // At least two consecutive letters — that
+                    // separates language from symbols and number formats.
+                    if (!Regex("""\p{L}\p{L}""").containsMatchIn(onlyText)) return@forEach
                     val zeile = s.substring(0, treffer.range.first).count { it == '\n' } + 1
                     fehler += "${datei.name}:$zeile  \"$text\""
                 }
@@ -392,7 +392,7 @@ class StringResourceParityTest {
             "Oberflächentext als Literal statt aus den Sprachdateien:\n  " +
                 fehler.joinToString("\n  ")
         }
-        val veraltet = (erlaubt - erlaubtGesehen).sorted()
+        val veraltet = (erlaubt - allowedSeen).sorted()
         assert(veraltet.isEmpty()) {
             "Diese Eintraege in `erlaubt` beschreiben nichts mehr: " +
                 veraltet.joinToString(", ") +

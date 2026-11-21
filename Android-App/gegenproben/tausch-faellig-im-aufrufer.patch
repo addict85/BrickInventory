@@ -1,15 +1,15 @@
 Gegenprobe: TokenTausch.faellig() tauscht mit runBlocking im Aufrufer statt im übergebenen Anwendungsbereich
 Modul: core-data
-Test: ch.brickinventoryapp.data.TokenTauschTest
-Rot: faellig tauscht im Anwendungsbereich und kehrt sofort zurueck
+Test: ch.brickinventoryapp.data.TokenSwapTest
+Rot: due swaps in the application scope and returns immediately
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
-@@ -114,7 +114,7 @@ class TokenTausch(
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
+@@ -114,7 +114,7 @@ class TokenSwap(
      /** Für die Kopfzeile: nicht warten, die Anfrage selbst ist gelungen. */
      override fun faellig(alterToken: String) {
-         if (sperre.isLocked) return
+         if (lock.isLocked) return
 -        hintergrund.launch { tausche(alterToken) }
 +        runBlocking { tausche(alterToken) }
      }

@@ -1,14 +1,14 @@
 Gegenprobe: Der ProfileInstallReceiver bleibt im zusammengeführten Manifest
 Modul: app
-Test: ch.brickinventoryapp.app.BibliotheksKomponentenTest
-Rot: der Profileinstaller
+Test: ch.brickinventoryapp.app.LibraryComponentsTest
+Rot: the profile installer is not in the manifest
 
 diff --git a/Android-App/app/src/main/AndroidManifest.xml b/Android-App/app/src/main/AndroidManifest.xml
 --- a/Android-App/app/src/main/AndroidManifest.xml
 +++ b/Android-App/app/src/main/AndroidManifest.xml
 @@ -205,10 +205,6 @@
            Widerrufsdienst von Google-Sign-in (die App meldet nur mit Passkeys an).
-           Jede exportierte Komponente ist Angriffsfläche (tools/manifest-pruefen.py).
+           Jede exportierte Komponente ist Angriffsfläche (tools/manifest-check.py).
          -->
 -        <receiver
 -            android:name="androidx.profileinstaller.ProfileInstallReceiver"

@@ -1,20 +1,20 @@
-/** Anmelden per QR-Code; die App holt ihren Token, wenn die Web-Sitzung bestätigt (src/konto/qrKopplung.ts). */
-import { waechterFuer } from '../api_v1/middleware';
-import { angemeldeteNutzerId, ipThrottle, bestaetigeMitFaktor, perSitzung } from '../../src/konto/http/anmeldung';
-import { vertragsRouter } from '../../src/http/vertragsRouter';
-import { assertLoginAllowed, geraeteNameInhaltGueltig, meldeAnmeldung, QR_TTL_MS } from '../../src/konto';
-import type { Dienste } from '../../src/dienste';
-import { fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
+/** Logging in by QR code; the app picks up its token once the web session confirms (src/account/qrPairing.ts). */
+import { guardFor } from '../api_v1/middleware';
+import { signedInUserId, ipThrottle, confirmWithFactor, perSession } from '../../src/account/http/login';
+import { vertragsRouter } from '../../src/http/contractRouter';
+import { assertLoginAllowed, devicesNameContentValid, reportLogin, QR_TTL_MS } from '../../src/account';
+import type { Dienste } from '../../src/services';
+import { fachfehler, notFound } from '../../src/infra/errorTexts';
 
-/** Das Konto muss bei der Meldung und bei der Abholung noch anmelden dürfen. */
-async function darfAnmelden(d: Pick<Dienste, 'konto'>, uid: number): Promise<boolean> {
-  const user = await d.konto.kontoVollVon(uid);
+/** The account must still be allowed to log in at the report and at the pickup. */
+async function signInMay(d: Pick<Dienste, 'account'>, uid: number): Promise<boolean> {
+  const user = await d.account.accountFullOf(uid);
   return !!user && !assertLoginAllowed(user);
 }
 
-/** Keine Sitzung: Sie trüge die vollen Rechte des Kontos an Scope `app` vorbei. */
-async function qrAbgeholt(
-  d: Pick<Dienste, 'konto'>,
+/** No session: it would carry the account's full rights past scope `app`. */
+async function qrPickedUp(
+  d: Pick<Dienste, 'account'>,
   user: { id: number; username: string },
   token: string,
   nonce?: string | null,
@@ -27,89 +27,89 @@ async function qrAbgeholt(
     isAdmin: false,
     userId: user.id,
     user: { id: user.id, username: user.username },
-    token_info: await d.konto.tokenAngaben(token),
+    token_info: await d.account.tokenDetails(token),
     ...(nonce ? { schluessel_nonce: nonce } : {}),
   } as const;
 }
 
-export function baueQrRouter(d: Pick<Dienste, 'konto'>) {
-  const { requireLoginOrToken: requireLogin } = waechterFuer(d.konto);
+export function buildQrRouter(d: Pick<Dienste, 'account'>) {
+  const { requireLoginOrToken: requireLogin } = guardFor(d.account);
   const router = vertragsRouter('/api/v1/auth');
 
-  // Der QR-Code trägt nur eine einmalige Nonce (SHA-256 in qr_login_tokens),
-  // kein Geheimnis des Kontos; den Ablauf beschreibt src/konto/qrKopplung.ts.
-  // POST, weil die Route eine Nonce anlegt; ein GET liesse sich von fremden Seiten auslösen.
+  // The QR code only carries a one-time nonce (SHA-256 in qr_login_tokens),
+  // no secret of the account; the flow is described in src/account/qrPairing.ts.
+  // POST, because the route creates a nonce; a GET could be triggered from foreign pages.
   router.endpunkt('POST /api/v1/auth/qr-token', requireLogin, async (req, res) => {
-    // Wie /token-create: Ein QR-Code eröffnet einen neuen, langlebigen Geräte-
-    // zugang; nur aus der Sitzung, mit Passwort und zweitem Faktor.
-    if (!perSitzung(req)) fachfehler('verboten', 'nur_mit_sitzung');
-    if (!(await bestaetigeMitFaktor(d.konto, req, res, angemeldeteNutzerId(req), req.eingabe.password))) return;
-    // Die Laufzeit wählt die angemeldete Sitzung, nicht das unangemeldete /qr-login.
-    return { ...(await d.konto.qrZugangErzeugen(angemeldeteNutzerId(req), req.eingabe.gueltigkeit)) };
+    // Like /token-create: a QR code opens a new, long-lived device
+    // access; only from the session, with password and second factor.
+    if (!perSession(req)) fachfehler('verboten', 'nur_mit_sitzung');
+    if (!(await confirmWithFactor(d.account, req, res, signedInUserId(req), req.eingabe.password))) return;
+    // The lifetime is chosen by the signed-in session, not by the anonymous /qr-login.
+    return { ...(await d.account.createQrAccess(signedInUserId(req), req.eingabe.gueltigkeit)) };
   });
 
-  // Gedrosselt, weil der Endpunkt ohne Anmeldung in die Datenbank schreibt.
-  router.endpunkt('POST /api/v1/auth/qr-login', ipThrottle(d.konto, 'qr-login', 30, 60 * 60 * 1000), async req => {
+  // Throttled, because the endpoint writes to the database without login.
+  router.endpunkt('POST /api/v1/auth/qr-login', ipThrottle(d.account, 'qr-login', 30, 60 * 60 * 1000), async req => {
     const { token, label } = req.eingabe;
     if (!token?.startsWith('bim:')) fachfehler('ungueltig', 'token_ungueltig');
-    if (!geraeteNameInhaltGueltig(label)) fachfehler('ungueltig', 'geraetename_ungueltig');
-    const m = await d.konto.meldeGeraet(token, label, req.ip);
-    if (!m || !(await darfAnmelden(d, m.uid))) fachfehler('nicht_angemeldet', 'token_ungueltig');
+    if (!devicesNameContentValid(label)) fachfehler('ungueltig', 'geraetename_ungueltig');
+    const m = await d.account.reportDevice(token, label, req.ip);
+    if (!m || !(await signInMay(d, m.uid))) fachfehler('nicht_angemeldet', 'token_ungueltig');
     return { wartet: true, abholung: m.abholung, code: m.code, expires_in: QR_TTL_MS / 1000 } as const;
   });
 
-  // Die App fragt alle paar Sekunden, bis die Web-Sitzung bestätigt oder ablehnt.
-  // Mit `vorschau` steht danach nur das Konto in der Antwort; den Token holt das Ja der App.
+  // The app asks every few seconds until the web session confirms or rejects.
+  // With `vorschau` only the account is in the response afterwards; the token comes with the app's yes.
   router.endpunkt(
     'POST /api/v1/auth/qr-login/abholen',
-    ipThrottle(d.konto, 'qr-abholen', 600, 60 * 60 * 1000),
+    ipThrottle(d.account, 'qr-abholen', 600, 60 * 60 * 1000),
     async (req, res) => {
       if (!req.eingabe.abholung) fachfehler('ungueltig', 'token_ungueltig');
-      const a = await d.konto.holeQrTokenAb(
+      const a = await d.account.holeQrTokenAb(
         req.eingabe.abholung,
         req.ip,
-        uid => darfAnmelden(d, uid),
+        uid => signInMay(d, uid),
         req.eingabe.vorschau === true,
       );
       if (a.stand === 'wartet') return { wartet: true } as const;
-      const user = await d.konto.kontoKurzVon(a.uid);
+      const user = await d.account.accountShortOf(a.uid);
       if (!user) fachfehler('nicht_angemeldet', 'token_ungueltig');
       if (a.stand === 'bereit') return { wartet: false, vorschau: true, username: user.username } as const;
-      meldeAnmeldung({ ip: req.ip, konto: user.id, zugang: 'qr' });
-      // Eine Anmeldung wie mit Passwort oder Passkey: Den QR-Code gab es nur mit Passwort und Faktor.
-      await d.konto.verwalter.uebernahmenAbbrechen(user.id);
-      res.json(await qrAbgeholt(d, user, a.token, a.schluesselNonce));
+      reportLogin({ ip: req.ip, konto: user.id, zugang: 'qr' });
+      // A login like with password or passkey: the QR code was only available with password and factor.
+      await d.account.verwalter.cancelTakeovers(user.id);
+      res.json(await qrPickedUp(d, user, a.token, a.keyNonce));
     },
   );
 
   router.endpunkt(
     'POST /api/v1/auth/qr-login/verwerfen',
-    ipThrottle(d.konto, 'qr-abholen', 600, 60 * 60 * 1000),
+    ipThrottle(d.account, 'qr-abholen', 600, 60 * 60 * 1000),
     async req => {
-      if (!(await d.konto.verwirfAbholung(req.eingabe.abholung))) fachfehler('nicht_angemeldet', 'token_ungueltig');
+      if (!(await d.account.discardPickup(req.eingabe.abholung))) fachfehler('nicht_angemeldet', 'token_ungueltig');
       return {};
     },
   );
 
   router.endpunkt('GET /api/v1/auth/qr-kopplung/:id', requireLogin, async req => {
-    if (!perSitzung(req)) fachfehler('verboten', 'nur_mit_sitzung');
-    const s = await d.konto.kopplungsStand(req.pfad.id, angemeldeteNutzerId(req));
-    if (!s) nichtGefunden();
+    if (!perSession(req)) fachfehler('verboten', 'nur_mit_sitzung');
+    const s = await d.account.kopplungsStand(req.pfad.id, signedInUserId(req));
+    if (!s) notFound();
     return { ...s };
   });
 
   router.endpunkt('POST /api/v1/auth/qr-kopplung/:id/bestaetigen', requireLogin, async req => {
-    if (!perSitzung(req)) fachfehler('verboten', 'nur_mit_sitzung');
-    const uid = angemeldeteNutzerId(req);
-    await d.konto.bestaetigeKopplung(req.pfad.id, uid, req.eingabe.code);
-    const s = await d.konto.kopplungsStand(req.pfad.id, uid);
-    d.konto.hinweisNebenher(uid, 'token_neu', s?.geraet ?? 'qr-login');
+    if (!perSession(req)) fachfehler('verboten', 'nur_mit_sitzung');
+    const uid = signedInUserId(req);
+    await d.account.confirmPairing(req.pfad.id, uid, req.eingabe.code);
+    const s = await d.account.kopplungsStand(req.pfad.id, uid);
+    d.account.hintInBackground(uid, 'token_neu', s?.geraet ?? 'qr-login');
     return {};
   });
 
   router.endpunkt('POST /api/v1/auth/qr-kopplung/:id/ablehnen', requireLogin, async req => {
-    if (!perSitzung(req)) fachfehler('verboten', 'nur_mit_sitzung');
-    if (!(await d.konto.lehneKopplungAb(req.pfad.id, angemeldeteNutzerId(req)))) nichtGefunden();
+    if (!perSession(req)) fachfehler('verboten', 'nur_mit_sitzung');
+    if (!(await d.account.rejectPairingAb(req.pfad.id, signedInUserId(req)))) notFound();
     return {};
   });
   return router;

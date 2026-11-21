@@ -1,11 +1,11 @@
 Gegenprobe: Der Startzustand liest progress wieder als ganze Zahl
 Modul: core-data
 Test: ch.brickinventoryapp.data.ServerStartTest
-Rot: ein Fortschritt mit Anteil wird gelesen
+Rot: a progress with share is read
 
-diff --git a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt
---- a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt
-+++ b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/Vertrag.kt
+diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
+--- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
++++ b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/Vertrag.kt
 @@ -2290,7 +2290,7 @@
      @SerialName("pfad") val pfad: String? = null,
      @SerialName("ready") val ready: Boolean = false,
@@ -15,15 +15,15 @@ diff --git a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag
      @SerialName("total") val total: Int = 0,
      @SerialName("sub") val sub: String? = null,
  )
-diff --git a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/abbildung/EinzelAbbildungen.kt b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/abbildung/EinzelAbbildungen.kt
---- a/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/abbildung/EinzelAbbildungen.kt
-+++ b/Android-App/core-vertrag/src/main/java/ch/brickinventoryapp/vertrag/abbildung/EinzelAbbildungen.kt
+diff --git a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/mapping/EinzelAbbildungen.kt b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/mapping/EinzelAbbildungen.kt
+--- a/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/mapping/EinzelAbbildungen.kt
++++ b/Android-App/core-contract/src/main/java/ch/brickinventoryapp/contract/mapping/EinzelAbbildungen.kt
 @@ -29,7 +29,7 @@
- fun CsvArt.alsAnsicht(): CsvImportArt = CsvImportArt.valueOf(name)
+ fun CsvKind.alsAnsicht(): CsvImportKind = CsvImportKind.valueOf(name)
  
- fun StartupStatus.alsAnsicht() = StartzustandAnsicht(bereit = ready, schritt = step, unterschritt = sub,
+ fun StartupStatus.alsAnsicht() = StartStateView(bereit = ready, schritt = step, undercut = sub,
 -    fortschritt = progress, gesamt = total)
 +    fortschritt = progress.toDouble(), gesamt = total)
  
- fun ChartPoint.alsAnsicht() = DiagrammPunkt(xLabel, value.alsGeldPflicht(), yFrac)
+ fun ChartPoint.alsAnsicht() = DiagrammPunkt(xLabel, value.asMoneyRequired(), yFrac)
  

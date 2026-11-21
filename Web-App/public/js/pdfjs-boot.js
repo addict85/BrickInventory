@@ -1,8 +1,8 @@
-// Neueste PDF.js (ESM). Global bereitstellen, damit die klassischen App-Skripte (public/js/*.js) sie via
-// window.pdfjsLib nutzen können.
+// Latest PDF.js (ESM). Exposed globally so the classic app scripts (public/js/*.js) can use it via
+// window.pdfjsLib.
 //
-// Lag früher als <script type="module"> direkt in index.html. Mit der geschlossenen CSP (script-src ohne
-// 'unsafe-inline') wurde der Block blockiert — als eigene Datei ist er von 'self' gedeckt.
+// Used to sit as a <script type="module"> directly in index.html. With the locked-down CSP (script-src
+// without 'unsafe-inline') that block was blocked — as its own file it is covered by 'self'.
 import * as pdfjsLib from '/vendor/pdfjs/pdf.min.mjs?v=6.4.299';
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.min.mjs?v=6.4.299';

@@ -1,0 +1,198 @@
+/**
+ * A NEWLY created set is answered the same in both capture routes.
+ */
+require('./helpers/system-frame');
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+
+// The follow-up after capturing hangs on a setTimeout and runs AFTER
+// this test, against a pool that is closed by then. The same precaution
+// as in set-add-exists-db.test.js.
+let posedAddSet = null;
+let positionCalled = 0;
+const Module = require('node:module');
+const _realRequire = Module.prototype.require;
+Module.prototype.require = function (name, ...rest) {
+  const m = _realRequire.call(this, name, ...rest);
+  // The creation is set up; the completion in the stream without network.
+  if (typeof name === 'string' && /[/\\]addSet(\.js)?$/.test(name))
+    return new Proxy(m, {
+      // The factory binds at build time (mit()): the replacement only checks the setting when called.
+      get: (t, k) => {
+        if (k === 'setSupplement')
+          return (sk, ...a) => (posedAddSet !== null ? Promise.resolve({ name: 'Testset' }) : t[k](sk, ...a));
+        if (k !== 'setErfassen') return t[k];
+        return async (sk, ...args) => {
+          if (posedAddSet === null) return t[k](sk, ...args);
+          positionCalled++;
+          return posedAddSet(...args);
+        };
+      },
+    });
+  return m;
+};
+
+const _req = require('./helpers/sources').buildAndRequire();
+const { dataOrSkip } = require('./helpers/db');
+const { testServer } = require('./helpers/server');
+const { testData } = require('./helpers/sources');
+const { holdsSet } = require('./helpers/inventory');
+const db = testData();
+
+test('a newly created set is answered the same in both routes', { concurrency: 1 }, async t => {
+  if (!(await dataOrSkip(t, _req))) return;
+
+  const NUTZER = `neu-form-${process.pid}`;
+  const basis = 96000 + (process.pid % 900);
+  const DA = `${basis}-1`; // exists, for step 1
+  const NEW_A = `${basis + 100}-1`; // does not exist, for the stream
+  const NEW_B = `${basis + 200}-1`; // does not exist, for the token route
+
+  const aufraeumen = async () => {
+    for (const sn of [DA, NEW_A, NEW_B]) {
+      await db.run(`DELETE FROM sets WHERE set_number=$1`, [sn]).catch(() => {});
+      await db.run(`DELETE FROM set_acquisitions WHERE set_number=$1`, [sn]).catch(() => {});
+    }
+  };
+
+  await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x')`, [NUTZER]);
+  const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [NUTZER])).id;
+  await aufraeumen();
+  await holdsSet(db, uid, DA, 0); // quantity 0: the acquisition behind it carries it
+  await db.run(
+    `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
+                VALUES ($1,$2,10,'N',1)`,
+    [uid, DA],
+  );
+
+  const { base, srv } = testServer(_req, { sitzung: { userId: uid }, t });
+
+  try {
+    // ── 1. The premise, with the REAL function ────────────────────────────
+    //
+    // If `success` already stood in the result of setErfassen(), everything further would check
+    // nothing: the routes would then not have to add it in the first place. The
+    // „exists" branch runs purely on the database and needs no network.
+    const { setErfassen } = require('./helpers/sources').areaPage('sets');
+    const echt = await setErfassen({ requester: uid, setNumber: DA });
+    assert.equal(echt.action, 'exists', 'der Aufbau des Tests stimmt nicht mehr');
+    assert.equal(
+      'success' in echt,
+      false,
+      'setErfassen() liefert jetzt selbst ein success — dann sagt dieser Test nichts mehr ueber die Routen',
+    );
+
+    // ── 2. The stream: the `done` event ───────────────────────────────────
+    //
+    // What is set up is EXACTLY the form that setErfassen()
+    // returns for a new set.
+    posedAddSet = async e => ({
+      action: 'added',
+      set_number: e.setNumber,
+      name: 'Testset',
+      katalog_offen: true,
+      ergaenzung: 'ausstehend',
+      besitzer: e.requester,
+    });
+    const vorher = positionCalled;
+
+    const strom = await fetch(`${base}/api/v1/sets/add-stream`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ set_number: NEW_A, quantity: 1 }),
+    });
+    assert.equal(strom.status, 200);
+    assert.match(
+      strom.headers.get('content-type') || '',
+      /text\/event-stream/,
+      'fuer ein neues Set muss es der Ereignisstrom sein, nicht die JSON-Form',
+    );
+    const roh = await strom.text();
+    assert.ok(
+      positionCalled > vorher,
+      'setErfassen() wurde nicht gerufen — die Stellung greift nicht, der Test prueft nichts',
+    );
+
+    const ereignisse = roh
+      .split('\n')
+      .filter(z => z.startsWith('data:'))
+      .map(z => {
+        try {
+          return JSON.parse(z.slice(5).trim());
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+    const fertig = ereignisse.find(e => e.step === 'done');
+    assert.ok(fertig, `kein done-Ereignis im Strom: ${roh}`);
+
+    // THE assertion. `=== true` and not `.ok()`: a missing field is
+    // `undefined` and would have slipped through with a soft check — exactly
+    // the state that Marco reported.
+    assert.equal(
+      fertig.success,
+      true,
+      'das done-Ereignis traegt kein success:true — die Android-App bricht damit ' +
+        'beim Anlegen JEDES neuen Sets ab, obwohl das Set angelegt ist',
+    );
+    assert.equal(fertig.action, 'added');
+    assert.equal(fertig.set_number, NEW_A);
+
+    // ── 3. The token route with the same result ───────────────────────────
+    const vorher2 = positionCalled;
+    const token = await fetch(`${base}/api/v1/sets`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ set_number: NEW_B, quantity: 1 }),
+    });
+    assert.equal(token.status, 200);
+    const tb = await token.json();
+    assert.ok(positionCalled > vorher2, 'setErfassen() wurde auf der Token-Route nicht gerufen');
+    assert.equal(tb.success, true);
+
+    // ── 4. One response, one form ──────────────────────────────────────────
+    //
+    // Both paths pass THE SAME result through. If their forms
+    // drift apart, it depends on the chosen path again whether a client can read the
+    // response — and that was the error.
+    const felder = o =>
+      Object.keys(o)
+        .filter(k => k !== 'step')
+        .sort();
+    assert.deepEqual(
+      felder(fertig),
+      felder(tb),
+      `Strom ${JSON.stringify(felder(fertig))} gegen Token-Route ` +
+        `${JSON.stringify(felder(tb))} — dieselbe Auskunft in zwei Formen`,
+    );
+
+    // 5. The app demands nothing that the server does not send: the required fields of its
+    // model (shared/app-schnittstelle.json, generated from its source text).
+    const model = require('./helpers/contract').appSchnittstelle().modelle.AddSetResponse;
+    assert.ok(model && model.felder.length >= 5, 'Modell AddSetResponse nicht gefunden — umbenannt?');
+    const zeilen = model.felder.map(name => ({ name, pflicht: model.pflicht.includes(name) }));
+
+    const geliefert = new Set([...Object.keys(fertig), ...Object.keys(tb)]);
+    const requiredAndMissing = zeilen.filter(f => f.pflicht && !geliefert.has(f.name)).map(f => f.name);
+    assert.deepEqual(
+      requiredAndMissing,
+      [],
+      'AddSetResponse verlangt Felder, die beim Anlegen eines neuen Sets nicht ' +
+        'ankommen:\n  ' +
+        requiredAndMissing.join('\n  ') +
+        '\nkotlinx.serialization bricht dann ab, und die App meldet einen Fehler ' +
+        'fuer ein Set, das angelegt ist. Entweder schickt der Server das Feld, ' +
+        'oder es bekommt einen Vorgabewert — „Feld fehlt" ist keine Aussage.',
+    );
+  } finally {
+    posedAddSet = null;
+    await aufraeumen();
+    await db.run(`DELETE FROM users WHERE username=$1`, [NUTZER]).catch(() => {});
+    await new Promise(r => srv.close(r));
+    await db.pool.end().catch(() => {});
+  }
+});

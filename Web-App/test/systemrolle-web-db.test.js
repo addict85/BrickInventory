@@ -1,28 +1,28 @@
 /**
- * Die Web-Systemrolle (Migration 0119): Den Systemrahmen einer HTTP-Anfrage trägt eine Rolle, die
- * am Zeilenschutz vorbei nur Zugang, Verwaltung, Kontoeinstellungen, Aufträge und Tabellen ohne
- * Kontobezug erreicht; Gutscheine, Sammlung, Finanzen und Kopien vor Migrationen bleiben bei jobs.
- * Hier die Liste und der echte Web-Prozess mit ihr allein; testServer nimmt sie überall.
+ * The web system role (migration 0119): the system context of an HTTP request is carried by a role that,
+ * bypassing row security, only reaches access, administration, account settings, jobs and tables without
+ * account reference; vouchers, collection, finances and copies before migrations stay with jobs.
+ * Here the list and the real web process with it alone; testServer takes it everywhere.
  *
- * Gegenproben (15.11.2026 gemessen, je einzeln):
- *   A  in 0119 'vouchers' in die Liste `konto` → rot: „genau diese Tabellenrechte“ und
- *      „… bleiben Gutscheine zu“ (die Abfrage gelingt)
- *   B  in db/database.ts poolDesRahmens() ohne `web` (immer systemPool) → rot: „Anfragen
- *      nehmen …“ (current_user ist die Systemrolle), „… bleiben Gutscheine zu“ und „… aus
- *      den Kopien …“ (die Kopie ist lesbar)
- *   C  in db/migrate.ts entferneKontoAusSicherungen() wieder mit DELETE je Kopie → rot:
- *      „ein Konto verschwindet auch aus den Kopien …“ (0 statt 2: Die Web-Rolle sieht die
- *      Kopien im Katalog nicht und löscht still nichts)
- *   D  in startup/datenbank.ts bereiteDatenbankVor() ohne den Zweig `jobs === false` → rot:
- *      „der Web-Prozess startet …“ (permission denied for table vouchers, kein Start)
- *   E  warteAufAltbestand() kehrt sofort zurück → rot: „… wartet auf die Umschlüsselung“
- *   F  in src/teile/partsSummary.ts katalogEinmalNachziehen() ohne den Zweig für `web` →
- *      rot: „eine Anfrage zieht den Katalog nicht selbst nach …“
- *   G  in 0120 die Schleife mit REVOKE gestrichen → rot: „jede Sicht liest …“ (die neue Sicht
- *      steht mit `web` in der Liste)
- *   H  in 0120 `security_invoker = true` gestrichen → rot im selben Test (alle drei Sichten
- *      „ohne security_invoker“; ohne den Listenvergleich: „durch die Sicht nur das eigene
- *      Konto“, a sah auch b)
+ * Counter-checks (measured 15.11.2026, each on its own):
+ *   A  in 0119 'vouchers' into the list `account_id` → red: “… exactly these table privileges” and
+ *      “… vouchers stay closed” (the query succeeds)
+ *   B  in db/database.ts poolOfFrame() without `web` (always systemPool) → red: “requests
+ *      take …” (current_user is the system role), “… vouchers stay closed” and “… from
+ *      the copies …” (the copy is readable)
+ *   C  in db/migrate.ts removeAccountFromBackups() again with DELETE per copy → red:
+ *      “an account also disappears from the copies …” (0 instead of 2: the web role does not see the
+ *      copies in the catalog and silently deletes nothing)
+ *   D  in startup/database.ts prepareDatabaseBefore() without the branch `jobs === false` → red:
+ *      “the web process starts …” (permission denied for table vouchers, no start)
+ *   E  waitOnLegacyStock() returns immediately → red: “… waits for the re-encryption”
+ *   F  in src/parts/summary.ts catalogFollowUpOnce() without the branch for `web` →
+ *      red: “a request does not update the catalog itself …”
+ *   G  the loop with REVOKE deleted in 0120 → red: “every view reads …” (the new view
+ *      stands in the list with `web`)
+ *   H  `security_invoker = true` deleted in 0120 → red in the same test (all three views
+ *      „ohne security_invoker“; without the list comparison: „durch die Sicht nur das eigene
+ *      Konto“, a also saw b)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -36,32 +36,32 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const quellen = require('./helpers/sources');
 const _req = quellen.buildAndRequire();
 const { keineDb } = require('./helpers/db');
-const { warte } = require('./helpers/zeit');
-const { portVon } = require('./helpers/server');
-const db = quellen.testDaten();
-const { alsAnfrage, alsWebAnfrage, imSystemkontext } = _req('src/infra/kontoKontext.js');
+const { warte } = require('./helpers/time');
+const { portOf } = require('./helpers/server');
+const db = quellen.testData();
+const { asRequest, asWebRequest, inSystemContext } = _req('src/infra/accountContext.js');
 
 const WEB = process.env.PGSYSTEM_WEB_USER;
-const VOLL = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'].join(', ');
-const MIT_ALLEN_RECHTEN = [
-  // Zugang, Haushalt, Verwaltung, Kontoeinstellungen und Aufträge
-  ...['account_link_invites', 'account_links', 'api_tokens', 'api_tokens_verbraucht', 'auftraege'],
-  ...['geraete_nonces', 'geraete_schluessel', 'global_settings', 'household_former_links', 'passkeys'],
-  ...['qr_login_tokens', 'rate_limit_attempts', 'schritt_challenges', 'schritt_freigaben', 'user_sessions'],
-  ...['user_settings', 'users', 'verwalter_uebernahmen', 'webauthn_challenges', 'zweiter_faktor'],
-  'zweiter_faktor_codes',
-  // ohne Kontobezug: Katalog, Preis- und Bildspeicher, Laufzustand
-  ...['api_aufrufe', 'api_takt', 'app_logs', 'auftrag_exklusiv', 'auftrag_pausen', 'auftrags_arten'],
-  ...['bl_zuordnung', 'catalog_cache', 'image_misses', 'image_wanted', 'laufzustand', 'minifig_parts_cache'],
+const FULL = ['SELECT', 'INSERT', 'UPDATE', 'DELETE'].join(', ');
+const WITH_ALL_RIGHT = [
+  // access, household, administration, account settings and jobs
+  ...['account_link_invites', 'account_links', 'api_tokens', 'api_tokens_consumed', 'jobs'],
+  ...['device_nonces', 'device_keys', 'global_settings', 'household_former_links', 'passkeys'],
+  ...['qr_login_tokens', 'rate_limit_attempts', 'step_up_challenges', 'step_up_approvals', 'user_sessions'],
+  ...['user_settings', 'users', 'admin_takeovers', 'webauthn_challenges', 'second_factor'],
+  'second_factor_codes',
+  // without account reference: catalog, price and image stores, run state
+  ...['api_calls', 'api_cadence', 'app_logs', 'job_exclusive_locks', 'job_pauses', 'job_types'],
+  ...['bl_mapping', 'catalog_cache', 'image_misses', 'image_wanted', 'run_state', 'minifig_parts_cache'],
   ...['minifig_price_cache', 'minifig_price_history', 'minifigs_catalog', 'part_catalog', 'part_color_catalog'],
-  ...['part_price_cache', 'part_price_history', 'parts_katalog_offen', 'price_cache', 'price_history'],
+  ...['part_price_cache', 'part_price_history', 'parts_catalog_pending', 'price_cache', 'price_history'],
   ...['rb_colors', 'rb_inventories', 'rb_inventory_minifigs', 'rb_inventory_parts', 'rb_part_categories'],
-  ...['rb_parts', 'rb_sets', 'rb_themes', 'set_catalog', 'set_figuren', 'set_teile', 'shared_instructions'],
-  ...['subsets_cache', 'wechselkurse'],
+  ...['rb_parts', 'rb_sets', 'rb_themes', 'set_catalog', 'set_minifigs', 'set_parts', 'shared_instructions'],
+  ...['subsets_cache', 'exchange_rates'],
 ];
 const SOLL = {
-  ...Object.fromEntries(MIT_ALLEN_RECHTEN.map(t => [t, VOLL])),
-  verwaltungsprotokoll: 'SELECT, INSERT',
+  ...Object.fromEntries(WITH_ALL_RIGHT.map(t => [t, FULL])),
+  admin_log: 'SELECT, INSERT',
   parts_version_user: 'SELECT, INSERT, UPDATE',
   set_minifigs_catalog: 'SELECT',
   set_parts_catalog: 'SELECT',
@@ -70,10 +70,10 @@ const SOLL = {
   sets: '(set_number)',
 };
 
-const freierPort = () =>
+const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = portVon(s);
+      const p = portOf(s);
       s.close(() => r(p));
     });
   });
@@ -86,14 +86,14 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     return;
   }
   if (!WEB) {
-    keineDb(t, new Error('ohne Testlauf (scripts/test-lauf.js) keine Web-Systemrolle'));
+    keineDb(t, new Error('ohne Testlauf (scripts/test-run.js) keine Web-Systemrolle'));
     return;
   }
-  const zugang = quellen.testZugang();
+  const zugang = quellen.testAccess();
   t.after(() => db.pool.end().catch(() => {}));
-  const imWeb = f => alsWebAnfrage({}, () => imSystemkontext('Test', f));
+  const imWeb = f => asWebRequest({}, () => inSystemContext('Test', f));
 
-  await t.test('die Web-Systemrolle hat genau diese Tabellenrechte', async () => {
+  await t.test('the web system role has exactly these table privileges', async () => {
     const zeilen = await db.all(
       `SELECT c.relname AS t, COALESCE(NULLIF(concat_ws(', ',
                 CASE WHEN has_table_privilege($1, c.oid, 'SELECT') THEN 'SELECT' END,
@@ -119,7 +119,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     assert.deepEqual(fn, { kopien: true, zahl: true, aufraeumen: false, bypass: true });
   });
 
-  await t.test('jede Sicht liest mit den Rechten der Abfragenden, die Web-Rolle nur die genannten', async tt => {
+  await t.test('every view reads with the rights of the querying role, the web role only the named ones', async tt => {
     const name = `sicht_test_${process.pid}`;
     const a = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [name])).id;
     const b = (await db.get(`INSERT INTO users (username, password_hash) VALUES ($1, 'x') RETURNING id`, [`${name}b`]))
@@ -129,23 +129,30 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
       await db.run('DELETE FROM users WHERE id = ANY($1)', [[a, b]]);
     });
     await db.run(`INSERT INTO sets (user_id, set_number) VALUES ($1, '10001-1'), ($2, '10002-1')`, [a, b]);
-    // Eine neue Sicht über eine Kontotabelle, danach 0119 erneut (UPGRADE.md, Abschnitt 65) und 0120.
+    // A new view over an account table, afterwards 0119 again (UPGRADE.md, section 65) and 0120.
     await db.run(`CREATE VIEW ${name} AS SELECT user_id, set_number FROM sets`);
+    // 0119 is history and still names table and column by their old
+    // names (auftrags_arten.art); 0124 (applied long ago) would otherwise have renamed them
+    // right afterwards, as with a real order of the migrations.
+    await db.run('ALTER TABLE job_types RENAME COLUMN type TO art');
+    await db.run('ALTER TABLE job_types RENAME TO auftrags_arten');
     await db.run(fs.readFileSync(path.join(ROOT, 'db/migrations/0119-systemrolle-web.sql'), 'utf8'));
+    await db.run('ALTER TABLE auftrags_arten RENAME TO job_types');
+    await db.run('ALTER TABLE job_types RENAME COLUMN art TO type');
     await db.run(
       fs.readFileSync(path.join(ROOT, 'db/migrations/0120-sichten-mit-rechten-der-abfragenden.sql'), 'utf8'),
     );
-    const sichten = await db.all(
+    const views = await db.all(
       `SELECT c.relname AS v, coalesce('security_invoker=true' = ANY (c.reloptions), false) AS invoker,
               has_table_privilege($1, c.oid, 'SELECT') AS web
          FROM pg_class c WHERE c.relnamespace = 'public'::regnamespace AND c.relkind = 'v' ORDER BY c.relname::text COLLATE "C"`,
       [WEB],
     );
     assert.deepEqual(
-      sichten.map(s => `${s.v}${s.invoker ? '' : ' ohne security_invoker'}${s.web ? ' web' : ''}`),
+      views.map(s => `${s.v}${s.invoker ? '' : ' ohne security_invoker'}${s.web ? ' web' : ''}`),
       ['set_minifigs_catalog web', 'set_parts_catalog web', name],
     );
-    const sieht = await alsAnfrage({ session: { userId: a } }, () =>
+    const sieht = await asRequest({ session: { userId: a } }, () =>
       zugang.all(`SELECT DISTINCT user_id FROM ${name} WHERE user_id = ANY($1)`, [[a, b]]),
     );
     assert.deepEqual(
@@ -155,13 +162,13 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     );
   });
 
-  await t.test('Anfragen nehmen im Systemrahmen die Web-Systemrolle, sonst die Systemrolle', async () => {
+  await t.test('requests take the web system role in the system context, otherwise the system role', async () => {
     assert.equal((await imWeb(() => zugang.get('SELECT current_user AS u'))).u, WEB);
-    const ohne = await imSystemkontext('Test', () => zugang.get('SELECT current_user AS u'));
+    const ohne = await inSystemContext('Test', () => zugang.get('SELECT current_user AS u'));
     assert.equal(ohne.u, process.env.PGSYSTEM_USER);
   });
 
-  await t.test('im Systemrahmen einer Anfrage bleiben Gutscheine zu, Konten offen', async () => {
+  await t.test('in the system context of a request vouchers stay closed, accounts open', async () => {
     await assert.rejects(
       imWeb(() => zugang.get('SELECT count(*) FROM vouchers')),
       /permission denied for table vouchers/,
@@ -173,7 +180,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     assert.ok(await imWeb(() => zugang.get('SELECT count(*)::int AS n FROM users')));
   });
 
-  await t.test('ein Konto verschwindet auch aus den Kopien, ohne dass die Web-Rolle sie liest', async tt => {
+  await t.test('an account also disappears from the copies without the web role reading them', async tt => {
     const uid = 987_001;
     await db.run('DROP SCHEMA IF EXISTS vor_migration_1 CASCADE');
     await db.run('CREATE SCHEMA vor_migration_1');
@@ -186,7 +193,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
       imWeb(() => zugang.get('SELECT * FROM vor_migration_1.users')),
       /permission denied/,
     );
-    const n = await imWeb(() => _req('db/migrate.js').entferneKontoAusSicherungen(zugang, uid));
+    const n = await imWeb(() => _req('db/migrate.js').removeAccountFromBackups(zugang, uid));
     assert.equal(n, 2);
     assert.deepEqual(
       (await db.all('SELECT id FROM vor_migration_1.users')).map(z => z.id),
@@ -194,31 +201,31 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     );
   });
 
-  await t.test('eine Anfrage zieht den Katalog nicht selbst nach, sie stellt den Auftrag ein', async () => {
+  await t.test('a request does not update the catalog itself, it enqueues the job', async () => {
     const uid = (
       await db.get(`INSERT INTO users (username, password_hash) VALUES ('systemweb-teile', 'x') RETURNING id`)
     ).id;
-    await db.run(`DELETE FROM auftraege WHERE art = 'katalog_nachzug'`);
-    await db.run(`INSERT INTO parts_katalog_offen (nummer) VALUES ('3001')`);
-    const { zusammenfassungFrisch } = _req('src/teile/partsSummary.js');
-    await alsWebAnfrage({ session: { userId: uid } }, () => zusammenfassungFrisch(uid));
-    const offen = async () => (await db.get('SELECT count(*)::int AS n FROM parts_katalog_offen')).n;
+    await db.run(`DELETE FROM jobs WHERE type = 'katalog_nachzug'`);
+    await db.run(`INSERT INTO parts_catalog_pending (number) VALUES ('3001')`);
+    const { summaryFresh } = _req('src/parts/summary.js');
+    await asWebRequest({ session: { userId: uid } }, () => summaryFresh(uid));
+    const offen = async () => (await db.get('SELECT count(*)::int AS n FROM parts_catalog_pending')).n;
     assert.equal(await offen(), 1, 'die Anfrage hat die Warteschlange geleert');
-    assert.ok(await db.get(`SELECT 1 FROM auftraege WHERE art = 'katalog_nachzug' AND status = 'offen'`));
-    const nachzug = quellen
-      .testDienste()
-      .auftraege.angemeldeteArten()
+    assert.ok(await db.get(`SELECT 1 FROM jobs WHERE type = 'katalog_nachzug' AND status = 'offen'`));
+    const followUp = quellen
+      .testServices()
+      .jobQueue.signedInKinds()
       .find(a => a.art === 'katalog_nachzug');
-    await imSystemkontext('Test', () => nachzug.ausfuehren({}, {}));
+    await inSystemContext('Test', () => followUp.ausfuehren({}, {}));
     assert.equal(await offen(), 0, 'der Auftrag leert sie');
   });
 
-  await t.test('der Web-Prozess startet mit der Web-Systemrolle und wartet auf die Umschlüsselung', async tt => {
-    await db.run(`DELETE FROM laufzustand WHERE schluessel = 'altbestand_v2'`);
-    const port = await freierPort();
-    const { PGSYSTEM_WEB_USER: _u, PGSYSTEM_WEB_PASSWORD: _p, ...ohneWeb } = process.env;
+  await t.test('the web process starts with the web system role and waits for the re-encryption', async tt => {
+    await db.run(`DELETE FROM run_state WHERE key = 'altbestand_v2'`);
+    const port = await freePort();
+    const { PGSYSTEM_WEB_USER: _u, PGSYSTEM_WEB_PASSWORD: _p, ...withoutWeb } = process.env;
     const env = {
-      ...ohneWeb,
+      ...withoutWeb,
       SESSION_SECRET: 'systemrolle-web-test-geheimnis-lang-genug-1234',
       PORT: String(port),
       TRUST_PROXY: 'false',
@@ -251,7 +258,7 @@ test('Web-Systemrolle', { concurrency: 1, timeout: 180_000 }, async t => {
     for (let i = 0; i < 80 && !/warte, bis der Dienst jobs/.test(log) && srv.exitCode === null; i++) await warte(250);
     assert.match(log, /warte, bis der Dienst jobs/, log.slice(-1500));
     assert.equal(await bereit(), null, 'ohne Marke nimmt der Web-Prozess keine Anfrage an');
-    await db.run(`INSERT INTO laufzustand (schluessel, wert) VALUES ('altbestand_v2', 'Test')`);
+    await db.run(`INSERT INTO run_state (key, value) VALUES ('altbestand_v2', 'Test')`);
     let status = null;
     for (let i = 0; i < 120 && status !== 200 && srv.exitCode === null; i++) {
       status = await bereit();

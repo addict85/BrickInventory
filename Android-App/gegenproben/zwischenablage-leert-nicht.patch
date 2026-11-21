@@ -1,15 +1,15 @@
 Gegenprobe: Das abgelaufene Geheimnis bleibt in der Zwischenablage
 Modul: core-ui
-Test: ch.brickinventoryapp.ui.util.GeheimeZwischenablageTest
-Rot: ein kopiertes Geheimnis ist nach einer Minute weg
+Test: ch.brickinventoryapp.ui.util.SecretClipboardTest
+Rot: a copied secret is gone after one minute, foreign content stays
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/GeheimeZwischenablage.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/GeheimeZwischenablage.kt
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/GeheimeZwischenablage.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/GeheimeZwischenablage.kt
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/SecretClipboard.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/SecretClipboard.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/SecretClipboard.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/util/SecretClipboard.kt
 @@ -56,7 +56,6 @@
-             GeheimSchritt.WARTEN -> Unit
-             GeheimSchritt.VERGESSEN -> kennung = null
-             GeheimSchritt.LEEREN -> {
+             SecretStep.WARTEN -> Unit
+             SecretStep.FORGOTTEN -> kennung = null
+             SecretStep.LEEREN -> {
 -                cm.clearPrimaryClip()
                  kennung = null
              }

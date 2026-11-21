@@ -3,49 +3,49 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-// Was root an ./data tut, steht in daten-rechte.sh (eigener Dienst vor app und jobs).
+// What root does to ./data is in daten-rechte.sh (its own service before app and jobs).
 const ep = fs.readFileSync(path.join(__dirname, '..', 'daten-rechte.sh'), 'utf8');
-const einstieg = fs.readFileSync(path.join(__dirname, '..', 'docker-entrypoint.sh'), 'utf8');
+const entry = fs.readFileSync(path.join(__dirname, '..', 'docker-entrypoint.sh'), 'utf8');
 
 /**
- * Der Start des Containers schweigt nicht, und er arbeitet nicht umsonst.
+ * The container start is not silent, and it does not work in vain.
  */
 
-test('der Start sagt, was er tut', () => {
-  // Der eigentliche Schaden war nicht die Wartezeit, sondern die Stille: Man
-  // kann nicht unterscheiden, ob etwas arbeitet oder haengt.
+test('the startup says what it does', () => {
+  // The actual damage was not the waiting time but the silence: one
+  // cannot tell whether something is working or hanging.
   const zeilen = [...ep.matchAll(/^echo "\[daten-rechte\]/gm)].length;
   assert.ok(
     zeilen >= 2,
     `Nur ${zeilen} Ausgabe(n) im Entrypoint. Ohne sie beginnt jeder Start mit ` + 'einer unbestimmten Zeit Schweigen.',
   );
-  const ersteAusgabe = ep.indexOf('echo "[daten-rechte]');
-  const ersteArbeit = ep.indexOf('mkdir -p');
+  const firstOutput = ep.indexOf('echo "[daten-rechte]');
+  const firstWork = ep.indexOf('mkdir -p');
   assert.ok(
-    ersteAusgabe > 0 && ersteAusgabe < ersteArbeit,
+    firstOutput > 0 && firstOutput < firstWork,
     'Die erste Ausgabe steht hinter der ersten Arbeit — dann schweigt der Start ' +
       'wieder genau so lange, wie die Arbeit dauert.',
   );
 });
 
-test('der Eigentuemerwechsel laeuft nicht bei jedem Start', () => {
-  // ── Die Regel ────────────────────────────────────────────────────────────
-  // `chown -R` ueber das Datenverzeichnis ist ein REPARATURSCHRITT. Er darf
-  // vorkommen, aber nie unbedingt: Jede Inode-Aenderung ist auf einer SD-Karte
-  // oder einem Netzlaufwerk ein eigener Schreibvorgang, und data/images/ fuellt
-  // sich mit jedem Set-, Teile- und Minifigurenbild.
+test('the owner change does not run on every start', () => {
+  // ── The rule ─────────────────────────────────────────────────────────────
+  // `chown -R` over the data directory is a REPAIR STEP. It may
+  // occur, but never unconditionally: every inode change is on an SD card
+  // or a network drive a separate write, and data/images/ fills
+  // up with every set, part and minifigure image.
   const rekursiv = [...ep.matchAll(/^\s*(chown -R |find \/app\/data -xdev ! -uid "\$ZIEL_UID" -exec chown )/gm)];
   assert.ok(
     rekursiv.length > 0,
     'Der Reparaturschritt fehlt ganz — ein frisch ' + 'eingehaengter Datentraeger waere dann nie zu retten',
   );
   for (const m of rekursiv) {
-    // Eingerückt, also in einer Funktion oder einem Zweig; am Zeilenanfang
-    // liefe er bei JEDEM Start über alle Bilder.
+    // Indented, i.e. in a function or a branch; at the start of the line
+    // it would run over all images at EVERY start.
     assert.match(m[0], /^\s+/, 'Der Reparaturschritt steht unbedingt am Zeilenanfang.');
   }
-  // Die Suche haelt beim ERSTEN Treffer an: im Normalfall ein Durchlauf ohne
-  // einen einzigen Schreibvorgang.
+  // The search stops at the FIRST hit: in the normal case one pass without
+  // a single write.
   assert.match(
     ep,
     /find \/app\/data -xdev ! -uid "\$ZIEL_UID" -print -quit/,
@@ -54,9 +54,9 @@ test('der Eigentuemerwechsel laeuft nicht bei jedem Start', () => {
   );
 });
 
-test('wer es anders braucht, kann es stellen', () => {
-  // `never` fuer Einhaengungen, auf denen chown nichts bewirkt (SMB/CIFS mit
-  // festem uid); `always`, falls die Suche einmal etwas nicht sieht.
+test('whoever needs it differently can set it', () => {
+  // `never` for mounts on which chown has no effect (SMB/CIFS with
+  // fixed uid); `always` in case the search ever misses something.
   for (const wert of ['never', 'always']) {
     assert.ok(ep.includes(`  ${wert})`), `BRICKINV_CHOWN=${wert} gibt es nicht mehr`);
   }
@@ -67,10 +67,10 @@ test('wer es anders braucht, kann es stellen', () => {
   );
 });
 
-// Gegenprobe (02.11.2026 gemessen): `su-exec brickinv` vor mkdir gestrichen → rot.
-test('die angelegten Verzeichnisse legt der Dienst selbst an, nicht root', () => {
-  // So gehören sie ihm auch nach BRICKINV_CHOWN=never, und ein Symlink des
-  // Dienstes unter /app/data führt kein mkdir von root nach aussen.
+// Counter-check (measured 02.11.2026): `su-exec brickinv` before mkdir deleted → red.
+test('the service creates the created directories itself, not root', () => {
+  // That way they belong to it even after BRICKINV_CHOWN=never, and a symlink of the
+  // service under /app/data does not lead a mkdir by root outside.
   const code = ep
     .split('\n')
     .filter(z => !z.trimStart().startsWith('#'))
@@ -96,23 +96,23 @@ test('die angelegten Verzeichnisse legt der Dienst selbst an, nicht root', () =>
   }
 });
 
-test('ein normaler Start geht gar nicht erst durch die Dateien', () => {
-  // Marcos Rueckfrage
+test('a normal start does not even go through the files', () => {
+  // Marco's follow-up question
   assert.match(
     ep,
     /MARKE=\/app\/data\/\.\w+/,
     'Die Marke fehlt — dann laeuft bei JEDEM Start die Suche ueber den ganzen ' +
       'Datenbestand, auch wenn nichts zu tun ist',
   );
-  // Sie muss VOR der Suche gelesen werden, sonst spart sie nichts.
-  const markeGelesen = ep.indexOf('cat "$MARKE"');
+  // It must be read BEFORE the search, otherwise it saves nothing.
+  const readBrand = ep.indexOf('cat "$MARKE"');
   const gesucht = ep.indexOf('find /app/data -xdev ! -uid "$ZIEL_UID" -print');
   assert.ok(
-    markeGelesen > 0 && markeGelesen < gesucht,
+    readBrand > 0 && readBrand < gesucht,
     'Die Marke wird erst nach der Suche gelesen. Dann ist die Suche schon ' + 'gelaufen, und die Marke spart nichts.',
   );
-  // Und sie muss die UID tragen, nicht bloss existieren: Ein Wechsel der UID
-  // ist genau der Fall, fuer den es den Reparaturschritt gibt.
+  // And it must carry the UID, not merely exist: a change of the UID
+  // is exactly the case for which the repair step exists.
   assert.match(
     ep,
     /= "\$ZIEL_UID"/,
@@ -121,9 +121,9 @@ test('ein normaler Start geht gar nicht erst durch die Dateien', () => {
   );
 });
 
-test('die Marke bricht keinen Start ab', () => {
-  // Ein nur lesbar eingehaengter Datentraeger kann sie nicht aufnehmen. Mit
-  // `set -e` waere das sonst das Ende des Starts — wegen einer Abkuerzung.
+test('the marker aborts no startup', () => {
+  // A read-only mounted volume cannot hold it. With
+  // `set -e` that would otherwise be the end of the start — because of a shortcut.
   const fn = ep.slice(ep.indexOf('setzeMarke() {'), ep.indexOf('case "${BRICKINV_CHOWN'));
   assert.match(
     fn,
@@ -133,11 +133,11 @@ test('die Marke bricht keinen Start ab', () => {
   );
 });
 
-// Gegenprobe (am 28.10.2026 gemessen): `-h` am chown der Marke entfernt → rot.
-test('chown als root folgt keinem Symlink', () => {
-  // /app/data gehört dem Dienst. Ohne -h schriebe root das ZIEL eines dort
-  // abgelegten Symlinks um — eine Datei ausserhalb, etwa /etc/passwd.
-  const code = `${ep}\n${einstieg}`
+// Counter-check (measured on 28.10.2026): `-h` removed from the marker's chown → red.
+test('chown as root follows no symlink', () => {
+  // /app/data belongs to the service. Without -h root would rewrite the TARGET of a
+  // symlink placed there — a file outside, say /etc/passwd.
+  const code = `${ep}\n${entry}`
     .split('\n')
     .filter(z => !z.trimStart().startsWith('#'))
     .join('\n');
@@ -149,9 +149,9 @@ test('chown als root folgt keinem Symlink', () => {
   );
 });
 
-// Gegenproben (02.11.2026 gemessen): in berichtige() `find -L` → rot (die Datei
-// hinter dem Symlink wird umgeschrieben); `-xdev` gestrichen → rot (fehlt im Aufruf).
-test('der Reparaturschritt folgt keinem Symlink und bleibt im Datenträger', t => {
+// Counter-checks (measured 02.11.2026): in berichtige() `find -L` → red (the file
+// behind the symlink is rewritten); `-xdev` deleted → red (missing in the call).
+test('the repair step follows no symlink and stays on the volume', t => {
   const os = require('node:os');
   const { spawnSync } = require('node:child_process');
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-chown-'));
@@ -183,9 +183,9 @@ test('der Reparaturschritt folgt keinem Symlink und bleibt im Datenträger', t =
   assert.ok(geaendert.includes('-h'));
 });
 
-// Gegenprobe (01.11.2026 gemessen): setzeMarke wieder mit `printf … > "$MARKE"`
-// als root → rot: „die Marke schreibt nicht durch einen Symlink“.
-test('die Marke schreibt nicht durch einen Symlink', t => {
+// Counter-check (measured 01.11.2026): setzeMarke again with `printf … > "$MARKE"`
+// as root → red: “the marker does not write through a symlink”.
+test('the marker does not write through a symlink', t => {
   const os = require('node:os');
   const { spawnSync } = require('node:child_process');
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-marke-'));
@@ -195,7 +195,7 @@ test('die Marke schreibt nicht durch einen Symlink', t => {
   fs.writeFileSync(fremd, 'unberuehrt');
   fs.symlinkSync(fremd, marke);
   const fn = ep.slice(ep.indexOf('setzeMarke() {'), ep.indexOf('case "${BRICKINV_CHOWN'));
-  // su-exec gibt es nur im Image; hier wechselt es den Nutzer nicht.
+  // su-exec only exists in the image; here it does not switch the user.
   fs.mkdirSync(path.join(ordner, 'bin'));
   fs.writeFileSync(path.join(ordner, 'bin', 'su-exec'), '#!/bin/sh\nshift\nexec "$@"\n', { mode: 0o755 });
   const r = spawnSync('sh', ['-c', `${fn}\nsetzeMarke`], {
@@ -208,10 +208,10 @@ test('die Marke schreibt nicht durch einen Symlink', t => {
   assert.equal(fs.readFileSync(marke, 'utf8'), '1234');
 });
 
-// Gegenproben (04.11.2026 gemessen, Runde 12 H2): nach `umask 077` wieder
-// `umask 022` → rot (neue Ordner 755); das chmod der Uploads gestrichen → rot
-// (alte Datei 644).
-test('was der Dienst anlegt und hochgeladen hat, liest nur er', t => {
+// Counter-checks (measured 04.11.2026, round 12 H2): after `umask 077` again
+// `umask 022` → red (new folders 755); the chmod of the uploads deleted → red
+// (old file 644).
+test('what the service created and uploaded only it reads', t => {
   const os = require('node:os');
   const { spawnSync } = require('node:child_process');
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-umask-'));
@@ -238,18 +238,18 @@ test('was der Dienst anlegt und hochgeladen hat, liest nur er', t => {
   );
 });
 
-// Gegenproben (11.11.2026 gemessen, je einzeln): im Entrypoint `umask 077`
-// gestrichen → rot „der Server legt Dateien für andere lesbar an“; die Abfrage
-// `[ "$(id -u)" = 0 ]` durch `true` ersetzt → rot „ohne root kein Weg über
-// daten-rechte und su-exec“ (der root-Zweig sucht /app/daten-rechte.sh).
-test('als brickinv gestartet geht der Entrypoint ohne root-Schritt direkt zum Server', t => {
+// Counter-checks (measured 11.11.2026, each alone): in the entrypoint `umask 077`
+// deleted → red “the server creates files readable for others”; the query
+// `[ "$(id -u)" = 0 ]` replaced by `true` → red “without root no path via
+// daten-rechte and su-exec” (the root branch looks for /app/daten-rechte.sh).
+test('started as brickinv the entrypoint goes directly to the server without a root step', t => {
   const os = require('node:os');
   const { spawnSync } = require('node:child_process');
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'bi-einstieg-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const bin = path.join(ordner, 'bin');
   fs.mkdirSync(bin);
-  // compose.yaml startet app und jobs mit `user: brickinv`; `id` und `node` stehen hier dafür.
+  // compose.yaml starts app and jobs with `user: brickinv`; `id` and `node` stand in for that here.
   fs.writeFileSync(path.join(bin, 'id'), '#!/bin/sh\necho 100\n', { mode: 0o755 });
   fs.writeFileSync(path.join(bin, 'node'), '#!/bin/sh\necho "umask=$(umask) node $*"\n', { mode: 0o755 });
   const r = spawnSync('sh', [path.join(__dirname, '..', 'docker-entrypoint.sh')], {

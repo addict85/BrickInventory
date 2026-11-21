@@ -1,7 +1,7 @@
 Gegenprobe: sicherAufrufen() legt einen festen Satz in Ergebnis.Fehler.Server statt den des Servers
 Modul: app
 Test: ch.brickinventoryapp.app.ErrorMessageLayerTest
-Rot: die Datenschicht baut keine Meldung
+Rot: the data layer builds no message for the user
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/Abruf.kt
 index 31fb616..3aa116f 100644

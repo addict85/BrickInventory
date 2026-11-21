@@ -1,11 +1,11 @@
 Gegenprobe: ein Zeitpunkt in einem Fachtyp wieder als String
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: Fachtypen tragen Betraege
+Rot: domain types carry amounts as Money and points in time as Instant, not as Double and String
 
-diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/HaushaltAnsichten.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/HaushaltAnsichten.kt
---- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/HaushaltAnsichten.kt
-+++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/fach/HaushaltAnsichten.kt
+diff --git a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HaushaltAnsichten.kt b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HaushaltAnsichten.kt
+--- a/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HaushaltAnsichten.kt
++++ b/Android-App/core-model/src/main/java/ch/brickinventoryapp/model/domain/HaushaltAnsichten.kt
 @@ -40,6 +40,7 @@
      val createdAt: Instant? = null,
      val ownerUserId: Int? = null,

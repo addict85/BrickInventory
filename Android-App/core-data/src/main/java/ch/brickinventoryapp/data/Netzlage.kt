@@ -10,63 +10,63 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * In welcher Art Netz hängt das Gerät? Das Vorwärmen der Vorschaubilder lässt sich
- * je Lage erlauben, denn ein Durchlauf im Ausland ist eine Rechnung. Ein gemessenes
- * WLAN (Hotspot) zählt als Mobilfunk.
+ * What kind of network is the device on? Warming the thumbnails can be
+ * allowed per situation, because a pass abroad is a bill. A metered
+ * Wi-Fi (hotspot) counts as mobile.
  */
 @Singleton
-class Netzlage internal constructor(private val messen: () -> Art) {
-    /** Die Messung über den ConnectivityManager; der interne Weg gibt Tests eine feste Lage. */
+class Netzlage internal constructor(private val measure: () -> Art) {
+    /** The measurement via the ConnectivityManager; the internal path gives tests a fixed situation. */
     @Inject constructor(@ApplicationContext context: Context) : this({ miss(context) })
 
     /**
-     * Die vier Lagen. Sie schliessen einander aus — das ist der Grund fuer eine
-     * Aufzaehlung statt dreier Ja/Nein-Fragen: Der Aufrufer soll nicht selbst
-     * entscheiden muessen, was gilt, wenn zwei davon zutraefen.
+     * The four situations. They exclude each other — that is the reason for an
+     * enumeration instead of three yes/no questions: the caller should not have to
+     * decide itself what applies if two of them were true.
      */
-    enum class Art { KEIN_NETZ, WLAN, MOBIL, ROAMING }
+    enum class Art { KEIN_NETZ, WLAN, MOBILE, ROAMING }
 
-    fun aktuell(): Art = messen()
+    fun aktuell(): Art = measure()
 
     /**
-     * Wann ein vorübergehend gescheiterter Abruf noch einmal geht: mit wachsender
-     * Pause, und ohne Netz gar nicht — dann zeigt die Ablage ihren Stand, und ein
-     * Warten in festen Schritten hielte nur die Ladeanzeige offen.
+     * When a temporarily failed fetch is tried again: with a growing
+     * pause, and without network not at all — then the store shows its state, and
+     * waiting in fixed steps would only keep the loading indicator open.
      */
     @Singleton
     class Wiederholung internal constructor(
         private val netz: () -> Art,
         private val versuche: Int,
-        private val erstePause: Long,
-        private val warte: suspend (Long) -> Unit,
+        private val firstPause: Long,
+        private val wait: suspend (Long) -> Unit,
     ) {
-        @Inject constructor(netzlage: Netzlage) : this(netzlage::aktuell, VERSUCHE, ERSTE_PAUSE_MS, { delay(it) })
+        @Inject constructor(netzlage: Netzlage) : this(netzlage::aktuell, ATTEMPTS, FIRST_PAUSE_MS, { delay(it) })
 
         suspend fun <T> wiederhole(call: suspend () -> Ergebnis<T>): Ergebnis<T> {
-            var pause = erstePause
+            var pause = firstPause
             repeat(versuche - 1) {
                 val r = call()
                 if (r !is Ergebnis.Fehler || !r.transient || netz() == Art.KEIN_NETZ) return r
-                warte(pause)
-                pause = (pause * 2).coerceAtMost(HOECHSTE_PAUSE_MS)
+                wait(pause)
+                pause = (pause * 2).coerceAtMost(HIGHEST_PAUSE_MS)
             }
             return call()
         }
 
-        /** Dieselbe Regel mit weniger Versuchen — wo jemand auf die Antwort wartet und weiterblättern will. */
-        fun hoechstens(n: Int): Wiederholung = Wiederholung(netz, n.coerceIn(1, versuche), erstePause, warte)
+        /** The same rule with fewer attempts — where someone waits for the answer and wants to page on. */
+        fun atMost(n: Int): Wiederholung = Wiederholung(netz, n.coerceIn(1, versuche), firstPause, wait)
 
         companion object {
-            const val VERSUCHE = 5
-            const val ERSTE_PAUSE_MS = 1_000L
-            const val HOECHSTE_PAUSE_MS = 16_000L
+            const val ATTEMPTS = 5
+            const val FIRST_PAUSE_MS = 1_000L
+            const val HIGHEST_PAUSE_MS = 16_000L
 
-            /** Für Tests und Abrufe, die selbst nicht wiederholen sollen: genau ein Versuch. */
+            /** For tests and fetches that should not retry themselves: exactly one attempt. */
             val EINMAL = Wiederholung({ Art.WLAN }, 1, 0L, {})
 
-            /** Für Tests: feste Lage, Pausen werden nur mitgeschrieben. */
-            fun fuerTest(versuche: Int = VERSUCHE, netz: () -> Art = { Art.WLAN },
-                         warte: suspend (Long) -> Unit = {}) = Wiederholung(netz, versuche, ERSTE_PAUSE_MS, warte)
+            /** For tests: fixed situation, pauses are only recorded. */
+            fun forTest(versuche: Int = ATTEMPTS, netz: () -> Art = { Art.WLAN },
+                         wait: suspend (Long) -> Unit = {}) = Wiederholung(netz, versuche, FIRST_PAUSE_MS, wait)
         }
     }
 
@@ -75,28 +75,28 @@ class Netzlage internal constructor(private val messen: () -> Art) {
             val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
                 ?: return Art.KEIN_NETZ
             val netz = cm.activeNetwork ?: return Art.KEIN_NETZ
-            val faehig = cm.getNetworkCapabilities(netz) ?: return Art.KEIN_NETZ
-            if (!faehig.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) return Art.KEIN_NETZ
+            val capable = cm.getNetworkCapabilities(netz) ?: return Art.KEIN_NETZ
+            if (!capable.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) return Art.KEIN_NETZ
 
-            val gemessen = !faehig.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+            val gemessen = !capable.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
 
             return when {
-                faehig.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ->
-                    if (istRoaming(faehig)) Art.ROAMING else Art.MOBIL
-                // Ethernet zaehlt wie WLAN: fest, ungemessen, und auf einem
-                // Tablet in der Dockingstation genau das, was „zu Hause" meint.
-                faehig.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                    faehig.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ->
-                    if (gemessen) Art.MOBIL else Art.WLAN
-                // Etwas anderes (Bluetooth-Tethering, VPN ohne erkennbaren
-                // Untergrund): vorsichtig als Mobilfunk behandeln. Bei einer
-                // Einstellung, die Datenvolumen kostet, ist die Vorgabe „lieber
-                // nicht" die richtige Richtung fuer den unbekannten Fall.
-                else -> Art.MOBIL
+                capable.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ->
+                    if (isRoaming(capable)) Art.ROAMING else Art.MOBILE
+                // Ethernet counts like Wi-Fi: fixed, unmetered, and on a
+                // tablet in the docking station exactly what „at home" means.
+                capable.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                    capable.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ->
+                    if (gemessen) Art.MOBILE else Art.WLAN
+                // Something else (Bluetooth tethering, VPN without a recognizable
+                // underlying network): treat cautiously as mobile. For a
+                // setting that costs data volume, the default „rather
+                // not" is the right direction for the unknown case.
+                else -> Art.MOBILE
             }
         }
 
-        fun istRoaming(faehig: NetworkCapabilities): Boolean =
-            !faehig.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
+        fun isRoaming(capable: NetworkCapabilities): Boolean =
+            !capable.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_ROAMING)
     }
 }

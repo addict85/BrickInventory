@@ -1,17 +1,17 @@
 Gegenprobe: Die Kaufpreis-Kachel zeigt den höchsten Kauf statt des Schnitts
-Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.SetDetailAnzeigeTest
-Rot: die Kaufpreis-Kachel zeigt den mengengewichteten Schnitt
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.SetDetailDisplayTest
+Rot: the purchase price tile shows the quantity-weighted average, not the last purchase
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/SetDetailSections.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/SetDetailSections.kt
 @@ -239,7 +239,7 @@
      item(key = "wertkacheln") {
          // avg_price zuerst: Marktpreis ist der einfache Schnitt, nicht der mengengewichtete.
          val marktpreis = price?.takeUnless { it.noPrice }?.let { it.avgPrice ?: it.qtyAvgPrice }
--        val kaufpreis = set.anzeigeKaufpreis
+-        val kaufpreis = set.displayPurchasePrice
 +        val kaufpreis = set.maxPurchasePrice
-         val differenz = if (marktpreis != null && kaufpreis != null) marktpreis - kaufpreis else null
+         val difference = if (marktpreis != null && kaufpreis != null) marktpreis - kaufpreis else null
          WertKacheln(
              // Dieselben Wörter wie Finanzen und Merkliste statt eines Strichs, der wie ein Wert aussah.

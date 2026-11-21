@@ -1,5 +1,5 @@
 {
-  "_warum": "Farben, die BEIDE Oberflaechen gleich fuehren muessen. Aus dieser Datei werden Web-App/public/tokens.css und Android-App/.../ui/theme/DesignTokens.kt ERZEUGT — beide Dateien nicht von Hand bearbeiten. Siehe shared/README.md.",
+  "_warum": "Colors that BOTH UIs must keep identical. Web-App/public/tokens.css and Android-App/.../ui/theme/DesignTokens.kt are GENERATED from this file — do not edit either file by hand. See shared/README.md.",
   "designs": {
     "classic": {
       "b50": "#eff6ff",
@@ -68,12 +68,12 @@
     }
   },
   "_notizen": {
-    "chart-new": "Diagrammfarben — je Design ueberschreibbar. Vorher standen sie fest im JavaScript; damit konnte kein Design sie anpassen, und im Stein-Look stach das Bernstein der Gebraucht-Linie aus der ansonsten blauen Palette heraus.",
-    "chart-used": "Im Stein-Design Salbeigruen und Sand — dieselben Werte wie die Zustands-Plaketten .cond-new und .cond-used. Der Grund ist nicht Geschmack: Diese Farben stehen ueberall in der Oberflaeche fuer genau diese Unterscheidung; wer sie im Diagramm wiedererkennt, muss die Legende nicht lesen. Vorher stand dort --chart-used:#3d5a80 (die Primaerfarbe des Designs) — zusammen mit dem hellen Blau der Neu-Linie ergab das ZWEI Blautoene, die sich nur in der Helligkeit unterschieden, und verkleinert oder gedruckt verschwindet so ein Unterschied als Erstes.",
-    "brick-petrol": "Aktions- und Wertfarbe des Stein-Designs. Gibt es nur dort — im Grunddesign existiert kein Gegenstueck.",
-    "ink": "Die Kante des Designs \"noppe\" — Rahmen, Versatzschatten und Text stehen alle auf demselben Ton. Kunststoff wirft keine Wolke, er liegt auf: Der Schatten ist derselbe Ton wie der Rahmen, nur versetzt. Waeren es zwei Toene, sieht die Kante aus wie ein Druckfehler."
+    "chart-new": "Chart colors — overridable per theme. Before, they were hard-coded in the JavaScript; no theme could adjust them, and in the brick look the amber of the used line stuck out of the otherwise blue palette.",
+    "chart-used": "In the brick theme sage green and sand — the same values as the condition badges .cond-new and .cond-used. The reason is not taste: everywhere in the UI these colors stand for exactly this distinction; whoever recognizes them in the chart does not have to read the legend. Before, it said --chart-used:#3d5a80 (the theme's primary color) — together with the light blue of the new line that made TWO shades of blue that only differed in lightness, and scaled down or printed such a difference is the first to disappear.",
+    "brick-petrol": "Action and value color of the brick theme. Exists only there — the base theme has no counterpart.",
+    "ink": "The edge of the theme \"noppe\" — border, offset shadow and text all use the same tone. Plastic casts no cloud, it rests on the surface: the shadow is the same tone as the border, only offset. With two tones the edge would look like a misprint."
   },
-  "_app_warum": "Welche Konstante der App welchen Token spiegelt. Die Werte stehen NICHT hier — sie kommen aus 'designs' oben. Diese Zuordnung erzeugt DesignTokens.kt.",
+  "_app_warum": "Which constant of the app mirrors which token. The values are NOT here — they come from 'designs' above. This mapping generates DesignTokens.kt.",
   "app": {
     "BrandBlue": {
       "design": "classic",
@@ -188,12 +188,12 @@
       "token": "chart-used"
     }
   },
-  "_listen_warum": "Farbreihen, die ein Design DURCHZAEHLT statt sie einzeln zu benennen. Sie stehen hier und nicht in den Designs darueber, weil ihre Laenge zum Design gehoert, nicht ihre Rolle: Der elfte Ton hat keinen eigenen Namen, er ist schlicht der elfte. Erzeugt werden daraus --<praefix>-0..n in tokens.css und ein listOf(...) in DesignTokens.kt.",
+  "_listen_warum": "Color series a theme ENUMERATES instead of naming them individually. They stand here and not in the themes above because their length belongs to the theme, not their role: the eleventh tone has no name of its own, it is simply the eleventh. From them --<praefix>-0..n in tokens.css and a listOf(...) in DesignTokens.kt are generated.",
   "listen": {
     "faecher": {
       "praefix": "faecher",
       "kotlin": "FaecherFarben",
-      "warum": "Der Themenfaecher des Designs \"farbfaecher\": zwoelf Toene gleicher Helligkeit und Buntheit, nur der Farbton wechselt — so steht kein Thema lauter da als ein anderes. Die Zuordnung ist Thema-Nummer modulo zwoelf. BEWUSST eine feste Liste statt einer Rechnung: Eine Farbformel muesste in CSS und in Kotlin identisch nachgebaut werden, und genau solche Paare laufen auseinander. Eine Liste laesst sich erzeugen.",
+      "warum": "The theme fan of the design \"farbfaecher\": twelve tones of equal lightness and chroma, only the hue changes — that way no theme stands out louder than another. The mapping is theme number modulo twelve. DELIBERATELY a fixed list instead of a calculation: a color formula would have to be rebuilt identically in CSS and in Kotlin, and exactly such pairs drift apart. A list can be generated.",
       "werte": [
         "#c0392b",
         "#c0682b",
@@ -212,7 +212,7 @@
     "steine": {
       "praefix": "stein",
       "kotlin": "SteinFarben",
-      "warum": "Die Deckelfarben des Designs \"noppe\": sechs Klemmbaustein-Toene, die die Kachelwand durchlaeuft. Sie bedeuten NICHTS — anders als der Faecher darueber, wo die Farbe das Thema ist. Hier gibt sie Takt, und genau das ist der Haken dieses Designs: Wer den Faecher kennt, sucht hier eine Auskunft, die es nicht gibt. Sechs und nicht zwoelf, damit die Wiederholung als Rhythmus lesbar bleibt statt als Zufall. Die Zuordnung ist die Position in der Liste modulo sechs.",
+      "warum": "The lid colors of the theme \"noppe\": six building brick tones the tile wall cycles through. They mean NOTHING — unlike the fan above, where the color is the theme. Here it gives rhythm, and that is exactly the catch of this theme: whoever knows the fan looks for information here that does not exist. Six and not twelve, so that the repetition stays readable as rhythm instead of chance. The mapping is the position in the list modulo six.",
       "werte": [
         "#d91f26",
         "#f5c400",
@@ -223,8 +223,8 @@
       ]
     }
   },
-  "_erbt_warum": "Ein Design kann die Palette eines anderen ERBEN. Gebraucht wird das von \"hochglanz\": Es ist \"noppe\" als lackierte Broschuere — dieselben Farben, dazu Schichten (Woelbung, Lichtkuppen, Lichtstreifen), die kein Farbwert sind. Die elf Werte ein zweites Mal hinzuschreiben waere eine Abschrift, und eine Abschrift zieht beim naechsten Mal nicht mit.",
-  "_dunkel_warum": "Die dunkle Variante JE Design, aktiv mit <html data-dunkel> (Geraetewahl „Dunkel, wenn das System dunkel ist“). Vorher bekam, wer dunkel wollte, das Design „werkbank“ — also ein anderes Design. 'basis' belegt Flaechen, Grau-Achse und Meldefarben fuer alle Designs (dieselben Rollen wie in themes/werkbank.css); je Design stehen nur die Markenfarben, aufgehellt, damit Text und Linien in ihnen auf dunklem Grund lesbar bleiben. Schrift auf der Markenfarbe ist dann dunkel (--auf-primaer). Werkbank ist schon dunkel und hat keine Variante. Beide Oberflaechen lesen diesen Abschnitt: Der Generator erzeugt daraus die dunklen Bloecke in public/tokens.css und die App-Tabelle ui/theme/DunkelTokens.kt.",
+  "_erbt_warum": "A theme can INHERIT the palette of another. \"hochglanz\" needs this: it is \"noppe\" as a glossy brochure — the same colors, plus layers (curvature, highlights, light streaks) that are not color values. Writing the eleven values down a second time would be a copy, and a copy does not follow along the next time.",
+  "_dunkel_warum": "The dark variant PER theme, active with <html data-dunkel> (device choice “dark when the system is dark”). Before, whoever wanted dark got the theme “werkbank” — i.e. a different theme. 'basis' assigns surfaces, gray axis and status colors for all themes (the same roles as in themes/werkbank.css); per theme only the brand colors stand here, lightened so that text and lines in them stay readable on a dark background. Text on the brand color is then dark (--auf-primaer). Werkbank is already dark and has no variant. Both UIs read this section: the generator creates the dark blocks in public/tokens.css and the app table ui/theme/DunkelTokens.kt from it.",
   "dunkel": {
     "basis": {
       "s50": "#11151a",

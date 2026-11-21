@@ -1200,7 +1200,7 @@ input.suchfeld{width:220px}
 .kachel-datum{display:flex;flex-wrap:wrap;align-items:center;gap:0 .3em;font-size:var(--fs-1);color:var(--mut);margin-top:.2rem}
 .mono-2{font-family:var(--mono);font-size:var(--fs-2)}
 .zeiger{cursor:pointer}
-/* Bis js/stile.js den Stil gesetzt hat (und data-stil entfernt), bleibt Verborgenes verborgen. */
+/* Bis js/styles.js den Stil gesetzt hat (und data-stil entfernt), bleibt Verborgenes verborgen. */
 [data-stil*="display:none"]{display:none}
 .durchlaessig{display:contents}
 .ohne-rand{margin:0}

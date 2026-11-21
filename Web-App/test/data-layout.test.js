@@ -1,8 +1,8 @@
 /**
- * Ordnung unter data/ — Bilder nach Art getrennt, Anleitungen ohne "shared".
+ * Order under data/ — images separated by kind, instructions without "shared".
  *
- * Gegenprobe (am 25.10. gemessen): in downloadImage() immer PART_IMAGES_DIR
- * → rot: „Figurenbild nicht im Figurenordner".
+ * Counter-check (measured on 25.10.): always PART_IMAGES_DIR in downloadImage()
+ * → red: “minifigure image not in the minifigure folder".
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,33 +11,33 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const read = f => fs.readFileSync(path.join(ROOT, f), 'utf8');
-// Der Helfer statt eines naiven /\*…\*\/: `'/images/*pfad'` in server.ts
-// eröffnete für diesen sonst einen Kommentar bis zum nächsten Kommentarende.
+// The helper instead of a naive /\*…\*\/: `'/images/*pfad'` in server.ts
+// otherwise opened a comment for it up to the next comment end.
 const strip = s =>
   require('./helpers/sources')
     .ohneKommentare(s)
     .replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 
-/** Alle Quelldateien, die Pfade schreiben könnten. */
+/** All source files that could write paths. */
 const SOURCES = [
   'server.ts',
   'routes/api_v1/parts.ts',
   'routes/api_v1/sets.ts',
-  'routes/api_v1/setsAnleitungen.ts',
-  'src/sets/dienst.ts',
-  'src/sets/anleitungen.ts',
-  'src/bilder/thumbs.ts',
+  'routes/api_v1/setsInstructions.ts',
+  'src/sets/service.ts',
+  'src/sets/instructions.ts',
+  'src/images/thumbs.ts',
   'routes/api_v1/pdf.ts',
-  'src/katalog/teileAnreicherung.ts',
-  'src/katalog/katalogAbgleich.ts',
+  'src/catalog/partsEnrichment.ts',
+  'src/catalog/catalogSync.ts',
 ];
 
-test('keine Quelle schreibt mehr die alten Pfade', () => {
+test('no source writes the old paths any more', () => {
   for (const f of SOURCES) {
     const src = strip(read(f));
-    // In server.ts sind die Alt-Pfade als Weiterleitung noch erlaubt — dort
-    // stehen sie in app.get(...) und in cdnFuerFehlendesBild, nicht als
-    // Ziel eines Schreibvorgangs.
+    // In server.ts the old paths are still allowed as redirects — there
+    // they stand in app.get(...) and in cdnForMissingImage, not as the
+    // target of a write.
     const writes = [...src.matchAll(/=\s*[`'"]\/data\/(part_images|instructions\/shared)\//g)];
     assert.deepEqual(
       writes.map(m => m[0]),
@@ -47,11 +47,11 @@ test('keine Quelle schreibt mehr die alten Pfade', () => {
   }
 });
 
-test('Teile- und Figurenbilder landen in getrennten Ordnern', async t => {
-  // Am Verhalten: downloadImage() mit nachgestelltem https.get (ohne Netz).
+test('part and figure images land in separate folders', async t => {
+  // On behavior: downloadImage() with a rebuilt https.get (without network).
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
   const _req = require('./helpers/sources').buildAndRequire();
-  const { downloadImage } = _req('src/katalog/teileAnreicherung.js');
+  const { downloadImage } = _req('src/catalog/partsEnrichment.js');
   const { PART_IMAGES_DIR, MINIFIG_IMAGES_DIR } = _req('src/infra/appPaths.js');
   const https = require('node:https');
   const { Readable } = require('node:stream');
@@ -83,37 +83,37 @@ test('Teile- und Figurenbilder landen in getrennten Ordnern', async t => {
   assert.ok(fs.existsSync(path.join(MINIFIG_IMAGES_DIR, `${NUM}_0.png`)), 'Figurenbild nicht im Figurenordner');
   assert.equal(await downloadImage(cdn, NUM, 0, 'part'), `/images/parts/${NUM}_0.png`);
   assert.ok(fs.existsSync(path.join(PART_IMAGES_DIR, `${NUM}_0.png`)), 'Teilebild nicht im Teileordner');
-  // Der einzige Aufruf für Figuren sitzt im Bild-Hintergrundlauf.
+  // The only call for minifigures sits in the image background run.
   assert.match(
-    read('src/katalog/bildNachlauf.ts'),
+    read('src/catalog/imageFollowUp.ts'),
     /downloadImage\(kx, f\.image_url, f\.fig_number, 0, 'minifig'\)/,
     'Der Figuren-Download muss die Art mitgeben — sonst landen Figuren wieder bei den Teilen',
   );
 });
 
-test('die Bildroute behält Anmeldepflicht und CDN-Heilung', () => {
-  // EINE Route für den ganzen Baum unter data/images/, damit kein Teil ohne
-  // Anmeldung ausgeliefert wird (kein statischer Mount: test/media-auth.test.js).
-  // strip() vor dem Schneiden, sonst schiebt ein Erklärtext die Zeile hinaus.
+test('the image route keeps mandatory login and CDN healing', () => {
+  // ONE route for the whole tree under data/images/ so that no part is delivered
+  // without login (no static mount: test/media-auth.test.js).
+  // strip() before cutting, otherwise an explanatory text pushes the line out.
   assert.match(
-    strip(read('routes/seiten.ts')),
-    /router\.get\('\/images\/\*pfad',[^)]*\)\s*=>\s*liefereBild\(d, req, res\)\)/,
+    strip(read('routes/pages.ts')),
+    /router\.get\('\/images\/\*pfad',[^)]*\)\s*=>\s*deliverImage\(d, req, res\)\)/,
     'Bildroute nicht gefunden',
   );
-  const src = strip(read('src/bilder/http/bildAuslieferung.ts'));
-  const start = src.indexOf('function liefereBild(');
+  const src = strip(read('src/images/http/imageDelivery.ts'));
+  const start = src.indexOf('function deliverImage(');
   assert.ok(start > 0, 'Bildroute nicht gefunden');
   const route = src.slice(start, start + 2000);
-  assert.match(route, /nutzerIdDerAnfrage\(d\.konto, req\)/, 'Ohne Anmeldeprüfung wären die Bilder öffentlich');
+  assert.match(route, /userIdTheRequest\(d\.account, req\)/, 'Ohne Anmeldeprüfung wären die Bilder öffentlich');
   assert.match(
     route,
-    /cdnFuerFehlendesBild/,
+    /cdnForMissingImage/,
     'Fehlt die lokale Datei, muss weiterhin auf den Bild-Proxy umgeleitet werden',
   );
 });
 
-test('es gibt keine Abwärtskompatibilität für die alten Pfade mehr', () => {
-  // Bewusste Entscheidung
+test('there is no backward compatibility for the old paths any more', () => {
+  // deliberate decision
   const src = read('server.ts');
   assert.doesNotMatch(
     src,
@@ -130,14 +130,14 @@ test('es gibt keine Abwärtskompatibilität für die alten Pfade mehr', () => {
   assert.doesNotMatch(
     paths,
     /LEGACY_PART_IMAGES|LEGACY_SHARED_INSTR/,
-    'webPfadAufloesen darf keine Alt-Präfixe mehr kennen',
+    'resolveWebPath darf keine Alt-Präfixe mehr kennen',
   );
 });
 
-test('daten-rechte legt die neuen Verzeichnisse an', () => {
-  // Kommentare weg: Der Erklärtext im Entrypoint nennt die alten Verzeichnisse
-  // ("instructions/shared und part_images sind entfallen") und hätte die
-  // Negativprüfung unten selbst ausgelöst.
+test('daten-rechte creates the new directories', () => {
+  // Comments out: the explanatory text in the entrypoint names the old directories
+  // ("instructions/shared und part_images sind entfallen") and would have triggered the
+  // negative check below itself.
   const ep = read('daten-rechte.sh').replace(/^\s*#[^\n]*$/gm, '');
   for (const d of ['images/sets', 'images/parts', 'images/minifigs', 'instructions']) {
     assert.match(ep, new RegExp(`/app/data/${d.replace('/', '\\/')}`), `${d} fehlt`);

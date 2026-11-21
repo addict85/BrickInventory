@@ -1,11 +1,11 @@
 Gegenprobe: Gutschein-Formular wieder mit eigener Reihe Speichern | Abbrechen
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: Abbrechen und Hauptknopf stehen nur in der Knopfzeile
+Rot: Cancel and main button stand together only in the button row
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheinFormular.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheinFormular.kt
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheinFormular.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheinFormular.kt
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheinFormular.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheinFormular.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheinFormular.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheinFormular.kt
 @@ -151,6 +151,10 @@
          }
        }

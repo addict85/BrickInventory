@@ -1,17 +1,17 @@
 Gegenprobe: ein Pin auf eine System-Wurzel gilt wieder über den Abgleich mit der mitgeschickten Wurzel, an der CT-Prüfung vorbei (Stand vor sec11 H6)
-Modul: feature-anmeldung
-Test: ch.brickinventoryapp.anmeldung.ZertifikatPinTest
-Rot: ein Pin auf eine System-Wurzel gilt nur mit der System-Pruefung
+Modul: feature-login
+Test: ch.brickinventoryapp.login.CertificatePinTest
+Rot: a pin on a system root applies only with the system check, even if the server sends it along
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/ServerVertrauen.kt
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/ServerVertrauen.kt
 @@ -248,7 +248,7 @@
          // Ein Pin auf eine System-Wurzel gilt nur über die System-Prüfung samt Certificate
          // Transparency: Schickt der Server die Wurzel mit, umginge der Abgleich die CT-Prüfung.
-         val oeffentlicherPin = pin in systemWurzeln
--        if (!oeffentlicherPin && passtZumPin(chain, pin)) return
-+        if (passtZumPin(chain, pin)) return
-         val lage = lage(chain, mit)
-         if (traegtPin(lage, pin, oeffentlicherPin, ausCode)) return if (oeffentlicherPin) pruefeBlatt(chain[0], schluessel, ausCode) else Unit
-         val art = if (ausCode) ZertifikatUngeklaert.Art.CODE_ABWEICHUNG else ZertifikatUngeklaert.Art.GEAENDERT
+         val publicPin = pin in systemRoots
+-        if (!publicPin && fitsToPin(chain, pin)) return
++        if (fitsToPin(chain, pin)) return
+         val situation = situation(chain, mit)
+         if (carriesPin(situation, pin, publicPin, fromCode)) return if (publicPin) checkSheet(chain[0], schluessel, fromCode) else Unit
+         val art = if (fromCode) CertificateUnresolved.Art.CODE_ABWEICHUNG else CertificateUnresolved.Art.GEAENDERT

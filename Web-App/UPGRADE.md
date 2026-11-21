@@ -296,7 +296,7 @@ Schreibzugriff auf die Datenbank in ein anderes Konto oder eine andere Zeile
 kopiert, lässt sich dort nicht mehr lesen.
 
 - **Der erste Start schlüsselt den Bestand um**, bevor er Anfragen annimmt
-  (Migration 0088, dann `startup/datenbank.ts`): API-Schlüssel und
+  (Migration 0088, dann `startup/database.ts`): API-Schlüssel und
   SMTP-Passwort, TOTP-Geheimnisse, Gutscheinnummern und -PINs (auch in den
   Kopien `vor_migration_*`), gespeicherte Antworten der Idempotency-Keys und
   die Gutschein-PDFs unter `data/vouchers/`. Das Protokoll meldet die Zahl.
@@ -1754,7 +1754,7 @@ docker compose exec postgres psql -U brickinventory -c "SELECT max(name) FROM sc
 - **Was sich ändert:** Die App hinterlegt ihren Geräteschlüssel für den
   Schrittschutz (Gutschein-PIN, Verwaltung, zweiter Faktor) nur noch mit seiner
   Attestierungskette. Der Server prüft, dass die Kette bis zu einer Google-Wurzel
-  reicht (`src/geraete/attestation/googleWurzeln.ts`, Quelle und SHA-256 dort),
+  reicht (`src/devices/attestation/googleRoots.ts`, Quelle und SHA-256 dort),
   dass sie die Nonce des Servers trägt (`POST /api/v1/geraet/schluessel/nonce`,
   einmalig, nur in den ersten 10 Minuten eines Zugangs), dass der Schlüssel im
   TEE oder StrongBox entstand und bei jeder Benutzung nur nach Gerätesperre oder
@@ -1875,7 +1875,7 @@ bisher mit `\restrict` und ohne Besitzerzeilen), richtet danach mit
 Rolle, die das Schema ändern darf, migriert beim Start wie bisher selbst.
 Wer die Trennung auch dort will, ruft `postgres/app-rolle.sh` als Superuser
 mit `DB_MIGRATION_PASSWORD` auf und startet einmal
-`node dist/startup/migrieren.js` als Migrationsrolle, den Server danach als
+`node dist/startup/migrate.js` als Migrationsrolle, den Server danach als
 `brickinventory_app`.
 
 <a id="caddy-image"></a>
@@ -2375,3 +2375,72 @@ wird). Hinweise:
 - **Protokoll des ersten Starts:** Die Zeile heisst „✅ Erstes Administratorkonto
   erstellt“ statt „Standard-Admin erstellt“. Wer im Protokoll danach sucht, nimmt
   `docker compose logs migration | grep "Erstes Administratorkonto"`.
+
+## 68. Runde 30, Phase 1 – Schema und Vertrag auf Englisch (Migration 0124)
+
+Erste Stufe der Umstellung des Quelltexts auf Englisch (CLAUDE.md): Tabellen- und
+Spaltennamen des Schemas, die bisher Deutsch waren, heissen jetzt Englisch; ebenso die
+Feldnamen im API-Vertrag (`src/contract/*.ts`), soweit sie nach aussen sichtbar sind.
+Funktions-, Trigger- und Policy-Namen sowie die GUC-Einstellung `app.konto` bleiben
+vorerst Deutsch – das ist eine bewusste, kleinere Folgestufe, keine Lücke dieser Migration.
+Enum-Werte in CHECK-Constraints (z. B. `'passwort'`, `'teil'`, `'figur'`) sind gespeicherte
+Daten, keine Bezeichner, und bleiben unverändert.
+
+- **Migration 0124** benennt Tabellen und Spalten um (`db/migrations/0124-schema-englisch-phase1.sql`,
+  wiederholbar nur als Ganzes – ein Abbruch mittendrin lässt die Transaktion zurückrollen).
+  Umbenannte Tabellen: `api_aufrufe→api_calls`, `api_takt→api_cadence`,
+  `api_tokens_verbraucht→api_tokens_consumed`, `auftraege→jobs`, `auftrag_exklusiv→job_exclusive_locks`,
+  `auftrag_pausen→job_pauses`, `auftrags_arten→job_types`, `bl_zuordnung→bl_mapping`,
+  `bl_zuordnung_eigen→bl_mapping_custom`, `figur_eigen→minifig_custom`,
+  `geraete_nonces→device_nonces`, `geraete_schluessel→device_keys`,
+  `gutschein_guthaben_schranke→voucher_balance_throttle`, `idempotenz→idempotency`,
+  `import_stand→import_status`, `laufzustand→run_state`, `papierkorb→trash`,
+  `parts_katalog_offen→parts_catalog_pending`, `schritt_challenges→step_up_challenges`,
+  `schritt_freigaben→step_up_approvals`, `set_figuren→set_minifigs`, `set_teile→set_parts`,
+  `teil_eigen→part_custom`, `teil_farbe_eigen→part_color_custom`,
+  `verwalter_uebernahmen→admin_takeovers`, `verwaltungsprotokoll→admin_log`,
+  `wechselkurse→exchange_rates`, `zweiter_faktor→second_factor`,
+  `zweiter_faktor_codes→second_factor_codes`. Dazu deutsche Spalten auf schon englisch
+  benannten Tabellen, u. a. `users.sitzungs_version→session_version`,
+  `users.registrierung_offen→registration_pending`,
+  `users.email_neu*→new_email*`, `price_alerts.richtung/schwelle/ausgeloest/zuletzt_am/zuletzt_preis
+  → direction/threshold/triggered/last_triggered_at/last_price`,
+  `qr_login_tokens.*`, `api_tokens.*`, `rate_limit_attempts.laufend*→ongoing*`,
+  `vouchers.guthaben_geprueft_am→balance_checked_at`, `rb_sets.herkunft→source`,
+  `webauthn_challenges.zweck→purpose`, sowie `tag→day` auf den Erfassungstabellen
+  (`minifig_acquisitions`, `part_acquisitions`, `set_acquisitions`). `schema_migrations`
+  (inkl. `pruefsumme`) bleibt unverändert: reine Infrastruktur der Migrations-Maschinerie,
+  nicht Teil des Anwendungsschemas – eine spätere Phase kann sie mitnehmen.
+  **Docker:** Die Migration läuft wie jede andere beim nächsten Start der Migrationsrolle;
+  nichts von Hand zu tun. **Eigene Auswertungen oder Skripte**, die diese Tabellen- oder
+  Spaltennamen direkt ansprechen (SQL, pgweb-Abfragen, Backups mit `COPY`), müssen auf die
+  neuen Namen umgestellt werden; `postgres/app-rolle.sh` (Leserolle-Allowlist) ist bereits
+  angepasst.
+- **API-Felder geändert** (Vertrag, `src/contract/*.ts`, nach Regenerierung von
+  `docs/openapi.json`, `frontend-types/contract.d.ts` und `Vertrag.kt`): Preisalarme
+  (`GET/PUT .../alert`, `GET /alerts`, `GET /alerts/pending`) liefern/erwarten jetzt
+  `direction`, `threshold`, `triggered`, `last_triggered_at`, `last_price` statt
+  `richtung`, `schwelle`, `ausgeloest`, `zuletzt_am`, `zuletzt_preis` (ebenso im CSV-Export/-Import
+  der Preisalarme; der Import liest zur Übergangszeit weiter die alten deutschen
+  Spaltenüberschriften). Papierkorb (`GET /papierkorb`, `POST .../wiederherstellen`) liefert
+  `type`, `number`, `color_id`, `label`, `deleted_at` statt `art`, `nummer`, `farbe_id`,
+  `bezeichnung`, `geloescht_am`. Die Admin-Übersicht der Hintergrundaufträge
+  (`GET /admin/auftraege`) liefert `type`, `attempts`, `max_attempts`, `due_at`,
+  `deadline_at`, `started_at`, `progress`, `error_message`, `waiting` statt `art`,
+  `versuche`, `max_versuche`, `faellig_ab`, `frist_bis`, `gestartet`, `fortschritt`,
+  `fehler`, `wartet` (ebenso `AuftragPause`/`AuftragZaehler`); `GET /auth/profile` liefert
+  `new_email` statt `email_neu`. Die Route **`art` als Pfadsegment**
+  (`/admin/auftraege/art/:art/...`) und das zugehörige Antwortfeld `art` bleiben vorerst
+  unverändert – ein URL-Pfad ist ein grösserer Vertragsbruch und bleibt einer späteren
+  Stufe vorbehalten. **Folge für eigene Integrationen:** Wer diese Endpunkte direkt
+  anspricht (nicht über die mitgelieferte Oberfläche oder die Android-App, die beide
+  mit diesem Update mitgehen), muss die Feldnamen anpassen.
+- **Was diese Phase bewusst nicht anfasst:** `db/rows.ts`, `src/contract/*.ts` und die
+  übrigen Verzeichnisse mit deutschen Datei- und Verzeichnisnamen (`src/jobQueue/`,
+  `src/finances/`, `src/catalog/`, `src/account/`, `src/verwaltung/`, `src/inventory/`, …) bleiben
+  in dieser Phase unbenannt; das ist Phase 2 (Web-Server) vorbehalten. Android-seitig ist nur
+  `Vertrag.kt` (per Generator) auf die neuen Feldnamen gebracht; die übrigen Kotlin-Quellen,
+  die diese Felder lesen (u. a. `AlarmRepository*`, `Preisalarmeingabe.kt`,
+  `MerklisteViewModel.kt`), und `shared/app-schnittstelle.json` sind **nicht** mitgezogen –
+  das ist ausdrücklich Aufgabe der Android-Phase (4/5) dieses Plans, mit Gradle-Build und
+  echter Kompilierprüfung, die hier nicht zur Verfügung stand.

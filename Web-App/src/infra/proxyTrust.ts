@@ -1,0 +1,75 @@
+import net from 'node:net';
+
+/** Only explicitly named addresses: every trusted sender can state its client address freely
+ * and thus bypass the login lock. A network spanning more than eight addresses only with `networkConfirmed`
+ * (PROXY_NETZ_BESTAETIGT=1): it usually contains clients too. */
+export function proxyVertrauen(
+  wert?: string,
+  networkConfirmed = false,
+): false | string[] | ((adresse: string) => boolean) {
+  const v = (wert ?? '').trim();
+  if (!v) return nurLoopback;
+  if (/^(false|nein|no|off)$/i.test(v)) return false;
+  const eintraege = v.split(/[\s,]+/).filter(Boolean);
+  const falsch = eintraege.filter(e => !proxyEntryValid(e, networkConfirmed));
+  if (falsch.length)
+    throw new Error(
+      proxyErrorText(
+        falsch,
+        falsch.every(e => proxyEntryValid(e, true)),
+      ),
+    );
+  return eintraege;
+}
+
+function proxyErrorText(falsch: string[], onlyToWide: boolean): string {
+  const liste = falsch.map(f => `„${f}"`).join(', ');
+  if (onlyToWide)
+    return (
+      `TRUST_PROXY enthält ${liste}: ein Netz mit mehr als 8 Adressen (IPv4 weiter als /29, IPv6 weiter als /120). ` +
+      'Besser nur die feste Adresse des Proxys; wer das Netz wirklich braucht, setzt PROXY_NETZ_BESTAETIGT=1 ' +
+      '(UPGRADE.md#runde-24).'
+    );
+  return (
+    `TRUST_PROXY enthält ${liste}. Erlaubt sind nur die feste Adresse ` +
+    'des eigenen Reverse-Proxys (z. B. 172.28.73.10) oder ein kleines Netz (IPv4 ab /29, IPv6 ab /120; ' +
+    'bis /16 bzw. /64 nur mit PROXY_NETZ_BESTAETIGT=1), mehrere durch Komma getrennt, oder „false" ohne Proxy. ' +
+    '„docker", „true" und Hop-Zahlen gibt es nicht mehr — siehe README.md und docs/SICHERHEIT.md.'
+  );
+}
+
+/** Without confirmation at most eight addresses, with it at most /16 or /64. */
+export function proxyEntryValid(eintrag: string, networkConfirmed = false): boolean {
+  const [adresse, praefix, rest] = eintrag.split('/');
+  if (rest !== undefined || !adresse) return false;
+  const art = net.isIP(adresse);
+  if (!art) return false;
+  if (praefix === undefined) return true;
+  if (!/^\d{1,3}$/.test(praefix)) return false;
+  const p = Number(praefix);
+  const [eng, weit, max] = art === 4 ? [29, 16, 32] : [120, 64, 128];
+  return p <= max && p >= (networkConfirmed ? weit : eng);
+}
+
+export const withoutV4Shell = (adresse: string) => adresse.replace(/^::ffff:(?=\d+\.\d+\.\d+\.\d+$)/i, '');
+
+function nurLoopback(adresse: string): boolean {
+  const a = withoutV4Shell(adresse);
+  return a === '::1' || /^127\.\d+\.\d+\.\d+$/.test(a);
+}
+
+export function inDockerNetwork(adresse: string): boolean {
+  const a = withoutV4Shell(adresse);
+  const v4 = /^(\d+)\.(\d+)\.\d+\.\d+$/.exec(a);
+  if (v4) return Number(v4[1]) === 172 && Number(v4[2]) >= 16 && Number(v4[2]) <= 31;
+  const erste = parseInt(a.toLowerCase().split(':')[0] || '0', 16);
+  return a.includes(':') && erste >= 0xfc00 && erste <= 0xfdff;
+}
+
+export function isDockerGateway(adresse: string): boolean {
+  const a = withoutV4Shell(adresse);
+  if (!inDockerNetwork(a)) return false;
+  if (a.includes(':')) return a.toLowerCase().split(':').pop() === '1';
+  const [, , o3, o4] = a.split('.');
+  return o3 === '0' && o4 === '1';
+}

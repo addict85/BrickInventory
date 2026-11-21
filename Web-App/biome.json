@@ -16,7 +16,7 @@
       "clients/**",
       "startup/**",
       "types/**",
-      "frontend-typen/**",
+      "frontend-types/**",
       "scripts/**",
       "test/**",
       "public/js/**",

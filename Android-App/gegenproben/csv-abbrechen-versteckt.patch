@@ -1,7 +1,7 @@
 Gegenprobe: der Abbrechen-Knopf des CSV-Imports erscheint erst aufgeklappt
 Modul: app
-Test: ch.brickinventoryapp.app.CsvAbbrechenKnopfTest
-Rot: ein laufender Import
+Test: ch.brickinventoryapp.app.CsvCancelButtonTest
+Rot: a running import can be cancelled while collapsed, a finished one cannot
 
 diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt
 --- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/ui/components/CsvImportBanner.kt

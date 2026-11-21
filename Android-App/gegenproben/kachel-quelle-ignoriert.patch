@@ -1,17 +1,17 @@
 Gegenprobe: Galeriekachel nennt auch den Kaufpreis „Marktpreis“ (kachel_quelle übergangen)
 Modul: app
-Test: ch.brickinventoryapp.app.OberflaechenRegelnTest
-Rot: Galeriekachel
+Test: ch.brickinventoryapp.app.UisRulesTest
+Rot: gallery tile names the purchase price as purchase price
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalerieKarte.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalerieKarte.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalerieKarte.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalerieKarte.kt
 @@ -309,7 +309,7 @@
      // Zeile steht die Bezeichnung vor dem Betrag, wenn die Breite reicht.
      val quelle = when (if (betrag != null) kachelQuelle(set, preis) else null) {
-         KachelQuelle.MARKT -> stringResource(R.string.gallery_card_market)
--        KachelQuelle.KAUF -> stringResource(R.string.gallery_card_paid)
-+        KachelQuelle.KAUF -> stringResource(R.string.gallery_card_market)
+         TileSource.MARKT -> stringResource(R.string.gallery_card_market)
+-        TileSource.PURCHASE -> stringResource(R.string.gallery_card_paid)
++        TileSource.PURCHASE -> stringResource(R.string.gallery_card_market)
          null -> ""
      }
      if (!zeile) Text(quelle, style = MaterialTheme.typography.bodySmall,

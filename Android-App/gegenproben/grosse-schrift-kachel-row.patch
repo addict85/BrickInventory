@@ -1,18 +1,18 @@
 Gegenprobe: Prozent wieder neben dem Betrag in einer Row, ohne Zeilensperre
-Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.SetKachelTest
-Rot: Kachel bei 200 Prozent
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.SetTileTest
+Rot: tile at 200 percent wraps neither amount nor percent
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieKarte.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalerieKarte.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalerieKarte.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalerieKarte.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalerieKarte.kt
 @@ -115,7 +115,7 @@
-     val guvAnsage = if (pct != null && betrag != null) stringResource(
+     val guvAnnouncement = if (pct != null && betrag != null) stringResource(
          if (pct >= 0) R.string.gallery_pnl_gewinn else R.string.gallery_pnl_verlust, fmtProzent(pct)) else null
-     val mengeAnsage = if (set.quantity > 1) pluralStringResource(R.plurals.gallery_stat_units, set.quantity, fmtInt(set.quantity)) else null
+     val quantityAnnouncement = if (set.quantity > 1) pluralStringResource(R.plurals.gallery_stat_units, set.quantity, fmtInt(set.quantity)) else null
 -    val guv: (@Composable () -> Unit)? = if (pct != null && betrag != null) ({
 +    val guv: (@Composable () -> Unit)? = if (pct != null && false) ({
-         GuvPlakette(pct)
+         GuvBadge(pct)
      }) else null
      val menge: (@Composable () -> Unit)? = if (set.quantity > 1) ({
 @@ -321,7 +321,7 @@

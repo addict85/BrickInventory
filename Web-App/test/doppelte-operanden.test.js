@@ -1,28 +1,28 @@
 /**
- * Derselbe Operand zweimal in der Webapp.
+ * The same operand twice in the web app.
  *
- * Die Regel steht in scripts/check-doppelte-operanden.js; dort ist auch
- * begründet, warum es sie gibt. Dieser Test führt sie im normalen Lauf mit aus.
+ * The rule lives in scripts/check-duplicate-operands.js; there it is also
+ * explained why it exists. This test runs it along in the normal run.
  *
- * Gegenproben (durchgeführt):
- *   a) Den bekannten `avg > 0 || avg > 0` in financeCalc.ts zurückgeholt → rot.
- *   b) `SELECT avg_price, avg_price` zurückgeholt → rot.
- *   d) Den Pfad zu den Quellen verbogen → rot mit eigener Meldung, statt still
- *      grün auf der halben Menge.
+ * Counter-checks (performed):
+ *   a) the known `avg > 0 || avg > 0` in financeCalc.ts brought back → red.
+ *   b) `SELECT avg_price, avg_price` brought back → red.
+ *   d) the path to the sources bent → red with its own message instead of silently
+ *      green on half the set.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 
-test('kein Ausdruck steht zweimal auf beiden Seiten', () => {
-  const skript = path.join(__dirname, '..', 'scripts', 'check-doppelte-operanden.js');
+test('no expression stands twice on both sides', () => {
+  const script = path.join(__dirname, '..', 'scripts', 'check-duplicate-operands.js');
   try {
-    execFileSync(process.execPath, [skript], { encoding: 'utf8', stdio: 'pipe' });
+    execFileSync(process.execPath, [script], { encoding: 'utf8', stdio: 'pipe' });
   } catch (e) {
     assert.fail(
       `${e.stdout || ''}${e.stderr || ''}`.trim() ||
-        'check-doppelte-operanden.js ist fehlgeschlagen, ohne etwas zu melden',
+        'check-duplicate-operands.js ist fehlgeschlagen, ohne etwas zu melden',
     );
   }
 });

@@ -1,14 +1,14 @@
 Gegenprobe: der Merklistenzustand bekommt wieder ein eigenes Ladefeld
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: Zustaende tragen Laden und Meldung
+Rot: screens do not trigger loading via LaunchedEffect, states carry loading and message
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/ZustandMerkliste.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/ZustandMerkliste.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/ZustandMerkliste.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/ZustandMerkliste.kt
 index b8f9d3e..3f0de7b 100644
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/ZustandMerkliste.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/ZustandMerkliste.kt
-@@ -22,6 +22,7 @@ data class MerklisteUiState(
-     val merkposten: List<MerkpostenAnsicht> = emptyList(),
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/ZustandMerkliste.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/ZustandMerkliste.kt
+@@ -22,6 +22,7 @@ data class WantedUiState(
+     val merkposten: List<WantedItemView> = emptyList(),
      /** Der letzte Abruf vom Server; die Liste selbst kommt aus der Ablage. */
      val abruf: Laden<Unit> = Laden.Daten(Unit),
 +    val nochLaedt: Boolean = false,

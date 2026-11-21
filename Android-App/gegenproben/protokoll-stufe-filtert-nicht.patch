@@ -1,17 +1,17 @@
 Gegenprobe: Ein abgewählter Stufen-Chip blendet keine Zeile aus
-Modul: feature-verwaltung
-Test: ch.brickinventoryapp.verwaltung.MonitoringProtokollAnzeigeTest
-Rot: eine abgewaehlte Stufe
+Modul: feature-management
+Test: ch.brickinventoryapp.management.MonitoringLogDisplayTest
+Rot: a deselected level hides its lines
 
-diff --git a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt
+diff --git a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringProtokoll.kt b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringProtokoll.kt
 index 6b54475..27f1480 100644
---- a/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt
-+++ b/Android-App/feature-verwaltung/src/main/java/ch/brickinventoryapp/verwaltung/ui/screens/MonitoringProtokoll.kt
-@@ -91,7 +91,7 @@ internal fun ProtokollSection(verwaltung: VerwaltungUiState, aktionen: Monitorin
-                     val sichtbar = remember(verwaltung.protokoll, versteckteStufen, protokollSuche) {
-                         val suche = protokollSuche.trim().lowercase()
+--- a/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringProtokoll.kt
++++ b/Android-App/feature-management/src/main/java/ch/brickinventoryapp/management/ui/screens/MonitoringProtokoll.kt
+@@ -91,7 +91,7 @@ internal fun LogSection(verwaltung: ManagementUiState, aktionen: Monitorin
+                     val sichtbar = remember(verwaltung.protokoll, hiddenLevels, logSearch) {
+                         val suche = logSearch.trim().lowercase()
                          verwaltung.protokoll.filter { z ->
--                            z.level?.lowercase() !in versteckteStufen &&
+-                            z.level?.lowercase() !in hiddenLevels &&
 +                            true &&
                                  (suche.isEmpty() || z.message.orEmpty().lowercase().contains(suche))
                          }

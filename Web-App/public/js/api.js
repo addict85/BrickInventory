@@ -1,21 +1,21 @@
 import { LANG, tRaw } from '../i18n.js';
-import { melde } from './ereignisse.js';
-import { merkeSitzungsende } from './meldungen.js';
-import { antwortErhalten, zeigeVerbindung } from './verbindung.js';
+import { emit } from './events.js';
+import { rememberSessionEnd } from './messages.js';
+import { receiveResponse, showConnection } from './connection.js';
 
-// Die Hülle um die eigene API. Jeder Aufruf geht hierüber, damit Sprache, Verbindungsband, Sitzungsende und
-// Zwischenspeicher für alle gleich gelten.
+// The wrapper around the own API. Every call goes through here, so that language, connection banner, session end and
+// cache apply the same way for all.
 
 /**
- * Jeder Weg zur eigenen API läuft hierüber: Sprache, Verbindungsband und das Ende der Sitzung (401) gelten
- * dann auch für Uploads, Downloads und Ströme. Wirft nur bei Netzfehler oder Abbruch; den Status prüft der
- * Aufrufer.
+ * Every path to the own API runs through here: language, connection banner and the end of the session (401) then
+ * apply to uploads, downloads and streams too. Only throws on a network error or abort; the caller checks
+ * the status.
  * @param {string} method
- * @param {string} path  ohne `/api`, z. B. `/v1/sets`
+ * @param {string} path  without `/api`, e.g. `/v1/sets`
  * @param {{ body?: FormData | object | null, signal?: AbortSignal, headers?: Record<string, string>, cache?: RequestCache }} [o]
  * @returns {Promise<Response>}
  */
-export async function apiRoh(method, path, o = {}) {
+export async function apiRaw(method, path, o = {}) {
   /** @type {Record<string, string>} */
   const headers = { 'Accept-Language': LANG, ...o.headers };
   /** @type {RequestInit} */
@@ -33,27 +33,27 @@ export async function apiRoh(method, path, o = {}) {
   } catch (e) {
     if (/** @type {{ name?: string } | null} */ (e)?.name !== 'AbortError') {
       console.warn('[api]', method, path, e);
-      zeigeVerbindung(false);
+      showConnection(false);
     }
     throw e;
   }
-  antwortErhalten();
-  if (res.status === 401) melde('sitzungBeendet', path);
+  receiveResponse();
+  if (res.status === 401) emit('sitzungBeendet', path);
   return res;
 }
 
 /**
- * JSON einer Antwort, deren Felder unverändert bleiben sollen (etwa ein eigenes
- * `status`, das api() mit dem HTTP-Status überschriebe). null bei Netzfehler,
- * Fehlerstatus oder einer Antwort, die kein JSON ist.
+ * JSON of a response whose fields should stay unchanged (e.g. an own
+ * `status` that api() would overwrite with the HTTP status). null on a network error,
+ * error status or a response that is not JSON.
  * @template {string} M
  * @template {string} P
  * @param {M} method @param {P} path
- * @returns {Promise<import('../../frontend-typen/api').ApiDaten<M, P>>}
+ * @returns {Promise<import('../../frontend-types/api').ApiDaten<M, P>>}
  */
-export async function apiDaten(method, path) {
+export async function apiData(method, path) {
   try {
-    const r = await apiRoh(method, path);
+    const r = await apiRaw(method, path);
     return r.ok ? await r.json() : null;
   } catch (_) {
     return null;
@@ -61,22 +61,22 @@ export async function apiDaten(method, path) {
 }
 
 /**
- * Aufruf der eigenen API mit JSON-Antwort. Liefert immer ein Objekt, nie eine Ausnahme: Jeder Fehlschlag
- * (Netz, Proxy-Fehlerseite, Status ohne `success`) kommt als `{ success: false, error, status }`, wie vom
- * Server. Den Typ der Antwort liefert der Vertrag (frontend-typen/api.d.ts), wenn der Pfad als Literal oder
- * Vorlage dasteht. FormData geht als Upload, alles andere als JSON.
+ * Call of the own API with a JSON response. Always delivers an object, never an exception: every failure
+ * (network, proxy error page, status without `success`) comes as `{ success: false, error, status }`, as from the
+ * server. The response type is delivered by the contract (frontend-types/api.d.ts) if the path is written as a literal or
+ * template. FormData goes as an upload, everything else as JSON.
  * @template {string} M
  * @template {string} P
  * @param {M} method
  * @param {P} path
  * @param {FormData | object | null} [body]
  * @param {{ signal?: AbortSignal, cache?: RequestCache }} [o]
- * @returns {Promise<import('../../frontend-typen/api').ApiAntwort<M, P>>}
+ * @returns {Promise<import('../../frontend-types/api').ApiAntwort<M, P>>}
  */
 export async function api(method, path, body, o = {}) {
   let res;
   try {
-    res = await apiRoh(method, path, { ...o, body: body ?? null });
+    res = await apiRaw(method, path, { ...o, body: body ?? null });
   } catch (_) {
     const alt = method === 'GET' ? ausZwischenspeicher(path) : null;
     if (alt) return { ...alt, ausZwischenspeicher: true };
@@ -95,7 +95,7 @@ export async function api(method, path, body, o = {}) {
     };
   }
   if (res.status === 429 && daten && typeof daten === 'object')
-    daten.warteSek = Number(res.headers.get('Retry-After')) || 0;
+    daten.waitSec = Number(res.headers.get('Retry-After')) || 0;
   if (!res.ok && daten && typeof daten === 'object' && daten.success === undefined) {
     return {
       ...daten,
@@ -105,21 +105,21 @@ export async function api(method, path, body, o = {}) {
     };
   }
   if (daten && typeof daten === 'object') daten.status = res.status;
-  if (method === 'GET' && res.ok && daten?.success !== false) inZwischenspeicher(path, daten);
+  if (method === 'GET' && res.ok && daten?.success !== false) inCache(path, daten);
   if (res.status === 401 && daten?.error && !/^\/v1\/auth\/(me|login)/.test(path))
-    merkeSitzungsende(String(daten.error));
-  if (res.status === 403 && daten?.code === 'passwort_wechsel_noetig') melde('passwortWechselNoetig');
-  if (res.status === 403 && daten?.code === 'zweiter_faktor_pflicht') melde('zweiterFaktorPflicht');
-  return /** @type {import('../../frontend-typen/api').ApiAntwort<M, P>} */ (/** @type {unknown} */ (daten));
+    rememberSessionEnd(String(daten.error));
+  if (res.status === 403 && daten?.code === 'passwort_wechsel_noetig') emit('passwortWechselNoetig');
+  if (res.status === 403 && daten?.code === 'zweiter_faktor_pflicht') emit('zweiterFaktorPflicht');
+  return /** @type {import('../../frontend-types/api').ApiAntwort<M, P>} */ (/** @type {unknown} */ (daten));
 }
 
 /**
- * Ein Ereignisstrom der eigenen API: EventSource mit dem Sitzungscookie, jedes Ereignis als Objekt nach dem
- * Vertrag (`Strom` in frontend-typen/vertrag.d.ts). Ohne EventSource null; dann fragt der Aufrufer ab.
- * Bricht der Strom ab, ist er geschlossen, und `fehler` entscheidet über den Rückfall.
+ * An event stream of the own API: EventSource with the session cookie, every event as an object according to the
+ * contract (`Strom` in frontend-types/contract.d.ts). Without EventSource null; then the caller polls.
+ * If the stream breaks off, it is closed, and `fehler` decides about the fallback.
  * @template {string} P
- * @param {P} path  ohne `/api`, z. B. `/v1/sets/import/csv/stream`
- * @param {{ ereignis: (e: import('../../frontend-typen/api').StromEreignis<P>) => void, fehler: () => void }} o
+ * @param {P} path  without `/api`, e.g. `/v1/sets/import/csv/stream`
+ * @param {{ ereignis: (e: import('../../frontend-types/api').StromEreignis<P>) => void, fehler: () => void }} o
  * @returns {{ schliesse: () => void } | null}
  */
 export function strom(path, o) {
@@ -150,11 +150,11 @@ export function strom(path, o) {
 }
 
 /**
- * Meldetext für eine Ausnahme aus fetch(). Der Browser sagt „Failed to fetch“ oder „NetworkError…“; der
- * Nutzer soll lesen, was es heisst.
+ * Message text for an exception from fetch(). The browser says "Failed to fetch" or "NetworkError…"; the
+ * user should read what it means.
  * @param {unknown} e
  */
-export function fehlerMeldung(e) {
+export function errorMessage(e) {
   const text = String(/** @type {{ message?: unknown } | null} */ (e)?.message ?? e ?? '');
   if (
     /failed to fetch|networkerror|load failed|network request failed/i.test(text) ||
@@ -164,21 +164,21 @@ export function fehlerMeldung(e) {
   return text || tRaw('common.unknown_error');
 }
 
-// ── Zwischenspeicher für Lesezugriffe ──────────────────────────────────────
-// Ohne Netz zeigen Listen den zuletzt geladenen Stand dieses Tabs statt eines Fehlers. sessionStorage: nur
-// dieser Tab, weg beim Abmelden (leereZwischenspeicher).
+// ── Cache for read accesses ─────────────────────────────────────────────────
+// Without network, lists show this tab's last loaded state instead of an error. sessionStorage: only
+// this tab, gone on logout (emptyCache).
 const ZS = 'bim_api:';
 
-const ZS_PFADE = /^\/v1\/(wanted|sets|stats|parts|minifigs|finance\/|catalog\/sets\?)/;
+const ZS_PATHS = /^\/v1\/(wanted|sets|stats|parts|minifigs|finance\/|catalog\/sets\?)/;
 
 /** @param {string} pfad @param {unknown} daten */
-function inZwischenspeicher(pfad, daten) {
-  if (!ZS_PFADE.test(pfad)) return;
+function inCache(pfad, daten) {
+  if (!ZS_PATHS.test(pfad)) return;
   try {
     const s = JSON.stringify(daten);
     if (s.length < 400_000) sessionStorage.setItem(ZS + pfad, s);
   } catch (_) {
-    /* voll oder gesperrt: dann ohne */
+    /* full or blocked: then without */
   }
 }
 
@@ -192,10 +192,10 @@ function ausZwischenspeicher(pfad) {
   }
 }
 
-export function leereZwischenspeicher() {
+export function emptyCache() {
   try {
     for (const k of Object.keys(sessionStorage)) if (k.startsWith(ZS)) sessionStorage.removeItem(k);
   } catch (_) {
-    /* ohne Speicher nichts zu leeren */
+    /* without storage there is nothing to clear */
   }
 }

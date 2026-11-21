@@ -1,0 +1,62 @@
+/**
+ * schema_migrations carries a checksum per migration; if an already
+ * applied file was changed afterwards, runMigrations() aborts with a
+ * message that names the file. A missing sum (applied before the check)
+ * is filled in.
+ *
+ * Counter-checks (measured on 30.10.2026):
+ *   A  the comparison `r.pruefsumme !== ist` removed in checkApplied() →
+ *      red: “a changed migration stops the startup” (no error)
+ *   B  the filling in of missing sums removed → red: “a missing sum
+ *      is filled in”
+ *
+ * Prerequisite: test DB via TEST_DATABASE_URL.
+ */
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+
+const { buildAndRequire, testData } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { keineDb } = require('./helpers/db');
+const db = testData();
+const { runMigrations } = _req('db/migrate.js');
+
+const PROBE = '0077-wechselkurse.sql';
+
+test('checksums of the migrations', { concurrency: 1 }, async t => {
+  try {
+    await db.initSchemaOnce();
+  } catch (e) {
+    keineDb(t, e);
+    return;
+  }
+  const c = await db.pool.connect();
+  const summe = async () =>
+    (await c.query('SELECT pruefsumme FROM schema_migrations WHERE name = $1', [PROBE])).rows[0].pruefsumme;
+  t.after(async () => {
+    await c.query('UPDATE schema_migrations SET pruefsumme = NULL WHERE name = $1', [PROBE]).catch(() => {});
+    await runMigrations(c).catch(() => {});
+    c.release();
+    await db.pool.end().catch(() => {});
+  });
+  const echt = await summe();
+  assert.match(echt, /^[0-9a-f]{64}$/, 'die Migration trägt eine SHA-256-Summe');
+
+  await t.test('a missing sum is filled in', async () => {
+    await c.query('UPDATE schema_migrations SET pruefsumme = NULL WHERE name = $1', [PROBE]);
+    assert.deepEqual(await runMigrations(c), []);
+    assert.equal(await summe(), echt);
+  });
+
+  await t.test('a changed migration stops the startup', async () => {
+    await c.query(`UPDATE schema_migrations SET pruefsumme = repeat('0', 64) WHERE name = $1`, [PROBE]);
+    await assert.rejects(
+      runMigrations(c),
+      new RegExp(
+        `Schon angewandte Migration\\(en\\) nachträglich geändert: ${PROBE.replace('.', '\\.')}\\. Den alten Inhalt wiederherstellen`,
+      ),
+    );
+  });
+});

@@ -1,13 +1,13 @@
 /**
- * Der ZIP-Export erzeugt ein gültiges Archiv — mit genau der API, die
- * routes/api_v1/settings.ts benutzt.
+ * The ZIP export produces a valid archive — with exactly the API that
+ * routes/api_v1/settings.ts uses.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { PassThrough } = require('node:stream');
 
-/** Baut ein Archiv wie routes/api_v1/settings.ts und gibt die Bytes zurück. */
+/** Builds an archive like routes/api_v1/settings.ts and returns the bytes. */
 function zippen(dateien) {
   const { ZipArchive } = require('archiver');
   return new Promise((fertig, fehler) => {
@@ -25,11 +25,11 @@ function zippen(dateien) {
   });
 }
 
-test('archiver ist aus CommonJS heraus benutzbar', () => {
-  // Die Aussage ist dieselbe geblieben: Der Server ist CommonJS, und was er
-  // `require()`t, muss er auch benutzen können. Geändert hat sich, was
-  // „benutzen" heisst — in archiver 7 eine Funktion aufrufen, seit 8 eine
-  // Klasse konstruieren.
+test('archiver is usable from CommonJS', () => {
+  // The statement has stayed the same: the server is CommonJS, and what it
+  // `require()`s, it must also be able to use. What has changed is what
+  // "use" means — in archiver 7 calling a function, since 8 constructing a
+  // class.
   const mod = require('archiver');
   assert.equal(
     typeof mod.ZipArchive,
@@ -43,7 +43,7 @@ test('archiver ist aus CommonJS heraus benutzbar', () => {
   }
 });
 
-test('der Datenexport erzeugt ein entpackbares ZIP', async () => {
+test('the data export produces an unpackable ZIP', async () => {
   const b = await zippen({
     'sets.csv': 'set_number;name\n10294-1;Titanic\n',
     'teile.csv': 'part;color\n3001;Rot\n',
@@ -53,14 +53,14 @@ test('der Datenexport erzeugt ein entpackbares ZIP', async () => {
   assert.equal(b.slice(0, 4).toString('hex'), '504b0304', 'kein ZIP-Kopf (PK)');
   assert.ok(b.length > 200, `nur ${b.length} Bytes`);
 
-  // Die Namen stehen im zentralen Verzeichnis am Ende — fehlt es, ist das
-  // Archiv für jeden Entpacker leer.
+  // The names are in the central directory at the end — if it is missing, the
+  // archive is empty for every unpacker.
   const text = b.toString('latin1');
   for (const name of ['sets.csv', 'teile.csv', 'minifiguren.csv']) {
     assert.ok(text.includes(name), `${name} fehlt im Archiv`);
   }
 
-  // Und wirklich entpacken — nicht nur hineinschauen.
+  // And really unpack — not just look inside.
   const os = require('node:os'),
     fs = require('node:fs');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'zip-'));
@@ -76,9 +76,9 @@ test('der Datenexport erzeugt ein entpackbares ZIP', async () => {
   }
 });
 
-test('kein veraltetes glob mehr im Abhängigkeitsbaum', () => {
-  // Der Auslöser. Wandert glob 10 über eine andere Bibliothek zurück, soll das
-  // auffallen — die Warnung im Installationslog liest niemand zuverlässig.
+test('no outdated glob in the dependency tree anymore', () => {
+  // The trigger. If glob 10 comes back via another library, that should
+  // stand out — nobody reliably reads the warning in the install log.
   const lock = require(path.join(__dirname, '..', 'package-lock.json'));
   const alt = Object.entries(lock.packages || {})
     .filter(([p, v]) => p.endsWith('node_modules/glob') && parseInt(v.version, 10) < 11)
@@ -92,15 +92,15 @@ test('kein veraltetes glob mehr im Abhängigkeitsbaum', () => {
   );
 });
 
-test('kein minimatch unter 11.0.1 im Abhängigkeitsbaum', () => {
-  // GHSA-g3hv-75wg-m249 über archiver → readdir-glob; gehalten vom overrides-Eintrag.
-  // Gegenprobe (01.11.2026): package-lock.json von e21f747 (minimatch 10.2.6) → rot.
+test('no minimatch below 11.0.1 in the dependency tree', () => {
+  // GHSA-g3hv-75wg-m249 via archiver → readdir-glob; held by the overrides entry.
+  // Counter-check (01.11.2026): package-lock.json from e21f747 (minimatch 10.2.6) → red.
   const lock = require(path.join(__dirname, '..', 'package-lock.json'));
-  const fassungen = Object.entries(lock.packages || {})
+  const versions = Object.entries(lock.packages || {})
     .filter(([p]) => p.endsWith('node_modules/minimatch'))
     .map(([p, v]) => [p, v.version.split('.').map(Number)]);
-  assert.ok(fassungen.length > 0, 'minimatch nicht im Lockfile — greift die Suche noch?');
-  const alt = fassungen
+  assert.ok(versions.length > 0, 'minimatch nicht im Lockfile — greift die Suche noch?');
+  const alt = versions
     .filter(([, [a, b, c]]) => a < 11 || (a === 11 && b === 0 && c < 1))
     .map(([p, v]) => `${p}@${v.join('.')}`);
   assert.deepEqual(alt, []);

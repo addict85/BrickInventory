@@ -1,16 +1,16 @@
 Gegenprobe: FilterWahl wieder als FilterChip (Rolle Kästchen statt Optionsfeld)
 Modul: app
-Test: ch.brickinventoryapp.app.BarrierefreiheitTest
-Rot: Filterwahl ist eine Einfachwahl mit Ueberschrift und bricht um
+Test: ch.brickinventoryapp.app.AccessibilityTest
+Rot: filter choice is a single choice with heading and wraps
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/Filterblatt.kt
-@@ -188,7 +188,7 @@ fun FilterAbschnitt(titel: String, chips: @Composable () -> Unit) {
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/Filterblatt.kt
+@@ -188,7 +188,7 @@ fun FilterSection(titel: String, chips: @Composable () -> Unit) {
   */
  @Composable
- fun FilterWahl(text: String, gewaehlt: Boolean, onClick: () -> Unit) {
--    WahlChip(text, gewaehlt, onClick, if (grosseSchrift()) Modifier else Modifier.widthIn(max = 220.dp))
+ fun FilterChoice(text: String, gewaehlt: Boolean, onClick: () -> Unit) {
+-    ChoiceChip(text, gewaehlt, onClick, if (largeFont()) Modifier else Modifier.widthIn(max = 220.dp))
 +    androidx.compose.material3.FilterChip(gewaehlt, onClick, { Text(text) })
  }
  

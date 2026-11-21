@@ -1,0 +1,102 @@
+import type { z } from 'zod';
+
+/** Per kind the zod schema of the payload. Every area adds its kinds via `declare module`
+ * (the area's jobKinds.ts): queuing is checked without this area knowing them. */
+// biome-ignore lint/suspicious/noEmptyInterface: the areas extend it
+export interface JobPayloads {}
+export type JobKind = keyof JobPayloads & string;
+export type PayloadSchema<A extends JobKind> = JobPayloads[A] extends z.ZodType ? JobPayloads[A] : never;
+export type Nutzlast<A extends JobKind> = z.output<PayloadSchema<A>>;
+export type PayloadInput<A extends JobKind> = z.input<PayloadSchema<A>>;
+
+export type JobStatus = 'offen' | 'laeuft' | 'erledigt' | 'fehler' | 'abgebrochen';
+
+export interface Fortschritt {
+  erledigt?: number;
+  gesamt?: number;
+  text?: string | null;
+  [k: string]: unknown;
+}
+
+/** What a service needs from the running job: report state, stop at the signal. */
+export interface JobRun {
+  readonly signal?: AbortSignal;
+  fortschritt?(f: Fortschritt): Promise<boolean>;
+}
+
+/** Throws the reason for the abort; between two steps of a long run. */
+export function checkAbort(lauf: JobRun | undefined): void {
+  lauf?.signal?.throwIfAborted();
+}
+
+export interface JobRow {
+  id: string;
+  type: JobKind;
+  payload: Record<string, unknown>;
+  user_id: number | null;
+  dedupe_key: string | null;
+  status: JobStatus;
+  attempts: number;
+  max_attempts: number;
+  locked_by: string | null;
+  error_message: string | null;
+}
+
+export interface Einstellen {
+  userId?: number | null;
+  /** If an open job with this key already exists, no second one is added. */
+  schluessel?: string;
+  maxAttempts?: number;
+  afterSeconds?: number;
+  /** Takes precedence over afterSeconds. */
+  dueAb?: Date;
+  fortschritt?: Fortschritt;
+}
+
+export type Belegung = Pick<JobRow, 'id' | 'locked_by'>;
+
+/** If a remote side throttles, the whole kind waits, not one job. */
+
+export interface Pause {
+  type: string;
+  until_at: Date;
+  reason: string | null;
+  level: number;
+}
+
+/** What a handler gets from the worker; the domain services only know this, not the worker. */
+export interface JobContext {
+  /** false: the job no longer belongs to this run (aborted, reassigned). */
+  lebenszeichen(): Promise<boolean>;
+  fortschritt(f: Fortschritt): Promise<boolean>;
+  /** Aborted, reassigned or the process ends: fetches and loops stop. */
+  readonly signal: AbortSignal;
+  /** A long job stops at the next safe point. */
+  readonly beendet: boolean;
+  readonly versuch: number;
+}
+
+/** Is returned and continued later without counting as failed. */
+export class JobInterrupted extends Error {
+  constructor() {
+    super('Auftrag unterbrochen');
+  }
+}
+
+export class JobLost extends Error {
+  constructor() {
+    super('Auftrag gehört nicht mehr diesem Lauf');
+  }
+}
+
+/** The remote side throttles or a quota is exhausted. `zaehlt`
+ * decides whether it counts as an attempt (and thus ends at some point). */
+export class JobMove extends Error {
+  constructor(
+    readonly bis: Date,
+    readonly grund: string,
+    readonly zaehlt = false,
+  ) {
+    super(grund);
+  }
+}

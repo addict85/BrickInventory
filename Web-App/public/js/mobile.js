@@ -1,20 +1,21 @@
-// Was mobile.css nicht deklarativ kann: Tabellenzellen bekommen ihre Spaltenbeschriftung in data-label
-// gestempelt, statt zehn Vorlagen anzufassen und künftige zu vergessen. Läuft immer, wirkt nur schmal.
+// What mobile.css cannot do declaratively: table cells get their column label stamped into
+// data-label, instead of touching ten templates and forgetting future ones. Always runs, only
+// takes effect on narrow screens.
 
 (() => {
-  // ── 1. data-label auf Tabellenzellen ────────────────────────────────────
+  // ── 1. data-label on table cells ────────────────────────────────────
 
-  /** Beschriftungen einer Tabelle aus ihrem <thead> übernehmen. */
+  /** Take a table's labels from its <thead>. */
   /** @param {HTMLTableElement | null | undefined} table */
   function labelTable(table) {
     if (!table || table.dataset.labelled === '1') return;
     const head = table.tHead;
     if (!head?.rows.length) return;
 
-    // Nur die unterste Kopfzeile zählt — mehrzeilige Köpfe (Gruppenüberschrift darüber) kommen in den
-    // Finanztabellen vor.
+    // Only the bottom header row counts — multi-row headers (a group heading above) occur in the
+    // finance tables.
     const headRow = head.rows[head.rows.length - 1];
-    // Nur sichtbarer Text: Ein Kopf, der bloss für Vorleser beschriftet ist (.vh), bleibt in der Karte leer.
+    // Visible text only: a header labelled only for screen readers (.vh) stays empty on the card.
     const labels = [...headRow.cells].map(th => {
       const k = th.cloneNode(true);
       /** @type {Element} */
@@ -32,7 +33,7 @@
           if (!cell.hasAttribute('data-label')) {
             cell.setAttribute('data-label', labels[col] || '');
           }
-          // colspan berücksichtigen, sonst verrutschen alle folgenden Spalten
+          // Account for colspan, otherwise every following column shifts
           col += cell.colSpan || 1;
         }
       }
@@ -40,7 +41,7 @@
     table.dataset.labelled = '1';
   }
 
-  /** Alle noch unbeschrifteten Tabellen unterhalb von root behandeln. */
+  /** Handle every still-unlabelled table below root. */
   /** @param {Element | null | undefined} root */
   function labelAll(root) {
     const scope = root ?? document;
@@ -50,8 +51,8 @@
     );
   }
 
-  // Die Listen werden per innerHTML gebaut, also beobachten wir Kindknoten. characterData und attributes
-  // bewusst aus: Wir wollen nur neue Tabellen, nicht jede Textänderung.
+  // Lists are built via innerHTML, so we watch child nodes. characterData and attributes are
+  // deliberately left out: we only want new tables, not every text change.
   const observer = new MutationObserver(muts => {
     for (const m of muts) {
       for (const node of m.addedNodes) {
@@ -69,13 +70,13 @@
     bindNavAutoScroll();
   }
 
-  // ── 2. Aktiven Reiter in den sichtbaren Bereich scrollen ────────────────
+  // ── 2. Scroll the active tab into view ────────────────
 
   function scrollActiveTabIntoView() {
     const nav = document.querySelector('nav');
     const active = /** @type {HTMLElement | null} */ (document.querySelector('.ntab.active'));
     if (!nav || !active) return;
-    // Nur wenn die Leiste überhaupt scrollt — auf dem Desktop passiert nichts.
+    // Only if the bar actually scrolls — nothing happens on desktop.
     if (nav.scrollWidth <= nav.clientWidth + 4) return;
     const target = active.offsetLeft - (nav.clientWidth - active.offsetWidth) / 2;
     nav.scrollTo({
@@ -88,87 +89,89 @@
     document.querySelectorAll('.ntab').forEach(tab => {
       if (tab._mobileScrollBound) return;
       tab._mobileScrollBound = true;
-      // Nach dem bestehenden Klick-Handler laufen lassen, der .active setzt.
+      // Run after the existing click handler that sets .active.
       tab.addEventListener('click', () => setTimeout(scrollActiveTabIntoView, 0));
     });
-    // Beim Anzeigen der App (nach Login/Neuladen) einmal nachziehen.
+    // Catch up once when the app becomes visible (after login/reload).
     setTimeout(scrollActiveTabIntoView, 300);
   }
 
-  // Bedingung ist <body>, nicht der readyState: Das Skript steht am Ende des Body, die Beschriftungen greifen
-  // so vor dem ersten Paint. Nur auf DOMContentLoaded zu warten liefe bei spätem Laden nie an.
+  // The condition is <body>, not readyState: the script sits at the end of the body, so labelling
+  // takes effect before the first paint. Waiting only for DOMContentLoaded would never fire on a late load.
   start();
   if (!started) document.addEventListener('DOMContentLoaded', start);
 
-  // ── 3. Rollende Abschnittsleiste der Einstellungen ──────────────────────
-  // Am Telefon rollt sie seitwärts; ohne Hinweis am Rand sah niemand die Abschnitte dahinter. data-mehr sagt
-  // dem CSS, auf welcher Seite noch etwas liegt.
+  // ── 3. Scrolling section bar in settings ──────────────────────
+  // On a phone it scrolls sideways; without an edge hint nobody saw the sections behind it. data-mehr
+  // tells the CSS which side still has more.
   /**
    * @param {HTMLElement} nav
    */
-  function randHinweis(nav) {
-    const rechts = nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 2;
-    const links = nav.scrollLeft > 2;
-    const mehr = (links ? 'l' : '') + (rechts ? 'r' : '');
-    if (nav.dataset.mehr !== mehr) nav.dataset.mehr = mehr;
+  function edgeHint(nav) {
+    const right = nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 2;
+    const left = nav.scrollLeft > 2;
+    const more = (left ? 'l' : '') + (right ? 'r' : '');
+    if (nav.dataset.mehr !== more) nav.dataset.mehr = more;
   }
-  for (const einstNav of /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.einst-nav, .konto-nav'))) {
-    einstNav.addEventListener('scroll', () => randHinweis(einstNav), { passive: true });
-    // Chrome rollt einen nur angeschnittenen Link beim Fokus nicht; er läge halb ausserhalb des Fensters.
-    einstNav.addEventListener('focusin', e => {
+  for (const settingsNav of /** @type {NodeListOf<HTMLElement>} */ (
+    document.querySelectorAll('.einst-nav, .konto-nav')
+  )) {
+    settingsNav.addEventListener('scroll', () => edgeHint(settingsNav), { passive: true });
+    // Chrome doesn't scroll a partly-clipped link into view on focus; it would sit half outside the window.
+    settingsNav.addEventListener('focusin', e => {
       if (e.target instanceof HTMLElement) e.target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     });
     if (typeof ResizeObserver === 'function')
-      new ResizeObserver(() => requestAnimationFrame(() => randHinweis(einstNav))).observe(einstNav);
+      new ResizeObserver(() => requestAnimationFrame(() => edgeHint(settingsNav))).observe(settingsNav);
   }
 
-  // ── 4. Kopf beim Rollen nach unten ausblenden ───────────────────────────
-  // Nur die Klasse; mobile.css blendet aus, und zwar nur bei geringer Höhe (200 % Zoom, Querformat), wo Kopf,
-  // Band und Leiste fast die Hälfte belegen. Rollen nach oben oder Fokus im Kopf holt ihn zurück.
-  let letzteHoehe = window.scrollY;
+  // ── 4. Hide the header when scrolling down ───────────────────────
+  // Only the class; mobile.css hides it, and only at low height (200% zoom, landscape), where header,
+  // banner and nav take up nearly half the screen. Scrolling up or focus in the header brings it back.
+  let lastHeight = window.scrollY;
   window.addEventListener(
     'scroll',
     () => {
       const y = window.scrollY,
-        wurzel = document.documentElement;
-      wurzel.classList.toggle('schrift-gross', parseFloat(getComputedStyle(wurzel).fontSize) >= 24);
-      if (y < 60 || y < letzteHoehe - 4) wurzel.classList.remove('kopf-weg');
-      else if (y > letzteHoehe + 4) wurzel.classList.add('kopf-weg');
-      if (Math.abs(y - letzteHoehe) > 4) letzteHoehe = y;
+        root = document.documentElement;
+      root.classList.toggle('schrift-gross', parseFloat(getComputedStyle(root).fontSize) >= 24);
+      if (y < 60 || y < lastHeight - 4) root.classList.remove('kopf-weg');
+      else if (y > lastHeight + 4) root.classList.add('kopf-weg');
+      if (Math.abs(y - lastHeight) > 4) lastHeight = y;
     },
     { passive: true },
   );
-  for (const leiste of document.querySelectorAll('header, nav:not(.einst-nav)'))
-    leiste.addEventListener('focusin', () => document.documentElement.classList.remove('kopf-weg'));
+  for (const bar of document.querySelectorAll('header, nav:not(.einst-nav)'))
+    bar.addEventListener('focusin', () => document.documentElement.classList.remove('kopf-weg'));
 
-  // ── 5. Platz für die festen Leisten ─────────────────────────────────────
-  // Tab rollte ein Feld nur knapp ins Bild, und die Leiste lag darüber (WCAG 2.4.11). Die Höhen wechseln mit
-  // Schriftgrösse und Breite; das scroll-padding in styles.css liest sie. Gemessen wird vor dem Rollen
-  // (focusin).
-  function leistenMessen() {
-    const wurzel = document.documentElement,
-      kopf = /** @type {HTMLElement|null} */ (document.querySelector('header'));
+  // ── 5. Room for the fixed bars ─────────────────────────────────────
+  // A field scrolled only just into view, with the bar sitting over it (WCAG 2.4.11). The heights
+  // change with font size and width; scroll-padding in styles.css reads them. Measured before
+  // scrolling (focusin).
+  function measureBars() {
+    const root = document.documentElement,
+      header = /** @type {HTMLElement|null} */ (document.querySelector('header'));
     const nav = /** @type {HTMLElement|null} */ (document.querySelector('nav:not(.einst-nav)')),
-      band = document.getElementById('offline-band');
-    const navUnten = !!nav && getComputedStyle(nav).position === 'fixed';
-    const leisten = (kopf?.offsetHeight || 0) + (nav && !navUnten ? nav.offsetHeight : 0);
-    const oben = leisten + (band && !band.hidden ? band.offsetHeight : 0);
-    const unten = navUnten ? nav.offsetHeight : 0;
-    // Nur Änderungen schreiben: Jeder Schreibzugriff löst Layout aus, und der Beobachter unten sähe sich selbst.
-    for (const [name, wert] of [
-      ['--leiste-oben', `${Math.round(oben)}px`],
-      ['--leiste-unten', `${Math.round(unten)}px`],
-      ['--band-oben', `${Math.round(leisten)}px`],
+      banner = document.getElementById('offline-band');
+    const navBottom = !!nav && getComputedStyle(nav).position === 'fixed';
+    const bars = (header?.offsetHeight || 0) + (nav && !navBottom ? nav.offsetHeight : 0);
+    const top = bars + (banner && !banner.hidden ? banner.offsetHeight : 0);
+    const bottom = navBottom ? nav.offsetHeight : 0;
+    // Only write on change: every write triggers layout, and the observer below would see itself.
+    for (const [name, value] of [
+      ['--leiste-oben', `${Math.round(top)}px`],
+      ['--leiste-unten', `${Math.round(bottom)}px`],
+      ['--band-oben', `${Math.round(bars)}px`],
     ])
-      if (wurzel.style.getPropertyValue(name) !== wert) wurzel.style.setProperty(name, wert);
+      if (root.style.getPropertyValue(name) !== value) root.style.setProperty(name, value);
   }
-  document.addEventListener('focusin', leistenMessen, true);
-  window.addEventListener('resize', leistenMessen, { passive: true });
+  document.addEventListener('focusin', measureBars, true);
+  window.addEventListener('resize', measureBars, { passive: true });
   if (typeof ResizeObserver === 'function')
     for (const l of document.querySelectorAll('header, nav:not(.einst-nav)'))
-      new ResizeObserver(() => requestAnimationFrame(leistenMessen)).observe(l);
-  leistenMessen();
+      new ResizeObserver(() => requestAnimationFrame(measureBars)).observe(l);
+  measureBars();
 
-  // Für Tests und für Code, der Tabellen ausserhalb des Observers erzeugt.
+  // For tests and for code that creates tables outside the observer.
   window.__bimLabelTables = labelAll;
 })();

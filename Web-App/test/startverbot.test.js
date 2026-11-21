@@ -1,35 +1,35 @@
 /**
- * In Produktion startet der Server nicht mit dem Beispielpasswort der
- * Datenbank oder einem TRUST_PROXY, das ganzen Netzen glaubt. Geprüft am
- * echten Server: Er muss sich mit Code 1 und einer klaren Meldung beenden,
- * bevor er eine Datenbank braucht.
+ * In production the server does not start with the example password of the
+ * database or a TRUST_PROXY that believes whole networks. Checked on the
+ * real server: it must exit with code 1 and a clear message
+ * before it needs a database.
  *
- * Gegenproben (am 30.10.2026 gemessen):
- *   A  in server.ts den Aufruf von startVerbote() entfernt → rot: „der Server
- *      läuft mit dem Beispielpasswort weiter“ (beide Teilprüfungen)
- *   B  in startVerbote() den TRUST_PROXY-Zweig entfernt → rot nur bei
+ * Counter-checks (measured on 30.10.2026):
+ *   A  the call of startBans() removed in server.ts → red: „der Server
+ *      läuft mit dem Beispielpasswort weiter“ (both subchecks)
+ *   B  the TRUST_PROXY branch removed in startBans() → red only at
  *      „TRUST_PROXY=docker“
- *   C  startVerbote() ohne die Abfrage auf NODE_ENV → rot: „ausserhalb von
+ *   C  startBans() without the query on NODE_ENV → red: „ausserhalb von
  *      Produktion kein Verbot“
- * Gegenproben (04.11.2026 gemessen):
- *   D  sitzungsGeheimnis() wieder mit `!konfig().produktion` statt
- *      `konfig().entwicklung` → rot: „ohne NODE_ENV kein öffentliches
- *      Sitzungsgeheimnis“ (beide Fälle starten)
- *   E  der frühe Aufruf von sitzungsGeheimnis() in starte() gestrichen → rot:
- *      dieselbe Prüfung (der Start scheitert erst an der Datenbank, ohne Grund)
- *   F  `start` in package.json ohne NODE_ENV=production → rot: „npm start …“
- *   G  die Meldung zu APP_BASE_URL in server.ts gestrichen → rot: „ohne
- *      APP_BASE_URL im Betrieb …“ (mit der Ausnahme keine Meldung)
- * Gegenproben H4 (04.11.2026 gemessen, je einzeln):
- *   H  in startVerbote() den Zweig zu APP_BASE_URL entfernt → rot: „ohne
- *      APP_BASE_URL im Betrieb …“ (Code statt 1: Datenbankfehler)
- *   I  APP_BASE_URL_FEHLT_OK nicht ausgewertet → rot: dieselbe Prüfung (mit
- *      der Ausnahme verweigert)
- *   J  die Ausnahme für ROLLE=jobs entfernt → rot: dieselbe Prüfung ({"ROLLE":"jobs"})
- * Gegenproben (08.11.2026 gemessen, je einzeln):
- *   K  'change-me-to-a-long-random-string' aus PLATZHALTER_GEHEIMNISSE
- *      gestrichen → rot: „Beispielwert und zu kurzes Sitzungsgeheimnis …“
- *   L  die Mindestlänge in sitzungsGeheimnis() gestrichen → rot: dieselbe Prüfung
+ * Counter-checks (measured 04.11.2026):
+ *   D  sitzungsGeheimnis() again with `!konfig().production` instead of
+ *      `konfig().entwicklung` → red: “without NODE_ENV no public
+ *      session secret” (both cases start)
+ *   E  the early call of sitzungsGeheimnis() deleted in starte() → red:
+ *      the same check (the start only fails at the database, without a reason)
+ *   F  `start` in package.json without NODE_ENV=production → red: „npm start …“
+ *   G  the message on APP_BASE_URL deleted in server.ts → red: “without
+ *      APP_BASE_URL in production …” (with the exception no message)
+ * Counter-checks H4 (measured 04.11.2026, each on its own):
+ *   H  the branch on APP_BASE_URL removed in startBans() → red: “without
+ *      APP_BASE_URL in production …” (code instead of 1: database error)
+ *   I  APP_BASE_URL_FEHLT_OK not evaluated → red: the same check (refused
+ *      with the exception)
+ *   J  the exception for ROLLE=jobs removed → red: the same check ({"ROLLE":"jobs"})
+ * Counter-checks (measured 08.11.2026, each on its own):
+ *   K  'change-me-to-a-long-random-string' deleted from PLACEHOLDER_SECRETS
+ *      → red: “example value and too short session secret …”
+ *   L  the minimum length deleted in sitzungsGeheimnis() → red: the same check
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -39,9 +39,9 @@ const { spawn } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { startVerbote } = _req('src/infra/konfig.js');
+const { startBans } = _req('src/infra/config.js');
 
-/** Server starten und auf sein Ende warten — höchstens `ms`, dann gilt er als laufend. */
+/** Start the server and wait for its end — at most `ms`, then it counts as running. */
 function starte(env, ms = 8000) {
   return new Promise(fertig => {
     const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
@@ -72,7 +72,7 @@ function starte(env, ms = 8000) {
   });
 }
 
-test('Beispielpasswort der Datenbank: Start verweigert', { timeout: 30_000 }, async () => {
+test('example database password: startup refused', { timeout: 30_000 }, async () => {
   for (const env of [
     { PGPASSWORD: 'brickinventory_secret', PGHOST: '127.0.0.1', PGPORT: '1' },
     { DATABASE_URL: 'postgres://brickinventory:brickinventory_secret@127.0.0.1:1/x' },
@@ -83,13 +83,13 @@ test('Beispielpasswort der Datenbank: Start verweigert', { timeout: 30_000 }, as
   }
 });
 
-test('TRUST_PROXY=docker: Start verweigert', { timeout: 30_000 }, async () => {
+test('TRUST_PROXY=docker: startup refused', { timeout: 30_000 }, async () => {
   const { code, log } = await starte({ DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', TRUST_PROXY: 'docker' });
   assert.equal(code, 1, log.slice(-400));
   assert.match(log, /TRUST_PROXY enthält „docker/);
 });
 
-test('ohne NODE_ENV kein öffentliches Sitzungsgeheimnis', { timeout: 30_000 }, async () => {
+test('without NODE_ENV no public session secret', { timeout: 30_000 }, async () => {
   const ohne = {
     NODE_ENV: undefined,
     DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x',
@@ -100,14 +100,14 @@ test('ohne NODE_ENV kein öffentliches Sitzungsgeheimnis', { timeout: 30_000 }, 
     assert.equal(code, 1, log.slice(-400));
     assert.match(log, /SESSION_SECRET .*Start verweigert/);
   }
-  // Ausdrücklich in der Entwicklung gilt das Entwicklungsgeheimnis; der Start
-  // scheitert dann erst an der Datenbank, die es hier nicht gibt.
+  // Explicitly in development the development secret applies; the start
+  // then only fails at the database, which does not exist here.
   const { log } = await starte({ ...ohne, NODE_ENV: 'development', SESSION_SECRET: undefined });
   assert.doesNotMatch(log, /SESSION_SECRET/);
   assert.match(log, /Database initialisation failed/);
 });
 
-test('Beispielwert und zu kurzes Sitzungsgeheimnis: Start verweigert', { timeout: 30_000 }, async () => {
+test('example value and too short session secret: startup refused', { timeout: 30_000 }, async () => {
   const env = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'https://lego.example.org' };
   for (const [geheimnis, grund] of /** @type {[string, RegExp][]} */ ([
     ['change-me-to-a-long-random-string', /Beispielwert/],
@@ -119,13 +119,13 @@ test('Beispielwert und zu kurzes Sitzungsgeheimnis: Start verweigert', { timeout
   }
 });
 
-test('ohne APP_BASE_URL im Betrieb: Start verweigert, nur ausdrücklich erlaubt', { timeout: 60_000 }, async () => {
+test('without APP_BASE_URL in production: startup refused, only explicitly allowed', { timeout: 60_000 }, async () => {
   const db = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x' };
   const ohne = await starte(db);
   assert.equal(ohne.code, 1, ohne.log.slice(-400));
   assert.match(ohne.log, /APP_BASE_URL fehlt im Betrieb: .*Start verweigert/);
   assert.doesNotMatch(ohne.log, /Database initialisation failed/, 'das Verbot kommt vor der Datenbank');
-  // Mit der Ausnahme startet er bis zur Datenbank, laut gemeldet.
+  // With the exception it starts up to the database, reported loudly.
   const erlaubt = await starte({ ...db, APP_BASE_URL_FEHLT_OK: '1' });
   assert.match(erlaubt.log, /❌ \[start\] APP_BASE_URL fehlt im Betrieb \(APP_BASE_URL_FEHLT_OK=1\): Der Host-Filter/);
   assert.match(erlaubt.log, /Database initialisation failed/);
@@ -136,14 +136,14 @@ test('ohne APP_BASE_URL im Betrieb: Start verweigert, nur ausdrücklich erlaubt'
   }
 });
 
-test('npm start setzt NODE_ENV=production', () => {
+test('npm start sets NODE_ENV=production', () => {
   const start = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).scripts.start;
   assert.match(start, /^NODE_ENV=production node dist\/server\.js$/);
 });
 
-test('ausserhalb von Produktion kein Verbot, mit eigenem Passwort keines', () => {
-  assert.deepEqual(startVerbote({ NODE_ENV: 'development' }), [], 'ausserhalb von Produktion kein Verbot');
+test('outside production no ban, with an own password none', () => {
+  assert.deepEqual(startBans({ NODE_ENV: 'development' }), [], 'ausserhalb von Produktion kein Verbot');
   const basis = { NODE_ENV: 'production', PGPASSWORD: 'eigenes', APP_BASE_URL: 'https://lego.example.org' };
-  assert.deepEqual(startVerbote({ ...basis, TRUST_PROXY: '172.28.73.10' }), []);
-  assert.equal(startVerbote({ ...basis, TRUST_PROXY: '1' }).length, 1);
+  assert.deepEqual(startBans({ ...basis, TRUST_PROXY: '172.28.73.10' }), []);
+  assert.equal(startBans({ ...basis, TRUST_PROXY: '1' }).length, 1);
 });

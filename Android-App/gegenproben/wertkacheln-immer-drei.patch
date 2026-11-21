@@ -1,18 +1,18 @@
 Gegenprobe: Wert-Kacheln immer zu dritt nebeneinander, wie vor H1
-Modul: core-ui-bestand
-Test: ch.brickinventoryapp.gemeinsam.WertKachelnTest
-Rot: Wert-Kacheln zeigen vierstellige Betraege auf schmalem Telefon bei 100 Prozent
+Modul: core-ui-inventory
+Test: ch.brickinventoryapp.shared.ValueTilesTest
+Rot: value tiles show four-digit amounts fully on a narrow phone at 100 percent
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
 index 5b45eb7..bdb1cca 100644
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/SetDetailComponents.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/SetDetailComponents.kt
 @@ -431,7 +431,7 @@ fun WertKacheln(markt: String, kauf: String, pnl: Double?, modifier: Modifier =
-         val pnlText = if (breite(pnlEinzeilig) > maxWidth) pnlTeile.joinToString("\n") else pnlEinzeilig
+         val pnlText = if (breite(pnlSingleLine) > maxWidth) pnlParts.joinToString("\n") else pnlSingleLine
          val abstand = Abstaende.klein
-         val gleichHoch = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
--        when (kachelAnordnung(maxWidth, bedarf, abstand)) {
-+        when (KachelAnordnung.DREI) {
-             KachelAnordnung.DREI -> Row(gleichHoch, horizontalArrangement = Arrangement.spacedBy(abstand)) {
-                 marktKachel(Modifier.weight(1f).fillMaxHeight())
-                 kaufKachel(Modifier.weight(1f).fillMaxHeight())
+         val equalHigh = Modifier.fillMaxWidth().height(IntrinsicSize.Min)
+-        when (tileArrangement(maxWidth, demand, abstand)) {
++        when (TileArrangement.DREI) {
+             TileArrangement.DREI -> Row(equalHigh, horizontalArrangement = Arrangement.spacedBy(abstand)) {
+                 marketTile(Modifier.weight(1f).fillMaxHeight())
+                 purchaseTile(Modifier.weight(1f).fillMaxHeight())

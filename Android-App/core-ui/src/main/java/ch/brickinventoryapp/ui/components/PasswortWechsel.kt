@@ -13,72 +13,72 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
-import ch.brickinventoryapp.model.util.PASSWORT_MIN_ZEICHEN
-import ch.brickinventoryapp.model.util.passwortZuKurz
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.model.util.PASSWORD_MIN_CHARS
+import ch.brickinventoryapp.model.util.passwordToShort
+import ch.brickinventoryapp.resources.R
 
-/** Ein Feld des Passwortwechsels, das vor dem Absenden nicht stimmt. */
-enum class PasswortFeldFehler { AKTUELL, NEU, WIEDERHOLUNG }
+/** A field of the password change that isn't valid before submitting. */
+enum class PasswordFieldError { AKTUELL, NEU, WIEDERHOLUNG }
 
-/** Was vor dem Absenden nicht stimmt, in der Reihenfolge der Felder. */
-fun passwortWechselFehler(aktuell: String, neu: String, wiederholt: String): List<PasswortFeldFehler> = buildList {
-    if (aktuell.isBlank()) add(PasswortFeldFehler.AKTUELL)
-    if (passwortZuKurz(neu)) add(PasswortFeldFehler.NEU)
-    if (wiederholt != neu) add(PasswortFeldFehler.WIEDERHOLUNG)
+/** What isn't valid before submitting, in the order of the fields. */
+fun passwordSwitchError(aktuell: String, neu: String, wiederholt: String): List<PasswordFieldError> = buildList {
+    if (aktuell.isBlank()) add(PasswordFieldError.AKTUELL)
+    if (passwordToShort(neu)) add(PasswordFieldError.NEU)
+    if (wiederholt != neu) add(PasswordFieldError.WIEDERHOLUNG)
 }
 
 /**
- * Der Zustand des Absendens: Der Knopf bleibt antippbar und markiert dann jedes falsche
- * Feld, der Cursor geht ins erste davon (wie beim Set-Dialog). Ein gesperrter Knopf liess
- * raten, was fehlt.
+ * The state of submitting: the button stays tappable and then marks every wrong
+ * field, the cursor goes into the first of them (as in the set dialog). A locked button left
+ * you guessing what's missing.
  */
-class PasswortWechselPruefung {
+class PasswordSwitchCheck {
     var geprueft by mutableStateOf(false)
         private set
-    internal val fokus = PasswortFeldFehler.entries.associateWith { FocusRequester() }
+    internal val fokus = PasswordFieldError.entries.associateWith { FocusRequester() }
 
-    fun absenden(aktuell: String, neu: String, wiederholt: String, weiter: () -> Unit) {
+    fun submit(aktuell: String, neu: String, wiederholt: String, weiter: () -> Unit) {
         geprueft = true
-        val erstes = passwortWechselFehler(aktuell, neu, wiederholt).firstOrNull() ?: return weiter()
-        try { fokus.getValue(erstes).requestFocus() } catch (_: IllegalStateException) { /* nicht angeordnet */ }
+        val erstes = passwordSwitchError(aktuell, neu, wiederholt).firstOrNull() ?: return weiter()
+        try { fokus.getValue(erstes).requestFocus() } catch (_: IllegalStateException) { /* not arranged */ }
     }
 
-    fun zuruecksetzen() { geprueft = false }
+    fun reset() { geprueft = false }
 }
 
 @Composable
-fun rememberPasswortWechselPruefung(): PasswortWechselPruefung = remember { PasswortWechselPruefung() }
+fun rememberPasswordSwitchCheck(): PasswordSwitchCheck = remember { PasswordSwitchCheck() }
 
-/** Aktuelles, neues und wiederholtes Passwort, mit den Fehlern aus [pruefung]. */
+/** Current, new and repeated password, with the errors from [check]. */
 @Composable
-fun PasswortWechselFelder(
+fun PasswordSwitchFields(
     aktuell: String,
-    onAktuell: (String) -> Unit,
+    onCurrent: (String) -> Unit,
     neu: String,
-    onNeu: (String) -> Unit,
+    onNew: (String) -> Unit,
     wiederholt: String,
-    onWiederholt: (String) -> Unit,
-    pruefung: PasswortWechselPruefung,
+    onRepeated: (String) -> Unit,
+    check: PasswordSwitchCheck,
     weiter: KeyboardActions = KeyboardActions.Default,
 ) {
-    val fehler = if (pruefung.geprueft) passwortWechselFehler(aktuell, neu, wiederholt) else emptyList()
-    val aktuellFehlt = PasswortFeldFehler.AKTUELL in fehler
-    // Zu kurz und verschieden zeigen sich schon beim Tippen, leer erst nach dem Absenden.
-    val neuFalsch = PasswortFeldFehler.NEU in fehler || (neu.isNotEmpty() && passwortZuKurz(neu))
-    val verschieden = PasswortFeldFehler.WIEDERHOLUNG in fehler || (wiederholt.isNotEmpty() && wiederholt != neu)
-    PasswortFeld(aktuell, onAktuell, stringResource(R.string.konto_password_current),
-        Modifier.fillMaxWidth().focusRequester(pruefung.fokus.getValue(PasswortFeldFehler.AKTUELL)),
-        hinweis = if (aktuellFehlt) stringResource(R.string.login_password_fehlt) else null,
-        fehlerhaft = aktuellFehlt, imeAction = ImeAction.Next, keyboardActions = weiter)
-    PasswortFeld(neu, onNeu, stringResource(R.string.konto_password_new),
-        Modifier.fillMaxWidth().focusRequester(pruefung.fokus.getValue(PasswortFeldFehler.NEU)),
-        art = PasswortArt.NEU,
-        hinweis = if (neuFalsch) stringResource(R.string.register_password_short)
-                  else pluralStringResource(R.plurals.passwort_mindestens, PASSWORT_MIN_ZEICHEN, PASSWORT_MIN_ZEICHEN),
-        fehlerhaft = neuFalsch, imeAction = ImeAction.Next, keyboardActions = weiter)
-    PasswortFeld(wiederholt, onWiederholt, stringResource(R.string.register_password_repeat),
-        Modifier.fillMaxWidth().focusRequester(pruefung.fokus.getValue(PasswortFeldFehler.WIEDERHOLUNG)),
-        art = PasswortArt.WIEDERHOLUNG,
+    val fehler = if (check.geprueft) passwordSwitchError(aktuell, neu, wiederholt) else emptyList()
+    val currentMissing = PasswordFieldError.AKTUELL in fehler
+    // Too short and different show up while typing already, empty only after submitting.
+    val newWrong = PasswordFieldError.NEU in fehler || (neu.isNotEmpty() && passwordToShort(neu))
+    val verschieden = PasswordFieldError.WIEDERHOLUNG in fehler || (wiederholt.isNotEmpty() && wiederholt != neu)
+    PasswordField(aktuell, onCurrent, stringResource(R.string.konto_password_current),
+        Modifier.fillMaxWidth().focusRequester(check.fokus.getValue(PasswordFieldError.AKTUELL)),
+        hinweis = if (currentMissing) stringResource(R.string.login_password_fehlt) else null,
+        faulty = currentMissing, imeAction = ImeAction.Next, keyboardActions = weiter)
+    PasswordField(neu, onNew, stringResource(R.string.konto_password_new),
+        Modifier.fillMaxWidth().focusRequester(check.fokus.getValue(PasswordFieldError.NEU)),
+        art = PasswordKind.NEU,
+        hinweis = if (newWrong) stringResource(R.string.register_password_short)
+                  else pluralStringResource(R.plurals.passwort_mindestens, PASSWORD_MIN_CHARS, PASSWORD_MIN_CHARS),
+        faulty = newWrong, imeAction = ImeAction.Next, keyboardActions = weiter)
+    PasswordField(wiederholt, onRepeated, stringResource(R.string.register_password_repeat),
+        Modifier.fillMaxWidth().focusRequester(check.fokus.getValue(PasswordFieldError.WIEDERHOLUNG)),
+        art = PasswordKind.WIEDERHOLUNG,
         hinweis = if (verschieden) stringResource(R.string.startpasswort_verschieden) else null,
-        fehlerhaft = verschieden)
+        faulty = verschieden)
 }

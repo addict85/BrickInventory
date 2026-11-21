@@ -29,82 +29,82 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import ch.brickinventoryapp.model.ui.Meldung
 import ch.brickinventoryapp.ui.satz
-import ch.brickinventoryapp.ressourcen.R
+import ch.brickinventoryapp.resources.R
 import ch.brickinventoryapp.ui.theme.Formen
 
 /**
- * Ein Text, der nach einer Handlung erscheint, wird angesagt: Ohne Live-Region hört
- * eine blinde Person nach „Anmelden“ nichts und weiss nicht, dass es scheiterte.
+ * A text that appears after an action is announced: without a live region, a
+ * blind person hears nothing after „Sign in“ and doesn't know it failed.
  */
-fun Modifier.ansagen(): Modifier = semantics { liveRegion = LiveRegionMode.Polite }
+fun Modifier.announce(): Modifier = semantics { liveRegion = LiveRegionMode.Polite }
 
 /**
- * Steht über einem gesperrten Hauptknopf und sagt, was fehlt: Blass allein liess
- * raten, warum er nicht geht (wie beim Anmelden).
+ * Sits above a locked main button and says what's missing: pale alone left you
+ * guessing why it wouldn't go (as during sign-in).
  */
 @Composable
-fun SperrGrund(text: String) {
+fun LockReason(text: String) {
     Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
-/** Eine Fehlerzeile unter einem Formular, in Fehlerfarbe und angesagt. */
+/** An error line below a form, in error color and announced. */
 @Composable
-fun FehlerZeile(text: String, modifier: Modifier = Modifier) {
-    Text(text, modifier.ansagen(), color = MaterialTheme.colorScheme.error,
+fun ErrorRow(text: String, modifier: Modifier = Modifier) {
+    Text(text, modifier.announce(), color = MaterialTheme.colorScheme.error,
         style = MaterialTheme.typography.bodyMedium)
 }
 
 @Composable
-fun FehlerZeile(meldung: Meldung, modifier: Modifier = Modifier) = FehlerZeile(meldung.satz(), modifier)
+fun ErrorRow(meldung: Meldung, modifier: Modifier = Modifier) = ErrorRow(meldung.satz(), modifier)
 
-/** Was ins Feld gehört — davon hängt ab, was der Passwortmanager anbietet. */
-enum class PasswortArt {
-    /** Das bestehende Passwort: Der Manager setzt es ein. */
+/** What the field is for — this decides what the password manager offers. */
+enum class PasswordKind {
+    /** The existing password: the manager fills it in. */
     AKTUELL,
-    /** Ein neues Passwort: Der Manager schlägt ein starkes vor und merkt es sich. */
+    /** A new password: the manager suggests a strong one and remembers it. */
     NEU,
-    /** Die Wiederholung des neuen. */
+    /** The repeat of the new one. */
     WIEDERHOLUNG,
 }
 
 /**
- * Jedes Passwortfeld der App: mit Autofill-Art, Passworttastatur und dem Auge zum
- * Aufdecken. Solange das Passwort sichtbar ist, gilt der Sichtschutz — ein
- * aufgedecktes Passwort gehört in kein Bildschirmfoto, egal auf welcher Seite.
+ * Every password field of the app: with an autofill type, a password keyboard and the eye to
+ * reveal it. As long as the password is visible, the privacy screen applies — a
+ * revealed password belongs in no screenshot, whichever page it's on.
  */
 @Composable
-fun PasswortFeld(
+fun PasswordField(
     wert: String,
-    onWert: (String) -> Unit,
+    onValue: (String) -> Unit,
     beschriftung: String,
     modifier: Modifier = Modifier,
-    art: PasswortArt = PasswortArt.AKTUELL,
-    /** Hilfe- oder Fehlertext unter dem Feld; mit [fehlerhaft] in Fehlerfarbe. */
+    art: PasswordKind = PasswordKind.AKTUELL,
+    /** Help or error text below the field; in error color with [faulty]. */
     hinweis: String? = null,
-    fehlerhaft: Boolean = false,
+    faulty: Boolean = false,
     imeAction: ImeAction = ImeAction.Done,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
     var sichtbar by rememberSaveable { mutableStateOf(false) }
     if (sichtbar) Sichtschutz()
-    val autofill = if (art == PasswortArt.AKTUELL) ContentType.Password else ContentType.NewPassword
+    val autofill = if (art == PasswordKind.AKTUELL) ContentType.Password else ContentType.NewPassword
     OutlinedTextField(
         value = wert,
-        onValueChange = onWert,
+        onValueChange = onValue,
         label = { Text(beschriftung) },
-        // Das Schloss überall, nicht nur in der Anmeldung: So erkennt man ein Passwortfeld
-        // auf jeder Seite gleich.
+        // The lock icon everywhere, not only at sign-in: this way a password field is recognized
+        // the same way on every page.
         leadingIcon = { Icon(Icons.Default.Lock, null) },
         trailingIcon = {
-            val umschalten = stringResource(if (sichtbar) R.string.cd_password_hide else R.string.cd_password_show)
-            MitTooltip(umschalten) {
+            val toggle = stringResource(if (sichtbar) R.string.cd_password_hide else R.string.cd_password_show)
+            MitTooltip(toggle) {
                 IconButton(onClick = { sichtbar = !sichtbar }) {
-                    Icon(if (sichtbar) Icons.Default.VisibilityOff else Icons.Default.Visibility, contentDescription = umschalten)
+                    Icon(if (sichtbar) Icons.Default.VisibilityOff else Icons.Default.Visibility, contentDescription = toggle)
                 }
             }
         },
         visualTransformation = if (sichtbar) VisualTransformation.None else PasswordVisualTransformation(),
-        isError = fehlerhaft,
+        isError = faulty,
         supportingText = hinweis?.let { { Text(it) } },
         singleLine = true,
         shape = Formen.feld,

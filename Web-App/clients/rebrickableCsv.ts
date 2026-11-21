@@ -1,31 +1,31 @@
-/** Die täglichen Katalogdateien von Rebrickable (gzip-CSV). Über abruf.ts wie
- * jeder andere Abruf: Host-Liste, Grössendeckel, Gesamtfrist und Abbruch. */
+/** Rebrickable's daily catalog files (gzip CSV). Through fetch.ts like
+ * every other request: host list, size cap, total deadline and abort. */
 import fs from 'node:fs';
 import { createGunzip } from 'node:zlib';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { oeffneHttps, AbrufFehler } from '../src/infra/abruf';
+import { openHttps, AbrufFehler } from '../src/infra/fetch';
 
 const CSV_BASIS = 'https://cdn.rebrickable.com/media/downloads/';
 const CSV_HOSTS = ['cdn.rebrickable.com'] as const;
-/** inventory_parts.csv.gz hat gepackt rund 30 MB, entpackt rund 1 GB. */
-const GEPACKT_HOECHSTENS = 256 * 1024 * 1024;
-const ENTPACKT_HOECHSTENS = 4 * 1024 * 1024 * 1024;
+/** inventory_parts.csv.gz is about 30 MB packed, about 1 GB unpacked. */
+const PACKED_AT_MOST = 256 * 1024 * 1024;
+const UNPACKED_AT_MOST = 4 * 1024 * 1024 * 1024;
 const FRIST_MS = 30 * 60_000;
 
 export interface CsvLaden {
   signal?: AbortSignal;
-  /** Gelesene gepackte Bytes und die angekündigte Gesamtzahl (0: unbekannt). */
-  beiFortschritt?: (bytes: number, gesamt: number) => void;
+  /** Packed bytes read and the announced total (0: unknown). */
+  atProgress?: (bytes: number, gesamt: number) => void;
 }
 
-/** Lädt `datei` (z. B. parts.csv.gz) entpackt nach `ziel`. */
-export async function ladeKatalogCsv(datei: string, ziel: string, o: CsvLaden = {}): Promise<void> {
+/** Loads `datei` (e.g. parts.csv.gz) unpacked into `ziel`. */
+export async function loadCatalogCsv(datei: string, ziel: string, o: CsvLaden = {}): Promise<void> {
   if (!/^[a-z_]+\.csv\.gz$/.test(datei))
     throw new AbrufFehler('adresse', `Unbekannte Katalogdatei: ${datei.slice(0, 60)}`);
-  const a = await oeffneHttps(CSV_BASIS + datei, {
+  const a = await openHttps(CSV_BASIS + datei, {
     hosts: CSV_HOSTS,
-    maxBytes: GEPACKT_HOECHSTENS,
+    maxBytes: PACKED_AT_MOST,
     zeitlimitMs: FRIST_MS,
     ...(o.signal ? { signal: o.signal } : {}),
   });
@@ -39,22 +39,22 @@ export async function ladeKatalogCsv(datei: string, ziel: string, o: CsvLaden = 
   const zaehler = new Transform({
     transform(stueck: Buffer, _k, weiter) {
       gelesen += stueck.length;
-      o.beiFortschritt?.(gelesen, gesamt);
+      o.atProgress?.(gelesen, gesamt);
       weiter(null, stueck);
     },
   });
-  // Eine Gzip-Bombe endet am Deckel, nicht an der Platte.
+  // A gzip bomb ends at the cap, not at the disk.
   const deckel = new Transform({
     transform(stueck: Buffer, _k, weiter) {
       entpackt += stueck.length;
       weiter(
-        entpackt > ENTPACKT_HOECHSTENS
-          ? new AbrufFehler('zu-gross', `${datei} entpackt über ${ENTPACKT_HOECHSTENS} Byte`)
+        entpackt > UNPACKED_AT_MOST
+          ? new AbrufFehler('zu-gross', `${datei} entpackt über ${UNPACKED_AT_MOST} Byte`)
           : null,
         stueck,
       );
     },
   });
-  // Ein Abbruch beendet den Abruf (abruf.ts) und damit die ganze Kette.
+  // An abort ends the request (fetch.ts) and thereby the whole chain.
   await pipeline(a.strom(), zaehler, createGunzip(), deckel, fs.createWriteStream(ziel));
 }

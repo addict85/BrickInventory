@@ -5,31 +5,31 @@ import java.security.SecureRandom
 import java.security.Signature
 
 /**
- * Was als Bestätigung zählt: eine Signatur, die zum öffentlichen Schlüssel des
- * Keystore-Schlüssels passt. Der Schlüssel signiert nur unmittelbar nach
- * Gerätesperre oder starker Biometrie; ein eingehakter onAuthenticationSucceeded
- * ohne echte Freigabe scheitert an sign().
+ * What counts as a confirmation: a signature that matches the public key of the
+ * Keystore key. The key only signs immediately after the
+ * screen lock or strong biometrics; a hooked-up onAuthenticationSucceeded
+ * without a real release fails at sign().
  */
 class Schrittfreigabe(
     private val oeffentlich: () -> PublicKey,
-    private val zufall: SecureRandom = SecureRandom(),
+    private val random: SecureRandom = SecureRandom(),
 ) {
-    fun gilt(freigegeben: Signature?): Boolean = unterschrift(freigegeben, nonce()) != null
+    fun gilt(released: Signature?): Boolean = signature(released, nonce()) != null
 
-    fun nonce(): ByteArray = ByteArray(32).also(zufall::nextBytes)
+    fun nonce(): ByteArray = ByteArray(32).also(random::nextBytes)
 
-    /** Die Signatur über [nachricht], wenn sie zum Schlüssel passt; sonst null. Je Freigabe nur einmal. */
-    fun unterschrift(freigegeben: Signature?, nachricht: ByteArray): ByteArray? {
-        if (freigegeben == null) return null
+    /** The signature over [nachricht], if it matches the key; otherwise null. Only once per release. */
+    fun signature(released: Signature?, nachricht: ByteArray): ByteArray? {
+        if (released == null) return null
         return runCatching {
-            freigegeben.update(nachricht)
-            val unterschrift = freigegeben.sign()
+            released.update(nachricht)
+            val signature = released.sign()
             val passt = Signature.getInstance(SIGNATURVERFAHREN).run {
                 initVerify(oeffentlich())
                 update(nachricht)
-                verify(unterschrift)
+                verify(signature)
             }
-            unterschrift.takeIf { passt }
+            signature.takeIf { passt }
         }.getOrNull()
     }
 

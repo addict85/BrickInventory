@@ -1,24 +1,24 @@
 'use strict';
 /**
- * Das Schema steht an EINER Stelle — nicht im Anfragepfad.
+ * The schema stands in ONE place — not in the request path.
  */
 const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-/** Der Anfragepfad — hier wird geprüft. */
+/** The request path — this is where checking happens. */
 const ANFRAGEPFAD = [
   'routes' + path.sep,
-  path.join('src', 'sets', 'lesen.ts'),
-  path.join('src', 'sets', 'loeschen.ts'),
-  path.join('src', 'teile', 'abfragen.ts'),
-  path.join('src', 'figuren', 'abfragen.ts'),
-  path.join('src', 'bestand', 'gemeinsam.ts'),
-  path.join('src', 'bestand', 'kennzahlen.ts'),
+  path.join('src', 'sets', 'read.ts'),
+  path.join('src', 'sets', 'delete.ts'),
+  path.join('src', 'parts', 'queries.ts'),
+  path.join('src', 'minifigs', 'queries.ts'),
+  path.join('src', 'inventory', 'shared.ts'),
+  path.join('src', 'inventory', 'metrics.ts'),
 ];
 
-/** Schema-Anweisungen. Nur in echtem SQL, nicht in Prosa. */
+/** Schema statements. Only in real SQL, not in prose. */
 const MUSTER = /\b(CREATE\s+TABLE|CREATE\s+(?:UNIQUE\s+)?INDEX|ALTER\s+TABLE)\b/i;
 
 /** @param {string} quelle */
@@ -33,10 +33,10 @@ function ohneKommentare(quelle) {
 }
 
 /** @param {string} verz @param {string[]} raus */
-function sammle(verz, raus) {
+function collect(verz, raus) {
   for (const eintrag of fs.readdirSync(verz, { withFileTypes: true })) {
     const p = path.join(verz, eintrag.name);
-    if (eintrag.isDirectory()) sammle(p, raus);
+    if (eintrag.isDirectory()) collect(p, raus);
     else if (/\.(ts|js)$/.test(eintrag.name)) raus.push(p);
   }
   return raus;
@@ -51,11 +51,11 @@ for (const teil of ANFRAGEPFAD) {
     console.error('prüft die Suche nichts und wäre trotzdem grün.');
     process.exit(1);
   }
-  if (fs.statSync(verz).isDirectory()) sammle(verz, dateien);
+  if (fs.statSync(verz).isDirectory()) collect(verz, dateien);
   else dateien.push(verz);
 }
 
-// Untergrenze: Findet der Dateilauf zu wenig, wäre die Prüfung still grün.
+// Lower bound: if the file walk finds too little, the check would be silently green.
 if (dateien.length < 20) {
   console.error(`ROT — nur ${dateien.length} Dateien im Anfragepfad gefunden.`);
   console.error('Das ist zu wenig; vermutlich stimmt der Pfad nicht mehr.');
@@ -72,7 +72,7 @@ for (const datei of dateien) {
   });
 }
 
-// Der Selbstbeweis, und warum er JEDEN Teil einzeln prüft
+// The self-proof, and why it checks EVERY part individually
 const migVerz = path.join(ROOT, 'db/migrations');
 const bekannt = ohneKommentare(
   fs
@@ -103,51 +103,51 @@ if (treffer.length) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Regel 2 — jede Tabelle und jeder Index wird an GENAU EINER Stelle angelegt
+// Rule 2 — every table and every index is created in EXACTLY ONE place
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Absichtlich doppelt, mit Grund. Die Liste darf nur KÜRZER werden.
+ * Deliberately duplicated, with a reason. The list may only get SHORTER.
  * @type {Map<string, string>}
  */
-const DOPPELT_ERLAUBT = new Map([]);
+const DUPLICATE_ALLOWED = new Map([]);
 
 /** @type {string[]} */
-const alleQuellen = [];
+const allSources = [];
 for (const teil of ['db', 'routes', 'src', 'jobs', 'clients', 'scripts']) {
   const verz = path.join(ROOT, teil);
-  if (fs.existsSync(verz)) sammleAlle(verz, alleQuellen);
+  if (fs.existsSync(verz)) collectAll(verz, allSources);
 }
-if (fs.existsSync(path.join(ROOT, 'server.ts'))) alleQuellen.push(path.join(ROOT, 'server.ts'));
+if (fs.existsSync(path.join(ROOT, 'server.ts'))) allSources.push(path.join(ROOT, 'server.ts'));
 
 /** @param {string} verz @param {string[]} raus */
-function sammleAlle(verz, raus) {
+function collectAll(verz, raus) {
   for (const eintrag of fs.readdirSync(verz, { withFileTypes: true })) {
     const p = path.join(verz, eintrag.name);
-    if (eintrag.isDirectory()) sammleAlle(p, raus);
-    // schema-stand.sql und basis.sql sind erzeugte Abbilder, keine Quellen —
-    // sie nennen jede Tabelle ein zweites Mal, und zwar mit Absicht.
+    if (eintrag.isDirectory()) collectAll(p, raus);
+    // schema-stand.sql and basis.sql are generated copies, not sources —
+    // they name every table a second time, and deliberately so.
     else if (/\.(ts|js|sql)$/.test(eintrag.name) && !['schema-stand.sql', 'basis.sql'].includes(eintrag.name))
       raus.push(p);
   }
   return raus;
 }
 
-if (alleQuellen.length < 100) {
-  console.error(`ROT — nur ${alleQuellen.length} Quelldateien gefunden; der Pfad stimmt nicht.`);
+if (allSources.length < 100) {
+  console.error(`ROT — nur ${allSources.length} Quelldateien gefunden; der Pfad stimmt nicht.`);
   process.exit(1);
 }
 
 /** @type {Map<string, string[]>} */
 const angelegt = new Map();
-for (const datei of alleQuellen) {
+for (const datei of allSources) {
   const rel = path.relative(ROOT, datei);
   const text = ohneKommentare(fs.readFileSync(datei, 'utf8'));
   const re = /CREATE\s+(?:TABLE|(?:UNIQUE\s+)?INDEX)(?:\s+IF\s+NOT\s+EXISTS)?\s+(\w+)/gi;
   for (const m of text.matchAll(re)) {
-    // m[1] ist unter noUncheckedIndexedAccess moeglicherweise undefined —
-    // die Gruppe ist im Muster zwar nicht optional, aber das weiss der
-    // Typpruefer nicht. Ein leerer Name faellt hier still durch statt zu werfen.
+    // m[1] is possibly undefined under noUncheckedIndexedAccess —
+    // the group is not optional in the pattern, but the type checker
+    // does not know that. An empty name silently falls through here instead of throwing.
     const name = (m[1] || '').toLowerCase();
     if (!name) continue;
     const wo = angelegt.get(name) || [];
@@ -156,8 +156,8 @@ for (const datei of alleQuellen) {
   }
 }
 
-// Selbstbeweis: Eine bekannte Tabelle MUSS gefunden werden. Sonst ist das
-// Muster veraltet und "nichts doppelt" bedeutet nichts.
+// Self-proof: a known table MUST be found. Otherwise the
+// pattern is outdated and "nothing duplicated" means nothing.
 if (!angelegt.has('price_alerts')) {
   console.error('ROT — price_alerts wird nirgends angelegt gefunden. Das Muster ist veraltet;');
   console.error('ein leeres Ergebnis unten waere dann wertlos.');
@@ -168,7 +168,7 @@ if (!angelegt.has('price_alerts')) {
 const mehrfach = [];
 for (const [name, orte] of angelegt) {
   if (orte.length < 2) continue;
-  if (DOPPELT_ERLAUBT.has(name)) continue;
+  if (DUPLICATE_ALLOWED.has(name)) continue;
   mehrfach.push(`${name}  —  ${orte.join(', ')}`);
 }
 
@@ -180,7 +180,7 @@ if (mehrfach.length) {
   console.error('solange sie dasselbe wollen — und CREATE TABLE IF NOT EXISTS meldet');
   console.error('einen Unterschied nicht, es tut dann einfach nichts.');
   console.error('Ist die Doppelung unvermeidlich, gehoert sie mit Grund in');
-  console.error('DOPPELT_ERLAUBT in dieser Datei.');
+  console.error('DUPLICATE_ALLOWED in dieser Datei.');
   process.exit(1);
 }
 

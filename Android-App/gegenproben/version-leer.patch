@@ -1,15 +1,15 @@
 Gegenprobe: „Installiert:“ wieder ohne Rückfall, wenn keine Version bekannt ist
-Modul: feature-konto
-Test: ch.brickinventoryapp.konto.UpdateDialogTest
-Rot: ohne bekannte Version steht unbekannt
+Modul: feature-account
+Test: ch.brickinventoryapp.account.UpdateDialogTest
+Rot: without a known version unknown is shown, otherwise the version
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppFassungLokal.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppFassungLokal.kt
 index 6a30969..8c0245a 100644
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppFassungLokal.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppFassungLokal.kt
-@@ -14,4 +14,4 @@ val LocalAppFassung = staticCompositionLocalOf { AppFassung(name = "", code = 0)
+@@ -14,4 +14,4 @@ val LocalAppVersion = staticCompositionLocalOf { AppVersion(name = "", code = 0)
  
  /** Der Name der laufenden Version für Sätze; ohne Namen „unbekannt“ statt „Installiert: “ mit nichts dahinter. */
  @Composable
--fun versionsName(): String = LocalAppFassung.current.name.ifBlank { stringResource(R.string.update_version_unbekannt) }
-+fun versionsName(): String = LocalAppFassung.current.name
+-fun versionsName(): String = LocalAppVersion.current.name.ifBlank { stringResource(R.string.update_version_unbekannt) }
++fun versionsName(): String = LocalAppVersion.current.name

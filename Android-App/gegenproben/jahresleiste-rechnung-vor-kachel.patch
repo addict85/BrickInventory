@@ -1,17 +1,17 @@
 Gegenprobe: Die Jahresleiste rechnet, auch wo die Kachel schon geladen ist
-Modul: feature-katalog
-Test: ch.brickinventoryapp.katalog.CatalogYearMathTest
-Rot: eine geladene Kachel schlaegt die Rechnung
+Modul: feature-catalog
+Test: ch.brickinventoryapp.catalog.CatalogYearMathTest
+Rot: a loaded tile beats the calculation
 
-diff --git a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/CatalogYearMath.kt b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/CatalogYearMath.kt
---- a/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/CatalogYearMath.kt
-+++ b/Android-App/feature-katalog/src/main/java/ch/brickinventoryapp/katalog/ui/CatalogYearMath.kt
+diff --git a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/CatalogYearMath.kt b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/CatalogYearMath.kt
+--- a/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/CatalogYearMath.kt
++++ b/Android-App/feature-catalog/src/main/java/ch/brickinventoryapp/catalog/ui/CatalogYearMath.kt
 @@ -49,7 +49,7 @@ object CatalogYearMath {
-     fun jahrFuer(
-         anteil: Float, total: Int, verteilung: List<JahrAnzahlAnsicht>,
+     fun yearFor(
+         share: Float, total: Int, verteilung: List<JahrAnzahlAnsicht>,
          geladen: (Int) -> Int?
--    ): Int? = geladen(nummerAus(anteil, total)) ?: jahrAnPosition(anteil, total, verteilung)
-+    ): Int? = jahrAnPosition(anteil, total, verteilung) ?: geladen(nummerAus(anteil, total))
+-    ): Int? = geladen(numberFrom(share, total)) ?: yearAnPosition(share, total, verteilung)
++    ): Int? = yearAnPosition(share, total, verteilung) ?: geladen(numberFrom(share, total))
  
      /**
       * Welches Jahr liegt an diesem Anteil der Liste? Wie in der Webapp

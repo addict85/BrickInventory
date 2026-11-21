@@ -1,21 +1,21 @@
 /**
- * Schalter, die im Betrieb eine Schutzschicht abschalten (Sicherheitsprüfung
- * 16, L5): MAIL_KONSOLE_MIT_TOKEN=1 verhindert mit NODE_ENV=production den
- * Start, COOKIE_SECURE=0 ergibt eine Warnzeile. Am echten Server; eigene
- * Datei, weil startverbot.test.js mit jedem Start näher an die Frist der
- * Datei rückte.
+ * Switches that turn off a protection layer in production (security review
+ * 16, L5): MAIL_KONSOLE_MIT_TOKEN=1 prevents the start with NODE_ENV=production,
+ * COOKIE_SECURE=0 results in a warning line. On the real server; a file of its own
+ * because startverbot.test.js moved closer to the file's deadline with every
+ * start.
  *
- * Gegenproben (05.11.2026 gemessen, je einzeln):
- *   K  in startVerbote() den Zweig zu MAIL_KONSOLE_MIT_TOKEN entfernt → rot:
- *      „MAIL_KONSOLE_MIT_TOKEN=1 im Betrieb …“ (Code statt 1: Datenbankfehler)
- *   L  in server.ts die Schleife über startWarnungen() entfernt → rot:
- *      „COOKIE_SECURE=0 im Betrieb …“ (keine Warnzeile)
- * Gegenproben N10/N11 (05.11.2026 gemessen, je einzeln):
- *   M  den Zweig zu HSTS_MAX_AGE in startWarnungen() entfernt → rot:
+ * Counter-checks (measured 05.11.2026, each on its own):
+ *   K  the branch on MAIL_KONSOLE_MIT_TOKEN removed in startBans() → red:
+ *      “MAIL_KONSOLE_MIT_TOKEN=1 in production …” (code instead of 1: database error)
+ *   L  the loop over startWarnings() removed in server.ts → red:
+ *      “COOKIE_SECURE=0 in production …” (no warning line)
+ * Counter-checks N10/N11 (measured 05.11.2026, each on its own):
+ *   M  the branch on HSTS_MAX_AGE removed in startWarnings() → red:
  *      „HSTS_MAX_AGE=0 …“
- *   N  dbOhneTls() liefert immer false → rot: „entfernte Datenbank …“
- *   O  (06.11.2026) in dbOhneTls() die Regel für Namen ohne Punkt gestrichen →
- *      rot: „entfernte Datenbank …“ ({"PGHOST":"db-brickinventory"})
+ *   N  dbWithoutTls() always delivers false → red: “remote database …”
+ *   O  (06.11.2026) in dbWithoutTls() the rule for names without a dot deleted →
+ *      red: “remote database …” ({"PGHOST":"db-brickinventory"})
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -24,9 +24,9 @@ const { spawn } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { startWarnungen } = _req('src/infra/konfig.js');
+const { startWarnings } = _req('src/infra/config.js');
 
-/** Server starten und auf sein Ende warten — höchstens `ms`, dann gilt er als laufend. */
+/** Start the server and wait for its end — at most `ms`, then it counts as running. */
 function starte(env, ms = 20000) {
   return new Promise(fertig => {
     const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
@@ -57,7 +57,7 @@ function starte(env, ms = 20000) {
   });
 }
 
-test('MAIL_KONSOLE_MIT_TOKEN=1 im Betrieb: Start verweigert', { timeout: 50_000 }, async () => {
+test('MAIL_KONSOLE_MIT_TOKEN=1 in production: startup refused', { timeout: 50_000 }, async () => {
   const db = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'https://lego.example.org' };
   const r = await starte({ ...db, MAIL_KONSOLE_MIT_TOKEN: '1' });
   assert.equal(r.code, 1, r.log.slice(-400));
@@ -68,7 +68,7 @@ test('MAIL_KONSOLE_MIT_TOKEN=1 im Betrieb: Start verweigert', { timeout: 50_000 
   assert.match(entw.log, /Database initialisation failed/);
 });
 
-test('COOKIE_SECURE=0 im Betrieb: Warnzeile beim Start', { timeout: 50_000 }, async () => {
+test('COOKIE_SECURE=0 in production: warning line at startup', { timeout: 50_000 }, async () => {
   const db = { DATABASE_URL: 'postgres://u:eigenes@127.0.0.1:1/x', APP_BASE_URL: 'http://lego.lan' };
   const mit = await starte({ ...db, COOKIE_SECURE: '0' });
   assert.match(mit.log, /⚠️ \[start\] COOKIE_SECURE=0: Das Sitzungs-Cookie geht auch über http/);
@@ -77,15 +77,15 @@ test('COOKIE_SECURE=0 im Betrieb: Warnzeile beim Start', { timeout: 50_000 }, as
   assert.doesNotMatch(ohne.log, /COOKIE_SECURE/);
 });
 
-test('HSTS_MAX_AGE=0 im Betrieb: genau eine Warnung', () => {
-  const w = startWarnungen({ NODE_ENV: 'production', HSTS_MAX_AGE: '0' });
+test('HSTS_MAX_AGE=0 in production: exactly one warning', () => {
+  const w = startWarnings({ NODE_ENV: 'production', HSTS_MAX_AGE: '0' });
   assert.equal(w.length, 1, JSON.stringify(w));
   assert.match(w[0], /HSTS_MAX_AGE=0/);
-  assert.deepEqual(startWarnungen({ NODE_ENV: 'production', HSTS_MAX_AGE: '31536000' }), []);
+  assert.deepEqual(startWarnings({ NODE_ENV: 'production', HSTS_MAX_AGE: '31536000' }), []);
 });
 
-test('entfernte Datenbank ohne geprüftes TLS: Warnung', () => {
-  const tls = env => startWarnungen({ NODE_ENV: 'production', ...env }).filter(x => x.startsWith('[datenbank]'));
+test('remote database without verified TLS: warning', () => {
+  const tls = env => startWarnings({ NODE_ENV: 'production', ...env }).filter(x => x.startsWith('[datenbank]'));
   assert.equal(tls({ PGHOST: 'db.example.org' }).length, 1);
   assert.equal(tls({ DATABASE_URL: 'postgres://u:p@db.example.org/x?sslmode=require' }).length, 1);
   assert.deepEqual(tls({ PGHOST: 'db.example.org', PGSSLMODE: 'verify-full' }), []);

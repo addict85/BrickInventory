@@ -52,7 +52,7 @@ eigenen Job und verschlüsselt mit einer eigenen Passphrase.
 6. `beschreibung.pem` (unverschlüsselt) danach sicher löschen; die verschlüsselte
    Fassung und die Passphrase getrennt aufbewahren.
 
-Der öffentliche Schlüssel in `core-ressourcen/src/main/res/raw/beschreibungs_schluessel.pem`
+Der öffentliche Schlüssel in `core-resources/src/main/res/raw/beschreibungs_schluessel.pem`
 bleibt, wie er ist.
 
 Seit 12.11.2026 trägt die Beschreibung nur noch diese Signatur; der APK-Schlüssel

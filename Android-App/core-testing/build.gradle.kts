@@ -1,5 +1,5 @@
-// Hilfen für die Unit-Tests aller Module: Testserver, Testdienste und das
-// Lesen von Quelltext. Nur als testImplementation eingebunden.
+// Helpers for all modules' unit tests: test server, test services and
+// reading source code. Pulled in only as testImplementation.
 plugins {
     alias(libs.plugins.brickinventory.android.library)
 }
@@ -9,12 +9,12 @@ android {
 }
 
 dependencies {
-    // Nur implementation: Ein Test nennt die Module, deren Typen er selbst benutzt.
-    implementation(project(":core-zustand"))
-    implementation(project(":core-sitzung"))
+    // implementation only: a test names the modules whose types it itself uses.
+    implementation(project(":core-state"))
+    implementation(project(":core-session"))
     implementation(project(":core-data"))
-    implementation(project(":core-sicherheit"))
-    // Testablage: Listen und Ausgang im Speicher.
+    implementation(project(":core-security"))
+    // Test store: lists and outbox in memory.
     implementation(project(":core-offline"))
     api(libs.bundles.unit.tests)
     api(libs.retrofit)

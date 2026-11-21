@@ -1,7 +1,7 @@
 Gegenprobe: CameraX fällt auf 1.3 zurück
 Modul: app
 Test: ch.brickinventoryapp.app.CameraXUpgradeTest
-Rot: CameraX steht auf einer 16-KB-tauglichen Fassung
+Rot: CameraX is on a 16 KB capable version
 
 diff --git a/Android-App/gradle/libs.versions.toml b/Android-App/gradle/libs.versions.toml
 --- a/Android-App/gradle/libs.versions.toml

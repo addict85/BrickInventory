@@ -1,17 +1,17 @@
 Gegenprobe: Das Lesen des Tokens zählt auch bei gesperrtem Gerät jeden Versuch und gibt nach zehn Minuten auf
-Modul: core-sicherheit
-Test: ch.brickinventoryapp.sicherheit.TresorSperreTest
-Rot: bei gesperrtem Geraet wartet das Lesen
+Modul: core-security
+Test: ch.brickinventoryapp.security.VaultLockTest
+Rot: with a locked device reading waits without a deadline and reports the token after unlocking
 
-diff --git a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
---- a/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
-+++ b/Android-App/core-sicherheit/src/main/java/ch/brickinventoryapp/sicherheit/Tresorbefund.kt
+diff --git a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Tresorbefund.kt b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Tresorbefund.kt
+--- a/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Tresorbefund.kt
++++ b/Android-App/core-security/src/main/java/ch/brickinventoryapp/security/Tresorbefund.kt
 @@ -131,7 +131,7 @@
-                 warte(TRESOR_ANLAUF_MS.getOrElse(versuch) { TRESOR_NACHLAUF_MS })
+                 wait(VAULT_ATTEMPT_MS.getOrElse(attempt) { VAULT_FOLLOW_UP_MS })
                  // Bei gesperrtem Gerät gibt der Schlüssel erst nach dem Entsperren frei:
                  // Diese Zeit zählt nicht, sonst wäre nach einer Nacht die Sitzung weg.
--                if (versuch < TRESOR_ANLAUF_MS.size || !sperre.gesperrt()) versuch++
-+                versuch++
+-                if (attempt < VAULT_ATTEMPT_MS.size || !lock.gesperrt()) attempt++
++                attempt++
              }
          }
      }

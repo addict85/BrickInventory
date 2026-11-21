@@ -1,14 +1,13 @@
 Gegenprobe: das Protokoll schreibt auch ohne Android ins Logcat (android.util.Log ist im JVM-Test eine werfende Attrappe)
-Modul: core-netz
-Test: ch.brickinventoryapp.netz.ProtokollOhneAndroidTest
-Rot: ohne Android landet eine Warnung auf stderr
+Modul: core-network
+Test: ch.brickinventoryapp.network.LogWithoutAndroidTest
+Rot: without Android a warning ends up on stderr, not in logcat
 
-diff --git a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/Protokoll.kt b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/Protokoll.kt
-index 5cd5a4b..f383674 100644
---- a/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/Protokoll.kt
-+++ b/Android-App/core-netz/src/main/java/ch/brickinventoryapp/netz/util/Protokoll.kt
+diff --git a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/Protokoll.kt b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/Protokoll.kt
+--- a/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/Protokoll.kt
++++ b/Android-App/core-network/src/main/java/ch/brickinventoryapp/network/util/Protokoll.kt
 @@ -22,7 +22,7 @@ object Protokoll {
-      * nicht an einer Protokollzeile. Dort geht die Zeile nach stderr.
+      * a log line. There, the line goes to stderr instead.
       */
      internal fun vorgabe(vm: String? = System.getProperty("java.vm.name")): (Stufe, String, String, Throwable?) -> Unit =
 -        if (vm == "Dalvik") { stufe, tag, text, fehler ->

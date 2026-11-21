@@ -1,6 +1,6 @@
 {
   // Typprüfung der Tests (CommonJS, checkJs), vorerst ohne strict: Die Zahl der
-  // Meldungen ist eine Ratsche (scripts/check-test-typen.js), sie darf nur sinken.
+  // Meldungen ist eine Ratsche (scripts/check-test-types.js), sie darf nur sinken.
   "compilerOptions": {
     "allowJs": true,
     "checkJs": true,

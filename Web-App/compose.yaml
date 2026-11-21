@@ -196,7 +196,7 @@ services:
     mem_limit: ${MIGRATION_MEM_LIMIT:-512m}
     pids_limit: 64
     cpus: 1
-    entrypoint: ["node", "dist/startup/migrieren.js"]
+    entrypoint: ["node", "dist/startup/migrate.js"]
     depends_on:
       db-rolle:
         condition: service_completed_successfully
@@ -511,7 +511,7 @@ services:
             exit 1 ;;
         esac
         # Ein weites Netz glaubte jedem Gerät darin seine Adresse, die Drosseln je Adresse liefen leer. Dieselbe
-        # Grenze wie TRUST_PROXY (src/infra/proxyVertrauen.ts): über 8 Adressen nur mit PROXY_NETZ_BESTAETIGT=1.
+        # Grenze wie TRUST_PROXY (src/infra/proxyTrust.ts): über 8 Adressen nur mit PROXY_NETZ_BESTAETIGT=1.
         for a in $${VORGELAGERTER_PROXY}; do
           p=$${a##*/}; eng=29; weit=16
           case "$$a" in *:*) eng=120; weit=64 ;; esac

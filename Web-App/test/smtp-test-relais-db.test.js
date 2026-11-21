@@ -1,15 +1,15 @@
 /**
- * Der SMTP-Test ist kein Mail-Relais: an die eigene Adresse des Verwalters
- * geht er ohne Rückfrage (höchstens 10 je Stunde), an jede andere nur mit
- * Passwort — wie das Ändern des Mailservers.
+ * The SMTP test is not a mail relay: to the admin's own address
+ * it goes without a prompt (at most 10 per hour), to any other only with
+ * password — like changing the mail server.
  *
- * Gegenproben (am 07.11.2026 gemessen, je einzeln):
- *   A  die Passwortprüfung für fremde Adressen entfernt → rot: „eine fremde
- *      Adresse braucht das Passwort“ (200 statt 400, Mail ging raus)
- *   B  die Drossel entfernt → rot: „ab der elften Mail in der Stunde
- *      Schluss“ (200 statt 429)
+ * Counter-checks (measured on 07.11.2026, each on its own):
+ *   A  the password check for foreign addresses removed → red: “a foreign
+ *      address needs the password” (200 instead of 400, mail went out)
+ *   B  the throttle removed → red: “from the eleventh mail in an hour
+ *      it stops” (200 instead of 429)
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -20,22 +20,22 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:t
 const S = require('./helpers/sources');
 const _req = S.buildAndRequire();
 const gesendet = [];
-require('./helpers/sources').ersetzeDienste('mail', {
-  sendeSmtpTest: async to => {
+require('./helpers/sources').replaceServices('mail', {
+  sendSmtpTest: async to => {
     gesendet.push(to);
     return { success: true, mode: 'console' };
   },
 });
 const { routerServer } = require('./helpers/server');
-const { datenOderSkip } = require('./helpers/db');
-const db = S.testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = S.testData();
 const bcrypt = require(path.join(__dirname, '..', 'node_modules', 'bcryptjs'));
 
 const NAME = `smtprelais_${process.pid}`,
   PASS = 'chef-Passwort-1';
 
-test('SMTP-Test nur an die eigene Adresse oder mit Passwort', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+test('SMTP test only to the own address or with password', { concurrency: 1 }, async t => {
+  if (!(await dataOrSkip(t, _req))) return;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const eigene = `${NAME}@example.org`;
   const uid = (
@@ -63,7 +63,7 @@ test('SMTP-Test nur an die eigene Adresse oder mit Passwort', { concurrency: 1 }
       body: JSON.stringify(body),
     }).then(async r => ({ status: r.status, body: await r.json() }));
 
-  await t.test('die eigene Adresse braucht kein Passwort', async () => {
+  await t.test('the own address needs no password', async () => {
     const r = await probe({});
     assert.equal(r.status, 200, JSON.stringify(r.body));
     const r2 = await probe({ to: eigene.toUpperCase() });
@@ -71,7 +71,7 @@ test('SMTP-Test nur an die eigene Adresse oder mit Passwort', { concurrency: 1 }
     assert.deepEqual(gesendet, [eigene, eigene.toUpperCase()]);
   });
 
-  await t.test('eine fremde Adresse braucht das Passwort', async () => {
+  await t.test('a foreign address needs the password', async () => {
     gesendet.length = 0;
     const r = await probe({ to: 'fremd@example.net' });
     assert.deepEqual([r.status, r.body.code], [400, 'aktuelles_passwort_falsch']);
@@ -84,7 +84,7 @@ test('SMTP-Test nur an die eigene Adresse oder mit Passwort', { concurrency: 1 }
     assert.deepEqual(gesendet, ['fremd@example.net']);
   });
 
-  await t.test('ab der elften Mail in der Stunde Schluss', async () => {
+  await t.test('from the eleventh mail in an hour it stops', async () => {
     let letzte;
     for (let i = 0; i < 12; i++) {
       letzte = await probe({});

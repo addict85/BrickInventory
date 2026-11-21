@@ -1,7 +1,7 @@
 Gegenprobe: Ein gelöschtes Set bleibt in der Ablage stehen
-Modul: feature-sammlung
-Test: ch.brickinventoryapp.sammlung.GalerieViewModelTest
-Rot: ein geloeschtes Set verschwindet aus der Ablage
+Modul: feature-collection
+Test: ch.brickinventoryapp.collection.GalleryViewModelTest
+Rot: a deleted set disappears from the store, and the key figures come anew
 
 diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
 --- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repository/SetsRepositoryImpl.kt
@@ -10,8 +10,8 @@ diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/repos
  
      /** Löschen nur online: Der Papierkorb des Servers entscheidet, was zurückkommt. */
      override suspend fun deleteSet(setNumber: String): Ergebnis<Unit> =
--        ablage.nachgezogen({ r -> Nachzug.SetEntfernt(setNumber).takeIf { r.success } }) { sicherAufrufen { api.deleteSet(setNumber) } }.erledigt()
+-        ablage.nachgezogen({ r -> FollowUp.SetRemoved(setNumber).takeIf { r.success } }) { sicherAufrufen { api.deleteSet(setNumber) } }.erledigt()
 +        sicherAufrufen { api.deleteSet(setNumber) }.erledigt()
  
      /** Die Galerie aus der Ablage, nach den Filtern der Anzeige; ändert sich auch durch offline Bearbeitetes. */
-     override fun beobachteSets(suche: String?, thema: String?, lagerort: String?, sort: Setsortierung?): Flow<Lokal<SetAnsicht>> =
+     override fun observeSets(suche: String?, thema: String?, lagerort: String?, sort: Setsortierung?): Flow<Local<SetAnsicht>> =

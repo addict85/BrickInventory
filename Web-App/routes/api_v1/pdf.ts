@@ -1,23 +1,23 @@
-/** Asynchron: Die Route stellt nur einen Auftrag ein; Bilder holt und zeichnet
- * der Job-Prozess in einem eigenen Faden, damit der Web-Prozess frei bleibt. */
-import { meldeFehler, ohneFehlendeDatei } from '../../src/infra/fehler';
-import { streamFileToResponse } from '../../src/http/httpAntwort';
-import { kontoSchranke, waechterFuer } from './middleware';
-import { oeffneStrom, type Strom } from '../../src/konto/http/strom';
+/** Asynchronous: the route only enqueues a job; images are fetched and drawn by
+ * the job process in a thread of its own, so the web process stays free. */
+import { reportError, withoutMissingFile } from '../../src/infra/error';
+import { streamFileToResponse } from '../../src/http/httpResponse';
+import { kontoSchranke, guardFor } from './middleware';
+import { openStream, type Strom } from '../../src/account/http/stream';
 import _pdfFs from 'node:fs/promises';
-import { pdfSchluessel } from '../../src/katalog';
-import { antwortSprache, fachfehler, nichtGefunden } from '../../src/infra/fehlerTexte';
+import { pdfKey } from '../../src/catalog';
+import { responseLanguage, fachfehler, notFound } from '../../src/infra/errorTexts';
 import type { Request, Response } from 'express';
-import { inHuelle, vertragsRouter } from '../../src/http/vertragsRouter';
-import type { Dienste } from '../../src/dienste';
+import { inShell, vertragsRouter } from '../../src/http/contractRouter';
+import type { Dienste } from '../../src/services';
 
-function stromStand(job: {
+function streamStatus(job: {
   status: string;
   error?: string | null;
   etaSeconds?: number | null;
   missingImages?: unknown;
 }) {
-  return inHuelle({
+  return inShell({
     status: job.status,
     error: job.error || null,
     etaSeconds: job.etaSeconds ?? null,
@@ -25,12 +25,12 @@ function stromStand(job: {
   });
 }
 
-/** Der einzige Weg der drei Abrufrouten an einen Auftrag: nur der eigene; ein Lesefehler geht weiter. */
-function pdfJobReadFor(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'>, id: string, userId: number) {
-  return d.katalog.pdf.lies(id, userId);
+/** The only way of the three fetch routes to a job: only the own one; a read error goes on. */
+function pdfJobReadFor(d: Pick<Dienste, 'jobQueue' | 'catalog' | 'account'>, id: string, userId: number) {
+  return d.catalog.pdf.lies(id, userId);
 }
-/** Die Beugung steht als Platzhalter in der Tabelle, nicht hier. */
-function laufendeBeugung(anzahl: number, sprache: string) {
+/** The inflection is a placeholder in the table, not here. */
+function runningInflection(anzahl: number, sprache: string) {
   const en = sprache === 'en',
     eins = anzahl === 1;
   return {
@@ -42,28 +42,26 @@ function laufendeBeugung(anzahl: number, sprache: string) {
 
 const fertig = (s: string | undefined) => s === 'done' || s === 'error';
 
-/** NOTIFY meldet den Stand, gleich in welchem Prozess der Auftrag läuft; ohne
- * Nutzlast (beim Wiederverbinden) und im Rückfalltakt wird ebenfalls nachgesehen,
- * falls ein Signal während einer Verbindungsstörung verloren ging. */
-function folgeAuftrag(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'>, strom: Strom, jobId: string, uid: number) {
+/** NOTIFY reports the state, no matter in which process the job runs; without a
+ * payload (on reconnect) and in the fallback tick it also checks,
+ * in case a signal got lost during a connection outage. */
+function sequenceJob(d: Pick<Dienste, 'jobQueue' | 'catalog' | 'account'>, strom: Strom, jobId: string, uid: number) {
   const pruefe = async () => {
     const job = await pdfJobReadFor(d, jobId, uid);
     if (strom.zu) return;
-    if (job) strom.sende(stromStand(job));
+    if (job) strom.sende(streamStatus(job));
     if (!job || fertig(job.status)) strom.ende();
   };
-  strom.beiEnde(
-    d.auftraege.beiAuftragsStand(nutzlast => (!nutzlast || nutzlast === pdfSchluessel(jobId) ? pruefe() : undefined)),
-  );
+  strom.atEnd(d.jobQueue.atJobStatus(nutzlast => (!nutzlast || nutzlast === pdfKey(jobId) ? pruefe() : undefined)));
   const rueckfall = setInterval(pruefe, 15000);
-  strom.beiEnde(() => clearInterval(rueckfall));
+  strom.atEnd(() => clearInterval(rueckfall));
 }
 
-/** streamFileToResponse statt pipe(): Das Aufräumen kann die Datei zwischen Prüfung
- * und Öffnen entfernen, und ein Lesestrom-Fehler ohne Zuhörer beendet den Prozess.
- * Aufgeräumt wird nur nach vollständiger Auslieferung. */
-function liefereUndRaeumeAuf(
-  d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'>,
+/** streamFileToResponse instead of pipe(): the cleanup can remove the file between check
+ * and open, and a read stream error without a listener ends the process.
+ * Cleanup only happens after complete delivery. */
+function deliverAndCleanOn(
+  d: Pick<Dienste, 'jobQueue' | 'catalog' | 'account'>,
   req: Request,
   res: Response,
   jobId: string,
@@ -73,14 +71,14 @@ function liefereUndRaeumeAuf(
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', 'attachment; filename="teileliste.pdf"');
   const aufraeumen = () => {
-    _pdfFs.unlink(pdfPath).catch(ohneFehlendeDatei('pdf:datei loeschen'));
-    d.katalog.pdf.loesche(jobId, uid).catch((e: unknown) => meldeFehler('pdf:auftrag-loeschen', e));
+    _pdfFs.unlink(pdfPath).catch(withoutMissingFile('pdf:datei loeschen'));
+    d.catalog.pdf.loesche(jobId, uid).catch((e: unknown) => reportError('pdf:auftrag-loeschen', e));
   };
   streamFileToResponse(res, pdfPath, aufraeumen, req);
 }
 
-export function bauePdfRouter(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'>) {
-  const { requireToken } = waechterFuer(d.konto);
+export function buildPdfRouter(d: Pick<Dienste, 'jobQueue' | 'catalog' | 'account'>) {
+  const { requireToken } = guardFor(d.account);
   const router = vertragsRouter('/api/v1');
 
   router.endpunkt('POST /api/v1/sets/partslist-pdf', requireToken, async req => {
@@ -88,9 +86,9 @@ export function bauePdfRouter(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'
     const { sets = [], parts = [] } = req.eingabe;
     if (!parts.length) fachfehler('ungueltig', 'keine_teile');
 
-    const r = await d.katalog.pdf.starten(uid, sets, parts);
+    const r = await d.catalog.pdf.starten(uid, sets, parts);
     if ('laufend' in r) {
-      fachfehler('zu_viele', 'pdf_auftrag_laeuft', laufendeBeugung(r.laufend, antwortSprache(req)));
+      fachfehler('zu_viele', 'pdf_auftrag_laeuft', runningInflection(r.laufend, responseLanguage(req)));
     }
 
     return { jobId: r.jobId };
@@ -98,7 +96,7 @@ export function bauePdfRouter(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'
 
   router.endpunkt('GET /api/v1/sets/partslist-pdf/status/:jobId', requireToken, async req => {
     const job = await pdfJobReadFor(d, req.pfad.jobId, req.apiUser.user_id);
-    if (!job) nichtGefunden('job_nicht_gefunden');
+    if (!job) notFound('job_nicht_gefunden');
     return {
       status: job.status,
       error: job.error || null,
@@ -107,7 +105,7 @@ export function bauePdfRouter(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'
     };
   });
 
-  // SSE statt Polling; der Strom sendet nur bei Änderung.
+  // SSE instead of polling; the stream only sends on change.
   router.endpunkt(
     'GET /api/v1/sets/partslist-pdf/stream/:jobId',
     requireToken,
@@ -115,18 +113,18 @@ export function bauePdfRouter(d: Pick<Dienste, 'auftraege' | 'katalog' | 'konto'
     async (req, res) => {
       const jobId = req.pfad.jobId;
       const initial = await pdfJobReadFor(d, jobId, req.apiUser.user_id);
-      if (!initial) nichtGefunden('job_nicht_gefunden');
-      const strom = oeffneStrom(d.konto, req, res, { nurAenderungen: true });
-      strom.sende(stromStand(initial));
+      if (!initial) notFound('job_nicht_gefunden');
+      const strom = openStream(d.account, req, res, { onlyChanges: true });
+      strom.sende(streamStatus(initial));
       if (fertig(initial.status)) strom.ende();
-      else folgeAuftrag(d, strom, jobId, req.apiUser.user_id);
+      else sequenceJob(d, strom, jobId, req.apiUser.user_id);
     },
   );
 
   router.endpunkt('GET /api/v1/sets/partslist-pdf/download/:jobId', requireToken, async (req, res) => {
     const jobId = req.pfad.jobId;
-    const pdfPath = await d.katalog.pdf.fertigeDatei(jobId, req.apiUser.user_id);
-    liefereUndRaeumeAuf(d, req, res, jobId, req.apiUser.user_id, pdfPath);
+    const pdfPath = await d.catalog.pdf.finishedFile(jobId, req.apiUser.user_id);
+    deliverAndCleanOn(d, req, res, jobId, req.apiUser.user_id, pdfPath);
   });
   return router;
 }

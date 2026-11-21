@@ -1,0 +1,90 @@
+package ch.brickinventoryapp.offline
+
+import ch.brickinventoryapp.model.domain.Geld
+import ch.brickinventoryapp.model.domain.Stueckaenderung
+import ch.brickinventoryapp.model.domain.Figurenerfassung
+import ch.brickinventoryapp.model.domain.Teilerfassung
+import ch.brickinventoryapp.model.domain.Merkwunsch
+import ch.brickinventoryapp.model.domain.Erfassungswunsch
+import ch.brickinventoryapp.model.domain.Zustand
+import ch.brickinventoryapp.model.json.BrickJson
+import kotlinx.serialization.descriptors.elementNames
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Test
+
+/**
+ * The outbox lies in its own form (version 1), not as a server request. The
+ * examples below were written by the app before the separation (edit including AddSetRequest &
+ * co. as JSON); they lie like this on devices and must stay readable.
+ *
+ * Counter-checks (measured with kotlinc against core-model and core-offline):
+ *   A  gegenproben/ausgangsform-feldname-geaendert.patch (SetRequestF1 `set_number` → `setNumber`) → red “reads and writes every
+ *      frozen row” (set_erfassen) and “an item of an older app …”
+ *   B  in AddSetRequest (setNumber = server model) `@SerialName("set_number")` → `"set_nr"` → stays green:
+ *      a change to the network model no longer reaches the disk
+ *   C  in Ausgangsform.targetFrom the lookup in `anfrage` struck → red “even an unreadable
+ *      item names its number”
+ *   D  an example struck from VERSION_1 → red “every kind of version 1 has an example”
+ */
+class InitialFormTest {
+
+    private val json = BrickJson
+
+    private val VERSION_1: List<Pair<String, Editing>> = listOf(
+        """{"type":"set_menge","setNumber":"10001-1","schritt":-2}""" to Editing.SetMenge("10001-1", -2),
+        """{"type":"set_erfassen","anfrage":{"set_number":"10001-1","quantity":2,"purchase_price":49.9,"condition":"U","owner_user_id":7,"storage":"Regal A"}}""" to
+            Editing.SetErfassen(Erfassungswunsch(setNumber = "10001-1", menge = 2, kaufpreis = Geld.aus(49.9), zustand = Zustand.GEBRAUCHT, besitzer = 7, lagerort = "Regal A")),
+        """{"type":"merkposten_anlegen","anfrage":{"set_number":"75192-1","condition":"N","owner_user_id":3}}""" to
+            Editing.MerkpostenAnlegen(Merkwunsch(setNumber = "75192-1", zustand = Zustand.NEU, besitzer = 3)),
+        """{"type":"merkposten_loeschen","setNumber":"75192-1","zustand":"U","besitzer":null}""" to
+            Editing.MerkpostenLoeschen("75192-1", Zustand.GEBRAUCHT, null),
+        """{"type":"teil_erfassen","anfrage":{"part_number":"3001","color_id":5,"color_name":"Red","color_hex":"C91A09","quantity":4,"unit_price":0.12,"condition":"N","owner_user_id":null,"storage":"Kiste 3"}}""" to
+            Editing.TeilErfassen(Teilerfassung(nummer = "3001", farbId = 5, farbname = "Red", farbHex = "C91A09", menge = 4, stueckpreis = Geld.aus(0.12), zustand = Zustand.NEU, besitzer = null, lagerort = "Kiste 3")),
+        """{"type":"teil_aendern","partNumber":"3001","colorId":5,"anfrage":{"quantity":6,"unit_price":0.15,"bl_fig_number":null,"condition":"U","quantity_delta":2},"besitzer":7}""" to
+            Editing.TeilAendern("3001", 5, Stueckaenderung(menge = 6, schritt = 2, stueckpreis = Geld.aus(0.15), zustand = Zustand.GEBRAUCHT), 7),
+        """{"type":"teil_aendern","partNumber":"3001","colorId":5,"anfrage":{"quantity":6,"unit_price":null,"bl_fig_number":null,"condition":null},"besitzer":null}""" to
+            Editing.TeilAendern("3001", 5, Stueckaenderung(menge = 6), null),
+        """{"type":"teil_loeschen","partNumber":"3001","colorId":5,"besitzer":7}""" to Editing.TeilLoeschen("3001", 5, 7),
+        """{"type":"figur_erfassen","anfrage":{"fig_number":"fig-000001","bl_fig_number":"sw0001","quantity":1,"unit_price":3.5,"condition":"N","owner_user_id":7,"storage":null}}""" to
+            Editing.FigurErfassen(Figurenerfassung(nummer = "fig-000001", blNumber = "sw0001", menge = 1, stueckpreis = Geld.aus(3.5), zustand = Zustand.NEU, besitzer = 7, lagerort = null)),
+        """{"type":"figur_aendern","figNumber":"fig-000001","anfrage":{"quantity":2,"unit_price":null,"bl_fig_number":"sw0001","condition":null},"besitzer":null}""" to
+            Editing.FigurAendern("fig-000001", Stueckaenderung(menge = 2, blNumber = "sw0001"), null),
+        """{"type":"figur_loeschen","figNumber":"fig-000001","besitzer":7}""" to Editing.FigurLoeschen("fig-000001", 7),
+    )
+
+    @Test
+    fun `reads and writes every frozen row of version 1 unchanged`() {
+        for ((zeile, bearbeitung) in VERSION_1) {
+            assertEquals(zeile, bearbeitung, InitialForm.decode(json, zeile))
+            assertEquals(zeile, InitialForm.encode(json, bearbeitung))
+        }
+    }
+
+    @Test
+    fun `every kind of version 1 has an example`() {
+        val kinds = ItemF1.serializer().descriptor.getElementDescriptor(1).elementNames.toSet()
+        val belegt = VERSION_1.map { json.parseToJsonElement(it.first).jsonObject["type"]!!.jsonPrimitive.content }.toSet()
+        assertEquals(kinds, belegt)
+    }
+
+    @Test
+    fun `an item of an older app without fields added later stays readable`() {
+        assertEquals(Editing.SetErfassen(Erfassungswunsch(setNumber = "10001-1")),
+            InitialForm.decode(json, """{"type":"set_erfassen","anfrage":{"set_number":"10001-1"}}"""))
+        assertEquals(Editing.TeilErfassen(Teilerfassung(nummer = "3001", menge = 2)),
+            InitialForm.decode(json, """{"type":"teil_erfassen","anfrage":{"part_number":"3001","quantity":2}}"""))
+        assertEquals(Editing.TeilLoeschen("3001", 5, null),
+            InitialForm.decode(json, """{"type":"teil_loeschen","partNumber":"3001","colorId":5}"""))
+    }
+
+    @Test
+    fun `even an unreadable item names its number where it is still present`() {
+        assertEquals("10001-1", InitialForm.targetFrom(json, """{"type":"gibt_es_nicht","setNumber":"10001-1"}"""))
+        assertEquals("3001", InitialForm.targetFrom(json, """{"type":"neu","anfrage":{"part_number":"3001"}}"""))
+        assertNull(InitialForm.targetFrom(json, """{"type":"neu"}"""))
+        assertNull(InitialForm.targetFrom(json, "kein JSON"))
+    }
+}

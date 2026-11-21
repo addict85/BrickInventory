@@ -1,11 +1,11 @@
 /**
- * Preisverlauf im Haushalt — Set, manuelles Teil UND manuelle Minifigur.
+ * Price history in the household — set, manual part AND manual minifigure.
  *
- * Gegenprobe (durchgeführt): blickfeldIds() in den beiden Minifiguren-Routen
- * zurück auf `uid` → beide Minifiguren-Teilschritte werden rot, Set und Teil
- * bleiben grün.
+ * Counter-check (carried out): scopeIds() in the two minifigure routes
+ * back to `uid` → both minifigure substeps turn red, set and part
+ * stay green.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL (Migrationen für account_links).
+ * Prerequisite: test DB via TEST_DATABASE_URL (migrations for account_links).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,17 +14,17 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { haeltFigur, haeltSet, haeltTeil } = require('./helpers/bestand');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const { holdsMinifig, holdsSet, holdsPart } = require('./helpers/inventory');
+const db = testData();
 const express = require(path.join(ROOT, 'node_modules', 'express'));
 
-test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+test("price history: the main account sees the sub-account's acquisitions", { concurrency: 1 }, async t => {
+  if (!(await dataOrSkip(t, _req))) return;
 
-  const HAUPT = `ph-haupt-${process.pid}`,
+  const MAIN = `ph-haupt-${process.pid}`,
     SUB = `ph-sub-${process.pid}`;
   const SN = `98001-${process.pid}`;
   const PN = `ph-part-${process.pid}`;
@@ -43,17 +43,17 @@ test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos', { con
     await db.run(`DELETE FROM price_cache WHERE set_number=$1`, [SN]).catch(() => {});
   };
 
-  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]);
-  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [HAUPT, SUB]);
-  const hauptId = (await db.get(`SELECT id FROM users WHERE username=$1`, [HAUPT])).id;
+  await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]);
+  await db.run(`INSERT INTO users (username,password_hash) VALUES ($1,'x'),($2,'x')`, [MAIN, SUB]);
+  const mainId = (await db.get(`SELECT id FROM users WHERE username=$1`, [MAIN])).id;
   const subId = (await db.get(`SELECT id FROM users WHERE username=$1`, [SUB])).id;
   await db.run(`INSERT INTO account_links (main_user_id,sub_user_id) VALUES ($1,$2) ON CONFLICT DO NOTHING`, [
-    hauptId,
+    mainId,
     subId,
   ]);
-  // Beide Konten auf dieselbe Währung — sonst liest der Verlauf einen anderen
-  // Cache-Schlüssel als der Seed schreibt.
-  for (const id of [hauptId, subId])
+  // Both accounts on the same currency — otherwise the history reads a different
+  // cache key than the seed writes.
+  for (const id of [mainId, subId])
     await db.run(
       `INSERT INTO user_settings (user_id,key,value) VALUES ($1,'currency',$2)
                   ON CONFLICT (user_id,key) DO UPDATE SET value=$2`,
@@ -62,8 +62,8 @@ test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos', { con
 
   await aufraeumen();
 
-  // ── Bestand ANLEGEN, und zwar durchgehend beim UNTERKONTO ────────────────
-  await haeltSet(db, subId, SN, 0); // Menge 0: die Erfassung dahinter traegt sie
+  // ── CREATE stock, and that consistently with the SUB-ACCOUNT ────────────────
+  await holdsSet(db, subId, SN, 0); // quantity 0: the acquisition behind it carries it
   await db.run(
     `INSERT INTO set_acquisitions (user_id,set_number,purchase_price,condition,quantity)
                 VALUES ($1,$2,10,'N',1)`,
@@ -75,7 +75,7 @@ test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos', { con
     [SN, CUR],
   );
 
-  await haeltTeil(db, subId, PN, { menge: 0, colorId: 4 }); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsPart(db, subId, PN, { menge: 0, colorId: 4 }); // quantity 0: the acquisition behind it carries it
   await db.run(
     `INSERT INTO part_acquisitions (user_id,part_number,color_id,unit_price,condition,quantity)
                 VALUES ($1,$2,4,3,'N',1)`,
@@ -87,7 +87,7 @@ test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos', { con
     [PN, CUR],
   );
 
-  await haeltFigur(db, subId, FN, { menge: 0 }); // Menge 0: die Erfassung dahinter traegt sie
+  await holdsMinifig(db, subId, FN, { menge: 0 }); // quantity 0: the acquisition behind it carries it
   await db.run(
     `INSERT INTO minifig_acquisitions (user_id,fig_number,unit_price,condition,quantity)
                 VALUES ($1,$2,4,'N',1)`,
@@ -99,7 +99,7 @@ test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos', { con
     [FN, CUR],
   );
 
-  const appFuer = userId => {
+  const appFor = userId => {
     const app = express();
     app.use(express.json());
     app.use((req, _res, next) => {
@@ -107,24 +107,24 @@ test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos', { con
       req.apiUser = { user_id: userId, is_admin: 0 };
       next();
     });
-    app.use('/api/v1', require('./helpers/sources').routerAus(_req, 'routes/api_v1/index.js'));
+    app.use('/api/v1', require('./helpers/sources').routerFrom(_req, 'routes/api_v1/index.js'));
     return app;
   };
-  const srv = appFuer(hauptId).listen(0);
+  const srv = appFor(mainId).listen(0);
   const base = `http://localhost:${srv.address().port}`;
 
-  // Seit Etappe 5 gibt es je Art nur noch EINE Adresse; beide Clients rufen
-  // sie auf (requireToken nimmt Sitzung oder Token). Geprüft wird hier die
-  // Regel, nicht der Ausweis — die Gleichwertigkeit der Ausweise steht in
+  // Since stage 5 there is only ONE address per kind; both clients call
+  // it (requireToken takes session or token). What is checked here is the
+  // rule, not the credential — the equivalence of the credentials stands in
   // api-parity.
-  const FAELLE = [
+  const CASES = [
     ['Set', `/api/v1/sets/${SN}/price-history`],
     ['Teil', `/api/v1/parts/${PN}/4/price-history`],
     ['Minifigur', `/api/v1/minifigs/${FN}/price-history`],
   ];
 
   try {
-    for (const [art, pfad] of FAELLE) {
+    for (const [art, pfad] of CASES) {
       const r = await fetch(base + pfad);
       assert.equal(r.status, 200, `${art}: ${pfad} -> ${r.status}`);
       const b = await r.json();
@@ -137,11 +137,11 @@ test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos', { con
       assert.ok(n.pnl_pct != null, `${art}: ohne Kaufpreis gibt es auch keine Prozentangabe`);
     }
 
-    // Gegenrichtung: Mit accounts=own schaut das Hauptkonto ausdrücklich nur
-    // auf SICH — dann darf die Zeile NICHT erscheinen. Ohne diese Prüfung wäre
-    // der Test auch grün, wenn jemand das Blickfeld durch „alle Konten der
-    // Installation\" ersetzt.
-    for (const [art, pfad] of FAELLE) {
+    // Opposite direction: with accounts=own the main account explicitly looks only
+    // at ITSELF — then the row must NOT appear. Without this check the
+    // test would also be green if somebody replaced the scope by „all accounts of the
+    // installation\".
+    for (const [art, pfad] of CASES) {
       const r = await fetch(`${base}${pfad}?accounts=own`);
       const b = await r.json();
       assert.equal(
@@ -152,9 +152,9 @@ test('Preisverlauf: das Hauptkonto sieht die Erfassungen des Unterkontos', { con
     }
   } finally {
     await aufraeumen();
-    await db.run(`DELETE FROM account_links WHERE main_user_id=$1`, [hauptId]).catch(() => {});
-    await db.run(`DELETE FROM user_settings WHERE user_id IN ($1,$2)`, [hauptId, subId]).catch(() => {});
-    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [HAUPT, SUB]).catch(() => {});
+    await db.run(`DELETE FROM account_links WHERE main_user_id=$1`, [mainId]).catch(() => {});
+    await db.run(`DELETE FROM user_settings WHERE user_id IN ($1,$2)`, [mainId, subId]).catch(() => {});
+    await db.run(`DELETE FROM users WHERE username IN ($1,$2)`, [MAIN, SUB]).catch(() => {});
     await new Promise(r => srv.close(r));
     await db.pool.end().catch(() => {});
   }

@@ -1,0 +1,56 @@
+/**
+ * is_admin of the access is a boolean on every path: token with scope
+ * `voll` true, with `app` false; requireToken passes it on to req.apiUser like that.
+ *
+ * Counter-checks (measured on 11.11.2026):
+ *   A  in pruefeToken() back to `… ? 1 : 0` → red: both parts
+ *   B  in requireToken `is_admin: user.is_admin ? 1 : 0` → red: “requireToken
+ *      passes a boolean on”
+ */
+const test = require('node:test');
+const assert = require('node:assert/strict');
+
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
+
+const { buildAndRequire, testData } = require('./helpers/sources');
+const _req = buildAndRequire();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
+
+test('Verwalterrecht als boolean', { concurrency: 1 }, async t => {
+  if (!(await dataOrSkip(t, _req))) return;
+  const A = _req('src/account/deviceToken.js');
+  const name = `vb_${process.pid}`;
+  const { id } = await db.get(
+    `INSERT INTO users (username, password_hash, is_admin) VALUES ($1, 'x', true) RETURNING id`,
+    [name],
+  );
+  t.after(async () => {
+    await db.run('DELETE FROM users WHERE id = $1', [id]);
+    await db.pool.end().catch(() => {});
+  });
+  const voll = await A.createToken(id, 'voll', false, null, { scope: 'voll' });
+  const app = await A.createToken(id, 'app', false, null, { scope: 'app' });
+
+  await t.test('a token with scope full carries true, with app false', async () => {
+    assert.equal((await A.pruefeToken(voll)).nutzer?.is_admin, true);
+    assert.equal((await A.pruefeToken(app)).nutzer?.is_admin, false);
+  });
+
+  await t.test('requireToken passes a boolean on', async () => {
+    const { requireToken } = _req('routes/api_v1/middleware.js').guardFor(
+      require('./helpers/sources').testServices().account,
+    );
+    for (const [token, soll] of [
+      [voll, true],
+      [app, false],
+    ]) {
+      const req = { method: 'GET', path: '/x', headers: { authorization: `Bearer ${token}` }, ip: '127.0.0.1' };
+      await new Promise((weiter, fehler) => {
+        const res = { status: () => res, json: r => fehler(new Error(JSON.stringify(r))), setHeader: () => {} };
+        requireToken(req, res, weiter);
+      });
+      assert.equal(req.apiUser.is_admin, soll);
+    }
+  });
+});

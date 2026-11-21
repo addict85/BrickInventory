@@ -1,32 +1,32 @@
 /**
- * Die Datenbankverbindung steht an EINER Stelle (src/infra/konfig.ts). Der
- * CSV-Worker hatte eigene Standardwerte (brickinv statt brickinventory) und
- * verband sich ausserhalb von Docker mit einer anderen Datenbank.
+ * The database connection stands in ONE place (src/infra/config.ts). The
+ * CSV worker had its own defaults (brickinv instead of brickinventory) and
+ * connected outside Docker to a different database.
  *
- * Gegenproben (am 27.10. gemessen):
- *   A  in jobs/csvImportWorker.ts wieder `process.env.PGUSER || 'brickinv'`
- *      → rot: „niemand sonst liest die Verbindungsvariablen"
- *   B  in datenbankVerbindung die Zeile für DATABASE_URL entfernt →
- *      rot: „DATABASE_URL geht vor"
- *   C  in standardPasswortInBenutzung den Zweig für connectionString auf
- *      `return false` gesetzt → rot: „das Beispielpasswort wird erkannt"
+ * Counter-checks (measured on 27.10.):
+ *   A  in jobs/csvImportWorker.ts again `process.env.PGUSER || 'brickinv'`
+ *      → red: “nobody else reads the connection variables"
+ *   B  in databaseConnection the line for DATABASE_URL removed →
+ *      red: “DATABASE_URL takes precedence"
+ *   C  in standardPasswordInUse the branch for connectionString set to
+ *      `return false` → red: “the example password is recognized"
  *
- * Seit dem 30.10. liest NUR src/infra/konfig.ts die Umgebung; ein ungültiger Wert
- * beendet den Start mit einer Meldung je Variable. Gegenproben (D–F in einem
- * Lauf gemessen):
- *   D  in src/http/dateiEmpfang.ts wieder `Number(process.env.UPLOAD_KONTINGENT_MB)`
- *      → rot: „niemand ausser der Konfiguration liest process.env“
- *   E  in ganzzahl() die Grenzprüfung `n < min || n > max` entfernt → rot:
- *      „ungültige Werte: alle auf einmal, mit Namen“ (PORT=0 ging durch)
- *   F  den Import von startup/konfigPruefen aus server.ts entfernt → rot:
- *      „der Server startet mit falschem Wert nicht“ (Stacktrace aus
- *      src/konto/sitzungsFrist statt der Meldung)
- *   G  (30.10.) in ladeKonfig `veraltet` immer leer → rot: „ungültige Werte:
- *      alle auf einmal, mit Namen“ (WEB_WORKERS wurde nicht mehr genannt)
- *   H  (11.11.2026) in attestationWurzeln() die Prüfung auf entwicklungsUmgebung
- *      gestrichen → rot: „eigene Attestierungswurzeln nur in Entwicklung und Test“
- *   I  (15.11.2026) in altschluesselBis() den Vergleich mit dem Stichtag gestrichen
- *      (jedes gültige Datum gilt) → rot im selben Test (2099-12-31 ging durch)
+ * Since 30.10. ONLY src/infra/config.ts reads the environment; an invalid value
+ * ends the start with one message per variable. Counter-checks (D–F measured in one
+ * run):
+ *   D  in src/http/fileUpload.ts again `Number(process.env.UPLOAD_KONTINGENT_MB)`
+ *      → red: “nobody except the configuration reads process.env”
+ *   E  in ganzzahl() the bounds check `n < min || n > max` removed → red:
+ *      “invalid values: all at once, with names” (PORT=0 got through)
+ *   F  the import of startup/checkConfig removed from server.ts → red:
+ *      “the server does not start with a wrong value” (stack trace from
+ *      src/account/sessionDeadline instead of the message)
+ *   G  (30.10.) in ladeKonfig `veraltet` always empty → red: “invalid values:
+ *      all at once, with names” (WEB_WORKERS was no longer named)
+ *   H  (11.11.2026) in attestationWurzeln() the check for developmentEnvironment
+ *      deleted → red: “own attestation roots only in development and test”
+ *   I  (15.11.2026) in legacyKeyUntil() the comparison with the cutoff date deleted
+ *      (every valid date applies) → red in the same test (2099-12-31 got through)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -35,13 +35,12 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 const _req = require('./helpers/sources').buildAndRequire();
-const { datenbankVerbindung, standardPasswortInBenutzung, ladeKonfig, KonfigFehler, VARIABLEN } =
-  _req('src/infra/konfig.js');
+const { databaseConnection, standardPasswordInUse, ladeKonfig, KonfigFehler, VARIABLES } = _req('src/infra/config.js');
 const { ohneKommentare } = require('./helpers/sources');
 const { spawnSync } = require('node:child_process');
 
-test('ohne Angaben dieselben Standardwerte wie compose.yaml', () => {
-  assert.deepEqual(datenbankVerbindung({}), {
+test('without values the same defaults as compose.yaml', () => {
+  assert.deepEqual(databaseConnection({}), {
     host: 'postgres',
     port: 5432,
     user: 'brickinventory',
@@ -50,25 +49,22 @@ test('ohne Angaben dieselben Standardwerte wie compose.yaml', () => {
   });
 });
 
-test('das Beispielpasswort wird erkannt — einzeln und in DATABASE_URL', () => {
-  assert.equal(standardPasswortInBenutzung({}), true);
-  assert.equal(standardPasswortInBenutzung({ PGPASSWORD: 'eigenes' }), false);
-  assert.equal(
-    standardPasswortInBenutzung({ DATABASE_URL: 'postgres://brickinventory:brickinventory_secret@db/x' }),
-    true,
-  );
-  assert.equal(standardPasswortInBenutzung({ DATABASE_URL: 'postgres://brickinventory:anderes@db/x' }), false);
-  assert.equal(standardPasswortInBenutzung({ DATABASE_URL: 'kaputt' }), false);
+test('the example password is recognized — individually and in DATABASE_URL', () => {
+  assert.equal(standardPasswordInUse({}), true);
+  assert.equal(standardPasswordInUse({ PGPASSWORD: 'eigenes' }), false);
+  assert.equal(standardPasswordInUse({ DATABASE_URL: 'postgres://brickinventory:brickinventory_secret@db/x' }), true);
+  assert.equal(standardPasswordInUse({ DATABASE_URL: 'postgres://brickinventory:anderes@db/x' }), false);
+  assert.equal(standardPasswordInUse({ DATABASE_URL: 'kaputt' }), false);
 });
 
-test('DATABASE_URL geht vor', () => {
-  assert.deepEqual(datenbankVerbindung({ DATABASE_URL: 'postgres://a:b@c/d', PGUSER: 'x' }), {
+test('DATABASE_URL takes precedence', () => {
+  assert.deepEqual(databaseConnection({ DATABASE_URL: 'postgres://a:b@c/d', PGUSER: 'x' }), {
     connectionString: 'postgres://a:b@c/d',
   });
-  assert.equal(datenbankVerbindung({ PGPORT: '6543', PGUSER: 'u' }).port, 6543);
+  assert.equal(databaseConnection({ PGPORT: '6543', PGUSER: 'u' }).port, 6543);
 });
 
-test('niemand sonst liest die Verbindungsvariablen', () => {
+test('nobody else reads the connection variables', () => {
   const funde = [];
   const durch = dir => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -79,7 +75,7 @@ test('niemand sonst liest die Verbindungsvariablen', () => {
       }
       if (!e.name.endsWith('.ts')) continue;
       const rel = path.relative(ROOT, p);
-      if (rel === path.join('src/infra/konfig.ts')) continue;
+      if (rel === path.join('src/infra/config.ts')) continue;
       const s = fs.readFileSync(p, 'utf8');
       for (const m of s.matchAll(/process\.env\.(PGHOST|PGPORT|PGUSER|PGPASSWORD|PGDATABASE|DATABASE_URL)\b/g))
         funde.push(`${rel}: ${m[1]}`);
@@ -89,7 +85,7 @@ test('niemand sonst liest die Verbindungsvariablen', () => {
   assert.deepEqual(funde, []);
 });
 
-test('niemand ausser der Konfiguration liest process.env', () => {
+test('nobody except the configuration reads process.env', () => {
   const funde = [];
   const durch = dir => {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -100,7 +96,7 @@ test('niemand ausser der Konfiguration liest process.env', () => {
       }
       if (!e.name.endsWith('.ts')) continue;
       const rel = path.relative(ROOT, p);
-      if (rel === path.join('src/infra/konfig.ts')) continue;
+      if (rel === path.join('src/infra/config.ts')) continue;
       const zeilen = ohneKommentare(fs.readFileSync(p, 'utf8')).split('\n');
       zeilen.forEach((z, i) => {
         if (/process\.env\b/.test(z.replace(/\/\/.*$/, ''))) funde.push(`${rel}:${i + 1}`);
@@ -111,7 +107,7 @@ test('niemand ausser der Konfiguration liest process.env', () => {
   assert.deepEqual(funde, []);
 });
 
-test('ungültige Werte: alle auf einmal, mit Namen', () => {
+test('invalid values: all at once, with names', () => {
   assert.throws(
     () =>
       ladeKonfig({ PORT: '0', SESSION_IDLE_MINUTES: 'viel', COOKIE_SECURE: 'ja', APP_BASE_URL: 'lego.example.org' }),
@@ -142,7 +138,7 @@ test('ungültige Werte: alle auf einmal, mit Namen', () => {
   assert.equal(ladeKonfig({}).sitzungLeerlaufMin, 240, 'ohne Angabe die Vorgabe');
 });
 
-test('eigene Attestierungswurzeln nur in Entwicklung und Test; der Stichtag ist ein Datum', () => {
+test('own attestation roots only in development and test; the cutoff date is a date', () => {
   assert.throws(() => ladeKonfig({ ATTESTATION_WURZELN: 'PEM' }), /ATTESTATION_WURZELN gilt nur mit NODE_ENV/);
   assert.throws(() => ladeKonfig({ NODE_ENV: 'production', ATTESTATION_WURZELN: 'PEM' }), KonfigFehler);
   assert.equal(ladeKonfig({ NODE_ENV: 'test', ATTESTATION_WURZELN: 'PEM' }).attestationWurzeln, 'PEM');
@@ -155,7 +151,7 @@ test('eigene Attestierungswurzeln nur in Entwicklung und Test; der Stichtag ist 
     assert.throws(() => ladeKonfig({ GERAETESCHLUESSEL_ALT_BIS: spaeter }), /liegt nach 2027-02-01/, spaeter);
 });
 
-test('der Server startet mit falschem Wert nicht', () => {
+test('the server does not start with a wrong value', () => {
   const r = spawnSync(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     env: {
       PATH: process.env.PATH,
@@ -170,8 +166,8 @@ test('der Server startet mit falschem Wert nicht', () => {
   assert.match(r.stderr, /Ungültige Konfiguration:\n {2}- PORT="achtzig"[^\n]*\n {2}- SESSION_IDLE_MINUTES="-5"/);
 });
 
-test('.env.example nennt jede Variable', () => {
+test('.env.example names every variable', () => {
   const beispiel = fs.readFileSync(path.join(ROOT, '.env.example'), 'utf8');
-  const fehlt = VARIABLEN.filter(v => !new RegExp(`^#? ?${v}=`, 'm').test(beispiel));
+  const fehlt = VARIABLES.filter(v => !new RegExp(`^#? ?${v}=`, 'm').test(beispiel));
   assert.deepEqual(fehlt, []);
 });

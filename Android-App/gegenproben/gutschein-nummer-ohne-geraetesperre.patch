@@ -1,17 +1,17 @@
 Gegenprobe: Die Gutscheinnummer wird ohne Gerätesperre kopiert
 Modul: app
 Test: ch.brickinventoryapp.app.AblaufTest
-Rot: ohne Geraetesperre wird auch die Nummer nicht kopiert
+Rot: without device lock the number is not copied either
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/GutscheineCard.kt
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/GutscheineCard.kt
 @@ -212,7 +212,7 @@ fun GutscheineCard(
-                 onBearbeiten = { geschuetzt { onBearbeiten(g.id) } },
-                 onLoeschen = { geschuetzt { onLoeschen(g.id) } },
-                 onPdfOeffnen = { geschuetzt { onPdfOeffnen(g.id) } },
--                onKopieren = { istNummer -> geschuetzt { onKopieren(g.id, istNummer) } },
-+                onKopieren = { istNummer -> if (istNummer) onKopieren(g.id, true) else geschuetzt { onKopieren(g.id, false) } },
+                 editOn = { geschuetzt { editOn(g.id) } },
+                 deleteOn = { geschuetzt { deleteOn(g.id) } },
+                 openOnPdf = { geschuetzt { openOnPdf(g.id) } },
+-                onKopieren = { isNumber -> geschuetzt { onKopieren(g.id, isNumber) } },
++                onKopieren = { isNumber -> if (isNumber) onKopieren(g.id, true) else geschuetzt { onKopieren(g.id, false) } },
                  klartext = zustand.klartext[g.id],
-                 onGuthaben = { onGuthaben(g.id) },
-                 guthabenLaeuft = zustand.guthabenLaeuft == g.id,
+                 onBalance = { onBalance(g.id) },
+                 balanceRunning = zustand.balanceRunning == g.id,

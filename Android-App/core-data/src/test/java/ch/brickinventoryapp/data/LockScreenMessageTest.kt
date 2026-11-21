@@ -1,0 +1,53 @@
+package ch.brickinventoryapp.data
+
+import android.app.Notification
+import android.content.Context
+import androidx.core.app.NotificationCompat
+import androidx.test.core.app.ApplicationProvider
+import ch.brickinventoryapp.data.local.EntwertungsWorker
+import ch.brickinventoryapp.resources.R
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+
+/**
+ * Notifications name server and progress only when unlocked; on the lock screen there is
+ * a public version with the title alone.
+ *
+ * Counter-checks (Robolectric, only measurable in CI; job `gegenproben`):
+ *   abmeldung-meldung-oeffentlich  onlyUnlocked() struck from EntwertungsWorker.meldung()
+ *                                  → red “the failed sign-out names the server …”
+ *   sperrbildschirm-mit-text       the public version takes over the text → red “the public version …”
+ */
+@RunWith(RobolectricTestRunner::class)
+class LockScreenMessageTest {
+
+    private val ctx = ApplicationProvider.getApplicationContext<Context>()
+
+    private fun sichtbar(n: Notification?) = listOf(Notification.EXTRA_TITLE, Notification.EXTRA_TEXT, Notification.EXTRA_BIG_TEXT)
+        .joinToString(" ") { n?.extras?.getCharSequence(it)?.toString().orEmpty() }
+
+    @Test
+    fun `the failed sign-out names the server only when unlocked`() {
+        val n = EntwertungsWorker.meldung(ctx, "brick.example:8443")
+        assertEquals(Notification.VISIBILITY_PRIVATE, n.visibility)
+        assertNotNull("Ohne Ersatzfassung zeigt Android je nach Einstellung alles", n.publicVersion)
+        assertFalse(sichtbar(n.publicVersion), "brick.example" in sichtbar(n.publicVersion))
+        assertEquals(ctx.getString(R.string.abmeldung_gescheitert_titel),
+            n.publicVersion.extras.getCharSequence(Notification.EXTRA_TITLE).toString())
+        assertTrue("Entsperrt steht der Server in der Meldung", "brick.example" in sichtbar(n))
+    }
+
+    @Test
+    fun `the public version carries only the title`() {
+        val n = NotificationCompat.Builder(ctx, "probe").setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setContentTitle("Import").setContentText("Set 75192-1 von brick.example")
+            .onlyUnlocked(ctx, "probe", "Import", android.R.drawable.ic_dialog_info).build()
+        assertEquals(Notification.VISIBILITY_PRIVATE, n.visibility)
+        assertEquals("Import", sichtbar(n.publicVersion).trim())
+    }
+}

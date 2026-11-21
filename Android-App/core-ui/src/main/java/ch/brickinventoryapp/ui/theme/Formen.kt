@@ -1,6 +1,6 @@
 package ch.brickinventoryapp.ui.theme
 
-import ch.brickinventoryapp.ui.components.fokusRahmen
+import ch.brickinventoryapp.ui.components.focusFrame
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
@@ -18,55 +18,55 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
 /**
- * Formen und Erhebungen an einer Stelle, wie die Farben über `colorScheme`: „Mach
- * die Karten runder“ soll eine Zeile sein, nicht vierzehn Fundstellen. Nicht an
- * `MaterialTheme(shapes = …)` gehängt, weil das auch alle Bauteile umformte, die
- * heute die Material3-Vorgabe benutzen.
+ * Shapes and elevations in one place, like the colors via `colorScheme`: „make
+ * the cards rounder“ should be one line, not fourteen spots. Not attached to
+ * `MaterialTheme(shapes = …)`, because that would also reshape every component that
+ * currently uses the Material3 default.
  */
 object Formen {
     /**
-     * Der Eckenradius der Leiste, geteilt von [leiste] und [kachelBildEcken]: Das
-     * Kachelbild sitzt oben bündig in der Karte; verschiedene Radien liessen es
-     * überstehen oder einen Spalt.
+     * The corner radius of the bar, shared by [leiste] and [kachelBildEcken]: the
+     * tile image sits flush at the top in the card; different radii would make it
+     * stick out or leave a gap.
      */
-    private val leisteRadius = 14.dp
+    private val barRadius = 14.dp
 
-    /** Karten und Abschnitte. */
+    /** Cards and sections. */
     val karte = RoundedCornerShape(16.dp)
-    /** Chips (Filter, Auswahl) — die häufigste Form im Baum. */
+    /** Chips (filter, selection) — the most common shape in the tree. */
     val chip = RoundedCornerShape(20.dp)
     /**
-     * Eingabefelder. Knöpfe haben keine eigene Form: Sie tragen alle die Pille der
-     * Material-Vorgabe, damit Einrichten, Anmelden und Dialoge gleich aussehen
-     * (DesignTokensTest verbietet `shape =` an Knöpfen).
+     * Input fields. Buttons have no shape of their own: they all carry the pill of the
+     * Material default, so setup, sign-in and dialogs look alike
+     * (DesignTokensTest forbids `shape =` on buttons).
      */
     val feld = RoundedCornerShape(12.dp)
-    /** Kachelbilder und kleinere Flächen. */
+    /** Tile images and smaller surfaces. */
     val kachel = RoundedCornerShape(10.dp)
-    /** Hinweisleisten und eingebettete Flächen. */
-    val leiste = RoundedCornerShape(leisteRadius)
-    /** Etiketten und kleine Marken. */
+    /** Hint bars and embedded surfaces. */
+    val leiste = RoundedCornerShape(barRadius)
+    /** Labels and small badges. */
     val etikett = RoundedCornerShape(8.dp)
-    /** Sehr kleine Marken (Zustandspunkte, Zähler). */
+    /** Very small badges (condition dots, counters). */
     val marke = RoundedCornerShape(6.dp)
-    /** Schwebende Aktionsknöpfe (FAB) in Galerie, Teile, Minifiguren. */
+    /** Floating action buttons (FAB) in gallery, parts, minifigs. */
     val fab = RoundedCornerShape(18.dp)
-    /** Trennstriche und Fortschrittsbalken — fast eckig. */
+    /** Dividers and progress bars — nearly square. */
     val strich = RoundedCornerShape(2.dp)
 
-    /** Die oberen Ecken eines Kachelbildes — passt zwingend zu [leiste]. */
-    val kachelBildEcken = RoundedCornerShape(topStart = leisteRadius, topEnd = leisteRadius)
+    /** The top corners of a tile image — must match [leiste]. */
+    val kachelBildEcken = RoundedCornerShape(topStart = barRadius, topEnd = barRadius)
 
     /**
-     * Masse einer Bestandskachel (Teile- und Minifiguren-Reiter): Beide zeigen
-     * dieselbe Rasterbreite, und nur hier stehen die Zahlen, damit keine still
-     * abweicht.
+     * Dimensions of an inventory tile (parts and minifig tabs): both show
+     * the same grid width, and only here do the numbers live, so none
+     * silently drifts.
      */
     val kachelBreite = 112.dp
     /**
-     * Höhe der Bestandskachel, nachgerechnet für den schlimmsten Fall bei labelSmall (Name
-     * zweizeilig, Farbe, Preis, Notiz, Zustand, Besitzer, Bild): 203 dp. 208 lässt etwas Luft;
-     * höher passten weniger Reihen auf den Bildschirm.
+     * Height of the inventory tile, computed for the worst case with labelSmall (name
+     * on two lines, color, price, note, condition, owner, image): 203 dp. 208 leaves a bit of room;
+     * taller, fewer rows would fit on the screen.
      */
     val kachelHoehe  = 208.dp
 
@@ -77,42 +77,42 @@ object Formen {
 }
 
 /**
- * Die Kartenhülle — Form, Erhebung, Flächenfarbe, volle Breite. Der Innenabstand
- * bleibt beim Aufrufer, weil er sich an den Fundstellen unterschied.
+ * The card wrapper — shape, elevation, surface color, full width. The inner padding
+ * stays with the caller, because it differed at the call sites.
  */
 @Composable
 fun AppKarte(
     modifier: Modifier = Modifier,
     /**
-     * Antippbar machen. Material3 hat dafür eine eigene `Card`-Überladung mit
-     * Wellenanzeige; ein `clickable` an der unantippbaren Fassung sähe anders aus.
+     * Make it tappable. Material3 has its own `Card` overload for this,
+     * with a ripple indicator; a `clickable` on the non-tappable variant would look different.
      */
     onClick: (() -> Unit)? = null,
-    /** Was das Antippen tut, für TalkBack („Doppeltippen, um Details zu öffnen“). */
+    /** What tapping does, for TalkBack („Double-tap to open details“). */
     onClickLabel: String? = null,
     inhalt: @Composable ColumnScope.() -> Unit
 ) {
     val form = Formen.karte
-    val erhebung = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung)
+    val survey = CardDefaults.cardElevation(defaultElevation = Formen.karteErhebung)
     val farben = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     if (onClick == null) {
         Card(modifier = modifier.fillMaxWidth(), shape = form,
-             elevation = erhebung, colors = farben, content = inhalt)
+             elevation = survey, colors = farben, content = inhalt)
     } else {
-        // Card(onClick) setzt keine Rolle; TalkBack nannte die Kachel nicht als Knopf.
-        val bedienung = Modifier.fokusRahmen(form).semantics {
+        // Card(onClick) sets no role; TalkBack didn't announce the tile as a button.
+        val controls = Modifier.focusFrame(form).semantics {
             role = Role.Button
             onClick(label = onClickLabel) { onClick(); true }
         }
-        Card(onClick = onClick, modifier = modifier.fillMaxWidth().then(bedienung), shape = form,
-             elevation = erhebung, colors = farben, content = inhalt)
+        Card(onClick = onClick, modifier = modifier.fillMaxWidth().then(controls), shape = form,
+             elevation = survey, colors = farben, content = inhalt)
     }
 }
 
 /**
- * Farben mit Bedeutung, die das Material-Schema nicht kennt („erfolgreich“,
- * „Warnung“) — einmal festgelegt statt verstreut, damit sie mit dem Design
- * mitziehen. Die Werte je Design stehen in statusFarbenFuer() in Theme.kt.
+ * Colors with meaning that the Material scheme doesn't know („success“,
+ * „warning“) — defined once instead of scattered, so they follow along with the
+ * theme. The values per theme live in statusColorsFor() in Theme.kt.
  */
 data class StatusFarben(
     val erfolg: Color,

@@ -1,21 +1,21 @@
 Gegenprobe: Die Einladung lässt sich nur kopieren, nicht teilen
 Modul: app
 Test: ch.brickinventoryapp.app.BereichsablaeufeTest
-Rot: die Einladung laesst sich teilen und kopieren, mit Gueltigkeit und Sperrgrund
+Rot: the invitation can be shared and copied, with validity and lock reason
 
-diff --git a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenHaushalt.kt b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenHaushalt.kt
---- a/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenHaushalt.kt
-+++ b/Android-App/feature-konto/src/main/java/ch/brickinventoryapp/konto/ui/screens/EinstellungenHaushalt.kt
+diff --git a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/EinstellungenHaushalt.kt b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/EinstellungenHaushalt.kt
+--- a/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/EinstellungenHaushalt.kt
++++ b/Android-App/feature-account/src/main/java/ch/brickinventoryapp/account/ui/screens/EinstellungenHaushalt.kt
 @@ -166,12 +166,6 @@
              // Der Code gehört auf ein anderes Gerät: teilen und kopieren, beide gleich gewichtet.
-             val teilenTitel = stringResource(R.string.household_invite_section)
+             val shareTitle = stringResource(R.string.household_invite_section)
              Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Abstaende.klein)) {
--                OutlinedButton(onClick = { teileCodes(kontext, teilenTitel, listOf(c)) }, modifier = Modifier.weight(1f),
+-                OutlinedButton(onClick = { partsCodes(context, shareTitle, listOf(c)) }, modifier = Modifier.weight(1f),
 -                    colors = nebenKnopfFarben(), border = nebenKnopfRand()) {
--                    Icon(Icons.Default.Share, null, Modifier.size(mitSchrift(18.dp)))
+-                    Icon(Icons.Default.Share, null, Modifier.size(withFont(18.dp)))
 -                    Spacer(Modifier.width(Abstaende.klein))
 -                    Text(stringResource(R.string.household_invite_teilen))
 -                }
                  // Unter Android 13 sähe die Tastatur den Code; Teilen bleibt dort der Weg.
-                 if (geheimKopierbar(LocalSdkStufe.current)) OutlinedButton(
-                     onClick = { GeheimeZwischenablage.kopiere(kontext, einladungEtikett, c) },
+                 if (secretCopyable(LocalSdkLevel.current)) OutlinedButton(
+                     onClick = { SecretClipboard.copy(context, invitationLabel, c) },

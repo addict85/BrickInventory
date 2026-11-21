@@ -1,7 +1,7 @@
 Gegenprobe: Widget wieder ohne Beschreibung und Vorschau
 Modul: app
-Test: ch.brickinventoryapp.app.WidgetVorschauTest
-Rot: das Widget traegt Beschreibung
+Test: ch.brickinventoryapp.app.WidgetPreviewTest
+Rot: the widget carries a description and a preview with title and value
 
 diff --git a/Android-App/app/src/main/res/xml-v31/sammlungs_widget.xml b/Android-App/app/src/main/res/xml-v31/sammlungs_widget.xml
 index 6e867df..b860995 100644

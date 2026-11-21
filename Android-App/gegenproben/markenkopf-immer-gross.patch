@@ -1,17 +1,17 @@
 Gegenprobe: Markenkopf auch bei 200 % gross und zweizeilig
 Modul: app
-Test: ch.brickinventoryapp.app.GeruestUndFormularTest
-Rot: Markenkopf bei 200 Prozent
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
+Rot: brand header at 200 percent takes at most an eighth of the height
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/MarkenKopf.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/MarkenKopf.kt
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/MarkenKopf.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/MarkenKopf.kt
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/BrandsHeader.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/BrandsHeader.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/BrandsHeader.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/BrandsHeader.kt
 @@ -41,7 +41,7 @@ import ch.brickinventoryapp.ui.theme.Formen
- fun MarkenKopf(modifier: Modifier = Modifier, untertitel: String? = null) {
+ fun BrandsHeader(modifier: Modifier = Modifier, subtitle: String? = null) {
      // Bei grosser Schrift klein in einer Zeile: Kachel und zweizeiliger Name nahmen bei
      // 200 % ein Viertel der Seite, und das erste Feld lag unter dem Falz.
--    if (grosseSchrift()) {
-+    if (false && grosseSchrift()) {
+-    if (largeFont()) {
++    if (false && largeFont()) {
          Column(modifier, horizontalAlignment = Alignment.CenterHorizontally,
-             verticalArrangement = Arrangement.spacedBy(Abstaende.winzig)) {
+             verticalArrangement = Arrangement.spacedBy(Abstaende.tiny)) {
              Row(verticalAlignment = Alignment.CenterVertically,

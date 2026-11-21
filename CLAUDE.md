@@ -24,7 +24,20 @@ Gemessen am 25.10.2026: 50,5 % der Zeilen in `server.ts`, `routes/` und
 
 ## Sprache
 
-Commit-Nachrichten, Kommentare, Testnamen und Oberflächentexte sind Deutsch.
+Seit Runde 30 (17.11.2026, Entscheid des Nutzers) ist der Quellcode auf
+Englisch: Bezeichner (Variablen, Klassen, Funktionen, Methoden), Kommentare,
+Testnamen, Datei- und Verzeichnisnamen sowie das Datenbankschema und der
+API-Vertrag (OpenAPI, Zod-Schemas, erzeugte Kotlin-Typen, `app-schnittstelle.json`).
+Davor war der Code durchgehend Deutsch; die Umstellung lief bereichsweise und
+ist seit dem 21.11.2026 abgeschlossen (Web-App und Android-App, inklusive
+der Kommentare). Die dafür genutzten Ratschen in `test/ratschen.test.js` und
+`QuelltextRatscheTest.kt` sind entfernt — neuer Quelltext ist ohnehin auf
+Englisch zu schreiben, ganz ohne Ausnahmeliste.
+
+Deutsch bleiben: Commit-Nachrichten und Oberflächentexte (das, was Nutzer auf
+Deutsch sehen — `public/locales/de.js`, `values-de/strings.xml`, Mailtexte,
+Fehlermeldungen in der Oberfläche). Diese Texte sind kein Code und bleiben für
+Schweizer Nutzer verständlich.
 
 ## Tests
 
@@ -44,7 +57,7 @@ Commit-Nachrichten, Kommentare, Testnamen und Oberflächentexte sind Deutsch.
 
 - `npm test` im Verzeichnis `Web-App/` braucht eine Test-Datenbank
   (`TEST_DATABASE_URL`, `REQUIRE_DB=1`) und läuft parallel, jede Testdatei auf
-  einer eigenen Kopie einer Vorlage-Datenbank (`scripts/test-lauf.js`);
+  einer eigenen Kopie einer Vorlage-Datenbank (`scripts/test-run.js`);
   `npm run test:seriell` läuft wie früher nacheinander.
 - Ohne Chrome überspringen die Browser-Dateien still. Lokal deshalb mit
   `CHROME_BIN=<pfad zu chrome>` und `REQUIRE_BROWSER=1` laufen lassen (dann

@@ -1,26 +1,26 @@
 Gegenprobe: Teile-Aufschlüsselung wieder in derselben Zeile mit gewöhnlichen Leerzeichen
 Modul: app
-Test: ch.brickinventoryapp.app.GeruestUndFormularTest
-Rot: Teile-Aufschluesselung bricht
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
+Rot: parts breakdown does not break between number and word at 200 percent
 
-diff --git a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
---- a/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
-+++ b/Android-App/core-ui-bestand/src/main/java/ch/brickinventoryapp/gemeinsam/ui/GalleryStatChip.kt
+diff --git a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt
+--- a/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt
++++ b/Android-App/core-ui-inventory/src/main/java/ch/brickinventoryapp/shared/ui/GalleryStatChip.kt
 @@ -28,7 +28,7 @@
      val text = pluralStringResource(plural, anzahl, zahl)
      // Bei grosser Schrift steht die Aufschlüsselung auf eigener Zeile: In der Zeile brach sie
      // mitten in der Klammer („40 /einzeln“).
--    val trenner = if (grosseSchrift()) "\n(" else "\u2002("
-+    val trenner = "\u2002("
+-    val separator = if (largeFont()) "\n(" else "\u2002("
++    val separator = "\u2002("
      // Die Aufschlüsselung klein in derselben Zeile: Als zweite Zeile darunter war die
      // Kennzahl breiter als ihr Wert und liess eine Lücke vor der nächsten.
      val klein = MaterialTheme.typography.labelSmall.fontSize
 @@ -41,7 +41,7 @@
-                 append(text, stelle + zahl.length, text.length)
+                 append(text, place + zahl.length, text.length)
              }
              if (detail != null) withStyle(SpanStyle(fontSize = klein)) {
--                append(trenner); append(detail.split(TEILER).joinToString(TEILER) { untrennbar(it) }); append(')')
-+                append(trenner); append(detail); append(')')
+-                append(separator); append(detail.split(DIVIDER).joinToString(DIVIDER) { inseparable(it) }); append(')')
++                append(separator); append(detail); append(')')
              }
          },
          Modifier.semantics(mergeDescendants = true) {},

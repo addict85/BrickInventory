@@ -1,32 +1,32 @@
 /**
- * Beide Oberflächen übernehmen die Menge aus der SERVERANTWORT.
+ * Both UIs take the quantity from the SERVER RESPONSE.
  *
- * Gegenprobe (durchgeführt): in sammlung.js `const echt = qty` gesetzt →
- * der Webapp-Teilschritt wird rot. Am 30.10.2026 gemessen: in
- * routes/api_v1/sets.ts `...(r || {})` aus der PUT-Antwort entfernt → rot:
- * „die Route liefert die Menge“ (undefined statt 3). Am 08.11.2026
- * gemessen: in autosaveSet `const echt = qty` → rot: „die Webapp übernimmt
- * die Menge aus der Antwort“ (Feld bleibt auf 1). Am 12.11.2026 gemessen (das
- * Detail liest nach dem Speichern neu): in frischeDetailAuf das Setzen von
- * m-qty aus d.set.quantity entfernt → rot: ebenda (Feld leer).
+ * Counter-check (carried out): in sammlung.js `const echt = qty` set →
+ * the web app substep turns red. Counter-check of 30.10.2026: in
+ * routes/api_v1/sets.ts `...(r || {})` removed from the PUT response → red:
+ * “the route delivers the quantity” (undefined instead of 3). Counter-check of 08.11.2026:
+ * in autosaveSet `const echt = qty` → red: “the web app takes
+ * the quantity from the response” (field stays at 1). Counter-check of 12.11.2026 (the
+ * detail rereads after saving): in frischeDetailAuf the setting of
+ * m-qty from d.set.quantity removed → red: same place (field empty).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { openUi, warte } = require('./helpers/ui');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { haeltSet } = require('./helpers/bestand');
+const { holdsSet } = require('./helpers/inventory');
 
-test('die Route liefert die Menge überhaupt mit', { concurrency: 1 }, async t => {
-  // Ohne das Feld fielen beide Clients still auf ihre eigene Annahme zurück —
-  // der Rückfall ist absichtlich lautlos. Die Menge kommt aus setAendern(),
-  // summiert über das Blickfeld.
-  const db = testDaten();
-  if (!(await datenOderSkip(t, _req))) return;
+test('the route delivers the quantity at all', { concurrency: 1 }, async t => {
+  // Without the field both clients would silently fall back to their own assumption —
+  // the fallback is deliberately silent. The quantity comes from changeSet(),
+  // summed over the scope.
+  const db = testData();
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `mengenecho-${process.pid}`,
     SN = `${process.pid}5-1`;
   await db.run('DELETE FROM users WHERE username=$1', [NAME]);
@@ -35,7 +35,7 @@ test('die Route liefert die Menge überhaupt mit', { concurrency: 1 }, async t =
     await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  await haeltSet(db, uid, SN, 2);
+  await holdsSet(db, uid, SN, 2);
   const { base } = testServer(_req, { sitzung: { userId: uid }, t });
   const setze = async quantity =>
     (
@@ -49,11 +49,11 @@ test('die Route liefert die Menge überhaupt mit', { concurrency: 1 }, async t =
   assert.equal((await setze(1)).quantity, 1, 'auch nach dem Verringern');
 });
 
-test('die Webapp übernimmt die Menge aus der Antwort', async () => {
-  // Der Server deckelt das Verringern (Erfassungen anderer Konten im Haushalt): Er schreibt 2, nicht 1.
-  // Danach liest das Detail das Set neu; der Server nennt dort dieselbe Menge.
+test('the web app takes the quantity from the response', async () => {
+  // The server caps the reduction (acquisitions of other accounts in the household): it writes 2, not 1.
+  // Afterwards the detail rereads the set; the server names the same quantity there.
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 3 };
-  const { w, d, aufrufe } = await oeffneOberflaeche({
+  const { w, d, aufrufe } = await openUi({
     '/v1/sets': { success: true, total: 1, themes: [], sets: [SET] },
     '/v1/sets/10294-1': (_url, o) => {
       if (o?.method === 'PUT') SET.quantity = 2;

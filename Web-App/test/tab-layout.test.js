@@ -1,16 +1,16 @@
 /**
- * Reihenfolge der Reiter-Bereiche: Erfassen → Suche/Filter → Liste, so wie
- * Chrome sie zeichnet (echtes index.html mit den Stilen, alle Reiter und alle
- * erst später eingeblendeten Bereiche offen, 1200 px breit). Gemessen werden die Oberkanten, nicht die Zeilen im Markup:
- * Eine Flex-Reihenfolge oder ein Raster kann die Folge umdrehen.
+ * Order of the tab areas: add → search/filter → list, as
+ * Chrome draws them (real index.html with the styles, all tabs and all
+ * areas shown only later open, 1200 px wide). Measured are the top edges, not the lines in the markup:
+ * a flex order or a grid can reverse the sequence.
  *
- * Gegenproben (10.11.2026 gemessen, je einzeln):
- *   A  in styles.css #tab-gallery als Flex-Spalte mit `.erfassen-leiste{order:9}`
- *      → rot: „Erfassen steht über den Filtern …“ (Galerie) — im Markup
- *      stünde alles noch richtig
- *   B  `.filterzeile{… margin-bottom:1rem}` → rot: „die Filterleisten halten Abstand …“
- *   C  #btn-pl-bestand hinter #pl-setnr in die Werkzeugzeile verschoben → rot:
- *      „der eigene Bestand …“
+ * Counter-checks (measured 10.11.2026, each on its own):
+ *   A  in styles.css #tab-gallery as a flex column with `.erfassen-leiste{order:9}`
+ *      → red: “adding is above the filters …” (gallery) — in the markup
+ *      everything would still be right
+ *   B  `.filterzeile{… margin-bottom:1rem}` → red: “the filter bars keep distance …”
+ *   C  #btn-pl-bestand moved behind #pl-setnr into the tool row → red:
+ *      “the own stock …”
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -23,7 +23,7 @@ const { chrome } = require('./helpers/app-browser');
 const PUBLIC = path.join(__dirname, '..', 'public');
 const STILE = ['vendor/fonts/fonts.css', 'tokens.css', 'styles.css'];
 
-/** Erfassen, Filter, Liste je Reiter — als Selektoren auf das gezeichnete Dokument. */
+/** Add, filter, list per tab — as selectors on the drawn document. */
 const REITER = {
   Galerie: ['[data-click="oeffneErfassen"][data-arg="set"]', '#gs', '#gallery'],
   Teile: ['[data-click="oeffneErfassen"][data-arg="part"]', '#parts-search', '#manual-parts-list', '#parts-main'],
@@ -46,17 +46,17 @@ const EINMAL = [
   'scope-minifigs',
 ];
 
-/** Misst im gezeichneten index.html; liefert, was `messung` (Funktionsrumpf im Browser) zurückgibt. */
-let _ergebnis;
+/** Measures in the drawn index.html; delivers what `measurement` (function body in the browser) returns. */
+let _result;
 function gemessen(t) {
-  if (_ergebnis !== undefined) return _ergebnis;
+  if (_result !== undefined) return _result;
   const bin = chrome();
   if (!bin) {
-    t.skip('kein Chrome gefunden');
-    _ergebnis = null;
+    t.skip('no Chrome found');
+    _result = null;
     return null;
   }
-  const html = require('./helpers/sources').ohneHtmlKommentare(
+  const html = require('./helpers/sources').withoutHtmlComments(
     fs.readFileSync(path.join(PUBLIC, 'index.html'), 'utf8'),
   );
   const koerper = html
@@ -106,29 +106,29 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
     );
     const m = /ERGEBNIS(.*?)ENDE/s.exec(dom);
     assert.ok(m, 'Die Testseite hat kein Ergebnis geschrieben');
-    _ergebnis = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
-    return _ergebnis;
+    _result = JSON.parse((m[1] ?? '').replace(/&quot;/g, '"').replace(/&amp;/g, '&'));
+    return _result;
   } finally {
     fs.rmSync(ordner, { recursive: true, force: true });
   }
 }
 
-test('Erfassen steht über den Filtern, die Filter über den Listen (auch der manuellen)', t => {
+test('adding is above the filters, the filters above the lists (including the manual one)', t => {
   const e = gemessen(t);
   if (!e) return;
   const falsch = [];
-  for (const [name, folge] of Object.entries(e.reiter)) {
-    for (const [s, y] of folge) if (y == null) falsch.push(`${name}: ${s} fehlt`);
-    for (let i = 1; i < folge.length; i++)
-      if (folge[i - 1][1] != null && folge[i][1] != null && !(folge[i - 1][1] < folge[i][1]))
+  for (const [name, sequence] of Object.entries(e.reiter)) {
+    for (const [s, y] of sequence) if (y == null) falsch.push(`${name}: ${s} fehlt`);
+    for (let i = 1; i < sequence.length; i++)
+      if (sequence[i - 1][1] != null && sequence[i][1] != null && !(sequence[i - 1][1] < sequence[i][1]))
         falsch.push(
-          `${name}: ${folge[i - 1][0]} (${folge[i - 1][1]}) steht nicht über ${folge[i][0]} (${folge[i][1]})`,
+          `${name}: ${sequence[i - 1][0]} (${sequence[i - 1][1]}) steht nicht über ${sequence[i][0]} (${sequence[i][1]})`,
         );
   }
   assert.deepEqual(falsch, []);
 });
 
-test('jede Bedienelement-ID gibt es genau einmal', t => {
+test('every control ID exists exactly once', t => {
   const e = gemessen(t);
   if (!e) return;
   assert.deepEqual(
@@ -140,7 +140,7 @@ test('jede Bedienelement-ID gibt es genau einmal', t => {
   );
 });
 
-test('die Filterleisten halten Abstand zur Liste', t => {
+test('the filter bars keep distance to the list', t => {
   const e = gemessen(t);
   if (!e) return;
   assert.equal(e.leisten.length, 5, 'Galerie, Teile, Minifiguren, Katalog, Merkliste');
@@ -151,12 +151,12 @@ test('die Filterleisten halten Abstand zur Liste', t => {
   );
 });
 
-test('der eigene Bestand steht in der Teileliste auf einer eigenen Zeile', t => {
+test('the own stock is on its own line in the parts list', t => {
   const e = gemessen(t);
   if (!e) return;
   const { setnr, knopf, lose } = e.bestand;
   assert.ok(setnr && knopf && lose, 'Set-Nummer, Bestand-Knopf oder „nur lose“ fehlt');
-  // Die Werkzeugzeile trägt flex-wrap:nowrap: ein Knopf mehr schöbe dort den Rest aus dem Bild.
+  // The tool row carries flex-wrap:nowrap: one more button would push the rest out of view there.
   assert.ok(knopf[0] >= setnr[1], `der Bestand-Knopf (${knopf[0]}) steht in der Werkzeugzeile (bis ${setnr[1]})`);
   assert.ok(lose[0] >= setnr[1], '„nur lose Teile“ steht in der Werkzeugzeile');
 });

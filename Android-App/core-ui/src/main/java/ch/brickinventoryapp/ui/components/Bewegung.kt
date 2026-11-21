@@ -13,23 +13,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 
 /**
- * Hat die Person „Animationen entfernen“ gewählt (Animator-Dauer 0)? Dann fliegt kein
- * Bild, gleitet keine Kachel und schimmert kein Skelett: Bewegung kann Schwindel
- * auslösen, und wer sie abschaltet, meint alle. Die Einstellung wird beobachtet,
- * weil man sie bei offener App in den Systemeinstellungen umstellt.
+ * Has the person chosen „remove animations“ (animator duration 0)? Then no
+ * image flies, no tile glides and no skeleton shimmers: motion can trigger
+ * dizziness, and whoever turns it off means all of it. The setting is observed,
+ * because it's changed in system settings while the app is open.
  */
 @Composable
-fun bewegungReduziert(): Boolean {
-    val kontext = LocalContext.current
-    val aufloesung = kontext.contentResolver
-    fun lies() = Settings.Global.getFloat(aufloesung, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
-    var reduziert by remember(kontext) { mutableStateOf(lies()) }
-    DisposableEffect(kontext) {
-        val beobachter = object : ContentObserver(Handler(Looper.getMainLooper())) {
-            override fun onChange(selfChange: Boolean) { reduziert = lies() }
+fun movementReduced(): Boolean {
+    val context = LocalContext.current
+    val resolution = context.contentResolver
+    fun lies() = Settings.Global.getFloat(resolution, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+    var reduced by remember(context) { mutableStateOf(lies()) }
+    DisposableEffect(context) {
+        val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean) { reduced = lies() }
         }
-        aufloesung.registerContentObserver(Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE), false, beobachter)
-        onDispose { aufloesung.unregisterContentObserver(beobachter) }
+        resolution.registerContentObserver(Settings.Global.getUriFor(Settings.Global.ANIMATOR_DURATION_SCALE), false, observer)
+        onDispose { resolution.unregisterContentObserver(observer) }
     }
-    return reduziert
+    return reduced
 }

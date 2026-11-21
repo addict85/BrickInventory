@@ -1,7 +1,7 @@
 package ch.brickinventoryapp.data
 
-import ch.brickinventoryapp.sicherheit.auftragsVertrauen
-import ch.brickinventoryapp.sicherheit.spkiFingerabdruck
+import ch.brickinventoryapp.security.trustJob
+import ch.brickinventoryapp.security.spkiFingerprint
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
@@ -21,20 +21,20 @@ import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509ExtendedTrustManager
 
 /**
- * Die nachgeholte Entwertung nach einem Serverwechsel prüft den alten Server mit
- * dessen Pin, über echtes TLS: Der alte Server hat eine eigene CA, wie
- * der typische Heimserver; der eingerichtete ist inzwischen ein anderer. Die
- * Zertifikate sind dieselben festen Testdaten wie in ZertifikatPinTest.
+ * The deferred invalidation after a server switch checks the old server with
+ * its pin, via real TLS: the old server has its own CA, like
+ * the typical home server; the set-up one is a different one by now. The
+ * certificates are the same fixed test data as in CertificatePinTest.
  *
- * Gegenproben:
- *   A  auftragsVertrauen() mit `eigenerServer = { null }` (der alte Server gilt als
- *      fremder Host, nur System-CAs — der ältere Stand) → rot „der alte Server mit
- *      eigener CA wird mit seinem Pin erreicht“ (SPAETER statt ENTWERTET);
+ * Counter-checks:
+ *   A  trustJob() with `ownServer = { null }` (the old server counts as
+ *      foreign host, only system CAs — the older state) → red “the old server with
+ *      its own CA is reached with its pin” (LATER instead of ENTWERTET);
  *      gegenproben/entwertung-ohne-alten-pin.patch
- *   B  im Entwerter die Ablehnung weder gemerkt (MerktAblehnung) noch in der
- *      Ursachenkette gesucht (jeder IOException SPAETER) → rot „ein anderer
- *      Schluessel unter dem Pin bekommt kein Token …“. In der CI (Conscrypt im
- *      selben JVM) genügte die Suche in der Ursachenkette allein nicht.
+ *   B  in the canceller the rejection neither remembered (RemembersRejection) nor searched in the
+ *      cause chain (LATER for every IOException) → red “a different
+ *      key under the pin gets no token …”. In CI (Conscrypt in the
+ *      same JVM) the search in the cause chain alone was not enough.
  */
 class AlterServerPinTest {
 
@@ -53,7 +53,7 @@ class AlterServerPinTest {
         server.start()
     }
 
-    /** Das „System“: kennt nur eine öffentliche Wurzel, nicht die CA des alten Servers. */
+    /** The „system“: knows only a public root, not the old server's CA. */
     private val system: X509ExtendedTrustManager by lazy {
         val ks = KeyStore.getInstance("PKCS12").apply { load(null) }
         ks.setCertificateEntry("w", zert(ROOT))
@@ -61,38 +61,38 @@ class AlterServerPinTest {
             .apply { init(ks) }.trustManagers.filterIsInstance<X509ExtendedTrustManager>().first()
     }
 
-    /** Wie NetzModule ihn baut: je Auftrag ein Vertrauen für dessen Server und Pin. */
-    private val entwerter = Entwerter(
+    /** As NetzModule builds it: one trust per job for its server and pin. */
+    private val redeemer = Redeemer(
         OkHttpClient.Builder().connectTimeout(2, TimeUnit.SECONDS).readTimeout(2, TimeUnit.SECONDS).build(),
         entwicklung = false,
-        vertrauenFuer = { schluessel, pin -> auftragsVertrauen(system, system, schluessel, pin) },
+        trustFor = { schluessel, pin -> trustJob(system, system, schluessel, pin) },
     )
 
     private fun alterServer() = server.url("/brick").toString().trimEnd('/')
 
     @Test
-    fun `der alte Server mit eigener CA wird mit seinem Pin erreicht`() {
-        starte(WURZEL_BLATT_KEY, listOf(WURZEL_BLATT, WURZEL))
-        val pin = spkiFingerabdruck(zert(WURZEL))
-        assertEquals(Entwertungsergebnis.ENTWERTET, entwerter.entwerte(alterServer(), "altes-token", pin))
+    fun `the old server with its own CA is reached with its pin`() {
+        starte(ROOT_SHEET_KEY, listOf(ROOT_SHEET, WURZEL))
+        val pin = spkiFingerprint(zert(WURZEL))
+        assertEquals(Entwertungsergebnis.ENTWERTET, redeemer.redeem(alterServer(), "altes-token", pin))
         val a = server.takeRequest(1, TimeUnit.SECONDS)!!
         assertEquals("/brick/api/v1/auth/logout", a.path)
         assertEquals("Bearer altes-token", a.getHeader("Authorization"))
     }
 
     @Test
-    fun `ein anderer Schluessel unter dem Pin bekommt kein Token, und Warten hilft nicht`() {
-        // Ein öffentlich gültiges Zertifikat (System kennt ROOT) genügt nicht, wo der Pin die eigene CA verlangt.
+    fun `a different key under the pin gets no token, and waiting does not help`() {
+        // A publicly valid certificate (system knows ROOT) is not enough where the pin requires the own CA.
         starte(LEAF_KEY, listOf(LEAF, INTER))
-        val pin = spkiFingerabdruck(zert(WURZEL))
-        assertEquals(Entwertungsergebnis.AUFGEBEN, entwerter.entwerte(alterServer(), "altes-token", pin))
+        val pin = spkiFingerprint(zert(WURZEL))
+        assertEquals(Entwertungsergebnis.GIVE_UP, redeemer.redeem(alterServer(), "altes-token", pin))
         assertEquals("Keine Anfrage darf den Server erreichen", 0, server.requestCount)
     }
 
     @Test
-    fun `ohne Pin geht das Token nirgends hin`() {
+    fun `without a pin the token goes nowhere`() {
         starte(LEAF_KEY, listOf(LEAF, INTER))
-        assertEquals(Entwertungsergebnis.AUFGEBEN, entwerter.entwerte(alterServer(), "altes-token", null))
+        assertEquals(Entwertungsergebnis.GIVE_UP, redeemer.redeem(alterServer(), "altes-token", null))
         assertEquals(0, server.requestCount)
     }
 
@@ -106,7 +106,7 @@ class AlterServerPinTest {
         const val LEAF = "MIIBxDCCAWqgAwIBAgIUGKFt31uRyQEpo2/dyXJUnyNBQvQwCgYIKoZIzj0EAwIwGTEXMBUGA1UEAwwOQnJpY2sgWndpc2NoZW4wIBcNMjYxMDMwMTU0MjU4WhgPMjEyNjEwMDYxNTQyNThaMBQxEjAQBgNVBAMMCWxvY2FsaG9zdDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABMRphX3E9F+1CxrClvKYvhQLC1GyRMM0KV6hemBqhqJ4ErxTmWWsCmCaLxc9ai0HRRVGcwRaTUYN2zwUwOruxrqjgZIwgY8wDAYDVR0TAQH/BAIwADAOBgNVHQ8BAf8EBAMCB4AwEwYDVR0lBAwwCgYIKwYBBQUHAwEwGgYDVR0RBBMwEYIJbG9jYWxob3N0hwR/AAABMB8GA1UdIwQYMBaAFL8eS4SugWiE4OoPbCTgc+eVJ0NAMB0GA1UdDgQWBBTYiTrV8idg50suxhBOzVR4ehDuXjAKBggqhkjOPQQDAgNIADBFAiEAqVWMQNoCR/Qv0iDKhwjlSmbIpcj4QkkvEwOLQJjmWVkCIHbT27kp+E5rJEcyBRHjRi8lrrqHGMcGJY3hZQXm0rOc"
         const val LEAF_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg84oF2kTvPuV0IbWxEBoJyR56Fy+0F8JahbFGp5BLWNyhRANCAATEaYV9xPRftQsawpbymL4UCwtRskTDNCleoXpgaoaieBK8U5llrApgmi8XPWotB0UVRnMEWk1GDds8FMDq7sa6"
         const val WURZEL = "MIIBlTCCATugAwIBAgIUWfsD4SFXkS/uYDWYXA+OWZbAS0owCgYIKoZIzj0EAwIwFzEVMBMGA1UEAwwMQ2FkZHkgV3VyemVsMCAXDTI2MTAzMDIyMjg0NFoYDzIxMjYxMDA2MjIyODQ0WjAXMRUwEwYDVQQDDAxDYWRkeSBXdXJ6ZWwwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAASudcnAk+7NFzlNgXJlzLpv1WNLgSrYkYdxzHKOI9CAGktSDWCmqhJfXKbJezy/XJtJhb8No+g98CcCX+K4RZ7wo2MwYTAdBgNVHQ4EFgQULpDKa+iFWhIS/Vl4s94pdZYH43QwHwYDVR0jBBgwFoAULpDKa+iFWhIS/Vl4s94pdZYH43QwDwYDVR0TAQH/BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAQYwCgYIKoZIzj0EAwIDSAAwRQIgDuvgqOOE7zjj0LE3ZMADdJ6CbM9zLc9uZyPLXQIcJ24CIQDvseM//f4Ymtat2eDiE0guayf6MFBXQwVmUEAs/h5jsA=="
-        const val WURZEL_BLATT = "MIIBwjCCAWigAwIBAgIUJ5bQK16akXTtVJGiddkeeCeimhAwCgYIKoZIzj0EAwIwFzEVMBMGA1UEAwwMQ2FkZHkgV3VyemVsMCAXDTI2MTAzMDIyMjg0NFoYDzIxMjYxMDA2MjIyODQ0WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQkCXdFDKqjNGrBKlNNRxL4eL+CDWRzYEeNTxLPedxdqAmZELd0QILkTpIU3gnrMSNC92sr9JqJMj6bI6rbtqwHo4GSMIGPMAwGA1UdEwEB/wQCMAAwDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBoGA1UdEQQTMBGCCWxvY2FsaG9zdIcEfwAAATAdBgNVHQ4EFgQUAZczQX6xjqiWuzi8ceAiL8aMRSgwHwYDVR0jBBgwFoAULpDKa+iFWhIS/Vl4s94pdZYH43QwCgYIKoZIzj0EAwIDSAAwRQIhAIDDuQsj3wEuClpl1bZMDbJQ1fnXG3pDWbfkcK9Nbkj1AiAoe+I71U9V5jog/wz5Y5bOc2YbEAw1q+grLMsqMP1jUA=="
-        const val WURZEL_BLATT_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgqZs7tPJIE6CpMc2pY0PdwG3yxUHoNpKYXMHNMTymB+KhRANCAAQkCXdFDKqjNGrBKlNNRxL4eL+CDWRzYEeNTxLPedxdqAmZELd0QILkTpIU3gnrMSNC92sr9JqJMj6bI6rbtqwH"
+        const val ROOT_SHEET = "MIIBwjCCAWigAwIBAgIUJ5bQK16akXTtVJGiddkeeCeimhAwCgYIKoZIzj0EAwIwFzEVMBMGA1UEAwwMQ2FkZHkgV3VyemVsMCAXDTI2MTAzMDIyMjg0NFoYDzIxMjYxMDA2MjIyODQ0WjAUMRIwEAYDVQQDDAlsb2NhbGhvc3QwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNCAAQkCXdFDKqjNGrBKlNNRxL4eL+CDWRzYEeNTxLPedxdqAmZELd0QILkTpIU3gnrMSNC92sr9JqJMj6bI6rbtqwHo4GSMIGPMAwGA1UdEwEB/wQCMAAwDgYDVR0PAQH/BAQDAgeAMBMGA1UdJQQMMAoGCCsGAQUFBwMBMBoGA1UdEQQTMBGCCWxvY2FsaG9zdIcEfwAAATAdBgNVHQ4EFgQUAZczQX6xjqiWuzi8ceAiL8aMRSgwHwYDVR0jBBgwFoAULpDKa+iFWhIS/Vl4s94pdZYH43QwCgYIKoZIzj0EAwIDSAAwRQIhAIDDuQsj3wEuClpl1bZMDbJQ1fnXG3pDWbfkcK9Nbkj1AiAoe+I71U9V5jog/wz5Y5bOc2YbEAw1q+grLMsqMP1jUA=="
+        const val ROOT_SHEET_KEY = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgqZs7tPJIE6CpMc2pY0PdwG3yxUHoNpKYXMHNMTymB+KhRANCAAQkCXdFDKqjNGrBKlNNRxL4eL+CDWRzYEeNTxLPedxdqAmZELd0QILkTpIU3gnrMSNC92sr9JqJMj6bI6rbtqwH"
     }
 }

@@ -1,11 +1,11 @@
 'use strict';
 /**
- * Die Version dieses Baus: APP_VERSION (CI, Docker-Build-Argument), sonst
- * `git describe`, sonst „unbekannt“. Sie wird zur Bauzeit nach dist/version.json
- * geschrieben — nie in den Arbeitsbaum, damit `npm ci` und `npm run build`
- * keine Datei im Repository verändern.
+ * The version of this build: APP_VERSION (CI, Docker build argument), otherwise
+ * `git describe`, otherwise "unknown". It is written to dist/version.json at build time
+ * — never into the working tree, so that `npm ci` and `npm run build`
+ * change no file in the repository.
  *
- * Aufruf: node scripts/version.js [--outdir dist]   (sonst nur Ausgabe)
+ * Call: node scripts/version.js [--outdir dist]   (otherwise output only)
  */
 const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
@@ -14,10 +14,10 @@ const path = require('node:path');
 const ROOT = path.resolve(__dirname, '..');
 
 /** @param {Record<string, string | undefined>} env @returns {string} */
-function bauVersion(env = process.env, cwd = ROOT) {
+function buildVersion(env = process.env, cwd = ROOT) {
   const gesetzt = (env.APP_VERSION || '').trim();
   if (gesetzt) return gesetzt;
-  // Die Android-Etiketten (android-v…, apk-neuste) gehören zur App; die Web-App nannte sonst deren Nummer.
+  // The Android tags (android-v…, apk-neuste) belong to the app; the web app would otherwise name their number.
   try {
     return (
       execFileSync(
@@ -31,7 +31,7 @@ function bauVersion(env = process.env, cwd = ROOT) {
       ).trim() || 'unbekannt'
     );
   } catch {
-    // Kein Git (Docker-Kontext ohne .git): Ohne Build-Argument bleibt es offen.
+    // No Git (Docker context without .git): without a build argument it stays open.
     return 'unbekannt';
   }
 }
@@ -48,9 +48,9 @@ function schreibe(outdir, version) {
 if (require.main === module) {
   const i = process.argv.indexOf('--outdir');
   const ziel = i !== -1 ? process.argv[i + 1] : undefined;
-  const version = bauVersion();
+  const version = buildVersion();
   if (ziel) schreibe(path.resolve(ziel), version);
   console.log(`[version] ${version}`);
 }
 
-module.exports = { bauVersion, schreibe };
+module.exports = { buildVersion, schreibe };

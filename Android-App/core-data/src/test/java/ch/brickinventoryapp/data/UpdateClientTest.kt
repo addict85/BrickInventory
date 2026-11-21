@@ -13,19 +13,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Der Client der Selbstaktualisierung, wie Hilt ihn baut: Er geht zu GitHub, nicht zu
- * unserem Server, und trägt darum weder Token noch Sprache; Umleitungen folgt nur der
- * eigene Wächter (UpdateUmleitungTest), OkHttp selbst keiner, auch nicht von https
- * auf http. Was hinausginge, fängt ein angehängter Interceptor vor dem Netz ab.
+ * The client of the self-update, as Hilt builds it: it goes to GitHub, not to
+ * our server, and therefore carries neither token nor language; redirects are followed only by the
+ * own guard (UpdateRedirectTest), by OkHttp itself none, not even from https
+ * to http. What would go out is caught by an attached interceptor before the network.
  *
- * Gegenproben (Patches unter gegenproben/, lokal mit kotlinc gemessen):
- *   update-client-mit-token       ein Interceptor setzt Authorization → rot „der Update-Client …“
- *   update-client-folgt-http      followSslRedirects(true) → rot „der Update-Client …“
+ * Counter-checks (patches under gegenproben/, measured locally with kotlinc):
+ *   update-client-mit-token       an interceptor sets Authorization → red “the update client …”
+ *   update-client-folgt-http      followSslRedirects(true) → red “the update client …”
  */
 class UpdateClientTest {
 
     @Test
-    fun `der Update-Client traegt nichts von unserem Server und folgt keiner Umleitung selbst`() {
+    fun `the update client carries nothing from our server and follows no redirect itself`() {
         val client = NetzModule.provideUpdateOkHttpClient()
         assertFalse("OkHttp folgt Umleitungen am Wächter vorbei", client.followRedirects)
         assertFalse("OkHttp folgt einer Umleitung von https auf http", client.followSslRedirects)
@@ -33,12 +33,12 @@ class UpdateClientTest {
         assertTrue(client.networkInterceptors.isEmpty())
 
         var hinaus: Request? = null
-        val abgefangen = client.newBuilder().addInterceptor { kette ->
+        val intercepted = client.newBuilder().addInterceptor { kette ->
             hinaus = kette.request()
             Response.Builder().request(kette.request()).protocol(Protocol.HTTP_1_1).code(200).message("OK")
                 .body("{}".toResponseBody("application/json".toMediaType())).build()
         }.build()
-        abgefangen.newCall(Request.Builder().url("https://github.com/x/y/releases/download/a/version.json").build())
+        intercepted.newCall(Request.Builder().url("https://github.com/x/y/releases/download/a/version.json").build())
             .execute().close()
 
         val kopf = hinaus!!.headers

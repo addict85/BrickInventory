@@ -1,14 +1,14 @@
 Gegenprobe: fremdeAngabenEntfernen() lässt die Extras stehen
 Modul: app
-Test: ch.brickinventoryapp.app.FremderEinstiegTest
-Rot: ohne Extras navigiert ein fremder Deep-Link nicht
+Test: ch.brickinventoryapp.app.ForeignEntryTest
+Rot: without extras a foreign deep link does not navigate
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/NurLauncherStart.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/NurLauncherStart.kt
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/NurLauncherStart.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/NurLauncherStart.kt
-@@ -25,7 +25,6 @@ abstract class NurLauncherStart : FragmentActivity() {
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/OnlyLauncherStart.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/OnlyLauncherStart.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/OnlyLauncherStart.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/OnlyLauncherStart.kt
+@@ -25,7 +25,6 @@ abstract class OnlyLauncherStart : FragmentActivity() {
  
- internal fun fremdeAngabenEntfernen(intent: Intent?) {
+ internal fun removeForeignDetails(intent: Intent?) {
      intent ?: return
 -    intent.replaceExtras(null as Bundle?)
      intent.data = null

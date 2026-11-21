@@ -1,0 +1,236 @@
+#!/usr/bin/env python3
+"""Prueft das FERTIGE Release-APK auf das, was R8 weggeschrumpft haben kann.
+
+── Warum es diese Pruefung gibt ────────────────────────────────────────────
+
+Im Release-APK von main (120c998) stand:
+
+    Lch/brickinventoryapp/alarm/PreisalarmWorker;
+       direkt   (1): <init>
+       virtuell (0):
+
+doWork() fehlte. Der Preisalarm konnte auf keinem Geraet laufen — und alle
+470 Unit-Tests waren gruen, weil sie auf der JVM laufen und R8 dort nie
+stattfindet. Zwischen "uebersetzt" und "tut etwas" lag niemand.
+
+Die beiden Strings des Benachrichtigungskanals verschwanden gleich mit: Der
+Ressourcen-Schrumpfer fand keine Referenz mehr, weil der referenzierende
+Code weg war. Er hatte recht — die Ursache lag eine Stufe davor.
+
+── Was geprueft wird ───────────────────────────────────────────────────────
+
+1. Jede eigene Klasse, die von androidx.work erbt, muss doWork() haben.
+   Der NAME ueberlebt das Umbenennen, weil er eine Framework-Methode
+   ueberschreibt — genau deshalb ist er als Anker brauchbar.
+
+2. Jeder im Kotlin-Quelltext benutzte R.string.X muss im APK stehen.
+   Ein fehlender wirft Resources.NotFoundException, und zwar erst auf dem
+   Geraet.
+
+3. Klassen, die Room ueber ihren NAMEN laedt, brauchen ihren parameterlosen
+   Konstruktor. Marcos Geraet meldete am 25.09.:
+
+       androidx.work.impl.WorkDatabase_Impl.<init> []
+
+   Das ist eine NoSuchMethodException: Die Klasse war da, der Konstruktor
+   weg. Damit liess sich WorkManager nicht hochfahren — und das ist zugleich
+   die Erklaerung fuer den ungeklaerten Start-Absturz, der im Manifest
+   beschrieben steht.
+
+4. Die API-Modelle sind umbenannt: Eine Keep-Regel für ganz
+   vertrag (früher data.model) legte die API-Oberfläche im Klartext offen. Stichprobe: SetItem.
+
+Aufruf: apk-check.py <app.apk> <quellverzeichnis> [<quellverzeichnis> …]
+"""
+import re
+import struct
+import sys
+import zipfile
+from pathlib import Path
+
+EIGEN = 'Lch/brickinventoryapp/'
+ERBE  = 'Landroidx/work/'
+
+# Klassen, die NUR ueber Class.forName(<Name>) erreicht werden, samt dem
+# Glied, das dabei gebraucht wird. Der Eintrag steht hier und nicht in einer
+# Regel im Quelltext, weil er eine Aussage ueber das FERTIGE APK ist.
+#
+# WorkDatabase_Impl: Room baut den Namen aus dem der Datenbankklasse zusammen
+# und ruft getDeclaredConstructor(). Fehlt der, faehrt WorkManager nicht hoch
+# und der Preisalarm laeuft nie.
+UEBER_NAMEN = {
+    'Landroidx/work/impl/WorkDatabase_Impl;': '<init>',
+}
+
+# Stichprobe für das Umbenennen der API-Modelle: Steht sie mit ihrem Namen im APK,
+# hält eine Regel wieder das ganze Paket.
+MODELL_STICHPROBE = "Lch/brickinventoryapp/contract/SetItem;"
+
+
+class Dex:
+    """So viel DEX-Format, wie fuer die beiden Fragen noetig ist."""
+
+    def __init__(self, roh: bytes):
+        self.d = roh
+        self.string_ids = self.u32(0x3C)
+        self.type_ids = self.u32(0x44)
+        self.method_ids = self.u32(0x5C)
+        self.class_defs_size = self.u32(0x60)
+        self.class_defs = self.u32(0x64)
+
+    def u32(self, o): return struct.unpack('<I', self.d[o:o + 4])[0]
+
+    def uleb(self, o):
+        r = s = 0
+        while True:
+            b = self.d[o]
+            o += 1
+            r |= (b & 0x7F) << s
+            s += 7
+            if not b & 0x80:
+                return r, o
+
+    def s(self, i):
+        off = self.u32(self.string_ids + 4 * i)
+        n, off = self.uleb(off)
+        return self.d[off:off + n * 4].split(b'\x00')[0].decode('utf-8', 'replace')
+
+    def typ(self, i): return self.s(self.u32(self.type_ids + 4 * i))
+
+    def klassen(self):
+        """(name, oberklasse, [methodennamen]) je definierter Klasse."""
+        for i in range(self.class_defs_size):
+            o = self.class_defs + i * 32
+            name = self.typ(self.u32(o))
+            ober = self.typ(self.u32(o + 8))
+            daten = self.u32(o + 24)
+            methoden = []
+            if daten:
+                p = daten
+                sf, p = self.uleb(p)
+                inf, p = self.uleb(p)
+                dm, p = self.uleb(p)
+                vm, p = self.uleb(p)
+                for _ in range(sf + inf):
+                    _a, p = self.uleb(p)
+                    _b, p = self.uleb(p)
+                for anzahl in (dm, vm):
+                    midx = 0
+                    for _ in range(anzahl):
+                        di, p = self.uleb(p)
+                        _acc, p = self.uleb(p)
+                        _code, p = self.uleb(p)
+                        midx += di
+                        methoden.append(self.s(self.u32(self.method_ids + midx * 8 + 4)))
+            yield name, ober, methoden
+
+
+def fehler(text: str) -> None:
+    print(f'::error title=APK-Pruefung::{text}')
+
+
+def main() -> int:
+    # Ein Quellordner je Modul: Seit der Aufteilung stehen die Texte-Nutzer in allen.
+    apk, quellen = Path(sys.argv[1]), [Path(p) for p in sys.argv[2:]]
+    z = zipfile.ZipFile(apk)
+    schlimm = []
+
+    # ── 1. Worker mit doWork ────────────────────────────────────────────────
+    worker = {}
+    for eintrag in z.namelist():
+        if not re.fullmatch(r'classes\d*\.dex', eintrag):
+            continue
+        for name, ober, methoden in Dex(z.read(eintrag)).klassen():
+            if name.startswith(EIGEN) and ober.startswith(ERBE):
+                worker[name] = methoden
+
+    if not worker:
+        schlimm.append(
+            'Keine eigene Worker-Klasse im APK gefunden. Entweder wurde der '
+            'Preisalarm entfernt — dann gehoert diese Pruefung mit weg — oder '
+            'R8 hat die Klasse ganz verworfen.')
+    for name, methoden in sorted(worker.items()):
+        if 'doWork' in methoden:
+            print(f'  OK   {name}  ({len(methoden)} Methoden, doWork vorhanden)')
+        else:
+            schlimm.append(
+                f'{name} hat kein doWork() — R8 hat es weggeschrumpft. Die '
+                f'Keep-Regel von WorkManager nennt nur den Konstruktor; der '
+                f'Rest braucht eine eigene Regel in proguard-rules.pro. '
+                f'Uebrig: {", ".join(methoden) or "nichts ausser der Klasse"}')
+
+    # ── 3. Reflexiv geladene Klassen samt ihrem Glied ───────────────────────
+    #
+    # Hier wird ueber ALLE Klassen gesucht, nicht nur ueber die eigenen: Der
+    # Fehler sass in einer Bibliothek, und genau deshalb hat ihn die Pruefung
+    # oben nicht gesehen. Sie kannte nur Lch/brickinventoryapp/.
+    gefunden = {}
+    for eintrag in z.namelist():
+        if not re.fullmatch(r'classes\d*\.dex', eintrag):
+            continue
+        for name, _ober, methoden in Dex(z.read(eintrag)).klassen():
+            if name in UEBER_NAMEN:
+                gefunden[name] = methoden
+
+    for name, glied in sorted(UEBER_NAMEN.items()):
+        methoden = gefunden.get(name)
+        if methoden is None:
+            schlimm.append(
+                f'{name} steht gar nicht im APK. Room laedt sie ueber ihren '
+                f'Namen; ohne sie gibt es auf dem Geraet eine '
+                f'ClassNotFoundException. Keep-Regel in proguard-rules.pro?')
+        elif glied not in methoden:
+            schlimm.append(
+                f'{name} hat kein {glied}() — R8 hat es weggeschrumpft. Room '
+                f'ruft getDeclaredConstructor(), das gibt auf dem Geraet '
+                f'"NoSuchMethodException: {name[1:-1].replace("/", ".")}.{glied} []". '
+                f'Genau diese Meldung kam am 25.09. von Marcos Telefon. '
+                f'Uebrig: {", ".join(methoden) or "nichts ausser der Klasse"}')
+        else:
+            print(f'  OK   {name}  ({glied} vorhanden)')
+
+    # ── 4. API-Modelle umbenannt ────────────────────────────────────────────
+    namen = set()
+    for eintrag in z.namelist():
+        if re.fullmatch(r'classes\d*\.dex', eintrag):
+            namen.update(name for name, _o, _m in Dex(z.read(eintrag)).klassen())
+    modelle = sorted(n for n in namen if n.startswith('Lch/brickinventoryapp/contract/'))
+    if MODELL_STICHPROBE in namen:
+        schlimm.append(
+            f'{MODELL_STICHPROBE} steht mit seinem Namen im APK: Eine Keep-Regel hält die '
+            f'API-Modelle wieder im Klartext ({len(modelle)} Klassen unter vertrag).')
+    else:
+        print(f'  OK   API-Modelle umbenannt ({len(modelle)} Klassen behielten ihren Namen)')
+
+    # ── 2. Benutzte Strings muessen im APK stehen ───────────────────────────
+    arsc = z.read('resources.arsc')
+    benutzt = {}
+    for kt in (k for q in quellen for k in q.rglob('*.kt')):
+        for treffer in re.finditer(r'R\.string\.([a-z0-9_]+)', kt.read_text(encoding='utf-8')):
+            benutzt.setdefault(treffer.group(1), kt.name)
+
+    fehlend = [(n, w) for n, w in sorted(benutzt.items())
+               if re.search(rb'(?<![a-z0-9_])' + n.encode() + rb'(?![a-z0-9_])', arsc) is None]
+    print(f'  {len(benutzt)} benutzte Strings geprueft, {len(fehlend)} fehlen im APK')
+    if fehlend:
+        # Unterscheidet entfernte von umbenannten Ressourcen (Namen verschleiert).
+        print(f'  resources.arsc: {len(arsc)} Byte, verschleierte Namen: '
+              f'{"ja" if b"obfuscated" in arsc else "nein"}, '
+              f'Beispiel vorhanden: {[n for n in list(benutzt)[:400] if (n, benutzt[n]) not in fehlend][:5]}')
+    for name, woher in fehlend:
+        schlimm.append(
+            f'R.string.{name} wird in {woher} benutzt, steht aber nicht in '
+            f'resources.arsc — auf dem Geraet gibt das Resources.NotFoundException. '
+            f'Meist Folge davon, dass R8 den benutzenden Code entfernt hat.')
+
+    for t in schlimm:
+        fehler(t)
+    if schlimm:
+        print(f'\nAPK-Pruefung: {len(schlimm)} Befund(e).')
+        return 1
+    print('\nAPK-Pruefung: nichts zu beanstanden.')
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())

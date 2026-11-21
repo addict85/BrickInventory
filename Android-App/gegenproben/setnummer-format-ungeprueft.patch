@@ -1,16 +1,16 @@
 Gegenprobe: Hinzufügen nimmt eine unsinnige Nummer ("--") ohne Hinweis an
 Modul: app
 Test: ch.brickinventoryapp.app.AblaufTest
-Rot: ein Set mit unsinniger Nummer sagt
+Rot: a set with a nonsensical number says what is expected when adding
 
-diff --git a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt
---- a/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt
-+++ b/Android-App/feature-sammlung/src/main/java/ch/brickinventoryapp/sammlung/ui/screens/GalerieErfassen.kt
+diff --git a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalerieErfassen.kt b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalerieErfassen.kt
+--- a/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalerieErfassen.kt
++++ b/Android-App/feature-collection/src/main/java/ch/brickinventoryapp/collection/ui/screens/GalerieErfassen.kt
 @@ -66,7 +66,6 @@
- private fun nummerFehler(nummer: String, geprueft: Boolean): Int? = when {
+ private fun numberError(nummer: String, geprueft: Boolean): Int? = when {
      !geprueft -> null
      nummer.isBlank() -> R.string.erfassen_nummer_fehlt
--    !NumericInput.istSetnummer(nummer) -> R.string.erfassen_nummer_ungueltig
+-    !NumericInput.isSetNumber(nummer) -> R.string.erfassen_nummer_ungueltig
      else -> null
  }
  

@@ -1,15 +1,15 @@
 Gegenprobe: Der Abschnitt der manuell erfassten Teile steht hinter den Teilen aus Sets
 Modul: app
 Test: ch.brickinventoryapp.app.ManualItemsFirstTest
-Rot: Teile - die manuell erfassten
+Rot: parts - the manually added ones come before those from sets
 
-diff --git a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt
+diff --git a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsScreen.kt b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsScreen.kt
 index 290113c..a5b17fb 100644
---- a/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt
-+++ b/Android-App/feature-teile/src/main/java/ch/brickinventoryapp/teile/ui/screens/PartsScreen.kt
+--- a/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsScreen.kt
++++ b/Android-App/feature-parts/src/main/java/ch/brickinventoryapp/parts/ui/screens/PartsScreen.kt
 @@ -242,6 +242,25 @@ internal fun PartsScreen(
                      if (stats != null) {
-                         item(span = { GridItemSpan(maxLineSpan) }, key = "parts-stats") { TeileKennzahlen(stats) }
+                         item(span = { GridItemSpan(maxLineSpan) }, key = "parts-stats") { PartsMetrics(stats) }
                      }
 +                    // In der Tabellenansicht nimmt jede Zeile die ganze Breite (span =
 +                    // maxLineSpan). Derselbe Raster-Container, sonst wären Scrollstand,
@@ -19,15 +19,15 @@ index 290113c..a5b17fb 100644
 +                    items(
 +                        distinctParts,
 +                        key = { "${it.partNumber}-${it.colorId}" },
-+                        span = { if (ansicht == Listenansicht.TABELLE) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
++                        span = { if (ansicht == ListView.TABLE) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
 +                    ) { part ->
 +                        // BEIDE Ansichten oeffnen denselben Dialog — eine
 +                        // Ansicht darf nicht koennen, was die andere nicht kann.
-+                        val oeffne = { aktionen.oeffneSetItem(part.partNumber, part.colorId) }
-+                        Bewegt {
-+                            if (ansicht == Listenansicht.TABELLE) PartTableRow(part, serverUrl, imageLoader, oeffne)
++                        val oeffne = { aktionen.openSetItem(part.partNumber, part.colorId) }
++                        Moved {
++                            if (ansicht == ListView.TABLE) PartTableRow(part, serverUrl, imageLoader, oeffne)
 +                            else PartCard(part, serverUrl, imageLoader, oeffne,
-+                                ausgewaehlt = gewaehlt == detailSchluessel("part", part.partNumber, part.colorId))
++                                ausgewaehlt = gewaehlt == detailKey("part", part.partNumber, part.colorId))
 +                        }
 +                    }
                      // Manuell erfasste Teile als Grid-Sektion statt in einer FlowRow über dem Grid:
@@ -45,15 +45,15 @@ index 290113c..a5b17fb 100644
 -                    items(
 -                        distinctParts,
 -                        key = { "${it.partNumber}-${it.colorId}" },
--                        span = { if (ansicht == Listenansicht.TABELLE) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
+-                        span = { if (ansicht == ListView.TABLE) GridItemSpan(maxLineSpan) else GridItemSpan(1) },
 -                    ) { part ->
 -                        // BEIDE Ansichten oeffnen denselben Dialog — eine
 -                        // Ansicht darf nicht koennen, was die andere nicht kann.
--                        val oeffne = { aktionen.oeffneSetItem(part.partNumber, part.colorId) }
--                        Bewegt {
--                            if (ansicht == Listenansicht.TABELLE) PartTableRow(part, serverUrl, imageLoader, oeffne)
+-                        val oeffne = { aktionen.openSetItem(part.partNumber, part.colorId) }
+-                        Moved {
+-                            if (ansicht == ListView.TABLE) PartTableRow(part, serverUrl, imageLoader, oeffne)
 -                            else PartCard(part, serverUrl, imageLoader, oeffne,
--                                ausgewaehlt = gewaehlt == detailSchluessel("part", part.partNumber, part.colorId))
+-                                ausgewaehlt = gewaehlt == detailKey("part", part.partNumber, part.colorId))
 -                        }
 -                    }
                      if (isLoading) {

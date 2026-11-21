@@ -4,16 +4,16 @@ import org.junit.Test
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Fehlermeldungen entstehen an EINER Stelle, und die kann übersetzen.
+ * Error messages arise in ONE place, and that place can translate.
  *
- * Gegenprobe: gegenproben/fehler-satz-in-datenschicht.patch — sicherAufrufen()
- * legt einen festen Satz in Ergebnis.Fehler.Server → rot „die Datenschicht baut
- * keine Meldung …“.
+ * Counter-check: gegenproben/fehler-satz-in-datenschicht.patch — sicherAufrufen()
+ * puts a fixed sentence into Ergebnis.Fehler.Server → red “the data layer builds
+ * no message …”.
  */
 class ErrorMessageLayerTest {
 
-    private val datenschicht = listOf(
-        // Alle Dateien der Datenschicht — vorher nur die eine.
+    private val dataLayer = listOf(
+        // All files of the data layer — previously only the one.
         "data/repository/Ergebnis.kt",
         "data/repository/Abruf.kt",
         "data/repository/SetsRepositoryImpl.kt",
@@ -33,14 +33,14 @@ class ErrorMessageLayerTest {
     )
 
     @Test
-    fun `die Datenschicht baut keine Meldung fuer den Nutzer`() {
-        // Gesucht: ein fester Satz als Meldung — Server(status, "…"), Abgewiesen("…")
-        // oder message = "…". Erlaubt ist nur der leere Text — dann entscheidet die
-        // Anzeige — oder eine durchgereichte Servermeldung (eine Variable).
+    fun `the data layer builds no message for the user`() {
+        // Searched: a fixed sentence as message — Server(status, "…"), Abgewiesen("…")
+        // or message = "…". Allowed is only the empty text — then the display
+        // decides — or a passed-through server message (a variable).
         val satz = Regex("""Ergebnis\.Fehler\.(?:Abgewiesen\(\s*|Server\((?:[^,()]|\([^()]*\))*,\s*)"([^"]+)"|\bmessage\s*=\s*"([^"]+)"""")
         val fehler = mutableListOf<String>()
-        for (rel in datenschicht) {
-            val s = Quellen.ohneKommentare(Quellen.lies(rel))
+        for (rel in dataLayer) {
+            val s = Quellen.withoutComments(Quellen.lies(rel))
             satz.findAll(s).forEach { m ->
                 val zeile = s.substring(0, m.range.first).count { it == '\n' } + 1
                 fehler += "$rel:$zeile  ${m.value}"
@@ -54,20 +54,20 @@ class ErrorMessageLayerTest {
     }
 
     @Test
-    fun `die Zuordnung Ursache zu Text liegt ausserhalb von meldung`() {
-        // Ob jede Fehlerart einen eigenen Satz hat, prüft
-        // FehlerTexteTest — ausgeführt statt gelesen. Hier bleibt nur die
-        // Aussage, die eine Textsuche wirklich treffen kann: dass die
-        // Zuordnung eine eigene, Context-freie Funktion IST. Wandert sie
-        // zurück in meldung(), ist sie wieder nur über Android prüfbar.
-        val texte = Quellen.ohneKommentare(Quellen.lies("zustand/ui/FehlerTexte.kt"))
-        assert(texte.contains("fun fehlerTextId(")) { "fehlerTextId() fehlt" }
-        assert(!texte.contains("ctx.") && !texte.contains("Context")) {
+    fun `the mapping of cause to text lives outside of meldung`() {
+        // Whether every error kind has its own sentence is checked by
+        // ErrorTextsTest — executed instead of read. What remains here is only the
+        // statement a text search can really hit: that the
+        // mapping IS its own, context-free function. If it moves
+        // back into meldung(), it is again only checkable via Android.
+        val texts = Quellen.withoutComments(Quellen.lies("state/ui/FehlerTexte.kt"))
+        assert(texts.contains("fun fehlerTextId(")) { "fehlerTextId() fehlt" }
+        assert(!texts.contains("ctx.") && !texts.contains("Context")) {
             "FehlerTexte.kt darf keinen Context brauchen — sonst ist die Zuordnung " +
                 "wieder nur mit Android-Laufzeit prüfbar"
         }
-        val vm = Quellen.ohneKommentare(Quellen.lies("zustand/ui/viewmodel/AppTexte.kt"))
-        val meldung = Quellen.funktion(vm, "override fun meldung(")
+        val vm = Quellen.withoutComments(Quellen.lies("state/ui/viewmodel/AppTexte.kt"))
+        val meldung = Quellen.function(vm, "override fun meldung(")
         assert(meldung.isNotEmpty()) { "meldung() fehlt in AppTexte" }
         assert(meldung.contains("fehlerTextId(")) {
             "meldung() benutzt die gemeinsame Zuordnung nicht mehr"

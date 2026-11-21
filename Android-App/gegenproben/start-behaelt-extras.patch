@@ -1,16 +1,16 @@
 Gegenprobe: NurLauncherStart entfernt beim Start nichts mehr
 Modul: app
-Test: ch.brickinventoryapp.app.FremderEinstiegTest
-Rot: ein fremder Start erreicht die Activity ohne Extras
+Test: ch.brickinventoryapp.app.ForeignEntryTest
+Rot: a foreign start reaches the activity without extras and data
 
-diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/NurLauncherStart.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/NurLauncherStart.kt
---- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/NurLauncherStart.kt
-+++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/NurLauncherStart.kt
+diff --git a/Android-App/app/src/main/java/ch/brickinventoryapp/app/OnlyLauncherStart.kt b/Android-App/app/src/main/java/ch/brickinventoryapp/app/OnlyLauncherStart.kt
+--- a/Android-App/app/src/main/java/ch/brickinventoryapp/app/OnlyLauncherStart.kt
++++ b/Android-App/app/src/main/java/ch/brickinventoryapp/app/OnlyLauncherStart.kt
 @@ -13,7 +13,6 @@ import androidx.fragment.app.FragmentActivity
   */
- abstract class NurLauncherStart : FragmentActivity() {
+ abstract class OnlyLauncherStart : FragmentActivity() {
      override fun onCreate(savedInstanceState: Bundle?) {
--        fremdeAngabenEntfernen(intent)
+-        removeForeignDetails(intent)
          super.onCreate(savedInstanceState)
      }
  

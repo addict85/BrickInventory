@@ -5,76 +5,76 @@ import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Bedienelemente, die NUR aus einem Symbol bestehen, brauchen eine Beschriftung.
+ * Controls that consist ONLY of an icon need a label.
  *
- * ── Was dieser Test NICHT verlangt ──────────────────────────────────────────
- * `contentDescription = null` an einem Symbol NEBEN einem Text ist richtig und
- * bleibt: Sonst liest TalkBack dieselbe Sache zweimal („Suchen, Suchen"). Der
- * Test greift deshalb nur Symbole INNERHALB eines IconButton ab — dort ist das
- * Symbol das einzige, was der Knopf zu bieten hat.
+ * ── What this test does NOT require ─────────────────────────────────────────
+ * `contentDescription = null` on an icon NEXT to a text is right and
+ * stays: otherwise TalkBack reads the same thing twice („Suchen, Suchen"). The
+ * test therefore only picks up icons INSIDE an IconButton — there the
+ * icon is the only thing the button has to offer.
  */
 class IconButtonLabelTest {
 
-    // Hinweis: Die Prueflogik greift auch FilledTonalIconButton & Co. — deren
-    // Name enthaelt "IconButton". Das ist Absicht und hat beim Schreiben dieses
-    // Tests sechs weitere Stellen zutage gefoerdert, an die vorher niemand
-    // dachte: die Mengen-Knoepfe (+/-) in den beiden Detail-Ansichten und zwei
-    // Bearbeiten-Knoepfe im Monitoring. Die Mengen-Knoepfe trugen "+" und "-"
+    // Note: the check logic also picks up FilledTonalIconButton & co. — their
+    // name contains "IconButton". That is intentional and, while writing this
+    // test, brought to light six further places nobody had thought of
+    // before: the quantity buttons (+/-) in the two detail views and two
+    // edit buttons in the monitoring. The quantity buttons carried "+" and "-"
 
     private fun screens(): List<File> =
-        Quellen.wurzel
+        Quellen.root
             .walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
             .also {
-                // Untergrenze: ein leerer Dateilauf lässt jede
-                // Sammelprüfung darunter stillschweigend bestehen.
+                // Lower bound: an empty file walk lets every
+                // collective check below pass silently.
                 check(it.size >= 20) { "Zu wenige Kotlin-Dateien gefunden (${'$'}{it.size}) — Pfad veraltet?" }
             }
 
     @Test
-    fun `jeder IconButton hat eine Beschriftung`() {
-        val ohneLabel = mutableListOf<String>()
+    fun `every IconButton has a label`() {
+        val withoutLabel = mutableListOf<String>()
 
         for (datei in screens()) {
             val zeilen = datei.readText().lines()
             zeilen.forEachIndexed { i, zeile ->
                 if (!zeile.contains("IconButton(")) return@forEachIndexed
-                // Der Icon-Aufruf steht auf derselben oder einer der nächsten
-                // Zeilen — mehrzeilige Aufrufe sind der Normalfall.
+                // The icon call stands on the same or one of the next
+                // lines — multi-line calls are the normal case.
                 //
-                // Fenster über die nächsten zehn Zeilen statt über eine feste
-                // Zeichenzahl ab `Icon(`: Ein erster Versuch schnitt bei 300
-                // Zeichen ab und meldete deshalb den Passwort-Knopf als
-                // unbeschriftet, obwohl die Beschriftung — hinter zwei
-                // Kommentarzeilen — direkt darunter stand. Ein Test, der
-                // korrekten Code anmeckert, wird abgeschaltet statt befolgt.
+                // A window over the next ten lines instead of a fixed
+                // number of characters from `Icon(`: a first attempt cut at 300
+                // characters and therefore reported the password button as
+                // unlabelled, although the label — behind two
+                // comment lines — stood directly below. A test that
+                // complains about correct code gets switched off instead of followed.
                 val block = zeilen.subList(i, minOf(i + 10, zeilen.size)).joinToString("\n")
                 if (!block.contains("Icon(")) return@forEachIndexed
                 val beschriftet = block.contains("stringResource") ||
                     block.contains("contentDescription =")
-                if (!beschriftet) ohneLabel += "${datei.name}:${i + 1}"
+                if (!beschriftet) withoutLabel += "${datei.name}:${i + 1}"
             }
         }
 
-        assert(ohneLabel.isEmpty()) {
-            "IconButton ohne Beschriftung — TalkBack sagt dort nur „Schaltfläche\": $ohneLabel"
+        assert(withoutLabel.isEmpty()) {
+            "IconButton ohne Beschriftung — TalkBack sagt dort nur „Schaltfläche\": $withoutLabel"
         }
     }
 
     /**
-     * Jeder reine Symbolknopf liegt in MitTooltip: Sehende Nutzer konnten Filter und
-     * Sortieren (beides Linien) nur raten, Material zeigt den Namen beim langen Drücken.
-     * Der Aufruf steht auf derselben Zeile oder bis zu zwei Zeilen darüber. Ausnahme ist
-     * nur MitTooltip.kt selbst, das den Knopf als Inhalt bekommt.
+     * Every pure icon button lies in MitTooltip: sighted users could only guess filter and
+     * sort (both lines), Material shows the name on long press.
+     * The call stands on the same line or up to two lines above. The only exception is
+     * MitTooltip.kt itself, which gets the button as content.
      *
-     * Gegenprobe (gegenproben/symbolknopf-ohne-tooltip.patch): der Zurück-Pfeil der
-     * Unterseite ohne MitTooltip → rot mit Unterseite.kt.
+     * Counter-check (gegenproben/symbolknopf-ohne-tooltip.patch): the back arrow of the
+     * subpage without MitTooltip → red with Unterseite.kt.
      */
     @Test
-    fun `jeder Symbolknopf zeigt seinen Namen als Tooltip`() {
+    fun `every icon button shows its name as a tooltip`() {
         val ohne = mutableListOf<String>()
         for (datei in screens()) {
             if (datei.name == "MitTooltip.kt") continue
-            val zeilen = Quellen.ohneKommentare(datei.readText()).lines()
+            val zeilen = Quellen.withoutComments(datei.readText()).lines()
             zeilen.forEachIndexed { i, zeile ->
                 if (!zeile.contains("IconButton(")) return@forEachIndexed
                 val davor = zeilen.subList(maxOf(0, i - 2), i + 1).joinToString("\n")
@@ -85,9 +85,9 @@ class IconButtonLabelTest {
     }
 
     @Test
-    fun `die Beschriftungen liegen in beiden Sprachen vor`() {
-        // Ein fehlender Eintrag in values-de führt nicht zum Fehler, sondern
-        // still zum englischen Text — genau die Sorte Lücke, die niemand meldet.
+    fun `the labels exist in both languages`() {
+        // A missing entry in values-de does not lead to an error but
+        // silently to the English text — exactly the kind of gap nobody reports.
         val en = File(Quellen.res, "values/strings.xml").readText()
         val de = File(Quellen.res, "values-de/strings.xml").readText()
         val namen = listOf(
@@ -100,23 +100,23 @@ class IconButtonLabelTest {
         }
     }
 
-    // Gegenprobe (am 27.10. gemessen): in MerklisteZeile.kt das
-    // `role = Role.Button` wieder entfernt → rot mit genau dieser Stelle.
+    // Counter-check (measured on 27.10.): in MerklisteZeile.kt the
+    // `role = Role.Button` removed again → red with exactly this place.
     @Test
-    fun `jedes clickable nennt seine Rolle`() {
-        // Ohne Rolle sagt TalkBack bei einer anklickbaren Karte nichts darüber,
-        // dass man sie antippen kann.
-        val ohneRolle = mutableListOf<String>()
+    fun `every clickable names its role`() {
+        // Without a role TalkBack says nothing about a clickable card
+        // being tappable.
+        val withoutRole = mutableListOf<String>()
         for (f in screens()) {
-            // Glance (Startbildschirm-Widget) kennt keine Rolle: Dort wird daraus eine
-            // RemoteViews-Fläche, die der Launcher selbst als antippbar ansagt.
+            // Glance (home screen widget) knows no role: there it becomes a
+            // RemoteViews area that the launcher itself announces as tappable.
             if (f.readText().contains("import androidx.glance.")) continue
-            // Importzeilen leeren statt entfernen: die Zeilennummern bleiben stimmig.
+            // Empty import lines instead of removing them: the line numbers stay right.
             val s = f.readText().lines().joinToString("\n") { if (it.startsWith("import ")) "" else it }
             Regex("""\.clickable(\((?:[^()]|\([^()]*\))*\))?""").findAll(s).forEach { m ->
-                if (!m.value.contains("role =")) ohneRolle += "${f.name}:${s.substring(0, m.range.first).count { it == '\n' } + 1}"
+                if (!m.value.contains("role =")) withoutRole += "${f.name}:${s.substring(0, m.range.first).count { it == '\n' } + 1}"
             }
         }
-        assert(ohneRolle.isEmpty()) { "clickable ohne role: $ohneRolle" }
+        assert(withoutRole.isEmpty()) { "clickable ohne role: $withoutRole" }
     }
 }

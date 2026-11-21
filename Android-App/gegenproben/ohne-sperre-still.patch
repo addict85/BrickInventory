@@ -1,16 +1,16 @@
 Gegenprobe: Ohne Displaysperre lässt der Schrittschutz still durch (Stand vor sec10 H3)
 Modul: app
-Test: ch.brickinventoryapp.app.OhneSperreTest
-Rot: ohne Displaysperre warnt der Schrittschutz
+Test: ch.brickinventoryapp.app.WithoutLockTest
+Rot: without a screen lock the step guard warns instead of silently letting through
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Schrittschutz.kt
-@@ -70,7 +70,7 @@ class GeraeteSchrittschutz(
+@@ -70,7 +70,7 @@ class DevicesStepProtection(
              return
          }
          if (activity.getSystemService<KeyguardManager>()?.isDeviceSecure != true) {
--            ohneSperre.frage(grund) { frist.bestaetigt(); weiter() }
+-            withoutLock.frage(grund) { deadline.confirmed(); weiter() }
 +            weiter()
              return
          }

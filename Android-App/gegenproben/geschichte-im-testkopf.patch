@@ -1,7 +1,7 @@
 Gegenprobe: Ein Testkopf erzählt wieder, aus welchem Nachtrag er stammt
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: lange Kommentare im Workflow und in Tests
+Rot: long comments in the workflow and in tests become fewer
 
 diff --git a/Android-App/app/src/test/java/ch/brickinventoryapp/app/TabOpensAtTopTest.kt b/Android-App/app/src/test/java/ch/brickinventoryapp/app/TabOpensAtTopTest.kt
 index e94f1eb..39e3cf5 100644

@@ -1,7 +1,7 @@
 Gegenprobe: Werkbank wieder mit kühlem Anthrazit und Hellblau als Zweitfarbe
 Modul: core-ui
-Test: ch.brickinventoryapp.ui.FarbrollenTest
-Rot: Werkbank und Klassisch dunkel
+Test: ch.brickinventoryapp.ui.ColorRolesTest
+Rot: Workbench and Classic dark differ in surface and accent
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/theme/Theme.kt
 index 0db71be..f93a4b1 100644

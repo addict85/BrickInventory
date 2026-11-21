@@ -1,20 +1,20 @@
 package ch.brickinventoryapp.ui.util
 
-/** So lange bleibt ein kopiertes Geheimnis in der Zwischenablage. */
-internal const val GEHEIM_ABLAUF_MS = 60_000L
+/** How long a copied secret stays in the clipboard. */
+internal const val SECRET_FLOW_MS = 60_000L
 
-/** Was mit einem abgelaufenen Geheimnis in der Zwischenablage geschieht. */
-internal enum class GeheimSchritt { WARTEN, LEEREN, VERGESSEN }
+/** What happens to an expired secret in the clipboard. */
+internal enum class SecretStep { WARTEN, LEEREN, FORGOTTEN }
 
 /**
- * Geleert wird nur unser eigener Clip, erkannt an seiner Kennung: Hat jemand
- * inzwischen etwas anderes kopiert, gehört es ihm. Ist die Ablage nicht lesbar
- * (ab Android 10 im Hintergrund), wird gewartet, bis die App wieder vorne ist —
- * blind zu leeren könnte fremden Inhalt treffen.
+ * Only our own clip is cleared, recognized by its marker: if someone has
+ * copied something else in the meantime, it belongs to them. If the clipboard
+ * is not readable (from Android 10 in the background), it waits until the app
+ * is back in front — clearing it blindly could hit someone else's content.
  */
-internal fun geheimSchritt(kennung: String?, faelligAb: Long, jetzt: Long, lesbar: Boolean, kennungImClip: String?): GeheimSchritt = when {
-    kennung == null -> GeheimSchritt.VERGESSEN
-    jetzt < faelligAb || !lesbar -> GeheimSchritt.WARTEN
-    kennungImClip == kennung -> GeheimSchritt.LEEREN
-    else -> GeheimSchritt.VERGESSEN
+internal fun secretStep(kennung: String?, dueAb: Long, jetzt: Long, lesbar: Boolean, idInClip: String?): SecretStep = when {
+    kennung == null -> SecretStep.FORGOTTEN
+    jetzt < dueAb || !lesbar -> SecretStep.WARTEN
+    idInClip == kennung -> SecretStep.LEEREN
+    else -> SecretStep.FORGOTTEN
 }

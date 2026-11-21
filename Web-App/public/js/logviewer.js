@@ -1,6 +1,6 @@
-// Protokollfenster (monitor.js öffnet es per window.open). Externe Datei, weil das Fenster die CSP des
-// Öffners erbt und die Inline-Skripte sperrt. Übersetzungen kommen als data-Attribute am <body>, die
-// Anmeldung im Sitzungscookie. Eigene Funktion: Nichts davon soll global werden.
+// Log viewer window (monitor.js opens it via window.open). A separate file because the window
+// inherits the opener's CSP and blocks inline scripts. Translations arrive as data attributes on
+// <body>, the login via the session cookie. Its own closure: none of this should become global.
 (() => {
   const body = document.body;
   const BASE = body.dataset.base || '';
@@ -23,31 +23,31 @@
   const el = id => /** @type {HTMLElement} */ (document.getElementById(id));
   /** @param {string} k */
   const tx = k => L[k] || k;
-  // Das Fenster erbt die CSP samt Trusted Types: eigene Richtlinie für das hier maskierte Markup. Wie in
-  // escapen.js nimmt sie nur den Text an, den alsHtml() ihr gerade freigibt.
+  // The window inherits the CSP including Trusted Types: its own policy for the markup masked here. As in
+  // escaping.js, it only accepts the text that asHtml() has just cleared for it.
   const tt =
     /** @type {{ trustedTypes?: { createPolicy(n: string, r: object): { createHTML(s: string): string } } }} */ (
       /** @type {unknown} */ (window)
     ).trustedTypes;
   /** @type {string | null} */
-  let freigabe = null;
-  const richtlinie = tt
+  let cleared = null;
+  const policy = tt
     ? tt.createPolicy('app', {
         createHTML: (/** @type {string} */ s) => {
-          if (freigabe === null || s !== freigabe) throw new TypeError('Trusted Types: Markup nur über alsHtml()');
-          freigabe = null;
+          if (cleared === null || s !== cleared) throw new TypeError('Trusted Types: markup only via asHtml()');
+          cleared = null;
           return s;
         },
       })
     : null;
   /** @param {string} s @returns {string} */
-  const alsHtml = s => {
-    if (!richtlinie) return s;
-    freigabe = s;
+  const asHtml = s => {
+    if (!policy) return s;
+    cleared = s;
     try {
-      return richtlinie.createHTML(s);
+      return policy.createHTML(s);
     } finally {
-      freigabe = null;
+      cleared = null;
     }
   };
   /** @param {string} s */
@@ -56,30 +56,30 @@
   /** @param {string} text @param {string} q */
   function highlight(text, q) {
     if (!q) return esc(text);
-    const teile = esc(text).split(new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'));
-    return teile.map((p, i) => (i % 2 === 1 ? '<mark>' + p + '</mark>' : p)).join('');
+    const parts = esc(text).split(new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'));
+    return parts.map((p, i) => (i % 2 === 1 ? '<mark>' + p + '</mark>' : p)).join('');
   }
 
-  /** @param {string} [stufe] */
-  function toggleLevel(stufe) {
-    if (!stufe) return;
-    const btn = el('btn-' + stufe);
-    if (_levels.has(stufe)) {
-      _levels.delete(stufe);
+  /** @param {string} [level] */
+  function toggleLevel(level) {
+    if (!level) return;
+    const btn = el('btn-' + level);
+    if (_levels.has(level)) {
+      _levels.delete(level);
       btn.classList.remove('active');
     } else {
-      _levels.add(stufe);
+      _levels.add(level);
       btn.classList.add('active');
     }
-    btn.setAttribute('aria-pressed', String(_levels.has(stufe)));
+    btn.setAttribute('aria-pressed', String(_levels.has(level)));
     renderLogs();
   }
 
   async function loadLogs() {
-    const minuten = /** @type {HTMLSelectElement} */ (el('period')).value;
+    const minutes = /** @type {HTMLSelectElement} */ (el('period')).value;
     el('status').textContent = tx('common.loading');
     try {
-      const r = await fetch(BASE + '/api/v1/admin/logs?minutes=' + minuten, { credentials: 'same-origin' });
+      const r = await fetch(BASE + '/api/v1/admin/logs?minutes=' + minutes, { credentials: 'same-origin' });
       const d = await r.json();
       if (d.success) {
         _logs = d.logs;
@@ -90,42 +90,42 @@
     }
   }
 
-  // Ein Stacktrace füllte sonst den Bildschirm mit dutzenden Zeilen: Die erste Zeile bleibt stehen, der Rest
-  // klappt auf. Trifft die Suche im Rest, steht er offen — sonst wäre der Treffer unsichtbar.
-  /** @param {string} text @param {string} suche */
-  function meldung(text, suche) {
-    const [kopf, ...rest] = text.split('\n');
-    if (!rest.length) return `<span class="msg">${highlight(text, suche)}</span>`;
-    const offen = !!suche && rest.join('\n').toLowerCase().includes(suche);
+  // A stack trace would otherwise fill the screen with dozens of lines: the first line stays visible, the
+  // rest collapses. If the search matches inside the rest, it opens — otherwise the hit would be invisible.
+  /** @param {string} text @param {string} search */
+  function message(text, search) {
+    const [head, ...rest] = text.split('\n');
+    if (!rest.length) return `<span class="msg">${highlight(text, search)}</span>`;
+    const open = !!search && rest.join('\n').toLowerCase().includes(search);
     const n = String(rest.length);
-    const mehr = tx(rest.length === 1 ? 'log.mehr_zeilen_one' : 'log.mehr_zeilen').replace('{n}', n);
+    const more = tx(rest.length === 1 ? 'log.mehr_zeilen_one' : 'log.mehr_zeilen').replace('{n}', n);
     return (
-      `<details class="msg"${offen ? ' open' : ''}><summary>${highlight(kopf, suche)} ` +
-      `<span class="mehr">(${esc(mehr)})</span></summary>${highlight(rest.join('\n'), suche)}</details>`
+      `<details class="msg"${open ? ' open' : ''}><summary>${highlight(head, search)} ` +
+      `<span class="mehr">(${esc(more)})</span></summary>${highlight(rest.join('\n'), search)}</details>`
     );
   }
 
   function renderLogs() {
-    const suche = /** @type {HTMLInputElement} */ (el('search')).value.toLowerCase().trim();
+    const search = /** @type {HTMLInputElement} */ (el('search')).value.toLowerCase().trim();
     const wrap = el('log-wrap');
-    const treffer = _logs.filter(l => _levels.has(l.level) && (!suche || l.message.toLowerCase().includes(suche)));
-    el('status').textContent = treffer.length + ' / ' + _logs.length + ' ' + tx('log.entries');
-    if (!treffer.length) {
-      wrap.innerHTML = alsHtml('<div class="leer">' + esc(tx('log.none_found')) + '</div>');
+    const hits = _logs.filter(l => _levels.has(l.level) && (!search || l.message.toLowerCase().includes(search)));
+    el('status').textContent = hits.length + ' / ' + _logs.length + ' ' + tx('log.entries');
+    if (!hits.length) {
+      wrap.innerHTML = asHtml('<div class="leer">' + esc(tx('log.none_found')) + '</div>');
       return;
     }
-    wrap.innerHTML = alsHtml(
-      treffer
+    wrap.innerHTML = asHtml(
+      hits
         .map(l => {
-          const zeit = new Date(l.logged_at).toLocaleTimeString('de-CH', {
+          const time = new Date(l.logged_at).toLocaleTimeString('de-CH', {
             hour: '2-digit',
             minute: '2-digit',
             second: '2-digit',
           });
-          const stufe = esc(l.level);
+          const level = esc(l.level);
           return (
-            `<div class="ll ${stufe}"><span class="ts">${zeit}</span>` +
-            `<span class="lv ${stufe}">${esc(tx('log.stufe.' + l.level))}</span>${meldung(l.message, suche)}</div>`
+            `<div class="ll ${level}"><span class="ts">${time}</span>` +
+            `<span class="lv ${level}">${esc(tx('log.stufe.' + l.level))}</span>${message(l.message, search)}</div>`
           );
         })
         .join(''),
@@ -150,20 +150,19 @@
     }
   }
 
-  // Wie registry.js in der Anwendung: nur diese Namen sind aus dem Markup erreichbar, nicht jede Funktion
-  // auf window.
+  // Like registry.js in the app: only these names are reachable from markup, not every function on window.
   /** @type {Record<string, (arg?: string) => unknown>} */
   const HANDLER = { loadLogs, renderLogs, toggleAuto, toggleLevel };
-  for (const [attr, ereignis] of [
+  for (const [attr, event] of [
     ['data-click', 'click'],
     ['data-change', 'change'],
     ['data-input', 'input'],
   ]) {
-    document.querySelectorAll('[' + attr + ']').forEach(knoten => {
-      const fn = HANDLER[knoten.getAttribute(attr) || ''];
+    document.querySelectorAll('[' + attr + ']').forEach(node => {
+      const fn = HANDLER[node.getAttribute(attr) || ''];
       if (!fn) return;
-      const arg = knoten.getAttribute('data-arg');
-      knoten.addEventListener(ereignis, () => {
+      const arg = node.getAttribute('data-arg');
+      node.addEventListener(event, () => {
         fn(arg ?? undefined);
       });
     });

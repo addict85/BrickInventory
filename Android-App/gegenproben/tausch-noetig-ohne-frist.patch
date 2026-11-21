@@ -1,17 +1,17 @@
 Gegenprobe: noetigWartend() wartet ohne Frist auf den Tausch
 Modul: core-data
-Test: ch.brickinventoryapp.data.TokenTauschTest
-Rot: noetig wartet hoechstens die Frist, der Tausch laeuft weiter
+Test: ch.brickinventoryapp.data.TokenSwapTest
+Rot: needed waits at most the deadline, the swap keeps running
 
-diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
---- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
-+++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenTausch.kt
-@@ -133,7 +133,7 @@ class TokenTausch(
+diff --git a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
+--- a/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
++++ b/Android-App/core-data/src/main/java/ch/brickinventoryapp/data/TokenSwap.kt
+@@ -133,7 +133,7 @@ class TokenSwap(
       */
-     suspend fun noetigWartend(alterToken: String, herkunft: String?, generation: Long): String? {
+     suspend fun neededWaiting(alterToken: String, herkunft: String?, generation: Long): String? {
          val tausch = hintergrund.async { tausche(alterToken) }
 -        return when (withTimeoutOrNull(warten) { tausch.await() }) {
 +        return when (tausch.await() as Tauschergebnis?) {
              null -> null
-             Tauschergebnis.GETAUSCHT, Tauschergebnis.SCHON_GETAUSCHT -> stand()
+             Tauschergebnis.GETAUSCHT, Tauschergebnis.ALREADY_SWAPPED -> stand()
                  .takeIf { herkunft != null && it.herkunft == herkunft && it.generation == generation }

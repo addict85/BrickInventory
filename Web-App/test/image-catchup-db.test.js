@@ -1,11 +1,11 @@
 /**
- * Der Bilder-Nachlauf deckt ALLE Bildarten ab — und zieht fehlende Vorschauen
- * nach, nicht nur fehlende Dateien.
+ * The image follow-up run covers ALL image kinds — and catches up on missing previews,
+ * not only missing files.
  *
- * Gegenprobe (durchgeführt): `/images/sets/` aus _fsPathFromLocal entfernt →
- * thumbs bleibt 0 und die Datei entsteht nicht.
+ * Counter-check (performed): `/images/sets/` removed from _fsPathFromLocal →
+ * thumbs stays 0 and the file is not created.
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL. Ohne DB: skip.
+ * Prerequisite: test DB via TEST_DATABASE_URL. Without DB: skip.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -15,14 +15,14 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const { haeltSet, katalogSet } = require('./helpers/bestand');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const { holdsSet, catalogSet } = require('./helpers/inventory');
+const db = testData();
 
-test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder', { concurrency: 1 }, async t => {
-  if (!(await datenOderSkip(t, _req, { migrieren: false }))) return;
+test('the follow-up run creates missing previews — also for set images', { concurrency: 1 }, async t => {
+  if (!(await dataOrSkip(t, _req, { migrieren: false }))) return;
 
   const { Jimp } = require(path.join(ROOT, 'node_modules', 'jimp'));
   const { DATA_DIR } = _req('src/infra/appPaths.js');
@@ -41,13 +41,13 @@ test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder', { conc
   const uid = (await db.get(`SELECT id FROM users WHERE username=$1`, [USER])).id;
   await db.run(`DELETE FROM sets WHERE set_number=$1`, [name]);
   await db.run(`DELETE FROM set_catalog WHERE set_number=$1`, [name]);
-  await haeltSet(db, uid, name, 1);
-  // Der Bildpfad steht seit Migration 0033 im Katalog — und genau von dort
-  // sammelt der Nachlauf (src/katalog/teileAnreicherung.ts) die Pfade ein.
-  await katalogSet(db, name, { name: 'Test', image_local: `/images/sets/${name}.jpg` });
+  await holdsSet(db, uid, name, 1);
+  // Since migration 0033 the image path is in the catalog — and exactly from there
+  // the follow-up run (src/catalog/partsEnrichment.ts) collects the paths.
+  await catalogSet(db, name, { name: 'Test', image_local: `/images/sets/${name}.jpg` });
 
   try {
-    const { redownloadMissingImages } = _req('src/katalog/teileAnreicherung.js');
+    const { redownloadMissingImages } = _req('src/catalog/partsEnrichment.js');
     const r = await redownloadMissingImages();
 
     assert.ok(r && typeof r.thumbs === 'number', 'der Lauf muss melden, wie viele Vorschauen er erzeugt hat');
@@ -70,9 +70,9 @@ test('der Nachlauf erzeugt fehlende Vorschauen — auch für Set-Bilder', { conc
   }
 });
 
-test('der Pfad-Auflöser kennt alle drei Bildarten', () => {
+test('the path resolver knows all three image kinds', () => {
   const src = fs
-    .readFileSync(path.join(ROOT, 'src/katalog/bilderNachladen.ts'), 'utf8')
+    .readFileSync(path.join(ROOT, 'src/catalog/reloadImages.ts'), 'utf8')
     .split('\n')
     .filter(l => !l.trim().startsWith('//') && !l.trim().startsWith('*'))
     .join('\n');
@@ -80,14 +80,14 @@ test('der Pfad-Auflöser kennt alle drei Bildarten', () => {
   for (const art of ['/images/parts/', '/images/minifigs/', '/images/sets/']) {
     assert.ok(fn.includes(art), `_fsPathFromLocal kennt ${art} nicht — diese Bilder fallen still aus dem Lauf`);
   }
-  // Der Schutz gegen Pfadtricks muss bleiben: Der Wert kommt aus der Datenbank.
+  // The protection against path tricks must stay: the value comes from the database.
   assert.ok(/includes\('\.\.'\)/.test(fn), 'die Prüfung auf .. fehlt');
 });
 
-test('beide Vorschau-Erzeuger melden Fehlschläge', () => {
+test('both preview generators report failures', () => {
   for (const [datei, muster] of /** @type {[string, RegExp][]} */ ([
-    ['src/bilder/thumbs.ts', /\[thumb\]/],
-    ['src/bilder/proxyThumbs.ts', /\[img-proxy\] Vorschau fehlgeschlagen/],
+    ['src/images/thumbs.ts', /\[thumb\]/],
+    ['src/images/proxyThumbs.ts', /\[img-proxy\] Vorschau fehlgeschlagen/],
   ])) {
     const src = fs.readFileSync(path.join(ROOT, datei), 'utf8');
     assert.ok(

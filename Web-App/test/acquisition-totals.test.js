@@ -1,34 +1,34 @@
 /**
- * Die Summenzeile der Erfassungen rechnet der SERVER — einmal.
+ * The total row of the entries is computed by the SERVER — once.
  *
- * Gegenprobe (08.11.2026 gemessen): acqSummary() liest totals.quantity nicht
- * (`const menge = 0`) bzw. summenText() rechnet nicht mit totals.amount → rot:
- * „keine Oberfläche rechnet die Summe noch einmal“.
- * Gegenprobe (durchgeführt): `amount` in acquisitionTotals() auf 0 statt null
- * bei fehlenden Preisen → der Randfall-Teilschritt wird rot. Und ein
- * eingefügtes `acqs.reduce(...)` in admin.js → der Regel-Teilschritt.
- * Am 30.10.2026 gemessen: `totals` aus der Teile-Antwort in
- * routes/api_v1/acquisitions.ts entfernt → rot: „parts“ im Routen-Teilschritt.
- * Seit 05.11.2026 fehlt `amount` ohne bekannten Preis (Geld hat einen Typ);
- * gemessen: die Route ohne das Weglassen → rot: „minifigs“ (amount: null
- * verletzt den Vertrag, die Antwort hat keine Erfassungen).
+ * Counter-check (measured 08.11.2026): acqSummary() does not read totals.quantity
+ * (`const menge = 0`) or sumsText() does not compute with totals.amount → red:
+ * “no UI computes the sum again”.
+ * Counter-check (performed): `amount` in acquisitionTotals() set to 0 instead of null
+ * for missing prices → the edge case substep turns red. And an
+ * inserted `acqs.reduce(...)` in admin.js → the rule substep.
+ * Counter-check of 30.10.2026: `totals` removed from the parts response in
+ * routes/api_v1/acquisitions.ts → red: “parts” in the route substep.
+ * Since 05.11.2026 `amount` is missing without a known price (money has a type);
+ * measured: the route without the omission → red: “minifigs” (amount: null
+ * violates the contract, the response has no entries).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
-const { oeffneOberflaeche, warte } = require('./helpers/oberflaeche');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { openUi, warte } = require('./helpers/ui');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 const { testServer } = require('./helpers/server');
-const { acquisitionTotals } = _req('src/bestand/acquisitions.js');
+const { acquisitionTotals } = _req('src/inventory/acquisitions.js');
 
-// ── Teil 1: die Rechnung ────────────────────────────────────────────────────
+// ── Part 1: the computation ─────────────────────────────────────────────────
 
-test('Menge und Betrag: mengengewichtet über alle Zeilen', () => {
+test('quantity and amount: weighted by quantity over all rows', () => {
   const t = acquisitionTotals([
-    { quantity: 2, purchase_price: '7.41' }, // aus Postgres kommen NUMERIC als Text
+    { quantity: 2, purchase_price: '7.41' }, // from Postgres NUMERIC comes as text
     { quantity: 1, purchase_price: 9.48 },
   ]);
   assert.equal(t.quantity, 3);
@@ -36,52 +36,52 @@ test('Menge und Betrag: mengengewichtet über alle Zeilen', () => {
   assert.equal(t.priced_rows, 2);
 });
 
-test('unit_price zählt genauso wie purchase_price', () => {
-  // Manuelle Teile und Minifiguren führen den Preis in unit_price. Die
-  // Rückfallregel steht deshalb HIER und nicht in einem der Clients.
+test('unit_price counts just like purchase_price', () => {
+  // Manual parts and minifigures carry the price in unit_price. The
+  // fallback rule is therefore HERE and not in one of the clients.
   assert.equal(acquisitionTotals([{ quantity: 3, unit_price: 0.6 }]).amount, 1.8);
 });
 
-test('ohne Preis ist der Betrag null — nicht 0', () => {
-  // „Nichts erfasst" ist etwas anderes als „für null Franken gekauft". Nur mit
-  // null kann die Oberfläche den Gedankenstrich zeigen, ohne selbst zu raten;
-  // mit 0 müsste jede Ansicht dieselbe Auslegung noch einmal treffen.
+test('without a price the amount is null — not 0', () => {
+  // “Nothing entered" is something other than “bought for zero francs". Only with
+  // null can the UI show the dash without guessing itself;
+  // with 0 every view would have to make the same interpretation again.
   const t = acquisitionTotals([{ quantity: 2 }, { quantity: 1, purchase_price: null }]);
   assert.equal(t.quantity, 3, 'die Stücke sind da, auch ohne Preis');
   assert.equal(t.amount, null);
   assert.equal(t.priced_rows, 0);
 });
 
-test('eine Zeile mit Preis 0 ist erfasst und ergibt 0', () => {
-  // Abgrenzung zum Fall darüber: 0 ist ein Preis, kein fehlender Wert —
-  // sonst verschwände ein geschenktes Set aus der Zählung.
+test('a row with price 0 is captured and yields 0', () => {
+  // Distinction from the case above: 0 is a price, not a missing value —
+  // otherwise a gifted set would disappear from the count.
   const t = acquisitionTotals([{ quantity: 1, purchase_price: 0 }]);
   assert.equal(t.amount, 0);
   assert.equal(t.priced_rows, 1);
 });
 
-test('gemischt: Zeilen mit und ohne Preis', () => {
+test('mixed: rows with and without price', () => {
   const t = acquisitionTotals([{ quantity: 2, purchase_price: 10 }, { quantity: 5 }]);
   assert.equal(t.quantity, 7, 'die preislose Zeile zählt bei der MENGE mit');
   assert.equal(t.amount, 20, 'beim BETRAG nicht — sie hat keinen');
 });
 
-test('der Betrag ist auf zwei Stellen gerundet', () => {
-  // 3 × 11.326666 ergibt sonst 33.980000000000004 auf dem Schirm.
+test('the amount is rounded to two places', () => {
+  // Otherwise 3 × 11.326666 shows up as 33.980000000000004 on screen.
   const t = acquisitionTotals([{ quantity: 3, purchase_price: 11.326666 }]);
   assert.equal(String(t.amount).split('.')[1]?.length <= 2, true, `war: ${t.amount}`);
 });
 
-test('leere Liste', () => {
+test('empty list', () => {
   assert.deepEqual(acquisitionTotals([]), { quantity: 0, amount: null, priced_rows: 0 });
   assert.deepEqual(acquisitionTotals(null), { quantity: 0, amount: null, priced_rows: 0 });
 });
 
-// ── Teil 2: die Regel ───────────────────────────────────────────────────────
+// ── Part 2: the rule ────────────────────────────────────────────────────────
 
-test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, async t => {
-  const db = testDaten();
-  if (!(await datenOderSkip(t, _req))) return;
+test('all three acquisition routes deliver the sum', { concurrency: 1 }, async t => {
+  const db = testData();
+  if (!(await dataOrSkip(t, _req))) return;
   const P = process.pid,
     NAME = `summen-${P}`,
     SN = `${P}7-1`,
@@ -93,7 +93,7 @@ test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, as
     await db.run('DELETE FROM users WHERE id=$1', [uid]).catch(() => {});
     await db.pool.end().catch(() => {});
   });
-  // Die Kontowährung ist die der Käufe: So bleibt die Summe ohne Umrechnung nachrechenbar.
+  // The account currency is that of the purchases: so the sum stays verifiable without conversion.
   await db.run("INSERT INTO user_settings (user_id, key, value) VALUES ($1, 'currency', 'CHF')", [uid]);
   await db.run('INSERT INTO sets (user_id, set_number) VALUES ($1,$2)', [uid, SN]);
   await db.run(
@@ -130,9 +130,9 @@ test('alle drei Erfassungs-Routen liefern die Summe mit', { concurrency: 1 }, as
   }
 });
 
-test('keine Oberfläche rechnet die Summe noch einmal', async () => {
-  // Der Server schickt die Summenzeile als `totals`; hier bewusst NICHT die Summe der Zeilen
-  // (10 + 20 bei Menge 2): Was die Oberfläche zeigt, muss vom Server stammen.
+test('no UI computes the sum again', async () => {
+  // The server sends the total row as `totals`; here deliberately NOT the sum of the rows
+  // (10 + 20 at quantity 2): what the UI shows must come from the server.
   const SET = { set_number: '10294-1', name: 'Titanic', year: 2021, quantity: 2 };
   const zeile = (id, preis) => ({
     id,
@@ -143,7 +143,7 @@ test('keine Oberfläche rechnet die Summe noch einmal', async () => {
     created_at: '2026-10-01T10:00:00Z',
     user_id: 1,
   });
-  const { d } = await oeffneOberflaeche({
+  const { d } = await openUi({
     '/v1/sets': { success: true, total: 1, themes: [], sets: [SET] },
     '/v1/sets/10294-1': { success: true, set: SET },
     '/v1/sets/10294-1/acquisitions': {

@@ -1,0 +1,165 @@
+/**
+ * If the Rebrickable key is missing, the admin still opens his
+ * collection. A banner points it out, leads to the field on request and can be
+ * dismissed permanently per account. On the real bundle in jsdom.
+ *
+ * Counter-checks (measured 02.11.2026, each on its own, bundle rebuilt):
+ *   A  in checkRbKey again the jump to the tab „settings“ → red:
+ *      “collection instead of settings”
+ *   B  showRbHint() not called → red: “banner appears”
+ *   C  localStorage check removed in showRbHint → red: “dismissed
+ *      it stays away” (03.11.2026: deadline set to 30 days → red: “after
+ *      30 days it comes back”)
+ *   D  rbHinweisOeffnen without a click on the section → red: “link leads to the field”
+ *   E  einrichtungSpaeter without showRbHint() → red: “after “Später” in the
+ *      wizard the banner appears”
+ *   F  (12.11.2026, UX check 19 M4: permanently per account) key again
+ *      without account → red: “another account sees it again”; with a deadline of
+ *      30 days → red: “even after 31 days it stays away”
+ */
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { openUi, warte, takt } = require('./helpers/ui');
+
+const WITHOUT_KEY = {
+  '/v1/settings/raw': { success: true, settings: { currency: 'EUR', language: 'de', rebrickable_api_key: '' } },
+  '/v1/sets': {
+    success: true,
+    total: 1,
+    themes: [],
+    sets: [{ set_number: '10294-1', name: 'Titanic', year: 2021, theme: 'Icons', num_parts: 9090, quantity: 1 }],
+  },
+};
+
+test('without a Rebrickable key: collection with hint banner', async t => {
+  const { w, d, aufrufe } = await openUi(WITHOUT_KEY);
+  try {
+    const band = d.getElementById('rb-hinweis');
+    await warte(() => !band.hidden, 2000);
+    await t.test('banner appears', () => {
+      assert.equal(band.hidden, false);
+      assert.match(band.textContent, /Rebrickable/);
+    });
+    await t.test('collection instead of settings', async () => {
+      await takt(50);
+      assert.equal(d.getElementById('tab-gallery').classList.contains('active'), true);
+      assert.equal(d.getElementById('tab-settings').classList.contains('active'), false);
+      assert.ok(
+        aufrufe.some(a => /\/v1\/sets(\?|$)/.test(a.url)),
+        'Sammlung nicht geladen',
+      );
+    });
+    await t.test('link leads to the field', async () => {
+      band.querySelector('[data-click="rbHinweisOeffnen"]').click();
+      await takt(50);
+      assert.equal(d.getElementById('tab-settings').classList.contains('active'), true);
+      assert.equal(d.getElementById('einst-rb').classList.contains('einst-aktiv'), true);
+      assert.equal(d.activeElement.id, 'rb-key');
+      assert.equal(band.hidden, true);
+    });
+  } finally {
+    w.close();
+  }
+});
+
+test('dismissed it stays away — even in a new session', async () => {
+  const erst = await openUi(WITHOUT_KEY);
+  let gemerkt;
+  try {
+    const band = erst.d.getElementById('rb-hinweis');
+    await warte(() => !band.hidden, 2000);
+    band.querySelector('[data-click="rbHinweisWeg"]').click();
+    assert.equal(band.hidden, true);
+    gemerkt = Object.keys(erst.w.localStorage).find(k => k.startsWith('bim_rb_hinweis_weg:'));
+    assert.ok(gemerkt, 'nichts in localStorage gemerkt');
+  } finally {
+    erst.w.close();
+  }
+  const zweit = await openUi(WITHOUT_KEY, {
+    vorher: w => w.localStorage.setItem(gemerkt, '1'),
+  });
+  try {
+    assert.ok(await zweit.ruhig());
+    assert.equal(zweit.d.getElementById('rb-hinweis').hidden, true);
+  } finally {
+    zweit.w.close();
+  }
+});
+
+test('even after 31 days it stays away, another account sees it again', async t => {
+  const erst = await openUi(WITHOUT_KEY);
+  let schluessel;
+  try {
+    await warte(() => !erst.d.getElementById('rb-hinweis').hidden, 2000);
+    erst.d.querySelector('#rb-hinweis [data-click="rbHinweisWeg"]').click();
+    schluessel = Object.keys(erst.w.localStorage).find(k => k.startsWith('bim_rb_hinweis_weg:'));
+  } finally {
+    erst.w.close();
+  }
+  await t.test('even after 31 days it stays away', async () => {
+    const vor31 = Date.now() - 31 * 24 * 3600 * 1000;
+    const { w, d, ruhig } = await openUi(WITHOUT_KEY, {
+      vorher: f => {
+        f.localStorage.setItem(schluessel, String(vor31));
+        f.Date.now = () => vor31 + 62 * 24 * 3600 * 1000;
+      },
+    });
+    try {
+      assert.ok(await ruhig());
+      assert.equal(d.getElementById('rb-hinweis').hidden, true);
+    } finally {
+      w.close();
+    }
+  });
+  await t.test('another account sees it again', async () => {
+    const { w, d } = await openUi(
+      {
+        ...WITHOUT_KEY,
+        '/v1/auth/me': {
+          success: true,
+          loggedIn: true,
+          user: { id: 2, username: 'bert', is_admin: true, zweiterFaktorPflicht: false },
+        },
+      },
+      { vorher: f => f.localStorage.setItem(schluessel, '1') },
+    );
+    try {
+      await warte(() => !d.getElementById('rb-hinweis').hidden, 2000);
+      assert.equal(d.getElementById('rb-hinweis').hidden, false);
+    } finally {
+      w.close();
+    }
+  });
+});
+
+test('after “Später” in the wizard the banner appears', async () => {
+  const { w, d, ruhig } = await openUi({
+    ...WITHOUT_KEY,
+    '/v1/settings/einrichtung': {
+      success: true,
+      offen: true,
+      passwort_aendern: false,
+      quellen: { rebrickable: false },
+    },
+  });
+  try {
+    await warte(() => d.getElementById('einrichtung-modal').classList.contains('open'));
+    assert.ok(await ruhig());
+    assert.equal(d.getElementById('rb-hinweis').hidden, true, 'Band über dem Assistenten');
+    d.querySelector('#einrichtung-modal [data-click="einrichtungSpaeter"]').click();
+    await takt(20);
+    assert.equal(d.getElementById('rb-hinweis').hidden, false);
+  } finally {
+    w.close();
+  }
+});
+
+test('with a key no banner', async () => {
+  const { w, d, ruhig } = await openUi();
+  try {
+    assert.ok(await ruhig());
+    assert.equal(d.getElementById('rb-hinweis').hidden, true);
+  } finally {
+    w.close();
+  }
+});

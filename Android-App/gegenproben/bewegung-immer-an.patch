@@ -1,17 +1,17 @@
 Gegenprobe: „Animationen entfernen“ wird überhört
 Modul: app
-Test: ch.brickinventoryapp.app.GeruestUndFormularTest
-Rot: reduzierte Bewegung folgt der Animator-Dauer
+Test: ch.brickinventoryapp.app.ScaffoldAndFormTest
+Rot: reduced motion follows the system's animator duration
 
 diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt
 --- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt
 +++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/Bewegung.kt
 @@ -22,7 +22,7 @@ import androidx.compose.ui.platform.LocalContext
- fun bewegungReduziert(): Boolean {
-     val kontext = LocalContext.current
-     val aufloesung = kontext.contentResolver
--    fun lies() = Settings.Global.getFloat(aufloesung, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
-+    fun lies() = Settings.Global.getFloat(aufloesung, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) < 0f
-     var reduziert by remember(kontext) { mutableStateOf(lies()) }
-     DisposableEffect(kontext) {
-         val beobachter = object : ContentObserver(Handler(Looper.getMainLooper())) {
+ fun movementReduced(): Boolean {
+     val context = LocalContext.current
+     val resolution = context.contentResolver
+-    fun lies() = Settings.Global.getFloat(resolution, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
++    fun lies() = Settings.Global.getFloat(resolution, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) < 0f
+     var reduced by remember(context) { mutableStateOf(lies()) }
+     DisposableEffect(context) {
+         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {

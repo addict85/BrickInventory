@@ -3,13 +3,13 @@ package ch.brickinventoryapp.ui.components
 import java.security.ProviderException
 
 /**
- * Erst im StrongBox-Chip, sonst im TEE: Der Chip hält den Schlüssel auch gegen einen
- * Angriff auf das Hauptsystem. Zum TEE führt nur ein fehlender Chip
- * ([android.security.keystore.StrongBoxUnavailableException]) oder einer, der den
- * Schlüssel nicht erzeugen kann (manche Geräte melden das allgemeiner); beides ist eine
- * ProviderException. Jeder andere Fehler bleibt einer. Der Server nimmt TEE wie StrongBox an.
+ * First in the StrongBox chip, otherwise in the TEE: the chip holds the key even against an
+ * attack on the main system. Only a missing chip
+ * ([android.security.keystore.StrongBoxUnavailableException]) or one that cannot
+ * generate the key (some devices report this more generically) falls back to the TEE;
+ * both are a ProviderException. Every other error stays an error. The server accepts TEE just like StrongBox.
  */
-internal fun <T> strongBoxZuerst(erzeuge: (strongBox: Boolean) -> T): T =
+internal fun <T> strongBoxFirst(erzeuge: (strongBox: Boolean) -> T): T =
     try {
         erzeuge(true)
     } catch (_: ProviderException) {

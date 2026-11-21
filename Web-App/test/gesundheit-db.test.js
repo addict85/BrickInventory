@@ -1,22 +1,22 @@
 /**
- * Gesundheitsprüfung am echten Server: anonym geht nur der Status hinaus,
- * `live` antwortet ohne Datenbank, `ready` fragt sie und meldet 503, wenn sie
- * fehlt. Der Startzustand geht anonym nur mit seinen bekannten Feldern hinaus.
+ * Health check on the real server: anonymously only the status goes out,
+ * `live` answers without a database, `ready` asks it and reports 503 when it is
+ * missing. The startup state goes out anonymously only with its known fields.
  *
- * Gegenproben (01.11.2026 gemessen):
- *   A  in /api/v1/health `startup` wieder für alle → rot: „anonym nur der Status"
- *   B  /api/v1/health/ready ohne datenbankAntwortet() (immer 200) → rot: „ohne Datenbank
- *      meldet ready 503"
- *   C  startup-status ohne oeffentlicherStartZustand() → rot: „der
- *      Startzustand nennt nur seine Felder" (pfad und fehler gingen hinaus)
- *   D  progress im Vertrag wieder z.number().int() → rot: dieselbe Prüfung
- *      (vertrag_verletzt; der Server meldet Schritte mit Anteil, z. B. 2.37)
- *   E  (03.11.2026) startup-status wieder mit Schritt für alle (angemeldet
- *      immer true) → rot: „anonym nur der Fortschritt"
+ * Counter-checks (measured 01.11.2026):
+ *   A  in /api/v1/health `startup` again for everyone → red: “anonymously only the status"
+ *   B  /api/v1/health/ready without databaseResponds() (always 200) → red: “without a database
+ *      ready reports 503"
+ *   C  startup-status without publicStartState() → red: “the
+ *      startup state only names its fields" (pfad and fehler went out)
+ *   D  progress in the contract back to z.number().int() → red: the same check
+ *      (vertrag_verletzt; the server reports steps with a fraction, e.g. 2.37)
+ *   E  (03.11.2026) startup-status again with step for everyone (logged in
+ *      always true) → red: “anonymously only the progress"
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL, deren Benutzer Eigentümer ist.
+ * Prerequisite: test DB via TEST_DATABASE_URL whose user is the owner.
  *
- * @superuser (Ratsche in test/rollen-trennung-db.test.js)
+ * @superuser (ratchet in test/roles-separation-db.test.js)
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -27,23 +27,23 @@ const { spawn } = require('node:child_process');
 const URL_DB = process.env.TEST_DATABASE_URL || 'postgres://tester:test@localhost/cattest';
 process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
-const { buildAndRequire, testDaten } = require('./helpers/sources');
+const { buildAndRequire, testData } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
-const db = testDaten();
+const { dataOrSkip } = require('./helpers/db');
+const db = testData();
 const { Client } = require(path.join(ROOT, 'node_modules', 'pg'));
-const { warte } = require('./helpers/zeit');
-const { portVon } = require('./helpers/server');
-const freierPort = () =>
+const { warte } = require('./helpers/time');
+const { portOf } = require('./helpers/server');
+const freePort = () =>
   new Promise(r => {
     const s = net.createServer().listen(0, () => {
-      const p = portVon(s);
+      const p = portOf(s);
       s.close(() => r(p));
     });
   });
 
-test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 }, async t => {
-  if (!(await datenOderSkip(t, _req))) return;
+test('health check and startup state', { concurrency: 1, timeout: 180_000 }, async t => {
+  if (!(await dataOrSkip(t, _req))) return;
   const NAME = `gesund_${process.pid}`;
   await db.run('DELETE FROM users WHERE username = $1', [NAME]);
   const uid = (
@@ -53,8 +53,8 @@ test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 
       [NAME],
     )
   ).id;
-  const token = await _req('src/konto/geraeteToken.js').tokenAnlegen(uid, 'Gesundheit', false, null, { scope: 'voll' });
-  const { setzeZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').laufzustand;
+  const token = await _req('src/account/deviceToken.js').createToken(uid, 'Gesundheit', false, null, { scope: 'voll' });
+  const { setzeZustand, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
   await setzeZustand(
     'startup_status',
     JSON.stringify({
@@ -68,12 +68,12 @@ test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 
     }),
   );
   t.after(async () => {
-    await loescheZustand('startup_status');
+    await deleteState('startup_status');
     await db.run('DELETE FROM users WHERE id = $1', [uid]);
     await db.pool.end().catch(() => {});
   });
 
-  const port = await freierPort();
+  const port = await freePort();
   const srv = spawn(process.execPath, [path.join(ROOT, 'dist', 'server.js')], {
     cwd: ROOT,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -105,19 +105,19 @@ test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 
     }));
   for (let i = 0; i < 240 && (await hole('/api/v1/health/live').catch(() => null)) === null; i++) await warte(250);
 
-  await t.test('anonym nur der Status, der Verwalter sieht mehr', async () => {
+  await t.test('anonymously only the status, the admin sees more', async () => {
     const anonym = await hole('/api/v1/health');
     assert.deepEqual(anonym, { status: 200, body: { status: 'starting' } }, log.slice(-1500));
     const verwalter = await hole('/api/v1/health', { authorization: `Bearer ${token}` });
     assert.deepEqual(Object.keys(verwalter.body).sort(), ['db_pool', 'startup', 'status', 'uptime_seconds']);
   });
 
-  await t.test('der Startzustand nennt nur seine Felder', async () => {
+  await t.test('the startup state only names its fields', async () => {
     const r = await hole('/api/v1/startup-status', { authorization: `Bearer ${token}` });
     assert.deepEqual(r.body, { ready: false, step: 'Teile laden...', progress: 2.37, total: 8, sub: '40%' });
   });
 
-  await t.test('anonym nur der Fortschritt, nicht der Schritt', async () => {
+  await t.test('anonymously only the progress, not the step', async () => {
     const r = await hole('/api/v1/startup-status');
     assert.deepEqual(
       r.body,
@@ -126,16 +126,16 @@ test('Gesundheitsprüfung und Startzustand', { concurrency: 1, timeout: 180_000 
     );
   });
 
-  await t.test('live und ready antworten mit der Datenbank', async () => {
+  await t.test('live and ready answer with the database', async () => {
     assert.deepEqual(await hole('/api/v1/health/live'), { status: 200, body: { status: 'ok' } });
     assert.deepEqual(await hole('/api/v1/health/ready'), { status: 200, body: { status: 'ok' } });
   });
 
-  await t.test('ohne Datenbank meldet ready 503, live weiter 200', async () => {
+  await t.test('without a database ready reports 503, live still 200', async () => {
     const name = new URL(URL_DB).pathname.slice(1);
-    const wartung = new URL(URL_DB);
-    wartung.pathname = '/postgres';
-    const admin = new Client({ connectionString: wartung.toString() });
+    const maintenance = new URL(URL_DB);
+    maintenance.pathname = '/postgres';
+    const admin = new Client({ connectionString: maintenance.toString() });
     await admin.connect();
     try {
       await admin.query(`ALTER DATABASE "${name}" ALLOW_CONNECTIONS false`);

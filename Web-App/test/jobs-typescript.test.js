@@ -1,5 +1,5 @@
 /**
- * jobs/ nach TypeScript (Punkt 10).
+ * jobs/ to TypeScript (item 10).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,7 +9,7 @@ const path = require('node:path');
 const ROOT = path.join(__dirname, '..');
 const JOBS = path.join(ROOT, 'jobs');
 
-test('alle Jobs sind TypeScript', () => {
+test('all jobs are TypeScript', () => {
   const ts = fs.readdirSync(JOBS).filter(f => f.endsWith('.ts'));
   const jsOnly = fs
     .readdirSync(JOBS)
@@ -19,7 +19,7 @@ test('alle Jobs sind TypeScript', () => {
   assert.ok(ts.length >= 3, `Nur ${ts.length} .ts-Dateien gefunden`);
 });
 
-test('das Build-Skript erfasst jobs/', () => {
+test('the build script covers jobs/', () => {
   const build = fs.readFileSync(path.join(ROOT, 'scripts', 'build-ts.js'), 'utf8');
   assert.match(
     build,
@@ -28,11 +28,11 @@ test('das Build-Skript erfasst jobs/', () => {
   );
 });
 
-test('der Dockerfile baut jobs/ statt es roh zu kopieren', () => {
+test('the Dockerfile builds jobs/ instead of copying it raw', () => {
   const df = fs.readFileSync(path.join(ROOT, 'Dockerfile'), 'utf8');
-  // Seit der Build nach dist/ schreibt, kommt der gesamte transpilierte Baum
-  // (server.js, db/, routes/, utils/, jobs/) mit EINEM COPY. Die Absicht dieses
-  // Tests ist unverändert: Der Runtime-Stage darf keine .ts-Quelle sehen.
+  // Since the build writes to dist/, the whole transpiled tree
+  // (server.js, db/, routes/, utils/, jobs/) comes with ONE COPY. The intent of this
+  // test is unchanged: the runtime stage must see no .ts source.
   assert.match(
     df,
     /--outdir dist/,
@@ -55,11 +55,11 @@ test('der Dockerfile baut jobs/ statt es roh zu kopieren', () => {
   assert.doesNotMatch(runtime, /^COPY server\.ts/m, 'server.ts gehört nicht ins Laufzeit-Image');
 });
 
-test('benannte Exporte statt module.exports', () => {
-  // In .ts erzeugt module.exports keine benannten Exporte — Aufrufer wie
-  // src/sets/nachErfassung.ts importieren aber per Namen (`import { preisFuerSetHolen }`).
-  // csvImportWorker ist der Einstiegspunkt eines eigenen Prozesses
-  // (process.on('message')) und exportiert bewusst nichts.
+test('named exports instead of module.exports', () => {
+  // In .ts module.exports creates no named exports — but callers like
+  // src/sets/afterAdd.ts import by name (`import { preisFuerSetHolen }`).
+  // csvImportWorker is the entry point of its own process
+  // (process.on('message')) and deliberately exports nothing.
   const ENTRYPOINTS = new Set(['csvImportWorker.ts']);
   for (const f of fs.readdirSync(JOBS).filter(f => f.endsWith('.ts'))) {
     const src = fs.readFileSync(path.join(JOBS, f), 'utf8');
@@ -68,9 +68,9 @@ test('benannte Exporte statt module.exports', () => {
   }
 });
 
-test('jedes Job-Modul lässt sich laden', () => {
-  // Fängt Tippfehler in Exportnamen und zirkuläre Importe ab, die der
-  // Typecheck nicht sieht.
+test('every job module can be loaded', () => {
+  // Catches typos in export names and circular imports that the
+  // type check does not see.
   const DIST_JOBS = path.join(ROOT, 'dist', 'jobs');
   assert.ok(
     fs.existsSync(DIST_JOBS),

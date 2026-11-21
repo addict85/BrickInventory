@@ -1,28 +1,28 @@
 import type { CookieOptions, Request } from 'express';
-import { cookieSicher, konfig, type Konfig } from '../infra/konfig';
+import { cookieSafe, konfig, type Konfig } from '../infra/config';
 
 const NAME_TLS = '__Host-bim.sid';
-const NAME_OHNE_TLS = 'bim.sid';
+const NAME_WITHOUT_TLS = 'bim.sid';
 
-/** `__Host-` sperrt Nachbar-Subdomains aus; ohne TLS nähme der Browser es nicht an. */
+/** `__Host-` locks out neighboring subdomains; without TLS the browser would not accept it. */
 export function sitzungsKeksName(k: Konfig = konfig()): string {
-  return cookieSicher(k) ? NAME_TLS : NAME_OHNE_TLS;
+  return cookieSafe(k) ? NAME_TLS : NAME_WITHOUT_TLS;
 }
 
-/** Auch fürs Löschen: Ohne Secure verwirft der Browser den Löschbefehl. Kein maxAge.
- * Strict: Kein Link einer fremden Seite trägt die Sitzung mit. Die Oberfläche
- * holt alles per fetch von der eigenen Seite und bleibt so auch nach einem
- * Mail-Link angemeldet; Mail-Links selbst brauchen keine Sitzung. */
-export function sitzungsKeksOptionen(k: Konfig = konfig()): CookieOptions & { path: '/' } {
-  return { path: '/', httpOnly: true, sameSite: 'strict', secure: cookieSicher(k) };
+/** For deleting too: without Secure the browser discards the delete command. No maxAge.
+ * Strict: no link from a foreign page carries the session along. The UI
+ * fetches everything from its own site and thus stays logged in even after a
+ * mail link; mail links themselves need no session. */
+export function sessionCookieOptions(k: Konfig = konfig()): CookieOptions & { path: '/' } {
+  return { path: '/', httpOnly: true, sameSite: 'strict', secure: cookieSafe(k) };
 }
 
-/** Über http setzt express-session kein Secure-Cookie; die Antwort sagt das, statt „abgelaufen“ zu raten. */
-export function keksBleibtAus(req: Pick<Request, 'secure'>, k: Konfig = konfig()): boolean {
-  return cookieSicher(k) && !req.secure;
+/** Over http express-session sets no Secure cookie; the response says so instead of guessing "expired". */
+export function cookieStaysFrom(req: Pick<Request, 'secure'>, k: Konfig = konfig()): boolean {
+  return cookieSafe(k) && !req.secure;
 }
 
-/** Beide Namen: Für die Herkunftsprüfung zählt jedes Sitzungscookie. */
-export function traegtSitzungsKeks(kopf: string): boolean {
+/** Both names: every session cookie counts for the origin check. */
+export function carriesSessionCookie(kopf: string): boolean {
   return /(?:^|;\s*)(?:__Host-)?bim\.sid=/.test(kopf);
 }

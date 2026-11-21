@@ -1,8 +1,8 @@
--- Schema einer NEUEN Installation: Abbild aller Migrationen, die es bei
--- seiner Erzeugung gab. db/database.ts spielt es in eine leere Datenbank,
--- danach laufen nur die jüngeren Migrationen. Nicht von Hand ändern —
--- neu erzeugen mit `npm run build && npm run schema:stand`.
--- Erzeugt mit pg_dump 16.
+-- Schema of a NEW installation: image of all migrations that existed at
+-- its creation. db/database.ts loads it into an empty database,
+-- after that only the younger migrations run. Do not edit by hand —
+-- regenerate with `npm run build && npm run schema:stand`.
+-- Generated with pg_dump 16.
 SET statement_timeout = 0;
 SET lock_timeout = 0;
 SET idle_in_transaction_session_timeout = 0;

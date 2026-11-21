@@ -1,18 +1,18 @@
 /**
- * Ein Job-Prozess, dessen Start scheitert, beendet sich mit Exit-Code 1 und
- * hinterlässt kein Lebenszeichen: Der Healthcheck darf keinen Prozess ohne
- * Worker für gesund halten.
+ * A job process whose start fails ends with exit code 1 and
+ * leaves no heartbeat: the health check must not consider a process without a
+ * worker healthy.
  *
- * Geprüft am echten Server (ROLLE=jobs). Ein vorgeladenes Modul lässt
- * planeAlle() werfen, wie es eine fehlende Tabelle oder Verbindung täte.
+ * Checked on the real server (ROLLE=jobs). A preloaded module makes
+ * planeAll() throw, as a missing table or connection would.
  *
- * Gegenproben (05.11.2026 gemessen):
- *   A  in server.ts wieder `void starte();` → rot: „der Prozess endet mit
- *      Exit-Code 1“ (er lief weiter, bis der Test ihn nach 20 s abbrach)
- *   B  in starteJobs() das Lebenszeichen wieder vor planeAlle() → rot:
- *      „kein Lebenszeichen ohne Worker“
+ * Counter-checks (measured 05.11.2026):
+ *   A  in server.ts again `void starte();` → red: “the process ends with
+ *      exit code 1” (it kept running until the test aborted it after 20 s)
+ *   B  in startJobs() the heartbeat again before planeAll() → red:
+ *      “no heartbeat without a worker”
  *
- * Voraussetzung: Test-DB via TEST_DATABASE_URL.
+ * Prerequisite: test DB via TEST_DATABASE_URL.
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -26,29 +26,29 @@ process.env.DATABASE_URL = URL_DB;
 const ROOT = path.join(__dirname, '..');
 const { buildAndRequire } = require('./helpers/sources');
 const _req = buildAndRequire();
-const { datenOderSkip } = require('./helpers/db');
+const { dataOrSkip } = require('./helpers/db');
 
-const VORLADEN = `
+const PRELOAD = `
 const Module = require('node:module');
 const echt = Module.prototype.require;
 Module.prototype.require = function (name) {
   const m = echt.apply(this, arguments);
-  if (typeof name === 'string' && /(?:auftraege[/\\\\]|^\\.\\/)zeitplan(\\.js)?$/.test(name))
-    return { ...m, planeAlle: async () => { throw new Error('Testfehler: planeAlle'); } };
+  if (typeof name === 'string' && /(?:jobQueue[/\\\\]|^\\.\\/)schedule(\\.js)?$/.test(name))
+    return { ...m, planeAll: async () => { throw new Error('Testfehler: planeAll'); } };
   return m;
 };`;
 
-test('ein gescheiterter Start des Job-Prozesses beendet ihn', { concurrency: 1, timeout: 90_000 }, async t => {
-  const db = await datenOderSkip(t, _req);
+test('a failed start of the job process ends it', { concurrency: 1, timeout: 90_000 }, async t => {
+  const db = await dataOrSkip(t, _req);
   if (!db) return;
-  const { liesZustand, loescheZustand } = require('./helpers/sources').testBereich('auftraege').laufzustand;
-  const { LEBENSZEICHEN_SCHLUESSEL } = _req('startup/jobsProzess.js');
-  await loescheZustand(LEBENSZEICHEN_SCHLUESSEL);
+  const { liesZustand, deleteState } = require('./helpers/sources').testArea('jobQueue').laufzustand;
+  const { HEARTBEAT_KEY } = _req('startup/jobsProcess.js');
+  await deleteState(HEARTBEAT_KEY);
   t.after(() => db.pool.end().catch(() => {}));
 
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'jobs-startfehler-'));
-  const vorladen = path.join(ordner, 'planeAlle-wirft.js');
-  fs.writeFileSync(vorladen, VORLADEN);
+  const vorladen = path.join(ordner, 'planeAll-wirft.js');
+  fs.writeFileSync(vorladen, PRELOAD);
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
 
   const srv = spawn(process.execPath, ['--require', vorladen, path.join(ROOT, 'dist', 'server.js')], {
@@ -74,12 +74,12 @@ test('ein gescheiterter Start des Job-Prozesses beendet ihn', { concurrency: 1, 
     });
   });
 
-  await t.test('der Prozess endet mit Exit-Code 1', () => {
+  await t.test('the process ends with exit code 1', () => {
     assert.equal(ende, 1, log.slice(-1500));
-    assert.match(log, /Start gescheitert: .*Testfehler: planeAlle/);
+    assert.match(log, /Start gescheitert: .*Testfehler: planeAll/);
   });
 
-  await t.test('kein Lebenszeichen ohne Worker', async () => {
-    assert.equal(await liesZustand(LEBENSZEICHEN_SCHLUESSEL), null);
+  await t.test('no sign of life without a worker', async () => {
+    assert.equal(await liesZustand(HEARTBEAT_KEY), null);
   });
 });

@@ -1,14 +1,14 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
-import { konfig } from './konfig';
+import { konfig } from './config';
 import { prozessweit } from './prozessweit';
 
 export interface TlsStand {
-  /** Das Format des QR-Codes. */
+  /** The format of the QR code. */
   fp: string;
-  /** Zum Vorlesen. */
+  /** For reading aloud. */
   fp_hex: string;
-  /** SHA-256 des ganzen Zertifikats: Diesen Wert zeigen Geräte beim Installieren. */
+  /** SHA-256 of the whole certificate: devices show this value when installing. */
   zert_sha256: string;
   subject: string;
   gueltig_bis: string;
@@ -17,7 +17,7 @@ export interface TlsStand {
 
 const Z = prozessweit('tlsStand', () => ({ v: null as { pfad: string; mtimeMs: number; stand: TlsStand } | null }));
 
-export function tlsStandAus(pem: string): TlsStand {
+export function tlsStatusFrom(pem: string): TlsStand {
   const zert = new crypto.X509Certificate(pem);
   const spki = zert.publicKey.export({ type: 'spki', format: 'der' });
   const roh = crypto.createHash('sha256').update(spki).digest();
@@ -31,18 +31,18 @@ export function tlsStandAus(pem: string): TlsStand {
   };
 }
 
-/** Neu gelesen, sobald sich die Datei ändert: Caddy legt sie erst beim ersten
- * Start an, ein Neustart der App soll nicht nötig sein. */
+/** Re-read as soon as the file changes: Caddy only creates it on the first
+ * start, a restart of the app should not be necessary. */
 export async function tlsStand(): Promise<TlsStand | null> {
-  const pfad = konfig().caZertifikat;
+  const pfad = konfig().caCertificate;
   if (!pfad) return null;
   try {
-    // Stand und Inhalt aus derselben geöffneten Datei: Tauscht Caddy sie dazwischen, passt der Zwischenstand sonst nicht.
+    // State and content from the same opened file: if Caddy swaps it in between, the intermediate state would otherwise not match.
     const datei = await fs.promises.open(pfad, 'r');
     try {
       const st = await datei.stat();
       if (Z.v?.pfad === pfad && Z.v.mtimeMs === st.mtimeMs) return Z.v.stand;
-      const stand = tlsStandAus(await datei.readFile('utf8'));
+      const stand = tlsStatusFrom(await datei.readFile('utf8'));
       Z.v = { pfad, mtimeMs: st.mtimeMs, stand };
       return stand;
     } finally {
@@ -55,7 +55,7 @@ export async function tlsStand(): Promise<TlsStand | null> {
   }
 }
 
-export async function tlsAuskunft() {
+export async function tlsInfo() {
   const stand = await tlsStand();
   return {
     https: konfig().hinterTls,

@@ -3,7 +3,7 @@
   "info": {
     "title": "BrickInventory API",
     "version": "2",
-    "description": "Erzeugt aus src/vertrag/ (npm run vertrag:openapi). Nicht von Hand ändern."
+    "description": "Generated from src/contract/ (npm run vertrag:openapi). Do not edit by hand."
   },
   "paths": {
     "/api/v1/": {
@@ -13,7 +13,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -23,7 +23,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -42,7 +42,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -52,7 +52,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -69,7 +69,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -79,7 +79,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -154,7 +154,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -164,7 +164,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -195,7 +195,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -205,7 +205,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -246,7 +246,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -256,7 +256,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -297,7 +297,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -307,7 +307,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -348,7 +348,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -358,7 +358,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -408,7 +408,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -418,7 +418,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -448,7 +448,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -458,7 +458,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -499,7 +499,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -509,7 +509,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -539,7 +539,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -549,7 +549,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -604,7 +604,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -614,7 +614,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -634,7 +634,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -644,7 +644,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -661,7 +661,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -671,7 +671,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -712,7 +712,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -722,7 +722,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -777,7 +777,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -787,7 +787,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -827,7 +827,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -837,7 +837,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -911,7 +911,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -921,7 +921,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -941,7 +941,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -951,7 +951,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -986,7 +986,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -996,7 +996,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1060,7 +1060,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1070,7 +1070,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1089,7 +1089,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1099,7 +1099,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1130,7 +1130,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1140,7 +1140,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1160,7 +1160,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1170,7 +1170,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1208,7 +1208,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1218,7 +1218,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1238,7 +1238,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1248,7 +1248,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1278,7 +1278,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1288,7 +1288,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1318,7 +1318,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1328,7 +1328,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1358,7 +1358,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1368,7 +1368,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1398,7 +1398,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1408,7 +1408,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1428,7 +1428,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1438,7 +1438,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1483,7 +1483,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1493,7 +1493,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1513,7 +1513,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1523,7 +1523,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1558,7 +1558,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1568,7 +1568,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1603,7 +1603,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1613,7 +1613,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1698,7 +1698,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1708,7 +1708,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1743,7 +1743,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1753,7 +1753,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1788,7 +1788,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1798,7 +1798,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1833,7 +1833,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1843,7 +1843,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -1921,7 +1921,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -1931,7 +1931,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2014,7 +2014,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -2024,7 +2024,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2054,7 +2054,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -2064,7 +2064,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2083,7 +2083,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -2093,7 +2093,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2150,7 +2150,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -2160,7 +2160,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2195,7 +2195,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -2205,7 +2205,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2261,7 +2261,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -2271,7 +2271,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2349,7 +2349,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -2359,7 +2359,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2390,7 +2390,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -2400,7 +2400,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2478,7 +2478,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -2488,7 +2488,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2505,7 +2505,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -2515,7 +2515,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2645,7 +2645,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -2655,7 +2655,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2685,7 +2685,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -2695,7 +2695,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2736,7 +2736,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -2746,7 +2746,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2781,7 +2781,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -2791,7 +2791,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2828,7 +2828,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -2838,7 +2838,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2877,7 +2877,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -2887,7 +2887,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -2923,7 +2923,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -2933,7 +2933,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3032,7 +3032,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -3042,7 +3042,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3111,7 +3111,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -3121,7 +3121,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3140,7 +3140,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -3150,7 +3150,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3189,7 +3189,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -3199,7 +3199,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3286,7 +3286,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -3296,7 +3296,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3327,7 +3327,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -3337,7 +3337,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3372,7 +3372,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -3382,7 +3382,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3400,7 +3400,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -3410,7 +3410,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3445,7 +3445,7 @@
                   },
                   "isAdmin": {
                     "deprecated": true,
-                    "description": "früherer Name von is_admin",
+                    "description": "former name of is_admin",
                     "type": [
                       "boolean",
                       "integer",
@@ -3543,7 +3543,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -3553,7 +3553,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3642,7 +3642,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -3652,7 +3652,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3761,7 +3761,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -3771,7 +3771,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3880,7 +3880,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -3890,7 +3890,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -3979,7 +3979,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -3989,7 +3989,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4082,7 +4082,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -4092,7 +4092,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4170,7 +4170,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -4180,7 +4180,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4199,7 +4199,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -4209,7 +4209,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4287,7 +4287,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -4297,7 +4297,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4350,7 +4350,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -4360,7 +4360,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4413,7 +4413,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -4423,7 +4423,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4502,7 +4502,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -4512,7 +4512,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4601,7 +4601,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -4611,7 +4611,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4630,7 +4630,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -4640,7 +4640,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4728,7 +4728,7 @@
             "required": false,
             "schema": {
               "deprecated": true,
-              "description": "veraltet, entfällt mit API-Version 3; stattdessen page_size",
+              "description": "deprecated, dropped with API version 3; use page_size instead",
               "type": "string",
               "pattern": "^\\d{1,10}$"
             },
@@ -4737,7 +4737,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -4747,7 +4747,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4777,7 +4777,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -4787,7 +4787,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4835,7 +4835,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -4845,7 +4845,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4865,7 +4865,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -4875,7 +4875,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -4937,7 +4937,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -4947,7 +4947,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5008,7 +5008,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -5018,7 +5018,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5079,7 +5079,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -5089,7 +5089,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5141,7 +5141,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -5151,7 +5151,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5213,7 +5213,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -5223,7 +5223,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5242,7 +5242,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -5252,7 +5252,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5298,7 +5298,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -5308,7 +5308,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5339,7 +5339,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -5349,7 +5349,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5392,7 +5392,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -5402,7 +5402,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5448,7 +5448,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -5458,7 +5458,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5477,7 +5477,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -5487,7 +5487,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5506,7 +5506,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -5516,7 +5516,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5604,7 +5604,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -5614,7 +5614,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5631,7 +5631,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -5641,7 +5641,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5679,7 +5679,7 @@
                   "unit_price": {
                     "minimum": 0,
                     "maximum": 1000000,
-                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "description": "Amount as a number, at most four decimal places; null or empty: no amount",
                     "type": [
                       "number",
                       "null"
@@ -5791,7 +5791,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -5801,7 +5801,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5841,7 +5841,7 @@
                   "unit_price": {
                     "minimum": 0,
                     "maximum": 1000000,
-                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "description": "Amount as a number, at most four decimal places; null or empty: no amount",
                     "type": [
                       "number",
                       "null"
@@ -5915,7 +5915,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -5925,7 +5925,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -5988,7 +5988,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -5998,7 +5998,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -6038,7 +6038,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -6048,7 +6048,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -6076,7 +6076,7 @@
                   "purchase_price": {
                     "minimum": 0,
                     "maximum": 1000000,
-                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "description": "Amount as a number, at most four decimal places; null or empty: no amount",
                     "type": [
                       "number",
                       "null"
@@ -6085,7 +6085,7 @@
                   "unit_price": {
                     "minimum": 0,
                     "maximum": 1000000,
-                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "description": "Amount as a number, at most four decimal places; null or empty: no amount",
                     "type": [
                       "number",
                       "null"
@@ -6148,7 +6148,7 @@
                   },
                   "from_user_id": {
                     "deprecated": true,
-                    "description": "wird nicht ausgewertet: Der Besitzer kommt aus der Zeile",
+                    "description": "not evaluated: the owner comes from the row",
                     "anyOf": [
                       {
                         "anyOf": [
@@ -6201,7 +6201,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -6211,7 +6211,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -6252,7 +6252,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -6262,7 +6262,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -6315,7 +6315,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -6325,7 +6325,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -6378,7 +6378,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -6388,7 +6388,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -6419,7 +6419,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -6429,7 +6429,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -6471,7 +6471,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -6481,7 +6481,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -6566,7 +6566,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -6576,7 +6576,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -6619,7 +6619,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -6629,7 +6629,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -6648,7 +6648,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -6658,7 +6658,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -6676,7 +6676,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -6686,7 +6686,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -6775,7 +6775,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -6785,7 +6785,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -6874,7 +6874,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -6884,7 +6884,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -7055,7 +7055,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -7065,7 +7065,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -7082,7 +7082,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -7092,7 +7092,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -7117,7 +7117,7 @@
                       "integer",
                       "string"
                     ],
-                    "description": "fehlt sie, gilt 9999 (keine Farbe)"
+                    "description": "if missing, 9999 (no color) applies"
                   },
                   "color_name": {
                     "type": [
@@ -7151,7 +7151,7 @@
                   "unit_price": {
                     "minimum": 0,
                     "maximum": 1000000,
-                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "description": "Amount as a number, at most four decimal places; null or empty: no amount",
                     "type": [
                       "number",
                       "null"
@@ -7268,7 +7268,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -7278,7 +7278,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -7318,7 +7318,7 @@
                   "unit_price": {
                     "minimum": 0,
                     "maximum": 1000000,
-                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "description": "Amount as a number, at most four decimal places; null or empty: no amount",
                     "type": [
                       "number",
                       "null"
@@ -7390,7 +7390,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -7400,7 +7400,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -7472,7 +7472,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -7482,7 +7482,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -7531,7 +7531,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -7541,7 +7541,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -7569,7 +7569,7 @@
                   "purchase_price": {
                     "minimum": 0,
                     "maximum": 1000000,
-                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "description": "Amount as a number, at most four decimal places; null or empty: no amount",
                     "type": [
                       "number",
                       "null"
@@ -7578,7 +7578,7 @@
                   "unit_price": {
                     "minimum": 0,
                     "maximum": 1000000,
-                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "description": "Amount as a number, at most four decimal places; null or empty: no amount",
                     "type": [
                       "number",
                       "null"
@@ -7641,7 +7641,7 @@
                   },
                   "from_user_id": {
                     "deprecated": true,
-                    "description": "wird nicht ausgewertet: Der Besitzer kommt aus der Zeile",
+                    "description": "not evaluated: the owner comes from the row",
                     "anyOf": [
                       {
                         "anyOf": [
@@ -7703,7 +7703,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -7713,7 +7713,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -7772,7 +7772,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -7782,7 +7782,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -7889,7 +7889,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -7899,7 +7899,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -7961,7 +7961,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -7971,7 +7971,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -8011,7 +8011,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -8021,7 +8021,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -8063,7 +8063,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -8073,7 +8073,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -8093,7 +8093,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -8103,7 +8103,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -8147,7 +8147,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -8157,7 +8157,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -8201,7 +8201,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -8211,7 +8211,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -8231,7 +8231,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -8241,7 +8241,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -8335,7 +8335,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -8345,7 +8345,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -8388,7 +8388,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -8398,7 +8398,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -8475,7 +8475,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -8485,7 +8485,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -8582,7 +8582,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -8592,7 +8592,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -8609,7 +8609,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -8619,7 +8619,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -8657,7 +8657,7 @@
                   "purchase_price": {
                     "minimum": 0,
                     "maximum": 1000000,
-                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "description": "Amount as a number, at most four decimal places; null or empty: no amount",
                     "type": [
                       "number",
                       "null"
@@ -8788,7 +8788,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -8798,7 +8798,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -8826,7 +8826,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -8836,7 +8836,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -8876,7 +8876,7 @@
                   "purchase_price": {
                     "minimum": 0,
                     "maximum": 1000000,
-                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "description": "Amount as a number, at most four decimal places; null or empty: no amount",
                     "type": [
                       "number",
                       "null"
@@ -8972,7 +8972,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -8982,7 +8982,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -9045,7 +9045,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -9055,7 +9055,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -9095,7 +9095,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -9105,7 +9105,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -9133,7 +9133,7 @@
                   "purchase_price": {
                     "minimum": 0,
                     "maximum": 1000000,
-                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "description": "Amount as a number, at most four decimal places; null or empty: no amount",
                     "type": [
                       "number",
                       "null"
@@ -9142,7 +9142,7 @@
                   "unit_price": {
                     "minimum": 0,
                     "maximum": 1000000,
-                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "description": "Amount as a number, at most four decimal places; null or empty: no amount",
                     "type": [
                       "number",
                       "null"
@@ -9205,7 +9205,7 @@
                   },
                   "from_user_id": {
                     "deprecated": true,
-                    "description": "wird nicht ausgewertet: Der Besitzer kommt aus der Zeile",
+                    "description": "not evaluated: the owner comes from the row",
                     "anyOf": [
                       {
                         "anyOf": [
@@ -9258,7 +9258,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -9268,7 +9268,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -9309,7 +9309,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -9319,7 +9319,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -9348,7 +9348,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -9358,7 +9358,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -9374,18 +9374,18 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "richtung": {
+                  "direction": {
                     "type": "string",
                     "enum": [
                       "unter",
                       "ueber"
                     ]
                   },
-                  "schwelle": {
+                  "threshold": {
                     "type": "number",
                     "minimum": 0,
                     "maximum": 1000000,
-                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag"
+                    "description": "Amount as a number, at most four decimal places; null or empty: no amount"
                   },
                   "condition": {
                     "anyOf": [
@@ -9406,7 +9406,7 @@
                   }
                 },
                 "required": [
-                  "richtung"
+                  "direction"
                 ],
                 "additionalProperties": false
               }
@@ -9445,7 +9445,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -9455,7 +9455,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -9496,7 +9496,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -9506,7 +9506,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -9556,7 +9556,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -9566,7 +9566,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -9607,7 +9607,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -9617,7 +9617,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -9667,7 +9667,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -9677,7 +9677,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -9708,7 +9708,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -9718,7 +9718,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -9759,7 +9759,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -9769,7 +9769,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -9827,14 +9827,14 @@
               "type": "string",
               "maxLength": 8,
               "deprecated": true,
-              "description": "wird nicht ausgewertet: Es gilt die Währung des Kontos"
+              "description": "not evaluated: the account currency applies"
             },
             "deprecated": true
           }
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -9844,7 +9844,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -9896,7 +9896,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -9906,7 +9906,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -9937,7 +9937,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -9947,7 +9947,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10000,7 +10000,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -10010,7 +10010,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10101,13 +10101,13 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "text/event-stream": {}
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10145,7 +10145,7 @@
                   "purchase_price": {
                     "minimum": 0,
                     "maximum": 1000000,
-                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "description": "Amount as a number, at most four decimal places; null or empty: no amount",
                     "type": [
                       "number",
                       "null"
@@ -10254,7 +10254,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -10264,7 +10264,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10294,7 +10294,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -10304,7 +10304,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10323,13 +10323,13 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "text/csv": {}
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10348,7 +10348,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -10358,7 +10358,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10394,7 +10394,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -10404,7 +10404,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10438,7 +10438,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -10448,7 +10448,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10478,7 +10478,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -10488,7 +10488,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10519,7 +10519,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "text/event-stream": {
                 "schema": {
@@ -10529,7 +10529,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10559,7 +10559,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -10569,7 +10569,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10588,7 +10588,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -10598,7 +10598,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10784,13 +10784,13 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/pdf": {}
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10820,7 +10820,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -10830,7 +10830,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10860,7 +10860,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "text/event-stream": {
                 "schema": {
@@ -10870,7 +10870,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10889,7 +10889,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -10899,7 +10899,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10916,7 +10916,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -10926,7 +10926,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -10964,7 +10964,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -10974,7 +10974,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -11252,7 +11252,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -11262,7 +11262,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -11306,7 +11306,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -11316,7 +11316,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -11335,7 +11335,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -11345,7 +11345,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -11364,7 +11364,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -11374,7 +11374,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -11404,7 +11404,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -11414,7 +11414,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -11433,13 +11433,13 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/zip": {}
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -11458,7 +11458,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -11468,7 +11468,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -11488,7 +11488,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -11498,7 +11498,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -11545,7 +11545,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -11555,7 +11555,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -11586,7 +11586,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -11596,7 +11596,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -11685,7 +11685,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -11695,7 +11695,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -11737,7 +11737,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -11747,7 +11747,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -11818,7 +11818,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -11828,7 +11828,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -11862,7 +11862,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -11872,7 +11872,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -11910,7 +11910,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -11920,7 +11920,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -11939,7 +11939,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -11949,7 +11949,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -12030,7 +12030,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -12040,7 +12040,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -12122,7 +12122,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -12132,7 +12132,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -12151,7 +12151,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -12161,7 +12161,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -12180,7 +12180,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -12190,7 +12190,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -12221,7 +12221,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -12231,7 +12231,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -12309,7 +12309,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -12319,7 +12319,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -12372,7 +12372,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -12382,7 +12382,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -12401,7 +12401,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -12411,7 +12411,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -12453,7 +12453,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -12463,7 +12463,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -12506,7 +12506,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -12516,7 +12516,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -12559,7 +12559,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -12569,7 +12569,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -12589,7 +12589,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -12599,7 +12599,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -12679,14 +12679,14 @@
                 }
               ],
               "deprecated": true,
-              "description": "wird nicht ausgewertet: Die Liste folgt dem Recht"
+              "description": "not evaluated: the list follows the permission"
             },
             "deprecated": true
           }
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -12696,7 +12696,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -12725,7 +12725,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -12735,7 +12735,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -12803,7 +12803,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -12813,7 +12813,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -12879,7 +12879,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -12889,7 +12889,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -12939,7 +12939,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -12949,7 +12949,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -12966,7 +12966,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -12976,7 +12976,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -13007,7 +13007,7 @@
                     "type": "number",
                     "minimum": 0,
                     "maximum": 1000000,
-                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag"
+                    "description": "Amount as a number, at most four decimal places; null or empty: no amount"
                   },
                   "currency": {
                     "type": [
@@ -13045,7 +13045,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -13055,7 +13055,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -13086,7 +13086,7 @@
                     "type": "number",
                     "minimum": 0,
                     "maximum": 1000000,
-                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag"
+                    "description": "Amount as a number, at most four decimal places; null or empty: no amount"
                   },
                   "currency": {
                     "type": [
@@ -13119,7 +13119,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -13129,7 +13129,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -13218,7 +13218,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -13228,7 +13228,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -13269,7 +13269,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -13279,7 +13279,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -13392,13 +13392,13 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/pdf": {}
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -13428,7 +13428,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -13438,7 +13438,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -13528,13 +13528,13 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/pdf": {}
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -13553,7 +13553,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -13563,7 +13563,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -13642,7 +13642,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -13652,7 +13652,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -13687,7 +13687,7 @@
                     "type": "number",
                     "minimum": 0,
                     "maximum": 1000000,
-                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag"
+                    "description": "Amount as a number, at most four decimal places; null or empty: no amount"
                   },
                   "currency": {
                     "type": [
@@ -13786,7 +13786,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -13796,7 +13796,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -13813,7 +13813,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -13823,7 +13823,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -13949,7 +13949,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -13959,7 +13959,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -14027,7 +14027,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -14037,7 +14037,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -14087,7 +14087,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -14097,7 +14097,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -14184,7 +14184,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -14194,7 +14194,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -14221,7 +14221,7 @@
                   "purchase_price": {
                     "minimum": 0,
                     "maximum": 1000000,
-                    "description": "Betrag als Zahl, höchstens vier Nachkommastellen; null oder leer: kein Betrag",
+                    "description": "Amount as a number, at most four decimal places; null or empty: no amount",
                     "type": [
                       "number",
                       "null"
@@ -14308,7 +14308,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -14318,7 +14318,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -14338,7 +14338,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Erfolg",
+            "description": "Success",
             "content": {
               "application/json": {
                 "schema": {
@@ -14348,7 +14348,7 @@
             }
           },
           "default": {
-            "description": "Fehler",
+            "description": "Error",
             "content": {
               "application/json": {
                 "schema": {
@@ -14887,13 +14887,13 @@
           "scope": {
             "type": "string"
           },
-          "ip_bereich": {
+          "ip_range": {
             "type": [
               "string",
               "null"
             ]
           },
-          "rotiert_am": {
+          "rotated_at": {
             "type": "string"
           }
         },
@@ -14908,8 +14908,8 @@
           "token_prefix",
           "hard_expires_at",
           "scope",
-          "ip_bereich",
-          "rotiert_am"
+          "ip_range",
+          "rotated_at"
         ],
         "additionalProperties": {}
       },
@@ -14962,53 +14962,53 @@
           "id": {
             "type": "string"
           },
-          "art": {
+          "type": {
             "type": "string"
           },
           "status": {
             "type": "string"
           },
-          "versuche": {
+          "attempts": {
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
           },
-          "max_versuche": {
+          "max_attempts": {
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
           },
-          "faellig_ab": {
+          "due_at": {
             "type": [
               "string",
               "null"
             ]
           },
-          "frist_bis": {
+          "deadline_at": {
             "type": [
               "string",
               "null"
             ]
           },
-          "gestartet": {
+          "started_at": {
             "type": [
               "string",
               "null"
             ]
           },
-          "erstellt": {
+          "created_at": {
             "type": [
               "string",
               "null"
             ]
           },
-          "aktualisiert": {
+          "updated_at": {
             "type": [
               "string",
               "null"
             ]
           },
-          "fortschritt": {
+          "progress": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/AuftragFortschritt"
@@ -15018,7 +15018,7 @@
               }
             ]
           },
-          "fehler": {
+          "error_message": {
             "type": [
               "string",
               "null"
@@ -15027,7 +15027,7 @@
           "geplant": {
             "type": "boolean"
           },
-          "wartet": {
+          "waiting": {
             "type": "boolean"
           },
           "set_number": {
@@ -15039,19 +15039,19 @@
         },
         "required": [
           "id",
-          "art",
+          "type",
           "status",
-          "versuche",
-          "max_versuche",
-          "faellig_ab",
-          "frist_bis",
-          "gestartet",
-          "erstellt",
-          "aktualisiert",
-          "fortschritt",
-          "fehler",
+          "attempts",
+          "max_attempts",
+          "due_at",
+          "deadline_at",
+          "started_at",
+          "created_at",
+          "updated_at",
+          "progress",
+          "error_message",
           "geplant",
-          "wartet",
+          "waiting",
           "set_number"
         ],
         "additionalProperties": {}
@@ -15115,16 +15115,16 @@
       "AuftragPause": {
         "type": "object",
         "properties": {
-          "art": {
+          "type": {
             "type": "string"
           },
-          "bis": {
+          "until_at": {
             "type": [
               "string",
               "null"
             ]
           },
-          "grund": {
+          "reason": {
             "type": [
               "string",
               "null"
@@ -15132,9 +15132,9 @@
           }
         },
         "required": [
-          "art",
-          "bis",
-          "grund"
+          "type",
+          "until_at",
+          "reason"
         ],
         "additionalProperties": {}
       },
@@ -15183,7 +15183,7 @@
       "AuftragZaehler": {
         "type": "object",
         "properties": {
-          "art": {
+          "type": {
             "type": "string"
           },
           "status": {
@@ -15196,7 +15196,7 @@
           }
         },
         "required": [
-          "art",
+          "type",
           "status",
           "anzahl"
         ],
@@ -16297,7 +16297,7 @@
           },
           "pnl_pct": {
             "deprecated": true,
-            "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
+            "description": "deprecated, dropped with API version 3; use pnl_prozent instead",
             "type": [
               "string",
               "null"
@@ -17320,7 +17320,7 @@
                 },
                 "qty_avg_price": {
                   "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen avg_price",
+                  "description": "deprecated, dropped with API version 3; use avg_price instead",
                   "type": [
                     "number",
                     "null"
@@ -17328,7 +17328,7 @@
                 },
                 "pnl_pct": {
                   "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
+                  "description": "deprecated, dropped with API version 3; use pnl_prozent instead",
                   "type": [
                     "string",
                     "null"
@@ -17342,7 +17342,7 @@
                 },
                 "display_value": {
                   "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
+                  "description": "deprecated, dropped with API version 3; use wert_gesamt instead",
                   "type": [
                     "string",
                     "null"
@@ -17351,7 +17351,7 @@
                 "total_value": {
                   "type": "string",
                   "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt"
+                  "description": "deprecated, dropped with API version 3; use wert_gesamt instead"
                 },
                 "wert_gesamt": {
                   "type": [
@@ -17403,7 +17403,7 @@
                       },
                       "pnl_pct": {
                         "deprecated": true,
-                        "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
+                        "description": "deprecated, dropped with API version 3; use pnl_prozent instead",
                         "type": [
                           "string",
                           "null"
@@ -17475,7 +17475,7 @@
           "total_value": {
             "type": "string",
             "deprecated": true,
-            "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt"
+            "description": "deprecated, dropped with API version 3; use wert_gesamt instead"
           },
           "wert_gesamt": {
             "type": [
@@ -19224,7 +19224,7 @@
           "is_active": {
             "type": "boolean"
           },
-          "wirksam_ab": {
+          "effective_at": {
             "type": "string"
           }
         },
@@ -19268,7 +19268,7 @@
             "items": {
               "type": "object",
               "properties": {
-                "art": {
+                "type": {
                   "type": "string",
                   "enum": [
                     "passwort",
@@ -19278,13 +19278,13 @@
                     "loeschen"
                   ]
                 },
-                "wirksam_ab": {
+                "effective_at": {
                   "type": "string"
                 }
               },
               "required": [
-                "art",
-                "wirksam_ab"
+                "type",
+                "effective_at"
               ],
               "additionalProperties": {}
             }
@@ -20353,20 +20353,20 @@
       "MerkpostenAlarm": {
         "type": "object",
         "properties": {
-          "richtung": {
+          "direction": {
             "type": "string"
           },
-          "schwelle": {
+          "threshold": {
             "type": "number"
           },
-          "ausgeloest": {
+          "triggered": {
             "type": "boolean"
           }
         },
         "required": [
-          "richtung",
-          "schwelle",
-          "ausgeloest"
+          "direction",
+          "threshold",
+          "triggered"
         ],
         "additionalProperties": {}
       },
@@ -20655,7 +20655,7 @@
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
           },
-          "art": {
+          "type": {
             "type": "string",
             "enum": [
               "set",
@@ -20663,10 +20663,10 @@
               "figur"
             ]
           },
-          "nummer": {
+          "number": {
             "type": "string"
           },
-          "farbe_id": {
+          "color_id": {
             "anyOf": [
               {
                 "type": "integer",
@@ -20678,7 +20678,7 @@
               }
             ]
           },
-          "bezeichnung": {
+          "label": {
             "type": [
               "string",
               "null"
@@ -20694,7 +20694,7 @@
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
           },
-          "geloescht_am": {
+          "deleted_at": {
             "type": "string"
           },
           "endgueltig_am": {
@@ -20703,13 +20703,13 @@
         },
         "required": [
           "id",
-          "art",
-          "nummer",
-          "farbe_id",
-          "bezeichnung",
+          "type",
+          "number",
+          "color_id",
+          "label",
           "anzahl",
           "user_id",
-          "geloescht_am",
+          "deleted_at",
           "endgueltig_am"
         ],
         "additionalProperties": {}
@@ -21071,7 +21071,7 @@
                 },
                 "qty_avg_price": {
                   "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen avg_price",
+                  "description": "deprecated, dropped with API version 3; use avg_price instead",
                   "type": [
                     "number",
                     "null"
@@ -21079,7 +21079,7 @@
                 },
                 "pnl_pct": {
                   "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
+                  "description": "deprecated, dropped with API version 3; use pnl_prozent instead",
                   "type": [
                     "string",
                     "null"
@@ -21093,7 +21093,7 @@
                 },
                 "display_value": {
                   "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt",
+                  "description": "deprecated, dropped with API version 3; use wert_gesamt instead",
                   "type": [
                     "string",
                     "null"
@@ -21102,7 +21102,7 @@
                 "total_value": {
                   "type": "string",
                   "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt"
+                  "description": "deprecated, dropped with API version 3; use wert_gesamt instead"
                 },
                 "wert_gesamt": {
                   "type": [
@@ -21154,7 +21154,7 @@
                       },
                       "pnl_pct": {
                         "deprecated": true,
-                        "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
+                        "description": "deprecated, dropped with API version 3; use pnl_prozent instead",
                         "type": [
                           "string",
                           "null"
@@ -21227,7 +21227,7 @@
           "total_value": {
             "type": "string",
             "deprecated": true,
-            "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt"
+            "description": "deprecated, dropped with API version 3; use wert_gesamt instead"
           },
           "wert_gesamt": {
             "type": [
@@ -21824,7 +21824,7 @@
           },
           "pnl_pct": {
             "deprecated": true,
-            "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
+            "description": "deprecated, dropped with API version 3; use pnl_prozent instead",
             "type": [
               "string",
               "null"
@@ -21832,7 +21832,7 @@
           },
           "baseline_pnl_pct": {
             "deprecated": true,
-            "description": "veraltet, entfällt mit API-Version 3; stattdessen baseline_pnl_prozent",
+            "description": "deprecated, dropped with API version 3; use baseline_pnl_prozent instead",
             "type": [
               "string",
               "null"
@@ -21932,7 +21932,7 @@
           },
           "pnl_pct": {
             "deprecated": true,
-            "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
+            "description": "deprecated, dropped with API version 3; use pnl_prozent instead",
             "type": [
               "string",
               "null"
@@ -22170,25 +22170,25 @@
           "condition": {
             "type": "string"
           },
-          "richtung": {
+          "direction": {
             "type": "string"
           },
-          "schwelle": {
+          "threshold": {
             "type": "number"
           },
           "currency_code": {
             "type": "string"
           },
-          "ausgeloest": {
+          "triggered": {
             "type": "boolean"
           },
-          "zuletzt_am": {
+          "last_triggered_at": {
             "type": [
               "string",
               "null"
             ]
           },
-          "zuletzt_preis": {
+          "last_price": {
             "type": [
               "number",
               "null"
@@ -22225,12 +22225,12 @@
         "required": [
           "set_number",
           "condition",
-          "richtung",
-          "schwelle",
+          "direction",
+          "threshold",
           "currency_code",
-          "ausgeloest",
-          "zuletzt_am",
-          "zuletzt_preis",
+          "triggered",
+          "last_triggered_at",
+          "last_price",
           "besitzt"
         ],
         "additionalProperties": {}
@@ -22566,7 +22566,7 @@
           },
           "pnl_pct": {
             "deprecated": true,
-            "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
+            "description": "deprecated, dropped with API version 3; use pnl_prozent instead",
             "type": [
               "string",
               "null"
@@ -22627,7 +22627,7 @@
           "email_verified": {
             "type": "boolean"
           },
-          "email_neu": {
+          "new_email": {
             "type": [
               "string",
               "null"
@@ -22641,7 +22641,7 @@
           "first_name",
           "last_name",
           "email_verified",
-          "email_neu"
+          "new_email"
         ],
         "additionalProperties": {}
       },
@@ -22873,7 +22873,7 @@
               "null"
             ]
           },
-          "ip_bereich": {
+          "ip_range": {
             "type": [
               "string",
               "null"
@@ -22884,7 +22884,7 @@
           "success",
           "stand",
           "geraet",
-          "ip_bereich"
+          "ip_range"
         ],
         "additionalProperties": {}
       },
@@ -24223,7 +24223,7 @@
           "never_expires": {
             "type": "boolean"
           },
-          "rotiert_am": {
+          "rotated_at": {
             "type": [
               "string",
               "null"
@@ -24300,7 +24300,7 @@
           "never_expires": {
             "type": "boolean"
           },
-          "rotiert_am": {
+          "rotated_at": {
             "type": [
               "string",
               "null"
@@ -24535,7 +24535,7 @@
           "total_value": {
             "type": "string",
             "deprecated": true,
-            "description": "veraltet, entfällt mit API-Version 3; stattdessen wert_gesamt"
+            "description": "deprecated, dropped with API version 3; use wert_gesamt instead"
           },
           "wert_gesamt": {
             "type": [
@@ -24617,7 +24617,7 @@
           },
           "pnl_pct": {
             "deprecated": true,
-            "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
+            "description": "deprecated, dropped with API version 3; use pnl_prozent instead",
             "type": [
               "string",
               "null"
@@ -24788,7 +24788,7 @@
                 },
                 "pnl_pct": {
                   "deprecated": true,
-                  "description": "veraltet, entfällt mit API-Version 3; stattdessen pnl_prozent",
+                  "description": "deprecated, dropped with API version 3; use pnl_prozent instead",
                   "type": [
                     "string",
                     "null"
@@ -24898,7 +24898,7 @@
             "type": "boolean",
             "const": true
           },
-          "wirksam_ab": {
+          "effective_at": {
             "type": "string"
           }
         },
@@ -25301,7 +25301,7 @@
             "type": "boolean",
             "const": true
           },
-          "art": {
+          "type": {
             "type": "string",
             "enum": [
               "set",
@@ -25309,7 +25309,7 @@
               "figur"
             ]
           },
-          "nummer": {
+          "number": {
             "type": "string"
           },
           "user_id": {
@@ -25320,8 +25320,8 @@
         },
         "required": [
           "success",
-          "art",
-          "nummer",
+          "type",
+          "number",
           "user_id"
         ],
         "additionalProperties": {}

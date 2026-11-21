@@ -1,35 +1,35 @@
 package ch.brickinventoryapp.data
 
 import ch.brickinventoryapp.model.json.BrickJson
-import ch.brickinventoryapp.vertrag.AcquisitionsResponse
+import ch.brickinventoryapp.contract.AcquisitionsResponse
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.File
 import ch.brickinventoryapp.testing.Quellen
 
 /**
- * Die Oberflächen rechnen nicht — sie zeigen an. Summen und Kennzahlen kommen aus der
- * Antwort des Servers, nicht aus einer Schleife über eine (womöglich gefilterte) Liste;
- * sonst zeigten Webapp und App aus denselben Daten verschiedene Zahlen.
+ * The surfaces do not calculate — they display. Totals and key figures come from the
+ * server's response, not from a loop over a (possibly filtered) list;
+ * otherwise web app and app would show different numbers from the same data.
  *
- * Gegenprobe: in AcquisitionManagementScreen wieder
- * `acquisitions.sumOf { it.quantity }` eingesetzt → der erste Teilschritt wird
- * rot; in MinifigsScreen wieder `figs.size` → der zweite.
+ * Counter-check: in AcquisitionManagementScreen again
+ * `acquisitions.sumOf { it.quantity }` inserted → the first sub-step turns
+ * red; in MinifigsScreen again `figs.size` → the second.
  */
 class ServerComputedValuesTest {
 
     private fun read(rel: String) =
-        File(Quellen.wurzel, "$rel").readText()
+        File(Quellen.root, "$rel").readText()
 
-    /** Kommentare zeilenweise ausblenden — sonst hält der eigene Erklärtext die Prüfung grün. */
+    /** Hide comments line by line — otherwise the own explanatory text keeps the check green. */
     private fun code(s: String) = s.lines()
         .joinToString("\n") { if (it.trim().startsWith("//") || it.trim().startsWith("*")) "" else it }
 
     @Test
-    fun `die Summenzeile der Erfassungen kommt vom Server`() {
+    fun `the total row of the acquisitions comes from the server`() {
         for (f in listOf(
-            "sammlung/ui/screens/AcquisitionManagementScreen.kt",
-            "gemeinsam/ui/ManualItemComposables.kt",
+            "collection/ui/screens/AcquisitionManagementScreen.kt",
+            "shared/ui/ManualItemComposables.kt",
         )) {
             val c = code(read(f))
             assert(!c.contains("acquisitions.sumOf")) {
@@ -37,37 +37,37 @@ class ServerComputedValuesTest {
                     "aus der Antwort (utils/acquisitions.ts, acquisitionTotals)"
             }
         }
-        val acq = code(read("sammlung/ui/screens/AcquisitionManagementScreen.kt"))
+        val acq = code(read("collection/ui/screens/AcquisitionManagementScreen.kt"))
         assert(acq.contains("totals.quantity")) { "Die Menge muss aus totals kommen" }
         assert(acq.contains("totals.amount")) { "Der Betrag muss aus totals kommen" }
-        // Gegenrichtung: `amount` ist nullable, und die Ansicht darf daraus keine
-        // 0 machen — „nichts erfasst" und „für null gekauft" sind verschieden.
+        // Opposite direction: `amount` is nullable, and the view must not make a
+        // 0 of it — „nothing recorded" and „bought for nothing" are different.
         assert(acq.contains("totals.amount?.let")) {
             "Der fehlende Betrag muss als null behandelt werden, nicht als 0"
         }
     }
 
     /**
-     * Ausgeführt mit dem Json der App. Gegenprobe: die
-     * Vorgabe `= AcquisitionTotals()` entfernt → rot.
+     * Executed with the app's Json. Counter-check: the
+     * default `= AcquisitionTotals()` removed → red.
      */
     @Test
-    fun `die Antwort traegt die Summe, mit sicherer Vorgabe`() {
+    fun `the response carries the total, with a safe default`() {
         val neu = BrickJson.decodeFromString(AcquisitionsResponse.serializer(),
             """{"success":true,"acquisitions":[],"totals":{"quantity":3,"amount":42.5,"priced_rows":2}}""")
         assertEquals(3, neu.totals.quantity)
         assertEquals(42.5, neu.totals.amount ?: 0.0, 0.0)
-        // Ältere Serverstände schicken keine Summe; die Antwort scheitert daran nicht.
+        // Older server versions send no total; the response does not fail because of it.
         val alt = BrickJson.decodeFromString(AcquisitionsResponse.serializer(), """{"success":true,"acquisitions":[]}""")
         assertEquals(0, alt.totals.quantity)
     }
 
     @Test
-    fun `die Minifiguren-Kacheln kommen vom Server, nicht aus der gefilterten Liste`() {
-        val s = code(Quellen.bildschirm("teile/ui/screens/MinifigsScreen.kt"))
-        for (muster in listOf("figs.size", "figs.sumOf", "figs.count")) {
-            assert(!s.contains(muster)) {
-                "MinifigsScreen rechnet die Kacheln aus `figs` ($muster). Diese Liste ist " +
+    fun `the minifigure tiles come from the server, not from the filtered list`() {
+        val s = code(Quellen.bildschirm("parts/ui/screens/MinifigsScreen.kt"))
+        for (pattern in listOf("figs.size", "figs.sumOf", "figs.count")) {
+            assert(!s.contains(pattern)) {
+                "MinifigsScreen rechnet die Kacheln aus `figs` ($pattern). Diese Liste ist " +
                     "gefiltert — die Kachel „manuell erfasst\" stünde damit immer auf 0."
             }
         }

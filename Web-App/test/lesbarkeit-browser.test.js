@@ -1,24 +1,24 @@
 /**
- * Lesbar und erreichbar — gemessen im Browser mit den echten Stylesheets.
+ * Readable and reachable — measured in the browser with the real stylesheets.
  *
- * Gegenproben (am 27.10. gemessen):
- *   A  --auf-primaer in themes/werkbank.css entfernt → rot: „werkbank: Primärknopf"
- *   B  .lerr wieder mit --r500 → rot: „Anmeldefehler"
- *   C  .datei-versteckt mit display:none → rot: „Datei-Feld fokussierbar"
- *   D  (28.10.) :focus-visible wieder 2px in var(--b600) → rot: „Fokusring hell: 2px“
- *   F  (28.10.) .cond-new wieder mit var(--g600) → rot: „hell: Etikett Neu 3:1“;
- *      .besitzer-badge mit --b600 → rot: „hell: Etikett Besitzer 4.24:1“
- *   G  (28.10.) .pnl-pos wieder #16a34a → rot: „hell: Gewinn 3.15:1“
- *   I  (29.10.) im Generator die dunklen Blöcke übersprungen (Tokens neu
- *      erzeugt) → rot: „Die Karte der dunklen Variante ist hell“ (alle fünf)
- *   H  (28.10.) --preis in themes/noppe.css entfernt → rot: „Preis in Rot“
- *      mit „noppe: Preis“ und „hochglanz: Preis“
- *   E  (28.10.) word-spacing am body entfernt, ebenso word-spacing:inherit an
- *      button → rot: „Wortabstand 0.17 em“
- *   J  (29.10.) .fval wieder var(--b700) → rot: „Preis in Rot“ (noppe: Kennzahl,
- *      hochglanz: Kennzahl); noppe nav .ntab wieder var(--b100) → rot: „noppe:
- *      Reiter 3.74:1“; .spare-tag wieder var(--mut) → rot: „hell: Ersatzteil
- *      4.34:1“; .fstat.hi .fsub entfernt → rot: „… hellblauen Kachel 4.37:1“
+ * Counter-checks (measured on 27.10.):
+ *   A  --auf-primaer removed in themes/werkbank.css → red: „werkbank: Primärknopf"
+ *   B  .lerr again with --r500 → red: „Anmeldefehler"
+ *   C  .datei-versteckt with display:none → red: „Datei-Feld fokussierbar"
+ *   D  (28.10.) :focus-visible again 2px in var(--b600) → red: „Fokusring hell: 2px“
+ *   F  (28.10.) .cond-new again with var(--g600) → red: „hell: Etikett Neu 3:1“;
+ *      .besitzer-badge with --b600 → red: „hell: Etikett Besitzer 4.24:1“
+ *   G  (28.10.) .pnl-pos again #16a34a → red: „hell: Gewinn 3.15:1“
+ *   I  (29.10.) the dark blocks skipped in the generator (tokens
+ *      regenerated) → red: „Die Karte der dunklen Variante ist hell“ (all five)
+ *   H  (28.10.) --preis removed in themes/noppe.css → red: „Preis in Rot“
+ *      with „noppe: Preis“ and „hochglanz: Preis“
+ *   E  (28.10.) word-spacing on the body removed, likewise word-spacing:inherit on
+ *      button → red: „Wortabstand 0.17 em“
+ *   J  (29.10.) .fval again var(--b700) → red: „Preis in Rot“ (noppe: Kennzahl,
+ *      hochglanz: Kennzahl); noppe nav .ntab again var(--b100) → red: „noppe:
+ *      Reiter 3.74:1“; .spare-tag again var(--mut) → red: „hell: Ersatzteil
+ *      4.34:1“; .fstat.hi .fsub removed → red: „… hellblauen Kachel 4.37:1“
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -40,7 +40,7 @@ const STILE = [
 
 const { chrome } = require('./helpers/app-browser');
 
-function testseite() {
+function testPage() {
   const css = STILE.map(s => `<link rel="stylesheet" href="file://${path.join(PUBLIC, s)}">`).join('\n');
   return `<!doctype html><html lang="de"><head><meta charset="utf-8">${css}
 <style>/* Gemessen wird der Endzustand, nicht der Übergang (.btn hat transition:all). */ *{transition:none!important}</style></head><body>
@@ -155,33 +155,33 @@ window.addEventListener('load', () => document.fonts.ready.then(() => {
     if (d) h = max === r ? 60 * (((g - b) / d) % 6) : max === g ? 60 * ((b - r) / d + 2) : 60 * ((r - g) / d + 4);
     return { name: el.dataset.farbton, rot: s > 0.35 && (h < 25 || h > 335) };
   });
-  const marken = [...document.querySelectorAll('[data-marke]')].map(el => getComputedStyle(el).color);
-  const dunkelGrund = [...document.querySelectorAll('section[data-dunkel] > div')]
+  const brands = [...document.querySelectorAll('[data-marke]')].map(el => getComputedStyle(el).color);
+  const darkReason = [...document.querySelectorAll('section[data-dunkel] > div')]
     .map(el => ({ name: el.parentElement.dataset.theme, hell: Math.round(lum(rgb(getComputedStyle(el).backgroundColor)) * 1000) / 1000 }));
   const datei = document.getElementById('datei'); datei.focus();
   const fokus = document.activeElement === datei;
   const px = id => parseFloat(getComputedStyle(document.getElementById(id)).fontSize);
-  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify({ kontrast, farbton, marken, dunkelGrund, fokus, ring, raum: wortabstand(), snum: px('snum'), smeta: px('smeta') }) + 'ENDE';
+  document.getElementById('ergebnis').textContent = 'ERGEBNIS' + JSON.stringify({ kontrast, farbton, brands, darkReason, fokus, ring, space: wortabstand(), snum: px('snum'), smeta: px('smeta') }) + 'ENDE';
 }));
 /** Breite eines Leerzeichens in der Schrift des Knopfs, in em. */
 function wortabstand() {
   const w = document.getElementById('wort'), b = t => { w.textContent = t; return w.getBoundingClientRect().width; };
-  const raum = b('n n') - b('nn');
-  return Math.round(raum / parseFloat(getComputedStyle(w).fontSize) * 100) / 100;
+  const space = b('n n') - b('nn');
+  return Math.round(space / parseFloat(getComputedStyle(w).fontSize) * 100) / 100;
 }
 </script></body></html>`;
 }
 
-test('Kontrast, Datei-Felder und Kachelschrift', t => {
+test('contrast, file fields and tile font', t => {
   const bin = chrome();
   if (!bin) {
-    t.skip('kein Chrome gefunden');
+    t.skip('no Chrome found');
     return;
   }
   const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'lesbar-'));
   t.after(() => fs.rmSync(ordner, { recursive: true, force: true }));
   const datei = path.join(ordner, 'seite.html');
-  fs.writeFileSync(datei, testseite());
+  fs.writeFileSync(datei, testPage());
   const dom = execFileSync(
     bin,
     [
@@ -202,12 +202,12 @@ test('Kontrast, Datei-Felder und Kachelschrift', t => {
   assert.ok(e.kontrast.length >= 16);
   assert.ok(e.kontrast.filter(k => k.name.startsWith('dunkel ')).length === 35, 'Die dunklen Varianten fehlen');
   assert.deepEqual(
-    e.dunkelGrund.filter(g => g.hell > 0.05).map(g => `${g.name} ${g.hell}`),
+    e.darkReason.filter(g => g.hell > 0.05).map(g => `${g.name} ${g.hell}`),
     [],
     'Die Karte der dunklen Variante ist hell',
   );
-  // hochglanz erbt die Farben von noppe; die übrigen vier bleiben unterscheidbar.
-  assert.equal(new Set(e.marken).size, 4, `Markenfarben dunkel: ${e.marken}`);
+  // hochglanz inherits the colors of noppe; the other four stay distinguishable.
+  assert.equal(new Set(e.brands).size, 4, `Markenfarben dunkel: ${e.brands}`);
   assert.equal(e.farbton.length, 4);
   assert.deepEqual(
     e.farbton.filter(f => f.rot).map(f => f.name),
@@ -220,7 +220,7 @@ test('Kontrast, Datei-Felder und Kachelschrift', t => {
   );
   assert.equal(e.fokus, true, 'Datei-Feld fokussierbar: Tab übersprang CSV und BrickLink XML');
   assert.ok(e.snum >= 12 && e.smeta >= 12, `Kachelschrift ${e.snum}/${e.smeta} px`);
-  assert.ok(e.raum >= 0.22, `Wortabstand ${e.raum} em — „Set hinzufügen“ liest sich wie ein Wort`);
+  assert.ok(e.space >= 0.22, `Wortabstand ${e.space} em — „Set hinzufügen“ liest sich wie ein Wort`);
   assert.equal(e.ring.length, 2);
   for (const r of e.ring) {
     assert.ok(r.stil !== 'none' && r.breite >= 3, `Fokusring ${r.name}: ${r.breite}px ${r.stil}`);

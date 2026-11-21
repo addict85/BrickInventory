@@ -7,6 +7,6 @@
     "moduleDetection": "auto",
     "noUnusedLocals": false
   },
-  "include": ["public/js/theme-boot.js", "public/js/logviewer.js", "frontend-typen/*.d.ts"],
+  "include": ["public/js/theme-boot.js", "public/js/logviewer.js", "frontend-types/*.d.ts"],
   "exclude": []
 }

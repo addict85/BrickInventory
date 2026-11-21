@@ -1,16 +1,16 @@
 Gegenprobe: Das Widget verdeckt seine Beträge erst, wenn die App beim Öffnen gesperrt wurde
 Modul: core-ui
-Test: ch.brickinventoryapp.ui.AppSperreTest
-Rot: das Widget verdeckt seine Betraege
+Test: ch.brickinventoryapp.ui.AppLockTest
+Rot: the widget hides its amounts as soon as the lock can apply
 
-diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
---- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
-+++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppSperre.kt
+diff --git a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt
+--- a/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt
++++ b/Android-App/core-ui/src/main/java/ch/brickinventoryapp/ui/components/AppLock.kt
 @@ -75,6 +75,6 @@
           * darauf, stünden die Beträge bis zum nächsten Lauf offen auf dem Startbildschirm.
           */
-         fun verdecktWidget(ablage: Ablage): Boolean =
--            ablage.gesperrt() || ablage.minuten() > 0 && ablage.hintergrundSeit() != null
+         fun hiddenWidget(ablage: Ablage): Boolean =
+-            ablage.gesperrt() || ablage.minuten() > 0 && ablage.backgroundSince() != null
 +            ablage.gesperrt()
      }
  }

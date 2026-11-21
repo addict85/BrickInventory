@@ -4,34 +4,34 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 
 /**
- * Wendet die gespeicherte Sprachpräferenz ("system", "en", "de") über
- * AppCompatDelegate.setApplicationLocales() an.
- * AppCompatDelegate speichert die Wahl selbst und erzeugt die Activity neu; ein eigener
- * Context-Wrapper wäre doppelte Arbeit.
+ * Applies the saved language preference ("system", "en", "de") via
+ * AppCompatDelegate.setApplicationLocales().
+ * AppCompatDelegate saves the choice itself and recreates the activity; an own
+ * context wrapper would be duplicate work.
  */
 object LanguageManager {
 
-    /** Wird beim App-Start (Application.onCreate) aus dem gespeicherten Wert aufgerufen. */
+    /** Called at app start (Application.onCreate) from the saved value. */
     fun applyLanguage(languageCode: String) {
         val localeList = if (languageCode == "system") {
             LocaleListCompat.getEmptyLocaleList()
         } else {
             LocaleListCompat.forLanguageTags(languageCode)
         }
-        // Wenn sich die Auswahl nicht ändert, keine unnötige Recreation auslösen
+        // If the selection does not change, do not trigger an unnecessary recreation
         if (AppCompatDelegate.getApplicationLocales() != localeList) {
             AppCompatDelegate.setApplicationLocales(localeList)
         }
     }
 
     /**
-     * Context mit der gewählten App-Sprache — für SERVICES und andere
-     * Nicht-Activity-Kontexte.
-     * setApplicationLocales() lokalisiert nur Activities; ein Service bekäme unter Android 13 sonst
-     * die Systemsprache.
+     * Context with the chosen app language — for SERVICES and other
+     * non-activity contexts.
+     * setApplicationLocales() only localizes activities; a service would otherwise get the
+     * system language below Android 13.
      */
-    // Das App-Bundle trennt die Sprachen nicht (build.gradle.kts, bundle.language),
-    // und verteilt wird ohnehin das APK: Alle Texte sind immer an Bord.
+    // The app bundle does not split the languages (build.gradle.kts, bundle.language),
+    // and the APK is distributed anyway: all texts are always on board.
     @Suppress("AppBundleLocaleChanges")
     fun localizedContext(base: android.content.Context): android.content.Context {
         if (android.os.Build.VERSION.SDK_INT >= 33) return base

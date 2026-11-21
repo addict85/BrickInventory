@@ -1,7 +1,7 @@
 Gegenprobe: ein Prüfungskürzel steht wieder in einem Bau-Kommentar
 Modul: app
 Test: ch.brickinventoryapp.app.QuelltextRatscheTest
-Rot: lange Kommentare im Workflow und in Tests
+Rot: long comments in the workflow and in tests become fewer
 
 diff --git a/Android-App/settings.gradle.kts b/Android-App/settings.gradle.kts
 index e16fee5..edb97e5 100644

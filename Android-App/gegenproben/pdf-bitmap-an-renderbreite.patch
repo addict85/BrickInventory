@@ -1,17 +1,17 @@
 Gegenprobe: Bitmap-Zustand einer PDF-Seite hängt auch an der Renderbreite
-Modul: feature-finanzen
-Test: ch.brickinventoryapp.finanzen.PdfZoomTest
-Rot: beim Stufenwechsel bleibt die alte Seite stehen
+Modul: feature-finances
+Test: ch.brickinventoryapp.finances.PdfZoomTest
+Rot: on a level change the old page stays
 
-diff --git a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfSeiten.kt b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfSeiten.kt
---- a/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfSeiten.kt
-+++ b/Android-App/feature-finanzen/src/main/java/ch/brickinventoryapp/finanzen/ui/screens/PdfSeiten.kt
+diff --git a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfSeiten.kt b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfSeiten.kt
+--- a/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfSeiten.kt
++++ b/Android-App/feature-finances/src/main/java/ch/brickinventoryapp/finances/ui/screens/PdfSeiten.kt
 @@ -228,7 +228,7 @@
  
  @Composable
- private fun PdfPage(quelle: PdfQuelle, index: Int, renderBreitePx: Int, rendere: SeitenRenderer) {
+ private fun PdfPage(quelle: PdfQuelle, index: Int, renderWidthPx: Int, rendere: SeitenRenderer) {
 -    var bitmap by remember(quelle, index) { mutableStateOf<Bitmap?>(null) }
-+    var bitmap by remember(quelle, index, renderBreitePx) { mutableStateOf<Bitmap?>(null) }
++    var bitmap by remember(quelle, index, renderWidthPx) { mutableStateOf<Bitmap?>(null) }
  
-     // remember ohne, LaunchedEffect mit renderBreitePx: Beim Stufenwechsel bleibt die
+     // remember ohne, LaunchedEffect mit renderWidthPx: Beim Stufenwechsel bleibt die
      // alte Bitmap stehen, bis die neue da ist. Ein Ladekreis hätte eine andere Höhe

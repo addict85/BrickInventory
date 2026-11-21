@@ -1,9 +1,9 @@
 package ch.brickinventoryapp.model.ui
 
 /**
- * Wofür ein Ladefehler steht, grob genug für Symbol, Überschrift und Rat: Wer offline
- * ist, soll das Netz prüfen, wer abgemeldet wurde, sich anmelden. Ein roher Satz wie
- * „Serverfehler (500)“ allein sagte weder das eine noch das andere.
+ * What a loading error stands for, coarse enough for icon, heading and advice: whoever is
+ * offline shall check the network, whoever was signed out shall sign in. A raw sentence like
+ * „Serverfehler (500)“ alone said neither the one nor the other.
  */
 
-enum class Fehlerklasse { OFFLINE, SERVER, ANMELDUNG, UNBEKANNT }
+enum class Fehlerklasse { OFFLINE, SERVER, LOGIN, UNBEKANNT }
