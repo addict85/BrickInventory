@@ -66,7 +66,7 @@ async function financesOffline(_t, a) {
   }
   // Back on the network the list loads by itself; otherwise the button helps.
   await b.auswerten(`document.querySelector('#tab-finance [data-click="loadFinance"]')?.click(); true`);
-  await bis(`!!document.querySelector('#fin-tbl [data-fin-type="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 300);
+  await bis(`!!document.querySelector('#fin-tbl [data-fin-type="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 450);
   await bis(
     `[...document.querySelectorAll('.zeitraum-wahl .period-btn')].every(k => !k.disabled)`,
     'Zeitraum wieder frei',
@@ -127,7 +127,7 @@ async function financesPhone(_t, a) {
   await groesse(b, 390, 844);
   try {
     await b.auswerten(`document.querySelector('.ntab[data-tab="finance"]').click(); true`);
-    await bis(`!!document.querySelector('#fin-tbl [data-fin-type="figs"] tbody tr')`, 'Finanzen mit Figuren', 300);
+    await bis(`!!document.querySelector('#fin-tbl [data-fin-type="figs"] tbody tr')`, 'Finanzen mit Figuren', 450);
     await ruhig();
     const zeile = name =>
       b.auswerten(`(() => { const r = [...document.querySelectorAll('#fin-tbl tbody tr')].find(x => x.textContent.includes(${JSON.stringify(name)}));

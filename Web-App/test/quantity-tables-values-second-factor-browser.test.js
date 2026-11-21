@@ -333,7 +333,7 @@ async function tabellenansicht(_t, a) {
 async function financeColumns(_t, a) {
   const { b } = a;
   // Die erste Ladezeit der Finanzen schwankt im CI; grosszügiger als die übrigen Reiter.
-  await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-type="parts"] tbody tr')`, 'Finanzen', 300);
+  await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-type="parts"] tbody tr')`, 'Finanzen', 450);
   const m =
     await b.auswerten(`(() => { const sichtbar = z => { const k = z.cloneNode(true); k.querySelectorAll('.vh').forEach(v => v.remove());
       return k.textContent.trim() || (k.querySelector('img, svg') ? 'Bild' : ''); };

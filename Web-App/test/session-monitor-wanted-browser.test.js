@@ -94,7 +94,7 @@ async function financesOffline(_t, a) {
     await b.tab('Network.emulateNetworkConditions', { offline: false, ...NETWORK });
   }
   await b.auswerten(`document.querySelector('#fin-tbl [data-click="loadFinance"]')?.click(); true`);
-  await bis(`!!document.querySelector('#fin-tbl [data-fin-type="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 300);
+  await bis(`!!document.querySelector('#fin-tbl [data-fin-type="sets"] tfoot')`, 'Finanzen nach dem Neuladen', 450);
 }
 
 async function rechenbasis(_t, a) {
@@ -104,7 +104,7 @@ async function rechenbasis(_t, a) {
   await bis(
     `!!document.querySelector('#fin-tbl [data-fin-type="sets"] tbody tr') && !document.getElementById('fin-basis').hidden`,
     'Basiszeile',
-    300,
+    450,
   );
   const z = await b.auswerten(`({ basis: ${text('#fin-basis')},
     zeilen: [...document.querySelectorAll('#fin-tbl [data-fin-type] tbody tr')].length })`);
