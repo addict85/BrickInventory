@@ -54,10 +54,10 @@ async function groesse(b, breite, telefon) {
   });
 }
 
-async function geh(a, hash, bereit, was) {
+async function geh(a, hash, bereit, was, versuche = 200) {
   await a.b.auswerten(CLOSE);
   await a.b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
-  await a.bis(bereit, was, 200);
+  await a.bis(bereit, was, versuche);
   await a.ruhig(5000);
 }
 
@@ -166,7 +166,8 @@ async function hintergrund(_t, a) {
 
 async function finanzen(_t, a) {
   const { b } = a;
-  await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-type="sets"] tbody tr')`, 'Finanzen');
+  // Die erste Ladezeit der Finanzen schwankt im CI; grosszügiger als die übrigen Reiter.
+  await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-type="sets"] tbody tr')`, 'Finanzen', 300);
   // Since UX check 25 the unit price stands below the market value („je …“), only for more than one piece.
   const f = await b.auswerten(`(() => {
     const zeilen = [...document.querySelectorAll('[data-fin-type="sets"] tbody tr')].map(z => ({

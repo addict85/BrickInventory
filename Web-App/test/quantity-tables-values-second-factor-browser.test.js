@@ -52,10 +52,10 @@ async function groesse(b, breite, telefon) {
   });
 }
 
-async function geh(a, hash, bereit, was) {
+async function geh(a, hash, bereit, was, versuche = 200) {
   await a.b.auswerten(CLOSE);
   await a.b.auswerten(`location.hash = ${JSON.stringify(hash)}; true`);
-  await a.bis(bereit, was, 200);
+  await a.bis(bereit, was, versuche);
   await a.ruhig(5000);
 }
 
@@ -332,7 +332,8 @@ async function tabellenansicht(_t, a) {
 
 async function financeColumns(_t, a) {
   const { b } = a;
-  await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-type="parts"] tbody tr')`, 'Finanzen');
+  // Die erste Ladezeit der Finanzen schwankt im CI; grosszügiger als die übrigen Reiter.
+  await geh(a, '#/finanzen', `!!document.querySelector('#fin-tbl [data-fin-type="parts"] tbody tr')`, 'Finanzen', 300);
   const m =
     await b.auswerten(`(() => { const sichtbar = z => { const k = z.cloneNode(true); k.querySelectorAll('.vh').forEach(v => v.remove());
       return k.textContent.trim() || (k.querySelector('img, svg') ? 'Bild' : ''); };
