@@ -1,5 +1,5 @@
 {
-  "hinweis": "Erzeugt von Android-App/tools/vertrag/app-schnittstelle.js aus dem Quelltext der App; nicht von Hand ändern.",
+  "hinweis": "Erzeugt von Android-App/tools/contract/app-interface.js aus dem Quelltext der App; nicht von Hand ändern.",
   "routen": [
     {
       "methode": "GET",

@@ -9,7 +9,7 @@
  *      route sees the converted body”
  *   B  in checkInput `geprueft.abfrage = req.query` instead of the result
  *      → red: “the route sees the converted query”
- *   C  NewSet (vertrag/sets.ts) as z.looseObject → red: “an unknown field
+ *   C  NewSet (contract/sets.ts) as z.looseObject → red: “an unknown field
  *      is 400” and “every input and query is closed”
  *   D  in reportDeviation the branch unrecognized_keys deleted → red: “an
  *      unknown field is 400” and “a wrong query is 400” (code

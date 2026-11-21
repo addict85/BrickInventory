@@ -6,7 +6,7 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * Die Zusammenfassung des Prüfsummen-Jobs (tools/pruefsummen-vergleich.py),
+ * Die Zusammenfassung des Prüfsummen-Jobs (tools/checksum-compare.py),
  * ausgeführt gegen zwei kleine Metadateien: eine neue, eine entfernte und eine
  * Komponente mit anderer Prüfsumme bei gleicher Fassung.
  *
@@ -31,7 +31,7 @@ class ChecksumsComparisonTest {
         }
 
     private fun compare(alt: File, neu: File): String {
-        val p = ProcessBuilder("python3", "../tools/pruefsummen-vergleich.py", alt.path, neu.path)
+        val p = ProcessBuilder("python3", "../tools/checksum-compare.py", alt.path, neu.path)
             .redirectErrorStream(true).start()
         val text = p.inputStream.bufferedReader().readText()
         check(p.waitFor(30, TimeUnit.SECONDS) && p.exitValue() == 0) { text }

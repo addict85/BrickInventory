@@ -3,7 +3,7 @@
  * its source text, checked for currency in the Android run). The server must keep offering it:
  * every route in the contract, with the query parameters and body fields the app sends.
  * Whether the Kotlin models can read the responses is checked by the Android side
- * (Android-App/tools/vertrag/vertrag-kotlin.test.js).
+ * (Android-App/tools/contract/contract-kotlin.test.js).
  *
  * Counter-checks (measured 14.11.2026, each alone, reverted):
  *   A  'GET /api/v1/settings/default-condition' renamed in the contract → red: “every route of the app …”

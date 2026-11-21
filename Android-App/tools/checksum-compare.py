@@ -3,7 +3,7 @@
 neue, entfernte und Komponenten mit geänderter Prüfsumme oder geändertem Schlüssel,
 dazu neue Gruppen und neu vertraute PGP-Schlüssel (Gruppen-Regex zuerst), beide hervorgehoben.
 
-Aufruf: pruefsummen-vergleich.py <alt.xml> <neu.xml>
+Aufruf: checksum-compare.py <alt.xml> <neu.xml>
 
 Eine geänderte Prüfsumme bei gleicher Fassung ist der Fall, den jemand ansehen
 muss: Dasselbe Artefakt dürfte nie andere Bytes haben.

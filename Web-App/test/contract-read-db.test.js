@@ -4,7 +4,7 @@
  * parts and minifigure, a manual part, a manual minifigure, wishlist,
  * storage location, voucher, price alert, prices in the cache. Which routes the app calls
  * is in shared/app-schnittstelle.json; that its models match the contract
- * is checked by the Android run (tools/vertrag/vertrag-kotlin.test.js).
+ * is checked by the Android run (tools/contract/contract-kotlin.test.js).
  *
  * Counter-checks (measured 31.10.2026):
  *   A  in src/sets/repository/sets.ts the ::int on used_count removed → red:

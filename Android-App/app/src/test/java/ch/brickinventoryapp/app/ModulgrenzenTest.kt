@@ -35,7 +35,7 @@ import ch.brickinventoryapp.testing.Quellen
  *      gestrichen → rot „exclusiveContent je Block in settings.gradle.kts“
  *   J ein `regex="true"` zurück in
  *      verification-metadata.xml → rot „kein Schlüssel gilt für eine ganze Gruppe …“
- *   K in bauwerkzeug-luecken.txt die Fassung auf 3.15.0
+ *   K in build-tool-vulnerabilities.txt die Fassung auf 3.15.0
  *      → rot „jede Lücke im Bauwerkzeug …“ (steht nicht in verification-metadata.xml)
  *   H ein `PdfRenderer(` in PdfSeite.kt →
  *      rot „PdfRenderer steht nur im isolierten Render-Dienst“; ebenso
@@ -363,7 +363,7 @@ class ModulgrenzenTest {
     @Test
     fun `jede Luecke im Bauwerkzeug ist begruendet, befristet und aktuell`() {
         val meta = File(project, "gradle/verification-metadata.xml").readText()
-        val zeilen = File(project, "tools/bauwerkzeug-luecken.txt").readLines()
+        val zeilen = File(project, "tools/build-tool-vulnerabilities.txt").readLines()
         val entry = Regex("""^([\w.-]+):([\w.-]+):([\w.-]+) (CVE-\d{4}-\d+) bis:(\d{4}-\d{2}-\d{2})$""")
         var n = 0
         zeilen.forEachIndexed { i, z ->

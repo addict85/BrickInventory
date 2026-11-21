@@ -328,7 +328,7 @@ Ein Ereignisstrom (`art: 'strom'`) nennt sein Ereignis (`ereignis`); die Oberfl�
 
 Was die App vom Server braucht (Routen, Abfrage, Rumpffelder, die Felder ihrer
 Modelle), steht in `shared/app-schnittstelle.json`. Der Android-Lauf erzeugt und prüft
-die Datei aus dem Kotlin-Quelltext (`Android-App/tools/vertrag/`), die Web-Suite prüft den
+die Datei aus dem Kotlin-Quelltext (`Android-App/tools/contract/`), die Web-Suite prüft den
 Server gegen sie (`test/app-interface.test.js`, `contract-read-db`,
 `contract-write-db`). Kotlin-Quelltext liest die Web-Suite nicht (`test/ratschen.test.js`).
 

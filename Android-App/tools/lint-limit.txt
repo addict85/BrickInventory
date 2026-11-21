@@ -2,4 +2,4 @@
 0
 # Alle gemeldeten Gruppen sind behoben oder mit Grund unterdrueckt (app/lint.xml,
 # @Suppress, tools:ignore). Ein neuer Fund wird behoben, nicht die Grenze gehoben.
-# Herleitung und Messlaeufe: git log -p -- Android-App/tools/lint-obergrenze.txt
+# Herleitung und Messlaeufe: git log -p -- Android-App/tools/lint-limit.txt

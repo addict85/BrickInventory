@@ -1,38 +1,38 @@
 /**
- * Die Routen der App gegen den Vertrag des Servers (src/contract/, als JSON-Schema wie in
- * docs/openapi.json). Die Kotlin-Typen selbst sind aus dem Vertrag erzeugt
- * (contract-kotlin-dtos.test.js prüft, dass die Datei aktuell ist); hier bleibt, dass jede
- * Route der App genau den erzeugten Typ ihres Schemas liest und schickt.
+ * The app's routes against the server's contract (src/contract/, as JSON schema as in
+ * docs/openapi.json). The Kotlin types themselves are generated from the contract
+ * (contract-kotlin-dtos.test.js checks that the file is up to date); what remains here is that every
+ * route of the app reads and sends exactly the generated type of its schema.
  *
- * Gegenproben (14.11.2026 gemessen):
- *   A  im Vertrag die Route GET /api/v1/parts/stats umbenannt → rot: „jede Route der App
- *      hat einen Vertrag“
- *   B  in SetsApi.kt getSetDetail mit Response<SetsResponse> statt SetResponse → rot:
- *      „jede Antwort liest die App mit dem erzeugten Typ ihres Schemas“
- *   C  in KontoApi.kt login mit @Body QrLoginRequest → rot: „jeder Rumpf der App ist der
- *      erzeugte Rumpf seiner Route“
- *   D  in contract-kotlin-mapping.js ANFRAGEN eine erfundene Route ergänzt → rot: „jeder
- *      Rumpf der App ist der erzeugte Rumpf seiner Route“ (toter Rumpf)
- *   E  (05.11.2026) im Vertrag die Abfrage von GET /api/v1/sets ohne `page_size` → rot:
- *      „jeder Abfrageparameter der App steht im Vertrag“
- *   F  in Fehlercode.kt BARCODE_KEIN_SET("barcode_kein_satz") → rot: „jeder Fehlercode
- *      der App steht im Vertrag“ nennt barcode_kein_satz
- *   G  (14.11.2026) in KontoApi.kt "api/v1/settings/default-condition" mit angehängtem x →
- *      rot: „shared/app-schnittstelle.json ist aktuell“ (und „jede Route der App …“)
+ * Counter-checks (measured 14.11.2026):
+ *   A  in the contract the route GET /api/v1/parts/stats renamed → red: “every route of the app
+ *      has a contract”
+ *   B  in SetsApi.kt getSetDetail with Response<SetsResponse> instead of SetResponse → red:
+ *      “the app reads every response with the generated type of its schema”
+ *   C  in KontoApi.kt login with @Body QrLoginRequest → red: “every body of the app is the
+ *      generated body of its route”
+ *   D  in contract-kotlin-mapping.js ANFRAGEN an invented route added → red: “every
+ *      body of the app is the generated body of its route” (dead body)
+ *   E  (05.11.2026) in the contract the query of GET /api/v1/sets without `page_size` → red:
+ *      “every query parameter of the app is in the contract”
+ *   F  in Fehlercode.kt BARCODE_KEIN_SET("barcode_kein_satz") → red: “every error code
+ *      of the app is in the contract” names barcode_kein_satz
+ *   G  (14.11.2026) in KontoApi.kt "api/v1/settings/default-condition" with an appended x →
+ *      red: “shared/app-schnittstelle.json is up to date” (and “every route of the app …”)
  */
-// Läuft im Android-Lauf (android.yml, Job vertrag); die Web-Suite liest keinen Kotlin-Quelltext.
+// Runs in the Android run (android.yml, job vertrag); the web suite reads no Kotlin source.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { kotlinFehlercodes, apiRouten, schreibRouten } = require('./kotlin-vertrag.js');
-const { ANDROID, API } = require('./app-schnittstelle.js');
-// Erzeuger und Namenszuordnung der Kotlin-Typen liegen beim Vertrag (Web-App/scripts).
+const { kotlinFehlercodes, apiRouten, schreibRouten } = require('./kotlin-contract.js');
+const { ANDROID, API } = require('./app-interface.js');
+// Generator and name mapping of the Kotlin types live with the contract (Web-App/scripts).
 const SKRIPTE = path.join(ANDROID, '..', 'Web-App', 'scripts');
-const { klassenname, ZIEL } = require(path.join(SKRIPTE, 'contract-kotlin-dtos.js'));
+const { className: klassenname, ZIEL } = require(path.join(SKRIPTE, 'contract-kotlin-dtos.js'));
 const Z = require(path.join(SKRIPTE, 'contract-kotlin-mapping.js'));
-// Der Vertrag, wie der Server ihn veröffentlicht (npm run vertrag:openapi).
+// The contract as the server publishes it (npm run vertrag:openapi).
 const dok = JSON.parse(fs.readFileSync(path.join(ANDROID, '..', 'Web-App', 'docs', 'openapi.json'), 'utf8'));
 const routen = [
   ...apiRouten(API).map(r => ({
@@ -47,29 +47,29 @@ const routen = [
 const erzeugt = new Set([...fs.readFileSync(ZIEL, 'utf8').matchAll(/^(?:data |enum )?class (\w+)/gm)].map(m => m[1]));
 /** @param {string} p */
 const gleichfoermig = p => p.replace(/\{\w+\}/g, '{}');
-/** Pfad der App → Operation im Vertrag. @param {string} methode @param {string} pfad */
+/** Path of the app → operation in the contract. @param {string} methode @param {string} pfad */
 function operation(methode, pfad) {
   const treffer = Object.entries(dok.paths).filter(([p]) => gleichfoermig(p) === gleichfoermig(pfad));
   return treffer.length === 1 ? treffer[0][1][methode.toLowerCase()] : undefined;
 }
-/** Der Kotlin-Name, den der Erzeuger einem Schema gibt. @param {string} ref */
+/** The Kotlin name the generator gives a schema. @param {string} ref */
 const kotlinName = ref => {
   const n = klassenname(ref.split('/').pop() ?? '');
   return /** @type {Record<string, string>} */ (Z.NAMEN)[n] ?? n;
 };
 
-// Antworten ohne JSON-Typ: Dateien und leere Rümpfe.
+// Responses without a JSON type: files and empty bodies.
 const OHNE_SCHEMA = new Set(['ResponseBody', 'Unit']);
-// Rümpfe, die die App noch als Map oder JsonObject baut; jeder Eintrag ist ein offener Rest.
+// Bodies the app still builds as Map or JsonObject; every entry is an open remainder.
 const FREIE_RUEMPFE = new Set(['Map', 'JsonObject']);
 
-test('jede Route der App hat einen Vertrag', () => {
+test('every route of the app has a contract', () => {
   assert.ok(routen.length > 100, `nur ${routen.length} Routen gelesen — greift der Leser noch?`);
   const ohne = routen.filter(r => !operation(r.methode, r.pfad)).map(r => `${r.methode} ${r.pfad}`);
   assert.deepEqual(ohne, []);
 });
 
-test('jede Antwort liest die App mit dem erzeugten Typ ihres Schemas', () => {
+test('the app reads every response with the generated type of its schema', () => {
   const falsch = [];
   let geprueft = 0;
   for (const r of routen) {
@@ -88,7 +88,7 @@ test('jede Antwort liest die App mit dem erzeugten Typ ihres Schemas', () => {
   assert.ok(geprueft >= 140, `nur ${geprueft} Antworttypen verglichen`);
 });
 
-test('jeder Rumpf der App ist der erzeugte Rumpf seiner Route', () => {
+test('every body of the app is the generated body of its route', () => {
   const anfragen = Object.entries(/** @type {Record<string, string>} */ (Z.ANFRAGEN));
   const falsch = [];
   let geprueft = 0;
@@ -111,7 +111,7 @@ test('jeder Rumpf der App ist der erzeugte Rumpf seiner Route', () => {
   assert.deepEqual(tot, [], 'Ein Rumpf ohne Route der App ist toter Code im Erzeuger');
 });
 
-test('jeder Abfrageparameter der App steht im Vertrag', () => {
+test('every query parameter of the app is in the contract', () => {
   const fehlt = [];
   let geprueft = 0;
   for (const r of routen) {
@@ -127,7 +127,7 @@ test('jeder Abfrageparameter der App steht im Vertrag', () => {
   assert.ok(geprueft >= 50, `nur ${geprueft} Abfrageparameter verglichen`);
 });
 
-test('jeder Fehlercode der App steht im Vertrag', () => {
+test('every error code of the app is in the contract', () => {
   const datei = path.join(
     ANDROID,
     'core-model',
@@ -137,7 +137,7 @@ test('jeder Fehlercode der App steht im Vertrag', () => {
     'ch',
     'brickinventoryapp',
     'model',
-    'fach',
+    'domain',
     'Fehlercode.kt',
   );
   const kennungen = kotlinFehlercodes(datei);
@@ -149,10 +149,10 @@ test('jeder Fehlercode der App steht im Vertrag', () => {
   );
 });
 
-// Die Web-Suite liest die App nur über diese Datei; sie muss sagen, was der Quelltext sagt.
-test('shared/app-schnittstelle.json ist aktuell', () => {
-  const { schnittstelle } = require('./app-schnittstelle.js');
+// The web suite reads the app only via this file; it must say what the source says.
+test('shared/app-schnittstelle.json is up to date', () => {
+  const { schnittstelle } = require('./app-interface.js');
   const datei = JSON.parse(fs.readFileSync(path.join(ANDROID, '..', 'shared', 'app-schnittstelle.json'), 'utf8'));
   assert.ok(datei.routen.length > 100, `nur ${datei.routen.length} Routen in der Datei`);
-  assert.deepEqual(datei, schnittstelle(), 'node Android-App/tools/vertrag/app-schnittstelle.js');
+  assert.deepEqual(datei, schnittstelle(), 'node Android-App/tools/contract/app-interface.js');
 });

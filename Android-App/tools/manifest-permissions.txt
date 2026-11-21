@@ -1,5 +1,5 @@
 # Berechtigungen, die das fertige Release-APK verlangen darf (sec17 B-N12), je Zeile eine.
-# Geprüft von tools/manifest-pruefen.py im Job apk-pruefen am zusammengeführten Manifest:
+# Geprüft von tools/manifest-check.py im Job apk-pruefen am zusammengeführten Manifest:
 # Bibliotheken bringen eigene mit. Eine neue Zeile nur mit Grund darüber.
 
 # Eigene (app/src/main/AndroidManifest.xml): Server, Netzlage, Scannen, PDF-Export im

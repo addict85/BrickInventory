@@ -9,7 +9,7 @@ import java.security.MessageDigest
 import java.util.Base64
 
 /**
- * Die Prüfungen vor dem Veröffentlichen (tools/release-pruefen.py),
+ * Die Prüfungen vor dem Veröffentlichen (tools/release-check.py),
  * ausgeführt gegen Ausgaben im Format von `apksigner verify --print-certs` und
  * gegen Beschreibungen wie die in version-signiert.json einer Release.
  *
@@ -19,7 +19,7 @@ import java.util.Base64
  *      oder gleich alter Stand …“
  *   C  das Muster auf `SHA256 digest` statt `SHA-256 digest` → rot „das hinterlegte
  *      Zertifikat wird angenommen“ (Rückgabe 2 statt 0)
- *   D  tools/release-zertifikat.sha256 ohne Wert → rot „die hinterlegte Datei nennt …“
+ *   D  tools/release-certificate.sha256 ohne Wert → rot „die hinterlegte Datei nennt …“
  *   E  in beschreibung() `apkSha256` aus `soll` gestrichen → rot „die
  *      signierte Beschreibung muss genau dieses APK nennen“ (ein anderes APK ging durch)
  *   F  in beschreibung() die Zeile `falsch += deadline(…)` gestrichen → rot
@@ -54,7 +54,7 @@ class ReleaseCheckTest {
     }.joinToString(""))
 
     private fun pruefe(vararg args: String): Int {
-        val p = ProcessBuilder(listOf("python3", "../tools/release-pruefen.py") + args).redirectErrorStream(true).start()
+        val p = ProcessBuilder(listOf("python3", "../tools/release-check.py") + args).redirectErrorStream(true).start()
         val text = p.inputStream.bufferedReader().readText()
         check(p.waitFor(30, TimeUnit.SECONDS)) { text }
         return p.exitValue()
@@ -77,7 +77,7 @@ class ReleaseCheckTest {
 
     @Test
     fun `die hinterlegte Datei nennt das Release-Zertifikat`() {
-        assertEquals(0, pruefe("zertifikat", apksigner(release).path, "../tools/release-zertifikat.sha256"))
+        assertEquals(0, pruefe("zertifikat", apksigner(release).path, "../tools/release-certificate.sha256"))
     }
 
     @Test

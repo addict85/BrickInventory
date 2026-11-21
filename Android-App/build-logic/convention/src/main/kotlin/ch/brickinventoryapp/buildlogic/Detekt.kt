@@ -17,7 +17,7 @@ import java.io.File
 /**
  * Aufgabe `detekt`: prüft src/main und src/test des Moduls nach config/detekt/detekt.yml
  * und scheitert bei jedem Fund, der nicht in config/detekt/baseline.xml steht. Die
- * Baseline hält nur Länge und Verzweigung fest; tools/detekt-obergrenze.txt lässt sie schrumpfen. Die Kommandozeile statt des Gradle-Plugins:
+ * Baseline hält nur Länge und Verzweigung fest; tools/detekt-limit.txt lässt sie schrumpfen. Die Kommandozeile statt des Gradle-Plugins:
  * Sie braucht nur die Quellordner und bringt ihr eigenes Kotlin mit, das Plugin müsste
  * sich an die Quellsätze von AGP 9 mit eingebautem Kotlin hängen.
  */

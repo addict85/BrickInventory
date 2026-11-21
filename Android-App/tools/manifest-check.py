@@ -7,14 +7,14 @@ und eine neue Fassung mit einer exportierten Komponente faellt im Quelltext nich
 
 Rot (Rueckgabe 1), wenn
   - die Anwendung debuggable oder testOnly ist, allowBackup nicht false oder Klartext erlaubt,
-  - eine exportierte Komponente nicht in tools/manifest-exportiert.txt steht oder
+  - eine exportierte Komponente nicht in tools/manifest-exported.txt steht oder
     dort eine andere Berechtigung verlangt als im APK,
-  - das APK eine Berechtigung verlangt, die nicht in tools/manifest-berechtigungen.txt
+  - das APK eine Berechtigung verlangt, die nicht in tools/manifest-permissions.txt
     steht (etwa READ_PHONE_STATE aus einer neuen Bibliotheksfassung),
   - Googles datatransport ein Backend findet (meta-data `backend:` an
     TransportBackendDiscovery): Darüber meldet ML Kit Nutzungsdaten an Google.
 
-Aufruf: manifest-pruefen.py <xmltree.txt> <positivliste.txt> <berechtigungen.txt>
+Aufruf: manifest-check.py <xmltree.txt> <positivliste.txt> <berechtigungen.txt>
 """
 import re
 import sys
@@ -83,7 +83,7 @@ def pruefe(xmltree, erlaubt, rechte=frozenset()):
         for el in alle(w, art):
             name = el[1].get('name', '?')
             if name not in rechte:
-                fehler.append(f'{art} {name} steht nicht in tools/manifest-berechtigungen.txt')
+                fehler.append(f'{art} {name} steht nicht in tools/manifest-permissions.txt')
     if app.get('allowBackup') not in ('false', '0x0', '(type 0x12)0x0'):
         fehler.append(f'android:allowBackup ist nicht false ({app.get("allowBackup")})')
     if app.get('usesCleartextTraffic') in WAHR:

@@ -118,14 +118,14 @@ android {
     lint {
         // Lint läuft auf Release-Builds und bricht bei einem Fehler ab: Ein
         // Befund der Stufe Error ist kein Bericht, sondern ein Mangel. Warnungen
-        // zählt tools/lint-zaehlen.py gegen eine Obergrenze. Keine Baseline —
+        // zählt tools/lint-count.py gegen eine Obergrenze. Keine Baseline —
         // was gemeldet wird, wird behoben.
         checkReleaseBuilds = true
         abortOnError = true
         warningsAsErrors = false
         // Ein Lauf hier prüft alle Module mit, als wären sie eins: Ressourcen aus
         // core-resources gelten als benutzt, wenn ein Bereich sie liest, und der
-        // Bericht bleibt die eine Datei, die tools/lint-zaehlen.py zählt.
+        // Bericht bleibt die eine Datei, die tools/lint-count.py zählt.
         checkDependencies = true
     }
 
@@ -156,7 +156,7 @@ android {
 }
 
 // DataStore auf die Fassung des Katalogs festnageln: Eine transitive Anhebung ergäbe
-// ein anderes APK als das geprüfte. Die 16-KB-Ausrichtung misst tools/apk-ausrichtung.py
+// ein anderes APK als das geprüfte. Die 16-KB-Ausrichtung misst tools/apk-alignment.py
 // am gebauten APK.
 val datastore = libs.versions.datastore.get()
 configurations.configureEach {

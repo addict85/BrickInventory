@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.ReleaseCheckTest
 Rot: eine Beschreibung ohne gueltige Frist wird nicht veroeffentlicht
 
-diff --git a/Android-App/tools/release-pruefen.py b/Android-App/tools/release-pruefen.py
---- a/Android-App/tools/release-pruefen.py
-+++ b/Android-App/tools/release-pruefen.py
+diff --git a/Android-App/tools/release-check.py b/Android-App/tools/release-check.py
+--- a/Android-App/tools/release-check.py
++++ b/Android-App/tools/release-check.py
 @@ -138,7 +138,6 @@ def beschreibung(daten_pfad, apk_pfad, meta_pfad, commit, ablage):
          'apkUrl': f"{ablage.rstrip('/')}/BrickInventory-{element.get('versionCode')}.apk",
      }

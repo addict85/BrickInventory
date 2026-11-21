@@ -1,8 +1,8 @@
 /**
- * Die Release-Wege der App (.github/workflows/android*.yml): signiert und veröffentlicht wird
- * nur aus main, in eigenen Jobs ohne Projektcode; Prüfsummen und Bildschirmfotos kommen als
- * Pull-Request; die Fassungs-Release trägt alle Anhänge. Die Schritte laufen in bash gegen
- * eine nachgestellte Ablage. Läuft im Android-Lauf (android.yml, Job vertrag).
+ * The app's release paths (.github/workflows/android*.yml): signing and publishing happen
+ * only from main, in separate jobs without project code; checksums and screenshots come as
+ * pull requests; the version release carries all attachments. The steps run in bash against
+ * a simulated store. Runs in the Android run (android.yml, job vertrag).
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -19,13 +19,13 @@ const ohneKommentar = t =>
     .filter(z => !z.trimStart().startsWith('#'))
     .join('\n');
 const lies = datei => fs.readFileSync(path.join(WF, datei), 'utf8');
-/** Ein Job ohne Kommentarzeilen, von seiner Kopfzeile bis zum nächsten Job. */
+/** A job without comment lines, from its header line to the next job. */
 const jobIn = (datei, name) => {
   const teil = ohneKommentar(lies(datei)).split(new RegExp(`\\n  ${name}:\\n`))[1];
   assert.ok(teil, `Job ${name} fehlt in ${datei}`);
   return '\n' + teil.split(/\n {2}[\w-]+:\n/)[0] + '\n';
 };
-/** Ein Schritt (Name bis zum nächsten Schritt) eines Jobs. */
+/** A step (name up to the next step) of a job. */
 const schrittIn = (job, name) => {
   const i = job.indexOf(`- name: ${name}\n`);
   assert.ok(i >= 0, `Schritt „${name}“ nicht gefunden`);
@@ -34,15 +34,15 @@ const schrittIn = (job, name) => {
   return ende < 0 ? rest : rest.slice(0, ende);
 };
 
-// Ein signiertes APK in der neusten Release ist ein Update für jede installierte App. Signiert
-// wird nur aus android-release.yml in der Fassung von main; das Etikett liefert Daten.
-// Gegenproben (11.11.2026 gemessen, je einzeln): in android-release.yml ein `push:`-Auslöser
-// → rot „signiert wird nur aus main“; „Etikett liegt auf main“ prüft `ahead` statt `behind`
-// → rot „signiert wird nur ein Commit, der auf main liegt“; `environment:` des Jobs signatur fest
-// auf `release` → rot „Schlüssel nur im echten Lauf“; `KEY_PASS: ${{ secrets.KEY_PASSWORT }}`
-// in den Schritt „Signieren“ → rot „Secrets ausserhalb …“; in android.yml `echt: true` → rot
+// A signed APK in the newest release is an update for every installed app. Signing
+// happens only from android-release.yml in the version of main; the tag supplies data.
+// Counter-checks (measured 11.11.2026, each individually): in android-release.yml a `push:` trigger
+// → red „signiert wird nur aus main“; „Etikett liegt auf main“ checks `ahead` instead of `behind`
+// → red „signiert wird nur ein Commit, der auf main liegt“; `environment:` of the job signatur fixed
+// to `release` → red „Schlüssel nur im echten Lauf“; `KEY_PASS: ${{ secrets.KEY_PASSWORT }}`
+// into the step „Signieren“ → red „Secrets ausserhalb …“; in android.yml `echt: true` → red
 // „der Baulauf signiert nur zur Probe“.
-test('signiert und veröffentlicht wird nur aus main, und Gradle sieht den Schlüssel nie', () => {
+test('signing and publishing only from main, and Gradle never sees the key', () => {
   const android = lies('android.yml');
   assert.match(
     android,
@@ -110,7 +110,7 @@ test('signiert und veröffentlicht wird nur aus main, und Gradle sieht den Schl�
   for (const geheim of ['BESCHREIBUNG_SCHLUESSEL', 'BESCHREIBUNG_PASS'])
     assert.match(bschluessel, new RegExp(`: \\$\\{\\{ secrets\\.${geheim} \\}\\}`), `${geheim} fehlt`);
   assert.match(schrittIn(apk, 'Signieren'), /ECHT: \$\{\{ inputs\.echt \}\}/);
-  // Nur diese beiden Schritte nennen Secrets; kein anderer Schritt eines Android-Workflows.
+  // Only these two steps name secrets; no other step of an Android workflow.
   const andere = ['android.yml', 'android-signieren.yml', 'android-release.yml', 'android-bescheinigung.yml'].flatMap(
     d =>
       lies(d)
@@ -124,13 +124,13 @@ test('signiert und veröffentlicht wird nur aus main, und Gradle sieht den Schl�
   assert.deepEqual(andere, [], 'Secrets ausserhalb der Schritte, die Schlüssel bereitstellen');
 });
 
-// Gegenproben (11.11.2026 gemessen, je einzeln): ein `- uses: actions/checkout@…` in den
-// Job signatur → rot „… führt keinen Projektcode aus“; am Release-Job `needs: [etikett, signieren]`
-// → rot „veröffentlicht nur das geprüfte, signierte APK“; `environment: release` am
-// Release-Job entfernt → rot „… erst nach Freigabe …“; `uses:` des Jobs bescheinigen
-// entfernt → rot „die Herkunft des APK wird bescheinigt“. Gegenprobe 12.11.2026: Frist wieder
-// `30 * 86400` → rot „die Beschreibung gilt sieben Tage“.
-test('signiert wird in eigenen Jobs ohne Projektcode, geprüft und veröffentlicht danach', () => {
+// Counter-checks (measured 11.11.2026, each individually): a `- uses: actions/checkout@…` in the
+// job signatur → red „… führt keinen Projektcode aus“; at the release job `needs: [etikett, signieren]`
+// → red „veröffentlicht nur das geprüfte, signierte APK“; `environment: release` at the
+// release job removed → red „… erst nach Freigabe …“; `uses:` of the job bescheinigen
+// removed → red „die Herkunft des APK wird bescheinigt“. Counter-check 12.11.2026: deadline again
+// `30 * 86400` → red „die Beschreibung gilt sieben Tage“.
+test('signing in separate jobs without project code, checked and published afterwards', () => {
   for (const name of ['signatur', 'beschreibung']) {
     const job = jobIn('android-signieren.yml', name);
     for (const verboten of [/actions\/checkout/, /gradlew/, /tools\/[\w-]+\.py/, /python/, /setup-gradle/])
@@ -140,7 +140,7 @@ test('signiert wird in eigenen Jobs ohne Projektcode, geprüft und veröffentlic
   assert.match(apk, /name: apk-unsigniert/);
   assert.match(apk, /run-id: \$\{\{ inputs\.lauf \|\| github\.run_id \}\}/, 'das Artefakt kommt aus dem Baulauf');
   assert.match(jobIn('android-signieren.yml', 'beschreibung'), /name: apk-signiert\n/);
-  // Der APK-Schlüssel signiert nur noch APK und Bundle, die Beschreibung gilt sieben Tage.
+  // The APK key now only signs APK and bundle, the description is valid for seven days.
   assert.doesNotMatch(
     ohneKommentar(apk),
     /openssl pkcs12|-exportcert|version\.sig/,
@@ -159,11 +159,11 @@ test('signiert wird in eigenen Jobs ohne Projektcode, geprüft und veröffentlic
   assert.match(pruefen, /ref: \$\{\{ inputs\.commit \}\}/, 'geprüft wird mit den Werkzeugen des gebauten Commits');
   assert.match(
     pruefen,
-    /python3 tools\/apk-pruefen\.py\s*\\?\s*\n?\s*app\/build\/outputs\/apk\/release\/BrickInventory\.apk/,
+    /python3 tools\/apk-check\.py\s*\\?\s*\n?\s*app\/build\/outputs\/apk\/release\/BrickInventory\.apk/,
   );
   assert.match(
     pruefen,
-    /python3 tools\/apk-ausrichtung\.py\s*\\?\s*\n?\s*app\/build\/outputs\/apk\/release\/BrickInventory\.apk/,
+    /python3 tools\/apk-alignment\.py\s*\\?\s*\n?\s*app\/build\/outputs\/apk\/release\/BrickInventory\.apk/,
   );
   assert.doesNotMatch(pruefen, /secrets\./);
 
@@ -204,14 +204,14 @@ test('signiert wird in eigenen Jobs ohne Projektcode, geprüft und veröffentlic
   assert.doesNotMatch(apk, /oder als Repository-Secret/, 'die Signier-Secrets kommen nur aus der Environment');
 });
 
-// Neue Prüfsummen entscheiden, welche Bytes der Bau annimmt: Sie kommen als
-// Pull-Request mit Zusammenfassung, nie als Push auf einen bestehenden Zweig.
-// Gegenproben (02.11.2026 gemessen): im Job `pruefsummen-vorschlagen` wieder
-// `git push origin "HEAD:$GITHUB_REF_NAME"` → rot (Push-Ziel nicht der eigene
-// Zweig); `pull-requests: write` zusätzlich im Job `pruefsummen` → rot „… nur
-// der vorschlagende Job …“; im Job `bildschirmfotos-einchecken` die PNG-Prüfung
-// entfernt → rot „eingecheckt wird nur PNG“.
-test('Prüfsummen kommen als Pull-Request, Bildschirmfotos nur als PNG', () => {
+// New checksums decide which bytes the build accepts: they come as a
+// pull request with a summary, never as a push onto an existing branch.
+// Counter-checks (measured 02.11.2026): in the job `pruefsummen-vorschlagen` again
+// `git push origin "HEAD:$GITHUB_REF_NAME"` → red (push target not the own
+// branch); `pull-requests: write` additionally in the job `pruefsummen` → red „… nur
+// der vorschlagende Job …“; in the job `bildschirmfotos-einchecken` the PNG check
+// removed → red „eingecheckt wird nur PNG“.
+test('checksums come as a pull request, screenshots only as PNG', () => {
   const yml = fs
     .readFileSync(path.join(WF, 'android.yml'), 'utf8')
     .split('\n')
@@ -229,10 +229,10 @@ test('Prüfsummen kommen als Pull-Request, Bildschirmfotos nur als PNG', () => {
   assert.match(vorschlag, /gh pr create --base "\$GITHUB_REF_NAME" --head "\$ZWEIG"/);
   assert.doesNotMatch(vorschlag, /HEAD:\$GITHUB_REF_NAME/, 'nie auf den Zweig des Laufs');
   assert.doesNotMatch(vorschlag, /python|gradlew/, 'mit Schreibrecht läuft kein Werkzeug aus dem Repository');
-  // Ohne Schreibrecht UND ohne Gradle, in einem eigenen Job.
+  // Without write permission AND without Gradle, in a separate job.
   assert.match(
     job('pruefsummen-zusammenfassen'),
-    /tools\/pruefsummen-vergleich\.py/,
+    /tools\/checksum-compare\.py/,
     'die Zusammenfassung entsteht ohne Schreibrecht',
   );
   assert.match(job('pruefsummen-zusammenfassen'), /\n {4}permissions:\n {6}contents: read\n/);
@@ -252,7 +252,7 @@ test('Prüfsummen kommen als Pull-Request, Bildschirmfotos nur als PNG', () => {
   assert.match(bilder, /git add Android-App\/app\/src\/test\/bildschirmfotos\/\*\.png/);
 });
 
-/** Der run-Block eines Schritts, ohne den Einzug des YAML. */
+/** The run block of a step, without the YAML indentation. */
 function runVon(yml, name) {
   const z = yml.split('\n');
   const i = z.findIndex(l => l.trim() === `- name: ${name}`);
@@ -267,8 +267,8 @@ function runVon(yml, name) {
 }
 
 /**
- * Ein `gh`-Ersatz mit Releases als Ordnern (draussen/<etikett>/<anhang>): `release create`
- * legt an, `--latest` setzt LATEST; KAPPEN kürzt einen Anhang wie ein abgebrochener Upload.
+ * A `gh` stand-in with releases as folders (draussen/<etikett>/<anhang>): `release create`
+ * creates, `--latest` sets LATEST; KAPPEN truncates an attachment like an aborted upload.
  */
 function releaseOrt(t) {
   const ort = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'release-'));
@@ -303,7 +303,7 @@ esac
   };
   const beschreibung = (code, commit) =>
     JSON.stringify({ daten: Buffer.from(JSON.stringify({ versionCode: code, commit })).toString('base64') });
-  schreibe('arbeit/tools/release-zertifikat.sha256', 'f'.repeat(64) + '\n');
+  schreibe('arbeit/tools/release-certificate.sha256', 'f'.repeat(64) + '\n');
   schreibe('arbeit/app/build/outputs/apk/release/BrickInventory.apk', 'neues-apk');
   schreibe(
     'arbeit/app/build/outputs/apk/release/output-metadata.json',
@@ -311,7 +311,7 @@ esac
   );
   schreibe('arbeit/app/build/outputs/version-signiert.json', beschreibung(6, 'c'.repeat(40)));
   fs.writeFileSync(path.join(ort, 'LATEST'), 'android-v1\n');
-  /** Die Optionen für spawnSync: Arbeitsordner, `gh`-Ersatz zuerst im PATH, die Umgebung des Jobs. */
+  /** The options for spawnSync: working folder, `gh` stand-in first in PATH, the job's environment. */
   const optionen = (env = {}) => ({
     cwd: path.join(ort, 'arbeit'),
     encoding: /** @type {const} */ ('utf8'),
@@ -331,12 +331,12 @@ esac
   return { ort, schreibe, beschreibung, optionen, lies };
 }
 
-// Releases sind unveränderlich; der feste Link ist /releases/latest/download/.
-// Gegenproben (12.11.2026 gemessen, je einzeln): `--latest` → `--latest=false` → rot „die neue
-// Fassung wird Latest“; den Rückfall auf apk-neuste gestrichen → rot „Übergang: …“; die
-// Rückfrage der Grösse gestrichen → rot „ein halber Anhang …“; `cmp -s` durch `true` ersetzt
-// → rot „ein Wiederlauf mit anderem APK …“.
-test('die Fassungs-Release trägt alle Anhänge, wird Latest und folgt auf die veröffentlichte Fassung', t => {
+// Releases are immutable; the fixed link is /releases/latest/download/.
+// Counter-checks (measured 12.11.2026, each individually): `--latest` → `--latest=false` → red „die neue
+// Fassung wird Latest“; the fallback to apk-neuste deleted → red „Übergang: …“; the
+// size re-check deleted → red „ein halber Anhang …“; `cmp -s` replaced by `true`
+// → red „ein Wiederlauf mit anderem APK …“.
+test('the version release carries all attachments, becomes Latest and follows the published version', t => {
   const skript = runVon(lies('android-release.yml'), 'BrickInventory.apk als Release bereitstellen');
   const lauf = (o, env) => spawnSync('bash', ['-e', '-c', skript], o.optionen(env));
   const neu = releaseOrt(t);
@@ -382,14 +382,14 @@ test('die Fassungs-Release trägt alle Anhänge, wird Latest und folgt auf die v
   assert.notEqual(lauf(wieder).status, 0, 'ein Wiederlauf mit anderem APK geht durch');
 });
 
-// Gegenproben (12.11.2026 gemessen, je einzeln): `releases/latest` durch apk-neuste ersetzt
-// → rot „verglichen wird mit Latest“; den Rückfall auf apk-neuste gestrichen → rot „Übergang: …“.
-test('der Signierweg vergleicht den versionCode mit der Latest-Release, übergangsweise mit apk-neuste', t => {
+// Counter-checks (measured 12.11.2026, each individually): `releases/latest` replaced by apk-neuste
+// → red „verglichen wird mit Latest“; the fallback to apk-neuste deleted → red „Übergang: …“.
+test('the signing path compares the versionCode with the Latest release, transitionally with apk-neuste', t => {
   const skript = runVon(lies('android-signieren.yml'), 'versionCode über dem veröffentlichten');
-  const werkzeug = fs.readFileSync(path.join(__dirname, 'release-pruefen.py'), 'utf8');
+  const werkzeug = fs.readFileSync(path.join(__dirname, 'release-check.py'), 'utf8');
   const ort = (latest, neuste) => {
     const o = releaseOrt(t);
-    o.schreibe('arbeit/tools/release-pruefen.py', werkzeug);
+    o.schreibe('arbeit/tools/release-check.py', werkzeug);
     if (latest) o.schreibe('draussen/android-v1/version-signiert.json', o.beschreibung(latest, 'b'.repeat(40)));
     else o.schreibe('draussen/android-v1/BrickInventory-5.apk', 'alt');
     o.schreibe('draussen/apk-neuste/version.json', JSON.stringify({ versionCode: neuste, commit: 'b' }));
@@ -401,13 +401,13 @@ test('der Signierweg vergleicht den versionCode mit der Latest-Release, übergan
   assert.equal(ort(null, 5), 0, 'Übergang: eine neuere Fassung als apk-neuste geht durch');
 });
 
-// Ein Etikett setzt nur ein Admin, und keines wird umgehängt oder gelöscht: Das sichert das
-// Tag-Ruleset, und der Release-Lauf liest es wie die Regeln von main über die API.
-// Gegenproben (16.11.2026 gemessen, je einzeln): `deletion` aus der Schleife der Pflichtregeln
-// gestrichen → rot „ohne Löschschutz …“; der Filter `.enforcement == "active"` gestrichen → rot
-// „ein nur beobachtendes Ruleset …“; `TRIFFT=ja` ohne Mustervergleich → rot „ein Ruleset für
-// andere Etiketten …“; die Schleife über `exclude` gestrichen → rot „ein ausgenommenes Etikett …“.
-test('signiert wird nur, wenn ein aktives Tag-Ruleset das Etikett schützt', t => {
+// Only an admin sets a tag, and none is moved or deleted: the tag ruleset ensures
+// that, and the release run reads it via the API like the rules of main.
+// Counter-checks (measured 16.11.2026, each individually): `deletion` deleted from the loop of required rules
+// → red „ohne Löschschutz …“; the filter `.enforcement == "active"` deleted → red
+// „ein nur beobachtendes Ruleset …“; `TRIFFT=ja` without pattern match → red „ein Ruleset für
+// andere Etiketten …“; the loop over `exclude` deleted → red „ein ausgenommenes Etikett …“.
+test('signing only if an active tag ruleset protects the tag', t => {
   const skript = runVon(lies('android-release.yml'), 'Etiketten sind geschützt');
   const ort = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'regeln-'));
   t.after(() => fs.rmSync(ort, { recursive: true, force: true }));

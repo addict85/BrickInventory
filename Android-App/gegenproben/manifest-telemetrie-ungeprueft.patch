@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.ManifestCheckTest
 Rot: ein Telemetrie-Backend von ML Kit faellt auf
 
-diff --git a/Android-App/tools/manifest-pruefen.py b/Android-App/tools/manifest-pruefen.py
---- a/Android-App/tools/manifest-pruefen.py
-+++ b/Android-App/tools/manifest-pruefen.py
+diff --git a/Android-App/tools/manifest-check.py b/Android-App/tools/manifest-check.py
+--- a/Android-App/tools/manifest-check.py
++++ b/Android-App/tools/manifest-check.py
 @@ -107,7 +107,7 @@
              continue
          for eintrag in alle(dienst, 'meta-data'):

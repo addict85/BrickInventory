@@ -401,7 +401,7 @@ test('any in all forms, unknown parameters and success in services become fewer,
   );
   assert.ok(
     success <= SUCCESS_LIMIT,
-    `${success}-mal success: true in src/ (ohne vertrag/, http/), erlaubt sind ${SUCCESS_LIMIT}`,
+    `${success}-mal success: true in src/ (ohne contract/, http/), erlaubt sind ${SUCCESS_LIMIT}`,
   );
   if (success < SUCCESS_LIMIT)
     console.log(`  ℹ success in Diensten: ${success} (Schranke ${SUCCESS_LIMIT}) — Schranke nachziehen`);

@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.ReleaseCheckTest
 Rot: ein Beschreibungsschluessel, den die App nicht kennt, wird abgelehnt
 
-diff --git a/Android-App/tools/release-pruefen.py b/Android-App/tools/release-pruefen.py
---- a/Android-App/tools/release-pruefen.py
-+++ b/Android-App/tools/release-pruefen.py
+diff --git a/Android-App/tools/release-check.py b/Android-App/tools/release-check.py
+--- a/Android-App/tools/release-check.py
++++ b/Android-App/tools/release-check.py
 @@ -169,9 +169,6 @@ def schluessel(geliefert_pfad, app_pfad):
      if len(geliefert) != 1:
          print('Die App verlangt einen Beschreibungsschlüssel, die Beschreibung trägt keinen.')

@@ -96,7 +96,7 @@ export const Fehler = z.looseObject({
 });
 
 /** The codes from fehlerTexte.ts as a component of their own: the app branches on them
- * (Fehlercode.kt), and Android-App/tools/vertrag/vertrag-kotlin.test.js keeps both lists together. The
+ * (Fehlercode.kt), and Android-App/tools/contract/contract-kotlin.test.js keeps both lists together. The
  * runtime check above stays with the pattern because codes outside the table are
  * sent as well (vertrag_verletzt). */
 export const Fehlercode = z.enum(Object.keys(FEHLER) as [ErrorCode, ...ErrorCode[]]);

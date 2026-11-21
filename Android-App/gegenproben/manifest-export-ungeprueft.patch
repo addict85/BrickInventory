@@ -3,9 +3,9 @@ Modul: app
 Test: ch.brickinventoryapp.app.ManifestCheckTest
 Rot: eine fremde exportierte Komponente
 
-diff --git a/Android-App/tools/manifest-pruefen.py b/Android-App/tools/manifest-pruefen.py
---- a/Android-App/tools/manifest-pruefen.py
-+++ b/Android-App/tools/manifest-pruefen.py
+diff --git a/Android-App/tools/manifest-check.py b/Android-App/tools/manifest-check.py
+--- a/Android-App/tools/manifest-check.py
++++ b/Android-App/tools/manifest-check.py
 @@ -94,7 +94,7 @@ def pruefe(xmltree, erlaubt, rechte=frozenset()):
                  continue
              name, recht = a.get('name', '?'), a.get('permission')

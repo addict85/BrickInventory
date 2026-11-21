@@ -84,7 +84,7 @@ class SixteenKbAlignmentTest {
         //      eine spaetere Fassung wieder aus, bleibt der Riegel trotzdem
         //      zu. Faellt eine ANDERE Bibliothek zurueck, merkt es niemand.
         //
-        // Gemessen wird das jetzt am ERGEBNIS: tools/apk-ausrichtung.py liest
+        // Gemessen wird das jetzt am ERGEBNIS: tools/apk-alignment.py liest
         // die ELF-Koepfe aller .so im gebauten APK und meldet jede Ausrichtung
         // unter 16 KB. Die Action ruft es nach dem Release-Bau auf.
         //

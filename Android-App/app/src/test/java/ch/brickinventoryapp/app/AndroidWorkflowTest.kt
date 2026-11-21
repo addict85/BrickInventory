@@ -81,12 +81,12 @@ class AndroidWorkflowTest {
         assertTrue("die Signierwerkzeuge werden nicht gegen feste Prüfsummen geprüft",
             Regex("""[0-9a-f]{64} "\${'$'}WERKZEUGE/zipalign"[\s\\]+[0-9a-f]{64} "\${'$'}WERKZEUGE/lib/apksigner\.jar"[\s\\]+\| sha256sum -c -""")
                 .containsMatchIn(signieren))
-        val soll = File(Quellen.project, "tools/release-zertifikat.sha256").readLines()
+        val soll = File(Quellen.project, "tools/release-certificate.sha256").readLines()
             .map { it.substringBefore('#').trim() }.firstOrNull { Regex("^[0-9a-f]{64}$").matches(it) }
         assertTrue("Die README nennt nicht das hinterlegte Zertifikat",
             soll != null && "SHA-256 $soll" in File(Quellen.project, "README.md").readText())
         val bereitstellen = schritt("BrickInventory.apk als Release bereitstellen", freigabe)
-        for (s in listOf("tools/release-zertifikat.sha256", "Signierzertifikat SHA-256: \\`\$ZERT\\`", "apksigner verify --print-certs"))
+        for (s in listOf("tools/release-certificate.sha256", "Signierzertifikat SHA-256: \\`\$ZERT\\`", "apksigner verify --print-certs"))
             assertTrue("Release-Schritt ohne „$s“", s in bereitstellen)
         val pr = workflow.substringAfter("\n  pull_request:\n").substringBefore("\n  workflow_dispatch:")
         assertTrue("pull_request ohne Workflow-Pfad", "- '.github/workflows/android.yml'" in pr && "- '.github/workflows/android-signieren.yml'" in pr)
@@ -96,7 +96,7 @@ class AndroidWorkflowTest {
         assertTrue("BrickInventory.apk.probe-nicht-installieren" in schritt("Probe-APK für die Prüfung benennen", signierweg))
         assertFalse("pruefsummen-vergleich" in job("pruefsummen"))
         val zusammen = job("pruefsummen-zusammenfassen")
-        assertTrue("pruefsummen-vergleich.py" in zusammen)
+        assertTrue("checksum-compare.py" in zusammen)
         assertEquals("die Zusammenfassung entsteht ohne Gradle", false,
             Regex("gradlew|setup-gradle").containsMatchIn(zusammen))
     }

@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """Prüfungen vor dem Veröffentlichen eines APK (Job `apk-pruefen`).
 
-  release-pruefen.py zertifikat ZERTIFIKAT_TXT SOLL_DATEI
+  release-check.py zertifikat ZERTIFIKAT_TXT SOLL_DATEI
       ZERTIFIKAT_TXT ist die Ausgabe von `apksigner verify --print-certs`. Jedes
       genannte Signierzertifikat muss in SOLL_DATEI stehen (SHA-256, eine Zeile
       je Wert, `#` leitet einen Kommentar ein). Ein ausgetauschter Schlüssel in
       der Environment fiele sonst erst auf, wenn Updates scheitern; eine
       Neuinstallation über den Direktlink nähme ihn still an.
 
-  release-pruefen.py fassung ALT_VERSION_JSON NEU_CODE COMMIT
+  release-check.py fassung ALT_VERSION_JSON NEU_CODE COMMIT
       Der versionCode muss über dem veröffentlichten liegen; gleich nur für
       denselben Commit (ein wiederholter Lauf). Sonst ginge ein älterer Stand
       von main als „neustes APK“ hinaus. ALT_VERSION_JSON `-`: noch nichts
       veröffentlicht.
 
-  release-pruefen.py beschreibung DATEN_JSON APK OUTPUT_METADATA COMMIT ABLAGE
+  release-check.py beschreibung DATEN_JSON APK OUTPUT_METADATA COMMIT ABLAGE
       DATEN_JSON ist der signierte Inhalt von version-signiert.json (die
       Signatur prüft openssl im Workflow). Er muss genau dieses APK beschreiben:
       versionCode und versionName wie in AGPs output-metadata.json, Grösse und
@@ -25,7 +25,7 @@
       (höchstens einen Tag alt) und `gueltigBis` danach, höchstens 90 Tage —
       ohne sie liesse sich eine ältere Beschreibung still wieder hochladen.
 
-  release-pruefen.py schluessel GELIEFERT_PEM APP_PEM
+  release-check.py schluessel GELIEFERT_PEM APP_PEM
       GELIEFERT_PEM ist der öffentliche Beschreibungsschlüssel, mit dem der
       Signierjob signiert hat (fehlt die Datei: keiner). APP_PEM ist
       res/raw/beschreibungs_schluessel.pem der App. Nennt die App Schlüssel, muss

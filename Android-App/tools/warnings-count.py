@@ -32,7 +32,7 @@ sichtbar; was dazukommt, faellt auf.
   Gradle      „Deprecated Gradle features were used in this build"
   Lint        aus app/build/reports/lint-results-release.xml, falls vorhanden
 
-Aufruf:  python3 tools/warnungen-zaehlen.py <obergrenze.txt> <log> [<log> …]
+Aufruf:  python3 tools/warnings-count.py <obergrenze.txt> <log> [<log> …]
 Rueckgabe: 0 wenn die Summe die Obergrenze nicht uebersteigt, sonst 1.
 """
 import os
@@ -182,7 +182,7 @@ def obergrenze(pfad):
 
 def main(argv):
     if len(argv) < 3:
-        print("Aufruf: warnungen-zaehlen.py <obergrenze.txt> <log> [<log> …]",
+        print("Aufruf: warnings-count.py <obergrenze.txt> <log> [<log> …]",
               file=sys.stderr)
         return 2
     grenze_pfad, logs = argv[1], argv[2:]

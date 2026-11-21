@@ -97,10 +97,10 @@ jedem Push, der `Android-App/` berührt. Der Job `build` macht nacheinander:
    ohne eingecheckte Referenzen `recordRoborazziDebug`)
 3. Room-Schema eingecheckt?
 4. `assembleRelease bundleRelease`, danach `:app:lintRelease`
-5. Warnungen der Test- und Release-Übersetzung zählen (`tools/warnungen-obergrenze.txt`)
-   und Lint-Befunde zählen (`tools/lint-obergrenze.txt`)
+5. Warnungen der Test- und Release-Übersetzung zählen (`tools/warnings-limit.txt`)
+   und Lint-Befunde zählen (`tools/lint-limit.txt`)
 6. `detekt` gegen `config/detekt/baseline.xml`
-7. Rückstand der Abhängigkeiten melden (`tools/fassungen-pruefen.py`)
+7. Rückstand der Abhängigkeiten melden (`tools/versions-check.py`)
 
 Daneben misst der Job `gegenproben` die Patches unter `gegenproben/`: auf einem
 Push nur die betroffenen, nachts und von Hand alle. Die Test- und Lint-Berichte
@@ -181,7 +181,7 @@ Token-Verwaltung erfolgt über das Web-Interface unter Einstellungen → Mobile 
   (Credential Manager). Barcode-Scan und Texterkennung laufen auf dem Gerät. Den Weg,
   über den ML Kit Nutzungsstatistiken an Google meldet (datatransport, Backend `cct`
   zu `firebaselogging.googleapis.com`), nimmt das App-Manifest heraus; die Prüfung
-  des fertigen APK (`tools/manifest-pruefen.py`) ist rot, sobald er wieder drin ist.
+  des fertigen APK (`tools/manifest-check.py`) ist rot, sobald er wieder drin ist.
   Was die Play-Dienste in ihrem eigenen Prozess senden, regelt Google.
 - **Browser-Ziele** (BrickLink, Hersteller-Anleitungen) — nur auf Tipp.
 
@@ -322,7 +322,7 @@ R8 verkleinert und benennt um. Die eigenen Keep-Regeln (`app/proguard-rules.pro`
 halten nur, was über Reflexion oder das Framework erreicht wird: bei Workern
 Konstruktor und `doWork()` und Rooms Datenbank-Konstruktoren. Die API-Modelle
 werden umbenannt; ihre Serializer hält die Regel von kotlinx.serialization, und
-`tools/apk-pruefen.py` prüft am fertigen APK, dass `vertrag.SetItem` nicht
+`tools/apk-check.py` prüft am fertigen APK, dass `vertrag.SetItem` nicht
 mehr unter seinem Namen steht.
 
 **PDFs im isolierten Prozess:** `PdfRenderer` (pdfium) läuft nur in
@@ -366,7 +366,7 @@ Modulkanten und echte Zusatzabhängigkeiten:
 | `brickinventory.android.compose` | Compose-Übersetzer, `buildFeatures.compose`, BOM und Gruppe `compose` |
 | `brickinventory.android.hilt` | KSP, Hilt, `hilt-android` und `hilt-compiler` |
 | `brickinventory.android.feature` | die vier oben, `core-ktx`, Navigation, Robolectric- und Compose-Testbibliotheken samt Testressourcen — ein Bereich |
-| `brickinventory.detekt` | Aufgabe `detekt` (Regeln in `config/detekt/detekt.yml`, Länge und Verzweigung alter Funktionen in `baseline.xml`, Obergrenze `tools/detekt-obergrenze.txt`); kommt mit library/application/jvm.library |
+| `brickinventory.detekt` | Aufgabe `detekt` (Regeln in `config/detekt/detekt.yml`, Länge und Verzweigung alter Funktionen in `baseline.xml`, Obergrenze `tools/detekt-limit.txt`); kommt mit library/application/jvm.library |
 | `brickinventory.jvm.library` | `org.jetbrains.kotlin.jvm`, Java und Kotlin 17, Testprotokoll, detekt — für `core-model` |
 
 Modulkanten (`project(":…")`) trägt keine Konvention ein; sie stehen im Skript
@@ -473,7 +473,7 @@ hält, ist das die billigste Absicherung, die es gibt.
 
 Der eingetragene Wert stammt aus Gradles Veröffentlichung und gilt nur für die
 Fassung in `distributionUrl` derselben Datei. Ob er die amtliche Prüfsumme ist,
-misst `tools/gradle-wrapper-pruefen.py` in jedem CI-Job, bevor Gradle startet.
+misst `tools/gradle-wrapper-check.py` in jedem CI-Job, bevor Gradle startet.
 
 **Beim Anheben der Gradle-Fassung muss die Zeile mitwandern**, sonst bricht der
 nächste Build mit „Verification of Gradle distribution failed" ab. Die neue
@@ -522,7 +522,7 @@ Diese Sprünge sind Umbauten und gehören einzeln gebaut und ausprobiert:
 
 Die Stände stehen in `gradle/libs.versions.toml`; welche neuere Fassung es
 gibt, meldet der CI-Schritt „Sind die Abhängigkeiten auf der neuesten Fassung?“
-(`tools/fassungen-pruefen.py`).
+(`tools/versions-check.py`).
 
 ## Zwei Arten von Tests
 
@@ -702,10 +702,10 @@ Release. Herkunft: `gh attestation verify BrickInventory.apk --repo addict85/Bri
 (ebenso für `version-signiert.json` und das Bundle).
 
 Vor dem Veröffentlichen prüft der Job `apk-pruefen` zweierlei
-(`tools/release-pruefen.py`):
+(`tools/release-check.py`):
 
 - **Zertifikat:** Das APK muss mit einem der Zertifikate in
-  `tools/release-zertifikat.sha256` signiert sein. Den Wert liefert
+  `tools/release-certificate.sha256` signiert sein. Den Wert liefert
   `keytool -list -v -keystore brick.jks` (Zeile `SHA256:`; Doppelpunkte und
   Grossschreibung sind gleichgültig). Wird der Schlüssel je gewechselt
   (Rotation), kommt der neue Wert als zweite Zeile dazu. Ein Lauf ohne Etikett

@@ -7,14 +7,14 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 
 /**
- * tools/manifest-pruefen.py gegen Ausgaben im Format von
+ * tools/manifest-check.py gegen Ausgaben im Format von
  * `aapt2 dump xmltree --file AndroidManifest.xml`, mit der echten Positivliste.
  *
  * Gegenproben:
  *   manifest-export-ungeprueft  der Vergleich mit der Positivliste gestrichen → rot
  *                               „eine fremde exportierte Komponente …“
  *   manifest-debuggable-egal    die Prüfung auf debuggable gestrichen → rot „ein debuggable …“
- * ProfileInstallReceiver wieder in manifest-exportiert.txt →
+ * ProfileInstallReceiver wieder in manifest-exported.txt →
  *                               rot „herausgenommene Bibliothekskomponenten …“
  * die Schleife über uses-permission gestrichen →
  *                               rot „eine Berechtigung ausserhalb der Liste …“
@@ -53,8 +53,8 @@ class ManifestCheckTest {
 
     private fun pruefe(text: String): Pair<Int, String> {
         val f = File.createTempFile("manifest", ".txt").apply { deleteOnExit(); writeText(text) }
-        val p = ProcessBuilder("python3", "../tools/manifest-pruefen.py", f.path, "../tools/manifest-exportiert.txt",
-            "../tools/manifest-berechtigungen.txt")
+        val p = ProcessBuilder("python3", "../tools/manifest-check.py", f.path, "../tools/manifest-exported.txt",
+            "../tools/manifest-permissions.txt")
             .redirectErrorStream(true).start()
         val output = p.inputStream.bufferedReader().readText()
         check(p.waitFor(30, TimeUnit.SECONDS)) { output }

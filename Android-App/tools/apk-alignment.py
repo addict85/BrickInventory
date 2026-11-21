@@ -18,7 +18,7 @@ Das hat zwei Luecken, und beide sind grundsaetzlich:
      auf dl.google.com, und das ist von dort nicht erreichbar.
 
 Dieses Werkzeug misst stattdessen das ERGEBNIS — dieselbe Umkehrung wie bei
-tools/apk-pruefen.py, das nicht den Quelltext liest, sondern das APK, das
+tools/apk-check.py, das nicht den Quelltext liest, sondern das APK, das
 gleich hochgeladen wird.
 
 ── Was gemessen wird ───────────────────────────────────────────────────────
@@ -51,7 +51,7 @@ Unterschieden wird hier NICHT am Verzeichnisnamen, sondern am ELF-Kopf
 werden, sobald Android eine weitere 64-Bit-Architektur bekommt — der Kopf der
 Datei sagt es von selbst, und er ist die Eigenschaft, auf die es ankommt.
 
-Aufruf:  python3 tools/apk-ausrichtung.py <pfad-zum-apk>
+Aufruf:  python3 tools/apk-alignment.py <pfad-zum-apk>
 Rueckgabe: 0 wenn jede 64-Bit-Bibliothek ab 16 KB ausgerichtet ist, sonst 1.
 """
 import struct
@@ -98,7 +98,7 @@ def ausrichtung(daten):
 
 def main():
     if len(sys.argv) != 2:
-        print("Aufruf: apk-ausrichtung.py <apk>", file=sys.stderr)
+        print("Aufruf: apk-alignment.py <apk>", file=sys.stderr)
         return 2
     apk = sys.argv[1]
 

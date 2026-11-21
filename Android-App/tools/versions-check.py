@@ -21,7 +21,7 @@ Gelesen werden die maschinenlesbaren Verzeichnisse selbst:
 Vorfassungen (alpha, beta, rc, dev, snapshot, eap, M1) zaehlen nicht als
 „neueste" — dieses Projekt faehrt Stabiles.
 
-Aufruf:  python3 tools/fassungen-pruefen.py gradle/libs.versions.toml
+Aufruf:  python3 tools/versions-check.py gradle/libs.versions.toml
 Rueckgabe: 0, sobald ueberhaupt etwas gemessen wurde — 1 nur, wenn KEINE
 einzige Fassung messbar war. Ein Rueckstand faerbt den Lauf also nicht rot:
 Das Werkzeug BERICHTET. Ob eine aeltere Fassung richtig ist, entscheidet ein
@@ -119,7 +119,7 @@ def central(gruppe, artefakt):
 
 def main():
     if len(sys.argv) != 2:
-        print("Aufruf: fassungen-pruefen.py <libs.versions.toml>", file=sys.stderr)
+        print("Aufruf: versions-check.py <libs.versions.toml>", file=sys.stderr)
         return 2
     try:
         import tomllib

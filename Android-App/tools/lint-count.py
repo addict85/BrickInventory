@@ -3,7 +3,7 @@
 
 ── Warum es dieses Werkzeug gibt ───────────────────────────────────────────
 
-tools/warnungen-zaehlen.py meldet seit Lauf 37580480952 „Lint-Warnungen: 58
+tools/warnings-count.py meldet seit Lauf 37580480952 „Lint-Warnungen: 58
 (nicht in der Summe)". Eine Zahl, sonst nichts: WELCHE 58 stand nur im
 XML-Bericht, und der liegt als Artefakt in einer Ablage, die der Proxy dieser
 Entwicklungsumgebung mit 403 abweist. Damit war die Zahl nicht handhabbar —
@@ -32,7 +32,7 @@ erzeugt. Gezaehlt werden die Eintraege mit severity="Warning"; Error und
 Fatal werden getrennt gemeldet, denn die gehoeren nicht unter eine
 Warnungs-Obergrenze — bei denen ist die richtige Zahl null.
 
-Aufruf:  python3 tools/lint-zaehlen.py <obergrenze.txt> <lint-results.xml>
+Aufruf:  python3 tools/lint-count.py <obergrenze.txt> <lint-results.xml>
 Rueckgabe: 0 wenn die Warnungen die Obergrenze nicht uebersteigen und es
 keinen Error/Fatal gibt, sonst 1.
 """
@@ -89,7 +89,7 @@ def kurzname(pfad, zeile=None):
 # Sie werden deshalb NICHT versteckt, sondern getrennt: eigene Ueberschrift,
 # volle Nennung mit Fundort, aber ausserhalb der Obergrenze. Dieselbe Auskunft
 # gibt im Arbeitsablauf ohnehin schon der Schritt „Fassungen" (
-# tools/fassungen-pruefen.py), und zwar als seine eigentliche Aufgabe.
+# tools/versions-check.py), und zwar als seine eigentliche Aufgabe.
 FASSUNGSHINWEISE = ("AndroidGradlePluginVersion", "NewerVersionAvailable")
 
 
@@ -120,7 +120,7 @@ def lies(pfad):
 
 def main(argv):
     if len(argv) != 3:
-        print("Aufruf: lint-zaehlen.py <obergrenze.txt> <lint-results.xml>",
+        print("Aufruf: lint-count.py <obergrenze.txt> <lint-results.xml>",
               file=sys.stderr)
         return 2
     grenze_pfad, bericht = argv[1], argv[2]

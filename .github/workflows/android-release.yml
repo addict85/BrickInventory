@@ -293,7 +293,7 @@ jobs:
           BESCHREIBUNG=app/build/outputs/version-signiert.json
           LINK="https://github.com/$GITHUB_REPOSITORY/releases/latest/download/BrickInventory.apk"
           # Neuinstallationen prüfen gegen den festgenagelten Wert (sec17 B-N9), nicht gegen GitHub.
-          ZERT=$(grep -Eo '^[0-9a-f]{64}' tools/release-zertifikat.sha256 | head -1)
+          ZERT=$(grep -Eo '^[0-9a-f]{64}' tools/release-certificate.sha256 | head -1)
 
           META=app/build/outputs/apk/release/output-metadata.json
           if [ ! -f "$META" ]; then
@@ -311,7 +311,7 @@ jobs:
             exit 1
           fi
 
-          # Dieselbe Regel wie im Job apk-pruefen (tools/release-pruefen.py fassung),
+          # Dieselbe Regel wie im Job apk-pruefen (tools/release-check.py fassung),
           # hier unter der concurrency-Gruppe unmittelbar vor dem Anlegen. Ohne
           # Werkzeug aus dem Repository: Dieser Job hat Schreibrecht.
           if ! NEUSTE=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name) || [ -z "$NEUSTE" ]; then

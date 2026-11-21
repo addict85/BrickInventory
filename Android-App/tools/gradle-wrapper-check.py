@@ -18,7 +18,7 @@ downloads.gradle.org, und das ist aus der Entwicklungsumgebung dieses Projekts
 nicht erreichbar (HTTP 000; services.gradle.org leitet dorthin um). Wer die
 Fassung heben will, kann die Zahl von dort also nicht holen und darf sie auf
 keinen Fall erfinden. Der CI-Runner erreicht es — dasselbe Muster wie bei
-tools/fassungen-pruefen.py.
+tools/versions-check.py.
 
 ── Was gemeldet wird ───────────────────────────────────────────────────────
 
@@ -28,7 +28,7 @@ tools/fassungen-pruefen.py.
      die Zahl, die man zum Heben braucht. Nur ein Hinweis, nie rot — ob
      gehoben wird, entscheidet ein Mensch.
 
-Aufruf:  python3 tools/gradle-wrapper-pruefen.py gradle/wrapper/gradle-wrapper.properties
+Aufruf:  python3 tools/gradle-wrapper-check.py gradle/wrapper/gradle-wrapper.properties
 Rueckgabe: 0 wenn die Pruefsumme stimmt, 1 wenn sie abweicht oder gar nicht
 erst gemessen werden konnte. „Nicht abrufbar" ist hier ausdruecklich ROT und
 nicht „unklar": Dieses Werkzeug laeuft dort, wo der Abruf geht, und ein
@@ -63,7 +63,7 @@ def lies(pfad):
 
 def main(argv):
     if len(argv) != 2:
-        print("Aufruf: gradle-wrapper-pruefen.py <gradle-wrapper.properties>",
+        print("Aufruf: gradle-wrapper-check.py <gradle-wrapper.properties>",
               file=sys.stderr)
         return 2
     fassung, genagelt = lies(argv[1])

@@ -438,12 +438,12 @@ class QuelltextRatscheTest {
     fun `die detekt-Baseline haelt nur Laenge und Verzweigung und schrumpft`() {
         val baseline = File(Quellen.project, "config/detekt/baseline.xml").readText()
         val ids = Regex("""<ID>(\w+):""").findAll(baseline).map { it.groupValues[1] }.toList()
-        val grenze = File(Quellen.project, "tools/detekt-obergrenze.txt").readLines()
+        val grenze = File(Quellen.project, "tools/detekt-limit.txt").readLines()
             .first { it.isNotBlank() && !it.startsWith("#") }.trim().toInt()
         assert(ids.size >= 10) { "Nur ${ids.size} Einträge in der Baseline — Muster veraltet?" }
         val fremd = ids.filter { it !in setOf("LongMethod", "CyclomaticComplexMethod") }.distinct()
         assert(fremd.isEmpty()) { "Die Baseline verschweigt andere Regeln: $fremd. Den Fund beheben, nicht eintragen." }
-        ratchet("Funktionen in der detekt-Baseline (tools/detekt-obergrenze.txt)", grenze, ids.size,
+        ratchet("Funktionen in der detekt-Baseline (tools/detekt-limit.txt)", grenze, ids.size,
             "Eine neue lange oder verzweigte Funktion zerlegen, statt sie einzutragen.")
     }
 

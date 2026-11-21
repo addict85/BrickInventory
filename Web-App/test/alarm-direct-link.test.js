@@ -2,7 +2,7 @@
  * A notification leads to the set: the button in the mail carries `?set=` (alarm-mail-button.test.js
  * builds it), the web app uses it to open the set detail and cleans up the address. The app's
  * side (notification, entry, manifest) is checked by the Android suite (FremderEinstiegTest,
- * ManifestPruefenTest, tools/manifest-pruefen.py).
+ * ManifestPruefenTest, tools/manifest-check.py).
  *
  * Counter-checks (10.11.2026, jsdom): reading ?set= removed in showApp() → red;
  * history.replaceState removed there → red (“not cleaned up”).

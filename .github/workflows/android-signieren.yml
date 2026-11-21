@@ -392,7 +392,7 @@ jobs:
           P=app/build/outputs/apk/release/BrickInventory.apk.probe-nicht-installieren
           if [ -f "$P" ]; then mv "$P" app/build/outputs/apk/release/BrickInventory.apk; fi
 
-      # Das Release-Zertifikat steht fest in tools/release-zertifikat.sha256. Ein
+      # Das Release-Zertifikat steht fest in tools/release-certificate.sha256. Ein
       # probe-signiertes APK muss genau daran scheitern (Rückgabe 1); so läuft die
       # Prüfung bei jedem Bau gegen eine echte Ausgabe von apksigner.
       - name: APK prüfen
@@ -406,9 +406,9 @@ jobs:
           head -3 "$RUNNER_TEMP/zertifikat.txt"
           cd "$GITHUB_WORKSPACE/Android-App"
           ERGEBNIS=0
-          python3 tools/release-pruefen.py zertifikat "$RUNNER_TEMP/zertifikat.txt" tools/release-zertifikat.sha256 || ERGEBNIS=$?
+          python3 tools/release-check.py zertifikat "$RUNNER_TEMP/zertifikat.txt" tools/release-certificate.sha256 || ERGEBNIS=$?
           if [ "$ECHT" = "true" ] && [ "$ERGEBNIS" != 0 ]; then
-            echo "::error::Das APK ist nicht mit dem hinterlegten Release-Zertifikat signiert (tools/release-zertifikat.sha256). Nichts wird veröffentlicht."
+            echo "::error::Das APK ist nicht mit dem hinterlegten Release-Zertifikat signiert (tools/release-certificate.sha256). Nichts wird veröffentlicht."
             exit 1
           fi
           if [ "$ECHT" != "true" ] && [ "$ERGEBNIS" != 1 ]; then
@@ -423,8 +423,8 @@ jobs:
           set -euo pipefail
           "$ANDROID_HOME/build-tools/37.0.0/aapt2" dump xmltree --file AndroidManifest.xml \
             app/build/outputs/apk/release/BrickInventory.apk > "$RUNNER_TEMP/manifest.txt"
-          python3 tools/manifest-pruefen.py "$RUNNER_TEMP/manifest.txt" tools/manifest-exportiert.txt \
-            tools/manifest-berechtigungen.txt
+          python3 tools/manifest-check.py "$RUNNER_TEMP/manifest.txt" tools/manifest-exported.txt \
+            tools/manifest-permissions.txt
 
       # Die Beschreibung trägt die Signatur des Beschreibungsschlüssels und beschreibt
       # genau dieses APK. Das Release muss mit einem der Schlüssel signiert sein, die
@@ -448,7 +448,7 @@ jobs:
           # Rückgabe 3: Die App nennt keinen Beschreibungsschlüssel und nähme so keine
           # Beschreibung an. Sichtbar in jedem Lauf; ein Release veröffentlicht so nicht.
           SCHLUESSEL=0
-          python3 tools/release-pruefen.py schluessel "$A/beschreibungsschluessel.pem" \
+          python3 tools/release-check.py schluessel "$A/beschreibungsschluessel.pem" \
             core-resources/src/main/res/raw/beschreibungs_schluessel.pem || SCHLUESSEL=$?
           if [ "$SCHLUESSEL" = 3 ]; then
             if [ "$ECHT" = "true" ]; then
@@ -460,7 +460,7 @@ jobs:
             echo "::error::Die App verlangt einen Beschreibungsschlüssel, die Beschreibung trägt keinen davon (Environment release-beschreibung). Nichts wird veröffentlicht."
             exit 1
           fi
-          python3 tools/release-pruefen.py beschreibung "$T/daten.json" "$A/apk/release/BrickInventory.apk" \
+          python3 tools/release-check.py beschreibung "$T/daten.json" "$A/apk/release/BrickInventory.apk" \
             "$A/apk/release/output-metadata.json" "$COMMIT" \
             "https://github.com/$GITHUB_REPOSITORY/releases/download/$ETIKETT"
 
@@ -488,7 +488,7 @@ jobs:
           elif ! gh release download apk-neuste --repo "$GITHUB_REPOSITORY" -p version.json -O "$ALT" --clobber; then
             ALT=-
           fi
-          if ! python3 tools/release-pruefen.py fassung "$ALT" "$V_CODE" "$COMMIT"; then
+          if ! python3 tools/release-check.py fassung "$ALT" "$V_CODE" "$COMMIT"; then
             echo "::error::versionCode $V_CODE liegt nicht über dem veröffentlichten APK. Nichts wird veröffentlicht."
             exit 1
           fi
@@ -496,12 +496,12 @@ jobs:
       # Das fertige APK lesen, nicht den Quelltext: Was R8 entfernt, steht nur im Ergebnis.
       - name: APK gegen R8-Verluste prüfen
         run: |
-          python3 tools/apk-pruefen.py \
+          python3 tools/apk-check.py \
             app/build/outputs/apk/release/BrickInventory.apk \
             */src/main/java
 
       # 16-KB-Speicherseiten am gebauten APK messen statt an einer Versionsnummer.
       - name: Native Bibliotheken auf 16 KB ausgerichtet?
         run: |
-          python3 tools/apk-ausrichtung.py \
+          python3 tools/apk-alignment.py \
             app/build/outputs/apk/release/BrickInventory.apk

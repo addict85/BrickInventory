@@ -3,7 +3,7 @@
  *
  * Button in jsdom (real bundle), workflow as structure. The release paths themselves
  * (signing, checksums, versions) are checked by the Android run:
- * Android-App/tools/release-wege.test.js.
+ * Android-App/tools/release-paths.test.js.
  *
  * Counter-checks (measured 10.11.2026, each alone, reverted):
  *   b) button removed from index.html            → red: steps 1 and 2
